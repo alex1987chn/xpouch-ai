@@ -1,0 +1,15 @@
+[defaults]
+url = https://sentry.io/
+
+[auth]
+token =
+
+[http]
+verify_ssl = 0
+
+[projects]
+xpouch-ai = production
+
+[unrelease]
+ignore_missing_release = 1
+
