@@ -1,0 +1,34 @@
+services:
+  # 后端服务
+  backend:
+    build: ./backend
+    container_name: xpouch-backend
+    restart: always
+    volumes:
+      # 持久化 SQLite 数据库
+      - ./data:/app/data
+    env_file:
+      - ./backend/.env
+    environment:
+      - PORT=3000
+      # 数据库路径指向挂载卷
+      - DATABASE_URL=sqlite:////app/data/database.db
+    networks:
+      - app-network
+
+  # 前端服务
+  frontend:
+    build: ./frontend
+    container_name: xpouch-frontend
+    restart: always
+    ports:
+      # 映射到宿主机的 8080 端口，配合宿主机 Nginx 使用
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
