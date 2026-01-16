@@ -8,3 +8,28 @@ wheels/
 
 # Virtual environments
 .venv
+.venv/
+venv/
+ENV/
+env/
+.env/
+
+# Environment variables（包含敏感信息）
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.sqlite
