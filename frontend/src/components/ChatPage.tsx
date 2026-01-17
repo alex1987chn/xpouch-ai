@@ -121,7 +121,7 @@ export default function ChatPage() {
         <ChatGPTChatArea messages={messages} isTyping={isTyping} />
       </div>
 
-      <div className="pb-6 px-4 shrink-0">
+      <div className="pb-24 md:pb-20 px-4 shrink-0">
         <div className="relative flex justify-center">
           <div className="w-full max-w-2xl lg:max-w-4xl relative">
             <GlowingInput

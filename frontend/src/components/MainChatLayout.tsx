@@ -29,7 +29,9 @@ export default function MainChatLayout({ children, className, hasMessages = fals
   return (
     <div
       className={cn(
-        'flex h-[100dvh] w-screen overflow-hidden flex bg-slate-50 dark:bg-[#020617] transition-colors duration-200'
+        'flex w-full bg-slate-50 dark:bg-[#020617] transition-colors duration-200 overflow-x-hidden',
+        // 只有在其他页面（非首页）时才固定高度
+        hasMessages ? 'h-[100dvh]' : 'min-h-[100dvh]'
       )}
     >
       {/* 移动端侧边栏遮罩 */}
@@ -46,7 +48,7 @@ export default function MainChatLayout({ children, className, hasMessages = fals
         'w-[92px]',
         'bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a]',
         'backdrop-blur-xl',
-        'border-r border-slate-200/50',
+        'border-r border-slate-200/50 dark:border-slate-700/30',
         'lg:translate-x-0',
         isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full',
         isDesktopSidebarCollapsed && 'lg:-translate-x-full',
@@ -83,7 +85,7 @@ export default function MainChatLayout({ children, className, hasMessages = fals
 
       {/* 主内容区域 - 添加左边距和移动端适配 */}
       <div className={cn(
-        'flex-1 w-full flex flex-col transition-all duration-200 h-full',
+        'flex-1 w-full flex flex-col transition-all duration-200',
         isDesktopSidebarCollapsed ? 'lg:ml-0' : 'lg:ml-[92px]',
         isMobileSidebarOpen ? 'ml-0' : 'ml-0'
       )}>
@@ -98,7 +100,7 @@ export default function MainChatLayout({ children, className, hasMessages = fals
         </div>
 
         {/* 主要内容 */}
-        <main className={cn('flex-1 w-full flex flex-col min-h-0', className)}>
+        <main className={cn('flex-1 w-full flex flex-col', className)}>
           {children}
         </main>
       </div>

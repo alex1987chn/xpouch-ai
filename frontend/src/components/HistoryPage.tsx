@@ -73,9 +73,9 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-transparent">
-      {/* 极窄毛玻璃 Header - h-14 固定高度 */}
-      <header className="sticky top-0 z-40 w-full h-14 px-6 backdrop-blur-xl bg-white/70 dark:bg-[#020617]/70 border-b border-slate-200/50 shrink-0">
+    <div className="relative h-full bg-transparent overflow-x-hidden">
+      {/* 极窄毛玻璃 Header - h-14 固定高度，fixed 定位 */}
+      <header className="fixed top-0 left-0 right-0 z-40 h-14 px-6 lg:pl-[106px] backdrop-blur-xl bg-white/70 dark:bg-[#020617]/70 border-b border-slate-200/50 dark:border-slate-700/30">
         <div className="w-full max-w-5xl mx-auto h-full flex items-center">
           {/* 左侧：图标 + 标题 */}
           <div className="flex items-center h-full">
@@ -87,7 +87,13 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
         </div>
       </header>
 
-      <>
+      {/* 可滚动内容区 - 添加 pt-14 避免内容被 header 遮挡 */}
+      <div
+        className="h-full overflow-y-auto scrollbar-thin overscroll-behavior-y-contain overflow-x-hidden pt-14"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* 移动端滑动返回指示器 */}
         {swipeProgress > 0 && (
           <div
@@ -97,15 +103,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
             <ArrowLeft className="w-8 h-8 text-indigo-600 ml-3 opacity-90" />
           </div>
         )}
-
-        {/* 可滚动内容区 */}
-        <div
-          className="min-h-0 flex-1 overflow-y-auto scrollbar-thin overscroll-behavior-y-contain"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-20 mt-8">
+        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20 mt-8">
           {loading ? (
              <div className="text-center py-20 text-gray-500">Loading history...</div>
           ) : conversations.length > 0 ? (
@@ -176,7 +174,6 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
           )}
         </div>
       </div>
-    </>
     </div>
   )
 }
