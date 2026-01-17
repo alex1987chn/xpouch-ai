@@ -161,7 +161,7 @@ export default function CanvasChatPage() {
 
     // 2秒后恢复处理状态（模拟AI开始思考）
     setTimeout(() => setIsProcessing(false), 2000)
-  }, [inputMessage, handleMagicColor, handleSendMessage])
+  }, [inputMessage, parseMagicColor, handleSendMessage])
 
   // 如果 id 为 null，显示空状态
   if (!id) {
@@ -217,6 +217,7 @@ export default function CanvasChatPage() {
     <Sidebar
       isCollapsed={false}
       currentPlan={user?.plan as 'Free' | 'Pilot' | 'Maestro'}
+      onCreateAgent={() => navigate('/create-agent')}
       onSettingsClick={handleSettingsClick}
       onPersonalSettingsClick={handlePersonalSettingsClick}
     />
