@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.2] - 2026-01-17 (UI 统合重构)
+
+### 🎨 全站 UI 统合重构
+
+**品牌区增强**
+- PixelLetters 添加 0.8s 周期呼吸动效 (`animate-pulse-glow`)
+- Slogan "POUCH" 应用蓝紫渐变文字 (`bg-gradient-to-r from-blue-400 to-violet-500`)
+- 像素点尺寸与间隙优化，增强轻盈透明感
+
+**全站背景与网格水印**
+- Light 模式底色：`bg-slate-50`（冷瓷灰）
+- Dark 模式底色：`bg-[#020617]`（深空蓝）
+- 背景网格点间距扩大至 50px，透明度降低
+
+**页面骨架标准化**
+- 所有内页标题左对齐，统一使用 `px-6 md:px-12` 左边距
+- 内容容器统一使用 `max-w-5xl mx-auto w-full`
+- 极窄毛玻璃 Header (`h-14`, `backdrop-blur-xl`)
+- Header 垂直居中修复
+
+**搜索框修复**
+- 使用 `relative flex items-center` 布局
+- 图标 `absolute left-4`，输入框 `pl-11`
+- 背景使用微弱毛玻璃感
+
+**智能体卡片重构 (AgentCard)**
+- 商务高级感设计：`rounded-2xl`, 软阴影 `shadow-[0_8px_30px_rgb(0,0,0,0.04)]`
+- 左侧 4px 渐变竖条 (`from-blue-400 to-violet-500`)，完全覆盖边缘
+- Hover 效果：上移 4px，阴影增强，图标的紫色渐变背景
+- 选中状态默认第一个智能体
+
+**首页布局优化**
+- 4 列网格 (`lg:grid-cols-4`)，移动端 2 列
+- 默认选中第一个智能体卡片
+- Tab 标签与卡片左边缘对齐
+- "我的智能体"空状态卡片与精选卡片样式统一
+
+**侧边栏升级**
+- 选中态图标添加紫色发光阴影 `shadow-[0_0_15px_rgba(139,92,246,0.4)]`
+
+**输入框重构 (GlowingInput)**
+- 圆角改为 `rounded-[28px]`
+- Dark 模式使用 `bg-slate-950` + 内阴影
+
+**创建智能体页面 (CreateAgentPage)**
+- 沉浸式画布风格，透明背景透出像素网格
+- 双栏布局：左侧表单，右侧 Sticky 实时预览
+- 表单输入框：Light 模式 `bg-white`，Dark 模式 `bg-slate-800/50`
+- Focus 状态蓝紫渐变边框 `ring-2 ring-violet-500/50`
+- 分类选择：胶囊式标签按钮，选中态紫色渐变
+- 系统提示词：2000 字限制
+- 像素风格进度条：16 个像素块组成的进度指示器
+- 顶部毛玻璃 Header，创建按钮品牌渐变 + Glow 效果
+
+**历史记录与知识库页面**
+- Header 垂直居中修复
+- 新建按钮改为胶囊形状 (`rounded-full`)
+
+**滚动条统一样式**
+- 使用 `scrollbar-thin` 自定义细滚动条
+- 停止滚动 2s 后自动隐藏
+
+**其他细节修复**
+- HomePage 添加 `cn` 导入
+- AgentCard 图标背景渐变优化
+- 修复多个 TypeScript 类型问题
+- 清理未使用的导入
+
+---
+
 ## [Unreleased] - 2026-01-17 (交互优化 + 移动端体验)
 
 ### 🎨 UI/UX 优化
