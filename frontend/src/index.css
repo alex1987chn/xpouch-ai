@@ -3,137 +3,183 @@
 @tailwind utilities;
 
 @layer base {
+  /* Light theme (default) - 冷瓷灰 */
   :root {
-    --background: 0 0% 100%;
+    --background: 210 40% 98%;
     --foreground: 222.2 84% 4.9%;
-
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
- 
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
- 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
- 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
- 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
- 
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
- 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
- 
+    --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
   }
- 
+
+  /* Dark theme - 深邃蓝黑 */
+  html.dark,
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222 47% 3.9%;
     --foreground: 210 40% 98%;
- 
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
- 
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
- 
-    --primary: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
     --primary-foreground: 222.2 47.4% 11.2%;
- 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
- 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
- 
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
- 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
- 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-  }
-}
- 
-@layer base {
-  * {
-    @apply border-border;
+    --ring: 224.3 76.3% 48%;
   }
 
-  html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    height: 100%;
+  * {
+    border-color: hsl(var(--border));
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 200ms;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   }
 }
 
-/* Custom glow effect */
-.input-glow {
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  background: linear-gradient(45deg, #ff0080, #ff8c00, #40e0d0, #0080ff);
-  border-radius: 18px;
-  z-index: -1;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  filter: blur(10px);
+/* ============================================
+   像素呼吸动效 (Pixel Pulse Glow) - 0.8s 周期
+   ============================================ */
+@keyframes pixelPulseGlow {
+  0%, 100% {
+    opacity: 0.85;
+    filter: blur(0.5px);
+  }
+  50% {
+    opacity: 1;
+    filter: blur(0px);
+  }
 }
 
-.input-glow.active {
-  opacity: 0.5;
-  animation: glowing 3s linear infinite;
-}
-
-@keyframes glowing {
-  0% { background-position: 0 0; }
-  50% { background-position: 400% 0; }
-  100% { background-position: 0 0; }
-}
-
+.animate-pulse-glow,
 .pulse-glow {
-  box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
-  animation: pulse-blue 2s infinite;
+  animation: pixelPulseGlow 0.8s ease-in-out infinite;
 }
 
-@keyframes pulse-blue {
+/* ============================================
+   像素网格水印 (Pixel Grid Watermark)
+   ============================================ */
+body {
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.3;
+}
+
+.dark body::before {
+  background-image: radial-gradient(circle, #1e293b 1px, transparent 1px);
+  opacity: 0.25;
+}
+
+/* 确保内容在网格之上 */
+main, aside, header, .relative {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================
+   像素降落动画 (Pixel Fall-in Animation)
+   ============================================ */
+@keyframes pixelFallIn {
   0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+    transform: translateY(-200px) scale(0) rotate(180deg);
+    opacity: 0;
+  }
+  40% {
+    transform: translateY(-100px) scale(0.8) rotate(90deg);
+    opacity: 0.6;
   }
   70% {
-    transform: scale(1);
-    box-shadow: 0 0 0 6px rgba(99, 102, 241, 0);
+    transform: translateY(20px) scale(1.15) rotate(10deg);
+    opacity: 1;
   }
   100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    transform: translateY(0) scale(1) rotate(0deg);
+    opacity: 1;
   }
 }
 
-/* 自定义滚动条样式 */
+.animate-pixelFallIn {
+  animation: pixelFallIn 0.6s ease-out forwards;
+}
+
+/* ============================================
+   淡入动画 (Fade-in Animation)
+   ============================================ */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-in-out forwards;
+}
+
+/* ============================================
+   扇形旋转类 (Card Fan Rotation)
+   ============================================ */
+.card-rotate-0 {
+  transform: rotate(-8deg);
+}
+
+.card-rotate-1 {
+  transform: rotate(-4deg);
+}
+
+.card-rotate-2 {
+  transform: rotate(0deg);
+}
+
+.card-rotate-3 {
+  transform: rotate(4deg);
+}
+
+.card-rotate-4 {
+  transform: rotate(8deg);
+}
+
+/* ============================================
+   滚动条优化 (Scrollable Containers)
+   ============================================ */
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: rgba(156, 163, 175, 0.5) rgba(156, 163, 175, 0.2);
@@ -157,16 +203,512 @@
 }
 
 /* 暗色模式滚动条 */
-@media (prefers-color-scheme: dark) {
-  .scrollbar-thin {
-    scrollbar-color: rgba(100, 116, 139, 0.5) rgba(100, 116, 139, 0.2);
+.dark .scrollbar-thin {
+  scrollbar-color: rgba(100, 116, 139, 0.5) rgba(100, 116, 139, 0.2);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.5);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.8);
+}
+
+/* ============================================
+   平滑滚动容器 (Smooth Scroll Containers)
+   ============================================ */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.smooth-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.smooth-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.smooth-scroll::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.4);
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.smooth-scroll:hover::-webkit-scrollbar-thumb,
+.smooth-scroll:active::-webkit-scrollbar-thumb {
+  opacity: 1;
+}
+
+.smooth-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.7);
+}
+
+/* 暗色模式滚动条 */
+.dark .smooth-scroll {
+  scrollbar-color: transparent transparent;
+}
+
+.dark .smooth-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+}
+
+.dark .smooth-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.7);
+}
+
+/* ============================================
+   性能优化 (Performance Optimization)
+   ============================================ */
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* ============================================
+   历史记录渐变边框 (History Gradient Border)
+   ============================================ */
+.history-gradient-border {
+  position: relative;
+}
+
+.history-gradient-border::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  transition: background 0.2s ease;
+}
+
+.history-gradient-border:hover::before {
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.8), rgba(139, 92, 246, 0.2));
+}
+
+/* ============================================
+   基础光晕效果 - 移动端友好
+   ============================================ */
+@keyframes breathe-glow {
+  0%, 100% {
+    opacity: 0.5;
+    filter: blur(6px);
+  }
+  50% {
+    opacity: 0.9;
+    filter: blur(10px);
+  }
+}
+
+.input-glow {
+  position: absolute;
+  inset: -8px;
+  border-radius: 1.5rem;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(99, 102, 241, 0.35) 0%,
+    rgba(139, 92, 246, 0.2) 40%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: -1;
+  will-change: opacity, filter;
+}
+
+.input-glow.active {
+  opacity: 1;
+  animation: breathe-glow 4s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+/* ============================================
+   桌面端增强光晕效果 (>= 768px)
+   ============================================ */
+@media (min-width: 768px) {
+  @keyframes desktop-glow {
+    0%, 100% {
+      opacity: 0.7;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.03);
+    }
   }
 
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(100, 116, 139, 0.5);
+  .input-glow.active {
+    animation: desktop-glow 4s ease-in-out infinite;
   }
 
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: rgba(100, 116, 139, 0.8);
+  .pulse-glow {
+    animation: pulse-glow 4s ease-in-out infinite;
   }
+}
+
+/* ============================================
+   侧边栏菜单弹出动画 - 优化GPU性能
+   ============================================ */
+@keyframes menuFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* ============================================
+     基础光晕效果 - 移动端友好
+     ============================================ */
+  /* 呼吸光晕动画 - 移动端 (4秒周期: 2秒呼出, 2秒吸进) */
+  @keyframes breathe-glow {
+    0%, 100% {
+      opacity: 0.5;
+      filter: blur(6px);
+    }
+    50% {
+      opacity: 0.9;
+      filter: blur(10px);
+    }
+  }
+
+  /* 输入框光晕层 - 柔和呼吸效果 */
+  .input-glow {
+    position: absolute;
+    inset: -8px;
+    border-radius: 1.5rem;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(99, 102, 241, 0.35) 0%,
+      rgba(139, 92, 246, 0.2) 40%,
+      transparent 70%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: -1;
+    will-change: opacity, filter;
+  }
+
+  .input-glow.active {
+    opacity: 1;
+    animation: breathe-glow 4s ease-in-out infinite;
+  }
+
+  /* 脉冲边框光晕效果 (4秒周期) */
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+    }
+  }
+
+  .pulse-glow {
+    animation: pulse-glow 4s ease-in-out infinite;
+  }
+
+  /* ============================================
+     桌面端增强光晕效果 (>= 768px)
+     ============================================ */
+  @media (min-width: 768px) {
+    /* 桌面端增强版光晕 (4秒周期) */
+    @keyframes desktop-glow {
+      0%, 100% {
+        opacity: 0.7;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.03);
+      }
+    }
+
+    .input-glow.active {
+      animation: desktop-glow 4s ease-in-out infinite;
+    }
+
+    .pulse-glow {
+      animation: pulse-glow 4s ease-in-out infinite;
+    }
+  }
+}
+
+/* Glow Effect */
+@keyframes glow {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.5);
+  }
+}
+
+.glow-effect {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.5);
+}
+
+/* ============================================
+   像素网格水印 (Pixel Grid Watermark)
+   ============================================ */
+body {
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.5;
+}
+
+.dark body::before {
+  background-image: radial-gradient(circle, #1e293b 1px, transparent 1px);
+  opacity: 0.4;
+}
+
+/* 确保内容在网格之上 */
+main, aside, header, .relative {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================
+   像素降落动画 (Pixel Fall-in Animation)
+   ============================================ */
+@keyframes pixelFallIn {
+  0% {
+    transform: translateY(-200px) scale(0) rotate(180deg);
+    opacity: 0;
+  }
+  40% {
+    transform: translateY(-100px) scale(0.8) rotate(90deg);
+    opacity: 0.6;
+  }
+  70% {
+    transform: translateY(20px) scale(1.15) rotate(10deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.animate-pixelFallIn {
+  animation: pixelFallIn 0.6s ease-out forwards;
+}
+
+/* ============================================
+   淡入动画 (Fade-in Animation)
+   ============================================ */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-in-out forwards;
+}
+
+/* ============================================
+   扇形旋转类 (Card Fan Rotation)
+   ============================================ */
+.card-rotate-0 {
+  transform: rotate(-8deg);
+}
+
+.card-rotate-1 {
+  transform: rotate(-4deg);
+}
+
+.card-rotate-2 {
+  transform: rotate(0deg);
+}
+
+.card-rotate-3 {
+  transform: rotate(4deg);
+}
+
+.card-rotate-4 {
+  transform: rotate(8deg);
+}
+
+/* ============================================
+   滚动条优化 (Scrollable Containers)
+   ============================================ */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) rgba(156, 163, 175, 0.2);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.8);
+}
+
+/* 暗色模式滚动条 */
+.dark .scrollbar-thin {
+  scrollbar-color: rgba(100, 116, 139, 0.5) rgba(100, 116, 139, 0.2);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.5);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.8);
+}
+
+/* ============================================
+   平滑滚动容器 (Smooth Scroll Containers)
+   ============================================ */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.smooth-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.smooth-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.smooth-scroll::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.4);
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.smooth-scroll:hover::-webkit-scrollbar-thumb,
+.smooth-scroll:active::-webkit-scrollbar-thumb {
+  opacity: 1;
+}
+
+.smooth-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.7);
+}
+
+/* 暗色模式滚动条 */
+.dark .smooth-scroll {
+  scrollbar-color: transparent transparent;
+}
+
+.dark .smooth-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+}
+
+.dark .smooth-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.7);
+}
+
+/* ============================================
+   性能优化 (Performance Optimization)
+   ============================================ */
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* ============================================
+   历史记录渐变边框 (History Gradient Border)
+   ============================================ */
+.history-gradient-border {
+  position: relative;
+}
+
+.history-gradient-border::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  transition: background 0.2s ease;
+}
+
+.history-gradient-border:hover::before {
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.8), rgba(139, 92, 246, 0.2));
 }

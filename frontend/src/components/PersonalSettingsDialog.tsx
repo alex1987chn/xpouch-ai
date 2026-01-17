@@ -117,7 +117,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
         </div>
 
         {/* 内容区域 */}
-        <div className="flex-1 overflow-auto px-6 py-4 space-y-6">
+        <div className="flex-1 overflow-auto smooth-scroll px-6 py-4 space-y-6">
           {/* 头像设置 */}
           <section>
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
