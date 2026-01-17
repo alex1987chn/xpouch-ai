@@ -33,7 +33,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
       {/* Header */}
       <header className="shrink-0 h-16 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 justify-between bg-white dark:bg-gray-900 z-10">
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={onBack}
             className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
           >
@@ -46,7 +46,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
             </h1>
           </div>
         </div>
-        
+
         <button
           onClick={handleSave}
           disabled={!name || !systemPrompt}
@@ -60,17 +60,17 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-2xl mx-auto space-y-8">
-          
+
           {/* Agent Name */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Agent Name <span className="text-red-500">*</span>
+              {t('agentName')} <span className="text-red-500">{t('required')}</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Coding Assistant"
+              placeholder={t('agentNamePlaceholder')}
               className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-shadow"
             />
           </div>
@@ -78,13 +78,13 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
           {/* Description */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Description
+              {t('description')}
             </label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="A brief description of what this agent does..."
+              placeholder={t('descriptionPlaceholder')}
               className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-shadow"
             />
           </div>
@@ -92,15 +92,15 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
           {/* System Prompt */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              System Prompt <span className="text-red-500">*</span>
+              {t('systemPrompt')} <span className="text-red-500">{t('required')}</span>
             </label>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              Define how the agent should behave and respond.
+              {t('systemPromptHint')}
             </p>
             <textarea
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder="You are a helpful assistant who specializes in..."
+              placeholder={t('systemPromptPlaceholder')}
               rows={8}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-shadow resize-none font-mono text-sm"
             />

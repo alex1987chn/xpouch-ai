@@ -14,7 +14,7 @@ export const zh: Record<TranslationKey, string> = {
   placeholder: '输入消息...',
   featuredAgents: '精选智能体',
   myAgents: '我的智能体',
-  createAgent: '创建用户自己的新智能体',
+  createAgent: '创造您的专属智能体',
   backToChat: '会话',
   addCustomAgent: '添加自定义智能体',
   createYourFirstAgent: '创建第一个智能体',
@@ -39,8 +39,13 @@ export const zh: Record<TranslationKey, string> = {
   // Create Agent
   create: '创建',
   agentName: '智能体名称',
+  agentNamePlaceholder: '例如：编程助手',
   description: '描述',
+  descriptionPlaceholder: '简要描述这个智能体的功能...',
   systemPrompt: '系统提示词',
+  systemPromptPlaceholder: '你是一个专业的助手，擅长...',
+  systemPromptHint: '定义智能体应该如何行为和响应',
+  required: '必填',
   
   // Chat
   startConversation: '开始对话',
@@ -72,7 +77,7 @@ export const en: Record<TranslationKey, string> = {
   placeholder: 'Type a message...',
   featuredAgents: 'Featured Agents',
   myAgents: 'My Agents',
-  createAgent: 'Create User Agent',
+  createAgent: 'Create Your Exclusive Agent',
   backToChat: 'Back to Chat',
   addCustomAgent: 'Add Custom Agent',
   createYourFirstAgent: 'Create your first agent',
@@ -97,8 +102,13 @@ export const en: Record<TranslationKey, string> = {
   // Create Agent
   create: 'Create',
   agentName: 'Agent Name',
+  agentNamePlaceholder: 'e.g., Coding Assistant',
   description: 'Description',
+  descriptionPlaceholder: 'A brief description of what this agent does...',
   systemPrompt: 'System Prompt',
+  systemPromptPlaceholder: 'You are a helpful assistant who specializes in...',
+  systemPromptHint: 'Define how agent should behave and respond',
+  required: 'Required',
   
   // Chat
   startConversation: 'Start Conversation',
@@ -130,7 +140,7 @@ export const ja: Record<TranslationKey, string> = {
   placeholder: 'メッセージを入力...',
   featuredAgents: 'おすすめエージェント',
   myAgents: 'マイエージェント',
-  createAgent: 'ユーザーエージェントを作成',
+  createAgent: 'あなただけのエージェントを作成',
   backToChat: 'チャットに戻る',
   addCustomAgent: 'カスタムエージェントを追加',
   createYourFirstAgent: '最初のエージェントを作成',
@@ -155,8 +165,13 @@ export const ja: Record<TranslationKey, string> = {
   // Create Agent
   create: '作成',
   agentName: 'エージェント名',
+  agentNamePlaceholder: '例：プログラミングアシスタント',
   description: '説明',
+  descriptionPlaceholder: 'このエージェントの機能の簡単な説明...',
   systemPrompt: 'システムプロンプト',
+  systemPromptPlaceholder: 'あなたは専門的なアシスタントで、...',
+  systemPromptHint: 'エージェントがどのように動作し、応答するかを定義',
+  required: '必須',
   
   // Chat
   startConversation: '会話を開始',
