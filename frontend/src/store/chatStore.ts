@@ -2,15 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { type Agent, agents as defaultAgents } from '@/data/agents'
 import { generateId } from '@/utils/storage'
-
-// 定义聊天消息类型
-export interface Message {
-  id?: string
-  role: 'user' | 'assistant'
-  content: string
-  isTyping?: boolean
-  timestamp?: number | string
-}
+import { type Message, type Conversation } from '@/types'
 
 // 定义 Store 状态类型
 interface ChatState {

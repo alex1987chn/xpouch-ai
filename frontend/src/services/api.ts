@@ -1,9 +1,16 @@
 // API 服务 - 通过后端代理调用 AI 模型
 // 统一使用 LangGraph 工作流
 
+import {
+  ApiMessage,
+  Conversation,
+  UserProfile,
+  apiMessageToMessage
+} from '@/types'
+
 // 智能判断环境：本地开发直连后端，生产环境走 Nginx 代理
-const API_BASE_URL = import.meta.env.DEV 
-  ? 'http://127.0.0.1:3002/api' 
+const API_BASE_URL = import.meta.env.DEV
+  ? 'http://127.0.0.1:3002/api'
   : '/api'
 
 // 获取或生成客户端ID (简单的 UUID 生成，兼容低版本浏览器)
@@ -26,32 +33,8 @@ const getHeaders = () => ({
   'X-User-ID': getClientId()
 });
 
-export interface ChatMessage {
-  id?: string;
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-  timestamp?: Date | string;
-  isTyping?: boolean;
-}
-
-export interface Conversation {
-  id: string;
-  title: string;
-  agent_id: string;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-  messages?: ChatMessage[];
-  messageCount?: number;
-}
-
-// 用户相关接口
-export interface UserProfile {
-    id: string;
-    username: string;
-    avatar?: string;
-    plan: string;
-}
+// 为了向后兼容，导出别名
+export { ApiMessage as ChatMessage, Conversation, UserProfile }
 
 export async function getUserProfile(): Promise<UserProfile> {
     const response = await fetch(`${API_BASE_URL}/user/me`, {
@@ -111,14 +94,11 @@ export async function deleteConversation(id: string): Promise<void> {
  * 发送消息给 AI - 流式输出
  */
 export async function sendMessage(
-  model: string, // 保留参数但暂不使用
-  messages: ChatMessage[],
+  messages: ApiMessage[],
   agentId: string = 'assistant',
   onChunk?: (chunk: string, conversationId?: string) => void,
   conversationId?: string | null
 ): Promise<string> {
-  // 避免 lint 报错，临时使用 model 变量
-  void model
   
   // 提取最新一条消息作为当前 prompt，其他的作为 history
   const history = messages.slice(0, -1)

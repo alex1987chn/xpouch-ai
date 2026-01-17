@@ -3,8 +3,9 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useChatStore } from '@/store/chatStore'
 import { useChat } from '@/hooks/useChat'
 import { useManualArtifact } from '@/hooks/useArtifactListener'
+import { useMagicColorParser } from '@/hooks/useMagicColorParser'
 import { useCanvasStore } from '@/store/canvasStore'
-import { getConversation } from '@/services/api'
+import { getConversation, type ApiMessage } from '@/services/api'
 import { generateId } from '@/utils/storage'
 import { ArrowLeft } from 'lucide-react'
 import InteractiveCanvas from './InteractiveCanvas'
@@ -16,6 +17,7 @@ import { useUserStore } from '@/store/userStore'
 import { SettingsDialog } from './SettingsDialog'
 import { PersonalSettingsDialog } from './PersonalSettingsDialog'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
+import { type ChatPageState } from '@/types'
 
 export default function CanvasChatPage() {
   const { id } = useParams()
@@ -51,6 +53,7 @@ export default function CanvasChatPage() {
 
   const { setMagicColor } = useCanvasStore()
   const { artifactType, artifactContent } = useManualArtifact()
+  const { parseMagicColor } = useMagicColorParser(setMagicColor)
   const { user } = useUserStore()
 
   // 处理设置点击
@@ -107,8 +110,8 @@ export default function CanvasChatPage() {
 
         if (conversation.messages && conversation.messages.length > 0) {
           console.log('[CanvasChatPage] Loading messages:', conversation.messages.length)
-          const loadedMessages = conversation.messages.map((m: any) => ({
-            role: m.role,
+          const loadedMessages = conversation.messages.map((m: ApiMessage) => ({
+            role: m.role === 'system' ? 'assistant' : m.role,
             content: m.content,
             id: m.id ? String(m.id) : generateId(),
             timestamp: m.timestamp ? new Date(m.timestamp).getTime() : Date.now()
@@ -145,36 +148,11 @@ export default function CanvasChatPage() {
     }
   }, [location, handleSendMessage, navigate, setSelectedAgentId])
 
-  // 解析"魔法修改"指令
-  const handleMagicColor = useCallback((message: string) => {
-    if (!message || typeof message !== 'string') return false
-
-    const magicMatch = message.match(/把(.*?)改成?(.*?)(?:色|颜色)?/i)
-    if (magicMatch && magicMatch[2]) {
-      const color = magicMatch[2].trim()
-      const colorMap: Record<string, string> = {
-        '红': '#ef4444', '红色': '#ef4444',
-        '蓝': '#3b82f6', '蓝色': '#3b82f6',
-        '绿': '#22c55e', '绿色': '#22c55e',
-        '黄': '#eab308', '黄色': '#eab308',
-        '紫': '#8b5cf6', '紫色': '#8b5cf6',
-        '粉': '#ec4899', '粉色': '#ec4899',
-        '橙': '#f97316', '橙色': '#f97316'
-      }
-
-      if (colorMap[color]) {
-        setMagicColor(colorMap[color])
-        return true
-      }
-    }
-    return false
-  }, [setMagicColor])
-
   // 处理消息发送
   const handleSubmitMessage = useCallback(() => {
     if (!inputMessage || typeof inputMessage !== 'string' || !inputMessage.trim()) return
 
-    if (handleMagicColor(inputMessage)) {
+    if (parseMagicColor(inputMessage)) {
       return
     }
 

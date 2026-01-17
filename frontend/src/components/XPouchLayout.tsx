@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { ArrowLeft } from 'lucide-react'
+import SwipeBackIndicator from './SwipeBackIndicator'
 
 interface XPouchLayoutProps {
   SidebarContent: React.ReactNode
@@ -35,14 +35,7 @@ export default function XPouchLayout({
       {/* 主容器 */}
       <div className="relative flex flex-1 overflow-hidden">
         {/* 移动端滑动返回指示器 */}
-        {swipeProgress > 0 && (
-          <div
-            className="md:hidden absolute left-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-r from-indigo-500/30 to-transparent backdrop-blur-sm pointer-events-none z-50 transition-all"
-            style={{ width: `${Math.min(swipeProgress, 150)}px` }}
-          >
-            <ArrowLeft className="w-8 h-8 text-indigo-600 ml-3 opacity-90" />
-          </div>
-        )}
+        <SwipeBackIndicator swipeProgress={swipeProgress} />
 
         {/* 2. 画布区域 (Canvas) */}
         {/* 移动端逻辑：仅在 preview 模式显示 | PC端逻辑：始终作为背景 flex-1 */}

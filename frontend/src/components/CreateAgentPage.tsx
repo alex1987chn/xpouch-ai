@@ -3,6 +3,7 @@ import { ArrowLeft, Bot, Sparkles } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { cn } from '@/lib/utils'
+import SwipeBackIndicator from './SwipeBackIndicator'
 
 interface CreateAgentPageProps {
   onBack: () => void
@@ -152,14 +153,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
   return (
     <div className="flex flex-col h-full bg-transparent">
       {/* 移动端滑动返回指示器 */}
-      {swipeProgress > 0 && (
-        <div
-          className="md:hidden absolute left-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-r from-indigo-500/30 to-transparent backdrop-blur-sm pointer-events-none z-50 transition-all"
-          style={{ width: `${Math.min(swipeProgress, 150)}px` }}
-        >
-          <ArrowLeft className="w-8 h-8 text-indigo-600 ml-3 opacity-90" />
-        </div>
-      )}
+      <SwipeBackIndicator swipeProgress={swipeProgress} />
 
       {/* 顶部毛玻璃 Header */}
       <header className="sticky top-0 z-40 w-full h-14 px-6 backdrop-blur-xl bg-white/70 dark:bg-[#020617]/70 border-b border-slate-200/50 dark:border-slate-700/30 shrink-0">

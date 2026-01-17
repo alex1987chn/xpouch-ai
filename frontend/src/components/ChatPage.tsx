@@ -6,8 +6,9 @@ import ChatGPTChatArea from '@/components/ChatGPTChatArea'
 import GlowingInput from '@/components/GlowingInput'
 import { AgentHeader } from '@/components/AgentHeader'
 import { useTranslation } from '@/i18n'
-import { getConversation } from '@/services/api'
-import { generateId } from '@/utils/storage' // 依然用于生成临时ID
+import { getConversation, type ApiMessage } from '@/services/api'
+import { generateId, dbMessageToMessage } from '@/utils/storage'
+import { type ChatPageState } from '@/types'
 
 export default function ChatPage() {
   const { id } = useParams()
@@ -61,8 +62,8 @@ export default function ChatPage() {
                 // 恢复消息
                 // 后端返回的 messages 数组
                 if (conversation.messages && conversation.messages.length > 0) {
-                    const loadedMessages = conversation.messages.map((m: any) => ({
-                        role: m.role,
+                    const loadedMessages = conversation.messages.map((m: ApiMessage) => ({
+                        role: m.role === 'system' ? 'assistant' : m.role,
                         content: m.content,
                         id: m.id ? String(m.id) : generateId(),
                         timestamp: m.timestamp ? new Date(m.timestamp).getTime() : Date.now()
