@@ -10,7 +10,8 @@ export type TranslationKey =
   | 'addCustomAgent' | 'createYourFirstAgent'
   | 'theme' | 'language' | 'systemSettings' | 'userSettings' | 'personalSettings' | 'modelConfig'
   | 'save' | 'cancel' | 'delete' | 'edit' | 'confirmDelete' | 'noHistory' | 'startChat'
-  | 'create' | 'agentName' | 'description' | 'systemPrompt'
+  | 'create' | 'agentName' | 'agentNamePlaceholder' | 'description' | 'descriptionPlaceholder'
+  | 'systemPrompt' | 'systemPromptPlaceholder' | 'systemPromptHint' | 'required'
   | 'startConversation'
   | 'newKnowledgeBase' | 'searchKnowledge' | 'documents' | 'uploadDocument'
   | 'noKnowledgeFound' | 'noKnowledgeContent' | 'createFirstKnowledge'
@@ -26,8 +27,22 @@ const I18nContext = createContext<I18nContextType | undefined>(undefined)
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguage] = useState<Language>(() => {
+    // 1. 优先从 localStorage 读取
     const saved = localStorage.getItem('language')
-    return (saved as Language) || 'zh'
+    if (saved && ['zh', 'en', 'ja'].includes(saved)) {
+      return saved as Language
+    }
+
+    // 2. 自动检测系统/浏览器语言
+    const browserLang = navigator.language || navigator.languages?.[0] || 'en'
+
+    // 3. 匹配支持的语言
+    if (browserLang.startsWith('zh')) return 'zh' // 中文（简体/繁体）
+    if (browserLang.startsWith('ja')) return 'ja' // 日语
+    if (browserLang.startsWith('en')) return 'en' // 英语
+
+    // 4. 默认中文
+    return 'zh'
   })
 
   useEffect(() => {
