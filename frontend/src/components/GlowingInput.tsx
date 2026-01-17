@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { Send, Image, Paperclip, X, File } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { INPUT } from '@/constants/ui'
 
 interface UploadedFile {
   id: string
@@ -181,7 +182,7 @@ export default function GlowingInput({
               onBlur={() => setIsFocused(false)}
               placeholder={placeholder}
               disabled={disabled}
-              rows={3}
+              rows={INPUT.DEFAULT_ROWS}
               className="w-full min-h-[60px] resize-none bg-transparent border-0 outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 text-base leading-relaxed"
             />
           </div>

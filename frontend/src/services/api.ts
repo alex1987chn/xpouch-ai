@@ -111,7 +111,6 @@ export async function sendMessage(
   // 如果提供了 onChunk 回调，尝试使用流式输出
   if (onChunk) {
     const url = `${API_BASE_URL}/chat`
-    console.log('[API] Streaming request:', { url, agentId, conversationId })
 
     try {
       const response = await fetch(url, {
@@ -177,7 +176,7 @@ export async function sendMessage(
                    onChunk('', finalConversationId)
                 }
               } catch (e) {
-                console.warn('[API] Failed to parse SSE data:', e, data)
+                // Failed to parse SSE data, skip
               }
             }
           }
@@ -188,7 +187,6 @@ export async function sendMessage(
 
       return fullContent
     } catch (error) {
-      console.error('[API] Streaming error:', error)
       throw error
     }
   }

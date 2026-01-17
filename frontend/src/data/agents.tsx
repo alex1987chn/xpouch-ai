@@ -8,22 +8,26 @@ import {
   Brain,
   Wand
 } from 'lucide-react'
-
-export interface Agent {
-  id: string
-  name: string
-  description: string
-  icon: React.ReactNode
-  color: string
-  category: string
-  modelId: string // 指定使用的模型ID
-  promptTemplate?: string // 可选：自定义 prompt 模板
-  isDefault?: boolean // 是否为首页默认智能体
-}
+import type { Agent } from '@/types'
 
 // 获取默认智能体（首页使用）
 export function getDefaultAgent(): Agent | undefined {
   return agents.find(agent => agent.isDefault)
+}
+
+// 获取智能体的默认prompt模板
+export function getAgentDefaultPrompt(agentId: string): string {
+  const prompts: Record<string, string> = {
+    assistant: '你是一个通用AI助手，能够帮助用户处理各种任务，包括问答、写作、翻译等。请用友好、专业的语气回答。',
+    coder: '你是一个资深代码专家，擅长代码生成、调试、重构和代码审查。请提供高质量、可维护的代码解决方案。',
+    designer: '你是一个专业设计师，擅长图像生成、设计建议和视觉创作。请提供创意且实用的设计方案。',
+    video: '你是一个视频大师，精通视频生成、剪辑和特效制作。请提供专业的视频制作建议。',
+    musician: '你是一个音乐家，擅长音乐创作、音频处理和声音设计。请提供专业的音乐制作建议。',
+    analyst: '你是一个数据分析师，精通数据分析、报告生成和可视化。请提供深入的数据洞察。',
+    researcher: '你是一个研究员，擅长深度研究、文献分析和知识问答。请提供全面、准确的研究结果。',
+    creator: '你是一个创意总监，擅长创意策划、内容生成和品牌策略。请提供创新的创意方案。'
+  }
+  return prompts[agentId] || prompts['assistant']
 }
 
 export const agents: Agent[] = [

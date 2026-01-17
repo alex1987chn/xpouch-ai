@@ -4,6 +4,7 @@ import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { cn } from '@/lib/utils'
 import SwipeBackIndicator from './SwipeBackIndicator'
+import { PROGRESS } from '@/constants/ui'
 
 interface CreateAgentPageProps {
   onBack: () => void
@@ -69,15 +70,14 @@ function PreviewCard({ name, description, category }: { name: string; descriptio
 // 像素风格进度条组件
 function PixelProgressBar({ current, max }: { current: number; max: number }) {
   const progress = Math.min(current / max, 1)
-  const pixelCount = 16 // 像素块数量
-  const filledCount = Math.floor(progress * pixelCount)
+  const filledCount = Math.floor(progress * PROGRESS.PIXEL_COUNT)
 
   return (
     <div className="space-y-2">
       {/* 像素进度条 */}
       <div className="flex items-center gap-1">
         {/* 已填充的像素块 */}
-        {Array.from({ length: pixelCount }).map((_, i) => {
+        {Array.from({ length: PROGRESS.PIXEL_COUNT }).map((_, i) => {
           const isFilled = i < filledCount
           const delay = i * 0.02
 

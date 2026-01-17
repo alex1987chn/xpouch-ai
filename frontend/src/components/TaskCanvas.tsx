@@ -2,16 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { X, ChevronDown, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react'
 import { useCanvasStore } from '@/store/canvasStore'
-
-interface TaskNode {
-  id: string
-  title: string
-  status: 'pending' | 'in-progress' | 'completed'
-  children?: TaskNode[]
-  color?: string
-  icon?: string
-  description?: string
-}
+import type { TaskNode } from '@/types'
 
 interface TaskCanvasProps {
   className?: string

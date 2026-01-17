@@ -67,10 +67,13 @@ export interface Agent {
   id: string
   name: string
   description: string
-  icon: string
-  systemPrompt: string
+  icon: string | React.ReactNode
+  systemPrompt?: string
   category?: string
   color?: string
+  modelId?: string
+  promptTemplate?: string
+  isDefault?: boolean
   isCustom?: boolean
 }
 
@@ -97,6 +100,23 @@ export interface UserProfile {
   username: string
   avatar?: string
   plan: string
+}
+
+// ============================================
+// 任务节点类型
+// ============================================
+
+/**
+ * 任务节点接口
+ */
+export interface TaskNode {
+  id: string
+  title: string
+  status: 'pending' | 'in-progress' | 'completed'
+  children?: TaskNode[]
+  color?: string
+  icon?: string
+  description?: string
 }
 
 // ============================================

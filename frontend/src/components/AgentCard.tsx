@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Agent } from '@/data/agents'
+import type { Agent } from '@/types'
 import { cn } from '@/lib/utils'
 
 interface AgentCardProps {

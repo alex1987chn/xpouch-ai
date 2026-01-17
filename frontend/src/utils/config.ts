@@ -1,12 +1,35 @@
 // 配置工具函数
 // 提供便捷的配置访问方法
 
-import { defaultModel } from '@/config/models'
-import { AVAILABLE_MODELS, getAgentDefaultPrompt, type AppConfig, type AgentPromptConfig } from '@/types/config'
+import { defaultModel, models as modelConfigs, agentDefaultModels } from '@/config/models'
+import { getAgentDefaultPrompt } from '@/data/agents'
 
-// 导出可用模型列表
-export { AVAILABLE_MODELS }
-export { getAgentDefaultPrompt }
+// 导出可用模型列表（兼容旧代码）
+export const AVAILABLE_MODELS = modelConfigs.map(m => ({
+  id: m.id,
+  name: m.name,
+  description: `${m.provider} - ${m.contextWindow} tokens`,
+  provider: m.provider
+}))
+
+export { getAgentDefaultPrompt, defaultModel, agentDefaultModels }
+
+// 类型定义
+export interface AgentPromptConfig {
+  agentId: string
+  prompt: string
+  enabled: boolean
+}
+
+export interface AppConfig {
+  defaultModelId: string
+  agentPrompts: Record<string, AgentPromptConfig>
+  apiKeys: {
+    openai?: string
+    anthropic?: string
+    deepseek?: string
+  }
+}
 
 // LocalStorage 键名
 const CONFIG_STORAGE_KEY = 'xpouch-app-config'
@@ -66,7 +89,7 @@ function loadConfig(): AppConfig {
       return JSON.parse(stored)
     }
   } catch (error) {
-    console.error('Failed to load config:', error)
+    logger.error('Failed to load config:', error)
   }
   return {
     defaultModelId: defaultModel,
@@ -83,7 +106,7 @@ function saveConfig(config: AppConfig): void {
   try {
     localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config))
   } catch (error) {
-    console.error('Failed to save config:', error)
+    logger.error('Failed to save config:', error)
   }
 }
 
