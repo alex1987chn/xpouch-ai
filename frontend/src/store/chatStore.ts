@@ -29,7 +29,7 @@ interface ChatState {
   setSelectedAgentId: (id: string) => void
   setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void
   addMessage: (message: Message) => void
-  updateMessage: (id: string, content: string) => void
+  updateMessage: (id: string, content: string, append?: boolean) => void
   setIsTyping: (isTyping: boolean) => void
   setInputMessage: (input: string) => void
   setCurrentConversationId: (id: string | null) => void
@@ -66,9 +66,11 @@ export const useChatStore = create<ChatState>()(
         messages: [...state.messages, { ...message, id: message.id || generateId(), timestamp: Date.now() }]
       })),
 
-      updateMessage: (id: string, content: string) => set((state: ChatState) => ({
-        messages: state.messages.map((msg: Message) => 
-          msg.id === id ? { ...msg, content } : msg
+      updateMessage: (id: string, content: string, append?: boolean) => set((state: ChatState) => ({
+        messages: state.messages.map((msg: Message) =>
+          msg.id === id
+            ? { ...msg, content: append ? (msg.content || '') + content : content }
+            : msg
         )
       })),
 

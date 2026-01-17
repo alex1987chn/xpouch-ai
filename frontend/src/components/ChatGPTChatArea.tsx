@@ -66,29 +66,23 @@ function ChatGPTChatArea({ messages, isTyping }: ChatGPTChatAreaProps) {
               )}
 
               <div className={`flex-1 max-w-2xl ${message.role === 'user' ? 'flex justify-end' : ''}`}>
-                <div
-                  className={cn(
-                    'px-5 py-4 rounded-2xl transition-colors duration-300 w-fit',
-                    message.role === 'user'
-                      ? 'bg-gradient-to-r from-vibe-accent to-purple-600 text-white'
-                      : 'bg-card/80 backdrop-blur-sm text-foreground shadow-sm border border-border/40'
-                  )}
-                >
-                  {message.role === 'assistant' && !message.content ? (
-                    <div className="flex space-x-1 h-5 items-center">
-                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
-                    </div>
-                  ) : (
+                {message.content && (
+                  <div
+                    className={cn(
+                      'px-5 py-4 rounded-2xl transition-colors duration-300 w-fit',
+                      message.role === 'user'
+                        ? 'bg-gradient-to-r from-vibe-accent to-purple-600 text-white'
+                        : 'bg-card/80 backdrop-blur-sm text-foreground shadow-sm border border-border/40'
+                    )}
+                  >
                     <p className="whitespace-pre-wrap leading-relaxed">
                       {message.content}
                     </p>
-                  )}
-                  {message.isTyping && message.content && (
-                    <span className="inline-block w-1 h-4 ml-1 bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
-                  )}
-                </div>
+                    {message.isTyping && (
+                      <span className="inline-block w-1 h-4 ml-1 bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
+                    )}
+                  </div>
+                )}
               </div>
 
               {message.role === 'user' && (
@@ -99,8 +93,8 @@ function ChatGPTChatArea({ messages, isTyping }: ChatGPTChatAreaProps) {
             </div>
           ))}
 
-          {/* 正在输入提示 - 仅当最后一条消息是用户发送时显示，或者消息列表为空（防止闪烁）时 */}
-          {isTyping && (messages.length === 0 || messages[messages.length - 1]?.role === 'user') && (
+          {/* 正在输入提示 - 只在没有 assistant 消息时显示 */}
+          {isTyping && messages.filter(m => m.role === 'assistant').length === 0 && (
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(to bottom right, #6366F1, #8B5CF6)' }}>
                 <Bot className="w-5 h-5 text-white" />

@@ -26,6 +26,8 @@ export function useChat() {
     const userContent = content || inputMessage
     if (!userContent.trim()) return
 
+    console.log('[useChat] handleSendMessage called:', { userContent, currentConversationId, content })
+
     const currentAgent = getCurrentAgent()
     const modelId = currentAgent?.modelId || getDefaultModel()
 
@@ -35,13 +37,16 @@ export function useChat() {
     setIsTyping(true)
 
     try {
-      // 2. 准备请求数据
-      // 构建消息历史（包含之前的对话 + 当前用户消息）
-      const chatMessages: ChatMessage[] = messages.map((m: Message) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content
-      }))
-      chatMessages.push({ role: 'user', content: userContent })
+      // 2. 准备请求数据 - 使用当前消息状态 + 用户消息
+      const currentMessages = useChatStore.getState().messages
+      const chatMessages: ChatMessage[] = currentMessages
+        .filter((m: Message) => m.role === 'user' || m.role === 'assistant')
+        .map((m: Message) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content
+        }))
+
+      console.log('[useChat] Preparing request:', { chatMessages, selectedAgentId, currentConversationId })
 
       // 3. 预先添加 AI 空消息（占位）
       const assistantMessageId = generateId()
@@ -50,28 +55,22 @@ export function useChat() {
         role: 'assistant',
         content: ''
       })
-      
+
       let newConversationId: string | undefined
 
       // 4. 发送请求并处理流式响应
-      // 注意：现在我们把 conversationId 传给后端
       await sendMessage(
-        modelId, 
-        chatMessages, 
-        selectedAgentId, 
+        modelId,
+        chatMessages,
+        selectedAgentId,
         (chunk, conversationId) => {
-          // 实时更新刚才创建的那条消息
-          // 注意：必须获取最新的 messages 状态，而不是闭包中的
-          const currentMessages = useChatStore.getState().messages
-          const targetMessage = currentMessages.find((m: Message) => m.id === assistantMessageId)
-          
-          if (targetMessage) {
-            updateMessage(assistantMessageId, targetMessage.content + chunk)
-          }
-          
-          // 如果后端返回了新的 conversationId（通常在第一帧或最后一帧），保存它
-          if (conversationId && !currentConversationId) {
-             newConversationId = conversationId
+          // 实时更新 assistant 消息
+          updateMessage(assistantMessageId, chunk, true)
+
+          // 如果后端返回了新的 conversationId，保存它
+          if (conversationId && !newConversationId) {
+            console.log('[useChat] Received conversationId from backend:', conversationId)
+            newConversationId = conversationId
           }
         },
         currentConversationId
@@ -80,6 +79,7 @@ export function useChat() {
       // 5. 更新会话状态和 URL
       // 如果是新会话，后端会创建 ID 并通过流式返回（或我们需要手动更新状态）
       if (newConversationId && !currentConversationId) {
+        console.log('[useChat] Updating conversation ID and URL:', newConversationId)
         // 使用 replace: true 替换当前的历史记录
         // 注意：这里 navigate 需要在组件中调用，hook 中使用的 navigate 是有效的
         // 但如果这时组件已经卸载了怎么办？（通常不会，因为我们在 ChatPage）

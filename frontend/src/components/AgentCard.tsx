@@ -41,11 +41,13 @@ function AgentCard({ agent, isSelected, onClick }: AgentCardProps) {
     <Card
       onClick={onClick}
       className={cn(
-        'cursor-pointer transition-all duration-300 hover:scale-105 border',
-        'bg-card/80 backdrop-blur-sm',
+        'group cursor-pointer transition-all duration-300 border-2',
+        'bg-white/40 dark:bg-slate-900/80 backdrop-blur-sm',
+        'shadow-[0_8px_30px_rgb(0,0,0,0.04)]',
+        'hover:-translate-y-1 hover:shadow-xl hover:bg-white/60 dark:hover:bg-slate-800/80',
         isSelected
-          ? 'border-white/60 dark:border-gray-600/60 shadow-[0_20px_50px_rgba(0,0,0,0.08)] ring-1 ring-vibe-accent/20 dark:ring-vibe-accent/30'
-          : 'border-white/40 dark:border-gray-700/40 shadow-sm hover:border-white/50 dark:hover:border-gray-600/50'
+          ? 'border-purple-300 dark:border-purple-500 ring-2 ring-purple-100 dark:ring-purple-500/20'
+          : 'border-transparent hover:border-purple-200 dark:hover:border-purple-500/60'
       )}
     >
       <CardHeader className="pb-3">
@@ -53,25 +55,29 @@ function AgentCard({ agent, isSelected, onClick }: AgentCardProps) {
           <div
             className={cn(
               'w-12 h-12 rounded-xl flex items-center justify-center shadow-sm',
-              iconBg
+              'backdrop-blur-sm bg-white/40 dark:bg-slate-800/60',
+              'transition-colors group-hover:bg-white/60 dark:group-hover:bg-slate-700/60',
+              iconBg.replace('dark:bg-', 'bg-').replace('/30', '/60')
             )}
           >
-            <div className={iconText}>
+            <div className={cn(iconText, 'transition-colors group-hover:scale-110')}>
               {agent.icon}
             </div>
           </div>
           <div className="flex-1">
-            <CardTitle className="text-lg text-gray-800 dark:text-gray-100 transition-colors duration-300">
-              {agent.name}
-            </CardTitle>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/40 text-muted-foreground transition-colors duration-300">
-              {agent.category}
-            </span>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg text-gray-800 dark:text-gray-100 transition-colors duration-300">
+                {agent.name}
+              </CardTitle>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 bg-gray-100/60 dark:bg-slate-700/60">
+                {agent.category}
+              </span>
+            </div>
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-muted-foreground transition-colors duration-300">
+        <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed transition-colors duration-300">
           {agent.description}
         </p>
       </CardContent>

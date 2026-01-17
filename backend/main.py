@@ -135,7 +135,14 @@ async def get_conversations(session: Session = Depends(get_session), current_use
 async def get_conversation(conversation_id: str, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     statement = select(Conversation).where(Conversation.id == conversation_id).options(selectinload(Conversation.messages))
     conversation = session.exec(statement).first()
-    
+
+    print(f"[DEBUG] Fetching conversation {conversation_id}")
+    print(f"[DEBUG] Conversation exists: {conversation is not None}")
+    if conversation:
+        print(f"[DEBUG] Conversation user_id: {conversation.user_id}, current_user.id: {current_user.id}")
+        print(f"[DEBUG] Messages count: {len(conversation.messages) if conversation.messages else 0}")
+        print(f"[DEBUG] Messages: {conversation.messages}")
+
     if not conversation or conversation.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conversation

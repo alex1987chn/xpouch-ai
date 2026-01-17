@@ -1,13 +1,14 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createBrowserRouter, RouterProvider, useNavigate } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, useNavigate, Navigate } from 'react-router-dom'
 import { I18nProvider } from './i18n'
 import { ThemeProvider } from './hooks/useTheme'
 import './index.css'
 
 import Layout from './components/Layout'
+import ChatLayout from './components/ChatLayout'
 import HomePage from './components/HomePage'
-import ChatPage from './components/ChatPage'
+import CanvasChatPage from './components/CanvasChatPage'
 import HistoryPage from './components/HistoryPage'
 import KnowledgeBasePage from './components/KnowledgeBasePage'
 import CreateAgentPage from './components/CreateAgentPage'
@@ -16,10 +17,6 @@ import { type ConversationHistory } from './utils/storage'
 
 // 包装 HistoryPage 以适应 Router
 const HistoryPageWrapper = () => {
-  return <HistoryPageWithNavigation />
-}
-
-const HistoryPageWithNavigation = () => {
   const navigate = useNavigate()
 
   const handleConversationClick = (id: string) => {
@@ -31,9 +28,9 @@ const HistoryPageWithNavigation = () => {
   }
 
   return (
-    <HistoryPage 
-      onConversationClick={handleConversationClick} 
-      onSelectConversation={handleSelectConversation} 
+    <HistoryPage
+      onConversationClick={handleConversationClick}
+      onSelectConversation={handleSelectConversation}
     />
   )
 }
@@ -66,10 +63,6 @@ const router = createBrowserRouter([
         element: <HomePage />
       },
       {
-        path: 'chat/:id',
-        element: <ChatPage />
-      },
-      {
         path: 'history',
         element: <HistoryPageWrapper />
       },
@@ -80,6 +73,20 @@ const router = createBrowserRouter([
       {
         path: 'create-agent',
         element: <CreateAgentPageWrapper />
+      },
+      {
+        path: '*',
+        element: <Navigate to="/" replace />
+      }
+    ]
+  },
+  {
+    path: '/chat/:id',
+    element: <ChatLayout />,
+    children: [
+      {
+        index: true,
+        element: <CanvasChatPage />
       }
     ]
   }
