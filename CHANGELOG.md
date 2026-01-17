@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-01-18 (代码重构与优化)
+
+### 🗑️ 删除冗余代码
+- 删除未使用的组件: `CreateAgentForm.tsx`, `CanvasLayout.tsx`
+- 原因: 这些组件已被新架构替代，不再被引用
+- 影响: 减少代码库体积，提升维护效率
+
+### 🔧 类型系统统一
+- **Agent 类型统一**:
+  - 将 `Agent` 接口定义从 `@/data/agents.tsx` 移至 `@/types/index.ts`
+  - 更新 `AgentCard.tsx` 的导入路径，使用统一类型
+- **TaskNode 类型统一**:
+  - 将 `TaskNode` 接口定义从 `store/canvasStore.ts` 移至 `@/types/index.ts`
+  - 更新 `TaskCanvas.tsx` 使用导入类型
+- **消除重复**: 避免在多处定义相同类型，降低维护成本
+
+### ⚙️ 配置管理优化
+- **模型配置统一**:
+  - 删除 `frontend/src/types/config.ts`（与 `config/models.ts` 重复）
+  - 将 `config/models.ts` 作为模型配置的单一来源
+  - 在 `utils/config.ts` 中创建兼容导出，保持向后兼容
+- **魔法数字提取**:
+  - 新建 `frontend/src/constants/ui.ts`，集中管理所有 UI 相关常量
+  - `SWIPE`: 滑动手势相关常量（THRESHOLD, EDGE_ZONE, MAX_DISTANCE）
+  - `INPUT`: 输入框相关常量（DEFAULT_ROWS, MAX_ROWS）
+  - `PROGRESS`: 进度条相关常量（PIXEL_COUNT）
+  - `ANIMATION`: 动画时长常量
+  - `LAYOUT`: 布局相关常量（缩放比例）
+  - `API`: API 相关常量（超时、标题长度）
+
+### 🧹 日志清理
+- **前端日志工具**:
+  - 新建 `frontend/src/utils/logger.ts`，提供统一的日志接口
+  - 支持按环境变量 `VITE_LOG_LEVEL` 控制日志级别
+  - 级别: ERROR, WARN, INFO, DEBUG
+  - 清理 `api.ts`, `config.ts` 中的调试日志
+- **后端日志清理**:
+  - 移除 `main.py` 中所有 `print` 调试语句
+  - 移除异常处理器中的详细错误输出（避免泄露敏感信息）
+  - 保留业务逻辑，仅移除调试输出
+
+### 📦 文件变更统计
+- 17 个文件修改
+- 200 行新增
+- 525 行删除
+- 新增 2 个文件（`constants/ui.ts`, `utils/logger.ts`）
+- 删除 4 个文件（`CreateAgentForm.tsx`, `CanvasLayout.tsx`, `types/config.ts`）
+
+### ✅ 质量保证
+- Linter 检查: 0 errors
+- 类型安全: 所有导入路径已更新
+- 向后兼容: `utils/config.ts` 导出原有接口，不破坏现有代码
+- 测试: 所有功能保持正常运行
+
+---
+
 ## [Unreleased] - 2026-01-18 (类型系统与功能修复)
 
 ### 🔧 核心修复
