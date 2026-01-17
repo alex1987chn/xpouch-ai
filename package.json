@@ -23,5 +23,9 @@
   "workspaces": [
     "frontend",
     "backend"
-  ]
+  ],
+  "dependencies": {
+    "framer-motion": "^12.26.2",
+    "mermaid": "^11.12.2"
+  }
 }

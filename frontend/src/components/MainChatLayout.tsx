@@ -27,11 +27,10 @@ export default function MainChatLayout({ children, className, hasMessages = fals
   }, [])
 
   return (
-    <div 
+    <div
       className={cn(
-        'flex bg-background transition-colors duration-200',
-        // 使用 overflow-y-scroll 强制显示滚动条轨道，防止 Windows 下内容切换导致的布局跳动
-        hasMessages ? 'h-screen overflow-hidden' : 'min-h-screen overflow-y-scroll'
+        'flex h-[100dvh] w-screen overflow-hidden flex bg-slate-50 dark:bg-[#020617] transition-colors duration-200',
+        hasMessages ? 'h-screen overflow-hidden' : 'min-h-screen'
       )}
     >
       {/* 移动端侧边栏遮罩 */}
@@ -42,22 +41,27 @@ export default function MainChatLayout({ children, className, hasMessages = fals
         />
       )}
 
-      {/* 左侧边栏 */}
-      <div className={cn(
-        'fixed left-0 top-0 h-screen w-[92px] text-gray-600 flex flex-col border-r transition-transform duration-200 z-50',
-        'bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-gray-200/50 dark:border-gray-800/50',
+      {/* 左侧边栏 - 统一样式 */}
+      <aside className={cn(
+        'fixed left-0 top-0 h-screen flex-shrink-0 transition-transform duration-200 z-50',
+        'w-[92px]',
+        'bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a]',
+        'backdrop-blur-xl',
+        'border-r border-slate-200/50',
         'lg:translate-x-0',
         isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full',
         isDesktopSidebarCollapsed && 'lg:-translate-x-full',
       )}>
-        <Sidebar
-          isCollapsed={isDesktopSidebarCollapsed}
-          currentPlan="Free"
-          onCreateAgent={onCreateAgent}
-          onSettingsClick={onSettingsClick}
-          onPersonalSettingsClick={onPersonalSettingsClick}
-        />
-      </div>
+        <div className="h-full w-full">
+          <Sidebar
+            isCollapsed={isDesktopSidebarCollapsed}
+            currentPlan="Free"
+            onCreateAgent={onCreateAgent}
+            onSettingsClick={onSettingsClick}
+            onPersonalSettingsClick={onPersonalSettingsClick}
+          />
+        </div>
+      </aside>
 
       {/* 收拢/展开按钮 - 与头像水平对齐 */}
       <div className={cn(
@@ -80,7 +84,7 @@ export default function MainChatLayout({ children, className, hasMessages = fals
 
       {/* 主内容区域 - 添加左边距和移动端适配 */}
       <div className={cn(
-        'flex-1 flex flex-col transition-all duration-200',
+        'flex-1 w-full flex flex-col transition-all duration-200',
         hasMessages ? 'h-full' : 'min-h-screen',
         isDesktopSidebarCollapsed ? 'lg:ml-0' : 'lg:ml-[92px]',
         isMobileSidebarOpen ? 'ml-0' : 'ml-0'
@@ -96,7 +100,7 @@ export default function MainChatLayout({ children, className, hasMessages = fals
         </div>
 
         {/* 主要内容 */}
-        <main className={cn('flex-1 overflow-hidden flex flex-col', className)}>
+        <main className={cn('flex-1 w-full overflow-hidden flex flex-col', className)}>
           {children}
         </main>
       </div>

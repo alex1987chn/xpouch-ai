@@ -117,7 +117,9 @@ export default function GlowingInput({
       <div
         className={cn(
           'relative rounded-2xl border transition-all duration-300 overflow-hidden',
-          isFocused ? 'pulse-glow border-transparent' : 'shadow-lg border-2 border-gray-300 dark:border-gray-600',
+          isFocused 
+            ? 'border-2 border-indigo-500 dark:border-indigo-400 pulse-glow' 
+            : 'shadow-lg border-2 border-gray-300 dark:border-gray-600',
           'bg-card',
           disabled && 'opacity-50 cursor-not-allowed'
         )}

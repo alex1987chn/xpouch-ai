@@ -38,31 +38,14 @@ export default function ChatPage() {
 
   // 初始化或加载会话
   useEffect(() => {
-    // 1. 如果是新会话 (/chat/new)
-    if (id === 'new') {
-      setCurrentConversationId(null)
-      
-      // 检查是否有来自首页的初始消息
-      const state = location.state as { startWith?: string } | null
-      
-      // 只有在没有正在处理 startWith 消息的情况下才清空消息
-      // 这样可以防止 handleSendMessage 正在进行时消息被意外清空
-      if (!state?.startWith || !handledStartWithRef.current) {
-        setMessages([])
-      }
-      
-      if (agentIdFromUrl) {
-        setSelectedAgentId(agentIdFromUrl)
-      }
-    } 
-    // 2. 如果是已有会话
-    else if (id) {
+    // 1. 如果是已有会话
+    if (id) {
         // 检查是否已经是当前会话（且有消息），避免重复加载覆盖正在生成的消息
         const currentStoreId = useChatStore.getState().currentConversationId;
         const currentMessages = useChatStore.getState().messages;
-        
+
         console.log('[ChatPage] Checking load:', { id, currentStoreId, msgCount: currentMessages.length });
-        
+
         if (currentStoreId === id && currentMessages.length > 0) {
             console.log('[ChatPage] Skipping load, data already in store');
             return;
@@ -74,7 +57,7 @@ export default function ChatPage() {
             if (conversation) {
                 setSelectedAgentId(conversation.agent_id)
                 setCurrentConversationId(conversation.id)
-                
+
                 // 恢复消息
                 // 后端返回的 messages 数组
                 if (conversation.messages && conversation.messages.length > 0) {
@@ -89,11 +72,19 @@ export default function ChatPage() {
                     setMessages([])
                 }
             }
-        })          .catch(err => {
-            console.error("Failed to load conversation", err)
-            // 如果会话不存在或加载失败，跳转到新建会话
-            // 也可以选择跳转到首页 navigate('/')
-            navigate('/chat/new', { replace: true })
+        }).catch(err => {
+            // 检查是否是 404 错误（会话不存在）
+            if (err.message?.includes('404') || err.status === 404) {
+                console.log('[ChatPage] Conversation not found, treating as new conversation:', id)
+                // 这是临时 ID 或不存在的会话，清空消息列表
+                setMessages([])
+                setCurrentConversationId(null)
+            } else {
+                console.error("Failed to load conversation", err)
+                // 其他错误，跳转到新建会话
+                const newId = generateId()
+                navigate(`/chat/${newId}`, { replace: true })
+            }
         })
     }
   }, [id, agentIdFromUrl, setCurrentConversationId, setMessages, setSelectedAgentId, navigate])

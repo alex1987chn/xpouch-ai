@@ -15,7 +15,9 @@ export const zh: Record<TranslationKey, string> = {
   featuredAgents: '精选智能体',
   myAgents: '我的智能体',
   createAgent: '创建用户自己的新智能体',
-  backToChat: '回到上一个会话',
+  backToChat: '会话',
+  addCustomAgent: '添加自定义智能体',
+  createYourFirstAgent: '创建第一个智能体',
   
   // Settings
   theme: '主题',
@@ -72,6 +74,8 @@ export const en: Record<TranslationKey, string> = {
   myAgents: 'My Agents',
   createAgent: 'Create User Agent',
   backToChat: 'Back to Chat',
+  addCustomAgent: 'Add Custom Agent',
+  createYourFirstAgent: 'Create your first agent',
   
   // Settings
   theme: 'Theme',
@@ -128,6 +132,8 @@ export const ja: Record<TranslationKey, string> = {
   myAgents: 'マイエージェント',
   createAgent: 'ユーザーエージェントを作成',
   backToChat: 'チャットに戻る',
+  addCustomAgent: 'カスタムエージェントを追加',
+  createYourFirstAgent: '最初のエージェントを作成',
   
   // Settings
   theme: 'テーマ',

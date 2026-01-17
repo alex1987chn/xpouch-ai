@@ -8,6 +8,7 @@ import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useChatStore } from '@/store/chatStore'
 import { useUserStore } from '@/store/userStore'
+import { generateId } from '@/utils/storage'
 
 // 页面类型
 export type PageType = 'home' | 'history' | 'knowledge' | 'create-agent' | 'chat'
@@ -82,14 +83,15 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
     if (lastActiveConversationId) {
         navigate(`/chat/${lastActiveConversationId}`)
     } else {
-        // 如果没有历史会话，创建一个新的
-        navigate('/chat/new')
+        // 如果没有历史会话，创建一个新的会话 ID
+        const newId = generateId()
+        navigate(`/chat/${newId}`)
     }
   }
 
   return (
     <div className={cn(
-      'w-full h-full text-gray-600 flex flex-col',
+      'w-full h-full text-gray-600 dark:text-gray-300 flex flex-col',
       className
     )}>
       {/* Logo 区域 - 固定宽度保持大小 */}
@@ -121,8 +123,8 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
           className={cn(
             'flex items-center justify-center mx-auto w-10 h-10 rounded-full transition-all duration-200',
             isOnHome
-              ? 'bg-white text-indigo-600 shadow-sm dark:bg-gray-700 dark:text-indigo-400'
-              : 'text-gray-600 hover:bg-gray-100/50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200'
+              ? 'bg-white text-indigo-600 shadow-sm dark:bg-gray-700 dark:text-white'
+              : 'text-slate-400 hover:bg-gray-100/50 hover:text-gray-700 dark:hover:bg-gray-700/50 dark:hover:text-slate-200'
           )}
           title={t('home')}
         >
@@ -135,8 +137,8 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
           className={cn(
             'flex items-center justify-center mx-auto w-10 h-10 rounded-full transition-all duration-200',
             isOnChat
-              ? 'bg-white text-indigo-600 shadow-sm dark:bg-gray-700 dark:text-indigo-400'
-              : 'text-gray-600 hover:bg-gray-100/50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200'
+              ? 'bg-white text-indigo-600 shadow-sm dark:bg-gray-700 dark:text-white'
+              : 'text-slate-400 hover:bg-gray-100/50 hover:text-gray-700 dark:hover:bg-gray-700/50 dark:hover:text-slate-200'
           )}
           title={t('backToChat')}
         >
@@ -151,8 +153,8 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
             className={cn(
               'flex items-center justify-center mx-auto w-10 h-10 rounded-full transition-all duration-200',
               item.isActive
-                ? 'bg-white text-indigo-600 shadow-sm dark:bg-gray-700 dark:text-indigo-400'
-                : 'text-gray-600 hover:bg-gray-100/50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200'
+                ? 'bg-white text-indigo-600 shadow-sm dark:bg-gray-700 dark:text-white'
+                : 'text-slate-400 hover:bg-gray-100/50 hover:text-gray-700 dark:hover:bg-gray-700/50 dark:hover:text-slate-200'
             )}
             title={t(item.label as TranslationKey)}
           >
@@ -168,64 +170,47 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
         </div>
       </div>
 
-      {/* 底部：头像 */}
-      <div className={cn('mt-auto px-2 pb-3 border-t border-gray-200/50 dark:border-gray-700/50 relative h-[80px]', isCollapsed && 'lg:hidden')}>
-        {/* 用户头像 - 居中定位 */}
-        <button
+      {/* 底部：Integrated Rounded Cell */}
+      <div className="mt-auto mx-3 mb-6 pb-6 backdrop-blur-md">
+        {/* 用户一体化容器 */}
+        <div
           onClick={(e) => {
             e.stopPropagation()
             setIsMenuOpen(!isMenuOpen)
           }}
           data-avatar-button
-          className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors"
+          className="flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md p-2 transition-all hover:bg-white/10 cursor-pointer group outline-none focus:outline-none ring-0 focus:ring-0 select-none !important:border-transparent"
         >
-          <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-sm font-medium flex-shrink-0 overflow-hidden border-2 border-white dark:border-gray-600">
+          {/* 头像部分 */}
+          <div className="relative h-9 w-9 shrink-0">
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-blue-600 text-[11px] font-bold text-white shadow-inner overflow-hidden transition-all duration-300">
               {avatar ? (
                 <img
                   src={avatar}
                   alt="Avatar"
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                 />
               ) : (
                 getAvatarDisplay(avatar || '', username)
               )}
             </div>
-            <div className="absolute -right-1 -bottom-1 w-3.5 h-3.5 rounded-full bg-white dark:bg-gray-700 border border-white dark:border-gray-600 flex items-center justify-center">
-              {currentPlan === 'Free' && <Star className="w-2 h-2 text-purple-500" />}
-              {currentPlan === 'Pilot' && <Plane className="w-2 h-2 text-cyan-500" />}
-              {currentPlan === 'Maestro' && <Crown className="w-2 h-2 text-amber-500" />}
+            {/* 套餐图标 */}
+            <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#1e293b] bg-white dark:bg-gray-700 dark:border-gray-600 flex items-center justify-center shadow-sm">
+              {currentPlan === 'Free' && <Star className="w-1.5 h-1.5 text-purple-500" />}
+              {currentPlan === 'Pilot' && <Plane className="w-1.5 h-1.5 text-cyan-500" />}
+              {currentPlan === 'Maestro' && <Crown className="w-1.5 h-1.5 text-amber-500" />}
             </div>
           </div>
-        </button>
+        </div>
 
         {/* 弹出菜单 */}
         {isMenuOpen && (
           <div
             ref={menuRef}
-            className="fixed bottom-[80px] left-4 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/40 dark:border-gray-700/40 overflow-visible z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+            className="fixed bottom-[60px] left-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 dark:border-gray-700/50 overflow-visible z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
             style={{ width: '260px', maxWidth: 'calc(100vw - 32px)' }}
           >
             <div className="p-4">
-              {/* 顶部：头像和用户名 */}
-              <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50 dark:border-gray-700/50 mb-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-base font-medium flex-shrink-0 overflow-hidden border-2 border-white dark:border-gray-600 shadow-sm">
-                  {avatar ? (
-                    <img
-                      src={avatar}
-                      alt="Avatar"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    getAvatarDisplay(avatar || '', username)
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="block text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{username}</span>
-                  <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('personalSettings')}</span>
-                </div>
-              </div>
-
               {/* 三个权益套餐 - 居中分布，自动填充 */}
               <div className="flex justify-between gap-3 mb-4">
                 {/* Free 套餐 */}
