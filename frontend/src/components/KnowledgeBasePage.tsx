@@ -81,9 +81,9 @@ export default function KnowledgeBasePage() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-transparent">
-      {/* 极窄毛玻璃 Header - h-14 固定高度 */}
-      <header className="sticky top-0 z-40 w-full h-14 px-6 backdrop-blur-xl bg-white/70 dark:bg-[#020617]/70 border-b border-slate-200/50 shrink-0">
+    <div className="relative h-full bg-transparent overflow-x-hidden">
+      {/* 极窄毛玻璃 Header - h-14 固定高度，fixed 定位 */}
+      <header className="fixed top-0 left-0 right-0 z-40 h-14 px-6 lg:pl-[106px] backdrop-blur-xl bg-white/70 dark:bg-[#020617]/70 border-b border-slate-200/50 dark:border-slate-700/30">
         <div className="w-full max-w-5xl mx-auto h-full flex items-center">
           {/* 左侧：图标 + 标题 */}
           <div className="flex items-center h-full">
@@ -103,33 +103,32 @@ export default function KnowledgeBasePage() {
         </div>
       </header>
 
-      {/* 移动端滑动返回指示器 */}
-      {swipeProgress > 0 && (
-        <div
-          className="md:hidden absolute left-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-r from-indigo-500/30 to-transparent backdrop-blur-sm pointer-events-none z-50 transition-all"
-          style={{ width: `${Math.min(swipeProgress, 150)}px` }}
-        >
-          <ArrowLeft className="w-8 h-8 text-indigo-600 ml-3 opacity-90" />
-        </div>
-      )}
-
-      {/* 拖拽上传区 - 隐蔽 */}
-      <div className="md:hidden mx-6 mt-6">
-        <div className="border-2 border-dashed border-violet-200 dark:border-violet-800/30 rounded-xl p-6 text-center text-sm text-slate-400 dark:text-slate-500 transition-colors">
-          <Upload className="w-8 h-8 mx-auto mb-2 text-violet-400" />
-          <p>{t('dragFilesToUpload') || '拖拽文件到此处上传'}</p>
-        </div>
-      </div>
-
-      {/* 可滚动内容区 */}
+      {/* 可滚动内容区 - 添加 pt-14 避免内容被 header 遮挡 */}
       <div
-        className="min-h-0 flex-1 overflow-y-auto scrollbar-thin overscroll-behavior-y-contain"
+        className="h-full overflow-y-auto scrollbar-thin overscroll-behavior-y-contain overflow-x-hidden pt-14"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
+        {/* 移动端滑动返回指示器 */}
+        {swipeProgress > 0 && (
+          <div
+            className="md:hidden absolute left-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-r from-indigo-500/30 to-transparent backdrop-blur-sm pointer-events-none z-50 transition-all"
+            style={{ width: `${Math.min(swipeProgress, 150)}px` }}
+          >
+            <ArrowLeft className="w-8 h-8 text-indigo-600 ml-3 opacity-90" />
+          </div>
+        )}
+
+        {/* 拖拽上传区 - 隐蔽 */}
+        <div className="md:hidden mx-6 mt-6">
+          <div className="border-2 border-dashed border-violet-200 dark:border-violet-800/30 rounded-xl p-6 text-center text-sm text-slate-400 dark:text-slate-500 transition-colors">
+            <Upload className="w-8 h-8 mx-auto mb-2 text-violet-400" />
+            <p>{t('dragFilesToUpload') || '拖拽文件到此处上传'}</p>
+          </div>
+        </div>
         {/* 搜索框 */}
-        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 mt-8">
+        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 md:pb-4 mt-8">
           <div className="relative flex items-center">
             {/* 搜索图标 - 绝对定位 */}
             <div className="absolute left-4 flex-shrink-0">
@@ -153,7 +152,7 @@ export default function KnowledgeBasePage() {
         </div>
 
         {/* 知识库列表 */}
-        <div className="max-w-5xl mx-auto px-6 md:px-12 pb-20 space-y-3">
+        <div className="max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20 space-y-3">
           {filteredItems.map((item) => (
             <div
               key={item.id}
@@ -228,7 +227,7 @@ export default function KnowledgeBasePage() {
         </div>
 
         {filteredItems.length === 0 && (
-          <div className="text-center py-12 px-6 md:px-12">
+          <div className="text-center py-12 px-6 md:px-12 pb-24 md:pb-20">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
               {searchQuery ? t('noKnowledgeFound') : t('noKnowledgeContent')}

@@ -9,6 +9,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useChatStore } from '@/store/chatStore'
 import { useUserStore } from '@/store/userStore'
 import { generateId } from '@/utils/storage'
+import PixelLogo from '@/components/PixelLogo'
 
 // 页面类型
 export type PageType = 'home' | 'history' | 'knowledge' | 'create-agent' | 'chat'
@@ -94,14 +95,11 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
       'w-full h-full text-gray-600 dark:text-gray-300 flex flex-col',
       className
     )}>
-      {/* Logo 区域 - 固定宽度保持大小 */}
+      {/* Logo 区域 - 像素点阵 Logo */}
       <div className="p-3 pb-4 flex items-center justify-center">
-        <img
-          src="/logo.png"
-          alt="XPouch AI Logo"
-          className="h-8 w-[80px] object-contain cursor-pointer"
-          onClick={() => navigate('/')}
-        />
+        <div onClick={() => navigate('/')} className="cursor-pointer">
+          <PixelLogo size={32} variant="pouch" />
+        </div>
       </div>
 
       {/* 创建智能体按钮 - 圆形 */}

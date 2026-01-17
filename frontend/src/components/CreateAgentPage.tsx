@@ -162,7 +162,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
       )}
 
       {/* 顶部毛玻璃 Header */}
-      <header className="sticky top-0 z-40 w-full h-14 px-6 backdrop-blur-xl bg-white/70 dark:bg-[#020617]/70 border-b border-slate-200/50 shrink-0">
+      <header className="sticky top-0 z-40 w-full h-14 px-6 backdrop-blur-xl bg-white/70 dark:bg-[#020617]/70 border-b border-slate-200/50 dark:border-slate-700/30 shrink-0">
         <div className="w-full max-w-7xl mx-auto h-full flex items-center justify-between">
           {/* 左侧：返回按钮 */}
           <button
@@ -202,7 +202,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
         <div className="h-full max-w-7xl mx-auto flex">
           {/* 左侧：表单区 */}
           <div
-            className="flex-1 min-h-0 overflow-y-auto scrollbar-thin overscroll-behavior-y-contain p-6 md:p-12"
+            className="flex-1 min-h-0 overflow-y-auto scrollbar-thin overscroll-behavior-y-contain p-6 md:p-12 pb-24 md:pb-20"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}

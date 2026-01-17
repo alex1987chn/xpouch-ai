@@ -25,8 +25,8 @@ export default function XPouchLayout({
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden">
 
-      {/* 1. 侧边栏 - 固定宽度 92px */}
-      <aside className="hidden md:flex h-screen flex-shrink-0 w-[92px] border-r border-slate-200/50 backdrop-blur-xl">
+      {/* 1. 侧边栏 - 固定宽度 92px，统一样式 */}
+      <aside className="hidden md:flex h-screen flex-shrink-0 w-[92px] bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a] backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/30">
         <div className="h-full w-full">
           {SidebarContent}
         </div>

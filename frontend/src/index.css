@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 @layer base {
-  /* Light theme (default) - 冷瓷灰 */
+  /* Light theme (default) - 冷瓷�?*/
   :root {
     --background: 210 40% 98%;
     --foreground: 222.2 84% 4.9%;
@@ -104,7 +104,7 @@ body::before {
   opacity: 0.25;
 }
 
-/* 确保内容在网格之上 */
+/* 确保内容在网格之�?*/
 main, aside, header, .relative {
   position: relative;
   z-index: 1;
@@ -155,7 +155,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   扇形旋转类 (Card Fan Rotation)
+   扇形旋转�?(Card Fan Rotation)
    ============================================ */
 .card-rotate-0 {
   transform: rotate(-8deg);
@@ -178,7 +178,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   滚动条优化 (Scrollable Containers)
+   滚动条优�?(Scrollable Containers)
    ============================================ */
 .scrollbar-thin {
   scrollbar-width: thin;
@@ -186,7 +186,7 @@ main, aside, header, .relative {
 }
 
 .scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
+  width: 3px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
@@ -195,14 +195,14 @@ main, aside, header, .relative {
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: rgba(156, 163, 175, 0.5);
-  border-radius: 3px;
+  border-radius: 1.5px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: rgba(156, 163, 175, 0.8);
 }
 
-/* 暗色模式滚动条 */
+/* 暗色模式滚动�?*/
 .dark .scrollbar-thin {
   scrollbar-color: rgba(100, 116, 139, 0.5) rgba(100, 116, 139, 0.2);
 }
@@ -226,7 +226,7 @@ main, aside, header, .relative {
 }
 
 .smooth-scroll::-webkit-scrollbar {
-  width: 6px;
+  width: 3px;
   height: 6px;
 }
 
@@ -236,7 +236,7 @@ main, aside, header, .relative {
 
 .smooth-scroll::-webkit-scrollbar-thumb {
   background: rgba(156, 163, 175, 0.4);
-  border-radius: 3px;
+  border-radius: 1.5px;
   opacity: 0;
   transition: opacity 0.2s;
 }
@@ -250,7 +250,7 @@ main, aside, header, .relative {
   background: rgba(156, 163, 175, 0.7);
 }
 
-/* 暗色模式滚动条 */
+/* 暗色模式滚动�?*/
 .dark .smooth-scroll {
   scrollbar-color: transparent transparent;
 }
@@ -296,7 +296,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   基础光晕效果 - 移动端友好
+   基础光晕效果 - 移动端友�?
    ============================================ */
 @keyframes breathe-glow {
   0%, 100% {
@@ -345,7 +345,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   桌面端增强光晕效果 (>= 768px)
+   桌面端增强光晕效�?(>= 768px)
    ============================================ */
 @media (min-width: 768px) {
   @keyframes desktop-glow {
@@ -369,7 +369,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   侧边栏菜单弹出动画 - 优化GPU性能
+   侧边栏菜单弹出动�?- 优化GPU性能
    ============================================ */
 @keyframes menuFadeIn {
   0% {
@@ -388,9 +388,9 @@ main, aside, header, .relative {
   }
 
   /* ============================================
-     基础光晕效果 - 移动端友好
+     基础光晕效果 - 移动端友�?
      ============================================ */
-  /* 呼吸光晕动画 - 移动端 (4秒周期: 2秒呼出, 2秒吸进) */
+  /* 呼吸光晕动画 - 移动�?(4秒周�? 2秒呼�? 2秒吸�? */
   @keyframes breathe-glow {
     0%, 100% {
       opacity: 0.5;
@@ -425,7 +425,7 @@ main, aside, header, .relative {
     animation: breathe-glow 4s ease-in-out infinite;
   }
 
-  /* 脉冲边框光晕效果 (4秒周期) */
+  /* 脉冲边框光晕效果 (4秒周�? */
   @keyframes pulse-glow {
     0%, 100% {
       box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
@@ -440,10 +440,10 @@ main, aside, header, .relative {
   }
 
   /* ============================================
-     桌面端增强光晕效果 (>= 768px)
+     桌面端增强光晕效�?(>= 768px)
      ============================================ */
   @media (min-width: 768px) {
-    /* 桌面端增强版光晕 (4秒周期) */
+    /* 桌面端增强版光晕 (4秒周�? */
     @keyframes desktop-glow {
       0%, 100% {
         opacity: 0.7;
@@ -522,7 +522,7 @@ body::before {
   opacity: 0.4;
 }
 
-/* 确保内容在网格之上 */
+/* 确保内容在网格之�?*/
 main, aside, header, .relative {
   position: relative;
   z-index: 1;
@@ -573,7 +573,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   扇形旋转类 (Card Fan Rotation)
+   扇形旋转�?(Card Fan Rotation)
    ============================================ */
 .card-rotate-0 {
   transform: rotate(-8deg);
@@ -596,7 +596,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   滚动条优化 (Scrollable Containers)
+   滚动条优�?(Scrollable Containers)
    ============================================ */
 .scrollbar-thin {
   scrollbar-width: thin;
@@ -604,7 +604,7 @@ main, aside, header, .relative {
 }
 
 .scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
+  width: 3px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
@@ -613,14 +613,14 @@ main, aside, header, .relative {
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: rgba(156, 163, 175, 0.5);
-  border-radius: 3px;
+  border-radius: 1.5px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: rgba(156, 163, 175, 0.8);
 }
 
-/* 暗色模式滚动条 */
+/* 暗色模式滚动�?*/
 .dark .scrollbar-thin {
   scrollbar-color: rgba(100, 116, 139, 0.5) rgba(100, 116, 139, 0.2);
 }
@@ -644,7 +644,7 @@ main, aside, header, .relative {
 }
 
 .smooth-scroll::-webkit-scrollbar {
-  width: 6px;
+  width: 3px;
   height: 6px;
 }
 
@@ -654,7 +654,7 @@ main, aside, header, .relative {
 
 .smooth-scroll::-webkit-scrollbar-thumb {
   background: rgba(156, 163, 175, 0.4);
-  border-radius: 3px;
+  border-radius: 1.5px;
   opacity: 0;
   transition: opacity 0.2s;
 }
@@ -668,7 +668,7 @@ main, aside, header, .relative {
   background: rgba(156, 163, 175, 0.7);
 }
 
-/* 暗色模式滚动条 */
+/* 暗色模式滚动�?*/
 .dark .smooth-scroll {
   scrollbar-color: transparent transparent;
 }
@@ -712,3 +712,4 @@ main, aside, header, .relative {
 .history-gradient-border:hover::before {
   background: linear-gradient(180deg, rgba(139, 92, 246, 0.8), rgba(139, 92, 246, 0.2));
 }
+
