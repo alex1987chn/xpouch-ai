@@ -65,7 +65,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
         </div>
 
         {/* 内容区域 */}
-        <div className="flex-1 overflow-auto px-6 py-4 space-y-6">
+        <div className="flex-1 overflow-auto smooth-scroll px-6 py-4 space-y-6">
           {/* 默认模型选择 */}
           <section>
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">

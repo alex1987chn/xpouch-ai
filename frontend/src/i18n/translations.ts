@@ -11,7 +11,7 @@ export const zh: Record<TranslationKey, string> = {
   // Home
   greeting: '你好！我是 XPouch AI 助手',
   slogan: 'All Agents, One Pouch',
-  placeholder: '输入消息...',
+  placeholder: '进入多元宇宙...',
   featuredAgents: '精选智能体',
   myAgents: '我的智能体',
   createAgent: '创造您的专属智能体',
@@ -74,7 +74,7 @@ export const en: Record<TranslationKey, string> = {
   // Home
   greeting: 'Hello! I am XPouch AI Assistant',
   slogan: 'All Agents, One Pouch',
-  placeholder: 'Type a message...',
+  placeholder: 'Enter Multiverse...',
   featuredAgents: 'Featured Agents',
   myAgents: 'My Agents',
   createAgent: 'Create Your Exclusive Agent',
@@ -137,7 +137,7 @@ export const ja: Record<TranslationKey, string> = {
   // Home
   greeting: 'こんにちは！XPouch AI アシスタントです',
   slogan: 'All Agents, One Pouch',
-  placeholder: 'メッセージを入力...',
+  placeholder: 'マルチバースに入る...',
   featuredAgents: 'おすすめエージェント',
   myAgents: 'マイエージェント',
   createAgent: 'あなただけのエージェントを作成',

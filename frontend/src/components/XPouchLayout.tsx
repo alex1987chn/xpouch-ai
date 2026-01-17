@@ -23,10 +23,10 @@ export default function XPouchLayout({
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
 
   return (
-    <div className="flex h-[100dvh] w-screen overflow-hidden flex bg-slate-50 dark:bg-[#020617]">
+    <div className="flex h-[100dvh] w-screen overflow-hidden">
 
       {/* 1. 侧边栏 - 固定宽度 92px */}
-      <aside className="hidden md:flex h-screen flex-shrink-0 w-[92px] bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a] border-r border-slate-200/50 backdrop-blur-xl">
+      <aside className="hidden md:flex h-screen flex-shrink-0 w-[92px] border-r border-slate-200/50 backdrop-blur-xl">
         <div className="h-full w-full">
           {SidebarContent}
         </div>
@@ -47,7 +47,7 @@ export default function XPouchLayout({
         {/* 2. 画布区域 (Canvas) */}
         {/* 移动端逻辑：仅在 preview 模式显示 | PC端逻辑：始终作为背景 flex-1 */}
         <main className={cn(
-          'flex flex-1 relative h-full w-full overflow-hidden',
+          'flex flex-1 relative h-full w-full overflow-y-auto overflow-x-hidden',
           viewMode === 'preview' ? 'flex' : 'hidden',
           'md:flex'
         )}>

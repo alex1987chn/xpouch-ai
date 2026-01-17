@@ -116,11 +116,12 @@ export default function GlowingInput({
       {/* 输入框主体 */}
       <div
         className={cn(
-          'relative rounded-2xl border transition-all duration-300 overflow-hidden',
+          'relative rounded-[28px] transition-all duration-300 overflow-hidden',
           isFocused 
             ? 'border-2 border-indigo-500 dark:border-indigo-400 pulse-glow' 
             : 'shadow-lg border-2 border-gray-300 dark:border-gray-600',
-          'bg-card',
+          'bg-white dark:bg-slate-950',
+          'dark:shadow-[inset_0_2px_20px_rgba(139,92,246,0.05)]',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >

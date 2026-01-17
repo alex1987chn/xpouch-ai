@@ -14,15 +14,15 @@ export function LanguageSelector() {
   }
 
   return (
-    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 w-fit">
+    <div className="flex bg-slate-200 dark:bg-slate-700 rounded-full p-1 w-fit">
       {languages.map((lang) => (
         <button
           key={lang.code}
           onClick={() => setLanguage(lang.code as Language)}
-          className={`px-3 py-1 text-[10px] font-medium rounded-md transition-all duration-200 ${
+          className={`px-3 py-1.5 text-[10px] font-medium rounded-full transition-all duration-200 ${
             language === lang.code
-              ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-300 shadow-sm'
-              : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+              ? 'bg-white dark:bg-white text-slate-900 dark:text-slate-900 shadow-sm'
+              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
           {getShortName(lang.code)}

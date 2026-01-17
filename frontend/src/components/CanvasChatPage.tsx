@@ -15,6 +15,7 @@ import Sidebar from './Sidebar'
 import { useUserStore } from '@/store/userStore'
 import { SettingsDialog } from './SettingsDialog'
 import { PersonalSettingsDialog } from './PersonalSettingsDialog'
+import { useSwipeBack } from '@/hooks/useSwipeBack'
 
 export default function CanvasChatPage() {
   const { id } = useParams()
@@ -31,9 +32,7 @@ export default function CanvasChatPage() {
   const [isChatMinimized, setIsChatMinimized] = useState(false)
 
   // 移动端右滑返回
-  const touchStartXRef = useRef(0)
-  const [swipeProgress, setSwipeProgress] = useState(0)
-  const swipeThreshold = 100 // 触发返回的滑动阈值
+  const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
 
   const {
     messages,
@@ -87,6 +86,16 @@ export default function CanvasChatPage() {
       return
     }
 
+    // 检查是否是临时ID（包含连字符），如果是则跳过API调用
+    const isTempId = id.includes('-')
+    if (isTempId) {
+      console.log('[CanvasChatPage] Detected temporary ID, skipping API load:', id)
+      hasLoadedConversationRef.current = true
+      setCurrentConversationId(null)
+      setMessages([])
+      return
+    }
+
     hasLoadedConversationRef.current = true
     console.log('[CanvasChatPage] Loading conversation:', id)
 
@@ -114,19 +123,12 @@ export default function CanvasChatPage() {
         setMessages([])
       }
     }).catch(err => {
-      // 检查是否是 404 错误（会话不存在）
-      if (err.message?.includes('404') || err.status === 404) {
-        console.log('[CanvasChatPage] Conversation not found, treating as new conversation:', id)
-        // 这是临时 ID 或不存在的会话，清空消息列表
-        setMessages([])
-        setCurrentConversationId(null)
-      } else {
-        console.error('[CanvasChatPage] Failed to load conversation:', err)
-        setCurrentConversationId(id)
-        setMessages([])
-      }
+      console.error('[CanvasChatPage] Failed to load conversation:', err)
+      // 清空消息列表，准备开始新会话
+      setMessages([])
+      setCurrentConversationId(null)
     })
-  }, [id, setCurrentConversationId, setMessages, setSelectedAgentId])
+  }, [id, location.state, setCurrentConversationId, setMessages, setSelectedAgentId, navigate])
 
   // Handle startWith message from navigation state
   useEffect(() => {
@@ -182,37 +184,6 @@ export default function CanvasChatPage() {
     // 2秒后恢复处理状态（模拟AI开始思考）
     setTimeout(() => setIsProcessing(false), 2000)
   }, [inputMessage, handleMagicColor, handleSendMessage])
-
-  // 移动端右滑返回处理
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    // 只在左侧 30px 区域内响应滑动
-    const touchX = e.touches[0].clientX
-    if (touchX < 30) {
-      touchStartXRef.current = touchX
-    } else {
-      touchStartXRef.current = 0
-    }
-  }, [])
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (touchStartXRef.current > 0) {
-      const currentX = e.touches[0].clientX
-      const diff = currentX - touchStartXRef.current
-      // 限制最大滑动距离
-      if (diff > 0 && diff < 150) {
-        setSwipeProgress(diff)
-      }
-    }
-  }, [])
-
-  const handleTouchEnd = useCallback(() => {
-    if (swipeProgress > swipeThreshold) {
-      // 触发返回首页
-      navigate('/')
-    }
-    setSwipeProgress(0)
-    touchStartXRef.current = 0
-  }, [swipeProgress, navigate])
 
   // 如果 id 为 null，显示空状态
   if (!id) {

@@ -38,11 +38,10 @@ export default function FloatingChatPanel({
 }: FloatingChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isMinimized, setIsMinimized] = useState(false)
-  const [isChatMinimized, setIsChatMinimized] = useState(false)
 
   // Use parent's state if provided, otherwise use local state
-  const effectiveIsChatMinimized = propSetIsChatMinimized ? propIsChatMinimized : isChatMinimized
-  const effectiveSetIsChatMinimized = propSetIsChatMinimized || setIsChatMinimized
+  const effectiveIsChatMinimized = propSetIsChatMinimized ? propIsChatMinimized : isMinimized
+  const effectiveSetIsChatMinimized = propSetIsChatMinimized || setIsMinimized
 
   // Auto-scroll to bottom when new messages appear
   useEffect(() => {

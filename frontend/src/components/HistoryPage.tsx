@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { MessageSquare, Clock, ArrowRight, Trash2 } from 'lucide-react'
+import { MessageSquare, Clock, ArrowRight, Trash2, ArrowLeft } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { getConversations, deleteConversation as apiDeleteConversation, type Conversation } from '@/services/api'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
+import { useSwipeBack } from '@/hooks/useSwipeBack'
 
 interface HistoryPageProps {
   onConversationClick: (id: string) => void
@@ -14,6 +15,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
   const { t, language } = useTranslation()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
+  const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
   
   const loadHistory = async () => {
     try {
@@ -71,26 +73,45 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900/50">
-      {/* Header */}
-      <header className="shrink-0 h-16 border-b border-gray-200 dark:border-gray-800 flex items-center px-6 bg-white dark:bg-gray-900">
-        <div className="flex items-center gap-3">
-          <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {t('history')}
-          </h1>
+    <div className="flex flex-col h-full overflow-hidden bg-transparent">
+      {/* 极窄毛玻璃 Header - h-14 固定高度 */}
+      <header className="sticky top-0 z-40 w-full h-14 px-6 backdrop-blur-xl bg-white/70 dark:bg-[#020617]/70 border-b border-slate-200/50 shrink-0">
+        <div className="w-full max-w-5xl mx-auto h-full flex items-center">
+          {/* 左侧：图标 + 标题 */}
+          <div className="flex items-center h-full">
+            <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <h1 className="text-base font-semibold text-slate-800 dark:text-slate-200 ml-3">
+              {t('history')}
+            </h1>
+          </div>
         </div>
       </header>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-4xl mx-auto">
+      <>
+        {/* 移动端滑动返回指示器 */}
+        {swipeProgress > 0 && (
+          <div
+            className="md:hidden absolute left-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-r from-indigo-500/30 to-transparent backdrop-blur-sm pointer-events-none z-50 transition-all"
+            style={{ width: `${Math.min(swipeProgress, 150)}px` }}
+          >
+            <ArrowLeft className="w-8 h-8 text-indigo-600 ml-3 opacity-90" />
+          </div>
+        )}
+
+        {/* 可滚动内容区 */}
+        <div
+          className="min-h-0 flex-1 overflow-y-auto scrollbar-thin overscroll-behavior-y-contain"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-20 mt-8">
           {loading ? (
              <div className="text-center py-20 text-gray-500">Loading history...</div>
           ) : conversations.length > 0 ? (
-            <div className="grid gap-4">
+            <div className="space-y-4">
               {conversations.map((conversation) => (
-                <div 
+                <div
                   key={conversation.id}
                   onClick={() => {
                     onConversationClick(conversation.id)
@@ -98,23 +119,23 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
                     // 这里可能需要根据 useChatStore 的需求做转换
                     onSelectConversation(conversation)
                   }}
-                  className="group relative bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all cursor-pointer"
+                  className="group relative bg-white dark:bg-slate-900/50 rounded-xl p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-l-2 hover:border-violet-500 transition-all cursor-pointer border border-slate-200 dark:border-slate-700/50 shadow-sm"
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-medium text-gray-900 dark:text-white truncate mb-1">
+                      <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate mb-2">
                         {conversation.title || t('newChat')}
                       </h3>
                       <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">
                         {getLastMessagePreview(conversation)}
                       </p>
-                      
-                      <div className="flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
+
+                      <div className="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500">
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {formatDistanceToNow(new Date(conversation.updated_at), { 
+                          {formatDistanceToNow(new Date(conversation.updated_at), {
                             addSuffix: true,
-                            locale: getLocale() 
+                            locale: getLocale()
                           })}
                         </span>
                         <span className="flex items-center gap-1">
@@ -155,6 +176,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
           )}
         </div>
       </div>
+    </>
     </div>
   )
 }
