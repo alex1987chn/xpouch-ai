@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-01-18 (类型系统与功能修复)
+
+### 🔧 核心修复
+
+**TypeScript 模块导出修复** (`api.ts`):
+- 问题: 启用 `isolatedModules` 时重新导出类型必须使用 `export type` 语法
+- 修复: 将 `export { ApiMessage, Conversation, UserProfile }` 改为 `export type { ApiMessage, Conversation, UserProfile }`
+- 影响: 解决了 `ApiMessage` 无法导入的模块解析错误，确保类型系统正常运行
+
+**运行时错误修复** (`CanvasChatPage.tsx`):
+- 问题: `useCallback` 依赖数组中使用了未定义的 `handleMagicColor` 变量
+- 修复: 改为正确的 `parseMagicColor`
+- 影响: 修复了点击聊天页面时的 `ReferenceError: handleMagicColor is not defined`
+
+**UI 一致性优化** (`KnowledgeBasePage.tsx`):
+- 问题: 知识库和历史记录页面的标题图标间距不一致（`mr-2` vs `ml-3`）
+- 修复: 统一使用 `mr-3` 的图标间距
+- 影响: 提升了全局 UI 一致性和视觉体验
+
+**侧边栏导航修复** (`CanvasChatPage.tsx`):
+- 问题: 聊天页面侧边栏缺少 `onCreateAgent` 回调，无法跳转到创建页面
+- 修复: 添加 `onCreateAgent={() => navigate('/create-agent')}` 回调
+- 影响: 恢复了新建智能体按钮的导航功能
+
+### 📋 技术规范
+- 严格遵守 TypeScript 的 `isolatedModules` 规范
+- 遵循 DRY 原则，类型定义统一在 `@/types`
+- 统一 UI 组件的样式规范
+
+### ✅ 测试验证
+- Linter: 0 errors
+- 运行时: 无报错
+- 功能: 导航和交互正常
+
+---
+
 ## [Unreleased] - 2026-01-17 (全局视觉对齐与移动端体验优化)
 
 ### 🎨 全局视觉对齐 (6大设计规范)
