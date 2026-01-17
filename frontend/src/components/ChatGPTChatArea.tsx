@@ -1,12 +1,7 @@
 import { useRef, useEffect, memo } from 'react'
 import { Bot, User, MessageSquarePlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-interface Message {
-  role: 'user' | 'assistant'
-  content: string
-  isTyping?: boolean
-}
+import { type Message } from '@/types'
 
 interface ChatGPTChatAreaProps {
   messages: Message[]

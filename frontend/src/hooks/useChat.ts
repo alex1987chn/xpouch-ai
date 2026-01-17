@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useChatStore, type Message } from '@/store/chatStore'
-import { sendMessage, type ChatMessage } from '@/services/api'
+import { sendMessage, type ApiMessage } from '@/services/api'
 import { getDefaultModel } from '@/utils/config'
 import { generateId } from '@/utils/storage' // 仅保留 generateId，移除 LocalStorage 相关引用
 
@@ -28,9 +28,6 @@ export function useChat() {
 
     console.log('[useChat] handleSendMessage called:', { userContent, currentConversationId, content })
 
-    const currentAgent = getCurrentAgent()
-    const modelId = currentAgent?.modelId || getDefaultModel()
-
     // 1. 添加用户消息
     addMessage({ role: 'user', content: userContent })
     setInputMessage('')
@@ -39,10 +36,10 @@ export function useChat() {
     try {
       // 2. 准备请求数据 - 使用当前消息状态 + 用户消息
       const currentMessages = useChatStore.getState().messages
-      const chatMessages: ChatMessage[] = currentMessages
+      const chatMessages: ApiMessage[] = currentMessages
         .filter((m: Message) => m.role === 'user' || m.role === 'assistant')
         .map((m: Message) => ({
-          role: m.role as 'user' | 'assistant',
+          role: m.role,
           content: m.content
         }))
 
@@ -60,7 +57,6 @@ export function useChat() {
 
       // 4. 发送请求并处理流式响应
       await sendMessage(
-        modelId,
         chatMessages,
         selectedAgentId,
         (chunk, conversationId) => {

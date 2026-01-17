@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Plus, FileText, Trash2, Upload, Search, ArrowLeft } from 'lucide-react'
+import { Plus, FileText, Trash2, Upload, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
+import SwipeBackIndicator from './SwipeBackIndicator'
 
 // 知识库类型
 interface KnowledgeItem {
@@ -111,14 +112,7 @@ export default function KnowledgeBasePage() {
         onTouchEnd={handleTouchEnd}
       >
         {/* 移动端滑动返回指示器 */}
-        {swipeProgress > 0 && (
-          <div
-            className="md:hidden absolute left-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-r from-indigo-500/30 to-transparent backdrop-blur-sm pointer-events-none z-50 transition-all"
-            style={{ width: `${Math.min(swipeProgress, 150)}px` }}
-          >
-            <ArrowLeft className="w-8 h-8 text-indigo-600 ml-3 opacity-90" />
-          </div>
-        )}
+        <SwipeBackIndicator swipeProgress={swipeProgress} />
 
         {/* 拖拽上传区 - 隐蔽 */}
         <div className="md:hidden mx-6 mt-6">

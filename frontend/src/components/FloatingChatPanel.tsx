@@ -61,30 +61,8 @@ export default function FloatingChatPanel({
   const displayName = currentAgent?.name || agentName
   const displayDescription = currentAgent?.description || agentDescription
 
-  // 聊天面板收起时显示的机器人恢复按钮（内部版本，未被使用）
-  const MinimizedChatView = () => (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.8 }}
-      className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-violet-500 to-blue-600 rounded-2xl shadow-2xl flex items-center justify-center cursor-pointer hover:scale-105 transition-transform z-[100] animate-pulse"
-      onClick={() => effectiveSetIsChatMinimized(false)}
-      title="恢复对话"
-    >
-      <Bot className="w-6 h-6 text-white" />
-      {messages.length > 0 && (
-        <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center">
-          {messages.length}
-        </div>
-      )}
-    </motion.div>
-  )
-
   return (
     <>
-      {/* 机器人恢复按钮：仅当聊天面板收起时显示 */}
-      {effectiveIsChatMinimized && <MinimizedChatView />}
-
       <AnimatePresence>
         {!isMinimized && (
           <motion.div

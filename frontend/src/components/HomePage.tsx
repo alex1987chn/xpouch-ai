@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Bot } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
@@ -31,13 +31,19 @@ export default function HomePage() {
   // Agent Tab 状态
   const [agentTab, setAgentTab] = useState<'featured' | 'my'>('featured')
 
-  // 合并智能体列表用于显示
-  const displayMyAgents: Agent[] = customAgents.map(a => ({
-    ...a,
-    icon: <Bot className="w-5 h-5" />
-  })) as Agent[]
+  // 使用 useMemo 优化智能体列表计算
+  const displayMyAgents = useMemo<Agent[]>(
+    () => customAgents.map(a => ({
+      ...a,
+      icon: <Bot className="w-5 h-5" />
+    })),
+    [customAgents]
+  )
 
-  const displayedAgents: Agent[] = agentTab === 'featured' ? defaultAgents : displayMyAgents
+  const displayedAgents = useMemo<Agent[]>(
+    () => agentTab === 'featured' ? defaultAgents : displayMyAgents,
+    [agentTab, defaultAgents, displayMyAgents]
+  )
 
   // 默认选中第一个卡片
   useEffect(() => {
@@ -46,17 +52,18 @@ export default function HomePage() {
     }
   }, [displayedAgents, selectedAgentId, setSelectedAgentId])
 
-  const handleAgentClick = (agentId: string) => {
+  // 使用 useCallback 优化事件处理函数
+  const handleAgentClick = useCallback((agentId: string) => {
     setSelectedAgentId(agentId)
     const newId = generateId()
     navigate(`/chat/${newId}?agentId=${agentId}`)
-  }
+  }, [setSelectedAgentId, navigate])
 
-  const handleCreateAgent = () => {
+  const handleCreateAgent = useCallback(() => {
     navigate('/create-agent')
-  }
+  }, [navigate])
 
-  const handleSendMessage = () => {
+  const handleSendMessage = useCallback(() => {
     if (!inputMessage.trim()) return
 
     const newId = generateId()
@@ -66,7 +73,7 @@ export default function HomePage() {
         startWith: inputMessage
       }
     })
-  }
+  }, [inputMessage, navigate])
 
   return (
     <div className="bg-transparent scrollbar-thin overflow-x-hidden">

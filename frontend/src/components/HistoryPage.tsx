@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { MessageSquare, Clock, ArrowRight, Trash2, ArrowLeft } from 'lucide-react'
+import { MessageSquare, Clock, ArrowRight, Trash2 } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { getConversations, deleteConversation as apiDeleteConversation, type Conversation } from '@/services/api'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
+import SwipeBackIndicator from './SwipeBackIndicator'
 
 interface HistoryPageProps {
   onConversationClick: (id: string) => void
@@ -95,14 +96,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
         onTouchEnd={handleTouchEnd}
       >
         {/* 移动端滑动返回指示器 */}
-        {swipeProgress > 0 && (
-          <div
-            className="md:hidden absolute left-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-r from-indigo-500/30 to-transparent backdrop-blur-sm pointer-events-none z-50 transition-all"
-            style={{ width: `${Math.min(swipeProgress, 150)}px` }}
-          >
-            <ArrowLeft className="w-8 h-8 text-indigo-600 ml-3 opacity-90" />
-          </div>
-        )}
+        <SwipeBackIndicator swipeProgress={swipeProgress} />
         <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20 mt-8">
           {loading ? (
              <div className="text-center py-20 text-gray-500">Loading history...</div>
