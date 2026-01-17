@@ -88,7 +88,7 @@ export default function KnowledgeBasePage() {
         <div className="w-full max-w-5xl mx-auto h-full flex items-center">
           {/* 左侧：图标 + 标题 */}
           <div className="flex items-center h-full">
-            <Search className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mr-2" />
+            <Search className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mr-3" />
             <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">
               {t('knowledgeBase')}
             </h2>

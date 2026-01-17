@@ -1,11 +1,11 @@
 // API 服务 - 通过后端代理调用 AI 模型
 // 统一使用 LangGraph 工作流
 
+// 从统一类型定义文件导入
 import {
   ApiMessage,
   Conversation,
-  UserProfile,
-  apiMessageToMessage
+  UserProfile
 } from '@/types'
 
 // 智能判断环境：本地开发直连后端，生产环境走 Nginx 代理
@@ -33,8 +33,11 @@ const getHeaders = () => ({
   'X-User-ID': getClientId()
 });
 
+// 重新导出类型供外部使用
+export type { ApiMessage, Conversation, UserProfile }
+
 // 为了向后兼容，导出别名
-export { ApiMessage as ChatMessage, Conversation, UserProfile }
+export type { ApiMessage as ChatMessage }
 
 export async function getUserProfile(): Promise<UserProfile> {
     const response = await fetch(`${API_BASE_URL}/user/me`, {
