@@ -2,7 +2,7 @@ import pathlib
 from dotenv import load_dotenv
 import os
 
-print(">>> RELOADED main.py: Starting initialization...")
+# >>> RELOADED main.py: Starting initialization...
 
 # Load .env from the same directory as this file
 env_path = pathlib.Path(__file__).parent / ".env"
@@ -37,7 +37,6 @@ app = FastAPI(lifespan=lifespan)
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    print(f"Validation Error: {exc}")
     return JSONResponse(
         status_code=422,
         content={"detail": exc.errors(), "body": exc.body},
@@ -45,9 +44,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    print(f"Global Exception: {exc}")
-    import traceback
-    traceback.print_exc()
     return JSONResponse(
         status_code=500,
         content={"detail": str(exc)},
@@ -85,7 +81,6 @@ async def get_current_user(request: Request, session: Session = Depends(get_sess
     user_id = request.headers.get("X-User-ID")
     if not user_id:
         # Fallback for dev/testing without header
-        print("WARNING: No X-User-ID header found, using 'default-user'")
         user_id = "default-user"
     
     user = session.get(User, user_id)
@@ -136,13 +131,6 @@ async def get_conversation(conversation_id: str, session: Session = Depends(get_
     statement = select(Conversation).where(Conversation.id == conversation_id).options(selectinload(Conversation.messages))
     conversation = session.exec(statement).first()
 
-    print(f"[DEBUG] Fetching conversation {conversation_id}")
-    print(f"[DEBUG] Conversation exists: {conversation is not None}")
-    if conversation:
-        print(f"[DEBUG] Conversation user_id: {conversation.user_id}, current_user.id: {current_user.id}")
-        print(f"[DEBUG] Messages count: {len(conversation.messages) if conversation.messages else 0}")
-        print(f"[DEBUG] Messages: {conversation.messages}")
-
     if not conversation or conversation.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conversation
@@ -160,10 +148,6 @@ async def delete_conversation(conversation_id: str, session: Session = Depends(g
 # 聊天接口
 @app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    print(f"\n{'='*50}\nRECEIVED CHAT REQUEST: {request.message[:50]}\n{'='*50}\n")
-    print(f"Agent ID: {request.agentId}")
-    print(f"Stream mode: {request.stream}")
-    print(f"User ID: {current_user.id}")
 
     # 1. 确定 Conversation ID
     conversation_id = request.conversationId
@@ -219,27 +203,22 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
 
     # 4. 流式响应处理
     if request.stream:
-        print("Starting stream response...")
         async def event_generator():
             full_response = ""
             try:
-                print("Invoking agent_graph.astream_events...")
                 async for event in agent_graph.astream_events(
                     initial_state,
                     version="v2"
                 ):
                     kind = event["event"]
-                    
+
                     if kind == "on_chat_model_stream":
                         content = event["data"]["chunk"].content
                         if content:
                             full_response += content
                             yield f"data: {json.dumps({'content': content, 'conversationId': conversation_id})}\n\n"
-                            
+
             except Exception as e:
-                print(f"Error in stream: {e}")
-                import traceback
-                traceback.print_exc()
                 error_msg = json.dumps({"error": str(e)})
                 yield f"data: {error_msg}\n\n"
             
@@ -298,5 +277,4 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
 if __name__ == "__main__":
     # Local dev defaults to 3002, Docker uses PORT env var (e.g. 3000)
     port = int(os.getenv("PORT", 3002))
-    print(f"Starting server on port {port}...")
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

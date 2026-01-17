@@ -1,15 +1,5 @@
 import { create } from 'zustand'
-
-interface TaskNode {
-  id: string
-  title: string
-  status: 'pending' | 'in-progress' | 'completed'
-  children?: TaskNode[]
-  // 新增：魔法属性
-  color?: string
-  icon?: string
-  description?: string
-}
+import type { TaskNode } from '@/types'
 
 interface CanvasState {
   tasks: TaskNode[]
