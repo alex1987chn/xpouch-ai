@@ -7,6 +7,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-01-18 (超智能体基础设施 v0.3.0-alpha)
+
+### 🏗️ 基础设施与数据协议 (第一步)
+
+**后端数据模型扩展** (`backend/models.py`):
+- 新增 `SubTask` 模型：
+  - 字段：id (UUID), expert_type (枚举), description, input_data (JSON), status (枚举), output_result (JSON)
+  - 时间戳：created_at, updated_at, started_at, completed_at
+  - 关联：task_session_id (外键到 TaskSession)
+  
+- 新增 `TaskSession` 模型：
+  - 字段：session_id (UUID), user_query, final_response, status
+  - 关联：sub_tasks (一对多关系，cascade delete)
+  - 时间戳：created_at, updated_at, completed_at
+
+**专家类型枚举**:
+- `search` - 信息搜索专家
+- `coder` - 编程专家
+- `researcher` - 研究专家
+- `analyzer` - 分析专家
+- `writer` - 写作专家
+- `planner` - 规划专家
+
+**任务状态枚举**:
+- `pending` - 待执行
+- `running` - 执行中
+- `completed` - 已完成
+- `failed` - 执行失败
+
+**Pydantic DTO（数据传输对象）**:
+- `SubTaskCreate` - 创建子任务的请求 DTO
+- `SubTaskUpdate` - 更新子任务的请求 DTO
+- `TaskSessionCreate` - 创建任务会话的请求 DTO
+- `TaskSessionResponse` - 任务会话的响应 DTO
+- `LangSmithConfig` - LangSmith 追踪配置 DTO
+
+### 🔧 配置管理 (`backend/config.py`)
+
+**环境变量支持**:
+- `LANGCHAIN_TRACING_V2` - 启用 LangSmith V2 追踪 (true/false)
+- `LANGCHAIN_API_KEY` - LangSmith API 密钥
+- `LANGCHAIN_PROJECT` - LangSmith 项目名称（默认: xpouch-ai）
+
+**专家类型配置**:
+- `EXPERT_TYPES` - 可用专家类型列表
+- `EXPERT_NAMES` - 专家显示名称映射（中文）
+
+**初始化函数**:
+- `init_langchain_tracing()` - 初始化 LangChain 追踪
+- `validate_config()` - 验证配置完整性
+- `get_langsmith_config()` - 获取 LangSmith 配置
+
+### 🧪 验证脚本 (`backend/test_models.py`)
+
+**功能演示**:
+- 创建 SubTask 实例并序列化为 JSON
+- 创建 TaskSession 实例并验证数据完整性
+- 演示 DTO 的使用方式
+- 演示完整的工作流：用户查询 → 任务会话 → 子任务分发 → 状态更新 → 最终响应
+
+**验证标准**:
+- 符合 Pydantic v2 标准
+- UUID 格式验证
+- JSON 序列化验证
+- 异步调用兼容性
+
+### 📦 文件变更统计
+- 新增 2 个文件：`config.py`, `test_models.py`
+- 修改 1 个文件：`models.py` (新增 150+ 行代码)
+- 新增模型：2 个（SubTask, TaskSession）
+- 新增 DTO：4 个（SubTaskCreate, SubTaskUpdate, TaskSessionCreate, TaskSessionResponse）
+
+### ✅ 质量保证
+- 所有模型遵循 SQLModel + Pydantic v2 规范
+- 支持 FastAPI 异步调用
+- 完整的类型注解
+- 详细的中文注释
+- 验证脚本确保数据结构正确
+
+### 🎯 设计理念
+
+**模块化设计**:
+- 配置与模型分离
+- DTO 与数据库模型分离
+- 验证脚本独立
+
+**可扩展性**:
+- 专家类型易于扩展
+- 支持多种任务状态
+- 灵活的 JSON 字段支持任意数据结构
+
+**可追踪性**:
+- 完整的时间戳记录
+- 任务会话到子任务的完整链路
+- LangSmith 集成支持
+
+---
+
 ## [Unreleased] - 2026-01-18 (运行时错误修复)
 
 ### 🐛 核心修复
