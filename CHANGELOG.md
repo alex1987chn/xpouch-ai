@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-01-18 (组件拆分与架构优化)
+
+### 🧩 组件拆分与重构
+
+**Sidebar.tsx** (292行 → 110行，减少62%)
+- 提取 `SidebarMenu.tsx` - 菜单导航逻辑
+- 提取 `SidebarUserSection.tsx` - 用户头像和套餐显示
+- 提取 `SidebarSettingsMenu.tsx` - 设置弹出菜单
+- 简化主组件，提升可读性和可维护性
+
+**CreateAgentPage.tsx** (346行 → 290行，减少16%)
+- 提取 `PixelProgressBar.tsx` - 进度条组件（已独立）
+- 提取 `AgentPreviewCard.tsx` - 预览卡片组件
+- 更新导入使用新的子组件
+
+### 🛡️ 错误处理优化
+
+**main.tsx**:
+- 添加 `ErrorBoundary` 包裹根组件
+- 防止整个应用崩溃，提升稳定性
+
+### 🏗️ 全局状态管理
+
+**loadingStore.ts**:
+- 新建全局加载状态管理
+- 提供 `isLoading` 和 `loadingMessage` 状态
+- 便于全局统一管理加载状态
+
+## 技术细节
+- 组件职责单一化
+- 提升代码复用性
+- 减少组件复杂度
+- 改善类型安全和导入管理
+
+## 文件变更统计
+- 修改 3 个文件
+- 新增 5 个组件文件
+- Net: 净增加约 150 行（提取为独立组件）
+
+## 质量保证
+- 保持功能不变
+- 提升可维护性
+- Linter: 0 errors
+
+---
+
 ## [Unreleased] - 2026-01-18 (代码重构与优化)
 
 ### 🗑️ 删除冗余代码
