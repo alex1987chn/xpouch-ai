@@ -1,4 +1,5 @@
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import PixelLogo from '@/components/PixelLogo'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
@@ -15,11 +16,16 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ className, isCollapsed = false, onCreateAgent, onSettingsClick, onPersonalSettingsClick }: SidebarProps) {
-  const location = useLocation()
   const navigate = useNavigate()
-  
-  // 判断当前页面
-  const isOnChat = location.pathname.startsWith('/chat')
+  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false)
+
+  const handleSettingsMenuOpenChange = (isOpen: boolean) => {
+    setIsSettingsMenuOpen(isOpen)
+  }
+
+  const handleMenuClose = () => {
+    setIsSettingsMenuOpen(false)
+  }
 
   return (
     <div className={cn(
@@ -46,17 +52,15 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
       {/* 用户区域 */}
       <SidebarUserSection
         onPersonalSettingsClick={onPersonalSettingsClick}
-        onMenuOpenChange={(isOpen) => {
-          // 处理菜单打开状态，在 SidebarSettingsMenu 中使用
-        }}
+        onMenuOpenChange={handleSettingsMenuOpenChange}
       />
 
       {/* 设置弹出菜单 */}
       <SidebarSettingsMenu
-        isOpen={false}
+        isOpen={isSettingsMenuOpen}
         onPersonalSettingsClick={onPersonalSettingsClick}
         onSettingsClick={onSettingsClick}
-        onMenuClose={() => {}}
+        onMenuClose={handleMenuClose}
       />
     </div>
   )
