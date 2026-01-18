@@ -12,6 +12,7 @@ import CanvasChatPage from './components/CanvasChatPage'
 import HistoryPage from './components/HistoryPage'
 import KnowledgeBasePage from './components/KnowledgeBasePage'
 import CreateAgentPage from './components/CreateAgentPage'
+import ErrorBoundary from './components/ErrorBoundary'
 import { useChatStore } from './store/chatStore'
 import { type ConversationHistory } from './utils/storage'
 
@@ -94,10 +95,12 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <I18nProvider>
-      <ThemeProvider>
-        <RouterProvider router={router} />
-      </ThemeProvider>
-    </I18nProvider>
+    <ErrorBoundary>
+      <I18nProvider>
+        <ThemeProvider>
+          <RouterProvider router={router} />
+        </ThemeProvider>
+      </I18nProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )
