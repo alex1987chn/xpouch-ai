@@ -326,7 +326,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
 
               {/* 预览卡片 */}
               <div className="space-y-3">
-                <PreviewCard
+                <AgentPreviewCard
                   name={name}
                   description={description}
                   category={category}
