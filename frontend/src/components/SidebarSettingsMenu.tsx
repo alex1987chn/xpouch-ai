@@ -1,4 +1,4 @@
-import { Settings, Cog } from 'lucide-react'
+import { Settings, Cog, Star, Plane, Crown } from 'lucide-react'
 import { useTranslation, type TranslationKey } from '@/i18n'
 import { LanguageSelector } from '@/components/LanguageSelector'
 import { useUserStore } from '@/store/userStore'
