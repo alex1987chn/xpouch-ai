@@ -23,6 +23,9 @@ export default function CanvasChatPage() {
   const { id } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
+
+  // 从 URL 搜索参数获取 agentId
+  const agentIdFromUrl = new URLSearchParams(location.search).get('agentId')
   const { fetchUser } = useUserStore()
 
   // 确保用户信息已加载
@@ -138,11 +141,15 @@ export default function CanvasChatPage() {
     })
   }, [id, location.state, setCurrentConversationId, setMessages, setSelectedAgentId, navigate])
 
-  // Handle startWith message from navigation state
+  // Handle startWith message from navigation state and URL search params
   useEffect(() => {
     const state = location.state as { startWith?: string; agentId?: string } | null
+
+    // 优先从 state 获取 agentId，其次从 URL 搜索参数获取
     if (state?.agentId) {
       setSelectedAgentId(state.agentId)
+    } else if (agentIdFromUrl) {
+      setSelectedAgentId(agentIdFromUrl)
     }
 
     if (state?.startWith && !handledStartWithRef.current) {
@@ -151,7 +158,7 @@ export default function CanvasChatPage() {
       handleSendMessage(state.startWith)
       navigate(location.pathname + location.search, { replace: true, state: {} })
     }
-  }, [location, handleSendMessage, navigate, setSelectedAgentId])
+  }, [location, handleSendMessage, navigate, setSelectedAgentId, agentIdFromUrl])
 
   // 处理消息发送
   const handleSubmitMessage = useCallback(() => {
