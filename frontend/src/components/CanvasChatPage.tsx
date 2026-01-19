@@ -309,7 +309,7 @@ export default function CanvasChatPage() {
                   {artifactType === 'code' && <Code className="w-5 h-5 text-white" />}
                   {artifactType === 'markdown' && <FileText className="w-5 h-5 text-white" />}
                   {artifactType === 'search' && <Search className="w-5 h-5 text-white" />}
-                  {artifactType === 'html' && <FileCode className="w-5 h-5 text-white" />}
+                  {artifactType === 'html' && <HtmlIcon className="w-5 h-5 text-white" />}
                   {artifactType === 'text' && <FileText className="w-5 h-5 text-white" />}
                   <span className="text-white font-semibold text-base">
                     {artifactType === 'code' && '编程专家'}
@@ -329,7 +329,7 @@ export default function CanvasChatPage() {
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-auto p-6 bg-gray-50 dark:bg-slate-950">
+              <div className="flex-1 overflow-auto p-6 bg-gray-50 dark:bg-slate-950 smooth-scroll">
                 {artifactType === 'code' && (
                   <CodeArtifact content={artifactContent} />
                 )}

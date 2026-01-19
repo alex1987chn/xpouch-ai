@@ -28,9 +28,15 @@ from agents.graph import commander_graph
 from agents.experts import EXPERT_FUNCTIONS
 from models import Conversation, Message, User, TaskSession, SubTask
 from database import create_db_and_tables, get_session
+from config import init_langchain_tracing, validate_config
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 初始化 LangSmith 追踪
+    init_langchain_tracing()
+    # 验证配置
+    validate_config()
+    # 创建数据库表
     create_db_and_tables()
     yield
 
