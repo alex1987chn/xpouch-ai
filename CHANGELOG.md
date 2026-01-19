@@ -7,7 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased] - 2026-01-18 (超智能体基础设施 v0.3.0-alpha)
+## [Unreleased] - 2026-01-19 (移动端聊天体验优化)
+
+### 🎨 聊天面板布局重构
+
+**Flexbox 滚动架构优化** (`FloatingChatPanel.tsx`, `XPouchLayout.tsx`, `CanvasChatPage.tsx`):
+- 消息区域使用 `flex-1 overflow-y-auto` 实现独立滚动
+- Header 和 Input 区域使用 `flex-shrink-0` 固定定位
+- 添加 `min-h-0` 确保 flex 子元素正确收缩以触发滚动
+- 消息区域最大高度限制，超出时内部滚动
+
+**自动滚动优化**:
+- 使用 `scrollIntoView({ behavior: 'smooth' })` 替代 scrollTop
+- 新消息到达时平滑滚动到底部
+
+### 📱 移动端体验增强
+
+**对话面板全屏适配**:
+- 移动端使用 `fixed inset-0 h-[100dvh]` 全屏定位
+- 移除移动端 Header 的返回箭头按钮（使用滑动手势返回）
+- Artifact 全屏预览：移动端移除圆角和边框 (`rounded-none border-0`)
+
+**Artifact 全屏黑边修复**:
+- 问题：圆角容器在 `overflow-hidden` 时产生间隙
+- 修复：移动端使用直角全屏显示
+
+**PC 端按钮对齐优化**:
+- 收起按钮使用 `justify-end flex-1` 靠右边缘对齐
+
+### 🔧 全局样式修复
+
+**CSS 规则调整** (`index.css`):
+- 从全局 `position: relative` 规则中移除 `aside` 选择器
+- 避免干扰 Chat Panel 的高度计算
+
+### 🐛 Bug 修复列表
+
+| 问题 | 位置 | 修复 |
+|------|------|------|
+| 消息区域无滚动条，Header/Input 被顶出 | FloatingChatPanel.tsx | 添加 `min-h-0` + `overflow-hidden` |
+| 输入框溢出面板 | GlowingInput.tsx | 限制 textarea max-h |
+| 移动端切换按钮被遮挡 | XPouchLayout.tsx | 添加 z-[60] |
+| 圆角产生黑边 | CanvasChatPage.tsx | 移动端移除圆角 |
+| 返回箭头按钮残留 | FloatingChatPanel.tsx | 移除移动端返回按钮 |
+| 收起按钮不靠右 | FloatingChatPanel.tsx | 添加 justify-end |
+
+### 📦 文件变更统计
+- 修改 6 个核心组件文件
+- 新增样式规则：2 处
+- 修复 Bug：6 个
+
+### ✅ 质量保证
+- Linter: 0 errors
+- 移动端布局正常滚动
+- PC 端布局保持原有效
 
 ### 🏗️ 基础设施与数据协议 (第一步)
 
@@ -78,6 +131,230 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 修改 1 个文件：`models.py` (新增 150+ 行代码)
 - 新增模型：2 个（SubTask, TaskSession）
 - 新增 DTO：4 个（SubTaskCreate, SubTaskUpdate, TaskSessionCreate, TaskSessionResponse）
+
+---
+
+### 🧠 指挥官工作流实现 (第二步)
+
+**核心组件** (`backend/agents/graph.py`):
+
+**AgentState 定义**:
+- `messages`: 消息历史（支持 add_messages）
+- `task_list`: 子任务列表
+- `current_task_index`: 当前任务索引
+- `strategy`: 执行策略
+- `expert_results`: 专家执行结果汇总
+- `final_response`: 最终整合的响应
+
+**指挥官节点 (commander_node)**:
+- 功能：分析用户查询，拆解为多个子任务
+- 输出：`CommanderOutput` (tasks 列表, strategy, estimated_steps)
+- 兼容性：使用 JSON 解析替代 `with_structured_output()`（支持 DeepSeek API）
+
+**专家分发器 (expert_dispatcher_node)**:
+- 功能：根据 `current_task_index` 循环分发任务到对应专家
+- 支持专家：search, coder, researcher, analyzer, writer, planner
+- 专家实现：通用 LLM 调用，使用不同提示词
+
+**聚合器节点 (aggregator_node)**:
+- 功能：整合所有专家执行结果，生成最终响应
+- 输入：expert_results 列表
+- 输出：连贯、有用的最终答案
+
+**路由逻辑 (route_commander)**:
+- 条件边：检查 `task_list` 和 `current_task_index`
+- 路径：commander → expert_dispatcher（循环）→ aggregator → END
+
+**工作流编译** (`create_commander_workflow`):
+- 状态图：`StateGraph(AgentState)`
+- 节点：3 个（commander, expert_dispatcher, aggregator）
+- 条件路由：2 处（commander→expert, expert→aggregator/END）
+
+**执行函数** (`execute_commander_workflow`):
+- 输入：用户查询（字符串）
+- 输出：完整执行结果（包含 task_list, expert_results, final_response）
+- 异步支持：`await commander_graph.ainvoke(initial_state)`
+
+**测试脚本** (`backend/test_commander.py`):
+- 4 个测试用例（单专家、双专家、多专家协作、研究型任务）
+- 验证函数：任务拆解、专家执行、结果聚合
+- 交互模式：支持手动输入查询测试
+- 简化测试：`quick_test.py`（快速验证核心功能）
+
+### 🔧 技术修复
+- **DeepSeek API 兼容性**：移除 `with_structured_output()`，改用 JSON 提示词和解析
+- **枚举类型修复**：`ExpertType` 和 `TaskStatus` 改为 `Enum` 类，SQLModel 字段用 `str` 存储
+- **LangSmith 集成**：在 graph.py 中加载配置并初始化 tracing
+- **Windows GBK 编码**：过滤 emoji，避免控制台输出错误
+- **DTO 枚举修复**：所有 DTO 中的枚举字段改为 `str` 类型
+
+### 🧪 测试验证结果
+- ✅ 指挥官节点：成功拆解查询为 4 个子任务
+- ✅ 路由逻辑：正确循环分发任务
+- ✅ 专家执行：3/4 专家成功执行（WRITER 因网络问题失败）
+- ✅ 聚合器：成功整合结果（3217 字符响应）
+
+### 📦 文件变更统计
+- 重写 1 个文件：`agents/graph.py` (580+ 行)
+- 新增 2 个测试文件：`test_commander.py`, `quick_test.py`
+- 修改 2 个文件：`models.py` (枚举修复), `config.py` (emoji 修复)
+
+---
+
+### 🔧 架构优化：通用 JSON 解析器
+
+**新增工具** (`backend/utils/json_parser.py`):
+
+**核心功能**:
+- `parse_llm_json()`: 通用 LLM JSON 响应解析器
+  - 支持 Markdown 代码块清理（```json ... ```)
+  - 自动提取 JSON 内容（处理前后缀文本）
+  - Pydantic 模型验证
+  - 清理常见格式问题（尾部逗号、注释等）
+
+**辅助函数**:
+- `_clean_markdown_blocks()`: 移除 Markdown 代码块标记
+- `_extract_json()`: 从文本中提取 JSON 内容
+- `_clean_json_format()`: 清理 JSON 格式问题
+- `_fix_and_parse()`: 尝试修复并解析 JSON 数据
+- `extract_json_blocks()`: 提取所有 JSON 代码块
+- `is_valid_json()`: 检查内容是否为有效 JSON
+
+**架构优势**:
+1. **模型无关性**: 兼容所有 LLM（DeepSeek, GPT-4, Claude 等）
+2. **Prompt 控制权**: 100% 可见和控制发送给模型的指令
+3. **调试友好**: 清晰的解析流程，易于定位问题
+4. **可扩展性**: 为未来更换模型提供"一键切换"能力
+5. **一致性**: 图状态保持不变，后续节点使用标准 Pydantic 对象
+
+**graph.py 改进**:
+- 移除内联 JSON 解析代码
+- 使用 `parse_llm_json()` 替代手动正则匹配
+- 清晰的专家类型说明（search/coder/researcher/analyzer/writer/planner）
+- 简化提示词，去除冗余格式说明
+
+### 📦 文件变更统计
+- 新增 1 个工具文件：`utils/json_parser.py` (230+ 行)
+- 更新 1 个文件：`agents/graph.py` (使用新解析器）
+
+---
+
+### 🤖 专家池与结果汇总 (第三步)
+
+**专家节点实现** (`backend/agents/experts.py`, 370+ 行):
+
+**核心专家节点**:
+- `search_expert()`: 信息搜索专家
+  - 搜索并整理相关信息
+  - 提供可靠的信息来源
+  - 结构化的输出格式
+
+- `coder_expert()`: 编程专家
+  - 编写清晰、高效的代码
+  - 确保可读性和可维护性
+  - 提供代码注释和使用示例
+
+- `researcher_expert()`: 研究专家
+  - 进行深入的文献和技术调研
+  - 比较不同方法的优劣
+  - 提供研究建议和方向
+
+- `analyzer_expert()`: 分析专家
+  - 逻辑严密的分析和推理
+  - 识别关键因素和数据驱动洞察
+  - 评估方案可行性
+
+- `writer_expert()`: 写作专家
+  - 创作生动、优美的内容
+  - 确保逻辑性和连贯性
+  - 适应目标受众需求
+
+- `planner_expert()`: 规划专家
+  - 制定详细的执行计划
+  - 识别步骤和依赖关系
+  - 提供风险预案
+
+**专家提示词模板**:
+- `EXPERT_PROMPTS`: 包含 6 个专家的系统提示词
+- 每个专家有明确的职责和输出要求
+- 结构化的任务执行流程
+
+**专家分发器**:
+- `dispatch_to_expert()`: 统一的专家调用入口
+- `EXPERT_FUNCTIONS`: 专家类型到函数的映射
+- 自动路由到对应的专家节点
+- 统一的错误处理和结果格式
+
+**Aggregator 改进** (`backend/agents/graph.py`):
+
+**Markdown 响应生成**:
+- `_build_markdown_response()`: 构建结构化 Markdown
+- 按专家类型分组结果
+- 每个专家输出包含：状态、耗时、内容
+- 汇总章节：执行总结和后续建议
+
+**响应格式**:
+```markdown
+# 多专家协作结果
+
+**执行策略**: {strategy}
+
+---
+
+## 搜索结果
+### 1. {description}
+**状态**: ✅ completed
+**耗时**: 2.35 秒
+
+{output}
+
+...
+
+## 汇总
+本次协作共调用 N 个专家节点...
+```
+
+**graph.py 改进**:
+- 移除内联专家执行代码
+- 使用 `dispatch_to_expert()` 替代
+- 专家结果包含元数据（status, duration_ms, timestamps）
+- 聚合器生成结构化 Markdown 响应
+
+**流式测试脚本** (`backend/test_full_workflow.py`, 200+ 行):
+
+**测试模式**:
+1. **流式执行** (`astream`):
+   - 实时观察节点流转过程
+   - 打印每个节点的输入输出
+   - 验证最终响应完整性
+
+2. **节点流转测试**:
+   - 验证节点执行顺序
+   - 检查是否所有预期节点都被访问
+   - 比对实际和期望流转路径
+
+3. **LangSmith 追踪测试**:
+   - 验证配置是否正确
+   - 检查 Trace 是否被记录
+   - 提供 LangSmith 控制台链接
+
+4. **全链路测试**:
+   - 顺序执行所有测试
+   - 验证工作流完整性
+
+**测试输出**:
+- 节点访问顺序可视化
+- 每个 state 变化的详细打印
+- 最终响应预览
+- 错误和异常捕获
+
+### 📦 文件变更统计
+- 新增 1 个专家文件：`agents/experts.py` (370+ 行)
+- 更新 2 个文件：`agents/graph.py` (使用新专家), `CHANGELOG.md`
+- 新增 1 个测试文件：`test_full_workflow.py` (200+ 行)
+
+
+
 
 ### ✅ 质量保证
 - 所有模型遵循 SQLModel + Pydantic v2 规范

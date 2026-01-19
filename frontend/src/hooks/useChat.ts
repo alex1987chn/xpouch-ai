@@ -1,12 +1,17 @@
-import { useCallback } from 'react'
+import { useCallback, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useChatStore, type Message } from '@/store/chatStore'
+import { useCanvasStore } from '@/store/canvasStore'
 import { sendMessage, type ApiMessage } from '@/services/api'
 import { getDefaultModel } from '@/utils/config'
 import { generateId } from '@/utils/storage' // 仅保留 generateId，移除 LocalStorage 相关引用
 
 export function useChat() {
   const navigate = useNavigate()
+  const [activeExpertId, setActiveExpertId] = useState<string | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const { setArtifact } = useCanvasStore()
+
   const {
     messages,
     addMessage,
@@ -33,6 +38,9 @@ export function useChat() {
     setInputMessage('')
     setIsTyping(true)
 
+    // 创建新的 AbortController
+    abortControllerRef.current = new AbortController()
+
     try {
       // 2. 准备请求数据 - 使用当前消息状态 + 用户消息
       const currentMessages = useChatStore.getState().messages
@@ -56,12 +64,35 @@ export function useChat() {
       let newConversationId: string | undefined
 
       // 4. 发送请求并处理流式响应
+      console.log('[useChat] 准备调用 sendMessage')
       await sendMessage(
         chatMessages,
         selectedAgentId,
-        (chunk, conversationId) => {
+        (chunk, conversationId, expertEvent, artifact) => {
+          console.log('[useChat] sendMessage 回调被调用:', { chunk: chunk?.substring(0, 50), conversationId, expertEvent, hasArtifact: !!artifact })
+          // 处理专家事件
+          if (expertEvent?.type === 'expert_activated') {
+            console.log('[useChat] ✅ 专家激活:', expertEvent.expertId)
+            setActiveExpertId(expertEvent.expertId)
+          } else if (expertEvent?.type === 'expert_completed') {
+            console.log('[useChat] ✅ 专家完成:', expertEvent.expertId)
+            // 专家完成时不清除状态，等待下一个专家激活
+          }
+
+          // 处理 artifact 事件
+          if (artifact) {
+            console.log('[useChat] 收到 artifact:', artifact.type)
+            console.log('[useChat] Artifact language:', artifact.language)
+            console.log('[useChat] Artifact content length:', artifact.content?.length || 0)
+            console.log('[useChat] Artifact content preview:', artifact.content?.substring(0, 100))
+            // 更新 Canvas 显示代码
+            setArtifact(artifact.type, artifact.content)
+          }
+
           // 实时更新 assistant 消息
-          updateMessage(assistantMessageId, chunk, true)
+          if (chunk) {
+            updateMessage(assistantMessageId, chunk, true)
+          }
 
           // 如果后端返回了新的 conversationId，保存它
           if (conversationId && !newConversationId) {
@@ -69,7 +100,8 @@ export function useChat() {
             newConversationId = conversationId
           }
         },
-        currentConversationId
+        currentConversationId,
+        abortControllerRef.current.signal
       )
 
       // 5. 更新会话状态和 URL
@@ -84,21 +116,40 @@ export function useChat() {
       }
 
     } catch (error) {
-      console.error('Failed to send message:', error)
-      addMessage({
-        role: 'assistant',
-        content: '抱歉，发生了错误。请检查网络连接或稍后重试。'
-      })
+      // 检查是否是用户手动取消
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('[useChat] 请求已取消')
+        // 移除空的 AI 消息（如果没有内容）
+        updateMessage(assistantMessageId, '', false)
+      } else {
+        console.error('Failed to send message:', error)
+        addMessage({
+          role: 'assistant',
+          content: '抱歉，发生了错误。请检查网络连接或稍后重试。'
+        })
+      }
     } finally {
       setIsTyping(false)
+      abortControllerRef.current = null
     }
   }, [inputMessage, messages, selectedAgentId, currentConversationId, getCurrentAgent, addMessage, setInputMessage, setIsTyping, updateMessage, setCurrentConversationId, navigate])
+
+  // 停止生成
+  const handleStopGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      console.log('[useChat] 停止生成')
+      abortControllerRef.current.abort()
+    }
+  }, [])
 
   return {
     messages,
     isTyping,
     inputMessage,
     setInputMessage,
-    handleSendMessage
+    handleSendMessage,
+    handleStopGeneration,
+    activeExpertId,
+    setActiveExpertId
   }
 }

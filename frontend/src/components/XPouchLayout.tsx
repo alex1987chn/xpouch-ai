@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import SwipeBackIndicator from './SwipeBackIndicator'
 
@@ -9,6 +10,8 @@ interface XPouchLayoutProps {
   isChatMinimized?: boolean
   setIsChatMinimized?: (minimized: boolean) => void
   swipeProgress?: number
+  hasArtifact?: boolean
+  hideChatPanel?: boolean // 新增：用于全屏预览时隐藏对话面板
 }
 
 export default function XPouchLayout({
@@ -17,7 +20,9 @@ export default function XPouchLayout({
   ChatContent,
   isChatMinimized = false,
   setIsChatMinimized,
-  swipeProgress = 0
+  swipeProgress = 0,
+  hasArtifact = false,
+  hideChatPanel = false // 新增参数
 }: XPouchLayoutProps) {
   // viewMode 仅在移动端起作用
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
@@ -25,61 +30,115 @@ export default function XPouchLayout({
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden">
 
-      {/* 1. 侧边栏 - 固定宽度 92px，统一样式 */}
-      <aside className="hidden md:flex h-screen flex-shrink-0 w-[92px] bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a] backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/30">
+      {/* 1. 侧边栏 - 固定宽度 92px，统一样式，z-index 确保全局优先级 */}
+      <aside className="hidden md:flex h-screen flex-shrink-0 w-[92px] bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a] backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/30 relative z-[150]">
         <div className="h-full w-full">
           {SidebarContent}
         </div>
       </aside>
 
-      {/* 主容器 */}
-      <div className="relative flex flex-1 overflow-hidden">
+      {/* 主容器 - 根据是否有 artifact 动态切换布局 */}
+      <motion.div
+        layout
+        className={cn(
+          'relative flex flex-col md:flex-row overflow-hidden h-full w-full',
+          hasArtifact
+            ? 'flex-1 md:p-4 md:gap-4' // PC端：有 artifact 时显示 padding 和 gap
+            : 'flex-1' // 无 artifact 时使用
+        )}
+      >
         {/* 移动端滑动返回指示器 */}
         <SwipeBackIndicator swipeProgress={swipeProgress} />
 
-        {/* 2. 画布区域 (Canvas) */}
-        {/* 移动端逻辑：仅在 preview 模式显示 | PC端逻辑：始终作为背景 flex-1 */}
-        <main className={cn(
-          'flex flex-1 relative h-full w-full overflow-y-auto overflow-x-hidden',
-          viewMode === 'preview' ? 'flex' : 'hidden',
-          'md:flex'
-        )}>
+        {/* 背景网格画布 - 始终存在 */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 -z-10">
+          {/* 可以在这里添加网格背景 */}
+        </div>
+
+        {/* Artifact Container - 左侧（或浮动） */}
+        <AnimatePresence mode="wait">
+          <motion.main
+            key={viewMode}
+            layout={hasArtifact} // 只在有 artifact 时启用 layout
+            initial={false}
+            animate={{
+              flex: hasArtifact ? 1 : 1,
+              width: hasArtifact ? 'auto' : '100%'
+            }}
+            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1], layout: { duration: 0.4 } }}
+            className={cn(
+              'relative flex-shrink-0 md:flex-1 h-full overflow-hidden min-h-0',
+              viewMode === 'chat' ? 'hidden md:flex' : 'flex md:flex-1',
+              // 有 artifact 时：深色面板，圆角，边框（仅 PC 端）
+              hasArtifact && 'bg-[#0B0E14] md:rounded-2xl md:border md:border-slate-800 md:shadow-2xl',
+              // 无 artifact 时：透明，显示背景网格（仅 PC 端圆角）
+              !hasArtifact && 'md:rounded-2xl'
+            )}
+          >
           {/* 移动端：画布顶部的切换按钮（仅在 preview 模式显示） */}
           {viewMode === 'preview' && (
             <button
               onClick={() => setViewMode('chat')}
-              className="md:hidden absolute top-4 left-1/2 -translate-x-1/2 z-50 w-28 h-8 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-full shadow-lg flex items-center justify-center gap-2 px-3 hover:bg-white dark:hover:bg-slate-800 transition-all"
+              className="md:hidden absolute top-4 left-1/2 -translate-x-1/2 z-[60] w-28 h-8 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-full shadow-lg flex items-center justify-center gap-2 px-3 hover:bg-white dark:hover:bg-slate-800 transition-all"
             >
               <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
               <span className="text-[11px] font-medium text-slate-700 dark:text-slate-200">对话</span>
             </button>
           )}
 
-          {CanvasContent}
-        </main>
+          {/* Canvas 内容容器 */}
+          <div className={cn(
+            'h-full w-full',
+            viewMode === 'preview' ? 'block' : 'hidden',
+            'md:block'
+          )}>
+            {CanvasContent}
+          </div>
+        </motion.main>
+        </AnimatePresence>
 
-        {/* 4. 聊天面板 (Chat Panel) - 完整封装 */}
-        {/* 移动端逻辑：仅在 chat 模式全屏显示 | PC端逻辑：固定定位悬浮 */}
-        <aside className={cn(
-          // 基础样式
-          'flex flex-col bg-white dark:bg-slate-900/90 backdrop-blur-md z-50',
-          // 移动端样式
-          viewMode === 'chat' ? 'w-full h-full static' : 'hidden',
-          // PC端样式：固定定位悬浮 + 收起动画
-          'md:flex md:fixed md:right-6 md:top-6 md:bottom-6 md:w-[400px]',
-          'md:h-auto md:rounded-2xl md:shadow-2xl md:border md:border-slate-200/50 dark:md:border-slate-700/50 md:overflow-hidden md:bg-white dark:md:bg-slate-900/90 md:backdrop-blur-md',
-          // 关键：收起动画样式
-          'transition-all duration-300 ease-in-out',
-          isChatMinimized && 'md:translate-x-[110%] md:opacity-0 md:pointer-events-none'
-        )}>
-          {ChatContent(viewMode, setViewMode)}
-        </aside>
+        {/* Chat Panel - 右侧 */}
+        <AnimatePresence mode="wait">
+          {(!hideChatPanel || viewMode === 'chat') && (
+            <motion.aside
+              key="chat-panel"
+              layout={hasArtifact} // 只在有 artifact 时启用 layout
+              initial={false}
+              animate={{
+                width: hasArtifact ? '400px' : '400px',
+                flexShrink: 0
+              }}
+              transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1], layout: { duration: 0.4 } }}
+              className={cn(
+                // 基础样式
+                'flex flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-md',
+                // 移动端：全屏显示（使用 fixed 脱离文档流，避免受父容器影响）
+                'fixed inset-0 z-50 md:relative',
+                viewMode === 'chat' ? 'w-full h-[100dvh] rounded-none border-none' : 'hidden',
+                // PC端样式：统一样式，保持视觉一致
+                'md:flex md:w-[400px] md:h-full md:rounded-2xl md:shadow-2xl md:shadow-black/20 md:border md:border-slate-200/50 md:dark:border-slate-700/50',
+                // 关键：overflow-hidden 确保圆角锐利，只有内部消息区域滚动
+                'overflow-hidden min-h-0',
+                isChatMinimized && 'md:w-0 md:opacity-0 md:overflow-hidden md:pointer-events-none',
+                // 全屏预览时隐藏
+                hideChatPanel && 'hidden'
+              )}
+            >
+              <div className={cn(
+                'h-full w-full flex flex-col overflow-hidden',
+                isChatMinimized && 'md:opacity-0'
+              )}>
+                {ChatContent(viewMode, setViewMode)}
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
 
         {/* 机器人恢复按钮：仅在收起时显示 */}
         {isChatMinimized && setIsChatMinimized && (
           <button
             onClick={() => setIsChatMinimized(false)}
-            className="hidden md:flex fixed bottom-10 right-10 z-[100] w-14 h-14 bg-gradient-to-br from-violet-500 to-blue-600 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-105 transition-transform animate-bounce"
+            className="hidden md:flex fixed bottom-10 right-10 w-14 h-14 bg-gradient-to-br from-violet-500 to-blue-600 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-105 transition-transform animate-bounce"
             title="恢复对话"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,7 +147,7 @@ export default function XPouchLayout({
           </button>
         )}
 
-      </div>
+      </motion.div>
     </div>
   );
 }

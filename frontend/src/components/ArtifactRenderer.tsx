@@ -1,212 +1,273 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { Copy, ExternalLink, Globe, Code, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Code, FileText, GitBranch, ExternalLink, Copy, Check } from 'lucide-react'
-import DOMPurify from 'dompurify'
 
 interface ArtifactRendererProps {
-  type: 'code' | 'mermaid' | 'markdown'
-  content: string
-  className?: string
+  type: string
+  content: any
 }
 
-export default function ArtifactRenderer({
-  type,
-  content,
-  className
-}: ArtifactRendererProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
+export default function ArtifactRenderer({ type, content }: ArtifactRendererProps) {
   const [copied, setCopied] = useState(false)
-  const [mermaidKey, setMermaidKey] = useState(0)
+  const [htmlUrl, setHtmlUrl] = useState<string | null>(null)
 
-  // Handle mermaid rendering
+  // 复制到剪贴板
+  const handleCopy = useCallback((text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [])
+
+  // 清理Blob URL
   useEffect(() => {
-    if (type === 'mermaid' && containerRef.current) {
-      const renderMermaid = async () => {
-        try {
-          const mermaid = await import('mermaid')
-          mermaid.default.initialize({
-            startOnLoad: false,
-            theme: 'default',
-            securityLevel: 'loose',
-            fontFamily: 'inherit'
-          })
-
-          // Clear previous content
-          containerRef.current!.innerHTML = ''
-
-          // Create container for mermaid
-          const mermaidDiv = document.createElement('div')
-          mermaidDiv.className = 'mermaid-container flex justify-center p-4'
-          containerRef.current!.appendChild(mermaidDiv)
-
-          // Generate unique ID
-          const id = `mermaid-${Date.now()}`
-          mermaidDiv.id = id
-
-          // Render
-          await mermaid.default.run({
-            nodes: [mermaidDiv]
-          })
-        } catch (error) {
-          console.error('Mermaid rendering error:', error)
-          if (containerRef.current) {
-            containerRef.current.innerHTML = `
-              <div class="flex items-center justify-center p-8 text-red-500">
-                <p>图表渲染失败，请检查语法</p>
-              </div>
-            `
-          }
-        }
+    return () => {
+      if (htmlUrl) {
+        URL.revokeObjectURL(htmlUrl)
       }
+    }
+  }, [htmlUrl])
 
-      renderMermaid()
-      // Re-render when content changes
-      setMermaidKey(prev => prev + 1)
+  // 创建 HTML Blob URL
+  useEffect(() => {
+    if (type === 'html' && typeof content === 'string' && content) {
+      const blob = new Blob([content], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      setHtmlUrl(url)
+      return () => {
+        URL.revokeObjectURL(url)
+      }
     }
   }, [type, content])
 
-  // Copy to clipboard
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(content)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (error) {
-      console.error('Copy failed:', error)
-    }
+  // Type: code - Syntax-Highlighted Code Block
+  if (type === 'code') {
+    const { language, code } = content || { language: 'text', code: '' }
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 30, damping: 20 }}
+        className="rounded-xl bg-gray-800/60 p-4"
+      >
+        <div className="relative rounded-lg overflow-hidden">
+          {/* Language Label */}
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-900/50 border-b border-gray-700/50">
+            <span className="text-xs font-medium text-gray-400 uppercase">{language || 'text'}</span>
+            <button
+              onClick={() => handleCopy(code)}
+              className="flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+              title="复制代码"
+            >
+              {copied ? <Code className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+            </button>
+          </div>
+          
+          {/* Code Content */}
+          <div className="p-4 overflow-x-auto">
+            <SyntaxHighlighter
+              language={language || 'text'}
+              style={vscDarkPlus}
+              PreTag="div"
+              customStyle={{ background: 'transparent', padding: 0, margin: 0 }}
+              className="text-sm"
+            >
+              {String(code)}
+            </SyntaxHighlighter>
+          </div>
+        </div>
+      </motion.div>
+    )
   }
 
-  // Render based on type
-  const renderContent = () => {
-    switch (type) {
-      case 'code':
-        return (
-          <div className="relative group">
-            {/* Code Header */}
-            <div className="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-gray-900 border-b border-gray-700">
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                  <div className="w-3 h-3 rounded-full bg-green-500" />
-                </div>
-                <span className="ml-3 text-xs text-gray-400">Code Preview</span>
-              </div>
-              <button
-                onClick={handleCopy}
-                className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-3 h-3" />
-                    <span>Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3" />
-                    <span>Copy</span>
-                  </>
+  // Type: search - Dual-Column Information Cards
+  if (type === 'search') {
+    const results = content?.results || []
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 30, damping: 20 }}
+        className="rounded-xl p-4"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+          {results.map((result: any, index: number) => (
+            <div
+              key={index}
+              className={cn(
+                'rounded-xl bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors cursor-pointer'
+              )}
+            >
+              {/* Favicon & Title */}
+              <div className="flex items-start gap-3 mb-2">
+                {result.favicon && (
+                  <img src={result.favicon} alt="" className="w-5 h-5 rounded flex-shrink-0" />
                 )}
-              </button>
-            </div>
-            {/* Code Content */}
-            <pre className="p-4 overflow-auto bg-gray-900 dark:bg-gray-950 text-gray-100 font-mono text-sm">
-              <code>{content}</code>
-            </pre>
-          </div>
-        )
-
-      case 'markdown':
-        // Sanitize and render markdown
-        const sanitizedContent = DOMPurify.sanitize(content)
-        return (
-          <div
-            className="prose prose-gray dark:prose-invert max-w-none p-6 overflow-auto"
-            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-          />
-        )
-
-      case 'mermaid':
-        return (
-          <div
-            ref={containerRef}
-            key={mermaidKey}
-            className="w-full h-full overflow-auto p-4 bg-white dark:bg-gray-900 rounded-lg"
-          >
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="animate-pulse text-gray-400">
-                Loading diagram...
+                <a
+                  href={result.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-semibold text-gray-800 dark:text-gray-100 hover:text-blue-400 hover:underline transition-colors"
+                >
+                  {result.title}
+                </a>
               </div>
+              
+              {/* Snippet */}
+              <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed">
+                {result.snippet}
+              </p>
+              
+              {/* Source URL */}
+              {result.url && (
+                <div className="flex items-center gap-1 mt-2">
+                  <Globe className="w-3 h-3 text-gray-500" />
+                  <a
+                    href={result.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-gray-500 hover:text-blue-400 hover:underline transition-colors truncate"
+                  >
+                    {result.url}
+                  </a>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    )
+  }
+
+  // Type: report - Rich Markdown Document
+  if (type === 'report' || type === 'markdown') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 30, damping: 20 }}
+        className="rounded-xl p-6"
+      >
+        <div className="prose prose-invert prose-sm max-w-none">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              // Custom heading styles
+              h1: ({ children }) => (
+                <h1 className="text-2xl font-bold text-violet-400 border-b border-violet-400/30 pb-2 mb-4 mt-6">
+                  {children}
+                </h1>
+              ),
+              h2: ({ children }) => (
+                <h2 className="text-xl font-semibold text-violet-400 border-b border-violet-400/30 pb-2 mb-3 mt-5">
+                  {children}
+                </h2>
+              ),
+              h3: ({ children }) => (
+                <h3 className="text-lg font-semibold text-violet-400 border-b border-violet-400/30 pb-2 mb-2 mt-4">
+                  {children}
+                </h3>
+              ),
+              // Custom link styles
+              a: ({ children, href }) => (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:underline transition-colors"
+                >
+                  {children}
+                </a>
+              ),
+              // Custom code styles
+              code: ({ children, className }) => {
+                const isInline = !className?.includes('language-')
+                return isInline ? (
+                  <code className="bg-gray-700 px-1.5 py-0.5 rounded text-sm">
+                    {children}
+                  </code>
+                ) : (
+                  <code className={cn('block', className)}>{children}</code>
+                )
+              },
+              // Custom list styles
+              ul: ({ children }) => (
+                <ul className="space-y-2 list-disc pl-4 marker:text-violet-400">
+                  {children}
+                </ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="space-y-2 list-decimal pl-4 marker:text-violet-400">
+                  {children}
+                </ol>
+              ),
+            }}
+          >
+            {typeof content === 'string' ? content : JSON.stringify(content, null, 2)}
+          </ReactMarkdown>
+        </div>
+      </motion.div>
+    )
+  }
+
+  // Type: html - Embedded Web Content
+  if (type === 'html') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 30, damping: 20 }}
+        className="rounded-xl overflow-hidden"
+      >
+        {/* Browser Window Wrapper */}
+        <div className="bg-gray-800/80 rounded-xl border border-gray-700/50 overflow-hidden">
+          {/* Browser Chrome */}
+          <div className="flex items-center justify-between px-6 py-4 bg-gray-900/90 border-b border-gray-700/50">
+            {/* URL Bar Placeholder */}
+            <div className="flex items-center gap-2 px-4 py-2 bg-gray-800 rounded text-xs text-gray-400">
+              <Globe className="w-3 h-3" />
+              <span className="flex-1 truncate">
+                {typeof content === 'string' ? content.slice(0, 50) : 'Web Content'}
+              </span>
             </div>
           </div>
-        )
 
-      default:
-        return (
-          <div className="flex items-center justify-center p-8 text-gray-500">
-            Unknown artifact type: {type}
-          </div>
-        )
-    }
+          {/* Iframe Content */}
+          {htmlUrl ? (
+            <iframe
+              src={htmlUrl}
+              className="w-full h-[500px] bg-white"
+              sandbox="allow-scripts allow-same-origin"
+              title="Artifact Content"
+            />
+          ) : (
+            <div className="w-full h-[500px] flex items-center justify-center text-gray-500">
+              加载中...
+            </div>
+          )}
+        </div>
+      </motion.div>
+    )
   }
 
-  // Get icon based on type
-  const getTypeIcon = () => {
-    switch (type) {
-      case 'code':
-        return <Code className="w-4 h-4" />
-      case 'markdown':
-        return <FileText className="w-4 h-4" />
-      case 'mermaid':
-        return <GitBranch className="w-4 h-4" />
-      default:
-        return null
-    }
-  }
-
-  // Get type label
-  const getTypeLabel = () => {
-    switch (type) {
-      case 'code':
-        return '代码预览'
-      case 'markdown':
-        return '文档'
-      case 'mermaid':
-        return '流程图'
-      default:
-        return '内容'
-    }
-  }
-
+  // Fallback - Unknown Type
   return (
-    <div
-      className={cn(
-        'w-full h-full flex flex-col bg-white dark:bg-gray-900 rounded-xl shadow-xl overflow-hidden',
-        className
-      )}
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 30, damping: 20 }}
+      className="rounded-xl bg-gray-800/60 p-6"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-        <div className="flex items-center gap-2">
-          {getTypeIcon()}
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-            {getTypeLabel()}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500 dark:text-gray-400"
-            title="在新窗口打开"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </button>
-        </div>
+      <div className="flex items-center justify-center gap-3 text-gray-400">
+        <FileText className="w-8 h-8" />
+        <p className="text-sm">Unsupported artifact type: {type}</p>
       </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-auto">
-        {renderContent()}
-      </div>
-    </div>
+    </motion.div>
   )
 }

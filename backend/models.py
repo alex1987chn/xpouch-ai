@@ -1,8 +1,9 @@
-from typing import List, Optional, Literal
+from typing import List, Optional
 from datetime import datetime
 from uuid import uuid4
 from sqlmodel import Field, SQLModel, Relationship, JSON
 from pydantic import BaseModel
+from enum import Enum
 
 
 # ============================================================================
@@ -44,11 +45,23 @@ class Message(SQLModel, table=True):
 # 新增模型：超智能体基础设施
 # ============================================================================
 
-# 专家类型枚举
-ExpertType = Literal["search", "coder", "researcher", "analyzer", "writer", "planner"]
+class ExpertType(str, Enum):
+    """专家类型枚举"""
+    SEARCH = "search"
+    CODER = "coder"
+    RESEARCHER = "researcher"
+    ANALYZER = "analyzer"
+    WRITER = "writer"
+    PLANNER = "planner"
+    IMAGE_ANALYZER = "image_analyzer"
 
-# 子任务状态枚举
-TaskStatus = Literal["pending", "running", "completed", "failed"]
+
+class TaskStatus(str, Enum):
+    """子任务状态枚举"""
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 class SubTask(SQLModel, table=True):
@@ -56,18 +69,18 @@ class SubTask(SQLModel, table=True):
     子任务模型 - 由"指挥官"分发给专家的具体任务
     """
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
-    
+
     # 专家类型：指定由哪个专家执行
-    expert_type: ExpertType = Field(index=True)
-    
+    expert_type: str = Field(index=True)  # 存储 ExpertType 枚举值
+
     # 任务描述：自然语言描述的任务内容
     description: str = Field(index=True)
-    
+
     # 输入数据：JSON 格式的任务参数
     input_data: Optional[dict] = Field(default=None, sa_type=JSON)
-    
+
     # 任务状态
-    status: TaskStatus = Field(default="pending", index=True)
+    status: str = Field(default="pending", index=True)  # 存储 TaskStatus 枚举值
     
     # 输出结果：JSON 格式的执行结果
     output_result: Optional[dict] = Field(default=None, sa_type=JSON)
@@ -99,7 +112,7 @@ class TaskSession(SQLModel, table=True):
     final_response: Optional[str] = Field(default=None)
     
     # 会话状态
-    status: TaskStatus = Field(default="pending", index=True)
+    status: str = Field(default="pending", index=True)
     
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
@@ -113,14 +126,14 @@ class TaskSession(SQLModel, table=True):
 
 class SubTaskCreate(BaseModel):
     """创建子任务的 DTO"""
-    expert_type: ExpertType
+    expert_type: str  # ExpertType 枚举值
     description: str
     input_data: Optional[dict] = None
 
 
 class SubTaskUpdate(BaseModel):
     """更新子任务的 DTO"""
-    status: Optional[TaskStatus] = None
+    status: Optional[str] = None  # TaskStatus 枚举值
     output_result: Optional[dict] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
@@ -137,7 +150,7 @@ class TaskSessionResponse(BaseModel):
     user_query: str
     sub_tasks: List[SubTask]
     final_response: Optional[str]
-    status: TaskStatus
+    status: str  # TaskStatus 枚举值
     created_at: datetime
     updated_at: datetime
     completed_at: Optional[datetime] = None

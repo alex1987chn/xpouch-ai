@@ -132,6 +132,28 @@ export interface ChatPageState {
 }
 
 // ============================================
+// 专家状态事件类型
+// ============================================
+
+/**
+ * 专家状态事件类型
+ */
+export interface ExpertEvent {
+  type: 'expert_activated' | 'expert_completed'
+  expertId: string
+}
+
+/**
+ * Artifact（代码/图表等）类型
+ */
+export interface Artifact {
+  type: 'code' | 'markdown' | 'search' | 'html' | 'text'
+  language?: string
+  content: string
+  source?: string
+}
+
+// ============================================
 // 类型守卫函数
 // ============================================
 

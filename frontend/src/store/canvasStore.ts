@@ -25,9 +25,9 @@ interface CanvasState {
   setIsDragging: (isDragging: boolean) => void
 
   // Artifact 状态管理
-  artifactType: 'code' | 'mermaid' | 'markdown' | null
+  artifactType: 'code' | 'markdown' | 'search' | 'html' | 'text' | null
   artifactContent: string
-  setArtifact: (type: 'code' | 'mermaid' | 'markdown' | null, content: string) => void
+  setArtifact: (type: 'code' | 'markdown' | 'search' | 'html' | 'text' | null, content: string) => void
   clearArtifact: () => void
 }
 
@@ -60,6 +60,13 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   // Artifact 状态管理
   artifactType: null,
   artifactContent: '',
-  setArtifact: (type, content) => set({ artifactType: type, artifactContent: content }),
-  clearArtifact: () => set({ artifactType: null, artifactContent: '' })
+  setArtifact: (type, content) => {
+    console.log('[canvasStore] setArtifact called:', { type, contentLength: content?.length || 0 })
+    console.log('[canvasStore] content preview:', content?.substring(0, 100))
+    set({ artifactType: type, artifactContent: content })
+  },
+  clearArtifact: () => {
+    console.log('[canvasStore] clearArtifact called')
+    set({ artifactType: null, artifactContent: '' })
+  }
 }))

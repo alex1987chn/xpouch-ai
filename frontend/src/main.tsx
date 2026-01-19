@@ -6,7 +6,6 @@ import { ThemeProvider } from './hooks/useTheme'
 import './index.css'
 
 import Layout from './components/Layout'
-import ChatLayout from './components/ChatLayout'
 import HomePage from './components/HomePage'
 import CanvasChatPage from './components/CanvasChatPage'
 import HistoryPage from './components/HistoryPage'
@@ -47,9 +46,9 @@ const CreateAgentPageWrapper = () => {
   }
 
   return (
-    <CreateAgentPage 
-      onBack={() => navigate('/')} 
-      onSave={handleSave} 
+    <CreateAgentPage
+      onBack={() => navigate('/')}
+      onSave={handleSave}
     />
   )
 }
@@ -83,13 +82,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/chat/:id',
-    element: <ChatLayout />,
-    children: [
-      {
-        index: true,
-        element: <CanvasChatPage />
-      }
-    ]
+    element: <CanvasChatPage />
   }
 ])
 

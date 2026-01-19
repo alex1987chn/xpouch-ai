@@ -1,8 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
-import { Bot, User, Minimize2, Maximize2 } from 'lucide-react'
+import { Bot, User, Minimize2, Maximize2, Copy, RefreshCw, Check } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import type { Message } from '@/store/chatStore'
 import GlowingInput from './GlowingInput'
@@ -20,6 +19,7 @@ interface FloatingChatPanelProps {
   onViewModeChange?: (mode: 'chat' | 'preview') => void
   isChatMinimized?: boolean
   setIsChatMinimized?: (minimized: boolean) => void
+  onStopGeneration?: () => void
 }
 
 export default function FloatingChatPanel({
@@ -34,7 +34,8 @@ export default function FloatingChatPanel({
   viewMode = 'chat',
   onViewModeChange,
   isChatMinimized: propIsChatMinimized = false,
-  setIsChatMinimized: propSetIsChatMinimized
+  setIsChatMinimized: propSetIsChatMinimized,
+  onStopGeneration
 }: FloatingChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isMinimized, setIsMinimized] = useState(false)
@@ -45,7 +46,9 @@ export default function FloatingChatPanel({
 
   // Auto-scroll to bottom when new messages appear
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages])
 
   // Handle submit
@@ -61,6 +64,28 @@ export default function FloatingChatPanel({
   const displayName = currentAgent?.name || agentName
   const displayDescription = currentAgent?.description || agentDescription
 
+  // Copy functionality
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+
+  const handleCopyMessage = useCallback(async (content: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopiedMessageId(messageId)
+      setTimeout(() => setCopiedMessageId(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }, [])
+
+  const handleRetryMessage = useCallback((content: string) => {
+    setInputMessage(content)
+    // Focus on input
+    const inputElement = document.querySelector('textarea') as HTMLTextAreaElement
+    if (inputElement) {
+      inputElement.focus()
+    }
+  }, [setInputMessage])
+
   return (
     <>
       <AnimatePresence>
@@ -73,14 +98,13 @@ export default function FloatingChatPanel({
             }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className={cn(
-              'flex flex-col h-full pt-[env(safe-area-inset-top)]',
-              effectiveIsChatMinimized && 'md:translate-x-[120%] md:opacity-0 pointer-events-none',
-              className
+              'flex flex-col h-full min-h-0 overflow-hidden',
+              effectiveIsChatMinimized && 'md:translate-x-[120%] md:opacity-0 pointer-events-none'
             )}
           >
-      {/* Header - Sticky with backdrop blur */}
-      <div className="sticky top-0 z-20 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-4 py-3">
-        <div className="flex items-center justify-between">
+      {/* Header - Fixed at top, flex-shrink-0 */}
+      <div className="flex-shrink-0 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-4 py-3">
+        <div className="flex items-center gap-3 flex-1">
           {/* 左侧：智能体信息 */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center shadow-lg">
@@ -97,8 +121,8 @@ export default function FloatingChatPanel({
           </div>
 
           {/* 右侧：PC端最小化按钮 + 移动端切换器 */}
-          <div className="flex items-center gap-2">
-            {/* PC端收起按钮 */}
+          <div className="flex items-center justify-end flex-1">
+            {/* PC端收起按钮 - 靠右边缘 */}
             <button
               onClick={() => effectiveSetIsChatMinimized(true)}
               className="hidden md:flex p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -128,8 +152,8 @@ export default function FloatingChatPanel({
         </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 px-4 py-4">
+      {/* Messages - flex-1 + overflow-y-auto for scrolling */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-thin">
         <div className="space-y-4">
           {messages.filter(msg => msg.content.trim() !== '').map((msg, index) => (
             <motion.div
@@ -138,42 +162,82 @@ export default function FloatingChatPanel({
               animate={{ opacity: 1, y: 0 }}
               className={cn(
                 'flex gap-3',
-                msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'
+                msg.role === 'user' ? 'flex-col items-end' : 'flex-col items-start'
               )}
             >
-              {/* Avatar */}
-              <div
-                className={cn(
-                  'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
-                  msg.role === 'user'
-                    ? 'bg-indigo-600'
-                    : 'bg-gradient-to-br from-indigo-500 to-purple-500'
-                )}
-              >
-                {msg.role === 'user' ? (
-                  <User className="w-4 h-4 text-white" />
-                ) : (
-                  <Bot className="w-4 h-4 text-white" />
-                )}
+              {/* Avatar + Message Bubble Row */}
+              <div className={cn('flex gap-3 w-full', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
+                {/* Avatar */}
+                <div
+                  className={cn(
+                    'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
+                    msg.role === 'user'
+                      ? 'bg-indigo-600'
+                      : 'bg-gradient-to-br from-indigo-500 to-purple-500'
+                  )}
+                >
+                  {msg.role === 'user' ? (
+                    <User className="w-4 h-4 text-white" />
+                  ) : (
+                    <Bot className="w-4 h-4 text-white" />
+                  )}
+                </div>
+
+                {/* Message Bubble */}
+                <div
+                  className={cn(
+                    'max-w-[80%] rounded-2xl p-4 shadow-sm',
+                    msg.role === 'user'
+                      ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-indigo-200 dark:shadow-indigo-900/20'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100'
+                  )}
+                >
+                  {msg.role === 'user' ? (
+                    <div className="whitespace-pre-wrap text-sm">
+                      {msg.content}
+                    </div>
+                  ) : (
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
+                      {msg.content}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Message Bubble */}
+              {/* Action Buttons - Below bubble */}
               <div
                 className={cn(
-                  'max-w-[80%] rounded-2xl p-4 shadow-sm',
-                  msg.role === 'user'
-                    ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-indigo-200 dark:shadow-indigo-900/20'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100'
+                  'flex gap-1 opacity-0 hover:opacity-100 transition-opacity',
+                  msg.role === 'user' ? 'self-end' : 'self-start'
                 )}
               >
-                {msg.role === 'user' ? (
-                  <div className="whitespace-pre-wrap text-sm">
-                    {msg.content}
-                  </div>
-                ) : (
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
-                    {msg.content}
-                  </div>
+                {/* Copy Button */}
+                <button
+                  onClick={() => handleCopyMessage(msg.content, msg.id || String(index))}
+                  className={cn(
+                    'p-1.5 rounded-lg transition-colors text-xs',
+                    msg.role === 'user'
+                      ? 'hover:bg-indigo-400/20 text-white/70 hover:text-white'
+                      : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
+                  )}
+                  title="复制"
+                >
+                  {copiedMessageId === (msg.id || String(index)) ? (
+                    <Check className="w-3.5 h-3.5" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+
+                {/* Retry Button (Only for user messages) */}
+                {msg.role === 'user' && (
+                  <button
+                    onClick={() => handleRetryMessage(msg.content)}
+                    className="p-1.5 rounded-lg hover:bg-indigo-400/20 text-white/70 hover:text-white transition-colors text-xs"
+                    title="重试"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
                 )}
               </div>
             </motion.div>
@@ -184,7 +248,7 @@ export default function FloatingChatPanel({
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex gap-3"
+              className="flex gap-3 items-start"
             >
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0">
                 <Bot className="w-4 h-4 text-white" />
@@ -213,14 +277,15 @@ export default function FloatingChatPanel({
 
           <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
 
-      {/* Input Area */}
-      <div className="flex-shrink-0 p-4 border-t border-gray-200/50 dark:border-gray-700/50">
+      {/* Input Area - flex-shrink-0 to keep it fixed at bottom */}
+      <div className="flex-shrink-0 w-full px-4 pt-4 pb-4 md:pb-6 border-t border-gray-200/50 dark:border-gray-700/50">
         <GlowingInput
           value={inputMessage}
           onChange={setInputMessage}
           onSubmit={handleSubmit}
+          onStop={onStopGeneration}
           placeholder="描述你的任务，AI 会帮你拆解..."
           disabled={isTyping}
           isTyping={isTyping}

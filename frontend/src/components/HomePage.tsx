@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Bot } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
-import { agents as defaultAgents, type Agent } from '@/data/agents'
+import { experts as defaultExperts, type Agent } from '@/data/agents'
 import AgentCard from '@/components/AgentCard'
 import { useNavigate } from 'react-router-dom'
 import PixelLetters from './PixelLetters'
@@ -16,7 +16,7 @@ export default function HomePage() {
   const [showSlogan, setShowSlogan] = useState(false)
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowSlogan(true), 1500)
+    const timer = setTimeout(() => setShowSlogan(true), 4000)
     return () => clearTimeout(timer)
   }, [])
 
@@ -41,8 +41,8 @@ export default function HomePage() {
   )
 
   const displayedAgents = useMemo<Agent[]>(
-    () => agentTab === 'featured' ? defaultAgents : displayMyAgents,
-    [agentTab, defaultAgents, displayMyAgents]
+    () => agentTab === 'featured' ? defaultExperts : displayMyAgents,
+    [agentTab, defaultExperts, displayMyAgents]
   )
 
   // 默认选中第一个卡片
@@ -66,32 +66,35 @@ export default function HomePage() {
   const handleSendMessage = useCallback(() => {
     if (!inputMessage.trim()) return
 
+    // 如果用户选择了专家（如编程专家），传递 agentId
     const newId = generateId()
-    console.log('[HomePage] Sending message with temp ID:', newId, 'message:', inputMessage)
+    console.log('[HomePage] Sending message with temp ID:', newId, 'message:', inputMessage, 'agentId:', selectedAgentId)
+
     navigate(`/chat/${newId}`, {
       state: {
-        startWith: inputMessage
+        startWith: inputMessage,
+        agentId: selectedAgentId || undefined
       }
     })
-  }, [inputMessage, navigate])
+  }, [inputMessage, navigate, selectedAgentId])
 
   return (
-    <div className="bg-transparent scrollbar-thin overflow-x-hidden">
+    <div className="bg-transparent homepage-scroll overflow-y-auto overflow-x-hidden scrollbar-gutter-stable h-[100dvh] scroll-smooth">
       {/* Logo + 输入框区域 */}
       <div className="pt-[10vh] pb-6 px-6 md:px-12">
         <div className="w-full max-w-5xl mx-auto">
           <div className="flex flex-col items-center">
-            <div className="transform scale-100 transition-transform duration-500 py-2">
+            <div className="relative w-full h-28 overflow-hidden flex items-center justify-center">
               <PixelLetters />
             </div>
-            <p className={`mt-4 text-sm font-medium uppercase tracking-[0.2em] text-slate-600 dark:text-slate-400 ${
+            <p className={`mt-1 text-xs sm:text-sm md:text-base font-semibold uppercase tracking-[0.25em] text-slate-700 dark:text-slate-300 ${
               showSlogan ? 'animate-fadeIn' : 'opacity-0'
             }`}>
-              All Agents, One <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-violet-500">POUCH</span>
+              All Agents, One <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-violet-500 font-bold">POUCH</span>
             </p>
           </div>
 
-          <div className="w-full max-w-3xl mx-auto mt-16">
+          <div className="w-full max-w-3xl mx-auto mt-14">
             <div className="transform transition-all duration-300 hover:scale-[1.01]">
               <GlowingInput
                 value={inputMessage}
@@ -107,7 +110,7 @@ export default function HomePage() {
       {/* 智能体列表分类 Tab */}
       <div className="px-6 md:px-12">
         <div className="w-full max-w-5xl mx-auto">
-          <header className="mb-6 mt-8">
+          <header className="mb-6 mt-12">
             <div className="flex space-x-6">
               <button
                 onClick={() => setAgentTab('featured')}
@@ -135,12 +138,12 @@ export default function HomePage() {
       </div>
 
       {/* Agent Grid Container - 自然布局，全页滚动 */}
-      <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20 mt-8">
+      <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20 mt-12">
         {/* PC 端：4列网格；移动端：2列网格 */}
         <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-forwards">
           {displayedAgents.map((agent, index) => (
             <AgentCard
-              key={agent.id}
+              key={`${agent.id}-${index}`}
               agent={agent}
               index={index}
               isSelected={selectedAgentId === agent.id}

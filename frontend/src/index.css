@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 @layer base {
-  /* Light theme (default) - 冷瓷�?*/
+  /* Light theme (default) - 鍐风摲鐏?*/
   :root {
     --background: 210 40% 98%;
     --foreground: 222.2 84% 4.9%;
@@ -27,7 +27,7 @@
     --radius: 0.5rem;
   }
 
-  /* Dark theme - 深邃蓝黑 */
+  /* Dark theme - 娣遍們钃濋粦 */
   html.dark,
   .dark {
     --background: 222 47% 3.9%;
@@ -63,7 +63,7 @@
 }
 
 /* ============================================
-   像素呼吸动效 (Pixel Pulse Glow) - 0.8s 周期
+   鍍忕礌鍛煎惛鍔ㄦ�?(Pixel Pulse Glow) - 0.8s 鍛ㄦ�?
    ============================================ */
 @keyframes pixelPulseGlow {
   0%, 100% {
@@ -82,7 +82,7 @@
 }
 
 /* ============================================
-   像素网格水印 (Pixel Grid Watermark)
+   鍍忕礌缃戞牸姘村�?(Pixel Grid Watermark)
    ============================================ */
 body {
   position: relative;
@@ -104,14 +104,14 @@ body::before {
   opacity: 0.25;
 }
 
-/* 确保内容在网格之�?*/
-main, aside, header, .relative {
+/* 纭繚鍐呭鍦ㄧ綉鏍间箣�?*/
+main, header, .relative {
   position: relative;
   z-index: 1;
 }
 
 /* ============================================
-   像素降落动画 (Pixel Fall-in Animation)
+   鍍忕礌闄嶈惤鍔ㄧ�?(Pixel Fall-in Animation)
    ============================================ */
 @keyframes pixelFallIn {
   0% {
@@ -137,7 +137,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   淡入动画 (Fade-in Animation)
+   娣″叆鍔ㄧ�?(Fade-in Animation)
    ============================================ */
 @keyframes fadeIn {
   0% {
@@ -155,7 +155,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   扇形旋转�?(Card Fan Rotation)
+   鎵囧舰鏃嬭浆�? (Card Fan Rotation)
    ============================================ */
 .card-rotate-0 {
   transform: rotate(-8deg);
@@ -178,7 +178,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   滚动条优�?(Scrollable Containers)
+   婊氬姩鏉′紭�? (Scrollable Containers)
    ============================================ */
 .scrollbar-thin {
   scrollbar-width: thin;
@@ -202,7 +202,7 @@ main, aside, header, .relative {
   background: rgba(156, 163, 175, 0.8);
 }
 
-/* 暗色模式滚动�?*/
+/* 鏆楄壊妯″紡婊氬姩鏉?*/
 .dark .scrollbar-thin {
   scrollbar-color: rgba(100, 116, 139, 0.5) rgba(100, 116, 139, 0.2);
 }
@@ -216,7 +216,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   平滑滚动容器 (Smooth Scroll Containers)
+   骞虫粦婊氬姩瀹瑰�?(Smooth Scroll Containers)
    ============================================ */
 .smooth-scroll {
   -webkit-overflow-scrolling: touch;
@@ -250,7 +250,7 @@ main, aside, header, .relative {
   background: rgba(156, 163, 175, 0.7);
 }
 
-/* 暗色模式滚动�?*/
+/* 鏆楄壊妯″紡婊氬姩鏉?*/
 .dark .smooth-scroll {
   scrollbar-color: transparent transparent;
 }
@@ -264,7 +264,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   性能优化 (Performance Optimization)
+   鎬ц兘浼樺�?(Performance Optimization)
    ============================================ */
 @media (prefers-reduced-motion: no-preference) {
   * {
@@ -274,7 +274,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   历史记录渐变边框 (History Gradient Border)
+   鍘嗗彶璁板綍娓愬彉杈�?(History Gradient Border)
    ============================================ */
 .history-gradient-border {
   position: relative;
@@ -296,7 +296,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   基础光晕效果 - 移动端友�?
+   鍩虹鍏夋檿鏁堟灉 - 绉诲姩绔弸濂?
    ============================================ */
 @keyframes breathe-glow {
   0%, 100% {
@@ -345,7 +345,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   桌面端增强光晕效�?(>= 768px)
+   妗岄潰绔鍖哄厜鏅曟晥�?(>= 768px)
    ============================================ */
 @media (min-width: 768px) {
   @keyframes desktop-glow {
@@ -369,7 +369,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   侧边栏菜单弹出动�?- 优化GPU性能
+   渚ц竟鏍忚彍鍗曞脊鍑哄姩鐢?- 浼樺寲GPU鎬ц兘
    ============================================ */
 @keyframes menuFadeIn {
   0% {
@@ -388,9 +388,9 @@ main, aside, header, .relative {
   }
 
   /* ============================================
-     基础光晕效果 - 移动端友�?
+     鍩虹鍏夋檿鏁堟灉 - 绉诲姩绔弸濂?
      ============================================ */
-  /* 呼吸光晕动画 - 移动�?(4秒周�? 2秒呼�? 2秒吸�? */
+  /* 鍛煎惛鍏夋檿鍔ㄧ�?- 绉诲姩绔?(4绉掑懆鏈? 2绉掑懠鍑? 2绉掑惛杩? */
   @keyframes breathe-glow {
     0%, 100% {
       opacity: 0.5;
@@ -402,7 +402,7 @@ main, aside, header, .relative {
     }
   }
 
-  /* 输入框光晕层 - 柔和呼吸效果 */
+  /* 杈撳叆妗嗗厜鏅曞�?- 鏌斿拰鍛煎惛鏁堟�?*/
   .input-glow {
     position: absolute;
     inset: -8px;
@@ -425,7 +425,7 @@ main, aside, header, .relative {
     animation: breathe-glow 4s ease-in-out infinite;
   }
 
-  /* 脉冲边框光晕效果 (4秒周�? */
+  /* 鑴夊啿杈规鍏夋檿鏁堟�?(4绉掑懆鏈? */
   @keyframes pulse-glow {
     0%, 100% {
       box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
@@ -440,10 +440,10 @@ main, aside, header, .relative {
   }
 
   /* ============================================
-     桌面端增强光晕效�?(>= 768px)
+     妗岄潰绔鍖哄厜鏅曟晥�?(>= 768px)
      ============================================ */
   @media (min-width: 768px) {
-    /* 桌面端增强版光晕 (4秒周�? */
+    /* 妗岄潰绔鍖虹増鍏夋檿 (4绉掑懆鏈? */
     @keyframes desktop-glow {
       0%, 100% {
         opacity: 0.7;
@@ -500,7 +500,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   像素网格水印 (Pixel Grid Watermark)
+   鍍忕礌缃戞牸姘村�?(Pixel Grid Watermark)
    ============================================ */
 body {
   position: relative;
@@ -522,14 +522,14 @@ body::before {
   opacity: 0.4;
 }
 
-/* 确保内容在网格之�?*/
-main, aside, header, .relative {
+/* 纭繚鍐呭鍦ㄧ綉鏍间箣�?*/
+main, header, .relative {
   position: relative;
   z-index: 1;
 }
 
 /* ============================================
-   像素降落动画 (Pixel Fall-in Animation)
+   鍍忕礌闄嶈惤鍔ㄧ�?(Pixel Fall-in Animation)
    ============================================ */
 @keyframes pixelFallIn {
   0% {
@@ -555,7 +555,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   淡入动画 (Fade-in Animation)
+   娣″叆鍔ㄧ�?(Fade-in Animation)
    ============================================ */
 @keyframes fadeIn {
   0% {
@@ -573,7 +573,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   扇形旋转�?(Card Fan Rotation)
+   鎵囧舰鏃嬭浆�? (Card Fan Rotation)
    ============================================ */
 .card-rotate-0 {
   transform: rotate(-8deg);
@@ -596,7 +596,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   滚动条优�?(Scrollable Containers)
+   婊氬姩鏉′紭�? (Scrollable Containers)
    ============================================ */
 .scrollbar-thin {
   scrollbar-width: thin;
@@ -620,7 +620,7 @@ main, aside, header, .relative {
   background: rgba(156, 163, 175, 0.8);
 }
 
-/* 暗色模式滚动�?*/
+/* 鏆楄壊妯″紡婊氬姩鏉?*/
 .dark .scrollbar-thin {
   scrollbar-color: rgba(100, 116, 139, 0.5) rgba(100, 116, 139, 0.2);
 }
@@ -634,7 +634,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   平滑滚动容器 (Smooth Scroll Containers)
+   骞虫粦婊氬姩瀹瑰�?(Smooth Scroll Containers)
    ============================================ */
 .smooth-scroll {
   -webkit-overflow-scrolling: touch;
@@ -668,7 +668,7 @@ main, aside, header, .relative {
   background: rgba(156, 163, 175, 0.7);
 }
 
-/* 暗色模式滚动�?*/
+/* 鏆楄壊妯″紡婊氬姩鏉?*/
 .dark .smooth-scroll {
   scrollbar-color: transparent transparent;
 }
@@ -682,7 +682,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   性能优化 (Performance Optimization)
+   鎬ц兘浼樺�?(Performance Optimization)
    ============================================ */
 @media (prefers-reduced-motion: no-preference) {
   * {
@@ -692,7 +692,7 @@ main, aside, header, .relative {
 }
 
 /* ============================================
-   历史记录渐变边框 (History Gradient Border)
+   鍘嗗彶璁板綍娓愬彉杈�?(History Gradient Border)
    ============================================ */
 .history-gradient-border {
   position: relative;
@@ -711,5 +711,42 @@ main, aside, header, .relative {
 
 .history-gradient-border:hover::before {
   background: linear-gradient(180deg, rgba(139, 92, 246, 0.8), rgba(139, 92, 246, 0.2));
+}
+
+/* ============================================
+   首页透明滚动�?(Homepage Transparent Scrollbar)
+   ============================================ */
+.homepage-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  scrollbar-gutter: stable;
+}
+
+.homepage-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.homepage-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.homepage-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.homepage-scroll:hover::-webkit-scrollbar-thumb,
+.homepage-scroll:active::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.4);
+}
+
+.dark .homepage-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.dark .homepage-scroll:hover::-webkit-scrollbar-thumb,
+.dark .homepage-scroll:active::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
 }
 

@@ -42,9 +42,9 @@ export default function MainChatLayout({ children, className, hasMessages = fals
         />
       )}
 
-      {/* 左侧边栏 - 统一样式 */}
+      {/* 左侧边栏 - 统一样式，全局层级 */}
       <aside className={cn(
-        'fixed left-0 top-0 h-screen flex-shrink-0 transition-transform duration-200 z-50',
+        'fixed left-0 top-0 h-screen flex-shrink-0 transition-transform duration-200 z-[150]',
         'w-[92px]',
         'bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a]',
         'backdrop-blur-xl',

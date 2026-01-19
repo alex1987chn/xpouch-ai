@@ -42,7 +42,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
       {/* 遮罩 */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"

@@ -126,10 +126,14 @@ const config: Config = {
       },
       backdropBlur: {
         xl: "20px",
+      },
+      scrollbarGutter: {
+        stable: "stable",
+        "stable-both-edges": "stable both-edges",
       }
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 }
 
 export default config
