@@ -14,6 +14,7 @@ import CreateAgentPage from './components/CreateAgentPage'
 import ErrorBoundary from './components/ErrorBoundary'
 import { useChatStore } from './store/chatStore'
 import { type ConversationHistory } from './utils/storage'
+import { createCustomAgent } from './services/api'
 
 // 包装 HistoryPage 以适应 Router
 const HistoryPageWrapper = () => {
@@ -42,26 +43,14 @@ const CreateAgentPageWrapper = () => {
 
   const handleSave = async (agent: any) => {
     try {
-      // 调用后端 API 保存自定义智能体
-      const response = await fetch('/api/agents', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: agent.name,
-          description: agent.description,
-          systemPrompt: agent.systemPrompt,
-          category: agent.category,
-          modelId: agent.modelId
-        })
+      // 使用统一的 API 调用
+      const savedAgent = await createCustomAgent({
+        name: agent.name,
+        description: agent.description,
+        systemPrompt: agent.systemPrompt,
+        category: agent.category,
+        modelId: agent.modelId
       })
-
-      if (!response.ok) {
-        throw new Error('保存智能体失败')
-      }
-
-      const savedAgent = await response.json()
 
       // 同时更新前端状态（添加 UI 所需的属性）
       const agentWithUI = {

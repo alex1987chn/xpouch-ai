@@ -10,10 +10,8 @@ import {
   Artifact
 } from '@/types'
 
-// 智能判断环境：本地开发直连后端，生产环境走 Nginx 代理
-const API_BASE_URL = import.meta.env.DEV
-  ? 'http://127.0.0.1:3002/api'
-  : '/api'
+// 智能判断环境：统一使用相对路径，由 Vite 代理或 Nginx 处理
+const API_BASE_URL = '/api'
 
 // 获取或生成客户端ID (简单的 UUID 生成，兼容低版本浏览器)
 function getClientId(): string {
@@ -87,11 +85,124 @@ export async function getConversation(id: string): Promise<Conversation> {
 export async function deleteConversation(id: string): Promise<void> {
   const url = `${API_BASE_URL}/conversations/${id}`
   const response = await fetch(url, { 
-      method: 'DELETE',
-      headers: getHeaders()
+    method: 'DELETE',
+    headers: getHeaders()
   })
   if (!response.ok) {
     throw new Error('Failed to delete conversation')
+  }
+}
+
+// ============================================================================
+// 自定义智能体 API
+// ============================================================================
+
+interface CustomAgent {
+  id: string
+  user_id: string
+  name: string
+  description?: string
+  system_prompt: string
+  model_id: string
+  category: string
+  conversation_count: number
+  is_public: boolean
+  created_at: string
+  updated_at: string
+}
+
+interface CreateAgentRequest {
+  name: string
+  description?: string
+  systemPrompt: string
+  category?: string
+  modelId?: string
+}
+
+interface AgentsResponse {
+  builtin: Array<{
+    id: string
+    name: string
+    description: string
+    is_builtin: true
+    system_prompt: string
+  }>
+  custom: Array<{
+    id: string
+    name: string
+    description?: string
+    system_prompt: string
+    category: string
+    model_id: string
+    conversation_count: number
+    is_public: boolean
+    created_at: string
+    updated_at: string
+    is_builtin: false
+  }>
+}
+
+// 创建自定义智能体
+export async function createCustomAgent(agent: CreateAgentRequest): Promise<CustomAgent> {
+  const url = `${API_BASE_URL}/agents`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(agent)
+  })
+  if (!response.ok) {
+    throw new Error('Failed to create custom agent')
+  }
+  return response.json()
+}
+
+// 获取所有智能体（内置 + 自定义）
+export async function getAllAgents(): Promise<AgentsResponse> {
+  const url = `${API_BASE_URL}/agents`
+  const response = await fetch(url, {
+    headers: getHeaders()
+  })
+  if (!response.ok) {
+    throw new Error('Failed to fetch agents')
+  }
+  return response.json()
+}
+
+// 获取单个自定义智能体
+export async function getCustomAgent(id: string): Promise<CustomAgent> {
+  const url = `${API_BASE_URL}/agents/${id}`
+  const response = await fetch(url, {
+    headers: getHeaders()
+  })
+  if (!response.ok) {
+    throw new Error('Failed to fetch custom agent')
+  }
+  return response.json()
+}
+
+// 更新自定义智能体
+export async function updateCustomAgent(id: string, agent: Partial<CreateAgentRequest>): Promise<CustomAgent> {
+  const url = `${API_BASE_URL}/agents/${id}`
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(agent)
+  })
+  if (!response.ok) {
+    throw new Error('Failed to update custom agent')
+  }
+  return response.json()
+}
+
+// 删除自定义智能体
+export async function deleteCustomAgent(id: string): Promise<void> {
+  const url = `${API_BASE_URL}/agents/${id}`
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: getHeaders()
+  })
+  if (!response.ok) {
+    throw new Error('Failed to delete custom agent')
   }
 }
 
