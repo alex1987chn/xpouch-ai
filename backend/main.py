@@ -64,11 +64,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def global_exception_handler(request: Request, exc: Exception):
     import traceback
     print("=" * 80)
-    print(f"[ERROR] 全局异常捕获:")
-    print(f"[ERROR] 请求路径: {request.url.path}")
-    print(f"[ERROR] 异常类型: {type(exc).__name__}")
-    print(f"[ERROR] 异常信息: {str(exc)}")
-    print(f"[ERROR] 堆栈跟踪:")
+    print("[ERROR] Global exception caught:")
+    print(f"[ERROR] Request path: {request.url.path}")
+    print(f"[ERROR] Exception type: {type(exc).__name__}")
+    print(f"[ERROR] Exception message: {str(exc)}")
+    print("[ERROR] Stack trace:")
     traceback.print_exc()
     print("=" * 80)
     return JSONResponse(
@@ -324,8 +324,8 @@ async def delete_conversation(conversation_id: str, session: Session = Depends(g
 # 聊天接口
 @app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    print(f"[MAIN] ========== 收到聊天请求 ==========")
-    print(f"[MAIN] 消息内容: {request.message}")
+    print(f"[MAIN] ========== Received chat request ==========")
+    print(f"[MAIN] Message content: {request.message}")
     print(f"[MAIN] Agent ID: {request.agentId}")
     print(f"[MAIN] Conversation ID: {request.conversationId}")
     print(f"[MAIN] Stream: {request.stream}")
@@ -382,28 +382,29 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     expert_types = ["search", "coder", "researcher", "analyzer", "writer", "planner", "image_analyzer"]
     custom_agent = None
 
-    print(f"[MAIN] 专家类型列表: {expert_types}")
-    print(f"[MAIN] 检查: {request.agentId} 是否在专家类型列表中: {request.agentId in expert_types}")
+    print(f"[MAIN] Expert types list: {expert_types}")
+    print(f"[MAIN] Checking: {request.agentId} in expert types: {request.agentId in expert_types}")
 
     if request.agentId not in expert_types:
         # 可能是自定义智能体，从数据库加载
-        print(f"[MAIN] 检查自定义智能体: {request.agentId}")
+        print(f"[MAIN] Checking custom agent: {request.agentId}")
         custom_agent = session.get(CustomAgent, request.agentId)
-        print(f"[MAIN] 查询结果: {custom_agent}")
+        print(f"[MAIN] Query result: Agent found={custom_agent is not None}")
 
         if custom_agent and custom_agent.user_id == current_user.id:
-            print(f"[MAIN] ✅ 检测到自定义智能体: {custom_agent.name}")
-            print(f"[MAIN] ✅ System Prompt: {custom_agent.system_prompt[:100]}...")
+            # 不打印 name 和 system_prompt 避免编码问题
+            print(f"[MAIN] [OK] Custom agent detected")
+            print(f"[MAIN] [OK] System prompt length: {len(custom_agent.system_prompt)}")
             # 更新使用次数
             custom_agent.conversation_count += 1
             session.add(custom_agent)
             session.commit()
         else:
-            print(f"[MAIN] ❌ 未找到自定义智能体，使用指挥官模式")
+            print(f"[MAIN] [NOT FOUND] Custom agent not found, using commander mode")
             if custom_agent:
-                print(f"[MAIN] ❌ 原因: 用户ID不匹配 (agent_user={custom_agent.user_id}, current_user={current_user.id})")
+                print(f"[MAIN] [ERROR] User ID mismatch")
             else:
-                print(f"[MAIN] ❌ 原因: 自定义智能体不存在")
+                print(f"[MAIN] [ERROR] Custom agent does not exist")
     
     # 如果是自定义智能体，使用直接 LLM 调用模式（不经过 LangGraph）
     if custom_agent:
