@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, create_engine, Session
-from models import Conversation, Message
+from models import Conversation, Message, User, CustomAgent
 import os
 
 # 确保 data 目录存在
