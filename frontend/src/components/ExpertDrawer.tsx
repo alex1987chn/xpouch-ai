@@ -98,7 +98,7 @@ export default function ExpertDrawer({ isOpen, onClose, expertName }: ExpertDraw
       {/* 背景遮罩 */}
       <div
         className={cn(
-          'fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-300',
+          'fixed inset-0 bg-black/50 backdrop-blur-sm z-[300] transition-opacity duration-300',
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
         onClick={handleOverlayClick}
@@ -107,7 +107,7 @@ export default function ExpertDrawer({ isOpen, onClose, expertName }: ExpertDraw
       {/* 抽屉内容 */}
       <div
         className={cn(
-          'fixed right-0 top-0 h-full w-[30%] bg-white dark:bg-gray-900 shadow-2xl z-50 transition-transform duration-300 flex flex-col',
+          'fixed right-0 top-0 h-full w-[30%] bg-white dark:bg-gray-900 shadow-2xl z-[300] transition-transform duration-300 flex flex-col',
           isOpen ? 'translate-x-0' : 'translate-x-full'
         )}
       >

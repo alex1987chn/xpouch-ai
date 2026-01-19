@@ -1,229 +1,212 @@
-import { useRef, useCallback, useEffect } from 'react'
-import { motion, AnimatePresence, useMotionValue } from 'framer-motion'
+import { Fragment, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { ZoomIn, ZoomOut, RefreshCw } from 'lucide-react'
-import { useCanvasStore } from '@/store/canvasStore'
-import ArtifactRenderer from './ArtifactRenderer.tsx'
+import { Code, FileText, Search, FileText as TextIcon, FileCode as HtmlIcon, X, Maximize2, Copy, Check } from 'lucide-react'
+import { CodeArtifact, DocArtifact, SearchArtifact, HtmlArtifact, TextArtifact } from './artifacts'
 import ParticleGrid from './ParticleGrid.tsx'
 
 interface InteractiveCanvasProps {
   className?: string
-  artifactType?: 'code' | 'mermaid' | 'markdown' | null
+  artifactType?: 'code' | 'markdown' | 'search' | 'html' | 'text' | null
   artifactContent?: string
-  isProcessing?: boolean // 是否正在处理任务（用于粒子动画）
+  isProcessing?: boolean
+  activeExpertId?: string | null
+  isFullscreen?: boolean
+  setIsFullscreen?: (fullscreen: boolean) => void
 }
 
 export default function InteractiveCanvas({
   className,
   artifactType = null,
   artifactContent = '',
-  isProcessing = false
+  isProcessing = false,
+  activeExpertId = null,
+  isFullscreen = false,
+  setIsFullscreen = () => {}
 }: InteractiveCanvasProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const {
-    scale,
-    setScale,
-    offsetX,
-    offsetY,
-    setOffset,
-    resetView,
-    isDragging,
-    setIsDragging
-  } = useCanvasStore()
+  const [copied, setCopied] = useState(false)
 
-  // Motion values for smooth animations
-  const motionScale = useMotionValue(scale)
-  const motionOffsetX = useMotionValue(offsetX)
-  const motionOffsetY = useMotionValue(offsetY)
+  const currentType = artifactType || null
+  const currentContent = artifactContent || ''
 
-  useEffect(() => {
-    motionScale.set(scale)
-    motionOffsetX.set(offsetX)
-    motionOffsetY.set(offsetY)
-  }, [scale, offsetX, offsetY, motionScale, motionOffsetX, motionOffsetY])
+  const expertNames: Record<string, string> = {
+    code: '编程专家',
+    markdown: '写作专家',
+    search: '搜索专家',
+    html: 'HTML 生成',
+    text: '文本生成'
+  }
 
-  // Handle wheel zoom
-  const handleWheel = useCallback((e: WheelEvent) => {
-    e.preventDefault()
+  const expertColors: Record<string, { from: string; to: string }> = {
+    code: { from: 'from-indigo-500', to: 'to-purple-600' },
+    markdown: { from: 'from-emerald-500', to: 'to-teal-600' },
+    search: { from: 'from-violet-500', to: 'to-pink-600' },
+    html: { from: 'from-orange-500', to: 'to-amber-600' },
+    text: { from: 'from-slate-500', to: 'to-gray-600' }
+  }
 
-    const delta = e.deltaY > 0 ? -0.1 : 0.1
-    const newScale = Math.min(Math.max(scale + delta, 0.25), 3)
+  const handleCopy = async () => {
+    console.log('[InteractiveCanvas] handleCopy called, currentContent length:', currentContent.length)
+    console.log('[InteractiveCanvas] currentContent preview:', currentContent.substring(0, 100))
 
-    if (newScale !== scale && containerRef.current) {
-      try {
-        const rect = containerRef.current.getBoundingClientRect()
-        const mouseX = e.clientX - rect.left
-        const mouseY = e.clientY - rect.top
-
-        const scaleChange = newScale / scale
-        const newOffsetX = mouseX - (mouseX - offsetX) * scaleChange
-        const newOffsetY = mouseY - (mouseY - offsetY) * scaleChange
-
-        setScale(newScale)
-        setOffset(newOffsetX, newOffsetY)
-      } catch (error) {
-        console.warn('Failed to get container bounding rect:', error)
-        // Fall back to simple scale change without offset adjustment
-        setScale(newScale)
-      }
+    if (!currentContent) {
+      console.warn('[InteractiveCanvas] currentContent is empty')
+      return
     }
-  }, [scale, offsetX, offsetY, setScale, setOffset])
 
-  // Handle mouse drag
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 0) {
-      setIsDragging(true)
+    try {
+      await navigator.clipboard.writeText(currentContent)
+      console.log('[InteractiveCanvas] Copy successful')
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('[InteractiveCanvas] Failed to copy:', err)
     }
-  }, [setIsDragging])
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isDragging) {
-      setOffset(offsetX + e.movementX, offsetY + e.movementY)
-    }
-  }, [isDragging, offsetX, offsetY, setOffset])
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false)
-  }, [setIsDragging])
-
-  // Global mouse up listener
-  useEffect(() => {
-    const handleGlobalMouseUp = () => setIsDragging(false)
-    document.addEventListener('mouseup', handleGlobalMouseUp)
-    return () => document.removeEventListener('mouseup', handleGlobalMouseUp)
-  }, [setIsDragging])
-
-  // Register wheel event
-  useEffect(() => {
-    const container = containerRef.current
-    if (container) {
-      container.addEventListener('wheel', handleWheel, { passive: false })
-      return () => container.removeEventListener('wheel', handleWheel)
-    }
-  }, [handleWheel])
-
-  // Zoom controls
-  const handleZoomIn = () => setScale(Math.min(scale + 0.25, 3))
-  const handleZoomOut = () => setScale(Math.max(scale - 0.25, 0.25))
-  const handleReset = () => resetView()
+  }
 
   return (
-    <div
-      ref={containerRef}
-      className={cn(
-        'relative h-screen w-screen overflow-hidden',
-        'bg-gray-100 dark:bg-gray-950',
-        'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))]',
-        'bg-[length:40px_40px]',
-        'bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)]',
-        'dark:bg-[linear-gradient(to_right,#374151_1px,transparent_1px),linear-gradient(to_bottom,#374151_1px,transparent_1px)]',
+    <>
+      <div className={cn(
+        'relative h-full overflow-hidden flex flex-col',
         className
-      )}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
-    >
-      {/* Dark Mode 粒子网格背景 - 仅在暗色模式下显示 */}
-      <ParticleGrid isProcessing={isProcessing} className="absolute inset-0 dark:block hidden" />
-      {/* Transform Container - Stage */}
-      <motion.div
-        className="absolute inset-0 origin-top-left overflow-hidden"
-        style={{
-          scale: motionScale,
-          x: motionOffsetX,
-          y: motionOffsetY
-        }}
-      >
-        {/* Artifact Renderer - Center Stage */}
-        <div className="w-full h-full flex items-center justify-center p-8">
-          <AnimatePresence mode="wait">
-            {artifactType ? (
-              <motion.div
-                key="artifact"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full"
-              >
-                <ArtifactRenderer
-                  type={artifactType}
-                  content={artifactContent}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 w-full h-full overflow-hidden"
-              >
-                <div className="text-center max-w-md space-y-4">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 flex items-center justify-center">
-                    <svg
-                      className="w-10 h-10 text-indigo-600 dark:text-indigo-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-700 dark:text-gray-200">
-                    等待 AI 生成内容
-                  </h3>
-                  <p className="text-sm">
-                    在右侧对话框中描述任务，AI 将在此区域生成代码、图表或文档
-                  </p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </motion.div>
+      )}>
+        <ParticleGrid isProcessing={isProcessing} className="absolute inset-0 dark:block hidden" />
 
-      {/* Zoom Controls */}
-      <div className="absolute bottom-6 left-6 flex items-center gap-2">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-1 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-1"
-        >
-          <button
-            onClick={handleZoomOut}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            title="缩小"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <span className="w-14 text-center text-sm font-medium">
-            {Math.round(scale * 100)}%
-          </span>
-          <button
-            onClick={handleZoomIn}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            title="放大"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
-          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
-          <button
-            onClick={handleReset}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            title="重置视图"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </motion.div>
+        <div className="flex-1 overflow-auto">
+          <div className="w-full h-full">
+            <AnimatePresence mode="wait">
+              {currentType ? (
+                <motion.div
+                  key={currentType}
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full h-full flex flex-col"
+                >
+                  <div className={cn(
+                    'rounded-2xl',
+                    'bg-white dark:bg-slate-900',
+                    'shadow-2xl shadow-black/10 dark:shadow-black/40',
+                    'overflow-hidden',
+                    'flex-1 flex flex-col'
+                  )}>
+                    <AnimatePresence mode="wait">
+                      {currentType && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="relative z-20 flex-shrink-0"
+                        >
+                          <div
+                            className={cn(
+                              'w-full px-4 py-2.5 flex items-center justify-between',
+                              currentType && expertColors[currentType]
+                                ? `bg-gradient-to-r ${expertColors[currentType].from} ${expertColors[currentType].to}`
+                                : 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-md'
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              {currentType === 'code' && <Code className="w-4 h-4 text-white" />}
+                              {currentType === 'markdown' && <FileText className="w-4 h-4 text-white" />}
+                              {currentType === 'search' && <Search className="w-4 h-4 text-white" />}
+                              {currentType === 'html' && <HtmlIcon className="w-4 h-4 text-white" />}
+                              {currentType === 'text' && <TextIcon className="w-4 h-4 text-white" />}
+                              <span className="text-white text-sm font-medium">
+                                {expertNames[currentType] || 'AI 生成的结果'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={handleCopy}
+                                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                                title={copied ? '已复制' : '复制'}
+                              >
+                                {copied ? (
+                                  <Check className="w-4 h-4 text-white" />
+                                ) : (
+                                  <Copy className="w-4 h-4 text-white" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => setIsFullscreen(true)}
+                                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                                title="放大预览"
+                              >
+                                <Maximize2 className="w-4 h-4 text-white" />
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    <div className="flex-1 overflow-hidden">
+                      {currentType === 'code' && (
+                        <div className="w-full h-full overflow-auto">
+                          <CodeArtifact content={currentContent} />
+                        </div>
+                      )}
+                      {currentType === 'markdown' && (
+                        <div className="w-full h-full overflow-auto">
+                          <DocArtifact content={currentContent} />
+                        </div>
+                      )}
+                      {currentType === 'search' && (
+                        <div className="w-full h-full overflow-auto">
+                          <SearchArtifact />
+                        </div>
+                      )}
+                      {currentType === 'html' && (
+                        <div className="w-full h-full">
+                          <HtmlArtifact content={currentContent} />
+                        </div>
+                      )}
+                      {currentType === 'text' && (
+                        <div className="w-full h-full overflow-auto">
+                          <TextArtifact content={currentContent} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="w-full h-full flex items-center justify-center"
+                >
+                  <div className="text-center max-w-md space-y-6">
+                    <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 flex items-center justify-center mx-auto">
+                      <svg
+                        className="w-12 h-12 text-indigo-600 dark:text-indigo-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1 1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1 1v-6z"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-200">
+                      等待 AI 生成内容
+                    </h3>
+                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                      在右侧对话框中描述任务，AI 将在此区域生成代码、文档或其他内容
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

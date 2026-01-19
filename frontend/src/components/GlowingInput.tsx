@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Send, Image, Paperclip, X, File } from 'lucide-react'
+import { Send, Image, Paperclip, X, File, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { INPUT } from '@/constants/ui'
@@ -17,6 +17,7 @@ interface GlowingInputProps {
   onChange: (value: string) => void
   onSubmit: () => void
   onSubmitComplete?: () => void
+  onStop?: () => void
   placeholder?: string
   disabled?: boolean
   isTyping?: boolean
@@ -28,6 +29,7 @@ export default function GlowingInput({
   onChange,
   onSubmit,
   onSubmitComplete,
+  onStop,
   placeholder = '输入消息...',
   disabled = false,
   isTyping = false,
@@ -172,7 +174,7 @@ export default function GlowingInput({
           onClick={() => textareaRef.current?.focus()}
         >
           {/* 文本输入框 */}
-          <div className="flex-1 px-4 py-3 min-h-0">
+          <div className="px-4 py-3 min-h-[60px] max-h-[200px] overflow-y-auto">
             <textarea
               ref={textareaRef}
               value={value}
@@ -183,7 +185,7 @@ export default function GlowingInput({
               placeholder={placeholder}
               disabled={disabled}
               rows={INPUT.DEFAULT_ROWS}
-              className="w-full min-h-[60px] resize-none bg-transparent border-0 outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 text-base leading-relaxed"
+              className="w-full min-h-[60px] max-h-[180px] resize-none bg-transparent border-0 outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 text-base leading-relaxed"
             />
           </div>
 
@@ -232,20 +234,37 @@ export default function GlowingInput({
               </Button>
             </div>
 
-            {/* 发送按钮 */}
+            {/* 发送/停止按钮 */}
             <Button
-              onClick={handleSubmit}
-              disabled={!canSubmit || disabled || isTyping}
+              onClick={() => {
+                if (isTyping) {
+                  onStop?.()
+                } else {
+                  handleSubmit()
+                }
+              }}
+              disabled={isTyping ? false : (!canSubmit || disabled)}
               size="sm"
               className={cn(
                 'h-9 px-5 rounded-xl transition-all font-medium shadow-sm',
-                canSubmit
-                  ? 'bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600'
-                  : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed'
+                isTyping
+                  ? 'bg-red-500 text-white hover:bg-red-600 dark:bg-red-500 dark:hover:bg-red-600'
+                  : canSubmit
+                    ? 'bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600'
+                    : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed'
               )}
             >
-              <Send className="w-4 h-4 mr-1.5" />
-              发送
+              {isTyping ? (
+                <>
+                  <Square className="w-4 h-4 mr-1.5" />
+                  停止
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-1.5" />
+                  发送
+                </>
+              )}
             </Button>
           </div>
         </div>

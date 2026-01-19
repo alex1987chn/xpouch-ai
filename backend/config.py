@@ -78,19 +78,19 @@ def init_langchain_tracing():
     config = get_langsmith_config()
     
     if not config["enabled"]:
-        print("ℹ️  LangSmith 追踪未启用（设置 LANGCHAIN_TRACING_V2=true 启用）")
+        print("[INFO] LangSmith 追踪未启用（设置 LANGCHAIN_TRACING_V2=true 启用）")
         return
-    
+
     if not config["api_key"]:
-        print("⚠️  LangSmith 已启用，但未设置 LANGCHAIN_API_KEY")
+        print("[WARN] LangSmith 已启用，但未设置 LANGCHAIN_API_KEY")
         return
-    
+
     # 设置环境变量（LangChain 自动读取）
     os.environ["LANGCHAIN_TRACING_V2"] = str(config["tracing_v2"]).lower()
     os.environ["LANGCHAIN_API_KEY"] = config["api_key"]
     os.environ["LANGCHAIN_PROJECT"] = config["project_name"]
-    
-    print(f"✅ LangSmith 追踪已启用")
+
+    print(f"[OK] LangSmith 追踪已启用")
     print(f"   - 项目: {config['project_name']}")
     print(f"   - V2 追踪: {config['tracing_v2']}")
 
@@ -151,17 +151,17 @@ def validate_config() -> bool:
     ])
     
     if not has_llm:
-        print("⚠️  警告: 未配置任何 LLM API Key")
+        print("[WARN] 警告: 未配置任何 LLM API Key")
         print("   请在 .env 文件中设置 OPENAI_API_KEY 或 DEEPSEEK_API_KEY")
         return False
     
     # 检查 LangSmith 配置
     langsmith = get_langsmith_config()
     if langsmith["enabled"] and not langsmith["api_key"]:
-        print("⚠️  警告: LangSmith 已启用但未设置 LANGCHAIN_API_KEY")
+        print("[WARN] 警告: LangSmith 已启用但未设置 LANGCHAIN_API_KEY")
         return False
-    
-    print("✅ 配置验证通过")
+
+    print("[OK] 配置验证通过")
     return True
 
 

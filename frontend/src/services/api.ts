@@ -5,7 +5,9 @@
 import {
   ApiMessage,
   Conversation,
-  UserProfile
+  UserProfile,
+  ExpertEvent,
+  Artifact
 } from '@/types'
 
 // 智能判断环境：本地开发直连后端，生产环境走 Nginx 代理
@@ -99,10 +101,11 @@ export async function deleteConversation(id: string): Promise<void> {
 export async function sendMessage(
   messages: ApiMessage[],
   agentId: string = 'assistant',
-  onChunk?: (chunk: string, conversationId?: string) => void,
-  conversationId?: string | null
+  onChunk?: (chunk: string, conversationId?: string, expertEvent?: ExpertEvent, artifact?: Artifact) => void,
+  conversationId?: string | null,
+  abortSignal?: AbortSignal
 ): Promise<string> {
-  
+
   // 提取最新一条消息作为当前 prompt，其他的作为 history
   const history = messages.slice(0, -1)
   const lastMessage = messages[messages.length - 1]
@@ -126,6 +129,7 @@ export async function sendMessage(
           conversationId,
           stream: true,
         }),
+        signal: abortSignal
       })
 
       if (!response.ok) {
@@ -164,14 +168,40 @@ export async function sendMessage(
                 const parsed = JSON.parse(data)
                 // 兼容 Python 后端返回格式: { content: "...", conversationId: "..." }
                 const content = parsed.content
+                const activeExpert = parsed.activeExpert
+                const expertCompleted = parsed.expertCompleted
+                const artifact = parsed.artifact
+
                 if (parsed.conversationId) {
                     finalConversationId = parsed.conversationId
                 }
-                
+
+                // 处理专家激活事件（传递给回调）
+                if (activeExpert && typeof onChunk === 'function') {
+                  // 调用回调，传递专家激活信息
+                  // @ts-ignore - 扩展回调签名支持专家状态
+                  onChunk('', finalConversationId, { type: 'expert_activated', expertId: activeExpert })
+                  console.log('[API] 专家激活:', activeExpert)
+                }
+
+                // 处理专家完成事件
+                if (expertCompleted && typeof onChunk === 'function') {
+                  // @ts-ignore - 扩展回调签名支持专家状态
+                  onChunk('', finalConversationId, { type: 'expert_completed', expertId: expertCompleted })
+                  console.log('[API] 专家完成:', expertCompleted)
+                }
+
+                // 处理 artifact 事件
+                if (artifact && typeof onChunk === 'function') {
+                  // @ts-ignore - 扩展回调签名支持 artifact
+                  onChunk('', finalConversationId, undefined, artifact)
+                  console.log('[API] 收到 artifact:', artifact.type, artifact.language)
+                }
+
                 if (content) {
                   fullContent += content
                   onChunk(content, finalConversationId)
-                } else if (finalConversationId && !content) {
+                } else if (finalConversationId && !content && !activeExpert && !expertCompleted && !artifact) {
                    // 某些包可能只包含 conversationId
                    onChunk('', finalConversationId)
                 }

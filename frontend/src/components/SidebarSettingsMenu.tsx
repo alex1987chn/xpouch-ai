@@ -21,7 +21,7 @@ export default function SidebarSettingsMenu({ isOpen, onPersonalSettingsClick, o
   if (!isOpen) return null
 
   return (
-    <div className="fixed bottom-[60px] left-4 bg-white/85 dark:bg-slate-900/85 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/40 overflow-hidden z-[100] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
+    <div className="fixed bottom-[60px] left-4 bg-white/85 dark:bg-slate-900/85 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/40 overflow-hidden z-[200] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
       style={{
         width: '260px',
         maxWidth: 'calc(100vw - 32px)'

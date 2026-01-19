@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import PixelLogo from '@/components/PixelLogo'
@@ -44,7 +45,7 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
 
       {/* 主题切换 */}
       <div className="px-2 pb-2">
-        <div className="flex items-center justify-center mx-auto w-6 h-6 rounded-full border border-gray-300 bg-gray-200/50 hover:bg-gray-300/50 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 flex items-center justify-center transition-colors shadow-md">
+        <div className="flex items-center justify-center mx-auto w-6 h-6 rounded-full bg-gray-200/50 hover:bg-gray-300/50 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 transition-all duration-200 hover:scale-110 cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-500/50">
           <ThemeSwitcher />
         </div>
       </div>
@@ -55,13 +56,16 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
         onMenuOpenChange={handleSettingsMenuOpenChange}
       />
 
-      {/* 设置弹出菜单 */}
-      <SidebarSettingsMenu
-        isOpen={isSettingsMenuOpen}
-        onPersonalSettingsClick={onPersonalSettingsClick}
-        onSettingsClick={onSettingsClick}
-        onMenuClose={handleMenuClose}
-      />
+      {/* 设置弹出菜单 - 使用 Portal 突破 stacking context */}
+      {isSettingsMenuOpen && createPortal(
+        <SidebarSettingsMenu
+          isOpen={isSettingsMenuOpen}
+          onPersonalSettingsClick={onPersonalSettingsClick}
+          onSettingsClick={onSettingsClick}
+          onMenuClose={handleMenuClose}
+        />,
+        document.body
+      )}
     </div>
   )
 }

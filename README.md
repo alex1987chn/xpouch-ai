@@ -1,83 +1,101 @@
 # XPouch AI
 
-基于 LangGraph 的高颜值多智能体 AI 助手，支持**双层交互画布**与**实时内容渲染**。
+基于 LangGraph 的高颜值多智能体 AI 助手，支持**指挥官工作流**与**双层交互画布**。
 
 ## 🚀 功能特性
+
+### 🧠 指挥官工作流 (核心引擎)
+
+**指挥官节点 (commander_node)**
+- 分析用户查询，智能拆解为多个子任务
+- 生成执行策略和预估步骤数
+- JSON 解析兼容 DeepSeek 等多种 LLM
+
+**专家分发器 (expert_dispatcher_node)**
+- 循环分发任务到对应专家节点
+- 支持 6 种专业专家：search/coder/researcher/analyzer/writer/planner
+- 统一的结果格式和错误处理
+
+**聚合器节点 (aggregator_node)**
+- 整合所有专家执行结果
+- 生成结构化 Markdown 响应
+- 包含执行统计和后续建议
 
 ### 🎨 双层交互画布 (核心亮点)
 
 **底层 - 可交互画布 (Interactive Canvas)**
-- 全屏覆盖 (`h-screen w-screen`)，固定定位不遮挡
-- 径向渐变 + 网格背景，支持深色模式
-- **缩放功能**：滚轮缩放 (25%-300%)，底部控制栏
-- **平移功能**：拖拽移动，鼠标手势流畅
-- **Artifact 渲染**：根据类型动态展示代码预览、流程图、Markdown 文档
+- 全屏覆盖 (`fixed inset-0`)，固定定位不遮挡
+- 径向渐变 + 粒子网格背景，支持深色模式
+- **Artifact 渲染**：代码预览、HTML 预览、Markdown 文档、搜索结果
+- **全屏预览**：点击放大按钮查看完整内容
 
 **顶层 - 悬浮对话面板 (Floating Chat Overlay)**
-- 毛玻璃效果 (`bg-white/90 backdrop-blur-xl`)
-- 圆角设计 (`rounded-2xl`)，高深度阴影 (`shadow-2xl`)
-- **可收起/展开**：右上角收起按钮 + 右下角机器人恢复按钮
-- **平滑动画**：300ms ease-in-out 过渡，紫色渐变机器人图标
-- **呼吸效果**：机器人恢复按钮带 `animate-bounce` 提示交互
-- **点击穿透**：收起后 `pointer-events-none` 确保画布可点击
+- 毛玻璃效果 (`bg-white/95 backdrop-blur-md`)
+- **Flexbox 滚动架构**：消息区域独立滚动，Header/Input 固定定位
+- **PC 端**：400px 宽度，圆角设计，可收起/展开
+- **移动端**：全屏显示，手势滑动切换对话/产物
+- **智能体状态显示**：顶部浮动状态条显示当前执行专家
 
-### 🤖 AI 智能体
-- **8 个专业化 AI 智能体**：内置不同场景的专家助手
+### 🤖 AI 智能体系统
+- **8 个内置智能体**：不同场景的专业助手
 - **自定义智能体创建**：用户可构建个性化 AI 助手
-- **LangGraph 工作流**：Python 版智能体引擎
+- **LangGraph Python 工作流**：模块化智能体引擎
+- **任务会话管理**：SubTask + TaskSession 数据模型
 
 ### 💬 对话体验
 - **实时打字效果**：自然的消息生成与打字动画
 - **SSE 流式响应**：基于 Token 的实时流式传输
-- **上下文记忆**：自动保存和恢复多轮对话上下文
+- **上下文记忆**：自动保存和恢复多轮对话
+- **专家状态指示**：实时显示当前执行中的专家
+
+### 📱 移动端体验
+- **全屏对话模式**：固定高度，消息区域滚动
+- **手势切换**：点击切换对话/产物视图
+- **滑动返回**：左侧边缘右滑返回（滑动手势 >100px 触发）
+- **无返回按钮**：移除物理按钮，依赖手势交互
 
 ### 🧭 开发路线图
 
-### 📌 v0.2.x - 核心功能完善（当前）
+### 📌 v0.3.x - 超智能体系统（当前）
 
-- ✅ 双层交互画布系统
-- ✅ 基于 LangGraph 的多智能体工作流
-- ✅ SQLite 数据持久化
-- ✅ 完整的 UI/UX 体系
-- ✅ 国际化支持（中/英/日）
-- 🚧 用户认证与权限管理
+- ✅ 指挥官工作流：任务拆解 → 专家分发 → 结果聚合
+- ✅ 6 专业专家池：search/coder/researcher/analyzer/writer/planner
+- ✅ SubTask + TaskSession 数据模型
+- ✅ JSON 解析器：兼容所有 LLM 提供商
+- ✅ 响应式布局：移动端/平板/桌面完美适配
+- ✅ Flexbox 滚动架构：Header/Input 固定，消息独立滚动
 - 🚧 知识库集成（RAG）
+- 🚧 用户认证与权限管理
 
-### 🎯 v0.3.x - 超智能体探索（计划中）
-
-- 🔮 **多智能体协作**：智能体动态分工与协作机制
-- 🔮 **自主决策系统**：基于上下文的任务拆解与执行规划
-- 🔮 **知识增强引擎**：向量检索 + 实时学习
-- 🔮 **推理与反思**：思维链（CoT）+ 自我纠错
-- 🔮 **工具调用框架**：可插拔工具生态（搜索、计算、代码执行）
-
-### 🌟 v1.0 - 产品化（未来）
+### 🎯 v1.0 - 产品化（未来）
 
 - 🔮 **插件市场**：社区驱动的智能体和工具生态
 - 🔮 **企业级功能**：团队协作、审计日志、API 管理
 - 🔮 **多模态支持**：图像、语音、视频输入
 - 🔮 **云端部署**：SaaS 服务 + 私有化部署支持
 
-### 🎯 界面特性
+### 🎯 技术特性
 - **响应式设计**：完美适配移动端、平板和桌面设备
-- **移动端手势**：左侧边缘右滑返回（30px 触发区域）
-- **深色模式支持**：根据系统偏好自动切换主题，平滑过渡动画
+- **深色模式支持**：根据系统偏好自动切换主题
 - **国际化**：支持英语、中文和日语
-- **路由管理**：React Router 深度集成，支持 URL 分享会话
-- **Glassmorphism 设计**：毛玻璃效果 + 深度阴影 + 流畅动画
+- **路由管理**：React Router 7，支持 URL 分享会话
+- **Glassmorphism**：毛玻璃效果 + 深度阴影 + 流畅动画
+- **粒子网格**：动态背景效果，处理消息时触发汇聚动画
 
 ### 💾 数据持久化
-- **SQLite 云端同步**：聊天记录持久化存储
-- **历史记录管理**：按时间排序，支持查看和删除
+- **SQLite 数据库**：SQLModel ORM 框架
+- **任务会话**：TaskSession + SubTask 完整链路
+- **历史记录**：按时间排序，支持查看和删除
 
 ### ⚡ 性能优化
 - **Zustand 全局状态管理**：组件逻辑与视图分离
-- **智能缓存与按需加载**
 - **按需渲染**：交互区域动态加载
+- **智能缓存**：减少重复请求
 
 ## 🛠️ 技术栈
 
 ### 前端
+
 | 技术 | 版本 | 用途 |
 |------|------|------|
 | React | 18.3.1 | UI 框架 |
@@ -94,6 +112,7 @@
 | Vitest | 4.0.17 | 单元测试 |
 
 ### 后端
+
 | 技术 | 版本 | 用途 |
 |------|------|------|
 | Python | 3.13+ | 后端语言 |
@@ -112,7 +131,7 @@ graph TD
     User[用户浏览器] -->|HTTP/SSE| Frontend[React 前端]
 
     subgraph Frontend["前端应用 (React + Vite)"]
-        Router[React Router]
+        Router[React Router 7]
         Pages[页面组件]
         Components[UI 组件]
         Store[Zustand 状态管理]
@@ -151,8 +170,18 @@ graph TD
         Graph --> LLM
     end
 
-    BackendDev --> Backend
-    BackendProd --> Backend
+    subgraph CommanderWorkflow["指挥官工作流"]
+        Commander[指挥官节点]
+        Dispatcher[专家分发器]
+        Aggregator[聚合器节点]
+        Experts[6 专家节点]
+
+        Commander --> Dispatcher
+        Dispatcher --> Experts
+        Experts --> Aggregator
+    end
+
+    Graph --> CommanderWorkflow
 ```
 
 ## 📦 项目结构
@@ -164,12 +193,11 @@ xpouch-ai/
 ├── frontend/                      # 🌐 React 前端应用
 │   ├── src/
 │   │   ├── components/            # React 组件
-│   │   │   ├── ChatPage.tsx           # 聊天页面
 │   │   │   ├── CanvasChatPage.tsx     # 画布聊天页
 │   │   │   ├── InteractiveCanvas.tsx  # 可交互画布
 │   │   │   ├── FloatingChatPanel.tsx  # 悬浮对话面板
 │   │   │   ├── ArtifactRenderer.tsx   # 内容渲染器
-│   │   │   ├── TaskCanvas.tsx         # 任务画布
+│   │   │   ├── XPouchLayout.tsx       # 响应式布局容器
 │   │   │   ├── Sidebar.tsx            # 侧边栏主组件
 │   │   │   ├── SidebarMenu.tsx        # 侧边栏菜单
 │   │   │   ├── SidebarUserSection.tsx # 用户区域
@@ -213,13 +241,15 @@ xpouch-ai/
 │
 ├── backend/                       # 🔧 Python 后端
 │   ├── agents/                    # LangGraph 智能体
-│   │   └── graph.py               # 工作流定义
+│   │   ├── graph.py               # 指挥官工作流定义
+│   │   └── experts.py             # 专家池实现
+│   ├── utils/                     # 工具模块
+│   │   └── json_parser.py         # JSON 解析器
 │   ├── main.py                    # FastAPI 应用入口
 │   ├── models.py                  # SQLModel 数据模型
 │   ├── database.py                # 数据库连接
+│   ├── config.py                  # 配置管理
 │   ├── pyproject.toml             # Python 项目配置
-│   ├── requirements.txt            # Python 依赖列表
-│   ├── uv.lock                    # uv 锁定文件
 │   ├── .env                       # 环境变量 (需手动创建)
 │   ├── Dockerfile                 # Docker 镜像配置
 │   └── data/                      # SQLite 数据库目录
@@ -331,12 +361,6 @@ pnpm run dev
 - 前端：http://localhost:5173
 - 后端 API：http://localhost:3002
 
-## 📦 项目结构
-
-本项目采用 **Monorepo** 架构，前端和后端完全分离。
-
-详见上方的详细项目结构说明。
-
 ## 🔧 配置说明
 
 ### 后端配置（`backend/.env`）
@@ -360,45 +384,28 @@ pnpm run dev
 > **开发环境**：使用 `http://localhost:3002/api`
 > **生产环境**：使用 `/api`（由 Nginx 代理）
 
-## 🚀 部署说明
-
-### Docker 部署（推荐）
-
-**优势**：
-- ✅ 一键启动，无需手动配置环境
-- ✅ 完整的 Nginx 反向代理
-- ✅ 生产环境就绪
-- ✅ 数据持久化（挂载卷）
-
-**更新部署**：
-
-```bash
-git pull
-docker-compose up --build -d
-```
-
-### 生产部署建议
-
-1. **使用环境变量管理工具**（如 dotenv-vault）
-2. **配置 HTTPS**（使用 Let's Encrypt + Nginx）
-3. **配置数据库备份**（SQLite 定期备份）
-4. **配置日志收集**（Sentry 集成）
-5. **配置 CDN**（静态资源加速）
-
 ## 📖 使用指南
+
+### 指挥官工作流
+
+1. **发送查询**：在对话框中输入您的需求
+2. **任务拆解**：指挥官节点分析查询，拆分为多个子任务
+3. **专家执行**：任务分发给对应的专家节点并行处理
+4. **结果聚合**：聚合器整合所有专家结果，生成最终响应
 
 ### 双层交互画布
 
-1. **缩放**：使用鼠标滚轮或底部控制栏（25%-300%）
-2. **平移**：按住画布空白区域拖动
-3. **收起/展开**：点击右上角收起图标或右下角机器人按钮
-4. **移动端返回**：从屏幕左侧边缘右滑返回首页（滑动 >100px 触发）
+1. **切换视图**：移动端点击顶部切换对话/产物视图
+2. **全屏预览**：点击放大按钮查看完整 Artifact 内容
+3. **收起面板**：PC端点击收起按钮，释放画布空间
+4. **移动端返回**：从屏幕左侧边缘右滑返回首页
 
 ### Artifact 渲染
 
 - **代码**：自动识别并渲染代码预览，支持复制
-- **Mermaid**：动态渲染流程图、时序图等
+- **HTML**：iframe 实时预览
 - **Markdown**：安全渲染 Markdown 文档
+- **搜索结果**：结构化展示搜索结果
 
 ### 创建自定义智能体
 
@@ -447,7 +454,6 @@ docker-compose up --build -d
 
 - [CHANGELOG.md](./CHANGELOG.md) - 详细的更新日志
 - [API 文档](http://localhost:3002/docs) - FastAPI Swagger 文档（启动后端后访问）
-- [前端组件文档](./frontend/README.md) - 组件使用说明（待完善）
 
 ## 📄 许可证
 
