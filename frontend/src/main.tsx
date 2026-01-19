@@ -40,9 +40,42 @@ const CreateAgentPageWrapper = () => {
   const navigate = useNavigate()
   const { addCustomAgent } = useChatStore()
 
-  const handleSave = (agent: any) => {
-    addCustomAgent(agent)
-    navigate('/') // 回到首页
+  const handleSave = async (agent: any) => {
+    try {
+      // 调用后端 API 保存自定义智能体
+      const response = await fetch('/api/agents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: agent.name,
+          description: agent.description,
+          systemPrompt: agent.systemPrompt,
+          category: agent.category,
+          modelId: agent.modelId
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('保存智能体失败')
+      }
+
+      const savedAgent = await response.json()
+
+      // 同时更新前端状态（添加 UI 所需的属性）
+      const agentWithUI = {
+        ...savedAgent,
+        icon: agent.icon,
+        color: agent.color
+      }
+
+      addCustomAgent(agentWithUI)
+      navigate('/') // 回到首页
+    } catch (error) {
+      console.error('保存智能体失败:', error)
+      alert('保存失败，请稍后重试')
+    }
   }
 
   return (

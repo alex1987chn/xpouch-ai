@@ -19,6 +19,7 @@ class User(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.now)
     
     conversations: List["Conversation"] = Relationship(back_populates="user")
+    custom_agents: List["CustomAgent"] = Relationship(back_populates="user")
 
 class Conversation(SQLModel, table=True):
     id: Optional[str] = Field(default=None, primary_key=True)
@@ -39,6 +40,85 @@ class Message(SQLModel, table=True):
     timestamp: datetime = Field(default_factory=datetime.now)
     
     conversation: Conversation = Relationship(back_populates="messages")
+
+
+# ============================================================================
+# 新增模型：用户自定义智能体（简单对话模式）
+# ============================================================================
+
+class CustomAgent(SQLModel, table=True):
+    """
+    用户创建的自定义智能体
+    
+    用于简单的对话场景，直接使用用户的 system_prompt 调用 LLM，
+    不经过 LangGraph 的专家工作流。
+    """
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    
+    # 关联用户
+    user_id: str = Field(foreign_key="user.id", index=True)
+    
+    # 基本信息
+    name: str = Field(index=True)  # 智能体名称
+    description: Optional[str] = None  # 描述
+    
+    # 核心配置
+    system_prompt: str  # 用户自定义的系统提示词（关键！）
+    model_id: str = Field(default="gpt-4o")  # 使用的模型
+    
+    # 分类和统计
+    category: str = Field(default="综合")  # 分类（写作、编程、创意等）
+    is_public: bool = Field(default=False)  # 是否公开（未来扩展）
+    conversation_count: int = Field(default=0)  # 使用次数
+    
+    # 时间戳
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+    
+    # 关联
+    user: Optional[User] = Relationship(back_populates="custom_agents")
+
+
+# 在 User 模型中添加关联
+# 需要在第 21 行后添加：
+# custom_agents: List["CustomAgent"] = Relationship(back_populates="user")
+
+
+# ============================================================================
+# Pydantic DTO - 自定义智能体 API
+# ============================================================================
+
+class CustomAgentCreate(BaseModel):
+    """创建自定义智能体的 DTO"""
+    name: str
+    description: Optional[str] = None
+    system_prompt: str  # 必填
+    category: str = "综合"
+    model_id: str = "gpt-4o"
+
+
+class CustomAgentUpdate(BaseModel):
+    """更新自定义智能体的 DTO"""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    system_prompt: Optional[str] = None
+    category: Optional[str] = None
+    model_id: Optional[str] = None
+
+
+class CustomAgentResponse(BaseModel):
+    """自定义智能体响应 DTO"""
+    id: str
+    user_id: str
+    name: str
+    description: Optional[str]
+    system_prompt: str
+    model_id: str
+    category: str
+    is_public: bool
+    conversation_count: int
+    created_at: datetime
+    updated_at: datetime
 
 
 # ============================================================================
