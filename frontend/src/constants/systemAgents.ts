@@ -18,10 +18,20 @@ export interface SystemAgent {
 }
 
 /**
- * 系统专家智能体列表
+ * 系统智能体列表
  * 用于复杂任务处理，经过 LangGraph 工作流
  */
 export const SYSTEM_AGENTS: SystemAgent[] = [
+  {
+    agentId: 'sys-assistant',
+    name: '通用助手',
+    description: '日常对话、通用任务、智能问答',
+    iconName: 'Bot',
+    category: '通用',
+    color: 'from-violet-500 to-purple-500',
+    graphId: 'assistant',
+    capabilities: ['general-conversation', 'task-handling', 'qa']
+  },
   {
     agentId: 'sys-search',
     name: '搜索专家',
@@ -112,5 +122,5 @@ export function isSystemAgent(agentId: string): boolean {
  * 获取默认系统智能体
  */
 export function getDefaultSystemAgent(): SystemAgent {
-  return SYSTEM_AGENTS[0] // 搜索专家
+  return SYSTEM_AGENTS[0] // 通用助手
 }

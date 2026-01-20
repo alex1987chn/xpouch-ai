@@ -388,6 +388,133 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     if agent_id_for_check and agent_id_for_check.startswith("sys-"):
         agent_id_for_check = agent_id_for_check[4:]  # 去掉 sys- 前缀
 
+    # 特殊处理 sys-assistant：走自定义智能体逻辑（不经过 LangGraph）
+    if agent_id_for_check == "assistant":
+        print(f"[MAIN] 检测到通用助手模式（sys-assistant）")
+        # 构建一个临时的 custom_agent 对象，使用通用助手的系统提示词
+        from langchain_openai import ChatOpenAI
+        import os
+
+        # 准备通用助手提示词
+        assistant_system_prompt = """你是一个通用的 AI 助手，专门用于日常对话和回答用户的各种问题。
+
+你的职责：
+- 友好、耐心地回答用户的问题
+- 提供准确、有用的信息
+- 在不确定时坦诚告知
+- 保持对话的自然流畅
+
+请用清晰、友好的语言回答用户的问题。"""
+
+        # 流式响应处理
+        if request.stream:
+            async def event_generator():
+                full_response = ""
+                try:
+                    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+                    base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+                    model_name = os.getenv("MODEL_NAME", "deepseek-chat")
+
+                    llm = ChatOpenAI(
+                        model=model_name,
+                        api_key=api_key,
+                        base_url=base_url,
+                        temperature=0.7,
+                        streaming=True
+                    )
+
+                    # 添加 System Prompt
+                    messages_with_system = []
+                    messages_with_system.append(("system", assistant_system_prompt))
+                    messages_with_system.extend(langchain_messages)
+
+                    print(f"[ASSISTANT] 开始流式生成...")
+                    async for chunk in llm.astream(messages_with_system):
+                        content = chunk.content
+                        if content:
+                            full_response += content
+                            yield f"data: {json.dumps({'content': content, 'conversationId': conversation_id})}\n\nn"
+
+                    print(f"[ASSISTANT] 完成，总长度: {len(full_response)}")
+
+                except Exception as e:
+                    print(f"[ASSISTANT] 错误: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    error_msg = json.dumps({"error": str(e)})
+                    yield f"data: {error_msg}\n\nn"
+
+                # 保存 AI 回复到数据库
+                if full_response:
+                    ai_msg_db = Message(
+                        conversation_id=conversation_id,
+                        role="assistant",
+                        content=full_response,
+                        timestamp=datetime.now()
+                    )
+                    from database import engine
+                    with Session(engine) as inner_session:
+                        inner_session.add(ai_msg_db)
+                        # 更新会话时间
+                        conv = inner_session.get(Conversation, conversation_id)
+                        if conv:
+                            conv.updated_at = datetime.now()
+                            inner_session.add(conv)
+                        inner_session.commit()
+
+                yield "data: [DONE]\n\nn"
+
+            return StreamingResponse(
+                event_generator(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no"
+                }
+            )
+        else:
+            # 非流式
+            from langchain_openai import ChatOpenAI
+            import os
+
+            api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+            base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+            model_name = os.getenv("MODEL_NAME", "deepseek-chat")
+
+            llm = ChatOpenAI(
+                model=model_name,
+                api_key=api_key,
+                base_url=base_url,
+                temperature=0.7
+            )
+
+            # 添加 System Prompt
+            messages_with_system = []
+            messages_with_system.append(("system", assistant_system_prompt))
+            messages_with_system.extend(langchain_messages)
+
+            result = await llm.ainvoke(messages_with_system)
+            full_response = result.content
+
+            # 保存 AI 回复
+            ai_msg_db = Message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=full_response,
+                timestamp=datetime.now()
+            )
+            session.add(ai_msg_db)
+            conversation.updated_at = datetime.now()
+            session.add(conversation)
+            session.commit()
+
+            return {
+                "role": "assistant",
+                "content": full_response,
+                "conversationId": conversation_id
+            }
+
     print(f"[MAIN] Expert types list: {expert_types}")
     print(f"[MAIN] Checking: {request.agentId} -> {agent_id_for_check} in expert types: {agent_id_for_check in expert_types}")
 
@@ -566,6 +693,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
         print(f"[MAIN] initial_state task_list 长度: {len(initial_state['task_list'])}")
     else:
         # 指挥官模式：通过 LLM 拆解任务
+        print(f"[MAIN] 进入指挥官模式，agentId: {request.agentId}")
         initial_state = {
             "messages": langchain_messages,
             "current_agent": agent_id_for_check,
@@ -576,6 +704,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             "final_response": "",
             "context": {}
         }
+        print(f"[MAIN] initial_state: {initial_state}")
 
     # 4. 流式响应处理
     if request.stream:
@@ -592,9 +721,13 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                     kind = event["event"]
                     name = event.get("name", "")
 
-                    # 每收到100个事件打印一次进度
-                    if event_count % 100 == 0:
+                    # 每收到10个事件打印一次进度（调试用）
+                    if event_count % 10 == 0:
                         print(f"[STREAM] 已处理 {event_count} 个事件，当前: {kind} - {name}")
+
+                    # 捕获指挥官节点执行
+                    if kind == "on_chain_start" and name == "commander":
+                        print(f"[STREAM] 指挥官节点开始执行")
 
                     # 捕获专家节点开始执行（expert_type: expert_name）
                     if kind == "on_chain_start" and name in ["search", "coder", "researcher", "analyzer", "writer", "planner", "image_analyzer"]:
@@ -615,7 +748,15 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
 
                             # 推送 artifact_update 事件
                             yield f"data: {json.dumps({'artifact': artifact, 'conversationId': conversation_id})}\n\n"
-                        yield f"data: {json.dumps({'expertCompleted': name, 'conversationId': conversation_id})}\n\n"
+                        # 推送专家完成事件（包含完整信息）
+                        yield f"data: {json.dumps({
+                            'expertCompleted': name,
+                            'conversationId': conversation_id,
+                            'duration_ms': output_data.get('duration_ms', 0),
+                            'status': output_data.get('status', 'completed'),
+                            'output': output_data.get('output_result', ''),
+                            'error': output_data.get('error')
+                        })}\n\n"
                         print(f"[STREAM] 专家 {name} 执行完成")
 
                     # 捕获 expert_dispatcher 节点执行结束（用于直接专家模式）
@@ -623,7 +764,11 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                         print(f"[STREAM] expert_dispatcher 结束执行，检查 output_data...")
                         # 检查是否生成了 artifact
                         output_data = event["data"]["output"]
-                        print(f"[STREAM] output_data 类型: {type(output_data)}, 包含 artifact: {isinstance(output_data, dict) and 'artifact' in output_data}")
+                        print(f"[STREAM] output_data 类型: {type(output_data)}")
+                        if isinstance(output_data, dict):
+                            print(f"[STREAM] output_data keys: {output_data.keys()}")
+                            print(f"[STREAM] 包含 artifact: {'artifact' in output_data}")
+                            print(f"[STREAM] 包含 __expert_info: {'__expert_info' in output_data}")
 
                         if isinstance(output_data, dict) and "artifact" in output_data:
                             artifact = output_data["artifact"]
@@ -632,6 +777,30 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
 
                             # 推送 artifact_update 事件
                             yield f"data: {json.dumps({'artifact': artifact, 'conversationId': conversation_id})}\n\n"
+
+                        # 检查是否有专家信息（用于专家状态栏）
+                        if isinstance(output_data, dict) and "__expert_info" in output_data:
+                            expert_info = output_data["__expert_info"]
+                            expert_type = expert_info.get("expert_type")
+                            print(f"[STREAM] 检测到 __expert_info: {expert_info}")
+
+                            # 发送专家激活事件
+                            yield f"data: {json.dumps({'activeExpert': expert_type, 'conversationId': conversation_id})}\n\n"
+                            print(f"[STREAM] ✅ 专家 {expert_type} 激活")
+
+                            # 发送专家完成事件
+                            yield f"data: {json.dumps({
+                                'expertCompleted': expert_type,
+                                'conversationId': conversation_id,
+                                'duration_ms': expert_info.get('duration_ms', 0),
+                                'status': expert_info.get('status', 'completed'),
+                                'output': expert_info.get('output', ''),
+                                'error': expert_info.get('error')
+                            })}\n\n"
+                            print(f"[STREAM] ✅ 专家 {expert_type} 完成 (status: {expert_info.get('status')})")
+                        else:
+                            print(f"[STREAM] ⚠️  未检测到 __expert_info 字段")
+
                         print(f"[STREAM] expert_dispatcher 执行完成")
 
                     # 捕获 LLM 流式输出

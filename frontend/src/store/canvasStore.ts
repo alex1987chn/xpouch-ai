@@ -1,6 +1,24 @@
 import { create } from 'zustand'
 import type { TaskNode } from '@/types'
 
+// 专家结果类型
+export interface ExpertResult {
+  expertType: string
+  expertName: string
+  description: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  output?: string
+  artifact?: {
+    type: 'code' | 'markdown' | 'search' | 'html' | 'text'
+    content: string
+    language?: string
+  }
+  duration?: number
+  error?: string
+  startedAt?: string
+  completedAt?: string
+}
+
 interface CanvasState {
   tasks: TaskNode[]
   addTask: (task: TaskNode) => void
@@ -29,6 +47,15 @@ interface CanvasState {
   artifactContent: string
   setArtifact: (type: 'code' | 'markdown' | 'search' | 'html' | 'text' | null, content: string) => void
   clearArtifact: () => void
+
+  // 专家结果状态管理
+  expertResults: ExpertResult[]
+  selectedExpert: string | null
+  addExpertResult: (result: ExpertResult) => void
+  updateExpertResult: (expertType: string, updates: Partial<ExpertResult>) => void
+  selectExpert: (expertType: string | null) => void
+  clearExpertResults: () => void
+  retryExpert: (expertType: string) => void
 }
 
 export const useCanvasStore = create<CanvasState>((set) => ({
@@ -68,5 +95,32 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   clearArtifact: () => {
     console.log('[canvasStore] clearArtifact called')
     set({ artifactType: null, artifactContent: '' })
+  },
+
+  // 专家结果状态管理
+  expertResults: [],
+  selectedExpert: null,
+  addExpertResult: (result) => set(state => {
+    console.log('[canvasStore] addExpertResult:', result)
+    return { expertResults: [...state.expertResults, result] }
+  }),
+  updateExpertResult: (expertType, updates) => set(state => ({
+    expertResults: state.expertResults.map(expert =>
+      expert.expertType === expertType ? { ...expert, ...updates } : expert
+    )
+  })),
+  selectExpert: (expertType) => {
+    console.log('[canvasStore] selectExpert:', expertType)
+    set({ selectedExpert: expertType })
+  },
+  clearExpertResults: () => set({ expertResults: [], selectedExpert: null }),
+  retryExpert: (expertType) => {
+    console.log('[canvasStore] retryExpert:', expertType)
+    // TODO: 实现重试逻辑
+    set(state => ({
+      expertResults: state.expertResults.map(expert =>
+        expert.expertType === expertType ? { ...expert, status: 'pending', error: undefined } : expert
+      )
+    }))
   }
 }))

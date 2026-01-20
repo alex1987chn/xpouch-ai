@@ -1,8 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Send, Image, Paperclip, X, File, Square } from 'lucide-react'
+import { Send, Image, Paperclip, X, File, Square, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { INPUT } from '@/constants/ui'
+
+type ConversationMode = 'simple' | 'complex'
 
 interface UploadedFile {
   id: string
@@ -22,6 +24,8 @@ interface GlowingInputProps {
   disabled?: boolean
   isTyping?: boolean
   onFocusRestore?: () => void
+  conversationMode?: ConversationMode
+  onConversationModeChange?: (mode: ConversationMode) => void
 }
 
 export default function GlowingInput({
@@ -33,7 +37,9 @@ export default function GlowingInput({
   placeholder = '输入消息...',
   disabled = false,
   isTyping = false,
-  onFocusRestore
+  onFocusRestore,
+  conversationMode = 'simple',
+  onConversationModeChange
 }: GlowingInputProps) {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isFocused, setIsFocused] = useState(false)
@@ -192,7 +198,7 @@ export default function GlowingInput({
           {/* 底部工具栏 */}
           <div className="flex items-center justify-between px-3 py-2">
             {/* 左侧工具按钮 */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <input
                 type="file"
                 ref={imageInputRef}
@@ -232,6 +238,42 @@ export default function GlowingInput({
               >
                 <Paperclip className="w-4 h-4" />
               </Button>
+
+              {/* 模式切换胶囊 */}
+              {onConversationModeChange && (
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full p-0.5 border border-slate-200 dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => onConversationModeChange('simple')}
+                    className={cn(
+                      'flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all',
+                      'hover:scale-105 active:scale-95',
+                      conversationMode === 'simple'
+                        ? 'bg-violet-500 text-white shadow-md'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    )}
+                    title="简单对话模式"
+                  >
+                    <Sparkles className="w-2.5 h-2.5" />
+                    <span>简单</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onConversationModeChange('complex')}
+                    className={cn(
+                      'flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all',
+                      'hover:scale-105 active:scale-95',
+                      conversationMode === 'complex'
+                        ? 'bg-violet-500 text-white shadow-md'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    )}
+                    title="复杂任务模式"
+                  >
+                    <Sparkles className="w-2.5 h-2.5" />
+                    <span>复杂</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* 发送/停止按钮 */}

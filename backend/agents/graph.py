@@ -303,7 +303,15 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
         return_dict = {
             "task_list": task_list,  # 更新 task_list（包含已更新的 SubTask）
             "expert_results": updated_results,
-            "current_task_index": current_index + 1
+            "current_task_index": current_index + 1,
+            # 添加专家信息供流式事件处理使用
+            "__expert_info": {
+                "expert_type": expert_type,
+                "status": "completed",
+                "duration_ms": result.get("duration_ms", 0),
+                "output": result.get("output_result", ""),
+                "error": None
+            }
         }
 
         # 如果专家返回了 artifact，添加到返回值中
@@ -334,7 +342,15 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
         return {
             "task_list": task_list,
             "expert_results": updated_results,
-            "current_task_index": current_index + 1
+            "current_task_index": current_index + 1,
+            # 添加专家信息供流式事件处理使用
+            "__expert_info": {
+                "expert_type": expert_type,
+                "status": "failed",
+                "duration_ms": 0,
+                "output": error_result,
+                "error": str(e)
+            }
         }
 
 
