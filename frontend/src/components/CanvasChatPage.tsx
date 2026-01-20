@@ -1,13 +1,13 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
+import { ArrowLeft, X, Code, FileText, Search, FileCode as HtmlIcon, FileText as TextIcon, Copy, Check, Maximize2 } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { useChat } from '@/hooks/useChat'
 import { useCanvasStore } from '@/store/canvasStore'
+import type { ExpertResult } from '@/store/canvasStore'
 import { getConversation, type ApiMessage } from '@/services/api'
 import { generateId } from '@/utils/storage'
-import { ArrowLeft, X, Code, FileText, Search, FileCode as HtmlIcon, FileText as TextIcon, Copy, Check } from 'lucide-react'
-import InteractiveCanvas from './InteractiveCanvas'
 import FloatingChatPanel from './FloatingChatPanel'
 import FloatingExpertBar from './FloatingExpertBar'
 import ExpertDrawer from './ExpertDrawer'
@@ -18,6 +18,8 @@ import { SettingsDialog } from './SettingsDialog'
 import { PersonalSettingsDialog } from './PersonalSettingsDialog'
 import { cn } from '@/lib/utils'
 import { CodeArtifact, DocArtifact, SearchArtifact, HtmlArtifact, TextArtifact } from './artifacts'
+import ParticleGrid from './ParticleGrid.tsx'
+import ExpertStatusBar, { ExpertPreviewModal } from './ExpertStatusBar'
 
 export default function CanvasChatPage() {
   const { id } = useParams()
@@ -39,9 +41,11 @@ export default function CanvasChatPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isPersonalSettingsOpen, setIsPersonalSettingsOpen] = useState(false)
-  const [selectedExpert] = useState('')
   const [isChatMinimized, setIsChatMinimized] = useState(false)
-  const [isArtifactFullscreen, setIsArtifactFullscreen] = useState(false) // 新增：artifact 全屏状态
+  const [isArtifactFullscreen, setIsArtifactFullscreen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [previewExpert, setPreviewExpert] = useState<ExpertResult | null>(null)
+
 
   const {
     messages,
@@ -61,8 +65,17 @@ export default function CanvasChatPage() {
     getCurrentAgent
   } = useChatStore()
 
-  const { setMagicColor, artifactType, artifactContent } = useCanvasStore()
+  const { setMagicColor, artifactType, artifactContent, setArtifact, addExpertResult, updateExpertResult, expertResults, selectedExpert } = useCanvasStore()
   const { user } = useUserStore()
+  const assistantMessageIdRef = useRef<string | null>(null)
+
+  // 监听选中的专家变化，切换到对应的 artifact
+  useEffect(() => {
+    const expert = expertResults.find(e => e.expertType === selectedExpert)
+    if (expert?.artifact) {
+      setArtifact(expert.artifact.type, expert.artifact.content)
+    }
+  }, [selectedExpert, expertResults, setArtifact])
 
   // 处理设置点击
   const handleSettingsClick = () => {
@@ -71,6 +84,18 @@ export default function CanvasChatPage() {
 
   const handlePersonalSettingsClick = () => {
     setIsPersonalSettingsOpen(true)
+  }
+
+  // 处理复制
+  const handleCopy = async () => {
+    if (!artifactContent) return
+    try {
+      await navigator.clipboard.writeText(artifactContent)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
   }
 
   // 初始化或加载会话
@@ -164,7 +189,7 @@ export default function CanvasChatPage() {
   const handleSubmitMessage = useCallback(() => {
     if (!inputMessage || typeof inputMessage !== 'string' || !inputMessage.trim()) return
 
-    setIsProcessing(true) // 开始处理，触发粒子汇聚动画
+    setIsProcessing(true)
     handleSendMessage(inputMessage)
 
     // 2秒后恢复处理状态（模拟AI开始思考）
@@ -194,6 +219,128 @@ export default function CanvasChatPage() {
     )
   }
 
+  // Artifact 配置
+  const expertNames: Record<string, string> = {
+    code: '编程专家',
+    markdown: '写作专家',
+    search: '搜索专家',
+    html: 'HTML 生成',
+    text: '文本生成'
+  }
+
+  const expertColors: Record<string, { from: string; to: string }> = {
+    code: { from: 'from-indigo-500', to: 'to-purple-600' },
+    markdown: { from: 'from-emerald-500', to: 'to-teal-600' },
+    search: { from: 'from-violet-500', to: 'to-pink-600' },
+    html: { from: 'from-orange-500', to: 'to-amber-600' },
+    text: { from: 'from-slate-500', to: 'to-gray-600' }
+  }
+
+  // 专家状态栏内容
+  const ExpertBarContent = <ExpertStatusBar previewExpert={previewExpert} setPreviewExpert={setPreviewExpert} />
+
+  // Artifact显示内容
+  const ArtifactContent = (
+    <AnimatePresence mode="wait">
+      {artifactType ? (
+        <motion.div
+          key={artifactType}
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: -10 }}
+          transition={{ duration: 0.3 }}
+          className="w-full h-full flex flex-col"
+        >
+          <div className={cn(
+            'rounded-2xl',
+            'bg-white dark:bg-slate-900',
+            'shadow-2xl shadow-black/10 dark:shadow-black/40',
+            'overflow-hidden',
+            'flex-1 flex flex-col relative z-10'
+          )}>
+            <AnimatePresence mode="wait">
+              {artifactType && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="relative z-20 flex-shrink-0"
+                >
+                  <div
+                    className={cn(
+                      'w-full px-4 py-2.5 flex items-center justify-between',
+                      artifactType && expertColors[artifactType]
+                        ? `bg-gradient-to-r ${expertColors[artifactType].from} ${expertColors[artifactType].to}`
+                        : 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-md'
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      {artifactType === 'code' && <Code className="w-4 h-4 text-white" />}
+                      {artifactType === 'markdown' && <FileText className="w-4 h-4 text-white" />}
+                      {artifactType === 'search' && <Search className="w-4 h-4 text-white" />}
+                      {artifactType === 'html' && <HtmlIcon className="w-4 h-4 text-white" />}
+                      {artifactType === 'text' && <TextIcon className="w-4 h-4 text-white" />}
+                      <span className="text-white text-sm font-medium">
+                        {expertNames[artifactType] || 'AI 生成的结果'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleCopy}
+                        className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                        title={copied ? '已复制' : '复制'}
+                      >
+                        {copied ? (
+                          <Check className="w-4 h-4 text-white" />
+                        ) : (
+                          <Copy className="w-4 h-4 text-white" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setIsArtifactFullscreen(true)}
+                        className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                        title="放大预览"
+                      >
+                        <Maximize2 className="w-4 h-4 text-white" />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <div className="flex-1 overflow-hidden">
+              {artifactType === 'code' && (
+                <div className="w-full h-full overflow-y-auto overflow-x-hidden touch-pan-y touch-pinch-zoom">
+                  <CodeArtifact content={artifactContent} />
+                </div>
+              )}
+              {artifactType === 'markdown' && (
+                <div className="w-full h-full overflow-y-auto overflow-x-hidden touch-pan-y touch-pinch-zoom">
+                  <DocArtifact content={artifactContent} />
+                </div>
+              )}
+              {artifactType === 'search' && (
+                <div className="w-full h-full overflow-y-auto overflow-x-hidden touch-pan-y touch-pinch-zoom">
+                  <SearchArtifact />
+                </div>
+              )}
+              {artifactType === 'html' && (
+                <div className="w-full h-full overflow-y-auto overflow-x-hidden touch-pan-y touch-pinch-zoom">
+                  <HtmlArtifact content={artifactContent} />
+                </div>
+              )}
+              {artifactType === 'text' && (
+                <div className="w-full h-full overflow-y-auto overflow-x-hidden touch-pan-y touch-pinch-zoom">
+                  <TextArtifact content={artifactContent} />
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  )
+
   // 创建聊天内容组件
   const ChatContent = (viewMode: 'chat' | 'preview', setViewMode: (mode: 'chat' | 'preview') => void) => (
     <div className="relative flex-1 flex flex-col min-h-0">
@@ -219,21 +366,6 @@ export default function CanvasChatPage() {
         onStopGeneration={handleStopGeneration}
       />
     </div>
-  )
-
-  // 创建画布内容组件
-  const CanvasContent = (
-    <InteractiveCanvas
-      artifactType={artifactType}
-      artifactContent={artifactContent}
-      isProcessing={isProcessing}
-      isFullscreen={isArtifactFullscreen}
-      setIsFullscreen={setIsArtifactFullscreen}
-      className={cn(
-        'w-full h-full transition-all duration-500',
-        activeExpertId === 'coder' && 'ring-2 ring-blue-500/30'
-      )}
-    />
   )
 
   // 创建侧边栏内容
@@ -274,9 +406,11 @@ export default function CanvasChatPage() {
 
       {/* 主内容区 - 独立 stacking context，层级低于侧边栏 */}
       <div className="relative z-[50] w-full h-full">
+        <ParticleGrid isProcessing={isProcessing} className="absolute inset-0 dark:block hidden z-0 pointer-events-none" />
         <XPouchLayout
           SidebarContent={SidebarContent}
-          CanvasContent={CanvasContent}
+          ExpertBarContent={ExpertBarContent}
+          ArtifactContent={ArtifactContent}
           ChatContent={ChatContent}
           isChatMinimized={isChatMinimized}
           setIsChatMinimized={setIsChatMinimized}
@@ -317,7 +451,7 @@ export default function CanvasChatPage() {
                   {artifactType === 'markdown' && <FileText className="w-5 h-5 text-white" />}
                   {artifactType === 'search' && <Search className="w-5 h-5 text-white" />}
                   {artifactType === 'html' && <HtmlIcon className="w-5 h-5 text-white" />}
-                  {artifactType === 'text' && <FileText className="w-5 h-5 text-white" />}
+                  {artifactType === 'text' && <TextIcon className="w-5 h-5 text-white" />}
                   <span className="text-white font-semibold text-base">
                     {artifactType === 'code' && '编程专家'}
                     {artifactType === 'markdown' && '文档预览'}
@@ -355,6 +489,16 @@ export default function CanvasChatPage() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 专家详情预览弹窗 - 提升到根级别，确保能够覆盖所有元素 */}
+      <AnimatePresence>
+        {previewExpert && (
+          <ExpertPreviewModal
+            expert={previewExpert}
+            onClose={() => setPreviewExpert(null)}
+          />
         )}
       </AnimatePresence>
     </>

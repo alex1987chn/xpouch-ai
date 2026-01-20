@@ -327,11 +327,19 @@ export async function sendMessage(
                   console.log('[API] 专家激活:', activeExpert)
                 }
 
-                // 处理专家完成事件
+                // 处理专家完成事件（包含完整信息）
                 if (expertCompleted && typeof onChunk === 'function') {
+                  const expertEvent = {
+                    type: 'expert_completed' as const,
+                    expertId: expertCompleted,
+                    duration_ms: parsed.duration_ms,
+                    status: parsed.status,
+                    output: parsed.output,
+                    error: parsed.error
+                  }
                   // @ts-ignore - 扩展回调签名支持专家状态
-                  onChunk('', finalConversationId, { type: 'expert_completed', expertId: expertCompleted })
-                  console.log('[API] 专家完成:', expertCompleted)
+                  onChunk('', finalConversationId, expertEvent)
+                  console.log('[API] 专家完成:', expertCompleted, expertEvent)
                 }
 
                 // 处理 artifact 事件

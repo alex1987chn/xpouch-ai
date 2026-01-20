@@ -1,7 +1,7 @@
 import { useCallback, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useChatStore, type Message } from '@/store/chatStore'
-import { useCanvasStore } from '@/store/canvasStore'
+import { useCanvasStore, type ExpertResult } from '@/store/canvasStore'
 import { sendMessage, type ApiMessage } from '@/services/api'
 import { getSystemAgent } from '@/constants/systemAgents'
 import { getDefaultModel } from '@/utils/config'
@@ -12,7 +12,7 @@ export function useChat() {
   const navigate = useNavigate()
   const [activeExpertId, setActiveExpertId] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
-  const { setArtifact } = useCanvasStore()
+  const { setArtifact, addExpertResult, updateExpertResult } = useCanvasStore()
 
   const {
     messages,
@@ -112,9 +112,43 @@ export function useChat() {
           if (expertEvent?.type === 'expert_activated') {
             console.log('[useChat] ✅ 专家激活:', expertEvent.expertId)
             setActiveExpertId(expertEvent.expertId)
+
+            // 添加专家结果到状态栏
+            const expertNames: Record<string, string> = {
+              search: '搜索专家',
+              coder: '编程专家',
+              researcher: '研究专家',
+              analyzer: '分析专家',
+              writer: '写作专家',
+              planner: '规划专家',
+              image_analyzer: '图片分析专家'
+            }
+
+            const newExpert = {
+              expertType: expertEvent.expertId,
+              expertName: expertNames[expertEvent.expertId] || expertEvent.expertId,
+              description: `执行 ${expertNames[expertEvent.expertId] || expertEvent.expertId} 任务`,
+              status: 'running' as const,
+              startedAt: new Date().toISOString()
+            }
+            console.log('[useChat] 添加专家到状态栏:', newExpert)
+            addExpertResult(newExpert)
+            console.log('[useChat] 当前专家结果列表:', useCanvasStore.getState().expertResults)
           } else if (expertEvent?.type === 'expert_completed') {
-            console.log('[useChat] ✅ 专家完成:', expertEvent.expertId)
-            // 专家完成时不清除状态，等待下一个专家激活
+            console.log('[useChat] ✅ 专家完成:', expertEvent.expertId, expertEvent)
+            console.log('[useChat] 更新前专家结果列表:', useCanvasStore.getState().expertResults)
+            // 延迟更新专家状态，让用户能看到 running 状态
+            setTimeout(() => {
+              // 更新专家状态为完成，包含完整信息
+              updateExpertResult(expertEvent.expertId, {
+                status: (expertEvent.status === 'failed' ? 'failed' : 'completed') as 'completed' | 'failed',
+                completedAt: new Date().toISOString(),
+                duration: expertEvent.duration_ms,
+                error: expertEvent.error,
+                output: expertEvent.output
+              })
+              console.log('[useChat] 更新后专家结果列表:', useCanvasStore.getState().expertResults)
+            }, 500) // 延迟 500ms
           }
 
           // 处理 artifact 事件
@@ -125,6 +159,17 @@ export function useChat() {
             console.log('[useChat] Artifact content preview:', artifact.content?.substring(0, 100))
             // 更新 Canvas 显示代码
             setArtifact(artifact.type, artifact.content)
+
+            // 如果有当前激活的专家，更新其 artifact 信息
+            if (activeExpertId) {
+              updateExpertResult(activeExpertId, {
+                artifact: {
+                  type: artifact.type,
+                  content: artifact.content,
+                  language: artifact.language
+                }
+              })
+            }
           }
 
           // 实时更新 assistant 消息

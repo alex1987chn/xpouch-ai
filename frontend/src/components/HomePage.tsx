@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Bot, AlertCircle } from 'lucide-react'
+import { Bot, AlertCircle, Sparkles } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
 import { SYSTEM_AGENTS, type SystemAgent } from '@/constants/systemAgents'
@@ -13,6 +13,8 @@ import { generateId } from '@/utils/storage'
 import { cn } from '@/lib/utils'
 import { deleteCustomAgent, getAllAgents } from '@/services/api'
 import type { Agent } from '@/types'
+
+type ConversationMode = 'simple' | 'complex'
 
 export default function HomePage() {
   const { t } = useTranslation()
@@ -36,6 +38,9 @@ export default function HomePage() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   const [inputMessage, setInputMessage] = useState('')
+
+  // 对话模式：简单对话（默认）或 复杂任务
+  const [conversationMode, setConversationMode] = useState<ConversationMode>('simple')
 
   // Agent Tab 状态
   const [agentTab, setAgentTab] = useState<'featured' | 'my'>('featured')
@@ -172,17 +177,27 @@ export default function HomePage() {
   const handleSendMessage = useCallback(() => {
     if (!inputMessage.trim()) return
 
-    // 如果用户选择了专家（如编程专家），传递 agentId
     const newId = generateId()
-    console.log('[HomePage] Sending message with temp ID:', newId, 'message:', inputMessage, 'agentId:', selectedAgentId)
+
+    // 根据对话模式决定使用哪个智能体
+    const agentIdForChat = conversationMode === 'simple'
+      ? 'sys-assistant' // 简单对话：使用通用助手
+      : 'sys-commander' // 复杂任务：传递不在 expert_types 中的值，触发指挥官模式
+
+    console.log('[HomePage] Sending message:', {
+      tempId: newId,
+      message: inputMessage,
+      mode: conversationMode,
+      agentId: agentIdForChat
+    })
 
     navigate(`/chat/${newId}`, {
       state: {
         startWith: inputMessage,
-        agentId: selectedAgentId || undefined
+        agentId: agentIdForChat
       }
     })
-  }, [inputMessage, navigate, selectedAgentId])
+  }, [inputMessage, navigate, conversationMode])
 
   return (
     <div className="bg-transparent homepage-scroll overflow-y-auto overflow-x-hidden scrollbar-gutter-stable h-[100dvh] scroll-smooth">
@@ -200,13 +215,16 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="w-full max-w-3xl mx-auto mt-14">
+          <div className="w-full max-w-4xl mx-auto mt-14">
             <div className="transform transition-all duration-300 hover:scale-[1.01]">
+              {/* 输入框 */}
               <GlowingInput
                 value={inputMessage}
                 onChange={setInputMessage}
                 onSubmit={handleSendMessage}
-                placeholder={t('placeholder')}
+                placeholder={conversationMode === 'simple' ? '描述你的需求，与通用助手对话...' : '描述你的复杂任务，AI 将智能拆解并分配给多个专家...'}
+                conversationMode={conversationMode}
+                onConversationModeChange={setConversationMode}
               />
             </div>
           </div>
