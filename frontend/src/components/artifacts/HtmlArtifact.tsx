@@ -27,11 +27,11 @@ export default function HtmlArtifact({ content, className }: HtmlArtifactProps) 
     <div className={cn('w-full h-full flex flex-col overflow-hidden', className)}>
       {/* Browser Chrome Header - Full Width, No Gap */}
       <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-gray-900 border-b border-gray-700/50">
-        {/* Window Control Dots - Red, Yellow, Green */}
+        {/* Window Control Dots - Project Theme Colors */}
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500 hover:bg-red-400 transition-colors cursor-pointer" />
-          <div className="w-3 h-3 rounded-full bg-yellow-500 hover:bg-yellow-400 transition-colors cursor-pointer" />
-          <div className="w-3 h-3 rounded-full bg-green-500 hover:bg-green-400 transition-colors cursor-pointer" />
+          <div className="w-3 h-3 rounded-full bg-slate-600 dark:bg-slate-400 hover:bg-slate-500 dark:hover:bg-slate-500 transition-colors cursor-pointer" />
+          <div className="w-3 h-3 rounded-full bg-slate-600 dark:bg-slate-400 hover:bg-slate-500 dark:hover:bg-slate-500 transition-colors cursor-pointer" />
+          <div className="w-3 h-3 rounded-full bg-blue-500 hover:bg-blue-400 transition-colors cursor-pointer" />
         </div>
         {/* URL Bar Placeholder */}
         <div className="flex-1 mx-4 px-3 py-1.5 bg-gray-800 rounded text-xs text-gray-400">

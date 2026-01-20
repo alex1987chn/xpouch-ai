@@ -23,7 +23,7 @@ export default function SearchArtifact({ results = [], className }: SearchArtifa
       )}
     >
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-500 to-cyan-600 px-4 py-3 flex items-center justify-between">
+      <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-500 to-violet-500 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Search className="w-4 h-4 text-white" />
           <span className="text-white text-sm font-medium">搜索结果</span>
@@ -56,7 +56,7 @@ export default function SearchArtifact({ results = [], className }: SearchArtifa
                 </div>
                 {result.verified && (
                   <div className="flex-shrink-0" title="已验证">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    <CheckCircle2 className="w-5 h-5 text-blue-500 dark:text-blue-400" />
                   </div>
                 )}
               </div>
