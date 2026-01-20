@@ -5,24 +5,26 @@ import SwipeBackIndicator from './SwipeBackIndicator'
 
 interface XPouchLayoutProps {
   SidebarContent: React.ReactNode
-  CanvasContent: React.ReactNode
+  ExpertBarContent: React.ReactNode // 专家状态栏
+  ArtifactContent: React.ReactNode // Artifact显示区域
   ChatContent: (viewMode: 'chat' | 'preview', setViewMode: (mode: 'chat' | 'preview') => void) => React.ReactNode
   isChatMinimized?: boolean
   setIsChatMinimized?: (minimized: boolean) => void
   swipeProgress?: number
   hasArtifact?: boolean
-  hideChatPanel?: boolean // 新增：用于全屏预览时隐藏对话面板
+  hideChatPanel?: boolean
 }
 
 export default function XPouchLayout({
   SidebarContent,
-  CanvasContent,
+  ExpertBarContent,
+  ArtifactContent,
   ChatContent,
   isChatMinimized = false,
   setIsChatMinimized,
   swipeProgress = 0,
   hasArtifact = false,
-  hideChatPanel = false // 新增参数
+  hideChatPanel = false
 }: XPouchLayoutProps) {
   // viewMode 仅在移动端起作用
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
@@ -37,7 +39,7 @@ export default function XPouchLayout({
         </div>
       </aside>
 
-      {/* 主容器 - 根据是否有 artifact 动态切换布局 */}
+      {/* 主容器 - 三区布局：左侧专家区（bar + artifact），右侧聊天区 */}
       <motion.div
         layout
         className={cn(
@@ -55,7 +57,7 @@ export default function XPouchLayout({
           {/* 可以在这里添加网格背景 */}
         </div>
 
-        {/* Artifact Container - 左侧（或浮动） */}
+        {/* 左侧专家区 - 包含专家状态栏和Artifact区域 */}
         <AnimatePresence mode="wait">
           <motion.main
             key={viewMode}
@@ -75,26 +77,36 @@ export default function XPouchLayout({
               !hasArtifact && 'md:rounded-2xl'
             )}
           >
-          {/* 移动端：画布顶部的切换按钮（仅在 preview 模式显示） */}
-          {viewMode === 'preview' && (
-            <button
-              onClick={() => setViewMode('chat')}
-              className="md:hidden absolute top-4 left-1/2 -translate-x-1/2 z-[60] w-28 h-8 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-full shadow-lg flex items-center justify-center gap-2 px-3 hover:bg-white dark:hover:bg-slate-800 transition-all"
-            >
-              <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-              <span className="text-[11px] font-medium text-slate-700 dark:text-slate-200">对话</span>
-            </button>
-          )}
+            {/* 移动端：画布顶部的切换按钮（仅在 preview 模式显示） */}
+            {viewMode === 'preview' && (
+              <button
+                onClick={() => setViewMode('chat')}
+                className="md:hidden absolute top-4 left-1/2 -translate-x-1/2 z-[60] w-28 h-8 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-full shadow-lg flex items-center justify-center gap-2 px-3 hover:bg-white dark:hover:bg-slate-800 transition-all"
+              >
+                <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                <span className="text-[11px] font-medium text-slate-700 dark:text-slate-200">对话</span>
+              </button>
+            )}
 
-          {/* Canvas 内容容器 */}
-          <div className={cn(
-            'h-full w-full',
-            viewMode === 'preview' ? 'block' : 'hidden',
-            'md:block'
-          )}>
-            {CanvasContent}
-          </div>
-        </motion.main>
+            {/* Canvas 内容容器 - flex column布局 */}
+            <div className={cn(
+              'h-full w-full flex flex-col',
+              viewMode === 'preview' ? 'block' : 'hidden',
+              'md:block'
+            )}>
+              {/* 专家状态栏 - 顶部，固定高度 */}
+              <div className="relative z-20 flex-shrink-0 px-4 pt-4 pb-2">
+                {ExpertBarContent}
+              </div>
+
+              {/* Artifact显示区域 - 占据剩余空间 */}
+              <div className="flex-1 overflow-auto relative z-10">
+                <div className="w-full h-full px-4 pb-4">
+                  {ArtifactContent}
+                </div>
+              </div>
+            </div>
+          </motion.main>
         </AnimatePresence>
 
         {/* Chat Panel - 右侧 */}
