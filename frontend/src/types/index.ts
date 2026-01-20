@@ -64,17 +64,49 @@ export interface Conversation {
  * 智能体接口
  */
 export interface Agent {
-  id: string
-  name: string
-  description: string
-  icon: string | React.ReactNode
-  systemPrompt?: string
-  category?: string
-  color?: string
-  modelId?: string
-  promptTemplate?: string
-  isDefault?: boolean
-  isCustom?: boolean
+    id: string
+    name: string
+    description: string
+    icon: string | React.ReactNode
+    systemPrompt?: string
+    category?: string
+    color?: string
+    modelId?: string
+    promptTemplate?: string
+    isDefault?: boolean
+    isCustom?: boolean
+    is_builtin?: boolean // 标识是否为预定义专家
+}
+
+/**
+ * 智能体类型
+ */
+export type AgentType = 'system' | 'custom'
+
+/**
+ * 智能体上下文 - 双轨制统一接口
+ */
+export interface AgentContext {
+    type: AgentType
+    config: Agent
+    threadId: string
+}
+
+/**
+ * 自定义智能体数据接口
+ */
+export interface CustomAgentData {
+    id: string
+    user_id: string
+    name: string
+    description?: string
+    system_prompt: string
+    model_id: string
+    category: string
+    conversation_count: number
+    is_public: boolean
+    created_at: string
+    updated_at: string
 }
 
 /**

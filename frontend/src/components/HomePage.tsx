@@ -1,35 +1,83 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Bot } from 'lucide-react'
+import { Bot, AlertCircle } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
-import { experts as defaultExperts, type Agent } from '@/data/agents'
+import { SYSTEM_AGENTS, type SystemAgent } from '@/constants/systemAgents'
+import { LucideIconName } from '@/lib/icon-mapping'
 import AgentCard from '@/components/AgentCard'
-import { useNavigate } from 'react-router-dom'
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { useNavigate, useLocation } from 'react-router-dom'
 import PixelLetters from './PixelLetters'
 import GlowingInput from './GlowingInput'
 import { generateId } from '@/utils/storage'
 import { cn } from '@/lib/utils'
+import { deleteCustomAgent, getAllAgents } from '@/services/api'
+import type { Agent } from '@/types'
 
 export default function HomePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const [showSlogan, setShowSlogan] = useState(false)
+
+  const {
+    selectedAgentId,
+    setSelectedAgentId,
+    customAgents,
+    setCustomAgents
+  } = useChatStore()
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSlogan(true), 4000)
     return () => clearTimeout(timer)
   }, [])
 
-  const {
-    selectedAgentId,
-    setSelectedAgentId,
-    customAgents
-  } = useChatStore()
+  // 刷新自定义智能体列表的状态
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const [inputMessage, setInputMessage] = useState('')
 
   // Agent Tab 状态
   const [agentTab, setAgentTab] = useState<'featured' | 'my'>('featured')
+
+  // 删除确认对话框状态
+  const [deletingAgentId, setDeletingAgentId] = useState<string | null>(null)
+  const [deletingAgentName, setDeletingAgentName] = useState<string>('')
+
+  // 从后端加载自定义智能体列表
+  useEffect(() => {
+    const loadCustomAgents = async () => {
+      try {
+        const response = await getAllAgents()
+        // 后端已经按 created_at 降序排序了（最新的在前）
+        // 直接使用返回的自定义智能体列表，完全替换 store 中的数据
+        const customAgentsData = response.map(agent => ({
+          id: agent.id,
+          name: agent.name,
+          description: agent.description || '',
+          icon: <Bot className="w-5 h-5" />,
+          systemPrompt: agent.system_prompt,
+          category: agent.category,
+          modelId: agent.model_id,
+          isCustom: true,
+          is_builtin: false
+        }))
+        // 使用完全替换而不是合并，确保与后端同步
+        setCustomAgents(customAgentsData)
+      } catch (error) {
+        console.error('加载自定义智能体失败:', error)
+      }
+    }
+
+    loadCustomAgents()
+  }, [refreshKey, setCustomAgents]) // 添加 setCustomAgents 依赖
+
+  // 监听路由变化，当从创建页面返回首页时刷新列表
+  useEffect(() => {
+    if (location.pathname === '/') {
+      setRefreshKey(prev => prev + 1)
+    }
+  }, [location.pathname])
 
   // 使用 useMemo 优化智能体列表计算
   const displayMyAgents = useMemo<Agent[]>(
@@ -41,8 +89,16 @@ export default function HomePage() {
   )
 
   const displayedAgents = useMemo<Agent[]>(
-    () => agentTab === 'featured' ? defaultExperts : displayMyAgents,
-    [agentTab, defaultExperts, displayMyAgents]
+    () => agentTab === 'featured' ? SYSTEM_AGENTS.map(sa => {
+      const IconComponent = LucideIconName(sa.iconName)
+      return {
+        ...sa,
+        id: sa.agentId,
+        icon: <IconComponent className="w-5 h-5" />,
+        modelId: 'deepseek-chat'
+      }
+    }) : displayMyAgents,
+    [agentTab, displayMyAgents]
   )
 
   // 默认选中第一个卡片
@@ -56,12 +112,62 @@ export default function HomePage() {
   const handleAgentClick = useCallback((agentId: string) => {
     setSelectedAgentId(agentId)
     const newId = generateId()
-    navigate(`/chat/${newId}?agentId=${agentId}`)
-  }, [setSelectedAgentId, navigate])
+    // 对于系统智能体，确保传递 sys- 前缀的 agentId
+    if (agentTab === 'featured') {
+      // 从 SYSTEM_AGENTS 获取正确的 agentId（带 sys- 前缀）
+      const systemAgent = SYSTEM_AGENTS.find(sa => sa.agentId === agentId)
+      const actualAgentId = systemAgent ? systemAgent.agentId : agentId
+      navigate(`/chat/${newId}?agentId=${actualAgentId}`)
+    } else {
+      navigate(`/chat/${newId}?agentId=${agentId}`)
+    }
+  }, [setSelectedAgentId, navigate, agentTab])
 
   const handleCreateAgent = useCallback(() => {
     navigate('/create-agent')
   }, [navigate])
+
+  // 处理删除自定义 agent - 打开确认对话框
+  const handleDeleteAgent = useCallback((agentId: string, agentName: string) => {
+    setDeletingAgentId(agentId)
+    setDeletingAgentName(agentName)
+  }, [])
+
+  // 确认删除操作
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deletingAgentId) return
+
+    try {
+      await deleteCustomAgent(deletingAgentId)
+      setCustomAgents(prev => prev.filter(agent => agent.id !== deletingAgentId))
+      // 如果删除的是当前选中的 agent，切换到第一个可用 agent
+      if (selectedAgentId === deletingAgentId) {
+        const remainingAgents = displayMyAgents.filter(agent => agent.id !== deletingAgentId)
+        if (remainingAgents.length > 0) {
+          setSelectedAgentId(remainingAgents[0].id)
+        } else {
+          setSelectedAgentId(SYSTEM_AGENTS[0].agentId)
+        }
+      }
+    } catch (error) {
+      console.error('删除自定义智能体失败:', error)
+      // 即使删除失败（比如 404），也从 store 中移除该 agent
+      // 因为这可能是一个无效的 ID（本地缓存的旧数据）
+      setCustomAgents(prev => prev.filter(agent => agent.id !== deletingAgentId))
+      // 如果删除的是当前选中的 agent，切换到第一个可用 agent
+      if (selectedAgentId === deletingAgentId) {
+        const remainingAgents = displayMyAgents.filter(agent => agent.id !== deletingAgentId)
+        if (remainingAgents.length > 0) {
+          setSelectedAgentId(remainingAgents[0].id)
+        } else {
+          setSelectedAgentId(SYSTEM_AGENTS[0].agentId)
+        }
+      }
+    } finally {
+      setDeletingAgentId(null)
+      setDeletingAgentName('')
+    }
+  }, [deletingAgentId, selectedAgentId, displayMyAgents, setSelectedAgentId])
 
   const handleSendMessage = useCallback(() => {
     if (!inputMessage.trim()) return
@@ -148,6 +254,8 @@ export default function HomePage() {
               index={index}
               isSelected={selectedAgentId === agent.id}
               onClick={() => handleAgentClick(agent.id)}
+              showDeleteButton={agentTab === 'my' && !agent.is_builtin}
+              onDelete={() => handleDeleteAgent(agent.id, agent.name)}
             />
           ))}
         </div>
@@ -201,6 +309,19 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      {/* 删除确认对话框 */}
+      <DeleteConfirmDialog
+        isOpen={deletingAgentId !== null}
+        onClose={() => {
+          setDeletingAgentId(null)
+          setDeletingAgentName('')
+        }}
+        onConfirm={handleConfirmDelete}
+        title="确认删除智能体"
+        description="删除后无法恢复，请确认是否继续？"
+        itemName={deletingAgentName}
+      />
     </div>
   )
 }

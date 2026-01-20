@@ -70,6 +70,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
   const [description, setDescription] = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
   const [category, setCategory] = useState('综合')
+  const [selectedModel, setSelectedModel] = useState('deepseek-chat')
 
   const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({
     enabled: true,
@@ -85,7 +86,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
       description,
       systemPrompt,
       category,
-      modelId: 'gpt-4o',
+      modelId: selectedModel,
       icon: <Bot className="w-5 h-5" />,
       color: 'from-violet-500 to-fuchsia-500'
     }
@@ -94,6 +95,9 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
   }
 
   const categories = ['综合', '开发', '创作', '分析', '研究']
+  const models = [
+    { id: 'deepseek-chat', name: 'DeepSeek Chat' }
+  ]
 
   return (
     <div className="flex flex-col h-full bg-transparent">
@@ -189,6 +193,29 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
                       )}
                     >
                       {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 模型选择 */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  <span>模型</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {models.map((model) => (
+                    <button
+                      key={model.id}
+                      onClick={() => setSelectedModel(model.id)}
+                      className={cn(
+                        'px-4 py-2 rounded-full text-sm font-medium transition-all duration-300',
+                        selectedModel === model.id
+                          ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/25'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-violet-100 dark:hover:bg-violet-900/30'
+                      )}
+                    >
+                      {model.name}
                     </button>
                   ))}
                 </div>

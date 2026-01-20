@@ -11,14 +11,25 @@ export default defineConfig({
     },
   },
   server: {
-    host: '0.0.0.0',
+    host: '127.0.0.1',
     port: 5173,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:3002',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path
+        rewrite: (path) => path,
+        configure: (proxy, options) => {
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log('[Vite Proxy] Request:', req.method, req.url, '->', options.target + req.url)
+          })
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            console.log('[Vite Proxy] Response:', proxyRes.statusCode, req.url)
+          })
+          proxy.on('error', (err, req, res) => {
+            console.error('[Vite Proxy] Error:', err.message)
+          })
+        }
       },
       '/health': {
         target: 'http://127.0.0.1:3002',

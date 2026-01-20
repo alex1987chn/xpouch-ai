@@ -7,7 +7,8 @@ import {
   Conversation,
   UserProfile,
   ExpertEvent,
-  Artifact
+  Artifact,
+  CustomAgentData
 } from '@/types'
 
 // 智能判断环境：统一使用相对路径，由 Vite 代理或 Nginx 处理
@@ -94,7 +95,39 @@ export async function deleteConversation(id: string): Promise<void> {
 }
 
 // ============================================================================
-// 自定义智能体 API
+// 系统智能体 API (System Agents - LangGraph Experts)
+// ============================================================================
+
+/**
+ * 获取系统智能体列表
+ * 这些是预定义的专家，由系统维护
+ */
+export async function getSystemAgents() {
+  // 从本地注册表返回系统智能体
+  // 不需要后端调用，因为是常量数据
+  const { SYSTEM_AGENTS } = await import('@/constants/systemAgents')
+  return SYSTEM_AGENTS
+}
+
+/**
+ * 根据ID获取系统智能体
+ */
+export async function getSystemAgentById(agentId: string) {
+  const { getSystemAgent } = await import('@/constants/systemAgents')
+  return getSystemAgent(agentId)
+}
+
+/**
+ * 直接获取系统智能体（同步版本，不使用 await）
+ * 从 systemAgents.ts 重新导出，方便直接调用
+ */
+export async function getSystemAgent(agentId: string) {
+  const { getSystemAgent: getSysAgent } = await import('@/constants/systemAgents')
+  return getSysAgent(agentId)
+}
+
+// ============================================================================
+// 自定义智能体 API (Custom Agents - User-defined)
 // ============================================================================
 
 interface CustomAgent {
@@ -119,29 +152,6 @@ interface CreateAgentRequest {
   modelId?: string
 }
 
-interface AgentsResponse {
-  builtin: Array<{
-    id: string
-    name: string
-    description: string
-    is_builtin: true
-    system_prompt: string
-  }>
-  custom: Array<{
-    id: string
-    name: string
-    description?: string
-    system_prompt: string
-    category: string
-    model_id: string
-    conversation_count: number
-    is_public: boolean
-    created_at: string
-    updated_at: string
-    is_builtin: false
-  }>
-}
-
 // 创建自定义智能体
 export async function createCustomAgent(agent: CreateAgentRequest): Promise<CustomAgent> {
   const url = `${API_BASE_URL}/agents`
@@ -156,16 +166,38 @@ export async function createCustomAgent(agent: CreateAgentRequest): Promise<Cust
   return response.json()
 }
 
-// 获取所有智能体（内置 + 自定义）
-export async function getAllAgents(): Promise<AgentsResponse> {
+// 获取所有自定义智能体
+export async function getAllAgents() {
+  // 从后端获取自定义智能体
   const url = `${API_BASE_URL}/agents`
   const response = await fetch(url, {
     headers: getHeaders()
   })
   if (!response.ok) {
-    throw new Error('Failed to fetch agents')
+    throw new Error('Failed to fetch custom agents')
   }
-  return response.json()
+
+  const data = await response.json()
+
+  // 转换自定义智能体数据格式
+  return data.map((agent: any) => ({
+    ...agent,
+    id: agent.id,
+    name: agent.name,
+    description: agent.description || '',
+    icon: 'bot' // 默认图标
+  }))
+}
+
+/**
+ * 获取指定类型的智能体
+ */
+export async function getAgentsByType(type: 'system' | 'custom'): Promise<any[]> {
+  if (type === 'system') {
+    return await getSystemAgents()
+  } else {
+    return await getAllAgents()
+  }
 }
 
 // 获取单个自定义智能体
@@ -253,7 +285,7 @@ export async function sendMessage(
       }
 
       const decoder = new TextDecoder()
-      let fullContent = '' 
+      let fullContent = ''
       let buffer = ''
       let finalConversationId: string | undefined
 
@@ -274,7 +306,7 @@ export async function sendMessage(
             if (trimmed.startsWith('data: ')) {
               const data = trimmed.slice(6)
               if (data === '[DONE]') continue
-              
+
               try {
                 const parsed = JSON.parse(data)
                 // 兼容 Python 后端返回格式: { content: "...", conversationId: "..." }

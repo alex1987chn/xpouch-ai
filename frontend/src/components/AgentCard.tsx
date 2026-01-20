@@ -2,15 +2,18 @@ import { memo } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { Agent } from '@/types'
 import { cn } from '@/lib/utils'
+import { Trash2 } from 'lucide-react'
 
 interface AgentCardProps {
   agent: Agent
   isSelected: boolean
   onClick: () => void
+  onDelete?: () => void
   index?: number
+  showDeleteButton?: boolean
 }
 
-function AgentCard({ agent, isSelected, onClick, index: _index }: AgentCardProps) {
+function AgentCard({ agent, isSelected, onClick, onDelete, index: _index, showDeleteButton = false }: AgentCardProps) {
   return (
     <div
       onClick={onClick}
@@ -73,6 +76,18 @@ function AgentCard({ agent, isSelected, onClick, index: _index }: AgentCardProps
                 </span>
               </div>
             </div>
+
+            {showDeleteButton && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete?.()
+                }}
+                className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors text-red-600 dark:text-red-400"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </CardHeader>
 

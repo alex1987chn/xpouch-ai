@@ -12,6 +12,16 @@ from models import SubTask
 # 专家提示词模板
 # ============================================================================
 
+EXPERT_DESCRIPTIONS = {
+    "search": "搜索专家",
+    "coder": "编程专家",
+    "researcher": "研究专家",
+    "analyzer": "分析专家",
+    "writer": "写作专家",
+    "planner": "规划专家",
+    "image_analyzer": "图片分析专家"
+}
+
 EXPERT_PROMPTS = {
     "search": """你是一个信息搜索专家。
 
