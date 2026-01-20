@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🏗️ 架构重构
+
+**专家协作可视化系统重构**
+- 新增专家状态栏：实时显示专家执行状态（pending/running/completed/failed）
+- 专家卡片展示：图标 + 名称 + 状态指示灯
+- 点击展开详情：预览弹窗显示任务描述、耗时、输出、错误信息
+- 支持失败重试：失败状态的专家提供重试按钮
+- 后端事件增强：专家完成事件包含完整信息（duration_ms, status, output, error）
+
+**XPouchLayout 三区扁平化布局**
+- 移除 InteractiveCanvas 中间层，减少嵌套层级
+- 新架构：专家状态栏 + artifact + 对话面板（三者平级）
+- 专家状态栏：左侧区域顶部，固定高度（z-20）
+- Artifact 显示：占据剩余空间（flex-1, z-10）
+- 优势：z-index 管理简化，视觉层级更协调，扩展性更强
+
+**层级管理优化**
+- 专家预览弹窗：提升到 CanvasChatPage 根级别渲染（z-[100]）
+- Artifact 全屏预览：z-[99999]
+- 解决弹窗被 artifact/chat 面板遮挡的问题
+- 避免 stacking context 限制
+
 ### 🔧 功能修复
 
 **直连模式恢复**
