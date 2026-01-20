@@ -300,7 +300,7 @@ export default function CanvasChatPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.3 }}
-              className="relative w-full max-w-[95vw] h-[90vh] bg-white dark:bg-slate-900 rounded-none md:rounded-3xl shadow-2xl overflow-hidden flex flex-col border-0 md:border border-gray-200 dark:border-gray-800"
+              className="relative w-full max-w-[95vw] h-[90vh] md:h-[85vh] bg-white dark:bg-slate-900 rounded-none md:rounded-3xl shadow-2xl overflow-hidden flex flex-col border-0 md:border border-gray-200 dark:border-gray-800"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -336,7 +336,7 @@ export default function CanvasChatPage() {
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-auto p-6 bg-gray-50 dark:bg-slate-950 smooth-scroll">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 bg-gray-50 dark:bg-slate-950 smooth-scroll touch-pan-y touch-pinch-zoom"
                 {artifactType === 'code' && (
                   <CodeArtifact content={artifactContent} />
                 )}
