@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔧 功能修复
+
+**直连模式恢复**
+- 问题: 点击专家智能体卡片进入对话后，仍然走调度模式而非直连模式
+- 原因: 后端 `main.py` 中 `request.agentId` 带 `sys-` 前缀，但 `expert_types` 列表不含前缀，导致匹配失败
+- 修复: 去除 `sys-` 前缀后再比较专家类型
+- 影响: 恢复直连模式，点击专家卡片可直接调用对应专家，跳过指挥官调度
+
+**智能体名称显示修复**
+- 问题: 对话界面显示 "AI Assistant" 而非智能体真实名称（如"写作专家"）
+- 原因: `chatStore.ts` 引用不存在的 `@/data/agents` 文件，导致 `defaultAgents` 为空
+- 修复: 移除对 `@/data/agents` 的引用，改用 `SYSTEM_AGENTS` 并映射为 Agent 类型
+- 影响: FloatingChatPanel 现在正确显示当前智能体的名称和描述
+
+**Artifact 滚动修复**
+- 问题: 对话生成的 artifact 内容无法滚动查看
+- 原因: `ParticleGrid` 粒子元素缺少 `pointer-events-none`，遮挡了滚动交互；层级关系不明确
+- 修复 1: 给所有粒子添加 `pointer-events-none` 类
+- 修复 2: 设置 `ParticleGrid` 为 `z-0`（最底层）
+- 修复 3: 设置 artifact 内容容器为 `relative z-10`（在上层）
+- 修复 4: HTML artifact 容器添加 `overflow-auto`，与其他类型保持一致
+- 影响: 所有 artifact 类型现在可以正常滚动，包括移动端
+
 ### 📱 移动端 Artifact 滚动优化
 
 **CanvasChatPage.tsx - 移动端滚动问题修复**

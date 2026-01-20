@@ -70,7 +70,7 @@ export default function InteractiveCanvas({
         'relative h-full overflow-hidden flex flex-col',
         className
       )}>
-        <ParticleGrid isProcessing={isProcessing} className="absolute inset-0 dark:block hidden" />
+        <ParticleGrid isProcessing={isProcessing} className="absolute inset-0 dark:block hidden z-0 pointer-events-none" />
 
         <div className="flex-1 overflow-auto">
           <div className="w-full h-full">
@@ -89,7 +89,7 @@ export default function InteractiveCanvas({
                     'bg-white dark:bg-slate-900',
                     'shadow-2xl shadow-black/10 dark:shadow-black/40',
                     'overflow-hidden',
-                    'flex-1 flex flex-col'
+                    'flex-1 flex flex-col relative z-10'
                   )}>
                     <AnimatePresence mode="wait">
                       {currentType && (
@@ -143,27 +143,27 @@ export default function InteractiveCanvas({
                     </AnimatePresence>
                     <div className="flex-1 overflow-hidden">
                       {currentType === 'code' && (
-                        <div className="w-full h-full overflow-auto">
+                        <div className="w-full h-full overflow-y-auto overflow-x-hidden touch-pan-y touch-pinch-zoom">
                           <CodeArtifact content={currentContent} />
                         </div>
                       )}
                       {currentType === 'markdown' && (
-                        <div className="w-full h-full overflow-auto">
+                        <div className="w-full h-full overflow-y-auto overflow-x-hidden touch-pan-y touch-pinch-zoom">
                           <DocArtifact content={currentContent} />
                         </div>
                       )}
                       {currentType === 'search' && (
-                        <div className="w-full h-full overflow-auto">
+                        <div className="w-full h-full overflow-y-auto overflow-x-hidden touch-pan-y touch-pinch-zoom">
                           <SearchArtifact />
                         </div>
                       )}
                       {currentType === 'html' && (
-                        <div className="w-full h-full">
+                        <div className="w-full h-full overflow-y-auto overflow-x-hidden touch-pan-y touch-pinch-zoom">
                           <HtmlArtifact content={currentContent} />
                         </div>
                       )}
                       {currentType === 'text' && (
-                        <div className="w-full h-full overflow-auto">
+                        <div className="w-full h-full overflow-y-auto overflow-x-hidden touch-pan-y touch-pinch-zoom">
                           <TextArtifact content={currentContent} />
                         </div>
                       )}
