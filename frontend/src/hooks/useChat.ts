@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { useChatStore, type Message } from '@/store/chatStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import { sendMessage, type ApiMessage } from '@/services/api'
+import { getSystemAgent } from '@/constants/systemAgents'
 import { getDefaultModel } from '@/utils/config'
 import { generateId } from '@/utils/storage' // 仅保留 generateId，移除 LocalStorage 相关引用
+import type { AgentType } from '@/types'
 
 export function useChat() {
   const navigate = useNavigate()
@@ -26,12 +28,44 @@ export function useChat() {
     getCurrentAgent
   } = useChatStore()
 
+  // 判断智能体类型（系统 vs 自定义）
+  const getAgentType = useCallback((agentId: string): AgentType => {
+    // 检查是否为系统智能体（以 sys- 开头）
+    if (agentId.startsWith('sys-')) {
+      return 'system'
+    } else if (getSystemAgent(agentId)) {
+      return 'system'
+    }
+    return 'custom'
+  }, [])
+
+  // 生成 Thread ID（根据智能体类型）
+  const getThreadId = useCallback((agentId: string, userId?: string): string => {
+    const agentType = getAgentType(agentId)
+
+    if (agentType === 'system') {
+      // 系统智能体：使用 ${userId}_${agentId}
+      const clientId = localStorage.getItem('xpouch_client_id') || 'default-user'
+      // 提取语义化的 graphId（移除 sys- 前缀）
+      const graphId = agentId.replace('sys-', '')
+      return `exp_${clientId}_${graphId}`
+    } else {
+      // 自定义智能体：使用 cus_${agentId}
+      return `cus_${agentId}`
+    }
+  }, [getAgentType])
+
   // 发送消息核心逻辑
   const handleSendMessage = useCallback(async (content?: string) => {
     const userContent = content || inputMessage
     if (!userContent.trim()) return
 
-    console.log('[useChat] handleSendMessage called:', { userContent, currentConversationId, content })
+    if (!selectedAgentId) {
+      console.error('[useChat] 未选择智能体')
+      return
+    }
+
+    console.log('[useChat] handleSendMessage called:', { userContent, currentConversationId, selectedAgentId })
 
     // 1. 添加用户消息
     addMessage({ role: 'user', content: userContent })
@@ -51,7 +85,11 @@ export function useChat() {
           content: m.content
         }))
 
-      console.log('[useChat] Preparing request:', { chatMessages, selectedAgentId, currentConversationId })
+      // 判断智能体类型和生成 Thread ID
+      const agentType = getAgentType(selectedAgentId)
+      const threadId = getThreadId(selectedAgentId)
+
+      console.log('[useChat] Agent Info:', { agentType, agentId: selectedAgentId, threadId })
 
       // 3. 预先添加 AI 空消息（占位）
       const assistantMessageId = generateId()
@@ -132,7 +170,7 @@ export function useChat() {
       setIsTyping(false)
       abortControllerRef.current = null
     }
-  }, [inputMessage, messages, selectedAgentId, currentConversationId, getCurrentAgent, addMessage, setInputMessage, setIsTyping, updateMessage, setCurrentConversationId, navigate])
+  }, [inputMessage, messages, selectedAgentId, currentConversationId, getCurrentAgent, addMessage, setInputMessage, setIsTyping, updateMessage, setCurrentConversationId, navigate, getAgentType, getThreadId])
 
   // 停止生成
   const handleStopGeneration = useCallback(() => {

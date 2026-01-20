@@ -27,6 +27,7 @@ interface ChatState {
   setCurrentConversationId: (id: string | null) => void
   setLastActiveConversationId: (id: string | null) => void
   addCustomAgent: (agent: Agent) => void
+  setCustomAgents: (agents: Agent[] | ((prev: Agent[]) => Agent[])) => void
   
   // Getters
   getAllAgents: () => Agent[]
@@ -83,6 +84,12 @@ export const useChatStore = create<ChatState>()(
       
       addCustomAgent: (agent: Agent) => set((state: ChatState) => ({
         customAgents: [...state.customAgents, agent]
+      })),
+
+      setCustomAgents: (agentsOrUpdater: Agent[] | ((prev: Agent[]) => Agent[])) => set((state: ChatState) => ({
+        customAgents: typeof agentsOrUpdater === 'function'
+          ? agentsOrUpdater(state.customAgents)
+          : agentsOrUpdater
       })),
 
       // Getters

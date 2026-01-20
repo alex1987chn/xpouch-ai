@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🎨 UI/UX 优化
+
+**删除确认对话框**
+- 新增 `components/ui/dialog.tsx`：基于 Radix UI 的通用对话框组件
+- 新增 `components/DeleteConfirmDialog.tsx`：专门的删除确认对话框
+- 功能特性：
+  - 红色警告图标和提示
+  - 显示删除项名称
+  - "删除中"加载状态
+  - 支持取消/确认操作
+  - 异步操作支持
+- 更新 `HomePage.tsx`：集成删除确认对话框替代原生 confirm
+
+**智能体卡片点击修复**
+- 问题: `AgentCard` 在"我的智能体"标签页下点击无效（onClick 被禁用）
+- 原因: `showDeleteButton ? undefined : onClick` 条件判断错误
+- 修复: 移除条件判断，确保点击事件始终生效
+- 影响: 自定义智能体现在可以正常点击进入对话界面
+
+### 🐛 后端 Bug 修复
+
+**CustomAgent 拼写错误修复**
+- 问题: `backend/main.py` 中存在 8 处 `CustomomAgent` → `CustomAgent` 拼写错误
+- 影响: Python 编译失败，导致后端无法加载
+- 修复: 统一所有引用为正确的 `CustomAgent` 类名
+- 影响: 后端可以正常启动并处理请求
+
+**Python 缓存清理**
+- 问题: Python `__pycache__` 缓存损坏导致旧的错误代码仍被加载
+- 表现: "cannot import name 'EXPERT_DESCRIPTIONS'" 错误持续出现
+- 修复: 清理 167 个 `__pycache__` 目录，终止 14 个僵尸 Python 进程
+- 影响: 确保运行的是最新代码，缓存问题彻底解决
+
+**API 接口优化**
+- 优化: 移除 `/api/agents` 接口中的冗余 `CustomAgent` 导入
+- 影响: 代码更简洁，避免重复导入
+
 ### 🔧 Bug 修复与优化
 
 **CanvasChatPage.tsx - FileCode 未定义错误**

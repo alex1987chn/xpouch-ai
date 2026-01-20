@@ -191,48 +191,49 @@ async def get_all_agents(
     current_user: User = Depends(get_current_user)
 ):
     """
-    获取所有可用智能体（预定义专家 + 用户自定义）
-    
-    返回：
-    - builtin: 预定义的 6 个专家（用于复杂任务）
-    - custom: 用户创建的自定义智能体（用于简单对话）
+    获取当前用户的所有自定义智能体
+
+    注意：
+    - 系统专家（sys-search, sys-coder等）由前端常量管理，不通过API返回
+    - 此端点仅返回用户创建的自定义智能体
     """
-    from agents.experts import EXPERT_PROMPTS, EXPERT_DESCRIPTIONS
-    
-    # 预定义专家
-    builtin_agents = []
-    for expert_id, prompt in EXPERT_PROMPTS.items():
-        builtin_agents.append({
-            "id": expert_id,
-            "name": EXPERT_DESCRIPTIONS.get(expert_id, expert_id),
-            "description": prompt[:100] + "..." if len(prompt) > 100 else prompt,
-            "is_builtin": True,
-            "system_prompt": prompt
-        })
-    
-    # 用户自定义智能体
-    statement = select(CustomAgent).where(CustomAgent.user_id == current_user.id)
-    custom_agents = session.exec(statement).all()
-    
-    return {
-        "builtin": builtin_agents,
-        "custom": [
-            {
-                "id": agent.id,
+    try:
+        print(f"[API] /api/agents called, user_id: {current_user.id}")
+
+        # 用户自定义智能体（按创建时间降序，最新的在前）
+        statement = select(CustomAgent).where(CustomAgent.user_id == current_user.id).order_by(CustomAgent.created_at.desc())
+        print(f"[API] Query statement created")
+
+        custom_agents = session.exec(statement).all()
+        print(f"[API] Query executed, found {len(custom_agents)} agents")
+
+        # 构建返回结果，确保所有字段可序列化
+        result = []
+        for agent in custom_agents:
+            print(f"[API] Processing agent: {agent.id} - {agent.name}")
+            agent_data = {
+                "id": str(agent.id),
                 "name": agent.name,
-                "description": agent.description,
+                "description": agent.description or "",
                 "system_prompt": agent.system_prompt,
                 "category": agent.category,
                 "model_id": agent.model_id,
                 "conversation_count": agent.conversation_count,
                 "is_public": agent.is_public,
-                "created_at": agent.created_at.isoformat(),
-                "updated_at": agent.updated_at.isoformat(),
+                "created_at": agent.created_at.isoformat() if agent.created_at else None,
+                "updated_at": agent.updated_at.isoformat() if agent.updated_at else None,
                 "is_builtin": False
             }
-            for agent in custom_agents
-        ]
-    }
+            result.append(agent_data)
+
+        print(f"[API] Returning custom agents: {len(result)} items")
+        return result
+
+    except Exception as e:
+        print(f"[API] Error in /api/agents: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/agents/{agent_id}")

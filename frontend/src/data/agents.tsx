@@ -39,7 +39,8 @@ export const experts: Agent[] = [
     color: 'from-blue-500 to-cyan-500',
     category: '信息',
     modelId: 'deepseek-chat',
-    isDefault: true // 标记为首页默认智能体
+    isDefault: true, // 标记为首页默认智能体
+    is_builtin: true
   },
   {
     id: 'coder',
@@ -48,7 +49,8 @@ export const experts: Agent[] = [
     icon: <Code className="h-5 w-5" />,
     color: 'from-green-500 to-emerald-500',
     category: '开发',
-    modelId: 'deepseek-chat'
+    modelId: 'deepseek-chat',
+    is_builtin: true
   },
   {
     id: 'researcher',
@@ -57,7 +59,8 @@ export const experts: Agent[] = [
     icon: <FileText className="h-5 w-5" />,
     color: 'from-purple-500 to-violet-500',
     category: '研究',
-    modelId: 'deepseek-chat'
+    modelId: 'deepseek-chat',
+    is_builtin: true
   },
   {
     id: 'analyzer',
@@ -66,7 +69,8 @@ export const experts: Agent[] = [
     icon: <Layout className="h-5 w-5" />,
     color: 'from-rose-500 to-pink-500',
     category: '分析',
-    modelId: 'deepseek-chat'
+    modelId: 'deepseek-chat',
+    is_builtin: true
   },
   {
     id: 'writer',
@@ -75,7 +79,8 @@ export const experts: Agent[] = [
     icon: <PenTool className="h-5 w-5" />,
     color: 'from-amber-500 to-orange-500',
     category: '创作',
-    modelId: 'deepseek-chat'
+    modelId: 'deepseek-chat',
+    is_builtin: true
   },
   {
     id: 'planner',
@@ -84,7 +89,8 @@ export const experts: Agent[] = [
     icon: <MessageSquare className="h-5 w-5" />,
     color: 'from-indigo-500 to-blue-500',
     category: '规划',
-    modelId: 'deepseek-chat'
+    modelId: 'deepseek-chat',
+    is_builtin: true
   },
   {
     id: 'image_analyzer',
@@ -93,7 +99,8 @@ export const experts: Agent[] = [
     icon: <ImageIcon className="h-5 w-5" />,
     color: 'from-teal-500 to-cyan-500',
     category: '视觉',
-    modelId: 'deepseek-chat'
+    modelId: 'deepseek-chat',
+    is_builtin: true
   }
 ]
 
