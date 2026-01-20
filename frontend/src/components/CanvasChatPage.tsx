@@ -336,7 +336,7 @@ export default function CanvasChatPage() {
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 bg-gray-50 dark:bg-slate-950 smooth-scroll touch-pan-y touch-pinch-zoom"
+              <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 bg-gray-50 dark:bg-slate-950 smooth-scroll touch-pan-y touch-pinch-zoom">
                 {artifactType === 'code' && (
                   <CodeArtifact content={artifactContent} />
                 )}

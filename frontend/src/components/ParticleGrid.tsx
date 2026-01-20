@@ -76,14 +76,14 @@ export default function ParticleGrid({ isProcessing = false, className = '' }: P
           return (
             <motion.div
               key={particle.id}
-              initial={{ 
+              initial={{
                 opacity: 0,
                 scale: 0
               }}
               animate={{
                 opacity: isConverging ? convergeOpacity : particle.targetOpacity,
                 scale: isConverging ? convergeScale : 1,
-                x: isConverging 
+                x: isConverging
                   ? (centerX - particle.x) * 0.15
                   : 0,
                 y: isConverging
@@ -110,7 +110,7 @@ export default function ParticleGrid({ isProcessing = false, className = '' }: P
                   ease: "easeInOut"
                 }
               }}
-              className="absolute rounded-full"
+              className="absolute rounded-full pointer-events-none"
               style={{
                 left: particle.x,
                 top: particle.y,

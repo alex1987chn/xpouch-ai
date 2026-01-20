@@ -383,10 +383,15 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     expert_types = ["search", "coder", "researcher", "analyzer", "writer", "planner", "image_analyzer"]
     custom_agent = None
 
-    print(f"[MAIN] Expert types list: {expert_types}")
-    print(f"[MAIN] Checking: {request.agentId} in expert types: {request.agentId in expert_types}")
+    # 处理 sys- 前缀（系统专家智能体）
+    agent_id_for_check = request.agentId
+    if agent_id_for_check and agent_id_for_check.startswith("sys-"):
+        agent_id_for_check = agent_id_for_check[4:]  # 去掉 sys- 前缀
 
-    if request.agentId not in expert_types:
+    print(f"[MAIN] Expert types list: {expert_types}")
+    print(f"[MAIN] Checking: {request.agentId} -> {agent_id_for_check} in expert types: {agent_id_for_check in expert_types}")
+
+    if agent_id_for_check not in expert_types:
         # 可能是自定义智能体，从数据库加载
         print(f"[MAIN] Checking custom agent: {request.agentId}")
         custom_agent = session.get(CustomAgent, request.agentId)
@@ -529,13 +534,13 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             }
     
     # 预定义专家模式
-    print(f"[MAIN] 检查 agentId: {request.agentId}, expert_types: {expert_types}")
-    if request.agentId in expert_types:
-        print(f"[MAIN] 检测到直接专家模式: {request.agentId}")
+    print(f"[MAIN] 检查 agentId: {request.agentId} -> {agent_id_for_check}, expert_types: {expert_types}")
+    if agent_id_for_check in expert_types:
+        print(f"[MAIN] 检测到直接专家模式: {agent_id_for_check}")
         # 直接创建单个任务列表
         task_list = [{
             "id": str(uuid.uuid4()),
-            "expert_type": request.agentId,
+            "expert_type": agent_id_for_check,
             "description": request.message,
             "input_data": {},
             "priority": 0,
@@ -551,10 +556,10 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
 
         initial_state = {
             "messages": langchain_messages,
-            "current_agent": request.agentId,
+            "current_agent": agent_id_for_check,
             "task_list": task_list,
             "current_task_index": 0,
-            "strategy": f"直接专家模式 - {request.agentId}",
+            "strategy": f"直接专家模式 - {agent_id_for_check}",
             "expert_results": [],
             "final_response": ""
         }
@@ -563,7 +568,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
         # 指挥官模式：通过 LLM 拆解任务
         initial_state = {
             "messages": langchain_messages,
-            "current_agent": request.agentId,
+            "current_agent": agent_id_for_check,
             "task_list": [],
             "current_task_index": 0,
             "strategy": "",

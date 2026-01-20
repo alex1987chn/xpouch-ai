@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { type Agent, agents as defaultAgents } from '@/data/agents'
+import { SYSTEM_AGENTS } from '@/constants/systemAgents'
+import { type Agent } from '@/types'
 import { generateId } from '@/utils/storage'
 import { type Message, type Conversation } from '@/types'
 
@@ -95,12 +96,35 @@ export const useChatStore = create<ChatState>()(
       // Getters
       getAllAgents: () => {
         const state = get()
-        return [...defaultAgents, ...state.customAgents]
+        // 映射 SYSTEM_AGENTS 为 Agent 类型
+        const systemAgents = SYSTEM_AGENTS.map(sa => ({
+          id: sa.agentId,
+          name: sa.name,
+          description: sa.description,
+          category: sa.category,
+          isCustom: false,
+          is_builtin: true,
+          modelId: 'deepseek-chat',
+          icon: null, // 不需要 icon，在 UI 层处理
+          systemPrompt: '' // 不需要 systemPrompt
+        }))
+        return [...systemAgents, ...state.customAgents]
       },
-      
+
       getCurrentAgent: () => {
         const state = get()
-        const allAgents = [...defaultAgents, ...state.customAgents]
+        const systemAgents = SYSTEM_AGENTS.map(sa => ({
+          id: sa.agentId,
+          name: sa.name,
+          description: sa.description,
+          category: sa.category,
+          isCustom: false,
+          is_builtin: true,
+          modelId: 'deepseek-chat',
+          icon: null,
+          systemPrompt: ''
+        }))
+        const allAgents = [...systemAgents, ...state.customAgents]
         return allAgents.find(a => a.id === state.selectedAgentId)
       }
     }),
