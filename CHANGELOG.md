@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 📱 移动端 Artifact 滚动优化
+
+**CanvasChatPage.tsx - 移动端滚动问题修复**
+- 问题: 移动端 artifact 对话框无法滚动长内容
+- 原因: 缺少明确的滚动方向和触摸滚动优化
+- 修复 1: 内容区域明确指定 `overflow-y-auto overflow-x-hidden`
+- 修复 2: 添加 `touch-pan-y touch-pinch-zoom` 启用触摸滚动
+- 修复 3: 移动端高度调整为 `h-[90vh] md:h-[85vh]`
+- 影响: 移动端现在可以流畅地滚动长 artifact 内容
+
 ### 🎨 Artifact 颜色统一修复
 
 **SearchArtifact.tsx - 主题配色调整**
