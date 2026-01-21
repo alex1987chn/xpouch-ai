@@ -74,6 +74,10 @@ export default function DocArtifact({ content, className }: DocArtifactProps) {
               alt={alt || 'Image'}
               className="rounded-lg shadow-md max-w-full h-auto my-4"
               loading="lazy"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+              }}
             />
           ),
         }}
