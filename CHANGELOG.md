@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 📝 文档优化（P2-4）
+
+**utils/logger.ts - 完整 JSDoc 文档**
+- 为 `AppError` 类添加完整 JSDoc（@param, @example）
+- 为 `errorHandler` 对象添加详细方法文档
+- 为 6 个安全访问工具函数添加完整 JSDoc：
+  - `safeGet()` - 安全数组访问
+  - `safeGetProp()` - 安全对象属性访问
+  - `safeCall()` - 安全回调执行
+  - `safeString()` - 安全字符串转换
+  - `safeNumber()` - 安全数字转换
+  - `safeBoolean()` - 安全布尔值转换
+- 每个函数都包含：
+  - 完整的 `@description` 说明
+  - 详细的 `@param` 参数说明
+  - `@returns` 返回值说明
+  - `@example` 使用示例
+- 影响：
+  - IDE 智能提示完善
+  - 新开发者快速理解
+  - 减少代码注释负担
+
+**文档创建状态（部分完成）**
+- ✅ utils/logger.ts - 完整 JSDoc（已添加）
+- ✅ docs/DEVELOPMENT.md - 已创建框架
+- ⚠️ docs/API.md - 待创建
+- ⚠️ docs/ARCHITECTURE.md - 待创建
+- ⚠️ Storybook 组件文档 - 待配置
+- ⚠️ docs/DEPLOYMENT.md - 待创建
+
 ### ⚡ 性能优化与代码重构（P1）
 
 **useChat.ts - 移除直接 state 读取模式（P1-1）**
