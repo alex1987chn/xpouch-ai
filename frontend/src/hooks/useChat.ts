@@ -18,6 +18,27 @@ const debug = DEBUG
   ? (...args: unknown[]) => console.log('[useChat]', ...args)
   : () => {}
 
+/**
+ * 聊天 Hook
+ *
+ * @description
+ * 管理聊天消息、专家激活、SSE 流式响应的核心 Hook
+ * 提供发送消息、取消消息、专家状态管理等功能
+ *
+ * @returns {
+ *   sendMessage: 发送消息函数
+ *   cancelMessage: 取消消息函数
+ *   activeExpertId: 当前激活的专家 ID
+ * }
+ *
+ * @example
+ * ```typescript
+ * const { sendMessage, cancelMessage, activeExpertId } = useChat()
+ * await sendMessage('你好，帮我搜索信息')
+ * cancelMessage() // 取消正在发送的消息
+ * console.log(activeExpertId) // 'search'
+ * ```
+ */
 export function useChat() {
   const navigate = useNavigate()
   const [activeExpertId, setActiveExpertId] = useState<string | null>(null)
