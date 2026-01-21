@@ -116,7 +116,12 @@ const router = createBrowserRouter([
   }
 ])
 
-createRoot(document.getElementById('root')!).render(
+// 防止 HMR 时重复调用 createRoot
+const container = document.getElementById('root')!
+const root = (container as any)._reactRoot || createRoot(container)
+;(container as any)._reactRoot = root
+
+root.render(
   <StrictMode>
     <ErrorBoundary>
       <AppProvider>

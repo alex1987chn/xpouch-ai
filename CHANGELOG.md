@@ -223,6 +223,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔧 Bug 修复与优化
 
+**main.tsx - React 重复 createRoot 警告修复**
+- 问题: 控制台警告 "You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before"
+- 原因: Vite 热重载（HMR）时多次调用 createRoot()，在同一个 DOM 容器上创建多个 root
+- 修复: 将 root 实例缓存在容器的 `_reactRoot` 属性中，HMR 时复用现有 root
+- 影响: 开发环境不再出现 createRoot 重复警告，HMR 行为更稳定
+
 **HomePage.tsx - 无限循环请求修复**
 - 问题: 首页疯狂请求 `/api/agents`，造成性能浪费
 - 原因: 路由监听 useEffect 依赖了 `customAgents`，导致无限循环（路由变化→setRefreshKey→请求→更新customAgents→再次触发）
