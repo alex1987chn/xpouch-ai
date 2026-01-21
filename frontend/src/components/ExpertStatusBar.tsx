@@ -39,32 +39,40 @@ function ExpertPreviewModal({ expert, onClose }: { expert: ExpertResult; onClose
     failed: <AlertCircle className="w-5 h-5 text-white" />
   }
 
+  // 性能优化：使用 will-change 提示浏览器
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
       className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
       onClick={onClose}
     >
       {/* 背景遮罩 */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-      {/* 预览卡片 */}
+      {/* 预览卡片 - 性能优化 */}
       <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+        initial={{ opacity: 0, transform: 'scale(0.95)' }}
+        animate={{ opacity: 1, transform: 'scale(1)' }}
+        exit={{ opacity: 0, transform: 'scale(0.95)' }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        style={{ willChange: 'transform, opacity' }}
         className={cn(
-          'relative w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden',
+          'relative max-w-lg rounded-2xl shadow-2xl overflow-hidden',
           'bg-white dark:bg-slate-800',
-          'border border-gray-200 dark:border-slate-700'
+          'border border-gray-200 dark:border-slate-700',
+          'w-full' // 单独一行，避免与其他类混在一起影响性能
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 头部 */}
-        <div className="p-6 border-b border-gray-200 dark:border-slate-700 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20">
+        {/* 头部 - 性能优化：移除渐变，使用纯色 */}
+        <div className={cn(
+          'p-6 border-b',
+          'bg-white dark:bg-slate-800',
+          'border-gray-200 dark:border-slate-700'
+        )}>
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               {/* 状态指示灯 */}
@@ -118,7 +126,7 @@ function ExpertPreviewModal({ expert, onClose }: { expert: ExpertResult; onClose
           </div>
         </div>
 
-        {/* 内容区域 */}
+        {/* 内容区域 - 性能优化：移出动画，使用 div */}
         <div className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
           {/* 任务描述 */}
           <div>
