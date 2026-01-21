@@ -223,6 +223,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ⚡ 性能优化与代码重构（P0）
 
+**utils/logger.ts - 统一错误处理系统**
+- 创建 `AppError` 类：规范化错误对象，包含 code、originalError
+- 创建 `errorHandler` 对象：
+  - `handle()`: 异步错误处理，记录 + 发送监控（TODO）+ 用户提示（TODO）
+  - `handleSync()`: 同步错误处理
+  - `normalizeError()`: 规范化任意错误为 AppError
+  - `getUserMessage()`: 获取用户友好的错误消息
+- 创建 `withErrorHandler()` 装饰器：自动捕获函数错误
+- 创建 `safeExecute()` 快捷函数：简化装饰器使用
+- 影响：
+  - 错误处理统一，易于维护
+  - 支持 TODO 的错误监控和用户提示集成
+  - 自动错误捕获，减少遗漏
+
+**useChat.ts - 应用统一错误处理**
+- 引入 `errorHandler` 替代手动 console.error
+- 捕获 AbortError：显示 debug 日志
+- 捕获其他错误：使用 errorHandler.handle() + getUserMessage()
+- 添加用户友好的错误消息到聊天记录
+- 影响：
+  - 错误处理标准化
+  - 用户体验提升（友好错误消息）
+  - 易于集成错误监控服务
+
+**store/userStore.ts - 应用统一错误处理**
+- 引入 `errorHandler` 替代手动 console.error
+- fetchUser: 使用 errorHandler.handleSync()
+- updateUser: 使用 errorHandler.handleSync()
+- 错误消息使用 errorHandler.getUserMessage()
+- 影响：
+  - 错误处理统一
+  - 错误消息用户友好
+
 **useChat.ts - 核心重构优化**
 - 添加开发环境判断：`const DEBUG = import.meta.env.DEV`
 - 创建统一调试函数：`const debug = DEBUG ? console.log : () => {}`
