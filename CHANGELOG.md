@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🐛 Bug 修复
+
+**CanvasChatPage.tsx - 修复编译错误和优化依赖数组**
+- 添加缺失的 `useMemo` 导入到 React 导入语句
+- 优化 `expertIcons` 的 `useMemo` 依赖数组：移除外部导入的静态组件（`Code`、`FileText`、`Search`、`HtmlIcon`、`TextIcon`）
+- 修复 `expertColors` 的 `useMemo` 括号闭合问题
+- 影响：
+  - 修复构建失败：`Expected ")" but found "const"`
+  - 遵循 React 最佳实践：静态导入的组件不放入依赖数组
+  - 代码更规范，减少不必要的重计算
+  - Linter 错误从 38 个减少到 1 个
+
 ### 🚀 性能优化
 
 **CanvasChatPage.tsx - 修复频繁重绘问题**

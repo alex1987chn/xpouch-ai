@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, X, Code, FileText, Search, FileCode as HtmlIcon, FileText as TextIcon, Copy, Check, Maximize2 } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
@@ -241,7 +241,7 @@ export default function CanvasChatPage() {
     search: { from: 'from-violet-500', to: 'to-pink-600' },
     html: { from: 'from-orange-500', to: 'to-amber-600' },
     text: { from: 'from-slate-500', to: 'to-gray-600' }
-  }, [])
+  }), [])
 
   // 图标映射（用于标题栏）
   const expertIcons = useMemo(() => ({
@@ -250,7 +250,7 @@ export default function CanvasChatPage() {
     search: Search,
     html: HtmlIcon,
     text: TextIcon
-  }), [Code, FileText, Search, HtmlIcon, TextIcon])
+  }), [])
 
   // Artifact显示内容（使用 useMemo 避免重复创建）
   const ArtifactContent = useMemo(() => (
@@ -336,15 +336,15 @@ export default function CanvasChatPage() {
         </div>
       ) : null}
     </>
-  ), [artifactType, artifactContent, handleCopy, copied, getArtifactTitle, expertColors, expertIcons, Code, FileText, Search, HtmlIcon, TextIcon, Maximize2, Check, Copy])
+  ), [artifactType, artifactContent, handleCopy, copied, getArtifactTitle, expertColors, expertIcons])
 
   // 专家状态栏内容（使用 useMemo 避免重复创建）
   const ExpertBarContent = useMemo(() => (
     <ExpertStatusBar previewExpert={previewExpert} setPreviewExpert={setPreviewExpert} />
   ), [previewExpert, setPreviewExpert])
 
-  // 创建聊天内容组件（使用 useMemo 避免重复创建）
-  const ChatContent = useMemo(() => (viewMode: 'chat' | 'preview', setViewMode: (mode: 'chat' | 'preview') => void) => (
+  // 创建聊天内容组件（使用 useCallback 避免重复创建）
+  const ChatContent = useCallback((viewMode: 'chat' | 'preview', setViewMode: (mode: 'chat' | 'preview') => void) => (
     <div className="relative flex-1 flex flex-col min-h-0">
       {/* 专家调度看板 - 浮动在顶部，z-index 高于聊天面板 */}
       {activeExpertId && (
@@ -368,7 +368,7 @@ export default function CanvasChatPage() {
         onStopGeneration={handleStopGeneration}
       />
     </div>
-  )), [messages, inputMessage, setInputMessage, handleSubmitMessage, isTyping, getCurrentAgent, isChatMinimized, setIsChatMinimized, handleStopGeneration, activeExpertId])
+  ), [messages, inputMessage, setInputMessage, handleSubmitMessage, isTyping, getCurrentAgent, isChatMinimized, setIsChatMinimized, handleStopGeneration, activeExpertId])
 
   return (
     <>
