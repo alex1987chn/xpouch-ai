@@ -19,6 +19,7 @@ const EXPERT_CONFIG: Record<string, { icon: string; color: string; name: string 
 
 // 专家详情预览卡片
 function ExpertPreviewModal({ expert, onClose }: { expert: ExpertResult; onClose: () => void }) {
+  const { t } = useTranslation()
   const config = EXPERT_CONFIG[expert.expertType] || { icon: '🤖', color: 'gray', name: '未知专家' }
 
   // 优先使用 AI 返回的自定义标题，否则使用默认名称

@@ -221,6 +221,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 修复 2: 优化滚动层级，将 `overflow-auto` 从外层移到内层，确保只有内容区域滚动
 - 影响: 移动端预览模式下，专家状态栏不再遮挡 Artifact 内容，滚动体验更流畅
 
+**ExpertStatusBar.tsx - 点击预览 Artifact 报错**
+- 问题: 点击专家卡片预览时，页面报错 "ReferenceError: t is not defined"
+- 原因: `ExpertPreviewModal` 组件中使用了 `t('taskDescription')`，但组件内部未调用 `useTranslation()` hook
+- 修复: 在 `ExpertPreviewModal` 组件中添加 `const { t } = useTranslation()`
+- 影响: 专家预览功能现在可以正常工作，点击专家卡片可以查看详细信息
+
 **CanvasChatPage.tsx - FileCode 未定义错误**
 - 问题: 使用 `FileCode` 组件但未导入，导入时使用了别名 `HtmlIcon`
 - 修复: 将第 312 行的 `<FileCode />` 改为 `<HtmlIcon />`
