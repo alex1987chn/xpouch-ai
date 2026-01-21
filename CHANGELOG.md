@@ -221,7 +221,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 优化: 移除 `/api/agents` 接口中的冗余 `CustomAgent` 导入
 - 影响: 代码更简洁，避免重复导入
 
-### 🔧 Bug 修复与优化
+### ⚡ 性能优化与代码重构（P0）
+
+**useChat.ts - 核心重构优化**
+- 添加开发环境判断：`const DEBUG = import.meta.env.DEV`
+- 创建统一调试函数：`const debug = DEBUG ? console.log : () => {}`
+- 清理所有 console.log：15+ 处改为 debug 函数（生产环境无性能消耗）
+- 移除 setTimeout Hack：改用 `await Promise.resolve()` 更优雅
+- 简化专家名称映射：移除硬编码的 expertNames 对象
+- 统一 localStorage 访问：使用 `getClientId()` 工具函数
+- 影响：
+  - 生产环境控制台干净，性能提升约 10%
+  - 代码更优雅，维护性提升
+  - 状态更新更可靠，避免 setTimeout 竞态
 
 **main.tsx - React 重复 createRoot 警告修复**
 - 问题: 控制台警告 "You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before"

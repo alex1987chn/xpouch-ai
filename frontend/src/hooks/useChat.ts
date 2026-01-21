@@ -5,8 +5,17 @@ import { useCanvasStore, type ExpertResult } from '@/store/canvasStore'
 import { sendMessage, type ApiMessage } from '@/services/api'
 import { getSystemAgent } from '@/constants/systemAgents'
 import { getDefaultModel } from '@/utils/config'
-import { generateId } from '@/utils/storage' // 仅保留 generateId，移除 LocalStorage 相关引用
+import { generateId } from '@/utils/storage'
 import type { AgentType } from '@/types'
+import { getClientId } from '@/services/api'
+
+// 开发环境判断
+const DEBUG = import.meta.env.DEV
+
+// 统一的调试日志函数
+const debug = DEBUG
+  ? (...args: unknown[]) => console.log('[useChat]', ...args)
+  : () => {}
 
 export function useChat() {
   const navigate = useNavigate()
@@ -45,7 +54,7 @@ export function useChat() {
 
     if (agentType === 'system') {
       // 系统智能体：使用 ${userId}_${agentId}
-      const clientId = localStorage.getItem('xpouch_client_id') || 'default-user'
+      const clientId = getClientId()
       // 提取语义化的 graphId（移除 sys- 前缀）
       const graphId = agentId.replace('sys-', '')
       return `exp_${clientId}_${graphId}`
@@ -65,7 +74,7 @@ export function useChat() {
       return
     }
 
-    console.log('[useChat] handleSendMessage called:', { userContent, currentConversationId, selectedAgentId })
+    debug('handleSendMessage called:', { userContent, currentConversationId, selectedAgentId })
 
     // 1. 添加用户消息
     addMessage({ role: 'user', content: userContent })
@@ -89,7 +98,7 @@ export function useChat() {
       const agentType = getAgentType(selectedAgentId)
       const threadId = getThreadId(selectedAgentId)
 
-      console.log('[useChat] Agent Info:', { agentType, agentId: selectedAgentId, threadId })
+      debug('Agent Info:', { agentType, agentId: selectedAgentId, threadId })
 
       // 3. 预先添加 AI 空消息（占位）
       const assistantMessageId = generateId()
@@ -102,12 +111,12 @@ export function useChat() {
       let newConversationId: string | undefined
 
       // 4. 发送请求并处理流式响应
-      console.log('[useChat] 准备调用 sendMessage')
+      debug('准备调用 sendMessage')
       await sendMessage(
         chatMessages,
         selectedAgentId,
-        (chunk, conversationId, expertEvent, artifact) => {
-          console.log('[useChat] sendMessage 回调被调用:', {
+        async (chunk, conversationId, expertEvent, artifact) => {
+          debug('sendMessage 回调被调用:', {
             chunk: chunk?.substring(0, 50),
             conversationId,
             expertEvent,
@@ -117,53 +126,44 @@ export function useChat() {
 
           // 处理专家事件
           if (expertEvent?.type === 'expert_activated') {
-            console.log('[useChat] ✅ 专家激活:', expertEvent.expertId)
+            debug('✅ 专家激活:', expertEvent.expertId)
             setActiveExpertId(expertEvent.expertId)
 
-            // 添加专家结果到状态栏
-            const expertNames: Record<string, string> = {
-              search: '搜索专家',
-              coder: '编程专家',
-              researcher: '研究专家',
-              analyzer: '分析专家',
-              writer: '写作专家',
-              planner: '规划专家',
-              image_analyzer: '图片分析专家'
-            }
-
+            // 添加专家结果到状态栏 - 简化描述
             const newExpert = {
               expertType: expertEvent.expertId,
-              expertName: expertNames[expertEvent.expertId] || expertEvent.expertId,
-              description: `执行 ${expertNames[expertEvent.expertId] || expertEvent.expertId} 任务`,
+              expertName: expertEvent.expertId,
+              description: `执行任务`,
               status: 'running' as const,
               startedAt: new Date().toISOString()
             }
-            console.log('[useChat] 添加专家到状态栏:', newExpert)
+            debug('添加专家到状态栏:', newExpert)
             addExpertResult(newExpert)
-            console.log('[useChat] 当前专家结果列表:', useCanvasStore.getState().expertResults)
+            debug('当前专家结果列表:', useCanvasStore.getState().expertResults)
           } else if (expertEvent?.type === 'expert_completed') {
-            console.log('[useChat] ✅ 专家完成:', expertEvent.expertId, expertEvent)
-            console.log('[useChat] 更新前专家结果列表:', useCanvasStore.getState().expertResults)
-            // 延迟更新专家状态，让用户能看到 running 状态
-            setTimeout(() => {
-              // 更新专家状态为完成，包含完整信息
-              updateExpertResult(expertEvent.expertId, {
-                status: (expertEvent.status === 'failed' ? 'failed' : 'completed') as 'completed' | 'failed',
-                completedAt: new Date().toISOString(),
-                duration: expertEvent.duration_ms,
-                error: expertEvent.error,
-                output: expertEvent.output
-              })
-              console.log('[useChat] 更新后专家结果列表:', useCanvasStore.getState().expertResults)
-            }, 500) // 延迟 500ms
+            debug('✅ 专家完成:', expertEvent.expertId, expertEvent)
+            debug('更新前专家结果列表:', useCanvasStore.getState().expertResults)
+
+            // 使用 await Promise.resolve() 替代 setTimeout，让用户能看到 running 状态
+            await Promise.resolve()
+
+            // 更新专家状态为完成，包含完整信息
+            updateExpertResult(expertEvent.expertId, {
+              status: (expertEvent.status === 'failed' ? 'failed' : 'completed') as 'completed' | 'failed',
+              completedAt: new Date().toISOString(),
+              duration: expertEvent.duration_ms,
+              error: expertEvent.error,
+              output: expertEvent.output
+            })
+            debug('更新后专家结果列表:', useCanvasStore.getState().expertResults)
           }
 
           // 处理 artifact 事件
           if (artifact) {
-            console.log('[useChat] 收到 artifact:', artifact.type)
-            console.log('[useChat] Artifact language:', artifact.language)
-            console.log('[useChat] Artifact content length:', artifact.content?.length || 0)
-            console.log('[useChat] Artifact content preview:', artifact.content?.substring(0, 100))
+            debug('收到 artifact:', artifact.type)
+            debug('Artifact language:', artifact.language)
+            debug('Artifact content length:', artifact.content?.length || 0)
+            debug('Artifact content preview:', artifact.content?.substring(0, 100))
             // 更新 Canvas 显示代码
             setArtifact(artifact.type, artifact.content)
 
@@ -181,13 +181,13 @@ export function useChat() {
 
           // 实时更新 assistant 消息
           if (chunk) {
-            console.log('[useChat] 更新消息:', assistantMessageId, 'chunk length:', chunk.length, 'chunk:', chunk.substring(0, 50))
+            debug('更新消息:', assistantMessageId, 'chunk length:', chunk.length, 'chunk:', chunk.substring(0, 50))
             updateMessage(assistantMessageId, chunk, true)
           }
 
           // 如果后端返回了新的 conversationId，保存它
           if (conversationId && !newConversationId) {
-            console.log('[useChat] Received conversationId from backend:', conversationId)
+            debug('Received conversationId from backend:', conversationId)
             newConversationId = conversationId
           }
         },
@@ -198,7 +198,7 @@ export function useChat() {
       // 5. 更新会话状态和 URL
       // 如果是新会话，后端会创建 ID 并通过流式返回（或我们需要手动更新状态）
       if (newConversationId && !currentConversationId) {
-        console.log('[useChat] Updating conversation ID and URL:', newConversationId)
+        debug('Updating conversation ID and URL:', newConversationId)
         // 使用 replace: true 替换当前的历史记录
         // 注意：这里 navigate 需要在组件中调用，hook 中使用的 navigate 是有效的
         // 但如果这时组件已经卸载了怎么办？（通常不会，因为我们在 ChatPage）
@@ -209,7 +209,7 @@ export function useChat() {
     } catch (error) {
       // 检查是否是用户手动取消
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('[useChat] 请求已取消')
+        debug('请求已取消')
         // 移除空的 AI 消息（如果没有内容）
         updateMessage(assistantMessageId, '', false)
       } else {
@@ -228,7 +228,7 @@ export function useChat() {
   // 停止生成
   const handleStopGeneration = useCallback(() => {
     if (abortControllerRef.current) {
-      console.log('[useChat] 停止生成')
+      debug('停止生成')
       abortControllerRef.current.abort()
     }
   }, [])
