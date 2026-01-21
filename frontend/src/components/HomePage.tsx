@@ -88,17 +88,20 @@ export default function HomePage() {
       if (stateAgentTab === 'my') {
         // 从创建页面返回，切换到"我的智能体"标签
         setAgentTab('my')
-        // 选中第一个自定义智能体
-        if (customAgents.length > 0) {
-          setSelectedAgentId(customAgents[0].id)
-        }
       } else {
         // 正常返回首页，重置为精选智能体标签
         setAgentTab('featured')
         setSelectedAgentId(SYSTEM_AGENTS[0].agentId)
       }
     }
-  }, [location.pathname, location.state, setSelectedAgentId, customAgents])
+  }, [location.pathname, location.state, setSelectedAgentId])
+
+  // 在 customAgents 更新后，如果是 my 标签页且没有选中的 agent，选中第一个
+  useEffect(() => {
+    if (agentTab === 'my' && customAgents.length > 0 && !selectedAgentId) {
+      setSelectedAgentId(customAgents[0].id)
+    }
+  }, [customAgents, agentTab, selectedAgentId, setSelectedAgentId])
 
   // 使用 useMemo 优化智能体列表计算
   const displayMyAgents = useMemo<Agent[]>(

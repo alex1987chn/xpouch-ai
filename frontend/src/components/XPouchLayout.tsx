@@ -145,8 +145,8 @@ export default function XPouchLayout({
               </div>
 
               {/* 移动端：Artifact 显示区域 */}
-              <div className="h-full w-full overflow-auto relative pt-20">
-                <div className="w-full p-4">
+              <div className="h-full w-full flex flex-col pt-24">
+                <div className="flex-1 overflow-auto p-4">
                   {ArtifactContent}
                 </div>
               </div>
