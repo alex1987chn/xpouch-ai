@@ -10,7 +10,7 @@ import { useApp } from '@/providers/AppProvider'
 
 interface HistoryPageProps {
   onConversationClick: (id: string) => void
-  onSelectConversation: (conversation: any) => void // 弱化类型，因为现在使用 API 返回的结构
+  onSelectConversation: (conversation: Conversation) => void // 强类型，API 返回的结构
 }
 
 export default function HistoryPage({ onConversationClick, onSelectConversation }: HistoryPageProps) {
@@ -19,7 +19,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
   const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
-  
+
   const loadHistory = async () => {
     try {
       setLoading(true)
@@ -38,7 +38,9 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
-    if (confirm(t('confirmDelete' as any) || 'Are you sure you want to delete this conversation?')) {
+    // 使用字符串字面量作为兜底，避免类型断言
+    const confirmMessage = t('confirmDelete') || 'Are you sure you want to delete this conversation?'
+    if (confirm(confirmMessage)) {
       try {
         await apiDeleteConversation(id)
         loadHistory()
@@ -163,10 +165,10 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
                 <MessageSquare className="w-8 h-8 text-gray-400 dark:text-gray-500" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                {t('noHistory' as any) || 'No conversation history'}
+                {t('noHistory') || 'No conversation history'}
               </h3>
               <p className="text-gray-500 dark:text-gray-400">
-                {t('startChat' as any) || 'Start a new chat to see it here'}
+                {t('startChat') || 'Start a new chat to see it here'}
               </p>
             </div>
           )}

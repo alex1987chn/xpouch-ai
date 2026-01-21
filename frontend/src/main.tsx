@@ -118,8 +118,16 @@ const router = createBrowserRouter([
 
 // 防止 HMR 时重复调用 createRoot
 const container = document.getElementById('root')!
-const root = (container as any)._reactRoot || createRoot(container)
-;(container as any)._reactRoot = root
+
+// 定义 HMR 根缓存类型
+interface HMRRootContainer extends HTMLElement {
+  _reactRoot?: any
+}
+
+// 使用类型断言（HMR 特殊场景）
+const hmrContainer = container as HMRRootContainer
+const root = hmrContainer._reactRoot || createRoot(container)
+hmrContainer._reactRoot = root
 
 root.render(
   <StrictMode>
