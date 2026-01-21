@@ -208,6 +208,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔧 Bug 修复与优化
 
+**HomePage.tsx - 无限循环请求修复**
+- 问题: 首页疯狂请求 `/api/agents`，造成性能浪费
+- 原因: 路由监听 useEffect 依赖了 `customAgents`，导致无限循环（路由变化→setRefreshKey→请求→更新customAgents→再次触发）
+- 修复: 从路由监听 useEffect 的依赖数组中移除 `customAgents`，将"选中第一个自定义智能体"逻辑提取到独立的 useEffect 中
+- 影响: 首页只会加载一次智能体列表，不再重复请求
+
+**XPouchLayout.tsx - 移动端专家状态栏遮挡 Artifact**
+- 问题: 移动端预览模式下，专家状态栏遮挡了生成的 Artifact 内容
+- 原因: Artifact 区域的顶部 padding（pt-20 = 80px）不足以容纳对话按钮和专家状态栏
+- 修复 1: 将顶部 padding 从 `pt-20`（80px）增加到 `pt-24`（96px）
+- 修复 2: 优化滚动层级，将 `overflow-auto` 从外层移到内层，确保只有内容区域滚动
+- 影响: 移动端预览模式下，专家状态栏不再遮挡 Artifact 内容，滚动体验更流畅
+
 **CanvasChatPage.tsx - FileCode 未定义错误**
 - 问题: 使用 `FileCode` 组件但未导入，导入时使用了别名 `HtmlIcon`
 - 修复: 将第 312 行的 `<FileCode />` 改为 `<HtmlIcon />`
