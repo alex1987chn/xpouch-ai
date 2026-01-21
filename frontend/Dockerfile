@@ -1,10 +1,16 @@
 # 阶段 1: 构建
-FROM node:20-alpine as builder
-WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
+FROM node:22-alpine as builder
+
 # 安装 pnpm
 RUN npm install -g pnpm
-RUN pnpm install
+
+WORKDIR /app
+
+# 复制依赖文件并安装（利用 Docker 缓存）
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile
+
+# 复制源码并构建
 COPY . .
 RUN pnpm run build
 

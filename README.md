@@ -21,37 +21,49 @@
 - 生成结构化 Markdown 响应
 - 包含执行统计和后续建议
 
-### 🎨 双层交互画布 (核心亮点)
+### 🎨 XPouchLayout 三区扁平布局 (核心亮点)
 
 **架构层级**：应用级布局 + 页面级布局
 
-**应用级布局 (Layout.tsx + MainChatLayout.tsx)** - 所有页面共享
+**应用级布局 (AppLayout)** - 所有页面共享
 - **侧边栏**：固定 92px 宽度，z-index: 150，全局优先级
 - **主内容区域**：通过 React Router Outlet 渲染子页面
 - **移动端适配**：汉堡菜单 + 遮罩层 + 响应式侧边栏
+- **状态管理**：AppProvider 统一管理 Sidebar 和 Dialogs 状态
 
-**页面级布局 (XPouchLayout.tsx)** - 聊天页面专用
-- **左侧 - Artifact 容器**：
+**页面级布局 (XPouchLayout)** - 聊天页面专用（三区扁平布局）
+- **左侧 - 专家状态栏**：
+  - 实时显示专家执行状态（pending/running/completed/failed）
+  - 点击展开详情：预览弹窗显示任务描述、耗时、输出、错误信息
+  - 固定高度，z-20
+- **中间 - Artifact 容器**：
   - 代码/HTML/Markdown/搜索结果渲染
-  - 支持全屏预览（z-index: 99999）
+  - 占据剩余空间（flex-1, z-10）
+  - 支持全屏预览（z-[100]）
   - 深色面板，圆角设计（PC端）
 - **右侧 - 悬浮对话面板**：
   - 毛玻璃效果 (`bg-white/95 backdrop-blur-md`)
   - **Flexbox 滚动架构**：消息区域独立滚动，Header/Input 固定
-  - **PC 端**：400px 宽度，圆角设计，可收起/展开
+  - **PC 端**：30% 宽度（flex-[3]），圆角设计，可收起/展开
   - **移动端**：全屏显示，手势滑动切换对话/产物
-  - **智能体状态显示**：顶部浮动状态条显示当前执行专家
+  - 层级：z-[50]
 
 **全屏预览模式**：
 - 点击放大按钮进入全屏预览
 - 隐藏对话面板，最大化 Artifact 显示区域
 - 背景遮罩 + 居中展示，支持点击关闭
+- 层级：z-[100]
 
 ### 🤖 AI 智能体系统
 - **8 个内置智能体**：不同场景的专业助手
 - **自定义智能体创建**：用户可构建个性化 AI 助手
 - **LangGraph Python 工作流**：模块化智能体引擎
 - **任务会话管理**：SubTask + TaskSession 数据模型
+- **双模路由系统**：
+  - **简单对话模式**（默认）：使用 sys-assistant 通用助手（后端直接 LLM 调用）
+  - **复杂任务模式**：使用 sys-commander 触发指挥官模式（LangGraph 调度多专家）
+  - 两个按钮位于输入框左侧，当前选中的模式显示紫色高亮背景
+  - 前端通过 conversationMode 状态控制路由逻辑
 
 ### 💬 对话体验
 - **实时打字效果**：自然的消息生成与打字动画
@@ -75,6 +87,11 @@
 - ✅ JSON 解析器：兼容所有 LLM 提供商
 - ✅ 响应式布局：移动端/平板/桌面完美适配
 - ✅ Flexbox 滚动架构：Header/Input 固定，消息独立滚动
+- ✅ XPouchLayout 三区扁平布局
+- ✅ 专家状态栏和可视化系统
+- ✅ 双模路由系统（简单对话/复杂任务）
+- ✅ 完整国际化支持（中/英/日）
+- ✅ Provider/Context 系统重构
 - 🚧 知识库集成（RAG）
 - 🚧 用户认证与权限管理
 
@@ -88,10 +105,12 @@
 ### 🎯 技术特性
 - **响应式设计**：完美适配移动端、平板和桌面设备
 - **深色模式支持**：根据系统偏好自动切换主题
-- **国际化**：支持英语、中文和日语
+- **国际化**：支持英语、中文和日语（i18n，40+ 翻译键）
 - **路由管理**：React Router 7，支持 URL 分享会话
 - **Glassmorphism**：毛玻璃效果 + 深度阴影 + 流畅动画
 - **粒子网格**：动态背景效果，处理消息时触发汇聚动画
+- **Provider/Context 系统**：AppProvider 统一管理全局状态
+- **专家协作可视化**：实时显示专家执行状态和详细任务信息
 
 ### 💾 数据持久化
 - **SQLite 数据库**：SQLModel ORM 框架
@@ -214,59 +233,51 @@ xpouch-ai/
 ├── frontend/                      # 🌐 React 前端应用
 │   ├── src/
 │   │   ├── components/            # React 组件
-│   │   │   ├── Layout.tsx             # 应用级布局容器
-│   │   │   ├── MainChatLayout.tsx     # 统一侧边栏布局（所有页面）
-│   │   │   ├── XPouchLayout.tsx       # 双层交互画布布局（聊天页专用）
+│   │   │   ├── AppLayout.tsx           # 应用级布局容器
+│   │   │   ├── XPouchLayout.tsx        # 三区扁平布局（聊天页专用）
 │   │   │   ├── CanvasChatPage.tsx      # 画布聊天页
-│   │   │   ├── InteractiveCanvas.tsx   # 可交互画布
 │   │   │   ├── FloatingChatPanel.tsx    # 悬浮对话面板
-│   │   │   ├── ArtifactRenderer.tsx     # 内容渲染器
-│   │   │   ├── Sidebar.tsx              # 侧边栏主组件
-│   │   │   ├── SidebarMenu.tsx          # 侧边栏菜单
-│   │   │   ├── SidebarUserSection.tsx   # 用户区域
-│   │   │   ├── SidebarSettingsMenu.tsx   # 设置菜单
-│   │   │   ├── GlowingInput.tsx         # 发光输入框
-│   │   │   ├── AgentCard.tsx            # 智能体卡片
-│   │   │   ├── CreateAgentPage.tsx      # 创建智能体页
-│   │   │   ├── HomePage.tsx             # 首页
-│   │   │   ├── HistoryPage.tsx          # 历史记录页
-│   │   │   ├── KnowledgeBasePage.tsx     # 知识库页
-│   │   │   ├── ErrorBoundary.tsx        # 错误边界
-│   │   │   ├── artifacts/               # Artifact 子组件
+│   │   │   ├── ExpertStatusBar.tsx     # 专家状态栏
+│   │   │   ├── ExpertDrawer.tsx        # 专家详情抽屉
+│   │   │   ├── Sidebar.tsx            # 侧边栏主组件
+│   │   │   ├── SidebarUserSection.tsx # 用户区域
+│   │   │   ├── GlowingInput.tsx       # 发光输入框
+│   │   │   ├── AgentCard.tsx          # 智能体卡片
+│   │   │   ├── CreateAgentPage.tsx    # 创建智能体页
+│   │   │   ├── DeleteConfirmDialog.tsx # 删除确认对话框
+│   │   │   ├── HomePage.tsx           # 首页
+│   │   │   ├── HistoryPage.tsx        # 历史记录页
+│   │   │   ├── KnowledgeBasePage.tsx   # 知识库页
+│   │   │   ├── ErrorBoundary.tsx      # 错误边界
+│   │   │   ├── artifacts/             # Artifact 子组件
 │   │   │   │   ├── CodeArtifact.tsx
 │   │   │   │   ├── DocArtifact.tsx
 │   │   │   │   ├── HtmlArtifact.tsx
 │   │   │   │   ├── SearchArtifact.tsx
 │   │   │   │   └── TextArtifact.tsx
-│   │   │   └── ui/                      # shadcn/ui 基础组件
+│   │   │   └── ui/                  # shadcn/ui 基础组件
+│   │   ├── providers/              # Provider 组件
+│   │   │   └── AppProvider.tsx        # 应用级状态管理
 │   │   ├── store/                 # Zustand 状态管理
 │   │   │   ├── chatStore.ts           # 对话历史
 │   │   │   ├── canvasStore.ts         # 画布状态
-│   │   │   ├── userStore.ts           # 用户信息
-│   │   │   └── loadingStore.ts        # 全局加载状态
+│   │   │   └── ...
 │   │   ├── hooks/                 # 自定义 Hooks
-│   │   │   ├── useChat.ts              # 聊天逻辑
-│   │   │   ├── useSwipeBack.ts         # 滑动返回
-│   │   │   └── useArtifactListener.ts  # SSE 监听
+│   │   │   ├── useChat.ts            # 聊天逻辑
+│   │   │   ├── useSwipeBack.ts       # 滑动返回
+│   │   │   └── useArtifactListener.ts # SSE 监听
 │   │   ├── services/              # API 服务层
-│   │   │   └── api.ts                  # API 客户端
-│   │   ├── config/                # 配置文件
-│   │   │   └── models.ts              # 模型配置
-│   │   ├── constants/             # 常量定义
-│   │   │   └── ui.ts                  # UI 常量
-│   │   ├── types/                 # TypeScript 类型
-│   │   │   └── index.ts               # 全局类型定义
-│   │   ├── utils/                 # 工具函数
-│   │   │   ├── logger.ts              # 日志工具
-│   │   │   └── userSettings.ts        # 用户设置
-│   │   ├── i18n/                  # 国际化
-│   │   ├── data/                  # 静态数据
-│   │   ├── lib/                   # 第三方库封装
-│   │   ├── main.tsx               # 应用入口
-│   │   └── vite.config.ts         # Vite 配置
-│   ├── nginx.conf                 # Nginx 配置 (Docker)
-│   ├── package.json               # NPM 依赖
-│   └── tsconfig.json              # TypeScript 配置
+│   │   │   └── api.ts              # API 客户端
+│   │   ├── i18n/                 # 国际化
+│   │   │   ├── index.ts            # i18n 配置
+│   │   │   └── translations.ts     # 翻译文件（中/英/日）
+│   │   ├── lib/                  # 工具函数
+│   │   │   └── utils.ts           # 通用工具
+│   │   ├── main.tsx              # 应用入口
+│   │   └── vite.config.ts        # Vite 配置
+│   ├── nginx.conf                # Nginx 配置 (Docker)
+│   ├── package.json              # NPM 依赖
+│   └── tsconfig.json             # TypeScript 配置
 │
 ├── backend/                       # 🔧 Python 后端
 │   ├── agents/                    # LangGraph 智能体
@@ -280,9 +291,9 @@ xpouch-ai/
 │   ├── database.py                # 数据库连接
 │   ├── config.py                  # 配置管理
 │   ├── pyproject.toml             # Python 项目配置
-│   ├── .env                       # 环境变量 (需手动创建)
-│   ├── Dockerfile                 # Docker 镜像配置
-│   └── data/                      # SQLite 数据库目录
+│   ├── .env.example              # 环境变量示例
+│   ├── Dockerfile                # Docker 镜像配置
+│   └── data/                     # SQLite 数据库目录
 │
 ├── docker-compose.yml             # 🐳 Docker 编排配置
 ├── CHANGELOG.md                   # 📝 更新日志
@@ -342,18 +353,13 @@ docker-compose down
 - Python >= 3.10 (推荐 3.13)
 - `uv` (推荐的 Python 包管理器)
 
-**1. 安装前端依赖**
+**1. 安装依赖**
 
 ```bash
-cd frontend
+# 使用 pnpm 安装所有依赖
 pnpm install
-```
 
-**2. 安装后端依赖**
-
-```bash
-cd backend
-uv sync
+# 后端使用 uv（已自动处理）
 ```
 
 **3. 配置环境变量**
@@ -372,21 +378,18 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 VITE_API_URL=http://localhost:3002/api
 ```
 
-**4. 启动后端**
+**3. 启动服务**
 
 ```bash
-cd backend
-uv run main.py
-```
-
-**5. 启动前端**
-
-```bash
-cd frontend
+# 启动前后端（并发运行）
 pnpm run dev
+
+# 或分别启动：
+pnpm run dev:frontend  # 仅前端
+pnpm run dev:backend   # 仅后端
 ```
 
-**6. 访问应用**
+**4. 访问应用**
 
 - 前端：http://localhost:5173
 - 后端 API：http://localhost:3002
@@ -423,14 +426,16 @@ pnpm run dev
 3. **专家执行**：任务分发给对应的专家节点并行处理
 4. **结果聚合**：聚合器整合所有专家结果，生成最终响应
 
-### 双层交互画布
+### XPouchLayout 三区布局
 
 **架构说明**：
-- **应用级布局**：`Layout.tsx` + `MainChatLayout.tsx` 提供统一的侧边栏和主内容区域
-- **页面级布局**：`XPouchLayout.tsx` 在聊天页面实现双层交互画布效果
+- **三区扁平布局**：专家状态栏 + Artifact + 对话面板
+- **专家状态栏**：左侧顶部，显示专家执行状态，点击展开详情
+- **Artifact 容器**：占据中间 70% 空间，渲染代码/HTML/Markdown/搜索结果
+- **对话面板**：右侧 30%，毛玻璃效果，可收起/展开
 
 **使用方法**：
-1. **切换视图**：移动端点击顶部切换对话/产物视图
+1. **查看专家状态**：点击专家状态栏的卡片查看详细信息（任务、耗时、输出、错误）
 2. **全屏预览**：点击放大按钮查看完整 Artifact 内容（隐藏对话面板）
 3. **收起面板**：PC端点击收起按钮，释放画布空间
 4. **移动端返回**：从屏幕左侧边缘右滑返回首页
