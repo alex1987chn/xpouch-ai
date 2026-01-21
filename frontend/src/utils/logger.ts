@@ -194,3 +194,95 @@ export function safeExecute<T extends (...args: unknown[]) => unknown>(
   return withErrorHandler(fn, context)
 }
 
+/**
+ * 安全访问工具函数
+ * 用于处理可能的 undefined/null 值
+ */
+
+/**
+ * 安全获取数组元素
+ */
+export function safeGet<T>(
+  array: T[] | null | undefined,
+  index: number,
+  fallback: T
+): T {
+  if (!array || !array[index]) {
+    return fallback
+  }
+  return array[index]
+}
+
+/**
+ * 安全获取对象属性
+ */
+export function safeGetProp<T, K extends keyof T>(
+  obj: T | null | undefined,
+  key: K,
+  fallback: T[K]
+): T[K] {
+  if (!obj || obj[key] === undefined) {
+    return fallback
+  }
+  return obj[key]
+}
+
+/**
+ * 安全执行可选回调
+ */
+export function safeCall<T>(
+  fn?: (...args: unknown[]) => T,
+  ...args: unknown[]
+): T | undefined {
+  if (typeof fn !== 'function') {
+    return undefined
+  }
+  try {
+    return fn(...args)
+  } catch (error) {
+    errorHandler.handleSync(error, 'safeCall')
+    return undefined
+  }
+}
+
+/**
+ * 安全字符串处理
+ */
+export function safeString(value: unknown, fallback: string = ''): string {
+  if (value === null || value === undefined) {
+    return fallback
+  }
+  if (typeof value === 'string') {
+    return value
+  }
+  return String(value)
+}
+
+/**
+ * 安全数字处理
+ */
+export function safeNumber(value: unknown, fallback: number = 0): number {
+  if (value === null || value === undefined) {
+    return fallback
+  }
+  if (typeof value === 'number') {
+    return value
+  }
+  const num = Number(value)
+  return isNaN(num) ? fallback : num
+}
+
+/**
+ * 安全布尔值处理
+ */
+export function safeBoolean(value: unknown, fallback: boolean = false): boolean {
+  if (value === null || value === undefined) {
+    return fallback
+  }
+  if (typeof value === 'boolean') {
+    return value
+  }
+  return Boolean(value)
+}
+
+

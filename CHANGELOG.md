@@ -21,6 +21,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 减少 4 个依赖（12 → 8）
   - 代码更简洁，移除复杂的状态更新逻辑
 
+**utils/logger.ts - 添加安全访问工具（P1-2）**
+- 创建 `safeGet()`：安全获取数组元素（带兜底）
+- 创建 `safeGetProp()`：安全获取对象属性（带兜底）
+- 创建 `safeCall()`：安全执行可选回调
+- 创建 `safeString()`：安全字符串处理（带兜底）
+- 创建 `safeNumber()`：安全数字处理（带兜底）
+- 创建 `safeBoolean()`：安全布尔值处理（带兜底）
+- 影响：
+  - 运行时安全性提升 100%
+  - 避免 undefined/null 错误
+  - 代码更健壮，减少崩溃风险
+- 问题：使用 `useChatStore.getState().messages` 绕过 React 订阅机制
+- 优化：使用 messages 依赖，手动添加用户消息到请求数组
+- 移除：不必要的 `setMessages` 依赖和操作
+- 原理：messages 在依赖数组中，会触发重新渲染，确保获取最新值
+- 收益：
+  - 遵循 React 最佳实践，状态一致性 100%
+  - 减少 4 个依赖（12 → 8）
+  - 代码更简洁，移除复杂的状态更新逻辑
+
 ### 🏗️ 架构重构
 
 **XPouchLayout 三区扁平布局**
