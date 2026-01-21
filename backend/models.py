@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import datetime
 from uuid import uuid4
 from sqlmodel import Field, SQLModel, Relationship, JSON
-from pydantic import BaseModel
+from pydantic import BaseModel, Field as PydanticField
 from enum import Enum
 
 
@@ -92,18 +92,18 @@ class CustomAgentCreate(BaseModel):
     """创建自定义智能体的 DTO"""
     name: str
     description: Optional[str] = None
-    system_prompt: str  # 必填
+    system_prompt: str = PydanticField(alias="systemPrompt")  # 必填，前端字段为 systemPrompt
     category: str = "综合"
-    model_id: str = "gpt-4o"
+    model_id: str = PydanticField(default="gpt-4o", alias="modelId")
 
 
 class CustomAgentUpdate(BaseModel):
     """更新自定义智能体的 DTO"""
     name: Optional[str] = None
     description: Optional[str] = None
-    system_prompt: Optional[str] = None
+    system_prompt: Optional[str] = PydanticField(default=None, alias="systemPrompt")
     category: Optional[str] = None
-    model_id: Optional[str] = None
+    model_id: Optional[str] = PydanticField(default=None, alias="modelId")
 
 
 class CustomAgentResponse(BaseModel):

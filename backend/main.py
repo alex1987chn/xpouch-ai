@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, AsyncGenerator
 import json
 import uvicorn
 import os
@@ -32,6 +32,120 @@ from models import (
 )
 from database import create_db_and_tables, get_session
 from config import init_langchain_tracing, validate_config
+from utils.exceptions import (
+    AppError,
+    ValidationError,
+    AuthenticationError,
+    AuthorizationError,
+    NotFoundError,
+    LLMError,
+    DatabaseError,
+    ExternalServiceError,
+    RateLimitError,
+    handle_error
+)
+
+
+# ============================================================================
+# 共享的大模型调用函数
+# ============================================================================
+
+async def stream_llm_response(
+    messages: list,
+    system_prompt: str,
+    model: str = None,
+    conversation_id: str = None
+) -> AsyncGenerator[str, None]:
+    """
+    共享的大模型流式响应函数
+
+    Args:
+        messages: 消息列表（LangChain 格式）
+        system_prompt: 系统提示词
+        model: 模型名称（可选，默认从环境变量读取）
+        conversation_id: 会话 ID（可选）
+
+    Yields:
+        SSE 格式的数据块
+    """
+    from langchain_openai import ChatOpenAI
+
+    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+    base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+    model_name = model or os.getenv("MODEL_NAME", "deepseek-chat")
+
+    print(f"[LLM] 初始化模型: {model_name}")
+    print(f"[LLM] Base URL: {base_url}")
+
+    llm = ChatOpenAI(
+        model=model_name,
+        api_key=api_key,
+        base_url=base_url,
+        temperature=0.7,
+        streaming=True
+    )
+
+    # 添加 System Prompt
+    messages_with_system = []
+    messages_with_system.append(("system", system_prompt))
+    messages_with_system.extend(messages)
+
+    print(f"[LLM] 开始流式生成...")
+    chunk_count = 0
+
+    async for chunk in llm.astream(messages_with_system):
+        content = chunk.content
+        if content:
+            chunk_count += 1
+            print(f"[LLM] Chunk #{chunk_count}: {repr(content[:50] if len(content) > 50 else content)}")
+
+            # SSE 格式：data: {...}\n\n
+            event_data = {'content': content}
+            if conversation_id:
+                event_data['conversationId'] = conversation_id
+            yield f"data: {json.dumps(event_data)}\n\n"
+
+    print(f"[LLM] 完成，总 chunk 数: {chunk_count}")
+
+
+async def invoke_llm_response(
+    messages: list,
+    system_prompt: str,
+    model: str = None
+) -> str:
+    """
+    共享的大模型非流式响应函数
+
+    Args:
+        messages: 消息列表（LangChain 格式）
+        system_prompt: 系统提示词
+        model: 模型名称（可选，默认从环境变量读取）
+
+    Returns:
+        完整的响应文本
+    """
+    from langchain_openai import ChatOpenAI
+
+    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+    base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+    model_name = model or os.getenv("MODEL_NAME", "deepseek-chat")
+
+    llm = ChatOpenAI(
+        model=model_name,
+        api_key=api_key,
+        base_url=base_url,
+        temperature=0.7
+    )
+
+    # 添加 System Prompt
+    messages_with_system = []
+    messages_with_system.append(("system", system_prompt))
+    messages_with_system.extend(messages)
+
+    result = await llm.ainvoke(messages_with_system)
+    return result.content
+
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -47,43 +161,111 @@ app = FastAPI(lifespan=lifespan)
 
 # 添加请求日志中间件
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def log_requests(request: Request, call_next) -> Response:
     print(f"[MIDDLEWARE] 收到请求: {request.method} {request.url.path}")
     print(f"[MIDDLEWARE] Headers: {dict(request.headers)}")
     response = await call_next(request)
     return response
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     return JSONResponse(
         status_code=422,
         content={"detail": exc.errors(), "body": exc.body},
     )
 
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    """处理自定义应用异常"""
+    print(f"[APP ERROR] {exc.code}: {exc.message}")
+    if exc.original_error:
+        import traceback
+        traceback.print_exception(type(exc.original_error), exc.original_error, exc.original_error.__traceback__)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=exc.to_dict(),
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """处理 FastAPI HTTP 异常"""
+    print(f"[HTTP ERROR] {exc.status_code}: {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": "HTTP_ERROR",
+                "message": str(exc.detail),
+                "details": {}
+            }
+        },
+    )
+
+
 @app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """处理未捕获的异常"""
     import traceback
     print("=" * 80)
-    print("[ERROR] Global exception caught:")
-    print(f"[ERROR] Request path: {request.url.path}")
-    print(f"[ERROR] Exception type: {type(exc).__name__}")
-    print(f"[ERROR] Exception message: {str(exc)}")
-    print("[ERROR] Stack trace:")
+    print("[UNHANDLED ERROR] Global exception caught:")
+    print(f"[UNHANDLED ERROR] Request path: {request.url.path}")
+    print(f"[UNHANDLED ERROR] Exception type: {type(exc).__name__}")
+    print(f"[UNHANDLED ERROR] Exception message: {str(exc)}")
+    print("[UNHANDLED ERROR] Stack trace:")
     traceback.print_exc()
     print("=" * 80)
+    
+    # 转换为 AppError
+    app_error = handle_error(exc)
     return JSONResponse(
-        status_code=500,
-        content={"detail": str(exc)},
+        status_code=app_error.status_code,
+        content=app_error.to_dict(),
     )
 
 # 配置 CORS
+def get_cors_origins():
+    """从环境变量 CORS_ORIGINS 读取允许的来源，支持逗号分隔的多个域名"""
+    cors_origins_str = os.getenv("CORS_ORIGINS", "").strip()
+    if cors_origins_str:
+        # 按逗号分割，去除空白字符
+        origins = [origin.strip() for origin in cors_origins_str.split(",")]
+        print(f"[CORS] 允许的来源: {origins}")
+        return origins
+    
+    # 未设置 CORS_ORIGINS，根据环境变量决定默认值
+    environment = os.getenv("ENVIRONMENT", "development").lower()
+    if environment == "production":
+        print("[WARN] 生产环境未设置 CORS_ORIGINS，CORS 将拒绝所有跨域请求")
+        return []
+    else:
+        # 开发环境默认允许本地前端
+        default_origin = "http://localhost:5173"
+        print(f"[CORS] 开发环境默认允许来源: {default_origin}")
+        return [default_origin]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Temporarily allow all for debugging
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-User-ID", "X-Request-ID"],
 )
+
+# 添加安全头信息中间件
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    # 安全头信息
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # 基本 CSP - 允许自身和 inline 样式/脚本（开发环境）
+    csp_policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+    response.headers["Content-Security-Policy"] = csp_policy
+    # 权限策略
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return response
 
 class ChatMessageDTO(BaseModel):
     role: str
@@ -112,7 +294,7 @@ class UpdateUserRequest(BaseModel):
     plan: Optional[str] = None
 
 # --- Dependency: Current User ---
-async def get_current_user(request: Request, session: Session = Depends(get_session)):
+async def get_current_user(request: Request, session: Session = Depends(get_session)) -> User:
     user_id = request.headers.get("X-User-ID")
     if not user_id:
         # Fallback for dev/testing without header
@@ -160,7 +342,7 @@ async def update_user_me(request: UpdateUserRequest, session: Session = Depends(
 
 @app.post("/api/agents")
 async def create_custom_agent(
-    agent_data: dict,
+    agent_data: CustomAgentCreate,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
@@ -172,11 +354,11 @@ async def create_custom_agent(
     """
     custom_agent = CustomAgent(
         user_id=current_user.id,
-        name=agent_data.get("name", "未命名智能体"),
-        description=agent_data.get("description"),
-        system_prompt=agent_data.get("systemPrompt", ""),  # 前端传来的字段是 systemPrompt
-        category=agent_data.get("category", "综合"),
-        model_id=agent_data.get("modelId", "gpt-4o")
+        name=agent_data.name,
+        description=agent_data.description,
+        system_prompt=agent_data.system_prompt,
+        category=agent_data.category,
+        model_id=agent_data.model_id
     )
     session.add(custom_agent)
     session.commit()
@@ -233,7 +415,7 @@ async def get_all_agents(
         print(f"[API] Error in /api/agents: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise AppError(message=str(e), original_error=e)
 
 
 @app.get("/api/agents/{agent_id}")
@@ -245,7 +427,7 @@ async def get_custom_agent(
     """获取单个自定义智能体详情"""
     agent = session.get(CustomAgent, agent_id)
     if not agent or agent.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Agent not found")
+        raise NotFoundError(resource="智能体")
     return agent
 
 
@@ -258,7 +440,7 @@ async def delete_custom_agent(
     """删除自定义智能体"""
     agent = session.get(CustomAgent, agent_id)
     if not agent or agent.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Agent not found")
+        raise NotFoundError(resource="智能体")
     session.delete(agent)
     session.commit()
     print(f"[API] 删除自定义智能体: {agent_id}")
@@ -268,25 +450,25 @@ async def delete_custom_agent(
 @app.put("/api/agents/{agent_id}")
 async def update_custom_agent(
     agent_id: str,
-    agent_data: dict,
+    agent_data: CustomAgentUpdate,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
     """更新自定义智能体"""
     agent = session.get(CustomAgent, agent_id)
     if not agent or agent.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Agent not found")
+        raise NotFoundError(resource="智能体")
     
-    if "name" in agent_data:
-        agent.name = agent_data["name"]
-    if "description" in agent_data:
-        agent.description = agent_data["description"]
-    if "systemPrompt" in agent_data:
-        agent.system_prompt = agent_data["systemPrompt"]
-    if "category" in agent_data:
-        agent.category = agent_data["category"]
-    if "modelId" in agent_data:
-        agent.model_id = agent_data["modelId"]
+    if agent_data.name is not None:
+        agent.name = agent_data.name
+    if agent_data.description is not None:
+        agent.description = agent_data.description
+    if agent_data.system_prompt is not None:
+        agent.system_prompt = agent_data.system_prompt
+    if agent_data.category is not None:
+        agent.category = agent_data.category
+    if agent_data.model_id is not None:
+        agent.model_id = agent_data.model_id
     
     agent.updated_at = datetime.now()
     session.add(agent)
@@ -309,7 +491,7 @@ async def get_conversation(conversation_id: str, session: Session = Depends(get_
     conversation = session.exec(statement).first()
 
     if not conversation or conversation.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        raise NotFoundError(resource="会话")
     return conversation
 
 # 删除会话 (Filtered by User)
@@ -317,12 +499,174 @@ async def get_conversation(conversation_id: str, session: Session = Depends(get_
 async def delete_conversation(conversation_id: str, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     conversation = session.get(Conversation, conversation_id)
     if not conversation or conversation.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        raise NotFoundError(resource="会话")
     session.delete(conversation)
     session.commit()
     return {"ok": True}
 
 # 聊天接口
+# ============================================================================
+# 简单对话端点（sys-assistant）
+# ============================================================================
+
+ASSISTANT_SYSTEM_PROMPT = """你是一个通用的 AI 助手，专门用于日常对话和回答用户的各种问题。
+
+你的职责：
+- 友好、耐心地回答用户的问题
+- 提供准确、有用的信息
+- 在不确定时坦诚告知
+- 保持对话的自然流畅
+
+请用清晰、友好的语言回答用户的问题。"""
+
+
+@app.post("/api/chat-simple")
+async def chat_simple_endpoint(
+    request: ChatRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    简单对话端点（sys-assistant 模式）
+
+    功能：
+    - 直连大模型，不经过 LangGraph
+    - 不维护专家状态
+    - 快速响应
+    """
+    print(f"[SIMPLE] ========== 简单对话请求 ==========")
+    print(f"[SIMPLE] Message content: {request.message}")
+    print(f"[SIMPLE] User ID: {current_user.id}")
+
+    # 1. 确定 Conversation ID
+    conversation_id = request.conversationId
+    conversation = None
+
+    if conversation_id:
+        conversation = session.get(Conversation, conversation_id)
+        if conversation and conversation.user_id != current_user.id:
+            raise AuthorizationError("没有权限访问此会话")
+
+    if not conversation:
+        # 创建新会话
+        conversation_id = str(uuid.uuid4())
+        conversation = Conversation(
+            id=conversation_id,
+            title=request.message[:30] + "..." if len(request.message) > 30 else request.message,
+            agent_id="sys-assistant",
+            user_id=current_user.id,
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+        session.add(conversation)
+        session.commit()
+        session.refresh(conversation)
+
+    # 2. 保存用户消息到数据库
+    user_msg_db = Message(
+        conversation_id=conversation_id,
+        role="user",
+        content=request.message,
+        timestamp=datetime.now()
+    )
+    session.add(user_msg_db)
+    session.commit()
+
+    # 3. 准备消息历史
+    statement = select(Message).where(Message.conversation_id == conversation_id).order_by(Message.timestamp)
+    db_messages = session.exec(statement).all()
+
+    langchain_messages = []
+    for msg in db_messages:
+        if msg.role == "user":
+            langchain_messages.append(HumanMessage(content=msg.content))
+        elif msg.role == "assistant":
+            langchain_messages.append(AIMessage(content=msg.content))
+
+    # 4. 流式响应
+    if request.stream:
+        async def event_generator():
+            full_response = ""
+            try:
+                print(f"[SIMPLE] 开始流式生成...")
+
+                async for chunk in stream_llm_response(
+                    langchain_messages,
+                    ASSISTANT_SYSTEM_PROMPT,
+                    conversation_id=conversation_id
+                ):
+                    yield chunk
+                    content = json.loads(chunk.split("data: ")[1].strip())
+                    full_response += content.get('content', '')
+
+                print(f"[SIMPLE] 完成，总长度: {len(full_response)}")
+
+                # 保存 AI 回复到数据库
+                if full_response:
+                    ai_msg_db = Message(
+                        conversation_id=conversation_id,
+                        role="assistant",
+                        content=full_response,
+                        timestamp=datetime.now()
+                    )
+                    from database import engine
+                    with Session(engine) as inner_session:
+                        inner_session.add(ai_msg_db)
+                        # 更新会话时间
+                        conv = inner_session.get(Conversation, conversation_id)
+                        if conv:
+                            conv.updated_at = datetime.now()
+                            inner_session.add(conv)
+                        inner_session.commit()
+
+                yield "data: [DONE]\n\n"
+
+            except Exception as e:
+                print(f"[SIMPLE] 错误: {e}")
+                import traceback
+                traceback.print_exc()
+                error_msg = json.dumps({"error": str(e)})
+                yield f"data: {error_msg}\n\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"
+            }
+        )
+    else:
+        # 非流式响应
+        full_response = await invoke_llm_response(
+            langchain_messages,
+            ASSISTANT_SYSTEM_PROMPT
+        )
+
+        # 保存 AI 回复
+        ai_msg_db = Message(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=full_response,
+            timestamp=datetime.now()
+        )
+        session.add(ai_msg_db)
+        conversation.updated_at = datetime.now()
+        session.add(conversation)
+        session.commit()
+
+        return {
+            "role": "assistant",
+            "content": full_response,
+            "conversationId": conversation_id
+        }
+
+
+# ============================================================================
+# 复杂任务端点（sys-commander）
+# ============================================================================
+
 @app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     print(f"[MAIN] ========== Received chat request ==========")
@@ -339,7 +683,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     if conversation_id:
         conversation = session.get(Conversation, conversation_id)
         if conversation and conversation.user_id != current_user.id:
-             raise HTTPException(status_code=403, detail="Not authorized")
+             raise AuthorizationError("没有权限访问此会话")
         
     if not conversation:
         # 如果没有ID或找不到，创建新会话
@@ -388,146 +732,16 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     if agent_id_for_check and agent_id_for_check.startswith("sys-"):
         agent_id_for_check = agent_id_for_check[4:]  # 去掉 sys- 前缀
 
-    # 特殊处理 sys-assistant：走自定义智能体逻辑（不经过 LangGraph）
-    if agent_id_for_check == "assistant":
-        print(f"[MAIN] 检测到通用助手模式（sys-assistant）")
-        # 构建一个临时的 custom_agent 对象，使用通用助手的系统提示词
-        from langchain_openai import ChatOpenAI
-        import os
-
-        # 准备通用助手提示词
-        assistant_system_prompt = """你是一个通用的 AI 助手，专门用于日常对话和回答用户的各种问题。
-
-你的职责：
-- 友好、耐心地回答用户的问题
-- 提供准确、有用的信息
-- 在不确定时坦诚告知
-- 保持对话的自然流畅
-
-请用清晰、友好的语言回答用户的问题。"""
-
-        # 流式响应处理
-        if request.stream:
-            async def event_generator():
-                full_response = ""
-                try:
-                    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
-                    base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
-                    model_name = os.getenv("MODEL_NAME", "deepseek-chat")
-
-                    llm = ChatOpenAI(
-                        model=model_name,
-                        api_key=api_key,
-                        base_url=base_url,
-                        temperature=0.7,
-                        streaming=True
-                    )
-
-                    # 添加 System Prompt
-                    messages_with_system = []
-                    messages_with_system.append(("system", assistant_system_prompt))
-                    messages_with_system.extend(langchain_messages)
-
-                    print(f"[ASSISTANT] 开始流式生成...")
-                    chunk_count = 0
-
-                    # SSE 格式：每个消息以 data: 开头，后面跟内容，然后两个换行符
-                    async for chunk in llm.astream(messages_with_system):
-                        content = chunk.content
-                        if content:
-                            chunk_count += 1
-                            full_response += content
-                            print(f"[ASSISTANT] Chunk #{chunk_count}: {repr(content[:50] if len(content) > 50 else content)}")
-
-                            # SSE 格式：data: {...}\n\n
-                            event_data = json.dumps({'content': content, 'conversationId': conversation_id})
-                            yield f"data: {event_data}\n\n"
-
-                    print(f"[ASSISTANT] 完成，总 chunk 数: {chunk_count}, 总长度: {len(full_response)}")
-                    print(f"[ASSISTANT] 完整响应前200字符: {repr(full_response[:200])}")
-
-                except Exception as e:
-                    print(f"[ASSISTANT] 错误: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    error_msg = json.dumps({"error": str(e)})
-                    yield f"data: {error_msg}\n\nn"
-
-                # 保存 AI 回复到数据库
-                if full_response:
-                    ai_msg_db = Message(
-                        conversation_id=conversation_id,
-                        role="assistant",
-                        content=full_response,
-                        timestamp=datetime.now()
-                    )
-                    from database import engine
-                    with Session(engine) as inner_session:
-                        inner_session.add(ai_msg_db)
-                        # 更新会话时间
-                        conv = inner_session.get(Conversation, conversation_id)
-                        if conv:
-                            conv.updated_at = datetime.now()
-                            inner_session.add(conv)
-                        inner_session.commit()
-
-                yield "data: [DONE]\n\nn"
-
-            return StreamingResponse(
-                event_generator(),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                    "X-Accel-Buffering": "no"
-                }
-            )
-        else:
-            # 非流式
-            from langchain_openai import ChatOpenAI
-            import os
-
-            api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
-            base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
-            model_name = os.getenv("MODEL_NAME", "deepseek-chat")
-
-            llm = ChatOpenAI(
-                model=model_name,
-                api_key=api_key,
-                base_url=base_url,
-                temperature=0.7
-            )
-
-            # 添加 System Prompt
-            messages_with_system = []
-            messages_with_system.append(("system", assistant_system_prompt))
-            messages_with_system.extend(langchain_messages)
-
-            result = await llm.ainvoke(messages_with_system)
-            full_response = result.content
-
-            # 保存 AI 回复
-            ai_msg_db = Message(
-                conversation_id=conversation_id,
-                role="assistant",
-                content=full_response,
-                timestamp=datetime.now()
-            )
-            session.add(ai_msg_db)
-            conversation.updated_at = datetime.now()
-            session.add(conversation)
-            session.commit()
-
-            return {
-                "role": "assistant",
-                "content": full_response,
-                "conversationId": conversation_id
-            }
-
-    print(f"[MAIN] Expert types list: {expert_types}")
+    print(f"[COMPLEX] Expert types list: {expert_types}")
     print(f"[MAIN] Checking: {request.agentId} -> {agent_id_for_check} in expert types: {agent_id_for_check in expert_types}")
 
-    if agent_id_for_check not in expert_types:
+    # 特殊处理：sys-commander 直接进入指挥官模式（不走自定义 agent 逻辑）
+    is_commander_mode = request.agentId == "sys-commander" or agent_id_for_check == "commander"
+    if is_commander_mode:
+        print(f"[MAIN] [COMMANDER MODE] Detected sys-commander, entering commander workflow")
+        agent_id_for_check = "commander"  # 强制设置为 commander
+        custom_agent = None  # 不走自定义 agent 逻辑
+    elif agent_id_for_check not in expert_types:
         # 可能是自定义智能体，从数据库加载
         print(f"[MAIN] Checking custom agent: {request.agentId}")
         custom_agent = session.get(CustomAgent, request.agentId)
@@ -547,6 +761,9 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                 print(f"[MAIN] [ERROR] User ID mismatch")
             else:
                 print(f"[MAIN] [ERROR] Custom agent does not exist")
+            custom_agent = None
+    else:
+        custom_agent = None
     
     # 如果是自定义智能体，使用直接 LLM 调用模式（不经过 LangGraph）
     if custom_agent:
@@ -705,7 +922,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
         print(f"[MAIN] 进入指挥官模式，agentId: {request.agentId}")
         initial_state = {
             "messages": langchain_messages,
-            "current_agent": agent_id_for_check,
+            "current_agent": "commander",  # 指挥官模式下使用 commander 作为 current_agent
             "task_list": [],
             "current_task_index": 0,
             "strategy": "",
@@ -720,6 +937,10 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
         async def event_generator():
             full_response = ""
             event_count = 0
+
+            # 为每个专家维护 artifact 列表（支持多个 artifact 累积）
+            expert_artifacts = {}
+
             try:
                 print(f"[STREAM] 开始流式处理...")
                 async for event in commander_graph.astream_events(
@@ -740,6 +961,10 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
 
                     # 捕获专家节点开始执行（expert_type: expert_name）
                     if kind == "on_chain_start" and name in ["search", "coder", "researcher", "analyzer", "writer", "planner", "image_analyzer"]:
+                        # 初始化该专家的 artifact 列表
+                        if name not in expert_artifacts:
+                            expert_artifacts[name] = []
+
                         yield f"data: {json.dumps({'activeExpert': name, 'conversationId': conversation_id})}\n\n"
                         print(f"[STREAM] 专家 {name} 开始执行")
 
@@ -750,13 +975,19 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                         output_data = event["data"]["output"]
                         print(f"[STREAM] output_data 类型: {type(output_data)}, 包含 artifact: {isinstance(output_data, dict) and 'artifact' in output_data}")
 
+                        # 累积 artifact
                         if isinstance(output_data, dict) and "artifact" in output_data:
                             artifact = output_data["artifact"]
                             print(f"[STREAM] 检测到 artifact: {artifact['type']}")
                             print(f"[STREAM] artifact content 长度: {len(artifact.get('content', ''))}")
 
-                            # 推送 artifact_update 事件
-                            yield f"data: {json.dumps({'artifact': artifact, 'conversationId': conversation_id})}\n\n"
+                            # 添加到该专家的 artifact 列表
+                            expert_artifacts[name] = expert_artifacts.get(name, [])
+                            expert_artifacts[name].append(artifact)
+                            print(f"[STREAM] 专家 {name} 当前 artifacts 数量: {len(expert_artifacts[name])}")
+
+                            # 推送 artifact_update 事件（包含所有 artifacts）
+                            yield f"data: {json.dumps({'artifact': artifact, 'conversationId': conversation_id, 'allArtifacts': expert_artifacts[name]})}\n\n"
                         # 推送专家完成事件（包含完整信息）
                         yield f"data: {json.dumps({
                             'expertCompleted': name,
@@ -764,7 +995,8 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                             'duration_ms': output_data.get('duration_ms', 0),
                             'status': output_data.get('status', 'completed'),
                             'output': output_data.get('output_result', ''),
-                            'error': output_data.get('error')
+                            'error': output_data.get('error'),
+                            'allArtifacts': expert_artifacts.get(name, [])
                         })}\n\n"
                         print(f"[STREAM] 专家 {name} 执行完成")
 
@@ -774,18 +1006,32 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                         # 检查是否生成了 artifact
                         output_data = event["data"]["output"]
                         print(f"[STREAM] output_data 类型: {type(output_data)}")
+                        print(f"[STREAM] output_data 内容: {output_data}")
                         if isinstance(output_data, dict):
                             print(f"[STREAM] output_data keys: {output_data.keys()}")
                             print(f"[STREAM] 包含 artifact: {'artifact' in output_data}")
                             print(f"[STREAM] 包含 __expert_info: {'__expert_info' in output_data}")
+                            if "artifact" in output_data:
+                                print(f"[STREAM] artifact 内容: {output_data['artifact']}")
+                            if "__expert_info" in output_data:
+                                print(f"[STREAM] __expert_info 内容: {output_data['__expert_info']}")
 
+                        # 累积 artifact
                         if isinstance(output_data, dict) and "artifact" in output_data:
                             artifact = output_data["artifact"]
+                            expert_type = output_data.get("__expert_info", {}).get("expert_type", "unknown")
+
+                            # 初始化该专家的 artifact 列表
+                            if expert_type not in expert_artifacts:
+                                expert_artifacts[expert_type] = []
+
+                            expert_artifacts[expert_type].append(artifact)
                             print(f"[STREAM] 从 expert_dispatcher 检测到 artifact: {artifact['type']}")
                             print(f"[STREAM] artifact content 长度: {len(artifact.get('content', ''))}")
+                            print(f"[STREAM] 专家 {expert_type} 当前 artifacts 数量: {len(expert_artifacts[expert_type])}")
 
-                            # 推送 artifact_update 事件
-                            yield f"data: {json.dumps({'artifact': artifact, 'conversationId': conversation_id})}\n\n"
+                            # 推送 artifact_update 事件（包含所有 artifacts）
+                            yield f"data: {json.dumps({'artifact': artifact, 'conversationId': conversation_id, 'allArtifacts': expert_artifacts[expert_type]})}\n\n"
 
                         # 检查是否有专家信息（用于专家状态栏）
                         if isinstance(output_data, dict) and "__expert_info" in output_data:
@@ -797,14 +1043,15 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                             yield f"data: {json.dumps({'activeExpert': expert_type, 'conversationId': conversation_id})}\n\n"
                             print(f"[STREAM] ✅ 专家 {expert_type} 激活")
 
-                            # 发送专家完成事件
+                            # 发送专家完成事件（包含所有 artifacts）
                             yield f"data: {json.dumps({
                                 'expertCompleted': expert_type,
                                 'conversationId': conversation_id,
                                 'duration_ms': expert_info.get('duration_ms', 0),
                                 'status': expert_info.get('status', 'completed'),
                                 'output': expert_info.get('output', ''),
-                                'error': expert_info.get('error')
+                                'error': expert_info.get('error'),
+                                'allArtifacts': expert_artifacts.get(expert_type, [])
                             })}\n\n"
                             print(f"[STREAM] ✅ 专家 {expert_type} 完成 (status: {expert_info.get('status')})")
                         else:
@@ -913,25 +1160,16 @@ async def chat_invoke_endpoint(
 
     # 1. 模式验证
     if request.mode not in ["auto", "direct"]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"无效的执行模式: {request.mode}，必须是 'auto' 或 'direct'"
-        )
+        raise ValidationError(f"无效的执行模式: {request.mode}，必须是 'auto' 或 'direct'")
 
     # 2. Direct 模式需要 agent_id
     if request.mode == "direct" and not request.agent_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Direct 模式需要指定 agent_id"
-        )
+        raise ValidationError("Direct 模式需要指定 agent_id")
 
     # 3. 验证 agent_id 是否在 EXPERT_FUNCTIONS 中
     if request.mode == "direct":
         if request.agent_id not in EXPERT_FUNCTIONS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"未知的专家类型: {request.agent_id}，可用专家: {list(EXPERT_FUNCTIONS.keys())}"
-            )
+            raise ValidationError(f"未知的专家类型: {request.agent_id}，可用专家: {list(EXPERT_FUNCTIONS.keys())}")
 
     # 4. 创建 TaskSession 记录（用于数据库持久化）
     thread_id = request.thread_id or str(uuid.uuid4())
@@ -1115,10 +1353,7 @@ async def chat_invoke_endpoint(
         session.commit()
 
         print(f"[ERROR] 执行失败: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"执行失败: {str(e)}"
-        )
+        raise AppError(message=f"执行失败: {str(e)}", original_error=e)
 
 
 if __name__ == "__main__":

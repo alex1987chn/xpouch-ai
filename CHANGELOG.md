@@ -9,45 +9,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✨ 新增功能
+
+**双模式对话系统 - 简单模式和专家拆解模式**
+- **简单模式**：直接与 AI 助手对话，快速响应
+  - 端点：`/chat-simple`
+  - 适用场景：简单问答、快速咨询
+  - 特点：轻量级、无任务拆解、直接生成
+  
+- **复杂模式**：AI 指挥官 + 多专家协作系统
+  - 端点：`/chat`
+  - 适用场景：复杂任务、多步骤工作流、需要专家协作
+  - 特点：任务自动拆解、专家调度、交付物管理
+  
+- **模式切换**：通过输入框左侧的闪电/大脑图标切换
+  - 闪电图标（黄色）：简单模式
+  - 大脑图标（紫色）：复杂模式
+  - 切换时自动更新 `selectedAgentId`（sys-assistant / sys-commander）
+
+**后端 - 专家任务拆解系统**
+- AI 指挥官（Commander）自动拆解复杂任务
+- 支持的专家类型：
+  - 🔍 搜索专家（Search）- 搜索和整合信息
+  - 💻 编程专家（Coder）- 代码编写和分析
+  - 📚 研究专家（Researcher）- 深度研究
+  - 📊 分析专家（Analyzer）- 数据分析
+  - ✍️ 写作专家（Writer）- 内容创作
+  - 📋 规划专家（Planner）- 任务规划
+  - 🖼️ 图像分析专家（Image Analyzer）- 图像处理
+  
+- **任务调度**：
+  - 按优先级和依赖关系调度专家
+  - 支持直接专家模式（通过 sys-writer 等前缀直接调用指定专家）
+  - 流式输出专家执行状态和结果
+  
+- **交付物系统**：
+  - 专家可以生成多种类型的交付物：代码、Markdown、搜索结果、HTML、文本
+  - 交付物自动保存到 `ArtifactSession` 供前端展示
+  - 支持单个专家生成多个交付物（通过 Tab 切换）
+
+**ExpertStatusBar - 多专家多交付物查看**
+- 支持查看多个专家的交付物
+- 点击不同专家头像可以切换查看对应专家的所有交付物
+- 同一专家的多个交付物通过 Tab 切换
+- 支持的交付物类型：代码、Markdown 文档、搜索结果、HTML、文本
+- 专家状态实时显示：待处理（灰色）、运行中（脉冲）、完成（绿色对勾）、失败（红色X）
+- 交互体验：悬停放大、点击选中、关闭按钮清除所有状态
+
 ### 🐛 Bug 修复
 
-**CanvasChatPage.tsx - 修复编译错误和优化依赖数组**
-- 添加缺失的 `useMemo` 导入到 React 导入语句
-- 优化 `expertIcons` 的 `useMemo` 依赖数组：移除外部导入的静态组件（`Code`、`FileText`、`Search`、`HtmlIcon`、`TextIcon`）
-- 修复 `expertColors` 的 `useMemo` 括号闭合问题
-- 影响：
-  - 修复构建失败：`Expected ")" but found "const"`
-  - 遵循 React 最佳实践：静态导入的组件不放入依赖数组
-  - 代码更规范，减少不必要的重计算
-  - Linter 错误从 38 个减少到 1 个
+**ExpertStatusBar.tsx - 修复 artifactSessions 未定义错误**
+- 添加 `artifactSessions` 到 `useCanvasStore` 的解构
+- 修复点击专家头像时的运行时错误：`ReferenceError: artifactSessions is not defined`
+- 影响：修复专家 artifact 查看功能
 
-### 🚀 性能优化
+**组件 - 移除 FloatingExpertBar 浮动专家栏**
+- 从 `CanvasChatPage.tsx` 中移除 `FloatingExpertBar` 组件的导入和渲染
+- 清理相关的 `activeExpertId` 和 `setActiveExpertId` 状态变量
+- 移除未使用的变量（`dialogs`、`X`、`isProcessing`、`setMagicColor`、`artifactType`、`setArtifact`、`addExpertResult`、`updateExpertResult`、`expertResults`、`user`、`assistantMessageIdRef`）
+- 修复 TypeScript 类型错误：正确导入 `Message` 类型
+- 原因：功能已整合到 ExpertStatusBar，FloatingExpertBar 冗余
 
-**CanvasChatPage.tsx - 修复频繁重绘问题**
-- 使用 `useMemo` 缓存 JSX 和对象（`ArtifactContent`、`ChatContent`、`ExpertBarContent`）
-- 使用 `useMemo` 缓存配置对象（`expertColors`、`expertIcons`）
-- 使用 `useCallback` 优化 `getArtifactTitle` 函数
-- 使用 `useMemo` 缓存专家 artifact（`selectedExpertArtifact`）
-- 优化 `useEffect` 依赖数组（只触发 artifact 变化）
-- 影响：
-  - 重绘次数减少 85%
-  - 对象重新创建减少 95%
-  - 性能提升 95%
-  - 预览交互更流畅
+**代码清理 - 移除所有调试日志**
+- `useChat.ts` - 将 `DEBUG` 设为 `false`，移除所有 `console.log` 和 `debug` 输出
+- `CanvasChatPage.tsx` - 移除所有 `console.log`（初始化状态、模式切换、会话加载等）
+- `ChatPage.tsx` - 移除所有 `console.log`（会话检查、加载状态等）
+- `ExpertStatusBar.tsx` - 移除点击事件相关的调试日志
+- `ArtifactProvider.tsx` - 移除状态相关的调试日志
+- `api.ts` - 移除所有 API 调用相关的调试日志（发送消息、专家激活、专家完成、artifact 接收等）
+- `GlowingInput.tsx` - 移除开发环境下的"当前模式"提示
+- 影响：控制台干净，无调试信息输出
+- 用户体验：界面更专业，无干扰信息
 
-### 🐛 Bug 修复
+### 🎨 UI 优化
 
-**api.ts - 导出 getClientId 函数**
-- 添加 `export` 关键字到 `getClientId()` 函数
-- 修复导入错误：`The requested module does not provide an export named 'getClientId'`
-- 影响：修复前端应用启动失败问题
-
-### 📝 文档优化（P2-4）
-
-**尝试情况**:
-- ✅ 命令创建空文件成功（`echo. > logger.test.ts`）
-- ❌ `replace_in_file` 工具无法识别文件（路径问题）
-- ❌ PowerShell/Echo 命令多次失败（参数/重命名错误）
+**简化界面，提升用户体验**
+- 移除聊天面板上方的浮动专家栏
+- 移除输入框上方的"当前模式"调试提示
+- 专家状态通过左侧 ExpertStatusBar 统一管理
+- 界面更简洁，减少视觉干扰
 - ❌ `write_file` 工具在此环境中不可用
 
 **根本原因**:

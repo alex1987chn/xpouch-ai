@@ -179,10 +179,25 @@ export interface ExpertEvent {
  * Artifact（代码/图表等）类型
  */
 export interface Artifact {
+  id: string  // 唯一标识符
   type: 'code' | 'markdown' | 'search' | 'html' | 'text'
   language?: string
   content: string
   source?: string
+  title?: string  // Artifact 的自定义标题
+  timestamp?: string  // 创建时间
+}
+
+/**
+ * ArtifactSession - 每个专家的交付物会话
+ * 支持多个交付物的管理和切换
+ */
+export interface ArtifactSession {
+  expertType: string  // 专家类型（如 'writer', 'coder'）
+  artifacts: Artifact[]  // 该专家的所有交付物
+  currentIndex: number  // 当前展示的交付物索引
+  createdAt: string  // 会话创建时间
+  updatedAt: string  // 会话最后更新时间
 }
 
 // ============================================

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Send, Image, Paperclip, X, File, Square, Sparkles } from 'lucide-react'
+import { Send, Image, Paperclip, X, File, Square, Zap, Brain } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { INPUT } from '@/constants/ui'
@@ -243,36 +243,42 @@ export default function GlowingInput({
 
               {/* 模式切换胶囊 */}
               {onConversationModeChange && (
-                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full p-0.5 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full px-1 border border-slate-200 dark:border-slate-700" style={{ width: '59px', height: '32px' }}>
                   <button
                     type="button"
-                    onClick={() => onConversationModeChange('simple')}
+                    onClick={() => {
+                      console.log('[GlowingInput] 切换到简单模式')
+                      onConversationModeChange('simple')
+                    }}
                     className={cn(
-                      'flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all',
+                      'flex items-center justify-center rounded-full transition-all',
                       'hover:scale-105 active:scale-95',
                       conversationMode === 'simple'
                         ? 'bg-violet-500 text-white shadow-md'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                     )}
-                    title={t('simpleMode')}
+                    style={{ width: '27px', height: '27px' }}
+                    title="快速对话模式 - 直接调用AI，响应迅速"
                   >
-                    <Sparkles className="w-2.5 h-2.5" />
-                    <span>{t('simple')}</span>
+                    <Zap className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => onConversationModeChange('complex')}
+                    onClick={() => {
+                      console.log('[GlowingInput] 切换到复杂模式')
+                      onConversationModeChange('complex')
+                    }}
                     className={cn(
-                      'flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all',
+                      'flex items-center justify-center rounded-full transition-all',
                       'hover:scale-105 active:scale-95',
                       conversationMode === 'complex'
                         ? 'bg-violet-500 text-white shadow-md'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                     )}
-                    title={t('complexMode')}
+                    style={{ width: '27px', height: '27px' }}
+                    title="专家协作模式 - 多专家智能体协同工作，深度分析复杂任务"
                   >
-                    <Sparkles className="w-2.5 h-2.5" />
-                    <span>{t('complex')}</span>
+                    <Brain className="w-4 h-4" />
                   </button>
                 </div>
               )}

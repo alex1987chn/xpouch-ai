@@ -7,6 +7,8 @@ import type { Message } from '@/store/chatStore'
 import GlowingInput from './GlowingInput'
 import { useTranslation } from '@/i18n'
 
+type ConversationMode = 'simple' | 'complex'
+
 interface FloatingChatPanelProps {
   className?: string
   messages: Message[]
@@ -21,6 +23,8 @@ interface FloatingChatPanelProps {
   isChatMinimized?: boolean
   setIsChatMinimized?: (minimized: boolean) => void
   onStopGeneration?: () => void
+  conversationMode?: ConversationMode
+  onConversationModeChange?: (mode: ConversationMode) => void
 }
 
 export default function FloatingChatPanel({
@@ -36,7 +40,9 @@ export default function FloatingChatPanel({
   onViewModeChange,
   isChatMinimized: propIsChatMinimized = false,
   setIsChatMinimized: propSetIsChatMinimized,
-  onStopGeneration
+  onStopGeneration,
+  conversationMode = 'simple',
+  onConversationModeChange
 }: FloatingChatPanelProps) {
   const { t } = useTranslation()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -316,6 +322,8 @@ export default function FloatingChatPanel({
           placeholder={t('describeTask')}
           disabled={isTyping}
           isTyping={isTyping}
+          conversationMode={conversationMode}
+          onConversationModeChange={onConversationModeChange}
         />
       </div>
           </motion.div>

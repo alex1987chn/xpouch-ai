@@ -9,9 +9,10 @@ import { generateId } from '@/utils/storage'
 import type { AgentType } from '@/types'
 import { getClientId } from '@/services/api'
 import { logger, errorHandler } from '@/utils/logger'
+import type { Artifact } from '@/types'
 
 // 开发环境判断
-const DEBUG = import.meta.env.DEV
+const DEBUG = false
 
 // 统一的调试日志函数
 const debug = DEBUG
@@ -43,7 +44,7 @@ export function useChat() {
   const navigate = useNavigate()
   const [activeExpertId, setActiveExpertId] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
-  const { setArtifact, addExpertResult, updateExpertResult } = useCanvasStore()
+  const { setArtifact, addExpertResult, updateExpertResult, addArtifact, addArtifactsBatch } = useCanvasStore()
 
   const {
     messages,
@@ -86,6 +87,15 @@ export function useChat() {
     }
   }, [getAgentType])
 
+  // 判断对话模式（根据 agentId）
+  const getConversationMode = useCallback((agentId: string): 'simple' | 'complex' => {
+    if (agentId === 'sys-assistant') {
+      return 'simple'
+    }
+    // 其他所有情况都是复杂模式（包括 sys-commander 和专家）
+    return 'complex'
+  }, [])
+
   // 发送消息核心逻辑
   const handleSendMessage = useCallback(async (content?: string) => {
     const userContent = content || inputMessage
@@ -118,11 +128,17 @@ export function useChat() {
       setInputMessage('')
       setIsTyping(true)
 
-      // 3. 判断智能体类型和生成 Thread ID
+      // 3. 判断智能体类型、模式和 Thread ID
       const agentType = getAgentType(selectedAgentId)
       const threadId = getThreadId(selectedAgentId)
+      const conversationMode = getConversationMode(selectedAgentId)
 
-      debug('Agent Info:', { agentType, agentId: selectedAgentId, threadId })
+      debug('Agent Info:', {
+        agentType,
+        agentId: selectedAgentId,
+        threadId,
+        conversationMode
+      })
 
       // 4. 预先添加 AI 空消息（占位）
       const assistantMessageId = generateId()
@@ -134,65 +150,105 @@ export function useChat() {
 
       let newConversationId: string | undefined
 
-      // 4. 发送请求并处理流式响应
+      // 5. 发送请求并处理流式响应
       debug('准备调用 sendMessage')
       await sendMessage(
         chatMessages,
         selectedAgentId,
-        async (chunk, conversationId, expertEvent, artifact) => {
+        async (chunk, conversationId, expertEvent, artifact, expertId) => {
           debug('sendMessage 回调被调用:', {
             chunk: chunk?.substring(0, 50),
             conversationId,
             expertEvent,
             hasArtifact: !!artifact,
+            expertId,
             assistantMessageId
           })
 
-          // 处理专家事件
-          if (expertEvent?.type === 'expert_activated') {
-            debug('✅ 专家激活:', expertEvent.expertId)
-            setActiveExpertId(expertEvent.expertId)
+          // 处理专家事件（只在复杂模式下）
+          if (conversationMode === 'complex') {
+            // 处理专家激活事件
+            if (expertEvent?.type === 'expert_activated') {
+              debug('✅ 专家激活:', expertEvent.expertId)
+              setActiveExpertId(expertEvent.expertId)
 
-            // 使用统一的专家结果创建函数
-            const newExpert = createExpertResult(expertEvent.expertId, 'running')
-            debug('添加专家到状态栏:', newExpert)
-            addExpertResult(newExpert)
-            debug('当前专家结果列表:', useCanvasStore.getState().expertResults)
-          } else if (expertEvent?.type === 'expert_completed') {
-            debug('✅ 专家完成:', expertEvent.expertId, expertEvent)
-            debug('更新前专家结果列表:', useCanvasStore.getState().expertResults)
+              // 使用统一的专家结果创建函数
+              const newExpert = createExpertResult(expertEvent.expertId, 'running')
+              debug('添加专家到状态栏:', newExpert)
+              addExpertResult(newExpert)
+              debug('当前专家结果列表:', useCanvasStore.getState().expertResults)
+            } else if (expertEvent?.type === 'expert_completed') {
+              debug('✅ 专家完成:', expertEvent.expertId, expertEvent)
+              debug('更新前专家结果列表:', useCanvasStore.getState().expertResults)
 
-            // 使用 await Promise.resolve() 替代 setTimeout，让用户能看到 running 状态
-            await Promise.resolve()
+              // 使用 await Promise.resolve() 替代 setTimeout，让用户能看到 running 状态
+              await Promise.resolve()
 
-            // 更新专家状态为完成，包含完整信息
-            updateExpertResult(expertEvent.expertId, {
-              status: (expertEvent.status === 'failed' ? 'failed' : 'completed') as 'completed' | 'failed',
-              completedAt: new Date().toISOString(),
-              duration: expertEvent.duration_ms,
-              error: expertEvent.error,
-              output: expertEvent.output
-            })
-            debug('更新后专家结果列表:', useCanvasStore.getState().expertResults)
+              // 处理 allArtifacts（新架构：批量添加到 ArtifactSession）
+              if (expertEvent.allArtifacts && Array.isArray(expertEvent.allArtifacts) && expertEvent.allArtifacts.length > 0) {
+                debug('处理 allArtifacts:', expertEvent.allArtifacts.length, '个 artifact')
+                debug('专家ID:', expertEvent.expertId)
+                debug('artifacts 数据:', expertEvent.allArtifacts)
+
+                const artifacts: Artifact[] = expertEvent.allArtifacts.map((item: any) => ({
+                  id: generateId(),
+                  timestamp: new Date().toISOString(),
+                  type: item.type,
+                  title: item.title,
+                  content: item.content,
+                  language: item.language
+                }))
+
+                            addArtifactsBatch(expertEvent.expertId, artifacts)
+                debug('已添加 artifacts 到 ArtifactSession:', expertEvent.expertId)
+              }
+
+              // 更新专家状态为完成，包含完整信息
+              updateExpertResult(expertEvent.expertId, {
+                status: (expertEvent.status === 'failed' ? 'failed' : 'completed') as 'completed' | 'failed',
+                completedAt: new Date().toISOString(),
+                duration: expertEvent.duration_ms,
+                error: expertEvent.error,
+                output: expertEvent.output,
+                artifacts: expertEvent.allArtifacts ? expertEvent.allArtifacts.map((item: any) => ({
+                  id: generateId(),
+                  timestamp: new Date().toISOString(),
+                  type: item.type,
+                  title: item.title,
+                  content: item.content,
+                  language: item.language
+                })) : undefined
+              })
+              debug('更新后专家结果列表:', useCanvasStore.getState().expertResults)
+            }
           }
 
           // 处理 artifact 事件
-          if (artifact) {
-            debug('收到 artifact:', artifact.type)
+          if (artifact && expertId) {
+            debug('收到 artifact:', artifact.type, 'expertId:', expertId)
             debug('Artifact language:', artifact.language)
             debug('Artifact content length:', artifact.content?.length || 0)
             debug('Artifact content preview:', artifact.content?.substring(0, 100))
-            // 更新 Canvas 显示代码
+
+            // 新架构：添加到 ArtifactSession
+            const fullArtifact: Artifact = {
+              id: generateId(),
+              timestamp: new Date().toISOString(),
+              type: artifact.type,
+              title: artifact.title,
+              content: artifact.content,
+              language: artifact.language
+            }
+            addArtifact(expertId, fullArtifact)
+            debug('已添加 artifact 到 ArtifactSession:', expertId, 'type:', artifact.type)
+
+            // 兼容旧逻辑：更新 Canvas 显示代码
             setArtifact(artifact.type, artifact.content)
 
             // 如果有当前激活的专家，更新其 artifact 信息
             if (activeExpertId) {
               updateExpertResult(activeExpertId, {
-                artifact: {
-                  type: artifact.type,
-                  content: artifact.content,
-                  language: artifact.language
-                }
+                artifact: fullArtifact
               })
             }
           }
@@ -210,7 +266,8 @@ export function useChat() {
           }
         },
         currentConversationId,
-        abortControllerRef.current.signal
+        abortControllerRef.current.signal,
+        conversationMode  // 传递模式参数
       )
 
       // 5. 更新会话状态和 URL
@@ -245,7 +302,7 @@ export function useChat() {
       setIsTyping(false)
       abortControllerRef.current = null
     }
-  }, [inputMessage, selectedAgentId, currentConversationId, getAgentType, getThreadId])
+  }, [inputMessage, selectedAgentId, currentConversationId, getAgentType, getThreadId, getConversationMode])
 
   // 停止生成
   const handleStopGeneration = useCallback(() => {

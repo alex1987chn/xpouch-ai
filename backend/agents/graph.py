@@ -22,6 +22,7 @@ sys.path.append(str(pathlib.Path(__file__).parent))
 from models import ExpertType, TaskStatus, SubTask
 from config import init_langchain_tracing, get_langsmith_config
 from utils.json_parser import parse_llm_json
+from utils.exceptions import AppError
 from agents.experts import (
     run_search_expert,
     run_coder_expert,
@@ -275,7 +276,11 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
 
         # 检查执行结果
         if "error" in result:
-            raise Exception(result["error"])
+            raise AppError(
+                message=result["error"],
+                code="EXPERT_EXECUTION_ERROR",
+                status_code=500
+            )
 
         # 转换 SubTask 对象（更新 output_result 和 status）
         current_task["output_result"] = {"content": result.get("output_result", "")}
