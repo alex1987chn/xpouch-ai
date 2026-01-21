@@ -223,7 +223,7 @@ export function useChat() {
       setIsTyping(false)
       abortControllerRef.current = null
     }
-  }, [inputMessage, messages, selectedAgentId, currentConversationId, getCurrentAgent, addMessage, setInputMessage, setIsTyping, updateMessage, setCurrentConversationId, navigate, getAgentType, getThreadId])
+  }, [inputMessage, selectedAgentId, currentConversationId, getAgentType, getThreadId])
 
   // 停止生成
   const handleStopGeneration = useCallback(() => {
