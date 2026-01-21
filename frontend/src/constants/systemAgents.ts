@@ -5,6 +5,7 @@
  */
 
 import { LucideIconName } from '@/lib/icon-mapping'
+import type { ExpertResult } from '@/store/canvasStore'
 
 export interface SystemAgent {
   agentId: string        // 语义化ID，如 sys-search
@@ -16,6 +17,24 @@ export interface SystemAgent {
   graphId: string       // LangGraph 工作流标识符
   capabilities: string[]  // 启用的工具/特性
 }
+
+/**
+ * 专家类型
+ */
+export type ExpertType = 'search' | 'coder' | 'researcher' | 'analyzer' | 'writer' | 'planner' | 'image_analyzer'
+
+/**
+ * 专家配置（简化版，用于 ExpertStatusBar）
+ */
+export const EXPERT_CONFIG: Record<ExpertType, { icon: string; color: string; name: string }> = {
+  search: { icon: '🔍', color: 'violet', name: '搜索专家' },
+  coder: { icon: '💻', color: 'indigo', name: '编程专家' },
+  researcher: { icon: '📚', color: 'emerald', name: '研究专家' },
+  analyzer: { icon: '📊', color: 'blue', name: '分析专家' },
+  writer: { icon: '✍️', color: 'teal', name: '写作专家' },
+  planner: { icon: '📋', color: 'orange', name: '规划专家' },
+  image_analyzer: { icon: '🖼️', color: 'pink', name: '图片分析专家' }
+} as const
 
 /**
  * 系统智能体列表
@@ -124,3 +143,39 @@ export function isSystemAgent(agentId: string): boolean {
 export function getDefaultSystemAgent(): SystemAgent {
   return SYSTEM_AGENTS[0] // 通用助手
 }
+
+/**
+ * 获取专家名称（带兜底）
+ */
+export function getExpertName(expertType: string): string {
+  return EXPERT_CONFIG[expertType as ExpertType]?.name || expertType
+}
+
+/**
+ * 获取专家配置（带兜底）
+ */
+export function getExpertConfig(expertType: string) {
+  return EXPERT_CONFIG[expertType as ExpertType] || {
+    icon: '🤖',
+    color: 'gray',
+    name: expertType
+  }
+}
+
+/**
+ * 创建专家结果
+ */
+export function createExpertResult(
+  expertType: string,
+  status: ExpertResult['status'] = 'pending'
+): ExpertResult {
+  const config = getExpertConfig(expertType)
+  return {
+    expertType,
+    expertName: config.name,
+    description: `执行${config.name}任务`,
+    status,
+    startedAt: new Date().toISOString()
+  }
+}
+

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useChatStore, type Message } from '@/store/chatStore'
 import { useCanvasStore, type ExpertResult } from '@/store/canvasStore'
 import { sendMessage, type ApiMessage } from '@/services/api'
-import { getSystemAgent } from '@/constants/systemAgents'
+import { getSystemAgent, createExpertResult } from '@/constants/systemAgents'
 import { getDefaultModel } from '@/utils/config'
 import { generateId } from '@/utils/storage'
 import type { AgentType } from '@/types'
@@ -130,14 +130,8 @@ export function useChat() {
             debug('✅ 专家激活:', expertEvent.expertId)
             setActiveExpertId(expertEvent.expertId)
 
-            // 添加专家结果到状态栏 - 简化描述
-            const newExpert = {
-              expertType: expertEvent.expertId,
-              expertName: expertEvent.expertId,
-              description: `执行任务`,
-              status: 'running' as const,
-              startedAt: new Date().toISOString()
-            }
+            // 使用统一的专家结果创建函数
+            const newExpert = createExpertResult(expertEvent.expertId, 'running')
             debug('添加专家到状态栏:', newExpert)
             addExpertResult(newExpert)
             debug('当前专家结果列表:', useCanvasStore.getState().expertResults)

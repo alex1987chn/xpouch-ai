@@ -5,22 +5,12 @@ import { cn } from '@/lib/utils'
 import { CheckCircle2, Clock2, AlertCircle, X, RefreshCw, Info } from 'lucide-react'
 import { useCanvasStore, type ExpertResult } from '@/store/canvasStore'
 import { useTranslation } from '@/i18n'
-
-// 专家配置
-const EXPERT_CONFIG: Record<string, { icon: string; color: string; name: string }> = {
-  search: { icon: '🔍', color: 'violet', name: '搜索专家' },
-  coder: { icon: '💻', color: 'indigo', name: '编程专家' },
-  researcher: { icon: '📚', color: 'emerald', name: '研究专家' },
-  analyzer: { icon: '📊', color: 'blue', name: '分析专家' },
-  writer: { icon: '✍️', color: 'teal', name: '写作专家' },
-  planner: { icon: '📋', color: 'orange', name: '规划专家' },
-  image_analyzer: { icon: '🖼️', color: 'pink', name: '图片分析专家' }
-}
+import { getExpertConfig } from '@/constants/systemAgents'
 
 // 专家详情预览卡片
 function ExpertPreviewModal({ expert, onClose }: { expert: ExpertResult; onClose: () => void }) {
   const { t } = useTranslation()
-  const config = EXPERT_CONFIG[expert.expertType] || { icon: '🤖', color: 'gray', name: '未知专家' }
+  const config = getExpertConfig(expert.expertType)
 
   // 优先使用 AI 返回的自定义标题，否则使用默认名称
   const displayName = expert.title || config.name
@@ -191,7 +181,7 @@ const ExpertCard = React.forwardRef<HTMLDivElement, {
   expert: ExpertResult
   onClick: () => void
 }>(({ expert, onClick }, ref) => {
-  const config = EXPERT_CONFIG[expert.expertType] || { icon: '🤖', color: 'gray', name: '未知专家' }
+  const config = getExpertConfig(expert.expertType)
 
   // 优先使用 AI 返回的自定义标题，否则使用默认名称
   const displayName = expert.title || config.name
