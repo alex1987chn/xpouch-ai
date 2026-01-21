@@ -1,4 +1,4 @@
-import { useState, forwardRef } from 'react'
+import { useState, forwardRef, useMemo } from 'react'
 import React from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -7,27 +7,89 @@ import { useCanvasStore, type ExpertResult } from '@/store/canvasStore'
 import { useTranslation } from '@/i18n'
 import { getExpertConfig } from '@/constants/systemAgents'
 
+// 状态配置常量（提取重复配置）
+const STATUS_COLORS = {
+  pending: 'bg-gray-200 dark:bg-gray-700',
+  running: 'bg-green-500 animate-pulse',
+  completed: 'bg-green-500',
+  failed: 'bg-red-500'
+} as const
+
+// 状态图标组件（提取重复逻辑）
+function StatusIcon({
+  status,
+  className = 'w-5 h-5'
+}: {
+  status: ExpertResult['status']
+  className?: string
+}) {
+  const icons = {
+    pending: null,
+    running: <Clock2 className={`${className} text-white`} />,
+    completed: <CheckCircle2 className={`${className} text-white`} />,
+    failed: <AlertCircle className={`${className} text-white`} />
+  }
+
+  return icons[status]
+}
+
+// 专家信息显示组件（提取重复逻辑）
+function ExpertInfo({
+  expert,
+  showDuration = true
+}: {
+  expert: ExpertResult
+  showDuration?: boolean
+}) {
+  const config = getExpertConfig(expert.expertType)
+  const displayName = expert.title || config.name
+
+  return (
+    <div className="flex items-center gap-4">
+      <div className={cn(
+        'w-10 h-10 rounded-full flex items-center justify-center shadow-lg',
+        STATUS_COLORS[expert.status]
+      )}>
+        <StatusIcon status={expert.status} />
+      </div>
+
+      <div>
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">{config.icon}</span>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+            {displayName}
+          </h3>
+        </div>
+        <div className="flex items-center gap-3 mt-1">
+          <span className={cn(
+            'text-sm font-medium',
+            expert.status === 'completed' && 'text-green-600 dark:text-green-400',
+            expert.status === 'running' && 'text-blue-600 dark:text-blue-400',
+            expert.status === 'failed' && 'text-red-600 dark:text-red-400',
+            expert.status === 'pending' && 'text-gray-600 dark:text-gray-400'
+          )}>
+            {expert.status === 'pending' && '等待中'}
+            {expert.status === 'running' && '执行中'}
+            {expert.status === 'completed' && '已完成'}
+            {expert.status === 'failed' && '执行失败'}
+          </span>
+          {showDuration && expert.duration && (
+            <>
+              <span className="text-gray-300 dark:text-gray-600">•</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                耗时 {(expert.duration / 1000).toFixed(2)}s
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // 专家详情预览卡片
 function ExpertPreviewModal({ expert, onClose }: { expert: ExpertResult; onClose: () => void }) {
   const { t } = useTranslation()
-  const config = getExpertConfig(expert.expertType)
-
-  // 优先使用 AI 返回的自定义标题，否则使用默认名称
-  const displayName = expert.title || config.name
-
-  const statusColors = {
-    pending: 'bg-gray-200 dark:bg-gray-700',
-    running: 'bg-green-500 animate-pulse',
-    completed: 'bg-green-500',
-    failed: 'bg-red-500'
-  }
-
-  const statusIcons = {
-    pending: null,
-    running: <Clock2 className="w-5 h-5 text-white" />,
-    completed: <CheckCircle2 className="w-5 h-5 text-white" />,
-    failed: <AlertCircle className="w-5 h-5 text-white" />
-  }
 
   // 性能优化：使用 will-change 提示浏览器
   return (
@@ -57,54 +119,14 @@ function ExpertPreviewModal({ expert, onClose }: { expert: ExpertResult; onClose
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 头部 - 性能优化：移除渐变，使用纯色 */}
+        {/* 头部 - 使用提取的 ExpertInfo 组件 */}
         <div className={cn(
           'p-6 border-b',
           'bg-white dark:bg-slate-800',
           'border-gray-200 dark:border-slate-700'
         )}>
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              {/* 状态指示灯 */}
-              <div className={cn(
-                'w-10 h-10 rounded-full flex items-center justify-center shadow-lg',
-                statusColors[expert.status]
-              )}>
-                {statusIcons[expert.status]}
-              </div>
-
-              {/* 专家信息 */}
-              <div>
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">{config.icon}</span>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                    {displayName}
-                  </h3>
-                </div>
-                <div className="flex items-center gap-3 mt-1">
-                  <span className={cn(
-                    'text-sm font-medium',
-                    expert.status === 'completed' && 'text-green-600 dark:text-green-400',
-                    expert.status === 'running' && 'text-blue-600 dark:text-blue-400',
-                    expert.status === 'failed' && 'text-red-600 dark:text-red-400',
-                    expert.status === 'pending' && 'text-gray-600 dark:text-gray-400'
-                  )}>
-                    {expert.status === 'pending' && '等待中'}
-                    {expert.status === 'running' && '执行中'}
-                    {expert.status === 'completed' && '已完成'}
-                    {expert.status === 'failed' && '执行失败'}
-                  </span>
-                  {expert.duration && (
-                    <>
-                      <span className="text-gray-300 dark:text-gray-600">•</span>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        耗时 {(expert.duration / 1000).toFixed(2)}s
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
+            <ExpertInfo expert={expert} showDuration={true} />
 
             {/* 关闭按钮 */}
             <button
@@ -183,23 +205,6 @@ const ExpertCard = React.forwardRef<HTMLDivElement, {
 }>(({ expert, onClick }, ref) => {
   const config = getExpertConfig(expert.expertType)
 
-  // 优先使用 AI 返回的自定义标题，否则使用默认名称
-  const displayName = expert.title || config.name
-
-  const statusColors = {
-    pending: 'bg-gray-200 dark:bg-gray-700',
-    running: 'bg-green-500 animate-pulse',
-    completed: 'bg-green-500',
-    failed: 'bg-red-500'
-  }
-
-  const statusIcons = {
-    pending: null,
-    running: <Clock2 className="w-3 h-3 text-white" />,
-    completed: <CheckCircle2 className="w-3 h-3 text-white" />,
-    failed: <AlertCircle className="w-3 h-3 text-white" />
-  }
-
   return (
     <div
       ref={ref}
@@ -222,9 +227,9 @@ const ExpertCard = React.forwardRef<HTMLDivElement, {
         {/* 状态指示灯 */}
         <div className={cn(
           'w-2.5 h-2.5 rounded-full flex items-center justify-center',
-          statusColors[expert.status]
+          STATUS_COLORS[expert.status]
         )}>
-          {statusIcons[expert.status]}
+          <StatusIcon status={expert.status} className="w-3 h-3" />
         </div>
 
         {/* 专家图标 */}
@@ -232,7 +237,7 @@ const ExpertCard = React.forwardRef<HTMLDivElement, {
 
         {/* 专家名称 */}
         <span className="text-xs font-medium text-gray-700 dark:text-gray-200">
-          {displayName}
+          {expert.title || config.name}
         </span>
       </div>
     </div>
