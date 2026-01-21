@@ -1,10 +1,9 @@
 import React, { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import SwipeBackIndicator from './SwipeBackIndicator'
 
 interface XPouchLayoutProps {
-  SidebarContent: React.ReactNode
   ExpertBarContent: React.ReactNode // 专家状态栏
   ArtifactContent: React.ReactNode // Artifact显示区域
   ChatContent: (viewMode: 'chat' | 'preview', setViewMode: (mode: 'chat' | 'preview') => void) => React.ReactNode
@@ -16,7 +15,6 @@ interface XPouchLayoutProps {
 }
 
 export default function XPouchLayout({
-  SidebarContent,
   ExpertBarContent,
   ArtifactContent,
   ChatContent,
@@ -30,23 +28,12 @@ export default function XPouchLayout({
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
 
   return (
-    <div className="flex h-[100dvh] w-screen overflow-hidden">
-
-      {/* 1. 侧边栏 - 固定宽度 92px，统一样式，z-index 确保全局优先级 */}
-      <aside className="hidden md:flex h-screen flex-shrink-0 w-[92px] bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a] backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/30 relative z-[150]">
-        <div className="h-full w-full">
-          {SidebarContent}
-        </div>
-      </aside>
-
-      {/* 主容器 - 三区布局：左侧专家区（bar + artifact），右侧聊天区 */}
-      <motion.div
-        layout
+    <div className="flex h-[100dvh] w-full overflow-hidden">
+      {/* 主容器 - 左右并列布局 */}
+      <div
         className={cn(
           'relative flex flex-col md:flex-row overflow-hidden h-full w-full',
-          hasArtifact
-            ? 'flex-1 md:p-4 md:gap-4' // PC端：有 artifact 时显示 padding 和 gap
-            : 'flex-1' // 无 artifact 时使用
+          'p-4 md:gap-4' // PC端：统一的 padding (16px) 和 gap
         )}
       >
         {/* 移动端滑动返回指示器 */}
@@ -57,81 +44,53 @@ export default function XPouchLayout({
           {/* 可以在这里添加网格背景 */}
         </div>
 
-        {/* 左侧专家区 - 包含专家状态栏和Artifact区域 */}
-        <AnimatePresence mode="wait">
-          <motion.main
-            key={viewMode}
-            layout={hasArtifact} // 只在有 artifact 时启用 layout
-            initial={false}
-            animate={{
-              flex: hasArtifact ? 1 : 1,
-              width: hasArtifact ? 'auto' : '100%'
-            }}
-            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1], layout: { duration: 0.4 } }}
+        {/* 左侧容器：专家状态栏 + Artifact，占 7 份（约 70%） */}
+        <div
+          className={cn(
+            'relative flex flex-col gap-4 min-h-0 flex-[7]',
+            'hidden md:flex' // PC端显示
+          )}
+        >
+          {/* 专家状态栏 - 自适应宽度，固定高度 */}
+          <section
             className={cn(
-              'relative flex-shrink-0 md:flex-1 h-full overflow-hidden min-h-0',
-              viewMode === 'chat' ? 'hidden md:flex' : 'flex md:flex-1',
-              // 有 artifact 时：深色面板，圆角，边框（仅 PC 端）
-              hasArtifact && 'bg-[#0B0E14] md:rounded-2xl md:border md:border-slate-800 md:shadow-2xl',
-              // 无 artifact 时：透明，显示背景网格（仅 PC 端圆角）
-              !hasArtifact && 'md:rounded-2xl'
+              'relative w-full',
+              'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md',
+              'rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20'
             )}
           >
-            {/* 移动端：画布顶部的切换按钮（仅在 preview 模式显示） */}
-            {viewMode === 'preview' && (
-              <button
-                onClick={() => setViewMode('chat')}
-                className="md:hidden absolute top-4 left-1/2 -translate-x-1/2 z-[60] w-28 h-8 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-full shadow-lg flex items-center justify-center gap-2 px-3 hover:bg-white dark:hover:bg-slate-800 transition-all"
-              >
-                <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                <span className="text-[11px] font-medium text-slate-700 dark:text-slate-200">对话</span>
-              </button>
-            )}
+            {ExpertBarContent}
+          </section>
 
-            {/* Canvas 内容容器 - flex column布局 */}
-            <div className={cn(
-              'h-full w-full flex flex-col',
-              viewMode === 'preview' ? 'block' : 'hidden',
-              'md:block'
-            )}>
-              {/* 专家状态栏 - 顶部，固定高度 */}
-              <div className="relative z-20 flex-shrink-0 px-4 pt-4 pb-2">
-                {ExpertBarContent}
-              </div>
+          {/* Artifact 显示区域 - 自适应宽度，占据剩余高度 */}
+          {hasArtifact && (
+            <section
+              className={cn(
+                'relative w-full flex-1 min-h-0 overflow-hidden',
+                'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md',
+                'rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20'
+              )}
+            >
+              {ArtifactContent}
+            </section>
+          )}
+        </div>
 
-              {/* Artifact显示区域 - 占据剩余空间 */}
-              <div className="flex-1 overflow-auto relative z-10">
-                <div className="w-full h-full px-4 pb-4">
-                  {ArtifactContent}
-                </div>
-              </div>
-            </div>
-          </motion.main>
-        </AnimatePresence>
-
-        {/* Chat Panel - 右侧 */}
+        {/* Chat Panel - 右侧，占 3 份（约 30%） */}
         <AnimatePresence mode="wait">
           {(!hideChatPanel || viewMode === 'chat') && (
-            <motion.aside
-              key="chat-panel"
-              layout={hasArtifact} // 只在有 artifact 时启用 layout
-              initial={false}
-              animate={{
-                width: hasArtifact ? '400px' : '400px',
-                flexShrink: 0
-              }}
-              transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1], layout: { duration: 0.4 } }}
+            <aside
               className={cn(
                 // 基础样式
                 'flex flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-md',
-                // 移动端：全屏显示（使用 fixed 脱离文档流，避免受父容器影响）
+                // 移动端：全屏显示
                 'fixed inset-0 z-50 md:relative',
                 viewMode === 'chat' ? 'w-full h-[100dvh] rounded-none border-none' : 'hidden',
-                // PC端样式：统一样式，保持视觉一致
-                'md:flex md:w-[400px] md:h-full md:rounded-2xl md:shadow-2xl md:shadow-black/20 md:border md:border-slate-200/50 md:dark:border-slate-700/50',
+                // PC端样式：与其他区域统一，设置 flex-3 占 30%
+                'md:flex md:flex-[3] md:h-full md:rounded-2xl md:shadow-2xl md:shadow-black/20 md:border md:border-slate-200/50 md:dark:border-slate-700/50',
                 // 关键：overflow-hidden 确保圆角锐利，只有内部消息区域滚动
                 'overflow-hidden min-h-0',
-                isChatMinimized && 'md:w-0 md:opacity-0 md:overflow-hidden md:pointer-events-none',
+                isChatMinimized && 'md:flex-0 md:opacity-0 md:overflow-hidden md:pointer-events-none',
                 // 全屏预览时隐藏
                 hideChatPanel && 'hidden'
               )}
@@ -142,7 +101,7 @@ export default function XPouchLayout({
               )}>
                 {ChatContent(viewMode, setViewMode)}
               </div>
-            </motion.aside>
+            </aside>
           )}
         </AnimatePresence>
 
@@ -159,7 +118,42 @@ export default function XPouchLayout({
           </button>
         )}
 
-      </motion.div>
+        {/* 移动端预览模式内容 */}
+        <AnimatePresence mode="wait">
+          {viewMode === 'preview' && (
+            <div
+              className={cn(
+                'fixed inset-0 z-40 md:hidden',
+                'bg-slate-50 dark:bg-slate-950'
+              )}
+            >
+              <div className="absolute top-4 left-4 z-50">
+                <button
+                  onClick={() => setViewMode('chat')}
+                  className="w-28 h-8 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-full shadow-lg flex items-center justify-center gap-2 px-3 hover:bg-white dark:hover:bg-slate-800 transition-all"
+                >
+                  <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                  <span className="text-[11px] font-medium text-slate-700 dark:text-slate-200">对话</span>
+                </button>
+              </div>
+
+              {/* 移动端：专家状态栏 */}
+              <div className="absolute top-4 right-4 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20">
+                <div className="p-4">
+                  {ExpertBarContent}
+                </div>
+              </div>
+
+              {/* 移动端：Artifact 显示区域 */}
+              <div className="h-full w-full overflow-auto relative pt-20">
+                <div className="w-full p-4">
+                  {ArtifactContent}
+                </div>
+              </div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
-  );
+  )
 }

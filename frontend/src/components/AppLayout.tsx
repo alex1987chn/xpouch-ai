@@ -1,0 +1,141 @@
+import { ReactNode, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { cn } from '@/lib/utils'
+import { Menu, ChevronRight } from 'lucide-react'
+import Sidebar from '@/components/Sidebar'
+import { SettingsDialog } from '@/components/SettingsDialog'
+import { PersonalSettingsDialog } from '@/components/PersonalSettingsDialog'
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { useApp } from '@/providers/AppProvider'
+
+interface AppLayoutProps {
+  children: ReactNode
+  hideMobileMenu?: boolean // 某些页面（如CanvasChatPage）可能不需要汉堡菜单
+}
+
+export default function AppLayout({ children, hideMobileMenu = false }: AppLayoutProps) {
+  const navigate = useNavigate()
+  const { sidebar, dialogs } = useApp()
+
+  // 监听全局 toggle-sidebar 事件
+  useEffect(() => {
+    const handleToggle = () => {
+      sidebar.toggleCollapsed()
+    }
+    window.addEventListener('toggle-sidebar', handleToggle)
+    return () => window.removeEventListener('toggle-sidebar', handleToggle)
+  }, [sidebar])
+
+  // 创建 Agent 的回调
+  const handleCreateAgent = () => {
+    navigate('/create-agent')
+  }
+
+  // 确认删除 Agent
+  const handleDeleteConfirm = async () => {
+    if (!dialogs.deletingAgentId) return
+
+    // 这里只是占位符，实际的删除逻辑由各页面通过订阅 dialogs 状态来处理
+    // 或者统一在这里处理
+    console.log('[AppLayout] Delete confirm clicked for:', dialogs.deletingAgentId)
+    dialogs.closeDeleteConfirm()
+  }
+
+  return (
+    <div
+      className={cn(
+        'flex w-full bg-slate-50 dark:bg-[#020617] transition-colors duration-200 overflow-x-hidden',
+        'min-h-[100dvh]'
+      )}
+    >
+      {/* 移动端侧边栏遮罩 */}
+      {sidebar.isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={sidebar.closeMobile}
+        />
+      )}
+
+      {/* 左侧边栏 - 统一的全局 Sidebar */}
+      <aside className={cn(
+        'fixed left-0 top-0 h-screen flex-shrink-0 transition-transform duration-200 z-[150]',
+        'w-[92px]',
+        'bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a]',
+        'backdrop-blur-xl',
+        'border-r border-slate-200/50 dark:border-slate-700/30',
+        'lg:translate-x-0',
+        sidebar.isMobileOpen ? 'translate-x-0' : '-translate-x-full',
+        sidebar.isCollapsed && 'lg:-translate-x-full',
+      )}>
+        <div className="h-full w-full">
+          <Sidebar
+            isCollapsed={sidebar.isCollapsed}
+            onCreateAgent={handleCreateAgent}
+            onSettingsClick={dialogs.openSettings}
+            onPersonalSettingsClick={dialogs.openPersonalSettings}
+            onToggleCollapse={sidebar.toggleCollapsed}
+          />
+        </div>
+      </aside>
+
+      {/* 收拢侧边栏后，显示的展开按钮 - 悬浮在屏幕左边缘 */}
+      {sidebar.isCollapsed && (
+        <div className="fixed left-2 top-1/2 -translate-y-1/2 z-50 hidden lg:flex">
+          <button
+            onClick={sidebar.toggleCollapsed}
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200/80 dark:bg-gray-800/80 backdrop-blur-md hover:bg-gray-300/80 dark:hover:bg-gray-700/80 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-violet-500/50 shadow-lg text-gray-600 dark:text-gray-300"
+            title="展开侧边栏"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* 主内容区域 - 右侧交互区 */}
+      <div className={cn(
+        'flex-1 w-full flex flex-col transition-all duration-200',
+        sidebar.isCollapsed ? 'lg:ml-0' : 'lg:ml-[92px]',
+        sidebar.isMobileOpen ? 'ml-0' : 'ml-0'
+      )}>
+        {/* 移动端汉堡菜单按钮 */}
+        {!hideMobileMenu && (
+          <div className="lg:hidden absolute top-4 left-4 z-50">
+            <button
+              onClick={sidebar.toggleMobile}
+              className="p-2 rounded-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-md hover:bg-gray-100/50 dark:hover:bg-slate-700/50 transition-colors shadow-md"
+            >
+              <Menu className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+            </button>
+          </div>
+        )}
+
+        {/* 主要内容 */}
+        <main className="flex-1 w-full flex flex-col h-full overflow-hidden">
+          {children}
+        </main>
+      </div>
+
+      {/* 全局 Dialogs */}
+      <SettingsDialog
+        isOpen={dialogs.settingsOpen}
+        onClose={dialogs.closeSettings}
+      />
+
+      <PersonalSettingsDialog
+        isOpen={dialogs.personalSettingsOpen}
+        onClose={dialogs.closePersonalSettings}
+      />
+
+      <DeleteConfirmDialog
+        isOpen={dialogs.deleteConfirmOpen}
+        onClose={dialogs.closeDeleteConfirm}
+        onConfirm={handleDeleteConfirm}
+        title="确认删除智能体"
+        description="删除后无法恢复，请确认是否继续？"
+        itemName={dialogs.deletingAgentName}
+      />
+    </div>
+  )
+}
+
+

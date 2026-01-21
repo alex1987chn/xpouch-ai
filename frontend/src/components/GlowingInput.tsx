@@ -3,6 +3,7 @@ import { Send, Image, Paperclip, X, File, Square, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { INPUT } from '@/constants/ui'
+import { useTranslation } from '@/i18n'
 
 type ConversationMode = 'simple' | 'complex'
 
@@ -34,13 +35,14 @@ export default function GlowingInput({
   onSubmit,
   onSubmitComplete,
   onStop,
-  placeholder = '输入消息...',
+  placeholder,
   disabled = false,
   isTyping = false,
   onFocusRestore,
   conversationMode = 'simple',
   onConversationModeChange
 }: GlowingInputProps) {
+  const { t } = useTranslation()
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isFocused, setIsFocused] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -188,7 +190,7 @@ export default function GlowingInput({
               onKeyDown={handleKeyDown}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              placeholder={placeholder}
+              placeholder={placeholder || t('placeholder')}
               disabled={disabled}
               rows={INPUT.DEFAULT_ROWS}
               className="w-full min-h-[60px] max-h-[180px] resize-none bg-transparent border-0 outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 text-base leading-relaxed"
@@ -214,7 +216,7 @@ export default function GlowingInput({
                 onClick={() => imageInputRef.current?.click()}
                 disabled={disabled}
                 className="w-8 h-8 rounded-lg text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                title="上传图片"
+                title={t('uploadImage')}
               >
                 <Image className="w-4 h-4" />
               </Button>
@@ -234,7 +236,7 @@ export default function GlowingInput({
                 onClick={() => fileInputRef.current?.click()}
                 disabled={disabled}
                 className="w-8 h-8 rounded-lg text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                title="上传附件"
+                title={t('uploadAttachment')}
               >
                 <Paperclip className="w-4 h-4" />
               </Button>
@@ -252,10 +254,10 @@ export default function GlowingInput({
                         ? 'bg-violet-500 text-white shadow-md'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                     )}
-                    title="简单对话模式"
+                    title={t('simpleMode')}
                   >
                     <Sparkles className="w-2.5 h-2.5" />
-                    <span>简单</span>
+                    <span>{t('simple')}</span>
                   </button>
                   <button
                     type="button"
@@ -267,10 +269,10 @@ export default function GlowingInput({
                         ? 'bg-violet-500 text-white shadow-md'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                     )}
-                    title="复杂任务模式"
+                    title={t('complexMode')}
                   >
                     <Sparkles className="w-2.5 h-2.5" />
-                    <span>复杂</span>
+                    <span>{t('complex')}</span>
                   </button>
                 </div>
               )}
@@ -299,12 +301,12 @@ export default function GlowingInput({
               {isTyping ? (
                 <>
                   <Square className="w-4 h-4 mr-1.5" />
-                  停止
+                  {t('stop')}
                 </>
               ) : (
                 <>
                   <Send className="w-4 h-4 mr-1.5" />
-                  发送
+                  {t('send')}
                 </>
               )}
             </Button>
@@ -314,7 +316,7 @@ export default function GlowingInput({
         {/* 快捷提示 */}
         {files.length === 0 && (
           <div className="px-4 py-2 text-xs text-muted-foreground bg-muted/50 border-t border-border transition-colors duration-300">
-            按 Enter 发送，Shift + Enter 换行
+            {t('enterToSend')}
           </div>
         )}
       </div>

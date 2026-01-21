@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, Clock, FileText, Code, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/i18n'
 
 interface WorkflowStep {
   id: string
@@ -16,59 +17,62 @@ interface ExpertDrawerProps {
   expertName: string
 }
 
-const mockWorkflows: Record<string, WorkflowStep[]> = {
-  search: [
-    {
-      id: '1',
-      title: '接收任务',
-      description: '解析用户输入的任务描述',
-      duration: '2s',
-      status: 'completed'
-    },
-    {
-      id: '2',
-      title: '构建查询',
-      description: '根据关键词构建搜索查询',
-      duration: '3s',
-      status: 'completed'
-    },
-    {
-      id: '3',
-      title: '执行搜索',
-      description: '调用搜索 API 执行查询',
-      duration: '5s',
-      status: 'running'
-    }
-  ],
-  analyzer: [
-    {
-      id: '1',
-      title: '分析数据',
-      description: '处理搜索结果，提取关键信息',
-      duration: '8s',
-      status: 'pending'
-    },
-    {
-      id: '2',
-      title: '生成报告',
-      description: '汇总分析结果，输出结构化数据',
-      duration: '5s',
-      status: 'pending'
-    }
-  ],
-  frontend: [
-    {
-      id: '1',
-      title: '设计 UI 组件',
-      description: '基于 Figma 设计稿实现 React 组件',
-      duration: '15s',
-      status: 'pending'
-    }
-  ]
-}
-
 export default function ExpertDrawer({ isOpen, onClose, expertName }: ExpertDrawerProps) {
-  const [selectedWorkflow, setSelectedWorkflow] = useState<keyof typeof mockWorkflows>('search')
+  const { t } = useTranslation()
+
+  const getMockWorkflows = (): Record<string, WorkflowStep[]> => ({
+    search: [
+      {
+        id: '1',
+        title: t('receiveTask'),
+        description: t('receiveTaskDesc'),
+        duration: '2s',
+        status: 'completed'
+      },
+      {
+        id: '2',
+        title: t('buildQuery'),
+        description: t('buildQueryDesc'),
+        duration: '3s',
+        status: 'completed'
+      },
+      {
+        id: '3',
+        title: t('executeSearch'),
+        description: t('executeSearchDesc'),
+        duration: '5s',
+        status: 'running'
+      }
+    ],
+    analyzer: [
+      {
+        id: '1',
+        title: t('analyzeData'),
+        description: t('analyzeDataDesc'),
+        duration: '8s',
+        status: 'pending'
+      },
+      {
+        id: '2',
+        title: t('generateReport'),
+        description: t('generateReportDesc'),
+        duration: '5s',
+        status: 'pending'
+      }
+    ],
+    frontend: [
+      {
+        id: '1',
+        title: t('designUI'),
+        description: t('designUIDesc'),
+        duration: '15s',
+        status: 'pending'
+      }
+    ]
+  })
+
+  const [selectedWorkflow, setSelectedWorkflow] = useState<keyof ReturnType<typeof getMockWorkflows>>('search')
+  const mockWorkflows = getMockWorkflows()
 
   const workflowSteps = mockWorkflows[selectedWorkflow] || []
 
@@ -84,9 +88,14 @@ export default function ExpertDrawer({ isOpen, onClose, expertName }: ExpertDraw
       running: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
       completed: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
     }
+    const statusText = {
+      pending: t('pending'),
+      running: t('running'),
+      completed: t('completed')
+    }
     return (
       <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', styles[status])}>
-        {status === 'running' ? '进行中' : status === 'completed' ? '完成' : '等待'}
+        {statusText[status]}
       </span>
     )
   }
@@ -118,7 +127,7 @@ export default function ExpertDrawer({ isOpen, onClose, expertName }: ExpertDraw
               {expertName}
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              专家工作流详情
+              {t('expertWorkflowDetails')}
             </p>
           </div>
           <button
@@ -142,9 +151,9 @@ export default function ExpertDrawer({ isOpen, onClose, expertName }: ExpertDraw
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
               )}
             >
-              {key === 'search' && '🔍 搜索专家'}
-              {key === 'analyzer' && '📊 分析专家'}
-              {key === 'frontend' && '🎨 前端专家'}
+              {key === 'search' && `🔍 ${t('searchExpert')}`}
+              {key === 'analyzer' && `📊 ${t('analyzerExpert')}`}
+              {key === 'frontend' && `🎨 ${t('frontendExpert')}`}
             </button>
           ))}
         </div>

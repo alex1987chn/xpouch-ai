@@ -84,7 +84,7 @@ export const useChatStore = create<ChatState>()(
       setLastActiveConversationId: (id: string | null) => set({ lastActiveConversationId: id }),
       
       addCustomAgent: (agent: Agent) => set((state: ChatState) => ({
-        customAgents: [...state.customAgents, agent]
+        customAgents: [agent, ...state.customAgents]
       })),
 
       setCustomAgents: (agentsOrUpdater: Agent[] | ((prev: Agent[]) => Agent[])) => set((state: ChatState) => ({

@@ -25,7 +25,7 @@ export default function Layout() {
       onPersonalSettingsClick={() => setIsPersonalSettingsOpen(true)}
     >
       <Outlet />
-      
+
       <SettingsDialog
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -38,3 +38,4 @@ export default function Layout() {
     </MainChatLayout>
   )
 }
+

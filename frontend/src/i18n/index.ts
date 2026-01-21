@@ -16,6 +16,22 @@ export type TranslationKey =
   | 'newKnowledgeBase' | 'searchKnowledge' | 'documents' | 'uploadDocument'
   | 'noKnowledgeFound' | 'noKnowledgeContent' | 'createFirstKnowledge'
   | 'currentPlan'
+  // Input & Chat
+  | 'uploadImage' | 'uploadAttachment' | 'simpleMode' | 'complexMode' | 'simple' | 'complex'
+  | 'stop' | 'send' | 'enterToSend' | 'describeTask'
+  // Chat Actions
+  | 'copy' | 'regenerate' | 'resend'
+  // Expert Status
+  | 'taskDescription' | 'clear' | 'expertWorkflowDetails' | 'searchExpert' | 'analyzerExpert' | 'frontendExpert'
+  | 'pending' | 'running' | 'completed'
+  // Delete Dialog
+  | 'confirmDeleteTitle' | 'confirmDeleteDescription' | 'deleting'
+  // Create Agent Page
+  | 'simpleDescription' | 'defineBehavior' | 'writingAssistantPlaceholder' | 'tip' | 'tipDescription'
+  | 'realtimePreview' | 'previewDescription' | 'submitTaskPlaceholder'
+  // Workflow Steps (Expert Drawer)
+  | 'receiveTask' | 'receiveTaskDesc' | 'buildQuery' | 'buildQueryDesc' | 'executeSearch' | 'executeSearchDesc'
+  | 'analyzeData' | 'analyzeDataDesc' | 'generateReport' | 'generateReportDesc' | 'designUI' | 'designUIDesc'
 
 interface I18nContextType {
   language: Language

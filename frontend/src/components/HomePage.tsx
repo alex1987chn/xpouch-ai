@@ -77,12 +77,28 @@ export default function HomePage() {
     loadCustomAgents()
   }, [refreshKey, setCustomAgents]) // 添加 setCustomAgents 依赖
 
-  // 监听路由变化，当从创建页面返回首页时刷新列表
+  // 监听路由变化，当从创建页面返回首页时重置状态
   useEffect(() => {
     if (location.pathname === '/') {
       setRefreshKey(prev => prev + 1)
+
+      // 检查是否有从创建页面传递的 agentTab 状态
+      const stateAgentTab = location.state?.agentTab as 'featured' | 'my' | undefined
+
+      if (stateAgentTab === 'my') {
+        // 从创建页面返回，切换到"我的智能体"标签
+        setAgentTab('my')
+        // 选中第一个自定义智能体
+        if (customAgents.length > 0) {
+          setSelectedAgentId(customAgents[0].id)
+        }
+      } else {
+        // 正常返回首页，重置为精选智能体标签
+        setAgentTab('featured')
+        setSelectedAgentId(SYSTEM_AGENTS[0].agentId)
+      }
     }
-  }, [location.pathname])
+  }, [location.pathname, location.state, setSelectedAgentId, customAgents])
 
   // 使用 useMemo 优化智能体列表计算
   const displayMyAgents = useMemo<Agent[]>(
@@ -157,7 +173,6 @@ export default function HomePage() {
     } catch (error) {
       console.error('删除自定义智能体失败:', error)
       // 即使删除失败（比如 404），也从 store 中移除该 agent
-      // 因为这可能是一个无效的 ID（本地缓存的旧数据）
       setCustomAgents(prev => prev.filter(agent => agent.id !== deletingAgentId))
       // 如果删除的是当前选中的 agent，切换到第一个可用 agent
       if (selectedAgentId === deletingAgentId) {
@@ -172,7 +187,7 @@ export default function HomePage() {
       setDeletingAgentId(null)
       setDeletingAgentName('')
     }
-  }, [deletingAgentId, selectedAgentId, displayMyAgents, setSelectedAgentId])
+  }, [deletingAgentId, selectedAgentId, displayMyAgents, setCustomAgents, setSelectedAgentId])
 
   const handleSendMessage = useCallback(() => {
     if (!inputMessage.trim()) return
@@ -200,7 +215,7 @@ export default function HomePage() {
   }, [inputMessage, navigate, conversationMode])
 
   return (
-    <div className="bg-transparent homepage-scroll overflow-y-auto overflow-x-hidden scrollbar-gutter-stable h-[100dvh] scroll-smooth">
+    <div className="bg-transparent homepage-scroll overflow-y-auto overflow-x-hidden scrollbar-gutter-stable w-full h-full scroll-smooth">
       {/* Logo + 输入框区域 */}
       <div className="pt-[10vh] pb-6 px-6 md:px-12">
         <div className="w-full max-w-5xl mx-auto">
@@ -222,7 +237,7 @@ export default function HomePage() {
                 value={inputMessage}
                 onChange={setInputMessage}
                 onSubmit={handleSendMessage}
-                placeholder={conversationMode === 'simple' ? '描述你的需求，与通用助手对话...' : '描述你的复杂任务，AI 将智能拆解并分配给多个专家...'}
+                placeholder={conversationMode === 'simple' ? t('placeholder') : t('submitTaskPlaceholder')}
                 conversationMode={conversationMode}
                 onConversationModeChange={setConversationMode}
               />
@@ -343,3 +358,5 @@ export default function HomePage() {
     </div>
   )
 }
+
+

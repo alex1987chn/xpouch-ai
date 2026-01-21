@@ -224,13 +224,13 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
               {/* 描述 */}
               <div className="space-y-3">
                 <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  <span>描述</span>
+                  <span>{t('description')}</span>
                 </label>
                 <input
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="简单描述你的智能体..."
+                  placeholder={t('simpleDescription')}
                   className={cn(
                     'w-full px-5 py-3.5 rounded-2xl',
                     'bg-white dark:bg-slate-800/50',
@@ -247,16 +247,16 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
               {/* 系统提示词 */}
               <div className="space-y-3">
                 <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  <span>系统提示词</span>
+                  <span>{t('systemPrompt')}</span>
                   <span className="text-violet-500">*</span>
                 </label>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  定义智能体的行为、性格和能力
+                  {t('defineBehavior')}
                 </p>
                 <textarea
                   value={systemPrompt}
                   onChange={(e) => setSystemPrompt(e.target.value.slice(0, 2000))}
-                  placeholder="你是一个专业的写作助手..."
+                  placeholder={t('writingAssistantPlaceholder')}
                   rows={10}
                   maxLength={2000}
                   className={cn(
@@ -278,8 +278,8 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
               {/* 提示信息 */}
               <div className="p-4 rounded-xl bg-violet-50 dark:bg-violet-900/20 border border-violet-200/50 dark:border-violet-700/50">
                 <p className="text-xs text-violet-600 dark:text-violet-300">
-                  <span className="font-semibold">提示：</span>
-                  填写名称和系统提示词后即可创建智能体。详细的提示词能让智能体更好地理解你的需求。
+                  <span className="font-semibold">{t('tip')}：</span>
+                  {t('tipDescription')}
                 </p>
               </div>
             </div>
@@ -292,7 +292,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-blue-400 to-violet-500" />
                 <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                  实时预览
+                  {t('realtimePreview')}
                 </h2>
               </div>
 
@@ -307,7 +307,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
 
               {/* 预览说明 */}
               <p className="mt-4 text-xs text-slate-400 dark:text-slate-500 text-center">
-                这是你的智能体在首页展示的效果
+                {t('previewDescription')}
               </p>
             </div>
           </div>

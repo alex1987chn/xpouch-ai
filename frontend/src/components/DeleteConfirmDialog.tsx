@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/i18n'
 
 interface DeleteConfirmDialogProps {
   isOpen: boolean
@@ -24,10 +25,11 @@ export function DeleteConfirmDialog({
   isOpen,
   onClose,
   onConfirm,
-  title = '确认删除',
-  description = '此操作无法撤销，请确认是否继续？',
+  title,
+  description,
   itemName,
 }: DeleteConfirmDialogProps) {
+  const { t } = useTranslation()
   const [isDeleting, setIsDeleting] = useState(false)
 
   const handleConfirm = async () => {
@@ -49,7 +51,7 @@ export function DeleteConfirmDialog({
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
             <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
           </div>
-          <DialogTitle className="text-center">{title}</DialogTitle>
+          <DialogTitle className="text-center">{title || t('confirmDeleteTitle')}</DialogTitle>
           {itemName && (
             <DialogDescription className="text-center">
               <span className="font-semibold text-slate-900 dark:text-slate-100">
@@ -58,7 +60,7 @@ export function DeleteConfirmDialog({
             </DialogDescription>
           )}
           <DialogDescription className="text-center">
-            {description}
+            {description || t('confirmDeleteDescription')}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="sm:justify-center gap-2">
@@ -69,7 +71,7 @@ export function DeleteConfirmDialog({
             disabled={isDeleting}
             className="w-full sm:w-auto"
           >
-            取消
+            {t('cancel')}
           </Button>
           <Button
             type="button"
@@ -78,7 +80,7 @@ export function DeleteConfirmDialog({
             disabled={isDeleting}
             className="w-full sm:w-auto"
           >
-            {isDeleting ? '删除中...' : '确认删除'}
+            {isDeleting ? t('deleting') : t('confirmDelete')}
           </Button>
         </DialogFooter>
       </DialogContent>

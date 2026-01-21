@@ -1,8 +1,10 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, forwardRef } from 'react'
+import React from 'react'
+import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { CheckCircle2, Clock2, AlertCircle, X, RefreshCw, Info } from 'lucide-react'
 import { useCanvasStore, type ExpertResult } from '@/store/canvasStore'
+import { useTranslation } from '@/i18n'
 
 // 专家配置
 const EXPERT_CONFIG: Record<string, { icon: string; color: string; name: string }> = {
@@ -18,6 +20,9 @@ const EXPERT_CONFIG: Record<string, { icon: string; color: string; name: string 
 // 专家详情预览卡片
 function ExpertPreviewModal({ expert, onClose }: { expert: ExpertResult; onClose: () => void }) {
   const config = EXPERT_CONFIG[expert.expertType] || { icon: '🤖', color: 'gray', name: '未知专家' }
+
+  // 优先使用 AI 返回的自定义标题，否则使用默认名称
+  const displayName = expert.title || config.name
 
   const statusColors = {
     pending: 'bg-gray-200 dark:bg-gray-700',
@@ -38,7 +43,7 @@ function ExpertPreviewModal({ expert, onClose }: { expert: ExpertResult; onClose
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
       onClick={onClose}
     >
       {/* 背景遮罩 */}
@@ -74,7 +79,7 @@ function ExpertPreviewModal({ expert, onClose }: { expert: ExpertResult; onClose
                 <div className="flex items-center gap-3">
                   <span className="text-3xl">{config.icon}</span>
                   <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                    {config.name}
+                    {displayName}
                   </h3>
                 </div>
                 <div className="flex items-center gap-3 mt-1">
@@ -118,7 +123,7 @@ function ExpertPreviewModal({ expert, onClose }: { expert: ExpertResult; onClose
           <div>
             <h4 className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
               <Info className="w-4 h-4 text-indigo-500" />
-              任务描述
+              {t('taskDescription')}
             </h4>
             <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed bg-gray-50 dark:bg-slate-900/50 p-3 rounded-lg">
               {expert.description}
@@ -173,11 +178,14 @@ function ExpertPreviewModal({ expert, onClose }: { expert: ExpertResult; onClose
 }
 
 // 专家卡片组件（简化版）
-function ExpertCard({ expert, onClick }: {
+const ExpertCard = React.forwardRef<HTMLDivElement, {
   expert: ExpertResult
   onClick: () => void
-}) {
+}>(({ expert, onClick }, ref) => {
   const config = EXPERT_CONFIG[expert.expertType] || { icon: '🤖', color: 'gray', name: '未知专家' }
+
+  // 优先使用 AI 返回的自定义标题，否则使用默认名称
+  const displayName = expert.title || config.name
 
   const statusColors = {
     pending: 'bg-gray-200 dark:bg-gray-700',
@@ -194,13 +202,11 @@ function ExpertCard({ expert, onClick }: {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
+    <div
+      ref={ref}
       className={cn(
         'flex-shrink-0 cursor-pointer transition-all duration-300',
-        expert.status === 'failed' && 'ring-2 ring-red-500 ring-opacity-50',
-        expert.expertType === useCanvasStore.getState().selectedExpert && 'ring-2 ring-indigo-500'
+        expert.status === 'failed' && 'ring-2 ring-red-500 ring-opacity-50'
       )}
       onClick={onClick}
     >
@@ -208,6 +214,7 @@ function ExpertCard({ expert, onClick }: {
         'flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition-all duration-300',
         'bg-white dark:bg-slate-800',
         'hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2',
         expert.status === 'running' && 'border-green-400 shadow-green-500/20',
         expert.status === 'completed' && 'border-green-400',
         expert.status === 'failed' && 'border-red-400',
@@ -226,12 +233,14 @@ function ExpertCard({ expert, onClick }: {
 
         {/* 专家名称 */}
         <span className="text-xs font-medium text-gray-700 dark:text-gray-200">
-          {config.name}
+          {displayName}
         </span>
       </div>
-    </motion.div>
+    </div>
   )
-}
+})
+
+ExpertCard.displayName = 'ExpertCard'
 
 interface ExpertStatusBarProps {
   previewExpert: ExpertResult | null
@@ -239,10 +248,8 @@ interface ExpertStatusBarProps {
 }
 
 export default function ExpertStatusBar({ previewExpert, setPreviewExpert }: ExpertStatusBarProps) {
+  const { t } = useTranslation()
   const { expertResults, selectedExpert, selectExpert, clearExpertResults } = useCanvasStore()
-
-  console.log('[ExpertStatusBar] 渲染，专家结果数量:', expertResults.length)
-  console.log('[ExpertStatusBar] 专家结果列表:', expertResults)
 
   // 按执行顺序排序专家
   const sortedExperts = [...expertResults].sort((a, b) => {
@@ -253,9 +260,7 @@ export default function ExpertStatusBar({ previewExpert, setPreviewExpert }: Exp
   return (
     <>
       {/* 专家状态栏容器 */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
+      <div
         className={cn(
           'flex items-center gap-3 overflow-x-auto pb-2 min-h-[60px] px-4 py-3',
           'bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm',
@@ -271,21 +276,16 @@ export default function ExpertStatusBar({ previewExpert, setPreviewExpert }: Exp
           </div>
         )}
 
-        <AnimatePresence mode="popLayout">
-          {sortedExperts.map((expert) => {
-            console.log('[ExpertStatusBar] 渲染专家卡片:', expert.expertType, expert.status, expert)
-            return (
-              <ExpertCard
-                key={expert.expertType}
-                expert={expert}
-                onClick={() => {
-                  selectExpert(expert.expertType)
-                  setPreviewExpert(expert)
-                }}
-              />
-            )
-          })}
-        </AnimatePresence>
+        {sortedExperts.map((expert) => (
+          <ExpertCard
+            key={expert.expertType}
+            expert={expert}
+            onClick={() => {
+              selectExpert(expert.expertType)
+              setPreviewExpert(expert)
+            }}
+          />
+        ))}
 
         {/* 清除按钮 */}
         {sortedExperts.length > 0 && (
@@ -296,10 +296,10 @@ export default function ExpertStatusBar({ previewExpert, setPreviewExpert }: Exp
             }}
             className="ml-auto px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
           >
-            清除
+            {t('clear')}
           </button>
         )}
-      </motion.div>
+      </div>
     </>
   )
 }

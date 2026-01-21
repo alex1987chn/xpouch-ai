@@ -1,11 +1,12 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createBrowserRouter, RouterProvider, useNavigate, Navigate } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, useNavigate, Navigate, Outlet } from 'react-router-dom'
 import { I18nProvider } from './i18n'
 import { ThemeProvider } from './hooks/useTheme'
+import { AppProvider } from './providers/AppProvider'
+import AppLayout from './components/AppLayout'
 import './index.css'
 
-import Layout from './components/Layout'
 import HomePage from './components/HomePage'
 import CanvasChatPage from './components/CanvasChatPage'
 import HistoryPage from './components/HistoryPage'
@@ -15,6 +16,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { useChatStore } from './store/chatStore'
 import { type ConversationHistory } from './utils/storage'
 import { createCustomAgent } from './services/api'
+import { deleteCustomAgent, getAllAgents } from './services/api'
 
 // 包装 HistoryPage 以适应 Router
 const HistoryPageWrapper = () => {
@@ -43,7 +45,6 @@ const CreateAgentPageWrapper = () => {
 
   const handleSave = async (agent: any) => {
     try {
-      // 使用统一的 API 调用
       const savedAgent = await createCustomAgent({
         name: agent.name,
         description: agent.description,
@@ -52,7 +53,6 @@ const CreateAgentPageWrapper = () => {
         modelId: agent.modelId
       })
 
-      // 同时更新前端状态（添加 UI 所需的属性）
       const agentWithUI = {
         ...savedAgent,
         icon: agent.icon,
@@ -60,7 +60,8 @@ const CreateAgentPageWrapper = () => {
       }
 
       addCustomAgent(agentWithUI)
-      navigate('/') // 回到首页
+      // 导航到首页并切换到"我的智能体"标签
+      navigate('/', { state: { agentTab: 'my' } })
     } catch (error) {
       console.error('保存智能体失败:', error)
       alert('保存失败，请稍后重试')
@@ -75,10 +76,17 @@ const CreateAgentPageWrapper = () => {
   )
 }
 
+// 包装 CanvasChatPage 以适应 AppLayout（隐藏汉堡菜单）
+const CanvasChatPageWrapper = () => {
+  return (
+    <CanvasChatPage />
+  )
+}
+
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <Layout />,
+    element: <AppLayout><Outlet /></AppLayout>,
     children: [
       {
         index: true,
@@ -104,18 +112,22 @@ const router = createBrowserRouter([
   },
   {
     path: '/chat/:id',
-    element: <CanvasChatPage />
+    element: <AppLayout hideMobileMenu={true}><CanvasChatPage /></AppLayout>
   }
 ])
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <I18nProvider>
-        <ThemeProvider>
-          <RouterProvider router={router} />
-        </ThemeProvider>
-      </I18nProvider>
+      <AppProvider>
+        <I18nProvider>
+          <ThemeProvider>
+            <RouterProvider router={router} />
+          </ThemeProvider>
+        </I18nProvider>
+      </AppProvider>
     </ErrorBoundary>
   </StrictMode>,
 )
+
+

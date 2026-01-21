@@ -25,7 +25,7 @@ export default function SidebarUserSection({ onPersonalSettingsClick, onMenuOpen
   }
 
   return (
-    <div className="mt-auto mx-auto mb-3 backdrop-blur-md">
+    <div className="mb-3 backdrop-blur-md">
       {/* 用户头像 */}
       <div
         onClick={handleAvatarClick}
