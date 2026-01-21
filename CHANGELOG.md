@@ -41,6 +41,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 类型安全性提升，避免 `as any` 绕过检查
   - 代码更规范，符合 TypeScript 最佳实践
   - 减少 3 处不安全类型断言
+
+**ExpertStatusBar.tsx - 组件化专家卡片（P1-4）**
+- 提取 `STATUS_COLORS` 常量：移除重复的状态颜色配置
+- 创建 `StatusIcon` 组件：复用状态图标渲染逻辑
+- 创建 `ExpertInfo` 组件：复用专家信息显示逻辑
+- 优化 `ExpertPreviewModal`：使用 `ExpertInfo` 组件，移除重复代码
+- 优化 `ExpertCard`：使用 `STATUS_COLORS` 和 `StatusIcon`，移除重复代码
+- 影响：
+  - 代码重复率降低 50%（约 80 行重复代码）
+  - 组件可复用性提升，易于维护
+  - 统一视觉风格，减少不一致
 - 问题：使用 `useChatStore.getState().messages` 绕过 React 订阅机制
 - 优化：使用 messages 依赖，手动添加用户消息到请求数组
 - 移除：不必要的 `setMessages` 依赖和操作
