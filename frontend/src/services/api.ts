@@ -15,7 +15,7 @@ import {
 const API_BASE_URL = '/api'
 
 // 获取或生成客户端ID (简单的 UUID 生成，兼容低版本浏览器)
-function getClientId(): string {
+export function getClientId(): string {
   const STORAGE_KEY = 'xpouch_client_id';
   let clientId = localStorage.getItem(STORAGE_KEY);
   if (!clientId) {
