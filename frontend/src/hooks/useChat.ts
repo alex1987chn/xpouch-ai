@@ -77,31 +77,33 @@ export function useChat() {
 
     debug('handleSendMessage called:', { userContent, currentConversationId, selectedAgentId })
 
-    // 1. 添加用户消息
-    addMessage({ role: 'user', content: userContent })
-    setInputMessage('')
-    setIsTyping(true)
-
     // 创建新的 AbortController
     abortControllerRef.current = new AbortController()
 
     try {
-      // 2. 准备请求数据 - 使用当前消息状态 + 用户消息
-      const currentMessages = useChatStore.getState().messages
-      const chatMessages: ApiMessage[] = currentMessages
-        .filter((m: Message) => m.role === 'user' || m.role === 'assistant')
-        .map((m: Message) => ({
+      // 1. 准备请求数据 - 使用 messages 依赖，手动添加用户消息
+      const chatMessages: ApiMessage[] = [
+        ...messages,
+        { role: 'user', content: userContent }
+      ]
+        .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+        .map((m: any) => ({
           role: m.role,
           content: m.content
         }))
 
-      // 判断智能体类型和生成 Thread ID
+      // 2. 添加用户消息（触发状态更新）
+      addMessage({ role: 'user', content: userContent })
+      setInputMessage('')
+      setIsTyping(true)
+
+      // 3. 判断智能体类型和生成 Thread ID
       const agentType = getAgentType(selectedAgentId)
       const threadId = getThreadId(selectedAgentId)
 
       debug('Agent Info:', { agentType, agentId: selectedAgentId, threadId })
 
-      // 3. 预先添加 AI 空消息（占位）
+      // 4. 预先添加 AI 空消息（占位）
       const assistantMessageId = generateId()
       addMessage({
         id: assistantMessageId,
