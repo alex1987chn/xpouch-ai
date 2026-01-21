@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import SwipeBackIndicator from './SwipeBackIndicator'
+import { useApp } from '@/providers/AppProvider'
 
 // 知识库类型
 interface KnowledgeItem {
@@ -57,6 +58,7 @@ const mockKnowledgeItems: KnowledgeItem[] = [
 
 export default function KnowledgeBasePage() {
   const { t, language } = useTranslation()
+  const { sidebar } = useApp()
   const [items] = useState<KnowledgeItem[]>(mockKnowledgeItems)
   const [searchQuery, setSearchQuery] = useState('')
   const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
@@ -82,9 +84,11 @@ export default function KnowledgeBasePage() {
   }
 
   return (
-    <div className="relative h-full bg-transparent overflow-x-hidden">
+    <div className="bg-transparent overflow-x-hidden w-full h-full flex flex-col">
       {/* 极窄毛玻璃 Header - h-14 固定高度，fixed 定位 */}
-      <header className="fixed top-0 left-0 right-0 z-40 h-14 px-6 lg:pl-[106px] backdrop-blur-xl bg-white/70 dark:bg-[#020617]/70 border-b border-slate-200/50 dark:border-slate-700/30">
+      <header className="fixed top-0 left-0 right-0 z-40 h-14 px-6 lg:pl-[106px] backdrop-blur-xl bg-white/70 dark:bg-[#020617]/70 border-b border-slate-200/50 dark:border-slate-700/30 transition-all duration-200" style={{
+        paddingLeft: sidebar.isCollapsed ? '12px' : '106px'
+      }}>
         <div className="w-full max-w-5xl mx-auto h-full flex items-center">
           {/* 左侧：图标 + 标题 */}
           <div className="flex items-center h-full">

@@ -6,12 +6,14 @@ export interface ExpertResult {
   expertType: string
   expertName: string
   description: string
+  title?: string // AI 返回的自定义标题
   status: 'pending' | 'running' | 'completed' | 'failed'
   output?: string
   artifact?: {
     type: 'code' | 'markdown' | 'search' | 'html' | 'text'
     content: string
     language?: string
+    title?: string // Artifact 的自定义标题
   }
   duration?: number
   error?: string
@@ -88,12 +90,9 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   artifactType: null,
   artifactContent: '',
   setArtifact: (type, content) => {
-    console.log('[canvasStore] setArtifact called:', { type, contentLength: content?.length || 0 })
-    console.log('[canvasStore] content preview:', content?.substring(0, 100))
     set({ artifactType: type, artifactContent: content })
   },
   clearArtifact: () => {
-    console.log('[canvasStore] clearArtifact called')
     set({ artifactType: null, artifactContent: '' })
   },
 
@@ -101,8 +100,11 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   expertResults: [],
   selectedExpert: null,
   addExpertResult: (result) => set(state => {
-    console.log('[canvasStore] addExpertResult:', result)
-    return { expertResults: [...state.expertResults, result] }
+    // 移除同类型的旧记录，只保留最新的
+    const filtered = state.expertResults.filter(
+      expert => expert.expertType !== result.expertType
+    )
+    return { expertResults: [...filtered, result] }
   }),
   updateExpertResult: (expertType, updates) => set(state => ({
     expertResults: state.expertResults.map(expert =>
@@ -110,12 +112,10 @@ export const useCanvasStore = create<CanvasState>((set) => ({
     )
   })),
   selectExpert: (expertType) => {
-    console.log('[canvasStore] selectExpert:', expertType)
     set({ selectedExpert: expertType })
   },
   clearExpertResults: () => set({ expertResults: [], selectedExpert: null }),
   retryExpert: (expertType) => {
-    console.log('[canvasStore] retryExpert:', expertType)
     // TODO: 实现重试逻辑
     set(state => ({
       expertResults: state.expertResults.map(expert =>

@@ -107,7 +107,14 @@ export function useChat() {
         chatMessages,
         selectedAgentId,
         (chunk, conversationId, expertEvent, artifact) => {
-          console.log('[useChat] sendMessage 回调被调用:', { chunk: chunk?.substring(0, 50), conversationId, expertEvent, hasArtifact: !!artifact })
+          console.log('[useChat] sendMessage 回调被调用:', {
+            chunk: chunk?.substring(0, 50),
+            conversationId,
+            expertEvent,
+            hasArtifact: !!artifact,
+            assistantMessageId
+          })
+
           // 处理专家事件
           if (expertEvent?.type === 'expert_activated') {
             console.log('[useChat] ✅ 专家激活:', expertEvent.expertId)
@@ -174,6 +181,7 @@ export function useChat() {
 
           // 实时更新 assistant 消息
           if (chunk) {
+            console.log('[useChat] 更新消息:', assistantMessageId, 'chunk length:', chunk.length, 'chunk:', chunk.substring(0, 50))
             updateMessage(assistantMessageId, chunk, true)
           }
 

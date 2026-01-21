@@ -60,7 +60,64 @@ export const zh: Record<TranslationKey, string> = {
   createFirstKnowledge: '创建第一个知识库',
   
   // User Menu
-  currentPlan: '当前套餐'
+  currentPlan: '当前计划',
+
+  // Input & Chat
+  uploadImage: '上传图片',
+  uploadAttachment: '上传附件',
+  simpleMode: '简单对话模式',
+  complexMode: '复杂任务模式',
+  simple: '简单',
+  complex: '复杂',
+  stop: '停止',
+  send: '发送',
+  enterToSend: '按 Enter 发送，Shift + Enter 换行',
+  describeTask: '描述你的任务，AI 会帮你拆解...',
+
+  // Chat Actions
+  copy: '复制',
+  regenerate: '重新生成',
+  resend: '重新发送',
+
+  // Expert Status
+  taskDescription: '任务描述',
+  clear: '清除',
+  expertWorkflowDetails: '专家工作流详情',
+  searchExpert: '搜索专家',
+  analyzerExpert: '分析专家',
+  frontendExpert: '前端专家',
+  pending: '等待',
+  running: '进行中',
+  completed: '完成',
+
+  // Delete Dialog
+  confirmDeleteTitle: '确认删除',
+  confirmDeleteDescription: '此操作无法撤销，请确认是否继续？',
+  deleting: '删除中...',
+
+  // Create Agent Page
+  simpleDescription: '简单描述你的智能体...',
+  defineBehavior: '定义智能体的行为、性格和能力',
+  writingAssistantPlaceholder: '你是一个专业的写作助手...',
+  tip: '提示',
+  tipDescription: '填写名称和系统提示词后即可创建智能体。详细的提示词能让智能体更好地理解你的需求。',
+  realtimePreview: '实时预览',
+  previewDescription: '这是你的智能体在首页展示的效果',
+  submitTaskPlaceholder: '描述你的任务，AI 会帮你拆解...',
+
+  // Workflow Steps (Expert Drawer)
+  receiveTask: '接收任务',
+  receiveTaskDesc: '解析用户输入的任务描述',
+  buildQuery: '构建查询',
+  buildQueryDesc: '根据关键词构建搜索查询',
+  executeSearch: '执行搜索',
+  executeSearchDesc: '调用搜索 API 执行查询',
+  analyzeData: '分析数据',
+  analyzeDataDesc: '处理搜索结果，提取关键信息',
+  generateReport: '生成报告',
+  generateReportDesc: '汇总分析结果，输出结构化数据',
+  designUI: '设计 UI 组件',
+  designUIDesc: '基于 Figma 设计稿实现 React 组件'
 }
 
 export const en: Record<TranslationKey, string> = {
@@ -123,7 +180,64 @@ export const en: Record<TranslationKey, string> = {
   createFirstKnowledge: 'Create first knowledge base',
   
   // User Menu
-  currentPlan: 'Current Plan'
+  currentPlan: 'Current Plan',
+
+  // Input & Chat
+  uploadImage: 'Upload Image',
+  uploadAttachment: 'Upload Attachment',
+  simpleMode: 'Simple Chat Mode',
+  complexMode: 'Complex Task Mode',
+  simple: 'Simple',
+  complex: 'Complex',
+  stop: 'Stop',
+  send: 'Send',
+  enterToSend: 'Press Enter to send, Shift + Enter for new line',
+  describeTask: 'Describe your task, AI will help break it down...',
+
+  // Chat Actions
+  copy: 'Copy',
+  regenerate: 'Regenerate',
+  resend: 'Resend',
+
+  // Expert Status
+  taskDescription: 'Task Description',
+  clear: 'Clear',
+  expertWorkflowDetails: 'Expert Workflow Details',
+  searchExpert: 'Search Expert',
+  analyzerExpert: 'Analyzer Expert',
+  frontendExpert: 'Frontend Expert',
+  pending: 'Pending',
+  running: 'Running',
+  completed: 'Completed',
+
+  // Delete Dialog
+  confirmDeleteTitle: 'Confirm Delete',
+  confirmDeleteDescription: 'This action cannot be undone. Are you sure you want to continue?',
+  deleting: 'Deleting...',
+
+  // Create Agent Page
+  simpleDescription: 'Briefly describe your agent...',
+  defineBehavior: 'Define the behavior, personality, and capabilities of the agent',
+  writingAssistantPlaceholder: 'You are a professional writing assistant...',
+  tip: 'Tip',
+  tipDescription: 'Fill in the name and system prompt to create an agent. Detailed prompts help the agent better understand your needs.',
+  realtimePreview: 'Real-time Preview',
+  previewDescription: 'This is how your agent will appear on the home page',
+  submitTaskPlaceholder: 'Describe your task, AI will help break it down...',
+
+  // Workflow Steps (Expert Drawer)
+  receiveTask: 'Receive Task',
+  receiveTaskDesc: 'Parse the task description from user input',
+  buildQuery: 'Build Query',
+  buildQueryDesc: 'Build search query based on keywords',
+  executeSearch: 'Execute Search',
+  executeSearchDesc: 'Call search API to execute query',
+  analyzeData: 'Analyze Data',
+  analyzeDataDesc: 'Process search results and extract key information',
+  generateReport: 'Generate Report',
+  generateReportDesc: 'Summarize analysis results and output structured data',
+  designUI: 'Design UI Components',
+  designUIDesc: 'Implement React components based on Figma designs'
 }
 
 export const ja: Record<TranslationKey, string> = {
@@ -186,5 +300,62 @@ export const ja: Record<TranslationKey, string> = {
   createFirstKnowledge: '最初のナレッジベースを作成',
   
   // User Menu
-  currentPlan: '現在のプラン'
+  currentPlan: '現在のプラン',
+
+  // Input & Chat
+  uploadImage: '画像をアップロード',
+  uploadAttachment: 'ファイルをアップロード',
+  simpleMode: 'シンプルチャットモード',
+  complexMode: '複雑なタスクモード',
+  simple: 'シンプル',
+  complex: '複雑',
+  stop: '停止',
+  send: '送信',
+  enterToSend: 'Enterで送信、Shift + Enterで改行',
+  describeTask: 'タスクを説明すると、AIが分解してくれます...',
+
+  // Chat Actions
+  copy: 'コピー',
+  regenerate: '再生成',
+  resend: '再送信',
+
+  // Expert Status
+  taskDescription: 'タスク説明',
+  clear: 'クリア',
+  expertWorkflowDetails: 'エキスパートワークフロー詳細',
+  searchExpert: '検索エキスパート',
+  analyzerExpert: '分析エキスパート',
+  frontendExpert: 'フロントエンドエキスパート',
+  pending: '待機中',
+  running: '実行中',
+  completed: '完了',
+
+  // Delete Dialog
+  confirmDeleteTitle: '削除の確認',
+  confirmDeleteDescription: 'この操作は取り消せません。続行しますか？',
+  deleting: '削除中...',
+
+  // Create Agent Page
+  simpleDescription: 'エージェントを簡単に説明...',
+  defineBehavior: 'エージェントの行動、性格、能力を定義',
+  writingAssistantPlaceholder: 'あなたは専門的なライティングアシスタント...',
+  tip: 'ヒント',
+  tipDescription: '名前とシステムプロンプトを入力してエージェントを作成します。詳細なプロンプトはエージェントがあなたのニーズをよりよく理解するのに役立ちます。',
+  realtimePreview: 'リアルタイムプレビュー',
+  previewDescription: 'これはエージェントがホームページに表示される方法です',
+  submitTaskPlaceholder: 'タスクを説明すると、AIが分解してくれます...',
+
+  // Workflow Steps (Expert Drawer)
+  receiveTask: 'タスクを受信',
+  receiveTaskDesc: 'ユーザー入力からタスク説明を解析',
+  buildQuery: 'クエリを構築',
+  buildQueryDesc: 'キーワードに基づいて検索クエリを構築',
+  executeSearch: '検索を実行',
+  executeSearchDesc: '検索APIを呼び出してクエリを実行',
+  analyzeData: 'データを分析',
+  analyzeDataDesc: '検索結果を処理して主要な情報を抽出',
+  generateReport: 'レポートを生成',
+  generateReportDesc: '分析結果を要約して構造化データを出力',
+  designUI: 'UIコンポーネントを設計',
+  designUIDesc: 'Figmaデザインに基づいてReactコンポーネントを実装'
 }

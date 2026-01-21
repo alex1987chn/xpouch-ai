@@ -11,23 +11,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🏗️ 架构重构
 
-**专家协作可视化系统重构**
+**XPouchLayout 三区扁平布局**
+- 移除 InteractiveCanvas 中间层，减少嵌套层级
+- 新架构：专家状态栏 + artifact + 对话面板（三者平级）
+- 专家状态栏：左侧区域顶部，固定高度（z-20）
+- Artifact 显示：占据剩余空间（flex-1, z-10）
+- 对话面板：右侧区域，占 30%（flex-3, z-[50]）
+- 优势：z-index 管理简化，视觉层级更协调，扩展性更强
+
+**Provider/Context 系统重构**
+- 新增 AppProvider 组件统一管理全局状态
+- 管理 Sidebar 状态（折叠、移动端展开）
+- 管理 Dialogs 状态（设置、个人设置、删除确认）
+- 在 main.tsx 中注入 AppProvider，替换分散状态管理
+- 新增 AppLayout 组件封装通用布局逻辑
+- 支持隐藏移动端汉堡菜单（CanvasChatPage）
+
+**双模路由系统**
+- 首页实现模式切换功能：简单对话（默认）和复杂任务
+- 简单模式：使用 sys-assistant 通用助手（后端特殊处理，直接 LLM 调用）
+- 复杂模式：使用 sys-commander 触发指挥官模式（LangGraph 调度多专家）
+- 两个按钮位于输入框左侧的胶囊中
+- 当前选中的模式显示紫色高亮背景
+- 前端通过 conversationMode 状态控制路由逻辑
+
+**专家协作可视化系统**
 - 新增专家状态栏：实时显示专家执行状态（pending/running/completed/failed）
 - 专家卡片展示：图标 + 名称 + 状态指示灯
 - 点击展开详情：预览弹窗显示任务描述、耗时、输出、错误信息
 - 支持失败重试：失败状态的专家提供重试按钮
 - 后端事件增强：专家完成事件包含完整信息（duration_ms, status, output, error）
-
-**XPouchLayout 三区扁平化布局**
-- 移除 InteractiveCanvas 中间层，减少嵌套层级
-- 新架构：专家状态栏 + artifact + 对话面板（三者平级）
-- 专家状态栏：左侧区域顶部，固定高度（z-20）
-- Artifact 显示：占据剩余空间（flex-1, z-10）
-- 优势：z-index 管理简化，视觉层级更协调，扩展性更强
+- 专家预览弹窗：提升到 CanvasChatPage 根级别渲染（z-[1000]）
+- Artifact 全屏预览：z-[100]
 
 **层级管理优化**
-- 专家预览弹窗：提升到 CanvasChatPage 根级别渲染（z-[100]）
-- Artifact 全屏预览：z-[99999]
+- 专家预览弹窗：提升到 CanvasChatPage 根级别渲染（z-[1000]）
+- Artifact 全屏预览：z-[100]
 - 解决弹窗被 artifact/chat 面板遮挡的问题
 - 避免 stacking context 限制
 
@@ -101,6 +120,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 修复: 移除条件判断，确保点击事件始终生效
 - 影响: 自定义智能体现在可以正常点击进入对话界面
 
+### ⚡ 性能优化
+
+**FloatingExpertBar 图标优化**
+- 问题: 每个图标使用 4x4 网格（16 个 div），7 个专家 = 112 个 DOM 元素
+- 优化: 简化为单个 div + Emoji，减少约 87.5% 的 DOM 节点
+- 移除: `transition-all duration-300` → `transition-opacity duration-200`
+- 移除: 所有图标的 `animate-pulse` → 仅对活跃状态使用
+- 结果: 大幅提升页面渲染性能，减少卡顿
+
+**ExpertStatusBar 性能优化**
+- 移除: `AnimatePresence mode="popLayout"` 布局动画
+- 优化: 直接渲染 ExpertCard，移除昂贵的布局动画计算
+- 移除: 专家卡片选中时的蓝环效果（`ring-2 ring-indigo-500`）
+- 结果: 减少动画计算开销，视觉更简洁
+
+**CanvasChatPage 性能优化**
+- 移除: Artifact 内容区的嵌套 `motion.div`
+- 移除: Artifact 标题栏的 `motion.div`
+- 移除: Artifact 全屏预览的 `AnimatePresence` + 双层 `motion.div`
+- 移除: 专家预览弹窗的 `AnimatePresence`
+- 保留: ExpertPreviewModal 的 motion（用户交互需要平滑过渡）
+- 结果: 减少不必要的动画计算，提升交互流畅度
+
+**布局比例优化**
+- 问题: 对话面板没有固定的 30% 宽度比例
+- 优化: 使用 `flex-[7]` 和 `flex-[3]` 设置 70% : 30% 的布局
+- 结果: 左侧（专家栏 + Artifact）占 70%，右侧（对话面板）占 30%
+
+**调试日志清理**
+- 移除: 前端所有调试 console.log
+- 结果: 减少垃圾回收压力，提升运行时性能
+
+### 🎨 交互改进
+
+**聊天消息操作（参考 ChatGPT/DeepSeek）**
+- 复制按钮: 悬停时显示在消息气泡右上角
+- 用户消息: 复制 + 重新发送按钮
+- 助手消息: 复制 + 重新生成按钮
+- 图标更新: `RefreshCw` → `RotateCcw`（逆时针旋转，更符合"重新"语义）
+- 视觉效果: 毛玻璃背景 `backdrop-blur-sm`，悬停高亮
+- 交互流程:
+  - 用户消息悬停 → 右上角显示复制，下方显示重新发送
+  - 助手消息悬停 → 右上角显示复制 + 重新生成
+
+**Artifact 标题自定义**
+- 新增: `ExpertResult.title` 字段（AI 返回的自定义标题）
+- 新增: `artifact.title` 字段（Artifact 的自定义标题）
+- 优先级: Artifact 标题 > ExpertResult 标题 > 默认专家名称
+- 应用位置:
+  - Artifact 标题栏
+  - Artifact 全屏预览
+  - 专家状态栏卡片
+  - 专家预览弹窗
+- 结果: 不再使用助手名称作为标题，支持 AI 返回自定义标题
+
+**消息气泡交互**
+- 悬停显示: 操作按钮仅在悬停时显示
+- 定位优化: 复制按钮在气泡右上角
+- 状态反馈: 复制成功显示 ✓ 图标 2 秒
+- 主题适配: 用户消息蓝色主题，助手消息灰色主题
+
+### 🔧 技术改进
+
+**类型定义更新**
+- `canvasStore.ts`: 添加 `title?: string` 到 ExpertResult
+- `canvasStore.ts`: 添加 `title?: string` 到 Artifact 类型
+- 向后兼容: `title` 为可选字段，未提供时使用默认值
+
 ### 🐛 后端 Bug 修复
 
 **CustomAgent 拼写错误修复**
@@ -145,6 +232,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 移除 `backend/data/database.db` 从 git 跟踪
 - 原因: 数据库文件包含本地测试数据，不应提交
 - 影响: 避免数据库文件污染版本控制
+
+**ExpertDrawer.tsx 语法错误修复**
+- 问题: 文件中存在重复的 `export default function ExpertDrawer` 定义（第 20 行和第 77 行）
+- 修复: 删除不完整的第一个定义，保留完整实现
+- 影响: 修复了构建错误，前端可以正常编译运行
+
+**首页智能体状态管理优化**
+- 问题 1: 切换回首页时，高亮框未重置到第一个精选智能体
+- 问题 2: 创建自定义智能体后，未自动定位到"我的智能体"页面
+- 问题 3: 新增的自定义智能体未按最新在前排序
+- 修复 1: `HomePage.tsx` 第 80-95 行，路由返回首页时重置 agentTab 为 'featured'，重置 selectedAgentId 为第一个系统智能体
+- 修复 2: `main.tsx` 第 46-68 行，handleSave 导航时传递 `state: { agentTab: 'my' }`；HomePage 从 location.state 读取并切换标签
+- 修复 3: `chatStore.ts` 第 86-88 行，addCustomAgent 方法中 `[...state.customAgents, agent]` 改为 `[agent, ...state.customAgents]`
+- 影响: 首页状态管理更符合用户预期，新创建的智能体自动显示在列表顶部
 
 ---
 

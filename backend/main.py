@@ -429,13 +429,22 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                     messages_with_system.extend(langchain_messages)
 
                     print(f"[ASSISTANT] 开始流式生成...")
+                    chunk_count = 0
+
+                    # SSE 格式：每个消息以 data: 开头，后面跟内容，然后两个换行符
                     async for chunk in llm.astream(messages_with_system):
                         content = chunk.content
                         if content:
+                            chunk_count += 1
                             full_response += content
-                            yield f"data: {json.dumps({'content': content, 'conversationId': conversation_id})}\n\nn"
+                            print(f"[ASSISTANT] Chunk #{chunk_count}: {repr(content[:50] if len(content) > 50 else content)}")
 
-                    print(f"[ASSISTANT] 完成，总长度: {len(full_response)}")
+                            # SSE 格式：data: {...}\n\n
+                            event_data = json.dumps({'content': content, 'conversationId': conversation_id})
+                            yield f"data: {event_data}\n\n"
+
+                    print(f"[ASSISTANT] 完成，总 chunk 数: {chunk_count}, 总长度: {len(full_response)}")
+                    print(f"[ASSISTANT] 完整响应前200字符: {repr(full_response[:200])}")
 
                 except Exception as e:
                     print(f"[ASSISTANT] 错误: {e}")

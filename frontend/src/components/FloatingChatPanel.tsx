@@ -1,10 +1,11 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { Bot, User, Minimize2, Maximize2, Copy, RefreshCw, Check } from 'lucide-react'
+import { Bot, User, Minimize2, Maximize2, Copy, Check, RotateCcw, MoreVertical } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import type { Message } from '@/store/chatStore'
 import GlowingInput from './GlowingInput'
+import { useTranslation } from '@/i18n'
 
 interface FloatingChatPanelProps {
   className?: string
@@ -37,6 +38,7 @@ export default function FloatingChatPanel({
   setIsChatMinimized: propSetIsChatMinimized,
   onStopGeneration
 }: FloatingChatPanelProps) {
+  const { t } = useTranslation()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isMinimized, setIsMinimized] = useState(false)
 
@@ -85,6 +87,14 @@ export default function FloatingChatPanel({
       inputElement.focus()
     }
   }, [setInputMessage])
+
+  const handleRegenerate = useCallback(() => {
+    // 重新生成上一条助手消息
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
+    if (lastUserMsg) {
+      setInputMessage(lastUserMsg.content)
+    }
+  }, [messages, setInputMessage])
 
   return (
     <>
@@ -183,15 +193,16 @@ export default function FloatingChatPanel({
                   )}
                 </div>
 
-                {/* Message Bubble */}
+                {/* Message Bubble with Action Button */}
                 <div
                   className={cn(
-                    'max-w-[80%] rounded-2xl p-4 shadow-sm',
+                    'relative max-w-[80%] rounded-2xl p-4 shadow-sm group',
                     msg.role === 'user'
                       ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-indigo-200 dark:shadow-indigo-900/20'
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100'
                   )}
                 >
+                  {/* Content */}
                   {msg.role === 'user' ? (
                     <div className="whitespace-pre-wrap text-sm">
                       {msg.content}
@@ -201,45 +212,61 @@ export default function FloatingChatPanel({
                       {msg.content}
                     </div>
                   )}
+
+                  {/* Action Button - Hover to show at top right */}
+                  <div
+                    className={cn(
+                      'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
+                      msg.role === 'user' ? 'flex-row' : 'flex-row'
+                    )}
+                  >
+                    {/* Copy Button */}
+                    <button
+                      onClick={() => handleCopyMessage(msg.content, msg.id || String(index))}
+                      className={cn(
+                        'p-1.5 rounded-lg transition-colors text-xs backdrop-blur-sm',
+                        msg.role === 'user'
+                          ? 'hover:bg-indigo-400/30 bg-indigo-500/20 text-white'
+                          : 'hover:bg-gray-200/80 dark:hover:bg-gray-700/80 bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300'
+                      )}
+                      title={t('copy')}
+                    >
+                      {copiedMessageId === (msg.id || String(index)) ? (
+                        <Check className="w-3.5 h-3.5" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+
+                    {/* Regenerate Button (Only for assistant messages) */}
+                    {msg.role === 'assistant' && (
+                      <button
+                        onClick={handleRegenerate}
+                        className={cn(
+                          'p-1.5 rounded-lg transition-colors text-xs backdrop-blur-sm',
+                          'hover:bg-gray-200/80 dark:hover:bg-gray-700/80 bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300'
+                        )}
+                        title={t('regenerate')}
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Action Buttons - Below bubble */}
-              <div
-                className={cn(
-                  'flex gap-1 opacity-0 hover:opacity-100 transition-opacity',
-                  msg.role === 'user' ? 'self-end' : 'self-start'
-                )}
-              >
-                {/* Copy Button */}
-                <button
-                  onClick={() => handleCopyMessage(msg.content, msg.id || String(index))}
-                  className={cn(
-                    'p-1.5 rounded-lg transition-colors text-xs',
-                    msg.role === 'user'
-                      ? 'hover:bg-indigo-400/20 text-white/70 hover:text-white'
-                      : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
-                  )}
-                  title="复制"
-                >
-                  {copiedMessageId === (msg.id || String(index)) ? (
-                    <Check className="w-3.5 h-3.5" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5" />
-                  )}
-                </button>
-
-                {/* Retry Button (Only for user messages) */}
-                {msg.role === 'user' && (
+              {/* Edit Button for User Messages - On hover */}
+              {msg.role === 'user' && (
+                <div className="flex gap-1 opacity-0 hover:opacity-100 transition-opacity self-end">
                   <button
                     onClick={() => handleRetryMessage(msg.content)}
                     className="p-1.5 rounded-lg hover:bg-indigo-400/20 text-white/70 hover:text-white transition-colors text-xs"
-                    title="重试"
+                    title={t('resend')}
                   >
-                    <RefreshCw className="w-3.5 h-3.5" />
+                    <RotateCcw className="w-3.5 h-3.5" />
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </motion.div>
           ))}
 
@@ -286,7 +313,7 @@ export default function FloatingChatPanel({
           onChange={setInputMessage}
           onSubmit={handleSubmit}
           onStop={onStopGeneration}
-          placeholder="描述你的任务，AI 会帮你拆解..."
+          placeholder={t('describeTask')}
           disabled={isTyping}
           isTyping={isTyping}
         />
