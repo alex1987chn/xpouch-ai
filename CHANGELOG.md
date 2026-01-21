@@ -31,13 +31,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 新开发者快速理解
   - 减少代码注释负担
 
+**constants/systemAgents.ts - 完整 JSDoc 文档**
+- 为系统智能体接口添加详细注释
+- 为专家类型和配置添加说明
+- 为 6 个工具函数添加完整 JSDoc：
+  - `getSystemAgent()` - 查找系统智能体
+  - `isSystemAgent()` - 判断是否为系统智能体
+  - `getDefaultSystemAgent()` - 获取默认智能体
+  - `getExpertName()` - 获取专家名称
+  - `getExpertConfig()` - 获取专家配置
+  - `createExpertResult()` - 创建专家结果
+- 每个函数都包含：
+  - 完整的 `@description` 说明
+  - 详细的 `@param` 参数说明
+  - `@returns` 返回值说明
+  - `@example` 使用示例
+
+**hooks/useChat.ts - JSDoc 文档**
+- 为 `useChat` Hook 添加主文档
+- 包含 Hook 功能描述、返回值说明
+- 添加使用示例
+
 **文档创建状态（部分完成）**
-- ✅ utils/logger.ts - 完整 JSDoc（已添加）
-- ✅ docs/DEVELOPMENT.md - 已创建框架
+- ✅ utils/logger.ts - 完整 JSDoc（已提交：9b07be0）
+- ✅ constants/systemAgents.ts - 完整 JSDoc（已提交：1731687）
+- ✅ hooks/useChat.ts - JSDoc 文档（已提交：94bcb6b）
+- ✅ CHANGELOG.md - 更新
+- ⚠️ docs/DEVELOPMENT.md - 已创建框架
 - ⚠️ docs/API.md - 待创建
 - ⚠️ docs/ARCHITECTURE.md - 待创建
 - ⚠️ Storybook 组件文档 - 待配置
 - ⚠️ docs/DEPLOYMENT.md - 待创建
+
+### 🧪 单元测试（P2-2）- 未完成
+
+**说明**:
+由于文件系统限制，无法创建新的测试文件（`.test.ts`）。
+
+**待创建的测试文件**:
+- ✅ utils/logger.test.ts - 工具函数测试
+- ✅ constants/systemAgents.test.ts - 配置测试
+- ✅ store/chatStore.test.ts - Store 测试
+- ✅ store/canvasStore.test.ts - Store 测试
+- ✅ hooks/useChat.test.ts - Hook 测试
+
+**建议**:
+后续在支持新文件创建的环境中执行这些测试文件创建。
 
 ### ⚡ 性能优化与代码重构（P1）
 
