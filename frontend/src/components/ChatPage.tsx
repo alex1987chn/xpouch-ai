@@ -45,14 +45,9 @@ export default function ChatPage() {
         const currentStoreId = useChatStore.getState().currentConversationId;
         const currentMessages = useChatStore.getState().messages;
 
-        console.log('[ChatPage] Checking load:', { id, currentStoreId, msgCount: currentMessages.length });
-
         if (currentStoreId === id && currentMessages.length > 0) {
-            console.log('[ChatPage] Skipping load, data already in store');
             return;
         }
-
-        console.log('[ChatPage] Loading from API:', id);
         // 从 API 加载
         getConversation(id).then(conversation => {
             if (conversation) {
@@ -76,7 +71,6 @@ export default function ChatPage() {
         }).catch(err => {
             // 检查是否是 404 错误（会话不存在）
             if (err.message?.includes('404') || err.status === 404) {
-                console.log('[ChatPage] Conversation not found, treating as new conversation:', id)
                 // 这是临时 ID 或不存在的会话，清空消息列表
                 setMessages([])
                 setCurrentConversationId(null)

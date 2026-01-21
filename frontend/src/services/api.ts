@@ -246,7 +246,8 @@ export async function sendMessage(
   agentId: string = 'assistant',
   onChunk?: (chunk: string, conversationId?: string, expertEvent?: ExpertEvent, artifact?: Artifact) => void,
   conversationId?: string | null,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
+  mode: 'simple' | 'complex' = 'simple'
 ): Promise<string> {
 
   // 提取最新一条消息作为当前 prompt，其他的作为 history
@@ -254,9 +255,12 @@ export async function sendMessage(
   const lastMessage = messages[messages.length - 1]
   const messageContent = lastMessage.content
 
+  // 根据模式选择端点
+  const endpoint = mode === 'simple' ? '/chat-simple' : '/chat'
+  const url = `${API_BASE_URL}${endpoint}`
+
   // 如果提供了 onChunk 回调，尝试使用流式输出
   if (onChunk) {
-    const url = `${API_BASE_URL}/chat`
 
     try {
       const response = await fetch(url, {
@@ -314,6 +318,7 @@ export async function sendMessage(
                 const activeExpert = parsed.activeExpert
                 const expertCompleted = parsed.expertCompleted
                 const artifact = parsed.artifact
+                const allArtifacts = parsed.allArtifacts as Array<any> | undefined
 
                 if (parsed.conversationId) {
                     finalConversationId = parsed.conversationId
@@ -324,7 +329,6 @@ export async function sendMessage(
                   // 调用回调，传递专家激活信息
                   // @ts-ignore - 扩展回调签名支持专家状态
                   onChunk('', finalConversationId, { type: 'expert_activated', expertId: activeExpert })
-                  console.log('[API] 专家激活:', activeExpert)
                 }
 
                 // 处理专家完成事件（包含完整信息）
@@ -335,18 +339,17 @@ export async function sendMessage(
                     duration_ms: parsed.duration_ms,
                     status: parsed.status,
                     output: parsed.output,
-                    error: parsed.error
+                    error: parsed.error,
+                    allArtifacts: allArtifacts || []
                   }
                   // @ts-ignore - 扩展回调签名支持专家状态
                   onChunk('', finalConversationId, expertEvent)
-                  console.log('[API] 专家完成:', expertCompleted, expertEvent)
                 }
 
                 // 处理 artifact 事件
                 if (artifact && typeof onChunk === 'function') {
                   // @ts-ignore - 扩展回调签名支持 artifact
-                  onChunk('', finalConversationId, undefined, artifact)
-                  console.log('[API] 收到 artifact:', artifact.type, artifact.language)
+                  onChunk('', finalConversationId, undefined, artifact, activeExpert || null)
                 }
 
                 if (content) {

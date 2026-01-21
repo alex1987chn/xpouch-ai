@@ -1,20 +1,16 @@
 import { create } from 'zustand'
-import type { TaskNode } from '@/types'
+import type { TaskNode, Artifact, ArtifactSession } from '@/types'
 
 // 专家结果类型
 export interface ExpertResult {
   expertType: string
   expertName: string
   description: string
-  title?: string // AI 返回的自定义标题
+  title?: string  // AI 返回的自定义标题
   status: 'pending' | 'running' | 'completed' | 'failed'
   output?: string
-  artifact?: {
-    type: 'code' | 'markdown' | 'search' | 'html' | 'text'
-    content: string
-    language?: string
-    title?: string // Artifact 的自定义标题
-  }
+  artifact?: Artifact  // 单个交付物（向后兼容）
+  artifacts?: Artifact[]  // 多个交付物（新架构）
   duration?: number
   error?: string
   startedAt?: string
@@ -44,11 +40,23 @@ interface CanvasState {
   isDragging: boolean
   setIsDragging: (isDragging: boolean) => void
 
-  // Artifact 状态管理
+  // Artifact 状态管理（保留向后兼容）
   artifactType: 'code' | 'markdown' | 'search' | 'html' | 'text' | null
   artifactContent: string
   setArtifact: (type: 'code' | 'markdown' | 'search' | 'html' | 'text' | null, content: string) => void
   clearArtifact: () => void
+
+  // ArtifactSession 管理（新架构）
+  artifactSessions: ArtifactSession[]  // 每个专家的交付物会话
+  selectedExpertSession: string | null  // 当前选中的专家类型
+
+  // ArtifactSession 操作
+  getArtifactSession: (expertType: string) => ArtifactSession | undefined
+  addArtifact: (expertType: string, artifact: Artifact) => void
+  addArtifactsBatch: (expertType: string, artifacts: Artifact[]) => void
+  selectArtifactSession: (expertType: string | null) => void
+  switchArtifactIndex: (expertType: string, index: number) => void
+  clearArtifactSessions: () => void
 
   // 专家结果状态管理
   expertResults: ExpertResult[]
@@ -86,7 +94,7 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   isDragging: false,
   setIsDragging: (isDragging) => set({ isDragging }),
 
-  // Artifact 状态管理
+  // Artifact 状态管理（保留向后兼容）
   artifactType: null,
   artifactContent: '',
   setArtifact: (type, content) => {
@@ -95,6 +103,87 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   clearArtifact: () => {
     set({ artifactType: null, artifactContent: '' })
   },
+
+  // ArtifactSession 管理（新架构）
+  artifactSessions: [],
+  selectedExpertSession: null,
+
+  getArtifactSession: (expertType) => {
+    return useCanvasStore.getState().artifactSessions.find(
+      session => session.expertType === expertType
+    )
+  },
+
+  addArtifact: (expertType, artifact) => set(state => {
+    const now = new Date().toISOString()
+    const existingIndex = state.artifactSessions.findIndex(
+      session => session.expertType === expertType
+    )
+
+    if (existingIndex >= 0) {
+      // 更新现有会话
+      const updatedSessions = [...state.artifactSessions]
+      updatedSessions[existingIndex] = {
+        ...updatedSessions[existingIndex],
+        artifacts: [...updatedSessions[existingIndex].artifacts, artifact],
+        currentIndex: updatedSessions[existingIndex].artifacts.length,  // 切换到新添加的 artifact
+        updatedAt: now
+      }
+      return { artifactSessions: updatedSessions }
+    } else {
+      // 创建新会话
+      const newSession: ArtifactSession = {
+        expertType,
+        artifacts: [artifact],
+        currentIndex: 0,
+        createdAt: now,
+        updatedAt: now
+      }
+      return { artifactSessions: [...state.artifactSessions, newSession] }
+    }
+  }),
+
+  addArtifactsBatch: (expertType, artifacts) => set(state => {
+    const now = new Date().toISOString()
+    const existingIndex = state.artifactSessions.findIndex(
+      session => session.expertType === expertType
+    )
+
+    if (existingIndex >= 0) {
+      // 更新现有会话
+      const updatedSessions = [...state.artifactSessions]
+      updatedSessions[existingIndex] = {
+        ...updatedSessions[existingIndex],
+        artifacts: [...updatedSessions[existingIndex].artifacts, ...artifacts],
+        updatedAt: now
+      }
+      return { artifactSessions: updatedSessions }
+    } else {
+      // 创建新会话
+      const newSession: ArtifactSession = {
+        expertType,
+        artifacts,
+        currentIndex: 0,
+        createdAt: now,
+        updatedAt: now
+      }
+      return { artifactSessions: [...state.artifactSessions, newSession] }
+    }
+  }),
+
+  selectArtifactSession: (expertType) => set({ selectedExpertSession: expertType }),
+
+  switchArtifactIndex: (expertType, index) => set(state => {
+    return {
+      artifactSessions: state.artifactSessions.map(session =>
+        session.expertType === expertType
+          ? { ...session, currentIndex: index }
+          : session
+      )
+    }
+  }),
+
+  clearArtifactSessions: () => set({ artifactSessions: [], selectedExpertSession: null }),
 
   // 专家结果状态管理
   expertResults: [],

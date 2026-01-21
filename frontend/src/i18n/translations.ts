@@ -32,7 +32,7 @@ export const zh: Record<TranslationKey, string> = {
   cancel: '取消',
   delete: '删除',
   edit: '编辑',
-  confirmDelete: '确定要删除这个会话吗？',
+  confirmDelete: '确认',
   noHistory: '暂无历史记录',
   startChat: '开始一个新的聊天',
   

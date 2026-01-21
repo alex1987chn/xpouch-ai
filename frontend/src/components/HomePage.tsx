@@ -198,21 +198,26 @@ export default function HomePage() {
     const newId = generateId()
 
     // 根据对话模式决定使用哪个智能体
-    const agentIdForChat = conversationMode === 'simple'
+    // 直接读取当前状态，避免闭包问题
+    const isSimpleMode = conversationMode === 'simple'
+    const agentIdForChat = isSimpleMode
       ? 'sys-assistant' // 简单对话：使用通用助手
       : 'sys-commander' // 复杂任务：传递不在 expert_types 中的值，触发指挥官模式
 
     console.log('[HomePage] Sending message:', {
       tempId: newId,
       message: inputMessage,
-      mode: conversationMode,
-      agentId: agentIdForChat
+      conversationMode: conversationMode,
+      isSimpleMode,
+      agentIdForChat: agentIdForChat,
+      expected: isSimpleMode ? 'sys-assistant' : 'sys-commander'
     })
 
     navigate(`/chat/${newId}`, {
       state: {
         startWith: inputMessage,
-        agentId: agentIdForChat
+        agentId: agentIdForChat,
+        mode: conversationMode // 传递模式信息
       }
     })
   }, [inputMessage, navigate, conversationMode])
