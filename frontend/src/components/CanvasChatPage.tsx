@@ -392,31 +392,28 @@ export default function CanvasChatPage() {
             className="relative w-full max-w-[95vw] h-[90vh] md:h-[85vh] bg-white dark:bg-slate-900 rounded-none md:rounded-3xl shadow-2xl overflow-hidden flex flex-col border-0 md:border border-gray-200 dark:border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
-              {/* Header */}
+              {/* Header - 性能优化：移除渐变，使用纯色 */}
               <div className={cn(
-                'w-full px-6 py-4 flex items-center justify-between border-b transition-colors',
-                artifactType === 'code' && 'bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-600 dark:to-purple-700 border-indigo-200 dark:border-indigo-800',
-                artifactType === 'markdown' && 'bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-700 border-emerald-200 dark:border-emerald-800',
-                artifactType === 'search' && 'bg-gradient-to-r from-violet-500 to-pink-600 dark:from-violet-600 dark:to-pink-700 border-violet-200 dark:border-violet-800',
-                artifactType === 'html' && 'bg-gradient-to-r from-orange-500 to-amber-600 dark:from-orange-600 dark:to-amber-700 border-orange-200 dark:border-orange-800',
-                artifactType === 'text' && 'bg-gradient-to-r from-slate-500 to-gray-600 dark:from-slate-600 dark:to-gray-700 border-slate-200 dark:border-slate-800'
+                'w-full px-6 py-4 flex items-center justify-between border-b',
+                'bg-white dark:bg-slate-900',
+                'border-gray-200 dark:border-slate-800'
               )}>
                 <div className="flex items-center gap-3">
-                  {artifactType === 'code' && <Code className="w-5 h-5 text-white" />}
-                  {artifactType === 'markdown' && <FileText className="w-5 h-5 text-white" />}
-                  {artifactType === 'search' && <Search className="w-5 h-5 text-white" />}
-                  {artifactType === 'html' && <HtmlIcon className="w-5 h-5 text-white" />}
-                  {artifactType === 'text' && <TextIcon className="w-5 h-5 text-white" />}
-                  <span className="text-white font-semibold text-base">
+                  {artifactType === 'code' && <Code className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />}
+                  {artifactType === 'markdown' && <FileText className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
+                  {artifactType === 'search' && <Search className="w-5 h-5 text-violet-600 dark:text-violet-400" />}
+                  {artifactType === 'html' && <HtmlIcon className="w-5 h-5 text-orange-600 dark:text-orange-400" />}
+                  {artifactType === 'text' && <TextIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />}
+                  <span className="text-gray-900 dark:text-gray-100 font-semibold text-base">
                     {getArtifactTitle()}
                   </span>
                 </div>
                 <button
                   onClick={() => setIsArtifactFullscreen(false)}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
                   title="关闭"
                 >
-                  <X className="w-5 h-5 text-white" />
+                  <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                 </button>
               </div>
 

@@ -122,6 +122,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ⚡ 性能优化
 
+**弹窗动画性能优化（解决卡顿问题）**
+- 问题: 点击 Artifact 预览和专家卡片预览时出现明显卡顿
+- 原因: 
+  - ExpertPreviewModal 使用 spring 缓动（计算量大）
+  - 头部背景使用渐变（触发重绘）
+  - 动画时长过长（spring 缓动持续时间长）
+  - 缺少 willChange 提示
+- 优化 1: 移除 spring 缓动，改用 duration: 0.2s + easeOut（更轻量）
+- 优化 2: 缩短动画时间（0.15s 和 0.2s）
+- 优化 3: 将 scale 等动画属性改为 transform 字符串（避免 layout 计算）
+- 优化 4: 添加 willChange: 'transform, opacity' 提示浏览器优化
+- 优化 5: 移除 ExpertPreviewModal 头部背景渐变，改用纯色（减少重绘）
+- 优化 6: 移除 CanvasChatPage Artifact 全屏预览头部背景渐变，改用纯色 + 彩色图标
+- 影响: 弹窗动画流畅度显著提升，卡顿问题解决
+
 **FloatingExpertBar 图标优化**
 - 问题: 每个图标使用 4x4 网格（16 个 div），7 个专家 = 112 个 DOM 元素
 - 优化: 简化为单个 div + Emoji，减少约 87.5% 的 DOM 节点
