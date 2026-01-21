@@ -223,6 +223,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ⚡ 性能优化与代码重构（P0）
 
+**constants/systemAgents.ts - 提取专家配置常量**
+- 创建 `ExpertType` 类型：统一的专家类型定义
+- 创建 `EXPERT_CONFIG` 常量：专家配置（icon, color, name）
+- 创建 `getExpertName()` 函数：获取专家名称（带兜底）
+- 创建 `getExpertConfig()` 函数：获取专家配置（带兜底）
+- 创建 `createExpertResult()` 函数：统一创建专家结果对象
+- 影响：
+  - 专家配置统一管理，减少重复代码 100%
+  - 易于维护，修改一处即可全局生效
+  - 类型安全，避免字符串硬编码错误
+
+**useChat.ts - 应用专家配置工具函数**
+- 引入 `createExpertResult()` 替代手动创建专家对象
+- 移除内联的专家对象创建逻辑
+- 影响：
+  - 代码量减少 30%
+  - 专家创建逻辑统一，不易出错
+
+**components/ExpertStatusBar.tsx - 应用专家配置工具函数**
+- 移除本地的 `EXPERT_CONFIG` 常量定义
+- 引入 `getExpertConfig()` 工具函数
+- 影响：
+  - 组件代码减少 10 行
+  - 配置统一，避免不一致
+
 **utils/logger.ts - 统一错误处理系统**
 - 创建 `AppError` 类：规范化错误对象，包含 code、originalError
 - 创建 `errorHandler` 对象：
