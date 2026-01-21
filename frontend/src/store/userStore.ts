@@ -1,11 +1,12 @@
 import { create } from 'zustand'
 import { getUserProfile, updateUserProfile, type UserProfile } from '@/services/api'
+import { logger, errorHandler } from '@/utils/logger'
 
 interface UserState {
   user: UserProfile | null
   isLoading: boolean
   error: string | null
-  
+
   fetchUser: () => Promise<void>
   updateUser: (data: Partial<UserProfile>) => Promise<void>
 }
@@ -21,8 +22,8 @@ export const useUserStore = create<UserState>((set) => ({
       const user = await getUserProfile()
       set({ user, isLoading: false })
     } catch (error) {
-      console.error("Failed to fetch user:", error)
-      set({ error: (error as Error).message, isLoading: false })
+      errorHandler.handleSync(error, 'fetchUser')
+      set({ error: errorHandler.getUserMessage(error), isLoading: false })
     }
   },
 
@@ -32,8 +33,8 @@ export const useUserStore = create<UserState>((set) => ({
       const updatedUser = await updateUserProfile(data)
       set({ user: updatedUser, isLoading: false })
     } catch (error) {
-       console.error("Failed to update user:", error)
-      set({ error: (error as Error).message, isLoading: false })
+      errorHandler.handleSync(error, 'updateUser')
+      set({ error: errorHandler.getUserMessage(error), isLoading: false })
     }
   }
 }))

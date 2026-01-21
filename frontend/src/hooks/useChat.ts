@@ -8,6 +8,7 @@ import { getDefaultModel } from '@/utils/config'
 import { generateId } from '@/utils/storage'
 import type { AgentType } from '@/types'
 import { getClientId } from '@/services/api'
+import { logger, errorHandler } from '@/utils/logger'
 
 // 开发环境判断
 const DEBUG = import.meta.env.DEV
@@ -213,10 +214,14 @@ export function useChat() {
         // 移除空的 AI 消息（如果没有内容）
         updateMessage(assistantMessageId, '', false)
       } else {
-        console.error('Failed to send message:', error)
+        // 使用统一的错误处理器
+        errorHandler.handle(error, 'handleSendMessage')
+
+        // 添加错误消息到聊天
+        const userMessage = errorHandler.getUserMessage(error)
         addMessage({
           role: 'assistant',
-          content: '抱歉，发生了错误。请检查网络连接或稍后重试。'
+          content: userMessage
         })
       }
     } finally {
