@@ -308,6 +308,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 端口配置统一：修复 `backend/.env.example` PORT=3000，`backend/Dockerfile` EXPOSE 3000，与 `docker-compose.yml` 和 `frontend/nginx.conf` 保持一致
 - 影响: Docker 构建更快，依赖管理更可靠，端口配置完全统一，部署无冲突
 
+**后端 Dockerfile uv 安装修复**
+- 问题: Lighthouse 部署失败，Docker 镜像内未正确安装 uv 工具
+- 原因: uv 安装到 `~/.local/bin` 但未添加到 PATH 环境变量，导致后续命令找不到 uv
+- 修复 1: 添加 `ENV PATH="/root/.local/bin:${PATH}"` 将 uv 路径加入 PATH
+- 修复 2: 使用完整路径 `/root/.local/bin/uv pip install` 确保命令可执行
+- 影响: Lighthouse 云端部署现在可以成功安装依赖并运行
+
 ---
 
 ## [v0.2.3] - 2026-01-19

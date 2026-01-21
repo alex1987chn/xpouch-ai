@@ -9,6 +9,7 @@ ENV PYTHONUNBUFFERED=1
 # 安装 uv（推荐的 Python 包管理器）
 RUN apt-get update && apt-get install -y curl && \
     curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    export PATH="$HOME/.local/bin:$PATH" && \
     rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件
@@ -17,7 +18,8 @@ RUN apt-get update && apt-get install -y curl && \
 COPY requirements.txt .
 
 # 使用 uv 安装依赖（更快更可靠）
-RUN uv pip install --no-cache -r requirements.txt
+ENV PATH="/root/.local/bin:${PATH}"
+RUN /root/.local/bin/uv pip install --no-cache -r requirements.txt
 
 # 复制源码
 COPY . .
