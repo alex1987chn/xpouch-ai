@@ -52,4 +52,5 @@ Thumbs.db
 *.tmp
 *.temp
 $null
+*.bat
 upload-package/
