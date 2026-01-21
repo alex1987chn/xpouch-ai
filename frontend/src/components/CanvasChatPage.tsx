@@ -64,13 +64,18 @@ export default function CanvasChatPage() {
   const { user } = useUserStore()
   const assistantMessageIdRef = useRef<string | null>(null)
 
-  // 监听选中的专家变化，切换到对应的 artifact
-  useEffect(() => {
+  // 监听选中的专家变化，切换到对应的 artifact（使用 useMemo 避免频繁调用）
+  const selectedExpertArtifact = useMemo(() => {
     const expert = expertResults.find(e => e.expertType === selectedExpert)
-    if (expert?.artifact) {
-      setArtifact(expert.artifact.type, expert.artifact.content)
+    return expert?.artifact || null
+  }, [selectedExpert, expertResults])
+
+  // 当专家 artifact 变化时更新
+  useEffect(() => {
+    if (selectedExpertArtifact) {
+      setArtifact(selectedExpertArtifact.type, selectedExpertArtifact.content)
     }
-  }, [selectedExpert, expertResults, setArtifact])
+  }, [selectedExpertArtifact, setArtifact])
 
   // 处理复制
   const handleCopy = async () => {
@@ -209,7 +214,7 @@ export default function CanvasChatPage() {
   const selectedExpertResult = expertResults.find(e => e.expertType === selectedExpert)
 
   // 获取自定义标题（优先级：AI 返回 > 默认专家名称）
-  const getArtifactTitle = () => {
+  const getArtifactTitle = useCallback(() => {
     // 首先检查 Artifact 是否有自定义标题
     if (selectedExpertResult?.artifact?.title) {
       return selectedExpertResult.artifact.title
@@ -227,30 +232,28 @@ export default function CanvasChatPage() {
       text: '文本生成'
     }
     return expertNames[artifactType || ''] || 'AI 生成的结果'
-  }
+  }, [selectedExpertResult?.artifact?.title, selectedExpertResult?.title, artifactType])
 
-  const expertColors: Record<string, { from: string; to: string }> = {
+  // 颜色和图标映射（使用 useMemo 避免重复创建）
+  const expertColors = useMemo(() => ({
     code: { from: 'from-indigo-500', to: 'to-purple-600' },
     markdown: { from: 'from-emerald-500', to: 'to-teal-600' },
     search: { from: 'from-violet-500', to: 'to-pink-600' },
     html: { from: 'from-orange-500', to: 'to-amber-600' },
     text: { from: 'from-slate-500', to: 'to-gray-600' }
-  }
+  }, [])
 
   // 图标映射（用于标题栏）
-  const expertIcons: Record<string, any> = {
+  const expertIcons = useMemo(() => ({
     code: Code,
     markdown: FileText,
     search: Search,
     html: HtmlIcon,
     text: TextIcon
-  }
+  }), [Code, FileText, Search, HtmlIcon, TextIcon])
 
-  // 专家状态栏内容
-  const ExpertBarContent = <ExpertStatusBar previewExpert={previewExpert} setPreviewExpert={setPreviewExpert} />
-
-  // Artifact显示内容
-  const ArtifactContent = (
+  // Artifact显示内容（使用 useMemo 避免重复创建）
+  const ArtifactContent = useMemo(() => (
     <>
       {artifactType ? (
         <div className="w-full h-full flex flex-col">
@@ -333,10 +336,15 @@ export default function CanvasChatPage() {
         </div>
       ) : null}
     </>
-  )
+  ), [artifactType, artifactContent, handleCopy, copied, getArtifactTitle, expertColors, expertIcons, Code, FileText, Search, HtmlIcon, TextIcon, Maximize2, Check, Copy])
 
-  // 创建聊天内容组件
-  const ChatContent = (viewMode: 'chat' | 'preview', setViewMode: (mode: 'chat' | 'preview') => void) => (
+  // 专家状态栏内容（使用 useMemo 避免重复创建）
+  const ExpertBarContent = useMemo(() => (
+    <ExpertStatusBar previewExpert={previewExpert} setPreviewExpert={setPreviewExpert} />
+  ), [previewExpert, setPreviewExpert])
+
+  // 创建聊天内容组件（使用 useMemo 避免重复创建）
+  const ChatContent = useMemo(() => (viewMode: 'chat' | 'preview', setViewMode: (mode: 'chat' | 'preview') => void) => (
     <div className="relative flex-1 flex flex-col min-h-0">
       {/* 专家调度看板 - 浮动在顶部，z-index 高于聊天面板 */}
       {activeExpertId && (
@@ -360,7 +368,7 @@ export default function CanvasChatPage() {
         onStopGeneration={handleStopGeneration}
       />
     </div>
-  )
+  )), [messages, inputMessage, setInputMessage, handleSubmitMessage, isTyping, getCurrentAgent, isChatMinimized, setIsChatMinimized, handleStopGeneration, activeExpertId])
 
   return (
     <>
