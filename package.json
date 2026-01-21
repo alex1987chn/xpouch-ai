@@ -4,32 +4,24 @@
   "private": true,
   "description": "XPouch AI - A modern AI assistant with LangGraph backend",
   "scripts": {
-    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
-    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
-    "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "cd backend && npm run dev",
-    "build": "npm run build:frontend && npm run build:backend",
-    "build:frontend": "cd frontend && npm run build",
-    "build:backend": "cd backend && npm run build",
-    "start": "npm run dev",
-    "test": "npm run test:frontend && npm run test:backend",
-    "test:frontend": "cd frontend && npm run test",
-    "test:backend": "cd backend && npm run test",
-    "clean": "rm -rf frontend/node_modules backend/node_modules frontend/dist backend/dist"
+    "dev": "concurrently \"pnpm --prefix frontend run dev\" \"cd backend && uv run main.py\"",
+    "dev:frontend": "pnpm --prefix frontend run dev",
+    "dev:backend": "cd backend && uv run main.py",
+    "build": "pnpm --prefix frontend run build",
+    "preview": "pnpm --prefix frontend run preview",
+    "test": "pnpm --prefix frontend run test",
+    "lint": "pnpm --prefix frontend run lint",
+    "clean": "rm -rf frontend/node_modules backend/.venv frontend/dist backend/__pycache__"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
   },
   "workspaces": [
-    "frontend",
-    "backend"
+    "frontend"
   ],
-  "dependencies": {
-    "@tailwindcss/typography": "^0.5.19",
-    "framer-motion": "^12.26.2",
-    "mermaid": "^11.12.2",
-    "react-markdown": "^10.1.0",
-    "react-syntax-highlighter": "^16.1.0",
-    "remark-gfm": "^4.0.1"
-  }
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@9.0.0"
 }

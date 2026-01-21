@@ -6,21 +6,23 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# 安装基础工具
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# 安装 uv（推荐的 Python 包管理器）
+RUN apt-get update && apt-get install -y curl && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件
 # 注意：在构建镜像前，请确保在 backend 目录下生成了 requirements.txt
 # 可以使用命令: uv pip compile pyproject.toml -o requirements.txt
 COPY requirements.txt .
 
-# 安装依赖
-RUN pip install --no-cache-dir -r requirements.txt
+# 使用 uv 安装依赖（更快更可靠）
+RUN uv pip install --no-cache -r requirements.txt
 
 # 复制源码
 COPY . .
 
-# 暴露端口
+# 暴露端口（与 .env.example 和 docker-compose.yml 保持一致）
 EXPOSE 3000
 
 # 启动命令

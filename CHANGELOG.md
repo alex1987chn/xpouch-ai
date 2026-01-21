@@ -247,6 +247,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 修复 3: `chatStore.ts` 第 86-88 行，addCustomAgent 方法中 `[...state.customAgents, agent]` 改为 `[agent, ...state.customAgents]`
 - 影响: 首页状态管理更符合用户预期，新创建的智能体自动显示在列表顶部
 
+### 🔧 项目清理与优化
+
+**垃圾文件清理**
+- 删除 `$null` - PowerShell 残留文件
+- 删除 `backend/README.md` - 空文件
+- 删除 `frontend/CHANGELOG.md` - 与根目录重复
+- 删除 `frontend/MEM.md` - 记忆应该在系统中
+- 影响: 项目目录更整洁，避免无用文件污染仓库
+
+**.gitignore 优化**
+- 新增前端构建产物规则（`dist/`, `*.local`）
+- 新增环境变量规则（`.env`, `.env.local`, `.env.*.local`）
+- 新增 IDE 配置（`.vscode/`, `.idea/`）
+- 新增 Python 缓存（`__pycache__/`, `*.py[oc]`）
+- 新增数据库文件（`*.db`, `*.sqlite`）
+- 新增操作系统文件（`.DS_Store`, `Thumbs.db`）
+- 新增日志文件（`*.log`, `logs/`）
+- 新增临时文件（`*.tmp`, `upload-package/`）
+- 影响: 避免敏感文件和不必要的文件提交到版本控制
+
+**package.json 优化**
+- 根目录 `package.json`: 统一使用 `pnpm` 命令，移除不必要的 dependencies，添加 `engines` 和 `packageManager` 字段
+- 前端 `package.json`: 更新 `react-markdown` ^9.0.1 → ^10.1.0，更新 `typescript` ~5.6.2 → ~5.7.2
+- 影响: 依赖管理更规范，使用最新稳定版本
+
+**README 文档更新**
+- 更新 XPouchLayout 架构说明：双层交互画布 → 三区扁平布局（专家状态栏 + Artifact + 对话面板）
+- 新增专家协作可视化系统说明
+- 新增双模路由系统说明（简单对话/复杂任务）
+- 更新技术特性：国际化、Provider/Context 系统
+- 更新项目结构：新增 AppLayout、providers 目录，移除 MainChatLayout、InteractiveCanvas
+- 更新快速开始：统一使用 pnpm 命令，简化安装流程
+- 更新开发路线图：新增 6 项已完成功能
+- 更新使用指南：XPouchLayout 使用方法
+- 影响: 文档与最新架构和功能完全同步
+
+**Docker 配置优化**
+- 前端 Dockerfile: Node.js 20-alpine → 22-alpine，优化缓存层（先复制 package.json，再安装依赖），使用 `--frozen-lockfile` 加速安装
+- 后端 Dockerfile: 改用 `uv` 包管理器（更快更可靠），重新生成 requirements.txt（50 个包）
+- 端口配置统一：修复 `backend/.env.example` PORT=3000，`backend/Dockerfile` EXPOSE 3000，与 `docker-compose.yml` 和 `frontend/nginx.conf` 保持一致
+- 影响: Docker 构建更快，依赖管理更可靠，端口配置完全统一，部署无冲突
+
 ---
 
 ## [v0.2.3] - 2026-01-19
