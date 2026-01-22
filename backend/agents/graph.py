@@ -221,7 +221,14 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
             "task_list": task_list,
             "strategy": commander_response.strategy,
             "current_task_index": 0,
-            "expert_results": []
+            "expert_results": [],
+            # 添加任务计划信息供前端展示
+            "__task_plan": {
+                "task_count": len(task_list),
+                "strategy": commander_response.strategy,
+                "estimated_steps": commander_response.estimated_steps,
+                "tasks": task_list
+            }
         }
 
     except Exception as e:
@@ -316,6 +323,13 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
                 "duration_ms": result.get("duration_ms", 0),
                 "output": result.get("output_result", ""),
                 "error": None
+            },
+            # 添加任务开始信息供前端展示
+            "__task_start_info": {
+                "task_index": current_index + 1,
+                "total_tasks": len(task_list),
+                "expert_type": expert_type,
+                "description": description
             }
         }
 

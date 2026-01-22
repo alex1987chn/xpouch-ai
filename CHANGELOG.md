@@ -16,12 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 端点：`/chat-simple`
   - 适用场景：简单问答、快速咨询
   - 特点：轻量级、无任务拆解、直接生成
-  
+
 - **复杂模式**：AI 指挥官 + 多专家协作系统
   - 端点：`/chat`
   - 适用场景：复杂任务、多步骤工作流、需要专家协作
   - 特点：任务自动拆解、专家调度、交付物管理
-  
+
 - **模式切换**：通过输入框左侧的闪电/大脑图标切换
   - 闪电图标（黄色）：简单模式
   - 大脑图标（紫色）：复杂模式
@@ -37,16 +37,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ✍️ 写作专家（Writer）- 内容创作
   - 📋 规划专家（Planner）- 任务规划
   - 🖼️ 图像分析专家（Image Analyzer）- 图像处理
-  
+
 - **任务调度**：
   - 按优先级和依赖关系调度专家
   - 支持直接专家模式（通过 sys-writer 等前缀直接调用指定专家）
   - 流式输出专家执行状态和结果
-  
+
 - **交付物系统**：
   - 专家可以生成多种类型的交付物：代码、Markdown、搜索结果、HTML、文本
   - 交付物自动保存到 `ArtifactSession` 供前端展示
   - 支持单个专家生成多个交付物（通过 Tab 切换）
+
+**任务执行过程可视化**
+- **任务计划展示**：显示执行策略、预计步骤、任务列表
+- **任务开始信息**：实时显示每个任务的执行进度、专家类型、任务描述
+- **专家完成状态**：显示专家完成状态、耗时、输出内容
+- **全流程透明化**：用户可以回顾从任务拆解到最终响应的完整过程
+
+### 🐛 修复问题
+
+**任务执行信息展示**
+- ✅ 后端推送 `taskStart` 事件到前端
+- ✅ 前端展示任务开始消息：`🚀 正在执行 [1/6] - ExpertType.PLANNER 专家`
+- ✅ 专家完成消息增强：显示专家的输出内容
+
+**直连专家模式优化**
+- ✅ 直连专家模式下不显示复杂/简单模式切换按钮
+- ✅ 简单模式下收到 artifact 时，自动选中该专家的 session
+- ✅ 精选智能体直接进入后为直连模式，无需模式切换
+
+**Artifact 预览功能修复**
+- ✅ **滚动问题修复**：长内容可以正常滚动
+  - ArtifactsArea: `overflow-hidden` → `overflow-auto`
+  - DocArtifact: 添加 `min-h-0`
+  - CodeArtifact: 添加 `overflow-auto min-h-0`
+  - HtmlArtifact: iframe 外层添加 `overflow-hidden min-h-0` 的 div
+- ✅ **全屏预览关闭修复**：
+  - 将全屏容器定位改为 `fixed`，覆盖整个视口
+  - 添加内部关闭按钮（X 图标）
+  - 提高层级到 `z-[9999]`
+- ✅ **全屏预览显示问题修复**：
+  - 移动 `ArtifactProvider` 到最外层
+  - 全屏预览独立于主布局，不侵入侧边栏
+- ✅ **ArtifactProvider 上下文修复**：
+  - 确保所有使用 `useArtifacts` 的组件都在 Provider 内
+  - 修复 "useArtifacts must be used within an ArtifactProvider" 错误
 
 **ExpertStatusBar - 多专家多交付物查看**
 - 支持查看多个专家的交付物

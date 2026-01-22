@@ -135,7 +135,7 @@ export default function ArtifactsArea({ className, isFullscreen, onFullscreenTog
       </div>
 
       {/* 内容区域 */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-auto">
         {renderArtifact()}
       </div>
     </div>

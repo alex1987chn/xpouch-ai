@@ -40,18 +40,20 @@ export default function HtmlArtifact({ content, className }: HtmlArtifactProps) 
       </div>
 
       {/* Iframe Content - Full Coverage, No Gap */}
-      {htmlUrl ? (
-        <iframe
-          src={htmlUrl}
-          className="w-full h-full flex-1 bg-white border-0"
-          sandbox="allow-scripts allow-same-origin allow-forms"
-          title="HTML Preview"
-        />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-gray-500">
-          加载中...
-        </div>
-      )}
+      <div className="flex-1 overflow-hidden min-h-0">
+        {htmlUrl ? (
+          <iframe
+            src={htmlUrl}
+            className="w-full h-full bg-white border-0"
+            sandbox="allow-scripts allow-same-origin allow-forms"
+            title="HTML Preview"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-500">
+            加载中...
+          </div>
+        )}
+      </div>
     </div>
   )
 }
