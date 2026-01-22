@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import AgentCard from './AgentCard'
-import type { Agent } from '@/data/agents'
+import type { Agent } from '@/types'
 
 const mockAgent: Agent = {
   id: 'assistant',

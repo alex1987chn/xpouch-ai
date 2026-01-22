@@ -1043,6 +1043,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                             # 推送专家完成事件（包含完整信息）
                             yield f"data: {json.dumps({
                                 'expertCompleted': expert_name,
+                                'description': expert_info.get('description', ''),
                                 'conversationId': conversation_id,
                                 'duration_ms': duration_ms,
                                 'status': expert_status,

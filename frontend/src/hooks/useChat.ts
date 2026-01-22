@@ -112,6 +112,10 @@ export function useChat() {
     // 创建新的 AbortController
     abortControllerRef.current = new AbortController()
 
+    // 3. 判断对话模式
+    const conversationMode = getConversationMode(selectedAgentId)
+    let assistantMessageId: string | undefined
+    
     try {
       // 1. 准备请求数据 - 使用 messages 依赖，手动添加用户消息
       const chatMessages: ApiMessage[] = [
@@ -129,10 +133,9 @@ export function useChat() {
       setInputMessage('')
       setIsTyping(true)
 
-      // 3. 判断智能体类型、模式和 Thread ID
+      // 4. 判断智能体类型和 Thread ID
       const agentType = getAgentType(selectedAgentId)
       const threadId = getThreadId(selectedAgentId)
-      const conversationMode = getConversationMode(selectedAgentId)
 
       debug('Agent Info:', {
         agentType,
@@ -141,8 +144,7 @@ export function useChat() {
         conversationMode
       })
 
-      // 4. 在复杂模式下，添加任务开始消息，并预先添加 AI 空消息用于显示最终响应
-      let assistantMessageId: string | undefined
+      // 5. 在复杂模式下，添加任务开始消息，并预先添加 AI 空消息用于显示最终响应
       if (conversationMode === 'complex') {
         // 添加复杂模式开始提示
         addMessage({
@@ -202,6 +204,24 @@ export function useChat() {
               id: generateId(),
               role: 'system',
               content: taskStartMessage
+            })
+          }
+
+          // 处理任务计划事件（只在复杂模式下）
+          if (conversationMode === 'complex' && expertEvent?.type === 'task_plan') {
+            const taskPlan = expertEvent as any
+            const tasks = taskPlan.tasks || []
+            
+            // 构建简单的任务列表消息
+            let taskListMessage = '📋 任务计划：\n'
+            tasks.forEach((task: any, index: number) => {
+              taskListMessage += `${index + 1}. ${task.description}\n`
+            })
+
+            addMessage({
+              id: generateId(),
+              role: 'system',
+              content: taskListMessage
             })
           }
 

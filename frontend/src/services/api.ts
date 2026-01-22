@@ -341,6 +341,7 @@ export async function sendMessage(
                   const expertEvent = {
                     type: 'expert_completed' as const,
                     expertId: expertCompleted,
+                    description: parsed.description || '',
                     duration_ms: parsed.duration_ms,
                     status: parsed.status,
                     output: parsed.output,
@@ -355,14 +356,14 @@ export async function sendMessage(
                 if (taskPlan && typeof onChunk === 'function') {
                   console.log('[api.ts] 处理任务计划事件:', taskPlan)
                   // @ts-ignore - 扩展回调签名支持任务计划
-                  onChunk('', finalConversationId, undefined, undefined, undefined, { type: 'task_plan', ...taskPlan })
+                  onChunk('', finalConversationId, { type: 'task_plan', ...taskPlan })
                 }
 
                 // 处理 taskStart 事件（任务开始展示）
                 if (taskStart && typeof onChunk === 'function') {
                   console.log('[api.ts] 处理任务开始事件:', taskStart)
                   // @ts-ignore - 扩展回调签名支持任务开始
-                  onChunk('', finalConversationId, undefined, undefined, undefined, { type: 'task_start', ...taskStart })
+                  onChunk('', finalConversationId, { type: 'task_start', ...taskStart })
                 }
 
                 // 处理 artifact 事件
