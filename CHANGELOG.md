@@ -417,6 +417,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 测试：复杂模式下任务计划和专家完成消息显示正常
 - 状态：所有功能验证通过，前后端服务可正常运行
 
+### 🔧 依赖更新 (2026-01-22)
+
+**packageManager 升级**
+- 升级 pnpm 从 9.0.0 到 10.28.1
+- 影响: 获得最新 pnpm 的性能优化和 bug 修复
+
+**依赖检查结果**
+- 检查了根目录 package.json、frontend/package.json、backend/pyproject.toml
+- 检查了前后端 Dockerfile 和 docker-compose.yml
+- 确认所有依赖均为最新版本，无其他需要更新的依赖
+
 ### ⚡ 性能优化
 
 **弹窗动画性能优化（解决卡顿问题）**
