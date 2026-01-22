@@ -392,6 +392,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 修复: 移除条件判断，确保点击事件始终生效
 - 影响: 自定义智能体现在可以正常点击进入对话界面
 
+### 🐛 Bug 修复与验证 (2026-01-22)
+
+**专家完成消息显示优化**
+- 问题：专家完成事件显示空括号"[]"而不是任务名称
+- 原因：后端推送专家完成事件时缺少任务描述字段
+- 修复：修改`backend/agents/graph.py`，在`__expert_info`字段中添加`description`；更新`backend/main.py`推送逻辑
+- 影响：现在正确显示"writer专家完成任务【撰写项目报告】，用时2.5秒..."
+
+**任务计划展示优化**
+- 问题：任务计划显示过多细节，界面不够简洁
+- 优化：修改前端`useChat.ts`，仅展示任务描述列表（格式：`1. [任务描述]`）
+- 影响：用户看到简洁的任务拆解列表，界面更清晰
+
+**TypeScript编译错误修复**
+- 修复`AgentCard.test.tsx`：错误的import路径（从`@/data/agents`改为`@/types`）
+- 修复`AppRoot.tsx`：移除未使用的`addCustomAgent`导入
+- 修复`ChatPage.tsx`：错误的`dbMessageToMessage`导入路径
+- 修复`DocArtifact.tsx`：注释掉未使用的`math`和`inlineMath`属性
+- 影响：项目编译通过，无TypeScript错误
+
+**后端服务稳定性验证**
+- 验证：后端专家事件推送逻辑正确性
+- 测试：复杂模式下任务计划和专家完成消息显示正常
+- 状态：所有功能验证通过，前后端服务可正常运行
+
 ### ⚡ 性能优化
 
 **弹窗动画性能优化（解决卡顿问题）**

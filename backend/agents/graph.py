@@ -319,6 +319,7 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
             # 添加专家信息供流式事件处理使用
             "__expert_info": {
                 "expert_type": expert_type,
+                "description": description,
                 "status": "completed",
                 "duration_ms": result.get("duration_ms", 0),
                 "output": result.get("output_result", ""),
@@ -365,6 +366,7 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
             # 添加专家信息供流式事件处理使用
             "__expert_info": {
                 "expert_type": expert_type,
+                "description": description,
                 "status": "failed",
                 "duration_ms": 0,
                 "output": error_result,

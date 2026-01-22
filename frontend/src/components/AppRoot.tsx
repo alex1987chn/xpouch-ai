@@ -15,7 +15,7 @@ interface AppRootProps {
 export default function AppRoot({ children }: AppRootProps) {
   const navigate = useNavigate()
   const { sidebar, dialogs } = useApp()
-  const { addCustomAgent } = useChatStore()
+  // const { addCustomAgent } = useChatStore() // Unused
 
   // 监听全局 toggle-sidebar 事件
   useEffect(() => {

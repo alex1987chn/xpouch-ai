@@ -154,16 +154,16 @@ export default function DocArtifact({ content, className }: DocArtifactProps) {
               {children}
             </sup>
           ),
-          math: ({ children }) => (
-            <span className="inline-block px-1 py-0.5 font-mono">
-              {children}
-            </span>
-          ),
-          inlineMath: ({ children }) => (
-            <span className="inline font-mono">
-              {children}
-            </span>
-          ),
+          // math: ({ children }) => (
+          //   <span className="inline-block px-1 py-0.5 font-mono">
+          //     {children}
+          //   </span>
+          // ),
+          // inlineMath: ({ children }) => (
+          //   <span className="inline font-mono">
+          //     {children}
+          //   </span>
+          // ),
           img: ({ src, alt }) => (
             <img
               src={src}
