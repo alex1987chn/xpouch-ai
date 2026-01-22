@@ -9,7 +9,7 @@ interface DocArtifactProps {
 
 export default function DocArtifact({ content, className }: DocArtifactProps) {
   return (
-    <div className={cn('prose prose-slate dark:prose-invert prose-sm max-w-none p-6 w-full h-full overflow-auto', className)}>
+    <div className={cn('prose prose-slate dark:prose-invert prose-sm max-w-none p-6 w-full h-full overflow-auto min-h-0', className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{

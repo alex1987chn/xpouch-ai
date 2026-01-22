@@ -6,6 +6,8 @@ import { useChatStore } from '@/store/chatStore'
 import type { Message } from '@/store/chatStore'
 import GlowingInput from './GlowingInput'
 import { useTranslation } from '@/i18n'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 type ConversationMode = 'simple' | 'complex'
 
@@ -25,6 +27,7 @@ interface FloatingChatPanelProps {
   onStopGeneration?: () => void
   conversationMode?: ConversationMode
   onConversationModeChange?: (mode: ConversationMode) => void
+  hideModeSwitch?: boolean | undefined
 }
 
 export default function FloatingChatPanel({
@@ -42,7 +45,8 @@ export default function FloatingChatPanel({
   setIsChatMinimized: propSetIsChatMinimized,
   onStopGeneration,
   conversationMode = 'simple',
-  onConversationModeChange
+  onConversationModeChange,
+  hideModeSwitch = false
 }: FloatingChatPanelProps) {
   const { t } = useTranslation()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -118,214 +122,309 @@ export default function FloatingChatPanel({
               effectiveIsChatMinimized && 'md:translate-x-[120%] md:opacity-0 pointer-events-none'
             )}
           >
-      {/* Header - Fixed at top, flex-shrink-0 */}
-      <div className="flex-shrink-0 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-4 py-3">
-        <div className="flex items-center gap-3 flex-1">
-          {/* 左侧：智能体信息 */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center shadow-lg">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                {displayName}
-              </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {displayDescription}
-              </p>
-            </div>
-          </div>
-
-          {/* 右侧：PC端最小化按钮 + 移动端切换器 */}
-          <div className="flex items-center justify-end flex-1">
-            {/* PC端收起按钮 - 靠右边缘 */}
-            <button
-              onClick={() => effectiveSetIsChatMinimized(true)}
-              className="hidden md:flex p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              title="收起"
-            >
-              <Minimize2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-            </button>
-
-            {/* 移动端专用切换器 (md:hidden) */}
-            {onViewModeChange && (
-              <div className="md:hidden flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg w-28">
-                <button
-                  onClick={() => onViewModeChange('chat')}
-                  className={`flex-1 text-[11px] py-1 rounded-md transition-all ${viewMode === 'chat' ? 'bg-white dark:bg-slate-700 shadow-sm font-bold text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}
-                >
-                  对话
-                </button>
-                <button
-                  onClick={() => onViewModeChange('preview')}
-                  className={`flex-1 text-[11px] py-1 rounded-md transition-all ${viewMode === 'preview' ? 'bg-white dark:bg-slate-700 shadow-sm font-bold text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}
-                >
-                  产物
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Messages - flex-1 + overflow-y-auto for scrolling */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-thin">
-        <div className="space-y-4">
-          {messages.filter(msg => msg.content.trim() !== '').map((msg, index) => (
-            <motion.div
-              key={msg.id || index}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={cn(
-                'flex gap-3',
-                msg.role === 'user' ? 'flex-col items-end' : 'flex-col items-start'
-              )}
-            >
-              {/* Avatar + Message Bubble Row */}
-              <div className={cn('flex gap-3 w-full', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
-                {/* Avatar */}
-                <div
-                  className={cn(
-                    'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
-                    msg.role === 'user'
-                      ? 'bg-indigo-600'
-                      : 'bg-gradient-to-br from-indigo-500 to-purple-500'
-                  )}
-                >
-                  {msg.role === 'user' ? (
-                    <User className="w-4 h-4 text-white" />
-                  ) : (
-                    <Bot className="w-4 h-4 text-white" />
-                  )}
-                </div>
-
-                {/* Message Bubble with Action Button */}
-                <div
-                  className={cn(
-                    'relative max-w-[80%] rounded-2xl p-4 shadow-sm group',
-                    msg.role === 'user'
-                      ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-indigo-200 dark:shadow-indigo-900/20'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100'
-                  )}
-                >
-                  {/* Content */}
-                  {msg.role === 'user' ? (
-                    <div className="whitespace-pre-wrap text-sm">
-                      {msg.content}
-                    </div>
-                  ) : (
-                    <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
-                      {msg.content}
-                    </div>
-                  )}
-
-                  {/* Action Button - Hover to show at top right */}
-                  <div
-                    className={cn(
-                      'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
-                      msg.role === 'user' ? 'flex-row' : 'flex-row'
-                    )}
-                  >
-                    {/* Copy Button */}
-                    <button
-                      onClick={() => handleCopyMessage(msg.content, msg.id || String(index))}
-                      className={cn(
-                        'p-1.5 rounded-lg transition-colors text-xs backdrop-blur-sm',
-                        msg.role === 'user'
-                          ? 'hover:bg-indigo-400/30 bg-indigo-500/20 text-white'
-                          : 'hover:bg-gray-200/80 dark:hover:bg-gray-700/80 bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300'
-                      )}
-                      title={t('copy')}
-                    >
-                      {copiedMessageId === (msg.id || String(index)) ? (
-                        <Check className="w-3.5 h-3.5" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-
-                    {/* Regenerate Button (Only for assistant messages) */}
-                    {msg.role === 'assistant' && (
-                      <button
-                        onClick={handleRegenerate}
-                        className={cn(
-                          'p-1.5 rounded-lg transition-colors text-xs backdrop-blur-sm',
-                          'hover:bg-gray-200/80 dark:hover:bg-gray-700/80 bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300'
-                        )}
-                        title={t('regenerate')}
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+            {/* Header - Fixed at top, flex-shrink-0 */}
+            <div className="flex-shrink-0 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-4 py-3">
+              <div className="flex items-center gap-3 flex-1">
+                {/* 左侧：智能体信息 */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center shadow-lg">
+                    <Bot className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                      {displayName}
+                    </h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {displayDescription}
+                    </p>
                   </div>
                 </div>
-              </div>
 
-              {/* Edit Button for User Messages - On hover */}
-              {msg.role === 'user' && (
-                <div className="flex gap-1 opacity-0 hover:opacity-100 transition-opacity self-end">
+                {/* 右侧：PC端最小化按钮 + 移动端切换器 */}
+                <div className="flex items-center justify-end flex-1">
+                  {/* PC端收起按钮 - 靠右边缘 */}
                   <button
-                    onClick={() => handleRetryMessage(msg.content)}
-                    className="p-1.5 rounded-lg hover:bg-indigo-400/20 text-white/70 hover:text-white transition-colors text-xs"
-                    title={t('resend')}
+                    onClick={() => effectiveSetIsChatMinimized(true)}
+                    className="hidden md:flex p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    title="收起"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
+                    <Minimize2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                   </button>
-                </div>
-              )}
-            </motion.div>
-          ))}
 
-          {/* Typing Indicator */}
-          {isTyping && messages.filter(m => m.role === 'assistant' && m.content.trim() !== '').length === 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex gap-3 items-start"
-            >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-                <Bot className="w-4 h-4 text-white" />
-              </div>
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4">
-                <div className="flex items-center gap-1">
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 1 }}
-                    className="w-2 h-2 bg-gray-400 rounded-full"
-                  />
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
-                    className="w-2 h-2 bg-gray-400 rounded-full"
-                  />
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
-                    className="w-2 h-2 bg-gray-400 rounded-full"
-                  />
+                  {/* 移动端专用切换器 (md:hidden) */}
+                  {onViewModeChange && (
+                    <div className="md:hidden flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg w-28">
+                      <button
+                        onClick={() => onViewModeChange('chat')}
+                        className={`flex-1 text-[11px] py-1 rounded-md transition-all ${viewMode === 'chat' ? 'bg-white dark:bg-slate-700 shadow-sm font-bold text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}
+                      >
+                        对话
+                      </button>
+                      <button
+                        onClick={() => onViewModeChange('preview')}
+                        className={`flex-1 text-[11px] py-1 rounded-md transition-all ${viewMode === 'preview' ? 'bg-white dark:bg-slate-700 shadow-sm font-bold text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}
+                      >
+                        产物
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
-            </motion.div>
-          )}
+            </div>
 
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
+            {/* Messages - flex-1 + overflow-y-auto for scrolling */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-thin">
+              <div className="space-y-4">
+                {messages
+                  .filter(msg => {
+                    // 在复杂模式下，只显示用户消息和系统消息
+                    if (conversationMode === 'complex') {
+                      return msg.content.trim() !== '' && (msg.role === 'user' || msg.role === 'system')
+                    }
+                    // 在简单模式下，显示所有非空消息
+                    return msg.content.trim() !== ''
+                  })
+                  .map((msg, index) => {
+                    // 系统消息特殊处理
+                    const isSystemMessage = msg.role === 'system'
 
-      {/* Input Area - flex-shrink-0 to keep it fixed at bottom */}
-      <div className="flex-shrink-0 w-full px-4 pt-4 pb-4 md:pb-6 border-t border-gray-200/50 dark:border-gray-700/50">
-        <GlowingInput
-          value={inputMessage}
-          onChange={setInputMessage}
-          onSubmit={handleSubmit}
-          onStop={onStopGeneration}
-          placeholder={t('describeTask')}
-          disabled={isTyping}
-          isTyping={isTyping}
-          conversationMode={conversationMode}
-          onConversationModeChange={onConversationModeChange}
-        />
-      </div>
+                    return (
+                      <motion.div
+                        key={msg.id || index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={cn(
+                          'flex gap-3',
+                          msg.role === 'user' ? 'flex-col items-end' : 'flex-col items-start',
+                          isSystemMessage && 'flex-col items-center'
+                        )}
+                      >
+                        {/* 系统消息特殊样式 */}
+                        {isSystemMessage ? (
+                          <div className="w-full bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30 rounded-xl px-4 py-2 text-center">
+                            <span className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">
+                              {msg.content}
+                            </span>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Avatar + Message Bubble Row */}
+                            <div className={cn('flex gap-3 w-full', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
+                              {/* Avatar */}
+                              <div
+                                className={cn(
+                                  'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
+                                  msg.role === 'user'
+                                    ? 'bg-indigo-600'
+                                    : 'bg-gradient-to-br from-indigo-500 to-purple-500'
+                                )}
+                              >
+                                {msg.role === 'user' ? (
+                                  <User className="w-4 h-4 text-white" />
+                                ) : (
+                                  <Bot className="w-4 h-4 text-white" />
+                                )}
+                              </div>
+
+                              {/* Message Bubble with Action Button */}
+                              <div
+                                className={cn(
+                                  'relative max-w-[80%] rounded-2xl p-4 shadow-sm group',
+                                  msg.role === 'user'
+                                    ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-indigo-200 dark:shadow-indigo-900/20'
+                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100'
+                                )}
+                              >
+                                {/* Content */}
+                                {msg.role === 'user' ? (
+                                  <div className="whitespace-pre-wrap text-sm">
+                                    {msg.content}
+                                  </div>
+                                ) : (
+                                  <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
+                                    <ReactMarkdown
+                                      remarkPlugins={[remarkGfm]}
+                                      components={{
+                                        // 代码块渲染（带简单样式）
+                                        code: ({ children, className }) => {
+                                          const isInline = !className?.includes('language-')
+                                          return isInline ? (
+                                            <code className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm text-slate-800 dark:text-slate-200">
+                                              {children}
+                                            </code>
+                                          ) : (
+                                            <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto my-4">
+                                              <code className="text-sm">{children}</code>
+                                            </pre>
+                                          )
+                                        },
+                                        // 标题样式
+                                        h1: ({ children }) => (
+                                          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 border-b border-slate-300 dark:border-slate-700 pb-2 mb-4 mt-6">
+                                            {children}
+                                          </h1>
+                                        ),
+                                        h2: ({ children }) => (
+                                          <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 border-b border-slate-300 dark:border-slate-700 pb-2 mb-3 mt-5">
+                                            {children}
+                                          </h2>
+                                        ),
+                                        h3: ({ children }) => (
+                                          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mt-4 mb-2">
+                                            {children}
+                                          </h3>
+                                        ),
+                                        // 段落样式
+                                        p: ({ children }) => (
+                                          <p className="text-slate-700 dark:text-slate-300 leading-relaxed mb-4">
+                                            {children}
+                                          </p>
+                                        ),
+                                        // 列表样式
+                                        ul: ({ children }) => (
+                                          <ul className="list-disc pl-6 mb-4 text-slate-700 dark:text-slate-300 space-y-1">
+                                            {children}
+                                          </ul>
+                                        ),
+                                        ol: ({ children }) => (
+                                          <ol className="list-decimal pl-6 mb-4 text-slate-700 dark:text-slate-300 space-y-1">
+                                            {children}
+                                          </ol>
+                                        ),
+                                        // 链接样式
+                                        a: ({ children, href }) => (
+                                          <a
+                                            href={href}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 dark:text-blue-400 hover:underline"
+                                          >
+                                            {children}
+                                          </a>
+                                        ),
+                                        // 引用块样式
+                                        blockquote: ({ children }) => (
+                                          <blockquote className="border-l-4 border-slate-400 dark:border-slate-600 pl-4 italic text-slate-600 dark:text-slate-400 my-4">
+                                            {children}
+                                          </blockquote>
+                                        ),
+                                      }}
+                                    >
+                                      {msg.content}
+                                    </ReactMarkdown>
+                                  </div>
+                                )}
+
+                                {/* Action Button - Hover to show at top right */}
+                                <div
+                                  className={cn(
+                                    'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
+                                    msg.role === 'user' ? 'flex-row' : 'flex-row'
+                                  )}
+                                >
+                                  {/* Copy Button */}
+                                  <button
+                                    onClick={() => handleCopyMessage(msg.content, msg.id || String(index))}
+                                    className={cn(
+                                      'p-1.5 rounded-lg transition-colors text-xs backdrop-blur-sm',
+                                      msg.role === 'user'
+                                        ? 'hover:bg-indigo-400/30 bg-indigo-500/20 text-white'
+                                        : 'hover:bg-gray-200/80 dark:hover:bg-gray-700/80 bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300'
+                                    )}
+                                    title={t('copy')}
+                                  >
+                                    {copiedMessageId === (msg.id || String(index)) ? (
+                                      <Check className="w-3.5 h-3.5" />
+                                    ) : (
+                                      <Copy className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+
+                                  {/* Regenerate Button (Only for assistant messages) */}
+                                  {msg.role === 'assistant' && (
+                                    <button
+                                      onClick={handleRegenerate}
+                                      className={cn(
+                                        'p-1.5 rounded-lg transition-colors text-xs backdrop-blur-sm',
+                                        'hover:bg-gray-200/80 dark:hover:bg-gray-700/80 bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300'
+                                      )}
+                                      title={t('regenerate')}
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Edit Button for User Messages - On hover */}
+                            {msg.role === 'user' && (
+                              <div className="flex gap-1 opacity-0 hover:opacity-100 transition-opacity self-end">
+                                <button
+                                  onClick={() => handleRetryMessage(msg.content)}
+                                  className="p-1.5 rounded-lg hover:bg-indigo-400/20 text-white/70 hover:text-white transition-colors text-xs"
+                                  title={t('resend')}
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </motion.div>
+                    )
+                  })}
+
+                {/* Typing Indicator */}
+                {isTyping && messages.filter(m => m.role === 'assistant' && m.content.trim() !== '').length === 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex gap-3 items-start"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                      <Bot className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4">
+                      <div className="flex items-center gap-1">
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ repeat: Infinity, duration: 1 }}
+                          className="w-2 h-2 bg-gray-400 rounded-full"
+                        />
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
+                          className="w-2 h-2 bg-gray-400 rounded-full"
+                        />
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
+                          className="w-2 h-2 bg-gray-400 rounded-full"
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                <div ref={messagesEndRef} />
+              </div>
+            </div>
+
+            {/* Input Area - flex-shrink-0 to keep it fixed at bottom */}
+            <div className="flex-shrink-0 w-full px-4 pt-4 pb-4 md:pb-6 border-t border-gray-200/50 dark:border-gray-700/50">
+              <GlowingInput
+                value={inputMessage}
+                onChange={setInputMessage}
+                onSubmit={handleSubmit}
+                onStop={onStopGeneration}
+                placeholder={t('describeTask')}
+                disabled={isTyping}
+                isTyping={isTyping}
+                conversationMode={conversationMode}
+                onConversationModeChange={onConversationModeChange}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

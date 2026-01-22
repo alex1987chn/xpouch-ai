@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, X } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { useChat } from '@/hooks/useChat'
 import { useCanvasStore } from '@/store/canvasStore'
@@ -29,13 +29,9 @@ export default function CanvasChatPage() {
   // 对话模式状态
   const [conversationMode, setConversationMode] = useState<'simple' | 'complex'>(initialMode)
 
-  // 监听 agentId 变化，自动更新模式
-  useEffect(() => {
-    if (agentIdFromUrl === 'sys-commander') {
-      setConversationMode('complex')
-    } else if (agentIdFromUrl === 'sys-assistant') {
-      setConversationMode('simple')
-    }
+  // 判断是否是直连专家模式（非 sys-commander）
+  const isDirectExpertMode = useMemo(() => {
+    return !!(agentIdFromUrl && agentIdFromUrl !== 'sys-commander')
   }, [agentIdFromUrl])
 
   const { fetchUser } = useUserStore()
@@ -69,14 +65,35 @@ export default function CanvasChatPage() {
 
   const { selectedExpert } = useCanvasStore()
 
-  // 当 conversationMode 改变时，更新 selectedAgentId
+  // 监听 agentId 变化，自动更新模式
   useEffect(() => {
-    const newAgentId = conversationMode === 'complex'
-      ? 'sys-commander'
-      : 'sys-assistant'
+    if (agentIdFromUrl === 'sys-commander') {
+      setConversationMode('complex')
+    } else if (agentIdFromUrl === 'sys-assistant') {
+      setConversationMode('simple')
+    } else {
+      // 直连专家模式，使用 simple 模式（但实际上是直连专家）
+      setConversationMode('simple')
+    }
+  }, [agentIdFromUrl])
 
-    setSelectedAgentId(newAgentId)
-  }, [conversationMode, setSelectedAgentId])
+  // 处理 URL 参数中的 agentId
+  useEffect(() => {
+    if (agentIdFromUrl) {
+      setSelectedAgentId(agentIdFromUrl)
+    }
+  }, [agentIdFromUrl, setSelectedAgentId])
+
+  // 处理 startWith 消息（自动发送）
+  useEffect(() => {
+    const state = location.state as { startWith?: string; agentId?: string } | null
+
+    if (state?.startWith && !handledStartWithRef.current) {
+      handledStartWithRef.current = true
+      handleSendMessage(state.startWith)
+      navigate(location.pathname + location.search, { replace: true, state: {} })
+    }
+  }, [location, handleSendMessage, navigate, setSelectedAgentId, agentIdFromUrl])
 
   // 初始化或加载会话
   useEffect(() => {
@@ -140,24 +157,6 @@ export default function CanvasChatPage() {
     })
   }, [id, location, setSelectedAgentId, agentIdFromUrl, setMessages, setCurrentConversationId])
 
-  // 处理 URL 参数中的 agentId
-  useEffect(() => {
-    if (agentIdFromUrl) {
-      setSelectedAgentId(agentIdFromUrl)
-    }
-  }, [agentIdFromUrl, setSelectedAgentId])
-
-  // 处理 startWith 消息（自动发送）
-  useEffect(() => {
-    const state = location.state as { startWith?: string; agentId?: string } | null
-
-    if (state?.startWith && !handledStartWithRef.current) {
-      handledStartWithRef.current = true
-      handleSendMessage(state.startWith)
-      navigate(location.pathname + location.search, { replace: true, state: {} })
-    }
-  }, [location, handleSendMessage, navigate, setSelectedAgentId, agentIdFromUrl])
-
   // 处理消息发送
   const handleSubmitMessage = useCallback(() => {
     if (!inputMessage || typeof inputMessage !== 'string' || !inputMessage.trim()) return
@@ -188,21 +187,8 @@ export default function CanvasChatPage() {
     )
   }
 
-  // 专家状态栏内容（使用 useMemo 避免重复创建）
-  const ExpertBarContent = useMemo(() => (
-    <ExpertStatusBar />
-  ), [])
-
-  // Artifact 区域内容（使用新的 ArtifactsArea 组件）
-  const ArtifactContent = useMemo(() => (
-    <ArtifactsArea
-      isFullscreen={isArtifactFullscreen}
-      onFullscreenToggle={() => setIsArtifactFullscreen(!isArtifactFullscreen)}
-    />
-  ), [isArtifactFullscreen])
-
-  // 创建聊天内容组件（使用 useCallback 避免重复创建）
-  const ChatContent = useCallback((viewMode: 'chat' | 'preview', setViewMode: (mode: 'chat' | 'preview') => void) => (
+  // 将 isDirectExpertMode 传递给 ChatContent 回调使用
+  const ChatContentWithMode = useCallback((viewMode: 'chat' | 'preview', setViewMode: (mode: 'chat' | 'preview') => void) => (
     <div className="relative flex-1 flex flex-col min-h-0">
       <FloatingChatPanel
         messages={messages}
@@ -218,13 +204,38 @@ export default function CanvasChatPage() {
         setIsChatMinimized={setIsChatMinimized}
         onStopGeneration={handleStopGeneration}
         conversationMode={conversationMode}
-        onConversationModeChange={setConversationMode}
+        onConversationModeChange={isDirectExpertMode ? undefined : setConversationMode}
+        hideModeSwitch={isDirectExpertMode}
       />
     </div>
-  ), [messages, inputMessage, setInputMessage, handleSubmitMessage, isTyping, getCurrentAgent, isChatMinimized, setIsChatMinimized, handleStopGeneration, conversationMode])
+  ), [messages, inputMessage, setInputMessage, handleSubmitMessage, isTyping, getCurrentAgent, isChatMinimized, setIsChatMinimized, handleStopGeneration, conversationMode, setConversationMode, isDirectExpertMode])
+
+  // 专家状态栏内容（使用 useMemo 避免重复创建）
+  const ExpertBarContent = useMemo(() => (
+    <ExpertStatusBar />
+  ), [])
+
+  // Artifact 区域内容（使用新的 ArtifactsArea 组件）
+  const ArtifactContent = useMemo(() => (
+    <ArtifactsArea
+      isFullscreen={isArtifactFullscreen}
+      onFullscreenToggle={() => setIsArtifactFullscreen(!isArtifactFullscreen)}
+    />
+  ), [isArtifactFullscreen])
 
   return (
     <ArtifactProvider>
+      {/* XPouchLayout - 直接渲染，不受外层容器限制 */}
+      <XPouchLayout
+        ExpertBarContent={ExpertBarContent}
+        ArtifactContent={ArtifactContent}
+        ChatContent={ChatContentWithMode}
+        isChatMinimized={isChatMinimized}
+        setIsChatMinimized={setIsChatMinimized}
+        hasArtifact={true}
+        hideChatPanel={isArtifactFullscreen}
+      />
+
       {/* 抽屉式专家详情 - 提升到最顶层，独立 stacking context */}
       <ExpertDrawer
         isOpen={isExpertDrawerOpen}
@@ -232,27 +243,25 @@ export default function CanvasChatPage() {
         expertName={selectedExpert || '专家'}
       />
 
-      {/* XPouchLayout - 直接渲染，不受外层容器限制 */}
-      <XPouchLayout
-        ExpertBarContent={ExpertBarContent}
-        ArtifactContent={ArtifactContent}
-        ChatContent={ChatContent}
-        isChatMinimized={isChatMinimized}
-        setIsChatMinimized={setIsChatMinimized}
-        hasArtifact={true}
-        hideChatPanel={isArtifactFullscreen}
-      />
-
-      {/* Artifact全屏预览 - 只在交互区域内显示 */}
+      {/* Artifact全屏预览 - 独立于布局之外，确保覆盖整个视口 */}
       {isArtifactFullscreen && (
         <div
-          className="absolute inset-0 z-[1000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 dark:bg-black/70"
+          className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 dark:bg-black/70"
           onClick={() => setIsArtifactFullscreen(false)}
         >
           <div
             className="relative w-full max-w-[95vw] h-[90vh] md:h-[85vh] bg-white dark:bg-slate-900 rounded-none md:rounded-3xl shadow-2xl overflow-hidden flex flex-col border-0 md:border border-gray-200 dark:border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* 内部关闭按钮（因为外层只负责关闭全屏） */}
+            <button
+              onClick={() => setIsArtifactFullscreen(false)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors"
+              title="关闭"
+            >
+              <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            </button>
+
             <ArtifactsArea
               isFullscreen={true}
               onFullscreenToggle={() => setIsArtifactFullscreen(false)}

@@ -319,6 +319,10 @@ export async function sendMessage(
                 const expertCompleted = parsed.expertCompleted
                 const artifact = parsed.artifact
                 const allArtifacts = parsed.allArtifacts as Array<any> | undefined
+                const taskPlan = parsed.taskPlan
+                const taskStart = parsed.taskStart
+
+                console.log('[api.ts] 收到SSE数据:', { hasContent: !!content, activeExpert, expertCompleted, hasArtifact: !!artifact, parsed })
 
                 if (parsed.conversationId) {
                     finalConversationId = parsed.conversationId
@@ -326,6 +330,7 @@ export async function sendMessage(
 
                 // 处理专家激活事件（传递给回调）
                 if (activeExpert && typeof onChunk === 'function') {
+                  console.log('[api.ts] 处理专家激活事件:', activeExpert)
                   // 调用回调，传递专家激活信息
                   // @ts-ignore - 扩展回调签名支持专家状态
                   onChunk('', finalConversationId, { type: 'expert_activated', expertId: activeExpert })
@@ -346,6 +351,20 @@ export async function sendMessage(
                   onChunk('', finalConversationId, expertEvent)
                 }
 
+                // 处理 taskPlan 事件（任务计划展示）
+                if (taskPlan && typeof onChunk === 'function') {
+                  console.log('[api.ts] 处理任务计划事件:', taskPlan)
+                  // @ts-ignore - 扩展回调签名支持任务计划
+                  onChunk('', finalConversationId, undefined, undefined, undefined, { type: 'task_plan', ...taskPlan })
+                }
+
+                // 处理 taskStart 事件（任务开始展示）
+                if (taskStart && typeof onChunk === 'function') {
+                  console.log('[api.ts] 处理任务开始事件:', taskStart)
+                  // @ts-ignore - 扩展回调签名支持任务开始
+                  onChunk('', finalConversationId, undefined, undefined, undefined, { type: 'task_start', ...taskStart })
+                }
+
                 // 处理 artifact 事件
                 if (artifact && typeof onChunk === 'function') {
                   // @ts-ignore - 扩展回调签名支持 artifact
@@ -354,8 +373,12 @@ export async function sendMessage(
 
                 if (content) {
                   fullContent += content
-                  onChunk(content, finalConversationId)
-                } else if (finalConversationId && !content && !activeExpert && !expertCompleted && !artifact) {
+                  // 如果是最终响应，不通过onChunk处理（避免双重渲染）
+                  if (!parsed.isFinal) {
+                    onChunk(content, finalConversationId)
+                  }
+                  // isFinal=True时，将内容存入fullContent但暂时不渲染
+                } else if (finalConversationId && !content && !activeExpert && !expertCompleted && !artifact && !taskPlan) {
                    // 某些包可能只包含 conversationId
                    onChunk('', finalConversationId)
                 }

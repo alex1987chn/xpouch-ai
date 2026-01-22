@@ -959,105 +959,92 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                     if kind == "on_chain_start" and name == "commander":
                         print(f"[STREAM] 指挥官节点开始执行")
 
-                    # 捕获专家节点开始执行（expert_type: expert_name）
-                    if kind == "on_chain_start" and name in ["search", "coder", "researcher", "analyzer", "writer", "planner", "image_analyzer"]:
-                        # 初始化该专家的 artifact 列表
-                        if name not in expert_artifacts:
-                            expert_artifacts[name] = []
-
-                        yield f"data: {json.dumps({'activeExpert': name, 'conversationId': conversation_id})}\n\n"
-                        print(f"[STREAM] 专家 {name} 开始执行")
-
-                    # 捕获专家节点执行结束
-                    if kind == "on_chain_end" and name in ["search", "coder", "researcher", "analyzer", "writer", "planner", "image_analyzer"]:
-                        print(f"[STREAM] 专家 {name} 结束执行，检查 output_data...")
-                        # 检查是否生成了 artifact
+                    # 捕获指挥官节点执行结束（获取任务计划）
+                    if kind == "on_chain_end" and name == "commander":
+                        print(f"[STREAM] 指挥官节点结束，检查是否有任务计划...")
                         output_data = event["data"]["output"]
-                        print(f"[STREAM] output_data 类型: {type(output_data)}, 包含 artifact: {isinstance(output_data, dict) and 'artifact' in output_data}")
 
-                        # 累积 artifact
-                        if isinstance(output_data, dict) and "artifact" in output_data:
-                            artifact = output_data["artifact"]
-                            print(f"[STREAM] 检测到 artifact: {artifact['type']}")
-                            print(f"[STREAM] artifact content 长度: {len(artifact.get('content', ''))}")
+                        if "__task_plan" in output_data:
+                            task_plan = output_data["__task_plan"]
+                            print(f"[STREAM] 发现任务计划: {task_plan['task_count']} 个任务")
+                            # 推送任务计划事件到前端
+                            yield f"data: {json.dumps({'taskPlan': task_plan, 'conversationId': conversation_id})}\n\n"
+                            print(f"[STREAM] 推送任务计划事件")
 
-                            # 添加到该专家的 artifact 列表
-                            expert_artifacts[name] = expert_artifacts.get(name, [])
-                            expert_artifacts[name].append(artifact)
-                            print(f"[STREAM] 专家 {name} 当前 artifacts 数量: {len(expert_artifacts[name])}")
+                    # 捕获聚合器节点执行结束（获取最终响应）
+                    if kind == "on_chain_end" and name == "aggregator":
+                        print(f"[STREAM] 聚合器节点结束，检查是否有最终响应...")
+                        output_data = event["data"]["output"]
 
-                            # 推送 artifact_update 事件（包含所有 artifacts）
-                            yield f"data: {json.dumps({'artifact': artifact, 'conversationId': conversation_id, 'allArtifacts': expert_artifacts[name]})}\n\n"
-                        # 推送专家完成事件（包含完整信息）
-                        yield f"data: {json.dumps({
-                            'expertCompleted': name,
-                            'conversationId': conversation_id,
-                            'duration_ms': output_data.get('duration_ms', 0),
-                            'status': output_data.get('status', 'completed'),
-                            'output': output_data.get('output_result', ''),
-                            'error': output_data.get('error'),
-                            'allArtifacts': expert_artifacts.get(name, [])
-                        })}\n\n"
-                        print(f"[STREAM] 专家 {name} 执行完成")
+                        if "final_response" in output_data:
+                            final_response = output_data["final_response"]
+                            print(f"[STREAM] 发现最终响应，长度: {len(final_response)}")
+                            # 推送最终响应到前端
+                            yield f"data: {json.dumps({'content': final_response, 'conversationId': conversation_id, 'isFinal': True})}\n\n"
+                            print(f"[STREAM] 推送最终响应事件")
 
-                    # 捕获 expert_dispatcher 节点执行结束（用于直接专家模式）
+                    # 捕获专家分发器节点执行（通过 __expert_info 字段传递专家信息）
                     if kind == "on_chain_end" and name == "expert_dispatcher":
-                        print(f"[STREAM] expert_dispatcher 结束执行，检查 output_data...")
-                        # 检查是否生成了 artifact
+                            yield f"data: {json.dumps({'taskPlan': task_plan, 'conversationId': conversation_id})}\n\n"
+                            print(f"[STREAM] 推送任务计划事件")
+
+                    # 捕获专家分发器节点执行（通过 __expert_info 字段传递专家信息）
+                    if kind == "on_chain_end" and name == "expert_dispatcher":
+                        print(f"[STREAM] expert_dispatcher 节点结束，检查是否有专家信息...")
                         output_data = event["data"]["output"]
                         print(f"[STREAM] output_data 类型: {type(output_data)}")
-                        print(f"[STREAM] output_data 内容: {output_data}")
-                        if isinstance(output_data, dict):
-                            print(f"[STREAM] output_data keys: {output_data.keys()}")
-                            print(f"[STREAM] 包含 artifact: {'artifact' in output_data}")
-                            print(f"[STREAM] 包含 __expert_info: {'__expert_info' in output_data}")
-                            if "artifact" in output_data:
-                                print(f"[STREAM] artifact 内容: {output_data['artifact']}")
-                            if "__expert_info" in output_data:
-                                print(f"[STREAM] __expert_info 内容: {output_data['__expert_info']}")
 
-                        # 累积 artifact
-                        if isinstance(output_data, dict) and "artifact" in output_data:
-                            artifact = output_data["artifact"]
-                            expert_type = output_data.get("__expert_info", {}).get("expert_type", "unknown")
+                        if "__task_start_info" in output_data:
+                            task_start_info = output_data["__task_start_info"]
+                            print(f"[STREAM] 发现任务开始信息: {task_start_info}")
+                            # 推送任务开始事件到前端
+                            yield f"data: {json.dumps({'taskStart': task_start_info, 'conversationId': conversation_id})}\n\n"
+                            print(f"[STREAM] 推送任务开始事件")
+
+                        if "__expert_info" in output_data:
+                            expert_info = output_data["__expert_info"]
+                            expert_name = expert_info.get("expert_type")
+                            expert_status = expert_info.get("status", "completed")
+                            duration_ms = expert_info.get("duration_ms", 0)
+                            output_result = expert_info.get("output", "")
+                            expert_error = expert_info.get("error")
+
+                            print(f"[STREAM] 发现专家信息: {expert_name}, 状态: {expert_status}, 耗时: {duration_ms}ms")
 
                             # 初始化该专家的 artifact 列表
-                            if expert_type not in expert_artifacts:
-                                expert_artifacts[expert_type] = []
+                            if expert_name not in expert_artifacts:
+                                expert_artifacts[expert_name] = []
 
-                            expert_artifacts[expert_type].append(artifact)
-                            print(f"[STREAM] 从 expert_dispatcher 检测到 artifact: {artifact['type']}")
-                            print(f"[STREAM] artifact content 长度: {len(artifact.get('content', ''))}")
-                            print(f"[STREAM] 专家 {expert_type} 当前 artifacts 数量: {len(expert_artifacts[expert_type])}")
+                            # 推送专家激活事件（在专家开始执行时）
+                            yield f"data: {json.dumps({'activeExpert': expert_name, 'conversationId': conversation_id})}\n\n"
+                            print(f"[STREAM] 推送专家激活事件: {expert_name}")
 
-                            # 推送 artifact_update 事件（包含所有 artifacts）
-                            yield f"data: {json.dumps({'artifact': artifact, 'conversationId': conversation_id, 'allArtifacts': expert_artifacts[expert_type]})}\n\n"
+                            # 检查是否生成了 artifact
+                            if "artifact" in output_data:
+                                artifact = output_data["artifact"]
+                                print(f"[STREAM] 检测到 artifact: {artifact['type']}")
+                                print(f"[STREAM] artifact content 长度: {len(artifact.get('content', ''))}")
 
-                        # 检查是否有专家信息（用于专家状态栏）
-                        if isinstance(output_data, dict) and "__expert_info" in output_data:
-                            expert_info = output_data["__expert_info"]
-                            expert_type = expert_info.get("expert_type")
-                            print(f"[STREAM] 检测到 __expert_info: {expert_info}")
+                                # 添加到该专家的 artifact 列表
+                                expert_artifacts[expert_name].append(artifact)
+                                print(f"[STREAM] 专家 {expert_name} 当前 artifacts 数量: {len(expert_artifacts[expert_name])}")
 
-                            # 发送专家激活事件
-                            yield f"data: {json.dumps({'activeExpert': expert_type, 'conversationId': conversation_id})}\n\n"
-                            print(f"[STREAM] ✅ 专家 {expert_type} 激活")
+                                # 推送 artifact_update 事件（包含所有 artifacts）
+                                yield f"data: {json.dumps({'artifact': artifact, 'conversationId': conversation_id, 'allArtifacts': expert_artifacts[expert_name]})}\n\n"
 
-                            # 发送专家完成事件（包含所有 artifacts）
+                            # 推送专家完成事件（包含完整信息）
                             yield f"data: {json.dumps({
-                                'expertCompleted': expert_type,
+                                'expertCompleted': expert_name,
                                 'conversationId': conversation_id,
-                                'duration_ms': expert_info.get('duration_ms', 0),
-                                'status': expert_info.get('status', 'completed'),
-                                'output': expert_info.get('output', ''),
-                                'error': expert_info.get('error'),
-                                'allArtifacts': expert_artifacts.get(expert_type, [])
+                                'duration_ms': duration_ms,
+                                'status': expert_status,
+                                'output': output_result,
+                                'error': expert_error,
+                                'allArtifacts': expert_artifacts.get(expert_name, [])
                             })}\n\n"
-                            print(f"[STREAM] ✅ 专家 {expert_type} 完成 (status: {expert_info.get('status')})")
+                            print(f"[STREAM] 专家 {expert_name} 执行完成")
                         else:
                             print(f"[STREAM] ⚠️  未检测到 __expert_info 字段")
-
-                        print(f"[STREAM] expert_dispatcher 执行完成")
 
                     # 捕获 LLM 流式输出
                     if kind == "on_chat_model_stream":

@@ -243,42 +243,40 @@ export default function GlowingInput({
 
               {/* 模式切换胶囊 */}
               {onConversationModeChange && (
-                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full px-1 border border-slate-200 dark:border-slate-700" style={{ width: '59px', height: '32px' }}>
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-200 dark:border-slate-700 h-6 w-[51px] gap-0">
                   <button
                     type="button"
                     onClick={() => {
-                      console.log('[GlowingInput] 切换到简单模式')
                       onConversationModeChange('simple')
                     }}
                     className={cn(
-                      'flex items-center justify-center rounded-full transition-all',
+                      'flex items-center justify-center rounded-l-full rounded-r-full transition-all',
                       'hover:scale-105 active:scale-95',
                       conversationMode === 'simple'
                         ? 'bg-violet-500 text-white shadow-md'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                     )}
-                    style={{ width: '27px', height: '27px' }}
+                    style={{ width: '25px', height: '24px' }}
                     title="快速对话模式 - 直接调用AI，响应迅速"
                   >
-                    <Zap className="w-4 h-4" />
+                    <Zap className="w-3 h-3" />
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      console.log('[GlowingInput] 切换到复杂模式')
                       onConversationModeChange('complex')
                     }}
                     className={cn(
-                      'flex items-center justify-center rounded-full transition-all',
+                      'flex items-center justify-center rounded-r-full rounded-l-full transition-all',
                       'hover:scale-105 active:scale-95',
                       conversationMode === 'complex'
                         ? 'bg-violet-500 text-white shadow-md'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                     )}
-                    style={{ width: '27px', height: '27px' }}
+                    style={{ width: '25px', height: '24px' }}
                     title="专家协作模式 - 多专家智能体协同工作，深度分析复杂任务"
                   >
-                    <Brain className="w-4 h-4" />
+                    <Brain className="w-3 h-3" />
                   </button>
                 </div>
               )}
