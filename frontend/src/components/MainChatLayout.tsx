@@ -45,7 +45,7 @@ export default function MainChatLayout({ children, className, hasMessages = fals
       {/* 左侧边栏 - 统一样式，全局层级 */}
       <aside className={cn(
         'fixed left-0 top-0 h-screen flex-shrink-0 transition-transform duration-200 z-[150]',
-        'w-[92px]',
+        'w-[64px]',
         'bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a]',
         'backdrop-blur-xl',
         'border-r border-slate-200/50 dark:border-slate-700/30',
@@ -67,7 +67,7 @@ export default function MainChatLayout({ children, className, hasMessages = fals
       {/* 收拢/展开按钮 - 与头像水平对齐 */}
       <div className={cn(
         'fixed bottom-[55px] z-50 transition-all duration-200 lg:flex hidden',
-        isDesktopSidebarCollapsed ? 'left-[12px]' : 'left-[92px]'
+        isDesktopSidebarCollapsed ? 'left-[12px]' : 'left-[64px]'
       )}>
         {/* 收拢/展开侧边栏按钮 */}
         <button
@@ -86,7 +86,7 @@ export default function MainChatLayout({ children, className, hasMessages = fals
       {/* 主内容区域 - 添加左边距和移动端适配 */}
       <div className={cn(
         'flex-1 w-full flex flex-col transition-all duration-200',
-        isDesktopSidebarCollapsed ? 'lg:ml-0' : 'lg:ml-[92px]',
+        isDesktopSidebarCollapsed ? 'lg:ml-0' : 'lg:ml-[64px]',
         isMobileSidebarOpen ? 'ml-0' : 'ml-0'
       )}>
         {/* 移动端汉堡菜单按钮 */}

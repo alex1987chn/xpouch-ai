@@ -59,7 +59,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
       {/* 左侧边栏 - 统一的全局 Sidebar */}
       <aside className={cn(
         'fixed left-0 top-0 h-screen flex-shrink-0 transition-transform duration-200 z-[150]',
-        'w-[92px]',
+        'w-[64px]',
         'bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a]',
         'backdrop-blur-xl',
         'border-r border-slate-200/50 dark:border-slate-700/30',
@@ -94,7 +94,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
       {/* 主内容区域 - 右侧交互区 */}
       <div className={cn(
         'flex-1 w-full flex flex-col transition-all duration-200',
-        sidebar.isCollapsed ? 'lg:ml-0' : 'lg:ml-[92px]',
+        sidebar.isCollapsed ? 'lg:ml-0' : 'lg:ml-[64px]',
         sidebar.isMobileOpen ? 'ml-0' : 'ml-0'
       )}>
         {/* 移动端汉堡菜单按钮 */}

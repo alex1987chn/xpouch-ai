@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { Bot, User, Minimize2, Maximize2, Copy, Check, RotateCcw, MoreVertical } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
+import { useCanvasStore } from '@/store/canvasStore'
 import type { Message } from '@/store/chatStore'
 import GlowingInput from './GlowingInput'
 import { useTranslation } from '@/i18n'
@@ -49,6 +50,7 @@ export default function FloatingChatPanel({
   hideModeSwitch = false
 }: FloatingChatPanelProps) {
   const { t } = useTranslation()
+  const { selectExpert, selectArtifactSession } = useCanvasStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isMinimized, setIsMinimized] = useState(false)
 
@@ -177,9 +179,9 @@ export default function FloatingChatPanel({
               <div className="space-y-4">
                 {messages
                   .filter(msg => {
-                    // 在复杂模式下，只显示用户消息和系统消息
+                    // 在复杂模式下，只显示系统消息（任务计划、任务开始、专家完成等），不显示 assistant 消息（Markdown内容）
                     if (conversationMode === 'complex') {
-                      return msg.content.trim() !== '' && (msg.role === 'user' || msg.role === 'system')
+                      return msg.content.trim() !== '' && (msg.role === 'system' || msg.role === 'user')
                     }
                     // 在简单模式下，显示所有非空消息
                     return msg.content.trim() !== ''
@@ -201,10 +203,53 @@ export default function FloatingChatPanel({
                       >
                         {/* 系统消息特殊样式 */}
                         {isSystemMessage ? (
-                          <div className="w-full bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30 rounded-xl px-4 py-2 text-center">
-                            <span className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">
-                              {msg.content}
-                            </span>
+                          <div className="w-full bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30 rounded-xl px-4 py-3 text-center">
+                            <div className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">
+                              {(() => {
+                                // 检查是否包含 [查看交付物](expertId) 链接
+                                const artifactLinkMatch = msg.content.match(/\[查看交付物\]\(#(\w+)\)/)
+                                if (artifactLinkMatch) {
+                                  const expertId = artifactLinkMatch[1]
+                                  // 替换链接为按钮
+                                  const cleanContent = msg.content.replace(/\[查看交付物\]\(#\w+\)/, '')
+                                  return (
+                                    <div className="flex items-center justify-center gap-2">
+                                      <span>{cleanContent}</span>
+                                      <button
+                                        onClick={(e) => {
+                                          // 阻止事件冒泡，避免触发其他点击事件
+                                          e.stopPropagation()
+                                          // 选择对应的专家和 artifact
+                                          selectExpert(expertId)
+                                          selectArtifactSession(expertId)
+                                          // 滚动到对应的 artifact
+                                          setTimeout(() => {
+                                            document.getElementById(`artifact-${expertId}`)?.scrollIntoView({ behavior: 'smooth' })
+                                          }, 100)
+                                        }}
+                                        className="text-[10px] px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors flex items-center gap-1"
+                                        title="查看交付物"
+                                      >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm0 6a3 3 0 11-6 0 3 3 0 016 0zm0 6a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        查看
+                                      </button>
+                                    </div>
+                                  )
+                                }
+                                // 普通 Markdown 内容（如任务计划）
+                                return (
+                                  <div className="prose prose-xs dark:prose-invert max-w-none">
+                                    <ReactMarkdown
+                                      remarkPlugins={[remarkGfm]}
+                                    >
+                                      {msg.content}
+                                    </ReactMarkdown>
+                                  </div>
+                                )
+                              })()}
+                            </div>
                           </div>
                         ) : (
                           <>

@@ -44,8 +44,38 @@ export default function XPouchLayout({
           {/* 可以在这里添加网格背景 */}
         </div>
 
-        {/* 左侧容器：专家状态栏 + Artifact，占 7 份（约 70%） */}
+        {/* Chat Panel - 左侧，占 3 份（约 30%） */}
+        <AnimatePresence mode="wait">
+          {(!hideChatPanel || viewMode === 'chat') && (
+            <aside
+              className={cn(
+                // 基础样式
+                'flex flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-md',
+                // 移动端：全屏显示
+                'fixed inset-0 z-50 md:relative',
+                viewMode === 'chat' ? 'w-full h-[100dvh] rounded-none border-none' : 'hidden',
+                // PC端样式：与其他区域统一，设置 flex-3 占 30%
+                'md:flex md:flex-[3] md:h-full md:rounded-2xl md:shadow-2xl md:shadow-black/20 md:border md:border-slate-200/50 md:dark:border-slate-700/50',
+                // 关键：overflow-hidden 确保圆角锐利，只有内部消息区域滚动
+                'overflow-hidden min-h-0',
+                isChatMinimized && 'md:flex-0 md:opacity-0 md:overflow-hidden md:pointer-events-none',
+                // 全屏预览时隐藏
+                hideChatPanel && 'hidden'
+              )}
+            >
+              <div className={cn(
+                'h-full w-full flex flex-col overflow-hidden',
+                isChatMinimized && 'md:opacity-0'
+              )}>
+                {ChatContent(viewMode, setViewMode)}
+              </div>
+            </aside>
+          )}
+        </AnimatePresence>
+
+        {/* 右侧容器：专家交付区（专家状态栏 + Artifact），占 7 份（约 70%） */}
         <div
+          id="expert-delivery-zone"
           className={cn(
             'relative flex flex-col gap-4 min-h-0 flex-[7]',
             'hidden md:flex' // PC端显示
@@ -75,35 +105,6 @@ export default function XPouchLayout({
             </section>
           )}
         </div>
-
-        {/* Chat Panel - 右侧，占 3 份（约 30%） */}
-        <AnimatePresence mode="wait">
-          {(!hideChatPanel || viewMode === 'chat') && (
-            <aside
-              className={cn(
-                // 基础样式
-                'flex flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-md',
-                // 移动端：全屏显示
-                'fixed inset-0 z-50 md:relative',
-                viewMode === 'chat' ? 'w-full h-[100dvh] rounded-none border-none' : 'hidden',
-                // PC端样式：与其他区域统一，设置 flex-3 占 30%
-                'md:flex md:flex-[3] md:h-full md:rounded-2xl md:shadow-2xl md:shadow-black/20 md:border md:border-slate-200/50 md:dark:border-slate-700/50',
-                // 关键：overflow-hidden 确保圆角锐利，只有内部消息区域滚动
-                'overflow-hidden min-h-0',
-                isChatMinimized && 'md:flex-0 md:opacity-0 md:overflow-hidden md:pointer-events-none',
-                // 全屏预览时隐藏
-                hideChatPanel && 'hidden'
-              )}
-            >
-              <div className={cn(
-                'h-full w-full flex flex-col overflow-hidden',
-                isChatMinimized && 'md:opacity-0'
-              )}>
-                {ChatContent(viewMode, setViewMode)}
-              </div>
-            </aside>
-          )}
-        </AnimatePresence>
 
         {/* 机器人恢复按钮：仅在收起时显示 */}
         {isChatMinimized && setIsChatMinimized && (

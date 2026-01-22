@@ -45,7 +45,7 @@ export default function HtmlArtifact({ content, className }: HtmlArtifactProps) 
           <iframe
             src={htmlUrl}
             className="w-full h-full bg-white border-0"
-            sandbox="allow-scripts allow-same-origin allow-forms"
+            sandbox="allow-same-origin allow-forms allow-popups"
             title="HTML Preview"
           />
         ) : (

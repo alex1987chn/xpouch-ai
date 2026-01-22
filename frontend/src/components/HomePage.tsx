@@ -157,6 +157,11 @@ export default function HomePage() {
     setDeletingAgentName(agentName)
   }, [])
 
+  // 调试对话模式变化
+  useEffect(() => {
+    console.log('[HomePage] conversationMode changed to:', conversationMode)
+  }, [conversationMode])
+
   // 确认删除操作
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingAgentId) return
@@ -213,10 +218,9 @@ export default function HomePage() {
       expected: isSimpleMode ? 'sys-assistant' : 'sys-commander'
     })
 
-    navigate(`/chat/${newId}`, {
+    navigate(`/chat/${newId}?agentId=${agentIdForChat}`, {
       state: {
         startWith: inputMessage,
-        agentId: agentIdForChat,
         mode: conversationMode // 传递模式信息
       }
     })

@@ -11,6 +11,7 @@ import FloatingChatPanel from './FloatingChatPanel'
 import ExpertDrawer from './ExpertDrawer'
 import XPouchLayout from './XPouchLayout'
 import { useUserStore } from '@/store/userStore'
+import { useApp } from '@/providers/AppProvider'
 import ExpertStatusBar from './ExpertStatusBar'
 import ArtifactsArea from './ArtifactsArea'
 import { ArtifactProvider } from '@/providers/ArtifactProvider'
@@ -64,6 +65,7 @@ export default function CanvasChatPage() {
   } = useChatStore()
 
   const { selectedExpert } = useCanvasStore()
+  const { sidebar } = useApp()
 
   // 监听 agentId 变化，自动更新模式
   useEffect(() => {
@@ -243,29 +245,36 @@ export default function CanvasChatPage() {
         expertName={selectedExpert || '专家'}
       />
 
-      {/* Artifact全屏预览 - 独立于布局之外，确保覆盖整个视口 */}
+      {/* Artifact全屏预览 - 移动端全屏覆盖 */}
+      {isArtifactFullscreen && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 dark:bg-black/70 lg:hidden">
+          <div
+            className="relative w-full max-w-[95vw] h-[90vh] bg-white dark:bg-slate-900 rounded-none shadow-2xl overflow-hidden flex flex-col border border-gray-200 dark:border-gray-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button onClick={() => setIsArtifactFullscreen(false)} className="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors">
+              <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            </button>
+            <ArtifactsArea isFullscreen={true} onFullscreenToggle={() => setIsArtifactFullscreen(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Artifact全屏预览 - 桌面端在主内容区居中 */}
       {isArtifactFullscreen && (
         <div
-          className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 dark:bg-black/70"
+          className="hidden lg:block fixed right-0 top-0 bottom-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 dark:bg-black/70"
+          style={{ left: sidebar.isCollapsed ? '0px' : '64px' }}
           onClick={() => setIsArtifactFullscreen(false)}
         >
           <div
-            className="relative w-full max-w-[95vw] h-[90vh] md:h-[85vh] bg-white dark:bg-slate-900 rounded-none md:rounded-3xl shadow-2xl overflow-hidden flex flex-col border-0 md:border border-gray-200 dark:border-gray-800"
+            className="relative w-full max-w-[95vw] h-[calc(100vh-2rem)] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-gray-200 dark:border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 内部关闭按钮（因为外层只负责关闭全屏） */}
-            <button
-              onClick={() => setIsArtifactFullscreen(false)}
-              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors"
-              title="关闭"
-            >
+            <button onClick={() => setIsArtifactFullscreen(false)} className="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors">
               <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
-
-            <ArtifactsArea
-              isFullscreen={true}
-              onFullscreenToggle={() => setIsArtifactFullscreen(false)}
-            />
+            <ArtifactsArea isFullscreen={true} onFullscreenToggle={() => setIsArtifactFullscreen(false)} />
           </div>
         </div>
       )}

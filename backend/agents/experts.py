@@ -183,6 +183,7 @@ async def run_search_expert(
         # 添加 text artifact
         result["artifact"] = {
             "type": "text",
+            "title": "搜索结果",
             "content": response.content,
             "source": "search_expert"
         }
@@ -290,6 +291,7 @@ async def run_coder_expert(
             artifact_data = {
                 "type": artifact_type,
                 "language": language,
+                "title": f"{language} 代码",
                 "content": code,
                 "source": "coder_expert"
             }
@@ -372,6 +374,7 @@ async def run_researcher_expert(
         # 添加 text artifact
         result["artifact"] = {
             "type": "text",
+            "title": "研究报告",
             "content": response.content,
             "source": "researcher_expert"
         }
@@ -437,6 +440,7 @@ async def run_analyzer_expert(
         # 添加 text artifact
         result["artifact"] = {
             "type": "text",
+            "title": "分析结果",
             "content": response.content,
             "source": "analyzer_expert"
         }
@@ -502,6 +506,7 @@ async def run_writer_expert(
         # 添加 markdown artifact（写作专家生成的通常是 Markdown 格式）
         result["artifact"] = {
             "type": "markdown",
+            "title": "写作内容",
             "content": response.content,
             "source": "writer_expert"
         }
@@ -568,6 +573,7 @@ async def run_planner_expert(
         # 添加 text artifact
         result["artifact"] = {
             "type": "text",
+            "title": "规划方案",
             "content": response.content,
             "source": "planner_expert"
         }
@@ -644,6 +650,7 @@ async def run_image_analyzer_expert(
         # 添加 text artifact
         result["artifact"] = {
             "type": "text",
+            "title": "图像分析",
             "content": response.content,
             "source": "image_analyzer_expert"
         }

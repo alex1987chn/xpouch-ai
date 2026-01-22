@@ -983,10 +983,24 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                             yield f"data: {json.dumps({'content': final_response, 'conversationId': conversation_id, 'isFinal': True})}\n\n"
                             print(f"[STREAM] 推送最终响应事件")
 
-                    # 捕获专家分发器节点执行（通过 __expert_info 字段传递专家信息）
-                    if kind == "on_chain_end" and name == "expert_dispatcher":
-                            yield f"data: {json.dumps({'taskPlan': task_plan, 'conversationId': conversation_id})}\n\n"
-                            print(f"[STREAM] 推送任务计划事件")
+                    # 捕获专家分发器节点开始执行（推送任务开始信息）
+                    if kind == "on_chain_start" and name == "expert_dispatcher":
+                        print(f"[STREAM] expert_dispatcher 节点开始执行，检查是否有任务信息...")
+                        # 从事件输入中获取 state
+                        input_data = event.get("data", {}).get("input", {})
+                        task_list = input_data.get("task_list", [])
+                        current_task_index = input_data.get("current_task_index", 0)
+
+                        if task_list and current_task_index < len(task_list):
+                            current_task = task_list[current_task_index]
+                            task_start_info = {
+                                "task_index": current_task_index + 1,
+                                "total_tasks": len(task_list),
+                                "expert_type": current_task.get("expert_type", ""),
+                                "description": current_task.get("description", "")
+                            }
+                            print(f"[STREAM] 推送任务开始信息: {task_start_info}")
+                            yield f"data: {json.dumps({'taskStart': task_start_info, 'conversationId': conversation_id})}\n\n"
 
                     # 捕获专家分发器节点执行（通过 __expert_info 字段传递专家信息）
                     if kind == "on_chain_end" and name == "expert_dispatcher":
@@ -994,13 +1008,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                         output_data = event["data"]["output"]
                         print(f"[STREAM] output_data 类型: {type(output_data)}")
 
-                        if "__task_start_info" in output_data:
-                            task_start_info = output_data["__task_start_info"]
-                            print(f"[STREAM] 发现任务开始信息: {task_start_info}")
-                            # 推送任务开始事件到前端
-                            yield f"data: {json.dumps({'taskStart': task_start_info, 'conversationId': conversation_id})}\n\n"
-                            print(f"[STREAM] 推送任务开始事件")
-
+                        # 移除重复的 __task_start_info 处理（现在在 on_chain_start 时处理）
                         if "__expert_info" in output_data:
                             expert_info = output_data["__expert_info"]
                             expert_name = expert_info.get("expert_type")

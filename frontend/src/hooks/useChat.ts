@@ -10,6 +10,7 @@ import type { AgentType } from '@/types'
 import { getClientId } from '@/services/api'
 import { logger, errorHandler } from '@/utils/logger'
 import type { Artifact } from '@/types'
+import { parseAssistantMessage, shouldDisplayAsArtifact } from '@/utils/artifactParser'
 
 // 开发环境判断
 const DEBUG = false
@@ -143,10 +144,11 @@ export function useChat() {
       // 4. 在复杂模式下，添加任务开始消息，并预先添加 AI 空消息用于显示最终响应
       let assistantMessageId: string | undefined
       if (conversationMode === 'complex') {
+        // 添加复杂模式开始提示
         addMessage({
           id: generateId(),
           role: 'system',
-          content: '🔍 检测到是复杂任务，正在拆解任务...'
+          content: '🔍 检测到复杂任务，正在拆解...'
         })
         // 预先添加 AI 空消息（占位），用于显示聚合器的最终响应
         assistantMessageId = generateId()
@@ -183,26 +185,7 @@ export function useChat() {
             assistantMessageId
           })
 
-          // 处理任务计划事件（只在复杂模式下）
-          if (conversationMode === 'complex' && expertEvent?.type === 'task_plan') {
-            const plan = expertEvent as any
-            const strategy = plan.strategy
-            const estimatedSteps = plan.estimated_steps
-            const tasks = plan.tasks || []
 
-            // 构建任务计划消息
-            let planMessage = `📋 任务计划\n**执行策略**: ${strategy}\n**预计步骤**: ${estimatedSteps}\n\n---\n`
-
-            tasks.forEach((task: any, index: number) => {
-              planMessage += `[${index + 1}] ${task.expert_type}: ${task.description}\n`
-            })
-
-            addMessage({
-              id: generateId(),
-              role: 'system',
-              content: planMessage
-            })
-          }
 
           // 处理任务开始事件（只在复杂模式下）
           if (conversationMode === 'complex' && expertEvent?.type === 'task_start') {
@@ -212,8 +195,8 @@ export function useChat() {
             const expertType = taskInfo.expert_type
             const description = taskInfo.description
 
-            // 构建任务开始消息
-            let taskStartMessage = `🚀 正在执行 [${taskIndex}/${totalTasks}] - ${expertType} 专家\n**任务**: ${description}`
+            // 构建任务开始消息 - 用户友好的格式
+            let taskStartMessage = `${expertType}专家正在执行任务【${description}】`
 
             addMessage({
               id: generateId(),
@@ -247,19 +230,30 @@ export function useChat() {
               // 添加工作流状态消息（包含专家输出）
               const expertConfig = getSystemAgent(expertEvent.expertId)
               const expertName = expertConfig?.name || expertEvent.expertId
-              const status = expertEvent.status === 'failed' ? '❌' : '✅'
-              const duration = expertEvent.duration_ms ? ` (用时 ${(expertEvent.duration_ms / 1000).toFixed(1)}秒)` : ''
+              const duration = expertEvent.duration_ms ? `${(expertEvent.duration_ms / 1000).toFixed(1)}` : ''
+              const expertId = expertEvent.expertId
+              const description = expertEvent.description || ''
 
-              // 显示专家的输出内容（如果有）
-              let completionMessage = `${status} ${expertName} 完成${duration}`
-              if (expertEvent.output && expertEvent.output.trim()) {
-                completionMessage += `\n\n📄 **输出内容**:\n${expertEvent.output}`
+              // 简洁的完成消息，输出内容在 artifact 区域展示
+              let completionMessage = `${expertName}专家完成任务【${description}】，用时${duration}秒。交付物在右侧可查看 [查看交付物](#${expertId})`
+
+              // 失败时显示错误信息
+              if (expertEvent.status === 'failed') {
+                if (expertEvent.error) {
+                  completionMessage += `\n\n失败原因：${expertEvent.error}`
+                } else {
+                  completionMessage += `\n\n任务执行失败，请查看详细错误信息`
+                }
               }
 
               addMessage({
                 id: generateId(),
                 role: 'system',
-                content: completionMessage
+                content: completionMessage,
+                metadata: {
+                  type: 'expert_completion',
+                  expertId: expertId
+                }
               })
 
               // 处理 allArtifacts（新架构：批量添加到 ArtifactSession）
@@ -299,24 +293,22 @@ export function useChat() {
               })
               debug('更新后专家结果列表:', useCanvasStore.getState().expertResults)
 
-              // 检查是否所有专家都已完成，如果是则自动高亮第一个专家
+              // 检查是否所有专家都已完成，如果是则显示总完成消息
               const expertResults = useCanvasStore.getState().expertResults
               const allCompleted = expertResults.every(expert =>
                 expert.status === 'completed' || expert.status === 'failed'
               )
 
+              // 只有当所有专家都完成，且当前专家是最后一个完成的专家时，才显示总完成消息
               if (allCompleted && expertResults.length > 0) {
-                debug('✅ 所有专家已完成，自动高亮第一个专家')
-                const firstExpert = expertResults[0]
-                selectExpert(firstExpert.expertType)
-                selectArtifactSession(firstExpert.expertType)
-
-                // 添加完成提示消息
-                addMessage({
-                  id: generateId(),
-                  role: 'system',
-                  content: `🎉 所有专家已完成！已为您展示 ${expertConfig?.name || firstExpert.expertType} 的交付物`
-                })
+                const currentExpertIndex = expertResults.findIndex(e => e.expertType === expertId)
+                // 只显示最后一个专家完成时的总完成消息
+                if (currentExpertIndex === expertResults.length - 1) {
+                  debug('✅ 所有专家已完成，自动高亮第一个专家')
+                  const firstExpert = expertResults[0]
+                  selectExpert(firstExpert.expertType)
+                  selectArtifactSession(firstExpert.expertType)
+                }
               }
             }
           }
@@ -389,6 +381,33 @@ export function useChat() {
       if (conversationMode === 'complex' && finalResponseContent && assistantMessageId) {
         debug('更新复杂模式的最终响应，长度:', finalResponseContent.length)
         updateMessage(assistantMessageId, finalResponseContent)
+      }
+
+      // 6. 自动从助手消息中提取内容并创建 artifact
+      if (finalResponseContent && shouldDisplayAsArtifact(finalResponseContent)) {
+        debug('检测到适合在 artifact 区域展示的内容，准备创建 artifact')
+        
+        // 确定 expertType（专家类型）
+        let expertType = 'assistant'
+        if (conversationMode === 'complex') {
+          // 复杂模式下，使用当前激活的专家或默认值
+          expertType = activeExpertId || 'commander'
+        }
+        
+        // 解析助手消息内容
+        const artifacts = parseAssistantMessage(finalResponseContent, expertType)
+        
+        if (artifacts.length > 0) {
+          debug(`成功解析出 ${artifacts.length} 个 artifact，expertType: ${expertType}`)
+          
+          // 批量添加 artifact 到会话中
+          addArtifactsBatch(expertType, artifacts)
+          
+          // 如果是简单模式，自动选中该会话
+          if (conversationMode === 'simple') {
+            selectArtifactSession(expertType)
+          }
+        }
       }
 
     } catch (error) {

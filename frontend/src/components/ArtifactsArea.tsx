@@ -52,8 +52,28 @@ export default function ArtifactsArea({ className, isFullscreen, onFullscreenTog
   }
 
   // 处理关闭（取消选中专家）
+  // 只在全屏模式时才提供关闭功能，正常模式不需要关闭
   const handleClose = () => {
-    selectExpert(null)
+    if (onFullscreenToggle) {
+      onFullscreenToggle() // 关闭预览模式
+    }
+  }
+
+  // 获取专家显示名称
+  const getExpertDisplayName = (expertType: string): string => {
+    const displayNames: Record<string, string> = {
+      'assistant': 'AI 助手',
+      'commander': '指挥官',
+      'search': '搜索专家',
+      'coder': '编程专家',
+      'researcher': '研究专家',
+      'analyzer': '分析专家',
+      'writer': '写作专家',
+      'planner': '规划专家',
+      'image_analyzer': '图像分析专家'
+    }
+    
+    return displayNames[expertType] || expertType
   }
 
   // 根据 artifact 类型渲染对应组件
@@ -77,18 +97,20 @@ export default function ArtifactsArea({ className, isFullscreen, onFullscreenTog
   }
 
   return (
-    <div className={cn(
-      'flex flex-col h-full bg-white dark:bg-slate-800 rounded-2xl border',
-      'border-gray-200 dark:border-slate-700 overflow-hidden',
-      className
-    )}>
+    <div
+      id={`artifact-${currentSession.expertType}`}
+      className={cn(
+        'flex flex-col h-full bg-white dark:bg-slate-800 rounded-2xl border',
+        'border-gray-200 dark:border-slate-700 overflow-hidden',
+        className
+      )}>
       {/* 头部：标题 + 操作栏 */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50">
         {/* 左侧：标题 */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {/* 专家名称 */}
           <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">
-            {currentSession.expertType}
+            {getExpertDisplayName(currentSession.expertType)}
           </span>
 
           {/* Tab 切换 */}
@@ -123,14 +145,16 @@ export default function ArtifactsArea({ className, isFullscreen, onFullscreenTog
             </button>
           )}
 
-          {/* 关闭按钮 */}
-          <button
-            onClick={handleClose}
-            className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
-            title="关闭"
-          >
-            <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-          </button>
+          {/* 关闭按钮 - 只在全屏模式显示 */}
+          {isFullscreen && (
+            <button
+              onClick={handleClose}
+              className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+              title="关闭"
+            >
+              <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            </button>
+          )}
         </div>
       </div>
 
