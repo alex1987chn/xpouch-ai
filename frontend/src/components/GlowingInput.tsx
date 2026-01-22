@@ -247,10 +247,11 @@ export default function GlowingInput({
                   <button
                     type="button"
                     onClick={() => {
+                      console.log('[GlowingInput] Switching to simple mode')
                       onConversationModeChange('simple')
                     }}
                     className={cn(
-                      'flex items-center justify-center rounded-l-full rounded-r-full transition-all',
+                      'flex items-center justify-center rounded-l-full transition-all',
                       'hover:scale-105 active:scale-95',
                       conversationMode === 'simple'
                         ? 'bg-violet-500 text-white shadow-md'
@@ -264,10 +265,11 @@ export default function GlowingInput({
                   <button
                     type="button"
                     onClick={() => {
+                      console.log('[GlowingInput] Switching to complex mode')
                       onConversationModeChange('complex')
                     }}
                     className={cn(
-                      'flex items-center justify-center rounded-r-full rounded-l-full transition-all',
+                      'flex items-center justify-center rounded-r-full transition-all',
                       'hover:scale-105 active:scale-95',
                       conversationMode === 'complex'
                         ? 'bg-violet-500 text-white shadow-md'

@@ -14,6 +14,15 @@ export interface Message {
   content: string
   isTyping?: boolean
   timestamp?: number | string
+  metadata?: MessageMetadata
+}
+
+/**
+ * 消息元数据（用于专家任务等）
+ */
+export interface MessageMetadata {
+  type?: 'task_plan' | 'task_start' | 'expert_completion'
+  expertId?: string
 }
 
 /**

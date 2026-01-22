@@ -36,9 +36,9 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
       className
     )}>
       {/* Logo 区域 - 像素点阵 Logo */}
-      <div className="p-3 pb-4 flex items-center justify-center">
+      <div className="p-2 pb-3 flex items-center justify-center">
         <div onClick={() => navigate('/')} className="cursor-pointer">
-          <PixelLogo size={32} variant="pouch" />
+          <PixelLogo size={24} variant="pouch" />
         </div>
       </div>
 
@@ -46,7 +46,7 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
       <SidebarMenu isCollapsed={isCollapsed} onCreateAgent={onCreateAgent} />
 
       {/* 底部功能区 */}
-      <div className="mt-auto px-2 pb-3 space-y-3">
+      <div className="mt-auto px-1.5 pb-2 space-y-2">
         {/* 用户区域 */}
         <div className="flex justify-center">
           <SidebarUserSection
@@ -56,9 +56,9 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
         </div>
 
         {/* 功能按钮组 - 主题切换 + 展开/收拢 */}
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-1.5">
           {/* 主题切换 */}
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-200/50 hover:bg-gray-300/50 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 transition-all duration-200 hover:scale-110 cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-500/50">
+          <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-200/50 hover:bg-gray-300/50 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 transition-all duration-200 hover:scale-110 cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-500/50">
             <ThemeSwitcher />
           </div>
 
@@ -66,7 +66,7 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
           {onToggleCollapse && (
             <button
               onClick={onToggleCollapse}
-              className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-200/50 hover:bg-gray-300/50 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-gray-600 dark:text-gray-300"
+              className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-200/50 hover:bg-gray-300/50 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-gray-600 dark:text-gray-300"
               title={isCollapsed ? '展开侧边栏' : '收拢侧边栏'}
             >
               {isCollapsed ? (

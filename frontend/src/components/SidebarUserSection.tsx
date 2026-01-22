@@ -25,14 +25,14 @@ export default function SidebarUserSection({ onPersonalSettingsClick, onMenuOpen
   }
 
   return (
-    <div className="mb-3 backdrop-blur-md">
+    <div className="mb-2 backdrop-blur-md">
       {/* 用户头像 */}
       <div
         onClick={handleAvatarClick}
         data-avatar-button
-        className="relative h-10 w-10 shrink-0 cursor-pointer transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+        className="relative h-8 w-8 shrink-0 cursor-pointer transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
       >
-        <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-blue-600 text-xs font-bold text-white shadow-lg overflow-hidden">
+        <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-blue-600 text-[10px] font-bold text-white shadow-lg overflow-hidden">
           {avatar ? (
             <img
               src={avatar}
@@ -44,10 +44,10 @@ export default function SidebarUserSection({ onPersonalSettingsClick, onMenuOpen
           )}
         </div>
         {/* 套餐图标 */}
-        <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-[#1e293b] bg-white dark:bg-gray-700 dark:border-gray-600 flex items-center justify-center shadow-sm">
-          {currentPlan === 'Free' && <Star className="w-1.5 h-1.5 text-purple-500" />}
-          {currentPlan === 'Pilot' && <Plane className="w-1.5 h-1.5 text-cyan-500" />}
-          {currentPlan === 'Maestro' && <Crown className="w-1.5 h-1.5 text-amber-500" />}
+        <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#1e293b] bg-white dark:bg-gray-700 dark:border-gray-600 flex items-center justify-center shadow-sm">
+          {currentPlan === 'Free' && <Star className="w-1 h-1 text-purple-500" />}
+          {currentPlan === 'Pilot' && <Plane className="w-1 h-1 text-cyan-500" />}
+          {currentPlan === 'Maestro' && <Crown className="w-1 h-1 text-amber-500" />}
         </div>
       </div>
     </div>
