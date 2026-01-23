@@ -61,6 +61,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✨ UI 优化
+
+**侧边栏菜单顺序调整**：
+- 知识库按钮移动到历史记录按钮上方
+- 调整后顺序：首页 → 知识库 → 历史记录
+- 同步调整路由配置顺序
+
+**主题切换按钮简化**：
+- 移除 `Sidebar.tsx` 中包裹 `ThemeSwitcher` 的圆形背景容器
+- 按钮直接显示，更加简洁
+
+**搜索框组件统一**：
+- `KnowledgeBasePage.tsx` 的搜索框从原生 `<input>` + 自定义样式替换为 shadcn/ui 的 `Input` 组件
+- 样式与 `HistoryPage.tsx` 保持完全一致
+
+**历史会话卡片优化**：
+- 移除历史会话卡片右下角的 `ArrowRight` 图标
+- 清理未使用的 `ArrowRight` 导入
+- 卡片点击即可进入会话，无需额外箭头提示
+
 ### ✨ 新增功能
 
 **双模式对话系统 - 简单模式和专家拆解模式**
