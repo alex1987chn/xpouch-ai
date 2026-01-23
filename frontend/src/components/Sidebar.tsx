@@ -46,24 +46,10 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
       <SidebarMenu isCollapsed={isCollapsed} onCreateAgent={onCreateAgent} />
 
       {/* 底部功能区 */}
-      <div className="mt-auto px-1.5 pb-2 space-y-2">
-        {/* 用户区域 */}
-        <div className="flex justify-center">
-          <SidebarUserSection
-            onPersonalSettingsClick={onPersonalSettingsClick}
-            onMenuOpenChange={handleSettingsMenuOpenChange}
-          />
-        </div>
-
-        {/* 功能按钮组 - 主题切换 + 展开/收拢 */}
-        <div className="flex items-center justify-center gap-1.5">
-          {/* 主题切换 */}
-          <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-200/50 hover:bg-gray-300/50 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 transition-all duration-200 hover:scale-110 cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-500/50">
-            <ThemeSwitcher />
-          </div>
-
-          {/* 展开/收拢按钮 */}
-          {onToggleCollapse && (
+      <div className="mt-auto px-1.5 pb-2 space-y-1">
+        {/* 收拢按钮 - 移到用户区域上方 */}
+        {onToggleCollapse && (
+          <div className="flex justify-center mb-1">
             <button
               onClick={onToggleCollapse}
               className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-200/50 hover:bg-gray-300/50 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-gray-600 dark:text-gray-300"
@@ -75,7 +61,20 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
                 <ChevronLeft className="w-3 h-3" />
               )}
             </button>
-          )}
+          </div>
+        )}
+
+        {/* 用户区域 */}
+        <div className="flex justify-center">
+          <SidebarUserSection
+            onPersonalSettingsClick={onPersonalSettingsClick}
+            onMenuOpenChange={handleSettingsMenuOpenChange}
+          />
+        </div>
+
+        {/* 主题切换按钮 */}
+        <div className="flex items-center justify-center">
+          <ThemeSwitcher />
         </div>
       </div>
 

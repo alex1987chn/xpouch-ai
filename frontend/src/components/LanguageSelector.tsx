@@ -1,8 +1,13 @@
 import { useTranslation, type Language } from '@/i18n'
 import { languages } from '@/constants/languages'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { cn } from '@/lib/utils'
 
-export function LanguageSelector() {
+interface LanguageSelectorProps {
+  className?: string
+}
+
+export function LanguageSelector({ className }: LanguageSelectorProps) {
   const { language, setLanguage } = useTranslation()
 
   const getShortName = (code: string) => {
@@ -19,14 +24,14 @@ export function LanguageSelector() {
       type="single"
       value={language}
       onValueChange={(value) => value && setLanguage(value as Language)}
-      className="bg-slate-200 dark:bg-slate-700 rounded-full p-1 w-fit"
+      className={cn("bg-slate-200 dark:bg-slate-700 rounded-full p-0.5 w-fit", className)}
     >
       {languages.map((lang) => (
         <ToggleGroupItem
           key={lang.code}
           value={lang.code}
           aria-label={lang.name}
-          className="text-[10px] font-medium"
+          className="text-[9px] font-medium min-w-[32px] h-7 px-2"
         >
           {getShortName(lang.code)}
         </ToggleGroupItem>

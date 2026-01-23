@@ -1,4 +1,5 @@
 import { Settings, Cog, Star, Plane, Crown } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import { useTranslation, type TranslationKey } from '@/i18n'
 import { LanguageSelector } from '@/components/LanguageSelector'
 import { useUserStore } from '@/store/userStore'
@@ -14,14 +15,42 @@ interface SidebarSettingsMenuProps {
 export default function SidebarSettingsMenu({ isOpen, onPersonalSettingsClick, onSettingsClick, onMenuClose }: SidebarSettingsMenuProps) {
   const { t } = useTranslation()
   const { user } = useUserStore()
+  const menuRef = useRef<HTMLDivElement>(null)
 
   // 优先使用 Store 中的 plan，如果没有则默认为 Free
   const currentPlan = (user?.plan as 'Free' | 'Pilot' | 'Maestro') || 'Free'
 
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      // 如果点击的是头像按钮（或其子元素），不关闭菜单
+      const avatarButton = document.querySelector('[data-avatar-button]')
+      if (avatarButton && avatarButton.contains(event.target as Node)) {
+        return
+      }
+
+      // 如果点击的是菜单内部，不关闭
+      if (menuRef.current && menuRef.current.contains(event.target as Node)) {
+        return
+      }
+
+      // 点击外部，关闭菜单
+      onMenuClose()
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen, onMenuClose])
+
   if (!isOpen) return null
 
   return (
-    <div className="fixed bottom-[60px] left-4 bg-white/85 dark:bg-slate-900/85 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/40 overflow-hidden z-[200] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
+    <div 
+      ref={menuRef}
+      className="fixed bottom-[60px] left-4 bg-white/85 dark:bg-slate-900/85 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/40 overflow-hidden z-[200] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
       style={{
         width: '260px',
         maxWidth: 'calc(100vw - 32px)'
@@ -98,7 +127,7 @@ export default function SidebarSettingsMenu({ isOpen, onPersonalSettingsClick, o
         <div className="border-t border-slate-200/30 dark:border-white/10 mt-3 mb-3" />
 
         {/* 底部：语言选择靠右 */}
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end mt-2">
           <LanguageSelector />
         </div>
       </div>

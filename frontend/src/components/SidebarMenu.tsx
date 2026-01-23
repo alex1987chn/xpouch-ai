@@ -15,8 +15,8 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
 
   // 判断当前页面
   const isOnHome = location.pathname === '/'
-  const isOnHistory = location.pathname === '/history'
   const isOnKnowledge = location.pathname === '/knowledge'
+  const isOnHistory = location.pathname === '/history'
 
   // 处理菜单项点击
   const handleMenuClick = (path: string) => {
@@ -54,6 +54,19 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
           <Home className="w-4 h-4 flex-shrink-0" />
         </button>
 
+        <button
+          onClick={() => handleMenuClick('/knowledge')}
+          className={cn(
+            'flex items-center justify-center mx-auto w-8 h-8 rounded-full transition-all duration-200',
+            isOnKnowledge
+              ? 'bg-white text-indigo-600 shadow-[0_0_15px_rgba(139,92,246,0.4)] dark:bg-gray-700 dark:text-white dark:shadow-[0_0_15px_rgba(139,92,246,0.4)]'
+              : 'text-slate-400 hover:bg-gray-100/50 hover:text-gray-700 dark:hover:bg-gray-700/50 dark:hover:text-slate-200'
+          )}
+          title={t('knowledgeBase')}
+        >
+          <FileText className="w-4 h-4 flex-shrink-0" />
+        </button>
+
         {/* 历史记录按钮 */}
         <button
           onClick={() => handleMenuClick('/history')}
@@ -66,19 +79,6 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
           title={t('history')}
         >
           <History className="w-4 h-4 flex-shrink-0" />
-        </button>
-
-        <button
-          onClick={() => handleMenuClick('/knowledge')}
-          className={cn(
-            'flex items-center justify-center mx-auto w-8 h-8 rounded-full transition-all duration-200',
-            isOnKnowledge
-              ? 'bg-white text-indigo-600 shadow-[0_0_15px_rgba(139,92,246,0.4)] dark:bg-gray-700 dark:text-white dark:shadow-[0_0_15px_rgba(139,92,246,0.4)]'
-              : 'text-slate-400 hover:bg-gray-100/50 hover:text-gray-700 dark:hover:bg-gray-700/50 dark:hover:text-slate-200'
-          )}
-          title={t('knowledgeBase')}
-        >
-          <FileText className="w-4 h-4 flex-shrink-0" />
         </button>
       </div>
     </>

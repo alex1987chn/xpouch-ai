@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { MessageSquare, Clock, ArrowRight, Trash2, Search } from 'lucide-react'
+import { MessageSquare, Clock, Trash2, Search } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { getConversations, deleteConversation as apiDeleteConversation, type Conversation } from '@/services/api'
 import { formatDistanceToNow } from 'date-fns'
@@ -216,7 +216,6 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      <ArrowRight className="w-5 h-5 text-gray-300 dark:text-gray-600 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors" />
                     </div>
                   </div>
                 </div>
