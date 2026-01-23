@@ -10,6 +10,8 @@ import { useTranslation } from '@/i18n'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getExpertConfig } from '@/constants/systemAgents'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Card, CardContent } from '@/components/ui/card'
 
 type ConversationMode = 'simple' | 'complex'
 
@@ -382,7 +384,7 @@ export default function FloatingChatPanel({
             </div>
 
             {/* Messages - flex-1 + overflow-y-auto for scrolling */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-thin">
+            <ScrollArea className="flex-1 px-4 py-4">
               <div className="space-y-4">
               {messages.map((msg, index) => {
                     const isSystemMessage = msg.role === 'system'
@@ -399,8 +401,8 @@ export default function FloatingChatPanel({
                         )}
                       >
                         {isSystemMessage ? (
-                          <div className="w-full bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30 rounded-xl px-4 py-3 text-left">
-                            <div className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">
+                          <Card className="w-full bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30">
+                            <CardContent className="px-4 py-3 text-left">
                               {(() => {
                                 const artifactLinkMatch = msg.content.match(/\[查看交付物\]\(#(\w+)\)/)
                                 if (artifactLinkMatch) {
@@ -431,8 +433,8 @@ export default function FloatingChatPanel({
                                   </div>
                                 )
                               })()}
-                            </div>
-                          </div>
+                            </CardContent>
+                          </Card>
                         ) : (
                           <div className={cn('flex gap-3 w-full group', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
                             {/* Avatar */}
@@ -446,7 +448,7 @@ export default function FloatingChatPanel({
                             {/* Message Bubble */}
                             {/* 修复：如果assistant消息内容为空且正在输入，隐藏空气泡，避免与loading指示器重复 */}
                             {!(msg.role === 'assistant' && !msg.content && isTyping) && (
-                              <div className={cn(
+                              <Card className={cn(
                                 'relative max-w-[80%] rounded-2xl p-4 shadow-sm',
                                 msg.role === 'user'
                                   ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white'
@@ -471,7 +473,7 @@ export default function FloatingChatPanel({
                                 </div>
 
                                 {/* Content Rendering */}
-                                <div className="text-sm text-left">
+                                <CardContent className="text-sm text-left">
                                   {msg.role === 'user' ? (
                                     <div className="whitespace-pre-wrap">{msg.content}</div>
                                   ) : (
@@ -509,8 +511,8 @@ export default function FloatingChatPanel({
                                       )}
                                     </>
                                   )}
-                                </div>
-                              </div>
+                                </CardContent>
+                              </Card>
                             )}
                           </div>
                         )}
@@ -537,7 +539,7 @@ export default function FloatingChatPanel({
                 )}
                 <div ref={messagesEndRef} />
               </div>
-            </div>
+            </ScrollArea>
 
             {/* Input Area - flex-shrink-0 to keep it fixed at bottom */}
             <div className="flex-shrink-0 w-full px-4 pt-4 pb-4 md:pb-6 border-t border-gray-200/50 dark:border-gray-700/50">
