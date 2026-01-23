@@ -5,7 +5,7 @@ import { useChatStore } from '@/store/chatStore'
 import { useChat } from '@/hooks/useChat'
 import { useCanvasStore } from '@/store/canvasStore'
 import { getConversation, type ApiMessage } from '@/services/api'
-import { type Message, type Conversation } from '@/types'
+import { type Message, type Conversation, type Artifact } from '@/types'
 import { generateId } from '@/utils/storage'
 import FloatingChatPanel from './FloatingChatPanel'
 import ExpertDrawer from './ExpertDrawer'
@@ -14,7 +14,7 @@ import { useUserStore } from '@/store/userStore'
 import { useApp } from '@/providers/AppProvider'
 import ExpertStatusBar from './ExpertStatusBar'
 import ArtifactsArea from './ArtifactsArea'
-import { ArtifactProvider } from '@/providers/ArtifactProvider'
+import { ArtifactProvider, useArtifacts } from '@/providers/ArtifactProvider'
 import { SYSTEM_AGENTS } from '@/constants/agents'
 
 export default function CanvasChatPage() {
@@ -24,6 +24,130 @@ export default function CanvasChatPage() {
 
   // 存储当前会话对象（用于数据驱动 UI）
   const [currentConvData, setCurrentConvData] = useState<Conversation | null>(null)
+
+  // ============================================
+  // 辅助函数：从消息中检测 artifacts
+  // ============================================
+  function detectArtifactsFromMessages(messages: Message[]): Artifact[] {
+    const artifacts: Artifact[] = []
+    let artifactIndex = 0
+
+    messages.forEach((msg) => {
+      if (msg.role !== 'assistant') return
+
+      // 检测代码块 ```language code ```
+      const codeBlockRegex = /```(\w+)?\n([\s\S]*?)\n```/g
+      let match
+      while ((match = codeBlockRegex.exec(msg.content)) !== null) {
+        const language = match[1] || 'text'
+        const codeContent = match[2]
+        artifacts.push({
+          id: generateId(),
+          type: 'code' as any,
+          content: codeContent,
+          title: `${language === 'text' ? '代码' : language}${artifactIndex + 1}`,
+          createdAt: new Date().toISOString()
+        })
+        artifactIndex++
+      }
+
+      // 检测HTML块
+      if (msg.content.includes('```html') || msg.content.includes('<!DOCTYPE html>') || /<html[\s>]/i.test(msg.content)) {
+        const hasHtmlCodeBlock = artifacts.some(a => a.type === 'html')
+        if (!hasHtmlCodeBlock) {
+          const htmlMatch = msg.content.match(/```html\n([\s\S]*?)\n```/i) || msg.content.match(/<html[\s\S]*?<\/html>/is)
+          if (htmlMatch) {
+            artifacts.push({
+              id: generateId(),
+              type: 'html' as any,
+              content: htmlMatch[1] || htmlMatch[0],
+              title: `网页${artifactIndex + 1}`,
+              createdAt: new Date().toISOString()
+            })
+            artifactIndex++
+          }
+        }
+      }
+
+      // 检测复杂 Markdown（长度>500字 + 包含复杂结构）
+      const hasComplexStructure = /#{2,}|^[\s]*[-*+] |^\d+\./m.test(msg.content)
+      const hasCodeBlock = /```[\s\S]*?```/.test(msg.content)
+      const textLength = msg.content.replace(/```[\s\S]*?```/g, '').trim().length
+
+      if (textLength > 500 && hasComplexStructure && !hasCodeBlock && artifactIndex === 0) {
+        artifacts.push({
+          id: generateId(),
+          type: 'markdown' as any,
+          content: msg.content,
+          title: `文档${artifactIndex + 1}`,
+          createdAt: new Date().toISOString()
+        })
+        artifactIndex++
+      }
+    })
+
+    return artifacts
+  }
+
+  // ============================================
+  // 辅助函数：从消息内容中检测 artifacts
+  // ============================================
+  function detectArtifactsFromMessages(messages: Message[]): Artifact[] {
+    const artifacts: Artifact[] = []
+
+    messages.forEach((msg) => {
+      if (msg.role !== 'assistant') return
+
+      // 检测代码块 ```language code ```
+      const codeBlockRegex = /```(\w+)?\n([\s\S]*?)\n```/g
+      let match
+      while ((match = codeBlockRegex.exec(msg.content)) !== null) {
+        const language = match[1] || 'text'
+        const codeContent = match[2]
+        artifacts.push({
+          id: generateId(),
+          type: 'code' as any,
+          content: codeContent,
+          title: `${language === 'text' ? '代码' : language}1`,
+          createdAt: new Date().toISOString()
+        })
+      }
+
+      // 检测HTML块
+      if (msg.content.includes('```html') || msg.content.includes('<!DOCTYPE html>') || /<html[\s>]/i.test(msg.content)) {
+        const hasHtmlCodeBlock = artifacts.some(a => a.type === 'html')
+        if (!hasHtmlCodeBlock) {
+          const htmlMatch = msg.content.match(/```html\n([\s\S]*?)\n```/i) || msg.content.match(/<html[\s\S]*?<\/html>/is)
+          if (htmlMatch) {
+            artifacts.push({
+              id: generateId(),
+              type: 'html' as any,
+              content: htmlMatch[1] || htmlMatch[0],
+              title: '网页1',
+              createdAt: new Date().toISOString()
+            })
+          }
+        }
+      }
+
+      // 检测复杂 Markdown（长度>500字 + 包含复杂结构）
+      const hasComplexStructure = /#{2,}|^[\s]*[-*+] |^\d+\./m.test(msg.content)
+      const hasCodeBlock = /```[\s\S]*?```/.test(msg.content)
+      const textLength = msg.content.replace(/```[\s\S]*?```/g, '').trim().length
+
+      if (textLength > 500 && hasComplexStructure && !hasCodeBlock && artifacts.length === 0) {
+        artifacts.push({
+          id: generateId(),
+          type: 'markdown' as any,
+          content: msg.content,
+          title: '文档1',
+          createdAt: new Date().toISOString()
+        })
+      }
+    })
+
+    return artifacts
+  }
 
   // 从 URL 搜索参数获取 agentId
   const agentIdFromUrl = new URLSearchParams(location.search).get('agentId')
@@ -65,6 +189,20 @@ export default function CanvasChatPage() {
     setCurrentConversationId,
     getCurrentAgent
   } = useChatStore()
+
+  const {
+    addArtifactsBatch,
+    selectArtifactSession,
+    clearArtifactSessions
+  } = useCanvasStore()
+
+  const { addArtifactsBatch: addArtifactsToProvider } = useArtifacts()
+
+  const {
+    addArtifactsBatch,
+    selectArtifactSession,
+    clearArtifactSessions
+  } = useCanvasStore()
 
   const { selectedExpert } = useCanvasStore()
   const { sidebar } = useApp()
@@ -153,6 +291,7 @@ export default function CanvasChatPage() {
         setCurrentConvData(conversation) // 保存当前会话对象
         console.log('[CanvasChatPage] 会话加载成功:', { id: conversation.id, agent_id: conversation.agent_id, agent_type: conversation.agent_type })
 
+        // 加载 messages
         if (conversation.messages && conversation.messages.length > 0) {
           const loadedMessages = conversation.messages.map((m) => {
             const typedM = m as ApiMessage
@@ -164,6 +303,61 @@ export default function CanvasChatPage() {
             }
           })
           setMessages(loadedMessages as Message[])
+
+          // 加载 artifacts（如果存在）
+          if (conversation.agent_type === 'ai' && conversation.task_session) {
+            // 复杂模式：从 task_session.sub_tasks 加载 artifacts
+            const taskSession = conversation.task_session as any
+            if (taskSession?.sub_tasks) {
+              // 清空旧数据
+              clearArtifactSessions()
+
+              // 为每个专家创建 artifact session
+              taskSession.sub_tasks.forEach((subTask: any, idx: number) => {
+                const expertType = subTask.expert_type || `expert-${idx}`
+                const artifacts: Artifact[] = []
+
+                // 如果有 artifacts 字段，转换为 Artifact 类型
+                if (subTask.artifacts && Array.isArray(subTask.artifacts)) {
+                  subTask.artifacts.forEach((artifactData: any, artIdx: number) => {
+                    artifacts.push({
+                      id: generateId(),
+                      type: artifactData.type || 'code',
+                      content: artifactData.content || '',
+                      title: artifactData.title || `Artifact ${artIdx + 1}`,
+                      createdAt: new Date().toISOString()
+                    })
+                  })
+                }
+
+                // 添加到 canvasStore
+                if (artifacts.length > 0) {
+                  addArtifactsBatch(expertType, artifacts)
+                }
+              })
+            }
+          } else {
+            // 简单模式：从 messages 检测 artifacts
+            const detectedArtifacts = detectArtifactsFromMessages(loadedMessages)
+            if (detectedArtifacts.length > 0) {
+              // 清空旧数据
+              clearArtifactSessions()
+
+              // 使用 'simple' 作为专家类型
+              const simpleArtifacts = detectedArtifacts.map((art, idx) => ({
+                ...art,
+                title: art.type === 'code' ? `代码${idx + 1}` :
+                        art.type === 'html' ? `网页${idx + 1}` :
+                        `文档${idx + 1}`
+              }))
+
+              // 添加到 canvasStore
+              addArtifactsBatch('simple', simpleArtifacts)
+
+              // 自动选中第一个 artifact
+              selectArtifactSession('simple')
+            }
+          }
         } else {
           setMessages([])
         }
@@ -175,7 +369,7 @@ export default function CanvasChatPage() {
       console.error('[CanvasChatPage] Failed to load conversation:', err)
       setMessages([])
     })
-  }, [id, location, setSelectedAgentId, agentIdFromUrl, setMessages, setCurrentConversationId])
+  }, [id, location, setSelectedAgentId, agentIdFromUrl, setMessages, setCurrentConversationId, addArtifactsBatch, clearArtifactSessions, selectArtifactSession])
 
   // 处理消息发送
   const handleSubmitMessage = useCallback(() => {
