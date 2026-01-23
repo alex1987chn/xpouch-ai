@@ -5,9 +5,6 @@ from sqlmodel import Field, SQLModel, Relationship, JSON, Session, select
 from pydantic import BaseModel, Field as PydanticField
 from enum import Enum
 
-# 导入常量配置
-from constants import ASSISTANT_SYSTEM_PROMPT
-
 
 # ============================================================================
 # 枚举类型
@@ -120,50 +117,6 @@ class CustomAgent(SQLModel, table=True):
     
     # 关联
     user: Optional[User] = Relationship(back_populates="custom_agents")
-
-    @classmethod
-    def get_default_assistant(cls, user_id: str, session: Session) -> "CustomAgent":
-        """
-        获取或创建默认助手
-
-        Args:
-            user_id: 用户ID
-            session: 数据库会话
-
-        Returns:
-            默认助手的CustomAgent对象
-
-        说明：
-        - 如果用户已存在默认助手，则返回该助手
-        - 如果不存在，则创建一个新的默认助手并返回
-        - 默认助手使用固定的系统提示词（ASSISTANT_SYSTEM_PROMPT）
-        - 默认助手不可删除（is_default=True）
-        """
-        # 1. 先从数据库查询
-        default = session.exec(
-            select(cls).where(
-                cls.user_id == user_id,
-                cls.is_default == True
-            )
-        ).first()
-
-        if default:
-            return default
-
-        # 2. 不存在则创建默认助手
-        default = cls(
-            user_id=user_id,
-            name="通用助手",
-            description="日常对话助手",
-            system_prompt=ASSISTANT_SYSTEM_PROMPT,
-            is_default=True,
-            category="综合"
-        )
-        session.add(default)
-        session.commit()
-        session.refresh(default)
-
-        return default
 
 
 # 在 User 模型中添加关联

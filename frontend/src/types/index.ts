@@ -91,6 +91,7 @@ export interface Agent {
     isDefault?: boolean
     isCustom?: boolean
     is_builtin?: boolean // 标识是否为预定义专家
+    isCreateCard?: boolean // 标识是否为创建智能体卡片
 }
 
 /**

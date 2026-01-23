@@ -15,6 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional, AsyncGenerator
+from types import SimpleNamespace
 import json
 import uvicorn
 import os
@@ -383,24 +384,19 @@ async def get_all_agents(
     current_user: User = Depends(get_current_user)
 ):
     """
-    获取当前用户的所有智能体（包含默认助手）
+    获取当前用户的所有自定义智能体
 
     返回列表：
-    1. 默认助手（is_default=True，固定在第一位）
-    2. 用户自定义智能体（按创建时间降序）
+    - 用户自定义智能体（按创建时间降序，最新的在前）
 
     注意：
     - 系统专家（search, coder, researcher等）不返回，虚拟专家不暴露到前端
-    - 返回前端的智能体类型：默认助手 + 自定义智能体
+    - 默认助手（简单模式）由前端硬编码，不在此接口返回
     """
     try:
         print(f"[API] /api/agents called, user_id: {current_user.id}")
 
-        # 1. 获取或创建默认助手
-        default_agent = CustomAgent.get_default_assistant(current_user.id, session)
-        print(f"[API] Default assistant: {default_agent.id} - {default_agent.name}")
-
-        # 2. 获取用户自定义智能体（按创建时间降序，最新的在前）
+        # 获取用户自定义智能体（按创建时间降序，最新的在前）
         statement = select(CustomAgent).where(
             CustomAgent.user_id == current_user.id,
             CustomAgent.is_default == False  # 排除默认助手
@@ -410,26 +406,10 @@ async def get_all_agents(
         custom_agents = session.exec(statement).all()
         print(f"[API] Query executed, found {len(custom_agents)} custom agents")
 
-        # 3. 构建返回结果
+        # 构建返回结果
         result = []
 
-        # 3.1 添加默认助手（第一位）
-        result.append({
-            "id": str(default_agent.id),
-            "name": default_agent.name,
-            "description": default_agent.description or "",
-            "system_prompt": default_agent.system_prompt,
-            "category": default_agent.category,
-            "model_id": default_agent.model_id,
-            "conversation_count": default_agent.conversation_count,
-            "is_public": default_agent.is_public,
-            "is_default": True,  # 标记为默认助手
-            "created_at": default_agent.created_at.isoformat() if default_agent.created_at else None,
-            "updated_at": default_agent.updated_at.isoformat() if default_agent.updated_at else None,
-            "is_builtin": False
-        })
-
-        # 3.2 添加自定义智能体
+        # 添加自定义智能体
         for agent in custom_agents:
             print(f"[API] Processing agent: {agent.id} - {agent.name}")
             result.append({
@@ -447,7 +427,7 @@ async def get_all_agents(
                 "is_builtin": False
             })
 
-        print(f"[API] Returning agents: {len(result)} items (1 default + {len(custom_agents)} custom)")
+        print(f"[API] Returning agents: {len(result)} items (custom only)")
         return result
 
     except Exception as e:
@@ -697,13 +677,16 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
         print(f"[MAIN] [AI ASSISTANT MODE] Entering commander workflow")
         custom_agent = None  # 不走自定义 agent 逻辑
     elif normalized_agent_id == SYSTEM_AGENT_DEFAULT_CHAT:
-        # 默认助手：简单模式
-        print(f"[MAIN] [DEFAULT ASSISTANT MODE] Using default assistant")
-        custom_agent = CustomAgent.get_default_assistant(current_user.id, session)
-        # 更新使用次数
-        custom_agent.conversation_count += 1
-        session.add(custom_agent)
-        session.commit()
+        # 默认助手：简单模式（直接使用常量）
+        print(f"[MAIN] [DEFAULT ASSISTANT MODE] Using ASSISTANT_SYSTEM_PROMPT constant")
+        # 创建简单的对象用于后续处理
+        custom_agent = SimpleNamespace(
+            name="默认助手",
+            system_prompt=ASSISTANT_SYSTEM_PROMPT,
+            model_id=os.getenv("MODEL_NAME", "deepseek-chat"),
+            user_id=current_user.id,
+            is_default=True
+        )
     else:
         # 尝试作为自定义智能体UUID加载
         print(f"[MAIN] Checking custom agent: {normalized_agent_id}")

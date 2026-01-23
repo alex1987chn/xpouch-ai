@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Bot, Sparkles, Code2, FileText, Zap } from 'lucide-react'
+import { Bot, Sparkles, Code2, FileText, Zap, Plus } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
 import AgentCard from '@/components/AgentCard'
@@ -50,18 +50,20 @@ export default function HomePage() {
       try {
         const response = await getAllAgents()
         // 后端已经按 created_at 降序排序了（最新的在前）
-        // 直接使用返回的自定义智能体列表，完全替换 store 中的数据
-        const customAgentsData = response.map(agent => ({
-          id: agent.id,
-          name: agent.name,
-          description: agent.description || '',
-          icon: <Bot className="w-5 h-5" />,
-          systemPrompt: agent.system_prompt,
-          category: agent.category,
-          modelId: agent.model_id,
-          isCustom: true,
-          is_builtin: false
-        }))
+        // 过滤掉 is_default=True 的智能体（通用助手）
+        const customAgentsData = response
+          .filter(agent => !agent.is_default)
+          .map(agent => ({
+            id: agent.id,
+            name: agent.name,
+            description: agent.description || '',
+            icon: <Bot className="w-5 h-5" />,
+            systemPrompt: agent.system_prompt,
+            category: agent.category,
+            modelId: agent.model_id,
+            isCustom: true,
+            is_builtin: false
+          }))
         // 使用完全替换而不是合并，确保与后端同步
         setCustomAgents(customAgentsData)
       } catch (error) {
@@ -81,9 +83,9 @@ export default function HomePage() {
     }
   }, [location.pathname, setSelectedAgentId])
 
-  // 构建显示的智能体列表：默认助手 + 自定义智能体
+  // 构建显示的智能体列表：创建卡片 + 默认助手 + 自定义智能体
   const displayedAgents = useMemo<Agent[]>(() => {
-    // 默认助手（第一位）
+    // 默认助手
     const defaultAgent: Agent = {
       id: SYSTEM_AGENTS.DEFAULT_CHAT,
       name: getSystemAgentName(SYSTEM_AGENTS.DEFAULT_CHAT),
@@ -99,7 +101,18 @@ export default function HomePage() {
       icon: <Bot className="w-5 h-5" />
     }))
 
-    return [defaultAgent, ...customAgentsWithIcon]
+    // 创建智能体卡片（第一位） - 特殊卡片，不是真实的agent
+    const createAgentCard: Agent = {
+      id: 'create-agent-card',
+      name: '创建智能体',
+      description: '自定义属于你的专属智能体',
+      icon: <Plus className="w-5 h-5" />,
+      modelId: '',
+      isDefault: false,
+      isCreateCard: true
+    }
+
+    return [createAgentCard, defaultAgent, ...customAgentsWithIcon]
   }, [customAgents])
 
   // 默认选中第一个卡片（默认助手）
@@ -281,80 +294,24 @@ export default function HomePage() {
       {/* 我的智能体区域 */}
       <div className="w-full max-w-5xl mx-auto px-6 md:px-12 mt-12 pb-24 md:pb-20">
         <header className="mb-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">我的智能体</h2>
-            <button
-              onClick={handleCreateAgent}
-              className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors"
-            >
-              + 新建智能体
-            </button>
-          </div>
-        </header>
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">我的智能体</h2>
+      </header>
 
-        {/* PC 端：4列网格；移动端：2列网格 */}
-        <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-forwards">
-          {displayedAgents.map((agent, index) => (
-            <AgentCard
-              key={`${agent.id}-${index}`}
-              agent={agent}
-              index={index}
-              isSelected={selectedAgentId === agent.id}
-              onClick={() => handleAgentClick(agent.id)}
-              showDeleteButton={!agent.isDefault}
-              onDelete={() => handleDeleteAgent(agent.id, agent.name)}
-            />
-          ))}
-        </div>
-
-        {/* 空状态卡片 - 只在没有自定义智能体时显示 */}
-        {customAgents.length === 0 && (
-          <div
-            onClick={handleCreateAgent}
-            className={cn(
-              'group relative cursor-pointer overflow-hidden',
-              'bg-white dark:bg-slate-900/50',
-              'rounded-2xl border border-dashed border-slate-200/50 dark:border-slate-700/50',
-              'shadow-[0_8px_30px_rgb(0,0,0,0.04)]',
-              'transition-all duration-300 ease-out',
-              'hover:-translate-y-1 hover:shadow-xl',
-              'hover:border-violet-300 dark:hover:border-violet-500'
-            )}
-          >
-            {/* 左侧渐变竖条 - Hover 时显示 */}
-            <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-gradient-to-b from-blue-400 to-violet-500 opacity-0 group-hover:opacity-100 transition-all duration-300" />
-
-            <div className="p-5 pl-5">
-              <div className="flex items-center gap-3">
-                {/* 图标容器 */}
-                <div className={cn(
-                  'w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0',
-                  'bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-700',
-                  'transition-all duration-300 ease-out',
-                  'group-hover:bg-gradient-to-br group-hover:from-violet-500 group-hover:to-fuchsia-500',
-                  'group-hover:scale-110'
-                )}>
-                  <Bot className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-white transition-colors" />
-                </div>
-
-                {/* 标题与描述 */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <h3 className="font-bold text-slate-800 dark:text-slate-100 truncate text-sm leading-tight">
-                      {t('addCustomAgent')}
-                    </h3>
-                    <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                      新建
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                    + {t('createYourFirstAgent')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* PC 端：4列网格；移动端：2列网格 */}
+      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-forwards">
+        {displayedAgents.map((agent, index) => (
+          <AgentCard
+            key={`${agent.id}-${index}`}
+            agent={agent}
+            index={index}
+            isSelected={agent.isCreateCard ? false : selectedAgentId === agent.id}
+            onClick={agent.isCreateCard ? handleCreateAgent : () => handleAgentClick(agent.id)}
+            showDeleteButton={!agent.isDefault && !agent.isCreateCard}
+            onCreateAgent={agent.isCreateCard ? handleCreateAgent : undefined}
+            onDelete={() => handleDeleteAgent(agent.id, agent.name)}
+          />
+        ))}
+      </div>
       </div>
 
       {/* 删除确认对话框 */}
