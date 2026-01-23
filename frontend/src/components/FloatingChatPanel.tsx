@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { Bot, User, Minimize2, Maximize2, Copy, Check, RotateCcw, MoreVertical, Sparkles, Code, Globe, FileText, FileCode, ArrowRight } from 'lucide-react'
+import { Bot, User, Minimize2, Maximize2, Copy, Check, RotateCcw, MoreVertical, Sparkles, Code, Globe, ArrowRight } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import type { Message, Artifact } from '@/store/chatStore'
@@ -15,7 +15,7 @@ type ConversationMode = 'simple' | 'complex'
 
 // Artifact类型定义
 type DetectedArtifact = {
-  type: 'code' | 'html' | 'markdown' | 'text'
+  type: 'code' | 'html'
   content: string
   language?: string
 }
@@ -53,15 +53,6 @@ function detectArtifactsFromMessage(content: string): DetectedArtifact[] {
     }
   }
 
-  // 检测长文本（单条消息超过500字）
-  const textLength = content.replace(/```[\s\S]*?```/g, '').trim().length
-  if (textLength > 500 && artifacts.length === 0) {
-    artifacts.push({
-      type: 'text',
-      content: content
-    })
-  }
-
   return artifacts
 }
 
@@ -69,9 +60,7 @@ function detectArtifactsFromMessage(content: string): DetectedArtifact[] {
 function getArtifactName(type: string, index: number, total: number): string {
   const typeMap: Record<string, string> = {
     'code': '代码',
-    'html': '网页',
-    'markdown': 'Markdown',
-    'text': '长文本'
+    'html': '网页'
   }
   // 根据类型和总数量生成名称
   if (total === 1) {
@@ -247,18 +236,6 @@ export default function FloatingChatPanel({
         bgColor: 'bg-orange-100 dark:bg-orange-900/30',
         textColor: 'text-orange-600 dark:text-orange-400',
         borderColor: 'border-orange-200 dark:border-orange-800/30'
-      },
-      markdown: {
-        icon: <FileText className="w-4 h-4" />,
-        bgColor: 'bg-purple-100 dark:bg-purple-900/30',
-        textColor: 'text-purple-600 dark:text-purple-400',
-        borderColor: 'border-purple-200 dark:border-purple-800/30'
-      },
-      text: {
-        icon: <FileCode className="w-4 h-4" />,
-        bgColor: 'bg-green-100 dark:bg-green-900/30',
-        textColor: 'text-green-600 dark:text-green-400',
-        borderColor: 'border-green-200 dark:border-green-800/30'
       }
     }
 
