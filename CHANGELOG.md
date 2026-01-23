@@ -789,6 +789,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+**架构优化 (2026-01-23)**
+
+- **移除冗余"通用助手"数据库记录**：识别并移除前端硬编码默认助手与后端数据库记录的重复，改为使用前端常量直接驱动逻辑，简化数据流
+- **UI组件统一化**：系统化迁移所有自定义UI组件到基于Radix UI的shadcn组件，实现100%组件库覆盖率，创建7个新组件（Label、Select、Textarea、Separator、ScrollArea、ToggleGroup、Switch）
+- **滚动性能优化**：使用shadcn ScrollArea替换原生`overflow-y-auto`，提供统一平滑滚动体验，解决跨平台滚动行为不一致问题
+- **错误处理标准化**：创建自定义异常类（utils/exceptions.py）统一错误处理，替换HTTPException调用，使用Pydantic模型进行请求验证
+- **类型安全强化**：强化TypeScript类型定义，移除不安全类型断言，提升代码健壮性和可维护性
+- **前后端逻辑简化**：后端移除`get_default_assistant()`数据库查询依赖，直接使用`ASSISTANT_SYSTEM_PROMPT`常量；前端过滤`is_default`助手避免重复显示
+
+---
+
 ## [v0.2.3] - 2026-01-19
 
 ### 📱 移动端聊天体验优化
