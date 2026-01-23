@@ -24,10 +24,10 @@ export default function ParticleGrid({ isProcessing = false, className = '' }: P
   // 记录中心位置
   useEffect(() => {
     if (!containerRef.current) return
-    
-    const container = containerRef.current
-    const rect = container.getBoundingClientRect()
-    
+
+    const rect = containerRef.current.getBoundingClientRect()
+    if (!rect) return
+
     setCenterX(rect.width / 2)
     setCenterY(rect.height / 2)
     

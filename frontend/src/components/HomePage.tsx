@@ -1,9 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Bot, AlertCircle, Sparkles } from 'lucide-react'
+import { Bot, Sparkles, Code2, FileText, Zap } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
-import { SYSTEM_AGENTS, type SystemAgent } from '@/constants/systemAgents'
-import { LucideIconName } from '@/lib/icon-mapping'
 import AgentCard from '@/components/AgentCard'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -13,6 +11,7 @@ import { generateId } from '@/utils/storage'
 import { cn } from '@/lib/utils'
 import { deleteCustomAgent, getAllAgents } from '@/services/api'
 import type { Agent } from '@/types'
+import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 
 type ConversationMode = 'simple' | 'complex'
 
@@ -41,9 +40,6 @@ export default function HomePage() {
 
   // 对话模式：简单对话（默认）或 复杂任务
   const [conversationMode, setConversationMode] = useState<ConversationMode>('simple')
-
-  // Agent Tab 状态
-  const [agentTab, setAgentTab] = useState<'featured' | 'my'>('featured')
 
   // 删除确认对话框状态
   const [deletingAgentId, setDeletingAgentId] = useState<string | null>(null)
@@ -81,71 +77,45 @@ export default function HomePage() {
   useEffect(() => {
     if (location.pathname === '/') {
       setRefreshKey(prev => prev + 1)
-
-      // 检查是否有从创建页面传递的 agentTab 状态
-      const stateAgentTab = location.state?.agentTab as 'featured' | 'my' | undefined
-
-      if (stateAgentTab === 'my') {
-        // 从创建页面返回，切换到"我的智能体"标签
-        setAgentTab('my')
-      } else {
-        // 正常返回首页，重置为精选智能体标签
-        setAgentTab('featured')
-        setSelectedAgentId(SYSTEM_AGENTS[0].agentId)
-      }
+      // 重置为默认助手
+      setSelectedAgentId(SYSTEM_AGENTS.DEFAULT_CHAT)
     }
-  }, [location.pathname, location.state, setSelectedAgentId])
+  }, [location.pathname, setSelectedAgentId])
 
-  // 在 customAgents 更新后，如果是 my 标签页且没有选中的 agent，选中第一个
-  useEffect(() => {
-    if (agentTab === 'my' && customAgents.length > 0 && !selectedAgentId) {
-      setSelectedAgentId(customAgents[0].id)
+  // 构建显示的智能体列表：默认助手 + 自定义智能体
+  const displayedAgents = useMemo<Agent[]>(() => {
+    // 默认助手（第一位）
+    const defaultAgent: Agent = {
+      id: SYSTEM_AGENTS.DEFAULT_CHAT,
+      name: getSystemAgentName(SYSTEM_AGENTS.DEFAULT_CHAT),
+      description: '日常对话、通用任务、智能问答',
+      icon: <Bot className="w-5 h-5" />,
+      modelId: 'deepseek-chat',
+      isDefault: true
     }
-  }, [customAgents, agentTab, selectedAgentId, setSelectedAgentId])
 
-  // 使用 useMemo 优化智能体列表计算
-  const displayMyAgents = useMemo<Agent[]>(
-    () => customAgents.map(a => ({
+    // 自定义智能体
+    const customAgentsWithIcon = customAgents.map(a => ({
       ...a,
       icon: <Bot className="w-5 h-5" />
-    })),
-    [customAgents]
-  )
+    }))
 
-  const displayedAgents = useMemo<Agent[]>(
-    () => agentTab === 'featured' ? SYSTEM_AGENTS.map(sa => {
-      const IconComponent = LucideIconName(sa.iconName)
-      return {
-        ...sa,
-        id: sa.agentId,
-        icon: <IconComponent className="w-5 h-5" />,
-        modelId: 'deepseek-chat'
-      }
-    }) : displayMyAgents,
-    [agentTab, displayMyAgents]
-  )
+    return [defaultAgent, ...customAgentsWithIcon]
+  }, [customAgents])
 
-  // 默认选中第一个卡片
+  // 默认选中第一个卡片（默认助手）
   useEffect(() => {
     if (!selectedAgentId && displayedAgents.length > 0) {
       setSelectedAgentId(displayedAgents[0].id)
     }
   }, [displayedAgents, selectedAgentId, setSelectedAgentId])
 
-  // 使用 useCallback 优化事件处理函数
+  // 点击智能体卡片
   const handleAgentClick = useCallback((agentId: string) => {
     setSelectedAgentId(agentId)
     const newId = generateId()
-    // 对于系统智能体，确保传递 sys- 前缀的 agentId
-    if (agentTab === 'featured') {
-      // 从 SYSTEM_AGENTS 获取正确的 agentId（带 sys- 前缀）
-      const systemAgent = SYSTEM_AGENTS.find(sa => sa.agentId === agentId)
-      const actualAgentId = systemAgent ? systemAgent.agentId : agentId
-      navigate(`/chat/${newId}?agentId=${actualAgentId}`)
-    } else {
-      navigate(`/chat/${newId}?agentId=${agentId}`)
-    }
-  }, [setSelectedAgentId, navigate, agentTab])
+    navigate(`/chat/${newId}?agentId=${agentId}`)
+  }, [setSelectedAgentId, navigate])
 
   const handleCreateAgent = useCallback(() => {
     navigate('/create-agent')
@@ -169,33 +139,23 @@ export default function HomePage() {
     try {
       await deleteCustomAgent(deletingAgentId)
       setCustomAgents(prev => prev.filter(agent => agent.id !== deletingAgentId))
-      // 如果删除的是当前选中的 agent，切换到第一个可用 agent
+      // 如果删除的是当前选中的 agent，切换到默认助手
       if (selectedAgentId === deletingAgentId) {
-        const remainingAgents = displayMyAgents.filter(agent => agent.id !== deletingAgentId)
-        if (remainingAgents.length > 0) {
-          setSelectedAgentId(remainingAgents[0].id)
-        } else {
-          setSelectedAgentId(SYSTEM_AGENTS[0].agentId)
-        }
+        setSelectedAgentId(SYSTEM_AGENTS.DEFAULT_CHAT)
       }
     } catch (error) {
       console.error('删除自定义智能体失败:', error)
       // 即使删除失败（比如 404），也从 store 中移除该 agent
       setCustomAgents(prev => prev.filter(agent => agent.id !== deletingAgentId))
-      // 如果删除的是当前选中的 agent，切换到第一个可用 agent
+      // 如果删除的是当前选中的 agent，切换到默认助手
       if (selectedAgentId === deletingAgentId) {
-        const remainingAgents = displayMyAgents.filter(agent => agent.id !== deletingAgentId)
-        if (remainingAgents.length > 0) {
-          setSelectedAgentId(remainingAgents[0].id)
-        } else {
-          setSelectedAgentId(SYSTEM_AGENTS[0].agentId)
-        }
+        setSelectedAgentId(SYSTEM_AGENTS.DEFAULT_CHAT)
       }
     } finally {
       setDeletingAgentId(null)
       setDeletingAgentName('')
     }
-  }, [deletingAgentId, selectedAgentId, displayMyAgents, setCustomAgents, setSelectedAgentId])
+  }, [deletingAgentId, selectedAgentId, setCustomAgents, setSelectedAgentId])
 
   const handleSendMessage = useCallback(() => {
     if (!inputMessage.trim()) return
@@ -203,28 +163,18 @@ export default function HomePage() {
     const newId = generateId()
 
     // 根据对话模式决定使用哪个智能体
-    // 直接读取当前状态，避免闭包问题
-    const isSimpleMode = conversationMode === 'simple'
-    const agentIdForChat = isSimpleMode
-      ? 'sys-assistant' // 简单对话：使用通用助手
-      : 'sys-commander' // 复杂任务：传递不在 expert_types 中的值，触发指挥官模式
-
-    console.log('[HomePage] Sending message:', {
-      tempId: newId,
-      message: inputMessage,
-      conversationMode: conversationMode,
-      isSimpleMode,
-      agentIdForChat: agentIdForChat,
-      expected: isSimpleMode ? 'sys-assistant' : 'sys-commander'
-    })
+    // 简单模式：使用当前选中的智能体（默认助手或自定义智能体）
+    // 复杂模式：使用任务指挥官（sys-task-orchestrator）
+    const agentIdForChat = conversationMode === 'simple'
+      ? selectedAgentId || SYSTEM_AGENTS.DEFAULT_CHAT
+      : SYSTEM_AGENTS.ORCHESTRATOR
 
     navigate(`/chat/${newId}?agentId=${agentIdForChat}`, {
       state: {
-        startWith: inputMessage,
-        mode: conversationMode // 传递模式信息
+        startWith: inputMessage
       }
     })
-  }, [inputMessage, navigate, conversationMode])
+  }, [inputMessage, navigate, conversationMode, selectedAgentId])
 
   return (
     <div className="bg-transparent homepage-scroll overflow-y-auto overflow-x-hidden scrollbar-gutter-stable w-full h-full scroll-smooth">
@@ -258,38 +208,91 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 智能体列表分类 Tab */}
-      <div className="px-6 md:px-12">
-        <div className="w-full max-w-5xl mx-auto">
-          <header className="mb-6 mt-12">
-            <div className="flex space-x-6">
-              <button
-                onClick={() => setAgentTab('featured')}
-                className={`text-sm font-semibold border-b-2 pb-1 transition-all ${
-                  agentTab === 'featured'
-                    ? 'border-violet-500 text-violet-600 dark:text-violet-400'
-                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
-              >
-                {t('featuredAgents')}
-              </button>
-              <button
-                onClick={() => setAgentTab('my')}
-                className={`text-sm font-medium border-b-2 pb-1 transition-all ${
-                  agentTab === 'my'
-                    ? 'border-violet-500 text-violet-600 dark:text-violet-400'
-                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
-              >
-                {t('myAgents')}
-              </button>
+      {/* 推荐场景区域（占位符，未来扩展） */}
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 md:px-12 mt-8 sm:mt-12">
+        <header className="mb-4 sm:mb-6">
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">推荐场景</h2>
+        </header>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {/* 场景1：代码生成 */}
+          <div
+            onClick={() => {
+              setInputMessage('帮我编写一个React组件')
+              setConversationMode('complex')
+            }}
+            className="cursor-pointer overflow-hidden bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-500"
+          >
+            <div className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-violet-100 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/20">
+                  <Code2 className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">代码生成</h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                AI助手会自动拆解任务，调用编程专家为您生成代码
+              </p>
             </div>
-          </header>
+          </div>
+
+          {/* 场景2：深度调研 */}
+          <div
+            onClick={() => {
+              setInputMessage('帮我调研一下最新的前端技术趋势')
+              setConversationMode('complex')
+            }}
+            className="cursor-pointer overflow-hidden bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-500"
+          >
+            <div className="p-4 sm:p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-100 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/20">
+                  <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">深度调研</h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                AI助手会调用搜索专家和研究专家，为您完成深度调研
+              </p>
+            </div>
+          </div>
+
+          {/* 场景3：快速问答 */}
+          <div
+            onClick={() => {
+              setInputMessage('今天天气怎么样？')
+              setConversationMode('simple')
+            }}
+            className="cursor-pointer overflow-hidden bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-500"
+          >
+            <div className="p-4 sm:p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-amber-100 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/20">
+                  <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">快速问答</h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                使用默认助手快速回答您的问题，适合简单对话
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Agent Grid Container - 自然布局，全页滚动 */}
-      <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20 mt-12">
+      {/* 我的智能体区域 */}
+      <div className="w-full max-w-5xl mx-auto px-6 md:px-12 mt-12 pb-24 md:pb-20">
+        <header className="mb-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">我的智能体</h2>
+            <button
+              onClick={handleCreateAgent}
+              className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors"
+            >
+              + 新建智能体
+            </button>
+          </div>
+        </header>
+
         {/* PC 端：4列网格；移动端：2列网格 */}
         <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-forwards">
           {displayedAgents.map((agent, index) => (
@@ -299,14 +302,14 @@ export default function HomePage() {
               index={index}
               isSelected={selectedAgentId === agent.id}
               onClick={() => handleAgentClick(agent.id)}
-              showDeleteButton={agentTab === 'my' && !agent.is_builtin}
+              showDeleteButton={!agent.isDefault}
               onDelete={() => handleDeleteAgent(agent.id, agent.name)}
             />
           ))}
         </div>
 
-        {/* 空状态卡片 - 只在 myAgents 标签页且没有智能体时显示 */}
-        {agentTab === 'my' && displayMyAgents.length === 0 && (
+        {/* 空状态卡片 - 只在没有自定义智能体时显示 */}
+        {customAgents.length === 0 && (
           <div
             onClick={handleCreateAgent}
             className={cn(

@@ -35,6 +35,10 @@ export const zh: Record<TranslationKey, string> = {
   confirmDelete: '确认',
   noHistory: '暂无历史记录',
   startChat: '开始一个新的聊天',
+  totalHistory: '条历史记录',
+  totalItems: '项内容',
+  matchingHistory: '条匹配的历史记录',
+  matchingItems: '项匹配的内容',
   
   // Create Agent
   create: '创建',
@@ -155,6 +159,10 @@ export const en: Record<TranslationKey, string> = {
   confirmDelete: 'Are you sure you want to delete this conversation?',
   noHistory: 'No conversation history',
   startChat: 'Start a new chat to see it here',
+  totalHistory: 'history records',
+  totalItems: 'total items',
+  matchingHistory: 'matching history',
+  matchingItems: 'matching items',
   
   // Create Agent
   create: 'Create',
@@ -275,6 +283,10 @@ export const ja: Record<TranslationKey, string> = {
   confirmDelete: 'この会話を削除してもよろしいですか？',
   noHistory: '履歴なし',
   startChat: '新しいチャットを開始してここに表示します',
+  totalHistory: '件の履歴',
+  totalItems: '件のアイテム',
+  matchingHistory: '件の一致する履歴',
+  matchingItems: '件の一致するアイテム',
   
   // Create Agent
   create: '作成',

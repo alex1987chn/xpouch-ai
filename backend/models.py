@@ -1,9 +1,23 @@
 from typing import List, Optional
 from datetime import datetime
 from uuid import uuid4
-from sqlmodel import Field, SQLModel, Relationship, JSON
+from sqlmodel import Field, SQLModel, Relationship, JSON, Session, select
 from pydantic import BaseModel, Field as PydanticField
 from enum import Enum
+
+# 导入常量配置
+from constants import ASSISTANT_SYSTEM_PROMPT
+
+
+# ============================================================================
+# 枚举类型
+# ============================================================================
+
+class ConversationType(str, Enum):
+    """会话类型枚举"""
+    DEFAULT = "default"      # 默认助手（简单模式）
+    CUSTOM = "custom"        # 自定义智能体（简单模式）
+    AI = "ai"               # AI助手（复杂模式）
 
 
 # ============================================================================
@@ -22,15 +36,41 @@ class User(SQLModel, table=True):
     custom_agents: List["CustomAgent"] = Relationship(back_populates="user")
 
 class Conversation(SQLModel, table=True):
+    """
+    会话模型
+    
+    - 简单模式（DEFAULT, CUSTOM）：仅存储消息
+    - 复杂模式（AI）：额外关联TaskSession，存储专家执行记录
+    """
     id: Optional[str] = Field(default=None, primary_key=True)
     title: str
-    agent_id: str = Field(default="assistant")
-    user_id: str = Field(foreign_key="user.id", index=True) # 关联用户
+    
+    # 会话类型：明确区分三种模式
+    agent_type: str = Field(index=True, default=ConversationType.DEFAULT.value)
+    
+    # 智能体ID
+    # - agent_type='default' 时，存储默认助手的UUID
+    # - agent_type='custom' 时，存储自定义智能体的UUID
+    # - agent_type='ai' 时，存储固定的'ai-assistant'标识
+    agent_id: str = Field(index=True)
+    
+    # 用户ID
+    user_id: str = Field(foreign_key="user.id", index=True)
+    
+    # 关联的任务会话（仅复杂模式有值）
+    task_session_id: Optional[str] = Field(default=None, index=True)
+    
+    # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     
+    # 关联关系
     user: Optional[User] = Relationship(back_populates="conversations")
     messages: List["Message"] = Relationship(back_populates="conversation", sa_relationship_kwargs={"cascade": "all, delete"})
+    task_session: Optional["TaskSession"] = Relationship(
+        back_populates="conversation",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
 class Message(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -48,7 +88,7 @@ class Message(SQLModel, table=True):
 
 class CustomAgent(SQLModel, table=True):
     """
-    用户创建的自定义智能体
+    用户智能体（包括默认助手和自定义智能体）
     
     用于简单的对话场景，直接使用用户的 system_prompt 调用 LLM，
     不经过 LangGraph 的专家工作流。
@@ -64,7 +104,10 @@ class CustomAgent(SQLModel, table=True):
     
     # 核心配置
     system_prompt: str  # 用户自定义的系统提示词（关键！）
-    model_id: str = Field(default="gpt-4o")  # 使用的模型
+    model_id: str = Field(default="deepseek-chat")  # 使用的模型
+    
+    # 新增：是否为默认助手
+    is_default: bool = Field(default=False, index=True)
     
     # 分类和统计
     category: str = Field(default="综合")  # 分类（写作、编程、创意等）
@@ -77,6 +120,50 @@ class CustomAgent(SQLModel, table=True):
     
     # 关联
     user: Optional[User] = Relationship(back_populates="custom_agents")
+
+    @classmethod
+    def get_default_assistant(cls, user_id: str, session: Session) -> "CustomAgent":
+        """
+        获取或创建默认助手
+
+        Args:
+            user_id: 用户ID
+            session: 数据库会话
+
+        Returns:
+            默认助手的CustomAgent对象
+
+        说明：
+        - 如果用户已存在默认助手，则返回该助手
+        - 如果不存在，则创建一个新的默认助手并返回
+        - 默认助手使用固定的系统提示词（ASSISTANT_SYSTEM_PROMPT）
+        - 默认助手不可删除（is_default=True）
+        """
+        # 1. 先从数据库查询
+        default = session.exec(
+            select(cls).where(
+                cls.user_id == user_id,
+                cls.is_default == True
+            )
+        ).first()
+
+        if default:
+            return default
+
+        # 2. 不存在则创建默认助手
+        default = cls(
+            user_id=user_id,
+            name="通用助手",
+            description="日常对话助手",
+            system_prompt=ASSISTANT_SYSTEM_PROMPT,
+            is_default=True,
+            category="综合"
+        )
+        session.add(default)
+        session.commit()
+        session.refresh(default)
+
+        return default
 
 
 # 在 User 模型中添加关联
@@ -94,7 +181,7 @@ class CustomAgentCreate(BaseModel):
     description: Optional[str] = None
     system_prompt: str = PydanticField(alias="systemPrompt")  # 必填，前端字段为 systemPrompt
     category: str = "综合"
-    model_id: str = PydanticField(default="gpt-4o", alias="modelId")
+    model_id: str = PydanticField(default="deepseek-chat", alias="modelId")
 
 
 class CustomAgentUpdate(BaseModel):
@@ -146,9 +233,14 @@ class TaskStatus(str, Enum):
 
 class SubTask(SQLModel, table=True):
     """
-    子任务模型 - 由"指挥官"分发给专家的具体任务
+    子任务模型 - 专家执行的具体任务
+    
+    每个专家任务产生一个或多个交付物（Artifacts）
     """
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+
+    # 关联的任务会话
+    task_session_id: str = Field(foreign_key="tasksession.session_id", index=True)
 
     # 专家类型：指定由哪个专家执行
     expert_type: str = Field(index=True)  # 存储 ExpertType 枚举值
@@ -161,43 +253,65 @@ class SubTask(SQLModel, table=True):
 
     # 任务状态
     status: str = Field(default="pending", index=True)  # 存储 TaskStatus 枚举值
-    
+
     # 输出结果：JSON 格式的执行结果
     output_result: Optional[dict] = Field(default=None, sa_type=JSON)
-    
+
+    # 新增：Artifacts数据（统一存储格式）
+    # 结构：
+    # [
+    #   {
+    #     "type": "code",
+    #     "title": "Python代码",
+    #     "language": "python",
+    #     "content": "print('hello')"
+    #   },
+    #   {
+    #     "type": "html",
+    #     "title": "HTML文档",
+    #     "content": "<div>...</div>"
+    #   }
+    # ]
+    artifacts: Optional[List[dict]] = Field(default=None, sa_type=JSON)
+
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    
-    # 关联的会话
-    task_session_id: Optional[str] = Field(foreign_key="tasksession.session_id", index=True)
+
+    # 关联关系
     task_session: Optional["TaskSession"] = Relationship(back_populates="sub_tasks")
 
 
 class TaskSession(SQLModel, table=True):
     """
-    任务会话模型 - 记录一次完整的多专家协作过程
+    任务会话模型 - 记录一次完整的多专家协作过程（仅复杂模式）
     """
     session_id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
-    
+
+    # 新增：关联的会话ID（核心！用于从历史记录加载）
+    conversation_id: str = Field(foreign_key="conversation.id", index=True)
+
     # 用户查询：原始用户输入
     user_query: str = Field(index=True)
-    
+
     # 关联的子任务列表
     sub_tasks: List[SubTask] = Relationship(back_populates="task_session", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    
+
     # 最终响应：整合所有子任务结果的最终答案
     final_response: Optional[str] = Field(default=None)
-    
+
     # 会话状态
     status: str = Field(default="pending", index=True)
-    
+
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     completed_at: Optional[datetime] = None
+
+    # 关联关系
+    conversation: Optional[Conversation] = Relationship(back_populates="task_session")
 
 
 # ============================================================================

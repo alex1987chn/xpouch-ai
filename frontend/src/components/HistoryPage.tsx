@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { MessageSquare, Clock, ArrowRight, Trash2 } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { getConversations, deleteConversation as apiDeleteConversation, type Conversation } from '@/services/api'
@@ -7,6 +7,7 @@ import { zhCN, enUS, ja } from 'date-fns/locale'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import SwipeBackIndicator from './SwipeBackIndicator'
 import { useApp } from '@/providers/AppProvider'
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 
 interface HistoryPageProps {
   onConversationClick: (id: string) => void
@@ -19,6 +20,11 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
   const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
+
+  // 删除确认状态
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null)
+  const [deletingConversationTitle, setDeletingConversationTitle] = useState('')
 
   const loadHistory = async () => {
     try {
@@ -36,20 +42,28 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
     loadHistory()
   }, [])
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  // 处理删除 - 打开确认对话框
+  const handleDelete = useCallback((e: React.MouseEvent, id: string, title: string) => {
     e.stopPropagation()
-    // 使用字符串字面量作为兜底，避免类型断言
-    const confirmMessage = t('confirmDelete') || 'Are you sure you want to delete this conversation?'
-    if (confirm(confirmMessage)) {
-      try {
-        await apiDeleteConversation(id)
-        loadHistory()
-      } catch (error) {
-        console.error('Failed to delete conversation:', error)
-        alert('Failed to delete conversation')
-      }
+    setDeletingConversationId(id)
+    setDeletingConversationTitle(title || 'Unknown Conversation')
+    setDeleteDialogOpen(true)
+  }, [])
+
+  // 确认删除操作
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deletingConversationId) return
+
+    try {
+      await apiDeleteConversation(deletingConversationId)
+      // 从本地列表中移除，避免刷新导致滚动位置丢失
+      setConversations(prev => prev.filter(conv => conv.id !== deletingConversationId))
+      setDeleteDialogOpen(false)
+    } catch (error) {
+      console.error('Failed to delete conversation:', error)
+      setDeleteDialogOpen(false)
     }
-  }
+  }, [deletingConversationId])
 
   const getLocale = () => {
     switch (language) {
@@ -103,7 +117,19 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
       >
         {/* 移动端滑动返回指示器 */}
         <SwipeBackIndicator swipeProgress={swipeProgress} />
-        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20 mt-8">
+
+        {/* 数据统计信息 */}
+        {!loading && conversations.length > 0 && (
+          <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 md:pb-4 mt-8">
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              <span>
+                {conversations.length} {t('totalHistory') || 'history records'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20 mt-0">
           {loading ? (
              <div className="text-center py-20 text-gray-500">Loading history...</div>
           ) : conversations.length > 0 ? (
@@ -146,7 +172,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
                     <div className="flex flex-col items-end gap-2">
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={(e) => handleDelete(e, conversation.id)}
+                          onClick={(e) => handleDelete(e, conversation.id, conversation.title || '')}
                           className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                           title="Delete conversation"
                         >
@@ -174,6 +200,21 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
           )}
         </div>
       </div>
+
+      {/* 删除确认对话框 */}
+      <DeleteConfirmDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false)
+          setDeletingConversationId(null)
+          setDeletingConversationTitle('')
+        }}
+        onConfirm={handleConfirmDelete}
+        title={t('confirmDeleteTitle')}
+        description={t('confirmDeleteDescription')}
+        itemName={deletingConversationTitle}
+      />
     </div>
   )
 }
+

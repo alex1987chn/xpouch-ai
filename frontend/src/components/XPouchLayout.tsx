@@ -12,6 +12,7 @@ interface XPouchLayoutProps {
   swipeProgress?: number
   hasArtifact?: boolean
   hideChatPanel?: boolean
+  showExpertBar?: boolean // 是否显示专家状态栏（仅复杂模式）
 }
 
 export default function XPouchLayout({
@@ -21,8 +22,9 @@ export default function XPouchLayout({
   isChatMinimized = false,
   setIsChatMinimized,
   swipeProgress = 0,
-  hasArtifact = false,
-  hideChatPanel = false
+  hasArtifact = true, // 默认始终显示Artifacts
+  hideChatPanel = false,
+  showExpertBar = false // 默认不显示专家状态栏
 }: XPouchLayoutProps) {
   // viewMode 仅在移动端起作用
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
@@ -73,26 +75,31 @@ export default function XPouchLayout({
           )}
         </AnimatePresence>
 
-        {/* 右侧容器：专家交付区（专家状态栏 + Artifact），占 7 份（约 70%） */}
-        <div
-          id="expert-delivery-zone"
-          className={cn(
-            'relative flex flex-col gap-4 min-h-0 flex-[7]',
-            'hidden md:flex' // PC端显示
-          )}
-        >
-          {/* 专家状态栏 - 自适应宽度，固定高度 */}
-          <section
+        {/* 右侧容器：专家状态栏 + Artifacts区域，占 7 份（约 70%） */}
+        {(showExpertBar || hasArtifact) && (
+          <div
+            id="expert-delivery-zone"
             className={cn(
-              'relative w-full',
-              'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md',
-              'rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20'
+              'relative flex flex-col gap-4 min-h-0 flex-[7]',
+              'hidden md:flex' // PC端显示
             )}
           >
-            {ExpertBarContent}
-          </section>
+          {/* 专家状态栏 - 仅复杂模式显示 */}
+          {showExpertBar && (
+            <section
+              className={cn(
+                'relative w-full h-auto max-h-[180px] overflow-hidden',
+                'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md',
+                'rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20'
+              )}
+            >
+              <div className="h-full overflow-y-auto overflow-x-hidden">
+                {ExpertBarContent}
+              </div>
+            </section>
+          )}
 
-          {/* Artifact 显示区域 - 自适应宽度，占据剩余高度 */}
+          {/* Artifacts区域 - 始终显示（所有对话都可能生成需要展示的内容） */}
           {hasArtifact && (
             <section
               className={cn(
@@ -105,6 +112,7 @@ export default function XPouchLayout({
             </section>
           )}
         </div>
+        )}
 
         {/* 机器人恢复按钮：仅在收起时显示 */}
         {isChatMinimized && setIsChatMinimized && (
@@ -138,15 +146,20 @@ export default function XPouchLayout({
                 </button>
               </div>
 
-              {/* 移动端：专家状态栏 */}
-              <div className="absolute top-4 right-4 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20">
-                <div className="p-4">
-                  {ExpertBarContent}
+              {/* 移动端：专家状态栏 - 仅复杂模式显示 */}
+              {showExpertBar && (
+                <div className="absolute top-4 right-4 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20">
+                  <div className="p-4">
+                    {ExpertBarContent}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* 移动端：Artifact 显示区域 */}
-              <div className="h-full w-full flex flex-col pt-24">
+              {/* 移动端：Artifacts显示区域 - 始终显示 */}
+              <div className={cn(
+                'h-full w-full flex flex-col',
+                showExpertBar ? 'pt-24' : 'pt-16'
+              )}>
                 <div className="flex-1 overflow-auto p-4">
                   {ArtifactContent}
                 </div>

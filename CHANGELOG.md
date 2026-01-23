@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2025-01-17] - v0.3.0 - 架构重构：语义化系统常量
+
+### ✨ 新增功能
+
+- **语义化系统智能体 ID**：引入 `sys-default-chat` 和 `sys-task-orchestrator` 替代硬编码字符串
+- **数据驱动 UI 显示**：基于 `Conversation.agent_type` 字段自动显示/隐藏专家交付区
+- **向后兼容性支持**：旧 ID (`ai-assistant`, `default-assistant`) 自动映射到新 ID
+
+### 🔧 修改内容
+
+#### 前端修改 (8 个文件)
+
+- **新建文件**：
+  - `frontend/src/constants/agents.ts` - 系统智能体常量定义
+
+- **修改文件**：
+  - `frontend/src/types/index.ts` - 添加 `Conversation.agent_type` 字段
+  - `frontend/src/components/HomePage.tsx` - 使用语义化常量
+  - `frontend/src/components/CanvasChatPage.tsx` - 数据驱动 UI 显示
+  - `frontend/src/components/XPouchLayout.tsx` - 添加 `showExpertDeliveryZone` 属性
+  - `frontend/src/hooks/useChat.ts` - 使用常量判断智能体类型
+  - `frontend/src/store/chatStore.ts` - 更新 `getCurrentAgent` 函数
+
+#### 后端修改 (3 个文件)
+
+- **修改文件**：
+  - `backend/constants.py` - 添加系统智能体 ID 定义和映射逻辑
+  - `backend/main.py` - 更新 `agent_type` 判断逻辑，使用规范化函数
+  - `backend/migrations/verify_conversations.py` - 新增数据库验证脚本
+
+#### 常量变更
+
+**前端常量**：
+- `SYSTEM_AGENTS.DEFAULT_CHAT` = `'sys-default-chat'`
+- `SYSTEM_AGENTS.ORCHESTRATOR` = `'sys-task-orchestrator'`
+- `isSystemAgent(agentId)` - 判断是否为系统智能体
+
+**后端常量**：
+- `SYSTEM_AGENT_DEFAULT_CHAT` = `'sys-default-chat'`
+- `SYSTEM_AGENT_ORCHESTRATOR` = `'sys-task-orchestrator'`
+- `normalize_agent_id(agentId)` - 规范化智能体 ID（兼容旧 ID）
+
+### 🎯 破坏性变更
+
+无（保持向后兼容）
+
+### 🧪 已知问题
+
+无
+
+---
+
 ## [Unreleased]
 
 ### ✨ 新增功能

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Plus, FileText, Trash2, Upload, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -6,6 +6,7 @@ import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import SwipeBackIndicator from './SwipeBackIndicator'
 import { useApp } from '@/providers/AppProvider'
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 
 // 知识库类型
 interface KnowledgeItem {
@@ -59,14 +60,43 @@ const mockKnowledgeItems: KnowledgeItem[] = [
 export default function KnowledgeBasePage() {
   const { t, language } = useTranslation()
   const { sidebar } = useApp()
-  const [items] = useState<KnowledgeItem[]>(mockKnowledgeItems)
+  const [items, setItems] = useState<KnowledgeItem[]>(mockKnowledgeItems)
   const [searchQuery, setSearchQuery] = useState('')
   const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
+
+  // 删除确认状态
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
+  const [deletingItemName, setDeletingItemName] = useState('')
 
   // 创建知识库
   const handleCreateKnowledgeBase = () => {
     console.log('Create new knowledge base')
   }
+
+  // 处理删除 - 打开确认对话框
+  const handleDelete = useCallback((e: React.MouseEvent, itemId: string, itemName: string) => {
+    e.stopPropagation()
+    setDeletingItemId(itemId)
+    setDeletingItemName(itemName)
+    setDeleteDialogOpen(true)
+  }, [])
+
+  // 确认删除操作
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deletingItemId) return
+
+    try {
+      // TODO: 调用后端API删除
+      console.log('Deleting item:', deletingItemId)
+      // 从本地列表中移除，避免刷新导致滚动位置丢失
+      setItems(prev => prev.filter(item => item.id !== deletingItemId))
+      setDeleteDialogOpen(false)
+    } catch (error) {
+      console.error('Failed to delete item:', error)
+      setDeleteDialogOpen(false)
+    }
+  }, [deletingItemId])
 
   // 过滤搜索结果
   const filteredItems = items.filter((item) =>
@@ -126,7 +156,7 @@ export default function KnowledgeBasePage() {
           </div>
         </div>
         {/* 搜索框 */}
-        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 md:pb-4 mt-8">
+        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-3 md:pb-3 mt-8">
           <div className="relative flex items-center">
             {/* 搜索图标 - 绝对定位 */}
             <div className="absolute left-4 flex-shrink-0">
@@ -146,6 +176,18 @@ export default function KnowledgeBasePage() {
                 'transition-all'
               )}
             />
+          </div>
+        </div>
+
+        {/* 数据统计信息 */}
+        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 md:pb-4">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            <span>
+              {searchQuery
+                ? `${filteredItems.length} ${t('matchingItems') || 'matching items'}`
+                : `${items.length} ${t('totalItems') || 'total items'}`
+              }
+            </span>
           </div>
         </div>
 
@@ -216,6 +258,7 @@ export default function KnowledgeBasePage() {
                   size="icon"
                   className="w-8 h-8"
                   title={t('delete')}
+                  onClick={(e) => handleDelete(e, item.id, item.name)}
                 >
                   <Trash2 className="w-4 h-4 text-slate-400 hover:text-slate-600" />
                 </Button>
@@ -239,6 +282,21 @@ export default function KnowledgeBasePage() {
           </div>
         )}
       </div>
+
+      {/* 删除确认对话框 */}
+      <DeleteConfirmDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false)
+          setDeletingItemId(null)
+          setDeletingItemName('')
+        }}
+        onConfirm={handleConfirmDelete}
+        title={t('confirmDeleteTitle')}
+        description={t('confirmDeleteDescription')}
+        itemName={deletingItemName}
+      />
     </div>
   )
 }
+

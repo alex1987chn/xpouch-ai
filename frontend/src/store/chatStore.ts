@@ -1,9 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { SYSTEM_AGENTS } from '@/constants/systemAgents'
 import { type Agent } from '@/types'
 import { generateId } from '@/utils/storage'
 import { type Message, type Conversation } from '@/types'
+import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 
 // 定义 Store 状态类型
 interface ChatState {
@@ -96,36 +96,43 @@ export const useChatStore = create<ChatState>()(
       // Getters
       getAllAgents: () => {
         const state = get()
-        // 映射 SYSTEM_AGENTS 为 Agent 类型
-        const systemAgents = SYSTEM_AGENTS.map(sa => ({
-          id: sa.agentId,
-          name: sa.name,
-          description: sa.description,
-          category: sa.category,
-          isCustom: false,
-          is_builtin: true,
-          modelId: 'deepseek-chat',
-          icon: null, // 不需要 icon，在 UI 层处理
-          systemPrompt: '' // 不需要 systemPrompt
-        }))
-        return [...systemAgents, ...state.customAgents]
+        // 只返回自定义智能体
+        return state.customAgents
       },
 
       getCurrentAgent: () => {
         const state = get()
-        const systemAgents = SYSTEM_AGENTS.map(sa => ({
-          id: sa.agentId,
-          name: sa.name,
-          description: sa.description,
-          category: sa.category,
-          isCustom: false,
-          is_builtin: true,
-          modelId: 'deepseek-chat',
-          icon: null,
-          systemPrompt: ''
-        }))
-        const allAgents = [...systemAgents, ...state.customAgents]
-        return allAgents.find(a => a.id === state.selectedAgentId)
+        // 根据selectedAgentId判断智能体类型
+        if (state.selectedAgentId === SYSTEM_AGENTS.DEFAULT_CHAT) {
+          // 默认助手
+          return {
+            id: SYSTEM_AGENTS.DEFAULT_CHAT,
+            name: getSystemAgentName(SYSTEM_AGENTS.DEFAULT_CHAT),
+            description: '日常对话、通用任务、智能问答',
+            category: '通用',
+            isCustom: false,
+            is_builtin: false,
+            modelId: 'deepseek-chat',
+            icon: null,
+            systemPrompt: ''
+          }
+        } else if (state.selectedAgentId === SYSTEM_AGENTS.ORCHESTRATOR) {
+          // AI助手
+          return {
+            id: SYSTEM_AGENTS.ORCHESTRATOR,
+            name: getSystemAgentName(SYSTEM_AGENTS.ORCHESTRATOR),
+            description: '复杂任务拆解、专家协作、智能聚合',
+            category: 'AI',
+            isCustom: false,
+            is_builtin: false,
+            modelId: 'deepseek-chat',
+            icon: null,
+            systemPrompt: ''
+          }
+        } else {
+          // 自定义智能体
+          return state.customAgents.find(a => a.id === state.selectedAgentId)
+        }
       }
     }),
     {

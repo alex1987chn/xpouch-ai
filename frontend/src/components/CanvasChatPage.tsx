@@ -5,7 +5,7 @@ import { useChatStore } from '@/store/chatStore'
 import { useChat } from '@/hooks/useChat'
 import { useCanvasStore } from '@/store/canvasStore'
 import { getConversation, type ApiMessage } from '@/services/api'
-import { type Message } from '@/types'
+import { type Message, type Conversation } from '@/types'
 import { generateId } from '@/utils/storage'
 import FloatingChatPanel from './FloatingChatPanel'
 import ExpertDrawer from './ExpertDrawer'
@@ -15,25 +15,27 @@ import { useApp } from '@/providers/AppProvider'
 import ExpertStatusBar from './ExpertStatusBar'
 import ArtifactsArea from './ArtifactsArea'
 import { ArtifactProvider } from '@/providers/ArtifactProvider'
+import { SYSTEM_AGENTS } from '@/constants/agents'
 
 export default function CanvasChatPage() {
   const { id } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
 
+  // 存储当前会话对象（用于数据驱动 UI）
+  const [currentConvData, setCurrentConvData] = useState<Conversation | null>(null)
+
   // 从 URL 搜索参数获取 agentId
   const agentIdFromUrl = new URLSearchParams(location.search).get('agentId')
 
-  // 从 location.state 获取初始对话模式（首页传递过来的）
-  const initialMode = location.state?.mode || 'simple' as 'simple' | 'complex'
-
-  // 对话模式状态
-  const [conversationMode, setConversationMode] = useState<'simple' | 'complex'>(initialMode)
-
-  // 判断是否是直连专家模式（非 sys-commander）
-  const isDirectExpertMode = useMemo(() => {
-    return !!(agentIdFromUrl && agentIdFromUrl !== 'sys-commander')
+  // 根据 URL 中的 agentId 确定对话模式
+  const initialConversationMode = useMemo(() => {
+    console.log('[CanvasChatPage] initialConversationMode: agentIdFromUrl =', agentIdFromUrl)
+    return agentIdFromUrl === SYSTEM_AGENTS.ORCHESTRATOR ? 'complex' : 'simple'
   }, [agentIdFromUrl])
+
+  // 对话模式状态：根据 URL 参数初始化
+  const [conversationMode, setConversationMode] = useState<'simple' | 'complex'>(initialConversationMode)
 
   const { fetchUser } = useUserStore()
 
@@ -67,14 +69,36 @@ export default function CanvasChatPage() {
   const { selectedExpert } = useCanvasStore()
   const { sidebar } = useApp()
 
+  // 处理对话模式切换
+  const handleConversationModeChange = useCallback((newMode: 'simple' | 'complex') => {
+    console.log('[CanvasChatPage] 切换对话模式:', newMode)
+    setConversationMode(newMode)
+
+    // 切换模式时，更新 selectedAgentId
+    const currentPath = location.pathname
+    const searchParams = new URLSearchParams(location.search)
+
+    if (newMode === 'complex') {
+      // 切换到复杂模式：使用任务指挥官
+      setSelectedAgentId(SYSTEM_AGENTS.ORCHESTRATOR)
+      searchParams.set('agentId', SYSTEM_AGENTS.ORCHESTRATOR)
+    } else {
+      // 切换到简单模式：使用默认助手
+      setSelectedAgentId(SYSTEM_AGENTS.DEFAULT_CHAT)
+      searchParams.set('agentId', SYSTEM_AGENTS.DEFAULT_CHAT)
+    }
+
+    // 更新 URL（保持 conversationId，更新 agentId）
+    navigate(`${currentPath}?${searchParams.toString()}`, { replace: true })
+  }, [setSelectedAgentId, location, navigate])
+
   // 监听 agentId 变化，自动更新模式
   useEffect(() => {
-    if (agentIdFromUrl === 'sys-commander') {
+    console.log('[CanvasChatPage] agentIdFromUrl 变化:', agentIdFromUrl)
+    if (agentIdFromUrl === SYSTEM_AGENTS.ORCHESTRATOR) {
       setConversationMode('complex')
-    } else if (agentIdFromUrl === 'sys-assistant') {
-      setConversationMode('simple')
     } else {
-      // 直连专家模式，使用 simple 模式（但实际上是直连专家）
+      // 其他都是简单模式（默认助手、自定义智能体）
       setConversationMode('simple')
     }
   }, [agentIdFromUrl])
@@ -120,21 +144,14 @@ export default function CanvasChatPage() {
       return
     }
 
-    // 检查是否是临时ID（包含连字符），如果是则跳过API调用
-    const isTempId = id.includes('-')
-    if (isTempId) {
-      hasLoadedConversationRef.current = true
-      setCurrentConversationId(null)
-      setMessages([])
-      return
-    }
-
     hasLoadedConversationRef.current = true
 
     getConversation(id).then(conversation => {
       if (conversation) {
         setSelectedAgentId(conversation.agent_id)
         setCurrentConversationId(conversation.id)
+        setCurrentConvData(conversation) // 保存当前会话对象
+        console.log('[CanvasChatPage] 会话加载成功:', { id: conversation.id, agent_id: conversation.agent_id, agent_type: conversation.agent_type })
 
         if (conversation.messages && conversation.messages.length > 0) {
           const loadedMessages = conversation.messages.map((m) => {
@@ -151,6 +168,7 @@ export default function CanvasChatPage() {
           setMessages([])
         }
       } else {
+        console.error('[CanvasChatPage] 会话不存在:', id)
         setMessages([])
       }
     }).catch(err => {
@@ -189,7 +207,7 @@ export default function CanvasChatPage() {
     )
   }
 
-  // 将 isDirectExpertMode 传递给 ChatContent 回调使用
+  // 将 conversationMode 传递给 ChatContent 回调使用
   const ChatContentWithMode = useCallback((viewMode: 'chat' | 'preview', setViewMode: (mode: 'chat' | 'preview') => void) => (
     <div className="relative flex-1 flex flex-col min-h-0">
       <FloatingChatPanel
@@ -206,11 +224,11 @@ export default function CanvasChatPage() {
         setIsChatMinimized={setIsChatMinimized}
         onStopGeneration={handleStopGeneration}
         conversationMode={conversationMode}
-        onConversationModeChange={isDirectExpertMode ? undefined : setConversationMode}
-        hideModeSwitch={isDirectExpertMode}
+        onConversationModeChange={handleConversationModeChange}
+        hideModeSwitch={false}
       />
     </div>
-  ), [messages, inputMessage, setInputMessage, handleSubmitMessage, isTyping, getCurrentAgent, isChatMinimized, setIsChatMinimized, handleStopGeneration, conversationMode, setConversationMode, isDirectExpertMode])
+  ), [messages, inputMessage, setInputMessage, handleSubmitMessage, isTyping, getCurrentAgent, isChatMinimized, setIsChatMinimized, handleStopGeneration, conversationMode, handleConversationModeChange])
 
   // 专家状态栏内容（使用 useMemo 避免重复创建）
   const ExpertBarContent = useMemo(() => (
@@ -225,6 +243,18 @@ export default function CanvasChatPage() {
     />
   ), [isArtifactFullscreen])
 
+  // 数据驱动：拆分专家状态栏和Artifacts区域的显示控制
+  const showExpertBar = useMemo(() => {
+    // 专家状态栏：仅在复杂模式（agent_type === 'ai'）显示
+    if (!currentConvData) {
+      return conversationMode === 'complex'
+    }
+    return currentConvData.agent_type === 'ai'
+  }, [currentConvData, conversationMode])
+
+  // Artifacts区域：始终显示（所有对话模式都可能生成需要Artifacts展示的内容）
+  const showArtifacts = true
+
   return (
     <ArtifactProvider>
       {/* XPouchLayout - 直接渲染，不受外层容器限制 */}
@@ -234,8 +264,9 @@ export default function CanvasChatPage() {
         ChatContent={ChatContentWithMode}
         isChatMinimized={isChatMinimized}
         setIsChatMinimized={setIsChatMinimized}
-        hasArtifact={true}
+        hasArtifact={showArtifacts}
         hideChatPanel={isArtifactFullscreen}
+        showExpertBar={showExpertBar}
       />
 
       {/* 抽屉式专家详情 - 提升到最顶层，独立 stacking context */}

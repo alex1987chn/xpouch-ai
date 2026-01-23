@@ -18,11 +18,12 @@ from datetime import datetime
 
 # 导入数据模型
 import sys
-sys.path.append(str(pathlib.Path(__file__).parent))
+sys.path.append(str(pathlib.Path(__file__).parent.parent))
 from models import ExpertType, TaskStatus, SubTask
 from config import init_langchain_tracing, get_langsmith_config
 from utils.json_parser import parse_llm_json
 from utils.exceptions import AppError
+from constants import COMMANDER_SYSTEM_PROMPT
 from agents.experts import (
     run_search_expert,
     run_coder_expert,
@@ -140,36 +141,8 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
     last_message = messages[-1]
     user_query = last_message.content if isinstance(last_message, HumanMessage) else str(last_message.content)
     
-    # 指挥官系统提示词
-    system_prompt = """你是一个智能任务指挥官（Commander），负责将用户查询拆解为多个专业的子任务。
-
-你的职责：
-1. 分析用户查询的需求和复杂度
-2. 识别需要哪些专家类型来完成任务
-3. 为每个专家生成具体、可执行的子任务
-4. 定义任务执行的优先级和依赖关系
-
-可用的专家类型：
-- search: 信息搜索专家 - 用于搜索、查询信息
-- coder: 编程专家 - 用于代码编写、调试、优化
-- researcher: 研究专家 - 用于深入研究、文献调研
-- analyzer: 分析专家 - 用于数据分析、逻辑推理
-- writer: 写作专家 - 用于文案撰写、内容创作
-- planner: 规划专家 - 用于任务规划、方案设计
-- image_analyzer: 图片分析专家 - 用于图片内容分析、视觉识别
-
-任务拆解原则：
-- 将复杂任务分解为多个独立的、可并行的子任务
-- 每个子任务应明确指定由哪个专家执行
-- 子任务之间应有清晰的逻辑关系
-- 为子任务提供足够的上下文和参数
-
-请以 JSON 格式输出子任务列表，包含以下信息：
-- expert_type: 专家类型（search/coder/researcher/analyzer/writer/planner/image_analyzer）
-- description: 任务描述（清晰、具体）
-- input_data: 任务输入参数（字典格式）
-- priority: 优先级（0=最高，数字越小越优先）
-"""
+    # 指挥官系统提示词（使用constants.py中的常量）
+    system_prompt = COMMANDER_SYSTEM_PROMPT
     
     # 构建提示词模板
     prompt = ChatPromptTemplate.from_messages([

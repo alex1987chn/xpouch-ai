@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useChatStore, type Message } from '@/store/chatStore'
 import { useCanvasStore, type ExpertResult } from '@/store/canvasStore'
 import { sendMessage, type ApiMessage } from '@/services/api'
-import { getSystemAgent, createExpertResult } from '@/constants/systemAgents'
+import { getExpertConfig, createExpertResult } from '@/constants/systemAgents'
 import { getDefaultModel } from '@/utils/config'
 import { generateId } from '@/utils/storage'
 import type { AgentType } from '@/types'
@@ -11,6 +11,7 @@ import { getClientId } from '@/services/api'
 import { logger, errorHandler } from '@/utils/logger'
 import type { Artifact } from '@/types'
 import { parseAssistantMessage, shouldDisplayAsArtifact } from '@/utils/artifactParser'
+import { SYSTEM_AGENTS, isSystemAgent } from '@/constants/agents'
 
 // 开发环境判断
 const DEBUG = false
@@ -61,12 +62,9 @@ export function useChat() {
     getCurrentAgent
   } = useChatStore()
 
-  // 判断智能体类型（系统 vs 自定义）
+  // 判断智能体类型（默认助手 / AI助手 / 自定义）
   const getAgentType = useCallback((agentId: string): AgentType => {
-    // 检查是否为系统智能体（以 sys- 开头）
-    if (agentId.startsWith('sys-')) {
-      return 'system'
-    } else if (getSystemAgent(agentId)) {
+    if (isSystemAgent(agentId)) {
       return 'system'
     }
     return 'custom'
@@ -89,12 +87,12 @@ export function useChat() {
   }, [getAgentType])
 
   // 判断对话模式（根据 agentId）
+  // sys-task-orchestrator 是复杂模式，其他都是简单模式
   const getConversationMode = useCallback((agentId: string): 'simple' | 'complex' => {
-    if (agentId === 'sys-assistant') {
-      return 'simple'
+    if (agentId === SYSTEM_AGENTS.ORCHESTRATOR) {
+      return 'complex'
     }
-    // 其他所有情况都是复杂模式（包括 sys-commander 和专家）
-    return 'complex'
+    return 'simple'
   }, [])
 
   // 发送消息核心逻辑
@@ -189,22 +187,19 @@ export function useChat() {
 
 
 
-          // 处理任务开始事件（只在复杂模式下）
+
+          // 处理任务开始事件（只在复杂模式下）- 不再添加消息，信息在loading气泡中展示
           if (conversationMode === 'complex' && expertEvent?.type === 'task_start') {
             const taskInfo = expertEvent as any
-            const taskIndex = taskInfo.task_index
-            const totalTasks = taskInfo.total_tasks
             const expertType = taskInfo.expert_type
             const description = taskInfo.description
 
-            // 构建任务开始消息 - 用户友好的格式
-            let taskStartMessage = `${expertType}专家正在执行任务【${description}】`
-
-            addMessage({
-              id: generateId(),
-              role: 'system',
-              content: taskStartMessage
-            })
+            // 设置当前执行的专家信息（用于loading气泡展示）
+            setActiveExpertId(expertType)
+            // 更新专家状态为运行中
+            const newExpert = createExpertResult(expertType, 'running')
+            newExpert.description = description
+            updateExpertResult(expertType, newExpert)
           }
 
           // 处理任务计划事件（只在复杂模式下）
@@ -248,8 +243,8 @@ export function useChat() {
               await Promise.resolve()
 
               // 添加工作流状态消息（包含专家输出）
-              const expertConfig = getSystemAgent(expertEvent.expertId)
-              const expertName = expertConfig?.name || expertEvent.expertId
+              const expertConfig = getExpertConfig(expertEvent.expertId)
+              const expertName = expertConfig.name
               const duration = expertEvent.duration_ms ? `${(expertEvent.duration_ms / 1000).toFixed(1)}` : ''
               const expertId = expertEvent.expertId
               const description = expertEvent.description || ''
@@ -382,8 +377,7 @@ export function useChat() {
           }
         },
         currentConversationId,
-        abortControllerRef.current.signal,
-        conversationMode  // 传递模式参数
+        abortControllerRef.current.signal
       )
 
       // 5. 更新会话状态和 URL，并显示最终响应（如果是复杂模式）

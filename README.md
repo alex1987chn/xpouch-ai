@@ -55,15 +55,16 @@
 - 层级：z-[100]
 
 ### 🤖 AI 智能体系统
-- **8 个内置智能体**：不同场景的专业助手
-- **自定义智能体创建**：用户可构建个性化 AI 助手
+- **默认助手**：日常对话、通用任务、快速问答（简单模式）
+- **AI助手（复杂模式）**：任务拆解、多专家协作、深度分析
+- **自定义智能体创建**：用户可构建个性化 AI 助手（简单模式）
 - **LangGraph Python 工作流**：模块化智能体引擎
 - **任务会话管理**：SubTask + TaskSession 数据模型
 - **双模路由系统**：
-  - **简单对话模式**（默认）：使用 sys-assistant 通用助手（后端直接 LLM 调用）
-  - **复杂任务模式**：使用 sys-commander 触发指挥官模式（LangGraph 调度多专家）
+  - **简单模式**（默认）：使用默认助手或自定义智能体（后端直接 LLM 调用）
+  - **复杂模式**（AI助手）：使用 AI助手触发指挥官模式（LangGraph 调度多专家）
   - 两个按钮位于输入框左侧，当前选中的模式显示紫色高亮背景
-  - 前端通过 conversationMode 状态控制路由逻辑
+  - 前端通过 agentId 控制路由逻辑（`ai-assistant` 触发复杂模式）
 
 ### 💬 对话体验
 - **实时打字效果**：自然的消息生成与打字动画
@@ -81,7 +82,13 @@
 
 ### 📌 v0.3.x - 超智能体系统（当前）
 
-- ✅ 指挥官工作流：任务拆解 → 专家分发 → 结果聚合
+**架构重构完成 (2025-01-17)**：
+- ✅ 引入语义化系统智能体 ID：`sys-default-chat` 和 `sys-task-orchestrator`
+- ✅ 实现数据驱动 UI 显示：基于 `Conversation.agent_type` 字段
+- ✅ 后端适配：添加 ID 映射逻辑，支持向后兼容
+- 📝 详见：[CHANGELOG.md](./CHANGELOG.md) 和 [架构重构文档](./docs/ARCHITECTURE_REFACTORING.md)
+
+- ✅ 指挥官工作流：任务拆解 → 专家分发 → 结果聚合 |
 - ✅ 6 专业专家池：search/coder/researcher/analyzer/writer/planner
 - ✅ SubTask + TaskSession 数据模型
 - ✅ JSON 解析器：兼容所有 LLM 提供商
@@ -114,7 +121,22 @@
 
 ### 💾 数据持久化
 - **SQLite 数据库**：SQLModel ORM 框架
-- **任务会话**：TaskSession + SubTask 完整链路
+- **Conversation 模型**：
+  - `agent_type`: 智能体类型（default/custom/ai）
+  - `agent_id`: 智能体ID（default-assistant/ai-assistant/自定义UUID）
+  - `task_session_id`: 关联的任务会话ID（仅复杂模式有值）
+- **CustomAgent 模型**：
+  - `is_default`: 默认助手标记
+  - `get_default_assistant()`: 获取或创建默认助手的类方法
+- **TaskSession 模型**：记录一次完整的多专家协作过程（仅复杂模式）
+  - `conversation_id`: 关联的会话ID
+  - `user_query`: 原始用户输入
+  - `final_response`: 整合所有子任务结果的最终答案
+- **SubTask 模型**：专家执行的具体任务
+  - `task_session_id`: 关联的任务会话ID
+  - `expert_type`: 执行任务的专家类型
+  - `description`: 任务的自然语言描述
+  - `artifacts`: 交付物数据（JSON格式）
 - **历史记录**：按时间排序，支持查看和删除
 
 ### ⚡ 性能优化
