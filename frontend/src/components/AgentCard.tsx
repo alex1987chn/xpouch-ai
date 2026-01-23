@@ -2,19 +2,48 @@ import { memo } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { Agent } from '@/types'
 import { cn } from '@/lib/utils'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Plus } from 'lucide-react'
 
 interface AgentCardProps {
   agent: Agent
   isSelected: boolean
   onClick: () => void
   onDelete?: () => void
+  onCreateAgent?: () => void
   index?: number
   showDeleteButton?: boolean
 }
 
-function AgentCard({ agent, isSelected, onClick, onDelete, index: _index, showDeleteButton = false }: AgentCardProps) {
+function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent, index: _index, showDeleteButton = false }: AgentCardProps) {
   const isDefaultAgent = agent.isDefault === true
+  const isCreateCard = agent.isCreateCard === true
+
+  // 如果是创建智能体卡片，使用简洁的居中加号样式
+  if (isCreateCard) {
+    return (
+      <div
+        onClick={onCreateAgent}
+        className="group relative cursor-pointer overflow-hidden bg-white dark:bg-slate-900/50 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl transition-all duration-300 ease-out hover:-translate-y-1 hover:border-violet-400 dark:hover:border-violet-600 hover:shadow-lg flex items-center justify-center p-8"
+      >
+        {/* 居中的大加号 */}
+        <div className="flex flex-col items-center gap-3">
+          <div
+            className={cn(
+              'w-16 h-16 rounded-2xl flex items-center justify-center',
+              'bg-gradient-to-br from-violet-100 to-fuchsia-100 dark:from-violet-900/30 dark:to-fuchsia-900/30',
+              'transition-all duration-300 ease-out',
+              'group-hover:scale-110 group-hover:bg-gradient-to-br group-hover:from-violet-500 group-hover:to-fuchsia-500'
+            )}
+          >
+            <Plus className={cn('w-8 h-8 text-violet-500 dark:text-violet-400 transition-colors', 'group-hover:text-white')} />
+          </div>
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-400 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+            创建智能体
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -28,11 +57,8 @@ function AgentCard({ agent, isSelected, onClick, onDelete, index: _index, showDe
         'rounded-2xl border',
         'transition-all duration-300 ease-out',
         // 悬停效果：上移 4px + 深色投影
-        'hover:-translate-y-1 hover:shadow-xl',
-        // 选中状态：紫色光环 + 边框变色
-        isSelected && !isDefaultAgent && 'ring-2 ring-violet-500/20 border-violet-300 dark:border-violet-600',
-        // 默认助手的选中状态
-        isSelected && isDefaultAgent && 'ring-2 ring-violet-500/40 border-violet-500 dark:border-violet-400'
+        'hover:-translate-y-1 hover:shadow-xl'
+        // 移除所有选中高亮状态（ring边框）
       )}
     >
       {/* 左侧渐变竖条 - 4px 宽度，完全覆盖边缘 */}
@@ -40,8 +66,8 @@ function AgentCard({ agent, isSelected, onClick, onDelete, index: _index, showDe
         className={cn(
           'absolute left-0 top-0 bottom-0 w-[4px] bg-gradient-to-b from-blue-400 to-violet-500',
           'transition-all duration-300 ease-out',
-          // 默认隐藏，悬停/选中时显示
-          (isSelected || isDefaultAgent) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          // 默认隐藏，悬停时显示（移除选中状态）
+          isDefaultAgent ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         )}
       />
 
@@ -79,9 +105,7 @@ function AgentCard({ agent, isSelected, onClick, onDelete, index: _index, showDe
                   ? 'bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30'
                   : 'bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30',
                 // Hover 时变为 violet-500 渐变（非默认助手）
-                !isDefaultAgent && 'group-hover:bg-gradient-to-br group-hover:from-violet-500 group-hover:to-fuchsia-500 group-hover:scale-110',
-                // 默认助手不放大
-                isDefaultAgent && 'scale-110'
+                !isDefaultAgent && 'group-hover:bg-gradient-to-br group-hover:from-violet-500 group-hover:to-fuchsia-500 group-hover:scale-110'
               )}
             >
               <div className={cn(
