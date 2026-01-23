@@ -6,6 +6,9 @@ import { cn } from '@/lib/utils'
 import SwipeBackIndicator from './SwipeBackIndicator'
 import AgentPreviewCard from './AgentPreviewCard'
 import { PROGRESS } from '@/constants/ui'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 
 interface CreateAgentPageProps {
   onBack: () => void
@@ -153,33 +156,22 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
             <div className="max-w-xl mx-auto space-y-8">
               {/* 智能体名称 */}
               <div className="space-y-3">
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  <span>智能体名称</span>
-                  <span className="text-violet-500">*</span>
-                </label>
-                <input
+                <Label htmlFor="agent-name">
+                  智能体名称<span className="text-violet-500">*</span>
+                </Label>
+                <Input
+                  id="agent-name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="给你的智能体起个名字..."
-                  className={cn(
-                    'w-full px-5 py-3.5 rounded-2xl',
-                    'bg-white dark:bg-slate-800/50',
-                    'border border-slate-200/50 dark:border-slate-700/50',
-                    'text-slate-800 dark:text-slate-100',
-                    'placeholder:text-slate-400 dark:placeholder:text-slate-500',
-                    'focus:outline-none focus:border-transparent',
-                    'transition-all duration-300',
-                    'focus:ring-2 focus:ring-violet-500/50'
-                  )}
+                  className="rounded-2xl"
                 />
               </div>
 
               {/* 分类选择 */}
               <div className="space-y-3">
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  <span>分类</span>
-                </label>
+                <Label>分类</Label>
                 <div className="flex flex-wrap gap-2">
                   {categories.map((cat) => (
                     <button
@@ -200,9 +192,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
 
               {/* 模型选择 */}
               <div className="space-y-3">
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  <span>模型</span>
-                </label>
+                <Label>模型</Label>
                 <div className="flex flex-wrap gap-2">
                   {models.map((model) => (
                     <button
@@ -223,52 +213,33 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
 
               {/* 描述 */}
               <div className="space-y-3">
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  <span>{t('description')}</span>
-                </label>
-                <input
+                <Label htmlFor="agent-description">{t('description')}</Label>
+                <Input
+                  id="agent-description"
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={t('simpleDescription')}
-                  className={cn(
-                    'w-full px-5 py-3.5 rounded-2xl',
-                    'bg-white dark:bg-slate-800/50',
-                    'border border-slate-200/50 dark:border-slate-700/50',
-                    'text-slate-800 dark:text-slate-100',
-                    'placeholder:text-slate-400 dark:placeholder:text-slate-500',
-                    'focus:outline-none focus:border-transparent',
-                    'transition-all duration-300',
-                    'focus:ring-2 focus:ring-violet-500/50'
-                  )}
+                  className="rounded-2xl"
                 />
               </div>
 
               {/* 系统提示词 */}
               <div className="space-y-3">
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  <span>{t('systemPrompt')}</span>
-                  <span className="text-violet-500">*</span>
-                </label>
+                <Label htmlFor="agent-prompt">
+                  {t('systemPrompt')}<span className="text-violet-500">*</span>
+                </Label>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {t('defineBehavior')}
                 </p>
-                <textarea
+                <Textarea
+                  id="agent-prompt"
                   value={systemPrompt}
                   onChange={(e) => setSystemPrompt(e.target.value.slice(0, 2000))}
                   placeholder={t('writingAssistantPlaceholder')}
                   rows={10}
                   maxLength={2000}
-                  className={cn(
-                    'w-full px-5 py-4 rounded-2xl scrollbar-thin',
-                    'bg-white dark:bg-slate-800/50',
-                    'border border-slate-200/50 dark:border-slate-700/50',
-                    'text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500',
-                    'focus:outline-none focus:border-transparent',
-                    'transition-all duration-300 resize-none',
-                    'focus:ring-2 focus:ring-violet-500/50',
-                    'font-mono text-sm leading-relaxed'
-                  )}
+                  className="rounded-2xl resize-none font-mono text-sm leading-relaxed"
                 />
 
                 {/* 像素风格进度条 */}

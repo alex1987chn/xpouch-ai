@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, Clock, FileText, Code, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
+import { Badge } from '@/components/ui/badge'
 
 interface WorkflowStep {
   id: string
@@ -83,20 +84,31 @@ export default function ExpertDrawer({ isOpen, onClose, expertName }: ExpertDraw
   }
 
   const statusBadge = (status: WorkflowStep['status']) => {
-    const styles = {
-      pending: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-      running: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-      completed: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+    const variant = {
+      pending: 'secondary' as const,
+      running: 'default' as const,
+      completed: 'default' as const
     }
     const statusText = {
       pending: t('pending'),
       running: t('running'),
       completed: t('completed')
     }
+    const colors = {
+      pending: '',
+      running: 'bg-blue-500 hover:bg-blue-600',
+      completed: 'bg-green-500 hover:bg-green-600'
+    }
     return (
-      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', styles[status])}>
+      <Badge
+        variant={status === 'pending' ? 'secondary' : 'default'}
+        className={cn(
+          'text-xs font-medium',
+          status !== 'pending' && colors[status]
+        )}
+      >
         {statusText[status]}
-      </span>
+      </Badge>
     )
   }
 
