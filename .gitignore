@@ -56,3 +56,8 @@ $null
 # Ignore files with special characters (common in Windows)
 *[^a-zA-Z0-9._/-]*
 upload-package/
+
+# Local documentation (private notes, not for GitHub)
+MEM.md
+CHANGELOG.md
+CHANGELOG_ARCHIVE.md
