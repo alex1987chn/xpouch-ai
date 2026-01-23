@@ -220,6 +220,7 @@ export async function sendMessage(
   if (onChunk) {
 
     try {
+      console.log('[api.ts] 发送请求:', { url, agentId, hasConversationId: !!conversationId })
       const response = await fetch(url, {
         method: 'POST',
         headers: getHeaders(),
@@ -237,9 +238,11 @@ export async function sendMessage(
       })
 
       if (!response.ok) {
+        console.error('[api.ts] 请求失败:', response.status, response.statusText)
         throw new Error(`API Error: ${response.status}`);
       }
 
+      console.log('[api.ts] 请求成功，开始读取 SSE 流')
       const reader = response.body?.getReader()
       if (!reader) {
         throw new Error('Response body is not readable')
@@ -279,7 +282,9 @@ export async function sendMessage(
                 const taskPlan = parsed.taskPlan
                 const taskStart = parsed.taskStart
 
-                console.log('[api.ts] 收到SSE数据:', { hasContent: !!content, activeExpert, expertCompleted, hasArtifact: !!artifact, parsed })
+                if (content || activeExpert || expertCompleted || artifact || taskPlan || taskStart) {
+                  console.log('[api.ts] 收到SSE数据:', { hasContent: !!content, activeExpert, expertCompleted, hasArtifact: !!artifact, parsed })
+                }
 
                 if (parsed.conversationId) {
                     finalConversationId = parsed.conversationId

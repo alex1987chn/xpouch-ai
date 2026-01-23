@@ -17,7 +17,7 @@ import ArtifactsArea from './ArtifactsArea'
 import { ArtifactProvider, useArtifacts } from '@/providers/ArtifactProvider'
 import { SYSTEM_AGENTS } from '@/constants/agents'
 
-export default function CanvasChatPage() {
+function CanvasChatPageContent() {
   const { id } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
@@ -89,66 +89,6 @@ export default function CanvasChatPage() {
     return artifacts
   }
 
-  // ============================================
-  // 辅助函数：从消息内容中检测 artifacts
-  // ============================================
-  function detectArtifactsFromMessages(messages: Message[]): Artifact[] {
-    const artifacts: Artifact[] = []
-
-    messages.forEach((msg) => {
-      if (msg.role !== 'assistant') return
-
-      // 检测代码块 ```language code ```
-      const codeBlockRegex = /```(\w+)?\n([\s\S]*?)\n```/g
-      let match
-      while ((match = codeBlockRegex.exec(msg.content)) !== null) {
-        const language = match[1] || 'text'
-        const codeContent = match[2]
-        artifacts.push({
-          id: generateId(),
-          type: 'code' as any,
-          content: codeContent,
-          title: `${language === 'text' ? '代码' : language}1`,
-          createdAt: new Date().toISOString()
-        })
-      }
-
-      // 检测HTML块
-      if (msg.content.includes('```html') || msg.content.includes('<!DOCTYPE html>') || /<html[\s>]/i.test(msg.content)) {
-        const hasHtmlCodeBlock = artifacts.some(a => a.type === 'html')
-        if (!hasHtmlCodeBlock) {
-          const htmlMatch = msg.content.match(/```html\n([\s\S]*?)\n```/i) || msg.content.match(/<html[\s\S]*?<\/html>/is)
-          if (htmlMatch) {
-            artifacts.push({
-              id: generateId(),
-              type: 'html' as any,
-              content: htmlMatch[1] || htmlMatch[0],
-              title: '网页1',
-              createdAt: new Date().toISOString()
-            })
-          }
-        }
-      }
-
-      // 检测复杂 Markdown（长度>500字 + 包含复杂结构）
-      const hasComplexStructure = /#{2,}|^[\s]*[-*+] |^\d+\./m.test(msg.content)
-      const hasCodeBlock = /```[\s\S]*?```/.test(msg.content)
-      const textLength = msg.content.replace(/```[\s\S]*?```/g, '').trim().length
-
-      if (textLength > 500 && hasComplexStructure && !hasCodeBlock && artifacts.length === 0) {
-        artifacts.push({
-          id: generateId(),
-          type: 'markdown' as any,
-          content: msg.content,
-          title: '文档1',
-          createdAt: new Date().toISOString()
-        })
-      }
-    })
-
-    return artifacts
-  }
-
   // 从 URL 搜索参数获取 agentId
   const agentIdFromUrl = new URLSearchParams(location.search).get('agentId')
 
@@ -191,18 +131,10 @@ export default function CanvasChatPage() {
   } = useChatStore()
 
   const {
-    addArtifactsBatch,
+    addArtifactsBatch: addArtifactsFromProvider,
     selectArtifactSession,
     clearArtifactSessions
-  } = useCanvasStore()
-
-  const { addArtifactsBatch: addArtifactsFromProvider } = useArtifacts()
-
-  const {
-    addArtifactsBatch,
-    selectArtifactSession,
-    clearArtifactSessions
-  } = useCanvasStore()
+  } = useArtifacts()
 
   const { selectedExpert } = useCanvasStore()
   const { sidebar } = useApp()
@@ -278,7 +210,8 @@ export default function CanvasChatPage() {
     if (state?.startWith) {
       hasLoadedConversationRef.current = true
       setCurrentConversationId(null)
-      setMessages([])
+      // 注意：不要清空消息！useChat会处理消息添加
+      // setMessages([]) - 已移除，避免清空用户刚刚输入的消息
       return
     }
 
@@ -366,10 +299,20 @@ export default function CanvasChatPage() {
         setMessages([])
       }
     }).catch(err => {
-      console.error('[CanvasChatPage] Failed to load conversation:', err)
-      setMessages([])
+      // 检查是否是 404 错误（会话不存在）
+      const isNotFound = err.message?.includes('404') || 
+                         err.message?.includes('Not Found') ||
+                         (err.response && err.response.status === 404);
+      
+      if (!isNotFound) {
+        console.error('[CanvasChatPage] Failed to load conversation:', err);
+      } else {
+        console.warn('[CanvasChatPage] 会话不存在（临时ID或尚未创建）:', id);
+      }
+      setMessages([]);
+      setCurrentConversationId(null);
     })
-  }, [id, location, setSelectedAgentId, agentIdFromUrl, setMessages, setCurrentConversationId, addArtifactsBatch, clearArtifactSessions, selectArtifactSession])
+  }, [id, location, setSelectedAgentId, agentIdFromUrl, setMessages, setCurrentConversationId, addArtifactsFromProvider, clearArtifactSessions, selectArtifactSession])
 
   // 处理消息发送
   const handleSubmitMessage = useCallback(() => {
@@ -450,7 +393,7 @@ export default function CanvasChatPage() {
   const showArtifacts = true
 
   return (
-    <ArtifactProvider>
+    <>
       {/* XPouchLayout - 直接渲染，不受外层容器限制 */}
       <XPouchLayout
         ExpertBarContent={ExpertBarContent}
@@ -503,6 +446,15 @@ export default function CanvasChatPage() {
           </div>
         </div>
       )}
+    </>
+  )
+}
+
+// 外层组件，用 ArtifactProvider 包裹 CanvasChatPageContent
+export default function CanvasChatPage() {
+  return (
+    <ArtifactProvider>
+      <CanvasChatPageContent />
     </ArtifactProvider>
   )
 }

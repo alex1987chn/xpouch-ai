@@ -50,23 +50,65 @@ export const useChatStore = create<ChatState>()(
       // 动作实现
       setSelectedAgentId: (id: string) => set({ selectedAgentId: id }),
       
-      setMessages: (messagesOrUpdater: Message[] | ((prev: Message[]) => Message[])) => set((state: ChatState) => ({
-        messages: typeof messagesOrUpdater === 'function' 
+      setMessages: (messagesOrUpdater: Message[] | ((prev: Message[]) => Message[])) => set((state: ChatState) => {
+        const newMessages = typeof messagesOrUpdater === 'function' 
           ? messagesOrUpdater(state.messages) 
           : messagesOrUpdater
-      })),
+        console.log('[chatStore] setMessages called:', { 
+          isFunction: typeof messagesOrUpdater === 'function',
+          existingCount: state.messages.length,
+          newCount: newMessages.length,
+          newMessageIds: newMessages.map(m => m.id)
+        })
+        return { messages: newMessages }
+      }),
 
-      addMessage: (message: Message) => set((state: ChatState) => ({
-        messages: [...state.messages, { ...message, id: message.id || generateId(), timestamp: Date.now() }]
-      })),
+      addMessage: (message: Message) => set((state: ChatState) => {
+        console.log('[chatStore] addMessage called:', { 
+          messageId: message.id, 
+          role: message.role, 
+          contentLength: message.content?.length,
+          existingMessagesCount: state.messages.length,
+          existingMessageIds: state.messages.map(m => m.id)
+        })
+        const newMessage = { ...message, id: message.id || generateId(), timestamp: Date.now() }
+        const newMessages = [...state.messages, newMessage]
+        console.log('[chatStore] addMessage result:', { 
+          newMessageId: newMessage.id, 
+          newMessagesCount: newMessages.length,
+          newMessageIds: newMessages.map(m => m.id)
+        })
+        return { messages: newMessages }
+      }),
 
-      updateMessage: (id: string, content: string, append?: boolean) => set((state: ChatState) => ({
-        messages: state.messages.map((msg: Message) =>
-          msg.id === id
-            ? { ...msg, content: append ? (msg.content || '') + content : content }
-            : msg
-        )
-      })),
+      updateMessage: (id: string, content: string, append?: boolean) => set((state: ChatState) => {
+        console.log('[chatStore] updateMessage called:', { 
+          targetId: id, 
+          contentLength: content.length, 
+          append: !!append,
+          existingMessagesCount: state.messages.length,
+          matchingMessage: state.messages.find(m => m.id === id)
+        })
+        const updatedMessages = state.messages.map((msg: Message) => {
+          if (msg.id === id) {
+            const newContent = append ? (msg.content || '') + content : content
+            console.log('[chatStore] 更新消息详情:', { 
+              id, 
+              oldContentLength: msg.content?.length, 
+              addedContentLength: content.length, 
+              newContentLength: newContent.length,
+              newContentPreview: newContent.substring(0, 50) 
+            })
+            return { ...msg, content: newContent }
+          }
+          return msg
+        })
+        console.log('[chatStore] updateMessage result:', { 
+          updatedMessagesCount: updatedMessages.length,
+          updatedMessageIds: updatedMessages.map(m => m.id)
+        })
+        return { messages: updatedMessages }
+      }),
 
       setIsTyping: (isTyping: boolean) => set({ isTyping }),
       

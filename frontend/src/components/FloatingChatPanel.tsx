@@ -159,6 +159,14 @@ export default function FloatingChatPanel({
   useEffect(() => {
     console.log('[FloatingChatPanel] 当前对话模式:', conversationMode)
   }, [conversationMode])
+  
+  // 调试：记录接收到的消息和模式
+  useEffect(() => {
+    console.log('[FloatingChatPanel] 调试：messages=', messages, 'conversationMode=', conversationMode, 'messages count=', messages.length)
+    messages.forEach((msg, idx) => {
+      console.log(`[FloatingChatPanel] 消息 ${idx}: id=${msg.id}, role=${msg.role}, content长度=${msg.content?.length}, content前50=${msg.content?.substring(0, 50)}`)
+    })
+  }, [messages, conversationMode])
 
   // Auto-scroll to bottom when new messages appear
   useEffect(() => {
@@ -376,9 +384,7 @@ export default function FloatingChatPanel({
             {/* Messages - flex-1 + overflow-y-auto for scrolling */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-thin">
               <div className="space-y-4">
-                {messages
-                  .filter(msg => msg.content.trim() !== '')
-                  .map((msg, index) => {
+              {messages.map((msg, index) => {
                     const isSystemMessage = msg.role === 'system'
 
                     return (
@@ -471,9 +477,11 @@ export default function FloatingChatPanel({
                                     {conversationMode === 'simple' ? (() => {
                                       const artifacts = detectArtifactsFromMessage(msg.content)
                                       const hasMarkdownArtifact = artifacts.some(a => a.type === 'markdown')
+                                      console.log('[FloatingChatPanel] 渲染消息:', { id: msg.id, contentLength: msg.content?.length, content: msg.content?.substring(0, 50), artifacts, hasMarkdownArtifact })
 
                                       if (hasMarkdownArtifact) {
                                         // 如果有markdown artifact，只显示预览卡片
+                                        console.log('[FloatingChatPanel] 只显示 artifact 预览卡片')
                                         return (
                                           <div className="space-y-2">
                                             {artifacts.map((art, i) => (
@@ -485,9 +493,10 @@ export default function FloatingChatPanel({
 
                                       // 如果没有markdown artifact，显示文本 + code/html artifact
                                       const textOnly = msg.content.replace(/```[\s\S]*?```/g, '').trim()
+                                      console.log('[FloatingChatPanel] 显示文本内容:', { textOnly: textOnly?.substring(0, 50), textOnlyLength: textOnly?.length })
                                       return (
                                         <div className="space-y-3">
-                                          {textOnly && <ReactMarkdown remarkPlugins={[remarkGfm]}>{textOnly}</ReactMarkdown>}
+                                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{textOnly}</ReactMarkdown>
                                           {artifacts.map((art, i) => (
                                             <ArtifactPreviewCard key={i} artifact={art} index={i} total={artifacts.length} />
                                           ))}
