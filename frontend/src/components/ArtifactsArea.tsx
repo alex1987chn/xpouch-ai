@@ -4,6 +4,7 @@ import { CodeArtifact, DocArtifact, SearchArtifact, HtmlArtifact, TextArtifact }
 import ArtifactTabs from './ArtifactTabs'
 import { X, Copy, Check, Maximize2 } from 'lucide-react'
 import { useState } from 'react'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 // ============================================
 // ArtifactsArea - 整合 Tabs + Content 的交付物展示区域
@@ -159,9 +160,9 @@ export default function ArtifactsArea({ className, isFullscreen, onFullscreenTog
       </div>
 
       {/* 内容区域 */}
-      <div className="flex-1 overflow-auto">
+      <ScrollArea className="flex-1">
         {renderArtifact()}
-      </div>
+      </ScrollArea>
     </div>
   )
 }

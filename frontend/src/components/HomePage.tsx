@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { deleteCustomAgent, getAllAgents } from '@/services/api'
 import type { Agent } from '@/types'
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 type ConversationMode = 'simple' | 'complex'
 
@@ -189,7 +190,7 @@ export default function HomePage() {
   }, [inputMessage, navigate, conversationMode, selectedAgentId])
 
   return (
-    <div className="bg-transparent homepage-scroll overflow-y-auto overflow-x-hidden scrollbar-gutter-stable w-full h-full scroll-smooth">
+    <ScrollArea className="bg-transparent homepage-scroll w-full h-full scroll-smooth">
       {/* Logo + 输入框区域 */}
       <div className="pt-[10vh] pb-6 px-6 md:px-12">
         <div className="w-full max-w-5xl mx-auto">
@@ -326,7 +327,7 @@ export default function HomePage() {
         description="删除后无法恢复，请确认是否继续？"
         itemName={deletingAgentName}
       />
-    </div>
+    </ScrollArea>
   )
 }
 
