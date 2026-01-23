@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react'
-import { MessageSquare, Clock, ArrowRight, Trash2 } from 'lucide-react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
+import { MessageSquare, Clock, ArrowRight, Trash2, Search } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { getConversations, deleteConversation as apiDeleteConversation, type Conversation } from '@/services/api'
 import { formatDistanceToNow } from 'date-fns'
@@ -8,6 +8,7 @@ import { useSwipeBack } from '@/hooks/useSwipeBack'
 import SwipeBackIndicator from './SwipeBackIndicator'
 import { useApp } from '@/providers/AppProvider'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { cn } from '@/lib/utils'
 
 interface HistoryPageProps {
   onConversationClick: (id: string) => void
@@ -19,6 +20,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
   const { sidebar } = useApp()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
   const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
 
   // 删除确认状态
@@ -56,7 +58,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
 
     try {
       await apiDeleteConversation(deletingConversationId)
-      // 从本地列表中移除，避免刷新导致滚动位置丢失
+      // 从原始列表中移除，避免刷新导致滚动位置丢失
       setConversations(prev => prev.filter(conv => conv.id !== deletingConversationId))
       setDeleteDialogOpen(false)
     } catch (error) {
@@ -91,6 +93,22 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
       return conversation.messages?.length || 0
   }
 
+  // 过滤搜索结果
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return conversations
+    }
+    const query = searchQuery.toLowerCase()
+    return conversations.filter(conv => {
+      // 搜索标题和最后一条消息
+      const titleMatch = (conv.title || t('newChat')).toLowerCase().includes(query)
+      const messageMatch = conv.messages && conv.messages.length > 0
+        ? conv.messages[conv.messages.length - 1].content.toLowerCase().includes(query)
+        : false
+      return titleMatch || messageMatch
+    })
+  }, [conversations, searchQuery, t])
+
   return (
     <div className="bg-transparent overflow-x-hidden w-full h-full flex flex-col">
       {/* 极窄毛玻璃 Header - h-14 固定高度，fixed 定位 */}
@@ -118,12 +136,39 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
         {/* 移动端滑动返回指示器 */}
         <SwipeBackIndicator swipeProgress={swipeProgress} />
 
+        {/* 搜索框 */}
+        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-3 md:pb-3 mt-8">
+          <div className="relative flex items-center">
+            {/* 搜索图标 - 绝对定位 */}
+            <div className="absolute left-4 flex-shrink-0">
+              <Search className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+            </div>
+
+            <input
+              type="text"
+              placeholder={t('searchHistory') || '搜索历史记录...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={cn(
+                'w-full pl-11 pr-4 py-2.5 h-11 rounded-lg',
+                'bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50',
+                'text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500',
+                'focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/10',
+                'transition-all'
+              )}
+            />
+          </div>
+        </div>
+
         {/* 数据统计信息 */}
-        {!loading && conversations.length > 0 && (
-          <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 md:pb-4 mt-8">
+        {!loading && filteredConversations.length > 0 && (
+          <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 md:pb-4">
             <div className="text-xs text-slate-500 dark:text-slate-400">
               <span>
-                {conversations.length} {t('totalHistory') || 'history records'}
+                {searchQuery
+                  ? `${filteredConversations.length} ${t('matchingHistory') || 'matching history'}`
+                  : `${conversations.length} ${t('totalHistory') || 'total history'}`
+                }
               </span>
             </div>
           </div>
@@ -132,9 +177,9 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
         <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20 mt-0">
           {loading ? (
              <div className="text-center py-20 text-gray-500">Loading history...</div>
-          ) : conversations.length > 0 ? (
+          ) : filteredConversations.length > 0 ? (
             <div className="space-y-4">
-              {conversations.map((conversation) => (
+              {filteredConversations.map((conversation) => (
                 <div
                   key={conversation.id}
                   onClick={() => {
@@ -191,10 +236,16 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
                 <MessageSquare className="w-8 h-8 text-gray-400 dark:text-gray-500" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                {t('noHistory') || 'No conversation history'}
+                {searchQuery
+                  ? t('noMatchingHistory') || 'No matching history found'
+                  : t('noHistory') || 'No conversation history'
+                }
               </h3>
               <p className="text-gray-500 dark:text-gray-400">
-                {t('startChat') || 'Start a new chat to see it here'}
+                {searchQuery
+                  ? t('tryOtherKeywords') || 'Try other keywords'
+                  : t('startChat') || 'Start a new chat to see it here'
+                }
               </p>
             </div>
           )}
