@@ -8,6 +8,7 @@ import { useSwipeBack } from '@/hooks/useSwipeBack'
 import SwipeBackIndicator from './SwipeBackIndicator'
 import { useApp } from '@/providers/AppProvider'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
 interface HistoryPageProps {
@@ -139,23 +140,13 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
         {/* 搜索框 */}
         <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-3 md:pb-3 mt-8">
           <div className="relative flex items-center">
-            {/* 搜索图标 - 绝对定位 */}
-            <div className="absolute left-4 flex-shrink-0">
-              <Search className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-            </div>
-
-            <input
+            <Search className="absolute left-3 w-4 h-4 text-slate-400 dark:text-slate-500" />
+            <Input
               type="text"
               placeholder={t('searchHistory') || '搜索历史记录...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={cn(
-                'w-full pl-11 pr-4 py-2.5 h-11 rounded-lg',
-                'bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50',
-                'text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500',
-                'focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/10',
-                'transition-all'
-              )}
+              className="pl-10"
             />
           </div>
         </div>

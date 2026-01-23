@@ -1,8 +1,13 @@
 import { useState } from 'react'
-import { X, Save, Info } from 'lucide-react'
+import { Save, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AVAILABLE_MODELS, getDefaultModel, setDefaultModel, getAgentPrompt, setAgentPrompt, getAgentDefaultPrompt } from '@/utils/config'
 import { agents } from '@/data/agents'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Separator } from '@/components/ui/separator'
 
 interface SettingsDialogProps {
   isOpen: boolean
@@ -39,42 +44,25 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     setAgentPrompts(prev => ({ ...prev, [agentId]: value }))
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* 遮罩 */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* 对话框 */}
-      <div className="relative bg-card rounded-2xl shadow-2xl max-w-4xl w-full mx-4 max-h-[85vh] overflow-hidden flex flex-col">
-        {/* 头部 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-xl font-semibold text-foreground">
-            系统设置
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-secondary transition-colors"
-          >
-            <X className="w-5 h-5 text-muted-foreground" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>系统设置</DialogTitle>
+        </DialogHeader>
 
         {/* 内容区域 */}
-        <div className="flex-1 overflow-auto smooth-scroll px-6 py-4 space-y-6">
+        <div className="flex-1 overflow-auto smooth-scroll px-1 py-4 space-y-6">
           {/* 默认模型选择 */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 block">
               默认模型
-            </h3>
+            </Label>
             <div className="space-y-2">
               {AVAILABLE_MODELS.map(model => (
-                <label
+                <div
                   key={model.id}
+                  onClick={() => setSelectedModelId(model.id)}
                   className={cn(
                     'flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all',
                     selectedModelId === model.id
@@ -82,14 +70,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                       : 'border-border hover:border-input'
                   )}
                 >
-                  <input
-                    type="radio"
-                    name="model"
-                    value={model.id}
-                    checked={selectedModelId === model.id}
-                    onChange={() => setSelectedModelId(model.id)}
-                    className="sr-only"
-                  />
                   <div className="flex-1">
                     <div className="font-medium text-foreground">
                       {model.name}
@@ -103,16 +83,18 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                       <div className="w-2 h-2 rounded-full bg-white" />
                     </div>
                   )}
-                </label>
+                </div>
               ))}
             </div>
           </section>
 
+          <Separator />
+
           {/* API Key 配置说明 */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 block">
               API Key 配置
-            </h3>
+            </Label>
             <div className="p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
@@ -131,11 +113,13 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             </div>
           </section>
 
+          <Separator />
+
           {/* 智能体 Prompt 配置 */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 block">
               智能体 Prompt 配置
-            </h3>
+            </Label>
             <div className="space-y-4">
               {agents.map(agent => {
                 const defaultPrompt = getAgentDefaultPrompt(agent.id)
@@ -151,20 +135,20 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                         <span className="text-white text-lg">{agent.name[0]}</span>
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-medium text-foreground">
+                        <Label className="font-medium text-foreground">
                           {agent.name}
-                        </h4>
+                        </Label>
                         <p className="text-xs text-muted-foreground">
                           {defaultPrompt.substring(0, 50)}...
                         </p>
                       </div>
                     </div>
-                    <textarea
+                    <Textarea
                       value={customPrompt}
                       onChange={(e) => handlePromptChange(agent.id, e.target.value)}
                       placeholder={`使用默认 prompt: ${defaultPrompt}`}
                       rows={3}
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="resize-none"
                     />
                   </div>
                 )
@@ -174,22 +158,16 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
         </div>
 
         {/* 底部按钮 */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-secondary/30">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-secondary transition-colors"
-          >
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
             取消
-          </button>
-          <button
-            onClick={handleSave}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-          >
-            <Save className="w-4 h-4" />
+          </Button>
+          <Button onClick={handleSave}>
+            <Save className="w-4 h-4 mr-2" />
             保存设置
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
