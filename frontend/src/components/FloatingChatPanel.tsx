@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { Bot, User, Minimize2, Maximize2, Copy, Check, RotateCcw, MoreVertical, Sparkles, Code, Globe, ArrowRight } from 'lucide-react'
+import { Bot, User, Minimize2, Maximize2, Copy, Check, RotateCcw, MoreVertical, Sparkles, Code, Globe, FileText, ArrowRight } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import type { Message, Artifact } from '@/store/chatStore'
@@ -15,7 +15,7 @@ type ConversationMode = 'simple' | 'complex'
 
 // Artifact类型定义
 type DetectedArtifact = {
-  type: 'code' | 'html'
+  type: 'code' | 'html' | 'markdown'
   content: string
   language?: string
 }
@@ -53,6 +53,21 @@ function detectArtifactsFromMessage(content: string): DetectedArtifact[] {
     }
   }
 
+  // 智能检测复杂Markdown（长度>500字 + 包含复杂结构）
+  // 规则：包含多级标题(##+) 或 无序列表(-*+) 或 有序列表(\d+.)
+  const hasComplexStructure = /#{2,}|^[\s]*[-*+] |^\d+\./m.test(content)
+  const hasCodeBlock = /```[\s\S]*?```/.test(content)
+  const textLength = content.replace(/```[\s\S]*?```/g, '').trim().length
+
+  // 如果内容较长且包含复杂结构，识别为markdown artifact
+  // 同时排除已经检测到代码块或HTML的情况，避免重复
+  if (textLength > 500 && hasComplexStructure && !hasCodeBlock && artifacts.length === 0) {
+    artifacts.push({
+      type: 'markdown',
+      content: content
+    })
+  }
+
   return artifacts
 }
 
@@ -60,7 +75,8 @@ function detectArtifactsFromMessage(content: string): DetectedArtifact[] {
 function getArtifactName(type: string, index: number, total: number): string {
   const typeMap: Record<string, string> = {
     'code': '代码',
-    'html': '网页'
+    'html': '网页',
+    'markdown': '文档'
   }
   // 根据类型和总数量生成名称
   if (total === 1) {
@@ -236,6 +252,12 @@ export default function FloatingChatPanel({
         bgColor: 'bg-orange-100 dark:bg-orange-900/30',
         textColor: 'text-orange-600 dark:text-orange-400',
         borderColor: 'border-orange-200 dark:border-orange-800/30'
+      },
+      markdown: {
+        icon: <FileText className="w-4 h-4" />,
+        bgColor: 'bg-purple-100 dark:bg-purple-900/30',
+        textColor: 'text-purple-600 dark:text-purple-400',
+        borderColor: 'border-purple-200 dark:border-purple-800/30'
       }
     }
 
@@ -448,6 +470,20 @@ export default function FloatingChatPanel({
                                   <>
                                     {conversationMode === 'simple' ? (() => {
                                       const artifacts = detectArtifactsFromMessage(msg.content)
+                                      const hasMarkdownArtifact = artifacts.some(a => a.type === 'markdown')
+
+                                      if (hasMarkdownArtifact) {
+                                        // 如果有markdown artifact，只显示预览卡片
+                                        return (
+                                          <div className="space-y-2">
+                                            {artifacts.map((art, i) => (
+                                              <ArtifactPreviewCard key={i} artifact={art} index={i} total={artifacts.length} />
+                                            ))}
+                                          </div>
+                                        )
+                                      }
+
+                                      // 如果没有markdown artifact，显示文本 + code/html artifact
                                       const textOnly = msg.content.replace(/```[\s\S]*?```/g, '').trim()
                                       return (
                                         <div className="space-y-3">
