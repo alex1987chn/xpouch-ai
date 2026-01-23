@@ -3,6 +3,7 @@ import { X, Clock, FileText, Code, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 interface WorkflowStep {
   id: string
@@ -171,7 +172,7 @@ export default function ExpertDrawer({ isOpen, onClose, expertName }: ExpertDraw
         </div>
 
         {/* 工作流时间线 */}
-        <div className="flex-1 overflow-auto p-6">
+        <ScrollArea className="flex-1 p-6">
           <div className="relative">
             {/* 连接线 */}
             <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300 dark:bg-gray-700" />
@@ -227,7 +228,7 @@ export default function ExpertDrawer({ isOpen, onClose, expertName }: ExpertDraw
               ))}
             </div>
           </div>
-        </div>
+        </ScrollArea>
       </div>
     </>
   )

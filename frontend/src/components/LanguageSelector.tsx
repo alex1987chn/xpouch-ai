@@ -1,5 +1,6 @@
 import { useTranslation, type Language } from '@/i18n'
 import { languages } from '@/constants/languages'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 export function LanguageSelector() {
   const { language, setLanguage } = useTranslation()
@@ -14,20 +15,22 @@ export function LanguageSelector() {
   }
 
   return (
-    <div className="flex bg-slate-200 dark:bg-slate-700 rounded-full p-1 w-fit">
+    <ToggleGroup
+      type="single"
+      value={language}
+      onValueChange={(value) => value && setLanguage(value as Language)}
+      className="bg-slate-200 dark:bg-slate-700 rounded-full p-1 w-fit"
+    >
       {languages.map((lang) => (
-        <button
+        <ToggleGroupItem
           key={lang.code}
-          onClick={() => setLanguage(lang.code as Language)}
-          className={`px-3 py-1.5 text-[10px] font-medium rounded-full transition-all duration-200 ${
-            language === lang.code
-              ? 'bg-white dark:bg-white text-slate-900 dark:text-slate-900 shadow-sm'
-              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
+          value={lang.code}
+          aria-label={lang.name}
+          className="text-[10px] font-medium"
         >
           {getShortName(lang.code)}
-        </button>
+        </ToggleGroupItem>
       ))}
-    </div>
+    </ToggleGroup>
   )
 }
