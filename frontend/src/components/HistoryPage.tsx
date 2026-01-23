@@ -9,6 +9,7 @@ import SwipeBackIndicator from './SwipeBackIndicator'
 import { useApp } from '@/providers/AppProvider'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 
 interface HistoryPageProps {
@@ -128,8 +129,8 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
       </header>
 
       {/* 可滚动内容区 - 添加 pt-14 避免内容被 header 遮挡 */}
-      <div
-        className="h-full overflow-y-auto scrollbar-thin overscroll-behavior-y-contain overflow-x-hidden pt-14"
+      <ScrollArea
+        className="h-full overflow-x-hidden pt-14"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -241,7 +242,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
             </div>
           )}
         </div>
-      </div>
+      </ScrollArea>
 
       {/* 删除确认对话框 */}
       <DeleteConfirmDialog
