@@ -93,12 +93,12 @@ const router = createBrowserRouter([
         element: <HomePage />
       },
       {
-        path: 'history',
-        element: <HistoryPageWrapper />
-      },
-      {
         path: 'knowledge',
         element: <KnowledgeBasePage />
+      },
+      {
+        path: 'history',
+        element: <HistoryPageWrapper />
       },
       {
         path: 'create-agent',
