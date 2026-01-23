@@ -196,7 +196,7 @@ export default function CanvasChatPage() {
     clearArtifactSessions
   } = useCanvasStore()
 
-  const { addArtifactsBatch: addArtifactsToProvider } = useArtifacts()
+  const { addArtifactsBatch: addArtifactsFromProvider } = useArtifacts()
 
   const {
     addArtifactsBatch,
@@ -332,7 +332,7 @@ export default function CanvasChatPage() {
 
                 // 添加到 canvasStore
                 if (artifacts.length > 0) {
-                  addArtifactsBatch(expertType, artifacts)
+                  addArtifactsFromProvider(expertType, artifacts)
                 }
               })
             }
@@ -352,7 +352,7 @@ export default function CanvasChatPage() {
               }))
 
               // 添加到 canvasStore
-              addArtifactsBatch('simple', simpleArtifacts)
+              addArtifactsFromProvider('simple', simpleArtifacts)
 
               // 自动选中第一个 artifact
               selectArtifactSession('simple')
