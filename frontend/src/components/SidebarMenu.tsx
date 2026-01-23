@@ -1,8 +1,6 @@
-import { Home, History, FileText, MessageCircle } from 'lucide-react'
+import { Home, History, FileText } from 'lucide-react'
 import { useTranslation, type TranslationKey } from '@/i18n'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useChatStore } from '@/store/chatStore'
-import { generateId } from '@/utils/storage'
 import { cn } from '@/lib/utils'
 
 interface SidebarMenuProps {
@@ -14,10 +12,8 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
-  const { lastActiveConversationId } = useChatStore()
 
   // 判断当前页面
-  const isOnChat = location.pathname.startsWith('/chat')
   const isOnHome = location.pathname === '/'
   const isOnHistory = location.pathname === '/history'
   const isOnKnowledge = location.pathname === '/knowledge'
@@ -25,16 +21,6 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
   // 处理菜单项点击
   const handleMenuClick = (path: string) => {
     navigate(path)
-  }
-
-  const handleBackToChat = () => {
-    if (lastActiveConversationId) {
-      navigate(`/chat/${lastActiveConversationId}`)
-    } else {
-      // 如果没有历史会话，创建一个新的会话 ID
-      const newId = generateId()
-      navigate(`/chat/${newId}`)
-    }
   }
 
   return (
@@ -68,21 +54,7 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
           <Home className="w-4 h-4 flex-shrink-0" />
         </button>
 
-        {/* 回到上一个会话按钮 */}
-        <button
-          onClick={handleBackToChat}
-          className={cn(
-            'flex items-center justify-center mx-auto w-8 h-8 rounded-full transition-all duration-200',
-            isOnChat
-              ? 'bg-white text-indigo-600 shadow-[0_0_15px_rgba(139,92,246,0.4)] dark:bg-gray-700 dark:text-white dark:shadow-[0_0_15px_rgba(139,92,246,0.4)]'
-              : 'text-slate-400 hover:bg-gray-100/50 hover:text-gray-700 dark:hover:bg-gray-700/50 dark:hover:text-slate-200'
-          )}
-          title={t('backToChat')}
-        >
-          <MessageCircle className="w-4 h-4 flex-shrink-0" />
-        </button>
-
-        {/* 其他菜单项 */}
+        {/* 历史记录按钮 */}
         <button
           onClick={() => handleMenuClick('/history')}
           className={cn(
