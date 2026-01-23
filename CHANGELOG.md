@@ -798,6 +798,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **类型安全强化**：强化TypeScript类型定义，移除不安全类型断言，提升代码健壮性和可维护性
 - **前后端逻辑简化**：后端移除`get_default_assistant()`数据库查询依赖，直接使用`ASSISTANT_SYSTEM_PROMPT`常量；前端过滤`is_default`助手避免重复显示
 
+### 🔧 依赖升级 (2026-01-23)
+
+**前端核心依赖升级**：
+- **Vite**: 从 ^5.4.17 升级到 **^7.3.1**（5.x → 7.x 重大版本更新，获得构建性能优化）
+- **Framer Motion**: 从 ^11.15.0 升级到 **^12.29.0**（11.x → 12.x 重大版本更新，改善交互流畅度）
+- **Lucide React**: 从 ^0.462.0 升级到 **^0.563.0**（0.46 → 0.56 版本，图标库更新）
+
+**开发者工具更新**：
+- **@vitejs/plugin-react**: 从 ^4.3.4 升级到 **^5.1.2**（支持 Vite 7）
+- **@sentry/react**: 从 ^10.33.0 升级到 **^10.36.0**
+- **@sentry/vite-plugin**: 从 ^4.6.1 升级到 **^4.7.0**
+- **@testing-library/react**: 从 ^16.3.1 升级到 **^16.3.2**
+- **@types/node**: 从 ^25.0.7 升级到 **^25.0.10**
+
+**配置修复**：
+- **pnpm workspace 配置**：创建 `pnpm-workspace.yaml` 文件，解决 pnpm 的 workspace 警告
+- **依赖位置清理**：从根目录 `package.json` 移除前端依赖，确保前端包独立管理自己的依赖
+
+**验证结果**：
+- ✅ Vite 7.3.1 构建成功，无编译错误
+- ✅ 所有功能运行正常，兼容性验证通过
+
 ---
 
 ## [v0.2.3] - 2026-01-19
