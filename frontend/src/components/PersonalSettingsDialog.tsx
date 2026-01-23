@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react'
-import { X, Save, User, Camera, Upload } from 'lucide-react'
+import { Save, User, Camera, Upload } from 'lucide-react'
 import { fileToBase64 } from '@/utils/userSettings'
 import { useUserStore } from '@/store/userStore'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
 interface PersonalSettingsDialogProps {
   isOpen: boolean
@@ -10,7 +15,7 @@ interface PersonalSettingsDialogProps {
 
 export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDialogProps) {
   const { user, updateUser } = useUserStore()
-  
+
   const [username, setUsername] = useState('')
   const [avatar, setAvatar] = useState('')
   const [avatarPreview, setAvatarPreview] = useState('')
@@ -91,54 +96,29 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* 遮罩 */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* 对话框 */}
-      <div className="relative bg-card rounded-2xl shadow-2xl max-w-md w-full mx-4 max-h-[85vh] overflow-hidden flex flex-col">
-        {/* 头部 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-xl font-semibold text-foreground">
-            个人设置
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-secondary transition-colors"
-          >
-            <X className="w-5 h-5 text-muted-foreground" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>个人设置</DialogTitle>
+        </DialogHeader>
 
         {/* 内容区域 */}
-        <div className="flex-1 overflow-auto smooth-scroll px-6 py-4 space-y-6">
+        <div className="flex-1 overflow-auto smooth-scroll px-1 py-4 space-y-6">
           {/* 头像设置 */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 block">
               头像设置
-            </h3>
+            </Label>
             <div className="flex items-center gap-4">
               {/* 头像预览 */}
               <div className="relative">
-                <div
-                  className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-2xl font-bold overflow-hidden border-4 border-white dark:border-gray-800 shadow-lg"
-                >
-                  {avatarPreview ? (
-                    <img
-                      src={avatarPreview}
-                      alt="Avatar"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    username.substring(0, 2).toUpperCase()
-                  )}
-                </div>
+                <Avatar className="w-20 h-20 border-4 border-white dark:border-gray-800 shadow-lg">
+                  <AvatarImage src={avatarPreview} alt="Avatar" />
+                  <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-500 text-white text-2xl font-bold">
+                    {username.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
 
                 {/* 上传按钮 */}
                 <label className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-gray-700 rounded-full flex items-center justify-center shadow-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border-2 border-white dark:border-gray-800">
@@ -165,13 +145,15 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
                   />
                 </label>
                 {avatarPreview && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={handleRemoveAvatar}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                   >
-                    <X className="w-4 h-4" />
+                    <Camera className="w-4 h-4 mr-2" />
                     移除头像
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -182,18 +164,19 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
 
           {/* 用户名设置 */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            <Label htmlFor="username" className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 block">
               用户名
-            </h3>
+            </Label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input
+              <Input
+                id="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="请输入用户名"
                 maxLength={20}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="pl-10"
               />
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -203,28 +186,20 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
         </div>
 
         {/* 底部按钮 */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-secondary/30">
-          <button
-            onClick={onClose}
-            disabled={isSaving}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
-          >
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isSaving}>
             取消
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
-          >
+          </Button>
+          <Button onClick={handleSave} disabled={isSaving}>
             {isSaving ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
             ) : (
-                <Save className="w-4 h-4" />
+              <Save className="w-4 h-4 mr-2" />
             )}
             {isSaving ? '保存中...' : '保存'}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
