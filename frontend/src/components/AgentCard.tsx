@@ -45,6 +45,27 @@ function AgentCard({ agent, isSelected, onClick, onDelete, index: _index, showDe
         )}
       />
 
+      {/* 删除按钮 - 右上角，hover时显示 */}
+      {showDeleteButton && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete?.()
+          }}
+          className={cn(
+            'absolute top-3 right-3 z-10',
+            'p-2 rounded-lg transition-all duration-200',
+            'bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm',
+            'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300',
+            'opacity-0 group-hover:opacity-100 hover:scale-110 hover:bg-red-50 dark:hover:bg-red-900/20',
+            'shadow-sm hover:shadow-md'
+          )}
+          title="删除"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      )}
+
       <Card className="bg-transparent border-0 shadow-none h-full">
         <CardHeader className="pb-3 pl-5">
           <div className="flex items-start gap-3">
@@ -97,18 +118,6 @@ function AgentCard({ agent, isSelected, onClick, onDelete, index: _index, showDe
                 )}
               </div>
             </div>
-
-            {showDeleteButton && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDelete?.()
-                }}
-                className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors text-red-600 dark:text-red-400"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
           </div>
         </CardHeader>
 
