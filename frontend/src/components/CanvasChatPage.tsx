@@ -6,7 +6,6 @@ import { useChat } from '@/hooks/useChat'
 import { useCanvasStore } from '@/store/canvasStore'
 import { getConversation, type ApiMessage } from '@/services/api'
 import { type Message, type Conversation, type Artifact } from '@/types'
-import { generateId } from '@/utils/storage'
 import FloatingChatPanel from './FloatingChatPanel'
 import ExpertDrawer from './ExpertDrawer'
 import XPouchLayout from './XPouchLayout'
@@ -42,7 +41,7 @@ function CanvasChatPageContent() {
         const language = match[1] || 'text'
         const codeContent = match[2]
         artifacts.push({
-          id: generateId(),
+          id: crypto.randomUUID(),
           type: 'code' as any,
           content: codeContent,
           title: `${language === 'text' ? '代码' : language}${artifactIndex + 1}`,
@@ -58,7 +57,7 @@ function CanvasChatPageContent() {
           const htmlMatch = msg.content.match(/```html\n([\s\S]*?)\n```/i) || msg.content.match(/<html[\s\S]*?<\/html>/is)
           if (htmlMatch) {
             artifacts.push({
-              id: generateId(),
+              id: crypto.randomUUID(),
               type: 'html' as any,
               content: htmlMatch[1] || htmlMatch[0],
               title: `网页${artifactIndex + 1}`,
@@ -76,7 +75,7 @@ function CanvasChatPageContent() {
 
       if (textLength > 500 && hasComplexStructure && !hasCodeBlock && artifactIndex === 0) {
         artifacts.push({
-          id: generateId(),
+          id: crypto.randomUUID(),
           type: 'markdown' as any,
           content: msg.content,
           title: `文档${artifactIndex + 1}`,
@@ -110,6 +109,7 @@ function CanvasChatPageContent() {
 
   const handledStartWithRef = useRef(false)
   const hasLoadedConversationRef = useRef(false)
+  const previousConversationIdRef = useRef<string | null>(null)
   const [isExpertDrawerOpen, setIsExpertDrawerOpen] = useState(false)
   const [isChatMinimized, setIsChatMinimized] = useState(false)
   const [isArtifactFullscreen, setIsArtifactFullscreen] = useState(false)
@@ -197,11 +197,13 @@ function CanvasChatPageContent() {
       setCurrentConversationId(null)
       setMessages([])
       hasLoadedConversationRef.current = false
+      previousConversationIdRef.current = null
       return
     }
 
-    // 检查是否已经加载过（避免重复加载）
-    if (hasLoadedConversationRef.current) {
+    // 检查是否是同一个会话（避免重复加载）
+    if (id === previousConversationIdRef.current && hasLoadedConversationRef.current) {
+      console.log('[CanvasChatPage] 同一会话，跳过加载:', id)
       return
     }
 
@@ -210,31 +212,38 @@ function CanvasChatPageContent() {
     if (state?.startWith) {
       hasLoadedConversationRef.current = true
       setCurrentConversationId(null)
+      previousConversationIdRef.current = id
       // 注意：不要清空消息！useChat会处理消息添加
       // setMessages([]) - 已移除，避免清空用户刚刚输入的消息
       return
     }
 
     hasLoadedConversationRef.current = true
+    previousConversationIdRef.current = id
+
+    console.log('[CanvasChatPage] 开始加载会话:', id)
 
     getConversation(id).then(conversation => {
       if (conversation) {
         setSelectedAgentId(conversation.agent_id)
         setCurrentConversationId(conversation.id)
         setCurrentConvData(conversation) // 保存当前会话对象
-        console.log('[CanvasChatPage] 会话加载成功:', { id: conversation.id, agent_id: conversation.agent_id, agent_type: conversation.agent_type })
+        console.log('[CanvasChatPage] 会话加载成功:', { id: conversation.id, agent_id: conversation.agent_id, agent_type: conversation.agent_type, messagesCount: conversation.messages?.length })
 
         // 加载 messages
         if (conversation.messages && conversation.messages.length > 0) {
           const loadedMessages = conversation.messages.map((m) => {
             const typedM = m as ApiMessage
+            // 修复：保留system角色，不转换为assistant，确保系统消息正确显示
+            // system消息用于显示专家完成、任务计划等信息
             return {
-              role: typedM.role === 'system' ? 'assistant' : (typedM.role as 'assistant' | 'user'),
+              role: typedM.role as 'user' | 'assistant' | 'system',
               content: typedM.content,
-              id: typedM.id ? String(typedM.id) : generateId(),
+              id: typedM.id ? String(typedM.id) : crypto.randomUUID(),
               timestamp: typedM.timestamp ? new Date(typedM.timestamp).getTime() : Date.now()
             }
           })
+          console.log('[CanvasChatPage] 加载的消息:', { count: loadedMessages.length, firstMessage: loadedMessages[0], lastMessage: loadedMessages[loadedMessages.length - 1] })
           setMessages(loadedMessages as Message[])
 
           // 加载 artifacts（如果存在）
@@ -254,7 +263,7 @@ function CanvasChatPageContent() {
                 if (subTask.artifacts && Array.isArray(subTask.artifacts)) {
                   subTask.artifacts.forEach((artifactData: any, artIdx: number) => {
                     artifacts.push({
-                      id: generateId(),
+                      id: crypto.randomUUID(),
                       type: artifactData.type || 'code',
                       content: artifactData.content || '',
                       title: artifactData.title || `Artifact ${artIdx + 1}`,
@@ -312,7 +321,7 @@ function CanvasChatPageContent() {
       setMessages([]);
       setCurrentConversationId(null);
     })
-  }, [id, location, setSelectedAgentId, agentIdFromUrl, setMessages, setCurrentConversationId, addArtifactsFromProvider, clearArtifactSessions, selectArtifactSession])
+  }, [id, location.state, agentIdFromUrl]) // 只依赖id和location.state，其他函数引用不需要作为依赖
 
   // 处理消息发送
   const handleSubmitMessage = useCallback(() => {

@@ -44,12 +44,12 @@ function getTabTitle(artifact: Artifact, index: number, total: number): string {
   return truncateTitle(title)
 }
 
-// 截断标题，最多显示10个字符
+// 截断标题，最多显示6个字符
 function truncateTitle(title: string): string {
-  if (title.length <= 10) {
+  if (title.length <= 6) {
     return title
   }
-  return title.substring(0, 10) + '...'
+  return title.substring(0, 6) + '...'
 }
 
 export default function ArtifactTabs({ className }: ArtifactTabsProps) {
@@ -74,9 +74,12 @@ export default function ArtifactTabs({ className }: ArtifactTabsProps) {
         const isActive = index === currentIndex
         const title = getTabTitle(artifact, index, artifacts.length)
 
+        // 修复：确保每个artifact有唯一的key，使用artifact.id或fallback到index
+        const key = artifact.id || `artifact-${index}`
+
         return (
           <button
-            key={artifact.id}
+            key={key}
             onClick={() => switchArtifact(index)}
             className={cn(
               'flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all',

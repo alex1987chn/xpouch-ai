@@ -1,6 +1,7 @@
 import pathlib
 from dotenv import load_dotenv
 import os
+import sys
 
 # >>> RELOADED main.py: Starting initialization...
 
@@ -23,6 +24,7 @@ from sqlalchemy.orm import selectinload # Import selectinload
 from contextlib import asynccontextmanager
 from datetime import datetime
 import uuid
+import io
 
 from agents.graph import commander_graph
 from agents.experts import EXPERT_FUNCTIONS
@@ -612,15 +614,18 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     # 1. 确定 Conversation ID
     conversation_id = request.conversationId
     conversation = None
-    
+
     if conversation_id:
         conversation = session.get(Conversation, conversation_id)
         if conversation and conversation.user_id != current_user.id:
              raise AuthorizationError("没有权限访问此会话")
-        
+
     if not conversation:
         # 如果没有ID或找不到，创建新会话
-        conversation_id = str(uuid.uuid4())
+        # 如果前端提供了conversationId（即使是新会话），直接使用前端的ID（幂等性）
+        # 只有当conversationId为空时，才生成新的UUID
+        if not conversation_id:
+            conversation_id = str(uuid.uuid4())
 
         # 规范化智能体 ID（兼容旧 ID）
         normalized_agent_id = normalize_agent_id(request.agentId)
@@ -1287,4 +1292,6 @@ async def chat_invoke_endpoint(
 if __name__ == "__main__":
     # Local dev defaults to 3002, Docker uses PORT env var (e.g. 3000)
     port = int(os.getenv("PORT", 3002))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+
+    # 启动uvicorn（log_config=None禁用默认日志，避免编码冲突）
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True, log_config=None)
