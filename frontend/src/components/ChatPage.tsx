@@ -7,7 +7,6 @@ import GlowingInput from '@/components/GlowingInput'
 import { AgentHeader } from '@/components/AgentHeader'
 import { useTranslation } from '@/i18n'
 import { getConversation, type ApiMessage } from '@/services/api'
-import { generateId } from '@/utils/storage'
 import { dbMessageToMessage } from '@/types'
 import { type ChatPageState } from '@/types'
 
@@ -61,7 +60,7 @@ export default function ChatPage() {
                     const loadedMessages = conversation.messages.map((m: ApiMessage) => ({
                         role: m.role === 'system' ? 'assistant' : m.role,
                         content: m.content,
-                        id: m.id ? String(m.id) : generateId(),
+                        id: m.id ? String(m.id) : crypto.randomUUID(),
                         timestamp: m.timestamp ? new Date(m.timestamp).getTime() : Date.now()
                     }))
                     setMessages(loadedMessages)
@@ -72,13 +71,13 @@ export default function ChatPage() {
         }).catch(err => {
             // 检查是否是 404 错误（会话不存在）
             if (err.message?.includes('404') || err.status === 404) {
-                // 这是临时 ID 或不存在的会话，清空消息列表
+                // 这是新会话（前端生成的UUID尚未在后端创建），清空消息列表
                 setMessages([])
-                setCurrentConversationId(null)
+                setCurrentConversationId(id)
             } else {
                 console.error("Failed to load conversation", err)
                 // 其他错误，跳转到新建会话
-                const newId = generateId()
+                const newId = crypto.randomUUID()
                 navigate(`/chat/${newId}`, { replace: true })
             }
         })

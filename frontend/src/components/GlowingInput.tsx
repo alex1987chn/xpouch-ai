@@ -296,7 +296,7 @@ export default function GlowingInput({
               disabled={isTyping ? false : (!canSubmit || disabled)}
               size="sm"
               className={cn(
-                'h-9 px-5 rounded-xl transition-all font-medium shadow-sm',
+                'h-9 px-3 rounded-xl transition-all font-medium shadow-sm',
                 isTyping
                   ? 'bg-red-500 text-white hover:bg-red-600 dark:bg-red-500 dark:hover:bg-red-600'
                   : canSubmit
@@ -310,10 +310,7 @@ export default function GlowingInput({
                   {t('stop')}
                 </>
               ) : (
-                <>
-                  <Send className="w-4 h-4 mr-1.5" />
-                  {t('send')}
-                </>
+                <Send className="w-4 h-4" />
               )}
             </Button>
           </div>

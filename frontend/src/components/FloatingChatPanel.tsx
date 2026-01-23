@@ -444,71 +444,74 @@ export default function FloatingChatPanel({
                             </div>
 
                             {/* Message Bubble */}
-                            <div className={cn(
-                              'relative max-w-[80%] rounded-2xl p-4 shadow-sm',
-                              msg.role === 'user' 
-                                ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white' 
-                                : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100'
-                            )}>
-                              {/* Action Buttons Panel */}
+                            {/* 修复：如果assistant消息内容为空且正在输入，隐藏空气泡，避免与loading指示器重复 */}
+                            {!(msg.role === 'assistant' && !msg.content && isTyping) && (
                               <div className={cn(
-                                'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
-                                msg.role === 'user' ? 'flex-row-reverse -top-8 right-0' : 'flex-row'
+                                'relative max-w-[80%] rounded-2xl p-4 shadow-sm',
+                                msg.role === 'user'
+                                  ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white'
+                                  : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100'
                               )}>
-                                <button
-                                  onClick={() => handleCopyMessage(msg.content, msg.id || String(index))}
-                                  className="p-1.5 rounded-lg bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-300 transition-colors"
-                                >
-                                  {copiedMessageId === (msg.id || String(index)) ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                                </button>
-                                {msg.role === 'assistant' && (
-                                  <button onClick={handleRegenerate} className="p-1.5 rounded-lg bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-300">
-                                    <RotateCcw className="w-3.5 h-3.5" />
+                                {/* Action Buttons Panel */}
+                                <div className={cn(
+                                  'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
+                                  msg.role === 'user' ? 'flex-row-reverse -top-8 right-0' : 'flex-row'
+                                )}>
+                                  <button
+                                    onClick={() => handleCopyMessage(msg.content, msg.id || String(index))}
+                                    className="p-1.5 rounded-lg bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-300 transition-colors"
+                                  >
+                                    {copiedMessageId === (msg.id || String(index)) ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                                   </button>
-                                )}
-                              </div>
+                                  {msg.role === 'assistant' && (
+                                    <button onClick={handleRegenerate} className="p-1.5 rounded-lg bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-300">
+                                      <RotateCcw className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
 
-                              {/* Content Rendering */}
-                              <div className="text-sm text-left">
-                                {msg.role === 'user' ? (
-                                  <div className="whitespace-pre-wrap">{msg.content}</div>
-                                ) : (
-                                  <>
-                                    {conversationMode === 'simple' ? (() => {
-                                      const artifacts = detectArtifactsFromMessage(msg.content)
-                                      const hasMarkdownArtifact = artifacts.some(a => a.type === 'markdown')
-                                      console.log('[FloatingChatPanel] 渲染消息:', { id: msg.id, contentLength: msg.content?.length, content: msg.content?.substring(0, 50), artifacts, hasMarkdownArtifact })
+                                {/* Content Rendering */}
+                                <div className="text-sm text-left">
+                                  {msg.role === 'user' ? (
+                                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                                  ) : (
+                                    <>
+                                      {conversationMode === 'simple' ? (() => {
+                                        const artifacts = detectArtifactsFromMessage(msg.content)
+                                        const hasMarkdownArtifact = artifacts.some(a => a.type === 'markdown')
+                                        console.log('[FloatingChatPanel] 渲染消息:', { id: msg.id, contentLength: msg.content?.length, content: msg.content?.substring(0, 50), artifacts, hasMarkdownArtifact })
 
-                                      if (hasMarkdownArtifact) {
-                                        // 如果有markdown artifact，只显示预览卡片
-                                        console.log('[FloatingChatPanel] 只显示 artifact 预览卡片')
+                                        if (hasMarkdownArtifact) {
+                                          // 如果有markdown artifact，只显示预览卡片
+                                          console.log('[FloatingChatPanel] 只显示 artifact 预览卡片')
+                                          return (
+                                            <div className="space-y-2">
+                                              {artifacts.map((art, i) => (
+                                                <ArtifactPreviewCard key={i} artifact={art} index={i} total={artifacts.length} />
+                                              ))}
+                                            </div>
+                                          )
+                                        }
+
+                                        // 如果没有markdown artifact，显示文本 + code/html artifact
+                                        const textOnly = msg.content.replace(/```[\s\S]*?```/g, '').trim()
+                                        console.log('[FloatingChatPanel] 显示文本内容:', { textOnly: textOnly?.substring(0, 50), textOnlyLength: textOnly?.length })
                                         return (
-                                          <div className="space-y-2">
+                                          <div className="space-y-3">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{textOnly}</ReactMarkdown>
                                             {artifacts.map((art, i) => (
                                               <ArtifactPreviewCard key={i} artifact={art} index={i} total={artifacts.length} />
                                             ))}
                                           </div>
                                         )
-                                      }
-
-                                      // 如果没有markdown artifact，显示文本 + code/html artifact
-                                      const textOnly = msg.content.replace(/```[\s\S]*?```/g, '').trim()
-                                      console.log('[FloatingChatPanel] 显示文本内容:', { textOnly: textOnly?.substring(0, 50), textOnlyLength: textOnly?.length })
-                                      return (
-                                        <div className="space-y-3">
-                                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{textOnly}</ReactMarkdown>
-                                          {artifacts.map((art, i) => (
-                                            <ArtifactPreviewCard key={i} artifact={art} index={i} total={artifacts.length} />
-                                          ))}
-                                        </div>
-                                      )
-                                    })() : (
-                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                                    )}
-                                  </>
-                                )}
+                                      })() : (
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </div>
                         )}
                       </motion.div>
@@ -516,24 +519,19 @@ export default function FloatingChatPanel({
                   })}
 
                 {/* Typing Indicator */}
-                {isTyping && (
+                {/* 修复：只有在没有内容开始流式时才显示loading指示器
+                     如果有runningExpert（复杂模式）或有非空的assistant消息（简单模式开始流式），则隐藏loading */}
+                {isTyping && !runningExpert && !messages.some(m => m.role === 'assistant' && m.content && m.content.length > 0) && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 items-start">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
                       <Bot className="w-4 h-4 text-white" />
                     </div>
                     <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4">
-                      {runningExpert ? (
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />
-                          <span className="text-sm">{runningExpertConfig?.name} 正在执行...</span>
-                        </div>
-                      ) : (
-                        <div className="flex gap-1">
-                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
-                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]" />
-                        </div>
-                      )}
+                      <div className="flex gap-1">
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                      </div>
                     </div>
                   </motion.div>
                 )}

@@ -5,7 +5,6 @@ import { useCanvasStore, type ExpertResult } from '@/store/canvasStore'
 import { sendMessage, type ApiMessage } from '@/services/api'
 import { getExpertConfig, createExpertResult } from '@/constants/systemAgents'
 import { getDefaultModel } from '@/utils/config'
-import { generateId } from '@/utils/storage'
 import type { AgentType } from '@/types'
 import { getClientId } from '@/services/api'
 import { logger, errorHandler } from '@/utils/logger'
@@ -146,12 +145,12 @@ export function useChat() {
       if (conversationMode === 'complex') {
         // 添加复杂模式开始提示
         addMessage({
-          id: generateId(),
+          id: crypto.randomUUID(),
           role: 'system',
           content: '🔍 检测到复杂任务，正在拆解...'
         })
         // 预先添加 AI 空消息（占位），用于显示聚合器的最终响应
-        assistantMessageId = generateId()
+        assistantMessageId = crypto.randomUUID()
         addMessage({
           id: assistantMessageId,
           role: 'assistant',
@@ -159,7 +158,7 @@ export function useChat() {
         })
       } else {
         // 预先添加 AI 空消息（占位）
-        assistantMessageId = generateId()
+        assistantMessageId = crypto.randomUUID()
         addMessage({
           id: assistantMessageId,
           role: 'assistant',
@@ -167,7 +166,6 @@ export function useChat() {
         })
       }
 
-      let newConversationId: string | undefined
       let finalResponseContent = ''
 
       // 5. 发送请求并处理流式响应
@@ -214,7 +212,7 @@ export function useChat() {
             })
 
             addMessage({
-              id: generateId(),
+              id: crypto.randomUUID(),
               role: 'system',
               content: taskListMessage
             })
@@ -262,7 +260,7 @@ export function useChat() {
               }
 
               addMessage({
-                id: generateId(),
+                id: crypto.randomUUID(),
                 role: 'system',
                 content: completionMessage,
                 metadata: {
@@ -278,7 +276,7 @@ export function useChat() {
                 debug('artifacts 数据:', expertEvent.allArtifacts)
 
                 const artifacts: Artifact[] = expertEvent.allArtifacts.map((item: any) => ({
-                  id: generateId(),
+                  id: crypto.randomUUID(),
                   timestamp: new Date().toISOString(),
                   type: item.type,
                   title: item.title,
@@ -298,7 +296,7 @@ export function useChat() {
                 error: expertEvent.error,
                 output: expertEvent.output,
                 artifacts: expertEvent.allArtifacts ? expertEvent.allArtifacts.map((item: any) => ({
-                  id: generateId(),
+                  id: crypto.randomUUID(),
                   timestamp: new Date().toISOString(),
                   type: item.type,
                   title: item.title,
@@ -337,7 +335,7 @@ export function useChat() {
 
             // 新架构：添加到 ArtifactSession
             const fullArtifact: Artifact = {
-              id: generateId(),
+              id: crypto.randomUUID(),
               timestamp: new Date().toISOString(),
               type: artifact.type,
               title: artifact.title,
@@ -379,26 +377,16 @@ export function useChat() {
             })
           }
 
-          // 如果后端返回了新的 conversationId，保存它
-          if (conversationId && !newConversationId) {
-            debug('Received conversationId from backend:', conversationId)
-            newConversationId = conversationId
-          }
+          // 注意：不再处理后端返回的 conversationId，因为前端已经使用真实ID
+          // 前端生成的UUID直接作为conversationId传递给后端，后端直接使用该ID创建会话
         },
         currentConversationId,
         abortControllerRef.current.signal
       )
 
-      // 5. 更新会话状态和 URL，并显示最终响应（如果是复杂模式）
-      // 如果是新会话，后端会创建 ID 并通过流式返回（或我们需要手动更新状态）
-      if (newConversationId && !currentConversationId) {
-        debug('Updating conversation ID and URL:', newConversationId)
-        // 使用 replace: true 替换当前的历史记录
-        // 注意：这里 navigate 需要在组件中调用，hook 中使用的 navigate 是有效的
-        // 但如果这时组件已经卸载了怎么办？（通常不会，因为我们在 ChatPage）
-        setCurrentConversationId(newConversationId)
-        navigate(`/chat/${newConversationId}`, { replace: true })
-      }
+      // 注意：不再执行URL替换，因为前端已经使用真实UUID作为conversationId
+      // HomePage中生成的UUID直接传递给后端，后端直接使用该ID创建会话
+      // 无需等待后端返回conversationId并替换URL，避免了流式传输时的路由跳转风险
 
       // 如果是复杂模式，更新最终响应到助手消息
       if (conversationMode === 'complex' && finalResponseContent && assistantMessageId) {
