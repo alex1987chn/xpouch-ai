@@ -5,6 +5,7 @@ import { CheckCircle2, Clock2, AlertCircle } from 'lucide-react'
 import { useCanvasStore, type ExpertResult } from '@/store/canvasStore'
 import { getExpertConfig } from '@/constants/systemAgents'
 import { DeleteConfirmDialog } from './DeleteConfirmDialog'
+import { Badge } from '@/components/ui/badge'
 
 // 状态配置常量
 const STATUS_COLORS = {
