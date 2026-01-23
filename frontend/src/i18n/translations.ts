@@ -39,6 +39,9 @@ export const zh: Record<TranslationKey, string> = {
   totalItems: '项内容',
   matchingHistory: '条匹配的历史记录',
   matchingItems: '项匹配的内容',
+  searchHistory: '搜索历史记录...',
+  noMatchingHistory: '未找到匹配的历史记录',
+  tryOtherKeywords: '尝试其他关键词',
   
   // Create Agent
   create: '创建',
@@ -163,6 +166,9 @@ export const en: Record<TranslationKey, string> = {
   totalItems: 'total items',
   matchingHistory: 'matching history',
   matchingItems: 'matching items',
+  searchHistory: 'Search history...',
+  noMatchingHistory: 'No matching history found',
+  tryOtherKeywords: 'Try other keywords',
   
   // Create Agent
   create: 'Create',
@@ -287,6 +293,9 @@ export const ja: Record<TranslationKey, string> = {
   totalItems: '件のアイテム',
   matchingHistory: '件の一致する履歴',
   matchingItems: '件の一致するアイテム',
+  searchHistory: '履歴を検索...',
+  noMatchingHistory: '一致する履歴が見つかりません',
+  tryOtherKeywords: '他のキーワードを試してください',
   
   // Create Agent
   create: '作成',

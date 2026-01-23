@@ -1,10 +1,10 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { Bot, User, Minimize2, Maximize2, Copy, Check, RotateCcw, MoreVertical, Sparkles } from 'lucide-react'
+import { Bot, User, Minimize2, Maximize2, Copy, Check, RotateCcw, MoreVertical, Sparkles, Code, Globe, FileText, FileCode, ArrowRight } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { useCanvasStore } from '@/store/canvasStore'
-import type { Message } from '@/store/chatStore'
+import type { Message, Artifact } from '@/store/chatStore'
 import GlowingInput from './GlowingInput'
 import { useTranslation } from '@/i18n'
 import ReactMarkdown from 'react-markdown'
@@ -12,6 +12,83 @@ import remarkGfm from 'remark-gfm'
 import { getExpertConfig } from '@/constants/systemAgents'
 
 type ConversationMode = 'simple' | 'complex'
+
+// Artifact类型定义
+type DetectedArtifact = {
+  type: 'code' | 'html' | 'markdown' | 'text'
+  content: string
+  language?: string
+}
+
+// 从消息内容中检测artifacts
+function detectArtifactsFromMessage(content: string): DetectedArtifact[] {
+  const artifacts: DetectedArtifact[] = []
+
+  // 检测代码块 ```language code ```
+  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)\n```/g
+  let match
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    const language = match[1] || 'text'
+    const codeContent = match[2]
+    artifacts.push({
+      type: 'code',
+      content: codeContent,
+      language
+    })
+  }
+
+  // 检测HTML块（可能用特殊标记）
+  if (content.includes('```html') || content.includes('<!DOCTYPE html>') || /<html[\s>]/i.test(content)) {
+    // 如果上面已经检测到html代码块，跳过
+    const hasHtmlCodeBlock = artifacts.some(a => a.language === 'html')
+    if (!hasHtmlCodeBlock) {
+      const htmlMatch = content.match(/```html\n([\s\S]*?)\n```/i) || content.match(/<html[\s\S]*?<\/html>/is)
+      if (htmlMatch) {
+        artifacts.push({
+          type: 'html',
+          content: htmlMatch[1] || htmlMatch[0],
+          language: 'html'
+        })
+      }
+    }
+  }
+
+  // 检测长文本（单条消息超过500字）
+  const textLength = content.replace(/```[\s\S]*?```/g, '').trim().length
+  if (textLength > 500 && artifacts.length === 0) {
+    artifacts.push({
+      type: 'text',
+      content: content
+    })
+  }
+
+  return artifacts
+}
+
+// 生成artifact名称
+function getArtifactName(type: string, index: number, total: number): string {
+  const typeMap: Record<string, string> = {
+    'code': '代码',
+    'html': '网页',
+    'markdown': 'Markdown',
+    'text': '长文本'
+  }
+  // 根据类型和总数量生成名称
+  if (total === 1) {
+    return `${typeMap[type]}1`
+  }
+  return `${typeMap[type]}${index + 1}`
+}
+
+// 获取预览内容（截取）
+function getPreviewContent(content: string, maxLength = 80): string {
+  // 移除代码块标记，只保留内容
+  const cleanContent = content.replace(/```(\w+)?\n?/g, '').replace(/\n```$/g, '')
+  if (cleanContent.length <= maxLength) {
+    return cleanContent
+  }
+  return cleanContent.substring(0, maxLength) + '...'
+}
 
 interface FloatingChatPanelProps {
   className?: string
@@ -128,6 +205,109 @@ export default function FloatingChatPanel({
     }
   }, [messages, setInputMessage])
 
+  // 处理点击artifact预览卡片
+  const handleArtifactPreviewClick = useCallback((artifact: DetectedArtifact, index: number, total: number) => {
+    // 在简单模式下，需要将artifact传递到右侧区域显示
+    console.log('[FloatingChatPanel] 点击artifact预览:', { type: artifact.type, index, total })
+
+    // 检测并添加到canvasStore
+    const expertType = 'simple'
+    const artifactName = getArtifactName(artifact.type, index, total)
+
+    // 创建一个新的artifact对象
+    const newArtifact: Artifact = {
+      id: `artifact-${Date.now()}-${index}`,
+      type: artifact.type as any,
+      content: artifact.content,
+      title: artifactName,
+      createdAt: new Date().toISOString()
+    }
+
+    // 添加到canvasStore的artifactSessions中
+    // 注意：这里简化处理，实际应该根据conversationMode判断
+    if (selectArtifactSession) {
+      selectArtifactSession(expertType)
+    }
+  }, [selectArtifactSession])
+
+  // Artifact预览卡片组件
+  function ArtifactPreviewCard({ artifact, index, total }: { artifact: DetectedArtifact, index: number, total: number }) {
+    const typeName = getArtifactName(artifact.type, index, total)
+    const previewContent = getPreviewContent(artifact.content)
+
+    const typeConfig = {
+      code: {
+        icon: <Code className="w-4 h-4" />,
+        bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+        textColor: 'text-blue-600 dark:text-blue-400',
+        borderColor: 'border-blue-200 dark:border-blue-800/30'
+      },
+      html: {
+        icon: <Globe className="w-4 h-4" />,
+        bgColor: 'bg-orange-100 dark:bg-orange-900/30',
+        textColor: 'text-orange-600 dark:text-orange-400',
+        borderColor: 'border-orange-200 dark:border-orange-800/30'
+      },
+      markdown: {
+        icon: <FileText className="w-4 h-4" />,
+        bgColor: 'bg-purple-100 dark:bg-purple-900/30',
+        textColor: 'text-purple-600 dark:text-purple-400',
+        borderColor: 'border-purple-200 dark:border-purple-800/30'
+      },
+      text: {
+        icon: <FileCode className="w-4 h-4" />,
+        bgColor: 'bg-green-100 dark:bg-green-900/30',
+        textColor: 'text-green-600 dark:text-green-400',
+        borderColor: 'border-green-200 dark:border-green-800/30'
+      }
+    }
+
+    const config = typeConfig[artifact.type]
+
+    return (
+      <button
+        onClick={() => handleArtifactPreviewClick(artifact, index, total)}
+        className={cn(
+          'w-full group relative rounded-lg border p-3 text-left transition-all',
+          'hover:shadow-md hover:scale-[1.02] active:scale-[0.98]',
+          config.bgColor,
+          config.borderColor
+        )}
+      >
+        <div className="flex items-start gap-3">
+          {/* 图标 */}
+          <div className={cn(
+            'flex-shrink-0 mt-0.5 p-1.5 rounded-md',
+            config.textColor
+          )}>
+            {config.icon}
+          </div>
+
+          {/* 内容 */}
+          <div className="flex-1 min-w-0">
+            {/* 名称 */}
+            <div className={cn(
+              'text-xs font-medium mb-1',
+              config.textColor
+            )}>
+              {typeName}
+            </div>
+
+            {/* 预览内容 */}
+            <div className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">
+              {previewContent}
+            </div>
+          </div>
+
+          {/* 右侧指示箭头 */}
+          <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <ArrowRight className="w-4 h-4 text-gray-400" />
+          </div>
+        </div>
+      </button>
+    )
+  }
+
   return (
     <>
       <AnimatePresence>
@@ -200,7 +380,6 @@ export default function FloatingChatPanel({
                 {messages
                   .filter(msg => msg.content.trim() !== '')
                   .map((msg, index) => {
-                    // 系统消息特殊处理
                     const isSystemMessage = msg.role === 'system'
 
                     return (
@@ -214,294 +393,128 @@ export default function FloatingChatPanel({
                           isSystemMessage && 'flex-col items-center'
                         )}
                       >
-                        {/* 系统消息特殊样式 */}
                         {isSystemMessage ? (
                           <div className="w-full bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30 rounded-xl px-4 py-3 text-left">
                             <div className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">
                               {(() => {
-                                // 检查是否包含 [查看交付物](expertId) 链接
                                 const artifactLinkMatch = msg.content.match(/\[查看交付物\]\(#(\w+)\)/)
                                 if (artifactLinkMatch) {
                                   const expertId = artifactLinkMatch[1]
-                                  // 替换链接为按钮
                                   const cleanContent = msg.content.replace(/\[查看交付物\]\(#\w+\)/, '')
                                   return (
                                     <div className="flex items-center justify-between gap-4">
                                       <span className="flex-1">{cleanContent}</span>
                                       <button
                                         onClick={(e) => {
-                                          // 阻止事件冒泡，避免触发其他点击事件
                                           e.stopPropagation()
-                                          // 选择对应的专家和 artifact
-                                          selectExpert(expertId)
-                                          selectArtifactSession(expertId)
-                                          // 滚动到对应的 artifact
+                                          selectExpert?.(expertId)
+                                          selectArtifactSession?.(expertId)
                                           setTimeout(() => {
                                             document.getElementById(`artifact-${expertId}`)?.scrollIntoView({ behavior: 'smooth' })
                                           }, 100)
                                         }}
                                         className="text-[11px] px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors flex items-center gap-1.5 flex-shrink-0 ml-4"
-                                        title="查看交付物"
                                       >
-                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm0 6a3 3 0 11-6 0 3 3 0 016 0zm0 6a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
                                         查看交付物
                                       </button>
                                     </div>
                                   )
                                 }
-                                // 普通 Markdown 内容（如任务计划）
                                 return (
                                   <div className="prose prose-xs dark:prose-invert max-w-none">
-                                    <ReactMarkdown
-                                      remarkPlugins={[remarkGfm]}
-                                    >
-                                      {msg.content}
-                                    </ReactMarkdown>
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                                   </div>
                                 )
                               })()}
                             </div>
                           </div>
                         ) : (
-                          <>
-                            {/* Avatar + Message Bubble Row */}
-                            <div className={cn('flex gap-3 w-full', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
-                              {/* Avatar */}
-                              <div
-                                className={cn(
-                                  'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
-                                  msg.role === 'user'
-                                    ? 'bg-indigo-600'
-                                    : 'bg-gradient-to-br from-indigo-500 to-purple-500'
-                                )}
-                              >
-                                {msg.role === 'user' ? (
-                                  <User className="w-4 h-4 text-white" />
-                                ) : (
-                                  <Bot className="w-4 h-4 text-white" />
-                                )}
-                              </div>
-
-                              {/* Message Bubble with Action Button */}
-                              <div
-                                className={cn(
-                                  'relative max-w-[80%] rounded-2xl p-4 shadow-sm group',
-                                  msg.role === 'user'
-                                    ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-indigo-200 dark:shadow-indigo-900/20'
-                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100'
-                                )}
-                              >
-                                {/* Content */}
-                                {msg.role === 'user' ? (
-                                  <div className="whitespace-pre-wrap text-sm text-left">
-                                    {msg.content}
-                                  </div>
-                                ) : (
-                                  <div className="prose prose-sm dark:prose-invert max-w-none text-sm text-left">
-                                    <ReactMarkdown
-                                      remarkPlugins={[remarkGfm]}
-                                      components={{
-                                        // 代码块渲染（带简单样式）
-                                        code: ({ children, className }) => {
-                                          const isInline = !className?.includes('language-')
-                                          return isInline ? (
-                                            <code className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm text-slate-800 dark:text-slate-200">
-                                              {children}
-                                            </code>
-                                          ) : (
-                                            <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto my-4">
-                                              <code className="text-sm">{children}</code>
-                                            </pre>
-                                          )
-                                        },
-                                        // 标题样式
-                                        h1: ({ children }) => (
-                                          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 border-b border-slate-300 dark:border-slate-700 pb-2 mb-4 mt-6">
-                                            {children}
-                                          </h1>
-                                        ),
-                                        h2: ({ children }) => (
-                                          <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 border-b border-slate-300 dark:border-slate-700 pb-2 mb-3 mt-5">
-                                            {children}
-                                          </h2>
-                                        ),
-                                        h3: ({ children }) => (
-                                          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mt-4 mb-2">
-                                            {children}
-                                          </h3>
-                                        ),
-                                        // 段落样式
-                                        p: ({ children }) => (
-                                          <p className="text-slate-700 dark:text-slate-300 leading-relaxed mb-4">
-                                            {children}
-                                          </p>
-                                        ),
-                                        // 列表样式
-                                        ul: ({ children }) => (
-                                          <ul className="list-disc pl-6 mb-4 text-slate-700 dark:text-slate-300 space-y-1">
-                                            {children}
-                                          </ul>
-                                        ),
-                                        ol: ({ children }) => (
-                                          <ol className="list-decimal pl-6 mb-4 text-slate-700 dark:text-slate-300 space-y-1">
-                                            {children}
-                                          </ol>
-                                        ),
-                                        // 链接样式
-                                        a: ({ children, href }) => (
-                                          <a
-                                            href={href}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-blue-600 dark:text-blue-400 hover:underline"
-                                          >
-                                            {children}
-                                          </a>
-                                        ),
-                                        // 引用块样式
-                                        blockquote: ({ children }) => (
-                                          <blockquote className="border-l-4 border-slate-400 dark:border-slate-600 pl-4 italic text-slate-600 dark:text-slate-400 my-4">
-                                            {children}
-                                          </blockquote>
-                                        ),
-                                      }}
-                                    >
-                                      {msg.content}
-                                    </ReactMarkdown>
-                                  </div>
-                                )}
-
-                                {/* Action Button - Hover to show at top right */}
-                                <div
-                                  className={cn(
-                                    'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
-                                    msg.role === 'user' ? 'flex-row' : 'flex-row'
-                                  )}
-                                >
-                                  {/* Copy Button */}
-                                  <button
-                                    onClick={() => handleCopyMessage(msg.content, msg.id || String(index))}
-                                    className={cn(
-                                      'p-1.5 rounded-lg transition-colors text-xs backdrop-blur-sm',
-                                      msg.role === 'user'
-                                        ? 'hover:bg-indigo-400/30 bg-indigo-500/20 text-white'
-                                        : 'hover:bg-gray-200/80 dark:hover:bg-gray-700/80 bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300'
-                                    )}
-                                    title={t('copy')}
-                                  >
-                                    {copiedMessageId === (msg.id || String(index)) ? (
-                                      <Check className="w-3.5 h-3.5" />
-                                    ) : (
-                                      <Copy className="w-3.5 h-3.5" />
-                                    )}
-                                  </button>
-
-                                  {/* Regenerate Button (Only for assistant messages) */}
-                                  {msg.role === 'assistant' && (
-                                    <button
-                                      onClick={handleRegenerate}
-                                      className={cn(
-                                        'p-1.5 rounded-lg transition-colors text-xs backdrop-blur-sm',
-                                        'hover:bg-gray-200/80 dark:hover:bg-gray-700/80 bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300'
-                                      )}
-                                      title={t('regenerate')}
-                                    >
-                                      <RotateCcw className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
+                          <div className={cn('flex gap-3 w-full group', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
+                            {/* Avatar */}
+                            <div className={cn(
+                              'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
+                              msg.role === 'user' ? 'bg-indigo-600' : 'bg-gradient-to-br from-indigo-500 to-purple-500'
+                            )}>
+                              {msg.role === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
                             </div>
 
-                            {/* Edit Button for User Messages - On hover */}
-                            {msg.role === 'user' && (
-                              <div className="flex gap-1 opacity-0 hover:opacity-100 transition-opacity self-end">
+                            {/* Message Bubble */}
+                            <div className={cn(
+                              'relative max-w-[80%] rounded-2xl p-4 shadow-sm',
+                              msg.role === 'user' 
+                                ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white' 
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100'
+                            )}>
+                              {/* Action Buttons Panel */}
+                              <div className={cn(
+                                'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
+                                msg.role === 'user' ? 'flex-row-reverse -top-8 right-0' : 'flex-row'
+                              )}>
                                 <button
-                                  onClick={() => handleRetryMessage(msg.content)}
-                                  className="p-1.5 rounded-lg hover:bg-indigo-400/20 text-white/70 hover:text-white transition-colors text-xs"
-                                  title={t('resend')}
+                                  onClick={() => handleCopyMessage(msg.content, msg.id || String(index))}
+                                  className="p-1.5 rounded-lg bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-300 transition-colors"
                                 >
-                                  <RotateCcw className="w-3.5 h-3.5" />
+                                  {copiedMessageId === (msg.id || String(index)) ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                                 </button>
+                                {msg.role === 'assistant' && (
+                                  <button onClick={handleRegenerate} className="p-1.5 rounded-lg bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-300">
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
                               </div>
-                            )}
-                          </>
+
+                              {/* Content Rendering */}
+                              <div className="text-sm text-left">
+                                {msg.role === 'user' ? (
+                                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                                ) : (
+                                  <>
+                                    {conversationMode === 'simple' ? (() => {
+                                      const artifacts = detectArtifactsFromMessage(msg.content)
+                                      const textOnly = msg.content.replace(/```[\s\S]*?```/g, '').trim()
+                                      return (
+                                        <div className="space-y-3">
+                                          {textOnly && <ReactMarkdown remarkPlugins={[remarkGfm]}>{textOnly}</ReactMarkdown>}
+                                          {artifacts.map((art, i) => (
+                                            <ArtifactPreviewCard key={i} artifact={art} index={i} total={artifacts.length} />
+                                          ))}
+                                        </div>
+                                      )
+                                    })() : (
+                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         )}
                       </motion.div>
                     )
                   })}
 
                 {/* Typing Indicator */}
-                {isTyping && messages.filter(m => m.role === 'assistant' && m.content.trim() !== '').length === 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex gap-3 items-start"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                {isTyping && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 items-start">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
                       <Bot className="w-4 h-4 text-white" />
                     </div>
-                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4 max-w-[80%]">
-                      {runningExpert && runningExpertConfig ? (
-                        /* 复杂模式：显示当前执行专家信息 */
-                        <div className="flex items-center gap-3">
-                          <div className="flex-shrink-0">
-                            <Sparkles className="w-5 h-5 text-indigo-500 animate-pulse" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                              {runningExpertConfig.name}专家正在执行任务
-                            </div>
-                            {runningExpert.description && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
-                                {runningExpert.description}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex gap-1 flex-shrink-0">
-                            <motion.div
-                              animate={{ scale: [1, 1.2, 1] }}
-                              transition={{ repeat: Infinity, duration: 1 }}
-                              className="w-2 h-2 bg-indigo-400 rounded-full"
-                            />
-                            <motion.div
-                              animate={{ scale: [1, 1.2, 1] }}
-                              transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
-                              className="w-2 h-2 bg-indigo-400 rounded-full"
-                            />
-                            <motion.div
-                              animate={{ scale: [1, 1.2, 1] }}
-                              transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
-                              className="w-2 h-2 bg-indigo-400 rounded-full"
-                            />
-                          </div>
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4">
+                      {runningExpert ? (
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />
+                          <span className="text-sm">{runningExpertConfig?.name} 正在执行...</span>
                         </div>
                       ) : (
-                        /* 简单模式：普通loading动画 */
-                        <div className="flex items-center gap-1">
-                          <motion.div
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{ repeat: Infinity, duration: 1 }}
-                            className="w-2 h-2 bg-gray-400 rounded-full"
-                          />
-                          <motion.div
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
-                            className="w-2 h-2 bg-gray-400 rounded-full"
-                          />
-                          <motion.div
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
-                            className="w-2 h-2 bg-gray-400 rounded-full"
-                          />
+                        <div className="flex gap-1">
+                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
+                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]" />
                         </div>
                       )}
                     </div>
                   </motion.div>
                 )}
-
                 <div ref={messagesEndRef} />
               </div>
             </div>

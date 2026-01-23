@@ -56,8 +56,8 @@ export default function XPouchLayout({
                 // 移动端：全屏显示
                 'fixed inset-0 z-50 md:relative',
                 viewMode === 'chat' ? 'w-full h-[100dvh] rounded-none border-none' : 'hidden',
-                // PC端样式：与其他区域统一，设置 flex-3 占 30%
-                'md:flex md:flex-[3] md:h-full md:rounded-2xl md:shadow-2xl md:shadow-black/20 md:border md:border-slate-200/50 md:dark:border-slate-700/50',
+                // PC端样式：固定30%宽度，使用精确的百分比
+                'md:flex md:w-[30%] md:min-w-[30%] md:max-w-[30%] md:h-full md:rounded-2xl md:shadow-2xl md:shadow-black/20 md:border md:border-slate-200/50 md:dark:border-slate-700/50',
                 // 关键：overflow-hidden 确保圆角锐利，只有内部消息区域滚动
                 'overflow-hidden min-h-0',
                 isChatMinimized && 'md:flex-0 md:opacity-0 md:overflow-hidden md:pointer-events-none',
@@ -80,8 +80,9 @@ export default function XPouchLayout({
           <div
             id="expert-delivery-zone"
             className={cn(
-              'relative flex flex-col gap-4 min-h-0 flex-[7]',
-              'hidden md:flex' // PC端显示
+              'relative flex flex-col gap-4 min-h-0',
+              'hidden md:flex md:w-[70%] md:min-w-[70%] md:max-w-[70%]', // PC端显示，固定70%宽度
+              'md:flex' // PC端显示
             )}
           >
           {/* 专家状态栏 - 仅复杂模式显示 */}
