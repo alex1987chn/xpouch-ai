@@ -25,7 +25,7 @@ const ARTIFACT_ICONS = {
 function getTabTitle(artifact: Artifact, index: number, total: number): string {
   // 优先使用 artifact 的自定义标题
   if (artifact.title) {
-    return artifact.title
+    return truncateTitle(artifact.title)
   }
 
   // 根据类型生成默认标题
@@ -39,8 +39,17 @@ function getTabTitle(artifact: Artifact, index: number, total: number): string {
 
   const typeName = typeNames[artifact.type]
   const showNumber = total > 1
+  const title = showNumber ? `${typeName} ${index + 1}` : typeName
 
-  return showNumber ? `${typeName} ${index + 1}` : typeName
+  return truncateTitle(title)
+}
+
+// 截断标题，最多显示10个字符
+function truncateTitle(title: string): string {
+  if (title.length <= 10) {
+    return title
+  }
+  return title.substring(0, 10) + '...'
 }
 
 export default function ArtifactTabs({ className }: ArtifactTabsProps) {
