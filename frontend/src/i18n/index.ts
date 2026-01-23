@@ -10,6 +10,7 @@ export type TranslationKey =
   | 'addCustomAgent' | 'createYourFirstAgent'
   | 'theme' | 'language' | 'systemSettings' | 'userSettings' | 'personalSettings' | 'modelConfig'
   | 'save' | 'cancel' | 'delete' | 'edit' | 'confirmDelete' | 'noHistory' | 'startChat'
+  | 'totalHistory' | 'totalItems' | 'matchingHistory' | 'matchingItems'
   | 'create' | 'agentName' | 'agentNamePlaceholder' | 'description' | 'descriptionPlaceholder'
   | 'systemPrompt' | 'systemPromptPlaceholder' | 'systemPromptHint' | 'required'
   | 'startConversation'

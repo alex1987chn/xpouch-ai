@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { Bot, User, Minimize2, Maximize2, Copy, Check, RotateCcw, MoreVertical } from 'lucide-react'
+import { Bot, User, Minimize2, Maximize2, Copy, Check, RotateCcw, MoreVertical, Sparkles } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import type { Message } from '@/store/chatStore'
@@ -9,6 +9,7 @@ import GlowingInput from './GlowingInput'
 import { useTranslation } from '@/i18n'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { getExpertConfig } from '@/constants/systemAgents'
 
 type ConversationMode = 'simple' | 'complex'
 
@@ -28,7 +29,7 @@ interface FloatingChatPanelProps {
   onStopGeneration?: () => void
   conversationMode?: ConversationMode
   onConversationModeChange?: (mode: ConversationMode) => void
-  hideModeSwitch?: boolean | undefined
+  hideModeSwitch?: boolean
 }
 
 export default function FloatingChatPanel({
@@ -50,13 +51,32 @@ export default function FloatingChatPanel({
   hideModeSwitch = false
 }: FloatingChatPanelProps) {
   const { t } = useTranslation()
-  const { selectExpert, selectArtifactSession } = useCanvasStore()
+  const { selectExpert, selectArtifactSession, expertResults, selectedExpert: canvasSelectedExpert } = useCanvasStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isMinimized, setIsMinimized] = useState(false)
+
+  // 获取当前正在执行的专家（用于loading气泡展示）
+  const runningExpert = expertResults.find(exp => exp.status === 'running')
+  const runningExpertConfig = runningExpert ? getExpertConfig(runningExpert.expertType) : null
 
   // Use parent's state if provided, otherwise use local state
   const effectiveIsChatMinimized = propSetIsChatMinimized ? propIsChatMinimized : isMinimized
   const effectiveSetIsChatMinimized = propSetIsChatMinimized || setIsMinimized
+
+  // 处理模式切换
+  const handleModeChange = (newMode: ConversationMode) => {
+    console.log('[FloatingChatPanel] 切换模式:', conversationMode, '->', newMode)
+    if (onConversationModeChange) {
+      onConversationModeChange(newMode)
+    } else {
+      console.warn('[FloatingChatPanel] onConversationModeChange 未提供')
+    }
+  }
+
+  // 根据对话模式更新 agentId
+  useEffect(() => {
+    console.log('[FloatingChatPanel] 当前对话模式:', conversationMode)
+  }, [conversationMode])
 
   // Auto-scroll to bottom when new messages appear
   useEffect(() => {
@@ -178,14 +198,7 @@ export default function FloatingChatPanel({
             <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-thin">
               <div className="space-y-4">
                 {messages
-                  .filter(msg => {
-                    // 在复杂模式下，只显示系统消息（任务计划、任务开始、专家完成等），不显示 assistant 消息（Markdown内容）
-                    if (conversationMode === 'complex') {
-                      return msg.content.trim() !== '' && (msg.role === 'system' || msg.role === 'user')
-                    }
-                    // 在简单模式下，显示所有非空消息
-                    return msg.content.trim() !== ''
-                  })
+                  .filter(msg => msg.content.trim() !== '')
                   .map((msg, index) => {
                     // 系统消息特殊处理
                     const isSystemMessage = msg.role === 'system'
@@ -203,7 +216,7 @@ export default function FloatingChatPanel({
                       >
                         {/* 系统消息特殊样式 */}
                         {isSystemMessage ? (
-                          <div className="w-full bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30 rounded-xl px-4 py-3 text-center">
+                          <div className="w-full bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30 rounded-xl px-4 py-3 text-left">
                             <div className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">
                               {(() => {
                                 // 检查是否包含 [查看交付物](expertId) 链接
@@ -213,8 +226,8 @@ export default function FloatingChatPanel({
                                   // 替换链接为按钮
                                   const cleanContent = msg.content.replace(/\[查看交付物\]\(#\w+\)/, '')
                                   return (
-                                    <div className="flex items-center justify-center gap-2">
-                                      <span>{cleanContent}</span>
+                                    <div className="flex items-center justify-between gap-4">
+                                      <span className="flex-1">{cleanContent}</span>
                                       <button
                                         onClick={(e) => {
                                           // 阻止事件冒泡，避免触发其他点击事件
@@ -227,13 +240,13 @@ export default function FloatingChatPanel({
                                             document.getElementById(`artifact-${expertId}`)?.scrollIntoView({ behavior: 'smooth' })
                                           }, 100)
                                         }}
-                                        className="text-[10px] px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors flex items-center gap-1"
+                                        className="text-[11px] px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors flex items-center gap-1.5 flex-shrink-0 ml-4"
                                         title="查看交付物"
                                       >
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm0 6a3 3 0 11-6 0 3 3 0 016 0zm0 6a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
-                                        查看
+                                        查看交付物
                                       </button>
                                     </div>
                                   )
@@ -282,11 +295,11 @@ export default function FloatingChatPanel({
                               >
                                 {/* Content */}
                                 {msg.role === 'user' ? (
-                                  <div className="whitespace-pre-wrap text-sm">
+                                  <div className="whitespace-pre-wrap text-sm text-left">
                                     {msg.content}
                                   </div>
                                 ) : (
-                                  <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
+                                  <div className="prose prose-sm dark:prose-invert max-w-none text-sm text-left">
                                     <ReactMarkdown
                                       remarkPlugins={[remarkGfm]}
                                       components={{
@@ -430,24 +443,61 @@ export default function FloatingChatPanel({
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0">
                       <Bot className="w-4 h-4 text-white" />
                     </div>
-                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4">
-                      <div className="flex items-center gap-1">
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ repeat: Infinity, duration: 1 }}
-                          className="w-2 h-2 bg-gray-400 rounded-full"
-                        />
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
-                          className="w-2 h-2 bg-gray-400 rounded-full"
-                        />
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
-                          className="w-2 h-2 bg-gray-400 rounded-full"
-                        />
-                      </div>
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4 max-w-[80%]">
+                      {runningExpert && runningExpertConfig ? (
+                        /* 复杂模式：显示当前执行专家信息 */
+                        <div className="flex items-center gap-3">
+                          <div className="flex-shrink-0">
+                            <Sparkles className="w-5 h-5 text-indigo-500 animate-pulse" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                              {runningExpertConfig.name}专家正在执行任务
+                            </div>
+                            {runningExpert.description && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                                {runningExpert.description}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-1 flex-shrink-0">
+                            <motion.div
+                              animate={{ scale: [1, 1.2, 1] }}
+                              transition={{ repeat: Infinity, duration: 1 }}
+                              className="w-2 h-2 bg-indigo-400 rounded-full"
+                            />
+                            <motion.div
+                              animate={{ scale: [1, 1.2, 1] }}
+                              transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
+                              className="w-2 h-2 bg-indigo-400 rounded-full"
+                            />
+                            <motion.div
+                              animate={{ scale: [1, 1.2, 1] }}
+                              transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
+                              className="w-2 h-2 bg-indigo-400 rounded-full"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        /* 简单模式：普通loading动画 */
+                        <div className="flex items-center gap-1">
+                          <motion.div
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ repeat: Infinity, duration: 1 }}
+                            className="w-2 h-2 bg-gray-400 rounded-full"
+                          />
+                          <motion.div
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
+                            className="w-2 h-2 bg-gray-400 rounded-full"
+                          />
+                          <motion.div
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
+                            className="w-2 h-2 bg-gray-400 rounded-full"
+                          />
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}

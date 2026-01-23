@@ -52,12 +52,18 @@ export interface DBMessage {
 // ============================================
 
 /**
+ * 会话类型枚举
+ */
+export type ConversationAgentType = 'default' | 'custom' | 'ai'
+
+/**
  * 会话接口
  */
 export interface Conversation {
   id: string
   title: string
   agent_id: string
+  agent_type?: ConversationAgentType  // 会话类型：default（默认助手）、custom（自定义智能体）、ai（AI助手/复杂模式）
   user_id: string
   created_at: string
   updated_at: string

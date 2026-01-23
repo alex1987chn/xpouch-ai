@@ -95,38 +95,6 @@ export async function deleteConversation(id: string): Promise<void> {
 }
 
 // ============================================================================
-// 系统智能体 API (System Agents - LangGraph Experts)
-// ============================================================================
-
-/**
- * 获取系统智能体列表
- * 这些是预定义的专家，由系统维护
- */
-export async function getSystemAgents() {
-  // 从本地注册表返回系统智能体
-  // 不需要后端调用，因为是常量数据
-  const { SYSTEM_AGENTS } = await import('@/constants/systemAgents')
-  return SYSTEM_AGENTS
-}
-
-/**
- * 根据ID获取系统智能体
- */
-export async function getSystemAgentById(agentId: string) {
-  const { getSystemAgent } = await import('@/constants/systemAgents')
-  return getSystemAgent(agentId)
-}
-
-/**
- * 直接获取系统智能体（同步版本，不使用 await）
- * 从 systemAgents.ts 重新导出，方便直接调用
- */
-export async function getSystemAgent(agentId: string) {
-  const { getSystemAgent: getSysAgent } = await import('@/constants/systemAgents')
-  return getSysAgent(agentId)
-}
-
-// ============================================================================
 // 自定义智能体 API (Custom Agents - User-defined)
 // ============================================================================
 
@@ -189,16 +157,7 @@ export async function getAllAgents() {
   }))
 }
 
-/**
- * 获取指定类型的智能体
- */
-export async function getAgentsByType(type: 'system' | 'custom'): Promise<any[]> {
-  if (type === 'system') {
-    return await getSystemAgents()
-  } else {
-    return await getAllAgents()
-  }
-}
+
 
 // 获取单个自定义智能体
 export async function getCustomAgent(id: string): Promise<CustomAgent> {
@@ -246,8 +205,7 @@ export async function sendMessage(
   agentId: string = 'assistant',
   onChunk?: (chunk: string, conversationId?: string, expertEvent?: ExpertEvent, artifact?: Artifact) => void,
   conversationId?: string | null,
-  abortSignal?: AbortSignal,
-  mode: 'simple' | 'complex' = 'simple'
+  abortSignal?: AbortSignal
 ): Promise<string> {
 
   // 提取最新一条消息作为当前 prompt，其他的作为 history
@@ -255,9 +213,8 @@ export async function sendMessage(
   const lastMessage = messages[messages.length - 1]
   const messageContent = lastMessage.content
 
-  // 根据模式选择端点
-  const endpoint = mode === 'simple' ? '/chat-simple' : '/chat'
-  const url = `${API_BASE_URL}${endpoint}`
+  // 统一调用 /api/chat
+  const url = `${API_BASE_URL}/chat`
 
   // 如果提供了 onChunk 回调，尝试使用流式输出
   if (onChunk) {

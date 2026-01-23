@@ -32,6 +32,14 @@ from models import (
 )
 from database import create_db_and_tables, get_session
 from config import init_langchain_tracing, validate_config
+from constants import (
+    ASSISTANT_SYSTEM_PROMPT,
+    normalize_agent_id,
+    is_system_agent,
+    SYSTEM_AGENT_ORCHESTRATOR,
+    SYSTEM_AGENT_DEFAULT_CHAT
+)
+from utils.artifacts import parse_artifacts_from_response, generate_artifact_event
 from utils.exceptions import (
     AppError,
     ValidationError,
@@ -373,27 +381,56 @@ async def get_all_agents(
     current_user: User = Depends(get_current_user)
 ):
     """
-    获取当前用户的所有自定义智能体
+    获取当前用户的所有智能体（包含默认助手）
+
+    返回列表：
+    1. 默认助手（is_default=True，固定在第一位）
+    2. 用户自定义智能体（按创建时间降序）
 
     注意：
-    - 系统专家（sys-search, sys-coder等）由前端常量管理，不通过API返回
-    - 此端点仅返回用户创建的自定义智能体
+    - 系统专家（search, coder, researcher等）不返回，虚拟专家不暴露到前端
+    - 返回前端的智能体类型：默认助手 + 自定义智能体
     """
     try:
         print(f"[API] /api/agents called, user_id: {current_user.id}")
 
-        # 用户自定义智能体（按创建时间降序，最新的在前）
-        statement = select(CustomAgent).where(CustomAgent.user_id == current_user.id).order_by(CustomAgent.created_at.desc())
+        # 1. 获取或创建默认助手
+        default_agent = CustomAgent.get_default_assistant(current_user.id, session)
+        print(f"[API] Default assistant: {default_agent.id} - {default_agent.name}")
+
+        # 2. 获取用户自定义智能体（按创建时间降序，最新的在前）
+        statement = select(CustomAgent).where(
+            CustomAgent.user_id == current_user.id,
+            CustomAgent.is_default == False  # 排除默认助手
+        ).order_by(CustomAgent.created_at.desc())
         print(f"[API] Query statement created")
 
         custom_agents = session.exec(statement).all()
-        print(f"[API] Query executed, found {len(custom_agents)} agents")
+        print(f"[API] Query executed, found {len(custom_agents)} custom agents")
 
-        # 构建返回结果，确保所有字段可序列化
+        # 3. 构建返回结果
         result = []
+
+        # 3.1 添加默认助手（第一位）
+        result.append({
+            "id": str(default_agent.id),
+            "name": default_agent.name,
+            "description": default_agent.description or "",
+            "system_prompt": default_agent.system_prompt,
+            "category": default_agent.category,
+            "model_id": default_agent.model_id,
+            "conversation_count": default_agent.conversation_count,
+            "is_public": default_agent.is_public,
+            "is_default": True,  # 标记为默认助手
+            "created_at": default_agent.created_at.isoformat() if default_agent.created_at else None,
+            "updated_at": default_agent.updated_at.isoformat() if default_agent.updated_at else None,
+            "is_builtin": False
+        })
+
+        # 3.2 添加自定义智能体
         for agent in custom_agents:
             print(f"[API] Processing agent: {agent.id} - {agent.name}")
-            agent_data = {
+            result.append({
                 "id": str(agent.id),
                 "name": agent.name,
                 "description": agent.description or "",
@@ -402,13 +439,13 @@ async def get_all_agents(
                 "model_id": agent.model_id,
                 "conversation_count": agent.conversation_count,
                 "is_public": agent.is_public,
+                "is_default": False,
                 "created_at": agent.created_at.isoformat() if agent.created_at else None,
                 "updated_at": agent.updated_at.isoformat() if agent.updated_at else None,
                 "is_builtin": False
-            }
-            result.append(agent_data)
+            })
 
-        print(f"[API] Returning custom agents: {len(result)} items")
+        print(f"[API] Returning agents: {len(result)} items (1 default + {len(custom_agents)} custom)")
         return result
 
     except Exception as e:
@@ -437,10 +474,21 @@ async def delete_custom_agent(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    """删除自定义智能体"""
+    """
+    删除自定义智能体
+
+    注意：
+    - 禁止删除默认助手（is_default=True）
+    - 只能删除用户自己的智能体
+    """
     agent = session.get(CustomAgent, agent_id)
     if not agent or agent.user_id != current_user.id:
         raise NotFoundError(resource="智能体")
+
+    # 禁止删除默认助手
+    if agent.is_default:
+        raise AppError(message="禁止删除默认助手")
+
     session.delete(agent)
     session.commit()
     print(f"[API] 删除自定义智能体: {agent_id}")
@@ -492,6 +540,49 @@ async def get_conversation(conversation_id: str, session: Session = Depends(get_
 
     if not conversation or conversation.user_id != current_user.id:
         raise NotFoundError(resource="会话")
+
+    # 如果是AI助手会话（复杂模式），加载TaskSession和SubTask
+    if conversation.agent_type == "ai" and conversation.task_session_id:
+        task_session = session.get(TaskSession, conversation.task_session_id)
+        if task_session:
+            # 加载SubTasks
+            statement = select(SubTask).where(SubTask.task_session_id == task_session.session_id)
+            sub_tasks = session.exec(statement).all()
+
+            # 构建响应数据（字典形式）- 明确包含 agent_type 字段
+            return {
+                "id": conversation.id,
+                "title": conversation.title,
+                "agent_id": conversation.agent_id,
+                "agent_type": conversation.agent_type,
+                "user_id": conversation.user_id,
+                "task_session_id": conversation.task_session_id,
+                "created_at": conversation.created_at.isoformat() if conversation.created_at else None,
+                "updated_at": conversation.updated_at.isoformat() if conversation.updated_at else None,
+                "task_session": {
+                    "session_id": task_session.session_id,
+                    "user_query": task_session.user_query,
+                    "final_response": task_session.final_response,
+                    "status": task_session.status,
+                    "sub_tasks": [
+                        {
+                            "id": st.id,
+                            "task_session_id": st.task_session_id,
+                            "expert_type": st.expert_type,
+                            "task_description": st.task_description,
+                            "status": st.status,
+                            "output": st.output,
+                            "error": st.error,
+                            "artifacts": st.artifacts,
+                            "duration_ms": st.duration_ms,
+                            "created_at": st.created_at.isoformat() if st.created_at else None
+                        }
+                        for st in sub_tasks
+                    ]
+                }
+            }
+
+    # 对于非AI会话，直接返回 conversation 对象
     return conversation
 
 # 删除会话 (Filtered by User)
@@ -504,167 +595,8 @@ async def delete_conversation(conversation_id: str, session: Session = Depends(g
     session.commit()
     return {"ok": True}
 
-# 聊天接口
 # ============================================================================
-# 简单对话端点（sys-assistant）
-# ============================================================================
-
-ASSISTANT_SYSTEM_PROMPT = """你是一个通用的 AI 助手，专门用于日常对话和回答用户的各种问题。
-
-你的职责：
-- 友好、耐心地回答用户的问题
-- 提供准确、有用的信息
-- 在不确定时坦诚告知
-- 保持对话的自然流畅
-
-请用清晰、友好的语言回答用户的问题。"""
-
-
-@app.post("/api/chat-simple")
-async def chat_simple_endpoint(
-    request: ChatRequest,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    简单对话端点（sys-assistant 模式）
-
-    功能：
-    - 直连大模型，不经过 LangGraph
-    - 不维护专家状态
-    - 快速响应
-    """
-    print(f"[SIMPLE] ========== 简单对话请求 ==========")
-    print(f"[SIMPLE] Message content: {request.message}")
-    print(f"[SIMPLE] User ID: {current_user.id}")
-
-    # 1. 确定 Conversation ID
-    conversation_id = request.conversationId
-    conversation = None
-
-    if conversation_id:
-        conversation = session.get(Conversation, conversation_id)
-        if conversation and conversation.user_id != current_user.id:
-            raise AuthorizationError("没有权限访问此会话")
-
-    if not conversation:
-        # 创建新会话
-        conversation_id = str(uuid.uuid4())
-        conversation = Conversation(
-            id=conversation_id,
-            title=request.message[:30] + "..." if len(request.message) > 30 else request.message,
-            agent_id="sys-assistant",
-            user_id=current_user.id,
-            created_at=datetime.now(),
-            updated_at=datetime.now()
-        )
-        session.add(conversation)
-        session.commit()
-        session.refresh(conversation)
-
-    # 2. 保存用户消息到数据库
-    user_msg_db = Message(
-        conversation_id=conversation_id,
-        role="user",
-        content=request.message,
-        timestamp=datetime.now()
-    )
-    session.add(user_msg_db)
-    session.commit()
-
-    # 3. 准备消息历史
-    statement = select(Message).where(Message.conversation_id == conversation_id).order_by(Message.timestamp)
-    db_messages = session.exec(statement).all()
-
-    langchain_messages = []
-    for msg in db_messages:
-        if msg.role == "user":
-            langchain_messages.append(HumanMessage(content=msg.content))
-        elif msg.role == "assistant":
-            langchain_messages.append(AIMessage(content=msg.content))
-
-    # 4. 流式响应
-    if request.stream:
-        async def event_generator():
-            full_response = ""
-            try:
-                print(f"[SIMPLE] 开始流式生成...")
-
-                async for chunk in stream_llm_response(
-                    langchain_messages,
-                    ASSISTANT_SYSTEM_PROMPT,
-                    conversation_id=conversation_id
-                ):
-                    yield chunk
-                    content = json.loads(chunk.split("data: ")[1].strip())
-                    full_response += content.get('content', '')
-
-                print(f"[SIMPLE] 完成，总长度: {len(full_response)}")
-
-                # 保存 AI 回复到数据库
-                if full_response:
-                    ai_msg_db = Message(
-                        conversation_id=conversation_id,
-                        role="assistant",
-                        content=full_response,
-                        timestamp=datetime.now()
-                    )
-                    from database import engine
-                    with Session(engine) as inner_session:
-                        inner_session.add(ai_msg_db)
-                        # 更新会话时间
-                        conv = inner_session.get(Conversation, conversation_id)
-                        if conv:
-                            conv.updated_at = datetime.now()
-                            inner_session.add(conv)
-                        inner_session.commit()
-
-                yield "data: [DONE]\n\n"
-
-            except Exception as e:
-                print(f"[SIMPLE] 错误: {e}")
-                import traceback
-                traceback.print_exc()
-                error_msg = json.dumps({"error": str(e)})
-                yield f"data: {error_msg}\n\n"
-
-        return StreamingResponse(
-            event_generator(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no"
-            }
-        )
-    else:
-        # 非流式响应
-        full_response = await invoke_llm_response(
-            langchain_messages,
-            ASSISTANT_SYSTEM_PROMPT
-        )
-
-        # 保存 AI 回复
-        ai_msg_db = Message(
-            conversation_id=conversation_id,
-            role="assistant",
-            content=full_response,
-            timestamp=datetime.now()
-        )
-        session.add(ai_msg_db)
-        conversation.updated_at = datetime.now()
-        session.add(conversation)
-        session.commit()
-
-        return {
-            "role": "assistant",
-            "content": full_response,
-            "conversationId": conversation_id
-        }
-
-
-# ============================================================================
-# 复杂任务端点（sys-commander）
+# 统一聊天端点（简单模式 + 复杂模式）
 # ============================================================================
 
 @app.post("/api/chat")
@@ -675,6 +607,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     print(f"[MAIN] Conversation ID: {request.conversationId}")
     print(f"[MAIN] Stream: {request.stream}")
     print(f"[MAIN] User ID: {current_user.id}")
+    print(f"[MAIN] Full request: {request}")
 
     # 1. 确定 Conversation ID
     conversation_id = request.conversationId
@@ -688,10 +621,28 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     if not conversation:
         # 如果没有ID或找不到，创建新会话
         conversation_id = str(uuid.uuid4())
+
+        # 规范化智能体 ID（兼容旧 ID）
+        normalized_agent_id = normalize_agent_id(request.agentId)
+
+        # 根据 agentId 确定 agent_type
+        if normalized_agent_id == SYSTEM_AGENT_ORCHESTRATOR:
+            agent_type = "ai"
+        elif normalized_agent_id == SYSTEM_AGENT_DEFAULT_CHAT:
+            agent_type = "default"
+        else:
+            # 尝试作为自定义智能体UUID加载
+            custom_agent_check = session.get(CustomAgent, normalized_agent_id)
+            if custom_agent_check and custom_agent_check.user_id == current_user.id:
+                agent_type = "custom"
+            else:
+                agent_type = "default"  # 默认值
+
         conversation = Conversation(
             id=conversation_id,
             title=request.message[:30] + "..." if len(request.message) > 30 else request.message,
-            agent_id=request.agentId,
+            agent_id=normalized_agent_id,  # 使用规范化后的 ID
+            agent_type=agent_type,  # 正确设置 agent_type
             user_id=current_user.id, # 绑定当前用户
             created_at=datetime.now(),
             updated_at=datetime.now()
@@ -724,31 +675,36 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     # 构建状态
 
     # 检查是否是自定义智能体
-    expert_types = ["search", "coder", "researcher", "analyzer", "writer", "planner", "image_analyzer"]
     custom_agent = None
 
-    # 处理 sys- 前缀（系统专家智能体）
-    agent_id_for_check = request.agentId
-    if agent_id_for_check and agent_id_for_check.startswith("sys-"):
-        agent_id_for_check = agent_id_for_check[4:]  # 去掉 sys- 前缀
+    # 规范化智能体 ID（兼容旧 ID）
+    normalized_agent_id = normalize_agent_id(request.agentId)
 
-    print(f"[COMPLEX] Expert types list: {expert_types}")
-    print(f"[MAIN] Checking: {request.agentId} -> {agent_id_for_check} in expert types: {agent_id_for_check in expert_types}")
+    # 判断智能体类型：
+    # 1. sys-task-orchestrator → 复杂模式（指挥官模式）
+    # 2. sys-default-chat → 简单模式（默认助手）
+    # 3. 自定义智能体UUID → 简单模式
 
-    # 特殊处理：sys-commander 直接进入指挥官模式（不走自定义 agent 逻辑）
-    is_commander_mode = request.agentId == "sys-commander" or agent_id_for_check == "commander"
-    if is_commander_mode:
-        print(f"[MAIN] [COMMANDER MODE] Detected sys-commander, entering commander workflow")
-        agent_id_for_check = "commander"  # 强制设置为 commander
+    print(f"[MAIN] Agent ID: {request.agentId} (normalized: {normalized_agent_id})")
+
+    if normalized_agent_id == SYSTEM_AGENT_ORCHESTRATOR:
+        # AI助手：复杂模式（指挥官模式）
+        print(f"[MAIN] [AI ASSISTANT MODE] Entering commander workflow")
         custom_agent = None  # 不走自定义 agent 逻辑
-    elif agent_id_for_check not in expert_types:
-        # 可能是自定义智能体，从数据库加载
-        print(f"[MAIN] Checking custom agent: {request.agentId}")
-        custom_agent = session.get(CustomAgent, request.agentId)
-        print(f"[MAIN] Query result: Agent found={custom_agent is not None}")
+    elif normalized_agent_id == SYSTEM_AGENT_DEFAULT_CHAT:
+        # 默认助手：简单模式
+        print(f"[MAIN] [DEFAULT ASSISTANT MODE] Using default assistant")
+        custom_agent = CustomAgent.get_default_assistant(current_user.id, session)
+        # 更新使用次数
+        custom_agent.conversation_count += 1
+        session.add(custom_agent)
+        session.commit()
+    else:
+        # 尝试作为自定义智能体UUID加载
+        print(f"[MAIN] Checking custom agent: {normalized_agent_id}")
+        custom_agent = session.get(CustomAgent, normalized_agent_id)
 
         if custom_agent and custom_agent.user_id == current_user.id:
-            # 不打印 name 和 system_prompt 避免编码问题
             print(f"[MAIN] [OK] Custom agent detected")
             print(f"[MAIN] [OK] System prompt length: {len(custom_agent.system_prompt)}")
             # 更新使用次数
@@ -756,14 +712,12 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             session.add(custom_agent)
             session.commit()
         else:
-            print(f"[MAIN] [NOT FOUND] Custom agent not found, using commander mode")
+            print(f"[MAIN] [NOT FOUND] Custom agent not found")
             if custom_agent:
                 print(f"[MAIN] [ERROR] User ID mismatch")
             else:
                 print(f"[MAIN] [ERROR] Custom agent does not exist")
             custom_agent = None
-    else:
-        custom_agent = None
     
     # 如果是自定义智能体，使用直接 LLM 调用模式（不经过 LangGraph）
     if custom_agent:
@@ -778,11 +732,16 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                     # 导入 LLM
                     from langchain_openai import ChatOpenAI
                     import os
-                    
+
                     api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
                     base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
                     model_name = custom_agent.model_id or os.getenv("MODEL_NAME", "deepseek-chat")
-                    
+
+                    # 自动修正：如果使用 DeepSeek API 但 model_id 是 OpenAI 模型，切换为 deepseek-chat
+                    if "deepseek.com" in base_url and model_name.startswith("gpt-"):
+                        print(f"[CUSTOM AGENT] 检测到不兼容模型 {model_name}，自动切换为 deepseek-chat")
+                        model_name = "deepseek-chat"
+
                     print(f"[CUSTOM AGENT] 使用模型: {model_name}")
                     print(f"[CUSTOM AGENT] 使用 Base URL: {base_url}")
                     
@@ -848,11 +807,16 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             # 非流式
             from langchain_openai import ChatOpenAI
             import os
-            
+
             api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
             base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
             model_name = custom_agent.model_id or os.getenv("MODEL_NAME", "deepseek-chat")
-            
+
+            # 自动修正：如果使用 DeepSeek API 但 model_id 是 OpenAI 模型，切换为 deepseek-chat
+            if "deepseek.com" in base_url and model_name.startswith("gpt-"):
+                print(f"[CUSTOM AGENT] 检测到不兼容模型 {model_name}，自动切换为 deepseek-chat")
+                model_name = "deepseek-chat"
+
             llm = ChatOpenAI(
                 model=model_name,
                 api_key=api_key,
@@ -886,51 +850,19 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                 "conversationId": conversation_id
             }
     
-    # 预定义专家模式
-    print(f"[MAIN] 检查 agentId: {request.agentId} -> {agent_id_for_check}, expert_types: {expert_types}")
-    if agent_id_for_check in expert_types:
-        print(f"[MAIN] 检测到直接专家模式: {agent_id_for_check}")
-        # 直接创建单个任务列表
-        task_list = [{
-            "id": str(uuid.uuid4()),
-            "expert_type": agent_id_for_check,
-            "description": request.message,
-            "input_data": {},
-            "priority": 0,
-            "status": "pending",
-            "output_result": None,
-            "started_at": None,
-            "completed_at": None,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
-        }]
-        print(f"[MAIN] 创建任务列表: {len(task_list)} 个任务")
-        print(f"[MAIN] 任务详情: {task_list[0]['description']}")
-
-        initial_state = {
-            "messages": langchain_messages,
-            "current_agent": agent_id_for_check,
-            "task_list": task_list,
-            "current_task_index": 0,
-            "strategy": f"直接专家模式 - {agent_id_for_check}",
-            "expert_results": [],
-            "final_response": ""
-        }
-        print(f"[MAIN] initial_state task_list 长度: {len(initial_state['task_list'])}")
-    else:
-        # 指挥官模式：通过 LLM 拆解任务
-        print(f"[MAIN] 进入指挥官模式，agentId: {request.agentId}")
-        initial_state = {
-            "messages": langchain_messages,
-            "current_agent": "commander",  # 指挥官模式下使用 commander 作为 current_agent
-            "task_list": [],
-            "current_task_index": 0,
-            "strategy": "",
-            "expert_results": [],
-            "final_response": "",
-            "context": {}
-        }
-        print(f"[MAIN] initial_state: {initial_state}")
+    # 指挥官模式：通过 LLM 拆解任务
+    print(f"[MAIN] 进入指挥官模式，agentId: {request.agentId}")
+    initial_state = {
+        "messages": langchain_messages,
+        "current_agent": "commander",  # 指挥官模式下使用 commander 作为 current_agent
+        "task_list": [],
+        "current_task_index": 0,
+        "strategy": "",
+        "expert_results": [],
+        "final_response": "",
+        "context": {}
+    }
+    print(f"[MAIN] initial_state: {initial_state}")
 
     # 4. 流式响应处理
     if request.stream:

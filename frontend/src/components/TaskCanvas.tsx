@@ -40,7 +40,8 @@ export default function TaskCanvas({ className, showHeader = true }: TaskCanvasP
 
     if (newScale !== scale) {
       // 计算缩放中心（鼠标相对于画布容器的位置）
-      const rect = canvasRef.current?.getBoundingClientRect()
+      if (!canvasRef.current) return
+      const rect = canvasRef.current.getBoundingClientRect()
       if (!rect) return
 
       const mouseX = e.clientX - rect.left
