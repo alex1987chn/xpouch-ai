@@ -105,13 +105,13 @@ export function useChat() {
       return
     }
 
+    const conversationMode = getConversationMode(selectedAgentId)
+    console.log('[useChat] 发送消息:', { userContent, selectedAgentId, conversationMode, currentConversationId })
     debug('handleSendMessage called:', { userContent, currentConversationId, selectedAgentId })
 
     // 创建新的 AbortController
     abortControllerRef.current = new AbortController()
 
-    // 3. 判断对话模式
-    const conversationMode = getConversationMode(selectedAgentId)
     let assistantMessageId: string | undefined
     
     try {
@@ -366,8 +366,17 @@ export function useChat() {
 
           // 实时更新 assistant 消息（只在简单模式下）
           if (chunk && conversationMode === 'simple') {
+            console.log('[useChat] 简单模式收到 chunk:', { assistantMessageId, chunkLength: chunk.length, chunk: chunk.substring(0, 50) })
             debug('更新消息:', assistantMessageId, 'chunk length:', chunk.length, 'chunk:', chunk.substring(0, 50))
+            console.log('[useChat] 更新消息前检查 store 状态:', {
+              messageIds: useChatStore.getState().messages.map(m => m.id),
+              hasAssistantMessage: useChatStore.getState().messages.find(m => m.id === assistantMessageId)
+            })
             updateMessage(assistantMessageId, chunk, true)
+            console.log('[useChat] 更新消息后检查 store 状态:', {
+              messageIds: useChatStore.getState().messages.map(m => m.id),
+              assistantMessage: useChatStore.getState().messages.find(m => m.id === assistantMessageId)
+            })
           }
 
           // 如果后端返回了新的 conversationId，保存它
