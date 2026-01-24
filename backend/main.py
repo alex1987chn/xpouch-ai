@@ -55,6 +55,7 @@ from utils.exceptions import (
     RateLimitError,
     handle_error
 )
+from auth import router as auth_router
 
 
 # ============================================================================
@@ -159,6 +160,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# 注册认证路由
+app.include_router(auth_router)
+
 # 添加请求日志中间件
 @app.middleware("http")
 async def log_requests(request: Request, call_next) -> Response:
@@ -250,6 +254,15 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-User-ID", "X-Request-ID"],
 )
 
+# 添加请求日志中间件
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"[Main] 收到请求: {request.method} {request.url}")
+    print(f"[Main] Headers: {dict(request.headers)}")
+    response = await call_next(request)
+    print(f"[Main] 响应状态: {response.status_code}")
+    return response
+
 # 添加安全头信息中间件
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
@@ -292,21 +305,77 @@ class UpdateUserRequest(BaseModel):
     plan: Optional[str] = None
 
 # --- Dependency: Current User ---
-async def get_current_user(request: Request, session: Session = Depends(get_session)) -> User:
+async def get_current_user(
+    request: Request,
+    session: Session = Depends(get_session),
+    require_auth: bool = False  # 是否强制要求JWT认证
+) -> User:
+    """
+    获取当前用户（优先JWT，回退X-User-ID）
+
+    策略：
+    1. 首先检查Authorization头（JWT token）
+    2. 如果JWT有效，使用JWT中的user_id
+    3. 如果没有JWT，回退到X-User-ID头（向后兼容）
+    4. 如果require_auth=True且都没有认证，抛出401错误
+
+    Args:
+        request: FastAPI请求对象
+        session: 数据库会话
+        require_auth: 是否强制要求认证（默认False，向后兼容）
+
+    Returns:
+        用户对象
+    """
+    from utils.jwt_handler import verify_token, AuthenticationError as JWTAuthError
+
+    # 策略1: 尝试从Authorization头获取JWT token
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        try:
+            payload = verify_token(token, token_type="access")
+            user_id = payload["sub"]
+            
+            user = session.get(User, user_id)
+            if user:
+                return user
+        except JWTAuthError:
+            # JWT无效，继续尝试其他方式
+            pass
+
+    # 策略2: 回退到X-User-ID头（向后兼容）
     user_id = request.headers.get("X-User-ID")
-    if not user_id:
-        # Fallback for dev/testing without header
-        user_id = "default-user"
-    
-    user = session.get(User, user_id)
-    if not user:
-        # Auto-register new user
-        user = User(id=user_id, username=f"User-{user_id[:4]}")
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-    
-    return user
+    if user_id:
+        user = session.get(User, user_id)
+        if user:
+            return user
+        elif not require_auth:
+            # 未启用严格认证时，自动注册新用户（向后兼容）
+            user = User(id=user_id, username=f"User-{user_id[:4]}")
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            return user
+
+    # 策略3: 没有任何认证信息
+    if not require_auth:
+        # 未启用严格认证时，使用默认用户（向后兼容）
+        user = session.get(User, "default-user")
+        if user:
+            return user
+        else:
+            user = User(id="default-user", username="Default User")
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            return user
+
+    # 严格认证模式：抛出401错误
+    raise HTTPException(
+        status_code=401,
+        detail="Unauthorized. Please login first."
+    )
 
 # --- API Endpoints ---
 

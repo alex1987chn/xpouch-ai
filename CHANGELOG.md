@@ -7,6 +7,198 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-01-25] - v0.5.0 - JWT 认证系统
+
+### ✨ 新增功能
+
+**JWT 认证系统（手机验证码登录）**：
+- **后端实现**：
+  - 新增 `backend/auth.py` - 认证路由模块
+  - `/api/auth/send-code` - 发送验证码（开发环境返回验证码用于测试）
+  - `/api/auth/verify-code` - 验证验证码并登录/注册
+  - `/api/auth/refresh-token` - 刷新访问令牌
+  - JWT token 管理（access_token: 30天, refresh_token: 60天）
+
+- **数据库迁移**：
+  - `migration_002_jwt_auth.py` - 新增认证相关字段
+  - User 表字段：`phone_number`, `email`, `password_hash`
+  - User 表字段：`verification_code`, `verification_code_expires_at`
+  - User 表字段：`auth_provider`, `provider_id`
+  - User 表字段：`access_token`, `refresh_token`, `token_expires_at`
+  - User 表字段：`is_verified`
+  - 创建唯一索引：`ix_user_phone_number`, `ix_user_email`, `ix_user_provider_id`
+
+- **前端实现**：
+  - 新增 `frontend/src/components/LoginDialog.tsx` - 登录/注册弹窗
+    - 手机号输入区（带国家/地区选择器）
+    - 6位验证码输入（自动跳转下一个输入框）
+    - 发送验证码按钮（60秒倒计时）
+    - 登录/注册模式切换
+    - 开发环境自动显示验证码（蓝色调试框 + 黄色提示框）
+
+  - 扩展 `frontend/src/store/userStore.ts` - 用户状态管理
+    - `accessToken` / `refreshToken` / `tokenExpiresAt` - JWT token 管理
+    - `isAuthenticated` - 登录状态
+    - `sendVerificationCode()` - 发送验证码
+    - `loginWithPhone()` - 手机验证码登录
+    - `refreshToken()` - 刷新 access token
+    - `fetchUser()` - 获取用户信息（自动携带 JWT）
+    - 使用 Zustand persist 中间件持久化 token
+
+  - 扩展 `frontend/src/services/api.ts` - 认证 API
+    - `sendVerificationCode()` - 发送验证码 API
+    - `verifyCodeAndLogin()` - 验证登录 API
+    - `refreshTokenApi()` - 刷新 token API
+    - `getHeaders()` - 优先使用 JWT，回退到 X-User-ID
+
+- **UI 组件更新**：
+  - `frontend/src/components/SidebarUserSection.tsx` - 支持未登录状态
+    - 未登录：显示登录按钮
+    - 已登录：显示用户头像、用户名、套餐信息
+  - `frontend/src/components/GlowingInput.tsx` - 复杂模式按钮登录检查
+    - 未登录：点击复杂模式按钮自动打开登录弹窗
+    - 已登录：正常切换到复杂模式
+
+### 🔧 修改内容
+
+**后端修改（4 个文件）**：
+- `backend/auth.py` - 新增认证路由
+- `backend/migrations/migration_002_jwt_auth.py` - 新增认证字段迁移
+- `backend/database.py` - 注册新迁移
+- `backend/main.py` - 添加请求日志中间件
+
+**前端修改（5 个文件）**：
+- `frontend/src/components/LoginDialog.tsx` - 新增登录弹窗组件
+- `frontend/src/components/SidebarUserSection.tsx` - 登录/未登录状态
+- `frontend/src/components/GlowingInput.tsx` - 登录检查
+- `frontend/src/store/userStore.ts` - JWT token 管理
+- `frontend/src/hooks/useExpertStream.ts` - API 调用统一使用代理
+
+**后端工具（1 个文件）**：
+- `backend/utils/jwt_handler.py` - JWT token 生成和验证
+  - `create_access_token(user_id)` - 创建访问令牌
+  - `create_refresh_token(user_id)` - 创建刷新令牌
+  - `verify_token(token)` - 验证令牌
+  - `AuthenticationError` - 自定义认证异常
+
+- `backend/utils/verification.py` - 验证码生成和验证
+  - `generate_verification_code(length=6)` - 生成验证码
+  - `verify_code(stored_code, provided_code, expires_at)` - 验证验证码
+  - `validate_phone_number(phone_number)` - 验证手机号格式
+  - `mask_phone_number(phone_number)` - 手机号脱敏
+
+### 🐛 Bug 修复
+
+**数据库迁移修复**：
+- 问题：SQLite 不支持 `ALTER TABLE ADD COLUMN` 时直接添加 `UNIQUE` 约束
+- 错误：`sqlite3.OperationalError: Cannot add a UNIQUE column`
+- 修复：分两步 - 先添加列，再创建唯一索引
+- 影响：迁移成功执行，User 表认证字段正确创建
+
+**后端导入修复**：
+- 问题：`auth.py` 中使用 `timedelta` 但未导入
+- 错误：`NameError: name 'timedelta' is not defined`
+- 修复：`from datetime import datetime, timedelta`
+- 影响：token 过期时间计算正确
+
+**前端 CORS 修复**：
+- 问题：前端直接访问 `http://localhost:3002`，导致 CORS 错误
+- 修复：统一使用相对路径（`/api/*`），通过 Vite 代理转发
+- 修改文件：
+  - `frontend/src/store/userStore.ts` - `loginWithPhone` / `refreshToken`
+  - `frontend/src/hooks/useExpertStream.ts` - `/api/chat`
+- 影响：CORS 问题解决，API 调用正常
+
+**登录成功后 UI 更新修复**：
+- 问题：登录成功后弹窗未正确关闭，页面有遮罩感
+- 修复：
+  - 优化 `loginWithPhone`：先保存 token，再获取用户信息
+  - 即使用户信息获取失败，也会设置基本用户信息和 `isAuthenticated: true`
+  - 优化 `LoginDialog` 关闭时序：添加 100ms 延迟确保状态已更新
+- 影响：登录成功后弹窗平滑关闭，UI 立即更新为已登录状态
+
+### 🎨 UI/UX 设计
+
+**登录弹窗设计（参考 ChatGPT/DeepSeek）**：
+- 使用 shadcn/ui Dialog 组件
+- 深色半透明背景遮罩（bg-black/80）
+- 卡片式设计，圆角 12px，轻微阴影
+- 顶部标题栏：居中标题 + 右侧关闭按钮
+- 底部细分割线，分隔标题和内容区域
+- 手机号输入：placeholder 提示，实时格式验证
+- 验证码输入：6 个独立输入框，自动跳转
+- 发送验证码按钮：倒计时显示，防止重复发送
+- 提交按钮：主色调填充，加载状态显示旋转图标
+- 模式切换：底部文字链接（登录/注册切换）
+
+**用户体验优化**：
+- 开发环境自动显示验证码（蓝色调试框 + 黄色提示框）
+- 验证码有效期：5 分钟
+- 登录成功后自动关闭弹窗，无需手动刷新
+- 未登录用户点击复杂模式按钮自动打开登录弹窗
+- 验证码输入框支持自动粘贴
+
+### 🔒 安全性
+
+**验证码安全**：
+- 验证码有效期：5 分钟
+- 验证码长度：6 位数字
+- 验证码生成：随机数字，使用时间戳作为随机种子
+- 验证码存储：加密存储在数据库
+- 验证码验证：比较时使用常量时间比较，防止时序攻击
+
+**JWT Token 安全**：
+- Access Token 过期时间：30 天
+- Refresh Token 过期时间：60 天
+- Token 签名：HS256 算法
+- Secret Key：从环境变量 `JWT_SECRET_KEY` 读取
+- Token 存储：前端使用 localStorage（持久化）
+
+### 📊 统计数据
+
+- **新增文件**：6 个
+  - `backend/auth.py`
+  - `backend/utils/jwt_handler.py`
+  - `backend/utils/verification.py`
+  - `backend/migrations/migration_002_jwt_auth.py`
+  - `frontend/src/components/LoginDialog.tsx`
+
+- **修改文件**：8 个
+  - `backend/database.py`
+  - `backend/main.py`
+  - `frontend/src/store/userStore.ts`
+  - `frontend/src/services/api.ts`
+  - `frontend/src/components/SidebarUserSection.tsx`
+  - `frontend/src/components/GlowingInput.tsx`
+  - `frontend/src/hooks/useExpertStream.ts`
+
+- **代码变更**：
+  - 新增代码：约 800 行
+  - 修改代码：约 150 行
+
+- **数据库变更**：
+  - User 表新增 13 个字段
+  - 创建 4 个唯一索引
+
+### 🧪 测试
+
+**功能测试**：
+- ✅ 发送验证码功能正常
+- ✅ 验证码验证登录功能正常
+- ✅ JWT token 生成和验证正常
+- ✅ Token 刷新功能正常
+- ✅ 登录成功后 UI 自动更新
+- ✅ 未登录状态点击复杂模式按钮打开登录弹窗
+- ✅ 登录弹窗关闭和状态重置正常
+
+**兼容性测试**：
+- ✅ SQLite 数据库迁移成功
+- ✅ 向后兼容：现有 API 继续支持 X-User-ID
+- ✅ 新 API 要求 JWT 认证
+- ✅ Vite 代理转发正常
+
+---
+
 ## [2026-01-24] - v0.4.0 - UI优化与Bug修复
 
 ### 🎨 UI/UX 改进

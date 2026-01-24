@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Dialog,
-  DialogContent,
+  DialogContentCentered,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -46,7 +46,7 @@ export function DeleteConfirmDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContentCentered className="sm:max-w-[400px]">
         <DialogHeader>
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
             <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
@@ -83,7 +83,7 @@ export function DeleteConfirmDialog({
             {isDeleting ? t('deleting') : t('confirmDelete')}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </DialogContentCentered>
     </Dialog>
   )
 }

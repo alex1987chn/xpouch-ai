@@ -3,7 +3,7 @@ import { Save, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AVAILABLE_MODELS, getDefaultModel, setDefaultModel, getAgentPrompt, setAgentPrompt, getAgentDefaultPrompt } from '@/utils/config'
 import { agents } from '@/data/agents'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContentCentered, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -46,7 +46,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContentCentered className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>系统设置</DialogTitle>
         </DialogHeader>
@@ -167,7 +167,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             保存设置
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </DialogContentCentered>
     </Dialog>
   )
 }
