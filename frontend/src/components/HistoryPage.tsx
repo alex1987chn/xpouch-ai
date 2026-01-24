@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { MessageSquare, Clock, Trash2, Search } from 'lucide-react'
+import { MessageSquare, Clock, Trash2, Search, Bot } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { getConversations, deleteConversation as apiDeleteConversation, type Conversation } from '@/services/api'
 import { formatDistanceToNow } from 'date-fns'
@@ -111,6 +111,8 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
     })
   }, [conversations, searchQuery, t])
 
+
+
   return (
     <div className="bg-transparent overflow-x-hidden w-full h-full flex flex-col">
       {/* 极窄毛玻璃 Header - h-14 固定高度，fixed 定位 */}
@@ -170,14 +172,12 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
           {loading ? (
              <div className="text-center py-20 text-gray-500">Loading history...</div>
           ) : filteredConversations.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {filteredConversations.map((conversation) => (
                 <div
                   key={conversation.id}
                   onClick={() => {
                     onConversationClick(conversation.id)
-                    // 传递给父组件，父组件可能会用这个对象更新状态
-                    // 这里可能需要根据 useChatStore 的需求做转换
                     onSelectConversation(conversation)
                   }}
                   className="group relative bg-white dark:bg-slate-900/50 rounded-xl p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-l-2 hover:border-violet-500 transition-all cursor-pointer border border-slate-200 dark:border-slate-700/50 shadow-sm"
@@ -232,7 +232,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
                   : t('noHistory') || 'No conversation history'
                 }
               </h3>
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-gray-500 dark:text-gray400">
                 {searchQuery
                   ? t('tryOtherKeywords') || 'Try other keywords'
                   : t('startChat') || 'Start a new chat to see it here'

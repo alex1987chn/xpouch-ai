@@ -128,6 +128,7 @@ export default function HomePage() {
   const handleAgentClick = useCallback((agentId: string) => {
     setSelectedAgentId(agentId)
     const newId = crypto.randomUUID()
+    useChatStore.getState().setCurrentConversationId(newId)
     navigate(`/chat/${newId}?agentId=${agentId}`)
   }, [setSelectedAgentId, navigate])
 
@@ -175,6 +176,7 @@ export default function HomePage() {
     if (!inputMessage.trim()) return
 
     const newId = crypto.randomUUID()
+    useChatStore.getState().setCurrentConversationId(newId)
 
     // 根据对话模式决定使用哪个智能体
     // 简单模式：使用当前选中的智能体（默认助手或自定义智能体）
