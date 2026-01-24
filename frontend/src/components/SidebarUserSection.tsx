@@ -73,8 +73,11 @@ export default function SidebarUserSection({ isCollapsed = false, onPersonalSett
           </div>
           {/* 名字和权益 */}
           <div className="flex flex-col min-w-0">
-            <span className="text-xs font-medium text-gray-700 dark:text-white/90 truncate leading-tight">
-              {username}
+            <span
+              className="text-xs font-medium text-gray-700 dark:text-white/90 truncate leading-tight"
+              title={username}
+            >
+              {username.length > 4 ? username.substring(0, 4) + '...' : username}
             </span>
             <span className="text-[10px] text-gray-500 dark:text-slate-400 truncate leading-tight">
               {planLabel}
