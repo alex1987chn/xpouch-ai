@@ -63,7 +63,7 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
       <div className="p-3 border-t border-gray-100 dark:border-white/5">
         {isCollapsed ? (
           /* 窄侧边栏：只显示收拢展开按钮 */
-          <div className="flex justify-center">
+          <div className="flex justify-center hidden lg:flex">
             <Button
               variant="ghost"
               size="icon"
@@ -83,10 +83,10 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
               onPersonalSettingsClick={onPersonalSettingsClick}
               onMenuOpenChange={handleSettingsMenuOpenChange}
             />
-            
+
             {/* 分隔线 */}
-            <div className="w-px h-8 bg-gray-200 dark:bg-white/10 flex-shrink-0" />
-            
+            <div className="w-px h-8 bg-gray-200 dark:bg-white/10 flex-shrink-0 hidden lg:block" />
+
             {/* 主题切换 + 收拢按钮 */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <ThemeSwitcher />
@@ -94,7 +94,7 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
                 variant="ghost"
                 size="icon"
                 onClick={onToggleCollapse}
-                className="w-6 h-6 rounded-lg hover:bg-indigo-50 dark:hover:bg-white/10 transition-all duration-200"
+                className="w-6 h-6 rounded-lg hover:bg-indigo-50 dark:hover:bg-white/10 transition-all duration-200 hidden lg:flex"
                 title="收拢侧边栏"
               >
                 <Menu className="w-4 h-4" />

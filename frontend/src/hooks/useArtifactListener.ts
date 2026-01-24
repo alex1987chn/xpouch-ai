@@ -37,10 +37,6 @@ export function useArtifactListener({
       const eventSource = new EventSource(url)
       eventSourceRef.current = eventSource
 
-      eventSource.onopen = () => {
-        console.log('[useArtifactListener] SSE connection established')
-      }
-
       eventSource.onerror = (error) => {
         console.error('[useArtifactListener] SSE connection error:', error)
         // Reconnect after 3 seconds
@@ -67,7 +63,7 @@ export function useArtifactListener({
       })
 
       eventSource.addEventListener('artifact_complete', () => {
-        console.log('[useArtifactListener] Artifact streaming complete')
+        // Artifact streaming complete
       })
 
       eventSource.addEventListener('error', (event: MessageEvent) => {

@@ -105,7 +105,6 @@ export function useChat() {
     }
 
     const conversationMode = getConversationMode(selectedAgentId)
-    console.log('[useChat] 发送消息:', { userContent, selectedAgentId, conversationMode, currentConversationId })
     debug('handleSendMessage called:', { userContent, currentConversationId, selectedAgentId })
 
     // 创建新的 AbortController
@@ -168,20 +167,20 @@ export function useChat() {
 
       let finalResponseContent = ''
 
+      // 存储后端返回的真实conversationId
+      let actualConversationId = currentConversationId
+
       // 5. 发送请求并处理流式响应
       debug('准备调用 sendMessage')
       finalResponseContent = await sendMessage(
         chatMessages,
         selectedAgentId,
         async (chunk, conversationId, expertEvent, artifact, expertId) => {
-          debug('sendMessage 回调被调用:', {
-            chunk: chunk?.substring(0, 50),
-            conversationId,
-            expertEvent,
-            hasArtifact: !!artifact,
-            expertId,
-            assistantMessageId
-          })
+          // 修复：更新store中的conversationId为后端返回的真实ID
+          if (conversationId && conversationId !== actualConversationId) {
+            actualConversationId = conversationId
+            setCurrentConversationId(conversationId)
+          }
 
           // 处理任务开始事件（只在复杂模式下）- 不再添加消息，信息在loading气泡中展示
           if (conversationMode === 'complex' && expertEvent?.type === 'task_start') {
@@ -374,27 +373,25 @@ export function useChat() {
             })
           }
 
-          // 注意：不再处理后端返回的 conversationId，因为前端已经使用真实ID
-          // 前端生成的UUID直接作为conversationId传递给后端，后端直接使用该ID创建会话
+          // 注意：处理后端返回的conversationId，确保前端使用正确的会话ID
+          // 后端可能返回与前端不同的ID（例如前端生成的UUID格式不符合要求）
         },
         currentConversationId,
         abortControllerRef.current.signal
       )
 
-      // 注意：不再执行URL替换，因为前端已经使用真实UUID作为conversationId
-      // HomePage中生成的UUID直接传递给后端，后端直接使用该ID创建会话
-      // 无需等待后端返回conversationId并替换URL，避免了流式传输时的路由跳转风险
+      // 修复：更新URL中的conversationId为后端返回的真实ID
+      if (actualConversationId !== currentConversationId) {
+        navigate(`/chat/${actualConversationId}?agentId=${selectedAgentId}`, { replace: true })
+      }
 
       // 如果是复杂模式，更新最终响应到助手消息
       if (conversationMode === 'complex' && finalResponseContent && assistantMessageId) {
-        debug('更新复杂模式的最终响应，长度:', finalResponseContent.length)
         updateMessage(assistantMessageId, finalResponseContent)
       }
 
       // 6. 自动从助手消息中提取内容并创建 artifact
       if (finalResponseContent && shouldDisplayAsArtifact(finalResponseContent)) {
-        debug('检测到适合在 artifact 区域展示的内容，准备创建 artifact')
-        
         // 确定 expertType（专家类型）
         let expertType = 'assistant'
         if (conversationMode === 'complex') {

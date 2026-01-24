@@ -69,6 +69,38 @@ export interface Conversation {
   updated_at: string
   messages?: Message[]
   messageCount?: number
+  task_session_id?: string  // 关联的任务会话ID（仅复杂模式）
+  task_session?: TaskSession  // 任务会话详情（仅复杂模式）
+}
+
+/**
+ * 任务会话接口 - 记录一次完整的多专家协作过程（仅复杂模式）
+ */
+export interface TaskSession {
+  session_id: string
+  conversation_id: string
+  user_query: string
+  final_response?: string
+  status?: string
+  sub_tasks?: SubTask[]
+  created_at?: string
+  updated_at?: string
+}
+
+/**
+ * 子任务接口 - 专家执行的具体任务
+ */
+export interface SubTask {
+  id: string
+  task_session_id: string
+  expert_type: string
+  task_description: string
+  status?: string
+  output?: string
+  error?: string
+  artifacts?: any[]  // Artifacts数据
+  duration_ms?: number
+  created_at?: string
 }
 
 // ============================================

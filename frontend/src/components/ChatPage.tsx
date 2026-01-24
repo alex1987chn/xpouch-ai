@@ -46,7 +46,10 @@ export default function ChatPage() {
         const currentMessages = useChatStore.getState().messages;
 
         if (currentStoreId === id && currentMessages.length > 0) {
-            return;
+            // 修复：总是从数据库加载，确保获取最新消息
+            // 清空缓存消息，避免使用localStorage中的旧数据
+            console.log('[ChatPage] 清空缓存消息，从数据库重新加载')
+            // 不return，继续执行下面的加载逻辑
         }
         // 从 API 加载
         getConversation(id).then(conversation => {

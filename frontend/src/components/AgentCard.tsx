@@ -106,7 +106,7 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: Agen
               )}>
                 {/* 默认助手装饰点 */}
                 {isDefaultAgent && (
-                  <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center shadow-sm">
+                  <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-slate-400 dark:bg-slate-600 rounded-full flex items-center justify-center shadow-sm">
                     <div className="w-1.5 h-1.5 bg-white rounded-full" />
                   </div>
                 )}

@@ -220,7 +220,6 @@ export async function sendMessage(
   if (onChunk) {
 
     try {
-      console.log('[api.ts] 发送请求:', { url, agentId, hasConversationId: !!conversationId })
       const response = await fetch(url, {
         method: 'POST',
         headers: getHeaders(),
@@ -242,7 +241,6 @@ export async function sendMessage(
         throw new Error(`API Error: ${response.status}`);
       }
 
-      console.log('[api.ts] 请求成功，开始读取 SSE 流')
       const reader = response.body?.getReader()
       if (!reader) {
         throw new Error('Response body is not readable')
@@ -282,17 +280,12 @@ export async function sendMessage(
                 const taskPlan = parsed.taskPlan
                 const taskStart = parsed.taskStart
 
-                if (content || activeExpert || expertCompleted || artifact || taskPlan || taskStart) {
-                  console.log('[api.ts] 收到SSE数据:', { hasContent: !!content, activeExpert, expertCompleted, hasArtifact: !!artifact, parsed })
-                }
-
                 if (parsed.conversationId) {
                     finalConversationId = parsed.conversationId
                 }
 
                 // 处理专家激活事件（传递给回调）
                 if (activeExpert && typeof onChunk === 'function') {
-                  console.log('[api.ts] 处理专家激活事件:', activeExpert)
                   // 调用回调，传递专家激活信息
                   // @ts-ignore - 扩展回调签名支持专家状态
                   onChunk('', finalConversationId, { type: 'expert_activated', expertId: activeExpert })
@@ -323,7 +316,6 @@ export async function sendMessage(
 
                 // 处理 taskStart 事件（任务开始展示）
                 if (taskStart && typeof onChunk === 'function') {
-                  console.log('[api.ts] 处理任务开始事件:', taskStart)
                   // @ts-ignore - 扩展回调签名支持任务开始
                   onChunk('', finalConversationId, { type: 'task_start', ...taskStart })
                 }
