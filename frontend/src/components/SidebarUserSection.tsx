@@ -6,11 +6,12 @@ import { cn } from '@/lib/utils'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
 interface SidebarUserSectionProps {
+  isCollapsed?: boolean
   onPersonalSettingsClick?: () => void
   onMenuOpenChange: (isOpen: boolean) => void
 }
 
-export default function SidebarUserSection({ onPersonalSettingsClick, onMenuOpenChange }: SidebarUserSectionProps) {
+export default function SidebarUserSection({ isCollapsed = false, onPersonalSettingsClick, onMenuOpenChange }: SidebarUserSectionProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { user } = useUserStore()
 
@@ -20,32 +21,67 @@ export default function SidebarUserSection({ onPersonalSettingsClick, onMenuOpen
   // 优先使用 Store 中的 plan，如果没有则默认为 Free
   const currentPlan = (user?.plan as 'Free' | 'Pilot' | 'Maestro') || 'Free'
 
+  // 套餐权益文案
+  const planLabel = {
+    'Free': '免费版',
+    'Pilot': '专业版',
+    'Maestro': '企业版'
+  }[currentPlan]
+
   const handleAvatarClick = () => {
     setIsMenuOpen(!isMenuOpen)
     onMenuOpenChange(!isMenuOpen)
   }
 
   return (
-    <div className="mb-2 backdrop-blur-md">
-      {/* 用户头像 */}
-      <div
-        onClick={handleAvatarClick}
-        data-avatar-button
-        className="relative shrink-0 cursor-pointer transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-      >
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={avatar} alt="Avatar" />
-          <AvatarFallback className="bg-gradient-to-br from-violet-500 to-blue-600 text-[10px] font-bold text-white shadow-lg">
-            {getAvatarDisplay(avatar || '', username)}
-          </AvatarFallback>
-        </Avatar>
-        {/* 套餐图标 */}
-        <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#1e293b] bg-white dark:bg-gray-700 dark:border-gray-600 flex items-center justify-center shadow-sm">
-          {currentPlan === 'Free' && <Star className="w-1 h-1 text-purple-500" />}
-          {currentPlan === 'Pilot' && <Plane className="w-1 h-1 text-cyan-500" />}
-          {currentPlan === 'Maestro' && <Crown className="w-1 h-1 text-amber-500" />}
+    <div className={cn(
+      'backdrop-blur-md',
+      !isCollapsed && 'w-full'
+    )}>
+      {isCollapsed ? (
+        <div
+          onClick={handleAvatarClick}
+          data-avatar-button=""
+          className="flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-indigo-50 dark:hover:bg-white/10 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+        >
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={avatar} alt="Avatar" />
+            <AvatarFallback className="bg-gradient-to-br from-violet-500 to-blue-600 text-[10px] font-bold text-white shadow-lg">
+              {getAvatarDisplay(avatar || '', username)}
+            </AvatarFallback>
+          </Avatar>
         </div>
-      </div>
+      ) : (
+        <div
+          onClick={handleAvatarClick}
+          data-avatar-button=""
+          className="flex items-center gap-2 cursor-pointer transition-all duration-200 hover:bg-indigo-50 dark:hover:bg-white/10 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+        >
+          <div className="relative shrink-0">
+            <Avatar className="h-7 w-7">
+              <AvatarImage src={avatar} alt="Avatar" />
+              <AvatarFallback className="bg-gradient-to-br from-violet-500 to-blue-600 text-[10px] font-bold text-white shadow-lg">
+                {getAvatarDisplay(avatar || '', username)}
+              </AvatarFallback>
+            </Avatar>
+            {/* 套餐图标 */}
+            <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-slate-800 bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm">
+              {currentPlan === 'Free' && <Star className="w-0.5 h-0.5 text-purple-500" />}
+              {currentPlan === 'Pilot' && <Plane className="w-0.5 h-0.5 text-cyan-500" />}
+              {currentPlan === 'Maestro' && <Crown className="w-0.5 h-0.5 text-amber-500" />}
+            </div>
+          </div>
+          {/* 名字和权益 */}
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-medium text-gray-700 dark:text-white/90 truncate leading-tight">
+              {username}
+            </span>
+            <span className="text-[10px] text-gray-500 dark:text-slate-400 truncate leading-tight">
+              {planLabel}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

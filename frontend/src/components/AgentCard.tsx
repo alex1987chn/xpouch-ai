@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import type { Agent } from '@/types'
 import { cn } from '@/lib/utils'
 import { Trash2, Plus } from 'lucide-react'
@@ -11,33 +11,52 @@ interface AgentCardProps {
   onDelete?: () => void
   onCreateAgent?: () => void
   index?: number
-  showDeleteButton?: boolean
 }
 
-function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent, index: _index, showDeleteButton = false }: AgentCardProps) {
+// 简洁的配色系统
+const STYLES = {
+  default: {
+    bg: 'bg-white dark:bg-slate-900/50',
+    border: 'border-slate-200 dark:border-slate-800',
+    hoverBorder: 'hover:border-violet-300 dark:hover:border-violet-700',
+    hoverBg: 'hover:bg-slate-50 dark:hover:bg-slate-800/50',
+    shadow: 'shadow-sm',
+    hoverShadow: 'hover:shadow-lg',
+  },
+} as const
+
+function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: AgentCardProps) {
   const isDefaultAgent = agent.isDefault === true
   const isCreateCard = agent.isCreateCard === true
+  const style = STYLES.default
 
-  // 如果是创建智能体卡片，使用简洁的居中加号样式
+  // 创建智能体卡片
   if (isCreateCard) {
     return (
       <div
         onClick={onCreateAgent}
-        className="group relative cursor-pointer overflow-hidden bg-white dark:bg-slate-900/50 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl transition-all duration-300 ease-out hover:-translate-y-1 hover:border-violet-400 dark:hover:border-violet-600 hover:shadow-lg flex items-center justify-center p-8"
+        className={cn(
+          'group cursor-pointer relative overflow-hidden rounded-xl',
+          'bg-slate-50 dark:bg-slate-900/50',
+          'border border-dashed border-slate-300 dark:border-slate-700',
+          'transition-all duration-200 ease-out',
+          'hover:border-violet-400 dark:hover:border-violet-600',
+          'hover:shadow-lg hover:shadow-violet-500/10',
+          'flex flex-col items-center justify-center p-5 min-h-[100px]'
+        )}
       >
-        {/* 居中的大加号 */}
-        <div className="flex flex-col items-center gap-3">
-          <div
-            className={cn(
-              'w-16 h-16 rounded-2xl flex items-center justify-center',
-              'bg-gradient-to-br from-violet-100 to-fuchsia-100 dark:from-violet-900/30 dark:to-fuchsia-900/30',
-              'transition-all duration-300 ease-out',
-              'group-hover:scale-110 group-hover:bg-gradient-to-br group-hover:from-violet-500 group-hover:to-fuchsia-500'
-            )}
-          >
-            <Plus className={cn('w-8 h-8 text-violet-500 dark:text-violet-400 transition-colors', 'group-hover:text-white')} />
+        <div className="flex flex-col items-center gap-2">
+          <div className={cn(
+            'w-10 h-10 rounded-lg',
+            'bg-white dark:bg-slate-800',
+            'shadow-sm border border-slate-200 dark:border-slate-700',
+            'flex items-center justify-center',
+            'transition-all duration-200',
+            'group-hover:scale-105 group-hover:shadow-md'
+          )}>
+            <Plus className="w-4 h-4 text-slate-400 group-hover:text-violet-500 transition-colors" />
           </div>
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-400 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+          <span className="text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
             创建智能体
           </span>
         </div>
@@ -45,110 +64,119 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent, index:
     )
   }
 
+  // 普通智能体卡片 - 参考推荐场景卡片设计
   return (
     <div
       onClick={onClick}
       className={cn(
-        'group relative cursor-pointer overflow-hidden',
-        // 默认助手特殊样式
-        isDefaultAgent
-          ? 'bg-gradient-to-br from-violet-50/80 to-fuchsia-50/80 dark:from-violet-950/50 dark:to-fuchsia-950/50 border-violet-300 dark:border-violet-700 shadow-[0_8px_30px_rgb(139,92,246,0.08)]'
-          : 'bg-white dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)]',
-        'rounded-2xl border',
-        'transition-all duration-300 ease-out',
-        // 悬停效果：上移 4px + 深色投影
-        'hover:-translate-y-1 hover:shadow-xl'
-        // 移除所有选中高亮状态（ring边框）
+        'group cursor-pointer relative rounded-xl overflow-hidden transition-all duration-200 ease-out',
+        // 选中状态
+        isSelected && 'ring-1 ring-transparent',
+        // 未选中状态
+        !isSelected && [
+          style.bg,
+          style.border,
+          style.hoverBg,
+          style.hoverBorder,
+          style.shadow
+        ].join(' ')
       )}
     >
-      {/* 左侧渐变竖条 - 4px 宽度，完全覆盖边缘 */}
-      <div
-        className={cn(
-          'absolute left-0 top-0 bottom-0 w-[4px] bg-gradient-to-b from-blue-400 to-violet-500',
-          'transition-all duration-300 ease-out',
-          // 默认隐藏，悬停时显示（移除选中状态）
-          isDefaultAgent ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-        )}
-      />
-
-      {/* 删除按钮 - 右上角，hover时显示 */}
-      {showDeleteButton && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete?.()
-          }}
-          className={cn(
-            'absolute top-3 right-3 z-10',
-            'p-2 rounded-lg transition-all duration-200',
-            'bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm',
-            'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300',
-            'opacity-0 group-hover:opacity-100 hover:scale-110 hover:bg-red-50 dark:hover:bg-red-900/20',
-            'shadow-sm hover:shadow-md'
-          )}
-          title="删除"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+      {/* 选中时的渐变边框 */}
+      {isSelected && (
+        <div className="absolute inset-0 rounded-xl p-[1px] pointer-events-none">
+          <div className="w-full h-full rounded-xl bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500" />
+        </div>
       )}
 
-      <Card className="bg-transparent border-0 shadow-none h-full">
-        <CardHeader className="pb-3 pl-5">
-          <div className="flex items-start gap-3">
-            {/* 图标容器 - Hover 时变为 violet 渐变 */}
-            <div
-              className={cn(
-                'w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0',
-                'transition-all duration-300 ease-out',
-                // 默认助手的特殊样式
-                isDefaultAgent
-                  ? 'bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30'
-                  : 'bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30',
-                // Hover 时变为 violet-500 渐变（非默认助手）
-                !isDefaultAgent && 'group-hover:bg-gradient-to-br group-hover:from-violet-500 group-hover:to-fuchsia-500 group-hover:scale-110'
-              )}
-            >
+      <Card className={cn(
+        'relative z-10 bg-transparent border-0 shadow-none rounded-xl h-full transition-all duration-200'
+      )}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between gap-3">
+            {/* 左侧：图标 + 信息 */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              {/* 图标容器 */}
               <div className={cn(
-                'transition-colors duration-300',
-                // 默认助手的图标颜色
-                isDefaultAgent
-                  ? 'text-white'
-                  : 'text-blue-600 dark:text-blue-400',
-                // Hover 时变为白色（非默认助手）
-                !isDefaultAgent && 'group-hover:text-white'
+                'flex-shrink-0 w-10 h-10 rounded-lg',
+                'bg-slate-100 dark:bg-slate-800',
+                'flex items-center justify-center',
+                'transition-all duration-200',
+                'group-hover:shadow-md'
               )}>
-                {agent.icon}
+                {/* 默认助手装饰点 */}
+                {isDefaultAgent && (
+                  <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center shadow-sm">
+                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                  </div>
+                )}
+                <span className={cn(
+                  'text-slate-600 dark:text-slate-300 transition-colors duration-200',
+                  'group-hover:text-violet-600 dark:group-hover:text-violet-400',
+                  'text-lg'
+                )}>
+                  {agent.icon}
+                </span>
               </div>
-            </div>
 
-            {/* 标题与标签 */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-slate-800 dark:text-slate-100 truncate text-sm leading-tight">
+              {/* 文本信息 */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <h3 className={cn(
+                    'font-medium truncate transition-colors duration-200',
+                    'text-slate-900 dark:text-slate-100',
+                    'group-hover:text-slate-700 dark:group-hover:text-white',
+                    'text-sm'
+                  )}>
                     {agent.name}
                   </h3>
-                  {/* 默认助手标记 */}
                   {isDefaultAgent && (
-                    <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-sm">
+                    <span className={cn(
+                      'flex-shrink-0 px-2 py-0.5 rounded text-[10px] font-medium',
+                      'bg-violet-100 dark:bg-violet-900/50',
+                      'text-violet-600 dark:text-violet-300'
+                    )}>
                       默认
                     </span>
                   )}
                 </div>
-                {!isDefaultAgent && (
-                  <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                    {agent.category}
-                  </span>
-                )}
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                  {agent.description}
+                </p>
               </div>
             </div>
-          </div>
-        </CardHeader>
 
-        <CardContent className="pl-5 pt-0">
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
-            {agent.description}
-          </p>
+            {/* 右侧：分类标签 + 删除按钮 */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {!isDefaultAgent && (
+                <span className={cn(
+                  'px-2 py-0.5 rounded text-[10px] font-medium',
+                  'bg-slate-100 dark:bg-slate-800',
+                  'text-slate-500 dark:text-slate-400'
+                )}>
+                  {agent.category}
+                </span>
+              )}
+              {/* 删除按钮 hover 时显示 */}
+              {!isDefaultAgent && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDelete?.()
+                  }}
+                  className={cn(
+                    'p-1.5 rounded-md transition-all duration-150',
+                    'text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400',
+                    'opacity-0 group-hover:opacity-100',
+                    'hover:bg-red-50 dark:hover:bg-red-900/20'
+                  )}
+                  title="删除"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

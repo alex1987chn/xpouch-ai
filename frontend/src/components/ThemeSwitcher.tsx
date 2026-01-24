@@ -10,14 +10,15 @@ export function ThemeSwitcher({ className }: ThemeSwitcherProps) {
   const { theme, toggleTheme } = useTheme()
 
   return (
-    <div className={`flex items-center justify-center ${className || ''}`}>
-      <Sun className="w-3.5 h-3.5 text-gray-600 dark:text-gray-300 mr-2" />
+    <div className={`flex items-center gap-1.5 ${className || ''}`}>
+      <Sun className="w-3 h-3 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
       <Switch
         checked={theme === 'dark'}
         onCheckedChange={toggleTheme}
         aria-label="Toggle theme"
+        className="flex-shrink-0 scale-90"
       />
-      <Moon className="w-3.5 h-3.5 text-gray-600 dark:text-gray-300 ml-2" />
+      <Moon className="w-3 h-3 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
     </div>
   )
 }
