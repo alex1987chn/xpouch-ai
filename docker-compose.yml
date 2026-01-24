@@ -18,7 +18,9 @@ services:
 
   # 前端服务
   frontend:
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
     container_name: xpouch-frontend
     restart: always
     ports:
