@@ -40,9 +40,23 @@ def run_migrations():
 
             # 检查 agent_type 列是否存在（Migration001 的标志）
             cursor.execute("PRAGMA table_info(conversation)")
-            columns = [row[1] for row in cursor.fetchall()]
+            conversation_columns = [row[1] for row in cursor.fetchall()]
 
-            if "agent_type" not in columns:
+            # 检查 is_default 列是否存在（完整迁移的标志）
+            cursor.execute("PRAGMA table_info(customagent)")
+            customagent_columns = [row[1] for row in cursor.fetchall()]
+
+            print(f"[Database] Conversation columns: {conversation_columns}")
+            print(f"[Database] CustomAgent columns: {customagent_columns}")
+
+            # 如果 agent_type 存在但 is_default 不存在，说明迁移只执行了一半
+            if "agent_type" in conversation_columns and "is_default" not in customagent_columns:
+                print("[Database] Migration partially applied (missing is_default column)...")
+                print("[Database] Re-running Migration001 to add missing columns...")
+                migration = Migration001ArchitectureRefactoring()
+                migration.up(conn)
+                print("[Database] Migration001 re-completed")
+            elif "agent_type" not in conversation_columns:
                 print("[Database] Running Migration001: Architecture Refactoring...")
                 migration = Migration001ArchitectureRefactoring()
                 migration.up(conn)
