@@ -4,7 +4,8 @@ import { cn } from '@/lib/utils'
 import { Bot, User, Minimize2, Maximize2, Copy, Check, RotateCcw, MoreVertical, Sparkles, Code, Globe, FileText, ArrowRight } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { useCanvasStore } from '@/store/canvasStore'
-import type { Message, Artifact } from '@/store/chatStore'
+import { useArtifacts } from '@/providers/ArtifactProvider'
+import type { Message, Artifact } from '@/types'
 import GlowingInput from './GlowingInput'
 import { useTranslation } from '@/i18n'
 import ReactMarkdown from 'react-markdown'
@@ -135,7 +136,8 @@ export default function FloatingChatPanel({
   hideModeSwitch = false
 }: FloatingChatPanelProps) {
   const { t } = useTranslation()
-  const { selectExpert, selectArtifactSession, expertResults, selectedExpert: canvasSelectedExpert } = useCanvasStore()
+  const { selectExpert, selectArtifactSession, expertResults, selectedExpert: canvasSelectedExpert, addArtifact: storeAddArtifact } = useCanvasStore()
+  const { addArtifact: providerAddArtifact } = useArtifacts()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isMinimized, setIsMinimized] = useState(false)
 
@@ -232,18 +234,25 @@ export default function FloatingChatPanel({
     // 创建一个新的artifact对象
     const newArtifact: Artifact = {
       id: `artifact-${Date.now()}-${index}`,
-      type: artifact.type as any,
+      type: artifact.type,
       content: artifact.content,
       title: artifactName,
-      createdAt: new Date().toISOString()
+      timestamp: new Date().toISOString()
     }
 
-    // 添加到canvasStore的artifactSessions中
-    // 注意：这里简化处理，实际应该根据conversationMode判断
+    // 添加到store和provider中
+    storeAddArtifact(expertType, newArtifact)
+    providerAddArtifact(expertType, {
+      type: artifact.type,
+      content: artifact.content,
+      title: artifactName
+    })
+
+    // 选中该专家会话
     if (selectArtifactSession) {
       selectArtifactSession(expertType)
     }
-  }, [selectArtifactSession])
+  }, [selectArtifactSession, storeAddArtifact, providerAddArtifact])
 
   // Artifact预览卡片组件
   function ArtifactPreviewCard({ artifact, index, total }: { artifact: DetectedArtifact, index: number, total: number }) {
@@ -385,22 +394,18 @@ export default function FloatingChatPanel({
 
             {/* Messages - flex-1 + overflow-y-auto for scrolling */}
             <ScrollArea className="flex-1 px-4 py-4">
-              <div className="space-y-4">
-              {messages.map((msg, index) => {
+              <div className="space-y-5">
+                  {messages.map((msg, index) => {
                     const isSystemMessage = msg.role === 'system'
 
-                    return (
-                      <motion.div
-                        key={msg.id || index}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={cn(
-                          'flex gap-3',
-                          msg.role === 'user' ? 'flex-col items-end' : 'flex-col items-start',
-                          isSystemMessage && 'flex-col items-center'
-                        )}
-                      >
-                        {isSystemMessage ? (
+                    if (isSystemMessage) {
+                      return (
+                        <motion.div
+                          key={msg.id || index}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="flex flex-col items-center"
+                        >
                           <Card className="w-full bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30">
                             <CardContent className="px-4 py-3 text-left">
                               {(() => {
@@ -428,94 +433,109 @@ export default function FloatingChatPanel({
                                   )
                                 }
                                 return (
-                                  <div className="prose prose-xs dark:prose-invert max-w-none">
+                                  <div className="prose prose-xs dark:prose-invert max-w-none prose-p:my-1.5 prose-p:leading-5 prose-headings:my-2 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5">
                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                                   </div>
                                 )
                               })()}
                             </CardContent>
                           </Card>
-                        ) : (
-                          <div className={cn('flex gap-3 w-full group', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
-                            {/* Avatar */}
-                            <div className={cn(
-                              'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
-                              msg.role === 'user' ? 'bg-indigo-600' : 'bg-gradient-to-br from-indigo-500 to-purple-500'
-                            )}>
-                              {msg.role === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
-                            </div>
+                        </motion.div>
+                      )
+                    }
 
+                    return (
+                      <motion.div
+                        key={msg.id || index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={cn(
+                          'flex gap-3',
+                          msg.role === 'user' ? 'flex-col items-end' : 'flex-col items-start'
+                        )}
+                      >
+                        <div className={cn('flex gap-3 w-full group', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
+                          {/* Avatar */}
+                          <div className={cn(
+                            'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
+                            msg.role === 'user' ? 'bg-indigo-600' : 'bg-gradient-to-br from-indigo-500 to-purple-500'
+                          )}>
+                            {msg.role === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
+                          </div>
+
+                          {/* Message Container - 包含气泡和按钮 */}
+                          <div className={cn('flex-1 flex flex-col', msg.role === 'user' ? 'items-end' : 'items-start')}>
                             {/* Message Bubble */}
-                            {/* 修复：如果assistant消息内容为空且正在输入，隐藏空气泡，避免与loading指示器重复 */}
                             {!(msg.role === 'assistant' && !msg.content && isTyping) && (
                               <Card className={cn(
-                                'relative max-w-[80%] rounded-2xl p-4 shadow-sm',
+                                'max-w-[80%] rounded-2xl p-3 shadow-sm',
                                 msg.role === 'user'
                                   ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white'
                                   : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100'
                               )}>
-                                {/* Action Buttons Panel */}
-                                <div className={cn(
-                                  'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
-                                  msg.role === 'user' ? 'flex-row-reverse -top-8 right-0' : 'flex-row'
-                                )}>
-                                  <button
-                                    onClick={() => handleCopyMessage(msg.content, msg.id || String(index))}
-                                    className="p-1.5 rounded-lg bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-300 transition-colors"
-                                  >
-                                    {copiedMessageId === (msg.id || String(index)) ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                                  </button>
-                                  {msg.role === 'assistant' && (
-                                    <button onClick={handleRegenerate} className="p-1.5 rounded-lg bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-300">
-                                      <RotateCcw className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                </div>
-
                                 {/* Content Rendering */}
-                                <CardContent className="text-sm text-left">
-                                  {msg.role === 'user' ? (
-                                    <div className="whitespace-pre-wrap">{msg.content}</div>
-                                  ) : (
-                                    <>
-                                      {conversationMode === 'simple' ? (() => {
-                                        const artifacts = detectArtifactsFromMessage(msg.content)
-                                        const hasMarkdownArtifact = artifacts.some(a => a.type === 'markdown')
-                                        console.log('[FloatingChatPanel] 渲染消息:', { id: msg.id, contentLength: msg.content?.length, content: msg.content?.substring(0, 50), artifacts, hasMarkdownArtifact })
+                                <CardContent className="text-sm text-left p-0">
+                                {msg.role === 'user' ? (
+                                  <div className="whitespace-pre-wrap leading-6">{msg.content}</div>
+                                ) : conversationMode !== 'simple' ? (
+                                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-p:leading-6 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-p:first:mt-0 prose-p:last:mb-0">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                                  </div>
+                                ) : (() => {
+                                  const artifacts = detectArtifactsFromMessage(msg.content)
+                                  const hasMarkdownArtifact = artifacts.some(a => a.type === 'markdown')
+                                  console.log('[FloatingChatPanel] 渲染消息:', { id: msg.id, contentLength: msg.content?.length, content: msg.content?.substring(0, 50), artifacts, hasMarkdownArtifact })
 
-                                        if (hasMarkdownArtifact) {
-                                          // 如果有markdown artifact，只显示预览卡片
-                                          console.log('[FloatingChatPanel] 只显示 artifact 预览卡片')
-                                          return (
-                                            <div className="space-y-2">
-                                              {artifacts.map((art, i) => (
-                                                <ArtifactPreviewCard key={i} artifact={art} index={i} total={artifacts.length} />
-                                              ))}
-                                            </div>
-                                          )
-                                        }
-
-                                        // 如果没有markdown artifact，显示文本 + code/html artifact
-                                        const textOnly = msg.content.replace(/```[\s\S]*?```/g, '').trim()
-                                        console.log('[FloatingChatPanel] 显示文本内容:', { textOnly: textOnly?.substring(0, 50), textOnlyLength: textOnly?.length })
-                                        return (
-                                          <div className="space-y-3">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{textOnly}</ReactMarkdown>
-                                            {artifacts.map((art, i) => (
-                                              <ArtifactPreviewCard key={i} artifact={art} index={i} total={artifacts.length} />
-                                            ))}
-                                          </div>
-                                        )
-                                      })() : (
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                                      )}
-                                    </>
-                                  )}
-                                </CardContent>
-                              </Card>
+                                  return hasMarkdownArtifact ? (
+                                    (() => {
+                                      console.log('[FloatingChatPanel] 只显示 artifact 预览卡片')
+                                      return (
+                                        <div className="space-y-2">
+                                          {artifacts.map((art, i) => (
+                                            <ArtifactPreviewCard key={i} artifact={art} index={i} total={artifacts.length} />
+                                          ))}
+                                        </div>
+                                      )
+                                    })()
+                                  ) : (() => {
+                                    const textOnly = msg.content.replace(/```[\s\S]*?```/g, '').trim()
+                                    console.log('[FloatingChatPanel] 显示文本内容:', { textOnly: textOnly?.substring(0, 50), textOnlyLength: textOnly?.length })
+                                    return (
+                                      <div className="space-y-2">
+                                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-p:leading-6 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
+                                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{textOnly}</ReactMarkdown>
+                                        </div>
+                                        {artifacts.map((art, i) => (
+                                          <ArtifactPreviewCard key={i} artifact={art} index={i} total={artifacts.length} />
+                                        ))}
+                                      </div>
+                                    )
+                                  })()
+                                })()}
+                              </CardContent>
+                            </Card>
                             )}
+
+                            {/* Action Buttons - 气泡下方，参考ChatGPT/DeepSeek */}
+                            <div className={cn(
+                              'flex gap-2 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity',
+                              msg.role === 'user' ? 'justify-end' : 'justify-start'
+                            )}>
+                              <button
+                                onClick={() => handleCopyMessage(msg.content, msg.id || String(index))}
+                                className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+                                title="复制"
+                              >
+                                {copiedMessageId === (msg.id || String(index)) ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                              {msg.role === 'assistant' && (
+                                <button onClick={handleRegenerate} className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all" title="重新生成">
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        )}
+                        </div>
                       </motion.div>
                     )
                   })}
@@ -523,7 +543,7 @@ export default function FloatingChatPanel({
                 {/* Typing Indicator */}
                 {/* 修复：只有在没有内容开始流式时才显示loading指示器
                      如果有runningExpert（复杂模式）或有非空的assistant消息（简单模式开始流式），则隐藏loading */}
-                {isTyping && !runningExpert && !messages.some(m => m.role === 'assistant' && m.content && m.content.length > 0) && (
+                {isTyping && !runningExpert && !messages.some(m => m.role === 'assistant' && m.content && m.content.length > 10) && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 items-start">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
                       <Bot className="w-4 h-4 text-white" />

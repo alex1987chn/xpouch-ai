@@ -8,6 +8,7 @@ import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import SidebarMenu from './SidebarMenu'
 import SidebarUserSection from './SidebarUserSection'
 import SidebarSettingsMenu from './SidebarSettingsMenu'
+import { Button } from '@/components/ui/button'
 
 interface SidebarProps {
   className?: string
@@ -50,9 +51,11 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
         {/* 收拢按钮 - 移到用户区域上方 */}
         {onToggleCollapse && (
           <div className="flex justify-center mb-1">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={onToggleCollapse}
-              className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-200/50 hover:bg-gray-300/50 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-gray-600 dark:text-gray-300"
+              className="w-5 h-5 rounded-full bg-gray-200/50 hover:bg-gray-300/50 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 transition-all duration-200 hover:scale-110"
               title={isCollapsed ? '展开侧边栏' : '收拢侧边栏'}
             >
               {isCollapsed ? (
@@ -60,7 +63,7 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
               ) : (
                 <ChevronLeft className="w-3 h-3" />
               )}
-            </button>
+            </Button>
           </div>
         )}
 

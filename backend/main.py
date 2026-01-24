@@ -719,7 +719,6 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                 try:
                     # 导入 LLM
                     from langchain_openai import ChatOpenAI
-                    import os
 
                     api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
                     base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
@@ -794,7 +793,6 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
         else:
             # 非流式
             from langchain_openai import ChatOpenAI
-            import os
 
             api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
             base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
@@ -1101,7 +1099,6 @@ async def chat_invoke_endpoint(
     session.refresh(task_session)
 
     # 5. 导入 LLM（需要从 agents.graph 重新导入）
-    import os
     from langchain_openai import ChatOpenAI
     from langchain_core.messages import HumanMessage, AIMessage
 
