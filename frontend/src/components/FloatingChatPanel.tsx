@@ -151,7 +151,6 @@ export default function FloatingChatPanel({
 
   // 处理模式切换
   const handleModeChange = (newMode: ConversationMode) => {
-    console.log('[FloatingChatPanel] 切换模式:', conversationMode, '->', newMode)
     if (onConversationModeChange) {
       onConversationModeChange(newMode)
     } else {
@@ -161,17 +160,10 @@ export default function FloatingChatPanel({
 
   // 根据对话模式更新 agentId
   useEffect(() => {
-    console.log('[FloatingChatPanel] 当前对话模式:', conversationMode)
+    // 根据对话模式更新 agentId
   }, [conversationMode])
-  
-  // 调试：记录接收到的消息和模式
-  useEffect(() => {
-    console.log('[FloatingChatPanel] 调试：messages=', messages, 'conversationMode=', conversationMode, 'messages count=', messages.length)
-    messages.forEach((msg, idx) => {
-      console.log(`[FloatingChatPanel] 消息 ${idx}: id=${msg.id}, role=${msg.role}, content长度=${msg.content?.length}, content前50=${msg.content?.substring(0, 50)}`)
-    })
-  }, [messages, conversationMode])
 
+  
   // Auto-scroll to bottom when new messages appear
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -225,7 +217,6 @@ export default function FloatingChatPanel({
   // 处理点击artifact预览卡片
   const handleArtifactPreviewClick = useCallback((artifact: DetectedArtifact, index: number, total: number) => {
     // 在简单模式下，需要将artifact传递到右侧区域显示
-    console.log('[FloatingChatPanel] 点击artifact预览:', { type: artifact.type, index, total })
 
     // 检测并添加到canvasStore
     const expertType = 'simple'

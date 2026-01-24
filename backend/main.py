@@ -85,9 +85,6 @@ async def stream_llm_response(
     base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
     model_name = model or os.getenv("MODEL_NAME", "deepseek-chat")
 
-    print(f"[LLM] 初始化模型: {model_name}")
-    print(f"[LLM] Base URL: {base_url}")
-
     llm = ChatOpenAI(
         model=model_name,
         api_key=api_key,
@@ -101,22 +98,14 @@ async def stream_llm_response(
     messages_with_system.append(("system", system_prompt))
     messages_with_system.extend(messages)
 
-    print(f"[LLM] 开始流式生成...")
-    chunk_count = 0
-
     async for chunk in llm.astream(messages_with_system):
         content = chunk.content
         if content:
-            chunk_count += 1
-            print(f"[LLM] Chunk #{chunk_count}: {repr(content[:50] if len(content) > 50 else content)}")
-
             # SSE 格式：data: {...}\n\n
             event_data = {'content': content}
             if conversation_id:
                 event_data['conversationId'] = conversation_id
             yield f"data: {json.dumps(event_data)}\n\n"
-
-    print(f"[LLM] 完成，总 chunk 数: {chunk_count}")
 
 
 async def invoke_llm_response(
@@ -173,8 +162,6 @@ app = FastAPI(lifespan=lifespan)
 # 添加请求日志中间件
 @app.middleware("http")
 async def log_requests(request: Request, call_next) -> Response:
-    print(f"[MIDDLEWARE] 收到请求: {request.method} {request.url.path}")
-    print(f"[MIDDLEWARE] Headers: {dict(request.headers)}")
     response = await call_next(request)
     return response
 
@@ -374,7 +361,6 @@ async def create_custom_agent(
     session.add(custom_agent)
     session.commit()
     session.refresh(custom_agent)
-    print(f"[API] 创建自定义智能体: {custom_agent.id} - {custom_agent.name}")
     return custom_agent
 
 
@@ -394,24 +380,19 @@ async def get_all_agents(
     - 默认助手（简单模式）由前端硬编码，不在此接口返回
     """
     try:
-        print(f"[API] /api/agents called, user_id: {current_user.id}")
-
         # 获取用户自定义智能体（按创建时间降序，最新的在前）
         statement = select(CustomAgent).where(
             CustomAgent.user_id == current_user.id,
             CustomAgent.is_default == False  # 排除默认助手
         ).order_by(CustomAgent.created_at.desc())
-        print(f"[API] Query statement created")
 
         custom_agents = session.exec(statement).all()
-        print(f"[API] Query executed, found {len(custom_agents)} custom agents")
 
         # 构建返回结果
         result = []
 
         # 添加自定义智能体
         for agent in custom_agents:
-            print(f"[API] Processing agent: {agent.id} - {agent.name}")
             result.append({
                 "id": str(agent.id),
                 "name": agent.name,
@@ -427,11 +408,10 @@ async def get_all_agents(
                 "is_builtin": False
             })
 
-        print(f"[API] Returning agents: {len(result)} items (custom only)")
+
         return result
 
     except Exception as e:
-        print(f"[API] Error in /api/agents: {e}")
         import traceback
         traceback.print_exc()
         raise AppError(message=str(e), original_error=e)
@@ -473,7 +453,6 @@ async def delete_custom_agent(
 
     session.delete(agent)
     session.commit()
-    print(f"[API] 删除自定义智能体: {agent_id}")
     return {"ok": True}
 
 
@@ -531,7 +510,7 @@ async def get_conversation(conversation_id: str, session: Session = Depends(get_
             statement = select(SubTask).where(SubTask.task_session_id == task_session.session_id)
             sub_tasks = session.exec(statement).all()
 
-            # 构建响应数据（字典形式）- 明确包含 agent_type 字段
+            # 构建响应数据（字典形式）- 明确包含 agent_type 字段和 messages
             return {
                 "id": conversation.id,
                 "title": conversation.title,
@@ -541,6 +520,15 @@ async def get_conversation(conversation_id: str, session: Session = Depends(get_
                 "task_session_id": conversation.task_session_id,
                 "created_at": conversation.created_at.isoformat() if conversation.created_at else None,
                 "updated_at": conversation.updated_at.isoformat() if conversation.updated_at else None,
+                "messages": [
+                    {
+                        "id": msg.id,
+                        "role": msg.role,
+                        "content": msg.content,
+                        "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
+                    }
+                    for msg in conversation.messages
+                ],
                 "task_session": {
                     "session_id": task_session.session_id,
                     "user_query": task_session.user_query,
@@ -564,8 +552,26 @@ async def get_conversation(conversation_id: str, session: Session = Depends(get_
                 }
             }
 
-    # 对于非AI会话，直接返回 conversation 对象
-    return conversation
+    # 对于非AI会话，手动构建响应以确保 messages 被序列化
+    return {
+        "id": conversation.id,
+        "title": conversation.title,
+        "agent_id": conversation.agent_id,
+        "agent_type": conversation.agent_type,
+        "user_id": conversation.user_id,
+        "task_session_id": conversation.task_session_id,
+        "created_at": conversation.created_at.isoformat() if conversation.created_at else None,
+        "updated_at": conversation.updated_at.isoformat() if conversation.updated_at else None,
+        "messages": [
+            {
+                "id": msg.id,
+                "role": msg.role,
+                "content": msg.content,
+                "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
+            }
+            for msg in conversation.messages
+        ]
+    }
 
 # 删除会话 (Filtered by User)
 @app.delete("/api/conversations/{conversation_id}")
@@ -583,14 +589,6 @@ async def delete_conversation(conversation_id: str, session: Session = Depends(g
 
 @app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    print(f"[MAIN] ========== Received chat request ==========")
-    print(f"[MAIN] Message content: {request.message}")
-    print(f"[MAIN] Agent ID: {request.agentId}")
-    print(f"[MAIN] Conversation ID: {request.conversationId}")
-    print(f"[MAIN] Stream: {request.stream}")
-    print(f"[MAIN] User ID: {current_user.id}")
-    print(f"[MAIN] Full request: {request}")
-
     # 1. 确定 Conversation ID
     conversation_id = request.conversationId
     conversation = None
@@ -670,15 +668,11 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     # 2. sys-default-chat → 简单模式（默认助手）
     # 3. 自定义智能体UUID → 简单模式
 
-    print(f"[MAIN] Agent ID: {request.agentId} (normalized: {normalized_agent_id})")
-
     if normalized_agent_id == SYSTEM_AGENT_ORCHESTRATOR:
         # AI助手：复杂模式（指挥官模式）
-        print(f"[MAIN] [AI ASSISTANT MODE] Entering commander workflow")
         custom_agent = None  # 不走自定义 agent 逻辑
     elif normalized_agent_id == SYSTEM_AGENT_DEFAULT_CHAT:
         # 默认助手：简单模式（直接使用常量）
-        print(f"[MAIN] [DEFAULT ASSISTANT MODE] Using ASSISTANT_SYSTEM_PROMPT constant")
         # 创建简单的对象用于后续处理
         custom_agent = SimpleNamespace(
             name="默认助手",
@@ -689,29 +683,18 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
         )
     else:
         # 尝试作为自定义智能体UUID加载
-        print(f"[MAIN] Checking custom agent: {normalized_agent_id}")
         custom_agent = session.get(CustomAgent, normalized_agent_id)
 
         if custom_agent and custom_agent.user_id == current_user.id:
-            print(f"[MAIN] [OK] Custom agent detected")
-            print(f"[MAIN] [OK] System prompt length: {len(custom_agent.system_prompt)}")
             # 更新使用次数
             custom_agent.conversation_count += 1
             session.add(custom_agent)
             session.commit()
         else:
-            print(f"[MAIN] [NOT FOUND] Custom agent not found")
-            if custom_agent:
-                print(f"[MAIN] [ERROR] User ID mismatch")
-            else:
-                print(f"[MAIN] [ERROR] Custom agent does not exist")
             custom_agent = None
-    
+
     # 如果是自定义智能体，使用直接 LLM 调用模式（不经过 LangGraph）
     if custom_agent:
-        print(f"[MAIN] 自定义智能体模式: {custom_agent.name}")
-        print(f"[MAIN] System Prompt: {custom_agent.system_prompt[:50]}...")
-        
         # 4. 流式响应处理（自定义智能体直接调用 LLM）
         if request.stream:
             async def event_generator():
@@ -739,23 +722,19 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                         temperature=0.7,
                         streaming=True
                     )
-                    
+
                     # 添加 System Prompt
                     messages_with_system = []
                     messages_with_system.append(("system", custom_agent.system_prompt))
                     messages_with_system.extend(langchain_messages)
-                    
-                    print(f"[CUSTOM AGENT] 开始流式生成...")
+
                     async for chunk in llm.astream(messages_with_system):
                         content = chunk.content
                         if content:
                             full_response += content
                             yield f"data: {json.dumps({'content': content, 'conversationId': conversation_id})}\n\n"
-                    
-                    print(f"[CUSTOM AGENT] 完成，总长度: {len(full_response)}")
-                    
+
                 except Exception as e:
-                    print(f"[CUSTOM AGENT] 错误: {e}")
                     import traceback
                     traceback.print_exc()
                     error_msg = json.dumps({"error": str(e)})
@@ -800,7 +779,6 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
 
             # 自动修正：如果使用 DeepSeek API 但 model_id 是 OpenAI 模型，切换为 deepseek-chat
             if "deepseek.com" in base_url and model_name.startswith("gpt-"):
-                print(f"[CUSTOM AGENT] 检测到不兼容模型 {model_name}，自动切换为 deepseek-chat")
                 model_name = "deepseek-chat"
 
             llm = ChatOpenAI(
@@ -848,7 +826,6 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
         "final_response": "",
         "context": {}
     }
-    print(f"[MAIN] initial_state: {initial_state}")
 
     # 4. 流式响应处理
     if request.stream:
@@ -860,7 +837,6 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             expert_artifacts = {}
 
             try:
-                print(f"[STREAM] 开始流式处理...")
                 async for event in commander_graph.astream_events(
                     initial_state,
                     version="v2"
@@ -873,37 +849,26 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                     if event_count % 10 == 0:
                         print(f"[STREAM] 已处理 {event_count} 个事件，当前: {kind} - {name}")
 
-                    # 捕获指挥官节点执行
-                    if kind == "on_chain_start" and name == "commander":
-                        print(f"[STREAM] 指挥官节点开始执行")
-
                     # 捕获指挥官节点执行结束（获取任务计划）
                     if kind == "on_chain_end" and name == "commander":
-                        print(f"[STREAM] 指挥官节点结束，检查是否有任务计划...")
                         output_data = event["data"]["output"]
 
                         if "__task_plan" in output_data:
                             task_plan = output_data["__task_plan"]
-                            print(f"[STREAM] 发现任务计划: {task_plan['task_count']} 个任务")
                             # 推送任务计划事件到前端
                             yield f"data: {json.dumps({'taskPlan': task_plan, 'conversationId': conversation_id})}\n\n"
-                            print(f"[STREAM] 推送任务计划事件")
 
                     # 捕获聚合器节点执行结束（获取最终响应）
                     if kind == "on_chain_end" and name == "aggregator":
-                        print(f"[STREAM] 聚合器节点结束，检查是否有最终响应...")
                         output_data = event["data"]["output"]
 
                         if "final_response" in output_data:
                             final_response = output_data["final_response"]
-                            print(f"[STREAM] 发现最终响应，长度: {len(final_response)}")
                             # 推送最终响应到前端
                             yield f"data: {json.dumps({'content': final_response, 'conversationId': conversation_id, 'isFinal': True})}\n\n"
-                            print(f"[STREAM] 推送最终响应事件")
 
                     # 捕获专家分发器节点开始执行（推送任务开始信息）
                     if kind == "on_chain_start" and name == "expert_dispatcher":
-                        print(f"[STREAM] expert_dispatcher 节点开始执行，检查是否有任务信息...")
                         # 从事件输入中获取 state
                         input_data = event.get("data", {}).get("input", {})
                         task_list = input_data.get("task_list", [])
@@ -917,14 +882,11 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                                 "expert_type": current_task.get("expert_type", ""),
                                 "description": current_task.get("description", "")
                             }
-                            print(f"[STREAM] 推送任务开始信息: {task_start_info}")
                             yield f"data: {json.dumps({'taskStart': task_start_info, 'conversationId': conversation_id})}\n\n"
 
                     # 捕获专家分发器节点执行（通过 __expert_info 字段传递专家信息）
                     if kind == "on_chain_end" and name == "expert_dispatcher":
-                        print(f"[STREAM] expert_dispatcher 节点结束，检查是否有专家信息...")
                         output_data = event["data"]["output"]
-                        print(f"[STREAM] output_data 类型: {type(output_data)}")
 
                         # 移除重复的 __task_start_info 处理（现在在 on_chain_start 时处理）
                         if "__expert_info" in output_data:
@@ -935,25 +897,18 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                             output_result = expert_info.get("output", "")
                             expert_error = expert_info.get("error")
 
-                            print(f"[STREAM] 发现专家信息: {expert_name}, 状态: {expert_status}, 耗时: {duration_ms}ms")
-
                             # 初始化该专家的 artifact 列表
                             if expert_name not in expert_artifacts:
                                 expert_artifacts[expert_name] = []
 
                             # 推送专家激活事件（在专家开始执行时）
                             yield f"data: {json.dumps({'activeExpert': expert_name, 'conversationId': conversation_id})}\n\n"
-                            print(f"[STREAM] 推送专家激活事件: {expert_name}")
 
                             # 检查是否生成了 artifact
                             if "artifact" in output_data:
                                 artifact = output_data["artifact"]
-                                print(f"[STREAM] 检测到 artifact: {artifact['type']}")
-                                print(f"[STREAM] artifact content 长度: {len(artifact.get('content', ''))}")
-
                                 # 添加到该专家的 artifact 列表
                                 expert_artifacts[expert_name].append(artifact)
-                                print(f"[STREAM] 专家 {expert_name} 当前 artifacts 数量: {len(expert_artifacts[expert_name])}")
 
                                 # 推送 artifact_update 事件（包含所有 artifacts）
                                 yield f"data: {json.dumps({'artifact': artifact, 'conversationId': conversation_id, 'allArtifacts': expert_artifacts[expert_name]})}\n\n"
@@ -969,9 +924,6 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                                 'error': expert_error,
                                 'allArtifacts': expert_artifacts.get(expert_name, [])
                             })}\n\n"
-                            print(f"[STREAM] 专家 {expert_name} 执行完成")
-                        else:
-                            print(f"[STREAM] ⚠️  未检测到 __expert_info 字段")
 
                     # 捕获 LLM 流式输出
                     if kind == "on_chat_model_stream":
@@ -981,7 +933,6 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                             yield f"data: {json.dumps({'content': content, 'conversationId': conversation_id})}\n\n"
 
                 print(f"[STREAM] 流式处理完成，共处理 {event_count} 个事件")
-                print(f"[STREAM] total_response 长度: {len(full_response)}")
 
             except Exception as e:
                 print(f"[STREAM] 错误: {e}")

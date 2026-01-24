@@ -81,7 +81,10 @@ async def commander_node(state: Dict[str, Any], llm) -> Dict[str, Any]:
     started_at = datetime.now()
 
     try:
-        print(f"[COMMANDER] 开始分析用户需求: {user_content[:50]}...")
+        try:
+            print(f"[COMMANDER] 开始分析用户需求: {user_content[:50]}...")
+        except UnicodeEncodeError:
+            print(f"[COMMANDER] 开始分析用户需求: [Contains unicode content]")
 
         # 调用 LLM 分解任务
         response = await llm.ainvoke([

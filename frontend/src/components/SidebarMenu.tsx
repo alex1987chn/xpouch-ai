@@ -213,7 +213,7 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
                   className="w-full h-auto p-2 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-all text-left group"
                 >
                   <div className="flex items-start gap-2">
-                    <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0 mt-0.5" />
+                    <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                         {conversation.title || t('newChat')}

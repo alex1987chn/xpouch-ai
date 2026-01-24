@@ -176,6 +176,7 @@ export default function HomePage() {
     if (!inputMessage.trim()) return
 
     const newId = crypto.randomUUID()
+    console.log('[HomePage] 生成新会话ID:', newId)
     useChatStore.getState().setCurrentConversationId(newId)
 
     // 根据对话模式决定使用哪个智能体
@@ -185,6 +186,7 @@ export default function HomePage() {
       ? selectedAgentId || SYSTEM_AGENTS.DEFAULT_CHAT
       : SYSTEM_AGENTS.ORCHESTRATOR
 
+    console.log('[HomePage] 导航到chat页面:', { newId, agentId: agentIdForChat, mode: conversationMode })
     navigate(`/chat/${newId}?agentId=${agentIdForChat}`, {
       state: {
         startWith: inputMessage

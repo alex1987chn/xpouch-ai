@@ -93,7 +93,6 @@ function CanvasChatPageContent() {
 
   // 根据 URL 中的 agentId 确定对话模式
   const initialConversationMode = useMemo(() => {
-    console.log('[CanvasChatPage] initialConversationMode: agentIdFromUrl =', agentIdFromUrl)
     return agentIdFromUrl === SYSTEM_AGENTS.ORCHESTRATOR ? 'complex' : 'simple'
   }, [agentIdFromUrl])
 
@@ -141,7 +140,6 @@ function CanvasChatPageContent() {
 
   // 处理对话模式切换
   const handleConversationModeChange = useCallback((newMode: 'simple' | 'complex') => {
-    console.log('[CanvasChatPage] 切换对话模式:', newMode)
     setConversationMode(newMode)
 
     // 切换模式时，更新 selectedAgentId
@@ -164,7 +162,6 @@ function CanvasChatPageContent() {
 
   // 监听 agentId 变化，自动更新模式
   useEffect(() => {
-    console.log('[CanvasChatPage] agentIdFromUrl 变化:', agentIdFromUrl)
     if (agentIdFromUrl === SYSTEM_AGENTS.ORCHESTRATOR) {
       setConversationMode('complex')
     } else {
@@ -205,34 +202,36 @@ function CanvasChatPageContent() {
       return
     }
 
-    // 检查是否是同一个会话（避免重复加载）
-    if (id === previousConversationIdRef.current && hasLoadedConversationRef.current) {
-      console.log('[CanvasChatPage] 同一会话，跳过加载:', id)
-      return
-    }
-
     // 检查是否有 startWith state（从首页过来的），如果有则不尝试加载
     const state = location.state as { startWith?: string; agentId?: string } | null
     if (state?.startWith) {
       hasLoadedConversationRef.current = true
       setCurrentConversationId(id)
       previousConversationIdRef.current = id
-      // 注意：不要清空消息！useChat会处理消息添加
-      // setMessages([]) - 已移除，避免清空用户刚刚输入的消息
+      return
+    }
+
+    // 检查是否是同一个会话（避免重复加载）
+    // 注意：只有当store中已经有正确的会话ID和消息时，才跳过加载
+    const currentStoreId = useChatStore.getState().currentConversationId;
+    const currentMessages = useChatStore.getState().messages;
+
+    // 修复：如果是页面刷新（store中有缓存消息），强制从数据库重新加载
+    // 判断标准：previousConversationId不为null且与当前ID相同，但store可能是从localStorage恢复的旧数据
+    const isRefresh = previousConversationIdRef.current !== null && previousConversationIdRef.current === id
+
+    if (id === previousConversationIdRef.current && hasLoadedConversationRef.current && id === currentStoreId && currentMessages.length > 0 && !isRefresh) {
       return
     }
 
     hasLoadedConversationRef.current = true
     previousConversationIdRef.current = id
 
-    console.log('[CanvasChatPage] 开始加载会话:', id)
-
     getConversation(id).then(conversation => {
       if (conversation) {
         setSelectedAgentId(conversation.agent_id)
         setCurrentConversationId(conversation.id)
         setCurrentConvData(conversation) // 保存当前会话对象
-        console.log('[CanvasChatPage] 会话加载成功:', { id: conversation.id, agent_id: conversation.agent_id, agent_type: conversation.agent_type, messagesCount: conversation.messages?.length })
 
         // 加载 messages
         if (conversation.messages && conversation.messages.length > 0) {
@@ -247,7 +246,6 @@ function CanvasChatPageContent() {
               timestamp: typedM.timestamp ? new Date(typedM.timestamp).getTime() : Date.now()
             }
           })
-          console.log('[CanvasChatPage] 加载的消息:', { count: loadedMessages.length, firstMessage: loadedMessages[0], lastMessage: loadedMessages[loadedMessages.length - 1] })
           setMessages(loadedMessages as Message[])
 
           // 加载 artifacts（如果存在）
