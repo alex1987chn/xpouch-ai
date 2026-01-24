@@ -3,10 +3,11 @@ import { TranslationKey } from './index'
 export const zh: Record<TranslationKey, string> = {
   // Navigation
   newChat: '新会话',
-  history: '历史记录',
+  history: '会话记录',
   knowledgeBase: '知识库',
   settings: '设置',
   home: '首页',
+  recentChats: '最近会话',
   
   // Home
   greeting: '你好！我是 XPouch AI 助手',
@@ -14,7 +15,7 @@ export const zh: Record<TranslationKey, string> = {
   placeholder: '进入多元宇宙...',
   featuredAgents: '精选智能体',
   myAgents: '我的智能体',
-  createAgent: '创造您的专属智能体',
+  createAgent: '创建专属智能体',
   backToChat: '会话',
   addCustomAgent: '添加自定义智能体',
   createYourFirstAgent: '创建第一个智能体',
@@ -130,10 +131,11 @@ export const zh: Record<TranslationKey, string> = {
 export const en: Record<TranslationKey, string> = {
   // Navigation
   newChat: 'New Chat',
-  history: 'History',
+  history: 'Conversations',
   knowledgeBase: 'Knowledge Base',
   settings: 'Settings',
   home: 'Home',
+  recentChats: 'Recent Chats',
   
   // Home
   greeting: 'Hello! I am XPouch AI Assistant',
@@ -141,7 +143,7 @@ export const en: Record<TranslationKey, string> = {
   placeholder: 'Enter Multiverse...',
   featuredAgents: 'Featured Agents',
   myAgents: 'My Agents',
-  createAgent: 'Create Your Exclusive Agent',
+  createAgent: 'Create Exclusive Agent',
   backToChat: 'Back to Chat',
   addCustomAgent: 'Add Custom Agent',
   createYourFirstAgent: 'Create your first agent',
@@ -257,10 +259,11 @@ export const en: Record<TranslationKey, string> = {
 export const ja: Record<TranslationKey, string> = {
   // Navigation
   newChat: '新しいチャット',
-  history: '履歴',
+  history: '会話記録',
   knowledgeBase: 'ナレッジベース',
   settings: '設定',
   home: 'ホーム',
+  recentChats: '最近のチャット',
   
   // Home
   greeting: 'こんにちは！XPouch AI アシスタントです',
@@ -268,7 +271,7 @@ export const ja: Record<TranslationKey, string> = {
   placeholder: 'マルチバースに入る...',
   featuredAgents: 'おすすめエージェント',
   myAgents: 'マイエージェント',
-  createAgent: 'あなただけのエージェントを作成',
+  createAgent: '専用エージェントを作成',
   backToChat: 'チャットに戻る',
   addCustomAgent: 'カスタムエージェントを追加',
   createYourFirstAgent: '最初のエージェントを作成',

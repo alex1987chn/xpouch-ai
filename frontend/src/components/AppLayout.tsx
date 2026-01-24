@@ -58,14 +58,13 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
 
       {/* 左侧边栏 - 统一的全局 Sidebar */}
       <aside className={cn(
-        'fixed left-0 top-0 h-screen flex-shrink-0 transition-transform duration-200 z-[150]',
-        'w-[64px]',
-        'bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a]',
+        'fixed left-0 top-0 h-screen flex-shrink-0 transition-all duration-300 z-[150]',
+        sidebar.isCollapsed ? 'w-[72px]' : 'w-[240px]',
+        'bg-gradient-to-b from-white via-gray-50 to-gray-100 dark:from-[#1e293b] dark:via-[#1a1d2e] dark:to-[#0d0f14]',
         'backdrop-blur-xl',
-        'border-r border-slate-200/50 dark:border-slate-700/30',
+        'border-r border-gray-100 dark:border-white/5',
         'lg:translate-x-0',
-        sidebar.isMobileOpen ? 'translate-x-0' : '-translate-x-full',
-        sidebar.isCollapsed && 'lg:-translate-x-full',
+        sidebar.isMobileOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         <div className="h-full w-full">
           <Sidebar
@@ -93,8 +92,8 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
 
       {/* 主内容区域 - 右侧交互区 */}
       <div className={cn(
-        'flex-1 w-full flex flex-col transition-all duration-200',
-        sidebar.isCollapsed ? 'lg:ml-0' : 'lg:ml-[64px]',
+        'flex-1 w-full flex flex-col transition-all duration-300',
+        sidebar.isCollapsed ? 'lg:ml-[72px]' : 'lg:ml-[240px]',
         sidebar.isMobileOpen ? 'ml-0' : 'ml-0'
       )}>
         {/* 移动端汉堡菜单按钮 */}

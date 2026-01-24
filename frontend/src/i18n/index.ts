@@ -5,7 +5,7 @@ export type Language = 'zh' | 'en' | 'ja'
 
 // 更新 TranslationKey 类型定义以包含所有键
 export type TranslationKey =
-  | 'newChat' | 'history' | 'knowledgeBase' | 'settings' | 'home'
+  | 'newChat' | 'history' | 'knowledgeBase' | 'settings' | 'home' | 'recentChats'
   | 'greeting' | 'slogan' | 'placeholder' | 'featuredAgents' | 'myAgents' | 'createAgent' | 'backToChat'
   | 'addCustomAgent' | 'createYourFirstAgent'
   | 'theme' | 'language' | 'systemSettings' | 'userSettings' | 'personalSettings' | 'modelConfig'

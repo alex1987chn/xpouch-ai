@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import PixelLogo from '@/components/PixelLogo'
+import PixelLettersStatic from '@/components/PixelLettersStatic'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import SidebarMenu from './SidebarMenu'
 import SidebarUserSection from './SidebarUserSection'
@@ -33,52 +34,74 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
 
   return (
     <div className={cn(
-      'w-full h-full text-gray-600 dark:text-gray-300 flex flex-col',
+      'w-full h-full text-gray-700 dark:text-gray-300 flex flex-col',
       className
     )}>
-      {/* Logo 区域 - 像素点阵 Logo */}
-      <div className="p-2 pb-3 flex items-center justify-center">
-        <div onClick={() => navigate('/')} className="cursor-pointer">
-          <PixelLogo size={24} variant="pouch" />
+      {/* Logo 区域 */}
+      <div className={cn(
+        'flex items-center justify-center',
+        isCollapsed ? 'py-3' : 'py-4'
+      )}>
+        <div onClick={() => navigate('/')} className={cn(
+          'cursor-pointer',
+          isCollapsed ? 'scale-[0.7]' : 'scale-[0.45]'
+        )}>
+          {isCollapsed ? (
+            <PixelLogo variant="pouch" size={32} />
+          ) : (
+            <PixelLettersStatic />
+          )}
         </div>
       </div>
 
-      {/* 菜单和用户区域 */}
-      <SidebarMenu isCollapsed={isCollapsed} onCreateAgent={onCreateAgent} />
+      {/* 菜单区域 */}
+      <div className="flex-1">
+        <SidebarMenu isCollapsed={isCollapsed} onCreateAgent={onCreateAgent} />
+      </div>
 
       {/* 底部功能区 */}
-      <div className="mt-auto px-1.5 pb-2 space-y-1">
-        {/* 收拢按钮 - 移到用户区域上方 */}
-        {onToggleCollapse && (
-          <div className="flex justify-center mb-1">
+      <div className="p-3 border-t border-gray-100 dark:border-white/5">
+        {isCollapsed ? (
+          /* 窄侧边栏：只显示收拢展开按钮 */
+          <div className="flex justify-center">
             <Button
               variant="ghost"
               size="icon"
               onClick={onToggleCollapse}
-              className="w-5 h-5 rounded-full bg-gray-200/50 hover:bg-gray-300/50 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 transition-all duration-200 hover:scale-110"
-              title={isCollapsed ? '展开侧边栏' : '收拢侧边栏'}
+              className="w-8 h-8 rounded-lg hover:bg-indigo-50 dark:hover:bg-white/10 transition-all duration-200"
+              title="展开侧边栏"
             >
-              {isCollapsed ? (
-                <ChevronRight className="w-3 h-3" />
-              ) : (
-                <ChevronLeft className="w-3 h-3" />
-              )}
+              <Menu className="w-5 h-5" />
             </Button>
           </div>
+        ) : (
+          /* 宽侧边栏：紧凑行布局 */
+          <div className="flex items-center gap-3">
+            {/* 用户区域 */}
+            <SidebarUserSection
+              isCollapsed={isCollapsed}
+              onPersonalSettingsClick={onPersonalSettingsClick}
+              onMenuOpenChange={handleSettingsMenuOpenChange}
+            />
+            
+            {/* 分隔线 */}
+            <div className="w-px h-8 bg-gray-200 dark:bg-white/10 flex-shrink-0" />
+            
+            {/* 主题切换 + 收拢按钮 */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <ThemeSwitcher />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggleCollapse}
+                className="w-6 h-6 rounded-lg hover:bg-indigo-50 dark:hover:bg-white/10 transition-all duration-200"
+                title="收拢侧边栏"
+              >
+                <Menu className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         )}
-
-        {/* 用户区域 */}
-        <div className="flex justify-center">
-          <SidebarUserSection
-            onPersonalSettingsClick={onPersonalSettingsClick}
-            onMenuOpenChange={handleSettingsMenuOpenChange}
-          />
-        </div>
-
-        {/* 主题切换按钮 */}
-        <div className="flex items-center justify-center">
-          <ThemeSwitcher />
-        </div>
       </div>
 
       {/* 设置弹出菜单 - 使用 Portal 突破 stacking context */}
@@ -94,4 +117,5 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
     </div>
   )
 }
+
 

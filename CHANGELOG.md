@@ -59,6 +59,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-01-24] - v0.3.1 - 侧边栏重构与 AgentCard 设计优化
+
+### 🎨 UI 优化
+
+**侧边栏重构**：
+- 窄侧边栏宽度从 48px 改为 72px
+- 底部区域紧凑行布局：用户信息 + 分隔线 + 主题切换 + 收拢按钮
+- 边距统一为 12px
+- 主题图标颜色调整为 indigo 系列
+- 展开/收拢动画流畅过渡
+- ScrollArea 优化：窄侧边栏不滚动，展开状态支持最近会话列表滚动
+
+**AgentCard 设计优化**：
+- 参考优秀产品设计（Linear、Vercel、Notion、Claude）
+- 移除竖条指示器，使用渐变边框代替
+- 删除按钮 hover 时淡入显示
+- 默认助手使用简洁配色，不抢视觉
+- 分类标签 hover 效果优化
+- 边距统一为 12px
+- 图标容器阴影系统
+- hover 抬升效果参考推荐场景卡片
+- 简洁的背景渐变 + 半透明遮罩
+
+**主题配色优化**：
+- Light 模式：柔和渐变 `white → gray-50 → gray-100`
+- Dark 模式：深蓝灰渐变 `#1e293b → #1a1d2e → #0d0f14`
+- 选中状态：indigo-100 背景 + indigo-700 文字
+- Hover 效果：白色半透明遮罩
+
+### 🔧 依赖管理优化
+
+**pnpm workspace 配置**：
+- 创建 `pnpm-workspace.yaml` 文件
+- 前端包独立管理依赖
+- 解决 workspace 警告
+
+### 📝 文件变更
+
+- 修改文件数：多个前端组件文件
+- 代码优化：更简洁的 UI 组件实现
+
+---
+
 ## [Unreleased]
 
 ### 🐛 Bug 修复
