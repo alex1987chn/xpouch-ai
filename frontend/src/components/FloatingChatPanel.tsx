@@ -18,7 +18,7 @@ type ConversationMode = 'simple' | 'complex'
 
 // Artifact类型定义
 type DetectedArtifact = {
-  type: 'code' | 'html' | 'markdown'
+  type: 'code' | 'html'
   content: string
   language?: string
 }
@@ -56,21 +56,6 @@ function detectArtifactsFromMessage(content: string): DetectedArtifact[] {
     }
   }
 
-  // 智能检测复杂Markdown（长度>500字 + 包含复杂结构）
-  // 规则：包含多级标题(##+) 或 无序列表(-*+) 或 有序列表(\d+.)
-  const hasComplexStructure = /#{2,}|^[\s]*[-*+] |^\d+\./m.test(content)
-  const hasCodeBlock = /```[\s\S]*?```/.test(content)
-  const textLength = content.replace(/```[\s\S]*?```/g, '').trim().length
-
-  // 如果内容较长且包含复杂结构，识别为markdown artifact
-  // 同时排除已经检测到代码块或HTML的情况，避免重复
-  if (textLength > 500 && hasComplexStructure && !hasCodeBlock && artifacts.length === 0) {
-    artifacts.push({
-      type: 'markdown',
-      content: content
-    })
-  }
-
   return artifacts
 }
 
@@ -78,8 +63,7 @@ function detectArtifactsFromMessage(content: string): DetectedArtifact[] {
 function getArtifactName(type: string, index: number, total: number): string {
   const typeMap: Record<string, string> = {
     'code': '代码',
-    'html': '网页',
-    'markdown': '文档'
+    'html': '网页'
   }
   // 根据类型和总数量生成名称
   if (total === 1) {
@@ -491,34 +475,23 @@ export default function FloatingChatPanel({
                                   </div>
                                 ) : (() => {
                                   const artifacts = detectArtifactsFromMessage(msg.content)
-                                  const hasMarkdownArtifact = artifacts.some(a => a.type === 'markdown')
-                                  console.log('[FloatingChatPanel] 渲染消息:', { id: msg.id, contentLength: msg.content?.length, content: msg.content?.substring(0, 50), artifacts, hasMarkdownArtifact })
+                                  console.log('[FloatingChatPanel] 渲染消息:', { id: msg.id, contentLength: msg.content?.length, content: msg.content?.substring(0, 50), artifacts })
 
-                                  return hasMarkdownArtifact ? (
-                                    (() => {
-                                      console.log('[FloatingChatPanel] 只显示 artifact 预览卡片')
-                                      return (
+                                  // 显示文本内容 + artifact 预览卡片
+                                  return (
+                                    <div className="space-y-2">
+                                      <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-p:leading-6 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                                      </div>
+                                      {artifacts.length > 0 && (
                                         <div className="space-y-2">
                                           {artifacts.map((art, i) => (
                                             <ArtifactPreviewCard key={i} artifact={art} index={i} total={artifacts.length} />
                                           ))}
                                         </div>
-                                      )
-                                    })()
-                                  ) : (() => {
-                                    const textOnly = msg.content.replace(/```[\s\S]*?```/g, '').trim()
-                                    console.log('[FloatingChatPanel] 显示文本内容:', { textOnly: textOnly?.substring(0, 50), textOnlyLength: textOnly?.length })
-                                    return (
-                                      <div className="space-y-2">
-                                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-p:leading-6 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
-                                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{textOnly}</ReactMarkdown>
-                                        </div>
-                                        {artifacts.map((art, i) => (
-                                          <ArtifactPreviewCard key={i} artifact={art} index={i} total={artifacts.length} />
-                                        ))}
-                                      </div>
-                                    )
-                                  })()
+                                      )}
+                                    </div>
+                                  )
                                 })()}
                               </CardContent>
                             </Card>
