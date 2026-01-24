@@ -2,6 +2,7 @@ import { Home, History, FileText } from 'lucide-react'
 import { useTranslation, type TranslationKey } from '@/i18n'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 interface SidebarMenuProps {
   isCollapsed?: boolean
@@ -27,24 +28,28 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
     <>
       {/* 创建智能体按钮 - 圆形 */}
       <div className={cn('px-1.5 pb-1.5', isCollapsed && 'lg:hidden')}>
-        <button
+        <Button
           onClick={onCreateAgent}
-          className="flex items-center justify-center mx-auto w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md"
+          variant="default"
+          size="icon"
+          className="mx-auto w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 shadow-md"
           title={t('createAgent')}
         >
           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m-7-7h14M5 12h14" />
           </svg>
-        </button>
+        </Button>
       </div>
 
       {/* 主菜单 - 圆形按钮 */}
-      <div className={cn('px-1.5 pb-1.5 space-y-1.5', isCollapsed && 'lg:hidden')}>
+      <div className={cn('px-1.5 pb-1.5 space-y-2.5', isCollapsed && 'lg:hidden')}>
         {/* 首页按钮 */}
-        <button
+        <Button
           onClick={() => handleMenuClick('/')}
+          variant={isOnHome ? 'default' : 'ghost'}
+          size="icon"
           className={cn(
-            'flex items-center justify-center mx-auto w-8 h-8 rounded-full transition-all duration-200',
+            'mx-auto w-8 h-8 rounded-full transition-all duration-200',
             isOnHome
               ? 'bg-white text-indigo-600 shadow-[0_0_15px_rgba(139,92,246,0.4)] dark:bg-gray-700 dark:text-white dark:shadow-[0_0_15px_rgba(139,92,246,0.4)]'
               : 'text-slate-400 hover:bg-gray-100/50 hover:text-gray-700 dark:hover:bg-gray-700/50 dark:hover:text-slate-200'
@@ -52,12 +57,14 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
           title={t('home')}
         >
           <Home className="w-4 h-4 flex-shrink-0" />
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={() => handleMenuClick('/knowledge')}
+          variant={isOnKnowledge ? 'default' : 'ghost'}
+          size="icon"
           className={cn(
-            'flex items-center justify-center mx-auto w-8 h-8 rounded-full transition-all duration-200',
+            'mx-auto w-8 h-8 rounded-full transition-all duration-200',
             isOnKnowledge
               ? 'bg-white text-indigo-600 shadow-[0_0_15px_rgba(139,92,246,0.4)] dark:bg-gray-700 dark:text-white dark:shadow-[0_0_15px_rgba(139,92,246,0.4)]'
               : 'text-slate-400 hover:bg-gray-100/50 hover:text-gray-700 dark:hover:bg-gray-700/50 dark:hover:text-slate-200'
@@ -65,13 +72,15 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
           title={t('knowledgeBase')}
         >
           <FileText className="w-4 h-4 flex-shrink-0" />
-        </button>
+        </Button>
 
         {/* 历史记录按钮 */}
-        <button
+        <Button
           onClick={() => handleMenuClick('/history')}
+          variant={isOnHistory ? 'default' : 'ghost'}
+          size="icon"
           className={cn(
-            'flex items-center justify-center mx-auto w-8 h-8 rounded-full transition-all duration-200',
+            'mx-auto w-8 h-8 rounded-full transition-all duration-200',
             isOnHistory
               ? 'bg-white text-indigo-600 shadow-[0_0_15px_rgba(139,92,246,0.4)] dark:bg-gray-700 dark:text-white dark:shadow-[0_0_15px_rgba(139,92,246,0.4)]'
               : 'text-slate-400 hover:bg-gray-100/50 hover:text-gray-700 dark:hover:bg-gray-700/50 dark:hover:text-slate-200'
@@ -79,7 +88,7 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
           title={t('history')}
         >
           <History className="w-4 h-4 flex-shrink-0" />
-        </button>
+        </Button>
       </div>
     </>
   )

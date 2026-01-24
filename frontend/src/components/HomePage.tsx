@@ -12,6 +12,7 @@ import { deleteCustomAgent, getAllAgents } from '@/services/api'
 import type { Agent } from '@/types'
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Card, CardContent } from '@/components/ui/card'
 
 type ConversationMode = 'simple' | 'complex'
 
@@ -228,14 +229,14 @@ export default function HomePage() {
         </header>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {/* 场景1：代码生成 */}
-          <div
+          <Card
             onClick={() => {
               setInputMessage('帮我编写一个React组件')
               setConversationMode('complex')
             }}
-            className="cursor-pointer overflow-hidden bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-500"
+            className="cursor-pointer overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-500"
           >
-            <div className="p-5">
+            <CardContent className="p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-violet-100 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/20">
                   <Code2 className="w-5 h-5 text-violet-600 dark:text-violet-400" />
@@ -245,18 +246,18 @@ export default function HomePage() {
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                 AI助手会自动拆解任务，调用编程专家为您生成代码
               </p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* 场景2：深度调研 */}
-          <div
+          <Card
             onClick={() => {
               setInputMessage('帮我调研一下最新的前端技术趋势')
               setConversationMode('complex')
             }}
-            className="cursor-pointer overflow-hidden bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-500"
+            className="cursor-pointer overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-500"
           >
-            <div className="p-4 sm:p-5">
+            <CardContent className="p-4 sm:p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-100 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/20">
                   <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -266,18 +267,18 @@ export default function HomePage() {
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                 AI助手会调用搜索专家和研究专家，为您完成深度调研
               </p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* 场景3：快速问答 */}
-          <div
+          <Card
             onClick={() => {
               setInputMessage('今天天气怎么样？')
               setConversationMode('simple')
             }}
-            className="cursor-pointer overflow-hidden bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-500"
+            className="cursor-pointer overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-500"
           >
-            <div className="p-4 sm:p-5">
+            <CardContent className="p-4 sm:p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-amber-100 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/20">
                   <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -287,8 +288,8 @@ export default function HomePage() {
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                 使用默认助手快速回答您的问题，适合简单对话
               </p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 

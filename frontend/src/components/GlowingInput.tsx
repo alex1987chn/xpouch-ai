@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Send, Image, Paperclip, X, File, Square, Zap, Brain } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { INPUT } from '@/constants/ui'
 import { useTranslation } from '@/i18n'
@@ -183,7 +184,7 @@ export default function GlowingInput({
         >
           {/* 文本输入框 */}
           <div className="px-4 py-3 min-h-[60px] max-h-[200px] overflow-y-auto">
-            <textarea
+            <Textarea
               ref={textareaRef}
               value={value}
               onChange={handleChange}
@@ -193,7 +194,7 @@ export default function GlowingInput({
               placeholder={placeholder || t('placeholder')}
               disabled={disabled}
               rows={INPUT.DEFAULT_ROWS}
-              className="w-full min-h-[60px] max-h-[180px] resize-none bg-transparent border-0 outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 text-base leading-relaxed"
+              className="w-full min-h-[60px] max-h-[180px] resize-none bg-transparent border-0 outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 text-base leading-relaxed focus-visible:ring-0 focus-visible:ring-offset-0"
             />
           </div>
 
