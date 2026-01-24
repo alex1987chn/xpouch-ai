@@ -78,8 +78,8 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
 
       {/* 侧边栏切换按钮 - 固定在侧边栏右边缘（参考 ChatGPT/DeepSeek 设计） */}
       <div className={cn(
-        'fixed top-4 z-50 hidden lg:flex transition-all duration-300',
-        sidebar.isCollapsed ? 'left-[72px]' : 'left-[240px]'
+        'fixed top-6 z-50 hidden lg:flex transition-all duration-300',
+        sidebar.isCollapsed ? 'left-[80px]' : 'left-[248px]'
       )}>
         <button
           onClick={sidebar.toggleCollapsed}
