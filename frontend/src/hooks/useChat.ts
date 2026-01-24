@@ -181,13 +181,7 @@ export function useChat() {
             hasArtifact: !!artifact,
             expertId,
             assistantMessageId
-          }),
-        currentConversationId, // 传递当前会话 ID，确保消息聚合到同一个会话
-        abortControllerRef.current?.signal
-      )
-
-
-
+          })
 
           // 处理任务开始事件（只在复杂模式下）- 不再添加消息，信息在loading气泡中展示
           if (conversationMode === 'complex' && expertEvent?.type === 'task_start') {
