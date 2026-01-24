@@ -6,18 +6,21 @@ RUN npm install -g pnpm
 
 WORKDIR /app
 
-# 复制 workspace 配置和 lockfile
+# 复制 workspace 配置
 COPY pnpm-workspace.yaml ./
+
+# 复制根目录的 package.json 和 lockfile
+COPY package.json ./
 COPY pnpm-lock.yaml ./
 
-# 复制 frontend 的 package.json
-COPY frontend/package.json ./
+# 复制 frontend 源码到子目录
+COPY frontend/ ./frontend/
 
-# 安装依赖（使用根目录的 lockfile）
+# 在 frontend 目录下安装依赖（符合 workspace 结构）
+WORKDIR /app/frontend
 RUN pnpm install --frozen-lockfile
 
-# 复制源码并构建
-COPY frontend/ ./
+# 构建前端
 RUN pnpm run build
 
 # 阶段 2: 运行 (Nginx)
