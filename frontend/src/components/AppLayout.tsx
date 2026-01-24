@@ -72,23 +72,33 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
             onCreateAgent={handleCreateAgent}
             onSettingsClick={dialogs.openSettings}
             onPersonalSettingsClick={dialogs.openPersonalSettings}
-            onToggleCollapse={sidebar.toggleCollapsed}
           />
         </div>
       </aside>
 
-      {/* 收拢侧边栏后，显示的展开按钮 - 悬浮在屏幕左边缘 */}
-      {sidebar.isCollapsed && (
-        <div className="fixed left-2 top-1/2 -translate-y-1/2 z-50 hidden lg:flex">
-          <button
-            onClick={sidebar.toggleCollapsed}
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200/80 dark:bg-gray-800/80 backdrop-blur-md hover:bg-gray-300/80 dark:hover:bg-gray-700/80 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-violet-500/50 shadow-lg text-gray-600 dark:text-gray-300"
-            title="展开侧边栏"
-          >
+      {/* 侧边栏切换按钮 - 固定在侧边栏右边缘（参考 ChatGPT/DeepSeek 设计） */}
+      <div className={cn(
+        'fixed top-4 z-50 hidden lg:flex transition-all duration-300',
+        sidebar.isCollapsed ? 'left-[72px]' : 'left-[240px]'
+      )}>
+        <button
+          onClick={sidebar.toggleCollapsed}
+          className={cn(
+            'flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200',
+            sidebar.isCollapsed
+              ? 'bg-gray-200/80 dark:bg-gray-800/80 hover:bg-gray-300/80 dark:hover:bg-gray-700/80 hover:scale-110'
+              : 'bg-white/90 dark:bg-slate-900/90 hover:bg-gray-100/90 dark:hover:bg-slate-800/90 hover:scale-105',
+            'backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-violet-500/50 shadow-lg text-gray-600 dark:text-gray-300'
+          )}
+          title={sidebar.isCollapsed ? '展开侧边栏' : '收拢侧边栏'}
+        >
+          {sidebar.isCollapsed ? (
             <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+          ) : (
+            <ChevronRight className="w-4 h-4 rotate-180" />
+          )}
+        </button>
+      </div>
 
       {/* 主内容区域 - 右侧交互区 */}
       <div className={cn(
