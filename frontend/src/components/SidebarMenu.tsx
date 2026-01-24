@@ -219,7 +219,7 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
                         className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"
                         title={conversation.title || t('newChat')}
                       >
-                        {conversation.title || t('newChat')}
+                        {(conversation.title || t('newChat')).substring(0, 10)}
                       </p>
                     </div>
                   </div>

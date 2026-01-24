@@ -218,32 +218,49 @@ export default function FloatingChatPanel({
   const handleArtifactPreviewClick = useCallback((artifact: DetectedArtifact, index: number, total: number) => {
     // 在简单模式下，需要将artifact传递到右侧区域显示
 
-    // 检测并添加到canvasStore
     const expertType = 'simple'
     const artifactName = getArtifactName(artifact.type, index, total)
 
-    // 创建一个新的artifact对象
-    const newArtifact: Artifact = {
-      id: `artifact-${Date.now()}-${index}`,
-      type: artifact.type,
-      content: artifact.content,
-      title: artifactName,
-      timestamp: new Date().toISOString()
-    }
+    // 检查该专家会话是否已存在
+    const existingSession = expertResults.find(session => session.expertType === expertType)
 
-    // 添加到store和provider中
-    storeAddArtifact(expertType, newArtifact)
-    providerAddArtifact(expertType, {
-      type: artifact.type,
-      content: artifact.content,
-      title: artifactName
-    })
+    if (existingSession && existingSession.artifacts.length > 0) {
+      // 会话已存在，直接选中
+      selectExpert(expertType)
 
-    // 选中该专家会话
-    if (selectArtifactSession) {
-      selectArtifactSession(expertType)
+      // 如果对应的 artifact 不在会话中，添加它
+      const artifactExists = existingSession.artifacts.some(art =>
+        art.type === artifact.type &&
+        art.content === artifact.content
+      )
+
+      if (!artifactExists) {
+        const newArtifact: Artifact = {
+          id: `artifact-${Date.now()}-${index}`,
+          type: artifact.type,
+          content: artifact.content,
+          title: artifactName,
+          timestamp: new Date().toISOString()
+        }
+        storeAddArtifact(expertType, newArtifact)
+      }
+    } else {
+      // 会话不存在，添加新的 artifact
+      const newArtifact: Artifact = {
+        id: `artifact-${Date.now()}-${index}`,
+        type: artifact.type,
+        content: artifact.content,
+        title: artifactName,
+        timestamp: new Date().toISOString()
+      }
+
+      // 添加到store
+      storeAddArtifact(expertType, newArtifact)
+
+      // 选中该专家会话
+      selectExpert(expertType)
     }
-  }, [selectArtifactSession, storeAddArtifact, providerAddArtifact])
+  }, [selectExpert, storeAddArtifact, providerAddArtifact, expertResults])
 
   // Artifact预览卡片组件
   function ArtifactPreviewCard({ artifact, index, total }: { artifact: DetectedArtifact, index: number, total: number }) {
