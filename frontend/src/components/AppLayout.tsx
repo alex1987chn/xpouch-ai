@@ -88,7 +88,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
             sidebar.isCollapsed
               ? 'bg-gray-200/80 dark:bg-gray-800/80 hover:bg-gray-300/80 dark:hover:bg-gray-700/80 hover:scale-110'
               : 'bg-white/90 dark:bg-slate-900/90 hover:bg-gray-100/90 dark:hover:bg-slate-800/90 hover:scale-105',
-            'backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-violet-500/50 shadow-lg text-gray-600 dark:text-gray-300'
+            'backdrop-blur-md focus:outline-none shadow-lg text-gray-600 dark:text-gray-300'
           )}
           title={sidebar.isCollapsed ? '展开侧边栏' : '收拢侧边栏'}
         >
