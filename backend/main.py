@@ -510,7 +510,7 @@ async def update_custom_agent(
 # 获取所有会话列表 (Filtered by User)
 @app.get("/api/conversations")
 async def get_conversations(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    statement = select(Conversation).where(Conversation.user_id == current_user.id).order_by(Conversation.updated_at.desc())
+    statement = select(Conversation).where(Conversation.user_id == current_user.id).options(selectinload(Conversation.messages)).order_by(Conversation.updated_at.desc())
     conversations = session.exec(statement).all()
     return conversations
 
