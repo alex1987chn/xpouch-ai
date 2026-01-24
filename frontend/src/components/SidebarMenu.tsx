@@ -215,7 +215,10 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
                   <div className="flex items-center gap-3">
                     <MessageSquare className="w-5 h-5 text-slate-400 dark:text-slate-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      <p
+                        className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"
+                        title={conversation.title || t('newChat')}
+                      >
                         {conversation.title || t('newChat')}
                       </p>
                     </div>
