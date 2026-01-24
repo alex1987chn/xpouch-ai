@@ -181,7 +181,10 @@ export function useChat() {
             hasArtifact: !!artifact,
             expertId,
             assistantMessageId
-          })
+          }),
+        currentConversationId, // 传递当前会话 ID，确保消息聚合到同一个会话
+        abortControllerRef.current?.signal
+      )
 
 
 
