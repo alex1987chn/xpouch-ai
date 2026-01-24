@@ -84,7 +84,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
         <button
           onClick={sidebar.toggleCollapsed}
           className={cn(
-            'flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200',
+            'p-2 rounded-lg transition-all duration-200',
             sidebar.isCollapsed
               ? 'bg-gray-200/80 dark:bg-gray-800/80 hover:bg-gray-300/80 dark:hover:bg-gray-700/80 hover:scale-110'
               : 'bg-white/90 dark:bg-slate-900/90 hover:bg-gray-100/90 dark:hover:bg-slate-800/90 hover:scale-105',
@@ -92,11 +92,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
           )}
           title={sidebar.isCollapsed ? '展开侧边栏' : '收拢侧边栏'}
         >
-          {sidebar.isCollapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <ChevronRight className="w-4 h-4 rotate-180" />
-          )}
+          <Menu className="w-5 h-5" />
         </button>
       </div>
 
