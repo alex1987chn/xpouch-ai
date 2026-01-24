@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Save, User, Camera, Upload } from 'lucide-react'
 import { fileToBase64 } from '@/utils/userSettings'
 import { useUserStore } from '@/store/userStore'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContentCentered, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -98,7 +98,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContentCentered className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>个人设置</DialogTitle>
         </DialogHeader>
@@ -199,7 +199,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
             {isSaving ? '保存中...' : '保存'}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </DialogContentCentered>
     </Dialog>
   )
 }

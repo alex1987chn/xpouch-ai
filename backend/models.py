@@ -26,6 +26,17 @@ class User(SQLModel, table=True):
     username: str = Field(default="User")
     avatar: Optional[str] = None
     plan: str = Field(default="Free") # Free, Pilot, Maestro
+    phone_number: Optional[str] = Field(default=None, unique=True, index=True)
+    email: Optional[str] = Field(default=None, unique=True, index=True)
+    password_hash: Optional[str] = Field(default=None)
+    verification_code: Optional[str] = Field(default=None)
+    verification_code_expires_at: Optional[datetime] = Field(default=None)
+    auth_provider: Optional[str] = Field(default=None)  # 'phone', 'email', 'github', 'google', 'wechat'
+    provider_id: Optional[str] = Field(default=None, index=True)
+    access_token: Optional[str] = Field(default=None)
+    refresh_token: Optional[str] = Field(default=None)
+    token_expires_at: Optional[datetime] = Field(default=None)
+    is_verified: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     

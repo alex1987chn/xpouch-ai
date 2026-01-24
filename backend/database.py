@@ -33,16 +33,16 @@ def run_migrations():
     # 导入并执行迁移
     try:
         from migration_001_architecture_refactoring import Migration001ArchitectureRefactoring
+        from migration_002_jwt_auth import Migration002JwtAuth
 
         # 检查迁移是否已执行（通过检查表结构）
         with sqlite3.connect(sqlite_file_name) as conn:
             cursor = conn.cursor()
 
-            # 检查 agent_type 列是否存在（Migration001 的标志）
+            # ===== Migration001: 架构重构 =====
             cursor.execute("PRAGMA table_info(conversation)")
             conversation_columns = [row[1] for row in cursor.fetchall()]
 
-            # 检查 is_default 列是否存在（完整迁移的标志）
             cursor.execute("PRAGMA table_info(customagent)")
             customagent_columns = [row[1] for row in cursor.fetchall()]
 
@@ -51,7 +51,7 @@ def run_migrations():
 
             # 如果 agent_type 存在但 is_default 不存在，说明迁移只执行了一半
             if "agent_type" in conversation_columns and "is_default" not in customagent_columns:
-                print("[Database] Migration partially applied (missing is_default column)...")
+                print("[Database] Migration001 partially applied (missing is_default column)...")
                 print("[Database] Re-running Migration001 to add missing columns...")
                 migration = Migration001ArchitectureRefactoring()
                 migration.up(conn)
@@ -63,6 +63,21 @@ def run_migrations():
                 print("[Database] Migration001 completed")
             else:
                 print("[Database] Migration001 already applied, skipping")
+
+            # ===== Migration002: JWT认证 =====
+            cursor.execute("PRAGMA table_info(user)")
+            user_columns = [row[1] for row in cursor.fetchall()]
+
+            print(f"[Database] User columns: {user_columns}")
+
+            # 检查 phone_number 是否存在作为Migration002的标志
+            if "phone_number" not in user_columns:
+                print("[Database] Running Migration002: JWT Authentication...")
+                migration = Migration002JwtAuth()
+                migration.up(conn)
+                print("[Database] Migration002 completed")
+            else:
+                print("[Database] Migration002 already applied, skipping")
 
             conn.commit()
 

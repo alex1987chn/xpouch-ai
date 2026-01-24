@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Star, Plane, Crown } from 'lucide-react'
+import { Star, Plane, Crown, User } from 'lucide-react'
 import { getAvatarDisplay } from '@/utils/userSettings'
 import { useUserStore } from '@/store/userStore'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import LoginDialog from '@/components/LoginDialog'
 
 interface SidebarUserSectionProps {
   isCollapsed?: boolean
@@ -13,7 +15,8 @@ interface SidebarUserSectionProps {
 
 export default function SidebarUserSection({ isCollapsed = false, onPersonalSettingsClick, onMenuOpenChange }: SidebarUserSectionProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { user } = useUserStore()
+  const [showLoginDialog, setShowLoginDialog] = useState(false)
+  const { user, isAuthenticated } = useUserStore()
 
   // 用户数据
   const username = user?.username || 'User'
@@ -31,6 +34,44 @@ export default function SidebarUserSection({ isCollapsed = false, onPersonalSett
   const handleAvatarClick = () => {
     setIsMenuOpen(!isMenuOpen)
     onMenuOpenChange(!isMenuOpen)
+  }
+
+  const handleLoginClick = () => {
+    setShowLoginDialog(true)
+  }
+
+  // 未登录状态：显示登录按钮
+  if (!isAuthenticated || !user) {
+    return (
+      <div className={cn('backdrop-blur-md', !isCollapsed && 'w-full')}>
+        {isCollapsed ? (
+          <div
+            onClick={handleLoginClick}
+            className="flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-indigo-50 dark:hover:bg-white/10 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+          >
+            <User className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </div>
+        ) : (
+          <Button
+            onClick={handleLoginClick}
+            variant="ghost"
+            className="w-full h-9 px-3 justify-start gap-2 text-sm font-medium"
+          >
+            <User className="w-4 h-4" />
+            <span>登录</span>
+          </Button>
+        )}
+        
+        <LoginDialog
+          open={showLoginDialog}
+          onOpenChange={setShowLoginDialog}
+          onSuccess={() => {
+            // 登录成功后刷新用户信息
+            onMenuOpenChange(false)
+          }}
+        />
+      </div>
+    )
   }
 
   return (

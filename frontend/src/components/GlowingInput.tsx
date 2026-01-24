@@ -5,6 +5,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { INPUT } from '@/constants/ui'
 import { useTranslation } from '@/i18n'
+import { useUserStore } from '@/store/userStore'
+import LoginDialog from '@/components/LoginDialog'
 
 type ConversationMode = 'simple' | 'complex'
 
@@ -44,6 +46,8 @@ export default function GlowingInput({
   onConversationModeChange
 }: GlowingInputProps) {
   const { t } = useTranslation()
+  const { isAuthenticated } = useUserStore()
+  const [showLoginDialog, setShowLoginDialog] = useState(false)
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isFocused, setIsFocused] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -121,6 +125,7 @@ export default function GlowingInput({
   const canSubmit = value.trim() || files.length > 0
 
   return (
+    <>
     <div className="relative w-full max-w-4xl mx-auto">
       {/* 光晕层 - 使用 CSS 类 (移动端基础效果，桌面端增强) */}
       <div className={cn('input-glow', isFocused && 'active')} />
@@ -266,6 +271,12 @@ export default function GlowingInput({
                   <button
                     type="button"
                     onClick={() => {
+                      if (!isAuthenticated) {
+                        // 未登录状态，显示登录对话框
+                        setShowLoginDialog(true)
+                        console.log('[GlowingInput] User not authenticated, showing login dialog')
+                        return
+                      }
                       console.log('[GlowingInput] Switching to complex mode')
                       onConversationModeChange('complex')
                     }}
@@ -277,7 +288,7 @@ export default function GlowingInput({
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                     )}
                     style={{ width: '25px', height: '24px' }}
-                    title="专家协作模式 - 多专家智能体协同工作，深度分析复杂任务"
+                    title={!isAuthenticated ? "登录后使用专家协作模式" : "专家协作模式 - 多专家智能体协同工作，深度分析复杂任务"}
                   >
                     <Brain className="w-3 h-3" />
                   </button>
@@ -325,5 +336,12 @@ export default function GlowingInput({
         )}
       </div>
     </div>
+    
+    {/* 登录对话框 */}
+    <LoginDialog
+      open={showLoginDialog}
+      onOpenChange={setShowLoginDialog}
+    />
+    </>
   )
 }

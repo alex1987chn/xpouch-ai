@@ -45,7 +45,7 @@ function CanvasChatPageContent() {
           type: 'code' as any,
           content: codeContent,
           title: `${language === 'text' ? '代码' : language}${artifactIndex + 1}`,
-          createdAt: new Date().toISOString()
+          timestamp: new Date().toISOString()
         })
         artifactIndex++
       }
@@ -61,7 +61,7 @@ function CanvasChatPageContent() {
               type: 'html' as any,
               content: htmlMatch[1] || htmlMatch[0],
               title: `网页${artifactIndex + 1}`,
-              createdAt: new Date().toISOString()
+              timestamp: new Date().toISOString()
             })
             artifactIndex++
           }
@@ -79,7 +79,7 @@ function CanvasChatPageContent() {
           type: 'markdown' as any,
           content: msg.content,
           title: `文档${artifactIndex + 1}`,
-          createdAt: new Date().toISOString()
+          timestamp: new Date().toISOString()
         })
         artifactIndex++
       }
@@ -269,7 +269,7 @@ function CanvasChatPageContent() {
                       type: artifactData.type || 'code',
                       content: artifactData.content || '',
                       title: artifactData.title || `Artifact ${artIdx + 1}`,
-                      createdAt: new Date().toISOString()
+                      timestamp: new Date().toISOString()
                     })
                   })
                 }

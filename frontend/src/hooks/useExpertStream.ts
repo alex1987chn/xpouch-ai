@@ -74,7 +74,8 @@ export function useExpertStream() {
     const messageContent = lastMessage.content
 
     try {
-      const response = await fetch('http://127.0.0.1:3002/api/chat', {
+      // 使用相对路径，通过 Vite 代理转发到后端
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

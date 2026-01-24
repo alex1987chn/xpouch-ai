@@ -28,11 +28,102 @@ export function getClientId(): string {
   return clientId;
 }
 
-// 统一请求头
-const getHeaders = () => ({
-  'Content-Type': 'application/json',
-  'X-User-ID': getClientId()
-});
+// 统一请求头（优先使用JWT，回退到X-User-ID）
+const getHeaders = () => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // 优先使用JWT token
+  const accessToken = localStorage.getItem('xpouch-user-storage');
+  if (accessToken) {
+    try {
+      const parsed = JSON.parse(accessToken);
+      if (parsed.state.accessToken) {
+        headers['Authorization'] = `Bearer ${parsed.state.accessToken}`;
+        return headers;
+      }
+    } catch (e) {
+      // Parsing failed, continue to fallback
+    }
+  }
+
+  // 回退到X-User-ID（向后兼容）
+  headers['X-User-ID'] = getClientId();
+  return headers;
+};
+
+// ============================================================================
+// 认证 API (Authentication)
+// ============================================================================
+
+interface SendCodeRequest {
+  phone_number: string
+}
+
+interface SendCodeResponse {
+  message: string
+  expires_in: number
+  phone_masked: string
+  _debug_code?: string  // 开发环境返回验证码
+  user_id?: string
+}
+
+interface VerifyCodeRequest {
+  phone_number: string
+  code: string
+}
+
+interface TokenResponse {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  expires_in: number
+  user_id: string
+  username: string
+}
+
+export async function sendVerificationCode(phoneNumber: string): Promise<SendCodeResponse> {
+  const url = `${API_BASE_URL}/auth/send-code`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone_number: phoneNumber })
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || '发送验证码失败')
+  }
+  return response.json()
+}
+
+export async function verifyCodeAndLogin(phoneNumber: string, code: string): Promise<TokenResponse> {
+  const url = `${API_BASE_URL}/auth/verify-code`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone_number: phoneNumber, code })
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || '验证失败')
+  }
+  return response.json()
+}
+
+export async function refreshTokenApi(refreshToken: string): Promise<TokenResponse> {
+  const url = `${API_BASE_URL}/auth/refresh-token`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken })
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || '刷新token失败')
+  }
+  return response.json()
+}
 
 // 重新导出类型供外部使用
 export type { ApiMessage, Conversation, UserProfile }
