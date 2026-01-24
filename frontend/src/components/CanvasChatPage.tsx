@@ -131,8 +131,8 @@ function CanvasChatPageContent() {
 
   const {
     addArtifactsBatch: addArtifactsFromProvider,
-    selectArtifactSession,
-    clearArtifactSessions
+    selectExpert,
+    clearSessions
   } = useArtifacts()
 
   const { selectedExpert } = useCanvasStore()
@@ -254,7 +254,7 @@ function CanvasChatPageContent() {
             const taskSession = conversation.task_session as any
             if (taskSession?.sub_tasks) {
               // 清空旧数据
-              clearArtifactSessions()
+              clearSessions()
 
               // 为每个专家创建 artifact session
               taskSession.sub_tasks.forEach((subTask: any, idx: number) => {
@@ -285,7 +285,7 @@ function CanvasChatPageContent() {
             const detectedArtifacts = detectArtifactsFromMessages(loadedMessages)
             if (detectedArtifacts.length > 0) {
               // 清空旧数据
-              clearArtifactSessions()
+              clearSessions()
 
               // 使用 'simple' 作为专家类型
               const simpleArtifacts = detectedArtifacts.map((art, idx) => ({
@@ -299,7 +299,7 @@ function CanvasChatPageContent() {
               addArtifactsFromProvider('simple', simpleArtifacts)
 
               // 自动选中第一个 artifact
-              selectArtifactSession('simple')
+              selectExpert('simple')
             }
           }
         } else {
