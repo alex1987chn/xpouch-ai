@@ -154,6 +154,7 @@ class CustomAgentResponse(BaseModel):
     description: Optional[str]
     system_prompt: str
     model_id: str
+    is_default: bool
     category: str
     is_public: bool
     conversation_count: int
