@@ -151,7 +151,7 @@ class CustomAgentResponse(BaseModel):
     id: str
     user_id: str
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
     system_prompt: str
     model_id: str
     is_default: bool
