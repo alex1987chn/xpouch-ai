@@ -186,10 +186,14 @@ function CanvasChatPageContent() {
 
     if (state?.startWith && !handledStartWithRef.current) {
       handledStartWithRef.current = true
+      // 确保当前会话ID正确设置
+      if (id) {
+        useChatStore.getState().setCurrentConversationId(id)
+      }
       handleSendMessage(state.startWith)
       navigate(location.pathname + location.search, { replace: true, state: {} })
     }
-  }, [location, handleSendMessage, navigate, setSelectedAgentId, agentIdFromUrl])
+  }, [location, handleSendMessage, navigate, setSelectedAgentId, agentIdFromUrl, id])
 
   // 初始化或加载会话
   useEffect(() => {
@@ -211,7 +215,7 @@ function CanvasChatPageContent() {
     const state = location.state as { startWith?: string; agentId?: string } | null
     if (state?.startWith) {
       hasLoadedConversationRef.current = true
-      setCurrentConversationId(null)
+      setCurrentConversationId(id)
       previousConversationIdRef.current = id
       // 注意：不要清空消息！useChat会处理消息添加
       // setMessages([]) - 已移除，避免清空用户刚刚输入的消息

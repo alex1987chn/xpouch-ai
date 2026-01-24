@@ -4,6 +4,24 @@
 
 ---
 
+## 2026-01-24：会话ID不一致性修复与历史页面展示优化
+
+### 🐛 Bug 修复
+
+**会话ID不一致性修复**：
+- 问题：在首页简单模式下连续发送消息，系统创建了三个不同的会话ID，而不是使用一个一致的ID。
+- 原因：会话ID传递链断裂。首页生成的ID未正确设置到全局状态（chatStore）中，导致后续消息发送时使用了不一致的ID。
+- 修复：在首页导航前显式设置store ID；在聊天页初始化逻辑中确保store ID与URL ID一致；在处理自动发送消息（startWith）时再次验证ID同步。
+- 修改文件：
+  - `frontend/src/components/HomePage.tsx`：在 `handleAgentClick` 和 `handleSendMessage` 中添加 `setCurrentConversationId`
+  - `frontend/src/components/CanvasChatPage.tsx`：初始化时设置ID，自动发送消息前检查同步
+  - `frontend/src/components/ChatPage.tsx`：自动发送消息前检查store ID与URL ID是否一致
+  - `frontend/src/components/HistoryPage.tsx`：移除按agent分组逻辑，改为平铺列表展示
+
+**历史页面展示修复**：
+- 移除按agent分组的复杂逻辑，恢复为简单的平铺列表展示。
+- 确保所有会话记录按时间顺序显示，点击进入对应完整对话历史。
+
 ## 2026-01-24：消息气泡UI优化
 
 ### 🎨 UI 优化

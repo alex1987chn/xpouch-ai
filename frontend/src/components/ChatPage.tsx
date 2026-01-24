@@ -96,6 +96,11 @@ export default function ChatPage() {
     const state = location.state as { startWith?: string } | null
     if (state?.startWith && !handledStartWithRef.current && !isTyping) {
       handledStartWithRef.current = true
+      // 确保当前会话ID正确设置
+      const currentStoreId = useChatStore.getState().currentConversationId;
+      if (currentStoreId !== id) {
+        useChatStore.getState().setCurrentConversationId(id);
+      }
       // Send the message immediately
       handleSendMessage(state.startWith)
       
@@ -103,7 +108,7 @@ export default function ChatPage() {
       // Using replace to keep the same history entry but clear state
       navigate(location.pathname + location.search, { replace: true, state: {} })
     }
-  }, [location, handleSendMessage, isTyping, navigate])
+  }, [location, handleSendMessage, isTyping, navigate, id])
 
   return (
     <div className="flex flex-col h-full relative">
