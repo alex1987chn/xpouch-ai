@@ -7,9 +7,10 @@ RUN npm install -g pnpm
 WORKDIR /app
 
 # 复制依赖文件并安装（利用 Docker 缓存）
-# 注意：使用 --no-frozen-lockfile 避免 lockfile 不一致导致的安装失败
+# 注意：生产环境使用 --frozen-lockfile 确保依赖版本一致性
+# 部署前需要确保 pnpm-lock.yaml 与 package.json 同步（运行 pnpm install）
 COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # 复制源码并构建
 COPY . .
