@@ -253,7 +253,6 @@ export default function GlowingInput({
                   <button
                     type="button"
                     onClick={() => {
-                      console.log('[GlowingInput] Switching to simple mode')
                       onConversationModeChange('simple')
                     }}
                     className={cn(

@@ -482,7 +482,6 @@ export default function FloatingChatPanel({
                                   </div>
                                 ) : (() => {
                                   const artifacts = detectArtifactsFromMessage(msg.content)
-                                  console.log('[FloatingChatPanel] 渲染消息:', { id: msg.id, contentLength: msg.content?.length, content: msg.content?.substring(0, 50), artifacts })
 
                                   // 显示文本内容 + artifact 预览卡片
                                   return (
