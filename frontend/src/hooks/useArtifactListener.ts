@@ -50,7 +50,6 @@ export function useArtifactListener({
       eventSource.addEventListener('artifact_update', (event: MessageEvent) => {
         try {
           const data: ArtifactUpdate = JSON.parse(event.data)
-          console.log('[useArtifactListener] Received artifact_update:', data.type)
 
           // Update store
           setArtifact(data.type, data.content)
@@ -78,7 +77,6 @@ export function useArtifactListener({
     if (eventSourceRef.current) {
       eventSourceRef.current.close()
       eventSourceRef.current = null
-      console.log('[useArtifactListener] SSE connection closed')
     }
   }, [])
 

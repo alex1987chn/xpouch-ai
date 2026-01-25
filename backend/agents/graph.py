@@ -310,7 +310,6 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
         # 如果专家返回了 artifact，添加到返回值中
         if "artifact" in result:
             return_dict["artifact"] = result["artifact"]
-            print(f"   [ARTIFACT] 检测到 artifact: {result['artifact']['type']}")
 
         return return_dict
 

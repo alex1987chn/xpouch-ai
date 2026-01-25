@@ -295,9 +295,7 @@ async def run_coder_expert(
                 "content": code,
                 "source": "coder_expert"
             }
-            print(f"[CODER] 提取到 {language} 代码块 (类型: {artifact_type}, 长度: {len(code)} 字符)")
         else:
-            print(f"[CODER] 未检测到代码块，返回普通文本")
 
         print(f"[CODER] 编程专家完成 (耗时: {duration_ms/1000:.2f}s)")
 
@@ -510,7 +508,6 @@ async def run_writer_expert(
             "content": response.content,
             "source": "writer_expert"
         }
-        print(f"[WRITER] 生成 Markdown artifact (长度: {len(response.content)} 字符)")
 
         return result
 
