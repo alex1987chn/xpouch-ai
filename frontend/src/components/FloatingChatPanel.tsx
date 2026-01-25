@@ -120,7 +120,7 @@ export default function FloatingChatPanel({
   hideModeSwitch = false
 }: FloatingChatPanelProps) {
   const { t } = useTranslation()
-  const { selectExpert, selectArtifactSession, expertResults, selectedExpert: canvasSelectedExpert, addArtifact: storeAddArtifact } = useCanvasStore()
+  const { selectExpert, selectArtifactSession, expertResults, selectedExpert: canvasSelectedExpert, addArtifact: storeAddArtifact, getArtifactSession, switchArtifactIndex } = useCanvasStore()
   const { addArtifact: providerAddArtifact } = useArtifacts()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isMinimized, setIsMinimized] = useState(false)
@@ -205,20 +205,18 @@ export default function FloatingChatPanel({
     const expertType = 'simple'
     const artifactName = getArtifactName(artifact.type, index, total)
 
-    // 检查该专家会话是否已存在
-    const existingSession = expertResults.find(session => session.expertType === expertType)
+    // 检查该专家会话是否已存在（使用artifactSessions而不是expertResults）
+    const existingSession = getArtifactSession(expertType)
 
-    if (existingSession && existingSession.artifacts.length > 0) {
-      // 会话已存在，直接选中
-      selectExpert(expertType)
-
-      // 如果对应的 artifact 不在会话中，添加它
-      const artifactExists = existingSession.artifacts.some(art =>
+    if (existingSession) {
+      // 查找是否已存在相同内容和类型的artifact
+      const existingArtifactIndex = existingSession.artifacts.findIndex(art =>
         art.type === artifact.type &&
         art.content === artifact.content
       )
 
-      if (!artifactExists) {
+      if (existingArtifactIndex === -1) {
+        // 添加新的artifact到现有会话
         const newArtifact: Artifact = {
           id: `artifact-${Date.now()}-${index}`,
           type: artifact.type,
@@ -227,9 +225,17 @@ export default function FloatingChatPanel({
           timestamp: new Date().toISOString()
         }
         storeAddArtifact(expertType, newArtifact)
+        // storeAddArtifact会自动将currentIndex设置为新artifact的索引
+      } else {
+        // artifact已存在，切换到该索引
+        switchArtifactIndex(expertType, existingArtifactIndex)
       }
+
+      // 选中该会话
+      selectArtifactSession(expertType)
+      selectExpert(expertType)
     } else {
-      // 会话不存在，添加新的 artifact
+      // 会话不存在，创建新会话并添加artifact
       const newArtifact: Artifact = {
         id: `artifact-${Date.now()}-${index}`,
         type: artifact.type,
@@ -238,13 +244,14 @@ export default function FloatingChatPanel({
         timestamp: new Date().toISOString()
       }
 
-      // 添加到store
+      // 添加到store（这会自动创建新会话）
       storeAddArtifact(expertType, newArtifact)
 
       // 选中该专家会话
+      selectArtifactSession(expertType)
       selectExpert(expertType)
     }
-  }, [selectExpert, storeAddArtifact, providerAddArtifact, expertResults])
+  }, [selectExpert, selectArtifactSession, storeAddArtifact, switchArtifactIndex, providerAddArtifact, getArtifactSession])
 
   // Artifact预览卡片组件
   function ArtifactPreviewCard({ artifact, index, total }: { artifact: DetectedArtifact, index: number, total: number }) {

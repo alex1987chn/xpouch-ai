@@ -119,36 +119,30 @@ export const useUserStore = create<UserState>()(
           // Calculate token expiry
           const expiresAt = Date.now() + data.expires_in * 1000
 
-          // 先保存 token
+          // 先清空旧的 user 数据，然后保存 token
           set({
+            user: null,  // ← 清空旧的用户数据
             accessToken: data.access_token,
             refreshToken: data.refresh_token,
             tokenExpiresAt: expiresAt
           })
 
-          console.log('[userStore] Token已保存，开始获取用户信息')
+          console.log('[userStore] Token已保存，旧用户数据已清空，开始获取用户信息')
 
           // 获取用户信息后再设置 isAuthenticated
           try {
             const user = await getUserProfile()
+            console.log('[userStore] 从后端获取的用户信息:', user)
+            console.log('[userStore] 用户名:', user.username)
             set({
               user,
               isAuthenticated: true,
               isLoading: false
             })
-            console.log('[userStore] 用户信息获取成功，登录完成')
-          } catch (userError) {
-            console.error('[userStore] 获取用户信息失败:', userError)
-            // 即使获取用户信息失败，也算登录成功
-            set({
-              user: {
-                id: data.user_id,
-                username: data.username,
-                plan: 'Free'
-              },
-              isAuthenticated: true,
-              isLoading: false
-            })
+            console.log('[userStore] 用户信息获取成功，登录完成:', user)
+          } catch (profileError) {
+            console.error('[userStore] 获取用户信息失败:', profileError)
+            throw profileError  // 重新抛出错误
           }
         } catch (error) {
           console.error('[userStore] loginWithPhone 错误:', error)
@@ -215,8 +209,26 @@ export const useUserStore = create<UserState>()(
       fetchUser: async () => {
         set({ isLoading: true, error: null })
         try {
-          const user = await getUserProfile()
-          set({ user, isLoading: false })
+          const remoteUser = await getUserProfile()
+          const localUser = get().user
+          
+          // 比较更新时间戳，只有当远程数据更新时才更新本地状态
+          if (localUser && remoteUser.updated_at) {
+            // 如果远程更新时间晚于本地更新时间，更新本地状态
+            if (remoteUser.updated_at > localUser.updated_at) {
+              console.log('[userStore] 检测到用户信息已更新，更新本地缓存')
+              console.log('[userStore] 本地更新时间:', localUser.updated_at)
+              console.log('[userStore] 远程更新时间:', remoteUser.updated_at)
+              set({ user: remoteUser, isLoading: false })
+            } else {
+              // 远程数据不比本地新，保持现有状态（避免不必要的重渲染）
+              console.log('[userStore] 用户信息未更新，保持本地缓存')
+              set({ isLoading: false })
+            }
+          } else {
+            // 本地没有用户数据或远程数据缺少时间戳，直接设置
+            set({ user: remoteUser, isLoading: false })
+          }
         } catch (error) {
           errorHandler.handleSync(error, 'fetchUser')
           set({ error: errorHandler.getUserMessage(error), isLoading: false })
@@ -229,11 +241,15 @@ export const useUserStore = create<UserState>()(
 
       // User: Update user profile
       updateUser: async (data) => {
+        console.log('[userStore] updateUser 开始，数据:', data)
         set({ isLoading: true, error: null })
         try {
           const updatedUser = await updateUserProfile(data)
+          console.log('[userStore] updateUser 成功，返回用户信息:', updatedUser)
+          console.log('[userStore] 更新后的用户名:', updatedUser.username)
           set({ user: updatedUser, isLoading: false })
         } catch (error) {
+          console.error('[userStore] updateUser 失败:', error)
           errorHandler.handleSync(error, 'updateUser')
           set({ error: errorHandler.getUserMessage(error), isLoading: false })
           throw error
@@ -242,6 +258,29 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: 'xpouch-user-storage',
+      version: 1,
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('[userStore] 持久化数据恢复失败:', error)
+          return
+        }
+        
+        // 数据恢复成功后，如果有有效的 accessToken，自动获取最新用户信息
+        if (state?.accessToken && state?.isAuthenticated) {
+          console.log('[userStore] 持久化数据恢复成功，自动获取最新用户信息')
+          // 延迟执行，确保 store 完全初始化
+          setTimeout(() => {
+            if (state?.fetchUser) {
+              state.fetchUser().catch(err => {
+                console.warn('[userStore] 自动获取用户信息失败:', err)
+                // 如果获取失败（如 token 过期），会自动登出
+              })
+            }
+          }, 100)
+        } else {
+          console.log('[userStore] 持久化数据恢复成功，用户未认证')
+        }
+      },
       partialize: (state) => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,

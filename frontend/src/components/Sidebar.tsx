@@ -57,9 +57,19 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
       </div>
 
       {/* 底部功能区 */}
-      <div className="p-3 border-t border-gray-100 dark:border-white/5">
-        {!isCollapsed && (
-          /* 宽侧边栏：紧凑行布局 */
+      <div className={cn(
+        'border-t border-gray-100 dark:border-white/5',
+        isCollapsed ? 'p-2 flex flex-col items-center gap-2' : 'p-3'
+      )}>
+        {/* 窄侧边栏：只显示用户区域 */}
+        {isCollapsed ? (
+          <SidebarUserSection
+            isCollapsed={isCollapsed}
+            onPersonalSettingsClick={onPersonalSettingsClick}
+            onMenuOpenChange={handleSettingsMenuOpenChange}
+          />
+        ) : (
+          /* 宽侧边栏：横向布局 */
           <div className="flex items-center gap-3">
             {/* 用户区域 */}
             <SidebarUserSection

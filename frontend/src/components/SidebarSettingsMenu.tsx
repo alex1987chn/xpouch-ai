@@ -1,4 +1,4 @@
-import { Settings, Cog, Star, Plane, Crown } from 'lucide-react'
+import { Settings, Cog, Star, Plane, Crown, LogOut } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useTranslation, type TranslationKey } from '@/i18n'
 import { LanguageSelector } from '@/components/LanguageSelector'
@@ -14,8 +14,13 @@ interface SidebarSettingsMenuProps {
 
 export default function SidebarSettingsMenu({ isOpen, onPersonalSettingsClick, onSettingsClick, onMenuClose }: SidebarSettingsMenuProps) {
   const { t } = useTranslation()
-  const { user } = useUserStore()
+  const { user, logout } = useUserStore()
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const handleLogout = () => {
+    logout()
+    onMenuClose()
+  }
 
   // 优先使用 Store 中的 plan，如果没有则默认为 Free
   const currentPlan = (user?.plan as 'Free' | 'Pilot' | 'Maestro') || 'Free'
@@ -120,6 +125,15 @@ export default function SidebarSettingsMenu({ isOpen, onPersonalSettingsClick, o
           >
             <Cog className="w-4 h-4 flex-shrink-0" />
             <span className="text-[11px] font-medium">{t('modelConfig')}</span>
+          </button>
+
+          {/* 登出 */}
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-2 py-2.5 text-red-500 dark:text-red-400 hover:bg-red-500/10 transition-all rounded-lg tracking-wide"
+          >
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+            <span className="text-[11px] font-medium">登出</span>
           </button>
         </div>
 

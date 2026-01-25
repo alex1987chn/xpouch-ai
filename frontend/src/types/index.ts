@@ -180,6 +180,7 @@ export interface UserProfile {
   username: string
   avatar?: string
   plan: string
+  updated_at: string  // 用户信息更新时间戳，用于同步
 }
 
 // ============================================
