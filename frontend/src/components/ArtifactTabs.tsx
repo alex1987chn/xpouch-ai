@@ -23,12 +23,7 @@ const ARTIFACT_ICONS = {
 
 // 生成 Tab 标题
 function getTabTitle(artifact: Artifact, index: number, total: number): string {
-  // 优先使用 artifact 的自定义标题
-  if (artifact.title) {
-    return truncateTitle(artifact.title)
-  }
-
-  // 根据类型生成默认标题
+  // 根据类型生成标题，统一格式为"类型+数字"
   const typeNames: Record<Artifact['type'], string> = {
     code: '代码',
     markdown: '文档',

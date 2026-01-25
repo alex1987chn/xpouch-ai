@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-01-26] - v0.5.1 - Artifact 预览重复创建修复
+
+### 🐛 Bug 修复
+
+**简单模式点击代码预览卡片重复创建 artifact 标签页问题修复**：
+
+- **问题**：在简单模式下，AI回复中的代码块会生成预览卡片，但点击同一卡片会重复创建 artifact 会话和标签页，导致"越点越多"。
+- **原因**：使用 `expertResults` 数组检查会话存在性，但简单模式下不会在 `expertResults` 中创建 `'simple'` 类型的专家记录，导致每次点击都认为会话不存在。
+- **修复**：
+  - 改用 `artifactSessions` 状态检查会话存在性（使用 `getArtifactSession('simple')`）
+  - 添加重复检测逻辑：当 artifact 已存在时，直接切换到对应标签页而不是创建新的
+  - 添加 `switchArtifactIndex` 函数支持标签页索引切换
+  - 更新依赖项确保状态一致性
+- **影响**：
+  - 点击同一代码预览卡片不会再创建重复标签页
+  - 点击不同代码块会为每个代码块创建独立标签页（符合预期）
+  - 标签页管理统一使用 `artifactSessions`，避免与 `expertResults` 混淆
+
+## [2026-01-25] - v0.5.0 - JWT 认证系统
+
 ## [2026-01-25] - v0.5.0 - JWT 认证系统
 
 ### ✨ 新增功能

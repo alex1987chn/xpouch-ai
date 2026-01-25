@@ -178,7 +178,7 @@ export function shouldDisplayAsArtifact(content: string): boolean {
   // 纯文本如果很短，可能不需要在 artifact 区域展示
   if (contentType === 'text') {
     const trimmed = content.trim()
-    return trimmed.length > 200 || trimmed.includes('\n')
+    return trimmed.length > 800 || trimmed.includes('\n')
   }
   
   // 其他类型都应该展示

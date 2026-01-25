@@ -344,21 +344,22 @@ async def get_current_user(
             # JWT无效，继续尝试其他方式
             pass
 
-    # 策略2: 回退到X-User-ID头（向后兼容）
-    user_id = request.headers.get("X-User-ID")
-    if user_id:
-        user = session.get(User, user_id)
-        if user:
-            return user
-        elif not require_auth:
-            # 未启用严格认证时，自动注册新用户（向后兼容）
-            user = User(id=user_id, username=f"User-{user_id[:4]}")
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-            return user
+    # 策略2: 回退到X-User-ID头（向后兼容） - 仅在非严格认证模式下使用
+    if not require_auth:
+        user_id = request.headers.get("X-User-ID")
+        if user_id:
+            user = session.get(User, user_id)
+            if user:
+                return user
+            else:
+                # 未启用严格认证时，自动注册新用户（向后兼容）
+                user = User(id=user_id, username=f"User-{user_id[:4]}")
+                session.add(user)
+                session.commit()
+                session.refresh(user)
+                return user
 
-    # 策略3: 没有任何认证信息
+    # 策略3: 没有任何认证信息 - 仅在非严格认证模式下使用
     if not require_auth:
         # 未启用严格认证时，使用默认用户（向后兼容）
         user = session.get(User, "default-user")
@@ -377,6 +378,14 @@ async def get_current_user(
         detail="Unauthorized. Please login first."
     )
 
+# --- Helper: Require Authentication ---
+async def get_current_user_with_auth(
+    request: Request,
+    session: Session = Depends(get_session)
+) -> User:
+    """要求强制JWT认证的依赖（包装 get_current_user）"""
+    return await get_current_user(request, session, require_auth=True)
+
 # --- API Endpoints ---
 
 @app.get("/")
@@ -385,23 +394,142 @@ async def root():
 
 # 用户信息接口
 @app.get("/api/user/me")
-async def get_user_me(current_user: User = Depends(get_current_user)):
+async def get_user_me(current_user: User = Depends(get_current_user_with_auth)):
     return current_user
 
 @app.put("/api/user/me")
-async def update_user_me(request: UpdateUserRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+async def update_user_me(request: UpdateUserRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user_with_auth)):
+    import sys
+    from datetime import datetime
+    print(f"[API] 收到更新用户信息请求，用户ID: {current_user.id}", file=sys.stderr)
+    print(f"[API] 请求内容: username={request.username}, avatar={'有' if request.avatar else '否'}, plan={request.plan}", file=sys.stderr)
+
+    # 记录更新时间戳
+    current_user.updated_at = datetime.now()
+    
     if request.username is not None:
         current_user.username = request.username
+        print(f"[API] 更新用户名为: {request.username}", file=sys.stderr)
     if request.avatar is not None:
         current_user.avatar = request.avatar
+        print(f"[API] 更新头像: {'是' if request.avatar else '否'}", file=sys.stderr)
     if request.plan is not None:
         current_user.plan = request.plan
-        
+        print(f"[API] 更新套餐: {request.plan}", file=sys.stderr)
+
     session.add(current_user)
     session.commit()
     session.refresh(current_user)
+
+    print(f"[API] 用户信息更新成功: {current_user.username} (更新时间: {current_user.updated_at})", file=sys.stderr)
     return current_user
 
+
+# ============================================================================
+# 调试接口 - 临时用于排查用户问题
+# ============================================================================
+
+@app.get("/api/debug/users")
+async def debug_list_users(session: Session = Depends(get_session)):
+    """列出所有用户（仅用于调试）"""
+    users = session.exec(select(User).order_by(User.created_at.desc())).all()
+    return {
+        "count": len(users),
+        "users": [
+            {
+                "id": u.id,
+                "username": u.username,
+                "phone_number": u.phone_number,
+                "auth_provider": u.auth_provider,
+                "created_at": u.created_at.isoformat() if u.created_at else None
+            }
+            for u in users
+        ]
+    }
+
+@app.get("/api/debug/verify-token")
+async def debug_verify_token(request: Request, session: Session = Depends(get_session)):
+    """验证JWT token并返回用户信息（仅用于调试）"""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return {"error": "No Authorization header"}
+
+    from utils.jwt_handler import verify_token, AuthenticationError as JWTAuthError
+
+    token = auth_header.split(" ")[1]
+    try:
+        payload = verify_token(token, token_type="access")
+        user_id = payload["sub"]
+        user = session.get(User, user_id)
+
+        if user:
+            return {
+                "token_user_id": user_id,
+                "user_found": True,
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "phone_number": user.phone_number,
+                    "auth_provider": user.auth_provider
+                }
+            }
+        else:
+            return {
+                "token_user_id": user_id,
+                "user_found": False,
+                "error": "User not found in database"
+            }
+    except JWTAuthError as e:
+        return {
+            "error": "Invalid token",
+            "detail": str(e)
+        }
+
+@app.delete("/api/debug/cleanup-users")
+async def debug_cleanup_users():
+    """清理没有手机号的垃圾用户（仅用于调试）"""
+    from database import engine
+    from sqlalchemy.orm import Session
+    import sys
+    
+    # 创建新的session，不经过get_current_user依赖
+    with Session(engine) as session:
+        # 查找所有没有手机号的用户
+        users_to_delete = session.exec(
+            select(User).where(User.phone_number.is_(None))
+        ).all()
+
+        count = len(users_to_delete)
+        print(f"[Debug] 找到 {count} 个垃圾用户需要清理", file=sys.stderr)
+
+        for user in users_to_delete:
+            print(f"[Debug] 删除用户: {user.id} - {user.username}", file=sys.stderr)
+            
+            # 1. 先删除该用户的所有会话（会级联删除messages）
+            conversations = session.exec(
+                select(Conversation).where(Conversation.user_id == user.id)
+            ).all()
+            for conv in conversations:
+                print(f"[Debug]   - 删除会话: {conv.id}", file=sys.stderr)
+                session.delete(conv)
+            
+            # 2. 删除该用户的所有自定义智能体
+            custom_agents = session.exec(
+                select(CustomAgent).where(CustomAgent.user_id == user.id)
+            ).all()
+            for agent in custom_agents:
+                print(f"[Debug]   - 删除智能体: {agent.id} - {agent.name}", file=sys.stderr)
+                session.delete(agent)
+            
+            # 3. 最后删除用户
+            session.delete(user)
+
+        session.commit()
+
+        return {
+            "deleted_count": count,
+            "deleted_users": [{"id": u.id, "username": u.username} for u in users_to_delete]
+        }
 
 # ============================================================================
 # 自定义智能体 API（简单对话模式）
