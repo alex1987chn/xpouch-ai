@@ -265,6 +265,15 @@ async def run_coder_expert(
         artifact_data = None
         code_result = extract_code_blocks(response.content)
 
+        # 初始化基础响应结果
+        result = {
+            "output_result": response.content,
+            "status": "completed",
+            "started_at": started_at.isoformat(),
+            "completed_at": completed_at.isoformat(),
+            "duration_ms": duration_ms
+        }
+
         if code_result:
             language, code = code_result
             # 根据 language 决定 artifact type
@@ -295,17 +304,6 @@ async def run_coder_expert(
                 "content": code,
                 "source": "coder_expert"
             }
-        else:
-
-        print(f"[CODER] 编程专家完成 (耗时: {duration_ms/1000:.2f}s)")
-
-        result = {
-            "output_result": response.content,
-            "status": "completed",
-            "started_at": started_at.isoformat(),
-            "completed_at": completed_at.isoformat(),
-            "duration_ms": duration_ms
-        }
 
         # 如果有代码块，添加 artifact 字段
         if artifact_data:
