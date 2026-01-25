@@ -83,12 +83,10 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
 
     setIsSaving(true)
     try {
-      console.log('[PersonalSettingsDialog] 开始保存用户信息:', { username, avatar: avatar ? '有' : '无' })
       await updateUser({
         username: username.trim(),
         avatar
       })
-      console.log('[PersonalSettingsDialog] 用户信息保存成功')
       onClose()
     } catch (error) {
       console.error('[PersonalSettingsDialog] Failed to save settings:', error)
