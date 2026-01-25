@@ -22,15 +22,6 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
 
   const { sendVerificationCode, loginWithPhone } = useUserStore()
 
-  // 调试：打印环境信息
-  useEffect(() => {
-    logger.debug('[LoginDialog] 当前环境:', {
-      DEV: import.meta.env.DEV,
-      MODE: import.meta.env.MODE,
-      VITE_APP_ENV: import.meta.env.VITE_APP_ENV
-    })
-  }, [])
-
   // 验证码倒计时
   useEffect(() => {
     let timer: NodeJS.Timeout
@@ -47,37 +38,19 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
       return
     }
 
-    console.log('[LoginDialog] 开始发送验证码，手机号:', phoneNumber)
     setLoading(true)
     try {
       const response = await sendVerificationCode(phoneNumber)
-      console.log('[LoginDialog] 后端响应:', response)
-      console.log('[LoginDialog] 响应中是否有 _debug_code:', !!response._debug_code)
-      console.log('[LoginDialog] 当前 step (修改前):', step)
-
       setStep('code')
       setCountdown(60) // 开始60秒倒计时
       // 开发环境保存验证码
       if (response._debug_code) {
         setDebugCode(response._debug_code)
-        console.log('[LoginDialog] 已保存验证码:', response._debug_code)
-      } else {
-        console.warn('[LoginDialog] 后端未返回 _debug_code，可能不是开发环境')
       }
-
-      // 使用 setTimeout 检查状态是否更新
-      setTimeout(() => {
-        console.log('[LoginDialog] 延迟检查 - step:', step, 'debugCode:', debugCode, 'countdown:', countdown)
-      }, 100)
-
-      console.log('[LoginDialog] 即将完成发送流程')
-      logger.debug(`[LoginDialog] 验证码已发送到 ${phoneNumber}`)
     } catch (error) {
-      console.error('[LoginDialog] 发送验证码失败:', error)
-      logger.error('[LoginDialog] 发送验证码失败:', error)
+      errorHandler.handleSync(error, 'sendVerificationCode')
       alert((error as Error).message)
     } finally {
-      console.log('[LoginDialog] 结束 loading，loading 设置为 false')
       setLoading(false)
     }
   }
@@ -92,7 +65,6 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
     setLoading(true)
     try {
       await loginWithPhone(phoneNumber, code)
-      logger.debug(`[LoginDialog] 登录成功`)
 
       // 延迟关闭弹窗，确保状态已更新
       setTimeout(() => {

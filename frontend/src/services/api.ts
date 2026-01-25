@@ -53,7 +53,6 @@ const getHeaders = () => {
 
   // 回退到X-User-ID（向后兼容）
   headers['X-User-ID'] = getClientId();
-  console.log('[API Headers] 使用 X-User-ID:', getClientId());
   return headers;
 };
 
@@ -144,26 +143,17 @@ export async function getUserProfile(): Promise<UserProfile> {
 }
 
 export async function updateUserProfile(data: Partial<UserProfile>): Promise<UserProfile> {
-    console.log('[api] updateUserProfile 开始，URL:', `${API_BASE_URL}/user/me`)
-    console.log('[api] 请求数据:', data)
-    console.log('[api] 请求头:', getHeaders())
-
     const response = await fetch(`${API_BASE_URL}/user/me`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(data)
     });
 
-    console.log('[api] 响应状态:', response.status, response.statusText)
-
     if (!response.ok) {
-        const errorText = await response.text()
-        console.error('[api] updateUserProfile 失败，错误:', errorText)
         throw new Error('Failed to update user profile');
     }
 
-    const result = await response.json()
-    console.log('[api] updateUserProfile 成功，返回数据:', result)
+    const result = await response.json();
     return result;
 }
 

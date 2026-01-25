@@ -273,10 +273,8 @@ export default function GlowingInput({
                       if (!isAuthenticated) {
                         // 未登录状态，显示登录对话框
                         setShowLoginDialog(true)
-                        console.log('[GlowingInput] User not authenticated, showing login dialog')
                         return
                       }
-                      console.log('[GlowingInput] Switching to complex mode')
                       onConversationModeChange('complex')
                     }}
                     className={cn(
