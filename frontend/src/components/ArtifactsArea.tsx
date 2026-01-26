@@ -25,12 +25,10 @@ export default function ArtifactsArea({ className, isFullscreen, onFullscreenTog
     return (
       <div className={cn(
         'flex flex-col items-center justify-center h-full text-gray-400',
-        'rounded-2xl border-2 border-dashed',
-        'border-gray-200 dark:border-slate-700',
         className
       )}>
         <div className="text-center space-y-2">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+          <div className="w-16 h-16 mx-auto mb-4 opacity-50">
             <span className="text-3xl">📦</span>
           </div>
           <p className="text-sm font-medium">暂无交付物</p>
@@ -101,8 +99,7 @@ export default function ArtifactsArea({ className, isFullscreen, onFullscreenTog
     <div
       id={`artifact-${currentSession.expertType}`}
       className={cn(
-        'flex flex-col h-full w-full max-w-full rounded-2xl border',
-        'border-gray-200 dark:border-slate-700 overflow-hidden',
+        'flex flex-col h-full w-full max-w-full',
         className
       )}>
       {/* 头部：标题 + 操作栏，宽度约束 */}

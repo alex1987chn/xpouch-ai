@@ -52,7 +52,7 @@ export default function XPouchLayout({
             <aside
               className={cn(
                 // 基础样式：flex-none确保不收缩
-                'flex-none flex-col backdrop-blur-md',
+                'flex-none flex-col bg-white/80 dark:bg-slate-900/80 backdrop-blur-md',
                 // 移动端：全屏显示
                 'fixed inset-0 z-50 md:relative',
                 viewMode === 'chat' ? 'w-full h-[100dvh] rounded-none border-none' : 'hidden',
@@ -88,8 +88,8 @@ export default function XPouchLayout({
             <section
               className={cn(
                 'relative w-full flex-none max-h-[180px] overflow-hidden', // flex-none确保不被压缩
-                'rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20',
-                'bg-transparent' // 背景透明，由子组件提供背景
+                'bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm',
+                'rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20'
               )}
             >
               <div className="h-full overflow-y-auto overflow-x-hidden p-2">
@@ -103,7 +103,7 @@ export default function XPouchLayout({
             <section
               className={cn(
                 'relative w-full flex-1 min-h-0 overflow-hidden', // 强制overflow-hidden
-                'backdrop-blur-md',
+                'bg-white/80 dark:bg-slate-900/80 backdrop-blur-md',
                 'rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20'
               )}
             >
