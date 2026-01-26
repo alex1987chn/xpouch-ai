@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { logger } from '@/utils/logger'
 
 interface PersonalSettingsDialogProps {
   isOpen: boolean
@@ -51,7 +52,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
         setAvatar(base64)
         setAvatarPreview(base64)
       } catch (error) {
-        console.error('Failed to process image:', error)
+        logger.error('Failed to process image:', error)
         alert('图片处理失败，请重试')
       }
     }
@@ -89,7 +90,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
       })
       onClose()
     } catch (error) {
-      console.error('[PersonalSettingsDialog] Failed to save settings:', error)
+      logger.error('[PersonalSettingsDialog] Failed to save settings:', error)
       alert('保存失败，请重试')
     } finally {
       setIsSaving(false)

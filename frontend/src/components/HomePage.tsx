@@ -69,7 +69,7 @@ export default function HomePage() {
         // 使用完全替换而不是合并，确保与后端同步
         setCustomAgents(customAgentsData)
       } catch (error) {
-        console.error('加载自定义智能体失败:', error)
+        logger.error('加载自定义智能体失败:', error)
       }
     }
 
@@ -154,7 +154,7 @@ export default function HomePage() {
         setSelectedAgentId(SYSTEM_AGENTS.DEFAULT_CHAT)
       }
     } catch (error) {
-      console.error('删除自定义智能体失败:', error)
+      logger.error('删除自定义智能体失败:', error)
       // 即使删除失败（比如 404），也从 store 中移除该 agent
       setCustomAgents(prev => prev.filter(agent => agent.id !== deletingAgentId))
       // 如果删除的是当前选中的 agent，切换到默认助手

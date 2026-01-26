@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { getConversations, type Conversation } from '@/services/api'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
+import { logger } from '@/utils/logger'
 
 interface SidebarMenuProps {
   isCollapsed?: boolean
@@ -36,7 +37,7 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
           .slice(0, 5)
         setRecentConversations(sorted)
       } catch (error) {
-        console.error('Failed to load recent conversations:', error)
+        logger.error('Failed to load recent conversations:', error)
       }
     }
 

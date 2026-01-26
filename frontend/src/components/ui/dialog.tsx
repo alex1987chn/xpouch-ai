@@ -84,6 +84,94 @@ const DialogContentCentered = React.forwardRef<
 ))
 DialogContentCentered.displayName = DialogPrimitive.Content.displayName
 
+// 全屏覆盖的 DialogContent（用于移动设备或大表单）
+const DialogContentFullscreen = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed inset-0 z-50 grid w-full h-full max-w-full gap-4 border-0 bg-white dark:bg-slate-900 p-0 shadow-none duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        className
+      )}
+      {...props}
+    >
+      <div className="absolute right-4 top-4 z-10">
+        <DialogPrimitive.Close className="rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-slate-100 data-[state=open]:text-slate-500 dark:ring-offset-slate-950 dark:focus:ring-slate-300 dark:data-[state=open]:bg-slate-800 dark:data-[state=open]:text-slate-400">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </DialogPrimitive.Close>
+      </div>
+      <div className="h-full overflow-auto">
+        {children}
+      </div>
+    </DialogPrimitive.Content>
+  </DialogPortal>
+))
+DialogContentFullscreen.displayName = DialogPrimitive.Content.displayName
+
+// 可配置位置的 DialogContent
+interface DialogContentPositionedProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  position?: 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+}
+
+const DialogContentPositioned = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  DialogContentPositionedProps
+>(({ className, children, position = 'center', ...props }, ref) => {
+  const getPositionClasses = () => {
+    switch (position) {
+      case 'top':
+        return 'top-0 left-[50%] translate-x-[-50%] translate-y-0 md:top-4 md:translate-y-0'
+      case 'bottom':
+        return 'bottom-0 left-[50%] translate-x-[-50%] translate-y-0 md:bottom-4 md:translate-y-0'
+      case 'left':
+        return 'left-0 top-[50%] translate-y-[-50%] translate-x-0 md:left-4 md:translate-x-0'
+      case 'right':
+        return 'right-0 top-[50%] translate-y-[-50%] translate-x-0 md:right-4 md:translate-x-0'
+      case 'top-left':
+        return 'top-0 left-0 translate-x-0 translate-y-0 md:top-4 md:left-4'
+      case 'top-right':
+        return 'top-0 right-0 translate-x-0 translate-y-0 md:top-4 md:right-4'
+      case 'bottom-left':
+        return 'bottom-0 left-0 translate-x-0 translate-y-0 md:bottom-4 md:left-4'
+      case 'bottom-right':
+        return 'bottom-0 right-0 translate-x-0 translate-y-0 md:bottom-4 md:right-4'
+      case 'center':
+      default:
+        return 'left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]'
+    }
+  }
+
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          "fixed z-50 grid w-full max-w-lg gap-4 border bg-white dark:bg-slate-900 p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          position === 'center' 
+            ? 'data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]' 
+            : 'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
+          getPositionClasses(),
+          className
+        )}
+        {...props}
+      >
+        {children}
+        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-slate-100 data-[state=open]:text-slate-500 dark:ring-offset-slate-950 dark:focus:ring-slate-300 dark:data-[state=open]:bg-slate-800 dark:data-[state=open]:text-slate-400">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  )
+})
+DialogContentPositioned.displayName = DialogPrimitive.Content.displayName
+
 const DialogHeader = ({
   className,
   ...props
@@ -147,6 +235,8 @@ export {
   DialogTrigger,
   DialogContent,
   DialogContentCentered,
+  DialogContentFullscreen,
+  DialogContentPositioned,
   DialogHeader,
   DialogFooter,
   DialogTitle,

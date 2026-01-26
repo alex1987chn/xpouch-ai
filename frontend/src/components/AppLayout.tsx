@@ -7,6 +7,7 @@ import { SettingsDialog } from '@/components/SettingsDialog'
 import { PersonalSettingsDialog } from '@/components/PersonalSettingsDialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { useApp } from '@/providers/AppProvider'
+import { logger } from '@/utils/logger'
 
 interface AppLayoutProps {
   children: ReactNode
@@ -37,7 +38,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
 
     // 这里只是占位符，实际的删除逻辑由各页面通过订阅 dialogs 状态来处理
     // 或者统一在这里处理
-    console.log('[AppLayout] Delete confirm clicked for:', dialogs.deletingAgentId)
+    logger.info('[AppLayout] Delete confirm clicked for:', dialogs.deletingAgentId)
     dialogs.closeDeleteConfirm()
   }
 

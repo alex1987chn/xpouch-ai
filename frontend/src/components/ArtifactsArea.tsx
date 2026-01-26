@@ -5,6 +5,7 @@ import ArtifactTabs from './ArtifactTabs'
 import { X, Copy, Check, Maximize2 } from 'lucide-react'
 import { useState } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { logger } from '@/utils/logger'
 
 // ============================================
 // ArtifactsArea - 整合 Tabs + Content 的交付物展示区域
@@ -46,7 +47,7 @@ export default function ArtifactsArea({ className, isFullscreen, onFullscreenTog
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
-      console.error('Failed to copy:', err)
+      logger.error('Failed to copy:', err)
     }
   }
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useCanvasStore } from '@/store/canvasStore'
+import { logger } from '@/utils/logger'
 
 interface ArtifactUpdate {
   type: 'code' | 'mermaid' | 'markdown'
@@ -38,7 +39,7 @@ export function useArtifactListener({
       eventSourceRef.current = eventSource
 
       eventSource.onerror = (error) => {
-        console.error('[useArtifactListener] SSE connection error:', error)
+        logger.error('[useArtifactListener] SSE connection error:', error)
         // Reconnect after 3 seconds
         setTimeout(() => {
           if (eventSourceRef.current === eventSource) {
@@ -57,7 +58,7 @@ export function useArtifactListener({
           // Call callback
           onArtifactUpdate?.(data)
         } catch (error) {
-          console.error('[useArtifactListener] Failed to parse artifact_update:', error)
+          logger.error('[useArtifactListener] Failed to parse artifact_update:', error)
         }
       })
 
@@ -66,10 +67,10 @@ export function useArtifactListener({
       })
 
       eventSource.addEventListener('error', (event: MessageEvent) => {
-        console.error('[useArtifactListener] Server error:', event.data)
+        logger.error('[useArtifactListener] Server error:', event.data)
       })
     } catch (error) {
-      console.error('[useArtifactListener] Failed to create SSE connection:', error)
+      logger.error('[useArtifactListener] Failed to create SSE connection:', error)
     }
   }, [conversationId, enabled, setArtifact, onArtifactUpdate])
 

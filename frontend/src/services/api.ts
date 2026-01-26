@@ -14,6 +14,8 @@ import {
 // 智能判断环境：统一使用相对路径，由 Vite 代理或 Nginx 处理
 const API_BASE_URL = '/api'
 
+import { logger } from '@/utils/logger'
+
 // 获取或生成客户端ID (简单的 UUID 生成，兼容低版本浏览器)
 export function getClientId(): string {
   const STORAGE_KEY = 'xpouch_client_id';
@@ -46,7 +48,7 @@ const getHeaders = () => {
         return headers;
       }
     } catch (e) {
-      console.warn('[API Headers] 解析token失败:', e);
+      logger.warn('[API Headers] 解析token失败:', e);
     }
   }
 
@@ -335,7 +337,7 @@ export async function sendMessage(
       })
 
       if (!response.ok) {
-        console.error('[api.ts] 请求失败:', response.status, response.statusText)
+        logger.error('[api.ts] 请求失败:', response.status, response.statusText)
         throw new Error(`API Error: ${response.status}`);
       }
 
