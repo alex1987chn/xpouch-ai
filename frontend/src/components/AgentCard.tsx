@@ -42,21 +42,21 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: Agen
           'transition-all duration-200 ease-out',
           'hover:border-violet-400 dark:hover:border-violet-600',
           'hover:shadow-lg hover:shadow-violet-500/10',
-          'flex flex-col items-center justify-center p-5 min-h-[100px]'
+          'flex flex-col items-center justify-center p-4 sm:p-5 min-h-[80px] sm:min-h-[100px]'
         )}
       >
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-1.5 sm:gap-2">
           <div className={cn(
-            'w-10 h-10 rounded-lg',
+            'w-8 h-8 sm:w-10 sm:h-10 rounded-lg',
             'bg-white dark:bg-slate-800',
             'shadow-sm border border-slate-200 dark:border-slate-700',
             'flex items-center justify-center',
             'transition-all duration-200',
             'group-hover:scale-105 group-hover:shadow-md'
           )}>
-            <Plus className="w-4 h-4 text-slate-400 group-hover:text-violet-500 transition-colors" />
+            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 group-hover:text-violet-500 transition-colors" />
           </div>
-          <span className="text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+          <span className="text-[11px] sm:text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
             创建智能体
           </span>
         </div>
@@ -92,13 +92,13 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: Agen
       <Card className={cn(
         'relative z-10 bg-transparent border-0 shadow-none rounded-xl h-full transition-all duration-200'
       )}>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between gap-3">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
             {/* 左侧：图标 + 信息 */}
-            <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               {/* 图标容器 */}
               <div className={cn(
-                'flex-shrink-0 w-10 h-10 rounded-lg',
+                'flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg',
                 'bg-slate-100 dark:bg-slate-800',
                 'flex items-center justify-center',
                 'transition-all duration-200',
@@ -106,14 +106,14 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: Agen
               )}>
                 {/* 默认助手装饰点 */}
                 {isDefaultAgent && (
-                  <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-slate-400 dark:bg-slate-600 rounded-full flex items-center justify-center shadow-sm">
-                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                  <div className="absolute -top-1 -right-1 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-slate-400 dark:bg-slate-600 rounded-full flex items-center justify-center shadow-sm">
+                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-white rounded-full" />
                   </div>
                 )}
                 <span className={cn(
                   'text-slate-600 dark:text-slate-300 transition-colors duration-200',
                   'group-hover:text-violet-600 dark:group-hover:text-violet-400',
-                  'text-lg'
+                  'text-base sm:text-lg'
                 )}>
                   {agent.icon}
                 </span>
@@ -121,18 +121,18 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: Agen
 
               {/* 文本信息 */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5">
                   <h3 className={cn(
                     'font-medium truncate transition-colors duration-200',
                     'text-slate-900 dark:text-slate-100',
                     'group-hover:text-slate-700 dark:group-hover:text-white',
-                    'text-sm'
+                    'text-[13px] sm:text-sm'
                   )}>
                     {agent.name}
                   </h3>
                   {isDefaultAgent && (
                     <span className={cn(
-                      'flex-shrink-0 px-2 py-0.5 rounded text-[10px] font-medium',
+                      'flex-shrink-0 px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-medium',
                       'bg-violet-100 dark:bg-violet-900/50',
                       'text-violet-600 dark:text-violet-300'
                     )}>
@@ -140,17 +140,17 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: Agen
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
                   {agent.description}
                 </p>
               </div>
             </div>
 
             {/* 右侧：分类标签 + 删除按钮 */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               {!isDefaultAgent && (
                 <span className={cn(
-                  'px-2 py-0.5 rounded text-[10px] font-medium',
+                  'px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-medium',
                   'bg-slate-100 dark:bg-slate-800',
                   'text-slate-500 dark:text-slate-400'
                 )}>
@@ -165,14 +165,14 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: Agen
                     onDelete?.()
                   }}
                   className={cn(
-                    'p-1.5 rounded-md transition-all duration-150',
+                    'p-1 sm:p-1.5 rounded-md transition-all duration-150',
                     'text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400',
                     'opacity-0 group-hover:opacity-100',
                     'hover:bg-red-50 dark:hover:bg-red-900/20'
                   )}
                   title="删除"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               )}
             </div>
