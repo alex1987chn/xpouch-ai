@@ -135,7 +135,7 @@ export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
   return (
     <div className={cn(
       'flex items-center gap-3 w-full max-w-full overflow-x-auto pb-2 min-h-[60px] px-4 py-3',
-      'bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm',
+      'backdrop-blur-sm',
       'rounded-2xl border border-gray-200 dark:border-slate-700',
       'shadow-lg',
       className

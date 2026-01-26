@@ -17,7 +17,7 @@ export default function SearchArtifact({ results = [], className }: SearchArtifa
   return (
     <div
       className={cn(
-        'w-full h-full bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-auto',
+        'w-full h-full rounded-lg shadow-lg overflow-auto',
         'border border-gray-200 dark:border-gray-700',
         className
       )}
@@ -42,7 +42,7 @@ export default function SearchArtifact({ results = [], className }: SearchArtifa
           results.map((result, idx) => (
             <div
               key={idx}
-              className="group p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-all"
+              className="group p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-all"
             >
               {/* Title */}
               <div className="flex items-start gap-3 mb-2">
