@@ -249,23 +249,23 @@ export default function GlowingInput({
 
               {/* 模式切换胶囊 */}
               {onConversationModeChange && (
-                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-200 dark:border-slate-700 h-5 sm:h-6 w-[45px] sm:w-[51px] gap-0">
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-200 dark:border-slate-700 h-[17px] sm:h-[18px] w-[31px] sm:w-[35px] overflow-hidden">
                   <button
                     type="button"
                     onClick={() => {
                       onConversationModeChange('simple')
                     }}
                     className={cn(
-                      'flex items-center justify-center rounded-l-full transition-all',
+                      'flex items-center justify-center transition-all',
                       'hover:scale-105 active:scale-95',
                       conversationMode === 'simple'
                         ? 'bg-violet-500 text-white shadow-md'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200',
+                      'h-full w-1/2'
                     )}
-                    style={{ width: '22px', height: '20px' }}
                     title="快速对话模式 - 直接调用AI，响应迅速"
                   >
-                    <Zap className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                    <Zap className="w-[7px] h-[7px] sm:w-[8px] sm:h-[8px]" />
                   </button>
                   <button
                     type="button"
@@ -278,16 +278,16 @@ export default function GlowingInput({
                       onConversationModeChange('complex')
                     }}
                     className={cn(
-                      'flex items-center justify-center rounded-r-full transition-all',
+                      'flex items-center justify-center transition-all',
                       'hover:scale-105 active:scale-95',
                       conversationMode === 'complex'
                         ? 'bg-violet-500 text-white shadow-md'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200',
+                      'h-full w-1/2'
                     )}
-                    style={{ width: '22px', height: '20px' }}
                     title={!isAuthenticated ? "登录后使用专家协作模式" : "专家协作模式 - 多专家智能体协同工作，深度分析复杂任务"}
                   >
-                    <Brain className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                    <Brain className="w-[7px] h-[7px] sm:w-[8px] sm:h-[8px]" />
                   </button>
                 </div>
               )}

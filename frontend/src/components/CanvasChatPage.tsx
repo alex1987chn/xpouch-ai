@@ -18,12 +18,15 @@ import { SYSTEM_AGENTS } from '@/constants/agents'
 import { logger } from '@/utils/logger'
 
 function CanvasChatPageContent() {
+  logger.info('[CanvasChatPage] CanvasChatPageContent组件渲染')
   const { id } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
 
   // 存储当前会话对象（用于数据驱动 UI）
   const [currentConvData, setCurrentConvData] = useState<Conversation | null>(null)
+
+  logger.info('[CanvasChatPage] 当前路由id:', id)
 
   // ============================================
   // 辅助函数：从消息中检测 artifacts
@@ -210,7 +213,10 @@ function CanvasChatPageContent() {
 
   // 初始化或加载会话
   useEffect(() => {
+    logger.info('[CanvasChatPage] useEffect触发，id:', id)
+
     if (!id) {
+      logger.info('[CanvasChatPage] id为null，清空状态')
       setCurrentConversationId(null)
       setMessages([])
       hasLoadedConversationRef.current = false
@@ -220,7 +226,10 @@ function CanvasChatPageContent() {
 
     // 检查是否有 startWith state（从首页过来的），如果有则不尝试加载
     const state = location.state as { startWith?: string; agentId?: string } | null
+    logger.info('[CanvasChatPage] location.state:', state)
+
     if (state?.startWith) {
+      logger.info('[CanvasChatPage] 有startWith状态，跳过加载')
       hasLoadedConversationRef.current = true
       setCurrentConversationId(id)
       previousConversationIdRef.current = id
@@ -232,18 +241,27 @@ function CanvasChatPageContent() {
     const currentStoreId = useChatStore.getState().currentConversationId;
     const currentMessages = useChatStore.getState().messages;
 
+    logger.info('[CanvasChatPage] currentStoreId:', currentStoreId, 'currentMessages.length:', currentMessages.length, 'hasLoadedConversation:', hasLoadedConversationRef.current)
+
     // 修复：如果是页面刷新（store中有缓存消息），强制从数据库重新加载
     // 判断标准：previousConversationId不为null且与当前ID相同，但store可能是从localStorage恢复的旧数据
     const isRefresh = previousConversationIdRef.current !== null && previousConversationIdRef.current === id
 
+    logger.info('[CanvasChatPage] previousConversationId:', previousConversationIdRef.current, 'isRefresh:', isRefresh)
+
     if (id === previousConversationIdRef.current && hasLoadedConversationRef.current && id === currentStoreId && currentMessages.length > 0 && !isRefresh) {
+      logger.info('[CanvasChatPage] 跳过加载（同一会话且已加载）')
       return
     }
+
+    logger.info('[CanvasChatPage] 开始加载会话:', id)
 
     hasLoadedConversationRef.current = true
     previousConversationIdRef.current = id
 
     getConversation(id).then(conversation => {
+      logger.info('[CanvasChatPage] 加载会话:', id, 'agent_type:', conversation?.agent_type, 'messages:', conversation?.messages?.length || 0)
+
       if (conversation) {
         setSelectedAgentId(conversation.agent_id)
         setCurrentConversationId(conversation.id)
@@ -251,17 +269,31 @@ function CanvasChatPageContent() {
 
         // 加载 messages
         if (conversation.messages && conversation.messages.length > 0) {
+          logger.info('[CanvasChatPage] 开始加载消息，数量:', conversation.messages.length)
+
+          // 统计不同类型的消息数量
+          const messageTypes = conversation.messages.reduce((acc, m) => {
+            const typedM = m as ApiMessage
+            acc[typedM.role] = (acc[typedM.role] || 0) + 1
+            return acc
+          }, {} as Record<string, number>)
+          logger.info('[CanvasChatPage] 消息类型统计:', messageTypes)
+
           const loadedMessages = conversation.messages.map((m) => {
             const typedM = m as ApiMessage
             // 修复：保留system角色，不转换为assistant，确保系统消息正确显示
             // system消息用于显示专家完成、任务计划等信息
-            return {
+            const message = {
               role: typedM.role as 'user' | 'assistant' | 'system',
               content: typedM.content,
               id: typedM.id ? String(typedM.id) : crypto.randomUUID(),
               timestamp: typedM.timestamp ? new Date(typedM.timestamp).getTime() : Date.now()
             }
+            logger.debug('[CanvasChatPage] 加载消息:', message.role, 'content:', message.content.substring(0, 50))
+            return message
           })
+
+          logger.info('[CanvasChatPage] 加载完成，设置消息数量:', loadedMessages.length, '消息类型:', loadedMessages.map(m => m.role))
           setMessages(loadedMessages as Message[])
 
           // 加载 artifacts（如果存在）

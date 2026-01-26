@@ -74,11 +74,13 @@ export function useChat() {
     if (expertEvent?.type === 'task_start') {
       const taskInfo = expertEvent as any
       const expertType = taskInfo.expert_type
-      const description = taskInfo.description
+      const description = taskInfo.description || taskInfo.task_name || '执行任务'
+
+      debug('任务开始:', expertType, '描述:', description)
 
       // 设置当前执行的专家信息（用于loading气泡展示）
       setActiveExpertId(expertType)
-      // 更新专家状态为运行中
+      // 更新专家状态为运行中，包含详细描述
       const newExpert = createExpertResult(expertType, 'running')
       newExpert.description = description
       updateExpertResult(expertType, newExpert)
@@ -110,6 +112,10 @@ export function useChat() {
       setActiveExpertId(expertEvent.expertId)
       // 使用统一的专家结果创建函数
       const newExpert = createExpertResult(expertEvent.expertId, 'running')
+      // 如果专家事件包含描述信息，设置描述
+      if (expertEvent.description) {
+        newExpert.description = expertEvent.description
+      }
       debug('添加专家到状态栏:', newExpert)
       addExpertResult(newExpert)
       debug('添加后专家结果列表:', useCanvasStore.getState().expertResults)
@@ -121,9 +127,7 @@ export function useChat() {
       debug('✅ 专家完成:', expertEvent.expertId, expertEvent)
       debug('更新前专家结果列表:', useCanvasStore.getState().expertResults)
 
-      // 使用 await Promise.resolve() 替代 setTimeout，让用户能看到 running 状态
-      await Promise.resolve()
-
+      // 不再延迟，立即显示完成状态
       // 添加工作流状态消息（包含专家输出）
       const expertConfig = getExpertConfig(expertEvent.expertId)
       const expertName = expertConfig.name
@@ -189,6 +193,9 @@ export function useChat() {
         })) : undefined
       })
       debug('更新后专家结果列表:', useCanvasStore.getState().expertResults)
+      
+      // 立即清除当前激活的专家，避免loading状态混淆
+      setActiveExpertId(null)
 
       // 检查是否所有专家都已完成，如果是则显示总完成消息
       const expertResults = useCanvasStore.getState().expertResults
@@ -360,8 +367,23 @@ export function useChat() {
       // 确保消息更新在artifact创建之前完成，避免状态不一致
       if (finalResponseContent && assistantMessageId) {
         debug(`更新助手消息 ${assistantMessageId}，长度: ${finalResponseContent.length}，模式: ${conversationMode}`)
+
+        // 复杂模式：检测技术内容，如果是则替换成友好文案
+        let messageContent = finalResponseContent
+        if (conversationMode === 'complex') {
+          // 检测是否包含大量技术内容（JSON、代码块等）
+          const hasTechnicalContent = finalResponseContent.includes('```') ||
+                                  finalResponseContent.includes('{') && finalResponseContent.includes('}') ||
+                                  finalResponseContent.includes('[') && finalResponseContent.includes(']')
+
+          if (hasTechnicalContent) {
+            // 复杂模式下，技术内容在artifact区域显示，assistant消息显示友好总结
+            messageContent = '✅ 复杂任务执行完成，请查看右侧的专家状态栏和artifact区域获取详细结果。'
+          }
+        }
+
         // updateMessage是同步的，不要await，避免页面卡死
-        updateMessage(assistantMessageId!, finalResponseContent)
+        updateMessage(assistantMessageId!, messageContent)
       }
 
       // 6. 自动从助手消息中提取内容并创建 artifact
