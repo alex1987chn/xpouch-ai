@@ -865,6 +865,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     # 2. sys-default-chat → 简单模式（默认助手）
     # 3. 自定义智能体UUID → 简单模式
 
+    print(f"[DEBUG] normalized_agent_id: {normalized_agent_id}, SYSTEM_AGENT_ORCHESTRATOR: {SYSTEM_AGENT_ORCHESTRATOR}")
     if normalized_agent_id == SYSTEM_AGENT_ORCHESTRATOR:
         # AI助手：复杂模式（指挥官模式）
         custom_agent = None  # 不走自定义 agent 逻辑
@@ -891,6 +892,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             custom_agent = None
 
     # 如果是自定义智能体，使用直接 LLM 调用模式（不经过 LangGraph）
+    print(f"[DEBUG] custom_agent value: {custom_agent}")
     if custom_agent:
         # 4. 流式响应处理（自定义智能体直接调用 LLM）
         if request.stream:
@@ -1034,6 +1036,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             expert_artifacts = {}
 
             try:
+                print(f"[DEBUG] 开始流式处理指挥官图，初始状态: {initial_state}")
                 async for event in commander_graph.astream_events(
                     initial_state,
                     version="v2"

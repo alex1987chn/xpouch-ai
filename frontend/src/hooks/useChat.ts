@@ -385,8 +385,9 @@ export function useChat() {
         navigate(`/chat/${actualConversationId}?agentId=${selectedAgentId}`, { replace: true })
       }
 
-      // 如果是复杂模式，更新最终响应到助手消息
-      if (conversationMode === 'complex' && finalResponseContent && assistantMessageId) {
+      // 更新最终响应到助手消息（简单模式和复杂模式都需要）
+      if (finalResponseContent && assistantMessageId) {
+        debug(`更新助手消息 ${assistantMessageId}，长度: ${finalResponseContent.length}，模式: ${conversationMode}`)
         updateMessage(assistantMessageId, finalResponseContent)
       }
 
