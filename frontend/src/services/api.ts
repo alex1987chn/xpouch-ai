@@ -43,7 +43,6 @@ const getHeaders = () => {
       const accessToken = parsed.state?.accessToken;
       if (accessToken) {
         headers['Authorization'] = `Bearer ${accessToken}`;
-        console.log('[API Headers] 使用 JWT token');
         return headers;
       }
     } catch (e) {
@@ -408,7 +407,6 @@ export async function sendMessage(
 
                 // 处理 taskPlan 事件（任务计划展示）
                 if (taskPlan && typeof onChunk === 'function') {
-                  console.log('[api.ts] 处理任务计划事件:', taskPlan)
                   // @ts-ignore - 扩展回调签名支持任务计划
                   onChunk('', finalConversationId, { type: 'task_plan', ...taskPlan })
                 }
