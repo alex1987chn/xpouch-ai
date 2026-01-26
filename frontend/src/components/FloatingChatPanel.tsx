@@ -292,30 +292,45 @@ export default memo(function FloatingChatPanel({
                 ))}
 
 
-                {/* Typing Indicator - 复杂模式显示文案提示，简单模式显示三个圆圈 */}
-                {isTyping && !messages.some(m => m.role === 'assistant' && m.content && m.content.length > 10) && runningExpert && runningExpertConfig && (
+                {/* Typing Indicator - 复杂模式显示详细任务进度，简单模式显示三个圆圈 */}
+                {isTyping && !messages.some(m => m.role === 'assistant' && m.content && m.content.length > 10) && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 items-start">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
                       <Bot className="w-4 h-4 text-white" />
                     </div>
-                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4">
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
-                        {runningExpertConfig.name}正在执行任务中，请稍候...
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-                {/* 简单模式的loading指示器 */}
-                {isTyping && !runningExpert && !messages.some(m => m.role === 'assistant' && m.content && m.content.length > 10) && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 items-start">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
-                      <Bot className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4">
-                      <div className="flex gap-1">
-                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
-                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4 max-w-md">
+                      <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                        {runningExpert && runningExpertConfig ? (
+                          // 复杂模式：有正在运行的专家时，显示详细任务进度
+                          <>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">{runningExpertConfig.name}</span>
+                            </div>
+                            {runningExpert.description ? (
+                              <div className="text-gray-600 dark:text-gray-400">
+                                正在{runningExpert.description}...
+                              </div>
+                            ) : (
+                              <div className="text-gray-600 dark:text-gray-400">
+                                正在执行任务中，请稍候...
+                              </div>
+                            )}
+                          </>
+                        ) : conversationMode === 'complex' ? (
+                          // 复杂模式：没有正在运行的专家时，显示通用提示
+                          <div className="flex items-center gap-2">
+                            <span className="inline-block w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+                            <span className="text-gray-700 dark:text-gray-300">正在分析需求并规划任务...</span>
+                          </div>
+                        ) : (
+                          // 简单模式：显示三个圆圈
+                          <div className="flex gap-1">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </motion.div>
