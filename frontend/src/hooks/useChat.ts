@@ -95,17 +95,19 @@ export function useChat() {
   }, [])
 
   // 发送消息核心逻辑
-  const handleSendMessage = useCallback(async (content?: string) => {
+  const handleSendMessage = useCallback(async (content?: string, overrideAgentId?: string) => {
     const userContent = content || inputMessage
     if (!userContent.trim()) return
 
-    if (!selectedAgentId) {
+    // 优先使用传入的 agentId，否则使用 store 中的 selectedAgentId
+    const agentId = overrideAgentId || selectedAgentId
+    if (!agentId) {
       console.error('[useChat] 未选择智能体')
       return
     }
 
-    const conversationMode = getConversationMode(selectedAgentId)
-    debug('handleSendMessage called:', { userContent, currentConversationId, selectedAgentId })
+    const conversationMode = getConversationMode(agentId)
+    debug('handleSendMessage called:', { userContent, currentConversationId, agentId, overrideAgentId })
 
     // 创建新的 AbortController
     abortControllerRef.current = new AbortController()
@@ -130,12 +132,12 @@ export function useChat() {
       setIsTyping(true)
 
       // 4. 判断智能体类型和 Thread ID
-      const agentType = getAgentType(selectedAgentId)
-      const threadId = getThreadId(selectedAgentId)
+      const agentType = getAgentType(agentId)
+      const threadId = getThreadId(agentId)
 
       debug('Agent Info:', {
         agentType,
-        agentId: selectedAgentId,
+        agentId: agentId,
         threadId,
         conversationMode
       })
@@ -174,7 +176,7 @@ export function useChat() {
       debug('准备调用 sendMessage')
       finalResponseContent = await sendMessage(
         chatMessages,
-        selectedAgentId,
+        agentId,
         async (chunk, conversationId, expertEvent, artifact, expertId) => {
           // 修复：更新store中的conversationId为后端返回的真实ID
           if (conversationId && conversationId !== actualConversationId) {

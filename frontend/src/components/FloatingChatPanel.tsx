@@ -466,7 +466,8 @@ export default function FloatingChatPanel({
                           {/* Message Container - 包含气泡和按钮 */}
                           <div className={cn('flex-1 flex flex-col', msg.role === 'user' ? 'items-end' : 'items-start')}>
                             {/* Message Bubble */}
-                            {!(msg.role === 'assistant' && !msg.content && isTyping) && (
+                            {/* 修复：空内容的消息也应该渲染，用于流式更新 */}
+                            {!(msg.role === 'assistant' && msg.content === undefined && !isTyping) && (
                               <Card className={cn(
                                 'max-w-[80%] rounded-2xl p-3 shadow-sm',
                                 msg.role === 'user'
