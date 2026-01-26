@@ -134,7 +134,7 @@ export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
 
   return (
     <div className={cn(
-      'flex items-center gap-3 overflow-x-auto pb-2 min-h-[60px] px-4 py-3',
+      'flex items-center gap-3 w-full max-w-full overflow-x-auto pb-2 min-h-[60px] px-4 py-3',
       'bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm',
       'rounded-2xl border border-gray-200 dark:border-slate-700',
       'shadow-lg',
@@ -142,26 +142,29 @@ export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
     )}>
       {/* 空状态提示 */}
       {sortedExperts.length === 0 && (
-        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
           <span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-pulse"></span>
           <span>等待专家调度...</span>
         </div>
       )}
 
-      {sortedExperts.map((expert) => (
-        <ExpertCard
-          key={expert.expertType}
-          expert={expert}
-          selected={expert.expertType === selectedExpert}
-          onClick={() => handleExpertClick(expert.expertType)}
-        />
-      ))}
+      {/* 专家卡片列表，宽度约束 */}
+      <div className="flex items-center gap-3 min-w-0 flex-1 overflow-x-auto">
+        {sortedExperts.map((expert) => (
+          <ExpertCard
+            key={expert.expertType}
+            expert={expert}
+            selected={expert.expertType === selectedExpert}
+            onClick={() => handleExpertClick(expert.expertType)}
+          />
+        ))}
+      </div>
 
       {/* 清除按钮 */}
       {sortedExperts.length > 0 && (
         <button
           onClick={handleClearClick}
-          className="ml-auto px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
+          className="ml-auto flex-shrink-0 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
         >
           清除
         </button>

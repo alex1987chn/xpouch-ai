@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { Bot, User, Minimize2, Maximize2, Copy, Check, RotateCcw, MoreVertical, Sparkles, Code, Globe, FileText, ArrowRight } from 'lucide-react'
+import { Bot, User, Copy, Check, RotateCcw, Sparkles, Code, Globe, FileText, ArrowRight } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import { useArtifacts } from '@/providers/ArtifactProvider'
@@ -59,17 +59,21 @@ function detectArtifactsFromMessage(content: string): DetectedArtifact[] {
   return artifacts
 }
 
-// 生成artifact名称
-function getArtifactName(type: string, index: number, total: number): string {
+// 生成artifact名称 - 按类型分别计数
+function getArtifactName(type: string, index: number, allArtifacts: DetectedArtifact[]): string {
   const typeMap: Record<string, string> = {
     'code': '代码',
-    'html': '网页'
+    'html': '网页',
+    'markdown': '文本'
   }
-  // 根据类型和总数量生成名称
-  if (total === 1) {
-    return `${typeMap[type]}1`
-  }
-  return `${typeMap[type]}${index + 1}`
+
+  // 计算该类型在所有artifacts中的索引
+  const typeIndex = allArtifacts
+    .slice(0, index + 1)
+    .filter(a => a.type === type)
+    .length
+
+  return `${typeMap[type] || type}${typeIndex}`
 }
 
 // 获取预览内容（截取）
@@ -93,8 +97,6 @@ interface FloatingChatPanelProps {
   agentDescription?: string
   viewMode?: 'chat' | 'preview'
   onViewModeChange?: (mode: 'chat' | 'preview') => void
-  isChatMinimized?: boolean
-  setIsChatMinimized?: (minimized: boolean) => void
   onStopGeneration?: () => void
   conversationMode?: ConversationMode
   onConversationModeChange?: (mode: ConversationMode) => void
@@ -112,8 +114,6 @@ export default function FloatingChatPanel({
   agentDescription = '任务拆解助手',
   viewMode = 'chat',
   onViewModeChange,
-  isChatMinimized: propIsChatMinimized = false,
-  setIsChatMinimized: propSetIsChatMinimized,
   onStopGeneration,
   conversationMode = 'simple',
   onConversationModeChange,
@@ -123,15 +123,10 @@ export default function FloatingChatPanel({
   const { selectExpert, selectArtifactSession, expertResults, selectedExpert: canvasSelectedExpert, addArtifact: storeAddArtifact, getArtifactSession, switchArtifactIndex } = useCanvasStore()
   const { addArtifact: providerAddArtifact } = useArtifacts()
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [isMinimized, setIsMinimized] = useState(false)
 
   // 获取当前正在执行的专家（用于loading气泡展示）
   const runningExpert = expertResults.find(exp => exp.status === 'running')
   const runningExpertConfig = runningExpert ? getExpertConfig(runningExpert.expertType) : null
-
-  // Use parent's state if provided, otherwise use local state
-  const effectiveIsChatMinimized = propSetIsChatMinimized ? propIsChatMinimized : isMinimized
-  const effectiveSetIsChatMinimized = propSetIsChatMinimized || setIsMinimized
 
   // 处理模式切换
   const handleModeChange = (newMode: ConversationMode) => {
@@ -199,11 +194,11 @@ export default function FloatingChatPanel({
   }, [messages, setInputMessage])
 
   // 处理点击artifact预览卡片
-  const handleArtifactPreviewClick = useCallback((artifact: DetectedArtifact, index: number, total: number) => {
+  const handleArtifactPreviewClick = useCallback((artifact: DetectedArtifact, index: number, allArtifacts: DetectedArtifact[]) => {
     // 在简单模式下，需要将artifact传递到右侧区域显示
 
     const expertType = 'simple'
-    const artifactName = getArtifactName(artifact.type, index, total)
+    const artifactName = getArtifactName(artifact.type, index, allArtifacts)
 
     // 检查该专家会话是否已存在（使用artifactSessions而不是expertResults）
     const existingSession = getArtifactSession(expertType)
@@ -254,8 +249,8 @@ export default function FloatingChatPanel({
   }, [selectExpert, selectArtifactSession, storeAddArtifact, switchArtifactIndex, providerAddArtifact, getArtifactSession])
 
   // Artifact预览卡片组件
-  function ArtifactPreviewCard({ artifact, index, total }: { artifact: DetectedArtifact, index: number, total: number }) {
-    const typeName = getArtifactName(artifact.type, index, total)
+  function ArtifactPreviewCard({ artifact, index, allArtifacts }: { artifact: DetectedArtifact, index: number, allArtifacts: DetectedArtifact[] }) {
+    const typeName = getArtifactName(artifact.type, index, allArtifacts)
     const previewContent = getPreviewContent(artifact.content)
 
     const typeConfig = {
@@ -283,7 +278,7 @@ export default function FloatingChatPanel({
 
     return (
       <button
-        onClick={() => handleArtifactPreviewClick(artifact, index, total)}
+        onClick={() => handleArtifactPreviewClick(artifact, index, allArtifacts)}
         className={cn(
           'w-full group relative rounded-lg border p-3 text-left transition-all',
           'hover:shadow-md hover:scale-[1.02] active:scale-[0.98]',
@@ -328,49 +323,34 @@ export default function FloatingChatPanel({
   return (
     <>
       <AnimatePresence>
-        {!isMinimized && (
-          <motion.div
-            initial={{ opacity: 1 }}
-            animate={{
-              opacity: effectiveIsChatMinimized ? 0 : 1,
-              x: effectiveIsChatMinimized ? '120%' : 0
-            }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className={cn(
-              'flex flex-col h-full min-h-0 overflow-hidden',
-              effectiveIsChatMinimized && 'md:translate-x-[120%] md:opacity-0 pointer-events-none'
-            )}
-          >
-            {/* Header - Fixed at top, flex-shrink-0 */}
-            <div className="flex-shrink-0 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-4 py-3">
-              <div className="flex items-center gap-3 flex-1">
+        <motion.div
+          initial={{ opacity: 1 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          className={cn(
+            'flex flex-col h-full min-h-0 overflow-hidden'
+          )}
+        >
+            {/* Header - Fixed at top, flex-shrink-0, max-width约束 */}
+            <div className="flex-shrink-0 w-full max-w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-4 py-3">
+              <div className="flex items-center gap-3 w-full min-w-0">
                 {/* 左侧：智能体信息 */}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center shadow-lg">
+                <div className="flex items-center gap-3 flex-shrink-0 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0">
                     <Bot className="w-5 h-5 text-white" />
                   </div>
-                  <div>
-                    <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
                       {displayName}
                     </h2>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                       {displayDescription}
                     </p>
                   </div>
                 </div>
 
-                {/* 右侧：PC端最小化按钮 + 移动端切换器 */}
-                <div className="flex items-center justify-end flex-1">
-                  {/* PC端收起按钮 - 靠右边缘 */}
-                  <button
-                    onClick={() => effectiveSetIsChatMinimized(true)}
-                    className="hidden md:flex p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    title="收起"
-                  >
-                    <Minimize2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                  </button>
-
-                  {/* 移动端专用切换器 (md:hidden) */}
+                {/* 右侧：移动端切换器 (md:hidden) */}
+                <div className="flex items-center justify-end flex-shrink-0">
                   {onViewModeChange && (
                     <div className="md:hidden flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg w-28">
                       <button
@@ -391,12 +371,17 @@ export default function FloatingChatPanel({
               </div>
             </div>
 
-            {/* Messages - flex-1 + overflow-y-auto for scrolling */}
-            <ScrollArea className="flex-1 px-4 py-4">
-              <div className="space-y-5">
+            {/* Messages - flex-1 + overflow-y-auto for scrolling, 防止长文本撑开 */}
+            <ScrollArea className="flex-1 w-full overflow-hidden">
+              <div className="px-4 py-4 space-y-5 w-full break-words overflow-x-hidden">
                   {messages.map((msg, index) => {
                     console.log('[FloatingChatPanel] 渲染消息:', { index, role: msg.role, contentLength: msg.content?.length, contentPreview: msg.content?.substring(0, 50) })
                     const isSystemMessage = msg.role === 'system'
+
+                    /* 复杂模式：只显示system消息（专家执行状态），不显示user和assistant消息 */
+                    if (conversationMode !== 'simple' && !isSystemMessage) {
+                      return null
+                    }
 
                     if (isSystemMessage) {
                       return (
@@ -404,9 +389,9 @@ export default function FloatingChatPanel({
                           key={msg.id || index}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="flex flex-col items-center"
+                          className="flex flex-col items-center w-full"
                         >
-                          <Card className="w-full bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30">
+                          <Card className="w-full max-w-full bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30">
                             <CardContent className="px-4 py-3 text-left">
                               {(() => {
                                 const artifactLinkMatch = msg.content.match(/\[查看交付物\]\(#(\w+)\)/)
@@ -450,11 +435,11 @@ export default function FloatingChatPanel({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className={cn(
-                          'flex gap-3',
+                          'flex gap-4',
                           msg.role === 'user' ? 'flex-col items-end' : 'flex-col items-start'
                         )}
                       >
-                        <div className={cn('flex gap-3 w-full group', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
+                        <div className={cn('flex gap-4 w-full group', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
                           {/* Avatar */}
                           <div className={cn(
                             'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
@@ -464,45 +449,45 @@ export default function FloatingChatPanel({
                           </div>
 
                           {/* Message Container - 包含气泡和按钮 */}
-                          <div className={cn('flex-1 flex flex-col', msg.role === 'user' ? 'items-end' : 'items-start')}>
-                            {/* Message Bubble */}
-                            {/* 修复：空内容的消息也应该渲染，用于流式更新 */}
+                          <div className={cn('flex flex-col min-w-0 flex-1 max-w-full', msg.role === 'user' ? 'items-end' : 'items-start')}>
+                            {/* Message Bubble - 自适应宽度，最大260px */}
                             {!(msg.role === 'assistant' && msg.content === undefined && !isTyping) && (
                               <Card className={cn(
-                                'max-w-[80%] rounded-2xl p-3 shadow-sm',
+                                'rounded-2xl p-3 shadow-sm',
                                 msg.role === 'user'
-                                  ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white'
-                                  : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100'
+                                  ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white max-w-[260px]'
+                                  : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 max-w-[260px]'
                               )}>
-                                {/* Content Rendering */}
-                                <CardContent className="text-sm text-left p-0">
-                                {msg.role === 'user' ? (
-                                  <div className="whitespace-pre-wrap leading-6">{msg.content}</div>
-                                ) : conversationMode !== 'simple' ? (
-                                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-p:leading-6 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-p:first:mt-0 prose-p:last:mb-0">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                                  </div>
-                                ) : (() => {
-                                  const artifacts = detectArtifactsFromMessage(msg.content)
-
-                                  // 显示文本内容 + artifact 预览卡片
-                                  return (
-                                    <div className="space-y-2">
-                                      <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-p:leading-6 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
+                                {/* Content Rendering - 正常换行，不强制横向滚动 */}
+                                <CardContent className="text-sm text-left p-0 w-full">
+                                    {msg.role === 'user' ? (
+                                      <div className="whitespace-pre-wrap break-words leading-6">{msg.content}</div>
+                                    ) : conversationMode !== 'simple' ? (
+                                      /* 复杂模式：只显示system消息（专家执行状态） */
+                                      <div className="prose prose-xs dark:prose-invert max-w-full prose-p:my-1.5 prose-p:leading-5 prose-headings:my-2 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-p:first:mt-0 prose-p:last:mb-0">
                                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                                       </div>
-                                      {artifacts.length > 0 && (
+                                    ) : (() => {
+                                      const artifacts = detectArtifactsFromMessage(msg.content)
+
+                                      /* 简单模式：显示文本内容 + artifact 预览卡片 */
+                                      return (
                                         <div className="space-y-2">
-                                          {artifacts.map((art, i) => (
-                                            <ArtifactPreviewCard key={i} artifact={art} index={i} total={artifacts.length} />
-                                          ))}
+                                          <div className="prose prose-sm dark:prose-invert max-w-full prose-p:my-2 prose-p:leading-6 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                                          </div>
+                                          {artifacts.length > 0 && (
+                                            <div className="space-y-2">
+                                              {artifacts.map((art, i) => (
+                                                <ArtifactPreviewCard key={i} artifact={art} index={i} allArtifacts={artifacts} />
+                                              ))}
+                                            </div>
+                                          )}
                                         </div>
-                                      )}
-                                    </div>
-                                  )
-                                })()}
-                              </CardContent>
-                            </Card>
+                                      )
+                                    })()}
+                                </CardContent>
+                              </Card>
                             )}
 
                             {/* Action Buttons - 气泡下方，参考ChatGPT/DeepSeek */}
@@ -529,9 +514,20 @@ export default function FloatingChatPanel({
                     )
                   })}
 
-                {/* Typing Indicator */}
-                {/* 修复：只有在没有内容开始流式时才显示loading指示器
-                     如果有runningExpert（复杂模式）或有非空的assistant消息（简单模式开始流式），则隐藏loading */}
+                {/* Typing Indicator - 复杂模式显示文案提示，简单模式显示三个圆圈 */}
+                {isTyping && !messages.some(m => m.role === 'assistant' && m.content && m.content.length > 10) && runningExpert && runningExpertConfig && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 items-start">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                      <Bot className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4">
+                      <div className="text-sm text-gray-600 dark:text-gray-300">
+                        {runningExpertConfig.name}正在执行任务中，请稍候...
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                {/* 简单模式的loading指示器 */}
                 {isTyping && !runningExpert && !messages.some(m => m.role === 'assistant' && m.content && m.content.length > 10) && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 items-start">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
@@ -550,8 +546,8 @@ export default function FloatingChatPanel({
               </div>
             </ScrollArea>
 
-            {/* Input Area - flex-shrink-0 to keep it fixed at bottom */}
-            <div className="flex-shrink-0 w-full px-4 pt-4 pb-4 md:pb-6 border-t border-gray-200/50 dark:border-gray-700/50">
+            {/* Input Area - flex-shrink-0 to keep it fixed at bottom, 宽度约束 */}
+            <div className="flex-shrink-0 w-full max-w-full px-4 pt-4 pb-4 md:pb-6 border-t border-gray-200/50 dark:border-gray-700/50">
               <GlowingInput
                 value={inputMessage}
                 onChange={setInputMessage}
@@ -565,7 +561,6 @@ export default function FloatingChatPanel({
               />
             </div>
           </motion.div>
-        )}
       </AnimatePresence>
     </>
   )

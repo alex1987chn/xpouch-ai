@@ -24,7 +24,7 @@ export default function HtmlArtifact({ content, className }: HtmlArtifactProps) 
   }, [content])
 
   return (
-    <div className={cn('w-full h-full flex flex-col overflow-hidden', className)}>
+    <div className={cn('w-full h-full flex flex-col overflow-hidden bg-white dark:bg-slate-900', className)}>
       {/* Browser Chrome Header - Full Width, No Gap */}
       <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-gray-900 border-b border-gray-700/50">
         {/* Window Control Dots - Project Theme Colors */}

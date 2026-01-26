@@ -7,91 +7,89 @@ interface XPouchLayoutProps {
   ExpertBarContent: React.ReactNode // 专家状态栏
   ArtifactContent: React.ReactNode // Artifact显示区域
   ChatContent: (viewMode: 'chat' | 'preview', setViewMode: (mode: 'chat' | 'preview') => void) => React.ReactNode
-  isChatMinimized?: boolean
-  setIsChatMinimized?: (minimized: boolean) => void
   swipeProgress?: number
   hasArtifact?: boolean
   hideChatPanel?: boolean
   showExpertBar?: boolean // 是否显示专家状态栏（仅复杂模式）
+  isSidebarOpen?: boolean // 侧边栏是否打开（用于调整宽度比例）
 }
 
 export default function XPouchLayout({
   ExpertBarContent,
   ArtifactContent,
   ChatContent,
-  isChatMinimized = false,
-  setIsChatMinimized,
   swipeProgress = 0,
   hasArtifact = true, // 默认始终显示Artifacts
   hideChatPanel = false,
-  showExpertBar = false // 默认不显示专家状态栏
+  showExpertBar = false, // 默认不显示专家状态栏
+  isSidebarOpen = false // 默认侧边栏关闭
 }: XPouchLayoutProps) {
+  // 优化3：改用固定宽度策略，避免百分比计算的脆弱性
+  // Chat Panel: 使用固定宽度范围，根据屏幕尺寸调整
+  // 移动端：w-full, PC端：380-420px固定宽度
+  const chatPanelWidthClass = isSidebarOpen
+    ? 'md:w-[380px]'  // 侧边栏打开时稍微窄一点
+    : 'md:w-[420px]'  // 侧边栏关闭时更宽
+
   // viewMode 仅在移动端起作用
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
 
   return (
-    <div className="flex h-[100dvh] w-full overflow-hidden">
-      {/* 主容器 - 左右并列布局 */}
+    <div className="flex h-[100dvh] w-full overflow-hidden bg-slate-50 dark:bg-slate-950 p-2 md:p-4">
+      {/* 主容器 - 添加transition实现动画协同 */}
       <div
         className={cn(
-          'relative flex flex-col md:flex-row overflow-hidden h-full w-full',
-          'p-4 md:gap-0' // 移动端：padding(16px)，PC端：无gap，子组件自己处理间距
+          'relative flex flex-col md:flex-row overflow-hidden h-full w-full transition-all duration-300 ease-in-out',
+          'md:gap-4' // PC端：gap(16px)，移动端：无gap（已经有外层padding）
         )}
       >
         {/* 移动端滑动返回指示器 */}
         <SwipeBackIndicator swipeProgress={swipeProgress} />
 
-        {/* 背景网格画布 - 始终存在 */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 -z-10">
-          {/* 可以在这里添加网格背景 */}
-        </div>
-
-        {/* Chat Panel - 左侧，占 3 份（约 30%） */}
+        {/* Chat Panel - 左侧，使用flex-none确保不收缩 */}
         <AnimatePresence mode="wait">
           {(!hideChatPanel || viewMode === 'chat') && (
             <aside
               className={cn(
-                // 基础样式
-                'flex flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-md',
+                // 基础样式：flex-none确保不收缩
+                'flex-none flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-md',
                 // 移动端：全屏显示
                 'fixed inset-0 z-50 md:relative',
                 viewMode === 'chat' ? 'w-full h-[100dvh] rounded-none border-none' : 'hidden',
-                // PC端样式：固定30%宽度，使用精确的百分比
-                'md:flex md:w-[30%] md:min-w-[30%] md:max-w-[30%] md:h-full md:rounded-2xl md:shadow-2xl md:shadow-black/20 md:border md:border-slate-200/50 md:dark:border-slate-700/50',
+                // PC端样式：使用clamp实现智能宽度
+                'md:flex transition-all duration-300',
+                chatPanelWidthClass,
+                'md:h-full md:rounded-2xl md:shadow-2xl md:shadow-black/20 md:border md:border-slate-200/50 md:dark:border-slate-700/50',
                 // 关键：overflow-hidden 确保圆角锐利，只有内部消息区域滚动
                 'overflow-hidden min-h-0',
-                isChatMinimized && 'md:flex-0 md:opacity-0 md:overflow-hidden md:pointer-events-none',
                 // 全屏预览时隐藏
                 hideChatPanel && 'hidden'
               )}
             >
-              <div className={cn(
-                'h-full w-full flex flex-col overflow-hidden',
-                isChatMinimized && 'md:opacity-0'
-              )}>
+              <div className="h-full w-full flex flex-col overflow-hidden">
                 {ChatContent(viewMode, setViewMode)}
               </div>
             </aside>
           )}
         </AnimatePresence>
 
-        {/* 右侧容器：专家状态栏 + Artifacts区域，占 7 份（约 70%） */}
+        {/* 右侧容器：专家状态栏 + Artifacts区域，强制弹性化 */}
         {(showExpertBar || hasArtifact) && (
           <div
             id="expert-delivery-zone"
             className={cn(
-              'relative flex flex-col min-h-0',
-              'hidden md:flex md:w-[70%] md:min-w-[70%] md:max-w-[70%]', // PC端显示，固定70%宽度
-              'md:flex' // PC端显示
+              'relative flex flex-col gap-4 overflow-hidden', // 添加overflow-hidden
+              'hidden md:flex',
+              'flex-1 min-w-0' // 关键：必须min-w-0才能随着剩余空间缩减
             )}
           >
-          {/* 专家状态栏 - 仅复杂模式显示 */}
+          {/* 专家状态栏 - 仅复杂模式显示，使用flex-none防止被压缩 */}
           {showExpertBar && (
             <section
               className={cn(
-                'relative w-full h-auto max-h-[180px] overflow-hidden',
-                'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md',
-                'rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20'
+                'relative w-full flex-none max-h-[180px] overflow-hidden', // flex-none确保不被压缩
+                'rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20',
+                'bg-transparent' // 背景透明，由子组件提供背景
               )}
             >
               <div className="h-full overflow-y-auto overflow-x-hidden p-2">
@@ -100,11 +98,11 @@ export default function XPouchLayout({
             </section>
           )}
 
-          {/* Artifacts区域 - 始终显示（所有对话都可能生成需要展示的内容） */}
+          {/* Artifacts区域 - 使用flex-1填满剩余空间，强制overflow-hidden */}
           {hasArtifact && (
             <section
               className={cn(
-                'relative w-full flex-1 min-h-0 overflow-hidden',
+                'relative w-full flex-1 min-h-0 overflow-hidden', // 强制overflow-hidden
                 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md',
                 'rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20'
               )}
@@ -113,19 +111,6 @@ export default function XPouchLayout({
             </section>
           )}
         </div>
-        )}
-
-        {/* 机器人恢复按钮：仅在收起时显示 */}
-        {isChatMinimized && setIsChatMinimized && (
-          <button
-            onClick={() => setIsChatMinimized(false)}
-            className="hidden md:flex fixed bottom-10 right-10 w-14 h-14 bg-gradient-to-br from-violet-500 to-blue-600 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-105 transition-transform animate-bounce"
-            title="恢复对话"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-            </svg>
-          </button>
         )}
 
         {/* 移动端预览模式内容 */}

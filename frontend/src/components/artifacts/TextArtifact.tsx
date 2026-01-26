@@ -7,8 +7,10 @@ interface TextArtifactProps {
 
 export default function TextArtifact({ content, className }: TextArtifactProps) {
   return (
-    <div className={cn('p-6 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-800 dark:text-slate-200 w-full h-full', className)}>
-      {content}
+    <div className={cn('w-full h-full bg-white dark:bg-slate-800', className)}>
+      <div className="p-6 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-800 dark:text-slate-200 w-full h-full overflow-auto">
+        {content}
+      </div>
     </div>
   )
 }
