@@ -25,7 +25,7 @@ export default function ArtifactsArea({ className, isFullscreen, onFullscreenTog
     return (
       <div className={cn(
         'flex flex-col items-center justify-center h-full text-gray-400',
-        'bg-gray-50 dark:bg-slate-900/50 rounded-2xl border-2 border-dashed',
+        'rounded-2xl border-2 border-dashed',
         'border-gray-200 dark:border-slate-700',
         className
       )}>
