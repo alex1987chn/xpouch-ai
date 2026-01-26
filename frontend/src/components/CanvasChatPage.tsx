@@ -187,10 +187,15 @@ function CanvasChatPageContent() {
       if (id) {
         useChatStore.getState().setCurrentConversationId(id)
       }
-      handleSendMessage(state.startWith)
-      navigate(location.pathname + location.search, { replace: true, state: {} })
+      // 确保 selectedAgentId 已从 URL 参数正确设置后再发送消息
+      // 修复：直接使用 agentIdFromUrl 而不是依赖 store 中的 selectedAgentId
+      if (agentIdFromUrl) {
+        // 直接发送消息，使用URL中的agentId
+        handleSendMessage(state.startWith, agentIdFromUrl)
+        navigate(location.pathname + location.search, { replace: true, state: {} })
+      }
     }
-  }, [location, handleSendMessage, navigate, setSelectedAgentId, agentIdFromUrl, id])
+  }, [location, handleSendMessage, navigate, agentIdFromUrl, id])
 
   // 初始化或加载会话
   useEffect(() => {
