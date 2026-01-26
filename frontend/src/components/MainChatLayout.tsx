@@ -56,7 +56,6 @@ export default function MainChatLayout({ children, className, hasMessages = fals
         <div className="h-full w-full">
           <Sidebar
             isCollapsed={isDesktopSidebarCollapsed}
-            currentPlan="Free"
             onCreateAgent={onCreateAgent}
             onSettingsClick={onSettingsClick}
             onPersonalSettingsClick={onPersonalSettingsClick}
