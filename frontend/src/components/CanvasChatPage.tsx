@@ -447,8 +447,7 @@ function CanvasChatPageContent() {
       {/* Artifact全屏预览 - 桌面端在主内容区居中 */}
       {isArtifactFullscreen && (
         <div
-          className="hidden lg:block fixed right-0 top-0 bottom-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 dark:bg-black/70"
-          style={{ left: sidebar.isCollapsed ? '0px' : '64px' }}
+          className="hidden lg:block fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 dark:bg-black/70"
           onClick={() => setIsArtifactFullscreen(false)}
         >
           <div

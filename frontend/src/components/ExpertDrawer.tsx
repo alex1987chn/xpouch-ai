@@ -126,11 +126,15 @@ export default function ExpertDrawer({ isOpen, onClose, expertName }: ExpertDraw
         onClick={handleOverlayClick}
       />
 
-      {/* 抽屉内容 */}
+      {/* 抽屉内容 - PC端：在窗口宽度减去侧边栏的区域内居中（使用calc动态计算） */}
       <div
         className={cn(
-          'fixed right-0 top-0 h-full w-[30%] bg-white dark:bg-gray-900 shadow-2xl z-[300] transition-transform duration-300 flex flex-col',
-          isOpen ? 'translate-x-0' : 'translate-x-full'
+          'fixed h-full w-[30%] max-w-[30%] bg-white dark:bg-gray-900 shadow-2xl z-[300] transition-all duration-300 flex flex-col',
+          isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full',
+          // PC端：使用left/right居中，考虑侧边栏宽度
+          'hidden md:flex md:left-1/2 md:right-auto md:top-0 md:bottom-0 md:translate-x-0',
+          // 移动端：全屏，固定right
+          'fixed right-0 top-0'
         )}
       >
         {/* 头部 */}

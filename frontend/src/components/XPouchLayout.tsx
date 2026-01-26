@@ -35,7 +35,7 @@ export default function XPouchLayout({
       <div
         className={cn(
           'relative flex flex-col md:flex-row overflow-hidden h-full w-full',
-          'p-4 md:gap-4' // PC端：统一的 padding (16px) 和 gap
+          'p-4 md:gap-0' // 移动端：padding(16px)，PC端：无gap，子组件自己处理间距
         )}
       >
         {/* 移动端滑动返回指示器 */}
@@ -80,7 +80,7 @@ export default function XPouchLayout({
           <div
             id="expert-delivery-zone"
             className={cn(
-              'relative flex flex-col gap-4 min-h-0',
+              'relative flex flex-col min-h-0',
               'hidden md:flex md:w-[70%] md:min-w-[70%] md:max-w-[70%]', // PC端显示，固定70%宽度
               'md:flex' // PC端显示
             )}
@@ -94,7 +94,7 @@ export default function XPouchLayout({
                 'rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20'
               )}
             >
-              <div className="h-full overflow-y-auto overflow-x-hidden">
+              <div className="h-full overflow-y-auto overflow-x-hidden p-2">
                 {ExpertBarContent}
               </div>
             </section>
