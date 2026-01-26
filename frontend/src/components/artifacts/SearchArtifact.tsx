@@ -15,13 +15,7 @@ interface SearchArtifactProps {
 
 export default function SearchArtifact({ results = [], className }: SearchArtifactProps) {
   return (
-    <div
-      className={cn(
-        'w-full h-full rounded-lg shadow-lg overflow-auto',
-        'border border-gray-200 dark:border-gray-700',
-        className
-      )}
-    >
+    <div className={cn('w-full h-full', className)}>
       {/* Header */}
       <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-500 to-violet-500 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
