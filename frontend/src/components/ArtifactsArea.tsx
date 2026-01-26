@@ -101,12 +101,12 @@ export default function ArtifactsArea({ className, isFullscreen, onFullscreenTog
     <div
       id={`artifact-${currentSession.expertType}`}
       className={cn(
-        'flex flex-col h-full w-full max-w-full bg-white dark:bg-slate-800 rounded-2xl border',
+        'flex flex-col h-full w-full max-w-full rounded-2xl border',
         'border-gray-200 dark:border-slate-700 overflow-hidden',
         className
       )}>
       {/* 头部：标题 + 操作栏，宽度约束 */}
-      <div className="flex items-center justify-between w-full max-w-full px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50">
+      <div className="flex items-center justify-between w-full max-w-full px-4 py-3 border-b border-gray-200 dark:border-slate-700">
         {/* 左侧：标题 */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {/* 专家名称 */}
