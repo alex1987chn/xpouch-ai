@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
+import { logger } from '@/utils/logger'
 
 interface DeleteConfirmDialogProps {
   isOpen: boolean
@@ -38,7 +39,7 @@ export function DeleteConfirmDialog({
       await onConfirm()
       onClose()
     } catch (error) {
-      console.error('Delete failed:', error)
+      logger.error('Delete failed:', error)
     } finally {
       setIsDeleting(false)
     }

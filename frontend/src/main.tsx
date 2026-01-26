@@ -13,6 +13,8 @@ import HistoryPage from './components/HistoryPage'
 import KnowledgeBasePage from './components/KnowledgeBasePage'
 import CreateAgentPage from './components/CreateAgentPage'
 import ErrorBoundary from './components/ErrorBoundary'
+
+import { logger } from '@/utils/logger'
 import { useChatStore } from './store/chatStore'
 import { type ConversationHistory } from './utils/storage'
 import { createCustomAgent } from './services/api'
@@ -63,7 +65,7 @@ const CreateAgentPageWrapper = () => {
       // 导航到首页并切换到"我的智能体"标签
       navigate('/', { state: { agentTab: 'my' } })
     } catch (error) {
-      console.error('保存智能体失败:', error)
+      logger.error('保存智能体失败:', error)
       alert('保存失败，请稍后重试')
     }
   }

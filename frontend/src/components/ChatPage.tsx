@@ -9,6 +9,7 @@ import { useTranslation } from '@/i18n'
 import { getConversation, type ApiMessage } from '@/services/api'
 
 import { SYSTEM_AGENTS } from '@/constants/agents'
+import { logger } from '@/utils/logger'
 
 export default function ChatPage() {
   const { id } = useParams()
@@ -79,7 +80,7 @@ export default function ChatPage() {
                 // 设置选中的智能体ID，确保发送消息时使用正确的agentId
                 setSelectedAgentId(agentIdFromUrl || SYSTEM_AGENTS.DEFAULT_CHAT)
             } else {
-                console.error("Failed to load conversation", err)
+                logger.error("Failed to load conversation", err)
                 // 其他错误，跳转到新建会话
                 const newId = crypto.randomUUID()
                 navigate(`/chat/${newId}`, { replace: true })

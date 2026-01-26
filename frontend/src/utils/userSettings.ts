@@ -5,6 +5,8 @@ export interface UserSettings {
   avatar: string // Base64 编码的头像图片
 }
 
+import { logger } from '@/utils/logger'
+
 const STORAGE_KEY = 'xpouch-user-settings'
 
 // 默认用户设置
@@ -22,7 +24,7 @@ export function loadUserSettings(): UserSettings {
       return JSON.parse(stored)
     }
   } catch (error) {
-    console.error('Failed to load user settings:', error)
+    logger.error('Failed to load user settings:', error)
   }
   return { ...DEFAULT_USER_SETTINGS }
 }
@@ -32,7 +34,7 @@ export function saveUserSettings(settings: UserSettings): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
   } catch (error) {
-    console.error('Failed to save user settings:', error)
+    logger.error('Failed to save user settings:', error)
   }
 }
 

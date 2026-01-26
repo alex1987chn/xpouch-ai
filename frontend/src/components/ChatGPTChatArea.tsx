@@ -2,6 +2,7 @@ import { useRef, useEffect, memo } from 'react'
 import { Bot, User, MessageSquarePlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { type Message } from '@/types'
+import { logger } from '@/utils/logger'
 
 interface ChatGPTChatAreaProps {
   messages: Message[]
@@ -18,7 +19,7 @@ function ChatGPTChatArea({ messages, isTyping }: ChatGPTChatAreaProps) {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight
       }
     } catch (error) {
-      console.error('Error scrolling chat area:', error)
+      logger.error('Error scrolling chat area:', error)
     }
   }, [messages, isTyping])
 

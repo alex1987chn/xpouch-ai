@@ -11,6 +11,7 @@ import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
+import { logger } from '@/utils/logger'
 
 interface HistoryPageProps {
   onConversationClick: (id: string) => void
@@ -36,7 +37,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
       const data = await getConversations()
       setConversations(data)
     } catch (error) {
-      console.error('Failed to load history:', error)
+      logger.error('Failed to load history:', error)
     } finally {
       setLoading(false)
     }
@@ -64,7 +65,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
       setConversations(prev => prev.filter(conv => conv.id !== deletingConversationId))
       setDeleteDialogOpen(false)
     } catch (error) {
-      console.error('Failed to delete conversation:', error)
+      logger.error('Failed to delete conversation:', error)
       setDeleteDialogOpen(false)
     }
   }, [deletingConversationId])

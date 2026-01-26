@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-01-26] - v0.5.2 - 消息状态同步与页面卡死修复
+
+### 🐛 Bug 修复
+
+**语法错误修复**：
+- 修复了 `FloatingChatPanel.tsx` 中的严重语法错误（函数定义和导出语句位置混乱）
+- 修复了 `ArtifactPreviewCard.tsx` 中的重复导出错误（`getArtifactName` 和 `getPreviewContent`）
+- 修复了 `MessageItem.tsx` 中的语法错误（JSX和导出语句混乱）
+
+**消息状态同步修复**：
+- 修复了从首页发送消息后AI回复不显示在FloatingChatPanel中的问题
+- 修复了刷新页面后artifact消失的问题
+- 优化了路由跳转时的状态传递，确保消息正确同步
+
+**页面卡死修复**：
+- 修复了第二次输入导致页面卡死和重复内容的问题
+- 移除了双重消息累积逻辑（`useChat`和`chatStore`中的重复累积）
+- 移除了不必要的异步等待操作，避免阻塞主线程
+
+**消息累积逻辑优化**：
+- 统一使用 `chatStore.updateMessage` 的append功能
+- 移除了手动消息累积，避免重复内容
+- 确保SSE流式响应正确累积显示
+
+**Artifact创建时序优化**：
+- 移除了简单模式下的延迟artifact创建逻辑
+- 优化了消息更新和artifact创建的时序，确保UI正常显示
+- 简化了artifact会话选择逻辑
+
+### ✨ 改进
+
+- **性能优化**：移除了阻塞UI的不必要异步操作，提升响应速度
+- **状态管理**：统一了消息和artifact的状态同步机制
+- **错误处理**：增强了错误边界和日志系统使用
+- **代码质量**：统一了logger工具的使用，移除所有console调用
+
+### 🔧 技术细节
+
+- 修复了 `detectArtifactsFromMessage` 函数的语法错误
+- 统一了 `updateMessage` 函数的调用方式
+- 优化了 `CanvasChatPage` 中的会话加载逻辑
+- 增强了页面刷新后的artifact恢复机制
+
+---
+
 ## [2026-01-26] - v0.5.1 - Artifact 预览重复创建修复
 
 ### 🐛 Bug 修复

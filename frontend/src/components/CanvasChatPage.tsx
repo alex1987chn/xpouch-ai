@@ -15,6 +15,7 @@ import ExpertStatusBar from './ExpertStatusBar'
 import ArtifactsArea from './ArtifactsArea'
 import { ArtifactProvider, useArtifacts } from '@/providers/ArtifactProvider'
 import { SYSTEM_AGENTS } from '@/constants/agents'
+import { logger } from '@/utils/logger'
 
 function CanvasChatPageContent() {
   const { id } = useParams()
@@ -182,17 +183,28 @@ function CanvasChatPageContent() {
 
     if (state?.startWith && !handledStartWithRef.current) {
       handledStartWithRef.current = true
+      logger.info(`[CanvasChatPage] 收到 startWith 消息: ${state.startWith.substring(0, 50)}...`)
+
       // 确保当前会话ID正确设置
       if (id) {
         useChatStore.getState().setCurrentConversationId(id)
       }
-      // 确保 selectedAgentId 已从 URL 参数正确设置后再发送消息
-      // 修复：直接使用 agentIdFromUrl 而不是依赖 store 中的 selectedAgentId
-      if (agentIdFromUrl) {
-        // 直接发送消息，使用URL中的agentId
-        handleSendMessage(state.startWith, agentIdFromUrl)
-        navigate(location.pathname + location.search, { replace: true, state: {} })
-      }
+      
+      // 等待store状态更新后再发送消息
+      setTimeout(() => {
+        // 确保 selectedAgentId 已从 URL 参数正确设置后再发送消息
+        // 修复：直接使用 agentIdFromUrl 而不是依赖 store 中的 selectedAgentId
+        if (agentIdFromUrl) {
+          // 直接发送消息，使用URL中的agentId
+          handleSendMessage(state.startWith, agentIdFromUrl)
+          navigate(location.pathname + location.search, { replace: true, state: {} })
+        } else {
+          logger.warn('[CanvasChatPage] 没有agentIdFromUrl，使用默认agent')
+          // 使用默认助手发送
+          handleSendMessage(state.startWith, SYSTEM_AGENTS.DEFAULT_CHAT)
+          navigate(location.pathname, { replace: true, state: {} })
+        }
+      }, 100) // 短暂延迟确保store状态更新
     }
   }, [location, handleSendMessage, navigate, agentIdFromUrl, id])
 
@@ -304,13 +316,18 @@ function CanvasChatPageContent() {
 
               // 自动选中第一个 artifact
               selectExpert('simple')
+              logger.info(`[CanvasChatPage] 从消息恢复 ${simpleArtifacts.length} 个 artifacts`)
+            } else {
+              // 即使没有检测到artifacts，也要清空旧的sessions
+              clearSessions()
+              logger.info('[CanvasChatPage] 刷新页面后没有检测到artifacts，清空sessions')
             }
           }
         } else {
           setMessages([])
         }
       } else {
-        console.error('[CanvasChatPage] 会话不存在:', id)
+        logger.error('[CanvasChatPage] 会话不存在:', id)
         setMessages([])
       }
     }).catch(err => {
@@ -320,9 +337,9 @@ function CanvasChatPageContent() {
                          (err.response && err.response.status === 404);
       
       if (!isNotFound) {
-        console.error('[CanvasChatPage] Failed to load conversation:', err);
+        logger.error('[CanvasChatPage] Failed to load conversation:', err);
       } else {
-        console.warn('[CanvasChatPage] 会话不存在（临时ID或尚未创建）:', id);
+        logger.warn('[CanvasChatPage] 会话不存在（临时ID或尚未创建）:', id);
       }
       setMessages([]);
       setCurrentConversationId(null);

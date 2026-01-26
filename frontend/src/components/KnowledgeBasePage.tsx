@@ -8,6 +8,7 @@ import { useSwipeBack } from '@/hooks/useSwipeBack'
 import SwipeBackIndicator from './SwipeBackIndicator'
 import { useApp } from '@/providers/AppProvider'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { logger } from '@/utils/logger'
 
 // 知识库类型
 interface KnowledgeItem {
@@ -72,7 +73,7 @@ export default function KnowledgeBasePage() {
 
   // 创建知识库
   const handleCreateKnowledgeBase = () => {
-    console.log('Create new knowledge base')
+    logger.info('Create new knowledge base')
   }
 
   // 处理删除 - 打开确认对话框
@@ -89,12 +90,12 @@ export default function KnowledgeBasePage() {
 
     try {
       // TODO: 调用后端API删除
-      console.log('Deleting item:', deletingItemId)
+      logger.info('Deleting item:', deletingItemId)
       // 从本地列表中移除，避免刷新导致滚动位置丢失
       setItems(prev => prev.filter(item => item.id !== deletingItemId))
       setDeleteDialogOpen(false)
     } catch (error) {
-      console.error('Failed to delete item:', error)
+      logger.error('Failed to delete item:', error)
       setDeleteDialogOpen(false)
     }
   }, [deletingItemId])
