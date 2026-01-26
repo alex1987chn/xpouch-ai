@@ -40,7 +40,7 @@ export default function XPouchLayout({
       <div
         className={cn(
           'relative flex flex-col md:flex-row overflow-hidden h-full w-full transition-all duration-300 ease-in-out',
-          'bg-slate-50 dark:bg-slate-950', // 与最外层保持一致
+          'bg-transparent', // 透明化，消除露底现象
           'md:gap-4' // PC端：gap(16px)，移动端：无gap（已经有外层padding）
         )}
       >
@@ -79,7 +79,7 @@ export default function XPouchLayout({
           <div
             id="expert-delivery-zone"
             className={cn(
-              'relative flex flex-col gap-2 overflow-hidden', // 添加overflow-hidden
+              'relative flex flex-col gap-4 overflow-hidden', // 统一gap-4
               'hidden md:flex',
               'flex-1 min-w-0' // 关键：必须min-w-0才能随着剩余空间缩减
             )}
