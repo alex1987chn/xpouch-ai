@@ -53,12 +53,13 @@ export default function SidebarSettingsMenu({ isOpen, onPersonalSettingsClick, o
   if (!isOpen) return null
 
   return (
-    <div 
+    <div
       ref={menuRef}
-      className="fixed bottom-[60px] left-4 bg-white/85 dark:bg-slate-900/85 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/40 overflow-hidden z-[200] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
+      className="fixed bottom-[60px] bg-white/85 dark:bg-slate-900/85 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/40 overflow-hidden z-[200] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
       style={{
         width: '260px',
-        maxWidth: 'calc(100vw - 32px)'
+        maxWidth: 'calc(100vw - 32px)',
+        left: '32px' // 固定距离左侧32px（侧边栏宽度+间距）
       }}
     >
       <div className="p-4">
