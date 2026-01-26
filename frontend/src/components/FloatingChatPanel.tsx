@@ -395,6 +395,7 @@ export default function FloatingChatPanel({
             <ScrollArea className="flex-1 px-4 py-4">
               <div className="space-y-5">
                   {messages.map((msg, index) => {
+                    console.log('[FloatingChatPanel] 渲染消息:', { index, role: msg.role, contentLength: msg.content?.length, contentPreview: msg.content?.substring(0, 50) })
                     const isSystemMessage = msg.role === 'system'
 
                     if (isSystemMessage) {
