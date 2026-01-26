@@ -190,20 +190,20 @@ export default function HomePage() {
   return (
     <ScrollArea className="bg-transparent homepage-scroll w-full h-full scroll-smooth">
       {/* Logo + 输入框区域 */}
-      <div className="pt-[10vh] pb-6 px-6 md:px-12">
+      <div className="pt-[10vh] pb-4 sm:pb-6 px-4 sm:px-6 md:px-12">
         <div className="w-full max-w-5xl mx-auto">
           <div className="flex flex-col items-center">
-            <div className="relative w-full h-28 overflow-hidden flex items-center justify-center">
+            <div className="relative w-full h-24 sm:h-28 overflow-hidden flex items-center justify-center">
               <PixelLetters />
             </div>
-            <p className={`mt-1 text-xs sm:text-sm md:text-base font-semibold uppercase tracking-[0.25em] text-slate-700 dark:text-slate-300 ${
+            <p className={`mt-1 text-[10px] sm:text-xs md:text-base font-semibold uppercase tracking-[0.25em] text-slate-700 dark:text-slate-300 ${
               showSlogan ? 'animate-fadeIn' : 'opacity-0'
             }`}>
               All Agents, One <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-violet-500 font-bold">POUCH</span>
             </p>
           </div>
 
-          <div className="w-full max-w-4xl mx-auto mt-14">
+          <div className="w-full mx-auto mt-8 sm:mt-14">
             <div className="transform transition-all duration-300 hover:scale-[1.01]">
               {/* 输入框 */}
               <GlowingInput
@@ -219,14 +219,15 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 推荐场景区域（占位符，未来扩展） */}
-      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 md:px-12 mt-8 sm:mt-12">
-        <header className="mb-4 sm:mb-6">
-          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">推荐场景</h2>
-        </header>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {/* 场景1：代码生成 */}
-          <Card
+      {/* 推荐场景区域 */}
+      <div className="px-4 sm:px-6 md:px-12 mt-6 sm:mt-12">
+        <div className="w-full max-w-5xl mx-auto">
+          <header className="mb-3 sm:mb-6">
+            <h2 className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">推荐场景</h2>
+          </header>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {/* 场景1：代码生成 */}
+            <Card
             onClick={() => {
               setInputMessage('帮我编写一个React组件')
               setConversationMode('complex')
@@ -291,26 +292,28 @@ export default function HomePage() {
       </div>
 
       {/* 我的智能体区域 */}
-      <div className="w-full max-w-5xl mx-auto px-6 md:px-12 mt-12 pb-24 md:pb-20">
-        <header className="mb-6">
-        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">我的智能体</h2>
-      </header>
+      <div className="px-4 sm:px-6 md:px-12 mt-8 sm:mt-12 pb-20 sm:pb-20 md:pb-20">
+        <div className="w-full max-w-5xl mx-auto">
+          <header className="mb-4 sm:mb-6">
+            <h2 className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">我的智能体</h2>
+          </header>
 
-      {/* PC 端：4列网格；移动端：2列网格 */}
-      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-forwards">
-        {displayedAgents.map((agent, index) => (
-          <AgentCard
-            key={`${agent.id}-${index}`}
-            agent={agent}
-            index={index}
-            isSelected={agent.isCreateCard ? false : selectedAgentId === agent.id}
-            onClick={agent.isCreateCard ? handleCreateAgent : () => handleAgentClick(agent.id)}
-            showDeleteButton={!agent.isDefault && !agent.isCreateCard}
-            onCreateAgent={agent.isCreateCard ? handleCreateAgent : undefined}
-            onDelete={() => handleDeleteAgent(agent.id, agent.name)}
-          />
-        ))}
-      </div>
+          {/* 移动端：1列网格；平板：2列网格；PC：4列网格 */}
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-forwards">
+            {displayedAgents.map((agent, index) => (
+              <AgentCard
+                key={`${agent.id}-${index}`}
+                agent={agent}
+                index={index}
+                isSelected={agent.isCreateCard ? false : selectedAgentId === agent.id}
+                onClick={agent.isCreateCard ? handleCreateAgent : () => handleAgentClick(agent.id)}
+                showDeleteButton={!agent.isDefault && !agent.isCreateCard}
+                onCreateAgent={agent.isCreateCard ? handleCreateAgent : undefined}
+                onDelete={() => handleDeleteAgent(agent.id, agent.name)}
+              />
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* 删除确认对话框 */}

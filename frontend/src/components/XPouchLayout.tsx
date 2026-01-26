@@ -3,6 +3,15 @@ import { AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import SwipeBackIndicator from './SwipeBackIndicator'
 
+// 统一的卡片基础样式定义，彻底告别 /80
+const cardBaseStyles = cn(
+  "transition-all duration-300 overflow-hidden rounded-2xl",
+  // Light Mode: 纯白实色，轻微灰色边框，柔和投影
+  "bg-white border-slate-200/60 shadow-xl shadow-slate-200/50",
+  // Dark Mode: 深色实色，深色边框，取消投影，增加内发光
+  "dark:bg-slate-900 dark:border-slate-800 dark:shadow-none dark:ring-1 dark:ring-white/5"
+);
+
 interface XPouchLayoutProps {
   ExpertBarContent: React.ReactNode // 专家状态栏
   ArtifactContent: React.ReactNode // Artifact显示区域
@@ -35,35 +44,39 @@ export default function XPouchLayout({
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
 
   return (
-    <div className="flex h-[100dvh] w-full overflow-hidden bg-slate-50 dark:bg-slate-950 p-2 md:p-4">
-      {/* 主容器 - 添加transition实现动画协同 */}
+    /* 第1层：底座背景 - 增加一点对比度 */
+    <div className="flex h-[100dvh] w-full overflow-hidden bg-slate-100 dark:bg-slate-950 p-2 md:p-4">
+      {/* 第2层：透明布局容器 */}
       <div
         className={cn(
           'relative flex flex-col md:flex-row overflow-hidden h-full w-full transition-all duration-300 ease-in-out',
-          'bg-transparent', // 透明化，消除露底现象
-          'md:gap-4' // PC端：gap(16px)，移动端：无gap（已经有外层padding）
+          'bg-transparent',
+          'md:gap-4'
         )}
       >
         {/* 移动端滑动返回指示器 */}
         <SwipeBackIndicator swipeProgress={swipeProgress} />
 
-        {/* Chat Panel - 左侧，使用flex-none确保不收缩 */}
+        {/* Chat Panel - 最终优化样式 */}
         <AnimatePresence mode="wait">
           {(!hideChatPanel || viewMode === 'chat') && (
             <aside
               className={cn(
-                // 基础样式：flex-none确保不收缩
-                'flex-none flex-col bg-white/80 dark:bg-slate-900/80 backdrop-blur-md',
-                // 移动端：全屏显示
-                'fixed inset-0 z-50 md:relative',
-                viewMode === 'chat' ? 'w-full h-[100dvh] rounded-none border-none' : 'hidden',
-                // PC端样式：使用clamp实现智能宽度
-                'md:flex transition-all duration-300',
+                'flex-none flex flex-col transition-all duration-300',
+                // 基础背景：彻底放弃半透明，解决灰色尖角
+                'bg-white dark:bg-slate-900',
+                // 响应式：移动端铺满，PC端赋予圆角和边框
+                'fixed inset-0 z-50 md:relative md:h-full md:rounded-2xl',
+                // 边框细节：使用更细腻的 60% 不透明度
+                'md:border md:border-slate-200/60 md:dark:border-slate-800',
+                // 投影细节：使用扩散范围大但色彩极淡的阴影，模拟自然光，黑暗模式下关闭投影改用 Ring
+                'md:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.08)] dark:md:shadow-none dark:md:ring-1 dark:md:ring-white/5',
+                'overflow-hidden',
+                // 移动端全屏显示
+                viewMode === 'chat' ? 'w-full h-full rounded-none border-none' : 'hidden',
+                // PC端布局
+                'md:flex',
                 chatPanelWidthClass,
-                'md:h-full md:rounded-2xl md:shadow-2xl md:shadow-black/20 md:border md:border-slate-200/50 md:dark:border-slate-700/50',
-                // 关键：overflow-hidden 确保圆角锐利，只有内部消息区域滚动
-                'overflow-hidden min-h-0',
-                // 全屏预览时隐藏
                 hideChatPanel && 'hidden'
               )}
             >
@@ -74,59 +87,47 @@ export default function XPouchLayout({
           )}
         </AnimatePresence>
 
-        {/* 右侧容器：专家状态栏 + Artifacts区域，强制弹性化 */}
+        {/* Delivery Zone - 这里的 min-w-0 解决了溢出 */}
         {(showExpertBar || hasArtifact) && (
           <div
             id="expert-delivery-zone"
-            className={cn(
-              'relative flex flex-col gap-4 overflow-hidden', // 统一gap-4
-              'hidden md:flex',
-              'flex-1 min-w-0' // 关键：必须min-w-0才能随着剩余空间缩减
-            )}
+            className="flex-1 min-w-0 flex flex-col gap-4 bg-transparent overflow-hidden hidden md:flex"
           >
-          {/* 专家状态栏 - 仅复杂模式显示，使用flex-none防止被压缩 */}
-          {showExpertBar && (
-            <section
-              className={cn(
-                'relative w-full flex-none max-h-[180px] overflow-hidden', // flex-none确保不被压缩
-                'bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm',
-                'rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20'
-              )}
-            >
-              <div className="h-full overflow-y-auto overflow-x-hidden p-2">
-                {ExpertBarContent}
-              </div>
-            </section>
-          )}
+            {/* 专家状态栏 */}
+            {showExpertBar && (
+              <section className={cn("flex-none w-full max-h-[180px]", cardBaseStyles)}>
+                <div className="h-full overflow-y-auto overflow-x-hidden p-2">
+                  {ExpertBarContent}
+                </div>
+              </section>
+            )}
 
-          {/* Artifacts区域 - 使用flex-1填满剩余空间，强制overflow-hidden */}
-          {hasArtifact && (
-            <section
-              className={cn(
-                'relative w-full flex-1 min-h-0 overflow-hidden', // 强制overflow-hidden
-                'bg-white/80 dark:bg-slate-900/80 backdrop-blur-md',
-                'rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20'
-              )}
-            >
-              {ArtifactContent}
-            </section>
-          )}
-        </div>
+            {/* Artifacts区域 - 使用absolute定位防止溢出 */}
+            {hasArtifact && (
+              <section className={cn("flex-1 min-h-0 relative", cardBaseStyles)}>
+                {/* 使用 absolute inset-0 强制子组件只能在容器范围内渲染 */}
+                <div className="absolute inset-0 overflow-hidden">
+                  {ArtifactContent}
+                </div>
+              </section>
+            )}
+          </div>
         )}
 
         {/* 移动端预览模式内容 */}
         <AnimatePresence mode="wait">
           {viewMode === 'preview' && (
-            <div
-              className={cn(
-                'fixed inset-0 z-40 md:hidden',
-                'bg-slate-50 dark:bg-slate-950'
-              )}
-            >
+            <div className="fixed inset-0 z-40 md:hidden bg-slate-100 dark:bg-slate-950">
               <div className="absolute top-4 left-4 z-50">
                 <button
                   onClick={() => setViewMode('chat')}
-                  className="w-28 h-8 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-full shadow-lg flex items-center justify-center gap-2 px-3 hover:bg-white dark:hover:bg-slate-800 transition-all"
+                  className={cn(
+                    'w-28 h-8 rounded-full flex items-center justify-center gap-2 px-3 transition-all',
+                    // 实色背景，避免半透明
+                    'bg-white dark:bg-slate-900',
+                    'border border-slate-200 dark:border-slate-800',
+                    'hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
                 >
                   <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
                   <span className="text-[11px] font-medium text-slate-700 dark:text-slate-200">对话</span>
@@ -135,10 +136,12 @@ export default function XPouchLayout({
 
               {/* 移动端：专家状态栏 - 仅复杂模式显示 */}
               {showExpertBar && (
-                <div className="absolute top-4 right-4 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-black/20">
-                  <div className="p-4">
-                    {ExpertBarContent}
-                  </div>
+                <div className={cn(
+                  "absolute top-4 right-4 z-50 p-4 rounded-2xl",
+                  cardBaseStyles,
+                  "max-w-[calc(100%-4rem)]"
+                )}>
+                  {ExpertBarContent}
                 </div>
               )}
 
