@@ -78,7 +78,7 @@ export default function XPouchLayout({
           <div
             id="expert-delivery-zone"
             className={cn(
-              'relative flex flex-col gap-4 overflow-hidden', // 添加overflow-hidden
+              'relative flex flex-col gap-2 overflow-hidden', // 添加overflow-hidden
               'hidden md:flex',
               'flex-1 min-w-0' // 关键：必须min-w-0才能随着剩余空间缩减
             )}
