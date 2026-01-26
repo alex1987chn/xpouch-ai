@@ -40,6 +40,7 @@ export default function XPouchLayout({
       <div
         className={cn(
           'relative flex flex-col md:flex-row overflow-hidden h-full w-full transition-all duration-300 ease-in-out',
+          'bg-slate-50 dark:bg-slate-950', // 与最外层保持一致
           'md:gap-4' // PC端：gap(16px)，移动端：无gap（已经有外层padding）
         )}
       >
