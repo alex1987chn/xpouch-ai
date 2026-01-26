@@ -756,3 +756,16 @@ main, header, .relative {
   background: rgba(100, 116, 139, 0.4);
 }
 
+/* ============================================
+   隐藏滚动条但保留滚动功能 (Hide scrollbar)
+   ============================================ */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, and Opera */
+}
+
+

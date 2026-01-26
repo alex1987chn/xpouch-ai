@@ -50,10 +50,12 @@ export default function CodeArtifact({ content, language = 'text', className }: 
   }
 
   return (
-    <div
-      ref={containerRef}
-      className={cn('w-full h-full font-mono text-sm bg-white dark:bg-slate-900 overflow-auto min-h-0', className)}
-    />
+    <div className={cn('w-full h-full bg-white dark:bg-slate-900', className)}>
+      <div
+        ref={containerRef}
+        className="w-full h-full font-mono text-sm overflow-auto"
+      />
+    </div>
   )
 }
 

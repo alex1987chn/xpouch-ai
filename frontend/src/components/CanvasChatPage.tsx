@@ -110,7 +110,6 @@ function CanvasChatPageContent() {
   const hasLoadedConversationRef = useRef(false)
   const previousConversationIdRef = useRef<string | null>(null)
   const [isExpertDrawerOpen, setIsExpertDrawerOpen] = useState(false)
-  const [isChatMinimized, setIsChatMinimized] = useState(false)
   const [isArtifactFullscreen, setIsArtifactFullscreen] = useState(false)
 
   const {
@@ -373,15 +372,13 @@ function CanvasChatPageContent() {
         agentDescription="任务拆解助手"
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        isChatMinimized={isChatMinimized}
-        setIsChatMinimized={setIsChatMinimized}
         onStopGeneration={handleStopGeneration}
         conversationMode={conversationMode}
         onConversationModeChange={handleConversationModeChange}
         hideModeSwitch={false}
       />
     </div>
-  ), [messages, inputMessage, setInputMessage, handleSubmitMessage, isTyping, getCurrentAgent, isChatMinimized, setIsChatMinimized, handleStopGeneration, conversationMode, handleConversationModeChange])
+  ), [messages, inputMessage, setInputMessage, handleSubmitMessage, isTyping, getCurrentAgent, handleStopGeneration, conversationMode, handleConversationModeChange])
 
   // 专家状态栏内容（使用 useMemo 避免重复创建）
   const ExpertBarContent = useMemo(() => (
@@ -415,11 +412,10 @@ function CanvasChatPageContent() {
         ExpertBarContent={ExpertBarContent}
         ArtifactContent={ArtifactContent}
         ChatContent={ChatContentWithMode}
-        isChatMinimized={isChatMinimized}
-        setIsChatMinimized={setIsChatMinimized}
         hasArtifact={showArtifacts}
         hideChatPanel={isArtifactFullscreen}
         showExpertBar={showExpertBar}
+        isSidebarOpen={!sidebar.isCollapsed} // 侧边栏展开时为true
       />
 
       {/* 抽屉式专家详情 - 提升到最顶层，独立 stacking context */}

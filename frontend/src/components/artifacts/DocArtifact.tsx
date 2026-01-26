@@ -11,11 +11,12 @@ interface DocArtifactProps {
 
 export default function DocArtifact({ content, className }: DocArtifactProps) {
   return (
-    <div className={cn('prose prose-slate dark:prose-invert prose-sm max-w-none p-6 w-full h-full overflow-auto min-h-0', className)}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeKatex]}
-        components={{
+    <div className={cn('w-full h-full bg-white dark:bg-slate-800', className)}>
+      <div className="prose prose-slate dark:prose-invert prose-sm max-w-none p-6 w-full h-full overflow-auto min-h-0">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeKatex]}
+          components={{
           h1: ({ children }) => (
             <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 border-b border-slate-300 dark:border-slate-700 pb-2 mb-4 mt-6">
               {children}
@@ -193,6 +194,7 @@ export default function DocArtifact({ content, className }: DocArtifactProps) {
       >
         {content}
       </ReactMarkdown>
+      </div>
     </div>
   )
 }

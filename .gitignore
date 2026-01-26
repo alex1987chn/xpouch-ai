@@ -43,6 +43,9 @@ venv/
 # Database
 backend/data/*.db
 backend/data/*.sqlite
+xpouch.db
+*.db
+*.sqlite
 
 # OS
 .DS_Store
@@ -65,6 +68,8 @@ cleanup.html
 clear_cache.html
 
 # Local documentation (private notes, not for GitHub)
+# Note: CHANGELOG.md and CHANGELOG_ARCHIVE.md are tracked in Git
 MEM.md
-CHANGELOG.md
-CHANGELOG_ARCHIVE.md
+
+# CodeBuddy plans (temporary files)
+.codebuddy/plans/

@@ -365,6 +365,173 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-01-27] - v0.5.2 - 布局深度优化与交互改进
+
+### 🏗️ 布局深度优化（XPouchLayout）
+
+**宽度计算逻辑优化 - 参考 Gemini 建议**：
+- **问题**：PC端同时使用百分比（32-38%）和硬性像素约束（280px-450px），导致侧边栏展开时宽度计算冲突
+- **原因**：百分比和像素约束冲突，侧边栏展开时可用宽度减小，可能强制执行min-width，导致右侧被挤出屏幕
+- **修复**：
+  - 改用固定宽度策略（参考主流AI对话应用）：侧边栏关闭时420px，打开时380px
+  - Chat Panel使用`flex-none`确保不收缩
+  - Delivery Zone使用`flex-1 min-w-0`作为"海绵"吸收所有宽度变化
+  - 添加主容器过渡动画：`transition-all duration-300 ease-in-out`
+- **影响**：侧边栏展开/关闭时布局平滑，不再出现宽度冲突和溢出
+
+**侧边栏动画协同优化**：
+- **问题**：侧边栏展开时，XPouchLayout瞬间变窄，内部元素生硬跳动
+- **修复**：
+  - 主容器添加`transition-[width] duration-300`
+  - Chat Panel添加`transition-all duration-300`
+  - 确保宽度切换与侧边栏motion动画曲线一致（ease-in-out）
+- **影响**：侧边栏开关时宽度平滑过渡，消除跳动和闪烁
+
+**Delivery Zone弹性化修复**：
+- **问题**：右侧区域看起来像被动位移，而不是主动变窄
+- **修复**：
+  - Delivery Zone容器强制添加`overflow-hidden`
+  - 必须使用`min-w-0`才能随着剩余空间缩减（flex默认min-width是auto）
+  - ExpertBar使用`flex-none`防止被压缩
+  - ArtifactsArea使用`flex-1 min-h-0`确保填满剩余空间
+- **影响**：Delivery Zone主动变窄，不再被动位移；长内容在正确容器内滚动
+
+**移除多余背景层**：
+- **问题**：对话面板和Delivery Zone下方有一样颜色的底
+- **原因**：存在一个absolute定位的背景层（`bg-gradient-to-br from-slate-50 to-slate-100`），颜色与外层容器不一致
+- **修复**：移除第50行的背景层`<div className="absolute inset-0 ...">`
+- **影响**：视觉统一，不再有分层感
+
+### 🐛 Bug 修复
+
+**FloatingChatPanel - 头像间距和气泡宽度优化**：
+
+**问题1：头像贴边**：
+- **现象**：AI头像和用户头像紧贴着对话面板边缘
+- **原因**：gap-3（12px）间距太小
+- **修复**：
+  - 外层flex容器从`gap-3`改为`gap-4`（16px）
+  - 头像和气泡间距也改为`gap-4`
+- **影响**：头像与边缘保持合理距离，视觉更舒适
+
+**问题2：气泡宽度超出面板**：
+- **现象**：气泡宽度接近对话面板宽度，超出范围
+- **原因**：使用了百分比max-width（80%），接近面板宽度
+- **修复**：
+  - 改用固定像素宽度：User气泡280px，AI气泡340px
+  - 后来调整为：统一260px
+  - 最终调整为：User/AI气泡统一240px
+- **影响**：气泡宽度适中，不会超出面板范围
+
+**问题3：内容横向过长时出现滚动条**：
+- **现象**：随便出现横向滚动条，不符合主流AI应用体验
+- **原因**：内容区域添加了`overflow-x-auto`和`min-w-max`，强制横向滚动
+- **修复**：
+  - 移除`overflow-x-auto`和`scrollbar-thin`
+  - 移除`min-w-max`（会强制不换行）
+  - 改为`break-words`（强制长单词换行）
+  - 使用`max-w-full`而不是`max-w-none`
+- **影响**：内容正常换行，不出现横向滚动条，符合ChatGPT/DeepSeek体验
+
+**问题4：气泡宽度不自适应**：
+- **现象**：短内容时气泡仍然拉伸到最大宽度
+- **原因**：Card使用了`w-full`
+- **修复**：
+  - 移除`w-full`
+  - 只保留`max-w-[260px]`（后来改为240px）
+  - 让气泡宽度自适应内容
+- **影响**：短内容气泡紧凑，长内容自动换行
+
+**问题5：消息容器溢出**：
+- **修复**：消息容器添加`max-w-full break-words overflow-x-hidden`
+  - `break-words`：确保长文本自动换行
+  - `overflow-x-hidden`：防止长URL或代码把面板宽度撑死
+- **影响**：长内容正确换行，不会撑破面板
+
+**ArtifactsArea - 宽度和间距约束优化**：
+
+**问题**：响应式宽度计算冲突
+- **修复**：
+  - 主容器添加`w-full max-w-full`
+  - 头部添加`w-full max-w-full`
+  - Tab区域使用`min-w-0 flex-1`确保正确收缩
+  - 操作按钮使用`flex-shrink-0`固定宽度
+  - 内容区域使用`w-full h-full max-w-full`
+- **影响**：所有元素都在约束范围内，不会溢出
+
+**ArtifactTabs - 宽度和间距约束优化**：
+
+**问题**：标签页溢出容器
+- **修复**：
+  - 主容器添加`w-full max-w-full`
+  - 标签容器添加`min-w-0 flex-1`
+  - 标签按钮使用`whitespace-nowrap flex-shrink-0`保持固定宽度
+- **影响**：标签页正确滚动，不会溢出
+
+**ExpertStatusBar - 宽度和间距约束优化**：
+
+**问题**：专家卡片溢出容器
+- **修复**：
+  - 主容器添加`w-full max-w-full`
+  - 专家卡片列表包裹在div中，添加`flex-1 min-w-0 overflow-x-auto`
+  - 清除按钮使用`flex-shrink-0`固定宽度
+  - 空状态提示使用`flex-shrink-0`固定宽度
+- **影响**：专家卡片正确显示，不会溢出
+
+### 📊 技术改进总结
+
+**参考 Gemini 建议实施的优化**：
+
+1. **宽度计算逻辑死锁优化**：使用clamp避免百分比vs像素冲突（后改为固定宽度）
+2. **侧边栏动画协同**：添加transition实现平滑过渡
+3. **Delivery Zone高度坍塌优化**：确保flex-1 min-h-0正确滚动
+4. **移动端层级管理**：暂缓实施（当前fixed方案已稳定）
+5. **CSS落地建议**：采纳核心思路（flex-none/flex-1/min-w-0）
+6. **视觉优化**：移除多余背景层，统一视觉
+
+**参考 ChatGPT/DeepSeek 体验优化**：
+
+1. **气泡宽度自适应**：短内容紧凑，长内容自动换行
+2. **横向滚动优化**：移除不必要的滚动条，内容自然换行
+3. **长单词处理**：使用break-words强制换行
+4. **间距优化**：头像16px间距，符合主流应用
+
+**修改文件统计**：
+
+- 修改文件：4个
+  - `frontend/src/components/XPouchLayout.tsx`
+  - `frontend/src/components/FloatingChatPanel.tsx`
+  - `frontend/src/components/ArtifactsArea.tsx`
+  - `frontend/src/components/ArtifactTabs.tsx`
+  - `frontend/src/components/ExpertStatusBar.tsx`
+
+- 代码变更：
+  - 新增代码：约100行
+  - 修改代码：约200行
+
+### 🎯 核心技术改进
+
+| 问题 | 解决方案 | 关键技术 |
+|-----|---------|-----------|
+| 宽度计算冲突 | 固定宽度策略 | `md:w-[380px] / md:w-[420px]` |
+| 侧边栏动画跳动 | 添加过渡动画 | `transition-all duration-300` |
+| Delivery Zone不收缩 | min-w-0强制弹性 | `flex-1 min-w-0` |
+| 气泡宽度不固定 | 统一最大宽度 | `max-w-[240px]` |
+| 内容横向溢出 | break-words强制换行 | `break-words` |
+| 头像贴边 | 增加间距 | `gap-4` (16px) |
+| 多余背景层 | 移除absolute背景 | 直接使用外层背景 |
+
+### 🧪 测试验证
+
+- ✅ XPouchLayout布局稳定，侧边栏开关无冲突
+- ✅ FloatingChatPanel消息显示正常，气泡宽度适中
+- ✅ ArtifactsArea内容正确滚动，无溢出
+- ✅ ArtifactTabs标签切换流畅，无遮挡
+- ✅ ExpertStatusBar专家卡片显示正常，可滚动
+- ✅ 所有组件无linter错误
+
+---
+
 ## [Unreleased]
 
 ### 🐛 Bug 修复
