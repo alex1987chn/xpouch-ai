@@ -101,7 +101,7 @@ export default function ArtifactTabs({ className }: ArtifactTabsProps) {
 
   return (
     <div className={cn(
-      'flex items-center gap-1 px-2 py-1 w-full max-w-full',
+      'flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-slate-800 rounded-lg w-full max-w-full',
       !showTabs && 'hidden',  // 只有一个 artifact 时不显示 tabs
       className
     )}>
@@ -109,7 +109,7 @@ export default function ArtifactTabs({ className }: ArtifactTabsProps) {
       {showScrollButtons && canScrollLeft && (
         <button
           onClick={() => handleScroll('left')}
-          className="flex-shrink-0 p-1 rounded-md hover:bg-gray-200/50 dark:hover:bg-slate-700/50 transition-colors"
+          className="flex-shrink-0 p-1 rounded-md hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
           title="向左滚动"
         >
           <ChevronLeft className="w-4 h-4 text-gray-600 dark:text-gray-400" />
@@ -139,8 +139,8 @@ export default function ArtifactTabs({ className }: ArtifactTabsProps) {
                 'flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all',
                 'whitespace-nowrap flex-shrink-0',
                 isActive
-                  ? 'text-indigo-600 dark:text-indigo-400 font-semibold'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-slate-700/50'
+                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-700'
               )}
               title={title}
             >
@@ -155,7 +155,7 @@ export default function ArtifactTabs({ className }: ArtifactTabsProps) {
       {showScrollButtons && canScrollRight && (
         <button
           onClick={() => handleScroll('right')}
-          className="flex-shrink-0 p-1 rounded-md hover:bg-gray-200/50 dark:hover:bg-slate-700/50 transition-colors"
+          className="flex-shrink-0 p-1 rounded-md hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
           title="向右滚动"
         >
           <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-400" />
