@@ -57,6 +57,13 @@ $null
 *[^a-zA-Z0-9._/-]*
 upload-package/
 
+# Debug scripts
+backend/check_*.py
+backend/list_users.py
+check_*.html
+cleanup.html
+clear_cache.html
+
 # Local documentation (private notes, not for GitHub)
 MEM.md
 CHANGELOG.md
