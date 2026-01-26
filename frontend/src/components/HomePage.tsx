@@ -288,6 +288,7 @@ export default function HomePage() {
               </p>
             </CardContent>
           </Card>
+          </div>
         </div>
       </div>
 

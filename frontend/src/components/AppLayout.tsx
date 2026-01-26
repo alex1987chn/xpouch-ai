@@ -1,7 +1,7 @@
 import { ReactNode, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { Menu, ChevronRight } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import Sidebar from '@/components/Sidebar'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { PersonalSettingsDialog } from '@/components/PersonalSettingsDialog'

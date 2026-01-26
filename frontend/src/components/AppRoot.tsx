@@ -6,7 +6,7 @@ import Sidebar from '@/components/Sidebar'
 import { useApp } from '@/providers/AppProvider'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { PersonalSettingsDialog } from '@/components/PersonalSettingsDialog'
-import { useChatStore } from '@/store/chatStore'
+
 
 interface AppRootProps {
   children: ReactNode
@@ -60,7 +60,6 @@ export default function AppRoot({ children }: AppRootProps) {
         <div className="h-full w-full">
           <Sidebar
             isCollapsed={sidebar.isCollapsed}
-            currentPlan="Free"
             onCreateAgent={handleCreateAgent}
             onSettingsClick={dialogs.openSettings}
             onPersonalSettingsClick={dialogs.openPersonalSettings}

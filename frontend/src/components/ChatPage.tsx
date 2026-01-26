@@ -7,8 +7,7 @@ import GlowingInput from '@/components/GlowingInput'
 import { AgentHeader } from '@/components/AgentHeader'
 import { useTranslation } from '@/i18n'
 import { getConversation, type ApiMessage } from '@/services/api'
-import { dbMessageToMessage } from '@/types'
-import { type ChatPageState } from '@/types'
+
 import { SYSTEM_AGENTS } from '@/constants/agents'
 
 export default function ChatPage() {

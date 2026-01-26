@@ -560,6 +560,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 解决方案：将导入从 `@/store/chatStore` 改为 `@/types`
 - 影响：类型安全性提升
 
+**JSX 编译错误修复**：
+- 问题：HomePage.tsx 中存在 "Unterminated JSX contents" 错误，推荐场景区域缺少闭合的 `</div>` 标签
+- 修复：在 grid div 后添加缺失的 `</div>`，确保 JSX 结构正确
+- 影响：前端构建正常进行，不再有 JSX 解析错误
+
+**类型属性错误修复**：
+- 问题：AppRoot.tsx 和 MainChatLayout.tsx 中传递不存在的 `currentPlan` 属性（SidebarProps 类型中无此属性）
+- 修复：移除多余的 `currentPlan` 属性传递
+- 影响：解决 TypeScript 类型校验错误，代码更规范
+
+**未使用导入清理**：
+- 清理 AppLayout.tsx、AppRoot.tsx、ChatPage.tsx、main.tsx 中未使用的导入变量
+- 影响：减少编译警告，提高代码整洁度
+
 ### 🎨 UI 优化
 
 **消息气泡间距优化**：
