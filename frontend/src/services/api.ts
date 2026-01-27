@@ -31,7 +31,7 @@ export function getClientId(): string {
 }
 
 // 统一请求头（优先使用JWT，回退到X-User-ID）
-const getHeaders = () => {
+export function getHeaders() {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -55,7 +55,8 @@ const getHeaders = () => {
   // 回退到X-User-ID（向后兼容）
   headers['X-User-ID'] = getClientId();
   return headers;
-};
+}
+
 
 // ============================================================================
 // 认证 API (Authentication)
