@@ -7,6 +7,7 @@
 - Token刷新
 """
 import logging
+import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from typing import Optional
@@ -160,6 +161,9 @@ async def send_verification_code(
     code = generate_verification_code(length=6)
     expires_at = get_code_expiry_duration(minutes=5)
     
+    # 判断是否开发环境
+    is_development = os.getenv("ENVIRONMENT", "development").lower() == "development"
+    
     # 查询用户是否存在
     user = session.exec(
         select(User).where(User.phone_number == phone_number)
@@ -179,11 +183,17 @@ async def send_verification_code(
             logger.warning(f"验证码短信发送失败: {error_message}")
             # 继续返回成功，因为验证码已生成并存储，用户可能通过其他方式获取
         
-        return {
+        response_data = {
             "message": "验证码已发送",
             "expires_in": 300,  # 5分钟，单位：秒
             "phone_masked": mask_phone_number(phone_number),
         }
+        
+        # 开发环境返回验证码用于调试
+        if is_development:
+            response_data["_debug_code"] = code
+            
+        return response_data
     else:
         # 用户不存在，创建新用户（未验证状态）
         # 生成用户ID
@@ -211,12 +221,18 @@ async def send_verification_code(
             logger.warning(f"验证码短信发送失败: {error_message}")
             # 继续返回成功，因为验证码已生成并存储，用户可能通过其他方式获取
         
-        return {
+        response_data = {
             "message": "验证码已发送（新用户注册）",
             "expires_in": 300,
             "phone_masked": mask_phone_number(phone_number),
             "user_id": new_user_id,
         }
+        
+        # 开发环境返回验证码用于调试
+        if is_development:
+            response_data["_debug_code"] = code
+            
+        return response_data
 
 
 @router.post("/verify-code", response_model=TokenResponse)
