@@ -14,7 +14,7 @@ os.chdir(project_root)
 sys.path.insert(0, str(project_root))
 
 from sqlmodel import SQLModel, Session, select
-from models import User, CustomAgent
+from models import User, CustomAgent, SystemExpert, UserRole
 
 # 加载环境变量
 env_path = Path(__file__).parent.parent / ".env"
@@ -95,6 +95,126 @@ def create_default_assistant(session: Session):
     print("[Init] Default assistant created successfully")
 
 
+def init_system_experts(session: Session):
+    """初始化系统专家数据（从硬编码 Prompt 写入数据库）"""
+    from agents.experts import EXPERT_PROMPTS
+
+    print("[Init] Checking for system experts...")
+
+    # 检查是否已有专家数据
+    existing_experts = session.exec(select(SystemExpert)).all()
+
+    if existing_experts:
+        print(f"[Init] {len(existing_experts)} system experts already exist, skipping initialization...")
+        return
+
+    # 定义专家配置
+    expert_configs = [
+        {
+            "expert_key": "search",
+            "name": "搜索专家",
+            "system_prompt": EXPERT_PROMPTS["search"],
+            "model": "gpt-4o",
+            "temperature": 0.3
+        },
+        {
+            "expert_key": "coder",
+            "name": "编程专家",
+            "system_prompt": EXPERT_PROMPTS["coder"],
+            "model": "gpt-4o",
+            "temperature": 0.2
+        },
+        {
+            "expert_key": "researcher",
+            "name": "研究专家",
+            "system_prompt": EXPERT_PROMPTS["researcher"],
+            "model": "gpt-4o",
+            "temperature": 0.4
+        },
+        {
+            "expert_key": "analyzer",
+            "name": "分析专家",
+            "system_prompt": EXPERT_PROMPTS["analyzer"],
+            "model": "gpt-4o",
+            "temperature": 0.3
+        },
+        {
+            "expert_key": "writer",
+            "name": "写作专家",
+            "system_prompt": EXPERT_PROMPTS["writer"],
+            "model": "gpt-4o",
+            "temperature": 0.7
+        },
+        {
+            "expert_key": "planner",
+            "name": "规划专家",
+            "system_prompt": EXPERT_PROMPTS["planner"],
+            "model": "gpt-4o",
+            "temperature": 0.5
+        },
+        {
+            "expert_key": "image_analyzer",
+            "name": "图片分析专家",
+            "system_prompt": EXPERT_PROMPTS["image_analyzer"],
+            "model": "gpt-4o",
+            "temperature": 0.3
+        }
+    ]
+
+    # 创建专家记录
+    for config in expert_configs:
+        expert = SystemExpert(**config)
+        session.add(expert)
+        print(f"[Init] Created expert: {config['name']}")
+
+    session.commit()
+    print(f"[Init] Initialized {len(expert_configs)} system experts")
+
+
+def promote_user_to_admin(email: str):
+    """
+    将指定用户升级为管理员
+
+    Args:
+        email: 用户邮箱地址
+
+    使用示例：
+        from scripts.init_db import promote_user_to_admin
+        promote_user_to_admin("admin@example.com")
+    """
+    from database import get_session
+
+    session_gen = get_session()
+    session = next(session_gen)
+
+    try:
+        # 查找用户
+        user = session.exec(
+            select(User).where(User.email == email)
+        ).first()
+
+        if not user:
+            print(f"[Promote] User with email '{email}' not found!")
+            return False
+
+        # 升级为管理员
+        user.role = UserRole.ADMIN
+        session.add(user)
+        session.commit()
+
+        print(f"[Promote] Successfully promoted user '{user.username}' to admin!")
+        return True
+
+    except Exception as e:
+        print(f"[Promote] Error: {e}")
+        session.rollback()
+        return False
+
+    finally:
+        session.close()
+
+
+
 def init_database():
     """主初始化函数"""
     from database import engine, get_session
@@ -116,6 +236,9 @@ def init_database():
         # 创建默认助手
         create_default_assistant(session)
 
+        # 初始化系统专家数据
+        init_system_experts(session)
+
         print("[Init] Database initialization completed successfully!")
         print("[Init]")
         print("[Init] ======================================")
@@ -123,6 +246,9 @@ def init_database():
         print("[Init]   Username: admin")
         print("[Init]   Password: admin123")
         print("[Init]   (Please change in production!)")
+        print("[Init]")
+        print("[Init] To promote a user to admin, run:")
+        print("[Init]   python -c \"from scripts.init_db import promote_user_to_admin; promote_user_to_admin('your-email@example.com')\"")
         print("[Init] ======================================")
 
     except Exception as e:

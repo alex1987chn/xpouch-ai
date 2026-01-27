@@ -56,6 +56,7 @@ from utils.exceptions import (
     handle_error
 )
 from auth import router as auth_router
+from api.admin import router as admin_router
 
 
 # ============================================================================
@@ -160,8 +161,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# 注册认证路由
+# 注册路由
 app.include_router(auth_router)
+app.include_router(admin_router)  # 管理员 API
 
 # 添加请求日志中间件
 @app.middleware("http")

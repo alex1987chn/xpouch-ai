@@ -72,6 +72,7 @@ class TokenResponse(BaseModel):
     expires_in: int  # 过期时间（秒）
     user_id: str
     username: str
+    role: str  # 添加角色字段
 
 
 class RefreshTokenRequest(BaseModel):
@@ -85,6 +86,7 @@ class UserResponse(BaseModel):
     username: str
     avatar: Optional[str]
     plan: str
+    role: str  # 添加角色字段
     phone_number: Optional[str]
     email: Optional[str]
     is_verified: bool
@@ -311,7 +313,8 @@ async def verify_code_and_login(
         token_type="bearer",
         expires_in=30 * 24 * 3600,  # 30天，单位：秒
         user_id=user.id,
-        username=user.username
+        username=user.username,
+        role=user.role.value if user.role else "user"  # 添加角色字段
     )
 
 
