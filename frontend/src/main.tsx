@@ -12,6 +12,8 @@ import CanvasChatPage from './components/CanvasChatPage'
 import HistoryPage from './components/HistoryPage'
 import KnowledgeBasePage from './components/KnowledgeBasePage'
 import CreateAgentPage from './components/CreateAgentPage'
+import ExpertAdminPage from './components/ExpertAdminPage'
+import AdminRoute from './components/AdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
 
 import { logger } from '@/utils/logger'
@@ -105,6 +107,14 @@ const router = createBrowserRouter([
       {
         path: 'create-agent',
         element: <CreateAgentPageWrapper />
+      },
+      {
+        path: 'admin/experts',
+        element: (
+          <AdminRoute>
+            <ExpertAdminPage />
+          </AdminRoute>
+        )
       },
       {
         path: '*',
