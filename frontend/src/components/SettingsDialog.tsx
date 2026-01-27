@@ -46,7 +46,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContentCentered className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContentCentered className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>系统设置</DialogTitle>
         </DialogHeader>
