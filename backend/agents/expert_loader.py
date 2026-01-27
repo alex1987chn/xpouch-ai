@@ -156,11 +156,14 @@ def get_expert_config_cached(
     return _expert_cache.get(expert_key)
 
 
-def refresh_cache(session: Session):
+def refresh_cache(session: Optional[Session] = None):
     """
     刷新专家配置缓存
 
     管理员更新专家配置后，可调用此函数刷新缓存
+
+    Args:
+        session: 数据库会话（可选，如果不提供则使用全局缓存）
     """
     global _expert_cache, _cache_timestamp
     import time
@@ -169,3 +172,20 @@ def refresh_cache(session: Session):
     _cache_timestamp = time.time()
 
     print(f"[ExpertLoader] Expert cache refreshed at {_cache_timestamp}")
+    print(f"[ExpertLoader] Cache now contains {len(_expert_cache)} experts")
+
+
+def force_refresh_all():
+    """
+    强制刷新所有专家配置（不依赖 session）
+
+    用于 API 调用后立即刷新缓存
+    """
+    global _expert_cache, _cache_timestamp
+    import time
+
+    # 清空缓存，下次查询时会自动重新加载
+    _expert_cache = {}
+    _cache_timestamp = None
+
+    print(f"[ExpertLoader] Cache cleared and will be reloaded on next access")
