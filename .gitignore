@@ -46,6 +46,7 @@ backend/data/*.sqlite
 xpouch.db
 *.db
 *.sqlite
+postgres_data/
 
 # OS
 .DS_Store
