@@ -40,17 +40,11 @@ def run_migrations():
     is_postgresql = DATABASE_URL.startswith("postgresql") or DATABASE_URL.startswith("postgres")
 
     if is_postgresql:
-        # PostgreSQL: 使用迁移脚本系统
-        print("[Database] PostgreSQL detected, using migration script system")
-        try:
-            from migrations.migrate import run_migrations as run_postgres_migrations
-            from migrations.migration_001_architecture_refactoring import Migration001ArchitectureRefactoring
+        # PostgreSQL: 使用 SQLModel 自动创建表（不使用迁移脚本）
+        print("[Database] PostgreSQL detected, using SQLModel auto-creation")
+        print("[Database] Tables will be created automatically by SQLModel")
+        print("[Database] PostgreSQL migrations skipped (using auto-creation)")
 
-            migrations = [Migration001ArchitectureRefactoring()]
-            run_postgres_migrations(migrations, rollback=False)
-            print("[Database] PostgreSQL migrations completed")
-        except Exception as e:
-            print(f"[Database] Error running PostgreSQL migrations: {e}")
     else:
         # SQLite: 使用原有的迁移逻辑
         print("[Database] SQLite detected, using legacy migration system")
