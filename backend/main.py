@@ -28,7 +28,7 @@ import uuid
 import io
 
 from agents.graph import commander_graph
-from agents.experts import EXPERT_FUNCTIONS
+from agents.dynamic_experts import DYNAMIC_EXPERT_FUNCTIONS, initialize_expert_cache
 from models import (
     Conversation, Message, User, TaskSession, SubTask,
     CustomAgent, CustomAgentCreate, CustomAgentUpdate, CustomAgentResponse
