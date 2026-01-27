@@ -5,9 +5,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "aiosqlite>=0.22.1",
-    "asyncpg>=0.29.0",
-    "psycopg2-binary>=2.9.9",
     "fastapi>=0.128.0",
     "langchain-openai>=1.1.7",
     "langgraph>=1.0.6",
@@ -19,5 +16,5 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "bcrypt==4.0.1",
     "python-multipart>=0.0.6",
-    "psycopg[binary]>=3.3.2",
+    "psycopg[binary]>=3.3.0",
 ]
