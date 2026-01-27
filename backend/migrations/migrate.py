@@ -13,6 +13,8 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from migrations.migration_001_architecture_refactoring import Migration001ArchitectureRefactoring
+from migrations.migration_002_jwt_auth import Migration002JwtAuth
+from migrations.migration_003_rbac_and_system_experts import Migration003RbacAndSystemExperts
 from migrations.runner import run_migrations, get_migration_status
 
 
@@ -21,6 +23,8 @@ def main():
     # 定义迁移列表（按版本顺序）
     migrations = [
         Migration001ArchitectureRefactoring(),
+        Migration002JwtAuth(),
+        Migration003RbacAndSystemExperts(),
     ]
 
     # 解析命令行参数

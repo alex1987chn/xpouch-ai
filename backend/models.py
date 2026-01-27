@@ -10,6 +10,12 @@ from enum import Enum
 # 枚举类型
 # ============================================================================
 
+class UserRole(str, Enum):
+    """用户角色枚举"""
+    USER = "user"
+    ADMIN = "admin"
+
+
 class ConversationType(str, Enum):
     """会话类型枚举"""
     DEFAULT = "default"      # 默认助手（简单模式）
@@ -21,11 +27,39 @@ class ConversationType(str, Enum):
 # 现有模型：用户、会话、消息
 # ============================================================================
 
+
+# ============================================================================
+# 新增模型：系统专家管理表
+# ============================================================================
+
+class SystemExpert(SQLModel, table=True):
+    """
+    系统专家表：存储 LangGraph 专家的 Prompt 和配置
+
+    管理员可以通过前端动态修改专家的 system_prompt，
+    LangGraph 执行任务时从数据库读取最新配置。
+    """
+    id: int = Field(default=None, primary_key=True, autoincrement=True)
+    expert_key: str = Field(
+        unique=True,
+        index=True,
+        description="专家类型标识（对应 ExpertType 枚举，如 'coder', 'search'）"
+    )
+    name: str = Field(description="专家显示名称")
+    system_prompt: str = Field(
+        description="专家系统提示词（核心字段，管理员可修改）"
+    )
+    model: str = Field(default="gpt-4o", description="使用的模型")
+    temperature: float = Field(default=0.5, description="温度参数（0.0-2.0）")
+    updated_at: datetime = Field(default_factory=datetime.now, description="最后更新时间")
+
+
 class User(SQLModel, table=True):
     id: str = Field(primary_key=True) # 前端生成的 UUID
     username: str = Field(default="User")
     avatar: Optional[str] = None
     plan: str = Field(default="Free") # Free, Pilot, Maestro
+    role: UserRole = Field(default=UserRole.USER)  # 用户角色：user 或 admin
     phone_number: Optional[str] = Field(default=None, unique=True, index=True)
     email: Optional[str] = Field(default=None, unique=True, index=True)
     password_hash: Optional[str] = Field(default=None)
@@ -39,7 +73,7 @@ class User(SQLModel, table=True):
     is_verified: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
-    
+
     conversations: List["Conversation"] = Relationship(back_populates="user")
     custom_agents: List["CustomAgent"] = Relationship(back_populates="user")
 
