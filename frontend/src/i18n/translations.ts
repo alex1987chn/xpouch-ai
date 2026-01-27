@@ -8,7 +8,7 @@ export const zh: Record<TranslationKey, string> = {
   settings: '设置',
   home: '首页',
   recentChats: '最近会话',
-  
+
   // Home
   greeting: '你好！我是 XPouch AI 助手',
   slogan: 'All Agents, One Pouch',
@@ -19,7 +19,7 @@ export const zh: Record<TranslationKey, string> = {
   backToChat: '会话',
   addCustomAgent: '添加自定义智能体',
   createYourFirstAgent: '创建第一个智能体',
-  
+
   // Settings
   theme: '主题',
   language: '语言',
@@ -27,7 +27,7 @@ export const zh: Record<TranslationKey, string> = {
   userSettings: '个人设置',
   personalSettings: '个人设置',
   modelConfig: '模型配置',
-  
+
   // Common
   save: '保存',
   cancel: '取消',
@@ -43,7 +43,7 @@ export const zh: Record<TranslationKey, string> = {
   searchHistory: '搜索历史记录...',
   noMatchingHistory: '未找到匹配的历史记录',
   tryOtherKeywords: '尝试其他关键词',
-  
+
   // Create Agent
   create: '创建',
   agentName: '智能体名称',
@@ -54,7 +54,7 @@ export const zh: Record<TranslationKey, string> = {
   systemPromptPlaceholder: '你是一个专业的助手，擅长...',
   systemPromptHint: '定义智能体应该如何行为和响应',
   required: '必填',
-  
+
   // Chat
   startConversation: '开始对话',
 
@@ -66,7 +66,7 @@ export const zh: Record<TranslationKey, string> = {
   noKnowledgeFound: '未找到知识库',
   noKnowledgeContent: '还没有创建任何知识库内容',
   createFirstKnowledge: '创建第一个知识库',
-  
+
   // User Menu
   currentPlan: '当前计划',
 
@@ -125,7 +125,40 @@ export const zh: Record<TranslationKey, string> = {
   generateReport: '生成报告',
   generateReportDesc: '汇总分析结果，输出结构化数据',
   designUI: '设计 UI 组件',
-  designUIDesc: '基于 Figma 设计稿实现 React 组件'
+  designUIDesc: '基于 Figma 设计稿实现 React 组件',
+
+  // RBAC Expert Admin (v0.6.0)
+  expertAdmin: '专家管理',
+  expertsList: '专家列表',
+  refresh: '刷新',
+  selectExpert: '选择专家进行配置',
+  lastUpdated: '最后更新',
+  expertKey: '专家标识',
+  model: '模型',
+  temperature: '温度参数',
+  temperatureValue: '温度参数: {value}',
+  systemPrompt: '系统提示词',
+  characters: '{count} 个字符',
+  saveConfig: '保存配置',
+  saving: '保存中...',
+  saveSuccess: '专家配置已更新，下次任务生效',
+  saveFailed: '无法保存专家配置',
+  previewMode: '预览模式',
+  editMode: '编辑模式',
+  startPreview: '开始预览',
+  previewing: '预览中...',
+  previewFailed: '预览失败',
+  testInput: '测试输入',
+  testInputPlaceholder: '输入测试文本（至少 10 个字符）...',
+  testInputMinChars: '{count} / 10 最小字符',
+  previewSuccess: '预览成功',
+  previewResults: '预览结果',
+  usedModel: '使用模型',
+  expertResponse: '专家响应',
+  executionTime: '执行时间',
+  seconds: '{time} 秒',
+  selectExpertPrompt: '请从左侧选择一个专家进行配置',
+  loadingExperts: '加载专家列表...'
 }
 
 export const en: Record<TranslationKey, string> = {
@@ -136,7 +169,7 @@ export const en: Record<TranslationKey, string> = {
   settings: 'Settings',
   home: 'Home',
   recentChats: 'Recent Chats',
-  
+
   // Home
   greeting: 'Hello! I am XPouch AI Assistant',
   slogan: 'All Agents, One Pouch',
@@ -147,7 +180,7 @@ export const en: Record<TranslationKey, string> = {
   backToChat: 'Back to Chat',
   addCustomAgent: 'Add Custom Agent',
   createYourFirstAgent: 'Create your first agent',
-  
+
   // Settings
   theme: 'Theme',
   language: 'Language',
@@ -155,7 +188,7 @@ export const en: Record<TranslationKey, string> = {
   userSettings: 'User Settings',
   personalSettings: 'User Settings',
   modelConfig: 'Model Config',
-  
+
   // Common
   save: 'Save',
   cancel: 'Cancel',
@@ -171,7 +204,7 @@ export const en: Record<TranslationKey, string> = {
   searchHistory: 'Search history...',
   noMatchingHistory: 'No matching history found',
   tryOtherKeywords: 'Try other keywords',
-  
+
   // Create Agent
   create: 'Create',
   agentName: 'Agent Name',
@@ -182,7 +215,7 @@ export const en: Record<TranslationKey, string> = {
   systemPromptPlaceholder: 'You are a helpful assistant who specializes in...',
   systemPromptHint: 'Define how agent should behave and respond',
   required: 'Required',
-  
+
   // Chat
   startConversation: 'Start Conversation',
 
@@ -194,7 +227,7 @@ export const en: Record<TranslationKey, string> = {
   noKnowledgeFound: 'No knowledge base found',
   noKnowledgeContent: 'No knowledge base content yet',
   createFirstKnowledge: 'Create first knowledge base',
-  
+
   // User Menu
   currentPlan: 'Current Plan',
 
@@ -233,17 +266,17 @@ export const en: Record<TranslationKey, string> = {
 
   // Create Agent Page
   simpleDescription: 'Briefly describe your agent...',
-  defineBehavior: 'Define the behavior, personality, and capabilities of the agent',
+  defineBehavior: 'Define behavior, personality, and capabilities of agent',
   writingAssistantPlaceholder: 'You are a professional writing assistant...',
   tip: 'Tip',
-  tipDescription: 'Fill in the name and system prompt to create an agent. Detailed prompts help the agent better understand your needs.',
+  tipDescription: 'Fill in name and system prompt to create an agent. Detailed prompts help agent better understand your needs.',
   realtimePreview: 'Real-time Preview',
   previewDescription: 'This is how your agent will appear on the home page',
   submitTaskPlaceholder: 'Describe your task, AI will help break it down...',
 
   // Workflow Steps (Expert Drawer)
   receiveTask: 'Receive Task',
-  receiveTaskDesc: 'Parse the task description from user input',
+  receiveTaskDesc: 'Parse task description from user input',
   buildQuery: 'Build Query',
   buildQueryDesc: 'Build search query based on keywords',
   executeSearch: 'Execute Search',
@@ -253,7 +286,40 @@ export const en: Record<TranslationKey, string> = {
   generateReport: 'Generate Report',
   generateReportDesc: 'Summarize analysis results and output structured data',
   designUI: 'Design UI Components',
-  designUIDesc: 'Implement React components based on Figma designs'
+  designUIDesc: 'Implement React components based on Figma designs',
+
+  // RBAC Expert Admin (v0.6.0)
+  expertAdmin: 'Expert Management',
+  expertsList: 'Expert List',
+  refresh: 'Refresh',
+  selectExpert: 'Select expert for configuration',
+  lastUpdated: 'Last Updated',
+  expertKey: 'Expert Key',
+  model: 'Model',
+  temperature: 'Temperature',
+  temperatureValue: 'Temperature: {value}',
+  systemPrompt: 'System Prompt',
+  characters: '{count} characters',
+  saveConfig: 'Save Configuration',
+  saving: 'Saving...',
+  saveSuccess: 'Expert configuration updated, will take effect on next task',
+  saveFailed: 'Failed to save expert configuration',
+  previewMode: 'Preview Mode',
+  editMode: 'Edit Mode',
+  startPreview: 'Start Preview',
+  previewing: 'Previewing...',
+  previewFailed: 'Preview Failed',
+  testInput: 'Test Input',
+  testInputPlaceholder: 'Enter test text (minimum 10 characters)...',
+  testInputMinChars: '{count} / 10 minimum characters',
+  previewSuccess: 'Preview Successful',
+  previewResults: 'Preview Results',
+  usedModel: 'Used Model',
+  expertResponse: 'Expert Response',
+  executionTime: 'Execution Time',
+  seconds: '{time} seconds',
+  selectExpertPrompt: 'Please select an expert from left to configure',
+  loadingExperts: 'Loading expert list...'
 }
 
 export const ja: Record<TranslationKey, string> = {
@@ -264,7 +330,7 @@ export const ja: Record<TranslationKey, string> = {
   settings: '設定',
   home: 'ホーム',
   recentChats: '最近のチャット',
-  
+
   // Home
   greeting: 'こんにちは！XPouch AI アシスタントです',
   slogan: 'All Agents, One Pouch',
@@ -275,7 +341,7 @@ export const ja: Record<TranslationKey, string> = {
   backToChat: 'チャットに戻る',
   addCustomAgent: 'カスタムエージェントを追加',
   createYourFirstAgent: '最初のエージェントを作成',
-  
+
   // Settings
   theme: 'テーマ',
   language: '言語',
@@ -283,7 +349,7 @@ export const ja: Record<TranslationKey, string> = {
   userSettings: '個人設定',
   personalSettings: '個人設定',
   modelConfig: 'モデル設定',
-  
+
   // Common
   save: '保存',
   cancel: 'キャンセル',
@@ -299,7 +365,7 @@ export const ja: Record<TranslationKey, string> = {
   searchHistory: '履歴を検索...',
   noMatchingHistory: '一致する履歴が見つかりません',
   tryOtherKeywords: '他のキーワードを試してください',
-  
+
   // Create Agent
   create: '作成',
   agentName: 'エージェント名',
@@ -310,7 +376,7 @@ export const ja: Record<TranslationKey, string> = {
   systemPromptPlaceholder: 'あなたは専門的なアシスタントで、...',
   systemPromptHint: 'エージェントがどのように動作し、応答するかを定義',
   required: '必須',
-  
+
   // Chat
   startConversation: '会話を開始',
 
@@ -322,7 +388,7 @@ export const ja: Record<TranslationKey, string> = {
   noKnowledgeFound: 'ナレッジベースが見つかりません',
   noKnowledgeContent: 'ナレッジベースの内容がまだありません',
   createFirstKnowledge: '最初のナレッジベースを作成',
-  
+
   // User Menu
   currentPlan: '現在のプラン',
 
@@ -381,5 +447,38 @@ export const ja: Record<TranslationKey, string> = {
   generateReport: 'レポートを生成',
   generateReportDesc: '分析結果を要約して構造化データを出力',
   designUI: 'UIコンポーネントを設計',
-  designUIDesc: 'Figmaデザインに基づいてReactコンポーネントを実装'
+  designUIDesc: 'Figmaデザインに基づいてReactコンポーネントを実装',
+
+  // RBAC Expert Admin (v0.6.0)
+  expertAdmin: 'エキスパート管理',
+  expertsList: 'エキスパートリスト',
+  refresh: '更新',
+  selectExpert: 'エキスパートを選択して設定',
+  lastUpdated: '最終更新',
+  expertKey: 'エキスパートキー',
+  model: 'モデル',
+  temperature: '温度パラメータ',
+  temperatureValue: '温度: {value}',
+  systemPrompt: 'システムプロンプト',
+  characters: '{count} 文字',
+  saveConfig: '設定を保存',
+  saving: '保存中...',
+  saveSuccess: 'エキスパート設定が更新され、次回タスクから有効',
+  saveFailed: 'エキスパート設定を保存できません',
+  previewMode: 'プレビューモード',
+  editMode: '編集モード',
+  startPreview: 'プレビュー開始',
+  previewing: 'プレビュー中...',
+  previewFailed: 'プレビュー失敗',
+  testInput: 'テスト入力',
+  testInputPlaceholder: 'テストテキストを入力（最低10文字）...',
+  testInputMinChars: '{count} / 10 最小文字',
+  previewSuccess: 'プレビュー成功',
+  previewResults: 'プレビュー結果',
+  usedModel: '使用モデル',
+  expertResponse: 'エキスパート応答',
+  executionTime: '実行時間',
+  seconds: '{time} 秒',
+  selectExpertPrompt: '左からエキスパートを選択して設定してください',
+  loadingExperts: 'エキスパートリスト読み込み中...'
 }
