@@ -158,7 +158,23 @@ export const zh: Record<TranslationKey, string> = {
   executionTime: '执行时间',
   seconds: '{time} 秒',
   selectExpertPrompt: '请从左侧选择一个专家进行配置',
-  loadingExperts: '加载专家列表...'
+  loadingExperts: '加载专家列表...',
+
+  // Artifact Area
+  noArtifacts: '暂无交付物',
+  clickExpertToView: '点击专家状态栏中的专家查看交付物',
+  closePreview: '关闭预览模式',
+
+  // Expert Names
+  aiAssistant: 'AI 助手',
+  commander: '指挥官',
+  searchExpertName: '搜索专家',
+  codingExpert: '编程专家',
+  researchExpert: '研究专家',
+  analyzerExpertName: '分析专家',
+  writingExpert: '写作专家',
+  planningExpert: '规划专家',
+  imageAnalyzerExpert: '图像分析专家'
 }
 
 export const en: Record<TranslationKey, string> = {
@@ -319,7 +335,23 @@ export const en: Record<TranslationKey, string> = {
   executionTime: 'Execution Time',
   seconds: '{time} seconds',
   selectExpertPrompt: 'Please select an expert from left to configure',
-  loadingExperts: 'Loading expert list...'
+  loadingExperts: 'Loading expert list...',
+
+  // Artifact Area
+  noArtifacts: 'No Artifacts',
+  clickExpertToView: 'Click on expert in status bar to view artifacts',
+  closePreview: 'Close Preview Mode',
+
+  // Expert Names
+  aiAssistant: 'AI Assistant',
+  commander: 'Commander',
+  searchExpertName: 'Search Expert',
+  codingExpert: 'Coding Expert',
+  researchExpert: 'Research Expert',
+  analyzerExpertName: 'Analyzer Expert',
+  writingExpert: 'Writing Expert',
+  planningExpert: 'Planning Expert',
+  imageAnalyzerExpert: 'Image Analysis Expert'
 }
 
 export const ja: Record<TranslationKey, string> = {
@@ -457,7 +489,7 @@ export const ja: Record<TranslationKey, string> = {
   lastUpdated: '最終更新',
   expertKey: 'エキスパートキー',
   model: 'モデル',
-  temperature: '温度パラメータ',
+  temperature: '温度',
   temperatureValue: '温度: {value}',
   systemPrompt: 'システムプロンプト',
   characters: '{count} 文字',
@@ -480,5 +512,21 @@ export const ja: Record<TranslationKey, string> = {
   executionTime: '実行時間',
   seconds: '{time} 秒',
   selectExpertPrompt: '左からエキスパートを選択して設定してください',
-  loadingExperts: 'エキスパートリスト読み込み中...'
+  loadingExperts: 'エキスパートリスト読み込み中...',
+
+  // Artifact Area
+  noArtifacts: 'アーティファクトなし',
+  clickExpertToView: 'ステータスバーのエキスパートをクリックしてアーティファクトを表示',
+  closePreview: 'プレビューモードを閉じる',
+
+  // Expert Names
+  aiAssistant: 'AI アシスタント',
+  commander: 'コマンダー',
+  searchExpertName: '検索エキスパート',
+  codingExpert: 'プログラミングエキスパート',
+  researchExpert: '研究エキスパート',
+  analyzerExpertName: '分析エキスパート',
+  writingExpert: 'ライティングエキスパート',
+  planningExpert: 'プランニングエキスパート',
+  imageAnalyzerExpert: '画像分析エキスパート'
 }

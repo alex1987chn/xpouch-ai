@@ -5,6 +5,7 @@ import ArtifactTabs from './ArtifactTabs'
 import { X, Copy, Check, Maximize2 } from 'lucide-react'
 import { useState } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useTranslation } from '@/i18n'
 import { logger } from '@/utils/logger'
 
 // ============================================
@@ -18,6 +19,7 @@ interface ArtifactsAreaProps {
 }
 
 export default function ArtifactsArea({ className, isFullscreen, onFullscreenToggle }: ArtifactsAreaProps) {
+  const { t } = useTranslation()
   const { currentArtifact, currentSession, selectExpert } = useArtifacts()
   const [copied, setCopied] = useState(false)
 
@@ -32,8 +34,8 @@ export default function ArtifactsArea({ className, isFullscreen, onFullscreenTog
           <div className="w-16 h-16 mx-auto mb-4 opacity-50">
             <span className="text-3xl">📦</span>
           </div>
-          <p className="text-sm font-medium">暂无交付物</p>
-          <p className="text-xs">点击专家状态栏中的专家查看交付物</p>
+          <p className="text-sm font-medium">{t('noArtifacts')}</p>
+          <p className="text-xs">{t('clickExpertToView')}</p>
         </div>
       </div>
     )
@@ -62,17 +64,17 @@ export default function ArtifactsArea({ className, isFullscreen, onFullscreenTog
   // 获取专家显示名称
   const getExpertDisplayName = (expertType: string): string => {
     const displayNames: Record<string, string> = {
-      'assistant': 'AI 助手',
-      'commander': '指挥官',
-      'search': '搜索专家',
-      'coder': '编程专家',
-      'researcher': '研究专家',
-      'analyzer': '分析专家',
-      'writer': '写作专家',
-      'planner': '规划专家',
-      'image_analyzer': '图像分析专家'
+      'assistant': t('aiAssistant'),
+      'commander': t('commander'),
+      'search': t('searchExpertName'),
+      'coder': t('codingExpert'),
+      'researcher': t('researchExpert'),
+      'analyzer': t('analyzerExpertName'),
+      'writer': t('writingExpert'),
+      'planner': t('planningExpert'),
+      'image_analyzer': t('imageAnalyzerExpert')
     }
-    
+
     return displayNames[expertType] || expertType
   }
 
