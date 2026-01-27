@@ -42,6 +42,14 @@ export type TranslationKey =
   | 'testInput' | 'testInputPlaceholder' | 'testInputMinChars' | 'previewSuccess'
   | 'previewResults' | 'usedModel' | 'temperature' | 'expertResponse'
   | 'executionTime' | 'seconds' | 'selectExpertPrompt' | 'loadingExperts'
+  // Artifact Area
+  | 'noArtifacts' | 'clickExpertToView' | 'closePreview'
+  // Expert Names
+  | 'aiAssistant' | 'commander' | 'searchExpertName' | 'codingExpert'
+  | 'researchExpert' | 'analyzerExpertName' | 'writingExpert'
+  | 'planningExpert' | 'imageAnalyzerExpert'
+
+
 
 interface I18nContextType {
   language: Language
