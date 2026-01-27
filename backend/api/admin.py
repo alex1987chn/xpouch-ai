@@ -100,6 +100,19 @@ class ExpertPreviewResponse(BaseModel):
     execution_time_ms: int
 
 
+class UserPromoteRequest(BaseModel):
+    """用户升级请求 DTO"""
+    email: str = PydanticField(..., description="用户邮箱地址")
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if not v or '@' not in v:
+            raise ValueError("请输入有效的邮箱地址")
+        return v.strip().lower()
+
+
+
 # ============================================================================
 # API 端点
 # ============================================================================
