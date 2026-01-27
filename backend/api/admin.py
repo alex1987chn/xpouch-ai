@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field as PydanticField, field_validator
 from auth import get_current_user
 from models import User, SystemExpert, UserRole
 from database import get_session
+from agents.expert_loader import refresh_cache
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -34,6 +35,22 @@ async def get_current_admin(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="需要管理员权限"
+        )
+    return current_user
+
+
+async def get_current_view_admin(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """
+    获取当前查看权限用户（VIEW_ADMIN 角色）
+
+    适用于只读场景，不要求完全的 ADMIN 权限
+    """
+    if current_user.role not in [UserRole.ADMIN, UserRole.USER]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="权限不足"
         )
     return current_user
 
@@ -79,12 +96,12 @@ class UserPromoteRequest(BaseModel):
 @router.get("/experts", response_model=List[ExpertResponse])
 async def get_all_experts(
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin)  # 需要管理员权限
+    current_user: User = Depends(get_current_view_admin)  # 需要 VIEW_ADMIN 或 EDIT_ADMIN 权限
 ):
     """
     获取所有系统专家列表
 
-    权限：Admin
+    权限：VIEW_ADMIN, EDIT_ADMIN, ADMIN
     """
     experts = session.exec(select(SystemExpert)).all()
 
@@ -139,17 +156,19 @@ async def update_expert(
     expert_key: str,
     expert_update: ExpertUpdate,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin)  # 需要管理员权限
+    _: User = Depends(get_current_admin)  # 需要 EDIT_ADMIN 或 ADMIN 权限
 ):
     """
     更新系统专家配置
 
-    权限：Admin
+    权限：EDIT_ADMIN, ADMIN
 
     可以更新：
     - system_prompt: 专家提示词
     - model: 使用的模型
     - temperature: 温度参数
+
+    注意：更新后会自动刷新 LangGraph 缓存，下次任务立即生效
     """
     # 查找专家
     expert = session.exec(
@@ -173,8 +192,16 @@ async def update_expert(
 
     print(f"[Admin] Expert '{expert_key}' updated by admin")
 
+    # 自动刷新 LangGraph 缓存（无需重启）
+    try:
+        refresh_cache(session)
+        print(f"[Admin] LangGraph cache refreshed successfully")
+    except Exception as e:
+        print(f"[Admin] Warning: Failed to refresh cache: {e}")
+        # 缓存刷新失败不影响保存操作，只是下次任务可能会使用旧缓存
+
     return {
-        "message": "专家配置已更新",
+        "message": "专家配置已更新，下次任务生效",
         "expert_key": expert_key,
         "updated_at": expert.updated_at.isoformat()
     }

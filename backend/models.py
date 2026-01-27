@@ -12,8 +12,10 @@ from enum import Enum
 
 class UserRole(str, Enum):
     """用户角色枚举"""
-    USER = "user"
-    ADMIN = "admin"
+    USER = "user"              # 普通用户
+    ADMIN = "admin"            # 完全管理员
+    VIEW_ADMIN = "view_admin"    # 查看管理员（只读专家配置）
+    EDIT_ADMIN = "edit_admin"    # 编辑管理员（可修改专家配置）
 
 
 class ConversationType(str, Enum):
