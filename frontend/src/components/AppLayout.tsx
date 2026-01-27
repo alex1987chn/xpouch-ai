@@ -73,29 +73,12 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
             onCreateAgent={handleCreateAgent}
             onSettingsClick={dialogs.openSettings}
             onPersonalSettingsClick={dialogs.openPersonalSettings}
+            onToggleCollapsed={sidebar.toggleCollapsed}
           />
         </div>
       </aside>
 
-      {/* 侧边栏切换按钮 - 固定在侧边栏右边缘（参考 ChatGPT/DeepSeek 设计） */}
-      <div className={cn(
-        'fixed top-6 z-50 hidden lg:flex transition-all duration-300',
-        sidebar.isCollapsed ? 'left-[80px]' : 'left-[248px]'
-      )}>
-        <button
-          onClick={sidebar.toggleCollapsed}
-          className={cn(
-            'p-2 rounded-lg transition-all duration-200',
-            sidebar.isCollapsed
-              ? 'bg-gray-200/80 dark:bg-gray-800/80 hover:bg-gray-300/80 dark:hover:bg-gray-700/80 hover:scale-110'
-              : 'bg-white/90 dark:bg-slate-900/90 hover:bg-gray-100/90 dark:hover:bg-slate-800/90 hover:scale-105',
-            'backdrop-blur-md focus:outline-none shadow-lg text-gray-600 dark:text-gray-300'
-          )}
-          title={sidebar.isCollapsed ? '展开侧边栏' : '收拢侧边栏'}
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-      </div>
+
 
       {/* 主内容区域 - 右侧交互区 */}
       <div className={cn(
