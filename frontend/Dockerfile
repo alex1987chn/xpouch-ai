@@ -6,13 +6,17 @@ RUN npm install -g pnpm
 
 WORKDIR /app
 
-# 复制前端源码
+# 复制前端源码（使用根目录的 monorepo lock 文件）
+COPY pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml ./
+COPY package.json ./
 COPY frontend/package.json ./
-COPY frontend/pnpm-lock.yaml ./
 COPY frontend/ ./
 
 # 验证文件复制成功
 RUN ls -la /app/package.json || (echo "package.json 未复制成功" && exit 1)
+RUN ls -la /app/pnpm-lock.yaml || (echo "pnpm-lock.yaml 未复制成功" && exit 1)
+RUN ls -la /app/pnpm-workspace.yaml || (echo "pnpm-workspace.yaml 未复制成功" && exit 1)
 RUN ls -la /app/vite.config.ts || (echo "vite.config.ts 未复制成功" && exit 1)
 
 # 安装依赖
