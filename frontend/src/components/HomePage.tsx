@@ -13,6 +13,8 @@ import type { Agent } from '@/types'
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardContent } from '@/components/ui/card'
+import { logger } from '@/utils/logger'
+
 
 type ConversationMode = 'simple' | 'complex'
 
