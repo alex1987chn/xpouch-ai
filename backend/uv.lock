@@ -55,6 +55,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "sqlmodel" },
+    { name = "tencentcloud-sdk-python" },
     { name = "uvicorn" },
 ]
 
@@ -69,6 +70,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "python-multipart", specifier = ">=0.0.6" },
     { name = "sqlmodel", specifier = ">=0.0.31" },
+    { name = "tencentcloud-sdk-python", specifier = ">=3.0.0" },
     { name = "uvicorn", specifier = ">=0.40.0" },
 ]
 
@@ -899,6 +901,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/0a/d4/2b0cd0fe285e14b36db076e78c93766ff1d529d70408bd1d2a5a84f1d929/tenacity-9.1.2.tar.gz", hash = "sha256:1169d376c297e7de388d18b4481760d478b0e99a777cad3a9c86e556f4b697cb", size = 48036, upload-time = "2025-04-02T08:25:09.966Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e5/30/643397144bfbfec6f6ef821f36f33e57d35946c44a2352d3c9f0ae847619/tenacity-9.1.2-py3-none-any.whl", hash = "sha256:f77bf36710d8b73a50b2dd155c97b870017ad21afe6ab300326b0371b3b05138", size = 28248, upload-time = "2025-04-02T08:25:07.678Z" },
+]
+
+[[package]]
+name = "tencentcloud-sdk-python"
+version = "3.1.38"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/24/e2/e203c8897dc1318994c7d1e4d4c454d29acb765f082143b617f027f14860/tencentcloud_sdk_python-3.1.38.tar.gz", hash = "sha256:20050d41f203dd8100058fb67f28956d68ad1ab67635babc8b8a9df75ac3d1a9", size = 13865886, upload-time = "2026-01-26T21:08:43.845Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/72/73/f6167c2fdc313ef8ddeb34a652b3c18c9646d8ec0001a4a321d75d38979b/tencentcloud_sdk_python-3.1.38-py2.py3-none-any.whl", hash = "sha256:c47c44c14ce15f1f9a4e6d0477897a1d20b6f6d1b646e22abc0e2c9aa5cedae1", size = 14744150, upload-time = "2026-01-26T21:07:51.286Z" },
 ]
 
 [[package]]

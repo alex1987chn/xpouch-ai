@@ -65,9 +65,11 @@ const DialogContentCentered = React.forwardRef<
       className={cn(
         "fixed top-[50%] z-50 grid w-full max-w-lg translate-y-[-50%] gap-4 border bg-white dark:bg-slate-900 p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
         // PC 端：在主内容区域内居中（考虑侧边栏宽度）
-        // 侧边栏展开时（240px）-> 居中在中间: calc(100vw - 240px)/2 = calc(50vw - 120px)
-        // 侧边栏收起时（72px）-> 居中在中间: calc(100vw - 72px)/2 = calc(50vw - 36px)
-        "md:left-[calc(50vw-120px)] md:translate-x-[-50%]",
+        // 使用 CSS 变量动态计算，根据侧边栏是否收起调整
+        // 侧边栏展开时（64px）-> 居中在中间: left = calc(50% + 32px) (64px/2)
+        // 侧边栏收起时（0px）-> 居中在中间: left = 50%
+        // 配合 translate-x: -50% 实现完美居中
+        "md:left-[calc(50%+var(--sidebar-center-offset,0px))] md:translate-x-[-50%]",
         // 移动端：在全屏居中
         "left-[50%] translate-x-[-50%]",
         className

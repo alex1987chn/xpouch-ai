@@ -6,6 +6,7 @@
 - 手机验证码验证（登录/注册）
 - Token刷新
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from typing import Optional
@@ -29,8 +30,10 @@ from utils.verification import (
     VerificationCodeExpiredError,
     VerificationCodeInvalidError
 )
+from utils.sms_service import send_verification_code_with_fallback
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+logger = logging.getLogger(__name__)
 
 
 # ==================== Pydantic模型 ====================
@@ -169,14 +172,17 @@ async def send_verification_code(
         session.add(user)
         session.commit()
         
-        # 模拟发送验证码（实际项目中这里应该调用短信API）
-        print(f"[Auth] 验证码已发送到 {mask_phone_number(phone_number)}: {code}")
+        # 发送验证码短信
+        success, error_message = send_verification_code_with_fallback(phone_number, code, expire_minutes=5)
+        
+        if not success:
+            logger.warning(f"验证码短信发送失败: {error_message}")
+            # 继续返回成功，因为验证码已生成并存储，用户可能通过其他方式获取
         
         return {
             "message": "验证码已发送",
             "expires_in": 300,  # 5分钟，单位：秒
             "phone_masked": mask_phone_number(phone_number),
-            "_debug_code": code  # 开发环境返回验证码，生产环境应删除
         }
     else:
         # 用户不存在，创建新用户（未验证状态）
@@ -198,15 +204,18 @@ async def send_verification_code(
         session.commit()
         session.refresh(new_user)
         
-        # 模拟发送验证码
-        print(f"[Auth] 验证码已发送到 {mask_phone_number(phone_number)}: {code}")
+        # 发送验证码短信
+        success, error_message = send_verification_code_with_fallback(phone_number, code, expire_minutes=5)
+        
+        if not success:
+            logger.warning(f"验证码短信发送失败: {error_message}")
+            # 继续返回成功，因为验证码已生成并存储，用户可能通过其他方式获取
         
         return {
             "message": "验证码已发送（新用户注册）",
             "expires_in": 300,
             "phone_masked": mask_phone_number(phone_number),
             "user_id": new_user_id,
-            "_debug_code": code
         }
 
 

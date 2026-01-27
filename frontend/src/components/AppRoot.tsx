@@ -37,6 +37,9 @@ export default function AppRoot({ children }: AppRootProps) {
         'flex w-full bg-slate-50 dark:bg-[#020617] transition-colors duration-200 overflow-x-hidden',
         'min-h-[100dvh]'
       )}
+      style={{
+        '--sidebar-center-offset': sidebar.isCollapsed ? '0px' : '32px',
+      } as React.CSSProperties}
     >
       {/* 移动端侧边栏遮罩 */}
       {sidebar.isMobileOpen && (
