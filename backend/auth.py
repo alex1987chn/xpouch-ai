@@ -94,6 +94,38 @@ class UserResponse(BaseModel):
 
 # ==================== 辅助函数 ====================
 
+# ==================== 辅助函数 ====================
+
+def get_auth_token(authorization: str = Header(default=None)) -> str:
+    """
+    从 Authorization header 提取 Bearer token
+
+    Args:
+        authorization: Authorization header 值
+
+    Returns:
+        JWT token 字符串
+
+    Raises:
+        HTTPException: header 格式无效
+    """
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="缺少认证令牌",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的认证令牌格式",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return authorization[len("Bearer "):]
+
+
 async def get_current_user_by_token(
     token: str,
     session: Session
@@ -153,35 +185,6 @@ async def get_current_user(
     """
     return await get_current_user_by_token(token, session)
 
-
-def get_auth_token(authorization: str = Header(default=None)) -> str:
-    """
-    从 Authorization header 提取 Bearer token
-
-    Args:
-        authorization: Authorization header 值
-
-    Returns:
-        JWT token 字符串
-
-    Raises:
-        HTTPException: header 格式无效
-    """
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="缺少认证令牌",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的认证令牌格式",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    return authorization[len("Bearer "):]
 
 
 
