@@ -10,6 +10,7 @@ interface AuthTokenResponse {
   expires_in: number
   user_id: string
   username: string
+  role: 'user' | 'admin'  // 添加角色字段
   detail?: string
   _debug_code?: string
 }

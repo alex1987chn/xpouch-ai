@@ -176,11 +176,12 @@ export type AgentCategory =
  * 用户资料接口
  */
 export interface UserProfile {
-  id: string
-  username: string
-  avatar?: string
-  plan: string
-  updated_at: string  // 用户信息更新时间戳，用于同步
+    id: string
+    username: string
+    avatar?: string
+    plan: string
+    role: 'user' | 'admin'  // 用户角色
+    updated_at: string  // 用户信息更新时间戳，用于同步
 }
 
 // ============================================
