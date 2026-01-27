@@ -132,12 +132,13 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
       </header>
 
       {/* 可滚动内容区 - 添加 pt-14 避免内容被 header 遮挡 */}
-      <ScrollArea
+      <div
         className="h-full overflow-x-hidden pt-14"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
+        <ScrollArea className="h-full w-full">
         {/* 移动端滑动返回指示器 */}
         <SwipeBackIndicator swipeProgress={swipeProgress} />
 
@@ -241,8 +242,8 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
               </p>
             </div>
           )}
-        </div>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
 
       {/* 删除确认对话框 */}
       <DeleteConfirmDialog
