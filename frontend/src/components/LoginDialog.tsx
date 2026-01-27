@@ -48,7 +48,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
         setDebugCode(response._debug_code)
       }
     } catch (error) {
-      errorHandler.handleSync(error, 'sendVerificationCode')
+      logger.error('发送验证码失败:', error)
       alert((error as Error).message)
     } finally {
       setLoading(false)
