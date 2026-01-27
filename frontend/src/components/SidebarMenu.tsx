@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Home, History, FileText, Plus, MessageSquare } from 'lucide-react'
+import { Home, History, FileText, Plus, MessageSquare, Shield } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getConversations, type Conversation } from '@/services/api'
+import { useUserStore } from '@/store/userStore'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
 import { logger } from '@/utils/logger'
@@ -20,11 +21,16 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
   const location = useLocation()
   const navigate = useNavigate()
   const [recentConversations, setRecentConversations] = useState<Conversation[]>([])
+  const { user } = useUserStore()
 
   // 判断当前页面
   const isOnHome = location.pathname === '/'
   const isOnKnowledge = location.pathname === '/knowledge'
   const isOnHistory = location.pathname === '/history'
+  const isOnAdmin = location.pathname === '/admin/experts'
+
+  // 判断是否为管理员
+  const isAdmin = user?.role === 'admin'
 
   // 获取最近5条历史会话
   useEffect(() => {
@@ -137,6 +143,23 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
             >
               <History className="w-4 h-4 flex-shrink-0" />
             </Button>
+
+            {/* 管理员按钮 - 仅管理员可见 */}
+            {isAdmin && (
+              <Button
+                onClick={() => handleMenuClick('/admin/experts')}
+                variant={isOnAdmin ? 'secondary' : 'ghost'}
+                className={cn(
+                  'h-9 w-9 transition-all duration-200 justify-center p-0 rounded-full',
+                  isOnAdmin
+                    ? 'bg-white text-indigo-600 dark:bg-gray-700 dark:text-white'
+                    : 'text-slate-400 hover:bg-gray-200/50 hover:text-gray-700 dark:hover:bg-gray-700/50 dark:hover:text-slate-200'
+                )}
+                title="专家管理"
+              >
+                <Shield className="w-4 h-4 flex-shrink-0" />
+              </Button>
+            )}
           </div>
         </div>
       ) : (
@@ -196,6 +219,26 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
             <History className={cn('flex-shrink-0', isCollapsed ? 'w-4 h-4' : 'w-5 h-5')} />
             {!isCollapsed && <span className="ml-3 text-sm font-medium">{t('history')}</span>}
           </Button>
+
+          {/* 管理员按钮 - 仅管理员可见 */}
+          {isAdmin && (
+            <Button
+              onClick={() => handleMenuClick('/admin/experts')}
+              variant={isOnAdmin ? 'secondary' : 'ghost'}
+              className={cn(
+                'h-9 transition-all duration-200 justify-center py-0',
+                isCollapsed
+                  ? 'w-8 mx-auto px-0'
+                  : 'w-full justify-start px-3',
+                isOnAdmin
+                  ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-600/80 dark:text-white shadow-lg shadow-indigo-500/20'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white'
+              )}
+            >
+              <Shield className={cn('flex-shrink-0', isCollapsed ? 'w-4 h-4' : 'w-5 h-5')} />
+              {!isCollapsed && <span className="ml-3 text-sm font-medium">专家管理</span>}
+            </Button>
+          )}
         </div>
 
         {/* 最近会话列表 - 仅在展开状态显示 */}
