@@ -41,7 +41,7 @@ class SystemExpert(SQLModel, table=True):
     管理员可以通过前端动态修改专家的 system_prompt，
     LangGraph 执行任务时从数据库读取最新配置。
     """
-    id: int = Field(default=None, primary_key=True, autoincrement=True)
+    id: int = Field(default=None, primary_key=True)
     expert_key: str = Field(
         unique=True,
         index=True,
