@@ -234,7 +234,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
                   : t('noHistory') || 'No conversation history'
                 }
               </h3>
-              <p className="text-gray-500 dark:text-gray400">
+              <p className="text-gray-500 dark:text-gray-400">
                 {searchQuery
                   ? t('tryOtherKeywords') || 'Try other keywords'
                   : t('startChat') || 'Start a new chat to see it here'
@@ -242,6 +242,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
               </p>
             </div>
           )}
+        </div>
         </ScrollArea>
       </div>
 

@@ -65,6 +65,7 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
         {isCollapsed ? (
           <SidebarUserSection
             isCollapsed={isCollapsed}
+            isMenuOpen={isSettingsMenuOpen}
             onPersonalSettingsClick={onPersonalSettingsClick}
             onMenuOpenChange={handleSettingsMenuOpenChange}
           />
@@ -74,6 +75,7 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
             {/* 用户区域 */}
             <SidebarUserSection
               isCollapsed={isCollapsed}
+              isMenuOpen={isSettingsMenuOpen}
               onPersonalSettingsClick={onPersonalSettingsClick}
               onMenuOpenChange={handleSettingsMenuOpenChange}
             />
