@@ -24,16 +24,7 @@ from config import init_langchain_tracing, get_langsmith_config
 from utils.json_parser import parse_llm_json
 from utils.exceptions import AppError
 from constants import COMMANDER_SYSTEM_PROMPT
-from agents.experts import (
-    run_search_expert,
-    run_coder_expert,
-    run_researcher_expert,
-    run_analyzer_expert,
-    run_writer_expert,
-    run_planner_expert,
-    run_image_analyzer_expert,
-    EXPERT_FUNCTIONS
-)
+from agents.dynamic_experts import DYNAMIC_EXPERT_FUNCTIONS, initialize_expert_cache
 
 
 # ============================================================================
@@ -245,8 +236,8 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
 
     # 调用原子化专家节点（直接传递 State）
     try:
-        # 查找对应的专家函数
-        expert_func = EXPERT_FUNCTIONS.get(expert_type)
+        # 查找对应的专家函数（使用动态专家函数）
+        expert_func = DYNAMIC_EXPERT_FUNCTIONS.get(expert_type)
 
         if not expert_func:
             raise ValueError(f"未知的专家类型: {expert_type}")
