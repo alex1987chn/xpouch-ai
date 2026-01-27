@@ -5,6 +5,24 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-01-27] - v0.5.5 - 侧边栏头像卡片状态同步修复
+
+### 🐛 Bug 修复
+
+**侧边栏头像卡片展开/收拢状态同步问题**：
+- **问题**：点击侧边栏底部的头像展开卡片，点击其他区域收拢卡片，再次点击头像需要两次点击才能展开卡片
+- **原因**：`SidebarUserSection` 组件内部维护了自己的 `isMenuOpen` 状态，而父组件 `Sidebar` 也维护了相同的状态 `isSettingsMenuOpen`，当用户点击外部关闭菜单时，只有父组件状态更新，子组件内部状态未同步
+- **修复**：
+  - 状态提升：将菜单打开状态统一提升到父组件 `Sidebar` 管理
+  - 受控组件改造：修改 `SidebarUserSection` 为受控组件，接收 `isMenuOpen` prop
+  - 状态同步：通过 props 将父组件的 `isSettingsMenuOpen` 状态传递给子组件
+- **影响**：
+  - 点击头像展开卡片，点击其他区域收拢卡片，再次点击头像能立即展开卡片
+  - 状态管理统一，避免内部状态与外部状态不一致问题
+  - 修复了需要二次点击才能打开菜单的用户体验问题
+
+---
+
 ---
 
 ## [2026-01-26] - v0.5.4 - History页面触摸事件修复

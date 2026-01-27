@@ -4,7 +4,6 @@ import { useChatStore } from '@/store/chatStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import { sendMessage, type ApiMessage } from '@/services/api'
 import { getExpertConfig, createExpertResult } from '@/constants/systemAgents'
-import type { Message } from '@/types'
 import { errorHandler } from '@/utils/logger'
 import type { Artifact } from '@/types'
 import { parseAssistantMessage, shouldDisplayAsArtifact } from '@/utils/artifactParser'
@@ -63,8 +62,7 @@ export function useChat() {
   // 处理所有类型的事件（任务开始、任务计划、专家激活、专家完成）
   const processExpertEvent = useCallback(async (
     expertEvent: any,
-    conversationMode: 'simple' | 'complex',
-    assistantMessageId?: string // 未使用，保留为了接口兼容
+    conversationMode: 'simple' | 'complex'
   ) => {
     if (conversationMode !== 'complex') return
 
@@ -305,7 +303,7 @@ export function useChat() {
 
           // 处理所有类型的事件（任务开始、任务计划、专家事件）
           if (expertEvent && conversationMode === 'complex') {
-            await processExpertEvent(expertEvent, conversationMode, assistantMessageId)
+            await processExpertEvent(expertEvent, conversationMode)
           }
 
           // 处理 artifact 事件

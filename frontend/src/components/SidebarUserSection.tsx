@@ -9,12 +9,12 @@ import LoginDialog from '@/components/LoginDialog'
 
 interface SidebarUserSectionProps {
   isCollapsed?: boolean
+  isMenuOpen?: boolean
   onPersonalSettingsClick?: () => void
   onMenuOpenChange: (isOpen: boolean) => void
 }
 
-export default function SidebarUserSection({ isCollapsed = false, onPersonalSettingsClick, onMenuOpenChange }: SidebarUserSectionProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+export default function SidebarUserSection({ isCollapsed = false, isMenuOpen = false, onPersonalSettingsClick, onMenuOpenChange }: SidebarUserSectionProps) {
   const [showLoginDialog, setShowLoginDialog] = useState(false)
   const { user, isAuthenticated } = useUserStore()
 
@@ -32,7 +32,7 @@ export default function SidebarUserSection({ isCollapsed = false, onPersonalSett
   }[currentPlan]
 
   const handleAvatarClick = () => {
-    setIsMenuOpen(!isMenuOpen)
+    // 切换菜单状态，通知父组件
     onMenuOpenChange(!isMenuOpen)
   }
 
