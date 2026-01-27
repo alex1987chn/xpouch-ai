@@ -4,6 +4,41 @@
 
 ## 🚀 功能特性
 
+### 🔐 RBAC 专家管理系统 (v0.6.0 新增)
+
+**角色权限体系**：
+- `USER`: 普通用户（无管理权限）
+- `VIEW_ADMIN`: 只查看专家配置（可预览）
+- `EDIT_ADMIN`: 可修改专家配置（可保存）
+- `ADMIN`: 完全管理员（可升级用户）
+
+**专家管理功能**：
+- 动态配置：管理员可在前端修改专家 Prompt、模型、温度参数
+- 实时预览：保存前预览专家响应效果
+- 自动刷新：修改后立即生效，无需重启后端
+- 细粒度权限：三级权限控制（admin > edit_admin > view_admin）
+- 路由鉴权：非管理员自动重定向到首页
+- 缓存机制：内存缓存专家配置（避免频繁查询）
+
+**管理员入口**：
+- 侧边栏显示"专家管理"入口（Shield 图标）
+- 仅 `role === 'admin'` 可见
+- 点击跳转到 `/admin/experts` 管理页面
+
+**管理界面 UI**：
+- 左侧专家列表（点击切换）
+- 右侧配置编辑器：
+  - 专家标识（只读）
+  - 模型选择下拉框
+  - 温度参数滑块（0.0-2.0）
+  - 系统提示词文本框（自动高度，最小 400px）
+  - 字符计数提示
+  - 保存按钮（带加载状态和验证）
+- 预览模式：
+  - 测试输入 Textarea（最小 10 字符）
+  - "开始预览" 按钮
+  - 预览结果展示（模型、温度、执行时间、响应内容）
+
 ### 🧠 指挥官工作流 (核心引擎)
 
 **指挥官节点 (commander_node)**
@@ -227,11 +262,39 @@ graph TD
         Graph[LangGraph 工作流]
         DB[(PostgreSQL 数据库)]
         LLM[LLM API]
+        ExpertCache[专家配置缓存]
 
         API --> Graph
         API --> DB
         Graph --> LLM
+        API --> ExpertCache
+        DB --> ExpertCache
     end
+
+    subgraph RBACSystem["RBAC 专家管理系统 (v0.6.0)"]
+        AdminAPI[Admin API]
+        ExpertLoader[专家加载器]
+        SystemExpertDB[系统专家配置]
+
+        AdminAPI --> SystemExpertDB
+        ExpertLoader --> SystemExpertDB
+        ExpertLoader --> ExpertCache
+
+        AdminAPI -.权限检查.-> UserRoles[用户角色]
+
+        subgraph FrontendAdmin["前端管理界面"]
+            ExpertAdminPage[专家管理页面]
+            AdminRoute[路由鉴权]
+
+            ExpertAdminPage --> AdminAPI
+            AdminRoute --> ExpertAdminPage
+            UserRoles --> AdminRoute
+        end
+
+        FrontendAdmin --> AdminAPI
+    end
+
+    Frontend --> AdminAPI
 
     subgraph CommanderWorkflow["指挥官工作流"]
         Commander[指挥官节点]
@@ -305,18 +368,28 @@ xpouch-ai/
 ├── backend/                       # 🔧 Python 后端
 │   ├── agents/                    # LangGraph 智能体
 │   │   ├── graph.py               # 指挥官工作流定义
-│   │   ├── commander.py           # 指挥官节点
-│   │   └── experts.py             # 专家池实现
+│   │   ├── expert_loader.py       # 专家配置加载器（数据库 + 缓存）
+│   │   ├── dynamic_experts.py     # 动态专家节点（使用数据库配置）
+│   │   └── experts.py             # 专家池实现（硬编码，降级用）
+│   ├── api/                       # API 端点
+│   │   ├── admin.py              # Admin API（专家管理、权限控制）
+│   │   └── auth.py              # 认证 API（登录、注册、Token 刷新）
 │   ├── utils/                     # 工具模块
 │   │   └── json_parser.py         # JSON 解析器
+│   ├── migrations/                # 数据库迁移脚本
+│   │   ├── runner.py             # 迁移执行器
+│   │   ├── migration_003_rbac_and_system_experts.py  # RBAC 和系统专家
+│   │   └── migration_004_add_granular_roles.py      # 细粒度角色
+│   ├── scripts/                  # 脚本目录（数据库初始化等）
+│   │   └── init_db.py            # 数据库初始化（创建专家数据）
 │   ├── main.py                    # FastAPI 应用入口
-│   ├── models.py                  # SQLModel 数据模型
+│   ├── models.py                  # SQLModel 数据模型（User, SystemExpert, etc.）
 │   ├── database.py                # 数据库连接
 │   ├── config.py                  # 配置管理
 │   ├── pyproject.toml             # Python 项目配置
+│   ├── requirements.txt            # Python 依赖
 │   ├── .env.example              # 环境变量示例
-│   ├── Dockerfile                # Docker 镜像配置
-│   └── scripts/                  # 脚本目录（数据库迁移等）
+│   └── Dockerfile                # Docker 镜像配置
 │
 ├── docker-compose.yml             # 🐳 Docker 编排配置
 ├── CHANGELOG.md                   # 📝 更新日志
@@ -362,11 +435,56 @@ docker-compose up --build -d
 - 前端：http://localhost:8080
 - 后端 API：http://localhost:8080/api
 
-**5. 停止服务**
+**5. 初始化数据库和升级管理员账号**
+
+```bash
+# 进入后端容器
+docker exec -it xpouch-backend bash
+
+# 应用数据库迁移（创建专家数据表）
+python scripts/init_db.py
+
+# 升级你的账号为管理员（替换为你的邮箱）
+python -c "from scripts.init_db import promote_user_to_admin; promote_user_to_admin('your-email@example.com')"
+
+# 退出容器
+exit
+```
+
+**6. 停止服务**
 
 ```bash
 docker-compose down
 ```
+
+### 📝 部署后配置（RBAC 系统）
+
+**访问专家管理页面**：
+- 使用管理员账号登录
+- 点击侧边栏的"专家管理"（Shield 图标）
+- 访问路径：`/admin/experts`
+
+**修改专家配置**：
+1. 选择一个专家（如"编程专家"）
+2. 修改以下配置：
+   - **模型**：选择使用的 LLM（gpt-4o、deepseek-chat 等）
+   - **温度参数**：0.0（精确）- 2.0（创意）
+   - **系统提示词**：编辑专家的行为指令
+3. 点击"保存配置"
+4. Toast 提示："专家配置已更新，下次任务生效"
+
+**预览专家响应**：
+1. 点击"预览模式"按钮
+2. 输入测试文本（至少 10 个字符）
+3. 点击"开始预览"
+4. 查看预览结果（响应内容、执行时间）
+5. 返回编辑模式，调整 Prompt 后再次预览
+
+**权限说明**：
+- `ADMIN`: 完全管理员（可修改专家配置、升级用户）
+- `EDIT_ADMIN`: 可修改专家配置（不可升级用户）
+- `VIEW_ADMIN`: 只查看专家配置（可预览，不可保存）
+- `USER`: 普通用户（无管理权限）
 
 ### 方式二：本地开发
 
