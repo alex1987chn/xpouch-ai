@@ -15,11 +15,13 @@ import CreateAgentPage from './components/CreateAgentPage'
 import ExpertAdminPage from './components/ExpertAdminPage'
 import AdminRoute from './components/AdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
+import { Toaster } from './components/ui/toaster'
 
 import { logger } from '@/utils/logger'
 import { useChatStore } from './store/chatStore'
 import { type ConversationHistory } from './utils/storage'
 import { createCustomAgent } from './services/api'
+
 
 
 // 包装 HistoryPage 以适应 Router
@@ -151,8 +153,13 @@ root.render(
           </ThemeProvider>
         </I18nProvider>
       </AppProvider>
+      <Toaster />
     </ErrorBoundary>
   </StrictMode>,
 )
+
+
+
+
 
 
