@@ -28,6 +28,20 @@ export interface PromoteUserRequest {
   email: string
 }
 
+export interface ExpertPreviewRequest {
+  expert_key: string
+  test_input: string
+}
+
+export interface ExpertPreviewResponse {
+  expert_name: string
+  test_input: string
+  preview_response: string
+  model: string
+  temperature: number
+  execution_time_ms: number
+}
+
 // ============================================================================
 // 专家管理 API
 // ============================================================================
@@ -106,3 +120,24 @@ export async function promoteUser(
 
   return await response.json()
 }
+
+/**
+ * 预览专家响应
+ */
+export async function previewExpert(
+  request: ExpertPreviewRequest
+): Promise<ExpertPreviewResponse> {
+  const response = await fetch('/api/admin/experts/preview', {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(request)
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || '预览失败')
+  }
+
+  return await response.json()
+}
+
