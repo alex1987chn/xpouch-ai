@@ -264,7 +264,8 @@ async def send_verification_code(
             verification_code=code,
             verification_code_expires_at=expires_at,
             auth_provider="phone",
-            is_verified=False
+            is_verified=False,
+            role="user"  # 添加默认角色
         )
         
         session.add(new_user)
