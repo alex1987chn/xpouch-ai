@@ -84,9 +84,20 @@ class ExpertUpdate(BaseModel):
         return v.strip()
 
 
-class UserPromoteRequest(BaseModel):
-    """用户升级请求 DTO"""
-    email: str
+class ExpertPreviewRequest(BaseModel):
+    """专家预览请求 DTO"""
+    expert_key: str
+    test_input: str = PydanticField(..., min_length=10, description="测试输入（至少10个字符）")
+
+
+class ExpertPreviewResponse(BaseModel):
+    """专家预览响应 DTO"""
+    expert_name: str
+    test_input: str
+    preview_response: str
+    model: str
+    temperature: float
+    execution_time_ms: int
 
 
 # ============================================================================
@@ -252,3 +263,74 @@ async def promote_user(
         "username": user.username,
         "email": user.email
     }
+
+
+@router.post("/experts/preview", response_model=ExpertPreviewResponse)
+async def preview_expert(
+    request: ExpertPreviewRequest,
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_view_admin)  # 需要 VIEW_ADMIN 或 EDIT_ADMIN 权限
+):
+    """
+    预览专家响应（模拟执行）
+
+    权限：VIEW_ADMIN, EDIT_ADMIN, ADMIN
+
+    功能：
+    - 使用当前数据库配置的 Prompt
+    - 调用 LLM 模拟专家响应
+    - 不影响实际任务执行
+    - 返回预览结果和执行时间
+
+    注意：此 API 不会刷新缓存，仅用于预览效果
+    """
+    from datetime import datetime
+    from langchain_openai import ChatOpenAI
+    from langchain_core.messages import SystemMessage, HumanMessage
+    from agents.expert_loader import get_expert_config
+    from database import get_session as get_db_session
+
+    # 获取专家配置（不从缓存读取，确保使用最新配置）
+    expert_config = get_expert_config(request.expert_key, session)
+
+    if not expert_config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"专家 '{request.expert_key}' 不存在"
+        )
+
+    # 调用 LLM 进行预览
+    started_at = datetime.now()
+
+    try:
+        # 使用专家配置的模型和温度参数
+        llm = ChatOpenAI(
+            model=expert_config["model"],
+            temperature=expert_config["temperature"],
+            api_key=os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY"),
+            base_url=os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+        )
+
+        response = await llm.ainvoke([
+            SystemMessage(content=expert_config["system_prompt"]),
+            HumanMessage(content=request.test_input)
+        ])
+
+        completed_at = datetime.now()
+        execution_time_ms = int((completed_at - started_at).total_seconds() * 1000)
+
+        return ExpertPreviewResponse(
+            expert_name=expert_config["name"],
+            test_input=request.test_input,
+            preview_response=response.content,
+            model=expert_config["model"],
+            temperature=expert_config["temperature"],
+            execution_time_ms=execution_time_ms
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"预览失败: {str(e)}"
+        )
+

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Save, RefreshCw, Loader2 } from 'lucide-react'
+import { Save, RefreshCw, Loader2, Play, AlertCircle } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -20,6 +21,7 @@ import {
   getAllExperts,
   getExpert,
   updateExpert,
+  previewExpert,
   type ExpertResponse,
   type ExpertUpdateRequest,
 } from '@/services/admin'
@@ -35,6 +37,12 @@ export default function ExpertAdminPage() {
     model: 'gpt-4o',
     temperature: 0.5,
   })
+
+  // 预览相关状态
+  const [previewMode, setPreviewMode] = useState(false)
+  const [testInput, setTestInput] = useState('')
+  const [previewResult, setPreviewResult] = useState<any>(null)
+  const [isPreviewing, setIsPreviewing] = useState(false)
 
   const { toast } = useToast()
 
@@ -78,6 +86,10 @@ export default function ExpertAdminPage() {
         model: data.model,
         temperature: data.temperature,
       })
+      // 切换专家时重置预览状态
+      setPreviewResult(null)
+      setTestInput('')
+      setPreviewMode(false)
     } catch (error) {
       logger.error('Failed to load expert:', error)
       toast({
@@ -114,6 +126,41 @@ export default function ExpertAdminPage() {
       })
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  // 预览专家响应
+  const handlePreview = async () => {
+    if (!selectedExpert || testInput.length < 10) {
+      toast({
+        title: '预览失败',
+        description: '测试输入至少需要 10 个字符',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsPreviewing(true)
+    setPreviewResult(null)
+    try {
+      const result = await previewExpert({
+        expert_key: selectedExpert.expert_key,
+        test_input: testInput,
+      })
+      setPreviewResult(result)
+      toast({
+        title: '预览成功',
+        description: `执行时间: ${(result.execution_time_ms / 1000).toFixed(2)} 秒`,
+      })
+    } catch (error) {
+      logger.error('Failed to preview expert:', error)
+      toast({
+        title: '预览失败',
+        description: error instanceof Error ? error.message : '无法预览专家响应',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPreviewing(false)
     }
   }
 
@@ -189,9 +236,23 @@ export default function ExpertAdminPage() {
       {/* 右侧：配置编辑器 */}
       <Card className="flex-1">
         <CardHeader className="pb-4">
-          <CardTitle className="text-lg">
-            {selectedExpert ? `${selectedExpert.name} 配置` : '选择专家'}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">
+              {selectedExpert ? `${selectedExpert.name} 配置` : '选择专家'}
+            </CardTitle>
+            {selectedExpert && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={previewMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setPreviewMode(!previewMode)}
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  {previewMode ? '编辑模式' : '预览模式'}
+                </Button>
+              </div>
+            )}
+          </div>
           {selectedExpert && (
             <div className="text-sm text-gray-500 mt-2">
               最后更新：{new Date(selectedExpert.updated_at).toLocaleString()}
@@ -201,99 +262,177 @@ export default function ExpertAdminPage() {
         <CardContent className="p-6">
           {selectedExpert ? (
             <div className="space-y-6">
-              {/* 专家标识（只读） */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  专家标识
-                </label>
-                <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-md text-gray-600 dark:text-gray-400">
-                  {selectedExpert.expert_key}
-                </div>
-              </div>
+              {/* 编辑模式 */}
+              {!previewMode && (
+                <>
+                  {/* 专家标识（只读） */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      专家标识
+                    </label>
+                    <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-md text-gray-600 dark:text-gray-400">
+                      {selectedExpert.expert_key}
+                    </div>
+                  </div>
 
-              {/* 模型选择 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  模型
-                </label>
-                <Select
-                  value={formData.model}
-                  onValueChange={(value) => handleFieldChange('model', value)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MODEL_OPTIONS.map((model) => (
-                      <SelectItem key={model} value={model}>
-                        {model}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  {/* 模型选择 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      模型
+                    </label>
+                    <Select
+                      value={formData.model}
+                      onValueChange={(value) => handleFieldChange('model', value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MODEL_OPTIONS.map((model) => (
+                          <SelectItem key={model} value={model}>
+                            {model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              {/* 温度参数 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  温度参数: {formData.temperature}
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="2"
-                  step="0.1"
-                  value={formData.temperature}
-                  onChange={(e) =>
-                    handleFieldChange('temperature', parseFloat(e.target.value))
-                  }
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>0.0 (精确)</span>
-                  <span>1.0 (平衡)</span>
-                  <span>2.0 (创意)</span>
-                </div>
-              </div>
+                  {/* 温度参数 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      温度参数: {formData.temperature}
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="0.1"
+                      value={formData.temperature}
+                      onChange={(e) =>
+                        handleFieldChange('temperature', parseFloat(e.target.value))
+                      }
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>0.0 (精确)</span>
+                      <span>1.0 (平衡)</span>
+                      <span>2.0 (创意)</span>
+                    </div>
+                  </div>
 
-              {/* 系统提示词 */}
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  系统提示词
-                </label>
-                <Textarea
-                  value={formData.system_prompt}
-                  onChange={(e) =>
-                    handleFieldChange('system_prompt', e.target.value)
-                  }
-                  placeholder="输入专家的系统提示词..."
-                  className="min-h-[400px] font-mono text-sm"
-                />
-                <div className="text-xs text-gray-500 mt-2 text-right">
-                  {formData.system_prompt.length} 个字符
-                </div>
-              </div>
+                  {/* 系统提示词 */}
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      系统提示词
+                    </label>
+                    <Textarea
+                      value={formData.system_prompt}
+                      onChange={(e) =>
+                        handleFieldChange('system_prompt', e.target.value)
+                      }
+                      placeholder="输入专家的系统提示词..."
+                      className="min-h-[400px] font-mono text-sm"
+                    />
+                    <div className="text-xs text-gray-500 mt-2 text-right">
+                      {formData.system_prompt.length} 个字符
+                    </div>
+                  </div>
 
-              {/* 保存按钮 */}
-              <div className="flex justify-end pt-4 border-t">
-                <Button
-                  onClick={handleSave}
-                  disabled={isSaving || formData.system_prompt.length < 10}
-                  className="min-w-[120px]"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      保存中...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      保存配置
-                    </>
+                  {/* 保存按钮 */}
+                  <div className="flex justify-end pt-4 border-t">
+                    <Button
+                      onClick={handleSave}
+                      disabled={isSaving || formData.system_prompt.length < 10}
+                      className="min-w-[120px]"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          保存中...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          保存配置
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {/* 预览模式 */}
+              {previewMode && (
+                <>
+                  {/* 测试输入 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      测试输入
+                    </label>
+                    <Textarea
+                      value={testInput}
+                      onChange={(e) => setTestInput(e.target.value)}
+                      placeholder="输入测试文本（至少 10 个字符）..."
+                      className="min-h-[100px] font-mono text-sm"
+                    />
+                    <div className="text-xs text-gray-500 mt-2 text-right">
+                      {testInput.length} / 10 最小字符
+                    </div>
+                  </div>
+
+                  {/* 预览按钮 */}
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handlePreview}
+                      disabled={isPreviewing || testInput.length < 10}
+                      className="min-w-[120px]"
+                    >
+                      {isPreviewing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          预览中...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4 mr-2" />
+                          开始预览
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* 预览结果 */}
+                  {previewResult && (
+                    <div className="mt-6 space-y-4">
+                      <div className="border-t pt-4">
+                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                          预览结果
+                        </h3>
+
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <div className="text-xs text-gray-500">使用模型</div>
+                            <div className="text-sm font-medium">{previewResult.model}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500">温度参数</div>
+                            <div className="text-sm font-medium">{previewResult.temperature}</div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">
+                            专家响应（执行时间: {(previewResult.execution_time_ms / 1000).toFixed(2)} 秒）
+                          </div>
+                          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
+                            {previewResult.preview_response}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </Button>
-              </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-center h-96 text-gray-500">
