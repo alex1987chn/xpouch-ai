@@ -120,7 +120,7 @@
 - **专家协作可视化**：实时显示专家执行状态和详细任务信息
 
 ### 💾 数据持久化
-- **SQLite 数据库**：SQLModel ORM 框架
+- **PostgreSQL 数据库**：SQLModel ORM 框架 + psycopg 驱动
 - **Conversation 模型**：
   - `agent_type`: 智能体类型（default/custom/ai）
   - `agent_id`: 智能体ID（default-assistant/ai-assistant/自定义UUID）
@@ -173,7 +173,8 @@
 | LangGraph | 1.0.6+ | AI 工作流编排 |
 | LangChain OpenAI | 1.1.7+ | LLM 集成 |
 | SQLModel | 0.0.31+ | ORM 框架 |
-| SQLite | 3.x | 数据库 |
+| PostgreSQL | 15+ | 数据库 |
+| psycopg | 3.x | PostgreSQL 驱动 |
 | uv | Latest | Python 包管理器 |
 
 ## 🏗️ 系统架构
@@ -224,7 +225,7 @@ graph TD
     subgraph Backend["后端服务 (FastAPI)"]
         API[RESTful API]
         Graph[LangGraph 工作流]
-        DB[(SQLite 数据库)]
+        DB[(PostgreSQL 数据库)]
         LLM[LLM API]
 
         API --> Graph
@@ -315,7 +316,7 @@ xpouch-ai/
 │   ├── pyproject.toml             # Python 项目配置
 │   ├── .env.example              # 环境变量示例
 │   ├── Dockerfile                # Docker 镜像配置
-│   └── data/                     # SQLite 数据库目录
+│   └── scripts/                  # 脚本目录（数据库迁移等）
 │
 ├── docker-compose.yml             # 🐳 Docker 编排配置
 ├── CHANGELOG.md                   # 📝 更新日志
