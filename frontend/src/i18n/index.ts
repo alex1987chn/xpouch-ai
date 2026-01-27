@@ -34,6 +34,14 @@ export type TranslationKey =
   // Workflow Steps (Expert Drawer)
   | 'receiveTask' | 'receiveTaskDesc' | 'buildQuery' | 'buildQueryDesc' | 'executeSearch' | 'executeSearchDesc'
   | 'analyzeData' | 'analyzeDataDesc' | 'generateReport' | 'generateReportDesc' | 'designUI' | 'designUIDesc'
+  // RBAC Expert Admin (v0.6.0)
+  | 'expertAdmin' | 'expertsList' | 'refresh' | 'selectExpert' | 'lastUpdated'
+  | 'expertKey' | 'model' | 'temperature' | 'temperatureValue' | 'systemPrompt'
+  | 'characters' | 'saveConfig' | 'saving' | 'saveSuccess' | 'saveFailed'
+  | 'previewMode' | 'editMode' | 'startPreview' | 'previewing' | 'previewFailed'
+  | 'testInput' | 'testInputPlaceholder' | 'testInputMinChars' | 'previewSuccess'
+  | 'previewResults' | 'usedModel' | 'temperature' | 'expertResponse'
+  | 'executionTime' | 'seconds' | 'selectExpertPrompt' | 'loadingExperts'
 
 interface I18nContextType {
   language: Language

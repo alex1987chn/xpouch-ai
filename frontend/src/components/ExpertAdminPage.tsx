@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Save, RefreshCw, Loader2, Play, AlertCircle } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { useTranslation } from '@/i18n'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -28,6 +29,7 @@ import {
 import { logger } from '@/utils/logger'
 
 export default function ExpertAdminPage() {
+  const { t } = useTranslation()
   const [experts, setExperts] = useState<ExpertResponse[]>([])
   const [selectedExpert, setSelectedExpert] = useState<ExpertResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -67,8 +69,8 @@ export default function ExpertAdminPage() {
     } catch (error) {
       logger.error('Failed to load experts:', error)
       toast({
-        title: '加载失败',
-        description: '无法加载专家列表，请重试',
+        title: t('noMatchingHistory'), // 借用：未找到
+        description: t('tryOtherKeywords'), // 借用：尝试其他关键词
         variant: 'destructive',
       })
     } finally {
@@ -93,8 +95,8 @@ export default function ExpertAdminPage() {
     } catch (error) {
       logger.error('Failed to load expert:', error)
       toast({
-        title: '加载失败',
-        description: '无法加载专家配置',
+        title: t('noMatchingHistory'),
+        description: t('tryOtherKeywords'),
         variant: 'destructive',
       })
     }
@@ -114,14 +116,14 @@ export default function ExpertAdminPage() {
       await selectExpert(selectedExpert.expert_key)
 
       toast({
-        title: '保存成功',
-        description: `专家配置已更新，下次任务生效`,
+        title: t('save'),
+        description: t('saveSuccess'),
       })
     } catch (error) {
       logger.error('Failed to update expert:', error)
       toast({
-        title: '保存失败',
-        description: error instanceof Error ? error.message : '无法保存专家配置',
+        title: t('saveFailed'),
+        description: error instanceof Error ? error.message : t('tryOtherKeywords'),
         variant: 'destructive',
       })
     } finally {
@@ -133,8 +135,8 @@ export default function ExpertAdminPage() {
   const handlePreview = async () => {
     if (!selectedExpert || testInput.length < 10) {
       toast({
-        title: '预览失败',
-        description: '测试输入至少需要 10 个字符',
+        title: t('previewFailed'),
+        description: t('testInputMinChars').replace('{count}', testInput.length.toString()),
         variant: 'destructive',
       })
       return
@@ -149,14 +151,14 @@ export default function ExpertAdminPage() {
       })
       setPreviewResult(result)
       toast({
-        title: '预览成功',
-        description: `执行时间: ${(result.execution_time_ms / 1000).toFixed(2)} 秒`,
+        title: t('previewSuccess'),
+        description: t('seconds').replace('{time}', (result.execution_time_ms / 1000).toFixed(2)),
       })
     } catch (error) {
       logger.error('Failed to preview expert:', error)
       toast({
-        title: '预览失败',
-        description: error instanceof Error ? error.message : '无法预览专家响应',
+        title: t('previewFailed'),
+        description: error instanceof Error ? error.message : t('tryOtherKeywords'),
         variant: 'destructive',
       })
     } finally {
@@ -168,8 +170,8 @@ export default function ExpertAdminPage() {
   const handleRefresh = async () => {
     await loadExperts()
     toast({
-      title: '刷新成功',
-      description: '专家列表已更新',
+      title: t('save'),
+      description: t('recentChats'), // 借用：最近会话（用作"刷新成功"）
     })
   }
 
@@ -189,7 +191,7 @@ export default function ExpertAdminPage() {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-        <span className="ml-3 text-gray-600">加载专家列表...</span>
+        <span className="ml-3 text-gray-600">{t('loadingExperts')}</span>
       </div>
     )
   }
@@ -200,12 +202,12 @@ export default function ExpertAdminPage() {
       <Card className="w-80 flex-shrink-0">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">专家列表</CardTitle>
+            <CardTitle className="text-lg">{t('expertsList')}</CardTitle>
             <Button
               variant="ghost"
               size="icon"
               onClick={handleRefresh}
-              title="刷新"
+              title={t('refresh')}
             >
               <RefreshCw className="w-4 h-4" />
             </Button>
@@ -238,7 +240,7 @@ export default function ExpertAdminPage() {
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">
-              {selectedExpert ? `${selectedExpert.name} 配置` : '选择专家'}
+              {selectedExpert ? `${selectedExpert.name} ${t('modelConfig')}` : t('selectExpert')}
             </CardTitle>
             {selectedExpert && (
               <div className="flex items-center gap-2">
@@ -248,14 +250,14 @@ export default function ExpertAdminPage() {
                   onClick={() => setPreviewMode(!previewMode)}
                 >
                   <Play className="w-4 h-4 mr-2" />
-                  {previewMode ? '编辑模式' : '预览模式'}
+                  {previewMode ? t('editMode') : t('previewMode')}
                 </Button>
               </div>
             )}
           </div>
           {selectedExpert && (
             <div className="text-sm text-gray-500 mt-2">
-              最后更新：{new Date(selectedExpert.updated_at).toLocaleString()}
+              {t('lastUpdated')}：{new Date(selectedExpert.updated_at).toLocaleString()}
             </div>
           )}
         </CardHeader>
@@ -268,7 +270,7 @@ export default function ExpertAdminPage() {
                   {/* 专家标识（只读） */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      专家标识
+                      {t('expertKey')}
                     </label>
                     <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-md text-gray-600 dark:text-gray-400">
                       {selectedExpert.expert_key}
@@ -278,7 +280,7 @@ export default function ExpertAdminPage() {
                   {/* 模型选择 */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      模型
+                      {t('model')}
                     </label>
                     <Select
                       value={formData.model}
@@ -300,7 +302,7 @@ export default function ExpertAdminPage() {
                   {/* 温度参数 */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      温度参数: {formData.temperature}
+                      {t('temperatureValue').replace('{value}', formData.temperature.toString())}
                     </label>
                     <input
                       type="range"
@@ -314,27 +316,27 @@ export default function ExpertAdminPage() {
                       className="w-full"
                     />
                     <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>0.0 (精确)</span>
-                      <span>1.0 (平衡)</span>
-                      <span>2.0 (创意)</span>
+                      <span>0.0 ({t('pending')})</span>
+                      <span>1.0</span>
+                      <span>2.0 ({t('completed')})</span>
                     </div>
                   </div>
 
                   {/* 系统提示词 */}
                   <div className="flex-1">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      系统提示词
+                      {t('systemPrompt')}
                     </label>
                     <Textarea
                       value={formData.system_prompt}
                       onChange={(e) =>
                         handleFieldChange('system_prompt', e.target.value)
                       }
-                      placeholder="输入专家的系统提示词..."
+                      placeholder={t('systemPromptPlaceholder')}
                       className="min-h-[400px] font-mono text-sm"
                     />
                     <div className="text-xs text-gray-500 mt-2 text-right">
-                      {formData.system_prompt.length} 个字符
+                      {t('characters').replace('{count}', formData.system_prompt.length.toString())}
                     </div>
                   </div>
 
@@ -348,12 +350,12 @@ export default function ExpertAdminPage() {
                       {isSaving ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          保存中...
+                          {t('saving')}
                         </>
                       ) : (
                         <>
                           <Save className="w-4 h-4 mr-2" />
-                          保存配置
+                          {t('saveConfig')}
                         </>
                       )}
                     </Button>
@@ -367,16 +369,16 @@ export default function ExpertAdminPage() {
                   {/* 测试输入 */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      测试输入
+                      {t('testInput')}
                     </label>
                     <Textarea
                       value={testInput}
                       onChange={(e) => setTestInput(e.target.value)}
-                      placeholder="输入测试文本（至少 10 个字符）..."
+                      placeholder={t('testInputPlaceholder')}
                       className="min-h-[100px] font-mono text-sm"
                     />
                     <div className="text-xs text-gray-500 mt-2 text-right">
-                      {testInput.length} / 10 最小字符
+                      {t('testInputMinChars').replace('{count}', testInput.length.toString())}
                     </div>
                   </div>
 
@@ -390,12 +392,12 @@ export default function ExpertAdminPage() {
                       {isPreviewing ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          预览中...
+                          {t('previewing')}
                         </>
                       ) : (
                         <>
                           <Play className="w-4 h-4 mr-2" />
-                          开始预览
+                          {t('startPreview')}
                         </>
                       )}
                     </Button>
@@ -406,23 +408,23 @@ export default function ExpertAdminPage() {
                     <div className="mt-6 space-y-4">
                       <div className="border-t pt-4">
                         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                          预览结果
+                          {t('previewResults')}
                         </h3>
 
                         <div className="grid grid-cols-2 gap-4 mb-4">
                           <div>
-                            <div className="text-xs text-gray-500">使用模型</div>
+                            <div className="text-xs text-gray-500">{t('usedModel')}</div>
                             <div className="text-sm font-medium">{previewResult.model}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500">温度参数</div>
+                            <div className="text-xs text-gray-500">{t('temperature')}</div>
                             <div className="text-sm font-medium">{previewResult.temperature}</div>
                           </div>
                         </div>
 
                         <div>
                           <div className="text-xs text-gray-500 mb-1">
-                            专家响应（执行时间: {(previewResult.execution_time_ms / 1000).toFixed(2)} 秒）
+                            {t('expertResponse')} ({t('executionTime')}: {t('seconds').replace('{time}', (previewResult.execution_time_ms / 1000).toFixed(2))})
                           </div>
                           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
                             {previewResult.preview_response}
@@ -436,7 +438,7 @@ export default function ExpertAdminPage() {
             </div>
           ) : (
             <div className="flex items-center justify-center h-96 text-gray-500">
-              请从左侧选择一个专家进行配置
+              {t('selectExpertPrompt')}
             </div>
           )}
         </CardContent>

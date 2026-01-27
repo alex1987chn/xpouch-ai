@@ -155,7 +155,7 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
                     ? 'bg-white text-indigo-600 dark:bg-gray-700 dark:text-white'
                     : 'text-slate-400 hover:bg-gray-200/50 hover:text-gray-700 dark:hover:bg-gray-700/50 dark:hover:text-slate-200'
                 )}
-                title="专家管理"
+                title={t('expertAdmin')}
               >
                 <Shield className="w-4 h-4 flex-shrink-0" />
               </Button>
@@ -236,7 +236,7 @@ export default function SidebarMenu({ isCollapsed = false, onCreateAgent }: Side
               )}
             >
               <Shield className={cn('flex-shrink-0', isCollapsed ? 'w-4 h-4' : 'w-5 h-5')} />
-              {!isCollapsed && <span className="ml-3 text-sm font-medium">专家管理</span>}
+              {!isCollapsed && <span className="ml-3 text-sm font-medium">{t('expertAdmin')}</span>}
             </Button>
           )}
         </div>
