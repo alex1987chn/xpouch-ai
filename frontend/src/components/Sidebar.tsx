@@ -39,11 +39,11 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
       {/* Logo 区域 */}
       <div className={cn(
         'flex items-center relative',
-        isCollapsed ? 'py-3 justify-center' : 'py-3 px-4'
+        isCollapsed ? 'py-3 justify-center' : 'py-4 px-4 justify-center'
       )}>
         <div onClick={() => navigate('/')} className={cn(
           'cursor-pointer flex items-center justify-center',
-          isCollapsed ? 'scale-[0.7]' : 'max-w-[160px] mx-auto'
+          isCollapsed ? 'scale-[0.7]' : 'scale-[0.52]'
         )}>
           {isCollapsed ? (
             <PixelLogo variant="pouch" size={32} />
@@ -53,12 +53,12 @@ export default function Sidebar({ className, isCollapsed = false, onCreateAgent,
             </div>
           )}
         </div>
-        
+
         {/* 侧边栏切换按钮 - 仅在桌面端且侧边栏展开时显示 */}
         {!isCollapsed && onToggleCollapsed && (
           <button
             onClick={onToggleCollapsed}
-            className="absolute hidden lg:flex p-1.5 rounded-lg transition-all duration-200 bg-white/80 dark:bg-slate-900/80 hover:bg-gray-100/80 dark:hover:bg-slate-800/80 hover:scale-105 border border-gray-200/50 dark:border-gray-700/50 focus:outline-none shadow text-gray-500 dark:text-gray-400 right-2 top-1/2 -translate-y-1/2"
+            className="absolute hidden lg:flex p-1.5 rounded-lg transition-all duration-200 bg-transparent hover:bg-gray-100/70 dark:hover:bg-slate-700/70 hover:shadow-md hover:shadow-gray-500/10 dark:hover:shadow-gray-400/10 hover:scale-105 focus:outline-none text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 right-2 top-1/2 -translate-y-1/2"
             title="收拢侧边栏"
           >
             <Menu className="w-4 h-4" />
