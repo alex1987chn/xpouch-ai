@@ -8,7 +8,7 @@
 """
 import logging
 import os
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlmodel import Session, select
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
@@ -100,14 +100,14 @@ async def get_current_user_by_token(
 ) -> User:
     """
     通过JWT token获取当前用户
-    
+
     Args:
         token: JWT access token
         session: 数据库会话
-        
+
     Returns:
         用户对象
-        
+
     Raises:
         HTTPException: token无效或用户不存在
     """
@@ -115,7 +115,7 @@ async def get_current_user_by_token(
         # 验证token
         payload = verify_token(token, token_type="access")
         user_id = payload["sub"]
-        
+
         # 获取用户
         user = session.get(User, user_id)
         if not user:
@@ -123,15 +123,67 @@ async def get_current_user_by_token(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="用户不存在"
             )
-        
+
         return user
-        
+
     except AuthenticationError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+async def get_current_user(
+    token: str = Depends(get_auth_token),
+    session: Session = Depends(get_session)
+) -> User:
+    """
+    FastAPI 依赖：从请求头获取 JWT token 并返回当前用户
+
+    Args:
+        token: Authorization header 中的 JWT token
+        session: 数据库会话
+
+    Returns:
+        用户对象
+
+    Raises:
+        HTTPException: token无效或用户不存在
+    """
+    return await get_current_user_by_token(token, session)
+
+
+def get_auth_token(authorization: str = Header(default=None)) -> str:
+    """
+    从 Authorization header 提取 Bearer token
+
+    Args:
+        authorization: Authorization header 值
+
+    Returns:
+        JWT token 字符串
+
+    Raises:
+        HTTPException: header 格式无效
+    """
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="缺少认证令牌",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的认证令牌格式",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return authorization[len("Bearer "):]
+
+
 
 
 # ==================== API端点 ====================
