@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-01-26] - v0.5.4 - History页面触摸事件修复
+
+### 🐛 Bug 修复
+
+**History页面触摸事件冲突**：
+- 修复了History页面中"Cannot read properties of null (reading 'getBoundingClientRect')"错误
+- 问题原因：ScrollArea组件被用于处理触摸事件，导致Radix UI内部DOM访问失败
+- 修复方案：将触摸事件处理从ScrollArea移到外层div容器
+- 确保移动端右滑返回功能正常工作，不影响ScrollArea的滚动功能
+
+---
+
 ## [2026-01-26] - v0.5.3 - 复杂模式Loading优化与UI改进
 
 ### 🎨 UI改进
