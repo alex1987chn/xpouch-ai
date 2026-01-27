@@ -1,18 +1,40 @@
 services:
+  # PostgreSQL 数据库服务
+  db:
+    image: postgres:15-alpine
+    container_name: xpouch-postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-xpouch_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
+      POSTGRES_DB: ${POSTGRES_DB:-xpouch_ai}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-xpouch_admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
   # 后端服务
   backend:
     build: ./backend
     container_name: xpouch-backend
     restart: always
-    volumes:
-      # 持久化 SQLite 数据库
-      - ./data:/app/data
     env_file:
       - ./backend/.env
     environment:
       - PORT=3000
-      # 数据库路径指向挂载卷
-      - DATABASE_URL=sqlite:////app/data/database.db
+      # PostgreSQL 连接串（服务器部署时）
+      # Docker Compose 会自动替换服务名 db 为实际容器IP
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-xpouch_admin}:${POSTGRES_PASSWORD:-admin123}@db:5432/${POSTGRES_DB:-xpouch_ai}
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - app-network
 
@@ -30,6 +52,9 @@ services:
       - backend
     networks:
       - app-network
+
+volumes:
+  postgres_data:
 
 networks:
   app-network:
