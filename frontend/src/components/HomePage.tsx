@@ -345,7 +345,7 @@ export default function HomePage() {
   ]
 
   return (
-    <div className="h-screen flex overflow-hidden">
+    <div className="h-full min-h-screen">
       {/* 网格背景 */}
       <GridPattern />
 
@@ -358,11 +358,11 @@ export default function HomePage() {
       </button>
 
       {/* Main Content */}
-      <main className="flex-1 h-full relative overflow-y-auto">
+      <main className="flex-1 min-h-screen relative">
         {/* System Status Marquee */}
         <SystemStatusMarquee className="sticky top-0 z-10" />
 
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-12 py-8 lg:py-12 flex flex-col">
+        <div className="max-w-6xl px-12 py-12 flex flex-col">
           {/* Hero Section */}
           <div className="flex-none flex flex-col items-start justify-center mb-10 select-none">
             <div className="flex gap-2 mb-6">
@@ -413,7 +413,8 @@ export default function HomePage() {
                     }
                   }}
                   placeholder="// Initialize construct..."
-                  className="flex-1 w-full min-h-[128px] bg-transparent py-6 pl-6 pr-6 text-xl font-bold font-mono text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-0 border-none resize-none z-10 relative"
+                  className="flex-1 w-full h-[135px] bg-transparent py-6 text-[20px] leading-[28px] font-bold font-mono text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-0 border-none resize-none z-10 relative"
+                  style={{ paddingLeft: '24px', paddingRight: '24px', paddingTop: '24px', paddingBottom: '24px' }}
                 />
               </div>
 
