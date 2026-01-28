@@ -25,6 +25,7 @@ from utils.json_parser import parse_llm_json
 from utils.exceptions import AppError
 from constants import COMMANDER_SYSTEM_PROMPT
 from agents.dynamic_experts import DYNAMIC_EXPERT_FUNCTIONS, initialize_expert_cache
+from agents.expert_loader import get_expert_config_cached
 
 
 # ============================================================================
@@ -132,8 +133,20 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
     last_message = messages[-1]
     user_query = last_message.content if isinstance(last_message, HumanMessage) else str(last_message.content)
     
-    # 指挥官系统提示词（使用constants.py中的常量）
-    system_prompt = COMMANDER_SYSTEM_PROMPT
+    # 从数据库加载指挥官配置（使用 expert_key="commander"）
+    commander_config = get_expert_config_cached("commander")
+    
+    if not commander_config:
+        # 回退到常量（保持向后兼容）
+        system_prompt = COMMANDER_SYSTEM_PROMPT
+        model = "gpt-4o"
+        temperature = 0.5
+        print(f"[CMD] Using fallback commander config (not found in database)")
+    else:
+        system_prompt = commander_config["system_prompt"]
+        model = commander_config["model"]
+        temperature = commander_config["temperature"]
+        print(f"[CMD] Loaded commander config from database: model={model}, temp={temperature}")
     
     # 构建提示词模板
     prompt = ChatPromptTemplate.from_messages([
@@ -143,7 +156,13 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
 
     # 调用 LLM 并使用通用解析器
     try:
-        response = await llm.ainvoke([
+        # 使用配置的模型和温度参数
+        llm_with_config = llm.bind(
+            model=model,
+            temperature=temperature
+        )
+        
+        response = await llm_with_config.ainvoke([
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"用户查询：{user_query}\n\n请将此查询拆解为子任务列表。\n\n必须以 JSON 格式输出，包含 tasks 列表、strategy 和 estimated_steps。")
         ])

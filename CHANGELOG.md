@@ -5,6 +5,38 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-01-28] - v0.6.2 - 专家初始化脚本修复与指挥官配置优化
+
+### 🐛 Bug 修复
+
+**同步/异步不兼容问题**：
+- 修复了 `init_experts.py` 中的致命同步/异步不兼容问题
+- 自动检测数据库引擎类型（AsyncEngine 或同步引擎）
+- 智能选择会话模式（AsyncSession 或 Session）
+- 兼容 FastAPI + SQLModel 异步项目架构
+
+### 🔧 技术改进
+
+**专家初始化脚本安全模式**：
+- 引入安全模式（默认）：仅创建缺失专家，不覆盖现有配置
+- 添加更新模式（`--update`）：显式覆盖现有专家配置为默认值
+- 命令行参数支持：`list`、`--safe`、`--help`
+- 详细日志输出：显示创建/跳过/更新的专家信息
+
+**指挥官配置动态加载**：
+- 修改 `graph.py` 中的指挥官节点，从数据库加载配置
+- 支持 `expert_key="commander"` 的独立模型和温度参数
+- 降级策略：数据库无数据时自动使用硬编码提示词常量
+- 日志输出：显示加载的配置来源和参数
+
+### ✨ 功能增强
+
+**指挥官专家集成**：
+- 在 `init_experts.py` 中添加指挥官专家（commander）默认配置
+- 使用 `constants.COMMANDER_SYSTEM_PROMPT` 作为默认系统提示词
+- 模型：gpt-4o，温度：0.5，与其他专家配置保持一致
+- 支持通过专家管理页面调整指挥官 Prompt 和参数
+
 ## [2026-01-27] - v0.6.1 - Bug 修复与 PostgreSQL 优化
 
 ### 🐛 Bug 修复

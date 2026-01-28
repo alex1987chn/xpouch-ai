@@ -2,13 +2,65 @@
 初始化系统专家数据
 
 此脚本在 SystemExpert 表中创建默认的专家配置
-包括：search, coder, researcher, analyzer, writer, planner, image_analyzer
+包括：search, coder, researcher, analyzer, writer, planner, image_analyzer, commander
+
+特性：
+1. 安全模式（默认）：仅创建缺失的专家，不覆盖现有专家
+2. 更新模式（--update）：覆盖现有专家的配置为默认值
+3. 异步兼容：自动检测数据库引擎类型，支持同步和异步会话
+
+使用方法：
+  python init_experts.py [options]
+
+选项：
+  list                   列出数据库中的所有专家
+  --update               更新模式：覆盖现有专家配置
+  --safe                 安全模式：仅创建缺失专家（默认）
+  --help                 显示帮助信息
+
+示例：
+  # 安全模式初始化（默认）
+  python init_experts.py
+
+  # 更新模式初始化（覆盖现有专家）
+  python init_experts.py --update
+
+  # 列出所有专家
+  python init_experts.py list
 """
 import sys
 from pathlib import Path
 
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# 导入指挥官系统提示词常量
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from constants import COMMANDER_SYSTEM_PROMPT
+import asyncio
+from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
+from sqlmodel import Session, select
+from models import SystemExpert
+from database import engine
+
+
+def get_session_class_and_engine():
+    """返回适当的会话类和引擎实例"""
+    # 检查引擎是否为异步引擎
+    try:
+        from sqlalchemy.ext.asyncio import AsyncEngine
+        if isinstance(engine, AsyncEngine):
+            print("[Info] Using AsyncSession (async engine detected)")
+            return AsyncSession, engine
+    except ImportError:
+        pass
+    
+    # 回退到同步会话
+    print("[Info] Using Session (sync engine)")
+    return Session, engine
+
+
+
 
 
 # 专家默认配置（导出给 main.py 使用）
@@ -247,81 +299,170 @@ EXPERT_DEFAULTS = [
 - 根据需求调整分析的深度和广度""",
         "model": "gpt-4o",
         "temperature": 0.3
+    },
+    {
+        "expert_key": "commander",
+        "name": "任务指挥官",
+        "system_prompt": COMMANDER_SYSTEM_PROMPT,
+        "model": "gpt-4o",
+        "temperature": 0.5
     }
 ]
 
 
-def init_experts():
-    """初始化系统专家数据"""
-    from sqlmodel import Session, select
+async def init_experts_async(update_existing=False):
+    """异步初始化系统专家数据"""
+    SessionClass, engine = get_session_class_and_engine()
+    
+    # 选择上下文管理器
+    if SessionClass == AsyncSession:
+        async with SessionClass(engine) as session:
+            await process_experts(session, update_existing)
+    else:
+        with SessionClass(engine) as session:
+            # 同步会话，但我们仍可以调用异步函数
+            await process_experts(session, update_existing)
+
+async def process_experts(session, update_existing):
+    """处理专家插入/更新逻辑"""
+    from sqlmodel import select
     from models import SystemExpert
-    from database import engine
-
-    with Session(engine) as session:
-        # 检查现有专家
+    
+    # 检查现有专家
+    if isinstance(session, AsyncSession):
+        result = await session.execute(select(SystemExpert))
+        existing_experts = result.scalars().all()
+    else:
         existing_experts = session.exec(select(SystemExpert)).all()
-        existing_keys = {e.expert_key for e in existing_experts}
-
-        print(f"Found {len(existing_experts)} existing experts in database")
-
-        # 插入或更新专家
-        updated_count = 0
-        created_count = 0
-
-        for expert_config in EXPERT_DEFAULTS:
-            expert_key = expert_config["expert_key"]
-
-            if expert_key in existing_keys:
+    
+    existing_keys = {e.expert_key for e in existing_experts}
+    print(f"Found {len(existing_experts)} existing experts in database")
+    
+    updated_count = 0
+    created_count = 0
+    
+    for expert_config in EXPERT_DEFAULTS:
+        expert_key = expert_config["expert_key"]
+        
+        if expert_key in existing_keys:
+            if update_existing:
                 # 更新现有专家
-                expert = session.exec(
-                    select(SystemExpert).where(SystemExpert.expert_key == expert_key)
-                ).first()
-                expert.name = expert_config["name"]
-                expert.system_prompt = expert_config["system_prompt"]
-                expert.model = expert_config["model"]
-                expert.temperature = expert_config["temperature"]
-                session.add(expert)
-                updated_count += 1
-                print(f"✓ Updated expert: {expert_key}")
+                if isinstance(session, AsyncSession):
+                    result = await session.execute(
+                        select(SystemExpert).where(SystemExpert.expert_key == expert_key)
+                    )
+                    expert = result.scalar_one_or_none()
+                else:
+                    expert = session.exec(
+                        select(SystemExpert).where(SystemExpert.expert_key == expert_key)
+                    ).first()
+                
+                if expert:
+                    expert.name = expert_config["name"]
+                    expert.system_prompt = expert_config["system_prompt"]
+                    expert.model = expert_config["model"]
+                    expert.temperature = expert_config["temperature"]
+                    session.add(expert)
+                    updated_count += 1
+                    print(f"✓ Updated expert: {expert_key}")
             else:
-                # 创建新专家
-                expert = SystemExpert(**expert_config)
-                session.add(expert)
-                created_count += 1
-                print(f"✓ Created expert: {expert_key}")
-
+                print(f"⚠ Skipping existing expert: {expert_key} (use --update to overwrite)")
+        else:
+            # 创建新专家
+            expert = SystemExpert(**expert_config)
+            session.add(expert)
+            created_count += 1
+            print(f"✓ Created expert: {expert_key}")
+    
+    # 提交事务
+    if isinstance(session, AsyncSession):
+        await session.commit()
+    else:
         session.commit()
+    
+    print(f"\nInitialization complete:")
+    print(f"  - Created: {created_count} experts")
+    print(f"  - Updated: {updated_count} experts")
+    print(f"  - Total: {len(EXPERT_DEFAULTS)} experts")
 
-        print(f"\nInitialization complete:")
-        print(f"  - Created: {created_count} experts")
-        print(f"  - Updated: {updated_count} experts")
-        print(f"  - Total: {len(EXPERT_DEFAULTS)} experts")
+def init_experts(update_existing=False):
+    """同步包装器，向后兼容"""
+    asyncio.run(init_experts_async(update_existing))
 
+
+async def list_experts_async():
+    """异步列出所有专家"""
+    SessionClass, engine = get_session_class_and_engine()
+    
+    if SessionClass == AsyncSession:
+        async with SessionClass(engine) as session:
+            await list_experts_process(session)
+    else:
+        with SessionClass(engine) as session:
+            await list_experts_process(session)
+
+async def list_experts_process(session):
+    """处理列出专家逻辑"""
+    from sqlmodel import select
+    from models import SystemExpert
+    
+    if isinstance(session, AsyncSession):
+        result = await session.execute(select(SystemExpert))
+        experts = result.scalars().all()
+    else:
+        experts = session.exec(select(SystemExpert)).all()
+    
+    print(f"\nTotal experts in database: {len(experts)}\n")
+    
+    for expert in experts:
+        print(f"Expert Key: {expert.expert_key}")
+        print(f"  Name: {expert.name}")
+        print(f"  Model: {expert.model}")
+        print(f"  Temperature: {expert.temperature}")
+        print(f"  Updated: {expert.updated_at}")
+        print(f"  Prompt Length: {len(expert.system_prompt)} characters")
+        print()
 
 def list_experts():
-    """列出所有专家"""
-    from sqlmodel import Session, select
-    from models import SystemExpert
-    from database import engine
-
-    with Session(engine) as session:
-        experts = session.exec(select(SystemExpert)).all()
-        print(f"\nTotal experts in database: {len(experts)}\n")
-
-        for expert in experts:
-            print(f"Expert Key: {expert.expert_key}")
-            print(f"  Name: {expert.name}")
-            print(f"  Model: {expert.model}")
-            print(f"  Temperature: {expert.temperature}")
-            print(f"  Updated: {expert.updated_at}")
-            print(f"  Prompt Length: {len(expert.system_prompt)} characters")
-            print()
+    """同步包装器，向后兼容"""
+    asyncio.run(list_experts_async())
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "list":
+    import sys
+    
+    # 默认安全模式（不覆盖现有专家）
+    update_existing = False
+    
+    # 解析命令行参数
+    args = sys.argv[1:]
+    if not args:
+        # 无参数：安全模式初始化
+        print("Initializing system experts (safe mode, no overwrite)...")
+        init_experts(update_existing=False)
+        list_experts()
+    elif args[0] == "list":
         list_experts()
     else:
+        # 解析标志
+        for arg in args:
+            if arg == "--update":
+                update_existing = True
+                print("⚠ Update mode enabled: existing experts will be overwritten!")
+            elif arg == "--safe":
+                update_existing = False
+                print("Safe mode: skipping existing experts (no overwrite)")
+            elif arg == "--help":
+                print("Usage: python init_experts.py [options]")
+                print("Options:")
+                print("  list                    List all experts in database")
+                print("  --update                Update existing experts (overwrite with defaults)")
+                print("  --safe                  Safe mode: only create missing experts (default)")
+                print("  --help                  Show this help message")
+                sys.exit(0)
+            else:
+                print(f"Warning: Unknown argument '{arg}'")
+        
         print("Initializing system experts...")
-        init_experts()
+        init_experts(update_existing=update_existing)
         list_experts()
