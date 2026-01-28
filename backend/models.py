@@ -1,7 +1,8 @@
 from typing import List, Optional
 from datetime import datetime
 from uuid import uuid4
-from sqlmodel import Field, SQLModel, Relationship, JSON, Session, select
+from sqlmodel import Field, SQLModel, Relationship, JSON, Session, select, Column
+from sqlalchemy import String
 from pydantic import BaseModel, Field as PydanticField
 from enum import Enum
 
@@ -61,7 +62,10 @@ class User(SQLModel, table=True):
     username: str = Field(default="User")
     avatar: Optional[str] = None
     plan: str = Field(default="Free") # Free, Pilot, Maestro
-    role: UserRole = Field(default=UserRole.USER, sa_column_kwargs={"name": "role"})  # 用户角色：user 或 admin
+    role: UserRole = Field(
+        default=UserRole.USER,
+        sa_column=Column(String(10))  # 使用 String 类型映射，保持数据库列为 VARCHAR
+    )
     phone_number: Optional[str] = Field(default=None, unique=True, index=True)
     email: Optional[str] = Field(default=None, unique=True, index=True)
     password_hash: Optional[str] = Field(default=None)
