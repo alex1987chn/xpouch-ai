@@ -42,6 +42,7 @@ export default function ExpertAdminPage() {
     temperature: 0.5,
   })
 
+
   // 预览相关状态
   const [previewMode, setPreviewMode] = useState(false)
   const [testInput, setTestInput] = useState('')
@@ -200,6 +201,8 @@ export default function ExpertAdminPage() {
     expert.expert_key.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+
+
   useEffect(() => {
     loadExperts()
   }, [])
@@ -296,115 +299,117 @@ export default function ExpertAdminPage() {
             </div>
           )}
         </CardHeader>
-        <CardContent className="p-6 overflow-y-auto flex-1">
+        <CardContent className="p-6 flex-1 flex flex-col overflow-hidden">
           {selectedExpert ? (
-            <div className="space-y-6">
+            <div className="flex flex-col h-full space-y-6">
               {/* 编辑模式 */}
               {!previewMode && (
-                <>
-                  {/* 模型选择 - 两级联动 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {t('model')}
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* 供应商选择 */}
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">供应商</label>
-                        <Select
-                          value={selectedProvider}
-                          onValueChange={(value) => {
-                            setSelectedProvider(value)
-                            // 切换供应商时，自动选择该供应商的第一个模型
-                            const firstModel = models.find(m => m.provider === value)
-                            if (firstModel) {
-                              setSelectedModel(firstModel.id)
-                              handleFieldChange('model', firstModel.id)
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from(new Set(models.map(m => m.provider))).map((provider) => (
-                              <SelectItem key={provider} value={provider}>
-                                {provider.charAt(0).toUpperCase() + provider.slice(1)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                <div className="flex flex-col h-full">
+                  {/* 内容区域 - 可滚动 */}
+                  <div className="flex-1 overflow-y-auto space-y-6">
+                    {/* 模型选择 - 两级联动 */}
+                    <div className="flex-shrink-0">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {t('model')}
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* 供应商选择 */}
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">供应商</label>
+                          <Select
+                            value={selectedProvider}
+                            onValueChange={(value) => {
+                              setSelectedProvider(value)
+                              // 切换供应商时，自动选择该供应商的第一个模型
+                              const firstModel = models.find(m => m.provider === value)
+                              if (firstModel) {
+                                setSelectedModel(firstModel.id)
+                                handleFieldChange('model', firstModel.id)
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from(new Set(models.map(m => m.provider))).map((provider) => (
+                                <SelectItem key={provider} value={provider}>
+                                  {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* 模型选择 */}
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">模型</label>
+                          <Select
+                            value={selectedModel}
+                            onValueChange={(value) => {
+                              setSelectedModel(value)
+                              handleFieldChange('model', value)
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {models.filter(m => m.provider === selectedProvider).map((model) => (
+                                <SelectItem key={model.id} value={model.id}>
+                                  {model.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
+                    </div>
 
-                      {/* 模型选择 */}
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">模型</label>
-                        <Select
-                          value={selectedModel}
-                          onValueChange={(value) => {
-                            setSelectedModel(value)
-                            handleFieldChange('model', value)
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {models.filter(m => m.provider === selectedProvider).map((model) => (
-                              <SelectItem key={model.id} value={model.id}>
-                                {model.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                    {/* 温度参数 */}
+                    <div className="flex-shrink-0">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {t('temperatureValue').replace('{value}', (formData.temperature ?? 0.5).toString())}
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="2"
+                        step="0.1"
+                        value={formData.temperature ?? 0.5}
+                        onChange={(e) =>
+                          handleFieldChange('temperature', parseFloat(e.target.value))
+                        }
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>0.0 (保守)</span>
+                        <span>1.0 (平衡)</span>
+                        <span>2.0 (创造性)</span>
+                      </div>
+                    </div>
+
+                    {/* 系统提示词 - 可调整大小 */}
+                    <div className="flex-shrink-0">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {t('systemPrompt')}
+                      </label>
+                      <Textarea
+                        value={formData.system_prompt}
+                        onChange={(e) =>
+                          handleFieldChange('system_prompt', e.target.value)
+                        }
+                        placeholder={t('systemPromptPlaceholder')}
+                        className="font-mono text-sm resize-y h-[150px] min-h-[150px] max-h-[250px]"
+                      />
+                      <div className="text-xs text-gray-500 mt-2 text-right">
+                        {t('characters').replace('{count}', formData.system_prompt.length.toString())}
                       </div>
                     </div>
                   </div>
 
-                  {/* 温度参数 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {t('temperatureValue').replace('{value}', (formData.temperature ?? 0.5).toString())}
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="2"
-                      step="0.1"
-                      value={formData.temperature ?? 0.5}
-                      onChange={(e) =>
-                        handleFieldChange('temperature', parseFloat(e.target.value))
-                      }
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>0.0 ({t('pending')})</span>
-                      <span>1.0</span>
-                      <span>2.0 ({t('completed')})</span>
-                    </div>
-                  </div>
-
-                  {/* 系统提示词 */}
-                  <div className="flex flex-col min-h-0">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {t('systemPrompt')}
-                    </label>
-                    <Textarea
-                      value={formData.system_prompt}
-                      onChange={(e) =>
-                        handleFieldChange('system_prompt', e.target.value)
-                      }
-                      placeholder={t('systemPromptPlaceholder')}
-                      className="font-mono text-sm resize-none"
-                      style={{ height: '300px' }}
-                    />
-                    <div className="text-xs text-gray-500 mt-2 text-right">
-                      {t('characters').replace('{count}', formData.system_prompt.length.toString())}
-                    </div>
-                  </div>
-
-                  {/* 保存按钮 */}
-                  <div className="flex justify-end pt-4 border-t">
+                  {/* 保存按钮 - 固定在底部 */}
+                  <div className="flex justify-end pt-4 border-t flex-shrink-0">
                     <Button
                       onClick={handleSave}
                       disabled={isSaving || formData.system_prompt.length < 10}
@@ -423,80 +428,83 @@ export default function ExpertAdminPage() {
                       )}
                     </Button>
                   </div>
-                </>
+                </div>
               )}
 
               {/* 预览模式 */}
               {previewMode && (
-                <>
-                  {/* 测试输入 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {t('testInput')}
-                    </label>
-                    <Textarea
-                      value={testInput}
-                      onChange={(e) => setTestInput(e.target.value)}
-                      placeholder={t('testInputPlaceholder')}
-                      className="min-h-[100px] font-mono text-sm"
-                    />
-                    <div className="text-xs text-gray-500 mt-2 text-right">
-                      {t('testInputMinChars').replace('{count}', testInput.length.toString())}
+                <div className="flex flex-col h-full">
+                  {/* 内容区域 - 可滚动 */}
+                  <div className="flex-1 overflow-y-auto space-y-6">
+                    {/* 测试输入 */}
+                    <div className="flex-shrink-0">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {t('testInput')}
+                      </label>
+                      <Textarea
+                        value={testInput}
+                        onChange={(e) => setTestInput(e.target.value)}
+                        placeholder={t('testInputPlaceholder')}
+                        className="min-h-[100px] font-mono text-sm"
+                      />
+                      <div className="text-xs text-gray-500 mt-2 text-right">
+                        {t('testInputMinChars').replace('{count}', testInput.length.toString())}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* 预览按钮 */}
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={handlePreview}
-                      disabled={isPreviewing || testInput.length < 10}
-                      className="min-w-[120px]"
-                    >
-                      {isPreviewing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          {t('previewing')}
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-4 h-4 mr-2" />
-                          {t('startPreview')}
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                    {/* 预览按钮 */}
+                    <div className="flex justify-end flex-shrink-0">
+                      <Button
+                        onClick={handlePreview}
+                        disabled={isPreviewing || testInput.length < 10}
+                        className="min-w-[120px]"
+                      >
+                        {isPreviewing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            {t('previewing')}
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4 mr-2" />
+                            {t('startPreview')}
+                          </>
+                        )}
+                      </Button>
+                    </div>
 
-                  {/* 预览结果 */}
-                  {previewResult && (
-                    <div className="mt-6 space-y-4">
-                      <div className="border-t pt-4">
-                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                          {t('previewResults')}
-                        </h3>
+                    {/* 预览结果 */}
+                    {previewResult && (
+                      <div className="space-y-4">
+                        <div className="border-t pt-4">
+                          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                            {t('previewResults')}
+                          </h3>
 
-                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                              <div className="text-xs text-gray-500">{t('usedModel')}</div>
+                              <div className="text-sm font-medium">{previewResult.model}</div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-gray-500">{t('temperature')}</div>
+                              <div className="text-sm font-medium">{previewResult.temperature}</div>
+                            </div>
+                          </div>
+
                           <div>
-                            <div className="text-xs text-gray-500">{t('usedModel')}</div>
-                            <div className="text-sm font-medium">{previewResult.model}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-gray-500">{t('temperature')}</div>
-                            <div className="text-sm font-medium">{previewResult.temperature}</div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">
-                            {t('expertResponse')} ({t('executionTime')}: {t('seconds').replace('{time}', (previewResult.execution_time_ms / 1000).toFixed(2))})
-                          </div>
-                          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
-                            {previewResult.preview_response}
+                            <div className="text-xs text-gray-500 mb-1">
+                              {t('expertResponse')} ({t('executionTime')}: {t('seconds').replace('{time}', (previewResult.execution_time_ms / 1000).toFixed(2))})
+                            </div>
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
+                              {previewResult.preview_response}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           ) : (
