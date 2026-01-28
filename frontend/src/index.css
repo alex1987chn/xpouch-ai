@@ -3,52 +3,88 @@
 @tailwind utilities;
 
 @layer base {
-  /* Light theme (default) - 閸愰鎽查悘?*/
+  /* ============================================
+     BAUHAUS DESIGN SYSTEM - 包豪斯设计系统
+     Geometric | Brutalism | High Contrast | No Border Radius
+     ============================================ */
+
+  /* Light mode - 魏玛纸张 */
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222.2 84% 4.9%;
+    /* Shadcn UI兼容变量 */
+    --background: 60 14% 93%;
+    --foreground: 0 0% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 60 14% 93%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 60 10% 90%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 48 96% 53%;
+    --accent-foreground: 0 0% 10%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 10%;
+    --input: 0 0% 10%;
+    --ring: 217 91% 60%;
+    --radius: 0rem;
+
+    /* Bauhaus专用变量 */
+    --bauhaus-bg: #f0f0eb;
+    --bauhaus-card: #ffffff;
+    --bauhaus-border: #1a1a1a;
+    --bauhaus-text: #1a1a1a;
+    --bauhaus-shadow: #1a1a1a;
+    --bauhaus-muted: #6b6b6b;
+    --bauhaus-input-bg: #fafaf8;
+
+    /* Bauhaus 原色 - Primary Colors */
+    --bauhaus-yellow: #facc15;
+    --bauhaus-blue: #2563eb;
+    --bauhaus-red: #ef4444;
+
+    /* Hard Shadow偏移量 */
+    --shadow-offset-x: 4px;
+    --shadow-offset-y: 4px;
+    --shadow-blur: 0px;
+    --shadow-spread: 0px;
   }
 
-  /* Dark theme - 濞ｉ亶鍊戦拑婵嬬拨 */
+  /* Dark mode - 德绍之夜 */
   html.dark,
   .dark {
-    --background: 222 47% 3.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    /* Shadcn UI兼容变量 */
+    --background: 0 0% 7%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 100%;
+    --input: 0 0% 100%;
+    --ring: 217 91% 60%;
+
+    /* Bauhaus专用变量 */
+    --bauhaus-bg: #111111;
+    --bauhaus-card: #1a1a1a;
+    --bauhaus-border: #ffffff;
+    --bauhaus-text: #ffffff;
+    --bauhaus-shadow: #2563eb;
+    --bauhaus-muted: #888888;
+    --bauhaus-input-bg: #0a0a0a;
   }
 
   * {
@@ -56,9 +92,21 @@
   }
 
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background-color: var(--bauhaus-bg);
+    color: var(--bauhaus-text);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* Bauhaus 全局样式覆盖 */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  /* 移除默认圆角 */
+  button, input, textarea, select, [role="button"] {
+    border-radius: 0 !important;
   }
 }
 
@@ -484,22 +532,25 @@ main, header, .relative {
   animation: glow 2s ease-in-out infinite;
 }
 
-/* Custom scrollbar */
+/* ============================================
+   Bauhaus Scrollbar - 直角无圆角
+   ============================================ */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--bauhaus-bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.3);
-  border-radius: 4px;
+  background: var(--bauhaus-border);
+  border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.5);
+  background: var(--bauhaus-blue);
 }
 
 /* ============================================
@@ -766,6 +817,121 @@ main, header, .relative {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari, and Opera */
+}
+
+/* ============================================
+   BAUHAUS UTILITY CLASSES
+   ============================================ */
+
+/* Hard Shadow - 硬阴影 */
+.shadow-hard {
+  box-shadow: 4px 4px 0 0 var(--bauhaus-shadow);
+}
+
+.shadow-hard-hover {
+  box-shadow: 8px 8px 0 0 var(--bauhaus-yellow);
+}
+
+/* Dark mode硬阴影变蓝色 */
+.dark .shadow-hard {
+  box-shadow: 4px 4px 0 0 var(--bauhaus-shadow);
+}
+
+.dark .shadow-hard-hover {
+  box-shadow: 8px 8px 0 0 var(--bauhaus-blue);
+}
+
+/* Bauhaus Button Press Effect - 按压效果 */
+.bauhaus-press {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.bauhaus-press:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 0 var(--bauhaus-shadow);
+}
+
+.dark .bauhaus-press:active {
+  box-shadow: 2px 2px 0 0 var(--bauhaus-blue);
+}
+
+/* Bauhaus Card Hover - 悬浮效果 */
+.bauhaus-float {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bauhaus-float:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 0 var(--bauhaus-yellow);
+}
+
+.dark .bauhaus-float:hover {
+  box-shadow: 8px 8px 0 0 var(--bauhaus-blue);
+}
+
+/* Bauhaus Input Focus - 输入框聚焦 */
+.bauhaus-input {
+  border: 2px solid var(--bauhaus-border);
+  background-color: var(--bauhaus-input-bg);
+  transition: border-width 0.15s ease, border-color 0.15s ease;
+}
+
+.bauhaus-input:focus {
+  outline: none;
+  border-width: 4px;
+  border-color: var(--bauhaus-blue);
+}
+
+/* Bauhaus Border - 粗边框 */
+.border-bauhaus {
+  border: 2px solid var(--bauhaus-border);
+}
+
+.border-bauhaus-thick {
+  border: 3px solid var(--bauhaus-border);
+}
+
+/* Bauhaus Backgrounds */
+.bg-bauhaus {
+  background-color: var(--bauhaus-bg);
+}
+
+.bg-bauhaus-card {
+  background-color: var(--bauhaus-card);
+}
+
+/* Bauhaus Text Colors */
+.text-bauhaus {
+  color: var(--bauhaus-text);
+}
+
+.text-bauhaus-muted {
+  color: var(--bauhaus-muted);
+}
+
+/* Bauhaus Accent Colors */
+.text-bauhaus-yellow {
+  color: var(--bauhaus-yellow);
+}
+
+.text-bauhaus-blue {
+  color: var(--bauhaus-blue);
+}
+
+.text-bauhaus-red {
+  color: var(--bauhaus-red);
+}
+
+.bg-bauhaus-yellow {
+  background-color: var(--bauhaus-yellow);
+}
+
+.bg-bauhaus-blue {
+  background-color: var(--bauhaus-blue);
+}
+
+.bg-bauhaus-red {
+  background-color: var(--bauhaus-red);
 }
 
 

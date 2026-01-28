@@ -52,6 +52,21 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // ============================================
+        // BAUHAUS DESIGN SYSTEM - 包豪斯设计系统
+        // ============================================
+        bauhaus: {
+          bg: 'var(--bauhaus-bg)',
+          card: 'var(--bauhaus-card)',
+          border: 'var(--bauhaus-border)',
+          text: 'var(--bauhaus-text)',
+          shadow: 'var(--bauhaus-shadow)',
+          muted: 'var(--bauhaus-muted)',
+          input: 'var(--bauhaus-input-bg)',
+          yellow: 'var(--bauhaus-yellow)',
+          blue: 'var(--bauhaus-blue)',
+          red: 'var(--bauhaus-red)',
+        },
         // 1. 糖果色系 (Vibe Palette)
         vibe: {
           bg: "#F8FAFC",
@@ -81,6 +96,14 @@ const config: Config = {
           card: { light: 'var(--ai-card-light)', dark: 'var(--ai-card-dark)' }
         }
       },
+      // Bauhaus Box Shadow - 硬阴影系统
+      boxShadow: {
+        'hard': '4px 4px 0 0 var(--bauhaus-shadow)',
+        'hard-hover': '8px 8px 0 0 var(--bauhaus-yellow)',
+        'hard-sm': '2px 2px 0 0 var(--bauhaus-shadow)',
+        'hard-lg': '6px 6px 0 0 var(--bauhaus-shadow)',
+        'hard-xl': '8px 8px 0 0 var(--bauhaus-shadow)',
+      },
       // 2. 输入框光晕的背景渐变
       backgroundImage: {
         'mesh-glow': "radial-gradient(at 20% 20%, #E9D5FF 0%, transparent 50%), radial-gradient(at 80% 10%, #DBEAFE 0%, transparent 50%), radial-gradient(at 50% 90%, #D1FAE5 0%, transparent 50%)",
@@ -91,6 +114,13 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        'bauhaus': '0',
+      },
+      // Bauhaus Border Width - 粗边框系统
+      borderWidth: {
+        '3': '3px',
+        '4': '4px',
+        'bauhaus': '2px',
       },
       keyframes: {
         "accordion-down": {
@@ -117,12 +147,23 @@ const config: Config = {
             filter: "brightness(1.2)"
           },
         },
+        // Bauhaus Animations
+        "bauhaus-press": {
+          "0%": { transform: "translate(0, 0)", boxShadow: "4px 4px 0 0 var(--bauhaus-shadow)" },
+          "100%": { transform: "translate(2px, 2px)", boxShadow: "2px 2px 0 0 var(--bauhaus-shadow)" },
+        },
+        "bauhaus-float": {
+          "0%, 100%": { transform: "translate(0, 0)" },
+          "50%": { transform: "translate(-2px, -2px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "vibe-pulse": "vibe-pulse 12s infinite ease-in-out",
         "pulse-glow": "pulse-glow 0.8s ease-in-out infinite",
+        "bauhaus-press": "bauhaus-press 0.1s ease-out forwards",
+        "bauhaus-float": "bauhaus-float 0.3s ease-out",
       },
       backdropBlur: {
         xl: "20px",
