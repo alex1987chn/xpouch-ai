@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { ReactNode } from 'react'
-import Sidebar from './Sidebar'
 import { cn } from '@/lib/utils'
 import { Menu, ChevronLeft, ChevronRight } from 'lucide-react'
+import { BauhausSidebar } from '@/components/bauhaus'
 
 interface MainChatLayoutProps {
   children: ReactNode
@@ -29,7 +29,7 @@ export default function MainChatLayout({ children, className, hasMessages = fals
   return (
     <div
       className={cn(
-        'flex w-full bg-slate-50 dark:bg-[#020617] transition-colors duration-200 overflow-x-hidden',
+        'flex w-full bg-[var(--bg-page)] dark:bg-[var(--bg-page)] transition-colors duration-200 overflow-x-hidden',
         // 只有在其他页面（非首页）时才固定高度
         hasMessages ? 'h-[100dvh]' : 'min-h-[100dvh]'
       )}
@@ -42,59 +42,59 @@ export default function MainChatLayout({ children, className, hasMessages = fals
         />
       )}
 
-      {/* 左侧边栏 - 统一样式，全局层级 */}
+      {/* 左侧边栏 - Bauhaus 风格 */}
       <aside className={cn(
-        'fixed left-0 top-0 h-screen flex-shrink-0 transition-transform duration-200 z-[150]',
-        'w-[64px]',
-        'bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a]',
-        'backdrop-blur-xl',
-        'border-r border-slate-200/50 dark:border-slate-700/30',
+        'fixed left-0 top-0 h-screen flex-shrink-0 transition-all duration-300 z-[150]',
+        'border-r-2 border-[var(--border-color)] bg-[var(--bg-card)]',
+        isDesktopSidebarCollapsed ? 'w-[72px]' : 'w-[280px]',
         'lg:translate-x-0',
         isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full',
-        isDesktopSidebarCollapsed && 'lg:-translate-x-full',
       )}>
         <div className="h-full w-full">
-          <Sidebar
+          <BauhausSidebar
             isCollapsed={isDesktopSidebarCollapsed}
+            isMobileOpen={isMobileSidebarOpen}
+            onMobileClose={() => setIsMobileSidebarOpen(false)}
             onCreateAgent={onCreateAgent}
             onSettingsClick={onSettingsClick}
             onPersonalSettingsClick={onPersonalSettingsClick}
+            onToggleCollapsed={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
           />
         </div>
       </aside>
 
-      {/* 收拢/展开按钮 - 与头像水平对齐 */}
+      {/* 收拢/展开按钮 */}
       <div className={cn(
-        'fixed bottom-[55px] z-50 transition-all duration-200 lg:flex hidden',
-        isDesktopSidebarCollapsed ? 'left-[12px]' : 'left-[64px]'
+        'fixed bottom-4 z-50 transition-all duration-300 lg:flex hidden',
+        isDesktopSidebarCollapsed ? 'left-[72px]' : 'left-[280px]'
       )}>
-        {/* 收拢/展开侧边栏按钮 */}
+        {/* 收拢/展开侧边栏按钮 - Bauhaus风格 */}
         <button
           onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
-          className="w-6 h-6 rounded-full border border-gray-300 bg-gray-200/50 hover:bg-gray-300/50 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors shadow-md"
+          className="p-1.5 border-2 border-[var(--border-color)] bg-[var(--bg-page)] shadow-[var(--shadow-color)_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_3px_3px_0_0]"
           title={isDesktopSidebarCollapsed ? '展开侧边栏' : '收拢侧边栏'}
         >
           {isDesktopSidebarCollapsed ? (
-            <ChevronRight className="w-3 h-3" />
+            <ChevronRight className="w-3.5 h-3.5" />
           ) : (
-            <ChevronLeft className="w-3 h-3" />
+            <ChevronLeft className="w-3.5 h-3.5" />
           )}
         </button>
       </div>
 
-      {/* 主内容区域 - 添加左边距和移动端适配 */}
+      {/* 主内容区域 */}
       <div className={cn(
-        'flex-1 w-full flex flex-col transition-all duration-200',
-        isDesktopSidebarCollapsed ? 'lg:ml-0' : 'lg:ml-[64px]',
+        'flex-1 w-full flex flex-col transition-all duration-300',
+        isDesktopSidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-[280px]',
         isMobileSidebarOpen ? 'ml-0' : 'ml-0'
       )}>
-        {/* 移动端汉堡菜单按钮 */}
-        <div className="lg:hidden p-4">
+        {/* 移动端汉堡菜单按钮 - Bauhaus风格 */}
+        <div className="lg:hidden absolute top-4 left-4 z-50">
           <button
             onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-            className="p-2 rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors"
+            className="p-2 border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--accent-hover)_2px_2px_0_0]"
           >
-            <Menu className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+            <Menu className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
 

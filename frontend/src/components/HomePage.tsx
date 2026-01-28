@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Bot, Plus, Code2, FileText, Zap, LayoutGrid, Database, Cpu, Settings, Image, Paperclip, ArrowRight } from 'lucide-react'
+import { Bot, Plus, Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
@@ -9,38 +9,20 @@ import { deleteCustomAgent, getAllAgents } from '@/services/api'
 import type { Agent } from '@/types'
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { logger } from '@/utils/logger'
+import { useApp } from '@/providers/AppProvider'
 
-// Bauhaus Components
+// shadcn Components
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+
+// Bauhaus Components (shadcn 没有的功能)
 import {
-  BauhausCard,
-  BauhausButton,
-  BauhausTextarea,
-  The4DPocketLogo,
   SystemStatusMarquee,
   NoiseOverlay,
   GridPattern,
-  BlinkingCursor,
 } from '@/components/bauhaus'
 
 type ConversationMode = 'simple' | 'complex'
-
-// Navigation Item Component
-function NavItem({ icon: Icon, label, active = false }: { icon: React.ElementType; label: string; active?: boolean }) {
-  return (
-    <a
-      href="#"
-      className={cn(
-        "flex items-center gap-4 px-4 py-3 border-2 font-mono text-xs font-bold tracking-wide uppercase transition-all",
-        active
-          ? "bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]"
-          : "border-transparent hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]"
-      )}
-    >
-      <Icon className="w-4 h-4 stroke-[2.5]" />
-      <span>{label}</span>
-    </a>
-  )
-}
 
 // Scene Card Component
 function SceneCard({
@@ -59,11 +41,15 @@ function SceneCard({
   onClick?: () => void
 }) {
   return (
-    <BauhausCard
-      number={number}
+    <Card
       onClick={onClick}
       className="p-5 cursor-pointer group flex flex-col justify-between h-44 relative overflow-hidden"
     >
+      {/* 编号 - 右上角 */}
+      <div className="absolute top-0 right-0 p-2 font-mono text-[10px] font-bold opacity-30">
+        {number}
+      </div>
+
       {/* 右下角倒角装饰 */}
       <div className="absolute bottom-0 right-0 w-0 h-0 border-b-[20px] border-r-[20px] border-b-[var(--accent-hover)] border-r-transparent transition-all group-hover:border-b-[40px] group-hover:border-r-[40px]" />
 
@@ -77,7 +63,7 @@ function SceneCard({
         <h4 className="font-black text-lg mb-1 group-hover:underline decoration-2 underline-offset-4">{title}</h4>
         <p className="text-xs font-mono text-[var(--text-secondary)] leading-tight">{subtitle}</p>
       </div>
-    </BauhausCard>
+    </Card>
   )
 }
 
@@ -100,7 +86,7 @@ function ConstructCard({
   const isOnline = status === 'online'
 
   return (
-    <BauhausCard
+    <Card
       onClick={onClick}
       className="p-0 cursor-pointer group h-44 flex relative overflow-hidden"
     >
@@ -147,7 +133,7 @@ function ConstructCard({
           </div>
         </div>
       </div>
-    </BauhausCard>
+    </Card>
   )
 }
 
@@ -176,12 +162,19 @@ export default function HomePage() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  // 判断当前页面
+  const isOnHome = location.pathname === '/'
+  const isOnKnowledge = location.pathname === '/knowledge'
+  const isOnHistory = location.pathname === '/history'
+
   const {
     selectedAgentId,
     setSelectedAgentId,
     customAgents,
     setCustomAgents
   } = useChatStore()
+
+  const { sidebar } = useApp()
 
   // 刷新自定义智能体列表的状态
   const [refreshKey, setRefreshKey] = useState(0)
@@ -356,67 +349,20 @@ export default function HomePage() {
       {/* 网格背景 */}
       <GridPattern />
 
-      {/* Sidebar */}
-      <aside className="w-[280px] h-full flex flex-col justify-between p-6 z-20 relative border-r-2 border-[var(--border-color)] bg-[var(--bg-card)]">
-        <div>
-          {/* Logo */}
-          <div className="flex items-center gap-4 mb-12 cursor-pointer group select-none">
-            <The4DPocketLogo size={42} />
-            <div>
-              <h1 className="text-xl font-black tracking-tighter uppercase leading-none">XPouch</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="w-1.5 h-1.5 bg-[var(--accent-hover)] rounded-full animate-pulse" />
-                <span className="font-mono text-[10px] text-[var(--text-secondary)] tracking-widest group-hover:text-[var(--text-primary)] transition-colors">
-                  OS v2.4
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* New Agent Button */}
-          <BauhausButton
-            onClick={handleCreateAgent}
-            className="w-full flex items-center justify-center gap-3 py-4 mb-8 group relative overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-4 h-4 bg-[var(--border-color)] transition-all group-hover:w-full group-hover:h-full group-hover:bg-[var(--accent-hover)] -z-10" />
-            <Plus className="w-5 h-5 stroke-[2.5] group-hover:stroke-black z-10" />
-            <span className="z-10 group-hover:text-black">New Agent</span>
-          </BauhausButton>
-
-          {/* Navigation */}
-          <nav className="space-y-2 font-mono text-xs font-bold tracking-wide">
-            <div className="pl-4 mb-2 text-[10px] text-[var(--text-secondary)] uppercase opacity-60">
-              /// Navigation
-            </div>
-            <NavItem icon={LayoutGrid} label="Dashboard" active />
-            <NavItem icon={Database} label="Knowledge" />
-            <NavItem icon={Cpu} label="Agents" />
-            <NavItem icon={Settings} label="Settings" />
-          </nav>
-        </div>
-
-        {/* User Profile */}
-        <div className="relative group cursor-pointer">
-          <div className="absolute inset-0 bg-[var(--shadow-color)] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2" />
-          <div className="relative flex items-center gap-3 px-4 py-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)] z-10">
-            <div className="w-8 h-8 bg-[var(--text-primary)] text-[var(--bg-page)] flex items-center justify-center font-bold text-sm">
-              A
-            </div>
-            <div className="flex-1">
-              <div className="font-bold text-sm uppercase">Alex_User</div>
-              <div className="text-[10px] font-mono text-[var(--text-secondary)]">PLAN: ARCHITECT</div>
-            </div>
-            <div className="w-2 h-2 bg-green-500 rounded-full border border-[var(--border-color)]" />
-          </div>
-        </div>
-      </aside>
+      {/* 移动端菜单按钮 */}
+      <button
+        onClick={sidebar.toggleMobile}
+        className="lg:hidden fixed top-4 left-4 z-30 p-2 border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--accent-hover)_2px_2px_0_0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+      >
+        <Menu className="w-5 h-5 stroke-[2.5]" />
+      </button>
 
       {/* Main Content */}
       <main className="flex-1 h-full relative overflow-y-auto">
         {/* System Status Marquee */}
         <SystemStatusMarquee className="sticky top-0 z-10" />
 
-        <div className="max-w-6xl mx-auto px-12 py-12 flex flex-col">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-12 py-8 lg:py-12 flex flex-col">
           {/* Hero Section */}
           <div className="flex-none flex flex-col items-start justify-center mb-10 select-none">
             <div className="flex gap-2 mb-6">
@@ -428,7 +374,7 @@ export default function HomePage() {
               </span>
             </div>
 
-            <h2 className="text-7xl md:text-8xl font-black tracking-tighter uppercase mb-2 leading-[0.9]">
+            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tighter uppercase mb-2 leading-[0.9]">
               READY TO <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--text-primary)] to-[var(--text-secondary)]">
                 ASSEMBLE?
@@ -482,16 +428,15 @@ export default function HomePage() {
                   </button>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="font-mono text-[10px] text-[var(--text-secondary)]">ENTER TO SEND</span>
-                  <BauhausButton
-                    variant="primary"
+                  <span className="font-mono text-[10px] text-[var(--text-secondary)] hidden sm:inline">ENTER TO SEND</span>
+                  <Button
                     onClick={handleSendMessage}
                     disabled={!inputMessage.trim()}
-                    className="px-6 py-2 flex items-center gap-2"
+                    className="px-4 sm:px-6 py-2 flex items-center gap-2"
                   >
                     <span>EXECUTE</span>
                     <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-                  </BauhausButton>
+                  </Button>
                 </div>
               </div>
             </div>

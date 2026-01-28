@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XPouch AI - Ultra High Fidelity</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['DM Sans', 'sans-serif'], mono: ['Space Mono', 'monospace'] },
+                    colors: {
+                        bauhaus: {
+                            bg: 'var(--bg-page)', card: 'var(--bg-card)', border: 'var(--border-color)',
+                            text: 'var(--text-primary)', yellow: '#facc15', blue: '#2563eb', red: '#ef4444',
+                        }
+                    },
+                    boxShadow: { 
+                        'hard': '6px 6px 0px 0px var(--shadow-color)', 
+                        'hard-lg': '10px 10px 0px 0px var(--shadow-color)',
+                        'hard-hover': '12px 12px 0px 0px var(--accent-hover)' 
+                    },
+                    backgroundImage: {
+                        'noise': "url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%220.05%22/%3E%3C/svg%3E')"
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg-page: #e8e8e3; --bg-card: #ffffff; --border-color: #0f0f0f; --text-primary: #0f0f0f; 
+            --text-secondary: #555555; --shadow-color: #0f0f0f; --accent-hover: #facc15; 
+            --grid-pattern: radial-gradient(#aaa 1.5px, transparent 1.5px);
+            --logo-base: #2563eb; --logo-item: #facc15; --logo-item-active: #ef4444;
+        }
+        .dark {
+            --bg-page: #0a0a0a; --bg-card: #161616; --border-color: #e5e5e5; --text-primary: #e5e5e5; 
+            --text-secondary: #888888; --shadow-color: #2563eb; --accent-hover: #facc15; 
+            --grid-pattern: radial-gradient(#333 1.5px, transparent 1.5px);
+            --logo-base: #f0f0f0; --logo-item: #facc15; --logo-item-active: #2563eb;
+        }
+        
+        body { 
+            background-color: var(--bg-page); color: var(--text-primary); 
+            background-image: var(--grid-pattern); background-size: 32px 32px;
+        }
+        
+        /* 噪点纹理覆盖 - 提升质感的关键 */
+        .texture-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: theme('backgroundImage.noise');
+            pointer-events: none; z-index: 9999; opacity: 0.6; mix-blend-mode: overlay;
+        }
+
+        /* 跑马灯动画 */
+        .marquee-container { overflow: hidden; white-space: nowrap; }
+        .marquee-content { display: inline-block; animation: marquee 20s linear infinite; }
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+        /* 组件精修 */
+        .bauhaus-border { border: 2px solid var(--border-color); } /* 稍微变细一点点，更精致 */
+        
+        .bauhaus-card { 
+            border: 2px solid var(--border-color); background: var(--bg-card); 
+            box-shadow: var(--shadow-color) 6px 6px 0 0; 
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); /* 有弹性的过渡 */
+        }
+        .bauhaus-card:hover { 
+            transform: translate(-3px, -3px); 
+            box-shadow: var(--accent-hover) 10px 10px 0 0; 
+            border-color: var(--accent-hover); 
+        }
+
+        .bauhaus-btn { 
+            border: 2px solid var(--border-color); background: var(--bg-card); 
+            color: var(--text-primary); box-shadow: var(--shadow-color) 4px 4px 0 0; 
+            font-weight: 700; transition: all 0.1s; letter-spacing: 0.05em;
+        }
+        .bauhaus-btn:hover { 
+            transform: translate(-2px, -2px); box-shadow: var(--accent-hover) 6px 6px 0 0; 
+            background: var(--accent-hover); color: #000; border-color: #000; 
+        }
+        .bauhaus-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+
+        /* Logo 动画保持不变 */
+        .logo-wrapper { width: 42px; height: 42px; position: relative; }
+        .pocket-base { width: 36px; height: 20px; border: 2px solid var(--border-color); border-top: none; background: var(--logo-base); border-bottom-left-radius: 18px; border-bottom-right-radius: 18px; position: absolute; bottom: 8px; left: 3px; z-index: 10; animation: baseRecoil 3s infinite cubic-bezier(0.25, 1, 0.5, 1); }
+        .pocket-item { width: 16px; height: 16px; background: var(--logo-item); border: 2px solid var(--border-color); position: absolute; left: 13px; top: -10px; z-index: 5; animation: dropProcess 3s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+        @keyframes dropProcess { 0% { top: -20px; opacity: 0; } 20% { opacity: 1; } 40% { top: 10px; background: var(--logo-item); } 50% { top: 10px; transform: rotate(10deg); background: var(--logo-item-active); } 60% { top: 10px; transform: rotate(-10deg); } 80% { top: 10px; opacity: 1; transform: scale(1); } 100% { top: 10px; opacity: 0; transform: scale(0); } }
+        @keyframes baseRecoil { 0%, 35% { transform: scale(1); } 40% { transform: scaleY(0.8) scaleX(1.1); } 50% { transform: scaleY(1.05) scaleX(0.95); } 60% { transform: scale(1); } 100% { transform: scale(1); } }
+
+        /* 输入框光标动画 */
+        .blinking-cursor { display: inline-block; width: 10px; height: 24px; background: var(--accent-hover); animation: blink 1s step-end infinite; vertical-align: middle; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden transition-colors duration-300">
+    <div class="texture-overlay"></div>
+
+    <aside class="w-[280px] h-full flex flex-col justify-between p-6 z-20 relative border-r-[2px] border-[var(--border-color)] bg-[var(--bg-card)]">
+        <div>
+            <div class="flex items-center gap-4 mb-12 cursor-pointer group select-none">
+                <div class="logo-wrapper">
+                    <div class="pocket-item"></div>
+                    <div class="pocket-base"></div>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-tighter uppercase leading-none">XPouch</h1>
+                    <div class="flex items-center gap-2 mt-1">
+                        <div class="w-1.5 h-1.5 bg-[var(--accent-hover)] rounded-full animate-pulse"></div>
+                        <span class="font-mono text-[10px] text-[var(--text-secondary)] tracking-widest group-hover:text-[var(--text-primary)] transition-colors">OS v2.4</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="w-full flex items-center justify-center gap-3 py-4 mb-8 bauhaus-btn group relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-4 h-4 bg-[var(--border-color)] transition-all group-hover:w-full group-hover:h-full group-hover:bg-[var(--accent-hover)] -z-10"></div>
+                
+                <i data-lucide="plus-square" class="w-5 h-5 stroke-2 group-hover:stroke-black z-10"></i>
+                <span class="z-10 group-hover:text-black">New Agent</span>
+            </button>
+
+            <nav class="space-y-2 font-mono text-xs font-bold tracking-wide">
+                <div class="pl-4 mb-2 text-[10px] text-[var(--text-secondary)] uppercase opacity-60">/// Navigation</div>
+                <a href="#" class="flex items-center gap-4 px-4 py-3 border-[2px] border-transparent bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]">
+                    <i data-lucide="layout-grid" class="w-4 h-4 stroke-2"></i> <span>DASHBOARD</span>
+                </a>
+                <a href="#" class="flex items-center gap-4 px-4 py-3 border-[2px] border-transparent hover:bg-[var(--bg-page)] hover:border-[var(--border-color)] transition-all">
+                    <i data-lucide="database" class="w-4 h-4 stroke-2"></i> <span>KNOWLEDGE</span>
+                </a>
+                <a href="#" class="flex items-center gap-4 px-4 py-3 border-[2px] border-transparent hover:bg-[var(--bg-page)] hover:border-[var(--border-color)] transition-all">
+                    <i data-lucide="cpu" class="w-4 h-4 stroke-2"></i> <span>AGENTS</span>
+                </a>
+                <a href="#" class="flex items-center gap-4 px-4 py-3 border-[2px] border-transparent hover:bg-[var(--bg-page)] hover:border-[var(--border-color)] transition-all">
+                    <i data-lucide="settings" class="w-4 h-4 stroke-2"></i> <span>SETTINGS</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="relative group cursor-pointer">
+            <div class="absolute inset-0 bg-[var(--shadow-color)] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2"></div>
+            <div class="relative flex items-center gap-3 px-4 py-3 border-[2px] border-[var(--border-color)] bg-[var(--bg-page)] z-10">
+                <div class="w-8 h-8 bg-[var(--text-primary)] text-[var(--bg-page)] flex items-center justify-center font-bold text-sm">A</div>
+                <div class="flex-1">
+                    <div class="font-bold text-sm uppercase">Alex_User</div>
+                    <div class="text-[10px] font-mono text-[var(--text-secondary)]">PLAN: ARCHITECT</div>
+                </div>
+                <div class="w-2 h-2 bg-green-500 rounded-full border border-[var(--border-color)]"></div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 h-full relative overflow-y-auto">
+        
+        <div class="w-full border-b-[2px] border-[var(--border-color)] bg-[var(--bg-card)] py-1 overflow-hidden z-10 sticky top-0">
+            <div class="marquee-container font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                <div class="marquee-content">
+                    /// SYSTEM STATUS: ONLINE /// CONNECTED TO NEURAL NET /// WAITING FOR INSTRUCTION /// XPOUCH OS V2.4 /// SYSTEM STATUS: ONLINE /// CONNECTED TO NEURAL NET /// WAITING FOR INSTRUCTION /// XPOUCH OS V2.4 
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-6xl mx-auto px-12 py-12 flex flex-col h-full">
+            
+            <div class="flex-none flex flex-col items-start justify-center mb-10 select-none">
+                <div class="flex gap-2 mb-6">
+                    <span class="px-2 py-1 text-[10px] font-mono font-bold border border-[var(--border-color)] bg-[var(--accent-hover)] text-black shadow-[2px_2px_0_0_var(--shadow-color)]">READY</span>
+                    <span class="px-2 py-1 text-[10px] font-mono font-bold border border-[var(--border-color)] text-[var(--text-secondary)]">IDLE</span>
+                </div>
+                
+                <h2 class="text-7xl md:text-8xl font-black tracking-tighter uppercase mb-2 leading-[0.9]">
+                    READY TO <br> <span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--text-primary)] to-[var(--text-secondary)]">ASSEMBLE?</span>
+                </h2>
+            </div>
+
+            <div class="flex-none mb-16 relative group">
+                <div class="absolute -top-3 left-4 bg-[var(--bg-page)] px-2 font-mono text-xs font-bold border-[2px] border-[var(--border-color)] z-20 text-[var(--text-secondary)]">COMMAND_INPUT</div>
+                
+                <div class="absolute inset-0 bg-[var(--shadow-color)] translate-x-2 translate-y-2 group-focus-within:translate-x-3 group-focus-within:translate-y-3 group-focus-within:bg-[var(--accent-hover)] transition-all"></div>
+                
+                <div class="relative border-[2px] border-[var(--border-color)] bg-[var(--bg-card)] p-1 flex flex-col">
+                    <div class="flex-1 relative">
+                        <div class="absolute left-4 top-6 font-mono text-sm text-[var(--text-secondary)] opacity-30 select-none">
+                            01<br>02<br>03
+                        </div>
+                        <textarea placeholder="// Initialize construct..." class="w-full h-32 bg-transparent border-none resize-none py-6 pl-12 pr-6 text-xl font-bold font-mono focus:ring-0 placeholder-[var(--text-secondary)] outline-none transition-colors z-10 relative"></textarea>
+                    </div>
+                    
+                    <div class="flex justify-between items-center p-3 border-t-[2px] border-[var(--border-color)] bg-[var(--bg-page)]">
+                         <div class="flex gap-2">
+                            <button class="p-2 border-[2px] border-transparent hover:bg-[var(--bg-card)] hover:border-[var(--border-color)] transition-all rounded-sm"><i data-lucide="image" class="w-4 h-4 stroke-2"></i></button>
+                            <button class="p-2 border-[2px] border-transparent hover:bg-[var(--bg-card)] hover:border-[var(--border-color)] transition-all rounded-sm"><i data-lucide="paperclip" class="w-4 h-4 stroke-2"></i></button>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="font-mono text-[10px] text-[var(--text-secondary)]">ENTER TO SEND</span>
+                            <button class="bauhaus-btn px-6 py-2 flex items-center gap-2 bg-[var(--text-primary)] text-[var(--bg-card)] border-[var(--text-primary)] shadow-none hover:bg-[var(--accent-hover)] hover:text-black hover:border-black hover:shadow-[4px_4px_0_0_black]">
+                                <span>EXECUTE</span> <i data-lucide="arrow-right" class="w-4 h-4 stroke-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 space-y-12 pb-10">
+                
+                <div>
+                    <div class="flex justify-between items-end mb-6 border-b-[2px] border-[var(--border-color)] pb-2 w-full">
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 bg-[var(--accent-hover)] border border-[var(--border-color)]"></div>
+                            <h3 class="text-sm font-black uppercase tracking-widest">Recommended</h3>
+                        </div>
+                        <div class="font-mono text-[10px] text-[var(--text-secondary)]">SHOWING 3 OF 12</div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bauhaus-card p-5 cursor-pointer group flex flex-col justify-between h-44 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 font-mono text-[10px] font-bold opacity-30">01</div>
+                            <div class="absolute bottom-0 right-0 w-0 h-0 border-b-[20px] border-r-[20px] border-b-[var(--accent-hover)] border-r-transparent transition-all group-hover:border-b-[40px] group-hover:border-r-[40px]"></div>
+
+                            <div class="flex justify-between items-start">
+                                <div class="p-2 border-[2px] border-[var(--border-color)] bg-[var(--bg-page)] group-hover:bg-white transition-colors">
+                                    <i data-lucide="code-2" class="w-6 h-6 stroke-2"></i>
+                                </div>
+                                <div class="font-mono text-[10px] bg-[var(--text-primary)] text-[var(--bg-page)] px-1">DEV</div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg mb-1 group-hover:underline decoration-2 underline-offset-4">Code Gen</h4>
+                                <p class="text-xs font-mono text-[var(--text-secondary)] leading-tight">Python / JS / Rust</p>
+                            </div>
+                        </div>
+
+                        <div class="bauhaus-card p-5 cursor-pointer group flex flex-col justify-between h-44 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 font-mono text-[10px] font-bold opacity-30">02</div>
+                            <div class="flex justify-between items-start">
+                                <div class="p-2 border-[2px] border-[var(--border-color)] bg-[var(--bg-page)] group-hover:bg-white transition-colors">
+                                    <i data-lucide="book-open" class="w-6 h-6 stroke-2"></i>
+                                </div>
+                                <div class="font-mono text-[10px] border-[2px] border-[var(--border-color)] px-1">RSRCH</div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg mb-1 group-hover:underline decoration-2 underline-offset-4">Deep Research</h4>
+                                <p class="text-xs font-mono text-[var(--text-secondary)] leading-tight">Web Analysis & Summary</p>
+                            </div>
+                        </div>
+
+                        <div class="bauhaus-card p-5 cursor-pointer group flex flex-col justify-between h-44 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 font-mono text-[10px] font-bold opacity-30">03</div>
+                            <div class="flex justify-between items-start">
+                                <div class="p-2 border-[2px] border-[var(--border-color)] bg-[var(--bg-page)] group-hover:bg-white transition-colors">
+                                    <i data-lucide="zap" class="w-6 h-6 stroke-2"></i>
+                                </div>
+                                <div class="font-mono text-[10px] border-[2px] border-[var(--border-color)] px-1">FAST</div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg mb-1 group-hover:underline decoration-2 underline-offset-4">Quick Q&A</h4>
+                                <p class="text-xs font-mono text-[var(--text-secondary)] leading-tight">GPT-4o Instant</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-8">
+                     <div class="flex justify-between items-end mb-6 border-b-[2px] border-[var(--border-color)] pb-2 w-full">
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 bg-[var(--logo-base)] border border-[var(--border-color)]"></div>
+                            <h3 class="text-sm font-black uppercase tracking-widest">My Constructs</h3>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        
+                        <div class="border-[2px] border-dashed border-[var(--text-secondary)] p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-[var(--bg-card)] hover:border-solid hover:border-[var(--accent-hover)] hover:shadow-[8px_8px_0_0_var(--accent-hover)] transition-all relative">
+                            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-10 text-[var(--border-color)] font-black text-6xl select-none">+</div>
+                            <div class="w-12 h-12 border-[2px] border-[var(--text-primary)] flex items-center justify-center mb-4 text-3xl group-hover:bg-[var(--accent-hover)] group-hover:border-[var(--accent-hover)] group-hover:text-black transition-colors bg-[var(--bg-page)] rounded-sm">+</div>
+                            <span class="font-bold font-mono uppercase tracking-wider text-sm group-hover:text-[var(--text-primary)]">Initialize New</span>
+                        </div>
+                        
+                        <div class="bauhaus-card p-0 cursor-pointer group h-44 flex relative overflow-hidden">
+                            <div class="w-4 h-full bg-[var(--logo-base)] group-hover:bg-[var(--accent-hover)] transition-colors border-r-[2px] border-[var(--border-color)] z-10 flex flex-col items-center justify-center gap-1 py-2">
+                                <div class="w-1 h-1 bg-[var(--bg-card)] rounded-full"></div>
+                                <div class="w-1 h-1 bg-[var(--bg-card)] rounded-full"></div>
+                                <div class="w-1 h-1 bg-[var(--bg-card)] rounded-full"></div>
+                            </div>
+                            
+                            <div class="p-5 flex-1 flex flex-col justify-between z-10">
+                                 <div class="flex justify-between items-start">
+                                     <h4 class="font-black text-xl tracking-tight">Nexus_Core</h4>
+                                     <div class="flex items-center gap-1 border border-[var(--border-color)] px-1 bg-[var(--bg-page)]">
+                                        <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                                        <span class="font-mono text-[9px] font-bold">ON</span>
+                                     </div>
+                                </div>
+                                <div>
+                                    <p class="font-mono text-xs text-[var(--text-secondary)] mb-3">/// PERSONAL.ASST</p>
+                                    <div class="flex gap-1 flex-wrap">
+                                        <span class="px-2 py-0.5 text-[9px] font-bold border border-[var(--border-color)] bg-[var(--bg-page)]">CHAT</span>
+                                        <span class="px-2 py-0.5 text-[9px] font-bold border border-[var(--border-color)] bg-[var(--bg-page)]">MEMORY</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                         <div class="bauhaus-card p-0 cursor-pointer group h-44 flex relative overflow-hidden">
+                            <div class="w-4 h-full bg-gray-400 group-hover:bg-[var(--accent-hover)] transition-colors border-r-[2px] border-[var(--border-color)] z-10"></div>
+                            <div class="p-5 flex-1 flex flex-col justify-between z-10">
+                                 <div class="flex justify-between items-start">
+                                     <h4 class="font-black text-xl tracking-tight text-[var(--text-secondary)]">Translator</h4>
+                                     <div class="flex items-center gap-1 border border-[var(--border-color)] px-1 bg-[var(--bg-page)]">
+                                        <div class="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                                        <span class="font-mono text-[9px] font-bold text-[var(--text-secondary)]">OFF</span>
+                                     </div>
+                                </div>
+                                <div>
+                                    <p class="font-mono text-xs text-[var(--text-secondary)] mb-3">/// LANG.MODEL</p>
+                                    <div class="flex gap-1 flex-wrap">
+                                        <span class="px-2 py-0.5 text-[9px] font-bold border border-[var(--border-color)] bg-[var(--bg-page)] text-[var(--text-secondary)]">EN-ZH</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div class="fixed bottom-8 right-8 z-50">
+        <button id="theme-toggle" class="bauhaus-btn w-12 h-12 flex items-center justify-center bg-[var(--bg-page)] rounded-full border-[2px]">
+            <i data-lucide="sun" class="w-5 h-5 stroke-2 hidden dark:block"></i>
+            <i data-lucide="moon" class="w-5 h-5 stroke-2 block dark:hidden"></i>
+        </button>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        const themeToggle = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+        themeToggle.addEventListener('click', () => {
+            htmlElement.classList.toggle('dark');
+            setTimeout(() => lucide.createIcons(), 0);
+        });
+    </script>
+</body>
+</html>

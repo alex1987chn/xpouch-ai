@@ -2,10 +2,11 @@ import { ReactNode, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { Menu, ChevronLeft, ChevronRight } from 'lucide-react'
-import Sidebar from '@/components/Sidebar'
+import { BauhausSidebar } from '@/components/bauhaus'
 import { useApp } from '@/providers/AppProvider'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { PersonalSettingsDialog } from '@/components/PersonalSettingsDialog'
+
 
 
 interface AppRootProps {
@@ -15,7 +16,6 @@ interface AppRootProps {
 export default function AppRoot({ children }: AppRootProps) {
   const navigate = useNavigate()
   const { sidebar, dialogs } = useApp()
-  // const { addCustomAgent } = useChatStore() // Unused
 
   // 监听全局 toggle-sidebar 事件
   useEffect(() => {
@@ -34,12 +34,9 @@ export default function AppRoot({ children }: AppRootProps) {
   return (
     <div
       className={cn(
-        'flex w-full bg-slate-50 dark:bg-[#020617] transition-colors duration-200 overflow-x-hidden',
+        'flex w-full bg-[var(--bg-page)] dark:bg-[var(--bg-page)] transition-colors duration-200 overflow-x-hidden',
         'min-h-[100dvh]'
       )}
-      style={{
-        '--sidebar-center-offset': sidebar.isCollapsed ? '0px' : '32px',
-      } as React.CSSProperties}
     >
       {/* 移动端侧边栏遮罩 */}
       {sidebar.isMobileOpen && (
@@ -49,59 +46,59 @@ export default function AppRoot({ children }: AppRootProps) {
         />
       )}
 
-      {/* 左侧边栏 - 统一样式，全局层级 */}
+      {/* 左侧边栏 - Bauhaus 风格 */}
       <aside className={cn(
-        'fixed left-0 top-0 h-screen flex-shrink-0 transition-transform duration-200 z-[150]',
-        'w-[64px]',
-        'bg-gradient-to-b from-slate-700 to-slate-900 dark:from-[#1e293b] dark:to-[#0f172a]',
-        'backdrop-blur-xl',
-        'border-r border-slate-200/50 dark:border-slate-700/30',
+        'fixed left-0 top-0 h-screen flex-shrink-0 transition-all duration-300 z-[150]',
+        'border-r-2 border-[var(--border-color)] bg-[var(--bg-card)]',
+        sidebar.isCollapsed ? 'w-[72px]' : 'w-[280px]',
         'lg:translate-x-0',
         sidebar.isMobileOpen ? 'translate-x-0' : '-translate-x-full',
-        sidebar.isCollapsed && 'lg:-translate-x-full',
       )}>
         <div className="h-full w-full">
-          <Sidebar
+          <BauhausSidebar
             isCollapsed={sidebar.isCollapsed}
+            isMobileOpen={sidebar.isMobileOpen}
+            onMobileClose={sidebar.closeMobile}
             onCreateAgent={handleCreateAgent}
             onSettingsClick={dialogs.openSettings}
             onPersonalSettingsClick={dialogs.openPersonalSettings}
+            onToggleCollapsed={sidebar.toggleCollapsed}
           />
         </div>
       </aside>
 
-      {/* 收拢/展开按钮 - 与头像水平对齐 */}
+      {/* 收拢/展开按钮 */}
       <div className={cn(
-        'fixed bottom-[55px] z-50 transition-all duration-200 lg:flex hidden',
-        sidebar.isCollapsed ? 'left-[12px]' : 'left-[64px]'
+        'fixed bottom-4 z-50 transition-all duration-300 lg:flex hidden',
+        sidebar.isCollapsed ? 'left-[72px]' : 'left-[280px]'
       )}>
-        {/* 收拢/展开侧边栏按钮 */}
+        {/* 收拢/展开侧边栏按钮 - Bauhaus风格 */}
         <button
           onClick={sidebar.toggleCollapsed}
-          className="w-6 h-6 rounded-full border border-gray-300 bg-gray-200/50 hover:bg-gray-300/50 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors shadow-md"
+          className="p-1.5 border-2 border-[var(--border-color)] bg-[var(--bg-page)] shadow-[var(--shadow-color)_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_3px_3px_0_0]"
           title={sidebar.isCollapsed ? '展开侧边栏' : '收拢侧边栏'}
         >
           {sidebar.isCollapsed ? (
-            <ChevronRight className="w-3 h-3" />
+            <ChevronRight className="w-3.5 h-3.5" />
           ) : (
-            <ChevronLeft className="w-3 h-3" />
+            <ChevronLeft className="w-3.5 h-3.5" />
           )}
         </button>
       </div>
 
-      {/* 主内容区域 - 添加左边距和移动端适配 */}
+      {/* 主内容区域 */}
       <div className={cn(
-        'flex-1 w-full flex flex-col transition-all duration-200',
-        sidebar.isCollapsed ? 'lg:ml-0' : 'lg:ml-[64px]',
+        'flex-1 w-full flex flex-col transition-all duration-300',
+        sidebar.isCollapsed ? 'lg:ml-[72px]' : 'lg:ml-[280px]',
         sidebar.isMobileOpen ? 'ml-0' : 'ml-0'
       )}>
-        {/* 移动端汉堡菜单按钮 - 不占用主内容区空间 */}
+        {/* 移动端汉堡菜单按钮 - Bauhaus风格 */}
         <div className="lg:hidden absolute top-4 left-4 z-50">
           <button
             onClick={sidebar.toggleMobile}
-            className="p-2 rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors"
+            className="p-2 border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--accent-hover)_2px_2px_0_0]"
           >
-            <Menu className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+            <Menu className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
 
@@ -124,4 +121,3 @@ export default function AppRoot({ children }: AppRootProps) {
     </div>
   )
 }
-
