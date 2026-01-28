@@ -48,6 +48,15 @@ export default function ExpertAdminPage() {
   const [previewResult, setPreviewResult] = useState<any>(null)
   const [isPreviewing, setIsPreviewing] = useState(false)
 
+  // 模型选择状态（两级联动）
+  const [selectedProvider, setSelectedProvider] = useState<string>(() => {
+    // 默认选择第一个可用的供应商
+    const availableProviders = models.map(m => m.provider)
+    const uniqueProviders = Array.from(new Set(availableProviders))
+    return uniqueProviders[0] || 'deepseek'
+  })
+  const [selectedModel, setSelectedModel] = useState<string>('')
+
   const { toast } = useToast()
 
   // 加载专家列表
@@ -82,6 +91,14 @@ export default function ExpertAdminPage() {
         model: data.model,
         temperature: data.temperature,
       })
+
+      // 同步更新模型选择状态（两级联动）
+      const modelConfig = models.find(m => m.id === data.model)
+      if (modelConfig) {
+        setSelectedProvider(modelConfig.provider)
+        setSelectedModel(modelConfig.id)
+      }
+
       // 切换专家时重置预览状态
       setPreviewResult(null)
       setTestInput('')
@@ -197,7 +214,7 @@ export default function ExpertAdminPage() {
   }
 
   return (
-    <div className="flex gap-6 h-full p-6">
+    <div className="flex gap-6 h-screen p-6">
       {/* 左侧：专家列表 */}
       <Card className="w-80 flex-shrink-0">
         <CardHeader className="pb-4">
@@ -295,26 +312,63 @@ export default function ExpertAdminPage() {
                     </div>
                   </div>
 
-                  {/* 模型选择 */}
+                  {/* 模型选择 - 两级联动 */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       {t('model')}
                     </label>
-                    <Select
-                      value={formData.model}
-                      onValueChange={(value) => handleFieldChange('model', value)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {models.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            {model.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* 供应商选择 */}
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">供应商</label>
+                        <Select
+                          value={selectedProvider}
+                          onValueChange={(value) => {
+                            setSelectedProvider(value)
+                            // 切换供应商时，自动选择该供应商的第一个模型
+                            const firstModel = models.find(m => m.provider === value)
+                            if (firstModel) {
+                              setSelectedModel(firstModel.id)
+                              handleFieldChange('model', firstModel.id)
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from(new Set(models.map(m => m.provider))).map((provider) => (
+                              <SelectItem key={provider} value={provider}>
+                                {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* 模型选择 */}
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">模型</label>
+                        <Select
+                          value={selectedModel}
+                          onValueChange={(value) => {
+                            setSelectedModel(value)
+                            handleFieldChange('model', value)
+                          }}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {models.filter(m => m.provider === selectedProvider).map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                {model.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   </div>
 
                   {/* 温度参数 */}
