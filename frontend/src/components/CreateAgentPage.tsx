@@ -9,6 +9,7 @@ import { PROGRESS } from '@/constants/ui'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { models } from '@/config/models'
 
 interface CreateAgentPageProps {
   onBack: () => void
@@ -98,9 +99,6 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
   }
 
   const categories = ['综合', '开发', '创作', '分析', '研究']
-  const models = [
-    { id: 'deepseek-chat', name: 'DeepSeek Chat' }
-  ]
 
   return (
     <div className="flex flex-col h-full bg-transparent">
