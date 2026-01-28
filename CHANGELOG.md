@@ -92,9 +92,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **滚动区域优化**：
 - 修复全局滚动条问题（h-screen 限制高度）
-- 专家列表高度自适应屏幕大小（calc(100vh - 320px)）
-- 系统提示词区域固定高度（400px），滚动条更短
-- 添加 resize-none 防止用户调整文本框大小
+- 两个 Card（专家列表 + 配置编辑器）独立滚动
+- 右侧配置编辑器内容溢出时滚动，确保保存按钮始终可见
+- 专家列表区域自动填充剩余空间滚动
+- 系统提示词固定高度 300px，减少溢出风险
+- 添加 flex 布局确保各区域正确分配空间
 
 **统一模型配置管理**：
 - ExpertAdminPage 使用 `@/config/models` 的统一模型配置
