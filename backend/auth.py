@@ -370,7 +370,7 @@ async def verify_code_and_login(
         expires_in=30 * 24 * 3600,  # 30天，单位：秒
         user_id=user.id,
         username=user.username,
-        role=user.role.value if user.role else "user"  # 添加角色字段
+        role=str(user.role) if user.role else "user"  # 添加角色字段（现在 role 是字符串）
     )
 
 
