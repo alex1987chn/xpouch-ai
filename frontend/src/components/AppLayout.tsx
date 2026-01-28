@@ -89,9 +89,8 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
 
       {/* 主内容区域 - 右侧交互区 */}
       <div className={cn(
-        'flex-1 w-full flex flex-col transition-all duration-300',
-        sidebar.isCollapsed ? 'lg:ml-[72px]' : 'lg:ml-[280px]',
-        sidebar.isMobileOpen ? 'ml-0' : 'ml-0'
+        'flex-1 w-full flex flex-col transition-all duration-300 relative z-10',
+        sidebar.isMobileOpen ? 'ml-0' : 'ml-[320.5px]'
       )}>
         {/* 移动端汉堡菜单按钮 - Bauhaus 风格 */}
         {!hideMobileMenu && (
@@ -106,7 +105,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
         )}
 
         {/* 主要内容 */}
-        <main className="flex-1 w-full flex flex-col h-full overflow-hidden">
+        <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
           {children}
         </main>
       </div>
@@ -131,11 +130,11 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
         itemName={dialogs.deletingAgentName}
       />
 
-      {/* 主题切换按钮 - Bauhaus风格 */}
+      {/* 主题切换按钮 - Bauhaus风格圆形按钮 */}
       <div className="fixed bottom-8 right-8 z-50">
         <button
           onClick={toggleTheme}
-          className="w-12 h-12 flex items-center justify-center rounded-full border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--accent-hover)_2px_2px_0_0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+          className="w-12 h-12 flex items-center justify-center border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--accent-hover)_2px_2px_0_0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all overflow-hidden theme-toggle-btn"
           title={theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
         >
           {theme === 'dark' ? (

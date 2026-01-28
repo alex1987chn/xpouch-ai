@@ -158,6 +158,10 @@ except ImportError as e:
     sms_service = None
     SMS_SERVICE_AVAILABLE = False
     logger.warning(f"tencentcloud-sdk未安装: {str(e)}，将使用控制台输出模式")
+except Exception as e:
+    sms_service = None
+    SMS_SERVICE_AVAILABLE = False
+    logger.warning(f"短信服务初始化失败: {str(e)}，将使用控制台输出模式")
 
 
 def send_verification_code_with_fallback(phone_number: str, code: str, expire_minutes: int = 5) -> Tuple[bool, Optional[str]]:

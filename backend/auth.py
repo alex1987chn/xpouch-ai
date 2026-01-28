@@ -209,88 +209,95 @@ async def send_verification_code(
 
     注意：当前为开发版本，实际发送短信需集成短信服务商
     """
-    import sys
-    print(f"[Auth] 收到发送验证码请求，方法: POST")
-    phone_number = request.phone_number
-    print(f"[Auth] 请求体已解析，手机号: {phone_number}")
-    
-    # 生成验证码（6位数字）
-    code = generate_verification_code(length=6)
-    expires_at = get_code_expiry_duration(minutes=5)
-    
-    # 判断是否开发环境
-    is_development = os.getenv("ENVIRONMENT", "development").lower() == "development"
-    
-    # 查询用户是否存在
-    user = session.exec(
-        select(User).where(User.phone_number == phone_number)
-    ).first()
-    
-    if user:
-        # 用户已存在，更新验证码
-        user.verification_code = code
-        user.verification_code_expires_at = expires_at
-        session.add(user)
-        session.commit()
+    try:
+        import sys
+        print(f"[Auth] 收到发送验证码请求，方法: POST")
+        phone_number = request.phone_number
+        print(f"[Auth] 请求体已解析，手机号: {phone_number}")
         
-        # 发送验证码短信
-        success, error_message = send_verification_code_with_fallback(phone_number, code, expire_minutes=5)
+        # 生成验证码（6位数字）
+        code = generate_verification_code(length=6)
+        expires_at = get_code_expiry_duration(minutes=5)
         
-        if not success:
-            logger.warning(f"验证码短信发送失败: {error_message}")
-            # 继续返回成功，因为验证码已生成并存储，用户可能通过其他方式获取
+        # 判断是否开发环境
+        is_development = os.getenv("ENVIRONMENT", "development").lower() == "development"
         
-        response_data = {
-            "message": "验证码已发送",
-            "expires_in": 300,  # 5分钟，单位：秒
-            "phone_masked": mask_phone_number(phone_number),
-        }
+        # 查询用户是否存在
+        user = session.exec(
+            select(User).where(User.phone_number == phone_number)
+        ).first()
         
-        # 开发环境返回验证码用于调试
-        if is_development:
-            response_data["_debug_code"] = code
+        if user:
+            # 用户已存在，更新验证码
+            user.verification_code = code
+            user.verification_code_expires_at = expires_at
+            session.add(user)
+            session.commit()
             
-        return response_data
-    else:
-        # 用户不存在，创建新用户（未验证状态）
-        # 生成用户ID
-        import uuid
-        new_user_id = str(uuid.uuid4())
-        
-        new_user = User(
-            id=new_user_id,
-            username=f"用户{phone_number[-4:]}",
-            phone_number=phone_number,
-            verification_code=code,
-            verification_code_expires_at=expires_at,
-            auth_provider="phone",
-            is_verified=False,
-            role="user"  # 添加默认角色
+            # 发送验证码短信
+            success, error_message = send_verification_code_with_fallback(phone_number, code, expire_minutes=5)
+            
+            if not success:
+                logger.warning(f"验证码短信发送失败: {error_message}")
+                # 继续返回成功，因为验证码已生成并存储，用户可能通过其他方式获取
+            
+            response_data = {
+                "message": "验证码已发送",
+                "expires_in": 300,  # 5分钟，单位：秒
+                "phone_masked": mask_phone_number(phone_number),
+            }
+            
+            # 开发环境返回验证码用于调试
+            if is_development:
+                response_data["_debug_code"] = code
+                
+            return response_data
+        else:
+            # 用户不存在，创建新用户（未验证状态）
+            # 生成用户ID
+            import uuid
+            new_user_id = str(uuid.uuid4())
+            
+            new_user = User(
+                id=new_user_id,
+                username=f"用户{phone_number[-4:]}",
+                phone_number=phone_number,
+                verification_code=code,
+                verification_code_expires_at=expires_at,
+                auth_provider="phone",
+                is_verified=False,
+                role="user"  # 添加默认角色
+            )
+            
+            session.add(new_user)
+            session.commit()
+            session.refresh(new_user)
+            
+            # 发送验证码短信
+            success, error_message = send_verification_code_with_fallback(phone_number, code, expire_minutes=5)
+            
+            if not success:
+                logger.warning(f"验证码短信发送失败: {error_message}")
+                # 继续返回成功，因为验证码已生成并存储，用户可能通过其他方式获取
+            
+            response_data = {
+                "message": "验证码已发送（新用户注册）",
+                "expires_in": 300,
+                "phone_masked": mask_phone_number(phone_number),
+                "user_id": new_user_id,
+            }
+            
+            # 开发环境返回验证码用于调试
+            if is_development:
+                response_data["_debug_code"] = code
+                
+            return response_data
+    except Exception as e:
+        logger.error(f"发送验证码处理异常: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"服务器内部错误: {str(e)}"
         )
-        
-        session.add(new_user)
-        session.commit()
-        session.refresh(new_user)
-        
-        # 发送验证码短信
-        success, error_message = send_verification_code_with_fallback(phone_number, code, expire_minutes=5)
-        
-        if not success:
-            logger.warning(f"验证码短信发送失败: {error_message}")
-            # 继续返回成功，因为验证码已生成并存储，用户可能通过其他方式获取
-        
-        response_data = {
-            "message": "验证码已发送（新用户注册）",
-            "expires_in": 300,
-            "phone_masked": mask_phone_number(phone_number),
-            "user_id": new_user_id,
-        }
-        
-        # 开发环境返回验证码用于调试
-        if is_development:
-            response_data["_debug_code"] = code
-            
-        return response_data
 
 
 @router.post("/verify-code", response_model=TokenResponse)

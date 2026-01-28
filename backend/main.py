@@ -174,7 +174,10 @@ async def lifespan(app: FastAPI):
             print(f"[Lifespan] Initialized {len(EXPERT_DEFAULTS)} experts")
         else:
             print(f"[Lifespan] Found {len(existing_experts)} experts in database")
+    
+    print("[Lifespan] Startup complete, yielding control to Uvicorn...")
     yield
+    print("[Lifespan] Shutdown started...")
 
 app = FastAPI(lifespan=lifespan)
 
@@ -185,8 +188,16 @@ app.include_router(admin_router)  # 管理员 API
 # 添加请求日志中间件
 @app.middleware("http")
 async def log_requests(request: Request, call_next) -> Response:
-    response = await call_next(request)
-    return response
+    print(f"[REQUEST] {request.method} {request.url.path}")
+    try:
+        response = await call_next(request)
+        print(f"[RESPONSE] {response.status_code} {request.url.path}")
+        return response
+    except Exception as e:
+        print(f"[ERROR] Exception in {request.method} {request.url.path}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -1442,6 +1453,14 @@ async def chat_invoke_endpoint(
 if __name__ == "__main__":
     # Local dev defaults to 3002, Docker uses PORT env var (e.g. 3000)
     port = int(os.getenv("PORT", 3002))
+    print(f"[STARTUP] Starting Uvicorn server on port {port}...")
+    print(f"[STARTUP] Host: 0.0.0.0, Port: {port}")
 
-    # 启动uvicorn（log_config=None禁用默认日志，避免编码冲突）
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True, log_config=None)
+    try:
+        # 启动uvicorn（禁用reload避免Windows文件监控问题）
+        uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False, log_level="info")
+    except Exception as e:
+        print(f"[STARTUP ERROR] {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise

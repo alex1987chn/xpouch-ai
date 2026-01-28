@@ -116,6 +116,11 @@
   button, input, textarea, select, [role="button"] {
     border-radius: 0 !important;
   }
+
+  /* 主题切换按钮 - 圆形例外 */
+  .theme-toggle-btn {
+    border-radius: 9999px !important;
+  }
 }
 
 /* ============================================
@@ -834,6 +839,62 @@ main, header, .relative {
 /* Bauhaus Border */
 .bauhaus-border {
   border: 2px solid var(--border-color);
+}
+
+/* Bauhaus Scrollbar - 直角无圆角，hover时才显示 */
+.bauhaus-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.bauhaus-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.bauhaus-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.bauhaus-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 0;
+}
+
+/* hover时显示滚动条 */
+.bauhaus-scrollbar:hover {
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.bauhaus-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  opacity: 0.4;
+}
+
+.bauhaus-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-hover);
+  opacity: 1;
+}
+
+/* Dark mode */
+.dark .bauhaus-scrollbar {
+  scrollbar-color: transparent transparent;
+}
+
+.dark .bauhaus-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.dark .bauhaus-scrollbar:hover {
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.dark .bauhaus-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  opacity: 0.6;
+}
+
+.dark .bauhaus-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-hover);
 }
 
 /* Bauhaus Card - 核心卡片样式 */
