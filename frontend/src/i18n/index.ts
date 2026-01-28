@@ -36,7 +36,7 @@ export type TranslationKey =
   | 'analyzeData' | 'analyzeDataDesc' | 'generateReport' | 'generateReportDesc' | 'designUI' | 'designUIDesc'
   // RBAC Expert Admin (v0.6.0)
   | 'expertAdmin' | 'expertsList' | 'refresh' | 'selectExpert' | 'lastUpdated'
-  | 'expertKey' | 'model' | 'temperature' | 'temperatureValue' | 'systemPrompt'
+  | 'expertKey' | 'model' | 'temperature' | 'temperatureValue' | 'expertSystemPrompt'
   | 'characters' | 'saveConfig' | 'saving' | 'saveSuccess' | 'saveFailed'
   | 'previewMode' | 'editMode' | 'startPreview' | 'previewing' | 'previewFailed'
   | 'testInput' | 'testInputPlaceholder' | 'testInputMinChars' | 'previewSuccess'
