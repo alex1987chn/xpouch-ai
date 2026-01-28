@@ -133,8 +133,8 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: Agen
                   {isDefaultAgent && (
                     <span className={cn(
                       'flex-shrink-0 px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-medium',
-                      'bg-violet-100 dark:bg-violet-900/50',
-                      'text-violet-600 dark:text-violet-300'
+                      'bg-slate-100 dark:bg-slate-800',
+                      'text-slate-500 dark:text-slate-400'
                     )}>
                       默认
                     </span>
