@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Save, RefreshCw, Loader2, Play, AlertCircle } from 'lucide-react'
+import { Save, RefreshCw, Loader2, Play, Search } from 'lucide-react'
+import { models } from '@/config/models'
 import { useToast } from '@/components/ui/use-toast'
 import { useTranslation } from '@/i18n'
 import { Textarea } from '@/components/ui/textarea'
@@ -34,6 +35,7 @@ export default function ExpertAdminPage() {
   const [selectedExpert, setSelectedExpert] = useState<ExpertResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [formData, setFormData] = useState<ExpertUpdateRequest>({
     system_prompt: '',
     model: 'gpt-4o',
@@ -47,14 +49,6 @@ export default function ExpertAdminPage() {
   const [isPreviewing, setIsPreviewing] = useState(false)
 
   const { toast } = useToast()
-
-  // 支持的模型列表
-  const MODEL_OPTIONS = [
-    'gpt-4o',
-    'gpt-4o-mini',
-    'gpt-4-turbo',
-    'deepseek-chat',
-  ]
 
   // 加载专家列表
   const loadExperts = async () => {
@@ -183,6 +177,12 @@ export default function ExpertAdminPage() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
+  // 过滤专家列表
+  const filteredExperts = experts.filter(expert =>
+    expert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    expert.expert_key.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   useEffect(() => {
     loadExperts()
   }, [])
@@ -214,8 +214,20 @@ export default function ExpertAdminPage() {
           </div>
         </CardHeader>
         <CardContent className="p-4">
-          <div className="space-y-2">
-            {experts.map((expert) => (
+          {/* 搜索框 */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="搜索专家..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {/* 专家列表 */}
+          <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto">
+            {filteredExperts.map((expert) => (
               <button
                 key={expert.id}
                 onClick={() => selectExpert(expert.expert_key)}
@@ -232,6 +244,12 @@ export default function ExpertAdminPage() {
               </button>
             ))}
           </div>
+          {/* 无搜索结果提示 */}
+          {filteredExperts.length === 0 && (
+            <div className="text-center text-gray-500 text-sm py-8">
+              未找到匹配的专家
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -290,9 +308,9 @@ export default function ExpertAdminPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {MODEL_OPTIONS.map((model) => (
-                          <SelectItem key={model} value={model}>
-                            {model}
+                        {models.map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            {model.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -302,14 +320,14 @@ export default function ExpertAdminPage() {
                   {/* 温度参数 */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {t('temperatureValue').replace('{value}', formData.temperature.toString())}
+                      {t('temperatureValue').replace('{value}', (formData.temperature ?? 0.5).toString())}
                     </label>
                     <input
                       type="range"
                       min="0"
                       max="2"
                       step="0.1"
-                      value={formData.temperature}
+                      value={formData.temperature ?? 0.5}
                       onChange={(e) =>
                         handleFieldChange('temperature', parseFloat(e.target.value))
                       }
