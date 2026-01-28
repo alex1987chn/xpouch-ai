@@ -4,6 +4,155 @@
 
 ---
 
+## 2026-01-27：v0.6.1 - Bug 修复与 PostgreSQL 优化
+
+### 🐛 Bug 修复
+
+**登录对话框错误**：
+- **问题**：`LoginDialog.tsx` 中 `ReferenceError: errorHandler is not defined`
+- **原因**：使用了不存在的 `errorHandler.handleSync()` 调用
+- **修复**：
+  - 移除 `errorHandler.handleSync()` 调用
+  - 改用已导入的 `logger.error()`
+- **影响**：
+  - 修复了发送验证码时的错误处理
+  - 优化了错误日志记录机制
+
+**验证码发送失败**：
+- **问题**：`POST /api/auth/send-code` 返回 500 错误
+- **原因**：创建新用户时缺少 `role` 字段，数据库列是 `NOT NULL`
+- **修复**：
+  - 更新 `auth.py` 中 `new_user` 创建逻辑
+  - 添加 `role="user"` 默认值
+- **影响**：
+  - 解决了新用户注册失败问题
+  - 确保所有用户都有有效角色
+
+**UserRole 枚举映射错误**：
+- **问题**：`AttributeError: 'str' object has no attribute 'value'`
+- **原因**：
+  - 使用 `sa_column=Column(String(10))` 映射后，`user.role` 返回字符串
+  - 代码尝试访问 `user.role.value` 导致错误
+- **修复**：
+  - 更新 `auth.py` 中的 `TokenResponse` 返回逻辑
+  - 使用 `str(user.role)` 替代 `user.role.value`
+- **影响**：
+  - 解决了登录后的角色返回错误
+  - 确保 TokenResponse 中的 role 字段是字符串
+
+**翻译重复键警告**：
+- **问题**：Vite 编译时出现 `Duplicate key "systemPrompt"` 警告
+- **原因**：
+  - 每个语言对象中有两个 `systemPrompt` 定义
+  - Create Agent 部分（行 53）
+  - RBAC Expert Admin 部分（行 140）
+- **修复**：
+  - 重命名 RBAC Expert Admin 部分的键为 `expertSystemPrompt`
+  - 更新 `index.ts` 类型定义
+- **影响**：
+  - 解决了 Vite 编译警告
+  - 区分两个不同功能的翻译键
+
+**SystemExpert 模型主键错误**：
+- **问题**：`SystemExpert` 模型主键定义错误
+- **原因**：主键类型定义不正确
+- **修复**：
+  - 修正 `SystemExpert` 模型的主键定义
+  - 确保 `expert_key` 唯一索引正确设置
+- **影响**：
+  - 解决了数据库模型定义错误
+  - 确保 SystemExpert 表正确创建
+
+### 🔧 技术改进
+
+**PostgreSQL 专有模式**：
+- **决策**：完全移除 SQLite 支持，强制使用 PostgreSQL
+- **原因**：
+  - 项目已完全切换到 PostgreSQL
+  - SQLite fallback 机制增加维护负担
+  - 简化代码结构
+- **实现**：
+  - 删除 `migrations/` 目录（SQLite 迁移脚本）
+  - 删除 `scripts/` 目录（数据库管理脚本）
+  - 简化 `database.py`（118 行 → 36 行）
+  - 移除 `sqlite3` 导入
+  - 移除 SQLite 引擎配置
+  - 添加 `DATABASE_URL` 验证
+  - 强制使用 PostgreSQL
+- **影响**：
+  - 代码减少 70%
+  - 删除 12 个不需要的文件
+  - 简化部署和维护
+
+**UserRole 枚举映射优化**：
+- **决策**：使用 SQLAlchemy String 类型映射，避免 PostgreSQL Native ENUM
+- **原因**：
+  - PostgreSQL Native ENUM 会给 Alembic 迁移带来复杂性
+  - 使用 String 类型更简单、更灵活
+  - SQLAlchemy 自动处理 String ↔ Enum 转换
+- **实现**：
+  - 使用 `sa_column=Column(String(10))` 映射
+  - 保持数据库列为 `VARCHAR(10)` 类型
+  - Python 层自动转换 String ↔ Enum
+  - 确保 `UserRole` 继承自 `str`
+- **影响**：
+  - 解决 Enum 类型不匹配错误
+  - 避免了 Alembic 迁移复杂度
+  - 数据库结构保持简单
+
+**导入和依赖修复**：
+- **修复内容**：
+  - 添加了 `getHeaders` 函数导出（`utils/request`）
+  - 添加了 `Toast` 组件和 `Toaster` 提供者
+  - 修复了迁移脚本类定义问题（`migration_003.py`）
+  - 调整了函数定义顺序解决 `NameError`
+  - 添加了 `HomePage.tsx` 缺少的 `logger` 导入
+- **影响**：
+  - 解决了模块导入错误
+  - 修复了运行时错误
+  - 优化了代码组织
+
+### 📊 数据库变更
+
+**User 表 role 字段**：
+- **类型**：`VARCHAR(10)`（保持不变）
+- **默认值**：`'user'`
+- **映射**：Python 层使用 `UserRole` 枚举
+- **自动转换**：SQLAlchemy 处理 String ↔ Enum 转换
+- **优势**：
+  - 避免了 PostgreSQL Native ENUM 的迁移复杂性
+  - 保持数据库结构简单
+  - Python 层享受类型安全
+
+**SystemExpert 表**：
+- **主键**：`id` (INT, 自增)
+- **唯一键**：`expert_key` (VARCHAR)
+- **添加到 PostgreSQL**：已创建并初始化
+- **用途**：存储 LangGraph 专家的 Prompt 和配置
+
+### 📊 性能优化
+
+**代码简化**：
+- 删除 `migrations/` 目录（8 个文件）
+- 删除 `scripts/` 目录（4 个文件）
+- 删除 `data/` 目录（SQLite 数据目录）
+- `database.py` 代码减少 70%（118 行 → 36 行）
+- 总计删除 12 个文件，减少 ~82 行代码
+
+**运行时优化**：
+- 移除 SQLite fallback 检查
+- 强制 PostgreSQL 配置验证
+- 简化数据库连接初始化
+
+### 📝 文档更新
+
+**配置文件**：
+- 更新 `.gitignore`（移除 SQLite 规则）
+- 保留通用的 Python/VirtualEnv 规则
+- 清理不再需要的配置项
+
+---
+
 ## 2026-01-27：RBAC 专家管理系统 + 三大扩展功能
 
 ### ✨ 重大功能更新（v0.6.0）

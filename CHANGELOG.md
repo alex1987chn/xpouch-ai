@@ -5,6 +5,85 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-01-27] - v0.6.1 - Bug 修复与 PostgreSQL 优化
+
+### 🐛 Bug 修复
+
+**登录对话框错误**：
+- 修复了 `LoginDialog.tsx` 中 `errorHandler is not defined` 错误
+- 改用 `logger.error()` 处理发送验证码失败的情况
+- 优化了错误提示机制
+
+**验证码发送失败**：
+- 修复了创建用户时缺少 `role` 字段的问题
+- 确保 `User` 模型创建时有默认角色值
+- 解决了 `POST /api/auth/send-code` 返回 500 错误的问题
+
+**UserRole 枚举映射错误**：
+- 修复了 `AttributeError: 'str' object has no attribute 'value'` 错误
+- 更新 `auth.py` 中的 `TokenResponse` 返回逻辑
+- 使用 `str(user.role)` 替代 `user.role.value`
+- 适配 SQLAlchemy String 类型映射
+
+**翻译重复键警告**：
+- 修复了 `translations.ts` 中重复的 `systemPrompt` 键
+- 重命名 RBAC Expert Admin 部分的键为 `expertSystemPrompt`
+- 解决了 Vite 编译时的 Duplicate key 警告
+
+### 🔧 技术改进
+
+**PostgreSQL 专有模式**：
+- 完全移除 SQLite 支持（fallback 机制）
+- 删除 `migrations/` 目录（SQLite 迁移脚本）
+- 删除 `scripts/` 目录（数据库管理脚本）
+- 简化 `database.py`（118 行 → 36 行）
+- 强制要求 `DATABASE_URL` 环境变量
+- 只支持 PostgreSQL 数据库
+
+**UserRole 枚举映射优化**：
+- 使用 SQLAlchemy `sa_column=Column(String(10))` 映射
+- 保持数据库列为 `VARCHAR(10)` 类型
+- Python 层自动转换 String ↔ Enum
+- 避免 PostgreSQL Native ENUM 的 Alembic 迁移复杂性
+
+**系统专家表修复**：
+- 修复了 `SystemExpert` 模型主键定义错误
+- 确保 `expert_key` 唯一索引正确设置
+
+**导入和依赖修复**：
+- 添加了 `getHeaders` 函数导出（utils/request）
+- 添加了 `Toast` 组件和 `Toaster` 提供者
+- 修复了迁移脚本类定义问题（`migration_003.py`）
+- 调整了函数定义顺序解决 `NameError`
+- 添加了 `HomePage.tsx` 缺少的 `logger` 导入
+
+### 📊 数据库变更
+
+**User 表 role 字段**：
+- 类型：`VARCHAR(10)`（保持不变）
+- 默认值：`'user'`
+- 映射：Python 层使用 `UserRole` 枚举
+- 自动转换：SQLAlchemy 处理 String ↔ Enum 转换
+
+**SystemExpert 表**：
+- 主键：`id` (INT, 自增)
+- 唯一键：`expert_key` (VARCHAR)
+- 添加到 PostgreSQL 并创建
+
+### 🎯 性能优化
+
+- 移除了 SQLite fallback 机制（简化代码）
+- 删除了 12 个不需要的文件（migrations + scripts）
+- `database.py` 代码减少 70%（118 行 → 36 行）
+- 清理了 `data/` 目录（SQLite 数据目录）
+
+### 📝 文档更新
+
+- 更新了 `.gitignore`（移除 SQLite 规则）
+- 保留了通用的 Python/VirtualEnv 规则
+
+---
+
 ## [2026-01-27] - v0.6.0 - RBAC 专家管理系统 + 三大扩展功能
 
 ### ✨ 新功能
