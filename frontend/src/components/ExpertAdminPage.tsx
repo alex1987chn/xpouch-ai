@@ -219,14 +219,14 @@ export default function ExpertAdminPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               type="text"
-              placeholder="搜索专家..."
+              placeholder="搜索"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
             />
           </div>
           {/* 专家列表 */}
-          <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto">
+          <div className="space-y-2 max-h-[576px] overflow-y-auto">
             {filteredExperts.map((expert) => (
               <button
                 key={expert.id}
