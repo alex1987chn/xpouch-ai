@@ -15,7 +15,12 @@ const config: Config = {
         "2xl": "1400px",
       },
     },
-      extend: {
+    extend: {
+      // 字体配置 - 来自 HTML
+      fontFamily: {
+        sans: ['DM Sans', 'system-ui', 'sans-serif'],
+        mono: ['Space Mono', 'monospace'],
+      },
       colors: {
         // 基础配色
         border: "hsl(var(--border))",
@@ -96,17 +101,20 @@ const config: Config = {
           card: { light: 'var(--ai-card-light)', dark: 'var(--ai-card-dark)' }
         }
       },
-      // Bauhaus Box Shadow - 硬阴影系统
+      // Bauhaus Box Shadow - 硬阴影系统 (来自 HTML)
       boxShadow: {
-        'hard': '4px 4px 0 0 var(--bauhaus-shadow)',
-        'hard-hover': '8px 8px 0 0 var(--bauhaus-yellow)',
-        'hard-sm': '2px 2px 0 0 var(--bauhaus-shadow)',
-        'hard-lg': '6px 6px 0 0 var(--bauhaus-shadow)',
-        'hard-xl': '8px 8px 0 0 var(--bauhaus-shadow)',
+        'hard': '6px 6px 0px 0px var(--shadow-color)',
+        'hard-lg': '10px 10px 0px 0px var(--shadow-color)',
+        'hard-hover': '12px 12px 0px 0px var(--accent-hover)',
+        'hard-sm': '4px 4px 0px 0px var(--shadow-color)',
+        'hard-md': '6px 6px 0px 0px var(--shadow-color)',
+        'hard-xl': '8px 8px 0px 0px var(--shadow-color)',
       },
-      // 2. 输入框光晕的背景渐变
+      // 背景图案
       backgroundImage: {
         'mesh-glow': "radial-gradient(at 20% 20%, #E9D5FF 0%, transparent 50%), radial-gradient(at 80% 10%, #DBEAFE 0%, transparent 50%), radial-gradient(at 50% 90%, #D1FAE5 0%, transparent 50%)",
+        // 噪点纹理 - 来自 HTML
+        'noise': "url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%220.05%22/%3E%3C/svg%3E')",
       },
       borderRadius: {
         'ai': '1.25rem',
