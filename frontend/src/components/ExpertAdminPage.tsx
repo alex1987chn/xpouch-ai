@@ -243,7 +243,7 @@ export default function ExpertAdminPage() {
             />
           </div>
           {/* 专家列表 */}
-          <div className="space-y-2 max-h-[576px] overflow-y-auto">
+          <div className="space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 320px)' }}>
             {filteredExperts.map((expert) => (
               <button
                 key={expert.id}
@@ -395,7 +395,7 @@ export default function ExpertAdminPage() {
                   </div>
 
                   {/* 系统提示词 */}
-                  <div className="flex-1">
+                  <div className="flex-1 flex flex-col min-h-0">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       {t('systemPrompt')}
                     </label>
@@ -405,7 +405,8 @@ export default function ExpertAdminPage() {
                         handleFieldChange('system_prompt', e.target.value)
                       }
                       placeholder={t('systemPromptPlaceholder')}
-                      className="min-h-[400px] font-mono text-sm"
+                      className="font-mono text-sm resize-none"
+                      style={{ height: '400px' }}
                     />
                     <div className="text-xs text-gray-500 mt-2 text-right">
                       {t('characters').replace('{count}', formData.system_prompt.length.toString())}
