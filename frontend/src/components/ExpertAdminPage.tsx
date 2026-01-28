@@ -302,16 +302,6 @@ export default function ExpertAdminPage() {
               {/* 编辑模式 */}
               {!previewMode && (
                 <>
-                  {/* 专家标识（只读） */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {t('expertKey')}
-                    </label>
-                    <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-md text-gray-600 dark:text-gray-400">
-                      {selectedExpert.expert_key}
-                    </div>
-                  </div>
-
                   {/* 模型选择 - 两级联动 */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
