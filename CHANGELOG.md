@@ -97,6 +97,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 专家列表区域自动填充剩余空间滚动
 - 系统提示词固定高度 300px，减少溢出风险
 - 添加 flex 布局确保各区域正确分配空间
+- 移除冗余的专家标识区域（左侧列表已显示 expert_key）
+- 减少右侧配置编辑器的垂直空间占用
 
 **统一模型配置管理**：
 - ExpertAdminPage 使用 `@/config/models` 的统一模型配置
