@@ -197,7 +197,7 @@ export default function ExpertAdminPage() {
   }
 
   return (
-    <div className="flex gap-6 h-full">
+    <div className="flex gap-6 h-full p-6">
       {/* 左侧：专家列表 */}
       <Card className="w-80 flex-shrink-0">
         <CardHeader className="pb-4">

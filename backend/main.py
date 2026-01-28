@@ -33,7 +33,7 @@ from models import (
     Conversation, Message, User, TaskSession, SubTask,
     CustomAgent, CustomAgentCreate, CustomAgentUpdate, CustomAgentResponse
 )
-from database import create_db_and_tables, get_session
+from database import create_db_and_tables, get_session, engine
 from config import init_langchain_tracing, validate_config
 from constants import (
     ASSISTANT_SYSTEM_PROMPT,
@@ -157,6 +157,23 @@ async def lifespan(app: FastAPI):
     validate_config()
     # 创建数据库表
     create_db_and_tables()
+    # 初始化系统专家数据
+    from models import SystemExpert
+    from scripts.init_experts import EXPERT_DEFAULTS
+
+    with Session(engine) as session:
+        existing_experts = session.exec(select(SystemExpert)).all()
+        existing_keys = {e.expert_key for e in existing_experts}
+
+        if not existing_experts:
+            print("[Lifespan] No experts found, initializing default experts...")
+            for expert_config in EXPERT_DEFAULTS:
+                expert = SystemExpert(**expert_config)
+                session.add(expert)
+            session.commit()
+            print(f"[Lifespan] Initialized {len(EXPERT_DEFAULTS)} experts")
+        else:
+            print(f"[Lifespan] Found {len(existing_experts)} experts in database")
     yield
 
 app = FastAPI(lifespan=lifespan)
