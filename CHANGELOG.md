@@ -82,6 +82,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 更新了 `.gitignore`（移除 SQLite 规则）
 - 保留了通用的 Python/VirtualEnv 规则
 
+### ✨ 功能增强（2026-01-28）
+
+**专家列表搜索**：
+- 在 ExpertAdminPage 添加搜索框
+- 支持按专家名称和 expert_key 过滤
+- 显示"未找到匹配的专家"提示
+- 优化列表滚动体验（最大高度 + 滚动）
+
+**统一模型配置管理**：
+- ExpertAdminPage 使用 `@/config/models` 的统一模型配置
+- CreateAgentPage 使用统一的模型配置
+- 删除硬编码的 MODEL_OPTIONS
+- 支持的模型包括：
+  - DeepSeek: deepseek-chat, deepseek-reasoner
+  - OpenAI: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-3.5-turbo
+  - Anthropic: claude-sonnet-4, claude-haiku-3
+  - Google: gemini-2.0-flash-exp, gemini-1.5-pro, gemini-1.5-flash
+- 模型下拉菜单显示友好名称而非 ID
+
 ### 🐛 管理员页面修复（2026-01-28）
 
 **ExpertAdminPage 样式问题**：
