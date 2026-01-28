@@ -90,6 +90,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 显示"未找到匹配的专家"提示
 - 优化列表滚动体验（最大高度 + 滚动）
 
+**滚动区域优化**：
+- 修复全局滚动条问题（h-screen 限制高度）
+- 专家列表高度自适应屏幕大小（calc(100vh - 320px)）
+- 系统提示词区域固定高度（400px），滚动条更短
+- 添加 resize-none 防止用户调整文本框大小
+
 **统一模型配置管理**：
 - ExpertAdminPage 使用 `@/config/models` 的统一模型配置
 - CreateAgentPage 使用统一的模型配置
