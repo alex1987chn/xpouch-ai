@@ -61,7 +61,7 @@ class User(SQLModel, table=True):
     username: str = Field(default="User")
     avatar: Optional[str] = None
     plan: str = Field(default="Free") # Free, Pilot, Maestro
-    role: UserRole = Field(default=UserRole.USER)  # 用户角色：user 或 admin
+    role: UserRole = Field(default=UserRole.USER, sa_column_kwargs={"name": "role"})  # 用户角色：user 或 admin
     phone_number: Optional[str] = Field(default=None, unique=True, index=True)
     email: Optional[str] = Field(default=None, unique=True, index=True)
     password_hash: Optional[str] = Field(default=None)
