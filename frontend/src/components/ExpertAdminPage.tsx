@@ -216,8 +216,8 @@ export default function ExpertAdminPage() {
   return (
     <div className="flex gap-6 h-screen p-6">
       {/* 左侧：专家列表 */}
-      <Card className="w-80 flex-shrink-0">
-        <CardHeader className="pb-4">
+      <Card className="w-80 flex-shrink-0 flex flex-col overflow-hidden">
+        <CardHeader className="pb-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">{t('expertsList')}</CardTitle>
             <Button
@@ -230,7 +230,7 @@ export default function ExpertAdminPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="p-4">
+        <CardContent className="p-4 overflow-y-auto flex-1">
           {/* 搜索框 */}
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -243,7 +243,7 @@ export default function ExpertAdminPage() {
             />
           </div>
           {/* 专家列表 */}
-          <div className="space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+          <div className="space-y-2">
             {filteredExperts.map((expert) => (
               <button
                 key={expert.id}
@@ -271,8 +271,8 @@ export default function ExpertAdminPage() {
       </Card>
 
       {/* 右侧：配置编辑器 */}
-      <Card className="flex-1">
-        <CardHeader className="pb-4">
+      <Card className="flex-1 flex flex-col overflow-hidden">
+        <CardHeader className="pb-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">
               {selectedExpert ? `${selectedExpert.name} ${t('modelConfig')}` : t('selectExpert')}
@@ -296,7 +296,7 @@ export default function ExpertAdminPage() {
             </div>
           )}
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="p-6 overflow-y-auto flex-1">
           {selectedExpert ? (
             <div className="space-y-6">
               {/* 编辑模式 */}
@@ -395,7 +395,7 @@ export default function ExpertAdminPage() {
                   </div>
 
                   {/* 系统提示词 */}
-                  <div className="flex-1 flex flex-col min-h-0">
+                  <div className="flex flex-col min-h-0">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       {t('systemPrompt')}
                     </label>
@@ -406,7 +406,7 @@ export default function ExpertAdminPage() {
                       }
                       placeholder={t('systemPromptPlaceholder')}
                       className="font-mono text-sm resize-none"
-                      style={{ height: '400px' }}
+                      style={{ height: '300px' }}
                     />
                     <div className="text-xs text-gray-500 mt-2 text-right">
                       {t('characters').replace('{count}', formData.system_prompt.length.toString())}
