@@ -1,28 +1,180 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Bot, Sparkles, Code2, FileText, Zap, Plus } from 'lucide-react'
+import { Bot, Plus, Code2, FileText, Zap, LayoutGrid, Database, Cpu, Settings, Image, Paperclip, ArrowRight } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
-import AgentCard from '@/components/AgentCard'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { useNavigate, useLocation } from 'react-router-dom'
-import PixelLetters from './PixelLetters'
-import GlowingInput from './GlowingInput'
 import { cn } from '@/lib/utils'
 import { deleteCustomAgent, getAllAgents } from '@/services/api'
 import type { Agent } from '@/types'
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Card, CardContent } from '@/components/ui/card'
 import { logger } from '@/utils/logger'
 
+// Bauhaus Components
+import {
+  BauhausCard,
+  BauhausButton,
+  BauhausTextarea,
+  The4DPocketLogo,
+  SystemStatusMarquee,
+  NoiseOverlay,
+  GridPattern,
+  BlinkingCursor,
+} from '@/components/bauhaus'
 
 type ConversationMode = 'simple' | 'complex'
+
+// Navigation Item Component
+function NavItem({ icon: Icon, label, active = false }: { icon: React.ElementType; label: string; active?: boolean }) {
+  return (
+    <a
+      href="#"
+      className={cn(
+        "flex items-center gap-4 px-4 py-3 border-2 font-mono text-xs font-bold tracking-wide uppercase transition-all",
+        active
+          ? "bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]"
+          : "border-transparent hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]"
+      )}
+    >
+      <Icon className="w-4 h-4 stroke-[2.5]" />
+      <span>{label}</span>
+    </a>
+  )
+}
+
+// Scene Card Component
+function SceneCard({
+  number,
+  icon: Icon,
+  title,
+  subtitle,
+  tag,
+  onClick,
+}: {
+  number: string
+  icon: React.ElementType
+  title: string
+  subtitle: string
+  tag: string
+  onClick?: () => void
+}) {
+  return (
+    <BauhausCard
+      number={number}
+      onClick={onClick}
+      className="p-5 cursor-pointer group flex flex-col justify-between h-44 relative overflow-hidden"
+    >
+      {/* 右下角倒角装饰 */}
+      <div className="absolute bottom-0 right-0 w-0 h-0 border-b-[20px] border-r-[20px] border-b-[var(--accent-hover)] border-r-transparent transition-all group-hover:border-b-[40px] group-hover:border-r-[40px]" />
+
+      <div className="flex justify-between items-start">
+        <div className="p-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] group-hover:bg-white transition-colors">
+          <Icon className="w-6 h-6 stroke-[2.5]" />
+        </div>
+        <div className="font-mono text-[10px] bg-[var(--text-primary)] text-[var(--bg-page)] px-1">{tag}</div>
+      </div>
+      <div>
+        <h4 className="font-black text-lg mb-1 group-hover:underline decoration-2 underline-offset-4">{title}</h4>
+        <p className="text-xs font-mono text-[var(--text-secondary)] leading-tight">{subtitle}</p>
+      </div>
+    </BauhausCard>
+  )
+}
+
+// Construct Card Component
+function ConstructCard({
+  name,
+  type,
+  status,
+  tags,
+  sideColor,
+  onClick,
+}: {
+  name: string
+  type: string
+  status: 'online' | 'offline'
+  tags: string[]
+  sideColor: string
+  onClick?: () => void
+}) {
+  const isOnline = status === 'online'
+
+  return (
+    <BauhausCard
+      onClick={onClick}
+      className="p-0 cursor-pointer group h-44 flex relative overflow-hidden"
+    >
+      {/* 左侧色条 */}
+      <div
+        className="w-4 h-full border-r-2 border-[var(--border-color)] z-10 flex flex-col items-center justify-center gap-1 py-2 transition-colors"
+        style={{ backgroundColor: sideColor }}
+      >
+        {isOnline && (
+          <>
+            <div className="w-1 h-1 bg-[var(--bg-card)] rounded-full" />
+            <div className="w-1 h-1 bg-[var(--bg-card)] rounded-full" />
+            <div className="w-1 h-1 bg-[var(--bg-card)] rounded-full" />
+          </>
+        )}
+      </div>
+
+      <div className="p-5 flex-1 flex flex-col justify-between z-10">
+        <div className="flex justify-between items-start">
+          <h4 className={cn("font-black text-xl tracking-tight", !isOnline && "text-[var(--text-secondary)]")}>
+            {name}
+          </h4>
+          <div className="flex items-center gap-1 border border-[var(--border-color)] px-1 bg-[var(--bg-page)]">
+            <div className={cn("w-1.5 h-1.5 rounded-full", isOnline ? "bg-green-500 animate-pulse" : "bg-gray-400")} />
+            <span className={cn("font-mono text-[9px] font-bold", !isOnline && "text-[var(--text-secondary)]")}>
+              {isOnline ? 'ON' : 'OFF'}
+            </span>
+          </div>
+        </div>
+        <div>
+          <p className="font-mono text-xs text-[var(--text-secondary)] mb-3">/// {type}</p>
+          <div className="flex gap-1 flex-wrap">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className={cn(
+                  "px-2 py-0.5 text-[9px] font-bold border border-[var(--border-color)] bg-[var(--bg-page)]",
+                  !isOnline && "text-[var(--text-secondary)]"
+                )}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </BauhausCard>
+  )
+}
+
+// Create New Card Component
+function CreateNewCard({ onClick }: { onClick?: () => void }) {
+  return (
+    <div
+      onClick={onClick}
+      className="border-2 border-dashed border-[var(--text-secondary)] p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-[var(--bg-card)] hover:border-solid hover:border-[var(--accent-hover)] hover:shadow-[8px_8px_0_0_var(--accent-hover)] transition-all relative"
+    >
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-10 text-[var(--border-color)] font-black text-6xl select-none">
+        +
+      </div>
+      <div className="w-12 h-12 border-2 border-[var(--text-primary)] flex items-center justify-center mb-4 text-3xl group-hover:bg-[var(--accent-hover)] group-hover:border-[var(--accent-hover)] group-hover:text-black transition-colors bg-[var(--bg-page)]">
+        +
+      </div>
+      <span className="font-bold font-mono uppercase tracking-wider text-sm group-hover:text-[var(--text-primary)]">
+        Initialize New
+      </span>
+    </div>
+  )
+}
 
 export default function HomePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const [showSlogan, setShowSlogan] = useState(false)
 
   const {
     selectedAgentId,
@@ -30,11 +182,6 @@ export default function HomePage() {
     customAgents,
     setCustomAgents
   } = useChatStore()
-
-  useEffect(() => {
-    const timer = setTimeout(() => setShowSlogan(true), 4000)
-    return () => clearTimeout(timer)
-  }, [])
 
   // 刷新自定义智能体列表的状态
   const [refreshKey, setRefreshKey] = useState(0)
@@ -53,8 +200,6 @@ export default function HomePage() {
     const loadCustomAgents = async () => {
       try {
         const response = await getAllAgents()
-        // 后端已经按 created_at 降序排序了（最新的在前）
-        // 过滤掉 is_default=True 的智能体（通用助手）
         const customAgentsData = response
           .filter(agent => !agent.is_default)
           .map(agent => ({
@@ -68,7 +213,6 @@ export default function HomePage() {
             isCustom: true,
             is_builtin: false
           }))
-        // 使用完全替换而不是合并，确保与后端同步
         setCustomAgents(customAgentsData)
       } catch (error) {
         logger.error('加载自定义智能体失败:', error)
@@ -76,20 +220,18 @@ export default function HomePage() {
     }
 
     loadCustomAgents()
-  }, [refreshKey, setCustomAgents]) // 添加 setCustomAgents 依赖
+  }, [refreshKey, setCustomAgents])
 
   // 监听路由变化，当从创建页面返回首页时重置状态
   useEffect(() => {
     if (location.pathname === '/') {
       setRefreshKey(prev => prev + 1)
-      // 重置为默认助手
       setSelectedAgentId(SYSTEM_AGENTS.DEFAULT_CHAT)
     }
   }, [location.pathname, setSelectedAgentId])
 
-  // 构建显示的智能体列表：创建卡片 + 默认助手 + 自定义智能体
+  // 构建显示的智能体列表
   const displayedAgents = useMemo<Agent[]>(() => {
-    // 默认助手
     const defaultAgent: Agent = {
       id: SYSTEM_AGENTS.DEFAULT_CHAT,
       name: getSystemAgentName(SYSTEM_AGENTS.DEFAULT_CHAT),
@@ -99,13 +241,11 @@ export default function HomePage() {
       isDefault: true
     }
 
-    // 自定义智能体
     const customAgentsWithIcon = customAgents.map(a => ({
       ...a,
       icon: <Bot className="w-5 h-5" />
     }))
 
-    // 创建智能体卡片（第一位） - 特殊卡片，不是真实的agent
     const createAgentCard: Agent = {
       id: 'create-agent-card',
       name: '创建智能体',
@@ -119,13 +259,6 @@ export default function HomePage() {
     return [createAgentCard, defaultAgent, ...customAgentsWithIcon]
   }, [customAgents])
 
-  // 默认选中第一个卡片（默认助手）
-  useEffect(() => {
-    if (!selectedAgentId && displayedAgents.length > 0) {
-      setSelectedAgentId(displayedAgents[0].id)
-    }
-  }, [displayedAgents, selectedAgentId, setSelectedAgentId])
-
   // 点击智能体卡片
   const handleAgentClick = useCallback((agentId: string) => {
     setSelectedAgentId(agentId)
@@ -138,7 +271,7 @@ export default function HomePage() {
     navigate('/create-agent')
   }, [navigate])
 
-  // 处理删除自定义 agent - 打开确认对话框
+  // 处理删除自定义 agent
   const handleDeleteAgent = useCallback((agentId: string, agentName: string) => {
     setDeletingAgentId(agentId)
     setDeletingAgentName(agentName)
@@ -151,15 +284,12 @@ export default function HomePage() {
     try {
       await deleteCustomAgent(deletingAgentId)
       setCustomAgents(prev => prev.filter(agent => agent.id !== deletingAgentId))
-      // 如果删除的是当前选中的 agent，切换到默认助手
       if (selectedAgentId === deletingAgentId) {
         setSelectedAgentId(SYSTEM_AGENTS.DEFAULT_CHAT)
       }
     } catch (error) {
       logger.error('删除自定义智能体失败:', error)
-      // 即使删除失败（比如 404），也从 store 中移除该 agent
       setCustomAgents(prev => prev.filter(agent => agent.id !== deletingAgentId))
-      // 如果删除的是当前选中的 agent，切换到默认助手
       if (selectedAgentId === deletingAgentId) {
         setSelectedAgentId(SYSTEM_AGENTS.DEFAULT_CHAT)
       }
@@ -175,151 +305,261 @@ export default function HomePage() {
     const newId = crypto.randomUUID()
     useChatStore.getState().setCurrentConversationId(newId)
 
-    // 根据对话模式决定使用哪个智能体
-    // 简单模式：使用当前选中的智能体（默认助手或自定义智能体）
-    // 复杂模式：使用任务指挥官（sys-task-orchestrator）
     const agentIdForChat = conversationMode === 'simple'
       ? selectedAgentId || SYSTEM_AGENTS.DEFAULT_CHAT
       : SYSTEM_AGENTS.ORCHESTRATOR
 
     navigate(`/chat/${newId}?agentId=${agentIdForChat}`, {
-      state: {
-        startWith: inputMessage
-      }
+      state: { startWith: inputMessage }
     })
   }, [inputMessage, navigate, conversationMode, selectedAgentId])
 
+  // 推荐场景数据
+  const scenes = [
+    {
+      number: '01',
+      icon: Code2,
+      title: 'Code Gen',
+      subtitle: 'Python / JS / Rust',
+      tag: 'DEV',
+      onClick: () => {
+        setInputMessage('帮我编写一个React组件')
+        setConversationMode('complex')
+      },
+    },
+    {
+      number: '02',
+      icon: FileText,
+      title: 'Deep Research',
+      subtitle: 'Web Analysis & Summary',
+      tag: 'RSRCH',
+      onClick: () => {
+        setInputMessage('帮我调研一下最新的前端技术趋势')
+        setConversationMode('complex')
+      },
+    },
+    {
+      number: '03',
+      icon: Zap,
+      title: 'Quick Q&A',
+      subtitle: 'GPT-4o Instant',
+      tag: 'FAST',
+      onClick: () => {
+        setInputMessage('今天天气怎么样？')
+        setConversationMode('simple')
+      },
+    },
+  ]
+
   return (
-    <ScrollArea className="bg-transparent homepage-scroll w-full h-full scroll-smooth">
-      {/* Logo + 输入框区域 */}
-      <div className="pt-[10vh] pb-4 sm:pb-6 px-4 sm:px-6 md:px-12">
-        <div className="w-full max-w-5xl mx-auto">
-          <div className="flex flex-col items-center">
-            <div className="relative w-full h-24 sm:h-28 overflow-hidden flex items-center justify-center">
-              <PixelLetters />
-            </div>
-            <p className={`mt-1 text-[10px] sm:text-xs md:text-base font-semibold uppercase tracking-[0.25em] text-slate-700 dark:text-slate-300 ${
-              showSlogan ? 'animate-fadeIn' : 'opacity-0'
-            }`}>
-              All Agents, One <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-violet-500 font-bold">POUCH</span>
-            </p>
-          </div>
+    <div className="h-screen flex overflow-hidden">
+      {/* 网格背景 */}
+      <GridPattern />
 
-          <div className="w-full mx-auto mt-8 sm:mt-14">
-            <div className="transform transition-all duration-300 hover:scale-[1.01]">
-              {/* 输入框 */}
-              <GlowingInput
-                value={inputMessage}
-                onChange={setInputMessage}
-                onSubmit={handleSendMessage}
-                placeholder={conversationMode === 'simple' ? t('placeholder') : t('submitTaskPlaceholder')}
-                conversationMode={conversationMode}
-                onConversationModeChange={setConversationMode}
-              />
+      {/* Sidebar */}
+      <aside className="w-[280px] h-full flex flex-col justify-between p-6 z-20 relative border-r-2 border-[var(--border-color)] bg-[var(--bg-card)]">
+        <div>
+          {/* Logo */}
+          <div className="flex items-center gap-4 mb-12 cursor-pointer group select-none">
+            <The4DPocketLogo size={42} />
+            <div>
+              <h1 className="text-xl font-black tracking-tighter uppercase leading-none">XPouch</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="w-1.5 h-1.5 bg-[var(--accent-hover)] rounded-full animate-pulse" />
+                <span className="font-mono text-[10px] text-[var(--text-secondary)] tracking-widest group-hover:text-[var(--text-primary)] transition-colors">
+                  OS v2.4
+                </span>
+              </div>
             </div>
           </div>
+
+          {/* New Agent Button */}
+          <BauhausButton
+            onClick={handleCreateAgent}
+            className="w-full flex items-center justify-center gap-3 py-4 mb-8 group relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-4 h-4 bg-[var(--border-color)] transition-all group-hover:w-full group-hover:h-full group-hover:bg-[var(--accent-hover)] -z-10" />
+            <Plus className="w-5 h-5 stroke-[2.5] group-hover:stroke-black z-10" />
+            <span className="z-10 group-hover:text-black">New Agent</span>
+          </BauhausButton>
+
+          {/* Navigation */}
+          <nav className="space-y-2 font-mono text-xs font-bold tracking-wide">
+            <div className="pl-4 mb-2 text-[10px] text-[var(--text-secondary)] uppercase opacity-60">
+              /// Navigation
+            </div>
+            <NavItem icon={LayoutGrid} label="Dashboard" active />
+            <NavItem icon={Database} label="Knowledge" />
+            <NavItem icon={Cpu} label="Agents" />
+            <NavItem icon={Settings} label="Settings" />
+          </nav>
         </div>
-      </div>
 
-      {/* 推荐场景区域 */}
-      <div className="px-4 sm:px-6 md:px-12 mt-6 sm:mt-12">
-        <div className="w-full max-w-5xl mx-auto">
-          <header className="mb-3 sm:mb-6">
-            <h2 className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">推荐场景</h2>
-          </header>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {/* 场景1：代码生成 */}
-            <Card
-            onClick={() => {
-              setInputMessage('帮我编写一个React组件')
-              setConversationMode('complex')
-            }}
-            className="cursor-pointer overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-500"
-          >
-            <CardContent className="p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-violet-100 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/20">
-                  <Code2 className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-                </div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100">代码生成</h3>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                AI助手会自动拆解任务，调用编程专家为您生成代码
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* 场景2：深度调研 */}
-          <Card
-            onClick={() => {
-              setInputMessage('帮我调研一下最新的前端技术趋势')
-              setConversationMode('complex')
-            }}
-            className="cursor-pointer overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-500"
-          >
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-100 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/20">
-                  <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100">深度调研</h3>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                AI助手会调用搜索专家和研究专家，为您完成深度调研
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* 场景3：快速问答 */}
-          <Card
-            onClick={() => {
-              setInputMessage('今天天气怎么样？')
-              setConversationMode('simple')
-            }}
-            className="cursor-pointer overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-500"
-          >
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-amber-100 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/20">
-                  <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                </div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100">快速问答</h3>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                使用默认助手快速回答您的问题，适合简单对话
-              </p>
-            </CardContent>
-          </Card>
+        {/* User Profile */}
+        <div className="relative group cursor-pointer">
+          <div className="absolute inset-0 bg-[var(--shadow-color)] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2" />
+          <div className="relative flex items-center gap-3 px-4 py-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)] z-10">
+            <div className="w-8 h-8 bg-[var(--text-primary)] text-[var(--bg-page)] flex items-center justify-center font-bold text-sm">
+              A
+            </div>
+            <div className="flex-1">
+              <div className="font-bold text-sm uppercase">Alex_User</div>
+              <div className="text-[10px] font-mono text-[var(--text-secondary)]">PLAN: ARCHITECT</div>
+            </div>
+            <div className="w-2 h-2 bg-green-500 rounded-full border border-[var(--border-color)]" />
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* 我的智能体区域 */}
-      <div className="px-4 sm:px-6 md:px-12 mt-8 sm:mt-12 pb-20 sm:pb-20 md:pb-20">
-        <div className="w-full max-w-5xl mx-auto">
-          <header className="mb-4 sm:mb-6">
-            <h2 className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">我的智能体</h2>
-          </header>
+      {/* Main Content */}
+      <main className="flex-1 h-full relative overflow-y-auto">
+        {/* System Status Marquee */}
+        <SystemStatusMarquee className="sticky top-0 z-10" />
 
-          {/* 移动端：1列网格；平板：2列网格；PC：4列网格 */}
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-forwards">
-            {displayedAgents.map((agent, index) => (
-              <AgentCard
-                key={`${agent.id}-${index}`}
-                agent={agent}
-                index={index}
-                isSelected={agent.isCreateCard ? false : selectedAgentId === agent.id}
-                onClick={agent.isCreateCard ? handleCreateAgent : () => handleAgentClick(agent.id)}
-                showDeleteButton={!agent.isDefault && !agent.isCreateCard}
-                onCreateAgent={agent.isCreateCard ? handleCreateAgent : undefined}
-                onDelete={() => handleDeleteAgent(agent.id, agent.name)}
-              />
-            ))}
+        <div className="max-w-6xl mx-auto px-12 py-12 flex flex-col">
+          {/* Hero Section */}
+          <div className="flex-none flex flex-col items-start justify-center mb-10 select-none">
+            <div className="flex gap-2 mb-6">
+              <span className="px-2 py-1 text-[10px] font-mono font-bold border border-[var(--border-color)] bg-[var(--accent-hover)] text-black shadow-[2px_2px_0_0_var(--shadow-color)]">
+                READY
+              </span>
+              <span className="px-2 py-1 text-[10px] font-mono font-bold border border-[var(--border-color)] text-[var(--text-secondary)]">
+                IDLE
+              </span>
+            </div>
+
+            <h2 className="text-7xl md:text-8xl font-black tracking-tighter uppercase mb-2 leading-[0.9]">
+              READY TO <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--text-primary)] to-[var(--text-secondary)]">
+                ASSEMBLE?
+              </span>
+            </h2>
+          </div>
+
+          {/* Command Input */}
+          <div className="flex-none mb-16 relative group">
+            <div className="absolute -top-3 left-4 bg-[var(--bg-page)] px-2 font-mono text-xs font-bold border-2 border-[var(--border-color)] z-20 text-[var(--text-secondary)]">
+              COMMAND_INPUT
+            </div>
+
+            {/* Shadow Layer */}
+            <div className="absolute inset-0 bg-[var(--shadow-color)] translate-x-2 translate-y-2 group-focus-within:translate-x-3 group-focus-within:translate-y-3 group-focus-within:bg-[var(--accent-hover)] transition-all" />
+
+            {/* Input Container */}
+            <div className="relative border-2 border-[var(--border-color)] bg-[var(--bg-card)] flex flex-col">
+              {/* Textarea with Line Numbers */}
+              <div className="flex-1 relative flex">
+                {/* Line Numbers */}
+                <div className="flex-none w-12 py-6 pl-4 border-r-2 border-[var(--border-color)]">
+                  <div className="font-mono text-sm text-[var(--text-secondary)] opacity-30 select-none leading-relaxed">
+                    01<br />02<br />03
+                  </div>
+                </div>
+
+                {/* Textarea */}
+                <textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleSendMessage()
+                    }
+                  }}
+                  placeholder="// Initialize construct..."
+                  className="flex-1 w-full min-h-[128px] bg-transparent py-6 pl-6 pr-6 text-xl font-bold font-mono text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-0 border-none resize-none z-10 relative"
+                />
+              </div>
+
+              {/* Toolbar */}
+              <div className="flex justify-between items-center p-3 border-t-2 border-[var(--border-color)] bg-[var(--bg-page)]">
+                <div className="flex gap-2">
+                  <button className="p-2 border-2 border-transparent hover:bg-[var(--bg-card)] hover:border-[var(--border-color)] transition-all">
+                    <Image className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                  <button className="p-2 border-2 border-transparent hover:bg-[var(--bg-card)] hover:border-[var(--border-color)] transition-all">
+                    <Paperclip className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="font-mono text-[10px] text-[var(--text-secondary)]">ENTER TO SEND</span>
+                  <BauhausButton
+                    variant="primary"
+                    onClick={handleSendMessage}
+                    disabled={!inputMessage.trim()}
+                    className="px-6 py-2 flex items-center gap-2"
+                  >
+                    <span>EXECUTE</span>
+                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                  </BauhausButton>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recommended Section */}
+          <div className="space-y-12 pb-10">
+            <div>
+              <div className="flex justify-between items-end mb-6 border-b-2 border-[var(--border-color)] pb-2 w-full">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-[var(--accent-hover)] border border-[var(--border-color)]" />
+                  <h3 className="text-sm font-black uppercase tracking-widest">Recommended</h3>
+                </div>
+                <div className="font-mono text-[10px] text-[var(--text-secondary)]">SHOWING 3 OF 12</div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {scenes.map((scene) => (
+                  <SceneCard key={scene.number} {...scene} />
+                ))}
+              </div>
+            </div>
+
+            {/* My Constructs Section */}
+            <div className="pt-8">
+              <div className="flex justify-between items-end mb-6 border-b-2 border-[var(--border-color)] pb-2 w-full">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-[var(--logo-base)] border border-[var(--border-color)]" />
+                  <h3 className="text-sm font-black uppercase tracking-widest">My Constructs</h3>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Create New Card */}
+                <CreateNewCard onClick={handleCreateAgent} />
+
+                {/* Default Agent */}
+                <ConstructCard
+                  name="Nexus_Core"
+                  type="PERSONAL.ASST"
+                  status="online"
+                  tags={['CHAT', 'MEMORY']}
+                  sideColor="var(--logo-base)"
+                  onClick={() => handleAgentClick(SYSTEM_AGENTS.DEFAULT_CHAT)}
+                />
+
+                {/* Custom Agents */}
+                {customAgents.slice(0, 1).map((agent) => (
+                  <ConstructCard
+                    key={agent.id}
+                    name={agent.name}
+                    type={agent.category?.toUpperCase() || 'CUSTOM'}
+                    status="offline"
+                    tags={[agent.category?.substring(0, 6).toUpperCase() || 'AGENT']}
+                    sideColor="#888888"
+                    onClick={() => handleAgentClick(agent.id)}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* 删除确认对话框 */}
+      {/* Noise Overlay */}
+      <NoiseOverlay />
+
+      {/* Delete Confirm Dialog */}
       <DeleteConfirmDialog
         isOpen={deletingAgentId !== null}
         onClose={() => {
@@ -331,8 +571,6 @@ export default function HomePage() {
         description="删除后无法恢复，请确认是否继续？"
         itemName={deletingAgentName}
       />
-    </ScrollArea>
+    </div>
   )
 }
-
-
