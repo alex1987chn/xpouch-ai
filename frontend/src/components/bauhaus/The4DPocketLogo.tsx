@@ -1,132 +1,79 @@
-import { motion } from "framer-motion"
-import { cn } from "@/lib/utils"
+"use client"
 
-/**
- * The4DPocketLogo - 4D口袋Logo动画组件
- * 
- * 复刻 xpouch_ultra_refined.html 中的 Logo 动画：
- * - pocket-base: 底部半圆形容器，有 baseRecoil 动画
- * - pocket-item: 顶部下落的方块，有 dropProcess 动画
- * 
- * 使用 Framer Motion 重写，获得更好的性能和更流畅的动画
- * 
- * @example
- * <The4DPocketLogo size={42} />
- * <The4DPocketLogo size={64} className="mx-auto" />
- */
+import { motion } from "framer-motion"
 
 interface The4DPocketLogoProps {
-  size?: number
   className?: string
 }
 
-export function The4DPocketLogo({ size = 42, className }: The4DPocketLogoProps) {
-  // 根据尺寸计算各元素大小
-  const scale = size / 42
-  const baseWidth = 36 * scale
-  const baseHeight = 20 * scale
-  const itemSize = 16 * scale
-  const borderWidth = 2 * scale
+export function The4DPocketLogo({ className }: The4DPocketLogoProps) {
+  // baseRecoil animation: scaleY/scaleX keyframes
+  const baseRecoilVariants = {
+    animate: {
+      scaleY: [1, 0.8, 1.05, 1, 1],
+      scaleX: [1, 1.1, 0.95, 1, 1],
+      transition: {
+        duration: 3,
+        repeat: Infinity,
+        times: [0, 0.35, 0.4, 0.5, 0.6, 1],
+        ease: [0.25, 1, 0.5, 1],
+      },
+    },
+  }
+
+  // dropProcess animation: top/opacity/rotate/scale keyframes
+  const dropProcessVariants = {
+    animate: {
+      top: ["-20px", "10px", "10px", "10px", "10px", "10px", "10px"],
+      opacity: [0, 1, 1, 1, 1, 1, 0],
+      rotate: [0, 0, 10, -10, 0, 0, 0],
+      scale: [1, 1, 1, 1, 1, 1, 0],
+      backgroundColor: [
+        "var(--logo-item)",
+        "var(--logo-item)",
+        "var(--logo-item-active)",
+        "var(--logo-item-active)",
+        "var(--logo-item)",
+        "var(--logo-item)",
+        "var(--logo-item)",
+      ],
+      transition: {
+        duration: 3,
+        repeat: Infinity,
+        times: [0, 0.2, 0.4, 0.5, 0.6, 0.8, 1],
+        ease: [0.68, -0.55, 0.27, 1.55],
+      },
+    },
+  }
 
   return (
-    <div 
-      className={cn("relative", className)}
-      style={{ width: size, height: size }}
+    <div
+      className={`relative w-[42px] h-[42px] ${className || ""}`}
+      style={{ willChange: "transform" }}
     >
-      {/* Pocket Base - 底部半圆形容器 */}
+      {/* Pocket Item - Animated drop */}
       <motion.div
-        className="absolute z-10"
+        className="absolute left-[13px] w-4 h-4 border-2 border-[var(--border-color)] z-[5]"
         style={{
-          width: baseWidth,
-          height: baseHeight,
-          bottom: 8 * scale,
-          left: 3 * scale,
-          backgroundColor: "var(--logo-base)",
-          border: `${borderWidth}px solid var(--border-color)`,
-          borderTop: "none",
-          borderBottomLeftRadius: baseHeight / 2,
-          borderBottomRightRadius: baseHeight / 2,
-        }}
-        animate={{
-          scaleY: [1, 0.8, 1.05, 1],
-          scaleX: [1, 1.1, 0.95, 1],
-        }}
-        transition={{
-          duration: 3,
-          repeat: Infinity,
-          times: [0, 0.4, 0.5, 0.6, 1],
-          ease: [0.25, 1, 0.5, 1], // cubic-bezier(0.25, 1, 0.5, 1)
-        }}
-      />
-
-      {/* Pocket Item - 顶部下落的方块 */}
-      <motion.div
-        className="absolute z-5"
-        style={{
-          width: itemSize,
-          height: itemSize,
-          left: (size - itemSize) / 2,
           backgroundColor: "var(--logo-item)",
-          border: `${borderWidth}px solid var(--border-color)`,
+          willChange: "transform, opacity",
         }}
-        initial={{ top: -20 * scale, opacity: 0 }}
-        animate={{
-          top: [ -20 * scale, 10 * scale, 10 * scale, 10 * scale, 10 * scale ],
-          opacity: [0, 1, 1, 1, 0],
-          rotate: [0, 0, 10, -10, 0],
-          scale: [1, 1, 1, 1, 0],
-        }}
-        transition={{
-          duration: 3,
-          repeat: Infinity,
-          times: [0, 0.2, 0.5, 0.6, 0.8, 1],
-          ease: [0.68, -0.55, 0.27, 1.55], // cubic-bezier(0.68, -0.55, 0.27, 1.55)
-        }}
+        variants={dropProcessVariants as any}
+        animate="animate"
       />
-    </div>
-  )
-}
 
-/**
- * The4DPocketLogoCSS - 纯 CSS 版本（备用）
- * 
- * 如果不需要 framer-motion，可以使用这个版本
- */
-export function The4DPocketLogoCSS({ size = 42, className }: The4DPocketLogoProps) {
-  const scale = size / 42
-
-  return (
-    <div 
-      className={cn("relative logo-wrapper", className)}
-      style={{ 
-        width: size, 
-        height: size,
-        ["--scale" as string]: scale,
-      }}
-    >
-      {/* Pocket Item - 先渲染，在 base 下面 */}
-      <div 
-        className="absolute pocket-item"
+      {/* Pocket Base - Animated recoil */}
+      <motion.div
+        className="absolute bottom-2 left-[3px] w-9 h-5 border-2 border-t-0 border-[var(--border-color)] z-10"
         style={{
-          width: 16 * scale,
-          height: 16 * scale,
-          left: 13 * scale,
-          borderWidth: 2 * scale,
+          backgroundColor: "var(--logo-base)",
+          borderBottomLeftRadius: "18px",
+          borderBottomRightRadius: "18px",
+          transformOrigin: "bottom center",
+          willChange: "transform",
         }}
-      />
-      
-      {/* Pocket Base */}
-      <div 
-        className="absolute pocket-base"
-        style={{
-          width: 36 * scale,
-          height: 20 * scale,
-          bottom: 8 * scale,
-          left: 3 * scale,
-          borderWidth: 2 * scale,
-          borderBottomLeftRadius: 18 * scale,
-          borderBottomRightRadius: 18 * scale,
-        }}
+        variants={baseRecoilVariants as any}
+        animate="animate"
       />
     </div>
   )

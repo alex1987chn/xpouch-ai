@@ -1,0 +1,537 @@
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { Home, Database, MessageSquare, Shield, Plus, User, ChevronRight, Cog, Clock, ArrowRight, Star, Plane, Crown, Globe } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { The4DPocketLogo } from '@/components/bauhaus'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { getConversations, type Conversation } from '@/services/api'
+import { useUserStore } from '@/store/userStore'
+import { formatDistanceToNow } from 'date-fns'
+import { zhCN, enUS, ja } from 'date-fns/locale'
+import { logger } from '@/utils/logger'
+import { useTranslation } from '@/i18n'
+import { getAvatarDisplay } from '@/utils/userSettings'
+
+export interface BauhausSidebarProps {
+  className?: string
+  isCollapsed?: boolean
+  onCreateAgent?: () => void
+  onSettingsClick?: () => void
+  onPersonalSettingsClick?: () => void
+  onToggleCollapsed?: () => void
+  isMobileOpen?: boolean
+  onMobileClose?: () => void
+}
+
+export default function BauhausSidebar({
+  className,
+  isCollapsed = false,
+  onCreateAgent,
+  onSettingsClick,
+  onPersonalSettingsClick,
+  onToggleCollapsed,
+  isMobileOpen = false,
+  onMobileClose,
+}: BauhausSidebarProps) {
+  const { t, language, setLanguage } = useTranslation()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [recentConversations, setRecentConversations] = useState<Conversation[]>([])
+  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false)
+  const { user, isAuthenticated, logout } = useUserStore()
+
+  // 判断当前页面
+  const isOnHome = location.pathname === '/'
+  const isOnKnowledge = location.pathname === '/knowledge'
+  const isOnHistory = location.pathname === '/history'
+  const isOnAdmin = location.pathname === '/admin/experts'
+
+  // 用户数据
+  const username = user?.username || 'User'
+  const avatar = user?.avatar
+  // 优先使用 Store 中的 plan，如果没有则默认为 Free
+  const currentPlan = (user?.plan as 'Free' | 'Pilot' | 'Maestro') || 'Free'
+
+  // 套餐权益文案
+  const planLabel = {
+    'Free': 'Free',
+    'Pilot': 'Pilot',
+    'Maestro': 'Maestro'
+  }[currentPlan]
+
+  // 获取最近5条历史会话
+  useEffect(() => {
+    const loadRecentConversations = async () => {
+      try {
+        const conversations = await getConversations()
+        // 按更新时间降序排列，取前5条
+        const sorted = [...conversations]
+          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+          .slice(0, 5)
+        setRecentConversations(sorted)
+      } catch (error) {
+        logger.error('Failed to load recent conversations:', error)
+      }
+    }
+    loadRecentConversations()
+  }, [])
+
+  // 处理导航点击
+  const handleMenuClick = (path: string) => {
+    navigate(path)
+    onMobileClose?.()
+  }
+
+  // 处理会话点击
+  const handleConversationClick = (conversationId: string) => {
+    navigate(`/chat/${conversationId}`)
+    onMobileClose?.()
+  }
+
+  // 设置菜单外部点击处理
+  useEffect(() => {
+    if (!isSettingsMenuOpen) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const avatarButton = document.querySelector('[data-avatar-button]')
+      if (avatarButton && avatarButton.contains(event.target as Node)) {
+        return
+      }
+      if (!isSettingsMenuOpen) return
+      onMobileClose?.()
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isSettingsMenuOpen, onMobileClose])
+
+  const getLocale = () => {
+    const lang = language || 'en'
+    switch (lang) {
+      case 'zh': return zhCN
+      case 'ja': return ja
+      default: return enUS
+    }
+  }
+
+  const handleLogout = () => {
+    logout()
+    setIsSettingsMenuOpen(false)
+  }
+
+  return (
+    <div
+      className={cn(
+        "w-full h-full flex flex-col text-[var(--text-primary)]",
+        className
+      )}
+    >
+      {/* Logo 区域 - 完全按照旧侧边栏的布局 */}
+      <div className="flex items-center relative">
+        {isCollapsed ? (
+          <div className="w-full py-3 justify-center flex items-center">
+            <div
+              onClick={() => handleMenuClick('/')}
+              className="cursor-pointer scale-[0.7]"
+            >
+              <The4DPocketLogo />
+            </div>
+          </div>
+        ) : (
+          <div className="w-full py-8 px-4">
+            <div
+              onClick={() => handleMenuClick('/')}
+              className="cursor-pointer flex items-center gap-4 group select-none w-[230px] h-[44px]"
+            >
+              <div className="shrink-0">
+                <The4DPocketLogo />
+              </div>
+              <div>
+                <h1 className="text-xl font-black tracking-tighter uppercase leading-none">XPouch</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="w-1.5 h-1.5 bg-[var(--accent-hover)] rounded-full animate-pulse"></div>
+                  <span className="font-mono text-[10px] text-[var(--text-secondary)] tracking-widest group-hover:text-[var(--text-primary)] transition-colors">OS v2.4</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 菜单区域 */}
+      <div className="flex-1 flex flex-col items-center">
+        {/* 创建智能体按钮 - 完全按照旧侧边栏：pb-4 */}
+        <div className="pb-4 w-full flex justify-center" style={{ maxWidth: '230px' }}>
+          {isCollapsed ? (
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  onCreateAgent?.()
+                  onMobileClose?.()
+                }}
+                className="w-9 h-9 rounded-full border-2 border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[var(--accent-hover)_6px_6px_0_0] hover:bg-[var(--accent-hover)] hover:text-black hover:border-black active:translate-x-[2px] active:translate-y-[2px] active:shadow-none relative group"
+              >
+                <Plus className="w-4 h-4 relative z-10" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                onCreateAgent?.()
+                onMobileClose?.()
+              }}
+              className="w-[230px] h-[44px] rounded-lg flex items-center justify-center gap-2 border-2 border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[var(--accent-hover)_6px_6px_0_0] hover:bg-[var(--accent-hover)] hover:text-black hover:border-black active:translate-x-[2px] active:translate-y-[2px] active:shadow-none relative group px-2"
+            >
+              <div className="absolute top-0 right-0 w-4 h-4 bg-[var(--border-color)] transition-all group-hover:w-full group-hover:h-full group-hover:bg-[var(--accent-hover)] -z-10" />
+              <Plus className="w-4 h-4 relative z-10" />
+              <span className="relative z-10 group-hover:text-black">New Agent</span>
+            </button>
+          )}
+        </div>
+
+        {/* 菜单区域 - 根据收拢状态使用不同容器 */}
+        {isCollapsed ? (
+          <div className="flex-1 flex flex-col items-center">
+            {/* 主菜单 - 首页、知识库、历史记录 */}
+            <div className="flex flex-col items-center space-y-2">
+              {/* 首页按钮 */}
+              <button
+                onClick={() => handleMenuClick('/')}
+                className={cn(
+                  'h-9 w-9 transition-all duration-200 justify-center p-0 rounded-full border-2',
+                  isOnHome
+                    ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
+                    : 'border-[var(--border-color)] text-slate-400 hover:bg-[var(--bg-page)] hover:text-gray-700 dark:hover:text-slate-200'
+                )}
+              >
+                <Home className="w-4 h-4 flex-shrink-0" />
+              </button>
+
+              {/* 知识库按钮 */}
+              <button
+                onClick={() => handleMenuClick('/knowledge')}
+                className={cn(
+                  'h-9 w-9 transition-all duration-200 justify-center p-0 rounded-full border-2',
+                  isOnKnowledge
+                    ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
+                    : 'border-[var(--border-color)] text-slate-400 hover:bg-[var(--bg-page)] hover:text-gray-700 dark:hover:text-slate-200'
+                )}
+              >
+                <Database className="w-4 h-4 flex-shrink-0" />
+              </button>
+
+              {/* 历史记录按钮 */}
+              <button
+                onClick={() => handleMenuClick('/history')}
+                className={cn(
+                  'h-9 w-9 transition-all duration-200 justify-center p-0 rounded-full border-2',
+                  isOnHistory
+                    ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
+                    : 'border-[var(--border-color)] text-slate-400 hover:bg-[var(--bg-page)] hover:text-gray-700 dark:hover:text-slate-200'
+                )}
+              >
+                <MessageSquare className="w-4 h-4 flex-shrink-0" />
+              </button>
+
+              {/* 管理员按钮 */}
+              <button
+                onClick={() => handleMenuClick('/admin/experts')}
+                className={cn(
+                  'h-9 w-9 transition-all duration-200 justify-center p-0 rounded-full border-2',
+                  isOnAdmin
+                    ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
+                    : 'border-[var(--border-color)] text-slate-400 hover:bg-[var(--bg-page)] hover:text-gray-700 dark:hover:text-slate-200'
+                )}
+              >
+                <Shield className="w-4 h-4 flex-shrink-0" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 w-full flex justify-center overflow-hidden">
+            <ScrollArea className="h-full w-[230px]">
+              {/* 主菜单 - 首页、知识库、历史记录 */}
+              <div className="space-y-2">
+              {/* 导航标题 */}
+              <div className="px-1 py-2">
+                <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                  /// Navigation
+                </h3>
+              </div>
+            {/* 首页按钮 */}
+            <button
+              onClick={() => handleMenuClick('/')}
+              className={cn(
+                'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2',
+                isOnHome
+                  ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
+                  : 'border-transparent text-[var(--text-primary)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]'
+              )}
+            >
+              <div className="flex items-center gap-3 px-3">
+                <Home className="w-5 h-5 flex-shrink-0" />
+                <span className="font-mono text-xs font-bold tracking-wide uppercase">Dashboard</span>
+              </div>
+            </button>
+
+            {/* 知识库按钮 */}
+            <button
+              onClick={() => handleMenuClick('/knowledge')}
+              className={cn(
+                'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2',
+                isOnKnowledge
+                  ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
+                  : 'border-transparent text-[var(--text-primary)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]'
+              )}
+            >
+              <div className="flex items-center gap-3 px-3">
+                <Database className="w-5 h-5 flex-shrink-0" />
+                <span className="font-mono text-xs font-bold tracking-wide uppercase">Knowledge</span>
+              </div>
+            </button>
+
+            {/* 历史记录按钮 */}
+            <button
+              onClick={() => handleMenuClick('/history')}
+              className={cn(
+                'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2',
+                isOnHistory
+                  ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
+                  : 'border-transparent text-[var(--text-primary)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]'
+              )}
+            >
+              <div className="flex items-center gap-3 px-3">
+                <MessageSquare className="w-5 h-5 flex-shrink-0" />
+                <span className="font-mono text-xs font-bold tracking-wide uppercase">History</span>
+              </div>
+            </button>
+
+            {/* 管理员按钮 */}
+            <button
+              onClick={() => handleMenuClick('/admin/experts')}
+              className={cn(
+                'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2',
+                isOnAdmin
+                  ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
+                  : 'border-transparent text-[var(--text-primary)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]'
+              )}
+            >
+              <div className="flex items-center gap-3 px-3">
+                <Shield className="w-5 h-5 flex-shrink-0" />
+                <span className="font-mono text-xs font-bold tracking-wide uppercase">Experts</span>
+              </div>
+            </button>
+          </div>
+
+          {/* 最近会话列表 - 仅在展开状态显示 - Bauhaus风格 */}
+          {recentConversations.length > 0 && (
+            <div className="mt-6 space-y-2 w-[230px]">
+              <div className="px-1 py-2">
+                <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  {t('recentChats') || '最近会话'}
+                </h3>
+              </div>
+              <div className="space-y-1">
+                {recentConversations.map((conv) => (
+                  <button
+                    key={conv.id}
+                    onClick={() => handleConversationClick(conv.id)}
+                    className="w-full h-auto px-3 py-2 rounded-lg hover:bg-[var(--accent-hover)] hover:text-black transition-all text-left group border-2 border-[var(--border-color)] shadow-[var(--shadow-color)_2px_2px_0_0]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <MessageSquare className="w-5 h-5 text-slate-400 dark:text-slate-500 flex-shrink-0 group-hover:text-black" />
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate group-hover:text-black transition-colors"
+                          title={conv.title || t('newChat')}
+                        >
+                          {(conv.title || t('newChat')).substring(0, 10)}
+                        </p>
+                      </div>
+                      <ArrowRight className="w-3 h-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+            </ScrollArea>
+          </div>
+        )}
+      </div>
+
+      {/* 底部用户区域 - Bauhaus风格 */}
+      <div className={cn(
+        'border-t-2 border-[var(--border-color)]',
+        isCollapsed ? 'p-2 flex flex-col items-center gap-2' : 'p-3'
+      )}>
+        {isCollapsed ? (
+          <div className="flex flex-col items-center gap-2">
+            <div
+              onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)}
+              data-avatar-button=""
+              className="flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-[var(--bg-page)] rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+            >
+              <Avatar className="h-8 w-8 border-2 border-[var(--border-color)] shadow-[var(--shadow-color)_2px_2px_0_0]">
+                <AvatarImage src={avatar} alt="Avatar" />
+                <AvatarFallback className="bg-gradient-to-br from-violet-500 to-blue-600 text-[10px] font-bold text-white">
+                  {getAvatarDisplay(avatar || '', username)}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+            {/* 展开按钮 - Bauhaus风格 */}
+            {onToggleCollapsed && (
+              <button
+                onClick={onToggleCollapsed}
+                className="p-1.5 border-2 border-[var(--border-color)] bg-[var(--bg-page)] shadow-[var(--shadow-color)_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_3px_3px_0_0]"
+                title="展开侧边栏"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="relative group cursor-pointer w-[230px] mx-auto mb-2">
+            <div className="absolute inset-0 bg-[var(--shadow-color)] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2"></div>
+            <div
+              onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)}
+              data-avatar-button=""
+              className="relative flex items-center gap-3 px-4 py-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)] z-10 transition-all"
+              style={{ width: '230px', height: '63px' }}
+            >
+              {/* 头像 */}
+              {avatar ? (
+                <img src={avatar} alt="Avatar" className="w-8 h-8 border-2 border-[var(--border-color)] shrink-0" />
+              ) : (
+                <div className="w-8 h-8 bg-[var(--text-primary)] text-[var(--bg-card)] flex items-center justify-center font-bold text-sm shrink-0 border-2 border-[var(--border-color)]">
+                  {username.charAt(0).toUpperCase()}
+                </div>
+              )}
+              {/* 名字 */}
+              <div className="flex-1">
+                <div className="font-bold text-sm uppercase" title={username}>
+                  {username}
+                </div>
+                <div className="text-[10px] font-mono text-[var(--text-secondary)]">
+                  PLAN: {planLabel}
+                </div>
+              </div>
+              {/* 状态指示点 */}
+              <div className="w-2 h-2 bg-green-500 rounded-full border border-[var(--border-color)] shrink-0"></div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 设置弹出菜单 - Portal - Bauhaus风格 */}
+      {isSettingsMenuOpen && createPortal(
+        <div
+          className="fixed bottom-[60px] bg-[var(--bg-card)] backdrop-blur-2xl border-2 border-[var(--border-color)] shadow-[var(--shadow-color)_4px_4px_0_0] z-[200] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
+          style={{
+            width: '260px',
+            maxWidth: 'calc(100vw - 32px)',
+            left: '32px',
+          }}
+        >
+          <div className="p-4 space-y-1">
+            {/* 用户信息 */}
+            <div className="pb-3 border-b-2 border-[var(--border-color)] mb-3">
+              <div className="font-mono text-[10px] text-[var(--text-secondary)] mb-2">
+                /// USER
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  {avatar ? (
+                    <img src={avatar} alt="Avatar" className="w-10 h-10 border-2 border-[var(--border-color)] shadow-[var(--shadow-color)_2px_2px_0_0]" />
+                  ) : (
+                    <div className="w-10 h-10 bg-[var(--text-primary)] text-[var(--bg-card)] flex items-center justify-center font-bold border-2 border-[var(--border-color)] shadow-[var(--shadow-color)_2px_2px_0_0]">
+                      {username.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  {/* 套餐图标 */}
+                  <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[var(--border-color)] bg-[var(--bg-card)] flex items-center justify-center shadow-sm">
+                    {currentPlan === 'Free' && <Star className="w-1 h-1 text-purple-500" />}
+                    {currentPlan === 'Pilot' && <Plane className="w-1 h-1 text-cyan-500" />}
+                    {currentPlan === 'Maestro' && <Crown className="w-1 h-1 text-amber-500" />}
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold">{username}</div>
+                  <div className="text-[10px] font-mono text-[var(--text-secondary)]">
+                    {isAuthenticated ? (user?.plan || 'Free') : 'Guest'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 设置选项 - Bauhaus风格 */}
+            <button
+              onClick={() => {
+                onPersonalSettingsClick?.()
+                setIsSettingsMenuOpen(false)
+                onMobileClose?.()
+              }}
+              className="w-full flex items-center gap-3 px-2 py-2.5 border-2 border-[var(--border-color)] hover:bg-[var(--accent-hover)] hover:text-black transition-all font-mono text-xs shadow-[var(--shadow-color)_2px_2px_0_0]"
+            >
+              <User className="w-4 h-4" />
+              <span>Personal Settings</span>
+            </button>
+
+            <button
+              onClick={() => {
+                onSettingsClick?.()
+                setIsSettingsMenuOpen(false)
+                onMobileClose?.()
+              }}
+              className="w-full flex items-center gap-3 px-2 py-2.5 border-2 border-[var(--border-color)] hover:bg-[var(--accent-hover)] hover:text-black transition-all font-mono text-xs shadow-[var(--shadow-color)_2px_2px_0_0]"
+            >
+              <Cog className="w-4 h-4" />
+              <span>Model Config</span>
+            </button>
+
+            {/* 语言切换 - Bauhaus风格 */}
+            <div className="space-y-1">
+              <div className="font-mono text-[10px] text-[var(--text-secondary)] uppercase px-2 pt-2">
+                /// LANGUAGE
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                {(['zh', 'en', 'ja'] as const).map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => {
+                      setLanguage(lang)
+                      setIsSettingsMenuOpen(false)
+                      onMobileClose?.()
+                    }}
+                    className={cn(
+                      'py-2 border-2 font-mono text-xs font-bold uppercase transition-all',
+                      language === lang
+                        ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[var(--shadow-color)_2px_2px_0_0]'
+                        : 'border-[var(--border-color)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)] text-[var(--text-primary)]'
+                    )}
+                  >
+                    {lang === 'zh' ? '中文' : lang === 'en' ? 'EN' : '日本語'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 退出登录 */}
+            {isAuthenticated && (
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-2 py-2.5 border-2 border-[var(--border-color)] hover:bg-red-500 hover:text-white transition-all font-mono text-xs text-red-500 shadow-[var(--shadow-color)_2px_2px_0_0]"
+              >
+                <ArrowRight className="w-4 h-4" />
+                <span>登出</span>
+              </button>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  )
+}

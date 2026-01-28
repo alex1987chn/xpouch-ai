@@ -1,12 +1,13 @@
 import { ReactNode, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { Menu } from 'lucide-react'
-import Sidebar from '@/components/Sidebar'
+import { Menu, Sun, Moon } from 'lucide-react'
+import { BauhausSidebar } from '@/components/bauhaus'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { PersonalSettingsDialog } from '@/components/PersonalSettingsDialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { useApp } from '@/providers/AppProvider'
+import { useTheme } from '@/hooks/useTheme'
 import { logger } from '@/utils/logger'
 
 interface AppLayoutProps {
@@ -17,6 +18,7 @@ interface AppLayoutProps {
 export default function AppLayout({ children, hideMobileMenu = false }: AppLayoutProps) {
   const navigate = useNavigate()
   const { sidebar, dialogs } = useApp()
+  const { theme, toggleTheme } = useTheme()
 
   // 监听全局 toggle-sidebar 事件
   useEffect(() => {
@@ -45,10 +47,16 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
   return (
     <div
       className={cn(
-        'flex w-full bg-slate-50 dark:bg-[#020617] transition-colors duration-200 overflow-x-hidden',
+        'flex w-full bg-[var(--bg-page)] dark:bg-[var(--bg-page)] transition-colors duration-200 overflow-x-hidden',
         'min-h-[100dvh]'
       )}
     >
+      {/* 网格背景 */}
+      <div className="fixed inset-0 pointer-events-none -z-10 bg-[var(--bg-page)] opacity-50" style={{
+        backgroundImage: 'radial-gradient(var(--text-secondary) 1.5px, transparent 1.5px)',
+        backgroundSize: '32px 32px'
+      }} aria-hidden="true" />
+
       {/* 移动端侧边栏遮罩 */}
       {sidebar.isMobileOpen && (
         <div
@@ -57,19 +65,18 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
         />
       )}
 
-      {/* 左侧边栏 - 统一的全局 Sidebar */}
+      {/* Bauhaus 侧边栏 */}
       <aside className={cn(
-        'fixed left-0 top-0 h-screen flex-shrink-0 transition-all duration-300 z-[150]',
-        sidebar.isCollapsed ? 'w-[72px]' : 'w-[240px]',
-        'bg-gradient-to-b from-white via-gray-50 to-gray-100 dark:from-[#1e293b] dark:via-[#1a1d2e] dark:to-[#0d0f14]',
-        'backdrop-blur-xl',
-        'border-r border-gray-100 dark:border-white/5',
+        'fixed left-0 top-0 h-screen flex-shrink-0 transition-all duration-300 z-[150] border-r-2 border-[var(--border-color)] bg-[var(--bg-card)]',
+        sidebar.isCollapsed ? 'w-[72px]' : 'w-[280px]',
         'lg:translate-x-0',
         sidebar.isMobileOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         <div className="h-full w-full">
-          <Sidebar
+          <BauhausSidebar
             isCollapsed={sidebar.isCollapsed}
+            isMobileOpen={sidebar.isMobileOpen}
+            onMobileClose={sidebar.closeMobile}
             onCreateAgent={handleCreateAgent}
             onSettingsClick={dialogs.openSettings}
             onPersonalSettingsClick={dialogs.openPersonalSettings}
@@ -83,17 +90,17 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
       {/* 主内容区域 - 右侧交互区 */}
       <div className={cn(
         'flex-1 w-full flex flex-col transition-all duration-300',
-        sidebar.isCollapsed ? 'lg:ml-[72px]' : 'lg:ml-[240px]',
+        sidebar.isCollapsed ? 'lg:ml-[72px]' : 'lg:ml-[280px]',
         sidebar.isMobileOpen ? 'ml-0' : 'ml-0'
       )}>
-        {/* 移动端汉堡菜单按钮 */}
+        {/* 移动端汉堡菜单按钮 - Bauhaus 风格 */}
         {!hideMobileMenu && (
           <div className="lg:hidden absolute top-4 left-4 z-50">
             <button
               onClick={sidebar.toggleMobile}
-              className="p-2 rounded-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-md hover:bg-gray-100/50 dark:hover:bg-slate-700/50 transition-colors shadow-md"
+              className="p-2 border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--accent-hover)_2px_2px_0_0]"
             >
-              <Menu className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+              <Menu className="w-5 h-5 stroke-[2.5]" />
             </button>
           </div>
         )}
@@ -123,6 +130,21 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
         description="删除后无法恢复，请确认是否继续？"
         itemName={dialogs.deletingAgentName}
       />
+
+      {/* 主题切换按钮 - Bauhaus风格 */}
+      <div className="fixed bottom-8 right-8 z-50">
+        <button
+          onClick={toggleTheme}
+          className="w-12 h-12 flex items-center justify-center rounded-full border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--accent-hover)_2px_2px_0_0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+          title={theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
+        >
+          {theme === 'dark' ? (
+            <Sun className="w-5 h-5 stroke-[2.5]" />
+          ) : (
+            <Moon className="w-5 h-5 stroke-[2.5]" />
+          )}
+        </button>
+      </div>
     </div>
   )
 }
