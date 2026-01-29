@@ -69,6 +69,7 @@ export const zh: Record<TranslationKey, string> = {
 
   // User Menu
   currentPlan: '当前计划',
+  logout: '退出登录',
 
   // Input & Chat
   uploadImage: '上传图片',
@@ -246,6 +247,7 @@ export const en: Record<TranslationKey, string> = {
 
   // User Menu
   currentPlan: 'Current Plan',
+  logout: 'Logout',
 
   // Input & Chat
   uploadImage: 'Upload Image',
@@ -423,6 +425,7 @@ export const ja: Record<TranslationKey, string> = {
 
   // User Menu
   currentPlan: '現在のプラン',
+  logout: 'ログアウト',
 
   // Input & Chat
   uploadImage: '画像をアップロード',

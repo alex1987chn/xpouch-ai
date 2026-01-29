@@ -362,7 +362,7 @@ export default function HomePage() {
         {/* System Status Marquee */}
         <SystemStatusMarquee className="sticky top-0 z-10" />
 
-        <div className="max-w-6xl px-12 py-12 flex flex-col">
+        <div className="max-w-6xl mx-auto px-12 py-12 flex flex-col w-full">
           {/* Hero Section */}
           <div className="flex-none flex flex-col items-start justify-center mb-10 select-none">
             <div className="flex gap-2 mb-6">

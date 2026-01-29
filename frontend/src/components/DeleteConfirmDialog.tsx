@@ -1,15 +1,6 @@
 import { useState } from 'react'
-import {
-  Dialog,
-  DialogContentCentered,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { AlertTriangle } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { createPortal } from 'react-dom'
+import { AlertTriangle, X } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { logger } from '@/utils/logger'
 
@@ -45,46 +36,91 @@ export function DeleteConfirmDialog({
     }
   }
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContentCentered className="sm:max-w-[400px]">
-        <DialogHeader>
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
-            <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+  const handleClose = () => {
+    if (!isDeleting) {
+      onClose()
+    }
+  }
+
+  if (!isOpen) return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 bg-black/50 z-[300] flex items-center justify-center"
+      onClick={handleClose}
+    >
+      <div
+        className="relative bg-[var(--bg-card)] border-2 border-[var(--border-color)] shadow-[var(--shadow-color)_8px_8px_0_0] w-[400px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 弹窗头部 - Bauhaus风格 */}
+        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-[var(--border-color)]">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-500"></div>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              /// WARNING
+            </span>
           </div>
-          <DialogTitle className="text-center">{title || t('confirmDeleteTitle')}</DialogTitle>
-          {itemName && (
-            <DialogDescription className="text-center">
-              <span className="font-semibold text-slate-900 dark:text-slate-100">
-                "{itemName}"
-              </span>
-            </DialogDescription>
-          )}
-          <DialogDescription className="text-center">
-            {description || t('confirmDeleteDescription')}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="sm:justify-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
+          <button
+            onClick={handleClose}
             disabled={isDeleting}
-            className="w-full sm:w-auto"
+            className="w-6 h-6 flex items-center justify-center border border-[var(--border-color)] hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* 弹窗内容 */}
+        <div className="p-6 space-y-5">
+          {/* 警告图标 */}
+          <div className="flex justify-center">
+            <div className="w-16 h-16 border-2 border-red-500 bg-red-500/10 flex items-center justify-center">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+          </div>
+
+          {/* 标题和描述 */}
+          <div className="text-center space-y-3">
+            <h2 className="text-lg font-black uppercase tracking-tight text-[var(--text-primary)]">
+              {title || t('confirmDeleteTitle')}
+            </h2>
+            {itemName && (
+              <div className="font-mono text-sm font-bold text-red-500 border-2 border-red-500/30 bg-red-500/10 py-2 px-4 inline-block">
+                {itemName}
+              </div>
+            )}
+            <p className="text-xs font-mono text-[var(--text-secondary)] leading-relaxed">
+              {description || t('confirmDeleteDescription')}
+            </p>
+          </div>
+        </div>
+
+        {/* 底部按钮 */}
+        <div className="flex gap-0 border-t-2 border-[var(--border-color)]">
+          <button
+            onClick={handleClose}
+            disabled={isDeleting}
+            className="flex-1 py-3 font-mono text-sm font-bold uppercase border-r-2 border-[var(--border-color)] hover:bg-[var(--bg-page)] transition-colors disabled:opacity-50"
           >
             {t('cancel')}
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
+          </button>
+          <button
             onClick={handleConfirm}
             disabled={isDeleting}
-            className="w-full sm:w-auto"
+            className="flex-1 py-3 bg-red-500 text-white font-mono text-sm font-bold uppercase hover:bg-red-600 transition-colors disabled:opacity-50"
           >
-            {isDeleting ? t('deleting') : t('confirmDelete')}
-          </Button>
-        </DialogFooter>
-      </DialogContentCentered>
-    </Dialog>
+            {isDeleting ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white animate-spin"></span>
+                {t('deleting')}
+              </span>
+            ) : (
+              t('confirmDelete')
+            )}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   )
 }
