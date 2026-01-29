@@ -30,10 +30,22 @@ export default function ModelSelector({ value, onChange, label = 'MODEL_CONFIG' 
   // 点击外部关闭下拉菜单
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (providerDropdownRef.current && !providerDropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node
+
+      // 检查点击是否在下拉菜单容器内
+      const isClickInsideProvider = providerDropdownRef.current?.contains(target)
+      const isClickInsideModel = modelDropdownRef.current?.contains(target)
+
+      // 检查点击是否在 Portal 渲染的下拉菜单内
+      const providerDropdown = document.querySelector('[data-provider-dropdown]')
+      const modelDropdown = document.querySelector('[data-model-dropdown]')
+      const isClickInProviderDropdown = providerDropdown?.contains(target)
+      const isClickInModelDropdown = modelDropdown?.contains(target)
+
+      if (!isClickInsideProvider && !isClickInProviderDropdown) {
         setShowProviderDropdown(false)
       }
-      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
+      if (!isClickInsideModel && !isClickInModelDropdown) {
         setShowModelDropdown(false)
       }
     }
@@ -90,6 +102,7 @@ export default function ModelSelector({ value, onChange, label = 'MODEL_CONFIG' 
           </button>
           {showProviderDropdown && createPortal(
             <div
+              data-provider-dropdown
               className="fixed border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[4px_4px_0_0_rgba(0,0,0,0.3)] z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
               style={{
                 width: providerDropdownRef.current?.getBoundingClientRect().width || 200,
@@ -130,6 +143,7 @@ export default function ModelSelector({ value, onChange, label = 'MODEL_CONFIG' 
           </button>
           {showModelDropdown && createPortal(
             <div
+              data-model-dropdown
               className="fixed border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[4px_4px_0_0_rgba(0,0,0,0.3)] z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
               style={{
                 width: modelDropdownRef.current?.getBoundingClientRect().width || 200,
