@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider, useNavigate, Navigate, Outlet } from 'react-router-dom'
 import { I18nProvider } from './i18n'
@@ -7,12 +7,15 @@ import { AppProvider } from './providers/AppProvider'
 import AppLayout from './components/AppLayout'
 import './index.css'
 
+// 路由懒加载 - 代码分割优化
+const UnifiedChatPage = lazy(() => import('./components/UnifiedChatPage'))
+const HistoryPage = lazy(() => import('./components/HistoryPage'))
+const KnowledgeBasePage = lazy(() => import('./components/KnowledgeBasePage'))
+const CreateAgentPage = lazy(() => import('./components/CreateAgentPage'))
+const ExpertAdminPage = lazy(() => import('./components/ExpertAdminPage'))
+
+// 同步导入（轻量组件）
 import HomePage from './components/HomePage'
-import CanvasChatPage from './components/CanvasChatPage'
-import HistoryPage from './components/HistoryPage'
-import KnowledgeBasePage from './components/KnowledgeBasePage'
-import CreateAgentPage from './components/CreateAgentPage'
-import ExpertAdminPage from './components/ExpertAdminPage'
 import AdminRoute from './components/AdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
 import { Toaster } from './components/ui/toaster'
@@ -21,6 +24,7 @@ import { logger } from '@/utils/logger'
 import { useChatStore } from './store/chatStore'
 import { type ConversationHistory } from './utils/storage'
 import { createCustomAgent } from './services/api'
+import { normalizeAgentId } from '@/utils/agentUtils'
 
 
 
@@ -28,19 +32,35 @@ import { createCustomAgent } from './services/api'
 const HistoryPageWrapper = () => {
   const navigate = useNavigate()
 
-  const handleConversationClick = (id: string) => {
-    navigate(`/chat/${id}`)
-  }
+  const handleSelectConversation = (conversation: any) => {
+    // 从 conversation 对象中提取所需参数
+    const conversationId = conversation.id
+    const agentId = conversation.agent_id || 'default-chat'
+    const normalizedAgentId = normalizeAgentId(agentId)
 
-  const handleSelectConversation = (conversation: ConversationHistory) => {
-    navigate(`/chat/${conversation.id}`)
+    // 根据会话类型判断模式
+    const isComplex = conversation.agent_type === 'ai'
+
+    // 构建搜索参数
+    const searchParams = new URLSearchParams()
+    searchParams.set('conversation', conversationId)
+    searchParams.set('agentId', normalizedAgentId)
+
+    if (isComplex) {
+      // 复杂模式：跳转到 UnifiedChatPage
+      navigate(`/chat/${conversationId}?${searchParams.toString()}`)
+    } else {
+      // 简单模式：跳转到 UnifiedChatPage
+      navigate(`/chat?${searchParams.toString()}`)
+    }
   }
 
   return (
-    <HistoryPage
-      onConversationClick={handleConversationClick}
-      onSelectConversation={handleSelectConversation}
-    />
+    <Suspense fallback={<LoadingFallback />}>
+      <HistoryPage
+        onSelectConversation={handleSelectConversation}
+      />
+    </Suspense>
   )
 }
 
@@ -75,17 +95,33 @@ const CreateAgentPageWrapper = () => {
   }
 
   return (
-    <CreateAgentPage
-      onBack={() => navigate('/')}
-      onSave={handleSave}
-    />
+    <Suspense fallback={<LoadingFallback />}>
+      <CreateAgentPage
+        onBack={() => navigate('/')}
+        onSave={handleSave}
+      />
+    </Suspense>
   )
 }
 
-// 包装 CanvasChatPage 以适应 AppLayout（隐藏汉堡菜单）
-const CanvasChatPageWrapper = () => {
+// 统一的聊天页面（支持简单和复杂模式）
+const UnifiedChatPageWrapper = () => {
   return (
-    <CanvasChatPage />
+    <Suspense fallback={<LoadingFallback />}>
+      <UnifiedChatPage />
+    </Suspense>
+  )
+}
+
+// 加载中状态组件
+function LoadingFallback() {
+  return (
+    <div className="h-screen w-full flex items-center justify-center font-mono text-sm text-secondary">
+      <div className="flex items-center gap-3">
+        <div className="w-2 h-2 bg-[var(--accent)] animate-pulse" />
+        <span>INITIALIZING_SYSTEM...</span>
+      </div>
+    </div>
   )
 }
 
@@ -100,7 +136,11 @@ const router = createBrowserRouter([
       },
       {
         path: 'knowledge',
-        element: <KnowledgeBasePage />
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <KnowledgeBasePage />
+          </Suspense>
+        )
       },
       {
         path: 'history',
@@ -114,7 +154,9 @@ const router = createBrowserRouter([
         path: 'admin/experts',
         element: (
           <AdminRoute>
-            <ExpertAdminPage />
+            <Suspense fallback={<LoadingFallback />}>
+              <ExpertAdminPage />
+            </Suspense>
           </AdminRoute>
         )
       },
@@ -125,8 +167,14 @@ const router = createBrowserRouter([
     ]
   },
   {
+    // 统一的聊天页面（支持简单和复杂模式）
+    path: '/chat',
+    element: <AppLayout hideMobileMenu={true}><UnifiedChatPageWrapper /></AppLayout>
+  },
+  {
+    // 统一聊天页面的带ID版本（兼容历史记录跳转）
     path: '/chat/:id',
-    element: <AppLayout hideMobileMenu={true}><CanvasChatPage /></AppLayout>
+    element: <AppLayout hideMobileMenu={true}><UnifiedChatPageWrapper /></AppLayout>
   }
 ])
 

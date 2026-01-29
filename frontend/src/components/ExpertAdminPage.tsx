@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Save, RefreshCw, Loader2, Play, Search, Check, X } from 'lucide-react'
 import { models } from '@/config/models'
 import { useTranslation } from '@/i18n'
@@ -65,6 +66,10 @@ export default function ExpertAdminPage() {
   // 下拉菜单显示状态
   const [showProviderDropdown, setShowProviderDropdown] = useState(false)
   const [showModelDropdown, setShowModelDropdown] = useState(false)
+
+  // 下拉菜单 ref
+  const providerDropdownRef = useRef<HTMLDivElement>(null)
+  const modelDropdownRef = useRef<HTMLDivElement>(null)
 
   // 加载专家列表
   const loadExperts = async () => {
@@ -181,6 +186,21 @@ export default function ExpertAdminPage() {
     loadExperts()
   }, [])
 
+  // 点击外部关闭下拉菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (providerDropdownRef.current && !providerDropdownRef.current.contains(event.target as Node)) {
+        setShowProviderDropdown(false)
+      }
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
+        setShowModelDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -191,7 +211,7 @@ export default function ExpertAdminPage() {
   }
 
   return (
-    <div className="flex gap-4 h-screen p-4 bg-[var(--bg-page)]">
+    <div className="flex gap-4 h-[100dvh] p-4 bg-[var(--bg-page)]">
       {/* Toast */}
       {toast && (
         <BauhausToast
@@ -329,7 +349,7 @@ export default function ExpertAdminPage() {
 
                     <div className="grid grid-cols-2 gap-3">
                       {/* 供应商选择 */}
-                      <div className="relative">
+                      <div className="relative" ref={providerDropdownRef}>
                         <label className="font-mono text-[9px] text-[var(--text-secondary)] mb-1 block uppercase">
                           Provider
                         </label>
@@ -340,8 +360,15 @@ export default function ExpertAdminPage() {
                           <span className="uppercase">{selectedProvider}</span>
                           <span className="text-[var(--text-secondary)]">▼</span>
                         </button>
-                        {showProviderDropdown && (
-                          <div className="absolute top-full left-0 right-0 mt-1 border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] z-20">
+                        {showProviderDropdown && createPortal(
+                          <div 
+                            className="fixed border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] z-[100]"
+                            style={{
+                              width: providerDropdownRef.current?.getBoundingClientRect().width || 200,
+                              left: providerDropdownRef.current?.getBoundingClientRect().left || 0,
+                              top: (providerDropdownRef.current?.getBoundingClientRect().bottom || 0) + 4
+                            }}
+                          >
                             {providers.map((provider) => (
                               <button
                                 key={provider}
@@ -362,12 +389,13 @@ export default function ExpertAdminPage() {
                                 {provider}
                               </button>
                             ))}
-                          </div>
+                          </div>,
+                          document.body
                         )}
                       </div>
 
                       {/* 模型选择 */}
-                      <div className="relative">
+                      <div className="relative" ref={modelDropdownRef}>
                         <label className="font-mono text-[9px] text-[var(--text-secondary)] mb-1 block uppercase">
                           Model
                         </label>
@@ -378,8 +406,15 @@ export default function ExpertAdminPage() {
                           <span>{models.find(m => m.id === selectedModel)?.name || 'Select'}</span>
                           <span className="text-[var(--text-secondary)]">▼</span>
                         </button>
-                        {showModelDropdown && (
-                          <div className="absolute top-full left-0 right-0 mt-1 border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] z-20 max-h-40 overflow-y-auto bauhaus-scrollbar">
+                        {showModelDropdown && createPortal(
+                          <div 
+                            className="fixed border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] z-[100] max-h-40 overflow-y-auto bauhaus-scrollbar"
+                            style={{
+                              width: modelDropdownRef.current?.getBoundingClientRect().width || 200,
+                              left: modelDropdownRef.current?.getBoundingClientRect().left || 0,
+                              top: (modelDropdownRef.current?.getBoundingClientRect().bottom || 0) + 4
+                            }}
+                          >
                             {currentProviderModels.map((model) => (
                               <button
                                 key={model.id}
@@ -396,7 +431,8 @@ export default function ExpertAdminPage() {
                                 {model.name}
                               </button>
                             ))}
-                          </div>
+                          </div>,
+                          document.body
                         )}
                       </div>
                     </div>
@@ -410,7 +446,18 @@ export default function ExpertAdminPage() {
                         TEMPERATURE: {formData.temperature?.toFixed(1)}
                       </label>
                     </div>
-                    <div className="relative h-8 bg-[var(--bg-page)] border-2 border-[var(--border-color)]">
+                    <div className="relative h-8 bg-[var(--bg-page)] border-2 border-[var(--border-color)]" style={{ zIndex: 10 }}>
+                      {/* 进度条背景 */}
+                      <div
+                        className="absolute top-0 left-0 h-full bg-[var(--accent-hover)] transition-all pointer-events-none"
+                        style={{ width: `${((formData.temperature ?? 0.5) / 2) * 100}%` }}
+                      />
+                      {/* 滑块手柄 */}
+                      <div
+                        className="absolute top-0 w-4 h-full bg-[var(--text-primary)] border-2 border-[var(--border-color)] transition-all pointer-events-none"
+                        style={{ left: `calc(${((formData.temperature ?? 0.5) / 2) * 100}% - 8px)` }}
+                      />
+                      {/* 实际的 range input */}
                       <input
                         type="range"
                         min="0"
@@ -418,15 +465,8 @@ export default function ExpertAdminPage() {
                         step="0.1"
                         value={formData.temperature ?? 0.5}
                         onChange={(e) => handleFieldChange('temperature', parseFloat(e.target.value))}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      />
-                      <div
-                        className="absolute top-0 left-0 h-full bg-[var(--accent-hover)] transition-all"
-                        style={{ width: `${((formData.temperature ?? 0.5) / 2) * 100}%` }}
-                      />
-                      <div
-                        className="absolute top-0 w-4 h-full bg-[var(--text-primary)] border-2 border-[var(--border-color)] transition-all"
-                        style={{ left: `calc(${((formData.temperature ?? 0.5) / 2) * 100}% - 8px)` }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                        style={{ WebkitAppearance: 'none', appearance: 'none' }}
                       />
                     </div>
                     <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
@@ -449,7 +489,7 @@ export default function ExpertAdminPage() {
                       onChange={(e) => handleFieldChange('system_prompt', e.target.value)}
                       placeholder={t('systemPromptPlaceholder')}
                       rows={10}
-                      className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[150px]"
+                      className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[150px] bauhaus-scrollbar"
                     />
                     <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
                       <span>{formData.system_prompt.length} CHARS</span>

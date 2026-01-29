@@ -11,8 +11,8 @@ interface DocArtifactProps {
 
 export default function DocArtifact({ content, className }: DocArtifactProps) {
   return (
-    <div className={cn('w-full h-full', className)}>
-      <div className="prose prose-slate dark:prose-invert prose-sm max-w-none p-6 w-full h-full overflow-auto min-h-0">
+    <div className={cn('w-full h-full overflow-auto', className)}>
+      <div className="prose prose-slate dark:prose-invert prose-sm max-w-none w-full min-h-0">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           rehypePlugins={[rehypeKatex]}

@@ -5,20 +5,22 @@
 @layer base {
   /* ============================================
      BAUHAUS DESIGN SYSTEM v2.0
-     Source: xpouch_ultra_refined.html
+     Neo-Brutalism + Bauhaus Industrial
      ============================================ */
 
   /* Light mode - 魏玛纸张 */
   :root {
-    /* 核心配色 - 来自 HTML */
+    /* 核心配色 - Bauhaus 风格 */
     --bg-page: #e8e8e3;
     --bg-card: #ffffff;
+    --bg-panel: #f8f8f8;
     --border-color: #0f0f0f;
     --text-primary: #0f0f0f;
     --text-secondary: #555555;
+    --text-inverted: #ffffff;
     --shadow-color: #0f0f0f;
     --accent-hover: #facc15;
-    
+
     /* 网格和Logo */
     --grid-pattern: radial-gradient(#aaa 1.5px, transparent 1.5px);
     --logo-base: #2563eb;
@@ -51,15 +53,17 @@
   /* Dark mode - 德绍之夜 */
   html.dark,
   .dark {
-    /* 核心配色 - 来自 HTML */
+    /* 核心配色 - Bauhaus 风格 */
     --bg-page: #0a0a0a;
     --bg-card: #161616;
+    --bg-panel: #1a1a1a;
     --border-color: #e5e5e5;
     --text-primary: #e5e5e5;
     --text-secondary: #888888;
+    --text-inverted: #0a0a0a;
     --shadow-color: #2563eb;
     --accent-hover: #facc15;
-    
+
     /* 网格和Logo */
     --grid-pattern: radial-gradient(#333 1.5px, transparent 1.5px);
     --logo-base: #f0f0f0;
@@ -112,7 +116,7 @@
     letter-spacing: -0.02em;
   }
 
-  /* 移除默认圆角 */
+  /* 移除默认圆角 - Bauhaus 风格 */
   button, input, textarea, select, [role="button"] {
     border-radius: 0 !important;
   }
@@ -121,328 +125,245 @@
   .theme-toggle-btn {
     border-radius: 9999px !important;
   }
-}
 
-/* ============================================
-   閸嶅繒绀岄崨鐓庢儧閸斻劍鏅?(Pixel Pulse Glow) - 0.8s 閸涖劍婀?
-   ============================================ */
-@keyframes pixelPulseGlow {
-  0%, 100% {
-    opacity: 0.85;
-    filter: blur(0.5px);
+  /* ============================================
+     Bauhaus Scrollbar - 直角无圆角
+     ============================================ */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
   }
-  50% {
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg-page);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 0;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--shadow-color);
+  }
+
+  /* ============================================
+     Bauhaus Core Components
+     ============================================ */
+
+  /* Bauhaus Border */
+  .bauhaus-border {
+    border: 2px solid var(--border-color);
+  }
+
+  /* Bauhaus Scrollbar - 直角无圆角，hover时才显示 */
+  .bauhaus-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .bauhaus-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .bauhaus-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .bauhaus-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 0;
+  }
+
+  /* hover时显示滚动条 */
+  .bauhaus-scrollbar:hover {
+    scrollbar-color: var(--border-color) transparent;
+  }
+
+  .bauhaus-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    opacity: 0.4;
+  }
+
+  .bauhaus-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-hover);
     opacity: 1;
-    filter: blur(0px);
   }
-}
 
-.animate-pulse-glow,
-.pulse-glow {
-  animation: pixelPulseGlow 0.8s ease-in-out infinite;
-}
-
-/* ============================================
-   閸嶅繒绀岀純鎴炵壐濮樻潙宓?(Pixel Grid Watermark)
-   ============================================ */
-body {
-  position: relative;
-}
-
-/* 暂时注释掉点状背景效果 */
-/*
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
-  background-size: 50px 50px;
-  opacity: 0.3;
-}
-
-.dark body::before {
-  background-image: radial-gradient(circle, #1e293b 1px, transparent 1px);
-  opacity: 0.25;
-}
-*/
-
-/* 绾箽閸愬懎閸︺劎缍夐弽闂寸娑?*/
-main, header, .relative {
-  position: relative;
-  z-index: 1;
-}
-
-/* ============================================
-   閸嶅繒绀岄梽宥堟儰閸斻劎鏁?(Pixel Fall-in Animation)
-   ============================================ */
-@keyframes pixelFallIn {
-  0% {
-    transform: translateY(-200px) scale(0) rotate(180deg);
-    opacity: 0;
+  /* Dark mode */
+  .dark .bauhaus-scrollbar {
+    scrollbar-color: transparent transparent;
   }
-  40% {
-    transform: translateY(-100px) scale(0.8) rotate(90deg);
+
+  .dark .bauhaus-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+
+  .dark .bauhaus-scrollbar:hover {
+    scrollbar-color: var(--border-color) transparent;
+  }
+
+  .dark .bauhaus-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: var(--border-color);
     opacity: 0.6;
   }
-  70% {
-    transform: translateY(20px) scale(1.15) rotate(10deg);
-    opacity: 1;
+
+  .dark .bauhaus-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-hover);
   }
-  100% {
-    transform: translateY(0) scale(1) rotate(0deg);
-    opacity: 1;
+
+  /* Bauhaus Card - 核心卡片样式 */
+  .bauhaus-card {
+    border: 2px solid var(--border-color);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-color) 6px 6px 0 0;
+    transition: all 0.2s;
   }
-}
 
-.animate-pixelFallIn {
-  animation: pixelFallIn 0.6s ease-out forwards;
-}
-
-/* ============================================
-   濞ｂ€冲弳閸斻劎鏁?(Fade-in Animation)
-   ============================================ */
-@keyframes fadeIn {
-  0% {
-    opacity: 0;
-    transform: translateY(10px);
+  .bauhaus-card:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: var(--accent-hover) 10px 10px 0 0;
+    border-color: var(--accent-hover);
   }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
+
+  /* Bauhaus Button - 核心按钮样式 */
+  .bauhaus-btn {
+    border: 2px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-color) 4px 4px 0 0;
+    font-weight: 700;
+    transition: all 0.1s;
+    letter-spacing: 0.05em;
   }
-}
 
-.animate-fadeIn {
-  animation: fadeIn 0.5s ease-in-out forwards;
-}
-
-/* ============================================
-   閹靛洤鑸伴弮瀣祮缁? (Card Fan Rotation)
-   ============================================ */
-.card-rotate-0 {
-  transform: rotate(-8deg);
-}
-
-.card-rotate-1 {
-  transform: rotate(-4deg);
-}
-
-.card-rotate-2 {
-  transform: rotate(0deg);
-}
-
-.card-rotate-3 {
-  transform: rotate(4deg);
-}
-
-.card-rotate-4 {
-  transform: rotate(8deg);
-}
-
-/* ============================================
-   濠婃艾濮╅弶鈥茬喘閸? (Scrollable Containers)
-   ============================================ */
-.scrollbar-thin {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(156, 163, 175, 0.5) rgba(156, 163, 175, 0.2);
-}
-
-.scrollbar-thin::-webkit-scrollbar {
-  width: 3px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.5);
-  border-radius: 1.5px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.8);
-}
-
-/* 閺嗘澹婂Ο鈥崇础濠婃艾濮╅弶?*/
-.dark .scrollbar-thin {
-  scrollbar-color: rgba(100, 116, 139, 0.5) rgba(100, 116, 139, 0.2);
-}
-
-.dark .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.5);
-}
-
-.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.8);
-}
-
-/* ============================================
-   楠炶櫕绮﹀⿰姘З鐎圭懓娅?(Smooth Scroll Containers)
-   ============================================ */
-.smooth-scroll {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
-
-.smooth-scroll::-webkit-scrollbar {
-  width: 3px;
-  height: 6px;
-}
-
-.smooth-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.smooth-scroll::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.4);
-  border-radius: 1.5px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.smooth-scroll:hover::-webkit-scrollbar-thumb,
-.smooth-scroll:active::-webkit-scrollbar-thumb {
-  opacity: 1;
-}
-
-.smooth-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.7);
-}
-
-/* 閺嗘澹婂Ο鈥崇础濠婃艾濮╅弶?*/
-.dark .smooth-scroll {
-  scrollbar-color: transparent transparent;
-}
-
-.dark .smooth-scroll::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
-}
-
-.dark .smooth-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.7);
-}
-
-/* ============================================
-   閹嗗厴娴兼ê瀵?(Performance Optimization)
-   ============================================ */
-@media (prefers-reduced-motion: no-preference) {
-  * {
-    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  .bauhaus-btn:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--accent-hover) 6px 6px 0 0;
+    background: var(--accent-hover);
+    color: #000;
+    border-color: #000;
   }
-}
 
-/* ============================================
-   閸樺棗褰剁拋鏉跨秿濞撴劕褰夋潏瑙?(History Gradient Border)
-   ============================================ */
-.history-gradient-border {
-  position: relative;
-}
-
-.history-gradient-border::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: transparent;
-  transition: background 0.2s ease;
-}
-
-.history-gradient-border:hover::before {
-  background: linear-gradient(180deg, rgba(139, 92, 246, 0.8), rgba(139, 92, 246, 0.2));
-}
-
-/* ============================================
-   閸╄櫣閸忓妾块弫鍫熺亯 - 缁夎濮╃粩寮告總?
-   ============================================ */
-@keyframes breathe-glow {
-  0%, 100% {
-    opacity: 0.5;
-    filter: blur(6px);
+  .bauhaus-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: none;
   }
-  50% {
-    opacity: 0.9;
-    filter: blur(10px);
+
+  /* 噪点纹理覆盖 */
+  .texture-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%220.05%22/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.6;
+    mix-blend-mode: overlay;
   }
-}
 
-.input-glow {
-  position: absolute;
-  inset: -8px;
-  border-radius: 1.5rem;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(99, 102, 241, 0.35) 0%,
-    rgba(139, 92, 246, 0.2) 40%,
-    transparent 70%
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-  z-index: -1;
-  will-change: opacity, filter;
-}
-
-.input-glow.active {
-  opacity: 1;
-  animation: breathe-glow 4s ease-in-out infinite;
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+  /* 跑马灯动画 */
+  .marquee-container {
+    overflow: hidden;
+    white-space: nowrap;
   }
-  50% {
-    box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+
+  .marquee-content {
+    display: inline-block;
+    animation: marquee 20s linear infinite;
   }
-}
 
-.pulse-glow {
-  animation: pulse-glow 4s ease-in-out infinite;
-}
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
 
-/* ============================================
-   濡楀矂娼扮粩閸栧搫鍘滈弲鏇熸櫏閺?(>= 768px)
-   ============================================ */
-@media (min-width: 768px) {
-  @keyframes desktop-glow {
-    0%, 100% {
-      opacity: 0.7;
-      transform: scale(1);
+  /* 输入框光标动画 */
+  .blinking-cursor {
+    display: inline-block;
+    width: 10px;
+    height: 24px;
+    background: var(--accent-hover);
+    animation: blink 1s step-end infinite;
+    vertical-align: middle;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* Logo 动画 */
+  .logo-wrapper {
+    width: 42px;
+    height: 42px;
+    position: relative;
+  }
+
+  .pocket-base {
+    width: 36px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    border-top: none;
+    background: var(--logo-base);
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
+    position: absolute;
+    bottom: 8px;
+    left: 3px;
+    z-index: 10;
+    animation: baseRecoil 3s infinite cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .pocket-item {
+    width: 16px;
+    height: 16px;
+    background: var(--logo-item);
+    border: 2px solid var(--border-color);
+    position: absolute;
+    left: 13px;
+    top: -10px;
+    z-index: 5;
+    animation: dropProcess 3s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55);
+  }
+
+  @keyframes dropProcess {
+    0% { top: -20px; opacity: 0; }
+    20% { opacity: 1; }
+    40% { top: 10px; background: var(--logo-item); }
+    50% { top: 10px; transform: rotate(10deg); background: var(--logo-item-active); }
+    60% { top: 10px; transform: rotate(-10deg); }
+    80% { top: 10px; opacity: 1; transform: scale(1); }
+    100% { top: 10px; opacity: 0; transform: scale(0); }
+  }
+
+  @keyframes baseRecoil {
+    0%, 35% { transform: scale(1); }
+    40% { transform: scaleY(0.8) scaleX(1.1); }
+    50% { transform: scaleY(1.05) scaleX(0.95); }
+    60% { transform: scale(1); }
+    100% { transform: scale(1); }
+  }
+
+  /* ============================================
+     Utility Classes
+     ============================================ */
+  .bg-page { background-color: var(--bg-page); }
+  .bg-card { background-color: var(--bg-card); }
+  .text-primary { color: var(--text-primary); }
+  .text-secondary { color: var(--text-secondary); }
+  .border-theme { border-color: var(--border-color); }
+
+  /* ============================================
+     Performance Optimization
+     ============================================ */
+  @media (prefers-reduced-motion: no-preference) {
+    * {
+      animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     }
-    50% {
-      opacity: 1;
-      transform: scale(1.03);
-    }
-  }
-
-  .input-glow.active {
-    animation: desktop-glow 4s ease-in-out infinite;
-  }
-
-  .pulse-glow {
-    animation: pulse-glow 4s ease-in-out infinite;
-  }
-}
-
-/* ============================================
-   娓氀嗙珶閺嶅繗褰嶉崡鏇炶剨閸戝搫濮╅悽?- 娴兼ê瀵睪PU閹嗗厴
-   ============================================ */
-@keyframes menuFadeIn {
-  0% {
-    opacity: 0;
-    transform: translateY(8px) scale(0.98);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
@@ -450,593 +371,4 @@ main, header, .relative {
   .text-balance {
     text-wrap: balance;
   }
-
-  /* ============================================
-     閸╄櫣閸忓妾块弫鍫熺亯 - 缁夎濮╃粩寮告總?
-     ============================================ */
-  /* 閸涚厧鎯涢崗澶嬫閸斻劎鏁?- 缁夎濮╃粩?(4缁夋帒鎳嗛張? 2缁夋帒鎳犻崙? 2缁夋帒鎯涙潻? */
-  @keyframes breathe-glow {
-    0%, 100% {
-      opacity: 0.5;
-      filter: blur(6px);
-    }
-    50% {
-      opacity: 0.9;
-      filter: blur(10px);
-    }
-  }
-
-  /* 鏉堟挸鍙嗗鍡楀帨閺呮洖鐪?- 閺屾柨鎷伴崨鐓庢儧閺佸牊鐏?*/
-  .input-glow {
-    position: absolute;
-    inset: -8px;
-    border-radius: 1.5rem;
-    background: radial-gradient(
-      ellipse at center,
-      rgba(99, 102, 241, 0.35) 0%,
-      rgba(139, 92, 246, 0.2) 40%,
-      transparent 70%
-    );
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-    z-index: -1;
-    will-change: opacity, filter;
-  }
-
-  .input-glow.active {
-    opacity: 1;
-    animation: breathe-glow 4s ease-in-out infinite;
-  }
-
-  /* 閼村鍟挎潏瑙勯崗澶嬫閺佸牊鐏?(4缁夋帒鎳嗛張? */
-  @keyframes pulse-glow {
-    0%, 100% {
-      box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
-    }
-    50% {
-      box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
-    }
-  }
-
-  .pulse-glow {
-    animation: pulse-glow 4s ease-in-out infinite;
-  }
-
-  /* ============================================
-     濡楀矂娼扮粩閸栧搫鍘滈弲鏇熸櫏閺?(>= 768px)
-     ============================================ */
-  @media (min-width: 768px) {
-    /* 濡楀矂娼扮粩閸栬櫣澧楅崗澶嬫 (4缁夋帒鎳嗛張? */
-    @keyframes desktop-glow {
-      0%, 100% {
-        opacity: 0.7;
-        transform: scale(1);
-      }
-      50% {
-        opacity: 1;
-        transform: scale(1.03);
-      }
-    }
-
-    .input-glow.active {
-      animation: desktop-glow 4s ease-in-out infinite;
-    }
-
-    .pulse-glow {
-      animation: pulse-glow 4s ease-in-out infinite;
-    }
-  }
 }
-
-/* Glow Effect */
-@keyframes glow {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
-  }
-  50% {
-    opacity: 0.8;
-    box-shadow: 0 0 40px rgba(99, 102, 241, 0.5);
-  }
-}
-
-.glow-effect {
-  animation: glow 2s ease-in-out infinite;
-}
-
-/* ============================================
-   Bauhaus Scrollbar - 直角无圆角
-   ============================================ */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-page);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 0;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--shadow-color);
-}
-
-/* ============================================
-   閸嶅繒绀岀純鎴炵壐濮樻潙宓?(Pixel Grid Watermark)
-   ============================================ */
-body {
-  position: relative;
-}
-
-/* 暂时注释掉点状背景效果（重复代码） */
-/*
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
-  background-size: 40px 40px;
-  opacity: 0.5;
-}
-
-.dark body::before {
-  background-image: radial-gradient(circle, #1e293b 1px, transparent 1px);
-  opacity: 0.4;
-}
-*/
-
-/* 绾箽閸愬懎閸︺劎缍夐弽闂寸娑?*/
-main, header, .relative {
-  position: relative;
-  z-index: 1;
-}
-
-/* ============================================
-   閸嶅繒绀岄梽宥堟儰閸斻劎鏁?(Pixel Fall-in Animation)
-   ============================================ */
-@keyframes pixelFallIn {
-  0% {
-    transform: translateY(-200px) scale(0) rotate(180deg);
-    opacity: 0;
-  }
-  40% {
-    transform: translateY(-100px) scale(0.8) rotate(90deg);
-    opacity: 0.6;
-  }
-  70% {
-    transform: translateY(20px) scale(1.15) rotate(10deg);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(0) scale(1) rotate(0deg);
-    opacity: 1;
-  }
-}
-
-.animate-pixelFallIn {
-  animation: pixelFallIn 0.6s ease-out forwards;
-}
-
-/* ============================================
-   濞ｂ€冲弳閸斻劎鏁?(Fade-in Animation)
-   ============================================ */
-@keyframes fadeIn {
-  0% {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.5s ease-in-out forwards;
-}
-
-/* ============================================
-   閹靛洤鑸伴弮瀣祮缁? (Card Fan Rotation)
-   ============================================ */
-.card-rotate-0 {
-  transform: rotate(-8deg);
-}
-
-.card-rotate-1 {
-  transform: rotate(-4deg);
-}
-
-.card-rotate-2 {
-  transform: rotate(0deg);
-}
-
-.card-rotate-3 {
-  transform: rotate(4deg);
-}
-
-.card-rotate-4 {
-  transform: rotate(8deg);
-}
-
-/* ============================================
-   濠婃艾濮╅弶鈥茬喘閸? (Scrollable Containers)
-   ============================================ */
-.scrollbar-thin {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(156, 163, 175, 0.5) rgba(156, 163, 175, 0.2);
-}
-
-.scrollbar-thin::-webkit-scrollbar {
-  width: 3px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.5);
-  border-radius: 1.5px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.8);
-}
-
-/* 閺嗘澹婂Ο鈥崇础濠婃艾濮╅弶?*/
-.dark .scrollbar-thin {
-  scrollbar-color: rgba(100, 116, 139, 0.5) rgba(100, 116, 139, 0.2);
-}
-
-.dark .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.5);
-}
-
-.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.8);
-}
-
-/* ============================================
-   楠炶櫕绮﹀⿰姘З鐎圭懓娅?(Smooth Scroll Containers)
-   ============================================ */
-.smooth-scroll {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
-
-.smooth-scroll::-webkit-scrollbar {
-  width: 3px;
-  height: 6px;
-}
-
-.smooth-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.smooth-scroll::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.4);
-  border-radius: 1.5px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.smooth-scroll:hover::-webkit-scrollbar-thumb,
-.smooth-scroll:active::-webkit-scrollbar-thumb {
-  opacity: 1;
-}
-
-.smooth-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.7);
-}
-
-/* 閺嗘澹婂Ο鈥崇础濠婃艾濮╅弶?*/
-.dark .smooth-scroll {
-  scrollbar-color: transparent transparent;
-}
-
-.dark .smooth-scroll::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
-}
-
-.dark .smooth-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.7);
-}
-
-/* ============================================
-   閹嗗厴娴兼ê瀵?(Performance Optimization)
-   ============================================ */
-@media (prefers-reduced-motion: no-preference) {
-  * {
-    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  }
-}
-
-/* ============================================
-   閸樺棗褰剁拋鏉跨秿濞撴劕褰夋潏瑙?(History Gradient Border)
-   ============================================ */
-.history-gradient-border {
-  position: relative;
-}
-
-.history-gradient-border::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: transparent;
-  transition: background 0.2s ease;
-}
-
-.history-gradient-border:hover::before {
-  background: linear-gradient(180deg, rgba(139, 92, 246, 0.8), rgba(139, 92, 246, 0.2));
-}
-
-/* ============================================
-   棣栭〉閫忔槑婊氬姩鏉?(Homepage Transparent Scrollbar)
-   ============================================ */
-.homepage-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-  scrollbar-gutter: stable;
-}
-
-.homepage-scroll::-webkit-scrollbar {
-  width: 8px;
-}
-
-.homepage-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.homepage-scroll::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 4px;
-  transition: background 0.2s ease;
-}
-
-.homepage-scroll:hover::-webkit-scrollbar-thumb,
-.homepage-scroll:active::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.4);
-}
-
-.dark .homepage-scroll::-webkit-scrollbar-thumb {
-  background: transparent;
-}
-
-.dark .homepage-scroll:hover::-webkit-scrollbar-thumb,
-.dark .homepage-scroll:active::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
-}
-
-/* ============================================
-   隐藏滚动条但保留滚动功能 (Hide scrollbar)
-   ============================================ */
-.scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Chrome, Safari, and Opera */
-}
-
-/* ============================================
-   BAUHAUS CORE COMPONENTS - from xpouch_ultra_refined.html
-   ============================================ */
-
-/* Bauhaus Border */
-.bauhaus-border {
-  border: 2px solid var(--border-color);
-}
-
-/* Bauhaus Scrollbar - 直角无圆角，hover时才显示 */
-.bauhaus-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
-
-.bauhaus-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-
-.bauhaus-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.bauhaus-scrollbar::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 0;
-}
-
-/* hover时显示滚动条 */
-.bauhaus-scrollbar:hover {
-  scrollbar-color: var(--border-color) transparent;
-}
-
-.bauhaus-scrollbar:hover::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  opacity: 0.4;
-}
-
-.bauhaus-scrollbar:hover::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-hover);
-  opacity: 1;
-}
-
-/* Dark mode */
-.dark .bauhaus-scrollbar {
-  scrollbar-color: transparent transparent;
-}
-
-.dark .bauhaus-scrollbar::-webkit-scrollbar-thumb {
-  background: transparent;
-}
-
-.dark .bauhaus-scrollbar:hover {
-  scrollbar-color: var(--border-color) transparent;
-}
-
-.dark .bauhaus-scrollbar:hover::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  opacity: 0.6;
-}
-
-.dark .bauhaus-scrollbar:hover::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-hover);
-}
-
-/* Bauhaus Card - 核心卡片样式 */
-.bauhaus-card {
-  border: 2px solid var(--border-color);
-  background: var(--bg-card);
-  box-shadow: var(--shadow-color) 6px 6px 0 0;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.bauhaus-card:hover {
-  transform: translate(-3px, -3px);
-  box-shadow: var(--accent-hover) 10px 10px 0 0;
-  border-color: var(--accent-hover);
-}
-
-/* Bauhaus Button - 核心按钮样式 */
-.bauhaus-btn {
-  border: 2px solid var(--border-color);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-color) 4px 4px 0 0;
-  font-weight: 700;
-  transition: all 0.1s;
-  letter-spacing: 0.05em;
-}
-
-.bauhaus-btn:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: var(--accent-hover) 6px 6px 0 0;
-  background: var(--accent-hover);
-  color: #000;
-  border-color: #000;
-}
-
-.bauhaus-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: none;
-}
-
-/* 噪点纹理覆盖 */
-.texture-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%220.05%22/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 9999;
-  opacity: 0.6;
-  mix-blend-mode: overlay;
-}
-
-/* 跑马灯动画 */
-.marquee-container {
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.marquee-content {
-  display: inline-block;
-  animation: marquee 20s linear infinite;
-}
-
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-/* 输入框光标动画 */
-.blinking-cursor {
-  display: inline-block;
-  width: 10px;
-  height: 24px;
-  background: var(--accent-hover);
-  animation: blink 1s step-end infinite;
-  vertical-align: middle;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-/* Logo 动画 */
-.logo-wrapper {
-  width: 42px;
-  height: 42px;
-  position: relative;
-}
-
-.pocket-base {
-  width: 36px;
-  height: 20px;
-  border: 2px solid var(--border-color);
-  border-top: none;
-  background: var(--logo-base);
-  border-bottom-left-radius: 18px;
-  border-bottom-right-radius: 18px;
-  position: absolute;
-  bottom: 8px;
-  left: 3px;
-  z-index: 10;
-  animation: baseRecoil 3s infinite cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-.pocket-item {
-  width: 16px;
-  height: 16px;
-  background: var(--logo-item);
-  border: 2px solid var(--border-color);
-  position: absolute;
-  left: 13px;
-  top: -10px;
-  z-index: 5;
-  animation: dropProcess 3s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55);
-}
-
-@keyframes dropProcess {
-  0% { top: -20px; opacity: 0; }
-  20% { opacity: 1; }
-  40% { top: 10px; background: var(--logo-item); }
-  50% { top: 10px; transform: rotate(10deg); background: var(--logo-item-active); }
-  60% { top: 10px; transform: rotate(-10deg); }
-  80% { top: 10px; opacity: 1; transform: scale(1); }
-  100% { top: 10px; opacity: 0; transform: scale(0); }
-}
-
-@keyframes baseRecoil {
-  0%, 35% { transform: scale(1); }
-  40% { transform: scaleY(0.8) scaleX(1.1); }
-  50% { transform: scaleY(1.05) scaleX(0.95); }
-  60% { transform: scale(1); }
-  100% { transform: scale(1); }
-}
-
-/* Utility Classes */
-.bg-page { background-color: var(--bg-page); }
-.bg-card { background-color: var(--bg-card); }
-.text-primary { color: var(--text-primary); }
-.text-secondary { color: var(--text-secondary); }
-.border-theme { border-color: var(--border-color); }
-
-

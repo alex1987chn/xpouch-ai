@@ -303,7 +303,7 @@ export async function deleteCustomAgent(id: string): Promise<void> {
  */
 export async function sendMessage(
   messages: ApiMessage[],
-  agentId: string = 'assistant',
+  agentId: string = 'default-chat',
   onChunk?: (chunk: string, conversationId?: string, expertEvent?: ExpertEvent, artifact?: Artifact) => void,
   conversationId?: string | null,
   abortSignal?: AbortSignal

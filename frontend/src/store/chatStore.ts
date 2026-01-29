@@ -37,7 +37,7 @@ export const useChatStore = create<ChatState>()(
   persist(
     (set, get) => ({
       // 初始状态
-      selectedAgentId: 'assistant',
+      selectedAgentId: 'default-chat',
       customAgents: [],
       messages: [],
       currentConversationId: null,

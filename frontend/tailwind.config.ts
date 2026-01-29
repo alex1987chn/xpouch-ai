@@ -58,6 +58,15 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground))",
         },
         // ============================================
+        // NEO-BRUTALISM THEME SYSTEM
+        // ============================================
+        panel: {
+          DEFAULT: "var(--bg-panel)",
+        },
+        inverted: {
+          DEFAULT: "var(--text-inverted)",
+        },
+        // ============================================
         // BAUHAUS DESIGN SYSTEM - 包豪斯设计系统
         // ============================================
         bauhaus: {
@@ -71,34 +80,6 @@ const config: Config = {
           yellow: 'var(--bauhaus-yellow)',
           blue: 'var(--bauhaus-blue)',
           red: 'var(--bauhaus-red)',
-        },
-        // 1. 糖果色系 (Vibe Palette)
-        vibe: {
-          bg: "#F8FAFC",
-          sidebar: "#E5E7EB",
-          accent: "#6366F1",
-          glass: "rgba(255, 255, 255, 0.7)",
-          // 光晕专用色
-          glow: {
-            purple: "#E9D5FF",
-            blue: "#DBEAFE",
-            mint: "#D1FAE5",
-            orange: "#FFEDD5",
-          }
-        },
-        cashmere: {
-          page: 'var(--cashmere-page)',
-          primary: 'var(--cashmere-primary)',
-          hover: 'var(--cashmere-hover)',
-          text: 'var(--cashmere-text)',
-          muted: 'var(--cashmere-muted)',
-          border: 'var(--cashmere-border)',
-        },
-        ai: {
-          bg: { light: 'var(--ai-bg-light)', dark: 'var(--ai-bg-dark)' },
-          primary: { light: 'var(--ai-primary-light)', dark: 'var(--ai-primary-dark)' },
-          text: { light: 'var(--ai-text-light)', dark: 'var(--ai-text-dark)' },
-          card: { light: 'var(--ai-card-light)', dark: 'var(--ai-card-dark)' }
         }
       },
       // Bauhaus Box Shadow - 硬阴影系统 (来自 HTML)
@@ -112,7 +93,6 @@ const config: Config = {
       },
       // 背景图案
       backgroundImage: {
-        'mesh-glow': "radial-gradient(at 20% 20%, #E9D5FF 0%, transparent 50%), radial-gradient(at 80% 10%, #DBEAFE 0%, transparent 50%), radial-gradient(at 50% 90%, #D1FAE5 0%, transparent 50%)",
         // 噪点纹理 - 来自 HTML
         'noise': "url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%220.05%22/%3E%3C/svg%3E')",
       },
@@ -139,18 +119,14 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "vibe-pulse": {
-          "0%, 100%": { opacity: "0.3", transform: "scale(1)" },
-          "50%": { opacity: "0.5", transform: "scale(1.05)" },
-        },
         "pulse-glow": {
-          "0%, 100%": { 
-            opacity: "1", 
+          "0%, 100%": {
+            opacity: "1",
             transform: "scale(1)",
             filter: "brightness(1)"
           },
-          "50%": { 
-            opacity: "0.9", 
+          "50%": {
+            opacity: "0.9",
             transform: "scale(1.08)",
             filter: "brightness(1.2)"
           },
@@ -168,7 +144,6 @@ const config: Config = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "vibe-pulse": "vibe-pulse 12s infinite ease-in-out",
         "pulse-glow": "pulse-glow 0.8s ease-in-out infinite",
         "bauhaus-press": "bauhaus-press 0.1s ease-out forwards",
         "bauhaus-float": "bauhaus-float 0.3s ease-out",
