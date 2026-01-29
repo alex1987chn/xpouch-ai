@@ -580,12 +580,12 @@ export default function BauhausSidebar({
               <span className="font-bold uppercase">{t('modelConfig')}</span>
             </button>
 
-            {/* 语言切换 - Bauhaus风格 纵向排列 */}
-            <div className="space-y-1 pt-1">
-              <div className="font-mono text-[10px] text-[var(--text-secondary)] uppercase px-1">
+            {/* 语言切换 - Bauhaus风格 水平排列 */}
+            <div className="pt-1">
+              <div className="font-mono text-[10px] text-[var(--text-secondary)] uppercase px-1 mb-2">
                 /// {t('language')}
               </div>
-              <div className="space-y-1">
+              <div className="grid grid-cols-3 gap-1">
                 {(['zh', 'en', 'ja'] as const).map((lang) => (
                   <button
                     key={lang}
@@ -594,17 +594,17 @@ export default function BauhausSidebar({
                       // 语言切换后不关闭菜单，让用户看到切换效果
                     }}
                     className={cn(
-                      'w-full flex items-center gap-2 px-3 py-2 border-2 font-mono text-xs font-bold uppercase transition-all',
+                      'flex items-center justify-center gap-1.5 px-2 py-2 border-2 font-mono text-[10px] font-bold uppercase transition-all',
                       language === lang
-                        ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[var(--shadow-color)_2px_2px_0_0]'
-                        : 'border-[var(--border-color)] hover:bg-[var(--bg-page)] text-[var(--text-primary)]'
+                        ? 'bg-[var(--accent-hover)] text-black border-black'
+                        : 'border-[var(--border-color)] hover:border-[var(--text-secondary)] text-[var(--text-primary)]'
                     )}
                   >
                     <span className={cn(
-                      'w-2 h-2 border border-current',
-                      language === lang ? 'bg-black' : 'bg-transparent'
+                      'w-1.5 h-1.5 rounded-full',
+                      language === lang ? 'bg-black' : 'bg-[var(--text-secondary)]'
                     )} />
-                    {lang === 'zh' ? '中文 / CHINESE' : lang === 'en' ? 'ENGLISH' : '日本語 / JAPANESE'}
+                    {lang === 'zh' ? '中文' : lang === 'en' ? 'EN' : '日本語'}
                   </button>
                 ))}
               </div>
