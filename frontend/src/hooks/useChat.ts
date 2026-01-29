@@ -455,7 +455,6 @@ export function useChat() {
   // 加载历史会话
   const loadConversation = useCallback(async (conversationId: string) => {
     try {
-      debug('加载会话:', conversationId)
       const conversation = await getConversation(conversationId)
 
       // 设置当前会话ID
@@ -473,7 +472,6 @@ export function useChat() {
 
       // 如果是复杂模式会话，恢复专家结果和artifacts
       if (conversation.agent_type === 'ai' && conversation.task_session) {
-        debug('恢复复杂模式会话:', conversation.task_session.sub_tasks?.length, '个子任务')
         const subTasks = conversation.task_session.sub_tasks || []
 
         // 清空旧的专家结果和artifacts
@@ -494,7 +492,6 @@ export function useChat() {
 
           // 添加专家结果
           addExpertResult(expertResult)
-          debug('恢复专家结果:', expertType, '状态:', subTask.status)
 
           // 恢复artifacts
           if (subTask.artifacts && Array.isArray(subTask.artifacts) && subTask.artifacts.length > 0) {
@@ -507,7 +504,6 @@ export function useChat() {
               language: item.language
             }))
             addArtifactsBatch(expertType, artifacts)
-            debug('恢复artifacts:', expertType, artifacts.length, '个')
           }
         })
 
@@ -516,11 +512,13 @@ export function useChat() {
           const firstExpertType = subTasks[0].expert_type
           selectExpert(firstExpertType)
           selectArtifactSession(firstExpertType)
-          debug('自动选中第一个专家:', firstExpertType)
         }
       }
+
+      return conversation
     } catch (error) {
       errorHandler.handle(error, 'loadConversation')
+      throw error
     }
   }, [setMessages, setCurrentConversationId, setSelectedAgentId, clearExpertResults, addExpertResult, addArtifactsBatch, selectExpert, selectArtifactSession])
 

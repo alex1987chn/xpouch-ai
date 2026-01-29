@@ -140,12 +140,17 @@ export default function UnifiedChatPage() {
   // 加载历史会话
   useEffect(() => {
     if (conversationId) {
-      loadConversation(conversationId)
+      loadConversation(conversationId).catch((error: any) => {
+        // 会话不存在或加载失败，导航回首页
+        if (error?.status === 404 || error?.message?.includes('404')) {
+          navigate('/', { replace: true })
+        }
+      })
     } else {
       clearExpertResults()
       clearArtifactSessions()
     }
-  }, [conversationId, loadConversation, clearExpertResults, clearArtifactSessions])
+  }, [conversationId, loadConversation, clearExpertResults, clearArtifactSessions, navigate])
 
   // 处理首页传来的消息
   useEffect(() => {
