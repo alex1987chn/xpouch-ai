@@ -15,18 +15,18 @@ interface SearchArtifactProps {
 
 export default function SearchArtifact({ results = [], className }: SearchArtifactProps) {
   return (
-    <div className={cn('w-full h-full', className)}>
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-500 to-violet-500 px-4 py-3 flex items-center justify-between">
+    <div className={cn('w-full h-full overflow-auto', className)}>
+      {/* Header - Minimal, no gradient */}
+      <div className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 px-3 py-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Search className="w-4 h-4 text-white" />
-          <span className="text-white text-sm font-medium">搜索结果</span>
+          <Search className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+          <span className="text-slate-700 dark:text-slate-300 text-sm font-medium">搜索结果</span>
         </div>
-        <span className="text-white/80 text-xs">{results.length} 条结果</span>
+        <span className="text-slate-500 dark:text-slate-500 text-xs">{results.length} 条结果</span>
       </div>
 
       {/* Search Results */}
-      <div className="p-4 space-y-3">
+      <div className="p-2 space-y-2">
         {results.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
             <Search className="w-12 h-12 mb-3 opacity-50" />
@@ -36,7 +36,7 @@ export default function SearchArtifact({ results = [], className }: SearchArtifa
           results.map((result, idx) => (
             <div
               key={idx}
-              className="group p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-all"
+              className="group p-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
             >
               {/* Title */}
               <div className="flex items-start gap-3 mb-2">

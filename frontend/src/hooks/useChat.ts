@@ -2,12 +2,12 @@ import { useCallback, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useChatStore } from '@/store/chatStore'
 import { useCanvasStore } from '@/store/canvasStore'
-import { sendMessage, type ApiMessage } from '@/services/api'
+import { sendMessage, getConversation, deleteConversation as apiDeleteConversation, type ApiMessage } from '@/services/api'
 import { getExpertConfig, createExpertResult } from '@/constants/systemAgents'
 import { errorHandler } from '@/utils/logger'
 import type { Artifact } from '@/types'
 import { parseAssistantMessage, shouldDisplayAsArtifact } from '@/utils/artifactParser'
-import { getAgentType, getThreadId, getConversationMode } from '@/utils/agentUtils'
+import { getAgentType, getThreadId, getConversationMode, normalizeAgentId } from '@/utils/agentUtils'
 
 import { logger } from '@/utils/logger'
 
@@ -43,11 +43,15 @@ const debug = DEBUG
 export function useChat() {
   const navigate = useNavigate()
   const [activeExpertId, setActiveExpertId] = useState<string | null>(null)
+  const [streamingContent, setStreamingContent] = useState('')
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
-  const { setArtifact, addExpertResult, updateExpertResult, addArtifact, addArtifactsBatch, selectExpert, selectArtifactSession } = useCanvasStore()
+  const { setArtifact, addExpertResult, updateExpertResult, addArtifact, addArtifactsBatch, selectExpert, selectArtifactSession, clearExpertResults } = useCanvasStore()
 
   const {
     messages,
+    setMessages,
     addMessage,
     updateMessage,
     isTyping,
@@ -56,7 +60,8 @@ export function useChat() {
     setInputMessage,
     selectedAgentId,
     currentConversationId,
-    setCurrentConversationId
+    setCurrentConversationId,
+    setSelectedAgentId
   } = useChatStore()
 
   // 处理所有类型的事件（任务开始、任务计划、专家激活、专家完成）
@@ -222,9 +227,10 @@ export function useChat() {
       logger.error('[useChat] 未选择智能体')
       return
     }
+    const normalizedAgentId = normalizeAgentId(agentId)
 
-    const conversationMode = getConversationMode(agentId)
-    debug('handleSendMessage called:', { userContent, currentConversationId, agentId, overrideAgentId })
+    const conversationMode = getConversationMode(normalizedAgentId)
+    debug('handleSendMessage called:', { userContent, currentConversationId, agentId: normalizedAgentId, overrideAgentId })
 
     // 创建新的 AbortController
     abortControllerRef.current = new AbortController()
@@ -249,12 +255,12 @@ export function useChat() {
       setIsTyping(true)
 
       // 4. 判断智能体类型和 Thread ID
-      const agentType = getAgentType(agentId)
-      const threadId = getThreadId(agentId)
+      const agentType = getAgentType(normalizedAgentId)
+      const threadId = getThreadId(normalizedAgentId)
 
       debug('Agent Info:', {
         agentType,
-        agentId: agentId,
+        agentId: normalizedAgentId,
         threadId,
         conversationMode
       })
@@ -291,9 +297,12 @@ export function useChat() {
 
       // 5. 发送请求并处理流式响应
       debug('准备调用 sendMessage')
+      setIsStreaming(true)
+      setStreamingContent('')
+      setError(null)
       finalResponseContent = await sendMessage(
         chatMessages,
-        agentId,
+        normalizedAgentId,
         async (chunk: string | undefined, conversationId?: string, expertEvent?: any, artifact?: Artifact, expertId?: string) => {
           // 修复：更新store中的conversationId为后端返回的真实ID
           if (conversationId && conversationId !== actualConversationId) {
@@ -342,11 +351,15 @@ export function useChat() {
             }
           }
 
-          // 实时更新 assistant 消息（只在简单模式下）
-          if (chunk && conversationMode === 'simple' && assistantMessageId) {
-            debug('更新消息:', assistantMessageId, 'chunk length:', chunk.length, 'chunk:', chunk.substring(0, 50))
-            // 直接使用updateMessage的append功能，不要手动累积
-            updateMessage(assistantMessageId, chunk, true)
+          // 实时更新流式内容和 assistant 消息
+          if (chunk) {
+            finalResponseContent += chunk
+            setStreamingContent(finalResponseContent)
+
+            if (conversationMode === 'simple' && assistantMessageId) {
+              debug('更新消息:', assistantMessageId, 'chunk length:', chunk.length, 'chunk:', chunk.substring(0, 50))
+              updateMessage(assistantMessageId, chunk, true)
+            }
           }
 
           // 注意：处理后端返回的conversationId，确保前端使用正确的会话ID
@@ -355,6 +368,8 @@ export function useChat() {
         currentConversationId,
         abortControllerRef.current.signal
       )
+      setIsStreaming(false)
+      setStreamingContent('')
 
       // 修复：更新URL中的conversationId为后端返回的真实ID
       if (actualConversationId !== currentConversationId) {
@@ -433,6 +448,7 @@ export function useChat() {
 
         // 添加错误消息到聊天
         const userMessage = errorHandler.getUserMessage(error)
+        setError(userMessage)
         addMessage({
           role: 'assistant',
           content: userMessage
@@ -440,6 +456,7 @@ export function useChat() {
       }
     } finally {
       setIsTyping(false)
+      setIsStreaming(false)
       abortControllerRef.current = null
     }
   }, [inputMessage, selectedAgentId, currentConversationId])
@@ -452,13 +469,112 @@ export function useChat() {
     }
   }, [])
 
+  // 加载历史会话
+  const loadConversation = useCallback(async (conversationId: string) => {
+    try {
+      debug('加载会话:', conversationId)
+      const conversation = await getConversation(conversationId)
+
+      // 设置当前会话ID
+      setCurrentConversationId(conversationId)
+
+      // 设置消息
+      if (conversation.messages && conversation.messages.length > 0) {
+        setMessages(conversation.messages)
+      }
+
+      // 设置选中的智能体（使用规范化后的 ID）
+      if (conversation.agent_id) {
+        setSelectedAgentId(normalizeAgentId(conversation.agent_id))
+      }
+
+      // 如果是复杂模式会话，恢复专家结果和artifacts
+      if (conversation.agent_type === 'ai' && conversation.task_session) {
+        debug('恢复复杂模式会话:', conversation.task_session.sub_tasks?.length, '个子任务')
+        const subTasks = conversation.task_session.sub_tasks || []
+
+        // 清空旧的专家结果和artifacts
+        clearExpertResults()
+
+        // 恢复每个子任务
+        subTasks.forEach((subTask: any) => {
+          const expertType = subTask.expert_type
+          if (!expertType) return
+
+          // 创建专家结果
+          const expertResult = createExpertResult(expertType, subTask.status || 'completed')
+          expertResult.completedAt = subTask.created_at
+          expertResult.duration = subTask.duration_ms
+          expertResult.output = subTask.output
+          expertResult.error = subTask.error
+          expertResult.description = subTask.task_description
+
+          // 添加专家结果
+          addExpertResult(expertResult)
+          debug('恢复专家结果:', expertType, '状态:', subTask.status)
+
+          // 恢复artifacts
+          if (subTask.artifacts && Array.isArray(subTask.artifacts) && subTask.artifacts.length > 0) {
+            const artifacts: Artifact[] = subTask.artifacts.map((item: any) => ({
+              id: crypto.randomUUID(),
+              timestamp: item.timestamp || new Date().toISOString(),
+              type: item.type,
+              title: item.title,
+              content: item.content,
+              language: item.language
+            }))
+            addArtifactsBatch(expertType, artifacts)
+            debug('恢复artifacts:', expertType, artifacts.length, '个')
+          }
+        })
+
+        // 自动选中第一个专家
+        if (subTasks.length > 0) {
+          const firstExpertType = subTasks[0].expert_type
+          selectExpert(firstExpertType)
+          selectArtifactSession(firstExpertType)
+          debug('自动选中第一个专家:', firstExpertType)
+        }
+      }
+    } catch (error) {
+      errorHandler.handle(error, 'loadConversation')
+    }
+  }, [setMessages, setCurrentConversationId, setSelectedAgentId, clearExpertResults, addExpertResult, addArtifactsBatch, selectExpert, selectArtifactSession])
+
+  // 删除会话
+  const deleteConversation = useCallback(async (conversationId: string) => {
+    try {
+      debug('删除会话:', conversationId)
+      await apiDeleteConversation(conversationId)
+
+      // 如果删除的是当前会话，清空消息
+      if (currentConversationId === conversationId) {
+        setMessages([])
+        setCurrentConversationId(null)
+      }
+    } catch (error) {
+      errorHandler.handle(error, 'deleteConversation')
+    }
+  }, [currentConversationId, setMessages, setCurrentConversationId])
+
   return {
     messages,
-    isTyping,
+    streamingContent,
+    isStreaming,
+    isLoading: isTyping,
+    error,
+    sendMessage: handleSendMessage,
+    retry: () => {
+      const lastMessage = messages.filter(m => m.role === 'user').pop()
+      if (lastMessage?.content) {
+        handleSendMessage(lastMessage.content)
+      }
+    },
     inputMessage,
     setInputMessage,
-    handleSendMessage,
     handleStopGeneration,
+    loadConversation,
+    deleteConversation,
     activeExpertId,
     setActiveExpertId
   }

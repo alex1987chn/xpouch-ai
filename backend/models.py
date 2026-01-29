@@ -131,6 +131,37 @@ class Message(SQLModel, table=True):
 
 
 # ============================================================================
+# Pydantic 响应模型（用于API响应序列化）
+# ============================================================================
+
+class MessageResponse(BaseModel):
+    """消息响应模型"""
+    id: Optional[int] = None
+    role: str
+    content: str
+    timestamp: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ConversationResponse(BaseModel):
+    """会话响应模型（用于列表）"""
+    id: Optional[str] = None
+    title: str
+    agent_type: str
+    agent_id: str
+    user_id: str
+    task_session_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    messages: List[MessageResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
 # 新增模型：用户自定义智能体（简单对话模式）
 # ============================================================================
 
@@ -251,7 +282,7 @@ class SubTask(SQLModel, table=True):
     expert_type: str = Field(index=True)  # 存储 ExpertType 枚举值
 
     # 任务描述：自然语言描述的任务内容
-    description: str = Field(index=True)
+    task_description: str = Field(index=True)
 
     # 输入数据：JSON 格式的任务参数
     input_data: Optional[dict] = Field(default=None, sa_type=JSON)
@@ -326,7 +357,7 @@ class TaskSession(SQLModel, table=True):
 class SubTaskCreate(BaseModel):
     """创建子任务的 DTO"""
     expert_type: str  # ExpertType 枚举值
-    description: str
+    task_description: str
     input_data: Optional[dict] = None
 
 

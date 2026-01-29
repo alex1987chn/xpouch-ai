@@ -1,39 +1,58 @@
 import { forwardRef, useState } from 'react'
 import React from 'react'
 import { cn } from '@/lib/utils'
-import { CheckCircle2, Clock2, AlertCircle } from 'lucide-react'
+import { CheckCircle2, Clock2, AlertCircle, Trash2 } from 'lucide-react'
 import { useCanvasStore, type ExpertResult } from '@/store/canvasStore'
 import { getExpertConfig } from '@/constants/systemAgents'
 import { DeleteConfirmDialog } from './DeleteConfirmDialog'
-import { Badge } from '@/components/ui/badge'
 
-// 状态配置常量
-const STATUS_COLORS = {
-  pending: 'bg-gray-200 dark:bg-gray-700',
-  running: 'bg-green-500 animate-pulse',
-  completed: 'bg-green-500',
-  failed: 'bg-red-500'
+// 状态配置常量 - Bauhaus 风格
+const STATUS_CONFIG = {
+  pending: {
+    border: 'border-[var(--border-color)]',
+    bg: 'bg-[var(--bg-page)]',
+    text: 'text-[var(--text-muted)]',
+    indicator: 'bg-[var(--text-muted)]'
+  },
+  running: {
+    border: 'border-[var(--accent-hover)]',
+    bg: 'bg-[var(--accent-hover)]/10',
+    text: 'text-[var(--accent-hover)]',
+    indicator: 'bg-[var(--accent-hover)]'
+  },
+  completed: {
+    border: 'border-green-500',
+    bg: 'bg-green-500/10',
+    text: 'text-green-600 dark:text-green-400',
+    indicator: 'bg-green-500'
+  },
+  failed: {
+    border: 'border-red-500',
+    bg: 'bg-red-500/10',
+    text: 'text-red-600 dark:text-red-400',
+    indicator: 'bg-red-500'
+  }
 } as const
 
 // 状态图标组件
 function StatusIcon({
   status,
-  className = 'w-5 h-5'
+  className = 'w-3 h-3'
 }: {
   status: ExpertResult['status']
   className?: string
 }) {
   const icons = {
     pending: null,
-    running: <Clock2 className={`${className} text-white`} />,
-    completed: <CheckCircle2 className={`${className} text-white`} />,
-    failed: <AlertCircle className={`${className} text-white`} />
+    running: <Clock2 className={`${className} animate-spin`} />,
+    completed: <CheckCircle2 className={`${className}`} />,
+    failed: <AlertCircle className={`${className}`} />
   }
 
   return icons[status]
 }
 
-// 专家卡片组件 - 圆形头像样式
+// 专家卡片组件 - Bauhaus 方形风格
 const ExpertCard = React.forwardRef<HTMLDivElement, {
   expert: ExpertResult
   onClick: () => void
@@ -41,58 +60,57 @@ const ExpertCard = React.forwardRef<HTMLDivElement, {
 }>(({ expert, onClick, selected }, ref) => {
   const config = getExpertConfig(expert.expertType)
   const displayName = expert.title || config.name
-  const shortName = displayName.slice(0, 2) // 只显示前两个字
+  const shortName = displayName.slice(0, 2)
+  const statusConfig = STATUS_CONFIG[expert.status]
 
   return (
     <div
       ref={ref}
-      className={cn(
-        'flex-shrink-0 cursor-pointer transition-all duration-300'
-      )}
+      className="flex-shrink-0 cursor-pointer group"
       onClick={onClick}
     >
       <div className={cn(
-        'relative flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-300',
-        'bg-card',
-        'hover:scale-110 hover:shadow-lg',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50',
-        expert.status === 'running' && 'border-amber-400',
-        expert.status === 'completed' && 'border-green-400',
-        expert.status === 'failed' && 'border-red-400',
-        expert.status === 'pending' && 'border-slate-300 dark:border-slate-600',
-        selected && 'border-violet-400 ring-2 ring-violet-500/20'
+        'relative w-12 h-12 flex items-center justify-center border-2 transition-all',
+        'shadow-[var(--shadow-color)_2px_2px_0_0]',
+        statusConfig.bg,
+        statusConfig.border,
+        selected && 'ring-2 ring-[var(--accent-hover)] ring-offset-2 ring-offset-[var(--bg-card)]',
+        'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_3px_3px_0_0]',
+        'active:translate-x-0 active:translate-y-0 active:shadow-[var(--shadow-color)_2px_2px_0_0]'
       )}>
         {/* 专家名称前两个字 */}
         <span className={cn(
-          'text-sm font-semibold',
-          expert.status === 'completed' && 'text-green-600 dark:text-green-400',
-          expert.status === 'failed' && 'text-red-600 dark:text-red-400',
-          expert.status === 'running' && 'text-amber-600 dark:text-amber-400',
-          (expert.status === 'pending' || !expert.status) && 'text-slate-600 dark:text-slate-400'
+          'font-mono text-sm font-bold',
+          statusConfig.text
         )}>
           {shortName}
         </span>
 
-        {/* 状态指示（完成时显示勾选） */}
-        {expert.status === 'completed' && (
-          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-card shadow-sm">
+        {/* 状态指示器 - 左下角 */}
+        <div className={cn(
+          'absolute -bottom-1 -left-1 w-4 h-4 border-2 border-[var(--bg-card)] flex items-center justify-center',
+          statusConfig.indicator
+        )}>
+          {expert.status === 'running' && (
+            <div className="w-full h-full bg-[var(--accent-hover)] animate-pulse" />
+          )}
+          {expert.status === 'completed' && (
             <CheckCircle2 className="w-2.5 h-2.5 text-white" />
-          </div>
-        )}
-
-        {/* 状态指示（失败时显示X） */}
-        {expert.status === 'failed' && (
-          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center border-2 border-card shadow-sm">
+          )}
+          {expert.status === 'failed' && (
             <AlertCircle className="w-2.5 h-2.5 text-white" />
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* 状态指示（运行时显示脉冲） */}
-        {expert.status === 'running' && (
-          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center border-2 border-card shadow-sm animate-pulse">
-            <Clock2 className="w-2.5 h-2.5 text-white" />
-          </div>
+        {/* 选中指示 - 黄色方块 */}
+        {selected && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-[var(--accent-hover)] border border-black" />
         )}
+      </div>
+
+      {/* 悬停提示 */}
+      <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 px-2 py-1 bg-[var(--bg-card)] border border-[var(--border-color)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+        <span className="font-mono text-[10px] whitespace-nowrap">{displayName}</span>
       </div>
     </div>
   )
@@ -105,7 +123,7 @@ interface ExpertStatusBarProps {
 }
 
 export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
-  const { expertResults, selectedExpert, selectExpert, selectArtifactSession, clearExpertResults, artifactSessions } = useCanvasStore()
+  const { expertResults, selectedExpert, selectExpert, selectArtifactSession, clearExpertResults } = useCanvasStore()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // 按执行顺序排序专家
@@ -114,13 +132,13 @@ export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
     return order.indexOf(a.status) - order.indexOf(b.status)
   })
 
-  // 处理专家卡片点击：同时更新专家选中状态和 artifact 会话状态
+  // 处理专家卡片点击
   const handleExpertClick = (expertType: string) => {
     selectExpert(expertType)
     selectArtifactSession(expertType)
   }
 
-  // 处理清除按钮点击：显示确认弹窗
+  // 处理清除按钮点击
   const handleClearClick = () => {
     setShowDeleteConfirm(true)
   }
@@ -132,21 +150,48 @@ export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
     setShowDeleteConfirm(false)
   }
 
+  // 统计
+  const runningCount = sortedExperts.filter(e => e.status === 'running').length
+  const completedCount = sortedExperts.filter(e => e.status === 'completed').length
+
   return (
     <div className={cn(
-      'flex items-center gap-3 w-full max-w-full overflow-x-auto pb-2 min-h-[60px] px-4 py-3',
+      'flex items-center gap-4 w-full overflow-hidden border-b-2 border-[var(--border-color)] bg-[var(--bg-page)] px-4 py-3',
       className
     )}>
-      {/* 空状态提示 */}
+      {/* 左侧标签 */}
+      <div className="flex-shrink-0">
+        <div className="font-mono text-[10px] text-[var(--text-secondary)] uppercase">
+          /// EXPERTS
+        </div>
+        {sortedExperts.length > 0 && (
+          <div className="flex items-center gap-2 mt-1">
+            {runningCount > 0 && (
+              <span className="font-mono text-[10px] text-[var(--accent-hover)]">
+                {runningCount} RUNNING
+              </span>
+            )}
+            {completedCount > 0 && (
+              <span className="font-mono text-[10px] text-green-600">
+                {completedCount} DONE
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 空状态提示 - Bauhaus 风格 */}
       {sortedExperts.length === 0 && (
-        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
-          <span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-pulse"></span>
-          <span>等待专家调度...</span>
+        <div className="flex items-center gap-2 flex-shrink-0 px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-card)]">
+          <div className="w-2 h-2 bg-[var(--text-muted)] animate-pulse" />
+          <span className="font-mono text-xs text-[var(--text-secondary)] uppercase">
+            WAITING FOR SCHEDULER...
+          </span>
         </div>
       )}
 
-      {/* 专家卡片列表，宽度约束 */}
-      <div className="flex items-center gap-3 min-w-0 flex-1 overflow-x-auto">
+      {/* 专家卡片列表 */}
+      <div className="flex items-center gap-3 flex-1 overflow-x-auto min-w-0 scrollbar-hide">
         {sortedExperts.map((expert) => (
           <ExpertCard
             key={expert.expertType}
@@ -157,13 +202,19 @@ export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
         ))}
       </div>
 
-      {/* 清除按钮 */}
+      {/* 清除按钮 - Bauhaus 风格 */}
       {sortedExperts.length > 0 && (
         <button
           onClick={handleClearClick}
-          className="ml-auto flex-shrink-0 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
+          className={cn(
+            'flex-shrink-0 flex items-center gap-2 px-3 py-2 border-2 font-mono text-xs font-bold uppercase',
+            'border-[var(--border-color)] text-[var(--text-secondary)]',
+            'hover:border-red-500 hover:text-red-500 hover:bg-red-500/10',
+            'transition-all'
+          )}
         >
-          清除
+          <Trash2 className="w-3 h-3" />
+          CLEAR
         </button>
       )}
 
@@ -178,4 +229,3 @@ export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
     </div>
   )
 }
-

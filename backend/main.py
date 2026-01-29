@@ -31,7 +31,8 @@ from agents.graph import commander_graph
 from agents.dynamic_experts import DYNAMIC_EXPERT_FUNCTIONS, initialize_expert_cache
 from models import (
     Conversation, Message, User, TaskSession, SubTask,
-    CustomAgent, CustomAgentCreate, CustomAgentUpdate, CustomAgentResponse
+    CustomAgent, CustomAgentCreate, CustomAgentUpdate, CustomAgentResponse,
+    ConversationResponse, MessageResponse
 )
 from database import create_db_and_tables, get_session, engine
 from config import init_langchain_tracing, validate_config
@@ -714,11 +715,11 @@ async def update_custom_agent(
 
 
 # 获取所有会话列表 (Filtered by User)
-@app.get("/api/conversations")
+@app.get("/api/conversations", response_model=List[ConversationResponse])
 async def get_conversations(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     statement = select(Conversation).where(Conversation.user_id == current_user.id).options(selectinload(Conversation.messages)).order_by(Conversation.updated_at.desc())
     conversations = session.exec(statement).all()
-    return conversations
+    return [ConversationResponse.model_validate(conv) for conv in conversations]
 
 # 获取单个会话详情 (Filtered by User)
 @app.get("/api/conversations/{conversation_id}")
@@ -1325,7 +1326,7 @@ async def chat_invoke_endpoint(
                 db_subtask = SubTask(
                     id=subtask["id"],
                     expert_type=subtask["expert_type"],
-                    description=subtask["description"],
+                    task_description=subtask["description"],
                     input_data=subtask["input_data"],
                     status=subtask["status"],
                     output_result=subtask["output_result"],
@@ -1393,7 +1394,7 @@ async def chat_invoke_endpoint(
             db_subtask = SubTask(
                 id=subtask_dict["id"],
                 expert_type=subtask_dict["expert_type"],
-                description=subtask_dict["description"],
+                task_description=subtask_dict["description"],
                 input_data=subtask_dict["input_data"],
                 status=result.get("status", "completed"),
                 output_result={"content": result.get("output_result", "")},

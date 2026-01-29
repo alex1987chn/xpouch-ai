@@ -1,29 +1,62 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
 
+/**
+ * =============================
+ * 全局应用状态管理 (AppProvider)
+ * =============================
+ *
+ * [架构层级] Layer 1 - 根状态提供者
+ *
+ * [功能描述]
+ * 统一管理全局应用状态，包括：
+ * - Sidebar 状态：折叠/展开、移动端开关
+ * - Dialogs 状态：设置弹窗、个人设置、删除确认
+ * - onCreateAgent 回调：由各页面设置
+ *
+ * [设计原则]
+ * - 单一数据源：所有全局状态集中管理
+ * - Context API：避免 prop drilling
+ * - 事件驱动：通过回调方法触发状态变更
+ *
+ * [使用示例]
+ * ```tsx
+ * // 在组件中使用
+ * const { sidebar, dialogs } = useApp()
+ *
+ * // 切换侧边栏折叠
+ * sidebar.toggleCollapsed()
+ *
+ * // 打开设置弹窗
+ * dialogs.openSettings()
+ *
+ * // 打开删除确认
+ * dialogs.openDeleteConfirm(agentId, agentName)
+ * ```
+ */
 interface AppContextType {
-  // Sidebar 状态
+  /** 侧边栏状态和方法 */
   sidebar: {
-    isCollapsed: boolean
-    isMobileOpen: boolean
-    toggleCollapsed: () => void
-    toggleMobile: () => void
-    closeMobile: () => void
+    isCollapsed: boolean // 桌面端是否折叠
+    isMobileOpen: boolean // 移动端是否打开
+    toggleCollapsed: () => void // 切换折叠状态
+    toggleMobile: () => void // 切换移动端开关
+    closeMobile: () => void // 关闭移动端侧边栏
   }
-  // Dialogs 状态
+  /** 全局弹窗状态和方法 */
   dialogs: {
-    settingsOpen: boolean
-    personalSettingsOpen: boolean
-    deleteConfirmOpen: boolean
-    deletingAgentId: string | null
-    deletingAgentName: string
-    openSettings: () => void
-    closeSettings: () => void
-    openPersonalSettings: () => void
-    closePersonalSettings: () => void
-    openDeleteConfirm: (id: string, name: string) => void
-    closeDeleteConfirm: () => void
+    settingsOpen: boolean // 系统设置弹窗
+    personalSettingsOpen: boolean // 个人设置弹窗
+    deleteConfirmOpen: boolean // 删除确认弹窗
+    deletingAgentId: string | null // 正在删除的智能体ID
+    deletingAgentName: string // 正在删除的智能体名称
+    openSettings: () => void // 打开系统设置
+    closeSettings: () => void // 关闭系统设置
+    openPersonalSettings: () => void // 打开个人设置
+    closePersonalSettings: () => void // 关闭个人设置
+    openDeleteConfirm: (id: string, name: string) => void // 打开删除确认
+    closeDeleteConfirm: () => void // 关闭删除确认
   }
-  // 创建 Agent 回调
+  /** 创建智能体回调（由各页面设置） */
   onCreateAgent?: () => void
 }
 

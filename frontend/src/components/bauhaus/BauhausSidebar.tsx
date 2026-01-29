@@ -14,6 +14,36 @@ import { useTranslation } from '@/i18n'
 import { getAvatarDisplay } from '@/utils/userSettings'
 import LoginDialog from '@/components/LoginDialog'
 
+/**
+ * =============================
+ * Bauhaus 风格侧边栏 (BauhausSidebar)
+ * =============================
+ *
+ * [架构层级] Layer 2.5 - 导航组件
+ *
+ * [设计风格] Bauhaus (包豪斯设计风格)
+ * - 几何形状：圆形按钮、方形卡片
+ * - 高对比度：黑色边框、纯色填充
+ * - 硬边风格：无圆角、锐利阴影
+ * - 机械感：悬停偏移、点击反馈
+ *
+ * [核心功能]
+ * 1. Logo 区域：The4DPocketLogo + 版本号
+ * 2. 创建智能体：New Agent 按钮（大号按钮）
+ * 3. 主导航：Dashboard/Knowledge/History/Experts
+ * 4. 最近会话：Memory_Dump（最多 5 条）
+ * 5. 用户区域：头像 + 设置菜单（Portal 弹出）
+ *
+ * [响应式设计]
+ * - 桌面端：固定宽度 280px（展开）/ 72px（折叠）
+ * - 移动端：全屏抽屉，带遮罩层
+ *
+ * [交互细节]
+ * - 展开/折叠：ChevronRight 按钮
+ * - 设置菜单：头像点击弹出，支持 Portal 渲染
+ * - 语言切换：下拉菜单，支持 zh/en/ja
+ * - 专家管理：仅 admin 角色显示
+ */
 export interface BauhausSidebarProps {
   className?: string
   isCollapsed?: boolean
@@ -48,6 +78,10 @@ export default function BauhausSidebar({
   const isOnKnowledge = location.pathname === '/knowledge'
   const isOnHistory = location.pathname === '/history'
   const isOnAdmin = location.pathname === '/admin/experts'
+
+  // 判断是否显示专家配置入口：需要登录且是 admin 角色，且非移动端
+  const isAdmin = user?.role === 'admin'
+  const showExpertAdmin = isAuthenticated && isAdmin && !isMobileOpen
 
   // 用户数据
   const username = user?.username || 'User'
@@ -171,7 +205,7 @@ export default function BauhausSidebar({
       </div>
 
       {/* 菜单区域 */}
-      <div className="flex-1 flex flex-col items-center">
+      <div className="flex-1 flex flex-col items-center overflow-hidden min-h-0">
         {/* 创建智能体按钮 - 完全按照旧侧边栏：pb-4 */}
         <div className="pb-4 w-full flex justify-center" style={{ maxWidth: '230px' }}>
           {isCollapsed ? (
@@ -245,18 +279,20 @@ export default function BauhausSidebar({
                 <MessageSquare className="w-4 h-4 flex-shrink-0" />
               </button>
 
-              {/* 管理员按钮 */}
-              <button
-                onClick={() => handleMenuClick('/admin/experts')}
-                className={cn(
-                  'h-9 w-9 transition-all duration-200 justify-center p-0 rounded-full border-2',
-                  isOnAdmin
-                    ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
-                    : 'border-[var(--border-color)] text-slate-400 hover:bg-[var(--bg-page)] hover:text-gray-700 dark:hover:text-slate-200'
-                )}
-              >
-                <Shield className="w-4 h-4 flex-shrink-0" />
-              </button>
+              {/* 管理员按钮 - 仅 admin 且非移动端显示 */}
+              {showExpertAdmin && (
+                <button
+                  onClick={() => handleMenuClick('/admin/experts')}
+                  className={cn(
+                    'h-9 w-9 transition-all duration-200 justify-center p-0 rounded-full border-2',
+                    isOnAdmin
+                      ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
+                      : 'border-[var(--border-color)] text-slate-400 hover:bg-[var(--bg-page)] hover:text-gray-700 dark:hover:text-slate-200'
+                  )}
+                >
+                  <Shield className="w-4 h-4 flex-shrink-0" />
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -273,7 +309,7 @@ export default function BauhausSidebar({
               <button
                 onClick={() => handleMenuClick('/')}
                 className={cn(
-                  'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2',
+                  'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2 mb-1',
                   isOnHome
                     ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
                     : 'border-transparent text-[var(--text-primary)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]'
@@ -289,7 +325,7 @@ export default function BauhausSidebar({
               <button
                 onClick={() => handleMenuClick('/knowledge')}
                 className={cn(
-                  'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2',
+                  'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2 mb-1',
                   isOnKnowledge
                     ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
                     : 'border-transparent text-[var(--text-primary)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]'
@@ -305,7 +341,7 @@ export default function BauhausSidebar({
               <button
                 onClick={() => handleMenuClick('/history')}
                 className={cn(
-                  'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2',
+                  'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2 mb-1',
                   isOnHistory
                     ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
                     : 'border-transparent text-[var(--text-primary)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]'
@@ -317,21 +353,23 @@ export default function BauhausSidebar({
                 </div>
               </button>
 
-              {/* 管理员按钮 */}
-              <button
-                onClick={() => handleMenuClick('/admin/experts')}
-                className={cn(
-                  'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2',
-                  isOnAdmin
-                    ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
-                    : 'border-transparent text-[var(--text-primary)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]'
-                )}
-              >
-                <div className="flex items-center gap-3 px-3">
-                  <Shield className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-mono text-xs font-bold tracking-wide uppercase">Experts</span>
-                </div>
-              </button>
+              {/* 管理员按钮 - 仅 admin 且非移动端显示 */}
+              {showExpertAdmin && (
+                <button
+                  onClick={() => handleMenuClick('/admin/experts')}
+                  className={cn(
+                    'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2',
+                    isOnAdmin
+                      ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
+                      : 'border-transparent text-[var(--text-primary)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]'
+                  )}
+                >
+                  <div className="flex items-center gap-3 px-3">
+                    <Shield className="w-5 h-5 flex-shrink-0" />
+                    <span className="font-mono text-xs font-bold tracking-wide uppercase">Experts</span>
+                  </div>
+                </button>
+              )}
             </div>
 
             {/* 最近会话列表 - Data Log 风格 - 独立滚动区域 */}
@@ -388,7 +426,7 @@ export default function BauhausSidebar({
 
       {/* 底部用户区域 - Bauhaus风格 */}
       <div className={cn(
-        'border-t-2 border-[var(--border-color)]',
+        'border-t-2 border-[var(--border-color)] shrink-0',
         isCollapsed ? 'p-2 flex flex-col items-center gap-2' : 'p-3'
       )}>
         {isAuthenticated ? (

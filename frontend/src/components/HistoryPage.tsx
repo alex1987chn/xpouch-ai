@@ -11,11 +11,10 @@ import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { logger } from '@/utils/logger'
 
 interface HistoryPageProps {
-  onConversationClick: (id: string) => void
-  onSelectConversation: (conversation: Conversation) => void // 强类型，API 返回的结构
+  onSelectConversation: (conversation: Conversation) => void
 }
 
-export default function HistoryPage({ onConversationClick, onSelectConversation }: HistoryPageProps) {
+export default function HistoryPage({ onSelectConversation }: HistoryPageProps) {
   const { t, language } = useTranslation()
   const { sidebar } = useApp()
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -178,10 +177,7 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
               {filteredConversations.map((conversation) => (
                 <div
                   key={conversation.id}
-                  onClick={() => {
-                    onConversationClick(conversation.id)
-                    onSelectConversation(conversation)
-                  }}
+                  onClick={() => onSelectConversation(conversation)}
                   className="group relative bg-[var(--bg-card)] border-2 border-[var(--border-color)] p-3 cursor-pointer shadow-[var(--shadow-color)_3px_3px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[var(--shadow-color)_5px_5px_0_0] transition-all"
                 >
                   <div className="flex justify-between items-start gap-4">

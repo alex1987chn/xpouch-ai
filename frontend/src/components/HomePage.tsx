@@ -296,15 +296,28 @@ export default function HomePage() {
     if (!inputMessage.trim()) return
 
     const newId = crypto.randomUUID()
-    useChatStore.getState().setCurrentConversationId(newId)
 
     const agentIdForChat = conversationMode === 'simple'
       ? selectedAgentId || SYSTEM_AGENTS.DEFAULT_CHAT
       : SYSTEM_AGENTS.ORCHESTRATOR
 
-    navigate(`/chat/${newId}?agentId=${agentIdForChat}`, {
-      state: { startWith: inputMessage }
-    })
+    // 根据模式选择不同的聊天页面
+    if (conversationMode === 'complex') {
+      // 复杂模式：使用 UnifiedChatPage，路径包含ID
+      const searchParams = new URLSearchParams()
+      searchParams.set('agentId', agentIdForChat)
+      navigate(`/chat/${newId}?${searchParams.toString()}`, {
+        state: { startWith: inputMessage, conversationMode }
+      })
+    } else {
+      // 简单模式：使用 UnifiedChatPage，使用query参数
+      const searchParams = new URLSearchParams()
+      searchParams.set('conversation', newId)
+      searchParams.set('agentId', agentIdForChat)
+      navigate(`/chat?${searchParams.toString()}`, {
+        state: { startWith: inputMessage, conversationMode }
+      })
+    }
   }, [inputMessage, navigate, conversationMode, selectedAgentId])
 
   // 推荐场景数据
@@ -345,7 +358,7 @@ export default function HomePage() {
   ]
 
   return (
-    <div className="h-full min-h-screen">
+    <div className="h-full">
       {/* 网格背景 */}
       <GridPattern />
 
@@ -358,7 +371,7 @@ export default function HomePage() {
       </button>
 
       {/* Main Content */}
-      <main className="flex-1 min-h-screen relative">
+      <div className="flex-1 relative">
         {/* System Status Marquee */}
         <SystemStatusMarquee className="sticky top-0 z-10" />
 
@@ -419,24 +432,53 @@ export default function HomePage() {
               </div>
 
               {/* Toolbar */}
-              <div className="flex justify-between items-center p-3 border-t-2 border-[var(--border-color)] bg-[var(--bg-page)]">
-                <div className="flex gap-2">
-                  <button className="p-2 border-2 border-transparent hover:bg-[var(--bg-card)] hover:border-[var(--border-color)] transition-all">
-                    <Image className="w-4 h-4 stroke-[2.5]" />
-                  </button>
-                  <button className="p-2 border-2 border-transparent hover:bg-[var(--bg-card)] hover:border-[var(--border-color)] transition-all">
-                    <Paperclip className="w-4 h-4 stroke-[2.5]" />
-                  </button>
+              <div className="flex justify-between items-center p-2 sm:p-3 border-t-2 border-[var(--border-color)] bg-[var(--bg-page)] gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                  {/* 模式切换 - Bauhaus 风格 */}
+                  <div className="flex items-center border-2 border-black bg-white flex-shrink-0">
+                    <button
+                      onClick={() => setConversationMode('simple')}
+                      className={cn(
+                        'px-2 sm:px-3 py-1.5 font-mono text-[9px] sm:text-[10px] font-bold uppercase transition-all border-r-2 border-black',
+                        conversationMode === 'simple'
+                          ? 'bg-[var(--accent)] text-black'
+                          : 'bg-transparent text-gray-500 hover:text-black hover:bg-gray-100'
+                      )}
+                    >
+                      SIMPLE
+                    </button>
+                    <button
+                      onClick={() => setConversationMode('complex')}
+                      className={cn(
+                        'px-2 sm:px-3 py-1.5 font-mono text-[9px] sm:text-[10px] font-bold uppercase transition-all',
+                        conversationMode === 'complex'
+                          ? 'bg-black text-white'
+                          : 'bg-transparent text-gray-500 hover:text-black hover:bg-gray-100'
+                      )}
+                    >
+                      COMPLEX
+                    </button>
+                  </div>
+
+                  {/* 附件按钮 */}
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-[var(--bg-card)] hover:border-[var(--border-color)] transition-all">
+                      <Image className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                    </button>
+                    <button className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-[var(--bg-card)] hover:border-[var(--border-color)] transition-all">
+                      <Paperclip className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                   <span className="font-mono text-[10px] text-[var(--text-secondary)] hidden sm:inline">ENTER TO SEND</span>
                   <Button
                     onClick={handleSendMessage}
                     disabled={!inputMessage.trim()}
-                    className="px-4 sm:px-6 py-2 flex items-center gap-2"
+                    className="px-2 sm:px-4 md:px-6 py-1.5 sm:py-2 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
                   >
-                    <span>EXECUTE</span>
-                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                    <span className="hidden sm:inline">EXECUTE</span>
+                    <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
                   </Button>
                 </div>
               </div>
@@ -500,7 +542,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Noise Overlay */}
       <NoiseOverlay />
