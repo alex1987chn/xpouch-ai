@@ -116,11 +116,19 @@ export default function ModelSelector({ value, onChange, label = 'MODEL_CONFIG' 
                   type="button"
                   onClick={() => handleProviderSelect(provider)}
                   className={cn(
-                    'w-full px-3 py-2 text-left font-mono text-xs uppercase hover:bg-[var(--accent-hover)]/10 transition-colors pointer-events-auto',
-                    selectedProvider === provider && 'bg-[var(--accent-hover)]/20'
+                    'w-full px-3 py-2.5 text-left font-mono text-xs uppercase transition-all pointer-events-auto relative',
+                    'hover:bg-[var(--accent-hover)] hover:text-black',
+                    selectedProvider === provider
+                      ? 'bg-[var(--accent-hover)] text-black font-bold'
+                      : 'bg-transparent text-[var(--text-primary)]'
                   )}
                 >
-                  {provider}
+                  <span className="flex items-center gap-2">
+                    {selectedProvider === provider && (
+                      <span className="w-1.5 h-1.5 bg-black rounded-full" />
+                    )}
+                    {provider}
+                  </span>
                 </button>
               ))}
             </div>,
@@ -157,11 +165,19 @@ export default function ModelSelector({ value, onChange, label = 'MODEL_CONFIG' 
                   type="button"
                   onClick={() => handleModelSelect(model.id)}
                   className={cn(
-                    'w-full px-3 py-2 text-left font-mono text-xs hover:bg-[var(--accent-hover)]/10 transition-colors pointer-events-auto',
-                    value === model.id && 'bg-[var(--accent-hover)]/20'
+                    'w-full px-3 py-2.5 text-left font-mono text-xs transition-all pointer-events-auto relative',
+                    'hover:bg-[var(--accent-hover)] hover:text-black',
+                    value === model.id
+                      ? 'bg-[var(--accent-hover)] text-black font-bold'
+                      : 'bg-transparent text-[var(--text-primary)]'
                   )}
                 >
-                  {model.name}
+                  <span className="flex items-center gap-2">
+                    {value === model.id && (
+                      <span className="w-1.5 h-1.5 bg-black rounded-full" />
+                    )}
+                    {model.name}
+                  </span>
                 </button>
               ))}
             </div>,
