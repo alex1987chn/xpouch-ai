@@ -40,8 +40,8 @@ import type { ExpertResult } from '@/store/canvasStore'
  *   - OrchestratorPanel (右侧 45%): 专家状态栏 + Artifacts
  *
  * [路由设计]
- * - 简单模式: `/chat?conversation=xxx&agentId=xxx`
- * - 复杂模式: `/chat/:id?agentId=ai-assistant`
+ * - 统一格式: `/chat/:id?agentId=xxx`
+ * - 支持简单模式和复杂模式，通过 agentId 区分
  *
  * [状态管理]
  * - useChat: 消息流逻辑
@@ -52,9 +52,11 @@ export default function UnifiedChatPage() {
 
   const navigate = useNavigate()
   const location = useLocation()
-  const { id: conversationId } = useParams()
+  const { id: pathConversationId } = useParams()
   const [searchParams] = useSearchParams()
 
+  // 支持两种 URL 格式：/chat/:id 或 /chat?conversation=xxx
+  const conversationId = pathConversationId || searchParams.get('conversation') || ''
   const agentId = searchParams.get('agentId') || 'default-chat'
   const normalizedAgentId = normalizeAgentId(agentId)
   const isNewConversation = searchParams.get('new') === 'true'

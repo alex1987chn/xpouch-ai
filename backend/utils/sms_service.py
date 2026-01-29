@@ -182,5 +182,4 @@ def send_verification_code_with_fallback(phone_number: str, code: str, expire_mi
         # 控制台输出模式（开发环境备用）
         masked_phone = f"{phone_number[:3]}****{phone_number[-4:]}"
         logger.warning(f"短信服务不可用，控制台输出验证码: {masked_phone} -> {code} (有效期{expire_minutes}分钟)")
-        print(f"[DEBUG SMS] 验证码发送到 {masked_phone}: {code} (有效期{expire_minutes}分钟)")
         return True, None

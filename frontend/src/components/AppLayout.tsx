@@ -79,7 +79,6 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
 
     // 这里只是占位符，实际的删除逻辑由各页面通过订阅 dialogs 状态来处理
     // 或者统一在这里处理
-    logger.info('[AppLayout] Delete confirm clicked for:', dialogs.deletingAgentId)
     dialogs.closeDeleteConfirm()
   }
 

@@ -169,7 +169,7 @@ function MessageItem({
         <div className="flex items-center gap-2 mb-1 opacity-40 group-hover:opacity-100 transition-opacity">
           <span className="font-mono text-[9px] uppercase">ID: {String(message.id ?? '').slice(0, 6)} // USER</span>
         </div>
-        <div className="bg-primary text-inverted p-5 shadow-hard border-2 border-transparent max-w-2xl w-full">
+        <div className="bg-primary text-inverted p-5 shadow-hard border-2 border-transparent w-fit max-w-[80%]">
           <div className="flex gap-3">
             <span className="font-mono text-[var(--accent)] font-bold shrink-0">&gt;_</span>
             <p className="font-mono text-sm leading-relaxed whitespace-pre-wrap">
