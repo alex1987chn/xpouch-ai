@@ -306,6 +306,7 @@ export default function HomePage() {
       // 复杂模式：使用 UnifiedChatPage，路径包含ID
       const searchParams = new URLSearchParams()
       searchParams.set('agentId', agentIdForChat)
+      searchParams.set('new', 'true')
       navigate(`/chat/${newId}?${searchParams.toString()}`, {
         state: { startWith: inputMessage, conversationMode }
       })
@@ -314,6 +315,7 @@ export default function HomePage() {
       const searchParams = new URLSearchParams()
       searchParams.set('conversation', newId)
       searchParams.set('agentId', agentIdForChat)
+      searchParams.set('new', 'true')
       navigate(`/chat?${searchParams.toString()}`, {
         state: { startWith: inputMessage, conversationMode }
       })

@@ -151,10 +151,10 @@ export function MessageItem({
 
         {/* 消息气泡 - Bauhaus 风格 */}
         <div className={cn(
-          'relative px-4 py-3 border-2 max-w-full',
+          'relative px-4 py-3 border-2',
           isUser
-            ? 'bg-[var(--bg-page)] border-[var(--border-color)] text-[var(--text-primary)]'
-            : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-primary)]',
+            ? 'bg-[var(--bg-page)] border-[var(--border-color)] text-[var(--text-primary)] w-fit max-w-[80%]'
+            : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-primary)] max-w-full',
           'shadow-[var(--shadow-color)_2px_2px_0_0]'
         )}>
           {/* 内容 */}

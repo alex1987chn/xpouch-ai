@@ -69,10 +69,6 @@ export const useUserStore = create<UserState>()(
             throw new Error(data.detail || '发送验证码失败')
           }
           set({ isLoading: false })
-          // 开发环境返回验证码用于测试
-          if (data._debug_code) {
-            logger.debug(`[Auth] 验证码: ${data._debug_code}`)
-          }
           return data as any // 返回完整响应数据
         } catch (error) {
           errorHandler.handleSync(error, 'sendVerificationCode')

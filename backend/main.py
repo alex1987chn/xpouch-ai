@@ -531,25 +531,20 @@ async def debug_cleanup_users():
         ).all()
 
         count = len(users_to_delete)
-        print(f"[Debug] 找到 {count} 个垃圾用户需要清理", file=sys.stderr)
 
         for user in users_to_delete:
-            print(f"[Debug] 删除用户: {user.id} - {user.username}", file=sys.stderr)
-            
             # 1. 先删除该用户的所有会话（会级联删除messages）
             conversations = session.exec(
                 select(Conversation).where(Conversation.user_id == user.id)
             ).all()
             for conv in conversations:
-                print(f"[Debug]   - 删除会话: {conv.id}", file=sys.stderr)
                 session.delete(conv)
-            
+
             # 2. 删除该用户的所有自定义智能体
             custom_agents = session.exec(
                 select(CustomAgent).where(CustomAgent.user_id == user.id)
             ).all()
             for agent in custom_agents:
-                print(f"[Debug]   - 删除智能体: {agent.id} - {agent.name}", file=sys.stderr)
                 session.delete(agent)
             
             # 3. 最后删除用户
@@ -896,7 +891,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     # 2. sys-default-chat → 简单模式（默认助手）
     # 3. 自定义智能体UUID → 简单模式
 
-    print(f"[DEBUG] normalized_agent_id: {normalized_agent_id}, SYSTEM_AGENT_ORCHESTRATOR: {SYSTEM_AGENT_ORCHESTRATOR}")
+
     if normalized_agent_id == SYSTEM_AGENT_ORCHESTRATOR:
         # AI助手：复杂模式（指挥官模式）
         custom_agent = None  # 不走自定义 agent 逻辑
@@ -923,7 +918,6 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             custom_agent = None
 
     # 如果是自定义智能体，使用直接 LLM 调用模式（不经过 LangGraph）
-    print(f"[DEBUG] custom_agent value: {custom_agent}")
     if custom_agent:
         # 4. 流式响应处理（自定义智能体直接调用 LLM）
         if request.stream:
@@ -1067,7 +1061,6 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             expert_artifacts = {}
 
             try:
-                print(f"[DEBUG] 开始流式处理指挥官图，初始状态: {initial_state}")
                 async for event in commander_graph.astream_events(
                     initial_state,
                     version="v2"
@@ -1142,7 +1135,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                                 expert_artifacts[expert_name].append(artifact)
 
                                 # 推送 artifact_update 事件（包含所有 artifacts）
-                                yield f"data: {json.dumps({'artifact': artifact, 'conversationId': conversation_id, 'allArtifacts': expert_artifacts[expert_name]})}\n\n"
+                                yield f"data: {json.dumps({'artifact': artifact, 'conversationId': conversation_id, 'allArtifacts': expert_artifacts[expert_name], 'activeExpert': expert_name})}\n\n"
 
                             # 推送专家完成事件（包含完整信息）
                             yield f"data: {json.dumps({

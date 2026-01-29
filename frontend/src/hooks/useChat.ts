@@ -71,15 +71,11 @@ export function useChat() {
   ) => {
     if (conversationMode !== 'complex') return
 
-    debug('收到事件:', expertEvent.type, expertEvent)
-
     // 处理任务开始事件
     if (expertEvent?.type === 'task_start') {
       const taskInfo = expertEvent as any
       const expertType = taskInfo.expert_type
       const description = taskInfo.description || taskInfo.task_name || '执行任务'
-
-      debug('任务开始:', expertType, '描述:', description)
 
       // 设置当前执行的专家信息（用于loading气泡展示）
       setActiveExpertId(expertType)
@@ -111,7 +107,6 @@ export function useChat() {
 
     // 处理专家激活事件
     if (expertEvent?.type === 'expert_activated') {
-      debug('✅ 专家激活:', expertEvent.expertId)
       setActiveExpertId(expertEvent.expertId)
       // 使用统一的专家结果创建函数
       const newExpert = createExpertResult(expertEvent.expertId, 'running')
@@ -119,16 +114,12 @@ export function useChat() {
       if (expertEvent.description) {
         newExpert.description = expertEvent.description
       }
-      debug('添加专家到状态栏:', newExpert)
       addExpertResult(newExpert)
-      debug('添加后专家结果列表:', useCanvasStore.getState().expertResults)
       return
     }
 
     // 处理专家完成事件
     if (expertEvent?.type === 'expert_completed') {
-      debug('✅ 专家完成:', expertEvent.expertId, expertEvent)
-      debug('更新前专家结果列表:', useCanvasStore.getState().expertResults)
 
       // 不再延迟，立即显示完成状态
       // 添加工作流状态消息（包含专家输出）
@@ -162,10 +153,6 @@ export function useChat() {
 
       // 处理 allArtifacts（新架构：批量添加到 ArtifactSession）
       if (expertEvent.allArtifacts && Array.isArray(expertEvent.allArtifacts) && expertEvent.allArtifacts.length > 0) {
-        debug('处理 allArtifacts:', expertEvent.allArtifacts.length, '个 artifact')
-        debug('专家ID:', expertEvent.expertId)
-        debug('artifacts 数据:', expertEvent.allArtifacts)
-
         const artifacts: Artifact[] = expertEvent.allArtifacts.map((item: any) => ({
           id: crypto.randomUUID(),
           timestamp: new Date().toISOString(),
@@ -176,7 +163,6 @@ export function useChat() {
         }))
 
         addArtifactsBatch(expertEvent.expertId, artifacts)
-        debug('已添加 artifacts 到 ArtifactSession:', expertEvent.expertId)
       }
 
       // 更新专家状态为完成，包含完整信息
@@ -195,8 +181,7 @@ export function useChat() {
           language: item.language
         })) : undefined
       })
-      debug('更新后专家结果列表:', useCanvasStore.getState().expertResults)
-      
+
       // 立即清除当前激活的专家，避免loading状态混淆
       setActiveExpertId(null)
 
@@ -208,7 +193,6 @@ export function useChat() {
 
       // 只有当所有专家都完成，且当前专家是最后一个完成的专家时，才显示总完成消息
       if (allCompleted && expertResults.length > 0) {
-        debug('✅ 所有专家已完成，自动高亮第一个专家')
         const firstExpert = expertResults[0]
         selectExpert(firstExpert.expertType)
         selectArtifactSession(firstExpert.expertType)
@@ -230,7 +214,6 @@ export function useChat() {
     const normalizedAgentId = normalizeAgentId(agentId)
 
     const conversationMode = getConversationMode(normalizedAgentId)
-    debug('handleSendMessage called:', { userContent, currentConversationId, agentId: normalizedAgentId, overrideAgentId })
 
     // 创建新的 AbortController
     abortControllerRef.current = new AbortController()

@@ -38,21 +38,12 @@ const HistoryPageWrapper = () => {
     const agentId = conversation.agent_id || 'default-chat'
     const normalizedAgentId = normalizeAgentId(agentId)
 
-    // 根据会话类型判断模式
-    const isComplex = conversation.agent_type === 'ai'
-
     // 构建搜索参数
     const searchParams = new URLSearchParams()
-    searchParams.set('conversation', conversationId)
     searchParams.set('agentId', normalizedAgentId)
 
-    if (isComplex) {
-      // 复杂模式：跳转到 UnifiedChatPage
-      navigate(`/chat/${conversationId}?${searchParams.toString()}`)
-    } else {
-      // 简单模式：跳转到 UnifiedChatPage
-      navigate(`/chat?${searchParams.toString()}`)
-    }
+    // 统一跳转到 /chat/:id 格式（支持简单和复杂模式）
+    navigate(`/chat/${conversationId}?${searchParams.toString()}`)
   }
 
   return (

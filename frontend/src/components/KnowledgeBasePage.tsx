@@ -71,7 +71,7 @@ export default function KnowledgeBasePage() {
 
   // 创建知识库
   const handleCreateKnowledgeBase = () => {
-    logger.info('Create new knowledge base')
+    // TODO: 实现创建知识库逻辑
   }
 
   // 处理删除 - 打开确认对话框
@@ -88,7 +88,6 @@ export default function KnowledgeBasePage() {
 
     try {
       // TODO: 调用后端API删除
-      logger.info('Deleting item:', deletingItemId)
       // 从本地列表中移除，避免刷新导致滚动位置丢失
       setItems(prev => prev.filter(item => item.id !== deletingItemId))
       setDeleteDialogOpen(false)

@@ -120,8 +120,9 @@ export default function BauhausSidebar({
   }
 
   // 处理会话点击
-  const handleConversationClick = (conversationId: string) => {
-    navigate(`/chat/${conversationId}`)
+  const handleConversationClick = (conversationId: string, agentId?: string) => {
+    const params = agentId ? `?agentId=${agentId}` : ''
+    navigate(`/chat/${conversationId}${params}`)
     onMobileClose?.()
   }
 
@@ -388,7 +389,7 @@ export default function BauhausSidebar({
                 {recentConversations.map((conv) => (
                   <button
                     key={conv.id}
-                    onClick={() => handleConversationClick(conv.id)}
+                    onClick={() => handleConversationClick(conv.id, conv.agent_id)}
                     className="group w-full text-left flex items-center gap-3 px-3 py-1.5 border border-transparent hover:border-[var(--border-color)] hover:bg-[var(--bg-page)] transition-all"
                   >
                     {/* 装饰性光标: Hover时出现 */}
