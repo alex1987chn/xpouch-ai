@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
+import { useState } from 'react'
 import { ArrowLeft, Bot, Sparkles } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { cn } from '@/lib/utils'
 import SwipeBackIndicator from './SwipeBackIndicator'
 import AgentPreviewCard from './AgentPreviewCard'
-import { models } from '@/config/models'
+import ModelSelector from './ModelSelector'
 
 interface CreateAgentPageProps {
   onBack: () => void
@@ -64,25 +63,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
   const [description, setDescription] = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
   const [category, setCategory] = useState('综合')
-
-  // 模型选择状态（两级联动）
-  const [selectedProvider, setSelectedProvider] = useState<string>(() => {
-    const availableProviders = models.map(m => m.provider)
-    const uniqueProviders = Array.from(new Set(availableProviders))
-    return uniqueProviders[0] || 'deepseek'
-  })
-  const [selectedModel, setSelectedModel] = useState<string>(() => {
-    const deepseekModels = models.filter(m => m.provider === 'deepseek')
-    return deepseekModels[0]?.id || 'deepseek-chat'
-  })
-
-  // 下拉菜单显示状态
-  const [showProviderDropdown, setShowProviderDropdown] = useState(false)
-  const [showModelDropdown, setShowModelDropdown] = useState(false)
-
-  // 下拉菜单 ref
-  const providerDropdownRef = useRef<HTMLDivElement>(null)
-  const modelDropdownRef = useRef<HTMLDivElement>(null)
+  const [selectedModel, setSelectedModel] = useState('deepseek-chat')
 
   const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({
     enabled: true,
@@ -105,27 +86,6 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
 
     onSave(newAgent)
   }
-
-  // 获取唯一供应商列表
-  const providers = Array.from(new Set(models.map(m => m.provider)))
-
-  // 获取当前供应商的模型列表
-  const currentProviderModels = models.filter(m => m.provider === selectedProvider)
-
-  // 点击外部关闭下拉菜单
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (providerDropdownRef.current && !providerDropdownRef.current.contains(event.target as Node)) {
-        setShowProviderDropdown(false)
-      }
-      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
-        setShowModelDropdown(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const categories = ['综合', '开发', '创作', '分析', '研究']
 
@@ -160,11 +120,11 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
             className={cn(
               'flex items-center gap-2 px-4 py-2 border-2 border-[var(--border-color)]',
               'bg-[var(--accent-hover)] text-black font-mono text-xs font-bold uppercase',
-              'shadow-[var(--shadow-color)_3px_3px_0_0]',
-              'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_4px_4px_0_0]',
+              'shadow-[3px_3px_0_0_rgba(0,0,0,1)]',
+              'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)]',
               'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
               'transition-all',
-              'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:shadow-[var(--shadow-color)_3px_3px_0_0]'
+              'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:shadow-[3px_3px_0_0_rgba(0,0,0,1)]'
             )}
           >
             <Sparkles className="w-4 h-4" />
@@ -227,103 +187,12 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
                 </div>
               </div>
 
-              {/* 模型选择 - 两级联动下拉菜单 */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                    MODEL_CONFIG
-                  </label>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {/* 供应商选择 */}
-                  <div className="relative" ref={providerDropdownRef}>
-                    <label className="font-mono text-[9px] text-[var(--text-secondary)] mb-1 block uppercase">
-                      Provider
-                    </label>
-                    <button
-                      onClick={() => setShowProviderDropdown(!showProviderDropdown)}
-                      className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-xs text-left flex items-center justify-between hover:border-[var(--accent-hover)] transition-colors"
-                    >
-                      <span className="uppercase">{selectedProvider}</span>
-                      <span className="text-[var(--text-secondary)]">▼</span>
-                    </button>
-                    {showProviderDropdown && createPortal(
-                      <div
-                        className="fixed border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] z-[100] max-h-40 overflow-y-auto bauhaus-scrollbar"
-                        style={{
-                          width: providerDropdownRef.current?.getBoundingClientRect().width || 200,
-                          left: providerDropdownRef.current?.getBoundingClientRect().left || 0,
-                          top: (providerDropdownRef.current?.getBoundingClientRect().bottom || 0) + 4
-                        }}
-                      >
-                        {providers.map((provider) => (
-                          <button
-                            key={provider}
-                            onClick={() => {
-                              setSelectedProvider(provider)
-                              const firstModel = models.find(m => m.provider === provider)
-                              if (firstModel) {
-                                setSelectedModel(firstModel.id)
-                              }
-                              setShowProviderDropdown(false)
-                            }}
-                            className={cn(
-                              'w-full px-3 py-2 text-left font-mono text-xs uppercase hover:bg-[var(--accent-hover)]/10 transition-colors',
-                              selectedProvider === provider && 'bg-[var(--accent-hover)]/20'
-                            )}
-                          >
-                            {provider}
-                          </button>
-                        ))}
-                      </div>,
-                      document.body
-                    )}
-                  </div>
-
-                  {/* 模型选择 */}
-                  <div className="relative" ref={modelDropdownRef}>
-                    <label className="font-mono text-[9px] text-[var(--text-secondary)] mb-1 block uppercase">
-                      Model
-                    </label>
-                    <button
-                      onClick={() => setShowModelDropdown(!showModelDropdown)}
-                      className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-xs text-left flex items-center justify-between hover:border-[var(--accent-hover)] transition-colors"
-                    >
-                      <span>{models.find(m => m.id === selectedModel)?.name || 'Select'}</span>
-                      <span className="text-[var(--text-secondary)]">▼</span>
-                    </button>
-                    {showModelDropdown && createPortal(
-                      <div
-                        className="fixed border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] z-[100] max-h-40 overflow-y-auto bauhaus-scrollbar"
-                        style={{
-                          width: modelDropdownRef.current?.getBoundingClientRect().width || 200,
-                          left: modelDropdownRef.current?.getBoundingClientRect().left || 0,
-                          top: (modelDropdownRef.current?.getBoundingClientRect().bottom || 0) + 4
-                        }}
-                      >
-                        {currentProviderModels.map((model) => (
-                          <button
-                            key={model.id}
-                            onClick={() => {
-                              setSelectedModel(model.id)
-                              setShowModelDropdown(false)
-                            }}
-                            className={cn(
-                              'w-full px-3 py-2 text-left font-mono text-xs hover:bg-[var(--accent-hover)]/10 transition-colors',
-                              selectedModel === model.id && 'bg-[var(--accent-hover)]/20'
-                            )}
-                          >
-                            {model.name}
-                          </button>
-                        ))}
-                      </div>,
-                      document.body
-                    )}
-                  </div>
-                </div>
-              </div>
+              {/* 模型选择 - 使用可复用组件 */}
+              <ModelSelector
+                value={selectedModel}
+                onChange={setSelectedModel}
+                label="MODEL"
+              />
 
               {/* 描述 */}
               <div className="space-y-3">
