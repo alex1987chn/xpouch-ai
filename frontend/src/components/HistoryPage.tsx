@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { MessageSquare, Clock, Trash2, Search, Bot } from 'lucide-react'
+import { MessageSquare, Clock, Trash2, Search } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { getConversations, deleteConversation as apiDeleteConversation, type Conversation } from '@/services/api'
 import { formatDistanceToNow } from 'date-fns'
@@ -8,9 +8,6 @@ import { useSwipeBack } from '@/hooks/useSwipeBack'
 import SwipeBackIndicator from './SwipeBackIndicator'
 import { useApp } from '@/providers/AppProvider'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
-import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { cn } from '@/lib/utils'
 import { logger } from '@/utils/logger'
 
 interface HistoryPageProps {
@@ -116,65 +113,68 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
 
   return (
     <div className="bg-transparent overflow-x-hidden w-full h-full flex flex-col">
-      {/* 极窄毛玻璃 Header - h-14 固定高度，fixed 定位 */}
-      <header className="fixed top-0 left-0 right-0 z-40 h-14 px-6 lg:pl-[76px] backdrop-blur-xl bg-white/70 dark:bg-[#020617]/70 border-b border-slate-200/50 dark:border-slate-700/30 transition-all duration-300" style={{
-        paddingLeft: sidebar.isCollapsed ? '12px' : '252px'
+      {/* Bauhaus Header - 硬边风格 */}
+      <header className="fixed top-0 left-0 right-0 z-40 h-[60px] px-6 border-b-2 border-[var(--border-color)] bg-[var(--bg-card)] transition-all duration-300" style={{
+        paddingLeft: sidebar.isCollapsed ? '88px' : '320px'
       }}>
         <div className="w-full max-w-5xl mx-auto h-full flex items-center">
-          {/* 左侧：图标 + 标题 */}
-          <div className="flex items-center h-full">
-            <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            <h1 className="text-base font-semibold text-slate-800 dark:text-slate-200 ml-3">
+          {/* 左侧：标题 */}
+          <div className="flex items-center h-full gap-3">
+            <div className="w-2 h-2 bg-[var(--accent-hover)]"></div>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              ///
+            </span>
+            <h1 className="text-base font-black uppercase tracking-tight text-[var(--text-primary)]">
               {t('history')}
             </h1>
           </div>
         </div>
       </header>
 
-      {/* 可滚动内容区 - 添加 pt-14 避免内容被 header 遮挡 */}
+      {/* 可滚动内容区 - Bauhaus风格 */}
       <div
-        className="h-full overflow-x-hidden pt-14"
+        className="h-full overflow-y-auto bauhaus-scrollbar overflow-x-hidden pt-[60px]"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <ScrollArea className="h-full w-full">
         {/* 移动端滑动返回指示器 */}
         <SwipeBackIndicator swipeProgress={swipeProgress} />
 
-        {/* 搜索框 */}
-        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-3 md:pb-3 mt-8">
+        {/* 搜索框 - Bauhaus风格 */}
+        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 mt-6">
           <div className="relative flex items-center">
-            <Search className="absolute left-3 w-4 h-4 text-slate-400 dark:text-slate-500" />
-            <Input
+            <Search className="absolute left-3 w-4 h-4 text-[var(--text-secondary)]" />
+            <input
               type="text"
               placeholder={t('searchHistory') || '搜索历史记录...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="w-full h-11 pl-10 pr-4 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
             />
           </div>
         </div>
 
-        {/* 数据统计信息 */}
+        {/* 数据统计信息 - Bauhaus风格 */}
         {!loading && filteredConversations.length > 0 && (
-          <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 md:pb-4">
-            <div className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4">
+            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">
+              <div className="w-1.5 h-1.5 bg-[var(--accent-hover)]"></div>
               <span>
                 {searchQuery
-                  ? `${filteredConversations.length} ${t('matchingHistory') || 'matching history'}`
-                  : `${conversations.length} ${t('totalHistory') || 'total history'}`
+                  ? `${filteredConversations.length} ${t('matchingHistory') || 'matching'}`
+                  : `${conversations.length} ${t('totalHistory') || 'total items'}`
                 }
               </span>
             </div>
           </div>
         )}
 
-        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20 mt-0">
+        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20">
           {loading ? (
-             <div className="text-center py-20 text-gray-500">Loading history...</div>
+             <div className="text-center py-20 font-mono text-sm text-[var(--text-secondary)] uppercase">Loading...</div>
           ) : filteredConversations.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {filteredConversations.map((conversation) => (
                 <div
                   key={conversation.id}
@@ -182,18 +182,18 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
                     onConversationClick(conversation.id)
                     onSelectConversation(conversation)
                   }}
-                  className="group relative bg-white dark:bg-slate-900/50 rounded-xl p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-l-2 hover:border-violet-500 transition-all cursor-pointer border border-slate-200 dark:border-slate-700/50 shadow-sm"
+                  className="group relative bg-[var(--bg-card)] border-2 border-[var(--border-color)] p-3 cursor-pointer shadow-[var(--shadow-color)_3px_3px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[var(--shadow-color)_5px_5px_0_0] transition-all"
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate mb-2">
+                      <h3 className="font-mono text-sm font-bold text-[var(--text-primary)] truncate">
                         {conversation.title || t('newChat')}
                       </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">
+                      <p className="font-mono text-xs text-[var(--text-secondary)] line-clamp-2 mt-1 mb-2">
                         {getLastMessagePreview(conversation)}
                       </p>
 
-                      <div className="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500">
+                      <div className="flex items-center gap-4 font-mono text-[10px] text-[var(--text-secondary)] uppercase">
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {formatDistanceToNow(new Date(conversation.updated_at), {
@@ -203,21 +203,19 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
                         </span>
                         <span className="flex items-center gap-1">
                           <MessageSquare className="w-3 h-3" />
-                          {getMessageCount(conversation)} messages
+                          {getMessageCount(conversation)} msgs
                         </span>
                       </div>
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => handleDelete(e, conversation.id, conversation.title || '')}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                          title="Delete conversation"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={(e) => handleDelete(e, conversation.id, conversation.title || '')}
+                        className="w-8 h-8 flex items-center justify-center border border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete conversation"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -225,16 +223,16 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
             </div>
           ) : (
             <div className="text-center py-20">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
-                <MessageSquare className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+              <div className="w-16 h-16 mx-auto mb-4 border-2 border-[var(--border-color)] bg-[var(--bg-page)] flex items-center justify-center">
+                <MessageSquare className="w-8 h-8 text-[var(--text-secondary)]" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              <h3 className="font-mono text-base font-bold text-[var(--text-primary)] uppercase mb-2">
                 {searchQuery
-                  ? t('noMatchingHistory') || 'No matching history found'
+                  ? t('noMatchingHistory') || 'No matching history'
                   : t('noHistory') || 'No conversation history'
                 }
               </h3>
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="font-mono text-xs text-[var(--text-secondary)] uppercase">
                 {searchQuery
                   ? t('tryOtherKeywords') || 'Try other keywords'
                   : t('startChat') || 'Start a new chat to see it here'
@@ -243,7 +241,6 @@ export default function HistoryPage({ onConversationClick, onSelectConversation 
             </div>
           )}
         </div>
-        </ScrollArea>
       </div>
 
       {/* 删除确认对话框 */}

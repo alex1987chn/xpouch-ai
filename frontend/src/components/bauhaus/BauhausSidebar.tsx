@@ -96,17 +96,26 @@ export default function BauhausSidebar({
     if (!isSettingsMenuOpen) return
 
     const handleClickOutside = (event: MouseEvent) => {
+      const menu = document.querySelector('[data-settings-menu]')
       const avatarButton = document.querySelector('[data-avatar-button]')
+      
+      // 如果点击的是头像按钮，让头像按钮的点击事件处理
       if (avatarButton && avatarButton.contains(event.target as Node)) {
         return
       }
-      if (!isSettingsMenuOpen) return
-      onMobileClose?.()
+      
+      // 如果点击的是菜单内部，不关闭
+      if (menu && menu.contains(event.target as Node)) {
+        return
+      }
+      
+      // 点击外部，关闭菜单
+      setIsSettingsMenuOpen(false)
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isSettingsMenuOpen, onMobileClose])
+  }, [isSettingsMenuOpen])
 
   const getLocale = () => {
     const lang = language || 'en'
@@ -468,18 +477,19 @@ export default function BauhausSidebar({
       {/* 设置弹出菜单 - Portal - Bauhaus风格 */}
       {isSettingsMenuOpen && createPortal(
         <div
+          data-settings-menu
           className="fixed bottom-[60px] bg-[var(--bg-card)] backdrop-blur-2xl border-2 border-[var(--border-color)] shadow-[var(--shadow-color)_4px_4px_0_0] z-[200] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
           style={{
-            width: '260px',
+            width: '280px',
             maxWidth: 'calc(100vw - 32px)',
             left: '32px',
           }}
         >
-          <div className="p-4 space-y-1">
+          <div className="p-4 space-y-2">
             {/* 用户信息 */}
-            <div className="pb-3 border-b-2 border-[var(--border-color)] mb-3">
+            <div className="pb-3 border-b-2 border-[var(--border-color)]">
               <div className="font-mono text-[10px] text-[var(--text-secondary)] mb-2">
-                /// USER
+                /// {t('userSettings')}
               </div>
               <div className="flex items-center gap-3">
                 <div className="relative">
@@ -490,16 +500,16 @@ export default function BauhausSidebar({
                       {username.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  {/* 套餐图标 */}
-                  <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[var(--border-color)] bg-[var(--bg-card)] flex items-center justify-center shadow-sm">
-                    {currentPlan === 'Free' && <Star className="w-1 h-1 text-purple-500" />}
-                    {currentPlan === 'Pilot' && <Plane className="w-1 h-1 text-cyan-500" />}
-                    {currentPlan === 'Maestro' && <Crown className="w-1 h-1 text-amber-500" />}
+                  {/* 套餐图标 - Bauhaus方形风格 */}
+                  <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 border-2 border-[var(--border-color)] bg-[var(--bg-card)] flex items-center justify-center shadow-sm">
+                    {currentPlan === 'Free' && <Star className="w-1.5 h-1.5 text-purple-500" />}
+                    {currentPlan === 'Pilot' && <Plane className="w-1.5 h-1.5 text-cyan-500" />}
+                    {currentPlan === 'Maestro' && <Crown className="w-1.5 h-1.5 text-amber-500" />}
                   </div>
                 </div>
-                <div className="flex-1">
-                  <div className="font-bold">{username}</div>
-                  <div className="text-[10px] font-mono text-[var(--text-secondary)]">
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm truncate">{username}</div>
+                  <div className="text-[10px] font-mono text-[var(--text-secondary)] uppercase">
                     {isAuthenticated ? (user?.plan || 'Free') : 'Guest'}
                   </div>
                 </div>
@@ -513,10 +523,10 @@ export default function BauhausSidebar({
                 setIsSettingsMenuOpen(false)
                 onMobileClose?.()
               }}
-              className="w-full flex items-center gap-3 px-2 py-2.5 border-2 border-[var(--border-color)] hover:bg-[var(--accent-hover)] hover:text-black transition-all font-mono text-xs shadow-[var(--shadow-color)_2px_2px_0_0]"
+              className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[var(--border-color)] hover:bg-[var(--accent-hover)] hover:text-black transition-all font-mono text-xs shadow-[var(--shadow-color)_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_3px_3px_0_0] active:translate-x-0 active:translate-y-0 active:shadow-[var(--shadow-color)_2px_2px_0_0]"
             >
               <User className="w-4 h-4" />
-              <span>Personal Settings</span>
+              <span className="font-bold uppercase">{t('personalSettings')}</span>
             </button>
 
             <button
@@ -525,47 +535,50 @@ export default function BauhausSidebar({
                 setIsSettingsMenuOpen(false)
                 onMobileClose?.()
               }}
-              className="w-full flex items-center gap-3 px-2 py-2.5 border-2 border-[var(--border-color)] hover:bg-[var(--accent-hover)] hover:text-black transition-all font-mono text-xs shadow-[var(--shadow-color)_2px_2px_0_0]"
+              className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[var(--border-color)] hover:bg-[var(--accent-hover)] hover:text-black transition-all font-mono text-xs shadow-[var(--shadow-color)_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_3px_3px_0_0] active:translate-x-0 active:translate-y-0 active:shadow-[var(--shadow-color)_2px_2px_0_0]"
             >
               <Cog className="w-4 h-4" />
-              <span>Model Config</span>
+              <span className="font-bold uppercase">{t('modelConfig')}</span>
             </button>
 
-            {/* 语言切换 - Bauhaus风格 */}
-            <div className="space-y-1">
-              <div className="font-mono text-[10px] text-[var(--text-secondary)] uppercase px-2 pt-2">
-                /// LANGUAGE
+            {/* 语言切换 - Bauhaus风格 纵向排列 */}
+            <div className="space-y-1 pt-1">
+              <div className="font-mono text-[10px] text-[var(--text-secondary)] uppercase px-1">
+                /// {t('language')}
               </div>
-              <div className="grid grid-cols-3 gap-1">
+              <div className="space-y-1">
                 {(['zh', 'en', 'ja'] as const).map((lang) => (
                   <button
                     key={lang}
                     onClick={() => {
                       setLanguage(lang)
-                      setIsSettingsMenuOpen(false)
-                      onMobileClose?.()
+                      // 语言切换后不关闭菜单，让用户看到切换效果
                     }}
                     className={cn(
-                      'py-2 border-2 font-mono text-xs font-bold uppercase transition-all',
+                      'w-full flex items-center gap-2 px-3 py-2 border-2 font-mono text-xs font-bold uppercase transition-all',
                       language === lang
                         ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[var(--shadow-color)_2px_2px_0_0]'
-                        : 'border-[var(--border-color)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)] text-[var(--text-primary)]'
+                        : 'border-[var(--border-color)] hover:bg-[var(--bg-page)] text-[var(--text-primary)]'
                     )}
                   >
-                    {lang === 'zh' ? '中文' : lang === 'en' ? 'EN' : '日本語'}
+                    <span className={cn(
+                      'w-2 h-2 border border-current',
+                      language === lang ? 'bg-black' : 'bg-transparent'
+                    )} />
+                    {lang === 'zh' ? '中文 / CHINESE' : lang === 'en' ? 'ENGLISH' : '日本語 / JAPANESE'}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* 退出登录 */}
+            {/* 退出登录 - 统一风格 */}
             {isAuthenticated && (
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-2 py-2.5 border-2 border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--accent-hover)] hover:text-black hover:border-black transition-all font-mono text-xs text-[var(--text-primary)] shadow-[var(--shadow-color)_2px_2px_0_0] hover:shadow-[black_2px_2px_0_0]"
+                className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[var(--border-color)] hover:bg-[var(--accent-hover)] hover:text-black transition-all font-mono text-xs text-[var(--text-primary)] shadow-[var(--shadow-color)_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_3px_3px_0_0] active:translate-x-0 active:translate-y-0 active:shadow-[var(--shadow-color)_2px_2px_0_0] mt-2"
               >
                 <ArrowRight className="w-4 h-4" />
-                <span>登出</span>
+                <span className="font-bold uppercase">{t('logout')}</span>
               </button>
             )}
           </div>

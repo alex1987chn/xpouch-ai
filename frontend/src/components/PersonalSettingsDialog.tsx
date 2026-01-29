@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Save, User, Camera, Upload } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Save, User, Camera, Upload, X } from 'lucide-react'
 import { fileToBase64 } from '@/utils/userSettings'
 import { useUserStore } from '@/store/userStore'
-import { Dialog, DialogContentCentered, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { logger } from '@/utils/logger'
 
 interface PersonalSettingsDialogProps {
@@ -97,33 +93,67 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
     }
   }
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContentCentered className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle>个人设置</DialogTitle>
-        </DialogHeader>
+  const handleClose = () => {
+    if (!isSaving) {
+      onClose()
+    }
+  }
+
+  if (!isOpen) return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 bg-black/50 z-[300] flex items-center justify-center"
+      onClick={handleClose}
+    >
+      <div
+        className="relative bg-[var(--bg-card)] border-2 border-[var(--border-color)] shadow-[var(--shadow-color)_8px_8px_0_0] w-[420px] max-w-[90vw] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 弹窗头部 - Bauhaus风格 */}
+        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-[var(--border-color)] shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-[var(--accent-hover)]"></div>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              /// USER_CONFIG
+            </span>
+          </div>
+          <button
+            onClick={handleClose}
+            disabled={isSaving}
+            className="w-6 h-6 flex items-center justify-center border border-[var(--border-color)] hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
         {/* 内容区域 */}
-        <div className="flex-1 overflow-auto smooth-scroll px-1 py-4 space-y-6">
+        <div className="flex-1 overflow-y-auto bauhaus-scrollbar px-5 py-5 space-y-6">
           {/* 头像设置 */}
           <section>
-            <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 block">
-              头像设置
-            </Label>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                AVATAR_SETUP
+              </span>
+            </div>
+
+            <div className="flex items-start gap-4">
               {/* 头像预览 */}
-              <div className="relative">
-                <Avatar className="w-20 h-20 border-4 border-white dark:border-gray-800 shadow-lg">
-                  <AvatarImage src={avatarPreview} alt="Avatar" />
-                  <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-500 text-white text-2xl font-bold">
-                    {username.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+              <div className="relative shrink-0">
+                <div className="w-20 h-20 border-2 border-[var(--border-color)] bg-[var(--bg-page)] flex items-center justify-center overflow-hidden">
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-black text-[var(--text-primary)]">
+                      {username.substring(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                </div>
 
                 {/* 上传按钮 */}
-                <label className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-gray-700 rounded-full flex items-center justify-center shadow-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border-2 border-white dark:border-gray-800">
-                  <Camera className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                <label className="absolute -bottom-1 -right-1 w-7 h-7 bg-[var(--accent-hover)] border-2 border-[var(--border-color)] flex items-center justify-center cursor-pointer hover:brightness-95 transition-all">
+                  <Camera className="w-3.5 h-3.5 text-black" />
                   <input
                     type="file"
                     accept="image/*"
@@ -134,10 +164,10 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
               </div>
 
               {/* 头像操作按钮 */}
-              <div className="flex flex-col gap-2">
-                <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-foreground bg-secondary hover:bg-secondary/70 cursor-pointer transition-colors">
+              <div className="flex flex-col gap-2 flex-1">
+                <label className="flex items-center justify-center gap-2 px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] cursor-pointer hover:bg-[var(--bg-card)] transition-colors">
                   <Upload className="w-4 h-4" />
-                  上传头像
+                  <span className="font-mono text-xs font-bold uppercase">上传头像</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -146,61 +176,79 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
                   />
                 </label>
                 {avatarPreview && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <button
                     onClick={handleRemoveAvatar}
-                    className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    className="flex items-center justify-center gap-2 px-3 py-2 border-2 border-red-500/50 text-red-500 hover:bg-red-500/10 transition-colors"
                   >
-                    <Camera className="w-4 h-4 mr-2" />
-                    移除头像
-                  </Button>
+                    <X className="w-4 h-4" />
+                    <span className="font-mono text-xs font-bold uppercase">移除</span>
+                  </button>
                 )}
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="font-mono text-[10px] text-[var(--text-secondary)] mt-2 opacity-60">
               支持 JPG、PNG 格式，最大 2MB
             </p>
           </section>
 
+          {/* 分隔线 */}
+          <div className="border-t-2 border-[var(--border-color)]"></div>
+
           {/* 用户名设置 */}
           <section>
-            <Label htmlFor="username" className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 block">
-              用户名
-            </Label>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                USERNAME
+              </span>
+            </div>
+
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                id="username"
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-secondary)]" />
+              <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="请输入用户名"
                 maxLength={20}
-                className="pl-10"
+                className="w-full pl-10 pr-3 py-2.5 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
               />
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="font-mono text-[10px] text-[var(--text-secondary)] mt-2 opacity-60">
               2-20 个字符
             </p>
           </section>
         </div>
 
         {/* 底部按钮 */}
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isSaving}>
+        <div className="flex gap-0 border-t-2 border-[var(--border-color)] shrink-0">
+          <button
+            onClick={handleClose}
+            disabled={isSaving}
+            className="flex-1 py-3 font-mono text-sm font-bold uppercase border-r-2 border-[var(--border-color)] hover:bg-[var(--bg-page)] transition-colors disabled:opacity-50"
+          >
             取消
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="flex-1 py-3 bg-[var(--accent-hover)] text-black font-mono text-sm font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
+          >
             {isSaving ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-black/30 border-t-black animate-spin"></span>
+                保存中...
+              </span>
             ) : (
-              <Save className="w-4 h-4 mr-2" />
+              <span className="flex items-center justify-center gap-2">
+                <Save className="w-4 h-4" />
+                保存
+              </span>
             )}
-            {isSaving ? '保存中...' : '保存'}
-          </Button>
-        </DialogFooter>
-      </DialogContentCentered>
-    </Dialog>
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   )
 }

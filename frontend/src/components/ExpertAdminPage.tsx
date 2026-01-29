@@ -1,24 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Save, RefreshCw, Loader2, Play, Search } from 'lucide-react'
+import { Save, RefreshCw, Loader2, Play, Search, Check, X } from 'lucide-react'
 import { models } from '@/config/models'
-import { useToast } from '@/components/ui/use-toast'
 import { useTranslation } from '@/i18n'
-import { Textarea } from '@/components/ui/textarea'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 import {
   getAllExperts,
   getExpert,
@@ -28,6 +12,25 @@ import {
   type ExpertUpdateRequest,
 } from '@/services/admin'
 import { logger } from '@/utils/logger'
+
+// Bauhaus Toast 组件（简单的替代方案）
+function BauhausToast({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000)
+    return () => clearTimeout(timer)
+  }, [onClose])
+
+  return (
+    <div className={cn(
+      "fixed bottom-4 right-4 z-50 px-4 py-3 border-2 shadow-[var(--shadow-color)_4px_4px_0_0] font-mono text-xs font-bold uppercase",
+      type === 'success'
+        ? 'border-green-500 bg-green-50 text-green-700'
+        : 'border-red-500 bg-red-50 text-red-700'
+    )}>
+      {message}
+    </div>
+  )
+}
 
 export default function ExpertAdminPage() {
   const { t } = useTranslation()
@@ -42,6 +45,8 @@ export default function ExpertAdminPage() {
     temperature: 0.5,
   })
 
+  // Toast 状态
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   // 预览相关状态
   const [previewMode, setPreviewMode] = useState(false)
@@ -51,14 +56,15 @@ export default function ExpertAdminPage() {
 
   // 模型选择状态（两级联动）
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
-    // 默认选择第一个可用的供应商
     const availableProviders = models.map(m => m.provider)
     const uniqueProviders = Array.from(new Set(availableProviders))
     return uniqueProviders[0] || 'deepseek'
   })
   const [selectedModel, setSelectedModel] = useState<string>('')
 
-  const { toast } = useToast()
+  // 下拉菜单显示状态
+  const [showProviderDropdown, setShowProviderDropdown] = useState(false)
+  const [showModelDropdown, setShowModelDropdown] = useState(false)
 
   // 加载专家列表
   const loadExperts = async () => {
@@ -66,17 +72,12 @@ export default function ExpertAdminPage() {
     try {
       const data = await getAllExperts()
       setExperts(data)
-      // 默认选择第一个专家
       if (data.length > 0 && !selectedExpert) {
         await selectExpert(data[0].expert_key)
       }
     } catch (error) {
       logger.error('Failed to load experts:', error)
-      toast({
-        title: t('noMatchingHistory'), // 借用：未找到
-        description: t('tryOtherKeywords'), // 借用：尝试其他关键词
-        variant: 'destructive',
-      })
+      setToast({ message: '加载失败', type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -93,24 +94,18 @@ export default function ExpertAdminPage() {
         temperature: data.temperature,
       })
 
-      // 同步更新模型选择状态（两级联动）
       const modelConfig = models.find(m => m.id === data.model)
       if (modelConfig) {
         setSelectedProvider(modelConfig.provider)
         setSelectedModel(modelConfig.id)
       }
 
-      // 切换专家时重置预览状态
       setPreviewResult(null)
       setTestInput('')
       setPreviewMode(false)
     } catch (error) {
       logger.error('Failed to load expert:', error)
-      toast({
-        title: t('noMatchingHistory'),
-        description: t('tryOtherKeywords'),
-        variant: 'destructive',
-      })
+      setToast({ message: '加载专家失败', type: 'error' })
     }
   }
 
@@ -121,23 +116,12 @@ export default function ExpertAdminPage() {
     setIsSaving(true)
     try {
       await updateExpert(selectedExpert.expert_key, formData)
-
-      // 刷新专家列表
       await loadExperts()
-      // 重新选择当前专家（更新 updated_at）
       await selectExpert(selectedExpert.expert_key)
-
-      toast({
-        title: t('save'),
-        description: t('saveSuccess'),
-      })
+      setToast({ message: '保存成功', type: 'success' })
     } catch (error) {
       logger.error('Failed to update expert:', error)
-      toast({
-        title: t('saveFailed'),
-        description: error instanceof Error ? error.message : t('tryOtherKeywords'),
-        variant: 'destructive',
-      })
+      setToast({ message: '保存失败', type: 'error' })
     } finally {
       setIsSaving(false)
     }
@@ -146,11 +130,7 @@ export default function ExpertAdminPage() {
   // 预览专家响应
   const handlePreview = async () => {
     if (!selectedExpert || testInput.length < 10) {
-      toast({
-        title: t('previewFailed'),
-        description: t('testInputMinChars').replace('{count}', testInput.length.toString()),
-        variant: 'destructive',
-      })
+      setToast({ message: '测试输入至少需要10个字符', type: 'error' })
       return
     }
 
@@ -162,17 +142,10 @@ export default function ExpertAdminPage() {
         test_input: testInput,
       })
       setPreviewResult(result)
-      toast({
-        title: t('previewSuccess'),
-        description: t('seconds').replace('{time}', (result.execution_time_ms / 1000).toFixed(2)),
-      })
+      setToast({ message: `执行完成 (${(result.execution_time_ms / 1000).toFixed(2)}s)`, type: 'success' })
     } catch (error) {
       logger.error('Failed to preview expert:', error)
-      toast({
-        title: t('previewFailed'),
-        description: error instanceof Error ? error.message : t('tryOtherKeywords'),
-        variant: 'destructive',
-      })
+      setToast({ message: '预览失败', type: 'error' })
     } finally {
       setIsPreviewing(false)
     }
@@ -181,10 +154,7 @@ export default function ExpertAdminPage() {
   // 刷新所有专家
   const handleRefresh = async () => {
     await loadExperts()
-    toast({
-      title: t('save'),
-      description: t('recentChats'), // 借用：最近会话（用作"刷新成功"）
-    })
+    setToast({ message: '刷新成功', type: 'success' })
   }
 
   // 表单字段更新
@@ -201,7 +171,11 @@ export default function ExpertAdminPage() {
     expert.expert_key.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  // 获取唯一供应商列表
+  const providers = Array.from(new Set(models.map(m => m.provider)))
 
+  // 获取当前供应商的模型列表
+  const currentProviderModels = models.filter(m => m.provider === selectedProvider)
 
   useEffect(() => {
     loadExperts()
@@ -210,310 +184,417 @@ export default function ExpertAdminPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-        <span className="ml-3 text-gray-600">{t('loadingExperts')}</span>
+        <div className="w-8 h-8 border-2 border-[var(--border-color)] border-t-[var(--accent-hover)] animate-spin"></div>
+        <span className="ml-3 font-mono text-sm text-[var(--text-secondary)]">LOADING...</span>
       </div>
     )
   }
 
   return (
-    <div className="flex gap-6 h-screen p-6">
+    <div className="flex gap-4 h-screen p-4 bg-[var(--bg-page)]">
+      {/* Toast */}
+      {toast && (
+        <BauhausToast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       {/* 左侧：专家列表 */}
-      <Card className="w-80 flex-shrink-0 flex flex-col overflow-hidden">
-        <CardHeader className="pb-4 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">{t('expertsList')}</CardTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleRefresh}
-              title={t('refresh')}
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
+      <div className="w-80 flex-shrink-0 flex flex-col overflow-hidden border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0]">
+        {/* 头部 */}
+        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-[var(--border-color)] shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-[var(--accent-hover)]"></div>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              /// EXPERTS
+            </span>
           </div>
-        </CardHeader>
-        <CardContent className="p-4 overflow-y-auto flex-1">
-          {/* 搜索框 */}
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
+          <button
+            onClick={handleRefresh}
+            className="w-7 h-7 flex items-center justify-center border border-[var(--border-color)] hover:bg-[var(--accent-hover)] transition-colors"
+            title={t('refresh')}
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* 搜索框 */}
+        <div className="p-3 border-b-2 border-[var(--border-color)]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
+            <input
               type="text"
-              placeholder="搜索"
+              placeholder="SEARCH..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="w-full pl-9 pr-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-xs focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
             />
           </div>
-          {/* 专家列表 */}
-          <div className="space-y-2">
+        </div>
+
+        {/* 专家列表 */}
+        <div className="flex-1 overflow-y-auto bauhaus-scrollbar p-2">
+          <div className="space-y-1">
             {filteredExperts.map((expert) => (
               <button
                 key={expert.id}
                 onClick={() => selectExpert(expert.expert_key)}
-                className={`w-full text-left px-4 py-3 rounded-lg transition-all ${
+                className={cn(
+                  'w-full text-left px-3 py-3 border-2 transition-all relative',
                   selectedExpert?.expert_key === expert.expert_key
-                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-600/80 dark:text-white'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
+                    ? 'border-[var(--accent-hover)] bg-[var(--accent-hover)] text-black shadow-[var(--shadow-color)_2px_2px_0_0]'
+                    : 'border-transparent hover:border-[var(--border-color)] hover:bg-[var(--bg-page)]'
+                )}
               >
-                <div className="font-medium">{expert.name}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {/* 选中指示器 */}
+                {selectedExpert?.expert_key === expert.expert_key && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-black" />
+                )}
+                <div className={cn(
+                  "font-mono text-sm font-bold",
+                  selectedExpert?.expert_key === expert.expert_key ? 'text-black' : 'text-[var(--text-primary)]'
+                )}>
+                  {expert.name}
+                </div>
+                <div className={cn(
+                  "font-mono text-[9px] mt-1 uppercase",
+                  selectedExpert?.expert_key === expert.expert_key ? 'text-black/70' : 'text-[var(--text-secondary)]'
+                )}>
                   {expert.expert_key}
                 </div>
               </button>
             ))}
           </div>
-          {/* 无搜索结果提示 */}
           {filteredExperts.length === 0 && (
-            <div className="text-center text-gray-500 text-sm py-8">
+            <div className="text-center font-mono text-xs text-[var(--text-secondary)] py-8">
               未找到匹配的专家
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* 右侧：配置编辑器 */}
-      <Card className="flex-1 flex flex-col overflow-hidden">
-        <CardHeader className="pb-4 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">
-              {selectedExpert ? `${selectedExpert.name} ${t('modelConfig')}` : t('selectExpert')}
-            </CardTitle>
-            {selectedExpert && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={previewMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setPreviewMode(!previewMode)}
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  {previewMode ? t('editMode') : t('previewMode')}
-                </Button>
-              </div>
-            )}
+      <div className="flex-1 flex flex-col overflow-hidden border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0]">
+        {/* 头部 */}
+        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-[var(--border-color)] shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-[var(--accent-hover)]"></div>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              /// {selectedExpert ? selectedExpert.name.toUpperCase() : 'CONFIG'}
+            </span>
           </div>
           {selectedExpert && (
-            <div className="text-sm text-gray-500 mt-2">
-              {t('lastUpdated')}：{new Date(selectedExpert.updated_at).toLocaleString()}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPreviewMode(!previewMode)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1.5 border-2 font-mono text-xs font-bold uppercase transition-all',
+                  previewMode
+                    ? 'border-[var(--accent-hover)] bg-[var(--accent-hover)] text-black'
+                    : 'border-[var(--border-color)] bg-[var(--bg-page)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
+                )}
+              >
+                <Play className="w-3.5 h-3.5" />
+                {previewMode ? 'EDIT_MODE' : 'PREVIEW'}
+              </button>
             </div>
           )}
-        </CardHeader>
-        <CardContent className="p-6 flex-1 flex flex-col overflow-hidden">
-          {selectedExpert ? (
-            <div className="flex flex-col h-full space-y-6">
-              {/* 编辑模式 */}
-              {!previewMode && (
-                <div className="flex flex-col h-full">
-                  {/* 内容区域 - 可滚动 */}
-                  <div className="flex-1 overflow-y-auto space-y-6">
-                    {/* 模型选择 - 两级联动 */}
-                    <div className="flex-shrink-0">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {t('model')}
-                      </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        {/* 供应商选择 */}
-                        <div>
-                          <label className="text-xs text-gray-500 mb-1 block">供应商</label>
-                          <Select
-                            value={selectedProvider}
-                            onValueChange={(value) => {
-                              setSelectedProvider(value)
-                              // 切换供应商时，自动选择该供应商的第一个模型
-                              const firstModel = models.find(m => m.provider === value)
-                              if (firstModel) {
-                                setSelectedModel(firstModel.id)
-                                handleFieldChange('model', firstModel.id)
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Array.from(new Set(models.map(m => m.provider))).map((provider) => (
-                                <SelectItem key={provider} value={provider}>
-                                  {provider.charAt(0).toUpperCase() + provider.slice(1)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+        </div>
 
-                        {/* 模型选择 */}
-                        <div>
-                          <label className="text-xs text-gray-500 mb-1 block">模型</label>
-                          <Select
-                            value={selectedModel}
-                            onValueChange={(value) => {
-                              setSelectedModel(value)
-                              handleFieldChange('model', value)
-                            }}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {models.filter(m => m.provider === selectedProvider).map((model) => (
-                                <SelectItem key={model.id} value={model.id}>
-                                  {model.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
+        {/* 更新时间 */}
+        {selectedExpert && (
+          <div className="px-4 py-2 border-b-2 border-[var(--border-color)] bg-[var(--bg-page)]">
+            <span className="font-mono text-[10px] text-[var(--text-secondary)]">
+              LAST_UPDATED: {new Date(selectedExpert.updated_at).toLocaleString()}
+            </span>
+          </div>
+        )}
+
+        {/* 内容区 */}
+        <div className="flex-1 overflow-y-auto bauhaus-scrollbar p-5">
+          {selectedExpert ? (
+            <div className="space-y-6">
+              {!previewMode ? (
+                <>
+                  {/* 模型选择 - Bauhaus 风格两级联动 */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+                      <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                        MODEL_CONFIG
+                      </label>
                     </div>
 
-                    {/* 温度参数 */}
-                    <div className="flex-shrink-0">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {t('temperatureValue').replace('{value}', (formData.temperature ?? 0.5).toString())}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* 供应商选择 */}
+                      <div className="relative">
+                        <label className="font-mono text-[9px] text-[var(--text-secondary)] mb-1 block uppercase">
+                          Provider
+                        </label>
+                        <button
+                          onClick={() => setShowProviderDropdown(!showProviderDropdown)}
+                          className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-xs text-left flex items-center justify-between hover:border-[var(--accent-hover)] transition-colors"
+                        >
+                          <span className="uppercase">{selectedProvider}</span>
+                          <span className="text-[var(--text-secondary)]">▼</span>
+                        </button>
+                        {showProviderDropdown && (
+                          <div className="absolute top-full left-0 right-0 mt-1 border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] z-20">
+                            {providers.map((provider) => (
+                              <button
+                                key={provider}
+                                onClick={() => {
+                                  setSelectedProvider(provider)
+                                  const firstModel = models.find(m => m.provider === provider)
+                                  if (firstModel) {
+                                    setSelectedModel(firstModel.id)
+                                    handleFieldChange('model', firstModel.id)
+                                  }
+                                  setShowProviderDropdown(false)
+                                }}
+                                className={cn(
+                                  'w-full px-3 py-2 text-left font-mono text-xs uppercase hover:bg-[var(--accent-hover)]/10 transition-colors',
+                                  selectedProvider === provider && 'bg-[var(--accent-hover)]/20'
+                                )}
+                              >
+                                {provider}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 模型选择 */}
+                      <div className="relative">
+                        <label className="font-mono text-[9px] text-[var(--text-secondary)] mb-1 block uppercase">
+                          Model
+                        </label>
+                        <button
+                          onClick={() => setShowModelDropdown(!showModelDropdown)}
+                          className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-xs text-left flex items-center justify-between hover:border-[var(--accent-hover)] transition-colors"
+                        >
+                          <span>{models.find(m => m.id === selectedModel)?.name || 'Select'}</span>
+                          <span className="text-[var(--text-secondary)]">▼</span>
+                        </button>
+                        {showModelDropdown && (
+                          <div className="absolute top-full left-0 right-0 mt-1 border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] z-20 max-h-40 overflow-y-auto bauhaus-scrollbar">
+                            {currentProviderModels.map((model) => (
+                              <button
+                                key={model.id}
+                                onClick={() => {
+                                  setSelectedModel(model.id)
+                                  handleFieldChange('model', model.id)
+                                  setShowModelDropdown(false)
+                                }}
+                                className={cn(
+                                  'w-full px-3 py-2 text-left font-mono text-xs hover:bg-[var(--accent-hover)]/10 transition-colors',
+                                  selectedModel === model.id && 'bg-[var(--accent-hover)]/20'
+                                )}
+                              >
+                                {model.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 温度参数 - Bauhaus 风格 */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+                      <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                        TEMPERATURE: {formData.temperature?.toFixed(1)}
                       </label>
+                    </div>
+                    <div className="relative h-8 bg-[var(--bg-page)] border-2 border-[var(--border-color)]">
                       <input
                         type="range"
                         min="0"
                         max="2"
                         step="0.1"
                         value={formData.temperature ?? 0.5}
-                        onChange={(e) =>
-                          handleFieldChange('temperature', parseFloat(e.target.value))
-                        }
-                        className="w-full"
+                        onChange={(e) => handleFieldChange('temperature', parseFloat(e.target.value))}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       />
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>0.0 (保守)</span>
-                        <span>1.0 (平衡)</span>
-                        <span>2.0 (创造性)</span>
-                      </div>
+                      <div
+                        className="absolute top-0 left-0 h-full bg-[var(--accent-hover)] transition-all"
+                        style={{ width: `${((formData.temperature ?? 0.5) / 2) * 100}%` }}
+                      />
+                      <div
+                        className="absolute top-0 w-4 h-full bg-[var(--text-primary)] border-2 border-[var(--border-color)] transition-all"
+                        style={{ left: `calc(${((formData.temperature ?? 0.5) / 2) * 100}% - 8px)` }}
+                      />
                     </div>
-
-                    {/* 系统提示词 - 可调整大小 */}
-                    <div className="flex-shrink-0">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {t('systemPrompt')}
-                      </label>
-                      <Textarea
-                        value={formData.system_prompt}
-                        onChange={(e) =>
-                          handleFieldChange('system_prompt', e.target.value)
-                        }
-                        placeholder={t('systemPromptPlaceholder')}
-                        className="font-mono text-sm resize-y h-[150px] min-h-[150px] max-h-[250px]"
-                      />
-                      <div className="text-xs text-gray-500 mt-2 text-right">
-                        {t('characters').replace('{count}', formData.system_prompt.length.toString())}
-                      </div>
+                    <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
+                      <span>0.0 (保守)</span>
+                      <span>1.0 (平衡)</span>
+                      <span>2.0 (创意)</span>
                     </div>
                   </div>
 
-                  {/* 保存按钮 - 固定在底部 */}
-                  <div className="flex justify-end pt-4 border-t flex-shrink-0">
-                    <Button
+                  {/* 系统提示词 */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+                      <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                        SYSTEM_PROMPT
+                      </label>
+                    </div>
+                    <textarea
+                      value={formData.system_prompt}
+                      onChange={(e) => handleFieldChange('system_prompt', e.target.value)}
+                      placeholder={t('systemPromptPlaceholder')}
+                      rows={10}
+                      className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[150px]"
+                    />
+                    <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
+                      <span>{formData.system_prompt.length} CHARS</span>
+                      <span className={formData.system_prompt.length < 10 ? 'text-red-500' : ''}>
+                        MIN: 10
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 保存按钮 */}
+                  <div className="flex justify-end pt-4 border-t-2 border-[var(--border-color)]">
+                    <button
                       onClick={handleSave}
                       disabled={isSaving || formData.system_prompt.length < 10}
-                      className="min-w-[120px]"
+                      className={cn(
+                        'flex items-center gap-2 px-6 py-2 border-2 border-[var(--border-color)]',
+                        'bg-[var(--accent-hover)] text-black font-mono text-xs font-bold uppercase',
+                        'shadow-[var(--shadow-color)_3px_3px_0_0]',
+                        'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_4px_4px_0_0]',
+                        'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
+                        'transition-all',
+                        'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0'
+                      )}
                     >
                       {isSaving ? (
                         <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          {t('saving')}
+                          <div className="w-3 h-3 border-2 border-black/30 border-t-black animate-spin"></div>
+                          SAVING...
                         </>
                       ) : (
                         <>
-                          <Save className="w-4 h-4 mr-2" />
-                          {t('saveConfig')}
+                          <Save className="w-4 h-4" />
+                          SAVE_CONFIG
                         </>
                       )}
-                    </Button>
+                    </button>
                   </div>
-                </div>
-              )}
-
-              {/* 预览模式 */}
-              {previewMode && (
-                <div className="flex flex-col h-full">
-                  {/* 内容区域 - 可滚动 */}
-                  <div className="flex-1 overflow-y-auto space-y-6">
+                </>
+              ) : (
+                <>
+                  {/* 预览模式 */}
+                  <div className="space-y-6">
                     {/* 测试输入 */}
-                    <div className="flex-shrink-0">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {t('testInput')}
-                      </label>
-                      <Textarea
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+                        <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                          TEST_INPUT
+                        </label>
+                      </div>
+                      <textarea
                         value={testInput}
                         onChange={(e) => setTestInput(e.target.value)}
                         placeholder={t('testInputPlaceholder')}
-                        className="min-h-[100px] font-mono text-sm"
+                        rows={5}
+                        className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-none"
                       />
-                      <div className="text-xs text-gray-500 mt-2 text-right">
-                        {t('testInputMinChars').replace('{count}', testInput.length.toString())}
+                      <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
+                        <span>{testInput.length} CHARS</span>
+                        <span className={testInput.length < 10 ? 'text-red-500' : ''}>
+                          MIN: 10
+                        </span>
                       </div>
                     </div>
 
                     {/* 预览按钮 */}
-                    <div className="flex justify-end flex-shrink-0">
-                      <Button
+                    <div className="flex justify-end">
+                      <button
                         onClick={handlePreview}
                         disabled={isPreviewing || testInput.length < 10}
-                        className="min-w-[120px]"
+                        className={cn(
+                          'flex items-center gap-2 px-6 py-2 border-2 border-[var(--border-color)]',
+                          'bg-[var(--accent-hover)] text-black font-mono text-xs font-bold uppercase',
+                          'shadow-[var(--shadow-color)_3px_3px_0_0]',
+                          'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_4px_4px_0_0]',
+                          'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
+                          'transition-all',
+                          'disabled:opacity-50 disabled:cursor-not-allowed'
+                        )}
                       >
                         {isPreviewing ? (
                           <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            {t('previewing')}
+                            <div className="w-3 h-3 border-2 border-black/30 border-t-black animate-spin"></div>
+                            RUNNING...
                           </>
                         ) : (
                           <>
-                            <Play className="w-4 h-4 mr-2" />
-                            {t('startPreview')}
+                            <Play className="w-4 h-4" />
+                            START_PREVIEW
                           </>
                         )}
-                      </Button>
+                      </button>
                     </div>
 
                     {/* 预览结果 */}
                     {previewResult && (
-                      <div className="space-y-4">
-                        <div className="border-t pt-4">
-                          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            {t('previewResults')}
-                          </h3>
+                      <div className="space-y-4 border-t-2 border-[var(--border-color)] pt-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-[var(--accent-hover)]"></div>
+                          <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                            /// RESULTS
+                          </span>
+                        </div>
 
-                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <div className="text-xs text-gray-500">{t('usedModel')}</div>
-                              <div className="text-sm font-medium">{previewResult.model}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500">{t('temperature')}</div>
-                              <div className="text-sm font-medium">{previewResult.temperature}</div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="p-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)]">
+                            <div className="font-mono text-[9px] text-[var(--text-secondary)] uppercase">MODEL</div>
+                            <div className="font-mono text-xs font-bold text-[var(--text-primary)] mt-1">
+                              {previewResult.model}
                             </div>
                           </div>
+                          <div className="p-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)]">
+                            <div className="font-mono text-[9px] text-[var(--text-secondary)] uppercase">TEMP</div>
+                            <div className="font-mono text-xs font-bold text-[var(--text-primary)] mt-1">
+                              {previewResult.temperature}
+                            </div>
+                          </div>
+                        </div>
 
-                          <div>
-                            <div className="text-xs text-gray-500 mb-1">
-                              {t('expertResponse')} ({t('executionTime')}: {t('seconds').replace('{time}', (previewResult.execution_time_ms / 1000).toFixed(2))})
-                            </div>
-                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
-                              {previewResult.preview_response}
-                            </div>
+                        <div className="p-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)]">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-mono text-[9px] text-[var(--text-secondary)] uppercase">
+                              RESPONSE
+                            </span>
+                            <span className="font-mono text-[9px] text-[var(--text-secondary)]">
+                              {(previewResult.execution_time_ms / 1000).toFixed(2)}s
+                            </span>
+                          </div>
+                          <div className="font-mono text-xs text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap">
+                            {previewResult.preview_response}
                           </div>
                         </div>
                       </div>
                     )}
                   </div>
-                </div>
+                </>
               )}
             </div>
           ) : (
-            <div className="flex items-center justify-center h-96 text-gray-500">
+            <div className="flex items-center justify-center h-96 font-mono text-xs text-[var(--text-secondary)] uppercase">
               {t('selectExpertPrompt')}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

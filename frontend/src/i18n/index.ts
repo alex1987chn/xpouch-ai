@@ -17,7 +17,7 @@ export type TranslationKey =
   | 'startConversation'
   | 'newKnowledgeBase' | 'searchKnowledge' | 'documents' | 'uploadDocument'
   | 'noKnowledgeFound' | 'noKnowledgeContent' | 'createFirstKnowledge'
-  | 'currentPlan'
+  | 'currentPlan' | 'logout'
   // Input & Chat
   | 'uploadImage' | 'uploadAttachment' | 'simpleMode' | 'complexMode' | 'simple' | 'complex'
   | 'stop' | 'send' | 'enterToSend' | 'describeTask'
