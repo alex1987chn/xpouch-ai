@@ -7,7 +7,7 @@ import { useCallback } from 'react'
 import { useChatStore } from '@/store/chatStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import { getExpertConfig, createExpertResult } from '@/constants/systemAgents'
-import type { ExpertEvent, TaskStartEvent, TaskPlanEvent, ExpertActivatedEvent, ExpertCompletedEvent } from '@/types'
+import type { ExpertEvent, TaskStartEvent, TaskPlanEvent, ExpertActivatedEvent, ExpertCompletedEvent, RouterDecisionEvent } from '@/types'
 import { logger } from '@/utils/logger'
 import { generateUUID } from '@/utils'
 
@@ -39,9 +39,24 @@ export function useExpertHandler() {
     expertEvent: ExpertEvent,
     conversationMode: 'simple' | 'complex'
   ) => {
-    if (conversationMode !== 'complex') return
-
     debug('收到专家事件:', expertEvent.type, expertEvent)
+
+    // 👈 处理 Router 决策事件（简单模式 vs 复杂模式）
+    if (expertEvent.type === 'router_decision') {
+      const routerEvent = expertEvent as RouterDecisionEvent
+      debug('Router 决策:', routerEvent.decision)
+
+      // 如果决策为 complex，自动切换到复杂模式 UI
+      if (routerEvent.decision === 'complex') {
+        // TODO: 这里可以触发 UI 变化，例如展开右侧 Sidebar
+        // 可以使用全局状态或事件来通知 UnifiedChatPage
+        debug('切换到复杂模式 UI')
+      }
+      return
+    }
+
+    // 以下事件只在复杂模式下处理
+    if (conversationMode !== 'complex') return
 
     // 处理任务开始事件
     if (expertEvent.type === 'task_start') {

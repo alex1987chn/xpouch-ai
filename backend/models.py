@@ -80,54 +80,67 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 
-    conversations: List["Conversation"] = Relationship(back_populates="user")
+    threads: List["Thread"] = Relationship(back_populates="user")
     custom_agents: List["CustomAgent"] = Relationship(back_populates="user")
 
-class Conversation(SQLModel, table=True):
+class Thread(SQLModel, table=True):
     """
     会话模型
-    
+
     - 简单模式（DEFAULT, CUSTOM）：仅存储消息
     - 复杂模式（AI）：额外关联TaskSession，存储专家执行记录
     """
+    __tablename__ = 'thread'  # 👈 显式指定表名为 thread（单数形式，符合数据库实际命名）
+
     id: Optional[str] = Field(default=None, primary_key=True)
     title: str
-    
+
     # 会话类型：明确区分三种模式
     agent_type: str = Field(index=True, default=ConversationType.DEFAULT.value)
-    
+
     # 智能体ID
     # - agent_type='default' 时，存储默认助手的UUID
     # - agent_type='custom' 时，存储自定义智能体的UUID
     # - agent_type='ai' 时，存储固定的'ai-assistant'标识
-    agent_id: str = Field(index=True)
-    
+    agent_id: str = Field(index=True, default='sys-default-chat')
+
     # 用户ID
     user_id: str = Field(foreign_key="user.id", index=True)
-    
+
     # 关联的任务会话（仅复杂模式有值）
     task_session_id: Optional[str] = Field(default=None, index=True)
-    
+
+    # 新增：线程状态（记录线程的执行状态）
+    # - idle: 空闲/完成状态
+    # - running: 正在运行
+    # - paused: 暂停
+    status: str = Field(default="idle", index=True)
+
+    # 新增：线程模式（记录路由模式）
+    # - simple: 普通对话模式（不自动展开面板）
+    # - complex: 复杂协作模式（自动展开面板）
+    thread_mode: str = Field(default="simple", index=True)
+
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
-    
+
     # 关联关系
-    user: Optional[User] = Relationship(back_populates="conversations")
-    messages: List["Message"] = Relationship(back_populates="conversation", sa_relationship_kwargs={"cascade": "all, delete"})
+    user: Optional[User] = Relationship(back_populates="threads")
+    messages: List["Message"] = Relationship(back_populates="thread", sa_relationship_kwargs={"cascade": "all, delete"})
     task_session: Optional["TaskSession"] = Relationship(
-        back_populates="conversation",
+        back_populates="thread",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
 class Message(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    conversation_id: str = Field(foreign_key="conversation.id", index=True)
+    thread_id: str = Field(foreign_key="thread.id", index=True)
     role: str
     content: str
     timestamp: datetime = Field(default_factory=datetime.now)
     
-    conversation: Conversation = Relationship(back_populates="messages")
+    thread: Thread = Relationship(back_populates="messages")
 
 
 # ============================================================================
@@ -145,7 +158,7 @@ class MessageResponse(BaseModel):
         from_attributes = True
 
 
-class ConversationResponse(BaseModel):
+class ThreadResponse(BaseModel):
     """会话响应模型（用于列表）"""
     id: Optional[str] = None
     title: str
@@ -327,7 +340,7 @@ class TaskSession(SQLModel, table=True):
     session_id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
 
     # 新增：关联的会话ID（核心！用于从历史记录加载）
-    conversation_id: str = Field(foreign_key="conversation.id", index=True)
+    thread_id: str = Field(foreign_key="thread.id", index=True)
 
     # 用户查询：原始用户输入
     user_query: str = Field(index=True)
@@ -347,7 +360,7 @@ class TaskSession(SQLModel, table=True):
     completed_at: Optional[datetime] = None
 
     # 关联关系
-    conversation: Optional[Conversation] = Relationship(back_populates="task_session")
+    thread: Optional[Thread] = Relationship(back_populates="task_session")
 
 
 # ============================================================================

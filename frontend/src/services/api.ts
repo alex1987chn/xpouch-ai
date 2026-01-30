@@ -161,7 +161,7 @@ export async function updateUserProfile(data: Partial<UserProfile>): Promise<Use
 
 // 获取会话列表
 export async function getConversations(): Promise<Conversation[]> {
-  const url = `${API_BASE_URL}/conversations`
+  const url = `${API_BASE_URL}/threads`
   const response = await fetch(url, {
       headers: getHeaders()
   })
@@ -173,7 +173,7 @@ export async function getConversations(): Promise<Conversation[]> {
 
 // 获取单个会话详情
 export async function getConversation(id: string): Promise<Conversation> {
-  const url = `${API_BASE_URL}/conversations/${id}`
+  const url = `${API_BASE_URL}/threads/${id}`
   const response = await fetch(url, {
       headers: getHeaders()
   })
@@ -185,8 +185,8 @@ export async function getConversation(id: string): Promise<Conversation> {
 
 // 删除会话
 export async function deleteConversation(id: string): Promise<void> {
-  const url = `${API_BASE_URL}/conversations/${id}`
-  const response = await fetch(url, { 
+  const url = `${API_BASE_URL}/threads/${id}`
+  const response = await fetch(url, {
     method: 'DELETE',
     headers: getHeaders()
   })
@@ -303,7 +303,7 @@ export async function deleteCustomAgent(id: string): Promise<void> {
  */
 export async function sendMessage(
   messages: ApiMessage[],
-  agentId: string = 'default-chat',
+  agentId: string | null | undefined = null,  // 👈 支持传递 null/undefined，交由后端处理默认值
   onChunk?: (chunk: string, conversationId?: string, expertEvent?: ExpertEvent, artifact?: Artifact) => void,
   conversationId?: string | null,
   abortSignal?: AbortSignal
@@ -330,7 +330,7 @@ export async function sendMessage(
             role: m.role,
             content: m.content
           })),
-          agentId,
+          agentId,  // 👈 可以是 null/undefined，后端会处理为 sys-default-chat
           conversationId,
           stream: true,
         }),
@@ -380,9 +380,16 @@ export async function sendMessage(
                 const allArtifacts = parsed.allArtifacts as Array<any> | undefined
                 const taskPlan = parsed.taskPlan
                 const taskStart = parsed.taskStart
+                const routerDecision = parsed.routerDecision  // 👈 Router 决策事件
 
                 if (parsed.conversationId) {
                     finalConversationId = parsed.conversationId
+                }
+
+                // 👈 处理 Router 决策事件（简单模式 vs 复杂模式）
+                if (routerDecision && typeof onChunk === 'function') {
+                  // @ts-ignore - 扩展回调签名支持 Router 决策
+                  onChunk('', finalConversationId, { type: 'router_decision', decision: routerDecision })
                 }
 
                 // 处理专家激活事件（传递给回调）

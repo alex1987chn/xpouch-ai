@@ -51,6 +51,7 @@ export const useChatStore = create<ChatState>()(
         const newMessages = typeof messagesOrUpdater === 'function'
           ? messagesOrUpdater(state.messages)
           : messagesOrUpdater
+
         return { messages: newMessages }
       }),
 

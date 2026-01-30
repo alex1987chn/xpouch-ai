@@ -6,6 +6,15 @@ import { useChat } from '@/hooks/useChat'
 
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { getConversationMode, normalizeAgentId } from '@/utils/agentUtils'
+import { logger } from '@/utils/logger'
+
+// 开发环境判断
+const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
+
+// 统一的调试日志函数
+const debug = DEBUG
+  ? (...args: unknown[]) => console.log('[UnifiedChatPage]', ...args)
+  : () => {}
 
 // 新布局组件
 import { IndustrialChatLayout, ChatStreamPanel, OrchestratorPanel } from '@/components/layout'
@@ -40,7 +49,9 @@ import type { ExpertResult } from '@/store/canvasStore'
  *   - OrchestratorPanel (右侧 45%): 专家状态栏 + Artifacts
  *
  * [路由设计]
- * - 统一格式: `/chat/:id?agentId=xxx`
+ * - 默认助手: `/chat/:id` (纯净 URL，后端自动使用 sys-default-chat)
+ * - 自定义智能体: `/chat/:id?agentId=xxx`
+ * - 复杂模式: `/chat/:id?agentId=sys-task-orchestrator`
  * - 支持简单模式和复杂模式，通过 agentId 区分
  *
  * [状态管理]
@@ -55,11 +66,12 @@ export default function UnifiedChatPage() {
   const { id: pathConversationId } = useParams()
   const [searchParams] = useSearchParams()
 
-  // 支持两种 URL 格式：/chat/:id 或 /chat?conversation=xxx
-  const conversationId = pathConversationId || searchParams.get('conversation') || ''
+  // URL 格式：/chat/:id?agentId=xxx（可选）
+  const conversationId = pathConversationId || ''
   const agentId = searchParams.get('agentId') || 'default-chat'
   const normalizedAgentId = normalizeAgentId(agentId)
-  const isNewConversation = searchParams.get('new') === 'true'
+  // 👈 从 state 中获取 isNew 标记，而不是查询参数
+  const isNewConversation = (location.state as { isNew?: boolean })?.isNew === true
   const initialMessage = (location.state as { startWith?: string })?.startWith
 
   // 移除模式判断，后端自动处理路由决策
@@ -77,10 +89,12 @@ export default function UnifiedChatPage() {
   const setSelectedAgentId = useChatStore(state => state.setSelectedAgentId)
   const selectedAgentId = useChatStore(state => state.selectedAgentId)
   const customAgents = useChatStore(state => state.customAgents)
+  const setCurrentConversationId = useChatStore(state => state.setCurrentConversationId)
+  const setMessages = useChatStore(state => state.setMessages)
   
   // 计算当前智能体，避免 getCurrentAgent() 每次返回新对象
+  // 👈 所有对话都使用默认助手，复杂模式是后端内部状态
   const currentAgent = useMemo(() => {
-    
     if (selectedAgentId === SYSTEM_AGENTS.DEFAULT_CHAT) {
       return {
         id: SYSTEM_AGENTS.DEFAULT_CHAT,
@@ -93,22 +107,15 @@ export default function UnifiedChatPage() {
         icon: null,
         systemPrompt: ''
       }
-    } else if (selectedAgentId === SYSTEM_AGENTS.ORCHESTRATOR) {
-      return {
-        id: SYSTEM_AGENTS.ORCHESTRATOR,
-        name: getSystemAgentName(SYSTEM_AGENTS.ORCHESTRATOR),
-        description: '复杂任务拆解、专家协作、智能聚合',
-        category: 'AI',
-        isCustom: false,
-        is_builtin: false,
-        modelId: 'deepseek-chat',
-        icon: null,
-        systemPrompt: ''
-      }
     } else {
+      // 自定义智能体
       return customAgents.find(a => a.id === selectedAgentId)
     }
   }, [selectedAgentId, customAgents])
+
+  // TODO: 从后端获取 thread_mode 来判断是否显示复杂模式 UI
+  // const threadMode = thread?.thread_mode // 'simple' | 'complex'
+  // const isComplexMode = threadMode === 'complex'
 
   const {
     artifactSessions,
@@ -140,27 +147,66 @@ export default function UnifiedChatPage() {
   // 输入框状态
   const [inputValue, setInputValue] = useState('')
 
+  // 👈 会话加载状态：确保 loadConversation 完成后再执行其他操作
+  const [conversationLoaded, setConversationLoaded] = useState(false)
+
   // 同步 URL 的 agentId 到 store 的 selectedAgentId（使用规范化后的 ID）
+  // 👈 同时设置 currentConversationId，确保新会话时 store 中的 ID 是最新的
   useEffect(() => {
+    // 立即设置 currentConversationId，避免闭包捕获旧值
+    if (conversationId) {
+      const currentId = useChatStore.getState().currentConversationId
+      if (currentId !== conversationId) {
+        debug('设置 currentConversationId:', conversationId)
+        setCurrentConversationId(conversationId)
+      }
+    }
+
     if (normalizedAgentId && normalizedAgentId !== selectedAgentId) {
       setSelectedAgentId(normalizedAgentId)
     }
-  }, [normalizedAgentId, selectedAgentId, setSelectedAgentId])
+  }, [conversationId, normalizedAgentId, selectedAgentId, setSelectedAgentId, setCurrentConversationId])
 
   // 加载历史会话
   useEffect(() => {
+    // 重置加载状态
+    setConversationLoaded(false)
+
     if (conversationId) {
-      loadConversation(conversationId).catch((error: any) => {
-        // 会话不存在或加载失败，导航回首页
-        if (error?.status === 404 || error?.message?.includes('404')) {
-          navigate('/', { replace: true })
-        }
-      })
+      // 👈 如果是新会话（从首页跳转），跳过数据库加载，直接清空状态
+      if (isNewConversation) {
+        debug('新会话，设置 conversationId 并清空状态:', conversationId)
+        // 👈 关键：立即设置 currentConversationId，确保消息发送到正确会话
+        setCurrentConversationId(conversationId)
+        // 👈 主动清空消息数组，防止旧消息泄露
+        setMessages([])
+        // 清空旧状态（消息由 useChat 的 sendMessage 添加）
+        clearExpertResults()
+        clearArtifactSessions()
+        setConversationLoaded(true)
+        return  // 👈 关键：新会话时不要调用 loadConversation
+      }
+
+      // 否则从数据库加载历史会话
+      loadConversation(conversationId)
+        .then(() => {
+          // 👈 标记会话加载完成
+          setConversationLoaded(true)
+          debug('历史会话加载完成，消息数量:', useChatStore.getState().messages.length)
+        })
+        .catch((error: any) => {
+          // 会话不存在或加载失败，导航回首页
+          if (error?.status === 404 || error?.message?.includes('404')) {
+            navigate('/', { replace: true })
+          }
+        })
     } else {
+      // 👈 无 conversationId 时清空所有状态
       clearExpertResults()
       clearArtifactSessions()
+      setConversationLoaded(true) // 新会话无需加载，直接标记为完成
     }
-  }, [conversationId, loadConversation, clearExpertResults, clearArtifactSessions, navigate])
+  }, [conversationId, loadConversation, clearExpertResults, clearArtifactSessions, navigate, isNewConversation, setCurrentConversationId])
 
   // 恢复草稿：新会话时检查 localStorage
   useEffect(() => {
@@ -175,18 +221,22 @@ export default function UnifiedChatPage() {
     }
   }, [conversationId])
 
-  // 处理首页传来的消息
+  // 处理首页传来的消息（新建会话）
   useEffect(() => {
-    if (isNewConversation && initialMessage && !isLoading) {
+    // 👈 关键修复：确保会话加载完成后再发送消息，避免消息被错误地添加到旧会话
+    if (isNewConversation && initialMessage && !isLoading && conversationId && conversationLoaded) {
       const timer = setTimeout(() => {
         sendMessage(initialMessage, normalizedAgentId)
-        const newParams = new URLSearchParams(searchParams)
-        newParams.delete('new')
-        navigate(`${location.pathname}?${newParams.toString()}`, { replace: true })
+        // 👈 发送消息后，清除 state 中的 isNew 和 startWith，保持 URL 纯净
+        // 使用 replace: true 避免用户回退时再次触发发送
+        navigate(`/chat/${conversationId}${searchParams.toString() ? '?' + searchParams.toString() : ''}`, {
+          replace: true,
+          state: {}  // 清除 state
+        })
       }, 100)
       return () => clearTimeout(timer)
     }
-  }, [isNewConversation, initialMessage, isLoading, sendMessage, normalizedAgentId, navigate, searchParams, location.pathname])
+  }, [isNewConversation, initialMessage, isLoading, sendMessage, normalizedAgentId, navigate, conversationId, searchParams, conversationLoaded])
 
   // 处理专家卡片点击
   const handleExpertClick = useCallback((expertId: string) => {

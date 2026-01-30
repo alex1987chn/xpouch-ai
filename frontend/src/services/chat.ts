@@ -14,7 +14,7 @@ import { logger } from '@/utils/logger'
  * 获取会话列表
  */
 export async function getConversations(): Promise<Conversation[]> {
-  const response = await fetch(buildUrl('/conversations'), {
+  const response = await fetch(buildUrl('/threads'), {
     headers: getHeaders()
   })
   return handleResponse<Conversation[]>(response, '获取会话列表失败')
@@ -24,7 +24,7 @@ export async function getConversations(): Promise<Conversation[]> {
  * 获取单个会话详情
  */
 export async function getConversation(id: string): Promise<Conversation> {
-  const response = await fetch(buildUrl(`/conversations/${id}`), {
+  const response = await fetch(buildUrl(`/threads/${id}`), {
     headers: getHeaders()
   })
   return handleResponse<Conversation>(response, '获取会话详情失败')
@@ -34,7 +34,7 @@ export async function getConversation(id: string): Promise<Conversation> {
  * 删除会话
  */
 export async function deleteConversation(id: string): Promise<void> {
-  const response = await fetch(buildUrl(`/conversations/${id}`), {
+  const response = await fetch(buildUrl(`/threads/${id}`), {
     method: 'DELETE',
     headers: getHeaders()
   })
@@ -141,12 +141,12 @@ async function processStream(
 
           try {
             const parsed = JSON.parse(data)
-            await processSSEData(parsed, onChunk, finalConversationId)
-              .then(conversationId => {
-                if (conversationId) {
-                  finalConversationId = conversationId
-                }
-              })
+            const result = await processSSEData(parsed, onChunk, finalConversationId, fullContent)
+            if (result.conversationId) {
+              finalConversationId = result.conversationId
+            }
+            // 👈 更新 fullContent
+            fullContent = result.content
           } catch (e) {
             // Failed to parse SSE data, skip
           }
@@ -166,8 +166,9 @@ async function processStream(
 async function processSSEData(
   data: any,
   onChunk: StreamCallback,
-  conversationId?: string
-): Promise<string | undefined> {
+  conversationId?: string,
+  fullContent: string = ''
+): Promise<{ conversationId?: string; content: string }> {
   const content = data.content
   const activeExpert = data.activeExpert
   const expertCompleted = data.expertCompleted
@@ -177,6 +178,13 @@ async function processSSEData(
   const taskStart = data.taskStart
 
   let finalConversationId = data.conversationId || conversationId
+  let updatedContent = fullContent
+
+  // 👈 添加调试日志
+  const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
+  if (DEBUG && content) {
+    console.log('[chat.ts processSSEData] 收到内容 chunk:', content.substring(0, 50), 'total length:', updatedContent.length + content.length)
+  }
 
   // 处理专家激活事件
   if (activeExpert) {
@@ -235,7 +243,9 @@ async function processSSEData(
   // 处理内容
   if (content) {
     await onChunk(content, finalConversationId)
+    // 👈 累加内容到 fullContent
+    updatedContent += content
   }
 
-  return finalConversationId
+  return { conversationId: finalConversationId, content: updatedContent }
 }

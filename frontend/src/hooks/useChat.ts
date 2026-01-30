@@ -48,7 +48,12 @@ export function useChat() {
   // 1. 获取聊天核心逻辑，传入 onNewConversation 回调
   const chatCore = useChatCore({
     onNewConversation: useCallback((conversationId: string, agentId: string) => {
-      navigate(`/chat/${conversationId}?agentId=${agentId}`, { replace: true })
+      // 👈 默认助手不添加 agentId 参数，让后端自动使用 sys-default-chat
+      if (agentId && agentId !== 'sys-default-chat' && agentId !== 'default-chat') {
+        navigate(`/chat/${conversationId}?agentId=${agentId}`, { replace: true })
+      } else {
+        navigate(`/chat/${conversationId}`, { replace: true })
+      }
     }, [navigate])
   })
 

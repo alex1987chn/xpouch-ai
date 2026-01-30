@@ -3,7 +3,7 @@
  * 
  * @description
  * 定义系统内置智能体的语义化 ID，替代硬编码字符串。
- * 这些常量确保前后端使用统一的智能体标识，提高代码可维护性。
+ * 注意：sys-task-orchestrator 是后端内部实现，不应在 URL 中暴露
  * 
  * @module constants/agents
  */
@@ -13,51 +13,66 @@
  * 
  * @description
  * TypeScript 字面量类型，用于类型检查和自动补全
+ * 注意：不包含 sys-task-orchestrator，它是后端内部实现
  * 
  * @example
  * ```typescript
- * const agentId: SystemAgentId = SYSTEM_AGENTS.ORCHESTRATOR // ✅ 正确
+ * const agentId: SystemAgentId = SYSTEM_AGENTS.DEFAULT_CHAT // ✅ 正确
  * const invalidId: SystemAgentId = 'custom-agent' // ❌ 类型错误
  * ```
  */
-export type SystemAgentId = 'sys-default-chat' | 'sys-task-orchestrator'
+export type SystemAgentId = 'sys-default-chat'
 
 /**
  * 系统智能体常量对象
  * 
  * @description
- * - `DEFAULT_CHAT`: 默认通用助手（简单模式），直接调用 LLM
- * - `ORCHESTRATOR`: 任务指挥官（复杂模式），通过 LangGraph 调度专家
+ * - `DEFAULT_CHAT`: 默认通用助手，所有对话的统一入口
+ * - `ORCHESTRATOR`: 后端内部使用的任务指挥官，不应在 URL 中暴露
+ * 
+ * 复杂模式 (Complex Mode) 是 Thread 的内部状态 (thread_mode='complex')，
+ * 不是一个独立的 Agent ID。前端通过后端返回的 thread_mode 判断模式。
  * 
  * @example
  * ```typescript
  * import { SYSTEM_AGENTS } from '@/constants/agents'
  * 
- * // 简单模式
- * const simpleModeAgentId = SYSTEM_AGENTS.DEFAULT_CHAT
- * // 复杂模式
- * const complexModeAgentId = SYSTEM_AGENTS.ORCHESTRATOR
+ * // 所有对话都使用默认助手作为入口
+ * const agentId = SYSTEM_AGENTS.DEFAULT_CHAT
  * 
- * console.log(simpleModeAgentId) // 'sys-default-chat'
- * console.log(complexModeAgentId) // 'sys-task-orchestrator'
+ * // 后端 Router 决定是简单模式还是复杂模式
+ * // 简单模式: thread_mode='simple' (直接回复)
+ * // 复杂模式: thread_mode='complex' (专家协作)
+ * 
+ * console.log(agentId) // 'sys-default-chat'
  * ```
  */
 export const SYSTEM_AGENTS = {
   /**
-   * 默认通用助手 ID
+   * 默认通用助手 ID - 所有对话的统一入口
    * 
    * @description
-   * 简单模式使用的智能体，直接调用大模型，不经过 LangGraph
+   * 无论是简单模式还是复杂模式，前端都使用此 ID 作为入口。
+   * 后端 Router 决定实际执行路径：
+   * - 简单查询 -> 直接调用 LLM -> thread_mode='simple'
+   * - 复杂任务 -> LangGraph 专家协作 -> thread_mode='complex'
+   * 
    * 对应前端显示名称："默认助手"
    */
   DEFAULT_CHAT: 'sys-default-chat',
 
   /**
-   * 任务指挥官 ID
+   * 任务指挥官 ID - 后端内部使用，不在 URL 中暴露
    * 
    * @description
-   * 复杂模式使用的智能体，通过 LangGraph 工作流调度多个专家协作
-   * 对应前端显示名称："AI 助手"
+   * ⚠️ 警告：此 ID 仅供后端内部 Graph 节点使用，绝不应出现在前端 URL 中！
+   * 
+   * 复杂模式是 Thread 的内部状态，由后端根据查询复杂度自动决定。
+   * 前端通过 SSE 事件 (router_decision) 或 API 响应中的 thread_mode 字段感知模式变化。
+   * 
+   * 对应前端显示名称："AI 助手" (仅在复杂模式 UI 中显示)
+   * 
+   * @deprecated 不要在 URL 中使用此 ID
    */
   ORCHESTRATOR: 'sys-task-orchestrator'
 } as const
