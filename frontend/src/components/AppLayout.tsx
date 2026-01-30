@@ -2,7 +2,9 @@ import { ReactNode, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { Menu, Sun, Moon } from 'lucide-react'
+import { useTranslation } from '@/i18n'
 import { BauhausSidebar } from '@/components/bauhaus'
+import { MobileOverlay } from '@/components/common'
 import { SettingsDialog } from '@/components/settings/SettingsDialog'
 import { PersonalSettingsDialog } from '@/components/settings/PersonalSettingsDialog'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
@@ -58,6 +60,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
   const navigate = useNavigate()
   const { sidebar, dialogs } = useApp()
   const { theme, toggleTheme } = useTheme()
+  const { t } = useTranslation()
 
   // 监听全局 toggle-sidebar 事件
   useEffect(() => {
@@ -97,13 +100,10 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
       }} aria-hidden="true" />
 
       {/* 移动端侧边栏遮罩 */}
-      {sidebar.isMobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 lg:hidden"
-          onClick={sidebar.closeMobile}
-          style={{ zIndex: Z_INDEX.OVERLAY }}
-        />
-      )}
+      <MobileOverlay
+        show={sidebar.isMobileOpen}
+        onClick={sidebar.closeMobile}
+      />
 
       {/* Bauhaus 侧边栏 - 还原原型 flex 布局 */}
       <aside className={cn(
@@ -124,26 +124,19 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
 
       {/* 移动端侧边栏 */}
       {sidebar.isMobileOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/50 lg:hidden"
-            onClick={sidebar.closeMobile}
-            style={{ zIndex: Z_INDEX.OVERLAY }}
-          />
-          <aside className="fixed left-0 top-0 h-[100dvh] w-[280px] border-r-2 border-[var(--border-color)] bg-[var(--bg-card)] lg:hidden" style={{ zIndex: Z_INDEX.MOBILE_SIDEBAR }}>
-            <div className="h-full w-full">
-              <BauhausSidebar
-                isCollapsed={false}
-                isMobileOpen={sidebar.isMobileOpen}
-                onMobileClose={sidebar.closeMobile}
-                onCreateAgent={handleCreateAgent}
-                onSettingsClick={dialogs.openSettings}
-                onPersonalSettingsClick={dialogs.openPersonalSettings}
-                onToggleCollapsed={sidebar.toggleCollapsed}
-              />
-            </div>
-          </aside>
-        </>
+        <aside className="fixed left-0 top-0 h-[100dvh] w-[280px] border-r-2 border-[var(--border-color)] bg-[var(--bg-card)] lg:hidden" style={{ zIndex: Z_INDEX.MOBILE_SIDEBAR }}>
+          <div className="h-full w-full">
+            <BauhausSidebar
+              isCollapsed={false}
+              isMobileOpen={sidebar.isMobileOpen}
+              onMobileClose={sidebar.closeMobile}
+              onCreateAgent={handleCreateAgent}
+              onSettingsClick={dialogs.openSettings}
+              onPersonalSettingsClick={dialogs.openPersonalSettings}
+              onToggleCollapsed={sidebar.toggleCollapsed}
+            />
+          </div>
+        </aside>
       )}
 
       {/* 主内容区域 - 右侧交互区 */}
@@ -179,8 +172,8 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
         isOpen={dialogs.deleteConfirmOpen}
         onClose={dialogs.closeDeleteConfirm}
         onConfirm={handleDeleteConfirm}
-        title="确认删除智能体"
-        description="删除后无法恢复，请确认是否继续？"
+        title={t('deleteAgentConfirm')}
+        description={t('deleteAgentConfirmDesc')}
         itemName={dialogs.deletingAgentName}
       />
 
