@@ -4,7 +4,7 @@ import { Save, RefreshCw, Loader2, Play, Search, Check, X } from 'lucide-react'
 import { models } from '@/config/models'
 import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/utils'
-import ModelSelector from './ModelSelector'
+import ModelSelector from '@/components/settings/ModelSelector'
 import {
   getAllExperts,
   getExpert,

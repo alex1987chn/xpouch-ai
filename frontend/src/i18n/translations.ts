@@ -339,12 +339,6 @@ export const en: Record<TranslationKey, string> = {
   confirmDeleteTitle: 'Confirm Delete',
   confirmDeleteDescription: 'This action cannot be undone. Are you sure you want to continue?',
   deleting: 'Deleting...',
-  model: 'MODEL',
-  temp: 'TEMP',
-  response: 'RESPONSE',
-  secondsAbbr: 's',
-  temperatureValue: 'Temperature: {value}',
-  characters: '{count} characters',
 
   // Workflow Steps (Expert Drawer)
   receiveTask: 'Receive Task',
@@ -547,12 +541,6 @@ export const ja: Record<TranslationKey, string> = {
   confirmDeleteTitle: '削除の確認',
   confirmDeleteDescription: 'この操作は取り消せません。続行しますか？',
   deleting: '削除中...',
-  model: 'モデル',
-  temp: '温度',
-  response: '応答',
-  secondsAbbr: '秒',
-  temperatureValue: '温度: {value}',
-  characters: '{count} 文字',
 
   // Workflow Steps (Expert Drawer)
   receiveTask: 'タスクを受信',

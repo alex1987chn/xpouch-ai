@@ -13,7 +13,7 @@ import { zhCN, enUS, ja } from 'date-fns/locale'
 import { logger } from '@/utils/logger'
 import { useTranslation } from '@/i18n'
 import { getAvatarDisplay } from '@/utils/userSettings'
-import LoginDialog from '@/components/LoginDialog'
+import LoginDialog from '@/components/auth/LoginDialog'
 import { useToast } from '@/components/ui/use-toast'
 
 /**
@@ -103,15 +103,15 @@ export default function BauhausSidebar({
     'Maestro': 'Maestro'
   }[currentPlan]
 
-  // 获取最近5条历史会话
+  // 获取最近20条历史会话（UI上展示5个区域，超出滚动）
   useEffect(() => {
     const loadRecentConversations = async () => {
       try {
         const conversations = await getConversations()
-        // 按更新时间降序排列，取前5条
+        // 按更新时间降序排列，取前20条
         const sorted = [...conversations]
           .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-          .slice(0, 5)
+          .slice(0, 20)
         setRecentConversations(sorted)
       } catch (error) {
         logger.error('Failed to load recent conversations:', error)
@@ -411,8 +411,8 @@ export default function BauhausSidebar({
                 </span>
               </div>
 
-              {/* 滚动区域: Bauhaus风格滚动条 - 最大高度显示4条，超出滚动 */}
-              <div className="overflow-y-auto px-3 space-y-1 w-[230px] mx-auto bauhaus-scrollbar" style={{ maxHeight: '160px' }}>
+              {/* 滚动区域: Bauhaus风格滚动条 - 最大高度显示5条，超出滚动 */}
+              <div className="overflow-y-auto px-3 space-y-1 w-[230px] mx-auto bauhaus-scrollbar" style={{ maxHeight: '220px' }}>
                 {/* 列表项: 极简、紧凑、数据感 */}
                 {recentConversations.map((conv) => (
                   <button

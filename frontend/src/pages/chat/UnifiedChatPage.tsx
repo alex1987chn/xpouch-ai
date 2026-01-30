@@ -8,10 +8,10 @@ import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { getConversationMode, normalizeAgentId } from '@/utils/agentUtils'
 
 // 新布局组件
-import { IndustrialChatLayout, ChatStreamPanel, OrchestratorPanel } from './layout'
+import { IndustrialChatLayout, ChatStreamPanel, OrchestratorPanel } from '@/components/layout'
 // 工业风格头部和专家详情弹窗
-import { IndustrialHeader } from './chat/IndustrialHeader'
-import { ExpertDetailModal } from './chat/ExpertDetailModal'
+import { IndustrialHeader } from '@/components/chat/IndustrialHeader'
+import { ExpertDetailModal } from '@/components/chat/ExpertDetailModal'
 import type { Artifact } from '@/types'
 import type { ExpertResult } from '@/store/canvasStore'
 

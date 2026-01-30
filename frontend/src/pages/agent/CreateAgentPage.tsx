@@ -3,9 +3,9 @@ import { ArrowLeft, Bot, Sparkles } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { cn } from '@/lib/utils'
-import SwipeBackIndicator from './SwipeBackIndicator'
-import AgentPreviewCard from './AgentPreviewCard'
-import ModelSelector from './ModelSelector'
+import SwipeBackIndicator from '@/components/agent/SwipeBackIndicator'
+import AgentPreviewCard from '@/components/agent/AgentPreviewCard'
+import ModelSelector from '@/components/settings/ModelSelector'
 
 interface CreateAgentPageProps {
   onBack: () => void

@@ -3,9 +3,9 @@ import { Plus, FileText, Trash2, Upload, Search, Folder, File } from 'lucide-rea
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
-import SwipeBackIndicator from './SwipeBackIndicator'
+import SwipeBackIndicator from '@/components/agent/SwipeBackIndicator'
 import { useApp } from '@/providers/AppProvider'
-import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { logger } from '@/utils/logger'
 
 // 知识库类型

@@ -5,9 +5,9 @@ import { getConversations, deleteConversation as apiDeleteConversation, type Con
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
-import SwipeBackIndicator from './SwipeBackIndicator'
+import SwipeBackIndicator from '@/components/agent/SwipeBackIndicator'
 import { useApp } from '@/providers/AppProvider'
-import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { logger } from '@/utils/logger'
 
 interface HistoryPageProps {
