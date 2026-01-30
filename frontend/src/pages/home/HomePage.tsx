@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Bot, Plus, Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image } from 'lucide-react'
+import { Bot, Plus, Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Trash2 } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
@@ -73,6 +73,7 @@ function ConstructCard({
   tags,
   sideColor,
   onClick,
+  onDelete,
 }: {
   name: string
   type: string
@@ -80,13 +81,13 @@ function ConstructCard({
   tags: string[]
   sideColor: string
   onClick?: () => void
+  onDelete?: () => void
 }) {
   const { t } = useTranslation()
   const isOnline = status === 'online'
 
   return (
     <Card
-      onClick={onClick}
       className="p-0 cursor-pointer group h-44 flex relative overflow-hidden"
     >
       {/* 左侧色条 */}
@@ -103,8 +104,30 @@ function ConstructCard({
         )}
       </div>
 
-      <div className="p-5 flex-1 flex flex-col justify-between z-10">
-        <div className="flex justify-between items-start">
+      <div className="p-5 flex-1 flex flex-col justify-between z-10 relative" onClick={onClick}>
+        {/* 删除按钮 - hover 时显示在右上角 */}
+        {onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+            className={cn(
+              "absolute top-2 right-2 w-7 h-7 border-2 border-[var(--border-color)] bg-[var(--bg-page)]",
+              "flex items-center justify-center z-20",
+              "opacity-0 group-hover:opacity-100",
+              "hover:bg-red-500 hover:text-white hover:border-red-500",
+              "transition-all duration-150",
+              "shadow-[2px_2px_0_0_var(--shadow-color)]",
+              "active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+            )}
+            title={t('delete')}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        <div className="flex justify-between items-start pr-8">
           <h4 className={cn("font-black text-xl tracking-tight", !isOnline && "text-[var(--text-secondary)]")}>
             {name}
           </h4>
@@ -490,6 +513,7 @@ export default function HomePage() {
                     tags={[agent.category?.substring(0, 6).toUpperCase() || 'AGENT']}
                     sideColor="#888888"
                     onClick={() => handleAgentClick(agent.id)}
+                    onDelete={() => handleDeleteAgent(agent.id, agent.name)}
                   />
                 ))}
               </div>
