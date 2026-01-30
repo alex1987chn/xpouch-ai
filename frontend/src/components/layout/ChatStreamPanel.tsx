@@ -47,10 +47,6 @@ interface ChatStreamPanelProps {
   onInputChange: (value: string) => void
   /** 发送消息回调 */
   onSend: () => void
-  /** 当前模式 */
-  mode: 'simple' | 'complex'
-  /** 模式切换回调 */
-  onModeChange: (mode: 'simple' | 'complex') => void
   /** 当前活跃专家 (用于显示路由指示器) */
   activeExpert?: string | null
   /** 重新生成消息回调 */
@@ -70,8 +66,6 @@ export default function ChatStreamPanel({
   inputValue,
   onInputChange,
   onSend,
-  mode,
-  onModeChange,
   activeExpert,
   onRegenerate,
 }: ChatStreamPanelProps) {
@@ -131,8 +125,6 @@ export default function ChatStreamPanel({
         onChange={onInputChange}
         onSend={handleSend}
         onKeyDown={handleKeyDown}
-        mode={mode}
-        onModeChange={onModeChange}
         disabled={isGenerating}
       />
     </>
@@ -339,16 +331,12 @@ function HeavyInputConsole({
   onChange,
   onSend,
   onKeyDown,
-  mode,
-  onModeChange,
   disabled,
 }: {
   value: string
   onChange: (value: string) => void
   onSend: () => void
   onKeyDown: (e: React.KeyboardEvent) => void
-  mode: 'simple' | 'complex'
-  onModeChange: (mode: 'simple' | 'complex') => void
   disabled?: boolean
 }) {
   const { t } = useTranslation()
@@ -382,38 +370,16 @@ function HeavyInputConsole({
 
           {/* 工具栏 */}
           <div className="flex justify-between items-center p-2 border-t-2 border-border bg-page">
-            {/* 左侧：模式切换 + 工具按钮 */}
+            {/* 左侧：工具按钮 */}
             <div className="flex items-center gap-4 pl-2">
-              {/* 机械开关：SIMPLE/COMPLEX */}
-              <div className={cn("flex border-2 border-border bg-card h-7", disabled && "opacity-60")}>
-                <ModeButton
-                  active={mode === 'simple'}
-                  onClick={() => onModeChange('simple')}
-                  disabled={disabled}
-                  isFirst
-                >
-                  {t('simple')}
-                </ModeButton>
-                <ModeButton
-                  active={mode === 'complex'}
-                  onClick={() => onModeChange('complex')}
-                  disabled={disabled}
-                >
-                  {t('complex')}
-                </ModeButton>
-              </div>
-
-              {/* 分隔线 */}
-              <div className="w-[1px] h-4 bg-border/50" />
-
               {/* 工具按钮 */}
-              <button 
+              <button
                 disabled={disabled}
                 className="hover:text-primary text-secondary transition-colors disabled:opacity-50"
               >
                 <Paperclip className="w-4 h-4" />
               </button>
-              <button 
+              <button
                 disabled={disabled}
                 className="hover:text-primary text-secondary transition-colors disabled:opacity-50"
               >
@@ -475,33 +441,4 @@ function HeavyInputTextArea({
   )
 }
 
-/** 模式切换按钮 */
-function ModeButton({
-  children,
-  active,
-  onClick,
-  disabled,
-  isFirst,
-}: {
-  children: React.ReactNode
-  active: boolean
-  onClick: () => void
-  disabled?: boolean
-  isFirst?: boolean
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        'px-3 text-[9px] font-bold transition-all uppercase',
-        isFirst && 'border-r-2 border-border',
-        active
-          ? 'bg-[var(--accent)] !text-primary !opacity-100'
-          : 'bg-card text-secondary hover:text-primary hover:bg-page'
-      )}
-    >
-      {children}
-    </button>
-  )
-}
+

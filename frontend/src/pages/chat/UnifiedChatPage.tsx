@@ -62,8 +62,7 @@ export default function UnifiedChatPage() {
   const isNewConversation = searchParams.get('new') === 'true'
   const initialMessage = (location.state as { startWith?: string })?.startWith
 
-  // 判断模式
-  const mode = useMemo(() => getConversationMode(normalizedAgentId), [normalizedAgentId])
+  // 移除模式判断，后端自动处理路由决策
 
 
   const {
@@ -124,9 +123,19 @@ export default function UnifiedChatPage() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [previewExpert, setPreviewExpert] = useState<ExpertResult | null>(null)
-  
+
   // 移动端视图模式状态
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
+
+  // 桌面端：检测到专家活动时，右侧面板自动展开
+  const hasExpertActivity = expertResults.length > 0 || Object.keys(artifactSessions).length > 0
+
+  // 移动端：检测到专家活动时，自动切换到 preview 模式
+  useEffect(() => {
+    if (hasExpertActivity && viewMode === 'chat') {
+      setViewMode('preview')
+    }
+  }, [hasExpertActivity])
   
   // 输入框状态
   const [inputValue, setInputValue] = useState('')
@@ -204,12 +213,6 @@ export default function UnifiedChatPage() {
     setInputValue('')
   }, [inputValue, isLoading, isStreaming, sendMessage, normalizedAgentId])
 
-  // 模式切换处理（简单/复杂模式切换）
-  const handleModeChange = useCallback((newMode: 'simple' | 'complex') => {
-    const targetAgentId = newMode === 'complex' ? SYSTEM_AGENTS.ORCHESTRATOR : SYSTEM_AGENTS.DEFAULT_CHAT
-    navigate(`/chat?agentId=${targetAgentId}`, { replace: true })
-  }, [navigate])
-
   // 当前选中的专家ID
   const selectedExpertId = selectedExpertSession
 
@@ -275,8 +278,6 @@ export default function UnifiedChatPage() {
             inputValue={inputValue}
             onInputChange={setInputValue}
             onSend={handleSend}
-            mode={mode}
-            onModeChange={handleModeChange}
             activeExpert={selectedExpertId}
             onRegenerate={() => retry()}
           />

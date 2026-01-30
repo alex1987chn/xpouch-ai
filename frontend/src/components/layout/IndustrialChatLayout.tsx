@@ -47,7 +47,7 @@ interface IndustrialChatLayoutProps {
   chatStreamPanel: ReactNode
   /** 右侧编排器面板 */
   orchestratorPanel: ReactNode
-  /** 是否隐藏右侧面板 (移动端) */
+  /** 是否隐藏右侧面板 (桌面端用) */
   hideOrchestrator?: boolean
   /** 当前视图模式 (移动端用) */
   viewMode?: 'chat' | 'preview'
