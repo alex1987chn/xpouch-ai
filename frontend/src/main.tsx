@@ -8,14 +8,14 @@ import AppLayout from './components/AppLayout'
 import './index.css'
 
 // 路由懒加载 - 代码分割优化
-const UnifiedChatPage = lazy(() => import('./components/UnifiedChatPage'))
-const HistoryPage = lazy(() => import('./components/HistoryPage'))
-const KnowledgeBasePage = lazy(() => import('./components/KnowledgeBasePage'))
-const CreateAgentPage = lazy(() => import('./components/CreateAgentPage'))
-const ExpertAdminPage = lazy(() => import('./components/ExpertAdminPage'))
+const UnifiedChatPage = lazy(() => import('./pages/chat/UnifiedChatPage'))
+const HistoryPage = lazy(() => import('./pages/history/HistoryPage'))
+const KnowledgeBasePage = lazy(() => import('./pages/knowledge/KnowledgeBasePage'))
+const CreateAgentPage = lazy(() => import('./pages/agent/CreateAgentPage'))
+const ExpertAdminPage = lazy(() => import('./pages/admin/ExpertAdminPage'))
 
 // 同步导入（轻量组件）
-import HomePage from './components/HomePage'
+import HomePage from './pages/home/HomePage'
 import AdminRoute from './components/AdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
 import { Toaster } from './components/ui/toaster'
