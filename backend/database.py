@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, create_engine, Session
-from models import Conversation, Message, User, CustomAgent
+from models import Thread, Message, User, CustomAgent
 import os
 from dotenv import load_dotenv
 from pathlib import Path

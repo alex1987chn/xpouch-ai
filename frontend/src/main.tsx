@@ -38,12 +38,24 @@ const HistoryPageWrapper = () => {
     const agentId = conversation.agent_id || 'default-chat'
     const normalizedAgentId = normalizeAgentId(agentId)
 
-    // 构建搜索参数
-    const searchParams = new URLSearchParams()
-    searchParams.set('agentId', normalizedAgentId)
-
-    // 统一跳转到 /chat/:id 格式（支持简单和复杂模式）
-    navigate(`/chat/${conversationId}?${searchParams.toString()}`)
+    // 👈 所有对话都使用纯净 URL /chat/:id
+    // 后端自动根据 thread_mode 决定是简单模式还是复杂模式
+    // 简单模式: thread_mode='simple' -> 直接回复
+    // 复杂模式: thread_mode='complex' -> 专家协作（右侧面板自动展开）
+    
+    // 只有自定义智能体（非系统默认助手）才需要在 URL 中携带 agentId
+    if (normalizedAgentId && 
+        normalizedAgentId !== 'sys-default-chat' && 
+        normalizedAgentId !== 'default-chat' &&
+        !normalizedAgentId.startsWith('sys-')) {
+      // 自定义智能体：需要携带 agentId
+      const searchParams = new URLSearchParams()
+      searchParams.set('agentId', normalizedAgentId)
+      navigate(`/chat/${conversationId}?${searchParams.toString()}`)
+    } else {
+      // 系统默认助手：纯净 URL，后端自动处理模式
+      navigate(`/chat/${conversationId}`)
+    }
   }
 
   return (

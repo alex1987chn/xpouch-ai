@@ -128,8 +128,12 @@ export default function BauhausSidebar({
 
   // 处理会话点击
   const handleConversationClick = (conversationId: string, agentId?: string) => {
-    const params = agentId ? `?agentId=${agentId}` : ''
-    navigate(`/chat/${conversationId}${params}`)
+    // 👈 默认助手不添加 agentId 参数，让后端自动使用 sys-default-chat
+    if (agentId && agentId !== 'sys-default-chat' && agentId !== 'default-chat') {
+      navigate(`/chat/${conversationId}?agentId=${agentId}`)
+    } else {
+      navigate(`/chat/${conversationId}`)
+    }
     onMobileClose?.()
   }
 

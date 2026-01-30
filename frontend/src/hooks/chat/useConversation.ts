@@ -4,7 +4,7 @@
  */
 
 import { useCallback } from 'react'
-import { useChatStore } from '@/store/chatStore'
+import { useChatStore, type ChatStore } from '@/store/chatStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import { getConversation, deleteConversation as apiDeleteConversation } from '@/services/chat'
 import { normalizeAgentId } from '@/utils/agentUtils'
@@ -46,14 +46,23 @@ export function useConversation() {
    */
   const loadConversation = useCallback(async (conversationId: string) => {
     try {
-      const conversation = await getConversation(conversationId)
+      // 👈 使用 getState() 获取最新状态，避免闭包捕获旧值
+      const store = useChatStore.getState()
+      const currentId = store.currentConversationId
+      const currentMessages = store.messages
 
-      debug('加载会话:', conversationId, conversation)
+      // 👈 关键修复：如果已经是当前会话且有消息，说明是新会话正在发送，不要覆盖
+      if (currentId === conversationId && currentMessages.length > 0) {
+        debug('阻止重复加载：已是当前会话且已有消息')
+        return
+      }
+
+      const conversation = await getConversation(conversationId)
 
       // 设置当前会话 ID
       setCurrentConversationId(conversationId)
 
-      // 设置消息
+      // 设置消息（如果有历史消息则覆盖，否则保持现有消息）
       if (conversation.messages && conversation.messages.length > 0) {
         setMessages(conversation.messages)
       }

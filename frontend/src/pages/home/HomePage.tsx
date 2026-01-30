@@ -221,16 +221,9 @@ export default function HomePage() {
   }, [location.pathname, setSelectedAgentId])
 
   // 构建显示的智能体列表
+  // 👈 注意：默认助手 (sys-default-chat) 不在列表中展示
+  // 用户通过首页底部的输入框与默认助手交互，避免重复创建 thread
   const displayedAgents = useMemo<Agent[]>(() => {
-    const defaultAgent: Agent = {
-      id: SYSTEM_AGENTS.DEFAULT_CHAT,
-      name: getSystemAgentName(SYSTEM_AGENTS.DEFAULT_CHAT),
-      description: '日常对话、通用任务、智能问答',
-      icon: <Bot className="w-5 h-5" />,
-      modelId: 'deepseek-chat',
-      isDefault: true
-    }
-
     const customAgentsWithIcon = customAgents.map(a => ({
       ...a,
       icon: <Bot className="w-5 h-5" />
@@ -246,7 +239,8 @@ export default function HomePage() {
       isCreateCard: true
     }
 
-    return [createAgentCard, defaultAgent, ...customAgentsWithIcon]
+    // 只展示：创建卡片 + 自定义智能体（不展示默认助手）
+    return [createAgentCard, ...customAgentsWithIcon]
   }, [customAgents])
 
   // 点击智能体卡片
@@ -254,7 +248,13 @@ export default function HomePage() {
     setSelectedAgentId(agentId)
     const newId = crypto.randomUUID()
     useChatStore.getState().setCurrentConversationId(newId)
-    navigate(`/chat/${newId}?agentId=${agentId}`)
+
+    // 👈 默认助手不添加 agentId 参数，让后端自动使用 sys-default-chat
+    if (agentId === SYSTEM_AGENTS.DEFAULT_CHAT) {
+      navigate(`/chat/${newId}`)
+    } else {
+      navigate(`/chat/${newId}?agentId=${agentId}`)
+    }
   }, [setSelectedAgentId, navigate])
 
   const handleCreateAgent = useCallback(() => {
@@ -296,14 +296,19 @@ export default function HomePage() {
 
     // 统一使用 Orchestrator 接口（后端自动路由）
     const agentId = selectedAgentId || SYSTEM_AGENTS.DEFAULT_CHAT
-    const searchParams = new URLSearchParams()
-    searchParams.set('conversation', newId)
-    searchParams.set('agentId', agentId)
-    searchParams.set('new', 'true')
 
-    navigate(`/chat?${searchParams.toString()}`, {
-      state: { startWith: inputMessage }
-    })
+    // 👈 直接导航到 /chat/:id 格式，不使用查询参数
+    // 默认助手：纯净 URL /chat/:id
+    // 自定义智能体：/chat/:id?agentId=xxx
+    if (agentId !== SYSTEM_AGENTS.DEFAULT_CHAT) {
+      navigate(`/chat/${newId}?agentId=${agentId}`, {
+        state: { startWith: inputMessage, isNew: true }
+      })
+    } else {
+      navigate(`/chat/${newId}`, {
+        state: { startWith: inputMessage, isNew: true }
+      })
+    }
   }, [inputMessage, navigate, selectedAgentId])
 
   // 推荐场景数据
@@ -473,18 +478,10 @@ export default function HomePage() {
                 {/* Create New Card */}
                 <CreateNewCard onClick={handleCreateAgent} />
 
-                {/* Default Agent */}
-                <ConstructCard
-                  name="Nexus_Core"
-                  type="PERSONAL.ASST"
-                  status="online"
-                  tags={['CHAT', 'MEMORY']}
-                  sideColor="var(--logo-base)"
-                  onClick={() => handleAgentClick(SYSTEM_AGENTS.DEFAULT_CHAT)}
-                />
+                {/* 👈 默认助手已移除：用户通过底部输入框与默认助手交互，避免重复创建 thread */}
 
                 {/* Custom Agents */}
-                {customAgents.slice(0, 1).map((agent) => (
+                {customAgents.slice(0, 2).map((agent) => (
                   <ConstructCard
                     key={agent.id}
                     name={agent.name}

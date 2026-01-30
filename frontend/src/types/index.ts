@@ -67,6 +67,8 @@ export interface Conversation {
   user_id: string
   created_at: string
   updated_at: string
+  status?: string  // 线程状态：idle（空闲）、running（运行中）、paused（暂停）
+  thread_mode?: 'simple' | 'complex'  // 线程模式：simple（普通对话）、complex（复杂协作）
   messages?: Message[]
   messageCount?: number
   task_session_id?: string  // 关联的任务会话ID（仅复杂模式）
@@ -78,7 +80,7 @@ export interface Conversation {
  */
 export interface TaskSession {
   session_id: string
-  conversation_id: string
+  thread_id: string  // 关联的线程ID
   user_query: string
   final_response?: string
   status?: string
@@ -267,9 +269,18 @@ export interface ExpertCompletedEvent {
 }
 
 /**
+ * Router 决策事件
+ * 👈 当后端 Router 决定是简单模式还是复杂模式时触发
+ */
+export interface RouterDecisionEvent {
+  type: 'router_decision'
+  decision: 'simple' | 'complex'
+}
+
+/**
  * 联合类型：所有专家事件
  */
-export type ExpertEvent = TaskStartEvent | TaskPlanEvent | ExpertActivatedEvent | ExpertCompletedEvent
+export type ExpertEvent = TaskStartEvent | TaskPlanEvent | ExpertActivatedEvent | ExpertCompletedEvent | RouterDecisionEvent
 
 /**
  * SSE 流式回调类型

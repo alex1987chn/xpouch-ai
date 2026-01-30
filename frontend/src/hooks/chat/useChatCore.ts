@@ -72,6 +72,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     updateMessage,
     isTyping,
     setIsTyping,
+    setMessages,
   } = useChatStore()
 
   /**
@@ -118,9 +119,10 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     let assistantMessageId: string | undefined
 
     try {
-      // 1. 准备请求数据 - 使用严格的 ApiMessage 类型
+      // 1. 准备请求数据 - 使用 getState() 获取最新的 messages，避免闭包捕获旧值
+      const storeState = useChatStore.getState()
       const chatMessages: ApiMessage[] = [
-        ...messages,
+        ...storeState.messages,
         { role: 'user', content: userContent }
       ]
         .filter((m): m is ApiMessage => {
@@ -132,18 +134,20 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
           content: m.content
         }))
 
-      // 2. 添加用户消息
-      addMessage({ role: 'user', content: userContent })
+      debug('准备发送消息，历史消息数:', storeState.messages.length, '当前输入:', userContent)
+
+      // 2. 添加用户消息和 AI 空消息（使用批量更新确保同步）
+      assistantMessageId = generateUUID()
+      debug('准备添加消息，AI ID:', assistantMessageId, '类型:', typeof assistantMessageId)
+
+      // 👈 关键修复：使用 setMessages 批量更新，避免中间件延迟
+      setMessages([...storeState.messages,
+        { role: 'user', content: userContent },
+        { id: assistantMessageId, role: 'assistant', content: '', timestamp: Date.now() }
+      ])
+
       setInputMessage('')
       setIsTyping(true)
-
-      // 3. 预先添加 AI 空消息
-      assistantMessageId = generateUUID()
-      addMessage({
-        id: assistantMessageId,
-        role: 'assistant',
-        content: ''
-      })
 
       // 4. 如果是复杂模式，添加任务开始提示
       if (conversationMode === 'complex') {
@@ -156,7 +160,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       // 5. 发送请求并处理流式响应
       let finalResponseContent = ''
-      let actualConversationId = currentConversationId
+      // 👈 使用 getState() 获取最新的 currentConversationId，避免闭包捕获旧值
+      const storeState2 = useChatStore.getState()
+      let actualConversationId = storeState2.currentConversationId || currentConversationId
 
       debug('准备调用 sendMessage')
       setIsStreaming(true)
@@ -191,9 +197,12 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
           finalResponseContent += chunk
           setStreamingContent(finalResponseContent)
 
-          if (conversationMode === 'simple' && assistantMessageId) {
-            debug('更新消息:', assistantMessageId, 'chunk length:', chunk.length)
-            updateMessage(assistantMessageId, chunk, true)
+          // 👈 注意：conversationMode 始终是 'simple'（见 agentUtils.ts），所以这里总是会更新
+          if (assistantMessageId) {
+            // 👈 使用 getState 直接调用 updateMessage，避免闭包问题
+            const store = useChatStore.getState()
+            // 直接使用 store 的 updateMessage 方法
+            store.updateMessage(assistantMessageId, chunk, true)
           }
 
           // 调用外部 onChunk 回调
@@ -205,7 +214,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         chatMessages,
         normalizedAgentId,
         streamCallback,
-        currentConversationId,
+        actualConversationId,
         abortControllerRef.current.signal
       )
 
@@ -213,27 +222,26 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       setStreamingContent('')
 
       // 6. 更新 URL 中的 conversationId（通过回调）
-      if (actualConversationId !== currentConversationId) {
+      const storeState3 = useChatStore.getState()
+      const initialConversationId = storeState3.currentConversationId
+      if (actualConversationId !== initialConversationId) {
         onNewConversation?.(actualConversationId, selectedAgentId)
       }
 
       // 7. 更新最终响应到助手消息
-      if (finalResponseContent && assistantMessageId) {
-        debug(`更新助手消息 ${assistantMessageId}，长度: ${finalResponseContent.length}，模式: ${conversationMode}`)
+      // 👈 流式更新已经在 onChunk 回调中完成，这里不再重复更新
+      // 但复杂模式可能需要替换为友好文案
+      if (finalResponseContent && assistantMessageId && conversationMode === 'complex') {
+        debug(`复杂模式：替换助手消息 ${assistantMessageId} 为友好文案`)
 
-        // 复杂模式：检测技术内容，如果是则替换成友好文案
-        let messageContent = finalResponseContent
-        if (conversationMode === 'complex') {
-          const hasTechnicalContent = finalResponseContent.includes('```') ||
-                                  finalResponseContent.includes('{') && finalResponseContent.includes('}') ||
-                                  finalResponseContent.includes('[') && finalResponseContent.includes(']')
+        const hasTechnicalContent = finalResponseContent.includes('```') ||
+                                finalResponseContent.includes('{') && finalResponseContent.includes('}') ||
+                                finalResponseContent.includes('[') && finalResponseContent.includes(']')
 
-          if (hasTechnicalContent) {
-            messageContent = t('complexTaskCompleted')
-          }
+        if (hasTechnicalContent) {
+          const messageContent = t('complexTaskCompleted')
+          updateMessage(assistantMessageId, messageContent)
         }
-
-        updateMessage(assistantMessageId, messageContent)
       }
 
       setIsSending(false)

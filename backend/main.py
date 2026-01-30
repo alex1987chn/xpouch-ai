@@ -30,9 +30,9 @@ import io
 from agents.graph import commander_graph
 from agents.dynamic_experts import DYNAMIC_EXPERT_FUNCTIONS, initialize_expert_cache
 from models import (
-    Conversation, Message, User, TaskSession, SubTask,
+    Thread, Message, User, TaskSession, SubTask,
     CustomAgent, CustomAgentCreate, CustomAgentUpdate, CustomAgentResponse,
-    ConversationResponse, MessageResponse
+    ThreadResponse, MessageResponse
 )
 from database import create_db_and_tables, get_session, engine
 from config import init_langchain_tracing, validate_config
@@ -68,7 +68,7 @@ async def stream_llm_response(
     messages: list,
     system_prompt: str,
     model: str = None,
-    conversation_id: str = None
+    thread_id: str = None
 ) -> AsyncGenerator[str, None]:
     """
     共享的大模型流式响应函数
@@ -77,7 +77,7 @@ async def stream_llm_response(
         messages: 消息列表（LangChain 格式）
         system_prompt: 系统提示词
         model: 模型名称（可选，默认从环境变量读取）
-        conversation_id: 会话 ID（可选）
+        thread_id: 线程 ID（可选）
 
     Yields:
         SSE 格式的数据块
@@ -106,8 +106,8 @@ async def stream_llm_response(
         if content:
             # SSE 格式：data: {...}\n\n
             event_data = {'content': content}
-            if conversation_id:
-                event_data['conversationId'] = conversation_id
+            if thread_id:
+                event_data['conversationId'] = thread_id
             yield f"data: {json.dumps(event_data)}\n\n"
 
 
@@ -533,11 +533,11 @@ async def debug_cleanup_users():
         count = len(users_to_delete)
 
         for user in users_to_delete:
-            # 1. 先删除该用户的所有会话（会级联删除messages）
-            conversations = session.exec(
-                select(Conversation).where(Conversation.user_id == user.id)
+            # 1. 先删除该用户的所有线程（会级联删除messages）
+            threads = session.exec(
+                select(Thread).where(Thread.user_id == user.id)
             ).all()
-            for conv in conversations:
+            for conv in threads:
                 session.delete(conv)
 
             # 2. 删除该用户的所有自定义智能体
@@ -709,25 +709,25 @@ async def update_custom_agent(
     return agent
 
 
-# 获取所有会话列表 (Filtered by User)
-@app.get("/api/conversations", response_model=List[ConversationResponse])
-async def get_conversations(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    statement = select(Conversation).where(Conversation.user_id == current_user.id).options(selectinload(Conversation.messages)).order_by(Conversation.updated_at.desc())
-    conversations = session.exec(statement).all()
-    return [ConversationResponse.model_validate(conv) for conv in conversations]
+# 获取所有线程列表 (Filtered by User)
+@app.get("/api/threads", response_model=List[ThreadResponse])
+async def get_threads(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    statement = select(Thread).where(Thread.user_id == current_user.id).options(selectinload(Thread.messages)).order_by(Thread.updated_at.desc())
+    threads = session.exec(statement).all()
+    return [ThreadResponse.model_validate(conv) for conv in threads]
 
-# 获取单个会话详情 (Filtered by User)
-@app.get("/api/conversations/{conversation_id}")
-async def get_conversation(conversation_id: str, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    statement = select(Conversation).where(Conversation.id == conversation_id).options(selectinload(Conversation.messages))
-    conversation = session.exec(statement).first()
+# 获取单个线程详情 (Filtered by User)
+@app.get("/api/threads/{thread_id}")
+async def get_thread(thread_id: str, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    statement = select(Thread).where(Thread.id == thread_id).options(selectinload(Thread.messages))
+    thread = session.exec(statement).first()
 
-    if not conversation or conversation.user_id != current_user.id:
+    if not thread or thread.user_id != current_user.id:
         raise NotFoundError(resource="会话")
 
-    # 如果是AI助手会话（复杂模式），加载TaskSession和SubTask
-    if conversation.agent_type == "ai" and conversation.task_session_id:
-        task_session = session.get(TaskSession, conversation.task_session_id)
+    # 如果是AI助手线程（复杂模式），加载TaskSession和SubTask
+    if thread.agent_type == "ai" and thread.task_session_id:
+        task_session = session.get(TaskSession, thread.task_session_id)
         if task_session:
             # 加载SubTasks
             statement = select(SubTask).where(SubTask.task_session_id == task_session.session_id)
@@ -735,14 +735,14 @@ async def get_conversation(conversation_id: str, session: Session = Depends(get_
 
             # 构建响应数据（字典形式）- 明确包含 agent_type 字段和 messages
             return {
-                "id": conversation.id,
-                "title": conversation.title,
-                "agent_id": conversation.agent_id,
-                "agent_type": conversation.agent_type,
-                "user_id": conversation.user_id,
-                "task_session_id": conversation.task_session_id,
-                "created_at": conversation.created_at.isoformat() if conversation.created_at else None,
-                "updated_at": conversation.updated_at.isoformat() if conversation.updated_at else None,
+                "id": thread.id,
+                "title": thread.title,
+                "agent_id": thread.agent_id,
+                "agent_type": thread.agent_type,
+                "user_id": thread.user_id,
+                "task_session_id": thread.task_session_id,
+                "created_at": thread.created_at.isoformat() if thread.created_at else None,
+                "updated_at": thread.updated_at.isoformat() if thread.updated_at else None,
                 "messages": [
                     {
                         "id": msg.id,
@@ -750,7 +750,7 @@ async def get_conversation(conversation_id: str, session: Session = Depends(get_
                         "content": msg.content,
                         "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
                     }
-                    for msg in conversation.messages
+                    for msg in thread.messages
                 ],
                 "task_session": {
                     "session_id": task_session.session_id,
@@ -775,16 +775,16 @@ async def get_conversation(conversation_id: str, session: Session = Depends(get_
                 }
             }
 
-    # 对于非AI会话，手动构建响应以确保 messages 被序列化
+    # 对于非AI线程，手动构建响应以确保 messages 被序列化
     return {
-        "id": conversation.id,
-        "title": conversation.title,
-        "agent_id": conversation.agent_id,
-        "agent_type": conversation.agent_type,
-        "user_id": conversation.user_id,
-        "task_session_id": conversation.task_session_id,
-        "created_at": conversation.created_at.isoformat() if conversation.created_at else None,
-        "updated_at": conversation.updated_at.isoformat() if conversation.updated_at else None,
+        "id": thread.id,
+        "title": thread.title,
+        "agent_id": thread.agent_id,
+        "agent_type": thread.agent_type,
+        "user_id": thread.user_id,
+        "task_session_id": thread.task_session_id,
+        "created_at": thread.created_at.isoformat() if thread.created_at else None,
+        "updated_at": thread.updated_at.isoformat() if thread.updated_at else None,
         "messages": [
             {
                 "id": msg.id,
@@ -792,17 +792,17 @@ async def get_conversation(conversation_id: str, session: Session = Depends(get_
                 "content": msg.content,
                 "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
             }
-            for msg in conversation.messages
+            for msg in thread.messages
         ]
     }
 
-# 删除会话 (Filtered by User)
-@app.delete("/api/conversations/{conversation_id}")
-async def delete_conversation(conversation_id: str, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    conversation = session.get(Conversation, conversation_id)
-    if not conversation or conversation.user_id != current_user.id:
+# 删除线程 (Filtered by User)
+@app.delete("/api/threads/{thread_id}")
+async def delete_thread(thread_id: str, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    thread = session.get(Thread, thread_id)
+    if not thread or thread.user_id != current_user.id:
         raise NotFoundError(resource="会话")
-    session.delete(conversation)
+    session.delete(thread)
     session.commit()
     return {"ok": True}
 
@@ -812,54 +812,65 @@ async def delete_conversation(conversation_id: str, session: Session = Depends(g
 
 @app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    # 1. 确定 Conversation ID
-    conversation_id = request.conversationId
-    conversation = None
+    # 1. 确定 Thread ID
+    thread_id = request.conversationId
+    thread = None
 
-    if conversation_id:
-        conversation = session.get(Conversation, conversation_id)
-        if conversation and conversation.user_id != current_user.id:
+    if thread_id:
+        thread = session.get(Thread, thread_id)
+        if thread and thread.user_id != current_user.id:
              raise AuthorizationError("没有权限访问此会话")
 
-    if not conversation:
-        # 如果没有ID或找不到，创建新会话
-        # 如果前端提供了conversationId（即使是新会话），直接使用前端的ID（幂等性）
+    if not thread:
+        # 如果没有ID或找不到，创建新线程
+        # 如果前端提供了conversationId（即使是新线程），直接使用前端的ID（幂等性）
         # 只有当conversationId为空时，才生成新的UUID
-        if not conversation_id:
-            conversation_id = str(uuid.uuid4())
+        if not thread_id:
+            thread_id = str(uuid.uuid4())
 
-        # 规范化智能体 ID（兼容旧 ID）
-        normalized_agent_id = normalize_agent_id(request.agentId)
+        # 兜底逻辑：如果 agentId 为 None、null 或空字符串，强制赋值为系统默认助手
+        if not request.agentId or request.agentId.strip() == "":
+            frontend_agent_id = SYSTEM_AGENT_DEFAULT_CHAT
+        else:
+            # 规范化智能体 ID（兼容旧 ID）
+            frontend_agent_id = normalize_agent_id(request.agentId)
+
+        # 👈 重要：sys-task-orchestrator 是内部实现，不应在 URL 中暴露
+        # 如果前端传了 orchestrator ID，将其视为默认助手（由后端 Router 决定实际模式）
+        if frontend_agent_id == SYSTEM_AGENT_ORCHESTRATOR:
+            frontend_agent_id = SYSTEM_AGENT_DEFAULT_CHAT
 
         # 根据 agentId 确定 agent_type
-        if normalized_agent_id == SYSTEM_AGENT_ORCHESTRATOR:
-            agent_type = "ai"
-        elif normalized_agent_id == SYSTEM_AGENT_DEFAULT_CHAT:
-            agent_type = "default"
+        # 尝试作为自定义智能体UUID加载
+        custom_agent_check = session.get(CustomAgent, frontend_agent_id)
+        if custom_agent_check and custom_agent_check.user_id == current_user.id:
+            agent_type = "custom"
+            # 自定义智能体保持其原始 ID
+            final_agent_id = frontend_agent_id
         else:
-            # 尝试作为自定义智能体UUID加载
-            custom_agent_check = session.get(CustomAgent, normalized_agent_id)
-            if custom_agent_check and custom_agent_check.user_id == current_user.id:
-                agent_type = "custom"
-            else:
-                agent_type = "default"  # 默认值
+            # 系统默认助手
+            agent_type = "default"
+            # 始终使用 sys-default-chat 作为系统助手的 ID
+            final_agent_id = SYSTEM_AGENT_DEFAULT_CHAT
 
-        conversation = Conversation(
-            id=conversation_id,
+        # 初始 thread_mode 为 simple，Router 会在处理时更新它
+        thread = Thread(
+            id=thread_id,
             title=request.message[:30] + "..." if len(request.message) > 30 else request.message,
-            agent_id=normalized_agent_id,  # 使用规范化后的 ID
+            agent_id=final_agent_id,  # 👈 系统助手始终使用 sys-default-chat
             agent_type=agent_type,  # 正确设置 agent_type
+            thread_mode="simple",  # 初始为 simple，后续由 Router 更新
             user_id=current_user.id, # 绑定当前用户
             created_at=datetime.now(),
             updated_at=datetime.now()
         )
-        session.add(conversation)
+        session.add(thread)
         session.commit()
-        session.refresh(conversation)
+        session.refresh(thread)
 
     # 2. 保存用户消息到数据库
     user_msg_db = Message(
-        conversation_id=conversation_id,
+        thread_id=thread_id,
         role="user",
         content=request.message,
         timestamp=datetime.now()
@@ -868,17 +879,21 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     session.commit()
 
     # 3. 准备 LangGraph 上下文
-    statement = select(Message).where(Message.conversation_id == conversation_id).order_by(Message.timestamp)
+    statement = select(Message).where(Message.thread_id == thread_id).order_by(Message.timestamp)
     db_messages = session.exec(statement).all()
-    
+
     langchain_messages = []
     for msg in db_messages:
         if msg.role == "user":
             langchain_messages.append(HumanMessage(content=msg.content))
         elif msg.role == "assistant":
             langchain_messages.append(AIMessage(content=msg.content))
-            
+
     # 构建状态
+
+    # 👈 新架构：所有对话都通过 sys-default-chat 入口
+    # 复杂模式 (Complex Mode) 是 Thread 的内部状态，不是独立的 Agent ID
+    # Router 会根据查询复杂度自动决定是简单模式还是复杂模式
 
     # 检查是否是自定义智能体
     custom_agent = None
@@ -886,18 +901,18 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     # 规范化智能体 ID（兼容旧 ID）
     normalized_agent_id = normalize_agent_id(request.agentId)
 
-    # 判断智能体类型：
-    # 1. sys-task-orchestrator → 复杂模式（指挥官模式）
-    # 2. sys-default-chat → 简单模式（默认助手）
-    # 3. 自定义智能体UUID → 简单模式
-
-
+    # 👈 将 orchestrator ID 也视为默认助手（不再作为 URL 中的独立模式）
     if normalized_agent_id == SYSTEM_AGENT_ORCHESTRATOR:
-        # AI助手：复杂模式（指挥官模式）
-        custom_agent = None  # 不走自定义 agent 逻辑
-    elif normalized_agent_id == SYSTEM_AGENT_DEFAULT_CHAT:
-        # 默认助手：简单模式（直接使用常量）
-        # 创建简单的对象用于后续处理
+        normalized_agent_id = SYSTEM_AGENT_DEFAULT_CHAT
+
+    # 判断智能体类型：
+    # 1. 自定义智能体UUID → 直接调用 LLM（不经过 LangGraph）
+    # 2. sys-default-chat 或默认情况 → 由 Router 决定简单/复杂模式
+
+    if normalized_agent_id == SYSTEM_AGENT_DEFAULT_CHAT:
+        # 系统默认助手：由 Router 决定模式
+        # - 简单查询 -> 直接调用 LLM -> thread_mode='simple'
+        # - 复杂任务 -> LangGraph 专家协作 -> thread_mode='complex'
         custom_agent = SimpleNamespace(
             name="默认助手",
             system_prompt=ASSISTANT_SYSTEM_PROMPT,
@@ -915,7 +930,14 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             session.add(custom_agent)
             session.commit()
         else:
-            custom_agent = None
+            # 未找到自定义智能体，回退到系统默认助手
+            custom_agent = SimpleNamespace(
+                name="默认助手",
+                system_prompt=ASSISTANT_SYSTEM_PROMPT,
+                model_id=os.getenv("MODEL_NAME", "deepseek-chat"),
+                user_id=current_user.id,
+                is_default=True
+            )
 
     # 如果是自定义智能体，使用直接 LLM 调用模式（不经过 LangGraph）
     if custom_agent:
@@ -956,18 +978,18 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                         content = chunk.content
                         if content:
                             full_response += content
-                            yield f"data: {json.dumps({'content': content, 'conversationId': conversation_id})}\n\n"
+                            yield f"data: {json.dumps({'content': content, 'conversationId': thread_id})}\n\n"
 
                 except Exception as e:
                     import traceback
                     traceback.print_exc()
                     error_msg = json.dumps({"error": str(e)})
                     yield f"data: {error_msg}\n\n"
-                
+
                 # 5. 保存 AI 回复到数据库
                 if full_response:
                     ai_msg_db = Message(
-                        conversation_id=conversation_id,
+                        thread_id=thread_id,
                         role="assistant",
                         content=full_response,
                         timestamp=datetime.now()
@@ -975,11 +997,11 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                     from database import engine
                     with Session(engine) as inner_session:
                         inner_session.add(ai_msg_db)
-                        # 更新会话时间
-                        conv = inner_session.get(Conversation, conversation_id)
-                        if conv:
-                            conv.updated_at = datetime.now()
-                            inner_session.add(conv)
+                        # 更新线程时间
+                        thread = inner_session.get(Thread, thread_id)
+                        if thread:
+                            thread.updated_at = datetime.now()
+                            inner_session.add(thread)
                         inner_session.commit()
                 
                 yield "data: [DONE]\n\n"
@@ -1019,36 +1041,45 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             
             result = await llm.ainvoke(messages_with_system)
             full_response = result.content
-            
+
             # 保存 AI 回复
             ai_msg_db = Message(
-                conversation_id=conversation_id,
+                thread_id=thread_id,
                 role="assistant",
                 content=full_response,
                 timestamp=datetime.now()
             )
             session.add(ai_msg_db)
-            conversation.updated_at = datetime.now()
-            session.add(conversation)
+            thread.updated_at = datetime.now()
+            session.add(thread)
             session.commit()
-            
+
             return {
                 "role": "assistant",
                 "content": full_response,
-                "conversationId": conversation_id
+                "conversationId": thread_id
             }
-    
-    # 指挥官模式：通过 LLM 拆解任务
-    print(f"[MAIN] 进入指挥官模式，agentId: {request.agentId}")
+
+    # ============================================================================
+    # 系统默认助手模式：通过 LangGraph (Router -> Planner -> Experts) 处理
+    # ============================================================================
+    # 👈 注意：所有对话都通过 sys-default-chat 入口
+    # Router 节点会决定是简单模式 (simple) 还是复杂模式 (complex)
+    # - simple: Router 直接生成回复，不经过 Planner
+    # - complex: 经过 Planner 拆解任务，多专家协作执行
+
+    print(f"[MAIN] 进入系统默认助手模式，使用 LangGraph 处理")
+
     initial_state = {
         "messages": langchain_messages,
-        "current_agent": "commander",  # 指挥官模式下使用 commander 作为 current_agent
+        "current_agent": "router",  # 👈 从 Router 节点开始
         "task_list": [],
         "current_task_index": 0,
         "strategy": "",
         "expert_results": [],
         "final_response": "",
-        "context": {}
+        "context": {},
+        "router_decision": ""  # Router 会填充此字段
     }
 
     # 4. 流式响应处理
@@ -1073,6 +1104,27 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                     if event_count % 10 == 0:
                         print(f"[STREAM] 已处理 {event_count} 个事件，当前: {kind} - {name}")
 
+                    # 👈 捕获 Router 节点执行结束（获取路由决策）
+                    if kind == "on_chain_end" and name == "router":
+                        output_data = event["data"]["output"]
+                        router_decision = output_data.get("router_decision", "")
+
+                        if router_decision:
+                            print(f"[STREAM] Router 决策: {router_decision}")
+                            # 更新 Thread 的 thread_mode
+                            thread.thread_mode = router_decision
+                            session.add(thread)
+                            session.commit()
+                            # 向前端发送 routerDecision 事件
+                            yield f"data: {json.dumps({'routerDecision': router_decision, 'conversationId': thread_id})}\n\n"
+
+                            # 👈 如果 Router 决策为 simple，直接获取 final_response 并结束
+                            if router_decision == "simple":
+                                final_response = output_data.get("final_response", "")
+                                if final_response:
+                                    full_response = final_response
+                                    yield f"data: {json.dumps({'content': final_response, 'conversationId': thread_id, 'isFinal': True})}\n\n"
+
                     # 捕获指挥官节点执行结束（获取任务计划）
                     if kind == "on_chain_end" and name == "commander":
                         output_data = event["data"]["output"]
@@ -1080,7 +1132,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                         if "__task_plan" in output_data:
                             task_plan = output_data["__task_plan"]
                             # 推送任务计划事件到前端
-                            yield f"data: {json.dumps({'taskPlan': task_plan, 'conversationId': conversation_id})}\n\n"
+                            yield f"data: {json.dumps({'taskPlan': task_plan, 'conversationId': thread_id})}\n\n"
 
                     # 捕获聚合器节点执行结束（获取最终响应）
                     if kind == "on_chain_end" and name == "aggregator":
@@ -1089,7 +1141,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                         if "final_response" in output_data:
                             final_response = output_data["final_response"]
                             # 推送最终响应到前端
-                            yield f"data: {json.dumps({'content': final_response, 'conversationId': conversation_id, 'isFinal': True})}\n\n"
+                            yield f"data: {json.dumps({'content': final_response, 'conversationId': thread_id, 'isFinal': True})}\n\n"
 
                     # 捕获专家分发器节点开始执行（推送任务开始信息）
                     if kind == "on_chain_start" and name == "expert_dispatcher":
@@ -1106,7 +1158,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                                 "expert_type": current_task.get("expert_type", ""),
                                 "description": current_task.get("description", "")
                             }
-                            yield f"data: {json.dumps({'taskStart': task_start_info, 'conversationId': conversation_id})}\n\n"
+                            yield f"data: {json.dumps({'taskStart': task_start_info, 'conversationId': thread_id})}\n\n"
 
                     # 捕获专家分发器节点执行（通过 __expert_info 字段传递专家信息）
                     if kind == "on_chain_end" and name == "expert_dispatcher":
@@ -1126,7 +1178,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                                 expert_artifacts[expert_name] = []
 
                             # 推送专家激活事件（在专家开始执行时）
-                            yield f"data: {json.dumps({'activeExpert': expert_name, 'conversationId': conversation_id})}\n\n"
+                            yield f"data: {json.dumps({'activeExpert': expert_name, 'conversationId': thread_id})}\n\n"
 
                             # 检查是否生成了 artifact
                             if "artifact" in output_data:
@@ -1135,13 +1187,13 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                                 expert_artifacts[expert_name].append(artifact)
 
                                 # 推送 artifact_update 事件（包含所有 artifacts）
-                                yield f"data: {json.dumps({'artifact': artifact, 'conversationId': conversation_id, 'allArtifacts': expert_artifacts[expert_name], 'activeExpert': expert_name})}\n\n"
+                                yield f"data: {json.dumps({'artifact': artifact, 'conversationId': thread_id, 'allArtifacts': expert_artifacts[expert_name], 'activeExpert': expert_name})}\n\n"
 
                             # 推送专家完成事件（包含完整信息）
                             yield f"data: {json.dumps({
                                 'expertCompleted': expert_name,
                                 'description': expert_info.get('description', ''),
-                                'conversationId': conversation_id,
+                                'conversationId': thread_id,
                                 'duration_ms': duration_ms,
                                 'status': expert_status,
                                 'output': output_result,
@@ -1154,7 +1206,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                         content = event["data"]["chunk"].content
                         if content:
                             full_response += content
-                            yield f"data: {json.dumps({'content': content, 'conversationId': conversation_id})}\n\n"
+                            yield f"data: {json.dumps({'content': content, 'conversationId': thread_id})}\n\n"
 
                 print(f"[STREAM] 流式处理完成，共处理 {event_count} 个事件")
 
@@ -1168,7 +1220,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             # 5. 流式结束后，保存 AI 回复到数据库
             if full_response:
                 ai_msg_db = Message(
-                    conversation_id=conversation_id,
+                    thread_id=thread_id,
                     role="assistant",
                     content=full_response,
                     timestamp=datetime.now()
@@ -1176,11 +1228,11 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                 from database import engine
                 with Session(engine) as inner_session:
                     inner_session.add(ai_msg_db)
-                    # 更新会话时间
-                    conv = inner_session.get(Conversation, conversation_id)
-                    if conv:
-                        conv.updated_at = datetime.now()
-                        inner_session.add(conv)
+                    # 更新线程时间
+                    thread = inner_session.get(Thread, thread_id)
+                    if thread:
+                        thread.updated_at = datetime.now()
+                        inner_session.add(thread)
                     inner_session.commit()
 
             yield "data: [DONE]\n\n"
@@ -1198,23 +1250,28 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
         # 非流式
         result = await commander_graph.ainvoke(initial_state)
         last_message = result["messages"][-1]
-        
+
+        # 👈 获取 Router 决策并更新 thread_mode
+        router_decision = result.get("router_decision", "simple")
+        thread.thread_mode = router_decision
+
         # 保存 AI 回复
         ai_msg_db = Message(
-            conversation_id=conversation_id,
+            thread_id=thread_id,
             role="assistant",
             content=last_message.content,
             timestamp=datetime.now()
         )
         session.add(ai_msg_db)
-        conversation.updated_at = datetime.now()
-        session.add(conversation)
+        thread.updated_at = datetime.now()
+        session.add(thread)
         session.commit()
-        
+
         return {
             "role": "assistant",
             "content": last_message.content,
-            "conversationId": conversation_id
+            "conversationId": thread_id,
+            "threadMode": router_decision  # 👈 返回 thread_mode 给前端
         }
 
 

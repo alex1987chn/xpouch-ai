@@ -4,12 +4,16 @@ import type { AgentType } from '@/types'
 
 /**
  * 旧 ID 到新 ID 的映射（与后端 constants.py 保持一致）
+ * 
+ * 注意：所有旧 ID 都映射到 DEFAULT_CHAT，因为复杂模式是内部状态
+ * 不应该通过 URL 中的 agentId 来区分简单/复杂模式
  */
 const OLD_TO_NEW_AGENT_ID_MAPPING: Record<string, string> = {
   'default-assistant': SYSTEM_AGENTS.DEFAULT_CHAT,
-  'ai-assistant': SYSTEM_AGENTS.ORCHESTRATOR,
+  'ai-assistant': SYSTEM_AGENTS.DEFAULT_CHAT, // 👈 旧复杂模式 ID 也映射到默认助手
   'default-chat': SYSTEM_AGENTS.DEFAULT_CHAT, // 兼容 UnifiedChatPage 中的默认值
   'assistant': SYSTEM_AGENTS.DEFAULT_CHAT, // 兼容 chatStore 初始值
+  'sys-task-orchestrator': SYSTEM_AGENTS.DEFAULT_CHAT, // 👈 内部 ID 映射到默认助手
 }
 
 /**
@@ -52,13 +56,32 @@ export function getThreadId(agentId: string, userId?: string): string {
 }
 
 /**
- * 判断对话模式（根据 agentId）
- * sys-task-orchestrator 是复杂模式，其他都是简单模式
+ * 判断对话模式（根据 thread_mode）
+ * 
+ * @deprecated 不要通过 agentId 判断模式！
+ * 复杂模式是 Thread 的内部状态，应该通过后端返回的 thread_mode 字段判断
+ * 
+ * 正确用法：
+ * const mode = thread.thread_mode // 'simple' | 'complex'
  */
 export function getConversationMode(agentId: string): 'simple' | 'complex' {
-  const normalizedId = normalizeAgentId(agentId)
-  if (normalizedId === SYSTEM_AGENTS.ORCHESTRATOR) {
-    return 'complex'
-  }
+  // 👈 所有对话都返回 'simple'，因为复杂模式是内部状态
+  // 不应该通过 URL 中的 agentId 来判断模式
+  // 前端应该通过后端返回的 thread_mode 字段来感知模式
   return 'simple'
+}
+
+/**
+ * 从后端 Thread 数据获取对话模式
+ * 
+ * @param threadMode - 后端返回的 thread_mode 字段
+ * @returns 'simple' | 'complex'
+ * 
+ * @example
+ * ```typescript
+ * const mode = getModeFromThread(thread.thread_mode) // 'simple' 或 'complex'
+ * ```
+ */
+export function getModeFromThread(threadMode?: string): 'simple' | 'complex' {
+  return threadMode === 'complex' ? 'complex' : 'simple'
 }
