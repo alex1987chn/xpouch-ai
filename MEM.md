@@ -4,6 +4,60 @@
 
 ---
 
+## 2026-01-30：v0.6.3 - 国际化优化与组件清理
+
+### 🎨 UI 改进
+
+**输入框巨型机器风格**：
+- **决策**：统一首页和聊天页的输入框placeholder风格
+- **设计理念**：强调实体感，将AI视为巨型机器
+- **实现**：
+  - 中文：// 准备装载...
+  - 英文：// AWAITING PAYLOAD...
+  - 日文：// 装填準備...
+- **影响**：用户体验更具科技感和工业风格
+
+### 🧹 代码清理
+
+**废弃组件删除**：
+- **决策**：移除架构重构后不再使用的组件和文件
+- **删除内容**：
+  - 组件：AgentHeader, ArtifactTabs, ArtifactsArea, MessageBubble, MessageItem（5个）
+  - 上下文：ToastContext, ArtifactProvider（2个）
+  - Hooks：useArtifactListener, useExpertStream, useMagicColorParser, useTypewriter（4个）
+  - 其他：plans.ts, icon-mapping.ts, loadingStore.ts, 3.0.0（4个）
+- **影响**：
+  - 代码库更清晰，减少维护负担
+  - 删除1677行冗余代码
+  - 架构更加简洁
+
+**国际化优化**：
+- **决策**：为核心页面和组件添加完整的国际化支持
+- **更新组件**：
+  - CreateAgentPage：表单标签、状态消息、按钮文本（47个翻译键）
+  - ExpertAdminPage：Toast消息、专家列表、配置界面（25个翻译键）
+  - HomePage：推荐场景和我的智能体标题（4个翻译键）
+  - UnifiedChatPage：统一聊天页面逻辑
+  - BauhausSidebar：优化样式
+  - ExpertDetailModal：添加国际化
+  - ChatStreamPanel：优化输入框和消息展示
+  - OrchestratorPanel：优化专家展示
+  - i18n/index.ts：更新翻译键定义
+- **新增翻译键**：76个（中英日三语言）
+- **影响**：
+  - 支持完整的中文、英文、日文切换
+  - UI文本统一管理，易于维护
+  - 国际化覆盖率达到100%
+
+### 📊 代码统计
+
+- **删除文件**：15个
+- **修改文件**：9个
+- **代码变更**：+334行，-1677行
+- **新增翻译键**：76个（中英日三语言）
+
+---
+
 ## 2026-01-27：v0.6.1 - Bug 修复与 PostgreSQL 优化
 
 ### 🐛 Bug 修复
