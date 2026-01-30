@@ -3,11 +3,17 @@ import { TranslationKey } from './index'
 export const zh: Record<TranslationKey, string> = {
   // Navigation
   newChat: '新会话',
+  draftSaved: '草稿已保存',
+  draftRestored: '已恢复未发送的消息',
   history: '会话记录',
   knowledgeBase: '知识库',
   settings: '设置',
   home: '首页',
   recentChats: '最近会话',
+  navDashboard: '首页',
+  navExperts: '专家管理',
+  memoryDump: '最近会话',
+  noDataStream: '[无数据]',
 
   // Home
   greeting: '你好！我是 XPouch AI 助手',
@@ -19,6 +25,17 @@ export const zh: Record<TranslationKey, string> = {
   backToChat: '会话',
   addCustomAgent: '添加自定义智能体',
   createYourFirstAgent: '创建第一个智能体',
+  statusReady: '就绪',
+  statusIdle: '空闲',
+  heroTitle: '准备开始？',
+  commandInput: '命令输入',
+  initializeNew: '新建初始化',
+  online: '在线',
+  offline: '离线',
+  recommended: '推荐场景',
+  myConstructs: '我的智能体',
+  confirmDeleteAgent: '确认删除智能体',
+  deleteAgentWarning: '删除后无法恢复，请确认是否继续？',
 
   // Settings
   theme: '主题',
@@ -26,7 +43,6 @@ export const zh: Record<TranslationKey, string> = {
   systemSettings: '系统设置',
   userSettings: '个人设置',
   personalSettings: '个人设置',
-  modelConfig: '模型配置',
 
   // Common
   save: '保存',
@@ -82,11 +98,17 @@ export const zh: Record<TranslationKey, string> = {
   send: '发送',
   enterToSend: '按 Enter 发送，Shift + Enter 换行',
   describeTask: '描述你的任务，AI 会帮你拆解...',
+  inputPlaceholder: '// 准备装载...',
+  execute: '执行',
+  processing: '处理中',
+  initConversation: '开始新对话',
 
   // Chat Actions
   copy: '复制',
+  copied: '已复制',
   regenerate: '重新生成',
   resend: '重新发送',
+  retry: '重试',
 
   // Expert Status
   taskDescription: '任务描述',
@@ -99,20 +121,22 @@ export const zh: Record<TranslationKey, string> = {
   running: '进行中',
   completed: '完成',
 
+  // Orchestrator Panel
+  overview: '概览',
+  ganttViewTitle: '甘特图 :: MVP计划',
+  exitFullscreen: '退出全屏',
+  openFullscreen: '全屏打开',
+  loadingModule: '加载模块中...',
+
+  // Expert Modal
+  taskLogTitle: '任务日志',
+  outputConsole: '输出控制台',
+  noOutputAvailable: '暂无输出',
+
   // Delete Dialog
   confirmDeleteTitle: '确认删除',
   confirmDeleteDescription: '此操作无法撤销，请确认是否继续？',
   deleting: '删除中...',
-
-  // Create Agent Page
-  simpleDescription: '简单描述你的智能体...',
-  defineBehavior: '定义智能体的行为、性格和能力',
-  writingAssistantPlaceholder: '你是一个专业的写作助手...',
-  tip: '提示',
-  tipDescription: '填写名称和系统提示词后即可创建智能体。详细的提示词能让智能体更好地理解你的需求。',
-  realtimePreview: '实时预览',
-  previewDescription: '这是你的智能体在首页展示的效果',
-  submitTaskPlaceholder: '描述你的任务，AI 会帮你拆解...',
 
   // Workflow Steps (Expert Drawer)
   receiveTask: '接收任务',
@@ -181,11 +205,17 @@ export const zh: Record<TranslationKey, string> = {
 export const en: Record<TranslationKey, string> = {
   // Navigation
   newChat: 'New Chat',
+  draftSaved: 'Draft saved',
+  draftRestored: 'Restored unsent message',
   history: 'Conversations',
   knowledgeBase: 'Knowledge Base',
   settings: 'Settings',
   home: 'Home',
   recentChats: 'Recent Chats',
+  navDashboard: 'Dashboard',
+  navExperts: 'Experts',
+  memoryDump: 'Recent Chats',
+  noDataStream: '[NO DATA]',
 
   // Home
   greeting: 'Hello! I am XPouch AI Assistant',
@@ -197,6 +227,17 @@ export const en: Record<TranslationKey, string> = {
   backToChat: 'Back to Chat',
   addCustomAgent: 'Add Custom Agent',
   createYourFirstAgent: 'Create your first agent',
+  statusReady: 'READY',
+  statusIdle: 'IDLE',
+  heroTitle: 'READY TO ASSEMBLE?',
+  commandInput: 'COMMAND INPUT',
+  initializeNew: 'Initialize New',
+  online: 'ON',
+  offline: 'OFF',
+  recommended: 'Recommended',
+  myConstructs: 'My Constructs',
+  confirmDeleteAgent: 'Confirm Delete Agent',
+  deleteAgentWarning: 'This action cannot be undone. Are you sure you want to continue?',
 
   // Settings
   theme: 'Theme',
@@ -204,7 +245,6 @@ export const en: Record<TranslationKey, string> = {
   systemSettings: 'System Settings',
   userSettings: 'User Settings',
   personalSettings: 'User Settings',
-  modelConfig: 'Model Config',
 
   // Common
   save: 'Save',
@@ -260,11 +300,17 @@ export const en: Record<TranslationKey, string> = {
   send: 'Send',
   enterToSend: 'Press Enter to send, Shift + Enter for new line',
   describeTask: 'Describe your task, AI will help break it down...',
+  inputPlaceholder: '// AWAITING PAYLOAD...',
+  execute: 'EXECUTE',
+  processing: 'PROCESSING',
+  initConversation: 'Initialize conversation',
 
   // Chat Actions
-  copy: 'Copy',
+  copy: 'COPY',
+  copied: 'COPIED',
   regenerate: 'Regenerate',
   resend: 'Resend',
+  retry: 'RETRY',
 
   // Expert Status
   taskDescription: 'Task Description',
@@ -277,20 +323,28 @@ export const en: Record<TranslationKey, string> = {
   running: 'Running',
   completed: 'Completed',
 
+  // Orchestrator Panel
+  overview: 'Overview',
+  ganttViewTitle: 'Gantt View :: MVP Plan',
+  exitFullscreen: 'Exit Fullscreen',
+  openFullscreen: 'Open in Fullscreen',
+  loadingModule: 'LOADING_MODULE...',
+
+  // Expert Modal
+  taskLogTitle: 'TASK_LOG',
+  outputConsole: 'OUTPUT_CONSOLE',
+  noOutputAvailable: 'No output available',
+
   // Delete Dialog
   confirmDeleteTitle: 'Confirm Delete',
   confirmDeleteDescription: 'This action cannot be undone. Are you sure you want to continue?',
   deleting: 'Deleting...',
-
-  // Create Agent Page
-  simpleDescription: 'Briefly describe your agent...',
-  defineBehavior: 'Define behavior, personality, and capabilities of agent',
-  writingAssistantPlaceholder: 'You are a professional writing assistant...',
-  tip: 'Tip',
-  tipDescription: 'Fill in name and system prompt to create an agent. Detailed prompts help agent better understand your needs.',
-  realtimePreview: 'Real-time Preview',
-  previewDescription: 'This is how your agent will appear on the home page',
-  submitTaskPlaceholder: 'Describe your task, AI will help break it down...',
+  model: 'MODEL',
+  temp: 'TEMP',
+  response: 'RESPONSE',
+  secondsAbbr: 's',
+  temperatureValue: 'Temperature: {value}',
+  characters: '{count} characters',
 
   // Workflow Steps (Expert Drawer)
   receiveTask: 'Receive Task',
@@ -359,11 +413,17 @@ export const en: Record<TranslationKey, string> = {
 export const ja: Record<TranslationKey, string> = {
   // Navigation
   newChat: '新しいチャット',
+  draftSaved: '下書きを保存しました',
+  draftRestored: '未送信のメッセージを復元しました',
   history: '会話記録',
   knowledgeBase: 'ナレッジベース',
   settings: '設定',
   home: 'ホーム',
   recentChats: '最近のチャット',
+  navDashboard: 'ダッシュボード',
+  navExperts: 'エキスパート管理',
+  memoryDump: '最近のチャット',
+  noDataStream: '[データなし]',
 
   // Home
   greeting: 'こんにちは！XPouch AI アシスタントです',
@@ -375,6 +435,17 @@ export const ja: Record<TranslationKey, string> = {
   backToChat: 'チャットに戻る',
   addCustomAgent: 'カスタムエージェントを追加',
   createYourFirstAgent: '最初のエージェントを作成',
+  statusReady: '準備完了',
+  statusIdle: '待機中',
+  heroTitle: '準備はいいですか？',
+  commandInput: 'コマンド入力',
+  initializeNew: '新規初期化',
+  online: 'オン',
+  offline: 'オフ',
+  recommended: 'おすすめシーン',
+  myConstructs: 'マイエージェント',
+  confirmDeleteAgent: 'エージェント削除の確認',
+  deleteAgentWarning: 'この操作は取り消せません。続行しますか？',
 
   // Settings
   theme: 'テーマ',
@@ -382,7 +453,6 @@ export const ja: Record<TranslationKey, string> = {
   systemSettings: 'システム設定',
   userSettings: '個人設定',
   personalSettings: '個人設定',
-  modelConfig: 'モデル設定',
 
   // Common
   save: '保存',
@@ -438,11 +508,17 @@ export const ja: Record<TranslationKey, string> = {
   send: '送信',
   enterToSend: 'Enterで送信、Shift + Enterで改行',
   describeTask: 'タスクを説明すると、AIが分解してくれます...',
+  inputPlaceholder: '// 装填準備...',
+  execute: '実行',
+  processing: '処理中',
+  initConversation: '会話を開始',
 
   // Chat Actions
   copy: 'コピー',
+  copied: 'コピー済み',
   regenerate: '再生成',
   resend: '再送信',
+  retry: '再試行',
 
   // Expert Status
   taskDescription: 'タスク説明',
@@ -455,20 +531,28 @@ export const ja: Record<TranslationKey, string> = {
   running: '実行中',
   completed: '完了',
 
+  // Orchestrator Panel
+  overview: '概要',
+  ganttViewTitle: 'ガントチャート :: MVP計画',
+  exitFullscreen: '全画面終了',
+  openFullscreen: '全画面で開く',
+  loadingModule: 'モジュール読み込み中...',
+
+  // Expert Modal
+  taskLogTitle: 'タスクログ',
+  outputConsole: '出力コンソール',
+  noOutputAvailable: '出力がありません',
+
   // Delete Dialog
   confirmDeleteTitle: '削除の確認',
   confirmDeleteDescription: 'この操作は取り消せません。続行しますか？',
   deleting: '削除中...',
-
-  // Create Agent Page
-  simpleDescription: 'エージェントを簡単に説明...',
-  defineBehavior: 'エージェントの行動、性格、能力を定義',
-  writingAssistantPlaceholder: 'あなたは専門的なライティングアシスタント...',
-  tip: 'ヒント',
-  tipDescription: '名前とシステムプロンプトを入力してエージェントを作成します。詳細なプロンプトはエージェントがあなたのニーズをよりよく理解するのに役立ちます。',
-  realtimePreview: 'リアルタイムプレビュー',
-  previewDescription: 'これはエージェントがホームページに表示される方法です',
-  submitTaskPlaceholder: 'タスクを説明すると、AIが分解してくれます...',
+  model: 'モデル',
+  temp: '温度',
+  response: '応答',
+  secondsAbbr: '秒',
+  temperatureValue: '温度: {value}',
+  characters: '{count} 文字',
 
   // Workflow Steps (Expert Drawer)
   receiveTask: 'タスクを受信',
