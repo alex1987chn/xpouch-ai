@@ -45,7 +45,27 @@ import { errorHandler } from '@/utils/logger'
 export function useChat() {
   const navigate = useNavigate()
 
-  // 1. 获取聊天核心逻辑，传入 onNewConversation 回调
+  // 1. 获取 Artifact 处理器
+  const artifactHandler = useArtifactHandler()
+
+  // 2. 组合 Artifact 处理
+  const handleArtifact = useCallback((
+    artifact: any,
+    expertId: string
+  ) => {
+    artifactHandler.handleStreamArtifact(artifact, expertId)
+  }, [artifactHandler])
+
+  // 3. 组合专家事件处理
+  const expertHandler = useExpertHandler()
+  const handleExpertEvent = useCallback(async (
+    event: any,
+    conversationMode: 'simple' | 'complex'
+  ) => {
+    await expertHandler.handleExpertEvent(event, conversationMode)
+  }, [expertHandler])
+
+  // 4. 获取带回调的聊天核心逻辑
   const chatCore = useChatCore({
     onNewConversation: useCallback((conversationId: string, agentId: string) => {
       // 👈 默认助手不添加 agentId 参数，让后端自动使用 sys-default-chat
@@ -54,35 +74,15 @@ export function useChat() {
       } else {
         navigate(`/chat/${conversationId}`, { replace: true })
       }
-    }, [navigate])
+    }, [navigate]),
+    onArtifact: handleArtifact,
+    onExpertEvent: handleExpertEvent,
   })
 
-  // 2. 获取专家事件处理器
-  const expertHandler = useExpertHandler()
-
-  // 3. 获取 Artifact 处理器
-  const artifactHandler = useArtifactHandler()
-
-  // 4. 获取会话管理器
+  // 5. 获取会话管理器
   const conversationManager = useConversation()
 
-  // 5. 组合专家事件处理
-  const handleExpertEvent = useCallback(async (
-    event: any,
-    conversationMode: 'simple' | 'complex'
-  ) => {
-    await expertHandler.handleExpertEvent(event, conversationMode)
-  }, [expertHandler])
-
-  // 6. 组合 Artifact 处理
-  const handleArtifact = useCallback((
-    artifact: any,
-    expertId: string
-  ) => {
-    artifactHandler.handleStreamArtifact(artifact, expertId)
-  }, [artifactHandler])
-
-  // 7. 重试最后一条用户消息
+  // 6. 重试最后一条用户消息
   const retry = useCallback(() => {
     const lastMessage = conversationManager.messages.filter(m => m.role === 'user').pop()
     if (lastMessage?.content) {

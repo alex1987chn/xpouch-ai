@@ -1,6 +1,6 @@
 import React from 'react'
 import { CheckCircle2, XCircle, Clock } from 'lucide-react'
-import { Dialog, DialogContent, DialogPortal, DialogOverlay } from '@/components/ui/dialog'
+import { Dialog, DialogContentBauhaus, DialogPortal, DialogOverlay } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { Z_INDEX } from '@/constants/zIndex'
@@ -90,7 +90,7 @@ export function ExpertDetailModal({ isOpen, onClose, expert }: ExpertDetailModal
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogPortal>
         <DialogOverlay className="z-[var(--z-index-modal)] bg-primary/50" />
-        <DialogContent
+        <DialogContentBauhaus
           className="
             /* 覆盖 shadcn 默认样式：去圆角，加粗边，加硬阴影 */
             sm:max-w-[800px]
@@ -189,7 +189,7 @@ export function ExpertDetailModal({ isOpen, onClose, expert }: ExpertDetailModal
               </ScrollArea>
             </div>
           </div>
-        </DialogContent>
+        </DialogContentBauhaus>
       </DialogPortal>
     </Dialog>
   )

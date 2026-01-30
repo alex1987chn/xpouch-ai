@@ -10,11 +10,22 @@ interface CodeArtifactProps {
 export default function CodeArtifact({ content, language = 'text', className }: CodeArtifactProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // 提取代码内容（去除代码块标记）
+  const extractCodeContent = (content: string): string => {
+    // 匹配 ```<lang> ... ``` 格式
+    const codeBlockMatch = content.match(/```\w*\n?([\s\S]*?)```/i)
+    if (codeBlockMatch) {
+      return codeBlockMatch[1].trim()
+    }
+    // 如果没有代码块标记，返回原始内容
+    return content.trim()
+  }
+
   // 简单的代码高亮渲染（不使用 Monaco Editor，保持轻量）
   useEffect(() => {
     if (!containerRef.current || !content) return
 
-    const code = content.trim()
+    const code = extractCodeContent(content)
     const lines = code.split('\n')
 
   // 基础语法高亮（关键词）
@@ -39,7 +50,7 @@ export default function CodeArtifact({ content, language = 'text', className }: 
   )
 
   containerRef.current.innerHTML = highlightedLines
-    .map((line, idx) => `<div class="flex"><span class="w-10 text-right text-gray-400 dark:text-gray-600 select-none mr-4 text-xs">${idx + 1}</span><pre class="flex-1 text-sm text-slate-800 dark:text-slate-200 font-mono whitespace-pre-wrap break-words">${line}</pre></div>`)
+    .map((line, idx) => `<div class="flex"><span class="w-10 text-right text-gray-500 dark:text-gray-400 select-none mr-4 text-xs">${idx + 1}</span><pre class="flex-1 text-sm text-slate-900 dark:text-slate-100 font-mono whitespace-pre-wrap break-words">${line}</pre></div>`)
     .join('')
   }, [content, language])
 

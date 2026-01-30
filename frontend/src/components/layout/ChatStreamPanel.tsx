@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { Terminal, Paperclip, Globe, Copy, Check, RefreshCw } from 'lucide-react'
-import type { Message } from '@/store/chatStore'
+import { Terminal, Paperclip, Globe, Copy, Check, RefreshCw, Square } from 'lucide-react'
+import type { Message } from '@/types'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -47,10 +47,14 @@ interface ChatStreamPanelProps {
   onInputChange: (value: string) => void
   /** 发送消息回调 */
   onSend: () => void
+  /** 停止生成回调 */
+  onStop?: () => void
   /** 当前活跃专家 (用于显示路由指示器) */
   activeExpert?: string | null
   /** 重新生成消息回调 */
   onRegenerate?: (messageId: string) => void
+  /** 链接点击回调 */
+  onLinkClick?: (href: string) => void
 }
 
 /**
@@ -66,8 +70,10 @@ export default function ChatStreamPanel({
   inputValue,
   onInputChange,
   onSend,
+  onStop,
   activeExpert,
   onRegenerate,
+  onLinkClick,
 }: ChatStreamPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -109,6 +115,7 @@ export default function ChatStreamPanel({
               isLast={index === messages.length - 1}
               activeExpert={activeExpert}
               onRegenerate={onRegenerate}
+              onLinkClick={onLinkClick}
             />
           ))
         )}
@@ -124,6 +131,7 @@ export default function ChatStreamPanel({
         value={inputValue}
         onChange={onInputChange}
         onSend={handleSend}
+        onStop={onStop}
         onKeyDown={handleKeyDown}
         disabled={isGenerating}
       />
@@ -154,11 +162,13 @@ function MessageItem({
   isLast,
   activeExpert,
   onRegenerate,
+  onLinkClick,
 }: {
   message: Message
   isLast: boolean
   activeExpert?: string | null
   onRegenerate?: (messageId: string) => void
+  onLinkClick?: (href: string) => void
 }) {
   const isUser = message.role === 'user'
   const [copied, setCopied] = useState(false)
@@ -219,14 +229,14 @@ function MessageItem({
   if (isUser) {
     // 用户消息：深色代码块风格
     return (
-      <div className="flex flex-col items-end group">
+      <div className="flex flex-col items-end group user-message">
         <div className="flex items-center gap-2 mb-1 opacity-50 group-hover:opacity-100 transition-opacity">
           <span className="font-mono text-[9px] uppercase text-secondary">ID: {String(message.id ?? '').slice(0, 6)} // USER</span>
         </div>
-        <div className="bg-primary text-inverted p-5 shadow-hard border-2 border-transparent w-fit max-w-[80%]">
+        <div className="bg-primary text-inverted p-5 shadow-hard border-2 border-transparent w-fit max-w-[80%] select-text">
           <div className="flex gap-3">
             <span className="font-mono text-[var(--accent)] font-bold shrink-0">&gt;_</span>
-            <p className="font-mono text-sm leading-relaxed whitespace-pre-wrap">
+            <p className="font-mono text-sm leading-relaxed whitespace-pre-wrap select-text">
               {message.content}
             </p>
           </div>
@@ -237,24 +247,38 @@ function MessageItem({
 
   // AI 消息：左侧色条容器 + 路由指示器
   return (
-    <div className="flex flex-col items-start w-full max-w-3xl">
+    <div className="flex flex-col items-start w-full max-w-3xl select-text ai-message">
       {/* 路由指示器 (仅在复杂模式且不是最后一条时显示) */}
       {activeExpert && !isLast && (
         <RoutingIndicator expertType={activeExpert} />
       )}
-      
+
       {/* 消息内容 */}
-      <div className="bg-card border-2 border-border border-l-[6px] border-l-[var(--accent)] p-6 w-full shadow-sm relative">
+      <div className="bg-card border-2 border-border border-l-[6px] border-l-[var(--accent)] p-6 w-full shadow-sm relative select-text">
         {/* 标签 */}
-        <div className="absolute top-0 right-0 bg-[var(--accent)] text-inverted font-mono text-[9px] px-2 py-0.5 font-bold">
+        <div className="absolute top-0 right-0 bg-[var(--accent)] text-inverted font-mono text-[9px] px-2 py-0.5 font-bold select-none">
           {activeExpert ? `${activeExpert.toUpperCase()}_RESPONSE` : 'FINAL_PLAN'}
         </div>
-        
+
         {/* Markdown 内容 */}
-        <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-sm prose-headings:font-bold prose-headings:text-primary prose-p:text-sm prose-p:leading-relaxed prose-p:text-primary prose-strong:text-primary prose-code:text-primary prose-pre:bg-panel prose-pre:border prose-pre:border-border/20 prose-a:text-blue-600 dark:prose-a:text-blue-400">
+        <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-sm prose-headings:font-bold prose-headings:text-primary prose-p:text-sm prose-p:leading-relaxed prose-p:text-primary prose-strong:text-primary prose-code:text-primary prose-pre:bg-panel prose-pre:border prose-pre:border-border/20 prose-a:text-blue-600 dark:prose-a:text-blue-400 select-text">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeHighlight]}
+            components={{
+              a: ({ node, ...props }) => (
+                <a
+                  {...props}
+                  onClick={(e) => {
+                    if (props.href?.startsWith('#')) {
+                      e.preventDefault()
+                      onLinkClick?.(props.href)
+                    }
+                  }}
+                  className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                />
+              ),
+            }}
           >
             {message.content}
           </ReactMarkdown>
@@ -267,8 +291,11 @@ function MessageItem({
           </span>
           <div className="flex gap-2">
             <button
-              onClick={handleCopy}
-              className="flex items-center gap-1 text-[10px] font-bold hover:bg-primary hover:text-inverted px-2 py-1 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleCopy()
+              }}
+              className="relative z-10 flex items-center gap-1 text-[10px] font-bold hover:bg-primary hover:text-inverted px-2 py-1 transition-colors cursor-pointer"
               title={t('copy')}
             >
               {copied ? (
@@ -285,8 +312,11 @@ function MessageItem({
             </button>
             {onRegenerate && (
               <button
-                onClick={handleRetry}
-                className="flex items-center gap-1 text-[10px] font-bold hover:bg-primary hover:text-inverted px-2 py-1 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleRetry()
+                }}
+                className="relative z-10 flex items-center gap-1 text-[10px] font-bold hover:bg-primary hover:text-inverted px-2 py-1 transition-colors cursor-pointer"
                 title={t('regenerate')}
               >
                 <RefreshCw className="w-3 h-3" />
@@ -330,12 +360,14 @@ function HeavyInputConsole({
   value,
   onChange,
   onSend,
+  onStop,
   onKeyDown,
   disabled,
 }: {
   value: string
   onChange: (value: string) => void
   onSend: () => void
+  onStop?: () => void
   onKeyDown: (e: React.KeyboardEvent) => void
   disabled?: boolean
 }) {
@@ -389,27 +421,31 @@ function HeavyInputConsole({
               </button>
             </div>
 
-            {/* 右侧：EXECUTE 按钮 */}
-            <button
-              onClick={onSend}
-              disabled={disabled || !value.trim()}
-              className={cn(
-                "px-6 py-1.5 bg-primary text-inverted font-bold text-[10px] uppercase border-2 border-transparent transition-all flex items-center gap-2 shadow-sm",
-                !disabled && value.trim() && "hover:bg-[var(--accent)] hover:text-primary hover:border-border active:translate-y-[1px]"
-              )}
-            >
-              {disabled ? (
-                <>
-                  <span className="w-3 h-3 border-2 border-inverted border-t-transparent rounded-full animate-spin" />
-                  {t('processing')}
-                </>
-              ) : (
-                <>
-                  {t('execute')}
-                  <Terminal className="w-3 h-3" />
-                </>
-              )}
-            </button>
+            {/* 右侧：EXECUTE 按钮 / 停止按钮 */}
+            {disabled && onStop ? (
+              // 停止按钮（正在生成时显示）
+              <button
+                onClick={onStop}
+                className="px-6 py-1.5 bg-[var(--logo-item-active)] text-inverted font-bold text-[10px] uppercase border-2 border-border transition-all flex items-center gap-2 shadow-sm hover:bg-[var(--accent)] hover:text-primary hover:border-border active:translate-y-[1px]"
+                title={t('stop')}
+              >
+                <Square className="w-3 h-3" />
+                {t('stop')}
+              </button>
+            ) : (
+              // 执行按钮（空闲时显示）
+              <button
+                onClick={onSend}
+                disabled={!value.trim()}
+                className={cn(
+                  "px-6 py-1.5 bg-primary text-inverted font-bold text-[10px] uppercase border-2 border-transparent transition-all flex items-center gap-2 shadow-sm",
+                  value.trim() && "hover:bg-[var(--accent)] hover:text-primary hover:border-border active:translate-y-[1px]"
+                )}
+              >
+                {t('execute')}
+                <Terminal className="w-3 h-3" />
+              </button>
+            )}
           </div>
         </div>
       </div>

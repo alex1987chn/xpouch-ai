@@ -72,22 +72,13 @@ export function useExpertHandler() {
       return
     }
 
-    // 处理任务计划事件
+    // 处理任务计划事件（不显示在对话中，只用于后端调试）
     if (expertEvent.type === 'task_plan') {
       const taskPlan = expertEvent as TaskPlanEvent
       const tasks = taskPlan.tasks || []
 
-      // 构建简单的任务列表消息
-      let taskListMessage = '📋 任务计划：\n'
-      tasks.forEach((task, index) => {
-        taskListMessage += `${index + 1}. ${task.description}\n`
-      })
-
-      addMessage({
-        id: generateUUID(),
-        role: 'system',
-        content: taskListMessage
-      })
+      debug('收到任务计划:', tasks)
+      // 不再添加到对话中，避免干扰用户
       return
     }
 
@@ -156,6 +147,18 @@ export function useExpertHandler() {
           // 兼容旧逻辑：更新 Canvas 显示代码
           setArtifact(item.type, item.content)
         })
+
+        // 检查是否是第一个专家完成并添加artifacts，如果是则自动选中
+        const expertResults = useCanvasStore.getState().expertResults
+        const completedExperts = expertResults.filter(e => 
+          e.status === 'completed' || e.status === 'failed'
+        )
+        
+        // 如果这是第一个完成的专家，自动选中它以展示第一个artifact
+        if (completedExperts.length === 1 && completedExperts[0].expertType === expertId) {
+          selectExpert(expertId)
+          selectArtifactSession(expertId)
+        }
       }
 
       // 更新专家状态为完成，包含完整信息

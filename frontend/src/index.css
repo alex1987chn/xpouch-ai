@@ -107,6 +107,69 @@
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
+  /* 改进文本选择样式 - 使用深色背景确保对比度 */
+  ::selection {
+    background-color: #0f0f0f !important;
+    color: #ffffff !important;
+  }
+
+  .dark ::selection {
+    background-color: #f5f5f5 !important;
+    color: #0a0a0a !important;
+  }
+
+  ::-moz-selection {
+    background-color: #0f0f0f !important;
+    color: #ffffff !important;
+  }
+
+  .dark ::-moz-selection {
+    background-color: #f5f5f5 !important;
+    color: #0a0a0a !important;
+  }
+
+  /* 用户消息选择样式 - 使用蓝色高对比度 */
+  .user-message ::selection {
+    background-color: var(--logo-base) !important;  /* 蓝色背景 */
+    color: #ffffff !important;                     /* 白色文字 */
+  }
+
+  .dark .user-message ::selection {
+    background-color: var(--logo-base) !important;  /* 蓝色背景 */
+    color: #ffffff !important;                       /* 白色文字 */
+  }
+
+  .user-message ::-moz-selection {
+    background-color: var(--logo-base) !important;
+    color: #ffffff !important;
+  }
+
+  .dark .user-message ::-moz-selection {
+    background-color: var(--logo-base) !important;
+    color: #ffffff !important;
+  }
+
+  /* AI 消息选择样式 - 使用高对比度的深色和亮色 */
+  .ai-message ::selection {
+    background-color: #0f0f0f !important;   /* 深色背景 - 在白色卡片上很明显 */
+    color: #ffffff !important;               /* 白色文字 */
+  }
+
+  .dark .ai-message ::selection {
+    background-color: #ffffff !important;   /* 白色背景 - 在深色卡片上很明显 */
+    color: #0a0a0a !important;               /* 深色文字 */
+  }
+
+  .ai-message ::-moz-selection {
+    background-color: #0f0f0f !important;
+    color: #ffffff !important;
+  }
+
+  .dark .ai-message ::-moz-selection {
+    background-color: #ffffff !important;
+    color: #0a0a0a !important;
+  }
+
   /* 字体配置 */
   .font-mono {
     font-family: 'Space Mono', monospace;

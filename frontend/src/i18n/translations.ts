@@ -174,7 +174,9 @@ export const zh: Record<TranslationKey, string> = {
 
   // Orchestrator Panel
   overview: '概览',
-  ganttViewTitle: '甘特图 :: MVP计划',
+  ganttViewTitle: '任务概览',
+  noArtifactsTitle: '暂无交付物',
+  noArtifactsDesc: '等待专家生成交付物。任务进行时，交付物将显示在这里。',
   exitFullscreen: '退出全屏',
   openFullscreen: '全屏打开',
   loadingModule: '加载模块中...',
@@ -417,7 +419,9 @@ export const en: Record<TranslationKey, string> = {
 
   // Orchestrator Panel
   overview: 'Overview',
-  ganttViewTitle: 'Gantt View :: MVP Plan',
+  ganttViewTitle: 'Task Overview',
+  noArtifactsTitle: 'No Artifacts Yet',
+  noArtifactsDesc: 'Waiting for experts to generate deliverables. Artifacts will appear here once the task is in progress.',
   exitFullscreen: 'Exit Fullscreen',
   openFullscreen: 'Open in Fullscreen',
   loadingModule: 'LOADING_MODULE...',
@@ -660,7 +664,9 @@ export const ja: Record<TranslationKey, string> = {
 
   // Orchestrator Panel
   overview: '概要',
-  ganttViewTitle: 'ガントチャート :: MVP計画',
+  ganttViewTitle: 'タスク概要',
+  noArtifactsTitle: 'まだ成果物がありません',
+  noArtifactsDesc: 'エキスパートによる成果物の生成を待っています。タスクが進行すると、ここに成果物が表示されます。',
   exitFullscreen: '全画面終了',
   openFullscreen: '全画面で開く',
   loadingModule: 'モジュール読み込み中...',

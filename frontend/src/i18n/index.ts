@@ -67,7 +67,8 @@ export type TranslationKey =
   // Artifact Area
   | 'noArtifacts' | 'clickExpertToView' | 'closePreview'
   // Orchestrator Panel
-  | 'overview' | 'ganttViewTitle' | 'exitFullscreen' | 'openFullscreen' | 'loadingModule'
+  | 'overview' | 'ganttViewTitle' | 'noArtifactsTitle' | 'noArtifactsDesc'
+  | 'exitFullscreen' | 'openFullscreen' | 'loadingModule'
   // Expert Modal
   | 'taskLogTitle' | 'outputConsole' | 'noOutputAvailable'
 

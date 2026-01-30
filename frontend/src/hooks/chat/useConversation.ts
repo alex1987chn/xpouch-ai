@@ -49,10 +49,10 @@ export function useConversation() {
       // 👈 使用 getState() 获取最新状态，避免闭包捕获旧值
       const store = useChatStore.getState()
       const currentId = store.currentConversationId
-      const currentMessages = store.messages
 
-      // 👈 关键修复：如果已经是当前会话且有消息，说明是新会话正在发送，不要覆盖
-      if (currentId === conversationId && currentMessages.length > 0) {
+      // 👈 关键修复：只在完全相同的会话且有消息时才阻止加载
+      // 但需要额外的检查：确保消息数量也匹配（避免上一个会话的消息残留）
+      if (currentId === conversationId && store.messages.length > 0) {
         debug('阻止重复加载：已是当前会话且已有消息')
         return
       }
