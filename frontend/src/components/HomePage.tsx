@@ -83,6 +83,7 @@ function ConstructCard({
   sideColor: string
   onClick?: () => void
 }) {
+  const { t } = useTranslation()
   const isOnline = status === 'online'
 
   return (
@@ -111,8 +112,8 @@ function ConstructCard({
           </h4>
           <div className="flex items-center gap-1 border border-[var(--border-color)] px-1 bg-[var(--bg-page)]">
             <div className={cn("w-1.5 h-1.5 rounded-full", isOnline ? "bg-green-500 animate-pulse" : "bg-gray-400")} />
-            <span className={cn("font-mono text-[9px] font-bold", !isOnline && "text-[var(--text-secondary)]")}>
-              {isOnline ? 'ON' : 'OFF'}
+              <span className={cn("font-mono text-[9px] font-bold", !isOnline && "text-[var(--text-secondary)]")}>
+              {isOnline ? t('online') : t('offline')}
             </span>
           </div>
         </div>
@@ -139,6 +140,7 @@ function ConstructCard({
 
 // Create New Card Component
 function CreateNewCard({ onClick }: { onClick?: () => void }) {
+  const { t } = useTranslation()
   return (
     <div
       onClick={onClick}
@@ -151,7 +153,7 @@ function CreateNewCard({ onClick }: { onClick?: () => void }) {
         +
       </div>
       <span className="font-bold font-mono uppercase tracking-wider text-sm group-hover:text-[var(--text-primary)]">
-        Initialize New
+        {t('initializeNew')}
       </span>
     </div>
   )
@@ -400,7 +402,7 @@ export default function HomePage() {
           {/* Command Input */}
           <div className="flex-none mb-16 relative group">
             <div className="absolute -top-3 left-4 bg-[var(--bg-page)] px-2 font-mono text-xs font-bold border-2 border-[var(--border-color)] z-20 text-[var(--text-secondary)]">
-              COMMAND_INPUT
+              {t('commandInput')}
             </div>
 
             {/* Shadow Layer */}
@@ -427,7 +429,7 @@ export default function HomePage() {
                       handleSendMessage()
                     }
                   }}
-                  placeholder="// Initialize construct..."
+                  placeholder={t('inputPlaceholder')}
                   className="flex-1 w-full h-[135px] bg-transparent py-6 text-[20px] leading-[28px] font-bold font-mono text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-0 border-none resize-none z-10 relative"
                   style={{ paddingLeft: '24px', paddingRight: '24px', paddingTop: '24px', paddingBottom: '24px' }}
                 />
@@ -479,7 +481,7 @@ export default function HomePage() {
                     disabled={!inputMessage.trim()}
                     className="px-2 sm:px-4 md:px-6 py-1.5 sm:py-2 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
                   >
-                    <span className="hidden sm:inline">EXECUTE</span>
+                    <span className="hidden sm:inline">{t('execute')}</span>
                     <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
                   </Button>
                 </div>
@@ -493,7 +495,7 @@ export default function HomePage() {
               <div className="flex justify-between items-end mb-6 border-b-2 border-[var(--border-color)] pb-2 w-full">
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 bg-[var(--accent-hover)] border border-[var(--border-color)]" />
-                  <h3 className="text-sm font-black uppercase tracking-widest">Recommended</h3>
+                  <h3 className="text-sm font-black uppercase tracking-widest">{t('recommended')}</h3>
                 </div>
                 <div className="font-mono text-[10px] text-[var(--text-secondary)]">SHOWING 3 OF 12</div>
               </div>
@@ -510,7 +512,7 @@ export default function HomePage() {
               <div className="flex justify-between items-end mb-6 border-b-2 border-[var(--border-color)] pb-2 w-full">
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 bg-[var(--logo-base)] border border-[var(--border-color)]" />
-                  <h3 className="text-sm font-black uppercase tracking-widest">My Constructs</h3>
+                  <h3 className="text-sm font-black uppercase tracking-widest">{t('myConstructs')}</h3>
                 </div>
               </div>
 
@@ -557,8 +559,8 @@ export default function HomePage() {
           setDeletingAgentName('')
         }}
         onConfirm={handleConfirmDelete}
-        title="确认删除智能体"
-        description="删除后无法恢复，请确认是否继续？"
+        title={t('confirmDeleteAgent')}
+        description={t('deleteAgentWarning')}
         itemName={deletingAgentName}
       />
     </div>

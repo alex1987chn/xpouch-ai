@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogPortal, DialogOverlay } from '@/components
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useTranslation } from '@/i18n'
 
 /**
  * ExpertResult 接口定义
@@ -53,6 +54,7 @@ interface ExpertDetailModalProps {
  * ```
  */
 export function ExpertDetailModal({ isOpen, onClose, expert }: ExpertDetailModalProps) {
+  const { t } = useTranslation()
   if (!expert) return null
 
   // 格式化耗时（秒）
@@ -182,7 +184,7 @@ export function ExpertDetailModal({ isOpen, onClose, expert }: ExpertDetailModal
                     <p>{expert.description}</p>
                   </div>
                 ) : (
-                  <div className="text-secondary text-xs">No output available</div>
+                  <div className="text-secondary text-xs">{t('noOutputAvailable')}</div>
                 )}
               </ScrollArea>
             </div>

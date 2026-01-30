@@ -5,24 +5,46 @@ export type Language = 'zh' | 'en' | 'ja'
 
 // 更新 TranslationKey 类型定义以包含所有键
 export type TranslationKey =
-  | 'newChat' | 'history' | 'knowledgeBase' | 'settings' | 'home' | 'recentChats'
+  // Navigation
+  | 'newChat' | 'draftSaved' | 'draftRestored' | 'history' | 'knowledgeBase' | 'settings' | 'home' | 'recentChats'
+  | 'navDashboard' | 'navExperts' | 'memoryDump' | 'noDataStream'
+  // Home
   | 'greeting' | 'slogan' | 'placeholder' | 'featuredAgents' | 'myAgents' | 'createAgent' | 'backToChat'
-  | 'addCustomAgent' | 'createYourFirstAgent'
+  | 'addCustomAgent' | 'createYourFirstAgent' | 'statusReady' | 'statusIdle' | 'heroTitle'
+  | 'commandInput' | 'initializeNew' | 'online' | 'offline' | 'recommended' | 'myConstructs'
+  | 'confirmDeleteAgent' | 'deleteAgentWarning'
+  // Create Agent
+  | 'agentName' | 'category' | 'description' | 'systemPrompt' | 'preview' | 'createAgent'
+  | 'chars' | 'complete' | 'almost' | 'input' | 'giveName' | 'categoryGeneral' | 'categoryDev'
+  | 'categoryCreate' | 'categoryAnalyze' | 'categoryResearch' | 'simpleDescription' | 'defineBehavior'
+  | 'writingAssistantPlaceholder' | 'tip' | 'tipDescription' | 'realtimePreview' | 'previewDescription'
+  | 'submitTaskPlaceholder' | 'loadFailed' | 'loadExpertFailed' | 'saveSuccess' | 'saveFailed'
+  | 'testInputMinCharsError' | 'executionCompleted' | 'previewFailed' | 'refreshSuccess' | 'loading'
+  | 'expertsHeader' | 'searchPlaceholder' | 'noMatchExpert' | 'config' | 'editMode' | 'previewMode'
+  | 'lastUpdated' | 'modelConfig' | 'temperature' | 'conservative' | 'balanced' | 'creative'
+  | 'minChars' | 'saving' | 'saveConfig' | 'testInput' | 'running' | 'startPreview' | 'results'
+  | 'model' | 'temp' | 'response' | 'secondsAbbr' | 'temperatureValue' | 'characters'
+  // Settings
   | 'theme' | 'language' | 'systemSettings' | 'userSettings' | 'personalSettings' | 'modelConfig'
+  // Common
   | 'save' | 'cancel' | 'delete' | 'edit' | 'confirmDelete' | 'noHistory' | 'startChat'
   | 'totalHistory' | 'totalItems' | 'matchingHistory' | 'matchingItems' | 'searchHistory'
   | 'noMatchingHistory' | 'tryOtherKeywords'
+  // Create Agent
   | 'create' | 'agentName' | 'agentNamePlaceholder' | 'description' | 'descriptionPlaceholder'
   | 'systemPrompt' | 'systemPromptPlaceholder' | 'systemPromptHint' | 'required'
-  | 'startConversation'
+  // Chat
+  | 'startConversation' | 'initConversation'
+  // Knowledge Base
   | 'newKnowledgeBase' | 'searchKnowledge' | 'documents' | 'uploadDocument'
   | 'noKnowledgeFound' | 'noKnowledgeContent' | 'createFirstKnowledge'
+  // User Menu
   | 'currentPlan' | 'logout'
   // Input & Chat
   | 'uploadImage' | 'uploadAttachment' | 'simpleMode' | 'complexMode' | 'simple' | 'complex'
-  | 'stop' | 'send' | 'enterToSend' | 'describeTask'
+  | 'stop' | 'send' | 'enterToSend' | 'describeTask' | 'inputPlaceholder' | 'execute' | 'processing'
   // Chat Actions
-  | 'copy' | 'regenerate' | 'resend'
+  | 'copy' | 'copied' | 'regenerate' | 'resend' | 'retry'
   // Expert Status
   | 'taskDescription' | 'clear' | 'expertWorkflowDetails' | 'searchExpert' | 'analyzerExpert' | 'frontendExpert'
   | 'pending' | 'running' | 'completed'
@@ -40,14 +62,14 @@ export type TranslationKey =
   | 'characters' | 'saveConfig' | 'saving' | 'saveSuccess' | 'saveFailed'
   | 'previewMode' | 'editMode' | 'startPreview' | 'previewing' | 'previewFailed'
   | 'testInput' | 'testInputPlaceholder' | 'testInputMinChars' | 'previewSuccess'
-  | 'previewResults' | 'usedModel' | 'temperature' | 'expertResponse'
+  | 'previewResults' | 'usedModel' | 'expertResponse'
   | 'executionTime' | 'seconds' | 'selectExpertPrompt' | 'loadingExperts'
   // Artifact Area
   | 'noArtifacts' | 'clickExpertToView' | 'closePreview'
-  // Expert Names
-  | 'aiAssistant' | 'commander' | 'searchExpertName' | 'codingExpert'
-  | 'researchExpert' | 'analyzerExpertName' | 'writingExpert'
-  | 'planningExpert' | 'imageAnalyzerExpert'
+  // Orchestrator Panel
+  | 'overview' | 'ganttViewTitle' | 'exitFullscreen' | 'openFullscreen' | 'loadingModule'
+  // Expert Modal
+  | 'taskLogTitle' | 'outputConsole' | 'noOutputAvailable'
 
 
 

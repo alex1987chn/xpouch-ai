@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Database, MessageSquare, Shield, Plus, User, ChevronRight, Cog, Clock, ArrowRight, Star, Plane, Crown, Globe } from 'lucide-react'
+import { Home, Database, MessageSquare, Shield, Plus, MessageSquarePlus, User, ChevronRight, Cog, Clock, ArrowRight, Star, Plane, Crown, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { The4DPocketLogo } from '@/components/bauhaus'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { getConversations, type Conversation } from '@/services/api'
 import { useUserStore } from '@/store/userStore'
+import { useChatStore } from '@/store/chatStore'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
 import { logger } from '@/utils/logger'
 import { useTranslation } from '@/i18n'
 import { getAvatarDisplay } from '@/utils/userSettings'
 import LoginDialog from '@/components/LoginDialog'
+import { useToast } from '@/components/ui/use-toast'
 
 /**
  * =============================
@@ -68,10 +70,15 @@ export default function BauhausSidebar({
   const { t, language, setLanguage } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
+  const { toast } = useToast()
   const [recentConversations, setRecentConversations] = useState<Conversation[]>([])
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false)
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false)
   const { user, isAuthenticated, logout } = useUserStore()
+  const inputMessage = useChatStore(state => state.inputMessage)
+  const setInputMessage = useChatStore(state => state.setInputMessage)
+  const setMessages = useChatStore(state => state.setMessages)
+  const setCurrentConversationId = useChatStore(state => state.setCurrentConversationId)
 
   // 判断当前页面
   const isOnHome = location.pathname === '/'
@@ -166,6 +173,32 @@ export default function BauhausSidebar({
     setIsSettingsMenuOpen(false)
   }
 
+  // 处理新建会话
+  const handleNewChat = () => {
+    // 检查当前是否在聊天页面且有未发送的消息
+    const isOnChatPage = location.pathname.startsWith('/chat')
+    const hasUnsentMessage = inputMessage?.trim().length > 0
+
+    if (isOnChatPage && hasUnsentMessage) {
+      // 保存草稿到 localStorage
+      localStorage.setItem('xpouch_chat_draft', inputMessage)
+      toast({
+        title: t('newChat'),
+        description: t('draftSaved'),
+        variant: 'default'
+      })
+    }
+
+    // 清空当前状态
+    setInputMessage('')
+    setMessages([])
+    setCurrentConversationId(null)
+
+    // 导航到新会话页面
+    navigate('/chat')
+    onMobileClose?.()
+  }
+
   return (
     <div
       className={cn(
@@ -207,31 +240,26 @@ export default function BauhausSidebar({
 
       {/* 菜单区域 */}
       <div className="flex-1 flex flex-col items-center overflow-hidden min-h-0">
-        {/* 创建智能体按钮 - 完全按照旧侧边栏：pb-4 */}
+        {/* 新建会话按钮 - 直接跳转到聊天页面 */}
         <div className="pb-4 w-full flex justify-center" style={{ maxWidth: '230px' }}>
           {isCollapsed ? (
             <div className="flex justify-center">
               <button
-                onClick={() => {
-                  onCreateAgent?.()
-                  onMobileClose?.()
-                }}
+                onClick={handleNewChat}
                 className="w-9 h-9 rounded-full border-2 border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[var(--accent-hover)_6px_6px_0_0] hover:bg-[var(--accent-hover)] hover:text-black hover:border-black active:translate-x-[2px] active:translate-y-[2px] active:shadow-none relative group"
+                title={t('newChat')}
               >
-                <Plus className="w-4 h-4 relative z-10" />
+                <MessageSquarePlus className="w-4 h-4 relative z-10" />
               </button>
             </div>
           ) : (
             <button
-              onClick={() => {
-                onCreateAgent?.()
-                onMobileClose?.()
-              }}
+              onClick={handleNewChat}
               className="w-[230px] h-[60px] rounded-lg flex items-center justify-center gap-2 border-2 border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[var(--accent-hover)_6px_6px_0_0] hover:bg-[var(--accent-hover)] hover:text-black hover:border-black active:translate-x-[2px] active:translate-y-[2px] active:shadow-none relative group px-2"
             >
               <div className="absolute top-0 right-0 w-4 h-4 bg-[var(--border-color)] transition-all group-hover:w-full group-hover:h-full group-hover:bg-[var(--accent-hover)] -z-10" />
-              <Plus className="w-4 h-4 relative z-10" />
-              <span className="relative z-10 group-hover:text-black">New Agent</span>
+              <MessageSquarePlus className="w-4 h-4 relative z-10" />
+              <span className="relative z-10 group-hover:text-black">{t('newChat')}</span>
             </button>
           )}
         </div>
@@ -318,7 +346,7 @@ export default function BauhausSidebar({
               >
                 <div className="flex items-center gap-3 px-3">
                   <Home className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-mono text-xs font-bold tracking-wide uppercase">Dashboard</span>
+                  <span className="font-mono text-xs font-bold tracking-wide uppercase">{t('navDashboard')}</span>
                 </div>
               </button>
 
@@ -334,7 +362,7 @@ export default function BauhausSidebar({
               >
                 <div className="flex items-center gap-3 px-3">
                   <Database className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-mono text-xs font-bold tracking-wide uppercase">Knowledge</span>
+                  <span className="font-mono text-xs font-bold tracking-wide uppercase">{t('knowledgeBase')}</span>
                 </div>
               </button>
 
@@ -350,7 +378,7 @@ export default function BauhausSidebar({
               >
                 <div className="flex items-center gap-3 px-3">
                   <MessageSquare className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-mono text-xs font-bold tracking-wide uppercase">History</span>
+                  <span className="font-mono text-xs font-bold tracking-wide uppercase">{t('history')}</span>
                 </div>
               </button>
 
@@ -367,7 +395,7 @@ export default function BauhausSidebar({
                 >
                   <div className="flex items-center gap-3 px-3">
                     <Shield className="w-5 h-5 flex-shrink-0" />
-                    <span className="font-mono text-xs font-bold tracking-wide uppercase">Experts</span>
+                    <span className="font-mono text-xs font-bold tracking-wide uppercase">{t('navExperts')}</span>
                   </div>
                 </button>
               )}
@@ -379,7 +407,7 @@ export default function BauhausSidebar({
               <div className="px-4 mb-2 flex items-center gap-2 opacity-50 w-[230px] mx-auto">
                 <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                  /// Memory_Dump
+                  /// {t('memoryDump')}
                 </span>
               </div>
 
@@ -413,7 +441,7 @@ export default function BauhausSidebar({
                 {/* 如果没有会话，显示空状态 */}
                 {recentConversations.length === 0 && (
                   <div className="px-3 py-2 font-mono text-[10px] text-[var(--text-secondary)] opacity-40">
-                    [NO_DATA_STREAM]
+                    {t('noDataStream')}
                   </div>
                 )}
               </div>
