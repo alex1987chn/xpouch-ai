@@ -3,12 +3,14 @@
 
 使用数据库加载的 Prompt，不再依赖硬编码常量
 """
+import os
 from typing import Dict, Any
 from langchain_core.messages import SystemMessage, HumanMessage
 from datetime import datetime
 
 from agents.expert_loader import get_expert_config_cached
 from agents.experts import EXPERT_DESCRIPTIONS
+from agents.model_fallback import get_effective_model, get_default_model
 
 
 async def run_expert_node(
@@ -33,17 +35,20 @@ async def run_expert_node(
     if not expert_config:
         # 降级：使用硬编码 Prompt（如果数据库中没有）
         from agents.experts import EXPERT_PROMPTS
+        # 👈 使用环境变量中的模型，而不是硬编码的 gpt-4o
+        default_model = get_default_model()
         expert_config = {
             "expert_key": expert_key,
             "name": EXPERT_DESCRIPTIONS.get(expert_key, expert_key),
             "system_prompt": EXPERT_PROMPTS.get(expert_key, ""),
-            "model": "gpt-4o",
+            "model": default_model,
             "temperature": 0.5
         }
-        print(f"[ExpertNode] Using fallback config for '{expert_key}'")
+        print(f"[ExpertNode] Using fallback config for '{expert_key}': model={default_model}")
 
     system_prompt = expert_config["system_prompt"]
-    model = expert_config["model"]
+    # 👈 应用模型兜底机制
+    model = get_effective_model(expert_config.get("model"))
     temperature = expert_config["temperature"]
 
     print(f"[ExpertNode] Running {expert_key} with model={model}, temp={temperature}")

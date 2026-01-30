@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional
 from datetime import datetime
 from uuid import uuid4
@@ -52,7 +53,7 @@ class SystemExpert(SQLModel, table=True):
     system_prompt: str = Field(
         description="专家系统提示词（核心字段，管理员可修改）"
     )
-    model: str = Field(default="gpt-4o", description="使用的模型")
+    model: str = Field(default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="使用的模型")
     temperature: float = Field(default=0.5, description="温度参数（0.0-2.0）")
     updated_at: datetime = Field(default_factory=datetime.now, description="最后更新时间")
 

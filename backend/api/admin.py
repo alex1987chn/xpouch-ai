@@ -73,7 +73,7 @@ class ExpertResponse(BaseModel):
 class ExpertUpdate(BaseModel):
     """专家更新 DTO"""
     system_prompt: str = PydanticField(..., min_length=10, description="系统提示词（至少10个字符）")
-    model: str = PydanticField(default="gpt-4o", description="模型名称")
+    model: str = PydanticField(default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="模型名称")
     temperature: float = PydanticField(default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）")
 
     @field_validator('system_prompt')

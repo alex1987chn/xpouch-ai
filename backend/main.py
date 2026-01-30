@@ -175,7 +175,12 @@ async def lifespan(app: FastAPI):
             print(f"[Lifespan] Initialized {len(EXPERT_DEFAULTS)} experts")
         else:
             print(f"[Lifespan] Found {len(existing_experts)} experts in database")
-    
+
+    # 清空专家缓存，确保使用最新的兜底机制重新加载
+    from agents.expert_loader import force_refresh_all
+    force_refresh_all()
+    print("[Lifespan] Expert cache cleared for fresh start")
+
     print("[Lifespan] Startup complete, yielding control to Uvicorn...")
     yield
     print("[Lifespan] Shutdown started...")
@@ -909,17 +914,16 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     # 1. 自定义智能体UUID → 直接调用 LLM（不经过 LangGraph）
     # 2. sys-default-chat 或默认情况 → 由 Router 决定简单/复杂模式
 
+    # 👈 修复：使用标志位区分系统默认助手和自定义智能体
+    is_system_default = False
+
     if normalized_agent_id == SYSTEM_AGENT_DEFAULT_CHAT:
         # 系统默认助手：由 Router 决定模式
         # - 简单查询 -> 直接调用 LLM -> thread_mode='simple'
         # - 复杂任务 -> LangGraph 专家协作 -> thread_mode='complex'
-        custom_agent = SimpleNamespace(
-            name="默认助手",
-            system_prompt=ASSISTANT_SYSTEM_PROMPT,
-            model_id=os.getenv("MODEL_NAME", "deepseek-chat"),
-            user_id=current_user.id,
-            is_default=True
-        )
+        is_system_default = True
+        custom_agent = None  # 系统默认助手不设置 custom_agent，让它走 LangGraph
+        print(f"[MAIN] 系统默认助手模式 - 将使用 LangGraph Router 决定执行路径")
     else:
         # 尝试作为自定义智能体UUID加载
         custom_agent = session.get(CustomAgent, normalized_agent_id)
@@ -929,15 +933,12 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             custom_agent.conversation_count += 1
             session.add(custom_agent)
             session.commit()
+            print(f"[MAIN] 自定义智能体模式 - 直接调用 LLM: {custom_agent.name}")
         else:
             # 未找到自定义智能体，回退到系统默认助手
-            custom_agent = SimpleNamespace(
-                name="默认助手",
-                system_prompt=ASSISTANT_SYSTEM_PROMPT,
-                model_id=os.getenv("MODEL_NAME", "deepseek-chat"),
-                user_id=current_user.id,
-                is_default=True
-            )
+            is_system_default = True
+            custom_agent = None
+            print(f"[MAIN] 未找到自定义智能体，回退到系统默认助手模式")
 
     # 如果是自定义智能体，使用直接 LLM 调用模式（不经过 LangGraph）
     if custom_agent:
@@ -1085,6 +1086,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
     # 4. 流式响应处理
     if request.stream:
         async def event_generator():
+            nonlocal thread  # 👈 声明 thread 是外层函数的变量
             full_response = ""
             event_count = 0
 
