@@ -8,6 +8,7 @@ import re
 from langchain_core.messages import SystemMessage, HumanMessage
 from agents.expert_loader import get_expert_config_cached
 from constants import EXPERT_DESCRIPTIONS, EXPERT_PROMPTS
+from agents.model_fallback import get_effective_model, get_default_model
 
 # ============================================================================
 # 🛠️ 核心辅助函数：获取专家配置
@@ -17,20 +18,22 @@ def _get_expert_settings(expert_key: str) -> Tuple[str, str, float]:
     """
     获取专家的运行时配置 (Prompt, Model, Temperature)
     优先级：数据库动态配置 > 硬编码默认值
+    模型兜底：如果配置的模型不可用，自动切换为环境变量中的默认模型
     """
     # 1. 尝试读库
     db_config = get_expert_config_cached(expert_key)
-    
+
     if db_config:
         # 数据库中有配置
         prompt = db_config.get("system_prompt") or EXPERT_PROMPTS.get(expert_key, "")
-        model = db_config.get("model", "gpt-4o") # 默认模型
+        # 应用模型兜底机制
+        model = get_effective_model(db_config.get("model"))
         temp = db_config.get("temperature", 0.5)
         return prompt, model, temp
-    
+
     # 2. 回退到硬编码
     prompt = EXPERT_PROMPTS.get(expert_key, "You are a helpful assistant.")
-    return prompt, "gpt-4o", 0.5
+    return prompt, get_default_model(), 0.5
 
 def format_input_data(data: Dict[str, Any]) -> str:
     """格式化输入数据"""

@@ -6,6 +6,7 @@
 from typing import Dict, Optional
 from sqlmodel import Session, select
 from models import SystemExpert
+from agents.model_fallback import get_effective_model
 
 # 内存缓存（避免每次查询数据库）
 _expert_cache: Dict[str, Dict] = {}
@@ -40,11 +41,14 @@ def get_expert_config(
         print(f"[ExpertLoader] Expert '{expert_key}' not found in database")
         return None
 
+    # 应用模型兜底机制
+    effective_model = get_effective_model(expert.model)
+
     return {
         "expert_key": expert.expert_key,
         "name": expert.name,
         "system_prompt": expert.system_prompt,
-        "model": expert.model,
+        "model": effective_model,
         "temperature": expert.temperature
     }
 
@@ -81,11 +85,13 @@ def load_all_experts(session: Session) -> Dict[str, Dict]:
 
     config_map = {}
     for expert in experts:
+        # 应用模型兜底机制
+        effective_model = get_effective_model(expert.model)
         config_map[expert.expert_key] = {
             "expert_key": expert.expert_key,
             "name": expert.name,
             "system_prompt": expert.system_prompt,
-            "model": expert.model,
+            "model": effective_model,
             "temperature": expert.temperature
         }
 

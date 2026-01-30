@@ -6,6 +6,7 @@
 2. 使用动态模型和温度参数
 3. 支持管理员实时更新 Prompt
 """
+import os
 from typing import Dict, Any, List
 from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 from langchain_openai import ChatOpenAI
@@ -13,6 +14,7 @@ from datetime import datetime
 
 from agents.expert_loader import get_expert_config_cached, refresh_cache
 from agents.experts import EXPERT_DESCRIPTIONS
+from agents.model_fallback import get_effective_model, get_default_model
 
 
 def create_expert_function(expert_key: str):
@@ -44,17 +46,20 @@ def create_expert_function(expert_key: str):
         if not expert_config:
             # 降级：使用硬编码 Prompt
             from agents.experts import EXPERT_PROMPTS
+            # 👈 使用环境变量中的模型，而不是硬编码的 gpt-4o
+            default_model = get_default_model()
             expert_config = {
                 "expert_key": expert_key,
                 "name": EXPERT_DESCRIPTIONS.get(expert_key, expert_key),
                 "system_prompt": EXPERT_PROMPTS.get(expert_key, ""),
-                "model": "gpt-4o",
+                "model": default_model,
                 "temperature": 0.5
             }
-            print(f"[DynamicExpert] Using fallback config for '{expert_key}'")
+            print(f"[DynamicExpert] Using fallback config for '{expert_key}': model={default_model}")
 
         system_prompt = expert_config["system_prompt"]
-        model = expert_config["model"]
+        # 👈 应用模型兜底机制
+        model = get_effective_model(expert_config.get("model"))
         temperature = expert_config["temperature"]
 
         print(f"[DynamicExpert] Running {expert_key} with model={model}, temp={temperature}")

@@ -58,27 +58,42 @@ llm = ChatOpenAI(
 # ============================================================================
 
 ROUTER_SYSTEM_PROMPT = """
-你是 XPouch OS 的中央路由指挥官（Router）。你的唯一职责是分析用户的意图并进行分类。
+你是 XPouch AI 的中央路由指挥官（Router）。你的唯一职责是分析用户的意图并进行分类。
 
-【分类规则】
-1. **简单/直接回复 (Simple / Direct Reply)**:
-   - 问候语（"你好", "Hi", "在吗"）
-   - 简单的自我介绍
-   - 极其基础的常识问题（"法国的首都是哪里？"）
-   - 简单的确认（"好的", "明白", "谢谢"）
+【分类规则 - 重要】
+
+1. **简单/直接回复 (Simple / Direct Reply)** - 仅限以下情况：
+   - 问候语（"你好", "Hi", "在吗", "早上好"）
+   - 极其基础的常识问题（"法国的首都是哪里？", "1+1等于几"）
+   - 简单的确认（"好的", "明白", "谢谢", "ok"）
+   - 闲聊（"今天天气怎么样", "讲个笑话"）
    -> 动作：你自己直接生成回复内容。
 
-2. **复杂/智能体任务 (Complex / Agent Task)**:
-   - 编写代码、调试 Bug、解释代码
-   - 网络搜索、深度研究
-   - 生成文件、表格、长文档
-   - 多步推理逻辑
-   - 任何需要调用工具或专家 (Experts) 的请求
-   -> 动作：委派给 'planner' (规划器)。
+2. **复杂/智能体任务 (Complex / Agent Task)** - 以下情况**必须**选择 complex：
+   - **编写代码、调试 Bug、代码审查、代码解释**（任何与代码相关的）
+   - **网络搜索、信息检索、深度研究、数据分析**
+   - **生成文件、文档、表格、报告、PPT 内容**
+   - **多步骤任务、需要分解的问题**
+   - **涉及多个领域的复杂问题**
+   - **任何需要调用工具、搜索网页、或专业专家处理的请求**
+   - **用户明确要求"搜索"、"查询"、"分析"、"比较"、"总结"等**
+
+【判断原则】
+- **宁可 complex，不要 simple** - 如果不确定，选择 complex，让 Planner 来处理
+- **代码相关任务一律 complex** - 即使是"Hello World"也走 complex 模式
+- **需要实时信息的任务一律 complex** - 如价格、天气、新闻等
 
 【输出格式】
 你必须严格按照以下 JSON 格式输出：
 {format_instructions}
+
+【示例】
+用户："你好" -> simple
+用户："帮我写个 Python 爬虫" -> complex
+用户："解释这段代码" -> complex  
+用户："搜索最新的 AI 新闻" -> complex
+用户："帮我规划一个项目" -> complex
+用户："巴黎天气怎么样" -> complex (需要实时信息)
 """
 
 class RoutingDecision(BaseModel):
@@ -133,12 +148,15 @@ async def router_node(state: AgentState) -> Dict[str, Any]:
     [守门人] 对意图进行分类：Simple vs Complex
     """
     messages = state["messages"]
+    last_message = messages[-1].content if messages else ""
     
     # 0. 检查"直接专家模式" (Direct Mode)
     # 如果状态中已经预置了 task_list，说明是系统恢复或 API 指定任务，直接跳过意图检查
     if state.get("task_list") and len(state.get("task_list", [])) > 0:
-        print("[ROUTER] 检测到现有任务列表，跳过意图检查 -> Complex")
+        print(f"[ROUTER] 检测到现有任务列表，跳过意图检查 -> Complex")
         return {"router_decision": "complex"}
+
+    print(f"[ROUTER] 分析用户输入: '{last_message[:100]}...' " if len(str(last_message)) > 100 else f"[ROUTER] 分析用户输入: '{last_message}'")
 
     # 1. 调用 LLM 进行分类
     # 使用通用的 PydanticOutputParser（兼容 DeepSeek/OpenAI）
@@ -155,10 +173,12 @@ async def router_node(state: AgentState) -> Dict[str, Any]:
             SystemMessage(content=prompt),
             *messages
         ])
+        print(f"[ROUTER] LLM 原始响应: {response.content[:200]}..." if len(response.content) > 200 else f"[ROUTER] LLM 原始响应: {response.content}")
         # 解析输出
         decision = parser.parse(response.content)
     except Exception as e:
         print(f"[ROUTER] 解析错误，回退到 Complex 模式: {e}")
+        print(f"[ROUTER] 错误详情: {str(e)}")
         # 安全回退：如果有问题，默认当作复杂任务处理
         decision = RoutingDecision(intent="complex", thought="Fallback due to parse error", direct_response="")
 
@@ -194,9 +214,9 @@ async def planner_node(state: AgentState) -> Dict[str, Any]:
     
     if not commander_config:
         system_prompt = PLANNER_SYSTEM_PROMPT
-        model = "gpt-4o"
+        model = model_name  # 👈 使用与 Router 相同的模型（从环境变量读取）
         temperature = 0.5
-        print(f"[PLANNER] 使用默认回退配置")
+        print(f"[PLANNER] 使用默认回退配置: model={model}")
     else:
         system_prompt = commander_config["system_prompt"]
         model = commander_config["model"]

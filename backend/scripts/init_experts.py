@@ -8,6 +8,7 @@
 1. 安全模式（默认）：仅创建缺失的专家，不覆盖现有专家
 2. 更新模式（--update）：覆盖现有专家的配置为默认值
 3. 异步兼容：自动检测数据库引擎类型，支持同步和异步会话
+4. 模型自动适配：从环境变量读取默认模型
 
 使用方法：
   python init_experts.py [options]
@@ -28,8 +29,13 @@
   # 列出所有专家
   python init_experts.py list
 """
+import os
 import sys
 from pathlib import Path
+
+# 从环境变量读取默认模型，默认使用 deepseek-chat
+DEFAULT_EXPERT_MODEL = os.getenv("MODEL_NAME", "deepseek-chat")
+print(f"[InitExperts] 使用默认模型: {DEFAULT_EXPERT_MODEL}")
 
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -64,6 +70,7 @@ def get_session_class_and_engine():
 
 
 # 专家默认配置（导出给 main.py 使用）
+# 使用环境变量中的 MODEL_NAME 作为默认模型
 EXPERT_DEFAULTS = [
     {
         "expert_key": "search",
@@ -94,7 +101,7 @@ EXPERT_DEFAULTS = [
 - 如遇到信息不足或不确定的情况，请明确告知
 - 避免编造信息，只提供可靠的搜索结果
 - 保持客观中立的立场""",
-        "model": "gpt-4o",
+        "model": DEFAULT_EXPERT_MODEL,
         "temperature": 0.3
     },
     {
@@ -126,7 +133,7 @@ EXPERT_DEFAULTS = [
 - 考虑错误处理和异常情况
 - 提供测试建议和验证方法
 - 遵循代码规范和最佳实践""",
-        "model": "gpt-4o",
+        "model": DEFAULT_EXPERT_MODEL,
         "temperature": 0.2
     },
     {
@@ -159,7 +166,7 @@ EXPERT_DEFAULTS = [
 - 标注信息的不确定性
 - 提供多维度的分析视角
 - 识别潜在的偏见和局限性""",
-        "model": "gpt-4o",
+        "model": DEFAULT_EXPERT_MODEL,
         "temperature": 0.4
     },
     {
@@ -193,7 +200,7 @@ EXPERT_DEFAULTS = [
 - 区分相关性和因果性
 - 提供基于证据的推理
 - 识别潜在的风险和机会""",
-        "model": "gpt-4o",
+        "model": DEFAULT_EXPERT_MODEL,
         "temperature": 0.3
     },
     {
@@ -227,7 +234,7 @@ EXPERT_DEFAULTS = [
 - 避免冗余和重复
 - 根据需求调整文风和语调
 - 确保专业术语的使用准确""",
-        "model": "gpt-4o",
+        "model": DEFAULT_EXPERT_MODEL,
         "temperature": 0.6
     },
     {
@@ -262,7 +269,7 @@ EXPERT_DEFAULTS = [
 - 识别潜在的瓶颈和风险点
 - 提供灵活的调整方案
 - 确保计划的清晰和可执行性""",
-        "model": "gpt-4o",
+        "model": DEFAULT_EXPERT_MODEL,
         "temperature": 0.3
     },
     {
@@ -297,14 +304,14 @@ EXPERT_DEFAULTS = [
 - 如遇到不明确的内容，如实说明
 - 保持客观的分析立场
 - 根据需求调整分析的深度和广度""",
-        "model": "gpt-4o",
+        "model": DEFAULT_EXPERT_MODEL,
         "temperature": 0.3
     },
     {
         "expert_key": "commander",
         "name": "任务指挥官",
         "system_prompt": COMMANDER_SYSTEM_PROMPT,
-        "model": "gpt-4o",
+        "model": DEFAULT_EXPERT_MODEL,
         "temperature": 0.5
     }
 ]
