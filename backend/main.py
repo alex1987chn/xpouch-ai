@@ -1083,7 +1083,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
         "router_decision": ""  # Router 会填充此字段
     }
 
-    # 4. 流式响应处理
+        # 4. 流式响应处理
     if request.stream:
         async def event_generator():
             nonlocal thread  # 👈 声明 thread 是外层函数的变量
@@ -1092,6 +1092,10 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
 
             # 为每个专家维护 artifact 列表（支持多个 artifact 累积）
             expert_artifacts = {}
+
+            # 收集 task_list 和 expert_results（用于持久化）
+            collected_task_list = []
+            collected_expert_results = []
 
             try:
                 async for event in commander_graph.astream_events(
@@ -1105,6 +1109,12 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                     # 每收到10个事件打印一次进度（调试用）
                     if event_count % 10 == 0:
                         print(f"[STREAM] 已处理 {event_count} 个事件，当前: {kind} - {name}")
+
+                    # 👈 捕获指挥官节点执行结束（收集 task_list）
+                    if kind == "on_chain_end" and name == "commander":
+                        output_data = event["data"]["output"]
+                        if "task_list" in output_data:
+                            collected_task_list = output_data["task_list"]
 
                     # 👈 捕获 Router 节点执行结束（获取路由决策）
                     if kind == "on_chain_end" and name == "router":
@@ -1203,8 +1213,14 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                                 'allArtifacts': expert_artifacts.get(expert_name, [])
                             })}\n\n"
 
-                    # 捕获 LLM 流式输出
+                    # 捕获 LLM 流式输出（排除 Router 节点，避免推送决策 JSON）
                     if kind == "on_chat_model_stream":
+                        # 检查是否是 Router 节点的输出
+                        event_tags = event.get("tags", [])
+                        if "router" in str(event_tags).lower():
+                            print(f"[STREAM] 跳过 Router 节点的流式输出")
+                            continue
+
                         content = event["data"]["chunk"].content
                         if content:
                             full_response += content
@@ -1219,7 +1235,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                 error_msg = json.dumps({"error": str(e)})
                 yield f"data: {error_msg}\n\n"
 
-            # 5. 流式结束后，保存 AI 回复到数据库
+            # 5. 流式结束后，保存 AI 回复和 Artifacts 到数据库
             if full_response:
                 ai_msg_db = Message(
                     thread_id=thread_id,
@@ -1230,11 +1246,58 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                 from database import engine
                 with Session(engine) as inner_session:
                     inner_session.add(ai_msg_db)
+
                     # 更新线程时间
                     thread = inner_session.get(Thread, thread_id)
                     if thread:
                         thread.updated_at = datetime.now()
+
+                    # 如果是复杂模式，保存 TaskSession 和 SubTask
+                    if thread.thread_mode == "complex" and collected_task_list:
+                        print(f"[STREAM] 保存复杂模式数据: {len(collected_task_list)} 个任务")
+
+                        # 创建 TaskSession
+                        task_session = TaskSession(
+                            session_id=str(uuid.uuid4()),
+                            thread_id=thread_id,
+                            user_query=request.message,
+                            status="completed",
+                            final_response=full_response,
+                            created_at=datetime.now(),
+                            updated_at=datetime.now(),
+                            completed_at=datetime.now()
+                        )
+                        inner_session.add(task_session)
+                        inner_session.flush()  # 确保 task_session 有 ID
+
+                        # 更新 thread 的 task_session_id 和 agent_type
+                        thread.task_session_id = task_session.session_id
+                        thread.agent_type = "ai"
                         inner_session.add(thread)
+
+                        # 保存每个 SubTask
+                        for task in collected_task_list:
+                            expert_type = task.get("expert_type", "")
+                            # 获取该专家的 artifacts
+                            artifacts_for_expert = expert_artifacts.get(expert_type, [])
+
+                            subtask = SubTask(
+                                id=task.get("id", str(uuid.uuid4())),
+                                expert_type=expert_type,
+                                task_description=task.get("description", ""),
+                                input_data=task.get("input_data", {}),
+                                status=task.get("status", "completed"),
+                                output_result={"content": task.get("output_result", "")},
+                                artifacts=artifacts_for_expert,  # 👈 保存 artifacts
+                                task_session_id=task_session.session_id,
+                                started_at=task.get("started_at"),
+                                completed_at=task.get("completed_at"),
+                                created_at=task.get("created_at"),
+                                updated_at=task.get("updated_at"),
+                            )
+                            inner_session.add(subtask)
+                            print(f"[STREAM] 保存 SubTask: {expert_type}, artifacts: {len(artifacts_for_expert)}")
+
                     inner_session.commit()
 
             yield "data: [DONE]\n\n"
@@ -1256,6 +1319,51 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
         # 👈 获取 Router 决策并更新 thread_mode
         router_decision = result.get("router_decision", "simple")
         thread.thread_mode = router_decision
+
+        # 如果是复杂模式，设置 agent_type 为 "ai"
+        if router_decision == "complex":
+            thread.agent_type = "ai"
+
+            # 创建 TaskSession
+            task_session = TaskSession(
+                session_id=str(uuid.uuid4()),
+                thread_id=thread_id,
+                user_query=request.message,
+                status="completed",
+                final_response=last_message.content,
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+                completed_at=datetime.now()
+            )
+            session.add(task_session)
+            session.flush()  # 确保 task_session 有 ID
+
+            # 更新 thread 的 task_session_id
+            thread.task_session_id = task_session.session_id
+
+            # 保存 SubTask（包括 artifacts）
+            for subtask in result["task_list"]:
+                # 检查是否有 artifact 字段
+                artifacts = subtask.get("artifact")
+                if artifacts:
+                    # 将单个 artifact 转换为列表格式
+                    artifacts = [artifacts] if isinstance(artifacts, dict) else artifacts
+
+                db_subtask = SubTask(
+                    id=subtask["id"],
+                    expert_type=subtask["expert_type"],
+                    task_description=subtask["description"],
+                    input_data=subtask["input_data"],
+                    status=subtask["status"],
+                    output_result=subtask["output_result"],
+                    artifacts=artifacts,
+                    started_at=subtask.get("started_at"),
+                    completed_at=subtask.get("completed_at"),
+                    created_at=subtask.get("created_at"),
+                    updated_at=subtask.get("updated_at"),
+                    task_session_id=task_session.session_id
+                )
+                session.add(db_subtask)
 
         # 保存 AI 回复
         ai_msg_db = Message(
@@ -1375,6 +1483,12 @@ async def chat_invoke_endpoint(
             # 保存 SubTask 到数据库
             for subtask in final_state["task_list"]:
                 # task_list 现在是字典列表，直接使用字典字段
+                # 检查是否有 artifact 字段
+                artifacts = subtask.get("artifact")
+                if artifacts:
+                    # 将单个 artifact 转换为列表格式
+                    artifacts = [artifacts] if isinstance(artifacts, dict) else artifacts
+
                 db_subtask = SubTask(
                     id=subtask["id"],
                     expert_type=subtask["expert_type"],
@@ -1382,6 +1496,7 @@ async def chat_invoke_endpoint(
                     input_data=subtask["input_data"],
                     status=subtask["status"],
                     output_result=subtask["output_result"],
+                    artifacts=artifacts,  # 👈 保存 artifacts
                     started_at=subtask.get("started_at"),
                     completed_at=subtask.get("completed_at"),
                     created_at=subtask["created_at"],

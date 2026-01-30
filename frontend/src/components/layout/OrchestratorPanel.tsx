@@ -142,12 +142,12 @@ function ExpertRail({
                   "w-10 h-10 border-2 flex items-center justify-center transition-all relative z-10",
                   isActive
                     ? "border-border bg-card shadow-[2px_2px_0_0_rgba(0,0,0,0.2)] hover:bg-[var(--accent)]"
-                    : "border-border/50 bg-page opacity-50 hover:opacity-100 hover:border-border hover:bg-card"
+                    : "border-border/70 bg-page hover:opacity-80 hover:border-border hover:bg-card"
                 )}
               >
                 <span className={cn(
                   "font-black text-xs",
-                  isActive ? "text-primary" : "text-secondary dark:text-secondary"
+                  isActive ? "text-primary" : "text-secondary dark:text-primary/60"
                 )}>
                   {label}
                 </span>
@@ -186,31 +186,39 @@ function ArtifactDashboard({
   onToggleFullscreen?: () => void
 }) {
   const { t } = useTranslation()
-  const [activeTab, setActiveTab] = useState<string>(selectedArtifact?.id || 'overview')
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    // 如果有 artifacts，默认选中第一个；否则显示概览
+    return selectedArtifact?.id || (artifacts.length > 0 ? artifacts[0].id : 'overview')
+  })
 
-  // 如果有选中的 artifact，显示它；否则显示概览
-  const currentArtifact = selectedArtifact || artifacts[0]
+  // 如果有选中的 artifact，显示它；否则显示第一个 artifact 或概览
+  const currentArtifact = selectedArtifact || (artifacts.length > 0 ? artifacts[0] : null)
+
+  // 当没有 artifacts 时才显示概览标签
+  const showOverviewTab = artifacts.length === 0
 
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-page">
       {/* Tab 栏 */}
       <div className="h-10 flex items-end px-2 gap-1 border-b-2 border-border bg-panel shrink-0 overflow-x-auto scrollbar-hide">
-        {/* 概览 Tab */}
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={cn(
-            "h-8 px-4 flex items-center gap-2 relative transition-all",
-            activeTab === 'overview'
-              ? "bg-card border-2 border-border border-b-0 top-[2px] z-10"
-              : "h-7 px-4 bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100"
-          )}
-        >
-          <LayoutGrid className="w-3 h-3" />
-          <span className="font-mono text-xs font-bold">{t('overview')}</span>
-        </button>
+        {/* 概览 Tab - 仅在没有 artifacts 时显示 */}
+        {showOverviewTab && (
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={cn(
+              "h-8 px-4 flex items-center gap-2 relative transition-all",
+              activeTab === 'overview'
+                ? "bg-card border-2 border-border border-b-0 top-[2px] z-10"
+                : "h-7 px-4 bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100"
+            )}
+          >
+            <LayoutGrid className="w-3 h-3" />
+            <span className="font-mono text-xs font-bold">{t('overview')}</span>
+          </button>
+        )}
 
-        {/* Artifact Tabs */}
-        {artifacts.slice(0, 3).map((artifact) => (
+        {/* Artifact Tabs - 仅在有 artifacts 时显示 */}
+        {!showOverviewTab && artifacts.slice(0, 3).map((artifact) => (
           <button
             key={artifact.id}
             onClick={() => {
@@ -258,25 +266,27 @@ function ArtifactDashboard({
           {/* 内容体 */}
           <div className="flex-1 overflow-auto p-4">
             {activeTab === 'overview' || !currentArtifact ? (
-              <GanttOverview />
+              <EmptyState />
             ) : (
               <ArtifactContent artifact={currentArtifact} />
             )}
           </div>
 
           {/* 底部操作栏 */}
-          <div className="absolute bottom-4 right-4">
-            <button
-              onClick={onToggleFullscreen}
-              className="px-4 py-2 bg-primary text-inverted font-mono text-xs hover:bg-[var(--accent)] hover:text-primary border-2 border-transparent hover:border-border transition-colors shadow-hard flex items-center gap-2"
-            >
-              {isFullscreen ? (
-                <><span className="text-lg leading-none">−</span> {t('exitFullscreen')}</>
-              ) : (
-                <><Maximize2 className="w-3 h-3" /> {t('openFullscreen')}</>
-              )}
-            </button>
-          </div>
+          {currentArtifact && (
+            <div className="absolute bottom-4 right-4">
+              <button
+                onClick={onToggleFullscreen}
+                className="px-4 py-2 bg-primary text-inverted font-mono text-xs hover:bg-[var(--accent)] hover:text-primary border-2 border-transparent hover:border-border transition-colors shadow-hard flex items-center gap-2"
+              >
+                {isFullscreen ? (
+                  <><span className="text-lg leading-none">−</span> {t('exitFullscreen')}</>
+                ) : (
+                  <><Maximize2 className="w-3 h-3" /> {t('openFullscreen')}</>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -293,54 +303,44 @@ function ArtifactDashboard({
   )
 }
 
-/** 甘特图概览 */
-function GanttOverview() {
-  const weeks = [
-    { label: 'Week 1', progress: 40, color: 'bg-primary', offset: 0 },
-    { label: 'Week 2', progress: 30, color: 'bg-[var(--accent)]', offset: 40 },
-    { label: 'Week 3', progress: 20, color: 'bg-secondary', offset: 70 },
-    { label: 'Week 4', progress: 10, color: 'bg-border/30', offset: 90 },
-  ]
+/** 空状态 - 占位效果 */
+function EmptyState() {
+  const { t } = useTranslation()
 
   return (
-    <div className="space-y-4 p-4">
-      <div className="text-xs text-secondary mb-6 font-mono">
-        // Project Timeline Overview
-      </div>
-      
-      {weeks.map((week, index) => (
-        <div key={week.label} className="flex items-center gap-4">
-          <div className="w-20 text-[9px] font-mono text-right text-secondary">
-            {week.label}
-          </div>
-          <div className="flex-1 bg-panel h-6 rounded-sm overflow-hidden border border-border/20">
-            <div 
-              className={cn("h-full transition-all duration-500", week.color)}
-              style={{ 
-                width: `${week.progress}%`,
-                marginLeft: `${week.offset}%`
-              }}
-            />
-          </div>
-          <div className="w-10 text-[9px] font-mono text-secondary">
-            {week.progress}%
+    <div className="h-full flex flex-col items-center justify-center p-8 border-2 border-dashed border-border/30 bg-panel/50">
+      <div className="text-center space-y-6">
+        {/* 图标 */}
+        <div className="flex justify-center">
+          <div className="w-16 h-16 border-2 border-border bg-card shadow-hard flex items-center justify-center">
+            <LayoutGrid className="w-8 h-8 text-secondary" />
           </div>
         </div>
-      ))}
 
-      {/* 图例 */}
-      <div className="mt-8 pt-4 border-t border-border/20 flex gap-6 text-[9px] font-mono">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-primary" />
-          <span>Backend</span>
+        {/* 标题 */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-primary">
+            {t('noArtifactsTitle') || 'No Artifacts Yet'}
+          </h3>
+          <p className="text-xs text-secondary max-w-sm mx-auto leading-relaxed">
+            {t('noArtifactsDesc') || 'Waiting for experts to generate deliverables. Artifacts will appear here once the task is in progress.'}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-[var(--accent)]" />
-          <span>Frontend</span>
+
+        {/* 装饰性元素 */}
+        <div className="flex justify-center gap-2 pt-4">
+          <div className="w-2 h-2 bg-border/30" />
+          <div className="w-2 h-2 bg-border/50" />
+          <div className="w-2 h-2 bg-[var(--accent)]" />
+          <div className="w-2 h-2 bg-border/50" />
+          <div className="w-2 h-2 bg-border/30" />
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-secondary" />
-          <span>Testing</span>
+
+        {/* 技术装饰 */}
+        <div className="pt-4 border-t border-border/20">
+          <div className="text-[9px] font-mono text-secondary/60">
+            STATUS: <span className="text-[var(--accent)]">WAITING_FOR_TASK</span>
+          </div>
         </div>
       </div>
     </div>
@@ -366,31 +366,31 @@ function ArtifactContent({ artifact }: { artifact: Artifact }) {
       case 'code':
         return (
           <Suspense fallback={<ArtifactLoader />}>
-            <CodeArtifact artifact={artifact} />
+            <CodeArtifact content={artifact.content} language={artifact.language} />
           </Suspense>
         )
       case 'markdown':
         return (
           <Suspense fallback={<ArtifactLoader />}>
-            <DocArtifact artifact={artifact} />
+            <DocArtifact content={artifact.content} />
           </Suspense>
         )
       case 'html':
         return (
           <Suspense fallback={<ArtifactLoader />}>
-            <HtmlArtifact artifact={artifact} />
+            <HtmlArtifact content={artifact.content} />
           </Suspense>
         )
       case 'search':
         return (
           <Suspense fallback={<ArtifactLoader />}>
-            <SearchArtifact artifact={artifact} />
+            <SearchArtifact content={artifact.content} />
           </Suspense>
         )
       case 'text':
         return (
           <Suspense fallback={<ArtifactLoader />}>
-            <TextArtifact artifact={artifact} />
+            <TextArtifact content={artifact.content} />
           </Suspense>
         )
       default:

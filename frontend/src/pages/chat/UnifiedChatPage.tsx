@@ -82,6 +82,7 @@ export default function UnifiedChatPage() {
     isStreaming,
     isLoading,
     sendMessage,
+    stopGeneration,
     loadConversation,
     retry
   } = useChat()
@@ -245,6 +246,23 @@ export default function UnifiedChatPage() {
       setPreviewExpert(expert)
       setShowPreviewModal(true)
       useCanvasStore.getState().selectExpert(expert.expertType)
+      // 同时选中 artifact session
+      useCanvasStore.getState().selectArtifactSession(expert.expertType)
+    }
+  }, [expertResults])
+
+  // 处理消息中的链接点击（如"查看交付物"）
+  const handleLinkClick = useCallback((href: string) => {
+    // 链接格式：#expertId，如 #writer
+    const expertId = href.replace('#', '')
+    if (expertId) {
+      const expert = expertResults.find((e: ExpertResult) => e.expertType === expertId)
+      if (expert) {
+        setPreviewExpert(expert)
+        setShowPreviewModal(true)
+        useCanvasStore.getState().selectExpert(expertId)
+        useCanvasStore.getState().selectArtifactSession(expertId)
+      }
     }
   }, [expertResults])
 
@@ -321,6 +339,7 @@ export default function UnifiedChatPage() {
       <IndustrialChatLayout
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        isFullscreen={isFullscreen}
         chatStreamPanel={
           <ChatStreamPanel
             messages={messages}
@@ -328,8 +347,10 @@ export default function UnifiedChatPage() {
             inputValue={inputValue}
             onInputChange={setInputValue}
             onSend={handleSend}
+            onStop={stopGeneration}
             activeExpert={selectedExpertId}
             onRegenerate={() => retry()}
+            onLinkClick={handleLinkClick}
           />
         }
         orchestratorPanel={

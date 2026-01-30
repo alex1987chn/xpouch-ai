@@ -91,9 +91,21 @@ async def run_expert_node(
             "duration_ms": duration_ms
         }
 
-        # 添加 text artifact
+        # 根据专家类型确定 artifact 类型
+        artifact_type_map = {
+            "coder": "code",
+            "writer": "markdown",
+            "search": "search",
+            "planner": "markdown",
+            "researcher": "markdown",
+            "analyzer": "markdown",
+            "image_analyzer": "text",
+        }
+        artifact_type = artifact_type_map.get(expert_key, "text")
+
+        # 添加 artifact
         result["artifact"] = {
-            "type": "text",
+            "type": artifact_type,
             "title": f"{expert_config['name']}结果",
             "content": response.content,
             "source": f"{expert_key}_expert"

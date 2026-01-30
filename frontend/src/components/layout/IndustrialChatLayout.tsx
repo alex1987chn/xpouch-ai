@@ -53,6 +53,8 @@ interface IndustrialChatLayoutProps {
   viewMode?: 'chat' | 'preview'
   /** 切换视图模式 */
   onViewModeChange?: (mode: 'chat' | 'preview') => void
+  /** 是否全屏模式 (右侧面板占满屏幕) */
+  isFullscreen?: boolean
 }
 
 export default function IndustrialChatLayout({
@@ -61,6 +63,7 @@ export default function IndustrialChatLayout({
   hideOrchestrator = false,
   viewMode = 'chat',
   onViewModeChange,
+  isFullscreen = false,
 }: IndustrialChatLayoutProps) {
   return (
     <div className="h-full flex flex-col overflow-hidden bg-panel font-sans selection:bg-[var(--accent)] selection:text-primary">
@@ -73,19 +76,24 @@ export default function IndustrialChatLayout({
           className={cn(
             'flex-1 flex flex-col min-w-0 border-r-2 border-border bg-panel relative',
             // 移动端：当 viewMode 为 preview 时隐藏左栏
-            viewMode === 'preview' && 'hidden md:flex'
+            viewMode === 'preview' && 'hidden md:flex',
+            // 全屏时隐藏左栏
+            isFullscreen && 'hidden'
           )}
         >
           {chatStreamPanel}
         </div>
 
-        {/* 右侧：编排器面板 (45%) - 无左边框，避免与左侧的右边框重叠 */}
+        {/* 右侧：编排器面板 (45% - 全屏时占满宽度) - 无左边框，避免与左侧的右边框重叠 */}
         <div
           className={cn(
             'w-full md:w-[45%] flex bg-card',
             // 移动端：默认隐藏，viewMode 为 preview 时显示
             viewMode === 'chat' && 'hidden md:flex',
-            hideOrchestrator && 'hidden'
+            // 隐藏右侧面板
+            hideOrchestrator && 'hidden',
+            // 全屏时占满宽度
+            isFullscreen && '!w-full !md:!w-full'
           )}
         >
           {orchestratorPanel}
