@@ -5,6 +5,45 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-01-30] - v0.6.3 - 国际化优化与组件清理
+
+### 🎨 UI 改进
+
+**输入框巨型机器风格**：
+- 首页和聊天页输入框placeholder统一为巨型机器风格文本
+- 中文：// 准备装载...
+- 英文：// AWAITING PAYLOAD...
+- 日文：// 装填準備...
+- 强调实体感，将AI视为巨型机器
+
+### 🧹 代码清理
+
+**废弃组件删除**：
+- 移除不再使用的组件：AgentHeader, ArtifactTabs, ArtifactsArea, MessageBubble, MessageItem
+- 移除废弃上下文：ToastContext, ArtifactProvider
+- 移除废弃hooks：useArtifactListener, useExpertStream, useMagicColorParser, useTypewriter
+- 移除其他废弃文件：plans.ts, icon-mapping.ts, loadingStore.ts, 3.0.0
+
+**国际化优化**：
+- CreateAgentPage 添加完整的国际化支持（47个翻译键）
+- ExpertAdminPage 添加完整的国际化支持（25个翻译键）
+- HomePage 优化UI和国际化实现（4个翻译键）
+- UnifiedChatPage 统一聊天页面逻辑
+- BauhausSidebar 优化样式
+- ExpertDetailModal 添加国际化
+- ChatStreamPanel 优化输入框和消息展示
+- OrchestratorPanel 优化专家展示
+- i18n/index.ts 更新翻译键定义
+
+### 📊 代码统计
+
+- 删除：15个废弃组件/文件（共1677行代码）
+- 修改：9个核心组件（国际化优化）
+- 新增：334行代码
+- 新增翻译键：76个
+
+---
+
 ## [2026-01-28] - v0.6.2 - 专家初始化脚本修复与指挥官配置优化
 
 ### 🐛 Bug 修复
