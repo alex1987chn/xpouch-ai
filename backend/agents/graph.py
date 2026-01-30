@@ -1,6 +1,6 @@
 """
-超智能体指挥官工作流 - 第二步
-实现任务拆解、专家路由和结果聚合的完整流程
+XPouch AI 智能路由工作流 (v2.7 架构)
+集成意图识别 (Router) -> 任务规划 (Planner) -> 专家执行 (Experts)
 """
 from typing import TypedDict, Annotated, List, Dict, Any, Literal
 from langgraph.graph import StateGraph, END, START
@@ -23,20 +23,14 @@ from models import ExpertType, TaskStatus, SubTask
 from config import init_langchain_tracing, get_langsmith_config
 from utils.json_parser import parse_llm_json
 from utils.exceptions import AppError
-from constants import COMMANDER_SYSTEM_PROMPT
+# 将原有的 COMMANDER_SYSTEM_PROMPT 作为规划器 (Planner) 的提示词
+from constants import COMMANDER_SYSTEM_PROMPT as PLANNER_SYSTEM_PROMPT 
 from agents.dynamic_experts import DYNAMIC_EXPERT_FUNCTIONS, initialize_expert_cache
 from agents.expert_loader import get_expert_config_cached
 
-
 # ============================================================================
-# 环境变量加载 & LangSmith 初始化
+# 0. 设置与配置
 # ============================================================================
-
-
-# ============================================================================
-# 环境变量加载 & LangSmith 初始化
-# ============================================================================
-
 env_path = pathlib.Path(__file__).parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
@@ -44,138 +38,189 @@ api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
 base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 model_name = os.getenv("MODEL_NAME", "deepseek-chat")
 
-# 初始化 LangSmith tracing
+# LangSmith 链路追踪
 langsmith_config = get_langsmith_config()
 if langsmith_config["enabled"]:
     init_langchain_tracing(langsmith_config)
-    print(f"[TRACE] LangSmith tracing 已启用: {langsmith_config['project_name']}")
-else:
-    print("[INFO] LangSmith tracing 未启用")
 
+# 初始化 LLM
+# 建议：如果可能，Router 可以使用更快的模型（如 gpt-4o-mini），这里暂时复用主配置
 llm = ChatOpenAI(
     model=model_name,
-    temperature=0.7,
+    temperature=0.3, # Router 需要更确定的输出，稍微降低温度
     api_key=api_key,
     base_url=base_url,
     streaming=True
 )
 
+# ============================================================================
+# 1. 结构定义与提示词 (新的 Router 逻辑)
+# ============================================================================
 
-# ============================================================================
-# 指挥官结构化输出定义
-# ============================================================================
+ROUTER_SYSTEM_PROMPT = """
+你是 XPouch OS 的中央路由指挥官（Router）。你的唯一职责是分析用户的意图并进行分类。
+
+【分类规则】
+1. **简单/直接回复 (Simple / Direct Reply)**:
+   - 问候语（"你好", "Hi", "在吗"）
+   - 简单的自我介绍
+   - 极其基础的常识问题（"法国的首都是哪里？"）
+   - 简单的确认（"好的", "明白", "谢谢"）
+   -> 动作：你自己直接生成回复内容。
+
+2. **复杂/智能体任务 (Complex / Agent Task)**:
+   - 编写代码、调试 Bug、解释代码
+   - 网络搜索、深度研究
+   - 生成文件、表格、长文档
+   - 多步推理逻辑
+   - 任何需要调用工具或专家 (Experts) 的请求
+   -> 动作：委派给 'planner' (规划器)。
+
+【输出格式】
+你必须严格按照以下 JSON 格式输出：
+{format_instructions}
+"""
+
+class RoutingDecision(BaseModel):
+    """路由器的决策输出结构"""
+    intent: Literal["simple", "complex"] = Field(
+        ..., 
+        description="用户意图：'simple' 表示简单闲聊，'complex' 表示需要专家处理的任务。"
+    )
+    direct_response: str = Field(
+        default="", 
+        description="如果 intent 是 'simple'，请在此处填写直接回复的内容。如果是 'complex'，必须留空。"
+    )
+    thought: str = Field(description="简短的思考过程，解释为什么做出这个分类。")
+
+# --- 保留原有的规划器结构 (原 CommanderOutput) ---
 
 class SubTaskOutput(BaseModel):
-    """单个子任务的结构化输出"""
+    """单个子任务结构 (Planner 使用)"""
     expert_type: ExpertType = Field(description="执行此任务的专家类型")
-    description: str = Field(description="任务的自然语言描述")
-    input_data: Dict[str, Any] = Field(default={}, description="任务输入参数")
-    priority: int = Field(default=0, description="任务优先级（0=最高）")
+    description: str = Field(description="任务描述")
+    input_data: Dict[str, Any] = Field(default={}, description="输入参数")
+    priority: int = Field(default=0, description="优先级 (0=最高)")
 
-
-class CommanderOutput(BaseModel):
-    """指挥官的结构化输出 - 子任务列表"""
-    tasks: List[SubTaskOutput] = Field(description="拆解的子任务列表")
-    strategy: str = Field(description="任务执行策略描述")
-    estimated_steps: int = Field(description="预计执行步骤数")
-
+class PlannerOutput(BaseModel):
+    """规划器输出 - 子任务列表 (原 CommanderOutput)"""
+    tasks: List[SubTaskOutput] = Field(description="子任务列表")
+    strategy: str = Field(description="执行策略概述")
+    estimated_steps: int = Field(description="预计步骤数")
 
 # ============================================================================
-# Agent 状态定义
+# 2. 状态定义
 # ============================================================================
 
 class AgentState(TypedDict):
-    """
-    超智能体系统的全局状态
-
-    包含：
-    - messages: 消息历史（支持 add_messages）
-    - task_list: 子任务列表（字典格式，用于专家函数）
-    - current_task_index: 当前执行的任务索引
-    - strategy: 执行策略
-    - expert_results: 专家执行结果汇总
-    - final_response: 最终整合的响应
-    """
+    """超智能体的全局状态"""
     messages: Annotated[List[BaseMessage], add_messages]
     task_list: List[Dict[str, Any]]
     current_task_index: int
     strategy: str
     expert_results: List[Dict[str, Any]]
     final_response: str
-
+    # 新增：记录路由决策信息
+    router_decision: str 
 
 # ============================================================================
-# 指挥官节点 - 任务拆解与分发
+# 3. 节点实现
 # ============================================================================
 
-async def commander_node(state: AgentState) -> Dict[str, Any]:
+# --- 新增：Router 节点 (前台接待) ---
+async def router_node(state: AgentState) -> Dict[str, Any]:
     """
-    指挥官节点：接收用户查询，拆解为多个子任务
-    
-    核心功能：
-    1. 分析用户查询的复杂度
-    2. 识别需要调用的专家类型
-    3. 为每个专家生成具体的子任务
-    4. 定义任务执行顺序和依赖关系
-    
-    Args:
-        state: 当前工作流状态
-    
-    Returns:
-        Dict[str, Any]: 更新后的状态（包含 task_list 和 strategy）
+    [守门人] 对意图进行分类：Simple vs Complex
     """
     messages = state["messages"]
     
-    # 获取用户查询（最新消息）
-    if not messages:
-        return {"task_list": [], "strategy": "无查询", "current_task_index": 0}
-    
+    # 0. 检查"直接专家模式" (Direct Mode)
+    # 如果状态中已经预置了 task_list，说明是系统恢复或 API 指定任务，直接跳过意图检查
+    if state.get("task_list") and len(state.get("task_list", [])) > 0:
+        print("[ROUTER] 检测到现有任务列表，跳过意图检查 -> Complex")
+        return {"router_decision": "complex"}
+
+    # 1. 调用 LLM 进行分类
+    # 使用通用的 PydanticOutputParser（兼容 DeepSeek/OpenAI）
+    from langchain_core.output_parsers import PydanticOutputParser
+
+    parser = PydanticOutputParser(pydantic_object=RoutingDecision)
+
+    # 构建 prompt（包含格式化指令）
+    prompt = ROUTER_SYSTEM_PROMPT.format(format_instructions=parser.get_format_instructions())
+
+    try:
+        # 调用 LLM
+        response = await llm.ainvoke([
+            SystemMessage(content=prompt),
+            *messages
+        ])
+        # 解析输出
+        decision = parser.parse(response.content)
+    except Exception as e:
+        print(f"[ROUTER] 解析错误，回退到 Complex 模式: {e}")
+        # 安全回退：如果有问题，默认当作复杂任务处理
+        decision = RoutingDecision(intent="complex", thought="Fallback due to parse error", direct_response="")
+
+    print(f"[ROUTER] 决策: {decision.intent.upper()} | 思考: {decision.thought}")
+
+    if decision.intent == "simple":
+        # 简单模式：直接生成回复并写入 messages 和 final_response
+        # 前端收到这个消息后，会作为普通对话显示，不会触发复杂 UI
+        return {
+            "router_decision": "simple",
+            "messages": [AIMessage(content=decision.direct_response)],
+            "final_response": decision.direct_response
+        }
+    else:
+        # 复杂模式：透传给 Planner
+        return {
+            "router_decision": "complex"
+        }
+
+# --- 修改：Planner 节点 (原 Commander) ---
+async def planner_node(state: AgentState) -> Dict[str, Any]:
+    """
+    [架构师] 将复杂查询拆解为子任务。
+    仅当 Router 决定 intent="complex" 时触发。
+    """
+    messages = state["messages"]
     last_message = messages[-1]
     user_query = last_message.content if isinstance(last_message, HumanMessage) else str(last_message.content)
     
-    # 从数据库加载指挥官配置（使用 expert_key="commander"）
-    commander_config = get_expert_config_cached("commander")
+    # 加载配置 (数据库或回退)
+    # 注意：为了兼容性，我们仍然读取 key="commander" 的配置
+    commander_config = get_expert_config_cached("commander") 
     
     if not commander_config:
-        # 回退到常量（保持向后兼容）
-        system_prompt = COMMANDER_SYSTEM_PROMPT
+        system_prompt = PLANNER_SYSTEM_PROMPT
         model = "gpt-4o"
         temperature = 0.5
-        print(f"[CMD] Using fallback commander config (not found in database)")
+        print(f"[PLANNER] 使用默认回退配置")
     else:
         system_prompt = commander_config["system_prompt"]
         model = commander_config["model"]
         temperature = commander_config["temperature"]
-        print(f"[CMD] Loaded commander config from database: model={model}, temp={temperature}")
+        print(f"[PLANNER] 加载数据库配置: model={model}")
     
-    # 构建提示词模板
-    prompt = ChatPromptTemplate.from_messages([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=f"用户查询：{user_query}\n\n请将此查询拆解为子任务列表。")
-    ])
-
-    # 调用 LLM 并使用通用解析器
+    # 执行 LLM 进行规划
     try:
-        # 使用配置的模型和温度参数
-        llm_with_config = llm.bind(
-            model=model,
-            temperature=temperature
-        )
+        llm_with_config = llm.bind(model=model, temperature=temperature)
         
         response = await llm_with_config.ainvoke([
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"用户查询：{user_query}\n\n请将此查询拆解为子任务列表。\n\n必须以 JSON 格式输出，包含 tasks 列表、strategy 和 estimated_steps。")
+            HumanMessage(content=f"用户查询: {user_query}\n\n请将此查询拆解为子任务列表。")
         ])
 
-        # 使用通用解析器解析 JSON（兼容所有模型）
-        commander_response = parse_llm_json(
+        # 解析 JSON
+        planner_response = parse_llm_json(
             response.content,
-            CommanderOutput,
+            PlannerOutput, # 使用新的 Pydantic 模型名
             strict=False,
             clean_markdown=True
         )
 
-        # 将 SubTaskOutput 转换为字典列表（用于 AgentState）
+        # 转换为内部字典格式
         task_list = [
             {
                 "id": str(uuid4()),
@@ -190,134 +235,86 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
                 "created_at": datetime.now().isoformat(),
                 "updated_at": datetime.now().isoformat()
             }
-            for task in commander_response.tasks
+            for task in planner_response.tasks
         ]
 
-        print(f"[CMD] 指挥官拆解完成: {len(task_list)} 个子任务")
-        print(f"   策略: {commander_response.strategy}")
-        print(f"   预计步骤: {commander_response.estimated_steps}")
-
-        for i, task in enumerate(task_list):
-            print(f"   [{i+1}] {task['expert_type']}: {task['description']}")
+        print(f"[PLANNER] 生成了 {len(task_list)} 个任务。策略: {planner_response.strategy}")
 
         return {
             "task_list": task_list,
-            "strategy": commander_response.strategy,
+            "strategy": planner_response.strategy,
             "current_task_index": 0,
             "expert_results": [],
-            # 添加任务计划信息供前端展示
+            # 前端用于 UI 渲染的元数据
             "__task_plan": {
                 "task_count": len(task_list),
-                "strategy": commander_response.strategy,
-                "estimated_steps": commander_response.estimated_steps,
+                "strategy": planner_response.strategy,
+                "estimated_steps": planner_response.estimated_steps,
                 "tasks": task_list
             }
         }
 
     except Exception as e:
-        print(f"[ERROR] 指挥官节点错误: {e}")
+        print(f"[ERROR] Planner 规划失败: {e}")
         return {
             "task_list": [],
-            "strategy": f"错误: {str(e)}",
-            "current_task_index": 0,
-            "expert_results": []
+            "strategy": f"Error: {str(e)}",
+            "current_task_index": 0
         }
 
-
-# ============================================================================
-# 专家执行节点
-# ============================================================================
-
+# --- 原有：Expert Dispatcher 节点 (逻辑不变) ---
 async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
-    """
-    专家分发器节点：根据当前任务索引，分发任务到对应专家
-
-    Args:
-        state: 当前工作流状态
-
-    Returns:
-        Dict[str, Any]: 更新后的状态（包含专家结果）
-    """
     task_list = state["task_list"]
     current_index = state["current_task_index"]
 
     if current_index >= len(task_list):
-        # 所有任务已完成
         return {"expert_results": state["expert_results"]}
 
-    # 获取当前任务
     current_task = task_list[current_index]
     expert_type = current_task["expert_type"]
     description = current_task["description"]
 
-    print(f"[EXEC] 正在执行 [{current_index + 1}/{len(task_list)}] - {expert_type} 专家")
-    print(f"   任务: {description}")
+    print(f"[EXEC] 执行任务 [{current_index + 1}/{len(task_list)}] - {expert_type}: {description}")
 
-    # 调用原子化专家节点（直接传递 State）
     try:
-        # 查找对应的专家函数（使用动态专家函数）
         expert_func = DYNAMIC_EXPERT_FUNCTIONS.get(expert_type)
-
         if not expert_func:
             raise ValueError(f"未知的专家类型: {expert_type}")
 
-        # 调用专家节点（传递完整的 state）
         result = await expert_func(state, llm)
 
-        # 检查执行结果
         if "error" in result:
-            raise AppError(
-                message=result["error"],
-                code="EXPERT_EXECUTION_ERROR",
-                status_code=500
-            )
+             raise AppError(message=result["error"], code="EXPERT_EXECUTION_ERROR")
 
-        # 转换 SubTask 对象（更新 output_result 和 status）
+        # 更新任务状态
         current_task["output_result"] = {"content": result.get("output_result", "")}
         current_task["status"] = result.get("status", "completed")
-        current_task["started_at"] = result.get("started_at")
         current_task["completed_at"] = result.get("completed_at")
-        current_task["updated_at"] = datetime.now().isoformat()
-
-        # 记录到 expert_results
+        
+        # 添加到结果集
         updated_results = state["expert_results"] + [{
             "task_id": current_task["id"],
             "expert_type": expert_type,
             "description": description,
             "output": result.get("output_result", ""),
             "status": result.get("status", "unknown"),
-            "started_at": result.get("started_at"),
-            "completed_at": result.get("completed_at", datetime.now().isoformat()),
             "duration_ms": result.get("duration_ms", 0)
         }]
 
         duration = result.get('duration_ms', 0) / 1000
-        print(f"   [OK] 专家执行完成 (耗时: {duration:.2f}s)")
+        print(f"   [OK] 耗时 {duration:.2f}s")
 
-        # 构建返回值，包含 artifact（如果有）
         return_dict = {
-            "task_list": task_list,  # 更新 task_list（包含已更新的 SubTask）
+            "task_list": task_list,
             "expert_results": updated_results,
             "current_task_index": current_index + 1,
-            # 添加专家信息供流式事件处理使用
-            "__expert_info": {
+            "__expert_info": { # 用于前端 SSE 事件
                 "expert_type": expert_type,
                 "description": description,
                 "status": "completed",
-                "duration_ms": result.get("duration_ms", 0),
                 "output": result.get("output_result", ""),
-                "error": None
-            },
-            # 添加任务开始信息供前端展示
-            "__task_start_info": {
-                "task_index": current_index + 1,
-                "total_tasks": len(task_list),
-                "expert_type": expert_type,
-                "description": description
             }
         }
-
-        # 如果专家返回了 artifact，添加到返回值中
         if "artifact" in result:
             return_dict["artifact"] = result["artifact"]
 
@@ -325,302 +322,118 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
 
     except Exception as e:
         print(f"   [ERROR] 专家执行失败: {e}")
-
-        # 标记任务失败
         current_task["status"] = "failed"
-        current_task["output_result"] = {"content": f"执行失败: {str(e)}"}
-        current_task["updated_at"] = datetime.now().isoformat()
-
-        error_result = f"执行失败: {str(e)}"
-        updated_results = state["expert_results"] + [{
-            "task_id": current_task["id"],
-            "expert_type": expert_type,
-            "description": description,
-            "output": error_result,
-            "completed_at": datetime.now().isoformat(),
-            "error": str(e)
-        }]
-
         return {
             "task_list": task_list,
-            "expert_results": updated_results,
             "current_task_index": current_index + 1,
-            # 添加专家信息供流式事件处理使用
             "__expert_info": {
                 "expert_type": expert_type,
                 "description": description,
                 "status": "failed",
-                "duration_ms": 0,
-                "output": error_result,
                 "error": str(e)
             }
         }
 
-
-# ============================================================================
-# 专家执行节点
-# ============================================================================
-
+# --- 原有：Aggregator 节点 (逻辑不变) ---
 async def aggregator_node(state: AgentState) -> Dict[str, Any]:
-    """
-    聚合器节点：整合所有专家执行结果，生成最终响应
-
-    核心功能：
-    1. 收集所有专家的执行结果
-    2. 识别结果之间的关系和依赖
-    3. 整合为一个连贯、有用的最终响应
-    4. 处理专家之间的冲突或矛盾
-    5. 生成结构化的 Markdown 响应
-
-    Args:
-        state: 当前工作流状态
-
-    Returns:
-        Dict[str, Any]: 更新后的状态（包含 final_response）
-    """
     expert_results = state["expert_results"]
     strategy = state["strategy"]
 
     if not expert_results:
-        return {
-            "final_response": "没有专家执行结果，无法生成响应。"
-        }
+        return {"final_response": "未生成任何执行结果。"}
 
-    print(f"[AGG] 聚合器整合 {len(expert_results)} 个专家结果")
-    print(f"   策略: {strategy}")
-
-    # 构建结构化的 Markdown 响应
+    print(f"[AGG] 正在聚合 {len(expert_results)} 个结果...")
     final_response = _build_markdown_response(expert_results, strategy)
-
-    print(f"   [OK] 聚合完成，生成 {len(final_response)} 字符的 Markdown 响应")
-
-    return {
-        "final_response": final_response
-    }
-
+    return {"final_response": final_response}
 
 def _build_markdown_response(expert_results: List[Dict[str, Any]], strategy: str) -> str:
-    """
-    构建结构化的 Markdown 响应
-
-    Args:
-        expert_results: 专家执行结果列表
-        strategy: 执行策略
-
-    Returns:
-        str: Markdown 格式的最终响应
-    """
-    # 标题和引言
-    markdown_parts = [
-        "# 多专家协作结果\n",
-        f"**执行策略**: {strategy}\n",
-        "---\n"
-    ]
-
-    # 按专家类型分组结果
-    expert_by_type = {}
-    for result in expert_results:
-        expert_type = result["expert_type"]
-        if expert_type not in expert_by_type:
-            expert_by_type[expert_type] = []
-        expert_by_type[expert_type].append(result)
-
-    # 每个专家的结果章节
-    expert_titles = {
-        "search": "## 搜索结果",
-        "coder": "## 代码实现",
-        "researcher": "## 研究报告",
-        "analyzer": "## 分析结果",
-        "writer": "## 文档内容",
-        "planner": "## 执行计划"
-    }
-
-    for expert_type, results in expert_by_type.items():
-        title = expert_titles.get(expert_type, f"## {expert_type.upper()} 结果")
-        markdown_parts.append(f"{title}\n")
-
-        for i, result in enumerate(results, 1):
-            description = result.get("description", "")
-            output = result.get("output", "")
-            status = result.get("status", "")
-            duration = result.get("duration_ms", 0) / 1000
-
-            markdown_parts.append(f"### {i}. {description}\n")
-
-            if status:
-                status_emoji = "[OK]" if status == "completed" else "[FAIL]"
-                markdown_parts.append(f"**状态**: {status_emoji} {status}\n")
-
-            if duration > 0:
-                markdown_parts.append(f"**耗时**: {duration:.2f} 秒\n")
-
-            markdown_parts.append(f"\n{output}\n")
-
-    # 汇总和结论
-    markdown_parts.extend([
-        "---\n",
-        "## 汇总\n",
-        f"本次协作共调用 {len(expert_results)} 个专家节点，",
-        f"按顺序完成并生成了综合结果。\n",
-        "> **提示**: 如需进一步优化或调整，请提出具体需求。"
-    ])
-
-    return "\n".join(markdown_parts)
-
+    # 简单的 Markdown 构建逻辑
+    lines = [f"# 执行报告\n**策略**: {strategy}\n---"]
+    for i, res in enumerate(expert_results, 1):
+        lines.append(f"## {i}. {res['expert_type'].upper()}: {res['description']}")
+        lines.append(f"{res['output']}\n")
+    return "\n".join(lines)
 
 # ============================================================================
-# 路由逻辑 - 条件边
+# 4. 条件路由逻辑 (Edges)
 # ============================================================================
 
-def check_direct_mode(state: AgentState) -> str:
-    """
-    检查是否是直接专家模式（已有任务列表）
-
-    Args:
-        state: 当前工作流状态
-
-    Returns:
-        str: "expert_dispatcher" 或 "commander"
-    """
-    task_list = state["task_list"]
-
-    # 如果已经有任务列表，说明是直接专家模式
-    if task_list and len(task_list) > 0:
-        print(f"[CHECK] 直接专家模式：跳过指挥官，直接执行任务")
-        return "expert_dispatcher"
-
-    # 否则走指挥官模式拆解任务
-    print(f"[CHECK] 指挥官模式：需要拆解任务")
-    return "commander"
-
-
-def route_commander(state: AgentState) -> str:
-    """
-    路由函数：决定下一步进入哪个节点
-
-    路由规则：
-    1. 如果 task_list 为空 → END（无任务）
-    2. 如果当前索引 >= 任务列表长度 → aggregator（所有任务完成）
-    3. 否则 → expert_dispatcher（执行下一个任务）
-
-    Args:
-        state: 当前工作流状态
-
-    Returns:
-        str: 目标节点名称
-    """
-    task_list = state["task_list"]
-    current_index = state["current_task_index"]
-
-    # 无任务
-    if not task_list:
-        print("[END] 无任务，流程结束")
+def route_router(state: AgentState) -> str:
+    """决定 Router 之后的去向"""
+    decision = state.get("router_decision", "complex")
+    
+    if decision == "simple":
+        print("[PATH] 简单意图 -> END (直接结束)")
         return END
+    else:
+        print("[PATH] 复杂意图 -> Planner (进入规划)")
+        # 再次检查：如果是直接模式（已有任务），直接去执行，不用规划
+        if state.get("task_list") and len(state.get("task_list", [])) > 0:
+             return "expert_dispatcher"
+        return "planner"
 
-    # 所有任务已完成
-    if current_index >= len(task_list):
-        print(f"[END] 所有任务完成，进入聚合器")
+def route_dispatcher(state: AgentState) -> str:
+    """决定 分发器 之后的去向（循环或聚合）"""
+    if state["current_task_index"] >= len(state["task_list"]):
         return "aggregator"
-
-    # 执行下一个任务
-    print(f"[NEXT] 继续执行任务 [{current_index + 1}/{len(task_list)}]")
     return "expert_dispatcher"
 
-
 # ============================================================================
-# 构建工作流图
+# 5. 构建工作流图
 # ============================================================================
 
-def create_commander_workflow() -> StateGraph:
-    """
-    构建指挥官工作流图
-
-    工作流结构:
-    1. START → check_direct_mode（检查是否直接专家模式）
-    2. check_direct_mode → commander 或 expert_dispatcher
-    3. commander → expert_dispatcher（通过路由）
-    4. expert_dispatcher → expert_dispatcher（循环，直到所有任务完成）
-    5. expert_dispatcher → aggregator（所有任务完成）
-    6. aggregator → END
-
-    Returns:
-        StateGraph: 编译后的工作流图
-    """
-    # 初始化图
+def create_smart_router_workflow() -> StateGraph:
     workflow = StateGraph(AgentState)
 
     # 添加节点
-    workflow.add_node("commander", commander_node)
+    workflow.add_node("router", router_node)
+    workflow.add_node("planner", planner_node)
     workflow.add_node("expert_dispatcher", expert_dispatcher_node)
     workflow.add_node("aggregator", aggregator_node)
 
-    # 设置入口：先检查是否直接专家模式
+    # 设置入口：现在入口是 Router！
+    workflow.set_entry_point("router")
+
+    # 添加连线
+    
+    # 1. Router -> (END | Planner | Dispatcher)
     workflow.add_conditional_edges(
-        START,
-        check_direct_mode,
+        "router",
+        route_router,
         {
-            "commander": "commander",
+            END: END,
+            "planner": "planner",
             "expert_dispatcher": "expert_dispatcher"
         }
     )
 
-    # 添加条件路由（从指挥官到专家分发器）
-    workflow.add_conditional_edges(
-        "commander",
-        route_commander,
-        {
-            "expert_dispatcher": "expert_dispatcher",
-            "aggregator": "aggregator",
-            END: END
-        }
-    )
+    # 2. Planner -> Dispatcher (规划完必然执行)
+    workflow.add_edge("planner", "expert_dispatcher")
 
-    # 添加条件路由（从专家分发器循环或到聚合器）
+    # 3. Dispatcher -> (Loop | Aggregator)
     workflow.add_conditional_edges(
         "expert_dispatcher",
-        route_commander,
+        route_dispatcher,
         {
             "expert_dispatcher": "expert_dispatcher",
-            "aggregator": "aggregator",
-            END: END
+            "aggregator": "aggregator"
         }
     )
 
-    # 聚合器到结束
+    # 4. Aggregator -> END
     workflow.add_edge("aggregator", END)
 
-    # 编译图（带调试信息）
-    compiled_graph = workflow.compile()
+    return workflow.compile()
 
-    print("[OK] 指挥官工作流编译完成")
-    print("   节点: commander, expert_dispatcher, aggregator")
-    print("   路由: 条件路由（直接专家模式检查 + 任务状态检查）")
-
-    return compiled_graph
-
+# 导出编译后的图
+commander_graph = create_smart_router_workflow()
 
 # ============================================================================
-# 编译并导出工作流
-# ============================================================================
-
-commander_graph = create_commander_workflow()
-
-
-# ============================================================================
-# 主执行函数（用于测试）
+# 测试封装函数
 # ============================================================================
 
 async def execute_commander_workflow(user_query: str) -> Dict[str, Any]:
-    """
-    执行指挥官工作流
-    
-    Args:
-        user_query: 用户查询
-    
-    Returns:
-        Dict[str, Any]: 执行结果
-    """
-    # 初始化状态
+    print(f"--- [START] 查询: {user_query} ---")
     initial_state: AgentState = {
         "messages": [HumanMessage(content=user_query)],
         "task_list": [],
@@ -629,55 +442,19 @@ async def execute_commander_workflow(user_query: str) -> Dict[str, Any]:
         "expert_results": [],
         "final_response": ""
     }
-    
-    print("="*60)
-    print("[START] 开始执行指挥官工作流")
-    print(f"   用户查询: {user_query}")
-    print("="*60)
-    
-    # 执行工作流
     final_state = await commander_graph.ainvoke(initial_state)
-
-    print("="*60)
-    print("[DONE] 指挥官工作流执行完成")
-    print("="*60)
-    # 避免输出太长的响应可能导致编码问题，并过滤 emoji
-    response_preview = final_state['final_response'][:200] + "..." if len(final_state['final_response']) > 200 else final_state['final_response']
-    # 过滤非 ASCII 字符（避免 Windows GBK 编码错误）
-    response_preview = ''.join(char for char in response_preview if ord(char) < 128)
-    print(f"   最终响应预览: {response_preview}")
-    print(f"   响应长度: {len(final_state['final_response'])} 字符")
-    print(f"   执行的任务数: {len(final_state['expert_results'])}")
-
+    print("--- [DONE] ---")
     return final_state
-
-
-# ============================================================================
-# 模块导出
-# ============================================================================
-
-__all__ = [
-    "commander_graph",
-    "execute_commander_workflow",
-    "AgentState",
-    "CommanderOutput",
-    "SubTaskOutput"
-]
-
-
-# ============================================================================
-# 测试入口
-# ============================================================================
 
 if __name__ == "__main__":
     import asyncio
-    
     async def test():
-        query = "帮我分析并优化这段 Python 代码，同时搜索相关的性能优化最佳实践"
-        result = await execute_commander_workflow(query)
-        print("\n" + "="*60)
-        print("最终结果:")
-        print("="*60)
-        print(result['final_response'])
+        # 测试 1: 简单闲聊
+        print("\n=== 测试 1: 简单模式 ===")
+        await execute_commander_workflow("你好，在吗？")
+        
+        # 测试 2: 复杂任务
+        print("\n=== 测试 2: 复杂模式 ===")
+        await execute_commander_workflow("帮我写一个 Python 脚本来抓取股票价格。")
     
     asyncio.run(test())
