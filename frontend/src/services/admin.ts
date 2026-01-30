@@ -1,83 +1,55 @@
 /**
- * 管理员 API 服务
+ * 管理员相关 API 服务
  */
 
-import { getHeaders } from './api'
+import { getHeaders, buildUrl, handleResponse } from './common'
 
 // ============================================================================
-// 专家管理类型
+// 类型定义
 // ============================================================================
 
-export interface ExpertResponse {
-  id: number
+export interface SystemExpert {
   expert_key: string
-  name: string
   system_prompt: string
   model: string
   temperature: number
+  created_at: string
   updated_at: string
 }
 
-export interface ExpertUpdateRequest {
+export interface UpdateExpertRequest {
   system_prompt: string
-  model?: string
-  temperature?: number
+  model: string
+  temperature: number
 }
 
-export interface PromoteUserRequest {
-  email: string
-}
-
-export interface ExpertPreviewRequest {
+export interface PreviewExpertRequest {
   expert_key: string
   test_input: string
 }
 
-export interface ExpertPreviewResponse {
-  expert_name: string
-  test_input: string
-  preview_response: string
-  model: string
-  temperature: number
+export interface PreviewExpertResponse {
+  response: string
   execution_time_ms: number
 }
 
-// ============================================================================
-// 专家管理 API
-// ============================================================================
-
-/**
- * 获取所有专家列表
- */
-export async function getAllExperts(): Promise<ExpertResponse[]> {
-  const response = await fetch('/api/admin/experts', {
-    method: 'GET',
-    headers: getHeaders()
-  })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.detail || '获取专家列表失败')
-  }
-
-  return await response.json()
+export interface PromoteUserRequest {
+  phone_number: string
+  role: 'admin'
 }
 
+// ============================================================================
+// API 函数
+// ============================================================================
+
 /**
- * 获取单个专家配置
+ * 获取所有系统专家配置
  */
-export async function getExpert(expertKey: string): Promise<ExpertResponse> {
-  const response = await fetch(`/api/admin/experts/${expertKey}`, {
-    method: 'GET',
+export async function getAllExperts(): Promise<SystemExpert[]> {
+  const response = await fetch(buildUrl('/admin/experts'), {
     headers: getHeaders()
   })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.detail || '获取专家配置失败')
-  }
-
-  return await response.json()
+  return handleResponse<SystemExpert[]>(response, '获取专家列表失败')
 }
 
 /**
@@ -85,59 +57,48 @@ export async function getExpert(expertKey: string): Promise<ExpertResponse> {
  */
 export async function updateExpert(
   expertKey: string,
-  data: ExpertUpdateRequest
-): Promise<{ message: string; expert_key: string; updated_at: string }> {
-  const response = await fetch(`/api/admin/experts/${expertKey}`, {
+  data: UpdateExpertRequest
+): Promise<SystemExpert> {
+  const response = await fetch(buildUrl(`/admin/experts/${expertKey}`), {
     method: 'PATCH',
     headers: getHeaders(),
     body: JSON.stringify(data)
   })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.detail || '更新专家配置失败')
-  }
-
-  return await response.json()
-}
-
-/**
- * 升级用户为管理员
- */
-export async function promoteUser(
-  email: string
-): Promise<{ message: string; username: string; email: string }> {
-  const response = await fetch('/api/admin/promote-user', {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ email })
-  })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.detail || '升级用户失败')
-  }
-
-  return await response.json()
+  return handleResponse<SystemExpert>(response, '更新专家配置失败')
 }
 
 /**
  * 预览专家响应
  */
 export async function previewExpert(
-  request: ExpertPreviewRequest
-): Promise<ExpertPreviewResponse> {
-  const response = await fetch('/api/admin/experts/preview', {
+  data: PreviewExpertRequest
+): Promise<PreviewExpertResponse> {
+  const response = await fetch(buildUrl('/admin/experts/preview'), {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(request)
+    body: JSON.stringify(data)
   })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.detail || '预览失败')
-  }
-
-  return await response.json()
+  return handleResponse<PreviewExpertResponse>(response, '预览专家响应失败')
 }
 
+/**
+ * 升级用户为管理员
+ */
+export async function promoteUser(data: PromoteUserRequest): Promise<void> {
+  const response = await fetch(buildUrl('/admin/promote-user'), {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  })
+  return handleResponse<void>(response, '升级用户失败')
+}
+
+/**
+ * 获取单个专家配置
+ */
+export async function getExpert(expertKey: string): Promise<SystemExpert> {
+  const response = await fetch(buildUrl(`/admin/experts/${expertKey}`), {
+    headers: getHeaders()
+  })
+  return handleResponse<SystemExpert>(response, '获取专家配置失败')
+}

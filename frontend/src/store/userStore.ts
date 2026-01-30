@@ -1,19 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { getUserProfile, updateUserProfile, type UserProfile } from '@/services/api'
+import { getUserProfile, updateUserProfile, type UserProfile } from '@/services/user'
+import { sendVerificationCode, verifyCodeAndLogin, refreshTokenApi, type TokenResponse } from '@/services/auth'
 import { logger, errorHandler } from '@/utils/logger'
-
-interface AuthTokenResponse {
-  access_token: string
-  refresh_token: string
-  token_type: string
-  expires_in: number
-  user_id: string
-  username: string
-  role: 'user' | 'admin'  // 添加角色字段
-  detail?: string
-  _debug_code?: string
-}
 
 interface UserState {
   user: UserProfile | null
@@ -56,20 +45,9 @@ export const useUserStore = create<UserState>()(
       sendVerificationCode: async (phoneNumber: string) => {
         set({ isLoading: true, error: null })
         try {
-          // 使用相对路径，通过 Vite 代理转发到后端
-          const response = await fetch('/api/auth/send-code', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone_number: phoneNumber })
-          })
-
-          const data = await response.json()
-
-          if (!response.ok) {
-            throw new Error(data.detail || '发送验证码失败')
-          }
+          const data = await sendVerificationCode(phoneNumber)
           set({ isLoading: false })
-          return data as any // 返回完整响应数据
+          return data
         } catch (error) {
           errorHandler.handleSync(error, 'sendVerificationCode')
           set({ error: errorHandler.getUserMessage(error), isLoading: false })
@@ -81,25 +59,14 @@ export const useUserStore = create<UserState>()(
       loginWithPhone: async (phoneNumber: string, code: string) => {
         set({ isLoading: true, error: null })
         try {
-          // 使用相对路径，通过 Vite 代理转发到后端
-          const response = await fetch('/api/auth/verify-code', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone_number: phoneNumber, code })
-          })
-
-          const data: AuthTokenResponse = await response.json()
-
-          if (!response.ok) {
-            throw new Error(data.detail || '验证失败')
-          }
+          const data = await verifyCodeAndLogin(phoneNumber, code)
 
           // Calculate token expiry
           const expiresAt = Date.now() + data.expires_in * 1000
 
           // 先清空旧的 user 数据，然后保存 token
           set({
-            user: null,  // ← 清空旧的用户数据
+            user: null,
             accessToken: data.access_token,
             refreshToken: data.refresh_token,
             tokenExpiresAt: expiresAt
@@ -115,7 +82,7 @@ export const useUserStore = create<UserState>()(
             })
           } catch (profileError) {
             errorHandler.handleSync(profileError, 'getUserProfile')
-            throw profileError  // 重新抛出错误
+            throw profileError
           }
         } catch (error) {
           errorHandler.handleSync(error, 'loginWithPhone')
@@ -132,17 +99,7 @@ export const useUserStore = create<UserState>()(
         }
 
         try {
-          // 使用相对路径，通过 Vite 代理转发到后端
-          const response = await fetch('/api/auth/refresh-token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh_token: currentRefreshToken })
-          })
-          const data: AuthTokenResponse = await response.json()
-          if (!response.ok) {
-            throw new Error(data.detail || '刷新token失败')
-          }
-
+          const data = await refreshTokenApi(currentRefreshToken)
           const expiresAt = Date.now() + data.expires_in * 1000
 
           set({
@@ -152,7 +109,6 @@ export const useUserStore = create<UserState>()(
             isAuthenticated: true
           })
         } catch (error) {
-          // Refresh failed, logout user
           get().logout()
           throw error
         }

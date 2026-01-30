@@ -218,12 +218,69 @@ export interface ChatPageState {
 // ============================================
 
 /**
- * 专家状态事件类型
+ * 任务开始事件
  */
-export interface ExpertEvent {
-  type: 'expert_activated' | 'expert_completed'
-  expertId: string
+export interface TaskStartEvent {
+  type: 'task_start'
+  expert_type: string
+  description?: string
+  task_name?: string
 }
+
+/**
+ * 任务计划事件
+ */
+export interface TaskPlanEvent {
+  type: 'task_plan'
+  tasks: Array<{
+    description: string
+    expert_type?: string
+  }>
+}
+
+/**
+ * 专家激活事件
+ */
+export interface ExpertActivatedEvent {
+  type: 'expert_activated'
+  expertId: string
+  description?: string
+}
+
+/**
+ * 专家完成事件
+ */
+export interface ExpertCompletedEvent {
+  type: 'expert_completed'
+  expertId: string
+  status: 'completed' | 'failed'
+  duration_ms?: number
+  description?: string
+  error?: string
+  output?: string
+  allArtifacts?: Array<{
+    type: Artifact['type']
+    title: string
+    content: string
+    language?: string
+  }>
+}
+
+/**
+ * 联合类型：所有专家事件
+ */
+export type ExpertEvent = TaskStartEvent | TaskPlanEvent | ExpertActivatedEvent | ExpertCompletedEvent
+
+/**
+ * SSE 流式回调类型
+ */
+export type StreamCallback = (
+  chunk: string | undefined,
+  conversationId?: string,
+  expertEvent?: ExpertEvent,
+  artifact?: Artifact,
+  expertId?: string
+) => Promise<void> | void
 
 /**
  * Artifact（代码/图表等）类型

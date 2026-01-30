@@ -36,6 +36,19 @@ export const zh: Record<TranslationKey, string> = {
   myConstructs: '我的智能体',
   confirmDeleteAgent: '确认删除智能体',
   deleteAgentWarning: '删除后无法恢复，请确认是否继续？',
+  deleteAgentConfirm: '删除智能体',
+  deleteAgentConfirmDesc: '删除后无法恢复，请确认是否继续？',
+
+  // Error
+  error: {
+    title: '操作失败',
+  },
+  operationFailed: '操作失败',
+
+  // Chat
+  detectingComplexTask: '🔍 检测到复杂任务，正在拆解...',
+  complexTaskCompleted: '✅ 复杂任务执行完成，请查看右侧的专家状态栏和 artifact 区域获取详细结果。',
+  taskPlan: '📋 任务计划：',
 
   // Settings
   theme: '主题',

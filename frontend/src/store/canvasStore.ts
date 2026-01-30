@@ -24,10 +24,6 @@ interface CanvasState {
   updateAllTasks: (tasks: TaskNode[]) => void
   clearTasks: () => void
 
-  // 魔法修改状态
-  magicColor: string | null
-  setMagicColor: (color: string) => void
-
   // 缩放和平移状态
   scale: number
   setScale: (scale: number) => void
@@ -78,9 +74,6 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   })),
   updateAllTasks: (tasks) => set({ tasks }),
   clearTasks: () => set({ tasks: [] }),
-
-  magicColor: null,
-  setMagicColor: (color) => set({ magicColor: color }),
 
   // 缩放和平移
   scale: 1,
