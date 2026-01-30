@@ -22,8 +22,6 @@ import {
   GridPattern,
 } from '@/components/bauhaus'
 
-type ConversationMode = 'simple' | 'complex'
-
 // Scene Card Component
 function SceneCard({
   number,
@@ -183,9 +181,6 @@ export default function HomePage() {
 
   const [inputMessage, setInputMessage] = useState('')
 
-  // 对话模式：简单对话（默认）或 复杂任务
-  const [conversationMode, setConversationMode] = useState<ConversationMode>('simple')
-
   // 删除确认对话框状态
   const [deletingAgentId, setDeletingAgentId] = useState<string | null>(null)
   const [deletingAgentName, setDeletingAgentName] = useState<string>('')
@@ -299,30 +294,17 @@ export default function HomePage() {
 
     const newId = crypto.randomUUID()
 
-    const agentIdForChat = conversationMode === 'simple'
-      ? selectedAgentId || SYSTEM_AGENTS.DEFAULT_CHAT
-      : SYSTEM_AGENTS.ORCHESTRATOR
+    // 统一使用 Orchestrator 接口（后端自动路由）
+    const agentId = selectedAgentId || SYSTEM_AGENTS.DEFAULT_CHAT
+    const searchParams = new URLSearchParams()
+    searchParams.set('conversation', newId)
+    searchParams.set('agentId', agentId)
+    searchParams.set('new', 'true')
 
-    // 根据模式选择不同的聊天页面
-    if (conversationMode === 'complex') {
-      // 复杂模式：使用 UnifiedChatPage，路径包含ID
-      const searchParams = new URLSearchParams()
-      searchParams.set('agentId', agentIdForChat)
-      searchParams.set('new', 'true')
-      navigate(`/chat/${newId}?${searchParams.toString()}`, {
-        state: { startWith: inputMessage, conversationMode }
-      })
-    } else {
-      // 简单模式：使用 UnifiedChatPage，使用query参数
-      const searchParams = new URLSearchParams()
-      searchParams.set('conversation', newId)
-      searchParams.set('agentId', agentIdForChat)
-      searchParams.set('new', 'true')
-      navigate(`/chat?${searchParams.toString()}`, {
-        state: { startWith: inputMessage, conversationMode }
-      })
-    }
-  }, [inputMessage, navigate, conversationMode, selectedAgentId])
+    navigate(`/chat?${searchParams.toString()}`, {
+      state: { startWith: inputMessage }
+    })
+  }, [inputMessage, navigate, selectedAgentId])
 
   // 推荐场景数据
   const scenes = [
@@ -334,7 +316,6 @@ export default function HomePage() {
       tag: 'DEV',
       onClick: () => {
         setInputMessage('帮我编写一个React组件')
-        setConversationMode('complex')
       },
     },
     {
@@ -345,7 +326,6 @@ export default function HomePage() {
       tag: 'RSRCH',
       onClick: () => {
         setInputMessage('帮我调研一下最新的前端技术趋势')
-        setConversationMode('complex')
       },
     },
     {
@@ -356,7 +336,6 @@ export default function HomePage() {
       tag: 'FAST',
       onClick: () => {
         setInputMessage('今天天气怎么样？')
-        setConversationMode('simple')
       },
     },
   ]
@@ -438,32 +417,6 @@ export default function HomePage() {
               {/* Toolbar */}
               <div className="flex justify-between items-center p-2 sm:p-3 border-t-2 border-[var(--border-color)] bg-[var(--bg-page)] gap-2">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                  {/* 模式切换 - Bauhaus 风格 */}
-                  <div className="flex items-center border-2 border-black bg-white flex-shrink-0">
-                    <button
-                      onClick={() => setConversationMode('simple')}
-                      className={cn(
-                        'px-2 sm:px-3 py-1.5 font-mono text-[9px] sm:text-[10px] font-bold uppercase transition-all border-r-2 border-black',
-                        conversationMode === 'simple'
-                          ? 'bg-[var(--accent)] text-black'
-                          : 'bg-transparent text-gray-500 hover:text-black hover:bg-gray-100'
-                      )}
-                    >
-                      SIMPLE
-                    </button>
-                    <button
-                      onClick={() => setConversationMode('complex')}
-                      className={cn(
-                        'px-2 sm:px-3 py-1.5 font-mono text-[9px] sm:text-[10px] font-bold uppercase transition-all',
-                        conversationMode === 'complex'
-                          ? 'bg-black text-white'
-                          : 'bg-transparent text-gray-500 hover:text-black hover:bg-gray-100'
-                      )}
-                    >
-                      COMPLEX
-                    </button>
-                  </div>
-
                   {/* 附件按钮 */}
                   <div className="flex gap-1 flex-shrink-0">
                     <button className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-[var(--bg-card)] hover:border-[var(--border-color)] transition-all">
