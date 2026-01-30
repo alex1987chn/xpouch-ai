@@ -5,6 +5,56 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-01-30] - v0.6.4 - 前端项目结构重组与优化
+
+### 🏗️ 架构改进
+
+**前端目录结构重组**：
+- 创建 `src/pages/` 目录，将页面组件按功能分类
+  - `pages/home/` - 首页相关
+  - `pages/chat/` - 聊天相关
+  - `pages/knowledge/` - 知识库相关
+  - `pages/history/` - 历史记录相关
+  - `pages/agent/` - 智能体相关
+  - `pages/admin/` - 管理后台相关
+- 将 `components/` 中的组件按功能移至子目录
+  - `components/auth/` - 认证组件（LoginDialog）
+  - `components/settings/` - 设置组件（SettingsDialog, PersonalSettingsDialog, DeleteConfirmDialog, LanguageSelector, ThemeSwitcher, ModelSelector）
+  - `components/agent/` - 智能体组件（AgentCard, AgentPreviewCard, ArtifactPreviewCard, SwipeBackIndicator）
+  - `components/chat/` - 聊天组件（ExpertStatusBar, IndustrialHeader, ExpertDetailModal）
+
+### 🔧 技术改进
+
+**Import 路径统一**：
+- 所有 import 统一使用 `@/` 别名替代相对路径
+- 更新 `main.tsx` 中的所有路由懒加载路径
+- 更新所有受影响组件（AppLayout, UnifiedChatPage, HistoryPage, KnowledgeBasePage, CreateAgentPage, ExpertAdminPage, BauhausSidebar）的 import 引用
+- 使用绝对路径提升代码可维护性
+
+**I18n 翻译优化**：
+- 删除英文翻译中的 3 个重复 key（`model`, `temperatureValue`, `characters`）
+- 删除日文翻译中的 3 个重复 key
+- 移除 `Delete Dialog` 部分不必要的 key（`model`, `temp`, `response`, `secondsAbbr`）
+- 解决 Vite 编译时的 Duplicate key 警告
+- 构建验证：无错误和警告
+
+### 🎨 UI 改进
+
+**最近会话显示优化**：
+- 后端加载最近 **20 条**会话记录（之前 5 条）
+- UI 区域高度调整为 **220px**，保持展示 **5 个**卡片（之前 160px）
+- 超出部分可滚动查看，用户体验更佳
+- Bauhaus 风格滚动条，视觉一致性
+
+### 📊 代码统计
+
+- 文件移动：20 个文件（15 个重命名至功能目录）
+- 修改文件：4 个（AppLayout, BauhausSidebar, main.tsx, translations.ts）
+- 代码变更：+27 行 / -39 行
+- 优化效果：目录结构清晰，组件查找更便捷，代码可维护性大幅提升
+
+---
+
 ## [2026-01-30] - v0.6.3 - 国际化优化与组件清理
 
 ### 🎨 UI 改进
