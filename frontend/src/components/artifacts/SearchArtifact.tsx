@@ -19,16 +19,16 @@ export default function SearchArtifact({ results = [], className }: SearchArtifa
       {/* Header - Minimal, no gradient */}
       <div className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 px-3 py-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Search className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-          <span className="text-slate-700 dark:text-slate-300 text-sm font-medium">搜索结果</span>
+          <Search className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+          <span className="text-slate-700 dark:text-slate-200 text-sm font-medium">搜索结果</span>
         </div>
-        <span className="text-slate-500 dark:text-slate-500 text-xs">{results.length} 条结果</span>
+        <span className="text-slate-500 dark:text-slate-400 text-xs">{results.length} 条结果</span>
       </div>
 
       {/* Search Results */}
       <div className="p-2 space-y-2">
         {results.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
+          <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-slate-400">
             <Search className="w-12 h-12 mb-3 opacity-50" />
             <p className="text-sm">暂无搜索结果</p>
           </div>
@@ -41,10 +41,10 @@ export default function SearchArtifact({ results = [], className }: SearchArtifa
               {/* Title */}
               <div className="flex items-start gap-3 mb-2">
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  <h3 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {result.title}
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                  <p className="text-sm text-gray-600 dark:text-slate-300 line-clamp-2">
                     {result.description}
                   </p>
                 </div>

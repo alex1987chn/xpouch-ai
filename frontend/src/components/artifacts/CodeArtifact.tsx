@@ -21,7 +21,7 @@ export default function CodeArtifact({ content, language = 'text', className }: 
   const highlightKeywords = (text: string, keywords: string[]) => {
     return keywords.reduce((acc, keyword) => {
       const regex = new RegExp(`\\b${keyword}\\b`, 'g')
-      return acc.replace(regex, `<span class="text-purple-600 dark:text-purple-400 font-semibold">${keyword}</span>`)
+      return acc.replace(regex, `<span class="text-purple-600 dark:text-purple-300 font-semibold">${keyword}</span>`)
     }, text)
   }
 

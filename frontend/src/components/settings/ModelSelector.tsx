@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { models } from '@/config/models'
+import { useTranslation } from '@/i18n'
 
 interface ModelSelectorProps {
   value: string
@@ -9,7 +10,8 @@ interface ModelSelectorProps {
   label?: string
 }
 
-export default function ModelSelector({ value, onChange, label = 'MODEL_CONFIG' }: ModelSelectorProps) {
+export default function ModelSelector({ value, onChange, label }: ModelSelectorProps) {
+  const { t } = useTranslation()
   // 查找当前模型对应的 provider
   const currentModel = models.find(m => m.id === value)
   const initialProvider = currentModel?.provider || 'deepseek'
@@ -79,18 +81,20 @@ export default function ModelSelector({ value, onChange, label = 'MODEL_CONFIG' 
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
-        <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-          {label}
-        </label>
-      </div>
+      {label && (
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+          <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+            {label}
+          </label>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         {/* 供应商选择 */}
         <div className="relative" ref={providerDropdownRef}>
           <label className="font-mono text-[9px] text-[var(--text-secondary)] mb-1 block uppercase">
-            Provider
+            {t('provider')}
           </label>
           <button
             type="button"
@@ -139,7 +143,7 @@ export default function ModelSelector({ value, onChange, label = 'MODEL_CONFIG' 
         {/* 模型选择 */}
         <div className="relative" ref={modelDropdownRef}>
           <label className="font-mono text-[9px] text-[var(--text-secondary)] mb-1 block uppercase">
-            Model
+            {t('model')}
           </label>
           <button
             type="button"

@@ -12,7 +12,7 @@ export type TranslationKey =
   | 'greeting' | 'slogan' | 'placeholder' | 'featuredAgents' | 'myAgents' | 'createAgent' | 'backToChat'
   | 'addCustomAgent' | 'createYourFirstAgent' | 'statusReady' | 'statusIdle' | 'heroTitle'
   | 'commandInput' | 'initializeNew' | 'online' | 'offline' | 'recommended' | 'myConstructs'
-  | 'confirmDeleteAgent' | 'deleteAgentWarning'
+  | 'confirmDeleteAgent' | 'deleteAgentWarning' | 'deleteAgentConfirm' | 'deleteAgentConfirmDesc'
   // Create Agent
   | 'agentName' | 'category' | 'description' | 'systemPrompt' | 'preview' | 'createAgent'
   | 'chars' | 'complete' | 'almost' | 'input' | 'giveName' | 'categoryGeneral' | 'categoryDev'
@@ -23,7 +23,7 @@ export type TranslationKey =
   | 'expertsHeader' | 'searchPlaceholder' | 'noMatchExpert' | 'config' | 'editMode' | 'previewMode'
   | 'lastUpdated' | 'modelConfig' | 'temperature' | 'conservative' | 'balanced' | 'creative'
   | 'minChars' | 'saving' | 'saveConfig' | 'testInput' | 'running' | 'startPreview' | 'results'
-  | 'model' | 'temp' | 'response' | 'secondsAbbr' | 'temperatureValue' | 'characters'
+  | 'model' | 'temp' | 'response' | 'secondsAbbr' | 'temperatureValue' | 'characters' | 'provider'
   // Settings
   | 'theme' | 'language' | 'systemSettings' | 'userSettings' | 'personalSettings' | 'modelConfig'
   // Common

@@ -147,7 +147,7 @@ function ExpertRail({
               >
                 <span className={cn(
                   "font-black text-xs",
-                  isActive ? "text-primary" : "text-secondary"
+                  isActive ? "text-primary" : "text-secondary dark:text-secondary"
                 )}>
                   {label}
                 </span>
@@ -235,7 +235,7 @@ function ArtifactDashboard({
       {/* 内容区 */}
       <div className="flex-1 bg-card p-4 overflow-hidden relative">
         {/* 点阵背景 */}
-        <div className="absolute inset-0 dot-grid opacity-30 pointer-events-none" />
+        <div className="absolute inset-0 dot-grid opacity-30 dark:opacity-20 pointer-events-none" />
 
         {/* 内容容器 */}
         <div className="w-full h-full border border-border bg-card shadow-sm relative flex flex-col">
@@ -283,11 +283,11 @@ function ArtifactDashboard({
       {/* 底部状态栏 */}
       <div className="bg-primary text-inverted border-t-2 border-border px-3 py-1.5 flex justify-between items-center text-[9px] font-mono shrink-0">
         <div className="flex gap-4">
-          <span>CPU: 12%</span>
-          <span>MEM: 402MB</span>
+          <span className="text-inverted">CPU: 12%</span>
+          <span className="text-inverted">MEM: 402MB</span>
           <span className="text-[var(--accent)]">NET: CONNECTED</span>
         </div>
-        <span>Ln 1, Col 1</span>
+        <span className="text-inverted">Ln 1, Col 1</span>
       </div>
     </div>
   )

@@ -33,7 +33,7 @@ export default function HtmlArtifact({ content, className }: HtmlArtifactProps) 
           title="HTML Preview"
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-gray-500">
+        <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-slate-400">
           加载中...
         </div>
       )}

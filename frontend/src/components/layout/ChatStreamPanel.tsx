@@ -137,11 +137,11 @@ export default function ChatStreamPanel({
 function EmptyState() {
   const { t } = useTranslation()
   return (
-    <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
-      <div className="w-16 h-16 border-2 border-dashed border-border flex items-center justify-center mb-4">
+    <div className="h-full flex flex-col items-center justify-center text-center opacity-60">
+      <div className="w-16 h-16 border-2 border-dashed border-border flex items-center justify-center mb-4 text-secondary">
         <Terminal className="w-8 h-8" />
       </div>
-      <p className="font-mono text-xs uppercase tracking-widest">
+      <p className="font-mono text-xs uppercase tracking-widest text-secondary">
         {t('initConversation')}
       </p>
     </div>
@@ -220,8 +220,8 @@ function MessageItem({
     // 用户消息：深色代码块风格
     return (
       <div className="flex flex-col items-end group">
-        <div className="flex items-center gap-2 mb-1 opacity-40 group-hover:opacity-100 transition-opacity">
-          <span className="font-mono text-[9px] uppercase">ID: {String(message.id ?? '').slice(0, 6)} // USER</span>
+        <div className="flex items-center gap-2 mb-1 opacity-50 group-hover:opacity-100 transition-opacity">
+          <span className="font-mono text-[9px] uppercase text-secondary">ID: {String(message.id ?? '').slice(0, 6)} // USER</span>
         </div>
         <div className="bg-primary text-inverted p-5 shadow-hard border-2 border-transparent w-fit max-w-[80%]">
           <div className="flex gap-3">
@@ -246,12 +246,12 @@ function MessageItem({
       {/* 消息内容 */}
       <div className="bg-card border-2 border-border border-l-[6px] border-l-[var(--accent)] p-6 w-full shadow-sm relative">
         {/* 标签 */}
-        <div className="absolute top-0 right-0 bg-[var(--accent)] text-primary font-mono text-[9px] px-2 py-0.5 font-bold">
+        <div className="absolute top-0 right-0 bg-[var(--accent)] text-inverted font-mono text-[9px] px-2 py-0.5 font-bold">
           {activeExpert ? `${activeExpert.toUpperCase()}_RESPONSE` : 'FINAL_PLAN'}
         </div>
         
         {/* Markdown 内容 */}
-        <div className="prose prose-sm max-w-none prose-headings:text-sm prose-headings:font-bold prose-p:text-sm prose-p:leading-relaxed prose-pre:bg-panel prose-pre:border prose-pre:border-border/20">
+        <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-sm prose-headings:font-bold prose-headings:text-primary prose-p:text-sm prose-p:leading-relaxed prose-p:text-primary prose-strong:text-primary prose-code:text-primary prose-pre:bg-panel prose-pre:border prose-pre:border-border/20 prose-a:text-blue-600 dark:prose-a:text-blue-400">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeHighlight]}
@@ -306,7 +306,7 @@ function RoutingIndicator({ expertType }: { expertType: string }) {
     <div className="flex items-center gap-2 mb-0 ml-4 pl-4 border-l-2 border-dashed border-border/30 h-6">
       <span className="font-mono text-[9px] bg-panel px-1 text-secondary">ROUTING</span>
       <span className="text-secondary">→</span>
-      <span className="font-mono text-[9px] font-bold border border-border px-1 bg-card">
+      <span className="font-mono text-[9px] font-bold border border-border px-1 bg-card text-primary">
         {expertType.toUpperCase()}_AGENT
       </span>
     </div>
@@ -317,7 +317,7 @@ function RoutingIndicator({ expertType }: { expertType: string }) {
 function GeneratingIndicator() {
   return (
     <div className="flex flex-col items-start w-full max-w-3xl ml-4 pl-4 border-l-2 border-dashed border-border/30 pb-4">
-      <div className="bg-card border border-border border-dashed p-3 w-fit flex items-center gap-2 text-xs font-mono text-secondary animate-pulse">
+      <div className="bg-card border border-border border-dashed p-3 w-fit flex items-center gap-2 text-xs font-mono text-primary animate-pulse">
         <span className="w-3 h-3 border-2 border-border border-t-transparent rounded-full animate-spin" />
         <span>Processing: Analyzing request stream...</span>
       </div>
@@ -375,13 +375,15 @@ function HeavyInputConsole({
               {/* 工具按钮 */}
               <button
                 disabled={disabled}
-                className="hover:text-primary text-secondary transition-colors disabled:opacity-50"
+                className="text-primary hover:text-[var(--accent)] transition-colors disabled:opacity-50"
+                title="附件"
               >
                 <Paperclip className="w-4 h-4" />
               </button>
               <button
                 disabled={disabled}
-                className="hover:text-primary text-secondary transition-colors disabled:opacity-50"
+                className="text-primary hover:text-[var(--accent)] transition-colors disabled:opacity-50"
+                title="网络搜索"
               >
                 <Globe className="w-4 h-4" />
               </button>
