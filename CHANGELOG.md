@@ -5,6 +5,64 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-01-31] - v0.6.6 - 前端智能路由全托管重构
+
+### 🚀 核心重构
+
+**移除手动模式切换，实现智能路由全托管**：
+- 删除 SIMPLE/COMPLEX 模式切换按钮（首页 + 聊天页）
+- 移除模式判断逻辑和状态管理
+- 统一使用 Orchestrator 接口（后端自动路由）
+- 前端根据后端响应自动展开右侧面板
+
+### 🎨 UI 改进
+
+**首页 (HomePage)**：
+- 移除输入框下方的模式切换按钮
+- 简化工具栏（只保留附件按钮）
+- 推荐场景点击只设置输入内容，不改变模式
+
+**聊天页 (UnifiedChatPage + ChatStreamPanel)**：
+- 移除模式切换按钮和 ModeButton 组件
+- 删除 `mode` 和 `onModeChange` props
+- 监听专家活动，自动切换移动端视图模式
+
+### 🔧 技术改进
+
+**智能响应 (Auto-Layout)**：
+- 监听 `expertResults` 和 `artifactSessions` 状态
+- 检测到专家活动时：
+  - 移动端：自动切换到 preview 模式
+  - 桌面端：右侧面板自动展开
+- 无需用户手动干预，体验更流畅
+
+**代码清理**：
+- 移除 `ConversationMode` 类型定义
+- 移除 `conversationMode` 状态
+- 移除 `handleModeChange` 函数
+- 移除模式判断逻辑（`if (conversationMode === 'complex')`）
+
+### 📊 代码统计
+
+- 修改文件：3 个
+- 代码变更：+28 行 / -137 行
+- 净减少：-109 行
+- 删除组件：ModeButton（完整删除）
+
+### 🎯 用户体验提升
+
+**修改前（手动模式切换）**：
+- 用户需要手动选择 SIMPLE 或 COMPLEX 模式
+- 增加用户认知负担
+- 选错模式会导致体验不好
+
+**修改后（智能路由全托管）**：
+- 用户直接输入消息，后端自动判断意图
+- 前端根据后端响应自动展开右侧面板
+- 交互更简洁、体验更智能
+
+---
+
 ## [2026-01-31] - v0.6.5 - 后端架构优化与代码质量提升
 
 ### 🏗️ 架构改进
