@@ -14,6 +14,7 @@ interface CreateAgentPageProps {
 
 // Bauhaus 风格进度条组件
 function BauhausProgressBar({ current, max }: { current: number; max: number }) {
+  const { t } = useTranslation()
   const progress = Math.min(current / max, 1)
   const filledCount = Math.floor(progress * 20)
 
@@ -40,7 +41,7 @@ function BauhausProgressBar({ current, max }: { current: number; max: number }) 
       {/* 字数统计 */}
       <div className="flex items-center justify-between font-mono text-[10px]">
         <span className="text-[var(--text-secondary)]">
-          {current} / {max} CHARS
+          {current} / {max} {t('chars')}
         </span>
         <span className={cn(
           'font-bold uppercase',
@@ -50,7 +51,7 @@ function BauhausProgressBar({ current, max }: { current: number; max: number }) 
               ? 'text-[var(--accent-hover)]'
               : 'text-[var(--text-secondary)]'
         )}>
-          {progress >= 1 ? 'COMPLETE' : progress >= 0.8 ? 'ALMOST' : 'INPUT...'}
+          {progress >= 1 ? t('complete') : progress >= 0.8 ? t('almost') : t('input')}
         </span>
       </div>
     </div>
@@ -87,7 +88,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
     onSave(newAgent)
   }
 
-  const categories = ['综合', '开发', '创作', '分析', '研究']
+  const categories = [t('categoryGeneral'), t('categoryDev'), t('categoryCreate'), t('categoryAnalyze'), t('categoryResearch')]
 
   return (
     <div className="flex flex-col h-full bg-transparent">
@@ -109,7 +110,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-[var(--accent-hover)]"></div>
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-              /// CREATE_AGENT
+              /// {t('createAgent')}
             </span>
           </div>
 
@@ -120,10 +121,11 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
             className={cn(
               'flex items-center gap-2 px-4 py-2 border-2 border-black',
               'bg-[var(--accent-hover)] text-black font-mono text-xs font-bold uppercase',
-              'hover:brightness-110',
-              'active:scale-[0.98]',
+              'shadow-[3px_3px_0_0_rgba(0,0,0,1)]',
+              'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)]',
+              'active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0_0_rgba(0,0,0,1)]',
               'transition-all',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
+              'disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0'
             )}
           >
             <Sparkles className="w-4 h-4" />
@@ -148,14 +150,14 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
                   <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                    AGENT_NAME <span className="text-[var(--accent-hover)]">*</span>
+                    {t('agentName')} <span className="text-[var(--accent-hover)]">*</span>
                   </label>
                 </div>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="给你的智能体起个名字..."
+                  placeholder={t('giveName')}
                   className="w-full px-4 py-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
                 />
               </div>
@@ -165,7 +167,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
                   <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                    CATEGORY
+                    {t('category')}
                   </label>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -198,7 +200,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
                   <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                    DESCRIPTION
+                    {t('description')}
                   </label>
                 </div>
                 <input
@@ -215,7 +217,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
                   <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                    SYSTEM_PROMPT <span className="text-[var(--accent-hover)]">*</span>
+                    {t('systemPrompt')} <span className="text-[var(--accent-hover)]">*</span>
                   </label>
                 </div>
                 <p className="font-mono text-[10px] text-[var(--text-secondary)] opacity-60">
@@ -239,7 +241,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
                 <div className="flex items-start gap-3">
                   <div className="w-1.5 h-1.5 bg-[var(--accent-hover)] mt-1.5 shrink-0"></div>
                   <p className="font-mono text-[10px] text-[var(--text-primary)] leading-relaxed">
-                    <span className="font-bold">{t('tip')}：</span>
+                    <span className="font-bold">{t('tip')}: </span>
                     {t('tipDescription')}
                   </p>
                 </div>
@@ -254,7 +256,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-1.5 h-1.5 bg-[var(--accent-hover)]"></div>
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                  /// PREVIEW
+                  /// {t('preview')}
                 </span>
               </div>
 

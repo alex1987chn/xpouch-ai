@@ -71,7 +71,8 @@ export default function UnifiedChatPage() {
     isStreaming,
     isLoading,
     sendMessage,
-    loadConversation
+    loadConversation,
+    retry
   } = useChat()
 
   const setSelectedAgentId = useChatStore(state => state.setSelectedAgentId)
@@ -151,6 +152,19 @@ export default function UnifiedChatPage() {
       clearArtifactSessions()
     }
   }, [conversationId, loadConversation, clearExpertResults, clearArtifactSessions, navigate])
+
+  // 恢复草稿：新会话时检查 localStorage
+  useEffect(() => {
+    if (!conversationId) {
+      const draft = localStorage.getItem('xpouch_chat_draft')
+      if (draft && !inputValue) {
+        setInputValue(draft)
+        localStorage.removeItem('xpouch_chat_draft')
+        // 可选：显示提示
+        // toast({ title: t('draftRestored') })
+      }
+    }
+  }, [conversationId])
 
   // 处理首页传来的消息
   useEffect(() => {
@@ -264,6 +278,7 @@ export default function UnifiedChatPage() {
             mode={mode}
             onModeChange={handleModeChange}
             activeExpert={selectedExpertId}
+            onRegenerate={() => retry()}
           />
         }
         orchestratorPanel={

@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { Maximize2, LayoutGrid, FileCode, Terminal, Cpu, Database, Search, Globe, Palette, Braces } from 'lucide-react'
 import type { Artifact } from '@/types'
 import type { ExpertResult } from '@/store/canvasStore'
+import { useTranslation } from '@/i18n'
 
 // Artifact 组件懒加载 - 按需加载重型库
 const CodeArtifact = lazy(() => import('@/components/artifacts/CodeArtifact').then(m => ({ default: m.default })))
@@ -184,6 +185,7 @@ function ArtifactDashboard({
   isFullscreen?: boolean
   onToggleFullscreen?: () => void
 }) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<string>(selectedArtifact?.id || 'overview')
 
   // 如果有选中的 artifact，显示它；否则显示概览
@@ -204,7 +206,7 @@ function ArtifactDashboard({
           )}
         >
           <LayoutGrid className="w-3 h-3" />
-          <span className="font-mono text-xs font-bold">Overview</span>
+          <span className="font-mono text-xs font-bold">{t('overview')}</span>
         </button>
 
         {/* Artifact Tabs */}
@@ -241,7 +243,7 @@ function ArtifactDashboard({
           <div className="flex justify-between items-center p-3 border-b border-border bg-panel shrink-0">
             <h3 className="font-bold uppercase text-xs flex items-center gap-2">
               {activeTab === 'overview' ? (
-                <><LayoutGrid className="w-3 h-3" /> Gantt View :: MVP Plan</>
+                <><LayoutGrid className="w-3 h-3" /> {t('ganttViewTitle')}</>
               ) : (
                 <><FileCode className="w-3 h-3" /> {currentArtifact?.title}</>
               )}
@@ -269,9 +271,9 @@ function ArtifactDashboard({
               className="px-4 py-2 bg-primary text-inverted font-mono text-xs hover:bg-[var(--accent)] hover:text-primary border-2 border-transparent hover:border-border transition-colors shadow-hard flex items-center gap-2"
             >
               {isFullscreen ? (
-                <><span className="text-lg leading-none">−</span> Exit Fullscreen</>
+                <><span className="text-lg leading-none">−</span> {t('exitFullscreen')}</>
               ) : (
-                <><Maximize2 className="w-3 h-3" /> Open in Fullscreen</>
+                <><Maximize2 className="w-3 h-3" /> {t('openFullscreen')}</>
               )}
             </button>
           </div>
@@ -347,12 +349,13 @@ function GanttOverview() {
 
 /** Artifact 内容渲染 */
 function ArtifactContent({ artifact }: { artifact: Artifact }) {
+  const { t } = useTranslation()
   // Artifact 加载状态
   const ArtifactLoader = () => (
     <div className="h-full flex items-center justify-center">
       <div className="flex items-center gap-2 text-xs text-secondary font-mono">
         <div className="w-2 h-2 bg-[var(--accent)] animate-pulse" />
-        <span>LOADING_MODULE...</span>
+        <span>{t('loadingModule')}</span>
       </div>
     </div>
   )

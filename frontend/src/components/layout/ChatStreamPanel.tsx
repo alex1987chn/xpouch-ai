@@ -1,10 +1,11 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { Terminal, Paperclip, Globe } from 'lucide-react'
+import { Terminal, Paperclip, Globe, Copy, Check, RefreshCw } from 'lucide-react'
 import type { Message } from '@/store/chatStore'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
+import { useTranslation } from '@/i18n'
 
 /**
  * =============================
@@ -52,6 +53,8 @@ interface ChatStreamPanelProps {
   onModeChange: (mode: 'simple' | 'complex') => void
   /** 当前活跃专家 (用于显示路由指示器) */
   activeExpert?: string | null
+  /** 重新生成消息回调 */
+  onRegenerate?: (messageId: string) => void
 }
 
 /**
@@ -70,6 +73,7 @@ export default function ChatStreamPanel({
   mode,
   onModeChange,
   activeExpert,
+  onRegenerate,
 }: ChatStreamPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -110,6 +114,7 @@ export default function ChatStreamPanel({
               message={msg} 
               isLast={index === messages.length - 1}
               activeExpert={activeExpert}
+              onRegenerate={onRegenerate}
             />
           ))
         )}
@@ -138,29 +143,86 @@ export default function ChatStreamPanel({
 
 /** 空状态 */
 function EmptyState() {
+  const { t } = useTranslation()
   return (
     <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
       <div className="w-16 h-16 border-2 border-dashed border-border flex items-center justify-center mb-4">
         <Terminal className="w-8 h-8" />
       </div>
       <p className="font-mono text-xs uppercase tracking-widest">
-        Initialize conversation
+        {t('initConversation')}
       </p>
     </div>
   )
 }
 
 /** 单条消息 */
-function MessageItem({ 
-  message, 
+function MessageItem({
+  message,
   isLast,
   activeExpert,
-}: { 
+  onRegenerate,
+}: {
   message: Message
   isLast: boolean
   activeExpert?: string | null
+  onRegenerate?: (messageId: string) => void
 }) {
   const isUser = message.role === 'user'
+  const [copied, setCopied] = useState(false)
+  const { t } = useTranslation()
+  
+  // 处理复制
+  const handleCopy = useCallback(async () => {
+    const textToCopy = message.content || ''
+    if (!textToCopy) {
+      console.warn('No content to copy')
+      return
+    }
+
+    try {
+      // 首选: Clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textToCopy)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+        return
+      }
+
+      // 降级方案: 使用 textarea 复制
+      const textarea = document.createElement('textarea')
+      textarea.value = textToCopy
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      textarea.style.top = '0'
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+
+      try {
+        const successful = document.execCommand('copy')
+        if (successful) {
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+        } else {
+          console.error('execCommand copy failed')
+        }
+      } catch (err) {
+        console.error('Fallback copy failed:', err)
+      } finally {
+        document.body.removeChild(textarea)
+      }
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }, [message.content])
+  
+  // 处理重试
+  const handleRetry = useCallback(() => {
+    if (message.id && onRegenerate) {
+      onRegenerate(message.id)
+    }
+  }, [message.id, onRegenerate])
   
   if (isUser) {
     // 用户消息：深色代码块风格
@@ -212,12 +274,33 @@ function MessageItem({
             TOKENS: {message.content.length}
           </span>
           <div className="flex gap-2">
-            <button className="text-[10px] font-bold hover:bg-primary hover:text-inverted px-2 py-1 transition-colors">
-              COPY
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1 text-[10px] font-bold hover:bg-primary hover:text-inverted px-2 py-1 transition-colors"
+              title={t('copy')}
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3 h-3" />
+                  {t('copied')}
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3" />
+                  {t('copy')}
+                </>
+              )}
             </button>
-            <button className="text-[10px] font-bold hover:bg-primary hover:text-inverted px-2 py-1 transition-colors">
-              RETRY
-            </button>
+            {onRegenerate && (
+              <button
+                onClick={handleRetry}
+                className="flex items-center gap-1 text-[10px] font-bold hover:bg-primary hover:text-inverted px-2 py-1 transition-colors"
+                title={t('regenerate')}
+              >
+                <RefreshCw className="w-3 h-3" />
+                {t('retry')}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -268,6 +351,7 @@ function HeavyInputConsole({
   onModeChange: (mode: 'simple' | 'complex') => void
   disabled?: boolean
 }) {
+  const { t } = useTranslation()
   return (
     <div className="bg-card border-t-2 border-border z-20 p-0">
       {/* 输入流标签条 */}
@@ -288,14 +372,11 @@ function HeavyInputConsole({
             <div className="w-10 py-4 text-right pr-3 font-mono text-xs text-secondary bg-page border-r-2 border-border/20 select-none leading-relaxed">
               01<br/>02<br/>03
             </div>
-            <textarea
+            <HeavyInputTextArea
               value={value}
-              onChange={(e) => onChange(e.target.value)}
+              onChange={onChange}
               onKeyDown={onKeyDown}
               disabled={disabled}
-              placeholder="// Init construction sequence..."
-              className="flex-1 bg-transparent border-none p-4 font-mono text-sm focus:ring-0 outline-none resize-none leading-relaxed placeholder-secondary disabled:opacity-50"
-              rows={3}
             />
           </div>
 
@@ -305,30 +386,21 @@ function HeavyInputConsole({
             <div className="flex items-center gap-4 pl-2">
               {/* 机械开关：SIMPLE/COMPLEX */}
               <div className={cn("flex border-2 border-border bg-card h-7", disabled && "opacity-60")}>
-                <button
+                <ModeButton
+                  active={mode === 'simple'}
                   onClick={() => onModeChange('simple')}
                   disabled={disabled}
-                  className={cn(
-                    'px-3 text-[9px] font-bold border-r-2 border-border transition-all',
-                    mode === 'simple'
-                      ? 'bg-[var(--accent)] !text-primary !opacity-100'
-                      : 'bg-card text-secondary hover:text-primary hover:bg-page'
-                  )}
+                  isFirst
                 >
-                  SIMPLE
-                </button>
-                <button
+                  {t('simple')}
+                </ModeButton>
+                <ModeButton
+                  active={mode === 'complex'}
                   onClick={() => onModeChange('complex')}
                   disabled={disabled}
-                  className={cn(
-                    'px-3 text-[9px] font-bold transition-all',
-                    mode === 'complex'
-                      ? 'bg-primary !text-inverted !opacity-100'
-                      : 'bg-card text-secondary hover:text-primary hover:bg-page'
-                  )}
                 >
-                  COMPLEX
-                </button>
+                  {t('complex')}
+                </ModeButton>
               </div>
 
               {/* 分隔线 */}
@@ -361,11 +433,11 @@ function HeavyInputConsole({
               {disabled ? (
                 <>
                   <span className="w-3 h-3 border-2 border-inverted border-t-transparent rounded-full animate-spin" />
-                  PROCESSING
+                  {t('processing')}
                 </>
               ) : (
                 <>
-                  EXECUTE
+                  {t('execute')}
                   <Terminal className="w-3 h-3" />
                 </>
               )}
@@ -374,5 +446,62 @@ function HeavyInputConsole({
         </div>
       </div>
     </div>
+  )
+}
+
+/** 输入文本域 - 带翻译 */
+function HeavyInputTextArea({
+  value,
+  onChange,
+  onKeyDown,
+  disabled,
+}: {
+  value: string
+  onChange: (value: string) => void
+  onKeyDown: (e: React.KeyboardEvent) => void
+  disabled?: boolean
+}) {
+  const { t } = useTranslation()
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={onKeyDown}
+      disabled={disabled}
+      placeholder={t('inputPlaceholder')}
+      className="flex-1 bg-transparent border-none p-4 font-mono text-sm focus:ring-0 outline-none resize-none leading-relaxed placeholder-secondary disabled:opacity-50"
+      rows={3}
+    />
+  )
+}
+
+/** 模式切换按钮 */
+function ModeButton({
+  children,
+  active,
+  onClick,
+  disabled,
+  isFirst,
+}: {
+  children: React.ReactNode
+  active: boolean
+  onClick: () => void
+  disabled?: boolean
+  isFirst?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'px-3 text-[9px] font-bold transition-all uppercase',
+        isFirst && 'border-r-2 border-border',
+        active
+          ? 'bg-[var(--accent)] !text-primary !opacity-100'
+          : 'bg-card text-secondary hover:text-primary hover:bg-page'
+      )}
+    >
+      {children}
+    </button>
   )
 }

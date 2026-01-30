@@ -67,7 +67,7 @@ export default function ExpertAdminPage() {
       }
     } catch (error) {
       logger.error('Failed to load experts:', error)
-      setToast({ message: '加载失败', type: 'error' })
+      setToast({ message: t('loadFailed'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -89,7 +89,7 @@ export default function ExpertAdminPage() {
       setPreviewMode(false)
     } catch (error) {
       logger.error('Failed to load expert:', error)
-      setToast({ message: '加载专家失败', type: 'error' })
+      setToast({ message: t('loadExpertFailed'), type: 'error' })
     }
   }
 
@@ -102,10 +102,10 @@ export default function ExpertAdminPage() {
       await updateExpert(selectedExpert.expert_key, formData)
       await loadExperts()
       await selectExpert(selectedExpert.expert_key)
-      setToast({ message: '保存成功', type: 'success' })
+      setToast({ message: t('saveSuccess'), type: 'success' })
     } catch (error) {
       logger.error('Failed to update expert:', error)
-      setToast({ message: '保存失败', type: 'error' })
+      setToast({ message: t('saveFailed'), type: 'error' })
     } finally {
       setIsSaving(false)
     }
@@ -114,7 +114,7 @@ export default function ExpertAdminPage() {
   // 预览专家响应
   const handlePreview = async () => {
     if (!selectedExpert || testInput.length < 10) {
-      setToast({ message: '测试输入至少需要10个字符', type: 'error' })
+      setToast({ message: t('testInputMinCharsError'), type: 'error' })
       return
     }
 
@@ -126,10 +126,10 @@ export default function ExpertAdminPage() {
         test_input: testInput,
       })
       setPreviewResult(result)
-      setToast({ message: `执行完成 (${(result.execution_time_ms / 1000).toFixed(2)}s)`, type: 'success' })
+      setToast({ message: `${t('executionCompleted')} (${(result.execution_time_ms / 1000).toFixed(2)}${t('secondsAbbr')})`, type: 'success' })
     } catch (error) {
       logger.error('Failed to preview expert:', error)
-      setToast({ message: '预览失败', type: 'error' })
+      setToast({ message: t('previewFailed'), type: 'error' })
     } finally {
       setIsPreviewing(false)
     }
@@ -138,7 +138,7 @@ export default function ExpertAdminPage() {
   // 刷新所有专家
   const handleRefresh = async () => {
     await loadExperts()
-    setToast({ message: '刷新成功', type: 'success' })
+    setToast({ message: t('refreshSuccess'), type: 'success' })
   }
 
   // 表单字段更新
@@ -163,7 +163,7 @@ export default function ExpertAdminPage() {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="w-8 h-8 border-2 border-[var(--border-color)] border-t-[var(--accent-hover)] animate-spin"></div>
-        <span className="ml-3 font-mono text-sm text-[var(--text-secondary)]">LOADING...</span>
+        <span className="ml-3 font-mono text-sm text-[var(--text-secondary)]">{t('loading')}</span>
       </div>
     )
   }
@@ -186,7 +186,7 @@ export default function ExpertAdminPage() {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-[var(--accent-hover)]"></div>
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-              /// EXPERTS
+              /// {t('expertsHeader')}
             </span>
           </div>
           <button
@@ -204,7 +204,7 @@ export default function ExpertAdminPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
             <input
               type="text"
-              placeholder="SEARCH..."
+              placeholder={t('searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-xs focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
@@ -247,7 +247,7 @@ export default function ExpertAdminPage() {
           </div>
           {filteredExperts.length === 0 && (
             <div className="text-center font-mono text-xs text-[var(--text-secondary)] py-8">
-              未找到匹配的专家
+              {t('noMatchExpert')}
             </div>
           )}
         </div>
@@ -260,7 +260,7 @@ export default function ExpertAdminPage() {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-[var(--accent-hover)]"></div>
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-              /// {selectedExpert ? selectedExpert.name.toUpperCase() : 'CONFIG'}
+              /// {selectedExpert ? selectedExpert.name.toUpperCase() : t('config')}
             </span>
           </div>
           {selectedExpert && (
@@ -275,7 +275,7 @@ export default function ExpertAdminPage() {
                 )}
               >
                 <Play className="w-3.5 h-3.5" />
-                {previewMode ? 'EDIT_MODE' : 'PREVIEW'}
+                {previewMode ? t('editMode') : t('previewMode')}
               </button>
             </div>
           )}
@@ -285,7 +285,7 @@ export default function ExpertAdminPage() {
         {selectedExpert && (
           <div className="px-4 py-2 border-b-2 border-[var(--border-color)] bg-[var(--bg-page)]">
             <span className="font-mono text-[10px] text-[var(--text-secondary)]">
-              LAST_UPDATED: {new Date(selectedExpert.updated_at).toLocaleString()}
+              {t('lastUpdated')}: {new Date(selectedExpert.updated_at).toLocaleString()}
             </span>
           </div>
         )}
@@ -300,7 +300,7 @@ export default function ExpertAdminPage() {
                   <ModelSelector
                     value={formData.model}
                     onChange={(modelId) => handleFieldChange('model', modelId)}
-                    label="MODEL_CONFIG"
+                    label={t('modelConfig')}
                   />
 
                   {/* 温度参数 - Bauhaus 风格 */}
@@ -308,7 +308,7 @@ export default function ExpertAdminPage() {
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
                       <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                        TEMPERATURE: {formData.temperature?.toFixed(1)}
+                        {t('temperature')}: {formData.temperature?.toFixed(1)}
                       </label>
                     </div>
                     <div className="relative h-8 bg-[var(--bg-page)] border-2 border-[var(--border-color)]" style={{ zIndex: 10 }}>
@@ -335,9 +335,9 @@ export default function ExpertAdminPage() {
                       />
                     </div>
                     <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
-                      <span>0.0 (保守)</span>
-                      <span>1.0 (平衡)</span>
-                      <span>2.0 (创意)</span>
+                      <span>0.0 ({t('conservative')})</span>
+                      <span>1.0 ({t('balanced')})</span>
+                      <span>2.0 ({t('creative')})</span>
                     </div>
                   </div>
 
@@ -346,7 +346,7 @@ export default function ExpertAdminPage() {
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
                       <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                        SYSTEM_PROMPT
+                        {t('systemPrompt')}
                       </label>
                     </div>
                     <textarea
@@ -357,9 +357,9 @@ export default function ExpertAdminPage() {
                       className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[150px] bauhaus-scrollbar"
                     />
                     <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
-                      <span>{formData.system_prompt.length} CHARS</span>
+                      <span>{formData.system_prompt.length} {t('chars')}</span>
                       <span className={formData.system_prompt.length < 10 ? 'text-red-500' : ''}>
-                        MIN: 10
+                        {t('minChars')}: 10
                       </span>
                     </div>
                   </div>
@@ -382,12 +382,12 @@ export default function ExpertAdminPage() {
                       {isSaving ? (
                         <>
                           <div className="w-3 h-3 border-2 border-black/30 border-t-black animate-spin"></div>
-                          SAVING...
+                          {t('saving')}
                         </>
                       ) : (
                         <>
                           <Save className="w-4 h-4" />
-                          SAVE_CONFIG
+                          {t('saveConfig')}
                         </>
                       )}
                     </button>
@@ -402,7 +402,7 @@ export default function ExpertAdminPage() {
                       <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
                         <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                          TEST_INPUT
+                          {t('testInput')}
                         </label>
                       </div>
                       <textarea
@@ -413,9 +413,9 @@ export default function ExpertAdminPage() {
                         className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-none"
                       />
                       <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
-                        <span>{testInput.length} CHARS</span>
+                        <span>{testInput.length} {t('chars')}</span>
                         <span className={testInput.length < 10 ? 'text-red-500' : ''}>
-                          MIN: 10
+                          {t('minChars')}: 10
                         </span>
                       </div>
                     </div>
@@ -438,12 +438,12 @@ export default function ExpertAdminPage() {
                         {isPreviewing ? (
                           <>
                             <div className="w-3 h-3 border-2 border-black/30 border-t-black animate-spin"></div>
-                            RUNNING...
+                            {t('running')}
                           </>
                         ) : (
                           <>
                             <Play className="w-4 h-4" />
-                            START_PREVIEW
+                            {t('startPreview')}
                           </>
                         )}
                       </button>
@@ -455,19 +455,19 @@ export default function ExpertAdminPage() {
                         <div className="flex items-center gap-2">
                           <div className="w-1.5 h-1.5 bg-[var(--accent-hover)]"></div>
                           <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                            /// RESULTS
+                            /// {t('results')}
                           </span>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                           <div className="p-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)]">
-                            <div className="font-mono text-[9px] text-[var(--text-secondary)] uppercase">MODEL</div>
+                            <div className="font-mono text-[9px] text-[var(--text-secondary)] uppercase">{t('model')}</div>
                             <div className="font-mono text-xs font-bold text-[var(--text-primary)] mt-1">
                               {previewResult.model}
                             </div>
                           </div>
                           <div className="p-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)]">
-                            <div className="font-mono text-[9px] text-[var(--text-secondary)] uppercase">TEMP</div>
+                            <div className="font-mono text-[9px] text-[var(--text-secondary)] uppercase">{t('temp')}</div>
                             <div className="font-mono text-xs font-bold text-[var(--text-primary)] mt-1">
                               {previewResult.temperature}
                             </div>
@@ -477,10 +477,10 @@ export default function ExpertAdminPage() {
                         <div className="p-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)]">
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-mono text-[9px] text-[var(--text-secondary)] uppercase">
-                              RESPONSE
+                              {t('response')}
                             </span>
                             <span className="font-mono text-[9px] text-[var(--text-secondary)]">
-                              {(previewResult.execution_time_ms / 1000).toFixed(2)}s
+                              {(previewResult.execution_time_ms / 1000).toFixed(2)}{t('secondsAbbr')}
                             </span>
                           </div>
                           <div className="font-mono text-xs text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap">
