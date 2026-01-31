@@ -109,6 +109,16 @@ export async function sendMessage(
 }
 
 /**
+ * 检测累积的内容是否是任务计划 JSON
+ */
+function isTaskPlanJSON(content: string): boolean {
+  const trimmed = content.trim()
+  // 检查是否以 { 开头并包含任务计划特征字段
+  return trimmed.startsWith('{') && 
+         (trimmed.includes('"tasks"') || trimmed.includes('"strategy"') || trimmed.includes('"estimated_steps"'))
+}
+
+/**
  * 处理 SSE 流式响应
  */
 async function processStream(
@@ -120,6 +130,9 @@ async function processStream(
   let fullContent = ''
   let buffer = ''
   let finalConversationId: string | undefined = initialConversationId || undefined
+  // 👈 用于检测任务计划 JSON 的累积缓冲区
+  let detectionBuffer = ''
+  let isFilteringTaskPlan = false
 
   try {
     while (true) {
@@ -141,6 +154,37 @@ async function processStream(
 
           try {
             const parsed = JSON.parse(data)
+            
+            // 👈 检测任务计划 JSON（累积检测）
+            if (parsed.content) {
+              detectionBuffer += parsed.content
+              
+              // 如果累积缓冲区看起来像任务计划 JSON，开始过滤
+              if (!isFilteringTaskPlan && detectionBuffer.length > 10) {
+                if (isTaskPlanJSON(detectionBuffer)) {
+                  isFilteringTaskPlan = true
+                  console.log('[chat.ts] 检测到任务计划 JSON，开始过滤')
+                }
+              }
+              
+              // 如果正在过滤任务计划，检查是否到达 JSON 结尾
+              if (isFilteringTaskPlan) {
+                // 检查是否是 JSON 的结尾（ balancing braces 简单检测）
+                const openBraces = (detectionBuffer.match(/{/g) || []).length
+                const closeBraces = (detectionBuffer.match(/}/g) || []).length
+                
+                if (openBraces > 0 && openBraces === closeBraces && detectionBuffer.trim().endsWith('}')) {
+                  // JSON 结束，重置状态
+                  console.log('[chat.ts] 任务计划 JSON 过滤结束，长度:', detectionBuffer.length)
+                  isFilteringTaskPlan = false
+                  detectionBuffer = ''
+                }
+                
+                // 跳过这个 content，不传递给前端
+                continue
+              }
+            }
+            
             const result = await processSSEData(parsed, onChunk, finalConversationId, fullContent)
             if (result.conversationId) {
               finalConversationId = result.conversationId
