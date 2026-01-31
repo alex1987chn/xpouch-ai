@@ -1232,7 +1232,14 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                             continue
                         
                         # 额外安全检查：过滤掉看起来像任务计划的 JSON（多种匹配模式）
+                        import re
                         content_stripped = content.strip() if content else ""
+                        
+                        # 移除 Markdown 代码块标记
+                        code_block_match = re.match(r'^```(?:json)?\s*([\s\S]*?)\s*```$', content_stripped)
+                        if code_block_match:
+                            content_stripped = code_block_match.group(1).strip()
+                        
                         if content_stripped.startswith('{'):
                             content_lower = content_stripped.lower()
                             if ('"tasks"' in content_lower and '"strategy"' in content_lower) or \

@@ -72,7 +72,7 @@ export default function SearchArtifact({ results = [], content, className }: Sea
                   <h3 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {result.title}
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-slate-300 line-clamp-2">
+                  <p className="text-sm text-gray-600 dark:text-slate-300 whitespace-pre-wrap">
                     {result.description}
                   </p>
                 </div>

@@ -156,8 +156,15 @@ def _clean_expert_output(content: str, expert_key: str) -> str:
     这不是用户想要的结果。这个函数会检测并转换这种输出。
     """
     import json
+    import re
     
     content_stripped = content.strip()
+    
+    # 移除 Markdown 代码块标记（如 ```json ... ```）
+    code_block_pattern = r'^```(?:json)?\s*([\s\S]*?)\s*```$'
+    match = re.match(code_block_pattern, content_stripped)
+    if match:
+        content_stripped = match.group(1).strip()
     
     # 检查是否是 task plan JSON
     if content_stripped.startswith('{') and content_stripped.endswith('}'):

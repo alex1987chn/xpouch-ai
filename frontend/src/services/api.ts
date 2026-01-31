@@ -403,11 +403,9 @@ export async function sendMessage(
 
                 if (content) {
                   fullContent += content
-                  // 如果是最终响应，不通过onChunk处理（避免双重渲染）
-                  if (!parsed.isFinal) {
-                    onChunk(content, finalConversationId)
-                  }
-                  // isFinal=True时，将内容存入fullContent但暂时不渲染
+                  // 👈 修复：最终响应也应该显示在对话中
+                  // 复杂模式下，final_response 是聚合器生成的执行报告，需要显示
+                  onChunk(content, finalConversationId)
                 } else if (finalConversationId && !content && !activeExpert && !expertCompleted && !artifact && !taskPlan) {
                    // 某些包可能只包含 conversationId
                    onChunk('', finalConversationId)

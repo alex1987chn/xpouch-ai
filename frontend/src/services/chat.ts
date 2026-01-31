@@ -243,22 +243,27 @@ async function processSSEData(
   // 处理内容（过滤掉看起来像任务计划 JSON 的内容）
   if (content) {
     // 👈 安全检查：过滤掉内部任务计划 JSON，避免泄露到聊天界面
-    const trimmedContent = content.trim()
-    // 检查是否是任务计划 JSON（多种模式）- 使用更宽松的匹配
+    let trimmedContent = content.trim()
+    
+    // 移除 Markdown 代码块标记（如 ```json ... ```）
+    const codeBlockMatch = trimmedContent.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/)
+    if (codeBlockMatch) {
+      trimmedContent = codeBlockMatch[1].trim()
+    }
+    
+    // 检查是否是完整的 task plan JSON（必须同时包含这三个字段才过滤）
     const lowerContent = trimmedContent.toLowerCase()
     const isTaskPlan = (
-      (trimmedContent.startsWith('{') && (
-        lowerContent.includes('"tasks"') || 
-        lowerContent.includes('"strategy"') || 
-        lowerContent.includes('"estimated_steps"') ||
-        lowerContent.includes('"expert_type"') ||
-        lowerContent.includes('"expert"') && lowerContent.includes('"description"')
-      ))
+      trimmedContent.startsWith('{') && 
+      trimmedContent.endsWith('}') &&
+      lowerContent.includes('"tasks"') && 
+      lowerContent.includes('"strategy"') &&
+      lowerContent.includes('"estimated_steps"')
     )
     
     if (isTaskPlan) {
       // 这看起来像任务计划 JSON，跳过不显示
-      console.log('[chat.ts processSSEData] 过滤掉任务计划 JSON:', trimmedContent.substring(0, 200))
+      console.warn('[chat.ts processSSEData] 过滤掉任务计划 JSON (不显示在对话中):', content.substring(0, 100))
     } else {
       await onChunk(content, finalConversationId)
       // 👈 累加内容到 fullContent
