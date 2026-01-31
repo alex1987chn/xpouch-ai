@@ -262,10 +262,11 @@ export default function HomePage() {
     useChatStore.getState().setCurrentConversationId(newId)
 
     // 👈 默认助手不添加 agentId 参数，让后端自动使用 sys-default-chat
+    // 关键：传递 isNew: true 标记，确保聊天页面识别为新会话并清空旧消息
     if (agentId === SYSTEM_AGENTS.DEFAULT_CHAT) {
-      navigate(`/chat/${newId}`)
+      navigate(`/chat/${newId}`, { state: { isNew: true } })
     } else {
-      navigate(`/chat/${newId}?agentId=${agentId}`)
+      navigate(`/chat/${newId}?agentId=${agentId}`, { state: { isNew: true } })
     }
   }, [setSelectedAgentId, navigate])
 
