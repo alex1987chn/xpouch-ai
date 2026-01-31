@@ -122,7 +122,12 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         currentIndex: updatedSessions[existingIndex].artifacts.length,  // 切换到新添加的 artifact
         updatedAt: now
       }
-      return { artifactSessions: updatedSessions }
+      // 自动选中该 expert session 和 expert
+      return { 
+        artifactSessions: updatedSessions,
+        selectedExpertSession: expertType,
+        selectedExpert: expertType
+      }
     } else {
       // 创建新会话
       const newSession: ArtifactSession = {
@@ -132,7 +137,12 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         createdAt: now,
         updatedAt: now
       }
-      return { artifactSessions: [...state.artifactSessions, newSession] }
+      // 自动选中第一个 expert session 和 expert
+      return { 
+        artifactSessions: [...state.artifactSessions, newSession],
+        selectedExpertSession: expertType,
+        selectedExpert: expertType
+      }
     }
   }),
 
@@ -150,7 +160,12 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         artifacts: [...updatedSessions[existingIndex].artifacts, ...artifacts],
         updatedAt: now
       }
-      return { artifactSessions: updatedSessions }
+      // 自动选中该 expert session 和 expert
+      return { 
+        artifactSessions: updatedSessions,
+        selectedExpertSession: expertType,
+        selectedExpert: expertType
+      }
     } else {
       // 创建新会话
       const newSession: ArtifactSession = {
@@ -160,7 +175,12 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         createdAt: now,
         updatedAt: now
       }
-      return { artifactSessions: [...state.artifactSessions, newSession] }
+      // 自动选中第一个 expert session 和 expert
+      return { 
+        artifactSessions: [...state.artifactSessions, newSession],
+        selectedExpertSession: expertType,
+        selectedExpert: expertType
+      }
     }
   }),
 

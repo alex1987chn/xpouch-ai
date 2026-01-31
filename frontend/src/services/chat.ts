@@ -240,11 +240,28 @@ async function processSSEData(
     await onChunk(undefined, finalConversationId, undefined, fullArtifact, activeExpert)
   }
 
-  // 处理内容
+  // 处理内容（过滤掉看起来像任务计划 JSON 的内容）
   if (content) {
-    await onChunk(content, finalConversationId)
-    // 👈 累加内容到 fullContent
-    updatedContent += content
+    // 👈 安全检查：过滤掉内部任务计划 JSON，避免泄露到聊天界面
+    const trimmedContent = content.trim()
+    // 检查是否是任务计划 JSON（多种模式）
+    const isTaskPlan = (
+      (trimmedContent.startsWith('{') && trimmedContent.includes('"tasks"')) ||
+      (trimmedContent.startsWith('{') && trimmedContent.includes('"strategy"')) ||
+      (trimmedContent.startsWith('{') && trimmedContent.includes('"estimated_steps"')) ||
+      (trimmedContent.startsWith('{') && trimmedContent.includes('"expert_type"'))
+    )
+    
+    if (isTaskPlan) {
+      // 这看起来像任务计划 JSON，跳过不显示
+      if (DEBUG) {
+        console.log('[chat.ts processSSEData] 过滤掉任务计划 JSON:', trimmedContent.substring(0, 100))
+      }
+    } else {
+      await onChunk(content, finalConversationId)
+      // 👈 累加内容到 fullContent
+      updatedContent += content
+    }
   }
 
   return { conversationId: finalConversationId, content: updatedContent }

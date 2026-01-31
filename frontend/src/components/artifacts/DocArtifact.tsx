@@ -75,15 +75,15 @@ export default function DocArtifact({ content, className }: DocArtifactProps) {
           code: ({ children, className }) => {
             const isInline = !className?.includes('language-')
             return isInline ? (
-              <code className="bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-sm text-slate-800 dark:text-slate-100">
+              <code className="bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 border border-border/50 text-sm text-slate-800 dark:text-slate-200 font-mono">
                 {children}
               </code>
             ) : (
-              <code className="text-slate-800 dark:text-slate-100">{children}</code>
+              <code className="text-inherit font-mono">{children}</code>
             )
           },
           pre: ({ children }) => (
-            <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto my-4">
+            <pre className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-4 border border-border overflow-x-auto my-4 font-mono text-sm">
               {children}
             </pre>
           ),

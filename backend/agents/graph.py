@@ -234,10 +234,18 @@ async def planner_node(state: AgentState) -> Dict[str, Any]:
     try:
         llm_with_config = llm.bind(model=model, temperature=temperature)
         
-        response = await llm_with_config.ainvoke([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=f"用户查询: {user_query}\n\n请将此查询拆解为子任务列表。")
-        ])
+        # 👈 添加 RunnableConfig 标签，便于流式输出过滤
+        from langchain_core.runnables import RunnableConfig
+        response = await llm_with_config.ainvoke(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=f"用户查询: {user_query}\n\n请将此查询拆解为子任务列表。")
+            ],
+            config=RunnableConfig(
+                tags=["commander", "planner"],
+                metadata={"node_type": "planner"}
+            )
+        )
 
         # 解析 JSON
         planner_response = parse_llm_json(

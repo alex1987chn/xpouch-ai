@@ -1213,12 +1213,14 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                                 'allArtifacts': expert_artifacts.get(expert_name, [])
                             })}\n\n"
 
-                    # 捕获 LLM 流式输出（排除 Router 节点，避免推送决策 JSON）
+                    # 捕获 LLM 流式输出（排除内部节点的输出，避免推送 JSON 到前端）
                     if kind == "on_chat_model_stream":
-                        # 检查是否是 Router 节点的输出
+                        # 检查是否是内部节点的输出（Router、Planner/Commander 等）
                         event_tags = event.get("tags", [])
-                        if "router" in str(event_tags).lower():
-                            print(f"[STREAM] 跳过 Router 节点的流式输出")
+                        tags_str = str(event_tags).lower()
+                        # 排除内部规划节点的流式输出，只保留最终聚合器的输出
+                        if "router" in tags_str or "commander" in tags_str or "planner" in tags_str:
+                            print(f"[STREAM] 跳过内部规划节点的流式输出: {tags_str}")
                             continue
 
                         content = event["data"]["chunk"].content

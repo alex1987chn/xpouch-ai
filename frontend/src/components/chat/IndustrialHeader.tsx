@@ -61,7 +61,7 @@ export function IndustrialHeader({
         </div>
         <span className="font-black text-lg tracking-tighter text-primary">
           {title}
-          <span className="text-[10px] font-mono text-secondary font-normal ml-2">
+          <span className="text-[10px] font-mono text-primary/60 dark:text-primary/50 font-normal ml-2">
             {version}
           </span>
         </span>
@@ -80,7 +80,7 @@ export function IndustrialHeader({
                   : 'bg-red-500'
             )}
           />
-          <span className="font-mono text-[10px] text-secondary dark:text-secondary/90 font-bold uppercase">
+          <span className="font-mono text-[10px] text-primary/70 dark:text-primary/60 font-bold uppercase">
             SYSTEM: {status}
           </span>
         </div>
