@@ -18,11 +18,11 @@ const debug = DEBUG
 
 // 新布局组件
 import { IndustrialChatLayout, ChatStreamPanel, OrchestratorPanel } from '@/components/layout'
-// 工业风格头部和专家详情弹窗
+// 工业风格头部
 import { IndustrialHeader } from '@/components/chat/IndustrialHeader'
-import { ExpertDetailModal } from '@/components/chat/ExpertDetailModal'
+
 import type { Artifact } from '@/types'
-import type { ExpertResult } from '@/store/canvasStore'
+
 
 /**
  * =============================
@@ -129,8 +129,6 @@ export default function UnifiedChatPage() {
 
 
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [showPreviewModal, setShowPreviewModal] = useState(false)
-  const [previewExpert, setPreviewExpert] = useState<ExpertResult | null>(null)
 
   // 移动端视图模式状态
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
@@ -250,40 +248,23 @@ export default function UnifiedChatPage() {
     }
   }, [isNewConversation, initialMessage, isLoading, sendMessage, normalizedAgentId, navigate, conversationId, searchParams, conversationLoaded])
 
-  // 处理专家卡片点击
+  // 处理专家卡片点击 - 切换到对应专家的 artifact 内容
   const handleExpertClick = useCallback((expertId: string) => {
-    const expert = expertResults.find((e: ExpertResult) => e.expertType === expertId)
-    if (expert) {
-      setPreviewExpert(expert)
-      setShowPreviewModal(true)
-      useCanvasStore.getState().selectExpert(expert.expertType)
-      // 同时选中 artifact session
-      useCanvasStore.getState().selectArtifactSession(expert.expertType)
-    }
-  }, [expertResults])
+    // 选中对应专家和 artifact session，右侧会自动显示该专家的第一个 artifact
+    useCanvasStore.getState().selectExpert(expertId)
+    useCanvasStore.getState().selectArtifactSession(expertId)
+  }, [])
 
-  // 处理消息中的链接点击（如"查看交付物"）
+  // 处理消息中的链接点击（如"查看交付物"）- 切换到对应专家的 artifact 内容
   const handleLinkClick = useCallback((href: string) => {
     // 链接格式：#expertId，如 #writer
     const expertId = href.replace('#', '')
     if (expertId) {
-      const expert = expertResults.find((e: ExpertResult) => e.expertType === expertId)
-      if (expert) {
-        setPreviewExpert(expert)
-        setShowPreviewModal(true)
-        useCanvasStore.getState().selectExpert(expertId)
-        useCanvasStore.getState().selectArtifactSession(expertId)
-      }
+      // 选中对应专家和 artifact session，右侧会自动显示该专家的第一个 artifact
+      useCanvasStore.getState().selectExpert(expertId)
+      useCanvasStore.getState().selectArtifactSession(expertId)
     }
-  }, [expertResults])
-
-  // 关闭预览弹窗
-  const handleCloseModal = useCallback(() => {
-    setShowPreviewModal(false)
-    setPreviewExpert(null)
   }, [])
-
-
 
   // 发送消息处理
   const handleSend = useCallback(() => {
@@ -378,12 +359,7 @@ export default function UnifiedChatPage() {
         }
       />
 
-      {/* 专家详情弹窗 */}
-      <ExpertDetailModal
-        isOpen={showPreviewModal}
-        onClose={handleCloseModal}
-        expert={previewExpert}
-      />
+
     </div>
   )
 }
