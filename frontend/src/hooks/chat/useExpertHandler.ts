@@ -118,7 +118,7 @@ export function useExpertHandler() {
         return
       }
 
-      console.log('[useExpertHandler] 收到任务计划事件:', tasks)
+      console.warn('[useExpertHandler] 收到任务计划事件，准备添加到 thinking:', tasks.length, '个任务')
       debug('收到任务计划:', tasks)
       
       // 存储到当前消息的 thinking 中
