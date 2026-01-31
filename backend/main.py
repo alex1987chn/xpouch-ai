@@ -1097,6 +1097,9 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             collected_task_list = []
             collected_expert_results = []
 
+            # 跟踪路由模式（simple/complex）
+            router_mode = ""
+
             try:
                 async for event in commander_graph.astream_events(
                     initial_state,
@@ -1110,12 +1113,6 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                     if event_count % 10 == 0:
                         print(f"[STREAM] 已处理 {event_count} 个事件，当前: {kind} - {name}")
 
-                    # 👈 捕获规划节点执行结束（收集 task_list）
-                    if kind == "on_chain_end" and name == "planner":
-                        output_data = event["data"]["output"]
-                        if "task_list" in output_data:
-                            collected_task_list = output_data["task_list"]
-
                     # 👈 捕获 Router 节点执行结束（获取路由决策）
                     if kind == "on_chain_end" and name == "router":
                         output_data = event["data"]["output"]
@@ -1123,6 +1120,7 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
 
                         if router_decision:
                             print(f"[STREAM] Router 决策: {router_decision}")
+                            router_mode = router_decision  # 记录路由模式
                             # 更新 Thread 的 thread_mode
                             thread.thread_mode = router_decision
                             session.add(thread)
@@ -1130,12 +1128,11 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                             # 向前端发送 routerDecision 事件
                             yield f"data: {json.dumps({'routerDecision': router_decision, 'conversationId': thread_id})}\n\n"
 
-                            # 👈 如果 Router 决策为 simple，直接获取 final_response 并结束
-                            if router_decision == "simple":
-                                final_response = output_data.get("final_response", "")
-                                if final_response:
-                                    full_response = final_response
-                                    yield f"data: {json.dumps({'content': final_response, 'conversationId': thread_id, 'isFinal': True})}\n\n"
+                    # 👈 捕获规划节点执行结束（收集 task_list）
+                    if kind == "on_chain_end" and name == "planner":
+                        output_data = event["data"]["output"]
+                        if "task_list" in output_data:
+                            collected_task_list = output_data["task_list"]
 
                     # 捕获规划节点执行结束（获取任务计划）
                     if kind == "on_chain_end" and name == "planner":
@@ -1147,6 +1144,13 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                             print(f"[STREAM] 发送 taskPlan 事件: {task_plan.get('task_count', 0)} 个任务")
                             # 推送任务计划事件到前端
                             yield f"data: {json.dumps({'taskPlan': task_plan, 'conversationId': thread_id})}\n\n"
+
+                    # 捕获 direct_reply 节点执行结束（Simple 模式流式输出完成）
+                    if kind == "on_chain_end" and name == "direct_reply":
+                        # direct_reply 节点的流式输出已经通过 on_chat_model_stream 处理完毕
+                        # 这里只需要发送最终标记
+                        yield f"data: {json.dumps({'content': '', 'conversationId': thread_id, 'isFinal': True})}\n\n"
+                        print(f"[STREAM] Direct Reply 节点完成，Simple 模式流式输出结束")
 
                     # 捕获聚合器节点执行结束（获取最终响应）
                     if kind == "on_chain_end" and name == "aggregator":
@@ -1215,31 +1219,46 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                                 'allArtifacts': expert_artifacts.get(expert_name, [])
                             })}\n\n"
 
-                    # 捕获 LLM 流式输出（排除内部节点的输出，避免推送 JSON 到前端）
+                    # 捕获 LLM 流式输出
+                    # - Simple 模式：允许 direct_reply 节点的流式输出
+                    # - Complex 模式：排除内部节点（Router、Planner/Commander、Expert），只保留 Aggregator 的输出
+                    # - Router 决策未知：跳过所有内部节点的输出（避免提前过滤）
                     if kind == "on_chat_model_stream":
                         # 检查是否是内部节点的输出（Router、Planner/Commander、Expert 等）
                         event_tags = event.get("tags", [])
                         tags_str = str(event_tags).lower()
                         content = event["data"]["chunk"].content
-                        
+
                         # 打印所有流式输出的标签和内容（用于调试）
                         print(f"[STREAM DEBUG] on_chat_model_stream: tags={event_tags}, name={name}, content[:30]={content[:30] if content else 'None'}")
-                        
-                        # 排除内部规划节点和专家的流式输出，只保留最终聚合器的输出
-                        # 注意：聚合器节点的输出不应该有这些标签
-                        if "router" in tags_str or "commander" in tags_str or "planner" in tags_str or "expert" in tags_str:
-                            print(f"[STREAM] 跳过内部节点/专家的流式输出: {tags_str}")
-                            continue
-                        
+
+                        # 🔥 修复：当 router_mode 未知时，跳过所有内部节点的输出
+                        if router_mode == "":
+                            if "router" in tags_str or "commander" in tags_str or "planner" in tags_str or "expert" in tags_str:
+                                print(f"[STREAM] Router 决策未知，跳过内部节点的流式输出: {tags_str}")
+                                continue
+
+                        # Simple 模式：只允许 direct_reply 节点的流式输出
+                        elif router_mode == "simple":
+                            if "direct_reply" not in tags_str:
+                                print(f"[STREAM] Simple 模式：跳过非 direct_reply 节点的流式输出: {tags_str}")
+                                continue
+
+                        # Complex 模式：排除内部规划节点和专家的流式输出，只保留最终聚合器的输出
+                        else:  # router_mode == "complex"
+                            if "router" in tags_str or "commander" in tags_str or "planner" in tags_str or "expert" in tags_str:
+                                print(f"[STREAM] Complex 模式：跳过内部节点/专家的流式输出: {tags_str}")
+                                continue
+
                         # 额外安全检查：过滤掉看起来像任务计划的 JSON（多种匹配模式）
                         import re
                         content_stripped = content.strip() if content else ""
-                        
+
                         # 移除 Markdown 代码块标记
                         code_block_match = re.match(r'^```(?:json)?\s*([\s\S]*?)\s*```$', content_stripped)
                         if code_block_match:
                             content_stripped = code_block_match.group(1).strip()
-                        
+
                         if content_stripped.startswith('{'):
                             content_lower = content_stripped.lower()
                             if ('"tasks"' in content_lower and '"strategy"' in content_lower) or \
