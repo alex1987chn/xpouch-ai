@@ -89,4 +89,4 @@ xpouch_v2.7_ultimate.html
 docs/
 
 # CodeBuddy plans (temporary files)
-.codebuddy/plans/
+.codebuddy/plans/"deploy.sh"  
