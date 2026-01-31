@@ -336,11 +336,11 @@ function ArtifactDashboard({
         <div className="w-full h-full border border-border bg-card shadow-sm relative flex flex-col">
           {/* 内容体 - 不再有额外的标题栏，标题在Tab上已显示 */}
           <div className="flex-1 overflow-hidden">
-            {!currentArtifact ? (
+            {!selectedArtifact ? (
               <EmptyState />
             ) : (
               <ArtifactContent 
-                artifact={currentArtifact} 
+                artifact={selectedArtifact} 
                 onToggleFullscreen={onToggleFullscreen}
                 isFullscreen={isFullscreen}
               />
