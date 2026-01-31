@@ -159,41 +159,8 @@ export async function updateUserProfile(data: Partial<UserProfile>): Promise<Use
     return result;
 }
 
-// 获取会话列表
-export async function getConversations(): Promise<Conversation[]> {
-  const url = `${API_BASE_URL}/threads`
-  const response = await fetch(url, {
-      headers: getHeaders()
-  })
-  if (!response.ok) {
-    throw new Error('Failed to fetch conversations')
-  }
-  return await response.json()
-}
-
-// 获取单个会话详情
-export async function getConversation(id: string): Promise<Conversation> {
-  const url = `${API_BASE_URL}/threads/${id}`
-  const response = await fetch(url, {
-      headers: getHeaders()
-  })
-  if (!response.ok) {
-    throw new Error('Failed to fetch conversation')
-  }
-  return await response.json()
-}
-
-// 删除会话
-export async function deleteConversation(id: string): Promise<void> {
-  const url = `${API_BASE_URL}/threads/${id}`
-  const response = await fetch(url, {
-    method: 'DELETE',
-    headers: getHeaders()
-  })
-  if (!response.ok) {
-    throw new Error('Failed to delete conversation')
-  }
-}
+// 会话相关 API 从 chat.ts 重新导出
+export { getConversations, getConversation, deleteConversation } from './chat'
 
 // ============================================================================
 // 自定义智能体 API (Custom Agents - User-defined)
