@@ -335,7 +335,11 @@ export async function sendMessage(
 
             if (trimmed.startsWith('data: ')) {
               const data = trimmed.slice(6)
-              if (data === '[DONE]') continue
+              if (data === '[DONE]') {
+                // 👈 主动关闭 reader，释放连接
+                logger.debug('[api.ts] 收到 [DONE]，主动关闭 SSE 连接')
+                break
+              }
 
               try {
                 const parsed = JSON.parse(data)
@@ -384,7 +388,7 @@ export async function sendMessage(
 
                 // 处理 taskPlan 事件（任务计划展示）
                 if (taskPlan && typeof onChunk === 'function') {
-                  console.log('[API] 收到 taskPlan 事件:', taskPlan)
+                  logger.debug('[api.ts] 收到 taskPlan 事件:', taskPlan)
                   // @ts-ignore - 扩展回调签名支持任务计划
                   onChunk('', finalConversationId, { type: 'task_plan', ...taskPlan })
                 }

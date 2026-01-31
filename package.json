@@ -23,5 +23,8 @@
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
   },
-  "packageManager": "pnpm@10.28.1"
+  "packageManager": "pnpm@10.28.1",
+  "dependencies": {
+    "@microsoft/fetch-event-source": "^2.0.1"
+  }
 }

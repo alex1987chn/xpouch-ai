@@ -3,7 +3,7 @@
  * 负责消息发送、停止生成、加载状态管理等核心功能
  */
 
-import { useCallback, useState, useRef } from 'react'
+import { useCallback, useState, useRef, useEffect } from 'react'
 import { sendMessage as apiSendMessage, type ApiMessage, type StreamCallback } from '@/services/chat'
 import { useChatStore } from '@/store/chatStore'
 import { getConversationMode, normalizeAgentId } from '@/utils/agentUtils'
@@ -285,6 +285,17 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     onChunk,
     onNewConversation
   ])
+
+  // 👈 组件卸载时清理：确保中止正在进行的请求，防止内存泄漏
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        debug('组件卸载，中止正在进行的请求')
+        abortControllerRef.current.abort()
+        abortControllerRef.current = null
+      }
+    }
+  }, [])
 
   return {
     // 状态

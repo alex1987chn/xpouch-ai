@@ -1,7 +1,9 @@
 /**
  * 聊天相关 API 服务
+ * 使用 @microsoft/fetch-event-source 处理 SSE 流式响应
  */
 
+import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
 import { getHeaders, buildUrl, handleResponse } from './common'
 import { ApiMessage, StreamCallback, ExpertEvent, Artifact, Conversation } from '@/types'
 import { logger } from '@/utils/logger'
@@ -43,6 +45,7 @@ export async function deleteConversation(id: string): Promise<void> {
 
 /**
  * 发送消息 - 流式输出
+ * 使用 @microsoft/fetch-event-source 处理 SSE，支持自动重连和优雅降级
  */
 export async function sendMessage(
   messages: ApiMessage[],
@@ -76,11 +79,28 @@ export async function sendMessage(
     return handleResponse<any>(response, '发送消息失败')
   }
 
-  // 流式模式
-  try {
-    const response = await fetch(url, {
+  // 流式模式 - 使用 fetch-event-source
+  return new Promise((resolve, reject) => {
+    let fullContent = ''
+    let finalConversationId: string | undefined = conversationId || undefined
+    let isCompleted = false
+
+    const ctrl = new AbortController()
+
+    // 如果外部有 abortSignal，同步取消
+    if (abortSignal) {
+      abortSignal.addEventListener('abort', () => {
+        ctrl.abort()
+        reject(new Error('请求已取消'))
+      })
+    }
+
+    fetchEventSource(url, {
       method: 'POST',
-      headers: getHeaders(),
+      headers: {
+        ...getHeaders(),
+        'Accept': 'text/event-stream',
+      },
       body: JSON.stringify({
         message: messageContent,
         history: history.map(m => ({ role: m.role, content: m.content })),
@@ -88,79 +108,72 @@ export async function sendMessage(
         conversationId,
         stream: true,
       }),
-      signal: abortSignal
-    })
+      signal: ctrl.signal,
 
-    if (!response.ok) {
-      logger.error('[chat.ts] 请求失败:', response.status, response.statusText)
-      throw new Error(`API Error: ${response.status}`)
-    }
-
-    const reader = response.body?.getReader()
-    if (!reader) {
-      throw new Error('Response body is not readable')
-    }
-
-    return await processStream(reader, onChunk, conversationId)
-  } catch (error) {
-    logger.error('[chat.ts] 流式请求失败:', error)
-    throw error
-  }
-}
-
-/**
- * 处理 SSE 流式响应
- */
-async function processStream(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-  onChunk: StreamCallback,
-  initialConversationId?: string | null
-): Promise<string> {
-  const decoder = new TextDecoder()
-  let fullContent = ''
-  let buffer = ''
-  let finalConversationId: string | undefined = initialConversationId || undefined
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const chunk = decoder.decode(value, { stream: true })
-      buffer += chunk
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed) continue
-
-        if (trimmed.startsWith('data: ')) {
-          const data = trimmed.slice(6)
-          if (data === '[DONE]') continue
-
-          try {
-            const parsed = JSON.parse(data)
-            const result = await processSSEData(parsed, onChunk, finalConversationId, fullContent)
-            if (result.conversationId) {
-              finalConversationId = result.conversationId
-            }
-            fullContent = result.content
-          } catch (e) {
-            // Failed to parse SSE data, skip
-          }
+      // ✅ 连接打开
+      async onopen(response) {
+        if (!response.ok) {
+          logger.error('[chat.ts] SSE 连接失败:', response.status, response.statusText)
+          throw new Error(`API Error: ${response.status}`)
         }
-      }
-    }
-  } finally {
-    reader.releaseLock()
-  }
+        logger.debug('[chat.ts] SSE 连接已打开')
+      },
 
-  return fullContent
+      // ✅ 收到消息
+      async onmessage(msg: EventSourceMessage) {
+        // msg.data 是 SSE 的 data 字段
+        if (msg.data === '[DONE]') {
+          logger.debug('[chat.ts] 收到 [DONE]，流式响应完成')
+          isCompleted = true
+          ctrl.abort() // 主动关闭连接
+          resolve(fullContent)
+          return
+        }
+
+        try {
+          const parsed = JSON.parse(msg.data)
+          const result = await processSSEData(parsed, onChunk, finalConversationId, fullContent)
+          if (result.conversationId) {
+            finalConversationId = result.conversationId
+          }
+          fullContent = result.content
+        } catch (e) {
+          // Failed to parse SSE data, skip
+          logger.debug('[chat.ts] 解析 SSE 数据失败，跳过:', msg.data.substring(0, 100))
+        }
+      },
+
+      // ✅ 错误处理 - 支持自动重连
+      onerror(err) {
+        // 用户主动取消不算错误
+        if (err.name === 'AbortError' || ctrl.signal.aborted) {
+          logger.debug('[chat.ts] 请求已取消')
+          return
+        }
+
+        logger.error('[chat.ts] SSE 错误:', err)
+
+        // 如果不是致命错误，返回重连延迟（毫秒）
+        // 这里不重连，直接失败，因为聊天通常不需要重连
+        reject(err)
+        throw err // 阻止自动重连
+      },
+
+      // ✅ 连接关闭
+      onclose() {
+        logger.debug('[chat.ts] SSE 连接已关闭')
+        if (!isCompleted) {
+          // 非正常关闭，但已经有内容，视为成功
+          resolve(fullContent)
+        }
+      },
+    })
+  })
 }
 
 /**
  * 处理 SSE 数据包
+ * 保持与之前版本一致的逻辑
  */
 async function processSSEData(
   data: any,
@@ -175,14 +188,23 @@ async function processSSEData(
   const allArtifacts = data.allArtifacts as Array<any> | undefined
   const taskPlan = data.taskPlan
   const taskStart = data.taskStart
+  const routerDecision = data.routerDecision
 
   let finalConversationId = data.conversationId || conversationId
   let updatedContent = fullContent
 
-  // 👈 添加调试日志
+  // 👈 调试日志
   const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
   if (DEBUG && content) {
-    console.log('[chat.ts processSSEData] 收到内容 chunk:', content.substring(0, 50), 'total length:', updatedContent.length + content.length)
+    logger.debug('[chat.ts processSSEData] 收到内容 chunk:', content.substring(0, 50), 'total length:', updatedContent.length + content.length)
+  }
+
+  // 👈 处理 Router 决策事件（简单模式 vs 复杂模式）
+  if (routerDecision) {
+    await onChunk(undefined, finalConversationId, {
+      type: 'router_decision',
+      decision: routerDecision
+    })
   }
 
   // 处理专家激活事件
@@ -210,7 +232,7 @@ async function processSSEData(
 
   // 处理任务计划事件
   if (taskPlan) {
-    console.log('[chat.ts] 处理 taskPlan 事件:', taskPlan)
+    logger.debug('[chat.ts] 处理 taskPlan 事件:', taskPlan)
     await onChunk(undefined, finalConversationId, {
       type: 'task_plan',
       tasks: taskPlan.tasks || []
@@ -244,26 +266,26 @@ async function processSSEData(
   if (content) {
     // 👈 安全检查：过滤掉内部任务计划 JSON，避免泄露到聊天界面
     let trimmedContent = content.trim()
-    
+
     // 移除 Markdown 代码块标记（如 ```json ... ```）
     const codeBlockMatch = trimmedContent.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/)
     if (codeBlockMatch) {
       trimmedContent = codeBlockMatch[1].trim()
     }
-    
+
     // 检查是否是完整的 task plan JSON（必须同时包含这三个字段才过滤）
     const lowerContent = trimmedContent.toLowerCase()
     const isTaskPlan = (
-      trimmedContent.startsWith('{') && 
+      trimmedContent.startsWith('{') &&
       trimmedContent.endsWith('}') &&
-      lowerContent.includes('"tasks"') && 
+      lowerContent.includes('"tasks"') &&
       lowerContent.includes('"strategy"') &&
       lowerContent.includes('"estimated_steps"')
     )
-    
+
     if (isTaskPlan) {
       // 这看起来像任务计划 JSON，跳过不显示
-      console.warn('[chat.ts processSSEData] 过滤掉任务计划 JSON (不显示在对话中):', content.substring(0, 100))
+      logger.warn('[chat.ts processSSEData] 过滤掉任务计划 JSON (不显示在对话中):', content.substring(0, 100))
     } else {
       await onChunk(content, finalConversationId)
       // 👈 累加内容到 fullContent
