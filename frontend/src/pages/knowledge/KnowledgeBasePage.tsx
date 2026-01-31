@@ -115,9 +115,13 @@ export default function KnowledgeBasePage() {
   return (
     <div className="bg-transparent overflow-x-hidden w-full h-full flex flex-col">
       {/* Bauhaus Header - 硬边风格 */}
-      <header className="fixed top-0 left-0 right-0 z-40 h-[60px] px-6 border-b-2 border-[var(--border-color)] bg-[var(--bg-card)] transition-all duration-200" style={{
-        paddingLeft: sidebar.isCollapsed ? '88px' : '320px'
-      }}>
+      <header
+        className={cn(
+          "fixed top-0 left-0 right-0 z-40 h-[60px] px-6 border-b-2 border-[var(--border-color)] bg-[var(--bg-card)] transition-all duration-200",
+          "lg:px-6",
+          sidebar.isCollapsed ? "lg:pl-[88px]" : "lg:pl-[320px]"
+        )}
+      >
         <div className="w-full max-w-5xl mx-auto h-full flex items-center">
           {/* 左侧：标题 */}
           <div className="flex items-center h-full gap-3">
