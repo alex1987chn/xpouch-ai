@@ -78,7 +78,7 @@ ROUTER_SYSTEM_PROMPT = """
 # 2. Default Assistant (Direct Reply) - 负责 Simple 模式的流式聊天
 # -------------------------------------------------------------------------
 DEFAULT_ASSISTANT_PROMPT = """
-你是 XPouch OS 的智能助手。
+你是 XPouch AI 的智能助手。
 风格：专业、简洁、赛博朋克风。
 任务：直接回复用户的问题。
 """
