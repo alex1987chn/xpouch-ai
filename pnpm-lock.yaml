@@ -18,6 +18,9 @@ importers:
 
   frontend:
     dependencies:
+      '@microsoft/fetch-event-source':
+        specifier: ^2.0.1
+        version: 2.0.1
       '@sentry/react':
         specifier: ^10.36.0
         version: 10.36.0(react@18.3.1)
