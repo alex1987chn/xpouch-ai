@@ -419,8 +419,11 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
   // 使用解构后的数据
   const displayArtifact = artifactData as Artifact
   const { t } = useTranslation()
-  // 视图模式：'code' | 'preview' - 默认显示代码
-  const [viewMode, setViewMode] = useState<'code' | 'preview'>('code')
+  // 视图模式：'code' | 'preview' 
+  // 默认：code 显示代码，html 显示预览（因为 html 主要是看渲染效果）
+  const [viewMode, setViewMode] = useState<'code' | 'preview'>(
+    displayArtifact.type === 'html' ? 'preview' : 'code'
+  )
   // Copy 成功状态
   const [copied, setCopied] = useState(false)
 
@@ -507,9 +510,9 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
         )
       case 'html':
         return (
-          <div className="h-full overflow-auto bg-page p-4 font-mono text-sm whitespace-pre-wrap">
-            {displayArtifact.content}
-          </div>
+          <Suspense fallback={<ArtifactLoader />}>
+            <CodeArtifact content={displayArtifact.content} language="html" />
+          </Suspense>
         )
       case 'search':
         return (
