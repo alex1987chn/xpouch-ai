@@ -122,25 +122,28 @@ async def router_node(state: AgentState) -> Dict[str, Any]:
 
 # --- 新增：Direct Reply 节点 (Simple 模式流式回答) ---
 async def direct_reply_node(state: AgentState) -> Dict[str, Any]:
-    """[直连] Simple 模式下的流式回复"""
+    """[直连节点] 负责 Simple 模式下的流式回复"""
     print(f"[DIRECT_REPLY] 节点开始执行")
     messages = state["messages"]
 
-    # 🔥 关键：静态 SystemPrompt + 动态 Messages
-    # 这里的输出会被 main.py 捕获并流式推送到前端
+    # 使用流式配置，添加 metadata 便于追踪
+    config = {"tags": ["direct_reply"], "metadata": {"node_type": "direct_reply"}}
+    
+    # 直接调用 LLM 生成回复 (这才是真正的流式)
     response = await llm.ainvoke(
         [
             SystemMessage(content=DEFAULT_ASSISTANT_PROMPT),
             *messages  # 用户的历史消息上下文
         ],
-        config={"tags": ["direct_reply"]}
+        config=config
     )
 
     print(f"[DIRECT_REPLY] 节点完成，回复长度: {len(response.content)}")
 
-    # 返回 AIMessage，会被流式捕获
+    # 直接返回 response 对象（保留完整元数据），并添加 final_response 字段
     return {
-        "messages": [AIMessage(content=response.content)]
+        "messages": [response],
+        "final_response": response.content
     }
 
 # --- 修改：Planner 节点 (原 Commander) ---
