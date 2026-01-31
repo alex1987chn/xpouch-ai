@@ -52,17 +52,13 @@ def get_langsmith_config() -> dict:
         "tracing_v2": bool
     }
     """
-    enabled = os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true"
+    # 读取一次环境变量，复用于 enabled 和 tracing_v2
+    tracing_v2 = os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true"
     api_key = os.getenv("LANGCHAIN_API_KEY")
-    
-    # 项目名称（默认使用项目名）
     project_name = os.getenv("LANGCHAIN_PROJECT", "xpouch-ai")
     
-    # 是否启用 V2 追踪
-    tracing_v2 = os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true"
-    
     return {
-        "enabled": enabled,
+        "enabled": tracing_v2,  # 复用 tracing_v2 值
         "api_key": api_key,
         "project_name": project_name,
         "tracing_v2": tracing_v2,
