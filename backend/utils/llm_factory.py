@@ -60,7 +60,7 @@ def get_router_llm() -> ChatOpenAI:
     """
     return get_llm_instance(
         streaming=True,
-        temperature=0.3
+        temperature=0.1
     )
 
 
@@ -70,7 +70,7 @@ def get_planner_llm() -> ChatOpenAI:
     """
     return get_llm_instance(
         streaming=True,
-        temperature=0.5
+        temperature=0.3
     )
 
 
