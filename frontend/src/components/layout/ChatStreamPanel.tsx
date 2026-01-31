@@ -143,6 +143,21 @@ export default function ChatStreamPanel({
 
 import type { ThinkingStep } from '@/types'
 
+/** 翻译专家名称 */
+function translateExpertName(name: string, t: (key: string) => string): string {
+  const nameMap: Record<string, string> = {
+    'Task Planning': t('planningExpert') || '规划专家',
+    'planner': t('planningExpert') || '规划专家',
+    'commander': t('commander') || '指挥官',
+    'search': t('searchExpertName') || '搜索专家',
+    'coding': t('codingExpert') || '编程专家',
+    'research': t('researchExpert') || '研究专家',
+    'analyzer': t('analyzerExpertName') || '分析专家',
+    'writing': t('writingExpert') || '写作专家',
+  }
+  return nameMap[name] || name
+}
+
 /** Thinking 区域 - 可展开的思考过程 */
 function ThinkingSection({ thinking }: { thinking: ThinkingStep[] }) {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -159,7 +174,7 @@ function ThinkingSection({ thinking }: { thinking: ThinkingStep[] }) {
       >
         <div className="flex items-center gap-2">
           <Brain className="w-3.5 h-3.5 text-[var(--accent-hover)]" />
-          <span className="font-bold">{t('thinking') || '思考过程'}</span>
+          <span className="font-bold">{t('thinking')}</span>
           <span className="text-[10px] text-primary/60">
             ({completedSteps}/{thinking.length})
           </span>
@@ -179,7 +194,7 @@ function ThinkingSection({ thinking }: { thinking: ThinkingStep[] }) {
             <div key={step.id} className="text-xs font-mono">
               <div className="flex items-center gap-2 text-[10px] text-primary/70 mb-1">
                 <span className="text-[var(--accent-hover)] font-bold">[{index + 1}]</span>
-                <span className="font-semibold">{step.expertName}</span>
+                <span className="font-semibold">{translateExpertName(step.expertName, t)}</span>
                 {step.status === 'running' && <span className="text-[var(--accent-hover)] animate-pulse">...</span>}
                 {step.status === 'completed' && <Check className="w-3 h-3 text-green-600 dark:text-green-400" />}
                 {step.status === 'failed' && <X className="w-3 h-3 text-red-600 dark:text-red-400" />}

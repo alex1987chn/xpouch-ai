@@ -276,7 +276,12 @@ export const zh: Record<TranslationKey, string> = {
   analyzerExpertName: '分析专家',
   writingExpert: '写作专家',
   planningExpert: '规划专家',
-  imageAnalyzerExpert: '图像分析专家'
+  imageAnalyzerExpert: '图像分析专家',
+  // Thinking Process
+  thinking: '思考过程',
+  thinkingSteps: '执行步骤',
+  showThinking: '显示思考',
+  hideThinking: '隐藏思考'
 }
 
 export const en: Record<TranslationKey, string> = {
@@ -544,7 +549,12 @@ export const en: Record<TranslationKey, string> = {
   analyzerExpertName: 'Analyzer Expert',
   writingExpert: 'Writing Expert',
   planningExpert: 'Planning Expert',
-  imageAnalyzerExpert: 'Image Analysis Expert'
+  imageAnalyzerExpert: 'Image Analysis Expert',
+  // Thinking Process
+  thinking: 'Thinking',
+  thinkingSteps: 'Execution Steps',
+  showThinking: 'Show Thinking',
+  hideThinking: 'Hide Thinking'
 }
 
 export const ja: Record<TranslationKey, string> = {
@@ -812,5 +822,10 @@ export const ja: Record<TranslationKey, string> = {
   analyzerExpertName: '分析エキスパート',
   writingExpert: 'ライティングエキスパート',
   planningExpert: 'プランニングエキスパート',
-  imageAnalyzerExpert: '画像分析エキスパート'
+  imageAnalyzerExpert: '画像分析エキスパート',
+  // Thinking Process
+  thinking: '思考プロセス',
+  thinkingSteps: '実行ステップ',
+  showThinking: '思考を表示',
+  hideThinking: '思考を隠す'
 }

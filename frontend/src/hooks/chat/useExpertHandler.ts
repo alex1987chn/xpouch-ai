@@ -3,7 +3,7 @@
  * 负责处理专家激活、专家完成、任务计划等事件
  */
 
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { useChatStore } from '@/store/chatStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import { getExpertConfig, createExpertResult } from '@/constants/systemAgents'
@@ -31,6 +31,31 @@ export function useExpertHandler() {
     selectArtifactSession,
     setArtifact,
   } = useCanvasStore()
+  
+  // 事件频率限制 - 防止同一事件被重复处理
+  const recentEvents = useRef<Map<string, number>>(new Map())
+  const MAX_EVENTS_PER_SECOND = 10
+  
+  const isRateLimited = (eventKey: string): boolean => {
+    const now = Date.now()
+    const lastTime = recentEvents.current.get(eventKey) || 0
+    
+    // 清理旧记录
+    for (const [key, time] of recentEvents.current.entries()) {
+      if (now - time > 1000) {
+        recentEvents.current.delete(key)
+      }
+    }
+    
+    // 检查频率
+    if (now - lastTime < 1000 / MAX_EVENTS_PER_SECOND) {
+      console.warn(`[useExpertHandler] 事件被频率限制: ${eventKey}`)
+      return true
+    }
+    
+    recentEvents.current.set(eventKey, now)
+    return false
+  }
   
   // 获取最后一条 AI 消息的 ID，用于更新 thinking
   const getLastAssistantMessageId = () => {
@@ -88,34 +113,55 @@ export function useExpertHandler() {
       const taskPlan = expertEvent as TaskPlanEvent
       const tasks = taskPlan.tasks || []
 
-      debug('收到任务计划:', tasks)
-      
-      // 构建原始任务计划 JSON 格式
-      const taskPlanJson = {
-        tasks: tasks.map((t: any) => ({
-          expert_type: t.expert_type,
-          description: t.description,
-          input_data: t.input_data,
-          priority: t.priority
-        })),
-        strategy: (taskPlan as any).strategy || '复杂任务规划',
-        estimated_steps: tasks.length
+      // 频率限制检查
+      if (isRateLimited('task_plan')) {
+        return
       }
+
+      console.log('[useExpertHandler] 收到任务计划事件:', tasks)
+      debug('收到任务计划:', tasks)
       
       // 存储到当前消息的 thinking 中
       const messageId = getLastAssistantMessageId()
       if (messageId) {
-        const existingThinking = useChatStore.getState().messages.find(m => m.id === messageId)?.metadata?.thinking || []
+        const message = useChatStore.getState().messages.find(m => m.id === messageId)
+        const existingThinking = message?.metadata?.thinking || []
+        
+        // 检查是否已存在相同的 task_plan（防止重复添加）
+        const hasExistingTaskPlan = existingThinking.some((step: any) => 
+          step.expertType === 'planner' && step.content?.includes('"strategy"')
+        )
+        
+        if (hasExistingTaskPlan) {
+          console.log('[useExpertHandler] 已存在 task_plan，跳过重复添加')
+          return
+        }
+        
+        // 构建原始任务计划 JSON 格式
+        const taskPlanJson = {
+          tasks: tasks.map((t: any) => ({
+            expert_type: t.expert_type,
+            description: t.description,
+            input_data: t.input_data,
+            priority: t.priority
+          })),
+          strategy: (taskPlan as any).strategy || '复杂任务规划',
+          estimated_steps: tasks.length
+        }
+        
         const newStep = {
           id: generateUUID(),
           expertType: 'planner',
-          expertName: '任务规划',
+          expertName: 'Task Planning', // 使用英文标识，显示时翻译
           content: JSON.stringify(taskPlanJson, null, 2),
           timestamp: new Date().toISOString(),
           status: 'completed' as const
         }
+        
+        // 限制 thinking 数组最大长度为 50，防止无限增长
+        const updatedThinking = [...existingThinking, newStep].slice(-50)
         updateMessageMetadata(messageId, { 
-          thinking: [...existingThinking, newStep]
+          thinking: updatedThinking
         })
       }
       return
@@ -139,6 +185,12 @@ export function useExpertHandler() {
     if (expertEvent.type === 'expert_completed') {
       const completedEvent = expertEvent as ExpertCompletedEvent
 
+      // 频率限制检查
+      const eventKey = `expert_completed_${completedEvent.expertId}`
+      if (isRateLimited(eventKey)) {
+        return
+      }
+
       debug('处理专家完成事件:', completedEvent.expertId, completedEvent.status)
 
       // 将专家执行过程添加到当前消息的 thinking 中
@@ -147,20 +199,31 @@ export function useExpertHandler() {
         const expertConfig = getExpertConfig(completedEvent.expertId)
         const expertName = expertConfig.name
         const description = completedEvent.description || ''
-        const existingThinking = useChatStore.getState().messages.find(m => m.id === messageId)?.metadata?.thinking || []
+        const message = useChatStore.getState().messages.find(m => m.id === messageId)
+        const existingThinking = message?.metadata?.thinking || []
         
-        const newStep = {
-          id: generateUUID(),
-          expertType: completedEvent.expertId,
-          expertName: expertName,
-          content: `执行${description ? `【${description}】` : '任务'}${completedEvent.status === 'failed' ? `失败: ${completedEvent.error || ''}` : '完成'}`,
-          timestamp: new Date().toISOString(),
-          status: completedEvent.status as 'completed' | 'failed'
+        // 检查是否已存在相同的专家完成记录（防止重复添加）
+        const stepContent = `执行${description ? `【${description}】` : '任务'}${completedEvent.status === 'failed' ? `失败: ${completedEvent.error || ''}` : '完成'}`
+        const hasExistingStep = existingThinking.some((step: any) => 
+          step.expertType === completedEvent.expertId && step.content === stepContent
+        )
+        
+        if (!hasExistingStep) {
+          const newStep = {
+            id: generateUUID(),
+            expertType: completedEvent.expertId,
+            expertName: expertName,
+            content: stepContent,
+            timestamp: new Date().toISOString(),
+            status: completedEvent.status as 'completed' | 'failed'
+          }
+          
+          // 限制 thinking 数组最大长度为 50，防止无限增长
+          const updatedThinking = [...existingThinking, newStep].slice(-50)
+          updateMessageMetadata(messageId, {
+            thinking: updatedThinking
+          })
         }
-        
-        updateMessageMetadata(messageId, {
-          thinking: [...existingThinking, newStep]
-        })
       }
 
       // 处理 allArtifacts（新架构：批量添加到 ArtifactSession）

@@ -102,8 +102,11 @@ def create_expert_function(expert_key: str):
 
             print(f"[{expert_key.upper()}] 专家完成 (耗时: {duration_ms/1000:.2f}s)")
 
+            # 检查并清理输出内容（避免 task plan JSON 泄露到用户界面）
+            cleaned_content = _clean_expert_output(response.content, expert_key)
+
             result = {
-                "output_result": response.content,
+                "output_result": cleaned_content,
                 "status": "completed",
                 "started_at": started_at.isoformat(),
                 "completed_at": completed_at.isoformat(),
@@ -122,11 +125,11 @@ def create_expert_function(expert_key: str):
             }
             artifact_type = artifact_type_map.get(expert_key, "text")
 
-            # 添加 artifact
+            # 添加 artifact（使用清理后的内容）
             result["artifact"] = {
                 "type": artifact_type,
                 "title": f"{expert_config['name']}结果",
-                "content": response.content,
+                "content": cleaned_content,
                 "source": f"{expert_key}_expert"
             }
 
@@ -144,6 +147,46 @@ def create_expert_function(expert_key: str):
 
     return expert_node
 
+
+def _clean_expert_output(content: str, expert_key: str) -> str:
+    """
+    清理专家输出，避免 task plan JSON 泄露到用户界面
+    
+    有些专家（如 writer、planner）可能会输出 task plan 格式的 JSON，
+    这不是用户想要的结果。这个函数会检测并转换这种输出。
+    """
+    import json
+    
+    content_stripped = content.strip()
+    
+    # 检查是否是 task plan JSON
+    if content_stripped.startswith('{') and content_stripped.endswith('}'):
+        try:
+            data = json.loads(content_stripped)
+            # 如果包含 tasks 和 strategy 字段，说明是 task plan
+            if isinstance(data, dict) and 'tasks' in data and 'strategy' in data:
+                print(f"[{expert_key.upper()}] 检测到 task plan JSON，转换为自然语言描述")
+                # 转换为自然语言描述
+                tasks = data.get('tasks', [])
+                strategy = data.get('strategy', '')
+                
+                lines = ["## 执行计划", ""]
+                if strategy:
+                    lines.append(f"**策略**: {strategy}")
+                    lines.append("")
+                
+                if tasks:
+                    lines.append("**任务列表**:")
+                    for i, task in enumerate(tasks, 1):
+                        expert_type = task.get('expert_type', 'unknown')
+                        description = task.get('description', '')
+                        lines.append(f"{i}. [{expert_type}] {description}")
+                
+                return "\n".join(lines)
+        except json.JSONDecodeError:
+            pass  # 不是有效的 JSON，保持原样
+    
+    return content
 
 def format_input_data(input_data: Dict) -> str:
     """格式化输入数据为文本"""
