@@ -151,16 +151,16 @@ function ThinkingSection({ thinking }: { thinking: ThinkingStep[] }) {
   const completedSteps = thinking.filter(s => s.status === 'completed').length
   
   return (
-    <div className="mb-4 border border-border/50 bg-panel/50">
+    <div className="mb-4 border border-border bg-panel">
       {/* 头部 - 点击展开/收起 */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono text-secondary hover:text-primary transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono text-primary/80 hover:text-primary transition-colors"
       >
         <div className="flex items-center gap-2">
-          <Brain className="w-3.5 h-3.5" />
-          <span>{t('thinking') || '思考过程'}</span>
-          <span className="text-[10px] text-secondary/60">
+          <Brain className="w-3.5 h-3.5 text-[var(--accent-hover)]" />
+          <span className="font-bold">{t('thinking') || '思考过程'}</span>
+          <span className="text-[10px] text-primary/60">
             ({completedSteps}/{thinking.length})
           </span>
         </div>
@@ -174,17 +174,17 @@ function ThinkingSection({ thinking }: { thinking: ThinkingStep[] }) {
       
       {/* 展开内容 */}
       {isExpanded && (
-        <div className="border-t border-border/30 px-3 py-2 space-y-2 max-h-60 overflow-y-auto">
+        <div className="border-t border-border px-3 py-2 space-y-2 max-h-60 overflow-y-auto">
           {thinking.map((step, index) => (
             <div key={step.id} className="text-xs font-mono">
-              <div className="flex items-center gap-2 text-[10px] text-secondary/70 mb-1">
-                <span className="text-[var(--accent-hover)]">[{index + 1}]</span>
-                <span>{step.expertName}</span>
+              <div className="flex items-center gap-2 text-[10px] text-primary/70 mb-1">
+                <span className="text-[var(--accent-hover)] font-bold">[{index + 1}]</span>
+                <span className="font-semibold">{step.expertName}</span>
                 {step.status === 'running' && <span className="text-[var(--accent-hover)] animate-pulse">...</span>}
-                {step.status === 'completed' && <Check className="w-3 h-3 text-green-500" />}
-                {step.status === 'failed' && <X className="w-3 h-3 text-red-500" />}
+                {step.status === 'completed' && <Check className="w-3 h-3 text-green-600 dark:text-green-400" />}
+                {step.status === 'failed' && <X className="w-3 h-3 text-red-600 dark:text-red-400" />}
               </div>
-              <div className="pl-4 text-secondary/80 whitespace-pre-wrap">
+              <div className="pl-4 text-primary/80 whitespace-pre-wrap">
                 {step.content}
               </div>
             </div>

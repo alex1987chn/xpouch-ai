@@ -23,7 +23,7 @@ const debug = DEBUG
  * 专家事件处理 Hook
  */
 export function useExpertHandler() {
-  const { addMessage, messages, updateMessageMetadata } = useChatStore()
+  const { updateMessageMetadata } = useChatStore()
   const {
     addExpertResult,
     updateExpertResult,
@@ -83,12 +83,24 @@ export function useExpertHandler() {
       return
     }
 
-    // 处理任务计划事件 - 存储到消息的 thinking 中
+    // 处理任务计划事件 - 存储到消息的 thinking 中（包含原始 JSON）
     if (expertEvent.type === 'task_plan') {
       const taskPlan = expertEvent as TaskPlanEvent
       const tasks = taskPlan.tasks || []
 
       debug('收到任务计划:', tasks)
+      
+      // 构建原始任务计划 JSON 格式
+      const taskPlanJson = {
+        tasks: tasks.map((t: any) => ({
+          expert_type: t.expert_type,
+          description: t.description,
+          input_data: t.input_data,
+          priority: t.priority
+        })),
+        strategy: (taskPlan as any).strategy || '复杂任务规划',
+        estimated_steps: tasks.length
+      }
       
       // 存储到当前消息的 thinking 中
       const messageId = getLastAssistantMessageId()
@@ -98,7 +110,7 @@ export function useExpertHandler() {
           id: generateUUID(),
           expertType: 'planner',
           expertName: '任务规划',
-          content: `任务计划：\n${tasks.map((t: any, i: number) => `${i + 1}. ${t.expert_type}: ${t.description}`).join('\n')}`,
+          content: JSON.stringify(taskPlanJson, null, 2),
           timestamp: new Date().toISOString(),
           status: 'completed' as const
         }
@@ -168,17 +180,6 @@ export function useExpertHandler() {
           setArtifact(item.type, item.content)
         })
 
-        // 检查是否是第一个专家完成并添加artifacts，如果是则自动选中
-        const expertResults = useCanvasStore.getState().expertResults
-        const completedExperts = expertResults.filter(e => 
-          e.status === 'completed' || e.status === 'failed'
-        )
-        
-        // 如果这是第一个完成的专家，自动选中它以展示第一个artifact
-        if (completedExperts.length === 1 && completedExperts[0].expertType === expertId) {
-          selectExpert(expertId)
-          selectArtifactSession(expertId)
-        }
       }
 
       // 更新专家状态为完成，包含完整信息
@@ -198,20 +199,14 @@ export function useExpertHandler() {
         })) : undefined
       })
 
-      // 检查是否所有专家都已完成，如果是则显示总完成消息
+      // 自动选中第一个专家展示其 artifact
       const expertResults = useCanvasStore.getState().expertResults
-      const allCompleted = expertResults.every(expert =>
-        expert.status === 'completed' || expert.status === 'failed'
-      )
-
-      // 只有当所有专家都完成，且当前专家是最后一个完成的专家时，才显示总完成消息
-      if (allCompleted && expertResults.length > 0) {
-        const firstExpert = expertResults[0]
-        selectExpert(firstExpert.expertType)
-        selectArtifactSession(firstExpert.expertType)
+      if (expertResults.length > 0) {
+        selectExpert(expertResults[0].expertType)
+        selectArtifactSession(expertResults[0].expertType)
       }
     }
-  }, [addMessage, addExpertResult, updateExpertResult, selectExpert, selectArtifactSession, setArtifact])
+  }, [addExpertResult, updateExpertResult, selectExpert, selectArtifactSession, setArtifact, updateMessageMetadata])
 
   return {
     handleExpertEvent,
