@@ -77,8 +77,8 @@ export default function IndustrialChatLayout({
             'flex-1 flex flex-col min-w-0 border-r-2 border-border bg-panel relative',
             // 移动端：当 viewMode 为 preview 时隐藏左栏
             viewMode === 'preview' && 'hidden md:flex',
-            // 全屏时隐藏左栏
-            isFullscreen && 'hidden'
+            // 全屏时隐藏左栏（确保在移动端和桌面端都隐藏）
+            isFullscreen && 'hidden md:hidden'
           )}
         >
           {chatStreamPanel}

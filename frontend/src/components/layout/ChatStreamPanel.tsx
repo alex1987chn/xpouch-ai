@@ -146,10 +146,10 @@ function EmptyState() {
   const { t } = useTranslation()
   return (
     <div className="h-full flex flex-col items-center justify-center text-center">
-      <div className="w-16 h-16 border-2 border-dashed border-border/60 flex items-center justify-center mb-4 text-secondary/80">
+      <div className="w-16 h-16 border-2 border-dashed border-border/60 flex items-center justify-center mb-4 text-primary/60">
         <Terminal className="w-8 h-8" />
       </div>
-      <p className="font-mono text-xs uppercase tracking-widest text-secondary dark:text-secondary/80">
+      <p className="font-mono text-xs uppercase tracking-widest text-primary/70 dark:text-primary/60">
         {t('initConversation')}
       </p>
     </div>
@@ -176,11 +176,13 @@ function MessageItem({
   
   // 处理复制
   const handleCopy = useCallback(async () => {
-    const textToCopy = message.content || ''
+    const textToCopy = message?.content || ''
     if (!textToCopy) {
-      console.warn('No content to copy')
+      console.warn('[Message Copy] No content to copy')
       return
     }
+
+    console.log('[Message Copy] Copying content, length:', textToCopy.length)
 
     try {
       // 首选: Clipboard API
@@ -188,36 +190,42 @@ function MessageItem({
         await navigator.clipboard.writeText(textToCopy)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
+        console.log('[Message Copy] Success via Clipboard API')
         return
       }
 
       // 降级方案: 使用 textarea 复制
       const textarea = document.createElement('textarea')
       textarea.value = textToCopy
-      textarea.style.position = 'fixed'
-      textarea.style.left = '-9999px'
-      textarea.style.top = '0'
+      textarea.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;'
       document.body.appendChild(textarea)
-      textarea.focus()
+      
+      const range = document.createRange()
+      range.selectNode(textarea)
+      const selection = window.getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
       textarea.select()
+      textarea.setSelectionRange(0, textToCopy.length)
 
       try {
         const successful = document.execCommand('copy')
         if (successful) {
           setCopied(true)
           setTimeout(() => setCopied(false), 2000)
+          console.log('[Message Copy] Success via execCommand')
         } else {
-          console.error('execCommand copy failed')
+          console.error('[Message Copy] execCommand returned false')
         }
       } catch (err) {
-        console.error('Fallback copy failed:', err)
+        console.error('[Message Copy] Fallback copy failed:', err)
       } finally {
         document.body.removeChild(textarea)
       }
     } catch (err) {
-      console.error('Failed to copy:', err)
+      console.error('[Message Copy] Failed to copy:', err)
     }
-  }, [message.content])
+  }, [message])
   
   // 处理重试
   const handleRetry = useCallback(() => {
@@ -231,7 +239,7 @@ function MessageItem({
     return (
       <div className="flex flex-col items-end group user-message">
         <div className="flex items-center gap-2 mb-1 opacity-60 group-hover:opacity-100 transition-opacity">
-          <span className="font-mono text-[9px] uppercase text-secondary dark:text-secondary/80">ID: {String(message.id ?? '').slice(0, 6)} // USER</span>
+          <span className="font-mono text-[9px] uppercase text-primary/50 dark:text-primary/40">ID: {String(message.id ?? '').slice(0, 6)} // USER</span>
         </div>
         <div className="bg-primary text-inverted p-5 shadow-hard border-2 border-transparent w-fit max-w-[80%] select-text">
           <div className="flex gap-3">
@@ -286,7 +294,7 @@ function MessageItem({
 
         {/* 底部操作栏 */}
         <div className="mt-4 pt-3 border-t border-border/20 flex justify-between items-center">
-          <span className="font-mono text-[10px] text-secondary dark:text-secondary/80">
+          <span className="font-mono text-[10px] text-primary/60 dark:text-primary/50">
             TOKENS: {message.content.length}
           </span>
           <div className="flex gap-2">
@@ -334,8 +342,8 @@ function MessageItem({
 function RoutingIndicator({ expertType }: { expertType: string }) {
   return (
     <div className="flex items-center gap-2 mb-0 ml-4 pl-4 border-l-2 border-dashed border-border/40 h-6">
-      <span className="font-mono text-[9px] bg-panel dark:bg-panel/80 px-1.5 py-0.5 text-secondary dark:text-secondary/90">ROUTING</span>
-      <span className="text-secondary dark:text-secondary/80">→</span>
+      <span className="font-mono text-[9px] bg-panel dark:bg-panel/80 px-1.5 py-0.5 text-primary/70 dark:text-primary/60">ROUTING</span>
+      <span className="text-primary/50 dark:text-primary/40">→</span>
       <span className="font-mono text-[9px] font-bold border border-border px-1.5 py-0.5 bg-card text-primary dark:text-primary/95">
         {expertType.toUpperCase()}_AGENT
       </span>
@@ -389,7 +397,7 @@ function HeavyInputConsole({
         )}>
           {/* 行号 + 文本域 */}
           <div className="flex min-h-[100px]">
-            <div className="w-10 py-4 text-right pr-3 font-mono text-xs text-secondary dark:text-secondary/70 bg-page border-r-2 border-border/20 select-none leading-relaxed">
+            <div className="w-10 py-4 text-right pr-3 font-mono text-xs text-primary/50 dark:text-primary/40 bg-page border-r-2 border-border/20 select-none leading-relaxed">
               01<br/>02<br/>03
             </div>
             <HeavyInputTextArea
@@ -473,7 +481,7 @@ function HeavyInputTextArea({
       onKeyDown={onKeyDown}
       disabled={disabled}
       placeholder={t('inputPlaceholder')}
-      className="flex-1 bg-transparent border-none p-4 font-mono text-sm focus:ring-0 outline-none resize-none leading-relaxed placeholder-secondary disabled:opacity-50"
+      className="flex-1 bg-transparent border-none p-4 font-mono text-sm focus:ring-0 outline-none resize-none leading-relaxed placeholder:text-primary/40 dark:placeholder:text-primary/30 disabled:opacity-50"
       rows={3}
     />
   )

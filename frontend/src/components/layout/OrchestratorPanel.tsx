@@ -1,6 +1,6 @@
-import { useState, lazy, Suspense } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { cn } from '@/lib/utils'
-import { Maximize2, LayoutGrid, FileCode, Terminal, Cpu, Database, Search, Globe, Palette, Braces } from 'lucide-react'
+import { Maximize2, LayoutGrid, FileCode, Terminal, Cpu, Database, Search, Globe, Palette, Braces, Eye, Code2, Copy, Check } from 'lucide-react'
 import type { Artifact } from '@/types'
 import type { ExpertResult } from '@/store/canvasStore'
 import { useTranslation } from '@/i18n'
@@ -141,7 +141,7 @@ function ExpertRail({
                 className={cn(
                   "w-10 h-10 border-2 flex items-center justify-center transition-all relative z-10",
                   isActive
-                    ? "border-border bg-card shadow-[2px_2px_0_0_rgba(0,0,0,0.2)] hover:bg-[var(--accent)]"
+                    ? "border-border bg-card shadow-[2px_2px_0_0_rgba(0,0,0,0.2)] hover:bg-[var(--accent-hover)]"
                     : "border-border/60 bg-page/80 hover:border-border hover:bg-card"
                 )}
               >
@@ -186,13 +186,27 @@ function ArtifactDashboard({
   onToggleFullscreen?: () => void
 }) {
   const { t } = useTranslation()
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    // 如果有 artifacts，默认选中第一个；否则显示概览
-    return selectedArtifact?.id || (artifacts.length > 0 ? artifacts[0].id : 'overview')
-  })
+  const [activeTab, setActiveTab] = useState<string>('overview')
 
   // 如果有选中的 artifact，显示它；否则显示第一个 artifact 或概览
   const currentArtifact = selectedArtifact || (artifacts.length > 0 ? artifacts[0] : null)
+
+  // 当 artifacts 变化时，自动选中第一个 artifact（如果当前没有选中或选中的是无效的）
+  useEffect(() => {
+    if (artifacts.length > 0) {
+      // 如果当前没有选中任何 tab，或者选中的 tab 不在当前 artifacts 中，则选中第一个
+      const artifactIds = artifacts.map(a => a.id)
+      const isCurrentTabValid = artifactIds.includes(activeTab)
+      
+      if (activeTab === 'overview' || !isCurrentTabValid) {
+        // 优先使用 selectedArtifact，否则使用第一个 artifact
+        const targetArtifact = selectedArtifact || artifacts[0]
+        if (targetArtifact && targetArtifact.id !== activeTab) {
+          setActiveTab(targetArtifact.id)
+        }
+      }
+    }
+  }, [artifacts, selectedArtifact, activeTab])
 
   // 当没有 artifacts 时才显示概览标签
   const showOverviewTab = artifacts.length === 0
@@ -247,46 +261,18 @@ function ArtifactDashboard({
 
         {/* 内容容器 */}
         <div className="w-full h-full border border-border bg-card shadow-sm relative flex flex-col">
-          {/* 标题栏 */}
-          <div className="flex justify-between items-center p-3 border-b border-border bg-panel shrink-0">
-            <h3 className="font-bold uppercase text-xs flex items-center gap-2">
-              {activeTab === 'overview' ? (
-                <><LayoutGrid className="w-3 h-3" /> {t('ganttViewTitle')}</>
-              ) : (
-                <><FileCode className="w-3 h-3" /> {currentArtifact?.title}</>
-              )}
-            </h3>
-            <div className="flex gap-2">
-              <div className="w-3 h-3 rounded-full border border-border bg-red-400" />
-              <div className="w-3 h-3 rounded-full border border-border bg-yellow-400" />
-              <div className="w-3 h-3 rounded-full border border-border bg-green-400" />
-            </div>
-          </div>
-
-          {/* 内容体 */}
-          <div className="flex-1 overflow-auto p-4">
+          {/* 内容体 - 不再有额外的标题栏，标题在Tab上已显示 */}
+          <div className="flex-1 overflow-hidden">
             {activeTab === 'overview' || !currentArtifact ? (
               <EmptyState />
             ) : (
-              <ArtifactContent artifact={currentArtifact} />
+              <ArtifactContent 
+                artifact={currentArtifact} 
+                onToggleFullscreen={onToggleFullscreen}
+                isFullscreen={isFullscreen}
+              />
             )}
           </div>
-
-          {/* 底部操作栏 */}
-          {currentArtifact && (
-            <div className="absolute bottom-4 right-4">
-              <button
-                onClick={onToggleFullscreen}
-                className="px-4 py-2 bg-primary text-inverted font-mono text-xs hover:bg-[var(--accent)] hover:text-primary border-2 border-transparent hover:border-border transition-colors shadow-hard flex items-center gap-2"
-              >
-                {isFullscreen ? (
-                  <><span className="text-lg leading-none">−</span> {t('exitFullscreen')}</>
-                ) : (
-                  <><Maximize2 className="w-3 h-3" /> {t('openFullscreen')}</>
-                )}
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -295,7 +281,7 @@ function ArtifactDashboard({
         <div className="flex gap-4">
           <span className="text-inverted">CPU: 12%</span>
           <span className="text-inverted">MEM: 402MB</span>
-          <span className="text-[var(--accent)]">NET: CONNECTED</span>
+          <span className="text-[var(--accent-hover)]">NET: CONNECTED</span>
         </div>
         <span className="text-inverted">Ln 1, Col 1</span>
       </div>
@@ -331,7 +317,7 @@ function EmptyState() {
         <div className="flex justify-center gap-2 pt-4">
           <div className="w-2 h-2 bg-border/30 dark:bg-border/20" />
           <div className="w-2 h-2 bg-border/50 dark:bg-border/40" />
-          <div className="w-2 h-2 bg-[var(--accent)]" />
+          <div className="w-2 h-2 bg-[var(--accent-hover)]" />
           <div className="w-2 h-2 bg-border/50 dark:bg-border/40" />
           <div className="w-2 h-2 bg-border/30 dark:bg-border/20" />
         </div>
@@ -339,7 +325,7 @@ function EmptyState() {
         {/* 技术装饰 */}
         <div className="pt-4 border-t border-border/20 dark:border-border/10">
           <div className="text-[9px] font-mono text-secondary/70 dark:text-secondary/60">
-            STATUS: <span className="text-[var(--accent)]">WAITING_FOR_TASK</span>
+            STATUS: <span className="text-[var(--accent-hover)]">WAITING_FOR_TASK</span>
           </div>
         </div>
       </div>
@@ -347,21 +333,88 @@ function EmptyState() {
   )
 }
 
-/** Artifact 内容渲染 */
-function ArtifactContent({ artifact }: { artifact: Artifact }) {
+/** Artifact 内容渲染 - 支持代码/预览切换 */
+interface ArtifactContentProps {
+  artifact: Artifact
+  onToggleFullscreen?: () => void
+  isFullscreen?: boolean
+}
+
+function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: ArtifactContentProps) {
   const { t } = useTranslation()
+  // 视图模式：'code' | 'preview' - 默认显示代码
+  const [viewMode, setViewMode] = useState<'code' | 'preview'>('code')
+  // Copy 成功状态
+  const [copied, setCopied] = useState(false)
+
+  // 复制内容到剪贴板
+  const handleCopy = useCallback(async () => {
+    const textToCopy = artifact?.content || ''
+    if (!textToCopy) {
+      console.warn('[Artifact Copy] No content to copy, artifact:', artifact)
+      return
+    }
+
+    console.log('[Artifact Copy] Copying content, length:', textToCopy.length)
+
+    try {
+      // 首选: Clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textToCopy)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+        console.log('[Artifact Copy] Success via Clipboard API')
+        return
+      }
+
+      // 降级方案: 使用 textarea 复制
+      const textarea = document.createElement('textarea')
+      textarea.value = textToCopy
+      textarea.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;'
+      document.body.appendChild(textarea)
+      
+      const range = document.createRange()
+      range.selectNode(textarea)
+      const selection = window.getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+      textarea.select()
+      textarea.setSelectionRange(0, textToCopy.length)
+
+      try {
+        const successful = document.execCommand('copy')
+        if (successful) {
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+          console.log('[Artifact Copy] Success via execCommand')
+        } else {
+          console.error('[Artifact Copy] execCommand returned false')
+        }
+      } catch (err) {
+        console.error('[Artifact Copy] Fallback copy failed:', err)
+      } finally {
+        document.body.removeChild(textarea)
+      }
+    } catch (err) {
+      console.error('[Artifact Copy] Failed to copy:', err)
+    }
+  }, [artifact])
+
   // Artifact 加载状态
   const ArtifactLoader = () => (
     <div className="h-full flex items-center justify-center">
       <div className="flex items-center gap-2 text-xs text-secondary dark:text-secondary/80 font-mono">
-        <div className="w-2 h-2 bg-[var(--accent)] animate-pulse" />
+        <div className="w-2 h-2 bg-[var(--accent-hover)] animate-pulse" />
         <span>{t('loadingModule')}</span>
       </div>
     </div>
   )
 
-  // 根据 artifact 类型渲染不同内容
-  const renderContent = () => {
+  // 判断是否支持预览
+  const canPreview = ['markdown', 'html', 'code'].includes(artifact.type)
+
+  // 渲染代码视图
+  const renderCodeView = () => {
     switch (artifact.type) {
       case 'code':
         return (
@@ -371,15 +424,15 @@ function ArtifactContent({ artifact }: { artifact: Artifact }) {
         )
       case 'markdown':
         return (
-          <Suspense fallback={<ArtifactLoader />}>
-            <DocArtifact content={artifact.content} />
-          </Suspense>
+          <div className="h-full overflow-auto bg-page p-4 font-mono text-sm whitespace-pre-wrap">
+            {artifact.content}
+          </div>
         )
       case 'html':
         return (
-          <Suspense fallback={<ArtifactLoader />}>
-            <HtmlArtifact content={artifact.content} />
-          </Suspense>
+          <div className="h-full overflow-auto bg-page p-4 font-mono text-sm whitespace-pre-wrap">
+            {artifact.content}
+          </div>
         )
       case 'search':
         return (
@@ -402,9 +455,134 @@ function ArtifactContent({ artifact }: { artifact: Artifact }) {
     }
   }
 
+  // 渲染预览视图
+  const renderPreviewView = () => {
+    switch (artifact.type) {
+      case 'code':
+        // 代码类型的预览：尝试渲染为代码高亮展示
+        return (
+          <Suspense fallback={<ArtifactLoader />}>
+            <CodeArtifact content={artifact.content} language={artifact.language} />
+          </Suspense>
+        )
+      case 'markdown':
+        return (
+          <Suspense fallback={<ArtifactLoader />}>
+            <div className="h-full overflow-auto p-4">
+              <DocArtifact content={artifact.content} />
+            </div>
+          </Suspense>
+        )
+      case 'html':
+        return (
+          <Suspense fallback={<ArtifactLoader />}>
+            <div className="h-full overflow-auto p-4">
+              <HtmlArtifact content={artifact.content} />
+            </div>
+          </Suspense>
+        )
+      default:
+        return renderCodeView()
+    }
+  }
+
   return (
-    <div className="h-full">
-      {renderContent()}
+    <div className="h-full flex flex-col">
+      {/* 工具栏 - Bauhaus 工业风格（始终显示） */}
+      <div className="flex items-center justify-between px-2 py-1.5 border-b border-border bg-panel shrink-0">
+        {/* 左侧装饰性图标 - 工业风格几何装饰 */}
+        <div className="flex items-center gap-2">
+          {/* 技术感装饰方块 - 明暗主题自适应 */}
+          <div className="flex items-end gap-1">
+            {/* 大方块 - 黄色强调色 */}
+            <div className="w-3 h-3 bg-[var(--accent-hover)] border border-border" />
+            {/* 中方块 - 卡片背景 */}
+            <div className="w-2 h-2 bg-card border-2 border-border" />
+            {/* 小方块 - 主色半透明 */}
+            <div className="w-1.5 h-1.5 bg-primary/60 border border-border/50" />
+          </div>
+          {/* 分隔线 */}
+          <div className="w-px h-4 bg-border mx-1" />
+          {/* 类型指示器 - 提高对比度 */}
+          <div className="flex items-center gap-1 text-[10px] font-mono text-primary uppercase">
+            <FileCode className="w-3 h-3 text-[var(--accent-hover)]" />
+            <span className="font-bold">{artifact.type}</span>
+          </div>
+        </div>
+
+        {/* 右侧：代码/预览切换按钮（仅支持预览的类型显示）+ Copy + 全屏 */}
+        <div className="flex items-center gap-1">
+          {/* 代码/预览切换按钮 - 仅支持预览的类型显示 */}
+          {canPreview && (
+            <>
+              <button
+                onClick={() => setViewMode('code')}
+                className={cn(
+                  "w-7 h-7 flex items-center justify-center border-2 transition-all",
+                  viewMode === 'code'
+                    ? "bg-primary text-inverted border-primary"
+                    : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+                )}
+                title="代码"
+              >
+                <Code2 className="w-3.5 h-3.5" />
+              </button>
+              
+              <button
+                onClick={() => setViewMode('preview')}
+                className={cn(
+                  "w-7 h-7 flex items-center justify-center border-2 transition-all",
+                  viewMode === 'preview'
+                    ? "bg-primary text-inverted border-primary"
+                    : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+                )}
+                title="预览"
+              >
+                <Eye className="w-3.5 h-3.5" />
+              </button>
+
+              {/* 分隔线 - 区分视图切换和其他功能 */}
+              <div className="w-px h-4 bg-border/50 mx-1" />
+            </>
+          )}
+
+          {/* Copy 按钮 - 所有类型都显示 */}
+          <button
+            onClick={handleCopy}
+            className={cn(
+              "w-7 h-7 flex items-center justify-center border-2 transition-all",
+              copied
+                ? "bg-green-500 text-white border-green-500"
+                : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+            )}
+            title={copied ? t('copied') || '已复制' : t('copy') || '复制'}
+          >
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
+
+          {/* 分隔线 - 区分 copy 和全屏功能 */}
+          <div className="w-px h-4 bg-border/50 mx-1" />
+
+          {/* 全屏按钮 */}
+          <button
+            onClick={onToggleFullscreen}
+            className={cn(
+              "w-7 h-7 flex items-center justify-center border-2 transition-all",
+              isFullscreen
+                ? "bg-primary text-inverted border-primary"
+                : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+            )}
+            title={isFullscreen ? t('exitFullscreen') : t('openFullscreen')}
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* 内容区域 */}
+      <div className="flex-1 overflow-hidden">
+        {viewMode === 'code' ? renderCodeView() : renderPreviewView()}
+      </div>
     </div>
   )
 }

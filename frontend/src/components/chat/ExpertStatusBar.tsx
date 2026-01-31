@@ -11,8 +11,8 @@ const STATUS_CONFIG = {
   pending: {
     border: 'border-[var(--border-color)]',
     bg: 'bg-[var(--bg-page)]',
-    text: 'text-[var(--text-secondary)]',
-    indicator: 'bg-[var(--text-muted)]'
+    text: 'text-primary/70 dark:text-primary/60',
+    indicator: 'bg-primary/50 dark:bg-primary/40'
   },
   running: {
     border: 'border-[var(--accent-hover)]',
@@ -161,7 +161,7 @@ export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
     )}>
       {/* 左侧标签 */}
       <div className="flex-shrink-0">
-        <div className="font-mono text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]/80 uppercase">
+        <div className="font-mono text-[10px] text-primary/60 dark:text-primary/50 uppercase">
           /// EXPERTS
         </div>
         {sortedExperts.length > 0 && (
@@ -184,7 +184,7 @@ export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
       {sortedExperts.length === 0 && (
         <div className="flex items-center gap-2 flex-shrink-0 px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-card)]">
           <div className="w-2 h-2 bg-[var(--text-muted)] dark:bg-[var(--text-secondary)]/60 animate-pulse" />
-          <span className="font-mono text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]/80 uppercase">
+          <span className="font-mono text-xs text-primary/60 dark:text-primary/50 uppercase">
             WAITING FOR SCHEDULER...
           </span>
         </div>
@@ -208,7 +208,7 @@ export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
           onClick={handleClearClick}
           className={cn(
             'flex-shrink-0 flex items-center gap-2 px-3 py-2 border-2 font-mono text-xs font-bold uppercase',
-            'border-[var(--border-color)] text-[var(--text-secondary)]',
+            'border-[var(--border-color)] text-primary/70 dark:text-primary/60',
             'hover:border-red-500 hover:text-red-500 hover:bg-red-500/10',
             'transition-all'
           )}
