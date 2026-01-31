@@ -37,7 +37,6 @@ from models import (
 from database import create_db_and_tables, get_session, engine
 from config import init_langchain_tracing, validate_config
 from constants import (
-    ASSISTANT_SYSTEM_PROMPT,
     normalize_agent_id,
     is_system_agent,
     SYSTEM_AGENT_ORCHESTRATOR,
