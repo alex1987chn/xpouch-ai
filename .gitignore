@@ -88,5 +88,6 @@ xpouch_v2.7_ultimate.html
 # Docs folder (local reference only)
 docs/
 
-# CodeBuddy plans (temporary files)
-.codebuddy/plans/"deploy.sh"  
+# CodeBuddy (project data, not for git)
+.codebuddy/
+deploy.sh
