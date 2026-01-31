@@ -43,7 +43,7 @@ export default function SearchArtifact({ results = [], content, className }: Sea
   )
 
   return (
-    <div className={cn('w-full h-full overflow-auto', className)}>
+    <div className={cn('w-full min-h-full overflow-auto', className)}>
       {/* Header - Minimal, no gradient */}
       <div className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 px-3 py-2 flex items-center justify-between">
         <div className="flex items-center gap-2">

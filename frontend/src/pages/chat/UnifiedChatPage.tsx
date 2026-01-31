@@ -122,6 +122,7 @@ export default function UnifiedChatPage() {
     artifactSessions,
     selectedExpertSession,
     selectArtifactSession,
+    switchArtifactIndex,
     clearArtifactSessions,
     expertResults,
     clearExpertResults
@@ -278,39 +279,42 @@ export default function UnifiedChatPage() {
 
   // 处理 Artifact 点击
   const handleArtifactClick = useCallback((artifact: Artifact) => {
-    // 从 artifact.id 中提取 expertType
-    // 格式：`${session.expertType}-${artifact.id}`
-    const expertType = artifact.id.split('-')[0]
-    selectArtifactSession(expertType)
-  }, [selectArtifactSession])
+    // 从 artifact 的 source 或 id 中提取 expertType
+    const expertType = artifact.source || selectedExpertSession
+    if (expertType) {
+      selectArtifactSession(expertType)
+    }
+  }, [selectArtifactSession, selectedExpertSession])
 
-  // 所有 artifacts 平铺为列表
-  const allArtifacts = useMemo(() => {
-    const artifacts: Artifact[] = []
-    artifactSessions.forEach((session: any) => {
-      session.artifacts.forEach((artifact: any, idx: number) => {
-        // 确保 artifact 符合 Artifact 接口
-        artifacts.push({
-          id: `${session.expertType}-${artifact.id}`,
-          type: artifact.type as 'code' | 'markdown' | 'search' | 'html' | 'text',
-          language: artifact.language,
-          content: artifact.content,
-          source: artifact.source,
-          title: artifact.title || `${session.expertType}-${idx + 1}`,
-          timestamp: artifact.timestamp
-        })
-      })
-    })
-    return artifacts
-  }, [artifactSessions])
+  // 获取当前选中专家的 artifact session
+  const currentArtifactSession = useMemo(() => {
+    if (!selectedExpertSession) return null
+    return artifactSessions.find(s => s.expertType === selectedExpertSession) || null
+  }, [artifactSessions, selectedExpertSession])
+
+  // 获取当前选中专家的所有 artifacts
+  const currentExpertArtifacts = useMemo(() => {
+    if (!currentArtifactSession) return []
+    return currentArtifactSession.artifacts.map((artifact, idx) => ({
+      ...artifact,
+      // 添加索引信息用于切换
+      _index: idx
+    }))
+  }, [currentArtifactSession])
 
   // 当前选中的 artifact
   const currentArtifact = useMemo(() => {
-    if (allArtifacts.length === 0) return null
-    // 根据选中的专家类型找到对应的 artifact
-    const selected = allArtifacts.find(a => a.id.includes(selectedExpertSession || ''))
-    return selected || allArtifacts[0] || null
-  }, [allArtifacts, selectedExpertSession])
+    if (!currentArtifactSession || currentArtifactSession.artifacts.length === 0) return null
+    // 返回当前索引的 artifact，如果索引无效则返回第一个
+    const currentIndex = currentArtifactSession.currentIndex
+    if (currentIndex >= 0 && currentIndex < currentArtifactSession.artifacts.length) {
+      return {
+        ...currentArtifactSession.artifacts[currentIndex],
+        _index: currentIndex
+      }
+    }
+    return { ...currentArtifactSession.artifacts[0], _index: 0 }
+  }, [currentArtifactSession])
 
   if (!currentAgent) {
     return (
@@ -350,9 +354,11 @@ export default function UnifiedChatPage() {
             experts={expertResults}
             activeExpertId={selectedExpertId}
             onExpertClick={handleExpertClick}
-            artifacts={allArtifacts}
+            artifactSession={currentArtifactSession}
+            artifacts={currentExpertArtifacts}
             selectedArtifact={currentArtifact}
             onArtifactClick={handleArtifactClick}
+            onSwitchArtifact={(index) => selectedExpertSession && switchArtifactIndex(selectedExpertSession, index)}
             isFullscreen={isFullscreen}
             onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
           />
