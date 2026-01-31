@@ -142,12 +142,12 @@ function ExpertRail({
                   "w-10 h-10 border-2 flex items-center justify-center transition-all relative z-10",
                   isActive
                     ? "border-border bg-card shadow-[2px_2px_0_0_rgba(0,0,0,0.2)] hover:bg-[var(--accent)]"
-                    : "border-border/70 bg-page hover:opacity-80 hover:border-border hover:bg-card"
+                    : "border-border/60 bg-page/80 hover:border-border hover:bg-card"
                 )}
               >
                 <span className={cn(
                   "font-black text-xs",
-                  isActive ? "text-primary" : "text-secondary dark:text-primary/60"
+                  isActive ? "text-primary" : "text-secondary dark:text-secondary/80"
                 )}>
                   {label}
                 </span>
@@ -155,7 +155,7 @@ function ExpertRail({
 
               {/* Tooltip */}
               <div className={cn(
-                "absolute left-14 top-2 bg-primary text-inverted text-[9px] px-2 py-1 whitespace-nowrap z-50",
+                "absolute left-14 top-2 bg-primary dark:bg-primary/95 text-inverted text-[9px] px-2 py-1 whitespace-nowrap z-50 border border-border/20",
                 "opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity"
               )}>
                 {expert.title || `${expert.expertType} (${expert.status})`}
@@ -208,8 +208,8 @@ function ArtifactDashboard({
             className={cn(
               "h-8 px-4 flex items-center gap-2 relative transition-all",
               activeTab === 'overview'
-                ? "bg-card border-2 border-border border-b-0 top-[2px] z-10"
-                : "h-7 px-4 bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100"
+                ? "bg-card border-2 border-border border-b-0 top-[2px] z-10 text-primary"
+                : "h-7 px-4 bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100 text-secondary dark:text-secondary/80"
             )}
           >
             <LayoutGrid className="w-3 h-3" />
@@ -228,8 +228,8 @@ function ArtifactDashboard({
             className={cn(
               "h-7 px-4 flex items-center gap-2 transition-all",
               activeTab === artifact.id
-                ? "h-8 bg-card border-2 border-border border-b-0 top-[2px] z-10"
-                : "bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100"
+                ? "h-8 bg-card border-2 border-border border-b-0 top-[2px] z-10 text-primary"
+                : "bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100 text-secondary dark:text-secondary/80"
             )}
           >
             <FileCode className="w-3 h-3" />
@@ -308,37 +308,37 @@ function EmptyState() {
   const { t } = useTranslation()
 
   return (
-    <div className="h-full flex flex-col items-center justify-center p-8 border-2 border-dashed border-border/30 bg-panel/50">
+    <div className="h-full flex flex-col items-center justify-center p-8 border-2 border-dashed border-border/30 dark:border-border/20 bg-panel/50 dark:bg-panel/30">
       <div className="text-center space-y-6">
         {/* 图标 */}
         <div className="flex justify-center">
           <div className="w-16 h-16 border-2 border-border bg-card shadow-hard flex items-center justify-center">
-            <LayoutGrid className="w-8 h-8 text-secondary" />
+            <LayoutGrid className="w-8 h-8 text-secondary dark:text-secondary/80" />
           </div>
         </div>
 
         {/* 标题 */}
         <div className="space-y-2">
-          <h3 className="text-sm font-bold uppercase tracking-wide text-primary">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-primary dark:text-primary/95">
             {t('noArtifactsTitle') || 'No Artifacts Yet'}
           </h3>
-          <p className="text-xs text-secondary max-w-sm mx-auto leading-relaxed">
+          <p className="text-xs text-secondary dark:text-secondary/80 max-w-sm mx-auto leading-relaxed">
             {t('noArtifactsDesc') || 'Waiting for experts to generate deliverables. Artifacts will appear here once the task is in progress.'}
           </p>
         </div>
 
         {/* 装饰性元素 */}
         <div className="flex justify-center gap-2 pt-4">
-          <div className="w-2 h-2 bg-border/30" />
-          <div className="w-2 h-2 bg-border/50" />
+          <div className="w-2 h-2 bg-border/30 dark:bg-border/20" />
+          <div className="w-2 h-2 bg-border/50 dark:bg-border/40" />
           <div className="w-2 h-2 bg-[var(--accent)]" />
-          <div className="w-2 h-2 bg-border/50" />
-          <div className="w-2 h-2 bg-border/30" />
+          <div className="w-2 h-2 bg-border/50 dark:bg-border/40" />
+          <div className="w-2 h-2 bg-border/30 dark:bg-border/20" />
         </div>
 
         {/* 技术装饰 */}
-        <div className="pt-4 border-t border-border/20">
-          <div className="text-[9px] font-mono text-secondary/60">
+        <div className="pt-4 border-t border-border/20 dark:border-border/10">
+          <div className="text-[9px] font-mono text-secondary/70 dark:text-secondary/60">
             STATUS: <span className="text-[var(--accent)]">WAITING_FOR_TASK</span>
           </div>
         </div>
@@ -353,7 +353,7 @@ function ArtifactContent({ artifact }: { artifact: Artifact }) {
   // Artifact 加载状态
   const ArtifactLoader = () => (
     <div className="h-full flex items-center justify-center">
-      <div className="flex items-center gap-2 text-xs text-secondary font-mono">
+      <div className="flex items-center gap-2 text-xs text-secondary dark:text-secondary/80 font-mono">
         <div className="w-2 h-2 bg-[var(--accent)] animate-pulse" />
         <span>{t('loadingModule')}</span>
       </div>
@@ -395,7 +395,7 @@ function ArtifactContent({ artifact }: { artifact: Artifact }) {
         )
       default:
         return (
-          <div className="p-4 bg-page border border-dashed border-border/30 text-secondary text-sm">
+          <div className="p-4 bg-page border border-dashed border-border/30 text-secondary dark:text-secondary/80 text-sm">
             {artifact.content}
           </div>
         )

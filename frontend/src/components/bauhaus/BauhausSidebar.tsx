@@ -15,6 +15,7 @@ import { useTranslation } from '@/i18n'
 import { getAvatarDisplay } from '@/utils/userSettings'
 import LoginDialog from '@/components/auth/LoginDialog'
 import { useToast } from '@/components/ui/use-toast'
+import { VERSION } from '@/constants/ui'
 
 /**
  * =============================
@@ -238,7 +239,7 @@ export default function BauhausSidebar({
                 <h1 className="text-xl font-black tracking-tighter uppercase leading-none">XPouch</h1>
                 <div className="flex items-center gap-2 mt-0.5">
                   <div className="w-1.5 h-1.5 bg-[var(--accent-hover)] rounded-full animate-pulse"></div>
-                  <span className="font-mono text-[10px] text-[var(--text-secondary)] tracking-widest group-hover:text-[var(--text-primary)] transition-colors">OS v2.4</span>
+                  <span className="font-mono text-[10px] text-[var(--text-secondary)] tracking-widest group-hover:text-[var(--text-primary)] transition-colors">OS {VERSION.CURRENT}</span>
                 </div>
               </div>
             </div>

@@ -1,6 +1,20 @@
 // UI 相关常量
 // 集中管理所有 UI 配置和魔法数字
 
+// 系统版本号
+export const VERSION = {
+  /** 当前 OS 版本号 */
+  CURRENT: 'v2.7.0',
+  /** 主版本号 */
+  MAJOR: 2,
+  /** 次版本号 */
+  MINOR: 7,
+  /** 修订号 */
+  PATCH: 0,
+  /** 完整版本字符串 */
+  get FULL() { return `XPOUCH OS ${this.CURRENT}` }
+}
+
 // 手势滑动相关
 export const SWIPE = {
   /** 触发返回手势的最小滑动距离 */
