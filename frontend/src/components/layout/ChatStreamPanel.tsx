@@ -32,28 +32,59 @@ function extractCodeBlocks(content: string): Array<{language: string, code: stri
  * 判断内容类型
  * 根据代码块语言或内容特征返回 artifact 类型
  */
-function detectContentType(codeBlocks: Array<{language: string, code: string}>): {type: 'code' | 'markdown' | 'html', content: string} | null {
-  if (codeBlocks.length === 0) return null
-  
-  // 如果只有一个代码块，直接用它
-  if (codeBlocks.length === 1) {
-    const block = codeBlocks[0]
-    const lang = block.language.toLowerCase()
+function detectContentType(
+  codeBlocks: Array<{language: string, code: string}>, 
+  fullContent: string
+): {type: 'code' | 'markdown' | 'html', content: string} | null {
+  // 优先处理代码块
+  if (codeBlocks.length > 0) {
+    // 如果只有一个代码块，直接用它
+    if (codeBlocks.length === 1) {
+      const block = codeBlocks[0]
+      const lang = block.language.toLowerCase()
+      
+      if (lang === 'html' || lang === 'htm') {
+        return { type: 'html', content: block.code }
+      } else if (['markdown', 'md'].includes(lang)) {
+        return { type: 'markdown', content: block.code }
+      } else if (['python', 'javascript', 'typescript', 'java', 'go', 'rust', 'c', 'cpp', 'json', 'yaml', 'sql', 'bash', 'shell'].includes(lang)) {
+        return { type: 'code', content: block.code }
+      } else {
+        return { type: 'code', content: block.code }
+      }
+    }
     
-    if (lang === 'html' || lang === 'htm') {
-      return { type: 'html', content: block.code }
-    } else if (['markdown', 'md'].includes(lang)) {
-      return { type: 'markdown', content: block.code }
-    } else if (['python', 'javascript', 'typescript', 'java', 'go', 'rust', 'c', 'cpp', 'json', 'yaml', 'sql', 'bash', 'shell'].includes(lang)) {
-      return { type: 'code', content: block.code }
-    } else {
-      return { type: 'code', content: block.code }
+    // 如果有多个代码块，合并它们
+    const allCode = codeBlocks.map(b => `// ${b.language}\n${b.code}`).join('\n\n')
+    return { type: 'code', content: allCode }
+  }
+  
+  // 没有代码块时，检查是否是 Markdown 格式内容
+  if (fullContent.length > 50) {
+    // 检测 Markdown 特征：标题、列表、粗体、斜体、链接等
+    const markdownPatterns = [
+      /^#{1,6}\s+/m,           // 标题 # ## ###
+      /^\s*[-*+]\s+/m,        // 列表 - * +
+      /^\s*\d+\.\s+/m,        // 有序列表 1. 2.
+      /\*\*[^*]+\*\*/,        // 粗体 **text**
+      /\*[^*]+\*/,            // 斜体 *text*
+      /\[[^\]]+\]\([^)]+\)/,  // 链接 [text](url)
+      /^\s*```/m,             // 代码块 ```
+      /^\s*>\s+/m,            // 引用 >
+      /\|[^|]+\|/,            // 表格 |
+    ]
+    
+    const markdownScore = markdownPatterns.reduce((score, pattern) => {
+      return score + (pattern.test(fullContent) ? 1 : 0)
+    }, 0)
+    
+    // 如果匹配至少 2 个 Markdown 特征，认为是 Markdown 内容
+    if (markdownScore >= 2) {
+      return { type: 'markdown', content: fullContent }
     }
   }
   
-  // 如果有多个代码块，合并它们
-  const allCode = codeBlocks.map(b => `// ${b.language}\n${b.code}`).join('\n\n')
-  return { type: 'code', content: allCode }
+  return null
 }
 
 /**
@@ -296,24 +327,24 @@ function MessageItem({
   const codeBlocks = extractCodeBlocks(message.content)
   const hasPreviewContent = codeBlocks.length > 0 || message.content.length > 200
   
-  // 处理预览 - 将内容发送到 artifact 区域
+  // 处理预览 - 将内容发送到 artifact 区域（替换模式）
   const handlePreview = useCallback(() => {
-    const addArtifact = useCanvasStore.getState().addArtifact
+    const setSimplePreview = useCanvasStore.getState().setSimplePreview
     
-    // 优先使用代码块
-    const detected = detectContentType(codeBlocks)
+    // 检测内容类型（传入完整内容用于 Markdown 识别）
+    const detected = detectContentType(codeBlocks, message.content)
     if (detected) {
-      addArtifact('simple', {
+      setSimplePreview({
         id: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
         type: detected.type,
-        title: detected.type === 'code' ? '代码片段' : detected.type === 'html' ? 'HTML 预览' : '内容预览',
+        title: detected.type === 'code' ? '代码预览' : detected.type === 'html' ? 'HTML 预览' : 'Markdown 预览',
         content: detected.content,
         language: detected.type === 'code' ? codeBlocks[0]?.language || 'text' : undefined
       })
     } else if (message.content.length > 200) {
       // 如果内容较长但没有代码块，将整个消息作为 markdown 预览
-      addArtifact('simple', {
+      setSimplePreview({
         id: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
         type: 'markdown',

@@ -53,6 +53,8 @@ interface CanvasState {
   selectArtifactSession: (expertType: string | null) => void
   switchArtifactIndex: (expertType: string, index: number) => void
   clearArtifactSessions: () => void
+  // Simple 模式预览 - 替换现有内容（而不是添加）
+  setSimplePreview: (artifact: Artifact) => void
 
   // 专家结果状态管理
   expertResults: ExpertResult[]
@@ -197,6 +199,45 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   }),
 
   clearArtifactSessions: () => set({ artifactSessions: [], selectedExpertSession: null }),
+
+  // Simple 模式预览 - 替换现有内容（而不是添加新的）
+  setSimplePreview: (artifact) => set(state => {
+    const now = new Date().toISOString()
+    const expertType = 'simple'
+    const existingIndex = state.artifactSessions.findIndex(
+      session => session.expertType === expertType
+    )
+
+    if (existingIndex >= 0) {
+      // 替换现有 session 的内容（只保留当前这个 artifact）
+      const updatedSessions = [...state.artifactSessions]
+      updatedSessions[existingIndex] = {
+        ...updatedSessions[existingIndex],
+        artifacts: [artifact],  // 替换为新的 artifact
+        currentIndex: 0,  // 重置到第一个
+        updatedAt: now
+      }
+      return { 
+        artifactSessions: updatedSessions,
+        selectedExpertSession: expertType,
+        selectedExpert: expertType
+      }
+    } else {
+      // 创建新的 session
+      const newSession: ArtifactSession = {
+        expertType,
+        artifacts: [artifact],
+        currentIndex: 0,
+        createdAt: now,
+        updatedAt: now
+      }
+      return { 
+        artifactSessions: [...state.artifactSessions, newSession],
+        selectedExpertSession: expertType,
+        selectedExpert: expertType
+      }
+    }
+  }),
 
   // 专家结果状态管理
   expertResults: [],
