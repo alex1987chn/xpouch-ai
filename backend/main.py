@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from typing import List, Optional, AsyncGenerator
 from types import SimpleNamespace
 import json
+import re
 import uvicorn
 import os
 from langchain_core.messages import HumanMessage, AIMessage
@@ -1302,15 +1303,16 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                         print(f"[STREAM] 保存复杂模式数据: {len(collected_task_list)} 个任务")
 
                         # 创建 TaskSession
+                        now = datetime.now()
                         task_session = TaskSession(
                             session_id=str(uuid.uuid4()),
                             thread_id=thread_id,
                             user_query=request.message,
                             status="completed",
                             final_response=full_response,
-                            created_at=datetime.now(),
-                            updated_at=datetime.now(),
-                            completed_at=datetime.now()
+                            created_at=now,
+                            updated_at=now,
+                            completed_at=now
                         )
                         inner_session.add(task_session)
                         inner_session.flush()  # 确保 task_session 有 ID
