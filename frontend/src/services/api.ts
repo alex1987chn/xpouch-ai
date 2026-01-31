@@ -417,6 +417,7 @@ export async function sendMessage(
 
                 // 处理 taskPlan 事件（任务计划展示）
                 if (taskPlan && typeof onChunk === 'function') {
+                  console.log('[API] 收到 taskPlan 事件:', taskPlan)
                   // @ts-ignore - 扩展回调签名支持任务计划
                   onChunk('', finalConversationId, { type: 'task_plan', ...taskPlan })
                 }

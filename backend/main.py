@@ -1110,8 +1110,8 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                     if event_count % 10 == 0:
                         print(f"[STREAM] 已处理 {event_count} 个事件，当前: {kind} - {name}")
 
-                    # 👈 捕获指挥官节点执行结束（收集 task_list）
-                    if kind == "on_chain_end" and name == "commander":
+                    # 👈 捕获规划节点执行结束（收集 task_list）
+                    if kind == "on_chain_end" and name == "planner":
                         output_data = event["data"]["output"]
                         if "task_list" in output_data:
                             collected_task_list = output_data["task_list"]
@@ -1137,12 +1137,14 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                                     full_response = final_response
                                     yield f"data: {json.dumps({'content': final_response, 'conversationId': thread_id, 'isFinal': True})}\n\n"
 
-                    # 捕获指挥官节点执行结束（获取任务计划）
-                    if kind == "on_chain_end" and name == "commander":
+                    # 捕获规划节点执行结束（获取任务计划）
+                    if kind == "on_chain_end" and name == "planner":
                         output_data = event["data"]["output"]
+                        print(f"[STREAM] Planner 节点结束，输出键: {list(output_data.keys())}")
 
                         if "__task_plan" in output_data:
                             task_plan = output_data["__task_plan"]
+                            print(f"[STREAM] 发送 taskPlan 事件: {task_plan.get('task_count', 0)} 个任务")
                             # 推送任务计划事件到前端
                             yield f"data: {json.dumps({'taskPlan': task_plan, 'conversationId': thread_id})}\n\n"
 
@@ -1224,14 +1226,20 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                         print(f"[STREAM DEBUG] on_chat_model_stream: tags={event_tags}, name={name}, content[:30]={content[:30] if content else 'None'}")
                         
                         # 排除内部规划节点和专家的流式输出，只保留最终聚合器的输出
+                        # 注意：聚合器节点的输出不应该有这些标签
                         if "router" in tags_str or "commander" in tags_str or "planner" in tags_str or "expert" in tags_str:
                             print(f"[STREAM] 跳过内部节点/专家的流式输出: {tags_str}")
                             continue
                         
-                        # 额外安全检查：过滤掉看起来像任务计划的 JSON
-                        if content and content.strip().startswith('{') and ('"tasks"' in content or '"strategy"' in content):
-                            print(f"[STREAM] 跳过任务计划JSON内容: {content[:100]}...")
-                            continue
+                        # 额外安全检查：过滤掉看起来像任务计划的 JSON（多种匹配模式）
+                        content_stripped = content.strip() if content else ""
+                        if content_stripped.startswith('{'):
+                            content_lower = content_stripped.lower()
+                            if ('"tasks"' in content_lower and '"strategy"' in content_lower) or \
+                               ('"tasks"' in content_lower and '"expert_type"' in content_lower) or \
+                               ('"estimated_steps"' in content_lower):
+                                print(f"[STREAM] 跳过任务计划JSON内容: {content[:200]}...")
+                                continue
 
                         if content:
                             print(f"[STREAM] 通过过滤的流式输出: content[:50]={content[:50]}")

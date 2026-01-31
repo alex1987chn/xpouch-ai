@@ -210,6 +210,7 @@ async function processSSEData(
 
   // 处理任务计划事件
   if (taskPlan) {
+    console.log('[chat.ts] 处理 taskPlan 事件:', taskPlan)
     await onChunk(undefined, finalConversationId, {
       type: 'task_plan',
       tasks: taskPlan.tasks || []
@@ -243,19 +244,21 @@ async function processSSEData(
   if (content) {
     // 👈 安全检查：过滤掉内部任务计划 JSON，避免泄露到聊天界面
     const trimmedContent = content.trim()
-    // 检查是否是任务计划 JSON（多种模式）
+    // 检查是否是任务计划 JSON（多种模式）- 使用更宽松的匹配
+    const lowerContent = trimmedContent.toLowerCase()
     const isTaskPlan = (
-      (trimmedContent.startsWith('{') && trimmedContent.includes('"tasks"')) ||
-      (trimmedContent.startsWith('{') && trimmedContent.includes('"strategy"')) ||
-      (trimmedContent.startsWith('{') && trimmedContent.includes('"estimated_steps"')) ||
-      (trimmedContent.startsWith('{') && trimmedContent.includes('"expert_type"'))
+      (trimmedContent.startsWith('{') && (
+        lowerContent.includes('"tasks"') || 
+        lowerContent.includes('"strategy"') || 
+        lowerContent.includes('"estimated_steps"') ||
+        lowerContent.includes('"expert_type"') ||
+        lowerContent.includes('"expert"') && lowerContent.includes('"description"')
+      ))
     )
     
     if (isTaskPlan) {
       // 这看起来像任务计划 JSON，跳过不显示
-      if (DEBUG) {
-        console.log('[chat.ts processSSEData] 过滤掉任务计划 JSON:', trimmedContent.substring(0, 100))
-      }
+      console.log('[chat.ts processSSEData] 过滤掉任务计划 JSON:', trimmedContent.substring(0, 200))
     } else {
       await onChunk(content, finalConversationId)
       // 👈 累加内容到 fullContent

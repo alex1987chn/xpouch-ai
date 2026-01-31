@@ -78,7 +78,8 @@ export type TranslationKey =
   // Settings Dialog (System Config)
   | 'systemConfig' | 'defaultModel' | 'apiKeyConfig' | 'apiKeyConfigTitle'
   | 'apiKeyConfigDesc' | 'apiKeyConfigHint' | 'agentPrompts' | 'customized' | 'defaultPrompt'
-
+  // Thinking Process
+  | 'thinking' | 'thinkingSteps' | 'showThinking' | 'hideThinking'
 
 
 interface I18nContextType {
