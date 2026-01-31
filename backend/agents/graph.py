@@ -5,7 +5,6 @@ XPouch AI 智能路由工作流 (v2.7 架构)
 from typing import TypedDict, Annotated, List, Dict, Any, Literal
 from langgraph.graph import StateGraph, END, START
 from langgraph.graph.message import add_messages
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser
@@ -31,27 +30,20 @@ from agents.expert_loader import get_expert_config_cached
 # ============================================================================
 # 0. 设置与配置
 # ============================================================================
+# 从工厂函数导入 LLM 实例创建器
+from utils.llm_factory import get_router_llm, get_planner_llm, get_expert_llm
+
+# LangSmith 链路追踪
 env_path = pathlib.Path(__file__).parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
-api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
-base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
-model_name = os.getenv("MODEL_NAME", "deepseek-chat")
-
-# LangSmith 链路追踪
 langsmith_config = get_langsmith_config()
 if langsmith_config["enabled"]:
     init_langchain_tracing(langsmith_config)
 
-# 初始化 LLM
-# 建议：如果可能，Router 可以使用更快的模型（如 gpt-4o-mini），这里暂时复用主配置
-llm = ChatOpenAI(
-    model=model_name,
-    temperature=0.3, # Router 需要更确定的输出，稍微降低温度
-    api_key=api_key,
-    base_url=base_url,
-    streaming=True
-)
+# 初始化 LLM - 使用工厂函数
+# Router 使用较低温度以获得更确定的输出
+llm = get_router_llm()
 
 # ============================================================================
 # 1. 结构定义与提示词 (新的 Router 逻辑)

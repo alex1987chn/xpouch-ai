@@ -58,6 +58,76 @@ from utils.exceptions import (
 )
 from auth import router as auth_router
 from api.admin import router as admin_router
+from utils.llm_factory import get_llm_instance
+
+
+# ============================================================================
+# 流式输出过滤函数
+# ============================================================================
+
+def should_stream_event(event_tags: list, router_mode: str, name: str = "") -> tuple[bool, str]:
+    """
+    判断是否应该将当前事件流式输出到前端
+    
+    Args:
+        event_tags: 事件标签列表
+        router_mode: 当前路由模式 ("", "simple", "complex")
+        name: 事件名称（用于调试）
+    
+    Returns:
+        tuple[bool, str]: (是否应输出, 跳过原因)
+    
+    过滤规则：
+    - Router 模式未知时: 跳过所有内部节点 (router/planner/expert)
+    - Simple 模式: 只允许 direct_reply 节点
+    - Complex 模式: 跳过内部节点，保留 Aggregator 输出
+    """
+    tags_str = str(event_tags).lower()
+    
+    # Router 决策未知时，跳过所有内部节点
+    if router_mode == "":
+        if any(tag in tags_str for tag in ["router", "commander", "planner", "expert"]):
+            return False, f"Router 决策未知，跳过内部节点: {tags_str}"
+    
+    # Simple 模式：只允许 direct_reply 节点
+    elif router_mode == "simple":
+        if "direct_reply" not in tags_str:
+            return False, f"Simple 模式：跳过非 direct_reply: {tags_str}"
+    
+    # Complex 模式：跳过内部规划节点和专家
+    else:  # router_mode == "complex"
+        if any(tag in tags_str for tag in ["router", "commander", "planner", "expert"]):
+            return False, f"Complex 模式：跳过内部节点: {tags_str}"
+    
+    return True, "通过过滤"
+
+
+def is_task_plan_content(content: str) -> bool:
+    """
+    检查内容是否是任务计划 JSON
+    
+    用于过滤掉不应展示给用户的内部任务计划数据
+    """
+    if not content:
+        return False
+    
+    content_stripped = content.strip()
+    
+    # 移除 Markdown 代码块标记
+    import re
+    code_block_match = re.match(r'^```(?:json)?\s*([\s\S]*?)\s*```$', content_stripped)
+    if code_block_match:
+        content_stripped = code_block_match.group(1).strip()
+    
+    # 检查是否是 JSON 格式的任务计划
+    if content_stripped.startswith('{'):
+        content_lower = content_stripped.lower()
+        if (('"tasks"' in content_lower and '"strategy"' in content_lower) or
+            ('"tasks"' in content_lower and '"expert_type"' in content_lower) or
+            ('"estimated_steps"' in content_lower)):
+            return True
+    
+    return False
 
 
 # ============================================================================
@@ -82,19 +152,8 @@ async def stream_llm_response(
     Yields:
         SSE 格式的数据块
     """
-    from langchain_openai import ChatOpenAI
-
-    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
-    base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
-    model_name = model or os.getenv("MODEL_NAME", "deepseek-chat")
-
-    llm = ChatOpenAI(
-        model=model_name,
-        api_key=api_key,
-        base_url=base_url,
-        temperature=0.7,
-        streaming=True
-    )
+    # 使用工厂函数获取 LLM 实例
+    llm = get_llm_instance(streaming=True, model=model, temperature=0.7)
 
     # 添加 System Prompt
     messages_with_system = []
@@ -127,18 +186,8 @@ async def invoke_llm_response(
     Returns:
         完整的响应文本
     """
-    from langchain_openai import ChatOpenAI
-
-    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
-    base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
-    model_name = model or os.getenv("MODEL_NAME", "deepseek-chat")
-
-    llm = ChatOpenAI(
-        model=model_name,
-        api_key=api_key,
-        base_url=base_url,
-        temperature=0.7
-    )
+    # 使用工厂函数获取 LLM 实例（非流式）
+    llm = get_llm_instance(streaming=False, model=model, temperature=0.7)
 
     # 添加 System Prompt
     messages_with_system = []
@@ -947,13 +996,10 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             async def event_generator():
                 full_response = ""
                 try:
-                    # 导入 LLM
-                    from langchain_openai import ChatOpenAI
-
-                    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
-                    base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+                    # 确定模型名称（带自动修正逻辑）
                     model_name = custom_agent.model_id or os.getenv("MODEL_NAME", "deepseek-chat")
-
+                    base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+                    
                     # 自动修正：如果使用 DeepSeek API 但 model_id 是 OpenAI 模型，切换为 deepseek-chat
                     if "deepseek.com" in base_url and model_name.startswith("gpt-"):
                         print(f"[CUSTOM AGENT] 检测到不兼容模型 {model_name}，自动切换为 deepseek-chat")
@@ -962,13 +1008,8 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                     print(f"[CUSTOM AGENT] 使用模型: {model_name}")
                     print(f"[CUSTOM AGENT] 使用 Base URL: {base_url}")
                     
-                    llm = ChatOpenAI(
-                        model=model_name,
-                        api_key=api_key,
-                        base_url=base_url,
-                        temperature=0.7,
-                        streaming=True
-                    )
+                    # 使用工厂函数获取 LLM 实例
+                    llm = get_llm_instance(streaming=True, model=model_name, temperature=0.7)
 
                     # 添加 System Prompt
                     messages_with_system = []
@@ -1018,22 +1059,16 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
             )
         else:
             # 非流式
-            from langchain_openai import ChatOpenAI
-
-            api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
-            base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+            # 确定模型名称（带自动修正逻辑）
             model_name = custom_agent.model_id or os.getenv("MODEL_NAME", "deepseek-chat")
+            base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 
             # 自动修正：如果使用 DeepSeek API 但 model_id 是 OpenAI 模型，切换为 deepseek-chat
             if "deepseek.com" in base_url and model_name.startswith("gpt-"):
                 model_name = "deepseek-chat"
 
-            llm = ChatOpenAI(
-                model=model_name,
-                api_key=api_key,
-                base_url=base_url,
-                temperature=0.7
-            )
+            # 使用工厂函数获取 LLM 实例
+            llm = get_llm_instance(streaming=False, model=model_name, temperature=0.7)
             
             # 添加 System Prompt
             messages_with_system = []
@@ -1224,47 +1259,22 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                     # - Complex 模式：排除内部节点（Router、Planner/Commander、Expert），只保留 Aggregator 的输出
                     # - Router 决策未知：跳过所有内部节点的输出（避免提前过滤）
                     if kind == "on_chat_model_stream":
-                        # 检查是否是内部节点的输出（Router、Planner/Commander、Expert 等）
                         event_tags = event.get("tags", [])
-                        tags_str = str(event_tags).lower()
                         content = event["data"]["chunk"].content
 
-                        # 打印所有流式输出的标签和内容（用于调试）
-                        print(f"[STREAM DEBUG] on_chat_model_stream: tags={event_tags}, name={name}, content[:30]={content[:30] if content else 'None'}")
+                        # 打印调试信息
+                        print(f"[STREAM DEBUG] tags={event_tags}, name={name}, content[:30]={content[:30] if content else 'None'}")
 
-                        # 🔥 修复：当 router_mode 未知时，跳过所有内部节点的输出
-                        if router_mode == "":
-                            if "router" in tags_str or "commander" in tags_str or "planner" in tags_str or "expert" in tags_str:
-                                print(f"[STREAM] Router 决策未知，跳过内部节点的流式输出: {tags_str}")
-                                continue
+                        # 使用统一的过滤函数判断是否应输出
+                        should_yield, reason = should_stream_event(event_tags, router_mode, name)
+                        if not should_yield:
+                            print(f"[STREAM] {reason}")
+                            continue
 
-                        # Simple 模式：只允许 direct_reply 节点的流式输出
-                        elif router_mode == "simple":
-                            if "direct_reply" not in tags_str:
-                                print(f"[STREAM] Simple 模式：跳过非 direct_reply 节点的流式输出: {tags_str}")
-                                continue
-
-                        # Complex 模式：排除内部规划节点和专家的流式输出，只保留最终聚合器的输出
-                        else:  # router_mode == "complex"
-                            if "router" in tags_str or "commander" in tags_str or "planner" in tags_str or "expert" in tags_str:
-                                print(f"[STREAM] Complex 模式：跳过内部节点/专家的流式输出: {tags_str}")
-                                continue
-
-                        # 额外安全检查：过滤掉看起来像任务计划的 JSON（多种匹配模式）
-                        content_stripped = content.strip() if content else ""
-
-                        # 移除 Markdown 代码块标记
-                        code_block_match = re.match(r'^```(?:json)?\s*([\s\S]*?)\s*```$', content_stripped)
-                        if code_block_match:
-                            content_stripped = code_block_match.group(1).strip()
-
-                        if content_stripped.startswith('{'):
-                            content_lower = content_stripped.lower()
-                            if ('"tasks"' in content_lower and '"strategy"' in content_lower) or \
-                               ('"tasks"' in content_lower and '"expert_type"' in content_lower) or \
-                               ('"estimated_steps"' in content_lower):
-                                print(f"[STREAM] 跳过任务计划JSON内容: {content[:200]}...")
-                                continue
+                        # 额外安全检查：过滤掉任务计划 JSON
+                        if is_task_plan_content(content):
+                            print(f"[STREAM] 跳过任务计划JSON内容: {content[:200]}...")
+                            continue
 
                         if content:
                             print(f"[STREAM] 通过过滤的流式输出: content[:50]={content[:50]}")
@@ -1486,21 +1496,11 @@ async def chat_invoke_endpoint(
     session.commit()
     session.refresh(task_session)
 
-    # 5. 导入 LLM（需要从 agents.graph 重新导入）
-    from langchain_openai import ChatOpenAI
+    # 5. 导入消息类型
     from langchain_core.messages import HumanMessage, AIMessage
 
-    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
-    base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
-    model_name = os.getenv("MODEL_NAME", "deepseek-chat")
-
-    llm = ChatOpenAI(
-        model=model_name,
-        temperature=0.7,
-        api_key=api_key,
-        base_url=base_url,
-        streaming=True
-    )
+    # 使用工厂函数获取 LLM 实例
+    llm = get_llm_instance(streaming=True, temperature=0.7)
 
     # 6. 根据模式执行
     try:
