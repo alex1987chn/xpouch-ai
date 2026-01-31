@@ -17,6 +17,9 @@ interface ChatState {
   isTyping: boolean
   inputMessage: string
 
+  // ✅ 新增：生成状态（用于替代 useChatCore 中的局部状态）
+  isGenerating: boolean
+
   // 动作 (Actions)
   setSelectedAgentId: (id: string) => void
   setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void
@@ -28,6 +31,9 @@ interface ChatState {
   setCurrentConversationId: (id: string | null) => void
   addCustomAgent: (agent: Agent) => void
   setCustomAgents: (agents: Agent[] | ((prev: Agent[]) => Agent[])) => void
+  
+  // ✅ 新增：生成状态控制
+  setGenerating: (value: boolean) => void
   
   // Getters
   getAllAgents: () => Agent[]
@@ -44,6 +50,7 @@ export const useChatStore = create<ChatState>()(
       currentConversationId: null,
       isTyping: false,
       inputMessage: '',
+      isGenerating: false,  // ✅ 新增：初始为 false
 
       // 动作实现
       setSelectedAgentId: (id: string) => set({ selectedAgentId: id }),
@@ -101,6 +108,9 @@ export const useChatStore = create<ChatState>()(
           ? agentsOrUpdater(state.customAgents)
           : agentsOrUpdater
       })),
+
+      // ✅ 新增：设置生成状态
+      setGenerating: (value: boolean) => set({ isGenerating: value }),
 
       // Getters
       getAllAgents: () => {

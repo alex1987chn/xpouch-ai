@@ -3,7 +3,7 @@
  * 负责消息发送、停止生成、加载状态管理等核心功能
  */
 
-import { useCallback, useState, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { sendMessage as apiSendMessage, type ApiMessage, type StreamCallback } from '@/services/chat'
 import { useChatStore } from '@/store/chatStore'
 import { getConversationMode, normalizeAgentId } from '@/utils/agentUtils'
@@ -53,12 +53,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   const { t } = useTranslation()
   const { onExpertEvent, onArtifact, onChunk, onNewConversation } = options
 
-  // 状态管理
-  const [isStreaming, setIsStreaming] = useState(false)
-  const [streamingContent, setStreamingContent] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  // ✅ 重构：状态提升到 Store，Hook 只管理 AbortController
   const abortControllerRef = useRef<AbortController | null>(null)
-  const [isSending, setIsSending] = useState(false) // 请求锁，防止重复提交
 
   // 从 chatStore 获取状态和方法
   const {
@@ -73,6 +69,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     isTyping,
     setIsTyping,
     setMessages,
+    isGenerating,        // ✅ 从 Store 读取
+    setGenerating,       // ✅ 从 Store 读取
   } = useChatStore()
 
   /**
@@ -93,7 +91,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     overrideAgentId?: string
   ) => {
     // 请求去重：防止重复提交
-    if (isSending) {
+    if (isGenerating) {
       debug('请求正在进行中，忽略重复提交')
       return
     }
@@ -101,13 +99,13 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     const userContent = content || inputMessage
     if (!userContent.trim()) return
 
-    setIsSending(true)
+    setGenerating(true)  // ✅ 使用 Store 方法
 
     // 优先使用传入的 agentId，否则使用 store 中的 selectedAgentId
     const agentId = overrideAgentId || selectedAgentId
     if (!agentId) {
       logger.error('[useChatCore] 未选择智能体')
-      setIsSending(false)
+      setGenerating(false)  // ✅ 使用 Store 方法
       return
     }
     const normalizedAgentId = normalizeAgentId(agentId)
@@ -165,9 +163,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       let actualConversationId = storeState2.currentConversationId || currentConversationId
 
       debug('准备调用 sendMessage')
-      setIsStreaming(true)
-      setStreamingContent('')
-      setError(null)
+      // ✅ 移除：状态已在函数开头设置
 
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
@@ -195,7 +191,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         // 实时更新流式内容
         if (chunk) {
           finalResponseContent += chunk
-          setStreamingContent(finalResponseContent)
 
           // 👈 注意：conversationMode 始终是 'simple'（见 agentUtils.ts），所以这里总是会更新
           if (assistantMessageId) {
@@ -218,8 +213,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         abortControllerRef.current.signal
       )
 
-      setIsStreaming(false)
-      setStreamingContent('')
+      // ✅ 移除：在 finally 中统一处理
 
       // 6. 更新 URL 中的 conversationId（通过回调）
       const storeState3 = useChatStore.getState()
@@ -244,12 +238,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         }
       }
 
-      setIsSending(false)
       return finalResponseContent
 
     } catch (error) {
-      setIsSending(false)
-
       // 检查是否是用户手动取消
       if (error instanceof Error && error.name === 'AbortError') {
         debug('请求已取消')
@@ -263,7 +254,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
         // 添加错误消息到聊天
         const userMessage = errorHandler.getUserMessage(error)
-        setError(userMessage)
         addMessage({
           role: 'assistant',
           content: userMessage
@@ -271,11 +261,11 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       }
     } finally {
       setIsTyping(false)
-      setIsStreaming(false)
+      setGenerating(false)  // ✅ 使用 Store 方法
       abortControllerRef.current = null
     }
   }, [
-    isSending,
+    isGenerating,
     messages,
     inputMessage,
     selectedAgentId,
@@ -283,7 +273,10 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     onExpertEvent,
     onArtifact,
     onChunk,
-    onNewConversation
+    onNewConversation,
+    setGenerating,
+    setIsTyping,
+    t
   ])
 
   // 👈 组件卸载时清理：确保中止正在进行的请求，防止内存泄漏
@@ -298,18 +291,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   }, [])
 
   return {
-    // 状态
-    messages,
-    inputMessage,
-    isStreaming,
-    streamingContent,
-    isLoading: isTyping,
-    error,
-    isSending,
-
-    // 方法
+    // ✅ 重构：Hook 只返回方法，状态从 Store 直接读取
     sendMessage: sendMessageCore,
     stopGeneration,
-    setInputMessage,
   }
 }
