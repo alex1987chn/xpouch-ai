@@ -1215,16 +1215,23 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
 
                     # 捕获 LLM 流式输出（排除内部节点的输出，避免推送 JSON 到前端）
                     if kind == "on_chat_model_stream":
-                        # 检查是否是内部节点的输出（Router、Planner/Commander 等）
+                        # 检查是否是内部节点的输出（Router、Planner/Commander、Expert 等）
                         event_tags = event.get("tags", [])
                         tags_str = str(event_tags).lower()
-                        # 排除内部规划节点的流式输出，只保留最终聚合器的输出
-                        if "router" in tags_str or "commander" in tags_str or "planner" in tags_str:
-                            print(f"[STREAM] 跳过内部规划节点的流式输出: {tags_str}")
+                        content = event["data"]["chunk"].content
+                        
+                        # 排除内部规划节点和专家的流式输出，只保留最终聚合器的输出
+                        if "router" in tags_str or "commander" in tags_str or "planner" in tags_str or "expert" in tags_str:
+                            print(f"[STREAM] 跳过内部节点/专家的流式输出: {tags_str}, content[:50]={content[:50] if content else 'None'}")
+                            continue
+                        
+                        # 额外安全检查：过滤掉看起来像任务计划的 JSON
+                        if content and content.strip().startswith('{') and ('"tasks"' in content or '"strategy"' in content):
+                            print(f"[STREAM] 跳过任务计划JSON内容: {content[:100]}...")
                             continue
 
-                        content = event["data"]["chunk"].content
                         if content:
+                            print(f"[STREAM] 通过过滤的流式输出: tags={event_tags}, content[:50]={content[:50]}")
                             full_response += content
                             yield f"data: {json.dumps({'content': content, 'conversationId': thread_id})}\n\n"
 

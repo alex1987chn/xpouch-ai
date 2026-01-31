@@ -84,10 +84,18 @@ def create_expert_function(expert_key: str):
                 temperature=temperature
             )
 
-            response = await llm_with_config.ainvoke([
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=f"任务描述: {description}\n\n输入参数:\n{format_input_data(input_data)}")
-            ])
+            # 👈 添加 RunnableConfig 标签，便于流式输出过滤
+            from langchain_core.runnables import RunnableConfig
+            response = await llm_with_config.ainvoke(
+                [
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=f"任务描述: {description}\n\n输入参数:\n{format_input_data(input_data)}")
+                ],
+                config=RunnableConfig(
+                    tags=["expert", expert_key],
+                    metadata={"node_type": "expert", "expert_type": expert_key}
+                )
+            )
 
             completed_at = datetime.now()
             duration_ms = int((completed_at - started_at).total_seconds() * 1000)
