@@ -27,5 +27,5 @@ COPY . .
 # 暴露端口（与 .env.example 和 docker-compose.yml 保持一致）
 EXPOSE 3000
 
-# 启动命令
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]
+# 启动命令（使用 uv run 确保在虚拟环境中运行）
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]
