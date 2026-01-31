@@ -1251,7 +1251,6 @@ async def chat_endpoint(request: ChatRequest, session: Session = Depends(get_ses
                                 continue
 
                         # 额外安全检查：过滤掉看起来像任务计划的 JSON（多种匹配模式）
-                        import re
                         content_stripped = content.strip() if content else ""
 
                         # 移除 Markdown 代码块标记
