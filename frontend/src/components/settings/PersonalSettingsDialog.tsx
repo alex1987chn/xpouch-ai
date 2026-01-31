@@ -4,6 +4,7 @@ import { Save, User, Camera, Upload, X } from 'lucide-react'
 import { fileToBase64 } from '@/utils/userSettings'
 import { useUserStore } from '@/store/userStore'
 import { logger } from '@/utils/logger'
+import { useTranslation } from '@/i18n'
 
 interface PersonalSettingsDialogProps {
   isOpen: boolean
@@ -11,6 +12,7 @@ interface PersonalSettingsDialogProps {
 }
 
 export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDialogProps) {
+  const { t } = useTranslation()
   const { user, updateUser } = useUserStore()
 
   const [username, setUsername] = useState('')
@@ -33,13 +35,13 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
     if (file) {
       // 验证文件类型
       if (!file.type.startsWith('image/')) {
-        alert('请上传图片文件')
+        alert(t('uploadImage') || '请上传图片文件')
         return
       }
 
       // 验证文件大小（最大 2MB）
       if (file.size > 2 * 1024 * 1024) {
-        alert('图片大小不能超过 2MB')
+        alert(t('avatarHint') || '图片大小不能超过 2MB')
         return
       }
 
@@ -49,7 +51,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
         setAvatarPreview(base64)
       } catch (error) {
         logger.error('Failed to process image:', error)
-        alert('图片处理失败，请重试')
+        alert(t('operationFailed') || '图片处理失败，请重试')
       }
     }
   }
@@ -64,17 +66,17 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
   const handleSave = async () => {
     // 验证用户名
     if (!username.trim()) {
-      alert('用户名不能为空')
+      alert(t('required') || '用户名不能为空')
       return
     }
 
     if (username.length < 2) {
-      alert('用户名至少需要2个字符')
+      alert(t('usernameHint') || '用户名至少需要2个字符')
       return
     }
 
     if (username.length > 20) {
-      alert('用户名不能超过20个字符')
+      alert(t('usernameHint') || '用户名不能超过20个字符')
       return
     }
 
@@ -87,7 +89,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
       onClose()
     } catch (error) {
       logger.error('[PersonalSettingsDialog] Failed to save settings:', error)
-      alert('保存失败，请重试')
+      alert(t('saveFailed') || '保存失败，请重试')
     } finally {
       setIsSaving(false)
     }
@@ -115,7 +117,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-[var(--accent-hover)]"></div>
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-              /// USER_CONFIG
+              /// {t('userConfig')}
             </span>
           </div>
           <button
@@ -134,7 +136,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                AVATAR_SETUP
+                {t('avatarSetup')}
               </span>
             </div>
 
@@ -167,7 +169,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
               <div className="flex flex-col gap-2 flex-1">
                 <label className="flex items-center justify-center gap-2 px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] cursor-pointer hover:bg-[var(--bg-card)] transition-colors">
                   <Upload className="w-4 h-4" />
-                  <span className="font-mono text-xs font-bold uppercase">上传头像</span>
+                  <span className="font-mono text-xs font-bold uppercase">{t('uploadAvatar')}</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -181,13 +183,13 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
                     className="flex items-center justify-center gap-2 px-3 py-2 border-2 border-red-500/50 text-red-500 hover:bg-red-500/10 transition-colors"
                   >
                     <X className="w-4 h-4" />
-                    <span className="font-mono text-xs font-bold uppercase">移除</span>
+                    <span className="font-mono text-xs font-bold uppercase">{t('removeAvatar')}</span>
                   </button>
                 )}
               </div>
             </div>
             <p className="font-mono text-[10px] text-[var(--text-secondary)] mt-2 opacity-60">
-              支持 JPG、PNG 格式，最大 2MB
+              {t('avatarHint')}
             </p>
           </section>
 
@@ -199,7 +201,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                USERNAME
+                {t('username')}
               </span>
             </div>
 
@@ -209,13 +211,13 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="请输入用户名"
+                placeholder={t('usernamePlaceholder')}
                 maxLength={20}
                 className="w-full pl-10 pr-3 py-2.5 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
               />
             </div>
             <p className="font-mono text-[10px] text-[var(--text-secondary)] mt-2 opacity-60">
-              2-20 个字符
+              {t('usernameHint')}
             </p>
           </section>
         </div>
@@ -227,7 +229,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
             disabled={isSaving}
             className="flex-1 py-3 font-mono text-sm font-bold uppercase border-r-2 border-[var(--border-color)] hover:bg-[var(--bg-page)] transition-colors disabled:opacity-50"
           >
-            取消
+            {t('cancel')}
           </button>
           <button
             onClick={handleSave}
@@ -237,12 +239,12 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
             {isSaving ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="w-4 h-4 border-2 border-black/30 border-t-black animate-spin"></span>
-                保存中...
+                {t('savingUserSettings')}
               </span>
             ) : (
               <span className="flex items-center justify-center gap-2">
                 <Save className="w-4 h-4" />
-                保存
+                {t('save')}
               </span>
             )}
           </button>

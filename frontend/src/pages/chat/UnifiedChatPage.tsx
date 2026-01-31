@@ -188,6 +188,17 @@ export default function UnifiedChatPage() {
         return  // 👈 关键：新会话时不要调用 loadConversation
       }
 
+      // 👈 关键修复：检查当前store中的conversationId是否与URL中的匹配
+      // 如果不匹配，说明是从历史记录切换过来的，需要强制加载
+      const storeCurrentId = useChatStore.getState().currentConversationId
+      const isSwitchingConversation = storeCurrentId !== conversationId
+      
+      if (isSwitchingConversation) {
+        debug('切换会话:', storeCurrentId, '->', conversationId)
+        // 👈 立即清空旧消息，避免用户看到前一条会话的内容
+        setMessages([])
+      }
+
       // 否则从数据库加载历史会话
       loadConversation(conversationId)
         .then(() => {
@@ -207,7 +218,7 @@ export default function UnifiedChatPage() {
       clearArtifactSessions()
       setConversationLoaded(true) // 新会话无需加载，直接标记为完成
     }
-  }, [conversationId, loadConversation, clearExpertResults, clearArtifactSessions, navigate, isNewConversation, setCurrentConversationId])
+  }, [conversationId, loadConversation, clearExpertResults, clearArtifactSessions, navigate, isNewConversation, setCurrentConversationId, setMessages])
 
   // 恢复草稿：新会话时检查 localStorage
   useEffect(() => {

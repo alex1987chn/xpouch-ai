@@ -71,6 +71,13 @@ export type TranslationKey =
   | 'exitFullscreen' | 'openFullscreen' | 'loadingModule'
   // Expert Modal
   | 'taskLogTitle' | 'outputConsole' | 'noOutputAvailable'
+  // Personal Settings Dialog
+  | 'avatarSetup' | 'uploadAvatar' | 'removeAvatar' | 'avatarHint'
+  | 'username' | 'usernamePlaceholder' | 'usernameHint'
+  | 'userConfig' | 'savingUserSettings'
+  // Settings Dialog (System Config)
+  | 'systemConfig' | 'defaultModel' | 'apiKeyConfig' | 'apiKeyConfigTitle'
+  | 'apiKeyConfigDesc' | 'apiKeyConfigHint' | 'agentPrompts' | 'customized' | 'defaultPrompt'
 
 
 

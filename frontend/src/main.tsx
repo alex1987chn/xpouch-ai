@@ -31,8 +31,14 @@ import { normalizeAgentId } from '@/utils/agentUtils'
 // 包装 HistoryPage 以适应 Router
 const HistoryPageWrapper = () => {
   const navigate = useNavigate()
+  const setMessages = useChatStore(state => state.setMessages)
+  const setCurrentConversationId = useChatStore(state => state.setCurrentConversationId)
 
   const handleSelectConversation = (conversation: any) => {
+    // 👈 关键：先清空当前状态，避免显示旧会话内容
+    setMessages([])
+    setCurrentConversationId(null)
+    
     // 从 conversation 对象中提取所需参数
     const conversationId = conversation.id
     const agentId = conversation.agent_id || 'default-chat'
@@ -108,10 +114,14 @@ const CreateAgentPageWrapper = () => {
 }
 
 // 统一的聊天页面（支持简单和复杂模式）
+import { useParams } from 'react-router-dom'
 const UnifiedChatPageWrapper = () => {
+  const { id } = useParams()
+  // 👈 关键：使用 key 强制组件在 conversationId 变化时重新创建
+  // 避免 React 复用组件实例导致状态混乱
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <UnifiedChatPage />
+      <UnifiedChatPage key={id || 'new'} />
     </Suspense>
   )
 }
