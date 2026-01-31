@@ -378,7 +378,8 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-12 py-12 flex flex-col w-full">
           {/* Hero Section */}
           <div className="flex-none flex flex-col items-start justify-center mb-10 select-none">
-            <div className="flex gap-2 mb-6">
+            {/* 状态标签 - 左上角 */}
+            <div className="flex gap-2 mb-4">
               <span className="px-2 py-1 text-[10px] font-mono font-bold border border-[var(--border-color)] bg-[var(--accent-hover)] text-black shadow-[2px_2px_0_0_var(--shadow-color)]">
                 READY
               </span>
@@ -387,12 +388,15 @@ export default function HomePage() {
               </span>
             </div>
 
-            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tighter uppercase mb-2 leading-[0.9]">
-              READY TO <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--text-primary)] to-[var(--text-secondary)]">
-                ASSEMBLE?
-              </span>
-            </h2>
+            {/* The Monolith Style Slogan */}
+            <div className="flex flex-col leading-none tracking-tighter">
+              <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-[var(--text-primary)]">
+                INFINITE MINDS.
+              </h2>
+              <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-[var(--accent-hover)]">
+                ONE POUCH.
+              </h2>
+            </div>
           </div>
 
           {/* Command Input */}
