@@ -165,11 +165,8 @@ function CreateNewCard({ onClick }: { onClick?: () => void }) {
   return (
     <div
       onClick={onClick}
-      className="border-2 border-dashed border-[var(--text-secondary)] p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-[var(--bg-card)] hover:border-solid hover:border-[var(--accent-hover)] hover:shadow-[8px_8px_0_0_var(--accent-hover)] transition-all relative"
+      className="border-2 border-dashed border-[var(--text-secondary)] p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-[var(--bg-card)] hover:border-solid hover:border-[var(--accent-hover)] hover:shadow-[8px_8px_0_0_var(--accent-hover)] transition-all"
     >
-      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-10 text-[var(--border-color)] font-black text-6xl select-none">
-        +
-      </div>
       <div className="w-12 h-12 border-2 border-[var(--text-primary)] flex items-center justify-center mb-4 text-3xl group-hover:bg-[var(--accent-hover)] group-hover:border-[var(--accent-hover)] group-hover:text-black transition-colors bg-[var(--bg-page)]">
         +
       </div>
