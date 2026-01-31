@@ -19,7 +19,7 @@ COPY requirements.txt .
 
 # 使用 uv 安装依赖（更快更可靠）
 ENV PATH="/root/.local/bin:${PATH}"
-RUN /root/.local/bin/uv pip install --no-cache -r requirements.txt
+RUN /root/.local/bin/uv pip install --no-cache --system -r requirements.txt
 
 # 复制源码
 COPY . .
