@@ -1,11 +1,60 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { Terminal, Paperclip, Globe, Copy, Check, RefreshCw, Square, Brain, ChevronUp, ChevronDown, X } from 'lucide-react'
+import { Terminal, Paperclip, Globe, Copy, Check, RefreshCw, Square, Brain, ChevronUp, ChevronDown, X, Eye } from 'lucide-react'
 import type { Message } from '@/types'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { useTranslation } from '@/i18n'
+import { useCanvasStore } from '@/store/canvasStore'
+
+/**
+ * 提取消息中的代码块
+ * 返回代码块数组，每个包含语言和代码内容
+ */
+function extractCodeBlocks(content: string): Array<{language: string, code: string}> {
+  const codeBlocks: Array<{language: string, code: string}> = []
+  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g
+  let match
+  
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    const language = match[1] || 'text'
+    const code = match[2].trim()
+    if (code) {
+      codeBlocks.push({ language, code })
+    }
+  }
+  
+  return codeBlocks
+}
+
+/**
+ * 判断内容类型
+ * 根据代码块语言或内容特征返回 artifact 类型
+ */
+function detectContentType(codeBlocks: Array<{language: string, code: string}>): {type: 'code' | 'markdown' | 'html', content: string} | null {
+  if (codeBlocks.length === 0) return null
+  
+  // 如果只有一个代码块，直接用它
+  if (codeBlocks.length === 1) {
+    const block = codeBlocks[0]
+    const lang = block.language.toLowerCase()
+    
+    if (lang === 'html' || lang === 'htm') {
+      return { type: 'html', content: block.code }
+    } else if (['markdown', 'md'].includes(lang)) {
+      return { type: 'markdown', content: block.code }
+    } else if (['python', 'javascript', 'typescript', 'java', 'go', 'rust', 'c', 'cpp', 'json', 'yaml', 'sql', 'bash', 'shell'].includes(lang)) {
+      return { type: 'code', content: block.code }
+    } else {
+      return { type: 'code', content: block.code }
+    }
+  }
+  
+  // 如果有多个代码块，合并它们
+  const allCode = codeBlocks.map(b => `// ${b.language}\n${b.code}`).join('\n\n')
+  return { type: 'code', content: allCode }
+}
 
 /**
  * =============================
@@ -243,6 +292,37 @@ function MessageItem({
   const [copied, setCopied] = useState(false)
   const { t } = useTranslation()
   
+  // 检查是否有可预览的代码块
+  const codeBlocks = extractCodeBlocks(message.content)
+  const hasPreviewContent = codeBlocks.length > 0 || message.content.length > 200
+  
+  // 处理预览 - 将内容发送到 artifact 区域
+  const handlePreview = useCallback(() => {
+    const addArtifact = useCanvasStore.getState().addArtifact
+    
+    // 优先使用代码块
+    const detected = detectContentType(codeBlocks)
+    if (detected) {
+      addArtifact('simple', {
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        type: detected.type,
+        title: detected.type === 'code' ? '代码片段' : detected.type === 'html' ? 'HTML 预览' : '内容预览',
+        content: detected.content,
+        language: detected.type === 'code' ? codeBlocks[0]?.language || 'text' : undefined
+      })
+    } else if (message.content.length > 200) {
+      // 如果内容较长但没有代码块，将整个消息作为 markdown 预览
+      addArtifact('simple', {
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        type: 'markdown',
+        title: '消息预览',
+        content: message.content,
+      })
+    }
+  }, [message.content, codeBlocks])
+  
   // 处理复制
   const handleCopy = useCallback(async () => {
     const textToCopy = message?.content || ''
@@ -372,6 +452,20 @@ function MessageItem({
             TOKENS: {message.content.length}
           </span>
           <div className="flex gap-2">
+            {/* 预览按钮 - 当内容包含代码块或较长时显示 */}
+            {hasPreviewContent && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handlePreview()
+                }}
+                className="relative z-10 flex items-center gap-1 text-[10px] font-bold hover:bg-primary hover:text-inverted px-2 py-1 transition-colors cursor-pointer"
+                title={t('preview')}
+              >
+                <Eye className="w-3 h-3" />
+                {t('preview')}
+              </button>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation()

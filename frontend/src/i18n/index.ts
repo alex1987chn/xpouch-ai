@@ -44,7 +44,7 @@ export type TranslationKey =
   | 'uploadImage' | 'uploadAttachment' | 'simpleMode' | 'complexMode' | 'simple' | 'complex'
   | 'stop' | 'send' | 'enterToSend' | 'describeTask' | 'inputPlaceholder' | 'execute' | 'processing'
   // Chat Actions
-  | 'copy' | 'copied' | 'regenerate' | 'resend' | 'retry'
+  | 'copy' | 'copied' | 'regenerate' | 'resend' | 'retry' | 'preview'
   // Expert Status
   | 'taskDescription' | 'clear' | 'expertWorkflowDetails' | 'searchExpert' | 'analyzerExpert' | 'frontendExpert'
   | 'pending' | 'running' | 'completed'
