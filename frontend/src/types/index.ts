@@ -18,11 +18,25 @@ export interface Message {
 }
 
 /**
+ * 思考过程步骤
+ */
+export interface ThinkingStep {
+  id: string
+  expertType: string
+  expertName: string
+  content: string
+  timestamp: string
+  status: 'running' | 'completed' | 'failed'
+}
+
+/**
  * 消息元数据（用于专家任务等）
  */
 export interface MessageMetadata {
   type?: 'task_plan' | 'task_start' | 'expert_completion'
   expertId?: string
+  thinking?: ThinkingStep[]
+  reasoningContent?: string
 }
 
 /**

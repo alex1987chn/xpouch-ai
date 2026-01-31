@@ -23,7 +23,7 @@ const debug = DEBUG
  * 专家事件处理 Hook
  */
 export function useExpertHandler() {
-  const { addMessage } = useChatStore()
+  const { addMessage, messages, updateMessageMetadata } = useChatStore()
   const {
     addExpertResult,
     updateExpertResult,
@@ -31,6 +31,17 @@ export function useExpertHandler() {
     selectArtifactSession,
     setArtifact,
   } = useCanvasStore()
+  
+  // 获取最后一条 AI 消息的 ID，用于更新 thinking
+  const getLastAssistantMessageId = () => {
+    const state = useChatStore.getState()
+    for (let i = state.messages.length - 1; i >= 0; i--) {
+      if (state.messages[i].role === 'assistant') {
+        return state.messages[i].id
+      }
+    }
+    return null
+  }
 
   /**
    * 处理所有类型的专家事件
@@ -72,13 +83,29 @@ export function useExpertHandler() {
       return
     }
 
-    // 处理任务计划事件（不显示在对话中，只用于后端调试）
+    // 处理任务计划事件 - 存储到消息的 thinking 中
     if (expertEvent.type === 'task_plan') {
       const taskPlan = expertEvent as TaskPlanEvent
       const tasks = taskPlan.tasks || []
 
       debug('收到任务计划:', tasks)
-      // 不再添加到对话中，避免干扰用户
+      
+      // 存储到当前消息的 thinking 中
+      const messageId = getLastAssistantMessageId()
+      if (messageId) {
+        const existingThinking = useChatStore.getState().messages.find(m => m.id === messageId)?.metadata?.thinking || []
+        const newStep = {
+          id: generateUUID(),
+          expertType: 'planner',
+          expertName: '任务规划',
+          content: `任务计划：\n${tasks.map((t: any, i: number) => `${i + 1}. ${t.expert_type}: ${t.description}`).join('\n')}`,
+          timestamp: new Date().toISOString(),
+          status: 'completed' as const
+        }
+        updateMessageMetadata(messageId, { 
+          thinking: [...existingThinking, newStep]
+        })
+      }
       return
     }
 
@@ -102,34 +129,27 @@ export function useExpertHandler() {
 
       debug('处理专家完成事件:', completedEvent.expertId, completedEvent.status)
 
-      // 添加工作流状态消息
-      const expertConfig = getExpertConfig(completedEvent.expertId)
-      const expertName = expertConfig.name
-      const duration = completedEvent.duration_ms ? `${(completedEvent.duration_ms / 1000).toFixed(1)}` : ''
-      const expertId = completedEvent.expertId
-      const description = completedEvent.description || ''
-
-      // 简洁的完成消息，输出内容在 artifact 区域展示
-      let completionMessage = `${expertName}专家完成任务【${description}】，用时${duration}秒。交付物在右侧可查看 [查看交付物](#${expertId})`
-
-      // 失败时显示错误信息
-      if (completedEvent.status === 'failed') {
-        if (completedEvent.error) {
-          completionMessage += `\n\n失败原因：${completedEvent.error}`
-        } else {
-          completionMessage += `\n\n任务执行失败，请查看详细错误信息`
+      // 将专家执行过程添加到当前消息的 thinking 中
+      const messageId = getLastAssistantMessageId()
+      if (messageId) {
+        const expertConfig = getExpertConfig(completedEvent.expertId)
+        const expertName = expertConfig.name
+        const description = completedEvent.description || ''
+        const existingThinking = useChatStore.getState().messages.find(m => m.id === messageId)?.metadata?.thinking || []
+        
+        const newStep = {
+          id: generateUUID(),
+          expertType: completedEvent.expertId,
+          expertName: expertName,
+          content: `执行${description ? `【${description}】` : '任务'}${completedEvent.status === 'failed' ? `失败: ${completedEvent.error || ''}` : '完成'}`,
+          timestamp: new Date().toISOString(),
+          status: completedEvent.status as 'completed' | 'failed'
         }
+        
+        updateMessageMetadata(messageId, {
+          thinking: [...existingThinking, newStep]
+        })
       }
-
-      addMessage({
-        id: generateUUID(),
-        role: 'system',
-        content: completionMessage,
-        metadata: {
-          type: 'expert_completion',
-          expertId: expertId
-        }
-      })
 
       // 处理 allArtifacts（新架构：批量添加到 ArtifactSession）
       if (completedEvent.allArtifacts && Array.isArray(completedEvent.allArtifacts) && completedEvent.allArtifacts.length > 0) {

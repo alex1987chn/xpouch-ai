@@ -109,31 +109,6 @@ export async function sendMessage(
 }
 
 /**
- * 检测内容是否是任务计划 JSON 的开始
- */
-function isTaskPlanJSONStart(content: string): boolean {
-  const trimmed = content.trimStart()
-  // 检查是否以 { 开头并包含任务计划特征字段
-  return trimmed.startsWith('{') && 
-         (trimmed.includes('"tasks"') || trimmed.includes('"strategy"') || trimmed.includes('"estimated_steps"'))
-}
-
-/**
- * 检测内容是否是正常 Markdown（而非 JSON）
- */
-function isMarkdownContent(content: string): boolean {
-  const trimmed = content.trimStart()
-  // 如果以 # 开头（标题）或包含常见 Markdown 标记
-  return trimmed.startsWith('#') || 
-         trimmed.startsWith('**') ||
-         trimmed.startsWith('- ') ||
-         trimmed.startsWith('* ') ||
-         trimmed.startsWith('1. ') ||
-         trimmed.includes('\n# ') ||
-         trimmed.includes('\n- ')
-}
-
-/**
  * 处理 SSE 流式响应
  */
 async function processStream(
@@ -145,10 +120,6 @@ async function processStream(
   let fullContent = ''
   let buffer = ''
   let finalConversationId: string | undefined = initialConversationId || undefined
-  // 👈 用于检测任务计划 JSON 的累积缓冲区
-  let detectionBuffer = ''
-  let isFilteringTaskPlan = false
-  let jsonStartDetected = false
 
   try {
     while (true) {
@@ -170,61 +141,10 @@ async function processStream(
 
           try {
             const parsed = JSON.parse(data)
-            
-            // 👈 检测任务计划 JSON（累积检测）
-            if (parsed.content) {
-              detectionBuffer += parsed.content
-              
-              // 如果尚未开始过滤且累积了一定内容，检测是否是任务计划
-              if (!jsonStartDetected && detectionBuffer.length >= 5) {
-                if (isTaskPlanJSONStart(detectionBuffer)) {
-                  jsonStartDetected = true
-                  isFilteringTaskPlan = true
-                  console.log('[chat.ts] 检测到任务计划 JSON 开始，开始过滤')
-                }
-              }
-              
-              // 如果正在过滤任务计划
-              if (isFilteringTaskPlan) {
-                // 检查是否是 JSON 的结尾（ balancing braces 简单检测）
-                const openBraces = (detectionBuffer.match(/{/g) || []).length
-                const closeBraces = (detectionBuffer.match(/}/g) || []).length
-                
-                if (openBraces > 0 && openBraces === closeBraces) {
-                  // JSON 可能结束，检查后面是否跟着 Markdown
-                  if (detectionBuffer.includes('}\n#') || detectionBuffer.includes('}\n\n#')) {
-                    console.log('[chat.ts] 任务计划 JSON 结束，检测到 Markdown 开始')
-                    isFilteringTaskPlan = false
-                    jsonStartDetected = false
-                    detectionBuffer = ''
-                    
-                    // 提取 JSON 后面的内容并传递
-                    const markdownMatch = detectionBuffer.match(/}[\s\S]*?(\n#[\s\S]*)/)
-                    if (markdownMatch) {
-                      parsed.content = markdownMatch[1]
-                    } else {
-                      continue
-                    }
-                  } else if (detectionBuffer.trim().endsWith('}')) {
-                    // 纯 JSON，没有后续 Markdown
-                    console.log('[chat.ts] 任务计划 JSON 过滤结束，长度:', detectionBuffer.length)
-                    isFilteringTaskPlan = false
-                    jsonStartDetected = false
-                    detectionBuffer = ''
-                    continue
-                  }
-                } else {
-                  // JSON 还没结束，继续过滤
-                  continue
-                }
-              }
-            }
-            
             const result = await processSSEData(parsed, onChunk, finalConversationId, fullContent)
             if (result.conversationId) {
               finalConversationId = result.conversationId
             }
-            // 👈 更新 fullContent
             fullContent = result.content
           } catch (e) {
             // Failed to parse SSE data, skip
