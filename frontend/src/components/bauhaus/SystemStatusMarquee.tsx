@@ -1,4 +1,4 @@
-"use client"
+import { VERSION } from '@/constants/ui'
 
 interface SystemStatusMarqueeProps {
   className?: string
@@ -10,7 +10,7 @@ export function SystemStatusMarquee({
   speed = 20,
 }: SystemStatusMarqueeProps) {
   const statusText =
-    "/// SYSTEM STATUS: ONLINE /// CONNECTED TO NEURAL NET /// WAITING FOR INSTRUCTION /// XPOUCH OS V2.4 /// "
+    `/// SYSTEM STATUS: ONLINE /// CONNECTED TO NEURAL NET /// WAITING FOR INSTRUCTION /// ${VERSION.FULL} /// `
 
   return (
     <div

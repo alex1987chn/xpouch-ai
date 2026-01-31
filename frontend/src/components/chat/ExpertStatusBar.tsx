@@ -161,7 +161,7 @@ export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
     )}>
       {/* 左侧标签 */}
       <div className="flex-shrink-0">
-        <div className="font-mono text-[10px] text-[var(--text-secondary)] uppercase">
+        <div className="font-mono text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]/80 uppercase">
           /// EXPERTS
         </div>
         {sortedExperts.length > 0 && (
@@ -172,7 +172,7 @@ export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
               </span>
             )}
             {completedCount > 0 && (
-              <span className="font-mono text-[10px] text-green-600">
+              <span className="font-mono text-[10px] text-green-600 dark:text-green-500">
                 {completedCount} DONE
               </span>
             )}
@@ -183,8 +183,8 @@ export default function ExpertStatusBar({ className }: ExpertStatusBarProps) {
       {/* 空状态提示 - Bauhaus 风格 */}
       {sortedExperts.length === 0 && (
         <div className="flex items-center gap-2 flex-shrink-0 px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-card)]">
-          <div className="w-2 h-2 bg-[var(--text-muted)] animate-pulse" />
-          <span className="font-mono text-xs text-[var(--text-secondary)] uppercase">
+          <div className="w-2 h-2 bg-[var(--text-muted)] dark:bg-[var(--text-secondary)]/60 animate-pulse" />
+          <span className="font-mono text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]/80 uppercase">
             WAITING FOR SCHEDULER...
           </span>
         </div>

@@ -1,6 +1,7 @@
 import React from 'react'
 import { X, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { VERSION } from '@/constants/ui'
 
 interface IndustrialHeaderProps {
   title?: string
@@ -32,7 +33,7 @@ interface IndustrialHeaderProps {
  * ```tsx
  * <IndustrialHeader
  *   title="XPOUCH_OS"
- *   version="v2.7"
+ *   version={VERSION.CURRENT}
  *   status="online"
  *   onClose={() => navigate('/')}
  * />
@@ -40,7 +41,7 @@ interface IndustrialHeaderProps {
  */
 export function IndustrialHeader({
   title = 'XPOUCH_OS',
-  version = 'v2.7',
+  version = VERSION.CURRENT,
   status = 'online',
   onClose,
   className
@@ -68,7 +69,7 @@ export function IndustrialHeader({
 
       {/* 右侧：系统状态指示器 + 关闭按钮 */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 px-3 py-1 bg-panel border border-border/20">
+        <div className="flex items-center gap-2 px-3 py-1 bg-panel dark:bg-panel/80 border border-border/20">
           <div
             className={cn(
               'w-2 h-2 rounded-full animate-pulse',
@@ -79,7 +80,7 @@ export function IndustrialHeader({
                   : 'bg-red-500'
             )}
           />
-          <span className="font-mono text-[10px] text-secondary font-bold uppercase">
+          <span className="font-mono text-[10px] text-secondary dark:text-secondary/90 font-bold uppercase">
             SYSTEM: {status}
           </span>
         </div>
