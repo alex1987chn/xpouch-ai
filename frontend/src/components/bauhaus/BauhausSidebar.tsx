@@ -128,6 +128,10 @@ export default function BauhausSidebar({
 
   // 处理会话点击
   const handleConversationClick = (conversationId: string, agentId?: string) => {
+    // 👈 关键：先清空当前状态，避免显示旧会话内容
+    setMessages([])
+    setCurrentConversationId(null)
+    
     // 👈 默认助手不添加 agentId 参数，让后端自动使用 sys-default-chat
     if (agentId && agentId !== 'sys-default-chat' && agentId !== 'default-chat') {
       navigate(`/chat/${conversationId}?agentId=${agentId}`)

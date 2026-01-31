@@ -4,6 +4,7 @@ import { Save, Info, X, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AVAILABLE_MODELS, getDefaultModel, setDefaultModel, getAgentPrompt, setAgentPrompt, getAgentDefaultPrompt } from '@/utils/config'
 import { agents } from '@/data/agents'
+import { useTranslation } from '@/i18n'
 
 interface SettingsDialogProps {
   isOpen: boolean
@@ -11,6 +12,7 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
+  const { t } = useTranslation()
   const [selectedModelId, setSelectedModelId] = useState<string>(getDefaultModel())
   const [agentPrompts, setAgentPrompts] = useState<Record<string, string>>({})
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null)
@@ -64,7 +66,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-[var(--accent-hover)]"></div>
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-              /// SYSTEM_CONFIG
+              /// {t('systemConfig')}
             </span>
           </div>
           <button
@@ -82,7 +84,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                DEFAULT_MODEL
+                {t('defaultModel')}
               </span>
             </div>
 
@@ -124,7 +126,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                API_KEY_CONFIG
+                {t('apiKeyConfig')}
               </span>
             </div>
 
@@ -133,13 +135,13 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <h4 className="font-mono text-xs font-bold text-[var(--text-primary)] mb-1">
-                    API Key 配置说明
+                    {t('apiKeyConfigTitle')}
                   </h4>
                   <p className="font-mono text-[10px] text-[var(--text-secondary)] mb-1">
-                    所有 API Key 均通过服务端环境变量配置，以确保安全性。
+                    {t('apiKeyConfigDesc')}
                   </p>
                   <p className="font-mono text-[9px] text-[var(--text-secondary)] opacity-60">
-                    请在服务器上配置 .env 文件中的 DEEPSEEK_API_KEY、OPENAI_API_KEY、ANTHROPIC_API_KEY、GOOGLE_API_KEY
+                    {t('apiKeyConfigHint')}
                   </p>
                 </div>
               </div>
@@ -154,7 +156,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                AGENT_PROMPTS
+                {t('agentPrompts')}
               </span>
             </div>
 
@@ -185,7 +187,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                           {agent.name}
                         </div>
                         <p className="font-mono text-[9px] text-[var(--text-secondary)] truncate">
-                          {customPrompt ? '已自定义' : `默认: ${defaultPrompt.substring(0, 30)}...`}
+                          {customPrompt ? t('customized') : `${t('defaultPrompt')}: ${defaultPrompt.substring(0, 30)}...`}
                         </p>
                       </div>
                       <div className={cn(

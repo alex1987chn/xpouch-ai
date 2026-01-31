@@ -5,6 +5,65 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-02-01] - v0.6.7 - 专家系统与Artifact展示优化
+
+### 🚀 核心功能
+
+**自动选中第一个专家**：
+- 实现第一个专家完成时自动选中的逻辑
+- 自动选中第一个artifact进行展示
+- 用户无需手动点击即可看到生成内容
+- 优化首次使用体验
+
+### 🎨 UI 改进
+
+**Artifact展示优化**：
+- artifact标签高亮（当前选中状态）
+- 预览窗口放大缩小功能
+- 代码/HTML/搜索渲染优化
+- 代码高亮和格式化改进
+
+**对话框组件优化**：
+- 创建DialogContentBauhaus变体（不含默认关闭按钮）
+- 修复ExpertDetailModal重复关闭按钮问题
+- 保持Bauhaus风格统一性
+
+**专家状态栏优化**：
+- 增强未高亮专家在明亮主题下的文本对比度
+- 将pending状态文本从--text-muted改为--text-secondary
+- 明亮主题下从#888888提升到#555555，更清晰易读
+
+### 🔧 技术改进
+
+**Router节点优化**：
+- 添加tags=["router"]配置，过滤JSON输出
+- 配合main.py的流式过滤逻辑
+- 防止意图识别JSON在对话面板展示
+- 提升用户界面的纯净度
+
+### 📊 代码统计
+
+- 修改文件：9个
+- 前端：7个文件
+- 后端：2个文件
+- 核心优化：专家系统、Artifact展示、UI组件
+
+### 🎯 用户体验提升
+
+**优化前**：
+- 需要手动点击专家和artifact才能看到内容
+- 未高亮专家在明亮主题下难以辨认
+- ExpertDetailModal有重复的关闭按钮
+- 意图识别JSON可能出现在对话面板
+
+**优化后**：
+- 第一个专家完成时自动选中，立即展示内容
+- 所有专家标签文本清晰可读
+- 只显示一个Bauhaus风格的关闭按钮
+- 对话面板只显示用户友好的AI回复
+
+---
+
 ## [2026-01-31] - v0.6.6 - 前端智能路由全托管重构
 
 ### 🚀 核心重构

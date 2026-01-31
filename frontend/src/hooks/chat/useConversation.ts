@@ -44,27 +44,40 @@ export function useConversation() {
   /**
    * 加载历史会话
    */
-  const loadConversation = useCallback(async (conversationId: string) => {
+  const loadConversation = useCallback(async (targetConversationId: string) => {
     try {
       // 👈 使用 getState() 获取最新状态，避免闭包捕获旧值
       const store = useChatStore.getState()
       const currentId = store.currentConversationId
 
       // 👈 关键修复：只在完全相同的会话且有消息时才阻止加载
-      // 但需要额外的检查：确保消息数量也匹配（避免上一个会话的消息残留）
-      if (currentId === conversationId && store.messages.length > 0) {
-        debug('阻止重复加载：已是当前会话且已有消息')
+      // 注意：必须严格比较，确保不会加载错误的会话
+      if (currentId === targetConversationId && store.messages.length > 0) {
+        debug('阻止重复加载：已是当前会话且已有消息', targetConversationId)
         return
       }
 
-      const conversation = await getConversation(conversationId)
+      debug('开始加载会话:', targetConversationId, '当前会话:', currentId)
+
+      const conversation = await getConversation(targetConversationId)
+
+      // 👈 关键：先清空旧消息，再设置新会话ID，避免用户看到旧数据
+      if (currentId !== targetConversationId) {
+        debug('清空旧消息，准备加载新会话')
+        setMessages([])
+      }
 
       // 设置当前会话 ID
-      setCurrentConversationId(conversationId)
+      setCurrentConversationId(targetConversationId)
 
-      // 设置消息（如果有历史消息则覆盖，否则保持现有消息）
+      // 👈 关键：确保设置新会话的消息（即使为空也要覆盖）
+      // 避免残留旧会话的消息
       if (conversation.messages && conversation.messages.length > 0) {
         setMessages(conversation.messages)
+        debug('设置新会话消息:', conversation.messages.length, '条')
+      } else {
+        setMessages([])
+        debug('新会话没有消息，清空消息列表')
       }
 
       // 设置选中的智能体（使用规范化后的 ID）
