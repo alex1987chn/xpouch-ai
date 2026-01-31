@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams, useLocation } from 'react-rout
 import { useCanvasStore } from '@/store/canvasStore'
 import { useChatStore } from '@/store/chatStore'
 import { useChat } from '@/hooks/useChat'
+import { useApp } from '@/providers/AppProvider'
 
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { getConversationMode, normalizeAgentId } from '@/utils/agentUtils'
@@ -65,6 +66,7 @@ export default function UnifiedChatPage() {
   const location = useLocation()
   const { id: pathConversationId } = useParams()
   const [searchParams] = useSearchParams()
+  const { sidebar } = useApp()
 
   // URL 格式：/chat/:id?agentId=xxx（可选）
   const conversationId = pathConversationId || ''
@@ -329,7 +331,10 @@ export default function UnifiedChatPage() {
   return (
     <div className="h-full flex flex-col">
       {/* 工业风格头部 */}
-      <IndustrialHeader onClose={() => navigate('/')} />
+      <IndustrialHeader
+        onClose={() => navigate('/')}
+        onMenuClick={sidebar.toggleMobile}
+      />
 
       {/* 主内容区 */}
       <IndustrialChatLayout

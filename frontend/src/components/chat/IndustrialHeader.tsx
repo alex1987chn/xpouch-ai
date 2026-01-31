@@ -1,5 +1,5 @@
 import React from 'react'
-import { X, CheckCircle2 } from 'lucide-react'
+import { X, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VERSION } from '@/constants/ui'
 
@@ -8,6 +8,7 @@ interface IndustrialHeaderProps {
   version?: string
   status?: 'online' | 'offline' | 'busy'
   onClose?: () => void
+  onMenuClick?: () => void
   className?: string
 }
 
@@ -23,6 +24,7 @@ interface IndustrialHeaderProps {
  * - Logo 和版本号
  * - 系统状态指示器（在线/离线/忙碌）
  * - 关闭按钮（可选）
+ * - 菜单按钮（可选）
  *
  * [样式风格] Bauhaus Industrial
  * - 固定高度 h-14
@@ -32,18 +34,18 @@ interface IndustrialHeaderProps {
  * [使用示例]
  * ```tsx
  * <IndustrialHeader
- *   title="XPOUCH_OS"
- *   version={VERSION.CURRENT}
  *   status="online"
  *   onClose={() => navigate('/')}
+ *   onMenuClick={() => sidebar.toggleMobile()}
  * />
  * ```
  */
 export function IndustrialHeader({
-  title = 'XPOUCH_OS',
+  title = 'XPOUCH',
   version = VERSION.CURRENT,
   status = 'online',
   onClose,
+  onMenuClick,
   className
 }: IndustrialHeaderProps) {
   return (
@@ -56,14 +58,27 @@ export function IndustrialHeader({
     >
       {/* 左侧：Logo 与 标题 */}
       <div className="flex items-center gap-3">
-        <div className="w-5 h-5 bg-primary text-[var(--accent)] flex items-center justify-center font-bold text-xs">
-          X
+        {/* 菜单按钮（移动端） */}
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="lg:hidden w-8 h-8 flex items-center justify-center border-2 border-border hover:bg-[var(--accent-hover)] transition-colors mr-1"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* 工业风格 Logo: [ XPOUCH ] */}
+        <div className="flex items-center gap-1">
+          <span className="text-lg font-black tracking-tighter text-gray-400">[</span>
+          <span className="text-lg font-black tracking-tighter text-yellow-400">X</span>
+          <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-slate-100">POUCH</span>
+          <span className="text-lg font-black tracking-tighter text-gray-400">]</span>
         </div>
-        <span className="font-black text-lg tracking-tighter text-primary">
-          {title}
-          <span className="text-[10px] font-mono text-primary/60 dark:text-primary/50 font-normal ml-2">
-            {version}
-          </span>
+
+        {/* 版本号 */}
+        <span className="text-[10px] font-mono text-primary/60 dark:text-primary/50 font-normal">
+          {version}
         </span>
       </div>
 
