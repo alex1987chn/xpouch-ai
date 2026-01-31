@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { cn } from '@/lib/utils'
 import { Maximize2, LayoutGrid, FileCode, Terminal, Cpu, Database, Search, Globe, Palette, Braces, Eye, Code2, Copy, Check } from 'lucide-react'
 import type { Artifact } from '@/types'
@@ -45,12 +45,16 @@ interface OrchestratorPanelProps {
   activeExpertId: string | null
   /** 点击专家回调 */
   onExpertClick: (expertId: string) => void
-  /** Artifacts 列表 */
-  artifacts: Artifact[]
+  /** 当前专家的 artifact session */
+  artifactSession: any
+  /** 当前专家的所有 artifacts */
+  artifacts: any[]
   /** 当前选中的 Artifact */
-  selectedArtifact: Artifact | null
+  selectedArtifact: any | null
   /** 点击 Artifact 回调 */
-  onArtifactClick: (artifact: Artifact) => void
+  onArtifactClick: (artifact: any) => void
+  /** 切换 Artifact 索引回调 */
+  onSwitchArtifact?: (index: number) => void
   /** 是否全屏 */
   isFullscreen?: boolean
   /** 切换全屏回调 */
@@ -68,9 +72,11 @@ export default function OrchestratorPanel({
   experts,
   activeExpertId,
   onExpertClick,
+  artifactSession,
   artifacts,
   selectedArtifact,
   onArtifactClick,
+  onSwitchArtifact,
   isFullscreen,
   onToggleFullscreen,
 }: OrchestratorPanelProps) {
@@ -85,9 +91,11 @@ export default function OrchestratorPanel({
 
       {/* Artifact 仪表盘 - 主内容区 */}
       <ArtifactDashboard
+        artifactSession={artifactSession}
         artifacts={artifacts}
         selectedArtifact={selectedArtifact}
         onArtifactClick={onArtifactClick}
+        onSwitchArtifact={onSwitchArtifact}
         isFullscreen={isFullscreen}
         onToggleFullscreen={onToggleFullscreen}
       />
@@ -173,85 +181,150 @@ function ExpertRail({
 
 /** Artifact 仪表盘 */
 function ArtifactDashboard({
+  artifactSession,
   artifacts,
   selectedArtifact,
   onArtifactClick,
+  onSwitchArtifact,
   isFullscreen,
   onToggleFullscreen,
 }: {
-  artifacts: Artifact[]
-  selectedArtifact: Artifact | null
-  onArtifactClick: (artifact: Artifact) => void
+  artifactSession: any
+  artifacts: any[]
+  selectedArtifact: any | null
+  onArtifactClick: (artifact: any) => void
+  onSwitchArtifact?: (index: number) => void
   isFullscreen?: boolean
   onToggleFullscreen?: () => void
 }) {
   const { t } = useTranslation()
-  const [activeTab, setActiveTab] = useState<string>('overview')
+  const tabsContainerRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
 
-  // 如果有选中的 artifact，显示它；否则显示第一个 artifact 或概览
-  const currentArtifact = selectedArtifact || (artifacts.length > 0 ? artifacts[0] : null)
-
-  // 当 artifacts 变化时，自动选中第一个 artifact（如果当前没有选中或选中的是无效的）
-  useEffect(() => {
-    if (artifacts.length > 0) {
-      // 如果当前没有选中任何 tab，或者选中的 tab 不在当前 artifacts 中，则选中第一个
-      const artifactIds = artifacts.map(a => a.id)
-      const isCurrentTabValid = artifactIds.includes(activeTab)
-      
-      if (activeTab === 'overview' || !isCurrentTabValid) {
-        // 优先使用 selectedArtifact，否则使用第一个 artifact
-        const targetArtifact = selectedArtifact || artifacts[0]
-        if (targetArtifact && targetArtifact.id !== activeTab) {
-          setActiveTab(targetArtifact.id)
-        }
-      }
+  // 检查是否可以滚动
+  const checkScroll = () => {
+    const container = tabsContainerRef.current
+    if (container) {
+      setCanScrollLeft(container.scrollLeft > 0)
+      setCanScrollRight(
+        container.scrollLeft < container.scrollWidth - container.clientWidth - 5
+      )
     }
-  }, [artifacts, selectedArtifact, activeTab])
+  }
 
-  // 当没有 artifacts 时才显示概览标签
-  const showOverviewTab = artifacts.length === 0
+  useEffect(() => {
+    checkScroll()
+    const container = tabsContainerRef.current
+    if (container) {
+      container.addEventListener('scroll', checkScroll)
+      return () => container.removeEventListener('scroll', checkScroll)
+    }
+  }, [artifacts])
+
+  // 滚动处理
+  const scrollLeft = () => {
+    const container = tabsContainerRef.current
+    if (container) {
+      container.scrollBy({ left: -100, behavior: 'smooth' })
+    }
+  }
+
+  const scrollRight = () => {
+    const container = tabsContainerRef.current
+    if (container) {
+      container.scrollBy({ left: 100, behavior: 'smooth' })
+    }
+  }
+
+  // 获取专家名称
+  const expertName = useMemo(() => {
+    if (!artifactSession) return ''
+    const expertNames: Record<string, string> = {
+      coder: '编程专家',
+      writer: '写作专家',
+      search: '搜索专家',
+      researcher: '研究专家',
+      analyzer: '分析专家',
+      planner: '规划专家',
+      image_analyzer: '图片分析',
+      architect: '架构师'
+    }
+    return expertNames[artifactSession.expertType] || artifactSession.expertType
+  }, [artifactSession])
+
+  // 当前选中的索引
+  const currentIndex = selectedArtifact?._index || 0
 
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-page">
       {/* Tab 栏 */}
-      <div className="h-10 flex items-end px-2 gap-1 border-b-2 border-border bg-panel shrink-0 overflow-x-auto scrollbar-hide">
-        {/* 概览 Tab - 仅在没有 artifacts 时显示 */}
-        {showOverviewTab && (
+      <div className="h-10 flex items-end px-2 gap-1 border-b-2 border-border bg-panel shrink-0">
+        {/* 左滚动按钮 */}
+        {canScrollLeft && (
           <button
-            onClick={() => setActiveTab('overview')}
-            className={cn(
-              "h-8 px-4 flex items-center gap-2 relative transition-all",
-              activeTab === 'overview'
-                ? "bg-card border-2 border-border border-b-0 top-[2px] z-10 text-primary"
-                : "h-7 px-4 bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100 text-secondary dark:text-secondary/80"
-            )}
+            onClick={scrollLeft}
+            className="h-7 w-6 flex items-center justify-center bg-panel border-2 border-border hover:bg-card transition-colors shrink-0"
           >
-            <LayoutGrid className="w-3 h-3" />
-            <span className="font-mono text-xs font-bold">{t('overview')}</span>
+            <span className="text-xs">←</span>
           </button>
         )}
 
-        {/* Artifact Tabs - 仅在有 artifacts 时显示 */}
-        {!showOverviewTab && artifacts.slice(0, 3).map((artifact) => (
+        {/* 专家名称标签（显示当前选中的专家） */}
+        {artifactSession && (
+          <div className="h-7 px-3 flex items-center gap-2 bg-[var(--accent-hover)] text-black border-2 border-border shrink-0">
+            <span className="font-mono text-xs font-bold uppercase">{expertName}</span>
+            <span className="text-[10px] opacity-70">({artifacts.length})</span>
+          </div>
+        )}
+
+        {/* 分隔线 */}
+        {artifactSession && artifacts.length > 0 && (
+          <div className="w-px h-5 bg-border mx-1 shrink-0" />
+        )}
+
+        {/* Artifact Tabs - 可滚动区域 */}
+        <div 
+          ref={tabsContainerRef}
+          className="flex-1 flex items-end gap-1 overflow-x-auto scrollbar-hide"
+        >
+          {artifacts.length === 0 ? (
+            <div className="h-7 px-4 flex items-center text-secondary/60 text-xs font-mono">
+              等待交付物...
+            </div>
+          ) : (
+            artifacts.map((artifact, idx) => (
+              <button
+                key={artifact.id}
+                onClick={() => {
+                  onSwitchArtifact?.(idx)
+                  onArtifactClick(artifact)
+                }}
+                className={cn(
+                  "h-7 px-3 flex items-center gap-2 transition-all shrink-0",
+                  currentIndex === idx
+                    ? "h-8 bg-card border-2 border-border border-b-0 top-[2px] z-10 text-primary"
+                    : "bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100 text-secondary dark:text-secondary/80"
+                )}
+              >
+                <FileCode className="w-3 h-3" />
+                <span className="font-mono text-xs font-bold truncate max-w-[100px]">
+                  {artifact.title || `${expertName}-${idx + 1}`}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+
+        {/* 右滚动按钮 */}
+        {canScrollRight && (
           <button
-            key={artifact.id}
-            onClick={() => {
-              setActiveTab(artifact.id)
-              onArtifactClick(artifact)
-            }}
-            className={cn(
-              "h-7 px-4 flex items-center gap-2 transition-all",
-              activeTab === artifact.id
-                ? "h-8 bg-card border-2 border-border border-b-0 top-[2px] z-10 text-primary"
-                : "bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100 text-secondary dark:text-secondary/80"
-            )}
+            onClick={scrollRight}
+            className="h-7 w-6 flex items-center justify-center bg-panel border-2 border-border hover:bg-card transition-colors shrink-0"
           >
-            <FileCode className="w-3 h-3" />
-            <span className="font-mono text-xs font-bold truncate max-w-[80px]">
-              {artifact.title}
-            </span>
+            <span className="text-xs">→</span>
           </button>
-        ))}
+        )}
       </div>
 
       {/* 内容区 */}
@@ -335,12 +408,16 @@ function EmptyState() {
 
 /** Artifact 内容渲染 - 支持代码/预览切换 */
 interface ArtifactContentProps {
-  artifact: Artifact
+  artifact: any
   onToggleFullscreen?: () => void
   isFullscreen?: boolean
 }
 
 function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: ArtifactContentProps) {
+  // 解构 artifact，排除 _index 等内部属性
+  const { _index, ...artifactData } = artifact || {}
+  // 使用解构后的数据
+  const displayArtifact = artifactData as Artifact
   const { t } = useTranslation()
   // 视图模式：'code' | 'preview' - 默认显示代码
   const [viewMode, setViewMode] = useState<'code' | 'preview'>('code')
@@ -411,45 +488,45 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
   )
 
   // 判断是否支持预览
-  const canPreview = ['markdown', 'html', 'code'].includes(artifact.type)
+  const canPreview = ['markdown', 'html', 'code'].includes(displayArtifact.type)
 
   // 渲染代码视图
   const renderCodeView = () => {
-    switch (artifact.type) {
+    switch (displayArtifact.type) {
       case 'code':
         return (
           <Suspense fallback={<ArtifactLoader />}>
-            <CodeArtifact content={artifact.content} language={artifact.language} />
+            <CodeArtifact content={displayArtifact.content} language={displayArtifact.language} />
           </Suspense>
         )
       case 'markdown':
         return (
           <div className="h-full overflow-auto bg-page p-4 font-mono text-sm whitespace-pre-wrap">
-            {artifact.content}
+            {displayArtifact.content}
           </div>
         )
       case 'html':
         return (
           <div className="h-full overflow-auto bg-page p-4 font-mono text-sm whitespace-pre-wrap">
-            {artifact.content}
+            {displayArtifact.content}
           </div>
         )
       case 'search':
         return (
           <Suspense fallback={<ArtifactLoader />}>
-            <SearchArtifact content={artifact.content} />
+            <SearchArtifact content={displayArtifact.content} />
           </Suspense>
         )
       case 'text':
         return (
           <Suspense fallback={<ArtifactLoader />}>
-            <TextArtifact content={artifact.content} />
+            <TextArtifact content={displayArtifact.content} />
           </Suspense>
         )
       default:
         return (
           <div className="p-4 bg-page border border-dashed border-border/30 text-secondary dark:text-secondary/80 text-sm">
-            {artifact.content}
+            {displayArtifact.content}
           </div>
         )
     }
@@ -457,19 +534,19 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
 
   // 渲染预览视图
   const renderPreviewView = () => {
-    switch (artifact.type) {
+    switch (displayArtifact.type) {
       case 'code':
         // 代码类型的预览：尝试渲染为代码高亮展示
         return (
           <Suspense fallback={<ArtifactLoader />}>
-            <CodeArtifact content={artifact.content} language={artifact.language} />
+            <CodeArtifact content={displayArtifact.content} language={displayArtifact.language} />
           </Suspense>
         )
       case 'markdown':
         return (
           <Suspense fallback={<ArtifactLoader />}>
             <div className="h-full overflow-auto p-4">
-              <DocArtifact content={artifact.content} />
+              <DocArtifact content={displayArtifact.content} />
             </div>
           </Suspense>
         )
@@ -477,7 +554,7 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
         return (
           <Suspense fallback={<ArtifactLoader />}>
             <div className="h-full overflow-auto p-4">
-              <HtmlArtifact content={artifact.content} />
+              <HtmlArtifact content={displayArtifact.content} />
             </div>
           </Suspense>
         )
@@ -506,7 +583,7 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
           {/* 类型指示器 - 提高对比度 */}
           <div className="flex items-center gap-1 text-[10px] font-mono text-primary uppercase">
             <FileCode className="w-3 h-3 text-[var(--accent-hover)]" />
-            <span className="font-bold">{artifact.type}</span>
+            <span className="font-bold">{displayArtifact.type}</span>
           </div>
         </div>
 
