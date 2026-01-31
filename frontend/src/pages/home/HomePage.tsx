@@ -84,7 +84,6 @@ function ConstructCard({
   onDelete?: () => void
 }) {
   const { t } = useTranslation()
-  const isOnline = status === 'online'
 
   return (
     <Card
@@ -95,13 +94,9 @@ function ConstructCard({
         className="w-4 h-full border-r-2 border-[var(--border-color)] z-10 flex flex-col items-center justify-center gap-1 py-2 transition-colors"
         style={{ backgroundColor: sideColor }}
       >
-        {isOnline && (
-          <>
-            <div className="w-1 h-1 bg-[var(--bg-card)] rounded-full" />
-            <div className="w-1 h-1 bg-[var(--bg-card)] rounded-full" />
-            <div className="w-1 h-1 bg-[var(--bg-card)] rounded-full" />
-          </>
-        )}
+        <div className="w-1 h-1 bg-[var(--bg-card)] rounded-full" />
+        <div className="w-1 h-1 bg-[var(--bg-card)] rounded-full" />
+        <div className="w-1 h-1 bg-[var(--bg-card)] rounded-full" />
       </div>
 
       <div className="p-5 flex-1 flex flex-col justify-between z-10 relative" onClick={onClick}>
@@ -128,13 +123,13 @@ function ConstructCard({
         )}
 
         <div className="flex justify-between items-start pr-8">
-          <h4 className={cn("font-black text-xl tracking-tight", !isOnline && "text-[var(--text-secondary)]")}>
+          <h4 className="font-black text-xl tracking-tight">
             {name}
           </h4>
           <div className="flex items-center gap-1 border border-[var(--border-color)] px-1 bg-[var(--bg-page)]">
-            <div className={cn("w-1.5 h-1.5 rounded-full", isOnline ? "bg-green-500 animate-pulse" : "bg-gray-400")} />
-              <span className={cn("font-mono text-[9px] font-bold", !isOnline && "text-[var(--text-secondary)]")}>
-              {isOnline ? t('online') : t('offline')}
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="font-mono text-[9px] font-bold">
+              {t('online')}
             </span>
           </div>
         </div>
@@ -144,10 +139,7 @@ function ConstructCard({
             {tags.map((tag) => (
               <span
                 key={tag}
-                className={cn(
-                  "px-2 py-0.5 text-[9px] font-bold border border-[var(--border-color)] bg-[var(--bg-page)]",
-                  !isOnline && "text-[var(--text-secondary)]"
-                )}
+                className="px-2 py-0.5 text-[9px] font-bold border border-[var(--border-color)] bg-[var(--bg-page)]"
               >
                 {tag}
               </span>
