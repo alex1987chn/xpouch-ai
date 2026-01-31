@@ -8,7 +8,7 @@ from langgraph.graph.message import add_messages
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser
 import os
 from dotenv import load_dotenv
 import pathlib
@@ -24,7 +24,7 @@ from config import init_langchain_tracing, get_langsmith_config
 from utils.json_parser import parse_llm_json
 from utils.exceptions import AppError
 # 将原有的 COMMANDER_SYSTEM_PROMPT 作为规划器 (Planner) 的提示词
-from constants import COMMANDER_SYSTEM_PROMPT as PLANNER_SYSTEM_PROMPT, ROUTER_SYSTEM_PROMPT 
+from constants import COMMANDER_SYSTEM_PROMPT as PLANNER_SYSTEM_PROMPT, ROUTER_SYSTEM_PROMPT, DEFAULT_ASSISTANT_PROMPT 
 from agents.dynamic_experts import DYNAMIC_EXPERT_FUNCTIONS, initialize_expert_cache
 from agents.expert_loader import get_expert_config_cached
 
@@ -59,16 +59,8 @@ llm = ChatOpenAI(
 # ROUTER_SYSTEM_PROMPT 已从 constants.py 导入
 
 class RoutingDecision(BaseModel):
-    """路由器的决策输出结构"""
-    intent: Literal["simple", "complex"] = Field(
-        ..., 
-        description="用户意图：'simple' 表示简单闲聊，'complex' 表示需要专家处理的任务。"
-    )
-    direct_response: str = Field(
-        default="", 
-        description="如果 intent 是 'simple'，请在此处填写直接回复的内容。如果是 'complex'，必须留空。"
-    )
-    thought: str = Field(description="简短的思考过程，解释为什么做出这个分类。")
+    """v2.7 网关决策结构（Router只负责分类）"""
+    decision_type: Literal["simple", "complex"] = Field(description="决策类型")
 
 # --- 保留原有的规划器结构 (原 CommanderOutput) ---
 
@@ -104,68 +96,52 @@ class AgentState(TypedDict):
 # 3. 节点实现
 # ============================================================================
 
-# --- 新增：Router 节点 (前台接待) ---
+# --- 新增：Router 节点 (网关) ---
 async def router_node(state: AgentState) -> Dict[str, Any]:
-    """
-    [守门人] 对意图进行分类：Simple vs Complex
-    """
+    """[网关] 只负责分类，不负责回答"""
     messages = state["messages"]
-    last_message = messages[-1].content if messages else ""
-    
-    # 0. 检查"直接专家模式" (Direct Mode)
-    # 如果状态中已经预置了 task_list，说明是系统恢复或 API 指定任务，直接跳过意图检查
+
+    # 断点恢复检查
     if state.get("task_list") and len(state.get("task_list", [])) > 0:
-        print(f"[ROUTER] 检测到现有任务列表，跳过意图检查 -> Complex")
         return {"router_decision": "complex"}
 
-    print(f"[ROUTER] 分析用户输入: '{last_message[:100]}...' " if len(str(last_message)) > 100 else f"[ROUTER] 分析用户输入: '{last_message}'")
-
-    # 1. 调用 LLM 进行分类
-    # 使用通用的 PydanticOutputParser（兼容 DeepSeek/OpenAI）
-    from langchain_core.output_parsers import PydanticOutputParser
-
     parser = PydanticOutputParser(pydantic_object=RoutingDecision)
-
-    # 构建 prompt（包含格式化指令）
-    prompt = ROUTER_SYSTEM_PROMPT.format(format_instructions=parser.get_format_instructions())
-
     try:
-        # 调用 LLM（使用 RunnableConfig 设置标签，便于流式过滤）
-        from langchain_core.runnables import RunnableConfig
+        # 🔥 关键：静态 SystemPrompt + 动态 Messages
         response = await llm.ainvoke(
             [
-                SystemMessage(content=prompt),
-                *messages
+                SystemMessage(content=ROUTER_SYSTEM_PROMPT),
+                *messages  # 用户的输入在这里
             ],
-            config=RunnableConfig(
-                tags=["router"],
-                metadata={"node_type": "router"}
-            )
+            config={"tags": ["router"]}
         )
-        print(f"[ROUTER] LLM 原始响应: {response.content[:200]}..." if len(response.content) > 200 else f"[ROUTER] LLM 原始响应: {response.content}")
-        # 解析输出
         decision = parser.parse(response.content)
-    except Exception as e:
-        print(f"[ROUTER] 解析错误，回退到 Complex 模式: {e}")
-        print(f"[ROUTER] 错误详情: {str(e)}")
-        # 安全回退：如果有问题，默认当作复杂任务处理
-        decision = RoutingDecision(intent="complex", thought="Fallback due to parse error", direct_response="")
+        return {"router_decision": decision.decision_type}
+    except:
+        return {"router_decision": "complex"}
 
-    print(f"[ROUTER] 决策: {decision.intent.upper()} | 思考: {decision.thought}")
+# --- 新增：Direct Reply 节点 (Simple 模式流式回答) ---
+async def direct_reply_node(state: AgentState) -> Dict[str, Any]:
+    """[直连] Simple 模式下的流式回复"""
+    print(f"[DIRECT_REPLY] 节点开始执行")
+    messages = state["messages"]
 
-    if decision.intent == "simple":
-        # 简单模式：直接生成回复并写入 messages 和 final_response
-        # 前端收到这个消息后，会作为普通对话显示，不会触发复杂 UI
-        return {
-            "router_decision": "simple",
-            "messages": [AIMessage(content=decision.direct_response)],
-            "final_response": decision.direct_response
-        }
-    else:
-        # 复杂模式：透传给 Planner
-        return {
-            "router_decision": "complex"
-        }
+    # 🔥 关键：静态 SystemPrompt + 动态 Messages
+    # 这里的输出会被 main.py 捕获并流式推送到前端
+    response = await llm.ainvoke(
+        [
+            SystemMessage(content=DEFAULT_ASSISTANT_PROMPT),
+            *messages  # 用户的历史消息上下文
+        ],
+        config={"tags": ["direct_reply"]}
+    )
+
+    print(f"[DIRECT_REPLY] 节点完成，回复长度: {len(response.content)}")
+
+    # 返回 AIMessage，会被流式捕获
+    return {
+        "messages": [AIMessage(content=response.content)]
+    }
 
 # --- 修改：Planner 节点 (原 Commander) ---
 async def planner_node(state: AgentState) -> Dict[str, Any]:
@@ -359,17 +335,16 @@ def _build_markdown_response(expert_results: List[Dict[str, Any]], strategy: str
 # ============================================================================
 
 def route_router(state: AgentState) -> str:
-    """决定 Router 之后的去向"""
+    """Router 之后的去向"""
     decision = state.get("router_decision", "complex")
-    
+
+    print(f"[ROUTE_ROUTER] 决策: {decision}, 将路由到: {'direct_reply' if decision == 'simple' else 'planner'}")
+
     if decision == "simple":
-        print("[PATH] 简单意图 -> END (直接结束)")
-        return END
+        # Simple 模式进入 direct_reply 节点
+        return "direct_reply"
     else:
-        print("[PATH] 复杂意图 -> Planner (进入规划)")
-        # 再次检查：如果是直接模式（已有任务），直接去执行，不用规划
-        if state.get("task_list") and len(state.get("task_list", [])) > 0:
-             return "expert_dispatcher"
+        # Complex 模式进入规划器
         return "planner"
 
 def route_dispatcher(state: AgentState) -> str:
@@ -387,6 +362,7 @@ def create_smart_router_workflow() -> StateGraph:
 
     # 添加节点
     workflow.add_node("router", router_node)
+    workflow.add_node("direct_reply", direct_reply_node)  # 新增：Simple 模式流式回复
     workflow.add_node("planner", planner_node)
     workflow.add_node("expert_dispatcher", expert_dispatcher_node)
     workflow.add_node("aggregator", aggregator_node)
@@ -395,17 +371,19 @@ def create_smart_router_workflow() -> StateGraph:
     workflow.set_entry_point("router")
 
     # 添加连线
-    
-    # 1. Router -> (END | Planner | Dispatcher)
+
+    # 1. Router -> (Direct Reply | Planner)
     workflow.add_conditional_edges(
         "router",
         route_router,
         {
-            END: END,
-            "planner": "planner",
-            "expert_dispatcher": "expert_dispatcher"
+            "direct_reply": "direct_reply",
+            "planner": "planner"
         }
     )
+
+    # 2. Direct Reply -> END
+    workflow.add_edge("direct_reply", END)
 
     # 2. Planner -> Dispatcher (规划完必然执行)
     workflow.add_edge("planner", "expert_dispatcher")
