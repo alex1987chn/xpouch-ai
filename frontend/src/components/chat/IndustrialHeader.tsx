@@ -76,8 +76,8 @@ export function IndustrialHeader({
           <span className="text-lg font-black tracking-tighter text-gray-400">]</span>
         </div>
 
-        {/* 版本号 - 工业风格分隔符 */}
-        <span className="text-[10px] font-mono text-primary/60 dark:text-primary/50 font-normal flex items-center gap-2">
+        {/* 版本号 - 工业风格分隔符 (桌面端显示) */}
+        <span className="hidden md:flex text-[10px] font-mono text-primary/60 dark:text-primary/50 font-normal items-center gap-2">
           <span className="text-[var(--text-secondary)]">///</span>
           <span>OS {version}</span>
         </span>
@@ -97,7 +97,7 @@ export function IndustrialHeader({
             )}
           />
           <span className="font-mono text-[10px] text-primary/70 dark:text-primary/60 font-bold uppercase">
-            SYSTEM: {status}
+            {status}
           </span>
         </div>
 
