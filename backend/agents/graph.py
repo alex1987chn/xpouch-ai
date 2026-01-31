@@ -117,7 +117,8 @@ async def router_node(state: AgentState) -> Dict[str, Any]:
         )
         decision = parser.parse(response.content)
         return {"router_decision": decision.decision_type}
-    except:
+    except Exception as e:
+        print(f"[ROUTER ERROR] {e}")
         return {"router_decision": "complex"}
 
 # --- 新增：Direct Reply 节点 (Simple 模式流式回答) ---
