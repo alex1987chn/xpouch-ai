@@ -236,7 +236,13 @@ export default function BauhausSidebar({
                 <The4DPocketLogo />
               </div>
               <div className="flex flex-col justify-center">
-                <h1 className="text-xl font-black tracking-tighter uppercase leading-none">XPouch</h1>
+                {/* 工业风格 Logo: [ XPOUCH ] */}
+                <h1 className="text-xl font-black tracking-tighter uppercase leading-none flex items-center">
+                  <span className="text-gray-400">[</span>
+                  <span className="text-yellow-400">X</span>
+                  <span className="text-slate-900 dark:text-slate-100">POUCH</span>
+                  <span className="text-gray-400">]</span>
+                </h1>
                 <div className="flex items-center gap-2 mt-0.5">
                   <div className="w-1.5 h-1.5 bg-[var(--accent-hover)] rounded-full animate-pulse"></div>
                   <span className="font-mono text-[10px] text-[var(--text-secondary)] tracking-widest group-hover:text-[var(--text-primary)] transition-colors">OS {VERSION.CURRENT}</span>
