@@ -161,6 +161,7 @@ export const zh: Record<TranslationKey, string> = {
   regenerate: '重新生成',
   resend: '重新发送',
   retry: '重试',
+  preview: '预览',
 
   // Expert Status
   taskDescription: '任务描述',
@@ -707,6 +708,7 @@ export const ja: Record<TranslationKey, string> = {
   regenerate: '再生成',
   resend: '再送信',
   retry: '再試行',
+  preview: 'プレビュー',
 
   // Expert Status
   taskDescription: 'タスク説明',
