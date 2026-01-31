@@ -22,6 +22,7 @@ interface ChatState {
   setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void
   addMessage: (message: Message) => void
   updateMessage: (id: string, content: string, append?: boolean) => void
+  updateMessageMetadata: (id: string, metadata: Partial<Message['metadata']>) => void
   setIsTyping: (isTyping: boolean) => void
   setInputMessage: (input: string) => void
   setCurrentConversationId: (id: string | null) => void
@@ -66,6 +67,19 @@ export const useChatStore = create<ChatState>()(
           if (msg.id === id) {
             const newContent = append ? (msg.content || '') + content : content
             return { ...msg, content: newContent }
+          }
+          return msg
+        })
+        return { messages: updatedMessages }
+      }),
+
+      updateMessageMetadata: (id: string, metadata: Partial<Message['metadata']>) => set((state: ChatState) => {
+        const updatedMessages = state.messages.map((msg: Message) => {
+          if (msg.id === id) {
+            return { 
+              ...msg, 
+              metadata: { ...msg.metadata, ...metadata }
+            }
           }
           return msg
         })
