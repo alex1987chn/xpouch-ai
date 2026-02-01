@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 from datetime import datetime, timedelta
 
 from database import get_session
-from models import User
+from models import User, UserRole
 from utils.jwt_handler import (
     create_access_token,
     create_refresh_token,
@@ -86,7 +86,7 @@ class UserResponse(BaseModel):
     username: str
     avatar: Optional[str]
     plan: str
-    role: str  # 添加角色字段
+    role: UserRole  # 👈 统一为枚举类型，修复 Pydantic 警告
     phone_number: Optional[str]
     email: Optional[str]
     is_verified: bool

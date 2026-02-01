@@ -198,9 +198,21 @@ export default function HomePage() {
   const [deletingAgentId, setDeletingAgentId] = useState<string | null>(null)
   const [deletingAgentName, setDeletingAgentName] = useState<string>('')
 
-  // 从后端加载自定义智能体列表
+  // 👈 从后端加载自定义智能体列表（使用缓存防止重复请求）
   useEffect(() => {
+    const store = useChatStore.getState()
+    
+    // 检查是否应该发起请求
+    if (!store.shouldFetchAgents()) {
+      // 使用缓存数据
+      if (store.agentsCache && store.agentsCache.length > 0) {
+        setCustomAgents(store.agentsCache)
+      }
+      return
+    }
+    
     const loadCustomAgents = async () => {
+      store.setLoadingAgents(true)
       try {
         const response = await getAllAgents()
         const customAgentsData = response
@@ -216,9 +228,13 @@ export default function HomePage() {
             isCustom: true,
             is_builtin: false
           }))
+        // 更新缓存和状态
+        store.setAgentsCache(customAgentsData)
         setCustomAgents(customAgentsData)
       } catch (error) {
         logger.error('加载自定义智能体失败:', error)
+      } finally {
+        store.setLoadingAgents(false)
       }
     }
 
@@ -268,10 +284,20 @@ export default function HomePage() {
       return
     }
 
-    // 👈 自定义智能体：查询历史会话，恢复最近的会话
+    // 👈 自定义智能体：查询历史会话，恢复最近的会话（使用缓存）
     try {
-      // 1. 获取所有会话
-      const conversations = await getConversations()
+      const store = useChatStore.getState()
+      let conversations: Conversation[]
+      
+      // 1. 优先使用缓存，缓存不存在或过期则发起请求
+      if (store.conversationsCache && !store.shouldFetchConversations()) {
+        conversations = store.conversationsCache
+      } else {
+        store.setLoadingConversations(true)
+        conversations = await getConversations()
+        store.setConversationsCache(conversations)
+        store.setLoadingConversations(false)
+      }
 
       // 2. 过滤出该智能体的会话（按更新时间倒序）
       const agentConversations = conversations

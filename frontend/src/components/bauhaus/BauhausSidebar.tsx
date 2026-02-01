@@ -129,11 +129,28 @@ export default function BauhausSidebar({
     }
   }
 
-  // 获取最近20条历史会话（UI上展示5个区域，超出滚动）
+  // 👈 获取最近20条历史会话（使用缓存防止重复请求）
   useEffect(() => {
+    const store = useChatStore.getState()
+    
+    // 检查是否应该发起请求
+    if (!store.shouldFetchConversations()) {
+      // 使用缓存数据
+      if (store.conversationsCache) {
+        const sorted = [...store.conversationsCache]
+          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+          .slice(0, 20)
+        setRecentConversations(sorted)
+      }
+      return
+    }
+    
     const loadRecentConversations = async () => {
+      store.setLoadingConversations(true)
       try {
         const conversations = await getConversations()
+        // 更新缓存
+        store.setConversationsCache(conversations)
         // 按更新时间降序排列，取前20条
         const sorted = [...conversations]
           .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
@@ -141,6 +158,8 @@ export default function BauhausSidebar({
         setRecentConversations(sorted)
       } catch (error) {
         logger.error('Failed to load recent conversations:', error)
+      } finally {
+        store.setLoadingConversations(false)
       }
     }
     loadRecentConversations()
