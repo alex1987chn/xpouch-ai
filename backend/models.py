@@ -140,8 +140,8 @@ class Message(SQLModel, table=True):
     role: str
     content: str
     timestamp: datetime = Field(default_factory=datetime.now)
-    # 👈 新增：metadata 字段存储 thinking、reasoning 等额外信息
-    metadata: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    # 👈 新增：extra_data 字段存储 thinking、reasoning 等额外信息（metadata 是 SQLAlchemy 保留字）
+    extra_data: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     
     thread: Thread = Relationship(back_populates="messages")
 
@@ -156,7 +156,7 @@ class MessageResponse(BaseModel):
     role: str
     content: str
     timestamp: Optional[datetime] = None
-    metadata: Optional[dict] = None  # 👈 新增：metadata 字段
+    extra_data: Optional[dict] = None  # 👈 新增：extra_data 字段（原 metadata，避免保留字冲突）
 
     class Config:
         from_attributes = True
