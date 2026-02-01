@@ -3,13 +3,13 @@ import { MessageSquare, Clock, Trash2, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { getConversations, deleteConversation as apiDeleteConversation, type Conversation } from '@/services/api'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow, parseISO, isValid } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
+import { logger } from '@/utils/logger'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import SwipeBackIndicator from '@/components/agent/SwipeBackIndicator'
 import { useApp } from '@/providers/AppProvider'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
-import { logger } from '@/utils/logger'
 
 interface HistoryPageProps {
   onSelectConversation: (conversation: Conversation) => void
@@ -72,6 +72,30 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
       case 'zh': return zhCN
       case 'ja': return ja
       default: return enUS
+    }
+  }
+
+  // 安全格式化相对时间
+  const formatRelativeTime = (dateString: string | undefined): string => {
+    if (!dateString) return '-'
+
+    try {
+      // 使用 parseISO 正确解析 ISO 8601 格式时间字符串
+      const date = parseISO(dateString)
+
+      // 验证日期是否有效
+      if (!isValid(date)) {
+        logger.warn('Invalid date string:', dateString)
+        return '-'
+      }
+
+      return formatDistanceToNow(date, {
+        addSuffix: true,
+        locale: getLocale()
+      })
+    } catch (error) {
+      logger.warn('Failed to format date:', dateString, error)
+      return '-'
     }
   }
 
@@ -195,12 +219,9 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                       </p>
 
                       <div className="flex items-center gap-4 font-mono text-[10px] text-[var(--text-secondary)] uppercase">
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1" title={conversation.updated_at || '-'}>
                           <Clock className="w-3 h-3" />
-                          {formatDistanceToNow(new Date(conversation.updated_at), {
-                            addSuffix: true,
-                            locale: getLocale()
-                          })}
+                          {formatRelativeTime(conversation.updated_at)}
                         </span>
                         <span className="flex items-center gap-1">
                           <MessageSquare className="w-3 h-3" />
