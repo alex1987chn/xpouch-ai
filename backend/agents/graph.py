@@ -241,6 +241,7 @@ async def planner_node(state: AgentState) -> Dict[str, Any]:
             print(f"[PLANNER] 任务会话已创建: {task_session.session_id}")
 
         # 转换为内部字典格式（用于 LangGraph 状态流转）
+        sub_tasks_list = task_session.sub_tasks if task_session else []
         task_list = [
             {
                 "id": subtask.id,
@@ -253,7 +254,7 @@ async def planner_node(state: AgentState) -> Dict[str, Any]:
                 "started_at": None,
                 "completed_at": None
             }
-            for subtask in task_session.sub_tasks if task_session else []
+            for subtask in sub_tasks_list
         ]
 
         print(f"[PLANNER] 生成了 {len(task_list)} 个任务。策略: {planner_response.strategy}")

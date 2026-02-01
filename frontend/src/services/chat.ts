@@ -8,7 +8,8 @@ import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-sou
 import { getHeaders, buildUrl, handleResponse } from './common'
 import { ApiMessage, StreamCallback, ExpertEvent, Conversation } from '@/types'
 import { logger } from '@/utils/logger'
-import { handleServerEvent, parseSSEEvent, type AnyServerEvent } from '@/handlers/eventHandlers'
+import { handleServerEvent } from '@/handlers/eventHandlers'
+import { parseSSEEvent, type AnyServerEvent } from '@/types/events'
 
 // ============================================================================
 // API 函数
