@@ -2,7 +2,6 @@
 // 提供便捷的配置访问方法
 
 import { defaultModel, models as modelConfigs, agentDefaultModels } from '@/config/models'
-import { getAgentDefaultPrompt } from '@/data/agents'
 
 // 导出可用模型列表（兼容旧代码）
 export const AVAILABLE_MODELS = modelConfigs.map(m => ({
@@ -12,7 +11,11 @@ export const AVAILABLE_MODELS = modelConfigs.map(m => ({
   provider: m.provider
 }))
 
-export { getAgentDefaultPrompt, defaultModel, agentDefaultModels }
+export { defaultModel, agentDefaultModels }
+
+// ⚠️ 智能体 Prompt 配置功能已移除
+// 智能体的 system prompt 现在通过后端 API 管理
+// 如需自定义智能体，请使用智能体管理界面
 
 // 类型定义
 export interface AgentPromptConfig {

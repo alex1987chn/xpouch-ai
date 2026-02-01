@@ -301,10 +301,10 @@ async def preview_expert(
     注意：此 API 不会刷新缓存，仅用于预览效果
     """
     from datetime import datetime
-    from langchain_openai import ChatOpenAI
     from langchain_core.messages import SystemMessage, HumanMessage
     from agents.expert_loader import get_expert_config
     from database import get_session as get_db_session
+    from utils.llm_factory import get_llm_instance
 
     # 获取专家配置（不从缓存读取，确保使用最新配置）
     expert_config = get_expert_config(request.expert_key, session)
@@ -319,12 +319,10 @@ async def preview_expert(
     started_at = datetime.now()
 
     try:
-        # 使用专家配置的模型和温度参数
-        llm = ChatOpenAI(
+        # 使用工厂方法创建 LLM 实例
+        llm = get_llm_instance(
             model=expert_config["model"],
-            temperature=expert_config["temperature"],
-            api_key=os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY"),
-            base_url=os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+            temperature=expert_config["temperature"]
         )
 
         response = await llm.ainvoke([

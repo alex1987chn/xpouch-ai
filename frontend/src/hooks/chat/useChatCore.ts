@@ -9,7 +9,7 @@ import { useChatStore } from '@/store/chatStore'
 import { getConversationMode, normalizeAgentId } from '@/utils/agentUtils'
 import { generateUUID } from '@/utils'
 import { useTranslation } from '@/i18n'
-import type { ExpertEvent, Artifact } from '@/types'
+import type { ExpertEvent } from '@/types'
 import { errorHandler, logger } from '@/utils/logger'
 import { isValidApiMessageRole } from '@/types'
 
@@ -38,8 +38,6 @@ function isApiMessage(obj: any): obj is ApiMessage {
 interface UseChatCoreOptions {
   /** 处理专家事件的回调 */
   onExpertEvent?: (event: ExpertEvent, conversationMode: 'simple' | 'complex') => Promise<void> | void
-  /** 处理 Artifact 的回调 */
-  onArtifact?: (artifact: Artifact, expertId: string) => void
   /** 处理流式内容的回调 */
   onChunk?: (chunk: string) => void
   /** 新会话创建时的回调 */
@@ -51,7 +49,7 @@ interface UseChatCoreOptions {
  */
 export function useChatCore(options: UseChatCoreOptions = {}) {
   const { t } = useTranslation()
-  const { onExpertEvent, onArtifact, onChunk, onNewConversation } = options
+  const { onExpertEvent, onChunk, onNewConversation } = options
 
   // ✅ 重构：状态提升到 Store，Hook 只管理 AbortController
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -167,9 +165,10 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
         conversationId?: string,
-        expertEvent?: ExpertEvent,
-        artifact?: Artifact,
-        expertId?: string
+        expertEvent?: ExpertEvent
+        // ⚠️ artifact 和 expertId 已合并到 expertCompleted 事件中处理
+        // artifact?: Artifact,
+        // expertId?: string
       ) => {
         // 更新 conversationId
         if (conversationId && conversationId !== actualConversationId) {
@@ -191,10 +190,11 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
           }
         }
 
-        // 处理 artifact
-        if (artifact && expertId) {
-          onArtifact?.(artifact, expertId)
-        }
+        // ⚠️ artifact 已合并到 expertCompleted 事件中处理
+        // 不再通过单独的回调传递，避免重复添加
+        // if (artifact && expertId) {
+        //   onArtifact?.(artifact, expertId)
+        // }
 
         // 实时更新流式内容
         if (chunk) {
@@ -285,7 +285,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     selectedAgentId,
     currentConversationId,
     onExpertEvent,
-    onArtifact,
     onChunk,
     onNewConversation,
     setGenerating,

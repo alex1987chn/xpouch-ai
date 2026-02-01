@@ -5,7 +5,7 @@
 
 import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
 import { getHeaders, buildUrl, handleResponse } from './common'
-import { ApiMessage, StreamCallback, ExpertEvent, Artifact, Conversation } from '@/types'
+import { ApiMessage, StreamCallback, ExpertEvent, Conversation } from '@/types'
 import { logger } from '@/utils/logger'
 
 // ============================================================================
@@ -182,7 +182,7 @@ async function processSSEData(
   const content = data.content
   const activeExpert = data.activeExpert
   const expertCompleted = data.expertCompleted
-  const artifact = data.artifact
+  // const artifact = data.artifact  // ⚠️ 已合并到 expertCompleted 事件中处理
   const allArtifacts = data.allArtifacts as Array<any> | undefined
   const taskPlan = data.taskPlan
   const taskStart = data.taskStart
@@ -247,18 +247,19 @@ async function processSSEData(
     })
   }
 
-  // 处理 artifact 事件
-  if (artifact && activeExpert) {
-    const fullArtifact: Artifact = {
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      type: artifact.type,
-      title: artifact.title,
-      content: artifact.content,
-      language: artifact.language
-    }
-    await onChunk(undefined, finalConversationId, undefined, fullArtifact, activeExpert)
-  }
+  // ⚠️ 注意：artifact 事件已合并到 expertCompleted 事件中处理
+  // 避免重复添加 artifact，这里不再单独处理
+  // if (artifact && activeExpert) {
+  //   const fullArtifact: Artifact = {
+  //     id: crypto.randomUUID(),
+  //     timestamp: new Date().toISOString(),
+  //     type: artifact.type,
+  //     title: artifact.title,
+  //     content: artifact.content,
+  //     language: artifact.language
+  //   }
+  //   await onChunk(undefined, finalConversationId, undefined, fullArtifact, activeExpert)
+  // }
 
   // 处理内容（过滤掉看起来像任务计划 JSON 的内容）
   if (content) {

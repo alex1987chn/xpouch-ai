@@ -203,21 +203,6 @@ export interface UserProfile {
 // ============================================
 // 任务节点类型
 // ============================================
-
-/**
- * 任务节点接口
- */
-export interface TaskNode {
-  id: string
-  title: string
-  status: 'pending' | 'in-progress' | 'completed'
-  children?: TaskNode[]
-  color?: string
-  icon?: string
-  description?: string
-}
-
-// ============================================
 // 路由状态类型
 // ============================================
 

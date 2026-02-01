@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { TaskNode, Artifact, ArtifactSession } from '@/types'
+import type { Artifact, ArtifactSession } from '@/types'
 
 // 专家结果类型
 export interface ExpertResult {
@@ -18,24 +18,6 @@ export interface ExpertResult {
 }
 
 interface CanvasState {
-  tasks: TaskNode[]
-  addTask: (task: TaskNode) => void
-  updateTask: (id: string, updates: Partial<TaskNode>) => void
-  updateAllTasks: (tasks: TaskNode[]) => void
-  clearTasks: () => void
-
-  // 缩放和平移状态
-  scale: number
-  setScale: (scale: number) => void
-  offsetX: number
-  offsetY: number
-  setOffset: (offsetX: number, offsetY: number) => void
-  resetView: () => void
-
-  // 拖动状态
-  isDragging: boolean
-  setIsDragging: (isDragging: boolean) => void
-
   // Artifact 状态管理（保留向后兼容）
   artifactType: 'code' | 'markdown' | 'search' | 'html' | 'text' | null
   artifactContent: string
@@ -67,28 +49,6 @@ interface CanvasState {
 }
 
 export const useCanvasStore = create<CanvasState>((set) => ({
-  tasks: [],
-  addTask: (task) => set(state => ({ tasks: [...state.tasks, task] })),
-  updateTask: (id, updates) => set(state => ({
-    tasks: state.tasks.map(task =>
-      task.id === id ? { ...task, ...updates } : task
-    )
-  })),
-  updateAllTasks: (tasks) => set({ tasks }),
-  clearTasks: () => set({ tasks: [] }),
-
-  // 缩放和平移
-  scale: 1,
-  setScale: (scale) => set({ scale }),
-  offsetX: 0,
-  offsetY: 0,
-  setOffset: (offsetX, offsetY) => set({ offsetX, offsetY }),
-  resetView: () => set({ scale: 1, offsetX: 0, offsetY: 0 }),
-
-  // 拖动状态
-  isDragging: false,
-  setIsDragging: (isDragging) => set({ isDragging }),
-
   // Artifact 状态管理（保留向后兼容）
   artifactType: null,
   artifactContent: '',

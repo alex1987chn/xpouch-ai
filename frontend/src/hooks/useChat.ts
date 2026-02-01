@@ -4,8 +4,7 @@
  * @description
  * 这是组合式 Hook，将聊天逻辑拆分为多个单一职责的子 Hooks：
  * - useChatCore: 核心聊天逻辑（发送、停止、加载状态）
- * - useExpertHandler: 专家事件处理（激活、完成、任务计划）
- * - useArtifactHandler: Artifact 处理（创建、解析、恢复）
+ * - useExpertHandler: 专家事件处理（激活、完成、任务计划、artifact 处理）
  * - useConversation: 会话管理（加载、删除）
  *
  * @returns {
@@ -37,7 +36,6 @@ import { useNavigate } from 'react-router-dom'
 import { useChatStore } from '@/store/chatStore'
 import { useChatCore } from './chat/useChatCore'
 import { useExpertHandler } from './chat/useExpertHandler'
-import { useArtifactHandler } from './chat/useArtifactHandler'
 import { useConversation } from './chat/useConversation'
 import { getConversationMode } from '@/utils/agentUtils'
 import { errorHandler } from '@/utils/logger'
@@ -53,18 +51,7 @@ export function useChat() {
     isGenerating,
   } = useChatStore()
 
-  // 1. 获取 Artifact 处理器
-  const artifactHandler = useArtifactHandler()
-
-  // 2. 组合 Artifact 处理
-  const handleArtifact = useCallback((
-    artifact: any,
-    expertId: string
-  ) => {
-    artifactHandler.handleStreamArtifact(artifact, expertId)
-  }, [artifactHandler])
-
-  // 3. 组合专家事件处理
+  // 1. 组合专家事件处理（包含 artifact 处理）
   const expertHandler = useExpertHandler()
   const handleExpertEvent = useCallback(async (
     event: any,
@@ -73,7 +60,7 @@ export function useChat() {
     await expertHandler.handleExpertEvent(event, conversationMode)
   }, [expertHandler])
 
-  // 4. 获取带回调的聊天核心逻辑
+  // 2. 获取带回调的聊天核心逻辑
   const chatCore = useChatCore({
     onNewConversation: useCallback((conversationId: string, agentId: string) => {
       // 默认助手不添加 agentId 参数，让后端自动使用 sys-default-chat
@@ -83,7 +70,6 @@ export function useChat() {
         navigate(`/chat/${conversationId}`, { replace: true })
       }
     }, [navigate]),
-    onArtifact: handleArtifact,
     onExpertEvent: handleExpertEvent,
   })
 
