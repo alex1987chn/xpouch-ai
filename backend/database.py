@@ -24,11 +24,12 @@ engine = create_engine(DATABASE_URL, echo=False)
 print(f"[Database] Using PostgreSQL: {DATABASE_URL}")
 
 def create_db_and_tables():
-    """创建数据库表"""
+    """创建数据库表（如果不存在）"""
     # PostgreSQL 使用 SQLModel 自动创建表
-    print("[Database] Creating database tables...")
-    SQLModel.metadata.create_all(engine)
-    print("[Database] Tables created successfully")
+    # checkfirst=True 是默认值：表存在则不操作，不存在则创建
+    print("[Database] Checking database tables...")
+    SQLModel.metadata.create_all(engine, checkfirst=True)
+    print("[Database] Database tables ready")
 
 def get_session():
     with Session(engine) as session:
