@@ -19,6 +19,14 @@ interface ChatState {
 
   // ✅ 新增：生成状态（用于替代 useChatCore 中的局部状态）
   isGenerating: boolean
+  
+  // 👈 新增：数据缓存（防止重复请求）
+  conversationsCache: Conversation[] | null
+  agentsCache: Agent[] | null
+  isLoadingConversations: boolean
+  isLoadingAgents: boolean
+  lastConversationsFetch: number
+  lastAgentsFetch: number
 
   // 动作 (Actions)
   setSelectedAgentId: (id: string) => void
@@ -35,10 +43,24 @@ interface ChatState {
   // ✅ 新增：生成状态控制
   setGenerating: (value: boolean) => void
   
+  // 👈 新增：缓存控制
+  setConversationsCache: (conversations: Conversation[]) => void
+  setAgentsCache: (agents: Agent[]) => void
+  invalidateConversationsCache: () => void
+  invalidateAgentsCache: () => void
+  setLoadingConversations: (loading: boolean) => void
+  setLoadingAgents: (loading: boolean) => void
+  
   // Getters
   getAllAgents: () => Agent[]
   getCurrentAgent: () => Agent | undefined
+  // 👈 新增：缓存获取器
+  shouldFetchConversations: () => boolean
+  shouldFetchAgents: () => boolean
 }
+
+// 缓存有效期：5分钟
+const CACHE_TTL = 5 * 60 * 1000
 
 export const useChatStore = create<ChatState>()(
   persist(
@@ -51,6 +73,14 @@ export const useChatStore = create<ChatState>()(
       isTyping: false,
       inputMessage: '',
       isGenerating: false,  // ✅ 新增：初始为 false
+      
+      // 👈 新增：缓存初始状态
+      conversationsCache: null,
+      agentsCache: null,
+      isLoadingConversations: false,
+      isLoadingAgents: false,
+      lastConversationsFetch: 0,
+      lastAgentsFetch: 0,
 
       // 动作实现
       setSelectedAgentId: (id: string) => set({ selectedAgentId: id }),
@@ -111,6 +141,32 @@ export const useChatStore = create<ChatState>()(
 
       // ✅ 新增：设置生成状态
       setGenerating: (value: boolean) => set({ isGenerating: value }),
+      
+      // 👈 新增：缓存操作
+      setConversationsCache: (conversations: Conversation[]) => set({
+        conversationsCache: conversations,
+        lastConversationsFetch: Date.now(),
+        isLoadingConversations: false,
+      }),
+      
+      setAgentsCache: (agents: Agent[]) => set({
+        agentsCache: agents,
+        lastAgentsFetch: Date.now(),
+        isLoadingAgents: false,
+      }),
+      
+      invalidateConversationsCache: () => set({
+        conversationsCache: null,
+        lastConversationsFetch: 0,
+      }),
+      
+      invalidateAgentsCache: () => set({
+        agentsCache: null,
+        lastAgentsFetch: 0,
+      }),
+      
+      setLoadingConversations: (loading: boolean) => set({ isLoadingConversations: loading }),
+      setLoadingAgents: (loading: boolean) => set({ isLoadingAgents: loading }),
 
       // Getters
       getAllAgents: () => {
@@ -152,6 +208,21 @@ export const useChatStore = create<ChatState>()(
           // 自定义智能体
           return state.customAgents.find(a => a.id === state.selectedAgentId)
         }
+      },
+      
+      // 👈 新增：缓存判断
+      shouldFetchConversations: () => {
+        const state = get()
+        if (state.isLoadingConversations) return false
+        if (!state.conversationsCache) return true
+        return Date.now() - state.lastConversationsFetch > CACHE_TTL
+      },
+      
+      shouldFetchAgents: () => {
+        const state = get()
+        if (state.isLoadingAgents) return false
+        if (!state.agentsCache) return true
+        return Date.now() - state.lastAgentsFetch > CACHE_TTL
       }
     }),
     {
