@@ -191,13 +191,12 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         if (chunk) {
           finalResponseContent += chunk
 
-          // 👈 注意：conversationMode 始终是 'simple'（见 agentUtils.ts），所以这里总是会更新
-          if (assistantMessageId) {
-            // 👈 使用 getState 直接调用 updateMessage，避免闭包问题
-            const store = useChatStore.getState()
-            // 直接使用 store 的 updateMessage 方法
-            store.updateMessage(assistantMessageId, chunk, true)
-          }
+          // 👈 v3.0: 移除这里的 updateMessage 调用，避免与 eventHandlers.ts 重复
+          // 现在统一由 eventHandlers.ts 的 handleMessageDelta 处理 message.delta 事件
+          // if (assistantMessageId) {
+          //   const store = useChatStore.getState()
+          //   store.updateMessage(assistantMessageId, chunk, true)
+          // }
 
           // 调用外部 onChunk 回调
           onChunk?.(chunk)
