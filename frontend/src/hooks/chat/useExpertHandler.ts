@@ -29,7 +29,6 @@ export function useExpertHandler() {
     updateExpertResult,
     selectExpert,
     selectArtifactSession,
-    setArtifact,
     addArtifactsBatch,
   } = useCanvasStore()
   
@@ -240,11 +239,6 @@ export function useExpertHandler() {
 
         // 批量添加 artifacts 到 ArtifactSession
         addArtifactsBatch(completedEvent.expertId, artifacts)
-
-        // 兼容旧逻辑：更新 Canvas 显示代码（用于简单模式）
-        completedEvent.allArtifacts.forEach((item) => {
-          setArtifact(item.type, item.content)
-        })
       }
 
       // 更新专家状态为完成，包含完整信息
@@ -271,7 +265,7 @@ export function useExpertHandler() {
         selectArtifactSession(expertResults[0].expertType)
       }
     }
-  }, [addExpertResult, updateExpertResult, selectExpert, selectArtifactSession, setArtifact, addArtifactsBatch, updateMessageMetadata])
+  }, [addExpertResult, updateExpertResult, selectExpert, selectArtifactSession, addArtifactsBatch, updateMessageMetadata])
 
   return {
     handleExpertEvent,
