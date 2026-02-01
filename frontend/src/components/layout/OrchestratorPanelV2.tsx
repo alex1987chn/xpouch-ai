@@ -141,16 +141,11 @@ function ComplexModePanel({
 }) {
   const [selectedArtifactIndex, setSelectedArtifactIndex] = useState(0)
 
-  // 订阅 taskStore - 使用选择器缓存结果
-  const { session, selectedTaskId, selectTask, tasks } = useTaskStore(
-    (state) => ({
-      session: state.session,
-      selectedTaskId: state.selectedTaskId,
-      selectTask: state.selectTask,
-      tasks: state.tasksCache  // 使用缓存的数组，而不是原始 Map
-    }),
-    shallow
-  )
+  // 分别订阅 taskStore 的状态，避免 shallow 比较失败
+  const session = useTaskStore((state) => state.session)
+  const selectedTaskId = useTaskStore((state) => state.selectedTaskId)
+  const selectTask = useTaskStore((state) => state.selectTask)
+  const tasks = useTaskStore((state) => state.tasksCache)  // 订阅缓存的数组
 
   // 计算当前选中的 task
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null

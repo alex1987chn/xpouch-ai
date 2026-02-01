@@ -122,7 +122,7 @@ export const useTaskStore = create<TaskState>()(
         if (mode === 'simple') {
           state.session = null
           state.tasks = new Map()
-          state.tasksCache = []  // 清空缓存
+          state.tasksCache = Object.freeze([])  // 清空缓存（冻结）
           state.tasksCacheVersion++
           state.isInitialized = false
         }
@@ -162,8 +162,9 @@ export const useTaskStore = create<TaskState>()(
         state.runningTaskId = null
         state.selectedTaskId = null
 
-        // 更新缓存
-        state.tasksCache = Array.from(state.tasks.values()).sort((a, b) => a.sort_order - b.sort_order)
+        // 更新缓存（冻结缓存，避免 immer 复制）
+        const sortedTasks = Array.from(state.tasks.values()).sort((a, b) => a.sort_order - b.sort_order)
+        state.tasksCache = Object.freeze(sortedTasks)
         state.tasksCacheVersion++
       })
     },
@@ -280,7 +281,7 @@ export const useTaskStore = create<TaskState>()(
         state.mode = null
         state.session = null
         state.tasks = new Map()
-        state.tasksCache = []  // 清空缓存
+        state.tasksCache = Object.freeze([])  // 清空缓存（冻结）
         state.tasksCacheVersion++
         state.runningTaskId = null
         state.selectedTaskId = null
