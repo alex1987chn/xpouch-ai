@@ -52,22 +52,26 @@ export interface TaskSession {
 interface TaskState {
   // 当前模式：simple | complex
   mode: 'simple' | 'complex' | null
-  
+
   // 当前任务会话
   session: TaskSession | null
-  
+
   // 任务存储（使用 Map 实现 O(1) 更新）
   tasks: Map<string, Task>
-  
+
+  // 缓存：排序后的任务数组（避免 selector 每次都创建新数组）
+  tasksCache: Task[]
+  tasksCacheVersion: number  // 缓存版本号，用于检测是否需要更新缓存
+
   // 当前运行的任务ID
   runningTaskId: string | null
-  
+
   // 选中的任务ID（用于展示产物）
   selectedTaskId: string | null
-  
+
   // 是否已初始化
   isInitialized: boolean
-  
+
   // Actions
   setMode: (mode: 'simple' | 'complex') => void
   initializePlan: (data: PlanCreatedData) => void
@@ -78,7 +82,7 @@ interface TaskState {
   addArtifact: (data: ArtifactGeneratedData) => void
   selectTask: (taskId: string | null) => void
   clearTasks: () => void
-  
+
   // Computed（通过 get 方法实现）
   getPendingTasks: () => Task[]
   getRunningTask: () => Task | null
@@ -101,6 +105,8 @@ export const useTaskStore = create<TaskState>()(
       mode: null,
       session: null,
       tasks: new Map(),
+      tasksCache: [],  // 缓存：排序后的任务数组
+      tasksCacheVersion: 0,  // 缓存版本号
       runningTaskId: null,
       selectedTaskId: null,
       isInitialized: false,
@@ -116,6 +122,8 @@ export const useTaskStore = create<TaskState>()(
         if (mode === 'simple') {
           state.session = null
           state.tasks = new Map()
+          state.tasksCache = []  // 清空缓存
+          state.tasksCacheVersion++
           state.isInitialized = false
         }
       })
@@ -153,6 +161,10 @@ export const useTaskStore = create<TaskState>()(
         state.isInitialized = true
         state.runningTaskId = null
         state.selectedTaskId = null
+
+        // 更新缓存
+        state.tasksCache = Array.from(state.tasks.values()).sort((a, b) => a.sort_order - b.sort_order)
+        state.tasksCacheVersion++
       })
     },
 
@@ -180,6 +192,7 @@ export const useTaskStore = create<TaskState>()(
           task.startedAt = data.started_at
         }
         state.runningTaskId = data.task_id
+        // 不更新缓存，因为只是修改 task 的 status，不会影响排序
       })
     },
 
@@ -267,6 +280,8 @@ export const useTaskStore = create<TaskState>()(
         state.mode = null
         state.session = null
         state.tasks = new Map()
+        state.tasksCache = []  // 清空缓存
+        state.tasksCacheVersion++
         state.runningTaskId = null
         state.selectedTaskId = null
         state.isInitialized = false
@@ -305,10 +320,8 @@ export const useTaskStore = create<TaskState>()(
     },
 
     getAllTasks: () => {
-      const { tasks } = get()
-      return Array.from(tasks.values()).sort(
-        (a, b) => a.sort_order - b.sort_order
-      )
+      const { tasksCache } = get()
+      return tasksCache
     },
 
     getSelectedTask: () => {
