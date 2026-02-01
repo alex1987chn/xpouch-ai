@@ -6,7 +6,8 @@ import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { deleteCustomAgent, getAllAgents } from '@/services/agent'
-import type { Agent } from '@/types'
+import { getConversations } from '@/services/chat'
+import type { Agent, Conversation } from '@/types'
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { logger } from '@/utils/logger'
 import { useApp } from '@/providers/AppProvider'
@@ -255,17 +256,49 @@ export default function HomePage() {
     return [createAgentCard, ...customAgentsWithIcon]
   }, [customAgents])
 
-  // 点击智能体卡片
-  const handleAgentClick = useCallback((agentId: string) => {
+  // 点击智能体卡片 - 恢复该智能体的最近会话或创建新会话
+  const handleAgentClick = useCallback(async (agentId: string) => {
     setSelectedAgentId(agentId)
-    const newId = crypto.randomUUID()
-    useChatStore.getState().setCurrentConversationId(newId)
 
-    // 👈 默认助手不添加 agentId 参数，让后端自动使用 sys-default-chat
-    // 关键：传递 isNew: true 标记，确保聊天页面识别为新会话并清空旧消息
+    // 👈 默认助手：直接创建新会话（不查询历史）
     if (agentId === SYSTEM_AGENTS.DEFAULT_CHAT) {
+      const newId = crypto.randomUUID()
+      useChatStore.getState().setCurrentConversationId(newId)
       navigate(`/chat/${newId}`, { state: { isNew: true } })
-    } else {
+      return
+    }
+
+    // 👈 自定义智能体：查询历史会话，恢复最近的会话
+    try {
+      // 1. 获取所有会话
+      const conversations = await getConversations()
+
+      // 2. 过滤出该智能体的会话（按更新时间倒序）
+      const agentConversations = conversations
+        .filter((conv: Conversation) => conv.agent_id === agentId)
+        .sort((a: Conversation, b: Conversation) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        )
+
+      // 3. 如果有历史会话，恢复最近的；否则创建新会话
+      if (agentConversations.length > 0) {
+        const latestConversation = agentConversations[0]
+        logger.debug('找到历史会话:', latestConversation.id, '智能体:', agentId)
+        useChatStore.getState().setCurrentConversationId(latestConversation.id)
+        // 不传递 isNew，让聊天页面加载历史消息
+        navigate(`/chat/${latestConversation.id}?agentId=${agentId}`)
+      } else {
+        // 没有历史会话，创建新会话
+        const newId = crypto.randomUUID()
+        useChatStore.getState().setCurrentConversationId(newId)
+        logger.debug('创建新会话:', newId, '智能体:', agentId)
+        navigate(`/chat/${newId}?agentId=${agentId}`, { state: { isNew: true } })
+      }
+    } catch (error) {
+      // 查询失败，降级为创建新会话
+      logger.error('查询历史会话失败:', error)
+      const newId = crypto.randomUUID()
+      useChatStore.getState().setCurrentConversationId(newId)
       navigate(`/chat/${newId}?agentId=${agentId}`, { state: { isNew: true } })
     }
   }, [setSelectedAgentId, navigate])
