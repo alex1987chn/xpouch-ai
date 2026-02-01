@@ -204,7 +204,8 @@ async def get_thread(
                         "id": msg.id,
                         "role": msg.role,
                         "content": msg.content,
-                        "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
+                        "timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
+                        "metadata": msg.metadata  # 👈 新增：返回 metadata
                     }
                     for msg in thread.messages
                 ],
@@ -246,7 +247,8 @@ async def get_thread(
                 "id": msg.id,
                 "role": msg.role,
                 "content": msg.content,
-                "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
+                "timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
+                "metadata": msg.metadata  # 👈 新增：返回 metadata
             }
             for msg in thread.messages
         ]
