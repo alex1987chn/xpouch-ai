@@ -249,9 +249,15 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       return finalResponseContent
 
     } catch (error) {
-      // 检查是否是用户手动取消
-      if (error instanceof Error && error.name === 'AbortError') {
-        debug('请求已取消')
+      // 👈 检查是否是用户手动取消（多种判断方式）
+      const isAbortError = 
+        (error instanceof Error && error.name === 'AbortError') ||
+        (error instanceof Error && error.message?.toLowerCase().includes('abort')) ||
+        (error instanceof Error && error.message?.toLowerCase().includes('cancel')) ||
+        abortControllerRef.current?.signal.aborted
+      
+      if (isAbortError) {
+        debug('请求已取消（用户主动停止）')
         // 移除空的 AI 消息
         if (assistantMessageId) {
           updateMessage(assistantMessageId, '', false)
