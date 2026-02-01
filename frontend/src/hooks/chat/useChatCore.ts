@@ -180,13 +180,16 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         if (expertEvent) {
           onExpertEvent?.(expertEvent, conversationMode)
           
-          // 👈 关键修复：当检测到复杂模式时，更新状态（UI 通过 ComplexModeIndicator 显示）
-          if (expertEvent.type === 'router_decision' && 
-              expertEvent.decision === 'complex' && 
-              !hasProcessedComplexMode) {
+          // 👈 关键修复：根据 Router 决策更新 conversationMode
+          if (expertEvent.type === 'router_decision' && !hasProcessedComplexMode) {
             hasProcessedComplexMode = true
-            debug('检测到复杂模式，更新 conversationMode')
-            setConversationMode('complex')
+            if (expertEvent.decision === 'complex') {
+              debug('检测到复杂模式，更新 conversationMode')
+              setConversationMode('complex')
+            } else {
+              debug('检测到简单模式，确保 conversationMode 为 simple')
+              setConversationMode('simple')
+            }
           }
         }
 

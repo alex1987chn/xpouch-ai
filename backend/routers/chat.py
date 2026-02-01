@@ -547,6 +547,7 @@ async def _handle_langgraph_stream(
         collected_task_list = []
         collected_expert_results = []
         router_mode = ""
+        thinking_steps = []  # 👈 新增：收集 thinking 步骤
 
         try:
             async for event in commander_graph.astream_events(
@@ -580,6 +581,16 @@ async def _handle_langgraph_stream(
                     if "task_list" in output_data:
                         collected_task_list = output_data["task_list"]
                         print(f"[DEBUG] Collected task_list: {len(collected_task_list)} tasks")
+                        
+                        # 👈 新增：收集 planner 的 thinking
+                        thinking_steps.append({
+                            "id": str(uuid4()),
+                            "expertType": "planner",
+                            "expertName": "任务规划器",
+                            "content": f"制定执行策略，拆解为 {len(collected_task_list)} 个子任务",
+                            "timestamp": datetime.now().isoformat(),
+                            "status": "completed"
+                        })
                     else:
                         print(f"[WARN] No task_list in planner output!")
                     
@@ -630,6 +641,16 @@ async def _handle_langgraph_stream(
 
                         if expert_name not in expert_artifacts:
                             expert_artifacts[expert_name] = []
+                        
+                        # 👈 新增：收集 expert 的 thinking
+                        thinking_steps.append({
+                            "id": str(uuid4()),
+                            "expertType": expert_name,
+                            "expertName": expert_name,
+                            "content": expert_info.get("description", f"{expert_name} 执行任务"),
+                            "timestamp": datetime.now().isoformat(),
+                            "status": "completed" if expert_status == "completed" else "failed"
+                        })
 
                         yield f"data: {json.dumps({'activeExpert': expert_name, 'conversationId': thread_id})}\n\n"
 
@@ -684,12 +705,21 @@ async def _handle_langgraph_stream(
         # 保存 AI 回复和 Artifacts 到数据库（使用独立的短生命周期Session）
         if full_response:
             with Session(engine) as save_session:
-                # 1. 保存 AI 消息
+                # 1. 保存 AI 消息（包含 thinking 数据）
+                extra_data = None
+                if thinking_steps:
+                    extra_data = {
+                        "thinking": thinking_steps,
+                        "thinking_count": len(thinking_steps)
+                    }
+                    print(f"[STREAM] 保存 thinking 数据: {len(thinking_steps)} 个步骤")
+                
                 ai_msg_db = Message(
                     thread_id=thread_id,
                     role="assistant",
                     content=full_response,
-                    timestamp=datetime.now()
+                    timestamp=datetime.now(),
+                    extra_data=extra_data
                 )
                 save_session.add(ai_msg_db)
 
