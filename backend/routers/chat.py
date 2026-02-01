@@ -539,7 +539,6 @@ async def _handle_langgraph_stream(
 ) -> StreamingResponse:
     """处理 LangGraph 流式响应"""
     async def event_generator():
-        nonlocal thread
         full_response = ""
         event_count = 0
         expert_artifacts = {}
@@ -567,9 +566,8 @@ async def _handle_langgraph_stream(
                     if router_decision:
                         print(f"[STREAM] Router 决策: {router_decision}")
                         router_mode = router_decision
-                        thread.thread_mode = router_decision
-                        session.add(thread)
-                        session.commit()
+                        # 👈 只记录决策，不立即修改数据库（避免session生命周期冲突）
+                        # thread状态将在streaming结束后统一更新
                         yield f"data: {json.dumps({'routerDecision': router_decision, 'conversationId': thread_id})}\n\n"
 
                 # 捕获规划节点执行结束
@@ -648,6 +646,10 @@ async def _handle_langgraph_stream(
                 if kind == "on_chat_model_stream":
                     event_tags = event.get("tags", [])
                     content = event["data"]["chunk"].content
+                    
+                    # 👈 调试：打印所有 on_chat_model_stream 事件的标签
+                    if event_count % 5 == 0:
+                        print(f"[STREAM DEBUG] on_chat_model_stream: tags={event_tags}, name={name}, router_mode={router_mode}")
 
                     should_yield, reason = should_stream_event(event_tags, router_mode, name)
                     if not should_yield:
@@ -672,64 +674,73 @@ async def _handle_langgraph_stream(
             error_msg = json.dumps({"error": str(e)})
             yield f"data: {error_msg}\n\n"
 
-        # 保存 AI 回复和 Artifacts 到数据库
+        # 保存 AI 回复和 Artifacts 到数据库（使用独立的短生命周期Session）
         if full_response:
-            ai_msg_db = Message(
-                thread_id=thread_id,
-                role="assistant",
-                content=full_response,
-                timestamp=datetime.now()
-            )
-            with Session(engine) as inner_session:
-                inner_session.add(ai_msg_db)
+            with Session(engine) as save_session:
+                # 1. 保存 AI 消息
+                ai_msg_db = Message(
+                    thread_id=thread_id,
+                    role="assistant",
+                    content=full_response,
+                    timestamp=datetime.now()
+                )
+                save_session.add(ai_msg_db)
 
-                thread = inner_session.get(Thread, thread_id)
-                if thread:
-                    thread.updated_at = datetime.now()
+                # 2. 更新 thread 状态（应用 router 决策）
+                thread_obj = save_session.get(Thread, thread_id)
+                if thread_obj:
+                    thread_obj.updated_at = datetime.now()
 
-                if thread.thread_mode == "complex" and collected_task_list:
-                    print(f"[STREAM] 保存复杂模式数据: {len(collected_task_list)} 个任务")
+                    # 应用 router 决策（如果在streaming过程中收集到了）
+                    if router_mode:
+                        thread_obj.thread_mode = router_mode
+                        print(f"[STREAM] 更新 thread_mode 为: {router_mode}")
 
-                    now = datetime.now()
-                    task_session = TaskSession(
-                        session_id=str(uuid4()),
-                        thread_id=thread_id,
-                        user_query=user_message,
-                        status="completed",
-                        final_response=full_response,
-                        created_at=now,
-                        updated_at=now,
-                        completed_at=now
-                    )
-                    inner_session.add(task_session)
-                    inner_session.flush()
+                    # 3. 如果是复杂模式，保存 TaskSession 和 SubTask
+                    if router_mode == "complex" and collected_task_list:
+                        print(f"[STREAM] 保存复杂模式数据: {len(collected_task_list)} 个任务")
 
-                    thread.task_session_id = task_session.session_id
-                    thread.agent_type = "ai"
-                    inner_session.add(thread)
-
-                    for task in collected_task_list:
-                        expert_type = task.get("expert_type", "")
-                        artifacts_for_expert = expert_artifacts.get(expert_type, [])
-
-                        subtask = SubTask(
-                            id=task.get("id", str(uuid4())),
-                            expert_type=expert_type,
-                            task_description=task.get("description", ""),
-                            input_data=task.get("input_data", {}),
-                            status=task.get("status", "completed"),
-                            output_result={"content": task.get("output_result", "")},
-                            artifacts=artifacts_for_expert,
-                            task_session_id=task_session.session_id,
-                            started_at=task.get("started_at"),
-                            completed_at=task.get("completed_at"),
-                            created_at=task.get("created_at"),
-                            updated_at=task.get("updated_at"),
+                        now = datetime.now()
+                        task_session = TaskSession(
+                            session_id=str(uuid4()),
+                            thread_id=thread_id,
+                            user_query=user_message,
+                            status="completed",
+                            final_response=full_response,
+                            created_at=now,
+                            updated_at=now,
+                            completed_at=now
                         )
-                        inner_session.add(subtask)
-                        print(f"[STREAM] 保存 SubTask: {expert_type}, artifacts: {len(artifacts_for_expert)}")
+                        save_session.add(task_session)
+                        save_session.flush()
 
-                inner_session.commit()
+                        thread_obj.task_session_id = task_session.session_id
+                        thread_obj.agent_type = "ai"
+                        save_session.add(thread_obj)
+
+                        for task in collected_task_list:
+                            expert_type = task.get("expert_type", "")
+                            artifacts_for_expert = expert_artifacts.get(expert_type, [])
+
+                            subtask = SubTask(
+                                id=task.get("id", str(uuid4())),
+                                expert_type=expert_type,
+                                task_description=task.get("description", ""),
+                                input_data=task.get("input_data", {}),
+                                status=task.get("status", "completed"),
+                                output_result={"content": task.get("output_result", "")},
+                                artifacts=artifacts_for_expert,
+                                task_session_id=task_session.session_id,
+                                started_at=task.get("started_at"),
+                                completed_at=task.get("completed_at"),
+                                created_at=task.get("created_at"),
+                                updated_at=task.get("updated_at"),
+                            )
+                            save_session.add(subtask)
+                            print(f"[STREAM] 保存 SubTask: {expert_type}, artifacts: {len(artifacts_for_expert)}")
+
+                    save_session.add(thread_obj)
+                save_session.commit()
 
         yield "data: [DONE]\n\n"
 
