@@ -50,6 +50,9 @@ export interface TaskSession {
 }
 
 interface TaskState {
+  // 当前模式：simple | complex
+  mode: 'simple' | 'complex' | null
+  
   // 当前任务会话
   session: TaskSession | null
   
@@ -66,6 +69,7 @@ interface TaskState {
   isInitialized: boolean
   
   // Actions
+  setMode: (mode: 'simple' | 'complex') => void
   initializePlan: (data: PlanCreatedData) => void
   updateTaskStatus: (taskId: string, status: TaskStatus) => void
   startTask: (data: TaskStartedData) => void
@@ -91,14 +95,31 @@ interface TaskState {
 // ============================================================================
 
 export const useTaskStore = create<TaskState>()(
-  persist(
+  // persist(
     immer((set, get) => ({
       // 初始状态
+      mode: null,
       session: null,
       tasks: new Map(),
       runningTaskId: null,
       selectedTaskId: null,
       isInitialized: false,
+
+    /**
+     * 设置模式
+     * v3.0: 在 router.decision 事件后调用
+     */
+    setMode: (mode: 'simple' | 'complex') => {
+      set((state) => {
+        state.mode = mode
+        // 如果切换到 simple 模式，清空任务状态
+        if (mode === 'simple') {
+          state.session = null
+          state.tasks = new Map()
+          state.isInitialized = false
+        }
+      })
+    },
 
     // ========================================================================
     // Actions
@@ -241,6 +262,7 @@ export const useTaskStore = create<TaskState>()(
      */
     clearTasks: () => {
       set((state) => {
+        state.mode = null
         state.session = null
         state.tasks = new Map()
         state.runningTaskId = null
@@ -308,51 +330,31 @@ export const useTaskStore = create<TaskState>()(
       ).length
       return Math.round((completed / total) * 100)
     }
-  })),
-    {
-      name: 'xpouch-task-store',
-      version: 1,
-      // 只持久化关键字段
-      partialize: (state) => ({
-        session: state.session,
-        tasks: Array.from(state.tasks.entries()),
-        selectedTaskId: state.selectedTaskId,
-        isInitialized: state.isInitialized
-      }),
-      // 自定义序列化：处理 Map
-      serialize: (state) => JSON.stringify(state),
-      deserialize: (str) => {
-        const parsed = JSON.parse(str)
-        // 恢复 Map
-        if (parsed.tasks && Array.isArray(parsed.tasks)) {
-          parsed.tasks = new Map(parsed.tasks)
-        }
-        return parsed
-      }
-    }
-  )
+  }))
+  // persist 配置暂时禁用，测试无限循环问题
+  // {
+  //   name: 'xpouch-task-store',
+  //   version: 1,
+  //   // 只持久化关键字段
+  //   partialize: (state) => ({
+  //     session: state.session,
+  //     tasks: Array.from(state.tasks.entries()),
+  //     selectedTaskId: state.selectedTaskId,
+  //     isInitialized: state.isInitialized
+  //   }),
+  //   // 自定义序列化：处理 Map
+  //   serialize: (state) => JSON.stringify(state),
+  //   deserialize: (str) => {
+  //     const parsed = JSON.parse(str)
+  //     // 恢复 Map
+  //     if (parsed.tasks && Array.isArray(parsed.tasks)) {
+  //       parsed.tasks = new Map(parsed.tasks)
+  //     }
+  //     return parsed
+  //   }
+  // }
+  // )
 )
 
-// ============================================================================
-// 便捷 Hooks
-// ============================================================================
-
-export function useTaskSession() {
-  return useTaskStore((state) => state.session)
-}
-
-export function useTasks() {
-  return useTaskStore((state) => state.getAllTasks())
-}
-
-export function useRunningTask() {
-  return useTaskStore((state) => state.getRunningTask())
-}
-
-export function useSelectedTask() {
-  return useTaskStore((state) => state.getSelectedTask())
-}
-
-export function useTaskProgress() {
-  return useTaskStore((state) => state.getProgress())
-}
+// 只导出 useTaskStore，组件中直接使用
+// 例：const mode = useTaskStore((state) => state.mode)

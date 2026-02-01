@@ -204,16 +204,16 @@ export class EventHandler {
 
   /**
    * 处理 router.decision 事件
-   * 记录路由决策
+   * v3.0: 设置模式，触发 UI 切换
    */
   private handleRouterDecision(event: RouterDecisionEvent): void {
+    const { setMode } = useTaskStore.getState()
+    
+    // 设置模式（simple 或 complex）
+    setMode(event.data.decision)
+    
     if (DEBUG) {
-      logger.debug('[EventHandler] 路由决策:', event.data.decision)
-    }
-
-    // 可以在这里触发 UI 变化（如展开右侧面板）
-    if (event.data.decision === 'complex') {
-      // TODO: 触发复杂模式 UI
+      logger.debug('[EventHandler] 路由决策，设置模式:', event.data.decision)
     }
   }
 

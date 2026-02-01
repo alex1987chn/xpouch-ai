@@ -52,13 +52,13 @@ export function useChat() {
   } = useChatStore()
 
   // 1. 组合专家事件处理（包含 artifact 处理）
-  const expertHandler = useExpertHandler()
+  const { handleExpertEvent: handleExpertEventRaw } = useExpertHandler()
   const handleExpertEvent = useCallback(async (
     event: any,
     conversationMode: 'simple' | 'complex'
   ) => {
-    await expertHandler.handleExpertEvent(event, conversationMode)
-  }, [expertHandler])
+    await handleExpertEventRaw(event, conversationMode)
+  }, [handleExpertEventRaw])
 
   // 2. 获取带回调的聊天核心逻辑
   const chatCore = useChatCore({
