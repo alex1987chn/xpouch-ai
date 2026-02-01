@@ -609,7 +609,6 @@ async def _handle_langgraph_stream(
                         # 尝试解析 JSON 格式的 task_list
                         if content and '"tasks"' in content and not collected_task_list:
                             try:
-                                import json
                                 data = json.loads(content)
                                 if "tasks" in data and isinstance(data["tasks"], list):
                                     collected_task_list = data["tasks"]
