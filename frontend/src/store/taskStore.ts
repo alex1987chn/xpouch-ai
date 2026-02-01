@@ -99,12 +99,6 @@ export const useTaskStore = create<TaskState>()(
       runningTaskId: null,
       selectedTaskId: null,
       isInitialized: false,
-    // 初始状态
-    session: null,
-    tasks: new Map(),
-    runningTaskId: null,
-    selectedTaskId: null,
-    isInitialized: false,
 
     // ========================================================================
     // Actions

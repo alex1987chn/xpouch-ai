@@ -7,7 +7,7 @@ from typing import Optional, List, Dict, Any, AsyncGenerator
 from datetime import datetime
 from uuid import uuid4
 
-from types.events import (
+from event_types.events import (
     EventType, SSEEvent,
     PlanCreatedData, TaskInfo,
     TaskStartedData, TaskProgressData, TaskCompletedData, TaskFailedData,

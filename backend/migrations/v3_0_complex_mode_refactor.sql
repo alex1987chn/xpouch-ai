@@ -56,32 +56,56 @@ END $$;
 
 DO $$
 BEGIN
+    -- 添加 task_description 列（如果不存在）
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'subtask' AND column_name = 'task_description') THEN
+        ALTER TABLE subtask ADD COLUMN task_description VARCHAR(500);
+    END IF;
+
+    -- 添加 output_result 列（如果不存在）
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'subtask' AND column_name = 'output_result') THEN
+        ALTER TABLE subtask ADD COLUMN output_result JSON;
+    END IF;
+
+    -- 添加 started_at 列（如果不存在）
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'subtask' AND column_name = 'started_at') THEN
+        ALTER TABLE subtask ADD COLUMN started_at TIMESTAMP;
+    END IF;
+
+    -- 添加 completed_at 列（如果不存在）
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'subtask' AND column_name = 'completed_at') THEN
+        ALTER TABLE subtask ADD COLUMN completed_at TIMESTAMP;
+    END IF;
+
     -- 添加 sort_order 列
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                    WHERE table_name = 'subtask' AND column_name = 'sort_order') THEN
         ALTER TABLE subtask ADD COLUMN sort_order INTEGER DEFAULT 0;
     END IF;
-    
+
     -- 添加 execution_mode 列
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                    WHERE table_name = 'subtask' AND column_name = 'execution_mode') THEN
         ALTER TABLE subtask ADD COLUMN execution_mode VARCHAR(20) DEFAULT 'sequential';
     END IF;
-    
+
     -- 添加 depends_on 列（JSON 格式存储依赖任务ID列表）
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                    WHERE table_name = 'subtask' AND column_name = 'depends_on') THEN
         ALTER TABLE subtask ADD COLUMN depends_on JSON;
     END IF;
-    
+
     -- 添加 error_message 列
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                    WHERE table_name = 'subtask' AND column_name = 'error_message') THEN
         ALTER TABLE subtask ADD COLUMN error_message TEXT;
     END IF;
-    
+
     -- 添加 duration_ms 列
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                    WHERE table_name = 'subtask' AND column_name = 'duration_ms') THEN
         ALTER TABLE subtask ADD COLUMN duration_ms INTEGER;
     END IF;
@@ -90,6 +114,7 @@ END $$;
 -- 为 SubTask 表创建索引
 CREATE INDEX IF NOT EXISTS idx_subtask_sort_order ON subtask(sort_order);
 CREATE INDEX IF NOT EXISTS idx_subtask_status ON subtask(status);
+CREATE INDEX IF NOT EXISTS idx_subtask_task_description ON subtask(task_description);
 
 -- ============================================================================
 -- 4. 数据迁移：将现有 SubTask 的 artifacts 迁移到 Artifact 表

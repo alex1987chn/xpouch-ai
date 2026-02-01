@@ -565,7 +565,11 @@ async def _handle_langgraph_stream(
                 # v3.0: 处理节点返回的 event_queue
                 if kind == "on_chain_end":
                     output_data = event["data"].get("output", {})
-                    event_queue = output_data.get("event_queue", [])
+                    # 简单模式返回字符串，复杂模式返回字典
+                    if isinstance(output_data, dict):
+                        event_queue = output_data.get("event_queue", [])
+                    else:
+                        event_queue = []
                     
                     # 发送 event_queue 中的所有事件
                     for queued_event in event_queue:
@@ -622,21 +626,12 @@ async def _handle_langgraph_stream(
         # 保存 AI 回复和 Artifacts 到数据库（使用独立的短生命周期Session）
         if full_response:
             with Session(engine) as save_session:
-                # 1. 保存 AI 消息（包含 thinking 数据）
-                extra_data = None
-                if thinking_steps:
-                    extra_data = {
-                        "thinking": thinking_steps,
-                        "thinking_count": len(thinking_steps)
-                    }
-                    print(f"[STREAM] 保存 thinking 数据: {len(thinking_steps)} 个步骤")
-                
+                # 1. 保存 AI 消息
                 ai_msg_db = Message(
                     thread_id=thread_id,
                     role="assistant",
                     content=full_response,
-                    timestamp=datetime.now(),
-                    extra_data=extra_data
+                    timestamp=datetime.now()
                 )
                 save_session.add(ai_msg_db)
 
