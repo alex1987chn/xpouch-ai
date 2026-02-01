@@ -208,9 +208,15 @@ export default function UnifiedChatPage() {
           debug('历史会话加载完成，消息数量:', useChatStore.getState().messages.length)
         })
         .catch((error: any) => {
-          // 会话不存在或加载失败，导航回首页
+          // 👈 关键修复：404 时作为新会话处理（可能是 state 丢失导致的）
           if (error?.status === 404 || error?.message?.includes('404')) {
-            navigate('/', { replace: true })
+            debug('会话不存在(404)，作为新会话处理:', conversationId)
+            // 不要导航回首页，而是作为新会话继续
+            setCurrentConversationId(conversationId)
+            setMessages([])
+            clearExpertResults()
+            clearArtifactSessions()
+            setConversationLoaded(true)
           }
         })
     } else {
