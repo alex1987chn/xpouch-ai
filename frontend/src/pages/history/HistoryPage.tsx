@@ -7,7 +7,6 @@ import { formatDistanceToNow, parseISO, isValid } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
 import { logger } from '@/utils/logger'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
-import SwipeBackIndicator from '@/components/agent/SwipeBackIndicator'
 import { useApp } from '@/providers/AppProvider'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 
@@ -188,9 +187,6 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* 移动端滑动返回指示器 */}
-        <SwipeBackIndicator swipeProgress={swipeProgress} />
-
         {/* 搜索框 - Bauhaus风格 */}
         <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 mt-6">
           <div className="relative flex items-center">

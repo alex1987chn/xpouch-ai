@@ -90,34 +90,5 @@ export function GridPattern({
   )
 }
 
-/**
- * BauhausBackground - 完整的背景组合
- *
- * 包含：页面背景色 + 网格图案 + 噪点纹理
- */
-interface BauhausBackgroundProps {
-  children: React.ReactNode
-  showGrid?: boolean
-  showNoise?: boolean
-  className?: string
-}
-
-export function BauhausBackground({
-  children,
-  showGrid = true,
-  showNoise = true,
-  className,
-}: BauhausBackgroundProps) {
-  return (
-    <div className={cn("relative min-h-screen", className)}>
-      {/* 网格背景 */}
-      {showGrid && <GridPattern />}
-
-      {/* 内容 */}
-      {children}
-
-      {/* 噪点纹理覆盖 */}
-      {showNoise && <NoiseOverlay />}
-    </div>
-  )
-}
+// BauhausBackground 已删除，因为未被使用
+// 如需使用，可以单独组合 GridPattern 和 NoiseOverlay

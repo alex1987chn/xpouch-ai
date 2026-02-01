@@ -3,12 +3,10 @@
 
 import type { Provider } from '@/types/model-provider'
 
-// 从环境变量加载配置（仅服务端）
+// 从环境变量加载配置（Vite 环境变量）
+// ⚠️ 前端无法直接访问后端环境变量，API Key 需通过后端代理获取
 const getEnv = (key: string): string => {
-  if (typeof process !== 'undefined' && process.env) {
-    return process.env[key] || ''
-  }
-  return ''
+  return import.meta.env[key] || ''
 }
 
 // 渠道配置 - API Key 从环境变量读取

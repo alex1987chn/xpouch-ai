@@ -3,7 +3,6 @@ import { Plus, FileText, Trash2, Upload, Search, Folder, File } from 'lucide-rea
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
-import SwipeBackIndicator from '@/components/agent/SwipeBackIndicator'
 import { useApp } from '@/providers/AppProvider'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { logger } from '@/utils/logger'
@@ -152,9 +151,6 @@ export default function KnowledgeBasePage() {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* 移动端滑动返回指示器 */}
-        <SwipeBackIndicator swipeProgress={swipeProgress} />
-
         {/* 搜索框 - Bauhaus风格 */}
         <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 mt-6">
           <div className="relative flex items-center">
