@@ -644,6 +644,8 @@ async def _handle_langgraph_stream(
                     output_data = event["data"]["output"]
                     if "final_response" in output_data:
                         final_response = output_data["final_response"]
+                        full_response += final_response  # 👈 关键修复：累积到 full_response
+                        print(f"[STREAM] Aggregator 返回 final_response: {len(final_response)} 字符")
                         yield f"data: {json.dumps({'content': final_response, 'conversationId': thread_id, 'isFinal': True})}\n\n"
 
                 # 捕获专家分发器节点开始执行
