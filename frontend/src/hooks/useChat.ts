@@ -102,7 +102,8 @@ export function useChat() {
     // ========== 状态：直接从 Store 读取 ==========
     messages: conversationManager.messages,
     inputMessage,
-    isGenerating,  // ? 从 Store 读取
+    isStreaming: isGenerating,  // ? 从 Store 读取，映射为 isStreaming 保持 API 一致
+    conversationMode: chatCore.conversationMode,  // ? 从 useChatCore 获取
 
     // ========== 方法 ==========
     sendMessage: chatCore.sendMessage,

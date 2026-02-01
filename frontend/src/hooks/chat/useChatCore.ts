@@ -3,7 +3,7 @@
  * 负责消息发送、停止生成、加载状态管理等核心功能
  */
 
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect, useState } from 'react'
 import { sendMessage as apiSendMessage, type ApiMessage, type StreamCallback } from '@/services/chat'
 import { useChatStore } from '@/store/chatStore'
 import { getConversationMode, normalizeAgentId } from '@/utils/agentUtils'
@@ -55,6 +55,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
   // ✅ 重构：状态提升到 Store，Hook 只管理 AbortController
   const abortControllerRef = useRef<AbortController | null>(null)
+  
+  // 👈 跟踪对话模式（由后端 Router 决策决定）
+  const [conversationMode, setConversationMode] = useState<'simple' | 'complex'>('simple')
 
   // 从 chatStore 获取状态和方法
   const {
@@ -100,6 +103,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     if (!userContent.trim()) return
 
     setGenerating(true)  // ✅ 使用 Store 方法
+    
+    // 👈 重置对话模式为 simple，等待后端 Router 决策
+    setConversationMode('simple')
 
     // 优先使用传入的 agentId，否则使用 store 中的 selectedAgentId
     const agentId = overrideAgentId || selectedAgentId
@@ -109,7 +115,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       return
     }
     const normalizedAgentId = normalizeAgentId(agentId)
-    const conversationMode = getConversationMode(normalizedAgentId)
 
     // 创建新的 AbortController
     abortControllerRef.current = new AbortController()
@@ -156,8 +161,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       debug('准备调用 sendMessage')
       // ✅ 移除：状态已在函数开头设置
 
-      // 👈 用于防止重复添加 complex 提示
-      let hasAddedComplexHint = false
+      // 👈 用于防止重复处理 complex 模式
+      let hasProcessedComplexMode = false
 
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
@@ -176,17 +181,13 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         if (expertEvent) {
           onExpertEvent?.(expertEvent, conversationMode)
           
-          // 👈 关键修复：当检测到复杂模式时，插入 loading 提示
+          // 👈 关键修复：当检测到复杂模式时，更新状态（UI 通过 ComplexModeIndicator 显示）
           if (expertEvent.type === 'router_decision' && 
               expertEvent.decision === 'complex' && 
-              !hasAddedComplexHint) {
-            hasAddedComplexHint = true
-            debug('检测到复杂模式，添加 loading 提示')
-            addMessage({
-              id: generateUUID(),
-              role: 'system',
-              content: t('detectingComplexTask')
-            })
+              !hasProcessedComplexMode) {
+            hasProcessedComplexMode = true
+            debug('检测到复杂模式，更新 conversationMode')
+            setConversationMode('complex')
           }
         }
 
@@ -301,5 +302,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     // ✅ 重构：Hook 只返回方法，状态从 Store 直接读取
     sendMessage: sendMessageCore,
     stopGeneration,
+    // 👈 返回对话模式，供上层组件使用
+    conversationMode,
   }
 }

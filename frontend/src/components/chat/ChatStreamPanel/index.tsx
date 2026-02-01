@@ -32,6 +32,7 @@ import type { Message } from '@/types'
 import EmptyState from '../EmptyState'
 import MessageItem from '../MessageItem'
 import GeneratingIndicator from '../GeneratingIndicator'
+import ComplexModeIndicator from '../ComplexModeIndicator'
 import HeavyInputConsole from '../HeavyInputConsole'
 
 interface ChatStreamPanelProps {
@@ -53,6 +54,8 @@ interface ChatStreamPanelProps {
   onRegenerate?: (messageId: string) => void
   /** 链接点击回调 */
   onLinkClick?: (href: string) => void
+  /** 当前对话模式 */
+  conversationMode?: 'simple' | 'complex'
 }
 
 /**
@@ -72,6 +75,7 @@ export default function ChatStreamPanel({
   activeExpert,
   onRegenerate,
   onLinkClick,
+  conversationMode = 'simple',
 }: ChatStreamPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -111,7 +115,13 @@ export default function ChatStreamPanel({
         )}
 
         {/* 生成中指示器 */}
-        {isGenerating && <GeneratingIndicator />}
+        {isGenerating && (
+          conversationMode === 'complex' ? (
+            <ComplexModeIndicator activeExpert={activeExpert} isProcessing={true} />
+          ) : (
+            <GeneratingIndicator />
+          )
+        )}
       </div>
 
       {/* 底部输入控制台 */}

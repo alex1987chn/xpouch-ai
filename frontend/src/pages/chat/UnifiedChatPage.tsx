@@ -82,7 +82,7 @@ export default function UnifiedChatPage() {
   const {
     messages,
     isStreaming,
-    isLoading,
+    conversationMode,
     sendMessage,
     stopGeneration,
     loadConversation,
@@ -246,7 +246,7 @@ export default function UnifiedChatPage() {
   // 处理首页传来的消息（新建会话）
   useEffect(() => {
     // 👈 关键修复：确保会话加载完成后再发送消息，避免消息被错误地添加到旧会话
-    if (isNewConversation && initialMessage && !isLoading && conversationId && conversationLoaded) {
+    if (isNewConversation && initialMessage && !isStreaming && conversationId && conversationLoaded) {
       const timer = setTimeout(() => {
         sendMessage(initialMessage, normalizedAgentId)
         // 👈 发送消息后，清除 state 中的 isNew 和 startWith，保持 URL 纯净
@@ -258,7 +258,7 @@ export default function UnifiedChatPage() {
       }, 100)
       return () => clearTimeout(timer)
     }
-  }, [isNewConversation, initialMessage, isLoading, sendMessage, normalizedAgentId, navigate, conversationId, searchParams, conversationLoaded])
+  }, [isNewConversation, initialMessage, isStreaming, sendMessage, normalizedAgentId, navigate, conversationId, searchParams, conversationLoaded])
 
   // 处理专家卡片点击 - 切换到对应专家的 artifact 内容
   const handleExpertClick = useCallback((expertId: string) => {
@@ -280,10 +280,10 @@ export default function UnifiedChatPage() {
 
   // 发送消息处理
   const handleSend = useCallback(() => {
-    if (!inputValue.trim() || isLoading || isStreaming) return
+    if (!inputValue.trim() || isStreaming) return
     sendMessage(inputValue, normalizedAgentId)
     setInputValue('')
-  }, [inputValue, isLoading, isStreaming, sendMessage, normalizedAgentId])
+  }, [inputValue, isStreaming, sendMessage, normalizedAgentId])
 
   // 当前选中的专家ID
   const selectedExpertId = selectedExpertSession
@@ -353,7 +353,8 @@ export default function UnifiedChatPage() {
         chatStreamPanel={
           <ChatStreamPanel
             messages={messages}
-            isGenerating={isStreaming || isLoading}
+            isGenerating={isStreaming}
+            conversationMode={conversationMode}
             inputValue={inputValue}
             onInputChange={setInputValue}
             onSend={handleSend}
