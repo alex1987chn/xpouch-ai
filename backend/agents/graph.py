@@ -155,7 +155,7 @@ async def planner_node(state: AgentState) -> Dict[str, Any]:
     
     if not commander_config:
         system_prompt = PLANNER_SYSTEM_PROMPT
-        model = model_name  # 👈 使用与 Router 相同的模型（从环境变量读取）
+        model = os.getenv("MODEL_NAME", "deepseek-chat")  # 👈 使用与 Router 相同的模型（从环境变量读取）
         temperature = 0.5
         print(f"[PLANNER] 使用默认回退配置: model={model}")
     else:
