@@ -54,13 +54,31 @@ END $$;
 -- 3. 扩展 SubTask 表
 -- ============================================================================
 
+-- 处理列名冲突：旧表可能有 'description' 列
 DO $$
 BEGIN
-    -- 添加 task_description 列（如果不存在）
+    -- 重命名 description 为 task_description（如果存在）
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+                  WHERE table_name = 'subtask' AND column_name = 'description') THEN
+        -- 先重命名避免冲突
+        ALTER TABLE subtask RENAME COLUMN description TO task_description_old;
+        
+        -- 如果 task_description 不存在，则使用 task_description_old
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                      WHERE table_name = 'subtask' AND column_name = 'task_description') THEN
+            ALTER TABLE subtask RENAME COLUMN task_description_old TO task_description;
+        ELSE
+            -- task_description 已存在，删除临时列
+            ALTER TABLE subtask DROP COLUMN task_description_old;
+        END IF;
+    END IF;
+    
+    -- 添加 task_description 列（如果还不存在）
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                    WHERE table_name = 'subtask' AND column_name = 'task_description') THEN
         ALTER TABLE subtask ADD COLUMN task_description VARCHAR(500);
     END IF;
+END $$;
 
     -- 添加 output_result 列（如果不存在）
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns
