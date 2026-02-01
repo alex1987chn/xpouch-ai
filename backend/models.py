@@ -284,16 +284,26 @@ class TaskStatus(str, Enum):
     FAILED = "failed"
 
 
+class ExecutionMode(str, Enum):
+    """任务执行模式"""
+    SEQUENTIAL = "sequential"  # 串行执行
+    PARALLEL = "parallel"      # 并行执行
+
+
 class SubTask(SQLModel, table=True):
     """
     子任务模型 - 专家执行的具体任务
     
     每个专家任务产生一个或多个交付物（Artifacts）
+    支持串行和并行执行模式
     """
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
 
     # 关联的任务会话
     task_session_id: str = Field(foreign_key="tasksession.session_id", index=True)
+
+    # 排序顺序：用于前端展示和串行执行顺序
+    sort_order: int = Field(default=0, index=True)
 
     # 专家类型：指定由哪个专家执行
     expert_type: str = Field(index=True)  # 存储 ExpertType 枚举值
@@ -307,25 +317,20 @@ class SubTask(SQLModel, table=True):
     # 任务状态
     status: str = Field(default="pending", index=True)  # 存储 TaskStatus 枚举值
 
+    # 执行模式：串行或并行
+    execution_mode: str = Field(default="sequential")  # sequential | parallel
+
+    # 依赖任务：并行模式下可能依赖其他任务（可选）
+    depends_on: Optional[List[str]] = Field(default=None, sa_type=JSON)
+
     # 输出结果：JSON 格式的执行结果
     output_result: Optional[dict] = Field(default=None, sa_type=JSON)
 
-    # 新增：Artifacts数据（统一存储格式）
-    # 结构：
-    # [
-    #   {
-    #     "type": "code",
-    #     "title": "Python代码",
-    #     "language": "python",
-    #     "content": "print('hello')"
-    #   },
-    #   {
-    #     "type": "html",
-    #     "title": "HTML文档",
-    #     "content": "<div>...</div>"
-    #   }
-    # ]
-    artifacts: Optional[List[dict]] = Field(default=None, sa_type=JSON)
+    # 错误信息
+    error_message: Optional[str] = None
+
+    # 执行耗时（毫秒）
+    duration_ms: Optional[int] = None
 
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
@@ -335,6 +340,12 @@ class SubTask(SQLModel, table=True):
 
     # 关联关系
     task_session: Optional["TaskSession"] = Relationship(back_populates="sub_tasks")
+    
+    # 关联的 Artifacts（多产物支持）
+    artifacts: List["Artifact"] = Relationship(
+        back_populates="sub_task",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
 
 class TaskSession(SQLModel, table=True):
@@ -343,19 +354,31 @@ class TaskSession(SQLModel, table=True):
     """
     session_id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
 
-    # 新增：关联的会话ID（核心！用于从历史记录加载）
+    # 关联的会话ID（核心！用于从历史记录加载）
     thread_id: str = Field(foreign_key="thread.id", index=True)
 
     # 用户查询：原始用户输入
     user_query: str = Field(index=True)
 
+    # 规划摘要：Planner 生成的策略概述
+    plan_summary: Optional[str] = Field(default=None)
+
+    # 预计步骤数
+    estimated_steps: int = Field(default=0)
+
+    # 执行模式：串行或并行
+    execution_mode: str = Field(default="sequential")  # sequential | parallel
+
     # 关联的子任务列表
-    sub_tasks: List[SubTask] = Relationship(back_populates="task_session", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    sub_tasks: List[SubTask] = Relationship(
+        back_populates="task_session",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "SubTask.sort_order"}
+    )
 
     # 最终响应：整合所有子任务结果的最终答案
     final_response: Optional[str] = Field(default=None)
 
-    # 会话状态
+    # 会话状态：pending | running | completed | failed
     status: str = Field(default="pending", index=True)
 
     # 时间戳
@@ -371,36 +394,124 @@ class TaskSession(SQLModel, table=True):
 # Pydantic DTO (数据传输对象) - 用于 API 请求/响应
 # ============================================================================
 
+class Artifact(SQLModel, table=True):
+    """
+    产物模型 - 支持一个专家生成多个产物
+    """
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    
+    # 关联的子任务
+    sub_task_id: str = Field(foreign_key="subtask.id", index=True)
+    
+    # 产物类型：code | html | markdown | json | text
+    type: str = Field(index=True)
+    
+    # 产物标题
+    title: Optional[str] = None
+    
+    # 产物内容
+    content: str
+    
+    # 代码语言（如果是代码类型）
+    language: Optional[str] = None
+    
+    # 排序顺序（同一专家的多产物排序）
+    sort_order: int = Field(default=0)
+    
+    # 时间戳
+    created_at: datetime = Field(default_factory=datetime.now)
+    
+    # 关联关系
+    sub_task: Optional[SubTask] = Relationship(back_populates="artifacts")
+
+
 class SubTaskCreate(BaseModel):
     """创建子任务的 DTO"""
     expert_type: str  # ExpertType 枚举值
     task_description: str
     input_data: Optional[dict] = None
+    sort_order: int = 0
+    execution_mode: str = "sequential"
+    depends_on: Optional[List[str]] = None
 
 
 class SubTaskUpdate(BaseModel):
     """更新子任务的 DTO"""
     status: Optional[str] = None  # TaskStatus 枚举值
     output_result: Optional[dict] = None
+    error_message: Optional[str] = None
+    duration_ms: Optional[int] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+
+
+class ArtifactCreate(BaseModel):
+    """创建产物的 DTO"""
+    type: str
+    title: Optional[str] = None
+    content: str
+    language: Optional[str] = None
+    sort_order: int = 0
+
+
+class ArtifactResponse(BaseModel):
+    """产物响应 DTO"""
+    id: str
+    type: str
+    title: Optional[str]
+    content: str
+    language: Optional[str]
+    sort_order: int
+    created_at: datetime
+
+
+class SubTaskResponse(BaseModel):
+    """子任务响应 DTO（包含产物列表）"""
+    id: str
+    expert_type: str
+    task_description: str
+    status: str
+    sort_order: int
+    execution_mode: str
+    depends_on: Optional[List[str]]
+    output_result: Optional[dict]
+    error_message: Optional[str]
+    duration_ms: Optional[int]
+    artifacts: List[ArtifactResponse]
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+    created_at: datetime
 
 
 class TaskSessionCreate(BaseModel):
     """创建任务会话的 DTO"""
     user_query: str
+    plan_summary: Optional[str] = None
+    estimated_steps: int = 0
+    execution_mode: str = "sequential"
+
+
+class TaskSessionUpdate(BaseModel):
+    """更新任务会话的 DTO"""
+    status: Optional[str] = None
+    final_response: Optional[str] = None
+    completed_at: Optional[datetime] = None
 
 
 class TaskSessionResponse(BaseModel):
     """任务会话响应 DTO"""
     session_id: str
+    thread_id: str
     user_query: str
-    sub_tasks: List[SubTask]
+    plan_summary: Optional[str]
+    estimated_steps: int
+    execution_mode: str
+    sub_tasks: List[SubTaskResponse]
     final_response: Optional[str]
-    status: str  # TaskStatus 枚举值
+    status: str
     created_at: datetime
     updated_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: Optional[datetime]
 
 
 # ============================================================================

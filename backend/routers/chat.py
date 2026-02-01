@@ -539,15 +539,16 @@ async def _handle_langgraph_stream(
     user_message: str,
     session: Session
 ) -> StreamingResponse:
-    """处理 LangGraph 流式响应"""
+    """处理 LangGraph 流式响应 (v3.0 - 支持新事件协议)"""
     async def event_generator():
         full_response = ""
         event_count = 0
-        expert_artifacts = {}
-        collected_task_list = []
-        collected_expert_results = []
         router_mode = ""
-        thinking_steps = []  # 👈 新增：收集 thinking 步骤
+        
+        # v3.0: 在 initial_state 中注入数据库会话和 thread_id
+        initial_state["db_session"] = session
+        initial_state["thread_id"] = thread_id
+        initial_state["event_queue"] = []
 
         try:
             async for event in commander_graph.astream_events(
@@ -557,9 +558,34 @@ async def _handle_langgraph_stream(
                 event_count += 1
                 kind = event["event"]
                 name = event.get("name", "")
-
+                
                 if event_count % 10 == 0:
                     print(f"[STREAM] 已处理 {event_count} 个事件，当前: {kind} - {name}")
+
+                # v3.0: 处理节点返回的 event_queue
+                if kind == "on_chain_end":
+                    output_data = event["data"].get("output", {})
+                    event_queue = output_data.get("event_queue", [])
+                    
+                    # 发送 event_queue 中的所有事件
+                    for queued_event in event_queue:
+                        if queued_event.get("type") == "sse":
+                            yield queued_event["event"]
+                            
+                            # v3.0: 解析事件以更新本地状态
+                            try:
+                                event_lines = queued_event["event"].strip().split('\n')
+                                event_data = {}
+                                for line in event_lines:
+                                    if line.startswith('data: '):
+                                        event_data = json.loads(line[6:])
+                                        break
+                                
+                                # 累积 message.delta 事件的内容
+                                if event_data.get('type') == 'message.delta':
+                                    full_response += event_data.get('content', '')
+                            except:
+                                pass
 
                 # 捕获 Router 节点执行结束
                 if kind == "on_chain_end" and name == "router":
@@ -569,163 +595,18 @@ async def _handle_langgraph_stream(
                     if router_decision:
                         print(f"[STREAM] Router 决策: {router_decision}")
                         router_mode = router_decision
-                        # 👈 只记录决策，不立即修改数据库（避免session生命周期冲突）
-                        # thread状态将在streaming结束后统一更新
+                        # 发送 router.decision 事件（兼容旧格式）
                         yield f"data: {json.dumps({'routerDecision': router_decision, 'conversationId': thread_id})}\n\n"
 
-                # 捕获规划节点执行结束（planner 可能没有 on_chain_end，用流式输出中的标记）
-                if kind == "on_chain_end" and name == "planner":
-                    output_data = event["data"]["output"]
-                    print(f"[DEBUG] Planner on_chain_end triggered!")
-                    print(f"[DEBUG] Planner output keys: {list(output_data.keys())}")
-                    
-                    if "task_list" in output_data:
-                        collected_task_list = output_data["task_list"]
-                        print(f"[DEBUG] Collected task_list: {len(collected_task_list)} tasks")
-                        
-                        # 👈 新增：收集 planner 的 thinking
-                        thinking_steps.append({
-                            "id": str(uuid4()),
-                            "expertType": "planner",
-                            "expertName": "任务规划器",
-                            "content": f"制定执行策略，拆解为 {len(collected_task_list)} 个子任务",
-                            "timestamp": datetime.now().isoformat(),
-                            "status": "completed"
-                        })
-                    else:
-                        print(f"[WARN] No task_list in planner output!")
-                    
-                    if "__task_plan" in output_data:
-                        task_plan = output_data["__task_plan"]
-                        print(f"[STREAM] 发送 taskPlan 事件: {task_plan.get('task_count', 0)} 个任务")
-                        yield f"data: {json.dumps({'taskPlan': task_plan, 'conversationId': thread_id})}\n\n"
-                
-                # 👈 备选：从流式输出中捕获 planner 的 JSON 输出
-                if kind == "on_chat_model_stream" and router_mode == "complex":
-                    event_tags = event.get("tags", [])
-                    # 检查是否是 planner/commander 的输出
-                    if any(tag in str(event_tags) for tag in ["planner", "commander"]):
-                        content = event["data"]["chunk"].content
-                        # 尝试解析 JSON 格式的 task_list
-                        if content and '"tasks"' in content and not collected_task_list:
-                            try:
-                                data = json.loads(content)
-                                if "tasks" in data and isinstance(data["tasks"], list):
-                                    collected_task_list = data["tasks"]
-                                    print(f"[DEBUG] 从流式输出解析 task_list: {len(collected_task_list)} tasks")
-                                    
-                                    # 收集 thinking
-                                    thinking_steps.append({
-                                        "id": str(uuid4()),
-                                        "expertType": "planner",
-                                        "expertName": "任务规划器",
-                                        "content": f"制定执行策略，拆解为 {len(collected_task_list)} 个子任务",
-                                        "timestamp": datetime.now().isoformat(),
-                                        "status": "completed"
-                                    })
-                                    
-                                    # 发送 taskPlan 事件
-                                    task_plan = {
-                                        "task_count": len(collected_task_list),
-                                        "tasks": collected_task_list
-                                    }
-                                    yield f"data: {json.dumps({'taskPlan': task_plan, 'conversationId': thread_id})}\n\n"
-                            except:
-                                pass  # 解析失败，忽略
-
-                # 捕获 direct_reply 节点执行结束
+                # 捕获 direct_reply 节点执行结束（Simple 模式）
                 if kind == "on_chain_end" and name == "direct_reply":
                     yield f"data: {json.dumps({'content': '', 'conversationId': thread_id, 'isFinal': True})}\n\n"
                     print(f"[STREAM] Direct Reply 节点完成，Simple 模式流式输出结束")
 
-                # 捕获聚合器节点执行结束
-                if kind == "on_chain_end" and name == "aggregator":
-                    output_data = event["data"]["output"]
-                    if "final_response" in output_data:
-                        final_response = output_data["final_response"]
-                        full_response += final_response  # 👈 关键修复：累积到 full_response
-                        print(f"[STREAM] Aggregator 返回 final_response: {len(final_response)} 字符")
-                        yield f"data: {json.dumps({'content': final_response, 'conversationId': thread_id, 'isFinal': True})}\n\n"
-
-                # 捕获专家分发器节点开始执行
-                if kind == "on_chain_start" and name == "expert_dispatcher":
-                    input_data = event.get("data", {}).get("input", {})
-                    task_list = input_data.get("task_list", [])
-                    current_task_index = input_data.get("current_task_index", 0)
-
-                    if task_list and current_task_index < len(task_list):
-                        current_task = task_list[current_task_index]
-                        task_start_info = {
-                            "task_index": current_task_index + 1,
-                            "total_tasks": len(task_list),
-                            "expert_type": current_task.get("expert_type", ""),
-                            "description": current_task.get("description", "")
-                        }
-                        yield f"data: {json.dumps({'taskStart': task_start_info, 'conversationId': thread_id})}\n\n"
-
-                # 捕获专家分发器节点执行
-                if kind == "on_chain_end" and name == "expert_dispatcher":
-                    output_data = event["data"]["output"]
-
-                    if "__expert_info" in output_data:
-                        expert_info = output_data["__expert_info"]
-                        expert_name = expert_info.get("expert_type")
-                        expert_status = expert_info.get("status", "completed")
-                        duration_ms = expert_info.get("duration_ms", 0)
-                        output_result = expert_info.get("output", "")
-                        expert_error = expert_info.get("error")
-
-                        if expert_name not in expert_artifacts:
-                            expert_artifacts[expert_name] = []
-                        
-                        # 👈 新增：收集 expert 的 thinking
-                        thinking_steps.append({
-                            "id": str(uuid4()),
-                            "expertType": expert_name,
-                            "expertName": expert_name,
-                            "content": expert_info.get("description", f"{expert_name} 执行任务"),
-                            "timestamp": datetime.now().isoformat(),
-                            "status": "completed" if expert_status == "completed" else "failed"
-                        })
-
-                        yield f"data: {json.dumps({'activeExpert': expert_name, 'conversationId': thread_id})}\n\n"
-
-                        if "artifact" in output_data:
-                            artifact = output_data["artifact"]
-                            expert_artifacts[expert_name].append(artifact)
-                            yield f"data: {json.dumps({'artifact': artifact, 'conversationId': thread_id, 'allArtifacts': expert_artifacts[expert_name], 'activeExpert': expert_name})}\n\n"
-
-                        yield f"data: {json.dumps({
-                            'expertCompleted': expert_name,
-                            'description': expert_info.get('description', ''),
-                            'conversationId': thread_id,
-                            'duration_ms': duration_ms,
-                            'status': expert_status,
-                            'output': output_result,
-                            'error': expert_error,
-                            'allArtifacts': expert_artifacts.get(expert_name, [])
-                        })}\n\n"
-
-                # 捕获 LLM 流式输出
-                if kind == "on_chat_model_stream":
-                    event_tags = event.get("tags", [])
+                # 捕获 LLM 流式输出（Simple 模式）
+                if kind == "on_chat_model_stream" and router_mode == "simple":
                     content = event["data"]["chunk"].content
-                    
-                    # 👈 调试：打印所有 on_chat_model_stream 事件的标签
-                    if event_count % 5 == 0:
-                        print(f"[STREAM DEBUG] on_chat_model_stream: tags={event_tags}, name={name}, router_mode={router_mode}")
-
-                    should_yield, reason = should_stream_event(event_tags, router_mode, name)
-                    if not should_yield:
-                        print(f"[STREAM] {reason}")
-                        continue
-
-                    if is_task_plan_content(content):
-                        print(f"[STREAM] 跳过任务计划JSON内容: {content[:200]}...")
-                        continue
-
                     if content:
-                        print(f"[STREAM] 通过过滤的流式输出: content[:50]={content[:50]}")
                         full_response += content
                         yield f"data: {json.dumps({'content': content, 'conversationId': thread_id})}\n\n"
 
