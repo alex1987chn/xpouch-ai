@@ -84,7 +84,7 @@ export const zh: Record<TranslationKey, string> = {
   operationFailed: '操作失败',
 
   // Chat
-  detectingComplexTask: '🔍 检测到复杂任务，正在拆解...',
+  detectingComplexTask: '检测到复杂任务，正在拆解...',
   complexTaskCompleted: '✅ 复杂任务执行完成，请查看右侧的专家状态栏和 artifact 区域获取详细结果。',
   taskPlan: '📋 任务计划：',
 
