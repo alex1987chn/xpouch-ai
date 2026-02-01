@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense, memo, useCallback, useMemo, useRef } from 'react'
+import { useState, lazy, Suspense, memo, useCallback, useMemo } from 'react'
 import { shallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
 import { Maximize2, FileCode, LayoutGrid, MessageSquare, Cpu, CheckCircle2, Loader2, Clock, XCircle } from 'lucide-react'
