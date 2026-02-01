@@ -173,6 +173,9 @@ export default function UnifiedChatPage() {
   useEffect(() => {
     // 重置加载状态
     setConversationLoaded(false)
+    
+    // eslint-disable-next-line no-console
+    console.log('[UnifiedChatPage] useEffect triggered:', { conversationId, isNewConversation })
 
     if (conversationId) {
       // 👈 如果是新会话（从首页跳转），跳过数据库加载，直接清空状态
