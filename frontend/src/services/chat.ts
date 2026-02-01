@@ -1,12 +1,14 @@
 /**
  * 聊天相关 API 服务
  * 使用 @microsoft/fetch-event-source 处理 SSE 流式响应
+ * v3.0: 支持新的事件协议（plan.created, task.*, artifact.generated, message.*）
  */
 
 import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
 import { getHeaders, buildUrl, handleResponse } from './common'
 import { ApiMessage, StreamCallback, ExpertEvent, Conversation } from '@/types'
 import { logger } from '@/utils/logger'
+import { handleServerEvent, parseSSEEvent, type AnyServerEvent } from '@/handlers/eventHandlers'
 
 // ============================================================================
 // API 函数
@@ -132,11 +134,28 @@ export async function sendMessage(
 
         try {
           const parsed = JSON.parse(msg.data)
-          const result = await processSSEData(parsed, onChunk, finalConversationId, fullContent)
-          if (result.conversationId) {
-            finalConversationId = result.conversationId
+          
+          // v3.0: 检查是否是新的事件协议格式（包含 type 字段）
+          if (parsed.type && parsed.data) {
+            // 新事件协议：直接解析并处理
+            const event = parseSSEEvent(parsed)
+            if (event) {
+              handleServerEvent(event)
+              
+              // 对于 message.delta 事件，还需要调用 onChunk 更新 UI
+              if (parsed.type === 'message.delta' && onChunk) {
+                await onChunk(parsed.data.content, finalConversationId)
+                fullContent += parsed.data.content
+              }
+            }
+          } else {
+            // 兼容旧事件格式（逐步废弃）
+            const result = await processSSEData(parsed, onChunk, finalConversationId, fullContent)
+            if (result.conversationId) {
+              finalConversationId = result.conversationId
+            }
+            fullContent = result.content
           }
-          fullContent = result.content
         } catch (e) {
           // Failed to parse SSE data, skip
           logger.debug('[chat.ts] 解析 SSE 数据失败，跳过:', msg.data.substring(0, 100))
