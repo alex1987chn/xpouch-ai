@@ -91,17 +91,8 @@ async def run_expert_node(
             "duration_ms": duration_ms
         }
 
-        # 根据专家类型确定 artifact 类型
-        artifact_type_map = {
-            "coder": "code",
-            "writer": "markdown",
-            "search": "search",
-            "planner": "markdown",
-            "researcher": "markdown",
-            "analyzer": "markdown",
-            "image_analyzer": "text",
-        }
-        artifact_type = artifact_type_map.get(expert_key, "text")
+        # 根据专家类型和内容自动确定 artifact 类型
+        artifact_type = _detect_artifact_type(response.content, expert_key)
 
         # 添加 artifact
         result["artifact"] = {
@@ -122,6 +113,59 @@ async def run_expert_node(
             "started_at": started_at.isoformat(),
             "completed_at": datetime.now().isoformat()
         }
+
+
+def _detect_artifact_type(content: str, expert_key: str) -> str:
+    """
+    根据内容自动检测 artifact 类型
+
+    优先根据内容特征判断，其次根据专家类型兜底
+
+    Args:
+        content: 专家输出的内容
+        expert_key: 专家类型标识
+
+    Returns:
+        str: artifact 类型 (code | html | markdown | text | search)
+    """
+    import re
+    content_lower = content.lower().strip()
+
+    # 1. HTML 检测（最高优先级）
+    # 检测完整的 HTML 文档或包含 <html> 标签的内容
+    if (content_lower.startswith("<!doctype html") or
+        content_lower.startswith("<html") or
+        ("<html" in content_lower and "</html>" in content_lower)):
+        return "html"
+
+    # 2. 检测是否包含 HTML 代码块（```html）
+    html_code_block = re.search(r'```html\n([\s\S]*?)```', content, re.IGNORECASE)
+    if html_code_block:
+        html_content = html_code_block.group(1).lower().strip()
+        if html_content.startswith("<") and (">" in html_content or "</" in html_content):
+            return "html"
+
+    # 3. 检测 Markdown 格式
+    has_markdown = any(marker in content for marker in ['# ', '## ', '### ', '> ', '- ', '* '])
+    has_code_block = '```' in content
+
+    # 4. 根据专家类型兜底
+    artifact_type_map = {
+        "coder": "code",
+        "writer": "markdown",
+        "search": "search",
+        "planner": "markdown",
+        "researcher": "markdown",
+        "analyzer": "markdown",
+        "image_analyzer": "text",
+    }
+    default_type = artifact_type_map.get(expert_key, "text")
+
+    # 5. 特殊处理：如果 coder 生成了 markdown，返回 markdown
+    if expert_key == "coder" and has_markdown and not has_code_block:
+        return "markdown"
+
+    return default_type
 
 
 def format_input_data(input_data: Dict) -> str:
