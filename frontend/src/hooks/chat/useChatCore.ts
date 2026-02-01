@@ -147,16 +147,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       setInputMessage('')
       setIsTyping(true)
 
-      // 4. 如果是复杂模式，添加任务开始提示
-      if (conversationMode === 'complex') {
-        addMessage({
-          id: generateUUID(),
-          role: 'system',
-          content: t('detectingComplexTask')
-        })
-      }
-
-      // 5. 发送请求并处理流式响应
+      // 4. 发送请求并处理流式响应
       let finalResponseContent = ''
       // 👈 使用 getState() 获取最新的 currentConversationId，避免闭包捕获旧值
       const storeState2 = useChatStore.getState()
@@ -164,6 +155,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       debug('准备调用 sendMessage')
       // ✅ 移除：状态已在函数开头设置
+
+      // 👈 用于防止重复添加 complex 提示
+      let hasAddedComplexHint = false
 
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
@@ -181,6 +175,19 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         // 处理专家事件
         if (expertEvent) {
           onExpertEvent?.(expertEvent, conversationMode)
+          
+          // 👈 关键修复：当检测到复杂模式时，插入 loading 提示
+          if (expertEvent.type === 'router_decision' && 
+              expertEvent.decision === 'complex' && 
+              !hasAddedComplexHint) {
+            hasAddedComplexHint = true
+            debug('检测到复杂模式，添加 loading 提示')
+            addMessage({
+              id: generateUUID(),
+              role: 'system',
+              content: t('detectingComplexTask')
+            })
+          }
         }
 
         // 处理 artifact
