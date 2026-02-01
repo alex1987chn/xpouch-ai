@@ -573,9 +573,10 @@ async def _handle_langgraph_stream(
                         # thread状态将在streaming结束后统一更新
                         yield f"data: {json.dumps({'routerDecision': router_decision, 'conversationId': thread_id})}\n\n"
 
-                # 捕获规划节点执行结束
+                # 捕获规划节点执行结束（planner 可能没有 on_chain_end，用流式输出中的标记）
                 if kind == "on_chain_end" and name == "planner":
                     output_data = event["data"]["output"]
+                    print(f"[DEBUG] Planner on_chain_end triggered!")
                     print(f"[DEBUG] Planner output keys: {list(output_data.keys())}")
                     
                     if "task_list" in output_data:
@@ -598,6 +599,40 @@ async def _handle_langgraph_stream(
                         task_plan = output_data["__task_plan"]
                         print(f"[STREAM] 发送 taskPlan 事件: {task_plan.get('task_count', 0)} 个任务")
                         yield f"data: {json.dumps({'taskPlan': task_plan, 'conversationId': thread_id})}\n\n"
+                
+                # 👈 备选：从流式输出中捕获 planner 的 JSON 输出
+                if kind == "on_chat_model_stream" and router_mode == "complex":
+                    event_tags = event.get("tags", [])
+                    # 检查是否是 planner/commander 的输出
+                    if any(tag in str(event_tags) for tag in ["planner", "commander"]):
+                        content = event["data"]["chunk"].content
+                        # 尝试解析 JSON 格式的 task_list
+                        if content and '"tasks"' in content and not collected_task_list:
+                            try:
+                                import json
+                                data = json.loads(content)
+                                if "tasks" in data and isinstance(data["tasks"], list):
+                                    collected_task_list = data["tasks"]
+                                    print(f"[DEBUG] 从流式输出解析 task_list: {len(collected_task_list)} tasks")
+                                    
+                                    # 收集 thinking
+                                    thinking_steps.append({
+                                        "id": str(uuid4()),
+                                        "expertType": "planner",
+                                        "expertName": "任务规划器",
+                                        "content": f"制定执行策略，拆解为 {len(collected_task_list)} 个子任务",
+                                        "timestamp": datetime.now().isoformat(),
+                                        "status": "completed"
+                                    })
+                                    
+                                    # 发送 taskPlan 事件
+                                    task_plan = {
+                                        "task_count": len(collected_task_list),
+                                        "tasks": collected_task_list
+                                    }
+                                    yield f"data: {json.dumps({'taskPlan': task_plan, 'conversationId': thread_id})}\n\n"
+                            except:
+                                pass  # 解析失败，忽略
 
                 # 捕获 direct_reply 节点执行结束
                 if kind == "on_chain_end" and name == "direct_reply":
