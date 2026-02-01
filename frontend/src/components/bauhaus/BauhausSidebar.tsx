@@ -5,7 +5,7 @@ import { Home, Database, MessageSquare, Shield, Plus, MessageSquarePlus, User, C
 import { cn } from '@/lib/utils'
 import { The4DPocketLogo } from '@/components/bauhaus'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { getConversations, type Conversation } from '@/services/api'
+import { getConversations, type Conversation } from '@/services/chat'
 import { useUserStore } from '@/store/userStore'
 import { useChatStore } from '@/store/chatStore'
 import { formatDistanceToNow } from 'date-fns'

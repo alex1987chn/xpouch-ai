@@ -130,7 +130,7 @@ export interface Agent {
     id: string
     name: string
     description: string
-    icon: string | React.ReactNode
+    icon: string  // 后端只返回字符串（Emoji 或 URL）
     systemPrompt?: string
     category?: string
     color?: string

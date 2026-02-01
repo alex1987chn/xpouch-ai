@@ -1,5 +1,5 @@
 import { SYSTEM_AGENTS, isSystemAgent } from '@/constants/agents'
-import { getClientId } from '@/services/api'
+import { getClientId } from '@/services/common'
 import type { AgentType } from '@/types'
 
 /**
