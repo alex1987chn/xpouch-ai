@@ -82,11 +82,32 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
     try {
       // 使用 parseISO 正确解析 ISO 8601 格式时间字符串
       const date = parseISO(dateString)
+      const now = new Date()
 
       // 验证日期是否有效
       if (!isValid(date)) {
         logger.warn('Invalid date string:', dateString)
         return '-'
+      }
+
+      // 调试：打印时间差
+      const diffMs = now.getTime() - date.getTime()
+      const diffSec = Math.floor(diffMs / 1000)
+      logger.debug('Time diff:', { dateString, diffMs, diffSec, now: now.toISOString() })
+
+      // 处理未来时间（服务器时间比客户端快）
+      if (diffMs < 0) {
+        return '刚刚'
+      }
+
+      // 小于 1 秒显示"刚刚"而不是 "now"
+      if (diffSec < 1) {
+        return '刚刚'
+      }
+
+      // 小于 60 秒显示具体秒数
+      if (diffSec < 60) {
+        return `${diffSec} 秒前`
       }
 
       return formatDistanceToNow(date, {
