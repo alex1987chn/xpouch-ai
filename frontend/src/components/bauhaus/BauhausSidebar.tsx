@@ -129,9 +129,8 @@ export default function BauhausSidebar({
 
   // 处理会话点击
   const handleConversationClick = (conversationId: string, agentId?: string) => {
-    // 👈 关键：先清空当前状态，避免显示旧会话内容
-    setMessages([])
-    setCurrentConversationId(null)
+    // 👈 修复：不要在这里清空状态，让 UnifiedChatPage 的 useEffect 来处理
+    // 直接导航即可，页面会根据 URL 自动加载会话
     
     // 👈 默认助手不添加 agentId 参数，让后端自动使用 sys-default-chat
     if (agentId && agentId !== 'sys-default-chat' && agentId !== 'default-chat') {
@@ -447,7 +446,7 @@ export default function BauhausSidebar({
                       </div>
                       {/* 时间: 极小字体 */}
                       <div className="font-mono text-[9px] text-[var(--text-secondary)] opacity-50 truncate">
-                        LOG_ID: {conv.id.slice(0, 6)} • {conv.date || 'NOW'}
+                        LOG_ID: {conv.id.slice(0, 6)} • {conv.updated_at ? formatDistanceToNow(new Date(conv.updated_at), { addSuffix: true, locale: getLocale() }) : 'NOW'}
                       </div>
                     </div>
                   </button>
