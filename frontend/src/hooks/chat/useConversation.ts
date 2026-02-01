@@ -45,14 +45,21 @@ export function useConversation() {
    * 加载历史会话
    */
   const loadConversation = useCallback(async (targetConversationId: string) => {
+    // eslint-disable-next-line no-console
+    console.log('[loadConversation] called:', { targetConversationId })
     try {
       // 👈 使用 getState() 获取最新状态，避免闭包捕获旧值
       const store = useChatStore.getState()
       const currentId = store.currentConversationId
 
+      // eslint-disable-next-line no-console
+      console.log('[loadConversation] current state:', { currentId, targetConversationId, messageCount: store.messages.length })
+
       // 👈 关键修复：只在完全相同的会话且有消息时才阻止加载
       // 注意：必须严格比较，确保不会加载错误的会话
       if (currentId === targetConversationId && store.messages.length > 0) {
+        // eslint-disable-next-line no-console
+        console.log('[loadConversation] blocked: same conversation with messages')
         debug('阻止重复加载：已是当前会话且已有消息', targetConversationId)
         return
       }
