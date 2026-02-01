@@ -8,7 +8,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { getConversations, type Conversation } from '@/services/chat'
 import { useUserStore } from '@/store/userStore'
 import { useChatStore } from '@/store/chatStore'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow, parseISO } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
 import { logger } from '@/utils/logger'
 import { useTranslation } from '@/i18n'
@@ -103,6 +103,31 @@ export default function BauhausSidebar({
     'Pilot': 'Pilot',
     'Maestro': 'Maestro'
   }[currentPlan]
+
+  // 格式化相对时间
+  const formatRelativeTime = (dateString: string | undefined): string => {
+    if (!dateString) return '-'
+    try {
+      const date = parseISO(dateString)
+      const now = new Date()
+      const diffMs = now.getTime() - date.getTime()
+      const diffSec = Math.floor(diffMs / 1000)
+
+      // 小于1秒显示"刚刚"
+      if (diffSec < 1) return t('justNow')
+      // 小于60秒显示具体秒数
+      if (diffSec < 60) return t('secondsAgo', { count: diffSec })
+
+      // 使用 date-fns 的 formatDistanceToNow
+      const localeMap = { zh: zhCN, en: enUS, ja }
+      return formatDistanceToNow(date, {
+        addSuffix: true,
+        locale: localeMap[language] || enUS
+      })
+    } catch (e) {
+      return '-'
+    }
+  }
 
   // 获取最近20条历史会话（UI上展示5个区域，超出滚动）
   useEffect(() => {
@@ -447,7 +472,7 @@ export default function BauhausSidebar({
                       </div>
                       {/* 时间: 极小字体 */}
                       <div className="font-mono text-[9px] text-[var(--text-secondary)] opacity-50 truncate">
-                        LOG_ID: {conv.id.slice(0, 6)} • {conv.date || 'NOW'}
+                        LOG_ID: {conv.id.slice(0, 6)} • {formatRelativeTime(conv.updated_at)}
                       </div>
                     </div>
                   </button>
