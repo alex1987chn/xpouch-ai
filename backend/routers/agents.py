@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 
 from database import get_session
 from dependencies import get_current_user
-from models import User, CustomAgent, CustomAgentCreate, CustomAgentUpdate
+from models import User, CustomAgent, CustomAgentCreate, CustomAgentUpdate, Thread
 from utils.exceptions import AppError, NotFoundError
 
 
@@ -119,6 +119,7 @@ async def delete_custom_agent(
     注意：
     - 禁止删除默认助手（is_default=True）
     - 只能删除用户自己的智能体
+    - 级联删除关联的所有会话记录
     """
     agent = session.get(CustomAgent, agent_id)
     if not agent or agent.user_id != current_user.id:
@@ -128,9 +129,25 @@ async def delete_custom_agent(
     if agent.is_default:
         raise AppError(message="禁止删除默认助手")
 
+    # 👈 级联删除关联的 Thread 记录（防止历史记录出现孤儿会话）
+    statement = select(Thread).where(
+        Thread.agent_id == agent_id,
+        Thread.agent_type == "custom",
+        Thread.user_id == current_user.id
+    )
+    related_threads = session.exec(statement).all()
+
+    # 先删除关联的 Thread（会自动级联删除 messages 和 task_session）
+    for thread in related_threads:
+        print(f"[DELETE] 删除智能体 {agent_id} 的关联会话: {thread.id}")
+        session.delete(thread)
+
+    # 删除智能体
     session.delete(agent)
     session.commit()
-    return {"ok": True}
+
+    print(f"[DELETE] 已删除智能体 {agent_id} 及其 {len(related_threads)} 个关联会话")
+    return {"ok": True, "deleted_threads_count": len(related_threads)}
 
 
 @router.put("/agents/{agent_id}")
