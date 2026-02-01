@@ -74,7 +74,7 @@ export async function sendMessage(
         agentId,
         conversationId,
         stream: false,
-        messageId: assistantMessageId,  // v3.0: 传递助手消息 ID
+        message_id: assistantMessageId,  // v3.0: 传递助手消息 ID
       }),
       signal: abortSignal
     })
@@ -107,7 +107,7 @@ export async function sendMessage(
         agentId,
         conversationId,
         stream: true,
-        messageId: assistantMessageId,  // v3.0: 传递助手消息 ID
+        message_id: assistantMessageId,  // v3.0: 传递助手消息 ID
       }),
       signal: ctrl.signal,
 
