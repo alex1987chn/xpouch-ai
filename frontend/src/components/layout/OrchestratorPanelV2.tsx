@@ -1,4 +1,5 @@
-import { useState, lazy, Suspense, memo } from 'react'
+import { useState, lazy, Suspense, memo, useCallback, useMemo } from 'react'
+import { shallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
 import { Maximize2, FileCode, LayoutGrid, MessageSquare, Cpu, CheckCircle2, Loader2, Clock, XCircle } from 'lucide-react'
 import { useTaskStore } from '@/store/taskStore'
@@ -139,15 +140,32 @@ function ComplexModePanel({
   onToggleFullscreen?: () => void
 }) {
   const [selectedArtifactIndex, setSelectedArtifactIndex] = useState(0)
-  
-  // 订阅 taskStore - 只订阅必要字段
-  const session = useTaskStore((state) => state.session)
-  const tasks = useTaskStore((state) => Array.from(state.tasks.values()).sort((a, b) => a.sort_order - b.sort_order))
-  const selectedTaskId = useTaskStore((state) => state.selectedTaskId)
-  const selectTask = useTaskStore((state) => state.selectTask)
-  
+
+  // 订阅 taskStore - 使用选择器缓存结果
+  const { session, selectedTaskId, selectTask } = useTaskStore(
+    (state) => ({
+      session: state.session,
+      selectedTaskId: state.selectedTaskId,
+      selectTask: state.selectTask
+    }),
+    shallow
+  )
+
+  // 单独订阅 tasks，使用 getAllTasks 方法
+  const tasks = useTaskStore((state) => state.getAllTasks())
+
   // 计算当前选中的 task
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null
+
+  // 使用 useCallback 缓存点击处理函数
+  const handleTaskClick = useCallback((taskId: string) => {
+    selectTask(taskId)
+    setSelectedArtifactIndex(0)
+  }, [selectTask])
+
+  const handleArtifactClick = useCallback((idx: number) => {
+    setSelectedArtifactIndex(idx)
+  }, [])
   
   // 计算进度
   const total = tasks.length
@@ -190,7 +208,7 @@ function ComplexModePanel({
               selectedTask.artifacts.map((artifact, idx) => (
                 <button
                   key={artifact.id}
-                  onClick={() => setSelectedArtifactIndex(idx)}
+                  onClick={() => handleArtifactClick(idx)}
                   className={cn(
                     "h-7 px-3 flex items-center gap-2 transition-all shrink-0",
                     selectedArtifactIndex === idx
@@ -235,10 +253,7 @@ function ComplexModePanel({
                   )}
                   
                   <button
-                    onClick={() => {
-                      selectTask(task.id)
-                      setSelectedArtifactIndex(0)
-                    }}
+                    onClick={() => handleTaskClick(task.id)}
                     className={cn(
                       "w-10 h-10 border-2 flex items-center justify-center transition-all relative",
                       isSelected

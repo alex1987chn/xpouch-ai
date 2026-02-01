@@ -199,8 +199,8 @@ export const useTaskStore = create<TaskState>()(
         if (state.runningTaskId === data.task_id) {
           state.runningTaskId = null
         }
-        // 自动选中第一个完成的任务展示产物
-        if (!state.selectedTaskId && data.artifact_count > 0) {
+        // 自动选中第一个完成的任务展示产物（只在未选中或选中不同任务时更新）
+        if (!state.selectedTaskId && data.artifact_count > 0 && state.selectedTaskId !== data.task_id) {
           state.selectedTaskId = data.task_id
         }
       })
@@ -243,8 +243,10 @@ export const useTaskStore = create<TaskState>()(
           // 按 sortOrder 排序
           task.artifacts.sort((a, b) => a.sortOrder - b.sortOrder)
         }
-        // 自动选中该任务
-        state.selectedTaskId = data.task_id
+        // 自动选中该任务（只在未选中或选中不同任务时更新，避免无限循环）
+        if (state.selectedTaskId !== data.task_id) {
+          state.selectedTaskId = data.task_id
+        }
       })
     },
 
