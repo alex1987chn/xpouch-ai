@@ -169,22 +169,20 @@ export class EventHandler {
   private handleMessageDelta(event: MessageDeltaEvent): void {
     const { updateMessage, messages } = useChatStore.getState()
 
-    // 查找或创建消息
+    // 查找消息（前端应该在 useChatCore 中已经创建空消息）
     let message = messages.find((m) => m.id === event.data.message_id)
 
     if (!message) {
-      // 创建新消息
-      const { addMessage } = useChatStore.getState()
-      addMessage({
-        id: event.data.message_id,
-        role: 'assistant',
-        content: event.data.content,
-        timestamp: Date.now()
-      })
-    } else {
-      // 更新现有消息
-      updateMessage(event.data.message_id, event.data.content, true)
+      // 如果找不到消息，说明前端还没有创建，跳过这个事件
+      // 前端会在 streamCallback 中创建空消息，后续的 delta 事件就能找到
+      if (DEBUG) {
+        logger.warn('[EventHandler] message.delta: 找不到消息 ID，跳过:', event.data.message_id)
+      }
+      return
     }
+
+    // 更新现有消息（追加增量内容）
+    updateMessage(event.data.message_id, event.data.content, true)
   }
 
   /**
