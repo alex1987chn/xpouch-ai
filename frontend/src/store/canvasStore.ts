@@ -32,12 +32,6 @@ interface CanvasState {
   // Simple 模式预览 - 替换现有内容（而不是添加）
   setSimplePreview: (artifact: Artifact) => void
 
-  // 👈 遗留方法兼容（已弃用，请使用新架构方法）
-  /** @deprecated 使用 addArtifact 或 setSimplePreview 替代 */
-  setArtifact: (type: 'code' | 'markdown' | 'search' | 'html' | 'text' | null, content: string) => void
-  /** @deprecated 使用 clearArtifactSessions 替代 */
-  clearArtifact: () => void
-
   // 专家结果状态管理
   expertResults: ExpertResult[]
   selectedExpert: string | null
@@ -215,17 +209,5 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         expert.expertType === expertType ? { ...expert, status: 'pending', error: undefined } : expert
       )
     }))
-  },
-
-  // 👈 遗留方法兼容（已迁移到 ArtifactSession 架构）
-  // 这些方法保留供旧代码调用，但内部实现已改为使用新架构
-  setArtifact: (type, content) => {
-    // 不再维护独立的 artifactType/artifactContent 状态
-    // 新架构使用 artifactSessions 管理所有产物
-    console.warn('[DEPRECATED] setArtifact is deprecated, use setSimplePreview or addArtifact instead')
-  },
-  clearArtifact: () => {
-    // 遗留方法，不再操作独立状态
-    console.warn('[DEPRECATED] clearArtifact is deprecated, use clearArtifactSessions instead')
   }
 }))

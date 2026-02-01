@@ -23,7 +23,6 @@ const debug = DEBUG
  */
 export function useArtifactHandler() {
   const {
-    setArtifact,
     addArtifact,
     addArtifactsBatch,
     selectArtifactSession,
@@ -78,16 +77,13 @@ export function useArtifactHandler() {
     selectArtifactSession(expertId)
     debug('自动选中 artifact session:', expertId)
 
-    // 兼容旧逻辑：更新 Canvas 显示代码
-    setArtifact(artifact.type, artifact.content)
-
     // 如果有当前激活的专家，更新其 artifact 信息
     if (activeExpertId) {
       updateExpertResult(activeExpertId, {
         artifact: fullArtifact
       })
     }
-  }, [createArtifact, addArtifact, selectArtifactSession, setArtifact, updateExpertResult, activeExpertId])
+  }, [createArtifact, addArtifact, selectArtifactSession, updateExpertResult, activeExpertId])
 
   /**
    * 从助手消息中解析并创建 Artifacts
