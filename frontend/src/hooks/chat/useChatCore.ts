@@ -176,21 +176,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
           setCurrentConversationId(conversationId)
         }
 
-        // 处理专家事件
+        // v3.0: 处理新协议事件
         if (expertEvent) {
-          onExpertEvent?.(expertEvent, conversationMode)
-          
-          // 👈 关键修复：根据 Router 决策更新 conversationMode
-          if (expertEvent.type === 'router_decision' && !hasProcessedComplexMode) {
-            hasProcessedComplexMode = true
-            if (expertEvent.decision === 'complex') {
-              debug('检测到复杂模式，更新 conversationMode')
-              setConversationMode('complex')
-            } else {
-              debug('检测到简单模式，确保 conversationMode 为 simple')
-              setConversationMode('simple')
-            }
-          }
+          onExpertEvent?.(expertEvent as any, conversationMode)
         }
 
         // ⚠️ artifact 已合并到 expertCompleted 事件中处理
@@ -221,7 +209,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         normalizedAgentId,
         streamCallback,
         actualConversationId,
-        abortControllerRef.current.signal
+        abortControllerRef.current.signal,
+        assistantMessageId  // v3.0: 传递前端生成的助手消息 ID
       )
 
       // ✅ 移除：在 finally 中统一处理

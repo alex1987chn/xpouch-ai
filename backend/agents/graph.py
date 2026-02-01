@@ -495,22 +495,23 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
     """
     expert_results = state["expert_results"]
     strategy = state["strategy"]
-    
+
     # 获取数据库会话
     db_session = state.get("db_session")
     task_session_id = state.get("task_session_id")
     event_queue = state.get("event_queue", [])
+    # v3.0: 获取前端传递的 message_id（如果有的话）
+    message_id = state.get("message_id", str(uuid4()))
 
     if not expert_results:
         return {"final_response": "未生成任何执行结果。", "event_queue": event_queue}
 
     print(f"[AGG] 正在聚合 {len(expert_results)} 个结果...")
-    
+
     # 构建最终回复（这里可以调用 LLM 生成更自然的总结）
     final_response = _build_markdown_response(expert_results, strategy)
-    
+
     # v3.0: 模拟流式输出（将最终回复分块发送）
-    message_id = str(uuid4())
     chunk_size = 50  # 每块字符数
     
     for i in range(0, len(final_response), chunk_size):

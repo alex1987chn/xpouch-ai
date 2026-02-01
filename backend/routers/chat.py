@@ -1,5 +1,6 @@
 """
 聊天路由模块 - 包含主要聊天端点和线程管理
+v3.0: 复杂模式使用新的事件协议（plan.created, task.started, task.completed, artifact.generated, message.delta）
 """
 import os
 import json
@@ -25,13 +26,14 @@ from constants import (
     SYSTEM_AGENT_ORCHESTRATOR,
     SYSTEM_AGENT_DEFAULT_CHAT
 )
-from utils.artifacts import parse_artifacts_from_response, generate_artifact_event
 from utils.llm_factory import get_llm_instance
 from agents.graph import commander_graph
 from utils.exceptions import AppError, NotFoundError, AuthorizationError
 
 
 router = APIRouter(prefix="/api", tags=["chat"])
+
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 
 # ============================================================================
@@ -51,74 +53,7 @@ class ChatRequest(BaseModel):
     conversationId: Optional[str] = None
     agentId: Optional[str] = "assistant"
     stream: Optional[bool] = True
-
-
-# ============================================================================
-# 流式输出过滤函数
-# ============================================================================
-
-def should_stream_event(event_tags: list, router_mode: str, name: str = "") -> tuple[bool, str]:
-    """
-    判断是否应该将当前事件流式输出到前端
-    
-    Args:
-        event_tags: 事件标签列表
-        router_mode: 当前路由模式 ("", "simple", "complex")
-        name: 事件名称（用于调试）
-    
-    Returns:
-        tuple[bool, str]: (是否应输出, 跳过原因)
-
-    过滤规则：
-    - Router 模式未知时: 跳过所有内部节点 (router/planner/expert)
-    - Simple 模式: 只允许 direct_reply 节点
-    - Complex 模式: 跳过内部节点，保留 Aggregator 输出
-    """
-    tags_str = str(event_tags).lower()
-    
-    # Router 决策未知时，跳过所有内部节点
-    if router_mode == "":
-        if any(tag in tags_str for tag in ["router", "commander", "planner", "expert"]):
-            return False, f"Router 决策未知，跳过内部节点: {tags_str}"
-    
-    # Simple 模式：只允许 direct_reply 节点
-    elif router_mode == "simple":
-        if "direct_reply" not in tags_str:
-            return False, f"Simple 模式：跳过非 direct_reply: {tags_str}"
-    
-    # Complex 模式：跳过内部规划节点和专家
-    else:  # router_mode == "complex"
-        if any(tag in tags_str for tag in ["router", "commander", "planner", "expert"]):
-            return False, f"Complex 模式：跳过内部节点: {tags_str}"
-    
-    return True, "通过过滤"
-
-
-def is_task_plan_content(content: str) -> bool:
-    """
-    检查内容是否是任务计划 JSON
-    
-    用于过滤掉不应展示给用户的内部任务计划数据
-    """
-    if not content:
-        return False
-    
-    content_stripped = content.strip()
-    
-    # 移除 Markdown 代码块标记
-    code_block_match = re.match(r'^```(?:json)?\s*([\s\S]*?)\s*```$', content_stripped)
-    if code_block_match:
-        content_stripped = code_block_match.group(1).strip()
-    
-    # 检查是否是 JSON 格式的任务计划
-    if content_stripped.startswith('{'):
-        content_lower = content_stripped.lower()
-        if (('"tasks"' in content_lower and '"strategy"' in content_lower) or
-            ('"tasks"' in content_lower and '"expert_type"' in content_lower) or
-            ('"estimated_steps"' in content_lower)):
-            return True
-    
-    return False
+    message_id: Optional[str] = None  # v3.0: 前端传递的助手消息 ID
 
 
 # ============================================================================
@@ -139,7 +74,6 @@ async def get_threads(
     )
     threads = session.exec(statement).all()
     
-    # 构建响应
     result = []
     for thread in threads:
         result.append({
@@ -186,7 +120,6 @@ async def get_thread(
     if thread.agent_type == "ai" and thread.task_session_id:
         task_session = session.get(TaskSession, thread.task_session_id)
         if task_session:
-            # 加载SubTasks
             statement = select(SubTask).where(SubTask.task_session_id == task_session.session_id)
             sub_tasks = session.exec(statement).all()
 
@@ -205,7 +138,7 @@ async def get_thread(
                         "role": msg.role,
                         "content": msg.content,
                         "timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
-                        "extra_data": msg.extra_data  # 👈 新增：返回 extra_data（原 metadata）
+                        "extra_data": msg.extra_data
                     }
                     for msg in thread.messages
                 ],
@@ -232,7 +165,6 @@ async def get_thread(
                 }
             }
 
-    # 对于非AI线程，返回基本信息
     return {
         "id": thread.id,
         "title": thread.title,
@@ -248,7 +180,7 @@ async def get_thread(
                 "role": msg.role,
                 "content": msg.content,
                 "timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
-                "extra_data": msg.extra_data  # 👈 新增：返回 extra_data（原 metadata）
+                "extra_data": msg.extra_data
             }
             for msg in thread.messages
         ]
@@ -282,9 +214,7 @@ async def chat_endpoint(
 ):
     """
     统一聊天端点（简单模式 + 复杂模式）
-    
-    - 自定义智能体：直接调用 LLM，不经过 LangGraph
-    - 系统默认助手：通过 LangGraph (Router -> Planner -> Experts) 处理
+    v3.0: 复杂模式使用新的事件协议
     """
     # 1. 确定 Thread ID
     thread_id = request.conversationId
@@ -296,7 +226,6 @@ async def chat_endpoint(
             raise AuthorizationError("没有权限访问此会话")
 
     if not thread:
-        # 如果没有ID或找不到，创建新线程
         if not thread_id:
             thread_id = str(uuid4())
 
@@ -409,7 +338,7 @@ async def chat_endpoint(
 
     if request.stream:
         return await _handle_langgraph_stream(
-            initial_state, thread_id, thread, request.message, session
+            initial_state, thread_id, thread, request.message, session, request.message_id
         )
     else:
         return await _handle_langgraph_sync(
@@ -434,7 +363,6 @@ async def _handle_custom_agent_stream(
             model_name = custom_agent.model_id or os.getenv("MODEL_NAME", "deepseek-chat")
             base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
             
-            # 自动修正：如果使用 DeepSeek API 但 model_id 是 OpenAI 模型
             if "deepseek.com" in base_url and model_name.startswith("gpt-"):
                 print(f"[CUSTOM AGENT] 检测到不兼容模型 {model_name}，自动切换为 deepseek-chat")
                 model_name = "deepseek-chat"
@@ -529,7 +457,7 @@ async def _handle_custom_agent_sync(
 
 
 # ============================================================================
-# LangGraph 处理函数
+# LangGraph 处理函数 - v3.0 新协议
 # ============================================================================
 
 async def _handle_langgraph_stream(
@@ -537,18 +465,27 @@ async def _handle_langgraph_stream(
     thread_id: str,
     thread: Thread,
     user_message: str,
-    session: Session
+    session: Session,
+    message_id: Optional[str] = None  # v3.0: 前端传递的助手消息 ID
 ) -> StreamingResponse:
-    """处理 LangGraph 流式响应 (v3.0 - 支持新事件协议)"""
+    """
+    处理 LangGraph 流式响应 (v3.0)
+    只发送新协议事件：plan.created, task.started, task.completed, artifact.generated, message.delta, message.done
+    """
     async def event_generator():
         full_response = ""
         event_count = 0
         router_mode = ""
         
+        # v3.0: 收集任务列表和产物（用于最终保存）
+        collected_task_list = []
+        expert_artifacts = {}
+        
         # v3.0: 在 initial_state 中注入数据库会话和 thread_id
         initial_state["db_session"] = session
         initial_state["thread_id"] = thread_id
         initial_state["event_queue"] = []
+        initial_state["message_id"] = message_id  # v3.0: 注入前端传递的助手消息 ID
 
         try:
             async for event in commander_graph.astream_events(
@@ -562,34 +499,49 @@ async def _handle_langgraph_stream(
                 if event_count % 10 == 0:
                     print(f"[STREAM] 已处理 {event_count} 个事件，当前: {kind} - {name}")
 
-                # v3.0: 处理节点返回的 event_queue
+                # v3.0: 处理节点返回的 event_queue（新协议事件）
                 if kind == "on_chain_end":
                     output_data = event["data"].get("output", {})
-                    # 简单模式返回字符串，复杂模式返回字典
+                    
                     if isinstance(output_data, dict):
                         event_queue = output_data.get("event_queue", [])
+                        
+                        # 收集任务列表（从 planner 节点）
+                        if output_data.get("task_list"):
+                            collected_task_list = output_data["task_list"]
+                            
+                        # 收集产物（从 expert_dispatcher 节点）
+                        if output_data.get("__expert_info"):
+                            expert_info = output_data["__expert_info"]
+                            expert_type = expert_info.get("expert_type")
+                            if expert_type and output_data.get("artifact"):
+                                if expert_type not in expert_artifacts:
+                                    expert_artifacts[expert_type] = []
+                                expert_artifacts[expert_type].append(output_data["artifact"])
                     else:
                         event_queue = []
                     
-                    # 发送 event_queue 中的所有事件
+                    # 发送 event_queue 中的所有事件（新协议）
                     for queued_event in event_queue:
                         if queued_event.get("type") == "sse":
                             yield queued_event["event"]
                             
-                            # v3.0: 解析事件以更新本地状态
+                            # 解析 message.delta 事件以累积内容
                             try:
                                 event_lines = queued_event["event"].strip().split('\n')
-                                event_data = {}
+                                event_data_str = ""
                                 for line in event_lines:
                                     if line.startswith('data: '):
-                                        event_data = json.loads(line[6:])
+                                        event_data_str = line[6:]
                                         break
                                 
-                                # 累积 message.delta 事件的内容
-                                if event_data.get('type') == 'message.delta':
-                                    full_response += event_data.get('content', '')
-                            except:
-                                pass
+                                if event_data_str:
+                                    event_data = json.loads(event_data_str)
+                                    if event_data.get('type') == 'message.delta':
+                                        full_response += event_data.get('data', {}).get('content', '')
+                            except Exception as e:
+                                if DEBUG:
+                                    print(f"[STREAM] 解析事件失败: {e}")
 
                 # 捕获 Router 节点执行结束
                 if kind == "on_chain_end" and name == "router":
@@ -599,20 +551,43 @@ async def _handle_langgraph_stream(
                     if router_decision:
                         print(f"[STREAM] Router 决策: {router_decision}")
                         router_mode = router_decision
-                        # 发送 router.decision 事件（兼容旧格式）
-                        yield f"data: {json.dumps({'routerDecision': router_decision, 'conversationId': thread_id})}\n\n"
+                        # v3.0: 发送 router.decision 事件（新协议）
+                        from event_types.events import EventType, RouterDecisionData, build_sse_event
+                        router_event = build_sse_event(
+                            EventType.ROUTER_DECISION,
+                            RouterDecisionData(decision=router_decision),
+                            str(uuid4())
+                        )
+                        from utils.event_generator import sse_event_to_string
+                        yield sse_event_to_string(router_event)
 
                 # 捕获 direct_reply 节点执行结束（Simple 模式）
                 if kind == "on_chain_end" and name == "direct_reply":
-                    yield f"data: {json.dumps({'content': '', 'conversationId': thread_id, 'isFinal': True})}\n\n"
-                    print(f"[STREAM] Direct Reply 节点完成，Simple 模式流式输出结束")
+                    # v3.0: Simple 模式使用 message.done 事件
+                    from event_types.events import EventType, MessageDoneData, build_sse_event
+                    done_event = build_sse_event(
+                        EventType.MESSAGE_DONE,
+                        MessageDoneData(message_id=message_id or str(uuid4()), full_content=full_response),
+                        str(uuid4())
+                    )
+                    from utils.event_generator import sse_event_to_string
+                    yield sse_event_to_string(done_event)
+                    print(f"[STREAM] Direct Reply 节点完成")
 
                 # 捕获 LLM 流式输出（Simple 模式）
                 if kind == "on_chat_model_stream" and router_mode == "simple":
                     content = event["data"]["chunk"].content
                     if content:
                         full_response += content
-                        yield f"data: {json.dumps({'content': content, 'conversationId': thread_id})}\n\n"
+                        # v3.0: Simple 模式也使用 message.delta 事件
+                        from event_types.events import EventType, MessageDeltaData, build_sse_event
+                        delta_event = build_sse_event(
+                            EventType.MESSAGE_DELTA,
+                            MessageDeltaData(message_id=message_id or str(uuid4()), content=content),
+                            str(uuid4())
+                        )
+                        from utils.event_generator import sse_event_to_string
+                        yield sse_event_to_string(delta_event)
 
             print(f"[STREAM] 流式处理完成，共处理 {event_count} 个事件")
 
@@ -620,13 +595,19 @@ async def _handle_langgraph_stream(
             print(f"[STREAM] 错误: {e}")
             import traceback
             traceback.print_exc()
-            error_msg = json.dumps({"error": str(e)})
-            yield f"data: {error_msg}\n\n"
+            # v3.0: 发送 error 事件
+            from event_types.events import EventType, ErrorData, build_sse_event
+            from utils.event_generator import sse_event_to_string
+            error_event = build_sse_event(
+                EventType.ERROR,
+                ErrorData(code="STREAM_ERROR", message=str(e)),
+                str(uuid4())
+            )
+            yield sse_event_to_string(error_event)
 
-        # 保存 AI 回复和 Artifacts 到数据库（使用独立的短生命周期Session）
+        # 保存 AI 回复和 Artifacts 到数据库
         if full_response:
             with Session(engine) as save_session:
-                # 1. 保存 AI 消息
                 ai_msg_db = Message(
                     thread_id=thread_id,
                     role="assistant",
@@ -635,18 +616,15 @@ async def _handle_langgraph_stream(
                 )
                 save_session.add(ai_msg_db)
 
-                # 2. 更新 thread 状态（应用 router 决策）
                 thread_obj = save_session.get(Thread, thread_id)
                 if thread_obj:
                     thread_obj.updated_at = datetime.now()
 
-                    # 应用 router 决策（如果在streaming过程中收集到了）
                     if router_mode:
                         thread_obj.thread_mode = router_mode
                         print(f"[STREAM] 更新 thread_mode 为: {router_mode}")
 
-                    # 3. 如果是复杂模式，保存 TaskSession 和 SubTask
-                    print(f"[DEBUG] Checking save condition: router_mode={router_mode}, task_list_len={len(collected_task_list)}")
+                    # 复杂模式：保存 TaskSession 和 SubTask
                     if router_mode == "complex" and collected_task_list:
                         print(f"[STREAM] 保存复杂模式数据: {len(collected_task_list)} 个任务")
 
