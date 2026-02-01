@@ -11,7 +11,7 @@ const STATUS_CONFIG = {
   pending: {
     border: 'border-[var(--border-color)]',
     bg: 'bg-[var(--bg-page)]',
-    text: 'text-primary/70 dark:text-primary/60',
+    text: 'text-[var(--text-primary)]',
     indicator: 'bg-primary/50 dark:bg-primary/40'
   },
   running: {
