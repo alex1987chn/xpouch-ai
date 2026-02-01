@@ -140,6 +140,8 @@ class Message(SQLModel, table=True):
     role: str
     content: str
     timestamp: datetime = Field(default_factory=datetime.now)
+    # 👈 新增：metadata 字段存储 thinking、reasoning 等额外信息
+    metadata: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     
     thread: Thread = Relationship(back_populates="messages")
 
@@ -154,6 +156,7 @@ class MessageResponse(BaseModel):
     role: str
     content: str
     timestamp: Optional[datetime] = None
+    metadata: Optional[dict] = None  # 👈 新增：metadata 字段
 
     class Config:
         from_attributes = True
