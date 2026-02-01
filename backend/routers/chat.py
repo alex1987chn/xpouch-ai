@@ -573,8 +573,13 @@ async def _handle_langgraph_stream(
                 # 捕获规划节点执行结束
                 if kind == "on_chain_end" and name == "planner":
                     output_data = event["data"]["output"]
+                    print(f"[DEBUG] Planner output keys: {list(output_data.keys())}")
+                    
                     if "task_list" in output_data:
                         collected_task_list = output_data["task_list"]
+                        print(f"[DEBUG] Collected task_list: {len(collected_task_list)} tasks")
+                    else:
+                        print(f"[WARN] No task_list in planner output!")
                     
                     if "__task_plan" in output_data:
                         task_plan = output_data["__task_plan"]
@@ -697,6 +702,7 @@ async def _handle_langgraph_stream(
                         print(f"[STREAM] 更新 thread_mode 为: {router_mode}")
 
                     # 3. 如果是复杂模式，保存 TaskSession 和 SubTask
+                    print(f"[DEBUG] Checking save condition: router_mode={router_mode}, task_list_len={len(collected_task_list)}")
                     if router_mode == "complex" and collected_task_list:
                         print(f"[STREAM] 保存复杂模式数据: {len(collected_task_list)} 个任务")
 
