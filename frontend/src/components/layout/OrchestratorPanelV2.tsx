@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense, memo, useCallback, useMemo } from 'react'
+import { useState, lazy, Suspense, memo, useCallback, useMemo, useRef } from 'react'
 import { shallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
 import { Maximize2, FileCode, LayoutGrid, MessageSquare, Cpu, CheckCircle2, Loader2, Clock, XCircle } from 'lucide-react'
@@ -151,8 +151,20 @@ function ComplexModePanel({
     shallow
   )
 
-  // 单独订阅 tasks，使用 getAllTasks 方法
-  const tasks = useTaskStore((state) => state.getAllTasks())
+  // 订阅 tasks，使用 getAllTasks 方法（已经排序）
+  // 使用 useRef 缓存结果，避免每次都创建新数组
+  const tasksRef = useRef<Task[] | null>(null)
+  const prevTasksRef = useRef<Map<string, Task> | null>(null)
+
+  const tasksMap = useTaskStore((state) => state.tasks)
+
+  // 只在 tasksMap 实际变化时才重新计算
+  if (tasksMap !== prevTasksRef.current) {
+    prevTasksRef.current = tasksMap
+    tasksRef.current = Array.from(tasksMap.values()).sort((a, b) => a.sort_order - b.sort_order)
+  }
+
+  const tasks = tasksRef.current || []
 
   // 计算当前选中的 task
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null
