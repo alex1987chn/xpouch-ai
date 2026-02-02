@@ -1,9 +1,8 @@
 import { useState, lazy, Suspense, memo, useCallback, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { 
-  Maximize2, LayoutGrid, FileCode, 
-  Eye, Code2, Copy, Check, Loader2, CheckCircle2, Clock, XCircle, Lightbulb,
-  ChevronDown, ChevronRight
+import {
+  Maximize2, LayoutGrid, FileCode,
+  Eye, Code2, Copy, Check, Loader2, CheckCircle2, Clock, XCircle
 } from 'lucide-react'
 import { useTaskStore } from '@/store/taskStore'
 import type { Artifact, Task } from '@/store/taskStore'
@@ -75,44 +74,19 @@ function SimpleModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPanel
 // Complex 模式
 function ComplexModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPanelV2Props) {
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [showThinking, setShowThinking] = useState(true)
   const selectedTaskId = useTaskStore((state) => state.selectedTaskId)
   const selectTask = useTaskStore((state) => state.selectTask)
   const tasks = useTaskStore((state) => state.tasksCache)
-  const session = useTaskStore((state) => state.session)
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null
 
   useEffect(() => { if (tasks.length && !selectedTaskId) selectTask(tasks[0].id) }, [tasks, selectedTaskId, selectTask])
   useEffect(() => setSelectedIndex(0), [selectedTaskId])
 
   const currentArtifact = selectedTask?.artifacts[selectedIndex] || null
-  const completedCount = tasks.filter(t => t.status === 'completed' || t.status === 'failed').length
-  const progress = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0
 
   return (
     <div className="flex-1 flex h-full bg-page">
-      <div className="w-56 border-r-2 border-border flex flex-col shrink-0 bg-page">
-        <div className="border-b border-border">
-          <button onClick={() => setShowThinking(!showThinking)} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/30">
-            <div className="flex items-center gap-2">
-              <Lightbulb className="w-4 h-4 text-yellow-500" />
-              <span className="text-sm font-medium">思考过程</span>
-            </div>
-            {showThinking ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </button>
-          {showThinking && session && (
-            <div className="px-3 pb-3 space-y-2 text-xs">
-              <div><span className="font-medium">策略：</span>{session.summary}</div>
-              <div><span className="font-medium">预估：</span>{session.estimatedSteps} 步骤</div>
-              <div className="space-y-1">
-                <div className="flex justify-between"><span>进度</span><span>{progress}%</span></div>
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary" style={{ width: `${progress}%` }} /></div>
-              </div>
-            </div>
-          )}
-        </div>
-        <ExpertRailComplex tasks={tasks} selectedTaskId={selectedTaskId} onTaskClick={selectTask} />
-      </div>
+      <ExpertRailComplex tasks={tasks} selectedTaskId={selectedTaskId} onTaskClick={selectTask} />
       <ArtifactDashboard 
  
         expertName={selectedTask?.expert_type || 'Expert'}
@@ -333,18 +307,34 @@ interface ArtifactContentProps {
 function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: ArtifactContentProps) {
   const [viewMode, setViewMode] = useState<'code' | 'preview'>(artifact.type === 'html' ? 'preview' : 'code')
   const [copied, setCopied] = useState(false)
+  const copyTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleCopy = useCallback(async () => {
     const text = artifact?.content || ''
     if (!text) return
+
+    // 清除之前的 timer
+    if (copyTimerRef.current) {
+      clearTimeout(copyTimerRef.current)
+    }
+
     try {
       await navigator.clipboard.writeText(text)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
     } catch (err) {
       console.error('Copy failed:', err)
     }
   }, [artifact])
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current)
+      }
+    }
+  }, [])
 
   const canPreview = ['markdown', 'html', 'code'].includes(artifact.type)
 

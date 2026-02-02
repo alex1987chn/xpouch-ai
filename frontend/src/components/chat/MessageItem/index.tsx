@@ -77,13 +77,17 @@ export default function MessageItem({
       taskStore.setMode('simple')
     }
     
-    // 添加 artifact 到虚拟任务
-    console.log('[Preview] Adding artifact:', artifact.title, 'to task:', SIMPLE_TASK_ID)
-    taskStore.addArtifact({
-      task_id: SIMPLE_TASK_ID,
-      expert_type: 'assistant',
-      artifact: artifact
-    })
+    // 替换 artifact 到虚拟任务（简单模式：替换而不是追加）
+    console.log('[Preview] Replacing artifact:', artifact.title, 'to task:', SIMPLE_TASK_ID)
+    taskStore.replaceArtifacts(SIMPLE_TASK_ID, [{
+      id: artifact.id,
+      type: artifact.type as any,
+      title: artifact.title,
+      content: artifact.content,
+      language: artifact.language,
+      sortOrder: artifact.sort_order,
+      createdAt: new Date().toISOString()
+    }])
     
     // 选中该任务
     taskStore.selectTask(SIMPLE_TASK_ID)
