@@ -56,22 +56,6 @@ export function getThreadId(agentId: string, userId?: string): string {
 }
 
 /**
- * 判断对话模式（根据 thread_mode）
- * 
- * @deprecated 不要通过 agentId 判断模式！
- * 复杂模式是 Thread 的内部状态，应该通过后端返回的 thread_mode 字段判断
- * 
- * 正确用法：
- * const mode = thread.thread_mode // 'simple' | 'complex'
- */
-export function getConversationMode(agentId: string): 'simple' | 'complex' {
-  // 👈 所有对话都返回 'simple'，因为复杂模式是内部状态
-  // 不应该通过 URL 中的 agentId 来判断模式
-  // 前端应该通过后端返回的 thread_mode 字段来感知模式
-  return 'simple'
-}
-
-/**
  * 从后端 Thread 数据获取对话模式
  * 
  * @param threadMode - 后端返回的 thread_mode 字段
