@@ -2,135 +2,100 @@
 
 数据库迁移脚本目录
 
-## 快速开始
+## 推荐使用：统一迁移脚本
 
-使用迁移脚本自动执行所有迁移：
+**`apply_all_migrations.sql`** - 包含所有 v3.0 迁移的统一脚本
+
+特性：
+- ✅ **幂等性**：可重复执行，已存在的表/字段/索引会自动跳过
+- ✅ **兼容性**：PostgreSQL 13+
+- ✅ **事务安全**：使用 `DO $$` 块确保原子性
+
+### 执行方式（推荐）
 
 ```bash
-# 查看迁移状态
-python backend/migrations/apply_migrations.py status
+# 方式1：使用 psql 命令行
+psql -h localhost -U postgres -d xpouch -f backend/migrations/apply_all_migrations.sql
 
-# 执行所有待执行的迁移
-python backend/migrations/apply_migrations.py apply
-
-# 回滚指定迁移（仅删除记录，不删除表结构）
-python backend/migrations/apply_migrations.py rollback --file v3_0_1_thread_fields.sql
+# 方式2：在 Docker 中执行
+docker exec -i your_postgres_container psql -U postgres -d xpouch < backend/migrations/apply_all_migrations.sql
 ```
 
-## 环境变量配置
+### 验证迁移
 
-确保设置以下环境变量（在 `.env` 文件中）：
+```sql
+-- 查看所有表结构
+SELECT table_name, COUNT(*) as column_count 
+FROM information_schema.columns 
+WHERE table_name IN ('thread', 'message', 'customagent', 'tasksession', 'subtask', 'artifact')
+GROUP BY table_name;
 
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=xpouch
-DB_USER=postgres
-DB_PASSWORD=your_password
+-- 查看迁移历史
+SELECT * FROM migration_history;
 ```
 
-## 迁移文件列表
+---
+
+## 备用：单独迁移文件
+
+如果需要单独执行某个迁移，可以使用以下文件：
 
 ### 1. v3_0_complex_mode_refactor.sql
 **v3.0 复杂模式重构**
 
 - 创建 `artifact` 表（产物独立表）
-- 扩展 `tasksession` 表（添加 plan_summary, estimated_steps, execution_mode）
-- 扩展 `subtask` 表（添加 task_description, output_result, started_at, completed_at, sort_order, execution_mode, depends_on, error_message, duration_ms）
-- 数据迁移：将 SubTask.artifacts JSON 字段迁移到 Artifact 表
-
-**执行：**
-```bash
-python backend/migrations/apply_migrations.py apply
-```
+- 扩展 `tasksession` 表（plan_summary, estimated_steps, execution_mode）
+- 扩展 `subtask` 表（task_description, output_result, started_at, completed_at, sort_order, execution_mode, depends_on, error_message, duration_ms）
 
 ### 2. add_message_metadata.sql
 **添加 Message 表 extra_data 字段**
 
 - 添加 `extra_data` JSONB 字段到 `message` 表
 - 用于存储 thinking, reasoning 等额外信息
-- 注意：不能使用 `metadata` 作为字段名（SQLAlchemy 保留字）
-
-**执行：**
-```bash
-python backend/migrations/apply_migrations.py apply
-```
 
 ### 3. v3_0_1_thread_fields.sql
 **v3.0.1 Thread 表字段扩展**
 
-- 添加 `agent_type` 字段到 `thread` 表（default/custom/ai）
-- 添加 `agent_id` 字段到 `thread` 表
-- 添加 `task_session_id` 字段到 `thread` 表
-- 添加 `status` 字段到 `thread` 表（idle/running/paused）
-- 添加 `thread_mode` 字段到 `thread` 表（simple/complex）
+- 添加 `agent_type`, `agent_id`, `task_session_id`, `status`, `thread_mode` 字段
 - 添加 `is_default` 字段到 `customagent` 表
 
-**执行：**
+---
+
+## Python 迁移工具（可选）
+
+如果需要更复杂的迁移逻辑，可以使用 `apply_migrations.py`：
+
 ```bash
+# 查看状态
+python backend/migrations/apply_migrations.py status
+
+# 执行所有迁移
 python backend/migrations/apply_migrations.py apply
 ```
 
-## 手动执行（备用）
+---
 
-如果自动脚本无法使用，可以手动执行 SQL 文件：
+## 主要字段变更清单
 
-```bash
-# 连接到数据库
-psql -h localhost -U postgres -d xpouch
+### Thread 表
+- `agent_type` (VARCHAR) - 会话类型: default/custom/ai
+- `agent_id` (VARCHAR) - 智能体ID
+- `task_session_id` (VARCHAR) - 关联任务会话
+- `status` (VARCHAR) - 状态: idle/running/paused
+- `thread_mode` (VARCHAR) - 模式: simple/complex
 
-# 执行迁移文件
-\i backend/migrations/v3_0_complex_mode_refactor.sql
-\i backend/migrations/add_message_metadata.sql
-\i backend/migrations/v3_0_1_thread_fields.sql
-```
+### Message 表
+- `extra_data` (JSONB) - 额外数据（thinking等）
 
-## 验证迁移
+### CustomAgent 表
+- `is_default` (BOOLEAN) - 是否为默认助手
 
-检查所有表结构：
+### TaskSession 表
+- `plan_summary`, `estimated_steps`, `execution_mode`
 
-```sql
--- 查看 Thread 表字段
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'thread';
+### SubTask 表
+- `task_description`, `output_result`, `started_at`, `completed_at`
+- `sort_order`, `execution_mode`, `depends_on`, `error_message`, `duration_ms`
 
--- 查看 Message 表字段
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'message';
-
--- 查看 CustomAgent 表字段
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'customagent';
-
--- 查看 SubTask 表字段
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'subtask';
-
--- 查看 TaskSession 表字段
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'tasksession';
-
--- 查看 Artifact 表字段
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'artifact';
-```
-
-## 新增迁移
-
-1. 创建新的 SQL 文件，命名格式：`vX_Y_description.sql`
-2. 在 `apply_migrations.py` 的 `MIGRATIONS` 列表中添加新迁移
-3. 在本文档中记录新迁移的说明
-4. 提交代码并部署
-
-## 注意事项
-
-1. **幂等性**：所有迁移脚本都是幂等的（可重复执行）
-2. **事务安全**：使用 `DO $$` 块确保原子性操作
-3. **兼容性**：支持 PostgreSQL 13+
-4. **索引**：所有新增字段都自动创建索引
+### Artifact 表（新建）
+- 完整的产物独立表
