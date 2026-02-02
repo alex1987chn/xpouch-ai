@@ -1,7 +1,6 @@
 /**
  * 会话管理 Hook
  * 负责加载历史会话、删除会话等功能
- * v3.1: 移除 canvasStore，使用 taskStore 管理复杂模式状态
  */
 
 import { useCallback } from 'react'
@@ -32,7 +31,6 @@ export function useConversation() {
     setSelectedAgentId,
   } = useChatStore()
 
-  // v3.1: 使用 taskStore 替代 canvasStore
   const {
     initializePlan,
     completeTask,
@@ -93,7 +91,6 @@ export function useConversation() {
         setSelectedAgentId(normalizeAgentId(conversation.agent_id))
       }
 
-      // v3.1: 如果是复杂模式会话，使用 taskStore 恢复任务状态
       if (conversation.agent_type === 'ai' && conversation.task_session) {
         const subTasks = conversation.task_session.sub_tasks || []
 

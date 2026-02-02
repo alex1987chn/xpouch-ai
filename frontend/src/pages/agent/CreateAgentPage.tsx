@@ -3,7 +3,6 @@ import { ArrowLeft, Bot, Sparkles } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { cn } from '@/lib/utils'
-import AgentPreviewCard from '@/components/agent/AgentPreviewCard'
 import ModelSelector from '@/components/settings/ModelSelector'
 
 interface CreateAgentPageProps {
@@ -242,33 +241,6 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
                   </p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* 右侧：实时预览区 - Sticky */}
-          <div className="hidden lg:block w-96 flex-shrink-0 p-6">
-            <div className="sticky top-24">
-              {/* 预览标题 */}
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-1.5 h-1.5 bg-[var(--accent-hover)]"></div>
-                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                  /// {t('preview')}
-                </span>
-              </div>
-
-              {/* 预览卡片 */}
-              <div className="space-y-3">
-                <AgentPreviewCard
-                  name={name}
-                  description={description}
-                  category={category}
-                />
-              </div>
-
-              {/* 预览说明 */}
-              <p className="mt-4 font-mono text-[10px] text-[var(--text-secondary)] text-center opacity-60">
-                {t('previewDescription')}
-              </p>
             </div>
           </div>
         </div>
