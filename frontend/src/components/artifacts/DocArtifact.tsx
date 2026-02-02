@@ -11,7 +11,7 @@ interface DocArtifactProps {
 
 export default function DocArtifact({ content, className }: DocArtifactProps) {
   return (
-    <div className={cn('w-full h-full overflow-auto', className)}>
+    <div className={cn('w-full h-full overflow-auto bauhaus-scrollbar', className)}>
       <div className="prose prose-slate dark:prose-invert prose-sm max-w-none w-full min-h-0">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
