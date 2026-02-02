@@ -61,31 +61,9 @@ $null
 *[^a-zA-Z0-9._/-]*
 upload-package/
 
-# Debug scripts
-backend/check_*.py
-backend/list_users.py
-check_*.html
-cleanup.html
-clear_cache.html
-
-# Backend deployment scripts and docs (temporary)
-backend/CLEANUP_SUMMARY.md
-backend/DEPLOYMENT_CHECKLIST.md
-backend/DOCKER_DEPLOYMENT.md
-backend/MIGRATION_SUMMARY.md
-backend/deploy_migrate.py
-backend/migrate_conversation_to_thread.py
-
 # Local documentation (private notes, not for GitHub)
 # Note: CHANGELOG.md and CHANGELOG_ARCHIVE.md are tracked in Git
 MEM.md
-POSTGRES_DEPLOYMENT.md
-
-# UI reference files (local only)
-xpouch_ultra_refined.html
-xpouch_v2.7_ultimate.html
-
-# Docs folder (local reference only)
 docs/
 
 # CodeBuddy (project data, not for git)
