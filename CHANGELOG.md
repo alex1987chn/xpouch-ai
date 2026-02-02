@@ -11,72 +11,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **v3.0.0 是项目的首个正式稳定版本，标志着架构重构完成和开源发布。**
 
-本版本经历了全面的架构重构，从传统的单体应用转变为现代化的前后端分离 Monorepo 架构，引入了 LangGraph 多智能体工作流、RBAC 专家管理系统、以及响应式三区扁平布局。所有代码和文档都已更新，为开源发布做好准备。
+本版本经历了全面的架构重构，采用现代化的前后端分离 Monorepo 架构，实现了智能路由系统、LangGraph 多专家工作流、以及 IndustrialChatLayout 双栏布局。
 
 ### 🏗️ 架构重构
 
-**Monorepo 架构升级**：
-- 采用前后端分离架构，前端位于 `/frontend`，后端位于 `/backend`
-- 前端使用 Vite + React 18 + TypeScript 构建
-- 后端使用 FastAPI + Python 3.13 + SQLModel 构建
+**Monorepo 架构**：
+- 前端位于 `/frontend`（Vite + React 18 + TypeScript）
+- 后端位于 `/backend`（FastAPI + Python 3.13 + SQLModel）
 - 统一使用 pnpm workspace 管理多包依赖
 - 使用 uv 作为 Python 包管理器
 
-**前端架构重构**：
+**前端架构**：
 - React 18.3.1 + React Router 7.12.0 路由系统
-- Zustand 5.0.10 全局状态管理，替代 Redux
+- Zustand 5.0.10 全局状态管理
 - shadcn/ui + Radix UI 无头组件库
 - Tailwind CSS 3.4.17 原子化样式
 - Framer Motion 12.29.0 动画与交互
 - 响应式设计，支持移动端/平板/桌面端
 - 完整的国际化支持（EN/ZH/JA）
 
-**后端架构重构**：
+**后端架构**：
 - FastAPI 0.128.0 异步 Web 框架
 - SQLModel 0.0.31 ORM 框架，统一 SQLAlchemy 和 Pydantic
 - PostgreSQL 15+ 数据库（移除 SQLite 支持）
 - LangGraph 1.0.6 AI 工作流编排
-- LangChain OpenAI 1.1.7 LLM 集成
 - JWT 认证 + 密码哈希（PyJWT + Passlib）
-- Alembic 数据库迁移支持
 
 ### ✨ 核心功能
 
-**双模智能路由系统**：
-- **简单模式（Simple Mode）**：直接调用 LLM 进行对话响应，适用于日常问答场景
-- **复杂模式（Complex Mode）**：基于 LangGraph 的多专家协作工作流，适用于复杂任务
-- 前端智能路由，后端自动判断意图
-- 用户无需手动切换，体验更流畅
+**智能路由系统（Router）**：
+- 单入口智能体 `sys-default-chat`（默认助手）
+- 后端 Router 节点智能判断 simple/complex
+- **Simple 模式**：直接调用 LLM 进行对话响应
+- **Complex 模式**：LangGraph 多专家协作工作流
+- 通过 `thread_mode` 字段区分模式（非独立智能体）
+- 前端无需手动切换，体验更流畅
 
-**LangGraph 指挥官工作流**：
-- 指挥官节点（Commander Node）：智能拆解用户需求，生成执行计划
-- 专家分发器（Expert Dispatcher）：循环分发任务到对应专家节点
+**LangGraph 工作流**：
+- Router 节点：意图识别，只做分类决策
+- Planner 节点：任务拆解，生成执行计划
+- Expert Dispatcher：循环分发任务到对应专家节点
 - 七位专业专家：search/coder/researcher/analyzer/writer/planner/image_analyzer
-- 聚合器节点（Aggregator Node）：整合所有专家结果，生成最终响应
+- Aggregator 节点：整合所有专家结果，生成最终响应
 - SSE 实时推送任务进度和专家状态
 
-**XPouchLayout 三区扁平布局**：
-- 应用级布局（AppLayout）：侧边栏 + 主内容区域
-- 页面级布局（XPouchLayout）：专家状态栏 + Artifact 容器 + 悬浮对话面板
-- 专家状态栏：实时显示专家执行状态（pending/running/completed/failed）
-- Artifact 容器：支持代码/HTML/Markdown/搜索结果渲染
-- 悬浮对话面板：毛玻璃效果，PC 端 30% 宽度，移动端全屏
-- 全屏预览模式：最大化 Artifact 显示区域
-
-**RBAC 专家管理系统**：
-- 四级权限控制：USER/VIEW_ADMIN/EDIT_ADMIN/ADMIN
-- SystemExpert 模型：数据库存储专家 Prompt 和配置
-- 管理员可通过前端动态修改专家行为
-- 缓存机制：避免频繁查询数据库
-- 自动刷新：修改后立即生效，无需重启后端
-- 预览模式：保存前可预览专家响应效果
+**IndustrialChatLayout 双栏布局**：
+- 左侧 ChatStreamPanel：消息列表 + 输入框（55% 宽度）
+- 右侧 OrchestratorPanelV2：编排器面板
+  - Simple 模式：AI 预览区域
+  - Complex 模式：BusRail（专家状态）+ Artifact（产物展示）
+- 桌面端双栏并排，移动端单栏切换
+- 全屏模式：Artifact 占满右侧区域
 
 **自定义智能体系统**：
 - 用户可创建个性化 AI 助手
 - 支持自定义系统提示词
 - 支持选择不同模型
 - 支持分类管理
-- 使用次数统计
+- 默认助手不在列表展示，通过首页输入框直接交互
 
 **Artifact 产物系统**：
 - 代码片段：语法高亮、复制功能
@@ -104,8 +96,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🔧 技术改进
 
 **代码质量提升**：
-- TypeScript 严格类型检查，移除所有 any 类型断言
-- Pydantic 模型验证，统一的异常处理
+- TypeScript 严格类型检查
+- Pydantic 模型验证
 - 单一职责原则，模块化设计
 - 自定义异常类：AppError/NotFoundError/ValidationError/AuthorizationError
 - 统一的错误处理装饰器：withErrorHandler
@@ -115,21 +107,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - React.memo 和 useMemo 优化渲染性能
 - 懒加载路由，代码分割
 - 专家配置内存缓存
-- Artifact 渲染优化
 
 **安全性增强**：
 - CORS 白名单配置
-- 安全头部中间件（X-Frame-Options/X-Content-Type-Options 等）
+- 安全头部中间件
 - JWT Token 认证
 - 密码 bcrypt 哈希
-- SQL 注入防护
 - API 权限检查
 
 ### 🎨 UI/UX 改进
 
 **视觉设计**：
 - Bauhaus 风格设计语言
-- 毛玻璃效果（backdrop-blur）
 - 粒子网格动态背景
 - 流畅的动画过渡
 - 深色/浅色主题支持
@@ -144,8 +133,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 📦 依赖更新
 
 **前端依赖**：
-- Vite 5.4.17 → 7.3.1（重大版本更新）
-- React 18.3.1（保持稳定）
+- Vite 5.4.17 → 7.3.1
+- React 18.3.1
 - TypeScript 5.6 → 5.7.2
 - Framer Motion 11.15.0 → 12.29.0
 - Lucide React 0.462.0 → 0.563.0
@@ -180,7 +169,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **文档改进**：
 - 完整的 README.md 文档，包含架构说明、部署指南、使用教程
 - CHANGELOG.md 详细的版本更新记录
-- 国际化翻译文件（EN/ZH/JA，100+ 翻译键）
+- 国际化翻译文件（EN/ZH/JA）
 - Docker 部署配置和 Nginx 配置
 - 环境变量配置说明
 
@@ -194,16 +183,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 数据库迁移脚本（幂等性设计）
 - CORS 和安全头部配置
 
-**监控和日志**：
-- 请求日志中间件
-- 错误追踪和堆栈输出
-- LangSmith 集成（可选）
-- Sentry 错误监控（可选）
-
 ### 📊 代码统计
 
-- 前端文件：135 个文件（61 *.tsx, 55 *.ts）
-- 后端文件：44 个文件（33 *.py）
+- 前端文件：135 个文件
+- 后端文件：44 个文件
 - 代码行数：约 15000+ 行
 - 提交次数：100+ 次
 - 贡献者：1 人
