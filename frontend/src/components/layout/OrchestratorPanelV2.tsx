@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense, memo, useCallback, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { Maximize2, FileCode, LayoutGrid, MessageSquare, Cpu, CheckCircle2, Loader2, Clock, XCircle, Copy, Eye, Code, RefreshCw } from 'lucide-react'
+import { Maximize2, FileCode, LayoutGrid, MessageSquare, Cpu, CheckCircle2, Loader2, Clock, XCircle, Copy, Eye, Code, Lightbulb, ChevronDown, ChevronRight } from 'lucide-react'
 import { useTaskStore } from '@/store/taskStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import type { Artifact, Task } from '@/store/taskStore'
@@ -39,7 +39,7 @@ export default function OrchestratorPanelV2({
   return <ComplexModePanel isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
 }
 
-// Simple 模式 - 参考之前的设计风格
+// Simple 模式
 function SimpleModePanel({
   isFullscreen,
   onToggleFullscreen,
@@ -145,11 +145,13 @@ function ComplexModePanel({
   onToggleFullscreen?: () => void
 }) {
   const [selectedArtifactIndex, setSelectedArtifactIndex] = useState(0)
+  const [showThinking, setShowThinking] = useState(true)
 
   const session = useTaskStore((state) => state.session)
   const selectedTaskId = useTaskStore((state) => state.selectedTaskId)
   const selectTask = useTaskStore((state) => state.selectTask)
   const tasks = useTaskStore((state) => state.tasksCache)
+  const runningTaskId = useTaskStore((state) => state.runningTaskId)
 
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null
 
@@ -195,41 +197,109 @@ function ComplexModePanel({
         </button>
       </div>
 
-      {/* Main Content: 专家栏(左) | Artifact(右) */}
-      <div className="flex-1 flex min-h-0">
-        {/* 左侧：专家栏 */}
-        <div className="w-14 border-r border-border bg-muted/20 flex flex-col items-center py-3 gap-2 overflow-y-auto">
-          {tasks.map((task) => {
-            const isSelected = selectedTaskId === task.id
+      {/* Main Content */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* 左侧：Thinking Section + 专家栏 */}
+        <div className="w-64 border-r border-border flex flex-col shrink-0">
+          {/* Thinking Section */}
+          <div className="border-b border-border">
+            <button
+              onClick={() => setShowThinking(!showThinking)}
+              className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50"
+            >
+              <div className="flex items-center gap-2">
+                <Lightbulb className="w-4 h-4 text-yellow-500" />
+                <span className="text-sm font-medium">思考过程</span>
+              </div>
+              {showThinking ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
             
-            return (
-              <button
-                key={task.id}
-                onClick={() => handleTaskClick(task.id)}
-                className={cn(
-                  "w-10 h-10 rounded-lg border-2 flex items-center justify-center relative transition-all",
-                  isSelected
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-card hover:border-primary/50"
+            {showThinking && (
+              <div className="px-3 pb-3 space-y-2">
+                {session ? (
+                  <>
+                    <div className="text-xs text-muted-foreground">
+                      <span className="font-medium">策略：</span>{session.summary}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      <span className="font-medium">预估步骤：</span>{session.estimatedSteps}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-muted-foreground">进度：</span>
+                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary transition-all"
+                          style={{ 
+                            width: `${tasks.length > 0 
+                              ? Math.round((tasks.filter(t => t.status === 'completed' || t.status === 'failed').length / tasks.length) * 100)
+                              : 0}%` 
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {tasks.filter(t => t.status === 'completed' || t.status === 'failed').length}/{tasks.length}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-xs text-muted-foreground">等待任务计划...</div>
                 )}
-                title={`${task.expert_type} (${task.status})`}
-              >
-                <span className="font-bold text-xs">
-                  {task.expert_type.slice(0, 2).toUpperCase()}
-                </span>
-                <div className="absolute -bottom-1 -right-1">
-                  <StatusIcon status={task.status} />
-                </div>
-              </button>
-            )
-          })}
+              </div>
+            )}
+          </div>
+
+          {/* 专家列表 */}
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {tasks.map((task, index) => {
+              const isSelected = selectedTaskId === task.id
+              const isRunning = runningTaskId === task.id
+              
+              return (
+                <button
+                  key={task.id}
+                  onClick={() => handleTaskClick(task.id)}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-2 py-2 rounded text-left transition-all",
+                    isSelected
+                      ? "bg-primary/10 border border-primary/30"
+                      : "hover:bg-muted/50 border border-transparent"
+                  )}
+                >
+                  <div className={cn(
+                    "w-8 h-8 rounded flex items-center justify-center text-xs font-bold shrink-0",
+                    isRunning 
+                      ? "bg-yellow-500/20 text-yellow-600 border border-yellow-500/30"
+                      : task.status === 'completed'
+                        ? "bg-green-500/20 text-green-600 border border-green-500/30"
+                        : task.status === 'failed'
+                          ? "bg-red-500/20 text-red-600 border border-red-500/30"
+                          : "bg-muted text-muted-foreground border border-border"
+                  )}>
+                    {task.expert_type.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate">
+                      {task.expert_type}
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <StatusIcon status={task.status} />
+                      <span>{task.status === 'pending' ? '等待中' : task.status === 'running' ? '执行中' : task.status === 'completed' ? '已完成' : '失败'}</span>
+                      {task.artifacts.length > 0 && (
+                        <span className="text-primary">• {task.artifacts.length} 产物</span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {/* 右侧：Artifact 区域 */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Artifact Header */}
           <div className="h-9 flex items-center justify-between px-3 border-b border-border bg-muted/30 shrink-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto">
               {!selectedTask ? (
                 <span className="text-xs text-muted-foreground">选择专家查看产物</span>
               ) : selectedTask.artifacts.length === 0 ? (
@@ -237,28 +307,26 @@ function ComplexModePanel({
                   {selectedTask.status === 'running' ? '正在生成...' : '暂无产物'}
                 </span>
               ) : (
-                <div className="flex items-center gap-1">
-                  {selectedTask.artifacts.map((artifact, idx) => (
-                    <button
-                      key={artifact.id}
-                      onClick={() => handleArtifactClick(idx)}
-                      className={cn(
-                        "px-2 py-1 text-xs rounded transition-colors",
-                        selectedArtifactIndex === idx
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                    >
-                      {artifact.title || `产物 ${idx + 1}`}
-                    </button>
-                  ))}
-                </div>
+                selectedTask.artifacts.map((artifact, idx) => (
+                  <button
+                    key={artifact.id}
+                    onClick={() => handleArtifactClick(idx)}
+                    className={cn(
+                      "px-2 py-1 text-xs rounded transition-colors whitespace-nowrap",
+                      selectedArtifactIndex === idx
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    {artifact.title || `产物 ${idx + 1}`}
+                  </button>
+                ))
               )}
             </div>
 
             {/* 工具按钮 */}
             {currentArtifact && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => navigator.clipboard.writeText(currentArtifact.content)}
                   className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded"
