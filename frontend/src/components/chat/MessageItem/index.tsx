@@ -10,7 +10,6 @@ import { useTaskStore } from '@/store/taskStore'
 import type { MessageItemProps } from '../types'
 import { extractCodeBlocks, detectContentType } from '../utils'
 import ThinkingSection from './ThinkingSection'
-import RoutingIndicator from '../RoutingIndicator'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -163,14 +162,9 @@ export default function MessageItem({
     )
   }
 
-  // AI 消息：左侧色条容器 + 路由指示器
+  // AI 消息：左侧色条容器
   return (
     <div className="flex flex-col items-start w-full max-w-3xl select-text ai-message">
-      {/* 路由指示器 (仅在复杂模式且不是最后一条时显示) */}
-      {activeExpert && !isLast && (
-        <RoutingIndicator expertType={activeExpert} />
-      )}
-
       {/* 消息内容 */}
       <div className="bg-card border-2 border-border border-l-[6px] border-l-[var(--accent)] p-6 w-full shadow-sm relative select-text">
         {/* 标签 */}

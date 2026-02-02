@@ -70,7 +70,6 @@ export default function UnifiedChatPage() {
     }
   }, [])
 
-  // v3.1: 移除 canvasStore，所有状态由 OrchestratorPanelV2 内部管理
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
   const [inputValue, setInputValue] = useState('')
@@ -104,7 +103,6 @@ export default function UnifiedChatPage() {
       if (isNewConversation) {
         useChatStore.getState().setCurrentConversationId(conversationId)
         useChatStore.getState().setMessages([])
-        // v3.1: 清理 taskStore（替换原来的 canvasStore 清理）
         const { clearTasks, setMode } = useTaskStore.getState()
         clearTasks()
         setMode('simple')
@@ -123,14 +121,12 @@ export default function UnifiedChatPage() {
           if (error?.status === 404 || error?.message?.includes('404')) {
             useChatStore.getState().setCurrentConversationId(conversationId)
             useChatStore.getState().setMessages([])
-            // v3.1: 清理 taskStore
             const { clearTasks, setMode } = useTaskStore.getState()
             clearTasks()
             setMode('simple')
           }
         })
     } else {
-      // v3.1: 清理 taskStore
       const { clearTasks, setMode } = useTaskStore.getState()
       clearTasks()
       setMode('simple')
@@ -162,18 +158,12 @@ export default function UnifiedChatPage() {
     }
   }, [isNewConversation, initialMessage, isStreaming, conversationId])
 
-  // v3.1: 移除 canvasStore 相关处理函数
-  // 专家点击和链接点击现在由 OrchestratorPanelV2 内部处理
-
   // 发送消息处理
   const handleSend = useCallback(() => {
     if (!inputValue.trim() || isStreaming) return
     sendMessage(inputValue, normalizedAgentId)
     setInputValue('')
   }, [inputValue, isStreaming, sendMessage, normalizedAgentId])
-
-  // v3.1: 移除所有 canvasStore 相关的 artifact 处理
-  // Artifact 展示现在完全由 OrchestratorPanelV2 内部管理
 
   // 缓存全屏切换回调
   const toggleFullscreen = useCallback(() => {

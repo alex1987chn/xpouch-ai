@@ -211,7 +211,6 @@ export function useExpertHandler() {
       case 'artifact.generated': {
         const artifactData = event.data
         
-        // v3.1: 只更新 taskStore（canvasStore 已废弃）
         taskActions.addArtifact(artifactData)
         
         // 自动选中该任务
