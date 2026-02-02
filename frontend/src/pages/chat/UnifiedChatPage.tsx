@@ -185,6 +185,8 @@ export default function UnifiedChatPage() {
       <IndustrialHeader
         onClose={() => navigate('/')}
         onMenuClick={sidebar.toggleMobile}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
       <IndustrialChatLayout
@@ -201,6 +203,7 @@ export default function UnifiedChatPage() {
             onSend={handleSend}
             onStop={stopGeneration}
             onRegenerate={() => retry()}
+            onPreview={() => setViewMode('preview')}
           />
         }
         orchestratorPanel={

@@ -56,6 +56,8 @@ interface ChatStreamPanelProps {
   onLinkClick?: (href: string) => void
   /** 当前对话模式 */
   conversationMode?: 'simple' | 'complex'
+  /** 点击消息预览回调（用于移动端切换到 preview 视图） */
+  onPreview?: () => void
 }
 
 /**
@@ -76,6 +78,7 @@ export default function ChatStreamPanel({
   onRegenerate,
   onLinkClick,
   conversationMode = 'simple',
+  onPreview,
 }: ChatStreamPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -124,6 +127,7 @@ export default function ChatStreamPanel({
               activeExpert={activeExpert}
               onRegenerate={onRegenerate}
               onLinkClick={onLinkClick}
+              onPreview={onPreview}
             />
           ))
         )}

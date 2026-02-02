@@ -24,6 +24,8 @@ export interface MessageItemProps {
   activeExpert?: string | null
   onRegenerate?: (messageId: string) => void
   onLinkClick?: (href: string) => void
+  /** 点击预览按钮回调（用于移动端切换到 preview 视图） */
+  onPreview?: () => void
 }
 
 /**

@@ -21,6 +21,7 @@ export default function MessageItem({
   activeExpert,
   onRegenerate,
   onLinkClick,
+  onPreview,
 }: MessageItemProps) {
   const isUser = message.role === 'user'
   const [copied, setCopied] = useState(false)
@@ -92,7 +93,7 @@ export default function MessageItem({
     
     console.log('[Preview] Current tasksCache:', taskStore.tasksCache)
     console.log('[Preview] Current mode:', taskStore.mode)
-  }, [message.content, codeBlocks])
+  }, [message.content, codeBlocks, onPreview])
 
   // 处理复制
   const handleCopy = useCallback(async () => {
