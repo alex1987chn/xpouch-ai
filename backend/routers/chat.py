@@ -360,6 +360,8 @@ async def _handle_custom_agent_stream(
     """处理自定义智能体流式响应 (v3.0 新协议)"""
     async def event_generator():
         full_response = ""
+        # v3.0: 确保使用一致的 message_id
+        actual_message_id = message_id or str(uuid4())
         try:
             model_name = custom_agent.model_id or os.getenv("MODEL_NAME", "deepseek-chat")
             base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
@@ -368,7 +370,7 @@ async def _handle_custom_agent_stream(
                 print(f"[CUSTOM AGENT] 检测到不兼容模型 {model_name}，自动切换为 deepseek-chat")
                 model_name = "deepseek-chat"
 
-            print(f"[CUSTOM AGENT] 使用模型: {model_name}，消息ID: {message_id}")
+            print(f"[CUSTOM AGENT] 使用模型: {model_name}，消息ID: {actual_message_id}")
             
             llm = get_llm_instance(streaming=True, model=model_name, temperature=0.7)
 
@@ -384,7 +386,7 @@ async def _handle_custom_agent_stream(
                     delta_event = build_sse_event(
                         EventType.MESSAGE_DELTA,
                         MessageDeltaData(
-                            message_id=message_id or str(uuid4()),
+                            message_id=actual_message_id,
                             content=content
                         ),
                         str(uuid4())
@@ -406,11 +408,12 @@ async def _handle_custom_agent_stream(
             yield sse_event_to_string(error_event)
 
         # v3.0: 发送 message.done 事件（新协议）
+        # 使用与 delta 事件相同的 actual_message_id
         from event_types.events import EventType, MessageDoneData, build_sse_event
         done_event = build_sse_event(
             EventType.MESSAGE_DONE,
             MessageDoneData(
-                message_id=message_id or str(uuid4()),
+                message_id=actual_message_id,
                 full_content=full_response
             ),
             str(uuid4())
@@ -419,7 +422,7 @@ async def _handle_custom_agent_stream(
         yield sse_event_to_string(done_event)
 
         yield "data: [DONE]\n\n"
-        print(f"[CUSTOM AGENT] 流式响应完成，消息ID: {message_id}")
+        print(f"[CUSTOM AGENT] 流式响应完成，消息ID: {actual_message_id}")
 
         # 保存 AI 回复到数据库
         if full_response:
