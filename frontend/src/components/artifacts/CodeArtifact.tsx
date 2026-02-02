@@ -50,7 +50,7 @@ export default function CodeArtifact({ content, language = 'text', className }: 
   )
 
   containerRef.current.innerHTML = highlightedLines
-    .map((line, idx) => `<div class="flex"><span class="w-10 text-right text-gray-500 dark:text-gray-400 select-none mr-4 text-xs">${idx + 1}</span><pre class="flex-1 text-sm text-slate-900 dark:text-slate-100 font-mono whitespace-pre-wrap break-words">${line}</pre></div>`)
+    .map((line, idx) => `<div class="flex min-w-0"><span class="w-10 text-right text-gray-500 dark:text-gray-400 select-none mr-4 text-xs shrink-0">${idx + 1}</span><pre class="flex-1 text-sm text-slate-900 dark:text-slate-100 font-mono whitespace-pre-wrap break-words">${line}</pre></div>`)
     .join('')
   }, [content, language])
 
@@ -61,7 +61,7 @@ export default function CodeArtifact({ content, language = 'text', className }: 
   }
 
   return (
-    <div className={cn('w-full h-full overflow-auto', className)}>
+    <div className={cn('w-full h-full overflow-auto bauhaus-scrollbar', className)}>
       <div
         ref={containerRef}
         className="w-full h-full font-mono text-sm"

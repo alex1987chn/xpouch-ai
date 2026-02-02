@@ -1,11 +1,14 @@
-import { useState, lazy, Suspense, memo, useCallback, useEffect } from 'react'
+import { useState, lazy, Suspense, memo, useCallback, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { Maximize2, FileCode, LayoutGrid, MessageSquare, Cpu, CheckCircle2, Loader2, Clock, XCircle, Copy, Eye, Code, Lightbulb, ChevronDown, ChevronRight } from 'lucide-react'
+import { 
+  Maximize2, LayoutGrid, FileCode, Terminal, Cpu, Database, Search, Globe, Palette, 
+  Eye, Code2, Copy, Check, Loader2, CheckCircle2, Clock, XCircle, Lightbulb,
+  ChevronDown, ChevronRight
+} from 'lucide-react'
 import { useTaskStore } from '@/store/taskStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import type { Artifact, Task } from '@/store/taskStore'
 
-// Artifact 组件懒加载
 const CodeArtifact = lazy(() => import('@/components/artifacts/CodeArtifact').then(m => ({ default: m.default })))
 const DocArtifact = lazy(() => import('@/components/artifacts/DocArtifact').then(m => ({ default: m.default })))
 const HtmlArtifact = lazy(() => import('@/components/artifacts/HtmlArtifact').then(m => ({ default: m.default })))
@@ -15,7 +18,11 @@ interface OrchestratorPanelV2Props {
   onToggleFullscreen?: () => void
 }
 
-// 状态图标组件
+const expertLabels: Record<string, string> = {
+  search: 'SRCH', coder: 'CODE', researcher: 'RSCH', analyzer: 'DATA',
+  writer: 'WRT', planner: 'PLAN', designer: 'DSGN', architect: 'ARC', default: 'AGENT',
+}
+
 const StatusIcon = memo(({ status }: { status: string }) => {
   switch (status) {
     case 'running': return <Loader2 className="w-3 h-3 animate-spin text-yellow-500" />
@@ -25,333 +32,284 @@ const StatusIcon = memo(({ status }: { status: string }) => {
   }
 })
 
-export default function OrchestratorPanelV2({
-  isFullscreen,
-  onToggleFullscreen,
-}: OrchestratorPanelV2Props) {
+export default function OrchestratorPanelV2({ isFullscreen, onToggleFullscreen }: OrchestratorPanelV2Props) {
   const mode = useTaskStore((state) => state.mode)
-  const isComplexMode = mode === 'complex'
-
-  if (!isComplexMode) {
-    return <SimpleModePanel isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
-  }
-
-  return <ComplexModePanel isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
+  return mode === 'complex' 
+    ? <ComplexModePanel {...{ isFullscreen, onToggleFullscreen }} />
+    : <SimpleModePanel {...{ isFullscreen, onToggleFullscreen }} />
 }
 
 // Simple 模式
-function SimpleModePanel({
-  isFullscreen,
-  onToggleFullscreen,
-}: {
-  isFullscreen?: boolean
-  onToggleFullscreen?: () => void
-}) {
-  const [selectedArtifactIndex, setSelectedArtifactIndex] = useState(0)
-  
+function SimpleModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPanelV2Props) {
+  const [selectedIndex, setSelectedIndex] = useState(0)
   const canvasStore = useCanvasStore.getState()
-  const artifactSessions = canvasStore.artifactSessions
-  const selectedExpertSession = canvasStore.selectedExpertSession
-  
-  const currentSession = selectedExpertSession 
-    ? artifactSessions.find(s => s.expertType === selectedExpertSession)
-    : artifactSessions[0]
-  
+  const sessions = canvasStore.artifactSessions
+  const selected = canvasStore.selectedExpertSession
+  const currentSession = selected ? sessions.find(s => s.expertType === selected) : sessions[0]
   const artifacts = currentSession?.artifacts || []
-  const currentArtifact = artifacts.length > 0 
-    ? artifacts[Math.min(selectedArtifactIndex, artifacts.length - 1)]
-    : null
+  const currentArtifact = artifacts[selectedIndex] || null
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background">
-      {/* 顶部 ARC 标签 */}
-      <div className="h-8 flex items-center justify-end px-2 shrink-0">
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-mono text-muted-foreground px-2 py-1 border border-border">ARC</span>
-          <button onClick={onToggleFullscreen} className="p-1 hover:bg-muted rounded">
-            <Maximize2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-
-      {/* 产物内容区域 */}
-      <div className="flex-1 overflow-hidden">
-        {!currentArtifact ? (
-          <EmptyState />
-        ) : (
-          <ArtifactViewer artifact={currentArtifact} />
-        )}
-      </div>
-
-      {/* 底部状态指示器 */}
-      <div className="h-8 flex items-center justify-center gap-1 shrink-0">
-        {artifacts.length > 0 ? (
-          artifacts.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setSelectedArtifactIndex(idx)}
-              className={cn(
-                "w-1.5 h-1.5 rounded-full transition-colors",
-                selectedArtifactIndex === idx ? "bg-primary" : "bg-muted-foreground/30"
-              )}
-            />
-          ))
-        ) : (
-          <>
-            <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-            <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-            <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// 空状态组件
-function EmptyState() {
-  return (
-    <div className="h-full flex flex-col items-center justify-center">
-      {/* 方框图标 */}
-      <div className="w-16 h-16 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center mb-4">
-        <div className="w-8 h-8 border border-muted-foreground/20" />
-      </div>
-      
-      {/* 文字 */}
-      <p className="text-sm text-muted-foreground mb-2">暂无交付物</p>
-      <p className="text-xs text-muted-foreground/60">等待 AI 生成代码、文档或 HTML</p>
-      
-      {/* 分隔线 */}
-      <div className="w-32 h-px bg-border my-6" />
-      
-      {/* 状态点 */}
-      <div className="flex items-center gap-2">
-        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-        <div className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
-        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-      </div>
+    <div className="flex-1 flex h-full bg-page">
+      <ExpertRailSimple hasArtifact={!!currentArtifact} />
+      <ArtifactDashboard 
+        expertType="assistant" 
+        expertName="AI" 
+        artifacts={artifacts} 
+        selectedArtifact={currentArtifact} 
+        selectedIndex={selectedIndex} 
+        onSelectArtifact={setSelectedIndex} 
+        {...{ isFullscreen, onToggleFullscreen }} 
+      />
     </div>
   )
 }
 
 // Complex 模式
-function ComplexModePanel({
-  isFullscreen,
-  onToggleFullscreen,
-}: {
-  isFullscreen?: boolean
-  onToggleFullscreen?: () => void
-}) {
-  const [selectedArtifactIndex, setSelectedArtifactIndex] = useState(0)
+function ComplexModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPanelV2Props) {
+  const [selectedIndex, setSelectedIndex] = useState(0)
   const [showThinking, setShowThinking] = useState(true)
-
-  const session = useTaskStore((state) => state.session)
   const selectedTaskId = useTaskStore((state) => state.selectedTaskId)
   const selectTask = useTaskStore((state) => state.selectTask)
   const tasks = useTaskStore((state) => state.tasksCache)
-  const runningTaskId = useTaskStore((state) => state.runningTaskId)
-
+  const session = useTaskStore((state) => state.session)
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null
 
-  // 自动选中第一个任务
-  useEffect(() => {
-    if (tasks.length > 0 && !selectedTaskId) {
-      selectTask(tasks[0].id)
-    }
-  }, [tasks, selectedTaskId, selectTask])
+  useEffect(() => { if (tasks.length && !selectedTaskId) selectTask(tasks[0].id) }, [tasks, selectedTaskId, selectTask])
+  useEffect(() => setSelectedIndex(0), [selectedTaskId])
 
-  useEffect(() => {
-    setSelectedArtifactIndex(0)
-  }, [selectedTaskId])
-
-  const handleTaskClick = useCallback((taskId: string) => {
-    selectTask(taskId)
-    setSelectedArtifactIndex(0)
-  }, [selectTask])
-
-  const handleArtifactClick = useCallback((idx: number) => {
-    setSelectedArtifactIndex(idx)
-  }, [])
-
-  const currentArtifact = selectedTask && selectedTask.artifacts.length > 0
-    ? selectedTask.artifacts[Math.min(selectedArtifactIndex, selectedTask.artifacts.length - 1)]
-    : null
+  const currentArtifact = selectedTask?.artifacts[selectedIndex] || null
+  const completedCount = tasks.filter(t => t.status === 'completed' || t.status === 'failed').length
+  const progress = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0
 
   return (
-    <div className="flex-1 flex flex-col bg-card h-full">
-      {/* Header */}
-      <div className="h-10 flex items-center justify-between px-3 border-b border-border bg-muted/50 shrink-0">
-        <div className="flex items-center gap-2">
-          <Cpu className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium">任务执行</span>
-          {session && (
-            <span className="text-xs text-muted-foreground">
-              {session.executionMode === 'sequential' ? '顺序执行' : '并行执行'}
-            </span>
+    <div className="flex-1 flex h-full bg-page">
+      <div className="w-56 border-r-2 border-border flex flex-col shrink-0 bg-page">
+        <div className="border-b border-border">
+          <button onClick={() => setShowThinking(!showThinking)} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/30">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="w-4 h-4 text-yellow-500" />
+              <span className="text-sm font-medium">思考过程</span>
+            </div>
+            {showThinking ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+          {showThinking && session && (
+            <div className="px-3 pb-3 space-y-2 text-xs">
+              <div><span className="font-medium">策略：</span>{session.summary}</div>
+              <div><span className="font-medium">预估：</span>{session.estimatedSteps} 步骤</div>
+              <div className="space-y-1">
+                <div className="flex justify-between"><span>进度</span><span>{progress}%</span></div>
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary" style={{ width: `${progress}%` }} /></div>
+              </div>
+            </div>
           )}
         </div>
-        <button onClick={onToggleFullscreen} className="p-1.5 hover:bg-muted rounded">
-          <Maximize2 className="w-4 h-4" />
-        </button>
+        <ExpertRailComplex tasks={tasks} selectedTaskId={selectedTaskId} onTaskClick={selectTask} />
       </div>
+      <ArtifactDashboard 
+        expertType={selectedTask?.expert_type || 'default'} 
+        expertName={selectedTask?.expert_type || 'Expert'}
+        artifacts={selectedTask?.artifacts || []} 
+        selectedArtifact={currentArtifact}
+        selectedIndex={selectedIndex} 
+        onSelectArtifact={setSelectedIndex} 
+        {...{ isFullscreen, onToggleFullscreen }} 
+      />
+    </div>
+  )
+}
 
-      {/* Main Content */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* 左侧：Thinking Section + 专家栏 */}
-        <div className="w-64 border-r border-border flex flex-col shrink-0">
-          {/* Thinking Section */}
-          <div className="border-b border-border">
-            <button
-              onClick={() => setShowThinking(!showThinking)}
-              className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50"
-            >
-              <div className="flex items-center gap-2">
-                <Lightbulb className="w-4 h-4 text-yellow-500" />
-                <span className="text-sm font-medium">思考过程</span>
+// 专家轨道 - Simple
+function ExpertRailSimple({ hasArtifact }: { hasArtifact: boolean }) {
+  return (
+    <div className="w-14 border-r-2 border-border bg-page flex flex-col items-center py-2 shrink-0">
+      <div className="w-[1px] h-4 bg-border/50 mb-2" />
+      <div className="relative group">
+        <div className="w-10 h-10 border-2 border-border bg-card shadow-[2px_2px_0_0_rgba(0,0,0,0.2)] flex items-center justify-center">
+          <span className="font-black text-xs text-primary">AI</span>
+        </div>
+        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-card rounded-full flex items-center justify-center">
+          <StatusIcon status={hasArtifact ? 'completed' : 'running'} />
+        </div>
+      </div>
+      <div className="flex-1 w-[1px] bg-border/30 border-l border-dashed border-border/30 min-h-[20px] mt-4" />
+    </div>
+  )
+}
+
+// 专家轨道 - Complex
+function ExpertRailComplex({ tasks, selectedTaskId, onTaskClick }: { 
+  tasks: Task[], selectedTaskId: string | null, onTaskClick: (id: string) => void 
+}) {
+  return (
+    <div className="flex-1 overflow-y-auto py-2">
+      <div className="flex flex-col items-center gap-3">
+        {tasks.map((task, idx) => {
+          const isActive = selectedTaskId === task.id || (!selectedTaskId && idx === 0)
+          const label = expertLabels[task.expert_type] || expertLabels.default
+          return (
+            <div key={task.id} className="group relative w-full flex justify-center">
+              {isActive && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-[2px] bg-border z-20" />}
+              <button onClick={() => onTaskClick(task.id)}
+                className={cn("w-10 h-10 border-2 flex items-center justify-center transition-all relative z-10",
+                  isActive ? "border-border bg-card shadow-[2px_2px_0_0_rgba(0,0,0,0.2)]" : "border-border/60 bg-page/80 hover:border-border")}>
+                <span className={cn("font-black text-xs", isActive ? "text-primary" : "text-muted-foreground")}>{label}</span>
+              </button>
+              <div className={cn("absolute left-14 top-2 bg-primary text-primary-foreground text-[9px] px-2 py-1 whitespace-nowrap z-50 border",
+                "opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity")}>
+                {task.expert_type} ({task.status})
               </div>
-              {showThinking ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            </button>
-            
-            {showThinking && (
-              <div className="px-3 pb-3 space-y-2">
-                {session ? (
-                  <>
-                    <div className="text-xs text-muted-foreground">
-                      <span className="font-medium">策略：</span>{session.summary}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      <span className="font-medium">预估步骤：</span>{session.estimatedSteps}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-muted-foreground">进度：</span>
-                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary transition-all"
-                          style={{ 
-                            width: `${tasks.length > 0 
-                              ? Math.round((tasks.filter(t => t.status === 'completed' || t.status === 'failed').length / tasks.length) * 100)
-                              : 0}%` 
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {tasks.filter(t => t.status === 'completed' || t.status === 'failed').length}/{tasks.length}
-                      </span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-xs text-muted-foreground">等待任务计划...</div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// Artifact 仪表盘
+interface ArtifactDashboardProps {
+  expertType: string
+  expertName: string
+  artifacts: Artifact[]
+  selectedArtifact: Artifact | null
+  selectedIndex: number
+  onSelectArtifact: (index: number) => void
+  isFullscreen?: boolean
+  onToggleFullscreen?: () => void
+}
+
+function ArtifactDashboard({ expertType, expertName, artifacts, selectedArtifact, selectedIndex, 
+  onSelectArtifact, isFullscreen, onToggleFullscreen }: ArtifactDashboardProps) {
+  const tabsRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const checkScroll = () => {
+    const container = tabsRef.current
+    if (container) {
+      setCanScrollLeft(container.scrollLeft > 0)
+      setCanScrollRight(container.scrollLeft < container.scrollWidth - container.clientWidth - 5)
+    }
+  }
+
+  useEffect(() => {
+    checkScroll()
+    const container = tabsRef.current
+    if (container) {
+      container.addEventListener('scroll', checkScroll)
+      return () => container.removeEventListener('scroll', checkScroll)
+    }
+  }, [artifacts])
+
+  const scrollLeft = () => tabsRef.current?.scrollBy({ left: -100, behavior: 'smooth' })
+  const scrollRight = () => tabsRef.current?.scrollBy({ left: 100, behavior: 'smooth' })
+
+  return (
+    <div className="flex-1 flex flex-col min-w-0 bg-page overflow-hidden">
+      {/* Tab 栏 - 文件夹标签风格 */}
+      <div className="h-10 flex items-end px-2 gap-1 border-b-2 border-border bg-panel shrink-0">
+        {canScrollLeft && (
+          <button onClick={scrollLeft} className="h-7 w-6 flex items-center justify-center bg-panel border-2 border-border hover:bg-card shrink-0">
+            <span className="text-xs">←</span>
+          </button>
+        )}
+        
+        {artifacts.length > 0 && (
+          <div className="h-7 px-3 flex items-center gap-2 bg-accent text-accent-foreground border-2 border-border shrink-0">
+            <span className="font-mono text-xs font-bold uppercase">{expertName}</span>
+            <span className="text-[10px] opacity-70">({artifacts.length})</span>
+          </div>
+        )}
+        
+        {artifacts.length > 0 && <div className="w-px h-5 bg-border mx-1 shrink-0" />}
+        
+        <div ref={tabsRef} className="flex-1 flex items-end gap-1 overflow-x-auto scrollbar-hide">
+          {artifacts.length === 0 ? (
+            <div className="h-7 px-4 flex items-center text-muted-foreground/60 text-xs font-mono">等待交付物...</div>
+          ) : (
+            artifacts.map((artifact, idx) => (
+              <button
+                key={artifact.id}
+                onClick={() => onSelectArtifact(idx)}
+                className={cn(
+                  "h-7 px-3 flex items-center gap-2 transition-all shrink-0",
+                  selectedIndex === idx
+                    ? "h-8 bg-card border-2 border-border border-b-0 top-[2px] z-10 text-primary shadow-[0_-2px_0_0_hsl(var(--accent))]"
+                    : "bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100 text-muted-foreground"
                 )}
-              </div>
-            )}
-          </div>
-
-          {/* 专家列表 */}
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {tasks.map((task, index) => {
-              const isSelected = selectedTaskId === task.id
-              const isRunning = runningTaskId === task.id
-              
-              return (
-                <button
-                  key={task.id}
-                  onClick={() => handleTaskClick(task.id)}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-2 py-2 rounded text-left transition-all",
-                    isSelected
-                      ? "bg-primary/10 border border-primary/30"
-                      : "hover:bg-muted/50 border border-transparent"
-                  )}
-                >
-                  <div className={cn(
-                    "w-8 h-8 rounded flex items-center justify-center text-xs font-bold shrink-0",
-                    isRunning 
-                      ? "bg-yellow-500/20 text-yellow-600 border border-yellow-500/30"
-                      : task.status === 'completed'
-                        ? "bg-green-500/20 text-green-600 border border-green-500/30"
-                        : task.status === 'failed'
-                          ? "bg-red-500/20 text-red-600 border border-red-500/30"
-                          : "bg-muted text-muted-foreground border border-border"
-                  )}>
-                    {task.expert_type.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium truncate">
-                      {task.expert_type}
-                    </div>
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <StatusIcon status={task.status} />
-                      <span>{task.status === 'pending' ? '等待中' : task.status === 'running' ? '执行中' : task.status === 'completed' ? '已完成' : '失败'}</span>
-                      {task.artifacts.length > 0 && (
-                        <span className="text-primary">• {task.artifacts.length} 产物</span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
+              >
+                <FileCode className="w-3 h-3" />
+                <span className="font-mono text-xs font-bold truncate max-w-[100px]">
+                  {artifact.title || `${expertName}-${idx + 1}`}
+                </span>
+              </button>
+            ))
+          )}
         </div>
 
-        {/* 右侧：Artifact 区域 */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Artifact Header */}
-          <div className="h-9 flex items-center justify-between px-3 border-b border-border bg-muted/30 shrink-0">
-            <div className="flex items-center gap-2 overflow-x-auto">
-              {!selectedTask ? (
-                <span className="text-xs text-muted-foreground">选择专家查看产物</span>
-              ) : selectedTask.artifacts.length === 0 ? (
-                <span className="text-xs text-muted-foreground">
-                  {selectedTask.status === 'running' ? '正在生成...' : '暂无产物'}
-                </span>
-              ) : (
-                selectedTask.artifacts.map((artifact, idx) => (
-                  <button
-                    key={artifact.id}
-                    onClick={() => handleArtifactClick(idx)}
-                    className={cn(
-                      "px-2 py-1 text-xs rounded transition-colors whitespace-nowrap",
-                      selectedArtifactIndex === idx
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                    )}
-                  >
-                    {artifact.title || `产物 ${idx + 1}`}
-                  </button>
-                ))
-              )}
-            </div>
+        {canScrollRight && (
+          <button onClick={scrollRight} className="h-7 w-6 flex items-center justify-center bg-panel border-2 border-border hover:bg-card shrink-0">
+            <span className="text-xs">→</span>
+          </button>
+        )}
+      </div>
 
-            {/* 工具按钮 */}
-            {currentArtifact && (
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={() => navigator.clipboard.writeText(currentArtifact.content)}
-                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded"
-                  title="复制"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
+      {/* 内容区 - 使用主题滚动条 */}
+      <div className="flex-1 bg-card p-4 overflow-hidden relative min-h-0 min-w-0">
+        <div className="absolute inset-0 dot-grid opacity-30 pointer-events-none" />
+        <div className="absolute inset-4 border border-border bg-card shadow-sm flex flex-col overflow-hidden min-w-0">
+          {!selectedArtifact ? (
+            <EmptyState />
+          ) : (
+            <ArtifactContent 
+              artifact={selectedArtifact} 
+              onToggleFullscreen={onToggleFullscreen}
+              isFullscreen={isFullscreen}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* 底部状态栏 */}
+      <div className="bg-primary text-primary-foreground border-t-2 border-border px-3 py-1.5 flex justify-between items-center text-[9px] font-mono shrink-0">
+        <div className="flex gap-4">
+          <span>CPU: 12%</span>
+          <span>MEM: 402MB</span>
+          <span className="text-accent">NET: CONNECTED</span>
+        </div>
+        <span>Ln 1, Col 1</span>
+      </div>
+    </div>
+  )
+}
+
+// 空状态
+function EmptyState() {
+  return (
+    <div className="h-full flex flex-col items-center justify-center p-8 border-2 border-dashed border-border/30 bg-panel/50">
+      <div className="text-center space-y-6">
+        <div className="flex justify-center">
+          <div className="w-16 h-16 border-2 border-border bg-card shadow-hard flex items-center justify-center">
+            <LayoutGrid className="w-8 h-8 text-muted-foreground" />
           </div>
-
-          {/* Artifact Content */}
-          <div className="flex-1 overflow-hidden">
-            {!currentArtifact ? (
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center space-y-3">
-                  <LayoutGrid className="w-10 h-10 mx-auto text-muted-foreground/50" />
-                  <p className="text-sm text-muted-foreground">
-                    {selectedTask ? '该专家暂无产物' : '选择专家查看产物'}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <ArtifactViewer artifact={currentArtifact} />
-            )}
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-primary">暂无交付物</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+            等待专家生成交付物。任务进行时，交付物将显示在这里。
+          </p>
+        </div>
+        <div className="flex justify-center gap-2 pt-4">
+          <div className="w-2 h-2 bg-border/30" />
+          <div className="w-2 h-2 bg-border/50" />
+          <div className="w-2 h-2 bg-accent" />
+          <div className="w-2 h-2 bg-border/50" />
+          <div className="w-2 h-2 bg-border/30" />
+        </div>
+        <div className="pt-4 border-t border-border/20">
+          <div className="text-[9px] font-mono text-muted-foreground/70">
+            STATUS: <span className="text-accent">WAITING_FOR_TASK</span>
           </div>
         </div>
       </div>
@@ -359,97 +317,142 @@ function ComplexModePanel({
   )
 }
 
-// Artifact 查看器组件
-interface ArtifactViewerProps {
+// Artifact 内容渲染
+interface ArtifactContentProps {
   artifact: Artifact
+  onToggleFullscreen?: () => void
+  isFullscreen?: boolean
 }
 
-function ArtifactViewer({ artifact }: ArtifactViewerProps) {
-  const [viewMode, setViewMode] = useState<'code' | 'preview'>('code')
-  const ArtifactLoader = () => <div className="h-full flex items-center justify-center text-sm text-muted-foreground">加载中...</div>
+function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: ArtifactContentProps) {
+  const [viewMode, setViewMode] = useState<'code' | 'preview'>(artifact.type === 'html' ? 'preview' : 'code')
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(async () => {
+    const text = artifact?.content || ''
+    if (!text) return
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Copy failed:', err)
+    }
+  }, [artifact])
+
+  const canPreview = ['markdown', 'html', 'code'].includes(artifact.type)
+
+  const ArtifactLoader = () => (
+    <div className="h-full flex items-center justify-center">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+        <div className="w-2 h-2 bg-accent animate-pulse" />
+        <span>加载中...</span>
+      </div>
+    </div>
+  )
 
   return (
     <div className="h-full flex flex-col">
-      {/* Toolbar */}
-      <div className="h-8 flex items-center justify-between px-3 border-b border-border bg-muted/20 shrink-0">
+      {/* 工具栏 - Bauhaus 工业风格 */}
+      <div className="flex items-center justify-between px-2 py-1.5 border-b border-border bg-panel shrink-0">
+        {/* 左侧装饰性图标 */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium">{artifact.title || '未命名产物'}</span>
-          <span className="text-xs text-muted-foreground">({artifact.type})</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {/* 视图切换 */}
-          <button
-            onClick={() => setViewMode('code')}
-            className={cn(
-              "p-1.5 rounded transition-colors",
-              viewMode === 'code' ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
-            )}
-            title="源码"
-          >
-            <Code className="w-3.5 h-3.5" />
-          </button>
-          {(artifact.type === 'html' || artifact.type === 'markdown') && (
-            <button
-              onClick={() => setViewMode('preview')}
-              className={cn(
-                "p-1.5 rounded transition-colors",
-                viewMode === 'preview' ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
-              )}
-              title="预览"
-            >
-              <Eye className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <div className="flex items-end gap-1">
+            <div className="w-3 h-3 bg-accent border border-border" />
+            <div className="w-2 h-2 bg-card border-2 border-border" />
+            <div className="w-1.5 h-1.5 bg-primary/60 border border-border/50" />
+          </div>
           <div className="w-px h-4 bg-border mx-1" />
+          <div className="flex items-center gap-1 text-[10px] font-mono text-primary uppercase">
+            <FileCode className="w-3 h-3 text-accent" />
+            <span className="font-bold">{artifact.type}</span>
+          </div>
+        </div>
+
+        {/* 右侧工具按钮 - 无文字 */}
+        <div className="flex items-center gap-1">
+          {canPreview && (
+            <>
+              <button
+                onClick={() => setViewMode('code')}
+                className={cn(
+                  "w-7 h-7 flex items-center justify-center border-2 transition-all",
+                  viewMode === 'code'
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+                )}
+                title="代码"
+              >
+                <Code2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode('preview')}
+                className={cn(
+                  "w-7 h-7 flex items-center justify-center border-2 transition-all",
+                  viewMode === 'preview'
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+                )}
+                title="预览"
+              >
+                <Eye className="w-3.5 h-3.5" />
+              </button>
+              <div className="w-px h-4 bg-border/50 mx-1" />
+            </>
+          )}
+
           <button
-            onClick={() => navigator.clipboard.writeText(artifact.content)}
-            className="p-1.5 text-muted-foreground hover:text-foreground rounded"
-            title="复制"
+            onClick={handleCopy}
+            className={cn(
+              "w-7 h-7 flex items-center justify-center border-2 transition-all",
+              copied
+                ? "bg-green-500 text-white border-green-500"
+                : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+            )}
+            title={copied ? '已复制' : '复制'}
           >
-            <Copy className="w-3.5 h-3.5" />
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
+
+          <div className="w-px h-4 bg-border/50 mx-1" />
+
+          <button
+            onClick={onToggleFullscreen}
+            className={cn(
+              "w-7 h-7 flex items-center justify-center border-2 transition-all",
+              isFullscreen
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+            )}
+            title={isFullscreen ? '退出全屏' : '全屏'}
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto">
-        {viewMode === 'preview' && artifact.type === 'html' ? (
-          <iframe
-            srcDoc={artifact.content}
-            className="w-full h-full border-0"
-            sandbox="allow-scripts"
-            title={artifact.title || 'Preview'}
-          />
-        ) : viewMode === 'preview' && artifact.type === 'markdown' ? (
+      {/* 内容区域 - 确保不会溢出 */}
+      <div className="flex-1 overflow-hidden min-h-0 min-w-0 relative">
+        {viewMode === 'code' ? (
           <Suspense fallback={<ArtifactLoader />}>
-            <div className="p-4">
-              <DocArtifact content={artifact.content} />
+            <div className="h-full w-full overflow-auto bauhaus-scrollbar">
+              <CodeArtifact content={artifact.content} language={artifact.language || artifact.type} />
             </div>
           </Suspense>
         ) : (
           <Suspense fallback={<ArtifactLoader />}>
-            <ArtifactContent artifact={artifact} />
+            <div className="h-full w-full overflow-auto bauhaus-scrollbar p-4">
+              {artifact.type === 'markdown' ? (
+                <DocArtifact content={artifact.content} />
+              ) : artifact.type === 'html' ? (
+                <HtmlArtifact content={artifact.content} />
+              ) : (
+                <CodeArtifact content={artifact.content} language={artifact.language || artifact.type} />
+              )}
+            </div>
           </Suspense>
         )}
       </div>
     </div>
   )
-}
-
-// Artifact 内容组件
-function ArtifactContent({ artifact }: { artifact: Artifact }) {
-  switch (artifact.type) {
-    case 'code':
-      return <CodeArtifact content={artifact.content} language={artifact.language} />
-    case 'markdown':
-      return <DocArtifact content={artifact.content} />
-    case 'html':
-      return <HtmlArtifact content={artifact.content} />
-    default:
-      return (
-        <div className="p-4">
-          <pre className="text-sm whitespace-pre-wrap">{artifact.content}</pre>
-        </div>
-      )
-  }
 }
