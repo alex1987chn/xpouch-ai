@@ -140,6 +140,13 @@ const config: Config = {
           "0%, 100%": { transform: "translate(0, 0)" },
           "50%": { transform: "translate(-2px, -2px)" },
         },
+        // Industrial Bus Flow Animation
+        "bus-flow": {
+          "0%, 100%": { transform: "translateY(-100%)", opacity: "0" },
+          "10%": { opacity: "0.8" },
+          "90%": { opacity: "0.8" },
+          "100%": { transform: "translateY(100%)", opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -147,6 +154,7 @@ const config: Config = {
         "pulse-glow": "pulse-glow 0.8s ease-in-out infinite",
         "bauhaus-press": "bauhaus-press 0.1s ease-out forwards",
         "bauhaus-float": "bauhaus-float 0.3s ease-out",
+        "bus-flow": "bus-flow 2s ease-in-out infinite",
       },
       backdropBlur: {
         xl: "20px",

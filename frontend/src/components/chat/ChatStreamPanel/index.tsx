@@ -92,6 +92,20 @@ export default function ChatStreamPanel({
     onSend()
   }
 
+  // 过滤消息：在复杂模式下，隐藏内容为空的 AI 消息（避免显示空消息气泡）
+  // 严格检查：内容为空、只有空白字符、或只有 markdown 空白符
+  const hasRealContent = (content: string): boolean => {
+    if (!content) return false
+    // 移除所有空白字符后检查是否有实质内容
+    const stripped = content.replace(/\s/g, '').replace(/[\n\r\t]/g, '')
+    return stripped.length > 0
+  }
+
+  // 复杂模式下始终过滤空 AI 消息（不只是生成中时）
+  const displayMessages = conversationMode === 'complex'
+    ? messages.filter(msg => !(msg.role === 'assistant' && !hasRealContent(msg.content)))
+    : messages
+
   return (
     <>
       {/* 消息列表区域 */}
@@ -99,14 +113,14 @@ export default function ChatStreamPanel({
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-6 space-y-8 dot-grid scrollbar-hide"
       >
-        {messages.length === 0 ? (
+        {displayMessages.length === 0 ? (
           <EmptyState />
         ) : (
-          messages.map((msg, index) => (
+          displayMessages.map((msg, index) => (
             <MessageItem
               key={msg.id || index}
               message={msg}
-              isLast={index === messages.length - 1}
+              isLast={index === displayMessages.length - 1}
               activeExpert={activeExpert}
               onRegenerate={onRegenerate}
               onLinkClick={onLinkClick}
