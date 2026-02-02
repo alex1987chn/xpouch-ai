@@ -68,7 +68,7 @@ export default function UnifiedChatPage() {
       const customAgents = useChatStore.getState().customAgents
       return customAgents.find(a => a.id === selectedAgentId)
     }
-  }, [])
+  }, [normalizedAgentId])
 
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
@@ -94,11 +94,8 @@ export default function UnifiedChatPage() {
     }
   }, [])
 
-  // 加载历史会话（只执行一次）
+  // 加载历史会话（conversationId 或 normalizedAgentId 改变时重新加载）
   useEffect(() => {
-    if (conversationLoadedRef.current) return
-    conversationLoadedRef.current = true
-
     if (conversationId) {
       if (isNewConversation) {
         useChatStore.getState().setCurrentConversationId(conversationId)
@@ -110,9 +107,12 @@ export default function UnifiedChatPage() {
       }
 
       const storeCurrentId = useChatStore.getState().currentConversationId
+      const storeAgentId = useChatStore.getState().selectedAgentId
       const isSwitchingConversation = storeCurrentId !== conversationId
-      
-      if (isSwitchingConversation) {
+      const isSwitchingAgent = storeAgentId !== normalizedAgentId
+
+      // 如果切换了会话或智能体，先清空旧消息
+      if (isSwitchingConversation || isSwitchingAgent) {
         useChatStore.getState().setMessages([])
       }
 
@@ -131,7 +131,7 @@ export default function UnifiedChatPage() {
       clearTasks()
       setMode('simple')
     }
-  }, [])
+  }, [conversationId, normalizedAgentId, isNewConversation])
 
   // 恢复草稿（只依赖 conversationId）
   useEffect(() => {

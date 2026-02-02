@@ -274,7 +274,9 @@ export default function HomePage() {
 
   // 点击智能体卡片 - 恢复该智能体的最近会话或创建新会话
   const handleAgentClick = useCallback(async (agentId: string) => {
-    setSelectedAgentId(agentId)
+    // 👈 先清空消息，避免显示旧会话的缓存
+    useChatStore.getState().setMessages([])
+    useChatStore.getState().setSelectedAgentId(agentId)
 
     // 👈 默认助手：直接创建新会话（不查询历史）
     if (agentId === SYSTEM_AGENTS.DEFAULT_CHAT) {
@@ -288,7 +290,7 @@ export default function HomePage() {
     try {
       const store = useChatStore.getState()
       let conversations: Conversation[]
-      
+
       // 1. 优先使用缓存，缓存不存在或过期则发起请求
       if (store.conversationsCache && !store.shouldFetchConversations()) {
         conversations = store.conversationsCache
@@ -327,7 +329,7 @@ export default function HomePage() {
       useChatStore.getState().setCurrentConversationId(newId)
       navigate(`/chat/${newId}?agentId=${agentId}`, { state: { isNew: true } })
     }
-  }, [setSelectedAgentId, navigate])
+  }, [navigate])
 
   const handleCreateAgent = useCallback(() => {
     navigate('/create-agent')
