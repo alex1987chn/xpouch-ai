@@ -39,7 +39,7 @@ export default function OrchestratorPanelV2({
   return <ComplexModePanel isFullscreen={isFullscreen} onToggleFullscreen={onToggleFullscreen} />
 }
 
-// Simple 模式
+// Simple 模式 - 参考之前的设计风格
 function SimpleModePanel({
   isFullscreen,
   onToggleFullscreen,
@@ -63,55 +63,74 @@ function SimpleModePanel({
     : null
 
   return (
-    <div className="flex-1 flex flex-col bg-card h-full">
-      {/* Header */}
-      <div className="h-10 flex items-center justify-between px-3 border-b border-border bg-muted/50 shrink-0">
-        <div className="flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium">对话</span>
+    <div className="flex-1 flex flex-col h-full bg-background">
+      {/* 顶部 ARC 标签 */}
+      <div className="h-8 flex items-center justify-end px-2 shrink-0">
+        <div className="flex items-center gap-1">
+          <span className="text-xs font-mono text-muted-foreground px-2 py-1 border border-border">ARC</span>
+          <button onClick={onToggleFullscreen} className="p-1 hover:bg-muted rounded">
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
         </div>
-        <button onClick={onToggleFullscreen} className="p-1.5 hover:bg-muted rounded">
-          <Maximize2 className="w-4 h-4" />
-        </button>
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0">
-        {/* Artifact Tabs */}
-        <div className="h-9 flex items-end px-2 gap-1 border-b border-border bg-muted/30 shrink-0">
-          {artifacts.length === 0 ? (
-            <div className="h-7 px-4 flex items-center text-muted-foreground text-xs">等待生成产物...</div>
-          ) : (
-            artifacts.map((artifact, idx) => (
-              <button
-                key={artifact.id}
-                onClick={() => setSelectedArtifactIndex(idx)}
-                className={cn(
-                  "h-7 px-3 flex items-center gap-2 text-xs transition-all",
-                  selectedArtifactIndex === idx
-                    ? "bg-card border-t border-x border-border text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <FileCode className="w-3.5 h-3.5" />
-                <span className="truncate max-w-[120px]">{artifact.title || `产物 ${idx + 1}`}</span>
-              </button>
-            ))
-          )}
-        </div>
+      {/* 产物内容区域 */}
+      <div className="flex-1 overflow-hidden">
+        {!currentArtifact ? (
+          <EmptyState />
+        ) : (
+          <ArtifactViewer artifact={currentArtifact} />
+        )}
+      </div>
 
-        {/* Artifact Content */}
-        <div className="flex-1 overflow-hidden">
-          {!currentArtifact ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center space-y-3">
-                <LayoutGrid className="w-10 h-10 mx-auto text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">等待 AI 生成产物</p>
-              </div>
-            </div>
-          ) : (
-            <ArtifactViewer artifact={currentArtifact} />
-          )}
-        </div>
+      {/* 底部状态指示器 */}
+      <div className="h-8 flex items-center justify-center gap-1 shrink-0">
+        {artifacts.length > 0 ? (
+          artifacts.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setSelectedArtifactIndex(idx)}
+              className={cn(
+                "w-1.5 h-1.5 rounded-full transition-colors",
+                selectedArtifactIndex === idx ? "bg-primary" : "bg-muted-foreground/30"
+              )}
+            />
+          ))
+        ) : (
+          <>
+            <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+            <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+            <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// 空状态组件
+function EmptyState() {
+  return (
+    <div className="h-full flex flex-col items-center justify-center">
+      {/* 方框图标 */}
+      <div className="w-16 h-16 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center mb-4">
+        <div className="w-8 h-8 border border-muted-foreground/20" />
+      </div>
+      
+      {/* 文字 */}
+      <p className="text-sm text-muted-foreground mb-2">暂无交付物</p>
+      <p className="text-xs text-muted-foreground/60">等待 AI 生成代码、文档或 HTML</p>
+      
+      {/* 分隔线 */}
+      <div className="w-32 h-px bg-border my-6" />
+      
+      {/* 状态点 */}
+      <div className="flex items-center gap-2">
+        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+        <div className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
+        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
       </div>
     </div>
   )
