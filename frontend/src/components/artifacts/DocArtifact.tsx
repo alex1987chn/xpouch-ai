@@ -14,30 +14,41 @@ interface DocArtifactProps {
 // Mermaid 代码块组件
 function MermaidCode({ children }: { children?: React.ReactNode }) {
   const codeRef = useRef<HTMLDivElement>(null)
+  const isMounted = useRef(true)
   const content = React.Children.toArray(children)
     .map(child => React.isValidElement(child) ? (child as React.ReactElement).props.children : child)
     .join('')
 
   useEffect(() => {
+    isMounted.current = true
+
     const renderMermaid = async () => {
-      if (!codeRef.current || !content) return
+      // 检查组件是否仍然挂载
+      if (!isMounted.current || !codeRef.current || !content) return
 
       try {
         const { mermaid } = await import('mermaid')
         await mermaid.initialize({ startOnLoad: false, theme: 'default' })
         const { svg } = await mermaid.render(`mermaid-${Date.now()}`, content)
-        if (codeRef.current) {
+
+        // 再次检查组件是否仍然挂载
+        if (isMounted.current && codeRef.current) {
           codeRef.current.innerHTML = svg
         }
       } catch (error) {
         console.error('Mermaid render error:', error)
-        if (codeRef.current) {
+        if (isMounted.current && codeRef.current) {
           codeRef.current.innerHTML = `<pre class="bg-slate-100 dark:bg-slate-800 p-4 border border-border overflow-x-auto my-4 font-mono text-sm">${content}</pre>`
         }
       }
     }
 
     renderMermaid()
+
+    // Cleanup 函数
+    return () => {
+      isMounted.current = false
+    }
   }, [content])
 
   return <div ref={codeRef} className="flex justify-center my-4" />

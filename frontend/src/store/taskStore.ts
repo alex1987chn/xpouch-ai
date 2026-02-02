@@ -6,6 +6,7 @@
 
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
+import { enableMapSet } from 'immer'
 import { persist } from './middleware/persist'
 import type {
   TaskInfo,
@@ -15,6 +16,9 @@ import type {
   TaskFailedData,
   ArtifactGeneratedData
 } from '@/types/events'
+
+// 启用 Immer 的 Map/Set 支持（必须在 create 之前调用）
+enableMapSet()
 
 // ============================================================================
 // 类型定义
@@ -80,6 +84,7 @@ interface TaskState {
   completeTask: (data: TaskCompletedData) => void
   failTask: (data: TaskFailedData) => void
   addArtifact: (data: ArtifactGeneratedData) => void
+  replaceArtifacts: (taskId: string, artifacts: Artifact[]) => void
   selectTask: (taskId: string | null) => void
   clearTasks: () => void
 
@@ -165,8 +170,13 @@ export const useTaskStore = create<TaskState>()(
         state.runningTaskId = null
         state.selectedTaskId = null
 
-        // 更新缓存（冻结缓存，避免 immer 复制）
-        const sortedTasks = Array.from(state.tasks.values()).sort((a, b) => a.sort_order - b.sort_order)
+        // 更新缓存（深拷贝避免 Immer proxy 被 revoke 后访问报错）
+        const sortedTasks = Array.from(state.tasks.values())
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map(task => ({
+            ...task,
+            artifacts: task.artifacts.map(a => ({...a}))  // 深拷贝 artifact
+          }))
         state.tasksCache = Object.freeze(sortedTasks)
         state.tasksCacheVersion++
       })
@@ -196,9 +206,14 @@ export const useTaskStore = create<TaskState>()(
           task.startedAt = data.started_at
         }
         state.runningTaskId = data.task_id
-        // 更新缓存（任务状态变化为 running，需要触发UI更新）
+        // 更新缓存（深拷贝避免 Immer proxy 问题）
         state.tasksCache = Object.freeze(
-          Array.from(state.tasks.values()).sort((a, b) => a.sort_order - b.sort_order)
+          Array.from(state.tasks.values())
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map(task => ({
+              ...task,
+              artifacts: task.artifacts.map(a => ({...a}))
+            }))
         )
         state.tasksCacheVersion++
       })
@@ -224,9 +239,14 @@ export const useTaskStore = create<TaskState>()(
         if (!state.selectedTaskId && data.artifact_count > 0 && state.selectedTaskId !== data.task_id) {
           state.selectedTaskId = data.task_id
         }
-        // 更新缓存（任务状态变化，需要重新生成缓存以触发UI更新）
+        // 更新缓存（深拷贝避免 Immer proxy 问题）
         state.tasksCache = Object.freeze(
-          Array.from(state.tasks.values()).sort((a, b) => a.sort_order - b.sort_order)
+          Array.from(state.tasks.values())
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map(task => ({
+              ...task,
+              artifacts: task.artifacts.map(a => ({...a}))
+            }))
         )
         state.tasksCacheVersion++
       })
@@ -246,9 +266,14 @@ export const useTaskStore = create<TaskState>()(
         if (state.runningTaskId === data.task_id) {
           state.runningTaskId = null
         }
-        // 更新缓存（任务状态变化为 failed，需要触发UI更新）
+        // 更新缓存（深拷贝避免 Immer proxy 问题）
         state.tasksCache = Object.freeze(
-          Array.from(state.tasks.values()).sort((a, b) => a.sort_order - b.sort_order)
+          Array.from(state.tasks.values())
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map(task => ({
+              ...task,
+              artifacts: task.artifacts.map(a => ({...a}))
+            }))
         )
         state.tasksCacheVersion++
       })
@@ -278,9 +303,37 @@ export const useTaskStore = create<TaskState>()(
         if (state.selectedTaskId !== data.task_id) {
           state.selectedTaskId = data.task_id
         }
-        // 更新缓存（artifact 变化，需要重新生成缓存以触发UI更新）
+        // 更新缓存（深拷贝避免 Immer proxy 问题）
         state.tasksCache = Object.freeze(
-          Array.from(state.tasks.values()).sort((a, b) => a.sort_order - b.sort_order)
+          Array.from(state.tasks.values())
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map(task => ({
+              ...task,
+              artifacts: task.artifacts.map(a => ({...a}))
+            }))
+        )
+        state.tasksCacheVersion++
+      })
+    },
+
+    /**
+     * 替换任务的产物列表
+     * 用于简单模式：每次预览时替换为新的 artifact
+     */
+    replaceArtifacts: (taskId: string, artifacts: Artifact[]) => {
+      set((state) => {
+        const task = state.tasks.get(taskId)
+        if (task) {
+          task.artifacts = artifacts
+        }
+        // 更新缓存（深拷贝避免 Immer proxy 问题）
+        state.tasksCache = Object.freeze(
+          Array.from(state.tasks.values())
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map(task => ({
+              ...task,
+              artifacts: task.artifacts.map(a => ({...a}))
+            }))
         )
         state.tasksCacheVersion++
       })
