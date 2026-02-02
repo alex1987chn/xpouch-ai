@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useTaskStore } from '@/store/taskStore'
 import type { Artifact, Task } from '@/store/taskStore'
+import { SIMPLE_TASK_ID } from '@/constants/task'
 
 const CodeArtifact = lazy(() => import('@/components/artifacts/CodeArtifact').then(m => ({ default: m.default })))
 const DocArtifact = lazy(() => import('@/components/artifacts/DocArtifact').then(m => ({ default: m.default })))
@@ -33,14 +34,12 @@ const StatusIcon = memo(({ status }: { status: string }) => {
 
 export default function OrchestratorPanelV2({ isFullscreen, onToggleFullscreen }: OrchestratorPanelV2Props) {
   const mode = useTaskStore((state) => state.mode)
-  return mode === 'complex' 
+  return mode === 'complex'
     ? <ComplexModePanel {...{ isFullscreen, onToggleFullscreen }} />
     : <SimpleModePanel {...{ isFullscreen, onToggleFullscreen }} />
 }
 
 // Simple 模式 - 使用 taskStore 承载预览内容
-const SIMPLE_TASK_ID = 'simple_session'
-
 function SimpleModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPanelV2Props) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const tasks = useTaskStore((state) => state.tasksCache)

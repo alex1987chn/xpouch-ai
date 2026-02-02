@@ -68,16 +68,8 @@ export interface TaskStartedData {
   started_at: string
 }
 
+
 export type TaskStartedEvent = SSEEvent<TaskStartedData>
-
-export interface TaskProgressData {
-  task_id: string
-  expert_type: string
-  progress: number // 0.0 - 1.0
-  message?: string
-}
-
-export type TaskProgressEvent = SSEEvent<TaskProgressData>
 
 export interface TaskCompletedData {
   task_id: string
@@ -169,7 +161,6 @@ export type ErrorEvent = SSEEvent<ErrorData>
 export type AnyServerEvent =
   | PlanCreatedEvent
   | TaskStartedEvent
-  | TaskProgressEvent
   | TaskCompletedEvent
   | TaskFailedEvent
   | ArtifactGeneratedEvent
@@ -197,47 +188,4 @@ export function parseSSEEvent(data: unknown): AnyServerEvent | null {
   }
 
   return event as AnyServerEvent
-}
-
-/**
- * 类型守卫函数
- */
-export function isPlanCreatedEvent(event: AnyServerEvent): event is PlanCreatedEvent {
-  return event.type === 'plan.created'
-}
-
-export function isTaskStartedEvent(event: AnyServerEvent): event is TaskStartedEvent {
-  return event.type === 'task.started'
-}
-
-export function isTaskProgressEvent(event: AnyServerEvent): event is TaskProgressEvent {
-  return event.type === 'task.progress'
-}
-
-export function isTaskCompletedEvent(event: AnyServerEvent): event is TaskCompletedEvent {
-  return event.type === 'task.completed'
-}
-
-export function isTaskFailedEvent(event: AnyServerEvent): event is TaskFailedEvent {
-  return event.type === 'task.failed'
-}
-
-export function isArtifactGeneratedEvent(event: AnyServerEvent): event is ArtifactGeneratedEvent {
-  return event.type === 'artifact.generated'
-}
-
-export function isMessageDeltaEvent(event: AnyServerEvent): event is MessageDeltaEvent {
-  return event.type === 'message.delta'
-}
-
-export function isMessageDoneEvent(event: AnyServerEvent): event is MessageDoneEvent {
-  return event.type === 'message.done'
-}
-
-export function isRouterDecisionEvent(event: AnyServerEvent): event is RouterDecisionEvent {
-  return event.type === 'router.decision'
-}
-
-export function isErrorEvent(event: AnyServerEvent): event is ErrorEvent {
-  return event.type === 'error'
 }

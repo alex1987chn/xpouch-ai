@@ -79,7 +79,6 @@ interface TaskState {
   // Actions
   setMode: (mode: 'simple' | 'complex') => void
   initializePlan: (data: PlanCreatedData) => void
-  updateTaskStatus: (taskId: string, status: TaskStatus) => void
   startTask: (data: TaskStartedData) => void
   completeTask: (data: TaskCompletedData) => void
   failTask: (data: TaskFailedData) => void
@@ -89,15 +88,8 @@ interface TaskState {
   clearTasks: () => void
 
   // Computed（通过 get 方法实现）
-  getPendingTasks: () => Task[]
-  getRunningTasks: () => Task[]
-  getCompletedTasks: () => Task[]
-  getFailedTasks: () => Task[]
-  getAllTasks: () => Task[]
   getSelectedTask: () => Task | null
   getSelectedTaskArtifacts: () => Artifact[]
-  getProgress: () => number
-  isTaskRunning: (taskId: string) => boolean
 }
 
 // ============================================================================
@@ -169,7 +161,7 @@ export const useTaskStore = create<TaskState>()(
         })
 
         state.isInitialized = true
-        state.runningTaskId = null
+        state.runningTaskIds = new Set()
         state.selectedTaskId = null
 
         // 更新缓存（深拷贝避免 Immer proxy 被 revoke 后访问报错）
@@ -181,18 +173,6 @@ export const useTaskStore = create<TaskState>()(
           }))
         state.tasksCache = Object.freeze(sortedTasks)
         state.tasksCacheVersion++
-      })
-    },
-
-    /**
-     * 更新任务状态
-     */
-    updateTaskStatus: (taskId: string, status: TaskStatus) => {
-      set((state) => {
-        const task = state.tasks.get(taskId)
-        if (task) {
-          task.status = status
-        }
       })
     },
 
@@ -366,44 +346,6 @@ export const useTaskStore = create<TaskState>()(
     // Computed Getters
     // ========================================================================
 
-    getPendingTasks: () => {
-      const { tasks } = get()
-      return Array.from(tasks.values())
-        .filter((t) => t.status === 'pending')
-        .sort((a, b) => a.sort_order - b.sort_order)
-    },
-
-    getRunningTasks: () => {
-      const { tasks, runningTaskIds } = get()
-      return Array.from(runningTaskIds)
-        .map(id => tasks.get(id))
-        .filter((t): t is Task => t !== undefined)
-        .sort((a, b) => a.sort_order - b.sort_order)
-    },
-
-    isTaskRunning: (taskId: string) => {
-      return get().runningTaskIds.has(taskId)
-    },
-
-    getCompletedTasks: () => {
-      const { tasks } = get()
-      return Array.from(tasks.values())
-        .filter((t) => t.status === 'completed')
-        .sort((a, b) => a.sort_order - b.sort_order)
-    },
-
-    getFailedTasks: () => {
-      const { tasks } = get()
-      return Array.from(tasks.values())
-        .filter((t) => t.status === 'failed')
-        .sort((a, b) => a.sort_order - b.sort_order)
-    },
-
-    getAllTasks: () => {
-      const { tasksCache } = get()
-      return tasksCache
-    },
-
     getSelectedTask: () => {
       const { tasks, selectedTaskId } = get()
       if (!selectedTaskId) return null
@@ -413,17 +355,6 @@ export const useTaskStore = create<TaskState>()(
     getSelectedTaskArtifacts: () => {
       const task = get().getSelectedTask()
       return task?.artifacts || []
-    },
-
-    getProgress: () => {
-      const { tasks, session } = get()
-      if (!session) return 0
-      const total = tasks.size
-      if (total === 0) return 0
-      const completed = Array.from(tasks.values()).filter(
-        (t) => t.status === 'completed' || t.status === 'failed'
-      ).length
-      return Math.round((completed / total) * 100)
     }
   }))
   // persist 配置暂时禁用，测试无限循环问题
