@@ -159,6 +159,62 @@ interface ArtifactDashboardProps {
   onToggleFullscreen?: () => void
 }
 
+// 任务状态指示器 - 显示在 Level 1 右侧
+function TaskStatusIndicator() {
+  const runningTask = useTaskStore((state) => {
+    const tasks = state.tasksCache
+    return tasks.find((t) => t.status === 'running')
+  })
+  const mode = useTaskStore((state) => state.mode)
+
+  if (mode === 'simple') {
+    return (
+      <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+        <span className="relative flex h-2 w-2">
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+        </span>
+        <span>Ready</span>
+      </div>
+    )
+  }
+
+  if (!runningTask) {
+    const allCompleted = useTaskStore.getState().tasksCache.every(
+      (t) => t.status === 'completed' || t.status === 'failed'
+    )
+    return (
+      <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+        {allCompleted ? (
+          <>
+            <CheckCircle2 className="w-3 h-3 text-green-500" />
+            <span>Completed</span>
+          </>
+        ) : (
+          <span>Waiting...</span>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-xs font-mono">
+      {/* 呼吸灯 */}
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+      </span>
+      
+      {/* 专家名称 + 描述 */}
+      <span className="text-primary truncate max-w-[150px]">
+        {runningTask.expert_type}
+      </span>
+      
+      {/* 状态 */}
+      <span className="text-muted-foreground">running</span>
+    </div>
+  )
+}
+
 function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIndex, 
   onSelectArtifact, isFullscreen, onToggleFullscreen }: ArtifactDashboardProps) {
   const tabsRef = useRef<HTMLDivElement>(null)
@@ -187,52 +243,60 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
 
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-page overflow-hidden">
-      {/* Tab 栏 - 文件夹标签风格 */}
-      <div className="h-10 flex items-end px-2 gap-1 border-b-2 border-border bg-panel shrink-0">
-        {canScrollLeft && (
-          <button onClick={scrollLeft} className="h-7 w-6 flex items-center justify-center bg-panel border-2 border-border hover:bg-card shrink-0">
-            <span className="text-xs">←</span>
-          </button>
-        )}
-        
-        {artifacts.length > 0 && (
-          <div className="h-7 px-3 flex items-center gap-2 bg-accent text-accent-foreground border-2 border-border shrink-0">
-            <span className="font-mono text-xs font-bold uppercase">{expertName}</span>
-            <span className="text-[10px] opacity-70">({artifacts.length})</span>
+      {/* Tab 栏 - 左右分栏：左侧 Tabs，右侧状态 */}
+      <div className="h-10 flex items-center justify-between border-b-2 border-border bg-panel shrink-0 px-2">
+        {/* 左侧：Tabs 区域（自适应 + 可滚动） */}
+        <div className="flex-1 flex items-center gap-1 min-w-0 mr-4">
+          {canScrollLeft && (
+            <button onClick={scrollLeft} className="h-7 w-6 flex items-center justify-center bg-panel border-2 border-border hover:bg-card shrink-0">
+              <span className="text-xs">←</span>
+            </button>
+          )}
+          
+          {artifacts.length > 0 && (
+            <div className="h-7 px-3 flex items-center gap-2 bg-accent text-accent-foreground border-2 border-border shrink-0">
+              <span className="font-mono text-xs font-bold uppercase">{expertName}</span>
+              <span className="text-[10px] opacity-70">({artifacts.length})</span>
+            </div>
+          )}
+          
+          {artifacts.length > 0 && <div className="w-px h-5 bg-border mx-1 shrink-0" />}
+          
+          <div ref={tabsRef} className="flex-1 flex items-end gap-1 overflow-x-auto scrollbar-hide">
+            {artifacts.length === 0 ? (
+              <div className="h-7 px-4 flex items-center text-muted-foreground/60 text-xs font-mono">等待交付物...</div>
+            ) : (
+              artifacts.map((artifact, idx) => (
+                <button
+                  key={artifact.id}
+                  onClick={() => onSelectArtifact(idx)}
+                  className={cn(
+                    "h-7 px-3 flex items-center gap-2 transition-all shrink-0",
+                    selectedIndex === idx
+                      ? "h-8 bg-card border-2 border-border border-b-0 top-[2px] z-10 text-primary shadow-[0_-2px_0_0_hsl(var(--accent))]"
+                      : "bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100 text-muted-foreground"
+                  )}
+                >
+                  <FileCode className="w-3 h-3" />
+                  <span className="font-mono text-xs font-bold truncate max-w-[100px]">
+                    {artifact.title || `${expertName}-${idx + 1}`}
+                  </span>
+                </button>
+              ))
+            )}
           </div>
-        )}
-        
-        {artifacts.length > 0 && <div className="w-px h-5 bg-border mx-1 shrink-0" />}
-        
-        <div ref={tabsRef} className="flex-1 flex items-end gap-1 overflow-x-auto scrollbar-hide">
-          {artifacts.length === 0 ? (
-            <div className="h-7 px-4 flex items-center text-muted-foreground/60 text-xs font-mono">等待交付物...</div>
-          ) : (
-            artifacts.map((artifact, idx) => (
-              <button
-                key={artifact.id}
-                onClick={() => onSelectArtifact(idx)}
-                className={cn(
-                  "h-7 px-3 flex items-center gap-2 transition-all shrink-0",
-                  selectedIndex === idx
-                    ? "h-8 bg-card border-2 border-border border-b-0 top-[2px] z-10 text-primary shadow-[0_-2px_0_0_hsl(var(--accent))]"
-                    : "bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100 text-muted-foreground"
-                )}
-              >
-                <FileCode className="w-3 h-3" />
-                <span className="font-mono text-xs font-bold truncate max-w-[100px]">
-                  {artifact.title || `${expertName}-${idx + 1}`}
-                </span>
-              </button>
-            ))
+
+          {canScrollRight && (
+            <button onClick={scrollRight} className="h-7 w-6 flex items-center justify-center bg-panel border-2 border-border hover:bg-card shrink-0">
+              <span className="text-xs">→</span>
+            </button>
           )}
         </div>
-
-        {canScrollRight && (
-          <button onClick={scrollRight} className="h-7 w-6 flex items-center justify-center bg-panel border-2 border-border hover:bg-card shrink-0">
-            <span className="text-xs">→</span>
-          </button>
-        )}
+        
+        {/* 右侧：任务状态指示器（固定不动） */}
+        <div className="flex-none flex items-center px-2 border-l border-border/50">
+          <TaskStatusIndicator />
+        </div>
       </div>
 
       {/* 内容区 - 使用主题滚动条 */}
