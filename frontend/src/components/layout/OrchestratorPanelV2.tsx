@@ -24,7 +24,7 @@ const StatusIcon = memo(({ status }: { status: string }) => {
     case 'failed': return <XCircle className="w-3 h-3 text-red-500" />
     default: return <Clock className="w-3 h-3" />
   }
-}))
+})
 
 // 专家名称映射
 const expertNameMap: Record<string, string> = {
