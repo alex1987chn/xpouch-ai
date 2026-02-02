@@ -14,6 +14,7 @@ import RoutingIndicator from '../RoutingIndicator'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
+import { SIMPLE_TASK_ID } from '@/constants/task'
 
 export default function MessageItem({
   message,
@@ -50,8 +51,6 @@ export default function MessageItem({
     }
 
     // Simple 模式：创建/复用一个虚拟任务来承载 artifact
-    const SIMPLE_TASK_ID = 'simple_session'
-    
     // 检查当前是否已经有 Simple 模式任务
     const hasSimpleTask = taskStore.mode === 'simple' && taskStore.tasks.has(SIMPLE_TASK_ID)
     
