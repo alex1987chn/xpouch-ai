@@ -6,7 +6,7 @@
 import { useState, useCallback } from 'react'
 import { Copy, Check, RefreshCw, Eye } from 'lucide-react'
 import { useTranslation } from '@/i18n'
-import { useCanvasStore } from '@/store/canvasStore'
+import { useTaskStore } from '@/store/taskStore'
 import type { MessageItemProps } from '../types'
 import { extractCodeBlocks, detectContentType } from '../utils'
 import ThinkingSection from './ThinkingSection'
@@ -30,29 +30,66 @@ export default function MessageItem({
   const codeBlocks = extractCodeBlocks(message.content)
   const hasPreviewContent = codeBlocks.length > 0 || message.content.length > 200
 
-  // 处理预览 - 将内容发送到 artifact 区域
+  // 处理预览 - 将内容发送到 artifact 区域（使用新协议 taskStore）
   const handlePreview = useCallback(() => {
-    const setSimplePreview = useCanvasStore.getState().setSimplePreview
-
+    const taskStore = useTaskStore.getState()
     const detected = detectContentType(codeBlocks, message.content)
-    if (detected) {
-      setSimplePreview({
-        id: crypto.randomUUID(),
-        timestamp: new Date().toISOString(),
-        type: detected.type,
-        title: detected.type === 'code' ? '代码预览' : detected.type === 'html' ? 'HTML 预览' : 'Markdown 预览',
-        content: detected.content,
-        language: detected.type === 'code' ? codeBlocks[0]?.language || 'text' : undefined
-      })
-    } else if (message.content.length > 200) {
-      setSimplePreview({
-        id: crypto.randomUUID(),
-        timestamp: new Date().toISOString(),
-        type: 'markdown',
-        title: '消息预览',
-        content: message.content,
-      })
+    
+    if (!detected && message.content.length <= 200) return
+
+    // 构造符合新协议的 artifact 数据（使用下划线命名匹配后端协议）
+    const artifact = {
+      id: crypto.randomUUID(),
+      type: detected?.type || 'markdown',
+      title: detected?.type === 'code' ? '代码预览' 
+        : detected?.type === 'html' ? 'HTML 预览' 
+        : '消息预览',
+      content: detected?.content || message.content,
+      language: detected?.type === 'code' ? codeBlocks[0]?.language : undefined,
+      sort_order: 0
     }
+
+    // Simple 模式：创建/复用一个虚拟任务来承载 artifact
+    const SIMPLE_TASK_ID = 'simple_session'
+    
+    // 检查当前是否已经有 Simple 模式任务
+    const hasSimpleTask = taskStore.mode === 'simple' && taskStore.tasks.has(SIMPLE_TASK_ID)
+    
+    if (!hasSimpleTask) {
+      // 需要初始化：先设置模式（这会清空 tasks），然后创建任务
+      console.log('[Preview] Initializing simple mode')
+      taskStore.setMode('simple')
+      taskStore.initializePlan({
+        session_id: 'simple_preview',
+        summary: '简单对话模式',
+        estimated_steps: 1,
+        execution_mode: 'sequential',
+        tasks: [{
+          id: SIMPLE_TASK_ID,
+          expert_type: 'assistant',
+          description: '简单对话预览',
+          status: 'completed',
+          sort_order: 0
+        }]
+      })
+    } else {
+      // 已经有 Simple 任务，确保模式是 simple（不会清空已有 tasks）
+      taskStore.setMode('simple')
+    }
+    
+    // 添加 artifact 到虚拟任务
+    console.log('[Preview] Adding artifact:', artifact.title, 'to task:', SIMPLE_TASK_ID)
+    taskStore.addArtifact({
+      task_id: SIMPLE_TASK_ID,
+      expert_type: 'assistant',
+      artifact: artifact
+    })
+    
+    // 选中该任务
+    taskStore.selectTask(SIMPLE_TASK_ID)
+    
+    console.log('[Preview] Current tasksCache:', taskStore.tasksCache)
+    console.log('[Preview] Current mode:', taskStore.mode)
   }, [message.content, codeBlocks])
 
   // 处理复制

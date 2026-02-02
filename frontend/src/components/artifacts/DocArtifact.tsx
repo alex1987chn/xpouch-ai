@@ -3,10 +3,44 @@ import remarkGfm from 'remark-gfm'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.css'
 import { cn } from '@/lib/utils'
+import { useEffect, useRef } from 'react'
+import React from 'react'
 
 interface DocArtifactProps {
   content: string
   className?: string
+}
+
+// Mermaid 代码块组件
+function MermaidCode({ children }: { children?: React.ReactNode }) {
+  const codeRef = useRef<HTMLDivElement>(null)
+  const content = React.Children.toArray(children)
+    .map(child => React.isValidElement(child) ? (child as React.ReactElement).props.children : child)
+    .join('')
+
+  useEffect(() => {
+    const renderMermaid = async () => {
+      if (!codeRef.current || !content) return
+
+      try {
+        const { mermaid } = await import('mermaid')
+        await mermaid.initialize({ startOnLoad: false, theme: 'default' })
+        const { svg } = await mermaid.render(`mermaid-${Date.now()}`, content)
+        if (codeRef.current) {
+          codeRef.current.innerHTML = svg
+        }
+      } catch (error) {
+        console.error('Mermaid render error:', error)
+        if (codeRef.current) {
+          codeRef.current.innerHTML = `<pre class="bg-slate-100 dark:bg-slate-800 p-4 border border-border overflow-x-auto my-4 font-mono text-sm">${content}</pre>`
+        }
+      }
+    }
+
+    renderMermaid()
+  }, [content])
+
+  return <div ref={codeRef} className="flex justify-center my-4" />
 }
 
 export default function DocArtifact({ content, className }: DocArtifactProps) {
@@ -74,19 +108,35 @@ export default function DocArtifact({ content, className }: DocArtifactProps) {
           ),
           code: ({ children, className }) => {
             const isInline = !className?.includes('language-')
+            const isMermaid = className?.includes('language-mermaid')
             return isInline ? (
               <code className="bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 border border-border/50 text-sm text-slate-800 dark:text-slate-200 font-mono">
                 {children}
               </code>
+            ) : isMermaid ? (
+              <code className="text-inherit font-mono">{children}</code>
             ) : (
               <code className="text-inherit font-mono">{children}</code>
             )
           },
-          pre: ({ children }) => (
-            <pre className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-4 border border-border overflow-x-auto my-4 font-mono text-sm">
-              {children}
-            </pre>
-          ),
+          pre: ({ children }) => {
+            // 检测是否为 mermaid 代码块
+            const isMermaid = React.Children.toArray(children).some(child => {
+              if (React.isValidElement(child)) {
+                const element = child as React.ReactElement
+                return element.props.className?.includes('language-mermaid')
+              }
+              return false
+            })
+
+            return isMermaid ? (
+              <MermaidCode>{children}</MermaidCode>
+            ) : (
+              <pre className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-4 border border-border overflow-x-auto my-4 font-mono text-sm">
+                {children}
+              </pre>
+            )
+          },
           blockquote: ({ children }) => (
             <blockquote className="border-l-4 border-slate-400 dark:border-slate-500 pl-4 italic text-slate-600 dark:text-slate-300 my-4">
               {children}
