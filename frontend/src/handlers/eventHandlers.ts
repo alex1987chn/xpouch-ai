@@ -158,19 +158,12 @@ export class EventHandler {
   private handleMessageDelta(event: MessageDeltaEvent): void {
     const { updateMessage, messages } = useChatStore.getState()
 
-    // DEBUG: 记录所有消息ID
-    if (DEBUG) {
-      logger.debug('[EventHandler] message.delta: 收到事件，消息ID:', event.data.message_id)
-      logger.debug('[EventHandler] message.delta: 当前消息列表:', messages.map(m => ({ id: m.id, role: m.role, contentLength: m.content?.length })))
-    }
-
     // 查找消息（前端应该在 useChatCore 中已经创建空消息）
     let message = messages.find((m) => m.id === event.data.message_id)
 
     if (!message) {
       // 如果找不到消息，说明前端还没有创建，跳过这个事件
-      // 前端会在 streamCallback 中创建空消息，后续的 delta 事件就能找到
-      logger.warn('[EventHandler] message.delta: 找不到消息 ID，跳过:', event.data.message_id, '可用ID:', messages.map(m => m.id))
+      if (DEBUG) logger.debug('[EventHandler] message.delta: 找不到消息 ID，跳过:', event.data.message_id)
       return
     }
 
@@ -178,7 +171,7 @@ export class EventHandler {
     updateMessage(event.data.message_id, event.data.content, true)
 
     if (DEBUG) {
-      logger.debug('[EventHandler] message.delta: 更新消息成功', event.data.message_id, '追加内容:', event.data.content)
+      logger.debug('[EventHandler] message.delta: 更新消息成功', event.data.message_id)
     }
   }
 

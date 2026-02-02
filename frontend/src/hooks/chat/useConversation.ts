@@ -91,6 +91,10 @@ export function useConversation() {
         setSelectedAgentId(normalizeAgentId(conversation.agent_id))
       }
 
+      // 👈 关键修复：无论是什么类型的会话，都先清空 task 状态
+      // 避免从复杂模式切换到简单模式时残留 artifacts
+      clearTasks()
+
       if (conversation.agent_type === 'ai' && conversation.task_session) {
         const subTasks = conversation.task_session.sub_tasks || []
 

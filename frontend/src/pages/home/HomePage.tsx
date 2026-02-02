@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Bot, Plus, Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Trash2 } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
+import { useTaskStore } from '@/store/taskStore'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -274,8 +275,9 @@ export default function HomePage() {
 
   // 点击智能体卡片 - 恢复该智能体的最近会话或创建新会话
   const handleAgentClick = useCallback(async (agentId: string) => {
-    // 👈 先清空消息，避免显示旧会话的缓存
+    // 👈 先清空消息和 task 状态，避免显示旧会话的缓存
     useChatStore.getState().setMessages([])
+    useTaskStore.getState().clearTasks()
     useChatStore.getState().setSelectedAgentId(agentId)
 
     // 👈 默认助手：直接创建新会话（不查询历史）

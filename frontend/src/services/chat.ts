@@ -133,11 +133,6 @@ export async function sendMessage(
           const eventType = msg.event
           const eventData = JSON.parse(msg.data)
           
-          // DEBUG: 记录收到的事件
-          if (eventType === 'message.delta' || eventType === 'message.done') {
-            logger.debug('[chat.ts] 收到事件:', eventType, 'data:', eventData)
-          }
-          
           // v3.0: 构建标准事件对象并交给 eventHandlers 处理
           if (eventType) {
             const fullEvent = {
