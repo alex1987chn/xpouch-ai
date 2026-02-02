@@ -20,9 +20,6 @@
 # Linux/macOS
 chmod +x backend/migrations/run_migration.sh
 backend/migrations/run_migration.sh
-
-# Windows PowerShell
-backend/migrations/run_migration.ps1
 ```
 
 #### 方式2：手动执行（需要手动输入密码）
