@@ -193,7 +193,11 @@ export const useTaskStore = create<TaskState>()(
           task.startedAt = data.started_at
         }
         state.runningTaskId = data.task_id
-        // 不更新缓存，因为只是修改 task 的 status，不会影响排序
+        // 更新缓存（任务状态变化为 running，需要触发UI更新）
+        state.tasksCache = Object.freeze(
+          Array.from(state.tasks.values()).sort((a, b) => a.sort_order - b.sort_order)
+        )
+        state.tasksCacheVersion++
       })
     },
 
@@ -217,6 +221,11 @@ export const useTaskStore = create<TaskState>()(
         if (!state.selectedTaskId && data.artifact_count > 0 && state.selectedTaskId !== data.task_id) {
           state.selectedTaskId = data.task_id
         }
+        // 更新缓存（任务状态变化，需要重新生成缓存以触发UI更新）
+        state.tasksCache = Object.freeze(
+          Array.from(state.tasks.values()).sort((a, b) => a.sort_order - b.sort_order)
+        )
+        state.tasksCacheVersion++
       })
     },
 
@@ -234,6 +243,11 @@ export const useTaskStore = create<TaskState>()(
         if (state.runningTaskId === data.task_id) {
           state.runningTaskId = null
         }
+        // 更新缓存（任务状态变化为 failed，需要触发UI更新）
+        state.tasksCache = Object.freeze(
+          Array.from(state.tasks.values()).sort((a, b) => a.sort_order - b.sort_order)
+        )
+        state.tasksCacheVersion++
       })
     },
 
@@ -261,6 +275,11 @@ export const useTaskStore = create<TaskState>()(
         if (state.selectedTaskId !== data.task_id) {
           state.selectedTaskId = data.task_id
         }
+        // 更新缓存（artifact 变化，需要重新生成缓存以触发UI更新）
+        state.tasksCache = Object.freeze(
+          Array.from(state.tasks.values()).sort((a, b) => a.sort_order - b.sort_order)
+        )
+        state.tasksCacheVersion++
       })
     },
 
