@@ -192,6 +192,10 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         if (chunk) {
           finalResponseContent += chunk
 
+          if (DEBUG) {
+            logger.debug('[useChatCore] 收到chunk，长度:', chunk.length, '总长度:', finalResponseContent.length, '消息ID:', assistantMessageId)
+          }
+
           // 👈 v3.0: 移除这里的 updateMessage 调用，避免与 eventHandlers.ts 重复
           // 现在统一由 eventHandlers.ts 的 handleMessageDelta 处理 message.delta 事件
           // if (assistantMessageId) {

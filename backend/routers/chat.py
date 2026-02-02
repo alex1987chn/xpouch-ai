@@ -314,7 +314,7 @@ async def chat_endpoint(
     if custom_agent:
         if request.stream:
             return await _handle_custom_agent_stream(
-                custom_agent, langchain_messages, thread_id, thread
+                custom_agent, langchain_messages, thread_id, thread, request.message_id
             )
         else:
             return await _handle_custom_agent_sync(
@@ -354,9 +354,10 @@ async def _handle_custom_agent_stream(
     custom_agent: CustomAgent,
     langchain_messages: list,
     thread_id: str,
-    thread: Thread
+    thread: Thread,
+    message_id: Optional[str] = None  # v3.0: 前端传递的助手消息 ID
 ) -> StreamingResponse:
-    """处理自定义智能体流式响应"""
+    """处理自定义智能体流式响应 (v3.0 新协议)"""
     async def event_generator():
         full_response = ""
         try:
@@ -367,7 +368,7 @@ async def _handle_custom_agent_stream(
                 print(f"[CUSTOM AGENT] 检测到不兼容模型 {model_name}，自动切换为 deepseek-chat")
                 model_name = "deepseek-chat"
 
-            print(f"[CUSTOM AGENT] 使用模型: {model_name}")
+            print(f"[CUSTOM AGENT] 使用模型: {model_name}，消息ID: {message_id}")
             
             llm = get_llm_instance(streaming=True, model=model_name, temperature=0.7)
 
@@ -378,13 +379,47 @@ async def _handle_custom_agent_stream(
                 content = chunk.content
                 if content:
                     full_response += content
-                    yield f"data: {json.dumps({'content': content, 'conversationId': thread_id})}\n\n"
+                    # v3.0: 使用 message.delta 事件（新协议）
+                    from event_types.events import EventType, MessageDeltaData, build_sse_event
+                    delta_event = build_sse_event(
+                        EventType.MESSAGE_DELTA,
+                        MessageDeltaData(
+                            message_id=message_id or str(uuid4()),
+                            content=content
+                        ),
+                        str(uuid4())
+                    )
+                    from utils.event_generator import sse_event_to_string
+                    yield sse_event_to_string(delta_event)
 
         except Exception as e:
             import traceback
             traceback.print_exc()
-            error_msg = json.dumps({"error": str(e)})
-            yield f"data: {error_msg}\n\n"
+            # v3.0: 发送 error 事件
+            from event_types.events import EventType, ErrorData, build_sse_event
+            from utils.event_generator import sse_event_to_string
+            error_event = build_sse_event(
+                EventType.ERROR,
+                ErrorData(code="STREAM_ERROR", message=str(e)),
+                str(uuid4())
+            )
+            yield sse_event_to_string(error_event)
+
+        # v3.0: 发送 message.done 事件（新协议）
+        from event_types.events import EventType, MessageDoneData, build_sse_event
+        done_event = build_sse_event(
+            EventType.MESSAGE_DONE,
+            MessageDoneData(
+                message_id=message_id or str(uuid4()),
+                full_content=full_response
+            ),
+            str(uuid4())
+        )
+        from utils.event_generator import sse_event_to_string
+        yield sse_event_to_string(done_event)
+
+        yield "data: [DONE]\n\n"
+        print(f"[CUSTOM AGENT] 流式响应完成，消息ID: {message_id}")
 
         # 保存 AI 回复到数据库
         if full_response:
@@ -396,10 +431,10 @@ async def _handle_custom_agent_stream(
             )
             with Session(engine) as inner_session:
                 inner_session.add(ai_msg_db)
-                thread = inner_session.get(Thread, thread_id)
-                if thread:
-                    thread.updated_at = datetime.now()
-                    inner_session.add(thread)
+                thread_obj = inner_session.get(Thread, thread_id)
+                if thread_obj:
+                    thread_obj.updated_at = datetime.now()
+                    inner_session.add(thread_obj)
                 inner_session.commit()
         
         yield "data: [DONE]\n\n"

@@ -172,6 +172,10 @@ export class EventHandler {
 
     // 更新现有消息（追加增量内容）
     updateMessage(event.data.message_id, event.data.content, true)
+
+    if (DEBUG) {
+      logger.debug('[EventHandler] message.delta: 更新消息', event.data.message_id, '当前内容长度:', (message.content || '') + event.data.content)
+    }
   }
 
   /**
@@ -179,7 +183,19 @@ export class EventHandler {
    * 完成消息流式输出
    */
   private handleMessageDone(event: MessageDoneEvent): void {
-    const { updateMessage } = useChatStore.getState()
+    const { updateMessage, messages } = useChatStore.getState()
+
+    // 查找消息
+    const message = messages.find(m => m.id === event.data.message_id)
+
+    if (DEBUG) {
+      logger.debug('[EventHandler] message.done: 消息ID', event.data.message_id, '找到消息:', !!message, '内容长度:', event.data.full_content?.length)
+    }
+
+    if (!message) {
+      logger.warn('[EventHandler] message.done: 找不到消息:', event.data.message_id)
+      return
+    }
 
     // 更新消息为最终内容
     updateMessage(event.data.message_id, event.data.full_content, false)
