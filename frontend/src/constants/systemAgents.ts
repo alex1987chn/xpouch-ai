@@ -11,22 +11,6 @@
 export type ExpertType = 'search' | 'coder' | 'researcher' | 'analyzer' | 'writer' | 'planner' | 'image_analyzer' | 'designer' | 'architect'
 
 /**
- * v3.1: 内联 ExpertResult 类型（原定义在 canvasStore，现内联避免循环依赖）
- * @deprecated 复杂模式现在使用 taskStore，此类型保留用于兼容旧代码
- */
-export interface ExpertResult {
-  expertType: string
-  expertName: string
-  description: string
-  status: 'pending' | 'running' | 'completed' | 'failed'
-  startedAt: string
-  completedAt?: string
-  duration?: number
-  output?: string
-  error?: string
-}
-
-/**
  * 专家配置（用于 BusRail 和复杂模式专家展示）
  * v3.1: icon 字段已废弃，BusRail 使用专家名称缩写（如 SRCH, CODE）
  */
@@ -80,37 +64,6 @@ export function getExpertConfig(expertType: string) {
   }
 }
 
-/**
- * 创建专家结果对象
- *
- * @param expertType - 专家类型（如 'search', 'coder'）
- * @param status - 专家状态（默认 'pending'）
- * @returns ExpertResult - 专家结果对象
- *
- * @description
- * 创建标准化的专家结果对象，包含专家类型、名称、描述、状态和开始时间
- * 自动从 EXPERT_CONFIG 获取专家名称和生成任务描述
- *
- * @example
- * ```typescript
- * const result = createExpertResult('search', 'running')
- * console.log(result.expertName) // '搜索专家'
- * console.log(result.status) // 'running'
- * console.log(result.description) // '执行搜索专家任务'
- * ```
- */
-export function createExpertResult(
-  expertType: string,
-  status: ExpertResult['status'] = 'pending'
-): ExpertResult {
-  const config = getExpertConfig(expertType)
-  return {
-    expertType,
-    expertName: config.name,
-    description: `执行${config.name}任务`,
-    status,
-    startedAt: new Date().toISOString()
-  }
-}
+
 
 

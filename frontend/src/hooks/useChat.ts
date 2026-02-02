@@ -19,8 +19,6 @@
  *   loadConversation: 加载历史会话
  *   deleteConversation: 删除会话
  *   retry: 重试最后一条消息
- *   activeExpertId: 当前激活的专家 ID（已移除，请使用 canvasStore）
- *   setActiveExpertId: 设置激活专家 ID（已移除，请使用 canvasStore）
  * }
  *
  * @example
@@ -37,7 +35,6 @@ import { useChatStore } from '@/store/chatStore'
 import { useChatCore } from './chat/useChatCore'
 import { useExpertHandler } from './chat/useExpertHandler'
 import { useConversation } from './chat/useConversation'
-import { getConversationMode } from '@/utils/agentUtils'
 import { errorHandler } from '@/utils/logger'
 
 export function useChat() {

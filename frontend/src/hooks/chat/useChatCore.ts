@@ -6,7 +6,7 @@
 import { useCallback, useRef, useEffect, useState } from 'react'
 import { sendMessage as apiSendMessage, type ApiMessage, type StreamCallback } from '@/services/chat'
 import { useChatStore } from '@/store/chatStore'
-import { getConversationMode, normalizeAgentId } from '@/utils/agentUtils'
+import { normalizeAgentId } from '@/utils/agentUtils'
 import { generateUUID } from '@/utils'
 import { useTranslation } from '@/i18n'
 import type { ExpertEvent } from '@/types'

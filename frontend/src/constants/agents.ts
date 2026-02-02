@@ -13,7 +13,6 @@
  * 
  * @description
  * TypeScript 字面量类型，用于类型检查和自动补全
- * 注意：不包含 sys-task-orchestrator，它是后端内部实现
  * 
  * @example
  * ```typescript
@@ -28,7 +27,6 @@ export type SystemAgentId = 'sys-default-chat'
  * 
  * @description
  * - `DEFAULT_CHAT`: 默认通用助手，所有对话的统一入口
- * - `ORCHESTRATOR`: 后端内部使用的任务指挥官，不应在 URL 中暴露
  * 
  * 复杂模式 (Complex Mode) 是 Thread 的内部状态 (thread_mode='complex')，
  * 不是一个独立的 Agent ID。前端通过后端返回的 thread_mode 判断模式。
@@ -59,22 +57,7 @@ export const SYSTEM_AGENTS = {
    * 
    * 对应前端显示名称："默认助手"
    */
-  DEFAULT_CHAT: 'sys-default-chat',
-
-  /**
-   * 任务指挥官 ID - 后端内部使用，不在 URL 中暴露
-   * 
-   * @description
-   * ⚠️ 警告：此 ID 仅供后端内部 Graph 节点使用，绝不应出现在前端 URL 中！
-   * 
-   * 复杂模式是 Thread 的内部状态，由后端根据查询复杂度自动决定。
-   * 前端通过 SSE 事件 (router_decision) 或 API 响应中的 thread_mode 字段感知模式变化。
-   * 
-   * 对应前端显示名称："AI 助手" (仅在复杂模式 UI 中显示)
-   * 
-   * @deprecated 不要在 URL 中使用此 ID
-   */
-  ORCHESTRATOR: 'sys-task-orchestrator'
+  DEFAULT_CHAT: 'sys-default-chat'
 } as const
 
 /**
@@ -89,7 +72,6 @@ export const SYSTEM_AGENTS = {
  * @example
  * ```typescript
  * isSystemAgent('sys-default-chat') // true
- * isSystemAgent('sys-task-orchestrator') // true
  * isSystemAgent('custom-uuid-123') // false
  * isSystemAgent('ai-assistant') // false (旧格式，需要迁移)
  * ```
@@ -111,14 +93,12 @@ export function isSystemAgent(agentId: string): agentId is SystemAgentId {
  * @example
  * ```typescript
  * getSystemAgentName('sys-default-chat') // '默认助手'
- * getSystemAgentName('sys-task-orchestrator') // 'AI 助手'
  * getSystemAgentName('custom-uuid') // 'custom-uuid'
  * ```
  */
 export function getSystemAgentName(agentId: string): string {
   const names: Record<SystemAgentId, string> = {
-    'sys-default-chat': '默认助手',
-    'sys-task-orchestrator': 'AI 助手'
+    'sys-default-chat': '默认助手'
   }
   return names[agentId as SystemAgentId] || agentId
 }

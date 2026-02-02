@@ -180,13 +180,9 @@ export default function MessageItem({
         </div>
 
         {/* Thinking 区域 */}
-        {(() => {
-          console.log('[MessageItem] message.metadata:', message.metadata)
-          console.log('[MessageItem] thinking 条件:', message.metadata?.thinking, message.metadata?.thinking?.length)
-          return message.metadata?.thinking && message.metadata.thinking.length > 0 && (
-            <ThinkingSection thinking={message.metadata.thinking} />
-          )
-        })()}
+        {message.metadata?.thinking && message.metadata.thinking.length > 0 && (
+          <ThinkingSection thinking={message.metadata.thinking} />
+        )}
 
         {/* Markdown 内容 */}
         <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-sm prose-headings:font-bold prose-headings:text-primary prose-p:text-sm prose-p:leading-relaxed prose-p:text-primary prose-strong:text-primary prose-code:text-primary prose-pre:bg-panel prose-pre:border prose-pre:border-border/20 prose-a:text-blue-600 dark:prose-a:text-blue-400 select-text">

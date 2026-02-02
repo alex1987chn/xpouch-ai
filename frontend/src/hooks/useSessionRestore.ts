@@ -93,27 +93,6 @@ export function useSessionRestore(
         return
       }
 
-      // 3. 从服务端获取完整任务会话
-      // TODO: 需要添加 API 端点 /api/task-sessions/:id
-      // const taskSession = await getTaskSession(conversation.task_session_id)
-      
-      // 4. 恢复任务计划
-      // if (taskSession) {
-      //   initializePlan({
-      //     session_id: taskSession.session_id,
-      //     summary: taskSession.plan_summary,
-      //     estimated_steps: taskSession.estimated_steps,
-      //     execution_mode: taskSession.execution_mode as 'sequential' | 'parallel',
-      //     tasks: taskSession.sub_tasks.map(st => ({
-      //       id: st.id,
-      //       expert_type: st.expert_type,
-      //       description: st.task_description,
-      //       sort_order: st.sort_order,
-      //       status: st.status as 'pending' | 'running' | 'completed' | 'failed'
-      //     }))
-      //   })
-      // }
-
       if (DEBUG) {
         logger.debug('[useSessionRestore] 会话恢复完成')
       }

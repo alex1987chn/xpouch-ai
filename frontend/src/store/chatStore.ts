@@ -191,19 +191,6 @@ export const useChatStore = create<ChatState>()(
             icon: null,
             systemPrompt: ''
           }
-        } else if (state.selectedAgentId === SYSTEM_AGENTS.ORCHESTRATOR) {
-          // AI助手
-          return {
-            id: SYSTEM_AGENTS.ORCHESTRATOR,
-            name: getSystemAgentName(SYSTEM_AGENTS.ORCHESTRATOR),
-            description: '复杂任务拆解、专家协作、智能聚合',
-            category: 'AI',
-            isCustom: false,
-            is_builtin: false,
-            modelId: 'deepseek-chat',
-            icon: null,
-            systemPrompt: ''
-          }
         } else {
           // 自定义智能体
           return state.customAgents.find(a => a.id === state.selectedAgentId)
