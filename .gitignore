@@ -93,4 +93,3 @@ docs/
 
 # Deployment scripts (local only, upload via SFTP)
 deploy.sh
-deploy.sh
