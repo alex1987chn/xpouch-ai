@@ -10,14 +10,28 @@
 - ✅ **幂等性**：可重复执行，已存在的表/字段/索引会自动跳过
 - ✅ **兼容性**：PostgreSQL 13+
 - ✅ **事务安全**：使用 `DO $$` 块确保原子性
+- ✅ **无敏感信息**：纯 SQL 文件，可安全开源
 
 ### 执行方式（推荐）
 
+#### 方式1：使用自动脚本（读取 .env 配置）
+
 ```bash
-# 方式1：使用 psql 命令行
+# Linux/macOS
+chmod +x backend/migrations/run_migration.sh
+backend/migrations/run_migration.sh
+
+# Windows PowerShell
+backend/migrations/run_migration.ps1
+```
+
+#### 方式2：手动执行（需要手动输入密码）
+
+```bash
+# 使用 psql 命令行
 psql -h localhost -U postgres -d xpouch -f backend/migrations/apply_all_migrations.sql
 
-# 方式2：在 Docker 中执行
+# 在 Docker 中执行
 docker exec -i your_postgres_container psql -U postgres -d xpouch < backend/migrations/apply_all_migrations.sql
 ```
 
@@ -62,3 +76,52 @@ SELECT * FROM migration_history;
 
 ### Artifact 表（新建）
 - 完整的产物独立表
+
+---
+
+## 部署流程
+
+### 线上部署步骤
+
+```bash
+# 1. 停止应用服务（避免迁移过程中有写入）
+docker stop xpouch-backend
+
+# 2. 备份数据库（重要！）
+docker exec your_postgres_container pg_dump -U postgres xpouch > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# 3. 拉取最新迁移脚本
+git pull origin main
+
+# 4. 执行数据库迁移
+cd backend/migrations
+chmod +x run_migration.sh
+./run_migration.sh
+
+# 5. 拉取完整代码并重启
+git pull origin main
+docker-compose up -d --build
+```
+
+### 注意事项
+
+1. **敏感信息安全**
+   - `backend/.env` 包含数据库密码、API Key 等敏感信息
+   - 该文件已被 `.gitignore` 忽略，**不会提交到 GitHub**
+   - 迁移脚本不会包含任何敏感信息
+
+2. **迁移前必做**
+   - 备份数据库
+   - 停止应用服务
+   - 确保 `.env` 文件配置正确
+
+3. **迁移后验证**
+   ```sql
+   -- 检查迁移记录
+   SELECT * FROM migration_history;
+   
+   -- 检查表结构
+   SELECT table_name, column_name 
+   FROM information_schema.columns 
+   WHERE table_name IN ('thread', 'message', 'customagent', 'tasksession', 'subtask', 'artifact');
+   ```
