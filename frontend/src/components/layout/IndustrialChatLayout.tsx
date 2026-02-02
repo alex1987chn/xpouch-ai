@@ -101,31 +101,7 @@ export default function IndustrialChatLayout({
         </div>
       </main>
 
-      {/* 移动端视图切换按钮 */}
-      <div className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-card border-2 border-border p-1 shadow-hard">
-        <button
-          onClick={() => onViewModeChange?.('chat')}
-          className={cn(
-            'px-4 py-2 text-[10px] font-bold uppercase transition-all',
-            viewMode === 'chat'
-              ? 'bg-primary text-inverted'
-              : 'bg-transparent text-secondary hover:text-primary'
-          )}
-        >
-          Chat
-        </button>
-        <button
-          onClick={() => onViewModeChange?.('preview')}
-          className={cn(
-            'px-4 py-2 text-[10px] font-bold uppercase transition-all',
-            viewMode === 'preview'
-              ? 'bg-primary text-inverted'
-              : 'bg-transparent text-secondary hover:text-primary'
-          )}
-        >
-          Preview
-        </button>
-      </div>
+      {/* 移动端视图切换按钮已移到 HeavyInputConsole 工具栏 */}
     </div>
   )
 }

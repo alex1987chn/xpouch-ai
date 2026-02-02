@@ -171,18 +171,18 @@ function TaskStatusIndicator() {
   return (
     <div className="flex items-center gap-2 text-xs font-mono">
       {/* 呼吸灯 */}
-      <span className="relative flex h-2 w-2">
+      <span className="relative flex h-2 w-2 shrink-0">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
         <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
       </span>
       
-      {/* 专家名称 + 描述 */}
-      <span className="text-primary truncate max-w-[150px]">
+      {/* 专家名称 - 移动端更短 */}
+      <span className="text-primary truncate max-w-[80px] sm:max-w-[150px]">
         {runningTask.expert_type}
       </span>
       
-      {/* 状态 */}
-      <span className="text-muted-foreground">running</span>
+      {/* 状态 - 移动端隐藏文字，只显示灯 */}
+      <span className="text-muted-foreground hidden sm:inline">running</span>
     </div>
   )
 }

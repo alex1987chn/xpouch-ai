@@ -1,5 +1,5 @@
 import React from 'react'
-import { X, Menu } from 'lucide-react'
+import { X, Menu, MessageSquare, Eye } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VERSION } from '@/constants/ui'
 
@@ -10,6 +10,10 @@ interface IndustrialHeaderProps {
   onClose?: () => void
   onMenuClick?: () => void
   className?: string
+  /** 当前视图模式（移动端用） */
+  viewMode?: 'chat' | 'preview'
+  /** 切换视图模式（移动端用） */
+  onViewModeChange?: (mode: 'chat' | 'preview') => void
 }
 
 /**
@@ -46,7 +50,9 @@ export function IndustrialHeader({
   status = 'online',
   onClose,
   onMenuClick,
-  className
+  className,
+  viewMode = 'chat',
+  onViewModeChange,
 }: IndustrialHeaderProps) {
   return (
     <header
@@ -83,8 +89,36 @@ export function IndustrialHeader({
         </span>
       </div>
 
-      {/* 右侧：系统状态指示器 + 关闭按钮 */}
-      <div className="flex items-center gap-4">
+      {/* 右侧：系统状态指示器 + 移动端视图切换 + 关闭按钮 */}
+      <div className="flex items-center gap-2 md:gap-4">
+        {/* 移动端视图切换 - 紧凑工业风 */}
+        {onViewModeChange && (
+          <div className="md:hidden flex items-center text-[9px] font-mono font-bold">
+            <button
+              onClick={() => onViewModeChange('chat')}
+              className={cn(
+                'h-6 px-2 border-2 border-border transition-all',
+                viewMode === 'chat'
+                  ? 'bg-primary text-inverted border-primary'
+                  : 'bg-panel text-secondary hover:border-primary hover:text-primary'
+              )}
+            >
+              CHAT
+            </button>
+            <button
+              onClick={() => onViewModeChange('preview')}
+              className={cn(
+                'h-6 px-2 border-2 border-border border-l-0 transition-all',
+                viewMode === 'preview'
+                  ? 'bg-primary text-inverted border-primary'
+                  : 'bg-panel text-secondary hover:border-primary hover:text-primary'
+              )}
+            >
+              PREV
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center gap-2 px-3 py-1 bg-panel dark:bg-panel/80 border border-border/20">
           <div
             className={cn(
