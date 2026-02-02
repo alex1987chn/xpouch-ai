@@ -10,6 +10,7 @@ import type { Artifact, Task } from '@/store/taskStore'
 const CodeArtifact = lazy(() => import('@/components/artifacts/CodeArtifact').then(m => ({ default: m.default })))
 const DocArtifact = lazy(() => import('@/components/artifacts/DocArtifact').then(m => ({ default: m.default })))
 const HtmlArtifact = lazy(() => import('@/components/artifacts/HtmlArtifact').then(m => ({ default: m.default })))
+const BusRail = lazy(() => import('@/components/layout/ExpertRail/BusRail').then(m => ({ default: m.default })))
 
 interface OrchestratorPanelV2Props {
   isFullscreen?: boolean
@@ -86,15 +87,17 @@ function ComplexModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPane
 
   return (
     <div className="flex-1 flex h-full bg-page">
-      <ExpertRailComplex tasks={tasks} selectedTaskId={selectedTaskId} onTaskClick={selectTask} />
-      <ArtifactDashboard 
+      <Suspense fallback={<div className="w-20 border-r-2 border-border bg-page flex items-center justify-center"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
+        <BusRail tasks={tasks} selectedTaskId={selectedTaskId} onTaskClick={selectTask} />
+      </Suspense>
+      <ArtifactDashboard
  
         expertName={selectedTask?.expert_type || 'Expert'}
-        artifacts={selectedTask?.artifacts || []} 
+        artifacts={selectedTask?.artifacts || []}
         selectedArtifact={currentArtifact}
-        selectedIndex={selectedIndex} 
-        onSelectArtifact={setSelectedIndex} 
-        {...{ isFullscreen, onToggleFullscreen }} 
+        selectedIndex={selectedIndex}
+        onSelectArtifact={setSelectedIndex}
+        {...{ isFullscreen, onToggleFullscreen }}
       />
     </div>
   )
@@ -114,36 +117,6 @@ function ExpertRailSimple({ hasArtifact }: { hasArtifact: boolean }) {
         </div>
       </div>
       <div className="flex-1 w-[1px] bg-border/30 border-l border-dashed border-border/30 min-h-[20px] mt-4" />
-    </div>
-  )
-}
-
-// 专家轨道 - Complex
-function ExpertRailComplex({ tasks, selectedTaskId, onTaskClick }: { 
-  tasks: Task[], selectedTaskId: string | null, onTaskClick: (id: string) => void 
-}) {
-  return (
-    <div className="flex-1 overflow-y-auto py-2">
-      <div className="flex flex-col items-center gap-3">
-        {tasks.map((task, idx) => {
-          const isActive = selectedTaskId === task.id || (!selectedTaskId && idx === 0)
-          const label = expertLabels[task.expert_type] || expertLabels.default
-          return (
-            <div key={task.id} className="group relative w-full flex justify-center">
-              {isActive && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-[2px] bg-border z-20" />}
-              <button onClick={() => onTaskClick(task.id)}
-                className={cn("w-10 h-10 border-2 flex items-center justify-center transition-all relative z-10",
-                  isActive ? "border-border bg-card shadow-[2px_2px_0_0_rgba(0,0,0,0.2)]" : "border-border/60 bg-page/80 hover:border-border")}>
-                <span className={cn("font-black text-xs", isActive ? "text-primary" : "text-muted-foreground")}>{label}</span>
-              </button>
-              <div className={cn("absolute left-14 top-2 bg-primary text-primary-foreground text-[9px] px-2 py-1 whitespace-nowrap z-50 border",
-                "opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity")}>
-                {task.expert_type} ({task.status})
-              </div>
-            </div>
-          )
-        })}
-      </div>
     </div>
   )
 }
@@ -244,9 +217,9 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-page overflow-hidden">
       {/* Tab 栏 - 左右分栏：左侧 Tabs，右侧状态 */}
-      <div className="h-10 flex items-center justify-between border-b-2 border-border bg-panel shrink-0 px-2">
+      <div className="h-10 flex items-center border-b-2 border-border bg-panel shrink-0 px-2">
         {/* 左侧：Tabs 区域（自适应 + 可滚动） */}
-        <div className="flex-1 flex items-center gap-1 min-w-0 mr-4">
+        <div className="flex-1 flex items-center gap-1 min-w-0 overflow-hidden">
           {canScrollLeft && (
             <button onClick={scrollLeft} className="h-7 w-6 flex items-center justify-center bg-panel border-2 border-border hover:bg-card shrink-0">
               <span className="text-xs">←</span>
@@ -254,15 +227,15 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
           )}
           
           {artifacts.length > 0 && (
-            <div className="h-7 px-3 flex items-center gap-2 bg-accent text-accent-foreground border-2 border-border shrink-0">
-              <span className="font-mono text-xs font-bold uppercase">{expertName}</span>
-              <span className="text-[10px] opacity-70">({artifacts.length})</span>
+            <div className="h-7 px-2 flex items-center gap-1.5 bg-accent text-accent-foreground border-2 border-border shrink-0">
+              <span className="font-mono text-[10px] font-bold uppercase">{expertName}</span>
+              <span className="text-[9px] opacity-70">({artifacts.length})</span>
             </div>
           )}
           
           {artifacts.length > 0 && <div className="w-px h-5 bg-border mx-1 shrink-0" />}
           
-          <div ref={tabsRef} className="flex-1 flex items-end gap-1 overflow-x-auto scrollbar-hide">
+          <div ref={tabsRef} className="flex-1 flex items-end gap-1 overflow-x-auto scrollbar-hide min-w-0">
             {artifacts.length === 0 ? (
               <div className="h-7 px-4 flex items-center text-muted-foreground/60 text-xs font-mono">等待交付物...</div>
             ) : (
@@ -271,14 +244,14 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
                   key={artifact.id}
                   onClick={() => onSelectArtifact(idx)}
                   className={cn(
-                    "h-7 px-3 flex items-center gap-2 transition-all shrink-0",
+                    "h-7 px-2 flex items-center gap-1.5 transition-all shrink-0",
                     selectedIndex === idx
                       ? "h-8 bg-card border-2 border-border border-b-0 top-[2px] z-10 text-primary shadow-[0_-2px_0_0_hsl(var(--accent))]"
                       : "bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100 text-muted-foreground"
                   )}
                 >
-                  <FileCode className="w-3 h-3" />
-                  <span className="font-mono text-xs font-bold truncate max-w-[100px]">
+                  <FileCode className="w-3 h-3 shrink-0" />
+                  <span className="font-mono text-xs font-bold truncate max-w-[80px]">
                     {artifact.title || `${expertName}-${idx + 1}`}
                   </span>
                 </button>
@@ -294,7 +267,7 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
         </div>
         
         {/* 右侧：任务状态指示器（固定不动） */}
-        <div className="flex-none flex items-center px-2 border-l border-border/50">
+        <div className="flex-none flex items-center pl-3 ml-2 border-l border-border/50 shrink-0">
           <TaskStatusIndicator />
         </div>
       </div>
@@ -400,7 +373,8 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
     }
   }, [])
 
-  const canPreview = ['markdown', 'html', 'code'].includes(artifact.type)
+  // 👈 所有文本类型都支持预览（统一 header 按钮）
+  const canPreview = true
 
   const ArtifactLoader = () => (
     <div className="h-full flex items-center justify-center">
@@ -502,10 +476,11 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
         ) : (
           <Suspense fallback={<ArtifactLoader />}>
             <div className="h-full w-full overflow-auto bauhaus-scrollbar p-4">
-              {artifact.type === 'markdown' ? (
-                <DocArtifact content={artifact.content} />
-              ) : artifact.type === 'html' ? (
+              {/* 👈 所有文本类型的预览渲染 */}
+              {artifact.type === 'html' ? (
                 <HtmlArtifact content={artifact.content} />
+              ) : artifact.type === 'markdown' || artifact.content.includes('#') || artifact.content.includes('**') ? (
+                <DocArtifact content={artifact.content} />
               ) : (
                 <CodeArtifact content={artifact.content} language={artifact.language || artifact.type} />
               )}

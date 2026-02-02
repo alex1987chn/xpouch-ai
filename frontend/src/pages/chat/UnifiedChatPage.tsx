@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'
-import { useCanvasStore } from '@/store/canvasStore'
 import { useChatStore } from '@/store/chatStore'
+import { useTaskStore } from '@/store/taskStore'
 import { useChat } from '@/hooks/useChat'
 import { useApp } from '@/providers/AppProvider'
 
@@ -12,8 +12,6 @@ import { normalizeAgentId } from '@/utils/agentUtils'
 import { IndustrialChatLayout, ChatStreamPanel } from '@/components/layout'
 import OrchestratorPanelV2 from '@/components/layout/OrchestratorPanelV2'
 import { IndustrialHeader } from '@/components/chat/IndustrialHeader'
-
-import type { Artifact } from '@/types'
 
 /**
  * =============================
@@ -72,28 +70,12 @@ export default function UnifiedChatPage() {
     }
   }, [])
 
-  const {
-    artifactSessions,
-    selectedExpertSession,
-    selectArtifactSession,
-    switchArtifactIndex,
-    clearExpertResults,
-    clearArtifactSessions,
-    expertResults
-  } = useCanvasStore()
-
+  // v3.1: 移除 canvasStore，所有状态由 OrchestratorPanelV2 内部管理
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
   const [inputValue, setInputValue] = useState('')
-
-  // 移动端：检测到专家活动时，自动切换到 preview 模式
-  const hasExpertActivity = expertResults.length > 0 || Object.keys(artifactSessions).length > 0
-  
-  useEffect(() => {
-    if (hasExpertActivity && viewMode === 'chat') {
-      setViewMode('preview')
-    }
-  }, [hasExpertActivity])
+  // TODO: 移动端专家活动检测需要 taskStore 提供类似能力
+  // const hasExpertActivity = ...
 
   // 同步 URL 的 agentId 到 store（只执行一次）
   useEffect(() => {
@@ -122,8 +104,10 @@ export default function UnifiedChatPage() {
       if (isNewConversation) {
         useChatStore.getState().setCurrentConversationId(conversationId)
         useChatStore.getState().setMessages([])
-        clearExpertResults()
-        clearArtifactSessions()
+        // v3.1: 清理 taskStore（替换原来的 canvasStore 清理）
+        const { clearTasks, setMode } = useTaskStore.getState()
+        clearTasks()
+        setMode('simple')
         return
       }
 
@@ -139,13 +123,17 @@ export default function UnifiedChatPage() {
           if (error?.status === 404 || error?.message?.includes('404')) {
             useChatStore.getState().setCurrentConversationId(conversationId)
             useChatStore.getState().setMessages([])
-            clearExpertResults()
-            clearArtifactSessions()
+            // v3.1: 清理 taskStore
+            const { clearTasks, setMode } = useTaskStore.getState()
+            clearTasks()
+            setMode('simple')
           }
         })
     } else {
-      clearExpertResults()
-      clearArtifactSessions()
+      // v3.1: 清理 taskStore
+      const { clearTasks, setMode } = useTaskStore.getState()
+      clearTasks()
+      setMode('simple')
     }
   }, [])
 
@@ -174,20 +162,8 @@ export default function UnifiedChatPage() {
     }
   }, [isNewConversation, initialMessage, isStreaming, conversationId])
 
-  // 处理专家卡片点击
-  const handleExpertClick = useCallback((expertId: string) => {
-    useCanvasStore.getState().selectExpert(expertId)
-    useCanvasStore.getState().selectArtifactSession(expertId)
-  }, [])
-
-  // 处理消息中的链接点击
-  const handleLinkClick = useCallback((href: string) => {
-    const expertId = href.replace('#', '')
-    if (expertId) {
-      useCanvasStore.getState().selectExpert(expertId)
-      useCanvasStore.getState().selectArtifactSession(expertId)
-    }
-  }, [])
+  // v3.1: 移除 canvasStore 相关处理函数
+  // 专家点击和链接点击现在由 OrchestratorPanelV2 内部处理
 
   // 发送消息处理
   const handleSend = useCallback(() => {
@@ -196,40 +172,8 @@ export default function UnifiedChatPage() {
     setInputValue('')
   }, [inputValue, isStreaming, sendMessage, normalizedAgentId])
 
-  const selectedExpertId = selectedExpertSession
-
-  // 处理 Artifact 点击
-  const handleArtifactClick = useCallback((artifact: Artifact) => {
-    const expertType = artifact.source || selectedExpertSession
-    if (expertType) {
-      selectArtifactSession(expertType)
-    }
-  }, [selectArtifactSession, selectedExpertSession])
-
-  // 获取当前选中专家的 artifact session
-  const currentArtifactSession = useMemo(() => {
-    if (!selectedExpertSession) return null
-    return artifactSessions.find(s => s.expertType === selectedExpertSession) || null
-  }, [artifactSessions, selectedExpertSession])
-
-  // 获取当前选中专家的所有 artifacts
-  const currentExpertArtifacts = useMemo(() => {
-    if (!currentArtifactSession) return []
-    return currentArtifactSession.artifacts.map((artifact, idx) => ({
-      ...artifact,
-      _index: idx
-    }))
-  }, [currentArtifactSession])
-
-  // 当前选中的 artifact
-  const currentArtifact = useMemo(() => {
-    if (!currentArtifactSession || currentArtifactSession.artifacts.length === 0) return null
-    const currentIndex = currentArtifactSession.currentIndex
-    if (currentIndex >= 0 && currentIndex < currentArtifactSession.artifacts.length) {
-      return { ...currentArtifactSession.artifacts[currentIndex], _index: currentIndex }
-    }
-    return { ...currentArtifactSession.artifacts[0], _index: 0 }
-  }, [currentArtifactSession])
+  // v3.1: 移除所有 canvasStore 相关的 artifact 处理
+  // Artifact 展示现在完全由 OrchestratorPanelV2 内部管理
 
   // 缓存全屏切换回调
   const toggleFullscreen = useCallback(() => {
@@ -266,9 +210,7 @@ export default function UnifiedChatPage() {
             onInputChange={setInputValue}
             onSend={handleSend}
             onStop={stopGeneration}
-            activeExpert={selectedExpertId}
             onRegenerate={() => retry()}
-            onLinkClick={handleLinkClick}
           />
         }
         orchestratorPanel={

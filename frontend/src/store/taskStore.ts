@@ -67,8 +67,8 @@ interface TaskState {
   tasksCache: Task[]
   tasksCacheVersion: number  // 缓存版本号，用于检测是否需要更新缓存
 
-  // 当前运行的任务ID
-  runningTaskId: string | null
+  // 当前运行的任务ID（支持并行）
+  runningTaskIds: Set<string>
 
   // 选中的任务ID（用于展示产物）
   selectedTaskId: string | null
@@ -90,13 +90,14 @@ interface TaskState {
 
   // Computed（通过 get 方法实现）
   getPendingTasks: () => Task[]
-  getRunningTask: () => Task | null
+  getRunningTasks: () => Task[]
   getCompletedTasks: () => Task[]
   getFailedTasks: () => Task[]
   getAllTasks: () => Task[]
   getSelectedTask: () => Task | null
   getSelectedTaskArtifacts: () => Artifact[]
   getProgress: () => number
+  isTaskRunning: (taskId: string) => boolean
 }
 
 // ============================================================================
@@ -112,7 +113,7 @@ export const useTaskStore = create<TaskState>()(
       tasks: new Map(),
       tasksCache: [],  // 缓存：排序后的任务数组
       tasksCacheVersion: 0,  // 缓存版本号
-      runningTaskId: null,
+      runningTaskIds: new Set(),
       selectedTaskId: null,
       isInitialized: false,
 
@@ -132,6 +133,7 @@ export const useTaskStore = create<TaskState>()(
           state.tasks = new Map()
           state.tasksCache = Object.freeze([])  // 清空缓存（冻结）
           state.tasksCacheVersion++
+          state.runningTaskIds = new Set()
           state.isInitialized = false
         }
       })
@@ -205,7 +207,7 @@ export const useTaskStore = create<TaskState>()(
           task.status = 'running'
           task.startedAt = data.started_at
         }
-        state.runningTaskId = data.task_id
+        state.runningTaskIds.add(data.task_id)
         // 更新缓存（深拷贝避免 Immer proxy 问题）
         state.tasksCache = Object.freeze(
           Array.from(state.tasks.values())
@@ -232,9 +234,7 @@ export const useTaskStore = create<TaskState>()(
           task.durationMs = data.duration_ms
           task.output = data.output
         }
-        if (state.runningTaskId === data.task_id) {
-          state.runningTaskId = null
-        }
+        state.runningTaskIds.delete(data.task_id)
         // 自动选中第一个完成的任务展示产物（只在未选中或选中不同任务时更新）
         if (!state.selectedTaskId && data.artifact_count > 0 && state.selectedTaskId !== data.task_id) {
           state.selectedTaskId = data.task_id
@@ -263,9 +263,7 @@ export const useTaskStore = create<TaskState>()(
           task.status = 'failed'
           task.error = data.error
         }
-        if (state.runningTaskId === data.task_id) {
-          state.runningTaskId = null
-        }
+        state.runningTaskIds.delete(data.task_id)
         // 更新缓存（深拷贝避免 Immer proxy 问题）
         state.tasksCache = Object.freeze(
           Array.from(state.tasks.values())
@@ -358,7 +356,7 @@ export const useTaskStore = create<TaskState>()(
         state.tasks = new Map()
         state.tasksCache = Object.freeze([])  // 清空缓存（冻结）
         state.tasksCacheVersion++
-        state.runningTaskId = null
+        state.runningTaskIds = new Set()
         state.selectedTaskId = null
         state.isInitialized = false
       })
@@ -375,10 +373,16 @@ export const useTaskStore = create<TaskState>()(
         .sort((a, b) => a.sort_order - b.sort_order)
     },
 
-    getRunningTask: () => {
-      const { tasks, runningTaskId } = get()
-      if (!runningTaskId) return null
-      return tasks.get(runningTaskId) || null
+    getRunningTasks: () => {
+      const { tasks, runningTaskIds } = get()
+      return Array.from(runningTaskIds)
+        .map(id => tasks.get(id))
+        .filter((t): t is Task => t !== undefined)
+        .sort((a, b) => a.sort_order - b.sort_order)
+    },
+
+    isTaskRunning: (taskId: string) => {
+      return get().runningTaskIds.has(taskId)
     },
 
     getCompletedTasks: () => {

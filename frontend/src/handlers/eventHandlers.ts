@@ -203,13 +203,27 @@ export class EventHandler {
   /**
    * 处理 router.decision 事件
    * v3.0: 设置模式，触发 UI 切换
+   * v3.1: complex 模式下移除空的 AI 消息气泡
    */
   private handleRouterDecision(event: RouterDecisionEvent): void {
     const { setMode } = useTaskStore.getState()
-    
+    const { messages, setMessages } = useChatStore.getState()
+
     // 设置模式（simple 或 complex）
     setMode(event.data.decision)
-    
+
+    // 👈 v3.1: complex 模式下移除空的 AI 消息（避免空气泡）
+    if (event.data.decision === 'complex') {
+      // 找到最后一条 AI 消息，如果是空的则移除
+      const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
+      if (lastAiMessage && !lastAiMessage.content?.trim()) {
+        setMessages(messages.filter(m => m.id !== lastAiMessage.id))
+        if (DEBUG) {
+          logger.debug('[EventHandler] complex 模式：移除空 AI 消息', lastAiMessage.id)
+        }
+      }
+    }
+
     if (DEBUG) {
       logger.debug('[EventHandler] 路由决策，设置模式:', event.data.decision)
     }

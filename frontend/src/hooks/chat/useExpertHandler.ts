@@ -5,7 +5,6 @@
 
 import { useCallback, useRef, useMemo } from 'react'
 import { useChatStore } from '@/store/chatStore'
-import { useCanvasStore } from '@/store/canvasStore'
 import { useTaskStore } from '@/store/taskStore'
 import { getExpertConfig } from '@/constants/systemAgents'
 import type { AnyServerEvent } from '@/types/events'
@@ -211,31 +210,12 @@ export function useExpertHandler() {
       
       case 'artifact.generated': {
         const artifactData = event.data
-        const expertType = artifactData.expert_type
         
-        // 1. 更新 taskStore
+        // v3.1: 只更新 taskStore（canvasStore 已废弃）
         taskActions.addArtifact(artifactData)
         
-        // 2. 同步到 canvasStore（用于 Artifact 展示）
-        const artifact = {
-          id: artifactData.artifact.id,
-          timestamp: new Date().toISOString(),
-          type: artifactData.artifact.type,
-          title: artifactData.artifact.title || `${expertType} 产物`,
-          content: artifactData.artifact.content,
-          language: artifactData.artifact.language
-        }
-        // 使用 getState() 避免订阅
-        useCanvasStore.getState().addArtifactsBatch(expertType, [artifact])
-        
-        // 3. 自动选中该任务
+        // 自动选中该任务
         taskActions.selectTask(artifactData.task_id)
-        break
-      }
-      
-      case 'router.decision': {
-        debug('Router 决策:', event.data.decision)
-        // 可以在这里触发 UI 变化（如展开右侧面板）
         break
       }
       

@@ -137,7 +137,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       debug('准备发送消息，历史消息数:', storeState.messages.length, '当前输入:', userContent)
 
-      // 2. 添加用户消息和 AI 空消息（使用批量更新确保同步）
+      // 2. 添加用户消息和 AI 消息占位符
+      // 👈 v3.1: 简单模式预先创建 AI 消息，复杂模式也创建占位符（用于关联 events）
       assistantMessageId = generateUUID()
       debug('准备添加消息，AI ID:', assistantMessageId, '类型:', typeof assistantMessageId)
 
@@ -268,6 +269,19 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       setIsTyping(false)
       setGenerating(false)  // ✅ 使用 Store 方法
       abortControllerRef.current = null
+
+      // 👈 v3.1: 复杂模式下清理空 AI 消息（避免空气泡）
+      if (conversationMode === 'complex' && assistantMessageId) {
+        const currentMessages = useChatStore.getState().messages
+        const assistantMsg = currentMessages.find(m => m.id === assistantMessageId)
+        if (assistantMsg && !assistantMsg.content?.trim()) {
+          // 删除空消息
+          useChatStore.getState().setMessages(
+            currentMessages.filter(m => m.id !== assistantMessageId)
+          )
+          debug('复杂模式：清理空 AI 消息', assistantMessageId)
+        }
+      }
     }
   }, [
     isGenerating,

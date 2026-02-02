@@ -7,7 +7,6 @@ export { useChat } from './useChat'
 
 export { useChatCore } from './chat/useChatCore'
 export { useExpertHandler } from './chat/useExpertHandler'
-export { useArtifactHandler } from './chat/useArtifactHandler'
 export { useConversation } from './chat/useConversation'
 
 // 主题相关

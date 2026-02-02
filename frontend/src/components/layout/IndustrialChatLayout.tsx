@@ -15,14 +15,15 @@ import { cn } from '@/lib/utils'
  * - 双栏布局：左侧聊天流 (55%) + 右侧编排器 (45%)
  *
  * [布局结构]
- * ┌─────────────────────────────────────────────┐
- * │ Header (由父组件直接提供)                   │
- * ├──────────────────┬──────────────────────────┤
- * │                  │                          │
- * │  Chat Stream     │  Orchestrator           │
- * │  Panel (55%)     │  Panel (45%)            │
- * │                  │                          │
- * └──────────────────┴──────────────────────────┘
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │ Header (由父组件直接提供)                                   │
+ * ├────────────────────────────┬────────────────────────────────┤
+ * │                            │                                │
+ * │  Chat Stream Panel         │  Orchestrator Panel            │
+ * │  (flex-1, min-w-[400px])   │  (45%-50%, min-w-[400px])      │
+ * │                            │  = BusRail (w-16) + Artifact   │
+ * │                            │                                │
+ * └────────────────────────────┴────────────────────────────────┘
  *
  * [响应式设计]
  * - 桌面端 (md+): 双栏并排显示
@@ -71,10 +72,10 @@ export default function IndustrialChatLayout({
 
       {/* 主内容区 - 双栏布局 */}
       <main className="flex-1 flex overflow-hidden">
-        {/* 左侧：聊天流面板 (55%) */}
+        {/* 左侧：聊天流面板 (55% -> 大屏 50%) */}
         <div
           className={cn(
-            'flex-1 flex flex-col min-w-0 border-r-2 border-border bg-panel relative',
+            'flex-1 flex flex-col min-w-[400px] border-r-2 border-border bg-panel relative',
             // 移动端：当 viewMode 为 preview 时隐藏左栏
             viewMode === 'preview' && 'hidden md:flex',
             // 全屏时隐藏左栏（确保在移动端和桌面端都隐藏）
@@ -84,16 +85,16 @@ export default function IndustrialChatLayout({
           {chatStreamPanel}
         </div>
 
-        {/* 右侧：编排器面板 (45% - 全屏时占满宽度) - 无左边框，避免与左侧的右边框重叠 */}
+        {/* 右侧：编排器面板 (55% - 全屏时占满宽度) - 无左边框，避免与左侧的右边框重叠 */}
         <div
           className={cn(
-            'w-full md:w-[45%] flex bg-card',
+            'w-full md:w-[55%] flex bg-card min-w-[400px]',
             // 移动端：默认隐藏，viewMode 为 preview 时显示
             viewMode === 'chat' && 'hidden md:flex',
             // 隐藏右侧面板
             hideOrchestrator && 'hidden',
             // 全屏时占满宽度
-            isFullscreen && '!w-full !md:!w-full'
+            isFullscreen && '!w-full !md:!w-full !min-w-0'
           )}
         >
           {orchestratorPanel}

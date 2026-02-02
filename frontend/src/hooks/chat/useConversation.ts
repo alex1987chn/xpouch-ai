@@ -1,17 +1,16 @@
 /**
  * 会话管理 Hook
  * 负责加载历史会话、删除会话等功能
+ * v3.1: 移除 canvasStore，使用 taskStore 管理复杂模式状态
  */
 
 import { useCallback } from 'react'
 import { useChatStore, type ChatStore } from '@/store/chatStore'
-import { useCanvasStore } from '@/store/canvasStore'
+import { useTaskStore } from '@/store/taskStore'
 import { getConversation, deleteConversation as apiDeleteConversation } from '@/services/chat'
 import { normalizeAgentId } from '@/utils/agentUtils'
-import { getExpertConfig, createExpertResult } from '@/constants/systemAgents'
-import { generateUUID } from '@/utils'
 import { errorHandler } from '@/utils/logger'
-import type { Conversation, Artifact } from '@/types'
+import type { Conversation } from '@/types'
 
 // 开发环境判断
 const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
@@ -33,13 +32,15 @@ export function useConversation() {
     setSelectedAgentId,
   } = useChatStore()
 
+  // v3.1: 使用 taskStore 替代 canvasStore
   const {
-    addExpertResult,
-    addArtifactsBatch,
-    selectExpert,
-    selectArtifactSession,
-    clearExpertResults,
-  } = useCanvasStore()
+    initializePlan,
+    completeTask,
+    addArtifact,
+    selectTask,
+    clearTasks,
+    setMode,
+  } = useTaskStore()
 
   /**
    * 加载历史会话
@@ -92,48 +93,65 @@ export function useConversation() {
         setSelectedAgentId(normalizeAgentId(conversation.agent_id))
       }
 
-      // 如果是复杂模式会话，恢复专家结果和 artifacts
+      // v3.1: 如果是复杂模式会话，使用 taskStore 恢复任务状态
       if (conversation.agent_type === 'ai' && conversation.task_session) {
         const subTasks = conversation.task_session.sub_tasks || []
 
-        // 清空旧的专家结果和 artifacts
-        clearExpertResults()
+        // 清空旧任务
+        clearTasks()
+        setMode('complex')
 
-        // 恢复每个子任务
+        // 初始化任务计划
+        initializePlan({
+          session_id: conversation.task_session.id,
+          summary: conversation.task_session.summary || '复杂任务',
+          estimated_steps: subTasks.length,
+          execution_mode: 'sequential',
+          tasks: subTasks.map((st: any) => ({
+            id: st.id || `task-${Date.now()}`,
+            expert_type: st.expert_type,
+            description: st.task_description || `${st.expert_type} 任务`,
+            status: st.status || 'completed',
+            sort_order: st.sort_order || 0
+          }))
+        })
+
+        // 恢复每个子任务的状态和 artifacts
         subTasks.forEach((subTask: any) => {
-          const expertType = subTask.expert_type
-          if (!expertType) return
+          const taskId = subTask.id || `task-${Date.now()}`
 
-          // 创建专家结果
-          const expertResult = createExpertResult(expertType, subTask.status || 'completed')
-          expertResult.completedAt = subTask.created_at
-          expertResult.duration = subTask.duration_ms
-          expertResult.output = subTask.output
-          expertResult.error = subTask.error
-          expertResult.description = subTask.task_description
-
-          // 添加专家结果
-          addExpertResult(expertResult)
+          // 完成任务（恢复历史状态）
+          completeTask({
+            task_id: taskId,
+            duration_ms: subTask.duration_ms,
+            output: subTask.output,
+            error: subTask.error
+          })
 
           // 恢复 artifacts
           if (subTask.artifacts && Array.isArray(subTask.artifacts) && subTask.artifacts.length > 0) {
-            const artifacts: Artifact[] = subTask.artifacts.map((item: any) => ({
-              id: generateUUID(),
-              timestamp: item.timestamp || new Date().toISOString(),
-              type: item.type,
-              title: item.title,
-              content: item.content,
-              language: item.language
-            }))
-            addArtifactsBatch(expertType, artifacts)
+            subTask.artifacts.forEach((item: any) => {
+              addArtifact({
+                task_id: taskId,
+                expert_type: subTask.expert_type,
+                artifact: {
+                  id: item.id || `artifact-${Date.now()}`,
+                  type: item.type || 'code',
+                  title: item.title || `${subTask.expert_type} 产物`,
+                  content: item.content || '',
+                  language: item.language
+                }
+              })
+            })
           }
         })
 
-        // 自动选中第一个专家
+        // 自动选中第一个任务
         if (subTasks.length > 0) {
-          const firstExpertType = subTasks[0].expert_type
-          selectExpert(firstExpertType)
-          selectArtifactSession(firstExpertType)
+          const firstTaskId = subTasks[0].id
+          if (firstTaskId) {
+            selectTask(firstTaskId)
+          }
         }
       }
 
@@ -146,11 +164,12 @@ export function useConversation() {
     setMessages,
     setCurrentConversationId,
     setSelectedAgentId,
-    clearExpertResults,
-    addExpertResult,
-    addArtifactsBatch,
-    selectExpert,
-    selectArtifactSession
+    clearTasks,
+    setMode,
+    initializePlan,
+    completeTask,
+    addArtifact,
+    selectTask
   ])
 
   /**

@@ -1,29 +1,44 @@
 /**
- * 专家配置（用于 ExpertStatusBar 和复杂模式专家展示）
+ * 专家配置（用于复杂模式专家展示）
  * 这些是 LangGraph 工作流中的内部专家，前端不直接暴露给用户
  *
- * ⚠️ 注意：ExpertStatusBar 现在是 Bauhaus 风格，只使用 name 字段显示专家名称前两个字
- * icon 字段已被废弃（之前使用 emoji，现在改为使用 lucide-react 图标）
+ * v3.1: ExpertStatusBar 已废弃，现在使用 BusRail 组件展示专家
  */
-
-import type { ExpertResult } from '@/store/canvasStore'
 
 /**
  * 专家类型
  */
-export type ExpertType = 'search' | 'coder' | 'researcher' | 'analyzer' | 'writer' | 'planner' | 'image_analyzer'
+export type ExpertType = 'search' | 'coder' | 'researcher' | 'analyzer' | 'writer' | 'planner' | 'image_analyzer' | 'designer' | 'architect'
 
 /**
- * 专家配置（用于 ExpertStatusBar）
- * icon 字段已废弃，ExpertStatusBar 使用 Bauhaus 风格显示专家名称前两个字
+ * v3.1: 内联 ExpertResult 类型（原定义在 canvasStore，现内联避免循环依赖）
+ * @deprecated 复杂模式现在使用 taskStore，此类型保留用于兼容旧代码
  */
-export const EXPERT_CONFIG: Record<ExpertType, { name: string }> = {
+export interface ExpertResult {
+  expertType: string
+  expertName: string
+  description: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  startedAt: string
+  completedAt?: string
+  duration?: number
+  output?: string
+  error?: string
+}
+
+/**
+ * 专家配置（用于 BusRail 和复杂模式专家展示）
+ * v3.1: icon 字段已废弃，BusRail 使用专家名称缩写（如 SRCH, CODE）
+ */
+export const EXPERT_CONFIG: Record<string, { name: string }> = {
   search: { name: '搜索专家' },
   coder: { name: '编程专家' },
   researcher: { name: '研究专家' },
   analyzer: { name: '分析专家' },
   writer: { name: '写作专家' },
   planner: { name: '规划专家' },
+  designer: { name: '设计专家' },
+  architect: { name: '架构专家' },
   image_analyzer: { name: '图片分析专家' }
 } as const
 
