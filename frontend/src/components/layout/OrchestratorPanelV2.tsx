@@ -1,12 +1,11 @@
 import { useState, lazy, Suspense, memo, useCallback, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { 
-  Maximize2, LayoutGrid, FileCode, Terminal, Cpu, Database, Search, Globe, Palette, 
+  Maximize2, LayoutGrid, FileCode, 
   Eye, Code2, Copy, Check, Loader2, CheckCircle2, Clock, XCircle, Lightbulb,
   ChevronDown, ChevronRight
 } from 'lucide-react'
 import { useTaskStore } from '@/store/taskStore'
-import { useCanvasStore } from '@/store/canvasStore'
 import type { Artifact, Task } from '@/store/taskStore'
 
 const CodeArtifact = lazy(() => import('@/components/artifacts/CodeArtifact').then(m => ({ default: m.default })))
@@ -39,21 +38,29 @@ export default function OrchestratorPanelV2({ isFullscreen, onToggleFullscreen }
     : <SimpleModePanel {...{ isFullscreen, onToggleFullscreen }} />
 }
 
-// Simple 模式
+// Simple 模式 - 使用 taskStore 承载预览内容
+const SIMPLE_TASK_ID = 'simple_session'
+
 function SimpleModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPanelV2Props) {
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const canvasStore = useCanvasStore.getState()
-  const sessions = canvasStore.artifactSessions
-  const selected = canvasStore.selectedExpertSession
-  const currentSession = selected ? sessions.find(s => s.expertType === selected) : sessions[0]
-  const artifacts = currentSession?.artifacts || []
+  const tasks = useTaskStore((state) => state.tasksCache)
+  const selectedTask = tasks.find(t => t.id === SIMPLE_TASK_ID)
+  const artifacts = selectedTask?.artifacts || []
   const currentArtifact = artifacts[selectedIndex] || null
+
+  // 调试输出
+  console.log('[SimpleModePanel] tasks:', tasks.length, 'selectedTask:', selectedTask?.id, 'artifacts:', artifacts.length)
+
+  // 当切换任务时重置选中索引
+  useEffect(() => {
+    setSelectedIndex(0)
+  }, [selectedTask?.id])
 
   return (
     <div className="flex-1 flex h-full bg-page">
       <ExpertRailSimple hasArtifact={!!currentArtifact} />
       <ArtifactDashboard 
-        expertType="assistant" 
+ 
         expertName="AI" 
         artifacts={artifacts} 
         selectedArtifact={currentArtifact} 
@@ -107,7 +114,7 @@ function ComplexModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPane
         <ExpertRailComplex tasks={tasks} selectedTaskId={selectedTaskId} onTaskClick={selectTask} />
       </div>
       <ArtifactDashboard 
-        expertType={selectedTask?.expert_type || 'default'} 
+ 
         expertName={selectedTask?.expert_type || 'Expert'}
         artifacts={selectedTask?.artifacts || []} 
         selectedArtifact={currentArtifact}
@@ -169,7 +176,6 @@ function ExpertRailComplex({ tasks, selectedTaskId, onTaskClick }: {
 
 // Artifact 仪表盘
 interface ArtifactDashboardProps {
-  expertType: string
   expertName: string
   artifacts: Artifact[]
   selectedArtifact: Artifact | null
@@ -179,7 +185,7 @@ interface ArtifactDashboardProps {
   onToggleFullscreen?: () => void
 }
 
-function ArtifactDashboard({ expertType, expertName, artifacts, selectedArtifact, selectedIndex, 
+function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIndex, 
   onSelectArtifact, isFullscreen, onToggleFullscreen }: ArtifactDashboardProps) {
   const tabsRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)

@@ -117,6 +117,9 @@ export const useTaskStore = create<TaskState>()(
      */
     setMode: (mode: 'simple' | 'complex') => {
       set((state) => {
+        // 只在模式真正改变时才处理
+        if (state.mode === mode) return
+        
         state.mode = mode
         // 如果切换到 simple 模式，清空任务状态
         if (mode === 'simple') {
