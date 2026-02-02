@@ -34,44 +34,7 @@ GROUP BY table_name;
 SELECT * FROM migration_history;
 ```
 
----
 
-## 备用：单独迁移文件
-
-如果需要单独执行某个迁移，可以使用以下文件：
-
-### 1. v3_0_complex_mode_refactor.sql
-**v3.0 复杂模式重构**
-
-- 创建 `artifact` 表（产物独立表）
-- 扩展 `tasksession` 表（plan_summary, estimated_steps, execution_mode）
-- 扩展 `subtask` 表（task_description, output_result, started_at, completed_at, sort_order, execution_mode, depends_on, error_message, duration_ms）
-
-### 2. add_message_metadata.sql
-**添加 Message 表 extra_data 字段**
-
-- 添加 `extra_data` JSONB 字段到 `message` 表
-- 用于存储 thinking, reasoning 等额外信息
-
-### 3. v3_0_1_thread_fields.sql
-**v3.0.1 Thread 表字段扩展**
-
-- 添加 `agent_type`, `agent_id`, `task_session_id`, `status`, `thread_mode` 字段
-- 添加 `is_default` 字段到 `customagent` 表
-
----
-
-## Python 迁移工具（可选）
-
-如果需要更复杂的迁移逻辑，可以使用 `apply_migrations.py`：
-
-```bash
-# 查看状态
-python backend/migrations/apply_migrations.py status
-
-# 执行所有迁移
-python backend/migrations/apply_migrations.py apply
-```
 
 ---
 
