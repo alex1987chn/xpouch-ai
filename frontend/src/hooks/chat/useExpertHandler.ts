@@ -72,14 +72,21 @@ export function useExpertHandler() {
       case 'plan.created': {
         const planData = event.data
         
+        debug('[plan.created] 收到计划创建事件:', planData)
+        
         // 1. 更新 taskStore（初始化任务计划）
         taskActions.initializePlan(planData)
         
         // 2. 添加到当前消息的 thinking
         const messageId = getLastAssistantMessageId()
+        debug('[plan.created] 找到的消息 ID:', messageId)
+        
         if (messageId) {
           const message = useChatStore.getState().messages.find(m => m.id === messageId)
+          debug('[plan.created] 消息对象:', message)
+          
           const existingThinking = message?.metadata?.thinking || []
+          debug('[plan.created] 现有的 thinking:', existingThinking)
           
           // 构建任务计划 JSON
           const taskPlanJson = {
@@ -102,9 +109,18 @@ export function useExpertHandler() {
             status: 'completed' as const
           }
           
+          debug('[plan.created] 准备更新 metadata:', newStep)
           updateMessageMetadata(messageId, { 
             thinking: [...existingThinking, newStep].slice(-50)
           })
+          
+          // 验证更新
+          setTimeout(() => {
+            const updatedMessage = useChatStore.getState().messages.find(m => m.id === messageId)
+            debug('[plan.created] 更新后的 metadata:', updatedMessage?.metadata)
+          }, 100)
+        } else {
+          debug('[plan.created] 警告：没有找到最后一条助手消息')
         }
         break
       }

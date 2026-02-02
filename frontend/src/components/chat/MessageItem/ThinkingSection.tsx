@@ -13,6 +13,8 @@ export default function ThinkingSection({ thinking }: ThinkingSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const { t } = useTranslation()
 
+  console.log('[ThinkingSection] 渲染，thinking 数量:', thinking.length)
+
   const completedSteps = thinking.filter(s => s.status === 'completed').length
 
   return (
