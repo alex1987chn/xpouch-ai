@@ -1,6 +1,6 @@
 // 模型提供商类型定义
 
-export type Provider = 'deepseek' | 'openai' | 'anthropic' | 'google' | 'minimax'
+export type Provider = 'deepseek' | 'openai' | 'anthropic' | 'google' | 'minimax' | 'moonshot'
 
 export interface ModelInfo {
   id: string

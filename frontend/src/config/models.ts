@@ -39,6 +39,11 @@ export const providerConfigs: Record<Provider, {
     name: 'MiniMax',
     apiKey: getEnv('MINIMAX_API_KEY'),
     baseURL: 'https://api.minimaxi.chat/v1'
+  },
+  moonshot: {
+    name: 'Moonshot',
+    apiKey: getEnv('MOONSHOT_API_KEY'),
+    baseURL: 'https://api.moonshot.cn/v1'
   }
 }
 
@@ -60,7 +65,10 @@ export const models = [
   { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', provider: 'anthropic', model: 'claude-sonnet-4-20250514', contextWindow: 200000 },
 
   // Google
-  { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'google', model: 'gemini-2.0-flash-exp', contextWindow: 1048576 }
+  { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'google', model: 'gemini-2.0-flash-exp', contextWindow: 1048576 },
+
+  // Moonshot (月之暗面)
+  { id: 'kimi-k2.5', name: 'Kimi K2.5', provider: 'moonshot', model: 'kimi-k2.5', contextWindow: 256000 }
 ] as const
 
 // 智能体默认模型映射

@@ -74,6 +74,19 @@ providers:
     priority: 5
     enabled: false
 
+  # -------------------------------------------------------------------------
+  # Moonshot (月之暗面) - Kimi 系列，长文本处理
+  # -------------------------------------------------------------------------
+  moonshot:
+    name: Moonshot
+    base_url: https://api.moonshot.cn/v1
+    env_key: MOONSHOT_API_KEY
+    default_model: kimi-k2.5
+    temperature: 0.7
+    context_window: 256000
+    priority: 6
+    enabled: true
+
 # ============================================================================
 # 模型别名映射（用于前端展示和后端调用）
 # ============================================================================
@@ -110,6 +123,12 @@ models:
     provider: openai
     model: gpt-4-turbo
     name: GPT-4 Turbo
+
+  # Moonshot (月之暗面)
+  kimi-k2.5:
+    provider: moonshot
+    model: kimi-k2.5
+    name: Kimi K2.5
 
 # ============================================================================
 # Router 节点配置
