@@ -363,16 +363,37 @@ async def _handle_custom_agent_stream(
         # v3.0: 确保使用一致的 message_id
         actual_message_id = message_id or str(uuid4())
         try:
-            model_name = custom_agent.model_id or os.getenv("MODEL_NAME", "deepseek-chat")
-            base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+            # 使用新的配置系统获取模型
+            from providers_config import get_model_config, get_provider_config, get_provider_api_key
             
-            if "deepseek.com" in base_url and model_name.startswith("gpt-"):
-                print(f"[CUSTOM AGENT] 检测到不兼容模型 {model_name}，自动切换为 deepseek-chat")
-                model_name = "deepseek-chat"
-
-            print(f"[CUSTOM AGENT] 使用模型: {model_name}，消息ID: {actual_message_id}")
+            model_id = custom_agent.model_id or "deepseek-chat"
+            model_config = get_model_config(model_id)
             
-            llm = get_llm_instance(streaming=True, model=model_name, temperature=0.7)
+            if model_config:
+                # 从配置文件获取提供商和实际模型名
+                provider = model_config.get('provider')
+                actual_model = model_config.get('model', model_id)
+                provider_config = get_provider_config(provider)
+                
+                if not provider_config:
+                    raise ValueError(f"提供商 {provider} 未配置")
+                
+                if not get_provider_api_key(provider):
+                    raise ValueError(f"提供商 {provider} 的 API Key 未设置，请在 .env 中配置 {provider_config.get('env_key')}")
+                
+                print(f"[CUSTOM AGENT] 使用模型: {model_id} ({actual_model} via {provider})，消息ID: {actual_message_id}")
+                
+                # 使用新的 llm_factory（会自动从配置文件读取 base_url）
+                llm = get_llm_instance(
+                    provider=provider,
+                    model=actual_model,
+                    streaming=True,
+                    temperature=0.7
+                )
+            else:
+                # Fallback: 旧版兼容（直接传递模型名）
+                print(f"[CUSTOM AGENT] 未找到模型配置，使用 fallback: {model_id}")
+                llm = get_llm_instance(streaming=True, model=model_id, temperature=0.7)
 
             messages_with_system = [("system", custom_agent.system_prompt)]
             messages_with_system.extend(langchain_messages)
@@ -461,13 +482,34 @@ async def _handle_custom_agent_sync(
     session: Session
 ) -> dict:
     """处理自定义智能体非流式响应"""
-    model_name = custom_agent.model_id or os.getenv("MODEL_NAME", "deepseek-chat")
-    base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
-
-    if "deepseek.com" in base_url and model_name.startswith("gpt-"):
-        model_name = "deepseek-chat"
-
-    llm = get_llm_instance(streaming=False, model=model_name, temperature=0.7)
+    # 使用新的配置系统获取模型
+    from providers_config import get_model_config, get_provider_config, get_provider_api_key
+    
+    model_id = custom_agent.model_id or "deepseek-chat"
+    model_config = get_model_config(model_id)
+    
+    if model_config:
+        provider = model_config.get('provider')
+        actual_model = model_config.get('model', model_id)
+        provider_config = get_provider_config(provider)
+        
+        if not provider_config:
+            raise ValueError(f"提供商 {provider} 未配置")
+        
+        if not get_provider_api_key(provider):
+            raise ValueError(f"提供商 {provider} 的 API Key 未设置")
+        
+        print(f"[CUSTOM AGENT] 使用模型: {model_id} ({actual_model} via {provider})")
+        
+        llm = get_llm_instance(
+            provider=provider,
+            model=actual_model,
+            streaming=False,
+            temperature=0.7
+        )
+    else:
+        print(f"[CUSTOM AGENT] 未找到模型配置，使用 fallback: {model_id}")
+        llm = get_llm_instance(streaming=False, model=model_id, temperature=0.7)
     
     messages_with_system = [("system", custom_agent.system_prompt)]
     messages_with_system.extend(langchain_messages)
