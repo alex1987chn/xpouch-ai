@@ -9,18 +9,30 @@ import { getHeaders, buildUrl, handleResponse } from './common'
 // ============================================================================
 
 export interface SystemExpert {
+  id: number
   expert_key: string
+  name: string
+  description?: string
   system_prompt: string
   model: string
   temperature: number
-  created_at: string
   updated_at: string
 }
 
 export interface UpdateExpertRequest {
   system_prompt: string
+  description?: string
   model: string
   temperature: number
+}
+
+export interface GenerateDescriptionRequest {
+  system_prompt: string
+}
+
+export interface GenerateDescriptionResponse {
+  description: string
+  generated_at: string
 }
 
 export interface PreviewExpertRequest {
@@ -101,4 +113,18 @@ export async function getExpert(expertKey: string): Promise<SystemExpert> {
     headers: getHeaders()
   })
   return handleResponse<SystemExpert>(response, '获取专家配置失败')
+}
+
+/**
+ * 根据 System Prompt 自动生成专家描述
+ */
+export async function generateExpertDescription(
+  data: GenerateDescriptionRequest
+): Promise<GenerateDescriptionResponse> {
+  const response = await fetch(buildUrl('/admin/experts/generate-description'), {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  })
+  return handleResponse<GenerateDescriptionResponse>(response, '生成描述失败')
 }

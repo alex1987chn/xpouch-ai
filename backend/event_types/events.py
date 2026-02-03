@@ -144,6 +144,7 @@ class MessageDoneData(BaseModel):
     message_id: str
     full_content: str
     total_tokens: Optional[int] = None
+    thinking: Optional[Dict[str, Any]] = None  # 思考过程数据（类似 DeepSeek Chat）
 
 
 # ============================================================================

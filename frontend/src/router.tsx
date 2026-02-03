@@ -3,14 +3,14 @@
  * 从 main.tsx 抽离，保持入口文件简洁
  */
 
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import { createBrowserRouter, useNavigate, Navigate, Outlet, useParams } from 'react-router-dom'
 import AppLayout from './components/AppLayout'
 import AdminRoute from './components/AdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
 import { Toaster } from './components/ui/toaster'
 import { useChatStore } from './store/chatStore'
-import { createCustomAgent } from './services/api'
+import { createCustomAgent, updateCustomAgent, getAllAgents } from './services/api'
 import { normalizeAgentId } from '@/utils/agentUtils'
 import { logger } from '@/utils/logger'
 
@@ -81,7 +81,7 @@ const HistoryPageWrapper = () => {
 // 包装 CreateAgentPage
 const CreateAgentPageWrapper = () => {
   const navigate = useNavigate()
-  const { addCustomAgent } = useChatStore()
+  const { addCustomAgent, invalidateAgentsCache } = useChatStore()
 
   const handleSave = async (agent: any) => {
     try {
@@ -100,6 +100,8 @@ const CreateAgentPageWrapper = () => {
       }
 
       addCustomAgent(agentWithUI)
+      // 使缓存失效，确保首页能获取到最新数据
+      invalidateAgentsCache()
       // 导航到首页并切换到"我的智能体"标签
       navigate('/', { state: { agentTab: 'my' } })
     } catch (error) {
@@ -113,6 +115,91 @@ const CreateAgentPageWrapper = () => {
       <CreateAgentPage
         onBack={() => navigate('/')}
         onSave={handleSave}
+      />
+    </Suspense>
+  )
+}
+
+// 包装 EditAgentPage
+const EditAgentPageWrapper = () => {
+  const navigate = useNavigate()
+  const { id } = useParams()
+  const { setCustomAgents, invalidateAgentsCache } = useChatStore()
+  const [agentData, setAgentData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const loadAgent = async () => {
+      if (!id) {
+        navigate('/')
+        return
+      }
+      try {
+        const agents = await getAllAgents()
+        const agent = agents.find((a: any) => a.id === id)
+        if (!agent) {
+          logger.error('智能体不存在:', id)
+          navigate('/')
+          return
+        }
+        setAgentData({
+          id: agent.id,
+          name: agent.name,
+          description: agent.description || '',
+          systemPrompt: agent.system_prompt || '',
+          category: agent.category || '综合',
+          modelId: agent.model_id || 'deepseek-chat'
+        })
+      } catch (error) {
+        logger.error('加载智能体失败:', error)
+        navigate('/')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadAgent()
+  }, [id, navigate])
+
+  const handleSave = async (agent: any) => {
+    if (!id) return
+    try {
+      const updatedAgent = await updateCustomAgent(id, {
+        name: agent.name,
+        description: agent.description,
+        systemPrompt: agent.systemPrompt,
+        category: agent.category,
+        modelId: agent.modelId
+      })
+
+      // 更新本地状态
+      setCustomAgents(prev =>
+        prev.map(a =>
+          a.id === id
+            ? { ...a, ...updatedAgent }
+            : a
+        )
+      )
+      // 使缓存失效
+      invalidateAgentsCache()
+      // 导航回首页
+      navigate('/', { state: { agentTab: 'my' } })
+    } catch (error) {
+      logger.error('更新智能体失败:', error)
+      alert('更新失败，请稍后重试')
+    }
+  }
+
+  if (isLoading) {
+    return <LoadingFallback />
+  }
+
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <CreateAgentPage
+        onBack={() => navigate('/')}
+        onSave={handleSave}
+        initialData={agentData}
+        isEditMode={true}
       />
     </Suspense>
   )
@@ -155,6 +242,10 @@ export const router = createBrowserRouter([
       {
         path: 'create-agent',
         element: <CreateAgentPageWrapper />
+      },
+      {
+        path: 'edit-agent/:id',
+        element: <EditAgentPageWrapper />
       },
       {
         path: 'admin/experts',

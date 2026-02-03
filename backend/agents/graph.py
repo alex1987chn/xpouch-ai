@@ -1,6 +1,6 @@
 """
 XPouch AI 智能路由工作流 (v3.0 架构)
-集成意图识别 (Router) -> 任务规划 (Planner) -> 专家执行 (Experts)
+集成意图识别 (Router) -> 任务指挥官 (Commander) -> 专家执行 (Experts)
 支持事件溯源持久化和 Server-Driven UI
 """
 from typing import TypedDict, Annotated, List, Dict, Any, Literal, Optional, AsyncGenerator
@@ -35,8 +35,7 @@ from crud.task_session import (
     create_artifacts_batch,
     update_task_session_status
 )
-# 将原有的 COMMANDER_SYSTEM_PROMPT 作为规划器 (Planner) 的提示词
-from constants import COMMANDER_SYSTEM_PROMPT as PLANNER_SYSTEM_PROMPT, ROUTER_SYSTEM_PROMPT, DEFAULT_ASSISTANT_PROMPT 
+from constants import COMMANDER_SYSTEM_PROMPT, ROUTER_SYSTEM_PROMPT, DEFAULT_ASSISTANT_PROMPT 
 from agents.dynamic_experts import DYNAMIC_EXPERT_FUNCTIONS, initialize_expert_cache
 from agents.expert_loader import get_expert_config_cached
 
@@ -44,7 +43,7 @@ from agents.expert_loader import get_expert_config_cached
 # 0. 设置与配置
 # ============================================================================
 # 从工厂函数导入 LLM 实例创建器
-from utils.llm_factory import get_router_llm, get_planner_llm, get_expert_llm
+from utils.llm_factory import get_router_llm, get_commander_llm, get_llm_instance, get_expert_llm
 
 # LangSmith 链路追踪
 env_path = pathlib.Path(__file__).parent.parent / ".env"
@@ -56,7 +55,24 @@ if langsmith_config["enabled"]:
 
 # 初始化 LLM - 使用工厂函数
 # Router 使用较低温度以获得更确定的输出
-llm = get_router_llm()
+router_llm = get_router_llm()
+
+# Commander 专用 LLM - 使用 Commander 的默认配置
+commander_llm = get_commander_llm()
+
+# Simple 模式专用 LLM - 使用 MiniMax（响应最快）
+# 注意：MiniMax-M2.1 有 <think> 标签，不适合 Router，但适合简单对话
+from providers_config import is_provider_configured
+try:
+    if is_provider_configured('minimax'):
+        simple_llm = get_llm_instance(provider='minimax', streaming=True, temperature=0.7)
+        print("[LLM] Simple 模式使用: MiniMax-M2.1")
+    else:
+        simple_llm = router_llm
+        print("[LLM] Simple 模式回退到 Router LLM")
+except Exception as e:
+    print(f"[LLM] Simple 模式初始化失败，回退到 Router: {e}")
+    simple_llm = router_llm
 
 # 全局事件生成器（用于生成 SSE 事件）
 event_gen = EventGenerator()
@@ -70,17 +86,17 @@ class RoutingDecision(BaseModel):
     """v2.7 网关决策结构（Router只负责分类）"""
     decision_type: Literal["simple", "complex"] = Field(description="决策类型")
 
-# --- 保留原有的规划器结构 (原 CommanderOutput) ---
+# --- 保留原有的指挥官结构 ---
 
 class SubTaskOutput(BaseModel):
-    """单个子任务结构 (Planner 使用)"""
+    """单个子任务结构 (Commander 使用)"""
     expert_type: ExpertType = Field(description="执行此任务的专家类型")
     description: str = Field(description="任务描述")
     input_data: Dict[str, Any] = Field(default={}, description="输入参数")
     priority: int = Field(default=0, description="优先级 (0=最高)")
 
-class PlannerOutput(BaseModel):
-    """规划器输出 - 子任务列表 (原 CommanderOutput)"""
+class CommanderOutput(BaseModel):
+    """指挥官输出 - 子任务列表"""
     tasks: List[SubTaskOutput] = Field(description="子任务列表")
     strategy: str = Field(description="执行策略概述")
     estimated_steps: int = Field(description="预计步骤数")
@@ -122,7 +138,7 @@ async def router_node(state: AgentState) -> Dict[str, Any]:
     parser = PydanticOutputParser(pydantic_object=RoutingDecision)
     try:
         # 🔥 关键：静态 SystemPrompt + 动态 Messages
-        response = await llm.ainvoke(
+        response = await router_llm.ainvoke(
             [
                 SystemMessage(content=ROUTER_SYSTEM_PROMPT),
                 *messages  # 用户的输入在这里
@@ -144,8 +160,8 @@ async def direct_reply_node(state: AgentState) -> Dict[str, Any]:
     # 使用流式配置，添加 metadata 便于追踪
     config = {"tags": ["direct_reply"], "metadata": {"node_type": "direct_reply"}}
     
-    # 直接调用 LLM 生成回复 (这才是真正的流式)
-    response = await llm.ainvoke(
+    # Simple 模式使用 MiniMax（响应最快）
+    response = await simple_llm.ainvoke(
         [
             SystemMessage(content=DEFAULT_ASSISTANT_PROMPT),
             *messages  # 用户的历史消息上下文
@@ -161,10 +177,10 @@ async def direct_reply_node(state: AgentState) -> Dict[str, Any]:
         "final_response": response.content
     }
 
-# --- 修改：Planner 节点 (原 Commander) ---
-async def planner_node(state: AgentState) -> Dict[str, Any]:
+# --- 指挥官节点 ---
+async def commander_node(state: AgentState) -> Dict[str, Any]:
     """
-    [架构师] 将复杂查询拆解为子任务。
+    [指挥官] 将复杂查询拆解为子任务。
     v3.0 更新：立即持久化到数据库，发送 plan.created 事件
     """
     messages = state["messages"]
@@ -176,23 +192,48 @@ async def planner_node(state: AgentState) -> Dict[str, Any]:
     thread_id = state.get("thread_id")
     
     # 加载配置 (数据库或回退)
-    commander_config = get_expert_config_cached("commander") 
-    
+    commander_config = get_expert_config_cached("commander")
+
     if not commander_config:
-        system_prompt = PLANNER_SYSTEM_PROMPT
+        # 回退：使用常量中的 Prompt 和硬编码的模型
+        system_prompt = COMMANDER_SYSTEM_PROMPT
         model = os.getenv("MODEL_NAME", "deepseek-chat")
         temperature = 0.5
-        print(f"[PLANNER] 使用默认回退配置: model={model}")
+        print(f"[COMMANDER] 使用默认回退配置: model={model}")
     else:
+        # 使用数据库配置
         system_prompt = commander_config["system_prompt"]
         model = commander_config["model"]
         temperature = commander_config["temperature"]
-        print(f"[PLANNER] 加载数据库配置: model={model}")
+        print(f"[COMMANDER] 加载数据库配置: model={model}, temperature={temperature}")
     
     # 执行 LLM 进行规划
     try:
-        llm_with_config = llm.bind(model=model, temperature=temperature)
-        
+        # 从模型名称推断 provider
+        from providers_config import get_model_config
+        from utils.llm_factory import get_llm_instance
+
+        model_config = get_model_config(model)
+
+        if model_config and 'provider' in model_config:
+            # 使用推断出的 provider 创建 LLM
+            provider = model_config['provider']
+            # 优先使用模型配置中的 temperature（如果有）
+            final_temperature = model_config.get('temperature', temperature)
+            # 获取实际的 API 模型名称（providers.yaml 中定义的 model 字段）
+            actual_model = model_config.get('model', model)
+            llm = get_llm_instance(
+                provider=provider,
+                streaming=True,
+                temperature=final_temperature
+            )
+            print(f"[COMMANDER] 模型 '{model}' -> '{actual_model}' 使用 provider: {provider}, temperature: {final_temperature}")
+            llm_with_config = llm.bind(model=actual_model, temperature=final_temperature)
+        else:
+            # 回退到 commander_llm（硬编码的 provider 优先级）
+            print(f"[COMMANDER] 模型 '{model}' 未找到 provider 配置，回退到 commander_llm")
+            llm_with_config = commander_llm.bind(model=model, temperature=temperature)
+
         from langchain_core.runnables import RunnableConfig
         response = await llm_with_config.ainvoke(
             [
@@ -200,15 +241,15 @@ async def planner_node(state: AgentState) -> Dict[str, Any]:
                 HumanMessage(content=f"用户查询: {user_query}\n\n请将此查询拆解为子任务列表。")
             ],
             config=RunnableConfig(
-                tags=["commander", "planner"],
-                metadata={"node_type": "planner"}
+                tags=["commander"],
+                metadata={"node_type": "commander"}
             )
         )
 
         # 解析 JSON
-        planner_response = parse_llm_json(
+        commander_response = parse_llm_json(
             response.content,
-            PlannerOutput,
+            CommanderOutput,
             strict=False,
             clean_markdown=True
         )
@@ -223,7 +264,7 @@ async def planner_node(state: AgentState) -> Dict[str, Any]:
                 sort_order=idx,
                 execution_mode="sequential"  # 默认串行，可扩展为并行
             )
-            for idx, task in enumerate(planner_response.tasks)
+            for idx, task in enumerate(commander_response.tasks)
         ]
 
         # v3.0: 立即持久化到数据库
@@ -233,12 +274,12 @@ async def planner_node(state: AgentState) -> Dict[str, Any]:
                 db=db_session,
                 thread_id=thread_id,
                 user_query=user_query,
-                plan_summary=planner_response.strategy,
-                estimated_steps=planner_response.estimated_steps,
+                plan_summary=commander_response.strategy,
+                estimated_steps=commander_response.estimated_steps,
                 subtasks_data=subtasks_data,
                 execution_mode="sequential"
             )
-            print(f"[PLANNER] 任务会话已创建: {task_session.session_id}")
+            print(f"[COMMANDER] 任务会话已创建: {task_session.session_id}")
 
         # 转换为内部字典格式（用于 LangGraph 状态流转）
         sub_tasks_list = task_session.sub_tasks if task_session else []
@@ -257,7 +298,7 @@ async def planner_node(state: AgentState) -> Dict[str, Any]:
             for subtask in sub_tasks_list
         ]
 
-        print(f"[PLANNER] 生成了 {len(task_list)} 个任务。策略: {planner_response.strategy}")
+        print(f"[COMMANDER] 生成了 {len(task_list)} 个任务。策略: {commander_response.strategy}")
 
         # v3.0: 构建事件队列
         event_queue = []
@@ -266,8 +307,8 @@ async def planner_node(state: AgentState) -> Dict[str, Any]:
         if task_session:
             plan_event = event_plan_created(
                 session_id=task_session.session_id,
-                summary=planner_response.strategy,
-                estimated_steps=planner_response.estimated_steps,
+                summary=commander_response.strategy,
+                estimated_steps=commander_response.estimated_steps,
                 execution_mode="sequential",
                 tasks=[
                     {
@@ -284,7 +325,7 @@ async def planner_node(state: AgentState) -> Dict[str, Any]:
 
         return {
             "task_list": task_list,
-            "strategy": planner_response.strategy,
+            "strategy": commander_response.strategy,
             "current_task_index": 0,
             "expert_results": [],
             "task_session_id": task_session.session_id if task_session else None,
@@ -292,14 +333,14 @@ async def planner_node(state: AgentState) -> Dict[str, Any]:
             # 保留前端兼容的元数据
             "__task_plan": {
                 "task_count": len(task_list),
-                "strategy": planner_response.strategy,
-                "estimated_steps": planner_response.estimated_steps,
+                "strategy": commander_response.strategy,
+                "estimated_steps": commander_response.estimated_steps,
                 "tasks": task_list
             }
         }
 
     except Exception as e:
-        print(f"[ERROR] Planner 规划失败: {e}")
+        print(f"[ERROR] Commander 规划失败: {e}")
         import traceback
         traceback.print_exc()
         return {
@@ -352,7 +393,16 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
         if not expert_func:
             raise ValueError(f"未知的专家类型: {expert_type}")
 
-        result = await expert_func(state, llm)
+        # 获取专家配置
+        expert_config = get_expert_config_cached(expert_type)
+        if expert_config and 'provider' in expert_config:
+            # 使用数据库配置的 provider
+            expert_llm = get_expert_llm(provider=expert_config['provider'])
+        else:
+            # 回退到默认专家 LLM
+            expert_llm = get_expert_llm()
+
+        result = await expert_func(state, expert_llm)
 
         if "error" in result:
              raise AppError(message=result["error"], code="EXPERT_EXECUTION_ERROR")
@@ -565,14 +615,14 @@ def route_router(state: AgentState) -> str:
     """Router 之后的去向"""
     decision = state.get("router_decision", "complex")
 
-    print(f"[ROUTE_ROUTER] 决策: {decision}, 将路由到: {'direct_reply' if decision == 'simple' else 'planner'}")
+    print(f"[ROUTE_ROUTER] 决策: {decision}, 将路由到: {'direct_reply' if decision == 'simple' else 'commander'}")
 
     if decision == "simple":
         # Simple 模式进入 direct_reply 节点
         return "direct_reply"
     else:
-        # Complex 模式进入规划器
-        return "planner"
+        # Complex 模式进入指挥官
+        return "commander"
 
 def route_dispatcher(state: AgentState) -> str:
     """决定 分发器 之后的去向（循环或聚合）"""
@@ -590,7 +640,7 @@ def create_smart_router_workflow() -> StateGraph:
     # 添加节点
     workflow.add_node("router", router_node)
     workflow.add_node("direct_reply", direct_reply_node)  # 新增：Simple 模式流式回复
-    workflow.add_node("planner", planner_node)
+    workflow.add_node("commander", commander_node)
     workflow.add_node("expert_dispatcher", expert_dispatcher_node)
     workflow.add_node("aggregator", aggregator_node)
 
@@ -599,21 +649,21 @@ def create_smart_router_workflow() -> StateGraph:
 
     # 添加连线
 
-    # 1. Router -> (Direct Reply | Planner)
+    # 1. Router -> (Direct Reply | Commander)
     workflow.add_conditional_edges(
         "router",
         route_router,
         {
             "direct_reply": "direct_reply",
-            "planner": "planner"
+            "commander": "commander"
         }
     )
 
     # 2. Direct Reply -> END
     workflow.add_edge("direct_reply", END)
 
-    # 2. Planner -> Dispatcher (规划完必然执行)
-    workflow.add_edge("planner", "expert_dispatcher")
+    # 3. Commander -> Dispatcher (指挥官完成后执行)
+    workflow.add_edge("commander", "expert_dispatcher")
 
     # 3. Dispatcher -> (Loop | Aggregator)
     workflow.add_conditional_edges(

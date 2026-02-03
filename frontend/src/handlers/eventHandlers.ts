@@ -180,7 +180,7 @@ export class EventHandler {
    * 完成消息流式输出
    */
   private handleMessageDone(event: MessageDoneEvent): void {
-    const { updateMessage, messages } = useChatStore.getState()
+    const { updateMessage, updateMessageMetadata, messages } = useChatStore.getState()
 
     // 查找消息
     const message = messages.find(m => m.id === event.data.message_id)
@@ -196,6 +196,16 @@ export class EventHandler {
 
     // 更新消息为最终内容
     updateMessage(event.data.message_id, event.data.full_content, false)
+
+    // 更新 thinking 数据（类似 DeepSeek Chat 的思考过程）
+    if (event.data.thinking && event.data.thinking.steps && event.data.thinking.steps.length > 0) {
+      updateMessageMetadata(event.data.message_id, {
+        thinking: event.data.thinking.steps
+      })
+      if (DEBUG) {
+        logger.debug('[EventHandler] 更新 thinking 数据，步骤数:', event.data.thinking.steps.length)
+      }
+    }
 
     if (DEBUG) {
       logger.debug('[EventHandler] 消息完成:', event.data.message_id)

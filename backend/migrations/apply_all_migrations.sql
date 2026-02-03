@@ -316,7 +316,41 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- 8. 迁移记录表（用于追踪）
+-- 8. SystemExpert 表：添加 description 字段
+-- ============================================================================
+\echo 'Checking systemexpert table columns...'
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'systemexpert' AND column_name = 'description'
+    ) THEN
+        ALTER TABLE systemexpert ADD COLUMN description VARCHAR(500);
+        \echo '  -> Added systemexpert.description column'
+    ELSE
+        \echo '  -> Column already exists, skipping'
+    END IF;
+END $$;
+
+-- 为现有专家填充默认描述（如果为空）
+UPDATE systemexpert 
+SET description = CASE expert_id
+    WHEN 'search' THEN 'Web search expert. Uses search engines to find information, facts, and data from the internet. Good for finding current events, specific data points, or general information.'
+    WHEN 'coder' THEN 'Code expert. Writes, debugs, and explains code in various programming languages. Good for software development, code review, and technical implementation.'
+    WHEN 'researcher' THEN 'Research expert. Conducts deep research on topics, synthesizes information from multiple sources, and provides comprehensive analysis. Good for academic or detailed research tasks.'
+    WHEN 'analyzer' THEN 'Analysis expert. Analyzes data, text, or situations to extract insights and patterns. Good for data analysis, sentiment analysis, and logical reasoning tasks.'
+    WHEN 'writer' THEN 'Writing expert. Creates and edits various types of content including articles, stories, emails, and documents. Good for creative writing, copywriting, and content creation.'
+    WHEN 'planner' THEN 'Planning expert. Breaks down complex tasks into step-by-step plans and organizes workflows. Good for project planning, task scheduling, and process design.'
+    WHEN 'image_analyzer' THEN 'Image analysis expert. Analyzes and describes images, extracts text via OCR, and interprets visual content. Good for image understanding, visual data extraction, and image-based research.'
+    ELSE 'Specialized AI expert for specific tasks.'
+END
+WHERE description IS NULL OR description = '';
+
+\echo '  -> SystemExpert descriptions updated'
+
+-- ============================================================================
+-- 9. 迁移记录表（用于追踪）
 -- ============================================================================
 \echo 'Creating migration history table...'
 

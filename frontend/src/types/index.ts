@@ -59,6 +59,12 @@ export interface DBMessage {
   role: 'user' | 'assistant'
   content: string
   timestamp?: string | Date
+  extra_data?: {
+    thinking?: {
+      text?: string
+      steps?: ThinkingStep[]
+    }
+  }
 }
 
 // ============================================
@@ -298,10 +304,19 @@ export function apiMessageToMessage(apiMessage: ApiMessage): Message {
  * 将数据库消息转换为 UI 消息
  */
 export function dbMessageToMessage(dbMessage: DBMessage): Message {
-  return {
+  const message: Message = {
     id: dbMessage.id ? String(dbMessage.id) : undefined,
     role: dbMessage.role,
     content: dbMessage.content,
     timestamp: dbMessage.timestamp ? String(dbMessage.timestamp) : undefined
   }
+
+  // 处理 thinking 数据（类似 DeepSeek Chat 的思考过程）
+  if (dbMessage.extra_data?.thinking?.steps && dbMessage.extra_data.thinking.steps.length > 0) {
+    message.metadata = {
+      thinking: dbMessage.extra_data.thinking.steps
+    }
+  }
+
+  return message
 }

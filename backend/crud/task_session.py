@@ -347,7 +347,7 @@ def create_task_session_with_subtasks(
     execution_mode: str = "sequential"
 ) -> TaskSession:
     """
-    批量创建任务会话和子任务（Planner 阶段使用）
+    批量创建任务会话和子任务（Commander 阶段使用）
     
     Args:
         db: 数据库会话

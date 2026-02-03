@@ -152,22 +152,7 @@ def get_router_llm() -> ChatOpenAI:
     )
 
 
-def get_planner_llm() -> ChatOpenAI:
-    """
-    获取 Planner 节点专用的 LLM 实例
-    
-    Planner 需要较强的规划能力，优先使用 DeepSeek 或 OpenAI
-    """
-    # 尝试使用 deepseek
-    if is_provider_configured('deepseek'):
-        return get_llm_instance(provider='deepseek', streaming=True, temperature=0.3)
-    
-    # 回退到 openai
-    if is_provider_configured('openai'):
-        return get_llm_instance(provider='openai', streaming=True, temperature=0.3)
-    
-    # 最后尝试任何可用的
-    return get_router_llm()
+
 
 
 def get_expert_llm(
@@ -177,12 +162,12 @@ def get_expert_llm(
 ) -> ChatOpenAI:
     """
     获取 Expert 节点专用的 LLM 实例
-    
+
     Args:
         provider: 指定提供商，默认使用第一个已配置的
         model: 指定模型
         temperature: 专家节点可自定义温度
-    
+
     Returns:
         ChatOpenAI: 配置好的 LLM 实例
     """
@@ -194,7 +179,7 @@ def get_expert_llm(
             streaming=True,
             temperature=temperature
         )
-    
+
     # 默认使用 deepseek（性价比高）
     if is_provider_configured('deepseek'):
         return get_llm_instance(
@@ -203,7 +188,7 @@ def get_expert_llm(
             streaming=True,
             temperature=temperature or 0.7
         )
-    
+
     # 回退到任何可用的
     return get_llm_instance(
         provider=get_best_router_provider(),
@@ -211,6 +196,29 @@ def get_expert_llm(
         streaming=True,
         temperature=temperature
     )
+
+
+def get_commander_llm() -> ChatOpenAI:
+    """
+    获取 Commander 节点专用的 LLM 实例
+
+    Commander 需要较强的规划能力，优先使用 DeepSeek 或 OpenAI
+    默认温度为 0.5（规划任务需要一定的创造性）
+
+    Returns:
+        ChatOpenAI: 配置好的 LLM 实例
+    """
+    # 尝试使用 deepseek
+    if is_provider_configured('deepseek'):
+        return get_llm_instance(provider='deepseek', streaming=True, temperature=0.5)
+
+    # 回退到 openai
+    if is_provider_configured('openai'):
+        return get_llm_instance(provider='openai', streaming=True, temperature=0.5)
+
+    # 最后尝试任何可用的
+    return get_router_llm()
+
 
 
 # ============================================================================

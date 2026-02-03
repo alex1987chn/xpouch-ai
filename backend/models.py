@@ -50,6 +50,10 @@ class SystemExpert(SQLModel, table=True):
         description="专家类型标识（对应 ExpertType 枚举，如 'coder', 'search'）"
     )
     name: str = Field(description="专家显示名称")
+    description: Optional[str] = Field(
+        default=None,
+        description="专家能力描述，用于 Planner 决定任务分配"
+    )
     system_prompt: str = Field(
         description="专家系统提示词（核心字段，管理员可修改）"
     )
@@ -360,7 +364,7 @@ class TaskSession(SQLModel, table=True):
     # 用户查询：原始用户输入
     user_query: str = Field(index=True)
 
-    # 规划摘要：Planner 生成的策略概述
+    # 规划摘要：Commander 生成的策略概述
     plan_summary: Optional[str] = Field(default=None)
 
     # 预计步骤数
