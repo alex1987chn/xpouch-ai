@@ -1,6 +1,6 @@
 # XPouch AI v3.0
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0%20with%20Additional%20Terms-blue.svg)](./LICENSE)
 [![Python 3.13+](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![React 18](https://img.shields.io/badge/React-18.3-61dafb.svg)](https://reactjs.org/)
 
@@ -485,7 +485,22 @@ pnpm --prefix frontend run lint
 
 ## 📄 许可证
 
-本项目基于 [MIT License](./LICENSE) 开源。
+本项目采用 **Apache License 2.0 + 附加条款** 开源。
+
+### 许可证要点
+
+| 使用场景 | 是否允许 | 说明 |
+|----------|----------|------|
+| **内部部署** | ✅ 允许 | 企业内部使用完全免费 |
+| **单一客户部署** | ✅ 允许 | 外包公司为客户单独部署 |
+| **SaaS 云服务** | ❌ 禁止 | 不得作为多租户服务提供给第三方 |
+| **修改 Logo** | ❌ 禁止 | 不得移除或修改界面中的 XPouch 品牌标识 |
+
+详细许可证内容请参阅 [LICENSE](./LICENSE) 文件。
+
+### 商业授权
+
+如需商业 SaaS 授权或品牌定制，请联系项目维护者。
 
 ## 🔒 安全
 
