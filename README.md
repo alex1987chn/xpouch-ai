@@ -492,8 +492,8 @@ pnpm --prefix frontend run lint
 
 ## 📮 联系方式
 
-- **仓库**：https://github.com/your-username/xpouch-ai
-- **问题反馈**：https://github.com/your-username/xpouch-ai/issues
+- **仓库**：https://github.com/alex1987chn/xpouch-ai
+- **问题反馈**：https://github.com/alex1987chn/xpouch-ai/issues
 
 ---
 
