@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Save, RefreshCw, Loader2, Play, Search, Check, X, Sparkles } from 'lucide-react'
+import { Save, RefreshCw, Loader2, Play, Search, Check, X, Sparkles, Plus, Trash2 } from 'lucide-react'
 import { models } from '@/config/models'
 import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -11,8 +11,11 @@ import {
   updateExpert,
   previewExpert,
   generateExpertDescription,
+  createExpert,
+  deleteExpert,
   type ExpertResponse,
   type ExpertUpdateRequest,
+  type CreateExpertRequest,
   type GenerateDescriptionResponse,
 } from '@/services/admin'
 import { logger } from '@/utils/logger'
@@ -33,6 +36,369 @@ function BauhausToast({ message, type, onClose }: { message: string; type: 'succ
     )}>
       {message}
     </div>
+  )
+}
+
+// 创建专家对话框
+function CreateExpertDialog({
+  isOpen,
+  onClose,
+  onCreate,
+  isCreating,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  onCreate: (data: CreateExpertRequest) => void
+  isCreating: boolean
+}) {
+  const { t } = useTranslation()
+  const [formData, setFormData] = useState<CreateExpertRequest>({
+    expert_key: '',
+    name: '',
+    description: '',
+    system_prompt: '',
+    model: 'gpt-4o',
+    temperature: 0.5,
+  })
+  const [keyError, setKeyError] = useState('')
+
+  // 验证 expert_key 格式
+  const validateExpertKey = (key: string): boolean => {
+    const regex = /^[a-z][a-z0-9_]*$/
+    return regex.test(key)
+  }
+
+  const handleExpertKeyChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, expert_key: value }))
+    if (value && !validateExpertKey(value)) {
+      setKeyError(t('expertKeyHint'))
+    } else {
+      setKeyError('')
+    }
+  }
+
+  const handleSubmit = () => {
+    // 校验必填字段
+    if (!formData.expert_key || !formData.name || !formData.system_prompt) {
+      return
+    }
+    if (!validateExpertKey(formData.expert_key)) {
+      setKeyError(t('expertKeyHint'))
+      return
+    }
+    onCreate(formData)
+  }
+
+  const handleClose = () => {
+    if (!isCreating) {
+      setFormData({
+        expert_key: '',
+        name: '',
+        description: '',
+        system_prompt: '',
+        model: 'gpt-4o',
+        temperature: 0.5,
+      })
+      setKeyError('')
+      onClose()
+    }
+  }
+
+  if (!isOpen) return null
+
+  return createPortal(
+    <>
+      {/* 遮罩 */}
+      <div className="fixed inset-0 bg-black/50 z-50" onClick={handleClose} />
+      {/* 对话框容器 */}
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] z-50 max-h-[90vh] overflow-y-auto">
+        {/* 标题 */}
+        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-[var(--border-color)]">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-[var(--accent-hover)]" />
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              /// {t('createExpert')}
+            </span>
+          </div>
+          <button
+            onClick={handleClose}
+            disabled={isCreating}
+            className="w-7 h-7 flex items-center justify-center border border-[var(--border-color)] hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* 表单内容 */}
+        <div className="p-4 space-y-4">
+          {/* Expert Key */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                {t('expertKey')}
+              </label>
+            </div>
+            <input
+              type="text"
+              value={formData.expert_key}
+              onChange={(e) => handleExpertKeyChange(e.target.value)}
+              placeholder={t('expertKeyPlaceholder')}
+              disabled={isCreating}
+              className={cn(
+                "w-full px-3 py-2 border-2 bg-[var(--bg-page)] font-mono text-sm focus:outline-none transition-colors",
+                keyError
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-[var(--border-color)] focus:border-[var(--accent-hover)]"
+              )}
+            />
+            {keyError && (
+              <p className="font-mono text-[9px] text-red-500">{keyError}</p>
+            )}
+            <p className="font-mono text-[9px] text-[var(--text-secondary)]">{t('expertKeyHint')}</p>
+          </div>
+
+          {/* Name */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                {t('name')}
+              </label>
+            </div>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+              placeholder={t('namePlaceholder')}
+              disabled={isCreating}
+              className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
+            />
+          </div>
+
+          {/* Description */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                {t('expertDescription')}
+              </label>
+            </div>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+              placeholder={t('expertDescriptionPlaceholder')}
+              rows={2}
+              disabled={isCreating}
+              className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[60px]"
+            />
+          </div>
+
+          {/* Model */}
+          <ModelSelector
+            value={formData.model}
+            onChange={(modelId) => setFormData((prev) => ({ ...prev, model: modelId }))}
+            label={t('modelConfig')}
+          />
+
+          {/* Temperature */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                {t('temperature')}: {formData.temperature.toFixed(1)}
+              </label>
+            </div>
+            <div className="relative h-8 bg-[var(--bg-page)] border-2 border-[var(--border-color)]">
+              {/* 进度条背景 */}
+              <div
+                className="absolute top-0 left-0 h-full bg-[var(--accent-hover)] transition-all pointer-events-none"
+                style={{ width: `${(formData.temperature / 2) * 100}%` }}
+              />
+              {/* 滑块手柄 */}
+              <div
+                className="absolute top-0 w-4 h-full bg-[var(--text-primary)] border-2 border-[var(--border-color)] transition-all pointer-events-none"
+                style={{ left: `calc(${(formData.temperature / 2) * 100}% - 8px)` }}
+              />
+              {/* 实际的 range input */}
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                value={formData.temperature}
+                onChange={(e) => setFormData((prev) => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+                disabled={isCreating}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                style={{ WebkitAppearance: 'none', appearance: 'none' }}
+              />
+            </div>
+            <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
+              <span>0.0 ({t('conservative')})</span>
+              <span>1.0 ({t('balanced')})</span>
+              <span>2.0 ({t('creative')})</span>
+            </div>
+          </div>
+
+          {/* System Prompt */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                {t('systemPrompt')}
+              </label>
+            </div>
+            <textarea
+              value={formData.system_prompt}
+              onChange={(e) => setFormData((prev) => ({ ...prev, system_prompt: e.target.value }))}
+              placeholder={t('systemPromptPlaceholder')}
+              rows={5}
+              disabled={isCreating}
+              className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[100px]"
+            />
+            <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
+              <span>{formData.system_prompt.length} {t('chars')}</span>
+              <span className={formData.system_prompt.length < 10 ? 'text-red-500' : ''}>
+                {t('minChars')}: 10
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 底部按钮 */}
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t-2 border-[var(--border-color)]">
+          <button
+            onClick={handleClose}
+            disabled={isCreating}
+            className="px-4 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-xs font-bold uppercase hover:bg-[var(--accent-hover)] hover:text-black transition-colors disabled:opacity-50"
+          >
+            {t('cancel')}
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={
+              isCreating ||
+              !formData.expert_key ||
+              !formData.name ||
+              !formData.system_prompt ||
+              formData.system_prompt.length < 10 ||
+              !!keyError
+            }
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 border-2 border-[var(--border-color)]',
+              'bg-[var(--accent-hover)] text-black font-mono text-xs font-bold uppercase',
+              'shadow-[var(--shadow-color)_2px_2px_0_0]',
+              'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_3px_3px_0_0]',
+              'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
+              'transition-all',
+              'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0'
+            )}
+          >
+            {isCreating ? (
+              <>
+                <div className="w-3 h-3 border-2 border-black/30 border-t-black animate-spin" />
+                {t('creating')}
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" />
+                {t('create')}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </>,
+    document.body
+  )
+}
+
+// 删除确认对话框
+function DeleteConfirmDialog({
+  isOpen,
+  expert,
+  onClose,
+  onConfirm,
+  isDeleting,
+}: {
+  isOpen: boolean
+  expert: ExpertResponse | null
+  onClose: () => void
+  onConfirm: () => void
+  isDeleting: boolean
+}) {
+  const { t } = useTranslation()
+
+  if (!isOpen || !expert) return null
+
+  return createPortal(
+    <>
+      {/* 遮罩 */}
+      <div className="fixed inset-0 bg-black/50 z-50" onClick={!isDeleting ? onClose : undefined} />
+      {/* 对话框容器 */}
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] z-50">
+        {/* 标题 */}
+        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-[var(--border-color)]">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-500" />
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              /// {t('confirmDeleteExpert')}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={isDeleting}
+            className="w-7 h-7 flex items-center justify-center border border-[var(--border-color)] hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* 内容 */}
+        <div className="p-4">
+          <p className="font-mono text-sm text-[var(--text-primary)]">
+            {t('deleteExpertWarning').replace('{name}', expert.name)}
+          </p>
+        </div>
+
+        {/* 底部按钮 */}
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t-2 border-[var(--border-color)]">
+          <button
+            onClick={onClose}
+            disabled={isDeleting}
+            className="px-4 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-xs font-bold uppercase hover:bg-[var(--accent-hover)] hover:text-black transition-colors disabled:opacity-50"
+          >
+            {t('cancel')}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 border-2 border-red-500',
+              'bg-red-500 text-white font-mono text-xs font-bold uppercase',
+              'shadow-[rgba(239,68,68,0.3)_2px_2px_0_0]',
+              'hover:bg-red-600 hover:border-red-600',
+              'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
+              'transition-all',
+              'disabled:opacity-50 disabled:cursor-not-allowed'
+            )}
+          >
+            {isDeleting ? (
+              <>
+                <div className="w-3 h-3 border-2 border-white/30 border-t-white animate-spin" />
+                {t('deleting')}
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-4 h-4" />
+                {t('delete')}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </>,
+    document.body
   )
 }
 
@@ -59,6 +425,15 @@ export default function ExpertAdminPage() {
   const [testInput, setTestInput] = useState('')
   const [previewResult, setPreviewResult] = useState<any>(null)
   const [isPreviewing, setIsPreviewing] = useState(false)
+
+  // 创建专家对话框状态
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
+
+  // 删除确认对话框状态
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [expertToDelete, setExpertToDelete] = useState<ExpertResponse | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // 加载专家列表
   const loadExperts = async () => {
@@ -176,6 +551,63 @@ export default function ExpertAdminPage() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
+  // 打开创建专家对话框
+  const handleOpenCreateDialog = () => {
+    setIsCreateDialogOpen(true)
+  }
+
+  // 创建专家
+  const handleCreateExpert = async (data: CreateExpertRequest) => {
+    setIsCreating(true)
+    try {
+      await createExpert(data)
+      setToast({ message: t('createSuccess'), type: 'success' })
+      setIsCreateDialogOpen(false)
+      await loadExperts()
+      // 选中新创建的专家
+      await selectExpert(data.expert_key)
+    } catch (error) {
+      logger.error('Failed to create expert:', error)
+      setToast({ message: t('createFailed'), type: 'error' })
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  // 打开删除确认对话框
+  const handleOpenDeleteDialog = (expert: ExpertResponse, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!expert.is_dynamic) {
+      setToast({ message: t('cannotDeleteSystemExpert'), type: 'error' })
+      return
+    }
+    setExpertToDelete(expert)
+    setIsDeleteDialogOpen(true)
+  }
+
+  // 删除专家
+  const handleDeleteExpert = async () => {
+    if (!expertToDelete) return
+
+    setIsDeleting(true)
+    try {
+      await deleteExpert(expertToDelete.expert_key)
+      setToast({ message: t('deleteSuccess'), type: 'success' })
+      setIsDeleteDialogOpen(false)
+      setExpertToDelete(null)
+      // 如果删除的是当前选中的专家，清空选择
+      if (selectedExpert?.expert_key === expertToDelete.expert_key) {
+        setSelectedExpert(null)
+      }
+      await loadExperts()
+    } catch (error) {
+      logger.error('Failed to delete expert:', error)
+      setToast({ message: t('deleteFailed'), type: 'error' })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   // 过滤专家列表
   const filteredExperts = experts.filter(expert =>
     expert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -206,6 +638,23 @@ export default function ExpertAdminPage() {
         />
       )}
 
+      {/* 创建专家对话框 */}
+      <CreateExpertDialog
+        isOpen={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+        onCreate={handleCreateExpert}
+        isCreating={isCreating}
+      />
+
+      {/* 删除确认对话框 */}
+      <DeleteConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        expert={expertToDelete}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteExpert}
+        isDeleting={isDeleting}
+      />
+
       {/* 左侧：专家列表 */}
       <div className="w-80 flex-shrink-0 flex flex-col overflow-hidden border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0]">
         {/* 头部 */}
@@ -216,13 +665,24 @@ export default function ExpertAdminPage() {
               /// {t('expertsHeader')}
             </span>
           </div>
-          <button
-            onClick={handleRefresh}
-            className="w-7 h-7 flex items-center justify-center border border-[var(--border-color)] hover:bg-[var(--accent-hover)] transition-colors"
-            title={t('refresh')}
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* 新建专家按钮 */}
+            <button
+              onClick={handleOpenCreateDialog}
+              className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase border border-[var(--border-color)] bg-[var(--bg-page)] hover:bg-[var(--accent-hover)] hover:text-black hover:border-[var(--accent-hover)] transition-colors"
+              title={t('newExpert')}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t('newExpert')}</span>
+            </button>
+            <button
+              onClick={handleRefresh}
+              className="w-7 h-7 flex items-center justify-center border border-[var(--border-color)] hover:bg-[var(--accent-hover)] transition-colors"
+              title={t('refresh')}
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* 搜索框 */}
@@ -247,7 +707,7 @@ export default function ExpertAdminPage() {
                 key={expert.id}
                 onClick={() => selectExpert(expert.expert_key)}
                 className={cn(
-                  'w-full text-left px-3 py-3 border-2 transition-all relative',
+                  'w-full text-left px-3 py-3 border-2 transition-all relative group',
                   selectedExpert?.expert_key === expert.expert_key
                     ? 'border-[var(--accent-hover)] bg-[var(--accent-hover)] text-black shadow-[var(--shadow-color)_2px_2px_0_0]'
                     : 'border-transparent hover:border-[var(--border-color)] hover:bg-[var(--bg-page)]'
@@ -257,9 +717,27 @@ export default function ExpertAdminPage() {
                 {selectedExpert?.expert_key === expert.expert_key && (
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-black" />
                 )}
+                
+                {/* 删除按钮（仅对动态专家显示） */}
+                {expert.is_dynamic && (
+                  <div
+                    onClick={(e) => handleOpenDeleteDialog(expert, e)}
+                    className={cn(
+                      'absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded transition-colors opacity-0 group-hover:opacity-100',
+                      selectedExpert?.expert_key === expert.expert_key
+                        ? 'hover:bg-black/20 text-black/70 hover:text-black'
+                        : 'hover:bg-red-100 text-[var(--text-secondary)] hover:text-red-500'
+                    )}
+                    title={t('deleteExpert')}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </div>
+                )}
+
                 <div className={cn(
                   "font-mono text-sm font-bold",
-                  selectedExpert?.expert_key === expert.expert_key ? 'text-black' : 'text-[var(--text-primary)]'
+                  selectedExpert?.expert_key === expert.expert_key ? 'text-black' : 'text-[var(--text-primary)]',
+                  expert.is_dynamic && 'pr-6'
                 )}>
                   {expert.name}
                 </div>

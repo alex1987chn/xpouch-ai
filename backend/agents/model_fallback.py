@@ -29,7 +29,7 @@ def get_effective_model(configured_model: Optional[str]) -> str:
     1. 如果未配置模型，使用环境变量 MODEL_NAME 或默认值
     2. 如果配置的是 OpenAI 模型（gpt-开头），自动切换为默认模型
     3. 支持通过环境变量 FORCE_MODEL_FALLBACK=true 强制使用兜底模型
-    4. 解析模型别名映射（如 minimax-m2.1 -> MiniMax-M2.1）
+    4. 解析模型别名映射（如 minimax-text-01 -> MiniMax-Text-01）
 
     Args:
         configured_model: 数据库中配置的模型名称

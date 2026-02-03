@@ -350,6 +350,31 @@ WHERE description IS NULL OR description = '';
 \echo '  -> SystemExpert descriptions updated'
 
 -- ============================================================================
+-- 10. SystemExpert 表：添加 is_dynamic 字段 (v3.0 Phase 1)
+-- ============================================================================
+\echo 'Checking systemexpert.is_dynamic column...'
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'systemexpert' AND column_name = 'is_dynamic'
+    ) THEN
+        ALTER TABLE systemexpert ADD COLUMN is_dynamic BOOLEAN DEFAULT TRUE;
+        \echo '  -> Added systemexpert.is_dynamic column'
+    ELSE
+        \echo '  -> Column already exists, skipping'
+    END IF;
+END $$;
+
+-- 标记现有系统专家为内置（不可删除）
+UPDATE systemexpert 
+SET is_dynamic = FALSE 
+WHERE expert_key IN ('search', 'coder', 'researcher', 'analyzer', 'writer', 'planner', 'image_analyzer', 'commander');
+
+\echo '  -> SystemExpert is_dynamic flags updated'
+
+-- ============================================================================
 -- 9. 迁移记录表（用于追踪）
 -- ============================================================================
 \echo 'Creating migration history table...'

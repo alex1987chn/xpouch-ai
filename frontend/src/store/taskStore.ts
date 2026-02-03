@@ -16,6 +16,7 @@ import type {
   TaskFailedData,
   ArtifactGeneratedData
 } from '@/types/events'
+import type { TaskSession, SubTask } from '@/types'
 
 // 启用 Immer 的 Map/Set 支持（必须在 create 之前调用）
 enableMapSet()
@@ -86,6 +87,12 @@ interface TaskState {
   replaceArtifacts: (taskId: string, artifacts: Artifact[]) => void
   selectTask: (taskId: string | null) => void
   clearTasks: () => void
+  
+  /**
+   * 从会话数据恢复任务状态（用于页面切换后状态恢复）
+   * v3.0: 状态恢复/水合 (State Rehydration)
+   */
+  restoreFromSession: (session: TaskSession, subTasks: SubTask[]) => void
 
   // Computed（通过 get 方法实现）
   getSelectedTask: () => Task | null
@@ -339,6 +346,96 @@ export const useTaskStore = create<TaskState>()(
         state.runningTaskIds = new Set()
         state.selectedTaskId = null
         state.isInitialized = false
+      })
+    },
+
+    /**
+     * 从会话数据恢复任务状态（用于页面切换后状态恢复）
+     * v3.0: 状态恢复/水合 (State Rehydration)
+     * 
+     * 根据 Gemini 的建议：
+     * - 不追求事件回放，直接拉取最新状态
+     * - 利用数据库作为天然缓存
+     * - 用户切回来时看到最新进度即可
+     */
+    restoreFromSession: (session: TaskSession, subTasks: SubTask[]) => {
+      set((state) => {
+        // 1. 设置任务会话
+        state.session = {
+          sessionId: session.session_id,
+          summary: session.user_query || '',
+          estimatedSteps: subTasks.length,
+          executionMode: 'sequential',
+          status: (session.status as 'pending' | 'running' | 'completed' | 'failed') || 'running'
+        }
+
+        // 2. 重建任务 Map
+        state.tasks = new Map()
+        let hasRunningTask = false
+
+        subTasks.forEach((subTask, index) => {
+          const taskStatus = (subTask.status as TaskStatus) || 'pending'
+          if (taskStatus === 'running') {
+            hasRunningTask = true
+          }
+
+          // 转换 artifact 数据
+          const artifacts: Artifact[] = (subTask.artifacts || []).map((art: any, artIndex: number) => ({
+            id: art.id || `${subTask.id}-artifact-${artIndex}`,
+            type: art.type || 'text',
+            title: art.title || `${subTask.expert_type}结果`,
+            content: art.content || '',
+            language: art.language,
+            sortOrder: art.sort_order || artIndex,
+            createdAt: art.created_at || new Date().toISOString()
+          }))
+
+          state.tasks.set(subTask.id, {
+            id: subTask.id,
+            expert_type: subTask.expert_type,
+            description: subTask.task_description,
+            status: taskStatus,
+            sort_order: index,
+            artifacts: artifacts,
+            output: subTask.output,
+            error: subTask.error,
+            startedAt: undefined,
+            completedAt: undefined,
+            durationMs: subTask.duration_ms
+          })
+
+          // 更新运行中任务集合
+          if (taskStatus === 'running') {
+            state.runningTaskIds.add(subTask.id)
+          }
+        })
+
+        // 3. 设置模式
+        state.mode = 'complex'
+        state.isInitialized = true
+
+        // 4. 自动选中第一个有产物的任务（或第一个任务）
+        const sortedTasks = Array.from(state.tasks.values())
+          .sort((a, b) => a.sort_order - b.sort_order)
+        
+        const firstTaskWithArtifacts = sortedTasks.find(t => t.artifacts.length > 0)
+        state.selectedTaskId = firstTaskWithArtifacts?.id || sortedTasks[0]?.id || null
+
+        // 5. 更新缓存
+        state.tasksCache = Object.freeze(
+          sortedTasks.map(task => ({
+            ...task,
+            artifacts: task.artifacts.map(a => ({...a}))
+          }))
+        )
+        state.tasksCacheVersion++
+
+        console.log('[TaskStore] 状态恢复完成:', {
+          sessionId: session.session_id,
+          taskCount: subTasks.length,
+          runningTasks: state.runningTaskIds.size,
+          hasRunningTask
+        })
       })
     },
 

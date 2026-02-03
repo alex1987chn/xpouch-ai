@@ -84,6 +84,11 @@ export type TranslationKey =
   | 'apiKeyConfigDesc' | 'apiKeyConfigHint' | 'agentPrompts' | 'customized' | 'defaultPrompt'
   // Thinking Process
   | 'thinking' | 'thinkingSteps' | 'showThinking' | 'hideThinking'
+  // Dynamic Expert (v3.0)
+  | 'newExpert' | 'createExpert' | 'deleteExpert' | 'confirmDeleteExpert' | 'deleteExpertWarning'
+  | 'expertKeyPlaceholder' | 'expertKeyHint' | 'expertKeyExists' | 'invalidExpertKey'
+  | 'namePlaceholder' | 'creating' | 'createSuccess' | 'createFailed'
+  | 'deleteSuccess' | 'deleteFailed' | 'cannotDeleteSystemExpert'
 
 
 interface I18nContextType {
