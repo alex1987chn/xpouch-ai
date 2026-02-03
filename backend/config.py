@@ -35,6 +35,10 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 # Google 配置（可选）
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
+# MiniMax 配置（可选，用于 Router 等快速响应场景）
+MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY")
+MINIMAX_BASE_URL = os.getenv("MINIMAX_BASE_URL", "https://api.minimaxi.chat/v1")
+
 
 # ============================================================================
 # LangSmith 追踪配置
@@ -144,6 +148,7 @@ def validate_config() -> bool:
         DEEPSEEK_API_KEY,
         ANTHROPIC_API_KEY,
         GOOGLE_API_KEY,
+        os.getenv("MINIMAX_API_KEY"),
     ])
     
     if not has_llm:
