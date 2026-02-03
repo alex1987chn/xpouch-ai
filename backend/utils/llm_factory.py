@@ -34,10 +34,10 @@ def get_llm_instance(
         - MODEL_NAME (默认: deepseek-chat)
     """
     # 读取 API 配置（带 fallback 逻辑）
-    _api_key = api_key or os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+    _api_key = api_key or os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY") or os.getenv("MINIMAX_API_KEY")
     _base_url = base_url or os.getenv("OPENAI_BASE_URL") or os.getenv(
         "DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"
-    )
+    ) or os.getenv("MINIMAX_BASE_URL", "https://api.minimaxi.chat/v1")
     _model = model or os.getenv("MODEL_NAME", "deepseek-chat")
     _temperature = temperature if temperature is not None else float(os.getenv("LLM_TEMPERATURE", "0.7"))
     
@@ -56,8 +56,20 @@ def get_llm_instance(
 def get_router_llm() -> ChatOpenAI:
     """
     获取 Router 节点专用的 LLM 实例
-    使用较低温度以获得更确定的输出
+    使用 MiniMax Text 01 以获得更快的响应速度
     """
+    # 优先使用 MiniMax（响应快），如未配置则使用默认配置
+    minimax_key = os.getenv("MINIMAX_API_KEY")
+    if minimax_key:
+        return ChatOpenAI(
+            model="MiniMax-Text-01",
+            temperature=0.1,
+            api_key=minimax_key,
+            base_url=os.getenv("MINIMAX_BASE_URL", "https://api.minimaxi.chat/v1"),
+            streaming=True
+        )
+    
+    # Fallback 到默认配置
     return get_llm_instance(
         streaming=True,
         temperature=0.1

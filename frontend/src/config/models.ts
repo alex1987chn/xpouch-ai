@@ -34,11 +34,19 @@ export const providerConfigs: Record<Provider, {
     name: 'Google',
     apiKey: getEnv('GOOGLE_API_KEY'),
     baseURL: 'https://generativelanguage.googleapis.com/v1'
+  },
+  minimax: {
+    name: 'MiniMax',
+    apiKey: getEnv('MINIMAX_API_KEY'),
+    baseURL: 'https://api.minimaxi.chat/v1'
   }
 }
 
 // 模型列表 - 包含所有支持的模型
 export const models = [
+  // MiniMax - 响应快，适合 Router
+  { id: 'minimax-text-01', name: 'MiniMax Text 01', provider: 'minimax', model: 'MiniMax-Text-01', contextWindow: 1000000 },
+
   // DeepSeek
   { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'deepseek', model: 'deepseek-chat', contextWindow: 128000 },
   { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner', provider: 'deepseek', model: 'deepseek-reasoner', contextWindow: 128000 },
@@ -47,16 +55,12 @@ export const models = [
   { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', model: 'gpt-4o', contextWindow: 128000 },
   { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', model: 'gpt-4o-mini', contextWindow: 128000 },
   { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'openai', model: 'gpt-4-turbo', contextWindow: 128000 },
-  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'openai', model: 'gpt-3.5-turbo', contextWindow: 16000 },
 
   // Anthropic
   { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', provider: 'anthropic', model: 'claude-sonnet-4-20250514', contextWindow: 200000 },
-  { id: 'claude-haiku-3-20250514', name: 'Claude Haiku 3', provider: 'anthropic', model: 'claude-haiku-3-20250514', contextWindow: 200000 },
 
   // Google
-  { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'google', model: 'gemini-2.0-flash-exp', contextWindow: 1048576 },
-  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'google', model: 'gemini-1.5-pro', contextWindow: 2000000 },
-  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'google', model: 'gemini-1.5-flash', contextWindow: 1000000 }
+  { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'google', model: 'gemini-2.0-flash-exp', contextWindow: 1048576 }
 ] as const
 
 // 智能体默认模型映射
