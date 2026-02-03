@@ -177,7 +177,13 @@ git push origin feat/your-feature-name
 
 ## 许可证
 
-通过提交贡献，您同意您的代码将使用与项目相同的 [MIT License](./LICENSE) 开源许可。
+通过提交贡献，您同意：
+
+1. 您的贡献将采用与项目相同的 [Apache License 2.0 + 附加条款](./LICENSE) 开源许可
+2. 项目维护者有权在未来调整开源协议条款
+3. 您的贡献可能被用于商业用途（包括云服务）
+
+详细贡献者条款请参阅 LICENSE 文件中的 "Contributor Agreement" 部分。
 
 ## 致谢
 
