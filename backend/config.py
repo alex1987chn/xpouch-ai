@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 # 加载环境变量
 load_dotenv()
 
-
 # ============================================================================
 # API 配置
 # ============================================================================
@@ -18,26 +17,14 @@ PORT = int(os.getenv("PORT", "3002"))
 
 
 # ============================================================================
-# LLM 提供商配置
+# LLM 提供商配置（已迁移到 providers.yaml）
 # ============================================================================
-
-# OpenAI 配置
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-
-# DeepSeek 配置
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
-
-# Anthropic 配置（可选）
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-
-# Google 配置（可选）
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-
-# MiniMax 配置（可选，用于 Router 等快速响应场景）
-MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY")
-MINIMAX_BASE_URL = os.getenv("MINIMAX_BASE_URL", "https://api.minimaxi.chat/v1")
+# 注意：所有 LLM 配置现在统一在 providers.yaml 中管理
+# 此文件不再包含具体的提供商配置
+# 使用方式：
+#   from providers_config import get_provider_config, get_active_providers
+#   from utils.llm_factory import get_llm_instance
+# ============================================================================
 
 
 # ============================================================================
@@ -142,19 +129,11 @@ def validate_config() -> bool:
     Returns:
         bool: 配置是否有效
     """
-    # 检查是否有至少一个 LLM API Key
-    has_llm = any([
-        OPENAI_API_KEY,
-        DEEPSEEK_API_KEY,
-        ANTHROPIC_API_KEY,
-        GOOGLE_API_KEY,
-        os.getenv("MINIMAX_API_KEY"),
-    ])
+    # 导入新的配置验证
+    from providers_config import print_provider_status
     
-    if not has_llm:
-        print("[WARN] 警告: 未配置任何 LLM API Key")
-        print("   请在 .env 文件中设置 OPENAI_API_KEY 或 DEEPSEEK_API_KEY")
-        return False
+    # 验证 LLM 提供商配置
+    has_llm = print_provider_status()
     
     # 检查 LangSmith 配置
     langsmith = get_langsmith_config()
@@ -162,8 +141,7 @@ def validate_config() -> bool:
         print("[WARN] 警告: LangSmith 已启用但未设置 LANGCHAIN_API_KEY")
         return False
 
-    print("[OK] 配置验证通过")
-    return True
+    return has_llm
 
 
 # ============================================================================
