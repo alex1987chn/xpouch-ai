@@ -45,7 +45,7 @@ export const providerConfigs: Record<Provider, {
 // 模型列表 - 包含所有支持的模型
 export const models = [
   // MiniMax - 响应快，适合 Router
-  { id: 'minimax-text-01', name: 'MiniMax Text 01', provider: 'minimax', model: 'MiniMax-Text-01', contextWindow: 1000000 },
+  { id: 'minimax-2.1', name: 'MiniMax 2.1', provider: 'minimax', model: 'abab6.5s-chat', contextWindow: 1000000 },
 
   // DeepSeek
   { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'deepseek', model: 'deepseek-chat', contextWindow: 128000 },

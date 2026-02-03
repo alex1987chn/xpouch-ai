@@ -58,11 +58,11 @@ def get_router_llm() -> ChatOpenAI:
     获取 Router 节点专用的 LLM 实例
     使用 MiniMax Text 01 以获得更快的响应速度
     """
-    # 优先使用 MiniMax（响应快），如未配置则使用默认配置
+    # 优先使用 MiniMax 2.1（响应快），如未配置则使用默认配置
     minimax_key = os.getenv("MINIMAX_API_KEY")
     if minimax_key:
         return ChatOpenAI(
-            model="MiniMax-Text-01",
+            model="abab6.5s-chat",
             temperature=0.1,
             api_key=minimax_key,
             base_url=os.getenv("MINIMAX_BASE_URL", "https://api.minimaxi.chat/v1"),
