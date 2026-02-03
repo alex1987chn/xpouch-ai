@@ -1,0 +1,126 @@
+# ============================================================================
+# LLM 提供商配置文件
+# ============================================================================
+# 说明：
+# - 此文件只包含非敏感配置（base_url、模型名、默认参数）
+# - API Key 必须在 .env 文件中设置（通过 env_key 指定变量名）
+# - 添加新提供商只需在此文件添加配置，无需修改代码
+# - 此文件会提交到 git，请勿包含任何敏感信息！
+# ============================================================================
+
+providers:
+  # -------------------------------------------------------------------------
+  # MiniMax - 响应速度快，推荐用于 Router 节点
+  # -------------------------------------------------------------------------
+  minimax:
+    name: MiniMax
+    base_url: https://api.minimaxi.chat/v1
+    env_key: MINIMAX_API_KEY              # .env 中的环境变量名
+    default_model: abab6.5s-chat          # MiniMax 2.1
+    temperature: 0.1                      # Router 用低温度
+    context_window: 1000000
+    priority: 1                           # Router 优先级（数字越小越优先）
+    enabled: true
+
+  # -------------------------------------------------------------------------
+  # DeepSeek - 性价比高，通用对话
+  # -------------------------------------------------------------------------
+  deepseek:
+    name: DeepSeek
+    base_url: https://api.deepseek.com/v1
+    env_key: DEEPSEEK_API_KEY
+    default_model: deepseek-chat
+    temperature: 0.7
+    context_window: 128000
+    priority: 2
+    enabled: true
+
+  # -------------------------------------------------------------------------
+  # OpenAI - GPT 系列，代码和复杂任务
+  # -------------------------------------------------------------------------
+  openai:
+    name: OpenAI
+    base_url: https://api.openai.com/v1
+    env_key: OPENAI_API_KEY
+    default_model: gpt-4o
+    temperature: 0.7
+    context_window: 128000
+    priority: 3
+    enabled: true
+
+  # -------------------------------------------------------------------------
+  # Anthropic - Claude 系列，长文本和研究
+  # -------------------------------------------------------------------------
+  anthropic:
+    name: Anthropic
+    base_url: https://api.anthropic.com/v1
+    env_key: ANTHROPIC_API_KEY
+    default_model: claude-sonnet-4-20250514
+    temperature: 0.7
+    context_window: 200000
+    priority: 4
+    enabled: false                         # 默认不启用，需配置 API Key
+
+  # -------------------------------------------------------------------------
+  # Google - Gemini 系列，多模态
+  # -------------------------------------------------------------------------
+  google:
+    name: Google
+    base_url: https://generativelanguage.googleapis.com/v1
+    env_key: GOOGLE_API_KEY
+    default_model: gemini-2.0-flash-exp
+    temperature: 0.7
+    context_window: 1048576
+    priority: 5
+    enabled: false
+
+# ============================================================================
+# 模型别名映射（用于前端展示和后端调用）
+# ============================================================================
+models:
+  # MiniMax
+  minimax-2.1:
+    provider: minimax
+    model: abab6.5s-chat
+    name: MiniMax 2.1
+    
+  # DeepSeek
+  deepseek-chat:
+    provider: deepseek
+    model: deepseek-chat
+    name: DeepSeek Chat
+    
+  deepseek-reasoner:
+    provider: deepseek
+    model: deepseek-reasoner
+    name: DeepSeek Reasoner
+    
+  # OpenAI
+  gpt-4o:
+    provider: openai
+    model: gpt-4o
+    name: GPT-4o
+    
+  gpt-4o-mini:
+    provider: openai
+    model: gpt-4o-mini
+    name: GPT-4o Mini
+    
+  gpt-4-turbo:
+    provider: openai
+    model: gpt-4-turbo
+    name: GPT-4 Turbo
+
+# ============================================================================
+# Router 节点配置
+# ============================================================================
+router:
+  # 优先级列表（按顺序尝试）
+  priority_providers:
+    - minimax
+    - deepseek
+    - openai
+  
+  # Router 专用参数
+  temperature: 0.1
+  streaming: true
