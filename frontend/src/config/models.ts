@@ -38,7 +38,7 @@ export const providerConfigs: Record<Provider, {
   minimax: {
     name: 'MiniMax',
     apiKey: getEnv('MINIMAX_API_KEY'),
-    baseURL: 'https://api.minimaxi.chat/v1'
+    baseURL: 'https://api.minimaxi.com/v1'  // OpenAI 兼容 API
   },
   moonshot: {
     name: 'Moonshot',
@@ -50,7 +50,8 @@ export const providerConfigs: Record<Provider, {
 // 模型列表 - 包含所有支持的模型
 export const models = [
   // MiniMax - 响应快，适合 Router
-  { id: 'minimax-2.1', name: 'MiniMax 2.1', provider: 'minimax', model: 'abab6.5s-chat', contextWindow: 1000000 },
+  // 文档: https://platform.minimaxi.com/docs/guides/quickstart-sdk
+  { id: 'minimax-m2.1', name: 'MiniMax M2.1', provider: 'minimax', model: 'MiniMax-M2.1', contextWindow: 1000000 },
 
   // DeepSeek
   { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'deepseek', model: 'deepseek-chat', contextWindow: 128000 },

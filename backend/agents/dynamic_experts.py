@@ -60,9 +60,22 @@ def create_expert_function(expert_key: str):
         system_prompt = expert_config["system_prompt"]
         # 👈 应用模型兜底机制
         model = get_effective_model(expert_config.get("model"))
-        temperature = expert_config["temperature"]
+        # 从数据库读取温度，但如果模型配置中有特殊约束，则使用模型配置中的值
+        db_temperature = expert_config["temperature"]
 
-        print(f"[DynamicExpert] Running {expert_key} with model={model}, temp={temperature}")
+        # 检查模型配置，获取实际的 API 模型名称和 temperature 约束
+        from providers_config import get_model_config
+        model_config = get_model_config(model)
+        if model_config:
+            # 使用 providers.yaml 中定义的 model 字段（实际 API 模型名称）
+            actual_model = model_config.get('model', model)
+            temperature = model_config.get('temperature', db_temperature)
+        else:
+            # 未找到配置，使用原始值
+            actual_model = model
+            temperature = db_temperature
+
+        print(f"[DynamicExpert] Running {expert_key} with model={actual_model}, temp={temperature} (db={db_temperature}, config={model})")
 
         # 获取当前任务
         task_list = state.get("task_list", [])
@@ -79,8 +92,9 @@ def create_expert_function(expert_key: str):
 
         try:
             # 使用配置的模型和温度参数
+            # 注意：使用 actual_model（providers.yaml 中定义的 API 模型名称）
             llm_with_config = llm.bind(
-                model=model,
+                model=actual_model,
                 temperature=temperature
             )
 

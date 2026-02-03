@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ArrowLeft, Bot, Sparkles } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ArrowLeft, Bot, Sparkles, Save } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { cn } from '@/lib/utils'
@@ -8,6 +8,15 @@ import ModelSelector from '@/components/settings/ModelSelector'
 interface CreateAgentPageProps {
   onBack: () => void
   onSave: (agent: any) => void
+  initialData?: {
+    id: string
+    name: string
+    description: string
+    systemPrompt: string
+    category: string
+    modelId: string
+  }
+  isEditMode?: boolean
 }
 
 // Bauhaus 风格进度条组件
@@ -56,13 +65,24 @@ function BauhausProgressBar({ current, max }: { current: number; max: number }) 
   )
 }
 
-export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps) {
+export default function CreateAgentPage({ onBack, onSave, initialData, isEditMode = false }: CreateAgentPageProps) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
   const [category, setCategory] = useState('综合')
   const [selectedModel, setSelectedModel] = useState('deepseek-chat')
+
+  // 编辑模式：加载初始数据
+  useEffect(() => {
+    if (isEditMode && initialData) {
+      setName(initialData.name || '')
+      setDescription(initialData.description || '')
+      setSystemPrompt(initialData.systemPrompt || '')
+      setCategory(initialData.category || '综合')
+      setSelectedModel(initialData.modelId || 'deepseek-chat')
+    }
+  }, [isEditMode, initialData])
 
   const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({
     enabled: true,
@@ -72,8 +92,8 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
   const handleSave = () => {
     if (!name || !systemPrompt) return
 
-    const newAgent = {
-      id: `user-agent-${Date.now()}`,
+    const agentData = {
+      id: isEditMode && initialData ? initialData.id : `user-agent-${Date.now()}`,
       name,
       description,
       systemPrompt,
@@ -83,7 +103,7 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
       color: 'from-violet-500 to-fuchsia-500'
     }
 
-    onSave(newAgent)
+    onSave(agentData)
   }
 
   const categories = [t('categoryGeneral'), t('categoryDev'), t('categoryCreate'), t('categoryAnalyze'), t('categoryResearch')]
@@ -105,11 +125,11 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-[var(--accent-hover)]"></div>
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-              /// {t('createAgent')}
+              /// {isEditMode ? t('editAgent') : t('createAgent')}
             </span>
           </div>
 
-          {/* 右侧：创建按钮 */}
+          {/* 右侧：保存按钮 */}
           <button
             onClick={handleSave}
             disabled={!name || !systemPrompt}
@@ -123,8 +143,8 @@ export default function CreateAgentPage({ onBack, onSave }: CreateAgentPageProps
               'disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0'
             )}
           >
-            <Sparkles className="w-4 h-4" />
-            <span>{t('create')}</span>
+            {isEditMode ? <Save className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+            <span>{isEditMode ? t('save') : t('create')}</span>
           </button>
         </div>
       </header>

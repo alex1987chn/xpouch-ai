@@ -5,8 +5,9 @@
 1. 获取系统专家列表
 2. 更新系统专家配置
 3. 升级用户为管理员
+4. 自动生成专家描述
 """
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from pydantic import BaseModel, Field as PydanticField, field_validator
@@ -64,6 +65,7 @@ class ExpertResponse(BaseModel):
     id: int
     expert_key: str
     name: str
+    description: Optional[str]
     system_prompt: str
     model: str
     temperature: float
@@ -73,6 +75,7 @@ class ExpertResponse(BaseModel):
 class ExpertUpdate(BaseModel):
     """专家更新 DTO"""
     system_prompt: str = PydanticField(..., min_length=10, description="系统提示词（至少10个字符）")
+    description: Optional[str] = PydanticField(default=None, description="专家能力描述，用于 Planner 决定任务分配")
     model: str = PydanticField(default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="模型名称")
     temperature: float = PydanticField(default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）")
 
@@ -96,6 +99,19 @@ class ExpertPreviewResponse(BaseModel):
     test_input: str
     preview_response: str
     model: str
+    temperature: float
+    execution_time_ms: int
+
+
+class GenerateDescriptionRequest(BaseModel):
+    """生成专家描述请求 DTO"""
+    system_prompt: str = PydanticField(..., min_length=10, description="系统提示词")
+
+
+class GenerateDescriptionResponse(BaseModel):
+    """生成专家描述响应 DTO"""
+    description: str
+    generated_at: str
     temperature: float
     execution_time_ms: int
 
@@ -137,6 +153,7 @@ async def get_all_experts(
             id=expert.id,
             expert_key=expert.expert_key,
             name=expert.name,
+            description=expert.description,
             system_prompt=expert.system_prompt,
             model=expert.model,
             temperature=expert.temperature,
@@ -171,6 +188,7 @@ async def get_expert(
         id=expert.id,
         expert_key=expert.expert_key,
         name=expert.name,
+        description=expert.description,
         system_prompt=expert.system_prompt,
         model=expert.model,
         temperature=expert.temperature,
@@ -192,6 +210,7 @@ async def update_expert(
 
     可以更新：
     - system_prompt: 专家提示词
+    - description: 专家能力描述（用于 Planner 决定任务分配）
     - model: 使用的模型
     - temperature: 温度参数
 
@@ -210,6 +229,7 @@ async def update_expert(
 
     # 更新字段
     expert.system_prompt = expert_update.system_prompt
+    expert.description = expert_update.description
     expert.model = expert_update.model
     expert.temperature = expert_update.temperature
 
@@ -346,5 +366,82 @@ async def preview_expert(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"预览失败: {str(e)}"
+        )
+
+
+@router.post("/experts/generate-description", response_model=GenerateDescriptionResponse)
+async def generate_expert_description(
+    request: GenerateDescriptionRequest,
+    _: User = Depends(get_current_admin)  # 需要管理员权限
+):
+    """
+    根据 System Prompt 自动生成专家描述
+
+    权限：EDIT_ADMIN, ADMIN
+
+    功能：
+    - 分析 System Prompt 的内容
+    - 使用 LLM 生成一句简短的专家能力描述
+    - 用于 Planner 决定何时将任务分配给该专家
+
+    说明：
+    - 生成的描述建议在 50-100 字之间
+    - 描述应简洁明了，突出专家核心能力
+    - 不会保存到数据库，仅返回生成的描述供前端使用
+    """
+    from datetime import datetime
+    from langchain_core.messages import SystemMessage, HumanMessage
+    from utils.llm_factory import get_router_llm
+
+    # 构建生成描述的 Prompt
+    description_prompt = f"""请根据以下 System Prompt，生成一句简短的专家能力描述（50-100字）。
+
+这个描述将被用于任务分配系统，帮助 Planner 决定何时将任务分配给该专家。
+
+要求：
+1. 简洁明了，突出核心能力
+2. 说明该专家擅长什么类型的任务
+3. 控制在 50-100 字之间
+4. 使用第三人称（如：擅长...、能够...）
+
+System Prompt:
+{request.system_prompt}
+
+请只输出描述文字，不要有任何前缀、解释或额外内容。"""
+
+    try:
+        # 使用 Router LLM 生成描述（温度稍高以获得更有创意的描述）
+        started_at = datetime.now()
+        llm = get_router_llm()
+        
+        # 获取温度参数
+        from providers_config import get_router_config
+        router_config = get_router_config()
+        temperature = router_config.get('temperature', 0.5)
+
+        response = await llm.ainvoke([
+            SystemMessage(content="你是一个专业的 AI 助手描述生成器。"),
+            HumanMessage(content=description_prompt)
+        ])
+
+        description = response.content.strip()
+
+        # 清理可能的引号
+        description = description.strip('"').strip("'")
+        
+        completed_at = datetime.now()
+        execution_time_ms = int((completed_at - started_at).total_seconds() * 1000)
+
+        return GenerateDescriptionResponse(
+            description=description,
+            generated_at=completed_at.isoformat(),
+            temperature=temperature,
+            execution_time_ms=execution_time_ms
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"生成描述失败: {str(e)}"
         )
 

@@ -18,6 +18,11 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from functools import lru_cache
+from dotenv import load_dotenv
+
+# 加载环境变量
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path, override=True)
 
 try:
     import yaml
@@ -197,15 +202,28 @@ def is_provider_configured(provider: str) -> bool:
 def get_model_config(model_id: str) -> Optional[Dict[str, Any]]:
     """
     获取指定模型的配置
-    
+
     Args:
         model_id: 模型标识（如 'minimax-2.1', 'gpt-4o'）
-    
+
     Returns:
         模型配置字典，如果不存在返回 None
+        注意：会合并 provider 的默认配置（如 temperature）
     """
     config = load_providers_config()
-    return config.get('models', {}).get(model_id)
+    model_config = config.get('models', {}).get(model_id)
+
+    if model_config:
+        # 合并 provider 默认配置到模型配置
+        provider_name = model_config.get('provider')
+        if provider_name:
+            provider_config = get_provider_config(provider_name)
+            if provider_config:
+                # 如果模型没有 temperature，使用 provider 默认值
+                if 'temperature' not in model_config and 'temperature' in provider_config:
+                    model_config = {**model_config, 'temperature': provider_config['temperature']}
+
+    return model_config
 
 
 def get_models_by_provider(provider: str) -> List[Dict[str, Any]]:

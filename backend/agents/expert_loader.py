@@ -87,13 +87,37 @@ def load_all_experts(session: Session) -> Dict[str, Dict]:
     for expert in experts:
         # 应用模型兜底机制
         effective_model = get_effective_model(expert.model)
-        config_map[expert.expert_key] = {
+        config = {
             "expert_key": expert.expert_key,
             "name": expert.name,
             "system_prompt": expert.system_prompt,
             "model": effective_model,
             "temperature": expert.temperature
         }
+        
+        # 尝试获取模型配置以确定 provider
+        try:
+            from providers_config import get_model_config
+            model_config = get_model_config(effective_model)
+            if model_config and 'provider' in model_config:
+                config["provider"] = model_config['provider']
+            else:
+                # 从模型名称推断 provider（简单启发式）
+                model_lower = effective_model.lower()
+                if model_lower.startswith('minimax'):
+                    config["provider"] = 'minimax'
+                elif model_lower.startswith('deepseek'):
+                    config["provider"] = 'deepseek'
+                elif model_lower.startswith('gpt'):
+                    config["provider"] = 'openai'
+                elif model_lower.startswith('kimi'):
+                    config["provider"] = 'moonshot'
+                else:
+                    config["provider"] = None
+        except ImportError:
+            config["provider"] = None
+            
+        config_map[expert.expert_key] = config
 
     print(f"[ExpertLoader] Loaded {len(config_map)} experts from database")
     return config_map

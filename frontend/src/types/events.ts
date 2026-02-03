@@ -3,6 +3,8 @@
  * 统一前后端事件协议（与 backend/types/events.py 对应）
  */
 
+import type { ThinkingStep } from './index'
+
 // ============================================================================
 // 事件类型枚举
 // ============================================================================
@@ -119,6 +121,11 @@ export type ArtifactGeneratedEvent = SSEEvent<ArtifactGeneratedData>
 // 消息阶段事件
 // ============================================================================
 
+export interface ThinkingData {
+  text?: string
+  steps?: ThinkingStep[]
+}
+
 export interface MessageDeltaData {
   message_id: string
   content: string
@@ -131,6 +138,7 @@ export interface MessageDoneData {
   message_id: string
   full_content: string
   total_tokens?: number
+  thinking?: ThinkingData  // 思考过程数据（类似 DeepSeek Chat）
 }
 
 export type MessageDoneEvent = SSEEvent<MessageDoneData>

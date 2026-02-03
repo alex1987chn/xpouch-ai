@@ -29,6 +29,7 @@ def get_effective_model(configured_model: Optional[str]) -> str:
     1. 如果未配置模型，使用环境变量 MODEL_NAME 或默认值
     2. 如果配置的是 OpenAI 模型（gpt-开头），自动切换为默认模型
     3. 支持通过环境变量 FORCE_MODEL_FALLBACK=true 强制使用兜底模型
+    4. 解析模型别名映射（如 minimax-m2.1 -> MiniMax-M2.1）
 
     Args:
         configured_model: 数据库中配置的模型名称
@@ -47,6 +48,18 @@ def get_effective_model(configured_model: Optional[str]) -> str:
     # 未配置时使用默认
     if not configured_model:
         return default_model
+
+    # 解析模型别名映射
+    try:
+        from providers_config import get_model_config
+        model_config = get_model_config(configured_model)
+        if model_config and 'model' in model_config:
+            resolved_model = model_config['model']
+            if resolved_model != configured_model:
+                print(f"[ModelFallback] 模型别名解析: '{configured_model}' -> '{resolved_model}'")
+                configured_model = resolved_model
+    except ImportError:
+        print(f"[ModelFallback] 警告: 无法导入 providers_config，跳过模型别名解析")
 
     # 检查是否需要模型兜底
     if _should_fallback(configured_model):

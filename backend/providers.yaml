@@ -11,15 +11,16 @@
 providers:
   # -------------------------------------------------------------------------
   # MiniMax - 响应速度快，推荐用于 Router 节点
+  # 文档: https://platform.minimaxi.com/docs/api-reference/text-openai-api
   # -------------------------------------------------------------------------
   minimax:
     name: MiniMax
-    base_url: https://api.minimaxi.chat/v1
-    env_key: MINIMAX_API_KEY              # .env 中的环境变量名
-    default_model: abab6.5s-chat          # MiniMax 2.1
-    temperature: 0.1                      # Router 用低温度
+    base_url: https://api.minimaxi.com/v1   # OpenAI 兼容 API
+    env_key: MINIMAX_API_KEY                # .env 中的环境变量名
+    default_model: MiniMax-M2.1             # MiniMax M2.1 (最新版)
+    temperature: 0.1                        # Router 用低温度
     context_window: 1000000
-    priority: 1                           # Router 优先级（数字越小越优先）
+    priority: 1                             # Router 优先级（数字越小越优先）
     enabled: true
 
   # -------------------------------------------------------------------------
@@ -92,10 +93,10 @@ providers:
 # ============================================================================
 models:
   # MiniMax
-  minimax-2.1:
+  minimax-m2.1:
     provider: minimax
-    model: abab6.5s-chat
-    name: MiniMax 2.1
+    model: MiniMax-M2.1
+    name: MiniMax M2.1
     
   # DeepSeek
   deepseek-chat:
@@ -129,16 +130,19 @@ models:
     provider: moonshot
     model: kimi-k2.5
     name: Kimi K2.5
+    temperature: 1  # kimi-k2.5 只支持 temperature=1
 
 # ============================================================================
 # Router 节点配置
 # ============================================================================
 router:
   # 优先级列表（按顺序尝试）
+  # 注意：MiniMax-M2.1 输出包含 <think> 标签，不适合需要 JSON 输出的 Router
+  # 所以 Router 优先使用 DeepSeek（输出干净，适合 JSON 解析）
   priority_providers:
-    - minimax
     - deepseek
     - openai
+    - minimax
   
   # Router 专用参数
   temperature: 0.1

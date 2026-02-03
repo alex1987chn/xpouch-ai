@@ -18,6 +18,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 from database import get_session, engine
 from dependencies import get_current_user, get_current_user_with_auth
+from utils.thinking_parser import parse_thinking
 from models import (
     User, Thread, Message, CustomAgent, TaskSession, SubTask
 )
@@ -380,20 +381,28 @@ async def _handle_custom_agent_stream(
                 
                 if not get_provider_api_key(provider):
                     raise ValueError(f"提供商 {provider} 的 API Key 未设置，请在 .env 中配置 {provider_config.get('env_key')}")
-                
-                print(f"[CUSTOM AGENT] 使用模型: {model_id} ({actual_model} via {provider})，消息ID: {actual_message_id}")
-                
+
+                # 从模型配置读取 temperature（允许模型级别覆盖）
+                model_config = get_model_config(model_id)
+                temperature = model_config.get('temperature', 0.7) if model_config else 0.7
+
+                print(f"[CUSTOM AGENT] 使用模型: {model_id} ({actual_model} via {provider}), temperature={temperature}，消息ID: {actual_message_id}")
+
                 # 使用新的 llm_factory（会自动从配置文件读取 base_url）
                 llm = get_llm_instance(
                     provider=provider,
                     model=actual_model,
                     streaming=True,
-                    temperature=0.7
+                    temperature=temperature
                 )
             else:
                 # Fallback: 旧版兼容（直接传递模型名）
-                print(f"[CUSTOM AGENT] 未找到模型配置，使用 fallback: {model_id}")
-                llm = get_llm_instance(streaming=True, model=model_id, temperature=0.7)
+                # 尝试从模型配置读取 temperature
+                model_config = get_model_config(model_id)
+                temperature = model_config.get('temperature', 0.7) if model_config else 0.7
+
+                print(f"[CUSTOM AGENT] 未找到模型配置，使用 fallback: {model_id}, temperature={temperature}")
+                llm = get_llm_instance(streaming=True, model=model_id, temperature=temperature)
 
             messages_with_system = [("system", custom_agent.system_prompt)]
             messages_with_system.extend(langchain_messages)
@@ -428,6 +437,9 @@ async def _handle_custom_agent_stream(
             )
             yield sse_event_to_string(error_event)
 
+        # 解析 thinking 标签（类似 DeepSeek Chat 的思考过程）
+        clean_content, thinking_data = parse_thinking(full_response)
+
         # v3.0: 发送 message.done 事件（新协议）
         # 使用与 delta 事件相同的 actual_message_id
         from event_types.events import EventType, MessageDoneData, build_sse_event
@@ -435,7 +447,8 @@ async def _handle_custom_agent_stream(
             EventType.MESSAGE_DONE,
             MessageDoneData(
                 message_id=actual_message_id,
-                full_content=full_response
+                full_content=clean_content,  # 使用清理后的内容
+                thinking=thinking_data  # 包含 thinking 数据
             ),
             str(uuid4())
         )
@@ -450,7 +463,8 @@ async def _handle_custom_agent_stream(
             ai_msg_db = Message(
                 thread_id=thread_id,
                 role="assistant",
-                content=full_response,
+                content=clean_content,  # 保存清理后的内容（移除 thought 标签）
+                extra_data={'thinking': thinking_data} if thinking_data else None,
                 timestamp=datetime.now()
             )
             with Session(engine) as inner_session:
@@ -518,10 +532,13 @@ async def _handle_custom_agent_sync(
     full_response = result.content
 
     # 保存 AI 回复
+    # 解析 thinking 标签
+    clean_content, thinking_data = parse_thinking(full_response)
     ai_msg_db = Message(
         thread_id=thread_id,
         role="assistant",
-        content=full_response,
+        content=clean_content,  # 保存清理后的内容
+        extra_data={'thinking': thinking_data} if thinking_data else None,
         timestamp=datetime.now()
     )
     session.add(ai_msg_db)
@@ -688,10 +705,13 @@ async def _handle_langgraph_stream(
         # 保存 AI 回复和 Artifacts 到数据库
         if full_response:
             with Session(engine) as save_session:
+                # 解析 thinking 标签
+                clean_content, thinking_data = parse_thinking(full_response)
                 ai_msg_db = Message(
                     thread_id=thread_id,
                     role="assistant",
-                    content=full_response,
+                    content=clean_content,  # 保存清理后的内容
+                    extra_data={'thinking': thinking_data} if thinking_data else None,
                     timestamp=datetime.now()
                 )
                 save_session.add(ai_msg_db)
@@ -822,10 +842,13 @@ async def _handle_langgraph_sync(
             session.add(db_subtask)
 
     # 保存 AI 回复
+    # 解析 thinking 标签
+    clean_content, thinking_data = parse_thinking(last_message.content)
     ai_msg_db = Message(
         thread_id=thread_id,
         role="assistant",
-        content=last_message.content,
+        content=clean_content,  # 保存清理后的内容
+        extra_data={'thinking': thinking_data} if thinking_data else None,
         timestamp=datetime.now()
     )
     session.add(ai_msg_db)
