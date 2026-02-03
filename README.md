@@ -1,10 +1,16 @@
 # XPouch AI v3.0
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python 3.13+](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![React 18](https://img.shields.io/badge/React-18.3-61dafb.svg)](https://reactjs.org/)
 
-XPouch AI v3.0 是一个基于 **LangGraph** 的智能对话与任务协作平台，采用前后端分离架构。
+> **Infinite Minds. One Pouch.**
+> 
+> 基于 LangGraph 的智能对话与任务协作平台，采用工业美学设计，支持多专家协作。
+
+![XPouch AI Screenshot](https://github.com/user-attachments/assets/c4554212-e24e-47dd-a61d-8df4f69ce233)
+
+XPouch AI v3.0 是一个基于 **LangGraph** 的智能对话与任务协作平台，采用前后端分离架构和 Bauhaus 工业美学设计。
 
 ## ✨ 核心特性
 
@@ -317,7 +323,7 @@ xpouch-ai/
 **1. 克隆项目**
 
 ```bash
-git clone https://github.com/your-username/xpouch-ai.git
+git clone https://github.com/alex1987chn/xpouch-ai.git
 cd xpouch-ai
 ```
 
@@ -460,14 +466,9 @@ pnpm --prefix frontend run lint
 
 我们欢迎所有形式的贡献！
 
-### 开发规范
+详细贡献指南请参阅 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
-- **代码风格**：遵循 ESLint 和 Prettier 配置
-- **提交信息**：使用 Conventional Commits 规范
-- **测试**：为新增功能编写单元测试
-- **文档**：更新相关文档和 CHANGELOG
-
-### 提交 Pull Request
+### 快速开始
 
 1. Fork 本仓库
 2. 创建特性分支：`git checkout -b feature/amazing-feature`
@@ -475,9 +476,24 @@ pnpm --prefix frontend run lint
 4. 推送到分支：`git push origin feature/amazing-feature`
 5. 打开 Pull Request 并描述更改内容
 
+### 开发规范
+
+- **代码风格**：遵循 ESLint 和 Prettier 配置
+- **提交信息**：使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范
+- **测试**：为新增功能编写单元测试
+- **文档**：更新相关文档和 CHANGELOG
+
 ## 📄 许可证
 
 本项目基于 [MIT License](./LICENSE) 开源。
+
+## 🔒 安全
+
+如发现安全问题，请查看 [SECURITY.md](./SECURITY.md) 了解如何安全地报告漏洞。
+
+## 📋 行为准则
+
+参与本项目时，请遵守我们的 [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)。
 
 ## 🙏 致谢
 
