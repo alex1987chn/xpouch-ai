@@ -95,7 +95,10 @@ export function useConversation() {
       // 避免从复杂模式切换到简单模式时残留 artifacts
       clearTasks()
 
-      if (conversation.agent_type === 'ai' && conversation.task_session) {
+      // v3.0: 只要有 task_session 就恢复任务状态（支持刷新后恢复）
+      // 注意：之前检查 agent_type === 'ai'，但可能由于时序问题导致 agent_type 未更新
+      // 现在只要有 task_session 数据就恢复
+      if (conversation.task_session) {
         const subTasks = conversation.task_session.sub_tasks || []
 
         // 清空旧任务

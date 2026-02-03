@@ -16,12 +16,22 @@ export interface SystemExpert {
   system_prompt: string
   model: string
   temperature: number
+  is_dynamic: boolean
   updated_at: string
 }
 
 export interface UpdateExpertRequest {
   system_prompt: string
   description?: string
+  model: string
+  temperature: number
+}
+
+export interface CreateExpertRequest {
+  expert_key: string
+  name: string
+  description?: string
+  system_prompt: string
   model: string
   temperature: number
 }
@@ -127,4 +137,27 @@ export async function generateExpertDescription(
     body: JSON.stringify(data)
   })
   return handleResponse<GenerateDescriptionResponse>(response, '生成描述失败')
+}
+
+/**
+ * 创建新专家
+ */
+export async function createExpert(data: CreateExpertRequest): Promise<SystemExpert> {
+  const response = await fetch(buildUrl('/admin/experts'), {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  })
+  return handleResponse<SystemExpert>(response, '创建专家失败')
+}
+
+/**
+ * 删除专家
+ */
+export async function deleteExpert(expertKey: string): Promise<void> {
+  const response = await fetch(buildUrl(`/admin/experts/${expertKey}`), {
+    method: 'DELETE',
+    headers: getHeaders()
+  })
+  return handleResponse<void>(response, '删除专家失败')
 }

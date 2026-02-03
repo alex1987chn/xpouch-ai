@@ -35,8 +35,8 @@ from crud.task_session import (
     create_artifacts_batch,
     update_task_session_status
 )
-from constants import COMMANDER_SYSTEM_PROMPT, ROUTER_SYSTEM_PROMPT, DEFAULT_ASSISTANT_PROMPT 
-from agents.dynamic_experts import DYNAMIC_EXPERT_FUNCTIONS, initialize_expert_cache
+from constants import COMMANDER_SYSTEM_PROMPT, COMMANDER_SYSTEM_PROMPT_TEMPLATE, ROUTER_SYSTEM_PROMPT, DEFAULT_ASSISTANT_PROMPT 
+from agents.dynamic_experts import DYNAMIC_EXPERT_FUNCTIONS, initialize_expert_cache, get_all_expert_list, format_expert_list_for_prompt, get_expert_function
 from agents.expert_loader import get_expert_config_cached
 
 # ============================================================================
@@ -53,26 +53,46 @@ langsmith_config = get_langsmith_config()
 if langsmith_config["enabled"]:
     init_langchain_tracing(langsmith_config)
 
-# 初始化 LLM - 使用工厂函数
-# Router 使用较低温度以获得更确定的输出
-router_llm = get_router_llm()
+# v3.0: 延迟初始化 LLM - 避免模块加载时就创建实例
+_router_llm = None
+_commander_llm = None
+_simple_llm = None
 
-# Commander 专用 LLM - 使用 Commander 的默认配置
-commander_llm = get_commander_llm()
+def get_router_llm_lazy():
+    """延迟初始化 Router LLM"""
+    global _router_llm
+    if _router_llm is None:
+        _router_llm = get_router_llm()
+    return _router_llm
 
-# Simple 模式专用 LLM - 使用 MiniMax（响应最快）
-# 注意：MiniMax-M2.1 有 <think> 标签，不适合 Router，但适合简单对话
-from providers_config import is_provider_configured
-try:
-    if is_provider_configured('minimax'):
-        simple_llm = get_llm_instance(provider='minimax', streaming=True, temperature=0.7)
-        print("[LLM] Simple 模式使用: MiniMax-M2.1")
-    else:
-        simple_llm = router_llm
-        print("[LLM] Simple 模式回退到 Router LLM")
-except Exception as e:
-    print(f"[LLM] Simple 模式初始化失败，回退到 Router: {e}")
-    simple_llm = router_llm
+def get_commander_llm_lazy():
+    """延迟初始化 Commander LLM"""
+    global _commander_llm
+    if _commander_llm is None:
+        _commander_llm = get_commander_llm()
+    return _commander_llm
+
+def get_simple_llm_lazy():
+    """延迟初始化 Simple 模式 LLM"""
+    global _simple_llm
+    if _simple_llm is None:
+        from providers_config import is_provider_configured
+        try:
+            if is_provider_configured('minimax'):
+                _simple_llm = get_llm_instance(provider='minimax', streaming=True, temperature=0.7)
+                print("[LLM] Simple 模式使用: MiniMax-M2.1")
+            else:
+                _simple_llm = get_router_llm_lazy()
+                print("[LLM] Simple 模式回退到 Router LLM")
+        except Exception as e:
+            print(f"[LLM] Simple 模式初始化失败，回退到 Router: {e}")
+            _simple_llm = get_router_llm_lazy()
+    return _simple_llm
+
+# 为了保持向后兼容，保留全局变量名作为函数别名
+router_llm = None  # 标记为废弃，使用 get_router_llm_lazy()
+commander_llm = None
+simple_llm = None
 
 # 全局事件生成器（用于生成 SSE 事件）
 event_gen = EventGenerator()
@@ -90,7 +110,7 @@ class RoutingDecision(BaseModel):
 
 class SubTaskOutput(BaseModel):
     """单个子任务结构 (Commander 使用)"""
-    expert_type: ExpertType = Field(description="执行此任务的专家类型")
+    expert_type: str = Field(description="执行此任务的专家类型（可以是系统内置专家或自定义专家）")
     description: str = Field(description="任务描述")
     input_data: Dict[str, Any] = Field(default={}, description="输入参数")
     priority: int = Field(default=0, description="优先级 (0=最高)")
@@ -138,7 +158,7 @@ async def router_node(state: AgentState) -> Dict[str, Any]:
     parser = PydanticOutputParser(pydantic_object=RoutingDecision)
     try:
         # 🔥 关键：静态 SystemPrompt + 动态 Messages
-        response = await router_llm.ainvoke(
+        response = await get_router_llm_lazy().ainvoke(
             [
                 SystemMessage(content=ROUTER_SYSTEM_PROMPT),
                 *messages  # 用户的输入在这里
@@ -161,7 +181,7 @@ async def direct_reply_node(state: AgentState) -> Dict[str, Any]:
     config = {"tags": ["direct_reply"], "metadata": {"node_type": "direct_reply"}}
     
     # Simple 模式使用 MiniMax（响应最快）
-    response = await simple_llm.ainvoke(
+    response = await get_simple_llm_lazy().ainvoke(
         [
             SystemMessage(content=DEFAULT_ASSISTANT_PROMPT),
             *messages  # 用户的历史消息上下文
@@ -192,8 +212,18 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
     thread_id = state.get("thread_id")
     
     # 加载配置 (数据库或回退)
-    commander_config = get_expert_config_cached("commander")
-
+    # v3.0: 优先从数据库直接读取，确保获取最新配置（包括动态占位符）
+    commander_config = None
+    if db_session:
+        from agents.expert_loader import get_expert_config
+        commander_config = get_expert_config("commander", db_session)
+        if commander_config:
+            print(f"[COMMANDER] 从数据库直接加载配置: model={commander_config['model']}")
+    
+    # 如果数据库读取失败，回退到缓存
+    if not commander_config:
+        commander_config = get_expert_config_cached("commander")
+    
     if not commander_config:
         # 回退：使用常量中的 Prompt 和硬编码的模型
         system_prompt = COMMANDER_SYSTEM_PROMPT
@@ -205,7 +235,24 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
         system_prompt = commander_config["system_prompt"]
         model = commander_config["model"]
         temperature = commander_config["temperature"]
-        print(f"[COMMANDER] 加载数据库配置: model={model}, temperature={temperature}")
+        print(f"[COMMANDER] 加载配置: model={model}, temperature={temperature}")
+    
+    # 注入动态专家列表到 System Prompt
+    try:
+        # 获取所有可用专家（包括动态创建的专家）
+        all_experts = get_all_expert_list(db_session)
+        expert_list_str = format_expert_list_for_prompt(all_experts)
+        
+        # 尝试注入专家列表到 Prompt（如果 Prompt 支持动态占位符）
+        if "{dynamic_expert_list}" in system_prompt:
+            system_prompt = system_prompt.format(dynamic_expert_list=expert_list_str)
+            print(f"[COMMANDER] 已注入动态专家列表，共 {len(all_experts)} 个专家")
+        else:
+            # 如果 Prompt 不包含占位符，保留原有逻辑（向后兼容）
+            print(f"[COMMANDER] Prompt 不包含动态占位符，跳过专家列表注入")
+    except Exception as e:
+        # 注入失败时不中断流程，保留原始 Prompt
+        print(f"[COMMANDER] 专家列表注入失败（已忽略）: {e}")
     
     # 执行 LLM 进行规划
     try:
@@ -232,7 +279,7 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
         else:
             # 回退到 commander_llm（硬编码的 provider 优先级）
             print(f"[COMMANDER] 模型 '{model}' 未找到 provider 配置，回退到 commander_llm")
-            llm_with_config = commander_llm.bind(model=model, temperature=temperature)
+            llm_with_config = get_commander_llm_lazy().bind(model=model, temperature=temperature)
 
         from langchain_core.runnables import RunnableConfig
         response = await llm_with_config.ainvoke(
@@ -389,20 +436,21 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
     event_queue.append({"type": "sse", "event": sse_event_to_string(started_event)})
 
     try:
-        expert_func = DYNAMIC_EXPERT_FUNCTIONS.get(expert_type)
-        if not expert_func:
-            raise ValueError(f"未知的专家类型: {expert_type}")
+        # 使用 get_expert_function 获取专家执行函数
+        # 对于系统内置专家返回硬编码函数，对于自定义专家返回 generic_worker_node
+        expert_func = get_expert_function(expert_type)
 
-        # 获取专家配置
-        expert_config = get_expert_config_cached(expert_type)
-        if expert_config and 'provider' in expert_config:
-            # 使用数据库配置的 provider
-            expert_llm = get_expert_llm(provider=expert_config['provider'])
+        if expert_type in DYNAMIC_EXPERT_FUNCTIONS:
+            # 系统内置专家，使用原有逻辑（预先创建 LLM）
+            expert_config = get_expert_config_cached(expert_type)
+            if expert_config and 'provider' in expert_config:
+                expert_llm = get_expert_llm(provider=expert_config['provider'])
+            else:
+                expert_llm = get_expert_llm()
+            result = await expert_func(state, expert_llm)
         else:
-            # 回退到默认专家 LLM
-            expert_llm = get_expert_llm()
-
-        result = await expert_func(state, expert_llm)
+            # 自定义专家，使用通用节点（generic_worker_node 自己会创建 LLM）
+            result = await expert_func(state)
 
         if "error" in result:
              raise AppError(message=result["error"], code="EXPERT_EXECUTION_ERROR")

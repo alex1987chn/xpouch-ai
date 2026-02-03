@@ -110,6 +110,8 @@ export async function sendMessage(
         message_id: assistantMessageId,  // v3.0: 传递助手消息 ID
       }),
       signal: ctrl.signal,
+      // v3.0: 保持连接即使页面隐藏（防止切换标签页导致任务重新开始）
+      openWhenHidden: true,
 
       async onopen(response) {
         if (!response.ok) {

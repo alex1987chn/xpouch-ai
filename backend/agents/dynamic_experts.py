@@ -7,14 +7,16 @@
 3. 支持管理员实时更新 Prompt
 """
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 from langchain_openai import ChatOpenAI
 from datetime import datetime
+from sqlmodel import Session, select
 
 from agents.expert_loader import get_expert_config_cached, refresh_cache
 from agents.experts import EXPERT_DESCRIPTIONS
 from agents.model_fallback import get_effective_model, get_default_model
+from models import SystemExpert
 
 
 def create_expert_function(expert_key: str):
@@ -280,6 +282,146 @@ DYNAMIC_EXPERT_FUNCTIONS = {
 }
 
 
+async def generic_worker_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    通用工作节点：处理自定义专家（非系统内置专家）
+    
+    对于数据库中动态创建的专家，使用此通用节点执行。
+    该节点自己负责创建 LLM 实例并加载专家配置。
+    
+    Args:
+        state: 完整的 AgentState
+    
+    Returns:
+        Dict: 执行结果（包含 output_result、status、artifact 等）
+    """
+    # 获取当前任务
+    task_list = state.get("task_list", [])
+    current_index = state.get("current_task_index", 0)
+    
+    if current_index >= len(task_list):
+        return {"error": "没有待执行的任务"}
+    
+    current_task = task_list[current_index]
+    expert_type = current_task.get("expert_type", "unknown")
+    description = current_task.get("description", "")
+    input_data = current_task.get("input_data", {})
+    
+    print(f"[GenericWorker] 处理自定义专家: {expert_type}")
+    
+    # 从缓存加载专家配置，如果没有则从数据库加载
+    expert_config = get_expert_config_cached(expert_type)
+    
+    # 如果缓存中没有，尝试从数据库加载（支持动态创建的自定义专家）
+    if not expert_config and "db_session" in state:
+        db = state["db_session"]
+        try:
+            from agents.expert_loader import get_expert_config
+            expert_config = get_expert_config(expert_type, db)
+            print(f"[GenericWorker] 从数据库加载专家配置: {expert_type}")
+        except Exception as e:
+            print(f"[GenericWorker] 从数据库加载失败: {e}")
+    
+    if not expert_config:
+        return {
+            "error": f"未找到专家 '{expert_type}' 的配置",
+            "status": "failed",
+            "output_result": f"专家 '{expert_type}' 未配置"
+        }
+    
+    # 自己创建 LLM 实例
+    from utils.llm_factory import get_expert_llm
+    if 'provider' in expert_config:
+        llm = get_expert_llm(provider=expert_config['provider'])
+    else:
+        llm = get_expert_llm()
+    
+    # 应用模型兜底机制
+    model = get_effective_model(expert_config.get("model"))
+    temperature = expert_config.get("temperature", 0.5)
+    system_prompt = expert_config.get("system_prompt", "你是一个专业的AI助手。")
+    expert_name = expert_config.get("name", expert_type)
+    
+    print(f"[GenericWorker] 使用模型: {model}, 温度: {temperature}")
+    
+    started_at = datetime.now()
+    
+    try:
+        # 使用配置的模型和温度参数
+        llm_with_config = llm.bind(
+            model=model,
+            temperature=temperature
+        )
+        
+        from langchain_core.runnables import RunnableConfig
+        response = await llm_with_config.ainvoke(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=f"任务描述: {description}\n\n输入参数:\n{format_input_data(input_data)}")
+            ],
+            config=RunnableConfig(
+                tags=["expert", expert_type, "generic"],
+                metadata={"node_type": "expert", "expert_type": expert_type, "is_generic": True}
+            )
+        )
+        
+        completed_at = datetime.now()
+        duration_ms = int((completed_at - started_at).total_seconds() * 1000)
+        
+        print(f"[GenericWorker] 专家完成 (耗时: {duration_ms/1000:.2f}s)")
+        
+        # 检查并清理输出内容
+        cleaned_content = _clean_expert_output(response.content, expert_type)
+        
+        # 根据内容自动确定 artifact 类型
+        artifact_type = _detect_artifact_type(cleaned_content, expert_type)
+        
+        return {
+            "output_result": cleaned_content,
+            "status": "completed",
+            "started_at": started_at.isoformat(),
+            "completed_at": completed_at.isoformat(),
+            "duration_ms": duration_ms,
+            "artifact": {
+                "type": artifact_type,
+                "title": f"{expert_name}结果",
+                "content": cleaned_content,
+                "source": f"{expert_type}_expert"
+            }
+        }
+        
+    except Exception as e:
+        print(f"[GenericWorker] 专家失败: {e}")
+        return {
+            "output_result": f"{expert_name}失败: {str(e)}",
+            "status": "failed",
+            "error": str(e),
+            "started_at": started_at.isoformat(),
+            "completed_at": datetime.now().isoformat()
+        }
+
+
+def get_expert_function(expert_type: str):
+    """
+    获取专家执行函数
+    
+    对于系统内置专家（search, coder, researcher, analyzer, writer, planner, image_analyzer），
+    返回对应的硬编码函数。
+    
+    对于自定义专家（数据库中动态创建的），返回 generic_worker_node。
+    
+    Args:
+        expert_type: 专家类型标识
+    
+    Returns:
+        callable: 专家执行函数
+    """
+    if expert_type in DYNAMIC_EXPERT_FUNCTIONS:
+        return DYNAMIC_EXPERT_FUNCTIONS[expert_type]
+    else:
+        return generic_worker_node
+
+
 def initialize_expert_cache(session):
     """
     初始化专家配置缓存
@@ -302,3 +444,88 @@ def initialize_expert_cache(session):
             print(f"  - Not found: {expert_key} (will use fallback)")
 
     print("[DynamicExpert] Expert cache initialized")
+
+
+def get_all_expert_list(db_session: Optional[Session] = None) -> List[tuple]:
+    """
+    获取所有可用专家的列表（包括动态创建的专家）
+    
+    从数据库中获取所有 SystemExpert 记录，返回格式化的专家信息列表。
+    用于 Commander Node 动态注入专家列表到 System Prompt。
+    
+    Args:
+        db_session: 数据库会话，如果为 None 则返回硬编码专家列表
+        
+    Returns:
+        List[tuple]: 专家列表，每个元素为 (expert_key, name, description) 元组
+        
+    Example:
+        >>> experts = get_all_expert_list(db_session)
+        >>> print(experts)
+        [('search', '搜索专家', '擅长信息搜索和查询'), ('coder', '编程专家', '擅长代码编写和调试')]
+    """
+    # 硬编码专家列表作为回退
+    fallback_experts = [
+        ("search", "搜索专家", "用于搜索、查询信息"),
+        ("coder", "编程专家", "用于代码编写、调试、优化"),
+        ("researcher", "研究专家", "用于深入研究、文献调研"),
+        ("analyzer", "分析专家", "用于数据分析、逻辑推理"),
+        ("writer", "写作专家", "用于文案撰写、内容创作"),
+        ("planner", "规划专家", "用于任务规划、方案设计"),
+        ("image_analyzer", "图片分析专家", "用于图片内容分析、视觉识别"),
+    ]
+    
+    # 如果没有提供数据库会话，直接返回硬编码列表
+    if db_session is None:
+        print("[DynamicExpert] 未提供数据库会话，使用硬编码专家列表")
+        return fallback_experts
+    
+    experts = []
+    
+    try:
+        # 从数据库查询所有 SystemExpert（包括动态创建的）
+        statement = select(SystemExpert).order_by(SystemExpert.expert_key)
+        results = db_session.exec(statement).all()
+        
+        for expert in results:
+            experts.append((
+                expert.expert_key,
+                expert.name,
+                expert.description or "暂无描述"
+            ))
+        
+        print(f"[DynamicExpert] 从数据库加载了 {len(experts)} 个专家")
+            
+    except Exception as e:
+        print(f"[DynamicExpert] 获取专家列表失败: {e}，使用硬编码列表")
+        # 发生异常时返回硬编码的专家列表
+        experts = fallback_experts
+    
+    return experts
+
+
+def format_expert_list_for_prompt(experts: List[tuple]) -> str:
+    """
+    将专家列表格式化为适合插入 Prompt 的字符串
+    
+    格式：- expert_key (Name): Description
+    
+    Args:
+        experts: 专家列表，每个元素为 (expert_key, name, description) 元组
+        
+    Returns:
+        str: 格式化后的专家列表字符串
+        
+    Example:
+        >>> experts = [('search', '搜索专家', '擅长信息搜索')]
+        >>> format_expert_list_for_prompt(experts)
+        '- search (搜索专家): 擅长信息搜索'
+    """
+    if not experts:
+        return "（暂无可用专家）"
+    
+    lines = []
+    for expert_key, name, description in experts:
+        lines.append(f"- {expert_key} ({name}): {description}")
+    
+    return "\n".join(lines)

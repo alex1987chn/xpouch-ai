@@ -301,9 +301,28 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     t
   ])
 
-  // 👈 组件卸载时清理：确保中止正在进行的请求，防止内存泄漏
+  // 👈 页面可见性和生命周期管理
+  const isPageHiddenRef = useRef(false)
+  
   useEffect(() => {
+    // 页面可见性变化处理
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // 页面隐藏：只标记状态，不关闭连接
+        isPageHiddenRef.current = true
+        debug('页面隐藏，保持 SSE 连接')
+      } else {
+        // 页面显示：恢复更新
+        isPageHiddenRef.current = false
+        debug('页面显示，恢复 UI 更新')
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      // 组件真正卸载时才中止请求
       if (abortControllerRef.current) {
         debug('组件卸载，中止正在进行的请求')
         abortControllerRef.current.abort()

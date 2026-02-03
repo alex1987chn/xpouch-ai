@@ -22,6 +22,15 @@ from utils.thinking_parser import parse_thinking
 from models import (
     User, Thread, Message, CustomAgent, TaskSession, SubTask
 )
+from crud.task_session import (
+    create_task_session,
+    get_task_session_by_thread,
+    update_task_session_status,
+    create_subtask,
+    get_subtasks_by_session,
+    update_subtask_status,
+    create_artifacts_batch
+)
 from constants import (
     normalize_agent_id,
     SYSTEM_AGENT_ORCHESTRATOR,
@@ -157,7 +166,18 @@ async def get_thread(
                             "status": st.status,
                             "output": st.output,
                             "error": st.error,
-                            "artifacts": st.artifacts,
+                            "artifacts": [
+                                {
+                                    "id": art.id,
+                                    "type": art.type,
+                                    "title": art.title,
+                                    "content": art.content,
+                                    "language": art.language,
+                                    "sort_order": art.sort_order,
+                                    "created_at": art.created_at.isoformat() if art.created_at else None
+                                }
+                                for art in (st.artifacts or [])
+                            ],
                             "duration_ms": st.duration_ms,
                             "created_at": st.created_at.isoformat() if st.created_at else None
                         }
@@ -573,6 +593,7 @@ async def _handle_langgraph_stream(
         full_response = ""
         event_count = 0
         router_mode = ""
+        task_session_id = None  # v3.0: 跟踪 TaskSession ID
         
         # v3.0: 收集任务列表和产物（用于最终保存）
         collected_task_list = []
@@ -640,7 +661,7 @@ async def _handle_langgraph_stream(
                                 if DEBUG:
                                     print(f"[STREAM] 解析事件失败: {e}")
 
-                # 捕获 Router 节点执行结束
+                # v3.0: 捕获 Router 节点执行结束
                 if kind == "on_chain_end" and name == "router":
                     output_data = event["data"]["output"]
                     router_decision = output_data.get("router_decision", "")
@@ -648,6 +669,37 @@ async def _handle_langgraph_stream(
                     if router_decision:
                         print(f"[STREAM] Router 决策: {router_decision}")
                         router_mode = router_decision
+                        
+                        # v3.0: 如果是复杂模式，立即创建 TaskSession 并更新 thread
+                        if router_decision == "complex":
+                            with Session(engine) as update_session:
+                                thread_obj = update_session.get(Thread, thread_id)
+                                if thread_obj:
+                                    # 立即设置 agent_type 为 ai
+                                    if thread_obj.agent_type != "ai":
+                                        thread_obj.agent_type = "ai"
+                                    thread_obj.thread_mode = "complex"
+                                    
+                                    # 检查是否已有 TaskSession（避免重复创建）
+                                    existing_ts = get_task_session_by_thread(update_session, thread_id)
+                                    if existing_ts:
+                                        task_session_id = existing_ts.session_id
+                                        print(f"[STREAM] 使用现有 TaskSession: {task_session_id}")
+                                    else:
+                                        # 创建新的 TaskSession
+                                        task_session = create_task_session(
+                                            db=update_session,
+                                            thread_id=thread_id,
+                                            user_query=user_message
+                                        )
+                                        task_session_id = task_session.session_id
+                                        thread_obj.task_session_id = task_session_id
+                                        print(f"[STREAM] 创建新 TaskSession: {task_session_id}")
+                                    
+                                    update_session.add(thread_obj)
+                                    update_session.commit()
+                                    print(f"[STREAM] 已更新 thread 为 complex 模式")
+                        
                         # v3.0: 发送 router.decision 事件（新协议）
                         from event_types.events import EventType, RouterDecisionData, build_sse_event
                         router_event = build_sse_event(
@@ -724,48 +776,51 @@ async def _handle_langgraph_stream(
                         thread_obj.thread_mode = router_mode
                         print(f"[STREAM] 更新 thread_mode 为: {router_mode}")
 
-                    # 复杂模式：保存 TaskSession 和 SubTask
-                    if router_mode == "complex" and collected_task_list:
-                        print(f"[STREAM] 保存复杂模式数据: {len(collected_task_list)} 个任务")
-
-                        now = datetime.now()
-                        task_session = TaskSession(
-                            session_id=str(uuid4()),
-                            thread_id=thread_id,
-                            user_query=user_message,
-                            status="completed",
-                            final_response=full_response,
-                            created_at=now,
-                            updated_at=now,
-                            completed_at=now
+                    # 复杂模式：更新 TaskSession 和保存 SubTask
+                    if router_mode == "complex" and task_session_id:
+                        print(f"[STREAM] 更新复杂模式数据: {len(collected_task_list)} 个任务, session={task_session_id}")
+                        
+                        # 更新 TaskSession 状态为完成
+                        update_task_session_status(
+                            save_session, 
+                            task_session_id, 
+                            "completed", 
+                            final_response=full_response
                         )
-                        save_session.add(task_session)
-                        save_session.flush()
-
-                        thread_obj.task_session_id = task_session.session_id
-                        thread_obj.agent_type = "ai"
-                        save_session.add(thread_obj)
-
+                        
+                        # 获取已存在的 SubTasks（避免重复创建）
+                        existing_subtasks = get_subtasks_by_session(save_session, task_session_id)
+                        existing_subtask_ids = {st.id for st in existing_subtasks}
+                        
+                        # 保存/更新 SubTasks
                         for task in collected_task_list:
+                            task_id = task.get("id")
                             expert_type = task.get("expert_type", "")
                             artifacts_for_expert = expert_artifacts.get(expert_type, [])
-
-                            subtask = SubTask(
-                                id=task.get("id", str(uuid4())),
-                                expert_type=expert_type,
-                                task_description=task.get("description", ""),
-                                input_data=task.get("input_data", {}),
-                                status=task.get("status", "completed"),
-                                output_result={"content": task.get("output_result", "")},
-                                artifacts=artifacts_for_expert,
-                                task_session_id=task_session.session_id,
-                                started_at=task.get("started_at"),
-                                completed_at=task.get("completed_at"),
-                                created_at=task.get("created_at"),
-                                updated_at=task.get("updated_at"),
-                            )
-                            save_session.add(subtask)
-                            print(f"[STREAM] 保存 SubTask: {expert_type}, artifacts: {len(artifacts_for_expert)}")
+                            
+                            if task_id and task_id in existing_subtask_ids:
+                                # 更新现有 SubTask
+                                update_subtask_status(
+                                    save_session,
+                                    task_id,
+                                    status=task.get("status", "completed"),
+                                    output_result={"content": task.get("output_result", "")}
+                                )
+                                # 保存 artifacts
+                                if artifacts_for_expert:
+                                    create_artifacts_batch(save_session, task_id, artifacts_for_expert)
+                                print(f"[STREAM] 更新 SubTask: {expert_type}")
+                            else:
+                                # 创建新 SubTask
+                                create_subtask(
+                                    save_session,
+                                    task_session_id=task_session_id,
+                                    expert_type=expert_type,
+                                    task_description=task.get("description", ""),
+                                    sort_order=task.get("sort_order", 0),
+                                    input_data=task.get("input_data", {})
+                                )
+                                print(f"[STREAM] 创建 SubTask: {expert_type}")
 
                     save_session.add(thread_obj)
                 save_session.commit()
@@ -797,10 +852,12 @@ async def _handle_langgraph_sync(
     # 获取 Router 决策并更新 thread_mode
     router_decision = result.get("router_decision", "simple")
     thread.thread_mode = router_decision
-
-    # 如果是复杂模式，设置 agent_type 为 "ai"
+    
+    # v3.0: 尽早设置 agent_type，这样即使任务进行中刷新也能正确恢复状态
     if router_decision == "complex":
         thread.agent_type = "ai"
+        session.add(thread)
+        session.flush()
 
         # 创建 TaskSession
         task_session = TaskSession(

@@ -17,7 +17,7 @@ providers:
     name: MiniMax
     base_url: https://api.minimaxi.com/v1   # OpenAI 兼容 API
     env_key: MINIMAX_API_KEY                # .env 中的环境变量名
-    default_model: MiniMax-M2.1             # MiniMax M2.1 (最新版)
+    default_model: MiniMax-M2.1             # MiniMax M2.1 (支持 OpenAI 兼容 API)
     temperature: 0.1                        # Router 用低温度
     context_window: 1000000
     priority: 1                             # Router 优先级（数字越小越优先）
@@ -97,6 +97,18 @@ models:
     provider: minimax
     model: MiniMax-M2.1
     name: MiniMax M2.1
+  
+  # 大写别名（兼容数据库中存储的格式）
+  MiniMax-M2.1:
+    provider: minimax
+    model: MiniMax-M2.1
+    name: MiniMax M2.1
+  
+  # 其他常见变体
+  MiniMax-M2-1:
+    provider: minimax
+    model: MiniMax-M2.1
+    name: MiniMax M2.1
     
   # DeepSeek
   deepseek-chat:
@@ -137,7 +149,7 @@ models:
 # ============================================================================
 router:
   # 优先级列表（按顺序尝试）
-  # 注意：MiniMax-M2.1 输出包含 <think> 标签，不适合需要 JSON 输出的 Router
+  # 注意：MiniMax-Text-01 输出包含 <think> 标签，不适合需要 JSON 输出的 Router
   # 所以 Router 优先使用 DeepSeek（输出干净，适合 JSON 解析）
   priority_providers:
     - deepseek

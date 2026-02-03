@@ -10,6 +10,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
+import os
 from pydantic import BaseModel, Field as PydanticField, field_validator
 
 from auth import get_current_user
@@ -69,15 +70,52 @@ class ExpertResponse(BaseModel):
     system_prompt: str
     model: str
     temperature: float
+    is_dynamic: bool
     updated_at: str
 
 
 class ExpertUpdate(BaseModel):
     """专家更新 DTO"""
+    name: Optional[str] = PydanticField(default=None, description="专家显示名称（仅动态专家可修改）")
     system_prompt: str = PydanticField(..., min_length=10, description="系统提示词（至少10个字符）")
     description: Optional[str] = PydanticField(default=None, description="专家能力描述，用于 Planner 决定任务分配")
     model: str = PydanticField(default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="模型名称")
     temperature: float = PydanticField(default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）")
+
+    @field_validator('system_prompt')
+    @classmethod
+    def validate_prompt(cls, v: str) -> str:
+        if not v or len(v.strip()) < 10:
+            raise ValueError("system_prompt 不能为空且长度必须大于 10")
+        return v.strip()
+
+
+class ExpertCreate(BaseModel):
+    """专家创建 DTO"""
+    expert_key: str = PydanticField(..., min_length=1, description="专家类型标识（唯一）")
+    name: str = PydanticField(..., min_length=1, description="专家显示名称")
+    description: Optional[str] = PydanticField(default=None, description="专家能力描述，用于 Planner 决定任务分配")
+    system_prompt: str = PydanticField(..., min_length=10, description="系统提示词（至少10个字符）")
+    model: str = PydanticField(default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="模型名称")
+    temperature: float = PydanticField(default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）")
+
+    @field_validator('expert_key')
+    @classmethod
+    def validate_expert_key(cls, v: str) -> str:
+        if not v or len(v.strip()) < 1:
+            raise ValueError("expert_key 不能为空")
+        # 只允许小写字母、数字和下划线
+        import re
+        if not re.match(r'^[a-z][a-z0-9_]*$', v.strip()):
+            raise ValueError("expert_key 必须以字母开头，只能包含小写字母、数字和下划线")
+        return v.strip()
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if not v or len(v.strip()) < 1:
+            raise ValueError("name 不能为空")
+        return v.strip()
 
     @field_validator('system_prompt')
     @classmethod
@@ -157,6 +195,7 @@ async def get_all_experts(
             system_prompt=expert.system_prompt,
             model=expert.model,
             temperature=expert.temperature,
+            is_dynamic=expert.is_dynamic,
             updated_at=expert.updated_at.isoformat()
         )
         for expert in experts
@@ -192,6 +231,7 @@ async def get_expert(
         system_prompt=expert.system_prompt,
         model=expert.model,
         temperature=expert.temperature,
+        is_dynamic=expert.is_dynamic,
         updated_at=expert.updated_at.isoformat()
     )
 
@@ -228,6 +268,15 @@ async def update_expert(
         )
 
     # 更新字段
+    # 只有动态专家可以修改 name
+    if expert_update.name is not None:
+        if not expert.is_dynamic:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="系统内置专家的名称不可修改"
+            )
+        expert.name = expert_update.name
+    
     expert.system_prompt = expert_update.system_prompt
     expert.description = expert_update.description
     expert.model = expert_update.model
@@ -444,4 +493,122 @@ System Prompt:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"生成描述失败: {str(e)}"
         )
+
+
+@router.post("/experts", response_model=ExpertResponse)
+async def create_expert(
+    expert_create: ExpertCreate,
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_admin)  # 需要管理员权限
+):
+    """
+    创建新专家
+
+    权限：ADMIN
+
+    说明：
+    - expert_key 必须唯一
+    - 新创建的专家 is_dynamic 默认为 True（用户创建的专家）
+    """
+    from datetime import datetime
+    
+    # 检查 expert_key 是否已存在
+    existing_expert = session.exec(
+        select(SystemExpert).where(SystemExpert.expert_key == expert_create.expert_key)
+    ).first()
+    
+    if existing_expert:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"专家 '{expert_create.expert_key}' 已存在"
+        )
+    
+    # 创建新专家
+    new_expert = SystemExpert(
+        expert_key=expert_create.expert_key,
+        name=expert_create.name,
+        description=expert_create.description,
+        system_prompt=expert_create.system_prompt,
+        model=expert_create.model,
+        temperature=expert_create.temperature,
+        is_dynamic=True,  # 用户创建的专家默认为动态专家
+        updated_at=datetime.now()
+    )
+    
+    session.add(new_expert)
+    session.commit()
+    session.refresh(new_expert)
+    
+    print(f"[Admin] Expert '{expert_create.expert_key}' created by admin")
+    
+    # 自动刷新 LangGraph 缓存
+    try:
+        refresh_cache(session)
+        print(f"[Admin] LangGraph cache refreshed successfully")
+    except Exception as e:
+        print(f"[Admin] Warning: Failed to refresh cache: {e}")
+    
+    return ExpertResponse(
+        id=new_expert.id,
+        expert_key=new_expert.expert_key,
+        name=new_expert.name,
+        description=new_expert.description,
+        system_prompt=new_expert.system_prompt,
+        model=new_expert.model,
+        temperature=new_expert.temperature,
+        is_dynamic=new_expert.is_dynamic,
+        updated_at=new_expert.updated_at.isoformat()
+    )
+
+
+@router.delete("/experts/{expert_key}")
+async def delete_expert(
+    expert_key: str,
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_admin)  # 需要管理员权限
+):
+    """
+    删除专家
+
+    权限：ADMIN
+
+    说明：
+    - 系统内置专家（is_dynamic=false）不可删除
+    - 删除后会自动刷新 LangGraph 缓存
+    """
+    # 查找专家
+    expert = session.exec(
+        select(SystemExpert).where(SystemExpert.expert_key == expert_key)
+    ).first()
+    
+    if not expert:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"专家 '{expert_key}' 不存在"
+        )
+    
+    # 检查是否为系统内置专家
+    if not expert.is_dynamic:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="系统内置专家不可删除"
+        )
+    
+    # 删除专家
+    session.delete(expert)
+    session.commit()
+    
+    print(f"[Admin] Expert '{expert_key}' deleted by admin")
+    
+    # 自动刷新 LangGraph 缓存
+    try:
+        refresh_cache(session)
+        print(f"[Admin] LangGraph cache refreshed successfully")
+    except Exception as e:
+        print(f"[Admin] Warning: Failed to refresh cache: {e}")
+    
+    return {
+        "message": "专家已删除",
+        "expert_key": expert_key
+    }
 

@@ -59,6 +59,7 @@ class SystemExpert(SQLModel, table=True):
     )
     model: str = Field(default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="使用的模型")
     temperature: float = Field(default=0.5, description="温度参数（0.0-2.0）")
+    is_dynamic: bool = Field(default=True, description="是否为动态专家，false=系统内置，true=用户创建")
     updated_at: datetime = Field(default_factory=datetime.now, description="最后更新时间")
 
 
