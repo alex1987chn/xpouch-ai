@@ -20,6 +20,7 @@ from agents.nodes import (
     direct_reply_node,
     commander_node,
     expert_dispatcher_node,
+    generic_worker_node,
     aggregator_node,
 )
 from agents.state import AgentState
@@ -90,9 +91,22 @@ def route_router(state: AgentState) -> str:
         return "commander"
 
 def route_dispatcher(state: AgentState) -> str:
-    """决定 分发器 之后的去向（循环或聚合）"""
-    if state["current_task_index"] >= len(state["task_list"]):
-        return "aggregator"
+    """
+    决定循环的去向：继续执行下一个任务 或 聚合结果
+
+    注意：这个路由函数在 Generic Worker 执行后被调用
+    Generic Worker 执行完任务后，current_index 不会自动增加
+    增加 current_index 的逻辑应该在 generic_worker_node 中实现
+    """
+    task_list = state.get("task_list", [])
+    current_index = state.get("current_task_index", 0)
+
+    # 检查是否还有任务
+    if current_index >= len(task_list):
+        return "aggregator"  # 所有任务完成，去聚合
+
+    # 还有任务，需要回到 Dispatcher 让它检查并分发
+    # Dispatcher 会检查任务并决定是否继续
     return "expert_dispatcher"
 
 # ============================================================================
@@ -107,6 +121,7 @@ def create_smart_router_workflow() -> StateGraph:
     workflow.add_node("direct_reply", direct_reply_node)  # 新增：Simple 模式流式回复
     workflow.add_node("commander", commander_node)
     workflow.add_node("expert_dispatcher", expert_dispatcher_node)
+    workflow.add_node("generic", generic_worker_node)  # 新增：通用专家执行节点
     workflow.add_node("aggregator", aggregator_node)
 
     # 设置入口：现在入口是 Router！
@@ -130,13 +145,18 @@ def create_smart_router_workflow() -> StateGraph:
     # 3. Commander -> Dispatcher (指挥官完成后执行)
     workflow.add_edge("commander", "expert_dispatcher")
 
-    # 3. Dispatcher -> (Loop | Aggregator)
+    # 4. Dispatcher -> Generic (专家执行)
+    # Dispatcher 检查专家存在后，流转到 Generic 执行
+    workflow.add_edge("expert_dispatcher", "generic")
+
+    # 5. Generic -> (Dispatcher | Aggregator)
+    # Generic 执行完任务后，根据是否还有任务决定去向
     workflow.add_conditional_edges(
-        "expert_dispatcher",
+        "generic",
         route_dispatcher,
         {
-            "expert_dispatcher": "expert_dispatcher",
-            "aggregator": "aggregator"
+            "expert_dispatcher": "expert_dispatcher",  # 还有任务，回到 Dispatcher 检查下一个
+            "aggregator": "aggregator"  # 所有任务完成，去聚合结果
         }
     )
 

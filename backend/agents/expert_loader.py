@@ -3,7 +3,7 @@
 
 从 SystemExpert 表动态加载专家 Prompt 和配置
 """
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from sqlmodel import Session, select
 from models import SystemExpert
 from utils.llm_factory import get_effective_model
@@ -244,3 +244,88 @@ def force_refresh_all():
     _cache_timestamp = None
 
     print(f"[ExpertLoader] Cache cleared and will be reloaded on next access")
+
+
+def get_all_expert_list(db_session: Optional[Session] = None) -> List[tuple]:
+    """
+    获取所有可用专家的列表（包括动态创建的专家）
+
+    从数据库中获取所有 SystemExpert 记录，返回格式化的专家信息列表。
+    用于 Commander Node 动态注入专家列表到 System Prompt。
+
+    Args:
+        db_session: 数据库会话，如果为 None 则返回硬编码专家列表
+
+    Returns:
+        List[tuple]: 专家列表，每个元素为 (expert_key, name, description) 元组
+
+    Example:
+        >>> experts = get_all_expert_list(db_session)
+        >>> print(experts)
+        [('search', '搜索专家', '擅长信息搜索和查询'), ('coder', '编程专家', '擅长代码编写和调试')]
+    """
+    # 硬编码专家列表作为回退
+    fallback_experts = [
+        ("search", "搜索专家", "用于搜索、查询信息"),
+        ("coder", "编程专家", "用于代码编写、调试、优化"),
+        ("researcher", "研究专家", "用于深入研究、文献调研"),
+        ("analyzer", "分析专家", "用于数据分析、逻辑推理"),
+        ("writer", "写作专家", "用于文案撰写、内容创作"),
+        ("planner", "规划专家", "用于任务规划、方案设计"),
+        ("image_analyzer", "图片分析专家", "用于图片内容分析、视觉识别"),
+    ]
+
+    # 如果没有提供数据库会话，直接返回硬编码列表
+    if db_session is None:
+        print("[ExpertLoader] 未提供数据库会话，使用硬编码专家列表")
+        return fallback_experts
+
+    experts = []
+
+    try:
+        # 从数据库查询所有 SystemExpert（包括动态创建的）
+        statement = select(SystemExpert).order_by(SystemExpert.expert_key)
+        results = db_session.exec(statement).all()
+
+        for expert in results:
+            experts.append((
+                expert.expert_key,
+                expert.name,
+                expert.description or "暂无描述"
+            ))
+
+        print(f"[ExpertLoader] 从数据库加载了 {len(experts)} 个专家")
+
+    except Exception as e:
+        print(f"[ExpertLoader] 获取专家列表失败: {e}，使用硬编码列表")
+        # 发生异常时返回硬编码的专家列表
+        experts = fallback_experts
+
+    return experts
+
+
+def format_expert_list_for_prompt(experts: List[tuple]) -> str:
+    """
+    将专家列表格式化为适合插入 Prompt 的字符串
+
+    格式：- expert_key (Name): Description
+
+    Args:
+        experts: 专家列表，每个元素为 (expert_key, name, description) 元组
+
+    Returns:
+        str: 格式化后的专家列表字符串
+
+    Example:
+        >>> experts = [('search', '搜索专家', '擅长信息搜索')]
+        >>> format_expert_list_for_prompt(experts)
+        '- search (搜索专家): 擅长信息搜索'
+    """
+    if not experts:
+        return "（暂无可用专家）"
+
+    lines = []
+    for expert_key, name, description in experts:
+        lines.append(f"- {expert_key} ({name}): {description}")
+
+    return "\n".join(lines)
