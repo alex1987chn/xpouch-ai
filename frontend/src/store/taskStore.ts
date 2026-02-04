@@ -22,6 +22,40 @@ import type { TaskSession, SubTask } from '@/types'
 enableMapSet()
 
 // ============================================================================
+// Helper 函数
+// ============================================================================
+
+/**
+ * 格式化任务输出：将后端复杂的 output_result 转为 Markdown 字符串
+ */
+const formatTaskOutput = (outputResult: any): string => {
+  if (!outputResult) return ''
+
+  // 如果已经是字符串，直接返回
+  if (typeof outputResult === 'string') return outputResult
+
+  // 提取核心内容
+  let formattedText = outputResult.content || ''
+
+  // 处理来源 (Source) - 适配 Search Expert 的输出结构
+  if (outputResult.source && Array.isArray(outputResult.source) && outputResult.source.length > 0) {
+    formattedText += '\n\n---\n**参考来源：**\n'
+    outputResult.source.forEach((src: any, index: number) => {
+      // 容错处理，防止 src 为空
+      const title = src.title || '未知来源'
+      const url = src.url || '#'
+      formattedText += `> ${index + 1}. [${title}](${url})\n`
+    })
+  }
+  // 兼容其他可能的字段名
+  else if (outputResult.sources) {
+    formattedText += '\n\n**参考资料:** ' + JSON.stringify(outputResult.sources)
+  }
+
+  return formattedText
+}
+
+// ============================================================================
 // 类型定义
 // ============================================================================
 
@@ -397,8 +431,10 @@ export const useTaskStore = create<TaskState>()(
             status: taskStatus,
             sort_order: index,
             artifacts: artifacts,
-            output: subTask.output,
-            error: subTask.error,
+            // 👈 修复字段映射：后端 output_result -> 前端 output
+            output: formatTaskOutput(subTask.output_result || subTask.output),
+            // 👈 修复字段映射：后端 error_message -> 前端 error
+            error: subTask.error_message || subTask.error,
             startedAt: undefined,
             completedAt: undefined,
             durationMs: subTask.duration_ms

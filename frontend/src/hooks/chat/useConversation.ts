@@ -11,6 +11,34 @@ import { normalizeAgentId } from '@/utils/agentUtils'
 import { errorHandler } from '@/utils/logger'
 import type { Conversation } from '@/types'
 
+// 👈 新增 Helper 函数：将后端 JSON 输出转为 Markdown 字符串
+const formatTaskOutput = (outputResult: any): string => {
+  if (!outputResult) return ''
+
+  // 如果已经是字符串，直接返回
+  if (typeof outputResult === 'string') return outputResult
+
+  // 提取核心内容
+  let formattedText = outputResult.content || ''
+
+  // 处理来源 (Source) - 适配 Search Expert 的输出结构
+  if (outputResult.source && Array.isArray(outputResult.source) && outputResult.source.length > 0) {
+    formattedText += '\n\n---\n**参考来源：**\n'
+    outputResult.source.forEach((src: any, index: number) => {
+      // 容错处理，防止 src 为空
+      const title = src.title || '未知来源'
+      const url = src.url || '#'
+      formattedText += `> ${index + 1}. [${title}](${url})\n`
+    })
+  }
+  // 兼容其他可能的字段名
+  else if (outputResult.sources) {
+    formattedText += '\n\n**参考资料:** ' + JSON.stringify(outputResult.sources)
+  }
+
+  return formattedText
+}
+
 // 开发环境判断
 const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
 
@@ -33,7 +61,7 @@ export function useConversation() {
 
   const {
     initializePlan,
-    completeTask,
+    restoreFromSession,  // 👈 修改：使用 restoreFromSession 替代手动恢复
     addArtifact,
     selectTask,
     clearTasks,
@@ -99,64 +127,18 @@ export function useConversation() {
       // 注意：之前检查 agent_type === 'ai'，但可能由于时序问题导致 agent_type 未更新
       // 现在只要有 task_session 数据就恢复
       if (conversation.task_session) {
-        const subTasks = conversation.task_session.sub_tasks || []
-
-        // 清空旧任务
-        clearTasks()
-        setMode('complex')
-
-        // 初始化任务计划
-        initializePlan({
-          session_id: conversation.task_session.id,
+        // 👈 使用 restoreFromSession 方法（taskStore 中已实现）
+        // 该方法已经包含了以下逻辑：
+        // 1. 状态分流（completed/running/pending）
+        // 2. Artifacts 恢复
+        // 3. 字段映射（output -> output_result）
+        restoreFromSession({
+          sessionId: conversation.task_session.id,
           summary: conversation.task_session.summary || '复杂任务',
-          estimated_steps: subTasks.length,
-          execution_mode: 'sequential',
-          tasks: subTasks.map((st: any) => ({
-            id: st.id || `task-${Date.now()}`,
-            expert_type: st.expert_type,
-            description: st.task_description || `${st.expert_type} 任务`,
-            status: st.status || 'completed',
-            sort_order: st.sort_order || 0
-          }))
-        })
-
-        // 恢复每个子任务的状态和 artifacts
-        subTasks.forEach((subTask: any) => {
-          const taskId = subTask.id || `task-${Date.now()}`
-
-          // 完成任务（恢复历史状态）
-          completeTask({
-            task_id: taskId,
-            duration_ms: subTask.duration_ms,
-            output: subTask.output,
-            error: subTask.error
-          })
-
-          // 恢复 artifacts
-          if (subTask.artifacts && Array.isArray(subTask.artifacts) && subTask.artifacts.length > 0) {
-            subTask.artifacts.forEach((item: any) => {
-              addArtifact({
-                task_id: taskId,
-                expert_type: subTask.expert_type,
-                artifact: {
-                  id: item.id || `artifact-${Date.now()}`,
-                  type: item.type || 'code',
-                  title: item.title || `${subTask.expert_type} 产物`,
-                  content: item.content || '',
-                  language: item.language
-                }
-              })
-            })
-          }
-        })
-
-        // 自动选中第一个任务
-        if (subTasks.length > 0) {
-          const firstTaskId = subTasks[0].id
-          if (firstTaskId) {
-            selectTask(firstTaskId)
-          }
-        }
+          estimatedSteps: conversation.task_session.estimated_steps || 0,
+          executionMode: 'sequential',
+          status: conversation.task_session.status === 'completed' ? 'completed' : 'completed'  // 👈 临时修复：使用 restoreFromSession 会覆盖
+        }, conversation.task_session.sub_tasks || [])
       }
 
       return conversation
@@ -169,11 +151,7 @@ export function useConversation() {
     setCurrentConversationId,
     setSelectedAgentId,
     clearTasks,
-    setMode,
-    initializePlan,
-    completeTask,
-    addArtifact,
-    selectTask
+    restoreFromSession  // 👈 修改：使用 restoreFromSession
   ])
 
   /**
