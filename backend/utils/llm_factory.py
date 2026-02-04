@@ -20,6 +20,7 @@ from providers_config import (
     get_best_router_provider,
     is_provider_configured
 )
+import httpx
 
 
 def get_llm_instance(
@@ -88,6 +89,15 @@ def get_llm_instance(
         llm_config['temperature'] = config['temperature']
     else:
         llm_config['temperature'] = 0.7  # 默认值
+    
+    # 🚀 修复：创建更健壮的 HTTP 客户端
+    # 禁用 HTTP/2 并增加超时时间，解决 "incomplete chunked read" 错误
+    http_client = httpx.Client(
+        http2=False,      # 🚨 关键：禁用 HTTP/2，解决大部分 chunked read 错误
+        timeout=300.0,    # 🚨 关键：给推理模型足够的思考时间（5 分钟）
+        verify=True        # 验证 SSL 证书（安全考虑）
+    )
+    llm_config['http_client'] = http_client
     
     return ChatOpenAI(**llm_config)
 
