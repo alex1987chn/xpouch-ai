@@ -10,7 +10,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field, field_validator
 
-from agents.nodes.state import AgentState
+from agents.state import AgentState
 from utils.json_parser import parse_llm_json
 from utils.llm_factory import get_llm_instance
 from constants import COMMANDER_SYSTEM_PROMPT

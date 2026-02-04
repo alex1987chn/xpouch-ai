@@ -6,7 +6,7 @@ Expert Dispatcher 节点 - 专家分发器
 from typing import Dict, Any, List
 from datetime import datetime
 
-from agents.nodes.state import AgentState
+from agents.state import AgentState
 from agents.dynamic_experts import DYNAMIC_EXPERT_FUNCTIONS, get_expert_function, get_expert_config_cached
 from utils.llm_factory import get_expert_llm
 from utils.event_generator import (
