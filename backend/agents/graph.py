@@ -33,7 +33,8 @@ from crud.task_session import (
     create_task_session_with_subtasks,
     update_subtask_status,
     create_artifacts_batch,
-    update_task_session_status
+    update_task_session_status,
+    get_task_session_by_thread
 )
 from constants import COMMANDER_SYSTEM_PROMPT, COMMANDER_SYSTEM_PROMPT_TEMPLATE, ROUTER_SYSTEM_PROMPT, DEFAULT_ASSISTANT_PROMPT 
 from agents.dynamic_experts import DYNAMIC_EXPERT_FUNCTIONS, initialize_expert_cache, get_all_expert_list, format_expert_list_for_prompt, get_expert_function
@@ -369,16 +370,43 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
         # v3.0: 立即持久化到数据库
         task_session = None
         if db_session and thread_id:
-            task_session = create_task_session_with_subtasks(
-                db=db_session,
-                thread_id=thread_id,
-                user_query=user_query,
-                plan_summary=commander_response.strategy,
-                estimated_steps=commander_response.estimated_steps,
-                subtasks_data=subtasks_data,
-                execution_mode="sequential"
-            )
-            print(f"[COMMANDER] 任务会话已创建: {task_session.session_id}")
+            # v3.1: 先检查 Router 是否已创建 TaskSession（避免重复创建）
+            existing_session = get_task_session_by_thread(db_session, thread_id)
+            if existing_session:
+                task_session = existing_session
+                print(f"[COMMANDER] 复用 Router 创建的 TaskSession: {task_session.session_id}")
+                # 更新已有 session 的信息
+                task_session.plan_summary = commander_response.strategy
+                task_session.estimated_steps = commander_response.estimated_steps
+                task_session.execution_mode = "sequential"
+                db_session.add(task_session)
+                # 创建 SubTask 并关联到已有 session
+                from crud.task_session import create_subtask
+                for subtask_data in subtasks_data:
+                    create_subtask(
+                        db=db_session,
+                        task_session_id=task_session.session_id,
+                        expert_type=subtask_data.expert_type,
+                        task_description=subtask_data.task_description,
+                        sort_order=subtask_data.sort_order,
+                        input_data=subtask_data.input_data,
+                        execution_mode=subtask_data.execution_mode,
+                        depends_on=subtask_data.depends_on
+                    )
+                db_session.commit()
+                db_session.refresh(task_session)
+            else:
+                # 创建新的 TaskSession
+                task_session = create_task_session_with_subtasks(
+                    db=db_session,
+                    thread_id=thread_id,
+                    user_query=user_query,
+                    plan_summary=commander_response.strategy,
+                    estimated_steps=commander_response.estimated_steps,
+                    subtasks_data=subtasks_data,
+                    execution_mode="sequential"
+                )
+                print(f"[COMMANDER] 任务会话已创建: {task_session.session_id}")
 
         # 转换为内部字典格式（用于 LangGraph 状态流转）
         # v3.1: 支持显式依赖关系，包含 task_id（Commander 生成）和 depends_on

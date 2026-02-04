@@ -118,8 +118,10 @@ export interface SubTask {
   expert_type: string
   task_description: string
   status?: string
-  output?: string
-  error?: string
+  output_result?: any  // 后端返回的原始输出结果
+  error_message?: string  // 后端返回的错误信息
+  output?: string  // 前端转换后的输出（兼容字段）
+  error?: string  // 前端转换后的错误（兼容字段）
   artifacts?: any[]  // Artifacts数据
   duration_ms?: number
   created_at?: string
