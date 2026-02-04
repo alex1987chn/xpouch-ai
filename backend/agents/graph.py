@@ -19,7 +19,7 @@ from datetime import datetime
 # 导入数据模型
 import sys
 sys.path.append(str(pathlib.Path(__file__).parent.parent))
-from models import ExpertType, TaskStatus, SubTask, TaskSession
+from models import ExpertType, TaskStatus, SubTask, TaskSession, Message as MessageModel
 from config import init_langchain_tracing, get_langsmith_config
 from utils.json_parser import parse_llm_json
 from utils.exceptions import AppError
@@ -730,6 +730,8 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
     task_session_id = state.get("task_session_id")
     event_queue = state.get("event_queue", [])
     # v3.0: 获取前端传递的 message_id（如果有的话）
+    # 注意：Message.id 在数据库中是 INTEGER 类型，不能直接使用 UUID
+    # 所以 message_id 只用于 SSE 事件标识，不用于数据库存储
     message_id = state.get("message_id", str(uuid4()))
 
     if not expert_results:
@@ -798,6 +800,23 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
             "completed",
             final_response=final_response
         )
+        
+        # 🔥🔥🔥 关键修复：持久化聚合消息到数据库 🔥🔥🔥
+        # 只有存进去了，下次刷新 GET /messages 才能看到它
+        conversation_id = state.get("thread_id")  # v3.2: 使用 thread_id 作为 conversation_id
+        if conversation_id:
+            # 创建消息记录（关联 conversation_id）
+            # 注意：不手动指定 id，让数据库自动生成（id 是 INTEGER 自增）
+            # message_id 只用于 SSE 事件标识
+            # 注意：Message 模型暂时没有 task_session_id 字段，以后可能需要添加
+            message_record = MessageModel(
+                thread_id=conversation_id,
+                role="assistant",
+                content=final_response
+            )
+            db_session.add(message_record)
+            db_session.commit()
+            print(f"[AGG] 聚合消息已持久化到数据库，conversation_id={conversation_id}")
     
     print(f"[AGG] 聚合完成，回复长度: {len(final_response)}")
 
