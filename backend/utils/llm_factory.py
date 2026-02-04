@@ -220,6 +220,32 @@ def get_commander_llm() -> ChatOpenAI:
     return get_router_llm()
 
 
+def get_aggregator_llm() -> ChatOpenAI:
+    """
+    获取 Aggregator 节点专用的 LLM 实例
+
+    Aggregator 用于总结多个专家的输出结果，生成自然语言的最终回复
+    优先使用 DeepSeek（性价比高，输出质量稳定）
+    默认温度为 0.7（总结任务需要一定的创造性）
+
+    Returns:
+        ChatOpenAI: 配置好的 LLM 实例
+    """
+    # 优先使用 deepseek（总结任务性价比高）
+    if is_provider_configured('deepseek'):
+        return get_llm_instance(provider='deepseek', streaming=True, temperature=0.7)
+
+    # 回退到 openai
+    if is_provider_configured('openai'):
+        return get_llm_instance(provider='openai', streaming=True, temperature=0.7)
+
+    # 尝试 minimax
+    if is_provider_configured('minimax'):
+        return get_llm_instance(provider='minimax', streaming=True, temperature=0.7)
+
+    # 最后尝试任何可用的
+    return get_router_llm()
+
 
 # ============================================================================
 # 便捷函数

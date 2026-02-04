@@ -43,7 +43,7 @@ from agents.expert_loader import get_expert_config_cached
 # 0. 设置与配置
 # ============================================================================
 # 从工厂函数导入 LLM 实例创建器
-from utils.llm_factory import get_router_llm, get_commander_llm, get_llm_instance, get_expert_llm
+from utils.llm_factory import get_router_llm, get_commander_llm, get_llm_instance, get_expert_llm, get_aggregator_llm
 
 # LangSmith 链路追踪
 env_path = pathlib.Path(__file__).parent.parent / ".env"
@@ -109,11 +109,16 @@ class RoutingDecision(BaseModel):
 # --- 保留原有的指挥官结构 ---
 
 class SubTaskOutput(BaseModel):
-    """单个子任务结构 (Commander 使用)"""
+    """单个子任务结构 (Commander 使用)
+    
+    支持显式依赖关系 (DAG)，通过 id 和 depends_on 实现精准数据管道
+    """
+    id: str = Field(default="", description="任务唯一标识符（短ID，如 task_1, task_2）")
     expert_type: str = Field(description="执行此任务的专家类型（可以是系统内置专家或自定义专家）")
     description: str = Field(description="任务描述")
     input_data: Dict[str, Any] = Field(default={}, description="输入参数")
     priority: int = Field(default=0, description="优先级 (0=最高)")
+    depends_on: List[str] = Field(default=[], description="依赖的任务ID列表。如果任务B需要任务A的输出，则填入 ['task_a']")
 
 class CommanderOutput(BaseModel):
     """指挥官输出 - 子任务列表"""
@@ -301,7 +306,13 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
             clean_markdown=True
         )
 
-        # v3.0: 准备子任务数据
+        # v3.1: 兜底处理 - 如果 LLM 没有生成 id，自动生成
+        for idx, task in enumerate(commander_response.tasks):
+            if not task.id:
+                task.id = f"task_{idx}"
+                print(f"[COMMANDER] 自动为任务 {idx} 生成 id: {task.id}")
+
+        # v3.0: 准备子任务数据（支持显式依赖关系 DAG）
         from models import SubTaskCreate
         subtasks_data = [
             SubTaskCreate(
@@ -309,10 +320,16 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
                 task_description=task.description,
                 input_data=task.input_data,
                 sort_order=idx,
-                execution_mode="sequential"  # 默认串行，可扩展为并行
+                execution_mode="sequential",  # 默认串行，可扩展为并行
+                depends_on=task.depends_on if task.depends_on else None
             )
             for idx, task in enumerate(commander_response.tasks)
         ]
+        
+        # 建立 task_id -> database_id 的映射（用于后续依赖注入）
+        task_id_mapping = {
+            task.id: idx for idx, task in enumerate(commander_response.tasks)
+        }
 
         # v3.0: 立即持久化到数据库
         task_session = None
@@ -329,21 +346,24 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
             print(f"[COMMANDER] 任务会话已创建: {task_session.session_id}")
 
         # 转换为内部字典格式（用于 LangGraph 状态流转）
+        # v3.1: 支持显式依赖关系，包含 task_id（Commander 生成）和 depends_on
         sub_tasks_list = task_session.sub_tasks if task_session else []
-        task_list = [
-            {
-                "id": subtask.id,
+        task_list = []
+        for idx, subtask in enumerate(sub_tasks_list):
+            commander_task = commander_response.tasks[idx]
+            task_list.append({
+                "id": subtask.id,  # 数据库生成的 UUID
+                "task_id": commander_task.id,  # Commander 生成的短ID（如 task_search）
                 "expert_type": subtask.expert_type,
                 "description": subtask.task_description,
                 "input_data": subtask.input_data,
                 "sort_order": subtask.sort_order,
                 "status": subtask.status,
+                "depends_on": commander_task.depends_on if commander_task.depends_on else [],
                 "output_result": None,
                 "started_at": None,
                 "completed_at": None
-            }
-            for subtask in sub_tasks_list
-        ]
+            })
 
         print(f"[COMMANDER] 生成了 {len(task_list)} 个任务。策略: {commander_response.strategy}")
 
@@ -360,12 +380,14 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
                 tasks=[
                     {
                         "id": t.id,
+                        "task_id": commander_response.tasks[idx].id,
                         "expert_type": t.expert_type,
                         "description": t.task_description,
                         "sort_order": t.sort_order,
-                        "status": t.status
+                        "status": t.status,
+                        "depends_on": commander_response.tasks[idx].depends_on if commander_response.tasks[idx].depends_on else []
                     }
-                    for t in task_session.sub_tasks
+                    for idx, t in enumerate(task_session.sub_tasks)
                 ]
             )
             event_queue.append({"type": "sse", "event": sse_event_to_string(plan_event)})
@@ -397,14 +419,15 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
             "event_queue": []
         }
 
-# --- v3.0: Expert Dispatcher 节点（支持持久化和事件发送）---
+# --- v3.1: Expert Dispatcher 节点（支持显式依赖注入和上下文传递）---
 async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
     """
     专家分发器节点
-    v3.0 更新：持久化状态变更，发送 task.started/completed/failed 事件
+    v3.1 更新：支持显式依赖关系（DAG），自动注入前置任务输出到上下文
     """
     task_list = state["task_list"]
     current_index = state["current_task_index"]
+    expert_results = state.get("expert_results", [])
     
     # 获取数据库会话
     db_session = state.get("db_session")
@@ -414,14 +437,51 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
     event_queue = state.get("event_queue", [])
 
     if current_index >= len(task_list):
-        return {"expert_results": state["expert_results"], "event_queue": event_queue}
+        return {"expert_results": expert_results, "event_queue": event_queue}
 
     current_task = task_list[current_index]
     task_id = current_task["id"]
+    task_short_id = current_task.get("task_id", f"task_{current_index}")  # Commander 生成的短ID
     expert_type = current_task["expert_type"]
     description = current_task["description"]
+    depends_on = current_task.get("depends_on", [])
 
     print(f"[EXEC] 执行任务 [{current_index + 1}/{len(task_list)}] - {expert_type}: {description}")
+    
+    # v3.1: 依赖检查和上下文注入
+    dependency_context = ""
+    dependency_outputs = []
+    if depends_on:
+        # 构建 task_short_id -> result 的映射
+        task_result_map = {}
+        for result in expert_results:
+            short_id = result.get("task_short_id")
+            if short_id:
+                task_result_map[short_id] = result
+        
+        # 收集依赖任务的输出
+        for dep_task_id in depends_on:
+            if dep_task_id in task_result_map:
+                dep_result = task_result_map[dep_task_id]
+                dependency_outputs.append({
+                    "task_id": dep_task_id,
+                    "expert_type": dep_result["expert_type"],
+                    "description": dep_result["description"],
+                    "output": dep_result["output"]
+                })
+            else:
+                print(f"[WARN] 依赖任务 {dep_task_id} 的输出尚未就绪")
+        
+        if dependency_outputs:
+            # 格式化依赖上下文
+            dependency_parts = []
+            for dep in dependency_outputs:
+                output_preview = dep['output'][:500] + "..." if len(dep['output']) > 500 else dep['output']
+                dep_str = f"【前置任务: {dep['task_id']} ({dep['expert_type']})】\n描述: {dep['description']}\n输出:\n{output_preview}"
+                dependency_parts.append(dep_str)
+            
+            dependency_context = "\n\n".join(dependency_parts)
+            print(f"[DEP] 已注入 {len(dependency_outputs)} 个依赖任务的上下文")
     
     # v3.0: 更新数据库状态为 running
     if db_session:
@@ -437,8 +497,30 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
 
     try:
         # 使用 get_expert_function 获取专家执行函数
-        # 对于系统内置专家返回硬编码函数，对于自定义专家返回 generic_worker_node
         expert_func = get_expert_function(expert_type)
+
+        # v3.1: 准备带依赖上下文的 state
+        # 将依赖上下文注入到 current_task 的 input_data 中
+        enhanced_input_data = current_task.get("input_data", {}).copy()
+        if dependency_context:
+            enhanced_input_data["__dependency_context"] = dependency_context
+            # 同时保存结构化的依赖数据供专家使用
+            enhanced_input_data["__dependencies"] = [
+                {
+                    "task_id": dep["task_id"],
+                    "expert_type": dep["expert_type"],
+                    "output": dep["output"]
+                }
+                for dep in dependency_outputs
+            ]
+        
+        # 创建增强的 state，注入依赖上下文
+        enhanced_task = current_task.copy()
+        enhanced_task["input_data"] = enhanced_input_data
+        
+        # 临时替换 state 中的 current_task
+        original_task_list = task_list.copy()
+        task_list[current_index] = enhanced_task
 
         if expert_type in DYNAMIC_EXPERT_FUNCTIONS:
             # 系统内置专家，使用原有逻辑（预先创建 LLM）
@@ -451,6 +533,9 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
         else:
             # 自定义专家，使用通用节点（generic_worker_node 自己会创建 LLM）
             result = await expert_func(state)
+        
+        # 恢复原 task_list（避免污染 state）
+        task_list[current_index] = original_task_list[current_index]
 
         if "error" in result:
              raise AppError(message=result["error"], code="EXPERT_EXECUTION_ERROR")
@@ -460,9 +545,10 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
         current_task["status"] = result.get("status", "completed")
         current_task["completed_at"] = result.get("completed_at")
         
-        # 添加到结果集
+        # 添加到结果集（v3.1: 包含 task_short_id 用于依赖查找）
         updated_results = state["expert_results"] + [{
-            "task_id": current_task["id"],
+            "task_id": current_task["id"],  # 数据库 UUID
+            "task_short_id": task_short_id,  # Commander 生成的短 ID (如 task_search)
             "expert_type": expert_type,
             "description": description,
             "output": result.get("output_result", ""),
@@ -585,11 +671,11 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
             }
         }
 
-# --- v3.0: Aggregator 节点（支持流式输出和事件发送）---
+# --- v3.1: Aggregator 节点（调用 LLM 生成自然语言总结）---
 async def aggregator_node(state: AgentState) -> Dict[str, Any]:
     """
     聚合器节点
-    v3.0 更新：流式输出最终回复，发送 message.delta/done 事件
+    v3.1 更新：调用 LLM 生成自然语言总结，支持流式输出
     """
     expert_results = state["expert_results"]
     strategy = state["strategy"]
@@ -604,25 +690,53 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
     if not expert_results:
         return {"final_response": "未生成任何执行结果。", "event_queue": event_queue}
 
-    print(f"[AGG] 正在聚合 {len(expert_results)} 个结果...")
+    print(f"[AGG] 正在聚合 {len(expert_results)} 个结果，调用 LLM 生成总结...")
 
-    # 构建最终回复（这里可以调用 LLM 生成更自然的总结）
-    final_response = _build_markdown_response(expert_results, strategy)
-
-    # v3.0: 模拟流式输出（将最终回复分块发送）
-    chunk_size = 50  # 每块字符数
+    # v3.1: 构建 Aggregator 的 Prompt
+    aggregator_prompt = _build_aggregator_prompt(expert_results, strategy)
     
-    for i in range(0, len(final_response), chunk_size):
-        chunk = final_response[i:i + chunk_size]
-        is_final = (i + chunk_size) >= len(final_response)
+    # v3.1: 获取 Aggregator LLM（带兜底逻辑）
+    aggregator_llm = get_aggregator_llm()
+    
+    # v3.1: 流式生成总结
+    final_response_chunks = []
+    
+    try:
+        # 使用流式输出
+        async for chunk in aggregator_llm.astream([
+            SystemMessage(content="你是一个专业的报告撰写专家。你的任务是将多个专家的分析结果整合成一份连贯、专业的最终报告。不要简单罗列，要用自然流畅的语言进行总结。"),
+            HumanMessage(content=aggregator_prompt)
+        ]):
+            content = chunk.content if hasattr(chunk, 'content') else str(chunk)
+            if content:
+                final_response_chunks.append(content)
+                
+                # 发送 message.delta 事件（实时流式）
+                delta_event = event_message_delta(
+                    message_id=message_id,
+                    content=content,
+                    is_final=False
+                )
+                event_queue.append({"type": "sse", "event": sse_event_to_string(delta_event)})
         
-        # 发送 message.delta 事件
-        delta_event = event_message_delta(
-            message_id=message_id,
-            content=chunk,
-            is_final=is_final
-        )
-        event_queue.append({"type": "sse", "event": sse_event_to_string(delta_event)})
+        final_response = "".join(final_response_chunks)
+        
+    except Exception as e:
+        print(f"[AGG] LLM 总结失败，回退到简单拼接: {e}")
+        # 兜底：使用简单拼接
+        final_response = _build_markdown_response(expert_results, strategy)
+        
+        # 发送简单拼接的结果
+        chunk_size = 100
+        for i in range(0, len(final_response), chunk_size):
+            chunk = final_response[i:i + chunk_size]
+            is_final = (i + chunk_size) >= len(final_response)
+            delta_event = event_message_delta(
+                message_id=message_id,
+                content=chunk,
+                is_final=is_final
+            )
+            event_queue.append({"type": "sse", "event": sse_event_to_string(delta_event)})
     
     # 发送 message.done 事件
     done_event = event_message_done(
@@ -646,6 +760,44 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
         "final_response": final_response,
         "event_queue": event_queue
     }
+
+
+def _build_aggregator_prompt(expert_results: List[Dict[str, Any]], strategy: str) -> str:
+    """
+    构建 Aggregator 的 Prompt，将多个专家结果转换为自然语言总结的输入
+    
+    Args:
+        expert_results: 专家执行结果列表
+        strategy: 执行策略概述
+        
+    Returns:
+        str: 供 LLM 总结的 Prompt
+    """
+    lines = [
+        f"执行策略: {strategy}",
+        "",
+        "各专家分析结果如下：",
+        ""
+    ]
+    
+    for i, res in enumerate(expert_results, 1):
+        lines.append(f"【专家 {i}: {res['expert_type'].upper()}】")
+        lines.append(f"任务描述: {res['description']}")
+        lines.append(f"分析结果:\n{res['output']}")
+        lines.append("")
+    
+    lines.extend([
+        "---",
+        "",
+        "请基于以上各专家的分析结果，撰写一份连贯、专业的最终总结报告。要求：",
+        "1. 用自然流畅的语言整合所有专家的观点，不要简单罗列",
+        "2. 突出关键发现和核心结论",
+        "3. 保持逻辑清晰，结构完整",
+        "4. 如果专家结果之间有依赖关系，请体现这种关联",
+        ""
+    ])
+    
+    return "\n".join(lines)
 
 def _build_markdown_response(expert_results: List[Dict[str, Any]], strategy: str) -> str:
     # 简单的 Markdown 构建逻辑
