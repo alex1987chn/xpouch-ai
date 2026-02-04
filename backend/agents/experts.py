@@ -8,7 +8,7 @@ import re
 from langchain_core.messages import SystemMessage, HumanMessage
 from agents.expert_loader import get_expert_config_cached
 from constants import EXPERT_DESCRIPTIONS, EXPERT_PROMPTS
-from agents.model_fallback import get_effective_model, get_default_model
+from utils.llm_factory import get_effective_model, get_default_model
 
 # ============================================================================
 # 🛠️ 核心辅助函数：获取专家配置

@@ -11,7 +11,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 
 from agents.expert_loader import get_expert_config_cached
-from agents.model_fallback import get_effective_model
+from utils.llm_factory import get_effective_model
 from providers_config import get_model_config
 from utils.llm_factory import get_expert_llm
 
