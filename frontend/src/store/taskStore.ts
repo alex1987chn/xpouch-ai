@@ -16,7 +16,7 @@ import type {
   TaskFailedData,
   ArtifactGeneratedData
 } from '@/types/events'
-import type { TaskSession, SubTask } from '@/types'
+import type { SubTask, TaskSession as ApiTaskSession } from '@/types'
 
 // 启用 Immer 的 Map/Set 支持（必须在 create 之前调用）
 enableMapSet()
@@ -121,12 +121,12 @@ interface TaskState {
   replaceArtifacts: (taskId: string, artifacts: Artifact[]) => void
   selectTask: (taskId: string | null) => void
   clearTasks: () => void
-  
+
   /**
    * 从会话数据恢复任务状态（用于页面切换后状态恢复）
    * v3.0: 状态恢复/水合 (State Rehydration)
    */
-  restoreFromSession: (session: TaskSession, subTasks: SubTask[]) => void
+  restoreFromSession: (session: ApiTaskSession, subTasks: SubTask[]) => void
 
   // Computed（通过 get 方法实现）
   getSelectedTask: () => Task | null
@@ -138,7 +138,7 @@ interface TaskState {
 // ============================================================================
 
 export const useTaskStore = create<TaskState>()(
-  // persist(
+  persist(
     immer((set, get) => ({
       // 初始状态
       mode: null,
@@ -158,13 +158,13 @@ export const useTaskStore = create<TaskState>()(
       set((state) => {
         // 只在模式真正改变时才处理
         if (state.mode === mode) return
-        
+
         state.mode = mode
         // 如果切换到 simple 模式，清空任务状态
         if (mode === 'simple') {
           state.session = null
           state.tasks = new Map()
-          state.tasksCache = Object.freeze([])  // 清空缓存（冻结）
+          state.tasksCache = []  // 清空缓存
           state.tasksCacheVersion++
           state.runningTaskIds = new Set()
           state.isInitialized = false
@@ -212,7 +212,7 @@ export const useTaskStore = create<TaskState>()(
             ...task,
             artifacts: task.artifacts.map(a => ({...a}))  // 深拷贝 artifact
           }))
-        state.tasksCache = Object.freeze(sortedTasks)
+        state.tasksCache = sortedTasks
         state.tasksCacheVersion++
       })
     },
@@ -230,14 +230,13 @@ export const useTaskStore = create<TaskState>()(
         }
         state.runningTaskIds.add(data.task_id)
         // 更新缓存（深拷贝避免 Immer proxy 问题）
-        state.tasksCache = Object.freeze(
+        state.tasksCache =
           Array.from(state.tasks.values())
             .sort((a, b) => a.sort_order - b.sort_order)
             .map(task => ({
               ...task,
               artifacts: task.artifacts.map(a => ({...a}))
             }))
-        )
         state.tasksCacheVersion++
       })
     },
@@ -261,14 +260,13 @@ export const useTaskStore = create<TaskState>()(
           state.selectedTaskId = data.task_id
         }
         // 更新缓存（深拷贝避免 Immer proxy 问题）
-        state.tasksCache = Object.freeze(
+        state.tasksCache =
           Array.from(state.tasks.values())
             .sort((a, b) => a.sort_order - b.sort_order)
             .map(task => ({
               ...task,
               artifacts: task.artifacts.map(a => ({...a}))
             }))
-        )
         state.tasksCacheVersion++
       })
     },
@@ -286,14 +284,13 @@ export const useTaskStore = create<TaskState>()(
         }
         state.runningTaskIds.delete(data.task_id)
         // 更新缓存（深拷贝避免 Immer proxy 问题）
-        state.tasksCache = Object.freeze(
+        state.tasksCache =
           Array.from(state.tasks.values())
             .sort((a, b) => a.sort_order - b.sort_order)
             .map(task => ({
               ...task,
               artifacts: task.artifacts.map(a => ({...a}))
             }))
-        )
         state.tasksCacheVersion++
       })
     },
@@ -323,14 +320,13 @@ export const useTaskStore = create<TaskState>()(
           state.selectedTaskId = data.task_id
         }
         // 更新缓存（深拷贝避免 Immer proxy 问题）
-        state.tasksCache = Object.freeze(
+        state.tasksCache =
           Array.from(state.tasks.values())
             .sort((a, b) => a.sort_order - b.sort_order)
             .map(task => ({
               ...task,
               artifacts: task.artifacts.map(a => ({...a}))
             }))
-        )
         state.tasksCacheVersion++
       })
     },
@@ -346,14 +342,13 @@ export const useTaskStore = create<TaskState>()(
           task.artifacts = artifacts
         }
         // 更新缓存（深拷贝避免 Immer proxy 问题）
-        state.tasksCache = Object.freeze(
+        state.tasksCache =
           Array.from(state.tasks.values())
             .sort((a, b) => a.sort_order - b.sort_order)
             .map(task => ({
               ...task,
               artifacts: task.artifacts.map(a => ({...a}))
             }))
-        )
         state.tasksCacheVersion++
       })
     },
@@ -375,7 +370,7 @@ export const useTaskStore = create<TaskState>()(
         state.mode = null
         state.session = null
         state.tasks = new Map()
-        state.tasksCache = Object.freeze([])  // 清空缓存（冻结）
+        state.tasksCache = []  // 清空缓存
         state.tasksCacheVersion++
         state.runningTaskIds = new Set()
         state.selectedTaskId = null
@@ -386,13 +381,13 @@ export const useTaskStore = create<TaskState>()(
     /**
      * 从会话数据恢复任务状态（用于页面切换后状态恢复）
      * v3.0: 状态恢复/水合 (State Rehydration)
-     * 
+     *
      * 根据 Gemini 的建议：
      * - 不追求事件回放，直接拉取最新状态
      * - 利用数据库作为天然缓存
      * - 用户切回来时看到最新进度即可
      */
-    restoreFromSession: (session: TaskSession, subTasks: SubTask[]) => {
+    restoreFromSession: (session: ApiTaskSession, subTasks: SubTask[]) => {
       set((state) => {
         // 1. 设置任务会话
         state.session = {
@@ -458,12 +453,11 @@ export const useTaskStore = create<TaskState>()(
         state.selectedTaskId = firstTaskWithArtifacts?.id || sortedTasks[0]?.id || null
 
         // 5. 更新缓存
-        state.tasksCache = Object.freeze(
+        state.tasksCache =
           sortedTasks.map(task => ({
             ...task,
             artifacts: task.artifacts.map(a => ({...a}))
           }))
-        )
         state.tasksCacheVersion++
 
         console.log('[TaskStore] 状态恢复完成:', {
@@ -489,30 +483,85 @@ export const useTaskStore = create<TaskState>()(
       const task = get().getSelectedTask()
       return task?.artifacts || []
     }
-  }))
-  // persist 配置暂时禁用，测试无限循环问题
-  // {
-  //   name: 'xpouch-task-store',
-  //   version: 1,
-  //   // 只持久化关键字段
-  //   partialize: (state) => ({
-  //     session: state.session,
-  //     tasks: Array.from(state.tasks.entries()),
-  //     selectedTaskId: state.selectedTaskId,
-  //     isInitialized: state.isInitialized
-  //   }),
-  //   // 自定义序列化：处理 Map
-  //   serialize: (state) => JSON.stringify(state),
-  //   deserialize: (str) => {
-  //     const parsed = JSON.parse(str)
-  //     // 恢复 Map
-  //     if (parsed.tasks && Array.isArray(parsed.tasks)) {
-  //       parsed.tasks = new Map(parsed.tasks)
-  //     }
-  //     return parsed
-  //   }
-  // }
-  // )
+  })),
+  // ============================================================================
+  // Persist 配置
+  // ============================================================================
+  // 注意：persist 配置暂时禁用，测试无限循环问题
+  {
+    name: 'xpouch-task-store',
+    version: 1,
+    // 只持久化关键字段
+    partialize: (state: TaskState): any => ({
+      session: state.session,
+      tasks: Array.from(state.tasks.entries()),
+      runningTaskIds: Array.from(state.runningTaskIds),
+      selectedTaskId: state.selectedTaskId,
+      isInitialized: state.isInitialized
+    }),
+    // 自定义序列化：处理 Map/Set
+    serialize: (state: any) => {
+      try {
+        // partialize 已经把 Map/Set 转换为数组
+        // tasks: [['taskId1', task1], ['taskId2', task2]]
+        // runningTaskIds: ['taskId1', 'taskId2']
+        const serialized = JSON.stringify(state)
+        console.log('[TaskStore] serialize 成功:', {
+          tasksCount: state.tasks?.length || 0,
+          runningTaskIdsCount: state.runningTaskIds?.length || 0,
+          hasSession: !!state.session,
+          isInitialized: state.isInitialized
+        })
+        return serialized
+      } catch (error) {
+        console.error('[TaskStore] serialize 失败:', error)
+        throw error
+      }
+    },
+    deserialize: (str: string) => {
+      try {
+        if (!str) {
+          console.warn('[TaskStore] deserialize: 空字符串，返回空对象')
+          return {}
+        }
+
+        const parsed = JSON.parse(str)
+
+        // 恢复 Map: [['key', value], ...] => Map
+        if (parsed.tasks && Array.isArray(parsed.tasks)) {
+          parsed.tasks = new Map(parsed.tasks)
+          console.log('[TaskStore] deserialize: 恢复 Map, 任务数:', parsed.tasks.size)
+        } else {
+          // 如果tasks不存在或不是数组，创建空Map
+          parsed.tasks = new Map()
+          console.warn('[TaskStore] deserialize: tasks 无效，创建空 Map')
+        }
+
+        // 恢复 Set: ['id1', 'id2', ...] => Set
+        if (parsed.runningTaskIds && Array.isArray(parsed.runningTaskIds)) {
+          parsed.runningTaskIds = new Set(parsed.runningTaskIds)
+          console.log('[TaskStore] deserialize: 恢复 Set, 运行中任务数:', parsed.runningTaskIds.size)
+        } else {
+          // 如果runningTaskIds不存在或不是数组，创建空Set
+          parsed.runningTaskIds = new Set()
+          console.warn('[TaskStore] deserialize: runningTaskIds 无效，创建空 Set')
+        }
+
+        return parsed
+      } catch (error) {
+        console.error('[TaskStore] deserialize 失败:', error)
+        // 返回一个安全的默认状态
+        return {
+          session: null,
+          tasks: new Map(),
+          runningTaskIds: new Set(),
+          selectedTaskId: null,
+          isInitialized: false
+        }
+      }
+    }
+  }
+  )
 )
 
 // 只导出 useTaskStore，组件中直接使用

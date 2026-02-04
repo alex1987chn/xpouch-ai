@@ -21,7 +21,7 @@
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_name = 'message' AND column_name = 'extra_data'
     ) THEN
         ALTER TABLE message ADD COLUMN extra_data JSONB DEFAULT NULL;
@@ -30,6 +30,11 @@ BEGIN
         \echo '  -> Column already exists, skipping'
     END IF;
 END $$;
+
+-- Message 表索引
+-- 复合索引：优化对话历史查询
+CREATE INDEX IF NOT EXISTS idx_message_thread_timestamp ON message(thread_id, timestamp);
+\echo '  -> Message table indexes created (if not exist)'
 
 -- ============================================================================
 -- 2. CustomAgent 表：添加 is_default 字段
@@ -313,6 +318,8 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_subtask_sort_order ON subtask(sort_order);
 CREATE INDEX IF NOT EXISTS idx_subtask_status ON subtask(status);
 CREATE INDEX IF NOT EXISTS idx_subtask_task_description ON subtask(task_description);
+-- 复合索引：优化会话加载时的任务查询
+CREATE INDEX IF NOT EXISTS idx_subtask_session_status ON subtask(task_session_id, status);
 \echo '  -> SubTask table indexes created (if not exist)'
 
 -- ============================================================================

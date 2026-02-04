@@ -49,33 +49,23 @@ async def get_current_user(
             # JWT无效，继续尝试其他方式
             pass
 
-    # 策略2: 回退到X-User-ID头（向后兼容） - 仅在非严格认证模式下使用
-    if not require_auth:
+    # 策略2: 回退到X-User-ID头（仅开发环境）
+    # ⚠️ 安全限制：X-User-ID 回退只在 development 环境启用
+    # 生产环境强制使用 JWT 认证，防止用户ID伪造攻击
+    import os
+    environment = os.getenv("ENVIRONMENT", "development")
+
+    if not require_auth and environment == "development":
         user_id = request.headers.get("X-User-ID")
         if user_id:
             user = session.get(User, user_id)
             if user:
                 return user
-            else:
-                # 未启用严格认证时，自动注册新用户（向后兼容）
-                user = User(id=user_id, username=f"User-{user_id[:4]}")
-                session.add(user)
-                session.commit()
-                session.refresh(user)
-                return user
+            # ❌ 移除自动注册逻辑（安全风险）
+            # 生产环境或 require_auth=True 时不会执行到这里
 
-    # 策略3: 没有任何认证信息 - 仅在非严格认证模式下使用
-    if not require_auth:
-        # 未启用严格认证时，使用默认用户（向后兼容）
-        user = session.get(User, "default-user")
-        if user:
-            return user
-        else:
-            user = User(id="default-user", username="Default User")
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-            return user
+    # ❌ 移除默认用户逻辑（安全风险）
+    # 生产环境或 require_auth=True 时直接抛出 401
 
     # 严格认证模式：抛出401错误
     raise HTTPException(
