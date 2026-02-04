@@ -8,7 +8,7 @@ from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 
-from agents.nodes.state import AgentState
+from agents.state import AgentState
 from constants import ROUTER_SYSTEM_PROMPT, DEFAULT_ASSISTANT_PROMPT
 
 

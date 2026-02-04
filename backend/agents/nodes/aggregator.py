@@ -7,7 +7,7 @@ from typing import Dict, Any, List
 from uuid import uuid4
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from agents.nodes.state import AgentState
+from agents.state import AgentState
 from utils.llm_factory import get_aggregator_llm
 from utils.event_generator import (
     event_message_delta, event_message_done, sse_event_to_string

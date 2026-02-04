@@ -11,7 +11,7 @@ from datetime import datetime
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 
-from agents.nodes.state import AgentState
+from agents.state import AgentState
 from agents.expert_loader import get_expert_config_cached
 from utils.llm_factory import get_effective_model, get_expert_llm
 from providers_config import get_model_config
