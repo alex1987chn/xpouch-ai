@@ -56,7 +56,7 @@ BEGIN
     ) THEN
         ALTER TABLE customagent ADD COLUMN category VARCHAR(50) DEFAULT '综合';
         
-echo '  -> Added customagent.category column'
+        \echo '  -> Added customagent.category column'
     END IF;
 
     -- is_public
@@ -66,7 +66,7 @@ echo '  -> Added customagent.category column'
     ) THEN
         ALTER TABLE customagent ADD COLUMN is_public BOOLEAN DEFAULT FALSE;
         
-echo '  -> Added customagent.is_public column'
+        \echo '  -> Added customagent.is_public column'
     END IF;
 
     -- conversation_count
@@ -76,7 +76,7 @@ echo '  -> Added customagent.is_public column'
     ) THEN
         ALTER TABLE customagent ADD COLUMN conversation_count INTEGER DEFAULT 0;
         
-echo '  -> Added customagent.conversation_count column'
+        \echo '  -> Added customagent.conversation_count column'
     END IF;
 END $$;
 
