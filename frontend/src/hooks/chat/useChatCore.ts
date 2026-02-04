@@ -274,16 +274,18 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       setGenerating(false)  // ✅ 使用 Store 方法
       abortControllerRef.current = null
 
-      // 👈 v3.1: 复杂模式下清理空 AI 消息（避免空气泡）
+      // 👈 v3.1: 复杂模式下，等待 aggregator 完成后再决定是否清理空消息
+      // 修复：aggregator 会发送 message.delta 事件来填充消息内容，不要提前删除
+      // 只有在确定没有 aggregator 事件的情况下才清理
       if (conversationMode === 'complex' && assistantMessageId) {
         const currentMessages = useChatStore.getState().messages
         const assistantMsg = currentMessages.find(m => m.id === assistantMessageId)
+        // 只有当消息为空且已经过了一段时间（aggregator 应该已完成）才删除
+        // 这里我们依赖 message.done 事件来标记完成，所以不在这里删除
         if (assistantMsg && !assistantMsg.content?.trim()) {
-          // 删除空消息
-          useChatStore.getState().setMessages(
-            currentMessages.filter(m => m.id !== assistantMessageId)
-          )
-          debug('复杂模式：清理空 AI 消息', assistantMessageId)
+          // 不删除消息，保留空消息等待 aggregator 填充
+          // 或者添加一个占位符文本
+          debug('复杂模式：保留空 AI 消息等待 aggregator 总结', assistantMessageId)
         }
       }
     }

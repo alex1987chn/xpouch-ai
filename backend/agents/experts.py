@@ -49,6 +49,53 @@ def extract_code_blocks(content: str) -> Optional[tuple[str, str]]:
         return (lang or 'text', code.strip())
     return None
 
+# v3.1: 新增辅助函数 - 构建带依赖上下文的专家 Prompt
+def _build_expert_prompt(current_task: Dict[str, Any]) -> str:
+    """
+    构建专家执行的 HumanMessage 内容
+    支持依赖上下文注入（通过 __dependency_context 字段）
+    
+    关键改进：明确指示专家必须基于前置任务输出执行当前任务
+    
+    Args:
+        current_task: 当前任务字典
+        
+    Returns:
+        str: 构造好的 Prompt 内容
+    """
+    description = current_task.get("description", "")
+    input_data = current_task.get("input_data", {})
+    
+    # 提取依赖上下文（内部字段，不暴露给 LLM）
+    dependency_context = input_data.get("__dependency_context", "")
+    # 清理 input_data，移除内部字段
+    clean_input_data = {k: v for k, v in input_data.items() if not k.startswith("__")}
+    
+    if dependency_context:
+        return f"""【重要】你必须基于以下前置任务的输出结果来完成当前任务。不要编造信息，必须从提供的上下文中提取关键数据。
+
+前置任务输出（这是你唯一的信息来源）：
+{dependency_context}
+
+---
+
+当前任务指令: {description}
+
+附加输入参数:
+{format_input_data(clean_input_data)}
+
+---
+
+⚠️ 执行要求：
+1. 你必须引用并使用前置任务输出中的具体数据
+2. 如果前置任务提供了多个选项/数据点，请明确说明你使用了哪一个
+3. 不要返回占位符（如"[请在此处插入...]"），必须填入实际从前置输出中提取的内容"""
+    else:
+        return f"""任务描述: {description}
+
+输入参数:
+{format_input_data(clean_input_data)}"""
+
 # ============================================================================
 # 🔍 Search Expert
 # ============================================================================
@@ -59,8 +106,6 @@ async def run_search_expert(state: Dict[str, Any], llm) -> Dict[str, Any]:
     if current_index >= len(task_list): return {"error": "无任务"}
     
     current_task = task_list[current_index]
-    description = current_task.get("description", "")
-    input_data = current_task.get("input_data", {})
     started_at = datetime.now()
 
     # [NEW] 读取配置
@@ -68,9 +113,11 @@ async def run_search_expert(state: Dict[str, Any], llm) -> Dict[str, Any]:
     llm_with_config = llm.bind(model=model, temperature=temp)
 
     try:
+        # v3.1: 使用新的 Prompt 构建函数，支持依赖上下文注入
+        human_prompt = _build_expert_prompt(current_task)
         response = await llm_with_config.ainvoke([
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"任务描述: {description}\n\n输入参数:\n{format_input_data(input_data)}")
+            HumanMessage(content=human_prompt)
         ])
 
         completed_at = datetime.now()
@@ -104,8 +151,6 @@ async def run_coder_expert(state: Dict[str, Any], llm) -> Dict[str, Any]:
     if current_index >= len(task_list): return {"error": "无任务"}
 
     current_task = task_list[current_index]
-    description = current_task.get("description", "")
-    input_data = current_task.get("input_data", {})
     started_at = datetime.now()
 
     # [NEW] 读取配置
@@ -113,9 +158,11 @@ async def run_coder_expert(state: Dict[str, Any], llm) -> Dict[str, Any]:
     llm_with_config = llm.bind(model=model, temperature=temp)
 
     try:
+        # v3.1: 使用新的 Prompt 构建函数，支持依赖上下文注入
+        human_prompt = _build_expert_prompt(current_task)
         response = await llm_with_config.ainvoke([
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"任务描述: {description}\n\n输入参数:\n{format_input_data(input_data)}")
+            HumanMessage(content=human_prompt)
         ])
 
         completed_at = datetime.now()
@@ -172,9 +219,11 @@ async def run_researcher_expert(state: Dict[str, Any], llm) -> Dict[str, Any]:
     llm_with_config = llm.bind(model=model, temperature=temp)
 
     try:
+        # v3.1: 使用新的 Prompt 构建函数，支持依赖上下文注入
+        human_prompt = _build_expert_prompt(current_task)
         response = await llm_with_config.ainvoke([
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"任务描述: {current_task.get('description')}\n\n输入:\n{format_input_data(current_task.get('input_data'))}")
+            HumanMessage(content=human_prompt)
         ])
         
         completed_at = datetime.now()
@@ -213,9 +262,11 @@ async def run_analyzer_expert(state: Dict[str, Any], llm) -> Dict[str, Any]:
     llm_with_config = llm.bind(model=model, temperature=temp)
 
     try:
+        # v3.1: 使用新的 Prompt 构建函数，支持依赖上下文注入
+        human_prompt = _build_expert_prompt(current_task)
         response = await llm_with_config.ainvoke([
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"任务: {current_task.get('description')}\n\n输入:\n{format_input_data(current_task.get('input_data'))}")
+            HumanMessage(content=human_prompt)
         ])
         
         completed_at = datetime.now()
@@ -254,9 +305,11 @@ async def run_writer_expert(state: Dict[str, Any], llm) -> Dict[str, Any]:
     llm_with_config = llm.bind(model=model, temperature=temp)
 
     try:
+        # v3.1: 使用新的 Prompt 构建函数，支持依赖上下文注入
+        human_prompt = _build_expert_prompt(current_task)
         response = await llm_with_config.ainvoke([
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"任务: {current_task.get('description')}\n\n输入:\n{format_input_data(current_task.get('input_data'))}")
+            HumanMessage(content=human_prompt)
         ])
         
         completed_at = datetime.now()
@@ -296,9 +349,11 @@ async def run_planner_expert(state: Dict[str, Any], llm) -> Dict[str, Any]:
     llm_with_config = llm.bind(model=model, temperature=temp)
 
     try:
+        # v3.1: 使用新的 Prompt 构建函数，支持依赖上下文注入
+        human_prompt = _build_expert_prompt(current_task)
         response = await llm_with_config.ainvoke([
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"规划任务: {current_task.get('description')}")
+            HumanMessage(content=human_prompt)
         ])
         
         completed_at = datetime.now()
@@ -334,8 +389,19 @@ async def run_image_analyzer_expert(state: Dict[str, Any], llm) -> Dict[str, Any
     llm_with_config = llm.bind(model=model, temperature=temp)
 
     try:
-        content = f"任务: {current_task.get('description')}"
-        if input_data.get("image_url"): content += f"\n\n图片URL: {input_data['image_url']}"
+        # v3.1: 构建带依赖上下文的 content
+        dependency_context = input_data.get("__dependency_context", "")
+        clean_input_data = {k: v for k, v in input_data.items() if not k.startswith("__")}
+        
+        content_parts = []
+        if dependency_context:
+            content_parts.append(f"参考上下文（前置任务输出）：\n{dependency_context}\n\n---\n")
+        
+        content_parts.append(f"任务: {current_task.get('description')}")
+        if clean_input_data.get("image_url"): 
+            content_parts.append(f"\n\n图片URL: {clean_input_data['image_url']}")
+        
+        content = "\n".join(content_parts)
 
         response = await llm_with_config.ainvoke([
             SystemMessage(content=system_prompt),
