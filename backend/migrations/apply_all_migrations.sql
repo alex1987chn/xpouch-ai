@@ -48,6 +48,36 @@ BEGIN
     ELSE
         \echo '  -> Column already exists, skipping'
     END IF;
+
+    -- category
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'customagent' AND column_name = 'category'
+    ) THEN
+        ALTER TABLE customagent ADD COLUMN category VARCHAR(50) DEFAULT '综合';
+        
+echo '  -> Added customagent.category column'
+    END IF;
+
+    -- is_public
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'customagent' AND column_name = 'is_public'
+    ) THEN
+        ALTER TABLE customagent ADD COLUMN is_public BOOLEAN DEFAULT FALSE;
+        
+echo '  -> Added customagent.is_public column'
+    END IF;
+
+    -- conversation_count
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'customagent' AND column_name = 'conversation_count'
+    ) THEN
+        ALTER TABLE customagent ADD COLUMN conversation_count INTEGER DEFAULT 0;
+        
+echo '  -> Added customagent.conversation_count column'
+    END IF;
 END $$;
 
 -- ============================================================================
@@ -143,6 +173,33 @@ BEGIN
     ) THEN
         ALTER TABLE tasksession ADD COLUMN execution_mode VARCHAR(20) DEFAULT 'sequential';
         \echo '  -> Added tasksession.execution_mode column'
+    END IF;
+
+    -- status
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'tasksession' AND column_name = 'status'
+    ) THEN
+        ALTER TABLE tasksession ADD COLUMN status VARCHAR(20) DEFAULT 'pending';
+        \echo '  -> Added tasksession.status column'
+    END IF;
+
+    -- completed_at
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'tasksession' AND column_name = 'completed_at'
+    ) THEN
+        ALTER TABLE tasksession ADD COLUMN completed_at TIMESTAMP;
+        \echo '  -> Added tasksession.completed_at column'
+    END IF;
+
+    -- final_response
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'tasksession' AND column_name = 'final_response'
+    ) THEN
+        ALTER TABLE tasksession ADD COLUMN final_response TEXT;
+        \echo '  -> Added tasksession.final_response column'
     END IF;
 END $$;
 
