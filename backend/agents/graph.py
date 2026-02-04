@@ -330,6 +330,22 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
             if not task.id:
                 task.id = f"task_{idx}"
                 print(f"[COMMANDER] 自动为任务 {idx} 生成 id: {task.id}")
+        
+        # v3.2: 修复依赖上下文注入 - 将 depends_on 中的索引格式转换为 ID 格式
+        # LLM 可能生成 ["0"]（索引），需要转换为 ["task_0"]（ID）
+        task_id_map = {str(idx): task.id for idx, task in enumerate(commander_response.tasks)}
+        for task in commander_response.tasks:
+            if task.depends_on:
+                new_depends_on = []
+                for dep in task.depends_on:
+                    # 如果是数字索引（如 "0"），转换为对应的 ID（如 "task_0"）
+                    if dep in task_id_map:
+                        new_depends_on.append(task_id_map[dep])
+                    else:
+                        # 如果已经是正确的 ID 格式（如 "task_0"），保持不变
+                        new_depends_on.append(dep)
+                task.depends_on = new_depends_on
+                print(f"[COMMANDER] 任务 {task.id} 的依赖已转换: {new_depends_on}")
 
         # v3.0: 准备子任务数据（支持显式依赖关系 DAG）
         from models import SubTaskCreate
@@ -478,6 +494,11 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
             if short_id:
                 task_result_map[short_id] = result
         
+        # 调试日志
+        print(f"[DEBUG] depends_on: {depends_on}")
+        print(f"[DEBUG] task_result_map keys: {list(task_result_map.keys())}")
+        print(f"[DEBUG] expert_results count: {len(expert_results)}")
+        
         # 收集依赖任务的输出
         for dep_task_id in depends_on:
             if dep_task_id in task_result_map:
@@ -488,6 +509,7 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
                     "description": dep_result["description"],
                     "output": dep_result["output"]
                 })
+                print(f"[DEBUG] 找到依赖任务 {dep_task_id}: {dep_result['expert_type']}")
             else:
                 print(f"[WARN] 依赖任务 {dep_task_id} 的输出尚未就绪")
         
@@ -540,6 +562,10 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
         # 临时替换 state 中的 current_task
         original_task_list = task_list.copy()
         task_list[current_index] = enhanced_task
+        
+        # v3.2: 创建增强的 state，确保专家能获取到依赖上下文
+        enhanced_state = state.copy()
+        enhanced_state["task_list"] = task_list.copy()
 
         if expert_type in DYNAMIC_EXPERT_FUNCTIONS:
             # 系统内置专家，使用原有逻辑（预先创建 LLM）
@@ -548,10 +574,10 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
                 expert_llm = get_expert_llm(provider=expert_config['provider'])
             else:
                 expert_llm = get_expert_llm()
-            result = await expert_func(state, expert_llm)
+            result = await expert_func(enhanced_state, expert_llm)
         else:
             # 自定义专家，使用通用节点（generic_worker_node 自己会创建 LLM）
-            result = await expert_func(state)
+            result = await expert_func(enhanced_state)
         
         # 恢复原 task_list（避免污染 state）
         task_list[current_index] = original_task_list[current_index]

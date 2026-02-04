@@ -341,6 +341,11 @@ async def generic_worker_node(state: Dict[str, Any]) -> Dict[str, Any]:
     
     print(f"[GenericWorker] 处理自定义专家: {expert_type}")
     
+    # v3.2: 提取依赖上下文（如果有）
+    dependency_context = input_data.get("__dependency_context", "")
+    # 从 input_data 中移除内部字段，避免暴露给 LLM
+    clean_input_data = {k: v for k, v in input_data.items() if not k.startswith("__")}
+    
     # 从缓存加载专家配置，如果没有则从数据库加载
     expert_config = get_expert_config_cached(expert_type)
     
@@ -385,11 +390,38 @@ async def generic_worker_node(state: Dict[str, Any]) -> Dict[str, Any]:
             temperature=temperature
         )
         
+        # v3.2: 构造带依赖上下文的 Prompt
+        # 如果有前置任务输出，明确指示专家必须基于这些输出执行
+        if dependency_context:
+            human_message_content = f"""【重要】你必须基于以下前置任务的输出结果来完成当前任务。不要编造信息，必须从提供的上下文中提取关键数据。
+
+前置任务输出（这是你唯一的信息来源）：
+{dependency_context}
+
+---
+
+当前任务指令: {description}
+
+附加输入参数:
+{format_input_data(clean_input_data)}
+
+---
+
+⚠️ 执行要求：
+1. 你必须引用并使用前置任务输出中的具体数据
+2. 如果前置任务提供了多个选项/数据点，请明确说明你使用了哪一个
+3. 不要返回占位符（如"[请在此处插入...]"），必须填入实际从前置输出中提取的内容"""
+        else:
+            human_message_content = f"""任务描述: {description}
+
+输入参数:
+{format_input_data(clean_input_data)}"""
+        
         from langchain_core.runnables import RunnableConfig
         response = await llm_with_config.ainvoke(
             [
                 SystemMessage(content=system_prompt),
-                HumanMessage(content=f"任务描述: {description}\n\n输入参数:\n{format_input_data(input_data)}")
+                HumanMessage(content=human_message_content)
             ],
             config=RunnableConfig(
                 tags=["expert", expert_type, "generic"],
