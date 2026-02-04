@@ -33,7 +33,8 @@ from config import init_langchain_tracing, validate_config
 from models import User, TaskSession, SubTask
 from constants import SYSTEM_AGENT_DEFAULT_CHAT
 from agents.graph import commander_graph
-from agents.dynamic_experts import DYNAMIC_EXPERT_FUNCTIONS as EXPERT_FUNCTIONS
+from agents.nodes.generic import generic_worker_node
+from agents.expert_loader import get_expert_config_cached
 from utils.llm_factory import get_llm_instance
 from utils.exceptions import (
     AppError, ValidationError, NotFoundError,
@@ -266,10 +267,11 @@ async def chat_invoke_endpoint(
     if request.mode == "direct" and not request.agent_id:
         raise ValidationError("Direct 模式需要指定 agent_id")
 
-    # 3. 验证 agent_id 是否在 EXPERT_FUNCTIONS 中
+    # 3. 验证 agent_id 是否存在（使用 expert_loader）
     if request.mode == "direct":
-        if request.agent_id not in EXPERT_FUNCTIONS:
-            raise ValidationError(f"未知的专家类型: {request.agent_id}，可用专家: {list(EXPERT_FUNCTIONS.keys())}")
+        expert_config = get_expert_config_cached(request.agent_id)
+        if not expert_config:
+            raise ValidationError(f"未知的专家类型: {request.agent_id}")
 
     # 4. 创建 TaskSession 记录
     from langchain_core.messages import HumanMessage
@@ -375,8 +377,8 @@ async def chat_invoke_endpoint(
                 "final_response": ""
             }
 
-            expert_func = EXPERT_FUNCTIONS[request.agent_id]
-            result = await expert_func(initial_state, llm)
+            # 使用 generic_worker_node 统一执行专家
+            result = await generic_worker_node(initial_state)
 
             # 保存 SubTask 到数据库
             db_subtask = SubTask(

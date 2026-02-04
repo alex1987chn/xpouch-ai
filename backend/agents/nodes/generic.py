@@ -135,11 +135,37 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         duration_ms = int((completed_at - started_at).total_seconds() * 1000)
         
         print(f"[GenericWorker] '{expert_type}' completed (耗时: {duration_ms/1000:.2f}s)")
-        
+
         # 检测 artifact 类型
         artifact_type = _detect_artifact_type(response.content, expert_type)
-        
+
+        # ✅ v3.2 修复：增加 current_task_index 以支持循环
+        # Generic Worker 执行完任务后，需要递增 index 才能执行下一个任务
+        next_index = current_index + 1
+
+        # ✅ 更新任务列表中的任务状态
+        task_list[current_index]["output_result"] = {"content": response.content}
+        task_list[current_index]["status"] = "completed"
+        task_list[current_index]["completed_at"] = completed_at.isoformat()
+
+        # ✅ 添加到 expert_results（用于后续任务依赖和最终聚合）
+        expert_result = {
+            "task_id": current_task.get("id", str(current_index)),
+            "expert_type": expert_type,
+            "description": description,
+            "output": response.content,
+            "status": "completed",
+            "duration_ms": duration_ms
+        }
+
+        # 获取现有的 expert_results 并追加新结果
+        expert_results = state.get("expert_results", [])
+        expert_results = expert_results + [expert_result]
+
         return {
+            "task_list": task_list,
+            "expert_results": expert_results,
+            "current_task_index": next_index,  # ✅ 增加 index
             "output_result": response.content,
             "status": "completed",
             "started_at": started_at.isoformat(),
@@ -155,7 +181,30 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         
     except Exception as e:
         print(f"[GenericWorker] '{expert_type}' failed: {e}")
+
+        # ✅ 失败时也要增加 index，否则会卡死循环
+        next_index = current_index + 1
+
+        # 更新任务状态为失败
+        task_list[current_index]["status"] = "failed"
+
+        # 获取现有的 expert_results 并添加失败记录
+        expert_results = state.get("expert_results", [])
+        expert_result = {
+            "task_id": current_task.get("id", str(current_index)),
+            "expert_type": expert_type,
+            "description": description,
+            "output": f"专家执行失败: {str(e)}",
+            "status": "failed",
+            "error": str(e),
+            "duration_ms": 0
+        }
+        expert_results = expert_results + [expert_result]
+
         return {
+            "task_list": task_list,
+            "expert_results": expert_results,
+            "current_task_index": next_index,  # ✅ 即使失败也增加 index
             "output_result": f"专家执行失败: {str(e)}",
             "status": "failed",
             "error": str(e),

@@ -60,7 +60,7 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
     """
     from langchain_core.messages import HumanMessage
     from agents.expert_loader import get_expert_config, get_expert_config_cached
-    from agents.dynamic_experts import get_all_expert_list, format_expert_list_for_prompt
+    from agents.expert_loader import get_all_expert_list, format_expert_list_for_prompt
     from crud.task_session import create_task_session_with_subtasks, get_task_session_by_thread
     from crud.task_session import create_subtask
     from models import SubTaskCreate
