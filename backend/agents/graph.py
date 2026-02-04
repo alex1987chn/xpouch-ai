@@ -149,23 +149,8 @@ class CommanderOutput(BaseModel):
 # ============================================================================
 # 2. 状态定义
 # ============================================================================
-
-class AgentState(TypedDict):
-    """超智能体的全局状态"""
-    messages: Annotated[List[BaseMessage], add_messages]
-    task_list: List[Dict[str, Any]]
-    current_task_index: int
-    strategy: str
-    expert_results: List[Dict[str, Any]]
-    final_response: str
-    # 记录路由决策信息
-    router_decision: str
-    # v3.0 新增：数据库持久化相关
-    thread_id: Optional[str]           # 关联的对话ID
-    task_session_id: Optional[str]     # 任务会话ID
-    db_session: Optional[Any]          # 数据库会话（用于节点内持久化）
-    # v3.0 新增：事件队列（用于 SSE 推送）
-    event_queue: List[Dict[str, Any]]  # 待发送的事件列表 
+# v3.1: 从 state.py 导入 AgentState
+from agents.state import AgentState 
 
 # ============================================================================
 # 3. 节点实现

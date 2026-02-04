@@ -12,6 +12,7 @@ LLM 工厂模块
     router_llm = get_router_llm()
 """
 
+import os
 from typing import Optional
 from langchain_openai import ChatOpenAI
 from providers_config import (
@@ -21,6 +22,83 @@ from providers_config import (
     is_provider_configured
 )
 import httpx
+
+
+# ============================================================================
+# 模型兜底机制（兼容接口，原 model_fallback.py 功能）
+# ============================================================================
+
+def get_default_model() -> str:
+    """
+    获取默认模型（每次都从环境变量读取）
+    
+    兼容原 model_fallback.py 接口
+    """
+    return os.getenv("MODEL_NAME", "deepseek-chat")
+
+
+def get_effective_model(configured_model: Optional[str]) -> str:
+    """
+    获取有效的模型名称（模型兜底机制）
+    
+    逻辑：
+    1. 如果未配置模型，使用环境变量 MODEL_NAME 或默认值
+    2. 如果配置的是 OpenAI 模型（gpt-开头），自动切换为默认模型
+    3. 支持通过环境变量 FORCE_MODEL_FALLBACK=true 强制使用兜底模型
+    4. 解析模型别名映射（通过 providers_config）
+    
+    Args:
+        configured_model: 数据库中配置的模型名称
+    
+    Returns:
+        str: 实际应该使用的模型名称
+    """
+    # 每次都重新读取默认模型
+    default_model = get_default_model()
+    
+    # 强制兜底模式
+    if os.getenv("FORCE_MODEL_FALLBACK", "").lower() == "true":
+        print(f"[ModelFallback] 强制兜底模式，使用 '{default_model}'")
+        return default_model
+    
+    # 未配置时使用默认
+    if not configured_model:
+        return default_model
+    
+    # 解析模型别名映射
+    try:
+        from providers_config import get_model_config
+        model_config = get_model_config(configured_model)
+        if model_config and 'model' in model_config:
+            resolved_model = model_config['model']
+            if resolved_model != configured_model:
+                print(f"[ModelFallback] 模型别名解析: '{configured_model}' -> '{resolved_model}'")
+                configured_model = resolved_model
+    except ImportError:
+        print(f"[ModelFallback] 警告: 无法导入 providers_config，跳过模型别名解析")
+    
+    # 检查是否需要模型兜底（OpenAI 模型在第三方 API 上可能不可用）
+    openai_models = [
+        "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo",
+        "gpt-4-vision-preview", "gpt-4-turbo-preview"
+    ]
+    
+    # 如果不是 OpenAI 模型，不需要兜底
+    if not any(configured_model.startswith(om) for om in openai_models):
+        return configured_model
+    
+    # OpenAI 模型默认需要兜底，除非明确配置 ALLOW_OPENAI_MODELS=true
+    if os.getenv("ALLOW_OPENAI_MODELS", "").lower() == "true":
+        return configured_model
+    
+    # 检查 API 配置
+    base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "")
+    if "openai.com" in base_url and os.getenv("ALLOW_OPENAI_MODELS", "").lower() == "true":
+        return configured_model
+    
+    # 默认情况下，所有 gpt- 开头的模型都需要兜底
+    print(f"[ModelFallback] 检测到 OpenAI 模型 '{configured_model}'，切换为 '{default_model}'")
+    return default_model
 
 
 def get_llm_instance(

@@ -10,7 +10,7 @@ from datetime import datetime
 
 from agents.expert_loader import get_expert_config_cached
 from agents.experts import EXPERT_DESCRIPTIONS
-from agents.model_fallback import get_effective_model, get_default_model
+from utils.llm_factory import get_effective_model, get_default_model
 
 
 async def run_expert_node(

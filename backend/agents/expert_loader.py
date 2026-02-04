@@ -6,7 +6,7 @@
 from typing import Dict, Optional
 from sqlmodel import Session, select
 from models import SystemExpert
-from agents.model_fallback import get_effective_model
+from utils.llm_factory import get_effective_model
 
 # 内存缓存（避免每次查询数据库）
 _expert_cache: Dict[str, Dict] = {}
