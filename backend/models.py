@@ -3,7 +3,7 @@ from typing import List, Optional
 from datetime import datetime
 from uuid import uuid4
 from sqlmodel import Field, SQLModel, Relationship, JSON, Session, select, Column
-from sqlalchemy import String
+from sqlalchemy import String, Index
 from pydantic import BaseModel, Field as PydanticField
 from enum import Enum
 
@@ -147,8 +147,14 @@ class Message(SQLModel, table=True):
     timestamp: datetime = Field(default_factory=datetime.now)
     # 👈 新增：extra_data 字段存储 thinking、reasoning 等额外信息（metadata 是 SQLAlchemy 保留字）
     extra_data: Optional[dict] = Field(default=None, sa_column=Column(JSON))
-    
+
     thread: Thread = Relationship(back_populates="messages")
+
+    # 🔥 复合索引：优化消息查询
+    # 场景：加载对话历史时，查询 WHERE thread_id = ? ORDER BY timestamp DESC
+    __table_args__ = (
+        Index("idx_message_thread_timestamp", "thread_id", "timestamp"),
+    )
 
 
 # ============================================================================
@@ -350,6 +356,12 @@ class SubTask(SQLModel, table=True):
     artifacts: List["Artifact"] = Relationship(
         back_populates="sub_task",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
+    # 🔥 复合索引：优化高频查询场景
+    # 场景：每次加载会话时，查询 WHERE task_session_id = ? AND status = ?
+    __table_args__ = (
+        Index("idx_subtask_session_status", "task_session_id", "status"),
     )
 
 
