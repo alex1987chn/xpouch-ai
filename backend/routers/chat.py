@@ -130,7 +130,13 @@ async def get_thread(
     if thread.agent_type == "ai" and thread.task_session_id:
         task_session = session.get(TaskSession, thread.task_session_id)
         if task_session:
-            statement = select(SubTask).where(SubTask.task_session_id == task_session.session_id)
+            # v3.0: 使用 selectinload 预加载 artifacts 关系，避免 N+1 查询
+            statement = (
+                select(SubTask)
+                .where(SubTask.task_session_id == task_session.session_id)
+                .options(selectinload(SubTask.artifacts))
+                .order_by(SubTask.sort_order)
+            )
             sub_tasks = session.exec(statement).all()
 
             return {
@@ -164,8 +170,8 @@ async def get_thread(
                             "expert_type": st.expert_type,
                             "task_description": st.task_description,
                             "status": st.status,
-                            "output": st.output,
-                            "error": st.error,
+                            "output_result": st.output_result,
+                            "error_message": st.error_message,
                             "artifacts": [
                                 {
                                     "id": art.id,
