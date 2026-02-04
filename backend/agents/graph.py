@@ -46,6 +46,13 @@ from agents.expert_loader import get_expert_config_cached
 # 从工厂函数导入 LLM 实例创建器
 from utils.llm_factory import get_router_llm, get_commander_llm, get_llm_instance, get_expert_llm, get_aggregator_llm
 
+# v3.1: 从 nodes 模块导入节点函数（重构后）
+from agents.nodes import (
+    router_node,
+    direct_reply_node,
+    commander_node,
+)
+
 # LangSmith 链路追踪
 env_path = pathlib.Path(__file__).parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
