@@ -318,9 +318,9 @@ xpouch-ai/
 │   ├── agents/                        # LangGraph 智能体
 │   │   ├── graph.py                   # 工作流图构建
 │   │   ├── state.py                   # AgentState 类型定义
-│   │   ├── expert_loader.py           # 专家配置加载器
-│   │   ├── dynamic_experts.py         # 动态专家工厂
-│   │   ├── experts.py                 # 专家定义和提示词
+│   │   ├── expert_loader.py           # 专家配置加载器（数据库 → 缓存）
+│   │   ├── dynamic_experts.py         # 动态专家工厂（DYNAMIC_EXPERT_FUNCTIONS）
+│   │   ├── experts.py                 # 静态专家执行函数（run_*_expert）
 │   │   └── nodes/                     # 工作流节点实现
 │   │       ├── router.py              # 意图识别节点
 │   │       ├── commander.py           # 任务规划节点
