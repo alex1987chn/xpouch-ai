@@ -129,11 +129,17 @@ Aggregator 整合所有结果生成最终响应
 - JWT Token 认证
 - 自动 Token 刷新
 
-**权限角色**（未来扩展）：
-- USER：普通用户
-- VIEW_ADMIN：查看管理员
-- EDIT_ADMIN：编辑管理员
-- ADMIN：完全管理员
+**权限角色**（已实现）：
+- USER：普通用户（无管理权限）
+- VIEW_ADMIN：查看管理员（可查看专家配置）
+- EDIT_ADMIN：编辑管理员（可修改专家配置）
+- ADMIN：完全管理员（可升级用户、完全控制）
+
+**权限控制**：
+- 后端：FastAPI 依赖注入进行 API 权限检查
+- 前端：React Router 路由鉴权（AdminRoute 组件）
+- 数据库：PostgreSQL ENUM 类型存储用户角色
+- 专家管理页面：仅 admin 角色可访问
 
 ### 🌍 国际化支持
 
@@ -208,27 +214,29 @@ graph TB
 
     subgraph Backend["后端 (FastAPI + Python)"]
         API["RESTful API"]
-        Auth["认证模块"]
+        Auth["认证模块 (JWT)"]
         Chat["聊天模块"]
         Agents["智能体模块"]
+        Admin["管理员模块"]
 
         API --> Auth
         API --> Chat
         API --> Agents
+        API --> Admin
     end
 
     subgraph LangGraph["LangGraph 工作流"]
-        Router["Router 节点"]
-        Planner["Planner 节点"]
-        Dispatcher["专家分发器"]
-        Experts["7 位专家节点"]
-        Aggregator["聚合器节点"]
+        Router["Router 节点 (意图识别)"]
+        Commander["Commander 节点 (任务规划)"]
+        Dispatcher["Dispatcher 节点 (专家分发)"]
+        Generic["Generic 节点 (专家执行)"]
+        Aggregator["Aggregator 节点 (结果聚合)"]
 
         Router --> |simple| DirectReply
-        Router --> |complex| Planner
-        Planner --> Dispatcher
-        Dispatcher --> Experts
-        Experts --> Aggregator
+        Router --> |complex| Commander
+        Commander --> Dispatcher
+        Dispatcher --> Generic
+        Generic --> Aggregator
     end
 
     subgraph Database["数据层"]
@@ -269,15 +277,17 @@ xpouch-ai/
 │   │   │   │   ├── HtmlArtifact.tsx
 │   │   │   │   └── SearchArtifact.tsx
 │   │   │   ├── bauhaus/               # Bauhaus 风格组件
+│   │   │   │   └── BauhausSidebar.tsx  # 侧边栏（含 admin 入口）
 │   │   │   ├── settings/              # 设置组件
 │   │   │   └── ui/                    # shadcn/ui 基础组件
+│   │   ├── AdminRoute.tsx             # 路由鉴权组件（支持细粒度权限）
 │   │   ├── pages/                     # 页面组件
 │   │   │   ├── home/                  # 首页
 │   │   │   ├── chat/                  # 统一聊天页
 │   │   │   ├── history/               # 历史记录
 │   │   │   ├── knowledge/             # 知识库
-│   │   │   # 智能体管理
 │   │   │   └── admin/                 # 管理后台
+│   │   │       └── ExpertAdminPage.tsx  # 专家管理页面
 │   │   ├── providers/                 # Provider 组件
 │   │   └── agent/                     # Agent 相关
 │   │   ├── store/                     # Zustand 状态管理
@@ -306,10 +316,19 @@ xpouch-ai/
 │
 ├── backend/                           # 🔧 Python 后端
 │   ├── agents/                        # LangGraph 智能体
-│   │   ├── graph.py                   # 工作流定义
+│   │   ├── graph.py                   # 工作流图构建
+│   │   ├── state.py                   # AgentState 类型定义
 │   │   ├── expert_loader.py           # 专家配置加载器
-│   │   ├── dynamic_experts.py         # 动态专家节点
-│   │   └── experts.py                 # 专家池实现
+│   │   ├── dynamic_experts.py         # 动态专家工厂
+│   │   ├── experts.py                 # 专家定义和提示词
+│   │   └── nodes/                     # 工作流节点实现
+│   │       ├── router.py              # 意图识别节点
+│   │       ├── commander.py           # 任务规划节点
+│   │       ├── dispatcher.py          # 专家分发节点
+│   │       ├── aggregator.py          # 结果聚合节点
+│   │       └── generic.py             # 通用专家执行节点
+│   ├── api/                           # API 路由
+│   │   └── admin.py                   # 管理员 API（专家配置）
 │   ├── routers/                       # 路由模块
 │   │   ├── chat.py                    # 聊天 API
 │   │   ├── agents.py                  # 智能体 API
