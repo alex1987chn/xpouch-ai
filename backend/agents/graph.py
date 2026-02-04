@@ -12,7 +12,7 @@ from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser
 import os
 from dotenv import load_dotenv
 import pathlib
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from uuid import uuid4
 from datetime import datetime
 
@@ -119,6 +119,25 @@ class SubTaskOutput(BaseModel):
     input_data: Dict[str, Any] = Field(default={}, description="输入参数")
     priority: int = Field(default=0, description="优先级 (0=最高)")
     depends_on: List[str] = Field(default=[], description="依赖的任务ID列表。如果任务B需要任务A的输出，则填入 ['task_a']")
+    
+    @field_validator('depends_on', mode='before')
+    @classmethod
+    def parse_depends_on(cls, v):
+        """
+        兼容处理：如果 LLM 返回了整数依赖（如 [0]），强制转为字符串 ["0"]
+        """
+        if v is None:
+            return []
+        
+        # 情况 1: LLM 发疯返了个单个 int/str (不是列表)
+        if isinstance(v, (int, str)):
+            return [str(v)]
+            
+        # 情况 2: 正常的列表，但里面混了 int
+        if isinstance(v, list):
+            return [str(item) for item in v]
+            
+        return v
 
 class CommanderOutput(BaseModel):
     """指挥官输出 - 子任务列表"""
