@@ -96,24 +96,10 @@ export default function UnifiedChatPage() {
     }
   }, [])
 
-  // v3.0: 标记是否有待发送的初始消息（阻止 loadConversation 过早加载）
-  const pendingInitialMessageRef = useRef(false)
-
   // 加载历史会话（conversationId 或 normalizedAgentId 改变时重新加载）
   useEffect(() => {
     if (conversationId) {
-      // v3.0: 如果是新会话且有初始消息，阻止加载，等待发送
-      if (isNewConversation && initialMessage) {
-        console.log('[UnifiedChatPage] 新会话有初始消息，阻止加载')
-        pendingInitialMessageRef.current = true
-        useChatStore.getState().setCurrentConversationId(conversationId)
-        // 不清空消息，让发送消息的effect来处理
-        const { clearTasks, setMode } = useTaskStore.getState()
-        clearTasks()
-        setMode('simple')
-        return
-      }
-      
+      // 如果是新会话，清空消息和任务状态
       if (isNewConversation) {
         useChatStore.getState().setCurrentConversationId(conversationId)
         useChatStore.getState().setMessages([])
@@ -127,12 +113,6 @@ export default function UnifiedChatPage() {
       const storeAgentId = useChatStore.getState().selectedAgentId
       const isSwitchingConversation = storeCurrentId !== conversationId
       const isSwitchingAgent = storeAgentId !== normalizedAgentId
-
-      // v3.0: 如果有待发送的初始消息，跳过加载
-      if (pendingInitialMessageRef.current) {
-        console.log('[UnifiedChatPage] 跳过加载，等待初始消息发送')
-        return
-      }
 
       // 如果切换了会话或智能体，先清空旧消息
       if (isSwitchingConversation || isSwitchingAgent) {
@@ -154,7 +134,7 @@ export default function UnifiedChatPage() {
       clearTasks()
       setMode('simple')
     }
-  }, [conversationId, normalizedAgentId, isNewConversation, initialMessage])
+  }, [conversationId, normalizedAgentId, isNewConversation])
 
   // 恢复草稿（只依赖 conversationId）
   useEffect(() => {
@@ -168,39 +148,46 @@ export default function UnifiedChatPage() {
   }, [conversationId])
 
   // 处理首页传来的消息（新建会话）
-  const initialMessageSentRef = useRef(false)
+  // 👈 使用 ref 锁住初始消息，确保只发送一次
+  const hasSentInitialMessage = useRef(false)
+
   useEffect(() => {
-    // v3.0: 修复首页输入跳转后不发送消息的问题
-    // 条件：新会话 + 有初始消息 + 有会话ID + 未发送过
-    // 注意：不检查 isStreaming，因为初始加载时不应该有进行中的流
-    if (isNewConversation && initialMessage && conversationId && !initialMessageSentRef.current) {
-      initialMessageSentRef.current = true
-      console.log('[UnifiedChatPage] 准备发送首页传来的消息:', initialMessage.substring(0, 50))
-      
-      // v3.0: 先添加用户消息到界面，再发送
-      useChatStore.getState().addMessage({
-        role: 'user',
-        content: initialMessage,
-        timestamp: Date.now()
-      })
-      
-      const timer = setTimeout(() => {
-        // 重置待发送标记，允许后续加载
-        pendingInitialMessageRef.current = false
-        
-        sendMessage(initialMessage, normalizedAgentId)
-          .catch(err => console.error('[UnifiedChatPage] 发送消息失败:', err))
-        
-        // 清除 state，防止重复发送
+    // 基础检查
+    if (!initialMessage || hasSentInitialMessage.current || isStreaming) {
+      return
+    }
+
+    // 🚀 核心修复：使用 setTimeout 延迟执行
+    // 这样做的目的是：在 React 严格模式的 "Mount -> Unmount" 瞬间，
+    // 这里的 timer 会被下面的 cleanup 清除，从而根本不会发出那个注定要被 Abort 的请求。
+    // 只有第二次稳定的 Mount，timer 才会真正跑完并发送请求。
+    const timer = setTimeout(() => {
+      // 双重检查：防止在 timeout 等待期间状态发生变化
+      if (hasSentInitialMessage.current) return
+
+      console.log('[UnifiedChatPage] 准备发送首页传来的消息 (Delayed):', initialMessage.substring(0, 50))
+
+      // 标记为已发送
+      hasSentInitialMessage.current = true
+
+      // 发送消息
+      sendMessage(initialMessage, normalizedAgentId)
+        .catch(err => console.error('[UnifiedChatPage] 发送消息失败:', err))
+
+      // 延迟清除 location.state，避免影响后续逻辑
+      setTimeout(() => {
         navigate(`/chat/${conversationId}${searchParams.toString() ? '?' + searchParams.toString() : ''}`, {
           replace: true,
           state: {}
         })
-      }, 100)  // 减少延迟，快速响应
-      
-      return () => clearTimeout(timer)
+      }, 0)
+    }, 300) // 延迟 300ms，足够绕过 Strict Mode 的抖动
+
+    // 清理函数：如果组件在 300ms 内被卸载（严格模式的第一次卸载），取消定时器
+    return () => {
+      clearTimeout(timer)
     }
-  }, [isNewConversation, initialMessage, conversationId, normalizedAgentId, sendMessage, navigate, searchParams])
+  }, [initialMessage, conversationId, normalizedAgentId, sendMessage, navigate, searchParams, isStreaming])
 
   // ============================================
   // v3.0: 状态恢复/水合 (State Rehydration)

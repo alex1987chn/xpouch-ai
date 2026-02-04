@@ -97,8 +97,12 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       return
     }
 
+    // 👈 修复：优先使用传入的 content 参数（如从首页跳转时），其次才使用 store 的 inputMessage
     const userContent = content || inputMessage
-    if (!userContent.trim()) return
+    if (!userContent.trim()) {
+      debug('消息内容为空，跳过发送')
+      return
+    }
 
     setGenerating(true)  // ✅ 使用 Store 方法
     
