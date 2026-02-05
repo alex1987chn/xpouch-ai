@@ -403,12 +403,11 @@ async def _handle_custom_agent_stream(
         # 🔥🔥🔥 新增：心跳间隔（15秒）远小于 Cloudflare 的 100秒超时 🔥🔥🔥
         HEARTBEAT_INTERVAL = 15.0
 
-        print(f"[CUSTOM AGENT STREAM] {datetime.now().isoformat()} - 开始流式处理，心跳间隔={HEARTBEAT_INTERVAL}秒")
+        print(f"[CUSTOM AGENT STREAM] {datetime.now().isoformat()} - 开始流式处理，心跳间隔={HEARTBEAT_INTERVAL}秒，强制心跳间隔=30.0秒")
 
-        # 🔥 新增：强制心跳计时器（每 30 秒强制发送一次心跳，不管有没有事件）
+        # 🔥 强制心跳计时器（每 30 秒强制发送一次心跳，不管有没有事件）
         FORCE_HEARTBEAT_INTERVAL = 30.0
         last_heartbeat_time = datetime.now()
-        print(f"[CUSTOM AGENT STREAM] 强制心跳间隔={FORCE_HEARTBEAT_INTERVAL}秒")
 
         try:
             # 使用新的配置系统获取模型
@@ -673,15 +672,14 @@ async def _handle_langgraph_stream(
         # 🔥🔥🔥 新增：心跳间隔（15秒）远小于 Cloudflare 的 100秒超时 🔥🔥🔥
         HEARTBEAT_INTERVAL = 15.0
 
-        print(f"[LANGGRAPH STREAM] {datetime.now().isoformat()} - 开始流式处理，心跳间隔={HEARTBEAT_INTERVAL}秒")
+        print(f"[LANGGRAPH STREAM] {datetime.now().isoformat()} - 开始流式处理，心跳间隔={HEARTBEAT_INTERVAL}秒，强制心跳间隔=30.0秒")
 
         # 获取图的流迭代器
         iterator = commander_graph.astream_events(initial_state, version="v2")
 
-        # 🔥 新增：强制心跳计时器（每 30 秒强制发送一次心跳，不管有没有事件）
+        # 🔥 强制心跳计时器（每 30 秒强制发送一次心跳，不管有没有事件）
         FORCE_HEARTBEAT_INTERVAL = 30.0
         last_heartbeat_time = datetime.now()
-        print(f"[LANGGRAPH STREAM] 强制心跳间隔={FORCE_HEARTBEAT_INTERVAL}秒")
 
         # 辅助函数：安全地获取下一个事件
         async def get_next_event():
@@ -710,12 +708,6 @@ async def _handle_langgraph_stream(
                     event_count += 1
                     kind = event["event"]
                     name = event.get("name", "")
-
-                    # 🔥 调试：记录每个事件的时间戳
-                    if event_count == 1:
-                        print(f"[STREAM] {datetime.now().isoformat()} - 第 1 个事件: {kind} / {name}")
-                    elif event_count % 50 == 0:
-                        print(f"[STREAM] {datetime.now().isoformat()} - 已处理 {event_count} 个事件，最近事件: {kind} / {name}")
 
                 except asyncio.TimeoutError:
                     # 🔥🔥🔥 心跳保活：AI 正在思考，但超过 15 秒未产生数据 🔥🔥🔥
