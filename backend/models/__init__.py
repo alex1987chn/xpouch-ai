@@ -545,5 +545,21 @@ class LangSmithConfig(BaseModel):
     @classmethod
     def from_env(cls) -> "LangSmithConfig":
         """从环境变量加载配置"""
-        from .config import get_langsmith_config
+        from config import get_langsmith_config
         return get_langsmith_config()
+
+
+# 🔥 导入记忆模型（放在最后避免循环导入）
+from models.memory import UserMemory
+
+__all__ = [
+    "UserRole", "ConversationType", "ExpertType", "TaskStatus", "ExecutionMode",
+    "User", "Thread", "Message", "SystemExpert", "CustomAgent",
+    "SubTask", "TaskSession", "Artifact", "UserMemory",
+    "MessageResponse", "ThreadResponse",
+    "CustomAgentCreate", "CustomAgentUpdate", "CustomAgentResponse",
+    "SubTaskCreate", "SubTaskUpdate", "SubTaskResponse",
+    "ArtifactCreate", "ArtifactResponse",
+    "TaskSessionCreate", "TaskSessionUpdate", "TaskSessionResponse",
+    "LangSmithConfig",
+]
