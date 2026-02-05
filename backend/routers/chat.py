@@ -644,12 +644,15 @@ async def _handle_langgraph_stream(
                         if output_data.get("__expert_info"):
                             expert_info = output_data["__expert_info"]
                             task_id = expert_info.get("task_id")
-                            if task_id and output_data.get("artifact"):
+                            artifact_data = output_data.get("artifact")
+                            if task_id and artifact_data:
                                 # 使用 task_id 作为 key，确保每个任务的 artifact 都被保存
                                 if task_id not in expert_artifacts:
                                     expert_artifacts[task_id] = []
-                                expert_artifacts[task_id].append(output_data["artifact"])
-                                print(f"[STREAM] 收集到 artifact: task_id={task_id}")
+                                expert_artifacts[task_id].append(artifact_data)
+                                print(f"[STREAM] 收集到 artifact: task_id={task_id}, type={artifact_data.get('type')}, title={artifact_data.get('title')}")
+                            elif task_id:
+                                print(f"[STREAM] ⚠️ 有 expert_info 但没有 artifact: task_id={task_id}")
                     else:
                         event_queue = []
                     
@@ -823,8 +826,16 @@ async def _handle_langgraph_stream(
                                 )
                                 # 保存 artifacts
                                 if artifacts_for_task:
-                                    create_artifacts_batch(save_session, task_id, artifacts_for_task)
-                                    print(f"[STREAM] 保存 {len(artifacts_for_task)} 个 artifacts 到 SubTask: {task_id}")
+                                    print(f"[STREAM] 准备保存 artifacts: task_id={task_id}, count={len(artifacts_for_task)}")
+                                    for art in artifacts_for_task:
+                                        print(f"[STREAM]   - artifact: type={art.get('type')}, title={art.get('title')[:30]}...")
+                                    try:
+                                        created = create_artifacts_batch(save_session, task_id, artifacts_for_task)
+                                        print(f"[STREAM] ✅ 成功保存 {len(created)} 个 artifacts 到 SubTask: {task_id}")
+                                    except Exception as art_err:
+                                        print(f"[STREAM] ❌ 保存 artifacts 失败: {art_err}")
+                                        import traceback
+                                        traceback.print_exc()
                                 print(f"[STREAM] 更新 SubTask: {expert_type}")
                             else:
                                 # 创建新 SubTask
