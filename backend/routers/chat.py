@@ -5,6 +5,7 @@ v3.0: 复杂模式使用新的事件协议（plan.created, task.started, task.co
 import os
 import json
 import re
+import asyncio  # 新增：用于心跳保活
 from datetime import datetime
 from typing import List, Optional, AsyncGenerator
 from uuid import uuid4
@@ -386,11 +387,18 @@ async def _handle_custom_agent_stream(
     thread: Thread,
     message_id: Optional[str] = None  # v3.0: 前端传递的助手消息 ID
 ) -> StreamingResponse:
-    """处理自定义智能体流式响应 (v3.0 新协议)"""
+    """处理自定义智能体流式响应 (v3.0 新协议)
+    
+    新增：添加心跳保活机制防止 Cloudflare/CDN 超时断开连接
+    """
     async def event_generator():
         full_response = ""
         # v3.0: 确保使用一致的 message_id
         actual_message_id = message_id or str(uuid4())
+
+        # 🔥🔥🔥 新增：心跳间隔（15秒）远小于 Cloudflare 的 100秒超时 🔥🔥🔥
+        HEARTBEAT_INTERVAL = 15.0
+
         try:
             # 使用新的配置系统获取模型
             from providers_config import get_model_config, get_provider_config, get_provider_api_key
@@ -435,22 +443,48 @@ async def _handle_custom_agent_stream(
             messages_with_system = [("system", custom_agent.system_prompt)]
             messages_with_system.extend(langchain_messages)
 
-            async for chunk in llm.astream(messages_with_system):
-                content = chunk.content
-                if content:
-                    full_response += content
-                    # v3.0: 使用 message.delta 事件（新协议）
-                    from event_types.events import EventType, MessageDeltaData, build_sse_event
-                    delta_event = build_sse_event(
-                        EventType.MESSAGE_DELTA,
-                        MessageDeltaData(
-                            message_id=actual_message_id,
-                            content=content
-                        ),
-                        str(uuid4())
+            # 获取流迭代器
+            iterator = llm.astream(messages_with_system)
+
+            # 辅助函数：安全地获取下一个 chunk
+            async def get_next_chunk():
+                try:
+                    return await asyncio.wait_for(
+                        iterator.__anext__(),
+                        timeout=HEARTBEAT_INTERVAL
                     )
-                    from utils.event_generator import sse_event_to_string
-                    yield sse_event_to_string(delta_event)
+                except StopAsyncIteration:
+                    return None
+
+            while True:
+                try:
+                    # 等待下一个 chunk，超过 15 秒则发送心跳
+                    chunk = await get_next_chunk()
+
+                    if chunk is None:  # 流结束
+                        break
+
+                    content = chunk.content
+                    if content:
+                        full_response += content
+                        # v3.0: 使用 message.delta 事件（新协议）
+                        from event_types.events import EventType, MessageDeltaData, build_sse_event
+                        delta_event = build_sse_event(
+                            EventType.MESSAGE_DELTA,
+                            MessageDeltaData(
+                                message_id=actual_message_id,
+                                content=content
+                            ),
+                            str(uuid4())
+                        )
+                        from utils.event_generator import sse_event_to_string
+                        yield sse_event_to_string(delta_event)
+
+                except asyncio.TimeoutError:
+                    # 🔥🔥🔥 心跳保活：LLM 正在思考，但超过 15 秒未产生数据 🔥🔥🔥
+                    # 发送 SSE 注释（冒号开头），浏览器会忽略，但 Cloudflare 认为有数据传输
+                    yield ": keep-alive\n\n"
+                    continue
 
         except Exception as e:
             import traceback
@@ -596,6 +630,8 @@ async def _handle_langgraph_stream(
     """
     处理 LangGraph 流式响应 (v3.0)
     只发送新协议事件：plan.created, task.started, task.completed, artifact.generated, message.delta, message.done
+    
+    新增：添加心跳保活机制防止 Cloudflare/CDN 超时断开连接
     """
     async def event_generator():
         full_response = ""
@@ -613,14 +649,42 @@ async def _handle_langgraph_stream(
         initial_state["event_queue"] = []
         initial_state["message_id"] = message_id  # v3.0: 注入前端传递的助手消息 ID
 
+        # 🔥🔥🔥 新增：心跳间隔（15秒）远小于 Cloudflare 的 100秒超时 🔥🔥🔥
+        HEARTBEAT_INTERVAL = 15.0
+
+        # 获取图的流迭代器
+        iterator = commander_graph.astream_events(initial_state, version="v2")
+
+        # 辅助函数：安全地获取下一个事件
+        async def get_next_event():
+            try:
+                # Python 3.10+ 使用 anext
+                return await asyncio.wait_for(
+                    iterator.__anext__(),
+                    timeout=HEARTBEAT_INTERVAL
+                )
+            except StopAsyncIteration:
+                return None
+
         try:
-            async for event in commander_graph.astream_events(
-                initial_state,
-                version="v2"
-            ):
-                event_count += 1
-                kind = event["event"]
-                name = event.get("name", "")
+            while True:
+                try:
+                    # 等待下一个事件，超过 15 秒则发送心跳
+                    event = await get_next_event()
+
+                    if event is None:  # 流结束
+                        break
+
+                    # 正常处理并返回 AI 数据
+                    event_count += 1
+                    kind = event["event"]
+                    name = event.get("name", "")
+
+                except asyncio.TimeoutError:
+                    # 🔥🔥🔥 心跳保活：AI 正在思考，但超过 15 秒未产生数据 🔥🔥🔥
+                    # 发送 SSE 注释（冒号开头），浏览器会忽略，但 Cloudflare 认为有数据传输
+                    yield ": keep-alive\n\n"
+                    continue
                 
                 if event_count % 100 == 0:
                     print(f"[STREAM] 已处理 {event_count} 个事件")
