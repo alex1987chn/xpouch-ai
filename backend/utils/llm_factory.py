@@ -230,7 +230,7 @@ def get_llm_instance(
     # 禁用 HTTP/2 并增加超时时间，解决 "incomplete chunked read" 错误
     http_client = httpx.Client(
         http2=False,      # 🚨 关键：禁用 HTTP/2，解决大部分 chunked read 错误
-        timeout=300.0,    # 🚨 关键：给推理模型足够的思考时间（5 分钟）
+        timeout=600.0,    # 🚨 关键：给推理模型足够的思考时间（10 分钟），对齐 gunicorn/nginx
         verify=True        # 验证 SSL 证书（安全考虑）
     )
     llm_config['http_client'] = http_client
