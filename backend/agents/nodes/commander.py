@@ -53,6 +53,50 @@ class CommanderOutput(BaseModel):
     estimated_steps: int = Field(description="预计步骤数")
 
 
+async def _preload_expert_configs(task_list: List[Dict], db_session: Any) -> None:
+    """
+    P1 优化: 预加载所有专家配置到缓存
+    
+    在 Commander 阶段就并行加载所有需要的专家配置，
+    避免 GenericWorker 执行时再逐个查询数据库。
+    
+    Args:
+        task_list: 任务列表
+        db_session: 数据库会话
+    """
+    if not task_list or not db_session:
+        return
+    
+    # 提取所有唯一的专家类型
+    expert_types = list(set(task.get("expert_type") for task in task_list if task.get("expert_type")))
+    if not expert_types:
+        return
+    
+    print(f"[COMMANDER] P1优化: 预加载 {len(expert_types)} 个专家配置...")
+    
+    # 并行加载所有专家配置
+    from agents.services.expert_manager import get_expert_config_cached
+    
+    loaded_count = 0
+    for expert_type in expert_types:
+        try:
+            # 先从缓存检查
+            cached = get_expert_config_cached(expert_type)
+            if cached:
+                loaded_count += 1
+                continue
+            
+            # 缓存未命中，从数据库加载
+            from agents.services.expert_manager import get_expert_config
+            config = get_expert_config(expert_type, db_session)
+            if config:
+                loaded_count += 1
+        except Exception as e:
+            print(f"[COMMANDER] 预加载专家 '{expert_type}' 失败: {e}")
+    
+    print(f"[COMMANDER] P1优化: 成功预加载 {loaded_count}/{len(expert_types)} 个专家配置")
+
+
 async def commander_node(state: AgentState) -> Dict[str, Any]:
     """
     [指挥官] 将复杂查询拆解为子任务。
@@ -229,6 +273,9 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
             })
 
         print(f"[COMMANDER] 生成了 {len(task_list)} 个任务。策略: {commander_response.strategy}")
+
+        # P1 优化: 预加载所有专家配置到缓存
+        await _preload_expert_configs(task_list, db_session)
 
         # v3.0: 构建事件队列
         event_queue = []
