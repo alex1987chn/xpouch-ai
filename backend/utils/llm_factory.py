@@ -4,6 +4,8 @@ LLM 工厂模块
 统一管理和创建 LLM 实例，完全基于配置文件（providers.yaml）
 消除硬编码，支持动态添加新提供商
 
+P2 优化: 添加 LLM 实例缓存池，复用实例减少创建开销
+
 使用示例：
     # 获取指定提供商的 LLM
     llm = get_llm_instance(provider="minimax", streaming=True)
@@ -13,7 +15,7 @@ LLM 工厂模块
 """
 
 import os
-from typing import Optional
+from typing import Optional, Dict, Any
 from langchain_openai import ChatOpenAI
 from providers_config import (
     get_provider_config,
@@ -22,6 +24,54 @@ from providers_config import (
     is_provider_configured
 )
 import httpx
+
+# ============================================================================
+# P2 优化: LLM 实例缓存池
+# ============================================================================
+
+# 全局缓存字典: key -> ChatOpenAI instance
+_llm_cache: Dict[str, ChatOpenAI] = {}
+_cache_hits = 0
+_cache_misses = 0
+
+def _get_cache_key(provider: str, model: Optional[str], streaming: bool, temperature: Optional[float]) -> str:
+    """生成缓存键"""
+    return f"{provider}:{model or 'default'}:{streaming}:{temperature or 'default'}"
+
+def get_cached_llm(provider: str, model: Optional[str], streaming: bool, temperature: Optional[float]) -> Optional[ChatOpenAI]:
+    """从缓存获取 LLM 实例"""
+    global _cache_hits
+    key = _get_cache_key(provider, model, streaming, temperature)
+    if key in _llm_cache:
+        _cache_hits += 1
+        return _llm_cache[key]
+    return None
+
+def set_cached_llm(provider: str, model: Optional[str], streaming: bool, temperature: Optional[float], llm: ChatOpenAI) -> None:
+    """缓存 LLM 实例"""
+    global _cache_misses
+    key = _get_cache_key(provider, model, streaming, temperature)
+    _llm_cache[key] = llm
+    _cache_misses += 1
+
+def get_llm_cache_stats() -> Dict[str, Any]:
+    """获取缓存统计"""
+    total = _cache_hits + _cache_misses
+    hit_rate = (_cache_hits / total * 100) if total > 0 else 0
+    return {
+        "cached_instances": len(_llm_cache),
+        "cache_hits": _cache_hits,
+        "cache_misses": _cache_misses,
+        "hit_rate": f"{hit_rate:.1f}%"
+    }
+
+def clear_llm_cache() -> None:
+    """清空 LLM 缓存"""
+    global _llm_cache, _cache_hits, _cache_misses
+    _llm_cache.clear()
+    _cache_hits = 0
+    _cache_misses = 0
+    print("[LLM Cache] 缓存已清空")
 
 
 # ============================================================================
@@ -110,6 +160,8 @@ def get_llm_instance(
     """
     统一的 LLM 工厂函数 - 完全配置化
     
+    P2 优化: 使用缓存池复用 LLM 实例
+    
     从 providers.yaml 读取配置，从 .env 读取 API Key
     
     Args:
@@ -128,6 +180,12 @@ def get_llm_instance(
         >>> llm = get_llm_instance("minimax", streaming=True, temperature=0.1)
         >>> llm = get_llm_instance("deepseek", model="deepseek-reasoner")
     """
+    # P2 优化: 检查缓存
+    cached = get_cached_llm(provider, model, streaming, temperature)
+    if cached:
+        print(f"[LLM Cache] 命中缓存: {provider}:{model or 'default'}")
+        return cached
+    
     # 读取提供商配置
     config = get_provider_config(provider)
     if not config:
@@ -177,7 +235,14 @@ def get_llm_instance(
     )
     llm_config['http_client'] = http_client
     
-    return ChatOpenAI(**llm_config)
+    # 创建实例
+    llm = ChatOpenAI(**llm_config)
+    
+    # P2 优化: 缓存实例
+    set_cached_llm(provider, model, streaming, temperature, llm)
+    print(f"[LLM Cache] 创建并缓存: {provider}:{model or 'default'}")
+    
+    return llm
 
 
 def get_llm_by_model(model_id: str, streaming: bool = False) -> ChatOpenAI:

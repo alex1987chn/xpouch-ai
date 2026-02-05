@@ -184,24 +184,25 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
             "sort_order": 0    # 默认排序
         }
 
-        # ✅ 实时保存专家执行结果到数据库（关键修复！）
+        # ✅ 异步保存专家执行结果到数据库（P0 优化：不阻塞主流程）
         db_session = state.get("db_session")
         if db_session and task_id:
             try:
-                from agents.services.task_manager import save_expert_execution_result
-                save_expert_execution_result(
-                    db=db_session,
+                from utils.async_task_queue import async_save_expert_result
+                # 使用后台线程异步保存，不阻塞 LLM 响应返回
+                asyncio.create_task(async_save_expert_result(
+                    db_session=db_session,
                     task_id=task_id,
                     expert_type=expert_type,
                     output_result=response.content,
                     artifact_data=artifact,
                     duration_ms=duration_ms
-                )
-                print(f"[GenericWorker] ✅ 专家执行结果已实时保存到数据库: {expert_type}")
+                ))
+                print(f"[GenericWorker] ✅ 专家执行结果已提交异步保存: {expert_type}")
             except Exception as save_err:
-                print(f"[GenericWorker] ⚠️ 实时保存失败（不影响流程）: {save_err}")
+                print(f"[GenericWorker] ⚠️ 异步保存提交失败（不影响流程）: {save_err}")
         else:
-            print(f"[GenericWorker] ⚠️ 跳过实时保存: db_session={db_session is not None}, task_id={task_id}")
+            print(f"[GenericWorker] ⚠️ 跳过保存: db_session={db_session is not None}, task_id={task_id}")
 
         # ✅ 生成事件队列（用于前端展示专家和 artifact）
         from utils.event_generator import (
