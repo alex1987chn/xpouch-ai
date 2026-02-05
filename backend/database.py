@@ -1,5 +1,6 @@
 from sqlmodel import SQLModel, create_engine, Session
 from models import Thread, Message, User, CustomAgent, SystemExpert, SubTask, TaskSession
+from models.memory import UserMemory  # 🔥 导入记忆模型，确保表被创建
 import os
 from dotenv import load_dotenv
 from pathlib import Path
