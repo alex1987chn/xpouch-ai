@@ -9,6 +9,9 @@ from langchain_core.messages import HumanMessage
 from dotenv import load_dotenv
 import pathlib
 
+# 🔥 新增：导入 MemorySaver 支持状态管理
+from langgraph.checkpoint.memory import MemorySaver
+
 # 导入数据模型
 import sys
 sys.path.append(str(pathlib.Path(__file__).parent.parent))
@@ -163,7 +166,17 @@ def create_smart_router_workflow() -> StateGraph:
     # 4. Aggregator -> END
     workflow.add_edge("aggregator", END)
 
-    return workflow.compile()
+    # ---------------------------------------------------------
+    # 🔥 修改开始：添加 Checkpointer
+    # ---------------------------------------------------------
+    # 初始化内存检查点
+    # 这会让 LangGraph 把状态保存在内存里，不会阻塞数据库，也不会导致 Cloudflare 超时
+    memory = MemorySaver()
+
+    # 编译时传入 checkpointer
+    return workflow.compile(checkpointer=memory)
+    # ---------------------------------------------------------
+    # 🔥 修改结束
 
 # 导出编译后的图
 commander_graph = create_smart_router_workflow()
