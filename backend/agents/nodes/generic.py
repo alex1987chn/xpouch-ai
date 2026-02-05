@@ -198,9 +198,9 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
                     artifact_data=artifact,
                     duration_ms=duration_ms
                 ))
-                print(f"[GenericWorker] ✅ 专家执行结果已提交异步保存: {expert_type}")
+                print(f"[GenericWorker] ✅ 专家执行结果已提交后台线程池保存: {expert_type}")
             except Exception as save_err:
-                print(f"[GenericWorker] ⚠️ 异步保存提交失败（不影响流程）: {save_err}")
+                print(f"[GenericWorker] ⚠️ 后台保存提交失败: {save_err}")
         else:
             print(f"[GenericWorker] ⚠️ 跳过保存: task_id={task_id}")
 
