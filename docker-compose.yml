@@ -1,7 +1,8 @@
 services:
-  # PostgreSQL 数据库服务
+  # PostgreSQL 数据库服务 (带 pgvector 插件，支持向量检索)
   db:
-    image: postgres:15-alpine
+    # ✅ 使用 pgvector 镜像，与 PostgreSQL 15 版本对应，数据无缝保留
+    image: pgvector/pgvector:pg15
     container_name: xpouch-postgres
     restart: always
     ports:
