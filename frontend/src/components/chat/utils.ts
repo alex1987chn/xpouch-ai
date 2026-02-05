@@ -24,15 +24,37 @@ export function extractCodeBlocks(content: string): Array<{language: string, cod
 
 /**
  * 内容类型检测结果
+ * 
+ * 3 Core Types 架构：
+ * - code: 所有逻辑类内容（python/js/mermaid/json-chart等），通过 language 字段区分具体类型
+ * - markdown: Markdown 文档
+ * - html: HTML 内容
  */
 export interface ContentTypeResult {
   type: 'code' | 'markdown' | 'html'
   content: string
+  language?: string  // 仅当 type='code' 时使用，标识具体语言（如 'python', 'mermaid', 'json-chart'）
 }
 
 /**
+ * 可视化内容优先级（用于多代码块场景）
+ * 优先级越高越值得被优先预览
+ */
+const VISUAL_PRIORITY = ['html', 'htm', 'mermaid', 'json-chart']
+
+/**
  * 判断内容类型
- * 根据代码块语言或内容特征返回 artifact 类型
+ * 
+ * 3 Core Types 架构检测逻辑：
+ * 1. HTML → 独立类型，走 HtmlArtifact
+ * 2. Markdown/MD → 直接渲染为 Markdown
+ * 3. 其他所有（python/js/ts/mermaid/json-chart等）→ code 类型，保留 language 字段
+ * 
+ * 🔥 多代码块优先级策略：
+ * 当 LLM 返回多个代码块时（如 Python + Mermaid），优先展示可视化内容（Mermaid/Chart/HTML）
+ * 因为这些比普通代码更值得"预览"
+ * 
+ * CodeArtifact 作为智能中枢，会根据 language 字段分发到不同渲染器
  */
 export function detectContentType(
   codeBlocks: Array<{language: string, code: string}>,
@@ -40,25 +62,48 @@ export function detectContentType(
 ): ContentTypeResult | null {
   // 优先处理代码块
   if (codeBlocks.length > 0) {
-    // 如果只有一个代码块，直接用它
-    if (codeBlocks.length === 1) {
-      const block = codeBlocks[0]
-      const lang = block.language.toLowerCase()
+    // 👑 优先级策略：先找有没有图表/流程图/HTML，因为它们比普通代码更值得"预览"
+    const visualBlock = codeBlocks.find(b => 
+      VISUAL_PRIORITY.includes(b.language.toLowerCase())
+    )
 
+    // 如果找到了可视化块，优先用它生成 Artifact
+    if (visualBlock) {
+      const lang = visualBlock.language.toLowerCase()
+      
+      // HTML 独立处理
       if (lang === 'html' || lang === 'htm') {
-        return { type: 'html', content: block.code }
-      } else if (['markdown', 'md'].includes(lang)) {
-        return { type: 'markdown', content: block.code }
-      } else if (['python', 'javascript', 'typescript', 'java', 'go', 'rust', 'c', 'cpp', 'json', 'yaml', 'sql', 'bash', 'shell'].includes(lang)) {
-        return { type: 'code', content: block.code }
-      } else {
-        return { type: 'code', content: block.code }
+        return { type: 'html', content: visualBlock.code }
+      }
+      
+      // Mermaid 和 json-chart 归为 code 类型，但保留 language 用于智能分发
+      return { 
+        type: 'code', 
+        content: visualBlock.code,
+        language: lang  // 👈 'mermaid' 或 'json-chart'
       }
     }
 
-    // 如果有多个代码块，合并它们
-    const allCode = codeBlocks.map(b => `// ${b.language}\n${b.code}`).join('\n\n')
-    return { type: 'code', content: allCode }
+    // 没找到可视化的，降级使用第一个代码块
+    const firstBlock = codeBlocks[0]
+    const lang = firstBlock.language.toLowerCase()
+
+    // 1. HTML 独立处理
+    if (lang === 'html' || lang === 'htm') {
+      return { type: 'html', content: firstBlock.code }
+    }
+    
+    // 2. Markdown 直接渲染
+    if (['markdown', 'md'].includes(lang)) {
+      return { type: 'markdown', content: firstBlock.code }
+    }
+    
+    // 3. 其他所有（python/js/ts等）都归为 code 类型
+    return { 
+      type: 'code', 
+      content: firstBlock.code,
+      language: lang  // 👈 透传 'python', 'javascript' 等
+    }
   }
 
   // 没有代码块时，检查是否是 Markdown 格式内容
