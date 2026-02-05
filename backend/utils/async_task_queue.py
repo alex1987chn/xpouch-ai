@@ -93,7 +93,7 @@ class AsyncTaskQueue:
 task_queue = AsyncTaskQueue()
 
 
-async def async_save_expert_result(
+def _sync_save_wrapper(
     task_id: str,
     expert_type: str,
     output_result: str,
@@ -101,11 +101,10 @@ async def async_save_expert_result(
     duration_ms: Optional[int] = None
 ) -> None:
     """
-    异步保存专家执行结果
+    同步包装函数：在独立的线程中保存专家执行结果
 
-    将数据库保存操作放到后台线程执行，不阻塞 LLM 响应返回。
-
-    🔥 修复：创建独立的 Session，避免主线程 Session 线程安全问题
+    🔥 核心修复：在后台线程里创建新的 Session，完全隔离主线程
+    因为是在新线程里，所以这里的阻塞不会影响主线程的心跳！
 
     Args:
         task_id: 任务 ID
@@ -117,21 +116,56 @@ async def async_save_expert_result(
     from database import engine, Session
     from agents.services.task_manager import save_expert_execution_result
 
-    # 🔥 核心修复：创建新的 Session（线程安全）
-    # 这个 Session 的生命周期完全由这个后台函数控制，与主线程无关
+    # 🔥 核心修复：在后台线程里创建全新的同步 Session
+    # Session 的生命周期完全由这个后台线程控制，与主线程无关
     with Session(engine) as new_session:
-        # 提交到后台线程池
-        await task_queue.submit(
-            save_expert_execution_result,
-            new_session,  # ✅ 传入新创建的 session，线程安全
-            task_id,
-            expert_type,
-            output_result,
-            artifact_data,
-            duration_ms
-        )
+        try:
+            # 调用现有的业务逻辑（同步代码）
+            save_expert_execution_result(
+                new_session,  # ✅ 传入新创建的 session，线程安全
+                task_id,
+                expert_type,
+                output_result,
+                artifact_data,
+                duration_ms
+            )
+            print(f"[AsyncSave] ✅ [Thread] 任务 {task_id} ({expert_type}) 保存成功")
+        except Exception as e:
+            new_session.rollback()  # 回滚防止脏数据
+            print(f"[AsyncSave] ❌ [Thread] 保存失败: {e}")
+            # 可以在这里加 Sentry 监控
 
-        print(f"[AsyncSave] 已提交后台保存任务: {expert_type} (task_id={task_id})")
+
+async def async_save_expert_result(
+    task_id: str,
+    expert_type: str,
+    output_result: str,
+    artifact_data: Optional[Dict[str, Any]] = None,
+    duration_ms: Optional[int] = None
+) -> None:
+    """
+    异步代理函数：将同步保存任务扔到线程池
+
+    🔥 关键：使用 asyncio.to_thread 把 _sync_save_wrapper 扔到线程池去跑
+    这相当于给数据库操作开了一个"平行宇宙"，主线程继续去发心跳包
+
+    Args:
+        task_id: 任务 ID
+        expert_type: 专家类型
+        output_result: 输出结果
+        artifact_data: Artifact 数据（可选）
+        duration_ms: 执行耗时（毫秒，可选）
+    """
+    # 🔥 关键：asyncio.to_thread 会把 _sync_save_wrapper 扔到线程池去跑
+    # Python 3.9+ 原生支持，不需要额外导入
+    await asyncio.to_thread(
+        _sync_save_wrapper,
+        task_id,
+        expert_type,
+        output_result,
+        artifact_data,
+        duration_ms
+    )
 
 
 def get_async_stats() -> Dict[str, int]:
