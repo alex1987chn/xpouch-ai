@@ -31,7 +31,7 @@ export async function getConversation(id: string): Promise<Conversation> {
   const response = await fetch(buildUrl(`/threads/${id}`), {
     headers: getHeaders()
   })
-  return handleResponse<Conversation>(response, '获取会话详情失败')
+  return await handleResponse<Conversation>(response, '获取会话详情失败')
 }
 
 /**

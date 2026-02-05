@@ -99,11 +99,16 @@ XPouch AI v3.0 是一个基于 **LangGraph** 的智能对话与任务协作平�
 
 **工作流程**：
 1. **Router**：意图识别，区分 simple/complex
-2. **Commander**：任务拆解，生成执行计划
-3. **Dispatcher**：检查专家存在，验证配置
-4. **Generic Worker**：执行专家任务，自动递增 index
+2. **Commander**：任务拆解，生成执行计划（调用 TaskManager）
+3. **Dispatcher**：检查专家存在，验证配置（调用 ExpertManager）
+4. **Generic Worker**：执行专家任务，自动递增 index，实时保存结果（调用 TaskManager）
 5. **Loop**：重复 Dispatcher → Generic，直到所有任务完成
 6. **Aggregator**：整合结果，生成最终响应
+
+**服务层抽象**：
+- **ExpertManager**：专家配置管理（数据库 → 缓存），提供动态加载和模型兜底
+- **TaskManager**：任务会话管理（TaskSession/SubTask），集中所有数据库操作
+- **设计原则**：Node 代码只关注业务逻辑，数据读写由 Services 层统一管理
 
 **执行闭环**：
 - Generic Worker 每次执行任务后，`current_index` 自动 +1
@@ -246,12 +251,25 @@ graph TB
         Auth["认证模块 (JWT)"]
         Chat["聊天模块"]
         Agents["智能体模块"]
+            Services["Services 服务层"]
+            Nodes["Nodes 节点"]
         Admin["管理员模块"]
+        CRUD["数据访问层 (CRUD)"]
+        Utils["工具模块"]
+        Models["数据模型"]
+        Config["配置管理"]
+        Constants["常量定义"]
 
         API --> Auth
         API --> Chat
         API --> Agents
         API --> Admin
+        Agents --> Services
+        Services --> Nodes
+        Services --> CRUD
+        Services --> Utils
+        Services --> Config
+        CRUD --> Models
     end
 
     subgraph LangGraph["LangGraph 工作流"]
@@ -346,11 +364,11 @@ xpouch-ai/
 │
 ├── backend/                           # 🔧 Python 后端
 │   ├── agents/                        # LangGraph 智能体
+│   │   ├── services/                  # 业务服务层
+│   │   │   ├── expert_manager.py     # 专家配置管理（数据库 → 缓存）
+│   │   │   └── task_manager.py      # 任务会话管理（TaskSession/SubTask）
 │   │   ├── graph.py                   # 工作流图构建
 │   │   ├── state.py                   # AgentState 类型定义
-│   │   ├── expert_loader.py           # 专家配置加载器（数据库 → 缓存）
-│   │   # v3: 已删除 dynamic_experts.py 和 experts.py
-│   │   # 所有专家配置通过 expert_loader.py 从数据库加载
 │   │   └── nodes/                     # 工作流节点实现
 │   │       ├── router.py              # 意图识别节点
 │   │       ├── commander.py           # 任务规划节点
@@ -364,6 +382,7 @@ xpouch-ai/
 │   │   ├── agents.py                  # 智能体 API
 │   │   └── system.py                  # 系统 API
 │   ├── crud/                          # 数据访问层
+│   │   └── task_session.py            # TaskSession CRUD
 │   ├── utils/                         # 工具模块
 │   │   ├── llm_factory.py             # LLM 工厂
 │   │   ├── json_parser.py             # JSON 解析器
@@ -371,6 +390,7 @@ xpouch-ai/
 │   │   └── event_generator.py         # 事件生成器
 │   ├── migrations/                    # 数据库迁移
 │   │   ├── apply_all_migrations.sql   # 统一迁移脚本
+│   │   ├── README.md                # 迁移说明文档
 │   │   └── run_migration.sh           # 迁移执行脚本
 │   ├── scripts/                       # 脚本目录
 │   │   └── init_experts.py            # 专家初始化脚本

@@ -15,8 +15,9 @@ Author: XPouch AI Team
 Created: 2026-02-05
 """
 from typing import Dict, Any, List, Optional
+from datetime import datetime
 from sqlmodel import Session
-
+from models import SubTaskCreate, SubTaskUpdate, ArtifactCreate
 from models import Message as MessageModel
 from crud.task_session import (
     create_task_session_with_subtasks,
@@ -24,6 +25,9 @@ from crud.task_session import (
     get_subtasks_by_session,
     create_subtask,
     update_task_session_status,
+    update_subtask_status,
+    create_artifacts_batch,
+    get_subtask,
 )
 
 
@@ -74,20 +78,22 @@ def get_or_create_task_session(
     if existing_session:
         print(f"[TaskManager] 复用已有 TaskSession: {existing_session.session_id}")
 
-        # ✅ 关键修复：删除旧的 SubTasks，避免重复创建导致 ID 不匹配
+        # ✅ 修复：删除旧的 SubTasks，根据新的 subtasks_data 创建新的
+        # 这样可以确保 task_list 与数据库一致
         old_subtasks = get_subtasks_by_session(db, existing_session.session_id)
-        for old_subtask in old_subtasks:
-            print(f"[TaskManager] 删除旧 SubTask: {old_subtask.id} ({old_subtask.expert_type})")
-            db.delete(old_subtask)
+        if old_subtasks:
+            print(f"[TaskManager] 删除 {len(old_subtasks)} 个旧子任务")
+            for old_subtask in old_subtasks:
+                db.delete(old_subtask)
 
-        # 更新已有 session 的信息
+        # 更新 session 的信息
         existing_session.plan_summary = plan_summary
         existing_session.estimated_steps = estimated_steps
         existing_session.execution_mode = execution_mode
-        existing_session.status = "running"  # ✅ 重置状态为 running
+        existing_session.status = "running"  # 重置状态为 running
         db.add(existing_session)
 
-        # 创建 SubTask 并关联到已有 session
+        # 创建新的 SubTasks 并关联到已有 session
         for subtask_data in subtasks_data:
             create_subtask(
                 db=db,
@@ -142,6 +148,80 @@ def complete_task_session(
         final_response=final_response
     )
     print(f"[TaskManager] TaskSession {task_session_id} 已标记为完成")
+
+
+# =============================================================================
+# 专家执行结果实时保存
+# =============================================================================
+
+def save_expert_execution_result(
+    db: Session,
+    task_id: str,
+    expert_type: str,
+    output_result: str,
+    artifact_data: Optional[Dict[str, Any]] = None,
+    duration_ms: Optional[int] = None
+) -> bool:
+    """
+    实时保存专家执行结果到数据库
+
+    在 GenericWorker 执行完成后立即调用，确保：
+    1. SubTask 状态更新为 completed
+    2. 输出结果保存到 SubTask
+    3. Artifact 创建并关联到 SubTask
+
+    Args:
+        db: 数据库会话
+        task_id: 子任务 ID (SubTask.id)
+        expert_type: 专家类型
+        output_result: 专家输出内容
+        artifact_data: Artifact 数据 (可选)
+        duration_ms: 执行耗时 (毫秒)
+
+    Returns:
+        bool: 是否保存成功
+    """
+    try:
+        print(f"[TaskManager] 保存专家执行结果: task_id={task_id}, expert_type={expert_type}")
+
+        # 1. 检查 SubTask 是否存在
+        subtask = get_subtask(db, task_id)
+        if not subtask:
+            print(f"[TaskManager] ⚠️ SubTask 不存在: {task_id}")
+            return False
+
+        # 2. 更新 SubTask 状态 - 直接操作对象避免参数问题
+        subtask.status = "completed"
+        subtask.output_result = {"content": output_result}
+        subtask.completed_at = datetime.now()
+        if duration_ms is not None:
+            subtask.duration_ms = duration_ms
+        subtask.updated_at = datetime.now()
+        db.add(subtask)
+        db.commit()
+        db.refresh(subtask)
+        print(f"[TaskManager] ✅ SubTask 状态已更新: {task_id}")
+
+        # 3. 创建 Artifact (如果有)
+        if artifact_data:
+            from models import ArtifactCreate
+            artifact_create = ArtifactCreate(
+                type=artifact_data.get("type", "markdown"),
+                title=artifact_data.get("title", f"{expert_type}结果"),
+                content=artifact_data.get("content", output_result),
+                language=artifact_data.get("language"),
+                sort_order=artifact_data.get("sort_order", 0)
+            )
+            create_artifacts_batch(db, task_id, [artifact_create])
+            print(f"[TaskManager] ✅ Artifact 已创建: {task_id}")
+
+        return True
+
+    except Exception as e:
+        print(f"[TaskManager] ❌ 保存专家执行结果失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 
 # =============================================================================
