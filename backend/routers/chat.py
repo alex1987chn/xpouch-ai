@@ -630,18 +630,25 @@ async def _handle_langgraph_stream(
                     if isinstance(output_data, dict):
                         event_queue = output_data.get("event_queue", [])
                         
-                        # 收集任务列表（从 planner 节点）
+                        # 收集任务列表（从任何返回 task_list 的节点）
+                        # ✅ 重要：每次都更新，因为 Generic Worker 会更新任务状态
                         if output_data.get("task_list"):
                             collected_task_list = output_data["task_list"]
+                            # 调试日志：查看任务状态变化
+                            if DEBUG:
+                                for task in collected_task_list:
+                                    print(f"[STREAM] Task {task.get('expert_type')}: status={task.get('status')}, id={task.get('id')}")
                             
-                        # 收集产物（从 expert_dispatcher 节点）
+                        # 收集产物（从 generic worker 节点）
                         if output_data.get("__expert_info"):
                             expert_info = output_data["__expert_info"]
-                            expert_type = expert_info.get("expert_type")
-                            if expert_type and output_data.get("artifact"):
-                                if expert_type not in expert_artifacts:
-                                    expert_artifacts[expert_type] = []
-                                expert_artifacts[expert_type].append(output_data["artifact"])
+                            task_id = expert_info.get("task_id")
+                            if task_id and output_data.get("artifact"):
+                                # 使用 task_id 作为 key，确保每个任务的 artifact 都被保存
+                                if task_id not in expert_artifacts:
+                                    expert_artifacts[task_id] = []
+                                expert_artifacts[task_id].append(output_data["artifact"])
+                                print(f"[STREAM] 收集到 artifact: task_id={task_id}")
                     else:
                         event_queue = []
                     
@@ -802,7 +809,8 @@ async def _handle_langgraph_stream(
                         for task in collected_task_list:
                             task_id = task.get("id")
                             expert_type = task.get("expert_type", "")
-                            artifacts_for_expert = expert_artifacts.get(expert_type, [])
+                            # ✅ 使用 task_id 获取 artifacts（与收集时一致）
+                            artifacts_for_task = expert_artifacts.get(task_id, [])
                             
                             if task_id and task_id in existing_subtask_ids:
                                 # 更新现有 SubTask
@@ -813,8 +821,9 @@ async def _handle_langgraph_stream(
                                     output_result={"content": task.get("output_result", "")}
                                 )
                                 # 保存 artifacts
-                                if artifacts_for_expert:
-                                    create_artifacts_batch(save_session, task_id, artifacts_for_expert)
+                                if artifacts_for_task:
+                                    create_artifacts_batch(save_session, task_id, artifacts_for_task)
+                                    print(f"[STREAM] 保存 {len(artifacts_for_task)} 个 artifacts 到 SubTask: {task_id}")
                                 print(f"[STREAM] 更新 SubTask: {expert_type}")
                             else:
                                 # 创建新 SubTask

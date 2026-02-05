@@ -229,7 +229,14 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
             "completed_at": completed_at.isoformat(),
             "duration_ms": duration_ms,
             "artifact": artifact,
-            "event_queue": full_event_queue  # ✅ 添加完整事件队列（包含 started 和 completed）
+            "event_queue": full_event_queue,  # ✅ 添加完整事件队列（包含 started 和 completed）
+            # ✅ 添加 __expert_info 用于 chat.py 识别和收集 artifacts
+            "__expert_info": {
+                "expert_type": expert_type,
+                "expert_name": expert_name,
+                "task_id": task_id,
+                "status": "completed"
+            }
         }
         
     except Exception as e:
@@ -280,7 +287,15 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
             "error": str(e),
             "started_at": started_at.isoformat(),
             "completed_at": datetime.now().isoformat(),
-            "event_queue": full_event_queue  # ✅ 添加完整事件队列（包含 started 和 failed）
+            "event_queue": full_event_queue,  # ✅ 添加完整事件队列（包含 started 和 failed）
+            # ✅ 添加 __expert_info 用于标识失败的专家
+            "__expert_info": {
+                "expert_type": expert_type,
+                "expert_name": expert_config.get("name", expert_type) if expert_config else expert_type,
+                "task_id": task_id,
+                "status": "failed",
+                "error": str(e)
+            }
         }
 
 
