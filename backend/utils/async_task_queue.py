@@ -94,7 +94,6 @@ task_queue = AsyncTaskQueue()
 
 
 async def async_save_expert_result(
-    db_session: Any,
     task_id: str,
     expert_type: str,
     output_result: str,
@@ -103,31 +102,36 @@ async def async_save_expert_result(
 ) -> None:
     """
     异步保存专家执行结果
-    
+
     将数据库保存操作放到后台线程执行，不阻塞 LLM 响应返回。
-    
+
+    🔥 修复：创建独立的 Session，避免主线程 Session 线程安全问题
+
     Args:
-        db_session: 数据库会话
         task_id: 任务 ID
         expert_type: 专家类型
         output_result: 输出结果
         artifact_data: Artifact 数据（可选）
         duration_ms: 执行耗时（毫秒，可选）
     """
+    from database import engine, Session
     from agents.services.task_manager import save_expert_execution_result
-    
-    # 提交到后台线程池
-    await task_queue.submit(
-        save_expert_execution_result,
-        db_session,
-        task_id,
-        expert_type,
-        output_result,
-        artifact_data,
-        duration_ms
-    )
-    
-    print(f"[AsyncSave] 已提交后台保存任务: {expert_type} (task_id={task_id})")
+
+    # 🔥 核心修复：创建新的 Session（线程安全）
+    # 这个 Session 的生命周期完全由这个后台函数控制，与主线程无关
+    with Session(engine) as new_session:
+        # 提交到后台线程池
+        await task_queue.submit(
+            save_expert_execution_result,
+            new_session,  # ✅ 传入新创建的 session，线程安全
+            task_id,
+            expert_type,
+            output_result,
+            artifact_data,
+            duration_ms
+        )
+
+        print(f"[AsyncSave] 已提交后台保存任务: {expert_type} (task_id={task_id})")
 
 
 def get_async_stats() -> Dict[str, int]:
