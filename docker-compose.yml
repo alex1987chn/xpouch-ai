@@ -32,6 +32,17 @@ services:
       # PostgreSQL 连接串（服务器部署时）
       # Docker Compose 会自动替换服务名 db 为实际容器IP
       - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-xpouch_admin}:${POSTGRES_PASSWORD:-admin123}@db:5432/${POSTGRES_DB:-xpouch_ai}
+
+      # 🔥🔥🔥 [新增] 覆盖默认启动命令，强制设置 600秒 超时 🔥🔥🔥
+    # 注意：这里我们显式绑定了 3000 端口，与你的 Nginx 配置保持一致
+    command: >
+      gunicorn 
+      -k uvicorn.workers.UvicornWorker 
+      main:app 
+      --bind 0.0.0.0:3000 
+      --workers 4 
+      --timeout 600
+      --keep-alive 65
     depends_on:
       db:
         condition: service_healthy
