@@ -1,86 +1,124 @@
 import { useState } from 'react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { vscDarkPlus, prism } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { cn } from '@/lib/utils'
-import { Copy, Check } from 'lucide-react'
+import { MermaidRenderer } from './renderers/MermaidRenderer'
+import { ChartRenderer } from './renderers/ChartRenderer'
 
 interface CodeArtifactProps {
   content: string
   language?: string
   className?: string
+  showHeader?: boolean  // 是否显示内部 header（默认 false，由外层控制）
+  isDarkTheme?: boolean // 主题模式
 }
 
-export default function CodeArtifact({ content, language = 'text', className }: CodeArtifactProps) {
-  const [copied, setCopied] = useState(false)
+/**
+ * CodeArtifact - 智能代码渲染中枢（无头模式）
+ * 
+ * 职责：纯粹的内容渲染，不管理 header/toolbar
+ * - 普通代码（python/js/ts等）→ PrismJS 语法高亮
+ * - mermaid → MermaidRenderer 流程图
+ * - json-chart → ChartRenderer 图表
+ * 
+ * Header 由外层 OrchestratorPanelV2 统一管理
+ */
+export default function CodeArtifact({ 
+  content, 
+  language = 'text', 
+  className,
+  showHeader = false,
+  isDarkTheme = true
+}: CodeArtifactProps) {
+  // 默认看预览（对于可视化内容），但允许切换回源码
+  const [showSource, setShowSource] = useState(false)
 
-  // 提取代码内容（去除代码块标记）
-  const extractCodeContent = (content: string): string => {
-    // 匹配 ```<lang> ... ``` 格式
-    const codeBlockMatch = content.match(/```\w*\n?([\s\S]*?)```/i)
-    if (codeBlockMatch) {
-      return codeBlockMatch[1].trim()
+  const displayLanguage = language.toLowerCase() || 'text'
+  
+  // 判断是否为可视化内容（支持预览/源码切换）
+  const isVisual = ['mermaid', 'json-chart'].includes(displayLanguage)
+
+  // 核心分流逻辑：根据语言渲染不同内容
+  const renderVisual = () => {
+    switch (displayLanguage) {
+      case 'mermaid':
+        return <MermaidRenderer code={content} />
+      case 'json-chart':
+        return <ChartRenderer code={content} />
+      default:
+        return null
     }
-    // 如果没有代码块标记，返回原始内容
-    return content.trim()
   }
 
-  // 复制功能
-  const handleCopy = () => {
-    const code = extractCodeContent(content)
-    navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const code = extractCodeContent(content)
-  const displayLanguage = language || 'text'
+  // 语法高亮用的语言映射
+  const highlightLanguage = displayLanguage === 'json-chart' ? 'json' : displayLanguage
+  const syntaxStyle = isDarkTheme ? vscDarkPlus : prism
 
   return (
-    <div className={cn('w-full h-full overflow-auto flex flex-col', className)}>
-      {/* 顶部栏：语言标识 + 复制按钮 */}
-      <div className="flex justify-between items-center bg-[#1e1e1e] dark:bg-[#1e1e1e] px-4 py-2 text-xs text-gray-400 dark:text-gray-400 border-b border-gray-700 dark:border-gray-700 shrink-0">
-        <span className="font-mono uppercase tracking-wide">{displayLanguage}</span>
-        <button
-          onClick={handleCopy}
-          className="hover:text-white dark:hover:text-white transition-colors flex items-center gap-1.5 px-2 py-1 rounded hover:bg-gray-800 dark:hover:bg-gray-700"
-        >
-          {copied ? (
-            <>
-              <Check size={14} className="text-green-400" />
-              <span>Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy size={14} />
-              <span>Copy</span>
-            </>
-          )}
-        </button>
-      </div>
+    <div className={cn(
+      'relative group rounded-lg overflow-hidden h-full flex flex-col',
+      isDarkTheme ? 'bg-[#1e1e1e]' : 'bg-white',
+      className
+    )}>
+      {/* 可选的内部 header（用于 DocArtifact 内嵌场景） */}
+      {showHeader && isVisual && (
+        <div className={cn(
+          "flex justify-between items-center px-3 py-1.5 text-xs border-b shrink-0",
+          isDarkTheme 
+            ? "bg-[#2d2d2d] text-gray-400 border-gray-700" 
+            : "bg-gray-100 text-gray-600 border-gray-200"
+        )}>
+          <span className="font-mono uppercase font-bold text-blue-400">
+            {displayLanguage}
+          </span>
+          <button
+            onClick={() => setShowSource(!showSource)}
+            className={cn(
+              "flex items-center gap-1 px-2 py-0.5 rounded text-xs",
+              isDarkTheme 
+                ? "bg-gray-700 hover:bg-gray-600 text-gray-300" 
+                : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+            )}
+          >
+            {showSource ? '预览' : '源码'}
+          </button>
+        </div>
+      )}
 
-      {/* 语法高亮区域 */}
-      <div className="flex-1 overflow-auto">
-        <SyntaxHighlighter
-          language={displayLanguage}
-          style={vscDarkPlus}
-          customStyle={{ margin: 0, padding: '1rem', fontSize: '0.875rem', backgroundColor: 'transparent' }}
-          showLineNumbers={true}
-          wrapLongLines={true}
-          lineNumberStyle={{
-            color: '#8b949e',
-            backgroundColor: 'transparent',
-            marginRight: '1rem',
-            paddingLeft: '0.5rem',
-            paddingRight: '1rem',
-            minWidth: '2.5rem',
-            textAlign: 'right',
-            userSelect: 'none'
-          }}
-        >
-          {code}
-        </SyntaxHighlighter>
+      {/* 内容区域 - 铺满剩余空间 */}
+      <div className="flex-1 w-full min-h-0 overflow-auto">
+        {isVisual && !showSource ? (
+          // 可视化模式：渲染图表/流程图
+          renderVisual()
+        ) : (
+          // 源码模式：语法高亮
+          <SyntaxHighlighter
+            language={highlightLanguage}
+            style={syntaxStyle}
+            customStyle={{ 
+              margin: 0, 
+              padding: '1rem', 
+              fontSize: '0.875rem', 
+              backgroundColor: 'transparent',
+              minHeight: '100%'
+            }}
+            showLineNumbers={true}
+            wrapLongLines={true}
+            lineNumberStyle={{
+              color: isDarkTheme ? '#8b949e' : '#6e7781',
+              backgroundColor: 'transparent',
+              marginRight: '1rem',
+              paddingLeft: '0.5rem',
+              paddingRight: '1rem',
+              minWidth: '2.5rem',
+              textAlign: 'right',
+              userSelect: 'none'
+            }}
+          >
+            {content.trim()}
+          </SyntaxHighlighter>
+        )}
       </div>
     </div>
   )
 }
-

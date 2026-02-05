@@ -39,6 +39,7 @@ export default function MessageItem({
     if (!detected && message.content.length <= 200) return
 
     // 构造符合新协议的 artifact 数据（使用下划线命名匹配后端协议）
+    // 🔥 3 Core Types 架构：language 字段从 detected 中获取（由 utils.ts 统一处理）
     const artifact = {
       id: crypto.randomUUID(),
       type: detected?.type || 'markdown',
@@ -46,7 +47,7 @@ export default function MessageItem({
         : detected?.type === 'html' ? 'HTML 预览' 
         : '消息预览',
       content: detected?.content || message.content,
-      language: detected?.type === 'code' ? codeBlocks[0]?.language : undefined,
+      language: detected?.language,  // 👈 从 ContentTypeResult 获取
       sort_order: 0
     }
 

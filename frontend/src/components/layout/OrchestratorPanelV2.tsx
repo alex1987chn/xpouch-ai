@@ -398,7 +398,10 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
           <div className="w-px h-4 bg-border mx-1" />
           <div className="flex items-center gap-1 text-[10px] font-mono text-primary uppercase">
             <FileCode className="w-3 h-3 text-accent" />
-            <span className="font-bold">{artifact.type}</span>
+            {/* 🔥 显示具体语言而非仅 type（如 python 而非 code） */}
+            <span className="font-bold">
+              {artifact.language || artifact.type}
+            </span>
           </div>
         </div>
 
@@ -468,8 +471,8 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
       <div className="flex-1 overflow-hidden min-h-0 min-w-0 relative">
         {viewMode === 'code' ? (
           <Suspense fallback={<ArtifactLoader />}>
-            <div className="h-full w-full overflow-auto bauhaus-scrollbar">
-              <CodeArtifact content={artifact.content} language={artifact.language || artifact.type} />
+            <div className="h-full w-full overflow-auto bauhaus-scrollbar p-0">
+              <CodeArtifact content={artifact.content} language={artifact.language || artifact.type} className="h-full" />
             </div>
           </Suspense>
         ) : (
@@ -477,11 +480,11 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
             <div className="h-full w-full overflow-auto bauhaus-scrollbar p-4">
               {/* 👈 所有文本类型的预览渲染 */}
               {artifact.type === 'html' ? (
-                <HtmlArtifact content={artifact.content} />
+                <HtmlArtifact content={artifact.content} className="h-full" />
               ) : artifact.type === 'markdown' || artifact.content.includes('#') || artifact.content.includes('**') ? (
-                <DocArtifact content={artifact.content} />
+                <DocArtifact content={artifact.content} className="h-full" />
               ) : (
-                <CodeArtifact content={artifact.content} language={artifact.language || artifact.type} />
+                <CodeArtifact content={artifact.content} language={artifact.language || artifact.type} className="h-full" />
               )}
             </div>
           </Suspense>
