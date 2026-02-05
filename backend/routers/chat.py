@@ -159,6 +159,7 @@ async def get_thread(
                     for msg in thread.messages
                 ],
                 "task_session": {
+                    "id": task_session.session_id,  # ✅ 前端兼容性：同时提供 id 和 session_id
                     "session_id": task_session.session_id,
                     "user_query": task_session.user_query,
                     "final_response": task_session.final_response,
