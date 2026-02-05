@@ -22,6 +22,7 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
     """
     expert_results = state["expert_results"]
     strategy = state["strategy"]
+    task_list = state.get("task_list", [])  # ✅ 获取 task_list 以便返回
 
     # 获取数据库会话
     db_session = state.get("db_session")
@@ -33,7 +34,11 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
     message_id = state.get("message_id", str(uuid4()))
 
     if not expert_results:
-        return {"final_response": "未生成任何执行结果。", "event_queue": event_queue}
+        return {
+            "task_list": state.get("task_list", []),  # ✅ 添加 task_list
+            "final_response": "未生成任何执行结果。",
+            "event_queue": event_queue
+        }
 
     print(f"[AGG] 正在聚合 {len(expert_results)} 个结果，调用 LLM 生成总结...")
 
@@ -102,7 +107,9 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
     
     print(f"[AGG] 聚合完成，回复长度: {len(final_response)}")
 
+    # ✅ 返回 task_list 以确保 chat.py 能收集到所有任务状态
     return {
+        "task_list": task_list,  # ✅ 添加 task_list
         "final_response": final_response,
         "event_queue": event_queue
     }
