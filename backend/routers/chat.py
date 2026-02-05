@@ -343,16 +343,18 @@ async def chat_endpoint(
     # 如果是自定义智能体，使用直接 LLM 调用模式
     if custom_agent:
         if request.stream:
+            print(f"[CHAT] {datetime.now().isoformat()} - ✅ 使用自定义智能体流式模式")
             return await _handle_custom_agent_stream(
                 custom_agent, langchain_messages, thread_id, thread, request.message_id
             )
         else:
+            print(f"[CHAT] {datetime.now().isoformat()} - ❌ 使用自定义智能体非流式模式（假流式！）")
             return await _handle_custom_agent_sync(
                 custom_agent, langchain_messages, thread_id, thread, session
             )
 
     # 系统默认助手模式：通过 LangGraph 处理
-    print(f"[CHAT] 进入系统默认助手模式，使用 LangGraph 处理")
+    print(f"[CHAT] {datetime.now().isoformat()} - 进入系统默认助手模式，使用 LangGraph 处理")
 
     initial_state = {
         "messages": langchain_messages,
@@ -367,10 +369,12 @@ async def chat_endpoint(
     }
 
     if request.stream:
+        print(f"[CHAT] {datetime.now().isoformat()} - ✅ 使用 LangGraph 流式模式（复杂模式）")
         return await _handle_langgraph_stream(
             initial_state, thread_id, thread, request.message, session, request.message_id
         )
     else:
+        print(f"[CHAT] {datetime.now().isoformat()} - ❌ 使用 LangGraph 非流式模式（假流式！）")
         return await _handle_langgraph_sync(
             initial_state, thread_id, thread, request.message, session
         )
@@ -398,6 +402,13 @@ async def _handle_custom_agent_stream(
 
         # 🔥🔥🔥 新增：心跳间隔（15秒）远小于 Cloudflare 的 100秒超时 🔥🔥🔥
         HEARTBEAT_INTERVAL = 15.0
+
+        print(f"[CUSTOM AGENT STREAM] {datetime.now().isoformat()} - 开始流式处理，心跳间隔={HEARTBEAT_INTERVAL}秒")
+
+        # 🔥 新增：强制心跳计时器（每 30 秒强制发送一次心跳，不管有没有事件）
+        FORCE_HEARTBEAT_INTERVAL = 30.0
+        last_heartbeat_time = datetime.now()
+        print(f"[CUSTOM AGENT STREAM] 强制心跳间隔={FORCE_HEARTBEAT_INTERVAL}秒")
 
         try:
             # 使用新的配置系统获取模型
@@ -483,8 +494,18 @@ async def _handle_custom_agent_stream(
                 except asyncio.TimeoutError:
                     # 🔥🔥🔥 心跳保活：LLM 正在思考，但超过 15 秒未产生数据 🔥🔥🔥
                     # 发送 SSE 注释（冒号开头），浏览器会忽略，但 Cloudflare 认为有数据传输
+                    print(f"[HEARTBEAT-CUSTOM-TIMEOUT] {datetime.now().isoformat()} - 发送心跳保活（已等待 {HEARTBEAT_INTERVAL} 秒无数据）")
                     yield ": keep-alive\n\n"
+                    last_heartbeat_time = datetime.now()
                     continue
+
+                # 🔥 强制心跳：即使有事件，每 30 秒也强制发送一次心跳
+                current_time = datetime.now()
+                time_since_last_heartbeat = (current_time - last_heartbeat_time).total_seconds()
+                if time_since_last_heartbeat >= FORCE_HEARTBEAT_INTERVAL:
+                    print(f"[HEARTBEAT-CUSTOM-FORCE] {datetime.now().isoformat()} - 强制发送心跳保活（距离上次心跳 {time_since_last_heartbeat:.1f} 秒）")
+                    yield ": keep-alive\n\n"
+                    last_heartbeat_time = current_time
 
         except Exception as e:
             import traceback
@@ -638,11 +659,11 @@ async def _handle_langgraph_stream(
         event_count = 0
         router_mode = ""
         task_session_id = None  # v3.0: 跟踪 TaskSession ID
-        
+
         # v3.0: 收集任务列表和产物（用于最终保存）
         collected_task_list = []
         expert_artifacts = {}
-        
+
         # v3.0: 在 initial_state 中注入数据库会话和 thread_id
         initial_state["db_session"] = session
         initial_state["thread_id"] = thread_id
@@ -652,8 +673,15 @@ async def _handle_langgraph_stream(
         # 🔥🔥🔥 新增：心跳间隔（15秒）远小于 Cloudflare 的 100秒超时 🔥🔥🔥
         HEARTBEAT_INTERVAL = 15.0
 
+        print(f"[LANGGRAPH STREAM] {datetime.now().isoformat()} - 开始流式处理，心跳间隔={HEARTBEAT_INTERVAL}秒")
+
         # 获取图的流迭代器
         iterator = commander_graph.astream_events(initial_state, version="v2")
+
+        # 🔥 新增：强制心跳计时器（每 30 秒强制发送一次心跳，不管有没有事件）
+        FORCE_HEARTBEAT_INTERVAL = 30.0
+        last_heartbeat_time = datetime.now()
+        print(f"[LANGGRAPH STREAM] 强制心跳间隔={FORCE_HEARTBEAT_INTERVAL}秒")
 
         # 辅助函数：安全地获取下一个事件
         async def get_next_event():
@@ -663,6 +691,9 @@ async def _handle_langgraph_stream(
                     iterator.__anext__(),
                     timeout=HEARTBEAT_INTERVAL
                 )
+            except asyncio.TimeoutError:
+                # 抛出超时异常，让外层捕获
+                raise
             except StopAsyncIteration:
                 return None
 
@@ -680,11 +711,27 @@ async def _handle_langgraph_stream(
                     kind = event["event"]
                     name = event.get("name", "")
 
+                    # 🔥 调试：记录每个事件的时间戳
+                    if event_count == 1:
+                        print(f"[STREAM] {datetime.now().isoformat()} - 第 1 个事件: {kind} / {name}")
+                    elif event_count % 50 == 0:
+                        print(f"[STREAM] {datetime.now().isoformat()} - 已处理 {event_count} 个事件，最近事件: {kind} / {name}")
+
                 except asyncio.TimeoutError:
                     # 🔥🔥🔥 心跳保活：AI 正在思考，但超过 15 秒未产生数据 🔥🔥🔥
                     # 发送 SSE 注释（冒号开头），浏览器会忽略，但 Cloudflare 认为有数据传输
+                    print(f"[HEARTBEAT-TIMEOUT] {datetime.now().isoformat()} - 发送心跳保活（已等待 {HEARTBEAT_INTERVAL} 秒无数据）")
                     yield ": keep-alive\n\n"
+                    last_heartbeat_time = datetime.now()
                     continue
+
+                # 🔥 强制心跳：即使有事件，每 30 秒也强制发送一次心跳
+                current_time = datetime.now()
+                time_since_last_heartbeat = (current_time - last_heartbeat_time).total_seconds()
+                if time_since_last_heartbeat >= FORCE_HEARTBEAT_INTERVAL:
+                    print(f"[HEARTBEAT-FORCE] {datetime.now().isoformat()} - 强制发送心跳保活（距离上次心跳 {time_since_last_heartbeat:.1f} 秒）")
+                    yield ": keep-alive\n\n"
+                    last_heartbeat_time = current_time
                 
                 if event_count % 100 == 0:
                     print(f"[STREAM] 已处理 {event_count} 个事件")
