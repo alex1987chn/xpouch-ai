@@ -803,6 +803,8 @@ async def _handle_langgraph_stream(
                         print(f"[STREAM] 更新 thread_mode 为: {router_mode}")
 
                     # 复杂模式：更新 TaskSession 和保存 SubTask
+                    print(f"[STREAM] 🔍 诊断: router_mode={router_mode}, task_session_id={task_session_id}, len(collected_task_list)={len(collected_task_list)}")
+                    
                     if router_mode == "complex" and task_session_id:
                         print(f"[STREAM] 更新复杂模式数据: {len(collected_task_list)} 个任务, session={task_session_id}")
                         
@@ -815,21 +817,32 @@ async def _handle_langgraph_stream(
                         )
                         
                         # 获取已存在的 SubTasks（避免重复创建）
+                        print(f"[STREAM] 🔍 诊断: 查询 existing_subtasks, task_session_id={task_session_id}")
                         existing_subtasks = get_subtasks_by_session(save_session, task_session_id)
+                        print(f"[STREAM] 🔍 诊断: 查询到 {len(existing_subtasks)} 个 existing_subtasks")
                         existing_subtask_ids = {st.id for st in existing_subtasks}
-                        print(f"[STREAM] 🔍 调试: existing_subtask_ids={existing_subtask_ids}")
+                        print(f"[STREAM] 🔍 诊断: existing_subtask_ids={existing_subtask_ids}")
                         
                         # 保存/更新 SubTasks
-                        for task in collected_task_list:
+                        print(f"[STREAM] 🔍 诊断: 准备遍历 collected_task_list, 数量={len(collected_task_list)}")
+                        if not collected_task_list:
+                            print(f"[STREAM] 🔍 诊断: collected_task_list 为空！")
+                        else:
+                            for idx, task in enumerate(collected_task_list):
+                                print(f"[STREAM] 🔍 诊断: 开始处理第 {idx} 个 task")
+                                task_id = task.get("id")
+                                print(f"[STREAM] 🔍 诊断:   task_id={task_id}")
+                                print(f"[STREAM] 🔍 诊断:   task_id in existing_subtask_ids? {task_id in existing_subtask_ids}")
+                                
+                                expert_type = task.get("expert_type", "")
                             task_id = task.get("id")
-                            expert_type = task.get("expert_type", "")
-                            # ✅ 使用 task_id 获取 artifacts（与收集时一致）
-                            artifacts_for_task = expert_artifacts.get(task_id, [])
-                            
-                            print(f"[STREAM] 🔍 调试: 处理 task_id={task_id}, expert_type={expert_type}")
-                            print(f"[STREAM] 🔍 调试:   - task.get('status')={task.get('status')}")
-                            print(f"[STREAM] 🔍 调试:   - task.get('output_result') type={type(task.get('output_result'))}")
-                            print(f"[STREAM] 🔍 调试:   - artifacts_for_task count={len(artifacts_for_task)}")
+                                # ✅ 使用 task_id 获取 artifacts（与收集时一致）
+                                artifacts_for_task = expert_artifacts.get(task_id, [])
+
+                                print(f"[STREAM] 🔍 调试: 处理 task_id={task_id}, expert_type={expert_type}")
+                                print(f"[STREAM] 🔍 调试:   - task.get('status')={task.get('status')}")
+                                print(f"[STREAM] 🔍 调试:   - task.get('output_result') type={type(task.get('output_result'))}")
+                                print(f"[STREAM] 🔍 调试:   - artifacts_for_task count={len(artifacts_for_task)}")
                             
                             if task_id and task_id in existing_subtask_ids:
                                 # 更新现有 SubTask
@@ -877,10 +890,12 @@ async def _handle_langgraph_stream(
                                     sort_order=task.get("sort_order", 0),
                                     input_data=task.get("input_data", {})
                                 )
-                                print(f"[STREAM] 创建 SubTask: {expert_type}")
+                                print(f"[STREAM] 🔍 诊断: 创建新 SubTask, task_id={task_id}, expert_type={expert_type}")
 
+                    print(f"[STREAM] 🔍 诊断: for 循环完成，准备提交")
                     save_session.add(thread_obj)
                 save_session.commit()
+                print(f"[STREAM] 🔍 诊断: 数据库已提交")
 
         yield "data: [DONE]\n\n"
 
