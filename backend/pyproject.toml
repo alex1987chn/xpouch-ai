@@ -19,4 +19,5 @@ dependencies = [
     "python-multipart>=0.0.6",
     "psycopg[binary]>=3.3.0",
     "alembic>=1.13.0",
+    "pgvector>=0.3.0",  # 🔥 新增：pgvector Python 客户端，支持向量操作
 ]
