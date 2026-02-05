@@ -12,7 +12,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 
 from agents.state import AgentState
-from agents.expert_loader import get_expert_config_cached
+from agents.services.expert_manager import get_expert_config_cached
 from utils.llm_factory import get_effective_model, get_expert_llm
 from providers_config import get_model_config
 
@@ -66,7 +66,7 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         print(f"[GenericWorker] 缓存中未找到 '{expert_type}'，尝试从数据库加载...")
         from database import engine
         from sqlmodel import Session
-        from agents.expert_loader import get_expert_config
+        from agents.services.expert_manager import get_expert_config
         
         with Session(engine) as session:
             expert_config = get_expert_config(expert_type, session)

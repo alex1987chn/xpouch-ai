@@ -34,7 +34,7 @@ from models import User, TaskSession, SubTask
 from constants import SYSTEM_AGENT_DEFAULT_CHAT
 from agents.graph import commander_graph
 from agents.nodes.generic import generic_worker_node
-from agents.expert_loader import get_expert_config_cached
+from agents.services.expert_manager import get_expert_config_cached
 from utils.llm_factory import get_llm_instance
 from utils.exceptions import (
     AppError, ValidationError, NotFoundError,
@@ -78,7 +78,7 @@ async def lifespan(app: FastAPI):
             print(f"[Lifespan] Found {len(existing_experts)} experts in database")
 
     # 清空专家缓存，确保使用最新的兜底机制重新加载
-    from agents.expert_loader import force_refresh_all
+    from agents.services.expert_manager import force_refresh_all
     force_refresh_all()
     print("[Lifespan] Expert cache cleared for fresh start")
 

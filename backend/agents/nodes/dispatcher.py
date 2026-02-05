@@ -8,7 +8,7 @@ v3.2 重构：移除对 dynamic_experts.py 的依赖
 """
 from typing import Dict, Any
 from agents.state import AgentState
-from agents.expert_loader import get_expert_config
+from agents.services.expert_manager import get_expert_config
 from utils.exceptions import AppError
 
 
@@ -41,7 +41,7 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
             expert_config = get_expert_config(expert_type, db_session)
         else:
             # 如果没有 db_session，暂时返回空（实际应该通过缓存检查）
-            from agents.expert_loader import get_expert_config_cached
+            from agents.services.expert_manager import get_expert_config_cached
             expert_config = get_expert_config_cached(expert_type)
         
         if not expert_config:
