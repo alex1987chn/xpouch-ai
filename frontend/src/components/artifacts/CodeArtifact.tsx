@@ -1,5 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useState } from 'react'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { cn } from '@/lib/utils'
+import { Copy, Check } from 'lucide-react'
 
 interface CodeArtifactProps {
   content: string
@@ -8,7 +11,7 @@ interface CodeArtifactProps {
 }
 
 export default function CodeArtifact({ content, language = 'text', className }: CodeArtifactProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [copied, setCopied] = useState(false)
 
   // 提取代码内容（去除代码块标记）
   const extractCodeContent = (content: string): string => {
@@ -21,51 +24,62 @@ export default function CodeArtifact({ content, language = 'text', className }: 
     return content.trim()
   }
 
-  // 简单的代码高亮渲染（不使用 Monaco Editor，保持轻量）
-  useEffect(() => {
-    if (!containerRef.current || !content) return
-
+  // 复制功能
+  const handleCopy = () => {
     const code = extractCodeContent(content)
-    const lines = code.split('\n')
-
-  // 基础语法高亮（关键词）
-  const highlightKeywords = (text: string, keywords: string[]) => {
-    return keywords.reduce((acc, keyword) => {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'g')
-      return acc.replace(regex, `<span class="text-purple-600 dark:text-purple-300 font-semibold">${keyword}</span>`)
-    }, text)
+    navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
-  const keywordsByLanguage: Record<string, string[]> = {
-    python: ['def', 'class', 'import', 'from', 'return', 'if', 'else', 'for', 'while', 'try', 'except', 'with', 'as'],
-    javascript: ['const', 'let', 'var', 'function', 'return', 'if', 'else', 'for', 'while', 'try', 'catch', 'import', 'export'],
-    java: ['public', 'private', 'class', 'void', 'int', 'String', 'return', 'if', 'else', 'for', 'while'],
-    typescript: ['interface', 'type', 'const', 'let', 'function', 'return', 'interface', 'export'],
-    rust: ['fn', 'let', 'mut', 'struct', 'impl', 'pub', 'use', 'return'],
-  }
-
-  const keywords = keywordsByLanguage[language.toLowerCase()] || []
-  const highlightedLines = lines.map(line =>
-    keywords.length > 0 ? highlightKeywords(escapeHtml(line), keywords) : escapeHtml(line)
-  )
-
-  containerRef.current.innerHTML = highlightedLines
-    .map((line, idx) => `<div class="flex min-w-0"><span class="w-10 text-right text-gray-500 dark:text-gray-400 select-none mr-4 text-xs shrink-0">${idx + 1}</span><pre class="flex-1 text-sm text-slate-900 dark:text-slate-100 font-mono whitespace-pre-wrap break-words">${line}</pre></div>`)
-    .join('')
-  }, [content, language])
-
-  const escapeHtml = (text: string) => {
-    const div = document.createElement('div')
-    div.textContent = text
-    return div.innerHTML
-  }
+  const code = extractCodeContent(content)
+  const displayLanguage = language || 'text'
 
   return (
-    <div className={cn('w-full h-full overflow-auto bauhaus-scrollbar', className)}>
-      <div
-        ref={containerRef}
-        className="w-full h-full font-mono text-sm"
-      />
+    <div className={cn('w-full h-full overflow-auto flex flex-col', className)}>
+      {/* 顶部栏：语言标识 + 复制按钮 */}
+      <div className="flex justify-between items-center bg-[#1e1e1e] dark:bg-[#1e1e1e] px-4 py-2 text-xs text-gray-400 dark:text-gray-400 border-b border-gray-700 dark:border-gray-700 shrink-0">
+        <span className="font-mono uppercase tracking-wide">{displayLanguage}</span>
+        <button
+          onClick={handleCopy}
+          className="hover:text-white dark:hover:text-white transition-colors flex items-center gap-1.5 px-2 py-1 rounded hover:bg-gray-800 dark:hover:bg-gray-700"
+        >
+          {copied ? (
+            <>
+              <Check size={14} className="text-green-400" />
+              <span>Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy size={14} />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* 语法高亮区域 */}
+      <div className="flex-1 overflow-auto">
+        <SyntaxHighlighter
+          language={displayLanguage}
+          style={vscDarkPlus}
+          customStyle={{ margin: 0, padding: '1rem', fontSize: '0.875rem', backgroundColor: 'transparent' }}
+          showLineNumbers={true}
+          wrapLongLines={true}
+          lineNumberStyle={{
+            color: '#8b949e',
+            backgroundColor: 'transparent',
+            marginRight: '1rem',
+            paddingLeft: '0.5rem',
+            paddingRight: '1rem',
+            minWidth: '2.5rem',
+            textAlign: 'right',
+            userSelect: 'none'
+          }}
+        >
+          {code}
+        </SyntaxHighlighter>
+      </div>
     </div>
   )
 }
