@@ -127,6 +127,7 @@ async def get_thread(
         raise NotFoundError(resource="会话")
 
     # 如果是AI助手线程（复杂模式），加载TaskSession和SubTask
+    print(f"[GET_THREAD] thread_id={thread_id}, agent_type={thread.agent_type}, task_session_id={thread.task_session_id}")
     if thread.agent_type == "ai" and thread.task_session_id:
         task_session = session.get(TaskSession, thread.task_session_id)
         if task_session:
@@ -621,29 +622,37 @@ async def _handle_langgraph_stream(
                 kind = event["event"]
                 name = event.get("name", "")
                 
-                if event_count % 10 == 0:
-                    print(f"[STREAM] 已处理 {event_count} 个事件，当前: {kind} - {name}")
+                if event_count % 100 == 0:
+                    print(f"[STREAM] 已处理 {event_count} 个事件")
 
                 # v3.0: 处理节点返回的 event_queue（新协议事件）
                 if kind == "on_chain_end":
                     raw_output = event["data"].get("output", {})
-                    # ✅ 确保 output_data 是字典类型（LangGraph 有时会返回字符串）
+                    # 确保 output_data 是字典类型（LangGraph 有时会返回字符串）
                     output_data = raw_output if isinstance(raw_output, dict) else {}
-                    # ✅ 调试：打印所有 on_chain_end 事件
-                    if isinstance(raw_output, dict):
-                        print(f"[STREAM DEBUG] on_chain_end: name={name}, has_task_list={bool(output_data.get('task_list'))}, has_expert_info={bool(output_data.get('__expert_info'))}")
                     
                     if isinstance(output_data, dict):
                         event_queue = output_data.get("event_queue", [])
-                        
+
+                        # 捕获 commander 节点返回的 task_session_id
+                        if name == "commander":
+                            session_id = output_data.get("task_session_id")
+                            if session_id:
+                                task_session_id = session_id
+                                print(f"[STREAM] 捕获到 TaskSession ID: {task_session_id}")
+                                # 立即更新 thread 的 task_session_id
+                                # Commander 只在复杂模式下才会创建 TaskSession，所以不需要检查 router_mode
+                                thread_obj = session.get(Thread, thread_id)
+                                if thread_obj and thread_obj.task_session_id != task_session_id:
+                                    thread_obj.task_session_id = task_session_id
+                                    session.add(thread_obj)
+                                    session.commit()
+                                    print(f"[STREAM] ✅ 已立即设置 thread.task_session_id = {task_session_id}")
+
                         # 收集任务列表（从任何返回 task_list 的节点）
-                        # ✅ 重要：每次都更新，因为 Generic Worker 会更新任务状态
+                        # 重要：每次都更新，因为 Generic Worker 会更新任务状态
                         if output_data.get("task_list"):
                             collected_task_list = output_data["task_list"]
-                            # 调试日志：查看任务状态变化
-                            if DEBUG:
-                                for task in collected_task_list:
-                                    print(f"[STREAM] Task {task.get('expert_type')}: status={task.get('status')}, id={task.get('id')}")
                             
                         # 收集产物（从 generic worker 节点）
                         if output_data.get("__expert_info"):
@@ -651,17 +660,12 @@ async def _handle_langgraph_stream(
                             task_id = expert_info.get("task_id")
                             expert_type = expert_info.get("expert_type")
                             artifact_data = output_data.get("artifact")
-                            print(f"[STREAM DEBUG] expert_info found: task_id={task_id}, expert_type={expert_type}, has_artifact={bool(artifact_data)}")
                             if task_id and artifact_data:
                                 # 使用 task_id 作为 key，确保每个任务的 artifact 都被保存
                                 if task_id not in expert_artifacts:
                                     expert_artifacts[task_id] = []
                                 expert_artifacts[task_id].append(artifact_data)
                                 print(f"[STREAM] ✅ 收集到 artifact: task_id={task_id}, type={artifact_data.get('type')}, title={artifact_data.get('title')}")
-                            elif task_id:
-                                print(f"[STREAM] ⚠️ 有 expert_info 但没有 artifact: task_id={task_id}, expert_type={expert_type}")
-                            else:
-                                print(f"[STREAM] ⚠️ 有 expert_info 但没有 task_id: expert_type={expert_type}")
                     else:
                         event_queue = []
                     
@@ -696,35 +700,19 @@ async def _handle_langgraph_stream(
                         print(f"[STREAM] Router 决策: {router_decision}")
                         router_mode = router_decision
                         
-                        # v3.0: 如果是复杂模式，立即创建 TaskSession 并更新 thread
+                        # v3.0: 如果是复杂模式，更新 thread 的 mode
+                        # 注意：TaskSession 由 Commander 完全负责创建和复用
                         if router_decision == "complex":
-                            with Session(engine) as update_session:
-                                thread_obj = update_session.get(Thread, thread_id)
-                                if thread_obj:
-                                    # 立即设置 agent_type 为 ai
-                                    if thread_obj.agent_type != "ai":
-                                        thread_obj.agent_type = "ai"
-                                    thread_obj.thread_mode = "complex"
-                                    
-                                    # 检查是否已有 TaskSession（避免重复创建）
-                                    existing_ts = get_task_session_by_thread(update_session, thread_id)
-                                    if existing_ts:
-                                        task_session_id = existing_ts.session_id
-                                        print(f"[STREAM] 使用现有 TaskSession: {task_session_id}")
-                                    else:
-                                        # 创建新的 TaskSession
-                                        task_session = create_task_session(
-                                            db=update_session,
-                                            thread_id=thread_id,
-                                            user_query=user_message
-                                        )
-                                        task_session_id = task_session.session_id
-                                        thread_obj.task_session_id = task_session_id
-                                        print(f"[STREAM] 创建新 TaskSession: {task_session_id}")
-                                    
-                                    update_session.add(thread_obj)
-                                    update_session.commit()
-                                    print(f"[STREAM] 已更新 thread 为 complex 模式")
+                            thread_obj = session.get(Thread, thread_id)
+                            if thread_obj:
+                                # 立即设置 agent_type 为 ai
+                                if thread_obj.agent_type != "ai":
+                                    thread_obj.agent_type = "ai"
+                                thread_obj.thread_mode = "complex"
+
+                                session.add(thread_obj)
+                                session.commit()
+                                print(f"[STREAM] 已更新 thread 为 complex 模式")
                         
                         # v3.0: 发送 router.decision 事件（新协议）
                         from event_types.events import EventType, RouterDecisionData, build_sse_event
@@ -798,107 +786,79 @@ async def _handle_langgraph_stream(
             save_session.add(ai_msg_db)
 
             thread_obj = save_session.get(Thread, thread_id)
-                if thread_obj:
-                    thread_obj.updated_at = datetime.now()
+            if thread_obj:
+                thread_obj.updated_at = datetime.now()
 
-                    if router_mode:
-                        thread_obj.thread_mode = router_mode
-                        print(f"[STREAM] 更新 thread_mode 为: {router_mode}")
+                if router_mode:
+                    thread_obj.thread_mode = router_mode
 
-                    # 复杂模式：更新 TaskSession 和保存 SubTask
-                    print(f"[STREAM] 🔍 诊断: router_mode={router_mode}, task_session_id={task_session_id}, len(collected_task_list)={len(collected_task_list)}")
-                    
-                    if router_mode == "complex" and task_session_id:
-                        print(f"[STREAM] 更新复杂模式数据: {len(collected_task_list)} 个任务, session={task_session_id}")
-                        
-                        # 更新 TaskSession 状态为完成
-                        update_task_session_status(
-                            save_session, 
-                            task_session_id, 
-                            "completed", 
-                            final_response=full_response
-                        )
-                        
-                        # 获取已存在的 SubTasks（避免重复创建）
-                        print(f"[STREAM] 🔍 诊断: 查询 existing_subtasks, task_session_id={task_session_id}")
-                        existing_subtasks = get_subtasks_by_session(save_session, task_session_id)
-                        print(f"[STREAM] 🔍 诊断: 查询到 {len(existing_subtasks)} 个 existing_subtasks")
-                        existing_subtask_ids = {st.id for st in existing_subtasks}
-                        print(f"[STREAM] 🔍 诊断: existing_subtask_ids={existing_subtask_ids}")
-                        
-                        # 保存/更新 SubTasks
-                        print(f"[STREAM] 🔍 诊断: 准备遍历 collected_task_list, 数量={len(collected_task_list)}")
-                        if not collected_task_list:
-                            print(f"[STREAM] 🔍 诊断: collected_task_list 为空！")
-                        else:
-                            for idx, task in enumerate(collected_task_list):
-                                print(f"[STREAM] 🔍 诊断: 开始处理第 {idx} 个 task")
-                                task_id = task.get("id")
-                                print(f"[STREAM] 🔍 诊断:   task_id={task_id}")
-                                print(f"[STREAM] 🔍 诊断:   task_id in existing_subtask_ids? {task_id in existing_subtask_ids}")
-                                
-                                expert_type = task.get("expert_type", "")
-                            task_id = task.get("id")
-                                # ✅ 使用 task_id 获取 artifacts（与收集时一致）
-                                artifacts_for_task = expert_artifacts.get(task_id, [])
+                # 复杂模式：更新 TaskSession 和保存 SubTask
+                if router_mode == "complex" and task_session_id:
+                    print(f"[STREAM] 更新复杂模式数据: {len(collected_task_list)} 个任务, session={task_session_id}")
+                    # 更新 thread 的 task_session_id
+                    thread_obj.task_session_id = task_session_id
+                    print(f"[STREAM] ✅ 已设置 thread.task_session_id = {task_session_id}")
 
-                                print(f"[STREAM] 🔍 调试: 处理 task_id={task_id}, expert_type={expert_type}")
-                                print(f"[STREAM] 🔍 调试:   - task.get('status')={task.get('status')}")
-                                print(f"[STREAM] 🔍 调试:   - task.get('output_result') type={type(task.get('output_result'))}")
-                                print(f"[STREAM] 🔍 调试:   - artifacts_for_task count={len(artifacts_for_task)}")
-                            
-                            if task_id and task_id in existing_subtask_ids:
-                                # 更新现有 SubTask
-                                # ✅ 修复：output_result 已经是 {"content": "..."} 格式，直接使用
-                                output_value = task.get("output_result", {"content": ""})
-                                # 兼容处理：如果已经是字典格式，直接使用；否则包装
-                                if isinstance(output_value, dict):
-                                    output_result = output_value
-                                else:
-                                    output_result = {"content": str(output_value)}
-                                
-                                print(f"[STREAM] 🔍 调试: 调用 update_subtask_status")
-                                print(f"[STREAM] 🔍 调试:   - status={task.get('status', 'completed')}")
-                                print(f"[STREAM] 🔍 调试:   - output_result type={type(output_result)}")
-                                
-                                update_subtask_status(
-                                    save_session,
-                                    task_id,
-                                    status=task.get("status", "completed"),
-                                    output_result=output_result,
-                                    duration_ms=task.get("duration_ms")  # ✅ 添加 duration_ms
-                                )
-                                print(f"[STREAM] ✅ SubTask 状态已更新")
-                                
-                                # 保存 artifacts
-                                if artifacts_for_task:
-                                    print(f"[STREAM] 准备保存 artifacts: task_id={task_id}, count={len(artifacts_for_task)}")
-                                    for art in artifacts_for_task:
-                                        print(f"[STREAM]   - artifact: type={art.get('type')}, title={art.get('title')[:30]}...")
-                                    try:
-                                        created = create_artifacts_batch(save_session, task_id, artifacts_for_task)
-                                        print(f"[STREAM] ✅ 成功保存 {len(created)} 个 artifacts 到 SubTask: {task_id}")
-                                    except Exception as art_err:
-                                        print(f"[STREAM] ❌ 保存 artifacts 失败: {art_err}")
-                                        import traceback
-                                        traceback.print_exc()
-                                print(f"[STREAM] 更新 SubTask: {expert_type}")
+                    # 更新 TaskSession 状态为完成
+                    update_task_session_status(
+                        save_session,
+                        task_session_id,
+                        "completed",
+                        final_response=full_response
+                    )
+
+                    # 获取已存在的 SubTasks（避免重复创建）
+                    existing_subtasks = get_subtasks_by_session(save_session, task_session_id)
+                    existing_subtask_ids = {st.id for st in existing_subtasks}
+
+                    # 保存/更新 SubTasks
+                    for idx, task in enumerate(collected_task_list):
+                        task_id = task.get("id")
+                        expert_type = task.get("expert_type", "")
+                        # 使用 task_id 获取 artifacts（与收集时一致）
+                        artifacts_for_task = expert_artifacts.get(task_id, [])
+
+                        if task_id and task_id in existing_subtask_ids:
+                            # 更新现有 SubTask
+                            # output_result 已经是 {"content": "..."} 格式，直接使用
+                            output_value = task.get("output_result", {"content": ""})
+                            # 兼容处理：如果已经是字典格式，直接使用；否则包装
+                            if isinstance(output_value, dict):
+                                output_result = output_value
                             else:
-                                # 创建新 SubTask
-                                create_subtask(
-                                    save_session,
-                                    task_session_id=task_session_id,
-                                    expert_type=expert_type,
-                                    task_description=task.get("description", ""),
-                                    sort_order=task.get("sort_order", 0),
-                                    input_data=task.get("input_data", {})
-                                )
-                                print(f"[STREAM] 🔍 诊断: 创建新 SubTask, task_id={task_id}, expert_type={expert_type}")
+                                output_result = {"content": str(output_value)}
 
-                    print(f"[STREAM] 🔍 诊断: for 循环完成，准备提交")
-                    save_session.add(thread_obj)
+                            update_subtask_status(
+                                save_session,
+                                task_id,
+                                status=task.get("status", "completed"),
+                                output_result=output_result,
+                                duration_ms=task.get("duration_ms")
+                            )
+                            print(f"[STREAM] ✅ SubTask 状态已更新: {expert_type}")
+
+                            # 保存 artifacts
+                            if artifacts_for_task:
+                                try:
+                                    created = create_artifacts_batch(save_session, task_id, artifacts_for_task)
+                                    print(f"[STREAM] ✅ 成功保存 {len(created)} 个 artifacts 到 SubTask: {task_id}")
+                                except Exception as art_err:
+                                    print(f"[STREAM] ❌ 保存 artifacts 失败: {art_err}")
+                                    import traceback
+                                    traceback.print_exc()
+                        else:
+                            # 创建新 SubTask
+                            create_subtask(
+                                save_session,
+                                task_session_id=task_session_id,
+                                expert_type=expert_type,
+                                task_description=task.get("description", ""),
+                                sort_order=task.get("sort_order", 0),
+                                input_data=task.get("input_data", {})
+                            )
+
+                save_session.add(thread_obj)
                 save_session.commit()
-                print(f"[STREAM] 🔍 诊断: 数据库已提交")
 
         yield "data: [DONE]\n\n"
 

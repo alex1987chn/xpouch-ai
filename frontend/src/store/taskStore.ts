@@ -459,13 +459,6 @@ export const useTaskStore = create<TaskState>()(
             artifacts: task.artifacts.map(a => ({...a}))
           }))
         state.tasksCacheVersion++
-
-        console.log('[TaskStore] 状态恢复完成:', {
-          sessionId: session.session_id,
-          taskCount: subTasks.length,
-          runningTasks: state.runningTaskIds.size,
-          hasRunningTask
-        })
       })
     },
 
