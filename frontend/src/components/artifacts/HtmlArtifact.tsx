@@ -83,9 +83,9 @@ export default function HtmlArtifact({ content, className }: HtmlArtifactProps) 
         <iframe
           src={htmlUrl}
           className="w-full h-full bg-white border-none"
-          // 🔥 允许执行 JavaScript 和必要的交互权限（去掉 allow-same-origin 提高安全性）
-          // 隔离 sandbox，无法访问主站 Cookie/LocalStorage，更安全
-          sandbox="allow-scripts allow-forms allow-popups allow-modals"
+          // 🔥 允许执行 JavaScript 和必要的交互权限（包含 allow-same-origin 支持 localStorage）
+          // 注意：iframe 内容可访问自身 Origin 的 LocalStorage/Cookies，但与主站隔离（blob URL）
+          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
           title="HTML Preview"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         />
