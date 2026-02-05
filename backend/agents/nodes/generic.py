@@ -6,6 +6,7 @@
 """
 import os
 import re
+import asyncio  # 🔥 新增：用于异步保存专家执行结果
 from typing import Dict, Any, Optional
 from datetime import datetime
 from langchain_core.messages import SystemMessage, HumanMessage
