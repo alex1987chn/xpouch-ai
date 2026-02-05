@@ -83,7 +83,20 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         }
     
     started_at = datetime.now()
-    
+
+    # ✅ 发送 task.started 事件（专家开始执行）
+    from utils.event_generator import event_task_started, sse_event_to_string
+    task_id = current_task.get("id", str(current_index))
+    started_event = event_task_started(
+        task_id=task_id,
+        expert_type=expert_type,
+        description=description
+    )
+    # 将 started 事件放入 state 的 event_queue，让 dispatcher 或其他节点处理
+    initial_event_queue = state.get("event_queue", [])
+    initial_event_queue.append({"type": "sse", "event": sse_event_to_string(started_event)})
+    print(f"[GenericWorker] 已生成 task.started 事件: {expert_type}")
+
     try:
         # 获取专家配置参数
         system_prompt = expert_config["system_prompt"]
@@ -162,6 +175,50 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         expert_results = state.get("expert_results", [])
         expert_results = expert_results + [expert_result]
 
+        # ✅ 构建 artifact 对象
+        artifact = {
+            "type": artifact_type,
+            "title": f"{expert_name}结果",
+            "content": response.content,
+            "source": f"{expert_type}_expert"
+        }
+
+        # ✅ 生成事件队列（用于前端展示专家和 artifact）
+        from utils.event_generator import (
+            event_task_completed, event_artifact_generated, sse_event_to_string
+        )
+        from uuid import uuid4
+
+        event_queue = []
+        task_id = current_task.get("id", str(current_index))
+
+        # 1. 发送 task.completed 事件（专家执行完成）
+        task_completed_event = event_task_completed(
+            task_id=task_id,
+            expert_type=expert_type,
+            description=description,
+            output=response.content[:500] + "..." if len(response.content) > 500 else response.content,
+            duration_ms=duration_ms,
+            artifact_count=1
+        )
+        event_queue.append({"type": "sse", "event": sse_event_to_string(task_completed_event)})
+        print(f"[GenericWorker] 已生成 task.completed 事件: {expert_type}")
+
+        # 2. 发送 artifact.generated 事件（生成产物）
+        artifact_event = event_artifact_generated(
+            task_id=task_id,
+            expert_type=expert_type,
+            artifact_id=str(uuid4()),
+            artifact_type=artifact_type,
+            content=response.content,
+            title=f"{expert_name}结果"
+        )
+        event_queue.append({"type": "sse", "event": sse_event_to_string(artifact_event)})
+        print(f"[GenericWorker] 已生成 artifact.generated 事件: {artifact_type}")
+
+        # ✅ 合并 started 事件和 completed 事件
+        full_event_queue = initial_event_queue + event_queue
+
         return {
             "task_list": task_list,
             "expert_results": expert_results,
@@ -171,12 +228,8 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
             "started_at": started_at.isoformat(),
             "completed_at": completed_at.isoformat(),
             "duration_ms": duration_ms,
-            "artifact": {
-                "type": artifact_type,
-                "title": f"{expert_name}结果",
-                "content": response.content,
-                "source": f"{expert_type}_expert"
-            }
+            "artifact": artifact,
+            "event_queue": full_event_queue  # ✅ 添加完整事件队列（包含 started 和 completed）
         }
         
     except Exception as e:
@@ -190,8 +243,9 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
 
         # 获取现有的 expert_results 并添加失败记录
         expert_results = state.get("expert_results", [])
+        task_id = current_task.get("id", str(current_index))
         expert_result = {
-            "task_id": current_task.get("id", str(current_index)),
+            "task_id": task_id,
             "expert_type": expert_type,
             "description": description,
             "output": f"专家执行失败: {str(e)}",
@@ -201,6 +255,22 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         }
         expert_results = expert_results + [expert_result]
 
+        # ✅ 生成 task.failed 事件
+        from utils.event_generator import event_task_failed, sse_event_to_string
+
+        event_queue = []
+        failed_event = event_task_failed(
+            task_id=task_id,
+            expert_type=expert_type,
+            description=description,
+            error=str(e)
+        )
+        event_queue.append({"type": "sse", "event": sse_event_to_string(failed_event)})
+        print(f"[GenericWorker] 已生成 task.failed 事件: {expert_type}")
+
+        # ✅ 合并 started 事件和 failed 事件
+        full_event_queue = initial_event_queue + event_queue
+
         return {
             "task_list": task_list,
             "expert_results": expert_results,
@@ -209,7 +279,8 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
             "status": "failed",
             "error": str(e),
             "started_at": started_at.isoformat(),
-            "completed_at": datetime.now().isoformat()
+            "completed_at": datetime.now().isoformat(),
+            "event_queue": full_event_queue  # ✅ 添加完整事件队列（包含 started 和 failed）
         }
 
 
