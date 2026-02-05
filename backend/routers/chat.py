@@ -626,9 +626,12 @@ async def _handle_langgraph_stream(
 
                 # v3.0: 处理节点返回的 event_queue（新协议事件）
                 if kind == "on_chain_end":
-                    output_data = event["data"].get("output", {})
+                    raw_output = event["data"].get("output", {})
+                    # ✅ 确保 output_data 是字典类型（LangGraph 有时会返回字符串）
+                    output_data = raw_output if isinstance(raw_output, dict) else {}
                     # ✅ 调试：打印所有 on_chain_end 事件
-                    print(f"[STREAM DEBUG] on_chain_end: name={name}, has_task_list={bool(output_data.get('task_list'))}, has_expert_info={bool(output_data.get('__expert_info'))}")
+                    if isinstance(raw_output, dict):
+                        print(f"[STREAM DEBUG] on_chain_end: name={name}, has_task_list={bool(output_data.get('task_list'))}, has_expert_info={bool(output_data.get('__expert_info'))}")
                     
                     if isinstance(output_data, dict):
                         event_queue = output_data.get("event_queue", [])
