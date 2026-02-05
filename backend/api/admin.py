@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field as PydanticField, field_validator
 from auth import get_current_user
 from models import User, SystemExpert, UserRole
 from database import get_session
-from agents.expert_loader import refresh_cache
+from agents.services.expert_manager import refresh_cache
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -371,7 +371,7 @@ async def preview_expert(
     """
     from datetime import datetime
     from langchain_core.messages import SystemMessage, HumanMessage
-    from agents.expert_loader import get_expert_config
+    from agents.services.expert_manager import get_expert_config
     from database import get_session as get_db_session
     from utils.llm_factory import get_llm_instance
 

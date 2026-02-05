@@ -12,8 +12,7 @@ from utils.llm_factory import get_aggregator_llm
 from utils.event_generator import (
     event_message_delta, event_message_done, sse_event_to_string
 )
-from crud.task_session import update_task_session_status
-from models import Message as MessageModel
+from agents.services.task_manager import complete_task_session, save_aggregator_message
 
 
 async def aggregator_node(state: AgentState) -> Dict[str, Any]:
@@ -91,31 +90,15 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
     )
     event_queue.append({"type": "sse", "event": sse_event_to_string(done_event)})
     
-    # v3.0: 更新任务会话状态为 completed
+    # v3.0: 更新任务会话状态并持久化聚合消息 (通过 TaskManager)
     if db_session and task_session_id:
-        update_task_session_status(
-            db_session,
-            task_session_id,
-            "completed",
-            final_response=final_response
-        )
-        
-        # 关键修复：持久化聚合消息到数据库
-        # 只有存进去了，下次刷新 GET /messages 才能看到它
+        # 标记任务会话为已完成
+        complete_task_session(db_session, task_session_id, final_response)
+
+        # 持久化聚合消息到数据库
         conversation_id = state.get("thread_id")  # v3.2: 使用 thread_id 作为 conversation_id
         if conversation_id:
-            # 创建消息记录（关联 conversation_id）
-            # 注意：不手动指定 id，让数据库自动生成（id 是 INTEGER 自增）
-            # message_id 只用于 SSE 事件标识
-            # 注意：Message 模型暂时没有 task_session_id 字段，以后可能需要添加
-            message_record = MessageModel(
-                thread_id=conversation_id,
-                role="assistant",
-                content=final_response
-            )
-            db_session.add(message_record)
-            db_session.commit()
-            print(f"[AGG] 聚合消息已持久化到数据库，conversation_id={conversation_id}")
+            save_aggregator_message(db_session, conversation_id, final_response)
     
     print(f"[AGG] 聚合完成，回复长度: {len(final_response)}")
 

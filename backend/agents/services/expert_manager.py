@@ -1,7 +1,8 @@
 """
-专家配置加载器
+专家管理服务
 
 从 SystemExpert 表动态加载专家 Prompt 和配置
+提供专家配置管理、缓存和格式化功能
 """
 from typing import Dict, Optional, List
 from sqlmodel import Session, select
@@ -38,7 +39,7 @@ def get_expert_config(
     ).first()
 
     if not expert:
-        print(f"[ExpertLoader] Expert '{expert_key}' not found in database")
+        print(f"[ExpertManager] Expert '{expert_key}' not found in database")
         return None
 
     # 应用模型兜底机制
@@ -144,7 +145,7 @@ def load_all_experts(session: Session) -> Dict[str, Dict]:
             
         config_map[expert.expert_key] = config
 
-    print(f"[ExpertLoader] Loaded {len(config_map)} experts from database")
+    print(f"[ExpertManager] Loaded {len(config_map)} experts from database")
     return config_map
 
 
@@ -179,7 +180,7 @@ def get_expert_prompt_cached(
     config = _expert_cache.get(expert_key)
 
     if not config:
-        print(f"[ExpertLoader] Expert '{expert_key}' not found in cache")
+        print(f"[ExpertManager] Expert '{expert_key}' not found in cache")
         return None
 
     return config["system_prompt"]
@@ -226,8 +227,8 @@ def refresh_cache(session: Optional[Session] = None):
     _expert_cache = load_all_experts(session)
     _cache_timestamp = time.time()
 
-    print(f"[ExpertLoader] Expert cache refreshed at {_cache_timestamp}")
-    print(f"[ExpertLoader] Cache now contains {len(_expert_cache)} experts")
+    print(f"[ExpertManager] Expert cache refreshed at {_cache_timestamp}")
+    print(f"[ExpertManager] Cache now contains {len(_expert_cache)} experts")
 
 
 def force_refresh_all():
@@ -243,7 +244,7 @@ def force_refresh_all():
     _expert_cache = {}
     _cache_timestamp = None
 
-    print(f"[ExpertLoader] Cache cleared and will be reloaded on next access")
+    print(f"[ExpertManager] Cache cleared and will be reloaded on next access")
 
 
 def get_all_expert_list(db_session: Optional[Session] = None) -> List[tuple]:
@@ -277,7 +278,7 @@ def get_all_expert_list(db_session: Optional[Session] = None) -> List[tuple]:
 
     # 如果没有提供数据库会话，直接返回硬编码列表
     if db_session is None:
-        print("[ExpertLoader] 未提供数据库会话，使用硬编码专家列表")
+        print("[ExpertManager] 未提供数据库会话，使用硬编码专家列表")
         return fallback_experts
 
     experts = []
@@ -294,10 +295,10 @@ def get_all_expert_list(db_session: Optional[Session] = None) -> List[tuple]:
                 expert.description or "暂无描述"
             ))
 
-        print(f"[ExpertLoader] 从数据库加载了 {len(experts)} 个专家")
+        print(f"[ExpertManager] 从数据库加载了 {len(experts)} 个专家")
 
     except Exception as e:
-        print(f"[ExpertLoader] 获取专家列表失败: {e}，使用硬编码列表")
+        print(f"[ExpertManager] 获取专家列表失败: {e}，使用硬编码列表")
         # 发生异常时返回硬编码的专家列表
         experts = fallback_experts
 
