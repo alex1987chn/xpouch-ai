@@ -782,19 +782,22 @@ async def _handle_langgraph_stream(
 
         # 保存 AI 回复和 Artifacts 到数据库
         if full_response:
-            with Session(engine) as save_session:
-                # 解析 thinking 标签
-                clean_content, thinking_data = parse_thinking(full_response)
-                ai_msg_db = Message(
-                    thread_id=thread_id,
-                    role="assistant",
-                    content=clean_content,  # 保存清理后的内容
-                    extra_data={'thinking': thinking_data} if thinking_data else None,
-                    timestamp=datetime.now()
-                )
-                save_session.add(ai_msg_db)
+            # ✅ 关键修复：使用 Router 传入的 session（即 db_session），而不是创建新的 session
+            # 这样才能看到 Commander 在 db_session 中 commit 的 SubTasks
+            save_session = session
 
-                thread_obj = save_session.get(Thread, thread_id)
+            # 解析 thinking 标签
+            clean_content, thinking_data = parse_thinking(full_response)
+            ai_msg_db = Message(
+                thread_id=thread_id,
+                role="assistant",
+                content=clean_content,  # 保存清理后的内容
+                extra_data={'thinking': thinking_data} if thinking_data else None,
+                timestamp=datetime.now()
+            )
+            save_session.add(ai_msg_db)
+
+            thread_obj = save_session.get(Thread, thread_id)
                 if thread_obj:
                     thread_obj.updated_at = datetime.now()
 
