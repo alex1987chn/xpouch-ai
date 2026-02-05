@@ -2,6 +2,7 @@
 Router 节点 - 意图识别
 
 负责将用户输入分类为 simple 或 complex 模式
+集成长期记忆检索，提供个性化路由决策
 """
 from typing import Dict, Any, Literal
 from langchain_core.messages import SystemMessage
@@ -10,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from agents.state import AgentState
 from constants import ROUTER_SYSTEM_PROMPT, DEFAULT_ASSISTANT_PROMPT
+from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 
 
 class RoutingDecision(BaseModel):
@@ -23,25 +25,53 @@ async def router_node(state: AgentState) -> Dict[str, Any]:
     
     根据用户输入判断应该使用 simple 模式（直接回复）
     还是 complex 模式（多专家协作）
+    
+    🔥 新增：检索长期记忆，提供个性化决策
     """
     messages = state["messages"]
+    last_message = messages[-1]
+    user_query = last_message.content if hasattr(last_message, 'content') else str(last_message)
 
     # 断点恢复检查
     if state.get("task_list") and len(state.get("task_list", [])) > 0:
         return {"router_decision": "complex"}
 
+    # 🔥 从 state 获取 user_id（如果存在），否则使用默认值
+    # 后续可以从请求 header 或上下文传递 user_id
+    user_id = state.get("user_id", "default_user")
+
+    print(f"--- [Router] 正在思考: {user_query[:100]}... ---")
+
+    # 1. 🔥 检索长期记忆（异步）
+    try:
+        relevant_memories = await memory_manager.search_relevant_memories(user_id, user_query, limit=3)
+    except Exception as e:
+        print(f"[Router] 记忆检索失败: {e}")
+        relevant_memories = ""
+
+    # 2. 🔥 构建 System Prompt（注入记忆）
+    system_prompt = ROUTER_SYSTEM_PROMPT
+    if relevant_memories:
+        print(f"[Router] 激活记忆:\n{relevant_memories}")
+        system_prompt += f"""
+
+【关于该用户的已知信息】:
+{relevant_memories}
+(请在决策时参考这些信息，判断用户偏好简单还是复杂交互)"""
+
     parser = PydanticOutputParser(pydantic_object=RoutingDecision)
     try:
-        # 关键：静态 SystemPrompt + 动态 Messages
+        # 关键：动态 SystemPrompt（含记忆）+ 动态 Messages
         from agents.graph import get_router_llm_lazy
         response = await get_router_llm_lazy().ainvoke(
             [
-                SystemMessage(content=ROUTER_SYSTEM_PROMPT),
+                SystemMessage(content=system_prompt),
                 *messages  # 用户的输入在这里
             ],
             config={"tags": ["router"]}
         )
         decision = parser.parse(response.content)
+        print(f"[Router] 决策结果: {decision.decision_type}")
         return {"router_decision": decision.decision_type}
     except Exception as e:
         print(f"[ROUTER ERROR] {e}")
@@ -53,9 +83,32 @@ async def direct_reply_node(state: AgentState) -> Dict[str, Any]:
     [直连节点] 负责 Simple 模式下的流式回复
     
     直接调用 LLM 生成回复，不经过复杂的多专家流程
+    🔥 新增：集成长期记忆，提供个性化回复
     """
     print(f"[DIRECT_REPLY] 节点开始执行")
     messages = state["messages"]
+    last_message = messages[-1]
+    user_query = last_message.content if hasattr(last_message, 'content') else str(last_message)
+
+    # 🔥 从 state 获取 user_id
+    user_id = state.get("user_id", "default_user")
+
+    # 1. 🔥 检索长期记忆（异步）
+    try:
+        relevant_memories = await memory_manager.search_relevant_memories(user_id, user_query, limit=5)
+    except Exception as e:
+        print(f"[DirectReply] 记忆检索失败: {e}")
+        relevant_memories = ""
+
+    # 2. 🔥 构建 System Prompt（注入记忆）
+    system_prompt = DEFAULT_ASSISTANT_PROMPT
+    if relevant_memories:
+        print(f"[DirectReply] 激活记忆:\n{relevant_memories}")
+        system_prompt += f"""
+
+【关于该用户的已知信息】:
+{relevant_memories}
+(请在回答时自然地利用这些信息，提供更个性化的回复)"""
 
     # 使用流式配置，添加 metadata 便于追踪
     config = {"tags": ["direct_reply"], "metadata": {"node_type": "direct_reply"}}
@@ -64,7 +117,7 @@ async def direct_reply_node(state: AgentState) -> Dict[str, Any]:
     from agents.graph import get_simple_llm_lazy
     response = await get_simple_llm_lazy().ainvoke(
         [
-            SystemMessage(content=DEFAULT_ASSISTANT_PROMPT),
+            SystemMessage(content=system_prompt),
             *messages  # 用户的历史消息上下文
         ],
         config=config
