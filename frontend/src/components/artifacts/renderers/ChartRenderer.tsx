@@ -38,25 +38,86 @@ interface ChartRendererProps {
   code: string
 }
 
+/**
+ * 检测 JSON 是否完整（流式输出防抖）
+ * 简单的启发式检测：检查括号是否平衡
+ */
+function isJSONComplete(str: string): boolean {
+  const trimmed = str.trim()
+  if (!trimmed) return false
+  
+  // 检查是否以 { 开头 } 结尾
+  if (trimmed[0] !== '{' || trimmed[trimmed.length - 1] !== '}') {
+    return false
+  }
+  
+  // 检查括号平衡
+  let braceCount = 0
+  let inString = false
+  let escapeNext = false
+  
+  for (const char of trimmed) {
+    if (escapeNext) {
+      escapeNext = false
+      continue
+    }
+    if (char === '\\') {
+      escapeNext = true
+      continue
+    }
+    if (char === '"' && !inString) {
+      inString = true
+      continue
+    }
+    if (char === '"' && inString) {
+      inString = false
+      continue
+    }
+    if (!inString) {
+      if (char === '{') braceCount++
+      if (char === '}') braceCount--
+    }
+  }
+  
+  return braceCount === 0
+}
+
 export function ChartRenderer({ code }: ChartRendererProps) {
+  // 🔥 防抖：如果 JSON 不完整，显示加载状态而非报错
+  if (!isJSONComplete(code)) {
+    return (
+      <div className="w-full h-[200px] bg-[#1e1e1e] rounded-lg p-4 my-4 border border-gray-700 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-gray-500">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+          <span className="text-sm">图表生成中...</span>
+        </div>
+      </div>
+    )
+  }
+
   let config: ChartConfig | null = null
   
   try {
     config = JSON.parse(code.trim())
   } catch (e) {
+    // JSON 完整但解析失败（语法错误），显示友好提示
     return (
-      <div className="text-gray-500 text-xs p-4 bg-gray-500/10 rounded border border-gray-500/20">
-        <div className="font-semibold mb-1">⚠️ JSON 解析错误</div>
-        <div>无法解析图表数据</div>
+      <div className="w-full h-[200px] bg-[#1e1e1e] rounded-lg p-4 my-4 border border-gray-700 flex items-center justify-center">
+        <div className="text-gray-500 text-sm flex items-center gap-2">
+          <span>图表数据格式错误</span>
+        </div>
       </div>
     )
   }
 
   if (!config || !config.items || !Array.isArray(config.items)) {
     return (
-      <div className="text-gray-500 text-xs p-4 bg-gray-500/10 rounded border border-gray-500/20">
-        <div className="font-semibold mb-1">⚠️ 数据格式错误</div>
-        <div>缺少 items 字段或格式不正确</div>
+      <div className="w-full h-[200px] bg-[#1e1e1e] rounded-lg p-4 my-4 border border-gray-700 flex items-center justify-center">
+        <div className="text-gray-500 text-sm">图表数据不完整</div>
       </div>
     )
   }
