@@ -83,8 +83,9 @@ export default function HtmlArtifact({ content, className }: HtmlArtifactProps) 
         <iframe
           src={htmlUrl}
           className="w-full h-full bg-white border-none"
-          // 🔥 添加 allow-scripts 允许执行 JavaScript（解决贪吃蛇游戏等 HTML Artifact）
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          // 🔥 允许执行 JavaScript 和必要的交互权限（去掉 allow-same-origin 提高安全性）
+          // 隔离 sandbox，无法访问主站 Cookie/LocalStorage，更安全
+          sandbox="allow-scripts allow-forms allow-popups allow-modals"
           title="HTML Preview"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         />
