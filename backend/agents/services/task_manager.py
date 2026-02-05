@@ -73,10 +73,17 @@ def get_or_create_task_session(
     if existing_session:
         print(f"[TaskManager] 复用已有 TaskSession: {existing_session.session_id}")
 
+        # ✅ 关键修复：删除旧的 SubTasks，避免重复创建导致 ID 不匹配
+        old_subtasks = get_subtasks_by_session(db, existing_session.session_id)
+        for old_subtask in old_subtasks:
+            print(f"[TaskManager] 删除旧 SubTask: {old_subtask.id} ({old_subtask.expert_type})")
+            db.delete(old_subtask)
+
         # 更新已有 session 的信息
         existing_session.plan_summary = plan_summary
         existing_session.estimated_steps = estimated_steps
         existing_session.execution_mode = execution_mode
+        existing_session.status = "running"  # ✅ 重置状态为 running
         db.add(existing_session)
 
         # 创建 SubTask 并关联到已有 session
@@ -94,7 +101,7 @@ def get_or_create_task_session(
 
         db.commit()
         db.refresh(existing_session)
-        print(f"[TaskManager] 已更新 TaskSession 并创建 {len(subtasks_data)} 个子任务")
+        print(f"[TaskManager] 已更新 TaskSession 并创建 {len(subtasks_data)} 个新子任务")
         return existing_session, True
 
     # 创建新的 TaskSession

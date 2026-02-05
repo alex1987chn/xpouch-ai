@@ -817,6 +817,7 @@ async def _handle_langgraph_stream(
                         # 获取已存在的 SubTasks（避免重复创建）
                         existing_subtasks = get_subtasks_by_session(save_session, task_session_id)
                         existing_subtask_ids = {st.id for st in existing_subtasks}
+                        print(f"[STREAM] 🔍 调试: existing_subtask_ids={existing_subtask_ids}")
                         
                         # 保存/更新 SubTasks
                         for task in collected_task_list:
@@ -825,14 +826,34 @@ async def _handle_langgraph_stream(
                             # ✅ 使用 task_id 获取 artifacts（与收集时一致）
                             artifacts_for_task = expert_artifacts.get(task_id, [])
                             
+                            print(f"[STREAM] 🔍 调试: 处理 task_id={task_id}, expert_type={expert_type}")
+                            print(f"[STREAM] 🔍 调试:   - task.get('status')={task.get('status')}")
+                            print(f"[STREAM] 🔍 调试:   - task.get('output_result') type={type(task.get('output_result'))}")
+                            print(f"[STREAM] 🔍 调试:   - artifacts_for_task count={len(artifacts_for_task)}")
+                            
                             if task_id and task_id in existing_subtask_ids:
                                 # 更新现有 SubTask
+                                # ✅ 修复：output_result 已经是 {"content": "..."} 格式，直接使用
+                                output_value = task.get("output_result", {"content": ""})
+                                # 兼容处理：如果已经是字典格式，直接使用；否则包装
+                                if isinstance(output_value, dict):
+                                    output_result = output_value
+                                else:
+                                    output_result = {"content": str(output_value)}
+                                
+                                print(f"[STREAM] 🔍 调试: 调用 update_subtask_status")
+                                print(f"[STREAM] 🔍 调试:   - status={task.get('status', 'completed')}")
+                                print(f"[STREAM] 🔍 调试:   - output_result type={type(output_result)}")
+                                
                                 update_subtask_status(
                                     save_session,
                                     task_id,
                                     status=task.get("status", "completed"),
-                                    output_result={"content": task.get("output_result", "")}
+                                    output_result=output_result,
+                                    duration_ms=task.get("duration_ms")  # ✅ 添加 duration_ms
                                 )
+                                print(f"[STREAM] ✅ SubTask 状态已更新")
+                                
                                 # 保存 artifacts
                                 if artifacts_for_task:
                                     print(f"[STREAM] 准备保存 artifacts: task_id={task_id}, count={len(artifacts_for_task)}")
