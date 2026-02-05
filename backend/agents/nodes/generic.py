@@ -175,12 +175,13 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         expert_results = state.get("expert_results", [])
         expert_results = expert_results + [expert_result]
 
-        # ✅ 构建 artifact 对象
+        # ✅ 构建 artifact 对象（符合 ArtifactCreate 模型）
         artifact = {
             "type": artifact_type,
             "title": f"{expert_name}结果",
             "content": response.content,
-            "source": f"{expert_type}_expert"
+            "language": None,  # 可选字段，Pydantic 模型需要
+            "sort_order": 0    # 默认排序
         }
 
         # ✅ 生成事件队列（用于前端展示专家和 artifact）
