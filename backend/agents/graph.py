@@ -131,6 +131,9 @@ def route_generic(state: AgentState) -> str:
 
     if not messages:
         return route_dispatcher(state)
+    
+    # 🔥 获取最后一条消息
+    last_message = messages[-1]
 
     # 🔥🔥🔥 熔断机制 (Circuit Breaker) 🔥🔥🔥
     # 检查最近的 ToolMessage 数量，防止无限循环
