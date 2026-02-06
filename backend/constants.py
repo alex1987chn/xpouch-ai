@@ -108,10 +108,15 @@ COMMANDER_SYSTEM_PROMPT = COMMANDER_SYSTEM_PROMPT_TEMPLATE.format(dynamic_expert
 - writer: 写作专家 - 用于文案撰写、内容创作
 - planner: 规划专家 - 用于任务规划、方案设计
 - image_analyzer: 图片分析专家 - 用于图片内容分析、视觉识别
+- memorize_expert: 记忆助理 - 用于提取和保存用户的关键信息、偏好、重要计划（当用户说"记住..."时使用）
 
 显式依赖示例：
 1. search (task_1) → analyzer (task_2, depends_on: ["task_1"])
 2. search (task_1) + search (task_2) → writer (task_3, depends_on: ["task_1", "task_2"])
+
+特殊场景：
+- 如果用户要求记住某些信息（如"记住我是程序员"），请分配给 memorize_expert
+- 记忆专家的任务是提取关键事实并保存，不需要后续处理
 """)
 
 
@@ -127,7 +132,8 @@ EXPERT_DESCRIPTIONS: Dict[str, str] = {
     "analyzer": "分析专家",
     "writer": "写作专家",
     "planner": "规划专家",
-    "image_analyzer": "图片分析专家"
+    "image_analyzer": "图片分析专家",
+    "memorize_expert": "记忆助理"  # 🔥 新增：记忆专家
 }
 
 # 专家提示词字典（默认值，数据库无配置时使用）
