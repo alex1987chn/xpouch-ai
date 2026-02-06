@@ -184,6 +184,12 @@ CREATE TABLE user_memories (
 );
 ```
 
+**配置管理**：
+- 嵌入模型配置在 `providers.yaml` 中管理
+- API Key 在 `.env` 文件中配置（`SILICON_API_KEY`）
+- 支持动态切换嵌入提供商（如 SiliconFlow、OpenAI）
+- 默认使用 BAAI/bge-m3（1024 维，中文优化）
+
 **使用场景**：
 - 用户说"记住我喜欢吃辣" → 提取事实并存储
 - 用户问"给我推荐餐厅" → AI 知道用户偏好辣味食物
@@ -681,10 +687,9 @@ pnpm run dev:backend   # 后端 http://localhost:3002（实际执行：cd backen
 | `OPENAI_API_KEY` | OpenAI API 密钥 | 是* | - |
 | `JWT_SECRET_KEY` | JWT 密钥 | 是 | - |
 | `SILICON_API_KEY` | 硅基流动 API 密钥 | 否 | - |
-| `EMBEDDING_MODEL` | 嵌入模型名称 | 否 | `BAAI/bge-m3` |
 
 > * 至少需要配置一个 LLM 提供商的 API 密钥
-> **注意**：记忆系统需要嵌入模型 API，推荐使用 SiliconFlow 的免费 BAAI/bge-m3 模型（1024 维，中文优化）
+> **注意**：记忆系统需要嵌入模型 API，推荐使用 SiliconFlow 的免费 BAAI/bge-m3 模型（1024 维，中文优化）。模型配置在 `providers.yaml` 中管理。
 
 ### 前端配置（frontend/.env）
 

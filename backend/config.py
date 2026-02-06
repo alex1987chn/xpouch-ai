@@ -125,23 +125,27 @@ EXPERT_NAMES = {
 def validate_config() -> bool:
     """
     验证配置是否完整
-    
+
     Returns:
         bool: 配置是否有效
     """
     # 导入新的配置验证
-    from providers_config import print_provider_status
-    
+    from providers_config import print_provider_status, print_embedding_status
+
     # 验证 LLM 提供商配置
     has_llm = print_provider_status()
-    
+
+    # 验证嵌入模型配置
+    has_embedding = print_embedding_status()
+
     # 检查 LangSmith 配置
     langsmith = get_langsmith_config()
     if langsmith["enabled"] and not langsmith["api_key"]:
         print("[WARN] 警告: LangSmith 已启用但未设置 LANGCHAIN_API_KEY")
         return False
 
-    return has_llm
+    # LLM 和嵌入模型至少配置一个
+    return has_llm or has_embedding
 
 
 # ============================================================================

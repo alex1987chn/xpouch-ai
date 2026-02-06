@@ -185,14 +185,129 @@ def get_provider_api_key(provider: str) -> Optional[str]:
 def is_provider_configured(provider: str) -> bool:
     """
     检查指定提供商是否已配置（有 API Key）
-    
+
     Args:
         provider: 提供商标识
-    
+
     Returns:
         bool: 是否已配置
     """
     return get_provider_api_key(provider) is not None
+
+
+# ============================================================================
+# 嵌入模型配置获取
+# ============================================================================
+
+def get_embeddings_config() -> Dict[str, Any]:
+    """
+    获取嵌入模型配置
+
+    Returns:
+        Dict: 包含 'providers' 和 'default_provider' 的配置字典
+    """
+    config = load_providers_config()
+    embeddings = config.get('embeddings', {})
+
+    if not embeddings:
+        raise ValueError("providers.yaml 中未找到 embeddings 配置")
+
+    return embeddings
+
+
+def get_embedding_provider_config(provider: str) -> Optional[Dict[str, Any]]:
+    """
+    获取指定嵌入提供商的配置
+
+    Args:
+        provider: 提供商标识（如 'siliconflow'）
+
+    Returns:
+        配置字典，如果不存在返回 None
+    """
+    embeddings = get_embeddings_config()
+    return embeddings.get('providers', {}).get(provider)
+
+
+def get_default_embedding_provider() -> str:
+    """
+    获取默认的嵌入提供商名称
+
+    Returns:
+        str: 默认提供商名称
+    """
+    embeddings = get_embeddings_config()
+    return embeddings.get('default_provider', 'siliconflow')
+
+
+def get_embedding_client():
+    """
+    获取嵌入模型的 OpenAI 客户端（基于配置）
+
+    Returns:
+        tuple: (OpenAI客户端, 模型名称, 向量维度)
+    """
+    provider = get_default_embedding_provider()
+    config = get_embedding_provider_config(provider)
+
+    if not config:
+        raise ValueError(f"未找到嵌入提供商配置: {provider}")
+
+    if not config.get('enabled', True):
+        raise ValueError(f"嵌入提供商已禁用: {provider}")
+
+    env_key = config.get('env_key')
+    api_key = os.getenv(env_key)
+
+    if not api_key:
+        raise ValueError(f"未设置嵌入模型 API Key: {env_key}\n请在 .env 文件中配置此变量")
+
+    from openai import OpenAI
+
+    client = OpenAI(
+        api_key=api_key,
+        base_url=config.get('base_url')
+    )
+
+    model = config.get('default_model')
+    dimensions = config.get('dimensions', 1024)
+
+    return client, model, dimensions
+
+
+def print_embedding_status():
+    """
+    打印嵌入模型的状态（用于启动时诊断）
+    """
+    try:
+        provider = get_default_embedding_provider()
+        config = get_embedding_provider_config(provider)
+
+        print("\n" + "="*60)
+        print("嵌入模型配置状态")
+        print("="*60)
+
+        if config and config.get('enabled', True):
+            env_key = config.get('env_key')
+            has_key = os.getenv(env_key) is not None
+
+            if has_key:
+                print(f"\n✅ 已配置:")
+                print(f"   • {config.get('name')} ({provider})")
+                print(f"   • 模型: {config.get('default_model')}")
+                print(f"   • 向量维度: {config.get('dimensions')}")
+            else:
+                print(f"\n⚠️  未配置 API Key:")
+                print(f"   • 请设置环境变量: {env_key}")
+        else:
+            print(f"\n🚫 嵌入提供商已禁用: {provider}")
+
+        print("="*60 + "\n")
+        return has_key
+
+    except Exception as e:
+        print(f"\n❌ 嵌入模型配置错误: {e}\n")
+        return False
 
 
 # ============================================================================
