@@ -680,11 +680,11 @@ pnpm run dev:backend   # 后端 http://localhost:3002（实际执行：cd backen
 | `DEEPSEEK_API_KEY` | DeepSeek API 密钥 | 是* | - |
 | `OPENAI_API_KEY` | OpenAI API 密钥 | 是* | - |
 | `JWT_SECRET_KEY` | JWT 密钥 | 是 | - |
-| `EMBEDDING_API_KEY` | 嵌入模型 API 密钥 | 否 | - |
+| `SILICON_API_KEY` | 硅基流动 API 密钥 | 否 | - |
 | `EMBEDDING_MODEL` | 嵌入模型名称 | 否 | `BAAI/bge-m3` |
 
 > * 至少需要配置一个 LLM 提供商的 API 密钥
-> **注意**：记忆系统需要嵌入模型 API，推荐使用 SiliconFlow 的免费 BAAI/bge-m3 模型
+> **注意**：记忆系统需要嵌入模型 API，推荐使用 SiliconFlow 的免费 BAAI/bge-m3 模型（1024 维，中文优化）
 
 ### 前端配置（frontend/.env）
 

@@ -13,13 +13,16 @@ client = OpenAI(
     base_url="https://api.siliconflow.cn/v1"  # ✅ 关键地址
 )
 
+# 嵌入模型配置（支持环境变量自定义，默认：BAAI/bge-m3）
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
+
 
 def get_embedding(text: str) -> List[float]:
     """获取向量 (调用 BAAI/bge-m3)"""
     try:
         response = client.embeddings.create(
             input=text.replace("\n", " "),
-            model="BAAI/bge-m3"  # ✅ 指定模型
+            model=EMBEDDING_MODEL  # ✅ 支持环境变量配置
         )
         return response.data[0].embedding
     except Exception as e:
