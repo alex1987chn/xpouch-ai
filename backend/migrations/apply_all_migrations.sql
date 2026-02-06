@@ -345,6 +345,31 @@ CREATE INDEX IF NOT EXISTS idx_artifact_type ON artifact(type);
 \echo '  -> Artifact table and indexes created (if not exist)'
 
 -- ============================================================================
+-- 6.5. UserMemory 表（新建）- 用户长期记忆，支持向量检索
+-- ============================================================================
+\echo 'Checking user_memory table...'
+
+-- 启用 pgvector 扩展
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS user_memories (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    embedding vector(1024),
+    created_at VARCHAR(255) NOT NULL,
+    source VARCHAR(50) DEFAULT 'conversation',
+    memory_type VARCHAR(50) DEFAULT 'fact'
+);
+
+-- 普通索引：优化按 user_id 查询
+CREATE INDEX IF NOT EXISTS idx_user_memories_user_id ON user_memories(user_id);
+
+-- 向量索引：优化相似度检索（使用 ivfflat 算法，适合 1024 维向量）
+CREATE INDEX IF NOT EXISTS idx_user_memories_embedding ON user_memories USING ivfflat(embedding vector_cosine_ops) WITH (lists = 100);
+\echo '  -> UserMemory table and indexes created (if not exist)'
+
+-- ============================================================================
 -- 7. 数据迁移：将现有 SubTask 的 artifacts 迁移到 Artifact 表
 -- ============================================================================
 \echo 'Checking data migration...'
@@ -472,7 +497,7 @@ SELECT
     table_name,
     COUNT(*) as column_count
 FROM information_schema.columns
-WHERE table_name IN ('thread', 'message', 'customagent', 'tasksession', 'subtask', 'artifact')
+WHERE table_name IN ('thread', 'message', 'customagent', 'tasksession', 'subtask', 'artifact', 'user_memories')
 GROUP BY table_name
 ORDER BY table_name;
 
