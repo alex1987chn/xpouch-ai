@@ -365,7 +365,9 @@ async def chat_endpoint(
         "expert_results": [],
         "final_response": "",
         "context": {},
-        "router_decision": ""
+        "router_decision": "",
+        "thread_id": thread_id,
+        "user_id": thread.user_id  # 🔥 传入 user_id 用于记忆功能
     }
 
     if request.stream:
@@ -663,12 +665,11 @@ async def _handle_langgraph_stream(
         collected_task_list = []
         expert_artifacts = {}
 
-        # v3.0: 在 initial_state 中注入 thread_id 和 event_queue
+        # v3.0: 在 initial_state 中注入 event_queue 和 message_id
         # 🔥 注意：不要放入 db_session，因为 MemorySaver 无法序列化 SQLAlchemy Session
-        initial_state["thread_id"] = thread_id
+        # thread_id 和 user_id 已在创建 initial_state 时注入
         initial_state["event_queue"] = []
         initial_state["message_id"] = message_id  # v3.0: 注入前端传递的助手消息 ID
-        # initial_state["user_id"] = user_id  # 如需记忆功能，传入 user_id
 
         # 🔥🔥🔥 新增：心跳间隔（15秒）远小于 Cloudflare 的 100秒超时 🔥🔥🔥
         HEARTBEAT_INTERVAL = 15.0
