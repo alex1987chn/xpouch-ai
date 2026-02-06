@@ -5,11 +5,14 @@ Expert Dispatcher 节点 - 专家分发器
 
 v3.2 重构：移除对 dynamic_experts.py 的依赖
 仅负责检查专家存在，流转逻辑由 graph.py 决定
+v3.3 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
 """
 from typing import Dict, Any
 from agents.state import AgentState
-from agents.services.expert_manager import get_expert_config
+from agents.services.expert_manager import get_expert_config, get_expert_config_cached
 from utils.exceptions import AppError
+from database import engine
+from sqlmodel import Session
 
 
 async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
@@ -20,6 +23,9 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
     - 移除专家执行逻辑（不再调用专家函数）
     - 仅负责检查专家是否存在并返回空字典
     - 流转逻辑由 graph.py 中的连线决定
+    
+    v3.3 更新：
+    - 使用独立数据库会话，避免 MemorySaver 序列化问题
     """
     task_list = state["task_list"]
     current_index = state["current_task_index"]
@@ -32,16 +38,13 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
     expert_type = current_task["expert_type"]
     description = current_task["description"]
     
-    # 获取数据库会话
-    db_session = state.get("db_session")
-    
-    # 检查专家是否存在
+    # 🔥 使用独立的数据库会话（避免 MemorySaver 序列化问题）
     try:
-        if db_session:
+        with Session(engine) as db_session:
             expert_config = get_expert_config(expert_type, db_session)
-        else:
-            # 如果没有 db_session，暂时返回空（实际应该通过缓存检查）
-            from agents.services.expert_manager import get_expert_config_cached
+        
+        if not expert_config:
+            # 缓存回退
             expert_config = get_expert_config_cached(expert_type)
         
         if not expert_config:
@@ -52,7 +55,6 @@ async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
         print(f"[Dispatcher] 专家存在，继续流转到下一个节点")
 
         # 返回空字典，让 Generic Worker 继续执行
-        # current_task 已经在 task_list 中，generic_worker_node 会通过 index 获取
         return {}
 
     except Exception as e:
