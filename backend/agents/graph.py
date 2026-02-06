@@ -185,7 +185,7 @@ commander_graph = create_smart_router_workflow()
 # 测试封装函数
 # ============================================================================
 
-async def execute_commander_workflow(user_query: str) -> dict[str, Any]:
+async def execute_commander_workflow(user_query: str, thread_id: str = "test_thread") -> dict[str, Any]:
     print(f"--- [START] 查询: {user_query} ---")
     initial_state: AgentState = {
         "messages": [HumanMessage(content=user_query)],
@@ -195,7 +195,11 @@ async def execute_commander_workflow(user_query: str) -> dict[str, Any]:
         "expert_results": [],
         "final_response": ""
     }
-    final_state = await commander_graph.ainvoke(initial_state)
+    # 🔥 添加 config 传递 thread_id 给 MemorySaver
+    final_state = await commander_graph.ainvoke(
+        initial_state,
+        config={"configurable": {"thread_id": thread_id}}
+    )
     print("--- [DONE] ---")
     return final_state
 

@@ -674,8 +674,12 @@ async def _handle_langgraph_stream(
 
         print(f"[LANGGRAPH STREAM] {datetime.now().isoformat()} - 开始流式处理，心跳间隔={HEARTBEAT_INTERVAL}秒，强制心跳间隔=30.0秒")
 
-        # 获取图的流迭代器
-        iterator = commander_graph.astream_events(initial_state, version="v2")
+        # 获取图的流迭代器（🔥 添加 config 传递 thread_id 给 MemorySaver）
+        iterator = commander_graph.astream_events(
+            initial_state,
+            config={"configurable": {"thread_id": thread_id}},
+            version="v2"
+        )
 
         # 🔥 强制心跳计时器（每 30 秒强制发送一次心跳，不管有没有事件）
         FORCE_HEARTBEAT_INTERVAL = 30.0
@@ -984,7 +988,11 @@ async def _handle_langgraph_sync(
     session: Session
 ) -> dict:
     """处理 LangGraph 非流式响应"""
-    result = await commander_graph.ainvoke(initial_state)
+    # 🔥 添加 config 传递 thread_id 给 MemorySaver
+    result = await commander_graph.ainvoke(
+        initial_state,
+        config={"configurable": {"thread_id": thread_id}}
+    )
     last_message = result["messages"][-1]
 
     # 获取 Router 决策并更新 thread_mode
