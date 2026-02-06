@@ -5,6 +5,7 @@ Router 节点 - 意图识别
 集成长期记忆检索，提供个性化路由决策
 """
 from typing import Dict, Any, Literal
+from datetime import datetime
 from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
@@ -12,6 +13,35 @@ from pydantic import BaseModel, Field
 from agents.state import AgentState
 from constants import ROUTER_SYSTEM_PROMPT, DEFAULT_ASSISTANT_PROMPT
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
+
+
+def _inject_current_time(system_prompt: str) -> str:
+    """
+    在 System Prompt 中注入当前时间
+
+    让 LLM 知道当前的确切时间，自动将"今天"、"昨天"等相对时间转换为具体日期
+    """
+    now = datetime.now()
+    weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+    weekday_str = weekdays[now.weekday()]
+
+    # 格式化时间：2026年02月06日 14:30:00 星期五
+    time_str = now.strftime(f"%Y年%m月%d日 %H:%M:%S {weekday_str}")
+    date_str = now.strftime("%Y-%m-%d")
+
+    # 构建增强的 System Prompt
+    enhanced_prompt = f"""【当前系统时间】：{time_str}
+【当前日期】：{date_str}
+
+{system_prompt}
+
+【时间处理指令】：
+- 如果用户询问"今天"、"昨天"或"最近"的新闻/事件，请根据【当前日期】将相对时间转换为具体日期格式（如 "{date_str}"）
+- 调用搜索工具时，请使用具体日期而非相对时间（例如："{date_str} AI新闻" 而不是 "今天的新闻"）
+- 这会帮助搜索工具返回更精准的结果
+"""
+
+    return enhanced_prompt
 
 
 class RoutingDecision(BaseModel):
@@ -100,7 +130,7 @@ async def direct_reply_node(state: AgentState) -> Dict[str, Any]:
         print(f"[DirectReply] 记忆检索失败: {e}")
         relevant_memories = ""
 
-    # 2. 🔥 构建 System Prompt（注入记忆）
+    # 2. 🔥 构建 System Prompt（注入记忆和时间）
     system_prompt = DEFAULT_ASSISTANT_PROMPT
     if relevant_memories:
         print(f"[DirectReply] 激活记忆:\n{relevant_memories}")
@@ -109,6 +139,10 @@ async def direct_reply_node(state: AgentState) -> Dict[str, Any]:
 【关于该用户的已知信息】:
 {relevant_memories}
 (请在回答时自然地利用这些信息，提供更个性化的回复)"""
+
+    # 🔥 核心修改：注入当前时间
+    system_prompt = _inject_current_time(system_prompt)
+    print(f"[DirectReply] 已注入当前时间到 System Prompt")
 
     # 使用流式配置，添加 metadata 便于追踪
     config = {"tags": ["direct_reply"], "metadata": {"node_type": "direct_reply"}}
