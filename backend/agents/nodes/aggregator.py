@@ -2,10 +2,12 @@
 Aggregator 节点 - 结果聚合器
 
 整合多个专家的输出结果，生成自然语言的最终回复
+v3.2 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
 """
 from typing import Dict, Any, List
 from uuid import uuid4
 from langchain_core.messages import SystemMessage, HumanMessage
+from sqlmodel import Session
 
 from agents.state import AgentState
 from utils.llm_factory import get_aggregator_llm
@@ -13,25 +15,25 @@ from utils.event_generator import (
     event_message_delta, event_message_done, sse_event_to_string
 )
 from agents.services.task_manager import complete_task_session, save_aggregator_message
+from database import engine
 
 
 async def aggregator_node(state: AgentState) -> Dict[str, Any]:
     """
     聚合器节点
     v3.1 更新：调用 LLM 生成自然语言总结，支持流式输出
+    v3.2 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
     """
     expert_results = state["expert_results"]
     strategy = state["strategy"]
     task_list = state.get("task_list", [])  # ✅ 获取 task_list 以便返回
 
-    # 获取数据库会话
-    db_session = state.get("db_session")
+    # 获取 task_session_id 和其他状态
     task_session_id = state.get("task_session_id")
     event_queue = state.get("event_queue", [])
     # v3.0: 获取前端传递的 message_id（如果有的话）
-    # 注意：Message.id 在数据库中是 INTEGER 类型，不能直接使用 UUID
-    # 所以 message_id 只用于 SSE 事件标识，不用于数据库存储
     message_id = state.get("message_id", str(uuid4()))
+    thread_id = state.get("thread_id")  # 🔥 用于保存消息到正确线程
 
     if not expert_results:
         return {
@@ -95,15 +97,19 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
     )
     event_queue.append({"type": "sse", "event": sse_event_to_string(done_event)})
     
-    # v3.0: 更新任务会话状态并持久化聚合消息 (通过 TaskManager)
-    if db_session and task_session_id:
-        # 标记任务会话为已完成
-        complete_task_session(db_session, task_session_id, final_response)
+    # v3.2: 更新任务会话状态并持久化聚合消息 (通过 TaskManager)
+    # 🔥 使用独立的数据库会话（避免 MemorySaver 序列化问题）
+    if task_session_id:
+        try:
+            with Session(engine) as db_session:
+                # 标记任务会话为已完成
+                complete_task_session(db_session, task_session_id, final_response)
 
-        # 持久化聚合消息到数据库
-        conversation_id = state.get("thread_id")  # v3.2: 使用 thread_id 作为 conversation_id
-        if conversation_id:
-            save_aggregator_message(db_session, conversation_id, final_response)
+                # 持久化聚合消息到数据库
+                if thread_id:
+                    save_aggregator_message(db_session, thread_id, final_response)
+        except Exception as e:
+            print(f"[AGG] 保存任务会话失败: {e}")
     
     print(f"[AGG] 聚合完成，回复长度: {len(final_response)}")
 

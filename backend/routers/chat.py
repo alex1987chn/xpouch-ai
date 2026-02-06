@@ -663,11 +663,12 @@ async def _handle_langgraph_stream(
         collected_task_list = []
         expert_artifacts = {}
 
-        # v3.0: 在 initial_state 中注入数据库会话和 thread_id
-        initial_state["db_session"] = session
+        # v3.0: 在 initial_state 中注入 thread_id 和 event_queue
+        # 🔥 注意：不要放入 db_session，因为 MemorySaver 无法序列化 SQLAlchemy Session
         initial_state["thread_id"] = thread_id
         initial_state["event_queue"] = []
         initial_state["message_id"] = message_id  # v3.0: 注入前端传递的助手消息 ID
+        # initial_state["user_id"] = user_id  # 如需记忆功能，传入 user_id
 
         # 🔥🔥🔥 新增：心跳间隔（15秒）远小于 Cloudflare 的 100秒超时 🔥🔥🔥
         HEARTBEAT_INTERVAL = 15.0
