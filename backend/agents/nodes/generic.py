@@ -16,6 +16,7 @@ from agents.state import AgentState
 from agents.services.expert_manager import get_expert_config_cached
 from utils.llm_factory import get_effective_model, get_expert_llm
 from providers_config import get_model_config
+from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 
 
 async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]:
@@ -149,6 +150,33 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         duration_ms = int((completed_at - started_at).total_seconds() * 1000)
         
         print(f"[GenericWorker] '{expert_type}' completed (耗时: {duration_ms/1000:.2f}s)")
+
+        # -------------------------------------------------------------
+        # 🔥 新增逻辑：如果是记忆专家，执行"写入数据库"操作
+        # -------------------------------------------------------------
+        if expert_type == "memorize_expert":
+            memory_content = response.content.strip()
+            # 从 state 获取 user_id，默认使用 default_user
+            user_id = state.get("user_id", "default_user")
+            
+            if memory_content:
+                print(f"[GenericWorker] 正在保存记忆: {memory_content}")
+                try:
+                    # 异步调用 memory_manager 保存 (内部使用了 to_thread)
+                    await memory_manager.add_memory(
+                        user_id=user_id,
+                        content=memory_content,
+                        source="conversation",
+                        memory_type="fact"
+                    )
+                    print(f"[GenericWorker] 记忆保存成功!")
+                    # 修改返回给用户的 output，让反馈更自然
+                    response_content_original = response.content
+                    response.content = f"已为您记录：{response_content_original}"
+                except Exception as mem_err:
+                    print(f"[GenericWorker] 记忆保存失败: {mem_err}")
+                    response.content = f"记录时遇到问题，但我会记住：{memory_content}"
+        # -------------------------------------------------------------
 
         # 检测 artifact 类型
         artifact_type = _detect_artifact_type(response.content, expert_type)
