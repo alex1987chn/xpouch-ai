@@ -85,7 +85,7 @@ XPouch AI v3.0 是一个基于 **LangGraph** 的智能对话与任务协作平�
 
 ### 🤖 专家协作系统（Agent 模式）
 
-仅在复杂模式下启用，7 位专业专家协同工作：
+仅在复杂模式下启用，8 位专业专家协同工作：
 
 | 专家 | 类型 | 职责 |
 |------|------|------|
@@ -96,6 +96,7 @@ XPouch AI v3.0 是一个基于 **LangGraph** 的智能对话与任务协作平�
 | writer | 写作专家 | 文案与内容创作 |
 | planner | 规划专家 | 任务规划与方案 |
 | image_analyzer | 图像分析专家 | 图片内容识别 |
+| memorize_expert | 记忆专家 | 用户信息提取与记忆存储 |
 
 **工作流程**：
 1. **Router**：意图识别，区分 simple/complex
@@ -143,6 +144,55 @@ Task 1 基于 Task 0 的输出执行分析
                 ↓
 Aggregator 整合所有结果生成最终响应
 ```
+
+### 🧠 长期记忆系统
+
+**核心特性**：基于 pgvector 的向量检索，实现用户偏好、习惯和重要信息的长期记忆。
+
+**技术架构**：
+- **嵌入模型**：BAAI/bge-m3（1024 维向量）
+- **向量数据库**：PostgreSQL 15 + pgvector 扩展
+- **相似度搜索**：ivfflat 算法，余弦相似度
+
+**记忆类型**：
+- **fact**：事实信息（如职业、联系方式）
+- **preference**：用户偏好（如喜欢辣、不用香菜）
+- **habit**：习惯信息（如下午3点开会）
+- **important**：重要事项（如项目截止日期）
+
+**工作机制**：
+1. **记忆写入**（仅 Complex 模式）：
+   - 用户发送"记住..."命令 → Router 识别为复杂模式
+   - Commander 将任务分配给 memorize_expert
+   - memorize_expert 提取关键事实并存储到 UserMemory 表
+
+2. **记忆读取**（所有模式）：
+   - Router/DirectReply 节点在处理查询前，自动检索相关记忆
+   - 将 Top-3 相关记忆注入到系统提示词中
+   - AI 基于记忆上下文生成个性化响应
+
+**数据结构**：
+```sql
+CREATE TABLE user_memories (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    embedding vector(1024),           -- 1024 维向量
+    created_at VARCHAR(255) NOT NULL,
+    source VARCHAR(50) DEFAULT 'conversation',
+    memory_type VARCHAR(50) DEFAULT 'fact'
+);
+```
+
+**使用场景**：
+- 用户说"记住我喜欢吃辣" → 提取事实并存储
+- 用户问"给我推荐餐厅" → AI 知道用户偏好辣味食物
+- 用户说"我是程序员" → AI 在后续对话中使用此信息
+
+**隐私保护**：
+- 记忆数据按 user_id 隔离
+- 仅当明确要求时才写入记忆
+- 记忆检索基于语义相似度，精确匹配用户意图
 
 ### 📦 Artifact 产物系统（3 Core Types 架构）
 
@@ -221,6 +271,7 @@ Aggregator 整合所有结果生成最终响应
 | LangChain OpenAI | 1.1.7+ | LLM 集成 |
 | SQLModel | 0.0.31+ | ORM 框架 |
 | PostgreSQL | 15+ | 数据库 |
+| pgvector | 0.3.0+ | 向量检索扩展 |
 | psycopg | 3.x | PostgreSQL 驱动 |
 | uv | Latest | Python 包管理器 |
 | PyJWT | 2.8.0 | JWT 认证 |
@@ -296,13 +347,15 @@ graph TB
     end
 
     subgraph Database["数据层"]
-        PostgreSQL["PostgreSQL 15+"]
+        PostgreSQL["PostgreSQL 15+ (pgvector)"]
+        UserMemory["用户记忆表"]
         Cache["专家配置缓存"]
     end
 
     subgraph LLM["LLM 服务"]
         OpenAI["OpenAI GPT-4o"]
         DeepSeek["DeepSeek Chat"]
+        Embedding["BAAI/bge-m3 (嵌入模型)"]
     end
 
     Client --> Frontend
@@ -376,7 +429,8 @@ xpouch-ai/
 │   ├── agents/                        # LangGraph 智能体
 │   │   ├── services/                  # 业务服务层
 │   │   │   ├── expert_manager.py     # 专家配置管理（数据库 → 缓存）
-│   │   │   └── task_manager.py      # 任务会话管理（TaskSession/SubTask）
+│   │   │   ├── task_manager.py      # 任务会话管理（TaskSession/SubTask）
+│   │   │   └── memory_manager.py    # 记忆管理服务（向量检索）
 │   │   ├── graph.py                   # 工作流图构建
 │   │   ├── state.py                   # AgentState 类型定义
 │   │   └── nodes/                     # 工作流节点实现
@@ -403,8 +457,13 @@ xpouch-ai/
 │   │   ├── README.md                # 迁移说明文档
 │   │   └── run_migration.sh           # 迁移执行脚本
 │   ├── scripts/                       # 脚本目录
-│   │   └── init_experts.py            # 专家初始化脚本
-│   ├── models.py                      # SQLModel 数据模型
+│   │   ├── init_db.py                # 数据库表初始化
+│   │   ├── init_experts.py           # 系统专家初始化
+│   │   └── init_memory_expert.py     # 记忆专家初始化
+│   ├── models/                        # 数据模型目录
+│   │   ├── __init__.py              # 模型导出
+│   │   ├── memory.py                # UserMemory 记忆表
+│   │   └── ... (其他模型)
 │   ├── database.py                    # 数据库连接
 │   ├── config.py                      # 配置管理
 │   ├── constants.py                   # 常量定义
@@ -425,6 +484,8 @@ xpouch-ai/
 
 ### Docker 部署（推荐）
 
+#### 新用户首次部署
+
 **1. 克隆项目**
 
 ```bash
@@ -444,25 +505,27 @@ vim backend/.env
 # LLM API Key（至少配置一个）
 DEEPSEEK_API_KEY=sk-your-deepseek-key
 
-# PostgreSQL 连接
-DATABASE_URL=postgresql+psycopg://user:password@host:port/dbname
+# PostgreSQL 连接（Docker Compose 会自动配置）
+# DATABASE_URL 留空或使用 docker-compose.yml 中的默认值
 
 # JWT 密钥（生产环境请修改）
 JWT_SECRET_KEY=your-secure-random-key
 ```
 
-**3. 执行数据库迁移**
+**3. 启动服务（会自动创建所有表）**
 
 ```bash
-cd backend
-chmod +x migrations/run_migration.sh
-./migrations/run_migration.sh
+docker-compose up -d --build
 ```
 
-**4. 启动服务**
+**4. 初始化专家数据（必须执行）**
 
 ```bash
-docker-compose up --build -d
+# 初始化系统专家
+docker exec -it xpouch-backend uv run scripts/init_experts.py
+
+# 初始化记忆专家
+docker exec -it xpouch-backend uv run scripts/init_memory_expert.py
 ```
 
 **5. 访问应用**
@@ -472,6 +535,51 @@ docker-compose up --build -d
 | 前端 | http://localhost:8080 |
 | 后端 API | http://localhost:8080/api |
 | API 文档 | http://localhost:8080/docs |
+
+#### 老用户升级部署
+
+**1. 备份数据库（重要！）**
+
+```bash
+docker exec xpouch-postgres pg_dump -U xpouch_admin xpouch_ai > backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+**2. 拉取最新代码**
+
+```bash
+git pull origin main
+```
+
+**3. 执行数据库迁移（添加新表/字段）**
+
+```bash
+docker exec -i xpouch-postgres psql -U xpouch_admin -d xpouch_ai < backend/migrations/apply_all_migrations.sql
+```
+
+**4. 重建并启动服务**
+
+```bash
+docker-compose up -d --build
+```
+
+**5. 初始化记忆专家（仅首次）**
+
+```bash
+docker exec -it xpouch-backend uv run scripts/init_memory_expert.py
+```
+
+**6. 验证部署**
+
+```bash
+# 检查 UserMemory 表是否创建
+docker exec xpouch-postgres psql -U xpouch_admin -d xpouch_ai -c "\dt user_memories"
+
+# 检查记忆专家是否注册
+docker exec xpouch-postgres psql -U xpouch_admin -d xpouch_ai -c "SELECT * FROM systemexpert WHERE expert_key = 'memorize_expert';"
+
+# 查看后端日志
+docker-compose logs -f backend
+```
 
 ### 本地开发
 
@@ -532,6 +640,35 @@ pnpm run dev:backend   # 后端 `cd backend && uv run main.py`，端口 http://l
    - 选择分类
 3. 保存后即可使用
 
+### 长期记忆功能
+
+**写入记忆**（仅复杂模式）：
+
+1. 输入"记住"相关请求，例如：
+   - "记住我喜欢吃辣，不要放香菜"
+   - "我是程序员，擅长 Python 和 React"
+   - "明天下午 3 点有个重要会议"
+2. 系统自动识别为复杂模式
+3. memorize_expert 提取关键事实并存储
+4. 记忆保存成功后会有提示
+
+**读取记忆**（所有模式）：
+
+1. 系统在处理用户查询时自动检索相关记忆
+2. 相关记忆会注入到 AI 的上下文中
+3. AI 基于记忆提供个性化响应
+
+**记忆类型**：
+- **fact**：事实信息（如职业、联系方式）
+- **preference**：用户偏好（如喜欢辣、不用香菜）
+- **habit**：习惯信息（如下午3点开会）
+- **important**：重要事项（如项目截止日期）
+
+**隐私保护**：
+- 记忆数据按用户隔离
+- 仅在明确要求时才写入
+- 支持记忆管理和删除（未来版本）
+
 ## 🔧 配置说明
 
 ### 后端配置（backend/.env）
@@ -543,8 +680,11 @@ pnpm run dev:backend   # 后端 `cd backend && uv run main.py`，端口 http://l
 | `DEEPSEEK_API_KEY` | DeepSeek API 密钥 | 是* | - |
 | `OPENAI_API_KEY` | OpenAI API 密钥 | 是* | - |
 | `JWT_SECRET_KEY` | JWT 密钥 | 是 | - |
+| `EMBEDDING_API_KEY` | 嵌入模型 API 密钥 | 否 | - |
+| `EMBEDDING_MODEL` | 嵌入模型名称 | 否 | `BAAI/bge-m3` |
 
 > * 至少需要配置一个 LLM 提供商的 API 密钥
+> **注意**：记忆系统需要嵌入模型 API，推荐使用 SiliconFlow 的免费 BAAI/bge-m3 模型
 
 ### 前端配置（frontend/.env）
 
@@ -625,6 +765,8 @@ pnpm --prefix frontend run lint
 - [Tailwind CSS](https://tailwindcss.com/) - 原子化 CSS 框架
 - [Radix UI](https://www.radix-ui.com/) - 无头 UI 组件
 - [FastAPI](https://fastapi.tiangolo.com/) - 现代 Python Web 框架
+- [pgvector](https://github.com/pgvector/pgvector) - PostgreSQL 向量检索扩展
+- [SQLModel](https://sqlmodel.tiangolo.com/) - Python ORM 框架
 
 ## 📮 联系方式
 
