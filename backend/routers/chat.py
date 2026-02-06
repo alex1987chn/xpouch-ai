@@ -698,10 +698,16 @@ async def _handle_langgraph_stream(
 
         print(f"[LANGGRAPH STREAM] {datetime.now().isoformat()} - 开始流式处理，心跳间隔={HEARTBEAT_INTERVAL}秒，强制心跳间隔=30.0秒")
 
-        # 获取图的流迭代器（🔥 添加 config 传递 thread_id 给 MemorySaver）
+        # 获取图的流迭代器（🔥 添加 config 传递 thread_id 给 MemorySaver，并设置递归限制）
+        # 注意：recursion_limit 必须在 config 顶层，不能在 configurable 中
         iterator = commander_graph.astream_events(
             initial_state,
-            config={"configurable": {"thread_id": thread_id}},
+            config={
+                "recursion_limit": 100,  # 🔥 设置递归限制（放在顶层！）
+                "configurable": {
+                    "thread_id": thread_id
+                }
+            },
             version="v2"
         )
 
@@ -1012,10 +1018,16 @@ async def _handle_langgraph_sync(
     session: Session
 ) -> dict:
     """处理 LangGraph 非流式响应"""
-    # 🔥 添加 config 传递 thread_id 给 MemorySaver
+    # 🔥 添加 config 传递 thread_id 给 MemorySaver，并设置递归限制
+    # 注意：recursion_limit 必须在 config 顶层，不能在 configurable 中
     result = await commander_graph.ainvoke(
         initial_state,
-        config={"configurable": {"thread_id": thread_id}}
+        config={
+            "recursion_limit": 100,  # 🔥 设置递归限制（放在顶层！）
+            "configurable": {
+                "thread_id": thread_id
+            }
+        }
     )
     last_message = result["messages"][-1]
 

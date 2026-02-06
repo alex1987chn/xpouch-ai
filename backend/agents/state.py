@@ -24,3 +24,5 @@ class AgentState(TypedDict):
     db_session: Optional[Any]          # 数据库会话（用于节点内持久化）
     # v3.0 新增：事件队列（用于 SSE 推送）
     event_queue: List[Dict[str, Any]]  # 待发送的事件列表
+    # v3.1 新增：工具调用计数（防止无限循环）
+    tool_call_count: int               # 当前任务的工具调用次数

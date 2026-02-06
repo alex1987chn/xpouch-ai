@@ -17,25 +17,71 @@ from agents.services.expert_manager import get_expert_config_cached
 from utils.llm_factory import get_effective_model, get_expert_llm
 from providers_config import get_model_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
+from tools import ALL_TOOLS  # 🔥 新增：导入工具集
+
+
+def _inject_current_time(system_prompt: str) -> str:
+    """
+    在 System Prompt 中注入当前时间
+
+    让 LLM 知道当前的确切时间，自动将"今天"、"昨天"等相对时间转换为具体日期
+    """
+    now = datetime.now()
+    weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+    weekday_str = weekdays[now.weekday()]
+
+    # 格式化时间：2026年02月06日 14:30:00 星期五
+    time_str = now.strftime(f"%Y年%m月%d日 %H:%M:%S {weekday_str}")
+    date_str = now.strftime("%Y-%m-%d")
+
+    # 构建增强的 System Prompt
+    enhanced_prompt = f"""【当前系统时间】：{time_str}
+【当前日期】：{date_str}
+
+{system_prompt}
+
+【时间处理指令】：
+- 如果用户询问"今天"、"昨天"或"最近"的新闻/事件，请根据【当前日期】将相对时间转换为具体日期格式（如 "{date_str}"）
+- 调用搜索工具时，请使用具体日期而非相对时间（例如："{date_str} AI新闻" 而不是 "今天的新闻"）
+- 这会帮助搜索工具返回更精准的结果
+
+【🔥🔥🔥 绝对禁止 - 严厉指令 🔥🔥🔥】：
+1. 当你调用工具并收到 ToolMessage（工具执行结果）后，**必须立即停止调用工具**，根据结果直接回答用户
+2. **绝对禁止**在收到 ToolMessage 后再次调用相同或不同的工具
+3. 如果搜索结果为空或不满意，**直接告诉用户"未找到相关信息"**，绝对不要重试或重复搜索
+4. 这是你被允许调用工具的**最后一次机会**，违反此指令将导致任务失败
+5. 【熔断警告】：如果你重复调用工具超过 3 次，系统会强制终止你的执行
+
+记住：看到工具结果 → 立即回答 → 任务完成。不要思考，不要犹豫，不要重试！
+"""
+
+    return enhanced_prompt
 
 
 async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]:
     """
     通用专家执行节点
-    
+
     根据 state["current_task"]["expert_type"] 从数据库加载专家配置并执行。
     用于处理动态创建的自定义专家。
-    
+
+    支持工具调用流程：
+    1. 首次调用：LLM 可能返回 tool_calls
+    2. 工具执行后：LLM 看到 ToolMessage，生成最终回复
+
     Args:
         state: AgentState，包含 task_list, current_task_index 等
         llm: 可选的 LLM 实例，如果不提供则根据专家配置创建
-    
+
     Returns:
         Dict: 执行结果，包含 output_result, status, artifact 等
     """
+    from langchain_core.messages import ToolMessage
+
     # 获取当前任务
     task_list = state.get("task_list", [])
     current_index = state.get("current_task_index", 0)
+    existing_messages = state.get("messages", [])
     
     if current_index >= len(task_list):
         return {
@@ -127,28 +173,93 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
                 llm = get_expert_llm(provider=provider, model=actual_model, temperature=temperature)
             else:
                 llm = get_expert_llm(model=actual_model, temperature=temperature)
-        
+
         # 绑定模型和温度参数
         llm_with_config = llm.bind(
             model=actual_model,
             temperature=temperature
         )
-        
-        # 使用 RunnableConfig 添加标签，便于流式输出过滤
-        response = await llm_with_config.ainvoke(
-            [
-                SystemMessage(content=system_prompt),
+
+        # 🔥 核心修改：在 System Prompt 中注入当前时间
+        enhanced_system_prompt = _inject_current_time(system_prompt)
+
+        # 🔥 关键修复：构建消息列表
+        # 如果有现有的 messages（包含 ToolMessage），则使用它们
+        # 否则创建新的消息列表
+        has_tool_message = False
+        if existing_messages:
+            # 工具执行后的情况：messages 包含 AIMessage(tool_calls) + ToolMessage
+            # 我们需要保留这些上下文，让 LLM 看到工具结果
+            # 检查最后一条是否是 ToolMessage
+            if existing_messages and isinstance(existing_messages[-1], ToolMessage):
+                has_tool_message = True
+            messages_for_llm = [
+                SystemMessage(content=enhanced_system_prompt),
+                *existing_messages  # 包含 AIMessage(tool_calls) 和 ToolMessage
+            ]
+        else:
+            # 首次调用：创建新的消息列表
+            messages_for_llm = [
+                SystemMessage(content=enhanced_system_prompt),
                 HumanMessage(content=f"任务描述: {description}\n\n输入参数:\n{_format_input_data(input_data)}")
-            ],
+            ]
+
+        # 🔥 关键修复：根据是否有 ToolMessage 决定是否绑定工具
+        # 如果已经有 ToolMessage（工具执行完成），则不绑定工具，防止无限循环
+        if has_tool_message:
+            llm_to_use = llm_with_config
+        else:
+            # 🔥 新增：为所有专家绑定工具（联网搜索、时间、计算器）
+            # 如果 LLM 支持工具调用，则绑定工具集
+            try:
+                llm_to_use = llm_with_config.bind_tools(ALL_TOOLS)
+            except Exception as e:
+                print(f"[GenericWorker] ⚠️ 工具绑定失败（模型可能不支持工具调用）: {e}")
+                llm_to_use = llm_with_config
+
+        # 🔥 关键优化：当 has_tool_message=True 时，在消息末尾添加明确的"任务完成"提示
+        if has_tool_message:
+            # 在消息列表末尾添加一个 HumanMessage，明确告诉 LLM 任务完成
+            messages_for_llm.append(HumanMessage(content="[系统提示：以上是工具执行结果，请基于此结果生成最终回复，任务已完成，不要再调用任何工具]"))
+
+        # 使用 RunnableConfig 添加标签，便于流式输出过滤
+        response = await llm_to_use.ainvoke(
+            messages_for_llm,
             config=RunnableConfig(
                 tags=["expert", expert_type, "generic_worker"],
                 metadata={"node_type": "expert", "expert_type": expert_type}
             )
         )
-        
+
+        # 🔥 关键修复：检查响应中是否包含工具调用
+        has_tool_calls = hasattr(response, "tool_calls") and response.tool_calls
+
+        if has_tool_calls:
+            print(f"[GenericWorker] 🔧 LLM 返回了工具调用！数量: {len(response.tool_calls)}")
+            for tool_call in response.tool_calls:
+                print(f"[GenericWorker]   - 工具: {tool_call.get('name', 'unknown')}")
+            # 🔥🔥 关键：返回 messages 让 ToolNode 处理工具调用
+            # 此时不生成 task.completed 事件，因为任务还没完成
+            return {
+                "messages": [response],  # 包含 tool_calls 的 AIMessage
+                "task_list": task_list,
+                "current_task_index": current_index,  # 不增加 index，等工具执行完再说
+                "event_queue": initial_event_queue,  # 只返回 started 事件
+                "__expert_info": {
+                    "expert_type": expert_type,
+                    "expert_name": expert_name,
+                    "task_id": task_id,
+                    "status": "waiting_for_tool",
+                    "tool_calls": response.tool_calls
+                }
+            }
+
+        # 没有工具调用，正常完成任务
+        print(f"[GenericWorker] ℹ️ LLM 返回了普通文本响应，未调用工具")
+
         completed_at = datetime.now()
         duration_ms = int((completed_at - started_at).total_seconds() * 1000)
-        
+
         print(f"[GenericWorker] '{expert_type}' completed (耗时: {duration_ms/1000:.2f}s)")
 
         # -------------------------------------------------------------
@@ -269,6 +380,7 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         full_event_queue = initial_event_queue + event_queue
 
         return {
+            "messages": [response],  # 🔥🔥🔥 核心修复：必须把 LLM 的最终回复更新到图状态的消息历史中！🔥🔥🔥
             "task_list": task_list,
             "expert_results": expert_results,
             "current_task_index": next_index,  # ✅ 增加 index

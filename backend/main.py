@@ -308,7 +308,12 @@ async def chat_invoke_endpoint(
 
             final_state = await commander_graph.ainvoke(
                 initial_state,
-                config={"configurable": {"thread_id": thread_id}}
+                config={
+                    "recursion_limit": 100,  # 🔥 设置递归限制（放在顶层！）
+                    "configurable": {
+                        "thread_id": thread_id
+                    }
+                }
             )
 
             # 保存 SubTask 到数据库

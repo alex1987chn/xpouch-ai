@@ -5,7 +5,8 @@ XPouch AI 智能路由工作流 (v3.0 架构)
 """
 from typing import Dict, Any
 from langgraph.graph import StateGraph, END
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, ToolMessage
+from langgraph.prebuilt import ToolNode  # 🔥 新增：工具执行节点
 from dotenv import load_dotenv
 import pathlib
 
@@ -27,6 +28,7 @@ from agents.nodes import (
     aggregator_node,
 )
 from agents.state import AgentState
+from tools import ALL_TOOLS  # 🔥 新增：导入工具集
 
 # LangSmith 链路追踪
 env_path = pathlib.Path(__file__).parent.parent / ".env"
@@ -112,6 +114,48 @@ def route_dispatcher(state: AgentState) -> str:
     # Dispatcher 会检查任务并决定是否继续
     return "expert_dispatcher"
 
+
+def route_generic(state: AgentState) -> str:
+    """
+    Generic Worker 之后的条件路由
+
+    1. 检查是否有工具调用请求，如果有则执行工具
+    2. 如果工具执行完成（最后一条是 ToolMessage），回到 Generic 继续处理
+    3. 如果没有工具调用，检查任务是否完成
+    """
+    from langchain_core.messages import ToolMessage, AIMessage
+
+    messages = state.get("messages", [])
+    current_index = state.get("current_task_index", 0)
+    task_list = state.get("task_list", [])
+
+    if not messages:
+        return route_dispatcher(state)
+
+    # 🔥🔥🔥 熔断机制 (Circuit Breaker) 🔥🔥🔥
+    # 检查最近的 ToolMessage 数量，防止无限循环
+    recent_tool_count = sum(1 for msg in messages[-10:] if isinstance(msg, ToolMessage))
+    if recent_tool_count >= 5:
+        print(f"[ROUTE_GENERIC] 🛑 熔断触发：最近已执行 {recent_tool_count} 次工具，强制结束任务！")
+        return "aggregator"
+
+    # 🔥 情况1：LLM 返回了 tool_calls，需要执行工具
+    if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+        return "tools"
+
+    # 🔥 情况2：最后一条是 ToolMessage，说明工具刚执行完
+    # 需要回到 Generic 让 LLM 处理工具结果
+    if isinstance(last_message, ToolMessage):
+        return "generic"
+
+    # 🔥 情况3：检查任务是否完成
+    # 如果 current_index >= len(task_list)，说明所有任务已完成
+    if current_index >= len(task_list):
+        return "aggregator"
+
+    # 情况4：还有任务，继续执行
+    return route_dispatcher(state)
+
 # ============================================================================
 # 5. 构建工作流图
 # ============================================================================
@@ -126,6 +170,11 @@ def create_smart_router_workflow() -> StateGraph:
     workflow.add_node("expert_dispatcher", expert_dispatcher_node)
     workflow.add_node("generic", generic_worker_node)  # 新增：通用专家执行节点
     workflow.add_node("aggregator", aggregator_node)
+
+    # 🔥 新增：工具执行节点
+    tool_node = ToolNode(ALL_TOOLS)
+    workflow.add_node("tools", tool_node)
+    print(f"[WORKFLOW] ✅ 已注册工具节点，包含 {len(ALL_TOOLS)} 个工具: {[t.name for t in ALL_TOOLS]}")
 
     # 设置入口：现在入口是 Router！
     workflow.set_entry_point("router")
@@ -152,18 +201,24 @@ def create_smart_router_workflow() -> StateGraph:
     # Dispatcher 检查专家存在后，流转到 Generic 执行
     workflow.add_edge("expert_dispatcher", "generic")
 
-    # 5. Generic -> (Dispatcher | Aggregator)
-    # Generic 执行完任务后，根据是否还有任务决定去向
+    # 5. Generic -> (Tools | Generic | Dispatcher | Aggregator)
+    # Generic 执行任务后，根据是否有工具调用请求或任务状态决定去向
     workflow.add_conditional_edges(
         "generic",
-        route_dispatcher,
+        route_generic,
         {
-            "expert_dispatcher": "expert_dispatcher",  # 还有任务，回到 Dispatcher 检查下一个
+            "tools": "tools",  # 有工具调用，执行工具
+            "generic": "generic",  # 工具执行完，回到 Generic 处理结果
+            "expert_dispatcher": "expert_dispatcher",  # 继续下一个任务
             "aggregator": "aggregator"  # 所有任务完成，去聚合结果
         }
     )
 
-    # 4. Aggregator -> END
+    # 6. Tools -> Generic (工具执行完，回到 Generic 继续处理)
+    # 工具执行完后，LLM 会继续响应，可能再次调用工具或完成任务
+    workflow.add_edge("tools", "generic")
+
+    # 7. Aggregator -> END
     workflow.add_edge("aggregator", END)
 
     # ---------------------------------------------------------
@@ -174,9 +229,11 @@ def create_smart_router_workflow() -> StateGraph:
     memory = MemorySaver()
 
     # 编译时传入 checkpointer
-    return workflow.compile(checkpointer=memory)
+    compiled_workflow = workflow.compile(checkpointer=memory)
     # ---------------------------------------------------------
     # 🔥 修改结束
+
+    return compiled_workflow
 
 # 导出编译后的图
 commander_graph = create_smart_router_workflow()
@@ -195,10 +252,16 @@ async def execute_commander_workflow(user_query: str, thread_id: str = "test_thr
         "expert_results": [],
         "final_response": ""
     }
-    # 🔥 添加 config 传递 thread_id 给 MemorySaver
+    # 🔥 添加 config 传递 thread_id 给 MemorySaver，并设置递归限制
+    # 注意：recursion_limit 必须在 config 顶层，不能在 configurable 中
     final_state = await commander_graph.ainvoke(
         initial_state,
-        config={"configurable": {"thread_id": thread_id}}
+        config={
+            "recursion_limit": 100,  # 🔥 设置递归限制（放在顶层！）
+            "configurable": {
+                "thread_id": thread_id
+            }
+        }
     )
     print("--- [DONE] ---")
     return final_state

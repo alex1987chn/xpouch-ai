@@ -14,6 +14,45 @@ XPouch AI v3.0 是一个基于 **LangGraph** 的智能对话与任务协作平�
 
 ## ✨ 核心特性
 
+### 🔧 工具系统（Function Calling）
+
+**设计理念**：通过 LangGraph 的 ToolNode 集成外部工具，增强 LLM 实时能力。
+
+**核心工具集**：
+
+|| 工具 | 功能 | 使用场景 |
+||------|------|----------|
+|| **search_web** | Tavily 联网搜索 | 实时新闻、股价、天气、冷知识查询 |
+|| **get_current_time** | 当前时间查询 | 相对时间转换（"今天"、"昨天"） |
+|| **calculator** | 数学计算 | 复杂算术运算、精度计算 |
+
+**工作流程**：
+```
+用户查询: "今天最热的10条新闻是什么？"
+            ↓
+Router 识别为复杂模式 → Commander → Generic Worker (search 专家)
+            ↓
+Generic Worker 绑定工具 → LLM 调用 search_web
+            ↓
+ToolNode 执行搜索 → 返回搜索结果
+            ↓
+Generic Worker 处理工具结果 → 生成最终回复
+            ↓
+熔断机制：防止工具调用死循环（最多 5 次）
+```
+
+**配置要求**：
+```env
+# .env 中配置 Tavily API Key
+TAVILY_API_KEY=tvly-your-key-here
+```
+
+**特性**：
+- **自动绑定**：所有专家自动绑定工具，无需单独配置
+- **时间注入**：System Prompt 自动注入当前时间，帮助 LLM 转换相对时间
+- **熔断保护**：检测工具调用次数，防止无限循环
+- **兼容性导入**：支持 langchain-tavily 和 langchain-community 两种实现
+
 ### 🧠 智能路由系统
 
 **设计理念**：双入口设计 + 单路由智能分发。
@@ -432,6 +471,10 @@ xpouch-ai/
 │   └── Dockerfile                     # Docker 镜像
 │
 ├── backend/                           # 🔧 Python 后端
+│   ├── tools/                         # 🔥 Function Calling 工具集
+│   │   ├── __init__.py                # 工具导出（ALL_TOOLS）
+│   │   ├── search.py                  # Tavily 联网搜索
+│   │   └── utils.py                   # 时间查询、计算器
 │   ├── agents/                        # LangGraph 智能体
 │   │   ├── services/                  # 业务服务层
 │   │   │   ├── expert_manager.py     # 专家配置管理（数据库 → 缓存）
@@ -444,7 +487,7 @@ xpouch-ai/
 │   │       ├── commander.py           # 任务规划节点
 │   │       ├── dispatcher.py          # 专家分发节点
 │   │       ├── aggregator.py          # 结果聚合节点
-│   │       └── generic.py             # 通用专家执行节点
+│   │       └── generic.py             # 通用专家执行节点（支持工具调用）
 │   ├── api/                           # API 路由
 │   │   └── admin.py                   # 管理员 API（专家配置）
 │   ├── routers/                       # 路由模块

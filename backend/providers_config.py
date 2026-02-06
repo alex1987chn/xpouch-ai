@@ -226,7 +226,8 @@ def get_embedding_provider_config(provider: str) -> Optional[Dict[str, Any]]:
         配置字典，如果不存在返回 None
     """
     embeddings = get_embeddings_config()
-    return embeddings.get('providers', {}).get(provider)
+    # embeddings 下直接是提供商配置，不需要 'providers' 层
+    return embeddings.get(provider)
 
 
 def get_default_embedding_provider() -> str:
@@ -292,21 +293,21 @@ def print_embedding_status():
             has_key = os.getenv(env_key) is not None
 
             if has_key:
-                print(f"\n✅ 已配置:")
-                print(f"   • {config.get('name')} ({provider})")
-                print(f"   • 模型: {config.get('default_model')}")
-                print(f"   • 向量维度: {config.get('dimensions')}")
+                print(f"\n[OK] 已配置:")
+                print(f"   - {config.get('name')} ({provider})")
+                print(f"   - 模型: {config.get('default_model')}")
+                print(f"   - 向量维度: {config.get('dimensions')}")
             else:
-                print(f"\n⚠️  未配置 API Key:")
-                print(f"   • 请设置环境变量: {env_key}")
+                print(f"\n[WARN] 未配置 API Key:")
+                print(f"   - 请设置环境变量: {env_key}")
         else:
-            print(f"\n🚫 嵌入提供商已禁用: {provider}")
+            print(f"\n[DISABLED] 嵌入提供商已禁用: {provider}")
 
         print("="*60 + "\n")
         return has_key
 
     except Exception as e:
-        print(f"\n❌ 嵌入模型配置错误: {e}\n")
+        print(f"\n[ERROR] 嵌入模型配置错误: {e}\n")
         return False
 
 
