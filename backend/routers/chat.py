@@ -452,7 +452,18 @@ async def _handle_custom_agent_stream(
                 print(f"[CUSTOM AGENT] 未找到模型配置，使用 fallback: {model_id}, temperature={temperature}")
                 llm = get_llm_instance(streaming=True, model=model_id, temperature=temperature)
 
-            messages_with_system = [("system", custom_agent.system_prompt)]
+            # 🔥 检索长期记忆
+            from services.memory_manager import memory_manager
+            user_query = langchain_messages[-1].content if langchain_messages else ""
+            relevant_memories = await memory_manager.search_relevant_memories(thread.user_id, user_query, limit=5)
+            
+            # 构建 System Prompt（注入记忆）
+            system_prompt = custom_agent.system_prompt
+            if relevant_memories:
+                print(f"[CUSTOM AGENT] 激活记忆: {relevant_memories[:100]}...")
+                system_prompt += f"\n\n【关于用户的已知信息】:\n{relevant_memories}\n(请在回答时自然地利用这些信息)"
+            
+            messages_with_system = [("system", system_prompt)]
             messages_with_system.extend(langchain_messages)
 
             # 获取流迭代器
@@ -609,7 +620,18 @@ async def _handle_custom_agent_sync(
         print(f"[CUSTOM AGENT] 未找到模型配置，使用 fallback: {model_id}")
         llm = get_llm_instance(streaming=False, model=model_id, temperature=0.7)
     
-    messages_with_system = [("system", custom_agent.system_prompt)]
+    # 🔥 检索长期记忆
+    from services.memory_manager import memory_manager
+    user_query = langchain_messages[-1].content if langchain_messages else ""
+    relevant_memories = await memory_manager.search_relevant_memories(thread.user_id, user_query, limit=5)
+    
+    # 构建 System Prompt（注入记忆）
+    system_prompt = custom_agent.system_prompt
+    if relevant_memories:
+        print(f"[CUSTOM AGENT] 激活记忆: {relevant_memories[:100]}...")
+        system_prompt += f"\n\n【关于用户的已知信息】:\n{relevant_memories}\n(请在回答时自然地利用这些信息)"
+    
+    messages_with_system = [("system", system_prompt)]
     messages_with_system.extend(langchain_messages)
     
     result = await llm.ainvoke(messages_with_system)
