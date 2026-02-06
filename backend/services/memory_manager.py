@@ -2,27 +2,25 @@ import os
 import asyncio
 from typing import List
 from datetime import datetime
-from openai import OpenAI  # 使用 OpenAI SDK 调用硅基流动
 from sqlmodel import Session, select
 from database import engine
 from models.memory import UserMemory
-
-# 初始化硅基流动客户端
-client = OpenAI(
-    api_key=os.getenv("SILICON_API_KEY"),
-    base_url="https://api.siliconflow.cn/v1"  # ✅ 关键地址
-)
-
-# 嵌入模型配置（支持环境变量自定义，默认：BAAI/bge-m3）
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
+from providers_config import get_embedding_client
 
 
 def get_embedding(text: str) -> List[float]:
-    """获取向量 (调用 BAAI/bge-m3)"""
+    """
+    获取向量嵌入
+
+    从 providers.yaml 读取配置，支持动态切换提供商
+    """
     try:
+        # 从统一配置获取客户端
+        client, model, dimensions = get_embedding_client()
+
         response = client.embeddings.create(
             input=text.replace("\n", " "),
-            model=EMBEDDING_MODEL  # ✅ 支持环境变量配置
+            model=model
         )
         return response.data[0].embedding
     except Exception as e:
