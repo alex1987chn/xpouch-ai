@@ -23,10 +23,13 @@ XPouch AI v3.0 是一个基于 **LangGraph** 的智能对话与任务协作平�
 || 工具 | 功能 | 使用场景 |
 ||------|------|----------|
 || **search_web** | Tavily 联网搜索 | 实时新闻、股价、天气、冷知识查询 |
+|| **read_webpage** | **Jina 深度阅读** | **读取 URL 全文、分析技术文档、GitHub 仓库阅读** |
 || **get_current_time** | 当前时间查询 | 相对时间转换（"今天"、"昨天"） |
 || **calculator** | 数学计算 | 复杂算术运算、精度计算 |
 
-**工作流程**：
+**工作流程示例**：
+
+*示例 1：联网搜索*
 ```
 用户查询: "今天最热的10条新闻是什么？"
             ↓
@@ -39,6 +42,25 @@ ToolNode 执行搜索 → 返回搜索结果
 Generic Worker 处理工具结果 → 生成最终回复
             ↓
 熔断机制：防止工具调用死循环（最多 5 次）
+```
+
+*示例 2：深度研究（搜索 + 阅读闭环）*
+```
+用户查询: "分析 DeepSeek-V3 的 GitHub 技术文档，对比 V2 的参数提升"
+            ↓
+Router → Commander 拆解任务:
+  1. search 专家 → 搜索 DeepSeek-V3 技术报告
+  2. researcher 专家 → 读取 GitHub 仓库详情
+            ↓
+Generic Worker (search) → 调用 search_web 获取线索
+            ↓
+Generic Worker (researcher) → 识别 URL → 调用 read_webpage
+            ↓
+Jina Reader 解析网页 → 返回 Markdown 全文
+            ↓
+Generic Worker → 基于全文生成深度分析报告
+            ↓
+Aggregator → 整合多源信息，输出完整对比结果
 ```
 
 **配置要求**：
