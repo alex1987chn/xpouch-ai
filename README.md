@@ -611,7 +611,7 @@ pnpm run dev
 
 # 或分别启动
 pnpm run dev:frontend  # 前端 http://localhost:5173
-pnpm run dev:backend   # 后端 `cd backend && uv run main.py`，端口 http://localhost:3002
+pnpm run dev:backend   # 后端 http://localhost:3002（实际执行：cd backend && uv run main.py）
 ```
 
 ## 📖 使用指南
