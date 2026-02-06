@@ -22,9 +22,8 @@ def parse_llm_json(
 
     功能：
     1. 移除 Markdown 代码块标记（```json ... ```）
-    2. 提取 JSON 内容（处理前后缀文本）
+    2. 使用状态机修复字符串内部的未转义字符
     3. 验证 JSON 格式是否符合 Pydantic 模型
-    4. 清理常见格式问题（尾部逗号、注释等）
 
     Args:
         content: LLM 原始响应内容
@@ -38,14 +37,6 @@ def parse_llm_json(
     Raises:
         ValueError: JSON 格式无效或解析失败
         ValidationError: JSON 结构不符合 Pydantic 模型
-
-    Example:
-        >>> from pydantic import BaseModel
-        >>> class Task(BaseModel):
-        ...     name: str
-        >>> result = parse_llm_json('{"name": "test"}', Task)
-        >>> print(result.name)
-        test
     """
     try:
         # 步骤 1: 清理 Markdown 代码块标记
@@ -56,16 +47,31 @@ def parse_llm_json(
         # 步骤 2: 提取 JSON 内容
         json_str = _extract_json(json_content)
 
-        # 步骤 3: 清理 JSON 格式问题
-        json_str = _clean_json_format(json_str)
-
-        # 步骤 4: 解析 JSON
+        # 步骤 3: 第一次尝试 - 直接解析（运气好的时候）
         try:
-            json_data = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"JSON 解析失败: {e}\n原始内容: {content[:500]}...")
+            json_data = json.loads(json_str, strict=False)
+        except json.JSONDecodeError:
+            # 🔥 步骤 4: 使用状态机修复字符串内部的未转义字符
+            print("[JSON Parser] 直接解析失败，使用状态机修复...")
+            repaired_str = _repair_json_string(json_str)
+            try:
+                json_data = json.loads(repaired_str, strict=False)
+            except json.JSONDecodeError as e:
+                # 步骤 5: 如果还是失败，尝试最后的暴力清理
+                print("[JSON Parser] 状态机修复失败，尝试暴力清理...")
+                final_str = _aggressive_clean(repaired_str)
+                try:
+                    json_data = json.loads(final_str, strict=False)
+                except json.JSONDecodeError as e2:
+                    error_pos = getattr(e2, 'pos', 0)
+                    start = max(0, error_pos - 50)
+                    end = min(len(final_str), error_pos + 50)
+                    raise ValueError(
+                        f"JSON 解析彻底失败: {e2}\n"
+                        f"错误位置: {error_pos}, 附近内容: ...{final_str[start:end]}..."
+                    )
 
-        # 步骤 5: 验证并转换为 Pydantic 对象
+        # 步骤 6: 验证并转换为 Pydantic 对象
         try:
             return response_model(**json_data)
         except ValidationError as e:
@@ -78,6 +84,55 @@ def parse_llm_json(
         if strict:
             raise
         raise ValueError(f"解析失败: {e}\n原始内容: {content[:500]}...")
+
+
+def _repair_json_string(s: str) -> str:
+    """
+    🔥 使用状态机修复 JSON 字符串：
+    1. 将字符串值内部的物理换行(\n)替换为 \\n
+    2. 将字符串值内部的 Tab(\t)替换为 \\t
+    3. 移除无效的控制字符
+    
+    这比正则更安全，因为它只在双引号内部进行替换
+    """
+    result = []
+    in_string = False
+    escape = False
+    
+    for char in s:
+        # 1. 处理转义符 (比如 \")
+        if char == '\\':
+            escape = not escape  # 翻转转义状态
+            result.append(char)
+            continue
+        
+        # 2. 处理双引号 (切换字符串状态)
+        if char == '"' and not escape:
+            in_string = not in_string
+            result.append(char)
+            continue
+            
+        # 3. 处理字符串内部的特殊字符
+        if in_string:
+            if char == '\n':
+                result.append('\\n')  # 强制转义换行
+            elif char == '\t':
+                result.append('\\t')  # 强制转义 Tab
+            elif char == '\r':
+                pass  # 忽略回车符
+            elif ord(char) < 32:
+                pass  # 忽略其他控制字符
+            else:
+                result.append(char)
+        else:
+            # 字符串外部：保留结构字符
+            result.append(char)
+        
+        # 重置转义状态 (如果当前不是转义符)
+        if escape:
+            escape = False
+
+    return "".join(result)
 
 
 def _clean_markdown_blocks(content: str) -> str:
@@ -110,9 +165,9 @@ def _extract_json(content: str) -> str:
     - JSON 前后有文本说明
     - 多个 JSON 对象（取第一个有效的）
     """
-    # 尝试 1: 整个内容就是 JSON
+    # 尝试 1: 整个内容就是 JSON (使用宽容模式)
     try:
-        json.loads(content)
+        json.loads(content, strict=False)
         return content
     except json.JSONDecodeError:
         pass
@@ -123,7 +178,7 @@ def _extract_json(content: str) -> str:
 
     for match in matches:
         try:
-            json.loads(match)
+            json.loads(match, strict=False)
             return match
         except json.JSONDecodeError:
             continue
@@ -134,7 +189,7 @@ def _extract_json(content: str) -> str:
 
     for match in matches:
         try:
-            json.loads(match)
+            json.loads(match, strict=False)
             return match
         except json.JSONDecodeError:
             continue
@@ -142,26 +197,20 @@ def _extract_json(content: str) -> str:
     raise ValueError("未找到有效的 JSON 内容")
 
 
-def _clean_json_format(json_str: str) -> str:
+def _aggressive_clean(json_str: str) -> str:
     """
-    清理 JSON 格式问题
-
-    处理:
-    - 尾部逗号 (如 {"a": 1,})
-    - 行内注释 (如 {"a": 1 // comment})
-    - 换行符
+    暴力清理 - 当所有方法都失败时使用
     """
-    # 移除行内注释 (简单处理)
-    json_str = re.sub(r'//.*$', '', json_str, flags=re.MULTILINE)
-    json_str = re.sub(r'/\*.*?\*/', '', json_str, flags=re.DOTALL)
-
-    # 移除尾部逗号
+    # 1. 移除所有 ASCII 控制字符 (除了 \n \r \t)
+    json_str = ''.join(c for c in json_str if ord(c) >= 32 or c in '\n\r\t')
+    
+    # 2. 替换 Unicode 特殊字符
+    json_str = json_str.replace('\u00A0', ' ').replace('\uFEFF', '')
+    
+    # 3. 移除尾部逗号 (如 {"a": 1,})
     json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
-
-    # 标准化换行符
-    json_str = json_str.replace('\r\n', '\n').replace('\r', '\n')
-
-    return json_str.strip()
+    
+    return json_str
 
 
 def _fix_and_parse(json_data: dict, response_model: Type[T]) -> T:
@@ -227,7 +276,7 @@ def is_valid_json(content: str) -> bool:
         bool: 是否为有效 JSON
     """
     try:
-        json.loads(content)
+        json.loads(content, strict=False)
         return True
     except (json.JSONDecodeError, TypeError):
         return False
