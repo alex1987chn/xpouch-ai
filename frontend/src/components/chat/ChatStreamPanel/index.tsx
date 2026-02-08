@@ -15,10 +15,12 @@
  * 2. Markdown 支持：GFM 表格、代码高亮 (rehype-highlight)
  * 3. 输入控制台：Heavy Input Console（机械风格）
  * 4. 工具按钮：附件、网络搜索
+ * 5. 🔥 Server-Driven UI：思维链可视化
  *
  * [组件拆分]
  * - EmptyState: 空状态展示
  * - MessageItem: 单条消息渲染
+ * - ThinkingProcess: 思维链展示（气泡外）
  * - GeneratingIndicator: 生成中动画
  * - HeavyInputConsole: 输入控制台
  *
@@ -27,13 +29,15 @@
  * - 状态管理由父组件和 Zustand Store 负责
  */
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import type { Message } from '@/types'
 import EmptyState from '../EmptyState'
 import MessageItem from '../MessageItem'
+import ThinkingProcess from '../ThinkingProcess'
 import GeneratingIndicator from '../GeneratingIndicator'
 import ComplexModeIndicator from '../ComplexModeIndicator'
 import HeavyInputConsole from '../HeavyInputConsole'
+import { parseThinkTags, formatThinkingAsSteps } from '@/utils/thinkParser'
 
 interface ChatStreamPanelProps {
   /** 消息列表 */
@@ -61,11 +65,64 @@ interface ChatStreamPanelProps {
 }
 
 /**
+ * 提取消息的思考步骤
+ * 支持：
+ * 1. Complex 模式：只使用 msg.metadata.thinking（不解析 think 标签）
+ * 2. Simple 模式：解析 <think></think> 标签
+ */
+function getMessageThinkingSteps(msg: Message, conversationMode: 'simple' | 'complex' = 'simple') {
+  const steps: Array<{
+    id: string
+    expertType: string
+    expertName: string
+    content: string
+    timestamp: string
+    status: 'pending' | 'running' | 'completed' | 'failed'
+    type?: 'search' | 'reading' | 'analysis' | 'coding' | 'planning' | 'writing' | 'default'
+    duration?: number
+    url?: string
+  }> = []
+
+  // 1. Complex 模式：只使用 metadata.thinking（不解析 think 标签，避免聚合报告中的 think 标签被解析）
+  if (conversationMode === 'complex') {
+    if (msg.metadata?.thinking && msg.metadata.thinking.length > 0) {
+      steps.push(...msg.metadata.thinking)
+    }
+    return steps
+  }
+
+  // 2. Simple 模式：解析 <think></think> 标签
+  if (msg.metadata?.thinking && msg.metadata.thinking.length > 0) {
+    steps.push(...msg.metadata.thinking)
+  }
+  
+  const parsed = parseThinkTags(msg.content)
+  if (parsed.hasThinking && parsed.thinking) {
+    steps.push(...formatThinkingAsSteps(parsed.thinking, 'completed'))
+  }
+
+  return steps
+}
+
+/**
+ * 检查消息是否有思考内容（用于控制 indicator 显示）
+ */
+function hasActiveThinking(msg: Message, isStreaming: boolean, conversationMode: 'simple' | 'complex' = 'simple'): boolean {
+  const steps = getMessageThinkingSteps(msg, conversationMode)
+  if (steps.length === 0) return false
+  
+  // 如果有任何 running 状态的步骤，或者正在流式传输最后一条消息
+  const hasRunning = steps.some(s => s.status === 'running')
+  return hasRunning || isStreaming
+}
+
+/**
  * 左侧聊天流面板 - Industrial Style
  *
  * 包含：
  * 1. 消息列表 (Terminal 风格)
- * 2. 底部输入控制台 (Heavy Input Console)
+ * 2. 🔥 思维链展示（在消息气泡外）
+ * 3. 底部输入控制台 (Heavy Input Console)
  */
 export default function ChatStreamPanel({
   messages,
@@ -96,18 +153,27 @@ export default function ChatStreamPanel({
   }
 
   // 过滤消息：在复杂模式下，隐藏内容为空的 AI 消息（避免显示空消息气泡）
-  // 严格检查：内容为空、只有空白字符、或只有 markdown 空白符
-  const hasRealContent = (content: string): boolean => {
-    if (!content) return false
-    // 移除所有空白字符后检查是否有实质内容
+  // 🔥 修复：如果消息有 thinking 数据，即使 content 为空也不过滤
+  const hasRealContent = (msg: Message): boolean => {
+    // 如果有 thinking 数据（metadata 或 think 标签），认为有实质内容
+    const thinkingSteps = getMessageThinkingSteps(msg, conversationMode)
+    if (thinkingSteps.length > 0) {
+      return true
+    }
+    // 检查 content
+    const content = msg.content || ''
     const stripped = content.replace(/\s/g, '').replace(/[\n\r\t]/g, '')
     return stripped.length > 0
   }
 
-  // 复杂模式下始终过滤空 AI 消息（不只是生成中时）
+  // 复杂模式下始终过滤空 AI 消息（但保留有 thinking 的消息）
   const displayMessages = conversationMode === 'complex'
-    ? messages.filter(msg => !(msg.role === 'assistant' && !hasRealContent(msg.content)))
+    ? messages.filter(msg => !(msg.role === 'assistant' && !hasRealContent(msg)))
     : messages
+
+  // 🔥 判断最后一条消息是否有活跃的 thinking（用于控制 indicator 显示）
+  const lastMessage = displayMessages[displayMessages.length - 1]
+  const hasThinkingActive = lastMessage?.role === 'assistant' && hasActiveThinking(lastMessage, isGenerating, conversationMode)
 
   return (
     <>
@@ -119,21 +185,53 @@ export default function ChatStreamPanel({
         {displayMessages.length === 0 ? (
           <EmptyState />
         ) : (
-          displayMessages.map((msg, index) => (
-            <MessageItem
-              key={msg.id || index}
-              message={msg}
-              isLast={index === displayMessages.length - 1}
-              activeExpert={activeExpert}
-              onRegenerate={onRegenerate}
-              onLinkClick={onLinkClick}
-              onPreview={onPreview}
-            />
-          ))
+          displayMessages.map((msg, index) => {
+            // 🔥 判断是否是最后一条消息且正在流式传输
+            const isLastAndStreaming = isGenerating && 
+              index === displayMessages.length - 1 && 
+              msg.role === 'assistant'
+            
+            // 🔥 获取消息的思考步骤（根据模式选择是否解析 think 标签）
+            const thinkingSteps = getMessageThinkingSteps(msg, conversationMode)
+            
+            // 🔥 使用更稳定的 key
+            const messageKey = msg.id ? `${msg.id}-${index}` : `msg-${index}`
+            
+            // 🔥 修复：提取去除 think 标签后的实际内容
+            const parsedContent = parseThinkTags(msg.content).content || msg.content || ''
+            const hasActualContent = parsedContent.replace(/\s/g, '').length > 0
+            
+            return (
+              <div key={messageKey}>
+                {/* 🔥 思维链展示（在消息气泡外） */}
+                {thinkingSteps.length > 0 && (
+                  <ThinkingProcess 
+                    steps={thinkingSteps}
+                    isThinking={isLastAndStreaming}
+                  />
+                )}
+                
+                {/* 🔥 消息内容 - 只在有实际内容时显示（去除 think 标签后） */}
+                {hasActualContent && (
+                  <MessageItem
+                    message={{
+                      ...msg,
+                      content: parsedContent
+                    }}
+                    isLast={index === displayMessages.length - 1}
+                    activeExpert={activeExpert}
+                    onRegenerate={onRegenerate}
+                    onLinkClick={onLinkClick}
+                    onPreview={onPreview}
+                  />
+                )}
+              </div>
+            )
+          })
         )}
 
-        {/* 生成中指示器 */}
-        {isGenerating && (
+        {/* 🔥 生成中指示器 - 只有没有 thinking 时才显示 */}
+        {isGenerating && !hasThinkingActive && (
           conversationMode === 'complex' ? (
             <ComplexModeIndicator activeExpert={activeExpert} isProcessing={true} />
           ) : (

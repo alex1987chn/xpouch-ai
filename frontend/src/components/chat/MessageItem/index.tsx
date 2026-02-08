@@ -9,7 +9,6 @@ import { useTranslation } from '@/i18n'
 import { useTaskStore } from '@/store/taskStore'
 import type { MessageItemProps } from '../types'
 import { extractCodeBlocks, detectContentType } from '../utils'
-import ThinkingSection from './ThinkingSection'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -173,11 +172,6 @@ export default function MessageItem({
         <div className="absolute top-0 right-0 bg-[var(--accent)] text-inverted font-mono text-[9px] px-2 py-0.5 font-bold select-none">
           {activeExpert ? `${activeExpert.toUpperCase()}_RESPONSE` : 'FINAL_PLAN'}
         </div>
-
-        {/* Thinking 区域 */}
-        {message.metadata?.thinking && message.metadata.thinking.length > 0 && (
-          <ThinkingSection thinking={message.metadata.thinking} />
-        )}
 
         {/* Markdown 内容 */}
         <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-sm prose-headings:font-bold prose-headings:text-primary prose-p:text-sm prose-p:leading-relaxed prose-p:text-primary prose-strong:text-primary prose-code:text-primary prose-pre:bg-panel prose-pre:border prose-pre:border-border/20 prose-a:text-blue-600 dark:prose-a:text-blue-400 select-text">

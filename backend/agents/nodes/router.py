@@ -57,14 +57,15 @@ async def router_node(state: AgentState) -> Dict[str, Any]:
     还是 complex 模式（多专家协作）
     
     🔥 新增：检索长期记忆，提供个性化决策
+    🔥 修复：每次用户新输入都重新判断，不受历史 task_list 影响
     """
     messages = state["messages"]
     last_message = messages[-1]
     user_query = last_message.content if hasattr(last_message, 'content') else str(last_message)
 
-    # 断点恢复检查
-    if state.get("task_list") and len(state.get("task_list", [])) > 0:
-        return {"router_decision": "complex"}
+    # v3.1 修复：移除断点恢复检查，每次用户新输入都重新判断
+    # 之前的逻辑会导致 Complex 模式结束后，新消息仍被判定为 Complex
+    # 如果需要断点恢复，应该由前端显式传递恢复信号，而不是自动判断
 
     # 🔥 从 state 获取 user_id（如果存在），否则使用默认值
     # 后续可以从请求 header 或上下文传递 user_id

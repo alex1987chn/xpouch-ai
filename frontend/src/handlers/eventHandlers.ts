@@ -100,6 +100,7 @@ export class EventHandler {
   /**
    * 处理 task.started 事件
    * 更新任务状态为 running
+   * 注意：thinking 更新由 useExpertHandler.ts 处理，避免重复
    */
   private handleTaskStarted(event: TaskStartedEvent): void {
     const { startTask } = useTaskStore.getState()
@@ -113,6 +114,7 @@ export class EventHandler {
   /**
    * 处理 task.completed 事件
    * 更新任务状态为 completed
+   * 注意：thinking 更新由 useExpertHandler.ts 处理，避免重复
    */
   private handleTaskCompleted(event: TaskCompletedEvent): void {
     const { completeTask } = useTaskStore.getState()
@@ -126,6 +128,7 @@ export class EventHandler {
   /**
    * 处理 task.failed 事件
    * 更新任务状态为 failed
+   * 注意：thinking 更新由 useExpertHandler.ts 处理，避免重复
    */
   private handleTaskFailed(event: TaskFailedEvent): void {
     const { failTask } = useTaskStore.getState()
@@ -205,13 +208,25 @@ export class EventHandler {
     // 更新消息为最终内容
     updateMessage(event.data.message_id, event.data.full_content, false)
 
-    // 更新 thinking 数据（类似 DeepSeek Chat 的思考过程）
+    // 🔥 修复：合并 thinking 数据，而不是覆盖
+    // 优先使用前端累积的 thinking，后端返回的作为补充
     if (event.data.thinking && event.data.thinking.steps && event.data.thinking.steps.length > 0) {
+      const existingThinking = message.metadata?.thinking || []
+      const newSteps = event.data.thinking.steps
+      
+      // 合并：保留现有步骤，添加后端返回的新步骤（去重）
+      const existingIds = new Set(existingThinking.map((s: any) => s.id))
+      const mergedThinking = [
+        ...existingThinking,
+        ...newSteps.filter((s: any) => !existingIds.has(s.id))
+      ]
+      
       updateMessageMetadata(event.data.message_id, {
-        thinking: event.data.thinking.steps
+        thinking: mergedThinking
       })
+      
       if (DEBUG) {
-        logger.debug('[EventHandler] 更新 thinking 数据，步骤数:', event.data.thinking.steps.length)
+        logger.debug('[EventHandler] 合并 thinking 数据，前端:', existingThinking.length, '后端:', newSteps.length, '合并后:', mergedThinking.length)
       }
     }
 
@@ -223,26 +238,14 @@ export class EventHandler {
   /**
    * 处理 router.decision 事件
    * v3.0: 设置模式，触发 UI 切换
-   * v3.1: complex 模式下移除空的 AI 消息气泡
+   * 🔥 注意：不再在这里移除空消息，交给 ChatStreamPanel 的过滤逻辑处理
+   * 避免误删将要添加 thinking 数据的消息
    */
   private handleRouterDecision(event: RouterDecisionEvent): void {
     const { setMode } = useTaskStore.getState()
-    const { messages, setMessages } = useChatStore.getState()
 
     // 设置模式（simple 或 complex）
     setMode(event.data.decision)
-
-    // 👈 v3.1: complex 模式下移除空的 AI 消息（避免空气泡）
-    if (event.data.decision === 'complex') {
-      // 找到最后一条 AI 消息，如果是空的则移除
-      const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
-      if (lastAiMessage && !lastAiMessage.content?.trim()) {
-        setMessages(messages.filter(m => m.id !== lastAiMessage.id))
-        if (DEBUG) {
-          logger.debug('[EventHandler] complex 模式：移除空 AI 消息', lastAiMessage.id)
-        }
-      }
-    }
 
     if (DEBUG) {
       logger.debug('[EventHandler] 路由决策，设置模式:', event.data.decision)

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { type Agent } from '@/types'
+import { type Agent, type ThinkingStep } from '@/types'
 import { generateId } from '@/utils/storage'
 import { type Message, type Conversation } from '@/types'
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
@@ -34,6 +34,11 @@ interface ChatState {
   addMessage: (message: Message) => void
   updateMessage: (id: string, content: string, append?: boolean) => void
   updateMessageMetadata: (id: string, metadata: Partial<Message['metadata']>) => void
+  /**
+   * 🔥 更新最后一条消息的 thinking 步骤
+   * 用于 Server-Driven UI 思维链显示
+   */
+  updateLastMessageThoughts: (step: ThinkingStep) => void
   setIsTyping: (isTyping: boolean) => void
   setInputMessage: (input: string) => void
   setCurrentConversationId: (id: string | null) => void
@@ -120,6 +125,51 @@ export const useChatStore = create<ChatState>()(
           }
           return msg
         })
+        return { messages: updatedMessages }
+      }),
+
+      /**
+       * 🔥 更新最后一条消息的 thinking 步骤
+       * 如果 step.id 已存在，则更新状态；如果不存在，则 append 到数组末尾
+       */
+      updateLastMessageThoughts: (step: ThinkingStep) => set((state: ChatState) => {
+        // 找到最后一条 assistant 消息
+        const lastMessageIndex = [...state.messages].reverse().findIndex(m => m.role === 'assistant')
+        if (lastMessageIndex === -1) return { messages: state.messages }
+        
+        const actualIndex = state.messages.length - 1 - lastMessageIndex
+        const lastMessage = state.messages[actualIndex]
+        
+        // 获取现有的 thinking 数组
+        const existingThinking = lastMessage.metadata?.thinking || []
+        
+        // 查找是否已存在相同 id 的 step
+        const existingIndex = existingThinking.findIndex((s: ThinkingStep) => s.id === step.id)
+        
+        let newThinking: ThinkingStep[]
+        if (existingIndex >= 0) {
+          // 更新现有 step
+          newThinking = [...existingThinking]
+          newThinking[existingIndex] = { ...newThinking[existingIndex], ...step }
+        } else {
+          // 追加新 step
+          newThinking = [...existingThinking, step]
+        }
+        
+        // 更新消息
+        const updatedMessages = state.messages.map((msg, idx) => {
+          if (idx === actualIndex) {
+            return {
+              ...msg,
+              metadata: {
+                ...msg.metadata,
+                thinking: newThinking
+              }
+            }
+          }
+          return msg
+        })
+        
         return { messages: updatedMessages }
       }),
 
@@ -214,14 +264,13 @@ export const useChatStore = create<ChatState>()(
     }),
     {
       name: 'xpouch-chat-store', // LocalStorage key
-      // 只持久化部分字段 (移除 messages，改为从后端获取)
+      // 🔥 修复：重新添加 messages 持久化，保留 thinking 等 metadata
+      // 注意：如果消息过多，可能需要定期清理或限制数量
       partialize: (state) => ({
         selectedAgentId: state.selectedAgentId,
         customAgents: state.customAgents,
-        // messages: [], // 已经在上面初始值设为空了，这里不需要持久化
-        // currentConversationId: null, // 同上
-        // isTyping: false, // 同上
-        // inputMessage: '' // 同上
+        messages: state.messages.slice(-50), // 只保留最近50条消息
+        currentConversationId: state.currentConversationId,
       })
     }
   )

@@ -135,7 +135,7 @@ export async function sendMessage(
           const eventType = msg.event
           const eventData = JSON.parse(msg.data)
           
-          // v3.0: 构建标准事件对象并交给 eventHandlers 处理
+          // v3.0: 构建标准事件对象
           if (eventType) {
             const fullEvent = {
               id: msg.id || crypto.randomUUID(),
@@ -144,14 +144,19 @@ export async function sendMessage(
               data: eventData
             }
             
-            // 统一处理所有事件
-            handleServerEvent(fullEvent as any)
-            
-            // 对于 message.delta 事件，额外更新 UI 流式内容
+            // 🔥 先调用 onChunk 传递事件给 useExpertHandler（用于 thinking 更新）
+            // 然后再调用 handleServerEvent（避免状态竞争）
             if (eventType === 'message.delta' && onChunk) {
+              // 文本流事件：传递内容
               await onChunk(eventData.content, finalConversationId)
               fullContent += eventData.content
+            } else if (onChunk) {
+              // 其他事件（task.started/completed/failed 等）：传递事件对象
+              await onChunk(undefined, finalConversationId, fullEvent as any)
             }
+            
+            // 统一处理所有事件（更新 taskStore 等）
+            handleServerEvent(fullEvent as any)
           }
           
         } catch (e) {
