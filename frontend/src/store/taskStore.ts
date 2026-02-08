@@ -179,31 +179,48 @@ export const useTaskStore = create<TaskState>()(
     /**
      * 初始化任务计划
      * 收到 plan.created 事件时调用
+     * v3.0 Fix: 防止同一 session 被重复初始化
      */
     initializePlan: (data: PlanCreatedData) => {
       set((state) => {
-        // 创建任务会话
-        state.session = {
-          sessionId: data.session_id,
-          summary: data.summary,
-          estimatedSteps: data.estimated_steps,
-          executionMode: data.execution_mode as 'sequential' | 'parallel',
-          status: 'running'
-        }
-
-        // 初始化任务 Map
-        state.tasks = new Map()
-        data.tasks.forEach((taskInfo) => {
-          state.tasks.set(taskInfo.id, {
-            ...taskInfo,
-            status: taskInfo.status as TaskStatus,
-            artifacts: []
+        // 🔥 检查是否已存在相同的 session，避免重复初始化
+        if (state.session?.sessionId === data.session_id) {
+          // Session 已存在，只更新任务状态（如果任务状态有变化）
+          data.tasks.forEach((taskInfo) => {
+            const existingTask = state.tasks.get(taskInfo.id)
+            if (!existingTask) {
+              // 添加新任务（容错：之前没添加的任务）
+              state.tasks.set(taskInfo.id, {
+                ...taskInfo,
+                status: taskInfo.status as TaskStatus,
+                artifacts: []
+              })
+            }
           })
-        })
+        } else {
+          // 创建任务会话
+          state.session = {
+            sessionId: data.session_id,
+            summary: data.summary,
+            estimatedSteps: data.estimated_steps,
+            executionMode: data.execution_mode as 'sequential' | 'parallel',
+            status: 'running'
+          }
+
+          // 初始化任务 Map（全新会话，完全重置）
+          state.tasks = new Map()
+          data.tasks.forEach((taskInfo) => {
+            state.tasks.set(taskInfo.id, {
+              ...taskInfo,
+              status: taskInfo.status as TaskStatus,
+              artifacts: []
+            })
+          })
+        }
 
         state.isInitialized = true
         state.runningTaskIds = new Set()
-        state.selectedTaskId = null
+        // 不重置 selectedTaskId，避免用户正在查看时被重置
 
         // 更新缓存（深拷贝避免 Immer proxy 被 revoke 后访问报错）
         const sortedTasks = Array.from(state.tasks.values())
@@ -298,20 +315,36 @@ export const useTaskStore = create<TaskState>()(
     /**
      * 添加产物
      * 收到 artifact.generated 事件时调用
+     * v3.0 Fix: 防止重复添加同一 artifact
      */
     addArtifact: (data: ArtifactGeneratedData) => {
       set((state) => {
         const task = state.tasks.get(data.task_id)
         if (task) {
-          task.artifacts.push({
-            id: data.artifact.id,
-            type: data.artifact.type as Artifact['type'],
-            title: data.artifact.title,
-            content: data.artifact.content,
-            language: data.artifact.language,
-            sortOrder: data.artifact.sort_order,
-            createdAt: new Date().toISOString()
-          })
+          // 检查是否已存在相同 ID 的 artifact，防止重复
+          const existingIndex = task.artifacts.findIndex(a => a.id === data.artifact.id)
+          if (existingIndex >= 0) {
+            // 更新现有 artifact 而不是添加新的
+            task.artifacts[existingIndex] = {
+              id: data.artifact.id,
+              type: data.artifact.type as Artifact['type'],
+              title: data.artifact.title,
+              content: data.artifact.content,
+              language: data.artifact.language,
+              sortOrder: data.artifact.sort_order,
+              createdAt: task.artifacts[existingIndex].createdAt || new Date().toISOString()
+            }
+          } else {
+            task.artifacts.push({
+              id: data.artifact.id,
+              type: data.artifact.type as Artifact['type'],
+              title: data.artifact.title,
+              content: data.artifact.content,
+              language: data.artifact.language,
+              sortOrder: data.artifact.sort_order,
+              createdAt: new Date().toISOString()
+            })
+          }
           // 按 sortOrder 排序
           task.artifacts.sort((a, b) => a.sortOrder - b.sortOrder)
         }

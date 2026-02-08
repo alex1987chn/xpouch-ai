@@ -26,7 +26,26 @@ export interface ThinkingStep {
   expertName: string
   content: string
   timestamp: string
-  status: 'running' | 'completed' | 'failed'
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  /**
+   * 步骤类型，用于 UI 区分显示图标
+   * - search: 联网搜索
+   * - reading: 深度阅读/网页阅读 (Jina Reader)
+   * - analysis: 分析思考
+   * - coding: 代码生成
+   * - planning: 任务规划
+   * - writing: 写作生成
+   * - default: 默认/其他
+   */
+  type?: 'search' | 'reading' | 'analysis' | 'coding' | 'planning' | 'writing' | 'default'
+  /**
+   * 执行耗时（毫秒）
+   */
+  duration?: number
+  /**
+   * 相关 URL（如 reading 类型时的网页链接）
+   */
+  url?: string
 }
 
 /**

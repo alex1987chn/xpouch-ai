@@ -240,17 +240,21 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
             ) : (
               artifacts.map((artifact, idx) => (
                 <button
-                  key={artifact.id}
-                  onClick={() => onSelectArtifact(idx)}
+                  key={`${artifact.id}-${idx}`}
+                  type="button"
+                  onClick={() => {
+                    console.log('[ArtifactDashboard] Clicking artifact:', idx, artifact.id)
+                    onSelectArtifact(idx)
+                  }}
                   className={cn(
-                    "h-7 px-2 flex items-center gap-1.5 transition-all shrink-0",
+                    "h-7 px-2 flex items-center gap-1.5 transition-all shrink-0 cursor-pointer",
                     selectedIndex === idx
                       ? "h-8 bg-card border-2 border-border border-b-0 top-[2px] z-10 text-primary shadow-[0_-2px_0_0_hsl(var(--accent))]"
                       : "bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100 text-muted-foreground"
                   )}
                 >
-                  <FileCode className="w-3 h-3 shrink-0" />
-                  <span className="font-mono text-xs font-bold truncate max-w-[80px]">
+                  <FileCode className="w-3 h-3 shrink-0 pointer-events-none" />
+                  <span className="font-mono text-xs font-bold truncate max-w-[80px] pointer-events-none">
                     {artifact.title || `${expertName}-${idx + 1}`}
                   </span>
                 </button>

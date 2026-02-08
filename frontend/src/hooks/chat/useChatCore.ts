@@ -6,6 +6,7 @@
 import { useCallback, useRef, useEffect, useState } from 'react'
 import { sendMessage as apiSendMessage, type ApiMessage, type StreamCallback } from '@/services/chat'
 import { useChatStore } from '@/store/chatStore'
+import { useTaskStore } from '@/store/taskStore'
 import { normalizeAgentId } from '@/utils/agentUtils'
 import { generateUUID } from '@/utils'
 import { useTranslation } from '@/i18n'
@@ -54,8 +55,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   // ✅ 重构：状态提升到 Store，Hook 只管理 AbortController
   const abortControllerRef = useRef<AbortController | null>(null)
   
-  // 👈 跟踪对话模式（由后端 Router 决策决定）
-  const [conversationMode, setConversationMode] = useState<'simple' | 'complex'>('simple')
+  // 👈 从 taskStore 读取对话模式（由后端 Router 决策决定）
+  const conversationMode = useTaskStore(state => state.mode) || 'simple'
 
   // 从 chatStore 获取状态和方法
   const {
@@ -98,16 +99,16 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     }
 
     // 👈 修复：优先使用传入的 content 参数（如从首页跳转时），其次才使用 store 的 inputMessage
-    const userContent = content || inputMessage
-    if (!userContent.trim()) {
+    const userContent = (content || inputMessage || '').trim()
+    if (!userContent) {
       debug('消息内容为空，跳过发送')
       return
     }
 
     setGenerating(true)  // ✅ 使用 Store 方法
     
-    // 👈 重置对话模式为 simple，等待后端 Router 决策
-    setConversationMode('simple')
+    // 👈 重置 taskStore 的 mode，等待后端 Router 决策
+    useTaskStore.getState().setMode('simple')
 
     // 优先使用传入的 agentId，否则使用 store 中的 selectedAgentId
     const agentId = overrideAgentId || selectedAgentId
@@ -126,18 +127,20 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     try {
       // 1. 准备请求数据 - 使用 getState() 获取最新的 messages，避免闭包捕获旧值
       const storeState = useChatStore.getState()
-      const chatMessages: ApiMessage[] = [
-        ...storeState.messages,
-        { role: 'user', content: userContent }
-      ]
-        .filter((m): m is ApiMessage => {
-          // 类型守卫：确保只保留有效的 ApiMessage
-          return isApiMessage(m)
-        })
+      // 🔥 修复：过滤掉 content 为 undefined 的历史消息，并确保类型正确
+      const validHistoryMessages = storeState.messages
+        .filter((m): m is Message & { content: string } => 
+          !!m && typeof m.content === 'string' && m.content.length > 0
+        )
         .map((m): ApiMessage => ({
-          role: m.role,
+          role: m.role as 'user' | 'assistant',
           content: m.content
         }))
+      
+      const chatMessages: ApiMessage[] = [
+        ...validHistoryMessages,
+        { role: 'user', content: userContent }
+      ]
 
       debug('准备发送消息，历史消息数:', storeState.messages.length, '当前输入:', userContent)
 
@@ -231,20 +234,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       }
 
       // 7. 更新最终响应到助手消息
-      // 👈 流式更新已经在 onChunk 回调中完成，这里不再重复更新
-      // 但复杂模式可能需要替换为友好文案
-      if (finalResponseContent && assistantMessageId && conversationMode === 'complex') {
-        debug(`复杂模式：替换助手消息 ${assistantMessageId} 为友好文案`)
-
-        const hasTechnicalContent = finalResponseContent.includes('```') ||
-                                finalResponseContent.includes('{') && finalResponseContent.includes('}') ||
-                                finalResponseContent.includes('[') && finalResponseContent.includes(']')
-
-        if (hasTechnicalContent) {
-          const messageContent = t('complexTaskCompleted')
-          updateMessage(assistantMessageId, messageContent)
-        }
-      }
+      // 🔥 修复：不再替换为友好文案，显示实际的聚合报告
+      // 流式内容由 eventHandlers.ts 的 handleMessageDelta 处理
+      debug(`任务完成，最终内容长度: ${finalResponseContent?.length || 0}`)
 
       return finalResponseContent
 
@@ -299,6 +291,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     inputMessage,
     selectedAgentId,
     currentConversationId,
+    conversationMode,
     onExpertEvent,
     onChunk,
     onNewConversation,
