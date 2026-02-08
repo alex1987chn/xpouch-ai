@@ -259,22 +259,6 @@ EXPERT_PROMPTS: Dict[str, str] = {
 
 
 # ============================================================================
-# 其他配置常量
-# ============================================================================
-
-# SSE推送事件类型
-SSE_EVENT_TYPES: Dict[str, str] = {
-    "MESSAGE": "message",
-    "ARTIFACTS": "artifacts",
-    "EXPERT_STARTED": "expert_started",
-    "EXPERT_COMPLETED": "expert_completed",
-    "TASK_PLAN": "task_plan",
-    "FINAL_RESPONSE": "final_response",
-    "ERROR": "error",
-}
-
-
-# ============================================================================
 # 系统智能体 ID 定义（与前端 constants/agents.ts 对应）
 # ============================================================================
 

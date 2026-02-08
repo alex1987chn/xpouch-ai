@@ -75,8 +75,6 @@ export default function UnifiedChatPage() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
   const [inputValue, setInputValue] = useState('')
-  // TODO: 移动端专家活动检测需要 taskStore 提供类似能力
-  // const hasExpertActivity = ...
 
   // 同步 URL 的 agentId 到 store（只执行一次）
   useEffect(() => {
