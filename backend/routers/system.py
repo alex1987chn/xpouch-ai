@@ -89,14 +89,26 @@ async def update_user_me(
 
 
 # ============================================================================
-# 调试接口
+# 调试接口（仅开发环境使用）
 # ============================================================================
+# ⚠️ 警告：以下端点仅在 development 环境启用，生产环境应禁用
+
+import os
+
+# 检查是否在开发环境
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+IS_DEVELOPMENT = ENVIRONMENT.lower() == "development"
+
 
 @router.get("/debug/users")
 async def debug_list_users(
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_auth)
 ):
-    """列出所有用户（仅用于调试）"""
+    """列出所有用户（仅用于调试，需要登录且仅开发环境）"""
+    if not IS_DEVELOPMENT:
+        raise NotFoundError(resource="端点")
+
     users = session.exec(select(User).order_by(User.created_at.desc())).all()
     return {
         "count": len(users),
@@ -118,7 +130,10 @@ async def debug_verify_token(
     request: Request,
     session: Session = Depends(get_session)
 ):
-    """验证JWT token并返回用户信息（仅用于调试）"""
+    """验证JWT token并返回用户信息（仅用于调试，仅开发环境）"""
+    if not IS_DEVELOPMENT:
+        raise NotFoundError(resource="端点")
+
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         return {"error": "No Authorization header"}
@@ -156,8 +171,13 @@ async def debug_verify_token(
 
 
 @router.delete("/debug/cleanup-users")
-async def debug_cleanup_users():
-    """清理没有手机号的垃圾用户（仅用于调试）"""
+async def debug_cleanup_users(
+    current_user: User = Depends(get_current_user_with_auth)
+):
+    """清理没有手机号的垃圾用户（仅用于调试，需要登录且仅开发环境）"""
+    if not IS_DEVELOPMENT:
+        raise NotFoundError(resource="端点")
+
     # 创建新的session，不经过get_current_user依赖
     with SASession(engine) as session:
         # 查找所有没有手机号的用户
@@ -181,7 +201,7 @@ async def debug_cleanup_users():
             ).all()
             for agent in custom_agents:
                 session.delete(agent)
-            
+
             # 3. 最后删除用户
             session.delete(user)
 

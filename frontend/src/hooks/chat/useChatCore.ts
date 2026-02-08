@@ -189,12 +189,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
           onExpertEvent?.(expertEvent as any, conversationMode)
         }
 
-        // ⚠️ artifact 已合并到 expertCompleted 事件中处理
-        // 不再通过单独的回调传递，避免重复添加
-        // if (artifact && expertId) {
-        //   onArtifact?.(artifact, expertId)
-        // }
-
         // 实时更新流式内容
         if (chunk) {
           finalResponseContent += chunk
@@ -202,13 +196,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
           if (DEBUG) {
             logger.debug('[useChatCore] 收到chunk，长度:', chunk.length, '总长度:', finalResponseContent.length, '消息ID:', assistantMessageId)
           }
-
-          // 👈 v3.0: 移除这里的 updateMessage 调用，避免与 eventHandlers.ts 重复
-          // 现在统一由 eventHandlers.ts 的 handleMessageDelta 处理 message.delta 事件
-          // if (assistantMessageId) {
-          //   const store = useChatStore.getState()
-          //   store.updateMessage(assistantMessageId, chunk, true)
-          // }
 
           // 调用外部 onChunk 回调
           onChunk?.(chunk)
