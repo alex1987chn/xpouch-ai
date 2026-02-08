@@ -14,6 +14,7 @@ import { generateUUID } from '@/utils'
 
 // ============================================================================
 // Helper: 根据 expert_type 推断 thinking step 类型
+// v3.1: 新增 memory 类型支持
 // ============================================================================
 const getExpertType = (expertType: string): ThinkingStep['type'] => {
   const type = expertType.toLowerCase()
@@ -23,6 +24,7 @@ const getExpertType = (expertType: string): ThinkingStep['type'] => {
   if (type.includes('plan')) return 'planning'
   if (type.includes('write')) return 'writing'
   if (type.includes('analysis') || type.includes('analyz')) return 'analysis'
+  if (type.includes('memory') || type.includes('recall')) return 'memory'
   return 'default'
 }
 
@@ -69,9 +71,14 @@ export function useExpertHandler() {
   // 保持 actions 引用稳定
   const taskActions = taskActionsRef.current
   
-  // 🔥 获取 updateMessageMetadata 的辅助函数
+  // 🔥 获取 updateMessageMetadata 的辅助函数（用于批量更新）
   const updateMessageMetadata = (messageId: string, metadata: any) => {
     chatStoreRef.current.updateMessageMetadata(messageId, metadata)
+  }
+  
+  // 🔥 新增：简化版更新 thinking step 的辅助函数（自动更新最后一条消息）
+  const updateLastMessageThought = (step: ThinkingStep) => {
+    chatStoreRef.current.updateLastMessageThoughts(step)
   }
 
   // 获取最后一条 AI 消息的 ID（使用 ref 获取最新状态）
@@ -184,40 +191,16 @@ export function useExpertHandler() {
         taskActions.startTask(taskData)
         
         // 2. 更新当前消息的 thinking（将 pending 改为 running）
-        const messageId = getLastAssistantMessageId()
-        if (messageId) {
-          const message = chatStoreRef.current.messages.find(m => m.id === messageId)
-          const existingThinking = message?.metadata?.thinking || []
-          
-          // 🔥 查找并更新现有 step（现在在 plan.created 时已添加）
-          const updatedThinking = existingThinking.map((step: ThinkingStep) => {
-            if (step.id === taskData.task_id) {
-              return {
-                ...step,
-                status: 'running' as const,
-                timestamp: taskData.started_at
-              }
-            }
-            return step
-          })
-          
-          // 如果没有找到（容错），添加新 step
-          if (!updatedThinking.find((s: ThinkingStep) => s.id === taskData.task_id)) {
-            updatedThinking.push({
-              id: taskData.task_id,
-              expertType: taskData.expert_type,
-              expertName: getExpertConfig(taskData.expert_type).name,
-              content: taskData.description,
-              timestamp: taskData.started_at,
-              status: 'running',
-              type: getExpertType(taskData.expert_type)
-            })
-          }
-          
-          updateMessageMetadata(messageId, { 
-            thinking: updatedThinking.slice(-50)
-          })
-        }
+        // 🔥 简化：使用 updateLastMessageThought 自动处理最后一条消息
+        updateLastMessageThought({
+          id: taskData.task_id,
+          expertType: taskData.expert_type,
+          expertName: getExpertConfig(taskData.expert_type).name,
+          content: taskData.description,
+          timestamp: taskData.started_at,
+          status: 'running',
+          type: getExpertType(taskData.expert_type)
+        })
         break
       }
       
@@ -227,43 +210,18 @@ export function useExpertHandler() {
         // 1. 更新 taskStore
         taskActions.completeTask(taskData)
         
-        // 2. 更新当前消息的 thinking（更新现有 step，而不是创建新 step）
-        const messageId = getLastAssistantMessageId()
-        if (messageId) {
-          const message = chatStoreRef.current.messages.find(m => m.id === messageId)
-          const existingThinking = message?.metadata?.thinking || []
-          
-          // 🔥 查找并更新现有 step
-          const updatedThinking = existingThinking.map((step: ThinkingStep) => {
-            if (step.id === taskData.task_id) {
-              return {
-                ...step,
-                status: 'completed' as const,
-                content: taskData.output || taskData.description,
-                duration: taskData.duration_ms
-              }
-            }
-            return step
-          })
-          
-          // 如果没有找到现有 step，则添加新 step（容错）
-          if (!updatedThinking.find((s: ThinkingStep) => s.id === taskData.task_id)) {
-            updatedThinking.push({
-              id: taskData.task_id,
-              expertType: taskData.expert_type,
-              expertName: getExpertConfig(taskData.expert_type).name,
-              content: taskData.output || taskData.description,
-              timestamp: taskData.completed_at,
-              status: 'completed',
-              type: getExpertType(taskData.expert_type),
-              duration: taskData.duration_ms
-            })
-          }
-          
-          updateMessageMetadata(messageId, { 
-            thinking: updatedThinking.slice(-50)
-          })
-        }
+        // 2. 更新当前消息的 thinking（更新为 completed 状态）
+        // 🔥 简化：使用 updateLastMessageThought 自动处理最后一条消息
+        updateLastMessageThought({
+          id: taskData.task_id,
+          expertType: taskData.expert_type,
+          expertName: getExpertConfig(taskData.expert_type).name,
+          content: taskData.output || taskData.description,
+          timestamp: taskData.completed_at,
+          status: 'completed',
+          type: getExpertType(taskData.expert_type),
+          duration: taskData.duration_ms
+        })
         break
       }
       
@@ -273,41 +231,17 @@ export function useExpertHandler() {
         // 1. 更新 taskStore
         taskActions.failTask(taskData)
         
-        // 2. 更新当前消息的 thinking（更新现有 step，而不是创建新 step）
-        const messageId = getLastAssistantMessageId()
-        if (messageId) {
-          const message = chatStoreRef.current.messages.find(m => m.id === messageId)
-          const existingThinking = message?.metadata?.thinking || []
-          
-          // 🔥 查找并更新现有 step
-          const updatedThinking = existingThinking.map((step: ThinkingStep) => {
-            if (step.id === taskData.task_id) {
-              return {
-                ...step,
-                status: 'failed' as const,
-                content: `${taskData.description}\n\n错误: ${taskData.error}`
-              }
-            }
-            return step
-          })
-          
-          // 如果没有找到现有 step，则添加新 step（容错）
-          if (!updatedThinking.find((s: ThinkingStep) => s.id === taskData.task_id)) {
-            updatedThinking.push({
-              id: taskData.task_id,
-              expertType: taskData.expert_type,
-              expertName: getExpertConfig(taskData.expert_type).name,
-              content: `${taskData.description}\n\n错误: ${taskData.error}`,
-              timestamp: taskData.failed_at,
-              status: 'failed',
-              type: getExpertType(taskData.expert_type)
-            })
-          }
-          
-          updateMessageMetadata(messageId, { 
-            thinking: updatedThinking.slice(-50)
-          })
-        }
+        // 2. 更新当前消息的 thinking（更新为 failed 状态）
+        // 🔥 简化：使用 updateLastMessageThought 自动处理最后一条消息
+        updateLastMessageThought({
+          id: taskData.task_id,
+          expertType: taskData.expert_type,
+          expertName: getExpertConfig(taskData.expert_type).name,
+          content: `${taskData.description}\n\n错误: ${taskData.error}`,
+          timestamp: taskData.failed_at,
+          status: 'failed',
+          type: getExpertType(taskData.expert_type)
+        })
         break
       }
       
