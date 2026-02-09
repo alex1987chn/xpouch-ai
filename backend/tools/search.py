@@ -6,21 +6,21 @@ import os
 from langchain_core.tools import tool
 
 # -----------------------------------------------------------
-# 🔥 核心修复：兼容性导入逻辑
+# 核心修复：兼容性导入逻辑
 # -----------------------------------------------------------
 try:
     # 优先尝试新版（官方推荐）
     from langchain_tavily import TavilySearchResults
-    print("[Search] ✅ 使用 langchain_tavily (新版)")
+    print("[Search] [OK] 使用 langchain_tavily (新版)")
 except ImportError:
     try:
         # 回退到旧版（社区版）
         from langchain_community.tools.tavily_search import TavilySearchResults
-        print("[Search] ⚠️ 使用 langchain_community.tools.tavily_search (旧版)")
+        print("[Search] [WARN] 使用 langchain_community.tools.tavily_search (旧版)")
     except ImportError:
         # 如果都没装，直接抛出异常，不要吞掉！
         raise ImportError(
-            "❌ 严重错误: 未找到 Tavily 库。请运行: uv add langchain-tavily langchain-community"
+            "[ERROR] 严重错误: 未找到 Tavily 库。请运行: uv add langchain-tavily langchain-community"
         )
 
 # -----------------------------------------------------------

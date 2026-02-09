@@ -118,68 +118,78 @@ export function useExpertHandler() {
         // 1. 更新 taskStore（初始化任务计划）
         taskActions.initializePlan(planData)
         
-        // 2. 添加到当前消息的 thinking（一次性添加所有步骤）
-        const messageId = getLastAssistantMessageId()
-        debug('[plan.created] 找到的消息 ID:', messageId)
+        // 2. 🔥🔥🔥 重建 thinking 步骤（同步删除已移除的任务）
+        const taskIds = planData.tasks.map((t: any) => t.id)
+        console.log('[plan.created] 重建 thinking 步骤:', { taskCount: taskIds.length, taskIds })
         
+        // 使用 rebuildThinkingFromPlan 同步删除已移除的任务
+        const { rebuildThinkingFromPlan } = chatStoreRef.current
+        rebuildThinkingFromPlan(taskIds)
+        
+        // 3. 添加缺失的 thinking 步骤（如果有新任务）
+        const messageId = getLastAssistantMessageId()
         if (messageId) {
           const message = chatStoreRef.current.messages.find(m => m.id === messageId)
           const existingThinking = message?.metadata?.thinking || []
           
-          // 🔥 检查是否已存在 planning step（避免重复添加）
+          // 检查是否已存在 planning step
           const hasPlanningStep = existingThinking.some((s: ThinkingStep) => 
             s.expertType === 'planner' || s.type === 'planning'
           )
           
-          if (hasPlanningStep) {
-            debug('[plan.created] planning step 已存在，跳过')
-            break
-          }
+          // 获取已存在的 task step IDs
+          const existingTaskIds = new Set(
+            existingThinking
+              .filter((s: ThinkingStep) => s.id && !s.id.startsWith('plan-'))
+              .map((s: ThinkingStep) => s.id)
+          )
           
-          // 🔥 新策略：一次性添加所有步骤（planning + 所有任务）
-          // 这样从一开始就显示完整的进度（如 1/6, 2/6, 3/6...）
           const newSteps: ThinkingStep[] = []
           
-          // 1) 添加 planning step（已完成）
-          const taskPlanJson = {
-            tasks: planData.tasks.map((t: any) => ({
-              expert_type: t.expert_type,
-              description: t.description,
-              priority: t.sort_order || 0
-            })),
-            strategy: planData.summary || '复杂任务规划',
-            estimated_steps: planData.estimated_steps
+          // 添加 planning step（如果不存在）
+          if (!hasPlanningStep) {
+            const taskPlanJson = {
+              tasks: planData.tasks.map((t: any) => ({
+                expert_type: t.expert_type,
+                description: t.description,
+                priority: t.sort_order || 0
+              })),
+              strategy: planData.summary || '复杂任务规划',
+              estimated_steps: planData.estimated_steps
+            }
+            
+            newSteps.push({
+              id: `plan-${planData.session_id}`,
+              expertType: 'planner',
+              expertName: 'Task Planning',
+              content: JSON.stringify(taskPlanJson, null, 2),
+              timestamp: new Date().toISOString(),
+              status: 'completed',
+              type: 'planning'
+            })
           }
           
-          newSteps.push({
-            id: `plan-${planData.session_id}`,
-            expertType: 'planner',
-            expertName: 'Task Planning',
-            content: JSON.stringify(taskPlanJson, null, 2),
-            timestamp: new Date().toISOString(),
-            status: 'completed',
-            type: 'planning'
-          })
-          
-          // 2) 为每个任务添加 pending 状态的 step
+          // 只为缺失的任务添加 step
           planData.tasks.forEach((task: any) => {
-            newSteps.push({
-              id: task.id,
-              expertType: task.expert_type,
-              expertName: getExpertConfig(task.expert_type).name,
-              content: task.description,
-              timestamp: new Date().toISOString(),
-              status: 'pending',  // 初始状态为 pending
-              type: getExpertType(task.expert_type)
-            })
+            if (!existingTaskIds.has(task.id)) {
+              newSteps.push({
+                id: task.id,
+                expertType: task.expert_type,
+                expertName: getExpertConfig(task.expert_type).name,
+                content: task.description,
+                timestamp: new Date().toISOString(),
+                status: 'pending',
+                type: getExpertType(task.expert_type)
+              })
+            }
           })
           
-          debug('[plan.created] 准备添加所有 steps:', newSteps.length)
-          updateMessageMetadata(messageId, { 
-            thinking: [...existingThinking, ...newSteps].slice(-50)
-          })
-        } else {
-          debug('[plan.created] 警告：没有找到最后一条助手消息')
+          if (newSteps.length > 0) {
+            debug('[plan.created] 添加新 steps:', newSteps.length)
+            updateMessageMetadata(messageId, { 
+              thinking: [...existingThinking, ...newSteps].slice(-50)
+            })
+          }
         }
         break
       }

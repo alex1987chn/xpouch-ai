@@ -28,6 +28,8 @@ export type EventType =
   // 消息阶段
   | 'message.delta'
   | 'message.done'
+  // 🔥🔥🔥 v3.5 HITL: 人类审核中断事件
+  | 'human.interrupt'
   // 系统事件
   | 'router.start'
   | 'router.decision'
@@ -220,6 +222,23 @@ export interface ErrorData {
 export type ErrorEvent = SSEEvent<ErrorData>
 
 // ============================================================================
+// 🔥🔥🔥 v3.5 HITL: 人类审核中断事件
+// ============================================================================
+
+export interface HumanInterruptData {
+  type: 'plan_review'
+  current_plan: Array<{
+    id: string
+    expert_type: string
+    description: string
+    sort_order: number
+    status: 'pending' | 'running' | 'completed' | 'failed'
+  }>
+}
+
+export type HumanInterruptEvent = SSEEvent<HumanInterruptData>
+
+// ============================================================================
 // 联合类型
 // ============================================================================
 
@@ -236,6 +255,7 @@ export type AnyServerEvent =
   | ArtifactCompletedEvent  // 🔥 新增
   | MessageDeltaEvent
   | MessageDoneEvent
+  | HumanInterruptEvent     // 🔥🔥🔥 v3.5 HITL
   | RouterStartEvent
   | RouterDecisionEvent
   | ErrorEvent

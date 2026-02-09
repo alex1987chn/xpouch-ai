@@ -3,11 +3,14 @@ XPouch AI Backend - 入口文件
 
 重构后：仅负责 App 初始化、中间件、注册路由
 业务逻辑已拆分到 routers/ 目录
+
+🔥 启动方式：
+- Windows: python run.py (已处理事件循环兼容性)
+- Linux/Mac: python main.py 或 uvicorn main:app
 """
 import pathlib
 from dotenv import load_dotenv
 import os
-import sys
 
 # Load .env from the same directory as this file
 env_path = pathlib.Path(__file__).parent / ".env"
@@ -59,6 +62,16 @@ async def lifespan(app: FastAPI):
     validate_config()
     # 创建数据库表
     create_db_and_tables()
+    
+    # 🔥🔥🔥 v3.5: 初始化 LangGraph Checkpointer 表 (HITL 支持)
+    from utils.db import init_checkpointer_tables
+    try:
+        await init_checkpointer_tables()
+        print("[Lifespan] Checkpointer tables initialized for HITL")
+    except Exception as e:
+        print(f"[Lifespan WARN] Failed to init checkpointer tables: {e}")
+        # 非致命错误，继续启动
+    
     # 初始化系统专家数据
     from models import SystemExpert
     from scripts.init_experts import EXPERT_DEFAULTS
@@ -85,6 +98,14 @@ async def lifespan(app: FastAPI):
     print("[Lifespan] Startup complete, yielding control to Uvicorn...")
     yield
     print("[Lifespan] Shutdown started...")
+    
+    # 🔥 关闭连接池
+    from utils.db import close_connection_pool
+    try:
+        await close_connection_pool()
+        print("[Lifespan] Connection pool closed")
+    except Exception as e:
+        print(f"[Lifespan WARN] Failed to close connection pool: {e}")
 
 
 # ============================================================================

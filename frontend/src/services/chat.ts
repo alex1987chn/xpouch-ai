@@ -182,3 +182,178 @@ export async function sendMessage(
     })
   })
 }
+
+/**
+ * 🔥🔥🔥 v3.5 HITL: 恢复被中断的执行流程
+ * 复用与 sendMessage 完全相同的 SSE 处理逻辑
+ */
+export interface ResumeChatParams {
+  threadId: string
+  updatedPlan?: Array<{
+    id: string
+    expert_type: string
+    description: string
+    sort_order: number
+    status: 'pending' | 'running' | 'completed' | 'failed'
+  }>
+  approved: boolean
+}
+
+export async function resumeChat(
+  params: ResumeChatParams,
+  onChunk?: StreamCallback,
+  abortSignal?: AbortSignal
+): Promise<string> {
+  const url = buildUrl('/chat/resume')
+  
+  // 如果不需要流式响应（如用户取消），使用普通 fetch
+  if (!onChunk) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        thread_id: params.threadId,
+        updated_plan: params.updatedPlan,
+        approved: params.approved
+      }),
+      signal: abortSignal
+    })
+    return handleResponse<any>(response, '恢复执行失败')
+  }
+
+  // 🔥 流式响应：复用与 sendMessage 完全相同的 SSE 处理逻辑
+  // 🚨🚨🚨 风险 2 修复：添加超时处理，防止 Promise 无限等待
+  return new Promise((resolve, reject) => {
+    let fullContent = ''
+    let isCompleted = false
+    let lastActivityTime = Date.now()
+    
+    // 🚨 超时检查（120秒无活动视为超时）
+    const TIMEOUT_MS = 120000
+    const timeoutCheck = setInterval(() => {
+      if (isCompleted) {
+        clearInterval(timeoutCheck)
+        return
+      }
+      if (Date.now() - lastActivityTime > TIMEOUT_MS) {
+        clearInterval(timeoutCheck)
+        logger.error('[chat.ts] Resume 超时：120秒内无活动')
+        ctrl.abort()
+        reject(new Error('执行超时，请检查后端状态'))
+      }
+    }, 10000)  // 每 10 秒检查一次
+
+    const ctrl = new AbortController()
+
+    if (abortSignal) {
+      abortSignal.addEventListener('abort', () => {
+        clearInterval(timeoutCheck)
+        ctrl.abort()
+        reject(new Error('请求已取消'))
+      })
+    }
+
+    fetchEventSource(url, {
+      method: 'POST',
+      headers: {
+        ...getHeaders(),
+        'Accept': 'text/event-stream',
+      },
+      body: JSON.stringify({
+        thread_id: params.threadId,
+        updated_plan: params.updatedPlan,
+        approved: params.approved
+      }),
+      signal: ctrl.signal,
+      openWhenHidden: true,
+
+      async onopen(response) {
+        if (!response.ok) {
+          logger.error('[chat.ts] Resume SSE 连接失败:', response.status, response.statusText)
+          clearInterval(timeoutCheck)
+          reject(new Error(`API Error: ${response.status}`))
+          return
+        }
+        logger.debug('[chat.ts] Resume SSE 连接已打开')
+        lastActivityTime = Date.now()
+      },
+
+      async onmessage(msg: EventSourceMessage) {
+        lastActivityTime = Date.now()  // 更新活动时间
+        
+        if (msg.data === '[DONE]') {
+          logger.debug('[chat.ts] Resume 收到 [DONE]，流式响应完成')
+          isCompleted = true
+          clearInterval(timeoutCheck)
+          resolve(fullContent)
+          return
+        }
+
+        try {
+          const eventType = msg.event
+          const eventData = JSON.parse(msg.data)
+          
+          if (eventType) {
+            const fullEvent = {
+              id: msg.id || crypto.randomUUID(),
+              timestamp: new Date().toISOString(),
+              type: eventType,
+              data: eventData
+            }
+            
+            // 🔥 复用与 sendMessage 完全相同的回调逻辑
+            if (eventType === 'message.delta' && onChunk) {
+              await onChunk(eventData.content, params.threadId)
+              fullContent += eventData.content
+            } else if (onChunk) {
+              await onChunk(undefined, params.threadId, fullEvent as any)
+            }
+            
+            // 统一处理所有事件
+            handleServerEvent(fullEvent as any)
+            
+            // 🔥 检查是否是 message.done 事件，表示流结束
+            if (eventType === 'message.done') {
+              logger.debug('[chat.ts] Resume 收到 message.done，流结束')
+              isCompleted = true
+              clearInterval(timeoutCheck)
+              resolve(fullContent)
+            }
+          }
+          
+        } catch (e) {
+          logger.debug('[chat.ts] Resume 解析 SSE 数据失败，跳过:', msg.data.substring(0, 100))
+        }
+      },
+
+      onerror(err) {
+        if (err.name === 'AbortError' || ctrl.signal.aborted) {
+          logger.debug('[chat.ts] Resume 请求已取消')
+          clearInterval(timeoutCheck)
+          if (!isCompleted) {
+            reject(new Error('请求已取消'))
+          }
+          return
+        }
+        
+        // 🚨🚨🚨 风险 2 修复：流异常断开， reject Promise
+        logger.error('[chat.ts] Resume SSE 错误:', err)
+        clearInterval(timeoutCheck)
+        if (!isCompleted) {
+          reject(new Error('连接异常断开，请重试'))
+        }
+      },
+
+      onclose() {
+        logger.debug('[chat.ts] Resume SSE 连接已关闭')
+        clearInterval(timeoutCheck)
+        
+        // 🚨 连接关闭时，如果还没完成，视为错误
+        if (!isCompleted) {
+          logger.error('[chat.ts] Resume SSE 连接意外关闭')
+          reject(new Error('连接意外关闭，请重试'))
+        }
+      },
+    })
+  })
+}

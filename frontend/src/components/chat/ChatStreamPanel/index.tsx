@@ -37,8 +37,11 @@ import ThinkingProcess from '../ThinkingProcess'
 import GeneratingIndicator from '../GeneratingIndicator'
 import ComplexModeIndicator from '../ComplexModeIndicator'
 import HeavyInputConsole from '../HeavyInputConsole'
+import PlanReviewCard from '../PlanReviewCard'  // 🔥🔥🔥 v3.5 HITL
 import { parseThinkTags, formatThinkingAsSteps } from '@/utils/thinkParser'
 import { useTaskStore } from '@/store/taskStore'
+import { useChatStore } from '@/store/chatStore'  // 🔥🔥🔥 v3.5 HITL
+import type { ResumeChatParams } from '@/services/chat'  // 🔥🔥🔥 v3.5 HITL
 
 interface ChatStreamPanelProps {
   /** 消息列表 */
@@ -63,6 +66,8 @@ interface ChatStreamPanelProps {
   conversationMode?: 'simple' | 'complex'
   /** 点击消息预览回调（用于移动端切换到 preview 视图） */
   onPreview?: () => void
+  /** 🔥🔥🔥 v3.5 HITL: 恢复执行回调 */
+  resumeExecution?: (params: ResumeChatParams) => Promise<string>
 }
 
 /**
@@ -137,11 +142,16 @@ export default function ChatStreamPanel({
   onLinkClick,
   conversationMode = 'simple',
   onPreview,
+  resumeExecution,  // 🔥🔥🔥 v3.5 HITL
 }: ChatStreamPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   
   // 🔥 获取 estimatedSteps 用于固定步骤编号（已包含 planning 步骤）
   const estimatedSteps = useTaskStore(state => state.session?.estimatedSteps || 0)
+  
+  // 🔥🔥🔥 v3.5 HITL: 获取审核状态
+  const isWaitingForApproval = useTaskStore(state => state.isWaitingForApproval)
+  const conversationId = useChatStore(state => state.currentConversationId)
 
   // 自动滚动到底部
   useEffect(() => {
@@ -250,6 +260,14 @@ export default function ChatStreamPanel({
           ) : (
             <GeneratingIndicator />
           )
+        )}
+        
+        {/* 🔥🔥🔥 v3.5 HITL: 计划审核卡片（当 Commander 规划完成时显示） */}
+        {isWaitingForApproval && conversationId && resumeExecution && (
+          <PlanReviewCard 
+            conversationId={conversationId} 
+            resumeExecution={resumeExecution}
+          />
         )}
       </div>
 
