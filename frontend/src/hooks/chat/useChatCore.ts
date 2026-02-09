@@ -150,9 +150,27 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       debug('准备添加消息，AI ID:', assistantMessageId, '类型:', typeof assistantMessageId)
 
       // 👈 关键修复：使用 setMessages 批量更新，避免中间件延迟
+      // 🔥 Phase 2: Optimistic UI - 抢跑响应，立即显示 Routing 状态
+      const routingStepId = generateUUID()
       setMessages([...storeState.messages,
         { role: 'user', content: userContent },
-        { id: assistantMessageId, role: 'assistant', content: '', timestamp: Date.now() }
+        {
+          id: assistantMessageId,
+          role: 'assistant',
+          content: '',
+          timestamp: Date.now(),
+          metadata: {
+            thinking: [{
+              id: routingStepId,
+              expertType: 'router',
+              expertName: '智能路由',
+              content: '正在分析意图，选择执行模式...',
+              timestamp: new Date().toISOString(),
+              status: 'running' as const,
+              type: 'analysis' as const
+            }]
+          }
+        }
       ])
 
       setInputMessage('')

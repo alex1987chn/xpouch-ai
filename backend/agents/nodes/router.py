@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from agents.state import AgentState
 from constants import ROUTER_SYSTEM_PROMPT, DEFAULT_ASSISTANT_PROMPT
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
+from utils.event_generator import event_router_start, event_router_decision, sse_event_to_string
 
 
 def _inject_current_time(system_prompt: str) -> str:
@@ -52,12 +53,13 @@ class RoutingDecision(BaseModel):
 async def router_node(state: AgentState) -> Dict[str, Any]:
     """
     [网关] 只负责分类，不负责回答
-    
+
     根据用户输入判断应该使用 simple 模式（直接回复）
     还是 complex 模式（多专家协作）
-    
+
     🔥 新增：检索长期记忆，提供个性化决策
     🔥 修复：每次用户新输入都重新判断，不受历史 task_list 影响
+    🔥 Phase 3: 发送 router.start 和 router.decision SSE 事件
     """
     messages = state["messages"]
     last_message = messages[-1]
@@ -72,6 +74,12 @@ async def router_node(state: AgentState) -> Dict[str, Any]:
     user_id = state.get("user_id", "default_user")
 
     print(f"--- [Router] 正在思考: {user_query[:100]}... ---")
+
+    # 🔥 Phase 3: 初始化事件队列，发送 router.start 事件
+    event_queue = state.get("event_queue", [])
+    start_event = event_router_start(query=user_query[:200])  # 限制长度
+    event_queue.append({"type": "sse", "event": sse_event_to_string(start_event)})
+    print(f"[Router] 已发送 router.start 事件")
 
     # 1. 🔥 检索长期记忆（异步）
     try:
@@ -103,10 +111,34 @@ async def router_node(state: AgentState) -> Dict[str, Any]:
         )
         decision = parser.parse(response.content)
         print(f"[Router] 决策结果: {decision.decision_type}")
-        return {"router_decision": decision.decision_type}
+
+        # 🔥 Phase 3: 发送 router.decision 事件
+        decision_event = event_router_decision(
+            decision=decision.decision_type,
+            reason=f"Based on query complexity analysis"
+        )
+        event_queue.append({"type": "sse", "event": sse_event_to_string(decision_event)})
+        print(f"[Router] 已发送 router.decision 事件: {decision.decision_type}")
+
+        return {
+            "router_decision": decision.decision_type,
+            "event_queue": event_queue  # 返回事件队列
+        }
     except Exception as e:
         print(f"[ROUTER ERROR] {e}")
-        return {"router_decision": "complex"}
+
+        # 🔥 Phase 3: 错误时也发送 decision 事件（fallback 到 complex）
+        decision_event = event_router_decision(
+            decision="complex",
+            reason=f"Router error, fallback to complex mode: {str(e)}"
+        )
+        event_queue.append({"type": "sse", "event": sse_event_to_string(decision_event)})
+        print(f"[Router] 错误，已发送 fallback router.decision 事件")
+
+        return {
+            "router_decision": "complex",
+            "event_queue": event_queue
+        }
 
 
 async def direct_reply_node(state: AgentState) -> Dict[str, Any]:

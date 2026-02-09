@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import { Copy, Check, RefreshCw, Eye } from 'lucide-react'
+import { Copy, Check, RefreshCw, Eye, Bot } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useTaskStore } from '@/store/taskStore'
 import type { MessageItemProps } from '../types'
@@ -163,95 +163,100 @@ export default function MessageItem({
     )
   }
 
-  // AI 消息：左侧色条容器
+  // AI 消息：无气泡，全宽展示（现代 AI 界面风格）
   return (
-    <div className="flex flex-col items-start w-full max-w-3xl select-text ai-message">
-      {/* 消息内容 */}
-      <div className="bg-card border-2 border-border border-l-[6px] border-l-[var(--accent)] p-6 w-full shadow-sm relative select-text">
-        {/* 标签 */}
-        <div className="absolute top-0 right-0 bg-[var(--accent)] text-inverted font-mono text-[9px] px-2 py-0.5 font-bold select-none">
-          {activeExpert ? `${activeExpert.toUpperCase()}_RESPONSE` : 'FINAL_PLAN'}
+    <div className="flex flex-col items-start w-full select-text ai-message group">
+      {/* 头部：头像 + 标签 + 时间 */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
+          <Bot className="w-3.5 h-3.5 text-primary-foreground" />
         </div>
+        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wide">
+          {activeExpert ? `${activeExpert.toUpperCase()}_AGENT` : 'ASSISTANT'}
+        </span>
+        <span className="font-mono text-[9px] text-muted-foreground/50">
+          {message.timestamp ? new Date(message.timestamp).toLocaleTimeString() : ''}
+        </span>
+      </div>
 
-        {/* Markdown 内容 */}
-        <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-sm prose-headings:font-bold prose-headings:text-primary prose-p:text-sm prose-p:leading-relaxed prose-p:text-primary prose-strong:text-primary prose-code:text-primary prose-pre:bg-panel prose-pre:border prose-pre:border-border/20 prose-a:text-blue-600 dark:prose-a:text-blue-400 select-text">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeHighlight]}
-            components={{
-              a: ({ node, ...props }) => (
-                <a
-                  {...props}
-                  onClick={(e) => {
-                    if (props.href?.startsWith('#')) {
-                      e.preventDefault()
-                      onLinkClick?.(props.href)
-                    }
-                  }}
-                  className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                />
-              ),
+      {/* 内容区：无气泡背景，直接展示 */}
+      <div className="w-full pl-8 prose prose-sm max-w-none dark:prose-invert 
+        prose-headings:text-sm prose-headings:font-bold prose-headings:text-foreground
+        prose-p:text-sm prose-p:leading-relaxed prose-p:text-foreground/90
+        prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-muted/50 
+        prose-pre:border prose-pre:border-border/30 prose-a:text-blue-600 dark:prose-a:text-blue-400 
+        select-text">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeHighlight]}
+          components={{
+            a: ({ node, ...props }) => (
+              <a
+                {...props}
+                onClick={(e) => {
+                  if (props.href?.startsWith('#')) {
+                    e.preventDefault()
+                    onLinkClick?.(props.href)
+                  }
+                }}
+                className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+              />
+            ),
+          }}
+        >
+          {message.content}
+        </ReactMarkdown>
+      </div>
+
+      {/* 底部操作栏：悬停显示，更简洁 */}
+      <div className="pl-8 mt-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        {/* 预览按钮 */}
+        {hasPreviewContent && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              handlePreview()
             }}
+            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
+            title={t('preview')}
           >
-            {message.content}
-          </ReactMarkdown>
-        </div>
-
-        {/* 底部操作栏 */}
-        <div className="mt-4 pt-3 border-t border-border/20 flex justify-between items-center">
-          <span className="font-mono text-[10px] text-primary/60 dark:text-primary/50">
-            TOKENS: {message.content.length}
-          </span>
-          <div className="flex gap-2">
-            {/* 预览按钮 */}
-            {hasPreviewContent && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handlePreview()
-                }}
-                className="relative z-10 flex items-center gap-1 text-[10px] font-bold hover:bg-primary hover:text-inverted px-2 py-1 transition-colors cursor-pointer"
-                title={t('preview')}
-              >
-                <Eye className="w-3 h-3" />
-                {t('preview')}
-              </button>
-            )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                handleCopy()
-              }}
-              className="relative z-10 flex items-center gap-1 text-[10px] font-bold hover:bg-primary hover:text-inverted px-2 py-1 transition-colors cursor-pointer"
-              title={t('copy')}
-            >
-              {copied ? (
-                <>
-                  <Check className="w-3 h-3" />
-                  {t('copied')}
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3 h-3" />
-                  {t('copy')}
-                </>
-              )}
-            </button>
-            {onRegenerate && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleRetry()
-                }}
-                className="relative z-10 flex items-center gap-1 text-[10px] font-bold hover:bg-primary hover:text-inverted px-2 py-1 transition-colors cursor-pointer"
-                title={t('regenerate')}
-              >
-                <RefreshCw className="w-3 h-3" />
-                {t('retry')}
-              </button>
-            )}
-          </div>
-        </div>
+            <Eye className="w-3 h-3" />
+            {t('preview')}
+          </button>
+        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            handleCopy()
+          }}
+          className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
+          title={t('copy')}
+        >
+          {copied ? (
+            <>
+              <Check className="w-3 h-3" />
+              {t('copied')}
+            </>
+          ) : (
+            <>
+              <Copy className="w-3 h-3" />
+              {t('copy')}
+            </>
+          )}
+        </button>
+        {onRegenerate && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              handleRetry()
+            }}
+            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
+            title={t('regenerate')}
+          >
+            <RefreshCw className="w-3 h-3" />
+            {t('retry')}
+          </button>
+        )}
       </div>
     </div>
   )

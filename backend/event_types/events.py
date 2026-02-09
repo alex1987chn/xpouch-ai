@@ -28,6 +28,7 @@ class EventType(str, Enum):
     MESSAGE_DONE = "message.done"           # 最终回复完成
     
     # 系统事件
+    ROUTER_START = "router.start"           # 路由开始（意图分析）
     ROUTER_DECISION = "router.decision"     # 路由决策
     ERROR = "error"                         # 全局错误
 
@@ -150,6 +151,12 @@ class MessageDoneData(BaseModel):
 # ============================================================================
 # 系统事件
 # ============================================================================
+
+class RouterStartData(BaseModel):
+    """router.start 事件数据"""
+    query: str  # 用户查询内容
+    timestamp: str
+
 
 class RouterDecisionData(BaseModel):
     """router.decision 事件数据"""

@@ -23,6 +23,7 @@ export type EventType =
   | 'message.delta'
   | 'message.done'
   // 系统事件
+  | 'router.start'
   | 'router.decision'
   | 'error'
 
@@ -147,6 +148,13 @@ export type MessageDoneEvent = SSEEvent<MessageDoneData>
 // 系统事件
 // ============================================================================
 
+export interface RouterStartData {
+  query: string
+  timestamp: string
+}
+
+export type RouterStartEvent = SSEEvent<RouterStartData>
+
 export interface RouterDecisionData {
   decision: 'simple' | 'complex'
   reason?: string
@@ -174,6 +182,7 @@ export type AnyServerEvent =
   | ArtifactGeneratedEvent
   | MessageDeltaEvent
   | MessageDoneEvent
+  | RouterStartEvent
   | RouterDecisionEvent
   | ErrorEvent
 
