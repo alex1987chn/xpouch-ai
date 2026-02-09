@@ -486,7 +486,11 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
               {artifact.type === 'html' ? (
                 <HtmlArtifact content={artifact.content} className="h-full" />
               ) : artifact.type === 'markdown' || artifact.content.includes('#') || artifact.content.includes('**') ? (
-                <DocArtifact content={artifact.content} className="h-full" />
+                <DocArtifact 
+                  content={artifact.content} 
+                  className="h-full" 
+                  isStreaming={artifact.isStreaming}  // 🔥 传递流式状态
+                />
               ) : (
                 <CodeArtifact content={artifact.content} language={artifact.language || artifact.type} className="h-full" />
               )}

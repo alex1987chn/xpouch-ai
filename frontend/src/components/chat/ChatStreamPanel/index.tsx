@@ -29,7 +29,7 @@
  * - 状态管理由父组件和 Zustand Store 负责
  */
 
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect } from 'react'
 import type { Message } from '@/types'
 import EmptyState from '../EmptyState'
 import MessageItem from '../MessageItem'
@@ -38,6 +38,7 @@ import GeneratingIndicator from '../GeneratingIndicator'
 import ComplexModeIndicator from '../ComplexModeIndicator'
 import HeavyInputConsole from '../HeavyInputConsole'
 import { parseThinkTags, formatThinkingAsSteps } from '@/utils/thinkParser'
+import { useTaskStore } from '@/store/taskStore'
 
 interface ChatStreamPanelProps {
   /** 消息列表 */
@@ -138,6 +139,9 @@ export default function ChatStreamPanel({
   onPreview,
 }: ChatStreamPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  
+  // 🔥 获取 estimatedSteps 用于固定步骤编号（已包含 planning 步骤）
+  const estimatedSteps = useTaskStore(state => state.session?.estimatedSteps || 0)
 
   // 自动滚动到底部
   useEffect(() => {
@@ -201,13 +205,22 @@ export default function ChatStreamPanel({
             const parsedContent = parseThinkTags(msg.content).content || msg.content || ''
             const hasActualContent = parsedContent.replace(/\s/g, '').length > 0
             
+            // 🔥🔥🔥 关键修复：在复杂模式下，只显示最后一条有 thinking 的消息
+            // 避免页面刷新后出现多个 ThinkingProcess
+            const isLastMessageWithThinking = index === displayMessages.length - 1 || 
+              !displayMessages.slice(index + 1).some(m => 
+                getMessageThinkingSteps(m, conversationMode).length > 0
+              )
+            
             return (
               <div key={messageKey}>
                 {/* 🔥 思维链展示（在消息气泡外） */}
-                {thinkingSteps.length > 0 && (
+                {/* 只在最后一条有 thinking 的消息显示 ThinkingProcess */}
+                {thinkingSteps.length > 0 && isLastMessageWithThinking && (
                   <ThinkingProcess 
                     steps={thinkingSteps}
                     isThinking={isLastAndStreaming}
+                    totalSteps={estimatedSteps > 0 ? estimatedSteps : thinkingSteps.length}  // 🔥 优先使用 estimatedSteps
                   />
                 )}
                 

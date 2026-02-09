@@ -8,10 +8,15 @@ import { useChatStore } from '@/store/chatStore'
 import type {
   AnyServerEvent,
   PlanCreatedEvent,
+  PlanStartedEvent,        // 🔥 新增
+  PlanThinkingEvent,       // 🔥 新增
   TaskStartedEvent,
   TaskCompletedEvent,
   TaskFailedEvent,
   ArtifactGeneratedEvent,
+  ArtifactStartEvent,
+  ArtifactChunkEvent,
+  ArtifactCompletedEvent,
   MessageDeltaEvent,
   MessageDoneEvent,
   RouterStartEvent,
@@ -59,6 +64,13 @@ export class EventHandler {
       case 'plan.created':
         this.handlePlanCreated(event as PlanCreatedEvent)
         break
+      // 🔥 新增：Commander 流式思考事件
+      case 'plan.started':
+        this.handlePlanStarted(event as PlanStartedEvent)
+        break
+      case 'plan.thinking':
+        this.handlePlanThinking(event as PlanThinkingEvent)
+        break
       case 'task.started':
         this.handleTaskStarted(event as TaskStartedEvent)
         break
@@ -70,6 +82,16 @@ export class EventHandler {
         break
       case 'artifact.generated':
         this.handleArtifactGenerated(event as ArtifactGeneratedEvent)
+        break
+      // 🔥 新增：Artifact 流式事件处理
+      case 'artifact.start':
+        this.handleArtifactStart(event as ArtifactStartEvent)
+        break
+      case 'artifact.chunk':
+        this.handleArtifactChunk(event as ArtifactChunkEvent)
+        break
+      case 'artifact.completed':
+        this.handleArtifactCompleted(event as ArtifactCompletedEvent)
         break
       case 'message.delta':
         this.handleMessageDelta(event as MessageDeltaEvent)
@@ -96,8 +118,103 @@ export class EventHandler {
     const { initializePlan } = useTaskStore.getState()
     initializePlan(event.data)
 
+    // 🔥 更新 thinking 步骤为完成状态
+    const { messages, updateMessageMetadata } = useChatStore.getState()
+    const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
+    
+    if (lastAiMessage?.metadata?.thinking) {
+      const thinking = [...lastAiMessage.metadata.thinking]
+      const planStepIndex = thinking.findIndex(s => s.type === 'planning')
+      if (planStepIndex >= 0) {
+        thinking[planStepIndex] = {
+          ...thinking[planStepIndex],
+          status: 'completed',
+          content: '任务规划完成'
+        }
+        updateMessageMetadata(lastAiMessage.id!, { thinking })
+      }
+    }
+
     if (DEBUG) {
       logger.debug('[EventHandler] 任务计划已初始化:', event.data.session_id)
+    }
+  }
+
+  /**
+   * 🔥 新增：处理 plan.started 事件
+   * 创建 thinking step，title 常驻，content 初始为空
+   */
+  private handlePlanStarted(event: PlanStartedEvent): void {
+    const { startPlan } = useTaskStore.getState()
+    startPlan(event.data)
+
+    // 🔥 创建 thinking step 到聊天消息
+    const { messages, updateMessageMetadata } = useChatStore.getState()
+    const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
+    
+    if (lastAiMessage) {
+      const thinking = [...(lastAiMessage.metadata?.thinking || [])]
+      
+      // 创建新的 planning step
+      // title: '任务规划' (expertName), content: '' (初始为空), status: 'running'
+      const planStep = {
+        id: `plan-${event.data.session_id}`,
+        expertType: 'planner',
+        expertName: '任务规划',  // 🔥 title 常驻
+        content: '',  // 🔥 初始为空，不显示内容
+        timestamp: new Date().toISOString(),
+        status: 'running' as const,
+        type: 'planning' as const
+      }
+      
+      // 查找是否已存在规划步骤，避免重复
+      const existingIndex = thinking.findIndex(s => s.type === 'planning')
+      if (existingIndex >= 0) {
+        // 复用现有 step，但重置 content
+        thinking[existingIndex] = { ...thinking[existingIndex], ...planStep }
+      } else {
+        thinking.push(planStep)
+      }
+      
+      updateMessageMetadata(lastAiMessage.id!, { thinking })
+    }
+
+    if (DEBUG) {
+      logger.debug('[EventHandler] 规划开始，title 常驻:', event.data.session_id)
+    }
+  }
+
+  /**
+   * 🔥 新增：处理 plan.thinking 事件
+   * 追加 delta 到 content 字段，不覆盖 title
+   */
+  private handlePlanThinking(event: PlanThinkingEvent): void {
+    console.log('[EventHandler] 🧠 plan.thinking:', event.data.delta.substring(0, 30) + '...')
+    
+    const { appendPlanThinking } = useTaskStore.getState()
+    appendPlanThinking(event.data)
+
+    // 🔥 追加到 thinking step 的 content 字段
+    const { messages, updateMessageMetadata } = useChatStore.getState()
+    const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
+    
+    if (lastAiMessage?.metadata?.thinking) {
+      const thinking = [...lastAiMessage.metadata.thinking]
+      const planStepIndex = thinking.findIndex(s => s.type === 'planning')
+      
+      if (planStepIndex >= 0) {
+        // 🔥 只更新 content，不覆盖 title (expertName)
+        thinking[planStepIndex] = {
+          ...thinking[planStepIndex],
+          content: thinking[planStepIndex].content + event.data.delta
+        }
+        updateMessageMetadata(lastAiMessage.id!, { thinking })
+        console.log('[EventHandler] ✅ thinking content 已更新')
+      } else {
+        console.warn('[EventHandler] ⚠️ 未找到 planning step')
+      }
+    } else {
+      console.warn('[EventHandler] ⚠️ 最后一条消息没有 thinking 元数据')
     }
   }
 
@@ -155,6 +272,54 @@ export class EventHandler {
         event.data.artifact.id,
         event.data.artifact.type
       )
+    }
+  }
+
+  /**
+   * 🔥 新增：处理 artifact.start 事件
+   * 开始流式 Artifact 生成
+   * 
+   * 注意：Artifact 生成是任务执行的子过程，不创建独立的 thinking step
+   * 以避免步骤数超过预估（如 8/5 的情况）
+   */
+  private handleArtifactStart(event: ArtifactStartEvent): void {
+    const { startArtifact } = useTaskStore.getState()
+    startArtifact(event.data)
+
+    // 🔥 不再创建独立的 artifact thinking step
+    // artifact 生成是 task 执行的一部分，应在对应 task step 中展示状态
+
+    if (DEBUG) {
+      logger.debug('[EventHandler] Artifact 流式生成开始:', event.data.artifact_id)
+    }
+  }
+
+  /**
+   * 🔥 新增：处理 artifact.chunk 事件
+   * 实时追加 Artifact 内容
+   */
+  private handleArtifactChunk(event: ArtifactChunkEvent): void {
+    const { streamArtifactChunk } = useTaskStore.getState()
+    streamArtifactChunk(event.data)
+
+    // 🔥 高频更新，不记录日志避免刷屏
+  }
+
+  /**
+   * 🔥 新增：处理 artifact.completed 事件
+   * 完成 Artifact 流式生成
+   * 
+   * 注意：不更新 thinking 状态，artifact 是任务执行的子过程
+   */
+  private handleArtifactCompleted(event: ArtifactCompletedEvent): void {
+    const { completeArtifact } = useTaskStore.getState()
+    completeArtifact(event.data)
+
+    // 🔥 不再更新 thinking 状态
+    // artifact 生成是 task 执行的一部分，不创建独立的 thinking step
+
+    if (DEBUG) {
+      logger.debug('[EventHandler] Artifact 流式生成完成:', event.data.artifact_id)
     }
   }
 

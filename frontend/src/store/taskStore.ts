@@ -11,10 +11,15 @@ import { persist } from './middleware/persist'
 import type {
   TaskInfo,
   PlanCreatedData,
+  PlanStartedData,        // 🔥 新增
+  PlanThinkingData,       // 🔥 新增
   TaskStartedData,
   TaskCompletedData,
   TaskFailedData,
-  ArtifactGeneratedData
+  ArtifactGeneratedData,
+  ArtifactStartData,
+  ArtifactChunkData,
+  ArtifactCompletedData
 } from '@/types/events'
 import type { SubTask, TaskSession as ApiTaskSession } from '@/types'
 
@@ -78,6 +83,7 @@ export interface Artifact {
   language?: string
   sortOrder: number
   createdAt: string
+  isStreaming?: boolean  // 🔥 新增：标记是否正在流式生成中
 }
 
 export interface TaskSession {
@@ -111,6 +117,12 @@ interface TaskState {
   // 是否已初始化
   isInitialized: boolean
 
+  // 🔥 新增：流式 Artifact 内容映射（artifact_id -> 累积内容）
+  streamingArtifacts: Map<string, string>
+
+  // 🔥 新增：Commander 规划思考内容
+  planThinkingContent: string
+
   // Actions
   setMode: (mode: 'simple' | 'complex') => void
   initializePlan: (data: PlanCreatedData) => void
@@ -121,6 +133,15 @@ interface TaskState {
   replaceArtifacts: (taskId: string, artifacts: Artifact[]) => void
   selectTask: (taskId: string | null) => void
   clearTasks: () => void
+
+  // 🔥 新增：Artifact 流式 Actions
+  startArtifact: (data: ArtifactStartData) => void
+  streamArtifactChunk: (data: ArtifactChunkData) => void
+  completeArtifact: (data: ArtifactCompletedData) => void
+
+  // 🔥 新增：Commander 规划 Actions
+  startPlan: (data: PlanStartedData) => void
+  appendPlanThinking: (data: PlanThinkingData) => void
 
   /**
    * 从会话数据恢复任务状态（用于页面切换后状态恢复）
@@ -149,6 +170,8 @@ export const useTaskStore = create<TaskState>()(
       runningTaskIds: new Set(),
       selectedTaskId: null,
       isInitialized: false,
+      streamingArtifacts: new Map(),  // 🔥 新增：流式 Artifact 内容映射
+      planThinkingContent: '',  // 🔥 新增：Commander 规划思考内容
 
     /**
      * 设置模式
@@ -202,7 +225,7 @@ export const useTaskStore = create<TaskState>()(
           state.session = {
             sessionId: data.session_id,
             summary: data.summary,
-            estimatedSteps: data.estimated_steps,
+            estimatedSteps: data.estimated_steps + 1,  // 🔥 +1 包含 planning 步骤
             executionMode: data.execution_mode as 'sequential' | 'parallel',
             status: 'running'
           }
@@ -408,6 +431,151 @@ export const useTaskStore = create<TaskState>()(
         state.runningTaskIds = new Set()
         state.selectedTaskId = null
         state.isInitialized = false
+        state.streamingArtifacts = new Map()  // 🔥 清空流式内容
+        state.planThinkingContent = ''  // 🔥 清空规划思考内容
+      })
+    },
+
+    /**
+     * 🔥 新增：开始规划
+     * 收到 plan.started 事件时调用
+     */
+    startPlan: (data: PlanStartedData) => {
+      set((state) => {
+        // 初始化规划思考内容
+        state.planThinkingContent = data.content
+        
+        // 设置任务会话（预览状态）
+        if (!state.session) {
+          state.session = {
+            sessionId: data.session_id,
+            summary: data.title,
+            estimatedSteps: 0,
+            executionMode: 'sequential',
+            status: 'running'
+          }
+        } else {
+          state.session.status = 'running'
+        }
+        
+        // 清空之前的任务（如果有）
+        state.tasks = new Map()
+        state.tasksCache = []
+        state.tasksCacheVersion++
+        state.isInitialized = false
+      })
+    },
+
+    /**
+     * 🔥 新增：追加规划思考内容
+     * 收到 plan.thinking 事件时调用
+     */
+    appendPlanThinking: (data: PlanThinkingData) => {
+      set((state) => {
+        state.planThinkingContent += data.delta
+        // 性能优化：不更新缓存版本号
+      })
+    },
+
+    /**
+     * 🔥 新增：开始 Artifact 流式生成
+     * 收到 artifact.start 事件时调用
+     */
+    startArtifact: (data: ArtifactStartData) => {
+      set((state) => {
+        // 1. 初始化流式内容映射
+        state.streamingArtifacts.set(data.artifact_id, '')
+
+        // 2. 查找对应任务
+        const task = state.tasks.get(data.task_id)
+        if (task) {
+          // 检查是否已存在相同 ID 的 artifact（防止重复）
+          const existingIndex = task.artifacts.findIndex(a => a.id === data.artifact_id)
+          if (existingIndex < 0) {
+            // 添加新的流式 artifact
+            task.artifacts.push({
+              id: data.artifact_id,
+              type: data.type,
+              title: data.title,
+              content: '',  // 初始为空
+              sortOrder: 0,
+              createdAt: new Date().toISOString(),
+              isStreaming: true  // 🔥 标记为流式中
+            })
+            // 按 sortOrder 排序
+            task.artifacts.sort((a, b) => a.sortOrder - b.sortOrder)
+          }
+        }
+
+        // 3. 自动选中该任务（让用户立即看到生成过程）
+        state.selectedTaskId = data.task_id
+
+        // 4. 更新缓存
+        const sortedTasks = Array.from(state.tasks.values())
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map(task => ({
+            ...task,
+            artifacts: task.artifacts.map(a => ({...a}))
+          }))
+        state.tasksCache = sortedTasks
+        state.tasksCacheVersion++
+      })
+    },
+
+    /**
+     * 🔥 新增：流式追加 Artifact 内容
+     * 收到 artifact.chunk 事件时调用
+     * 注意：此函数可能被高频调用（每秒几十次），需确保性能
+     */
+    streamArtifactChunk: (data: ArtifactChunkData) => {
+      set((state) => {
+        // 1. 更新流式内容映射
+        const currentContent = state.streamingArtifacts.get(data.artifact_id) || ''
+        const newContent = currentContent + data.delta
+        state.streamingArtifacts.set(data.artifact_id, newContent)
+
+        // 2. 查找并更新对应的 artifact（直接修改引用，避免深层拷贝）
+        for (const task of state.tasks.values()) {
+          const artifact = task.artifacts.find(a => a.id === data.artifact_id)
+          if (artifact) {
+            artifact.content = newContent
+            break  // 找到后退出
+          }
+        }
+
+        // 🔥 性能优化：不更新缓存版本号，避免触发过多重渲染
+        // 内容由引用传递，组件会直接看到更新
+      })
+    },
+
+    /**
+     * 🔥 新增：完成 Artifact 流式生成
+     * 收到 artifact.completed 事件时调用
+     */
+    completeArtifact: (data: ArtifactCompletedData) => {
+      set((state) => {
+        // 1. 清理流式内容映射
+        state.streamingArtifacts.delete(data.artifact_id)
+
+        // 2. 更新最终内容并标记完成
+        for (const task of state.tasks.values()) {
+          const artifact = task.artifacts.find(a => a.id === data.artifact_id)
+          if (artifact) {
+            artifact.content = data.full_content
+            artifact.isStreaming = false  // 🔥 标记完成
+            break
+          }
+        }
+
+        // 3. 更新缓存
+        const sortedTasks = Array.from(state.tasks.values())
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map(task => ({
+            ...task,
+            artifacts: task.artifacts.map(a => ({...a}))
+          }))
+        state.tasksCache = sortedTasks
+        state.tasksCacheVersion++
       })
     },
 
@@ -426,7 +594,7 @@ export const useTaskStore = create<TaskState>()(
         state.session = {
           sessionId: session.session_id,
           summary: session.user_query || '',
-          estimatedSteps: subTasks.length,
+          estimatedSteps: subTasks.length + 1,  // 🔥 +1 包含 planning 步骤
           executionMode: 'sequential',
           status: (session.status as 'pending' | 'running' | 'completed' | 'failed') || 'running'
         }

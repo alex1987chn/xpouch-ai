@@ -9,6 +9,7 @@ import HtmlArtifact from './HtmlArtifact'
 interface DocArtifactProps {
   content: string
   className?: string
+  isStreaming?: boolean  // 🔥 新增：流式生成状态
 }
 
 /**
@@ -22,7 +23,7 @@ interface DocArtifactProps {
  * - code → CodeArtifact 处理（含 mermaid/json-chart 等）
  * - html → HtmlArtifact 渲染
  */
-export default function DocArtifact({ content, className }: DocArtifactProps) {
+export default function DocArtifact({ content, className, isStreaming }: DocArtifactProps) {
   return (
     <div className={cn('w-full h-full overflow-auto bauhaus-scrollbar p-4', className)}>
       <div className="prose prose-slate dark:prose-invert prose-sm max-w-none w-full min-h-0">
@@ -206,6 +207,11 @@ export default function DocArtifact({ content, className }: DocArtifactProps) {
         >
           {content}
         </ReactMarkdown>
+        
+        {/* 🔥 新增：流式光标动画 */}
+        {isStreaming && (
+          <span className="inline-block w-2 h-5 ml-1 bg-primary animate-pulse align-middle rounded-sm" />
+        )}
       </div>
     </div>
   )

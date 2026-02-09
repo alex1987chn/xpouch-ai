@@ -9,9 +9,11 @@ from uuid import uuid4
 
 from event_types.events import (
     EventType, SSEEvent,
-    PlanCreatedData, TaskInfo,
+    PlanCreatedData, PlanStartedData, PlanThinkingData,  # 🔥 新增
+    TaskInfo,
     TaskStartedData, TaskProgressData, TaskCompletedData, TaskFailedData,
     ArtifactGeneratedData, ArtifactInfo,
+    ArtifactStartData, ArtifactChunkData, ArtifactCompletedData,
     MessageDeltaData, MessageDoneData,
     RouterStartData, RouterDecisionData, ErrorData,
     build_sse_event, sse_event_to_string
@@ -75,6 +77,36 @@ class EventGenerator:
         )
         
         return build_sse_event(EventType.PLAN_CREATED, data, self._next_event_id())
+    
+    # 🔥 新增：Commander 流式思考事件方法
+    
+    def plan_started(
+        self,
+        session_id: str,
+        title: str = "任务规划",
+        content: str = "正在分析需求...",
+        status: str = "running"
+    ) -> SSEEvent:
+        """生成 plan.started 事件 - 通知前端开始规划"""
+        data = PlanStartedData(
+            session_id=session_id,
+            title=title,
+            content=content,
+            status=status
+        )
+        return build_sse_event(EventType.PLAN_STARTED, data, self._next_event_id())
+    
+    def plan_thinking(
+        self,
+        session_id: str,
+        delta: str
+    ) -> SSEEvent:
+        """生成 plan.thinking 事件 - 流式思考内容增量"""
+        data = PlanThinkingData(
+            session_id=session_id,
+            delta=delta
+        )
+        return build_sse_event(EventType.PLAN_THINKING, data, self._next_event_id())
     
     # ========================================================================
     # 任务执行阶段事件
@@ -182,6 +214,54 @@ class EventGenerator:
         )
         return build_sse_event(EventType.ARTIFACT_GENERATED, data, self._next_event_id())
     
+    # 🔥 新增：Artifact 流式事件方法（Real-time Streaming）
+    
+    def artifact_start(
+        self,
+        task_id: str,
+        expert_type: str,
+        artifact_id: str,
+        title: str,
+        type: str
+    ) -> SSEEvent:
+        """生成 artifact.start 事件 - 通知前端开始流式生成"""
+        data = ArtifactStartData(
+            task_id=task_id,
+            expert_type=expert_type,
+            artifact_id=artifact_id,
+            title=title,
+            type=type
+        )
+        return build_sse_event(EventType.ARTIFACT_START, data, self._next_event_id())
+    
+    def artifact_chunk(
+        self,
+        artifact_id: str,
+        delta: str
+    ) -> SSEEvent:
+        """生成 artifact.chunk 事件 - 传输内容片段"""
+        data = ArtifactChunkData(
+            artifact_id=artifact_id,
+            delta=delta
+        )
+        return build_sse_event(EventType.ARTIFACT_CHUNK, data, self._next_event_id())
+    
+    def artifact_completed(
+        self,
+        artifact_id: str,
+        task_id: str,
+        expert_type: str,
+        full_content: str
+    ) -> SSEEvent:
+        """生成 artifact.completed 事件 - 流式生成完成"""
+        data = ArtifactCompletedData(
+            artifact_id=artifact_id,
+            task_id=task_id,
+            expert_type=expert_type,
+            full_content=full_content
+        )
+        return build_sse_event(EventType.ARTIFACT_COMPLETED, data, self._next_event_id())
+    
     # ========================================================================
     # 消息阶段事件
     # ========================================================================
@@ -268,6 +348,18 @@ def event_plan_created(*args, **kwargs) -> SSEEvent:
     return _event_generator.plan_created(*args, **kwargs)
 
 
+# 🔥 新增：Commander 流式思考事件便捷函数
+
+def event_plan_started(*args, **kwargs) -> SSEEvent:
+    """便捷函数：生成 plan.started 事件"""
+    return _event_generator.plan_started(*args, **kwargs)
+
+
+def event_plan_thinking(*args, **kwargs) -> SSEEvent:
+    """便捷函数：生成 plan.thinking 事件"""
+    return _event_generator.plan_thinking(*args, **kwargs)
+
+
 def event_task_started(*args, **kwargs) -> SSEEvent:
     """便捷函数：生成 task.started 事件"""
     return _event_generator.task_started(*args, **kwargs)
@@ -291,6 +383,23 @@ def event_task_failed(*args, **kwargs) -> SSEEvent:
 def event_artifact_generated(*args, **kwargs) -> SSEEvent:
     """便捷函数：生成 artifact.generated 事件"""
     return _event_generator.artifact_generated(*args, **kwargs)
+
+
+# 🔥 新增：Artifact 流式事件便捷函数（Real-time Streaming）
+
+def event_artifact_start(*args, **kwargs) -> SSEEvent:
+    """便捷函数：生成 artifact.start 事件"""
+    return _event_generator.artifact_start(*args, **kwargs)
+
+
+def event_artifact_chunk(*args, **kwargs) -> SSEEvent:
+    """便捷函数：生成 artifact.chunk 事件"""
+    return _event_generator.artifact_chunk(*args, **kwargs)
+
+
+def event_artifact_completed(*args, **kwargs) -> SSEEvent:
+    """便捷函数：生成 artifact.completed 事件"""
+    return _event_generator.artifact_completed(*args, **kwargs)
 
 
 def event_message_delta(*args, **kwargs) -> SSEEvent:

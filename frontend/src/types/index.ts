@@ -35,10 +35,11 @@ export interface ThinkingStep {
    * - coding: 代码生成
    * - planning: 任务规划
    * - writing: 写作生成
+   * - artifact: 产物生成 (实时流式渲染)
    * - memory: 记忆检索
    * - default: 默认/其他
    */
-  type?: 'search' | 'reading' | 'analysis' | 'coding' | 'planning' | 'writing' | 'memory' | 'default'
+  type?: 'search' | 'reading' | 'analysis' | 'coding' | 'planning' | 'writing' | 'artifact' | 'memory' | 'default'
   /**
    * 执行耗时（毫秒）
    */

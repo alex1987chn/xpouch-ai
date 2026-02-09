@@ -344,7 +344,8 @@ def create_task_session_with_subtasks(
     plan_summary: str,
     estimated_steps: int,
     subtasks_data: List[SubTaskCreate],
-    execution_mode: str = "sequential"
+    execution_mode: str = "sequential",
+    session_id: Optional[str] = None  # 🔥 新增：可选的自定义 session_id
 ) -> TaskSession:
     """
     批量创建任务会话和子任务（Commander 阶段使用）
@@ -357,21 +358,28 @@ def create_task_session_with_subtasks(
         estimated_steps: 预计步骤数
         subtasks_data: 子任务列表
         execution_mode: 执行模式
+        session_id: 可选的自定义 session_id（用于流式预览时保持一致性）
     
     Returns:
         创建的任务会话（包含所有子任务）
     """
     # 1. 创建任务会话
-    task_session = TaskSession(
-        thread_id=thread_id,
-        user_query=user_query,
-        plan_summary=plan_summary,
-        estimated_steps=estimated_steps,
-        execution_mode=execution_mode,
-        status="running"
-    )
+    # 🔥 如果传入了 session_id，使用它；否则数据库自动生成
+    task_session_data = {
+        "thread_id": thread_id,
+        "user_query": user_query,
+        "plan_summary": plan_summary,
+        "estimated_steps": estimated_steps,
+        "execution_mode": execution_mode,
+        "status": "running"
+    }
+    
+    if session_id:
+        task_session_data["session_id"] = session_id
+    
+    task_session = TaskSession(**task_session_data)
     db.add(task_session)
-    db.flush()  # 获取 session_id
+    db.flush()  # 获取 session_id（如果是自动生成的）
     
     # 2. 批量创建子任务
     for idx, data in enumerate(subtasks_data):
