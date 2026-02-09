@@ -13,6 +13,8 @@ class EventType(str, Enum):
     """SSE 事件类型枚举"""
     # 规划阶段
     PLAN_CREATED = "plan.created"           # Planner 生成计划
+    PLAN_STARTED = "plan.started"           # 🔥 新增：规划开始（设置标题）
+    PLAN_THINKING = "plan.thinking"         # 🔥 新增：规划思考流式内容
     
     # 任务执行阶段
     TASK_STARTED = "task.started"           # 专家开始执行
@@ -22,6 +24,11 @@ class EventType(str, Enum):
     
     # 产物阶段
     ARTIFACT_GENERATED = "artifact.generated"  # 产物生成
+    
+    # 🔥 新增：Artifact 流式事件（Real-time Streaming）
+    ARTIFACT_START = "artifact.start"       # 开始生成 Artifact
+    ARTIFACT_CHUNK = "artifact.chunk"       # 内容片段
+    ARTIFACT_COMPLETED = "artifact.completed"  # 生成完成
     
     # 消息阶段
     MESSAGE_DELTA = "message.delta"         # 最终回复流式块
@@ -65,6 +72,22 @@ class PlanCreatedData(BaseModel):
     estimated_steps: int
     execution_mode: str  # sequential | parallel
     tasks: List[TaskInfo]
+
+
+# 🔥 新增：Commander 流式思考事件数据模型
+
+class PlanStartedData(BaseModel):
+    """plan.started 事件数据 - 通知前端开始规划"""
+    session_id: str
+    title: str = "任务规划"
+    content: str = "正在分析需求..."
+    status: str = "running"
+
+
+class PlanThinkingData(BaseModel):
+    """plan.thinking 事件数据 - 流式思考内容增量"""
+    session_id: str
+    delta: str  # 思考内容的增量
 
 
 # ============================================================================
@@ -127,6 +150,31 @@ class ArtifactGeneratedData(BaseModel):
     task_id: str
     expert_type: str
     artifact: ArtifactInfo
+
+
+# 🔥 新增：Artifact 流式事件数据模型（Real-time Streaming）
+
+class ArtifactStartData(BaseModel):
+    """artifact.start 事件数据 - 通知前端开始流式生成"""
+    task_id: str
+    expert_type: str
+    artifact_id: str
+    title: str
+    type: str  # markdown | html | code | json | text
+
+
+class ArtifactChunkData(BaseModel):
+    """artifact.chunk 事件数据 - 传输内容片段"""
+    artifact_id: str
+    delta: str  # 增量内容
+
+
+class ArtifactCompletedData(BaseModel):
+    """artifact.completed 事件数据 - 流式生成完成"""
+    artifact_id: str
+    task_id: str
+    expert_type: str
+    full_content: str  # 完整内容（用于最终确认）
 
 
 # ============================================================================

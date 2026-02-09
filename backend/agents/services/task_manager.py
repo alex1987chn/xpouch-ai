@@ -42,7 +42,8 @@ def get_or_create_task_session(
     plan_summary: str,
     estimated_steps: int,
     subtasks_data: List[Any],
-    execution_mode: str = "sequential"
+    execution_mode: str = "sequential",
+    session_id: Optional[str] = None  # 🔥 新增：可选的 session_id
 ) -> tuple[Any, bool]:
     """
     获取或创建任务会话
@@ -58,6 +59,7 @@ def get_or_create_task_session(
         estimated_steps: 预计步骤数
         subtasks_data: 子任务数据列表 (SubTaskCreate)
         execution_mode: 执行模式 (sequential/parallel)
+        session_id: 可选的 session_id（用于流式预览时保持一致性）
 
     Returns:
         tuple: (task_session, is_reused)
@@ -112,6 +114,7 @@ def get_or_create_task_session(
         return existing_session, True
 
     # 创建新的 TaskSession
+    # 🔥 传入 session_id（如果提供了）
     task_session = create_task_session_with_subtasks(
         db=db,
         thread_id=thread_id,
@@ -119,7 +122,8 @@ def get_or_create_task_session(
         plan_summary=plan_summary,
         estimated_steps=estimated_steps,
         subtasks_data=subtasks_data,
-        execution_mode=execution_mode
+        execution_mode=execution_mode,
+        session_id=session_id  # 🔥 传入预览时使用的 session_id
     )
     print(f"[TaskManager] 创建新 TaskSession: {task_session.session_id}")
     return task_session, False

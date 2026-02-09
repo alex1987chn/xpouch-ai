@@ -99,17 +99,33 @@ async def _preload_expert_configs(task_list: List[Dict], db_session: Any) -> Non
     print(f"[COMMANDER] P1优化: 成功预加载 {loaded_count}/{len(expert_types)} 个专家配置")
 
 
-async def commander_node(state: AgentState) -> Dict[str, Any]:
+async def commander_node(state: AgentState, config: RunnableConfig = None) -> Dict[str, Any]:
     """
     [指挥官] 将复杂查询拆解为子任务。
     v3.0 更新：立即持久化到数据库，发送 plan.created 事件
     v3.1 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
+    v3.3 更新：流式思考 + JSON 生成，先展示思考过程，后输出任务规划
+    v3.4 更新：使用 Shared Queue 模式实现真正的实时流式输出
     """
     from agents.services.expert_manager import get_expert_config, get_expert_config_cached
     from agents.services.expert_manager import get_all_expert_list, format_expert_list_for_prompt
     from agents.services.task_manager import get_or_create_task_session
     from models import SubTaskCreate
-    from utils.event_generator import event_plan_created, sse_event_to_string
+    from utils.event_generator import (
+        event_plan_created, event_plan_started, event_plan_thinking,
+        sse_event_to_string
+    )
+    from uuid import uuid4
+    
+    # 🔥🔥🔥 v3.4: 获取共享队列 (Side Channel)
+    stream_queue = None
+    if config:
+        stream_queue = config.get("configurable", {}).get("stream_queue")
+        if stream_queue:
+            print(f"[COMMANDER] 获取到 stream_queue，将实时推送思考内容")
+    
+    # 🔥 初始化事件队列（用于收集所有事件）
+    event_queue = []
     
     messages = state["messages"]
     last_message = messages[-1]
@@ -184,24 +200,159 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
                 print(f"[COMMANDER] 模型 '{model}' 未找到 provider 配置，回退到 commander_llm")
                 llm_with_config = get_commander_llm_lazy().bind(model=model, temperature=temperature)
 
-            response = await llm_with_config.ainvoke(
+            # 🔥🔥🔥 v3.3: 流式思考 + JSON 生成
+            # 1️⃣ 获取或生成 session_id
+            # 如果 chat.py 已经发送了 plan.started，使用相同的 session_id
+            preview_session_id = state.get("preview_session_id") or str(uuid4())
+            
+            # 🔥 只有在 chat.py 没有发送 plan.started 的情况下，才在这里发送
+            if not state.get("preview_session_id"):
+                started_event = event_plan_started(
+                    session_id=preview_session_id,
+                    title="任务规划",
+                    content="正在分析需求...",
+                    status="running"
+                )
+                event_queue.append({"type": "sse", "event": sse_event_to_string(started_event)})
+                print(f"[COMMANDER] 发送 plan.started: {preview_session_id}")
+            else:
+                print(f"[COMMANDER] 复用 chat.py 发送的 plan.started: {preview_session_id}")
+            
+            # 2️⃣ 流式生成：区分 Thinking 和 JSON 阶段
+            thinking_content = ""
+            json_buffer = ""
+            is_json_phase = False
+            json_start_detected = False
+            
+            print("[COMMANDER] 开始流式生成...")
+            print(f"[COMMANDER] stream_queue: {'已获取' if stream_queue else '未获取'}")
+            
+            # 🔥🔥🔥 强化 Prompt：明确要求先思考再输出 JSON
+            human_prompt = f"""用户查询: {user_query}
+
+【重要】你必须按以下步骤执行：
+
+**步骤 1 - 需求分析（必须）:**
+请先以自然语言详细分析这个需求。包括：
+- 用户的核心意图是什么？
+- 需要哪些步骤来完成？
+- 每个步骤应该分配给哪个专家？
+- 步骤之间的依赖关系是什么？
+
+**步骤 2 - 任务规划（必须）:**
+在分析完成后，输出一个 ```json 代码块，包含结构化的任务数据。
+
+注意：不要直接输出 JSON，必须先进行详细的自然语言分析！"""
+            
+            chunk_count = 0
+            debug_chunks = []  # 收集前10个 chunk 用于调试
+            
+            async for chunk in llm_with_config.astream(
                 [
                     SystemMessage(content=system_prompt),
-                    HumanMessage(content=f"用户查询: {user_query}\n\n请将此查询拆解为子任务列表。")
+                    HumanMessage(content=human_prompt)
                 ],
                 config=RunnableConfig(
-                    tags=["commander"],
-                    metadata={"node_type": "commander"}
+                    tags=["commander", "streaming"],
+                    metadata={"node_type": "commander", "mode": "streaming"}
                 )
-            )
-
-            # 解析 JSON
-            commander_response = parse_llm_json(
-                response.content,
-                CommanderOutput,
-                strict=False,
-                clean_markdown=True
-            )
+            ):
+                content = chunk.content if hasattr(chunk, "content") else str(chunk)
+                chunk_count += 1
+                
+                # 🔥 收集前10个 chunk 用于调试
+                if chunk_count <= 10:
+                    debug_chunks.append(content)
+                    print(f"[COMMANDER] Chunk {chunk_count}: {repr(content[:80])}")
+                
+                if not content:
+                    continue
+                
+                # 🔥 每 50 个 chunk 打印一次日志
+                if chunk_count % 50 == 0:
+                    print(f"[COMMANDER] 已处理 {chunk_count} chunks, thinking_phase={not is_json_phase}, content_len={len(content)}, thinking_len={len(thinking_content)}")
+                
+                # 🔥 检测 JSON 开始标记（多种情况）
+                if not is_json_phase:
+                    # 情况1: 检测到代码块标记 ```json 或 ```
+                    if "```json" in content or "```" in content:
+                        print(f"[COMMANDER] 📦 检测到 JSON 开始标记，切换到 JSON 阶段")
+                        is_json_phase = True
+                        json_start_detected = True
+                        # 提取 ```json 之前的内容（如果有）作为最后的 thinking
+                        before_json = content.split("```")[0]
+                        if before_json.strip():
+                            thinking_content += before_json
+                            thinking_event = event_plan_thinking(
+                                session_id=preview_session_id,
+                                delta=before_json
+                            )
+                            event_str = sse_event_to_string(thinking_event)
+                            event_queue.append({"type": "sse", "event": event_str})
+                            # 🔥🔥🔥 实时推送到共享队列
+                            if stream_queue:
+                                await stream_queue.put({"type": "sse", "event": event_str})
+                        # 剩余部分进入 json_buffer
+                        json_parts = content.split("```", 1)
+                        if len(json_parts) > 1:
+                            json_buffer += json_parts[1]
+                        continue
+                    
+                    # 情况2: 检测到纯 JSON 开始（LLM 直接输出 JSON 而没有代码块）
+                    # 检测条件：内容以 '{' 开头，且我们已经接收了一些内容（避免误判第一个字符）
+                    if content.strip().startswith("{") and chunk_count > 1 and len(thinking_content) < 50:
+                        print(f"[COMMANDER] ⚠️ 检测到纯 JSON 输出（无代码块），切换到 JSON 阶段")
+                        print(f"[COMMANDER] 当前 thinking_content 长度: {len(thinking_content)}, 内容: {thinking_content[:100]}...")
+                        is_json_phase = True
+                        json_start_detected = True
+                        json_buffer += content
+                        continue
+                    
+                    # 📝 Thinking 阶段：实时发送 plan.thinking
+                    thinking_content += content
+                    thinking_event = event_plan_thinking(
+                        session_id=preview_session_id,
+                        delta=content
+                    )
+                    event_str = sse_event_to_string(thinking_event)
+                    event_queue.append({"type": "sse", "event": event_str})
+                    # 🔥🔥🔥 实时推送到共享队列
+                    if stream_queue:
+                        # 🔥 使用字典格式，与 chat.py 的 Consumer 匹配
+                        await stream_queue.put({"type": "sse", "event": event_str})
+                        if chunk_count <= 5:
+                            print(f"[COMMANDER] 🚀 发送 plan.thinking: {content[:50]}...")
+                else:
+                    # 📦 JSON 阶段：静默拼接，不发送 SSE
+                    # 检测 JSON 结束标记
+                    if "```" in content:
+                        # 提取 ``` 之前的内容
+                        json_parts = content.split("```", 1)
+                        json_buffer += json_parts[0]
+                        # 之后的内容忽略（结束标记后的内容）
+                    else:
+                        json_buffer += content
+            
+            print(f"[COMMANDER] 流式生成完成。思考长度: {len(thinking_content)}, JSON长度: {len(json_buffer)}")
+            
+            # 3️⃣ 解析 JSON
+            # 清理 JSON 内容（移除可能的 json 标记前缀）
+            json_str = json_buffer.strip()
+            if json_str.startswith("json"):
+                json_str = json_str[4:].strip()
+            
+            try:
+                commander_response = parse_llm_json(
+                    json_str,
+                    CommanderOutput,
+                    strict=False,
+                    clean_markdown=False  # 已经手动清理了
+                )
+                print(f"[COMMANDER] JSON 解析成功，生成 {len(commander_response.tasks)} 个任务")
+            except Exception as parse_err:
+                print(f"[COMMANDER] JSON 解析失败: {parse_err}")
+                print(f"[COMMANDER] 原始 JSON 内容: {json_str[:500]}...")
+                raise
 
             # v3.1: 兜底处理 - 如果 LLM 没有生成 id，自动生成
             for idx, task in enumerate(commander_response.tasks):
@@ -238,6 +389,7 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
             ]
 
             # v3.0: 立即持久化到数据库 (通过 TaskManager)
+            # 🔥 v3.3: 使用 preview_session_id 确保事件和数据库记录一致
             task_session = None
             if db_session and thread_id:
                 task_session, is_reused = get_or_create_task_session(
@@ -247,7 +399,8 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
                     plan_summary=commander_response.strategy,
                     estimated_steps=commander_response.estimated_steps,
                     subtasks_data=subtasks_data,
-                    execution_mode="sequential"
+                    execution_mode="sequential",
+                    session_id=preview_session_id  # 🔥 传入预览时使用的 session_id
                 )
                 session_source = "复用" if is_reused else "新建"
                 print(f"[COMMANDER] TaskSession {session_source}: {task_session.session_id}")
@@ -276,10 +429,10 @@ async def commander_node(state: AgentState) -> Dict[str, Any]:
             # P1 优化: 预加载所有专家配置到缓存
             await _preload_expert_configs(task_list, db_session)
 
-            # v3.0: 构建事件队列
-            event_queue = []
+            # 🔥 v3.3: 使用 preview_session_id 保持一致性，TaskSession 创建后会使用相同的 ID
+            # 注意：这里不再创建新的 event_queue，而是复用之前的事件队列
             
-            # 发送 plan.created 事件
+            # 4️⃣ 发送 plan.created 事件（完成状态）
             if task_session:
                 plan_event = event_plan_created(
                     session_id=task_session.session_id,

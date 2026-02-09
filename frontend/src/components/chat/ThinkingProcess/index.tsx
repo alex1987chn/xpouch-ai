@@ -30,7 +30,9 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  FileOutput,  // 🔥 新增：Artifact 类型图标
+  Database  // 🔥 新增：Memory 类型图标
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ThinkingStep } from '@/types'
@@ -46,6 +48,8 @@ interface ThinkingProcessProps {
   isThinking: boolean
   /** 自定义类名 */
   className?: string
+  /** 🔥 固定的总步骤数（从 plan.created 获取） */
+  totalSteps?: number
 }
 
 // ============================================================================
@@ -59,6 +63,8 @@ const typeIcons: Record<NonNullable<ThinkingStep['type']>, React.ElementType> = 
   coding: Code,
   planning: FileText,
   writing: PenTool,
+  artifact: FileOutput,  // 🔥 Artifact 生成类型
+  memory: Database,  // 🔥 新增：Memory 类型图标
   default: Brain
 }
 
@@ -69,6 +75,8 @@ const typeLabels: Record<NonNullable<ThinkingStep['type']>, string> = {
   coding: '代码生成',
   planning: '任务规划',
   writing: '写作生成',
+  artifact: '生成产物',
+  memory: '记忆检索',  // 🔥 新增：Memory 类型标签
   default: '思考'
 }
 
@@ -137,6 +145,8 @@ const StepItem = ({ step, index }: StepItemProps) => {
         step.type === 'coding' && "bg-emerald-500/10 text-emerald-500",
         step.type === 'planning' && "bg-cyan-500/10 text-cyan-500",
         step.type === 'writing' && "bg-pink-500/10 text-pink-500",
+        step.type === 'artifact' && "bg-orange-500/10 text-orange-500",
+        step.type === 'memory' && "bg-indigo-500/10 text-indigo-500",  // 🔥 新增：Memory 类型样式
         (!step.type || step.type === 'default') && "bg-gray-500/10 text-gray-500"
       )}>
         <Icon className="w-4 h-4" />
@@ -186,18 +196,21 @@ const StepItem = ({ step, index }: StepItemProps) => {
 // 主组件
 // ============================================================================
 
-export default function ThinkingProcess({ steps, isThinking, className }: ThinkingProcessProps) {
+export default function ThinkingProcess({ steps, isThinking, className, totalSteps: fixedTotalSteps }: ThinkingProcessProps) {
   const [isExpanded, setIsExpanded] = useState(true)
   const autoCollapseTimer = useRef<NodeJS.Timeout | null>(null)
   // 🔥 修复：使用 ref 记录是否已经自动折叠过，避免重复触发
   const hasAutoCollapsed = useRef(false)
+  // 🔥🔥🔥 新增：滚动容器 ref，用于自动滚动到底部
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   
   // 统计
-  const totalSteps = steps.length
+  const dynamicTotalSteps = steps.length
+  const totalSteps = fixedTotalSteps ?? dynamicTotalSteps  // 🔥 优先使用固定的总步骤数
   const completedSteps = steps.filter(s => s.status === 'completed').length
   const failedSteps = steps.filter(s => s.status === 'failed').length
   const runningSteps = steps.filter(s => s.status === 'running').length
-  const isAllDone = totalSteps > 0 && runningSteps === 0
+  const isAllDone = dynamicTotalSteps > 0 && runningSteps === 0
   
   // 自动展开/折叠逻辑
   useEffect(() => {
@@ -238,6 +251,14 @@ export default function ThinkingProcess({ steps, isThinking, className }: Thinki
       }
     }
   }, [])
+  
+  // 🔥🔥🔥 新增：自动滚动到底部
+  useEffect(() => {
+    if (scrollContainerRef.current && isExpanded) {
+      const container = scrollContainerRef.current
+      container.scrollTop = container.scrollHeight
+    }
+  }, [steps, isExpanded])
 
   if (steps.length === 0) return null
 
@@ -295,7 +316,10 @@ export default function ThinkingProcess({ steps, isThinking, className }: Thinki
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
           >
-            <div className="border-t border-border px-4 py-3 space-y-2 max-h-[400px] overflow-y-auto scrollbar-thin">
+            <div 
+              ref={scrollContainerRef}
+              className="border-t border-border px-4 py-3 space-y-2 max-h-[400px] overflow-y-auto scrollbar-thin"
+            >
               {steps.map((step, index) => (
                 // 🔥 修复：使用 index 作为 key 的一部分，确保唯一性
                 <StepItem key={`${step.id}-${index}`} step={step} index={index} />

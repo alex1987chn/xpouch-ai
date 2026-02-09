@@ -693,203 +693,248 @@ async def _handle_langgraph_stream(
         initial_state["event_queue"] = []
         initial_state["message_id"] = message_id  # v3.0: 注入前端传递的助手消息 ID
 
+        # 🔥🔥🔥 v3.4: Shared Queue 模式 - 创建共享队列用于 Commander 实时流式输出
+        stream_queue = asyncio.Queue()
+        
         # 🔥🔥🔥 新增：心跳间隔（15秒）远小于 Cloudflare 的 100秒超时 🔥🔥🔥
         HEARTBEAT_INTERVAL = 15.0
 
         print(f"[LANGGRAPH STREAM] {datetime.now().isoformat()} - 开始流式处理，心跳间隔={HEARTBEAT_INTERVAL}秒，强制心跳间隔=30.0秒")
-
-        # 获取图的流迭代器（🔥 添加 config 传递 thread_id 给 MemorySaver，并设置递归限制）
-        # 注意：recursion_limit 必须在 config 顶层，不能在 configurable 中
-        iterator = commander_graph.astream_events(
-            initial_state,
-            config={
-                "recursion_limit": 100,  # 🔥 设置递归限制（放在顶层！）
-                "configurable": {
-                    "thread_id": thread_id
-                }
-            },
-            version="v2"
-        )
+        print(f"[LANGGRAPH STREAM] v3.4 Shared Queue 模式已启用")
 
         # 🔥 强制心跳计时器（每 30 秒强制发送一次心跳，不管有没有事件）
         FORCE_HEARTBEAT_INTERVAL = 30.0
         last_heartbeat_time = datetime.now()
 
-        # 辅助函数：安全地获取下一个事件
-        async def get_next_event():
+        # 🔥🔥🔥 v3.4: Shared Queue Producer-Consumer 模式
+        # 创建生产者和消费者，实现真正的实时流式输出
+        
+        # 1. 定义生产者任务 (Producer) - 在后台运行 Graph
+        async def producer():
+            """生产者：运行 LangGraph，将事件放入队列"""
             try:
-                # Python 3.10+ 使用 anext
-                return await asyncio.wait_for(
-                    iterator.__anext__(),
-                    timeout=HEARTBEAT_INTERVAL
+                # 获取图的流迭代器，注入 stream_queue
+                iterator = commander_graph.astream_events(
+                    initial_state,
+                    config={
+                        "recursion_limit": 100,
+                        "configurable": {
+                            "thread_id": thread_id,
+                            "stream_queue": stream_queue  # 🔥 注入共享队列
+                        }
+                    },
+                    version="v2"
                 )
-            except asyncio.TimeoutError:
-                # 抛出超时异常，让外层捕获
-                raise
-            except StopAsyncIteration:
-                return None
-
+                
+                # 消费 Graph 事件
+                async for event in iterator:
+                    # 将事件放入队列，让主循环处理
+                    await stream_queue.put({"type": "graph_event", "event": event})
+                    
+            except Exception as e:
+                print(f"[PRODUCER] 错误: {e}")
+                import traceback
+                traceback.print_exc()
+                await stream_queue.put({"type": "graph_error", "error": str(e)})
+            finally:
+                # 🔥 哨兵信号：通知消费者结束
+                await stream_queue.put(None)
+        
+        # 2. 启动后台生产者任务
+        producer_task = asyncio.create_task(producer())
+        
+        # 3. 消费者循环 (Consumer) - 主线程消费队列并 yield SSE
         try:
             while True:
+                # 等待队列消息（带超时防止死锁）
                 try:
-                    # 等待下一个事件，超过 15 秒则发送心跳
-                    event = await get_next_event()
-
-                    if event is None:  # 流结束
-                        break
-
-                    # 正常处理并返回 AI 数据
-                    event_count += 1
-                    kind = event["event"]
-                    name = event.get("name", "")
-
+                    token = await asyncio.wait_for(stream_queue.get(), timeout=1.0)
                 except asyncio.TimeoutError:
-                    # 🔥🔥🔥 心跳保活：AI 正在思考，但超过 15 秒未产生数据 🔥🔥🔥
-                    # 发送 SSE 注释（冒号开头），浏览器会忽略，但 Cloudflare 认为有数据传输
-                    print(f"[HEARTBEAT-TIMEOUT] {datetime.now().isoformat()} - 发送心跳保活（已等待 {HEARTBEAT_INTERVAL} 秒无数据）")
-                    yield ": keep-alive\n\n"
-                    last_heartbeat_time = datetime.now()
+                    # 超时检查生产者是否已结束
+                    if producer_task.done():
+                        # 再次尝试读空队列，防止丢失最后的消息
+                        while not stream_queue.empty():
+                            item = stream_queue.get_nowait()
+                            if item is None:
+                                break
+                            yield item
+                        break
+                    # 生产者还在运行，发送心跳保活
+                    current_time = datetime.now()
+                    time_since_last_heartbeat = (current_time - last_heartbeat_time).total_seconds()
+                    if time_since_last_heartbeat >= FORCE_HEARTBEAT_INTERVAL:
+                        yield ": keep-alive\n\n"
+                        last_heartbeat_time = current_time
                     continue
-
-                # 🔥 强制心跳：即使有事件，每 30 秒也强制发送一次心跳
+                
+                # 🔥 收到哨兵信号，结束消费
+                if token is None:
+                    print(f"[CONSUMER] 收到哨兵信号，结束消费")
+                    break
+                
+                # 🔥 强制心跳检查（每 30 秒）
                 current_time = datetime.now()
                 time_since_last_heartbeat = (current_time - last_heartbeat_time).total_seconds()
                 if time_since_last_heartbeat >= FORCE_HEARTBEAT_INTERVAL:
-                    print(f"[HEARTBEAT-FORCE] {datetime.now().isoformat()} - 强制发送心跳保活（距离上次心跳 {time_since_last_heartbeat:.1f} 秒）")
                     yield ": keep-alive\n\n"
                     last_heartbeat_time = current_time
                 
-                if event_count % 100 == 0:
-                    print(f"[STREAM] 已处理 {event_count} 个事件")
-
-                # v3.0: 处理节点返回的 event_queue（新协议事件）
-                if kind == "on_chain_end":
-                    raw_output = event["data"].get("output", {})
-                    # 确保 output_data 是字典类型（LangGraph 有时会返回字符串）
-                    output_data = raw_output if isinstance(raw_output, dict) else {}
+                # 处理队列中的事件
+                if token.get("type") == "graph_error":
+                    # Graph 执行出错
+                    error_msg = token.get("error", "未知错误")
+                    print(f"[CONSUMER] Graph 执行错误: {error_msg}")
+                    break
+                
+                elif token.get("type") == "graph_event":
+                    # 处理 Graph 标准事件（plan.created, task.started 等）
+                    event = token["event"]
+                    event_count += 1
+                    kind = event["event"]
+                    name = event.get("name", "")
                     
-                    if isinstance(output_data, dict):
-                        event_queue = output_data.get("event_queue", [])
+                    if event_count % 100 == 0:
+                        print(f"[CONSUMER] 已处理 {event_count} 个事件")
+                
+                elif token.get("type") == "sse":
+                    # 🔥🔥🔥 v3.4: Commander 直接通过 queue 发送的 SSE 事件
+                    # 这是实时流式思考内容 (plan.thinking)
+                    print(f"[CONSUMER] 📤 yield SSE 事件: {token['event'][:100]}...")
+                    yield token["event"]
+                    continue
+                
+                # 处理 Graph 标准事件（从 graph_event 类型中提取）
+                if token.get("type") == "graph_event":
+                    event = token["event"]
+                    kind = event["event"]
+                    name = event.get("name", "")
+                    
+                    if event_count % 100 == 0:
+                        print(f"[CONSUMER] 已处理 {event_count} 个事件")
 
-                        # 捕获 commander 节点返回的 task_session_id
-                        if name == "commander":
-                            session_id = output_data.get("task_session_id")
-                            if session_id:
-                                task_session_id = session_id
-                                print(f"[STREAM] 捕获到 TaskSession ID: {task_session_id}")
-                                # 立即更新 thread 的 task_session_id
-                                # Commander 只在复杂模式下才会创建 TaskSession，所以不需要检查 router_mode
+                    # v3.0: 处理节点返回的 event_queue（新协议事件）
+                    if kind == "on_chain_end":
+                        raw_output = event["data"].get("output", {})
+                        # 确保 output_data 是字典类型（LangGraph 有时会返回字符串）
+                        output_data = raw_output if isinstance(raw_output, dict) else {}
+                        
+                        if isinstance(output_data, dict):
+                            event_queue = output_data.get("event_queue", [])
+
+                            # 捕获 commander 节点返回的 task_session_id
+                            if name == "commander":
+                                session_id = output_data.get("task_session_id")
+                                if session_id:
+                                    task_session_id = session_id
+                                    print(f"[CONSUMER] 捕获到 TaskSession ID: {task_session_id}")
+                                    # 立即更新 thread 的 task_session_id
+                                    thread_obj = session.get(Thread, thread_id)
+                                    if thread_obj and thread_obj.task_session_id != task_session_id:
+                                        thread_obj.task_session_id = task_session_id
+                                        session.add(thread_obj)
+                                        session.commit()
+                                        print(f"[CONSUMER] ✅ 已设置 thread.task_session_id = {task_session_id}")
+
+                            # 收集任务列表
+                            if output_data.get("task_list"):
+                                collected_task_list = output_data["task_list"]
+                                
+                            # 收集产物
+                            if output_data.get("__expert_info"):
+                                expert_info = output_data["__expert_info"]
+                                task_id = expert_info.get("task_id")
+                                artifact_data = output_data.get("artifact")
+                                if task_id and artifact_data:
+                                    if task_id not in expert_artifacts:
+                                        expert_artifacts[task_id] = []
+                                    expert_artifacts[task_id].append(artifact_data)
+                        else:
+                            event_queue = []
+                        
+                        # 发送 event_queue 中的所有事件
+                        for queued_event in event_queue:
+                            if queued_event.get("type") == "sse":
+                                yield queued_event["event"]
+
+                    # v3.0: 捕获 Router 节点执行结束
+                    if kind == "on_chain_end" and name == "router":
+                        output_data = event["data"]["output"]
+                        router_decision = output_data.get("router_decision", "")
+
+                        if router_decision:
+                            print(f"[CONSUMER] Router 决策: {router_decision}")
+                            router_mode = router_decision
+                            
+                            if router_decision == "complex":
                                 thread_obj = session.get(Thread, thread_id)
-                                if thread_obj and thread_obj.task_session_id != task_session_id:
-                                    thread_obj.task_session_id = task_session_id
+                                if thread_obj:
+                                    if thread_obj.agent_type != "ai":
+                                        thread_obj.agent_type = "ai"
+                                    thread_obj.thread_mode = "complex"
                                     session.add(thread_obj)
                                     session.commit()
-                                    print(f"[STREAM] ✅ 已立即设置 thread.task_session_id = {task_session_id}")
-
-                        # 收集任务列表（从任何返回 task_list 的节点）
-                        # 重要：每次都更新，因为 Generic Worker 会更新任务状态
-                        if output_data.get("task_list"):
-                            collected_task_list = output_data["task_list"]
-                            
-                        # 收集产物（从 generic worker 节点）
-                        if output_data.get("__expert_info"):
-                            expert_info = output_data["__expert_info"]
-                            task_id = expert_info.get("task_id")
-                            expert_type = expert_info.get("expert_type")
-                            artifact_data = output_data.get("artifact")
-                            if task_id and artifact_data:
-                                # 使用 task_id 作为 key，确保每个任务的 artifact 都被保存
-                                if task_id not in expert_artifacts:
-                                    expert_artifacts[task_id] = []
-                                expert_artifacts[task_id].append(artifact_data)
-                                print(f"[STREAM] ✅ 收集到 artifact: task_id={task_id}, type={artifact_data.get('type')}, title={artifact_data.get('title')}")
-                    else:
-                        event_queue = []
-                    
-                    # 发送 event_queue 中的所有事件（新协议）
-                    for queued_event in event_queue:
-                        if queued_event.get("type") == "sse":
-                            yield queued_event["event"]
-                            
-                            # 解析 message.delta 事件以累积内容
-                            try:
-                                event_lines = queued_event["event"].strip().split('\n')
-                                event_data_str = ""
-                                for line in event_lines:
-                                    if line.startswith('data: '):
-                                        event_data_str = line[6:]
-                                        break
+                                    print(f"[CONSUMER] 已更新 thread 为 complex 模式")
                                 
-                                if event_data_str:
-                                    event_data = json.loads(event_data_str)
-                                    if event_data.get('type') == 'message.delta':
-                                        full_response += event_data.get('data', {}).get('content', '')
-                            except Exception as e:
-                                if DEBUG:
-                                    print(f"[STREAM] 解析事件失败: {e}")
+                                # 🔥🔥🔥 关键：预生成 session_id 并立即发送 plan.started
+                                preview_session_id = str(uuid4())
+                                from utils.event_generator import event_plan_started, sse_event_to_string
+                                plan_started_event = event_plan_started(
+                                    session_id=preview_session_id,
+                                    title="任务规划",
+                                    content="正在分析需求...",
+                                    status="running"
+                                )
+                                yield sse_event_to_string(plan_started_event)
+                                print(f"[CONSUMER] 🚀 立即发送 plan.started: {preview_session_id}")
+                                
+                                # 将 preview_session_id 存入 initial_state
+                                initial_state["preview_session_id"] = preview_session_id
+                            
+                            # 发送 router.decision 事件
+                            from event_types.events import EventType, RouterDecisionData, build_sse_event
+                            router_event = build_sse_event(
+                                EventType.ROUTER_DECISION,
+                                RouterDecisionData(decision=router_decision),
+                                str(uuid4())
+                            )
+                            from utils.event_generator import sse_event_to_string
+                            yield sse_event_to_string(router_event)
 
-                # v3.0: 捕获 Router 节点执行结束
-                if kind == "on_chain_end" and name == "router":
-                    output_data = event["data"]["output"]
-                    router_decision = output_data.get("router_decision", "")
-
-                    if router_decision:
-                        print(f"[STREAM] Router 决策: {router_decision}")
-                        router_mode = router_decision
-                        
-                        # v3.0: 如果是复杂模式，更新 thread 的 mode
-                        # 注意：TaskSession 由 Commander 完全负责创建和复用
-                        if router_decision == "complex":
-                            thread_obj = session.get(Thread, thread_id)
-                            if thread_obj:
-                                # 立即设置 agent_type 为 ai
-                                if thread_obj.agent_type != "ai":
-                                    thread_obj.agent_type = "ai"
-                                thread_obj.thread_mode = "complex"
-
-                                session.add(thread_obj)
-                                session.commit()
-                                print(f"[STREAM] 已更新 thread 为 complex 模式")
-                        
-                        # v3.0: 发送 router.decision 事件（新协议）
-                        from event_types.events import EventType, RouterDecisionData, build_sse_event
-                        router_event = build_sse_event(
-                            EventType.ROUTER_DECISION,
-                            RouterDecisionData(decision=router_decision),
+                    # 捕获 direct_reply 节点执行结束（Simple 模式）
+                    if kind == "on_chain_end" and name == "direct_reply":
+                        from event_types.events import EventType, MessageDoneData, build_sse_event
+                        done_event = build_sse_event(
+                            EventType.MESSAGE_DONE,
+                            MessageDoneData(message_id=message_id or str(uuid4()), full_content=full_response),
                             str(uuid4())
                         )
                         from utils.event_generator import sse_event_to_string
-                        yield sse_event_to_string(router_event)
+                        yield sse_event_to_string(done_event)
+                        print(f"[CONSUMER] Direct Reply 节点完成")
 
-                # 捕获 direct_reply 节点执行结束（Simple 模式）
-                if kind == "on_chain_end" and name == "direct_reply":
-                    # v3.0: Simple 模式使用 message.done 事件
-                    from event_types.events import EventType, MessageDoneData, build_sse_event
-                    done_event = build_sse_event(
-                        EventType.MESSAGE_DONE,
-                        MessageDoneData(message_id=message_id or str(uuid4()), full_content=full_response),
-                        str(uuid4())
-                    )
-                    from utils.event_generator import sse_event_to_string
-                    yield sse_event_to_string(done_event)
-                    print(f"[STREAM] Direct Reply 节点完成")
+                    # 捕获 LLM 流式输出（Simple 模式）
+                    if kind == "on_chat_model_stream" and router_mode == "simple":
+                        content = event["data"]["chunk"].content
+                        if content:
+                            full_response += content
+                            from event_types.events import EventType, MessageDeltaData, build_sse_event
+                            delta_event = build_sse_event(
+                                EventType.MESSAGE_DELTA,
+                                MessageDeltaData(message_id=message_id or str(uuid4()), content=content),
+                                str(uuid4())
+                            )
+                            from utils.event_generator import sse_event_to_string
+                            yield sse_event_to_string(delta_event)
 
-                # 捕获 LLM 流式输出（Simple 模式）
-                if kind == "on_chat_model_stream" and router_mode == "simple":
-                    content = event["data"]["chunk"].content
-                    if content:
-                        full_response += content
-                        # v3.0: Simple 模式也使用 message.delta 事件
-                        from event_types.events import EventType, MessageDeltaData, build_sse_event
-                        delta_event = build_sse_event(
-                            EventType.MESSAGE_DELTA,
-                            MessageDeltaData(message_id=message_id or str(uuid4()), content=content),
-                            str(uuid4())
-                        )
-                        from utils.event_generator import sse_event_to_string
-                        yield sse_event_to_string(delta_event)
-
-            print(f"[STREAM] 流式处理完成，共处理 {event_count} 个事件")
+            print(f"[CONSUMER] 流式处理完成，共处理 {event_count} 个事件")
+            
+            # 🔥🔥🔥 v3.4: 确保生产者任务完成
+            if producer_task and not producer_task.done():
+                try:
+                    await asyncio.wait_for(producer_task, timeout=5.0)
+                except asyncio.TimeoutError:
+                    print(f"[CONSUMER] 生产者任务等待超时，强制取消")
+                    producer_task.cancel()
 
         except Exception as e:
             print(f"[STREAM] 错误: {e}")

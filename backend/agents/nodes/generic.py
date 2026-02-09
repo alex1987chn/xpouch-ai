@@ -9,7 +9,7 @@ import re
 import asyncio  # 🔥 新增：用于异步保存专家执行结果
 from typing import Dict, Any, Optional
 from datetime import datetime
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
 
 from agents.state import AgentState
@@ -18,6 +18,11 @@ from utils.llm_factory import get_effective_model, get_expert_llm
 from providers_config import get_model_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from tools import ALL_TOOLS  # 🔥 新增：导入工具集
+
+# 🔥 新增：支持流式 Artifact 生成的专家类型
+# 这些专家通常生成长文本内容（报告、分析等），流式体验更好
+# 不包含可能调用工具的专家（search, coder 等）以避免流式工具解析复杂性
+STREAMING_EXPERT_TYPES = {'writer', 'researcher', 'analyzer', 'planner'}
 
 
 def _enhance_system_prompt(system_prompt: str) -> str:
@@ -65,6 +70,10 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
     1. 首次调用：LLM 可能返回 tool_calls
     2. 工具执行后：LLM 看到 ToolMessage，生成最终回复
 
+    🔥 v3.2 新增：支持 Artifact 实时流式渲染（Real-time Streaming）
+    - writer, researcher, analyzer, planner 等专家使用 astream 流式生成
+    - search, coder 等可能调用工具的专家保持 ainvoke 模式
+
     Args:
         state: AgentState，包含 task_list, current_task_index 等
         llm: 可选的 LLM 实例，如果不提供则根据专家配置创建
@@ -92,6 +101,9 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
     expert_type = current_task.get("expert_type", "")
     description = current_task.get("description", "")
     input_data = current_task.get("input_data", {})
+    
+    # 🔥 判断是否为流式专家（支持实时 Artifact 渲染）
+    is_streaming_expert = expert_type in STREAMING_EXPERT_TYPES
     
     if not expert_type:
         return {
@@ -218,14 +230,35 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
             # 在消息列表末尾添加一个 HumanMessage，明确告诉 LLM 任务完成
             messages_for_llm.append(HumanMessage(content="[系统提示：以上是工具执行结果，请基于此结果生成最终回复，任务已完成，不要再调用任何工具]"))
 
-        # 使用 RunnableConfig 添加标签，便于流式输出过滤
-        response = await llm_to_use.ainvoke(
-            messages_for_llm,
-            config=RunnableConfig(
-                tags=["expert", expert_type, "generic_worker"],
-                metadata={"node_type": "expert", "expert_type": expert_type}
+        # 🔥🔥🔥 核心改动：流式 vs 非流式分支
+        if is_streaming_expert and not has_tool_message:
+            # ================================================================
+            # 🔥 流式模式：使用 astream 实时发送 Artifact chunks
+            # 适用于 writer, researcher, analyzer, planner 等生成长文本的专家
+            # ================================================================
+            response, artifact_id, full_content = await _handle_streaming_response(
+                llm_to_use=llm_to_use,
+                messages_for_llm=messages_for_llm,
+                expert_type=expert_type,
+                expert_name=expert_name,
+                task_id=task_id,
+                initial_event_queue=initial_event_queue
             )
-        )
+            has_tool_calls = False  # 流式模式下不处理工具调用
+        else:
+            # ================================================================
+            # 🔥 非流式模式：使用 ainvoke 等待完整响应
+            # 适用于 search, coder 等可能调用工具的专家
+            # ================================================================
+            response = await llm_to_use.ainvoke(
+                messages_for_llm,
+                config=RunnableConfig(
+                    tags=["expert", expert_type, "generic_worker"],
+                    metadata={"node_type": "expert", "expert_type": expert_type}
+                )
+            )
+            artifact_id = None  # 非流式模式稍后生成
+            full_content = None
 
         # 🔥 关键修复：检查响应中是否包含工具调用
         has_tool_calls = hasattr(response, "tool_calls") and response.tool_calls
@@ -285,8 +318,9 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
                     response.content = f"记录时遇到问题，但我会记住：{memory_content}"
         # -------------------------------------------------------------
 
-        # 检测 artifact 类型
-        artifact_type = _detect_artifact_type(response.content, expert_type)
+        # 🔥 检测 artifact 类型（流式模式下使用已累积的内容）
+        content_for_detection = full_content if full_content else response.content
+        artifact_type = _detect_artifact_type(content_for_detection, expert_type)
 
         # ✅ v3.2 修复：增加 current_task_index 以支持循环
         # Generic Worker 执行完任务后，需要递增 index 才能执行下一个任务
@@ -311,13 +345,21 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         expert_results = state.get("expert_results", [])
         expert_results = expert_results + [expert_result]
 
+        # 🔥 生成或复用 artifact_id
+        if artifact_id is None:
+            # 非流式模式：生成新的 artifact_id
+            from uuid import uuid4
+            artifact_id = str(uuid4())
+
         # ✅ 构建 artifact 对象（符合 ArtifactCreate 模型）
+        # 🔥 关键：包含 artifact_id，确保与流式过程中的 ID 一致
         artifact = {
             "type": artifact_type,
             "title": f"{expert_name}结果",
             "content": response.content,
             "language": None,  # 可选字段，Pydantic 模型需要
-            "sort_order": 0    # 默认排序
+            "sort_order": 0,   # 默认排序
+            "artifact_id": artifact_id  # 🔥 关键：保持 ID 一致性
         }
 
         # ✅ 异步保存专家执行结果到数据库（P0 优化：不阻塞主流程）
@@ -343,10 +385,34 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         from utils.event_generator import (
             event_task_completed, event_artifact_generated, sse_event_to_string
         )
-        from uuid import uuid4
 
         event_queue = []
-        task_id = current_task.get("id", str(current_index))
+
+        # 🔥 流式模式下：发送 artifact.completed 事件
+        # 非流式模式下：发送 artifact.generated 事件
+        if is_streaming_expert and not has_tool_message:
+            # 流式模式：发送 artifact.completed 完成事件
+            from utils.event_generator import event_artifact_completed
+            artifact_completed_event = event_artifact_completed(
+                artifact_id=artifact_id,
+                task_id=task_id,
+                expert_type=expert_type,
+                full_content=response.content
+            )
+            event_queue.append({"type": "sse", "event": sse_event_to_string(artifact_completed_event)})
+            print(f"[GenericWorker] 已生成 artifact.completed 事件: {artifact_id}")
+        else:
+            # 非流式模式：发送传统的 artifact.generated 事件
+            artifact_event = event_artifact_generated(
+                task_id=task_id,
+                expert_type=expert_type,
+                artifact_id=artifact_id,
+                artifact_type=artifact_type,
+                content=response.content,
+                title=f"{expert_name}结果"
+            )
+            event_queue.append({"type": "sse", "event": sse_event_to_string(artifact_event)})
+            print(f"[GenericWorker] 已生成 artifact.generated 事件: {artifact_type}")
 
         # 1. 发送 task.completed 事件（专家执行完成）
         task_completed_event = event_task_completed(
@@ -359,18 +425,6 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         )
         event_queue.append({"type": "sse", "event": sse_event_to_string(task_completed_event)})
         print(f"[GenericWorker] 已生成 task.completed 事件: {expert_type}")
-
-        # 2. 发送 artifact.generated 事件（生成产物）
-        artifact_event = event_artifact_generated(
-            task_id=task_id,
-            expert_type=expert_type,
-            artifact_id=str(uuid4()),
-            artifact_type=artifact_type,
-            content=response.content,
-            title=f"{expert_name}结果"
-        )
-        event_queue.append({"type": "sse", "event": sse_event_to_string(artifact_event)})
-        print(f"[GenericWorker] 已生成 artifact.generated 事件: {artifact_type}")
 
         # ✅ 合并 started 事件和 completed 事件
         full_event_queue = initial_event_queue + event_queue
@@ -392,7 +446,8 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
                 "expert_type": expert_type,
                 "expert_name": expert_name,
                 "task_id": task_id,
-                "status": "completed"
+                "status": "completed",
+                "artifact_id": artifact_id  # 🔥 包含 artifact_id
             }
         }
         
@@ -454,6 +509,101 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
                 "error": str(e)
             }
         }
+
+
+async def _handle_streaming_response(
+    llm_to_use,
+    messages_for_llm: list,
+    expert_type: str,
+    expert_name: str,
+    task_id: str,
+    initial_event_queue: list
+) -> tuple:
+    """
+    🔥 处理流式 LLM 响应（Real-time Artifact Streaming）
+    
+    使用 astream 实时生成内容，并通过 SSE 发送 artifact chunks 到前端。
+    
+    Args:
+        llm_to_use: 配置好的 LLM 实例
+        messages_for_llm: 消息列表
+        expert_type: 专家类型
+        expert_name: 专家名称
+        task_id: 任务ID
+        initial_event_queue: 初始事件队列（用于累积 chunk 事件）
+    
+    Returns:
+        tuple: (AIMessage response, artifact_id, full_content)
+    """
+    from uuid import uuid4
+    from langchain_core.messages import AIMessage
+    from utils.event_generator import event_artifact_start, event_artifact_chunk, sse_event_to_string
+    
+    # 🔥 Step 1: 预生成 artifact_id（保证整个流程 ID 一致）
+    artifact_id = str(uuid4())
+    
+    # 预设 artifact 类型（基于专家类型推断）
+    type_mapping = {
+        'writer': 'markdown',
+        'researcher': 'markdown',
+        'analyzer': 'markdown',
+        'planner': 'markdown'
+    }
+    artifact_type = type_mapping.get(expert_type, 'text')
+    
+    print(f"[Streaming] 开始流式生成 Artifact: {artifact_id} (expert: {expert_type})")
+    
+    # 🔥 Step 2: 发送 artifact.start 事件
+    start_event = event_artifact_start(
+        task_id=task_id,
+        expert_type=expert_type,
+        artifact_id=artifact_id,
+        title=f"{expert_name}结果",
+        type=artifact_type
+    )
+    initial_event_queue.append({"type": "sse", "event": sse_event_to_string(start_event)})
+    print(f"[Streaming] 已发送 artifact.start: {artifact_id}")
+    
+    # 🔥 Step 3: 使用 astream 流式生成
+    full_content = ""
+    chunk_count = 0
+    
+    try:
+        async for chunk in llm_to_use.astream(
+            messages_for_llm,
+            config=RunnableConfig(
+                tags=["expert", expert_type, "generic_worker", "streaming"],
+                metadata={"node_type": "expert", "expert_type": expert_type, "mode": "streaming"}
+            )
+        ):
+            # 提取增量内容
+            content_delta = chunk.content if hasattr(chunk, "content") else str(chunk)
+            
+            if content_delta:
+                full_content += content_delta
+                chunk_count += 1
+                
+                # 🔥 发送 artifact.chunk 事件（实时推送到前端）
+                chunk_event = event_artifact_chunk(
+                    artifact_id=artifact_id,
+                    delta=content_delta
+                )
+                initial_event_queue.append({"type": "sse", "event": sse_event_to_string(chunk_event)})
+                
+                # 每 10 个 chunk 打印一次日志，避免日志刷屏
+                if chunk_count % 10 == 0:
+                    print(f"[Streaming] 已发送 {chunk_count} chunks, 内容长度: {len(full_content)}")
+        
+        print(f"[Streaming] 流式生成完成: {chunk_count} chunks, 总长度: {len(full_content)}")
+        
+    except Exception as e:
+        print(f"[Streaming] 流式生成出错: {e}")
+        # 即使出错也返回已生成的内容
+    
+    # 🔥 Step 4: 构建 AIMessage 返回（与 ainvoke 返回格式一致）
+    response = AIMessage(content=full_content)
+    
+    return response, artifact_id, full_content
 
 
 def _format_input_data(data: Dict) -> str:
