@@ -14,6 +14,7 @@ import type {
   ArtifactGeneratedEvent,
   MessageDeltaEvent,
   MessageDoneEvent,
+  RouterStartEvent,
   RouterDecisionEvent,
   ErrorEvent
 } from '@/types/events'
@@ -52,6 +53,9 @@ export class EventHandler {
 
     // 根据事件类型分发处理
     switch (event.type) {
+      case 'router.start':
+        this.handleRouterStart(event as RouterStartEvent)
+        break
       case 'plan.created':
         this.handlePlanCreated(event as PlanCreatedEvent)
         break
@@ -236,6 +240,48 @@ export class EventHandler {
   }
 
   /**
+   * 处理 router.start 事件
+   * Phase 3: 路由开始，更新 thinking 状态
+   */
+  private handleRouterStart(event: RouterStartEvent): void {
+    // 更新最后一条 AI 消息的 thinking 状态
+    const { messages, updateMessageMetadata } = useChatStore.getState()
+    const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
+
+    if (lastAiMessage) {
+      const existingThinking = lastAiMessage.metadata?.thinking || []
+
+      // 查找或创建 router 的 thinking 步骤
+      const routerStepIndex = existingThinking.findIndex((s: any) => s.expertType === 'router')
+      const routerStep = {
+        id: `router-${event.id}`,
+        expertType: 'router',
+        expertName: '智能路由',
+        content: '正在分析意图，选择执行模式...',
+        timestamp: event.data.timestamp,
+        status: 'running' as const,
+        type: 'analysis' as const
+      }
+
+      let newThinking
+      if (routerStepIndex >= 0) {
+        // 更新现有的 router 步骤
+        newThinking = [...existingThinking]
+        newThinking[routerStepIndex] = routerStep
+      } else {
+        // 添加新的 router 步骤
+        newThinking = [...existingThinking, routerStep]
+      }
+
+      updateMessageMetadata(lastAiMessage.id!, { thinking: newThinking })
+    }
+
+    if (DEBUG) {
+      logger.debug('[EventHandler] 路由开始:', event.data.query.substring(0, 50))
+    }
+  }
+
+  /**
    * 处理 router.decision 事件
    * v3.0: 设置模式，触发 UI 切换
    * 🔥 注意：不再在这里移除空消息，交给 ChatStreamPanel 的过滤逻辑处理
@@ -246,6 +292,25 @@ export class EventHandler {
 
     // 设置模式（simple 或 complex）
     setMode(event.data.decision)
+
+      // 🔥 Phase 3: 更新 router thinking 步骤为完成状态
+    const { messages, updateMessageMetadata } = useChatStore.getState()
+    const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
+
+    if (lastAiMessage?.metadata?.thinking) {
+      const thinking = [...lastAiMessage.metadata.thinking]
+      const routerStepIndex = thinking.findIndex((s: any) => s.expertType === 'router')
+
+      if (routerStepIndex >= 0) {
+        const modeText = event.data.decision === 'simple' ? '简单模式' : '复杂模式（多专家协作）'
+        thinking[routerStepIndex] = {
+          ...thinking[routerStepIndex],
+          status: 'completed',
+          content: `意图分析完成：已选择${modeText}`
+        }
+        updateMessageMetadata(lastAiMessage.id!, { thinking })
+      }
+    }
 
     if (DEBUG) {
       logger.debug('[EventHandler] 路由决策，设置模式:', event.data.decision)

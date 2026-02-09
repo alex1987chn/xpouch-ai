@@ -13,7 +13,7 @@ from event_types.events import (
     TaskStartedData, TaskProgressData, TaskCompletedData, TaskFailedData,
     ArtifactGeneratedData, ArtifactInfo,
     MessageDeltaData, MessageDoneData,
-    RouterDecisionData, ErrorData,
+    RouterStartData, RouterDecisionData, ErrorData,
     build_sse_event, sse_event_to_string
 )
 
@@ -217,7 +217,18 @@ class EventGenerator:
     # ========================================================================
     # 系统事件
     # ========================================================================
-    
+
+    def router_start(
+        self,
+        query: str
+    ) -> SSEEvent:
+        """生成 router.start 事件"""
+        data = RouterStartData(
+            query=query,
+            timestamp=datetime.now().isoformat()
+        )
+        return build_sse_event(EventType.ROUTER_START, data, self._next_event_id())
+
     def router_decision(
         self,
         decision: str,
@@ -290,6 +301,11 @@ def event_message_delta(*args, **kwargs) -> SSEEvent:
 def event_message_done(*args, **kwargs) -> SSEEvent:
     """便捷函数：生成 message.done 事件"""
     return _event_generator.message_done(*args, **kwargs)
+
+
+def event_router_start(*args, **kwargs) -> SSEEvent:
+    """便捷函数：生成 router.start 事件"""
+    return _event_generator.router_start(*args, **kwargs)
 
 
 def event_router_decision(*args, **kwargs) -> SSEEvent:
