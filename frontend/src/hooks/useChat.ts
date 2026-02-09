@@ -92,6 +92,7 @@ export function useChat() {
     sendMessage: chatCore.sendMessage,
     setInputMessage,
     stopGeneration: chatCore.stopGeneration,
+    resumeExecution: chatCore.resumeExecution,  // 🔥🔥🔥 v3.5 HITL
 
     // 会话管理
     loadConversation: conversationManager.loadConversation,

@@ -39,6 +39,10 @@ interface ChatState {
    * 用于 Server-Driven UI 思维链显示
    */
   updateLastMessageThoughts: (step: ThinkingStep) => void
+  /**
+   * 🔥🔥🔥 v3.5 HITL: 根据任务计划重建 thinking 步骤
+   */
+  rebuildThinkingFromPlan: (taskIds: string[]) => void
   setIsTyping: (isTyping: boolean) => void
   setInputMessage: (input: string) => void
   setCurrentConversationId: (id: string | null) => void
@@ -171,6 +175,55 @@ export const useChatStore = create<ChatState>()(
         })
         
         return { messages: updatedMessages }
+      }),
+
+      /**
+       * 🔥🔥🔥 v3.5 HITL: 根据新的任务计划重建 thinking 步骤
+       * 用户删除任务后，移除对应的 thinking 步骤
+       */
+      rebuildThinkingFromPlan: (taskIds: string[]) => set((state: ChatState) => {
+        // 找到最后一条 assistant 消息
+        const lastMessageIndex = [...state.messages].reverse().findIndex(m => m.role === 'assistant')
+        if (lastMessageIndex === -1) return { messages: state.messages }
+        
+        const actualIndex = state.messages.length - 1 - lastMessageIndex
+        const lastMessage = state.messages[actualIndex]
+        
+        // 获取现有的 thinking 数组
+        const existingThinking = lastMessage.metadata?.thinking || []
+        
+        // 🔥 过滤：只保留 plan 步骤和在 taskIds 中的任务步骤
+        const newThinking = existingThinking.filter((step: ThinkingStep) => {
+          // 保留 planning 步骤（id 以 plan- 开头）
+          if (step.id?.startsWith('plan-')) return true
+          // 保留在任务列表中的步骤
+          return taskIds.includes(step.id)
+        })
+        
+        // 如果数量变了，更新消息
+        if (newThinking.length !== existingThinking.length) {
+          console.log('[HITL] thinking 步骤已更新:', {
+            before: existingThinking.length,
+            after: newThinking.length,
+            removed: existingThinking.filter(s => !newThinking.includes(s)).map(s => s.id)
+          })
+          const updatedMessages = state.messages.map((msg, idx) => {
+            if (idx === actualIndex) {
+              return {
+                ...msg,
+                metadata: {
+                  ...msg.metadata,
+                  thinking: newThinking
+                }
+              }
+            }
+            return msg
+          })
+          return { messages: updatedMessages }
+        }
+        
+        console.log('[HITL] thinking 步骤无需更新:', existingThinking.length)
+        return { messages: state.messages }
       }),
 
       setIsTyping: (isTyping: boolean) => set({ isTyping }),

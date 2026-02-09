@@ -123,6 +123,10 @@ interface TaskState {
   // 🔥 新增：Commander 规划思考内容
   planThinkingContent: string
 
+  // 🔥🔥🔥 v3.5 HITL: 人类审核状态
+  isWaitingForApproval: boolean
+  pendingPlan: Task[]
+
   // Actions
   setMode: (mode: 'simple' | 'complex') => void
   initializePlan: (data: PlanCreatedData) => void
@@ -142,6 +146,12 @@ interface TaskState {
   // 🔥 新增：Commander 规划 Actions
   startPlan: (data: PlanStartedData) => void
   appendPlanThinking: (data: PlanThinkingData) => void
+
+  // 🔥🔥🔥 v3.5 HITL Actions
+  setPendingPlan: (plan: Task[]) => void
+  clearPendingPlan: () => void
+  setIsWaitingForApproval: (waiting: boolean) => void
+  updateTasksFromPlan: (newPlan: { id: string; expert_type: string; description: string; sort_order?: number; status?: string }[]) => void
 
   /**
    * 从会话数据恢复任务状态（用于页面切换后状态恢复）
@@ -172,6 +182,8 @@ export const useTaskStore = create<TaskState>()(
       isInitialized: false,
       streamingArtifacts: new Map(),  // 🔥 新增：流式 Artifact 内容映射
       planThinkingContent: '',  // 🔥 新增：Commander 规划思考内容
+      isWaitingForApproval: false,  // 🔥🔥🔥 HITL: 等待审核状态
+      pendingPlan: [],  // 🔥🔥🔥 HITL: 待审核计划
 
     /**
      * 设置模式
@@ -208,11 +220,23 @@ export const useTaskStore = create<TaskState>()(
       set((state) => {
         // 🔥 检查是否已存在相同的 session，避免重复初始化
         if (state.session?.sessionId === data.session_id) {
-          // Session 已存在，只更新任务状态（如果任务状态有变化）
-          data.tasks.forEach((taskInfo) => {
-            const existingTask = state.tasks.get(taskInfo.id)
-            if (!existingTask) {
-              // 添加新任务（容错：之前没添加的任务）
+          // Session 已存在（如 HITL resume），同步删除已移除的任务
+          const newTaskIds = new Set(data.tasks.map((t: any) => t.id))
+          
+          // 删除不在新计划中的任务
+          state.tasks.forEach((task, id) => {
+            if (!newTaskIds.has(id)) {
+              state.tasks.delete(id)
+              console.log(`[HITL] initializePlan 删除任务: ${id}`)
+            }
+          })
+          
+          // 更新 session 的预估步骤数
+          state.session.estimatedSteps = data.estimated_steps + 1
+          
+          // 添加新任务（如果有）
+          data.tasks.forEach((taskInfo: any) => {
+            if (!state.tasks.has(taskInfo.id)) {
               state.tasks.set(taskInfo.id, {
                 ...taskInfo,
                 status: taskInfo.status as TaskStatus,
@@ -220,6 +244,17 @@ export const useTaskStore = create<TaskState>()(
               })
             }
           })
+          
+          // 重建缓存
+          state.tasksCache = Array.from(state.tasks.values())
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map(task => ({
+              ...task,
+              artifacts: task.artifacts.map(a => ({...a}))
+            }))
+          state.tasksCacheVersion++
+          
+          console.log(`[HITL] initializePlan 同步完成: ${state.tasks.size} 个任务`)
         } else {
           // 创建任务会话
           state.session = {
@@ -433,6 +468,8 @@ export const useTaskStore = create<TaskState>()(
         state.isInitialized = false
         state.streamingArtifacts = new Map()  // 🔥 清空流式内容
         state.planThinkingContent = ''  // 🔥 清空规划思考内容
+        state.isWaitingForApproval = false  // 🔥🔥🔥 HITL: 清除审核状态
+        state.pendingPlan = []  // 🔥🔥🔥 HITL: 清除待审核计划
       })
     },
 
@@ -474,6 +511,94 @@ export const useTaskStore = create<TaskState>()(
       set((state) => {
         state.planThinkingContent += data.delta
         // 性能优化：不更新缓存版本号
+      })
+    },
+
+    /**
+     * 🔥🔥🔥 v3.5 HITL: 设置待审核计划
+     * 收到 human.interrupt 事件时调用
+     */
+    setPendingPlan: (plan: Task[]) => {
+      set((state) => {
+        state.pendingPlan = plan
+        state.isWaitingForApproval = true
+        console.log('[HITL] 设置待审核计划:', plan.length, '个任务')
+      })
+    },
+
+    /**
+     * 🔥🔥🔥 v3.5 HITL: 清除待审核计划
+     * 用户确认或取消后调用
+     */
+    clearPendingPlan: () => {
+      set((state) => {
+        state.pendingPlan = []
+        state.isWaitingForApproval = false
+        console.log('[HITL] 清除待审核计划')
+      })
+    },
+
+    /**
+     * 🔥🔥🔥 v3.5 HITL: 设置等待审核状态
+     */
+    setIsWaitingForApproval: (waiting: boolean) => {
+      set((state) => {
+        state.isWaitingForApproval = waiting
+      })
+    },
+
+    /**
+     * 🔥🔥🔥 v3.5 HITL: 根据修改后的计划更新任务列表
+     * 用户删除/修改任务后，同步更新前端状态
+     */
+    updateTasksFromPlan: (newPlan: { id: string; expert_type: string; description: string; sort_order?: number; status?: string }[]) => {
+      set((state) => {
+        if (!state.session) return
+
+        // 1. 更新会话的预估步骤数
+        state.session.estimatedSteps = newPlan.length + 1  // +1 for planning step
+
+        // 2. 保留已存在的任务状态（已完成或正在运行的）
+        const existingTaskStatuses = new Map<string, TaskStatus>()
+        state.tasks.forEach((task, id) => {
+          if (task.status === 'completed' || task.status === 'running') {
+            existingTaskStatuses.set(id, task.status)
+          }
+        })
+
+        // 3. 重建任务 Map
+        const newTasks = new Map<string, Task>()
+        newPlan.forEach((taskInfo) => {
+          const existingStatus = existingTaskStatuses.get(taskInfo.id)
+          // 保留已有任务的 artifacts
+          const existingTask = state.tasks.get(taskInfo.id)
+          newTasks.set(taskInfo.id, {
+            id: taskInfo.id,
+            expert_type: taskInfo.expert_type,
+            description: taskInfo.description,
+            status: existingStatus || (taskInfo.status as TaskStatus) || 'pending',
+            sort_order: taskInfo.sort_order || 0,
+            artifacts: existingTask?.artifacts || []  // 保留已有 artifacts
+          })
+        })
+
+        state.tasks = newTasks
+        
+        // 🔥 关键：重建缓存数组
+        state.tasksCache = Array.from(newTasks.values())
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map(task => ({
+            ...task,
+            artifacts: task.artifacts.map(a => ({...a}))
+          }))
+        state.tasksCacheVersion++
+
+        console.log(`[HITL] 任务列表已更新:`, {
+          taskCount: newPlan.length,
+          cacheLength: state.tasksCache.length,
+          estimatedSteps: state.session.estimatedSteps,
+          taskIds: newPlan.map(t => t.id)
+        })
       })
     },
 

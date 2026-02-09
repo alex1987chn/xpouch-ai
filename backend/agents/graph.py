@@ -2,15 +2,18 @@
 XPouch AI 智能路由工作流 (v3.0 架构)
 集成意图识别 (Router) -> 任务指挥官 (Commander) -> 专家执行 (Experts)
 支持事件溯源持久化和 Server-Driven UI
+
+v3.3 更新：支持 AsyncPostgresSaver 实现 HITL (Human-in-the-Loop) 持久化
 """
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, ToolMessage
 from langgraph.prebuilt import ToolNode  # 🔥 新增：工具执行节点
+from langgraph.checkpoint.base import BaseCheckpointSaver  # 🔥 新增：Checkpointer 基类
 from dotenv import load_dotenv
 import pathlib
 
-# 🔥 新增：导入 MemorySaver 支持状态管理
+# 🔥 保留 MemorySaver 作为 fallback
 from langgraph.checkpoint.memory import MemorySaver
 
 # 导入数据模型
@@ -163,7 +166,18 @@ def route_generic(state: AgentState) -> str:
 # 5. 构建工作流图
 # ============================================================================
 
-def create_smart_router_workflow() -> StateGraph:
+def create_smart_router_workflow(checkpointer: Optional[BaseCheckpointSaver] = None) -> StateGraph:
+    """
+    创建智能路由工作流
+    
+    Args:
+        checkpointer: 可选的状态检查点保存器，用于 HITL (Human-in-the-Loop)
+                     如果传入 AsyncPostgresSaver，则状态会持久化到 PostgreSQL
+                     如果为 None，则使用 MemorySaver（内存存储，适合开发/测试）
+    
+    Returns:
+        编译后的 StateGraph 工作流
+    """
     workflow = StateGraph(AgentState)
 
     # 添加节点
@@ -177,7 +191,7 @@ def create_smart_router_workflow() -> StateGraph:
     # 🔥 新增：工具执行节点
     tool_node = ToolNode(ALL_TOOLS)
     workflow.add_node("tools", tool_node)
-    print(f"[WORKFLOW] ✅ 已注册工具节点，包含 {len(ALL_TOOLS)} 个工具: {[t.name for t in ALL_TOOLS]}")
+    print(f"[WORKFLOW] [OK] 已注册工具节点，包含 {len(ALL_TOOLS)} 个工具: {[t.name for t in ALL_TOOLS]}")
 
     # 设置入口：现在入口是 Router！
     workflow.set_entry_point("router")
@@ -225,28 +239,75 @@ def create_smart_router_workflow() -> StateGraph:
     workflow.add_edge("aggregator", END)
 
     # ---------------------------------------------------------
-    # 🔥 修改开始：添加 Checkpointer
+    # 🔥 修改开始：添加 Checkpointer (HITL 支持)
     # ---------------------------------------------------------
-    # 初始化内存检查点
-    # 这会让 LangGraph 把状态保存在内存里，不会阻塞数据库，也不会导致 Cloudflare 超时
-    memory = MemorySaver()
+    # 如果未传入 checkpointer，使用 MemorySaver 作为 fallback
+    if checkpointer is None:
+        print("[Graph] Using MemorySaver (non-persistent, for dev/test only)")
+        checkpointer = MemorySaver()
+    else:
+        print(f"[Graph] Using persistent checkpointer: {type(checkpointer).__name__}")
 
     # 编译时传入 checkpointer
-    compiled_workflow = workflow.compile(checkpointer=memory)
+    # 🔥🔥🔥 HITL 中断点：在 expert_dispatcher 前暂停，允许人类审核计划
+    compiled_workflow = workflow.compile(
+        checkpointer=checkpointer,
+        interrupt_before=["expert_dispatcher"]  # Commander 规划完成后暂停，等待人类确认
+    )
     # ---------------------------------------------------------
     # 🔥 修改结束
 
     return compiled_workflow
 
-# 导出编译后的图
-commander_graph = create_smart_router_workflow()
+
+# ============================================================================
+# 全局默认 Graph（向后兼容）
+# ============================================================================
+# 使用 MemorySaver 的默认 graph，用于向后兼容和测试
+# 生产环境建议使用 create_smart_router_workflow() 传入 AsyncPostgresSaver
+_commander_graph_default = None
+
+def get_default_commander_graph():
+    """获取默认的 commander graph（使用 MemorySaver）"""
+    global _commander_graph_default
+    if _commander_graph_default is None:
+        _commander_graph_default = create_smart_router_workflow()
+    return _commander_graph_default
+
+
+# 为了保持向后兼容，仍然导出 commander_graph
+# 但请注意：这在导入时就会创建，使用 MemorySaver
+commander_graph = get_default_commander_graph()
+
 
 # ============================================================================
 # 测试封装函数
 # ============================================================================
 
-async def execute_commander_workflow(user_query: str, thread_id: str = "test_thread") -> dict[str, Any]:
+async def execute_commander_workflow(
+    user_query: str, 
+    thread_id: str = "test_thread",
+    checkpointer: Optional[BaseCheckpointSaver] = None
+) -> dict[str, Any]:
+    """
+    执行 Commander 工作流
+    
+    Args:
+        user_query: 用户查询
+        thread_id: 线程 ID
+        checkpointer: 可选的持久化检查点
+    
+    Returns:
+        最终状态
+    """
     print(f"--- [START] 查询: {user_query} ---")
+    
+    # 根据是否传入 checkpointer 创建 graph
+    if checkpointer:
+        graph = create_smart_router_workflow(checkpointer=checkpointer)
+    else:
+        graph = get_default_commander_graph()
+    
     initial_state: AgentState = {
         "messages": [HumanMessage(content=user_query)],
         "task_list": [],
@@ -255,9 +316,10 @@ async def execute_commander_workflow(user_query: str, thread_id: str = "test_thr
         "expert_results": [],
         "final_response": ""
     }
-    # 🔥 添加 config 传递 thread_id 给 MemorySaver，并设置递归限制
+    
+    # 🔥 添加 config 传递 thread_id 给 checkpointer，并设置递归限制
     # 注意：recursion_limit 必须在 config 顶层，不能在 configurable 中
-    final_state = await commander_graph.ainvoke(
+    final_state = await graph.ainvoke(
         initial_state,
         config={
             "recursion_limit": 100,  # 🔥 设置递归限制（放在顶层！）

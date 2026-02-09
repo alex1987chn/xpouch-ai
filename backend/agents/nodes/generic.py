@@ -56,6 +56,11 @@ def _enhance_system_prompt(system_prompt: str) -> str:
 
 【执行逻辑】：
 检测到任务需求 -> 决定工具 (Search 或 Read) -> **输出 Tool Call** -> (等待执行) -> 获取 Artifact -> 生成回答。
+
+【容错处理指令 (Fault Tolerance)】：
+如果参考上下文中提到某些上游任务（如代码生成、数据分析等）的输出，但这些内容缺失或为空，
+请不要抱怨或询问，而是基于你已有的知识和当前可用信息，尽最大努力完成任务。
+忽略对缺失内容的引用，专注于完成核心任务目标。
 """
     return enhanced_prompt
 
@@ -208,9 +213,43 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
             ]
         else:
             # 首次调用：创建新的消息列表
+            # 🔥🔥🔥 智能上下文组装：处理依赖缺失的情况
+            expert_results = state.get("expert_results", [])
+            depends_on = current_task.get("depends_on", [])
+            
+            # 构建上下文提示
+            context_parts = []
+            missing_deps = []
+            
+            if depends_on:
+                # 查找依赖任务的输出
+                for dep_id in depends_on:
+                    dep_result = next(
+                        (r for r in expert_results if r.get("task_id") == dep_id), 
+                        None
+                    )
+                    if dep_result and dep_result.get("output"):
+                        context_parts.append(f"【上游任务 {dep_id} 的输出】:\n{dep_result['output'][:2000]}...")
+                    else:
+                        missing_deps.append(dep_id)
+            
+            # 组装任务提示
+            task_prompt = f"任务描述: {description}\n\n"
+            
+            if context_parts:
+                task_prompt += "参考上下文:\n" + "\n---\n".join(context_parts) + "\n\n"
+            
+            # 🔥 关键：注入容错指令
+            if missing_deps:
+                task_prompt += f"""⚠️ 注意：部分上游依赖任务 ({', '.join(missing_deps)}) 已被移除或未执行。
+如果任务描述中引用了这些缺失部分（如代码、数据等），请忽略该引用，
+并基于当前现有的信息，尽最大努力完成任务。不要在输出中抱怨缺少信息。\n\n"""
+            
+            task_prompt += f"输入参数:\n{_format_input_data(input_data)}"
+            
             messages_for_llm = [
                 SystemMessage(content=enhanced_system_prompt),
-                HumanMessage(content=f"任务描述: {description}\n\n输入参数:\n{_format_input_data(input_data)}")
+                HumanMessage(content=task_prompt)
             ]
 
         # 🔥 关键修复：根据是否有 ToolMessage 决定是否绑定工具

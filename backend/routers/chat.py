@@ -7,7 +7,7 @@ import json
 import re
 import asyncio  # 新增：用于心跳保活
 from datetime import datetime
-from typing import List, Optional, AsyncGenerator
+from typing import List, Optional, AsyncGenerator, Dict, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Request
@@ -38,8 +38,12 @@ from constants import (
     SYSTEM_AGENT_DEFAULT_CHAT
 )
 from utils.llm_factory import get_llm_instance
-from agents.graph import commander_graph
+from agents.graph import commander_graph, create_smart_router_workflow  # 🔥 新增：导入 create_smart_router_workflow
 from utils.exceptions import AppError, NotFoundError, AuthorizationError
+
+# 🔥 HITL (Human-in-the-Loop) 支持
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from utils.db import get_db_connection  # 🔥 新增：LangGraph 数据库连接
 
 
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -65,6 +69,17 @@ class ChatRequest(BaseModel):
     agentId: Optional[str] = "assistant"
     stream: Optional[bool] = True
     message_id: Optional[str] = None  # v3.0: 前端传递的助手消息 ID
+
+
+# ============================================================================
+# HITL (Human-in-the-Loop) 请求模型
+# ============================================================================
+
+class ResumeRequest(BaseModel):
+    """恢复被中断的 HITL 流程请求"""
+    thread_id: str
+    updated_plan: Optional[List[Dict[str, Any]]] = None
+    approved: bool = True
 
 
 # ============================================================================
@@ -676,6 +691,7 @@ async def _handle_langgraph_stream(
     只发送新协议事件：plan.created, task.started, task.completed, artifact.generated, message.delta, message.done
     
     新增：添加心跳保活机制防止 Cloudflare/CDN 超时断开连接
+    v3.5 更新：使用 AsyncPostgresSaver 实现 HITL (Human-in-the-Loop) 持久化
     """
     async def event_generator():
         full_response = ""
@@ -700,36 +716,64 @@ async def _handle_langgraph_stream(
         HEARTBEAT_INTERVAL = 15.0
 
         print(f"[LANGGRAPH STREAM] {datetime.now().isoformat()} - 开始流式处理，心跳间隔={HEARTBEAT_INTERVAL}秒，强制心跳间隔=30.0秒")
-        print(f"[LANGGRAPH STREAM] v3.4 Shared Queue 模式已启用")
+        print(f"[LANGGRAPH STREAM] v3.5 HITL 模式已启用 (AsyncPostgresSaver)")
 
         # 🔥 强制心跳计时器（每 30 秒强制发送一次心跳，不管有没有事件）
         FORCE_HEARTBEAT_INTERVAL = 30.0
         last_heartbeat_time = datetime.now()
 
-        # 🔥🔥🔥 v3.4: Shared Queue Producer-Consumer 模式
-        # 创建生产者和消费者，实现真正的实时流式输出
+        # 🔥🔥🔥 v3.5: HITL (Human-in-the-Loop) 支持
+        # 使用 AsyncPostgresSaver 实现状态持久化
         
         # 1. 定义生产者任务 (Producer) - 在后台运行 Graph
         async def producer():
             """生产者：运行 LangGraph，将事件放入队列"""
+            graph = None
+            config = None
             try:
-                # 获取图的流迭代器，注入 stream_queue
-                iterator = commander_graph.astream_events(
-                    initial_state,
-                    config={
+                # 🔥🔥🔥 v3.5: 创建 AsyncPostgresSaver 实现持久化
+                async with get_db_connection() as conn:
+                    checkpointer = AsyncPostgresSaver(conn)
+                    
+                    # 🔥 使用持久化的 checkpointer 创建 graph
+                    graph = create_smart_router_workflow(checkpointer=checkpointer)
+                    print(f"[PRODUCER] Graph compiled with AsyncPostgresSaver for HITL")
+                    
+                    config = {
                         "recursion_limit": 100,
                         "configurable": {
                             "thread_id": thread_id,
                             "stream_queue": stream_queue  # 🔥 注入共享队列
                         }
-                    },
-                    version="v2"
-                )
-                
-                # 消费 Graph 事件
-                async for event in iterator:
-                    # 将事件放入队列，让主循环处理
-                    await stream_queue.put({"type": "graph_event", "event": event})
+                    }
+                    
+                    # 获取图的流迭代器，注入 stream_queue
+                    iterator = graph.astream_events(
+                        initial_state,
+                        config=config,
+                        version="v2"
+                    )
+                    
+                    # 消费 Graph 事件
+                    async for event in iterator:
+                        # 将事件放入队列，让主循环处理
+                        await stream_queue.put({"type": "graph_event", "event": event})
+                    
+                    # 🔥🔥🔥 v3.5 HITL: 检查是否因中断而停止
+                    # 使用相同的 config 获取 state snapshot
+                    snapshot = await graph.aget_state(config)
+                    if snapshot.next:  # 如果 next 不为空，说明任务未完成但停止了 -> 处于 Pause 状态
+                        current_plan = snapshot.values.get("task_list", [])
+                        print(f"[PRODUCER] 🔴 HITL 中断触发！计划任务数: {len(current_plan)}")
+                        await stream_queue.put({
+                            "type": "hitl_interrupt",
+                            "data": {
+                                "type": "plan_review",
+                                "current_plan": current_plan
+                            }
+                        })
+                    else:
+                        print(f"[PRODUCER] ✅ Graph 正常完成，无中断")
                     
             except Exception as e:
                 print(f"[PRODUCER] 错误: {e}")
@@ -801,6 +845,16 @@ async def _handle_langgraph_stream(
                     # 这是实时流式思考内容 (plan.thinking)
                     print(f"[CONSUMER] 📤 yield SSE 事件: {token['event'][:100]}...")
                     yield token["event"]
+                    continue
+                
+                elif token.get("type") == "hitl_interrupt":
+                    # 🔥🔥🔥 v3.5 HITL: 人类审核中断事件
+                    interrupt_data = token.get("data", {})
+                    print(f"[CONSUMER] 🔴 HITL 中断事件: {interrupt_data.get('type')}")
+                    
+                    # 构造 human.interrupt SSE 事件（直接发送数据，不嵌套）
+                    event_str = f"event: human.interrupt\ndata: {json.dumps(interrupt_data)}\n\n"
+                    yield event_str
                     continue
                 
                 # 处理 Graph 标准事件（从 graph_event 类型中提取）
@@ -1062,18 +1116,24 @@ async def _handle_langgraph_sync(
     user_message: str,
     session: Session
 ) -> dict:
-    """处理 LangGraph 非流式响应"""
-    # 🔥 添加 config 传递 thread_id 给 MemorySaver，并设置递归限制
-    # 注意：recursion_limit 必须在 config 顶层，不能在 configurable 中
-    result = await commander_graph.ainvoke(
-        initial_state,
-        config={
-            "recursion_limit": 100,  # 🔥 设置递归限制（放在顶层！）
-            "configurable": {
-                "thread_id": thread_id
+    """处理 LangGraph 非流式响应 (v3.5 HITL 支持)"""
+    # 🔥🔥🔥 v3.5: 使用 AsyncPostgresSaver 实现持久化
+    async with get_db_connection() as conn:
+        checkpointer = AsyncPostgresSaver(conn)
+        graph = create_smart_router_workflow(checkpointer=checkpointer)
+        print(f"[SYNC MODE] Graph compiled with AsyncPostgresSaver for HITL")
+        
+        # 🔥 添加 config 传递 thread_id 给 checkpointer，并设置递归限制
+        # 注意：recursion_limit 必须在 config 顶层，不能在 configurable 中
+        result = await graph.ainvoke(
+            initial_state,
+            config={
+                "recursion_limit": 100,  # 🔥 设置递归限制（放在顶层！）
+                "configurable": {
+                    "thread_id": thread_id
+                }
             }
-        }
-    )
+        )
     last_message = result["messages"][-1]
 
     # 获取 Router 决策并更新 thread_mode
@@ -1146,3 +1206,345 @@ async def _handle_langgraph_sync(
         "conversationId": thread_id,
         "threadMode": router_decision
     }
+
+
+# ============================================================================
+# HITL (Human-in-the-Loop) - 流式恢复接口
+# ============================================================================
+
+@router.post("/chat/resume")
+async def resume_chat(
+    request: ResumeRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    恢复被中断的 HITL 流程（流式响应）
+    
+    当用户在前端审核计划后，调用此接口继续执行。
+    返回 SSE 流，包含后续所有任务执行事件。
+    """
+    print(f"[HITL RESUME] thread_id={request.thread_id}, approved={request.approved}")
+    
+    # 验证 thread 存在且属于当前用户
+    thread = session.get(Thread, request.thread_id)
+    if not thread:
+        raise NotFoundError(f"Thread not found: {request.thread_id}")
+    if thread.user_id != current_user.id:
+        raise AuthorizationError("无权访问此线程")
+    
+    # 如果用户拒绝，清理状态并结束流程
+    if not request.approved:
+        print(f"[HITL RESUME] 用户拒绝了计划，清理状态")
+        
+        # 🔥 清理 LangGraph checkpoint（避免僵尸状态）
+        try:
+            # Windows 兼容：使用同步连接清理
+            import psycopg
+            db_url = os.getenv("DATABASE_URL", "")
+            db_url = db_url.replace("postgresql+asyncpg", "postgresql").replace("postgresql+psycopg", "postgresql")
+            
+            with psycopg.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    # 先检查表是否存在
+                    cur.execute("""
+                        SELECT EXISTS (
+                            SELECT FROM information_schema.tables 
+                            WHERE table_name = 'checkpoints'
+                        )
+                    """)
+                    if cur.fetchone()[0]:
+                        cur.execute(
+                            "DELETE FROM checkpoints WHERE thread_id = %s",
+                            (request.thread_id,)
+                        )
+                        deleted = cur.rowcount
+                        print(f"[HITL RESUME] 清理了 {deleted} 个 checkpoint(s)")
+                    else:
+                        print("[HITL RESUME] checkpoints 表不存在，跳过清理")
+                conn.commit()
+        except Exception as e:
+            # 如果表不存在或其他错误，记录但不阻断流程
+            print(f"[HITL RESUME WARN] 清理 checkpoint 失败: {e}")
+        
+        # 🔥 更新 task_session 状态为 cancelled（如果存在）
+        try:
+            task_session = session.exec(
+                select(TaskSession).where(TaskSession.thread_id == request.thread_id)
+            ).first()
+            if task_session:
+                task_session.status = "cancelled"
+                task_session.final_response = "计划被用户取消"
+                task_session.updated_at = datetime.now()
+                session.add(task_session)
+                session.commit()
+                print(f"[HITL RESUME] TaskSession {task_session.session_id} 已标记为 cancelled")
+        except Exception as e:
+            print(f"[HITL RESUME WARN] 更新 task_session 失败: {e}")
+        
+        return {"status": "cancelled", "message": "计划已被用户拒绝"}
+    
+    # 🔥 流式恢复执行
+    async def resume_stream_generator():
+        """流式恢复生成器"""
+        async with get_db_connection() as conn:
+            checkpointer = AsyncPostgresSaver(conn)
+            graph = create_smart_router_workflow(checkpointer=checkpointer)
+            
+            config = {
+                "recursion_limit": 100,
+                "configurable": {
+                    "thread_id": request.thread_id
+                }
+            }
+            
+            # 1. 如果用户修改了计划，更新状态
+            if request.updated_plan:
+                print(f"[HITL RESUME] 更新计划，任务数: {len(request.updated_plan)}")
+                
+                # 🔥🔥🔥 清理已删除任务的依赖关系
+                # 获取当前保留的任务ID集合
+                kept_task_ids = {task.get("id") for task in request.updated_plan}
+                print(f"[HITL RESUME] 保留的任务ID: {kept_task_ids}")
+                
+                # 清理每个任务的 depends_on 中指向已删除任务的依赖
+                cleaned_plan = []
+                for task in request.updated_plan:
+                    cleaned_task = dict(task)
+                    if cleaned_task.get("depends_on"):
+                        original_deps = cleaned_task["depends_on"]
+                        # 只保留指向仍然存在任务的依赖
+                        cleaned_deps = [dep for dep in original_deps if dep in kept_task_ids]
+                        if len(cleaned_deps) != len(original_deps):
+                            print(f"[HITL RESUME] 任务 {cleaned_task.get('id')} 的依赖已清理: {original_deps} -> {cleaned_deps}")
+                        cleaned_task["depends_on"] = cleaned_deps if cleaned_deps else None
+                    cleaned_plan.append(cleaned_task)
+                
+                await graph.aupdate_state(config, {"task_list": cleaned_plan})
+            
+            # 2. 🔥🔥🔥 流式恢复执行（必须使用 astream_events 保持 SSE）
+            # 传入 None 作为 input，LangGraph 自动从断点继续
+            stream_queue = asyncio.Queue()
+            
+            # 🔥🔥🔥 首先发送 plan.created 事件，初始化前端 thinking 步骤
+            # 从 checkpoint 获取当前任务计划
+            snapshot = await graph.aget_state(config)
+            current_task_list = snapshot.values.get("task_list", [])
+            if current_task_list:
+                from event_types.events import EventType, PlanCreatedData, build_sse_event
+                from utils.event_generator import sse_event_to_string
+                
+                plan_event = build_sse_event(
+                    EventType.PLAN_CREATED,
+                    PlanCreatedData(
+                        session_id=request.thread_id,
+                        tasks=[
+                            {
+                                "id": task.get("id", f"task-{i}"),
+                                "expert_type": task.get("expert_type", "unknown"),
+                                "description": task.get("description", ""),
+                                "sort_order": task.get("sort_order", i),
+                                "status": task.get("status", "pending")
+                            }
+                            for i, task in enumerate(current_task_list)
+                        ],
+                        estimated_steps=len(current_task_list),
+                        execution_mode="sequential",  # 🔥 修复：添加缺失的必填字段
+                        summary=f"恢复执行 {len(current_task_list)} 个任务"
+                    ),
+                    str(uuid4())
+                )
+                await stream_queue.put({
+                    "type": "sse",
+                    "event": sse_event_to_string(plan_event)
+                })
+                print(f"[HITL RESUME] 已发送 plan.created 事件，任务数: {len(current_task_list)}")
+            
+            async def producer():
+                """生产者：运行 LangGraph，将事件转换为 SSE 放入队列"""
+                try:
+                    print(f"[RESUME PRODUCER] 开始流式恢复执行...")
+                    event_count = 0
+                    loop_count = 0
+                    
+                    # 🔥🔥🔥 循环执行直到所有任务完成（处理多轮中断）
+                    while True:
+                        loop_count += 1
+                        print(f"[RESUME PRODUCER] 第 {loop_count} 轮执行...")
+                        
+                        async for event in graph.astream_events(
+                            None,  # 从 checkpoint 继续
+                            config=config,
+                            version="v2"
+                        ):
+                            kind = event.get("event", "")
+                            name = event.get("name", "")
+                            data = event.get("data", {})
+                            
+                            # 🔥🔥🔥 处理各种事件类型，转换为 SSE
+                            # 关键：generic_worker_node 已经将事件放入 event_queue，我们只需要转发
+                            
+                            if kind == "on_chain_end":
+                                output_data = data.get("output", {})
+                                
+                                # 从节点的 event_queue 中提取事件（由 generic_worker_node 生成）
+                                if isinstance(output_data, dict):
+                                    event_queue = output_data.get("event_queue", [])
+                                    for queued_event in event_queue:
+                                        if queued_event.get("type") == "sse":
+                                            await stream_queue.put({
+                                                "type": "sse",
+                                                "event": queued_event["event"]
+                                            })
+                                            event_count += 1
+                                            
+                                    # 打印调试信息
+                                    if event_queue:
+                                        print(f"[RESUME PRODUCER] 节点 '{name}' 返回 {len(event_queue)} 个事件")
+                            
+                            # 处理 aggregator 完成
+                            if kind == "on_chain_end" and name == "aggregator":
+                                print(f"[RESUME PRODUCER] Aggregator 完成")
+                        
+                        # 检查是否完成或再次中断
+                        snapshot = await graph.aget_state(config)
+                        if not snapshot.next:
+                            print(f"[RESUME PRODUCER] 所有任务完成，共 {event_count} 个事件")
+                            break  # 🔥 完成，退出循环
+                        
+                        # 🔥 再次中断（由于 interrupt_before），自动继续执行
+                        print(f"[RESUME PRODUCER] 检测到中断，自动继续执行剩余任务...")
+                        # 继续循环，从当前 checkpoint 继续执行
+                    
+                    # 发送 message.done
+                    await stream_queue.put({
+                        "type": "sse",
+                        "event": f"event: message.done\ndata: {json.dumps({'type': 'message.done'})}\n\n"
+                    })
+                        
+                except Exception as e:
+                    print(f"[RESUME PRODUCER] 错误: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    await stream_queue.put({"type": "graph_error", "error": str(e)})
+                finally:
+                    await stream_queue.put(None)
+            
+            # 启动生产者
+            producer_task = asyncio.create_task(producer())
+            
+            # 消费并 yield SSE
+            try:
+                while True:
+                    try:
+                        token = await asyncio.wait_for(stream_queue.get(), timeout=1.0)
+                    except asyncio.TimeoutError:
+                        if producer_task.done():
+                            while not stream_queue.empty():
+                                item = stream_queue.get_nowait()
+                                if item is None:
+                                    break
+                                # 处理剩余事件
+                                if item.get("type") == "sse":
+                                    yield item["event"]
+                                elif item.get("type") == "hitl_interrupt":
+                                    yield f"event: human.interrupt\ndata: {json.dumps(item['data'])}\n\n"
+                                elif item.get("type") == "graph_error":
+                                    yield f"event: error\ndata: {json.dumps({'error': item.get('error')})}\n\n"
+                            break
+                        yield ": keep-alive\n\n"
+                        continue
+                    
+                    if token is None:
+                        break
+                    
+                    # 🔥🔥🔥 直接处理 SSE 事件
+                    if token.get("type") == "sse":
+                        yield token["event"]
+                    elif token.get("type") == "hitl_interrupt":
+                        yield f"event: human.interrupt\ndata: {json.dumps(token['data'])}\n\n"
+                    elif token.get("type") == "graph_error":
+                        yield f"event: error\ndata: {json.dumps({'error': token.get('error')})}\n\n"
+                        
+            finally:
+                if not producer_task.done():
+                    producer_task.cancel()
+    
+    return StreamingResponse(
+        resume_stream_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
+def format_resume_event(token: dict) -> Optional[str]:
+    """格式化恢复流中的事件为 SSE"""
+    if token.get("type") == "graph_error":
+        error_msg = token.get("error", "未知错误")
+        event_payload = {"type": "error", "message": error_msg}
+        return f"event: error\ndata: {json.dumps(event_payload)}\n\n"
+    
+    elif token.get("type") == "hitl_interrupt":
+        interrupt_data = token.get("data", {})
+        event_payload = {"type": "human.interrupt", "data": interrupt_data}
+        return f"event: human.interrupt\ndata: {json.dumps(event_payload)}\n\n"
+    
+    elif token.get("type") == "graph_event":
+        event = token["event"]
+        kind = event.get("event", "")
+        name = event.get("name", "")
+        data = event.get("data", {})
+        
+        # 🔥🔥🔥 处理 task 相关事件（从 event_queue 中提取）
+        if kind == "on_chain_end":
+            output_data = data.get("output", {})
+            if isinstance(output_data, dict):
+                event_queue = output_data.get("event_queue", [])
+                for queued_event in event_queue:
+                    if queued_event.get("type") == "sse":
+                        return queued_event["event"]
+        
+        # 🔥🔥🔥 处理 generic worker 节点（task 执行）
+        if kind == "on_chain_start" and name == "generic":
+            # 任务开始
+            input_data = data.get("input", {})
+            task_list = input_data.get("task_list", [])
+            current_index = input_data.get("current_task_index", 0)
+            if task_list and current_index < len(task_list):
+                task = task_list[current_index]
+                event_payload = {
+                    "type": "task.started",
+                    "data": {
+                        "task_id": task.get("id"),
+                        "expert_type": task.get("expert_type"),
+                        "description": task.get("description"),
+                        "started_at": datetime.now().isoformat()
+                    }
+                }
+                return f"event: task.started\ndata: {json.dumps(event_payload)}\n\n"
+        
+        if kind == "on_chain_end" and name == "generic":
+            # 任务完成
+            output_data = data.get("output", {})
+            task_result = output_data.get("__task_result", {})
+            if task_result:
+                event_payload = {
+                    "type": "task.completed",
+                    "data": {
+                        "task_id": task_result.get("task_id"),
+                        "expert_type": task_result.get("expert_type"),
+                        "status": "completed",
+                        "completed_at": datetime.now().isoformat()
+                    }
+                }
+                return f"event: task.completed\ndata: {json.dumps(event_payload)}\n\n"
+        
+        # 🔥 处理 message.done 事件（流结束标志）
+        if kind == "on_chain_end" and name == "aggregator":
+            return f"event: message.done\ndata: {json.dumps({'type': 'message.done'})}\n\n"
+    
+    return None

@@ -4,7 +4,13 @@
  */
 
 import { useCallback, useRef, useEffect, useState } from 'react'
-import { sendMessage as apiSendMessage, type ApiMessage, type StreamCallback } from '@/services/chat'
+import { 
+  sendMessage as apiSendMessage, 
+  resumeChat as apiResumeChat,
+  type ApiMessage, 
+  type StreamCallback,
+  type ResumeChatParams
+} from '@/services/chat'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
 import { normalizeAgentId } from '@/utils/agentUtils'
@@ -335,10 +341,77 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     }
   }, [])
 
+  /**
+   * 🔥🔥🔥 v3.5 HITL: 恢复被中断的执行流程
+   * 复用与 sendMessage 完全相同的 SSE 处理逻辑
+   */
+  const resumeExecution = useCallback(async (
+    params: ResumeChatParams
+  ): Promise<string> => {
+    if (isGenerating) {
+      debug('请求正在进行中，忽略重复恢复请求')
+      return ''
+    }
+
+    setGenerating(true)
+    abortControllerRef.current = new AbortController()
+
+    let fullContent = ''
+
+    try {
+      // 🔥 复用与 sendMessage 完全相同的 streamCallback 逻辑
+      const streamCallback: StreamCallback = async (
+        chunk: string | undefined,
+        conversationId?: string,
+        expertEvent?: ExpertEvent
+      ) => {
+        if (expertEvent) {
+          onExpertEvent?.(expertEvent as any, conversationMode)
+        }
+
+        if (chunk) {
+          fullContent += chunk
+          onChunk?.(chunk)
+        }
+      }
+
+      fullContent = await apiResumeChat(
+        params,
+        streamCallback,
+        abortControllerRef.current.signal
+      )
+
+      return fullContent
+
+    } catch (error) {
+      const isAbortError = 
+        (error instanceof Error && error.name === 'AbortError') ||
+        (error instanceof Error && error.message?.toLowerCase().includes('abort')) ||
+        abortControllerRef.current?.signal.aborted
+
+      if (!isAbortError) {
+        errorHandler.handle(error, 'resumeExecution')
+        addMessage({
+          role: 'assistant',
+          content: errorHandler.getUserMessage(error)
+        })
+      }
+      
+      // 🚨🚨🚨 关键：必须 rethrow 错误，让调用方知道失败了
+      throw error
+    } finally {
+      setGenerating(false)
+      abortControllerRef.current = null
+    }
+
+    return fullContent
+  }, [isGenerating, conversationMode, onExpertEvent, onChunk, setGenerating])
+
   return {
     // ✅ 重构：Hook 只返回方法，状态从 Store 直接读取
     sendMessage: sendMessageCore,
     stopGeneration,
+    resumeExecution,  // 🔥🔥🔥 v3.5 HITL: 暴露恢复执行方法
     // 👈 返回对话模式，供上层组件使用
     conversationMode,
   }

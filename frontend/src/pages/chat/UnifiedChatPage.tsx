@@ -44,7 +44,8 @@ export default function UnifiedChatPage() {
     sendMessage,
     stopGeneration,
     loadConversation,
-    retry
+    retry,
+    resumeExecution  // 🔥🔥🔥 v3.5 HITL
   } = useChat()
 
   // 使用 ref 标记初始化状态，防止无限循环
@@ -328,6 +329,7 @@ export default function UnifiedChatPage() {
             onStop={stopGeneration}
             onRegenerate={() => retry()}
             onPreview={() => setViewMode('preview')}
+            resumeExecution={resumeExecution}  // 🔥🔥🔥 v3.5 HITL
           />
         }
         orchestratorPanel={

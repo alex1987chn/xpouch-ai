@@ -19,6 +19,7 @@ import type {
   ArtifactCompletedEvent,
   MessageDeltaEvent,
   MessageDoneEvent,
+  HumanInterruptEvent,     // 🔥🔥🔥 v3.5 HITL
   RouterStartEvent,
   RouterDecisionEvent,
   ErrorEvent
@@ -98,6 +99,10 @@ export class EventHandler {
         break
       case 'message.done':
         this.handleMessageDone(event as MessageDoneEvent)
+        break
+      // 🔥🔥🔥 v3.5 HITL: 人类审核中断事件
+      case 'human.interrupt':
+        this.handleHumanInterrupt(event as HumanInterruptEvent)
         break
       case 'router.decision':
         this.handleRouterDecision(event as RouterDecisionEvent)
@@ -479,6 +484,27 @@ export class EventHandler {
 
     if (DEBUG) {
       logger.debug('[EventHandler] 路由决策，设置模式:', event.data.decision)
+    }
+  }
+
+  /**
+   * 🔥🔥🔥 v3.5 HITL: 处理 human.interrupt 事件
+   * Commander 规划完成，等待人类审核
+   */
+  private handleHumanInterrupt(event: HumanInterruptEvent): void {
+    const { setPendingPlan } = useTaskStore.getState()
+    
+    // 直接获取 current_plan
+    const currentPlan = event.data?.current_plan
+    
+    // 将待审核计划存入 Store，触发 UI 显示
+    if (currentPlan && currentPlan.length > 0) {
+      setPendingPlan(currentPlan)
+      logger.info('[EventHandler] 🔴 HITL 中断: 计划等待审核', {
+        taskCount: currentPlan.length
+      })
+    } else {
+      logger.warn('[EventHandler] ⚠️ HITL 事件数据不完整:', event)
     }
   }
 

@@ -469,26 +469,26 @@ def print_provider_status():
     print("="*60)
     
     if results['configured']:
-        print(f"\n✅ 已配置 ({len(results['configured'])}):")
+        print(f"\n[OK] 已配置 ({len(results['configured'])}):")
         for p in results['configured']:
-            print(f"   • {p['display_name']} ({p['name']}) - {p['default_model']}")
+            print(f"   - {p['display_name']} ({p['name']}) - {p['default_model']}")
     
     if results['missing_key']:
-        print(f"\n⚠️  未配置 API Key ({len(results['missing_key'])}):")
+        print(f"\n[WARN] 未配置 API Key ({len(results['missing_key'])}):")
         for p in results['missing_key']:
-            print(f"   • {p['name']} - 请设置 {p['env_key']}")
+            print(f"   - {p['name']} - 请设置 {p['env_key']}")
     
     if results['disabled']:
-        print(f"\n🚫 已禁用 ({len(results['disabled'])}):")
+        print(f"\n[DISABLED] 已禁用 ({len(results['disabled'])}):")
         for name in results['disabled']:
-            print(f"   • {name}")
+            print(f"   - {name}")
     
     # Router 推荐
     router_provider = get_best_router_provider()
     if router_provider:
-        print(f"\n🚀 Router 将使用: {router_provider}")
+        print(f"\n[Router] 将使用: {router_provider}")
     else:
-        print("\n❌ 错误: 没有可用的 LLM 提供商！")
+        print("\n[ERROR] 没有可用的 LLM 提供商！")
     
     print("="*60 + "\n")
     
