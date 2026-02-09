@@ -313,25 +313,62 @@ EXPERT_DEFAULTS = [
         "system_prompt": COMMANDER_SYSTEM_PROMPT,
         "model": DEFAULT_EXPERT_MODEL,
         "temperature": 0.5
+    },
+    {
+        "expert_key": "memorize_expert",
+        "name": "记忆助理",
+        "description": "用于提取并保存用户的关键信息和偏好",
+        "system_prompt": """你是一个专业的记忆提取专家。
+
+你的任务是从用户的输入中提取需要长期保存的关键信息（如个人喜好、身份信息、重要计划等）。
+
+规则：
+1. 请忽略无关的闲聊，直接提取事实
+2. 请直接输出需要保存的内容，不要包含任何寒暄
+3. 提取的事实应该简洁明了，便于后续检索
+
+示例：
+用户："记住我喜欢吃辣，不要放香菜"
+输出："用户喜欢吃辣，不喜欢香菜"
+
+用户："我是程序员，擅长 Python 和 React"
+输出："用户是程序员，擅长 Python 和 React"
+
+用户："明天下午 3 点有个重要会议"
+输出："用户明天下午 3 点有重要会议"
+
+请只输出提取后的事实内容，不要加任何解释。""",
+        "model": DEFAULT_EXPERT_MODEL,
+        "temperature": 0.1
     }
 ]
 
 
-async def init_experts_async(update_existing=False):
-    """异步初始化系统专家数据"""
+async def init_experts_async(update_existing=False, update_commander=False):
+    """异步初始化系统专家数据
+    
+    Args:
+        update_existing: 是否更新所有现有专家（覆盖自定义配置）
+        update_commander: 是否只更新 commander（用于启用思维链功能）
+    """
     SessionClass, engine = get_session_class_and_engine()
     
     # 选择上下文管理器
     if SessionClass == AsyncSession:
         async with SessionClass(engine) as session:
-            await process_experts(session, update_existing)
+            await process_experts(session, update_existing, update_commander)
     else:
         with SessionClass(engine) as session:
             # 同步会话，但我们仍可以调用异步函数
-            await process_experts(session, update_existing)
+            await process_experts(session, update_existing, update_commander)
 
-async def process_experts(session, update_existing):
-    """处理专家插入/更新逻辑"""
+async def process_experts(session, update_existing=False, update_commander=False):
+    """处理专家插入/更新逻辑
+    
+    Args:
+        update_existing: 是否更新所有现有专家（覆盖自定义配置）
+        update_commander: 是否只更新 commander（用于启用思维链功能）
+    """
     from sqlmodel import select
     from models import SystemExpert
     
@@ -347,33 +384,24 @@ async def process_experts(session, update_existing):
     
     updated_count = 0
     created_count = 0
+    commander_updated = False
     
     for expert_config in EXPERT_DEFAULTS:
         expert_key = expert_config["expert_key"]
         
         if expert_key in existing_keys:
+            # 情况1：强制更新所有专家
             if update_existing:
-                # 更新现有专家
-                if isinstance(session, AsyncSession):
-                    result = await session.execute(
-                        select(SystemExpert).where(SystemExpert.expert_key == expert_key)
-                    )
-                    expert = result.scalar_one_or_none()
-                else:
-                    expert = session.exec(
-                        select(SystemExpert).where(SystemExpert.expert_key == expert_key)
-                    ).first()
-                
-                if expert:
-                    expert.name = expert_config["name"]
-                    expert.system_prompt = expert_config["system_prompt"]
-                    expert.model = expert_config["model"]
-                    expert.temperature = expert_config["temperature"]
-                    session.add(expert)
-                    updated_count += 1
-                    print(f"✓ Updated expert: {expert_key}")
+                await _update_expert(session, expert_config)
+                updated_count += 1
+            # 情况2：只更新 commander（用于启用思维链）
+            elif update_commander and expert_key == "commander":
+                await _update_expert(session, expert_config)
+                updated_count += 1
+                commander_updated = True
+                print(f"✓ Commander updated to enable thinking chain!")
             else:
-                print(f"⚠ Skipping existing expert: {expert_key} (use --update to overwrite)")
+                print(f"⚠ Skipping existing expert: {expert_key}")
         else:
             # 创建新专家
             expert = SystemExpert(**expert_config)
@@ -391,10 +419,39 @@ async def process_experts(session, update_existing):
     print(f"  - Created: {created_count} experts")
     print(f"  - Updated: {updated_count} experts")
     print(f"  - Total: {len(EXPERT_DEFAULTS)} experts")
+    
+    if update_commander and not commander_updated:
+        print("\n⚠️  Warning: Commander not found in database, cannot update.")
 
-def init_experts(update_existing=False):
+
+async def _update_expert(session, expert_config):
+    """更新单个专家的辅助函数"""
+    from sqlmodel import select
+    from models import SystemExpert
+    
+    expert_key = expert_config["expert_key"]
+    
+    if isinstance(session, AsyncSession):
+        result = await session.execute(
+            select(SystemExpert).where(SystemExpert.expert_key == expert_key)
+        )
+        expert = result.scalar_one_or_none()
+    else:
+        expert = session.exec(
+            select(SystemExpert).where(SystemExpert.expert_key == expert_key)
+        ).first()
+    
+    if expert:
+        expert.name = expert_config["name"]
+        expert.system_prompt = expert_config["system_prompt"]
+        expert.model = expert_config["model"]
+        expert.temperature = expert_config["temperature"]
+        session.add(expert)
+        print(f"✓ Updated expert: {expert_key}")
+
+def init_experts(update_existing=False, update_commander=False):
     """同步包装器，向后兼容"""
-    asyncio.run(init_experts_async(update_existing))
+    asyncio.run(init_experts_async(update_existing, update_commander))
 
 
 async def list_experts_async():
@@ -440,13 +497,14 @@ if __name__ == "__main__":
     
     # 默认安全模式（不覆盖现有专家）
     update_existing = False
+    update_commander = False
     
     # 解析命令行参数
     args = sys.argv[1:]
     if not args:
-        # 无参数：安全模式初始化
+        # 无参数：安全模式初始化（只创建缺失的专家，包括 memorize_expert）
         print("Initializing system experts (safe mode, no overwrite)...")
-        init_experts(update_existing=False)
+        init_experts(update_existing=False, update_commander=False)
         list_experts()
     elif args[0] == "list":
         list_experts()
@@ -456,20 +514,35 @@ if __name__ == "__main__":
             if arg == "--update":
                 update_existing = True
                 print("⚠ Update mode enabled: existing experts will be overwritten!")
+            elif arg == "--update-commander":
+                update_commander = True
+                print("📝 Commander update mode: only commander prompt will be updated for thinking chain!")
             elif arg == "--safe":
                 update_existing = False
                 print("Safe mode: skipping existing experts (no overwrite)")
             elif arg == "--help":
                 print("Usage: python init_experts.py [options]")
-                print("Options:")
+                print("\nModes:")
+                print("  (no args)               Safe mode: only create missing experts (RECOMMENDED for upgrade)")
                 print("  list                    List all experts in database")
-                print("  --update                Update existing experts (overwrite with defaults)")
+                print("\nOptions:")
+                print("  --update                Update ALL existing experts (overwrite with defaults)")
+                print("  --update-commander      Only update commander prompt (enable thinking chain)")
                 print("  --safe                  Safe mode: only create missing experts (default)")
                 print("  --help                  Show this help message")
+                print("\nExamples:")
+                print("  # Upgrade: add missing experts (memorize_expert) without overwriting custom prompts")
+                print("  python init_experts.py")
+                print("")
+                print("  # Enable thinking chain for commander (update only commander prompt)")
+                print("  python init_experts.py --update-commander")
+                print("")
+                print("  # Force update all experts to defaults (DANGER: overwrites custom prompts)")
+                print("  python init_experts.py --update")
                 sys.exit(0)
             else:
                 print(f"Warning: Unknown argument '{arg}'")
         
         print("Initializing system experts...")
-        init_experts(update_existing=update_existing)
+        init_experts(update_existing=update_existing, update_commander=update_commander)
         list_experts()
