@@ -18,6 +18,7 @@ from utils.llm_factory import get_effective_model, get_expert_llm
 from providers_config import get_model_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from tools import ALL_TOOLS  # 🔥 新增：导入工具集
+import os  # 🔥 新增：用于读取环境变量
 
 # 🔥 新增：支持流式 Artifact 生成的专家类型
 # 这些专家通常生成长文本内容（报告、分析等），流式体验更好
@@ -219,10 +220,17 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         else:
             # 🔥 新增：为所有专家绑定工具（联网搜索、时间、计算器）
             # 如果 LLM 支持工具调用，则绑定工具集
-            try:
-                llm_to_use = llm_with_config.bind_tools(ALL_TOOLS)
-            except Exception as e:
-                print(f"[GenericWorker] ⚠️ 工具绑定失败（模型可能不支持工具调用）: {e}")
+            # 🔥 环境变量控制：ENABLE_TOOL_CALLING=false 可禁用工具调用（平滑升级兼容）
+            enable_tools = os.getenv("ENABLE_TOOL_CALLING", "true").lower() == "true"
+            if enable_tools:
+                try:
+                    llm_to_use = llm_with_config.bind_tools(ALL_TOOLS)
+                    print(f"[GenericWorker] 🔧 工具已绑定: {len(ALL_TOOLS)} 个工具")
+                except Exception as e:
+                    print(f"[GenericWorker] ⚠️ 工具绑定失败（模型可能不支持工具调用）: {e}")
+                    llm_to_use = llm_with_config
+            else:
+                print(f"[GenericWorker] ⏭️ 工具调用已禁用（ENABLE_TOOL_CALLING=false）")
                 llm_to_use = llm_with_config
 
         # 🔥 关键优化：当 has_tool_message=True 时，在消息末尾添加明确的"任务完成"提示
