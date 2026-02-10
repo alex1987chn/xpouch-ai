@@ -246,15 +246,20 @@ export const useTaskStore = create<TaskState>()(
           })
           
           // 重建缓存
-          state.tasksCache = Array.from(state.tasks.values())
+          const newCache = Array.from(state.tasks.values())
             .sort((a, b) => a.sort_order - b.sort_order)
             .map(task => ({
               ...task,
               artifacts: task.artifacts.map(a => ({...a}))
             }))
+          state.tasksCache = newCache
           state.tasksCacheVersion++
           
-          console.log(`[HITL] initializePlan 同步完成: ${state.tasks.size} 个任务`)
+          console.log(`[HITL] initializePlan 同步完成:`, {
+            taskCount: state.tasks.size,
+            cacheLength: newCache.length,
+            cacheIds: newCache.map(t => t.id)
+          })
         } else {
           // 创建任务会话
           state.session = {
