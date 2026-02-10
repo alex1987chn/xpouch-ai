@@ -118,6 +118,7 @@ export const useTaskActions = () => useTaskStore(
     clearPendingPlan: state.clearPendingPlan,
     setIsWaitingForApproval: state.setIsWaitingForApproval,
     restoreFromSession: state.restoreFromSession,
+    updateArtifactContent: state.updateArtifactContent,
   }))
 )
 

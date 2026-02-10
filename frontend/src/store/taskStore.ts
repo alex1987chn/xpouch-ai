@@ -134,6 +134,9 @@ interface TaskState {
   startArtifact: (data: ArtifactStartData) => void
   streamArtifactChunk: (data: ArtifactChunkData) => void
   completeArtifact: (data: ArtifactCompletedData) => void
+  
+  // 🔥🔥🔥 新增：Artifact 编辑 Action（异步，支持持久化）
+  updateArtifactContent: (taskId: string, artifactId: string, newContent: string) => Promise<boolean>
 
   // 🔥 新增：Commander 规划 Actions
   startPlan: (data: PlanStartedData) => void
@@ -699,6 +702,91 @@ export const useTaskStore = create<TaskState>()(
         state.tasksCache = sortedTasks
         state.tasksCacheVersion++
       })
+    },
+
+    /**
+     * 🔥🔥🔥 更新 Artifact 内容（编辑模式 + 持久化）
+     * 用于用户直接修改 AI 生成的 Artifact
+     * 
+     * 流程：
+     * 1. 乐观更新：立即更新前端状态
+     * 2. API 调用：持久化到后端数据库
+     * 3. 错误回滚：如果 API 失败，恢复原状态
+     */
+    updateArtifactContent: async (taskId: string, artifactId: string, newContent: string): Promise<boolean> => {
+      const state = get()
+      const task = state.tasks.get(taskId)
+      if (!task) {
+        console.error('[TaskStore] Task not found:', taskId)
+        return false
+      }
+
+      const artifact = task.artifacts.find(a => a.id === artifactId)
+      if (!artifact) {
+        console.error('[TaskStore] Artifact not found:', artifactId)
+        return false
+      }
+
+      // 保存旧内容用于回滚
+      const oldContent = artifact.content
+
+      // 1. 乐观更新：立即更新前端状态
+      set((state) => {
+        const taskToUpdate = state.tasks.get(taskId)
+        if (!taskToUpdate) return
+
+        const artifactToUpdate = taskToUpdate.artifacts.find(a => a.id === artifactId)
+        if (!artifactToUpdate) return
+
+        artifactToUpdate.content = newContent
+        
+        // 更新缓存
+        state.tasksCache =
+          Array.from(state.tasks.values())
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map(task => ({
+              ...task,
+              artifacts: task.artifacts.map(a => ({...a}))
+            }))
+        state.tasksCacheVersion++
+      })
+
+      // 2. API 调用：持久化到后端
+      try {
+        const { updateArtifact } = await import('@/services/chat')
+        await updateArtifact({
+          artifactId,
+          content: newContent
+        })
+        console.log('[TaskStore] Artifact updated successfully:', artifactId)
+        return true
+      } catch (error) {
+        // 3. 错误回滚：恢复旧内容
+        console.error('[TaskStore] Failed to update artifact, rolling back:', error)
+        
+        set((state) => {
+          const taskToRollback = state.tasks.get(taskId)
+          if (!taskToRollback) return
+
+          const artifactToRollback = taskToRollback.artifacts.find(a => a.id === artifactId)
+          if (!artifactToRollback) return
+
+          artifactToRollback.content = oldContent
+          
+          // 恢复缓存
+          state.tasksCache =
+            Array.from(state.tasks.values())
+              .sort((a, b) => a.sort_order - b.sort_order)
+              .map(task => ({
+                ...task,
+                artifacts: task.artifacts.map(a => ({...a}))
+              }))
+          state.tasksCacheVersion++
+        })
+        
+        // 抛出错误让 UI 层处理提示
+        throw error
+      }
     },
 
     /**

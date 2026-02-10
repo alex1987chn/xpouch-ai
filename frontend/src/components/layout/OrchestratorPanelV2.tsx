@@ -10,7 +10,8 @@ import { useState, lazy, Suspense, memo, useCallback, useEffect, useRef } from '
 import { cn } from '@/lib/utils'
 import {
   Maximize2, FileCode,
-  Eye, Code2, Copy, Check, Loader2, CheckCircle2, Clock, XCircle
+  Eye, Code2, Copy, Check, Loader2, CheckCircle2, Clock, XCircle,
+  Edit3, Save, X
 } from 'lucide-react'
 import type { Task } from '@/store/taskStore'
 import type { Artifact } from '@/types'
@@ -23,6 +24,7 @@ import {
   useTasksCache,
   useSelectedTaskId,
   useSelectTaskAction,
+  useTaskActions,
 } from '@/hooks/useTaskSelectors'
 
 const CodeArtifact = lazy(() => import('@/components/artifacts/CodeArtifact').then(m => ({ default: m.default })))
@@ -73,7 +75,8 @@ function SimpleModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPanel
     <div className="flex-1 flex h-full bg-page">
       <ExpertRailSimple hasArtifact={!!currentArtifact} />
       <ArtifactDashboard 
-        expertName="AI" 
+        expertName="AI"
+        taskId={SIMPLE_TASK_ID}
         artifacts={artifacts} 
         selectedArtifact={currentArtifact} 
         selectedIndex={selectedIndex} 
@@ -113,6 +116,7 @@ function ComplexModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPane
       </Suspense>
       <ArtifactDashboard
         expertName={selectedTask?.expert_type || 'Expert'}
+        taskId={selectedTask?.id || ''}
         artifacts={selectedTask?.artifacts || []}
         selectedArtifact={currentArtifact}
         selectedIndex={selectedIndex}
@@ -144,6 +148,7 @@ function ExpertRailSimple({ hasArtifact }: { hasArtifact: boolean }) {
 // Artifact Dashboard
 interface ArtifactDashboardProps {
   expertName: string
+  taskId: string
   artifacts: Artifact[]
   selectedArtifact: Artifact | null
   selectedIndex: number
@@ -205,7 +210,7 @@ function TaskStatusIndicator() {
   )
 }
 
-function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIndex, 
+function ArtifactDashboard({ expertName, taskId, artifacts, selectedArtifact, selectedIndex, 
   onSelectArtifact, isFullscreen, onToggleFullscreen }: ArtifactDashboardProps) {
   const tabsRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
@@ -300,7 +305,8 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
             <EmptyState variant="detailed" />
           ) : (
             <ArtifactContent 
-              artifact={selectedArtifact} 
+              artifact={selectedArtifact}
+              taskId={taskId}
               onToggleFullscreen={onToggleFullscreen}
               isFullscreen={isFullscreen}
             />
@@ -324,14 +330,21 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
 // Artifact content rendering
 interface ArtifactContentProps {
   artifact: Artifact
+  taskId: string
   onToggleFullscreen?: () => void
   isFullscreen?: boolean
 }
 
-function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: ArtifactContentProps) {
+function ArtifactContent({ artifact, taskId, onToggleFullscreen, isFullscreen }: ArtifactContentProps) {
   const [viewMode, setViewMode] = useState<'code' | 'preview'>(artifact.type === 'html' ? 'preview' : 'code')
   const [copied, setCopied] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState(artifact.content)
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  const { updateArtifactContent } = useTaskActions()
 
   const handleCopy = useCallback(async () => {
     const text = artifact?.content || ''
@@ -350,6 +363,31 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
     }
   }, [artifact])
 
+  const handleEdit = useCallback(() => {
+    setEditContent(artifact.content)
+    setSaveError(null)
+    setIsEditing(true)
+  }, [artifact.content])
+
+  const handleSave = useCallback(async () => {
+    setIsSaving(true)
+    setSaveError(null)
+    try {
+      await updateArtifactContent(taskId, artifact.id, editContent)
+      setIsEditing(false)
+    } catch (err: any) {
+      setSaveError(err.message || '保存失败')
+    } finally {
+      setIsSaving(false)
+    }
+  }, [taskId, artifact.id, editContent, updateArtifactContent])
+
+  const handleCancel = useCallback(() => {
+    setIsEditing(false)
+    setSaveError(null)
+    setEditContent(artifact.content)
+  }, [artifact.content])
+
   useEffect(() => {
     return () => {
       if (copyTimerRef.current) {
@@ -358,7 +396,15 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
     }
   }, [])
 
-  const canPreview = true
+  // Update edit content when artifact changes externally
+  useEffect(() => {
+    if (!isEditing) {
+      setEditContent(artifact.content)
+    }
+  }, [artifact.content, isEditing])
+
+  const canPreview = !isEditing && artifact.type !== 'text'
+  const canEdit = artifact.type === 'code' || artifact.type === 'markdown' || artifact.type === 'text'
 
   const ArtifactLoader = () => (
     <div className="h-full flex items-center justify-center">
@@ -383,57 +429,104 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
           <div className="flex items-center gap-1 text-[10px] font-mono text-primary uppercase">
             <FileCode className="w-3 h-3 text-accent" />
             <span className="font-bold">
-              {artifact.language || artifact.type}
+              {isEditing ? 'Editing' : (artifact.language || artifact.type)}
             </span>
           </div>
         </div>
 
         {/* Right toolbar buttons */}
         <div className="flex items-center gap-1">
-          {canPreview && (
+          {isEditing ? (
             <>
               <button
-                onClick={() => setViewMode('code')}
+                onClick={handleSave}
+                disabled={isSaving}
                 className={cn(
                   "w-7 h-7 flex items-center justify-center border-2 transition-all",
-                  viewMode === 'code'
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+                  isSaving 
+                    ? "bg-green-400 text-white border-green-400 cursor-not-allowed"
+                    : "bg-green-600 text-white border-green-600 hover:bg-green-700"
                 )}
-                title="Code"
+                title={isSaving ? "Saving..." : "Save"}
               >
-                <Code2 className="w-3.5 h-3.5" />
+                {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               </button>
               <button
-                onClick={() => setViewMode('preview')}
+                onClick={handleCancel}
+                disabled={isSaving}
                 className={cn(
                   "w-7 h-7 flex items-center justify-center border-2 transition-all",
-                  viewMode === 'preview'
-                    ? "bg-primary text-primary-foreground border-primary"
+                  isSaving
+                    ? "bg-panel text-muted-foreground border-border cursor-not-allowed"
+                    : "bg-panel text-primary border-border hover:border-red-500 hover:text-red-500"
+                )}
+                title="Cancel"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+              <div className="w-px h-4 bg-border/50 mx-1" />
+            </>
+          ) : (
+            <>
+              {canEdit && (
+                <>
+                  <button
+                    onClick={handleEdit}
+                    className={cn(
+                      "w-7 h-7 flex items-center justify-center border-2 transition-all",
+                      "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+                    )}
+                    title="Edit"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="w-px h-4 bg-border/50 mx-1" />
+                </>
+              )}
+              {canPreview && (
+                <>
+                  <button
+                    onClick={() => setViewMode('code')}
+                    className={cn(
+                      "w-7 h-7 flex items-center justify-center border-2 transition-all",
+                      viewMode === 'code'
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+                    )}
+                    title="Code"
+                  >
+                    <Code2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('preview')}
+                    className={cn(
+                      "w-7 h-7 flex items-center justify-center border-2 transition-all",
+                      viewMode === 'preview'
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+                    )}
+                    title="Preview"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="w-px h-4 bg-border/50 mx-1" />
+                </>
+              )}
+              <button
+                onClick={handleCopy}
+                className={cn(
+                  "w-7 h-7 flex items-center justify-center border-2 transition-all",
+                  copied
+                    ? "bg-green-500 text-white border-green-500"
                     : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
                 )}
-                title="Preview"
+                title={copied ? 'Copied' : 'Copy'}
               >
-                <Eye className="w-3.5 h-3.5" />
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
               <div className="w-px h-4 bg-border/50 mx-1" />
             </>
           )}
-
-          <button
-            onClick={handleCopy}
-            className={cn(
-              "w-7 h-7 flex items-center justify-center border-2 transition-all",
-              copied
-                ? "bg-green-500 text-white border-green-500"
-                : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
-            )}
-            title={copied ? 'Copied' : 'Copy'}
-          >
-            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-          </button>
-
-          <div className="w-px h-4 bg-border/50 mx-1" />
 
           <button
             onClick={onToggleFullscreen}
@@ -452,7 +545,28 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
 
       {/* Content area */}
       <div className="flex-1 overflow-hidden min-h-0 min-w-0 relative">
-        {viewMode === 'code' ? (
+        {isEditing ? (
+          <div className="h-full w-full flex flex-col">
+            {/* Error message */}
+            {saveError && (
+              <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
+                <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
+                  <XCircle className="w-3.5 h-3.5" />
+                  <span>{saveError}</span>
+                </div>
+              </div>
+            )}
+            <div className="flex-1 bg-gray-50 dark:bg-gray-900">
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                disabled={isSaving}
+                className="w-full h-full p-4 font-mono text-sm bg-transparent border-0 resize-none focus:outline-none focus:ring-0 text-gray-900 dark:text-gray-100 disabled:opacity-50"
+                spellCheck={false}
+              />
+            </div>
+          </div>
+        ) : viewMode === 'code' ? (
           <Suspense fallback={<ArtifactLoader />}>
             <div className="h-full w-full overflow-auto bauhaus-scrollbar p-0">
               <CodeArtifact content={artifact.content} language={artifact.language || artifact.type} className="h-full" />
