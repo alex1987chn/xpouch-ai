@@ -1,13 +1,29 @@
+/**
+ * OrchestratorPanelV2 - Performance Optimized (v3.6)
+ * 
+ * [优化说明]
+ * - 使用 Zustand Selectors 避免不必要的重渲染
+ * - 当 AI 生成回复时，面板保持静止（不触发 Render）
+ */
+
 import { useState, lazy, Suspense, memo, useCallback, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import {
   Maximize2, FileCode,
   Eye, Code2, Copy, Check, Loader2, CheckCircle2, Clock, XCircle
 } from 'lucide-react'
-import { useTaskStore } from '@/store/taskStore'
-import type { Artifact, Task } from '@/store/taskStore'
+import type { Task } from '@/store/taskStore'
+import type { Artifact } from '@/types'
 import { SIMPLE_TASK_ID } from '@/constants/task'
 import EmptyState from '@/components/chat/EmptyState'
+
+// Performance Optimized Selectors (v3.6)
+import {
+  useTaskMode,
+  useTasksCache,
+  useSelectedTaskId,
+  useSelectTaskAction,
+} from '@/hooks/useTaskSelectors'
 
 const CodeArtifact = lazy(() => import('@/components/artifacts/CodeArtifact').then(m => ({ default: m.default })))
 const DocArtifact = lazy(() => import('@/components/artifacts/DocArtifact').then(m => ({ default: m.default })))
@@ -34,21 +50,21 @@ const StatusIcon = memo(({ status }: { status: string }) => {
 })
 
 export default function OrchestratorPanelV2({ isFullscreen, onToggleFullscreen }: OrchestratorPanelV2Props) {
-  const mode = useTaskStore((state) => state.mode)
+  const mode = useTaskMode()
   return mode === 'complex'
     ? <ComplexModePanel {...{ isFullscreen, onToggleFullscreen }} />
     : <SimpleModePanel {...{ isFullscreen, onToggleFullscreen }} />
 }
 
-// Simple 模式 - 使用 taskStore 承载预览内容
+// Simple Mode - uses taskStore to carry preview content
 function SimpleModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPanelV2Props) {
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const tasks = useTaskStore((state) => state.tasksCache)
+  const tasks = useTasksCache()
   const selectedTask = tasks.find(t => t.id === SIMPLE_TASK_ID)
   const artifacts = selectedTask?.artifacts || []
   const currentArtifact = artifacts[selectedIndex] || null
 
-  // 当切换任务时重置选中索引
+  // Reset selected index when task changes
   useEffect(() => {
     setSelectedIndex(0)
   }, [selectedTask?.id])
@@ -57,7 +73,6 @@ function SimpleModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPanel
     <div className="flex-1 flex h-full bg-page">
       <ExpertRailSimple hasArtifact={!!currentArtifact} />
       <ArtifactDashboard 
- 
         expertName="AI" 
         artifacts={artifacts} 
         selectedArtifact={currentArtifact} 
@@ -69,15 +84,24 @@ function SimpleModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPanel
   )
 }
 
-// Complex 模式
+// Complex Mode
 function ComplexModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPanelV2Props) {
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const selectedTaskId = useTaskStore((state) => state.selectedTaskId)
-  const selectTask = useTaskStore((state) => state.selectTask)
-  const tasks = useTaskStore((state) => state.tasksCache)
+  
+  // Performance Optimized Selectors
+  const selectedTaskId = useSelectedTaskId()
+  const selectTask = useSelectTaskAction()
+  const tasks = useTasksCache()
+  
+  // Compute selected task from cache
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null
 
-  useEffect(() => { if (tasks.length && !selectedTaskId) selectTask(tasks[0].id) }, [tasks, selectedTaskId, selectTask])
+  // Auto-select first task if none selected
+  useEffect(() => { 
+    if (tasks.length && !selectedTaskId) selectTask(tasks[0].id) 
+  }, [tasks, selectedTaskId, selectTask])
+  
+  // Reset index when task changes
   useEffect(() => setSelectedIndex(0), [selectedTaskId])
 
   const currentArtifact = selectedTask?.artifacts[selectedIndex] || null
@@ -88,7 +112,6 @@ function ComplexModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPane
         <BusRail tasks={tasks} selectedTaskId={selectedTaskId} onTaskClick={selectTask} />
       </Suspense>
       <ArtifactDashboard
- 
         expertName={selectedTask?.expert_type || 'Expert'}
         artifacts={selectedTask?.artifacts || []}
         selectedArtifact={currentArtifact}
@@ -100,7 +123,7 @@ function ComplexModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPane
   )
 }
 
-// 专家轨道 - Simple
+// Expert Rail - Simple
 function ExpertRailSimple({ hasArtifact }: { hasArtifact: boolean }) {
   return (
     <div className="w-14 border-r-2 border-border bg-page flex flex-col items-center py-2 shrink-0">
@@ -118,7 +141,7 @@ function ExpertRailSimple({ hasArtifact }: { hasArtifact: boolean }) {
   )
 }
 
-// Artifact 仪表盘
+// Artifact Dashboard
 interface ArtifactDashboardProps {
   expertName: string
   artifacts: Artifact[]
@@ -129,13 +152,13 @@ interface ArtifactDashboardProps {
   onToggleFullscreen?: () => void
 }
 
-// 任务状态指示器 - 显示在 Level 1 右侧
+// Task Status Indicator - shown on the right side of Level 1
 function TaskStatusIndicator() {
-  const runningTask = useTaskStore((state) => {
-    const tasks = state.tasksCache
-    return tasks.find((t) => t.status === 'running')
-  })
-  const mode = useTaskStore((state) => state.mode)
+  const mode = useTaskMode()
+  const tasks = useTasksCache()
+  
+  // Compute running task from cache
+  const runningTask = tasks.find((t) => t.status === 'running')
 
   if (mode === 'simple') {
     return (
@@ -149,7 +172,7 @@ function TaskStatusIndicator() {
   }
 
   if (!runningTask) {
-    const allCompleted = useTaskStore.getState().tasksCache.every(
+    const allCompleted = tasks.every(
       (t) => t.status === 'completed' || t.status === 'failed'
     )
     return (
@@ -168,18 +191,15 @@ function TaskStatusIndicator() {
 
   return (
     <div className="flex items-center gap-2 text-xs font-mono">
-      {/* 呼吸灯 */}
       <span className="relative flex h-2 w-2 shrink-0">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
         <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
       </span>
       
-      {/* 专家名称 - 移动端更短 */}
       <span className="text-primary truncate max-w-[80px] sm:max-w-[150px]">
         {runningTask.expert_type}
       </span>
       
-      {/* 状态 - 移动端隐藏文字，只显示灯 */}
       <span className="text-muted-foreground hidden sm:inline">running</span>
     </div>
   )
@@ -213,9 +233,9 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
 
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-page overflow-hidden">
-      {/* Tab 栏 - 左右分栏：左侧 Tabs，右侧状态 */}
+      {/* Tab bar - left/right split: left Tabs, right status */}
       <div className="h-10 flex items-center border-b-2 border-border bg-panel shrink-0 px-2">
-        {/* 左侧：Tabs 区域（自适应 + 可滚动） */}
+        {/* Left: Tabs area (adaptive + scrollable) */}
         <div className="flex-1 flex items-center gap-1 min-w-0 overflow-hidden">
           {canScrollLeft && (
             <button onClick={scrollLeft} className="h-7 w-6 flex items-center justify-center bg-panel border-2 border-border hover:bg-card shrink-0">
@@ -234,7 +254,7 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
           
           <div ref={tabsRef} className="flex-1 flex items-end gap-1 overflow-x-auto scrollbar-hide min-w-0">
             {artifacts.length === 0 ? (
-              <div className="h-7 px-4 flex items-center text-muted-foreground/60 text-xs font-mono">等待交付物...</div>
+              <div className="h-7 px-4 flex items-center text-muted-foreground/60 text-xs font-mono">Waiting...</div>
             ) : (
               artifacts.map((artifact, idx) => (
                 <button
@@ -266,13 +286,13 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
           )}
         </div>
         
-        {/* 右侧：任务状态指示器（固定不动） */}
+        {/* Right: Task status indicator (fixed) */}
         <div className="flex-none flex items-center pl-3 ml-2 border-l border-border/50 shrink-0">
           <TaskStatusIndicator />
         </div>
       </div>
 
-      {/* 内容区 - 使用主题滚动条 */}
+      {/* Content area */}
       <div className="flex-1 bg-card p-4 overflow-hidden relative min-h-0 min-w-0">
         <div className="absolute inset-0 dot-grid opacity-30 pointer-events-none" />
         <div className="absolute inset-4 border border-border bg-card shadow-sm flex flex-col overflow-hidden min-w-0">
@@ -288,7 +308,7 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
         </div>
       </div>
 
-      {/* 底部状态栏 */}
+      {/* Bottom status bar */}
       <div className="bg-primary text-primary-foreground border-t-2 border-border px-3 py-1.5 flex justify-between items-center text-[9px] font-mono shrink-0">
         <div className="flex gap-4">
           <span>CPU: 12%</span>
@@ -301,7 +321,7 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
   )
 }
 
-// Artifact 内容渲染
+// Artifact content rendering
 interface ArtifactContentProps {
   artifact: Artifact
   onToggleFullscreen?: () => void
@@ -317,7 +337,6 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
     const text = artifact?.content || ''
     if (!text) return
 
-    // 清除之前的 timer
     if (copyTimerRef.current) {
       clearTimeout(copyTimerRef.current)
     }
@@ -327,11 +346,10 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
       setCopied(true)
       copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
     } catch (err) {
-      console.error('Copy failed:', err)
+      // Silent fail
     }
   }, [artifact])
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (copyTimerRef.current) {
@@ -340,23 +358,21 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
     }
   }, [])
 
-  // 👈 所有文本类型都支持预览（统一 header 按钮）
   const canPreview = true
 
   const ArtifactLoader = () => (
     <div className="h-full flex items-center justify-center">
       <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
         <div className="w-2 h-2 bg-accent animate-pulse" />
-        <span>加载中...</span>
+        <span>Loading...</span>
       </div>
     </div>
   )
 
   return (
     <div className="h-full flex flex-col">
-      {/* 工具栏 - Bauhaus 工业风格 */}
+      {/* Toolbar - Bauhaus industrial style */}
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border bg-panel shrink-0">
-        {/* 左侧装饰性图标 */}
         <div className="flex items-center gap-2">
           <div className="flex items-end gap-1">
             <div className="w-3 h-3 bg-accent border border-border" />
@@ -366,14 +382,13 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
           <div className="w-px h-4 bg-border mx-1" />
           <div className="flex items-center gap-1 text-[10px] font-mono text-primary uppercase">
             <FileCode className="w-3 h-3 text-accent" />
-            {/* 🔥 显示具体语言而非仅 type（如 python 而非 code） */}
             <span className="font-bold">
               {artifact.language || artifact.type}
             </span>
           </div>
         </div>
 
-        {/* 右侧工具按钮 - 无文字 */}
+        {/* Right toolbar buttons */}
         <div className="flex items-center gap-1">
           {canPreview && (
             <>
@@ -385,7 +400,7 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
                 )}
-                title="代码"
+                title="Code"
               >
                 <Code2 className="w-3.5 h-3.5" />
               </button>
@@ -397,7 +412,7 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
                 )}
-                title="预览"
+                title="Preview"
               >
                 <Eye className="w-3.5 h-3.5" />
               </button>
@@ -413,7 +428,7 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
                 ? "bg-green-500 text-white border-green-500"
                 : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
             )}
-            title={copied ? '已复制' : '复制'}
+            title={copied ? 'Copied' : 'Copy'}
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
@@ -428,14 +443,14 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
                 ? "bg-primary text-primary-foreground border-primary"
                 : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
             )}
-            title={isFullscreen ? '退出全屏' : '全屏'}
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* 内容区域 - 确保不会溢出 */}
+      {/* Content area */}
       <div className="flex-1 overflow-hidden min-h-0 min-w-0 relative">
         {viewMode === 'code' ? (
           <Suspense fallback={<ArtifactLoader />}>
@@ -446,14 +461,13 @@ function ArtifactContent({ artifact, onToggleFullscreen, isFullscreen }: Artifac
         ) : (
           <Suspense fallback={<ArtifactLoader />}>
             <div className="h-full w-full overflow-auto bauhaus-scrollbar p-4">
-              {/* 👈 所有文本类型的预览渲染 */}
               {artifact.type === 'html' ? (
                 <HtmlArtifact content={artifact.content} className="h-full" />
               ) : artifact.type === 'markdown' || artifact.content.includes('#') || artifact.content.includes('**') ? (
                 <DocArtifact 
                   content={artifact.content} 
                   className="h-full" 
-                  isStreaming={artifact.isStreaming}  // 🔥 传递流式状态
+                  isStreaming={artifact.isStreaming}
                 />
               ) : (
                 <CodeArtifact content={artifact.content} language={artifact.language || artifact.type} className="h-full" />

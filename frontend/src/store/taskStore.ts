@@ -21,7 +21,7 @@ import type {
   ArtifactChunkData,
   ArtifactCompletedData
 } from '@/types/events'
-import type { SubTask, TaskSession as ApiTaskSession, Artifact as BaseArtifact } from '@/types'
+import type { SubTask, TaskSession as ApiTaskSession, Artifact } from '@/types'
 
 // 启用 Immer 的 Map/Set 支持（必须在 create 之前调用）
 enableMapSet()
@@ -75,14 +75,8 @@ export interface Task extends TaskInfo {
   artifacts: Artifact[]
 }
 
-/**
- * TaskStore 扩展的 Artifact 类型
- * 基于 types/index.ts 的 Artifact 扩展必要字段
- */
-export interface Artifact extends BaseArtifact {
-  sortOrder: number
-  createdAt: string
-}
+// 使用 @/types 中统一的 Artifact 类型
+// 注意：Artifact 中的 sortOrder 和 createdAt 是可选的，使用时确保赋值
 
 export interface TaskSession {
   sessionId: string
@@ -406,8 +400,8 @@ export const useTaskStore = create<TaskState>()(
               createdAt: new Date().toISOString()
             })
           }
-          // 按 sortOrder 排序
-          task.artifacts.sort((a, b) => a.sortOrder - b.sortOrder)
+          // 按 sortOrder 排序（提供默认值 0）
+          task.artifacts.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
         }
         // 自动选中该任务（只在未选中或选中不同任务时更新，避免无限循环）
         if (state.selectedTaskId !== data.task_id) {
