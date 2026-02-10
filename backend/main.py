@@ -63,14 +63,18 @@ async def lifespan(app: FastAPI):
     # 创建数据库表
     create_db_and_tables()
 
-    # 🔥🔥🔥 v3.5: 初始化 LangGraph Checkpointer 表 (HITL 支持)
+    # 🔥🔥🔥 v3.5: 检查 LangGraph Checkpointer 表
+    # 注意：Checkpoint 表由 migrations/checkpoint_tables.sql 创建，支持复杂模式
     from utils.db import init_checkpointer_tables
     try:
         await init_checkpointer_tables()
-        print("[Lifespan] Checkpointer tables initialized for HITL")
+        print("[Lifespan] Checkpointer tables verified for HITL")
     except Exception as e:
-        print(f"[Lifespan WARN] Failed to init checkpointer tables: {e}")
+        print(f"[Lifespan WARN] Failed to verify checkpointer tables: {e}")
         # 非致命错误，继续启动
+        print("[Lifespan INFO] Run migrations if complex mode is not working:")
+        print("              - Linux/macOS: cd backend/migrations && ./run_all_migrations.sh")
+        print("              - Windows: cd backend/migrations && .\\run_all_migrations.ps1")
 
     # 初始化系统专家数据
     from expert_config import EXPERT_DEFAULTS
