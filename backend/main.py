@@ -25,8 +25,7 @@ from typing import List, Optional
 import json
 import uvicorn
 from datetime import datetime
-from uuid import uuid4
-
+import uuid
 from sqlmodel import Session, select
 from contextlib import asynccontextmanager
 
@@ -63,7 +62,7 @@ async def lifespan(app: FastAPI):
     # 创建数据库表
     create_db_and_tables()
 
-    # 🔥🔥🔥 v3.5: 检查 LangGraph Checkpointer 表
+    # 🔥🔥🔥 v3.1.0: 检查 LangGraph Checkpointer 表
     # 注意：Checkpoint 表由 migrations/checkpoint_tables.sql 创建，支持复杂模式
     from utils.db import init_checkpointer_tables
     try:
@@ -300,7 +299,7 @@ async def chat_invoke_endpoint(
     # 4. 创建 TaskSession 记录
     from langchain_core.messages import HumanMessage
     
-    thread_id = request.thread_id or str(uuid4())
+    thread_id = request.thread_id or str(uuid.uuid4())
     task_session = TaskSession(
         session_id=thread_id,
         user_query=request.message,
@@ -388,7 +387,7 @@ async def chat_invoke_endpoint(
             print(f"[DIRECT MODE] 直接调用专家: {request.agent_id}")
 
             subtask_dict = {
-                "id": str(uuid4()),
+                "id": str(uuid.uuid4()),
                 "expert_type": request.agent_id,
                 "description": request.message,
                 "input_data": {},

@@ -395,8 +395,8 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         # 🔥 生成或复用 artifact_id
         if artifact_id is None:
             # 非流式模式：生成新的 artifact_id
-            from uuid import uuid4
-            artifact_id = str(uuid4())
+            import uuid
+            artifact_id = str(uuid.uuid4())
 
         # ✅ 构建 artifact 对象（符合 ArtifactCreate 模型）
         # 🔥 关键：包含 artifact_id，确保与流式过程中的 ID 一致
@@ -582,12 +582,12 @@ async def _handle_streaming_response(
     Returns:
         tuple: (AIMessage response, artifact_id, full_content)
     """
-    from uuid import uuid4
+    import uuid
     from langchain_core.messages import AIMessage
     from utils.event_generator import event_artifact_start, event_artifact_chunk, sse_event_to_string
     
     # 🔥 Step 1: 预生成 artifact_id（保证整个流程 ID 一致）
-    artifact_id = str(uuid4())
+    artifact_id = str(uuid.uuid4())
     
     # 预设 artifact 类型（基于专家类型推断）
     type_mapping = {

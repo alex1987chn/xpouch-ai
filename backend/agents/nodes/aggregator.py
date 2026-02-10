@@ -5,7 +5,7 @@ Aggregator 节点 - 结果聚合器
 v3.2 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
 """
 from typing import Dict, Any, List
-from uuid import uuid4
+import uuid
 from langchain_core.messages import SystemMessage, HumanMessage
 from sqlmodel import Session
 
@@ -35,7 +35,7 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
     task_session_id = state.get("task_session_id")
     event_queue = state.get("event_queue", [])
     # v3.0: 获取前端传递的 message_id（如果有的话）
-    message_id = state.get("message_id", str(uuid4()))
+    message_id = state.get("message_id", str(uuid.uuid4()))
     thread_id = state.get("thread_id")  # 🔥 用于保存消息到正确线程
     
     # 🔥🔥🔥 v3.3: 获取共享队列 (Side Channel) 用于实时流式推送

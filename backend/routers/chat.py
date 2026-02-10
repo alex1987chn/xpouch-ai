@@ -6,9 +6,9 @@ import os
 import json
 import re
 import asyncio  # 新增：用于心跳保活
+import uuid
 from datetime import datetime
 from typing import List, Optional, AsyncGenerator, Dict, Any
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
@@ -276,7 +276,7 @@ async def chat_endpoint(
 
     if not thread:
         if not thread_id:
-            thread_id = str(uuid4())
+            thread_id = str(uuid.uuid.uuid.uuid4())
 
         # 兜底逻辑：如果 agentId 为 None、null 或空字符串，强制赋值为系统默认助手
         if not request.agentId or request.agentId.strip() == "":
@@ -420,7 +420,7 @@ async def _handle_custom_agent_stream(
     async def event_generator():
         full_response = ""
         # v3.0: 确保使用一致的 message_id
-        actual_message_id = message_id or str(uuid4())
+        actual_message_id = message_id or str(uuid.uuid.uuid4())
 
         # 🔥🔥🔥 新增：心跳间隔（15秒）远小于 Cloudflare 的 100秒超时 🔥🔥🔥
         HEARTBEAT_INTERVAL = 15.0
@@ -518,7 +518,7 @@ async def _handle_custom_agent_stream(
                                 message_id=actual_message_id,
                                 content=content
                             ),
-                            str(uuid4())
+                            str(uuid.uuid.uuid4())
                         )
                         from utils.event_generator import sse_event_to_string
                         yield sse_event_to_string(delta_event)
@@ -548,7 +548,7 @@ async def _handle_custom_agent_stream(
             error_event = build_sse_event(
                 EventType.ERROR,
                 ErrorData(code="STREAM_ERROR", message=str(e)),
-                str(uuid4())
+                str(uuid.uuid.uuid4())
             )
             yield sse_event_to_string(error_event)
 
@@ -565,7 +565,7 @@ async def _handle_custom_agent_stream(
                 full_content=clean_content,  # 使用清理后的内容
                 thinking=thinking_data  # 包含 thinking 数据
             ),
-            str(uuid4())
+            str(uuid.uuid.uuid4())
         )
         from utils.event_generator import sse_event_to_string
         yield sse_event_to_string(done_event)
@@ -696,7 +696,7 @@ async def _handle_langgraph_stream(
     只发送新协议事件：plan.created, task.started, task.completed, artifact.generated, message.delta, message.done
     
     新增：添加心跳保活机制防止 Cloudflare/CDN 超时断开连接
-    v3.5 更新：使用 AsyncPostgresSaver 实现 HITL (Human-in-the-Loop) 持久化
+    v3.1.0 更新：使用 AsyncPostgresSaver 实现 HITL (Human-in-the-Loop) 持久化
     """
     async def event_generator():
         full_response = ""
@@ -714,20 +714,20 @@ async def _handle_langgraph_stream(
         initial_state["event_queue"] = []
         initial_state["message_id"] = message_id  # v3.0: 注入前端传递的助手消息 ID
 
-        # 🔥🔥🔥 v3.4: Shared Queue 模式 - 创建共享队列用于 Commander 实时流式输出
+        # 🔥🔥🔥 v3.1.0: Shared Queue 模式 - 创建共享队列用于 Commander 实时流式输出
         stream_queue = asyncio.Queue()
         
         # 🔥🔥🔥 新增：心跳间隔（15秒）远小于 Cloudflare 的 100秒超时 🔥🔥🔥
         HEARTBEAT_INTERVAL = 15.0
 
         print(f"[LANGGRAPH STREAM] {datetime.now().isoformat()} - 开始流式处理，心跳间隔={HEARTBEAT_INTERVAL}秒，强制心跳间隔=30.0秒")
-        print(f"[LANGGRAPH STREAM] v3.5 HITL 模式已启用 (AsyncPostgresSaver)")
+        print(f"[LANGGRAPH STREAM] v3.1.0 HITL 模式已启用 (AsyncPostgresSaver)")
 
         # 🔥 强制心跳计时器（每 30 秒强制发送一次心跳，不管有没有事件）
         FORCE_HEARTBEAT_INTERVAL = 30.0
         last_heartbeat_time = datetime.now()
 
-        # 🔥🔥🔥 v3.5: HITL (Human-in-the-Loop) 支持
+        # 🔥🔥🔥 v3.1.0: HITL (Human-in-the-Loop) 支持
         # 使用 AsyncPostgresSaver 实现状态持久化
         
         # 1. 定义生产者任务 (Producer) - 在后台运行 Graph
@@ -736,7 +736,7 @@ async def _handle_langgraph_stream(
             graph = None
             config = None
             try:
-                # 🔥🔥🔥 v3.5: 创建 AsyncPostgresSaver 实现持久化
+                # 🔥🔥🔥 v3.1.0: 创建 AsyncPostgresSaver 实现持久化
                 async with get_db_connection() as conn:
                     checkpointer = AsyncPostgresSaver(conn)
                     
@@ -764,7 +764,7 @@ async def _handle_langgraph_stream(
                         # 将事件放入队列，让主循环处理
                         await stream_queue.put({"type": "graph_event", "event": event})
                     
-                    # 🔥🔥🔥 v3.5 HITL: 检查是否因中断而停止
+                    # 🔥🔥🔥 v3.1.0 HITL: 检查是否因中断而停止
                     # 使用相同的 config 获取 state snapshot
                     snapshot = await graph.aget_state(config)
                     if snapshot.next:  # 如果 next 不为空，说明任务未完成但停止了 -> 处于 Pause 状态
@@ -846,14 +846,14 @@ async def _handle_langgraph_stream(
                         print(f"[CONSUMER] 已处理 {event_count} 个事件")
                 
                 elif token.get("type") == "sse":
-                    # 🔥🔥🔥 v3.4: Commander 直接通过 queue 发送的 SSE 事件
+                    # 🔥🔥🔥 v3.1.0: Commander 直接通过 queue 发送的 SSE 事件
                     # 这是实时流式思考内容 (plan.thinking)
                     print(f"[CONSUMER] 📤 yield SSE 事件: {token['event'][:100]}...")
                     yield token["event"]
                     continue
                 
                 elif token.get("type") == "hitl_interrupt":
-                    # 🔥🔥🔥 v3.5 HITL: 人类审核中断事件
+                    # 🔥🔥🔥 v3.1.0 HITL: 人类审核中断事件
                     interrupt_data = token.get("data", {})
                     print(f"[CONSUMER] 🔴 HITL 中断事件: {interrupt_data.get('type')}")
                     
@@ -935,7 +935,7 @@ async def _handle_langgraph_stream(
                                     print(f"[CONSUMER] 已更新 thread 为 complex 模式")
                                 
                                 # 🔥🔥🔥 关键：预生成 session_id 并立即发送 plan.started
-                                preview_session_id = str(uuid4())
+                                preview_session_id = str(uuid.uuid.uuid4())
                                 from utils.event_generator import event_plan_started, sse_event_to_string
                                 plan_started_event = event_plan_started(
                                     session_id=preview_session_id,
@@ -954,7 +954,7 @@ async def _handle_langgraph_stream(
                             router_event = build_sse_event(
                                 EventType.ROUTER_DECISION,
                                 RouterDecisionData(decision=router_decision),
-                                str(uuid4())
+                                str(uuid.uuid.uuid4())
                             )
                             from utils.event_generator import sse_event_to_string
                             yield sse_event_to_string(router_event)
@@ -964,8 +964,8 @@ async def _handle_langgraph_stream(
                         from event_types.events import EventType, MessageDoneData, build_sse_event
                         done_event = build_sse_event(
                             EventType.MESSAGE_DONE,
-                            MessageDoneData(message_id=message_id or str(uuid4()), full_content=full_response),
-                            str(uuid4())
+                            MessageDoneData(message_id=message_id or str(uuid.uuid.uuid4()), full_content=full_response),
+                            str(uuid.uuid.uuid4())
                         )
                         from utils.event_generator import sse_event_to_string
                         yield sse_event_to_string(done_event)
@@ -979,15 +979,15 @@ async def _handle_langgraph_stream(
                             from event_types.events import EventType, MessageDeltaData, build_sse_event
                             delta_event = build_sse_event(
                                 EventType.MESSAGE_DELTA,
-                                MessageDeltaData(message_id=message_id or str(uuid4()), content=content),
-                                str(uuid4())
+                                MessageDeltaData(message_id=message_id or str(uuid.uuid.uuid4()), content=content),
+                                str(uuid.uuid.uuid4())
                             )
                             from utils.event_generator import sse_event_to_string
                             yield sse_event_to_string(delta_event)
 
             print(f"[CONSUMER] 流式处理完成，共处理 {event_count} 个事件")
             
-            # 🔥🔥🔥 v3.4: 确保生产者任务完成
+            # 🔥🔥🔥 v3.1.0: 确保生产者任务完成
             if producer_task and not producer_task.done():
                 try:
                     await asyncio.wait_for(producer_task, timeout=5.0)
@@ -1005,7 +1005,7 @@ async def _handle_langgraph_stream(
             error_event = build_sse_event(
                 EventType.ERROR,
                 ErrorData(code="STREAM_ERROR", message=str(e)),
-                str(uuid4())
+                str(uuid.uuid.uuid4())
             )
             yield sse_event_to_string(error_event)
 
@@ -1121,8 +1121,8 @@ async def _handle_langgraph_sync(
     user_message: str,
     session: Session
 ) -> dict:
-    """处理 LangGraph 非流式响应 (v3.5 HITL 支持)"""
-    # 🔥🔥🔥 v3.5: 使用 AsyncPostgresSaver 实现持久化
+    """处理 LangGraph 非流式响应 (v3.1.0 HITL 支持)"""
+    # 🔥🔥🔥 v3.1.0: 使用 AsyncPostgresSaver 实现持久化
     async with get_db_connection() as conn:
         checkpointer = AsyncPostgresSaver(conn)
         graph = create_smart_router_workflow(checkpointer=checkpointer)
@@ -1153,7 +1153,7 @@ async def _handle_langgraph_sync(
 
         # 创建 TaskSession
         task_session = TaskSession(
-            session_id=str(uuid4()),
+            session_id=str(uuid.uuid.uuid4()),
             thread_id=thread_id,
             user_query=user_message,
             status="completed",
@@ -1372,7 +1372,7 @@ async def resume_chat(
                         execution_mode="sequential",
                         summary=f"恢复执行 {len(plan_tasks)} 个任务"
                     ),
-                    str(uuid4())
+                    str(uuid.uuid.uuid4())
                 )
                 await sse_queue.put({
                     "type": "sse",

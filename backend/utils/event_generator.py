@@ -5,8 +5,7 @@ SSE 事件生成器
 
 from typing import Optional, List, Dict, Any, AsyncGenerator
 from datetime import datetime
-from uuid import uuid4
-
+import uuid
 from event_types.events import (
     EventType, SSEEvent,
     PlanCreatedData, PlanStartedData, PlanThinkingData,  # 🔥 新增
@@ -33,7 +32,7 @@ class EventGenerator:
     def _next_event_id(self) -> str:
         """生成下一个事件ID"""
         self._event_counter += 1
-        return f"evt_{self._event_counter}_{uuid4().hex[:8]}"
+        return f"evt_{self._event_counter}_{uuid.uuid4().hex[:8]}"
     
     # ========================================================================
     # 规划阶段事件
