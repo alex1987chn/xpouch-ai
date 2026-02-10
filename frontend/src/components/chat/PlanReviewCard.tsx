@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useCallback } from 'react'
+import { Trash2, Edit3, CheckCircle2, XCircle, Play, Loader2 } from 'lucide-react'
 import type { Task } from '@/store/taskStore'
 import type { ResumeChatParams } from '@/services/chat'
 
@@ -188,12 +189,14 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
       {/* Title */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-2xl">Stop</span>
+          <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
+            <span className="text-white font-bold text-sm">STOP</span>
+          </div>
           <h3 className="text-lg font-bold text-amber-700 dark:text-amber-400">
             计划审核
           </h3>
         </div>
-        <span className="text-xs px-2 py-1 bg-amber-200 dark:bg-amber-800 rounded">
+        <span className="text-xs px-2 py-1 bg-amber-200 dark:bg-amber-800 rounded font-mono">
           HITL
         </span>
       </div>
@@ -203,12 +206,14 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
         Commander 已生成执行计划，请审核或修改后再执行：
       </p>
       
-      {/* v3.5 HITL: Destructive test guide */}
-      <div className="mb-4 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-600 dark:text-blue-400">
-        <div className="font-semibold mb-1">Destructive Test Guide:</div>
-        <ul className="list-disc list-inside space-y-0.5">
-          <li>Modify test: Delete tasks or edit descriptions to verify Worker execution</li>
-          <li>Reject test: Click cancel to verify backend cleanup</li>
+      {/* v3.5 HITL: Test guide */}
+      <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+        <div className="font-semibold mb-1 flex items-center gap-1">
+          <span>测试指引:</span>
+        </div>
+        <ul className="list-disc list-inside space-y-0.5 text-blue-500 dark:text-blue-300">
+          <li>修改测试: 删除任务或编辑描述，验证 Worker 执行修改后的计划</li>
+          <li>取消测试: 点击取消，验证后端正确清理状态</li>
         </ul>
       </div>
 
@@ -249,10 +254,10 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
               {isEditing && editedPlan.length > 1 && (
                 <button
                   onClick={() => handleDeleteTask(task.id)}
-                  className="flex-shrink-0 p-1 text-red-500 hover:bg-red-50 rounded"
-                  title="Delete task"
+                  className="flex-shrink-0 p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                  title="删除任务"
                 >
-                  Delete
+                  <Trash2 className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -268,9 +273,20 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
             disabled={isSubmitting}
             className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 
                      rounded hover:bg-gray-100 dark:hover:bg-gray-700
-                     disabled:opacity-50 disabled:cursor-not-allowed"
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     flex items-center gap-1.5 transition-colors"
           >
-            {isEditing ? '完成编辑' : '编辑'}
+            {isEditing ? (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                完成编辑
+              </>
+            ) : (
+              <>
+                <Edit3 className="w-4 h-4" />
+                编辑
+              </>
+            )}
           </button>
         </div>
 
@@ -281,8 +297,10 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
             className="px-4 py-1.5 text-sm border border-red-300 dark:border-red-700
                      text-red-600 dark:text-red-400 rounded
                      hover:bg-red-50 dark:hover:bg-red-900/30
-                     disabled:opacity-50 disabled:cursor-not-allowed"
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     flex items-center gap-1.5 transition-colors"
           >
+            <XCircle className="w-4 h-4" />
             取消
           </button>
           <button
@@ -290,15 +308,16 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
             disabled={isSubmitting || editedPlan.length === 0}
             className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded
                      hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed
-                     flex items-center gap-2"
+                     flex items-center gap-2 transition-colors"
           >
             {isSubmitting ? (
               <>
-                <span className="animate-spin">Loading</span>
+                <Loader2 className="w-4 h-4 animate-spin" />
                 执行中...
               </>
             ) : (
               <>
+                <Play className="w-4 h-4" />
                 确认并执行 ({editedPlan.length})
               </>
             )}
