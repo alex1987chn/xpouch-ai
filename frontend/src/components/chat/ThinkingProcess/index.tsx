@@ -318,7 +318,7 @@ export default function ThinkingProcess({ steps, isThinking, className, totalSte
           >
             <div 
               ref={scrollContainerRef}
-              className="border-t border-border px-4 py-3 space-y-2 max-h-[400px] overflow-y-auto scrollbar-thin"
+              className="border-t border-border px-4 py-3 space-y-2 max-h-[300px] overflow-y-auto bauhaus-scrollbar"
             >
               {steps.map((step, index) => (
                 // 🔥 修复：使用 index 作为 key 的一部分，确保唯一性

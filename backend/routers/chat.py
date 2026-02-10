@@ -1327,10 +1327,9 @@ async def resume_chat(
             stream_queue = asyncio.Queue()
             
             # 🔥🔥🔥 首先发送 plan.created 事件，初始化前端 thinking 步骤
-            # 从 checkpoint 获取当前任务计划
-            snapshot = await graph.aget_state(config)
-            current_task_list = snapshot.values.get("task_list", [])
-            if current_task_list:
+            # 使用用户修改后的计划（而不是从 snapshot 读取，避免 LangGraph 缓存问题）
+            plan_tasks = request.updated_plan if request.updated_plan else []
+            if plan_tasks:
                 from event_types.events import EventType, PlanCreatedData, build_sse_event
                 from utils.event_generator import sse_event_to_string
                 
@@ -1346,11 +1345,11 @@ async def resume_chat(
                                 "sort_order": task.get("sort_order", i),
                                 "status": task.get("status", "pending")
                             }
-                            for i, task in enumerate(current_task_list)
+                            for i, task in enumerate(plan_tasks)
                         ],
-                        estimated_steps=len(current_task_list),
-                        execution_mode="sequential",  # 🔥 修复：添加缺失的必填字段
-                        summary=f"恢复执行 {len(current_task_list)} 个任务"
+                        estimated_steps=len(plan_tasks),
+                        execution_mode="sequential",
+                        summary=f"恢复执行 {len(plan_tasks)} 个任务"
                     ),
                     str(uuid4())
                 )
@@ -1358,7 +1357,7 @@ async def resume_chat(
                     "type": "sse",
                     "event": sse_event_to_string(plan_event)
                 })
-                print(f"[HITL RESUME] 已发送 plan.created 事件，任务数: {len(current_task_list)}")
+                print(f"[HITL RESUME] 已发送 plan.created 事件，任务数: {len(plan_tasks)}")
             
             async def producer():
                 """生产者：运行 LangGraph，将事件转换为 SSE 放入队列"""
