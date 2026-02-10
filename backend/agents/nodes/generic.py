@@ -1,8 +1,59 @@
 """
-通用专家执行节点
+Generic Worker 节点 - 通用专家执行
 
-用于处理动态创建的自定义专家，根据 state["current_task"]["expert_type"]
-从数据库加载专家配置并执行。
+[职责]
+执行单个专家任务，支持：
+- 专家配置动态加载（数据库 + 缓存）
+- 工具调用（Function Calling）
+- 流式 Artifact 生成（实时推送到前端）
+- 上下文组装（上游依赖任务输出注入）
+
+[执行流程]
+1. 从 state 获取当前任务（current_task_index）
+2. 加载专家配置（system_prompt, model, temperature）
+3. 组装上下文（系统提示 + 上游任务输出 + 当前任务输入）
+4. 调用 LLM（流式或非流式）
+5. 处理工具调用（如有）
+6. 生成 Artifact（代码/文档/HTML）
+7. 发送 task.completed 事件
+8. 更新任务状态到数据库
+9. 递增 current_task_index，返回控制给 Dispatcher
+
+[工具调用流程]
+首次调用 -> LLM 返回 tool_calls -> ToolNode 执行 -> 
+再次调用 -> LLM 看到 ToolMessage -> 生成最终回复
+
+[流式输出]
+STREAMING_EXPERT_TYPES = {'writer', 'researcher', 'analyzer', 'planner'}
+- 使用 astream 实时推送 Token
+- 通过 event_queue 发送到前端
+- 适用于长文本生成（报告、分析）
+
+[非流式输出]
+search, coder 等可能调用工具的专家：
+- 使用 ainvoke 等待完整响应
+- 支持工具调用解析
+
+[依赖注入]
+- 根据 depends_on 查找上游任务输出
+- 注入到当前任务上下文
+- 缺失依赖时容错处理（提示 LLM 尽力完成）
+
+[Artifact 生成]
+- 从 LLM 响应提取代码块
+- 识别语言类型（自动检测或指定）
+- 创建 Artifact 记录（数据库 + 事件推送）
+- 支持多个 Artifact（一个任务可产出多个文件）
+
+[错误处理]
+- 专家配置不存在：返回 failed 状态
+- LLM 调用异常：记录错误，标记失败
+- 工具执行失败：返回错误信息，LLM 生成容错回复
+
+[状态更新]
+- task_list[current_index]: 更新 output_result, status, completed_at
+- expert_results: 追加执行结果（供下游任务使用）
+- event_queue: 推送 task.started/completed 事件
 """
 import os
 import re

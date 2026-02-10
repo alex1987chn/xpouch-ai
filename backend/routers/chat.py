@@ -1,6 +1,47 @@
 """
-聊天路由模块 - 包含主要聊天端点和线程管理
-v3.0: 复杂模式使用新的事件协议（plan.created, task.started, task.completed, artifact.generated, message.delta）
+聊天路由模块 - XPouch AI 核心 API
+
+[职责]
+提供聊天相关的 RESTful API 和 SSE 流式接口：
+- 对话管理（Thread/Message CRUD）
+- 流式聊天（简单/复杂模式）
+- HITL 计划审核与恢复
+- Artifact 更新
+
+[架构]
+Router (FastAPI) -> Chat Service -> LangGraph Workflow
+                        |
+                        v
+               Event Queue (SSE Stream)
+                        |
+                        v
+               Frontend (Real-time UI)
+
+[端点]
+- POST /api/chat: 主聊天接口（SSE 流式）
+- POST /api/chat/resume: HITL 恢复执行
+- PATCH /api/artifacts/{id}: Artifact 内容更新
+- GET/POST/DELETE /api/threads/*: 会话管理
+
+[事件协议 v3.0]
+复杂模式下通过 SSE 发送事件驱动前端 UI：
+1. router.decision: 路由决策（simple/complex）
+2. plan.created: 任务计划创建（显示 thinking steps）
+3. task.started/completed/failed: 任务状态更新
+4. artifact.generated: 产物生成
+5. message.delta: 流式文本输出
+6. human.interrupt: HITL 暂停等待用户
+
+[关键设计]
+- 使用 MemorySaver（简单）或 AsyncPostgresSaver（HITL）持久化 LangGraph 状态
+- 流式生成器模式：event_generator() 持续产出 SSE 事件
+- 双队列架构：realtime_queue 用于实时推送，sse_queue 用于聚合输出
+
+[状态管理]
+- TaskSession: 复杂任务会话（Commander 创建）
+- SubTask: 子任务记录（每个专家执行单元）
+- Artifact: 产物记录（代码/文档/HTML）
+- Thread/Message: 对话历史
 """
 import os
 import json
@@ -276,7 +317,7 @@ async def chat_endpoint(
 
     if not thread:
         if not thread_id:
-            thread_id = str(uuid.uuid.uuid.uuid4())
+            thread_id = str(uuid.uuid4())
 
         # 兜底逻辑：如果 agentId 为 None、null 或空字符串，强制赋值为系统默认助手
         if not request.agentId or request.agentId.strip() == "":
@@ -420,7 +461,7 @@ async def _handle_custom_agent_stream(
     async def event_generator():
         full_response = ""
         # v3.0: 确保使用一致的 message_id
-        actual_message_id = message_id or str(uuid.uuid.uuid4())
+        actual_message_id = message_id or str(uuid.uuid4())
 
         # 🔥🔥🔥 新增：心跳间隔（15秒）远小于 Cloudflare 的 100秒超时 🔥🔥🔥
         HEARTBEAT_INTERVAL = 15.0
@@ -518,7 +559,7 @@ async def _handle_custom_agent_stream(
                                 message_id=actual_message_id,
                                 content=content
                             ),
-                            str(uuid.uuid.uuid4())
+                            str(uuid.uuid4())
                         )
                         from utils.event_generator import sse_event_to_string
                         yield sse_event_to_string(delta_event)
@@ -548,7 +589,7 @@ async def _handle_custom_agent_stream(
             error_event = build_sse_event(
                 EventType.ERROR,
                 ErrorData(code="STREAM_ERROR", message=str(e)),
-                str(uuid.uuid.uuid4())
+                str(uuid.uuid4())
             )
             yield sse_event_to_string(error_event)
 
@@ -565,7 +606,7 @@ async def _handle_custom_agent_stream(
                 full_content=clean_content,  # 使用清理后的内容
                 thinking=thinking_data  # 包含 thinking 数据
             ),
-            str(uuid.uuid.uuid4())
+            str(uuid.uuid4())
         )
         from utils.event_generator import sse_event_to_string
         yield sse_event_to_string(done_event)
@@ -935,7 +976,7 @@ async def _handle_langgraph_stream(
                                     print(f"[CONSUMER] 已更新 thread 为 complex 模式")
                                 
                                 # 🔥🔥🔥 关键：预生成 session_id 并立即发送 plan.started
-                                preview_session_id = str(uuid.uuid.uuid4())
+                                preview_session_id = str(uuid.uuid4())
                                 from utils.event_generator import event_plan_started, sse_event_to_string
                                 plan_started_event = event_plan_started(
                                     session_id=preview_session_id,
@@ -954,7 +995,7 @@ async def _handle_langgraph_stream(
                             router_event = build_sse_event(
                                 EventType.ROUTER_DECISION,
                                 RouterDecisionData(decision=router_decision),
-                                str(uuid.uuid.uuid4())
+                                str(uuid.uuid4())
                             )
                             from utils.event_generator import sse_event_to_string
                             yield sse_event_to_string(router_event)
@@ -964,8 +1005,8 @@ async def _handle_langgraph_stream(
                         from event_types.events import EventType, MessageDoneData, build_sse_event
                         done_event = build_sse_event(
                             EventType.MESSAGE_DONE,
-                            MessageDoneData(message_id=message_id or str(uuid.uuid.uuid4()), full_content=full_response),
-                            str(uuid.uuid.uuid4())
+                            MessageDoneData(message_id=message_id or str(uuid.uuid4()), full_content=full_response),
+                            str(uuid.uuid4())
                         )
                         from utils.event_generator import sse_event_to_string
                         yield sse_event_to_string(done_event)
@@ -979,8 +1020,8 @@ async def _handle_langgraph_stream(
                             from event_types.events import EventType, MessageDeltaData, build_sse_event
                             delta_event = build_sse_event(
                                 EventType.MESSAGE_DELTA,
-                                MessageDeltaData(message_id=message_id or str(uuid.uuid.uuid4()), content=content),
-                                str(uuid.uuid.uuid4())
+                                MessageDeltaData(message_id=message_id or str(uuid.uuid4()), content=content),
+                                str(uuid.uuid4())
                             )
                             from utils.event_generator import sse_event_to_string
                             yield sse_event_to_string(delta_event)
@@ -1005,7 +1046,7 @@ async def _handle_langgraph_stream(
             error_event = build_sse_event(
                 EventType.ERROR,
                 ErrorData(code="STREAM_ERROR", message=str(e)),
-                str(uuid.uuid.uuid4())
+                str(uuid.uuid4())
             )
             yield sse_event_to_string(error_event)
 
@@ -1089,7 +1130,7 @@ async def _handle_langgraph_stream(
                                     traceback.print_exc()
                         else:
                             # 创建新 SubTask
-                            create_subtask(
+                            new_subtask = create_subtask(
                                 save_session,
                                 task_session_id=task_session_id,
                                 expert_type=expert_type,
@@ -1097,6 +1138,17 @@ async def _handle_langgraph_stream(
                                 sort_order=task.get("sort_order", 0),
                                 input_data=task.get("input_data", {})
                             )
+                            print(f"[STREAM] ✅ 新 SubTask 已创建: {new_subtask.id} ({expert_type})")
+                            
+                            # 🔥 保存 artifacts 到新创建的 SubTask
+                            if artifacts_for_task and new_subtask:
+                                try:
+                                    created = create_artifacts_batch(save_session, new_subtask.id, artifacts_for_task)
+                                    print(f"[STREAM] ✅ 成功保存 {len(created)} 个 artifacts 到新 SubTask: {new_subtask.id}")
+                                except Exception as art_err:
+                                    print(f"[STREAM] ❌ 保存 artifacts 到新 SubTask 失败: {art_err}")
+                                    import traceback
+                                    traceback.print_exc()
 
                 save_session.add(thread_obj)
                 save_session.commit()
@@ -1153,7 +1205,7 @@ async def _handle_langgraph_sync(
 
         # 创建 TaskSession
         task_session = TaskSession(
-            session_id=str(uuid.uuid.uuid4()),
+            session_id=str(uuid.uuid4()),
             thread_id=thread_id,
             user_query=user_message,
             status="completed",
@@ -1329,7 +1381,13 @@ async def resume_chat(
                         cleaned_task["depends_on"] = cleaned_deps if cleaned_deps else None
                     cleaned_plan.append(cleaned_task)
                 
-                await graph.aupdate_state(config, {"task_list": cleaned_plan})
+                # 🔥🔥🔥 关键修复：同时重置 current_task_index 为 0
+                # 这样 LangGraph 会从新 plan 的第一个任务开始执行
+                await graph.aupdate_state(config, {
+                    "task_list": cleaned_plan,
+                    "current_task_index": 0
+                })
+                print(f"[HITL RESUME] 已重置 current_task_index 为 0")
             
             # 2. 🔥🔥🔥 流式恢复执行（必须使用 astream_events 保持 SSE）
             # 传入 None 作为 input，LangGraph 自动从断点继续
@@ -1372,7 +1430,7 @@ async def resume_chat(
                         execution_mode="sequential",
                         summary=f"恢复执行 {len(plan_tasks)} 个任务"
                     ),
-                    str(uuid.uuid.uuid4())
+                    str(uuid.uuid4())
                 )
                 await sse_queue.put({
                     "type": "sse",
@@ -1614,6 +1672,38 @@ class ArtifactUpdateResponse(BaseModel):
     language: Optional[str]
     sort_order: int
     updated: bool
+
+
+@router.get("/artifacts/{artifact_id}")
+async def get_artifact_endpoint(
+    artifact_id: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """获取单个 Artifact（调试用）"""
+    from crud.task_session import get_artifact
+    artifact = get_artifact(session, artifact_id)
+    if not artifact:
+        raise NotFoundError(f"Artifact not found: {artifact_id}")
+    
+    # 验证权限
+    subtask = session.get(SubTask, artifact.sub_task_id)
+    if subtask:
+        task_session = session.get(TaskSession, subtask.task_session_id)
+        if task_session:
+            thread = session.get(Thread, task_session.thread_id)
+            if not thread or thread.user_id != current_user.id:
+                raise AuthorizationError("无权访问此产物")
+    
+    return {
+        "id": artifact.id,
+        "type": artifact.type,
+        "title": artifact.title,
+        "content": artifact.content[:100] + "..." if len(artifact.content) > 100 else artifact.content,
+        "language": artifact.language,
+        "sort_order": artifact.sort_order,
+        "sub_task_id": artifact.sub_task_id
+    }
 
 
 @router.patch("/artifacts/{artifact_id}", response_model=ArtifactUpdateResponse)

@@ -7,7 +7,7 @@
  * - useExpertHandler: 专家事件处理（激活、完成、任务计划、artifact 处理）
  * - useConversation: 会话管理（加载、删除）
  *
- * v3.6 性能优化：使用 Zustand Selectors 避免不必要的重渲染
+ * v3.1.0 性能优化：使用 Zustand Selectors 避免不必要的重渲染
  *
  * @returns {
  *   sendMessage: 发送消息函数
@@ -38,7 +38,7 @@ import { useExpertHandler } from './chat/useExpertHandler'
 import { useConversation } from './chat/useConversation'
 import { errorHandler } from '@/utils/logger'
 
-// Performance Optimized Selectors (v3.6)
+// Performance Optimized Selectors (v3.1.0)
 import {
   useInputMessage,
   useSetInputMessageAction,
@@ -47,7 +47,7 @@ import {
 export function useChat() {
   const navigate = useNavigate()
 
-  // Performance Optimized Selectors (v3.6)
+  // Performance Optimized Selectors (v3.1.0)
   const inputMessage = useInputMessage()
   const setInputMessage = useSetInputMessageAction()
 

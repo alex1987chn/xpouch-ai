@@ -1,9 +1,52 @@
 """
-XPouch AI 智能路由工作流 (v3.0 架构)
-集成意图识别 (Router) -> 任务指挥官 (Commander) -> 专家执行 (Experts)
-支持事件溯源持久化和 Server-Driven UI
+XPouch AI LangGraph 工作流定义 (v3.1.0)
 
-v3.3 更新：支持 AsyncPostgresSaver 实现 HITL (Human-in-the-Loop) 持久化
+[架构]
+用户输入 -> Router -> [Simple/Direct | Complex]
+                              |
+                              v
+                    Commander (任务规划)
+                              |
+                              v
+                    HumanReview (HITL 中断点)
+                              |
+                              v
+        Loop: Dispatcher -> Generic Worker -> (工具调用?) -> ToolNode
+                              |
+                              v
+                    Aggregator (结果聚合)
+                              |
+                              v
+                         最终回复
+
+[节点职责]
+- router_node: 意图识别，判断 simple/complex/direct
+- commander_node: 复杂任务拆解为 SubTasks（DAG 依赖）
+- expert_dispatcher_node: 检查专家配置，分发到执行节点
+- generic_worker_node: 通用专家执行（支持工具调用 + 流式输出）
+- aggregator_node: 聚合专家结果，生成最终回复
+- direct_reply_node: 简单模式直接回复
+
+[状态流转]
+AgentState:
+  - messages: 对话历史
+  - task_list: 子任务列表（Commander 生成）
+  - current_task_index: 当前执行索引
+  - expert_results: 专家执行结果
+  - event_queue: SSE 事件队列（Server-Driven UI）
+
+[工具集成]
+- search_web: Tavily 联网搜索
+- read_webpage: Jina 网页阅读
+- get_current_time: 时间查询
+- calculator: 数学计算
+
+[持久化]
+- MemorySaver: 内存检查点（简单模式）
+- AsyncPostgresSaver: 数据库存储（HITL 断点续传）
+
+[入口函数]
+- create_smart_router_workflow(): 创建完整工作流（支持 HITL）
 """
 from typing import Dict, Any, Optional
 from langgraph.graph import StateGraph, END

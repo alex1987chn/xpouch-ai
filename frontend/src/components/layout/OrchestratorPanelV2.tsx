@@ -1,9 +1,35 @@
 /**
- * OrchestratorPanelV2 - Performance Optimized (v3.6)
+ * OrchestratorPanelV2 - 编排器面板 v3.1.0
  * 
- * [优化说明]
+ * [职责]
+ * 复杂模式下的右侧面板，负责：
+ * - 显示专家列表（BusRail）和任务状态
+ * - 展示 Artifact 产物（代码/文档/HTML）
+ * - 支持 Artifact 在线编辑、导出（Markdown/PDF）、全屏预览
+ * - 管理专家切换、Artifact Tab 切换
+ * 
+ * [架构]
+ * - SimpleModePanel: 简单模式（单专家输出）
+ * - ComplexModePanel: 复杂模式（多专家协作）
+ *   ├── BusRail: 专家状态栏（显示运行中/完成/失败状态）
+ *   └── ArtifactDashboard: Artifact 展示容器
+ *       ├── TabBar: Artifact 切换标签栏
+ *       ├── ArtifactContent: 内容渲染（支持编辑/预览/导出）
+ *       └── StatusBar: 底部状态栏
+ * 
+ * [性能优化]
  * - 使用 Zustand Selectors 避免不必要的重渲染
- * - 当 AI 生成回复时，面板保持静止（不触发 Render）
+ * - 当 AI 流式生成回复时，面板保持静止（不触发 Render）
+ * - Artifact 编辑状态局部管理，不影响全局 Store
+ * 
+ * [关键状态]
+ * - selectedIndex: 当前选中的 Artifact 索引
+ * - isEditing: 是否处于编辑模式
+ * - viewMode: 'code' | 'preview' 查看模式
+ * 
+ * [事件处理]
+ * - 切换专家时自动重置编辑状态
+ * - Artifact 保存失败自动回滚（乐观更新）
  */
 
 import { useState, lazy, Suspense, memo, useCallback, useEffect, useRef } from 'react'
@@ -19,7 +45,7 @@ import type { Artifact } from '@/types'
 import { SIMPLE_TASK_ID } from '@/constants/task'
 import EmptyState from '@/components/chat/EmptyState'
 
-// Performance Optimized Selectors (v3.6)
+// Performance Optimized Selectors (v3.1.0)
 import {
   useTaskMode,
   useTasksCache,
@@ -437,7 +463,15 @@ function ArtifactContent({ artifact, taskId, onToggleFullscreen, isFullscreen }:
     }
   }, [])
 
-  // Update edit content when artifact changes externally
+  // 🔥 当切换 artifact 时，重置编辑状态
+  useEffect(() => {
+    setIsEditing(false)
+    setSaveError(null)
+    setEditContent(artifact.content)
+    setViewMode(artifact.type === 'html' ? 'preview' : 'code')
+  }, [artifact.id])
+  
+  // Update edit content when artifact changes externally (during streaming)
   useEffect(() => {
     if (!isEditing) {
       setEditContent(artifact.content)

@@ -2,7 +2,7 @@
  * 会话管理 Hook
  * 负责加载历史会话、删除会话等功能
  * 
- * v3.6 性能优化：使用 Zustand Selectors 避免不必要的重渲染
+ * v3.1.0 性能优化：使用 Zustand Selectors 避免不必要的重渲染
  */
 
 import { useCallback } from 'react'
@@ -11,7 +11,7 @@ import { normalizeAgentId } from '@/utils/agentUtils'
 import { errorHandler } from '@/utils/logger'
 import type { Conversation } from '@/types'
 
-// Performance Optimized Selectors (v3.6)
+// Performance Optimized Selectors (v3.1.0)
 import {
   useMessages,
   useCurrentConversationId,
@@ -55,7 +55,7 @@ const debug = DEBUG
  * Conversation management Hook
  */
 export function useConversation() {
-  // Performance Optimized Selectors (v3.6)
+  // Performance Optimized Selectors (v3.1.0)
   const messages = useMessages()
   const currentConversationId = useCurrentConversationId()
   
