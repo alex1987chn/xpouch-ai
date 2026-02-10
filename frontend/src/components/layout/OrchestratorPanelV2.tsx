@@ -578,21 +578,19 @@ function ArtifactContent({ artifact, taskId, onToggleFullscreen, isFullscreen }:
                 
                 {/* Dropdown menu */}
                 {showExportMenu && (
-                  <div className="absolute right-0 top-full mt-1 z-50 min-w-[140px] bg-card border-2 border-border shadow-lg">
+                  <div className="absolute right-0 top-full mt-1 z-50 min-w-[120px] bg-card border-2 border-border shadow-lg">
                     <button
                       onClick={handleExportMarkdown}
-                      className="w-full px-3 py-2 text-left text-xs font-mono text-primary hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-xs font-mono text-primary hover:bg-accent hover:text-accent-foreground transition-colors"
                     >
-                      <span className="w-4 text-center">.md</span>
-                      <span>Markdown</span>
+                      Markdown (.md)
                     </button>
                     <div className="border-t border-border" />
                     <button
                       onClick={handleExportPDF}
-                      className="w-full px-3 py-2 text-left text-xs font-mono text-primary hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-xs font-mono text-primary hover:bg-accent hover:text-accent-foreground transition-colors"
                     >
-                      <span className="w-4 text-center">.pdf</span>
-                      <span>PDF</span>
+                      PDF (.pdf)
                     </button>
                   </div>
                 )}
