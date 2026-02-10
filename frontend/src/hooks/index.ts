@@ -17,3 +17,68 @@ export { useSwipeBack } from './useSwipeBack'
 
 // 异步错误处理
 export { useAsyncError } from './useAsyncError'
+
+// ============================================================================
+// 🔥🔥🔥 性能优化 Selectors (v3.6)
+// 使用 Zustand Selector 模式避免不必要的重渲染
+// 特别适用于高频 SSE 更新场景
+// ============================================================================
+
+// TaskStore Selectors
+export {
+  // 基础 Selectors
+  useTaskMode,
+  useTaskSession,
+  useSelectedTaskId,
+  useTaskInitialized,
+  useIsWaitingForApproval,
+  usePendingPlan,
+  useRunningTaskIds,
+  useTasksCacheVersion,
+  
+  // 复杂 Selectors (useShallow)
+  useTasksCache,
+  useTasksMap,
+  useSelectedTask,
+  useRunningTasks,
+  useTaskStats,
+  
+  // Actions
+  useTaskActions,
+  useSelectTaskAction,
+  useClearTasksAction,
+  useInitializePlanAction,
+  
+  // 条件 Selectors
+  useTaskById,
+  useIsTaskRunning,
+  useTaskArtifacts,
+} from './useTaskSelectors'
+
+// ChatStore Selectors
+export {
+  // 基础 Selectors
+  useCurrentConversationId,
+  useInputMessage,
+  useIsGenerating,
+  useIsTyping,
+  useSelectedAgentId,
+  
+  // 复杂 Selectors
+  useMessages,
+  useLastMessage,
+  useLastAssistantMessage,
+  useCustomAgents,
+  
+  // Actions
+  useChatActions,
+  useAddMessageAction,
+  useUpdateMessageAction,
+  useSetGeneratingAction,
+  useSetInputMessageAction,
+  
+  // 派生 Selectors
+  useMessageStats,
+  useHasMessages,
+  useMessageCount,
+} from './useChatSelectors'

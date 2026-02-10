@@ -15,7 +15,7 @@
  * 2. Markdown 支持：GFM 表格、代码高亮 (rehype-highlight)
  * 3. 输入控制台：Heavy Input Console（机械风格）
  * 4. 工具按钮：附件、网络搜索
- * 5. 🔥 Server-Driven UI：思维链可视化
+ * 5. Server-Driven UI：思维链可视化
  *
  * [组件拆分]
  * - EmptyState: 空状态展示
@@ -27,6 +27,10 @@
  * [状态管理]
  * - 所有状态通过 Props 传入，保持组件纯函数
  * - 状态管理由父组件和 Zustand Store 负责
+ *
+ * [性能优化] v3.6
+ * - 使用 Zustand Selectors 避免不必要的重渲染
+ * - 流式输出时组件保持静止
  */
 
 import { useRef, useEffect } from 'react'
@@ -36,11 +40,23 @@ import MessageItem from '../MessageItem'
 import ThinkingProcess from '../ThinkingProcess'
 import GeneratingIndicator from '../GeneratingIndicator'
 import HeavyInputConsole from '../HeavyInputConsole'
-import PlanReviewCard from '../PlanReviewCard'  // 🔥🔥🔥 v3.5 HITL
+import PlanReviewCard from '../PlanReviewCard'
 import { parseThinkTags, formatThinkingAsSteps } from '@/utils/thinkParser'
-import { useTaskStore } from '@/store/taskStore'
-import { useChatStore } from '@/store/chatStore'  // 🔥🔥🔥 v3.5 HITL
-import type { ResumeChatParams } from '@/services/chat'  // 🔥🔥🔥 v3.5 HITL
+import type { ResumeChatParams } from '@/services/chat'
+
+// Performance Optimized Selectors (v3.6)
+import {
+  useMessages,
+  useIsGenerating,
+  useCurrentConversationId,
+} from '@/hooks/useChatSelectors'
+import {
+  useTaskMode,
+  useRunningTaskIds,
+  useTasksCache,
+  useTaskSession,
+  useIsWaitingForApproval,
+} from '@/hooks/useTaskSelectors'
 
 interface ChatStreamPanelProps {
   /** 当前输入值 */
@@ -57,7 +73,7 @@ interface ChatStreamPanelProps {
   onLinkClick?: (href: string) => void
   /** 点击消息预览回调（用于移动端切换到 preview 视图） */
   onPreview?: () => void
-  /** 🔥🔥🔥 v3.5 HITL: 恢复执行回调 */
+  /** v3.5 HITL: 恢复执行回调 */
   resumeExecution?: (params: ResumeChatParams) => Promise<string>
 }
 
@@ -108,7 +124,6 @@ function hasActiveThinking(msg: Message, isStreaming: boolean, conversationMode:
   const steps = getMessageThinkingSteps(msg, conversationMode)
   if (steps.length === 0) return false
   
-  // 如果有任何 running 状态的步骤，或者正在流式传输最后一条消息
   const hasRunning = steps.some(s => s.status === 'running')
   return hasRunning || isStreaming
 }
@@ -118,7 +133,7 @@ function hasActiveThinking(msg: Message, isStreaming: boolean, conversationMode:
  *
  * 包含：
  * 1. 消息列表 (Terminal 风格)
- * 2. 🔥 思维链展示（在消息气泡外）
+ * 2. 思维链展示（在消息气泡外）
  * 3. 底部输入控制台 (Heavy Input Console)
  */
 export default function ChatStreamPanel({
@@ -129,71 +144,68 @@ export default function ChatStreamPanel({
   onRegenerate,
   onLinkClick,
   onPreview,
-  resumeExecution,  // 🔥🔥🔥 v3.5 HITL
+  resumeExecution,
 }: ChatStreamPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   
-  // 🔥 从 Store 直接获取状态，避免 props drilling
-  const messages = useChatStore(state => state.messages)
-  const isGenerating = useChatStore(state => state.isGenerating)
-  const conversationId = useChatStore(state => state.currentConversationId)
+  // Performance Optimized Selectors (v3.6)
+  // Only re-render when these specific values change
+  const messages = useMessages()
+  const isGenerating = useIsGenerating()
+  const conversationId = useCurrentConversationId()
   
-  // 🔥 从 TaskStore 获取模式相关信息
-  const mode = useTaskStore(state => state.mode)
+  // Task-related selectors
+  const mode = useTaskMode()
   const conversationMode = mode || 'simple'
-  const runningTaskIds = useTaskStore(state => state.runningTaskIds)
-  const tasks = useTaskStore(state => state.tasksCache)
+  const runningTaskIds = useRunningTaskIds()
+  const tasks = useTasksCache()
+  const session = useTaskSession()
+  const isWaitingForApproval = useIsWaitingForApproval()
   
-  // 🔥 获取当前运行的专家名称作为 activeExpert
+  // Derive active expert from running tasks
   const activeExpert = runningTaskIds.size > 0
     ? tasks.find(t => runningTaskIds.has(t.id))?.expert_type || null
     : null
   
-  // 🔥 获取 estimatedSteps 用于固定步骤编号（已包含 planning 步骤）
-  const estimatedSteps = useTaskStore(state => state.session?.estimatedSteps || 0)
-  
-  // 🔥🔥🔥 v3.5 HITL: 获取审核状态
-  const isWaitingForApproval = useTaskStore(state => state.isWaitingForApproval)
+  // Get estimated steps from session
+  const estimatedSteps = session?.estimatedSteps || 0
 
-  // 自动滚动到底部
+  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages, isGenerating])
 
-  // 处理发送
+  // Handle send
   const handleSend = () => {
     if (!inputValue.trim() || isGenerating) return
     onSend()
   }
 
-  // 过滤消息：在复杂模式下，隐藏内容为空的 AI 消息（避免显示空消息气泡）
-  // 🔥 修复：如果消息有 thinking 数据，即使 content 为空也不过滤
+  // Check if message has real content (for filtering)
   const hasRealContent = (msg: Message): boolean => {
-    // 如果有 thinking 数据（metadata 或 think 标签），认为有实质内容
     const thinkingSteps = getMessageThinkingSteps(msg, conversationMode)
     if (thinkingSteps.length > 0) {
       return true
     }
-    // 检查 content
     const content = msg.content || ''
     const stripped = content.replace(/\s/g, '').replace(/[\n\r\t]/g, '')
     return stripped.length > 0
   }
 
-  // 复杂模式下始终过滤空 AI 消息（但保留有 thinking 的消息）
+  // Filter messages: in complex mode, hide empty AI messages
   const displayMessages = conversationMode === 'complex'
     ? messages.filter(msg => !(msg.role === 'assistant' && !hasRealContent(msg)))
     : messages
 
-  // 🔥 判断最后一条消息是否有活跃的 thinking（用于控制 indicator 显示）
+  // Check if last message has active thinking
   const lastMessage = displayMessages[displayMessages.length - 1]
   const hasThinkingActive = lastMessage?.role === 'assistant' && hasActiveThinking(lastMessage, isGenerating, conversationMode)
 
   return (
     <>
-      {/* 消息列表区域 */}
+      {/* Message list area */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-6 space-y-8 dot-grid scrollbar-hide"
@@ -202,23 +214,17 @@ export default function ChatStreamPanel({
           <EmptyState />
         ) : (
           displayMessages.map((msg, index) => {
-            // 🔥 判断是否是最后一条消息且正在流式传输
             const isLastAndStreaming = isGenerating && 
               index === displayMessages.length - 1 && 
               msg.role === 'assistant'
             
-            // 🔥 获取消息的思考步骤（根据模式选择是否解析 think 标签）
             const thinkingSteps = getMessageThinkingSteps(msg, conversationMode)
-            
-            // 🔥 使用更稳定的 key
             const messageKey = msg.id ? `${msg.id}-${index}` : `msg-${index}`
             
-            // 🔥 修复：提取去除 think 标签后的实际内容
             const parsedContent = parseThinkTags(msg.content).content || msg.content || ''
             const hasActualContent = parsedContent.replace(/\s/g, '').length > 0
             
-            // 🔥🔥🔥 关键修复：在复杂模式下，只显示最后一条有 thinking 的消息
-            // 避免页面刷新后出现多个 ThinkingProcess
+            // Only show ThinkingProcess on the last message with thinking
             const isLastMessageWithThinking = index === displayMessages.length - 1 || 
               !displayMessages.slice(index + 1).some(m => 
                 getMessageThinkingSteps(m, conversationMode).length > 0
@@ -226,17 +232,16 @@ export default function ChatStreamPanel({
             
             return (
               <div key={messageKey}>
-                {/* 🔥 思维链展示（在消息气泡外） */}
-                {/* 只在最后一条有 thinking 的消息显示 ThinkingProcess */}
+                {/* Thinking chain display (outside message bubble) */}
                 {thinkingSteps.length > 0 && isLastMessageWithThinking && (
                   <ThinkingProcess 
                     steps={thinkingSteps}
                     isThinking={isLastAndStreaming}
-                    totalSteps={estimatedSteps > 0 ? estimatedSteps : thinkingSteps.length}  // 🔥 优先使用 estimatedSteps
+                    totalSteps={estimatedSteps > 0 ? estimatedSteps : thinkingSteps.length}
                   />
                 )}
                 
-                {/* 🔥 消息内容 - 只在有实际内容时显示（去除 think 标签后） */}
+                {/* Message content - only show when there's actual content */}
                 {hasActualContent && (
                   <MessageItem
                     message={{
@@ -255,12 +260,12 @@ export default function ChatStreamPanel({
           })
         )}
 
-        {/* 🔥 生成中指示器 - 只有没有 thinking 时才显示 */}
+        {/* Generating indicator - only show when no thinking */}
         {isGenerating && !hasThinkingActive && (
           <GeneratingIndicator mode={conversationMode} />
         )}
         
-        {/* 🔥🔥🔥 v3.5 HITL: 计划审核卡片（当 Commander 规划完成时显示） */}
+        {/* v3.5 HITL: Plan review card */}
         {isWaitingForApproval && conversationId && resumeExecution && (
           <PlanReviewCard 
             conversationId={conversationId} 
@@ -269,7 +274,7 @@ export default function ChatStreamPanel({
         )}
       </div>
 
-      {/* 底部输入控制台 */}
+      {/* Bottom input console */}
       <HeavyInputConsole
         value={inputValue}
         onChange={onInputChange}
@@ -281,5 +286,5 @@ export default function ChatStreamPanel({
   )
 }
 
-// 导出类型供外部使用
+// Export types for external use
 export type { ChatStreamPanelProps }
