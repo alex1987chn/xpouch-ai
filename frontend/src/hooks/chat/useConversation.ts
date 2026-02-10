@@ -80,6 +80,15 @@ export function useConversation() {
       // 🔥🔥🔥 关键修复：检测是否是页面刷新
       // 页面刷新时 messages 已从 localStorage 恢复，但任务状态需要从数据库恢复
       const isPageRefresh = currentId === targetConversationId && store.messages.length > 0
+      
+      // 🔥🔥🔥 调试日志：帮助诊断消息消失问题
+      console.log('[loadConversation] 调试信息:', {
+        targetConversationId,
+        currentId,
+        messagesCount: store.messages.length,
+        isPageRefresh,
+        messagesRoles: store.messages.map(m => m.role)
+      })
 
       debug('开始加载会话:', targetConversationId, '当前会话:', currentId, '是否页面刷新:', isPageRefresh)
 
@@ -106,6 +115,16 @@ export function useConversation() {
       } else {
         // 页面刷新时只设置会话 ID
         setCurrentConversationId(targetConversationId)
+        
+        // 🔥🔥🔥 关键修复：即使认为是页面刷新，也检查后端消息是否更多
+        // 这可以修复 localStorage 消息不完整的问题
+        if (conversation.messages && conversation.messages.length > store.messages.length) {
+          console.log('[loadConversation] 后端消息更多，更新消息列表:', {
+            local: store.messages.length,
+            remote: conversation.messages.length
+          })
+          setMessages(conversation.messages)
+        }
       }
 
       // 设置选中的智能体（使用规范化后的 ID）

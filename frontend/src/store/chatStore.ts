@@ -14,7 +14,6 @@ interface ChatState {
   // 聊天相关
   messages: Message[]
   currentConversationId: string | null
-  isTyping: boolean
   inputMessage: string
 
   // ✅ 新增：生成状态（用于替代 useChatCore 中的局部状态）
@@ -43,7 +42,6 @@ interface ChatState {
    * 🔥🔥🔥 v3.5 HITL: 根据任务计划重建 thinking 步骤
    */
   rebuildThinkingFromPlan: (taskIds: string[]) => void
-  setIsTyping: (isTyping: boolean) => void
   setInputMessage: (input: string) => void
   setCurrentConversationId: (id: string | null) => void
   addCustomAgent: (agent: Agent) => void
@@ -79,7 +77,6 @@ export const useChatStore = create<ChatState>()(
       customAgents: [],
       messages: [],
       currentConversationId: null,
-      isTyping: false,
       inputMessage: '',
       isGenerating: false,  // ✅ 新增：初始为 false
       
@@ -226,8 +223,6 @@ export const useChatStore = create<ChatState>()(
         return { messages: state.messages }
       }),
 
-      setIsTyping: (isTyping: boolean) => set({ isTyping }),
-      
       setInputMessage: (input: string) => set({ inputMessage: input }),
 
       setCurrentConversationId: (id: string | null) => set({ currentConversationId: id }),

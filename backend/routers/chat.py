@@ -143,7 +143,10 @@ async def get_thread(
         raise NotFoundError(resource="会话")
 
     # 如果是AI助手线程（复杂模式），加载TaskSession和SubTask
-    print(f"[GET_THREAD] thread_id={thread_id}, agent_type={thread.agent_type}, task_session_id={thread.task_session_id}")
+    print(f"[GET_THREAD] thread_id={thread_id}, agent_type={thread.agent_type}, task_session_id={thread.task_session_id}, messages_count={len(thread.messages)}")
+    # 打印所有消息的角色，帮助调试
+    for msg in thread.messages:
+        print(f"[GET_THREAD]   - msg_id={msg.id}, role={msg.role}, content_preview={msg.content[:30] if msg.content else 'N/A'}...")
     if thread.agent_type == "ai" and thread.task_session_id:
         task_session = session.get(TaskSession, thread.task_session_id)
         if task_session:
@@ -317,6 +320,7 @@ async def chat_endpoint(
     )
     session.add(user_msg_db)
     session.commit()
+    print(f"[CHAT] ✅ 用户消息已保存到数据库: thread_id={thread_id}, msg_id={user_msg_db.id}")
 
     # 3. 准备 LangGraph 上下文
     statement = select(Message).where(Message.thread_id == thread_id).order_by(Message.timestamp)
@@ -1291,10 +1295,14 @@ async def resume_chat(
             checkpointer = AsyncPostgresSaver(conn)
             graph = create_smart_router_workflow(checkpointer=checkpointer)
             
+            # 🔥🔥🔥 创建共享队列用于实时流式推送
+            stream_queue = asyncio.Queue()
+            
             config = {
                 "recursion_limit": 100,
                 "configurable": {
-                    "thread_id": request.thread_id
+                    "thread_id": request.thread_id,
+                    "stream_queue": stream_queue  # 🔥 传递给 aggregator 用于实时推送
                 }
             }
             
@@ -1324,10 +1332,22 @@ async def resume_chat(
             
             # 2. 🔥🔥🔥 流式恢复执行（必须使用 astream_events 保持 SSE）
             # 传入 None 作为 input，LangGraph 自动从断点继续
-            stream_queue = asyncio.Queue()
+            
+            # 🔥 创建两个队列：
+            # - realtime_queue: 给 aggregator 用于实时推送 message.delta
+            # - sse_queue: 用于收集所有 SSE 事件发送给前端
+            realtime_queue = asyncio.Queue()  # aggregator 实时推送用
+            sse_queue = asyncio.Queue()       # SSE 输出给前端用
+            
+            config = {
+                "recursion_limit": 100,
+                "configurable": {
+                    "thread_id": request.thread_id,
+                    "stream_queue": realtime_queue  # 🔥 传递给 aggregator
+                }
+            }
             
             # 🔥🔥🔥 首先发送 plan.created 事件，初始化前端 thinking 步骤
-            # 使用用户修改后的计划（而不是从 snapshot 读取，避免 LangGraph 缓存问题）
             plan_tasks = request.updated_plan if request.updated_plan else []
             if plan_tasks:
                 from event_types.events import EventType, PlanCreatedData, build_sse_event
@@ -1353,7 +1373,7 @@ async def resume_chat(
                     ),
                     str(uuid4())
                 )
-                await stream_queue.put({
+                await sse_queue.put({
                     "type": "sse",
                     "event": sse_event_to_string(plan_event)
                 })
@@ -1380,24 +1400,20 @@ async def resume_chat(
                             name = event.get("name", "")
                             data = event.get("data", {})
                             
-                            # 🔥🔥🔥 处理各种事件类型，转换为 SSE
-                            # 关键：generic_worker_node 已经将事件放入 event_queue，我们只需要转发
-                            
+                            # 🔥🔥🔥 处理节点返回的 event_queue 事件
                             if kind == "on_chain_end":
                                 output_data = data.get("output", {})
                                 
-                                # 从节点的 event_queue 中提取事件（由 generic_worker_node 生成）
                                 if isinstance(output_data, dict):
                                     event_queue = output_data.get("event_queue", [])
                                     for queued_event in event_queue:
                                         if queued_event.get("type") == "sse":
-                                            await stream_queue.put({
+                                            await sse_queue.put({
                                                 "type": "sse",
                                                 "event": queued_event["event"]
                                             })
                                             event_count += 1
                                             
-                                    # 打印调试信息
                                     if event_queue:
                                         print(f"[RESUME PRODUCER] 节点 '{name}' 返回 {len(event_queue)} 个事件")
                             
@@ -1405,18 +1421,31 @@ async def resume_chat(
                             if kind == "on_chain_end" and name == "aggregator":
                                 print(f"[RESUME PRODUCER] Aggregator 完成")
                         
+                        # 🔥🔥🔥 收集 aggregator 的实时流式推送
+                        # 非阻塞地获取所有已推送的事件
+                        realtime_count = 0
+                        try:
+                            while True:
+                                realtime_event = await asyncio.wait_for(realtime_queue.get(), timeout=0.1)
+                                if realtime_event and realtime_event.get("type") == "sse":
+                                    await sse_queue.put(realtime_event)
+                                    event_count += 1
+                                    realtime_count += 1
+                        except asyncio.TimeoutError:
+                            if realtime_count > 0:
+                                print(f"[RESUME PRODUCER] 本轮收集到 {realtime_count} 个 realtime 事件")
+                            pass
+                        
                         # 检查是否完成或再次中断
                         snapshot = await graph.aget_state(config)
                         if not snapshot.next:
                             print(f"[RESUME PRODUCER] 所有任务完成，共 {event_count} 个事件")
-                            break  # 🔥 完成，退出循环
+                            break
                         
-                        # 🔥 再次中断（由于 interrupt_before），自动继续执行
-                        print(f"[RESUME PRODUCER] 检测到中断，自动继续执行剩余任务...")
-                        # 继续循环，从当前 checkpoint 继续执行
+                        print(f"[RESUME PRODUCER] 检测到中断，自动继续执行...")
                     
                     # 发送 message.done
-                    await stream_queue.put({
+                    await sse_queue.put({
                         "type": "sse",
                         "event": f"event: message.done\ndata: {json.dumps({'type': 'message.done'})}\n\n"
                     })
@@ -1425,9 +1454,9 @@ async def resume_chat(
                     print(f"[RESUME PRODUCER] 错误: {e}")
                     import traceback
                     traceback.print_exc()
-                    await stream_queue.put({"type": "graph_error", "error": str(e)})
+                    await sse_queue.put({"type": "graph_error", "error": str(e)})
                 finally:
-                    await stream_queue.put(None)
+                    await sse_queue.put(None)
             
             # 启动生产者
             producer_task = asyncio.create_task(producer())
@@ -1436,14 +1465,13 @@ async def resume_chat(
             try:
                 while True:
                     try:
-                        token = await asyncio.wait_for(stream_queue.get(), timeout=1.0)
+                        token = await asyncio.wait_for(sse_queue.get(), timeout=1.0)
                     except asyncio.TimeoutError:
                         if producer_task.done():
-                            while not stream_queue.empty():
-                                item = stream_queue.get_nowait()
+                            while not sse_queue.empty():
+                                item = sse_queue.get_nowait()
                                 if item is None:
                                     break
-                                # 处理剩余事件
                                 if item.get("type") == "sse":
                                     yield item["event"]
                                 elif item.get("type") == "hitl_interrupt":
@@ -1457,7 +1485,6 @@ async def resume_chat(
                     if token is None:
                         break
                     
-                    # 🔥🔥🔥 直接处理 SSE 事件
                     if token.get("type") == "sse":
                         yield token["event"]
                     elif token.get("type") == "hitl_interrupt":

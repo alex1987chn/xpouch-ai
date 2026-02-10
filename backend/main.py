@@ -33,7 +33,7 @@ from contextlib import asynccontextmanager
 # 内部模块导入
 from database import create_db_and_tables, engine, get_session
 from config import init_langchain_tracing, validate_config
-from models import User, TaskSession, SubTask
+from models import User, TaskSession, SubTask, SystemExpert
 from constants import SYSTEM_AGENT_DEFAULT_CHAT
 from agents.graph import commander_graph
 from agents.nodes.generic import generic_worker_node
@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI):
     validate_config()
     # 创建数据库表
     create_db_and_tables()
-    
+
     # 🔥🔥🔥 v3.5: 初始化 LangGraph Checkpointer 表 (HITL 支持)
     from utils.db import init_checkpointer_tables
     try:
@@ -71,10 +71,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[Lifespan WARN] Failed to init checkpointer tables: {e}")
         # 非致命错误，继续启动
-    
+
     # 初始化系统专家数据
-    from models import SystemExpert
-    from scripts.init_experts import EXPERT_DEFAULTS
+    from expert_config import EXPERT_DEFAULTS
 
     with Session(engine) as session:
         existing_experts = session.exec(select(SystemExpert)).all()

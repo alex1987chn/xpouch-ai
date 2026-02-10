@@ -35,7 +35,6 @@ import EmptyState from '../EmptyState'
 import MessageItem from '../MessageItem'
 import ThinkingProcess from '../ThinkingProcess'
 import GeneratingIndicator from '../GeneratingIndicator'
-import ComplexModeIndicator from '../ComplexModeIndicator'
 import HeavyInputConsole from '../HeavyInputConsole'
 import PlanReviewCard from '../PlanReviewCard'  // 🔥🔥🔥 v3.5 HITL
 import { parseThinkTags, formatThinkingAsSteps } from '@/utils/thinkParser'
@@ -44,10 +43,6 @@ import { useChatStore } from '@/store/chatStore'  // 🔥🔥🔥 v3.5 HITL
 import type { ResumeChatParams } from '@/services/chat'  // 🔥🔥🔥 v3.5 HITL
 
 interface ChatStreamPanelProps {
-  /** 消息列表 */
-  messages: Message[]
-  /** 是否正在生成回复 */
-  isGenerating: boolean
   /** 当前输入值 */
   inputValue: string
   /** 输入框变化回调 */
@@ -56,14 +51,10 @@ interface ChatStreamPanelProps {
   onSend: () => void
   /** 停止生成回调 */
   onStop?: () => void
-  /** 当前活跃专家 (用于显示路由指示器) */
-  activeExpert?: string | null
   /** 重新生成消息回调 */
   onRegenerate?: (messageId: string) => void
   /** 链接点击回调 */
   onLinkClick?: (href: string) => void
-  /** 当前对话模式 */
-  conversationMode?: 'simple' | 'complex'
   /** 点击消息预览回调（用于移动端切换到 preview 视图） */
   onPreview?: () => void
   /** 🔥🔥🔥 v3.5 HITL: 恢复执行回调 */
@@ -131,27 +122,38 @@ function hasActiveThinking(msg: Message, isStreaming: boolean, conversationMode:
  * 3. 底部输入控制台 (Heavy Input Console)
  */
 export default function ChatStreamPanel({
-  messages,
-  isGenerating,
   inputValue,
   onInputChange,
   onSend,
   onStop,
-  activeExpert,
   onRegenerate,
   onLinkClick,
-  conversationMode = 'simple',
   onPreview,
   resumeExecution,  // 🔥🔥🔥 v3.5 HITL
 }: ChatStreamPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  
+  // 🔥 从 Store 直接获取状态，避免 props drilling
+  const messages = useChatStore(state => state.messages)
+  const isGenerating = useChatStore(state => state.isGenerating)
+  const conversationId = useChatStore(state => state.currentConversationId)
+  
+  // 🔥 从 TaskStore 获取模式相关信息
+  const mode = useTaskStore(state => state.mode)
+  const conversationMode = mode || 'simple'
+  const runningTaskIds = useTaskStore(state => state.runningTaskIds)
+  const tasks = useTaskStore(state => state.tasksCache)
+  
+  // 🔥 获取当前运行的专家名称作为 activeExpert
+  const activeExpert = runningTaskIds.size > 0
+    ? tasks.find(t => runningTaskIds.has(t.id))?.expert_type || null
+    : null
   
   // 🔥 获取 estimatedSteps 用于固定步骤编号（已包含 planning 步骤）
   const estimatedSteps = useTaskStore(state => state.session?.estimatedSteps || 0)
   
   // 🔥🔥🔥 v3.5 HITL: 获取审核状态
   const isWaitingForApproval = useTaskStore(state => state.isWaitingForApproval)
-  const conversationId = useChatStore(state => state.currentConversationId)
 
   // 自动滚动到底部
   useEffect(() => {
@@ -255,11 +257,7 @@ export default function ChatStreamPanel({
 
         {/* 🔥 生成中指示器 - 只有没有 thinking 时才显示 */}
         {isGenerating && !hasThinkingActive && (
-          conversationMode === 'complex' ? (
-            <ComplexModeIndicator activeExpert={activeExpert} isProcessing={true} />
-          ) : (
-            <GeneratingIndicator />
-          )
+          <GeneratingIndicator mode={conversationMode} />
         )}
         
         {/* 🔥🔥🔥 v3.5 HITL: 计划审核卡片（当 Commander 规划完成时显示） */}

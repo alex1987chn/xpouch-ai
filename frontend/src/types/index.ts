@@ -268,16 +268,27 @@ export type StreamCallback = (
 ) => Promise<void> | void
 
 /**
- * Artifact（代码/图表等）类型
+ * Artifact 类型枚举 - 统一前后端定义
+ * 注意：修改此枚举需要同步更新后端代码
+ */
+export type ArtifactType = 'code' | 'markdown' | 'search' | 'html' | 'text' | 'image'
+
+/**
+ * Artifact（代码/图表等）类型 - 权威定义
+ * 被 store/taskStore.ts 引用，避免重复定义
  */
 export interface Artifact {
   id: string  // 唯一标识符
-  type: 'code' | 'markdown' | 'search' | 'html' | 'text'
+  type: ArtifactType
   language?: string
   content: string
   source?: string
   title?: string  // Artifact 的自定义标题
   timestamp?: string  // 创建时间
+  // 以下字段由 taskStore 扩展
+  sortOrder?: number
+  createdAt?: string
+  isStreaming?: boolean  // 标记是否正在流式生成中
 }
 
 /**
@@ -318,7 +329,6 @@ export function apiMessageToMessage(apiMessage: ApiMessage): Message {
     id: apiMessage.id,
     role: apiMessage.role === 'system' ? 'assistant' : apiMessage.role, // 将 system 转换为 assistant
     content: apiMessage.content,
-    isTyping: apiMessage.isTyping,
     timestamp: apiMessage.timestamp ? String(apiMessage.timestamp) : undefined
   }
 }

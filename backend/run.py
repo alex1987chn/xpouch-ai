@@ -1,13 +1,23 @@
 """
 XPouch Backend 启动脚本（Windows 兼容版 + 显式 Loop 注入）
 
-核心修复：强制创建 SelectorEventLoop，完全绕过 Uvicorn 的 Loop 初始化逻辑
-解决 Uvicorn 内部重置 Event Loop Policy 的问题
+核心修复：
+1. 强制创建 SelectorEventLoop，完全绕过 Uvicorn 的 Loop 初始化逻辑
+2. 将父目录添加到 sys.path，支持绝对导入（如 from backend.config import）
 """
 import sys
 import asyncio
 import signal
 import os
+import pathlib
+
+# 🔥 修复：将项目根目录添加到 sys.path，支持绝对导入
+# 这样 from backend.config import ... 就能正确解析了
+backend_dir = pathlib.Path(__file__).parent
+project_root = backend_dir.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+    print(f"[Path Setup] Added to sys.path: {project_root}")
 
 PORT = int(os.getenv("PORT", 3002))
 HOST = os.getenv("HOST", "0.0.0.0")

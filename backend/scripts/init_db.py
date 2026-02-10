@@ -1,12 +1,12 @@
-"""数据库表初始化脚本"""
-import sys
-from pathlib import Path
+"""数据库表初始化脚本
 
-# 确保 backend 目录在路径中
-backend_dir = Path(__file__).parent.parent
-sys.path.insert(0, str(backend_dir))
+使用方法（从项目根目录运行）:
+    python -m backend.scripts.init_db
 
-from database import create_db_and_tables
+或设置 PYTHONPATH:
+    PYTHONPATH=/path/to/project:$PYTHONPATH python backend/scripts/init_db.py
+"""
+from backend.database import create_db_and_tables
 
 if __name__ == "__main__":
     print("[InitDB] 正在检查和创建数据库表...")
