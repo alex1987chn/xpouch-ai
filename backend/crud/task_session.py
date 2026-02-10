@@ -333,6 +333,22 @@ def delete_artifact(db: Session, artifact_id: str) -> bool:
     return True
 
 
+def update_artifact_content(db: Session, artifact_id: str, content: str) -> Optional[Artifact]:
+    """更新产物内容
+    
+    用于用户编辑 AI 生成的 Artifact 后持久化到数据库
+    """
+    artifact = get_artifact(db, artifact_id)
+    if not artifact:
+        return None
+    
+    artifact.content = content
+    db.add(artifact)
+    db.commit()
+    db.refresh(artifact)
+    return artifact
+
+
 # ============================================================================
 # 批量操作
 # ============================================================================

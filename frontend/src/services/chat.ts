@@ -184,6 +184,36 @@ export async function sendMessage(
 }
 
 /**
+ * 更新 Artifact 内容（持久化到后端）
+ * 用于用户编辑 AI 生成的产物
+ */
+export interface UpdateArtifactParams {
+  artifactId: string
+  content: string
+}
+
+export interface UpdateArtifactResult {
+  id: string
+  type: string
+  title?: string
+  content: string
+  language?: string
+  sort_order: number
+  updated: boolean
+}
+
+export async function updateArtifact(
+  params: UpdateArtifactParams
+): Promise<UpdateArtifactResult> {
+  const response = await fetch(buildUrl(`/artifacts/${params.artifactId}`), {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify({ content: params.content })
+  })
+  return handleResponse<UpdateArtifactResult>(response, '保存失败')
+}
+
+/**
  * 🔥🔥🔥 v3.5 HITL: 恢复被中断的执行流程
  * 复用与 sendMessage 完全相同的 SSE 处理逻辑
  */

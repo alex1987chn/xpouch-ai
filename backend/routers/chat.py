@@ -30,7 +30,8 @@ from crud.task_session import (
     create_subtask,
     get_subtasks_by_session,
     update_subtask_status,
-    create_artifacts_batch
+    create_artifacts_batch,
+    update_artifact_content
 )
 from constants import (
     normalize_agent_id,
@@ -1593,3 +1594,77 @@ def format_resume_event(token: dict) -> Optional[str]:
             return f"event: message.done\ndata: {json.dumps({'type': 'message.done'})}\n\n"
     
     return None
+
+
+# ============================================================================
+# Artifact 编辑持久化 API
+# ============================================================================
+
+class ArtifactUpdateRequest(BaseModel):
+    """Artifact 内容更新请求"""
+    content: str
+
+
+class ArtifactUpdateResponse(BaseModel):
+    """Artifact 内容更新响应"""
+    id: str
+    type: str
+    title: Optional[str]
+    content: str
+    language: Optional[str]
+    sort_order: int
+    updated: bool
+
+
+@router.patch("/artifacts/{artifact_id}", response_model=ArtifactUpdateResponse)
+async def update_artifact(
+    artifact_id: str,
+    request: ArtifactUpdateRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    更新 Artifact 内容（用于用户编辑 AI 生成的产物）
+    
+    此端点实现 Artifact 编辑的持久化，确保用户修改后的内容：
+    1. 保存到数据库
+    2. 后续任务执行时读取的是修改后的版本
+    3. 页面刷新后修改不会丢失
+    """
+    # 1. 查找 Artifact
+    from crud.task_session import get_artifact
+    artifact = get_artifact(session, artifact_id)
+    
+    if not artifact:
+        raise NotFoundError(f"Artifact not found: {artifact_id}")
+    
+    # 2. 验证权限（通过 SubTask -> TaskSession -> Thread 链验证）
+    subtask = session.get(SubTask, artifact.sub_task_id)
+    if not subtask:
+        raise NotFoundError("Associated task not found")
+    
+    task_session = session.get(TaskSession, subtask.task_session_id)
+    if not task_session:
+        raise NotFoundError("Associated session not found")
+    
+    thread = session.get(Thread, task_session.thread_id)
+    if not thread or thread.user_id != current_user.id:
+        raise AuthorizationError("无权修改此产物")
+    
+    # 3. 更新内容
+    updated_artifact = update_artifact_content(session, artifact_id, request.content)
+    
+    if not updated_artifact:
+        raise AppError("更新失败，请重试")
+    
+    print(f"[ARTIFACT UPDATE] 用户 {current_user.id} 更新了 Artifact {artifact_id}")
+    
+    return ArtifactUpdateResponse(
+        id=updated_artifact.id,
+        type=updated_artifact.type,
+        title=updated_artifact.title,
+        content=updated_artifact.content,
+        language=updated_artifact.language,
+        sort_order=updated_artifact.sort_order,
+        updated=True
+    )
