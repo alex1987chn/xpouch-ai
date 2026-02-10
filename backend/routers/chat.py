@@ -1385,6 +1385,32 @@ async def resume_chat(
                     print(f"[RESUME PRODUCER] 开始流式恢复执行...")
                     event_count = 0
                     loop_count = 0
+                    realtime_event_count = 0
+                    
+                    # 🔥🔥🔥 创建独立任务持续收集 realtime_queue 事件
+                    # 避免在 graph.astream_events 循环内部收集导致的时序问题
+                    realtime_events_collector = []
+                    collector_task = None
+                    
+                    async def collect_realtime_events():
+                        """独立协程：持续收集 realtime_queue 事件"""
+                        nonlocal realtime_event_count
+                        while True:
+                            try:
+                                realtime_event = await asyncio.wait_for(realtime_queue.get(), timeout=0.5)
+                                if realtime_event and realtime_event.get("type") == "sse":
+                                    realtime_events_collector.append(realtime_event)
+                                    realtime_event_count += 1
+                                    if realtime_event_count % 10 == 0:
+                                        print(f"[RESUME PRODUCER] 已收集 {realtime_event_count} 个 realtime 事件")
+                            except asyncio.TimeoutError:
+                                continue
+                            except Exception as e:
+                                print(f"[RESUME PRODUCER] 收集 realtime 事件错误: {e}")
+                                break
+                    
+                    # 启动收集器协程
+                    collector_task = asyncio.create_task(collect_realtime_events())
                     
                     # 🔥🔥🔥 循环执行直到所有任务完成（处理多轮中断）
                     while True:
@@ -1421,25 +1447,31 @@ async def resume_chat(
                             if kind == "on_chain_end" and name == "aggregator":
                                 print(f"[RESUME PRODUCER] Aggregator 完成")
                         
-                        # 🔥🔥🔥 收集 aggregator 的实时流式推送
-                        # 非阻塞地获取所有已推送的事件
-                        realtime_count = 0
-                        try:
-                            while True:
-                                realtime_event = await asyncio.wait_for(realtime_queue.get(), timeout=0.1)
-                                if realtime_event and realtime_event.get("type") == "sse":
-                                    await sse_queue.put(realtime_event)
-                                    event_count += 1
-                                    realtime_count += 1
-                        except asyncio.TimeoutError:
-                            if realtime_count > 0:
-                                print(f"[RESUME PRODUCER] 本轮收集到 {realtime_count} 个 realtime 事件")
-                            pass
+                        # 🔥🔥🔥 将收集到的 realtime 事件发送到 sse_queue
+                        if realtime_events_collector:
+                            flush_count = len(realtime_events_collector)
+                            for evt in realtime_events_collector:
+                                await sse_queue.put(evt)
+                                event_count += 1
+                            realtime_events_collector.clear()
+                            print(f"[RESUME PRODUCER] 本轮刷新 {flush_count} 个 realtime 事件")
                         
                         # 检查是否完成或再次中断
                         snapshot = await graph.aget_state(config)
                         if not snapshot.next:
-                            print(f"[RESUME PRODUCER] 所有任务完成，共 {event_count} 个事件")
+                            # 等待收集器完成
+                            if collector_task and not collector_task.done():
+                                collector_task.cancel()
+                                try:
+                                    await collector_task
+                                except asyncio.CancelledError:
+                                    pass
+                            # 最后刷新一次 realtime 事件
+                            if realtime_events_collector:
+                                for evt in realtime_events_collector:
+                                    await sse_queue.put(evt)
+                                    event_count += 1
+                            print(f"[RESUME PRODUCER] 所有任务完成，共 {event_count} 个事件 (realtime: {realtime_event_count})")
                             break
                         
                         print(f"[RESUME PRODUCER] 检测到中断，自动继续执行...")

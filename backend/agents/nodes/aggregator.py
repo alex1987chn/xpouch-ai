@@ -86,7 +86,10 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
                 if stream_queue:
                     try:
                         await stream_queue.put({"type": "sse", "event": event_str})
-                        print(f"[AGG] ✅ 已推送 chunk 到 stream_queue: {len(content)} chars")
+                        # 日志采样：前5个 + 每50个打印一次，平衡可见性和日志量
+                        chunk_index = len(final_response_chunks)
+                        if chunk_index <= 5 or chunk_index % 50 == 0:
+                            print(f"[AGG] ✅ 已推送 chunk {chunk_index}: {len(content)} chars")
                     except Exception as e:
                         print(f"[AGG] ❌ 推送到 stream_queue 失败: {e}")
         

@@ -2,47 +2,68 @@
 
 数据库迁移脚本目录
 
-## 推荐使用：统一迁移脚本
+## 迁移脚本列表
 
-**`apply_all_migrations.sql`** - 包含所有 v3.0 迁移的统一脚本
+### 1. `apply_all_migrations.sql` - 业务表迁移
+包含所有业务表的 v3.0 迁移：
+- Thread 表扩展（agent_type, agent_id, task_session_id, status, thread_mode）
+- Message 表扩展（extra_data）
+- CustomAgent 表扩展（is_default, category, is_public, conversation_count）
+- TaskSession 表扩展（plan_summary, estimated_steps, execution_mode, status, completed_at）
+- SubTask 表扩展（task_description, output_result, started_at, completed_at, sort_order, execution_mode, depends_on, error_message, duration_ms）
+- Artifact 表（新建）
+- UserMemory 表（新建，支持向量检索）
+- SystemExpert 表扩展（description, is_dynamic）
 
-特性：
+**特性：**
 - ✅ **幂等性**：可重复执行，已存在的表/字段/索引会自动跳过
 - ✅ **兼容性**：PostgreSQL 13+
 - ✅ **事务安全**：使用 `DO $$` 块确保原子性
 - ✅ **无敏感信息**：纯 SQL 文件，可安全开源
 
-### 执行方式（推荐）
+### 2. `checkpoint_tables.sql` - LangGraph Checkpoint 表迁移
+包含 LangGraph 复杂模式所需的检查点表：
+- `checkpoints` - 工作流状态快照
+- `checkpoint_blobs` - 二进制大对象存储
+- `checkpoint_writes` - 写入操作记录
+- `checkpoint_migrations` - 迁移版本记录
 
-#### 方式1：使用自动脚本（读取 .env 配置）
+**特性：**
+- ✅ **幂等性**：可重复执行
+- ✅ **兼容性**：PostgreSQL 13+
+- ✅ **LangGraph 标准**：完全符合 `langgraph-checkpoint-postgres` 官方 Schema
+
+### 3. `run_all_migrations.sh` - 统一迁移执行脚本
+自动执行所有迁移（业务表 + Checkpoint 表）的统一脚本
+
+---
+
+## 执行方式
+
+### 方式1：使用统一迁移脚本（推荐）
 
 ```bash
-# Linux/macOS
-chmod +x backend/migrations/run_migration.sh
-backend/migrations/run_migration.sh
+cd backend/migrations
+chmod +x run_all_migrations.sh
+./run_all_migrations.sh
 ```
 
-#### 方式2：手动执行（需要手动输入密码）
+#### Docker 环境
 
 ```bash
-# 使用 psql 命令行
-psql -h localhost -U postgres -d xpouch -f backend/migrations/apply_all_migrations.sql
-
-# 在 Docker 中执行
-docker exec -i your_postgres_container psql -U postgres -d xpouch < backend/migrations/apply_all_migrations.sql
+# 在 Docker 容器中执行（使用环境变量）
+docker exec -i ${POSTGRES_CONTAINER:-xpouch-postgres} psql -U ${POSTGRES_USER:-xpouch_admin} -d ${POSTGRES_DB:-xpouch_ai} < backend/migrations/apply_all_migrations.sql
+docker exec -i ${POSTGRES_CONTAINER:-xpouch-postgres} psql -U ${POSTGRES_USER:-xpouch_admin} -d ${POSTGRES_DB:-xpouch_ai} < backend/migrations/checkpoint_tables.sql
 ```
 
-### 验证迁移
+### 方式2：单独执行迁移
 
-```sql
--- 查看所有表结构
-SELECT table_name, COUNT(*) as column_count 
-FROM information_schema.columns 
-WHERE table_name IN ('thread', 'message', 'customagent', 'tasksession', 'subtask', 'artifact')
-GROUP BY table_name;
+```bash
+# 只执行业务表迁移（使用环境变量）
+psql -h localhost -U ${POSTGRES_USER:-xpouch_admin} -d ${POSTGRES_DB:-xpouch_ai} -f backend/migrations/apply_all_migrations.sql
 
--- 查看迁移历史
-SELECT * FROM migration_history;
+# 只执行 Checkpoint 表迁移
+psql -h localhost -U ${POSTGRES_USER:-xpouch_admin} -d ${POSTGRES_DB:-xpouch_ai} -f backend/migrations/checkpoint_tables.sql
 ```
 
 
@@ -78,25 +99,31 @@ SELECT * FROM migration_history;
 
 ## 部署流程
 
-### 线上部署步骤
+### 本地开发环境（Linux/macOS）
 
 ```bash
-# 1. 停止应用服务（避免迁移过程中有写入）
+cd backend/migrations
+chmod +x run_all_migrations.sh
+./run_all_migrations.sh
+```
+
+### Docker 部署（生产环境）
+
+```bash
+# 1. 停止应用服务（可选，迁移是幂等的）
 docker stop xpouch-backend
 
 # 2. 备份数据库（重要！）
-docker exec your_postgres_container pg_dump -U postgres xpouch > backup_$(date +%Y%m%d_%H%M%S).sql
+docker exec ${POSTGRES_CONTAINER:-xpouch-postgres} pg_dump -U ${POSTGRES_USER:-xpouch_admin} ${POSTGRES_DB:-xpouch_ai} > backup_$(date +%Y%m%d_%H%M%S).sql
 
-# 3. 拉取最新迁移脚本
+# 3. 拉取最新代码
 git pull origin main
 
-# 4. 执行数据库迁移
-cd backend/migrations
-chmod +x run_migration.sh
-./run_migration.sh
+# 4. 执行数据库迁移（在 Postgres 容器中）
+docker exec -i ${POSTGRES_CONTAINER:-xpouch-postgres} psql -U ${POSTGRES_USER:-xpouch_admin} -d ${POSTGRES_DB:-xpouch_ai} < backend/migrations/apply_all_migrations.sql
+docker exec -i ${POSTGRES_CONTAINER:-xpouch-postgres} psql -U ${POSTGRES_USER:-xpouch_admin} -d ${POSTGRES_DB:-xpouch_ai} < backend/migrations/checkpoint_tables.sql
 
-# 5. 拉取完整代码并重启
-git pull origin main
+# 5. 重启服务（带重建）
 docker-compose up -d --build
 ```
 
