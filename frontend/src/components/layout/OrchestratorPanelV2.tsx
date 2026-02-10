@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import {
   Maximize2, FileCode,
   Eye, Code2, Copy, Check, Loader2, CheckCircle2, Clock, XCircle,
-  Edit3, Save, X, Download, FileText
+  Edit3, Save, X, Download, ChevronDown
 } from 'lucide-react'
 import { downloadMarkdown, downloadPDF, getArtifactMarkdown } from '@/utils/export'
 import type { Task } from '@/store/taskStore'
@@ -343,8 +343,10 @@ function ArtifactContent({ artifact, taskId, onToggleFullscreen, isFullscreen }:
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
   const [editContent, setEditContent] = useState(artifact.content)
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const exportMenuRef = useRef<HTMLDivElement>(null)
   
   const { updateArtifactContent } = useTaskActions()
   
@@ -355,11 +357,13 @@ function ArtifactContent({ artifact, taskId, onToggleFullscreen, isFullscreen }:
   const handleExportMarkdown = useCallback(() => {
     const markdown = getArtifactMarkdown(artifact)
     downloadMarkdown(artifact.title || artifact.type, markdown)
+    setShowExportMenu(false)
   }, [artifact])
   
   // 导出 PDF
   const handleExportPDF = useCallback(async () => {
     setIsExportingPDF(true)
+    setShowExportMenu(false)
     try {
       await downloadPDF(contentElementId, artifact.title || artifact.type)
     } catch (err: any) {
@@ -369,6 +373,19 @@ function ArtifactContent({ artifact, taskId, onToggleFullscreen, isFullscreen }:
       setIsExportingPDF(false)
     }
   }, [contentElementId, artifact.title, artifact.type])
+  
+  // 点击外部关闭导出菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false)
+      }
+    }
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showExportMenu])
 
   const handleCopy = useCallback(async () => {
     const text = artifact?.content || ''
@@ -536,31 +553,50 @@ function ArtifactContent({ artifact, taskId, onToggleFullscreen, isFullscreen }:
                   <div className="w-px h-4 bg-border/50 mx-1" />
                 </>
               )}
-              {/* Export buttons */}
-              <button
-                onClick={handleExportMarkdown}
-                disabled={isExportingPDF}
-                className={cn(
-                  "w-7 h-7 flex items-center justify-center border-2 transition-all",
-                  "bg-panel text-primary border-border hover:border-primary hover:bg-card disabled:opacity-50"
+              {/* Export dropdown */}
+              <div ref={exportMenuRef} className="relative">
+                <button
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  disabled={isExportingPDF}
+                  className={cn(
+                    "h-7 px-1.5 flex items-center gap-0.5 border-2 transition-all",
+                    isExportingPDF
+                      ? "bg-primary/50 text-primary-foreground border-primary/50 cursor-wait"
+                      : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+                  )}
+                  title="Export"
+                >
+                  {isExportingPDF ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5" />
+                      <ChevronDown className={cn("w-3 h-3 transition-transform", showExportMenu && "rotate-180")} />
+                    </>
+                  )}
+                </button>
+                
+                {/* Dropdown menu */}
+                {showExportMenu && (
+                  <div className="absolute right-0 top-full mt-1 z-50 min-w-[140px] bg-card border-2 border-border shadow-lg">
+                    <button
+                      onClick={handleExportMarkdown}
+                      className="w-full px-3 py-2 text-left text-xs font-mono text-primary hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-2"
+                    >
+                      <span className="w-4 text-center">.md</span>
+                      <span>Markdown</span>
+                    </button>
+                    <div className="border-t border-border" />
+                    <button
+                      onClick={handleExportPDF}
+                      className="w-full px-3 py-2 text-left text-xs font-mono text-primary hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-2"
+                    >
+                      <span className="w-4 text-center">.pdf</span>
+                      <span>PDF</span>
+                    </button>
+                  </div>
                 )}
-                title="Export Markdown"
-              >
-                <FileText className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={handleExportPDF}
-                disabled={isExportingPDF}
-                className={cn(
-                  "w-7 h-7 flex items-center justify-center border-2 transition-all",
-                  isExportingPDF
-                    ? "bg-primary/50 text-primary-foreground border-primary/50 cursor-wait"
-                    : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
-                )}
-                title={isExportingPDF ? 'Generating PDF...' : 'Export PDF'}
-              >
-                {isExportingPDF ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              </button>
+              </div>
               <div className="w-px h-4 bg-border/50 mx-1" />
               
               <button
