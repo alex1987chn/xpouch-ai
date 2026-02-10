@@ -2,7 +2,7 @@
  * 聊天核心逻辑 Hook
  * 负责消息发送、停止生成、加载状态管理等核心功能
  * 
- * v3.6 性能优化：使用 Zustand Selectors 避免流式输出时的无效重计算
+ * v3.1.0 性能优化：使用 Zustand Selectors 避免流式输出时的无效重计算
  */
 
 import { useCallback, useRef, useEffect, useState } from 'react'
@@ -20,7 +20,7 @@ import type { ExpertEvent } from '@/types'
 import { errorHandler, logger } from '@/utils/logger'
 import { isValidApiMessageRole } from '@/types'
 
-// Performance Optimized Selectors (v3.6)
+// Performance Optimized Selectors (v3.1.0)
 import {
   useMessages,
   useInputMessage,
@@ -73,7 +73,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   // Refactored: Hook only manages AbortController
   const abortControllerRef = useRef<AbortController | null>(null)
   
-  // Performance Optimized Selectors (v3.6)
+  // Performance Optimized Selectors (v3.1.0)
   const conversationMode = useTaskMode() || 'simple'
   
   // Chat store selectors
@@ -317,7 +317,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   }, [])
 
   /**
-   * v3.5 HITL: Resume interrupted execution flow
+   * v3.1.0 HITL: Resume interrupted execution flow
    */
   const resumeExecution = useCallback(async (
     params: ResumeChatParams

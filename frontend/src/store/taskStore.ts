@@ -1,7 +1,41 @@
 /**
- * 任务状态管理 Store
- * 管理复杂模式下的专家任务状态和产物
- * 使用 Map 存储实现 O(1) 更新
+ * 任务状态管理 Store (Zustand + Immer)
+ * 
+ * [职责]
+ * 管理复杂模式下的多专家协作状态：
+ * - 任务计划（Plan）初始化与更新
+ * - 专家任务状态跟踪（pending/running/completed/failed）
+ * - Artifact 产物管理（增删改查）
+ * - HITL 状态管理（等待用户确认）
+ * 
+ * [架构设计]
+ * - 使用 Map<string, Task> 存储任务，实现 O(1) 更新
+ * - 使用 Immer 中间件实现不可变状态更新
+ * - tasksCache: 派生数组，用于 React 组件遍历（按 sort_order 排序）
+ * - tasksCacheVersion: 缓存版本号，触发组件重渲染
+ * 
+ * [性能优化]
+ * - Map 结构避免大数组遍历更新
+ * - tasksCache 惰性计算，减少重复排序
+ * - Selectors 模式（useTaskSelectors.ts）避免不必要重渲染
+ * 
+ * [关键操作]
+ * - initializePlan: 初始化/重置任务计划（支持 HITL 更新）
+ * - startTask/updateTaskStatus: 任务状态流转
+ * - addArtifact/updateArtifactContent: 产物管理
+ * - reset: 会话结束清理状态
+ * 
+ * [持久化]
+ * - 不持久化到 localStorage（会话级状态）
+ * - 页面刷新后通过 API 恢复会话状态
+ * 
+ * [事件驱动]
+ * 响应后端 SSE 事件：
+ * - plan.created: 初始化任务列表
+ * - task.started: 标记任务运行中
+ * - task.completed/failed: 更新任务结果
+ * - artifact.generated: 添加产物
+ * - human.interrupt: 显示 HITL 审核 UI
  */
 
 import { create } from 'zustand'
@@ -115,7 +149,7 @@ interface TaskState {
   // 🔥 新增：Commander 规划思考内容
   planThinkingContent: string
 
-  // 🔥🔥🔥 v3.5 HITL: 人类审核状态
+  // 🔥🔥🔥 v3.1.0 HITL: 人类审核状态
   isWaitingForApproval: boolean
   pendingPlan: Task[]
 
@@ -142,7 +176,7 @@ interface TaskState {
   startPlan: (data: PlanStartedData) => void
   appendPlanThinking: (data: PlanThinkingData) => void
 
-  // 🔥🔥🔥 v3.5 HITL Actions
+  // 🔥🔥🔥 v3.1.0 HITL Actions
   setPendingPlan: (plan: Task[]) => void
   clearPendingPlan: () => void
   setIsWaitingForApproval: (waiting: boolean) => void
@@ -515,7 +549,7 @@ export const useTaskStore = create<TaskState>()(
     },
 
     /**
-     * 🔥🔥🔥 v3.5 HITL: 设置待审核计划
+     * 🔥🔥🔥 v3.1.0 HITL: 设置待审核计划
      * 收到 human.interrupt 事件时调用
      */
     setPendingPlan: (plan: Task[]) => {
@@ -527,7 +561,7 @@ export const useTaskStore = create<TaskState>()(
     },
 
     /**
-     * 🔥🔥🔥 v3.5 HITL: 清除待审核计划
+     * 🔥🔥🔥 v3.1.0 HITL: 清除待审核计划
      * 用户确认或取消后调用
      */
     clearPendingPlan: () => {
@@ -539,7 +573,7 @@ export const useTaskStore = create<TaskState>()(
     },
 
     /**
-     * 🔥🔥🔥 v3.5 HITL: 设置等待审核状态
+     * 🔥🔥🔥 v3.1.0 HITL: 设置等待审核状态
      */
     setIsWaitingForApproval: (waiting: boolean) => {
       set((state) => {
@@ -548,7 +582,7 @@ export const useTaskStore = create<TaskState>()(
     },
 
     /**
-     * 🔥🔥🔥 v3.5 HITL: 根据修改后的计划更新任务列表
+     * 🔥🔥🔥 v3.1.0 HITL: 根据修改后的计划更新任务列表
      * 用户删除/修改任务后，同步更新前端状态
      */
     updateTasksFromPlan: (newPlan: { id: string; expert_type: string; description: string; sort_order?: number; status?: string }[]) => {

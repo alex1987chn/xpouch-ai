@@ -4,8 +4,8 @@
  * 当 Commander 完成规划后，展示此卡片让用户审核、修改计划，
  * 确认后再继续执行。
  * 
- * v3.5 HITL 核心组件
- * v3.6 性能优化：使用 Zustand Selectors 避免后台流式更新时的卡顿
+ * v3.1.0 HITL 核心组件
+ * v3.1.0 性能优化：使用 Zustand Selectors 避免后台流式更新时的卡顿
  */
 
 import React, { useState, useCallback } from 'react'
@@ -13,7 +13,7 @@ import { Trash2, Edit3, CheckCircle2, XCircle, Play, Loader2 } from 'lucide-reac
 import type { Task } from '@/store/taskStore'
 import type { ResumeChatParams } from '@/services/chat'
 
-// Performance Optimized Selectors (v3.6)
+// Performance Optimized Selectors (v3.1.0)
 import {
   useIsWaitingForApproval,
   usePendingPlan,
@@ -24,7 +24,7 @@ import { useChatStore } from '@/store/chatStore'
 
 interface PlanReviewCardProps {
   conversationId: string
-  /** v3.5 HITL: 恢复执行函数（复用主聊天的 SSE 处理逻辑） */
+  /** v3.1.0 HITL: 恢复执行函数（复用主聊天的 SSE 处理逻辑） */
   resumeExecution: (params: ResumeChatParams) => Promise<string>
 }
 
@@ -32,7 +32,7 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
   conversationId,
   resumeExecution 
 }) => {
-  // Performance Optimized Selectors (v3.6)
+  // Performance Optimized Selectors (v3.1.0)
   // Only re-render when these specific values change
   const isWaitingForApproval = useIsWaitingForApproval()
   const pendingPlan = usePendingPlan()
@@ -206,7 +206,7 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
         Commander 已生成执行计划，请审核或修改后再执行：
       </p>
       
-      {/* v3.5 HITL: Test guide */}
+      {/* v3.1.0 HITL: Test guide */}
       <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
         <div className="font-semibold mb-1 flex items-center gap-1">
           <span>测试指引:</span>

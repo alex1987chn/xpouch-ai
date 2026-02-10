@@ -1,7 +1,44 @@
 """
-Commander 节点 - 任务规划
+Commander 节点 - 任务规划与拆解
 
-将复杂查询拆解为子任务，支持显式依赖关系（DAG）
+[职责]
+将用户复杂查询拆解为可执行的子任务序列（SubTasks），支持：
+- 专家分配（expert_type）
+- 任务依赖（DAG，通过 depends_on 实现）
+- 优先级排序（priority）
+
+[执行流程]
+1. 分析用户查询意图
+2. 生成任务列表（使用结构化输出 CommanderOutput）
+3. 创建 TaskSession 和 SubTasks（数据库持久化）
+4. 预加载专家配置到缓存（P1 优化）
+5. 发送 plan.created 事件（驱动前端显示 Thinking Steps）
+6. 触发 HITL 中断（等待用户确认计划）
+
+[输出结构]
+CommanderOutput:
+  - tasks: SubTask 列表
+    - id: 任务唯一标识
+    - expert_type: 执行专家类型
+    - description: 任务描述
+    - depends_on: 依赖任务ID列表（上游输出注入上下文）
+    - priority: 执行优先级
+  - strategy: 执行策略概述
+  - estimated_steps: 预估步骤数
+
+[依赖处理]
+- 下游任务自动获取上游任务输出作为上下文
+- 容错：缺失依赖时提示 LLM 基于现有信息尽力完成
+
+[数据库操作]
+- 创建 TaskSession（任务会话）
+- 批量创建 SubTask（子任务）
+- 关联 Thread（对话线程）
+
+[HITL 集成]
+- 生成 plan.created 事件后暂停（interrupt）
+- 用户可修改/删除/重排任务
+- 确认后 Dispatcher 按新计划执行
 """
 import os
 from typing import Dict, Any, List, Optional

@@ -1,6 +1,36 @@
 /**
- * 聊天相关 API 服务
- * v3.0: 只支持新的事件协议
+ * 聊天 API 服务层
+ * 
+ * [职责]
+ * 封装所有与后端聊天相关的 HTTP API 调用，包括：
+ * - 会话管理（CRUD）
+ * - 流式消息发送（SSE）
+ * - HITL 恢复执行
+ * - Artifact 更新
+ * 
+ * [架构]
+ * - 使用 @microsoft/fetch-event-source 处理 SSE 流式响应
+ * - 事件分发：将 SSE 事件同时传递给 handleServerEvent（全局处理）和 onChunk 回调（组件级处理）
+ * - 自动 Token 刷新：401 时尝试刷新 Token 后重试
+ * 
+ * [关键函数]
+ * - sendMessageStream: 核心流式发送，处理简单/复杂模式
+ * - resumeTaskSession: HITL 恢复执行，支持用户修改后的计划
+ * - updateArtifact: Artifact 编辑保存
+ * 
+ * [事件协议]
+ * v3.0 新协议事件：
+ * - plan.created: 任务计划创建
+ * - task.started/completed/failed: 任务状态变更
+ * - artifact.generated: 产物生成
+ * - message.delta: 流式文本增量
+ * - message.done: 消息完成
+ * - human.interrupt: HITL 中断等待用户确认
+ * 
+ * [错误处理]
+ * - 网络错误：自动重试一次
+ * - 解析错误：跳过无效 SSE 数据，继续处理
+ * - 认证错误：触发 Token 刷新或跳转登录
  */
 
 import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
@@ -214,7 +244,7 @@ export async function updateArtifact(
 }
 
 /**
- * 🔥🔥🔥 v3.5 HITL: 恢复被中断的执行流程
+ * 🔥🔥🔥 v3.1.0 HITL: 恢复被中断的执行流程
  * 复用与 sendMessage 完全相同的 SSE 处理逻辑
  */
 export interface ResumeChatParams {

@@ -28,7 +28,7 @@
  * - 所有状态通过 Props 传入，保持组件纯函数
  * - 状态管理由父组件和 Zustand Store 负责
  *
- * [性能优化] v3.6
+ * [性能优化] v3.1.0
  * - 使用 Zustand Selectors 避免不必要的重渲染
  * - 流式输出时组件保持静止
  */
@@ -44,7 +44,7 @@ import PlanReviewCard from '../PlanReviewCard'
 import { parseThinkTags, formatThinkingAsSteps } from '@/utils/thinkParser'
 import type { ResumeChatParams } from '@/services/chat'
 
-// Performance Optimized Selectors (v3.6)
+// Performance Optimized Selectors (v3.1.0)
 import {
   useMessages,
   useIsGenerating,
@@ -73,7 +73,7 @@ interface ChatStreamPanelProps {
   onLinkClick?: (href: string) => void
   /** 点击消息预览回调（用于移动端切换到 preview 视图） */
   onPreview?: () => void
-  /** v3.5 HITL: 恢复执行回调 */
+  /** v3.1.0 HITL: 恢复执行回调 */
   resumeExecution?: (params: ResumeChatParams) => Promise<string>
 }
 
@@ -148,7 +148,7 @@ export default function ChatStreamPanel({
 }: ChatStreamPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   
-  // Performance Optimized Selectors (v3.6)
+  // Performance Optimized Selectors (v3.1.0)
   // Only re-render when these specific values change
   const messages = useMessages()
   const isGenerating = useIsGenerating()
@@ -265,7 +265,7 @@ export default function ChatStreamPanel({
           <GeneratingIndicator mode={conversationMode} />
         )}
         
-        {/* v3.5 HITL: Plan review card */}
+        {/* v3.1.0 HITL: Plan review card */}
         {isWaitingForApproval && conversationId && resumeExecution && (
           <PlanReviewCard 
             conversationId={conversationId} 

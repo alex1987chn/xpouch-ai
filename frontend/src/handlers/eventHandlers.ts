@@ -1,6 +1,36 @@
 /**
- * SSE 事件处理器
- * 连接后端 SSE 事件和前端 Store 状态更新
+ * SSE 事件处理器 - 全局事件分发中心
+ * 
+ * [职责]
+ * 处理后端推送的所有 SSE 事件，更新前端 Store 状态：
+ * - 任务状态管理（TaskStore）
+ * - 对话消息更新（ChatStore）
+ * - Thinking Steps 构建
+ * 
+ * [架构]
+ * chat.ts (SSE 连接) -> EventHandler -> Stores -> React Components
+ *                      |
+ *                      v
+ *               useExpertHandler (可选，用于 Thinking 更新)
+ * 
+ * [事件分发]
+ * 注意：plan.created 事件在 useExpertHandler 中处理（避免重复）
+ * 其他事件在此统一处理
+ * 
+ * [去重机制]
+ * - 使用 processedEventIds Set 去重
+ * - 限制存储数量（防内存泄漏）
+ * 
+ * [处理的事件类型]
+ * - router.*: 路由决策
+ * - task.*: 任务状态变更
+ * - artifact.*: 产物生成
+ * - message.*: 流式消息
+ * - human.interrupt: HITL 中断
+ * 
+ * [状态更新]
+ * - TaskStore: 任务状态、Artifact 列表
+ * - ChatStore: 消息元数据（Thinking Steps）、消息内容
  */
 
 import { useTaskStore } from '@/store/taskStore'
@@ -19,7 +49,7 @@ import type {
   ArtifactCompletedEvent,
   MessageDeltaEvent,
   MessageDoneEvent,
-  HumanInterruptEvent,     // 🔥🔥🔥 v3.5 HITL
+  HumanInterruptEvent,     // 🔥🔥🔥 v3.1.0 HITL
   RouterStartEvent,
   RouterDecisionEvent,
   ErrorEvent
@@ -62,8 +92,9 @@ export class EventHandler {
       case 'router.start':
         this.handleRouterStart(event as RouterStartEvent)
         break
+      // 🔥 plan.created 已在 useExpertHandler 中处理（避免重复）
+      // 保留 case 但不做任何操作
       case 'plan.created':
-        this.handlePlanCreated(event as PlanCreatedEvent)
         break
       // 🔥 新增：Commander 流式思考事件
       case 'plan.started':
@@ -100,7 +131,7 @@ export class EventHandler {
       case 'message.done':
         this.handleMessageDone(event as MessageDoneEvent)
         break
-      // 🔥🔥🔥 v3.5 HITL: 人类审核中断事件
+      // 🔥🔥🔥 v3.1.0 HITL: 人类审核中断事件
       case 'human.interrupt':
         this.handleHumanInterrupt(event as HumanInterruptEvent)
         break
@@ -488,7 +519,7 @@ export class EventHandler {
   }
 
   /**
-   * 🔥🔥🔥 v3.5 HITL: 处理 human.interrupt 事件
+   * 🔥🔥🔥 v3.1.0 HITL: 处理 human.interrupt 事件
    * Commander 规划完成，等待人类审核
    */
   private handleHumanInterrupt(event: HumanInterruptEvent): void {

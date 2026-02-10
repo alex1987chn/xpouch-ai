@@ -39,7 +39,7 @@ interface ChatState {
    */
   updateLastMessageThoughts: (step: ThinkingStep) => void
   /**
-   * 🔥🔥🔥 v3.5 HITL: 根据任务计划重建 thinking 步骤
+   * 🔥🔥🔥 v3.1.0 HITL: 根据任务计划重建 thinking 步骤
    */
   rebuildThinkingFromPlan: (taskIds: string[]) => void
   setInputMessage: (input: string) => void
@@ -175,7 +175,7 @@ export const useChatStore = create<ChatState>()(
       }),
 
       /**
-       * 🔥🔥🔥 v3.5 HITL: 根据新的任务计划重建 thinking 步骤
+       * 🔥🔥🔥 v3.1.0 HITL: 根据新的任务计划重建 thinking 步骤
        * 用户删除任务后，移除对应的 thinking 步骤
        */
       rebuildThinkingFromPlan: (taskIds: string[]) => set((state: ChatState) => {

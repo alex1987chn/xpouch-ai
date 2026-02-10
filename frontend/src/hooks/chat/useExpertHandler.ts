@@ -1,6 +1,38 @@
 /**
- * 专家事件处理 Hook
- * v3.0: 只处理新协议事件，更新 taskStore
+ * 专家事件处理 Hook - Thinking Steps 构建器
+ * 
+ * [职责]
+ * 处理 plan.created 事件，构建 Thinking Process 的 Steps：
+ * - 完全重建 thinking 数组（基于最新任务列表）
+ * - 添加 planning step（任务规划展示）
+ * - 为每个任务添加 thinking step（专家执行跟踪）
+ * 
+ * [与其他处理器的分工]
+ * - useExpertHandler: 专门处理 plan.created，负责 Thinking Steps UI
+ * - EventHandler (eventHandlers.ts): 处理其他所有事件，负责 Store 数据更新
+ * - 两者不重复处理同一事件
+ * 
+ * [执行时机]
+ * 在 chat.ts 中通过 onChunk 回调调用，早于 EventHandler
+ * 确保 Thinking Steps 先展示，再更新数据
+ * 
+ * [Thinking Step 结构]
+ * {
+ *   id: 任务ID,
+ *   expertType: 'search' | 'coder' | 'writer' | ...,
+ *   expertName: 显示名称,
+ *   content: 任务描述,
+ *   status: 'pending' | 'running' | 'completed' | 'failed',
+ *   type: ThinkingStep 类型（决定图标）
+ * }
+ * 
+ * [图标映射]
+ * search -> 搜索图标
+ * coder -> 代码图标
+ * writer -> 写作图标
+ * analyzer -> 分析图标
+ * planner -> 规划图标
+ * default -> 默认图标
  */
 
 import { useCallback, useRef, useMemo, useEffect } from 'react'
