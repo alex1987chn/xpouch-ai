@@ -112,6 +112,7 @@ export const useTaskActions = () => useTaskStore(
     addArtifact: state.addArtifact,
     selectTask: state.selectTask,
     clearTasks: state.clearTasks,
+    setMode: state.setMode,
     updateTasksFromPlan: state.updateTasksFromPlan,
     setPendingPlan: state.setPendingPlan,
     clearPendingPlan: state.clearPendingPlan,
@@ -126,6 +127,7 @@ export const useTaskActions = () => useTaskStore(
 export const useSelectTaskAction = () => useTaskStore(state => state.selectTask)
 export const useClearTasksAction = () => useTaskStore(state => state.clearTasks)
 export const useInitializePlanAction = () => useTaskStore(state => state.initializePlan)
+export const useSetModeAction = () => useTaskStore(state => state.setMode)
 
 // ============================================================================
 // 条件 Selectors (根据条件返回不同值)
