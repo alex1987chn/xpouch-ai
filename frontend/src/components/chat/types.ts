@@ -50,20 +50,6 @@ export interface HeavyInputTextAreaProps {
 }
 
 /**
- * 思考区域 Props
- */
-export interface ThinkingSectionProps {
-  thinking: Array<{
-    id: string
-    expertType: string
-    expertName: string
-    content: string
-    timestamp: string
-    status: 'running' | 'completed' | 'failed'
-  }>
-}
-
-/**
  * 路由指示器 Props
  */
 export interface RoutingIndicatorProps {
