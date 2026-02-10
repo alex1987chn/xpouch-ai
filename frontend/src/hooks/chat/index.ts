@@ -11,3 +11,6 @@ export { useExpertHandler } from './useExpertHandler'
 
 // 会话管理
 export { useConversation } from './useConversation'
+
+// 会话恢复
+export { useSessionRecovery } from './useSessionRecovery'

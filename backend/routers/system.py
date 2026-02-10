@@ -64,27 +64,20 @@ async def update_user_me(
     current_user: User = Depends(get_current_user_with_auth)
 ):
     """更新当前用户信息"""
-    print(f"[API] 收到更新用户信息请求，用户ID: {current_user.id}", file=sys.stderr)
-    print(f"[API] 请求内容: username={request.username}, avatar={'有' if request.avatar else '否'}, plan={request.plan}", file=sys.stderr)
-
     # 记录更新时间戳
     current_user.updated_at = datetime.now()
     
     if request.username is not None:
         current_user.username = request.username
-        print(f"[API] 更新用户名为: {request.username}", file=sys.stderr)
     if request.avatar is not None:
         current_user.avatar = request.avatar
-        print(f"[API] 更新头像: {'是' if request.avatar else '否'}", file=sys.stderr)
     if request.plan is not None:
         current_user.plan = request.plan
-        print(f"[API] 更新套餐: {request.plan}", file=sys.stderr)
 
     session.add(current_user)
     session.commit()
     session.refresh(current_user)
 
-    print(f"[API] 用户信息更新成功: {current_user.username} (更新时间: {current_user.updated_at})", file=sys.stderr)
     return current_user
 
 

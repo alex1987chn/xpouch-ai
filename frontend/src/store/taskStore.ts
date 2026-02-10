@@ -21,7 +21,7 @@ import type {
   ArtifactChunkData,
   ArtifactCompletedData
 } from '@/types/events'
-import type { SubTask, TaskSession as ApiTaskSession } from '@/types'
+import type { SubTask, TaskSession as ApiTaskSession, Artifact as BaseArtifact } from '@/types'
 
 // 启用 Immer 的 Map/Set 支持（必须在 create 之前调用）
 enableMapSet()
@@ -75,15 +75,13 @@ export interface Task extends TaskInfo {
   artifacts: Artifact[]
 }
 
-export interface Artifact {
-  id: string
-  type: 'code' | 'html' | 'markdown' | 'json' | 'text'
-  title?: string
-  content: string
-  language?: string
+/**
+ * TaskStore 扩展的 Artifact 类型
+ * 基于 types/index.ts 的 Artifact 扩展必要字段
+ */
+export interface Artifact extends BaseArtifact {
   sortOrder: number
   createdAt: string
-  isStreaming?: boolean  // 🔥 新增：标记是否正在流式生成中
 }
 
 export interface TaskSession {

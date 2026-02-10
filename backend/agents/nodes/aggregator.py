@@ -84,7 +84,11 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
                 
                 # 🔥🔥🔥 v3.3: 实时推送到共享队列，让前端立即收到
                 if stream_queue:
-                    await stream_queue.put({"type": "sse", "event": event_str})
+                    try:
+                        await stream_queue.put({"type": "sse", "event": event_str})
+                        print(f"[AGG] ✅ 已推送 chunk 到 stream_queue: {len(content)} chars")
+                    except Exception as e:
+                        print(f"[AGG] ❌ 推送到 stream_queue 失败: {e}")
         
         final_response = "".join(final_response_chunks)
         

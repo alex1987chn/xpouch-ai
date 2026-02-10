@@ -74,8 +74,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     setCurrentConversationId,
     addMessage,
     updateMessage,
-    isTyping,
-    setIsTyping,
     setMessages,
     isGenerating,        // ✅ 从 Store 读取
     setGenerating,       // ✅ 从 Store 读取
@@ -180,7 +178,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       ])
 
       setInputMessage('')
-      setIsTyping(true)
 
       // 4. 发送请求并处理流式响应
       let finalResponseContent = ''
@@ -277,7 +274,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         })
       }
     } finally {
-      setIsTyping(false)
       setGenerating(false)  // ✅ 使用 Store 方法
       abortControllerRef.current = null
 
@@ -307,7 +303,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     onChunk,
     onNewConversation,
     setGenerating,
-    setIsTyping,
     t
   ])
 

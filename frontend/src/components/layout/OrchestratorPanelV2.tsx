@@ -1,12 +1,13 @@
 import { useState, lazy, Suspense, memo, useCallback, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  Maximize2, LayoutGrid, FileCode,
+  Maximize2, FileCode,
   Eye, Code2, Copy, Check, Loader2, CheckCircle2, Clock, XCircle
 } from 'lucide-react'
 import { useTaskStore } from '@/store/taskStore'
 import type { Artifact, Task } from '@/store/taskStore'
 import { SIMPLE_TASK_ID } from '@/constants/task'
+import EmptyState from '@/components/chat/EmptyState'
 
 const CodeArtifact = lazy(() => import('@/components/artifacts/CodeArtifact').then(m => ({ default: m.default })))
 const DocArtifact = lazy(() => import('@/components/artifacts/DocArtifact').then(m => ({ default: m.default })))
@@ -46,9 +47,6 @@ function SimpleModePanel({ isFullscreen, onToggleFullscreen }: OrchestratorPanel
   const selectedTask = tasks.find(t => t.id === SIMPLE_TASK_ID)
   const artifacts = selectedTask?.artifacts || []
   const currentArtifact = artifacts[selectedIndex] || null
-
-  // 调试输出
-  console.log('[SimpleModePanel] tasks:', tasks.length, 'selectedTask:', selectedTask?.id, 'artifacts:', artifacts.length)
 
   // 当切换任务时重置选中索引
   useEffect(() => {
@@ -243,7 +241,6 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
                   key={`${artifact.id}-${idx}`}
                   type="button"
                   onClick={() => {
-                    console.log('[ArtifactDashboard] Clicking artifact:', idx, artifact.id)
                     onSelectArtifact(idx)
                   }}
                   className={cn(
@@ -280,7 +277,7 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
         <div className="absolute inset-0 dot-grid opacity-30 pointer-events-none" />
         <div className="absolute inset-4 border border-border bg-card shadow-sm flex flex-col overflow-hidden min-w-0">
           {!selectedArtifact ? (
-            <EmptyState />
+            <EmptyState variant="detailed" />
           ) : (
             <ArtifactContent 
               artifact={selectedArtifact} 
@@ -299,39 +296,6 @@ function ArtifactDashboard({ expertName, artifacts, selectedArtifact, selectedIn
           <span className="text-accent">NET: CONNECTED</span>
         </div>
         <span>Ln 1, Col 1</span>
-      </div>
-    </div>
-  )
-}
-
-// 空状态
-function EmptyState() {
-  return (
-    <div className="h-full flex flex-col items-center justify-center p-8 border-2 border-dashed border-border/30 bg-panel/50">
-      <div className="text-center space-y-6">
-        <div className="flex justify-center">
-          <div className="w-16 h-16 border-2 border-border bg-card shadow-hard flex items-center justify-center">
-            <LayoutGrid className="w-8 h-8 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <h3 className="text-sm font-bold uppercase tracking-wide text-primary">暂无交付物</h3>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
-            等待专家生成交付物。任务进行时，交付物将显示在这里。
-          </p>
-        </div>
-        <div className="flex justify-center gap-2 pt-4">
-          <div className="w-2 h-2 bg-border/30" />
-          <div className="w-2 h-2 bg-border/50" />
-          <div className="w-2 h-2 bg-accent" />
-          <div className="w-2 h-2 bg-border/50" />
-          <div className="w-2 h-2 bg-border/30" />
-        </div>
-        <div className="pt-4 border-t border-border/20">
-          <div className="text-[9px] font-mono text-muted-foreground/70">
-            STATUS: <span className="text-accent">WAITING_FOR_TASK</span>
-          </div>
-        </div>
       </div>
     </div>
   )

@@ -34,7 +34,7 @@ export type TranslationKey =
   | 'create' | 'agentName' | 'agentNamePlaceholder' | 'description' | 'descriptionPlaceholder'
   | 'systemPrompt' | 'systemPromptPlaceholder' | 'systemPromptHint' | 'required'
   // Chat
-  | 'startConversation' | 'initConversation'
+  | 'startConversation' | 'initConversation' | 'analyzingRequestStream'
   // Knowledge Base
   | 'newKnowledgeBase' | 'searchKnowledge' | 'documents' | 'uploadDocument'
   | 'noKnowledgeFound' | 'noKnowledgeContent' | 'createFirstKnowledge'
