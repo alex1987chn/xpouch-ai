@@ -1,6 +1,8 @@
 /**
  * 聊天核心逻辑 Hook
  * 负责消息发送、停止生成、加载状态管理等核心功能
+ * 
+ * v3.6 性能优化：使用 Zustand Selectors 避免流式输出时的无效重计算
  */
 
 import { useCallback, useRef, useEffect, useState } from 'react'
@@ -11,8 +13,6 @@ import {
   type StreamCallback,
   type ResumeChatParams
 } from '@/services/chat'
-import { useChatStore } from '@/store/chatStore'
-import { useTaskStore } from '@/store/taskStore'
 import { normalizeAgentId } from '@/utils/agentUtils'
 import { generateUUID } from '@/utils'
 import { useTranslation } from '@/i18n'
@@ -20,16 +20,28 @@ import type { ExpertEvent } from '@/types'
 import { errorHandler, logger } from '@/utils/logger'
 import { isValidApiMessageRole } from '@/types'
 
-// 开发环境判断
+// Performance Optimized Selectors (v3.6)
+import {
+  useMessages,
+  useInputMessage,
+  useSelectedAgentId,
+  useCurrentConversationId,
+  useIsGenerating,
+  useChatActions,
+} from '@/hooks/useChatSelectors'
+import { useTaskMode, useTaskActions } from '@/hooks/useTaskSelectors'
+import { useChatStore } from '@/store/chatStore'
+
+// Dev environment check
 const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
 
-// 统一的调试日志函数
+// Unified debug log function
 const debug = DEBUG
   ? (...args: unknown[]) => logger.debug('[useChatCore]', ...args)
   : () => {}
 
 /**
- * ApiMessage 类型守卫函数
+ * ApiMessage type guard function
  */
 function isApiMessage(obj: any): obj is ApiMessage {
   return (
@@ -43,95 +55,94 @@ function isApiMessage(obj: any): obj is ApiMessage {
 }
 
 interface UseChatCoreOptions {
-  /** 处理专家事件的回调 */
+  /** Handle expert event callback */
   onExpertEvent?: (event: ExpertEvent, conversationMode: 'simple' | 'complex') => Promise<void> | void
-  /** 处理流式内容的回调 */
+  /** Handle streaming content callback */
   onChunk?: (chunk: string) => void
-  /** 新会话创建时的回调 */
+  /** New conversation created callback */
   onNewConversation?: (conversationId: string, agentId: string) => void
 }
 
 /**
- * 聊天核心逻辑 Hook
+ * Chat core logic Hook
  */
 export function useChatCore(options: UseChatCoreOptions = {}) {
   const { t } = useTranslation()
   const { onExpertEvent, onChunk, onNewConversation } = options
 
-  // ✅ 重构：状态提升到 Store，Hook 只管理 AbortController
+  // Refactored: Hook only manages AbortController
   const abortControllerRef = useRef<AbortController | null>(null)
   
-  // 👈 从 taskStore 读取对话模式（由后端 Router 决策决定）
-  const conversationMode = useTaskStore(state => state.mode) || 'simple'
-
-  // 从 chatStore 获取状态和方法
-  const {
-    messages,
-    inputMessage,
-    setInputMessage,
-    selectedAgentId,
-    currentConversationId,
-    setCurrentConversationId,
-    addMessage,
-    updateMessage,
-    setMessages,
-    isGenerating,        // ✅ 从 Store 读取
-    setGenerating,       // ✅ 从 Store 读取
-  } = useChatStore()
+  // Performance Optimized Selectors (v3.6)
+  const conversationMode = useTaskMode() || 'simple'
+  
+  // Chat store selectors
+  const messages = useMessages()
+  const inputMessage = useInputMessage()
+  const selectedAgentId = useSelectedAgentId()
+  const currentConversationId = useCurrentConversationId()
+  const isGenerating = useIsGenerating()
+  
+  // Actions
+  const { 
+    setInputMessage, 
+    setCurrentConversationId, 
+    addMessage, 
+    updateMessage, 
+    setMessages, 
+    setGenerating 
+  } = useChatActions()
+  
+  const { setMode } = useTaskActions()
 
   /**
-   * 停止生成
+   * Stop generation
    */
   const stopGeneration = useCallback(() => {
     if (abortControllerRef.current) {
-      debug('停止生成')
+      debug('Stop generation')
       abortControllerRef.current.abort()
     }
   }, [])
 
   /**
-   * 发送消息核心逻辑
+   * Send message core logic
    */
   const sendMessageCore = useCallback(async (
     content?: string,
     overrideAgentId?: string
   ) => {
-    // 请求去重：防止重复提交
+    // Deduplication: prevent duplicate submissions
     if (isGenerating) {
-      debug('请求正在进行中，忽略重复提交')
+      debug('Request in progress, ignoring duplicate submission')
       return
     }
 
-    // 👈 修复：优先使用传入的 content 参数（如从首页跳转时），其次才使用 store 的 inputMessage
     const userContent = (content || inputMessage || '').trim()
     if (!userContent) {
-      debug('消息内容为空，跳过发送')
+      debug('Message content is empty, skipping send')
       return
     }
 
-    setGenerating(true)  // ✅ 使用 Store 方法
+    setGenerating(true)
     
-    // 👈 重置 taskStore 的 mode，等待后端 Router 决策
-    useTaskStore.getState().setMode('simple')
+    // Reset taskStore mode, wait for backend Router decision
+    setMode('simple')
 
-    // 优先使用传入的 agentId，否则使用 store 中的 selectedAgentId
     const agentId = overrideAgentId || selectedAgentId
     if (!agentId) {
-      logger.error('[useChatCore] 未选择智能体')
-      setGenerating(false)  // ✅ 使用 Store 方法
+      logger.error('[useChatCore] No agent selected')
+      setGenerating(false)
       return
     }
     const normalizedAgentId = normalizeAgentId(agentId)
 
-    // 创建新的 AbortController
     abortControllerRef.current = new AbortController()
 
     let assistantMessageId: string | undefined
 
     try {
-      // 1. 准备请求数据 - 使用 getState() 获取最新的 messages，避免闭包捕获旧值
       const storeState = useChatStore.getState()
-      // 🔥 修复：过滤掉 content 为 undefined 的历史消息，并确保类型正确
       const validHistoryMessages = storeState.messages
         .filter((m): m is Message & { content: string } => 
           !!m && typeof m.content === 'string' && m.content.length > 0
@@ -146,15 +157,11 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         { role: 'user', content: userContent }
       ]
 
-      debug('准备发送消息，历史消息数:', storeState.messages.length, '当前输入:', userContent)
+      debug('Preparing to send message, history count:', storeState.messages.length, 'Current input:', userContent)
 
-      // 2. 添加用户消息和 AI 消息占位符
-      // 👈 v3.1: 简单模式预先创建 AI 消息，复杂模式也创建占位符（用于关联 events）
       assistantMessageId = generateUUID()
-      debug('准备添加消息，AI ID:', assistantMessageId, '类型:', typeof assistantMessageId)
+      debug('Preparing to add message, AI ID:', assistantMessageId, 'Type:', typeof assistantMessageId)
 
-      // 👈 关键修复：使用 setMessages 批量更新，避免中间件延迟
-      // 🔥 Phase 2: Optimistic UI - 抢跑响应，立即显示 Routing 状态
       const routingStepId = generateUUID()
       setMessages([...storeState.messages,
         { role: 'user', content: userContent },
@@ -179,46 +186,35 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       setInputMessage('')
 
-      // 4. 发送请求并处理流式响应
       let finalResponseContent = ''
-      // 👈 使用 getState() 获取最新的 currentConversationId，避免闭包捕获旧值
       const storeState2 = useChatStore.getState()
       let actualConversationId = storeState2.currentConversationId || currentConversationId
 
-      debug('准备调用 sendMessage')
-      // ✅ 移除：状态已在函数开头设置
+      debug('Preparing to call sendMessage')
 
-      // 👈 用于防止重复处理 complex 模式
       let hasProcessedComplexMode = false
 
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
         conversationId?: string,
         expertEvent?: ExpertEvent
-        // ⚠️ artifact 和 expertId 已合并到 expertCompleted 事件中处理
-        // artifact?: Artifact,
-        // expertId?: string
       ) => {
-        // 更新 conversationId
         if (conversationId && conversationId !== actualConversationId) {
           actualConversationId = conversationId
           setCurrentConversationId(conversationId)
         }
 
-        // v3.0: 处理新协议事件
         if (expertEvent) {
           onExpertEvent?.(expertEvent as any, conversationMode)
         }
 
-        // 实时更新流式内容
         if (chunk) {
           finalResponseContent += chunk
 
           if (DEBUG) {
-            logger.debug('[useChatCore] 收到chunk，长度:', chunk.length, '总长度:', finalResponseContent.length, '消息ID:', assistantMessageId)
+            logger.debug('[useChatCore] Received chunk, length:', chunk.length, 'Total length:', finalResponseContent.length, 'Message ID:', assistantMessageId)
           }
 
-          // 调用外部 onChunk 回调
           onChunk?.(chunk)
         }
       }
@@ -229,27 +225,20 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         streamCallback,
         actualConversationId,
         abortControllerRef.current.signal,
-        assistantMessageId  // v3.0: 传递前端生成的助手消息 ID
+        assistantMessageId
       )
 
-      // ✅ 移除：在 finally 中统一处理
-
-      // 6. 更新 URL 中的 conversationId（通过回调）
       const storeState3 = useChatStore.getState()
       const initialConversationId = storeState3.currentConversationId
       if (actualConversationId !== initialConversationId) {
         onNewConversation?.(actualConversationId, selectedAgentId)
       }
 
-      // 7. 更新最终响应到助手消息
-      // 🔥 修复：不再替换为友好文案，显示实际的聚合报告
-      // 流式内容由 eventHandlers.ts 的 handleMessageDelta 处理
-      debug(`任务完成，最终内容长度: ${finalResponseContent?.length || 0}`)
+      debug(`Task completed, final content length: ${finalResponseContent?.length || 0}`)
 
       return finalResponseContent
 
     } catch (error) {
-      // 👈 检查是否是用户手动取消（多种判断方式）
       const isAbortError = 
         (error instanceof Error && error.name === 'AbortError') ||
         (error instanceof Error && error.message?.toLowerCase().includes('abort')) ||
@@ -257,16 +246,13 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         abortControllerRef.current?.signal.aborted
       
       if (isAbortError) {
-        debug('请求已取消（用户主动停止）')
-        // 移除空的 AI 消息
+        debug('Request cancelled (user initiated)')
         if (assistantMessageId) {
           updateMessage(assistantMessageId, '', false)
         }
       } else {
-        // 使用统一的错误处理器
         errorHandler.handle(error, 'sendMessageCore')
 
-        // 添加错误消息到聊天
         const userMessage = errorHandler.getUserMessage(error)
         addMessage({
           role: 'assistant',
@@ -274,27 +260,19 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         })
       }
     } finally {
-      setGenerating(false)  // ✅ 使用 Store 方法
+      setGenerating(false)
       abortControllerRef.current = null
 
-      // 👈 v3.1: 复杂模式下，等待 aggregator 完成后再决定是否清理空消息
-      // 修复：aggregator 会发送 message.delta 事件来填充消息内容，不要提前删除
-      // 只有在确定没有 aggregator 事件的情况下才清理
       if (conversationMode === 'complex' && assistantMessageId) {
         const currentMessages = useChatStore.getState().messages
         const assistantMsg = currentMessages.find(m => m.id === assistantMessageId)
-        // 只有当消息为空且已经过了一段时间（aggregator 应该已完成）才删除
-        // 这里我们依赖 message.done 事件来标记完成，所以不在这里删除
         if (assistantMsg && !assistantMsg.content?.trim()) {
-          // 不删除消息，保留空消息等待 aggregator 填充
-          // 或者添加一个占位符文本
-          debug('复杂模式：保留空 AI 消息等待 aggregator 总结', assistantMessageId)
+          debug('Complex mode: keep empty AI message waiting for aggregator summary', assistantMessageId)
         }
       }
     }
   }, [
     isGenerating,
-    messages,
     inputMessage,
     selectedAgentId,
     currentConversationId,
@@ -303,23 +281,26 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     onChunk,
     onNewConversation,
     setGenerating,
+    setMode,
+    setMessages,
+    setInputMessage,
+    setCurrentConversationId,
+    addMessage,
+    updateMessage,
     t
   ])
 
-  // 👈 页面可见性和生命周期管理
+  // Page visibility and lifecycle management
   const isPageHiddenRef = useRef(false)
   
   useEffect(() => {
-    // 页面可见性变化处理
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        // 页面隐藏：只标记状态，不关闭连接
         isPageHiddenRef.current = true
-        debug('页面隐藏，保持 SSE 连接')
+        debug('Page hidden, keeping SSE connection')
       } else {
-        // 页面显示：恢复更新
         isPageHiddenRef.current = false
-        debug('页面显示，恢复 UI 更新')
+        debug('Page visible, resuming UI updates')
       }
     }
 
@@ -327,9 +308,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
-      // 组件真正卸载时才中止请求
       if (abortControllerRef.current) {
-        debug('组件卸载，中止正在进行的请求')
+        debug('Component unmounting, aborting ongoing request')
         abortControllerRef.current.abort()
         abortControllerRef.current = null
       }
@@ -337,14 +317,13 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   }, [])
 
   /**
-   * 🔥🔥🔥 v3.5 HITL: 恢复被中断的执行流程
-   * 复用与 sendMessage 完全相同的 SSE 处理逻辑
+   * v3.5 HITL: Resume interrupted execution flow
    */
   const resumeExecution = useCallback(async (
     params: ResumeChatParams
   ): Promise<string> => {
     if (isGenerating) {
-      debug('请求正在进行中，忽略重复恢复请求')
+      debug('Request in progress, ignoring duplicate resume request')
       return ''
     }
 
@@ -354,7 +333,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     let fullContent = ''
 
     try {
-      // 🔥 复用与 sendMessage 完全相同的 streamCallback 逻辑
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
         conversationId?: string,
@@ -392,7 +370,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         })
       }
       
-      // 🚨🚨🚨 关键：必须 rethrow 错误，让调用方知道失败了
       throw error
     } finally {
       setGenerating(false)
@@ -400,14 +377,12 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     }
 
     return fullContent
-  }, [isGenerating, conversationMode, onExpertEvent, onChunk, setGenerating])
+  }, [isGenerating, conversationMode, onExpertEvent, onChunk, setGenerating, addMessage])
 
   return {
-    // ✅ 重构：Hook 只返回方法，状态从 Store 直接读取
     sendMessage: sendMessageCore,
     stopGeneration,
-    resumeExecution,  // 🔥🔥🔥 v3.5 HITL: 暴露恢复执行方法
-    // 👈 返回对话模式，供上层组件使用
+    resumeExecution,
     conversationMode,
   }
 }

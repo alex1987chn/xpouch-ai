@@ -7,6 +7,8 @@
  * - useExpertHandler: 专家事件处理（激活、完成、任务计划、artifact 处理）
  * - useConversation: 会话管理（加载、删除）
  *
+ * v3.6 性能优化：使用 Zustand Selectors 避免不必要的重渲染
+ *
  * @returns {
  *   sendMessage: 发送消息函数
  *   messages: 消息列表
@@ -31,24 +33,25 @@
 
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useChatStore } from '@/store/chatStore'
 import { useChatCore } from './chat/useChatCore'
 import { useExpertHandler } from './chat/useExpertHandler'
 import { useConversation } from './chat/useConversation'
 import { errorHandler } from '@/utils/logger'
 
+// Performance Optimized Selectors (v3.6)
+import {
+  useInputMessage,
+  useSetInputMessageAction,
+} from '@/hooks/useChatSelectors'
+
 export function useChat() {
   const navigate = useNavigate()
 
-  // ? 重构：直接从 Store 读取状态
-  const {
-    messages,
-    inputMessage,
-    setInputMessage,
-    isGenerating,
-  } = useChatStore()
+  // Performance Optimized Selectors (v3.6)
+  const inputMessage = useInputMessage()
+  const setInputMessage = useSetInputMessageAction()
 
-  // 1. 组合专家事件处理（包含 artifact 处理）
+  // 1. Compose expert event handler (includes artifact handling)
   const { handleExpertEvent: handleExpertEventRaw } = useExpertHandler()
   const handleExpertEvent = useCallback(async (
     event: any,
@@ -57,10 +60,9 @@ export function useChat() {
     await handleExpertEventRaw(event, conversationMode)
   }, [handleExpertEventRaw])
 
-  // 2. 获取带回调的聊天核心逻辑
+  // 2. Get chat core logic with callbacks
   const chatCore = useChatCore({
     onNewConversation: useCallback((conversationId: string, agentId: string) => {
-      // 默认助手不添加 agentId 参数，让后端自动使用 sys-default-chat
       if (agentId && agentId !== 'sys-default-chat' && agentId !== 'default-chat') {
         navigate(`/chat/${conversationId}?agentId=${agentId}`, { replace: true })
       } else {
@@ -70,10 +72,10 @@ export function useChat() {
     onExpertEvent: handleExpertEvent,
   })
 
-  // 5. 获取会话管理器
+  // 3. Get conversation manager
   const conversationManager = useConversation()
 
-  // 6. 重试最后一条用户消息
+  // 4. Retry last user message
   const retry = useCallback(() => {
     const lastMessage = conversationManager.messages.filter(m => m.role === 'user').pop()
     if (lastMessage?.content) {
@@ -82,23 +84,23 @@ export function useChat() {
   }, [conversationManager.messages, chatCore])
 
   return {
-    // ========== 状态：直接从 Store 读取 ==========
+    // ========== State ==========
     messages: conversationManager.messages,
     inputMessage,
-    isStreaming: isGenerating,  // ? 从 Store 读取，映射为 isStreaming 保持 API 一致
-    conversationMode: chatCore.conversationMode,  // ? 从 useChatCore 获取
+    isStreaming: chatCore.isGenerating,
+    conversationMode: chatCore.conversationMode,
 
-    // ========== 方法 ==========
+    // ========== Methods ==========
     sendMessage: chatCore.sendMessage,
     setInputMessage,
     stopGeneration: chatCore.stopGeneration,
-    resumeExecution: chatCore.resumeExecution,  // 🔥🔥🔥 v3.5 HITL
+    resumeExecution: chatCore.resumeExecution,
 
-    // 会话管理
+    // Conversation management
     loadConversation: conversationManager.loadConversation,
     deleteConversation: conversationManager.deleteConversation,
 
-    // 重试
+    // Retry
     retry,
   }
 }
