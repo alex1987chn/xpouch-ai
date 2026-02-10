@@ -1,7 +1,7 @@
 import os
+import uuid
 from typing import List, Optional
 from datetime import datetime
-from uuid import uuid4
 from sqlmodel import Field, SQLModel, Relationship, JSON, Session, select, Column
 from sqlalchemy import String, Index
 from pydantic import BaseModel, Field as PydanticField
@@ -200,7 +200,7 @@ class CustomAgent(SQLModel, table=True):
     用于简单的对话场景，直接使用用户的 system_prompt 调用 LLM，
     不经过 LangGraph 的专家工作流。
     """
-    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     
     # 关联用户
     user_id: str = Field(foreign_key="user.id", index=True)
@@ -308,7 +308,7 @@ class SubTask(SQLModel, table=True):
     每个专家任务产生一个或多个交付物（Artifacts）
     支持串行和并行执行模式
     """
-    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
 
     # 关联的任务会话
     task_session_id: str = Field(foreign_key="tasksession.session_id", index=True)
@@ -369,7 +369,7 @@ class TaskSession(SQLModel, table=True):
     """
     任务会话模型 - 记录一次完整的多专家协作过程（仅复杂模式）
     """
-    session_id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    session_id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
 
     # 关联的会话ID（核心！用于从历史记录加载）
     thread_id: str = Field(foreign_key="thread.id", index=True)
@@ -415,7 +415,7 @@ class Artifact(SQLModel, table=True):
     """
     产物模型 - 支持一个专家生成多个产物
     """
-    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     
     # 关联的子任务
     sub_task_id: str = Field(foreign_key="subtask.id", index=True)

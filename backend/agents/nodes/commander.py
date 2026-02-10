@@ -115,7 +115,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
         event_plan_created, event_plan_started, event_plan_thinking,
         sse_event_to_string
     )
-    from uuid import uuid4
+    import uuid
     
     # 🔥🔥🔥 v3.4: 获取共享队列 (Side Channel)
     stream_queue = None
@@ -203,7 +203,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
             # 🔥🔥🔥 v3.3: 流式思考 + JSON 生成
             # 1️⃣ 获取或生成 session_id
             # 如果 chat.py 已经发送了 plan.started，使用相同的 session_id
-            preview_session_id = state.get("preview_session_id") or str(uuid4())
+            preview_session_id = state.get("preview_session_id") or str(uuid.uuid4())
             
             # 🔥 只有在 chat.py 没有发送 plan.started 的情况下，才在这里发送
             if not state.get("preview_session_id"):

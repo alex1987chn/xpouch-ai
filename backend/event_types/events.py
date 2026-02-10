@@ -239,10 +239,10 @@ def build_sse_event(
     Returns:
         SSEEvent 对象
     """
-    from uuid import uuid4
+    import uuid
     
     return SSEEvent(
-        id=event_id or str(uuid4()),
+        id=event_id or str(uuid.uuid4()),
         timestamp=datetime.now().isoformat(),
         type=event_type,
         data=data.model_dump()
