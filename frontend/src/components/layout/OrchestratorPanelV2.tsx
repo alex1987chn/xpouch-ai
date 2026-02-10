@@ -11,8 +11,9 @@ import { cn } from '@/lib/utils'
 import {
   Maximize2, FileCode,
   Eye, Code2, Copy, Check, Loader2, CheckCircle2, Clock, XCircle,
-  Edit3, Save, X
+  Edit3, Save, X, Download, FileText
 } from 'lucide-react'
+import { downloadMarkdown, downloadPDF, getArtifactMarkdown } from '@/utils/export'
 import type { Task } from '@/store/taskStore'
 import type { Artifact } from '@/types'
 import { SIMPLE_TASK_ID } from '@/constants/task'
@@ -341,10 +342,33 @@ function ArtifactContent({ artifact, taskId, onToggleFullscreen, isFullscreen }:
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [isExportingPDF, setIsExportingPDF] = useState(false)
   const [editContent, setEditContent] = useState(artifact.content)
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null)
   
   const { updateArtifactContent } = useTaskActions()
+  
+  // 生成唯一的元素 ID 用于 PDF 导出
+  const contentElementId = `artifact-content-${artifact.id}`
+  
+  // 导出 Markdown
+  const handleExportMarkdown = useCallback(() => {
+    const markdown = getArtifactMarkdown(artifact)
+    downloadMarkdown(artifact.title || artifact.type, markdown)
+  }, [artifact])
+  
+  // 导出 PDF
+  const handleExportPDF = useCallback(async () => {
+    setIsExportingPDF(true)
+    try {
+      await downloadPDF(contentElementId, artifact.title || artifact.type)
+    } catch (err: any) {
+      console.error('PDF export failed:', err)
+      // 可以在这里添加 toast 提示
+    } finally {
+      setIsExportingPDF(false)
+    }
+  }, [contentElementId, artifact.title, artifact.type])
 
   const handleCopy = useCallback(async () => {
     const text = artifact?.content || ''
@@ -512,6 +536,33 @@ function ArtifactContent({ artifact, taskId, onToggleFullscreen, isFullscreen }:
                   <div className="w-px h-4 bg-border/50 mx-1" />
                 </>
               )}
+              {/* Export buttons */}
+              <button
+                onClick={handleExportMarkdown}
+                disabled={isExportingPDF}
+                className={cn(
+                  "w-7 h-7 flex items-center justify-center border-2 transition-all",
+                  "bg-panel text-primary border-border hover:border-primary hover:bg-card disabled:opacity-50"
+                )}
+                title="Export Markdown"
+              >
+                <FileText className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={handleExportPDF}
+                disabled={isExportingPDF}
+                className={cn(
+                  "w-7 h-7 flex items-center justify-center border-2 transition-all",
+                  isExportingPDF
+                    ? "bg-primary/50 text-primary-foreground border-primary/50 cursor-wait"
+                    : "bg-panel text-primary border-border hover:border-primary hover:bg-card"
+                )}
+                title={isExportingPDF ? 'Generating PDF...' : 'Export PDF'}
+              >
+                {isExportingPDF ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              </button>
+              <div className="w-px h-4 bg-border/50 mx-1" />
+              
               <button
                 onClick={handleCopy}
                 className={cn(
@@ -568,13 +619,13 @@ function ArtifactContent({ artifact, taskId, onToggleFullscreen, isFullscreen }:
           </div>
         ) : viewMode === 'code' ? (
           <Suspense fallback={<ArtifactLoader />}>
-            <div className="h-full w-full overflow-auto bauhaus-scrollbar p-0">
+            <div id={contentElementId} className="h-full w-full overflow-auto bauhaus-scrollbar p-0 bg-card">
               <CodeArtifact content={artifact.content} language={artifact.language || artifact.type} className="h-full" />
             </div>
           </Suspense>
         ) : (
           <Suspense fallback={<ArtifactLoader />}>
-            <div className="h-full w-full overflow-auto bauhaus-scrollbar p-4">
+            <div id={contentElementId} className="h-full w-full overflow-auto bauhaus-scrollbar p-4 bg-card">
               {artifact.type === 'html' ? (
                 <HtmlArtifact content={artifact.content} className="h-full" />
               ) : artifact.type === 'markdown' || artifact.content.includes('#') || artifact.content.includes('**') ? (
