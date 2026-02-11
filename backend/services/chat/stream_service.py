@@ -667,11 +667,14 @@ class StreamService:
                             if not isinstance(token, dict):
                                 continue
 
-                            # 检测 aggregator 节点执行
                             event_type = token.get("event", "")
                             metadata = token.get("metadata", {})
-                            if event_type == "on_chain_start" and metadata.get("name") == "aggregator":
+                            name = metadata.get("name", "")
+                            
+                            # 🔥 检测 aggregator 节点开始执行
+                            if event_type == "on_chain_start" and name == "aggregator":
                                 aggregator_executed = True
+                                logger.info(f"[Producer] 检测到 aggregator 开始执行 (loop {loop_count})")
 
                             # 处理 event_queue 中的事件（artifact.start/chunk/completed 等）
                             if event_type == "on_chain_end":
@@ -685,6 +688,14 @@ class StreamService:
                                                 "type": "sse",
                                                 "event": queued_event["event"]
                                             })
+                                    
+                                    # 🔥🔥🔥 关键修复：检测 aggregator 执行完成
+                                    # 如果 aggregator 节点已完成且有输出，标记为已执行并跳出
+                                    if name == "aggregator" and output.get("messages"):
+                                        aggregator_executed = True
+                                        logger.info(f"[Producer] aggregator 执行完成，准备退出 (loop {loop_count})")
+                                        # 发送完当前事件后立即退出内层循环
+                                        break
 
                             event_str = self.transform_langgraph_event(token, message_id)
                             if event_str:
@@ -692,6 +703,11 @@ class StreamService:
                                     "type": "sse",
                                     "event": event_str
                                 })
+                                
+                                # 🔥 如果发送了 message.done 事件，说明 aggregator 已完成
+                                if "message.done" in event_str:
+                                    logger.info(f"[Producer] 已发送 message.done，标记 aggregator 完成")
+                                    aggregator_executed = True
 
                             # 收集 artifacts
                             data = token.get("data", {}) or {}
@@ -701,6 +717,11 @@ class StreamService:
                                     "type": "artifact",
                                     "data": output["artifact"]
                                 })
+                        
+                        # 🔥 如果 aggregator 已执行，退出外层循环
+                        if aggregator_executed:
+                            logger.info(f"[Producer] aggregator 已完成，退出外层循环")
+                            break
 
                         # 短暂等待，让状态更新
                         await asyncio.sleep(0.1)
@@ -761,16 +782,24 @@ class StreamService:
         
         for task in updated_plan:
             task_id = task.get("id")
-            # 如果任务已完成，保留完整状态（包括 output_result）
-            if task_id in current_task_map and current_task_map[task_id].get("status") == "completed":
-                merged_task = dict(current_task_map[task_id])
+            # 🔥 关键：从当前状态查找对应的任务，保留 task_id (Commander ID)
+            existing_task = current_task_map.get(task_id)
+            
+            # 如果任务已完成，保留完整状态（包括 output_result 和 task_id）
+            if existing_task and existing_task.get("status") == "completed":
+                merged_task = dict(existing_task)
             else:
                 # 新任务或待执行任务，使用前端数据但保留已有输出
                 merged_task = dict(task)
-                if task_id in current_task_map:
-                    existing_task = current_task_map[task_id]
+                if existing_task:
+                    # 🔥🔥🔥 关键修复：保留 task_id (Commander ID) 和 output_result
+                    merged_task["task_id"] = existing_task.get("task_id") or task.get("task_id")
                     merged_task["output_result"] = existing_task.get("output_result")
                     merged_task["status"] = existing_task.get("status", task.get("status", "pending"))
+            
+            # 🔥 兜底：确保 task_id 字段存在（如果前端没传，从现有状态复制）
+            if not merged_task.get("task_id") and existing_task:
+                merged_task["task_id"] = existing_task.get("task_id")
             
             # 清理依赖关系
             if merged_task.get("depends_on"):

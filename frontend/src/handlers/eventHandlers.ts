@@ -392,12 +392,22 @@ export class EventHandler {
     }
   }
 
+  // 🔥 防重：已处理过的 message.done 消息ID集合
+  private processedMessageDones = new Set<string>()
+
   /**
    * 处理 message.done 事件
    * 完成消息流式输出
    */
   private handleMessageDone(event: MessageDoneEvent): void {
     const { updateMessage, updateMessageMetadata, messages } = useChatStore.getState()
+
+    // 🔥🔥🔥 防重保护：如果已处理过，直接忽略
+    if (this.processedMessageDones.has(event.data.message_id)) {
+      logger.debug('[EventHandler] message.done: 已处理过，忽略重复事件:', event.data.message_id)
+      return
+    }
+    this.processedMessageDones.add(event.data.message_id)
 
     // 查找消息
     const message = messages.find(m => m.id === event.data.message_id)
