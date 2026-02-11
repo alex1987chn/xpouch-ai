@@ -49,7 +49,7 @@ EXPERT_DEFAULTS = [
 > **Notice**: No relevant information found for the query "[Original Query]". Please refine the search terms.
 
 # User Query
-{user_query}""",
+{input}""",
         "model": "deepseek-chat",
         "temperature": 0.2
     },
@@ -100,7 +100,7 @@ if __name__ == "__main__":
 4.  **Dependencies**: 如果引入了第三方库，请务必创建一个 `requirements.txt` 或 `package.json` 文件块，以便用户知道如何安装依赖。
 
 # User Task
-{task_description}""",
+{input}""",
         "model": "deepseek-chat",
         "temperature": 0.0
     },
@@ -147,7 +147,7 @@ if __name__ == "__main__":
 * [2] Source Name/Description
 
 # User Research Task
-{task_description}""",
+{input}""",
         "model": "deepseek-chat",
         "temperature": 0.2
     },
@@ -200,7 +200,7 @@ if __name__ == "__main__":
 * **Actionable Advice**: 基于分析结果的具体行动建议（Step-by-step）。
 
 # Input Data / Context
-{task_description}""",
+{input}""",
         "model": "deepseek-chat",
         "temperature": 0.1
     },
@@ -239,7 +239,7 @@ if __name__ == "__main__":
 * **Optimization Tips**: [针对当前文案的进一步优化建议或修改思路]
 
 # User Task
-{task_description}""",
+{input}""",
         "model": "deepseek-chat",
         "temperature": 0.2
     },
@@ -303,7 +303,7 @@ gantt
 * **Scenario B**: 如果资源不足，则削减 Y...
 
 # User Requirement
-{task_description}""",
+{input}""",
         "model": "deepseek-chat",
         "temperature": 0.1
     },
@@ -349,7 +349,7 @@ gantt
 * **Emotional Tone**: [图片传达的情绪或氛围]
 
 # User Input / Context
-{user_query} (Context regarding the image, if provided)""",
+{input} (Context regarding the image, if provided)""",
         "model": "deepseek-chat",
         "temperature": 0.1
     },
@@ -463,7 +463,7 @@ Output:
 ```
 
 # User Input
-{user_input}""",
+{input}""",
         "model": "deepseek-chat",
         "temperature": 0.1
     }
