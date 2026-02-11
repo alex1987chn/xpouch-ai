@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useChatStore } from '@/store/chatStore'
+import { useTaskStore } from '@/store/taskStore'
 import { useExecutionStore } from '@/store/executionStore'
 import { useChat } from '@/hooks/useChat'
 import { useSessionRecovery } from '@/hooks/chat/useSessionRecovery'
@@ -97,13 +98,17 @@ export default function UnifiedChatPage() {
   useEffect(() => {
     if (!conversationId) {
       // 无会话 ID 时重置状态
+      useTaskStore.getState().clearTasks()
       useExecutionStore.getState().reset()
       return
     }
 
-    // 检查是否正在执行（使用 ExecutionStore）
+    // 检查是否正在执行（同时检查 TaskStore 和 ExecutionStore）
+    const { runningTaskIds, hasRunningTasks } = useTaskStore.getState()
+    const isTaskStoreExecuting = hasRunningTasks ? hasRunningTasks() : runningTaskIds.size > 0
     const executionStatus = useExecutionStore.getState().status
-    const isExecuting = executionStatus === 'executing' || executionStatus === 'planning'
+    const isExecutionStoreActive = executionStatus === 'executing' || executionStatus === 'planning'
+    const isExecuting = isTaskStoreExecuting || isExecutionStoreActive
     
     // 执行中不加载（避免干扰流式输出）
     if (isExecuting) {
@@ -126,6 +131,7 @@ export default function UnifiedChatPage() {
         if (error?.status === 404) {
           // 会话不存在，重置状态
           useChatStore.getState().setMessages([])
+          useTaskStore.getState().clearTasks()
           useExecutionStore.getState().reset()
         }
       })

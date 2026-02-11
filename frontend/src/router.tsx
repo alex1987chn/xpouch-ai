@@ -11,6 +11,7 @@ import AdminRoute from './components/AdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
 import { Toaster } from './components/ui/toaster'
 import { useChatStore } from './store/chatStore'
+import { useTaskStore } from './store/taskStore'
 import { useExecutionStore } from './store/executionStore'
 import { createCustomAgent, updateCustomAgent, getAllAgents } from './services/api'
 import { normalizeAgentId } from '@/utils/agentUtils'
@@ -46,9 +47,10 @@ const HistoryPageWrapper = () => {
 
   const handleSelectConversation = (conversation: any) => {
     // 🔥🔥🔥 Server-Driven UI: 导航前清空所有 Store（事件驱动）
-    // 避免旧执行状态阻止新会话加载
+    // 避免旧任务/执行状态阻止新会话加载
     setMessages([])
     setCurrentConversationId(null)
+    useTaskStore.getState().clearTasks()
     useExecutionStore.getState().reset()
 
     // 从 conversation 对象中提取所需参数
