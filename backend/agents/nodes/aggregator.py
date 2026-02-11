@@ -25,7 +25,7 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
     聚合器节点
     v3.1 更新：调用 LLM 生成自然语言总结，支持流式输出
     v3.2 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
-    v3.3 更新：使用 Shared Queue 实现真正的实时流式推送
+    v3.3 更新：使用事件驱动流式输出，通过 event_queue 实时推送 message.delta 事件
     """
     expert_results = state["expert_results"]
     strategy = state["strategy"]
@@ -37,13 +37,6 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
     # v3.0: 获取前端传递的 message_id（如果有的话）
     message_id = state.get("message_id", str(uuid.uuid4()))
     thread_id = state.get("thread_id")  # 🔥 用于保存消息到正确线程
-    
-    # 🔥🔥🔥 v3.3: 获取共享队列 (Side Channel) 用于实时流式推送
-    stream_queue = None
-    if config:
-        stream_queue = config.get("configurable", {}).get("stream_queue")
-        if stream_queue:
-            print(f"[AGG] 获取到 stream_queue，将实时推送聚合报告")
 
     if not expert_results:
         return {
@@ -81,17 +74,6 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
                 )
                 event_str = sse_event_to_string(delta_event)
                 event_queue.append({"type": "sse", "event": event_str})
-                
-                # 🔥🔥🔥 v3.3: 实时推送到共享队列，让前端立即收到
-                if stream_queue:
-                    try:
-                        await stream_queue.put({"type": "sse", "event": event_str})
-                        # 日志采样：前5个 + 每50个打印一次，平衡可见性和日志量
-                        chunk_index = len(final_response_chunks)
-                        if chunk_index <= 5 or chunk_index % 50 == 0:
-                            print(f"[AGG] ✅ 已推送 chunk {chunk_index}: {len(content)} chars")
-                    except Exception as e:
-                        print(f"[AGG] ❌ 推送到 stream_queue 失败: {e}")
         
         final_response = "".join(final_response_chunks)
         
@@ -112,10 +94,6 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
             )
             event_str = sse_event_to_string(delta_event)
             event_queue.append({"type": "sse", "event": event_str})
-            
-            # 🔥🔥🔥 v3.3: 实时推送到共享队列
-            if stream_queue:
-                await stream_queue.put({"type": "sse", "event": event_str})
     
     # 发送 message.done 事件
     done_event = event_message_done(

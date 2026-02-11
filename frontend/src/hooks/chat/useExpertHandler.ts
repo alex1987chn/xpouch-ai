@@ -112,9 +112,33 @@ export function useExpertHandler() {
     chatStoreRef.current.updateMessageMetadata(messageId, metadata)
   }
   
-  // 🔥 新增：简化版更新 thinking step 的辅助函数（自动更新最后一条消息）
+  // 🔥 新增：更新最后一条消息的 thinking 步骤
+  // Phase 2: 使用 updateMessageMetadata 代替已移除的 updateLastMessageThoughts
   const updateLastMessageThought = (step: ThinkingStep) => {
-    chatStoreRef.current.updateLastMessageThoughts(step)
+    const messageId = getLastAssistantMessageId()
+    if (!messageId) return
+    
+    const messages = chatStoreRef.current.messages
+    const message = messages.find(m => m.id === messageId)
+    if (!message) return
+    
+    // 获取现有的 thinking 数组
+    const existingThinking = message.metadata?.thinking || []
+    
+    // 查找是否已存在相同 ID 的 step
+    const stepIndex = existingThinking.findIndex((s: ThinkingStep) => s.id === step.id)
+    
+    let newThinking: ThinkingStep[]
+    if (stepIndex >= 0) {
+      // 更新现有 step
+      newThinking = [...existingThinking]
+      newThinking[stepIndex] = step
+    } else {
+      // 添加新 step
+      newThinking = [...existingThinking, step]
+    }
+    
+    chatStoreRef.current.updateMessageMetadata(messageId, { thinking: newThinking })
   }
 
   // 获取最后一条 AI 消息的 ID（使用 ref 获取最新状态）

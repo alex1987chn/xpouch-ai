@@ -325,7 +325,7 @@ CREATE TABLE user_memories (
 **核心能力**：
 - **计划审核**：Commander 生成任务计划后，暂停执行等待人类确认
 - **计划编辑**：用户可以修改、删除、重排任务后再继续执行
-- **实时流式反馈**：利用 Shared Queue 模式，聚合器可以实时推送思考内容
+- **事件驱动流式反馈**：利用 Server-Sent Events (SSE) 事件分发机制，将 Commander 的规划思考与 Expert 的执行过程实时推送到前端 ExecutionStore，实现零延迟的可视化反馈
 
 **工作流程**：
 ```
@@ -516,7 +516,7 @@ graph TB
         HumanReview["Human Review (HITL)"]
         Dispatcher["Dispatcher 节点 (检查专家存在)"]
         Generic["Generic Worker 节点 (统一执行)"]
-        Aggregator["Aggregator 节点 (结果聚合 + Shared Queue)"]
+        Aggregator["Aggregator 节点 (结果聚合 + Event-Driven Streaming)"]
         Checkpointer["AsyncPostgresSaver (检查点)"]
 
         Router --> |simple| DirectReply
