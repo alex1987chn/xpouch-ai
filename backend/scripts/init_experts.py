@@ -33,8 +33,8 @@ import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from sqlmodel import Session, select
 from expert_config import EXPERT_DEFAULTS, DEFAULT_EXPERT_MODEL
-from backend.database import engine
-from backend.constants import COMMANDER_SYSTEM_PROMPT
+from database import engine
+from constants import COMMANDER_SYSTEM_PROMPT
 
 
 def get_session_class_and_engine():

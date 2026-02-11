@@ -10,6 +10,11 @@ import asyncio
 import signal
 import os
 import pathlib
+import logging
+
+# 配置日志
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
 
 # 🔥 修复：将项目根目录添加到 sys.path，支持绝对导入
 # 这样 from backend.config import ... 就能正确解析了
@@ -48,7 +53,7 @@ def kill_process_on_port(port):
                         except:
                             pass
     except Exception as e:
-        print(f"[Cleanup] Warning: {e}")
+        logger.warning(f"[Cleanup] {e}")
 
 
 def start_server():
@@ -109,14 +114,14 @@ def start_server():
             loop.close()
             print("[Main] Cleanup complete")
         except Exception as e:
-            print(f"[Main] Cleanup error: {e}")
+            logger.error(f"[Main] Cleanup error: {e}")
 
 
 if __name__ == "__main__":
     try:
         from watchfiles import run_process
     except ImportError:
-        print("Error: 'watchfiles' not found. Run: uv add watchfiles")
+        logger.error("Error: 'watchfiles' not found. Run: uv add watchfiles")
         sys.exit(1)
 
     print("Starting XPouch Backend (Explicit Loop Mode)...\n")

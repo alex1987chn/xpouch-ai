@@ -3,8 +3,12 @@
 用于加载环境变量、初始化 LangChain 客户端和 LangSmith 追踪
 """
 import os
+import logging
 from typing import Optional
 from dotenv import load_dotenv
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 # 加载环境变量
 load_dotenv()
@@ -65,11 +69,11 @@ def init_langchain_tracing():
     config = get_langsmith_config()
     
     if not config["enabled"]:
-        print("[INFO] LangSmith 追踪未启用（设置 LANGCHAIN_TRACING_V2=true 启用）")
+        logger.info("LangSmith 追踪未启用（设置 LANGCHAIN_TRACING_V2=true 启用）")
         return
 
     if not config["api_key"]:
-        print("[WARN] LangSmith 已启用，但未设置 LANGCHAIN_API_KEY")
+        logger.warning("LangSmith 已启用，但未设置 LANGCHAIN_API_KEY")
         return
 
     # 设置环境变量（LangChain 自动读取）
@@ -77,9 +81,7 @@ def init_langchain_tracing():
     os.environ["LANGCHAIN_API_KEY"] = config["api_key"]
     os.environ["LANGCHAIN_PROJECT"] = config["project_name"]
 
-    print(f"[OK] LangSmith 追踪已启用")
-    print(f"   - 项目: {config['project_name']}")
-    print(f"   - V2 追踪: {config['tracing_v2']}")
+    logger.info(f"LangSmith 追踪已启用 | 项目: {config['project_name']} | V2: {config['tracing_v2']}")
 
 
 # ============================================================================
@@ -141,7 +143,7 @@ def validate_config() -> bool:
     # 检查 LangSmith 配置
     langsmith = get_langsmith_config()
     if langsmith["enabled"] and not langsmith["api_key"]:
-        print("[WARN] 警告: LangSmith 已启用但未设置 LANGCHAIN_API_KEY")
+        logger.warning("LangSmith 已启用但未设置 LANGCHAIN_API_KEY")
         return False
 
     # LLM 和嵌入模型至少配置一个
@@ -157,3 +159,16 @@ init_langchain_tracing()
 
 # 验证配置
 validate_config()
+
+
+# ============================================================================
+# SSE 流式配置
+# ============================================================================
+
+# 心跳间隔配置
+HEARTBEAT_INTERVAL: float = 15.0          # 正常心跳间隔(秒)
+FORCE_HEARTBEAT_INTERVAL: float = 30.0     # 强制心跳间隔(秒)
+STREAM_TIMEOUT: float = 30.0               # 流式超时(秒)
+
+# 执行限制
+RECURSION_LIMIT: int = 100                 # 递归深度限制

@@ -3,6 +3,7 @@
  * 负责消息发送、停止生成、加载状态管理等核心功能
  * 
  * v3.1.0 性能优化：使用 Zustand Selectors 避免流式输出时的无效重计算
+ * v3.1.1 状态机解析：实时分离 thinking 标签和正文内容
  */
 
 import { useCallback, useRef, useEffect, useState } from 'react'
@@ -31,6 +32,113 @@ import {
 } from '@/hooks/useChatSelectors'
 import { useTaskMode, useTaskActions } from '@/hooks/useTaskSelectors'
 import { useChatStore } from '@/store/chatStore'
+
+// ============================================================================
+// v3.1.1: 流式内容状态机解析器
+// 用于实时分离 <think> 标签内容和正文内容
+// ============================================================================
+interface StreamingParserState {
+  isInThinking: boolean
+  thinkingBuffer: string
+  contentBuffer: string
+}
+
+/**
+ * 处理流式 chunk，分离 thinking 和正文内容
+ * 返回 { content: 正文内容, thinking: thinking内容, hasUpdate: 是否有更新 }
+ * 
+ * v3.1.1 修复：
+ * - 只在流的最开始检查 JSON 元数据（避免误杀代码中的 JSON）
+ * - 正确处理 chunk 中的标签分割
+ */
+function processStreamingChunk(
+  chunk: string,
+  state: StreamingParserState,
+  isFirstChunk: boolean = false
+): { content: string; thinking: string; hasUpdate: boolean } {
+  let outputContent = ''
+  let outputThinking = ''
+  
+  // v3.1.1 修复：只在流的第一个 chunk 检查 JSON 元数据
+  // 避免误杀 AI 回复中的合法 JSON 代码示例
+  if (isFirstChunk) {
+    const trimmedChunk = chunk.trim()
+    // 严格匹配：以 { 开头、包含 "decision" 字段、且是系统元数据格式
+    if (trimmedChunk.startsWith('{') && 
+        trimmedChunk.includes('"decision"') && 
+        trimmedChunk.includes('"decision_type"')) {
+      // 这是系统元数据，不显示给用户
+      return { content: '', thinking: '', hasUpdate: false }
+    }
+  }
+  
+  // 状态机解析
+  let i = 0
+  while (i < chunk.length) {
+    const remainingChunk = chunk.slice(i)
+    
+    if (!state.isInThinking) {
+      // 不在 thinking 标签内，检查是否进入
+      const thinkStart = remainingChunk.indexOf('<think>')
+      const thoughtStart = remainingChunk.indexOf('<thought>')
+      
+      const nextTagStart = thinkStart !== -1 ? thinkStart : thoughtStart
+      const actualTagStart = thoughtStart !== -1 && (thinkStart === -1 || thoughtStart < thinkStart) 
+        ? thoughtStart 
+        : nextTagStart
+      
+      if (actualTagStart !== -1) {
+        // 找到标签开始，之前的内容是正文
+        outputContent += remainingChunk.slice(0, actualTagStart)
+        state.isInThinking = true
+        i += actualTagStart + (actualTagStart === thinkStart ? 7 : 9) // <think> 或 <thought> 的长度
+      } else {
+        // 没有标签，全部作为正文
+        outputContent += remainingChunk
+        break
+      }
+    } else {
+      // 在 thinking 标签内，检查是否退出
+      const thinkEnd = remainingChunk.indexOf('</think>')
+      const thoughtEnd = remainingChunk.indexOf('</thought>')
+      
+      const nextTagEnd = thinkEnd !== -1 ? thinkEnd : thoughtEnd
+      const actualTagEnd = thoughtEnd !== -1 && (thinkEnd === -1 || thoughtEnd < thinkEnd) 
+        ? thoughtEnd 
+        : nextTagEnd
+      
+      if (actualTagEnd !== -1) {
+        // 找到标签结束，之前的内容是 thinking
+        outputThinking += remainingChunk.slice(0, actualTagEnd)
+        state.isInThinking = false
+        i += actualTagEnd + (actualTagEnd === thinkEnd ? 8 : 10) // </think> 或 </thought> 的长度
+      } else {
+        // 没有结束标签，全部作为 thinking
+        outputThinking += remainingChunk
+        break
+      }
+    }
+  }
+  
+  // 更新状态缓冲
+  state.contentBuffer += outputContent
+  state.thinkingBuffer += outputThinking
+  
+  return {
+    content: outputContent,
+    thinking: outputThinking,
+    hasUpdate: outputContent.length > 0 || outputThinking.length > 0
+  }
+}
+
+/**
+ * 重置解析器状态
+ */
+function resetStreamingParser(state: StreamingParserState): void {
+  state.isInThinking = false
+  state.thinkingBuffer = ''
+  state.contentBuffer = ''
+}
 
 // Dev environment check
 const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
@@ -128,6 +236,13 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     
     // Reset taskStore mode, wait for backend Router decision
     setMode('simple')
+    
+    // v3.1.1: 初始化流式解析器状态
+    const streamingParserState: StreamingParserState = {
+      isInThinking: false,
+      thinkingBuffer: '',
+      contentBuffer: ''
+    }
 
     const agentId = overrideAgentId || selectedAgentId
     if (!agentId) {
@@ -193,6 +308,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       debug('Preparing to call sendMessage')
 
       let hasProcessedComplexMode = false
+      let isFirstChunk = true  // v3.1.1: 标记是否是第一个 chunk
 
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
@@ -209,13 +325,59 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         }
 
         if (chunk) {
-          finalResponseContent += chunk
-
-          if (DEBUG) {
-            logger.debug('[useChatCore] Received chunk, length:', chunk.length, 'Total length:', finalResponseContent.length, 'Message ID:', assistantMessageId)
+          // v3.1.1: 使用状态机解析器分离 thinking 和正文内容
+          const { content, thinking } = processStreamingChunk(chunk, streamingParserState, isFirstChunk)
+          
+          // 标记第一个 chunk 已处理
+          if (isFirstChunk) {
+            isFirstChunk = false
           }
-
-          onChunk?.(chunk)
+          
+          // 累积完整响应（包括 thinking，用于最终保存）
+          finalResponseContent += chunk
+          
+          if (DEBUG) {
+            logger.debug('[useChatCore] Received chunk, raw:', chunk.length, 'content:', content.length, 'thinking:', thinking.length, 'Message ID:', assistantMessageId)
+          }
+          
+          // 只将正文内容传递给 UI 显示
+          if (content) {
+            onChunk?.(content)
+          }
+          
+          // 如果有 thinking 内容，实时更新到消息 metadata
+          if (thinking && assistantMessageId) {
+            const { messages, updateMessageMetadata } = useChatStore.getState()
+            const message = messages.find(m => m.id === assistantMessageId)
+            if (message) {
+              const existingThinking = message.metadata?.thinking || []
+              // 查找或创建 thinking step
+              const thinkStepIndex = existingThinking.findIndex((s: any) => s.id === 'streaming-think')
+              let newThinking
+              
+              if (thinkStepIndex >= 0) {
+                // 追加到现有 thinking step
+                newThinking = [...existingThinking]
+                newThinking[thinkStepIndex] = {
+                  ...newThinking[thinkStepIndex],
+                  content: newThinking[thinkStepIndex].content + thinking
+                }
+              } else {
+                // 创建新的 thinking step
+                newThinking = [...existingThinking, {
+                  id: 'streaming-think',
+                  expertType: 'thinking',
+                  expertName: '思考过程',
+                  content: thinking,
+                  timestamp: new Date().toISOString(),
+                  status: 'running',
+                  type: 'default'
+                }]
+              }
+              
+              updateMessageMetadata(assistantMessageId, { thinking: newThinking })
+            }
+          }
         }
       }
 
@@ -331,6 +493,14 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     abortControllerRef.current = new AbortController()
 
     let fullContent = ''
+    
+    // v3.1.1: 初始化流式解析器状态
+    const streamingParserState: StreamingParserState = {
+      isInThinking: false,
+      thinkingBuffer: '',
+      contentBuffer: ''
+    }
+    let isFirstChunk = true  // v3.1.1: 标记是否是第一个 chunk
 
     try {
       const streamCallback: StreamCallback = async (
@@ -343,8 +513,54 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         }
 
         if (chunk) {
+          // v3.1.1: 使用状态机解析器分离 thinking 和正文内容
+          const { content, thinking } = processStreamingChunk(chunk, streamingParserState, isFirstChunk)
+          
+          // 标记第一个 chunk 已处理
+          if (isFirstChunk) {
+            isFirstChunk = false
+          }
+          
+          // 累积完整响应
           fullContent += chunk
-          onChunk?.(chunk)
+          
+          // 只将正文内容传递给 UI 显示
+          if (content) {
+            onChunk?.(content)
+          }
+          
+          // 如果有 thinking 内容，实时更新到消息 metadata
+          if (thinking) {
+            const { messages, updateMessageMetadata } = useChatStore.getState()
+            // 查找最后一条 AI 消息
+            const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
+            
+            if (lastAiMessage) {
+              const existingThinking = lastAiMessage.metadata?.thinking || []
+              const thinkStepIndex = existingThinking.findIndex((s: any) => s.id === 'streaming-think')
+              let newThinking
+              
+              if (thinkStepIndex >= 0) {
+                newThinking = [...existingThinking]
+                newThinking[thinkStepIndex] = {
+                  ...newThinking[thinkStepIndex],
+                  content: newThinking[thinkStepIndex].content + thinking
+                }
+              } else {
+                newThinking = [...existingThinking, {
+                  id: 'streaming-think',
+                  expertType: 'thinking',
+                  expertName: '思考过程',
+                  content: thinking,
+                  timestamp: new Date().toISOString(),
+                  status: 'running',
+                  type: 'default'
+                }]
+              }
+              
+              updateMessageMetadata(lastAiMessage.id!, { thinking: newThinking })
+            }
+          }
         }
       }
 

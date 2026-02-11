@@ -5,6 +5,7 @@
 
 import { lazy, Suspense, useState, useEffect } from 'react'
 import { createBrowserRouter, useNavigate, Navigate, Outlet, useParams } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import AppLayout from './components/AppLayout'
 import AdminRoute from './components/AdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -275,12 +276,24 @@ export const router = createBrowserRouter([
   }
 ])
 
+// 创建 QueryClient 实例
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5分钟缓存
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+
 // 导出Provider包装组件（供main.tsx使用）
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
-    <ErrorBoundary>
-      {children}
-      <Toaster />
-    </ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ErrorBoundary>
+        {children}
+        <Toaster />
+      </ErrorBoundary>
+    </QueryClientProvider>
   )
 }

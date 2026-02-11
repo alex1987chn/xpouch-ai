@@ -178,8 +178,26 @@ export async function sendMessage(
             // 然后再调用 handleServerEvent（避免状态竞争）
             if (eventType === 'message.delta' && onChunk) {
               // 文本流事件：传递内容
-              await onChunk(eventData.content, finalConversationId)
-              fullContent += eventData.content
+              // 🔥 修复：确保 content 存在且是字符串，避免追加 'undefined'
+              // v3.1.1: 实时过滤 thinking 标签，避免污染消息内容
+              const rawContent = eventData.content
+              if (rawContent && typeof rawContent === 'string') {
+                const { cleanContent, hasThinking } = filterThinkingTags(rawContent)
+                
+                // 只传递过滤后的内容给前端显示
+                if (cleanContent) {
+                  await onChunk(cleanContent, finalConversationId)
+                }
+                
+                // 累积原始内容（供后续使用）
+                fullContent += rawContent
+                
+                // 如果有 thinking 内容，替换 eventData 中的 content 为过滤后的内容
+                // 这样 handleServerEvent 更新消息时不会包含 thinking
+                if (hasThinking) {
+                  eventData.content = cleanContent
+                }
+              }
             } else if (onChunk) {
               // 其他事件（task.started/completed/failed 等）：传递事件对象
               await onChunk(undefined, finalConversationId, fullEvent as any)
@@ -363,8 +381,12 @@ export async function resumeChat(
             
             // 🔥 复用与 sendMessage 完全相同的回调逻辑
             if (eventType === 'message.delta' && onChunk) {
-              await onChunk(eventData.content, params.threadId)
-              fullContent += eventData.content
+              // 🔥 修复：确保 content 存在且是字符串，避免追加 'undefined'
+              const content = eventData.content
+              if (content && typeof content === 'string') {
+                await onChunk(content, params.threadId)
+                fullContent += content
+              }
             } else if (onChunk) {
               await onChunk(undefined, params.threadId, fullEvent as any)
             }

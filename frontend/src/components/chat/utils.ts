@@ -7,6 +7,9 @@
  * 返回代码块数组，每个包含语言和代码内容
  */
 export function extractCodeBlocks(content: string): Array<{language: string, code: string}> {
+  // 🔥 修复：处理空值
+  if (!content) return []
+  
   const codeBlocks: Array<{language: string, code: string}> = []
   const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g
   let match
@@ -60,6 +63,9 @@ export function detectContentType(
   codeBlocks: Array<{language: string, code: string}>,
   fullContent: string
 ): ContentTypeResult | null {
+  // 🔥 修复：处理空值
+  if (!fullContent) return null
+  
   // 优先处理代码块
   if (codeBlocks.length > 0) {
     // 👑 优先级策略：先找有没有图表/流程图/HTML，因为它们比普通代码更值得"预览"
