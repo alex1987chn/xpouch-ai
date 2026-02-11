@@ -34,6 +34,9 @@ class EventType(str, Enum):
     MESSAGE_DELTA = "message.delta"         # 最终回复流式块
     MESSAGE_DONE = "message.done"           # 最终回复完成
     
+    # 🔥🔥🔥 v3.1.0 HITL: 人类审核中断事件
+    HUMAN_INTERRUPT = "human.interrupt"     # 中断等待用户确认
+    
     # 系统事件
     ROUTER_START = "router.start"           # 路由开始（意图分析）
     ROUTER_DECISION = "router.decision"     # 路由决策
@@ -217,6 +220,16 @@ class ErrorData(BaseModel):
     code: str
     message: str
     details: Optional[Dict[str, Any]] = None
+
+
+# ============================================================================
+# 🔥🔥🔥 v3.1.0 HITL: 人类审核中断事件
+# ============================================================================
+
+class HumanInterruptData(BaseModel):
+    """human.interrupt 事件数据 - HITL 中断等待用户确认"""
+    type: str = "plan_review"  # 中断类型，目前仅支持 plan_review
+    current_plan: List[Dict[str, Any]]  # 当前计划任务列表
 
 
 # ============================================================================

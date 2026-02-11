@@ -59,8 +59,8 @@ import pathlib
 # 🔥 保留 MemorySaver 作为 fallback
 from langgraph.checkpoint.memory import MemorySaver
 
-# 导入数据模型 - 使用绝对导入（以 backend 为根）
-from backend.config import init_langchain_tracing, get_langsmith_config
+# 导入数据模型
+from config import init_langchain_tracing, get_langsmith_config
 
 # v3.1: 从 nodes 模块导入所有节点函数（重构后）
 from agents.nodes import (

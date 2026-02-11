@@ -1,0 +1,355 @@
+/**
+ * ExpertEditor - 专家编辑器组件
+ * 
+ * [职责]
+ * 右侧编辑器区域，包含：
+ * - 模型选择
+ * - 温度滑块
+ * - 能力描述（自动生成）
+ * - System Prompt 编辑
+ * - 预览模式
+ * - 保存按钮
+ */
+
+import { useState } from 'react'
+import { Save, Play, Sparkles } from 'lucide-react'
+import { useTranslation } from '@/i18n'
+import { cn } from '@/lib/utils'
+import ModelSelector from '@/components/settings/ModelSelector'
+import type {
+  SystemExpert,
+  UpdateExpertRequest,
+} from '@/services/admin'
+import { previewExpert } from '@/services/admin'
+
+interface ExpertEditorProps {
+  expert: SystemExpert | null
+  formData: UpdateExpertRequest
+  isSaving: boolean
+  isGeneratingDescription: boolean
+  onFieldChange: (field: keyof UpdateExpertRequest, value: string | number) => void
+  onSave: () => void
+  onGenerateDescription: () => void
+  onShowToast: (message: string, type: 'success' | 'error') => void
+}
+
+export default function ExpertEditor({
+  expert,
+  formData,
+  isSaving,
+  isGeneratingDescription,
+  onFieldChange,
+  onSave,
+  onGenerateDescription,
+  onShowToast,
+}: ExpertEditorProps) {
+  const { t } = useTranslation()
+  const [previewMode, setPreviewMode] = useState(false)
+  const [testInput, setTestInput] = useState('')
+  const [previewResult, setPreviewResult] = useState<any>(null)
+  const [isPreviewing, setIsPreviewing] = useState(false)
+
+  // 预览专家响应
+  const handlePreview = async () => {
+    if (!expert || testInput.length < 10) {
+      onShowToast(t('testInputMinCharsError'), 'error')
+      return
+    }
+
+    setIsPreviewing(true)
+    setPreviewResult(null)
+    try {
+      const result = await previewExpert({
+        expert_key: expert.expert_key,
+        test_input: testInput,
+      })
+      setPreviewResult(result)
+      onShowToast(
+        `${t('executionCompleted')} (${(result.execution_time_ms / 1000).toFixed(2)}${t('secondsAbbr')})`,
+        'success'
+      )
+    } catch (error) {
+      onShowToast(t('previewFailed'), 'error')
+    } finally {
+      setIsPreviewing(false)
+    }
+  }
+
+  if (!expert) {
+    return (
+      <div className="flex-1 flex items-center justify-center border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0]">
+        <div className="text-center">
+          <div className="w-12 h-12 border-2 border-[var(--border-color)] bg-[var(--bg-page)] mx-auto mb-4 flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-[var(--text-secondary)]" />
+          </div>
+          <p className="font-mono text-sm text-[var(--text-secondary)]">
+            {(t as any)('selectExpertToEdit')}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0]">
+      {/* 头部 */}
+      <div className="flex items-center justify-between px-4 py-3 border-b-2 border-[var(--border-color)] shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-[var(--accent-hover)]" />
+          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+            /// {expert.name.toUpperCase()}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPreviewMode(!previewMode)}
+            className={cn(
+              'flex items-center gap-2 px-3 py-1.5 border-2 font-mono text-xs font-bold uppercase transition-all',
+              previewMode
+                ? 'border-[var(--accent-hover)] bg-[var(--accent-hover)] text-black'
+                : 'border-[var(--border-color)] bg-[var(--bg-page)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
+            )}
+          >
+            <Play className="w-3.5 h-3.5" />
+            {previewMode ? t('editMode') : t('previewMode')}
+          </button>
+        </div>
+      </div>
+
+      {/* 更新时间 */}
+      <div className="px-4 py-2 border-b-2 border-[var(--border-color)] bg-[var(--bg-page)]">
+        <span className="font-mono text-[10px] text-[var(--text-secondary)]">
+          {t('lastUpdated')}: {new Date(expert.updated_at).toLocaleString()}
+        </span>
+      </div>
+
+      {/* 内容区 */}
+      <div className="flex-1 overflow-y-auto bauhaus-scrollbar p-5">
+        <div className="space-y-6">
+          {!previewMode ? (
+            <>
+              {/* 模型选择 */}
+              <ModelSelector
+                value={formData.model}
+                onChange={(modelId) => onFieldChange('model', modelId)}
+                label={t('modelConfig')}
+              />
+
+              {/* 温度参数 */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                    {t('temperature')}: {formData.temperature?.toFixed(1)}
+                  </label>
+                </div>
+                <div
+                  className="relative h-8 bg-[var(--bg-page)] border-2 border-[var(--border-color)]"
+                  style={{ zIndex: 10 }}
+                >
+                  <div
+                    className="absolute top-0 left-0 h-full bg-[var(--accent-hover)] transition-all pointer-events-none"
+                    style={{
+                      width: `${((formData.temperature ?? 0.5) / 2) * 100}%`,
+                    }}
+                  />
+                  <div
+                    className="absolute top-0 w-4 h-full bg-[var(--text-primary)] border-2 border-[var(--border-color)] transition-all pointer-events-none"
+                    style={{
+                      left: `calc(${((formData.temperature ?? 0.5) / 2) * 100}% - 8px)`,
+                    }}
+                  />
+                  <input
+                    type="range"
+                    min="0"
+                    max="2"
+                    step="0.1"
+                    value={formData.temperature ?? 0.5}
+                    onChange={(e) =>
+                      onFieldChange('temperature', parseFloat(e.target.value))
+                    }
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                    style={{ WebkitAppearance: 'none', appearance: 'none' }}
+                  />
+                </div>
+                <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
+                  <span>0.0 ({t('conservative')})</span>
+                  <span>1.0 ({t('balanced')})</span>
+                  <span>2.0 ({t('creative')})</span>
+                </div>
+              </div>
+
+              {/* 能力描述 */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+                    <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                      {t('expertDescription')}
+                    </label>
+                  </div>
+                  <button
+                    onClick={onGenerateDescription}
+                    disabled={isGeneratingDescription || formData.system_prompt.length < 10}
+                    className={cn(
+                      'flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase',
+                      'border border-[var(--border-color)] bg-[var(--bg-page)]',
+                      'hover:bg-[var(--accent-hover)] hover:text-black hover:border-[var(--accent-hover)]',
+                      'transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                    )}
+                    title={t('autoGenerateDescriptionTooltip')}
+                  >
+                    {isGeneratingDescription ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-current border-t-transparent animate-spin" />
+                        {t('generating')}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3 h-3" />
+                        {t('autoGenerate')}
+                      </>
+                    )}
+                  </button>
+                </div>
+                <textarea
+                  value={formData.description || ''}
+                  onChange={(e) => onFieldChange('description', e.target.value)}
+                  placeholder={t('expertDescriptionPlaceholder')}
+                  rows={3}
+                  className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[80px] bauhaus-scrollbar"
+                />
+                <p className="font-mono text-[9px] text-[var(--text-secondary)]">
+                  {t('expertDescriptionTooltip')}
+                </p>
+              </div>
+
+              {/* 系统提示词 */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                    {t('systemPrompt')}
+                  </label>
+                </div>
+                <textarea
+                  value={formData.system_prompt}
+                  onChange={(e) => onFieldChange('system_prompt', e.target.value)}
+                  placeholder={t('systemPromptPlaceholder')}
+                  rows={10}
+                  className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[150px] bauhaus-scrollbar"
+                />
+                <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
+                  <span>{formData.system_prompt.length} {t('chars')}</span>
+                  <span className={formData.system_prompt.length < 10 ? 'text-red-500' : ''}>
+                    {t('minChars')}: 10
+                  </span>
+                </div>
+              </div>
+
+              {/* 保存按钮 */}
+              <div className="flex justify-end pt-4 border-t-2 border-[var(--border-color)]">
+                <button
+                  onClick={onSave}
+                  disabled={isSaving || formData.system_prompt.length < 10}
+                  className={cn(
+                    'flex items-center gap-2 px-6 py-2 border-2 border-[var(--border-color)]',
+                    'bg-[var(--accent-hover)] text-black font-mono text-xs font-bold uppercase',
+                    'shadow-[var(--shadow-color)_3px_3px_0_0]',
+                    'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_4px_4px_0_0]',
+                    'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
+                    'transition-all',
+                    'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0'
+                  )}
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="w-3 h-3 border-2 border-black/30 border-t-black animate-spin" />
+                      {t('saving')}
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      {t('saveConfig')}
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* 预览模式 */}
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+                    <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                      {t('testInput')}
+                    </label>
+                  </div>
+                  <textarea
+                    value={testInput}
+                    onChange={(e) => setTestInput(e.target.value)}
+                    placeholder={t('testInputPlaceholder')}
+                    rows={5}
+                    className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-none"
+                  />
+                  <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
+                    <span>{testInput.length} {t('chars')}</span>
+                    <span className={testInput.length < 10 ? 'text-red-500' : ''}>
+                      {t('minChars')}: 10
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    onClick={handlePreview}
+                    disabled={isPreviewing || testInput.length < 10}
+                    className={cn(
+                      'flex items-center gap-2 px-6 py-2 border-2 border-[var(--border-color)]',
+                      'bg-[var(--accent-hover)] text-black font-mono text-xs font-bold uppercase',
+                      'shadow-[var(--shadow-color)_3px_3px_0_0]',
+                      'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_4px_4px_0_0]',
+                      'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
+                      'transition-all',
+                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                    )}
+                  >
+                    {isPreviewing ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-black/30 border-t-black animate-spin" />
+                        {t('running')}
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4" />
+                        {t('startPreview')}
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {previewResult && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-[var(--accent-hover)]" />
+                      <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                        {'Preview Result'}
+                      </label>
+                    </div>
+                    <div className="p-4 border-2 border-[var(--border-color)] bg-[var(--bg-page)] min-h-[200px]">
+                      <pre className="font-mono text-sm whitespace-pre-wrap">
+                        {previewResult.content}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

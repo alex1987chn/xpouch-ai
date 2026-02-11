@@ -66,3 +66,35 @@ export const API = {
   /** 消息标题最大长度 */
   TITLE_MAX_LENGTH: 30
 }
+
+// 动画时长（统一使用秒或毫秒，与 CSS transition 一致）
+export const ANIMATION_DURATION = {
+  /** 快速动画 - 按钮点击、微交互 (0.15s = 150ms) */
+  FAST: 0.15,
+  /** 标准动画 - 面板切换、折叠 (0.2s = 200ms) */
+  NORMAL: 0.2,
+  /** 慢速动画 - 模态框、全屏切换 (0.3s = 300ms) */
+  SLOW: 0.3,
+} as const
+
+// 布局尺寸
+export const DIMENSIONS = {
+  /** 侧边栏宽度 (px) */
+  SIDEBAR_WIDTH: 280,
+  /** ExpertRail 宽度 (px) */
+  RAIL_WIDTH: 56,
+  /** 顶部 Header 高度 (px) */
+  HEADER_HEIGHT: 64,
+  /** 底部输入框最小高度 (px) */
+  INPUT_MIN_HEIGHT: 80,
+} as const
+
+// 防抖配置
+export const DEBOUNCE = {
+  /** 搜索输入防抖 (ms) */
+  SEARCH: 300,
+  /** 窗口调整防抖 (ms) */
+  RESIZE: 100,
+  /** 滚动事件防抖 (ms) */
+  SCROLL: 50,
+} as const

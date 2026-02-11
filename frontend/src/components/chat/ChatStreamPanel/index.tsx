@@ -189,9 +189,9 @@ export default function ChatStreamPanel({
     if (thinkingSteps.length > 0) {
       return true
     }
-    const content = msg.content || ''
-    const stripped = content.replace(/\s/g, '').replace(/[\n\r\t]/g, '')
-    return stripped.length > 0
+    // 🔥 修复：确保 content 不为 undefined
+    const content = (msg.content || '').replace(/\s/g, '').replace(/[\n\r\t]/g, '')
+    return content.length > 0
   }
 
   // Filter messages: in complex mode, hide empty AI messages
@@ -221,7 +221,9 @@ export default function ChatStreamPanel({
             const thinkingSteps = getMessageThinkingSteps(msg, conversationMode)
             const messageKey = msg.id ? `${msg.id}-${index}` : `msg-${index}`
             
-            const parsedContent = parseThinkTags(msg.content).content || msg.content || ''
+            // 🔥 修复：确保 content 不为 undefined，避免显示 'undefined'
+            const rawContent = msg.content || ''
+            const parsedContent = parseThinkTags(rawContent).content || rawContent
             const hasActualContent = parsedContent.replace(/\s/g, '').length > 0
             
             // Only show ThinkingProcess on the last message with thinking

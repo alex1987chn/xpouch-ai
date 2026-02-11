@@ -137,8 +137,11 @@ BEGIN
     FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name LIKE 'checkpoint%';
 
-    SELECT ARRAY_UNION(required, tables) INTO missing;
-    missing := array_remove(missing, NULL);
+    -- 计算 missing: 在 required 中但不在 tables 中的表
+    -- 使用数组差集操作: required - tables
+    SELECT array_agg(req) INTO missing
+    FROM unnest(required) AS req
+    WHERE req NOT IN (SELECT unnest(tables));
 
     IF array_length(missing, 1) > 0 THEN
         RAISE NOTICE 'Missing tables: %', missing;

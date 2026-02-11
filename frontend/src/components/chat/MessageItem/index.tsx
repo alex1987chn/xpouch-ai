@@ -26,16 +26,19 @@ export default function MessageItem({
   const [copied, setCopied] = useState(false)
   const { t } = useTranslation()
 
+  // 🔥 修复：确保 content 是字符串
+  const content = message.content || ''
+  
   // 检查是否有可预览的代码块
-  const codeBlocks = extractCodeBlocks(message.content)
-  const hasPreviewContent = codeBlocks.length > 0 || message.content.length > 200
+  const codeBlocks = extractCodeBlocks(content)
+  const hasPreviewContent = codeBlocks.length > 0 || content.length > 200
 
   // 处理预览 - 将内容发送到 artifact 区域（使用新协议 taskStore）
   const handlePreview = useCallback(() => {
     const taskStore = useTaskStore.getState()
-    const detected = detectContentType(codeBlocks, message.content)
+    const detected = detectContentType(codeBlocks, content)
     
-    if (!detected && message.content.length <= 200) return
+    if (!detected && content.length <= 200) return
 
     // 构造符合新协议的 artifact 数据（使用下划线命名匹配后端协议）
     // 🔥 3 Core Types 架构：language 字段从 detected 中获取（由 utils.ts 统一处理）
@@ -45,7 +48,7 @@ export default function MessageItem({
       title: detected?.type === 'code' ? '代码预览' 
         : detected?.type === 'html' ? 'HTML 预览' 
         : '消息预览',
-      content: detected?.content || message.content,
+      content: detected?.content || content,
       language: detected?.language,  // 👈 从 ContentTypeResult 获取
       sort_order: 0
     }
@@ -93,11 +96,11 @@ export default function MessageItem({
     
     console.log('[Preview] Current tasksCache:', taskStore.tasksCache)
     console.log('[Preview] Current mode:', taskStore.mode)
-  }, [message.content, codeBlocks, onPreview])
+  }, [content, codeBlocks, onPreview])
 
   // 处理复制
   const handleCopy = useCallback(async () => {
-    const textToCopy = message?.content || ''
+    const textToCopy = content
     if (!textToCopy) return
 
     try {
@@ -155,7 +158,7 @@ export default function MessageItem({
           <div className="flex gap-3">
             <span className="font-mono text-[var(--accent)] font-bold shrink-0">&gt;_</span>
             <p className="font-mono text-sm leading-relaxed whitespace-pre-wrap select-text text-inverted">
-              {message.content}
+              {content}
             </p>
           </div>
         </div>
@@ -204,7 +207,7 @@ export default function MessageItem({
             ),
           }}
         >
-          {message.content}
+          {content}
         </ReactMarkdown>
       </div>
 
