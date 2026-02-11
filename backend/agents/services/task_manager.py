@@ -222,6 +222,7 @@ def save_expert_execution_result(
         if artifact_data:
             from models import ArtifactCreate
             artifact_create = ArtifactCreate(
+                id=artifact_data.get("artifact_id"),  # 使用前端传入的 artifact_id
                 type=artifact_data.get("type", "markdown"),
                 title=artifact_data.get("title", f"{expert_type}结果"),
                 content=artifact_data.get("content", output_result),
