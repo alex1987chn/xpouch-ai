@@ -779,15 +779,16 @@ class StreamService:
             data = token.get("data", {})
             chunk = data.get("chunk")
             if chunk and hasattr(chunk, "content") and chunk.content:
-                # 🔥🔥🔥 关键修复：检查是否是流式专家（streaming mode）
-                # 流式专家的内容通过 artifact.chunk 发送，不应该再发送 message.delta
-                # 否则会导致内容重复显示在消息面板中
+                # 🔥🔥🔥 关键修复：检查是否是 GenericWorker 的流式专家
+                # GenericWorker 流式专家（writer, researcher, analyzer, planner）的内容通过 artifact.chunk 发送
+                # Commander 的内容通过 plan.thinking 事件发送，不应被跳过
+                # 只跳过同时包含 streaming 和 generic_worker 标签的内容
                 metadata = token.get("metadata", {})
                 tags = metadata.get("tags", [])
                 
-                if "streaming" in tags:
-                    # 流式专家：内容已通过 artifact.chunk 发送，跳过 message.delta
-                    logger.debug(f"[transform_langgraph_event] 流式专家内容跳过 message.delta: {chunk.content[:50]}...")
+                if "streaming" in tags and "generic_worker" in tags:
+                    # GenericWorker 流式专家：内容已通过 artifact.chunk 发送，跳过 message.delta
+                    logger.debug(f"[transform_langgraph_event] GenericWorker 流式专家内容跳过 message.delta: {chunk.content[:50]}...")
                     return None
                 
                 # 只发送纯净数据，包含 message_id 用于前端消息关联

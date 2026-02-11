@@ -6,7 +6,7 @@
  * v3.1.1 状态机解析：实时分离 thinking 标签和正文内容
  */
 
-import { useCallback, useRef, useEffect, useState } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { 
   sendMessage as apiSendMessage, 
   resumeChat as apiResumeChat,
@@ -17,7 +17,7 @@ import {
 import { normalizeAgentId, getAgentType } from '@/utils/agentUtils'
 import { generateUUID } from '@/utils'
 import { useTranslation } from '@/i18n'
-import type { ExpertEvent } from '@/types'
+import type { ExpertEvent, Message } from '@/types'
 import { errorHandler, logger } from '@/utils/logger'
 import { isValidApiMessageRole } from '@/types'
 
@@ -34,6 +34,18 @@ import { useTaskMode, useTaskActions } from '@/hooks/useTaskSelectors'
 import { useChatStore } from '@/store/chatStore'
 
 // ============================================================================
+// Phase 2: ExecutionStore 集成 - Server-Driven UI 事件分发
+// ============================================================================
+import { useExecutionStore } from '@/store/executionStore'
+import type { 
+  RouterDecisionEvent, 
+  PlanThinkingEvent,
+  TaskStartedEvent,
+  TaskCompletedEvent,
+  HumanInterruptEvent 
+} from '@/types/events'
+
+// ============================================================================
 // v3.1.1: 流式内容状态机解析器
 // 用于实时分离 <think> 标签内容和正文内容
 // ============================================================================
@@ -47,9 +59,10 @@ interface StreamingParserState {
  * 处理流式 chunk，分离 thinking 和正文内容
  * 返回 { content: 正文内容, thinking: thinking内容, hasUpdate: 是否有更新 }
  * 
- * v3.1.1 修复：
- * - 只在流的最开始检查 JSON 元数据（避免误杀代码中的 JSON）
- * - 正确处理 chunk 中的标签分割
+ * v3.2.0 重构：
+ * - 🔥 移除前端过滤逻辑（决策 JSON、系统日志等应由后端过滤）
+ * - 只保留 <think> 标签解析功能
+ * - 遵循 Server-Driven UI 原则：前端只是投影仪，不做数据清理
  */
 function processStreamingChunk(
   chunk: string,
@@ -58,43 +71,6 @@ function processStreamingChunk(
 ): { content: string; thinking: string; hasUpdate: boolean } {
   let outputContent = ''
   let outputThinking = ''
-  
-  // v3.1.1 修复：只在流的第一个 chunk 检查并过滤系统元数据
-  // 避免误杀 AI 回复中的合法 JSON 代码示例
-  if (isFirstChunk) {
-    const trimmedChunk = chunk.trim()
-    
-    // 🔥🔥🔥 降噪：使用正则匹配并移除 Router 决策 JSON
-    // 匹配 {"decision_type": "complex"} 或 {"decision_type":"complex"}xxx
-    const decisionJsonRegex = /^\s*\{\s*"decision_type"\s*:\s*"[^"]+"\s*\}/
-    if (decisionJsonRegex.test(trimmedChunk)) {
-      // 移除 JSON 部分，保留后面的内容
-      chunk = trimmedChunk.replace(decisionJsonRegex, '').trim()
-      // 如果移除后没有内容了，直接返回空
-      if (!chunk) {
-        return { content: '', thinking: '', hasUpdate: false }
-      }
-    }
-    
-    // 🔥🔥🔥 降噪：过滤系统日志和工具调用提示
-    // 这些不应该展示给用户，只应该在 ThinkingProcess 中显示
-    const systemLogPatterns = [
-      // Expert thinking 日志
-      /^(Expert|专家)\s+\w+\s+(is\s+thinking|thinking|思考中)/i,
-      // 工具调用提示
-      /^(Calling|调用)\s+(tool|工具)\s*:/i,
-      // 原始 Prompt 传递标记
-      /^---\s*Prompt\s*---/i,
-      /^---\s*System\s*Message\s*---/i,
-    ]
-    
-    for (const pattern of systemLogPatterns) {
-      if (pattern.test(trimmedChunk)) {
-        // 这是系统日志，过滤掉但标记为 thinking 内容供 ThinkingProcess 使用
-        return { content: '', thinking: trimmedChunk, hasUpdate: true }
-      }
-    }
-  }
   
   // 状态机解析
   let i = 0
@@ -172,6 +148,104 @@ const debug = DEBUG
   ? (...args: unknown[]) => logger.debug('[useChatCore]', ...args)
   : () => {}
 
+// ============================================================================
+// Phase 2: Server-Driven UI 事件分发器
+// 将 SSE 事件映射到 ExecutionStore 状态机
+// ============================================================================
+
+/**
+ * 分发 SSE 事件到 ExecutionStore
+ * 遵循 Server-Driven UI 原则：后端推送事件，前端只更新状态
+ */
+function dispatchEventToExecutionStore(event: ExpertEvent): void {
+  const { 
+    setStatus, 
+    setExpert, 
+    appendThinking, 
+    setPlan, 
+    setProgress,
+    reset 
+  } = useExecutionStore.getState()
+
+  switch (event.type) {
+    // Router 决策阶段
+    case 'router.decision': {
+      const data = (event as RouterDecisionEvent).data
+      // 根据决策设置状态
+      if (data.decision === 'complex') {
+        setStatus('planning')
+      } else {
+        // Simple 模式下，如果正在生成，直接跳到 executing
+        setStatus('executing')
+      }
+      break
+    }
+
+    // 规划思考阶段
+    case 'plan.thinking': {
+      const data = (event as PlanThinkingEvent).data
+      appendThinking(data.delta)
+      break
+    }
+
+    // 任务开始 - 进入执行阶段
+    case 'task.started': {
+      const data = (event as TaskStartedEvent).data
+      setStatus('executing')
+      setExpert({
+        id: data.task_id,
+        name: data.expert_type,
+        type: data.expert_type,
+      })
+      appendThinking(`[${data.expert_type}] 开始执行: ${data.description}`)
+      break
+    }
+
+    // 任务完成
+    case 'task.completed': {
+      const data = (event as TaskCompletedEvent).data
+      appendThinking(`[${data.expert_type}] 执行完成，耗时 ${data.duration_ms}ms`)
+      // 清空当前专家（任务完成后）
+      setExpert(null)
+      break
+    }
+
+    // HITL 中断 - 等待用户审核
+    case 'human.interrupt': {
+      const data = (event as HumanInterruptEvent).data
+      setStatus('reviewing')
+      if (data.current_plan) {
+        setPlan(data.current_plan.map((t, i) => ({
+          id: t.id,
+          expertType: t.expert_type,
+          description: t.description,
+          status: t.status,
+          dependencies: i > 0 ? [data.current_plan[i - 1].id] : undefined
+        })))
+        setProgress({ current: 0, total: data.current_plan.length })
+      }
+      break
+    }
+
+    // 流程完成
+    case 'workflow.completed':
+      setStatus('completed')
+      setExpert(null)
+      break
+
+    // 流程错误/取消
+    case 'error':
+    case 'workflow.cancelled':
+      setStatus('idle')
+      setExpert(null)
+      break
+
+    default:
+      // 其他事件不处理
+      break
+  }
+}
+
 /**
  * ApiMessage type guard function
  */
@@ -227,6 +301,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   } = useChatActions()
   
   const { setMode } = useTaskActions()
+  
+  // Phase 2: ExecutionStore Actions
+  const { reset: resetExecutionStore } = useExecutionStore.getState()
 
   /**
    * Stop generation
@@ -258,6 +335,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     }
 
     setGenerating(true)
+    
+    // Phase 2: Reset ExecutionStore for new workflow
+    resetExecutionStore()
     
     // Reset taskStore mode, wait for backend Router decision
     setMode('simple')
@@ -305,18 +385,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       const agentType = getAgentType(normalizedAgentId)
       debug('Agent type:', agentType, 'Agent ID:', normalizedAgentId)
 
-      // 🔥 只有系统智能体才创建 router thinking 步骤
-      // 自定义智能体直接走 LLM，不经过 LangGraph Router
-      const initialThinking = agentType === 'system' ? [{
-        id: generateUUID(),
-        expertType: 'router',
-        expertName: '智能路由',
-        content: '正在分析意图，选择执行模式...',
-        timestamp: new Date().toISOString(),
-        status: 'running' as const,
-        type: 'analysis' as const
-      }] : []
-
       setMessages([...storeState.messages,
         { role: 'user', content: userContent },
         {
@@ -325,7 +393,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
           content: '',
           timestamp: Date.now(),
           metadata: {
-            thinking: initialThinking
+            thinking: []
           }
         }
       ])
@@ -353,6 +421,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
         if (expertEvent) {
           onExpertEvent?.(expertEvent as any, conversationMode)
+          
+          // Phase 2: 分发事件到 ExecutionStore
+          dispatchEventToExecutionStore(expertEvent as ExpertEvent)
         }
 
         if (chunk) {
@@ -467,7 +538,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     setCurrentConversationId,
     addMessage,
     updateMessage,
-    t
+    t,
+    resetExecutionStore
   ])
 
   // Page visibility and lifecycle management
@@ -528,6 +600,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       ) => {
         if (expertEvent) {
           onExpertEvent?.(expertEvent as any, conversationMode)
+          
+          // Phase 2: 分发事件到 ExecutionStore
+          dispatchEventToExecutionStore(expertEvent as ExpertEvent)
         }
 
         if (chunk) {

@@ -142,7 +142,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
     v3.0 更新：立即持久化到数据库，发送 plan.created 事件
     v3.1 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
     v3.3 更新：流式思考 + JSON 生成，先展示思考过程，后输出任务规划
-    v3.4 更新：使用 Shared Queue 模式实现真正的实时流式输出
+    v3.4 更新：使用事件驱动流式输出，通过 event_queue 实时推送 plan.thinking 事件
     """
     from agents.services.expert_manager import get_expert_config, get_expert_config_cached
     from agents.services.expert_manager import get_all_expert_list, format_expert_list_for_prompt
@@ -153,13 +153,6 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
         sse_event_to_string
     )
     import uuid
-    
-    # 🔥🔥🔥 v3.4: 获取共享队列 (Side Channel)
-    stream_queue = None
-    if config:
-        stream_queue = config.get("configurable", {}).get("stream_queue")
-        if stream_queue:
-            print(f"[COMMANDER] 获取到 stream_queue，将实时推送思考内容")
     
     # 🔥 初始化事件队列（用于收集所有事件）
     event_queue = []
@@ -262,7 +255,6 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
             json_start_detected = False
             
             print("[COMMANDER] 开始流式生成...")
-            print(f"[COMMANDER] stream_queue: {'已获取' if stream_queue else '未获取'}")
             
             # 🔥🔥🔥 强化 Prompt：明确要求先思考再输出 JSON
             human_prompt = f"""用户查询: {user_query}
@@ -326,9 +318,6 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                             )
                             event_str = sse_event_to_string(thinking_event)
                             event_queue.append({"type": "sse", "event": event_str})
-                            # 🔥🔥🔥 实时推送到共享队列
-                            if stream_queue:
-                                await stream_queue.put({"type": "sse", "event": event_str})
                         # 剩余部分进入 json_buffer
                         json_parts = content.split("```", 1)
                         if len(json_parts) > 1:
@@ -353,12 +342,9 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                     )
                     event_str = sse_event_to_string(thinking_event)
                     event_queue.append({"type": "sse", "event": event_str})
-                    # 🔥🔥🔥 实时推送到共享队列
-                    if stream_queue:
-                        # 🔥 使用字典格式，与 chat.py 的 Consumer 匹配
-                        await stream_queue.put({"type": "sse", "event": event_str})
-                        if chunk_count <= 5:
-                            print(f"[COMMANDER] 🚀 发送 plan.thinking: {content[:50]}...")
+                    # 打印前5个 chunk 用于调试
+                    if chunk_count <= 5:
+                        print(f"[COMMANDER] 🚀 发送 plan.thinking: {content[:50]}...")
                 else:
                     # 📦 JSON 阶段：静默拼接，不发送 SSE
                     # 检测 JSON 结束标记

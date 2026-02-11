@@ -49,14 +49,15 @@ import {
   useIsGenerating,
   useCurrentConversationId,
 } from '@/hooks/useChatSelectors'
+
+// Phase 2: Server-Driven UI - 使用 ExecutionStore 替代 TaskStore
 import {
-  useTaskMode,
-  useRunningTaskIds,
-  useTasksCache,
-  useTaskSession,
-  useIsWaitingForApproval,
-  usePendingPlan,
-} from '@/hooks/useTaskSelectors'
+  useExecutionStatus,
+  useCurrentExpert,
+  useThinkingTrace,
+  useExecutionPlan,
+  useExecutionActions,
+} from '@/store/executionStore'
 
 interface ChatStreamPanelProps {
   /** 当前输入值 */
@@ -79,49 +80,30 @@ interface ChatStreamPanelProps {
 
 /**
  * 提取消息的思考步骤
- * 支持：
- * 1. Complex 模式：只使用 msg.metadata.thinking（不解析 think 标签）
- * 2. Simple 模式：解析 <think></think> 标签
+ * Phase 2: Server-Driven UI - 只使用 metadata.thinking
+ * 不再解析 content 中的 `` 标签，避免重复显示
  */
-function getMessageThinkingSteps(msg: Message, conversationMode: 'simple' | 'complex' = 'simple') {
-  const steps: Array<{
-    id: string
-    expertType: string
-    expertName: string
-    content: string
-    timestamp: string
-    status: 'pending' | 'running' | 'completed' | 'failed'
-    type?: 'search' | 'reading' | 'analysis' | 'coding' | 'planning' | 'writing' | 'default'
-    duration?: number
-    url?: string
-  }> = []
-
-  // 1. Complex 模式：只使用 metadata.thinking（不解析 think 标签，避免聚合报告中的 think 标签被解析）
-  if (conversationMode === 'complex') {
-    if (msg.metadata?.thinking && msg.metadata.thinking.length > 0) {
-      steps.push(...msg.metadata.thinking)
-    }
-    return steps
-  }
-
-  // 2. Simple 模式：解析 <think></think> 标签
+function getMessageThinkingSteps(msg: Message) {
+  // 只使用 metadata.thinking，避免重复显示
   if (msg.metadata?.thinking && msg.metadata.thinking.length > 0) {
-    steps.push(...msg.metadata.thinking)
-  }
-  
-  const parsed = parseThinkTags(msg.content)
-  if (parsed.hasThinking && parsed.thinking) {
-    steps.push(...formatThinkingAsSteps(parsed.thinking, 'completed'))
+    return msg.metadata.thinking
   }
 
-  return steps
+  // 兼容旧消息：如果没有 metadata.thinking，则解析 content 中的 `` 标签
+  const parsed = parseThinkTags(msg.content || '')
+  if (parsed.hasThinking && parsed.thinking) {
+    return formatThinkingAsSteps(parsed.thinking, 'completed')
+  }
+
+  return []
 }
 
 /**
  * 检查消息是否有思考内容（用于控制 indicator 显示）
+ * Phase 2: Server-Driven UI - 简化逻辑
  */
-function hasActiveThinking(msg: Message, isStreaming: boolean, conversationMode: 'simple' | 'complex' = 'simple'): boolean {
-  const steps = getMessageThinkingSteps(msg, conversationMode)
+function hasActiveThinking(msg: Message, isStreaming: boolean): boolean {
+  const steps = getMessageThinkingSteps(msg)
   if (steps.length === 0) return false
   
   const hasRunning = steps.some(s => s.status === 'running')
@@ -154,22 +136,23 @@ export default function ChatStreamPanel({
   const isGenerating = useIsGenerating()
   const conversationId = useCurrentConversationId()
   
-  // Task-related selectors
-  const mode = useTaskMode()
-  const conversationMode = mode || 'simple'
-  const runningTaskIds = useRunningTaskIds()
-  const tasks = useTasksCache()
-  const session = useTaskSession()
-  const isWaitingForApproval = useIsWaitingForApproval()
-  const pendingPlan = usePendingPlan()
+  // Phase 2: Server-Driven UI - 使用 ExecutionStore 替代 TaskStore
+  const executionStatus = useExecutionStatus()
+  const currentExpert = useCurrentExpert()
+  const thinkingTrace = useThinkingTrace()
+  const executionPlan = useExecutionPlan()
+  const { reset: resetExecutionStore } = useExecutionActions()
   
-  // Derive active expert from running tasks
-  const activeExpert = runningTaskIds.size > 0
-    ? tasks.find(t => runningTaskIds.has(t.id))?.expert_type || null
-    : null
+  // 从 ExecutionStore 获取状态
+  const isWaitingForApproval = executionStatus === 'reviewing'
+  const isExecuting = executionStatus === 'executing'
+  const isPlanning = executionStatus === 'planning'
   
-  // Get estimated steps from session
-  const estimatedSteps = session?.estimatedSteps || 0
+  // 当前活跃专家
+  const activeExpert = currentExpert?.type || null
+  
+  // 获取计划步骤数
+  const estimatedSteps = executionPlan.length
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -186,18 +169,19 @@ export default function ChatStreamPanel({
 
   // Check if message has real content (for filtering)
   const hasRealContent = (msg: Message): boolean => {
-    const thinkingSteps = getMessageThinkingSteps(msg, conversationMode)
+    const thinkingSteps = getMessageThinkingSteps(msg)
     if (thinkingSteps.length > 0) {
       return true
     }
     // 🔥 修复：确保 content 不为 undefined
-    const content = (msg.content || '').replace(/\s/g, '').replace(/[\n\r\t]/g, '')
+    const content = (msg.content || '').replace(/\s/g, '').replace(/[\n\r\t]/g, ' ')
     return content.length > 0
   }
 
-  // Filter messages: in complex mode, hide empty AI messages
-  // 🔥 修复：但要保留正在生成中的AI消息（用于显示占位状态）
-  const displayMessages = conversationMode === 'complex'
+  // Phase 2: Server-Driven UI - 使用 executionStatus 替代 conversationMode
+  // 在执行中或计划审核阶段，隐藏空AI消息
+  const isInExecution = executionStatus === 'executing' || executionStatus === 'reviewing' || executionStatus === 'planning'
+  const displayMessages = isInExecution
     ? messages.filter(msg => {
         // 保留非AI消息
         if (msg.role !== 'assistant') return true
@@ -211,7 +195,7 @@ export default function ChatStreamPanel({
 
   // Check if last message has active thinking
   const lastMessage = displayMessages[displayMessages.length - 1]
-  const hasThinkingActive = lastMessage?.role === 'assistant' && hasActiveThinking(lastMessage, isGenerating, conversationMode)
+  const hasThinkingActive = lastMessage?.role === 'assistant' && hasActiveThinking(lastMessage, isGenerating)
   
   /**
    * 计算消息的 AI 状态
@@ -226,8 +210,11 @@ export default function ChatStreamPanel({
     
     if (!isLastAiMessage) return 'idle'
     
-    // 判断是 thinking 还是 streaming
-    const steps = getMessageThinkingSteps(msg, conversationMode)
+    // Phase 2: Server-Driven UI - 优先使用 ExecutionStore 状态
+    if (isPlanning || isExecuting) return 'thinking'
+    
+    // 后备：从消息 metadata 判断
+    const steps = getMessageThinkingSteps(msg)
     const hasRunningStep = steps.some(s => s.status === 'running')
     
     if (hasRunningStep) return 'thinking'
@@ -249,7 +236,7 @@ export default function ChatStreamPanel({
               index === displayMessages.length - 1 && 
               msg.role === 'assistant'
             
-            const thinkingSteps = getMessageThinkingSteps(msg, conversationMode)
+            const thinkingSteps = getMessageThinkingSteps(msg)
             const messageKey = msg.id ? `${msg.id}-${index}` : `msg-${index}`
             
             // 🔥 修复：确保 content 不为 undefined，避免显示 'undefined'
@@ -260,7 +247,7 @@ export default function ChatStreamPanel({
             // Only show ThinkingProcess on the last message with thinking
             const isLastMessageWithThinking = index === displayMessages.length - 1 || 
               !displayMessages.slice(index + 1).some(m => 
-                getMessageThinkingSteps(m, conversationMode).length > 0
+                getMessageThinkingSteps(m).length > 0
               )
             
             return (
@@ -298,15 +285,13 @@ export default function ChatStreamPanel({
           })
         )}
 
-
-        {/* v3.1.0 HITL: Plan review card */}
+        {/* Phase 2: Server-Driven UI - Plan review card 基于 executionStatus */}
         {/* 使用 key 强制重新挂载，避免 useEffect 同步 Props 反模式 */}
         {isWaitingForApproval && conversationId && resumeExecution && (
           <PlanReviewCard 
             key={`plan-review-${conversationId}`}
             conversationId={conversationId} 
             resumeExecution={resumeExecution}
-            initialPlan={pendingPlan}
           />
         )}
       </div>

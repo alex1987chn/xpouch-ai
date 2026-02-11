@@ -4,65 +4,54 @@
  * 当 Commander 完成规划后，展示此卡片让用户审核、修改计划，
  * 确认后再继续执行。
  * 
- * v3.1.0 HITL 核心组件
- * v3.1.0 性能优化：使用 Zustand Selectors 避免后台流式更新时的卡顿
+ * v3.2.0 Phase 2: Server-Driven UI 重构
+ * - 直接使用 ExecutionStore，不再通过 Props 接收 plan
+ * - 状态驱动 UI：基于 executionStore.status === 'reviewing'
  */
 
 import React, { useState, useCallback } from 'react'
 import { Trash2, Edit3, CheckCircle2, XCircle, Play, Loader2 } from 'lucide-react'
-import type { Task } from '@/store/taskStore'
 import type { ResumeChatParams } from '@/services/chat'
 
-// Performance Optimized Selectors (v3.1.0)
+// Phase 2: Server-Driven UI - 使用 ExecutionStore
 import {
-  useIsWaitingForApproval,
-  usePendingPlan,
-  useTaskActions,
-} from '@/hooks/useTaskSelectors'
+  useExecutionStatus,
+  useExecutionPlan,
+  useExecutionActions,
+} from '@/store/executionStore'
 import { useAddMessageAction } from '@/hooks/useChatSelectors'
-import { useChatStore } from '@/store/chatStore'
 
 interface PlanReviewCardProps {
   conversationId: string
   /** v3.1.0 HITL: 恢复执行函数（复用主聊天的 SSE 处理逻辑） */
   resumeExecution: (params: ResumeChatParams) => Promise<string>
-  /** 初始计划数据，用于直接初始化状态（避免 useEffect 同步 Props 反模式） */
-  initialPlan: Task[]
 }
 
 export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({ 
   conversationId,
   resumeExecution,
-  initialPlan
 }) => {
-  // Performance Optimized Selectors (v3.1.0)
-  // Only re-render when these specific values change
-  const isWaitingForApproval = useIsWaitingForApproval()
-  const pendingPlan = usePendingPlan()
-  
-  // Actions use stable references
+  // Phase 2: Server-Driven UI - 使用 ExecutionStore
+  const executionStatus = useExecutionStatus()
+  const executionPlan = useExecutionPlan()
   const { 
-    clearPendingPlan,
-    setIsWaitingForApproval,
-    setPendingPlan,
-    updateTasksFromPlan 
-  } = useTaskActions()
+    setStatus: setExecutionStatus,
+    setPlan: setExecutionPlan,
+    reset: resetExecutionStore 
+  } = useExecutionActions()
   
   const addMessage = useAddMessageAction()
   
-  // Note: rebuildThinkingFromPlan not in useChatSelectors yet, keep as-is
-  const rebuildThinkingFromPlan = useChatStore(state => state.rebuildThinkingFromPlan)
-  
-  // Local editing state - 直接用 initialPlan 初始化，避免 useEffect 同步 Props 反模式
+  // 本地编辑状态 - 直接用 executionPlan 初始化
   // 父组件通过 key 属性控制重置时机
-  const [editedPlan, setEditedPlan] = useState<Task[]>(initialPlan)
+  const [editedPlan, setEditedPlan] = useState(executionPlan)
   const [isEditing, setIsEditing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
 
-  // Don't render if not waiting for approval
-  if (!isWaitingForApproval) {
+  // Phase 2: Server-Driven UI - 基于 executionStatus 判断显示
+  if (executionStatus !== 'reviewing') {
     return null
   }
 
@@ -93,8 +82,8 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
     const previousPlan = [...editedPlan]
     setIsSubmitting(true)
     
-    clearPendingPlan()
-    setIsWaitingForApproval(false)
+    // Phase 2: 使用 ExecutionStore 重置状态
+    resetExecutionStore()
     
     try {
       await resumeExecution({
@@ -108,14 +97,15 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
         timestamp: Date.now()
       })
     } catch (error) {
-      setPendingPlan(previousPlan)
-      setIsWaitingForApproval(true)
+      // 恢复 plan 状态
+      setExecutionPlan(previousPlan)
+      setExecutionStatus('reviewing')
       alert('取消失败，请重试')
     } finally {
       setIsSubmitting(false)
       setIsCancelling(false)
     }
-  }, [conversationId, resumeExecution, clearPendingPlan, addMessage, setPendingPlan, setIsWaitingForApproval, editedPlan])
+  }, [conversationId, resumeExecution, resetExecutionStore, addMessage, setExecutionPlan, setExecutionStatus, editedPlan])
 
   // Confirm and execute plan
   const handleApprove = useCallback(async () => {
@@ -128,20 +118,10 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
     const tempMessageId = `temp-resume-${Date.now()}`
     setIsSubmitting(true)
     
-    const taskIds = editedPlan.map(t => t.id)
-    
-    updateTasksFromPlan(editedPlan.map(task => ({
-      id: task.id,
-      expert_type: task.expert_type,
-      description: task.description,
-      sort_order: task.sort_order,
-      status: task.status
-    })))
-    
-    rebuildThinkingFromPlan(taskIds)
-    
-    clearPendingPlan()
-    setIsWaitingForApproval(false)
+    // Phase 2: 更新 ExecutionStore 中的 plan
+    setExecutionPlan(editedPlan)
+    // 切换到执行状态
+    setExecutionStatus('executing')
     
     addMessage({
       id: tempMessageId,
@@ -155,9 +135,9 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
         threadId: conversationId,
         updatedPlan: editedPlan.map(task => ({
           id: task.id,
-          expert_type: task.expert_type,
+          expert_type: task.expertType,
           description: task.description,
-          sort_order: task.sort_order,
+          sort_order: 0, // ExecutionStore 的 Task 不存储 sort_order
           status: task.status
         })),
         approved: true
@@ -165,8 +145,9 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
 
       await resumeExecution(resumeParams)
     } catch (error) {
-      setPendingPlan(previousPlan)
-      setIsWaitingForApproval(true)
+      // 恢复状态
+      setExecutionPlan(previousPlan)
+      setExecutionStatus('reviewing')
       
       addMessage({
         id: tempMessageId,
@@ -179,7 +160,7 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
     } finally {
       setIsSubmitting(false)
     }
-  }, [editedPlan, conversationId, resumeExecution, clearPendingPlan, setIsWaitingForApproval, addMessage, setPendingPlan, updateTasksFromPlan, rebuildThinkingFromPlan])
+  }, [editedPlan, conversationId, resumeExecution, setExecutionPlan, setExecutionStatus, addMessage])
 
   return (
     <div className="my-4 p-4 border-2 border-amber-400 rounded-lg bg-amber-50 dark:bg-amber-900/20">
@@ -230,7 +211,7 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
 
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  {task.expert_type}
+                  {task.expertType}
                 </div>
 
                 {isEditing ? (
