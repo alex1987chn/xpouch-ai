@@ -56,6 +56,7 @@ import {
   useTasksCache,
   useTaskSession,
   useIsWaitingForApproval,
+  usePendingPlan,
 } from '@/hooks/useTaskSelectors'
 
 interface ChatStreamPanelProps {
@@ -161,6 +162,7 @@ export default function ChatStreamPanel({
   const tasks = useTasksCache()
   const session = useTaskSession()
   const isWaitingForApproval = useIsWaitingForApproval()
+  const pendingPlan = usePendingPlan()
   
   // Derive active expert from running tasks
   const activeExpert = runningTaskIds.size > 0
@@ -268,10 +270,13 @@ export default function ChatStreamPanel({
         )}
         
         {/* v3.1.0 HITL: Plan review card */}
+        {/* 使用 key 强制重新挂载，避免 useEffect 同步 Props 反模式 */}
         {isWaitingForApproval && conversationId && resumeExecution && (
           <PlanReviewCard 
+            key={`plan-review-${conversationId}`}
             conversationId={conversationId} 
             resumeExecution={resumeExecution}
+            initialPlan={pendingPlan}
           />
         )}
       </div>

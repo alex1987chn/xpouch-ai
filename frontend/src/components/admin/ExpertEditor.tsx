@@ -1,6 +1,6 @@
 /**
  * ExpertEditor - 专家编辑器组件
- * 
+ *
  * [职责]
  * 右侧编辑器区域，包含：
  * - 模型选择
@@ -9,6 +9,9 @@
  * - System Prompt 编辑
  * - 预览模式
  * - 保存按钮
+ *
+ * [状态管理]
+ * 使用 key 模式：父组件通过 key 控制重置，切换专家时自动重新初始化
  */
 
 import { useState } from 'react'
@@ -24,30 +27,60 @@ import { previewExpert } from '@/services/admin'
 
 interface ExpertEditorProps {
   expert: SystemExpert | null
-  formData: UpdateExpertRequest
   isSaving: boolean
   isGeneratingDescription: boolean
-  onFieldChange: (field: keyof UpdateExpertRequest, value: string | number) => void
-  onSave: () => void
-  onGenerateDescription: () => void
+  onSave: (data: UpdateExpertRequest) => void
+  onGenerateDescription: (systemPrompt: string) => Promise<string>
   onShowToast: (message: string, type: 'success' | 'error') => void
 }
 
 export default function ExpertEditor({
   expert,
-  formData,
   isSaving,
   isGeneratingDescription,
-  onFieldChange,
   onSave,
   onGenerateDescription,
   onShowToast,
 }: ExpertEditorProps) {
   const { t } = useTranslation()
+
+  // 内部状态：表单数据（key 模式保证 expert 是最新的）
+  const [formData, setFormData] = useState<UpdateExpertRequest>({
+    system_prompt: expert?.system_prompt || '',
+    description: expert?.description || '',
+    model: expert?.model || 'gpt-4o',
+    temperature: expert?.temperature ?? 0.5,
+  })
+
   const [previewMode, setPreviewMode] = useState(false)
   const [testInput, setTestInput] = useState('')
   const [previewResult, setPreviewResult] = useState<any>(null)
   const [isPreviewing, setIsPreviewing] = useState(false)
+
+  // 表单字段更新
+  const handleFieldChange = (field: keyof UpdateExpertRequest, value: string | number) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  // 保存
+  const handleSave = () => {
+    onSave(formData)
+  }
+
+  // 自动生成描述
+  const handleGenerateDescription = async () => {
+    if (!formData.system_prompt || formData.system_prompt.length < 10) {
+      onShowToast(t('systemPromptTooShort'), 'error')
+      return
+    }
+    try {
+      const description = await onGenerateDescription(formData.system_prompt)
+      setFormData((prev) => ({ ...prev, description }))
+      onShowToast(t('descriptionGenerated'), 'success')
+    } catch (error) {
+      onShowToast(t('generateDescriptionFailed'), 'error')
+    }
+  }
 
   // 预览专家响应
   const handlePreview = async () => {

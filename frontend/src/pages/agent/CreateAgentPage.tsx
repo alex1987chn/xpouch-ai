@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ArrowLeft, Bot, Sparkles, Save } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
@@ -67,22 +67,13 @@ function BauhausProgressBar({ current, max }: { current: number; max: number }) 
 
 export default function CreateAgentPage({ onBack, onSave, initialData, isEditMode = false }: CreateAgentPageProps) {
   const { t } = useTranslation()
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [systemPrompt, setSystemPrompt] = useState('')
-  const [category, setCategory] = useState('综合')
-  const [selectedModel, setSelectedModel] = useState('deepseek-chat')
-
-  // 编辑模式：加载初始数据
-  useEffect(() => {
-    if (isEditMode && initialData) {
-      setName(initialData.name || '')
-      setDescription(initialData.description || '')
-      setSystemPrompt(initialData.systemPrompt || '')
-      setCategory(initialData.category || '综合')
-      setSelectedModel(initialData.modelId || 'deepseek-chat')
-    }
-  }, [isEditMode, initialData])
+  // 直接用 initialData 初始化状态，避免 useEffect 同步 Props 反模式
+  // 父组件通过 key 属性控制组件重置时机
+  const [name, setName] = useState(initialData?.name || '')
+  const [description, setDescription] = useState(initialData?.description || '')
+  const [systemPrompt, setSystemPrompt] = useState(initialData?.systemPrompt || '')
+  const [category, setCategory] = useState(initialData?.category || '综合')
+  const [selectedModel, setSelectedModel] = useState(initialData?.modelId || 'deepseek-chat')
 
   const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({
     enabled: true,

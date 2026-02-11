@@ -18,7 +18,6 @@ import { cn } from '@/lib/utils'
 
 import {
   getAllExperts,
-  getExpert,
   updateExpert,
   createExpert,
   deleteExpert,
@@ -73,13 +72,7 @@ export default function ExpertAdminPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [expertToDelete, setExpertToDelete] = useState<SystemExpert | null>(null)
 
-  // 表单状态
-  const [formData, setFormData] = useState<UpdateExpertRequest>({
-    system_prompt: '',
-    description: '',
-    model: 'gpt-4o',
-    temperature: 0.5,
-  })
+  // 操作状态
   const [isSaving, setIsSaving] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false)
@@ -99,55 +92,45 @@ export default function ExpertAdminPage() {
     }
   }, [expertsError, t])
 
-  // 查询选中的专家详情
-  const { data: selectedExpert } = useQuery({
-    queryKey: ['expert', selectedExpertKey],
-    queryFn: () => getExpert(selectedExpertKey!),
-    enabled: !!selectedExpertKey,
-  })
+  // 从列表中获取选中的专家详情（避免重复查询）
+  const selectedExpert = selectedExpertKey
+    ? experts.find((e) => e.expert_key === selectedExpertKey) || null
+    : null
 
   // 选择专家
   const handleSelectExpert = useCallback((expertKey: string) => {
     setSelectedExpertKey(expertKey)
   }, [])
 
-  // 表单字段更新
-  const handleFieldChange = useCallback(
-    (field: keyof UpdateExpertRequest, value: string | number) => {
-      setFormData((prev) => ({ ...prev, [field]: value }))
-    },
-    []
-  )
-
   // 自动生成描述
-  const handleGenerateDescription = useCallback(async () => {
-    if (!formData.system_prompt || formData.system_prompt.length < 10) {
-      setToast({ message: (t as any)('systemPromptTooShort'), type: 'error' })
-      return
+  const handleGenerateDescription = useCallback(async (systemPrompt: string): Promise<string> => {
+    if (!systemPrompt || systemPrompt.length < 10) {
+      throw new Error('System prompt too short')
     }
 
     setIsGeneratingDescription(true)
     try {
       const result = await generateExpertDescription({
-        system_prompt: formData.system_prompt,
+        system_prompt: systemPrompt,
       })
-      setFormData((prev) => ({ ...prev, description: result.description }))
       setToast({ message: (t as any)('descriptionGenerated'), type: 'success' })
+      return result.description
     } catch (error) {
       logger.error('Failed to generate description:', error)
       setToast({ message: (t as any)('generateDescriptionFailed'), type: 'error' })
+      throw error
     } finally {
       setIsGeneratingDescription(false)
     }
-  }, [formData.system_prompt, t])
+  }, [t])
 
   // 保存配置
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (data: UpdateExpertRequest) => {
     if (!selectedExpert) return
 
     setIsSaving(true)
     try {
-      await updateExpert(selectedExpert.expert_key, formData)
+      await updateExpert(selectedExpert.expert_key, data)
       queryClient.invalidateQueries({ queryKey: ['experts'] })
       queryClient.invalidateQueries({ queryKey: ['expert', selectedExpert.expert_key] })
       setToast({ message: (t as any)('saveSuccess'), type: 'success' })
@@ -157,7 +140,7 @@ export default function ExpertAdminPage() {
     } finally {
       setIsSaving(false)
     }
-  }, [selectedExpert, formData, queryClient, t])
+  }, [selectedExpert, queryClient, t])
 
   // 创建专家
   const handleCreateExpert = useCallback(
@@ -275,14 +258,12 @@ export default function ExpertAdminPage() {
         onCreateClick={() => setIsCreateDialogOpen(true)}
       />
 
-      {/* 右侧：编辑器 */}
+      {/* 右侧：编辑器 - 使用 key 模式重置表单 */}
       <ExpertEditor
         key={selectedExpert?.expert_key || 'empty'}
         expert={selectedExpert || null}
-        formData={formData}
         isSaving={isSaving}
         isGeneratingDescription={isGeneratingDescription}
-        onFieldChange={handleFieldChange}
         onSave={handleSave}
         onGenerateDescription={handleGenerateDescription}
         onShowToast={(message, type) => setToast({ message, type })}

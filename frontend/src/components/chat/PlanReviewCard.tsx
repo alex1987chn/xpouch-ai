@@ -26,11 +26,14 @@ interface PlanReviewCardProps {
   conversationId: string
   /** v3.1.0 HITL: 恢复执行函数（复用主聊天的 SSE 处理逻辑） */
   resumeExecution: (params: ResumeChatParams) => Promise<string>
+  /** 初始计划数据，用于直接初始化状态（避免 useEffect 同步 Props 反模式） */
+  initialPlan: Task[]
 }
 
 export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({ 
   conversationId,
-  resumeExecution 
+  resumeExecution,
+  initialPlan
 }) => {
   // Performance Optimized Selectors (v3.1.0)
   // Only re-render when these specific values change
@@ -50,19 +53,13 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
   // Note: rebuildThinkingFromPlan not in useChatSelectors yet, keep as-is
   const rebuildThinkingFromPlan = useChatStore(state => state.rebuildThinkingFromPlan)
   
-  // Local editing state
-  const [editedPlan, setEditedPlan] = useState<Task[]>([])
+  // Local editing state - 直接用 initialPlan 初始化，避免 useEffect 同步 Props 反模式
+  // 父组件通过 key 属性控制重置时机
+  const [editedPlan, setEditedPlan] = useState<Task[]>(initialPlan)
   const [isEditing, setIsEditing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
-
-  // Initialize editing state
-  React.useEffect(() => {
-    if (pendingPlan.length > 0 && editedPlan.length === 0) {
-      setEditedPlan([...pendingPlan])
-    }
-  }, [pendingPlan, editedPlan.length])
 
   // Don't render if not waiting for approval
   if (!isWaitingForApproval) {
