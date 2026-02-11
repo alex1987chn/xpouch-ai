@@ -691,7 +691,14 @@ class StreamService:
         config: dict,
         updated_plan: List[dict]
     ):
-        """应用用户更新后的计划"""
+        """
+        应用用户更新后的计划
+        
+        🔥 关键修复：必须添加 HumanMessage 来触发 Graph 继续执行，
+        否则 LangGraph 会认为没有新输入而进入 END 节点。
+        """
+        from langchain_core.messages import HumanMessage
+        
         # 清理依赖关系
         kept_task_ids = {task.get("id") for task in updated_plan}
         cleaned_plan = []
@@ -706,10 +713,21 @@ class StreamService:
                 cleaned_task["depends_on"] = cleaned_deps if cleaned_deps else None
             cleaned_plan.append(cleaned_task)
         
-        # 更新 LangGraph 状态
+        # 🔥🔥🔥 关键修复：添加 HumanMessage 触发流程继续
+        # 获取当前状态中的 messages
+        current_state = await graph.aget_state(config)
+        current_messages = current_state.values.get("messages", [])
+        
+        # 添加批准消息作为新的 HumanMessage
+        approval_message = HumanMessage(content="计划已审核通过，请按新计划执行任务。")
+        updated_messages = list(current_messages) + [approval_message]
+        
+        # 更新 LangGraph 状态（包括 messages 触发执行）
         await graph.aupdate_state(config, {
             "task_list": cleaned_plan,
-            "current_task_index": 0
+            "current_task_index": 0,
+            "messages": updated_messages,
+            "expert_results": []  # 清空之前的结果，重新开始
         })
     
     # ============================================================================
@@ -726,11 +744,52 @@ class StreamService:
         
         event_type = token.get("event", "")
         
+        # 🔥 修复：过滤掉 router 节点的所有 LLM 事件
+        # Router 只负责决策，不应该有任何消息流式输出
+        # LangGraph 的 add_messages reducer 会自动将 LLM response 添加到 messages 列表
+        # 我们需要在事件层面过滤掉这些内容
+        if event_type.startswith("on_chat_model"):
+            # 检查是否是 router 相关的事件
+            # 可能通过 name 或 tags 标识
+            name = token.get("name", "")
+            metadata = token.get("metadata", {})
+            tags = metadata.get("tags", [])
+            
+            # 检查 run_id 是否与 router 相关
+            run_id = token.get("run_id", "")
+            
+            # 如果事件关联的是 router 节点，过滤掉
+            if "router" in name or "router" in str(tags).lower():
+                logger.debug(f"[transform_langgraph_event] 过滤 router 事件: {event_type}")
+                return None
+            
+            # 🔥 额外检查：如果是 on_chat_model_end，检查 content 是否是 JSON 格式的 decision
+            if event_type == "on_chat_model_end":
+                data = token.get("data", {}) or {}
+                output = data.get("output", {})
+                if output and isinstance(output, dict) and "content" in output:
+                    content = output["content"]
+                    # 如果 content 是 { "decision_type": "..." } 格式，过滤掉
+                    if isinstance(content, str) and ('"decision_type"' in content or '{"decision_type"' in content):
+                        logger.debug(f"[transform_langgraph_event] 过滤 router decision JSON: {content[:50]}...")
+                        return None
+        
         # 处理消息流
         if event_type == "on_chat_model_stream":
             data = token.get("data", {})
             chunk = data.get("chunk")
             if chunk and hasattr(chunk, "content") and chunk.content:
+                # 🔥🔥🔥 关键修复：检查是否是流式专家（streaming mode）
+                # 流式专家的内容通过 artifact.chunk 发送，不应该再发送 message.delta
+                # 否则会导致内容重复显示在消息面板中
+                metadata = token.get("metadata", {})
+                tags = metadata.get("tags", [])
+                
+                if "streaming" in tags:
+                    # 流式专家：内容已通过 artifact.chunk 发送，跳过 message.delta
+                    logger.debug(f"[transform_langgraph_event] 流式专家内容跳过 message.delta: {chunk.content[:50]}...")
+                    return None
+                
                 # 只发送纯净数据，包含 message_id 用于前端消息关联
                 event_data = {"content": chunk.content}
                 if message_id:

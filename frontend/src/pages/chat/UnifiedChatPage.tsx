@@ -117,6 +117,8 @@ export default function UnifiedChatPage() {
 
       loadConversation(conversationId)
         .catch((error: any) => {
+          // 🔥 修复：useConversation 中已处理竞态导致的 404
+          // 这里只处理其他错误（如会话被删除）
           if (error?.status === 404 || error?.message?.includes('404')) {
             useChatStore.getState().setCurrentConversationId(conversationId)
             useChatStore.getState().setMessages([])
@@ -170,11 +172,11 @@ export default function UnifiedChatPage() {
       sendMessage(initialMessage, normalizedAgentId)
         .catch(err => console.error('[UnifiedChatPage] 发送消息失败:', err))
 
-      // 延迟清除 location.state，避免影响后续逻辑
+      // 🔥 修复：使用 isNew: false 标记会话已创建，避免触发 loadConversation 404 错误
       setTimeout(() => {
         navigate(`/chat/${conversationId}${searchParams.toString() ? '?' + searchParams.toString() : ''}`, {
           replace: true,
-          state: {}
+          state: { isNew: false }
         })
       }, 0)
     }, 300) // 延迟 300ms，足够绕过 Strict Mode 的抖动

@@ -3,6 +3,7 @@
  */
 
 import type { Message } from '@/types'
+import type { AvatarStatus } from '@/components/ui/StatusAvatar'
 
 /**
  * 消息列表 Props
@@ -22,6 +23,8 @@ export interface MessageItemProps {
   message: Message
   isLast: boolean
   activeExpert?: string | null
+  /** AI 状态 - 用于头像光环动画 */
+  aiStatus?: AvatarStatus
   onRegenerate?: (messageId: string) => void
   onLinkClick?: (href: string) => void
   /** 点击预览按钮回调（用于移动端切换到 preview 视图） */

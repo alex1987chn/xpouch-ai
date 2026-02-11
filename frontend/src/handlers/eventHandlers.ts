@@ -383,11 +383,12 @@ export class EventHandler {
       return
     }
 
-    // 更新现有消息（追加增量内容）
-    updateMessage(event.data.message_id, event.data.content, true)
-
+    // 🔥 修复：避免重复更新
+    // message.delta 的更新已由 useChatCore.ts 中的 streamCallback 处理
+    // 这里不再重复更新，避免内容双倍追加
+    
     if (DEBUG) {
-      logger.debug('[EventHandler] message.delta: 更新消息成功', event.data.message_id)
+      logger.debug('[EventHandler] message.delta: 跳过更新（已由 useChatCore 处理）', event.data.message_id)
     }
   }
 
@@ -410,7 +411,8 @@ export class EventHandler {
       return
     }
 
-    // 更新消息为最终内容
+    // 🔥 最终校准：用后端返回的完整内容覆盖前端累积内容
+    // 这可以纠正流式传输中可能的数据丢失或乱序问题
     updateMessage(event.data.message_id, event.data.full_content, false)
 
     // 🔥 修复：合并 thinking 数据，而不是覆盖

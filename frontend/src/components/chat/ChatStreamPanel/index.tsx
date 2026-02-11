@@ -19,9 +19,8 @@
  *
  * [组件拆分]
  * - EmptyState: 空状态展示
- * - MessageItem: 单条消息渲染
+ * - MessageItem: 单条消息渲染（含 StatusAvatar 状态头像）
  * - ThinkingProcess: 思维链展示（气泡外）
- * - GeneratingIndicator: 生成中动画
  * - HeavyInputConsole: 输入控制台
  *
  * [状态管理]
@@ -38,11 +37,11 @@ import type { Message } from '@/types'
 import EmptyState from '../EmptyState'
 import MessageItem from '../MessageItem'
 import ThinkingProcess from '../ThinkingProcess'
-import GeneratingIndicator from '../GeneratingIndicator'
 import HeavyInputConsole from '../HeavyInputConsole'
 import PlanReviewCard from '../PlanReviewCard'
 import { parseThinkTags, formatThinkingAsSteps } from '@/utils/thinkParser'
 import type { ResumeChatParams } from '@/services/chat'
+import type { AvatarStatus } from '@/components/ui/StatusAvatar'
 
 // Performance Optimized Selectors (v3.1.0)
 import {
@@ -197,13 +196,43 @@ export default function ChatStreamPanel({
   }
 
   // Filter messages: in complex mode, hide empty AI messages
+  // 🔥 修复：但要保留正在生成中的AI消息（用于显示占位状态）
   const displayMessages = conversationMode === 'complex'
-    ? messages.filter(msg => !(msg.role === 'assistant' && !hasRealContent(msg)))
+    ? messages.filter(msg => {
+        // 保留非AI消息
+        if (msg.role !== 'assistant') return true
+        // 保留有实际内容的AI消息
+        if (hasRealContent(msg)) return true
+        // 🔥 保留正在生成中的AI消息（最后一条且正在生成）
+        const isLast = msg.id === messages[messages.length - 1]?.id
+        return isGenerating && isLast
+      })
     : messages
 
   // Check if last message has active thinking
   const lastMessage = displayMessages[displayMessages.length - 1]
   const hasThinkingActive = lastMessage?.role === 'assistant' && hasActiveThinking(lastMessage, isGenerating, conversationMode)
+  
+  /**
+   * 计算消息的 AI 状态
+   * 只有最后一条 AI 消息根据全局状态显示 thinking/streaming
+   * 历史消息一律显示 idle
+   */
+  const getMessageStatus = (msg: Message, index: number): AvatarStatus => {
+    const isLastAiMessage = 
+      isGenerating && 
+      index === displayMessages.length - 1 && 
+      msg.role === 'assistant'
+    
+    if (!isLastAiMessage) return 'idle'
+    
+    // 判断是 thinking 还是 streaming
+    const steps = getMessageThinkingSteps(msg, conversationMode)
+    const hasRunningStep = steps.some(s => s.status === 'running')
+    
+    if (hasRunningStep) return 'thinking'
+    return 'streaming'
+  }
 
   return (
     <>
@@ -245,8 +274,12 @@ export default function ChatStreamPanel({
                   />
                 )}
                 
-                {/* Message content - only show when there's actual content */}
-                {hasActualContent && (
+                {/* 
+                  Message content 
+                  - 有实际内容时显示完整消息
+                  - 正在生成中的空AI消息显示占位状态
+                */}
+                {(hasActualContent || (isLastAndStreaming && !hasActualContent)) && (
                   <MessageItem
                     message={{
                       ...msg,
@@ -254,6 +287,7 @@ export default function ChatStreamPanel({
                     }}
                     isLast={index === displayMessages.length - 1}
                     activeExpert={activeExpert}
+                    aiStatus={getMessageStatus(msg, index)}
                     onRegenerate={onRegenerate}
                     onLinkClick={onLinkClick}
                     onPreview={onPreview}
@@ -264,10 +298,7 @@ export default function ChatStreamPanel({
           })
         )}
 
-        {/* Generating indicator - only show in complex mode */}
-        {/* Complex mode needs indicator because multi-agent collaboration takes time */}
-        {/* Simple mode (including custom agents) doesn't need it - avatar has spinning ring animation */}
-        
+
         {/* v3.1.0 HITL: Plan review card */}
         {/* 使用 key 强制重新挂载，避免 useEffect 同步 Props 反模式 */}
         {isWaitingForApproval && conversationId && resumeExecution && (

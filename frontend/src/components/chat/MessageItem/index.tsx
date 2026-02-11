@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import { Copy, Check, RefreshCw, Eye, Bot } from 'lucide-react'
+import { Copy, Check, RefreshCw, Eye } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useTaskStore } from '@/store/taskStore'
 import type { MessageItemProps } from '../types'
@@ -13,11 +13,12 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { SIMPLE_TASK_ID } from '@/constants/task'
+import { StatusAvatar } from '@/components/ui/StatusAvatar'
 
 export default function MessageItem({
   message,
-  isLast,
   activeExpert,
+  aiStatus = 'idle',
   onRegenerate,
   onLinkClick,
   onPreview,
@@ -171,16 +172,11 @@ export default function MessageItem({
     <div className="flex flex-col items-start w-full select-text ai-message group">
       {/* 头部：头像 + 标签 + 时间 */}
       <div className="flex items-center gap-2 mb-3">
-        {/* 头像容器 */}
-        <div className="relative">
-          {/* 外圈旋转动画（类似 Gemini） - 只在最后一条消息显示 */}
-          {isLast && (
-            <div className="absolute -inset-[3px] rounded-full border-2 border-t-transparent border-r-transparent border-b-primary/50 border-l-primary/50 animate-[spin_2s_linear_infinite]" />
-          )}
-          <div className="w-6 h-6 rounded bg-primary flex items-center justify-center relative z-10">
-            <Bot className="w-3.5 h-3.5 text-primary-foreground" />
-          </div>
-        </div>
+        {/* 头像容器 - 使用 StatusAvatar 组件 */}
+        <StatusAvatar 
+          status={aiStatus}
+          className="w-6 h-6"
+        />
         <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wide">
           {activeExpert ? `${activeExpert.toUpperCase()}_AGENT` : 'ASSISTANT'}
         </span>
@@ -196,26 +192,33 @@ export default function MessageItem({
         prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-muted/50 
         prose-pre:border prose-pre:border-border/30 prose-a:text-blue-600 dark:prose-a:text-blue-400 
         select-text">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeHighlight]}
-          components={{
-            a: ({ node, ...props }) => (
-              <a
-                {...props}
-                onClick={(e) => {
-                  if (props.href?.startsWith('#')) {
-                    e.preventDefault()
-                    onLinkClick?.(props.href)
-                  }
-                }}
-                className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-              />
-            ),
-          }}
-        >
-          {content}
-        </ReactMarkdown>
+        {content ? (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeHighlight]}
+            components={{
+              a: ({ node, ...props }) => (
+                <a
+                  {...props}
+                  onClick={(e) => {
+                    if (props.href?.startsWith('#')) {
+                      e.preventDefault()
+                      onLinkClick?.(props.href)
+                    }
+                  }}
+                  className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                />
+              ),
+            }}
+          >
+            {content}
+          </ReactMarkdown>
+        ) : aiStatus !== 'idle' ? (
+          /* 🔥 占位状态：正在生成中但内容为空 */
+          <span className="text-muted-foreground/50 italic">
+            {aiStatus === 'thinking' ? '思考中...' : '生成中...'}
+          </span>
+        ) : null}
       </div>
 
       {/* 底部操作栏：悬停显示，更简洁 */}

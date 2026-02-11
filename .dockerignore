@@ -1,0 +1,89 @@
+# =============================================================================
+# XPouch AI - Docker Ignore File
+# 排除不需要复制到 Docker 镜像的文件，优化构建体积和安全性
+# =============================================================================
+
+# Version Control
+.git
+.gitignore
+.gitattributes
+
+# Dependencies
+**/node_modules
+**/pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Python Virtual Environments
+**/venv
+**/.venv
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/.mypy_cache
+
+# Build Outputs
+**/dist
+**/build
+**/*.egg-info
+
+# Environment Variables (Security)
+.env
+.env.*
+!.env.example
+
+# IDE and Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+thumbs.db
+
+# Documentation (not needed in production)
+*.md
+!README.md
+CHANGELOG.md
+CHANGELOG_ARCHIVE.md
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+LICENSE
+SECURITY.md
+
+# Logs
+*.log
+logs/
+
+# Test files
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+coverage/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Docker files themselves (avoid recursive copies)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Database data (should be mounted as volume)
+postgres_data/
+
+# Frontend specific
+frontend/dist
+frontend/build
+frontend/.cache
+
+# Backend specific
+backend/.venv
+backend/uv.lock
+backend/requirements.txt

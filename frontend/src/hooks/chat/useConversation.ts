@@ -120,7 +120,15 @@ export function useConversation() {
       }
 
       return conversation
-    } catch (error) {
+    } catch (error: any) {
+      // 🔥 修复：如果前端有消息但后端返回 404，可能是新会话创建过程中的竞态
+      // 这种情况下静默处理，避免显示错误
+      const store = useChatStore.getState()
+      if (error?.status === 404 && store.messages.length > 0 && !store.messages.some(m => m.role === 'assistant' && m.content?.length > 0)) {
+        debug('Conversation not found on backend but has pending messages, may be race condition during creation')
+        return null
+      }
+      
       errorHandler.handle(error, 'loadConversation')
       throw error
     }

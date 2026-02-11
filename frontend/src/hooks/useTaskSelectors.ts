@@ -119,6 +119,10 @@ export const useTaskActions = () => useTaskStore(
     setIsWaitingForApproval: state.setIsWaitingForApproval,
     restoreFromSession: state.restoreFromSession,
     updateArtifactContent: state.updateArtifactContent,
+    // 🔥 流式 artifact actions
+    startArtifact: state.startArtifact,
+    streamArtifactChunk: state.streamArtifactChunk,
+    completeArtifact: state.completeArtifact,
   }))
 )
 

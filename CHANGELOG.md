@@ -5,6 +5,15 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 🔧 Dependencies
+
+- **langgraph-sdk**: 升级至 0.3.5（从 0.3.3 升级）
+  - 在 `pyproject.toml` 中显式声明依赖 `langgraph-sdk==0.3.5`
+  - 更新 `requirements.txt` 锁定版本至 0.3.5
+  - 更新 `uv.lock` 依赖锁定文件
+
 ## [2026-02-02] - v3.0.0 - 架构重构与开源发布
 
 ### 🎉 重大版本更新

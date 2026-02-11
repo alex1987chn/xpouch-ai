@@ -420,10 +420,13 @@ export async function resumeChat(
         logger.debug('[chat.ts] Resume SSE 连接已关闭')
         clearInterval(timeoutCheck)
         
-        // 🚨 连接关闭时，如果还没完成，视为错误
+        // ✅ 宽容处理：当连接正常关闭但没有收到完成标志时，视为成功
+        // 原因：后端 LangGraph 完成 resume 操作后直接关闭连接，不会发送 [DONE] 标志
+        // 即使数据不完整，useSessionRecovery 会在页面恢复时自动拉取全量数据
         if (!isCompleted) {
-          logger.error('[chat.ts] Resume SSE 连接意外关闭')
-          reject(new Error('连接意外关闭，请重试'))
+          logger.warn('[chat.ts] Resume SSE 流正常关闭但未收到完成标志，视为成功')
+          isCompleted = true
+          resolve(fullContent)
         }
       },
     })
