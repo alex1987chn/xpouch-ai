@@ -60,6 +60,8 @@ class SystemExpert(SQLModel, table=True):
     model: str = Field(default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="使用的模型")
     temperature: float = Field(default=0.5, description="温度参数（0.0-2.0）")
     is_dynamic: bool = Field(default=True, description="是否为动态专家，false=系统内置，true=用户创建")
+    # 🔥 新增：系统核心组件标记（不可删除）
+    is_system: bool = Field(default=False, description="是否为系统核心组件，true=禁止删除")
     updated_at: datetime = Field(default_factory=datetime.now, description="最后更新时间")
 
 
@@ -450,6 +452,7 @@ class SubTaskCreate(BaseModel):
     sort_order: int = 0
     execution_mode: str = "sequential"
     depends_on: Optional[List[str]] = None
+    task_id: Optional[str] = None  # 🔥 Commander 生成的 task ID（如 task_1），用于 depends_on 映射
 
 
 class SubTaskUpdate(BaseModel):

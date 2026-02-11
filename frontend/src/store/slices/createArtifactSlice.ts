@@ -204,20 +204,34 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
   },
 
   streamArtifactChunk: (data: ArtifactChunkData) => {
+    let shouldUpdateCache = false
+    let targetTaskId: string | null = null
+
     set((state: any) => {
       const currentContent = state.streamingArtifacts.get(data.artifact_id) || ''
       const newContent = currentContent + data.delta
       state.streamingArtifacts.set(data.artifact_id, newContent)
 
-      for (const task of state.tasks.values()) {
+      for (const [taskId, task] of state.tasks.entries()) {
         const artifact = task.artifacts.find((a: any) => a.id === data.artifact_id)
         if (artifact) {
           artifact.content = newContent
+          shouldUpdateCache = true
+          targetTaskId = taskId
           break
         }
       }
     })
-    // Note: streamArtifactChunk is high-frequency, cache sync handled separately
+
+    // 🔥 关键修复：必须触发 cache 同步以更新 UI
+    // streamArtifactChunk 是高频调用，但我们仍需要定期刷新 UI
+    // 通过 syncTasksCache 重建 tasksCache 数组，触发 useShallow 比较
+    if (shouldUpdateCache && targetTaskId) {
+      // 使用微任务批量处理，避免每帧都重建 cache
+      queueMicrotask(() => {
+        get().syncTasksCache()
+      })
+    }
   },
 
   completeArtifact: (data: ArtifactCompletedData) => {

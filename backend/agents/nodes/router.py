@@ -3,6 +3,7 @@ Router 节点 - 意图识别
 
 负责将用户输入分类为 simple 或 complex 模式
 集成长期记忆检索，提供个性化路由决策
+v3.5 更新：使用数据库配置 + 占位符动态填充
 """
 from typing import Dict, Any, Literal
 from datetime import datetime
@@ -14,6 +15,7 @@ from agents.state import AgentState
 from constants import ROUTER_SYSTEM_PROMPT, DEFAULT_ASSISTANT_PROMPT
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from utils.event_generator import event_router_start, event_router_decision, sse_event_to_string
+from agents.services.expert_manager import get_expert_config_cached
 
 
 def _inject_current_time(system_prompt: str) -> str:
@@ -88,15 +90,16 @@ async def router_node(state: AgentState) -> Dict[str, Any]:
         print(f"[Router] 记忆检索失败: {e}")
         relevant_memories = ""
 
-    # 2. 🔥 构建 System Prompt（注入记忆）
-    system_prompt = ROUTER_SYSTEM_PROMPT
-    if relevant_memories:
-        print(f"[Router] 激活记忆:\n{relevant_memories}")
-        system_prompt += f"""
-
-【关于该用户的已知信息】:
-{relevant_memories}
-(请在决策时参考这些信息，判断用户偏好简单还是复杂交互)"""
+    # 2. 🔥 v3.5: 加载 System Prompt（DB -> Cache -> Constants 兜底）
+    system_prompt = _load_router_system_prompt()
+    
+    # 3. 🔥 v3.5: 填充占位符
+    system_prompt = _fill_router_placeholders(
+        system_prompt=system_prompt,
+        user_query=user_query,
+        relevant_memories=relevant_memories
+    )
+    print(f"[Router] System Prompt 已加载并填充占位符")
 
     parser = PydanticOutputParser(pydantic_object=RoutingDecision)
     try:
@@ -107,7 +110,7 @@ async def router_node(state: AgentState) -> Dict[str, Any]:
                 SystemMessage(content=system_prompt),
                 *messages  # 用户的输入在这里
             ],
-            config={"tags": ["router"]}
+            config={"tags": ["router"], "metadata": {"node_type": "router"}}
         )
         decision = parser.parse(response.content)
         print(f"[Router] 决策结果: {decision.decision_type}")
@@ -139,6 +142,70 @@ async def router_node(state: AgentState) -> Dict[str, Any]:
             "router_decision": "complex",
             "event_queue": event_queue
         }
+
+
+def _load_router_system_prompt() -> str:
+    """
+    v3.5: 三层兜底加载 Router System Prompt
+    
+    L1: SystemExpert 数据库表
+    L2: 内存缓存
+    L3: constants.ROUTER_SYSTEM_PROMPT (静态兜底)
+    """
+    # L1/L2: 尝试从数据库/缓存加载
+    try:
+        config = get_expert_config_cached("router")
+        if config and config.get("system_prompt"):
+            print("[Router] 从数据库/缓存加载 System Prompt")
+            return config["system_prompt"]
+    except Exception as e:
+        print(f"[Router] 从数据库加载失败: {e}")
+    
+    # L3: 兜底到静态常量
+    print("[Router] 使用静态常量 System Prompt (L3兜底)")
+    return ROUTER_SYSTEM_PROMPT
+
+
+def _fill_router_placeholders(
+    system_prompt: str,
+    user_query: str,
+    relevant_memories: str
+) -> str:
+    """
+    v3.5: 填充 Router System Prompt 中的占位符
+    
+    占位符:
+    - {user_query}: 用户查询
+    - {current_time}: 当前时间
+    - {relevant_memories}: 相关记忆
+    """
+    # 准备时间信息
+    now = datetime.now()
+    weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+    weekday_str = weekdays[now.weekday()]
+    time_str = now.strftime(f"%Y年%m月%d日 %H:%M:%S {weekday_str}")
+    
+    # 构建占位符映射
+    placeholder_map = {
+        "user_query": user_query,
+        "current_time": time_str,
+        "relevant_memories": relevant_memories if relevant_memories else "（暂无记忆）"
+    }
+    
+    # 替换所有支持的占位符
+    for placeholder, value in placeholder_map.items():
+        placeholder_pattern = f"{{{placeholder}}}"
+        if placeholder_pattern in system_prompt:
+            system_prompt = system_prompt.replace(placeholder_pattern, value)
+            print(f"[Router] 已注入占位符: {{{placeholder}}}")
+    
+    # 检查是否还有未填充的占位符（警告但不中断）
+    import re
+    remaining_placeholders = re.findall(r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}', system_prompt)
+    if remaining_placeholders:
+        print(f"[Router] 警告: 以下占位符未填充: {remaining_placeholders}")
+    
+    return system_prompt
 
 
 async def direct_reply_node(state: AgentState) -> Dict[str, Any]:

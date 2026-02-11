@@ -17,8 +17,6 @@ import {
   useTasksCache,
   useSelectedTaskId,
   useSelectTaskAction,
-  useIsWaitingForApproval,
-  usePendingPlan,
 } from '@/hooks/useTaskSelectors'
 import ArtifactDashboard from './ArtifactDashboard'
 
@@ -45,8 +43,6 @@ export default function ComplexModePanel({
   const tasks = useTasksCache()
   const selectedTaskId = useSelectedTaskId()
   const selectTask = useSelectTaskAction()
-  const isWaitingForApproval = useIsWaitingForApproval()
-  const pendingPlan = usePendingPlan()
 
   // 自动选中第一个任务
   useEffect(() => {
@@ -57,16 +53,6 @@ export default function ComplexModePanel({
 
   return (
     <div className="flex-1 flex h-full bg-page relative">
-      {/* HITL Plan Review Card - 条件渲染在顶部 */}
-      {/* TODO: PlanReviewCard 需要 conversationId 和 resumeExecution 参数 */}
-      {/* 这些参数应从父组件传入或使用 chatStore 获取 */}
-      {isWaitingForApproval && pendingPlan.length > 0 && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-card border-2 border-border p-4 shadow-lg">
-          <p className="text-sm font-mono">HITL Review Required</p>
-          <p className="text-xs text-muted-foreground">{pendingPlan.length} tasks pending</p>
-        </div>
-      )}
-
       {/* 左侧：Expert Rail */}
       <Suspense
         fallback={

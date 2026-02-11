@@ -17,6 +17,7 @@ export interface SystemExpert {
   model: string
   temperature: number
   is_dynamic: boolean
+  is_system: boolean  // 🔥 新增：系统核心组件标记（不可删除）
   updated_at: string
 }
 

@@ -372,7 +372,8 @@ class StreamService:
                             "expert_type": task.get("expert_type", "generic"),
                             "description": task.get("description", ""),
                             "sort_order": i,
-                            "status": "pending"
+                            "status": "pending",
+                            "depends_on": task.get("depends_on") or []  # 🔥 关键：传递依赖关系到前端
                         }
                         for i, task in enumerate(task_list)
                     ]
@@ -684,6 +685,9 @@ class StreamService:
                     yield ": keep-alive\n\n"
             
             await producer_task
+            
+            # 🔥 关键修复：发送 message.done 事件，通知前端流式输出结束
+            yield self._build_message_done_event(message_id or str(uuid.uuid4()), "")
     
     async def _apply_updated_plan(
         self,
@@ -699,35 +703,64 @@ class StreamService:
         """
         from langchain_core.messages import HumanMessage
         
-        # 清理依赖关系
+        # 🔥🔥🔥 关键修复：合并状态，不要完全替换
+        # 获取当前状态
+        current_state = await graph.aget_state(config)
+        current_values = current_state.values
+        current_task_list = current_values.get("task_list", [])
+        current_expert_results = current_values.get("expert_results", [])
+        
+        # 创建任务 ID 到当前任务的映射
+        current_task_map = {task.get("id"): task for task in current_task_list}
+        
+        # 清理依赖关系并合并状态
         kept_task_ids = {task.get("id") for task in updated_plan}
-        cleaned_plan = []
+        merged_plan = []
         
         for task in updated_plan:
-            cleaned_task = dict(task)
-            if cleaned_task.get("depends_on"):
+            task_id = task.get("id")
+            # 如果任务已完成，保留完整状态（包括 output_result）
+            if task_id in current_task_map and current_task_map[task_id].get("status") == "completed":
+                merged_task = dict(current_task_map[task_id])
+            else:
+                # 新任务或待执行任务，使用前端数据但保留已有输出
+                merged_task = dict(task)
+                if task_id in current_task_map:
+                    existing_task = current_task_map[task_id]
+                    merged_task["output_result"] = existing_task.get("output_result")
+                    merged_task["status"] = existing_task.get("status", task.get("status", "pending"))
+            
+            # 清理依赖关系
+            if merged_task.get("depends_on"):
                 cleaned_deps = [
-                    dep for dep in cleaned_task["depends_on"]
+                    dep for dep in merged_task["depends_on"]
                     if dep in kept_task_ids
                 ]
-                cleaned_task["depends_on"] = cleaned_deps if cleaned_deps else None
-            cleaned_plan.append(cleaned_task)
+                merged_task["depends_on"] = cleaned_deps if cleaned_deps else None
+            
+            merged_plan.append(merged_task)
+        
+        # 计算正确的 current_task_index（第一个待执行任务的位置）
+        next_task_index = 0
+        for idx, task in enumerate(merged_plan):
+            if task.get("status") != "completed":
+                next_task_index = idx
+                break
+        else:
+            # 所有任务都完成了
+            next_task_index = len(merged_plan)
         
         # 🔥🔥🔥 关键修复：添加 HumanMessage 触发流程继续
-        # 获取当前状态中的 messages
-        current_state = await graph.aget_state(config)
-        current_messages = current_state.values.get("messages", [])
-        
-        # 添加批准消息作为新的 HumanMessage
+        current_messages = current_values.get("messages", [])
         approval_message = HumanMessage(content="计划已审核通过，请按新计划执行任务。")
         updated_messages = list(current_messages) + [approval_message]
         
-        # 更新 LangGraph 状态（包括 messages 触发执行）
+        # 更新 LangGraph 状态（保留已完成任务的结果）
         await graph.aupdate_state(config, {
-            "task_list": cleaned_plan,
-            "current_task_index": 0,
+            "task_list": merged_plan,
+            "current_task_index": next_task_index,  # 🔥 使用正确的索引，而不是重置为 0
             "messages": updated_messages,
-            "expert_results": []  # 清空之前的结果，重新开始
+            "expert_results": current_expert_results  # 🔥 保留已有结果，而不是清空
         })
     
     # ============================================================================
@@ -779,22 +812,34 @@ class StreamService:
             data = token.get("data", {})
             chunk = data.get("chunk")
             if chunk and hasattr(chunk, "content") and chunk.content:
-                # 🔥🔥🔥 关键修复：检查是否是 GenericWorker 的流式专家
-                # GenericWorker 流式专家（writer, researcher, analyzer, planner）的内容通过 artifact.chunk 发送
-                # Commander 的内容通过 plan.thinking 事件发送，不应被跳过
-                # 只跳过同时包含 streaming 和 generic_worker 标签的内容
+                # 🔥🔥🔥 P0热修：严格过滤 commander 和 expert 节点的 message.delta
+                # 这些节点的内容应通过专用事件发送（plan.thinking/artifact.chunk）
+                # 只有 aggregator 节点允许发送 message.delta
                 metadata = token.get("metadata", {})
                 tags = metadata.get("tags", [])
+                node_type = metadata.get("node_type", "")
                 
+                # 拦截条件1：明确的节点类型为 commander 或 expert
+                if node_type in ["commander", "expert"]:
+                    logger.debug(f"[transform_langgraph_event] 拦截 {node_type} 节点的 message.delta: {chunk.content[:50]}...")
+                    return None
+                
+                # 拦截条件2：包含 streaming 和 generic_worker 标签（向后兼容）
                 if "streaming" in tags and "generic_worker" in tags:
-                    # GenericWorker 流式专家：内容已通过 artifact.chunk 发送，跳过 message.delta
                     logger.debug(f"[transform_langgraph_event] GenericWorker 流式专家内容跳过 message.delta: {chunk.content[:50]}...")
                     return None
                 
+                # 拦截条件3：router 节点的任何消息（额外保险）
+                if "router" in tags or node_type == "router":
+                    logger.debug(f"[transform_langgraph_event] 拦截 router 节点的 message.delta")
+                    return None
+                
                 # 只发送纯净数据，包含 message_id 用于前端消息关联
+                # 注意：只有 aggregator 节点会执行到这里
                 event_data = {"content": chunk.content}
                 if message_id:
                     event_data["message_id"] = message_id
+                logger.debug(f"[transform_langgraph_event] 允许 message.delta (node_type={node_type}, tags={tags}): {chunk.content[:50]}...")
                 return f"event: message.delta\ndata: {json.dumps(event_data)}\n\n"
         
         # 处理 chain 事件

@@ -95,9 +95,12 @@ def get_or_create_task_session(
         existing_session.status = "running"  # 重置状态为 running
         db.add(existing_session)
 
-        # 创建新的 SubTasks 并关联到已有 session
+        # 🔥 关键修复：批量创建子任务并正确映射 depends_on
+        task_id_to_subtask: Dict[str, Any] = {}
+        subtask_data_list: List[tuple] = []
+        
         for subtask_data in subtasks_data:
-            create_subtask(
+            subtask = create_subtask(
                 db=db,
                 task_session_id=existing_session.session_id,
                 expert_type=subtask_data.expert_type,
@@ -105,9 +108,27 @@ def get_or_create_task_session(
                 sort_order=subtask_data.sort_order,
                 input_data=subtask_data.input_data,
                 execution_mode=subtask_data.execution_mode,
-                depends_on=subtask_data.depends_on
+                depends_on=None  # 先不设置
             )
-
+            
+            # 建立映射
+            if subtask_data.task_id:
+                task_id_to_subtask[subtask_data.task_id] = subtask
+            subtask_data_list.append((subtask, subtask_data.depends_on))
+        
+        # 更新 depends_on
+        for subtask, original_depends_on in subtask_data_list:
+            if original_depends_on:
+                new_depends_on = []
+                for dep_id in original_depends_on:
+                    if dep_id in task_id_to_subtask:
+                        new_depends_on.append(str(task_id_to_subtask[dep_id].id))
+                    else:
+                        new_depends_on.append(dep_id)
+                subtask.depends_on = new_depends_on
+                db.add(subtask)
+                print(f"[TaskManager] 复用 Session - 任务 {subtask.id} depends_on: {original_depends_on} -> {new_depends_on}")
+        
         db.commit()
         db.refresh(existing_session)
         print(f"[TaskManager] 已更新 TaskSession 并创建 {len(subtasks_data)} 个新子任务")

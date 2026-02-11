@@ -397,7 +397,11 @@ def create_task_session_with_subtasks(
     db.add(task_session)
     db.flush()  # 获取 session_id（如果是自动生成的）
     
-    # 2. 批量创建子任务
+    # 2. 批量创建子任务（先创建，不设置 depends_on）
+    # 🔥 关键修复：建立 task_id → subtask UUID 的映射
+    task_id_to_subtask: Dict[str, SubTask] = {}
+    subtask_list: List[SubTask] = []
+    
     for idx, data in enumerate(subtasks_data):
         subtask = SubTask(
             task_session_id=task_session.session_id,
@@ -406,10 +410,30 @@ def create_task_session_with_subtasks(
             sort_order=data.sort_order if data.sort_order is not None else idx,
             input_data=data.input_data,
             execution_mode=data.execution_mode,
-            depends_on=data.depends_on,
+            depends_on=None,  # 先不设置，后面再更新
             status="pending"
         )
         db.add(subtask)
+        db.flush()  # 获取 subtask.id
+        
+        # 建立映射：Commander 的 task_id -> 数据库 subtask
+        if data.task_id:
+            task_id_to_subtask[data.task_id] = subtask
+        subtask_list.append((subtask, data.depends_on))
+    
+    # 3. 更新 depends_on：将 task ID 替换为 subtask UUID
+    for subtask, original_depends_on in subtask_list:
+        if original_depends_on:
+            new_depends_on = []
+            for dep_id in original_depends_on:
+                if dep_id in task_id_to_subtask:
+                    # 将 task_id 替换为 subtask UUID
+                    new_depends_on.append(str(task_id_to_subtask[dep_id].id))
+                else:
+                    # 保留原值（可能是 UUID 格式）
+                    new_depends_on.append(dep_id)
+            subtask.depends_on = new_depends_on
+            print(f"[TaskSession] 任务 {subtask.id} 的 depends_on 已更新: {original_depends_on} -> {new_depends_on}")
     
     db.commit()
     db.refresh(task_session)

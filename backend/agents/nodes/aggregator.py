@@ -3,6 +3,7 @@ Aggregator 节点 - 结果聚合器
 
 整合多个专家的输出结果，生成自然语言的最终回复
 v3.2 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
+v3.5 更新：实现三层兜底提示词体系 (DB -> Cache -> Constants)
 """
 from typing import Dict, Any, List
 import uuid
@@ -17,7 +18,9 @@ from utils.event_generator import (
     event_message_delta, event_message_done, sse_event_to_string
 )
 from agents.services.task_manager import complete_task_session, save_aggregator_message
+from agents.services.expert_manager import get_expert_config_cached
 from database import engine
+from constants import AGGREGATOR_SYSTEM_PROMPT
 
 
 async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> Dict[str, Any]:
@@ -26,6 +29,7 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
     v3.1 更新：调用 LLM 生成自然语言总结，支持流式输出
     v3.2 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
     v3.3 更新：使用事件驱动流式输出，通过 event_queue 实时推送 message.delta 事件
+    v3.5 更新：实现三层兜底提示词体系 (DB -> Cache -> Constants)
     """
     expert_results = state["expert_results"]
     strategy = state["strategy"]
@@ -47,8 +51,12 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
 
     print(f"[AGG] 正在聚合 {len(expert_results)} 个结果，调用 LLM 生成总结...")
 
-    # v3.1: 构建 Aggregator 的 Prompt
-    aggregator_prompt = _build_aggregator_prompt(expert_results, strategy)
+    # v3.5: 构建 Aggregator 的 Prompt（专家成果摘要）
+    aggregator_input = _build_aggregator_input(expert_results, strategy)
+    
+    # v3.5: 三层兜底加载 System Prompt (L1: DB -> L2: Cache -> L3: Constants)
+    system_prompt = _load_aggregator_system_prompt(aggregator_input)
+    print(f"[AGG] System Prompt 长度: {len(system_prompt)} 字符")
     
     # v3.1: 获取 Aggregator LLM（带兜底逻辑）
     aggregator_llm = get_aggregator_llm()
@@ -59,8 +67,8 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
     try:
         # 使用流式输出
         async for chunk in aggregator_llm.astream([
-            SystemMessage(content="你是一个专业的报告撰写专家。你的任务是将多个专家的分析结果整合成一份连贯、专业的最终报告。不要简单罗列，要用自然流畅的语言进行总结。"),
-            HumanMessage(content=aggregator_prompt)
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=aggregator_input)
         ]):
             content = chunk.content if hasattr(chunk, 'content') else str(chunk)
             if content:
@@ -126,40 +134,69 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
     }
 
 
-def _build_aggregator_prompt(expert_results: List[Dict[str, Any]], strategy: str) -> str:
+def _load_aggregator_system_prompt(input_data: str) -> str:
     """
-    构建 Aggregator 的 Prompt，将多个专家结果转换为自然语言总结的输入
+    v3.5: 三层兜底加载 Aggregator System Prompt
+    
+    L1: SystemExpert 数据库表
+    L2: 内存缓存
+    L3: constants.AGGREGATOR_SYSTEM_PROMPT (静态兜底)
+    
+    Args:
+        input_data: 要注入到 {input} 占位符的数据
+        
+    Returns:
+        str: 处理后的 System Prompt
+    """
+    system_prompt = None
+    
+    # L1/L2: 尝试从数据库/缓存加载
+    try:
+        config = get_expert_config_cached("aggregator")
+        if config and config.get("system_prompt"):
+            system_prompt = config["system_prompt"]
+            print("[AGG] 从数据库/缓存加载 System Prompt")
+    except Exception as e:
+        print(f"[AGG] 从数据库加载失败: {e}")
+    
+    # L3: 兜底到静态常量
+    if not system_prompt:
+        system_prompt = AGGREGATOR_SYSTEM_PROMPT
+        print("[AGG] 使用静态常量 System Prompt (L3兜底)")
+    
+    # 注入 {input} 占位符
+    if "{input}" in system_prompt:
+        system_prompt = system_prompt.replace("{input}", input_data)
+        print("[AGG] 已注入 {input} 占位符")
+    
+    return system_prompt
+
+
+def _build_aggregator_input(expert_results: List[Dict[str, Any]], strategy: str) -> str:
+    """
+    v3.5: 构建 Aggregator 的输入数据（注入到 System Prompt 的 {input} 占位符）
+    
+    将多个专家结果格式化为结构化文本，供 Aggregator 整合。
     
     Args:
         expert_results: 专家执行结果列表
         strategy: 执行策略概述
         
     Returns:
-        str: 供 LLM 总结的 Prompt
+        str: 供注入的输入文本
     """
     lines = [
-        f"执行策略: {strategy}",
+        f"【执行策略】: {strategy}",
         "",
-        "各专家分析结果如下：",
+        f"【专家成果汇总】: 共 {len(expert_results)} 位专家参与分析",
         ""
     ]
     
     for i, res in enumerate(expert_results, 1):
-        lines.append(f"【专家 {i}: {res['expert_type'].upper()}】")
-        lines.append(f"任务描述: {res['description']}")
-        lines.append(f"分析结果:\n{res['output']}")
+        lines.append(f"--- 专家 {i}: {res['expert_type'].upper()} ---")
+        lines.append(f"任务: {res['description']}")
+        lines.append(f"成果:\n{res['output']}")
         lines.append("")
-    
-    lines.extend([
-        "---",
-        "",
-        "请基于以上各专家的分析结果，撰写一份连贯、专业的最终总结报告。要求：",
-        "1. 用自然流畅的语言整合所有专家的观点，不要简单罗列",
-        "2. 突出关键发现和核心结论",
-        "3. 保持逻辑清晰，结构完整",
-        "4. 如果专家结果之间有依赖关系，请体现这种关联",
-        ""
-    ])
     
     return "\n".join(lines)
 
