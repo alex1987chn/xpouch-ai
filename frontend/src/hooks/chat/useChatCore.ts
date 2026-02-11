@@ -14,7 +14,7 @@ import {
   type StreamCallback,
   type ResumeChatParams
 } from '@/services/chat'
-import { normalizeAgentId } from '@/utils/agentUtils'
+import { normalizeAgentId, getAgentType } from '@/utils/agentUtils'
 import { generateUUID } from '@/utils'
 import { useTranslation } from '@/i18n'
 import type { ExpertEvent } from '@/types'
@@ -277,7 +277,21 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       assistantMessageId = generateUUID()
       debug('Preparing to add message, AI ID:', assistantMessageId, 'Type:', typeof assistantMessageId)
 
-      const routingStepId = generateUUID()
+      const agentType = getAgentType(normalizedAgentId)
+      debug('Agent type:', agentType, 'Agent ID:', normalizedAgentId)
+
+      // 🔥 只有系统智能体才创建 router thinking 步骤
+      // 自定义智能体直接走 LLM，不经过 LangGraph Router
+      const initialThinking = agentType === 'system' ? [{
+        id: generateUUID(),
+        expertType: 'router',
+        expertName: '智能路由',
+        content: '正在分析意图，选择执行模式...',
+        timestamp: new Date().toISOString(),
+        status: 'running' as const,
+        type: 'analysis' as const
+      }] : []
+
       setMessages([...storeState.messages,
         { role: 'user', content: userContent },
         {
@@ -286,15 +300,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
           content: '',
           timestamp: Date.now(),
           metadata: {
-            thinking: [{
-              id: routingStepId,
-              expertType: 'router',
-              expertName: '智能路由',
-              content: '正在分析意图，选择执行模式...',
-              timestamp: new Date().toISOString(),
-              status: 'running' as const,
-              type: 'analysis' as const
-            }]
+            thinking: initialThinking
           }
         }
       ])
@@ -309,7 +315,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       let hasProcessedComplexMode = false
       let isFirstChunk = true  // v3.1.1: 标记是否是第一个 chunk
-      let hasCompletedRouterThinking = false  // 🔥 新增：标记是否已完成路由分析步骤
 
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
@@ -326,28 +331,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         }
 
         if (chunk) {
-          // 🔥 修复：收到第一个有效chunk时，对于简单模式完成路由分析步骤
-          if (isFirstChunk && !hasCompletedRouterThinking && assistantMessageId) {
-            const currentMode = useTaskStore.getState().mode || 'simple'
-            if (currentMode === 'simple') {
-              const { messages, updateMessageMetadata } = useChatStore.getState()
-              const message = messages.find(m => m.id === assistantMessageId)
-              if (message?.metadata?.thinking) {
-                const thinking = [...message.metadata.thinking]
-                const routerStepIndex = thinking.findIndex((s: any) => s.expertType === 'router')
-                if (routerStepIndex >= 0) {
-                  thinking[routerStepIndex] = {
-                    ...thinking[routerStepIndex],
-                    status: 'completed',
-                    content: '意图分析完成：已选择简单模式'
-                  }
-                  updateMessageMetadata(assistantMessageId, { thinking })
-                  hasCompletedRouterThinking = true
-                }
-              }
-            }
-          }
-
           // v3.1.1: 使用状态机解析器分离 thinking 和正文内容
           const { content, thinking } = processStreamingChunk(chunk, streamingParserState, isFirstChunk)
           

@@ -179,24 +179,14 @@ export async function sendMessage(
             if (eventType === 'message.delta' && onChunk) {
               // 文本流事件：传递内容
               // 🔥 修复：确保 content 存在且是字符串，避免追加 'undefined'
-              // v3.1.1: 实时过滤 thinking 标签，避免污染消息内容
+              // 直接传递原始内容，thinking 过滤由 useChatCore.ts 的 processStreamingChunk 处理
               const rawContent = eventData.content
               if (rawContent && typeof rawContent === 'string') {
-                const { cleanContent, hasThinking } = filterThinkingTags(rawContent)
-                
-                // 只传递过滤后的内容给前端显示
-                if (cleanContent) {
-                  await onChunk(cleanContent, finalConversationId)
-                }
+                // 直接传递原始内容
+                await onChunk(rawContent, finalConversationId)
                 
                 // 累积原始内容（供后续使用）
                 fullContent += rawContent
-                
-                // 如果有 thinking 内容，替换 eventData 中的 content 为过滤后的内容
-                // 这样 handleServerEvent 更新消息时不会包含 thinking
-                if (hasThinking) {
-                  eventData.content = cleanContent
-                }
               }
             } else if (onChunk) {
               // 其他事件（task.started/completed/failed 等）：传递事件对象
