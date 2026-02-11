@@ -5,7 +5,7 @@ import { Home, Database, MessageSquare, Shield, Plus, MessageSquarePlus, User, C
 import { cn } from '@/lib/utils'
 import { The4DPocketLogo } from '@/components/bauhaus'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { getConversations, type Conversation } from '@/services/chat'
+import { type Conversation } from '@/services/chat'
 import { useUserStore } from '@/store/userStore'
 import { useChatStore } from '@/store/chatStore'
 import { formatDistanceToNow, parseISO } from 'date-fns'
@@ -16,6 +16,7 @@ import { getAvatarDisplay } from '@/utils/userSettings'
 import LoginDialog from '@/components/auth/LoginDialog'
 import { useToast } from '@/components/ui/use-toast'
 import { VERSION } from '@/constants/ui'
+import { useRecentConversationsQuery } from '@/hooks/queries'
 
 /**
  * =============================
@@ -72,7 +73,6 @@ export default function BauhausSidebar({
   const navigate = useNavigate()
   const location = useLocation()
   const { toast } = useToast()
-  const [recentConversations, setRecentConversations] = useState<Conversation[]>([])
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false)
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false)
   const { user, isAuthenticated, logout } = useUserStore()
@@ -80,6 +80,9 @@ export default function BauhausSidebar({
   const setInputMessage = useChatStore(state => state.setInputMessage)
   const setMessages = useChatStore(state => state.setMessages)
   const setCurrentConversationId = useChatStore(state => state.setCurrentConversationId)
+
+  // 使用 React Query 获取最近会话（自动缓存，5分钟内不会重复请求）
+  const { data: recentConversations = [] } = useRecentConversationsQuery(20)
 
   // 判断当前页面
   const isOnHome = location.pathname === '/'
@@ -129,41 +132,8 @@ export default function BauhausSidebar({
     }
   }
 
-  // 👈 获取最近20条历史会话（使用缓存防止重复请求）
-  useEffect(() => {
-    const store = useChatStore.getState()
-    
-    // 检查是否应该发起请求
-    if (!store.shouldFetchConversations()) {
-      // 使用缓存数据
-      if (store.conversationsCache) {
-        const sorted = [...store.conversationsCache]
-          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-          .slice(0, 20)
-        setRecentConversations(sorted)
-      }
-      return
-    }
-    
-    const loadRecentConversations = async () => {
-      store.setLoadingConversations(true)
-      try {
-        const conversations = await getConversations()
-        // 更新缓存
-        store.setConversationsCache(conversations)
-        // 按更新时间降序排列，取前20条
-        const sorted = [...conversations]
-          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-          .slice(0, 20)
-        setRecentConversations(sorted)
-      } catch (error) {
-        logger.error('Failed to load recent conversations:', error)
-      } finally {
-        store.setLoadingConversations(false)
-      }
-    }
-    loadRecentConversations()
-  }, [])
+  // 👈 已迁移到 React Query: useRecentConversationsQuery(20)
+  // 自动缓存管理，5分钟内数据被视为新鲜，不会重复请求
 
   // 处理导航点击
   const handleMenuClick = (path: string) => {

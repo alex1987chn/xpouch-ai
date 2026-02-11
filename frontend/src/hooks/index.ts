@@ -2,6 +2,17 @@
  * Hooks 统一导出
  */
 
+// ============================================================================
+// React Query Hooks - 服务端状态管理
+// ============================================================================
+export {
+  useChatHistoryQuery,
+  useChatSessionQuery,
+  useDeleteConversationMutation,
+  useRecentConversationsQuery,
+  chatHistoryKeys,
+} from './queries'
+
 // 聊天相关
 export { useChat } from './useChat'
 
