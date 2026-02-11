@@ -1,14 +1,15 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { MessageSquare, Clock, Trash2, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
-import { getConversations, deleteConversation as apiDeleteConversation, type Conversation } from '@/services/chat'
+import { type Conversation } from '@/services/chat'
 import { formatDistanceToNow, parseISO, isValid } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
 import { logger } from '@/utils/logger'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { useApp } from '@/providers/AppProvider'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
+import { useChatHistoryQuery, useDeleteConversationMutation } from '@/hooks/queries'
 
 interface HistoryPageProps {
   onSelectConversation: (conversation: Conversation) => void
@@ -17,31 +18,19 @@ interface HistoryPageProps {
 export default function HistoryPage({ onSelectConversation }: HistoryPageProps) {
   const { t, language } = useTranslation()
   const { sidebar } = useApp()
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
+
+  // 使用 React Query 获取历史记录
+  const { data: conversations = [], isLoading: loading } = useChatHistoryQuery()
+
+  // 使用 React Query Mutation 删除会话
+  const deleteMutation = useDeleteConversationMutation()
 
   // 删除确认状态
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null)
   const [deletingConversationTitle, setDeletingConversationTitle] = useState('')
-
-  const loadHistory = async () => {
-    try {
-      setLoading(true)
-      const data = await getConversations()
-      setConversations(data)
-    } catch (error) {
-      logger.error('Failed to load history:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadHistory()
-  }, [])
 
   // 处理删除 - 打开确认对话框
   const handleDelete = useCallback((e: React.MouseEvent, id: string, title: string) => {
@@ -51,20 +40,18 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
     setDeleteDialogOpen(true)
   }, [])
 
-  // 确认删除操作
+  // 确认删除操作 - 使用 React Query Mutation
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingConversationId) return
 
     try {
-      await apiDeleteConversation(deletingConversationId)
-      // 从原始列表中移除，避免刷新导致滚动位置丢失
-      setConversations(prev => prev.filter(conv => conv.id !== deletingConversationId))
+      await deleteMutation.mutateAsync(deletingConversationId)
       setDeleteDialogOpen(false)
     } catch (error) {
       logger.error('Failed to delete conversation:', error)
       setDeleteDialogOpen(false)
     }
-  }, [deletingConversationId])
+  }, [deletingConversationId, deleteMutation])
 
   const getLocale = () => {
     switch (language) {
