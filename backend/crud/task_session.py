@@ -286,14 +286,19 @@ def create_artifacts_batch(
     """批量创建产物"""
     artifacts = []
     for idx, data in enumerate(artifacts_data):
-        artifact = Artifact(
-            sub_task_id=sub_task_id,
-            type=data.type,
-            title=data.title,
-            content=data.content,
-            language=data.language,
-            sort_order=data.sort_order if data.sort_order is not None else idx
-        )
+        # 如果传入了 id 则使用，否则数据库自动生成
+        artifact_kwargs = {
+            "sub_task_id": sub_task_id,
+            "type": data.type,
+            "title": data.title,
+            "content": data.content,
+            "language": data.language,
+            "sort_order": data.sort_order if data.sort_order is not None else idx
+        }
+        if data.id:
+            artifact_kwargs["id"] = data.id
+        
+        artifact = Artifact(**artifact_kwargs)
         artifacts.append(artifact)
         db.add(artifact)
     

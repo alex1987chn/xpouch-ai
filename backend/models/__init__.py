@@ -467,6 +467,7 @@ class SubTaskUpdate(BaseModel):
 
 class ArtifactCreate(BaseModel):
     """创建产物的 DTO"""
+    id: Optional[str] = None  # 可选：指定 artifact ID（用于前端编辑）
     type: str
     title: Optional[str] = None
     content: str
