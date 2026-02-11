@@ -139,7 +139,7 @@ def route_router(state: AgentState) -> str:
         # Complex 模式进入指挥官
         return "commander"
 
-async def route_dispatcher(state: AgentState) -> str:
+def route_dispatcher(state: AgentState) -> str:
     """
     决定循环的去向：继续执行下一个任务 或 聚合结果
 
