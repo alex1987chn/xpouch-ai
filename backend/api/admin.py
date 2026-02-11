@@ -72,6 +72,7 @@ class ExpertResponse(BaseModel):
     model: str
     temperature: float
     is_dynamic: bool
+    is_system: bool  # 🔥 新增：系统核心组件标记
     updated_at: str
 
 
@@ -197,6 +198,7 @@ async def get_all_experts(
             model=expert.model,
             temperature=expert.temperature,
             is_dynamic=expert.is_dynamic,
+            is_system=expert.is_system,  # 🔥 新增
             updated_at=expert.updated_at.isoformat()
         )
         for expert in experts
@@ -233,6 +235,7 @@ async def get_expert(
         model=expert.model,
         temperature=expert.temperature,
         is_dynamic=expert.is_dynamic,
+        is_system=expert.is_system,  # 🔥 新增
         updated_at=expert.updated_at.isoformat()
     )
 
@@ -559,6 +562,7 @@ async def create_expert(
         model=new_expert.model,
         temperature=new_expert.temperature,
         is_dynamic=new_expert.is_dynamic,
+        is_system=new_expert.is_system if hasattr(new_expert, 'is_system') else False,  # 🔥 新增
         updated_at=new_expert.updated_at.isoformat()
     )
 
@@ -575,7 +579,7 @@ async def delete_expert(
     权限：ADMIN
 
     说明：
-    - 系统内置专家（is_dynamic=false）不可删除
+    - 系统核心组件（is_system=true）不可删除
     - 删除后会自动刷新 LangGraph 缓存
     """
     # 查找专家
@@ -589,7 +593,14 @@ async def delete_expert(
             detail=f"专家 '{expert_key}' 不存在"
         )
     
-    # 检查是否为系统内置专家
+    # 🔥 检查是否为系统核心组件（优先检查 is_system）
+    if expert.is_system:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="系统核心组件禁止删除"
+        )
+    
+    # 兼容旧逻辑：检查 is_dynamic（旧数据可能没有 is_system 字段）
     if not expert.is_dynamic:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

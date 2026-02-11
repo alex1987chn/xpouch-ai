@@ -41,11 +41,13 @@ CommanderOutput:
 - 确认后 Dispatcher 按新计划执行
 """
 import os
+import asyncio
+import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ValidationError
 from sqlmodel import Session
 
 from agents.state import AgentState
@@ -55,41 +57,56 @@ from constants import COMMANDER_SYSTEM_PROMPT
 from database import engine
 
 
-class SubTaskOutput(BaseModel):
-    """单个子任务结构 (Commander 使用)
-    
-    支持显式依赖关系 (DAG)，通过 id 和 depends_on 实现精准数据管道
-    """
+# ============================================================================
+# Commander 2.0: Pydantic 结构化输出模型
+# ============================================================================
+
+class Task(BaseModel):
+    """任务定义 - 支持 DAG 依赖关系"""
     id: str = Field(default="", description="任务唯一标识符（短ID，如 task_1, task_2）")
-    expert_type: str = Field(description="执行此任务的专家类型（可以是系统内置专家或自定义专家）")
+    expert_type: str = Field(description="执行此任务的专家类型")
     description: str = Field(description="任务描述")
     input_data: Dict[str, Any] = Field(default={}, description="输入参数")
     priority: int = Field(default=0, description="优先级 (0=最高)")
-    depends_on: List[str] = Field(default=[], description="依赖的任务ID列表。如果任务B需要任务A的输出，则填入 ['task_a']")
+    dependencies: List[str] = Field(default=[], description="依赖的任务ID列表")
     
-    @field_validator('depends_on', mode='before')
+    @field_validator('dependencies', mode='before')
     @classmethod
-    def parse_depends_on(cls, v):
-        """兼容处理：如果 LLM 返回了整数依赖（如 [0]），强制转为字符串 ["0"]"""
+    def parse_dependencies(cls, v):
+        """兼容处理：整数依赖转为字符串"""
         if v is None:
             return []
-        
-        # 情况 1: LLM 发疯返了个单个 int/str (不是列表)
         if isinstance(v, (int, str)):
             return [str(v)]
-            
-        # 情况 2: 正常的列表，但里面混了 int
         if isinstance(v, list):
             return [str(item) for item in v]
-            
         return v
 
 
-class CommanderOutput(BaseModel):
-    """指挥官输出 - 子任务列表"""
-    tasks: List[SubTaskOutput] = Field(description="子任务列表")
-    strategy: str = Field(description="执行策略概述")
-    estimated_steps: int = Field(description="预计步骤数")
+class ExecutionPlan(BaseModel):
+    """
+    Commander 2.0 执行计划输出
+    
+    使用 Pydantic 结构化输出，确保 LLM 生成符合 Schema 的数据
+    """
+    thought_process: str = Field(
+        default="", 
+        description="规划思考过程：分析需求、拆解步骤、分配专家的推理过程"
+    )
+    strategy: str = Field(
+        description="执行策略概述：如'并行执行'、'顺序执行'、'分阶段交付'等"
+    )
+    estimated_steps: int = Field(
+        description="预计步骤数"
+    )
+    tasks: List[Task] = Field(
+        description="子任务列表，支持依赖关系（DAG）"
+    )
+
+
+# 向后兼容：保留旧模型别名
+SubTaskOutput = Task
+CommanderOutput = ExecutionPlan
 
 
 async def _preload_expert_configs(task_list: List[Dict], db_session: Any) -> None:
@@ -187,22 +204,35 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                 temperature = commander_config["temperature"]
                 print(f"[COMMANDER] 加载配置: model={model}, temperature={temperature}")
             
-            # 注入动态专家列表到 System Prompt
+            # 🔥🔥🔥 Commander 2.0: 占位符自动填充
+            # 填充 {user_query} 和 {dynamic_expert_list}
             try:
                 # 获取所有可用专家（包括动态创建的专家）
                 all_experts = get_all_expert_list(db_session)
                 expert_list_str = format_expert_list_for_prompt(all_experts)
                 
-                # 尝试注入专家列表到 Prompt（如果 Prompt 支持动态占位符）
-                if "{dynamic_expert_list}" in system_prompt:
-                    system_prompt = system_prompt.format(dynamic_expert_list=expert_list_str)
-                    print(f"[COMMANDER] 已注入动态专家列表，共 {len(all_experts)} 个专家")
-                else:
-                    # 如果 Prompt 不包含占位符，保留原有逻辑（向后兼容）
-                    print(f"[COMMANDER] Prompt 不包含动态占位符，跳过专家列表注入")
+                # 构建占位符映射
+                placeholder_map = {
+                    "user_query": user_query,
+                    "dynamic_expert_list": expert_list_str
+                }
+                
+                # 替换所有支持的占位符
+                for placeholder, value in placeholder_map.items():
+                    placeholder_pattern = f"{{{placeholder}}}"
+                    if placeholder_pattern in system_prompt:
+                        system_prompt = system_prompt.replace(placeholder_pattern, value)
+                        print(f"[COMMANDER] 已注入占位符: {{{placeholder}}}")
+                
+                # 检查是否还有未填充的占位符（警告但不中断）
+                import re
+                remaining_placeholders = re.findall(r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}', system_prompt)
+                if remaining_placeholders:
+                    print(f"[COMMANDER] 警告: 以下占位符未填充: {remaining_placeholders}")
+                    
             except Exception as e:
                 # 注入失败时不中断流程，保留原始 Prompt
-                print(f"[COMMANDER] 专家列表注入失败（已忽略）: {e}")
+                print(f"[COMMANDER] 占位符填充失败（已忽略）: {e}")
             
             # 执行 LLM 进行规划
             # 从模型名称推断 provider
@@ -230,9 +260,8 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                 print(f"[COMMANDER] 模型 '{model}' 未找到 provider 配置，回退到 commander_llm")
                 llm_with_config = get_commander_llm_lazy().bind(model=model, temperature=temperature)
 
-            # 🔥🔥🔥 v3.3: 流式思考 + JSON 生成
+            # 🔥🔥🔥 Commander 2.0: JSON Mode + Pydantic 强校验
             # 1️⃣ 获取或生成 session_id
-            # 如果 chat.py 已经发送了 plan.started，使用相同的 session_id
             preview_session_id = state.get("preview_session_id") or str(uuid.uuid4())
             
             # 🔥 只有在 chat.py 没有发送 plan.started 的情况下，才在这里发送
@@ -248,134 +277,15 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
             else:
                 print(f"[COMMANDER] 复用 chat.py 发送的 plan.started: {preview_session_id}")
             
-            # 2️⃣ 流式生成：区分 Thinking 和 JSON 阶段
-            thinking_content = ""
-            json_buffer = ""
-            is_json_phase = False
-            json_start_detected = False
+            # 2️⃣ 使用 JSON Mode + Pydantic 强校验生成计划
+            # 🔥 Commander 2.0: DeepSeek 兼容的 JSON Mode 实现
+            human_prompt = f"用户查询: {user_query}\n\n请分析需求并生成执行计划。"
             
-            print("[COMMANDER] 开始流式生成...")
-            
-            # 🔥🔥🔥 强化 Prompt：明确要求先思考再输出 JSON
-            human_prompt = f"""用户查询: {user_query}
-
-【重要】你必须按以下步骤执行：
-
-**步骤 1 - 需求分析（必须）:**
-请先以自然语言详细分析这个需求。包括：
-- 用户的核心意图是什么？
-- 需要哪些步骤来完成？
-- 每个步骤应该分配给哪个专家？
-- 步骤之间的依赖关系是什么？
-
-**步骤 2 - 任务规划（必须）:**
-在分析完成后，输出一个 ```json 代码块，包含结构化的任务数据。
-
-注意：不要直接输出 JSON，必须先进行详细的自然语言分析！"""
-            
-            chunk_count = 0
-            debug_chunks = []  # 收集前10个 chunk 用于调试
-            
-            async for chunk in llm_with_config.astream(
-                [
-                    SystemMessage(content=system_prompt),
-                    HumanMessage(content=human_prompt)
-                ],
-                config=RunnableConfig(
-                    tags=["commander", "streaming"],
-                    metadata={"node_type": "commander", "mode": "streaming"}
-                )
-            ):
-                content = chunk.content if hasattr(chunk, "content") else str(chunk)
-                chunk_count += 1
-                
-                # 🔥 收集前10个 chunk 用于调试
-                if chunk_count <= 10:
-                    debug_chunks.append(content)
-                    print(f"[COMMANDER] Chunk {chunk_count}: {repr(content[:80])}")
-                
-                if not content:
-                    continue
-                
-                # 🔥 每 50 个 chunk 打印一次日志
-                if chunk_count % 50 == 0:
-                    print(f"[COMMANDER] 已处理 {chunk_count} chunks, thinking_phase={not is_json_phase}, content_len={len(content)}, thinking_len={len(thinking_content)}")
-                
-                # 🔥 检测 JSON 开始标记（多种情况）
-                if not is_json_phase:
-                    # 情况1: 检测到代码块标记 ```json 或 ```
-                    if "```json" in content or "```" in content:
-                        print(f"[COMMANDER] 📦 检测到 JSON 开始标记，切换到 JSON 阶段")
-                        is_json_phase = True
-                        json_start_detected = True
-                        # 提取 ```json 之前的内容（如果有）作为最后的 thinking
-                        before_json = content.split("```")[0]
-                        if before_json.strip():
-                            thinking_content += before_json
-                            thinking_event = event_plan_thinking(
-                                session_id=preview_session_id,
-                                delta=before_json
-                            )
-                            event_str = sse_event_to_string(thinking_event)
-                            event_queue.append({"type": "sse", "event": event_str})
-                        # 剩余部分进入 json_buffer
-                        json_parts = content.split("```", 1)
-                        if len(json_parts) > 1:
-                            json_buffer += json_parts[1]
-                        continue
-                    
-                    # 情况2: 检测到纯 JSON 开始（LLM 直接输出 JSON 而没有代码块）
-                    # 检测条件：内容以 '{' 开头，且我们已经接收了一些内容（避免误判第一个字符）
-                    if content.strip().startswith("{") and chunk_count > 1 and len(thinking_content) < 50:
-                        print(f"[COMMANDER] ⚠️ 检测到纯 JSON 输出（无代码块），切换到 JSON 阶段")
-                        print(f"[COMMANDER] 当前 thinking_content 长度: {len(thinking_content)}, 内容: {thinking_content[:100]}...")
-                        is_json_phase = True
-                        json_start_detected = True
-                        json_buffer += content
-                        continue
-                    
-                    # 📝 Thinking 阶段：实时发送 plan.thinking
-                    thinking_content += content
-                    thinking_event = event_plan_thinking(
-                        session_id=preview_session_id,
-                        delta=content
-                    )
-                    event_str = sse_event_to_string(thinking_event)
-                    event_queue.append({"type": "sse", "event": event_str})
-                    # 打印前5个 chunk 用于调试
-                    if chunk_count <= 5:
-                        print(f"[COMMANDER] 🚀 发送 plan.thinking: {content[:50]}...")
-                else:
-                    # 📦 JSON 阶段：静默拼接，不发送 SSE
-                    # 检测 JSON 结束标记
-                    if "```" in content:
-                        # 提取 ``` 之前的内容
-                        json_parts = content.split("```", 1)
-                        json_buffer += json_parts[0]
-                        # 之后的内容忽略（结束标记后的内容）
-                    else:
-                        json_buffer += content
-            
-            print(f"[COMMANDER] 流式生成完成。思考长度: {len(thinking_content)}, JSON长度: {len(json_buffer)}")
-            
-            # 3️⃣ 解析 JSON
-            # 清理 JSON 内容（移除可能的 json 标记前缀）
-            json_str = json_buffer.strip()
-            if json_str.startswith("json"):
-                json_str = json_str[4:].strip()
-            
-            try:
-                commander_response = parse_llm_json(
-                    json_str,
-                    CommanderOutput,
-                    strict=False,
-                    clean_markdown=False  # 已经手动清理了
-                )
-                print(f"[COMMANDER] JSON 解析成功，生成 {len(commander_response.tasks)} 个任务")
-            except Exception as parse_err:
-                print(f"[COMMANDER] JSON 解析失败: {parse_err}")
-                print(f"[COMMANDER] 原始 JSON 内容: {json_str[:500]}...")
-                raise
+            print("[COMMANDER] 使用 JSON Mode + Pydantic 校验生成执行计划...")
+            commander_response = await _generate_plan_with_json_mode(
+                llm_with_config, system_prompt, human_prompt, 
+                preview_session_id, event_queue
+            )
 
             # v3.1: 兜底处理 - 如果 LLM 没有生成 id，自动生成
             for idx, task in enumerate(commander_response.tasks):
@@ -383,22 +293,23 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                     task.id = f"task_{idx}"
                     print(f"[COMMANDER] 自动为任务 {idx} 生成 id: {task.id}")
             
-            # v3.2: 修复依赖上下文注入 - 将 depends_on 中的索引格式转换为 ID 格式
+            # v3.2: 修复依赖上下文注入 - 将 dependencies 中的索引格式转换为 ID 格式
             task_id_map = {str(idx): task.id for idx, task in enumerate(commander_response.tasks)}
             for task in commander_response.tasks:
-                if task.depends_on:
-                    new_depends_on = []
-                    for dep in task.depends_on:
+                if task.dependencies:
+                    new_dependencies = []
+                    for dep in task.dependencies:
                         # 如果是数字索引（如 "0"），转换为对应的 ID（如 "task_0"）
                         if dep in task_id_map:
-                            new_depends_on.append(task_id_map[dep])
+                            new_dependencies.append(task_id_map[dep])
                         else:
                             # 如果已经是正确的 ID 格式（如 "task_0"），保持不变
-                            new_depends_on.append(dep)
-                    task.depends_on = new_depends_on
-                    print(f"[COMMANDER] 任务 {task.id} 的依赖已转换: {new_depends_on}")
+                            new_dependencies.append(dep)
+                    task.dependencies = new_dependencies
+                    print(f"[COMMANDER] 任务 {task.id} 的依赖已转换: {new_dependencies}")
 
             # v3.0: 准备子任务数据（支持显式依赖关系 DAG）
+            # 🔥 关键修复：传递 task_id 用于 depends_on 映射
             subtasks_data = [
                 SubTaskCreate(
                     expert_type=task.expert_type,
@@ -406,7 +317,8 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                     input_data=task.input_data,
                     sort_order=idx,
                     execution_mode="sequential",
-                    depends_on=task.depends_on if task.depends_on else None
+                    depends_on=task.dependencies if task.dependencies else None,
+                    task_id=task.id  # 🔥 关键：传递 Commander 生成的 task ID
                 )
                 for idx, task in enumerate(commander_response.tasks)
             ]
@@ -441,7 +353,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                     "input_data": subtask.input_data,
                     "sort_order": subtask.sort_order,
                     "status": subtask.status,
-                    "depends_on": commander_task.depends_on if commander_task.depends_on else [],
+                    "depends_on": commander_task.dependencies if commander_task.dependencies else [],
                     "output_result": None,
                     "started_at": None,
                     "completed_at": None
@@ -470,7 +382,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                             "description": t.task_description,
                             "sort_order": t.sort_order,
                             "status": t.status,
-                            "depends_on": commander_response.tasks[idx].depends_on if commander_response.tasks[idx].depends_on else []
+                            "depends_on": commander_response.tasks[idx].dependencies if commander_response.tasks[idx].dependencies else []
                         }
                         for idx, t in enumerate(task_session.sub_tasks)
                     ]
@@ -503,3 +415,231 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                 "current_task_index": 0,
                 "event_queue": []
             }
+
+
+def _extract_json_string(content: str) -> str:
+    """
+    从 LLM 响应中提取 JSON 字符串
+    
+    处理以下情况:
+    1. Markdown 代码块 (```json ... ```)
+    2. 纯 JSON 文本
+    3. 前后有额外文本的情况
+    """
+    content = content.strip()
+    
+    # 情况 1: Markdown 代码块
+    if content.startswith("```"):
+        lines = content.split("\n")
+        # 找到第一个和最后一个 ```
+        start_idx = 0
+        end_idx = len(lines) - 1
+        
+        # 跳过开头的 ``` 或 ```json
+        for i, line in enumerate(lines):
+            if line.strip().startswith("```"):
+                start_idx = i + 1
+                break
+        
+        # 找到结尾的 ```
+        for i in range(len(lines) - 1, -1, -1):
+            if lines[i].strip() == "```":
+                end_idx = i
+                break
+        
+        json_content = "\n".join(lines[start_idx:end_idx])
+        return json_content.strip()
+    
+    # 情况 2: 尝试找到 JSON 对象的开始和结束
+    # 找到第一个 { 和最后一个 }
+    start = content.find("{")
+    end = content.rfind("}")
+    
+    if start != -1 and end != -1 and end > start:
+        return content[start:end+1]
+    
+    # 情况 3: 已经是纯 JSON
+    return content
+
+
+async def _generate_plan_with_json_mode(
+    llm_with_config,
+    system_prompt: str,
+    human_prompt: str,
+    preview_session_id: str,
+    event_queue: list
+) -> ExecutionPlan:
+    """
+    Commander 2.0: 使用 JSON Mode + Pydantic 强校验生成执行计划
+    
+    兼容 DeepSeek 等不支持 json_schema 但支持 json_object 的模型
+    
+    流程:
+    1. 开启 JSON Mode (response_format={"type": "json_object"})
+    2. 调用 LLM 获取原始 JSON 字符串
+    3. 使用 parse_llm_json 提取和清洗
+    4. 使用 ExecutionPlan.model_validate_json() 强校验
+    5. 失败时自动重试 (最多 2 次)
+    """
+    from utils.event_generator import event_plan_thinking, sse_event_to_string
+    from langchain_openai import ChatOpenAI
+    
+    # 增强 System Prompt，强制 JSON 输出
+    enhanced_system_prompt = system_prompt + """
+
+IMPORTANT: You MUST output a valid JSON object. No conversation, no markdown code blocks, just raw JSON text."""
+    
+    max_retries = 2
+    last_error = None
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"[COMMANDER] JSON Mode 尝试 {attempt + 1}/{max_retries}...")
+            
+            # 🔥 核心：使用 JSON Mode (DeepSeek 兼容)
+            # LangChain 的 bind 方法直接传递 kwargs 到 OpenAI API
+            json_mode_llm = llm_with_config.bind(
+                response_format={"type": "json_object"}
+            )
+            
+            # 调用 LLM 生成 JSON
+            response = await json_mode_llm.ainvoke(
+                [
+                    SystemMessage(content=enhanced_system_prompt),
+                    HumanMessage(content=human_prompt)
+                ],
+                config=RunnableConfig(
+                    tags=["commander", "json_mode"],
+                    metadata={"node_type": "commander", "mode": "json_object", "attempt": attempt + 1}
+                )
+            )
+            
+            # 获取原始内容
+            raw_content = response.content if hasattr(response, 'content') else str(response)
+            
+            # 发送 thinking 事件（显示原始内容的前缀部分）
+            thinking_preview = raw_content[:200] + "..." if len(raw_content) > 200 else raw_content
+            thinking_event = event_plan_thinking(
+                session_id=preview_session_id,
+                delta=f"[规划分析中...]\n{thinking_preview}"
+            )
+            event_queue.append({"type": "sse", "event": sse_event_to_string(thinking_event)})
+            
+            # 🔥 步骤 2: 提取和清洗 JSON
+            print(f"[COMMANDER] 提取 JSON，原始内容长度: {len(raw_content)}")
+            cleaned_content = _extract_json_string(raw_content)
+            
+            # 🔥 步骤 3: Pydantic 强校验
+            print("[COMMANDER] 执行 Pydantic 模型校验...")
+            execution_plan = ExecutionPlan.model_validate_json(cleaned_content)
+            
+            print(f"[COMMANDER] JSON Mode + Pydantic 校验成功，生成 {len(execution_plan.tasks)} 个任务")
+            return execution_plan
+            
+        except ValidationError as ve:
+            # Pydantic 校验失败，记录详细错误
+            last_error = f"Pydantic 校验失败: {ve}"
+            print(f"[COMMANDER] 尝试 {attempt + 1} 校验失败: {ve}")
+            
+            # 如果是最后一次尝试，抛出异常
+            if attempt == max_retries - 1:
+                raise ValueError(f"JSON Mode 生成计划失败（{max_retries}次尝试）: {last_error}")
+            
+            # 否则继续重试
+            await asyncio.sleep(0.5)
+            
+        except Exception as e:
+            # 其他错误（网络、解析等）
+            last_error = str(e)
+            print(f"[COMMANDER] 尝试 {attempt + 1} 发生错误: {e}")
+            
+            if attempt == max_retries - 1:
+                raise ValueError(f"JSON Mode 生成计划失败（{max_retries}次尝试）: {last_error}")
+            
+            await asyncio.sleep(0.5)
+    
+    # 理论上不会到达这里，但为了类型检查
+    raise ValueError(f"JSON Mode 生成计划失败: {last_error}")
+
+
+# 保留旧函数作为兜底（当 JSON Mode 完全不可用时）
+async def _streaming_planning_fallback(
+    llm_with_config,
+    system_prompt: str,
+    human_prompt: str,
+    preview_session_id: str,
+    event_queue: list
+) -> ExecutionPlan:
+    """
+    兜底方案：使用流式解析生成执行计划
+    
+    当 JSON Mode 也完全不可用时使用
+    """
+    from utils.event_generator import event_plan_thinking, sse_event_to_string
+    
+    thinking_content = ""
+    json_buffer = ""
+    is_json_phase = False
+    
+    print("[COMMANDER] Fallback: 使用流式解析...")
+    
+    async for chunk in llm_with_config.astream(
+        [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=human_prompt)
+        ],
+        config=RunnableConfig(
+            tags=["commander", "streaming", "fallback"],
+            metadata={"node_type": "commander", "mode": "fallback"}
+        )
+    ):
+        content = chunk.content if hasattr(chunk, "content") else str(chunk)
+        if not content:
+            continue
+        
+        if not is_json_phase:
+            if "```json" in content or "```" in content:
+                is_json_phase = True
+                before_json = content.split("```")[0]
+                if before_json.strip():
+                    thinking_content += before_json
+                    thinking_event = event_plan_thinking(
+                        session_id=preview_session_id,
+                        delta=before_json
+                    )
+                    event_queue.append({"type": "sse", "event": sse_event_to_string(thinking_event)})
+                json_parts = content.split("```", 1)
+                if len(json_parts) > 1:
+                    json_buffer += json_parts[1]
+                continue
+            
+            thinking_content += content
+            thinking_event = event_plan_thinking(
+                session_id=preview_session_id,
+                delta=content
+            )
+            event_queue.append({"type": "sse", "event": sse_event_to_string(thinking_event)})
+        else:
+            if "```" in content:
+                json_parts = content.split("```", 1)
+                json_buffer += json_parts[0]
+            else:
+                json_buffer += content
+    
+    # 解析 JSON
+    json_str = json_buffer.strip()
+    if json_str.startswith("json"):
+        json_str = json_str[4:].strip()
+    
+    try:
+        commander_response = parse_llm_json(
+            json_str,
+            ExecutionPlan,
+            strict=False,
+            clean_markdown=False
+        )
+        print(f"[COMMANDER] 流式解析成功，生成 {len(commander_response.tasks)} 个任务")
+        return commander_response
+    except Exception as parse_err:
+        print(f"[COMMANDER] 流式解析失败: {parse_err}")
+        raise

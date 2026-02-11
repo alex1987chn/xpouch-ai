@@ -3,21 +3,21 @@
  * 负责消息发送、停止生成、加载状态管理等核心功能
  * 
  * v3.1.0 性能优化：使用 Zustand Selectors 避免流式输出时的无效重计算
- * v3.1.1 状态机解析：实时分离 thinking 标签和正文内容
+ * v3.1.0 状态机解析：实时分离 thinking 标签和正文内容
+ * v3.1.0 重构：提取 useStreamHandler，消除 sendMessageCore 和 resumeExecution 的代码重复
  */
 
 import { useCallback, useRef, useEffect } from 'react'
 import { 
   sendMessage as apiSendMessage, 
   resumeChat as apiResumeChat,
-  type ApiMessage, 
-  type StreamCallback,
   type ResumeChatParams
 } from '@/services/chat'
+import type { ApiMessage, StreamCallback } from '@/types'
 import { normalizeAgentId, getAgentType } from '@/utils/agentUtils'
 import { generateUUID } from '@/utils'
 import { useTranslation } from '@/i18n'
-import type { ExpertEvent, Message } from '@/types'
+import type { Message } from '@/types'
 import { errorHandler, logger } from '@/utils/logger'
 import { isValidApiMessageRole } from '@/types'
 
@@ -42,103 +42,14 @@ import type {
   PlanThinkingEvent,
   TaskStartedEvent,
   TaskCompletedEvent,
-  HumanInterruptEvent 
+  HumanInterruptEvent,
+  AnyServerEvent
 } from '@/types/events'
 
 // ============================================================================
-// v3.1.1: 流式内容状态机解析器
-// 用于实时分离 <think> 标签内容和正文内容
+// v3.1.0: 流式处理器 Hook - 消除代码重复
 // ============================================================================
-interface StreamingParserState {
-  isInThinking: boolean
-  thinkingBuffer: string
-  contentBuffer: string
-}
-
-/**
- * 处理流式 chunk，分离 thinking 和正文内容
- * 返回 { content: 正文内容, thinking: thinking内容, hasUpdate: 是否有更新 }
- * 
- * v3.2.0 重构：
- * - 🔥 移除前端过滤逻辑（决策 JSON、系统日志等应由后端过滤）
- * - 只保留 <think> 标签解析功能
- * - 遵循 Server-Driven UI 原则：前端只是投影仪，不做数据清理
- */
-function processStreamingChunk(
-  chunk: string,
-  state: StreamingParserState,
-  isFirstChunk: boolean = false
-): { content: string; thinking: string; hasUpdate: boolean } {
-  let outputContent = ''
-  let outputThinking = ''
-  
-  // 状态机解析
-  let i = 0
-  while (i < chunk.length) {
-    const remainingChunk = chunk.slice(i)
-    
-    if (!state.isInThinking) {
-      // 不在 thinking 标签内，检查是否进入
-      const thinkStart = remainingChunk.indexOf('<think>')
-      const thoughtStart = remainingChunk.indexOf('<thought>')
-      
-      const nextTagStart = thinkStart !== -1 ? thinkStart : thoughtStart
-      const actualTagStart = thoughtStart !== -1 && (thinkStart === -1 || thoughtStart < thinkStart) 
-        ? thoughtStart 
-        : nextTagStart
-      
-      if (actualTagStart !== -1) {
-        // 找到标签开始，之前的内容是正文
-        outputContent += remainingChunk.slice(0, actualTagStart)
-        state.isInThinking = true
-        i += actualTagStart + (actualTagStart === thinkStart ? 7 : 9) // <think> 或 <thought> 的长度
-      } else {
-        // 没有标签，全部作为正文
-        outputContent += remainingChunk
-        break
-      }
-    } else {
-      // 在 thinking 标签内，检查是否退出
-      const thinkEnd = remainingChunk.indexOf('</think>')
-      const thoughtEnd = remainingChunk.indexOf('</thought>')
-      
-      const nextTagEnd = thinkEnd !== -1 ? thinkEnd : thoughtEnd
-      const actualTagEnd = thoughtEnd !== -1 && (thinkEnd === -1 || thoughtEnd < thinkEnd) 
-        ? thoughtEnd 
-        : nextTagEnd
-      
-      if (actualTagEnd !== -1) {
-        // 找到标签结束，之前的内容是 thinking
-        outputThinking += remainingChunk.slice(0, actualTagEnd)
-        state.isInThinking = false
-        i += actualTagEnd + (actualTagEnd === thinkEnd ? 8 : 10) // </think> 或 </thought> 的长度
-      } else {
-        // 没有结束标签，全部作为 thinking
-        outputThinking += remainingChunk
-        break
-      }
-    }
-  }
-  
-  // 更新状态缓冲
-  state.contentBuffer += outputContent
-  state.thinkingBuffer += outputThinking
-  
-  return {
-    content: outputContent,
-    thinking: outputThinking,
-    hasUpdate: outputContent.length > 0 || outputThinking.length > 0
-  }
-}
-
-/**
- * 重置解析器状态
- */
-function resetStreamingParser(state: StreamingParserState): void {
-  state.isInThinking = false
-  state.thinkingBuffer = ''
-  state.contentBuffer = ''
-}
+import { useStreamHandler } from './useStreamHandler'
 
 // Dev environment check
 const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
@@ -157,7 +68,7 @@ const debug = DEBUG
  * 分发 SSE 事件到 ExecutionStore
  * 遵循 Server-Driven UI 原则：后端推送事件，前端只更新状态
  */
-function dispatchEventToExecutionStore(event: ExpertEvent): void {
+function dispatchEventToExecutionStore(event: AnyServerEvent): void {
   const { 
     setStatus, 
     setExpert, 
@@ -215,12 +126,12 @@ function dispatchEventToExecutionStore(event: ExpertEvent): void {
       const data = (event as HumanInterruptEvent).data
       setStatus('reviewing')
       if (data.current_plan) {
-        setPlan(data.current_plan.map((t, i) => ({
+        setPlan(data.current_plan.map((t: any) => ({
           id: t.id,
           expertType: t.expert_type,
           description: t.description,
           status: t.status,
-          dependencies: i > 0 ? [data.current_plan[i - 1].id] : undefined
+          dependencies: t.depends_on || [] // 🔥 使用后端传来的实际依赖关系
         })))
         setProgress({ current: 0, total: data.current_plan.length })
       }
@@ -262,7 +173,7 @@ function isApiMessage(obj: any): obj is ApiMessage {
 
 interface UseChatCoreOptions {
   /** Handle expert event callback */
-  onExpertEvent?: (event: ExpertEvent, conversationMode: 'simple' | 'complex') => Promise<void> | void
+  onExpertEvent?: (event: AnyServerEvent, conversationMode: 'simple' | 'complex') => Promise<void> | void
   /** Handle streaming content callback */
   onChunk?: (chunk: string) => void
   /** New conversation created callback */
@@ -295,7 +206,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     setCurrentConversationId, 
     addMessage, 
     updateMessage,
-    updateMessageMetadata,
     setMessages, 
     setGenerating 
   } = useChatActions()
@@ -304,6 +214,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   
   // Phase 2: ExecutionStore Actions
   const { reset: resetExecutionStore } = useExecutionStore.getState()
+  
+  // v3.2.0: 流式处理器 - 消除代码重复
+  const { reset: resetStreamHandler, createChunkHandler } = useStreamHandler()
 
   /**
    * Stop generation
@@ -342,12 +255,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     // Reset taskStore mode, wait for backend Router decision
     setMode('simple')
     
-    // v3.1.1: 初始化流式解析器状态
-    const streamingParserState: StreamingParserState = {
-      isInThinking: false,
-      thinkingBuffer: '',
-      contentBuffer: ''
-    }
+    // v3.1.0: 重置流式处理器
+    resetStreamHandler()
 
     const agentId = overrideAgentId || selectedAgentId
     if (!agentId) {
@@ -406,13 +315,13 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       debug('Preparing to call sendMessage')
 
-      let hasProcessedComplexMode = false
-      let isFirstChunk = true  // v3.1.1: 标记是否是第一个 chunk
+      // v3.1.0: 创建 chunk 处理器（绑定 messageId）
+      const handleChunk = createChunkHandler(assistantMessageId, onChunk)
 
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
         conversationId?: string,
-        expertEvent?: ExpertEvent
+        expertEvent?: AnyServerEvent
       ) => {
         if (conversationId && conversationId !== actualConversationId) {
           actualConversationId = conversationId
@@ -423,50 +332,19 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
           onExpertEvent?.(expertEvent as any, conversationMode)
           
           // Phase 2: 分发事件到 ExecutionStore
-          dispatchEventToExecutionStore(expertEvent as ExpertEvent)
+          dispatchEventToExecutionStore(expertEvent)
         }
 
         if (chunk) {
-          // v3.1.1: 使用状态机解析器分离 thinking 和正文内容
-          const { content, thinking } = processStreamingChunk(chunk, streamingParserState, isFirstChunk)
-          
-          // 标记第一个 chunk 已处理
-          if (isFirstChunk) {
-            isFirstChunk = false
-          }
-          
-          // 累积完整响应（包括 thinking，用于最终保存）
+          // 累积完整响应（用于最终保存）
           finalResponseContent += chunk
           
           if (DEBUG) {
-            logger.debug('[useChatCore] Received chunk, raw:', chunk.length, 'content:', content.length, 'thinking:', thinking.length, 'Message ID:', assistantMessageId)
+            logger.debug('[useChatCore] Received chunk, length:', chunk.length, 'Message ID:', assistantMessageId)
           }
           
-          // 只将正文内容传递给 UI 显示
-          if (content) {
-            onChunk?.(content)
-            
-            // 🔥 关键修复：实时更新消息内容到 chatStore
-            if (assistantMessageId) {
-              updateMessage(assistantMessageId, content, true)
-            }
-          }
-          
-          // 如果有 thinking 内容，实时更新到消息 metadata
-          // 🔥 使用累积的 thinkingBuffer 而不是本次 chunk 的 thinking
-          if (streamingParserState.thinkingBuffer && assistantMessageId) {
-            updateMessageMetadata(assistantMessageId, {
-              thinking: [{
-                id: 'streaming-think',
-                expertType: 'thinking',
-                expertName: '思考过程',
-                content: streamingParserState.thinkingBuffer,
-                timestamp: new Date().toISOString(),
-                status: 'running',
-                type: 'default'
-              }]
-            })
-          }
+          // v3.1.0: 使用工厂方法处理 chunk
+          handleChunk(chunk)
         }
       }
 
@@ -481,7 +359,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       const storeState3 = useChatStore.getState()
       const initialConversationId = storeState3.currentConversationId
-      if (actualConversationId !== initialConversationId) {
+      if (actualConversationId && actualConversationId !== initialConversationId) {
         onNewConversation?.(actualConversationId, selectedAgentId)
       }
 
@@ -539,7 +417,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     addMessage,
     updateMessage,
     t,
-    resetExecutionStore
+    resetExecutionStore,
+    resetStreamHandler,
+    createChunkHandler
   ])
 
   // Page visibility and lifecycle management
@@ -584,46 +464,43 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
     let fullContent = ''
     
-    // v3.1.1: 初始化流式解析器状态
-    const streamingParserState: StreamingParserState = {
-      isInThinking: false,
-      thinkingBuffer: '',
-      contentBuffer: ''
-    }
-    let isFirstChunk = true  // v3.1.1: 标记是否是第一个 chunk
+    // 🔥 关键修复：创建助手消息来接收 resume 的流式内容
+    const assistantMessageId = generateUUID()
+    addMessage({
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+      metadata: {
+        thinking: []
+      }
+    })
+    
+    // v3.1.0: 重置流式处理器
+    resetStreamHandler()
+    
+    // v3.1.0: 创建 chunk 处理器（绑定 messageId）
+    const handleChunk = createChunkHandler(assistantMessageId, onChunk)
 
     try {
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
         conversationId?: string,
-        expertEvent?: ExpertEvent
+        expertEvent?: AnyServerEvent
       ) => {
         if (expertEvent) {
           onExpertEvent?.(expertEvent as any, conversationMode)
           
           // Phase 2: 分发事件到 ExecutionStore
-          dispatchEventToExecutionStore(expertEvent as ExpertEvent)
+          dispatchEventToExecutionStore(expertEvent)
         }
 
         if (chunk) {
-          // v3.1.1: 使用状态机解析器分离 thinking 和正文内容
-          const { content, thinking } = processStreamingChunk(chunk, streamingParserState, isFirstChunk)
-          
-          // 标记第一个 chunk 已处理
-          if (isFirstChunk) {
-            isFirstChunk = false
-          }
-          
           // 累积完整响应
           fullContent += chunk
           
-          // 只将正文内容传递给 UI 显示
-          if (content) {
-            onChunk?.(content)
-          }
-          
-          // 🔥 关键修复：使用累积的 thinkingBuffer 更新到消息 metadata
-          // resumeExecution 不直接更新消息内容，由上层通过 onChunk 处理
+          // v3.1.0: 使用工厂方法处理 chunk
+          handleChunk(chunk)
         }
       }
 
@@ -654,7 +531,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       setGenerating(false)
       abortControllerRef.current = null
     }
-  }, [isGenerating, conversationMode, onExpertEvent, onChunk, setGenerating, addMessage])
+  }, [isGenerating, conversationMode, onExpertEvent, onChunk, setGenerating, addMessage, resetStreamHandler, createChunkHandler])
 
   return {
     sendMessage: sendMessageCore,

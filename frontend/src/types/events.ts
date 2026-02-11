@@ -33,6 +33,9 @@ export type EventType =
   // 系统事件
   | 'router.start'
   | 'router.decision'
+  // 工作流事件
+  | 'workflow.completed'
+  | 'workflow.cancelled'
   | 'error'
 
 // ============================================================================
@@ -233,6 +236,7 @@ export interface HumanInterruptData {
     description: string
     sort_order: number
     status: 'pending' | 'running' | 'completed' | 'failed'
+    depends_on?: string[] // 🔥 任务依赖关系
   }>
 }
 

@@ -263,6 +263,7 @@ export interface ResumeChatParams {
     description: string
     sort_order: number
     status: 'pending' | 'running' | 'completed' | 'failed'
+    depends_on?: string[] // 🔥 任务依赖关系（关键字段）
   }>
   approved: boolean
 }

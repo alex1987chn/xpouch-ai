@@ -245,7 +245,13 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
             temperature=temperature
         )
 
-        # 🔥 核心修改：增强 System Prompt (注入时间 + 工具指令)
+        # 🔥🔥🔥 GenericWorker 2.0: 占位符填充 + System Prompt 增强
+        # 填充 {input} 占位符（任务描述）
+        if "{input}" in system_prompt:
+            system_prompt = system_prompt.replace("{input}", description)
+            print(f"[GenericWorker] 已注入占位符: {{input}} = {description[:50]}...")
+        
+        # 增强 System Prompt (注入时间 + 工具指令)
         enhanced_system_prompt = _enhance_system_prompt(system_prompt)
 
         # 🔥 关键修复：构建消息列表
@@ -424,6 +430,11 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         # Generic Worker 执行完任务后，需要递增 index 才能执行下一个任务
         next_index = current_index + 1
 
+        # 🔥🔥🔥 关键修复：创建 task_list 副本触发 LangGraph 状态更新
+        # 直接修改列表元素不会改变引用，LangGraph 检测不到变化
+        import copy
+        task_list = copy.deepcopy(task_list)
+        
         # ✅ 更新任务列表中的任务状态
         task_list[current_index]["output_result"] = {"content": response.content}
         task_list[current_index]["status"] = "completed"
@@ -555,6 +566,10 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         # ✅ 失败时也要增加 index，否则会卡死循环
         next_index = current_index + 1
 
+        # 🔥 创建副本触发状态更新
+        import copy
+        task_list = copy.deepcopy(task_list)
+        
         # 更新任务状态为失败
         task_list[current_index]["status"] = "failed"
 

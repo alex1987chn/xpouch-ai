@@ -138,7 +138,8 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
           expert_type: task.expertType,
           description: task.description,
           sort_order: 0, // ExecutionStore 的 Task 不存储 sort_order
-          status: task.status
+          status: task.status,
+          depends_on: task.dependencies || [] // 🔥 关键修复：传递依赖关系到后端
         })),
         approved: true
       }

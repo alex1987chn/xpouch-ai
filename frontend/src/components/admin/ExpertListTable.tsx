@@ -109,8 +109,8 @@ export default function ExpertListTable({
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-black" />
               )}
 
-              {/* 删除按钮（仅对动态专家显示） */}
-              {expert.is_dynamic && (
+              {/* 删除按钮（仅对非系统核心组件显示） */}
+              {!expert.is_system && (
                 <div
                   onClick={(e) => onDeleteExpert(expert, e)}
                   className={cn(
@@ -131,7 +131,7 @@ export default function ExpertListTable({
                   selectedExpertKey === expert.expert_key
                     ? 'text-black'
                     : 'text-[var(--text-primary)]',
-                  expert.is_dynamic && 'pr-6'
+                  !expert.is_system && 'pr-6'
                 )}
               >
                 {expert.name}

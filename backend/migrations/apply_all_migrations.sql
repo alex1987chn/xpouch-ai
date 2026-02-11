@@ -9,15 +9,15 @@
 --
 -- 执行方式：
 --   psql -h localhost -U postgres -d xpouch -f apply_all_migrations.sql
+--
+-- 注意：使用 RAISE NOTICE 替代 \echo 以兼容更多 PostgreSQL 客户端
 -- ============================================================================
 
-\echo 'Starting v3.0 unified migration...'
+DO $$ BEGIN RAISE NOTICE 'Starting v3.0 unified migration...'; END $$;
 
 -- ============================================================================
 -- 1. Message 表：添加 extra_data 字段
 -- ============================================================================
-\echo 'Checking message.extra_data column...'
-
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -25,22 +25,19 @@ BEGIN
         WHERE table_name = 'message' AND column_name = 'extra_data'
     ) THEN
         ALTER TABLE message ADD COLUMN extra_data JSONB DEFAULT NULL;
-        \echo '  -> Added message.extra_data column'
+        RAISE NOTICE '  -> Added message.extra_data column';
     ELSE
-        \echo '  -> Column already exists, skipping'
+        RAISE NOTICE '  -> Column already exists, skipping';
     END IF;
 END $$;
 
 -- Message 表索引
 -- 复合索引：优化对话历史查询
 CREATE INDEX IF NOT EXISTS idx_message_thread_timestamp ON message(thread_id, timestamp);
-\echo '  -> Message table indexes created (if not exist)'
 
 -- ============================================================================
 -- 2. CustomAgent 表：添加 is_default 字段
 -- ============================================================================
-\echo 'Checking customagent.is_default column...'
-
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -49,9 +46,9 @@ BEGIN
     ) THEN
         ALTER TABLE customagent ADD COLUMN is_default BOOLEAN DEFAULT FALSE;
         CREATE INDEX IF NOT EXISTS idx_customagent_is_default ON customagent(is_default);
-        \echo '  -> Added customagent.is_default column and index'
+        RAISE NOTICE '  -> Added customagent.is_default column and index';
     ELSE
-        \echo '  -> Column already exists, skipping'
+        RAISE NOTICE '  -> Column already exists, skipping';
     END IF;
 
     -- category
@@ -60,8 +57,7 @@ BEGIN
         WHERE table_name = 'customagent' AND column_name = 'category'
     ) THEN
         ALTER TABLE customagent ADD COLUMN category VARCHAR(50) DEFAULT '综合';
-        
-        \echo '  -> Added customagent.category column'
+        RAISE NOTICE '  -> Added customagent.category column';
     END IF;
 
     -- is_public
@@ -70,8 +66,7 @@ BEGIN
         WHERE table_name = 'customagent' AND column_name = 'is_public'
     ) THEN
         ALTER TABLE customagent ADD COLUMN is_public BOOLEAN DEFAULT FALSE;
-        
-        \echo '  -> Added customagent.is_public column'
+        RAISE NOTICE '  -> Added customagent.is_public column';
     END IF;
 
     -- conversation_count
@@ -80,16 +75,13 @@ BEGIN
         WHERE table_name = 'customagent' AND column_name = 'conversation_count'
     ) THEN
         ALTER TABLE customagent ADD COLUMN conversation_count INTEGER DEFAULT 0;
-        
-        \echo '  -> Added customagent.conversation_count column'
+        RAISE NOTICE '  -> Added customagent.conversation_count column';
     END IF;
 END $$;
 
 -- ============================================================================
 -- 3. Thread 表字段扩展
 -- ============================================================================
-\echo 'Checking thread table columns...'
-
 DO $$
 BEGIN
     -- agent_type
@@ -98,7 +90,7 @@ BEGIN
         WHERE table_name = 'thread' AND column_name = 'agent_type'
     ) THEN
         ALTER TABLE thread ADD COLUMN agent_type VARCHAR(20) DEFAULT 'default';
-        \echo '  -> Added thread.agent_type column'
+        RAISE NOTICE '  -> Added thread.agent_type column';
     END IF;
     
     -- agent_id
@@ -107,7 +99,7 @@ BEGIN
         WHERE table_name = 'thread' AND column_name = 'agent_id'
     ) THEN
         ALTER TABLE thread ADD COLUMN agent_id VARCHAR(50) DEFAULT 'sys-default-chat';
-        \echo '  -> Added thread.agent_id column'
+        RAISE NOTICE '  -> Added thread.agent_id column';
     END IF;
     
     -- task_session_id
@@ -116,7 +108,7 @@ BEGIN
         WHERE table_name = 'thread' AND column_name = 'task_session_id'
     ) THEN
         ALTER TABLE thread ADD COLUMN task_session_id VARCHAR(36);
-        \echo '  -> Added thread.task_session_id column'
+        RAISE NOTICE '  -> Added thread.task_session_id column';
     END IF;
     
     -- status
@@ -125,7 +117,7 @@ BEGIN
         WHERE table_name = 'thread' AND column_name = 'status'
     ) THEN
         ALTER TABLE thread ADD COLUMN status VARCHAR(20) DEFAULT 'idle';
-        \echo '  -> Added thread.status column'
+        RAISE NOTICE '  -> Added thread.status column';
     END IF;
     
     -- thread_mode
@@ -134,7 +126,7 @@ BEGIN
         WHERE table_name = 'thread' AND column_name = 'thread_mode'
     ) THEN
         ALTER TABLE thread ADD COLUMN thread_mode VARCHAR(20) DEFAULT 'simple';
-        \echo '  -> Added thread.thread_mode column'
+        RAISE NOTICE '  -> Added thread.thread_mode column';
     END IF;
 END $$;
 
@@ -144,13 +136,10 @@ CREATE INDEX IF NOT EXISTS idx_thread_agent_id ON thread(agent_id);
 CREATE INDEX IF NOT EXISTS idx_thread_task_session_id ON thread(task_session_id);
 CREATE INDEX IF NOT EXISTS idx_thread_status ON thread(status);
 CREATE INDEX IF NOT EXISTS idx_thread_thread_mode ON thread(thread_mode);
-\echo '  -> Thread table indexes created (if not exist)'
 
 -- ============================================================================
 -- 4. TaskSession 表扩展
 -- ============================================================================
-\echo 'Checking tasksession table columns...'
-
 DO $$
 BEGIN
     -- plan_summary
@@ -159,7 +148,7 @@ BEGIN
         WHERE table_name = 'tasksession' AND column_name = 'plan_summary'
     ) THEN
         ALTER TABLE tasksession ADD COLUMN plan_summary TEXT;
-        \echo '  -> Added tasksession.plan_summary column'
+        RAISE NOTICE '  -> Added tasksession.plan_summary column';
     END IF;
     
     -- estimated_steps
@@ -168,7 +157,7 @@ BEGIN
         WHERE table_name = 'tasksession' AND column_name = 'estimated_steps'
     ) THEN
         ALTER TABLE tasksession ADD COLUMN estimated_steps INTEGER DEFAULT 0;
-        \echo '  -> Added tasksession.estimated_steps column'
+        RAISE NOTICE '  -> Added tasksession.estimated_steps column';
     END IF;
     
     -- execution_mode
@@ -177,7 +166,7 @@ BEGIN
         WHERE table_name = 'tasksession' AND column_name = 'execution_mode'
     ) THEN
         ALTER TABLE tasksession ADD COLUMN execution_mode VARCHAR(20) DEFAULT 'sequential';
-        \echo '  -> Added tasksession.execution_mode column'
+        RAISE NOTICE '  -> Added tasksession.execution_mode column';
     END IF;
 
     -- status
@@ -186,7 +175,7 @@ BEGIN
         WHERE table_name = 'tasksession' AND column_name = 'status'
     ) THEN
         ALTER TABLE tasksession ADD COLUMN status VARCHAR(20) DEFAULT 'pending';
-        \echo '  -> Added tasksession.status column'
+        RAISE NOTICE '  -> Added tasksession.status column';
     END IF;
 
     -- completed_at
@@ -195,7 +184,7 @@ BEGIN
         WHERE table_name = 'tasksession' AND column_name = 'completed_at'
     ) THEN
         ALTER TABLE tasksession ADD COLUMN completed_at TIMESTAMP;
-        \echo '  -> Added tasksession.completed_at column'
+        RAISE NOTICE '  -> Added tasksession.completed_at column';
     END IF;
 
     -- final_response
@@ -204,15 +193,13 @@ BEGIN
         WHERE table_name = 'tasksession' AND column_name = 'final_response'
     ) THEN
         ALTER TABLE tasksession ADD COLUMN final_response TEXT;
-        \echo '  -> Added tasksession.final_response column'
+        RAISE NOTICE '  -> Added tasksession.final_response column';
     END IF;
 END $$;
 
 -- ============================================================================
 -- 5. SubTask 表扩展
 -- ============================================================================
-\echo 'Checking subtask table columns...'
-
 DO $$
 BEGIN
     -- 处理可能的列名冲突（旧表可能有 description 列）
@@ -238,7 +225,7 @@ BEGIN
         WHERE table_name = 'subtask' AND column_name = 'task_description'
     ) THEN
         ALTER TABLE subtask ADD COLUMN task_description VARCHAR(500);
-        \echo '  -> Added subtask.task_description column'
+        RAISE NOTICE '  -> Added subtask.task_description column';
     END IF;
     
     -- output_result
@@ -247,7 +234,7 @@ BEGIN
         WHERE table_name = 'subtask' AND column_name = 'output_result'
     ) THEN
         ALTER TABLE subtask ADD COLUMN output_result JSON;
-        \echo '  -> Added subtask.output_result column'
+        RAISE NOTICE '  -> Added subtask.output_result column';
     END IF;
     
     -- started_at
@@ -256,7 +243,7 @@ BEGIN
         WHERE table_name = 'subtask' AND column_name = 'started_at'
     ) THEN
         ALTER TABLE subtask ADD COLUMN started_at TIMESTAMP;
-        \echo '  -> Added subtask.started_at column'
+        RAISE NOTICE '  -> Added subtask.started_at column';
     END IF;
     
     -- completed_at
@@ -265,7 +252,7 @@ BEGIN
         WHERE table_name = 'subtask' AND column_name = 'completed_at'
     ) THEN
         ALTER TABLE subtask ADD COLUMN completed_at TIMESTAMP;
-        \echo '  -> Added subtask.completed_at column'
+        RAISE NOTICE '  -> Added subtask.completed_at column';
     END IF;
     
     -- sort_order
@@ -274,7 +261,7 @@ BEGIN
         WHERE table_name = 'subtask' AND column_name = 'sort_order'
     ) THEN
         ALTER TABLE subtask ADD COLUMN sort_order INTEGER DEFAULT 0;
-        \echo '  -> Added subtask.sort_order column'
+        RAISE NOTICE '  -> Added subtask.sort_order column';
     END IF;
     
     -- execution_mode
@@ -283,7 +270,7 @@ BEGIN
         WHERE table_name = 'subtask' AND column_name = 'execution_mode'
     ) THEN
         ALTER TABLE subtask ADD COLUMN execution_mode VARCHAR(20) DEFAULT 'sequential';
-        \echo '  -> Added subtask.execution_mode column'
+        RAISE NOTICE '  -> Added subtask.execution_mode column';
     END IF;
     
     -- depends_on
@@ -292,7 +279,7 @@ BEGIN
         WHERE table_name = 'subtask' AND column_name = 'depends_on'
     ) THEN
         ALTER TABLE subtask ADD COLUMN depends_on JSON;
-        \echo '  -> Added subtask.depends_on column'
+        RAISE NOTICE '  -> Added subtask.depends_on column';
     END IF;
     
     -- error_message
@@ -301,7 +288,7 @@ BEGIN
         WHERE table_name = 'subtask' AND column_name = 'error_message'
     ) THEN
         ALTER TABLE subtask ADD COLUMN error_message TEXT;
-        \echo '  -> Added subtask.error_message column'
+        RAISE NOTICE '  -> Added subtask.error_message column';
     END IF;
     
     -- duration_ms
@@ -310,7 +297,7 @@ BEGIN
         WHERE table_name = 'subtask' AND column_name = 'duration_ms'
     ) THEN
         ALTER TABLE subtask ADD COLUMN duration_ms INTEGER;
-        \echo '  -> Added subtask.duration_ms column'
+        RAISE NOTICE '  -> Added subtask.duration_ms column';
     END IF;
 END $$;
 
@@ -320,13 +307,10 @@ CREATE INDEX IF NOT EXISTS idx_subtask_status ON subtask(status);
 CREATE INDEX IF NOT EXISTS idx_subtask_task_description ON subtask(task_description);
 -- 复合索引：优化会话加载时的任务查询
 CREATE INDEX IF NOT EXISTS idx_subtask_session_status ON subtask(task_session_id, status);
-\echo '  -> SubTask table indexes created (if not exist)'
 
 -- ============================================================================
 -- 6. Artifact 表（新建）
 -- ============================================================================
-\echo 'Checking artifact table...'
-
 CREATE TABLE IF NOT EXISTS artifact (
     id VARCHAR(36) PRIMARY KEY,
     sub_task_id VARCHAR(36) NOT NULL,
@@ -342,13 +326,10 @@ CREATE TABLE IF NOT EXISTS artifact (
 
 CREATE INDEX IF NOT EXISTS idx_artifact_sub_task_id ON artifact(sub_task_id);
 CREATE INDEX IF NOT EXISTS idx_artifact_type ON artifact(type);
-\echo '  -> Artifact table and indexes created (if not exist)'
 
 -- ============================================================================
 -- 6.5. UserMemory 表（新建）- 用户长期记忆，支持向量检索
 -- ============================================================================
-\echo 'Checking user_memory table...'
-
 -- 启用 pgvector 扩展
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -367,13 +348,10 @@ CREATE INDEX IF NOT EXISTS idx_user_memories_user_id ON user_memories(user_id);
 
 -- 向量索引：优化相似度检索（使用 ivfflat 算法，适合 1024 维向量）
 CREATE INDEX IF NOT EXISTS idx_user_memories_embedding ON user_memories USING ivfflat(embedding vector_cosine_ops) WITH (lists = 100);
-\echo '  -> UserMemory table and indexes created (if not exist)'
 
 -- ============================================================================
 -- 7. 数据迁移：将现有 SubTask 的 artifacts 迁移到 Artifact 表
 -- ============================================================================
-\echo 'Checking data migration...'
-
 DO $$
 BEGIN
     -- 检查是否需要迁移（存在 artifacts 列且有数据）
@@ -400,15 +378,13 @@ BEGIN
             SELECT 1 FROM artifact WHERE sub_task_id = s.id
         );
         
-        \echo '  -> Data migration completed (if applicable)'
+        RAISE NOTICE '  -> Data migration completed (if applicable)';
     END IF;
 END $$;
 
 -- ============================================================================
 -- 8. SystemExpert 表：添加 description 字段
 -- ============================================================================
-\echo 'Checking systemexpert table columns...'
-
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -416,15 +392,15 @@ BEGIN
         WHERE table_name = 'systemexpert' AND column_name = 'description'
     ) THEN
         ALTER TABLE systemexpert ADD COLUMN description VARCHAR(500);
-        \echo '  -> Added systemexpert.description column'
+        RAISE NOTICE '  -> Added systemexpert.description column';
     ELSE
-        \echo '  -> Column already exists, skipping'
+        RAISE NOTICE '  -> Column already exists, skipping';
     END IF;
 END $$;
 
 -- 为现有专家填充默认描述（如果为空）
 UPDATE systemexpert 
-SET description = CASE expert_id
+SET description = CASE expert_key
     WHEN 'search' THEN 'Web search expert. Uses search engines to find information, facts, and data from the internet. Good for finding current events, specific data points, or general information.'
     WHEN 'coder' THEN 'Code expert. Writes, debugs, and explains code in various programming languages. Good for software development, code review, and technical implementation.'
     WHEN 'researcher' THEN 'Research expert. Conducts deep research on topics, synthesizes information from multiple sources, and provides comprehensive analysis. Good for academic or detailed research tasks.'
@@ -436,13 +412,9 @@ SET description = CASE expert_id
 END
 WHERE description IS NULL OR description = '';
 
-\echo '  -> SystemExpert descriptions updated'
-
 -- ============================================================================
 -- 10. SystemExpert 表：添加 is_dynamic 字段 (v3.0 Phase 1)
 -- ============================================================================
-\echo 'Checking systemexpert.is_dynamic column...'
-
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -450,9 +422,9 @@ BEGIN
         WHERE table_name = 'systemexpert' AND column_name = 'is_dynamic'
     ) THEN
         ALTER TABLE systemexpert ADD COLUMN is_dynamic BOOLEAN DEFAULT TRUE;
-        \echo '  -> Added systemexpert.is_dynamic column'
+        RAISE NOTICE '  -> Added systemexpert.is_dynamic column';
     ELSE
-        \echo '  -> Column already exists, skipping'
+        RAISE NOTICE '  -> Column already exists, skipping';
     END IF;
 END $$;
 
@@ -461,12 +433,9 @@ UPDATE systemexpert
 SET is_dynamic = FALSE 
 WHERE expert_key IN ('search', 'coder', 'researcher', 'analyzer', 'writer', 'planner', 'image_analyzer', 'commander');
 
-\echo '  -> SystemExpert is_dynamic flags updated'
-
 -- ============================================================================
 -- 9. 迁移记录表（用于追踪）
 -- ============================================================================
-\echo 'Creating migration history table...'
 
 CREATE TABLE IF NOT EXISTS migration_history (
     id SERIAL PRIMARY KEY,
@@ -483,23 +452,250 @@ ON CONFLICT (filename) DO UPDATE SET
     applied_at = CURRENT_TIMESTAMP,
     success = TRUE;
 
-\echo 'Migration history recorded'
+-- ============================================================================
+-- 11. SystemExpert 表：添加 is_system 字段 (v3.1)
+-- ============================================================================
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'systemexpert' AND column_name = 'is_system'
+    ) THEN
+        ALTER TABLE systemexpert ADD COLUMN is_system BOOLEAN DEFAULT FALSE;
+        RAISE NOTICE '  -> Added systemexpert.is_system column';
+    ELSE
+        RAISE NOTICE '  -> Column already exists, skipping';
+    END IF;
+END $$;
 
 -- ============================================================================
--- 验证
+-- 12. 初始化系统核心组件：router, aggregator, commander, memorize_expert (v3.1)
 -- ============================================================================
-\echo ''
-\echo '========================================'
-\echo 'Migration Summary'
-\echo '========================================'
 
-SELECT 
-    table_name,
-    COUNT(*) as column_count
-FROM information_schema.columns
-WHERE table_name IN ('thread', 'message', 'customagent', 'tasksession', 'subtask', 'artifact', 'user_memories')
-GROUP BY table_name
-ORDER BY table_name;
+-- Router: 意图路由网关
+INSERT INTO systemexpert (
+    expert_key, name, description, system_prompt, model, temperature, is_dynamic, is_system, updated_at
+) VALUES (
+    'router',
+    '意图路由网关',
+    'XPouch AI 的底层意图网关，负责将用户输入分类为 simple 或 complex 模式',
+    '你是 XPouch AI 的底层意图网关。
 
-\echo ''
-\echo 'v3.0 Unified migration completed successfully!'
+【当前时间】：{current_time}
+
+【用户查询】：{user_query}
+
+【用户记忆】：
+{relevant_memories}
+
+你必须且只能输出以下 JSON 格式之一，严禁输出任何其他内容：
+{ "decision_type": "simple" }
+或
+{ "decision_type": "complex" }
+
+判断逻辑：
+
+【Simple 模式】
+- 闲聊、问候、常识问答
+- 简单代码片段、无需联网
+- 无需长期记忆或持久化
+
+【Complex 模式 - 必须选择】
+- 用户要求**记住**某些信息（如"记住我是程序员"、"保存我的偏好"）
+- 需要查询实时数据（天气、股票、新闻）
+- 需要运行代码、分析文件
+- 复杂项目、深度分析、多步骤任务
+- 需要生成图片、文档或其他产物
+
+⚠️ 关键规则：如果用户说"记住..."、"保存..."、"记下来..."等要求存储信息的指令，**必须**选择 complex 模式。',
+    'deepseek-chat',
+    0.3,
+    FALSE,
+    TRUE,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT (expert_key) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    system_prompt = EXCLUDED.system_prompt,
+    model = EXCLUDED.model,
+    temperature = EXCLUDED.temperature,
+    is_system = TRUE,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- Aggregator: 结果聚合器
+INSERT INTO systemexpert (
+    expert_key, name, description, system_prompt, model, temperature, is_dynamic, is_system, updated_at
+) VALUES (
+    'aggregator',
+    '首席联络官',
+    '负责整合多个专家的分析成果，生成一份连贯、专业且易于理解的最终报告',
+    '你是 XPouch AI 的首席联络官（Chief Liaison Officer），负责整合多位专家的分析成果，生成一份连贯、专业且易于理解的最终报告。
+
+【专家成果汇总】：
+{input}
+
+【核心职责】
+1. 阅读并理解所有专家提交的分析结果
+2. 识别各专家观点之间的关联、互补或冲突
+3. 用自然流畅的语言整合所有信息（不要简单罗列）
+4. 突出关键发现和核心结论
+5. 保持逻辑清晰，结构完整
+
+【写作风格】
+- 专业但不晦涩，面向普通读者
+- 使用第三人称客观叙述
+- 适当使用小标题和列表增强可读性
+- 结论先行，细节支撑
+
+【输出要求】
+1. 开头简要概述整体结论（2-3句话）
+2. 主体部分按逻辑组织，不要按专家简单罗列
+3. 如有必要，提及数据来源或分析依据
+4. 结尾可以给出简明建议或展望（可选）',
+    'deepseek-chat',
+    0.5,
+    FALSE,
+    TRUE,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT (expert_key) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    system_prompt = EXCLUDED.system_prompt,
+    model = EXCLUDED.model,
+    temperature = EXCLUDED.temperature,
+    is_system = TRUE,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- Commander: 任务指挥官
+INSERT INTO systemexpert (
+    expert_key, name, description, system_prompt, model, temperature, is_dynamic, is_system, updated_at
+) VALUES (
+    'commander',
+    '任务指挥官',
+    '负责将用户复杂查询拆解为多个专业的子任务，并构建任务间的数据依赖关系',
+    '你是 XPouch AI 的智能任务指挥官（Commander），负责将用户查询拆解为可执行的子任务序列。
+
+【当前用户查询】：
+{user_query}
+
+【可用专家池】：
+{dynamic_expert_list}
+
+【核心能力】
+1. 分析用户需求的意图和真实目标
+2. 根据可用专家池选择最合适的专家组合
+3. 设计任务间的依赖关系（DAG），确保数据正确流转
+4. 生成结构化的执行计划
+
+【输出格式 - 严格 JSON Schema】
+你必须输出符合以下结构的 JSON 对象：
+
+{
+  "thought_process": "规划思考过程：分析需求、拆解步骤、分配专家的详细推理",
+  "strategy": "执行策略概述，如''并行执行''、''顺序执行''、''分阶段交付''",
+  "estimated_steps": 3,
+  "tasks": [
+    {
+      "id": "task_1",
+      "expert_type": "search",
+      "description": "具体的任务描述",
+      "input_data": {},
+      "priority": 0,
+      "dependencies": []
+    }
+  ]
+}
+
+【依赖关系设计原则】
+1. 如果任务B需要任务A的输出结果，在B.dependencies中填入A.id
+2. 无依赖的任务可以并行执行
+3. 通过显式依赖避免上下文污染
+
+【特殊场景处理】
+- 记忆请求：如果用户说"记住..."、"保存..."，分配给 memorize_expert
+- 实时数据：涉及天气、股票、新闻，优先使用 search
+- 代码相关：分配给 coder，可能配合 search 获取最新技术资料
+- 复杂分析：researcher → analyzer 的流水线
+
+【输出要求】
+1. 只输出纯 JSON，不要包含 markdown 代码块标记
+2. 确保 JSON 格式有效，可以被标准 JSON 解析器解析
+3. 所有必填字段必须存在且类型正确',
+    'deepseek-chat',
+    0.5,
+    FALSE,
+    TRUE,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT (expert_key) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    system_prompt = EXCLUDED.system_prompt,
+    model = EXCLUDED.model,
+    temperature = EXCLUDED.temperature,
+    is_system = TRUE,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- Memorize Expert: 记忆专家
+INSERT INTO systemexpert (
+    expert_key, name, description, system_prompt, model, temperature, is_dynamic, is_system, updated_at
+) VALUES (
+    'memorize_expert',
+    '记忆助理',
+    '负责提取和保存用户的关键信息、偏好、重要计划',
+    '你是 XPouch AI 的记忆助理，负责从用户对话中提取关键信息并保存。
+
+【当前任务】：
+{input}
+
+【职责】
+1. 仔细分析用户要求记住的内容
+2. 提取关键事实、偏好、计划或重要信息
+3. 用简洁的语言总结要保存的内容
+4. 返回给用户的回复应确认已记录的信息
+
+【提取原则】
+- 用户的职业、身份、专业领域
+- 用户的偏好设置（喜欢/不喜欢）
+- 用户的重要计划或目标
+- 用户的习惯或约束条件
+- 用户明确要求的待办事项
+
+【输出格式】
+直接回复确认信息，例如：
+"已为您记录：您是一名 Python 开发者，正在学习 LangChain。"
+
+不要输出 JSON 或其他结构化格式。',
+    'deepseek-chat',
+    0.3,
+    FALSE,
+    TRUE,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT (expert_key) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    system_prompt = EXCLUDED.system_prompt,
+    model = EXCLUDED.model,
+    temperature = EXCLUDED.temperature,
+    is_system = TRUE,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 标记所有核心专家为系统组件
+UPDATE systemexpert 
+SET is_system = TRUE, is_dynamic = FALSE
+WHERE expert_key IN ('search', 'coder', 'researcher', 'analyzer', 'writer', 'planner', 'image_analyzer', 'commander', 'router', 'aggregator', 'memorize_expert');
+
+-- ============================================================================
+-- 验证与完成
+-- ============================================================================
+DO $$
+BEGIN
+    RAISE NOTICE '';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'Migration Summary';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'v3.1 System Core Experts migration completed successfully!';
+END $$;

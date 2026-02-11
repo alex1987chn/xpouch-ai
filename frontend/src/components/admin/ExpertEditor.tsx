@@ -164,7 +164,7 @@ export default function ExpertEditor({
               {/* 模型选择 */}
               <ModelSelector
                 value={formData.model}
-                onChange={(modelId) => onFieldChange('model', modelId)}
+                onChange={(modelId) => handleFieldChange('model', modelId)}
                 label={t('modelConfig')}
               />
 
@@ -199,7 +199,7 @@ export default function ExpertEditor({
                     step="0.1"
                     value={formData.temperature ?? 0.5}
                     onChange={(e) =>
-                      onFieldChange('temperature', parseFloat(e.target.value))
+                      handleFieldChange('temperature', parseFloat(e.target.value))
                     }
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                     style={{ WebkitAppearance: 'none', appearance: 'none' }}
@@ -222,7 +222,7 @@ export default function ExpertEditor({
                     </label>
                   </div>
                   <button
-                    onClick={onGenerateDescription}
+                    onClick={handleGenerateDescription}
                     disabled={isGeneratingDescription || formData.system_prompt.length < 10}
                     className={cn(
                       'flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase',
@@ -247,7 +247,7 @@ export default function ExpertEditor({
                 </div>
                 <textarea
                   value={formData.description || ''}
-                  onChange={(e) => onFieldChange('description', e.target.value)}
+                  onChange={(e) => handleFieldChange('description', e.target.value)}
                   placeholder={t('expertDescriptionPlaceholder')}
                   rows={3}
                   className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[80px] bauhaus-scrollbar"
@@ -267,7 +267,7 @@ export default function ExpertEditor({
                 </div>
                 <textarea
                   value={formData.system_prompt}
-                  onChange={(e) => onFieldChange('system_prompt', e.target.value)}
+                  onChange={(e) => handleFieldChange('system_prompt', e.target.value)}
                   placeholder={t('systemPromptPlaceholder')}
                   rows={10}
                   className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[150px] bauhaus-scrollbar"
@@ -283,7 +283,7 @@ export default function ExpertEditor({
               {/* 保存按钮 */}
               <div className="flex justify-end pt-4 border-t-2 border-[var(--border-color)]">
                 <button
-                  onClick={onSave}
+                  onClick={handleSave}
                   disabled={isSaving || formData.system_prompt.length < 10}
                   className={cn(
                     'flex items-center gap-2 px-6 py-2 border-2 border-[var(--border-color)]',
