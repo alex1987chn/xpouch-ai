@@ -252,13 +252,16 @@ export default function ChatStreamPanel({
             
             return (
               <div key={messageKey}>
-                {/* Thinking chain display (outside message bubble) */}
+                {/* Thinking chain display (outside message bubble, BEFORE message content) */}
+                {/* 常规布局：思考过程在消息上方 */}
                 {thinkingSteps.length > 0 && isLastMessageWithThinking && (
-                  <ThinkingProcess 
-                    steps={thinkingSteps}
-                    isThinking={isLastAndStreaming}
-                    totalSteps={estimatedSteps > 0 ? estimatedSteps : thinkingSteps.length}
-                  />
+                  <div className="mb-4">
+                    <ThinkingProcess 
+                      steps={thinkingSteps}
+                      isThinking={isLastAndStreaming}
+                      totalSteps={estimatedSteps > 0 ? estimatedSteps : thinkingSteps.length}
+                    />
+                  </div>
                 )}
                 
                 {/* 

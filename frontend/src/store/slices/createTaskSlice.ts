@@ -315,6 +315,15 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
 
   clearTasks: () => {
     set((state: any) => {
+      // 🔥 保护：如果有运行中的任务，禁止清空（防止复杂模式执行中误清空）
+      if (state.runningTaskIds && state.runningTaskIds.size > 0) {
+        console.warn('[TaskStore] clearTasks 被阻止：有任务正在运行中', {
+          runningCount: state.runningTaskIds.size,
+          runningIds: Array.from(state.runningTaskIds)
+        })
+        return
+      }
+      
       state.mode = null
       state.session = null
       state.tasks = new Map()

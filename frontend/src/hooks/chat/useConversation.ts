@@ -80,9 +80,12 @@ export function useConversation() {
       const store = useChatStore.getState()
       const currentId = store.currentConversationId
 
-      const isPageRefresh = currentId === targetConversationId && store.messages.length > 0
+      // 🔥🔥🔥 改进：判断是否正在显示当前会话（避免执行完成后误判为页面刷新）
+      const isCurrentlyDisplaying = currentId === targetConversationId && store.messages.length > 0
+      // 🔥🔥🔥 真正的页面刷新：messages 来自 localStorage 恢复或为空
+      const isPageRefresh = isCurrentlyDisplaying && !store.messages.some(m => m.role === 'assistant' && m.content && m.content.length > 10)
       
-      debug('Starting to load conversation:', targetConversationId, 'Current conversation:', currentId, 'Is page refresh:', isPageRefresh)
+      debug('Starting to load conversation:', targetConversationId, 'Current conversation:', currentId, 'Is page refresh:', isPageRefresh, 'Is displaying:', isCurrentlyDisplaying)
 
       const conversation = await getConversation(targetConversationId)
 
@@ -102,9 +105,12 @@ export function useConversation() {
           debug('New conversation has no messages, clearing message list')
         }
       } else {
+        // 🔥🔥🔥 页面刷新时，强制重新加载消息（确保从数据库获取完整内容）
         setCurrentConversationId(targetConversationId)
         
-        if (conversation.messages && conversation.messages.length > store.messages.length) {
+        // 始终使用数据库的最新消息，避免本地累积的流式内容不完整
+        if (conversation.messages && conversation.messages.length > 0) {
+          debug('Page refresh: Loading complete messages from database:', conversation.messages.length, 'items')
           setMessages(conversation.messages)
         }
       }
@@ -113,9 +119,11 @@ export function useConversation() {
         setSelectedAgentId(normalizeAgentId(conversation.agent_id))
       }
 
+      // 🔥🔥🔥 改进：先清空任务，再恢复（确保 artifacts 正确加载）
       clearTasks()
 
       if (conversation.task_session) {
+        debug('Restoring task session:', conversation.task_session.id, 'sub_tasks:', conversation.task_session.sub_tasks?.length)
         restoreFromSession(conversation.task_session, conversation.task_session.sub_tasks || [])
       }
 

@@ -92,47 +92,48 @@ export default function UnifiedChatPage() {
     }
   }, [])
 
-  // 加载历史会话（conversationId 或 normalizedAgentId 改变时重新加载）
+  // 🔥🔥🔥 Server-Driven UI: 简化会话加载逻辑
+  // 依赖：key={id} 强制重新挂载 + 导航时清空 Store
   useEffect(() => {
-    if (conversationId) {
-      // 如果是新会话，清空消息和任务状态
-      if (isNewConversation) {
-        useChatStore.getState().setCurrentConversationId(conversationId)
-        useChatStore.getState().setMessages([])
-        const { clearTasks, setMode } = useTaskStore.getState()
-        clearTasks()
-        setMode('simple')
-        return
-      }
-
-      const storeCurrentId = useChatStore.getState().currentConversationId
-      const storeAgentId = useChatStore.getState().selectedAgentId
-      const isSwitchingConversation = storeCurrentId !== conversationId
-      const isSwitchingAgent = storeAgentId !== normalizedAgentId
-
-      // 如果切换了会话或智能体，先清空旧消息
-      if (isSwitchingConversation || isSwitchingAgent) {
-        useChatStore.getState().setMessages([])
-      }
-
-      loadConversation(conversationId)
-        .catch((error: any) => {
-          // 🔥 修复：useConversation 中已处理竞态导致的 404
-          // 这里只处理其他错误（如会话被删除）
-          if (error?.status === 404 || error?.message?.includes('404')) {
-            useChatStore.getState().setCurrentConversationId(conversationId)
-            useChatStore.getState().setMessages([])
-            const { clearTasks, setMode } = useTaskStore.getState()
-            clearTasks()
-            setMode('simple')
-          }
-        })
-    } else {
+    if (!conversationId) {
+      // 无会话 ID 时重置状态
       const { clearTasks, setMode } = useTaskStore.getState()
       clearTasks()
       setMode('simple')
+      return
     }
-  }, [conversationId, normalizedAgentId, isNewConversation])
+
+    // 检查是否有运行中的任务
+    const { runningTaskIds, hasRunningTasks } = useTaskStore.getState()
+    const isExecuting = hasRunningTasks ? hasRunningTasks() : runningTaskIds.size > 0
+    
+    // 执行中不加载（避免干扰流式输出）
+    if (isExecuting) {
+      console.log('[UnifiedChatPage] 执行中，跳过加载')
+      return
+    }
+
+    // 检查是否已加载当前会话
+    const storeCurrentId = useChatStore.getState().currentConversationId
+    const currentMessages = useChatStore.getState().messages
+    
+    if (storeCurrentId === conversationId && currentMessages.length > 0) {
+      // 已加载，跳过
+      return
+    }
+
+    // 加载历史会话
+    loadConversation(conversationId)
+      .catch((error: any) => {
+        if (error?.status === 404) {
+          // 会话不存在，重置状态
+          useChatStore.getState().setMessages([])
+          const { clearTasks, setMode } = useTaskStore.getState()
+          clearTasks()
+          setMode('simple')
+        }
+      })
+  }, [conversationId])
 
   // 恢复草稿（只依赖 conversationId）
   useEffect(() => {

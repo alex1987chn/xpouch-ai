@@ -325,6 +325,14 @@ export default function HomePage() {
 
     const newId = crypto.randomUUID()
 
+    // 🔥🔥🔥 Server-Driven UI: 导航前直接清空 Store（事件驱动）
+    // 避免 useEffect 复杂判断，确保新会话以干净状态开始
+    useChatStore.getState().setMessages([])
+    useChatStore.getState().setCurrentConversationId(null)
+    const { clearTasks, setMode } = useTaskStore.getState()
+    clearTasks()
+    setMode('simple')
+
     // 统一使用 Orchestrator 接口（后端自动路由）
     const agentId = selectedAgentId || SYSTEM_AGENTS.DEFAULT_CHAT
 
@@ -333,11 +341,11 @@ export default function HomePage() {
     // 自定义智能体：/chat/:id?agentId=xxx
     if (agentId !== SYSTEM_AGENTS.DEFAULT_CHAT) {
       navigate(`/chat/${newId}?agentId=${agentId}`, {
-        state: { startWith: inputMessage, isNew: true }
+        state: { startWith: inputMessage }
       })
     } else {
       navigate(`/chat/${newId}`, {
-        state: { startWith: inputMessage, isNew: true }
+        state: { startWith: inputMessage }
       })
     }
   }, [inputMessage, navigate, selectedAgentId])

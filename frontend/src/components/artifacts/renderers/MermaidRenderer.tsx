@@ -36,6 +36,38 @@ function isMermaidComplete(code: string): boolean {
     return false
   }
   
+  // 🔥 甘特图特殊处理：检查日期格式是否完整
+  if (trimmed.toLowerCase().startsWith('gantt')) {
+    // 检查是否有 section 和至少一个任务
+    const hasSection = lines.some(l => l.trim().toLowerCase().startsWith('section'))
+    const hasTask = lines.some(l => 
+      l.includes(':') && 
+      !l.toLowerCase().startsWith('gantt') && 
+      !l.toLowerCase().startsWith('section') &&
+      !l.toLowerCase().startsWith('dateformat')
+    )
+    // 甘特图需要 section + task
+    if (!hasSection || !hasTask) {
+      return false
+    }
+    // 检查任务行是否包含完整的日期（以 d 结尾表示天数，或包含日期格式）
+    const taskLines = lines.filter(l => 
+      l.includes(':') && 
+      !l.toLowerCase().startsWith('gantt') && 
+      !l.toLowerCase().startsWith('section') &&
+      !l.toLowerCase().startsWith('dateformat')
+    )
+    // 至少一个任务要有完整的日期定义（以数字+d 或具体日期结尾）
+    const hasValidDate = taskLines.some(l => 
+      /\d+d\s*$/.test(l) ||           // 以 30d 结尾
+      /\d{4}-\d{2}-\d{2}/.test(l) || // 包含 YYYY-MM-DD
+      /after\s+\w+/.test(l)          // 包含 after xxx
+    )
+    if (!hasValidDate) {
+      return false
+    }
+  }
+  
   return true
 }
 

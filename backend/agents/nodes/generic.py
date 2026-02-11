@@ -280,15 +280,19 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
             
             if depends_on:
                 # 查找依赖任务的输出
+                # 🔥🔥🔥 关键修复：双保险匹配，支持 task_id 和 db_uuid
                 for dep_id in depends_on:
                     dep_result = next(
-                        (r for r in expert_results if r.get("task_id") == dep_id), 
+                        (r for r in expert_results 
+                         if r.get("task_id") == dep_id or r.get("db_uuid") == dep_id), 
                         None
                     )
                     if dep_result and dep_result.get("output"):
                         context_parts.append(f"【上游任务 {dep_id} 的输出】:\n{dep_result['output'][:2000]}...")
+                        print(f"[GenericWorker] ✅ 找到依赖 {dep_id}: {len(dep_result['output'])} 字符")
                     else:
                         missing_deps.append(dep_id)
+                        print(f"[GenericWorker] ⚠️ 未找到依赖 {dep_id}, 可用结果: {[r.get('task_id') for r in expert_results]}")
             
             # 组装任务提示
             task_prompt = f"任务描述: {description}\n\n"
@@ -441,14 +445,23 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
         task_list[current_index]["completed_at"] = completed_at.isoformat()
 
         # ✅ 添加到 expert_results（用于后续任务依赖和最终聚合）
+        # 🔥🔥🔥 关键修复：使用 task_id (Commander ID, 如 "task_0") 而不是 id (UUID)
+        # 下游任务通过 depends_on: ["task_0"] 查找，必须用相同格式才能匹配
+        semantic_id = current_task.get("task_id")  # Commander ID (如 "task_0")
+        db_uuid = current_task.get("id")  # 数据库 UUID (如 "550e8400...")
+        record_id = semantic_id if semantic_id else db_uuid  # 优先使用 semantic_id
+        
         expert_result = {
-            "task_id": current_task.get("id", str(current_index)),
+            "task_id": record_id,  # 🔥 关键：使用 Commander ID 让下游能匹配到
+            "db_uuid": db_uuid,    # 保留 UUID 方便调试
             "expert_type": expert_type,
             "description": description,
             "output": response.content,
             "status": "completed",
             "duration_ms": duration_ms
         }
+        
+        print(f"[GenericWorker] 保存专家结果: task_id={record_id}, db_uuid={db_uuid}, expert={expert_type}")
 
         # 获取现有的 expert_results 并追加新结果
         expert_results = state.get("expert_results", [])
@@ -575,9 +588,13 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
 
         # 获取现有的 expert_results 并添加失败记录
         expert_results = state.get("expert_results", [])
-        task_id = current_task.get("id", str(current_index))
+        # 🔥🔥🔥 关键修复：使用 task_id (Commander ID) 而不是 id (UUID)
+        semantic_id = current_task.get("task_id")
+        db_uuid = current_task.get("id")
+        task_id = semantic_id if semantic_id else db_uuid
         expert_result = {
-            "task_id": task_id,
+            "task_id": task_id,  # 🔥 使用 Commander ID
+            "db_uuid": db_uuid,  # 保留 UUID
             "expert_type": expert_type,
             "description": description,
             "output": f"专家执行失败: {str(e)}",
@@ -703,8 +720,8 @@ async def _handle_streaming_response(
                 )
                 initial_event_queue.append({"type": "sse", "event": sse_event_to_string(chunk_event)})
                 
-                # 每 10 个 chunk 打印一次日志，避免日志刷屏
-                if chunk_count % 10 == 0:
+                # 每 100 个 chunk 或每 2000 字符打印一次日志，避免日志刷屏
+                if chunk_count % 100 == 0 or (chunk_count % 50 == 0 and len(full_content) % 2000 < 100):
                     print(f"[Streaming] 已发送 {chunk_count} chunks, 内容长度: {len(full_content)}")
         
         print(f"[Streaming] 流式生成完成: {chunk_count} chunks, 总长度: {len(full_content)}")
