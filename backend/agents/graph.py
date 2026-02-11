@@ -149,13 +149,16 @@ def route_dispatcher(state: AgentState) -> str:
     """
     task_list = state.get("task_list", [])
     current_index = state.get("current_task_index", 0)
+    
+    print(f"[ROUTE_DISPATCHER] current_index={current_index}, task_count={len(task_list)}")
 
     # 检查是否还有任务
     if current_index >= len(task_list):
+        print(f"[ROUTE_DISPATCHER] 所有任务完成，路由到 aggregator")
         return "aggregator"  # 所有任务完成，去聚合
 
     # 还有任务，需要回到 Dispatcher 让它检查并分发
-    # Dispatcher 会检查任务并决定是否继续
+    print(f"[ROUTE_DISPATCHER] 还有任务，路由到 expert_dispatcher")
     return "expert_dispatcher"
 
 
@@ -172,12 +175,16 @@ def route_generic(state: AgentState) -> str:
     messages = state.get("messages", [])
     current_index = state.get("current_task_index", 0)
     task_list = state.get("task_list", [])
+    
+    print(f"[ROUTE_GENERIC] current_index={current_index}, task_count={len(task_list)}, messages_count={len(messages)}")
 
     if not messages:
+        print(f"[ROUTE_GENERIC] messages 为空，调用 route_dispatcher")
         return route_dispatcher(state)
     
     # 🔥 获取最后一条消息
     last_message = messages[-1]
+    print(f"[ROUTE_GENERIC] 最后一条消息类型: {type(last_message).__name__}")
 
     # 🔥🔥🔥 熔断机制 (Circuit Breaker) 🔥🔥🔥
     # 检查最近的 ToolMessage 数量，防止无限循环
@@ -188,19 +195,23 @@ def route_generic(state: AgentState) -> str:
 
     # 🔥 情况1：LLM 返回了 tool_calls，需要执行工具
     if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+        print(f"[ROUTE_GENERIC] 检测到 tool_calls，路由到 tools")
         return "tools"
 
     # 🔥 情况2：最后一条是 ToolMessage，说明工具刚执行完
     # 需要回到 Generic 让 LLM 处理工具结果
     if isinstance(last_message, ToolMessage):
+        print(f"[ROUTE_GENERIC] 最后一条是 ToolMessage，路由到 generic")
         return "generic"
 
     # 🔥 情况3：检查任务是否完成
     # 如果 current_index >= len(task_list)，说明所有任务已完成
     if current_index >= len(task_list):
+        print(f"[ROUTE_GENERIC] 所有任务完成，路由到 aggregator")
         return "aggregator"
 
     # 情况4：还有任务，继续执行
+    print(f"[ROUTE_GENERIC] 还有任务，调用 route_dispatcher")
     return route_dispatcher(state)
 
 # ============================================================================
