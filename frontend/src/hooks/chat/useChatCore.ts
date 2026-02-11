@@ -59,16 +59,40 @@ function processStreamingChunk(
   let outputContent = ''
   let outputThinking = ''
   
-  // v3.1.1 修复：只在流的第一个 chunk 检查 JSON 元数据
+  // v3.1.1 修复：只在流的第一个 chunk 检查并过滤系统元数据
   // 避免误杀 AI 回复中的合法 JSON 代码示例
   if (isFirstChunk) {
     const trimmedChunk = chunk.trim()
-    // 严格匹配：以 { 开头、包含 "decision" 字段、且是系统元数据格式
-    if (trimmedChunk.startsWith('{') && 
-        trimmedChunk.includes('"decision"') && 
-        trimmedChunk.includes('"decision_type"')) {
-      // 这是系统元数据，不显示给用户
-      return { content: '', thinking: '', hasUpdate: false }
+    
+    // 🔥🔥🔥 降噪：使用正则匹配并移除 Router 决策 JSON
+    // 匹配 {"decision_type": "complex"} 或 {"decision_type":"complex"}xxx
+    const decisionJsonRegex = /^\s*\{\s*"decision_type"\s*:\s*"[^"]+"\s*\}/
+    if (decisionJsonRegex.test(trimmedChunk)) {
+      // 移除 JSON 部分，保留后面的内容
+      chunk = trimmedChunk.replace(decisionJsonRegex, '').trim()
+      // 如果移除后没有内容了，直接返回空
+      if (!chunk) {
+        return { content: '', thinking: '', hasUpdate: false }
+      }
+    }
+    
+    // 🔥🔥🔥 降噪：过滤系统日志和工具调用提示
+    // 这些不应该展示给用户，只应该在 ThinkingProcess 中显示
+    const systemLogPatterns = [
+      // Expert thinking 日志
+      /^(Expert|专家)\s+\w+\s+(is\s+thinking|thinking|思考中)/i,
+      // 工具调用提示
+      /^(Calling|调用)\s+(tool|工具)\s*:/i,
+      // 原始 Prompt 传递标记
+      /^---\s*Prompt\s*---/i,
+      /^---\s*System\s*Message\s*---/i,
+    ]
+    
+    for (const pattern of systemLogPatterns) {
+      if (pattern.test(trimmedChunk)) {
+        // 这是系统日志，过滤掉但标记为 thinking 内容供 ThinkingProcess 使用
+        return { content: '', thinking: trimmedChunk, hasUpdate: true }
+      }
     }
   }
   
@@ -196,7 +220,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     setInputMessage, 
     setCurrentConversationId, 
     addMessage, 
-    updateMessage, 
+    updateMessage,
+    updateMessageMetadata,
     setMessages, 
     setGenerating 
   } = useChatActions()
@@ -349,40 +374,27 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
           // 只将正文内容传递给 UI 显示
           if (content) {
             onChunk?.(content)
+            
+            // 🔥 关键修复：实时更新消息内容到 chatStore
+            if (assistantMessageId) {
+              updateMessage(assistantMessageId, content, true)
+            }
           }
           
           // 如果有 thinking 内容，实时更新到消息 metadata
-          if (thinking && assistantMessageId) {
-            const { messages, updateMessageMetadata } = useChatStore.getState()
-            const message = messages.find(m => m.id === assistantMessageId)
-            if (message) {
-              const existingThinking = message.metadata?.thinking || []
-              // 查找或创建 thinking step
-              const thinkStepIndex = existingThinking.findIndex((s: any) => s.id === 'streaming-think')
-              let newThinking
-              
-              if (thinkStepIndex >= 0) {
-                // 追加到现有 thinking step
-                newThinking = [...existingThinking]
-                newThinking[thinkStepIndex] = {
-                  ...newThinking[thinkStepIndex],
-                  content: newThinking[thinkStepIndex].content + thinking
-                }
-              } else {
-                // 创建新的 thinking step
-                newThinking = [...existingThinking, {
-                  id: 'streaming-think',
-                  expertType: 'thinking',
-                  expertName: '思考过程',
-                  content: thinking,
-                  timestamp: new Date().toISOString(),
-                  status: 'running',
-                  type: 'default'
-                }]
-              }
-              
-              updateMessageMetadata(assistantMessageId, { thinking: newThinking })
-            }
+          // 🔥 使用累积的 thinkingBuffer 而不是本次 chunk 的 thinking
+          if (streamingParserState.thinkingBuffer && assistantMessageId) {
+            updateMessageMetadata(assistantMessageId, {
+              thinking: [{
+                id: 'streaming-think',
+                expertType: 'thinking',
+                expertName: '思考过程',
+                content: streamingParserState.thinkingBuffer,
+                timestamp: new Date().toISOString(),
+                status: 'running',
+                type: 'default'
+              }]
+            })
           }
         }
       }
@@ -535,38 +547,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
             onChunk?.(content)
           }
           
-          // 如果有 thinking 内容，实时更新到消息 metadata
-          if (thinking) {
-            const { messages, updateMessageMetadata } = useChatStore.getState()
-            // 查找最后一条 AI 消息
-            const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
-            
-            if (lastAiMessage) {
-              const existingThinking = lastAiMessage.metadata?.thinking || []
-              const thinkStepIndex = existingThinking.findIndex((s: any) => s.id === 'streaming-think')
-              let newThinking
-              
-              if (thinkStepIndex >= 0) {
-                newThinking = [...existingThinking]
-                newThinking[thinkStepIndex] = {
-                  ...newThinking[thinkStepIndex],
-                  content: newThinking[thinkStepIndex].content + thinking
-                }
-              } else {
-                newThinking = [...existingThinking, {
-                  id: 'streaming-think',
-                  expertType: 'thinking',
-                  expertName: '思考过程',
-                  content: thinking,
-                  timestamp: new Date().toISOString(),
-                  status: 'running',
-                  type: 'default'
-                }]
-              }
-              
-              updateMessageMetadata(lastAiMessage.id!, { thinking: newThinking })
-            }
-          }
+          // 🔥 关键修复：使用累积的 thinkingBuffer 更新到消息 metadata
+          // resumeExecution 不直接更新消息内容，由上层通过 onChunk 处理
         }
       }
 
@@ -597,8 +579,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       setGenerating(false)
       abortControllerRef.current = null
     }
-
-    return fullContent
   }, [isGenerating, conversationMode, onExpertEvent, onChunk, setGenerating, addMessage])
 
   return {

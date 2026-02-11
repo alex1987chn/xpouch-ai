@@ -63,10 +63,18 @@ export function useChat() {
   // 2. Get chat core logic with callbacks
   const chatCore = useChatCore({
     onNewConversation: useCallback((conversationId: string, agentId: string) => {
+      // 🔥 修复：保留 isNew 状态，避免触发不必要的 loadConversation
+      // 后端已创建会话，标记 isNew: false 表示会话已存在
       if (agentId && agentId !== 'sys-default-chat' && agentId !== 'default-chat') {
-        navigate(`/chat/${conversationId}?agentId=${agentId}`, { replace: true })
+        navigate(`/chat/${conversationId}?agentId=${agentId}`, { 
+          replace: true,
+          state: { isNew: false }
+        })
       } else {
-        navigate(`/chat/${conversationId}`, { replace: true })
+        navigate(`/chat/${conversationId}`, { 
+          replace: true,
+          state: { isNew: false }
+        })
       }
     }, [navigate]),
     onExpertEvent: handleExpertEvent,

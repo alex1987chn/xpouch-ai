@@ -296,7 +296,7 @@ def get_router_llm() -> ChatOpenAI:
     router_config = get_router_config()
     
     temperature = router_config.get('temperature', 0.1)
-    streaming = router_config.get('streaming', True)
+    streaming = router_config.get('streaming', False)  # 🔥 Router 不需要流式输出
     
     return get_llm_instance(
         provider=provider,

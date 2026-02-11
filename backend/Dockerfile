@@ -9,17 +9,15 @@ ENV PYTHONUNBUFFERED=1
 # 安装 uv（推荐的 Python 包管理器）
 RUN apt-get update && apt-get install -y curl && \
     curl -LsSf https://astral.sh/uv/install.sh | sh && \
-    export PATH="$HOME/.local/bin:$PATH" && \
     rm -rf /var/lib/apt/lists/*
 
-# 复制依赖文件
-# 注意：在构建镜像前，请确保在 backend 目录下生成了 requirements.txt
-# 可以使用命令: uv pip compile pyproject.toml -o requirements.txt
-COPY requirements.txt .
+ENV PATH="/root/.local/bin:${PATH}"
+
+# 复制依赖锁定文件和 pyproject.toml
+COPY pyproject.toml uv.lock ./
 
 # 使用 uv 安装依赖（更快更可靠）
-ENV PATH="/root/.local/bin:${PATH}"
-RUN /root/.local/bin/uv pip install --no-cache --system -r requirements.txt
+RUN uv sync --frozen --no-dev
 
 # 复制源码
 COPY . .

@@ -98,6 +98,10 @@ export function useExpertHandler() {
     failTask: useTaskStore.getState().failTask,
     addArtifact: useTaskStore.getState().addArtifact,
     selectTask: useTaskStore.getState().selectTask,
+    // 🔥 流式 artifact actions
+    startArtifact: useTaskStore.getState().startArtifact,
+    streamArtifactChunk: useTaskStore.getState().streamArtifactChunk,
+    completeArtifact: useTaskStore.getState().completeArtifact,
   })
   
   // 保持 actions 引用稳定
@@ -267,6 +271,28 @@ export function useExpertHandler() {
         
         // 自动选中该任务
         taskActions.selectTask(artifactData.task_id)
+        break
+      }
+      
+      case 'artifact.start': {
+        // 🔥 流式 Artifact 开始：直接传递 event.data
+        taskActions.startArtifact(event.data)
+        // 自动切换到该任务
+        if (event.data.task_id) {
+          taskActions.selectTask(event.data.task_id)
+        }
+        break
+      }
+      
+      case 'artifact.chunk': {
+        // 🔥 流式 Artifact 更新：追加内容
+        taskActions.streamArtifactChunk(event.data)
+        break
+      }
+      
+      case 'artifact.completed': {
+        // 🔥 流式 Artifact 完成
+        taskActions.completeArtifact(event.data)
         break
       }
       
