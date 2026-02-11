@@ -642,10 +642,18 @@ class StreamService:
             # 创建生产者任务
             async def producer():
                 try:
+                    print("[Producer] 开始执行 LangGraph 流...")
+                    event_count = 0
                     async for token in graph.astream_events(None, config, version="v2"):
+                        event_count += 1
                         # 🔥 修复：token 可能是字符串，跳过非字典类型
                         if not isinstance(token, dict):
                             continue
+                        
+                        # 🔥 调试日志
+                        event_type = token.get("event", "")
+                        if "on_chain" in event_type or "on_chat_model" in event_type:
+                            print(f"[Producer] 收到事件 {event_count}: {event_type}")
                             
                         event_str = self.transform_langgraph_event(token, message_id)
                         if event_str:
@@ -662,12 +670,15 @@ class StreamService:
                                 "type": "artifact",
                                 "data": output["artifact"]
                             })
+                    
+                    print(f"[Producer] 流结束，共处理 {event_count} 个事件")
                 
                 except Exception as e:
                     import traceback
                     logger.error(f"[StreamService] Producer 错误: {e}")
                     traceback.print_exc()
                 finally:
+                    print("[Producer] 发送 done 信号")
                     await sse_queue.put({"type": "done"})
             
             # 启动生产者
