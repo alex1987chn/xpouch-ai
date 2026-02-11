@@ -665,6 +665,20 @@ class StreamService:
                             if not isinstance(token, dict):
                                 continue
 
+                            # 处理 event_queue 中的事件（artifact.start/chunk/completed 等）
+                            event_type = token.get("event", "")
+                            if event_type == "on_chain_end":
+                                data = token.get("data", {}) or {}
+                                output = data.get("output", {}) or {}
+                                if output and isinstance(output, dict):
+                                    event_queue = output.get("event_queue", [])
+                                    for queued_event in event_queue:
+                                        if queued_event.get("type") == "sse":
+                                            await sse_queue.put({
+                                                "type": "sse",
+                                                "event": queued_event["event"]
+                                            })
+
                             event_str = self.transform_langgraph_event(token, message_id)
                             if event_str:
                                 await sse_queue.put({

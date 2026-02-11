@@ -94,35 +94,14 @@ function ExpertNode({ task, isSelected, isRunning, index, onClick }: ExpertNodeP
           isSelected ? "text-primary-foreground" : "text-primary"
         )}>{label}</span>
         
-        {/* 状态指示灯 */}
-        {task.status === 'running' && (
-          <div className="absolute -bottom-0.5 -right-0.5">
-            <div className="w-3 h-3 bg-yellow-400 rounded-full relative">
-              <div className="absolute inset-0 rounded-full animate-ping bg-yellow-400" />
-            </div>
-          </div>
-        )}
       </div>
-      
+
       {/* Tooltip - 显示任务描述 */}
       <div className={cn(
         "absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-popover text-popover-foreground text-[10px] px-2 py-1 border border-border rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 max-w-[200px] truncate"
       )}>
         {task.description || task.expert_type}
       </div>
-      
-      {/* 🔥 运行中任务的特殊高亮效果 */}
-      {isRunning && (
-        <>
-          {/* 呼吸灯边框 */}
-          <div className="absolute inset-0 border-2 border-yellow-400 rounded animate-ping opacity-20" />
-          {/* 状态提示 */}
-          <div className="absolute -right-1 -top-1 w-3 h-3">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75" />
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-yellow-400" />
-          </div>
-        </>
-      )}
     </div>
   )
 }
