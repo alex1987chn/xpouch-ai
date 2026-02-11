@@ -8,6 +8,7 @@
 4. 自动生成专家描述
 """
 from typing import List, Optional
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 import os
@@ -281,6 +282,7 @@ async def update_expert(
     expert.description = expert_update.description
     expert.model = expert_update.model
     expert.temperature = expert_update.temperature
+    expert.updated_at = datetime.now()
 
     session.add(expert)
     session.commit()
