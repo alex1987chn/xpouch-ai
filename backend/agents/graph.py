@@ -112,12 +112,9 @@ def get_simple_llm_lazy():
         try:
             if is_provider_configured('minimax'):
                 _simple_llm = get_llm_instance(provider='minimax', streaming=True, temperature=0.7)
-                print("[LLM] Simple 模式使用: MiniMax-M2.1")
             else:
                 _simple_llm = get_router_llm()
-                print("[LLM] Simple 模式回退到 Router LLM")
-        except Exception as e:
-            print(f"[LLM] Simple 模式初始化失败，回退到 Router: {e}")
+        except Exception:
             _simple_llm = get_router_llm()
     return _simple_llm
 
@@ -129,8 +126,6 @@ def get_simple_llm_lazy():
 def route_router(state: AgentState) -> str:
     """Router 之后的去向"""
     decision = state.get("router_decision", "complex")
-
-    print(f"[ROUTE_ROUTER] 决策: {decision}, 将路由到: {'direct_reply' if decision == 'simple' else 'commander'}")
 
     if decision == "simple":
         # Simple 模式进入 direct_reply 节点
@@ -149,16 +144,12 @@ def route_dispatcher(state: AgentState) -> str:
     """
     task_list = state.get("task_list", [])
     current_index = state.get("current_task_index", 0)
-    
-    print(f"[ROUTE_DISPATCHER] current_index={current_index}, task_count={len(task_list)}")
 
     # 检查是否还有任务
     if current_index >= len(task_list):
-        print(f"[ROUTE_DISPATCHER] 所有任务完成，路由到 aggregator")
         return "aggregator"  # 所有任务完成，去聚合
 
     # 还有任务，需要回到 Dispatcher 让它检查并分发
-    print(f"[ROUTE_DISPATCHER] 还有任务，路由到 expert_dispatcher")
     return "expert_dispatcher"
 
 
@@ -175,43 +166,35 @@ def route_generic(state: AgentState) -> str:
     messages = state.get("messages", [])
     current_index = state.get("current_task_index", 0)
     task_list = state.get("task_list", [])
-    
-    print(f"[ROUTE_GENERIC] current_index={current_index}, task_count={len(task_list)}, messages_count={len(messages)}")
 
     if not messages:
-        print(f"[ROUTE_GENERIC] messages 为空，调用 route_dispatcher")
         return route_dispatcher(state)
-    
-    # 🔥 获取最后一条消息
+
+    # 获取最后一条消息
     last_message = messages[-1]
-    print(f"[ROUTE_GENERIC] 最后一条消息类型: {type(last_message).__name__}")
 
     # 🔥🔥🔥 熔断机制 (Circuit Breaker) 🔥🔥🔥
     # 检查最近的 ToolMessage 数量，防止无限循环
     recent_tool_count = sum(1 for msg in messages[-10:] if isinstance(msg, ToolMessage))
     if recent_tool_count >= 5:
-        print(f"[ROUTE_GENERIC] 🛑 熔断触发：最近已执行 {recent_tool_count} 次工具，强制结束任务！")
+        logger.warning(f"[RouteGeneric] 熔断触发：最近已执行 {recent_tool_count} 次工具，强制结束任务")
         return "aggregator"
 
-    # 🔥 情况1：LLM 返回了 tool_calls，需要执行工具
+    # 情况1：LLM 返回了 tool_calls，需要执行工具
     if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-        print(f"[ROUTE_GENERIC] 检测到 tool_calls，路由到 tools")
         return "tools"
 
-    # 🔥 情况2：最后一条是 ToolMessage，说明工具刚执行完
+    # 情况2：最后一条是 ToolMessage，说明工具刚执行完
     # 需要回到 Generic 让 LLM 处理工具结果
     if isinstance(last_message, ToolMessage):
-        print(f"[ROUTE_GENERIC] 最后一条是 ToolMessage，路由到 generic")
         return "generic"
 
-    # 🔥 情况3：检查任务是否完成
+    # 情况3：检查任务是否完成
     # 如果 current_index >= len(task_list)，说明所有任务已完成
     if current_index >= len(task_list):
-        print(f"[ROUTE_GENERIC] 所有任务完成，路由到 aggregator")
         return "aggregator"
 
     # 情况4：还有任务，继续执行
-    print(f"[ROUTE_GENERIC] 还有任务，调用 route_dispatcher")
     return route_dispatcher(state)
 
 # ============================================================================
@@ -243,7 +226,6 @@ def create_smart_router_workflow(checkpointer: Optional[BaseCheckpointSaver] = N
     # 🔥 新增：工具执行节点
     tool_node = ToolNode(ALL_TOOLS)
     workflow.add_node("tools", tool_node)
-    print(f"[WORKFLOW] [OK] 已注册工具节点，包含 {len(ALL_TOOLS)} 个工具: {[t.name for t in ALL_TOOLS]}")
 
     # 设置入口：现在入口是 Router！
     workflow.set_entry_point("router")

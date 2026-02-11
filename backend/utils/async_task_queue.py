@@ -49,7 +49,6 @@ class AsyncTaskQueue:
             "failed": 0
         }
         self._initialized = True
-        print(f"[AsyncTaskQueue] 初始化完成，线程池大小: {max_workers}")
     
     async def submit(self, func: Callable, *args, **kwargs) -> asyncio.Future:
         """
@@ -75,8 +74,6 @@ class AsyncTaskQueue:
             return result
         except Exception as e:
             self._stats["failed"] += 1
-            print(f"[AsyncTaskQueue] 任务执行失败: {e}")
-            traceback.print_exc()
             raise
     
     def get_stats(self) -> Dict[str, int]:
@@ -86,7 +83,6 @@ class AsyncTaskQueue:
     def shutdown(self, wait: bool = True):
         """关闭线程池"""
         self._executor.shutdown(wait=wait)
-        print("[AsyncTaskQueue] 线程池已关闭")
 
 
 # 全局单例
@@ -129,10 +125,8 @@ def _sync_save_wrapper(
                 artifact_data,
                 duration_ms
             )
-            print(f"[AsyncSave] ✅ [Thread] 任务 {task_id} ({expert_type}) 保存成功")
-        except Exception as e:
+        except Exception:
             new_session.rollback()  # 回滚防止脏数据
-            print(f"[AsyncSave] ❌ [Thread] 保存失败: {e}")
             # 可以在这里加 Sentry 监控
 
 

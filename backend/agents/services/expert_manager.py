@@ -145,7 +145,6 @@ def load_all_experts(session: Session) -> Dict[str, Dict]:
             
         config_map[expert.expert_key] = config
 
-    print(f"[ExpertManager] Loaded {len(config_map)} experts from database")
     return config_map
 
 
@@ -227,9 +226,6 @@ def refresh_cache(session: Optional[Session] = None):
     _expert_cache = load_all_experts(session)
     _cache_timestamp = time.time()
 
-    print(f"[ExpertManager] Expert cache refreshed at {_cache_timestamp}")
-    print(f"[ExpertManager] Cache now contains {len(_expert_cache)} experts")
-
 
 def force_refresh_all():
     """
@@ -243,8 +239,6 @@ def force_refresh_all():
     # 清空缓存，下次查询时会自动重新加载
     _expert_cache = {}
     _cache_timestamp = None
-
-    print(f"[ExpertManager] Cache cleared and will be reloaded on next access")
 
 
 def get_all_expert_list(db_session: Optional[Session] = None) -> List[tuple]:

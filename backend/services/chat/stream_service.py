@@ -646,43 +646,32 @@ class StreamService:
                 try:
                     loop_count = 0
                     max_loops = 50  # 防止无限循环
-                    
+
                     while loop_count < max_loops:
                         loop_count += 1
-                        print(f"[Producer] ====== 开始第 {loop_count} 轮执行 ======")
-                        
+
                         # 获取当前状态
                         current_state = await graph.aget_state(config)
                         task_list = current_state.values.get("task_list", [])
                         current_index = current_state.values.get("current_task_index", 0)
-                        
-                        print(f"[Producer] 当前状态: index={current_index}, tasks={len(task_list)}")
-                        
+
                         # 检查是否所有任务都完成了
                         if current_index >= len(task_list):
-                            print(f"[Producer] 所有任务已完成，退出循环")
                             break
-                        
+
                         # 执行一轮 LangGraph
-                        event_count = 0
                         async for token in graph.astream_events(None, config, version="v2"):
-                            event_count += 1
                             # 🔥 修复：token 可能是字符串，跳过非字典类型
                             if not isinstance(token, dict):
                                 continue
-                            
-                            # 🔥 调试日志
-                            event_type = token.get("event", "")
-                            if "on_chain" in event_type or "on_chat_model" in event_type:
-                                print(f"[Producer] 收到事件 {event_count}: {event_type}")
-                                
+
                             event_str = self.transform_langgraph_event(token, message_id)
                             if event_str:
                                 await sse_queue.put({
                                     "type": "sse",
                                     "event": event_str
                                 })
-                            
+
                             # 收集 artifacts
                             data = token.get("data", {}) or {}
                             output = data.get("output", {}) or {}
@@ -691,20 +680,15 @@ class StreamService:
                                     "type": "artifact",
                                     "data": output["artifact"]
                                 })
-                        
-                        print(f"[Producer] 第 {loop_count} 轮结束，共 {event_count} 个事件")
-                        
+
                         # 短暂等待，让状态更新
                         await asyncio.sleep(0.1)
-                    
-                    print(f"[Producer] 循环结束，共执行 {loop_count} 轮")
-                
+
                 except Exception as e:
                     import traceback
                     logger.error(f"[StreamService] Producer 错误: {e}")
                     traceback.print_exc()
                 finally:
-                    print("[Producer] 发送 done 信号")
                     await sse_queue.put({"type": "done"})
             
             # 启动生产者

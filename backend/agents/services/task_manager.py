@@ -17,6 +17,7 @@ Created: 2026-02-05
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from sqlmodel import Session
+from utils.logger import logger
 from models import SubTaskCreate, SubTaskUpdate, ArtifactCreate
 from models import Message as MessageModel
 from crud.task_session import (
@@ -78,13 +79,10 @@ def get_or_create_task_session(
     existing_session = get_task_session_by_thread(db, thread_id)
 
     if existing_session:
-        print(f"[TaskManager] 复用已有 TaskSession: {existing_session.session_id}")
-
         # ✅ 修复：删除旧的 SubTasks，根据新的 subtasks_data 创建新的
         # 这样可以确保 task_list 与数据库一致
         old_subtasks = get_subtasks_by_session(db, existing_session.session_id)
         if old_subtasks:
-            print(f"[TaskManager] 删除 {len(old_subtasks)} 个旧子任务")
             for old_subtask in old_subtasks:
                 db.delete(old_subtask)
 
@@ -127,11 +125,9 @@ def get_or_create_task_session(
                         new_depends_on.append(dep_id)
                 subtask.depends_on = new_depends_on
                 db.add(subtask)
-                print(f"[TaskManager] 复用 Session - 任务 {subtask.id} depends_on: {original_depends_on} -> {new_depends_on}")
-        
+
         db.commit()
         db.refresh(existing_session)
-        print(f"[TaskManager] 已更新 TaskSession 并创建 {len(subtasks_data)} 个新子任务")
         return existing_session, True
 
     # 创建新的 TaskSession
@@ -146,7 +142,6 @@ def get_or_create_task_session(
         execution_mode=execution_mode,
         session_id=session_id  # 🔥 传入预览时使用的 session_id
     )
-    print(f"[TaskManager] 创建新 TaskSession: {task_session.session_id}")
     return task_session, False
 
 
@@ -172,7 +167,6 @@ def complete_task_session(
         "completed",
         final_response=final_response
     )
-    print(f"[TaskManager] TaskSession {task_session_id} 已标记为完成")
 
 
 # =============================================================================
@@ -207,12 +201,10 @@ def save_expert_execution_result(
         bool: 是否保存成功
     """
     try:
-        print(f"[TaskManager] 保存专家执行结果: task_id={task_id}, expert_type={expert_type}")
-
         # 1. 检查 SubTask 是否存在
         subtask = get_subtask(db, task_id)
         if not subtask:
-            print(f"[TaskManager] ⚠️ SubTask 不存在: {task_id}")
+            logger.warning(f"[TaskManager] SubTask 不存在: {task_id}")
             return False
 
         # 2. 更新 SubTask 状态 - 直接操作对象避免参数问题
@@ -225,7 +217,6 @@ def save_expert_execution_result(
         db.add(subtask)
         db.commit()
         db.refresh(subtask)
-        print(f"[TaskManager] ✅ SubTask 状态已更新: {task_id}")
 
         # 3. 创建 Artifact (如果有)
         if artifact_data:
@@ -238,12 +229,11 @@ def save_expert_execution_result(
                 sort_order=artifact_data.get("sort_order", 0)
             )
             create_artifacts_batch(db, task_id, [artifact_create])
-            print(f"[TaskManager] ✅ Artifact 已创建: {task_id}")
 
         return True
 
     except Exception as e:
-        print(f"[TaskManager] ❌ 保存专家执行结果失败: {e}")
+        logger.error(f"[TaskManager] 保存专家执行结果失败: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -285,10 +275,9 @@ def save_aggregator_message(
         )
         db.add(message_record)
         db.commit()
-        print(f"[TaskManager] 聚合消息已持久化, thread_id={thread_id}, msg_id={message_record.id}")
         return message_record
     except Exception as e:
-        print(f"[TaskManager] 消息持久化失败: {e}")
+        logger.error(f"[TaskManager] 消息持久化失败: {e}")
         db.rollback()
         return None
 
@@ -330,10 +319,9 @@ def update_subtask_status(
             output_result=output_result,
             error_message=error_message
         )
-        print(f"[TaskManager] 子任务 {subtask_id} 状态更新为: {status}")
         return True
     except Exception as e:
-        print(f"[TaskManager] 子任务状态更新失败: {e}")
+        logger.error(f"[TaskManager] 子任务状态更新失败: {e}")
         return False
 
 

@@ -186,7 +186,7 @@ export default function MessageItem({
       </div>
 
       {/* 内容区：无气泡背景，直接展示 */}
-      <div className="w-full pl-8 prose prose-sm max-w-none dark:prose-invert 
+      <div className="w-full pl-7 prose prose-sm max-w-none dark:prose-invert 
         prose-headings:text-sm prose-headings:font-bold prose-headings:text-foreground
         prose-p:text-sm prose-p:leading-relaxed prose-p:text-foreground/90
         prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-muted/50 
@@ -222,7 +222,7 @@ export default function MessageItem({
       </div>
 
       {/* 底部操作栏：悬停显示，更简洁 */}
-      <div className="pl-8 mt-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+      <div className="pl-7 mt-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         {/* 预览按钮 */}
         {hasPreviewContent && (
           <button
