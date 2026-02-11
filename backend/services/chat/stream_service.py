@@ -646,6 +646,7 @@ class StreamService:
                 try:
                     loop_count = 0
                     max_loops = 50  # 防止无限循环
+                    aggregator_executed = False  # 🔥 标记 aggregator 是否已执行
 
                     while loop_count < max_loops:
                         loop_count += 1
@@ -654,9 +655,10 @@ class StreamService:
                         current_state = await graph.aget_state(config)
                         task_list = current_state.values.get("task_list", [])
                         current_index = current_state.values.get("current_task_index", 0)
+                        next_node = current_state.values.get("next_node", "")
 
-                        # 检查是否所有任务都完成了
-                        if current_index >= len(task_list):
+                        # 检查是否所有任务都完成了，或者 aggregator 已经执行过
+                        if current_index >= len(task_list) or aggregator_executed:
                             break
 
                         # 执行一轮 LangGraph
@@ -665,8 +667,13 @@ class StreamService:
                             if not isinstance(token, dict):
                                 continue
 
-                            # 处理 event_queue 中的事件（artifact.start/chunk/completed 等）
+                            # 检测 aggregator 节点执行
                             event_type = token.get("event", "")
+                            metadata = token.get("metadata", {})
+                            if event_type == "on_chain_start" and metadata.get("name") == "aggregator":
+                                aggregator_executed = True
+
+                            # 处理 event_queue 中的事件（artifact.start/chunk/completed 等）
                             if event_type == "on_chain_end":
                                 data = token.get("data", {}) or {}
                                 output = data.get("output", {}) or {}
