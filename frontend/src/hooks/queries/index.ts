@@ -19,3 +19,12 @@ export {
   useRecentConversationsQuery,
   chatHistoryKeys,
 } from './useChatHistoryQuery'
+
+export {
+  // Agents Queries
+  useAgentsQuery,
+  useCustomAgentsQuery,
+  useDeleteAgentMutation,
+  agentsKeys,
+  type UIAgent,
+} from './useAgentsQuery'

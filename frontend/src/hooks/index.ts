@@ -6,11 +6,18 @@
 // React Query Hooks - 服务端状态管理
 // ============================================================================
 export {
+  // Chat History
   useChatHistoryQuery,
   useChatSessionQuery,
   useDeleteConversationMutation,
   useRecentConversationsQuery,
   chatHistoryKeys,
+  // Agents
+  useAgentsQuery,
+  useCustomAgentsQuery,
+  useDeleteAgentMutation,
+  agentsKeys,
+  type UIAgent,
 } from './queries'
 
 // 聊天相关
