@@ -71,7 +71,6 @@ def clear_llm_cache() -> None:
     _llm_cache.clear()
     _cache_hits = 0
     _cache_misses = 0
-    print("[LLM Cache] 缓存已清空")
 
 
 # ============================================================================
@@ -183,7 +182,6 @@ def get_llm_instance(
     # P2 优化: 检查缓存
     cached = get_cached_llm(provider, model, streaming, temperature)
     if cached:
-        print(f"[LLM Cache] 命中缓存: {provider}:{model or 'default'}")
         return cached
     
     # 读取提供商配置
@@ -237,11 +235,10 @@ def get_llm_instance(
     
     # 创建实例
     llm = ChatOpenAI(**llm_config)
-    
+
     # P2 优化: 缓存实例
     set_cached_llm(provider, model, streaming, temperature, llm)
-    print(f"[LLM Cache] 创建并缓存: {provider}:{model or 'default'}")
-    
+
     return llm
 
 

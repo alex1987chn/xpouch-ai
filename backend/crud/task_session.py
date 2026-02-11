@@ -433,8 +433,7 @@ def create_task_session_with_subtasks(
                     # 保留原值（可能是 UUID 格式）
                     new_depends_on.append(dep_id)
             subtask.depends_on = new_depends_on
-            print(f"[TaskSession] 任务 {subtask.id} 的 depends_on 已更新: {original_depends_on} -> {new_depends_on}")
-    
+
     db.commit()
     db.refresh(task_session)
     return task_session
