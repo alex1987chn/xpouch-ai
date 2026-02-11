@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Bot, Plus, Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Trash2, Pencil } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
@@ -6,12 +6,11 @@ import { useTaskStore } from '@/store/taskStore'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { deleteCustomAgent, getAllAgents } from '@/services/agent'
-import { getConversations } from '@/services/chat'
 import type { Agent, Conversation } from '@/types'
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { logger } from '@/utils/logger'
 import { useApp } from '@/providers/AppProvider'
+import { useCustomAgentsQuery, useDeleteAgentMutation, useChatHistoryQuery } from '@/hooks/queries'
 
 // shadcn Components
 import { Button } from '@/components/ui/button'
@@ -200,20 +199,13 @@ export default function HomePage() {
 
   // 判断当前页面
   const isOnHome = location.pathname === '/'
-  const isOnKnowledge = location.pathname === '/knowledge'
-  const isOnHistory = location.pathname === '/history'
 
   const {
     selectedAgentId,
     setSelectedAgentId,
-    customAgents,
-    setCustomAgents
   } = useChatStore()
 
   const { sidebar } = useApp()
-
-  // 刷新自定义智能体列表的状态
-  const [refreshKey, setRefreshKey] = useState(0)
 
   const [inputMessage, setInputMessage] = useState('')
 
@@ -221,61 +213,24 @@ export default function HomePage() {
   const [deletingAgentId, setDeletingAgentId] = useState<string | null>(null)
   const [deletingAgentName, setDeletingAgentName] = useState<string>('')
 
-  // 👈 从后端加载自定义智能体列表（使用缓存防止重复请求）
-  useEffect(() => {
-    const store = useChatStore.getState()
-    
-    // 检查是否应该发起请求
-    if (!store.shouldFetchAgents()) {
-      // 使用缓存数据
-      if (store.agentsCache && store.agentsCache.length > 0) {
-        setCustomAgents(store.agentsCache)
-      }
-      return
-    }
-    
-    const loadCustomAgents = async () => {
-      store.setLoadingAgents(true)
-      try {
-        const response = await getAllAgents()
-        const customAgentsData = response
-          .filter(agent => !agent.is_default)
-          .map(agent => ({
-            id: agent.id,
-            name: agent.name,
-            description: agent.description || '',
-            icon: <Bot className="w-5 h-5" />,
-            systemPrompt: agent.system_prompt,
-            category: agent.category,
-            modelId: agent.model_id,
-            isCustom: true,
-            is_builtin: false
-          }))
-        // 更新缓存和状态
-        store.setAgentsCache(customAgentsData)
-        setCustomAgents(customAgentsData)
-      } catch (error) {
-        logger.error('加载自定义智能体失败:', error)
-      } finally {
-        store.setLoadingAgents(false)
-      }
-    }
+  // 👈 使用 React Query 获取自定义智能体列表（自动缓存，30分钟内不会重复请求）
+  const { data: customAgents = [], refetch: refetchAgents } = useCustomAgentsQuery()
 
-    loadCustomAgents()
-  }, [refreshKey, setCustomAgents])
+  // 👈 使用 React Query 获取会话列表
+  const { data: conversations = [] } = useChatHistoryQuery()
+
+  // 👈 使用 React Query Mutation 删除智能体
+  const deleteAgentMutation = useDeleteAgentMutation()
 
   // 监听路由变化，当从创建页面返回首页时重置状态
-  useEffect(() => {
-    if (location.pathname === '/') {
-      setRefreshKey(prev => prev + 1)
-      setSelectedAgentId(SYSTEM_AGENTS.DEFAULT_CHAT)
-    }
-  }, [location.pathname, setSelectedAgentId])
+  // 注意：不需要手动刷新数据，React Query 会自动处理缓存
+  // 但如果需要强制刷新，可以调用 refetchAgents()
 
   // 构建显示的智能体列表
   // 👈 注意：默认助手 (sys-default-chat) 不在列表中展示
   // 用户通过首页底部的输入框与默认助手交互，避免重复创建 thread
   const displayedAgents = useMemo<Agent[]>(() => {
+    // 为 customAgents 添加图标（React Query 返回的数据没有 icon）
     const customAgentsWithIcon = customAgents.map(a => ({
       ...a,
       icon: <Bot className="w-5 h-5" />
@@ -310,50 +265,29 @@ export default function HomePage() {
       return
     }
 
-    // 👈 自定义智能体：查询历史会话，恢复最近的会话（使用缓存）
-    try {
-      const store = useChatStore.getState()
-      let conversations: Conversation[]
+    // 👈 自定义智能体：使用 React Query 缓存的会话数据
+    // 过滤出该智能体的会话（按更新时间倒序）
+    const agentConversations = conversations
+      .filter((conv: Conversation) => conv.agent_id === agentId)
+      .sort((a: Conversation, b: Conversation) =>
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      )
 
-      // 1. 优先使用缓存，缓存不存在或过期则发起请求
-      if (store.conversationsCache && !store.shouldFetchConversations()) {
-        conversations = store.conversationsCache
-      } else {
-        store.setLoadingConversations(true)
-        conversations = await getConversations()
-        store.setConversationsCache(conversations)
-        store.setLoadingConversations(false)
-      }
-
-      // 2. 过滤出该智能体的会话（按更新时间倒序）
-      const agentConversations = conversations
-        .filter((conv: Conversation) => conv.agent_id === agentId)
-        .sort((a: Conversation, b: Conversation) =>
-          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-        )
-
-      // 3. 如果有历史会话，恢复最近的；否则创建新会话
-      if (agentConversations.length > 0) {
-        const latestConversation = agentConversations[0]
-        logger.debug('找到历史会话:', latestConversation.id, '智能体:', agentId)
-        useChatStore.getState().setCurrentConversationId(latestConversation.id)
-        // 不传递 isNew，让聊天页面加载历史消息
-        navigate(`/chat/${latestConversation.id}?agentId=${agentId}`)
-      } else {
-        // 没有历史会话，创建新会话
-        const newId = crypto.randomUUID()
-        useChatStore.getState().setCurrentConversationId(newId)
-        logger.debug('创建新会话:', newId, '智能体:', agentId)
-        navigate(`/chat/${newId}?agentId=${agentId}`, { state: { isNew: true } })
-      }
-    } catch (error) {
-      // 查询失败，降级为创建新会话
-      logger.error('查询历史会话失败:', error)
+    // 如果有历史会话，恢复最近的；否则创建新会话
+    if (agentConversations.length > 0) {
+      const latestConversation = agentConversations[0]
+      logger.debug('找到历史会话:', latestConversation.id, '智能体:', agentId)
+      useChatStore.getState().setCurrentConversationId(latestConversation.id)
+      // 不传递 isNew，让聊天页面加载历史消息
+      navigate(`/chat/${latestConversation.id}?agentId=${agentId}`)
+    } else {
+      // 没有历史会话，创建新会话
       const newId = crypto.randomUUID()
       useChatStore.getState().setCurrentConversationId(newId)
+      logger.debug('创建新会话:', newId, '智能体:', agentId)
       navigate(`/chat/${newId}?agentId=${agentId}`, { state: { isNew: true } })
     }
-  }, [navigate])
+  }, [navigate, conversations])
 
   const handleCreateAgent = useCallback(() => {
     navigate('/create-agent')
@@ -365,19 +299,18 @@ export default function HomePage() {
     setDeletingAgentName(agentName)
   }, [])
 
-  // 确认删除操作
+  // 确认删除操作 - 使用 React Query Mutation
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingAgentId) return
 
     try {
-      await deleteCustomAgent(deletingAgentId)
-      setCustomAgents(prev => prev.filter(agent => agent.id !== deletingAgentId))
+      await deleteAgentMutation.mutateAsync(deletingAgentId)
       if (selectedAgentId === deletingAgentId) {
         setSelectedAgentId(SYSTEM_AGENTS.DEFAULT_CHAT)
       }
     } catch (error) {
       logger.error('删除自定义智能体失败:', error)
-      setCustomAgents(prev => prev.filter(agent => agent.id !== deletingAgentId))
+      // 即使失败也重置选中状态
       if (selectedAgentId === deletingAgentId) {
         setSelectedAgentId(SYSTEM_AGENTS.DEFAULT_CHAT)
       }
@@ -385,7 +318,7 @@ export default function HomePage() {
       setDeletingAgentId(null)
       setDeletingAgentName('')
     }
-  }, [deletingAgentId, selectedAgentId, setCustomAgents, setSelectedAgentId])
+  }, [deletingAgentId, selectedAgentId, setSelectedAgentId, deleteAgentMutation])
 
   const handleSendMessage = useCallback(() => {
     if (!inputMessage.trim()) return
@@ -587,9 +520,9 @@ export default function HomePage() {
                   <ConstructCard
                     key={agent.id}
                     name={agent.name}
-                    type={agent.category?.toUpperCase() || 'CUSTOM'}
+                    type={(agent.category || 'CUSTOM').toUpperCase()}
                     status="offline"
-                    tags={[agent.category?.substring(0, 6).toUpperCase() || 'AGENT']}
+                    tags={[(agent.category || 'AGENT').substring(0, 6).toUpperCase()]}
                     sideColor="#888888"
                     onClick={() => handleAgentClick(agent.id)}
                     onEdit={() => navigate(`/edit-agent/${agent.id}`)}
