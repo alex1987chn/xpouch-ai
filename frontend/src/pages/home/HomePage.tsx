@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { Bot, Plus, Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Trash2, Pencil } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
-import { useTaskStore } from '@/store/taskStore'
+import { useExecutionStore } from '@/store/executionStore'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -329,9 +329,7 @@ export default function HomePage() {
     // 避免 useEffect 复杂判断，确保新会话以干净状态开始
     useChatStore.getState().setMessages([])
     useChatStore.getState().setCurrentConversationId(null)
-    const { clearTasks, setMode } = useTaskStore.getState()
-    clearTasks()
-    setMode('simple')
+    useExecutionStore.getState().reset()
 
     // 统一使用 Orchestrator 接口（后端自动路由）
     const agentId = selectedAgentId || SYSTEM_AGENTS.DEFAULT_CHAT
