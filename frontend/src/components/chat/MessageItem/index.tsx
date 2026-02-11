@@ -171,8 +171,15 @@ export default function MessageItem({
     <div className="flex flex-col items-start w-full select-text ai-message group">
       {/* 头部：头像 + 标签 + 时间 */}
       <div className="flex items-center gap-2 mb-3">
-        <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-          <Bot className="w-3.5 h-3.5 text-primary-foreground" />
+        {/* 头像容器 */}
+        <div className="relative">
+          {/* 外圈旋转动画（类似 Gemini） - 只在最后一条消息显示 */}
+          {isLast && (
+            <div className="absolute -inset-[3px] rounded-full border-2 border-t-transparent border-r-transparent border-b-primary/50 border-l-primary/50 animate-[spin_2s_linear_infinite]" />
+          )}
+          <div className="w-6 h-6 rounded bg-primary flex items-center justify-center relative z-10">
+            <Bot className="w-3.5 h-3.5 text-primary-foreground" />
+          </div>
         </div>
         <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wide">
           {activeExpert ? `${activeExpert.toUpperCase()}_AGENT` : 'ASSISTANT'}

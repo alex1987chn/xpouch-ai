@@ -264,10 +264,9 @@ export default function ChatStreamPanel({
           })
         )}
 
-        {/* Generating indicator - only show when no thinking */}
-        {isGenerating && !hasThinkingActive && (
-          <GeneratingIndicator mode={conversationMode} />
-        )}
+        {/* Generating indicator - only show in complex mode */}
+        {/* Complex mode needs indicator because multi-agent collaboration takes time */}
+        {/* Simple mode (including custom agents) doesn't need it - avatar has spinning ring animation */}
         
         {/* v3.1.0 HITL: Plan review card */}
         {/* 使用 key 强制重新挂载，避免 useEffect 同步 Props 反模式 */}
