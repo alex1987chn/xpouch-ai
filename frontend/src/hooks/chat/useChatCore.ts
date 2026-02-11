@@ -32,6 +32,7 @@ import {
 } from '@/hooks/useChatSelectors'
 import { useTaskMode, useTaskActions } from '@/hooks/useTaskSelectors'
 import { useChatStore } from '@/store/chatStore'
+import { useTaskStore } from '@/store/taskStore'
 
 // ============================================================================
 // Phase 2: ExecutionStore 集成 - Server-Driven UI 事件分发
@@ -126,14 +127,33 @@ function dispatchEventToExecutionStore(event: AnyServerEvent): void {
       const data = (event as HumanInterruptEvent).data
       setStatus('reviewing')
       if (data.current_plan) {
-        setPlan(data.current_plan.map((t: any) => ({
+        const plan = data.current_plan.map((t: any) => ({
           id: t.id,
           expertType: t.expert_type,
           description: t.description,
           status: t.status,
           dependencies: t.depends_on || [] // 🔥 使用后端传来的实际依赖关系
-        })))
+        }))
+        setPlan(plan)
         setProgress({ current: 0, total: data.current_plan.length })
+        
+        // 🔥🔥🔥 关键修复：同步到 TaskStore，避免双 Store 脑裂
+        // 将 plan 转换为 TaskStore 的格式并强制覆盖
+        const { initializePlan } = useTaskStore.getState()
+        initializePlan({
+          session_id: data.thread_id || 'unknown',
+          summary: data.message || '任务规划等待审核',
+          estimated_steps: data.current_plan.length,
+          tasks: data.current_plan.map((t: any, index: number) => ({
+            id: t.id,
+            task_id: t.id,
+            expert_type: t.expert_type,
+            description: t.description,
+            status: t.status || 'pending',
+            sort_order: t.sort_order ?? index,
+            depends_on: t.depends_on || [],
+          }))
+        })
       }
       break
     }

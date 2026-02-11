@@ -133,11 +133,11 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
     try {
       const resumeParams: ResumeChatParams = {
         threadId: conversationId,
-        updatedPlan: editedPlan.map(task => ({
+        updatedPlan: editedPlan.map((task, index) => ({
           id: task.id,
           expert_type: task.expertType,
           description: task.description,
-          sort_order: 0, // ExecutionStore 的 Task 不存储 sort_order
+          sort_order: index, // 🔥 修复：使用正确的顺序
           status: task.status,
           depends_on: task.dependencies || [] // 🔥 关键修复：传递依赖关系到后端
         })),
