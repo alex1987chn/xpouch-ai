@@ -196,7 +196,9 @@ const EditAgentPageWrapper = () => {
 
   return (
     <Suspense fallback={<LoadingFallback />}>
+      {/* 使用 key 强制组件在 id 变化时重新挂载，避免 useEffect 同步 Props 反模式 */}
       <CreateAgentPage
+        key={`edit-agent-${id}`}
         onBack={() => navigate('/')}
         onSave={handleSave}
         initialData={agentData}
