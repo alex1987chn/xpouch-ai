@@ -243,7 +243,9 @@ export default function ArtifactDashboard({
 
   // 检查功能可用性
   const canPreview = !isEditing && currentArtifact?.type !== 'text'
-  const canEdit = currentArtifact?.type === 'code' || currentArtifact?.type === 'markdown' || currentArtifact?.type === 'text'
+  // 🔥 预览 artifact 禁止编辑（没有持久化到数据库）
+  const canEdit = !currentArtifact?.isPreview && 
+    (currentArtifact?.type === 'code' || currentArtifact?.type === 'markdown' || currentArtifact?.type === 'text')
   const contentElementId = currentArtifact ? `artifact-content-${currentArtifact.id}` : ''
 
   // Loading 组件

@@ -89,7 +89,8 @@ export default function MessageItem({
       content: artifact.content,
       language: artifact.language,
       sortOrder: artifact.sort_order,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      isPreview: true  // 🔥 标记为预览 artifact，禁止编辑
     }])
     
     // 选中该任务

@@ -289,6 +289,7 @@ export interface Artifact {
   sortOrder?: number
   createdAt?: string
   isStreaming?: boolean  // 标记是否正在流式生成中
+  isPreview?: boolean  // 🔥 标记为预览 artifact，禁止编辑
 }
 
 /**
