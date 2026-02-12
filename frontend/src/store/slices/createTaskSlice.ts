@@ -136,22 +136,21 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
 
   // Actions
 
+  /**
+   * 🔥 已弃用：请使用 UISlice 的 setMode
+   * 保留此方法仅用于兼容性，实际逻辑移交给 UISlice
+   */
   setMode: (mode: 'simple' | 'complex') => {
+    // ⚠️ 跨 Slice 修改已移除
+    // UI 状态切换应通过 UISlice.setMode 处理
+    // TaskSlice 只关注 Task 数据本身的清理
     set((state: any) => {
-      if (state.mode === mode) return
-
       if (mode === 'simple') {
+        // 只清理 TaskSlice 自己的状态
         state.session = null
         state.tasks = new Map()
         rebuildTasksCache(state)
-        state.runningTaskIds = new Set()
-        state.isInitialized = false
-        state.planThinkingContent = ''
-        state.isWaitingForApproval = false
-        state.pendingPlan = []
       }
-      
-      state.mode = mode
     })
   },
 
@@ -196,7 +195,8 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
         })
       }
 
-      state.isInitialized = true
+      // 🔥 移除：state.isInitialized = true（这是 UISlice 的状态）
+      // UI 初始化状态应由 UISlice 处理
 
       rebuildTasksCache(state)
     })
@@ -256,7 +256,8 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
         task.startedAt = data.started_at
       }
 
-      state.runningTaskIds.add(data.task_id)
+      // 🔥 移除：state.runningTaskIds.add(data.task_id)（这是 UISlice 的状态）
+      // runningTaskIds 应由 UISlice 管理
       rebuildTasksCache(state)
     })
   },
@@ -271,11 +272,9 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
         completedTask.output = data.output
       }
 
-      state.runningTaskIds.delete(data.task_id)
-
-      if (!state.selectedTaskId && data.artifact_count > 0) {
-        state.selectedTaskId = data.task_id
-      }
+      // 🔥 移除：state.runningTaskIds.delete(data.task_id)（这是 UISlice 的状态）
+      // 🔥 移除：selectedTaskId 修改（这是 UISlice 的状态）
+      // 这些状态变更应由 UISlice 处理
 
       rebuildTasksCache(state)
     })
@@ -289,7 +288,7 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
         task.error = data.error
       }
 
-      state.runningTaskIds.delete(data.task_id)
+      // 🔥 移除：state.runningTaskIds.delete(data.task_id)（这是 UISlice 的状态）
 
       rebuildTasksCache(state)
     })
@@ -358,13 +357,11 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
       }
 
       state.tasks = new Map()
-      state.runningTaskIds = new Set()
+      // 🔥 移除：state.runningTaskIds = new Set()（这是 UISlice 的状态）
 
       subTasks.forEach((subTask, index) => {
         const taskStatus = (subTask.status as TaskStatus) || 'pending'
-        if (taskStatus === 'running') {
-          state.runningTaskIds.add(subTask.id)
-        }
+        // 🔥 移除：runningTaskIds 修改（这是 UISlice 的状态）
 
         const artifacts: Artifact[] = (subTask.artifacts || []).map((art: any, artIndex: number) => ({
           id: art.id || `${subTask.id}-artifact-${artIndex}`,
@@ -389,14 +386,11 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
         })
       })
 
-      state.mode = 'complex'
-      state.isInitialized = true
-
-      const sortedTasks = Array.from(state.tasks.values())
-        .sort((a: any, b: any) => a.sort_order - b.sort_order)
-
-      const firstTaskWithArtifacts = sortedTasks.find((t: any) => t.artifacts && t.artifacts.length > 0)
-      state.selectedTaskId = (firstTaskWithArtifacts as any)?.id || (sortedTasks[0] as any)?.id || null
+      // 🔥 移除以下跨 Slice 状态修改：
+      // state.mode = 'complex'（UISlice 状态）
+      // state.isInitialized = true（UISlice 状态）
+      // state.selectedTaskId = ...（UISlice 状态）
+      // 这些应由调用方（UISlice）处理
 
       rebuildTasksCache(state)
     })
