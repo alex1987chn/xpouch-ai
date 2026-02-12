@@ -123,9 +123,17 @@ export function useConversation() {
       // 避免旧的持久化状态阻止新会话加载
       clearTasks(true)
 
+      // 🔥🔥🔥 调试：检查 task_session 数据
+      debug('conversation.task_session:', conversation.task_session)
+      debug('conversation.task_session_id:', conversation.task_session_id)
+      debug('conversation.agent_type:', conversation.agent_type)
+
       if (conversation.task_session) {
-        debug('Restoring task session:', conversation.task_session.id, 'sub_tasks:', conversation.task_session.sub_tasks?.length)
+        debug('Restoring task session:', conversation.task_session.session_id || conversation.task_session.id, 'sub_tasks:', conversation.task_session.sub_tasks?.length)
+        debug('sub_tasks details:', conversation.task_session.sub_tasks)
         restoreFromSession(conversation.task_session, conversation.task_session.sub_tasks || [])
+      } else {
+        debug('⚠️ No task_session found in conversation!')
       }
 
       return conversation
