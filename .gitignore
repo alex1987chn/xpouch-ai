@@ -71,3 +71,6 @@ docs/
 
 # Deployment scripts (local only, upload via SFTP)
 deploy.sh
+
+# AI Context Directory (private documentation, API keys, etc.)
+.ai/
