@@ -25,13 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🏗️ 架构重构
 
 **Monorepo 架构**：
-- 前端位于 `/frontend`（Vite + React 18 + TypeScript）
+- 前端位于 `/frontend`（Vite + React 19 + TypeScript）
 - 后端位于 `/backend`（FastAPI + Python 3.13 + SQLModel）
 - 统一使用 pnpm workspace 管理多包依赖
 - 使用 uv 作为 Python 包管理器
 
 **前端架构**：
-- React 18.3.1 + React Router 7.12.0 路由系统
+- React 19.2.4 + React Router 7.12.0 路由系统
 - Zustand 5.0.10 全局状态管理
 - shadcn/ui + Radix UI 无头组件库
 - Tailwind CSS 3.4.17 原子化样式
@@ -143,7 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **前端依赖**：
 - Vite 5.4.17 → 7.3.1
-- React 18.3.1
+- React 19.2.4
 - TypeScript 5.6 → 5.7.2
 - Framer Motion 11.15.0 → 12.29.0
 - Lucide React 0.462.0 → 0.563.0
@@ -1026,7 +1026,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🔧 技术改进
 
 **前端框架**：
-- React 18
+- React 19
 - Tailwind CSS
 - Radix UI组件库
 - Zustand状态管理
