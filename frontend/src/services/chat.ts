@@ -190,7 +190,6 @@ export async function sendMessage(
               } else if (eventType === 'message.done') {
                 // message.done 事件：给 handleServerEvent 处理 thinking 状态更新
                 // 注意：onChunk 对 message.done 不处理（chunk 为 undefined）
-                console.log('[chat.ts] message.done 事件，调用 handleServerEvent')
                 handleServerEvent(fullEvent as any)
               } else {
                 // error 等其他事件：传递事件对象
@@ -198,7 +197,6 @@ export async function sendMessage(
               }
             } else if (!isChatEvent) {
               // Task 相关事件：直接给 eventHandlers，不经过 onChunk
-              console.log('[chat.ts] 调用 handleServerEvent:', eventType)
               handleServerEvent(fullEvent as any)
             }
           }

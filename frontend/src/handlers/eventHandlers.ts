@@ -86,8 +86,9 @@ export class EventHandler {
       this.processedEventIds.delete(first)
     }
 
-    // 🔥 强制日志：用于调试
-    console.log('[EventHandler] 处理事件:', event.type, event.id)
+    if (DEBUG) {
+      logger.debug('[EventHandler] 处理事件:', event.type, event.id)
+    }
 
     // 根据事件类型分发处理
     switch (event.type) {
@@ -151,13 +152,9 @@ export class EventHandler {
     const { messages, updateMessageMetadata } = useChatStore.getState()
     const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
     
-    console.log('[EventHandler] plan.created: lastAiMessage=', !!lastAiMessage, 'thinking=', lastAiMessage?.metadata?.thinking?.length)
-    
     if (lastAiMessage?.metadata?.thinking) {
       const thinking = [...lastAiMessage.metadata.thinking]
       const planStepIndex = thinking.findIndex(s => s.type === 'planning')
-      
-      console.log('[EventHandler] plan.created: planStepIndex=', planStepIndex)
       
       if (planStepIndex >= 0) {
         thinking[planStepIndex] = {
@@ -166,11 +163,12 @@ export class EventHandler {
           content: '任务规划完成'
         }
         updateMessageMetadata(lastAiMessage.id!, { thinking })
-        console.log('[EventHandler] plan.created: planning step 已标记为 completed')
       }
     }
 
-    console.log('[EventHandler] 任务计划已初始化:', event.data.session_id)
+    if (DEBUG) {
+      logger.debug('[EventHandler] 任务计划已初始化:', event.data.session_id)
+    }
   }
 
   /**
@@ -414,8 +412,9 @@ export class EventHandler {
     // 查找消息
     const message = messages.find(m => m.id === event.data.message_id)
 
-    // 🔥 强制日志：用于调试 thinking 状态问题
-    console.log('[EventHandler] message.done: 消息ID=', event.data.message_id, '找到消息=', !!message, '内容长度=', event.data.full_content?.length)
+    if (DEBUG) {
+      logger.debug('[EventHandler] message.done: 消息ID=', event.data.message_id, '找到消息=', !!message, '内容长度=', event.data.full_content?.length)
+    }
 
     if (!message) {
       logger.warn('[EventHandler] message.done: 找不到消息:', event.data.message_id)
@@ -451,11 +450,15 @@ export class EventHandler {
     // 🔥🔥🔥 关键修复：message.done 时将所有 thinking steps 标记为 completed
     // 防止流结束后仍有 running 状态的步骤导致 UI 一直转圈
     const finalMessage = useChatStore.getState().messages.find(m => m.id === event.data.message_id)
-    console.log('[EventHandler] message.done: finalMessage=', !!finalMessage, 'thinking=', finalMessage?.metadata?.thinking?.length)
+    if (DEBUG) {
+      logger.debug('[EventHandler] message.done: finalMessage=', !!finalMessage, 'thinking=', finalMessage?.metadata?.thinking?.length)
+    }
     if (finalMessage?.metadata?.thinking && finalMessage.metadata.thinking.length > 0) {
       const hasRunningSteps = finalMessage.metadata.thinking.some((s: any) => s.status === 'running')
       if (DEBUG) {
-        console.log('[EventHandler] message.done: hasRunningSteps=', hasRunningSteps)
+        if (DEBUG) {
+      logger.debug('[EventHandler] message.done: hasRunningSteps=', hasRunningSteps)
+    }
       }
       if (hasRunningSteps) {
         const completedThinking = finalMessage.metadata.thinking.map((s: any) => ({
@@ -523,8 +526,6 @@ export class EventHandler {
    * 避免误删将要添加 thinking 数据的消息
    */
   private handleRouterDecision(event: RouterDecisionEvent): void {
-    console.log('[EventHandler] router.decision:', event.data.decision)
-    
     const { setMode } = useTaskStore.getState()
 
     // 设置模式（simple 或 complex）
@@ -534,7 +535,9 @@ export class EventHandler {
     const { messages, updateMessageMetadata } = useChatStore.getState()
     const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
 
-    console.log('[EventHandler] router.decision: lastAiMessage=', !!lastAiMessage, 'thinking=', lastAiMessage?.metadata?.thinking?.length)
+    if (DEBUG) {
+      logger.debug('[EventHandler] router.decision: lastAiMessage=', !!lastAiMessage, 'thinking=', lastAiMessage?.metadata?.thinking?.length)
+    }
 
     if (lastAiMessage?.metadata?.thinking) {
       const thinking = [...lastAiMessage.metadata.thinking]
