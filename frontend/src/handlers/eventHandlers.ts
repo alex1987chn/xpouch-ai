@@ -408,8 +408,14 @@ export class EventHandler {
     // 🔥🔥🔥 关键修复：message.done 时将所有 thinking steps 标记为 completed
     // 防止流结束后仍有 running 状态的步骤导致 UI 一直转圈
     const finalMessage = useChatStore.getState().messages.find(m => m.id === event.data.message_id)
+    if (DEBUG) {
+      logger.debug('[EventHandler] message.done: finalMessage=', !!finalMessage, 'thinking=', finalMessage?.metadata?.thinking?.length)
+    }
     if (finalMessage?.metadata?.thinking && finalMessage.metadata.thinking.length > 0) {
       const hasRunningSteps = finalMessage.metadata.thinking.some((s: any) => s.status === 'running')
+      if (DEBUG) {
+        logger.debug('[EventHandler] message.done: hasRunningSteps=', hasRunningSteps)
+      }
       if (hasRunningSteps) {
         const completedThinking = finalMessage.metadata.thinking.map((s: any) => ({
           ...s,
@@ -417,7 +423,7 @@ export class EventHandler {
         }))
         updateMessageMetadata(event.data.message_id, { thinking: completedThinking })
         if (DEBUG) {
-          logger.debug('[EventHandler] message.done: 将所有 thinking steps 标记为 completed')
+          logger.debug('[EventHandler] message.done: 已将所有 thinking steps 标记为 completed')
         }
       }
     }
@@ -476,6 +482,10 @@ export class EventHandler {
    * 避免误删将要添加 thinking 数据的消息
    */
   private handleRouterDecision(event: RouterDecisionEvent): void {
+    if (DEBUG) {
+      logger.debug('[EventHandler] router.decision:', event.data.decision)
+    }
+    
     const { setMode } = useTaskStore.getState()
 
     // 设置模式（simple 或 complex）
@@ -485,9 +495,17 @@ export class EventHandler {
     const { messages, updateMessageMetadata } = useChatStore.getState()
     const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
 
+    if (DEBUG) {
+      logger.debug('[EventHandler] router.decision: lastAiMessage=', !!lastAiMessage, 'thinking=', lastAiMessage?.metadata?.thinking?.length)
+    }
+
     if (lastAiMessage?.metadata?.thinking) {
       const thinking = [...lastAiMessage.metadata.thinking]
       const routerStepIndex = thinking.findIndex((s: any) => s.expertType === 'router')
+
+      if (DEBUG) {
+        logger.debug('[EventHandler] router.decision: routerStepIndex=', routerStepIndex)
+      }
 
       if (routerStepIndex >= 0) {
         const modeText = event.data.decision === 'simple' ? '简单模式' : '复杂模式（多专家协作）'
@@ -497,6 +515,9 @@ export class EventHandler {
           content: `意图分析完成：已选择${modeText}`
         }
         updateMessageMetadata(lastAiMessage.id!, { thinking })
+        if (DEBUG) {
+          logger.debug('[EventHandler] router.decision: router step 已标记为 completed')
+        }
       }
     }
 
