@@ -45,6 +45,11 @@ export async function downloadPDF(elementId: string, filename: string): Promise<
     throw new Error(`Element with id "${elementId}" not found`)
   }
 
+  // 🔥 验证元素尺寸
+  if (element.scrollWidth === 0 || element.scrollHeight === 0) {
+    throw new Error('Element has zero dimensions')
+  }
+
   // 🔥 修复：保存当前滚动位置
   const originalScrollY = window.scrollY
   const originalScrollX = window.scrollX
@@ -52,55 +57,70 @@ export async function downloadPDF(elementId: string, filename: string): Promise<
   // 🔥 修复：滚动到顶部，确保从正确位置开始捕获
   window.scrollTo(0, 0)
 
-  // 使用 html2canvas 捕获 DOM（完整内容，不仅仅是可见区域）
-  const canvas = await html2canvas(element, {
-    useCORS: true,
-    logging: false,
-    scale: 2, // 提高清晰度
-    backgroundColor: null, // 保留原有背景色（跟随主题）
-    // 🔥 关键修复：捕获完整内容，不仅仅是可见区域
-    scrollY: -window.scrollY, // 修正滚动偏移
-    scrollX: -window.scrollX, // 修正水平滚动偏移
-    windowHeight: element.scrollHeight + 100, // 完整高度 + 缓冲
-    windowWidth: element.scrollWidth,
-  })
+  try {
+    // 使用 html2canvas 捕获 DOM（完整内容，不仅仅是可见区域）
+    const canvas = await html2canvas(element, {
+      useCORS: true,
+      allowTaint: false, // 🔥 禁止跨域图片污染 canvas
+      logging: false,
+      scale: 2, // 提高清晰度
+      backgroundColor: '#ffffff', // 🔥 使用白色背景，避免透明问题
+      // 🔥 关键修复：捕获完整内容，不仅仅是可见区域
+      scrollY: -window.scrollY, // 修正滚动偏移
+      scrollX: -window.scrollX, // 修正水平滚动偏移
+      windowHeight: element.scrollHeight + 100, // 完整高度 + 缓冲
+      windowWidth: element.scrollWidth,
+    })
 
-  // 🔥 恢复滚动位置
-  window.scrollTo(originalScrollX, originalScrollY)
+    // 🔥 验证 canvas 尺寸
+    if (canvas.width === 0 || canvas.height === 0) {
+      throw new Error('Canvas has zero dimensions after capture')
+    }
 
-  // 计算 PDF 尺寸（A4 纸）
-  const imgData = canvas.toDataURL('image/png')
-  const pdf = new jsPDF('p', 'mm', 'a4')
-  
-  const pdfWidth = pdf.internal.pageSize.getWidth()
-  const pdfHeight = pdf.internal.pageSize.getHeight()
-  
-  const canvasWidth = canvas.width
-  const canvasHeight = canvas.height
-  
-  // 计算缩放比例，使内容宽度适应 PDF 页面宽度
-  const ratio = Math.min(pdfWidth / canvasWidth, pdfHeight / canvasHeight)
-  
-  const imgWidth = canvasWidth * ratio
-  const imgHeight = canvasHeight * ratio
-  
-  // 如果内容超出一页，需要分页处理
-  let heightLeft = imgHeight
-  let position = 0
-  
-  // 添加第一页
-  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-  heightLeft -= pdfHeight
-  
-  // 如果内容超出一页，添加更多页面
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight
-    pdf.addPage()
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+    // 🔥 使用 JPEG 格式（更宽容，避免 PNG 签名问题）
+    const imgData = canvas.toDataURL('image/jpeg', 0.95)
+
+    // 🔥 验证生成的数据
+    if (!imgData || !imgData.startsWith('data:image/')) {
+      throw new Error('Failed to generate image data')
+    }
+
+    // 计算 PDF 尺寸（A4 纸）
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    
+    const pdfWidth = pdf.internal.pageSize.getWidth()
+    const pdfHeight = pdf.internal.pageSize.getHeight()
+    
+    const canvasWidth = canvas.width
+    const canvasHeight = canvas.height
+    
+    // 计算缩放比例，使内容宽度适应 PDF 页面宽度
+    const ratio = pdfWidth / canvasWidth
+    
+    const imgWidth = canvasWidth * ratio
+    const imgHeight = canvasHeight * ratio
+    
+    // 如果内容超出一页，需要分页处理
+    let heightLeft = imgHeight
+    let position = 0
+    
+    // 添加第一页
+    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
     heightLeft -= pdfHeight
+    
+    // 如果内容超出一页，添加更多页面
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight
+      pdf.addPage()
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pdfHeight
+    }
+    
+    pdf.save(generateFilename(filename, 'pdf'))
+  } finally {
+    // 🔥 恢复滚动位置
+    window.scrollTo(originalScrollX, originalScrollY)
   }
-  
-  pdf.save(generateFilename(filename, 'pdf'))
 }
 
 /**
