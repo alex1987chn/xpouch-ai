@@ -151,9 +151,14 @@ export class EventHandler {
     const { messages, updateMessageMetadata } = useChatStore.getState()
     const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
     
+    console.log('[EventHandler] plan.created: lastAiMessage=', !!lastAiMessage, 'thinking=', lastAiMessage?.metadata?.thinking?.length)
+    
     if (lastAiMessage?.metadata?.thinking) {
       const thinking = [...lastAiMessage.metadata.thinking]
       const planStepIndex = thinking.findIndex(s => s.type === 'planning')
+      
+      console.log('[EventHandler] plan.created: planStepIndex=', planStepIndex)
+      
       if (planStepIndex >= 0) {
         thinking[planStepIndex] = {
           ...thinking[planStepIndex],
@@ -161,12 +166,11 @@ export class EventHandler {
           content: '任务规划完成'
         }
         updateMessageMetadata(lastAiMessage.id!, { thinking })
+        console.log('[EventHandler] plan.created: planning step 已标记为 completed')
       }
     }
 
-    if (DEBUG) {
-      logger.debug('[EventHandler] 任务计划已初始化:', event.data.session_id)
-    }
+    console.log('[EventHandler] 任务计划已初始化:', event.data.session_id)
   }
 
   /**
@@ -257,9 +261,33 @@ export class EventHandler {
     const { startTask } = useTaskStore.getState()
     startTask(event.data)
 
-    if (DEBUG) {
-      logger.debug('[EventHandler] 任务开始:', event.data.task_id)
+    // 🔥 添加 task step 到消息的 thinking metadata
+    const { messages, updateMessageMetadata } = useChatStore.getState()
+    const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
+    
+    if (lastAiMessage) {
+      const existingThinking = lastAiMessage.metadata?.thinking || []
+      // 检查是否已存在该 task 的 step
+      const existingIndex = existingThinking.findIndex((s: any) => s.id === event.data.task_id)
+      
+      if (existingIndex < 0) {
+        const newStep = {
+          id: event.data.task_id,
+          expertType: event.data.expert_type,
+          expertName: event.data.expert_type,
+          content: event.data.description,
+          timestamp: event.data.started_at,
+          status: 'running' as const,
+          type: 'execution' as const
+        }
+        updateMessageMetadata(lastAiMessage.id!, {
+          thinking: [...existingThinking, newStep]
+        })
+        console.log('[EventHandler] task.started: 添加 task step 到 thinking:', event.data.task_id)
+      }
     }
+
+    console.log('[EventHandler] 任务开始:', event.data.task_id)
   }
 
   /**
@@ -280,9 +308,26 @@ export class EventHandler {
       setProgress({ current: completedCount, total: totalCount })
     }
 
-    if (DEBUG) {
-      logger.debug('[EventHandler] 任务完成:', event.data.task_id, '进度:', completedCount, '/', totalCount)
+    // 🔥 更新 task step 状态为 completed
+    const { messages, updateMessageMetadata } = useChatStore.getState()
+    const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
+    
+    if (lastAiMessage?.metadata?.thinking) {
+      const thinking = [...lastAiMessage.metadata.thinking]
+      const taskStepIndex = thinking.findIndex((s: any) => s.id === event.data.task_id)
+      
+      if (taskStepIndex >= 0) {
+        thinking[taskStepIndex] = {
+          ...thinking[taskStepIndex],
+          status: 'completed',
+          content: event.data.output || '任务执行完成'
+        }
+        updateMessageMetadata(lastAiMessage.id!, { thinking })
+        console.log('[EventHandler] task.completed: task step 已标记为 completed:', event.data.task_id)
+      }
     }
+
+    console.log('[EventHandler] 任务完成:', event.data.task_id, '进度:', completedCount, '/', totalCount)
   }
 
   /**
