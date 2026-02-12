@@ -19,12 +19,8 @@ export type EventType =
   | 'task.progress'
   | 'task.completed'
   | 'task.failed'
-  // 产物阶段
+  // 产物阶段 (v3.2.0: 仅保留批处理模式 artifact.generated)
   | 'artifact.generated'
-  // 🔥 新增：Artifact 流式事件（Real-time Streaming）
-  | 'artifact.start'
-  | 'artifact.chunk'
-  | 'artifact.completed'
   // 消息阶段
   | 'message.delta'
   | 'message.done'
@@ -146,32 +142,6 @@ export interface ArtifactGeneratedData {
 
 export type ArtifactGeneratedEvent = SSEEvent<ArtifactGeneratedData>
 
-// 🔥 新增：Artifact 流式事件数据类型（Real-time Streaming）
-
-export interface ArtifactStartData {
-  task_id: string
-  expert_type: string
-  artifact_id: string
-  title: string
-  type: 'markdown' | 'html' | 'code' | 'json' | 'text'
-}
-
-export interface ArtifactChunkData {
-  artifact_id: string
-  delta: string
-}
-
-export interface ArtifactCompletedData {
-  artifact_id: string
-  task_id: string
-  expert_type: string
-  full_content: string
-}
-
-export type ArtifactStartEvent = SSEEvent<ArtifactStartData>
-export type ArtifactChunkEvent = SSEEvent<ArtifactChunkData>
-export type ArtifactCompletedEvent = SSEEvent<ArtifactCompletedData>
-
 // ============================================================================
 // 消息阶段事件
 // ============================================================================
@@ -254,9 +224,6 @@ export type AnyServerEvent =
   | TaskCompletedEvent
   | TaskFailedEvent
   | ArtifactGeneratedEvent
-  | ArtifactStartEvent      // 🔥 新增
-  | ArtifactChunkEvent      // 🔥 新增
-  | ArtifactCompletedEvent  // 🔥 新增
   | MessageDeltaEvent
   | MessageDoneEvent
   | HumanInterruptEvent     // 🔥🔥🔥 v3.1.0 HITL

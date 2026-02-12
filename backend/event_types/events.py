@@ -155,31 +155,6 @@ class ArtifactGeneratedData(BaseModel):
     artifact: ArtifactInfo
 
 
-# 🔥 新增：Artifact 流式事件数据模型（Real-time Streaming）
-
-class ArtifactStartData(BaseModel):
-    """artifact.start 事件数据 - 通知前端开始流式生成"""
-    task_id: str
-    expert_type: str
-    artifact_id: str
-    title: str
-    type: str  # markdown | html | code | json | text
-
-
-class ArtifactChunkData(BaseModel):
-    """artifact.chunk 事件数据 - 传输内容片段"""
-    artifact_id: str
-    delta: str  # 增量内容
-
-
-class ArtifactCompletedData(BaseModel):
-    """artifact.completed 事件数据 - 流式生成完成"""
-    artifact_id: str
-    task_id: str
-    expert_type: str
-    full_content: str  # 完整内容（用于最终确认）
-
-
 # ============================================================================
 # 消息阶段事件
 # ============================================================================

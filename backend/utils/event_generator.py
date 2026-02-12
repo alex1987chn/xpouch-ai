@@ -12,7 +12,7 @@ from event_types.events import (
     TaskInfo,
     TaskStartedData, TaskProgressData, TaskCompletedData, TaskFailedData,
     ArtifactGeneratedData, ArtifactInfo,
-    ArtifactStartData, ArtifactChunkData, ArtifactCompletedData,
+
     MessageDeltaData, MessageDoneData,
     RouterStartData, RouterDecisionData, ErrorData,
     build_sse_event, sse_event_to_string
@@ -213,54 +213,6 @@ class EventGenerator:
         )
         return build_sse_event(EventType.ARTIFACT_GENERATED, data, self._next_event_id())
     
-    # 🔥 新增：Artifact 流式事件方法（Real-time Streaming）
-    
-    def artifact_start(
-        self,
-        task_id: str,
-        expert_type: str,
-        artifact_id: str,
-        title: str,
-        type: str
-    ) -> SSEEvent:
-        """生成 artifact.start 事件 - 通知前端开始流式生成"""
-        data = ArtifactStartData(
-            task_id=task_id,
-            expert_type=expert_type,
-            artifact_id=artifact_id,
-            title=title,
-            type=type
-        )
-        return build_sse_event(EventType.ARTIFACT_START, data, self._next_event_id())
-    
-    def artifact_chunk(
-        self,
-        artifact_id: str,
-        delta: str
-    ) -> SSEEvent:
-        """生成 artifact.chunk 事件 - 传输内容片段"""
-        data = ArtifactChunkData(
-            artifact_id=artifact_id,
-            delta=delta
-        )
-        return build_sse_event(EventType.ARTIFACT_CHUNK, data, self._next_event_id())
-    
-    def artifact_completed(
-        self,
-        artifact_id: str,
-        task_id: str,
-        expert_type: str,
-        full_content: str
-    ) -> SSEEvent:
-        """生成 artifact.completed 事件 - 流式生成完成"""
-        data = ArtifactCompletedData(
-            artifact_id=artifact_id,
-            task_id=task_id,
-            expert_type=expert_type,
-            full_content=full_content
-        )
-        return build_sse_event(EventType.ARTIFACT_COMPLETED, data, self._next_event_id())
-    
     # ========================================================================
     # 消息阶段事件
     # ========================================================================
@@ -382,23 +334,6 @@ def event_task_failed(*args, **kwargs) -> SSEEvent:
 def event_artifact_generated(*args, **kwargs) -> SSEEvent:
     """便捷函数：生成 artifact.generated 事件"""
     return _event_generator.artifact_generated(*args, **kwargs)
-
-
-# 🔥 新增：Artifact 流式事件便捷函数（Real-time Streaming）
-
-def event_artifact_start(*args, **kwargs) -> SSEEvent:
-    """便捷函数：生成 artifact.start 事件"""
-    return _event_generator.artifact_start(*args, **kwargs)
-
-
-def event_artifact_chunk(*args, **kwargs) -> SSEEvent:
-    """便捷函数：生成 artifact.chunk 事件"""
-    return _event_generator.artifact_chunk(*args, **kwargs)
-
-
-def event_artifact_completed(*args, **kwargs) -> SSEEvent:
-    """便捷函数：生成 artifact.completed 事件"""
-    return _event_generator.artifact_completed(*args, **kwargs)
 
 
 def event_message_delta(*args, **kwargs) -> SSEEvent:

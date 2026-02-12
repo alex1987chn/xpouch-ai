@@ -4,10 +4,11 @@
  * @description
  * 这是组合式 Hook，将聊天逻辑拆分为多个单一职责的子 Hooks：
  * - useChatCore: 核心聊天逻辑（发送、停止、加载状态）
- * - useExpertHandler: 专家事件处理（激活、完成、任务计划、artifact 处理）
  * - useConversation: 会话管理（加载、删除）
  *
- * v3.1.0 性能优化：使用 Zustand Selectors 避免不必要的重渲染
+ * v3.2.0 架构重构：
+ * - 移除 useExpertHandler，所有事件处理统一由 eventHandlers.ts 处理
+ * - 符合 SDUI 原则：Backend -> SSE -> EventHandler -> Store
  *
  * @returns {
  *   sendMessage: 发送消息函数
@@ -34,7 +35,6 @@
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useChatCore } from './chat/useChatCore'
-import { useExpertHandler } from './chat/useExpertHandler'
 import { useConversation } from './chat/useConversation'
 import { errorHandler } from '@/utils/logger'
 
@@ -51,16 +51,10 @@ export function useChat() {
   const inputMessage = useInputMessage()
   const setInputMessage = useSetInputMessageAction()
 
-  // 1. Compose expert event handler (includes artifact handling)
-  const { handleExpertEvent: handleExpertEventRaw } = useExpertHandler()
-  const handleExpertEvent = useCallback(async (
-    event: any,
-    conversationMode: 'simple' | 'complex'
-  ) => {
-    await handleExpertEventRaw(event, conversationMode)
-  }, [handleExpertEventRaw])
+  // v3.2.0: 所有会话逻辑（Chat & Task）均由 eventHandlers 统一处理，由后端驱动
+  // 移除了 useExpertHandler 中间层，简化事件处理链路
 
-  // 2. Get chat core logic with callbacks
+  // 1. Get chat core logic with callbacks
   const chatCore = useChatCore({
     onNewConversation: useCallback((conversationId: string, agentId: string) => {
       // 🔥 修复：保留 isNew 状态，避免触发不必要的 loadConversation
@@ -77,13 +71,13 @@ export function useChat() {
         })
       }
     }, [navigate]),
-    onExpertEvent: handleExpertEvent,
+    // v3.2.0: onExpertEvent 已移除，事件处理由 eventHandlers.ts 直接处理
   })
 
-  // 3. Get conversation manager
+  // 2. Get conversation manager
   const conversationManager = useConversation()
 
-  // 4. Retry last user message
+  // 3. Retry last user message
   const retry = useCallback(() => {
     const lastMessage = conversationManager.messages.filter(m => m.role === 'user').pop()
     if (lastMessage?.content) {

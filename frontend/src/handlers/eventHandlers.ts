@@ -95,8 +95,7 @@ export class EventHandler {
       case 'router.start':
         this.handleRouterStart(event as RouterStartEvent)
         break
-      // 🔥 plan.created 已在 useExpertHandler 中处理（避免重复）
-      // 保留 case 但不做任何操作
+      // 🔥 plan.created 仅用于初始化，不更新 UI（由 plan.started 接管）
       case 'plan.created':
         break
       // 🔥 Commander 流式思考事件
@@ -176,7 +175,9 @@ export class EventHandler {
    * 创建 thinking step，title 常驻，content 初始为空
    */
   private handlePlanStarted(event: PlanStartedEvent): void {
-    const { startPlan } = useTaskStore.getState()
+    // v3.2.0: 新规划开始时重置所有状态
+    const { startPlan, resetAll } = useTaskStore.getState()
+    resetAll()
     startPlan(event.data)
 
     // 🔥 创建 thinking step 到聊天消息

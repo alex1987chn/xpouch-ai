@@ -38,25 +38,10 @@ export const createPlanningSlice = (set: any, _get: any): PlanningSlice => ({
   // Actions
 
   startPlan: (data: PlanStartedData) => {
+    // v3.2.0: 仅更新本 Slice 的状态，不涉及其他 Slice
+    // session/tasks/isInitialized 等状态由组件层调用 resetAll() 统一重置
     set((state: any) => {
       state.planThinkingContent = data.content
-
-      if (!state.session) {
-        state.session = {
-          sessionId: data.session_id,
-          summary: data.title,
-          estimatedSteps: 0,
-          executionMode: 'sequential',
-          status: 'running'
-        }
-      } else {
-        state.session.status = 'running'
-      }
-
-      state.tasks = new Map()
-      state.tasksCache = []
-      state.tasksCacheVersion++
-      state.isInitialized = false
     })
   },
 

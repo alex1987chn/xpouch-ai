@@ -53,7 +53,7 @@ export function useSessionRestore(
   const isInitialized = useTaskStore((state) => state.isInitialized)
   const session = useTaskStore((state) => state.session)
   const initializePlan = useTaskStore((state) => state.initializePlan)
-  const clearTasks = useTaskStore((state) => state.clearTasks)
+  const resetAll = useTaskStore((state) => state.resetAll)
 
   /**
    * 执行恢复
@@ -105,11 +105,11 @@ export function useSessionRestore(
       setError(error)
       
       // 恢复失败时清空本地状态，避免显示过期数据
-      clearTasks()
+      resetAll()  // v3.2.0: 使用 resetAll 完整重置所有 Slice 状态
     } finally {
       setIsRestoring(false)
     }
-  }, [conversationId, enabled, isInitialized, session, initializePlan, clearTasks, onRestored])
+  }, [conversationId, enabled, isInitialized, session, initializePlan, resetAll, onRestored])
 
   /**
    * 自动恢复
