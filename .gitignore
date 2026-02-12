@@ -80,7 +80,9 @@ CODE_REVIEW_REPORT.md
 
 # Deployment documentation (local only)
 DEPLOY_UBUNTU.md
+DEPLOY_CHECKLIST.md
 
-# Upgrade guides and reports
+# Upgrade guides and reports (local only)
 REACT_19_UPGRADE_GUIDE.md
 REACT_19_COMPATIBILITY_REPORT.md
+REACT_19_MIGRATION_SUMMARY.md
