@@ -112,6 +112,7 @@ export const useTaskActions = () => useTaskStore(
     addArtifact: state.addArtifact,
     selectTask: state.selectTask,
     clearTasks: state.clearTasks,
+    resetAll: state.resetAll,
     setMode: state.setMode,
     updateTasksFromPlan: state.updateTasksFromPlan,
     setPendingPlan: state.setPendingPlan,
@@ -127,6 +128,7 @@ export const useTaskActions = () => useTaskStore(
  */
 export const useSelectTaskAction = () => useTaskStore(state => state.selectTask)
 export const useClearTasksAction = () => useTaskStore(state => state.clearTasks)
+export const useResetAllAction = () => useTaskStore(state => state.resetAll)
 export const useInitializePlanAction = () => useTaskStore(state => state.initializePlan)
 export const useSetModeAction = () => useTaskStore(state => state.setMode)
 

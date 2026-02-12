@@ -21,6 +21,7 @@ export interface PlanningSliceActions {
   appendPlanThinking: (data: PlanThinkingData) => void
   setPlanThinkingContent: (content: string) => void
   clearPlanThinking: () => void
+  resetPlanning: () => void
 }
 
 export type PlanningSlice = PlanningSliceState & PlanningSliceActions
@@ -72,6 +73,12 @@ export const createPlanningSlice = (set: any, _get: any): PlanningSlice => ({
   },
 
   clearPlanThinking: () => {
+    set((state: any) => {
+      state.planThinkingContent = ''
+    })
+  },
+
+  resetPlanning: () => {
     set((state: any) => {
       state.planThinkingContent = ''
     })

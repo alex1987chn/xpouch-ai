@@ -174,27 +174,27 @@ export async function sendMessage(
               data: eventData
             }
             
-            // 🔥 先调用 onChunk 传递事件给 useExpertHandler（用于 thinking 更新）
-            // 然后再调用 handleServerEvent（避免状态竞争）
-            if (eventType === 'message.delta' && onChunk) {
-              // 文本流事件：传递内容
-              // 🔥 修复：确保 content 存在且是字符串，避免追加 'undefined'
-              // 直接传递原始内容，thinking 过滤由 useChatCore.ts 的 processStreamingChunk 处理
-              const rawContent = eventData.content
-              if (rawContent && typeof rawContent === 'string') {
-                // 直接传递原始内容
-                await onChunk(rawContent, finalConversationId)
-                
-                // 累积原始内容（供后续使用）
-                fullContent += rawContent
-              }
-            } else if (onChunk) {
-              // 其他事件（task.started/completed/failed 等）：传递事件对象
-              await onChunk(undefined, finalConversationId, fullEvent as any)
-            }
+            // 🔥 事件分流：Chat 流式 vs Task 批处理
+            // message.* 事件 -> onChunk (给 useExpertHandler 处理对话流)
+            // router/plan/task/artifact 事件 -> handleServerEvent (给 eventHandlers 处理任务流)
+            const isChatEvent = eventType.startsWith('message.') || eventType === 'error'
             
-            // 统一处理所有事件（更新 taskStore 等）
-            handleServerEvent(fullEvent as any)
+            if (isChatEvent && onChunk) {
+              if (eventType === 'message.delta') {
+                // 文本流事件：传递内容
+                const rawContent = eventData.content
+                if (rawContent && typeof rawContent === 'string') {
+                  await onChunk(rawContent, finalConversationId)
+                  fullContent += rawContent
+                }
+              } else {
+                // message.done / error 事件：传递事件对象
+                await onChunk(undefined, finalConversationId, fullEvent as any)
+              }
+            } else if (!isChatEvent) {
+              // Task 相关事件：直接给 eventHandlers，不经过 onChunk
+              handleServerEvent(fullEvent as any)
+            }
           }
           
         } catch (e) {
@@ -370,20 +370,23 @@ export async function resumeChat(
               data: eventData
             }
             
-            // 🔥 复用与 sendMessage 完全相同的回调逻辑
-            if (eventType === 'message.delta' && onChunk) {
-              // 🔥 修复：确保 content 存在且是字符串，避免追加 'undefined'
-              const content = eventData.content
-              if (content && typeof content === 'string') {
-                await onChunk(content, params.threadId)
-                fullContent += content
-              }
-            } else if (onChunk) {
-              await onChunk(undefined, params.threadId, fullEvent as any)
-            }
+            // 🔥 事件分流：Chat 流式 vs Task 批处理
+            const isChatEvent = eventType.startsWith('message.') || eventType === 'error'
             
-            // 统一处理所有事件
-            handleServerEvent(fullEvent as any)
+            if (isChatEvent && onChunk) {
+              if (eventType === 'message.delta') {
+                const content = eventData.content
+                if (content && typeof content === 'string') {
+                  await onChunk(content, params.threadId)
+                  fullContent += content
+                }
+              } else {
+                await onChunk(undefined, params.threadId, fullEvent as any)
+              }
+            } else if (!isChatEvent) {
+              // Task 相关事件：直接给 eventHandlers
+              handleServerEvent(fullEvent as any)
+            }
             
             // 🔥 检查是否是 message.done 事件，表示流结束
             if (eventType === 'message.done') {

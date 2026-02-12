@@ -49,7 +49,7 @@ const HistoryPageWrapper = () => {
     // 避免旧任务/执行状态阻止新会话加载
     setMessages([])
     setCurrentConversationId(null)
-    useTaskStore.getState().clearTasks()
+    useTaskStore.getState().resetAll()
 
     // 从 conversation 对象中提取所需参数
     const conversationId = conversation.id

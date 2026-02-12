@@ -12,15 +12,16 @@
  * - 所有 Artifact 通过 artifact.generated 事件全量推送
  * - 添加进度更新逻辑
  * 
- * [架构]
+ * [架构 v3.2.0]
  * chat.ts (SSE 连接) -> EventHandler -> Stores -> React Components
- *                      |
- *                      v
- *               useExpertHandler (可选，用于 Thinking 更新)
  * 
  * [事件分发]
- * 注意：plan.created 事件在 useExpertHandler 中处理（避免重复）
- * 其他事件在此统一处理
+ * - message.* 事件 -> chat.ts onChunk -> ChatStore (流式对话)
+ * - plan/task/artifact 事件 -> EventHandler -> TaskStore (批处理)
+ * 
+ * [批处理模式]
+ * - artifact.generated 包含完整内容，直接存入 task.artifacts
+ * - 废弃流式：artifact.start/chunk/completed 不再使用
  * 
  * [去重机制]
  * - 使用 processedEventIds Set 去重
@@ -114,7 +115,8 @@ export class EventHandler {
       case 'task.failed':
         this.handleTaskFailed(event as TaskFailedEvent)
         break
-      // 批处理模式 - 只处理 artifact.generated
+      // 🔥 v3.2.0 批处理模式：artifact.generated 包含完整内容
+      // 注意：task.completed 只带500字节摘要，完整内容由本事件提供
       case 'artifact.generated':
         this.handleArtifactGenerated(event as ArtifactGeneratedEvent)
         break
@@ -250,7 +252,6 @@ export class EventHandler {
   /**
    * 处理 task.started 事件
    * 更新任务状态为 running
-   * 注意：thinking 更新由 useExpertHandler.ts 处理，避免重复
    */
   private handleTaskStarted(event: TaskStartedEvent): void {
     const { startTask } = useTaskStore.getState()
@@ -264,7 +265,9 @@ export class EventHandler {
   /**
    * 处理 task.completed 事件
    * 更新任务状态为 completed，并更新进度
-   * 添加进度更新逻辑
+   * 
+   * 🔥 注意：event.data.output 只有500字节摘要
+   * 完整内容通过 artifact.generated 事件单独发送
    */
   private handleTaskCompleted(event: TaskCompletedEvent): void {
     const { completeTask, setProgress, tasksCache } = useTaskStore.getState()
@@ -285,7 +288,6 @@ export class EventHandler {
   /**
    * 处理 task.failed 事件
    * 更新任务状态为 failed
-   * 注意：thinking 更新由 useExpertHandler.ts 处理，避免重复
    */
   private handleTaskFailed(event: TaskFailedEvent): void {
     const { failTask } = useTaskStore.getState()
