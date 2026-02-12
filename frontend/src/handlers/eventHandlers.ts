@@ -404,6 +404,23 @@ export class EventHandler {
         logger.debug('[EventHandler] 合并 thinking 数据，前端:', existingThinking.length, '后端:', newSteps.length, '合并后:', mergedThinking.length)
       }
     }
+    
+    // 🔥🔥🔥 关键修复：message.done 时将所有 thinking steps 标记为 completed
+    // 防止流结束后仍有 running 状态的步骤导致 UI 一直转圈
+    const finalMessage = useChatStore.getState().messages.find(m => m.id === event.data.message_id)
+    if (finalMessage?.metadata?.thinking && finalMessage.metadata.thinking.length > 0) {
+      const hasRunningSteps = finalMessage.metadata.thinking.some((s: any) => s.status === 'running')
+      if (hasRunningSteps) {
+        const completedThinking = finalMessage.metadata.thinking.map((s: any) => ({
+          ...s,
+          status: 'completed' as const
+        }))
+        updateMessageMetadata(event.data.message_id, { thinking: completedThinking })
+        if (DEBUG) {
+          logger.debug('[EventHandler] message.done: 将所有 thinking steps 标记为 completed')
+        }
+      }
+    }
 
     if (DEBUG) {
       logger.debug('[EventHandler] 消息完成:', event.data.message_id)
