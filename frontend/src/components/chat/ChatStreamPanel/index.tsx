@@ -32,7 +32,7 @@
  * - 流式输出时组件保持静止
  */
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useLayoutEffect } from 'react'
 import type { Message } from '@/types'
 import EmptyState from '../EmptyState'
 import MessageItem from '../MessageItem'
@@ -153,7 +153,8 @@ export default function ChatStreamPanel({
   const estimatedSteps = pendingPlan.length || 0
 
   // Auto-scroll to bottom
-  useEffect(() => {
+  // React 19: 使用 useLayoutEffect 避免滚动闪烁
+  useLayoutEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
