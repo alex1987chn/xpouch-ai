@@ -16,7 +16,7 @@
  * - 自动延迟折叠（全部完成后 1.5s）
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Search, 
@@ -253,7 +253,8 @@ export default function ThinkingProcess({ steps, isThinking, className, totalSte
   }, [])
   
   // 🔥🔥🔥 新增：自动滚动到底部
-  useEffect(() => {
+  // React 19: 使用 useLayoutEffect 避免滚动闪烁
+  useLayoutEffect(() => {
     if (scrollContainerRef.current && isExpanded) {
       const container = scrollContainerRef.current
       container.scrollTop = container.scrollHeight
