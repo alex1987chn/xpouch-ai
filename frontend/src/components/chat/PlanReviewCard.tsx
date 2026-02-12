@@ -1,19 +1,17 @@
 /**
  * PlanReviewCard - HITL (Human-in-the-Loop) 计划审核组件
  * 
- * Bauhaus 设计风格：
- * - 直角无圆角 (rounded-none)
- * - 粗边框 (border-2)
- * - 硬阴影 (shadow-hard)
- * - 三原色编码 (蓝/黄/红)
- * - 按压效果 (active:translate)
+ * v3.2 简化设计：
+ * - 柔和的边框样式，不抢眼
+ * - 简洁的任务列表展示
+ * - 保持 Bauhaus 风格但不过度
  * 
  * 状态驱动 UI：基于 isWaitingForApproval
  */
 
 import React, { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trash2, Edit3, CheckCircle2, XCircle, Play, Loader2, Hand, AlertTriangle } from 'lucide-react'
+import { Trash2, Edit3, CheckCircle2, XCircle, Play, Loader2, AlertTriangle } from 'lucide-react'
 import type { ResumeChatParams } from '@/services/chat'
 
 // 使用 TaskStore
@@ -25,17 +23,17 @@ import {
 import { useAddMessageAction } from '@/hooks/useChatSelectors'
 import { cn } from '@/lib/utils'
 
-// 专家颜色编码 - Bauhaus 三原色
+// 专家颜色编码 - 简化版
 const EXPERT_COLORS: Record<string, string> = {
-  search: 'bg-blue-600 text-white border-blue-600',
-  coder: 'bg-yellow-400 text-black border-black',
-  researcher: 'bg-red-600 text-white border-red-600',
-  analyzer: 'bg-black text-white border-black',
-  writer: 'bg-white text-black border-black dark:bg-gray-800 dark:text-white',
-  planner: 'bg-blue-500 text-white border-blue-500',
-  image_analyzer: 'bg-purple-600 text-white border-purple-600',
-  memorize_expert: 'bg-gray-600 text-white border-gray-600',
-  generic: 'bg-gray-200 text-black border-black dark:bg-gray-700 dark:text-white',
+  search: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300',
+  coder: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300',
+  researcher: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300',
+  analyzer: 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300',
+  writer: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300',
+  planner: 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300',
+  image_analyzer: 'bg-pink-100 text-pink-700 border-pink-300 dark:bg-pink-900/30 dark:text-pink-300',
+  memorize_expert: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300',
+  generic: 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400',
 }
 
 const getExpertColor = (expertType: string) => {
@@ -185,88 +183,64 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -10, scale: 0.98 }}
-        transition={{ duration: 0.2 }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.15 }}
         className={cn(
-          "my-4 border-2 border-black dark:border-white",
-          "bg-yellow-400 dark:bg-yellow-500",
-          "shadow-hard",
-          "transition-all duration-200"
+          "my-3 border-2 border-amber-400 dark:border-amber-600",
+          "bg-amber-50 dark:bg-amber-950/30",
+          "rounded-lg overflow-hidden"
         )}
       >
-        {/* 标题区 - Bauhaus 几何构成 */}
-        <div className="flex items-center justify-between p-4 border-b-2 border-black dark:border-white bg-white dark:bg-gray-900">
-          <div className="flex items-center gap-3">
-            {/* 八边形 STOP 标志 - Bauhaus 几何 */}
-            <div className="relative">
-              <div className="w-10 h-10 bg-red-600 rotate-45 flex items-center justify-center shadow-hard-sm">
-                <Hand className="w-5 h-5 text-white -rotate-45" />
-              </div>
-            </div>
-            <div>
-              <h3 className="text-lg font-bold uppercase tracking-wider text-black dark:text-white">
-                计划审核
-              </h3>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                Commander 已生成执行计划，请审核后确认
-              </p>
-            </div>
+        {/* 标题区 - 简洁 */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-amber-200 dark:border-amber-800 bg-amber-100/50 dark:bg-amber-900/30">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+              计划审核
+            </h3>
+            <span className="text-xs text-amber-600 dark:text-amber-400">
+              {editedPlan.length} 个任务
+            </span>
           </div>
-          {/* HITL 标签 */}
-          <span className="px-3 py-1 border-2 border-black dark:border-white bg-black text-white text-xs font-bold uppercase tracking-wider dark:bg-white dark:text-black">
+          <span className="px-2 py-0.5 text-xs font-medium bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 rounded">
             HITL
           </span>
         </div>
 
-        {/* 任务列表 */}
-        <div className="p-4 space-y-3 bg-white dark:bg-gray-900 max-h-96 overflow-y-auto">
+        {/* 任务列表 - 简洁 */}
+        <div className="p-3 space-y-2 max-h-64 overflow-y-auto">
           <AnimatePresence mode="popLayout">
             {editedPlan.map((task, index) => (
               <motion.div
                 key={task.id}
                 layout
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20, scale: 0.9 }}
-                transition={{ delay: index * 0.05 }}
+                exit={{ opacity: 0, x: 10, scale: 0.95 }}
+                transition={{ delay: index * 0.03 }}
                 className={cn(
-                  "p-3 border-2 border-black dark:border-white",
-                  "bg-white dark:bg-gray-800",
-                  "shadow-hard-sm",
-                  "hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard",
-                  "transition-all duration-150"
+                  "p-2.5 border border-gray-200 dark:border-gray-700",
+                  "bg-white dark:bg-gray-800 rounded-md",
+                  "hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
                 )}
               >
-                <div className="flex items-start gap-3">
-                  {/* 序号 - Bauhaus 几何方块 */}
-                  <div className={cn(
-                    "w-8 h-8 flex-shrink-0 flex items-center justify-center",
-                    "border-2 border-black dark:border-white",
-                    "font-bold text-sm",
-                    index === 0 
-                      ? "bg-blue-600 text-white border-blue-600" 
-                      : "bg-white text-black dark:bg-gray-800 dark:text-white"
-                  )}>
-                    {index + 1}
-                  </div>
+                <div className="flex items-start gap-2">
+                  {/* 序号 */}
+                  <span className="text-xs text-gray-400 dark:text-gray-500 font-mono w-5 flex-shrink-0">
+                    {index + 1}.
+                  </span>
                   
                   <div className="flex-1 min-w-0">
-                    {/* 专家类型标签 - 三原色编码 */}
-                    <div className="flex items-center gap-2 mb-2">
+                    {/* 专家类型标签 */}
+                    <div className="flex items-center gap-2 mb-1">
                       <span className={cn(
-                        "px-2 py-0.5 text-xs font-bold uppercase tracking-wider",
-                        "border-2",
+                        "px-1.5 py-0.5 text-xs font-medium rounded border",
                         getExpertColor(task.expert_type)
                       )}>
                         {task.expert_type}
                       </span>
-                      {task.depends_on && task.depends_on.length > 0 && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          ← 依赖: {task.depends_on.join(', ')}
-                        </span>
-                      )}
                     </div>
                     
                     {/* 任务描述 */}
@@ -276,15 +250,15 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
                         onChange={(e) => handleUpdateDescription(task.id, e.target.value)}
                         className={cn(
                           "w-full p-2 text-sm",
-                          "border-2 border-black dark:border-white",
+                          "border border-gray-300 dark:border-gray-600 rounded",
                           "bg-white dark:bg-gray-700 dark:text-white",
-                          "focus:outline-none focus:ring-2 focus:ring-yellow-400",
-                          "resize-y min-h-[60px]"
+                          "focus:outline-none focus:ring-1 focus:ring-amber-400",
+                          "resize-none min-h-[50px]"
                         )}
                         rows={2}
                       />
                     ) : (
-                      <div className="text-sm text-black dark:text-white">
+                      <div className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
                         {task.description}
                       </div>
                     )}
@@ -292,21 +266,13 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
                   
                   {/* 删除按钮 */}
                   {isEditing && editedPlan.length > 1 && (
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                    <button
                       onClick={() => handleDeleteTask(task.id)}
-                      className={cn(
-                        "flex-shrink-0 p-2",
-                        "border-2 border-red-600 bg-red-600 text-white",
-                        "shadow-hard-sm",
-                        "active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
-                        "transition-all duration-100"
-                      )}
+                      className="p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                       title="删除任务"
                     >
                       <Trash2 className="w-4 h-4" />
-                    </motion.button>
+                    </button>
                   )}
                 </div>
               </motion.div>
@@ -314,164 +280,138 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
           </AnimatePresence>
         </div>
 
-        {/* 操作按钮区 */}
-        <div className="flex items-center justify-between p-4 border-t-2 border-black dark:border-white bg-white dark:bg-gray-900">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+        {/* 操作按钮区 - 简洁 */}
+        <div className="flex items-center justify-between px-4 py-3 border-t border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
+          <button
             onClick={() => setIsEditing(!isEditing)}
             disabled={isSubmitting}
             className={cn(
-              "px-4 py-2 text-sm font-bold uppercase tracking-wider",
-              "border-2 border-black dark:border-white",
-              "bg-white text-black dark:bg-gray-800 dark:text-white",
-              "shadow-hard-sm",
-              "hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard",
-              "active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
+              "px-3 py-1.5 text-xs font-medium",
+              "border border-gray-300 dark:border-gray-600 rounded",
+              "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300",
+              "hover:bg-gray-50 dark:hover:bg-gray-700",
               "disabled:opacity-50 disabled:cursor-not-allowed",
-              "transition-all duration-100",
-              "flex items-center gap-2"
+              "transition-colors flex items-center gap-1.5"
             )}
           >
             {isEditing ? (
               <>
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle2 className="w-3.5 h-3.5" />
                 完成编辑
               </>
             ) : (
               <>
-                <Edit3 className="w-4 h-4" />
-                编辑计划
+                <Edit3 className="w-3.5 h-3.5" />
+                编辑
               </>
             )}
-          </motion.button>
+          </button>
 
           <div className="flex gap-2">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               onClick={handleReject}
               disabled={isSubmitting}
               className={cn(
-                "px-4 py-2 text-sm font-bold uppercase tracking-wider",
-                "border-2 border-red-600",
-                "bg-white text-red-600 dark:bg-transparent dark:text-red-500 dark:border-red-500",
-                "shadow-hard-sm",
-                "hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard",
-                "active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
+                "px-3 py-1.5 text-xs font-medium",
+                "border border-red-300 dark:border-red-700 rounded",
+                "bg-white dark:bg-transparent text-red-600 dark:text-red-400",
+                "hover:bg-red-50 dark:hover:bg-red-900/20",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
-                "transition-all duration-100",
-                "flex items-center gap-2"
+                "transition-colors flex items-center gap-1.5"
               )}
             >
-              <XCircle className="w-4 h-4" />
+              <XCircle className="w-3.5 h-3.5" />
               取消
-            </motion.button>
+            </button>
             
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               onClick={handleApprove}
               disabled={isSubmitting || editedPlan.length === 0}
               className={cn(
-                "px-4 py-2 text-sm font-bold uppercase tracking-wider",
-                "border-2 border-blue-600",
-                "bg-blue-600 text-white",
-                "shadow-hard-sm",
-                "hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard",
-                "active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
+                "px-3 py-1.5 text-xs font-medium",
+                "bg-blue-600 text-white rounded",
+                "hover:bg-blue-700",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
-                "transition-all duration-100",
-                "flex items-center gap-2"
+                "transition-colors flex items-center gap-1.5"
               )}
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  执行中...
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  执行中
                 </>
               ) : (
                 <>
-                  <Play className="w-4 h-4" />
-                  确认执行 ({editedPlan.length})
+                  <Play className="w-3.5 h-3.5" />
+                  确认执行
                 </>
               )}
-            </motion.button>
+            </button>
           </div>
         </div>
         
-        {/* 确认对话框 - Bauhaus 风格 */}
+        {/* 确认对话框 - 简洁 */}
         <AnimatePresence>
           {showConfirmDialog && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+              className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
               onClick={(e) => e.target === e.currentTarget && setShowConfirmDialog(false)}
             >
               <motion.div
-                initial={{ scale: 0.9, y: 20 }}
+                initial={{ scale: 0.95, y: 10 }}
                 animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
+                exit={{ scale: 0.95, y: 10 }}
                 className={cn(
-                  "w-full max-w-sm",
-                  "border-2 border-black dark:border-white",
-                  "bg-white dark:bg-gray-900",
-                  "shadow-hard-lg"
+                  "w-full max-w-xs",
+                  "border border-gray-200 dark:border-gray-700",
+                  "bg-white dark:bg-gray-800 rounded-lg overflow-hidden",
+                  "shadow-lg"
                 )}
               >
                 {/* 对话框头部 */}
-                <div className="flex items-center gap-3 p-4 border-b-2 border-black dark:border-white bg-red-600">
-                  <AlertTriangle className="w-6 h-6 text-white" />
-                  <h3 className="text-lg font-bold uppercase tracking-wider text-white">
+                <div className="flex items-center gap-2 p-3 border-b border-gray-200 dark:border-gray-700 bg-red-50 dark:bg-red-900/20">
+                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  <h3 className="text-sm font-medium text-red-700 dark:text-red-300">
                     确认取消
                   </h3>
                 </div>
                 
                 {/* 对话框内容 */}
-                <div className="p-4">
-                  <p className="text-sm text-black dark:text-white">
+                <div className="p-3">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     确定要取消执行吗？这会清理所有计划状态。
                   </p>
                 </div>
                 
                 {/* 对话框按钮 */}
-                <div className="flex gap-2 p-4 border-t-2 border-black dark:border-white">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                <div className="flex gap-2 p-3 border-t border-gray-200 dark:border-gray-700">
+                  <button
                     onClick={() => setShowConfirmDialog(false)}
                     className={cn(
-                      "flex-1 px-4 py-2 text-sm font-bold uppercase tracking-wider",
-                      "border-2 border-black dark:border-white",
-                      "bg-white text-black dark:bg-gray-800 dark:text-white",
-                      "shadow-hard-sm",
-                      "hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard",
-                      "active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
-                      "transition-all duration-100"
+                      "flex-1 px-3 py-1.5 text-xs font-medium",
+                      "border border-gray-300 dark:border-gray-600 rounded",
+                      "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300",
+                      "hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
                     )}
                   >
                     再想想
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                  </button>
+                  <button
                     onClick={doCancel}
                     disabled={isCancelling}
                     className={cn(
-                      "flex-1 px-4 py-2 text-sm font-bold uppercase tracking-wider",
-                      "border-2 border-red-600",
-                      "bg-red-600 text-white",
-                      "shadow-hard-sm",
-                      "hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard",
-                      "active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
+                      "flex-1 px-3 py-1.5 text-xs font-medium",
+                      "bg-red-600 text-white rounded",
+                      "hover:bg-red-700",
                       "disabled:opacity-50 disabled:cursor-not-allowed",
-                      "transition-all duration-100"
+                      "transition-colors"
                     )}
                   >
                     {isCancelling ? '取消中...' : '确定取消'}
-                  </motion.button>
+                  </button>
                 </div>
               </motion.div>
             </motion.div>
