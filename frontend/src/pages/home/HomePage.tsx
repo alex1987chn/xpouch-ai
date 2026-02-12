@@ -254,7 +254,7 @@ export default function HomePage() {
   const handleAgentClick = useCallback(async (agentId: string) => {
     // 👈 先清空消息和 task 状态，避免显示旧会话的缓存
     useChatStore.getState().setMessages([])
-    useTaskStore.getState().clearTasks()
+    useTaskStore.getState().resetAll()
     useChatStore.getState().setSelectedAgentId(agentId)
 
     // 👈 默认助手：直接创建新会话（不查询历史）
@@ -329,7 +329,7 @@ export default function HomePage() {
     // 避免 useEffect 复杂判断，确保新会话以干净状态开始
     useChatStore.getState().setMessages([])
     useChatStore.getState().setCurrentConversationId(null)
-    useTaskStore.getState().clearTasks()
+    useTaskStore.getState().resetAll()
 
     // 统一使用 Orchestrator 接口（后端自动路由）
     const agentId = selectedAgentId || SYSTEM_AGENTS.DEFAULT_CHAT

@@ -62,6 +62,13 @@ export const useTaskStore = create<TaskStore>()(
       ...createArtifactSlice(set, get),
       ...createUISlice(set, get),
       ...createPlanningSlice(set, get),
+      
+      // 全局重置方法 - 组合各 Slice 的重置逻辑
+      resetAll: (force: boolean = false) => {
+        get().clearTasks(force)
+        get().resetUI()
+        get().resetPlanning()
+      }
     })),
     // ============================================================================
     // Persist 配置

@@ -97,7 +97,7 @@ export default function UnifiedChatPage() {
   useEffect(() => {
     if (!conversationId) {
       // 无会话 ID 时重置状态
-      useTaskStore.getState().clearTasks()
+      useTaskStore.getState().resetAll()
       return
     }
 
@@ -131,7 +131,7 @@ export default function UnifiedChatPage() {
         if (error?.status === 404) {
           // 会话不存在，重置状态
           useChatStore.getState().setMessages([])
-          useTaskStore.getState().clearTasks()
+          useTaskStore.getState().resetAll()
         }
       })
   }, [conversationId, initialMessage])

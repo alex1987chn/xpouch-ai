@@ -325,17 +325,11 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
         return
       }
       
-      state.mode = null
+      // 只清理 TaskSlice 自己的状态
       state.session = null
       state.tasks = new Map()
       state.tasksCache = []
       state.tasksCacheVersion++
-      state.runningTaskIds = new Set()
-      state.selectedTaskId = null
-      state.isInitialized = false
-      state.planThinkingContent = ''
-      state.isWaitingForApproval = false
-      state.pendingPlan = []
     })
   },
 
