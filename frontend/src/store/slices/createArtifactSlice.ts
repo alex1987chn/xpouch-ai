@@ -14,7 +14,7 @@
  * [Architecture Note]
  * Cross-slice cache sync: All actions call `get().syncTasksCache()` 
  * OUTSIDE of `set()` closure to avoid nested Action anti-pattern.
- * React 18 Automatic Batching ensures single re-render.
+ * React 19 Automatic Batching ensures single re-render.
  */
 
 import type {

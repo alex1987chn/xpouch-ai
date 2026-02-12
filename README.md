@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0%20with%20Additional%20Terms-blue.svg)](./LICENSE)
 [![Python 3.13+](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/downloads/)
-[![React 18](https://img.shields.io/badge/React-18.3-61dafb.svg)](https://reactjs.org/)
+[![React 19](https://img.shields.io/badge/React-19.2-61dafb.svg)](https://react.dev/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.0+-green.svg)](https://github.com/langchain-ai/langgraph)
 
 > **Infinite Minds. One Pouch.**
@@ -447,7 +447,7 @@ CREATE TABLE user_memories (
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
-| React | 18.3.1 | UI 框架 |
+| React | 19.2.4 | UI 框架 |
 | TypeScript | 5.7.2 | 类型系统 |
 | React Router | 7.12.0 | 路由管理 |
 | Vite | 7.3.1 | 构建工具 |
@@ -468,7 +468,7 @@ CREATE TABLE user_memories (
 | Immer | 11.1.3 | 不可变状态（Zustand 中间件）|
 | KaTeX | 0.16.27 | LaTeX 数学公式渲染 |
 | date-fns | 4.1.0 | 日期格式化 |
-| React Syntax Highlighter | 16.1.0 | 代码语法高亮 |
+| prism-react-renderer | 2.4.1 | 代码语法高亮 |
 | rehype-highlight | 7.0.2 | Markdown 代码高亮插件 |
 | rehype-katex | 7.0.1 | Markdown 数学公式插件 |
 | remark-gfm | 4.0.0 | Markdown GitHub 扩展 |
