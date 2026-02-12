@@ -57,7 +57,7 @@ const HistoryPageWrapper = () => {
     const normalizedAgentId = normalizeAgentId(agentId)
 
     // 所有对话都使用纯净 URL /chat/:id
-    // 后端自动根据 thread_mode 决定是简单模式还是复杂模式
+    // URL 携带 agentId，作为页面状态的唯一真相源 (SDUI)
     // 只有自定义智能体（非系统默认助手）才需要在 URL 中携带 agentId
     if (normalizedAgentId &&
         normalizedAgentId !== 'sys-default-chat' &&

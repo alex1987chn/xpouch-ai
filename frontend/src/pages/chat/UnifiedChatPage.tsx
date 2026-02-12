@@ -8,6 +8,8 @@ import { useApp } from '@/providers/AppProvider'
 
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { normalizeAgentId } from '@/utils/agentUtils'
+import { getAllAgents } from '@/services/api'
+import { logger } from '@/utils/logger'
 
 // 新布局组件
 import { IndustrialChatLayout, ChatStreamPanel } from '@/components/layout'
@@ -49,10 +51,63 @@ export default function UnifiedChatPage() {
   const initializedRef = useRef(false)
   const conversationLoadedRef = useRef(false)
 
-  // 计算当前智能体
+  // 加载自定义 Agent 的状态
+  const [loadedAgent, setLoadedAgent] = useState<any>(null)
+  const [isLoadingAgent, setIsLoadingAgent] = useState(false)
+
+  // 异步加载自定义 Agent
+  useEffect(() => {
+    if (normalizedAgentId === SYSTEM_AGENTS.DEFAULT_CHAT) return
+    
+    // 先在 store 中查找
+    const customAgents = useChatStore.getState().customAgents
+    const cachedAgent = customAgents.find(a => a.id === normalizedAgentId)
+    if (cachedAgent) {
+      setLoadedAgent(cachedAgent)
+      return
+    }
+    
+    // 如果 store 中没有，从后端加载
+    const loadAgent = async () => {
+      setIsLoadingAgent(true)
+      try {
+        const agents = await getAllAgents()
+        const agent = agents.find((a: any) => a.id === normalizedAgentId)
+        if (agent) {
+          const formattedAgent = {
+            id: agent.id,
+            name: agent.name,
+            description: agent.description || '',
+            category: agent.category || '综合',
+            isCustom: true,
+            is_builtin: false,
+            modelId: agent.model_id || 'deepseek-chat',
+            icon: null,
+            systemPrompt: agent.system_prompt || ''
+          }
+          setLoadedAgent(formattedAgent)
+          // 同时更新 store
+          useChatStore.getState().setCustomAgents(prev => {
+            if (prev.find(a => a.id === agent.id)) return prev
+            return [...prev, formattedAgent]
+          })
+        }
+      } catch (error) {
+        logger.error('[UnifiedChatPage] 加载 Agent 失败:', error)
+      } finally {
+        setIsLoadingAgent(false)
+      }
+    }
+    
+    loadAgent()
+  }, [normalizedAgentId])
+
+  // 计算当前智能体 (SDUI: 直接从 URL 获取 agentId，不依赖 Store)
   const currentAgent = useMemo(() => {
-    const selectedAgentId = useChatStore.getState().selectedAgentId
-    if (selectedAgentId === SYSTEM_AGENTS.DEFAULT_CHAT) {
+    // 优先使用 URL 中的 agentId (真相源)
+    const effectiveAgentId = normalizedAgentId
+    
+    if (effectiveAgentId === SYSTEM_AGENTS.DEFAULT_CHAT) {
       return {
         id: SYSTEM_AGENTS.DEFAULT_CHAT,
         name: getSystemAgentName(SYSTEM_AGENTS.DEFAULT_CHAT),
@@ -64,31 +119,33 @@ export default function UnifiedChatPage() {
         icon: null,
         systemPrompt: ''
       }
-    } else {
-      const customAgents = useChatStore.getState().customAgents
-      return customAgents.find(a => a.id === selectedAgentId)
     }
-  }, [normalizedAgentId])
+    
+    // 优先使用从后端加载的 agent
+    if (loadedAgent && loadedAgent.id === effectiveAgentId) {
+      return loadedAgent
+    }
+    
+    // 从 store 缓存中查找
+    const customAgents = useChatStore.getState().customAgents
+    const cachedAgent = customAgents.find(a => a.id === effectiveAgentId)
+    if (cachedAgent) return cachedAgent
+    
+    // 如果都没有找到，返回 null (等待异步加载完成)
+    return null
+  }, [normalizedAgentId, loadedAgent])
 
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [viewMode, setViewMode] = useState<'chat' | 'preview'>('chat')
   const [inputValue, setInputValue] = useState('')
 
-  // 同步 URL 的 agentId 到 store（只执行一次）
+  // 同步会话 ID 到 store（仅用于 API 调用）
   useEffect(() => {
-    if (initializedRef.current) return
-    initializedRef.current = true
-
     if (conversationId) {
       const currentId = useChatStore.getState().currentConversationId
       if (currentId !== conversationId) {
         useChatStore.getState().setCurrentConversationId(conversationId)
       }
-    }
-
-    const selectedAgentId = useChatStore.getState().selectedAgentId
-    if (normalizedAgentId && normalizedAgentId !== selectedAgentId) {
-      useChatStore.getState().setSelectedAgentId(normalizedAgentId)
     }
   }, [])
 
@@ -204,11 +261,27 @@ export default function UnifiedChatPage() {
     setIsFullscreen(prev => !prev)
   }, [])
 
-  if (!currentAgent) {
+  // 加载中状态：agent 正在从后端获取
+  if (isLoadingAgent) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <p className="font-mono text-sm">Agent not found</p>
+          <div className="w-6 h-6 border-2 border-[var(--border-color)] border-t-[var(--accent)] animate-spin mx-auto mb-2" />
+          <p className="font-mono text-sm">Loading agent...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // URL 有 agentId 但加载失败（agent 不存在或已被删除）
+  if (!currentAgent && normalizedAgentId !== SYSTEM_AGENTS.DEFAULT_CHAT) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <p className="font-mono text-sm text-red-500">Agent not found</p>
+          <p className="font-mono text-xs text-[var(--text-secondary)] mt-1">
+            ID: {normalizedAgentId}
+          </p>
         </div>
       </div>
     )
