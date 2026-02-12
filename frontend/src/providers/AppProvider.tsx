@@ -32,6 +32,10 @@ import { createContext, useContext, useState, useCallback, ReactNode } from 'rea
  * // 打开删除确认
  * dialogs.openDeleteConfirm(agentId, agentName)
  * ```
+ * 
+ * [React 19 更新]
+ * - Context 可直接作为 Provider 使用
+ * - 支持 use() hook 读取 Context
  */
 interface AppContextType {
   /** 侧边栏状态和方法 */
@@ -140,10 +144,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     onCreateAgent: undefined // 由各页面设置
   }
 
+  // React 19: Context 可以直接作为 Provider 使用
   return (
-    <AppContext.Provider value={contextValue}>
+    <AppContext value={contextValue}>
       {children}
-    </AppContext.Provider>
+    </AppContext>
   )
 }
 
@@ -154,3 +159,6 @@ export function useApp() {
   }
   return context
 }
+
+// React 19: 支持 use() hook 的导出
+export { AppContext }
