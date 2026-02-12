@@ -370,9 +370,8 @@ export class EventHandler {
     // 查找消息
     const message = messages.find(m => m.id === event.data.message_id)
 
-    if (DEBUG) {
-      logger.debug('[EventHandler] message.done: 消息ID', event.data.message_id, '找到消息:', !!message, '内容长度:', event.data.full_content?.length)
-    }
+    // 🔥 强制日志：用于调试 thinking 状态问题
+    logger.debug('[EventHandler] message.done: 消息ID=', event.data.message_id, '找到消息=', !!message, '内容长度=', event.data.full_content?.length)
 
     if (!message) {
       logger.warn('[EventHandler] message.done: 找不到消息:', event.data.message_id)
@@ -408,9 +407,7 @@ export class EventHandler {
     // 🔥🔥🔥 关键修复：message.done 时将所有 thinking steps 标记为 completed
     // 防止流结束后仍有 running 状态的步骤导致 UI 一直转圈
     const finalMessage = useChatStore.getState().messages.find(m => m.id === event.data.message_id)
-    if (DEBUG) {
-      logger.debug('[EventHandler] message.done: finalMessage=', !!finalMessage, 'thinking=', finalMessage?.metadata?.thinking?.length)
-    }
+    logger.debug('[EventHandler] message.done: finalMessage=', !!finalMessage, 'thinking=', finalMessage?.metadata?.thinking?.length)
     if (finalMessage?.metadata?.thinking && finalMessage.metadata.thinking.length > 0) {
       const hasRunningSteps = finalMessage.metadata.thinking.some((s: any) => s.status === 'running')
       if (DEBUG) {
@@ -482,9 +479,7 @@ export class EventHandler {
    * 避免误删将要添加 thinking 数据的消息
    */
   private handleRouterDecision(event: RouterDecisionEvent): void {
-    if (DEBUG) {
-      logger.debug('[EventHandler] router.decision:', event.data.decision)
-    }
+    logger.debug('[EventHandler] router.decision:', event.data.decision)
     
     const { setMode } = useTaskStore.getState()
 
@@ -495,9 +490,7 @@ export class EventHandler {
     const { messages, updateMessageMetadata } = useChatStore.getState()
     const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
 
-    if (DEBUG) {
-      logger.debug('[EventHandler] router.decision: lastAiMessage=', !!lastAiMessage, 'thinking=', lastAiMessage?.metadata?.thinking?.length)
-    }
+    logger.debug('[EventHandler] router.decision: lastAiMessage=', !!lastAiMessage, 'thinking=', lastAiMessage?.metadata?.thinking?.length)
 
     if (lastAiMessage?.metadata?.thinking) {
       const thinking = [...lastAiMessage.metadata.thinking]
