@@ -17,6 +17,7 @@ import LoginDialog from '@/components/auth/LoginDialog'
 import { useToast } from '@/components/ui/use-toast'
 import { VERSION } from '@/constants/ui'
 import { useRecentConversationsQuery } from '@/hooks/queries'
+import { useQueryClient } from '@tanstack/react-query'
 
 /**
  * =============================
@@ -73,6 +74,7 @@ export default function BauhausSidebar({
   const navigate = useNavigate()
   const location = useLocation()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false)
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false)
   const { user, isAuthenticated, logout } = useUserStore()
@@ -80,6 +82,17 @@ export default function BauhausSidebar({
   const setInputMessage = useChatStore(state => state.setInputMessage)
   const setMessages = useChatStore(state => state.setMessages)
   const setCurrentConversationId = useChatStore(state => state.setCurrentConversationId)
+
+  // 登录成功后刷新所有数据
+  const handleLoginSuccess = () => {
+    // 刷新所有 React Query 缓存
+    queryClient.invalidateQueries()
+    // 显示成功提示
+    toast({
+      title: '登录成功',
+      description: '欢迎回来！',
+    })
+  }
 
   // 使用 React Query 获取最近会话（自动缓存，5分钟内不会重复请求）
   const { data: recentConversations = [] } = useRecentConversationsQuery(20)
@@ -686,6 +699,7 @@ export default function BauhausSidebar({
       <LoginDialog
         open={isLoginDialogOpen}
         onOpenChange={setIsLoginDialogOpen}
+        onSuccess={handleLoginSuccess}
       />
     </div>
   )
