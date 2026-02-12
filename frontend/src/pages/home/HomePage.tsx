@@ -330,23 +330,17 @@ export default function HomePage() {
     useChatStore.getState().setMessages([])
     useChatStore.getState().setCurrentConversationId(null)
     useTaskStore.getState().resetAll()
+    
+    // 🔥 修复：首页始终使用默认助手，忽略残留的 selectedAgentId
+    // 用户从首页输入内容 → 触发 AI 助手（复杂模式）
+    // 用户点击自定义智能体卡片 → 才使用自定义智能体（简单模式）
+    useChatStore.getState().setSelectedAgentId(SYSTEM_AGENTS.DEFAULT_CHAT)
 
-    // 统一使用 Orchestrator 接口（后端自动路由）
-    const agentId = selectedAgentId || SYSTEM_AGENTS.DEFAULT_CHAT
-
-    // 👈 直接导航到 /chat/:id 格式，不使用查询参数
-    // 默认助手：纯净 URL /chat/:id
-    // 自定义智能体：/chat/:id?agentId=xxx
-    if (agentId !== SYSTEM_AGENTS.DEFAULT_CHAT) {
-      navigate(`/chat/${newId}?agentId=${agentId}`, {
-        state: { startWith: inputMessage }
-      })
-    } else {
-      navigate(`/chat/${newId}`, {
-        state: { startWith: inputMessage }
-      })
-    }
-  }, [inputMessage, navigate, selectedAgentId])
+    // 👈 直接导航到 /chat/:id 格式，首页始终使用默认助手
+    navigate(`/chat/${newId}`, {
+      state: { startWith: inputMessage }
+    })
+  }, [inputMessage, navigate])
 
   // 推荐场景数据
   const scenes = [
