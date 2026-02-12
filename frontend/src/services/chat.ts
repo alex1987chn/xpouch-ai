@@ -34,7 +34,7 @@
  */
 
 import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
-import { getHeaders, buildUrl, handleResponse } from './common'
+import { getHeaders, buildUrl, handleResponse, handleSSEConnectionError } from './common'
 import { ApiMessage, StreamCallback, Conversation } from '@/types'
 import { logger } from '@/utils/logger'
 import { handleServerEvent } from '@/handlers/eventHandlers'
