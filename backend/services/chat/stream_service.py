@@ -685,6 +685,10 @@ class StreamService:
                             if event_type == "on_chain_start" and name == "aggregator":
                                 aggregator_executed = True
                                 logger.info(f"[Producer] 检测到 aggregator 开始执行 (loop {loop_count})")
+                            
+                            # 🔥 调试：记录所有 on_chain_end 事件
+                            if event_type == "on_chain_end":
+                                logger.info(f"[Producer] on_chain_end: name={name}, has_output={bool(token.get('data', {}).get('output'))}")
 
                             # 处理 event_queue 中的事件（artifact.start/chunk/completed 等）
                             if event_type == "on_chain_end":
