@@ -99,8 +99,20 @@ export const useTaskStore = create<TaskStore>()(
         try {
           // partialize 已经把 Map/Set 转换为数组
           const serialized = JSON.stringify(state)
+          
+          // 🔥 调试：检查每个 task 的 artifacts
+          let totalArtifacts = 0
+          if (state.tasks && Array.isArray(state.tasks)) {
+            state.tasks.forEach((entry: any) => {
+              const task = entry[1] // Map entry: [key, value]
+              const artifactCount = task?.artifacts?.length || 0
+              totalArtifacts += artifactCount
+            })
+          }
+          
           console.log('[TaskStore] serialize 成功:', {
             tasksCount: state.tasks?.length || 0,
+            totalArtifacts,
             runningTaskIdsCount: state.runningTaskIds?.length || 0,
             hasSession: !!state.session,
             isInitialized: state.isInitialized,
@@ -125,6 +137,15 @@ export const useTaskStore = create<TaskStore>()(
           if (parsed.tasks && Array.isArray(parsed.tasks)) {
             parsed.tasks = new Map(parsed.tasks)
             console.log('[TaskStore] deserialize: 恢复 Map, 任务数:', parsed.tasks.size)
+            
+            // 🔥 调试：检查每个 task 的 artifacts
+            let totalArtifacts = 0
+            parsed.tasks.forEach((task: any, key: string) => {
+              const artifactCount = task.artifacts?.length || 0
+              totalArtifacts += artifactCount
+              console.log(`[TaskStore] task ${key}: ${artifactCount} artifacts`)
+            })
+            console.log('[TaskStore] 总计 artifacts:', totalArtifacts)
           } else {
             parsed.tasks = new Map()
             console.warn('[TaskStore] deserialize: tasks 无效，创建空 Map')
