@@ -17,10 +17,10 @@ COPY frontend/vite.config.ts ./frontend/
 COPY frontend/tsconfig.json ./frontend/
 COPY frontend/tsconfig.app.json ./frontend/
 COPY frontend/tsconfig.node.json ./frontend/
-COPY frontend/tailwind.config.js ./frontend/ 2>/dev/null || true
-COPY frontend/postcss.config.js ./frontend/ 2>/dev/null || true
+COPY frontend/tailwind.config.ts ./frontend/
+COPY frontend/postcss.config.js ./frontend/
 COPY frontend/index.html ./frontend/
-COPY frontend/.env.production ./frontend/ 2>/dev/null || true
+COPY frontend/.env.production ./frontend/
 COPY frontend/src ./frontend/src/
 COPY frontend/public ./frontend/public/
 
