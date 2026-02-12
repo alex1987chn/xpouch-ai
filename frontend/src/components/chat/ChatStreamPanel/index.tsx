@@ -50,14 +50,14 @@ import {
   useCurrentConversationId,
 } from '@/hooks/useChatSelectors'
 
-// Phase 2: Server-Driven UI - 使用 ExecutionStore 替代 TaskStore
+// Phase 2: Server-Driven UI - 使用 TaskStore
 import {
-  useExecutionStatus,
-  useCurrentExpert,
-  useThinkingTrace,
-  useExecutionPlan,
-  useExecutionActions,
-} from '@/store/executionStore'
+  useTaskMode,
+  useIsWaitingForApproval,
+  useRunningTaskIds,
+  usePendingPlan,
+  useTaskActions,
+} from '@/hooks/useTaskSelectors'
 
 interface ChatStreamPanelProps {
   /** 当前输入值 */
@@ -136,23 +136,21 @@ export default function ChatStreamPanel({
   const isGenerating = useIsGenerating()
   const conversationId = useCurrentConversationId()
   
-  // Phase 2: Server-Driven UI - 使用 ExecutionStore 替代 TaskStore
-  const executionStatus = useExecutionStatus()
-  const currentExpert = useCurrentExpert()
-  const thinkingTrace = useThinkingTrace()
-  const executionPlan = useExecutionPlan()
-  const { reset: resetExecutionStore } = useExecutionActions()
+  // Phase 2: Server-Driven UI - 使用 TaskStore
+  const mode = useTaskMode()
+  const isWaitingForApproval = useIsWaitingForApproval()
+  const runningTaskIds = useRunningTaskIds()
+  const pendingPlan = usePendingPlan()
   
-  // 从 ExecutionStore 获取状态
-  const isWaitingForApproval = executionStatus === 'reviewing'
-  const isExecuting = executionStatus === 'executing'
-  const isPlanning = executionStatus === 'planning'
+  // 从 TaskStore 计算状态
+  const isExecuting = mode === 'complex' && runningTaskIds.size > 0
+  const isPlanning = mode === 'complex' && !isExecuting && !isWaitingForApproval
   
-  // 当前活跃专家
-  const activeExpert = currentExpert?.type || null
+  // 当前活跃专家（从运行中的任务获取）
+  const activeExpert = null // 暂不使用，后续可从 runningTaskIds 获取
   
   // 获取计划步骤数
-  const estimatedSteps = executionPlan.length
+  const estimatedSteps = pendingPlan.length || 0
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -178,9 +176,9 @@ export default function ChatStreamPanel({
     return content.length > 0
   }
 
-  // Phase 2: Server-Driven UI - 使用 executionStatus 替代 conversationMode
+  // Phase 2: Server-Driven UI - 使用 TaskStore 状态
   // 在执行中或计划审核阶段，隐藏空AI消息
-  const isInExecution = executionStatus === 'executing' || executionStatus === 'reviewing' || executionStatus === 'planning'
+  const isInExecution = isExecuting || isWaitingForApproval || isPlanning
   const displayMessages = isInExecution
     ? messages.filter(msg => {
         // 保留非AI消息
@@ -210,7 +208,7 @@ export default function ChatStreamPanel({
     
     if (!isLastAiMessage) return 'idle'
     
-    // Phase 2: Server-Driven UI - 优先使用 ExecutionStore 状态
+    // Phase 2: Server-Driven UI - 优先使用 TaskStore 状态
     if (isPlanning || isExecuting) return 'thinking'
     
     // 后备：从消息 metadata 判断

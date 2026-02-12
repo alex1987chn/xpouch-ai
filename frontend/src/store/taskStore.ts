@@ -1,16 +1,16 @@
 /**
  * 任务状态管理 Store (Zustand + Immer + Slice Pattern)
  * 
- * [架构升级 v3.2.0]
- * 采用 Zustand Slice Pattern 拆分大型 Store，解决以下问题：
- * - taskStore.ts 文件过大（1000+ 行）
- * - tasksCache 重建逻辑重复 6 次以上
- * - 职责混杂（UI 状态、任务数据、产物管理、规划逻辑）
+ * [架构升级 - 批处理模式重构]
+ * - 移除 Artifact 流式逻辑（streamingArtifacts 已删除）
+ * - 所有 Artifact 通过 artifact.generated 事件全量推送
+ * - 新增 progress 状态（从 ExecutionStore 迁移）
+ * - 符合 SDUI 原则：后端推送什么，前端就存什么
  * 
  * [新架构]
  * - createTaskSlice:      核心任务数据 + syncTasksCache
- * - createArtifactSlice:  产物管理（调用 syncTasksCache 保证一致性）
- * - createUISlice:        纯 UI 状态（模式、选中、运行中任务等）
+ * - createArtifactSlice:  产物管理（批处理模式）
+ * - createUISlice:        纯 UI 状态（模式、选中、运行中任务、进度）
  * - createPlanningSlice:  规划阶段状态（思考内容）
  * 
  * [职责]
@@ -68,7 +68,7 @@ export const useTaskStore = create<TaskStore>()(
     // ============================================================================
     {
       name: 'xpouch-task-store',
-      version: 1,
+      version: 2,  // 版本升级
       // 只持久化关键字段
       partialize: (state: TaskStore): any => ({
         // TaskSlice
@@ -80,11 +80,10 @@ export const useTaskStore = create<TaskStore>()(
         selectedTaskId: state.selectedTaskId,
         isInitialized: state.isInitialized,
         mode: state.mode,
-        isWaitingForApproval: state.isWaitingForApproval,
-        pendingPlan: state.pendingPlan,
+        // 不持久化临时状态：isWaitingForApproval, pendingPlan, progress
+        // 这些状态应该在页面刷新后通过 API 恢复
         // PlanningSlice
         planThinkingContent: state.planThinkingContent,
-        // ArtifactSlice - streamingArtifacts 不持久化（运行时状态）
       }),
       // 自定义序列化：处理 Map/Set
       serialize: (state: any) => {
@@ -95,7 +94,8 @@ export const useTaskStore = create<TaskStore>()(
             tasksCount: state.tasks?.length || 0,
             runningTaskIdsCount: state.runningTaskIds?.length || 0,
             hasSession: !!state.session,
-            isInitialized: state.isInitialized
+            isInitialized: state.isInitialized,
+            hasProgress: !!state.progress
           })
           return serialized
         } catch (error) {
@@ -143,7 +143,8 @@ export const useTaskStore = create<TaskStore>()(
             mode: null,
             isWaitingForApproval: false,
             pendingPlan: [],
-            planThinkingContent: ''
+            planThinkingContent: '',
+            progress: null
           }
         }
       }
@@ -156,8 +157,8 @@ export const useTaskStore = create<TaskStore>()(
 // ============================================================================
 
 export type { Task, TaskStatus, TaskSession } from './slices/createTaskSlice'
-export type { ArtifactSlice, ArtifactSliceState, ArtifactSliceActions } from './slices/createArtifactSlice'
-export type { UISlice, UISliceState, UISliceActions, AppMode } from './slices/createUISlice'
+export type { ArtifactSlice, ArtifactSliceActions } from './slices/createArtifactSlice'
+export type { UISlice, UISliceState, UISliceActions, AppMode, Progress } from './slices/createUISlice'
 export type { PlanningSlice, PlanningSliceState, PlanningSliceActions } from './slices/createPlanningSlice'
 
 // 默认导出

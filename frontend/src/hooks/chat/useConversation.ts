@@ -119,8 +119,9 @@ export function useConversation() {
         setSelectedAgentId(normalizeAgentId(conversation.agent_id))
       }
 
-      // 🔥🔥🔥 改进：先清空任务，再恢复（确保 artifacts 正确加载）
-      clearTasks()
+      // 🔥 强制清空任务状态（包括持久化的 runningTaskIds）
+      // 避免旧的持久化状态阻止新会话加载
+      clearTasks(true)
 
       if (conversation.task_session) {
         debug('Restoring task session:', conversation.task_session.id, 'sub_tasks:', conversation.task_session.sub_tasks?.length)
@@ -129,11 +130,10 @@ export function useConversation() {
 
       return conversation
     } catch (error: any) {
-      // 🔥 修复：如果前端有消息但后端返回 404，可能是新会话创建过程中的竞态
-      // 这种情况下静默处理，避免显示错误
-      const store = useChatStore.getState()
-      if (error?.status === 404 && store.messages.length > 0 && !store.messages.some(m => m.role === 'assistant' && m.content?.length > 0)) {
-        debug('Conversation not found on backend but has pending messages, may be race condition during creation')
+      // 404 错误：会话不存在（可能是新会话还没在后端创建）
+      // 这种情况下静默处理，不显示错误日志
+      if (error?.status === 404) {
+        debug('Conversation not found on backend, may be new conversation')
         return null
       }
       

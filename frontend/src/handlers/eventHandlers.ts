@@ -1,11 +1,16 @@
 /**
  * SSE 事件处理器 - 全局事件分发中心
- * 
+ *
  * [职责]
  * 处理后端推送的所有 SSE 事件，更新前端 Store 状态：
  * - 任务状态管理（TaskStore）
  * - 对话消息更新（ChatStore）
  * - Thinking Steps 构建
+ *
+ * [批处理模式重构]
+ * - 移除 artifact.start/chunk/completed 流式事件处理
+ * - 所有 Artifact 通过 artifact.generated 事件全量推送
+ * - 添加进度更新逻辑
  * 
  * [架构]
  * chat.ts (SSE 连接) -> EventHandler -> Stores -> React Components
@@ -24,12 +29,12 @@
  * [处理的事件类型]
  * - router.*: 路由决策
  * - task.*: 任务状态变更
- * - artifact.*: 产物生成
+ * - artifact.generated: 产物生成（批处理）
  * - message.*: 流式消息
  * - human.interrupt: HITL 中断
  * 
  * [状态更新]
- * - TaskStore: 任务状态、Artifact 列表
+ * - TaskStore: 任务状态、Artifact 列表、进度
  * - ChatStore: 消息元数据（Thinking Steps）、消息内容
  */
 
@@ -38,18 +43,15 @@ import { useChatStore } from '@/store/chatStore'
 import type {
   AnyServerEvent,
   PlanCreatedEvent,
-  PlanStartedEvent,        // 🔥 新增
-  PlanThinkingEvent,       // 🔥 新增
+  PlanStartedEvent,
+  PlanThinkingEvent,
   TaskStartedEvent,
   TaskCompletedEvent,
   TaskFailedEvent,
   ArtifactGeneratedEvent,
-  ArtifactStartEvent,
-  ArtifactChunkEvent,
-  ArtifactCompletedEvent,
   MessageDeltaEvent,
   MessageDoneEvent,
-  HumanInterruptEvent,     // 🔥🔥🔥 v3.1.0 HITL
+  HumanInterruptEvent,
   RouterStartEvent,
   RouterDecisionEvent,
   ErrorEvent
@@ -96,7 +98,7 @@ export class EventHandler {
       // 保留 case 但不做任何操作
       case 'plan.created':
         break
-      // 🔥 新增：Commander 流式思考事件
+      // 🔥 Commander 流式思考事件
       case 'plan.started':
         this.handlePlanStarted(event as PlanStartedEvent)
         break
@@ -112,18 +114,9 @@ export class EventHandler {
       case 'task.failed':
         this.handleTaskFailed(event as TaskFailedEvent)
         break
+      // 批处理模式 - 只处理 artifact.generated
       case 'artifact.generated':
         this.handleArtifactGenerated(event as ArtifactGeneratedEvent)
-        break
-      // 🔥 新增：Artifact 流式事件处理
-      case 'artifact.start':
-        this.handleArtifactStart(event as ArtifactStartEvent)
-        break
-      case 'artifact.chunk':
-        this.handleArtifactChunk(event as ArtifactChunkEvent)
-        break
-      case 'artifact.completed':
-        this.handleArtifactCompleted(event as ArtifactCompletedEvent)
         break
       case 'message.delta':
         this.handleMessageDelta(event as MessageDeltaEvent)
@@ -270,15 +263,22 @@ export class EventHandler {
 
   /**
    * 处理 task.completed 事件
-   * 更新任务状态为 completed
-   * 注意：thinking 更新由 useExpertHandler.ts 处理，避免重复
+   * 更新任务状态为 completed，并更新进度
+   * 添加进度更新逻辑
    */
   private handleTaskCompleted(event: TaskCompletedEvent): void {
-    const { completeTask } = useTaskStore.getState()
+    const { completeTask, setProgress, tasksCache } = useTaskStore.getState()
     completeTask(event.data)
 
+    // 🔥 更新进度
+    const completedCount = tasksCache.filter(t => t.status === 'completed').length
+    const totalCount = tasksCache.length
+    if (totalCount > 0) {
+      setProgress({ current: completedCount, total: totalCount })
+    }
+
     if (DEBUG) {
-      logger.debug('[EventHandler] 任务完成:', event.data.task_id)
+      logger.debug('[EventHandler] 任务完成:', event.data.task_id, '进度:', completedCount, '/', totalCount)
     }
   }
 
@@ -296,6 +296,7 @@ export class EventHandler {
 
   /**
    * 处理 artifact.generated 事件
+   * 批处理模式 - 直接添加完整的 artifact
    * 添加产物到对应任务
    */
   private handleArtifactGenerated(event: ArtifactGeneratedEvent): void {
@@ -306,56 +307,10 @@ export class EventHandler {
       logger.debug(
         '[EventHandler] 产物已添加:',
         event.data.artifact.id,
-        event.data.artifact.type
+        event.data.artifact.type,
+        '内容长度:',
+        event.data.artifact.content?.length || 0
       )
-    }
-  }
-
-  /**
-   * 🔥 新增：处理 artifact.start 事件
-   * 开始流式 Artifact 生成
-   * 
-   * 注意：Artifact 生成是任务执行的子过程，不创建独立的 thinking step
-   * 以避免步骤数超过预估（如 8/5 的情况）
-   */
-  private handleArtifactStart(event: ArtifactStartEvent): void {
-    const { startArtifact } = useTaskStore.getState()
-    startArtifact(event.data)
-
-    // 🔥 不再创建独立的 artifact thinking step
-    // artifact 生成是 task 执行的一部分，应在对应 task step 中展示状态
-
-    if (DEBUG) {
-      logger.debug('[EventHandler] Artifact 流式生成开始:', event.data.artifact_id)
-    }
-  }
-
-  /**
-   * 🔥 新增：处理 artifact.chunk 事件
-   * 实时追加 Artifact 内容
-   */
-  private handleArtifactChunk(event: ArtifactChunkEvent): void {
-    const { streamArtifactChunk } = useTaskStore.getState()
-    streamArtifactChunk(event.data)
-
-    // 🔥 高频更新，不记录日志避免刷屏
-  }
-
-  /**
-   * 🔥 新增：处理 artifact.completed 事件
-   * 完成 Artifact 流式生成
-   * 
-   * 注意：不更新 thinking 状态，artifact 是任务执行的子过程
-   */
-  private handleArtifactCompleted(event: ArtifactCompletedEvent): void {
-    const { completeArtifact } = useTaskStore.getState()
-    completeArtifact(event.data)
-
-    // 🔥 不再更新 thinking 状态
-    // artifact 生成是 task 执行的一部分，不创建独立的 thinking step
-
-    if (DEBUG) {
-      logger.debug('[EventHandler] Artifact 流式生成完成:', event.data.artifact_id)
     }
   }
 

@@ -2,6 +2,11 @@
  * 聊天核心逻辑 Hook
  * 负责消息发送、停止生成、加载状态管理等核心功能
  * 
+ * 重构：移除 ExecutionStore，统一使用 TaskStore
+ * - 移除 dispatchEventToExecutionStore 函数
+ * - 事件处理统一由 eventHandlers.ts 负责
+ * - 符合 SDUI 原则：单一数据源
+ * 
  * v3.1.0 性能优化：使用 Zustand Selectors 避免流式输出时的无效重计算
  * v3.1.0 状态机解析：实时分离 thinking 标签和正文内容
  * v3.1.0 重构：提取 useStreamHandler，消除 sendMessageCore 和 resumeExecution 的代码重复
@@ -35,19 +40,6 @@ import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
 
 // ============================================================================
-// Phase 2: ExecutionStore 集成 - Server-Driven UI 事件分发
-// ============================================================================
-import { useExecutionStore } from '@/store/executionStore'
-import type { 
-  RouterDecisionEvent, 
-  PlanThinkingEvent,
-  TaskStartedEvent,
-  TaskCompletedEvent,
-  HumanInterruptEvent,
-  AnyServerEvent
-} from '@/types/events'
-
-// ============================================================================
 // v3.1.0: 流式处理器 Hook - 消除代码重复
 // ============================================================================
 import { useStreamHandler } from './useStreamHandler'
@@ -59,123 +51,6 @@ const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
 const debug = DEBUG
   ? (...args: unknown[]) => logger.debug('[useChatCore]', ...args)
   : () => {}
-
-// ============================================================================
-// Phase 2: Server-Driven UI 事件分发器
-// 将 SSE 事件映射到 ExecutionStore 状态机
-// ============================================================================
-
-/**
- * 分发 SSE 事件到 ExecutionStore
- * 遵循 Server-Driven UI 原则：后端推送事件，前端只更新状态
- */
-function dispatchEventToExecutionStore(event: AnyServerEvent): void {
-  const { 
-    setStatus, 
-    setExpert, 
-    appendThinking, 
-    setPlan, 
-    setProgress,
-    reset 
-  } = useExecutionStore.getState()
-
-  switch (event.type) {
-    // Router 决策阶段
-    case 'router.decision': {
-      const data = (event as RouterDecisionEvent).data
-      // 根据决策设置状态
-      if (data.decision === 'complex') {
-        setStatus('planning')
-      } else {
-        // Simple 模式下，如果正在生成，直接跳到 executing
-        setStatus('executing')
-      }
-      break
-    }
-
-    // 规划思考阶段
-    case 'plan.thinking': {
-      const data = (event as PlanThinkingEvent).data
-      appendThinking(data.delta)
-      break
-    }
-
-    // 任务开始 - 进入执行阶段
-    case 'task.started': {
-      const data = (event as TaskStartedEvent).data
-      setStatus('executing')
-      setExpert({
-        id: data.task_id,
-        name: data.expert_type,
-        type: data.expert_type,
-      })
-      appendThinking(`[${data.expert_type}] 开始执行: ${data.description}`)
-      break
-    }
-
-    // 任务完成
-    case 'task.completed': {
-      const data = (event as TaskCompletedEvent).data
-      appendThinking(`[${data.expert_type}] 执行完成，耗时 ${data.duration_ms}ms`)
-      // 清空当前专家（任务完成后）
-      setExpert(null)
-      break
-    }
-
-    // HITL 中断 - 等待用户审核
-    case 'human.interrupt': {
-      const data = (event as HumanInterruptEvent).data
-      setStatus('reviewing')
-      if (data.current_plan) {
-        const plan = data.current_plan.map((t: any) => ({
-          id: t.id,
-          expertType: t.expert_type,
-          description: t.description,
-          status: t.status,
-          dependencies: t.depends_on || [] // 🔥 使用后端传来的实际依赖关系
-        }))
-        setPlan(plan)
-        setProgress({ current: 0, total: data.current_plan.length })
-        
-        // 🔥🔥🔥 关键修复：同步到 TaskStore，避免双 Store 脑裂
-        // 将 plan 转换为 TaskStore 的格式并强制覆盖
-        const { initializePlan } = useTaskStore.getState()
-        initializePlan({
-          session_id: data.thread_id || 'unknown',
-          summary: data.message || '任务规划等待审核',
-          estimated_steps: data.current_plan.length,
-          tasks: data.current_plan.map((t: any, index: number) => ({
-            id: t.id,
-            task_id: t.id,
-            expert_type: t.expert_type,
-            description: t.description,
-            status: t.status || 'pending',
-            sort_order: t.sort_order ?? index,
-            depends_on: t.depends_on || [],
-          }))
-        })
-      }
-      break
-    }
-
-    // 流程完成
-    case 'workflow.completed':
-      setStatus('completed')
-      setExpert(null)
-      break
-
-    // 流程错误/取消
-    case 'error':
-    case 'workflow.cancelled':
-      setStatus('idle')
-      setExpert(null)
-      break
-
-    default:
-      // 其他事件不处理
-      break
-  }
-}
 
 /**
  * ApiMessage type guard function
@@ -232,9 +107,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   
   const { setMode } = useTaskActions()
   
-  // Phase 2: ExecutionStore Actions
-  const { reset: resetExecutionStore } = useExecutionStore.getState()
-  
   // v3.2.0: 流式处理器 - 消除代码重复
   const { reset: resetStreamHandler, createChunkHandler } = useStreamHandler()
 
@@ -268,9 +140,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     }
 
     setGenerating(true)
-    
-    // Phase 2: Reset ExecutionStore for new workflow
-    resetExecutionStore()
     
     // Reset taskStore mode, wait for backend Router decision
     setMode('simple')
@@ -350,9 +219,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
         if (expertEvent) {
           onExpertEvent?.(expertEvent as any, conversationMode)
-          
-          // Phase 2: 分发事件到 ExecutionStore
-          dispatchEventToExecutionStore(expertEvent)
+          // 事件处理已由 eventHandlers.ts 统一负责
         }
 
         if (chunk) {
@@ -437,7 +304,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     addMessage,
     updateMessage,
     t,
-    resetExecutionStore,
     resetStreamHandler,
     createChunkHandler
   ])
@@ -510,9 +376,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       ) => {
         if (expertEvent) {
           onExpertEvent?.(expertEvent as any, conversationMode)
-          
-          // Phase 2: 分发事件到 ExecutionStore
-          dispatchEventToExecutionStore(expertEvent)
+          // 事件处理已由 eventHandlers.ts 统一负责
         }
 
         if (chunk) {

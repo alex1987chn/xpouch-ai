@@ -1,10 +1,15 @@
 /**
  * Artifact Slice - Artifact management
- * 
+ *
  * [Responsibilities]
  * - Manage Artifacts within Tasks (CRUD)
- * - Handle Artifact streaming generation state
  * - Provide async update and persistence to backend
+ *
+ * [重构：移除流式逻辑]
+ * - 删除 streamingArtifacts Map
+ * - 删除 startArtifact / streamArtifactChunk 方法
+ * - 只保留批处理模式的 addArtifact 方法
+ * - 符合 SDUI 原则：后端推送完整 Artifact，前端直接存储
  * 
  * [Architecture Note]
  * Cross-slice cache sync: All actions call `get().syncTasksCache()` 
@@ -13,10 +18,7 @@
  */
 
 import type {
-  ArtifactGeneratedData,
-  ArtifactStartData,
-  ArtifactChunkData,
-  ArtifactCompletedData
+  ArtifactGeneratedData
 } from '@/types/events'
 import type { Artifact } from '@/types'
 
@@ -25,7 +27,7 @@ import type { Artifact } from '@/types'
 // ============================================================================
 
 export interface ArtifactSliceState {
-  streamingArtifacts: Map<string, string>
+  // 移除 streamingArtifacts Map，不再需要流式状态
 }
 
 export interface ArtifactSliceActions {
@@ -34,14 +36,6 @@ export interface ArtifactSliceActions {
   replaceArtifacts: (taskId: string, artifacts: Artifact[]) => void
   updateArtifactContent: (taskId: string, artifactId: string, newContent: string) => Promise<boolean>
   deleteArtifact: (taskId: string, artifactId: string) => void
-  
-  // Streaming control
-  startArtifact: (data: ArtifactStartData) => void
-  streamArtifactChunk: (data: ArtifactChunkData) => void
-  completeArtifact: (data: ArtifactCompletedData) => void
-  
-  // Get streaming content
-  getStreamingContent: (artifactId: string) => string | undefined
 }
 
 export type ArtifactSlice = ArtifactSliceState & ArtifactSliceActions
@@ -52,8 +46,7 @@ export type ArtifactSlice = ArtifactSliceState & ArtifactSliceActions
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
-  // Initial state
-  streamingArtifacts: new Map(),
+  // Initial state - 不再需要 streamingArtifacts
 
   // Actions
 
@@ -173,85 +166,5 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
 
       throw error
     }
-  },
-
-  startArtifact: (data: ArtifactStartData) => {
-    set((state: any) => {
-      state.streamingArtifacts.set(data.artifact_id, '')
-
-      const task = state.tasks.get(data.task_id)
-      if (task) {
-        const existingIndex = task.artifacts.findIndex((a: any) => a.id === data.artifact_id)
-        
-        if (existingIndex < 0) {
-          task.artifacts.push({
-            id: data.artifact_id,
-            type: data.type as any,
-            title: data.title,
-            content: '',
-            sortOrder: 0,
-            createdAt: new Date().toISOString(),
-            isStreaming: true
-          })
-          task.artifacts.sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-        }
-      }
-
-      state.selectedTaskId = data.task_id
-    })
-    // Call Action outside of set()
-    get().syncTasksCache()
-  },
-
-  streamArtifactChunk: (data: ArtifactChunkData) => {
-    let shouldUpdateCache = false
-    let targetTaskId: string | null = null
-
-    set((state: any) => {
-      const currentContent = state.streamingArtifacts.get(data.artifact_id) || ''
-      const newContent = currentContent + data.delta
-      state.streamingArtifacts.set(data.artifact_id, newContent)
-
-      for (const [taskId, task] of state.tasks.entries()) {
-        const artifact = task.artifacts.find((a: any) => a.id === data.artifact_id)
-        if (artifact) {
-          artifact.content = newContent
-          shouldUpdateCache = true
-          targetTaskId = taskId
-          break
-        }
-      }
-    })
-
-    // 🔥 关键修复：必须触发 cache 同步以更新 UI
-    // streamArtifactChunk 是高频调用，但我们仍需要定期刷新 UI
-    // 通过 syncTasksCache 重建 tasksCache 数组，触发 useShallow 比较
-    if (shouldUpdateCache && targetTaskId) {
-      // 使用微任务批量处理，避免每帧都重建 cache
-      queueMicrotask(() => {
-        get().syncTasksCache()
-      })
-    }
-  },
-
-  completeArtifact: (data: ArtifactCompletedData) => {
-    set((state: any) => {
-      state.streamingArtifacts.delete(data.artifact_id)
-
-      for (const task of state.tasks.values()) {
-        const artifact = task.artifacts.find((a: any) => a.id === data.artifact_id)
-        if (artifact) {
-          artifact.content = data.full_content
-          artifact.isStreaming = false
-          break
-        }
-      }
-    })
-    // Call Action outside of set()
-    get().syncTasksCache()
-  },
-
-  getStreamingContent: (artifactId: string): string | undefined => {
-    return get().streamingArtifacts.get(artifactId)
   }
 })

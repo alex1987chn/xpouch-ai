@@ -13,7 +13,6 @@
 
 import { useRef, useCallback } from 'react'
 import { useChatActions } from '@/hooks/useChatSelectors'
-import { useExecutionActions } from '@/store/executionStore'
 
 // ============================================================================
 // 解析器状态定义
@@ -106,7 +105,6 @@ function processStreamingChunk(
 
 export function useStreamHandler() {
   const { updateMessage, updateMessageMetadata } = useChatActions()
-  const { appendThinking } = useExecutionActions()
   
   // 使用 Ref 存储解析状态，避免触发重渲染
   const parserRef = useRef<StreamingParserState>({
@@ -163,7 +161,6 @@ export function useStreamHandler() {
       
       // 更新 thinking 内容到 metadata
       if (parserRef.current.thinkingBuffer) {
-        appendThinking(thinking)
         updateMessageMetadata(messageId, {
           thinking: [{
             id: `streaming-think-${Date.now()}`,
@@ -177,7 +174,7 @@ export function useStreamHandler() {
         })
       }
     }
-  }, [updateMessage, updateMessageMetadata, appendThinking])
+  }, [updateMessage, updateMessageMetadata])
   
   return { 
     reset, 

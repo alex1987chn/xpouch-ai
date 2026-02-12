@@ -79,7 +79,7 @@ export interface TaskSliceActions {
   restoreFromSession: (session: ApiTaskSession, subTasks: SubTask[]) => void
   
   // Clear all tasks
-  clearTasks: () => void
+  clearTasks: (force?: boolean) => void
   
   // Cache sync (for other slices to call)
   syncTasksCache: () => void
@@ -313,10 +313,11 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
     })
   },
 
-  clearTasks: () => {
+  clearTasks: (force: boolean = false) => {
     set((state: any) => {
       // 🔥 保护：如果有运行中的任务，禁止清空（防止复杂模式执行中误清空）
-      if (state.runningTaskIds && state.runningTaskIds.size > 0) {
+      // 除非强制清空（force=true，用于从历史记录加载会话）
+      if (!force && state.runningTaskIds && state.runningTaskIds.size > 0) {
         console.warn('[TaskStore] clearTasks 被阻止：有任务正在运行中', {
           runningCount: state.runningTaskIds.size,
           runningIds: Array.from(state.runningTaskIds)
@@ -332,7 +333,6 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
       state.runningTaskIds = new Set()
       state.selectedTaskId = null
       state.isInitialized = false
-      state.streamingArtifacts = new Map()
       state.planThinkingContent = ''
       state.isWaitingForApproval = false
       state.pendingPlan = []

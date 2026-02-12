@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
-import { useExecutionStore } from '@/store/executionStore'
 import { useChat } from '@/hooks/useChat'
 import { useSessionRecovery } from '@/hooks/chat/useSessionRecovery'
 import { useApp } from '@/providers/AppProvider'
@@ -99,19 +98,20 @@ export default function UnifiedChatPage() {
     if (!conversationId) {
       // 无会话 ID 时重置状态
       useTaskStore.getState().clearTasks()
-      useExecutionStore.getState().reset()
       return
     }
 
-    // 检查是否正在执行（同时检查 TaskStore 和 ExecutionStore）
+    // 新会话（有 initialMessage）：跳过加载，会话在发送消息时创建
+    if (initialMessage) {
+      return
+    }
+
+    // 检查是否正在执行
     const { runningTaskIds, hasRunningTasks } = useTaskStore.getState()
     const isTaskStoreExecuting = hasRunningTasks ? hasRunningTasks() : runningTaskIds.size > 0
-    const executionStatus = useExecutionStore.getState().status
-    const isExecutionStoreActive = executionStatus === 'executing' || executionStatus === 'planning'
-    const isExecuting = isTaskStoreExecuting || isExecutionStoreActive
     
     // 执行中不加载（避免干扰流式输出）
-    if (isExecuting) {
+    if (isTaskStoreExecuting) {
       console.log('[UnifiedChatPage] 执行中，跳过加载')
       return
     }
@@ -125,17 +125,16 @@ export default function UnifiedChatPage() {
       return
     }
 
-    // 加载历史会话
+    // 加载历史会话（仅从历史记录进入的场景）
     loadConversation(conversationId)
       .catch((error: any) => {
         if (error?.status === 404) {
           // 会话不存在，重置状态
           useChatStore.getState().setMessages([])
           useTaskStore.getState().clearTasks()
-          useExecutionStore.getState().reset()
         }
       })
-  }, [conversationId])
+  }, [conversationId, initialMessage])
 
   // 恢复草稿（只依赖 conversationId）
   useEffect(() => {

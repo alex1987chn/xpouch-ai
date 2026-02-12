@@ -11,7 +11,9 @@
 
 ![XPouch AI Screenshot](https://github.com/user-attachments/assets/c4554212-e24e-47dd-a61d-8df4f69ce233)
 
-XPouch AI v3.1.0 是一个基于 **LangGraph** 的企业级 Agentic 平台。它采用前后端分离架构和 Bauhaus 工业美学设计，支持多专家协作、自我规划及专业产物交付。
+XPouch AI v3.1.0 是一个基于 **LangGraph** 的企业级 Agentic 平台。它采用 **Server-Driven UI** 架构和 Bauhaus 工业美学设计，支持多专家协作、自我规划及专业产物交付。
+
+> **架构理念**：后端是唯一的真理来源（Single Source of Truth），前端只是后端的"投影仪"——接收事件、存储状态、渲染UI，不做业务逻辑计算。
 
 ---
 
@@ -222,30 +224,47 @@ TAVILY_API_KEY=tvly-your-key-here
 - 下游专家自动获取上游专家的输出结果作为上下文
 - 实现多步骤复杂任务的流水线执行
 
-### ⚡ 前端性能优化（Zustand Selectors）
+### ⚡ 前端状态管理（Server-Driven + Zustand）
 
-**v3.1.0 性能重构**：引入细粒度状态选择器，解决流式输出时的面板抖动问题。
+**架构演进**：从双 Store 架构向单一 Store 架构简化
 
-**核心优化**：
-- **Selectors 模式**：使用 `useShallow` 和细粒度选择器，避免不必要的重渲染
-- **Actions 分离**：将 actions 和 state 分开获取，actions 使用稳定引用
-- **缓存机制**：`tasksCache` 配合 `tasksCacheVersion` 实现派生状态缓存
-
-**性能提升**：
-- AI 流式输出时，右侧面板保持静止（不触发 Render）
-- 只有当前任务的状态变化时，对应组件才重新渲染
-- 复杂模式下的内存占用减少 30%+
-
-**代码示例**：
+**当前架构**（过渡阶段）：
 ```typescript
-// 优化前：整个组件随任务状态变化重渲染
-const { tasks, selectedTaskId } = useTaskStore()
-
-// 优化后：只获取需要的派生状态
-const tasksCache = useTasksCache()  // 稳定引用
-const selectedTaskId = useSelectedTaskId()  // 只监听 ID
-const { updateArtifactContent } = useTaskActions()  // 稳定 action 引用
+// TaskStore - 业务逻辑状态（任务、产物、专家）
+// ExecutionStore - UI 执行状态（计划审核、执行进度）
+// chatStore - 对话状态（消息、会话）
 ```
+
+**设计原则**：
+- **事件驱动**：后端推送事件 → Store 直接存储 → UI 订阅渲染
+- **派生状态直接在渲染期计算**：避免 useEffect 派生数据
+- **导航时清理 Store**：切换会话前主动清理状态，避免数据残留
+
+**最佳实践**：
+```typescript
+// ✅ 正确：直接消费后端事件
+onEvent(event: ServerEvent) {
+  switch(event.type) {
+    case 'plan.generated': 
+      set({ tasks: event.data, status: 'reviewing' })
+      break
+    case 'expert.started': 
+      set({ currentExpert: event.data })
+      break
+  }
+}
+
+// ❌ 错误：前端计算进度
+const progress = useMemo(() => {
+  return tasks.filter(t => t.status === 'completed').length / tasks.length
+}, [tasks])
+
+// ✅ 正确：后端推送进度
+const progress = useTaskStore(state => state.progress)
+// 后端发送：{ type: 'progress', data: { current: 1, total: 4 } }
+```
+
+**即将进行的简化**：合并 TaskStore 和 ExecutionStore，统一业务状态和 UI 状态的管理。
 
 ```
 用户查询: "先搜索2024年销量最高的电动车，然后分析它的电池技术"
@@ -458,6 +477,46 @@ CREATE TABLE user_memories (
 
 ## 🏗️ 系统架构
 
+### Server-Driven UI 架构
+
+XPouch AI 采用 **Server-Driven UI** 架构模式，核心理念是：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Backend (LangGraph)                      │
+│                      唯一的真理来源                          │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐        │
+│  │ Router  │→│Commander│→│Generic  │→│Aggregator│        │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘        │
+│       ↓              ↓            ↓           ↓             │
+│   SSE Events → Structured Data → Frontend Store             │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Frontend (React)                         │
+│                     纯渲染层（投影仪）                        │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐        │
+│  │ Events  │→│  Store  │→│  State  │→│   UI    │        │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘        │
+│       ↑                                                    │
+│   直接消费，不解析/不计算/不推断                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**架构原则**：
+1. **后端驱动**：后端通过 SSE 推送结构化事件，前端直接存储，不做转换
+2. **状态即快照**：UI 只渲染当前 Store 状态，不依赖模式判断（如 `mode === 'complex'`）
+3. **双通道渲染**：主聊天窗口显示对话，侧边栏显示执行过程
+4. **事件协议**：`{entity}.{action}` 命名规范（如 `router.decision`、`expert.started`）
+
+**前端职责边界**：
+- ✅ **应该做的**：接收 SSE 事件、直接映射到 UI 状态、渲染当前快照
+- 🚫 **不应该做的**：解析文本流、计算进度、预测状态、过滤内容
+
+---
+
+### 完整系统架构
+
 ```mermaid
 graph TB
     subgraph Client["客户端"]
@@ -643,9 +702,10 @@ xpouch-ai/
 │   │   │   └── agent/                 # Agent 页面
 │   │   │       └── CreateAgentPage.tsx
 │   │   │
-│   │   ├── store/                     # Zustand 状态管理
-│   │   │   ├── chatStore.ts           # 对话状态
-│   │   │   ├── taskStore.ts           # 任务状态（Map + Selectors）
+│   │   ├── store/                     # Zustand 状态管理（Server-Driven）
+│   │   │   ├── chatStore.ts           # 对话状态（消息、会话）
+│   │   │   ├── taskStore.ts           # 任务状态（任务、产物）- 业务逻辑层
+│   │   │   ├── executionStore.ts      # 执行状态（计划、进度）- UI 状态层
 │   │   │   ├── userStore.ts           # 用户状态
 │   │   │   └── middleware/            # 自定义中间件
 │   │   │       └── persist.ts         # 持久化中间件
@@ -968,6 +1028,47 @@ pnpm run dev
 pnpm run dev:frontend  # 前端 http://localhost:5173
 pnpm run dev:backend   # 后端 http://localhost:3002（实际执行：cd backend && uv run main.py）
 ```
+
+## 🔄 架构演进说明
+
+### 当前状态：双 Store 架构（过渡阶段）
+
+**现状**：
+前端存在两个 Store 管理执行状态，导致"脑裂"问题：
+
+```typescript
+// TaskStore - 业务逻辑状态
+const { tasks, artifacts } = useTaskStore()
+
+// ExecutionStore - UI 执行状态  
+const { plan, executionStatus } = useExecutionStore()
+```
+
+**问题**：
+- 同一事件需要同时更新两个 Store
+- 状态同步容易遗漏，导致 UI 显示不一致
+- 组件可能混用两个 Store，增加心智负担
+
+**临时解决方案**：
+- 事件处理器中显式同步两个 Store
+- 导航时主动清理所有 Store 状态
+- 使用 `key={conversationId}` 强制组件重新挂载
+
+### 即将进行的简化
+
+**目标**：合并 TaskStore 和 ExecutionStore，统一状态管理
+
+**简化方向**：
+1. **单一 Store**：所有执行相关状态统一到一个 Store
+2. **分层架构**：Store 内部分层（业务层 + UI 层），但对外统一
+3. **事件驱动**：完全基于后端事件更新，前端不做派生计算
+
+**预期收益**：
+- 消除脑裂问题
+- 减少 50% 的状态同步代码
+- 简化组件逻辑，提升可维护性
+
+---
 
 ## 📖 使用指南
 

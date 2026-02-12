@@ -3,7 +3,6 @@ import { Bot, Plus, Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Tr
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
-import { useExecutionStore } from '@/store/executionStore'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -331,7 +330,6 @@ export default function HomePage() {
     useChatStore.getState().setMessages([])
     useChatStore.getState().setCurrentConversationId(null)
     useTaskStore.getState().clearTasks()
-    useExecutionStore.getState().reset()
 
     // 统一使用 Orchestrator 接口（后端自动路由）
     const agentId = selectedAgentId || SYSTEM_AGENTS.DEFAULT_CHAT
