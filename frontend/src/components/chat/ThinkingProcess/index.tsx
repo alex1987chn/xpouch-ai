@@ -65,6 +65,7 @@ const typeIcons: Record<NonNullable<ThinkingStep['type']>, React.ElementType> = 
   writing: PenTool,
   artifact: FileOutput,  // 🔥 Artifact 生成类型
   memory: Database,  // 🔥 新增：Memory 类型图标
+  execution: Code,  // 🔥 任务执行类型
   default: Brain
 }
 
@@ -77,6 +78,7 @@ const typeLabels: Record<NonNullable<ThinkingStep['type']>, string> = {
   writing: '写作生成',
   artifact: '生成产物',
   memory: '记忆检索',  // 🔥 新增：Memory 类型标签
+  execution: '任务执行',  // 🔥 任务执行类型
   default: '思考'
 }
 
@@ -147,6 +149,7 @@ const StepItem = ({ step, index }: StepItemProps) => {
         step.type === 'writing' && "bg-pink-500/10 text-pink-500",
         step.type === 'artifact' && "bg-orange-500/10 text-orange-500",
         step.type === 'memory' && "bg-indigo-500/10 text-indigo-500",  // 🔥 新增：Memory 类型样式
+        step.type === 'execution' && "bg-emerald-500/10 text-emerald-500",  // 🔥 任务执行类型样式
         (!step.type || step.type === 'default') && "bg-gray-500/10 text-gray-500"
       )}>
         <Icon className="w-4 h-4" />
