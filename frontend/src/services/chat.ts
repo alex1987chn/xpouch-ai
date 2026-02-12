@@ -193,6 +193,7 @@ export async function sendMessage(
               }
             } else if (!isChatEvent) {
               // Task 相关事件：直接给 eventHandlers，不经过 onChunk
+              console.log('[chat.ts] 调用 handleServerEvent:', eventType)
               handleServerEvent(fullEvent as any)
             }
           }
