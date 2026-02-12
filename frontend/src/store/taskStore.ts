@@ -67,9 +67,11 @@ export const useTaskStore = create<TaskStore>()(
       
       // 全局重置方法 - 组合各 Slice 的重置逻辑
       resetAll: (force: boolean = false) => {
-        get().clearTasks(force)
-        get().resetUI()
-        get().resetPlanning()
+        // 🔥 按依赖顺序重置各 Slice 状态
+        get().resetArtifacts()   // 1. 清空 Artifacts（在 Task 之前）
+        get().clearTasks(force)  // 2. 清空 Task 数据
+        get().resetUI()          // 3. 重置 UI 状态（依赖 Task 数据）
+        get().resetPlanning()    // 4. 重置 Planning 状态
       }
     })),
     // ============================================================================

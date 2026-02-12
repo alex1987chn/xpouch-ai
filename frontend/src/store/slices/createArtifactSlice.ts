@@ -36,6 +36,8 @@ export interface ArtifactSliceActions {
   replaceArtifacts: (taskId: string, artifacts: Artifact[]) => void
   updateArtifactContent: (taskId: string, artifactId: string, newContent: string) => Promise<boolean>
   deleteArtifact: (taskId: string, artifactId: string) => void
+  // Reset
+  resetArtifacts: () => void
 }
 
 export type ArtifactSlice = ArtifactSliceState & ArtifactSliceActions
@@ -80,7 +82,8 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
       }
 
       task.artifacts.sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-      state.selectedTaskId = data.task_id
+      // 🔥 移除：state.selectedTaskId = data.task_id（这是 UISlice 的状态）
+      // 选中 Task 应由 UISlice 处理
     })
     // Call Action outside of set() to avoid nested update anti-pattern
     get().syncTasksCache()
@@ -166,5 +169,20 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
 
       throw error
     }
+  },
+
+  /**
+   * 🔥 新增：清空所有 Task 的 Artifacts
+   * 用于 resetAll 时清理 Artifact 状态
+   */
+  resetArtifacts: () => {
+    set((state: any) => {
+      // 清空每个 task 的 artifacts 数组
+      state.tasks.forEach((task: any) => {
+        task.artifacts = []
+      })
+    })
+    // Call Action outside of set()
+    get().syncTasksCache()
   }
 })
