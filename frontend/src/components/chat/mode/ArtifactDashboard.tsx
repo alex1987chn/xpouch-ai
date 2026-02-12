@@ -185,7 +185,10 @@ export default function ArtifactDashboard({
     setIsExportingPDF(true)
     setShowExportMenu(false)
     try {
-      await downloadPDF(`artifact-content-${currentArtifact.id}`, currentArtifact.title || currentArtifact.type)
+      // 🔥 直接使用内容生成 PDF，避免 html2canvas 的各种问题
+      const content = currentArtifact.content || ''
+      const title = currentArtifact.title || currentArtifact.type
+      await downloadPDF(content, title)
     } catch (err) {
       console.error('PDF export failed:', err)
     } finally {
