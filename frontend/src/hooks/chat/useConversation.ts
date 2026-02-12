@@ -19,6 +19,7 @@ import {
 } from '@/hooks/useChatSelectors'
 import { useTaskActions } from '@/hooks/useTaskSelectors'
 import { useChatStore } from '@/store/chatStore'
+import { useTaskStore } from '@/store/taskStore'
 
 // Helper function: Convert backend JSON output to Markdown string
 const formatTaskOutput = (outputResult: any): string => {
