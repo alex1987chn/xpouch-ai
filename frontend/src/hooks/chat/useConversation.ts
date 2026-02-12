@@ -87,17 +87,33 @@ export function useConversation() {
       const isSameConversation = currentId === targetConversationId
       const hasMessages = store.messages.length > 0
       
-      // 如果会话和消息都已加载，检查 tasks 是否需要恢复
+      // 如果会话和消息都已加载，检查是否是页面刷新
       if (isSameConversation && hasMessages) {
-        // 🔥 检查 localStorage 是否已恢复完整数据
-        // 如果 tasks.size > 0 且 session 存在，说明数据已完整恢复
+        // 🔥 区分"刷新页面"和"Tab切换/路由切换"
+        // 刷新页面：总是从 API 获取最新数据
+        // Tab切换：使用 localStorage 恢复（由 useSessionRecovery 处理）
+        const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+        const isPageRefresh = navigation?.type === 'reload'
+        
+        if (isPageRefresh) {
+          debug('检测到页面刷新，从 API 获取最新数据')
+          const conversation = await getConversation(targetConversationId)
+          
+          if (conversation.task_session && conversation.task_session.sub_tasks?.length > 0) {
+            debug('从 API 恢复 tasks:', conversation.task_session.session_id, 'sub_tasks:', conversation.task_session.sub_tasks?.length)
+            clearTasks(true)
+            restoreFromSession(conversation.task_session, conversation.task_session.sub_tasks)
+          }
+          return conversation
+        }
+        
+        // Tab 切换或路由切换，检查 localStorage 是否有数据
         if (taskStore.tasks.size > 0 && taskStore.session) {
-          debug('Tasks 已从 localStorage 恢复，跳过 API 调用')
-          debug('tasks.size:', taskStore.tasks.size, 'session:', taskStore.session.session_id)
+          debug('Tab 切换，使用 localStorage 恢复的数据')
           return null
         }
         
-        // localStorage 没有恢复数据，需要从 API 获取
+        // localStorage 没有数据，从 API 获取
         debug('localStorage 未恢复 tasks，从 API 获取')
         const conversation = await getConversation(targetConversationId)
         
