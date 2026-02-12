@@ -16,7 +16,7 @@
 
 **下一代 LangGraph 智能协作平台** — 引入 HITL 人机回环、可视化工作流与工业级交互体验。
 
-[🚀 在线演示](https://demo.xpouch.ai) · [📖 文档](https://docs.xpouch.ai) · [🐛 问题反馈](https://github.com/alex1987chn/xpouch-ai/issues) · [💬 讨论](https://github.com/alex1987chn/xpouch-ai/discussions)
+[🚀 在线演示](https://xpouch.ai) · [🐛 问题反馈](https://github.com/alex1987chn/xpouch-ai/issues) · [💬 讨论](https://github.com/alex1987chn/xpouch-ai/discussions)
 
 </div>
 
@@ -234,6 +234,6 @@ pnpm run dev:backend   # http://localhost:3002
 
 **⭐ Star 我们，如果这个项目对你有帮助！**
 
-[🐛 报告问题](https://github.com/alex1987chn/xpouch-ai/issues) · [💡 功能建议](https://github.com/alex1987chn/xpouch-ai/discussions) · [📧 联系作者](mailto:alex1987chn@gmail.com)
+[🚀 在线体验](https://xpouch.ai) · [🐛 报告问题](https://github.com/alex1987chn/xpouch-ai/issues) · [💡 功能建议](https://github.com/alex1987chn/xpouch-ai/discussions)
 
 </div>
