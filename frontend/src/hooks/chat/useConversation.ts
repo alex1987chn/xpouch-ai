@@ -78,70 +78,81 @@ export function useConversation() {
   const loadConversation = useCallback(async (targetConversationId: string) => {
     try {
       const store = useChatStore.getState()
+      const taskStore = useTaskStore.getState()
       const currentId = store.currentConversationId
 
-      // 🔥🔥🔥 改进：判断是否正在显示当前会话（避免执行完成后误判为页面刷新）
-      const isCurrentlyDisplaying = currentId === targetConversationId && store.messages.length > 0
-      // 🔥🔥🔥 真正的页面刷新：messages 来自 localStorage 恢复或为空
-      const isPageRefresh = isCurrentlyDisplaying && !store.messages.some(m => m.role === 'assistant' && m.content && m.content.length > 10)
+      // 🔥🔥🔥 简化判断：检查是否需要重新加载
+      // 1. 会话不匹配：需要加载
+      // 2. 消息未加载：需要加载
+      const isSameConversation = currentId === targetConversationId
+      const hasMessages = store.messages.length > 0
       
-      debug('Starting to load conversation:', targetConversationId, 'Current conversation:', currentId, 'Is page refresh:', isPageRefresh, 'Is displaying:', isCurrentlyDisplaying)
+      // 如果会话和消息都已加载，检查 tasks 是否需要恢复
+      if (isSameConversation && hasMessages) {
+        // 先获取 conversation 数据，检查是否有 task_session
+        const conversation = await getConversation(targetConversationId)
+        
+        if (conversation.task_session && conversation.task_session.sub_tasks?.length > 0) {
+          // 有 task_session，检查 tasks 是否已恢复
+          if (taskStore.tasks.size === 0 || taskStore.session?.session_id !== conversation.task_session.session_id) {
+            // tasks 未恢复，需要恢复
+            debug('Tasks 未恢复，开始恢复:', conversation.task_session.session_id)
+            clearTasks(true)
+            restoreFromSession(conversation.task_session, conversation.task_session.sub_tasks)
+          } else {
+            debug('Tasks 已恢复，跳过')
+          }
+        }
+        return conversation
+      }
+
+      // 需要重新加载
+      debug('开始加载会话:', targetConversationId, '当前会话:', currentId)
 
       const conversation = await getConversation(targetConversationId)
 
-      if (!isPageRefresh) {
-        if (currentId !== targetConversationId) {
-          debug('Clearing old messages, preparing to load new conversation')
-          setMessages([])
-        }
-
-        setCurrentConversationId(targetConversationId)
-
-        if (conversation.messages && conversation.messages.length > 0) {
-          setMessages(conversation.messages)
-          debug('Setting new conversation messages:', conversation.messages.length, 'items')
-        } else {
-          setMessages([])
-          debug('New conversation has no messages, clearing message list')
-        }
-      } else {
-        // 🔥🔥🔥 页面刷新时，强制重新加载消息（确保从数据库获取完整内容）
-        setCurrentConversationId(targetConversationId)
-        
-        // 始终使用数据库的最新消息，避免本地累积的流式内容不完整
-        if (conversation.messages && conversation.messages.length > 0) {
-          debug('Page refresh: Loading complete messages from database:', conversation.messages.length, 'items')
-          setMessages(conversation.messages)
-        }
+      // 清空旧消息
+      if (currentId !== targetConversationId) {
+        debug('清空旧消息，准备加载新会话')
+        setMessages([])
       }
 
+      setCurrentConversationId(targetConversationId)
+
+      // 设置消息
+      if (conversation.messages && conversation.messages.length > 0) {
+        setMessages(conversation.messages)
+        debug('设置会话消息:', conversation.messages.length, '条')
+      } else {
+        setMessages([])
+        debug('会话无消息，清空消息列表')
+      }
+
+      // 设置 agent
       if (conversation.agent_id) {
         setSelectedAgentId(normalizeAgentId(conversation.agent_id))
       }
 
-      // 🔥 强制清空任务状态（包括持久化的 runningTaskIds）
-      // 避免旧的持久化状态阻止新会话加载
+      // 清空旧任务状态
       clearTasks(true)
 
-      // 🔥🔥🔥 调试：检查 task_session 数据
+      // 恢复 task_session
       debug('conversation.task_session:', conversation.task_session)
       debug('conversation.task_session_id:', conversation.task_session_id)
       debug('conversation.agent_type:', conversation.agent_type)
 
       if (conversation.task_session) {
-        debug('Restoring task session:', conversation.task_session.session_id || conversation.task_session.id, 'sub_tasks:', conversation.task_session.sub_tasks?.length)
-        debug('sub_tasks details:', conversation.task_session.sub_tasks)
+        debug('恢复 task_session:', conversation.task_session.session_id || conversation.task_session.id, 'sub_tasks:', conversation.task_session.sub_tasks?.length)
         restoreFromSession(conversation.task_session, conversation.task_session.sub_tasks || [])
       } else {
-        debug('⚠️ No task_session found in conversation!')
+        debug('无 task_session')
       }
 
       return conversation
     } catch (error: any) {
       // 404 错误：会话不存在（可能是新会话还没在后端创建）
-      // 这种情况下静默处理，不显示错误日志
       if (error?.status === 404) {
-        debug('Conversation not found on backend, may be new conversation')
+        debug('会话不存在，可能是新会话')
         return null
       }
       
