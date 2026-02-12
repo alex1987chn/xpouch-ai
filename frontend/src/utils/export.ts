@@ -3,6 +3,7 @@
  * 支持 Markdown 和 PDF 两种格式导出
  */
 
+import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 
 /**
@@ -33,97 +34,108 @@ export function downloadMarkdown(filename: string, content: string): void {
 }
 
 /**
- * 下载 PDF 文件（基于文本内容）
- * @param content 要导出的文本内容
- * @param filename 文件名（不含扩展名）
- * @returns Promise<void>
+ * 克隆元素并设置固定尺寸（用于 html2canvas 捕获）
  */
-export async function downloadPDF(content: string, filename: string): Promise<void> {
-  if (!content || content.trim().length === 0) {
-    throw new Error('Content is empty')
-  }
-
-  // 创建 PDF（A4 纸）
-  const pdf = new jsPDF('p', 'mm', 'a4')
-  const pageWidth = pdf.internal.pageSize.getWidth()
-  const pageHeight = pdf.internal.pageSize.getHeight()
-  const margin = 15 // 边距 (mm)
-  const lineHeight = 6 // 行高 (mm)
+function cloneElementWithFixedDimensions(element: HTMLElement): HTMLElement {
+  // 创建一个容器
+  const container = document.createElement('div')
+  container.style.cssText = `
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    background: #ffffff;
+    padding: 20px;
+    width: ${element.scrollWidth || 800}px;
+    min-height: ${element.scrollHeight || 600}px;
+  `
   
-  // 设置字体
-  pdf.setFont('helvetica', 'normal')
-  pdf.setFontSize(10)
+  // 克隆元素
+  const clone = element.cloneNode(true) as HTMLElement
+  clone.style.cssText = `
+    width: ${element.scrollWidth || 800}px !important;
+    min-height: ${element.scrollHeight || 600}px !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  `
   
-  // 计算可用宽度
-  const maxWidth = pageWidth - margin * 2
+  container.appendChild(clone)
+  document.body.appendChild(container)
   
-  // 分割内容为行
-  const lines = content.split('\n')
-  let y = margin
-  
-  for (const line of lines) {
-    // 处理空行
-    if (line.trim() === '') {
-      y += lineHeight * 0.5
-      continue
-    }
-    
-    // 使用 splitTextToSize 自动换行
-    const wrappedLines = pdf.splitTextToSize(line, maxWidth)
-    
-    for (const wrappedLine of wrappedLines) {
-      // 检查是否需要新页面
-      if (y + lineHeight > pageHeight - margin) {
-        pdf.addPage()
-        y = margin
-      }
-      
-      // 写入文本
-      pdf.text(wrappedLine, margin, y)
-      y += lineHeight
-    }
-  }
-  
-  pdf.save(generateFilename(filename, 'pdf'))
+  return container
 }
 
 /**
- * 下载 PDF 文件（基于 DOM 元素 - 备选方案）
- * 使用内容直接生成，避免 html2canvas 的各种问题
+ * 下载 PDF 文件
  * @param elementId 要导出的 DOM 元素 ID
  * @param filename 文件名（不含扩展名）
  * @returns Promise<void>
  */
-export async function downloadPDFFromElement(elementId: string, filename: string): Promise<void> {
+export async function downloadPDF(elementId: string, filename: string): Promise<void> {
   const element = document.getElementById(elementId)
   if (!element) {
     throw new Error(`Element with id "${elementId}" not found`)
   }
 
-  // 获取元素的文本内容
-  let content = ''
+  // 🔥 创建固定尺寸的克隆元素
+  const container = cloneElementWithFixedDimensions(element)
   
-  // 尝试从 CodeArtifact (pre/code) 获取
-  const codeElement = element.querySelector('pre code') || element.querySelector('pre')
-  if (codeElement?.textContent) {
-    content = codeElement.textContent
-  }
-  
-  // 尝试从 DocArtifact (article/div) 获取
-  if (!content) {
-    const docElement = element.querySelector('article') || element.querySelector('[data-artifact-content]')
-    if (docElement?.textContent) {
-      content = docElement.textContent
+  try {
+    // 等待一帧让 DOM 渲染
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    
+    // 使用 html2canvas 捕获
+    const canvas = await html2canvas(container, {
+      useCORS: true,
+      allowTaint: true, // 允许跨域图片
+      logging: false,
+      scale: 2,
+      backgroundColor: '#ffffff',
+      width: container.scrollWidth,
+      height: container.scrollHeight,
+    })
+
+    // 验证 canvas
+    if (canvas.width === 0 || canvas.height === 0) {
+      throw new Error('Canvas has zero dimensions')
     }
+
+    // 生成图片
+    const imgData = canvas.toDataURL('image/jpeg', 0.95)
+    
+    if (!imgData || !imgData.startsWith('data:image/')) {
+      throw new Error('Failed to generate image data')
+    }
+
+    // 创建 PDF
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    
+    // 计算缩放比例
+    const ratio = pageWidth / (canvas.width / 2) // scale=2 所以除以 2
+    const imgWidth = pageWidth
+    const imgHeight = (canvas.height / 2) * ratio
+    
+    // 分页处理
+    let heightLeft = imgHeight
+    let position = 0
+    
+    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+    heightLeft -= pageHeight
+    
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight
+      pdf.addPage()
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+    }
+    
+    pdf.save(generateFilename(filename, 'pdf'))
+  } finally {
+    // 清理克隆的元素
+    document.body.removeChild(container)
   }
-  
-  // 兜底：获取整个元素的文本
-  if (!content) {
-    content = element.textContent || ''
-  }
-  
-  // 使用文本内容生成 PDF
-  await downloadPDF(content, filename)
 }
 
 /**
