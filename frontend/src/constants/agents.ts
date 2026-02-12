@@ -20,7 +20,7 @@
  * const invalidId: SystemAgentId = 'custom-agent' // ❌ 类型错误
  * ```
  */
-export type SystemAgentId = 'sys-default-chat'
+export type SystemAgentId = 'sys-default-chat' | 'sys-task-orchestrator'
 
 /**
  * 系统智能体常量对象
@@ -57,7 +57,21 @@ export const SYSTEM_AGENTS = {
    * 
    * 对应前端显示名称："默认助手"
    */
-  DEFAULT_CHAT: 'sys-default-chat'
+  DEFAULT_CHAT: 'sys-default-chat',
+  
+  /**
+   * 任务编排器 ID - 复杂模式的内部实现
+   * 
+   * @description
+   * 这是后端 LangGraph 复杂模式的内部智能体 ID。
+   * 前端不应该直接在 URL 中使用此 ID，而是通过 DEFAULT_CHAT 作为入口，
+   * 让后端 Router 决定是否进入编排器模式。
+   * 
+   * 此 ID 主要用于：
+   * - 旧 ID 映射（ai-assistant -> ORCHESTRATOR）
+   * - 后端事件路由
+   */
+  ORCHESTRATOR: 'sys-task-orchestrator'
 } as const
 
 /**
@@ -98,7 +112,8 @@ export function isSystemAgent(agentId: string): agentId is SystemAgentId {
  */
 export function getSystemAgentName(agentId: string): string {
   const names: Record<SystemAgentId, string> = {
-    'sys-default-chat': '默认助手'
+    'sys-default-chat': '默认助手',
+    'sys-task-orchestrator': '任务编排器'
   }
   return names[agentId as SystemAgentId] || agentId
 }

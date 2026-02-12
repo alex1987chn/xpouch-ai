@@ -3,7 +3,10 @@
  */
 
 import { getHeaders, buildUrl, handleResponse } from './common'
-import { CustomAgentData } from '@/types'
+import type { Agent } from '@/types'
+
+// 重新导出类型供外部使用（Agent 类型来自 @/types）
+export type { Agent }
 
 // ============================================================================
 // 类型定义

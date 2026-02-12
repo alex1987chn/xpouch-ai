@@ -1,6 +1,7 @@
 /**
  * Chat Hooks 统一导出
  * v3.2.0: 移除 useExpertHandler（功能由 eventHandlers.ts 直接处理）
+ * v3.3.0: 移除 useSessionRecovery（合并到 useSessionRestore）
  */
 
 // 核心聊天逻辑
@@ -12,5 +13,5 @@ export { useChatCore } from './useChatCore'
 // 会话管理
 export { useConversation } from './useConversation'
 
-// 会话恢复
-export { useSessionRecovery } from './useSessionRecovery'
+// v3.3.0: useSessionRecovery 已合并到 useSessionRestore
+// 请从 '@/hooks/useSessionRestore' 导入

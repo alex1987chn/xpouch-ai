@@ -15,6 +15,7 @@ import { useTaskStore } from './store/taskStore'
 import { createCustomAgent, updateCustomAgent, getAllAgents } from './services/api'
 import { normalizeAgentId } from '@/utils/agentUtils'
 import { logger } from '@/utils/logger'
+import { SYSTEM_AGENTS } from '@/constants/agents'
 
 // 路由懒加载 - 代码分割优化
 const UnifiedChatPage = lazy(() => import('./pages/chat/UnifiedChatPage'))
@@ -60,7 +61,7 @@ const HistoryPageWrapper = () => {
     // URL 携带 agentId，作为页面状态的唯一真相源 (SDUI)
     // 只有自定义智能体（非系统默认助手）才需要在 URL 中携带 agentId
     if (normalizedAgentId &&
-        normalizedAgentId !== 'sys-default-chat' &&
+        normalizedAgentId !== SYSTEM_AGENTS.DEFAULT_CHAT &&
         normalizedAgentId !== 'default-chat' &&
         !normalizedAgentId.startsWith('sys-')) {
       // 自定义智能体：需要携带 agentId
@@ -278,6 +279,11 @@ export const router = createBrowserRouter([
     // 统一聊天页面的带ID版本（兼容历史记录跳转）
     path: '/chat/:id',
     element: <AppLayout hideMobileMenu={true}><UnifiedChatPageWrapper /></AppLayout>
+  },
+  {
+    // 登录页面 - 暂时重定向到首页（登录弹窗在首页处理）
+    path: '/login',
+    element: <Navigate to="/" replace />
   }
 ])
 

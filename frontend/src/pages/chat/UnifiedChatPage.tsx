@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams, useLocation } from 'react-rout
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
 import { useChat } from '@/hooks/useChat'
-import { useSessionRecovery } from '@/hooks/chat/useSessionRecovery'
+import { useSessionRestore } from '@/hooks/useSessionRestore'
 import { useApp } from '@/providers/AppProvider'
 
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
@@ -260,7 +260,8 @@ export default function UnifiedChatPage() {
   }, [initialMessage, conversationId, normalizedAgentId, sendMessage, navigate, searchParams, isStreaming])
 
   // v3.0: 状态恢复/水合（使用独立的 Hook）
-  useSessionRecovery(conversationId)
+  // v3.3.0: 使用合并后的 useSessionRestore，同时支持页面加载恢复和标签页切换恢复
+  useSessionRestore({ enabled: !!conversationId })
 
   // 发送消息处理
   const handleSend = useCallback(() => {

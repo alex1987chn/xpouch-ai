@@ -17,7 +17,7 @@
  * - error: 红色呼吸光环（错误状态）
  */
 
-import React from 'react';
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Bot } from 'lucide-react';
@@ -26,17 +26,17 @@ export type AvatarStatus = 'idle' | 'thinking' | 'streaming' | 'error';
 
 interface StatusAvatarProps {
   src?: string;
-  fallback?: React.ReactNode;
+  fallback?: ReactNode;
   status?: AvatarStatus;
   className?: string;
 }
 
-export const StatusAvatar: React.FC<StatusAvatarProps> = ({
+export function StatusAvatar({
   src,
   fallback,
   status = 'idle',
   className,
-}) => {
+}: StatusAvatarProps) {
   const isThinking = status === 'thinking';
   const isStreaming = status === 'streaming';
   const isError = status === 'error';

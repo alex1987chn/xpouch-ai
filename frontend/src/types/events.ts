@@ -122,6 +122,19 @@ export interface TaskFailedData {
 export type TaskFailedEvent = SSEEvent<TaskFailedData>
 
 // ============================================================================
+// 任务进度事件（可选）
+// ============================================================================
+
+export interface TaskProgressData {
+  task_id: string
+  expert_type: string
+  progress: number // 0.0 - 1.0
+  message?: string // 进度消息，如"正在搜索..."
+}
+
+export type TaskProgressEvent = SSEEvent<TaskProgressData>
+
+// ============================================================================
 // 产物阶段事件
 // ============================================================================
 
@@ -186,6 +199,31 @@ export interface RouterDecisionData {
 
 export type RouterDecisionEvent = SSEEvent<RouterDecisionData>
 
+// ============================================================================
+// 工作流事件
+// ============================================================================
+
+export interface WorkflowCompletedData {
+  session_id: string
+  total_tasks: number
+  completed_tasks: number
+  failed_tasks: number
+  duration_ms: number
+  completed_at: string
+}
+
+export type WorkflowCompletedEvent = SSEEvent<WorkflowCompletedData>
+
+export interface WorkflowCancelledData {
+  session_id: string
+  reason: string
+  cancelled_at: string
+  completed_tasks: number
+  pending_tasks: number
+}
+
+export type WorkflowCancelledEvent = SSEEvent<WorkflowCancelledData>
+
 export interface ErrorData {
   code: string
   message: string
@@ -221,6 +259,7 @@ export type AnyServerEvent =
   | PlanStartedEvent      // 🔥 新增
   | PlanThinkingEvent     // 🔥 新增
   | TaskStartedEvent
+  | TaskProgressEvent     // 🔥 新增
   | TaskCompletedEvent
   | TaskFailedEvent
   | ArtifactGeneratedEvent
@@ -229,6 +268,8 @@ export type AnyServerEvent =
   | HumanInterruptEvent     // 🔥🔥🔥 v3.1.0 HITL
   | RouterStartEvent
   | RouterDecisionEvent
+  | WorkflowCompletedEvent  // 🔥 新增
+  | WorkflowCancelledEvent  // 🔥 新增
   | ErrorEvent
 
 // ============================================================================

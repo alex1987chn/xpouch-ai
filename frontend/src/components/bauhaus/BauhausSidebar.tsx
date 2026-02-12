@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Database, MessageSquare, Shield, Plus, MessageSquarePlus, User, ChevronRight, Cog, Clock, ArrowRight, Star, Plane, Crown, Globe } from 'lucide-react'
+import { Home, Database, MessageSquare, Shield, Plus, MessageSquarePlus, User, ChevronRight, Cog, Clock, ArrowRight, Star, Plane, Crown, Globe, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { The4DPocketLogo } from '@/components/bauhaus'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -105,9 +105,9 @@ export default function BauhausSidebar({
   const isOnHistory = location.pathname === '/history'
   const isOnAdmin = location.pathname === '/admin/experts'
 
-  // 判断是否显示专家配置入口：需要登录且是 admin 角色，且非移动端
+  // 判断是否显示专家配置入口：对所有用户可见，但非管理员带锁
   const isAdmin = user?.role === 'admin'
-  const showExpertAdmin = isAuthenticated && isAdmin && !isMobileOpen
+  const showExpertAdmin = isAuthenticated && !isMobileOpen
 
   // 用户数据
   const username = user?.username || 'User'
@@ -162,8 +162,8 @@ export default function BauhausSidebar({
     setMessages([])
     setCurrentConversationId(null)
     
-    // 👈 默认助手不添加 agentId 参数，让后端自动使用 sys-default-chat
-    if (agentId && agentId !== 'sys-default-chat' && agentId !== 'default-chat') {
+    // 👈 默认助手不添加 agentId 参数，让后端自动使用默认助手
+    if (agentId && agentId !== SYSTEM_AGENTS.DEFAULT_CHAT && agentId !== 'default-chat') {
       navigate(`/chat/${conversationId}?agentId=${agentId}`)
     } else {
       navigate(`/chat/${conversationId}`)
@@ -368,18 +368,35 @@ export default function BauhausSidebar({
                 <MessageSquare className="w-4 h-4 flex-shrink-0" />
               </button>
 
-              {/* 管理员按钮 - 仅 admin 且非移动端显示 */}
+              {/* 管理员按钮 - 对所有登录用户可见，非管理员带锁 */}
               {showExpertAdmin && (
                 <button
-                  onClick={() => handleMenuClick('/admin/experts')}
+                  onClick={() => {
+                    if (isAdmin) {
+                      handleMenuClick('/admin/experts')
+                    } else {
+                      toast({
+                        title: '权限不足',
+                        description: '该功能仅限管理员使用',
+                        variant: 'destructive'
+                      })
+                    }
+                  }}
                   className={cn(
-                    'h-9 w-9 transition-all duration-200 justify-center p-0 rounded-full border-2',
+                    'h-9 w-9 transition-all duration-200 justify-center p-0 rounded-full border-2 relative',
                     isOnAdmin
                       ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
-                      : 'border-[var(--border-color)] text-slate-400 hover:bg-[var(--bg-page)] hover:text-gray-700 dark:hover:text-slate-200'
+                      : 'border-[var(--border-color)] text-slate-400 hover:bg-[var(--bg-page)] hover:text-gray-700 dark:hover:text-slate-200',
+                    !isAdmin && 'opacity-50'
                   )}
+                  title={isAdmin ? t('navExperts') : '该功能仅限管理员使用'}
                 >
                   <Shield className="w-4 h-4 flex-shrink-0" />
+                  {!isAdmin && (
+                    <div className="absolute -bottom-1 -right-1 bg-black text-white rounded-full p-0.5">
+                      <Lock className="w-2.5 h-2.5" />
+                    </div>
+                  )}
                 </button>
               )}
             </div>
@@ -442,20 +459,37 @@ export default function BauhausSidebar({
                 </div>
               </button>
 
-              {/* 管理员按钮 - 仅 admin 且非移动端显示 */}
+              {/* 管理员按钮 - 对所有登录用户可见，非管理员带锁 */}
               {showExpertAdmin && (
                 <button
-                  onClick={() => handleMenuClick('/admin/experts')}
+                  onClick={() => {
+                    if (isAdmin) {
+                      handleMenuClick('/admin/experts')
+                    } else {
+                      toast({
+                        title: '权限不足',
+                        description: '该功能仅限管理员使用',
+                        variant: 'destructive'
+                      })
+                    }
+                  }}
                   className={cn(
-                    'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2',
+                    'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2 relative',
                     isOnAdmin
                       ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
-                      : 'border-transparent text-[var(--text-primary)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]'
+                      : 'border-transparent text-[var(--text-primary)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]',
+                    !isAdmin && 'opacity-50'
                   )}
+                  title={isAdmin ? t('navExperts') : '该功能仅限管理员使用'}
                 >
                   <div className="flex items-center gap-3 px-3">
                     <Shield className="w-5 h-5 flex-shrink-0" />
                     <span className="font-mono text-xs font-bold tracking-wide uppercase">{t('navExperts')}</span>
+                    {!isAdmin && (
+                      <div className="absolute right-3 bg-black text-white rounded-full p-0.5">
+                        <Lock className="w-3 h-3" />
+                      </div>
+                    )}
                   </div>
                 </button>
               )}

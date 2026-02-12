@@ -37,6 +37,7 @@ import { useNavigate } from 'react-router-dom'
 import { useChatCore } from './chat/useChatCore'
 import { useConversation } from './chat/useConversation'
 import { errorHandler } from '@/utils/logger'
+import { SYSTEM_AGENTS } from '@/constants/agents'
 
 // Performance Optimized Selectors (v3.1.0)
 import {
@@ -59,7 +60,7 @@ export function useChat() {
     onNewConversation: useCallback((conversationId: string, agentId: string) => {
       // 🔥 修复：保留 isNew 状态，避免触发不必要的 loadConversation
       // 后端已创建会话，标记 isNew: false 表示会话已存在
-      if (agentId && agentId !== 'sys-default-chat' && agentId !== 'default-chat') {
+      if (agentId && agentId !== SYSTEM_AGENTS.DEFAULT_CHAT && agentId !== 'default-chat') {
         navigate(`/chat/${conversationId}?agentId=${agentId}`, { 
           replace: true,
           state: { isNew: false }

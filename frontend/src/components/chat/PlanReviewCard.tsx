@@ -9,7 +9,7 @@
  * 状态驱动 UI：基于 isWaitingForApproval
  */
 
-import React, { useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, Edit3, CheckCircle2, XCircle, Play, Loader2, AlertTriangle } from 'lucide-react'
 import type { ResumeChatParams } from '@/services/chat'
@@ -46,10 +46,10 @@ interface PlanReviewCardProps {
   resumeExecution: (params: ResumeChatParams) => Promise<string>
 }
 
-export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({ 
+export function PlanReviewCard({ 
   conversationId,
   resumeExecution,
-}) => {
+}: PlanReviewCardProps) {
   // 使用 TaskStore
   const isWaitingForApproval = useIsWaitingForApproval()
   const pendingPlan = usePendingPlan()
