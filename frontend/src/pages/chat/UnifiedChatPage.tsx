@@ -192,7 +192,7 @@ export default function UnifiedChatPage() {
       return
     }
 
-    debug('[UnifiedChatPage] 需要重新加载会话:', {
+    logger.debug('[UnifiedChatPage] 需要重新加载会话:', {
       storeCurrentId,
       conversationId,
       messagesCount: currentMessages.length,
