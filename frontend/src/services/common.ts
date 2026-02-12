@@ -62,8 +62,16 @@ export function buildUrl(path: string): string {
  */
 export async function handleResponse<T>(response: Response, errorMessage: string): Promise<T> {
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.detail || errorMessage)
+    let errorDetail = errorMessage
+    try {
+      const errorData = await response.json()
+      errorDetail = errorData.detail || errorMessage
+    } catch {
+      // 无法解析错误响应，使用默认消息
+    }
+    const error = new Error(errorDetail) as Error & { status: number }
+    error.status = response.status
+    throw error
   }
   return response.json()
 }

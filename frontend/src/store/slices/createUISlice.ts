@@ -1,12 +1,13 @@
 /**
  * UI Slice - UI state management
- * 
+ *
  * [Responsibilities]
  * - Manage UI state unrelated to application data
  * - Running task ID set
  * - Selected task ID
  * - Initialization state
  * - HITL review related UI state
+ * - Progress tracking (从 ExecutionStore 迁移)
  */
 
 import type { Task } from './createTaskSlice'
@@ -17,6 +18,11 @@ import type { Task } from './createTaskSlice'
 
 export type AppMode = 'simple' | 'complex' | null
 
+export interface Progress {
+  current: number
+  total: number
+}
+
 export interface UISliceState {
   mode: AppMode
   runningTaskIds: Set<string>
@@ -24,6 +30,7 @@ export interface UISliceState {
   isInitialized: boolean
   isWaitingForApproval: boolean
   pendingPlan: Task[]
+  progress: Progress | null  // 从 ExecutionStore 迁移
 }
 
 export interface UISliceActions {
@@ -39,6 +46,7 @@ export interface UISliceActions {
   resetUI: () => void
   hasRunningTasks: () => boolean
   isTaskRunning: (taskId: string) => boolean
+  setProgress: (progress: Progress | null) => void  // 新增
 }
 
 export type UISlice = UISliceState & UISliceActions
@@ -56,6 +64,7 @@ export const createUISlice = (set: any, get: any): UISlice => ({
   isInitialized: false,
   isWaitingForApproval: false,
   pendingPlan: [],
+  progress: null,  // 新增
 
   // Actions
 
@@ -124,6 +133,7 @@ export const createUISlice = (set: any, get: any): UISlice => ({
       state.isInitialized = false
       state.isWaitingForApproval = false
       state.pendingPlan = []
+      state.progress = null  // 重置进度
     })
   },
 
@@ -133,5 +143,12 @@ export const createUISlice = (set: any, get: any): UISlice => ({
 
   isTaskRunning: (taskId: string) => {
     return get().runningTaskIds.has(taskId)
+  },
+
+  // 新增进度设置方法
+  setProgress: (progress: Progress | null) => {
+    set((state: any) => {
+      state.progress = progress
+    })
   }
 })
