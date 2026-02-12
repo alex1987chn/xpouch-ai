@@ -509,10 +509,7 @@ class StreamService:
             
             # 保存 SubTasks
             for subtask in task_list:
-                artifacts = subtask.get("artifact")
-                if artifacts:
-                    artifacts = [artifacts] if isinstance(artifacts, dict) else artifacts
-                
+                # ❌ 移除错误的 artifacts 赋值（artifacts 是关系字段）
                 db_subtask = SubTask(
                     id=subtask["id"],
                     expert_type=subtask["expert_type"],
@@ -520,7 +517,6 @@ class StreamService:
                     input_data=subtask.get("input_data", {}),
                     status=subtask.get("status", "completed"),
                     output_result=subtask.get("output_result"),
-                    artifacts=artifacts,
                     started_at=subtask.get("started_at"),
                     completed_at=subtask.get("completed_at"),
                     created_at=datetime.now(),
@@ -530,13 +526,21 @@ class StreamService:
                 self.db.add(db_subtask)
                 self.db.flush()
                 
-                # 保存 artifacts
+                # 🔥 保存 artifacts（使用 task_id 匹配）
                 task_id = subtask.get("id")
+                logger.info(f"[StreamService] 尝试保存 artifacts: task_id={task_id}, expert_artifacts keys={list(expert_artifacts.keys())}")
+                
                 if task_id and task_id in expert_artifacts:
                     try:
+                        logger.info(f"[StreamService] 找到 artifacts: {len(expert_artifacts[task_id])} 个")
                         create_artifacts_batch(self.db, db_subtask.id, expert_artifacts[task_id])
+                        logger.info(f"[StreamService] ✅ artifacts 保存成功")
                     except Exception as e:
                         logger.error(f"[StreamService] 保存 artifacts 失败: {e}")
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    logger.warning(f"[StreamService] ⚠️ task_id={task_id} 在 expert_artifacts 中未找到")
         
         # 保存 AI 消息
         await self.session_service.save_assistant_message(
@@ -587,10 +591,12 @@ class StreamService:
                 # 收集 artifacts
                 task_id = task_result.get("task_id")
                 artifact_data = output.get("artifact")
+                logger.info(f"[_collect_execution_results] 收集 artifacts: task_id={task_id}, has_artifact={artifact_data is not None}")
                 if task_id and artifact_data:
                     if task_id not in expert_artifacts:
                         expert_artifacts[task_id] = []
                     expert_artifacts[task_id].append(artifact_data)
+                    logger.info(f"[_collect_execution_results] ✅ artifacts 已收集: task_id={task_id}, count={len(expert_artifacts[task_id])}")
     
     # ============================================================================
     # 公共流式方法（供 RecoveryService 复用）
