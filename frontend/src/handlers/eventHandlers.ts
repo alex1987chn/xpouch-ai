@@ -256,8 +256,9 @@ export class EventHandler {
    * 更新任务状态为 running
    */
   private handleTaskStarted(event: TaskStartedEvent): void {
-    const { startTask } = useTaskStore.getState()
+    const { startTask, addRunningTaskId } = useTaskStore.getState()
     startTask(event.data)
+    addRunningTaskId(event.data.task_id)  // 🔥 新增：更新 UI 状态
 
     // 🔥 添加 task step 到消息的 thinking metadata
     const { messages, updateMessageMetadata } = useChatStore.getState()
@@ -296,8 +297,9 @@ export class EventHandler {
    * 完整内容通过 artifact.generated 事件单独发送
    */
   private handleTaskCompleted(event: TaskCompletedEvent): void {
-    const { completeTask, setProgress, tasksCache } = useTaskStore.getState()
+    const { completeTask, setProgress, tasksCache, removeRunningTaskId, selectTask, tasks } = useTaskStore.getState()
     completeTask(event.data)
+    removeRunningTaskId(event.data.task_id)  // 🔥 新增：更新 UI 状态
 
     // 🔥 更新进度
     const completedCount = tasksCache.filter(t => t.status === 'completed').length
@@ -325,6 +327,14 @@ export class EventHandler {
       }
     }
 
+    // 🔥 新增：如果任务有产物，选中该任务
+    if (event.data.artifact_count > 0) {
+      const task = tasks.get(event.data.task_id)
+      if (task && task.artifacts.length > 0) {
+        selectTask(event.data.task_id)
+      }
+    }
+
     console.log('[EventHandler] 任务完成:', event.data.task_id, '进度:', completedCount, '/', totalCount)
   }
 
@@ -333,8 +343,9 @@ export class EventHandler {
    * 更新任务状态为 failed
    */
   private handleTaskFailed(event: TaskFailedEvent): void {
-    const { failTask } = useTaskStore.getState()
+    const { failTask, removeRunningTaskId } = useTaskStore.getState()
     failTask(event.data)
+    removeRunningTaskId(event.data.task_id)  // 🔥 新增：更新 UI 状态
 
     logger.error('[EventHandler] 任务失败:', event.data.task_id, event.data.error)
   }
@@ -345,8 +356,11 @@ export class EventHandler {
    * 添加产物到对应任务
    */
   private handleArtifactGenerated(event: ArtifactGeneratedEvent): void {
-    const { addArtifact } = useTaskStore.getState()
+    const { addArtifact, selectTask } = useTaskStore.getState()
     addArtifact(event.data)
+    
+    // 🔥 新增：生成 artifact 后选中对应任务
+    selectTask(event.data.task_id)
 
     if (DEBUG) {
       logger.debug(
@@ -526,7 +540,12 @@ export class EventHandler {
    * 避免误删将要添加 thinking 数据的消息
    */
   private handleRouterDecision(event: RouterDecisionEvent): void {
-    const { setMode } = useTaskStore.getState()
+    const { setMode, resetUI, mode } = useTaskStore.getState()
+
+    // 🔥 新增：如果模式切换，重置 UI 状态
+    if (mode !== event.data.decision) {
+      resetUI()
+    }
 
     // 设置模式（simple 或 complex）
     setMode(event.data.decision)
