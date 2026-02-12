@@ -48,7 +48,9 @@ enableMapSet()
 // 合并 Store 类型
 // ============================================================================
 
-type TaskStore = TaskSlice & ArtifactSlice & UISlice & PlanningSlice
+type TaskStore = TaskSlice & ArtifactSlice & UISlice & PlanningSlice & {
+  resetAll: (force?: boolean) => void
+}
 
 // ============================================================================
 // Store 实现

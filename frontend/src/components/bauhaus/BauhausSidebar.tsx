@@ -8,6 +8,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { type Conversation } from '@/services/chat'
 import { useUserStore } from '@/store/userStore'
 import { useChatStore } from '@/store/chatStore'
+import { useTaskStore } from '@/store/taskStore'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
 import { logger } from '@/utils/logger'
@@ -16,6 +17,7 @@ import { getAvatarDisplay } from '@/utils/userSettings'
 import LoginDialog from '@/components/auth/LoginDialog'
 import { useToast } from '@/components/ui/use-toast'
 import { VERSION } from '@/constants/ui'
+import { SYSTEM_AGENTS } from '@/constants/agents'
 import { useRecentConversationsQuery } from '@/hooks/queries'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -209,7 +211,7 @@ export default function BauhausSidebar({
     setIsSettingsMenuOpen(false)
   }
 
-  // 处理新建会话
+  // 处理新建会话 - 和首页输入框逻辑一致
   const handleNewChat = () => {
     // 检查当前是否在聊天页面且有未发送的消息
     const isOnChatPage = location.pathname.startsWith('/chat')
@@ -225,13 +227,17 @@ export default function BauhausSidebar({
       })
     }
 
-    // 清空当前状态
+    // 🔥🔥🔥 Server-Driven UI: 清空所有 Store 状态
+    // 新会话使用默认助手，由后端 Router 决策模式
     setInputMessage('')
     setMessages([])
     setCurrentConversationId(null)
+    useChatStore.getState().setSelectedAgentId(SYSTEM_AGENTS.DEFAULT_CHAT)
+    useTaskStore.getState().resetAll()
 
-    // 导航到新会话页面
-    navigate('/chat')
+    // 创建新会话 ID 并导航
+    const newId = crypto.randomUUID()
+    navigate(`/chat/${newId}`, { state: { isNew: true } })
     onMobileClose?.()
   }
 
