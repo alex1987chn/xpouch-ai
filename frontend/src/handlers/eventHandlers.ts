@@ -86,9 +86,8 @@ export class EventHandler {
       this.processedEventIds.delete(first)
     }
 
-    if (DEBUG) {
-      logger.debug('[EventHandler] 处理事件:', event.type, event.id)
-    }
+    // 🔥 强制日志：用于调试
+    logger.debug('[EventHandler] 处理事件:', event.type, event.id)
 
     // 根据事件类型分发处理
     switch (event.type) {
