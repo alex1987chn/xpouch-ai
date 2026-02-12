@@ -326,7 +326,7 @@ class StreamService:
                         if event_type == "on_chain_end" and output and isinstance(output, dict):
                             event_queue = output.get("event_queue", [])
                             for queued_event in event_queue:
-                                if queued_event.get("type") == "sse":
+                                if queued_event.get("type") == "sse" and queued_event.get("event"):
                                     yield queued_event["event"]
                         
                         # 处理其他事件（消息流、task 事件等）
