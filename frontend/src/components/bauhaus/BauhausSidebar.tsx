@@ -38,7 +38,7 @@ import { useQueryClient } from '@tanstack/react-query'
  * 1. Logo 区域：The4DPocketLogo + 版本号
  * 2. 创建智能体：New Agent 按钮（大号按钮）
  * 3. 主导航：Dashboard/Knowledge/History/Experts
- * 4. 最近会话：Memory_Dump（最多 5 条）
+ * 4. 最近会话：Memory_Dump（最多 8 条）
  * 5. 用户区域：头像 + 设置菜单（Portal 弹出）
  *
  * [响应式设计]
@@ -97,7 +97,7 @@ export default function BauhausSidebar({
   }
 
   // 使用 React Query 获取最近会话（自动缓存，5分钟内不会重复请求）
-  const { data: recentConversations = [] } = useRecentConversationsQuery(20)
+  const { data: recentConversations = [] } = useRecentConversationsQuery(8)
 
   // 判断当前页面
   const isOnHome = location.pathname === '/'
