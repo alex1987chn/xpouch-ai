@@ -1,4 +1,4 @@
-# XPouch AI v3.1.0
+# XPouch AI v3.2.0
 
 [![License](https://img.shields.io/badge/License-Apache%202.0%20with%20Additional%20Terms-blue.svg)](./LICENSE)
 [![Python 3.13+](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/downloads/)
@@ -11,9 +11,29 @@
 
 ![XPouch AI Screenshot](https://github.com/user-attachments/assets/c4554212-e24e-47dd-a61d-8df4f69ce233)
 
-XPouch AI v3.1.0 是一个基于 **LangGraph** 的企业级 Agentic 平台。它采用 **Server-Driven UI** 架构和 Bauhaus 工业美学设计，支持多专家协作、自我规划及专业产物交付。
+XPouch AI v3.2.0 是一个基于 **LangGraph** 的企业级 Agentic 平台。它采用 **Server-Driven UI** 架构和 Bauhaus 工业美学设计，支持多专家协作、自我规划及专业产物交付。
 
 > **架构理念**：后端是唯一的真理来源（Single Source of Truth），前端只是后端的"投影仪"——接收事件、存储状态、渲染UI，不做业务逻辑计算。
+
+---
+
+## 🔥 v3.2.0 更新
+
+### 会话状态持久化增强
+**刷新页面，状态完整恢复。**
+
+- **完整状态恢复**：刷新页面后，专家执行状态、Artifacts、任务计划全部恢复
+- **智能加载策略**：
+  - 页面刷新：从 API 获取最新数据
+  - Tab 切换：使用 localStorage 快速恢复
+- **HITL 断点续传增强**：计划审核期间刷新页面，状态不丢失
+
+### PDF 导出优化
+**中文导出无乱码。**
+
+- 修复 PDF 导出中文乱码问题
+- 支持完整的 Unicode 字符集
+- 保留 Mermaid 图表和代码高亮
 
 ---
 
@@ -240,6 +260,11 @@ TAVILY_API_KEY=tvly-your-key-here
 - **派生状态直接在渲染期计算**：避免 useEffect 派生数据
 - **导航时清理 Store**：切换会话前主动清理状态，避免数据残留
 
+**会话恢复策略** `v3.2.0`：
+- **页面刷新**：从 API 获取最新数据（确保数据是最新的）
+- **Tab 切换**：使用 localStorage 快速恢复（避免不必要的 API 调用）
+- **HITL 暂停点**：刷新后恢复计划审核状态
+
 **最佳实践**：
 ```typescript
 // ✅ 正确：直接消费后端事件
@@ -344,6 +369,7 @@ CREATE TABLE user_memories (
 **核心能力**：
 - **计划审核**：Commander 生成任务计划后，暂停执行等待人类确认
 - **计划编辑**：用户可以修改、删除、重排任务后再继续执行
+- **断点续传增强** `v3.2.0`：刷新页面后，计划审核状态完整恢复
 - **事件驱动流式反馈**：利用 Server-Sent Events (SSE) 事件分发机制，将 Commander 的规划思考与 Expert 的执行过程实时推送到前端 ExecutionStore，实现零延迟的可视化反馈
 
 **工作流程**：
@@ -358,6 +384,7 @@ CREATE TABLE user_memories (
 
 **技术实现**：
 - **AsyncPostgresSaver**：LangGraph 检查点持久化，支持断点续传
+- **TaskSession 持久化**：任务计划和执行状态存储在数据库中，刷新页面后从 API 恢复
 - **PlanReviewCard**：专门的计划审核 UI 组件
 - **Resume API**：`/api/chat/resume` 支持恢复被中断的执行流程
 
@@ -382,9 +409,10 @@ CREATE TABLE user_memories (
 **Artifact 编辑与导出**（v3.1.0）：
 - **实时编辑**：支持在界面上直接修改 AI 生成的 Artifact 内容
 - **持久化保存**：编辑后的内容通过 API 保存到数据库，支持页面刷新后恢复
+- **刷新恢复** `v3.2.0`：刷新页面后，Artifacts 从数据库完整恢复
 - **双模导出**：
   - Markdown 导出：生成 `.md` 文件，带 YAML frontmatter
-  - PDF 导出：使用 html2canvas + jspdf 将 Artifact 渲染为 A4 PDF
+  - PDF 导出 `v3.2.0 优化`：支持中文导出，无乱码，保留 Mermaid 图表和代码高亮
 - **乐观更新**：前端先更新 UI，后台异步持久化，失败自动回滚
 
 ### 🔐 用户认证与权限
