@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🚀 XPouch AI v3.1.0
+# 🚀 XPouch AI
 
 **Infinite Minds. One Pouch.**
 
@@ -8,6 +8,7 @@
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue?logo=python)](https://python.org)
 [![React](https://img.shields.io/badge/React-19.2-61dafb?logo=react)](https://react.dev)
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.0%2B-green?logo=langchain)](https://langchain-ai.github.io/langgraph/)
+[![Version](https://img.shields.io/badge/Version-3.1.0-blue.svg)](./CHANGELOG.md)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://docker.com)
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
