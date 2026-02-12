@@ -45,13 +45,28 @@ export async function downloadPDF(elementId: string, filename: string): Promise<
     throw new Error(`Element with id "${elementId}" not found`)
   }
 
-  // 使用 html2canvas 捕获 DOM
+  // 🔥 修复：保存当前滚动位置
+  const originalScrollY = window.scrollY
+  const originalScrollX = window.scrollX
+  
+  // 🔥 修复：滚动到顶部，确保从正确位置开始捕获
+  window.scrollTo(0, 0)
+
+  // 使用 html2canvas 捕获 DOM（完整内容，不仅仅是可见区域）
   const canvas = await html2canvas(element, {
     useCORS: true,
     logging: false,
     scale: 2, // 提高清晰度
     backgroundColor: null, // 保留原有背景色（跟随主题）
+    // 🔥 关键修复：捕获完整内容，不仅仅是可见区域
+    scrollY: -window.scrollY, // 修正滚动偏移
+    scrollX: -window.scrollX, // 修正水平滚动偏移
+    windowHeight: element.scrollHeight + 100, // 完整高度 + 缓冲
+    windowWidth: element.scrollWidth,
   })
+
+  // 🔥 恢复滚动位置
+  window.scrollTo(originalScrollX, originalScrollY)
 
   // 计算 PDF 尺寸（A4 纸）
   const imgData = canvas.toDataURL('image/png')
