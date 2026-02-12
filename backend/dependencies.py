@@ -55,14 +55,27 @@ async def get_current_user(
     import os
     environment = os.getenv("ENVIRONMENT", "development")
 
-    if not require_auth and environment == "development":
+    if not require_auth and environment.lower() == "development":
         user_id = request.headers.get("X-User-ID")
         if user_id:
             user = session.get(User, user_id)
             if user:
                 return user
-            # ❌ 移除自动注册逻辑（安全风险）
-            # 生产环境或 require_auth=True 时不会执行到这里
+            
+            # 开发环境自动创建用户（方便开发调试）
+            # ⚠️ 生产环境不会执行到这里
+            new_user = User(
+                id=user_id,
+                username=f"dev_user_{user_id[:8]}",
+                auth_provider="dev",
+                is_verified=True,
+                role="user"
+            )
+            session.add(new_user)
+            session.commit()
+            session.refresh(new_user)
+            print(f"[Auth] 开发环境自动创建用户: {user_id}")
+            return new_user
 
     # ❌ 移除默认用户逻辑（安全风险）
     # 生产环境或 require_auth=True 时直接抛出 401
