@@ -211,8 +211,15 @@ export default function BauhausSidebar({
     setIsSettingsMenuOpen(false)
   }
 
+  // 防止重复点击新建会话的 loading 状态
+  const [isCreatingNewChat, setIsCreatingNewChat] = useState(false)
+
   // 处理新建会话 - 和首页输入框逻辑一致
   const handleNewChat = () => {
+    // 防抖：防止快速重复点击
+    if (isCreatingNewChat) return
+    setIsCreatingNewChat(true)
+
     // 检查当前是否在聊天页面且有未发送的消息
     const isOnChatPage = location.pathname.startsWith('/chat')
     const hasUnsentMessage = inputMessage?.trim().length > 0
@@ -239,6 +246,9 @@ export default function BauhausSidebar({
     const newId = crypto.randomUUID()
     navigate(`/chat/${newId}`, { state: { isNew: true } })
     onMobileClose?.()
+
+    // 500ms 后解除防抖状态
+    setTimeout(() => setIsCreatingNewChat(false), 500)
   }
 
   return (
@@ -294,7 +304,8 @@ export default function BauhausSidebar({
             <div className="flex justify-center">
               <button
                 onClick={handleNewChat}
-                className="w-9 h-9 rounded-full border-2 border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[var(--accent-hover)_6px_6px_0_0] hover:bg-[var(--accent-hover)] hover:text-black hover:border-black active:translate-x-[2px] active:translate-y-[2px] active:shadow-none relative group"
+                disabled={isCreatingNewChat}
+                className="w-9 h-9 rounded-full border-2 border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[var(--accent-hover)_6px_6px_0_0] hover:bg-[var(--accent-hover)] hover:text-black hover:border-black active:translate-x-[2px] active:translate-y-[2px] active:shadow-none relative group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[var(--shadow-color)_4px_4px_0_0]"
                 title={t('newChat')}
               >
                 <MessageSquarePlus className="w-4 h-4 relative z-10" />
@@ -303,7 +314,8 @@ export default function BauhausSidebar({
           ) : (
             <button
               onClick={handleNewChat}
-              className="w-[230px] h-[60px] rounded-lg flex items-center justify-center gap-2 border-2 border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[var(--accent-hover)_6px_6px_0_0] hover:bg-[var(--accent-hover)] hover:text-black hover:border-black active:translate-x-[2px] active:translate-y-[2px] active:shadow-none relative group px-2"
+              disabled={isCreatingNewChat}
+              className="w-[230px] h-[60px] rounded-lg flex items-center justify-center gap-2 border-2 border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[var(--accent-hover)_6px_6px_0_0] hover:bg-[var(--accent-hover)] hover:text-black hover:border-black active:translate-x-[2px] active:translate-y-[2px] active:shadow-none relative group px-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[var(--shadow-color)_4px_4px_0_0]"
             >
               <div className="absolute top-0 right-0 w-4 h-4 bg-[var(--border-color)] transition-all group-hover:w-full group-hover:h-full group-hover:bg-[var(--accent-hover)] -z-10" />
               <MessageSquarePlus className="w-4 h-4 relative z-10" />
