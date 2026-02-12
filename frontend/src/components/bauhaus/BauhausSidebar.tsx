@@ -97,7 +97,7 @@ export default function BauhausSidebar({
   }
 
   // 使用 React Query 获取最近会话（自动缓存，5分钟内不会重复请求）
-  const { data: recentConversations = [] } = useRecentConversationsQuery(8)
+  const { data: recentConversations = [] } = useRecentConversationsQuery(20)
 
   // 判断当前页面
   const isOnHome = location.pathname === '/'
@@ -471,8 +471,8 @@ export default function BauhausSidebar({
                 </span>
               </div>
 
-              {/* 滚动区域: Bauhaus风格滚动条 - 最大高度显示5条，超出滚动 */}
-              <div className="overflow-y-auto px-3 space-y-1 w-[230px] mx-auto bauhaus-scrollbar" style={{ maxHeight: '220px' }}>
+              {/* 滚动区域: Bauhaus风格滚动条 - 最大高度显示8条，超出滚动 */}
+              <div className="overflow-y-auto px-3 space-y-1 w-[230px] mx-auto bauhaus-scrollbar" style={{ maxHeight: '360px' }}>
                 {/* 列表项: 极简、紧凑、数据感 */}
                 {recentConversations.map((conv) => (
                   <button
