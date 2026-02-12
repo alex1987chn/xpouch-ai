@@ -97,27 +97,23 @@ export const useTaskStore = create<TaskStore>()(
       // 自定义序列化：处理 Map/Set
       serialize: (state: any) => {
         try {
-          // partialize 已经把 Map/Set 转换为数组
           const serialized = JSON.stringify(state)
           
-          // 🔥 调试：检查每个 task 的 artifacts
-          let totalArtifacts = 0
-          if (state.tasks && Array.isArray(state.tasks)) {
-            state.tasks.forEach((entry: any) => {
-              const task = entry[1] // Map entry: [key, value]
-              const artifactCount = task?.artifacts?.length || 0
-              totalArtifacts += artifactCount
+          // 调试模式日志
+          if (import.meta.env.VITE_DEBUG_MODE === 'true') {
+            let totalArtifacts = 0
+            if (state.tasks && Array.isArray(state.tasks)) {
+              state.tasks.forEach((entry: any) => {
+                const task = entry[1]
+                totalArtifacts += task?.artifacts?.length || 0
+              })
+            }
+            console.log('[TaskStore] serialize:', {
+              tasksCount: state.tasks?.length || 0,
+              totalArtifacts,
+              hasSession: !!state.session
             })
           }
-          
-          console.log('[TaskStore] serialize 成功:', {
-            tasksCount: state.tasks?.length || 0,
-            totalArtifacts,
-            runningTaskIdsCount: state.runningTaskIds?.length || 0,
-            hasSession: !!state.session,
-            isInitialized: state.isInitialized,
-            hasProgress: !!state.progress
-          })
           return serialized
         } catch (error) {
           console.error('[TaskStore] serialize 失败:', error)
@@ -127,28 +123,29 @@ export const useTaskStore = create<TaskStore>()(
       deserialize: (str: string) => {
         try {
           if (!str) {
-            console.warn('[TaskStore] deserialize: 空字符串，返回空对象')
+            console.warn('[TaskStore] deserialize: 空字符串')
             return {}
           }
 
           const parsed = JSON.parse(str)
 
-          // 恢复 Map: [['key', value], ...] => Map
+          // 恢复 Map
           if (parsed.tasks && Array.isArray(parsed.tasks)) {
             parsed.tasks = new Map(parsed.tasks)
-            console.log('[TaskStore] deserialize: 恢复 Map, 任务数:', parsed.tasks.size)
             
-            // 🔥 调试：检查每个 task 的 artifacts
-            let totalArtifacts = 0
-            parsed.tasks.forEach((task: any, key: string) => {
-              const artifactCount = task.artifacts?.length || 0
-              totalArtifacts += artifactCount
-              console.log(`[TaskStore] task ${key}: ${artifactCount} artifacts`)
-            })
-            console.log('[TaskStore] 总计 artifacts:', totalArtifacts)
+            // 调试模式日志
+            if (import.meta.env.VITE_DEBUG_MODE === 'true') {
+              let totalArtifacts = 0
+              parsed.tasks.forEach((task: any) => {
+                totalArtifacts += task?.artifacts?.length || 0
+              })
+              console.log('[TaskStore] deserialize:', {
+                tasksCount: parsed.tasks.size,
+                totalArtifacts
+              })
+            }
           } else {
             parsed.tasks = new Map()
-            console.warn('[TaskStore] deserialize: tasks 无效，创建空 Map')
           }
 
           // 恢复 Set: ['id1', 'id2', ...] => Set
