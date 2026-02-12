@@ -685,10 +685,6 @@ class StreamService:
                             if event_type == "on_chain_start" and name == "aggregator":
                                 aggregator_executed = True
                                 logger.info(f"[Producer] 检测到 aggregator 开始执行 (loop {loop_count})")
-                            
-                            # 🔥 调试：记录所有 on_chain_end 事件
-                            if event_type == "on_chain_end":
-                                logger.info(f"[Producer] on_chain_end: name={name}, has_output={bool(token.get('data', {}).get('output'))}")
 
                             # 处理 event_queue 中的事件（artifact.start/chunk/completed 等）
                             if event_type == "on_chain_end":
@@ -696,12 +692,8 @@ class StreamService:
                                 output = data.get("output", {}) or {}
                                 if output and isinstance(output, dict):
                                     event_queue = output.get("event_queue", [])
-                                    logger.info(f"[Producer] 处理 event_queue，包含 {len(event_queue)} 个事件")
                                     for queued_event in event_queue:
                                         if queued_event.get("type") == "sse":
-                                            event_str = queued_event["event"]
-                                            if "message.done" in event_str:
-                                                logger.info(f"[Producer] 发送 message.done 事件")
                                             await sse_queue.put({
                                                 "type": "sse",
                                                 "event": event_str
