@@ -752,7 +752,7 @@ class StreamService:
                     item = await asyncio.wait_for(sse_queue.get(), timeout=STREAM_TIMEOUT)
                     if item.get("type") == "done":
                         break
-                    if item.get("type") == "sse":
+                    if item.get("type") == "sse" and item.get("event"):
                         yield item["event"]
                 except asyncio.TimeoutError:
                     yield ": keep-alive\n\n"
