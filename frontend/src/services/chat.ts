@@ -38,6 +38,9 @@ import { getHeaders, buildUrl, handleResponse } from './common'
 import { ApiMessage, StreamCallback, Conversation } from '@/types'
 import { logger } from '@/utils/logger'
 import { handleServerEvent } from '@/handlers/eventHandlers'
+
+// 重新导出类型供外部使用（Conversation 类型来自 @/types）
+export type { Conversation }
 import { useTaskStore } from '@/store/taskStore'
 
 // ============================================================================
@@ -101,8 +104,8 @@ export async function sendMessage(
       body: JSON.stringify({
         message: messageContent,
         history: history.map(m => ({ role: m.role, content: m.content })),
-        agentId,
-        conversationId,
+        agent_id: agentId,
+        conversation_id: conversationId,
         stream: false,
         message_id: assistantMessageId,  // v3.0: 传递助手消息 ID
       }),
@@ -134,8 +137,8 @@ export async function sendMessage(
       body: JSON.stringify({
         message: messageContent,
         history: history.map(m => ({ role: m.role, content: m.content })),
-        agentId,
-        conversationId,
+        agent_id: agentId,
+        conversation_id: conversationId,
         stream: true,
         message_id: assistantMessageId,  // v3.0: 传递助手消息 ID
       }),
@@ -430,7 +433,7 @@ export async function resumeChat(
         
         // ✅ 宽容处理：当连接正常关闭但没有收到完成标志时，视为成功
         // 原因：后端 LangGraph 完成 resume 操作后直接关闭连接，不会发送 [DONE] 标志
-        // 即使数据不完整，useSessionRecovery 会在页面恢复时自动拉取全量数据
+        // 即使数据不完整，useSessionRestore 会在页面恢复时自动拉取全量数据
         if (!isCompleted) {
           logger.warn('[chat.ts] Resume SSE 流正常关闭但未收到完成标志，视为成功')
           isCompleted = true

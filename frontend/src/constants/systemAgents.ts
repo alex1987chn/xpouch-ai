@@ -8,7 +8,7 @@
 /**
  * 专家类型
  */
-export type ExpertType = 'search' | 'coder' | 'researcher' | 'analyzer' | 'writer' | 'planner' | 'image_analyzer' | 'designer' | 'architect'
+export type ExpertType = 'search' | 'coder' | 'researcher' | 'analyzer' | 'writer' | 'planner' | 'image_analyzer' | 'designer' | 'architect' | 'memorize_expert'
 
 /**
  * 专家配置（用于 BusRail 和复杂模式专家展示）
@@ -23,7 +23,8 @@ export const EXPERT_CONFIG: Record<string, { name: string }> = {
   planner: { name: '规划专家' },
   designer: { name: '设计专家' },
   architect: { name: '架构专家' },
-  image_analyzer: { name: '图片分析专家' }
+  image_analyzer: { name: '图片分析专家' },
+  memorize_expert: { name: '记忆助理' }  // 🔥 新增：记忆专家
 } as const
 
 /**

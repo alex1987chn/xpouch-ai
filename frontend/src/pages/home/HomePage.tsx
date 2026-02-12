@@ -196,7 +196,6 @@ export default function HomePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-
   // 判断当前页面
   const isOnHome = location.pathname === '/'
 

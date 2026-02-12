@@ -92,7 +92,7 @@ export function useConversation() {
       if (isSameConversation && hasMessages) {
         // 🔥 区分"刷新页面"和"Tab切换/路由切换"
         // 刷新页面：总是从 API 获取最新数据
-        // Tab切换：使用 localStorage 恢复（由 useSessionRecovery 处理）
+        // Tab切换：由 useSessionRestore 统一处理恢复逻辑
         const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
         const isPageRefresh = navigation?.type === 'reload'
         

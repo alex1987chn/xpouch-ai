@@ -64,8 +64,8 @@ class ChatRequest(BaseModel):
     """聊天请求"""
     message: str
     history: List[ChatMessageDTO]
-    conversationId: Optional[str] = None
-    agentId: Optional[str] = "assistant"
+    conversation_id: Optional[str] = None
+    agent_id: Optional[str] = "assistant"
     stream: Optional[bool] = True
     message_id: Optional[str] = None
 
@@ -153,9 +153,9 @@ async def chat_endpoint(
     
     # 1. 获取或创建线程
     thread = await session_service.get_or_create_thread(
-        thread_id=request.conversationId,
+        thread_id=request.conversation_id,
         user_id=current_user.id,
-        agent_id=request.agentId,
+        agent_id=request.agent_id,
         message=request.message
     )
     thread_id = thread.id
@@ -168,7 +168,7 @@ async def chat_endpoint(
     
     # 4. 获取自定义智能体（如果有）
     custom_agent = await session_service.get_custom_agent(
-        agent_id=request.agentId or "assistant",
+        agent_id=request.agent_id or "assistant",
         user_id=current_user.id
     )
     

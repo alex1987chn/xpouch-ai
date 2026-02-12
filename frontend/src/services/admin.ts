@@ -57,7 +57,7 @@ export interface PreviewExpertResponse {
 }
 
 export interface PromoteUserRequest {
-  phone_number: string
+  email: string
   role: 'admin'
 }
 

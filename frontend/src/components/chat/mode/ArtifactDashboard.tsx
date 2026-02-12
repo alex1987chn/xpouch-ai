@@ -9,9 +9,13 @@
  * 
  * [数据获取]
  * 直连 useTaskStore 获取 selectedTask 和 artifacts
+ * 
+ * [v3.3.0 优化]
+ * - TaskStatusIndicator 和 ArtifactLoader 提取到外部并使用 React.memo 优化
+ * - 符合非 React.FC 的函数组件规范
  */
 
-import { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense, lazy, memo } from 'react'
 import {
   Maximize2,
   FileCode,
@@ -49,8 +53,15 @@ interface ArtifactDashboardProps {
   onToggleFullscreen?: () => void
 }
 
-// 状态指示器
-function TaskStatusIndicator() {
+// ============================================================================
+// 提取的子组件（使用 React.memo 优化性能）
+// ============================================================================
+
+/**
+ * 状态指示器组件
+ * 显示当前任务执行状态
+ */
+const TaskStatusIndicator = memo(function TaskStatusIndicator() {
   const mode = useTaskMode()
   const tasks = useTasksCache()
   const runningTask = tasks.find((t) => t.status === 'running')
@@ -96,7 +107,26 @@ function TaskStatusIndicator() {
       <span className="text-muted-foreground hidden sm:inline">running</span>
     </div>
   )
-}
+})
+
+/**
+ * Loading 组件
+ * 用于 Suspense fallback
+ */
+const ArtifactLoader = memo(function ArtifactLoader() {
+  return (
+    <div className="h-full flex items-center justify-center">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+        <div className="w-2 h-2 bg-accent animate-pulse" />
+        <span>Loading...</span>
+      </div>
+    </div>
+  )
+})
+
+// ============================================================================
+// 主组件
+// ============================================================================
 
 export default function ArtifactDashboard({
   isFullscreen,
@@ -185,7 +215,6 @@ export default function ArtifactDashboard({
     setIsExportingPDF(true)
     setShowExportMenu(false)
     try {
-      // 🔥 使用元素 ID 导出，支持中文和保留格式
       await downloadPDF(`artifact-content-${currentArtifact.id}`, currentArtifact.title || currentArtifact.type)
     } catch (err) {
       console.error('PDF export failed:', err)
@@ -244,20 +273,9 @@ export default function ArtifactDashboard({
 
   // 检查功能可用性
   const canPreview = !isEditing && currentArtifact?.type !== 'text'
-  // 🔥 预览 artifact 禁止编辑（没有持久化到数据库）
   const canEdit = !currentArtifact?.isPreview && 
     (currentArtifact?.type === 'code' || currentArtifact?.type === 'markdown' || currentArtifact?.type === 'text')
   const contentElementId = currentArtifact ? `artifact-content-${currentArtifact.id}` : ''
-
-  // Loading 组件
-  const ArtifactLoader = () => (
-    <div className="h-full flex items-center justify-center">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-        <div className="w-2 h-2 bg-accent animate-pulse" />
-        <span>Loading...</span>
-      </div>
-    </div>
-  )
 
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-page overflow-hidden">

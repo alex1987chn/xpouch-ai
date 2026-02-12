@@ -54,7 +54,6 @@ import os
 import re
 import asyncio  # 🔥 用于异步保存专家执行结果
 from typing import Dict, Any, Optional
-from datetime import datetime
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
 
@@ -64,45 +63,7 @@ from utils.llm_factory import get_effective_model, get_expert_llm
 from providers_config import get_model_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from tools import ALL_TOOLS  # 🔥 导入工具集
-
-
-def _enhance_system_prompt(system_prompt: str) -> str:
-    """
-    【增强版】System Prompt 注入
-    原名: _inject_current_time
-    功能: 注入时间 + 强制工具使用指令 + 防偷懒逻辑
-    """
-    now = datetime.now()
-    weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
-    weekday_str = weekdays[now.weekday()]
-    time_str = now.strftime(f"%Y年%m月%d日 %H:%M:%S {weekday_str}")
-    date_str = now.strftime("%Y-%m-%d")
-
-    # 🔥 核心增强：给模型洗脑，强制它使用工具，禁止脑补
-    enhanced_prompt = f"""【当前系统时间】：{time_str}
-【当前日期】：{date_str}
-
-{system_prompt}
-
-【工具使用强制指令 (Mandatory Tool Usage)】：
-你拥有强大的外部工具，针对以下情况 **必须** 调用工具，**严禁** 仅凭训练数据回答：
-1. **涉及具体 URL**：如果任务包含 http/https 链接（如 GitHub, 技术博客），**必须** 调用 `read_webpage` 读取全文。
-2. **涉及参数对比/最新技术**：如果任务要求"研究 DeepSeek-V3"、"参数对比"，**必须** 调用 `search_web` 或 `read_webpage` 获取一手数据。
-
-【防偷懒协议 (Anti-Laziness Protocol)】：
-1. **禁止复用上下文**：即使你觉得之前的对话里好像提到过相关信息，针对当前的具体任务（特别是 GitHub 阅读任务），你依然**必须**重新执行工具调用。
-2. **看到 URL 就去读**：不要盯着 URL 发呆，不要猜测 URL 里的内容。直接调用 `read_webpage`！
-3. **一步一动**：不要试图在一个回合里把所有事做完。先调工具 -> 拿到结果 -> 再分析。
-
-【执行逻辑】：
-检测到任务需求 -> 决定工具 (Search 或 Read) -> **输出 Tool Call** -> (等待执行) -> 获取 Artifact -> 生成回答。
-
-【容错处理指令 (Fault Tolerance)】：
-如果参考上下文中提到某些上游任务（如代码生成、数据分析等）的输出，但这些内容缺失或为空，
-请不要抱怨或询问，而是基于你已有的知识和当前可用信息，尽最大努力完成任务。
-忽略对缺失内容的引用，专注于完成核心任务目标。
-"""
-    return enhanced_prompt
+from utils.prompt_utils import enhance_system_prompt_with_tools  # v3.6: 提取到工具函数
 
 
 async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]:
@@ -239,7 +200,7 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
             print(f"[GenericWorker] 已注入占位符: {{input}} = {description[:50]}...")
         
         # 增强 System Prompt (注入时间 + 工具指令)
-        enhanced_system_prompt = _enhance_system_prompt(system_prompt)
+        enhanced_system_prompt = enhance_system_prompt_with_tools(system_prompt)
 
         # 🔥 关键修复：构建消息列表
         # 如果有现有的 messages（包含 ToolMessage），则使用它们

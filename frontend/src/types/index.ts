@@ -248,15 +248,6 @@ export interface ChatPageState {
 // ============================================
 
 /**
- * Router 决策事件
- * 👈 当后端 Router 决定是简单模式还是复杂模式时触发
- */
-export interface RouterDecisionEvent {
-  type: 'router_decision'
-  decision: 'simple' | 'complex'
-}
-
-/**
  * SSE 流式回调类型
  */
 export type StreamCallback = (

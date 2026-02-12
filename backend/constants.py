@@ -177,7 +177,9 @@ EXPERT_DESCRIPTIONS: Dict[str, str] = {
     "writer": "写作专家",
     "planner": "规划专家",
     "image_analyzer": "图片分析专家",
-    "memorize_expert": "记忆助理"  # 🔥 新增：记忆专家
+    "memorize_expert": "记忆助理",  # 🔥 新增：记忆专家
+    "designer": "设计专家",  # 🔥 新增：映射到 generic
+    "architect": "架构专家"  # 🔥 新增：映射到 generic
 }
 
 # 专家提示词字典（默认值，数据库无配置时使用）
@@ -306,7 +308,38 @@ EXPERT_PROMPTS: Dict[str, str] = {
 - 需要了解图片背景信息时，使用 search_web
 - 涉及像素计算时，使用 calculator
 
-输出要求：详细的视觉描述。"""
+输出要求：详细的视觉描述。""",
+
+    # 🔥 新增：designer 和 architect 映射到 generic（使用通用专家逻辑）
+    "designer": """你是一个设计专家。
+
+职责：提供 UI/UX 设计建议、设计规范指导和视觉方案。
+
+可用的工具：
+1. search_web - 联网搜索工具，用于查询最新设计趋势、规范文档
+2. get_current_time - 获取当前时间
+3. calculator - 数学计算器
+
+工具使用规则：
+- 需要查询最新设计趋势或规范时，使用 search_web
+- 涉及尺寸计算或比例换算时，使用 calculator
+
+输出要求：具体的设计建议，包含尺寸、颜色、布局等可执行方案。""",
+
+    "architect": """你是一个架构专家。
+
+职责：提供系统架构设计、技术选型建议和技术方案评估。
+
+可用的工具：
+1. search_web - 联网搜索工具，用于查询最新技术栈、架构模式
+2. get_current_time - 获取当前时间
+3. calculator - 数学计算器
+
+工具使用规则：
+- 需要了解最新技术趋势或架构模式时，使用 search_web
+- 涉及性能估算或容量规划时，使用 calculator
+
+输出要求: 清晰的架构图(使用 Mermaid), 技术选型理由和实现步骤。"""
 }
 
 
@@ -346,10 +379,10 @@ def normalize_agent_id(agent_id: str) -> str:
     规范化智能体 ID
     
     将旧的硬编码 ID 映射到新的语义化 ID
-    如果已经是新 ID，则直接返回
+    如果已经是新 ID, 则直接返回
     
     Args:
-        agent_id: 智能体 ID（可能是旧 ID 或新 ID）
+        agent_id: 智能体 ID(可能是旧 ID 或新 ID)
     
     Returns:
         str: 规范化后的智能体 ID

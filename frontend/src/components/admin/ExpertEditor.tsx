@@ -116,7 +116,7 @@ export default function ExpertEditor({
             <Sparkles className="w-6 h-6 text-[var(--text-secondary)]" />
           </div>
           <p className="font-mono text-sm text-[var(--text-secondary)]">
-            {(t as any)('selectExpertToEdit')}
+            选择专家以编辑
           </p>
         </div>
       </div>

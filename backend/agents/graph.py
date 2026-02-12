@@ -48,6 +48,10 @@ AgentState:
 [入口函数]
 - create_smart_router_workflow(): 创建完整工作流（支持 HITL）
 """
+
+import logging
+
+logger = logging.getLogger(__name__)
 from typing import Dict, Any, Optional
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, ToolMessage

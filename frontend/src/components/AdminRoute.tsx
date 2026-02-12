@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useUserStore } from '@/store/userStore'
+import { useToast } from '@/components/ui/use-toast'
 
 interface AdminRouteProps {
   children: React.ReactNode
@@ -9,6 +10,7 @@ interface AdminRouteProps {
 export default function AdminRoute({ children, requiredRole = 'admin' }: AdminRouteProps) {
   const { user, isAuthenticated } = useUserStore()
   const location = useLocation()
+  const { toast } = useToast()
 
   // 检查是否已登录
   if (!isAuthenticated || !user) {
@@ -29,11 +31,15 @@ export default function AdminRoute({ children, requiredRole = 'admin' }: AdminRo
     }
   }
 
-  // 权限不足，重定向到首页
+  // 权限不足，显示提示并重定向到首页
   if (!hasPermission()) {
+    toast({
+      title: '权限不足',
+      description: '该功能仅限管理员使用',
+      variant: 'destructive'
+    })
     return <Navigate to="/" state={{ from: location }} replace />
   }
 
   return <>{children}</>
 }
-
