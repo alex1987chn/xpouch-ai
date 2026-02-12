@@ -89,19 +89,22 @@ export function useConversation() {
       
       // 如果会话和消息都已加载，检查 tasks 是否需要恢复
       if (isSameConversation && hasMessages) {
-        // 先获取 conversation 数据，检查是否有 task_session
+        // 🔥 检查 localStorage 是否已恢复完整数据
+        // 如果 tasks.size > 0 且 session 存在，说明数据已完整恢复
+        if (taskStore.tasks.size > 0 && taskStore.session) {
+          debug('Tasks 已从 localStorage 恢复，跳过 API 调用')
+          debug('tasks.size:', taskStore.tasks.size, 'session:', taskStore.session.session_id)
+          return null
+        }
+        
+        // localStorage 没有恢复数据，需要从 API 获取
+        debug('localStorage 未恢复 tasks，从 API 获取')
         const conversation = await getConversation(targetConversationId)
         
         if (conversation.task_session && conversation.task_session.sub_tasks?.length > 0) {
-          // 有 task_session，检查 tasks 是否已恢复
-          if (taskStore.tasks.size === 0 || taskStore.session?.session_id !== conversation.task_session.session_id) {
-            // tasks 未恢复，需要恢复
-            debug('Tasks 未恢复，开始恢复:', conversation.task_session.session_id)
-            clearTasks(true)
-            restoreFromSession(conversation.task_session, conversation.task_session.sub_tasks)
-          } else {
-            debug('Tasks 已恢复，跳过')
-          }
+          debug('从 API 恢复 tasks:', conversation.task_session.session_id)
+          clearTasks(true)
+          restoreFromSession(conversation.task_session, conversation.task_session.sub_tasks)
         }
         return conversation
       }
