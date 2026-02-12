@@ -147,11 +147,7 @@ export async function sendMessage(
       openWhenHidden: true,
 
       async onopen(response) {
-        if (!response.ok) {
-          logger.error('[chat.ts] SSE 连接失败:', response.status, response.statusText)
-          throw new Error(`API Error: ${response.status}`)
-        }
-        logger.debug('[chat.ts] SSE 连接已打开')
+        handleSSEConnectionError(response, 'chat.ts')
       },
 
       async onmessage(msg: EventSourceMessage) {
@@ -344,13 +340,7 @@ export async function resumeChat(
       openWhenHidden: true,
 
       async onopen(response) {
-        if (!response.ok) {
-          logger.error('[chat.ts] Resume SSE 连接失败:', response.status, response.statusText)
-          clearInterval(timeoutCheck)
-          reject(new Error(`API Error: ${response.status}`))
-          return
-        }
-        logger.debug('[chat.ts] Resume SSE 连接已打开')
+        handleSSEConnectionError(response, 'chat.ts resume', () => clearInterval(timeoutCheck))
         lastActivityTime = Date.now()
       },
 

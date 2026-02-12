@@ -75,3 +75,22 @@ export async function handleResponse<T>(response: Response, errorMessage: string
   }
   return response.json()
 }
+
+/**
+ * 统一 SSE 连接错误处理
+ * 用于 fetchEventSource 的 onopen 回调
+ */
+export function handleSSEConnectionError(
+  response: Response,
+  context: string,
+  cleanup?: () => void
+): void {
+  if (!response.ok) {
+    logger.error(`[${context}] SSE 连接失败:`, response.status, response.statusText)
+    cleanup?.()
+    const error = new Error(`API Error: ${response.status}`) as Error & { status: number }
+    error.status = response.status
+    throw error
+  }
+  logger.debug(`[${context}] SSE 连接已打开`)
+}
