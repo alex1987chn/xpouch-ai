@@ -143,12 +143,24 @@ export class EventHandler {
   /**
    * 处理 plan.created 事件
    * 初始化任务计划
+   * 
+   * 🔥 跨 Slice 协作：
+   * - TaskSlice: 初始化任务数据结构
+   * - UISlice: 标记初始化完成、设置模式为 complex
+   * - ChatStore: 更新消息 thinking 状态
    */
   private handlePlanCreated(event: PlanCreatedEvent): void {
+    // 1️⃣ TaskSlice: 初始化任务数据
     const { initializePlan } = useTaskStore.getState()
     initializePlan(event.data)
 
-    // 🔥 更新 thinking 步骤为完成状态
+    // 2️⃣ UISlice: 标记初始化完成并设置模式
+    // 注意：initializePlan 不再修改 UI 状态，需显式调用
+    const { setIsInitialized, setMode } = useTaskStore.getState()
+    setIsInitialized(true)
+    setMode('complex')
+
+    // 3️⃣ ChatStore: 更新 thinking 步骤为完成状态
     const { messages, updateMessageMetadata } = useChatStore.getState()
     const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
     
