@@ -400,7 +400,11 @@ class StreamService:
                         message_id=actual_message_id
                     )
                 
-                yield self._build_message_done_event(actual_message_id, full_response)
+                # 🔥 修复：只有简单模式才在这里发送 message.done
+                # 复杂模式由 aggregator 通过 event_queue 发送
+                if router_decision == "simple":
+                    yield self._build_message_done_event(actual_message_id, full_response)
+                # 复杂模式：message.done 已由 aggregator 通过 event_queue 发送
         
         return StreamingResponse(
             event_generator(),
