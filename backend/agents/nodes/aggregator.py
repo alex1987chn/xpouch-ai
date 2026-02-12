@@ -65,23 +65,27 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
     final_response_chunks = []
     
     try:
-        # 使用流式输出
-        async for chunk in aggregator_llm.astream([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=aggregator_input)
-        ]):
+        # 🔥 关键修复：添加 metadata 标记为 aggregator 节点
+        # transform_langgraph_event 会识别并允许 aggregator 节点的 message.delta
+        # 这样通过 LangGraph 的 on_chat_model_stream 事件发送，避免与 event_queue 重复
+        aggregator_config = RunnableConfig(
+            tags=["aggregator"],
+            metadata={"node_type": "aggregator"}
+        )
+        
+        # 使用流式输出（通过 LangGraph 的 on_chat_model_stream 事件发送 message.delta）
+        async for chunk in aggregator_llm.astream(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=aggregator_input)
+            ],
+            config=aggregator_config
+        ):
             content = chunk.content if hasattr(chunk, 'content') else str(chunk)
             if content:
                 final_response_chunks.append(content)
-                
-                # 发送 message.delta 事件（实时流式）
-                delta_event = event_message_delta(
-                    message_id=message_id,
-                    content=content,
-                    is_final=False
-                )
-                event_str = sse_event_to_string(delta_event)
-                event_queue.append({"type": "sse", "event": event_str})
+                # 🔥 移除：不再通过 event_queue 发送 message.delta
+                # 让 transform_langgraph_event 统一处理，避免重复
         
         final_response = "".join(final_response_chunks)
         
@@ -90,15 +94,14 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
         # 兜底：使用简单拼接
         final_response = _build_markdown_response(expert_results, strategy)
         
-        # 发送简单拼接的结果
+        # 🔥 兜底情况：通过 event_queue 发送（因为没有 LLM 调用）
         chunk_size = 100
         for i in range(0, len(final_response), chunk_size):
             chunk = final_response[i:i + chunk_size]
-            is_final = (i + chunk_size) >= len(final_response)
             delta_event = event_message_delta(
                 message_id=message_id,
                 content=chunk,
-                is_final=is_final
+                is_final=False
             )
             event_str = sse_event_to_string(delta_event)
             event_queue.append({"type": "sse", "event": event_str})
