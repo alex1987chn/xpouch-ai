@@ -9,21 +9,8 @@
  */
 
 import { Highlight, themes } from 'prism-react-renderer'
-import Prism from 'prismjs'
 import { cn } from '@/lib/utils'
-
-// 导入常用语言支持
-import 'prismjs/components/prism-typescript'
-import 'prismjs/components/prism-tsx'
-import 'prismjs/components/prism-python'
-import 'prismjs/components/prism-json'
-import 'prismjs/components/prism-css'
-import 'prismjs/components/prism-scss'
-import 'prismjs/components/prism-bash'
-import 'prismjs/components/prism-yaml'
-import 'prismjs/components/prism-markdown'
-import 'prismjs/components/prism-sql'
-import 'prismjs/components/prism-docker'
+// 🔥 注意：prism-react-renderer 内置了 Prism，不需要再导入 prismjs
 
 interface CodeBlockProps {
   code: string
