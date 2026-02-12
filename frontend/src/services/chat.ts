@@ -187,8 +187,14 @@ export async function sendMessage(
                   await onChunk(rawContent, finalConversationId)
                   fullContent += rawContent
                 }
+              } else if (eventType === 'message.done') {
+                // message.done 事件：同时给 handleServerEvent 处理 thinking 状态
+                console.log('[chat.ts] message.done 事件，调用 handleServerEvent')
+                handleServerEvent(fullEvent as any)
+                // 同时给 onChunk 回调
+                await onChunk(undefined, finalConversationId, fullEvent as any)
               } else {
-                // message.done / error 事件：传递事件对象
+                // error 等其他事件：传递事件对象
                 await onChunk(undefined, finalConversationId, fullEvent as any)
               }
             } else if (!isChatEvent) {
