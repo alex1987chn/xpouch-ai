@@ -136,7 +136,10 @@ export const PlanReviewCard: React.FC<PlanReviewCardProps> = ({
     const tempMessageId = `temp-resume-${Date.now()}`
     setIsSubmitting(true)
     
-    // 更新 TaskStore 中的 plan
+    // 🔥 关键修复：设置模式为 complex，让 ComplexModePanel 渲染
+    setMode('complex')
+    
+    // 更新 TaskStore 中的 plan（初始化 tasks Map）
     updateTasksFromPlan(editedPlan)
     // 切换到执行状态
     setIsWaitingForApproval(false)
