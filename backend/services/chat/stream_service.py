@@ -748,9 +748,8 @@ class StreamService:
                     yield ": keep-alive\n\n"
             
             await producer_task
-            
-            # 🔥 关键修复：发送 message.done 事件，通知前端流式输出结束
-            yield self._build_message_done_event(message_id or str(uuid.uuid4()), "")
+            # message.done 由 aggregator_node 通过 event_queue 发送
+            # 这里不再重复发送
     
     async def _apply_updated_plan(
         self,
@@ -953,11 +952,8 @@ class StreamService:
                     }
                     return f"event: task.completed\ndata: {json.dumps(event_data)}\n\n"
             
-            # 处理 aggregator 完成
-            if name == "aggregator":
-                # 注意：message.done 的完整数据由 _build_message_done_event 构建
-                # 这里发送最小标识，完整内容将在后续处理
-                return f"event: message.done\ndata: {json.dumps({})}\n\n"
+            # aggregator 完成：message.done 由 aggregator_node 通过 event_queue 发送
+            # 这里不再重复发送
         
         return None
     
