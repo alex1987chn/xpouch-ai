@@ -77,3 +77,6 @@ deploy.sh
 
 # Code Review Report (private, for internal use only)
 CODE_REVIEW_REPORT.md
+
+# Deployment documentation (local only)
+DEPLOY_UBUNTU.md
