@@ -178,9 +178,14 @@ export default function UnifiedChatPage() {
     const storeCurrentId = useChatStore.getState().currentConversationId
     const currentMessages = useChatStore.getState().messages
     
-    // 是否需要重新加载（会话不匹配或消息未加载）
-    if (storeCurrentId === conversationId && currentMessages.length > 0) {
-      // 已加载，跳过
+    // 🔥 检测是否是页面刷新
+    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+    const isPageRefresh = navigation?.type === 'reload'
+    
+    // 是否需要重新加载
+    // 页面刷新时强制重新加载（避免 persist 恢复的数据跳过加载）
+    if (!isPageRefresh && storeCurrentId === conversationId && currentMessages.length > 0) {
+      // 已加载且不是刷新，跳过
       return
     }
 
