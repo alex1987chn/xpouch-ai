@@ -339,6 +339,16 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                 )
                 session_source = "复用" if is_reused else "新建"
                 print(f"[COMMANDER] TaskSession {session_source}: {task_session.session_id}")
+                
+                # 🔥🔥🔥 关键修复：更新 thread.task_session_id，确保前端能查询到
+                from models import Thread
+                thread = db_session.get(Thread, thread_id)
+                if thread:
+                    thread.task_session_id = task_session.session_id
+                    thread.agent_type = "ai"  # 🔥 同时更新 agent_type
+                    db_session.add(thread)
+                    db_session.commit()
+                    print(f"[COMMANDER] ✅ 已更新 thread.task_session_id: {task_session.session_id}")
 
             # 转换为内部字典格式（用于 LangGraph 状态流转）
             sub_tasks_list = task_session.sub_tasks if task_session else []
