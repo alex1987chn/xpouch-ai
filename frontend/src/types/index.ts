@@ -39,7 +39,7 @@ export interface ThinkingStep {
    * - memory: 记忆检索
    * - default: 默认/其他
    */
-  type?: 'search' | 'reading' | 'analysis' | 'coding' | 'planning' | 'writing' | 'artifact' | 'memory' | 'default'
+  type?: 'search' | 'reading' | 'analysis' | 'coding' | 'planning' | 'writing' | 'artifact' | 'memory' | 'execution' | 'default'
   /**
    * 执行耗时（毫秒）
    */
