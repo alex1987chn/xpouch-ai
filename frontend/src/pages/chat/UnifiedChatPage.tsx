@@ -176,11 +176,29 @@ export default function UnifiedChatPage() {
     // 检查是否已加载当前会话
     const storeCurrentId = useChatStore.getState().currentConversationId
     const currentMessages = useChatStore.getState().messages
+    const taskStore = useTaskStore.getState()
     
-    if (storeCurrentId === conversationId && currentMessages.length > 0) {
-      // 已加载，跳过
+    // 🔥🔥🔥 修复：如果是复杂模式且有 task_session_id，但 tasks 为空，必须重新加载
+    // 场景：刷新页面后，messages 从 localStorage 恢复，但 tasks 没有
+    const needReload = !(
+      storeCurrentId === conversationId && 
+      currentMessages.length > 0 &&
+      // 🔥 关键：检查 tasks 是否已恢复
+      (taskStore.session === null || taskStore.tasks.size > 0)
+    )
+    
+    if (!needReload) {
+      // 已加载且 tasks 已恢复，跳过
       return
     }
+
+    debug('[UnifiedChatPage] 需要重新加载会话:', {
+      storeCurrentId,
+      conversationId,
+      messagesCount: currentMessages.length,
+      hasTasks: taskStore.tasks.size > 0,
+      hasSession: taskStore.session !== null
+    })
 
     // 加载历史会话（仅从历史记录进入的场景）
     loadConversation(conversationId)
