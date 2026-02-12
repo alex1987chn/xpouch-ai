@@ -204,9 +204,22 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
 
   updateTasksFromPlan: (newPlan) => {
     set((state: any) => {
-      if (!state.session) return
+      // 🔥 修复：移除 session 检查，HITL 确认时 session 可能未初始化
+      // 直接更新 tasks Map，让 BusRail 能显示专家头像
 
-      state.session.estimatedSteps = newPlan.length + 1
+      // 更新或创建 session（如果不存在）
+      if (state.session) {
+        state.session.estimatedSteps = newPlan.length + 1
+      } else {
+        // HITL 确认时 session 可能未初始化，创建临时 session
+        state.session = {
+          sessionId: `hitl-${Date.now()}`,
+          summary: 'HITL 恢复执行',
+          estimatedSteps: newPlan.length + 1,
+          executionMode: 'sequential',
+          status: 'running'
+        }
+      }
 
       const existingTaskStatuses = new Map<string, TaskStatus>()
       state.tasks.forEach((task: any, id: string) => {
