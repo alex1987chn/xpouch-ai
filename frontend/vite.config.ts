@@ -10,6 +10,22 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    // 🔥 减少代码分割，避免动态导入问题
+    rollupOptions: {
+      output: {
+        // 将 node_modules 打包成一个 vendor chunk
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['framer-motion', 'lucide-react', '@radix-ui/react-dialog'],
+        },
+      },
+    },
+    // 清理旧的构建文件
+    emptyOutDir: true,
+    // 源映射（生产调试用）
+    sourcemap: true,
+  },
   server: {
     host: '127.0.0.1',
     port: 5173,
