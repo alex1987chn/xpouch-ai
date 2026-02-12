@@ -228,11 +228,11 @@ TAVILY_API_KEY=tvly-your-key-here
 
 **架构演进**：从双 Store 架构向单一 Store 架构简化
 
-**当前架构**（过渡阶段）：
+**当前架构**：
 ```typescript
-// TaskStore - 业务逻辑状态（任务、产物、专家）
-// ExecutionStore - UI 执行状态（计划审核、执行进度）
+// TaskStore - 任务与执行状态（任务、产物、专家、计划审核、执行进度）
 // chatStore - 对话状态（消息、会话）
+// userStore - 用户状态（认证、设置）
 ```
 
 **设计原则**：
@@ -704,8 +704,7 @@ xpouch-ai/
 │   │   │
 │   │   ├── store/                     # Zustand 状态管理（Server-Driven）
 │   │   │   ├── chatStore.ts           # 对话状态（消息、会话）
-│   │   │   ├── taskStore.ts           # 任务状态（任务、产物）- 业务逻辑层
-│   │   │   ├── executionStore.ts      # 执行状态（计划、进度）- UI 状态层
+│   │   │   ├── taskStore.ts           # 任务状态（任务、产物、计划、进度）
 │   │   │   ├── userStore.ts           # 用户状态
 │   │   │   └── middleware/            # 自定义中间件
 │   │   │       └── persist.ts         # 持久化中间件
@@ -1029,44 +1028,19 @@ pnpm run dev:frontend  # 前端 http://localhost:5173
 pnpm run dev:backend   # 后端 http://localhost:3002（实际执行：cd backend && uv run main.py）
 ```
 
-## 🔄 架构演进说明
+## 🔄 架构说明
 
-### 当前状态：双 Store 架构（过渡阶段）
+### 当前状态：单一 TaskStore 架构
 
-**现状**：
-前端存在两个 Store 管理执行状态，导致"脑裂"问题：
+**已完成简化**：
+- 合并了 `ExecutionStore` 和 `TaskStore`，消除"脑裂"问题
+- 所有任务相关状态（任务列表、产物、计划审核、执行进度）统一由 `TaskStore` 管理
+- 事件处理器只需更新单一 Store，逻辑更清晰
 
-```typescript
-// TaskStore - 业务逻辑状态
-const { tasks, artifacts } = useTaskStore()
-
-// ExecutionStore - UI 执行状态  
-const { plan, executionStatus } = useExecutionStore()
-```
-
-**问题**：
-- 同一事件需要同时更新两个 Store
-- 状态同步容易遗漏，导致 UI 显示不一致
-- 组件可能混用两个 Store，增加心智负担
-
-**临时解决方案**：
-- 事件处理器中显式同步两个 Store
-- 导航时主动清理所有 Store 状态
-- 使用 `key={conversationId}` 强制组件重新挂载
-
-### 即将进行的简化
-
-**目标**：合并 TaskStore 和 ExecutionStore，统一状态管理
-
-**简化方向**：
-1. **单一 Store**：所有执行相关状态统一到一个 Store
-2. **分层架构**：Store 内部分层（业务层 + UI 层），但对外统一
-3. **事件驱动**：完全基于后端事件更新，前端不做派生计算
-
-**预期收益**：
-- 消除脑裂问题
-- 减少 50% 的状态同步代码
-- 简化组件逻辑，提升可维护性
+**架构原则**：
+- **单一 Store**：所有执行相关状态统一管理
+- **事件驱动**：完全基于后端事件更新，前端不做派生计算
+- **导航清理**：切换会话时主动清理状态，避免数据残留
 
 ---
 
