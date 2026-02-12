@@ -24,7 +24,7 @@ export {
 export { useChat } from './useChat'
 
 export { useChatCore } from './chat/useChatCore'
-export { useExpertHandler } from './chat/useExpertHandler'
+// v3.2.0: useExpertHandler 已移除，事件处理由 eventHandlers.ts 直接处理
 export { useConversation } from './chat/useConversation'
 
 // 主题相关

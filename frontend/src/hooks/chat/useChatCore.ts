@@ -67,8 +67,6 @@ function isApiMessage(obj: any): obj is ApiMessage {
 }
 
 interface UseChatCoreOptions {
-  /** Handle expert event callback */
-  onExpertEvent?: (event: AnyServerEvent, conversationMode: 'simple' | 'complex') => Promise<void> | void
   /** Handle streaming content callback */
   onChunk?: (chunk: string) => void
   /** New conversation created callback */
@@ -80,7 +78,7 @@ interface UseChatCoreOptions {
  */
 export function useChatCore(options: UseChatCoreOptions = {}) {
   const { t } = useTranslation()
-  const { onExpertEvent, onChunk, onNewConversation } = options
+  const { onChunk, onNewConversation } = options
 
   // Refactored: Hook only manages AbortController
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -210,16 +208,11 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
         conversationId?: string,
-        expertEvent?: AnyServerEvent
+        _expertEvent?: AnyServerEvent  // v3.2.0: 事件处理由 eventHandlers.ts 直接处理，此处保留参数以兼容类型
       ) => {
         if (conversationId && conversationId !== actualConversationId) {
           actualConversationId = conversationId
           setCurrentConversationId(conversationId)
-        }
-
-        if (expertEvent) {
-          onExpertEvent?.(expertEvent as any, conversationMode)
-          // 事件处理已由 eventHandlers.ts 统一负责
         }
 
         if (chunk) {
@@ -293,7 +286,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     selectedAgentId,
     currentConversationId,
     conversationMode,
-    onExpertEvent,
     onChunk,
     onNewConversation,
     setGenerating,
@@ -372,13 +364,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
         conversationId?: string,
-        expertEvent?: AnyServerEvent
+        _expertEvent?: AnyServerEvent  // v3.2.0: 事件处理由 eventHandlers.ts 直接处理
       ) => {
-        if (expertEvent) {
-          onExpertEvent?.(expertEvent as any, conversationMode)
-          // 事件处理已由 eventHandlers.ts 统一负责
-        }
-
         if (chunk) {
           // 累积完整响应
           fullContent += chunk
@@ -415,7 +402,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       setGenerating(false)
       abortControllerRef.current = null
     }
-  }, [isGenerating, conversationMode, onExpertEvent, onChunk, setGenerating, addMessage, resetStreamHandler, createChunkHandler])
+  }, [isGenerating, conversationMode, onChunk, setGenerating, addMessage, resetStreamHandler, createChunkHandler])
 
   return {
     sendMessage: sendMessageCore,

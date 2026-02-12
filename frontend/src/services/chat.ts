@@ -174,9 +174,9 @@ export async function sendMessage(
               data: eventData
             }
             
-            // 🔥 事件分流：Chat 流式 vs Task 批处理
-            // message.* 事件 -> onChunk (给 useExpertHandler 处理对话流)
-            // router/plan/task/artifact 事件 -> handleServerEvent (给 eventHandlers 处理任务流)
+            // 🔥 事件分流：Chat 流式 vs Task 批处理 (SDUI 原则)
+            // message.* 事件 -> onChunk (给 ChatStore 处理对话流)
+            // router/plan/task/artifact 事件 -> handleServerEvent (给 TaskStore 处理任务流)
             const isChatEvent = eventType.startsWith('message.') || eventType === 'error'
             
             if (isChatEvent && onChunk) {
