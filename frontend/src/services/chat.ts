@@ -188,11 +188,10 @@ export async function sendMessage(
                   fullContent += rawContent
                 }
               } else if (eventType === 'message.done') {
-                // message.done 事件：同时给 handleServerEvent 处理 thinking 状态
+                // message.done 事件：给 handleServerEvent 处理 thinking 状态更新
+                // 注意：onChunk 对 message.done 不处理（chunk 为 undefined）
                 console.log('[chat.ts] message.done 事件，调用 handleServerEvent')
                 handleServerEvent(fullEvent as any)
-                // 同时给 onChunk 回调
-                await onChunk(undefined, finalConversationId, fullEvent as any)
               } else {
                 // error 等其他事件：传递事件对象
                 await onChunk(undefined, finalConversationId, fullEvent as any)
