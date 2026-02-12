@@ -3,7 +3,6 @@
  * 支持 Markdown 和 PDF 两种格式导出
  */
 
-import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 
 /**
@@ -34,93 +33,97 @@ export function downloadMarkdown(filename: string, content: string): void {
 }
 
 /**
- * 下载 PDF 文件
+ * 下载 PDF 文件（基于文本内容）
+ * @param content 要导出的文本内容
+ * @param filename 文件名（不含扩展名）
+ * @returns Promise<void>
+ */
+export async function downloadPDF(content: string, filename: string): Promise<void> {
+  if (!content || content.trim().length === 0) {
+    throw new Error('Content is empty')
+  }
+
+  // 创建 PDF（A4 纸）
+  const pdf = new jsPDF('p', 'mm', 'a4')
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
+  const margin = 15 // 边距 (mm)
+  const lineHeight = 6 // 行高 (mm)
+  
+  // 设置字体
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(10)
+  
+  // 计算可用宽度
+  const maxWidth = pageWidth - margin * 2
+  
+  // 分割内容为行
+  const lines = content.split('\n')
+  let y = margin
+  
+  for (const line of lines) {
+    // 处理空行
+    if (line.trim() === '') {
+      y += lineHeight * 0.5
+      continue
+    }
+    
+    // 使用 splitTextToSize 自动换行
+    const wrappedLines = pdf.splitTextToSize(line, maxWidth)
+    
+    for (const wrappedLine of wrappedLines) {
+      // 检查是否需要新页面
+      if (y + lineHeight > pageHeight - margin) {
+        pdf.addPage()
+        y = margin
+      }
+      
+      // 写入文本
+      pdf.text(wrappedLine, margin, y)
+      y += lineHeight
+    }
+  }
+  
+  pdf.save(generateFilename(filename, 'pdf'))
+}
+
+/**
+ * 下载 PDF 文件（基于 DOM 元素 - 备选方案）
+ * 使用内容直接生成，避免 html2canvas 的各种问题
  * @param elementId 要导出的 DOM 元素 ID
  * @param filename 文件名（不含扩展名）
  * @returns Promise<void>
  */
-export async function downloadPDF(elementId: string, filename: string): Promise<void> {
+export async function downloadPDFFromElement(elementId: string, filename: string): Promise<void> {
   const element = document.getElementById(elementId)
   if (!element) {
     throw new Error(`Element with id "${elementId}" not found`)
   }
 
-  // 🔥 验证元素尺寸
-  if (element.scrollWidth === 0 || element.scrollHeight === 0) {
-    throw new Error('Element has zero dimensions')
-  }
-
-  // 🔥 修复：保存当前滚动位置
-  const originalScrollY = window.scrollY
-  const originalScrollX = window.scrollX
+  // 获取元素的文本内容
+  let content = ''
   
-  // 🔥 修复：滚动到顶部，确保从正确位置开始捕获
-  window.scrollTo(0, 0)
-
-  try {
-    // 使用 html2canvas 捕获 DOM（完整内容，不仅仅是可见区域）
-    const canvas = await html2canvas(element, {
-      useCORS: true,
-      allowTaint: false, // 🔥 禁止跨域图片污染 canvas
-      logging: false,
-      scale: 2, // 提高清晰度
-      backgroundColor: '#ffffff', // 🔥 使用白色背景，避免透明问题
-      // 🔥 关键修复：捕获完整内容，不仅仅是可见区域
-      scrollY: -window.scrollY, // 修正滚动偏移
-      scrollX: -window.scrollX, // 修正水平滚动偏移
-      windowHeight: element.scrollHeight + 100, // 完整高度 + 缓冲
-      windowWidth: element.scrollWidth,
-    })
-
-    // 🔥 验证 canvas 尺寸
-    if (canvas.width === 0 || canvas.height === 0) {
-      throw new Error('Canvas has zero dimensions after capture')
-    }
-
-    // 🔥 使用 JPEG 格式（更宽容，避免 PNG 签名问题）
-    const imgData = canvas.toDataURL('image/jpeg', 0.95)
-
-    // 🔥 验证生成的数据
-    if (!imgData || !imgData.startsWith('data:image/')) {
-      throw new Error('Failed to generate image data')
-    }
-
-    // 计算 PDF 尺寸（A4 纸）
-    const pdf = new jsPDF('p', 'mm', 'a4')
-    
-    const pdfWidth = pdf.internal.pageSize.getWidth()
-    const pdfHeight = pdf.internal.pageSize.getHeight()
-    
-    const canvasWidth = canvas.width
-    const canvasHeight = canvas.height
-    
-    // 计算缩放比例，使内容宽度适应 PDF 页面宽度
-    const ratio = pdfWidth / canvasWidth
-    
-    const imgWidth = canvasWidth * ratio
-    const imgHeight = canvasHeight * ratio
-    
-    // 如果内容超出一页，需要分页处理
-    let heightLeft = imgHeight
-    let position = 0
-    
-    // 添加第一页
-    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
-    heightLeft -= pdfHeight
-    
-    // 如果内容超出一页，添加更多页面
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight
-      pdf.addPage()
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pdfHeight
-    }
-    
-    pdf.save(generateFilename(filename, 'pdf'))
-  } finally {
-    // 🔥 恢复滚动位置
-    window.scrollTo(originalScrollX, originalScrollY)
+  // 尝试从 CodeArtifact (pre/code) 获取
+  const codeElement = element.querySelector('pre code') || element.querySelector('pre')
+  if (codeElement?.textContent) {
+    content = codeElement.textContent
   }
+  
+  // 尝试从 DocArtifact (article/div) 获取
+  if (!content) {
+    const docElement = element.querySelector('article') || element.querySelector('[data-artifact-content]')
+    if (docElement?.textContent) {
+      content = docElement.textContent
+    }
+  }
+  
+  // 兜底：获取整个元素的文本
+  if (!content) {
+    content = element.textContent || ''
+  }
+  
+  // 使用文本内容生成 PDF
+  await downloadPDF(content, filename)
 }
 
 /**
