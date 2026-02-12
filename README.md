@@ -1,4 +1,4 @@
-# XPouch AI v3.2.0
+# XPouch AI v3.1.0
 
 [![License](https://img.shields.io/badge/License-Apache%202.0%20with%20Additional%20Terms-blue.svg)](./LICENSE)
 [![Python 3.13+](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/downloads/)
@@ -11,13 +11,13 @@
 
 ![XPouch AI Screenshot](https://github.com/user-attachments/assets/c4554212-e24e-47dd-a61d-8df4f69ce233)
 
-XPouch AI v3.2.0 是一个基于 **LangGraph** 的企业级 Agentic 平台。它采用 **Server-Driven UI** 架构和 Bauhaus 工业美学设计，支持多专家协作、自我规划及专业产物交付。
+XPouch AI v3.1.0 是一个基于 **LangGraph** 的企业级 Agentic 平台。它采用 **Server-Driven UI** 架构和 Bauhaus 工业美学设计，支持多专家协作、自我规划及专业产物交付。
 
 > **架构理念**：后端是唯一的真理来源（Single Source of Truth），前端只是后端的"投影仪"——接收事件、存储状态、渲染UI，不做业务逻辑计算。
 
 ---
 
-## 🔥 v3.2.0 更新
+## 🔥 v3.1.0 最新优化 (2026-02)
 
 ### 会话状态持久化增强
 **刷新页面，状态完整恢复。**
