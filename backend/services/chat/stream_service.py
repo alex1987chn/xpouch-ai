@@ -692,16 +692,20 @@ class StreamService:
                                 output = data.get("output", {}) or {}
                                 if output and isinstance(output, dict):
                                     event_queue = output.get("event_queue", [])
+                                    logger.info(f"[Producer] 处理 event_queue，包含 {len(event_queue)} 个事件")
                                     for queued_event in event_queue:
                                         if queued_event.get("type") == "sse":
+                                            event_str = queued_event["event"]
+                                            if "message.done" in event_str:
+                                                logger.info(f"[Producer] 发送 message.done 事件")
                                             await sse_queue.put({
                                                 "type": "sse",
-                                                "event": queued_event["event"]
+                                                "event": event_str
                                             })
                                     
                                     # 🔥🔥🔥 关键修复：检测 aggregator 执行完成
                                     # 如果 aggregator 节点已完成且有输出，标记为已执行并跳出
-                                    if name == "aggregator" and output.get("messages"):
+                                    if name == "aggregator" and output.get("final_response"):
                                         aggregator_executed = True
                                         logger.info(f"[Producer] aggregator 执行完成，准备退出 (loop {loop_count})")
                                         # 发送完当前事件后立即退出内层循环
