@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { vscDarkPlus, prism } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { cn } from '@/lib/utils'
+import { CodeBlock } from '@/components/ui/code-block'
 import { MermaidRenderer } from './renderers/MermaidRenderer'
 import { ChartRenderer } from './renderers/ChartRenderer'
 
@@ -52,7 +51,6 @@ export default function CodeArtifact({
 
   // 语法高亮用的语言映射
   const highlightLanguage = displayLanguage === 'json-chart' ? 'json' : displayLanguage
-  const syntaxStyle = isDarkTheme ? vscDarkPlus : prism
 
   return (
     <div className={cn(
@@ -92,31 +90,13 @@ export default function CodeArtifact({
           renderVisual()
         ) : (
           // 源码模式：语法高亮
-          <SyntaxHighlighter
+          <CodeBlock
+            code={content}
             language={highlightLanguage}
-            style={syntaxStyle}
-            customStyle={{ 
-              margin: 0, 
-              padding: '1rem', 
-              fontSize: '0.875rem', 
-              backgroundColor: 'transparent',
-              minHeight: '100%'
-            }}
             showLineNumbers={true}
-            wrapLongLines={true}
-            lineNumberStyle={{
-              color: isDarkTheme ? '#8b949e' : '#6e7781',
-              backgroundColor: 'transparent',
-              marginRight: '1rem',
-              paddingLeft: '0.5rem',
-              paddingRight: '1rem',
-              minWidth: '2.5rem',
-              textAlign: 'right',
-              userSelect: 'none'
-            }}
-          >
-            {content.trim()}
-          </SyntaxHighlighter>
+            isDarkTheme={isDarkTheme}
+            className="h-full"
+          />
         )}
       </div>
     </div>
