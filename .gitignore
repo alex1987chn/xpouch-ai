@@ -74,3 +74,6 @@ deploy.sh
 
 # AI Context Directory (private documentation, API keys, etc.)
 .ai/
+
+# Code Review Report (private, for internal use only)
+CODE_REVIEW_REPORT.md
