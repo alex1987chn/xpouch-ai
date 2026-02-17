@@ -302,16 +302,42 @@ export async function resumeChat(
     
     // 🚨 超时检查（120秒无活动视为超时）
     const TIMEOUT_MS = 120000
-    const timeoutCheck = setInterval(() => {
-      if (isCompleted) {
+    let timeoutCheck: NodeJS.Timeout | null = null
+    
+    // 安全的清理函数，确保在任何情况下都能清理 interval
+    const cleanup = () => {
+      if (timeoutCheck) {
         clearInterval(timeoutCheck)
+        timeoutCheck = null
+      }
+    }
+    
+    // 包装 resolve/reject 确保清理
+    const safeResolve = (value: string) => {
+      cleanup()
+      if (!isCompleted) {
+        isCompleted = true
+        resolve(value)
+      }
+    }
+    
+    const safeReject = (error: Error) => {
+      cleanup()
+      if (!isCompleted) {
+        isCompleted = true
+        reject(error)
+      }
+    }
+    
+    timeoutCheck = setInterval(() => {
+      if (isCompleted) {
+        cleanup()
         return
       }
       if (Date.now() - lastActivityTime > TIMEOUT_MS) {
-        clearInterval(timeoutCheck)
         logger.error('[chat.ts] Resume 超时：120秒内无活动')
         ctrl.abort()
-        reject(new Error('执行超时，请检查后端状态'))
+        safeReject(new Error('执行超时，请检查后端状态'))
       }
     }, 10000)  // 每 10 秒检查一次
 
@@ -319,9 +345,8 @@ export async function resumeChat(
 
     if (abortSignal) {
       abortSignal.addEventListener('abort', () => {
-        clearInterval(timeoutCheck)
         ctrl.abort()
-        reject(new Error('请求已取消'))
+        safeReject(new Error('请求已取消'))
       })
     }
 
@@ -340,7 +365,7 @@ export async function resumeChat(
       openWhenHidden: true,
 
       async onopen(response) {
-        handleSSEConnectionError(response, 'chat.ts resume', () => clearInterval(timeoutCheck))
+        handleSSEConnectionError(response, 'chat.ts resume', cleanup)
         lastActivityTime = Date.now()
       },
 
@@ -349,9 +374,7 @@ export async function resumeChat(
         
         if (msg.data === '[DONE]') {
           logger.debug('[chat.ts] Resume 收到 [DONE]，流式响应完成')
-          isCompleted = true
-          clearInterval(timeoutCheck)
-          resolve(fullContent)
+          safeResolve(fullContent)
           return
         }
 
@@ -388,9 +411,7 @@ export async function resumeChat(
             // 🔥 检查是否是 message.done 事件，表示流结束
             if (eventType === 'message.done') {
               logger.debug('[chat.ts] Resume 收到 message.done，流结束')
-              isCompleted = true
-              clearInterval(timeoutCheck)
-              resolve(fullContent)
+              safeResolve(fullContent)
             }
           }
           
@@ -402,32 +423,24 @@ export async function resumeChat(
       onerror(err) {
         if (err.name === 'AbortError' || ctrl.signal.aborted) {
           logger.debug('[chat.ts] Resume 请求已取消')
-          clearInterval(timeoutCheck)
-          if (!isCompleted) {
-            reject(new Error('请求已取消'))
-          }
+          safeReject(new Error('请求已取消'))
           return
         }
         
         // 🚨🚨🚨 风险 2 修复：流异常断开， reject Promise
         logger.error('[chat.ts] Resume SSE 错误:', err)
-        clearInterval(timeoutCheck)
-        if (!isCompleted) {
-          reject(new Error('连接异常断开，请重试'))
-        }
+        safeReject(new Error('连接异常断开，请重试'))
       },
 
       onclose() {
         logger.debug('[chat.ts] Resume SSE 连接已关闭')
-        clearInterval(timeoutCheck)
         
         // ✅ 宽容处理：当连接正常关闭但没有收到完成标志时，视为成功
         // 原因：后端 LangGraph 完成 resume 操作后直接关闭连接，不会发送 [DONE] 标志
         // 即使数据不完整，useSessionRestore 会在页面恢复时自动拉取全量数据
         if (!isCompleted) {
           logger.warn('[chat.ts] Resume SSE 流正常关闭但未收到完成标志，视为成功')
-          isCompleted = true
-          resolve(fullContent)
+          safeResolve(fullContent)
         }
       },
     })

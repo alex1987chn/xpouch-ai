@@ -116,6 +116,9 @@ export function useStreamHandler() {
   // 标记是否是第一个 chunk（用于某些特殊处理）
   const isFirstChunkRef = useRef(true)
   
+  // 🔥 稳定的 thinking ID，避免每次 chunk 都生成新 ID 导致组件频繁重创建
+  const thinkingIdRef = useRef<string>('')
+  
   /**
    * 重置解析器状态
    * 每次开始新的流式会话前调用
@@ -127,6 +130,8 @@ export function useStreamHandler() {
       contentBuffer: ''
     }
     isFirstChunkRef.current = true
+    // 重置 thinking ID，下次使用时生成新的
+    thinkingIdRef.current = ''
   }, [])
   
   /**
@@ -140,6 +145,12 @@ export function useStreamHandler() {
     messageId: string, 
     onChunk?: (content: string) => void
   ) => {
+    // 🔥 生成稳定的 thinking ID（基于 messageId，确保同一消息的所有 chunk 使用相同 ID）
+    if (!thinkingIdRef.current) {
+      thinkingIdRef.current = `streaming-think-${messageId}`
+    }
+    const stableThinkingId = thinkingIdRef.current
+    
     return (chunk: string) => {
       // 解析 chunk
       const { content, thinking } = processStreamingChunk(
@@ -163,7 +174,7 @@ export function useStreamHandler() {
       if (parserRef.current.thinkingBuffer) {
         updateMessageMetadata(messageId, {
           thinking: [{
-            id: `streaming-think-${Date.now()}`,
+            id: stableThinkingId,
             expertType: 'thinking',
             expertName: '思考过程',
             content: parserRef.current.thinkingBuffer,

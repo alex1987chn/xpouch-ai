@@ -95,8 +95,9 @@ export class EventHandler {
       case 'router.start':
         this.handleRouterStart(event as RouterStartEvent)
         break
-      // 🔥 plan.created 仅用于初始化，不更新 UI（由 plan.started 接管）
+      // 🔥 plan.created 用于初始化任务数据结构（必须调用 initializePlan 创建 tasks）
       case 'plan.created':
+        this.handlePlanCreated(event as PlanCreatedEvent)
         break
       // 🔥 Commander 流式思考事件
       case 'plan.started':
@@ -150,18 +151,19 @@ export class EventHandler {
    * - ChatStore: 更新消息 thinking 状态
    */
   private handlePlanCreated(event: PlanCreatedEvent): void {
-    // 1️⃣ TaskSlice: 初始化任务数据
-    const { initializePlan } = useTaskStore.getState()
+    // 1️⃣ 统一获取 Store 状态（避免多次 getState 调用）
+    const { initializePlan, setIsInitialized, setMode } = useTaskStore.getState()
+    const { messages, updateMessageMetadata } = useChatStore.getState()
+
+    // 2️⃣ TaskSlice: 初始化任务数据
     initializePlan(event.data)
 
-    // 2️⃣ UISlice: 标记初始化完成并设置模式
+    // 3️⃣ UISlice: 标记初始化完成并设置模式
     // 注意：initializePlan 不再修改 UI 状态，需显式调用
-    const { setIsInitialized, setMode } = useTaskStore.getState()
     setIsInitialized(true)
     setMode('complex')
 
-    // 3️⃣ ChatStore: 更新 thinking 步骤为完成状态
-    const { messages, updateMessageMetadata } = useChatStore.getState()
+    // 4️⃣ ChatStore: 更新 thinking 步骤为完成状态
     const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
     
     if (lastAiMessage?.metadata?.thinking) {
@@ -188,13 +190,16 @@ export class EventHandler {
    * 创建 thinking step，title 常驻，content 初始为空
    */
   private handlePlanStarted(event: PlanStartedEvent): void {
-    // v3.2.0: 新规划开始时重置所有状态
-    const { startPlan, resetAll } = useTaskStore.getState()
-    resetAll()
+    // v3.2.0: 新规划开始
+    // 统一获取 Store 状态（避免多次 getState 调用）
+    const { startPlan } = useTaskStore.getState()
+    const { messages, updateMessageMetadata } = useChatStore.getState()
+    
+    // 🔥 注意：不要调用 resetAll()，否则会清空 plan.created 创建的任务
+    // resetAll 只应在用户主动开始新对话时调用
     startPlan(event.data)
 
     // 🔥 创建 thinking step 到聊天消息
-    const { messages, updateMessageMetadata } = useChatStore.getState()
     const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
     
     if (lastAiMessage) {
@@ -234,13 +239,17 @@ export class EventHandler {
    * 追加 delta 到 content 字段，不覆盖 title
    */
   private handlePlanThinking(event: PlanThinkingEvent): void {
-    console.log('[EventHandler] 🧠 plan.thinking:', event.data.delta.substring(0, 30) + '...')
-    
+    // 统一获取 Store 状态（避免多次 getState 调用）
     const { appendPlanThinking } = useTaskStore.getState()
+    const { messages, updateMessageMetadata } = useChatStore.getState()
+    
     appendPlanThinking(event.data)
 
+    if (DEBUG) {
+      logger.debug('[EventHandler] 🧠 plan.thinking:', event.data.delta.substring(0, 30) + '...')
+    }
+
     // 🔥 追加到 thinking step 的 content 字段
-    const { messages, updateMessageMetadata } = useChatStore.getState()
     const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
     
     if (lastAiMessage?.metadata?.thinking) {
@@ -254,12 +263,14 @@ export class EventHandler {
           content: thinking[planStepIndex].content + event.data.delta
         }
         updateMessageMetadata(lastAiMessage.id!, { thinking })
-        console.log('[EventHandler] ✅ thinking content 已更新')
-      } else {
-        console.warn('[EventHandler] ⚠️ 未找到 planning step')
+        if (DEBUG) {
+          logger.debug('[EventHandler] thinking content 已更新')
+        }
+      } else if (DEBUG) {
+        logger.warn('[EventHandler] 未找到 planning step')
       }
-    } else {
-      console.warn('[EventHandler] ⚠️ 最后一条消息没有 thinking 元数据')
+    } else if (DEBUG) {
+      logger.warn('[EventHandler] 最后一条消息没有 thinking 元数据')
     }
   }
 
@@ -268,12 +279,14 @@ export class EventHandler {
    * 更新任务状态为 running
    */
   private handleTaskStarted(event: TaskStartedEvent): void {
+    // 统一获取 Store 状态（避免多次 getState 调用）
     const { startTask, addRunningTaskId } = useTaskStore.getState()
+    const { messages, updateMessageMetadata } = useChatStore.getState()
+    
     startTask(event.data)
     addRunningTaskId(event.data.task_id)  // 🔥 新增：更新 UI 状态
 
     // 🔥 添加 task step 到消息的 thinking metadata
-    const { messages, updateMessageMetadata } = useChatStore.getState()
     const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
     
     if (lastAiMessage) {
@@ -294,11 +307,15 @@ export class EventHandler {
         updateMessageMetadata(lastAiMessage.id!, {
           thinking: [...existingThinking, newStep]
         })
-        console.log('[EventHandler] task.started: 添加 task step 到 thinking:', event.data.task_id)
+        if (DEBUG) {
+          logger.debug('[EventHandler] task.started: 添加 task step 到 thinking:', event.data.task_id)
+        }
       }
     }
 
-    console.log('[EventHandler] 任务开始:', event.data.task_id)
+    if (DEBUG) {
+      logger.debug('[EventHandler] 任务开始:', event.data.task_id)
+    }
   }
 
   /**
@@ -307,11 +324,17 @@ export class EventHandler {
    * 
    * 🔥 注意：event.data.output 只有500字节摘要
    * 完整内容通过 artifact.generated 事件单独发送
+   * 
+   * 🔥 选中策略：task.completed 不负责选中，由 artifact.generated 统一处理
+   * 避免多个任务完成时的频繁切换问题
    */
   private handleTaskCompleted(event: TaskCompletedEvent): void {
-    const { completeTask, setProgress, tasksCache, removeRunningTaskId, selectTask, tasks } = useTaskStore.getState()
+    // 统一获取 Store 状态（避免多次 getState 调用）
+    const { completeTask, setProgress, tasksCache, removeRunningTaskId } = useTaskStore.getState()
+    const { messages, updateMessageMetadata } = useChatStore.getState()
+    
     completeTask(event.data)
-    removeRunningTaskId(event.data.task_id)  // 🔥 新增：更新 UI 状态
+    removeRunningTaskId(event.data.task_id)  // 🔥 更新 UI 状态
 
     // 🔥 更新进度
     const completedCount = tasksCache.filter(t => t.status === 'completed').length
@@ -321,7 +344,6 @@ export class EventHandler {
     }
 
     // 🔥 更新 task step 状态为 completed
-    const { messages, updateMessageMetadata } = useChatStore.getState()
     const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
     
     if (lastAiMessage?.metadata?.thinking) {
@@ -335,19 +357,18 @@ export class EventHandler {
           content: event.data.output || '任务执行完成'
         }
         updateMessageMetadata(lastAiMessage.id!, { thinking })
-        console.log('[EventHandler] task.completed: task step 已标记为 completed:', event.data.task_id)
+        if (DEBUG) {
+          logger.debug('[EventHandler] task.completed: task step 已标记为 completed:', event.data.task_id)
+        }
       }
     }
 
-    // 🔥 新增：如果任务有产物，选中该任务
-    if (event.data.artifact_count > 0) {
-      const task = tasks.get(event.data.task_id)
-      if (task && task.artifacts.length > 0) {
-        selectTask(event.data.task_id)
-      }
-    }
+    // 🔥 选中逻辑已移至 artifact.generated，避免重复切换
+    // 只有当任务没有产物（纯文本输出）且用户未选中任务时，才选中该任务
 
-    console.log('[EventHandler] 任务完成:', event.data.task_id, '进度:', completedCount, '/', totalCount)
+    if (DEBUG) {
+      logger.debug('[EventHandler] 任务完成:', event.data.task_id, '进度:', completedCount, '/', totalCount)
+    }
   }
 
   /**
@@ -366,13 +387,36 @@ export class EventHandler {
    * 处理 artifact.generated 事件
    * 批处理模式 - 直接添加完整的 artifact
    * 添加产物到对应任务
+   * 
+   * 🔥 智能选中策略：
+   * - 如果用户没有选中任何任务，自动选中新完成的有产物任务
+   * - 如果用户已手动选中某个任务，保持不变（避免打断用户查看）
    */
   private handleArtifactGenerated(event: ArtifactGeneratedEvent): void {
-    const { addArtifact, selectTask } = useTaskStore.getState()
+    const { addArtifact, selectTask, selectedTaskId, tasks } = useTaskStore.getState()
+    
+    // 🔥 调试日志：记录当前状态
+    if (DEBUG) {
+      const task = tasks.get(event.data.task_id)
+      logger.debug('[EventHandler] artifact.generated: 收到事件', {
+        taskId: event.data.task_id,
+        artifactId: event.data.artifact.id,
+        artifactType: event.data.artifact.type,
+        taskExists: !!task,
+        currentArtifactsCount: task?.artifacts?.length || 0
+      })
+    }
+    
     addArtifact(event.data)
     
-    // 🔥 新增：生成 artifact 后选中对应任务
-    selectTask(event.data.task_id)
+    // 🔥 智能选中：只有当用户未选中任务，或选中的任务无产物时，才自动切换
+    const currentSelectedTask = selectedTaskId ? tasks.get(selectedTaskId) : null
+    const shouldAutoSelect = !selectedTaskId || 
+      (currentSelectedTask && currentSelectedTask.artifacts.length === 0)
+    
+    if (shouldAutoSelect) {
+      selectTask(event.data.task_id)
+    }
 
     if (DEBUG) {
       logger.debug(
@@ -426,6 +470,7 @@ export class EventHandler {
    * 完成消息流式输出
    */
   private handleMessageDone(event: MessageDoneEvent): void {
+    // 统一获取 Store 状态（避免多次 getState 调用）
     const { updateMessage, updateMessageMetadata, messages } = useChatStore.getState()
 
     // 🔥🔥🔥 防重保护：如果已处理过，直接忽略
@@ -475,16 +520,15 @@ export class EventHandler {
     
     // 🔥🔥🔥 关键修复：message.done 时将所有 thinking steps 标记为 completed
     // 防止流结束后仍有 running 状态的步骤导致 UI 一直转圈
-    const finalMessage = useChatStore.getState().messages.find(m => m.id === event.data.message_id)
+    // 复用已获取的 messages，避免再次 getState()
+    const finalMessage = messages.find(m => m.id === event.data.message_id)
     if (DEBUG) {
       logger.debug('[EventHandler] message.done: finalMessage=', !!finalMessage, 'thinking=', finalMessage?.metadata?.thinking?.length)
     }
     if (finalMessage?.metadata?.thinking && finalMessage.metadata.thinking.length > 0) {
       const hasRunningSteps = finalMessage.metadata.thinking.some((s: any) => s.status === 'running')
       if (DEBUG) {
-        if (DEBUG) {
-      logger.debug('[EventHandler] message.done: hasRunningSteps=', hasRunningSteps)
-    }
+        logger.debug('[EventHandler] message.done: hasRunningSteps=', hasRunningSteps)
       }
       if (hasRunningSteps) {
         const completedThinking = finalMessage.metadata.thinking.map((s: any) => ({
@@ -552,7 +596,9 @@ export class EventHandler {
    * 避免误删将要添加 thinking 数据的消息
    */
   private handleRouterDecision(event: RouterDecisionEvent): void {
+    // 统一获取 Store 状态（避免多次 getState 调用）
     const { setMode, resetUI, mode } = useTaskStore.getState()
+    const { messages, updateMessageMetadata } = useChatStore.getState()
 
     // 🔥 新增：如果模式切换，重置 UI 状态
     if (mode !== event.data.decision) {
@@ -562,8 +608,7 @@ export class EventHandler {
     // 设置模式（simple 或 complex）
     setMode(event.data.decision)
 
-      // 🔥 Phase 3: 更新 router thinking 步骤为完成状态
-    const { messages, updateMessageMetadata } = useChatStore.getState()
+    // 🔥 Phase 3: 更新 router thinking 步骤为完成状态
     const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant')
 
     if (DEBUG) {
@@ -575,7 +620,7 @@ export class EventHandler {
       const routerStepIndex = thinking.findIndex((s: any) => s.expertType === 'router')
 
       if (DEBUG) {
-        console.log('[EventHandler] router.decision: routerStepIndex=', routerStepIndex)
+        logger.debug('[EventHandler] router.decision: routerStepIndex=', routerStepIndex)
       }
 
       if (routerStepIndex >= 0) {
