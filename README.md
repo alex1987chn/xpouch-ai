@@ -6,12 +6,9 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0%20with%20Additional%20Terms-blue.svg)](./LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue?logo=python)](https://python.org)
-[![React](https://img.shields.io/badge/React-19.2-61dafb?logo=react)](https://react.dev)
-[![LangGraph](https://img.shields.io/badge/LangGraph-1.0%2B-green?logo=langchain)](https://langchain-ai.github.io/langgraph/)
-[![Version](https://img.shields.io/badge/Version-3.1.0-blue.svg)](./CHANGELOG.md)
+[![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev)
+[![LangGraph](https://img.shields.io/badge/LangGraph-0.3%2B-green?logo=langchain)](https://langchain-ai.github.io/langgraph/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://docker.com)
-
-[English](./README.md) | [简体中文](./README.zh-CN.md)
 
 <img src="https://github.com/user-attachments/assets/c4554212-e24e-47dd-a61d-8df4f69ce233" alt="XPouch AI Screenshot" width="800">
 
@@ -36,7 +33,7 @@ AI 不再是"黑盒"。Commander 生成任务计划后，**暂停等待你的确
 <td width="50%">
 
 ### 🤖 多专家协作
-10 位专业专家协同工作：搜索、编程、研究、分析、写作、规划、**设计、架构**、图像分析、长期记忆。
+10 位专业专家协同工作：搜索、编程、研究、分析、写作、规划、设计、架构、图像分析、长期记忆。
 
 </td>
 </tr>
@@ -54,11 +51,34 @@ AI 不再是"黑盒"。Commander 生成任务计划后，**暂停等待你的确
 
 </td>
 </tr>
+<tr>
+<td width="50%">
+
+### 🔀 智能路由
+后端自动判断简单/复杂模式：日常对话直接响应，复杂任务自动触发多专家协作，无需手动切换。
+
+</td>
+<td width="50%">
+
+### 🎨 Server-Driven UI
+后端驱动 UI，通过 SSE 实时推送状态更新。前端作为"投影仪"，只负责渲染，逻辑由后端统一控制。
+
+</td>
+</tr>
 </table>
 
 ---
 
 ## 🚀 快速开始
+
+### 系统要求
+
+| 组件 | 最低版本 |
+|------|---------|
+| Docker | 20.0+ |
+| Docker Compose | 2.0+ |
+| Node.js (本地开发) | 18.0+ |
+| Python (本地开发) | 3.13+ |
 
 ### Docker 一键部署（推荐）
 
@@ -82,19 +102,69 @@ docker exec -it xpouch-backend uv run scripts/init_checkpoints.py
 访问 http://localhost:8080 🎉
 
 <details>
-<summary>📋 环境变量配置</summary>
+<summary>📋 环境变量配置详解</summary>
 
 ```env
-# 必需：至少配置一个 LLM 提供商
-DEEPSEEK_API_KEY=sk-your-key
-OPENAI_API_KEY=sk-your-key
+# ============================================================================
+# 必需配置
+# ============================================================================
 
-# 必需：JWT 密钥
+# 至少配置一个 LLM 提供商 API Key
+DEEPSEEK_API_KEY=sk-your-deepseek-key      # 推荐，性价比高
+OPENAI_API_KEY=sk-your-openai-key          # 可选
+ANTHROPIC_API_KEY=sk-ant-your-key          # 可选
+MINIMAX_API_KEY=your-minimax-key           # 可选，推荐用于 Router
+
+# JWT 密钥（生产环境请使用强密钥）
 JWT_SECRET_KEY=your-secure-random-key
 
-# 可选：记忆系统嵌入模型
-SILICON_API_KEY=your-key  # 推荐 BAAI/bge-m3
+# PostgreSQL 配置
+POSTGRES_USER=xpouch_admin
+POSTGRES_PASSWORD=your-secure-password
+POSTGRES_DB=xpouch_ai
+
+# ============================================================================
+# 可选配置
+# ============================================================================
+
+# 联网搜索（Tavily）
+TAVILY_API_KEY=tvly-your-tavily-key
+
+# 向量嵌入模型（用于长期记忆）
+SILICON_API_KEY=your-silicon-key           # 推荐 BAAI/bge-m3
+
+# LangSmith 追踪（调试用）
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=lsv2_pt_your-key
 ```
+
+**支持的 LLM 提供商**：DeepSeek、OpenAI、Anthropic、Google Gemini、MiniMax、Moonshot
+
+</details>
+
+<details>
+<summary>🔍 故障排除</summary>
+
+| 问题 | 解决方案 |
+|------|---------|
+| 容器启动失败 | 检查端口 8080/5432 是否被占用 |
+| 数据库连接失败 | 等待 PostgreSQL 完全启动（约 10-30 秒） |
+| LLM 调用失败 | 检查 API Key 是否正确配置 |
+| 前端白屏 | 检查浏览器控制台，确认后端 API 可访问 |
+
+```bash
+# 查看容器日志
+docker logs xpouch-backend
+docker logs xpouch-frontend
+
+# 重启服务
+docker-compose restart
+
+# 完全重建
+docker-compose down -v
+docker-compose up -d --build
+```
+
 </details>
 
 ---
@@ -127,9 +197,13 @@ SILICON_API_KEY=your-key  # 推荐 BAAI/bge-m3
 
 | 层级 | 技术 |
 |------|------|
-| **前端** | React 19 + TypeScript + Vite + Tailwind CSS |
-| **状态** | Zustand + Immer (严格 Slice 隔离) |
-| **后端** | FastAPI + Python 3.13 |
+| **前端框架** | React 19 + TypeScript + Vite 7 |
+| **状态管理** | Zustand 5 + Immer (Slice 模式) |
+| **服务端状态** | TanStack Query 5 (React Query) |
+| **UI 组件** | shadcn/ui + Radix UI + Tailwind CSS 3 |
+| **动画** | Framer Motion 12 |
+| **后端框架** | FastAPI + Python 3.13 |
+| **ORM** | SQLModel (SQLAlchemy + Pydantic) |
 | **AI 框架** | LangGraph + LangChain |
 | **数据库** | PostgreSQL 15 + pgvector |
 | **部署** | Docker + Docker Compose |
@@ -143,18 +217,24 @@ xpouch-ai/
 ├── frontend/               # React 19 + TypeScript
 │   ├── src/
 │   │   ├── components/     # UI 组件
+│   │   │   ├── chat/       # 聊天相关组件
+│   │   │   ├── layout/     # 布局组件
+│   │   │   └── ui/         # shadcn/ui 基础组件
 │   │   ├── store/          # Zustand Store (Slice 模式)
 │   │   ├── handlers/       # SSE 事件处理
+│   │   ├── hooks/          # 自定义 Hooks
 │   │   └── services/       # API 服务 (Barrel 模式)
 │   └── Dockerfile
 ├── backend/                # FastAPI + LangGraph
 │   ├── agents/             # LangGraph 工作流
-│   │   ├── nodes/          # Router/Commander/Generic
+│   │   ├── nodes/          # Router/Commander/Generic/Aggregator
 │   │   └── services/       # Expert/Task Manager
-│   ├── routers/            # REST API
+│   ├── routers/            # REST API 路由
 │   ├── tools/              # Function Calling 工具
+│   ├── models/             # SQLModel 数据模型
 │   └── Dockerfile
-└── docker-compose.yml
+├── docker-compose.yml
+└── CHANGELOG.md            # 更新日志
 ```
 
 ---
@@ -164,16 +244,25 @@ xpouch-ai/
 ### 本地开发
 
 ```bash
-# 安装依赖
+# 安装前端依赖
+cd frontend
 pnpm install
 
-# 启动前后端（并发）
-pnpm run dev
+# 安装后端依赖（需要 uv）
+cd ../backend
+uv sync
 
-# 或分别启动
-pnpm run dev:frontend  # http://localhost:5173
-pnpm run dev:backend   # http://localhost:3002
+# 启动前后端（需要两个终端）
+# 终端 1 - 后端
+cd backend && uv run uvicorn main:app --reload --port 3002
+
+# 终端 2 - 前端
+cd frontend && pnpm dev
 ```
+
+- 前端: http://localhost:5173
+- 后端 API: http://localhost:3002
+- API 文档: http://localhost:3002/docs
 
 ### 代码规范
 
@@ -181,9 +270,31 @@ pnpm run dev:backend   # http://localhost:3002
   ```bash
   git commit -m "feat: add human-in-the-loop approval"
   git commit -m "fix: resolve artifact rendering issue"
+  git commit -m "docs: update installation guide"
   ```
-- **代码风格**: ESLint + Prettier
+- **代码风格**: ESLint + Prettier (前端), Ruff (后端)
 - **类型安全**: TypeScript 严格模式
+
+---
+
+## 📖 文档
+
+| 文档 | 描述 |
+|------|------|
+| [CHANGELOG.md](./CHANGELOG.md) | 版本更新日志 |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | 贡献指南 |
+| [LICENSE](./LICENSE) | 许可证 (Apache 2.0 + 附加条款) |
+| [backend/.env.example](./backend/.env.example) | 环境变量配置示例 |
+
+---
+
+## 🗺️ 路线图
+
+- [ ] 多租户支持
+- [ ] 插件系统
+- [ ] 更多 LLM 提供商支持
+- [ ] 移动端原生应用
+- [ ] 工作流可视化编辑器
 
 ---
 
@@ -213,6 +324,7 @@ pnpm run dev:backend   # http://localhost:3002
 
 | 使用场景 | 许可 |
 |----------|------|
+| 个人学习 | ✅ 允许 |
 | 内部部署 | ✅ 允许 |
 | 单一客户部署 | ✅ 允许 |
 | SaaS 云服务 | ❌ 禁止 |
@@ -228,6 +340,7 @@ pnpm run dev:backend   # http://localhost:3002
 - [shadcn/ui](https://ui.shadcn.com/) - UI 组件库
 - [FastAPI](https://fastapi.tiangolo.com/) - Python Web 框架
 - [pgvector](https://github.com/pgvector/pgvector) - 向量检索
+- [TanStack Query](https://tanstack.com/query) - 服务端状态管理
 
 ---
 
