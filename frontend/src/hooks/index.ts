@@ -66,7 +66,6 @@ export {
   useSelectTaskAction,
   useClearTasksAction,
   useInitializePlanAction,
-  useSetModeAction,
   
   // 条件 Selectors
   useTaskById,
