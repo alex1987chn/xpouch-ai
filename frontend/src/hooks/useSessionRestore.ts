@@ -129,6 +129,14 @@ export function useSessionRestore(
         logger.debug('[useSessionRestore] 开始恢复会话:', conversationId)
       }
 
+      // 🔥 首先检查本地 localStorage 是否已有数据
+      const persistedState = localStorage.getItem('xpouch-task-store@2')
+      const hasLocalData = persistedState && JSON.parse(persistedState).session
+      
+      if (hasLocalData && DEBUG) {
+        logger.debug('[useSessionRestore] 发现本地持久化数据，优先使用')
+      }
+
       // 从服务端获取会话详情
       const conversation = await getConversation(conversationId)
       
@@ -146,6 +154,27 @@ export function useSessionRestore(
       const { task_session } = conversation
       if (task_session?.sub_tasks) {
         const subTasks = task_session.sub_tasks || []
+        
+        // 🔥 智能恢复策略：
+        // 1. 如果本地已有持久化数据且 subTasks 为空，保留本地数据
+        // 2. 否则使用 API 返回的数据（API 数据更权威）
+        const hasApiData = subTasks.length > 0 && subTasks.some((t: any) => 
+          t.artifacts && t.artifacts.length > 0
+        )
+        
+        if (!hasApiData && hasLocalData) {
+          if (DEBUG) {
+            logger.debug('[useSessionRestore] API 数据不完整，使用本地持久化数据')
+          }
+          // 不调用 restoreFromSession，保留 localStorage 中的数据
+          // 只需要更新一些关键状态
+          const localState = JSON.parse(persistedState)
+          if (localState.isInitialized) {
+            setIsRestored(true)
+            setIsRestoring(false)
+            return true
+          }
+        }
         
         // 恢复任务状态到 Store
         restoreFromSession(task_session, subTasks)

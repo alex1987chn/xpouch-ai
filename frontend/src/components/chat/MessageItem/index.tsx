@@ -3,7 +3,7 @@
  * 展示单条消息，支持用户消息和AI消息两种样式
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Copy, Check, RefreshCw, Eye } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useTaskStore } from '@/store/taskStore'
@@ -14,6 +14,10 @@ import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { SIMPLE_TASK_ID } from '@/constants/task'
 import { StatusAvatar } from '@/components/ui/StatusAvatar'
+import { logger } from '@/utils/logger'
+
+// 开发环境调试开关
+const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
 
 export default function MessageItem({
   message,
@@ -26,6 +30,18 @@ export default function MessageItem({
   const isUser = message.role === 'user'
   const [copied, setCopied] = useState(false)
   const { t } = useTranslation()
+  
+  // 🔥 用于存储复制成功提示的定时器，组件卸载时清理
+  const copyTimerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // 组件卸载时清理定时器
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current)
+      }
+    }
+  }, [])
 
   // 🔥 修复：确保 content 是字符串
   const content = message.content || ''
@@ -60,7 +76,9 @@ export default function MessageItem({
     
     if (!hasSimpleTask) {
       // 需要初始化：先设置模式（这会清空 tasks），然后创建任务
-      console.log('[Preview] Initializing simple mode')
+      if (DEBUG) {
+        logger.debug('[Preview] Initializing simple mode')
+      }
       taskStore.setMode('simple')
       taskStore.initializePlan({
         session_id: 'simple_preview',
@@ -81,7 +99,9 @@ export default function MessageItem({
     }
     
     // 替换 artifact 到虚拟任务（简单模式：替换而不是追加）
-    console.log('[Preview] Replacing artifact:', artifact.title, 'to task:', SIMPLE_TASK_ID)
+    if (DEBUG) {
+      logger.debug('[Preview] Replacing artifact:', artifact.title, 'to task:', SIMPLE_TASK_ID)
+    }
     taskStore.replaceArtifacts(SIMPLE_TASK_ID, [{
       id: artifact.id,
       type: artifact.type as any,
@@ -96,8 +116,10 @@ export default function MessageItem({
     // 选中该任务
     taskStore.selectTask(SIMPLE_TASK_ID)
     
-    console.log('[Preview] Current tasksCache:', taskStore.tasksCache)
-    console.log('[Preview] Current mode:', taskStore.mode)
+    if (DEBUG) {
+      logger.debug('[Preview] Current tasksCache:', taskStore.tasksCache)
+      logger.debug('[Preview] Current mode:', taskStore.mode)
+    }
   }, [content, codeBlocks, onPreview])
 
   // 处理复制
@@ -110,7 +132,7 @@ export default function MessageItem({
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(textToCopy)
         setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
+        copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
         return
       }
 
@@ -131,7 +153,7 @@ export default function MessageItem({
       const successful = document.execCommand('copy')
       if (successful) {
         setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
+        copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
       }
 
       document.body.removeChild(textarea)

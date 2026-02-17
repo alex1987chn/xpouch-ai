@@ -694,9 +694,10 @@ class StreamService:
                                     event_queue = output.get("event_queue", [])
                                     for queued_event in event_queue:
                                         if queued_event.get("type") == "sse":
+                                            # 🔥 修复：使用 queued_event["event"] 而不是未定义的 event_str
                                             await sse_queue.put({
                                                 "type": "sse",
-                                                "event": event_str
+                                                "event": queued_event["event"]
                                             })
                                     
                                     # 🔥🔥🔥 关键修复：检测 aggregator 执行完成

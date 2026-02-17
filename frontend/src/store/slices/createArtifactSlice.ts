@@ -55,7 +55,17 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
   addArtifact: (data: ArtifactGeneratedData) => {
     set((state: any) => {
       const task = state.tasks.get(data.task_id)
-      if (!task) return
+      if (!task) {
+        // 🔥 调试日志：task 不存在时记录信息
+        if (import.meta.env.VITE_DEBUG_MODE === 'true') {
+          console.error('[ArtifactSlice] addArtifact: Task not found!', {
+            taskId: data.task_id,
+            availableTaskIds: Array.from(state.tasks.keys()),
+            artifactId: data.artifact.id
+          })
+        }
+        return
+      }
 
       const existingIndex = task.artifacts.findIndex((a: any) => a.id === data.artifact.id)
       
@@ -84,6 +94,15 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
       task.artifacts.sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
       // 🔥 移除：state.selectedTaskId = data.task_id（这是 UISlice 的状态）
       // 选中 Task 应由 UISlice 处理
+      
+      // 🔥 调试日志：记录添加成功
+      if (import.meta.env.VITE_DEBUG_MODE === 'true') {
+        console.log('[ArtifactSlice] addArtifact: 成功添加', {
+          taskId: data.task_id,
+          artifactId: data.artifact.id,
+          totalArtifacts: task.artifacts.length
+        })
+      }
     })
     // Call Action outside of set() to avoid nested update anti-pattern
     get().syncTasksCache()
