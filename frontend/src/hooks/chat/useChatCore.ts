@@ -300,24 +300,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     createChunkHandler
   ])
 
-  // Page visibility and lifecycle management
-  const isPageHiddenRef = useRef(false)
-  
+  // Component unmount cleanup
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        isPageHiddenRef.current = true
-        debug('Page hidden, keeping SSE connection')
-      } else {
-        isPageHiddenRef.current = false
-        debug('Page visible, resuming UI updates')
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
       if (abortControllerRef.current) {
         debug('Component unmounting, aborting ongoing request')
         abortControllerRef.current.abort()

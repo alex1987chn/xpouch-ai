@@ -130,7 +130,6 @@ export const useSelectTaskAction = () => useTaskStore(state => state.selectTask)
 export const useClearTasksAction = () => useTaskStore(state => state.clearTasks)
 export const useResetAllAction = () => useTaskStore(state => state.resetAll)
 export const useInitializePlanAction = () => useTaskStore(state => state.initializePlan)
-export const useSetModeAction = () => useTaskStore(state => state.setMode)
 
 // ============================================================================
 // 条件 Selectors (根据条件返回不同值)
