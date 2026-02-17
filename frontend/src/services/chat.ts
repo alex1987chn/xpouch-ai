@@ -44,6 +44,22 @@ export type { Conversation }
 import { useTaskStore } from '@/store/taskStore'
 
 // ============================================================================
+// SSE 常量配置
+// ============================================================================
+
+/** 心跳超时时间（毫秒）- 超过此时间无活动视为连接断开 */
+const SSE_HEARTBEAT_TIMEOUT = 45000 // 45秒（后端心跳间隔 15秒的 3 倍）
+
+/** 心跳检查间隔 */
+const SSE_HEARTBEAT_CHECK_INTERVAL = 10000 // 10秒检查一次
+
+/** 最大重连次数 */
+const SSE_MAX_RETRIES = 3
+
+/** 重连基础延迟（毫秒） */
+const SSE_RETRY_BASE_DELAY = 1000
+
+// ============================================================================
 // API 函数
 // ============================================================================
 
@@ -118,13 +134,56 @@ export async function sendMessage(
     let fullContent = ''
     let finalConversationId: string | undefined = conversationId || undefined
     let isCompleted = false
+    
+    // 🔥 心跳检测：跟踪最后活动时间
+    let lastActivityTime = Date.now()
+    let heartbeatCheck: NodeJS.Timeout | null = null
 
     const ctrl = new AbortController()
+
+    // 🔥 安全清理函数
+    const cleanup = () => {
+      if (heartbeatCheck) {
+        clearInterval(heartbeatCheck)
+        heartbeatCheck = null
+      }
+    }
+
+    // 🔥 包装 resolve/reject 确保清理
+    const safeResolve = (value: string) => {
+      cleanup()
+      if (!isCompleted) {
+        isCompleted = true
+        resolve(value)
+      }
+    }
+
+    const safeReject = (error: Error) => {
+      cleanup()
+      if (!isCompleted) {
+        isCompleted = true
+        reject(error)
+      }
+    }
+
+    // 🔥 心跳检测：定期检查连接活性
+    heartbeatCheck = setInterval(() => {
+      if (isCompleted) {
+        cleanup()
+        return
+      }
+      const elapsed = Date.now() - lastActivityTime
+      if (elapsed > SSE_HEARTBEAT_TIMEOUT) {
+        logger.warn('[chat.ts] SSE 心跳超时，连接可能已断开')
+        ctrl.abort()
+        safeReject(new Error('连接超时，请重试'))
+      }
+    }, SSE_HEARTBEAT_CHECK_INTERVAL)
 
     if (abortSignal) {
       abortSignal.addEventListener('abort', () => {
         ctrl.abort()
-        reject(new Error('请求已取消'))
+        safeReject(new Error('请求已取消'))
       })
     }
 
@@ -148,14 +207,20 @@ export async function sendMessage(
 
       async onopen(response) {
         handleSSEConnectionError(response, 'chat.ts')
+        lastActivityTime = Date.now() // 🔥 更新活动时间
       },
 
       async onmessage(msg: EventSourceMessage) {
+        lastActivityTime = Date.now() // 🔥 更新活动时间
+        
         if (msg.data === '[DONE]') {
           logger.debug('[chat.ts] 收到 [DONE]，流式响应完成')
-          isCompleted = true
-          ctrl.abort()
-          resolve(fullContent)
+          safeResolve(fullContent)
+          return
+        }
+
+        // 🔥 心跳事件处理（后端发送的空注释心跳）
+        if (msg.data === '' || msg.event === 'heartbeat') {
           return
         }
 
@@ -208,16 +273,19 @@ export async function sendMessage(
       onerror(err) {
         if (err.name === 'AbortError' || ctrl.signal.aborted) {
           logger.debug('[chat.ts] 请求已取消')
+          safeReject(new Error('请求已取消'))
           return
         }
         logger.error('[chat.ts] SSE 错误:', err)
-        throw err
+        safeReject(new Error('连接异常，请重试'))
       },
 
       onclose() {
         logger.debug('[chat.ts] SSE 连接已关闭')
         if (!isCompleted) {
-          resolve(fullContent)
+          // 🔥 宽容处理：连接关闭但未收到完成标志时，视为成功
+          // 后端可能直接关闭连接而不发送 [DONE]
+          safeResolve(fullContent)
         }
       },
     })
@@ -294,21 +362,20 @@ export async function resumeChat(
   }
 
   // 🔥 流式响应：复用与 sendMessage 完全相同的 SSE 处理逻辑
-  // 🚨🚨🚨 风险 2 修复：添加超时处理，防止 Promise 无限等待
+  // 🔥 心跳检测：超时处理，防止 Promise 无限等待
   return new Promise((resolve, reject) => {
     let fullContent = ''
     let isCompleted = false
     let lastActivityTime = Date.now()
     
-    // 🚨 超时检查（120秒无活动视为超时）
-    const TIMEOUT_MS = 120000
-    let timeoutCheck: NodeJS.Timeout | null = null
+    // 🔥 使用统一的心跳超时常量
+    let heartbeatCheck: NodeJS.Timeout | null = null
     
     // 安全的清理函数，确保在任何情况下都能清理 interval
     const cleanup = () => {
-      if (timeoutCheck) {
-        clearInterval(timeoutCheck)
-        timeoutCheck = null
+      if (heartbeatCheck) {
+        clearInterval(heartbeatCheck)
+        heartbeatCheck = null
       }
     }
     
@@ -329,17 +396,19 @@ export async function resumeChat(
       }
     }
     
-    timeoutCheck = setInterval(() => {
+    // 🔥 心跳检测：定期检查连接活性
+    heartbeatCheck = setInterval(() => {
       if (isCompleted) {
         cleanup()
         return
       }
-      if (Date.now() - lastActivityTime > TIMEOUT_MS) {
-        logger.error('[chat.ts] Resume 超时：120秒内无活动')
+      const elapsed = Date.now() - lastActivityTime
+      if (elapsed > SSE_HEARTBEAT_TIMEOUT) {
+        logger.warn('[chat.ts] Resume SSE 心跳超时，连接可能已断开')
         ctrl.abort()
-        safeReject(new Error('执行超时，请检查后端状态'))
+        safeReject(new Error('连接超时，请重试'))
       }
-    }, 10000)  // 每 10 秒检查一次
+    }, SSE_HEARTBEAT_CHECK_INTERVAL)
 
     const ctrl = new AbortController()
 
@@ -370,11 +439,16 @@ export async function resumeChat(
       },
 
       async onmessage(msg: EventSourceMessage) {
-        lastActivityTime = Date.now()  // 更新活动时间
+        lastActivityTime = Date.now()  // 🔥 更新活动时间
         
         if (msg.data === '[DONE]') {
           logger.debug('[chat.ts] Resume 收到 [DONE]，流式响应完成')
           safeResolve(fullContent)
+          return
+        }
+
+        // 🔥 心跳事件处理
+        if (msg.data === '' || msg.event === 'heartbeat') {
           return
         }
 
@@ -427,7 +501,6 @@ export async function resumeChat(
           return
         }
         
-        // 🚨🚨🚨 风险 2 修复：流异常断开， reject Promise
         logger.error('[chat.ts] Resume SSE 错误:', err)
         safeReject(new Error('连接异常断开，请重试'))
       },
@@ -437,7 +510,6 @@ export async function resumeChat(
         
         // ✅ 宽容处理：当连接正常关闭但没有收到完成标志时，视为成功
         // 原因：后端 LangGraph 完成 resume 操作后直接关闭连接，不会发送 [DONE] 标志
-        // 即使数据不完整，useSessionRestore 会在页面恢复时自动拉取全量数据
         if (!isCompleted) {
           logger.warn('[chat.ts] Resume SSE 流正常关闭但未收到完成标志，视为成功')
           safeResolve(fullContent)

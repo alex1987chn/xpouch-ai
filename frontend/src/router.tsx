@@ -5,7 +5,7 @@
 
 import { lazy, Suspense, useState, useEffect } from 'react'
 import { createBrowserRouter, useNavigate, Navigate, Outlet, useParams } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import AppLayout from './components/AppLayout'
 import AdminRoute from './components/AdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -16,6 +16,7 @@ import { createCustomAgent, updateCustomAgent, getAllAgents } from './services/a
 import { normalizeAgentId } from '@/utils/agentUtils'
 import { logger } from '@/utils/logger'
 import { SYSTEM_AGENTS } from '@/constants/agents'
+import { agentsKeys } from '@/hooks/queries'
 
 // 路由懒加载 - 代码分割优化
 const UnifiedChatPage = lazy(() => import('./pages/chat/UnifiedChatPage'))
@@ -86,7 +87,8 @@ const HistoryPageWrapper = () => {
 // 包装 CreateAgentPage
 const CreateAgentPageWrapper = () => {
   const navigate = useNavigate()
-  const { addCustomAgent, invalidateAgentsCache } = useChatStore()
+  const queryClient = useQueryClient()
+  const addCustomAgent = useChatStore(state => state.addCustomAgent)
 
   const handleSave = async (agent: any) => {
     try {
@@ -105,8 +107,10 @@ const CreateAgentPageWrapper = () => {
       }
 
       addCustomAgent(agentWithUI)
-      // 使缓存失效，确保首页能获取到最新数据
-      invalidateAgentsCache()
+      
+      // 🔥 使用 React Query 缓存失效，确保首页能获取到最新数据
+      queryClient.invalidateQueries({ queryKey: agentsKeys.lists() })
+      
       // 导航到首页并切换到"我的智能体"标签
       navigate('/', { state: { agentTab: 'my' } })
     } catch (error) {
@@ -129,7 +133,8 @@ const CreateAgentPageWrapper = () => {
 const EditAgentPageWrapper = () => {
   const navigate = useNavigate()
   const { id } = useParams()
-  const { setCustomAgents, invalidateAgentsCache } = useChatStore()
+  const queryClient = useQueryClient()
+  const setCustomAgents = useChatStore(state => state.setCustomAgents)
   const [agentData, setAgentData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -184,8 +189,10 @@ const EditAgentPageWrapper = () => {
             : a
         )
       )
-      // 使缓存失效
-      invalidateAgentsCache()
+      
+      // 🔥 使用 React Query 缓存失效
+      queryClient.invalidateQueries({ queryKey: agentsKeys.lists() })
+      
       // 导航回首页
       navigate('/', { state: { agentTab: 'my' } })
     } catch (error) {

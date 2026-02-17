@@ -2,10 +2,30 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { type Agent } from '@/types'
 import { generateId } from '@/utils/storage'
-import { type Message, type Conversation } from '@/types'
+import { type Message } from '@/types'
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 
-// 定义 Store 状态类型
+/**
+ * ChatStore - 聊天状态管理
+ * 
+ * [职责边界]
+ * ✅ 当前活跃对话的实时状态（messages, isGenerating）
+ * ✅ 用户输入状态（inputMessage）
+ * ✅ 智能体选择状态（selectedAgentId）
+ * ✅ 用户自定义智能体（customAgents）
+ * 
+ * ❌ 不负责服务端数据缓存（由 React Query 处理）
+ *   - 会话列表 → useChatHistoryQuery
+ *   - 智能体列表 → useCustomAgentsQuery
+ * 
+ * [性能优化]
+ * - lastAssistantMessageId: 缓存最后一条助手消息 ID，避免 EventHandler 遍历查找
+ */
+
+// ============================================================================
+// Types
+// ============================================================================
+
 interface ChatState {
   // 智能体相关
   selectedAgentId: string
@@ -16,99 +36,105 @@ interface ChatState {
   currentConversationId: string | null
   inputMessage: string
 
-  // ✅ 新增：生成状态（用于替代 useChatCore 中的局部状态）
+  // 生成状态
   isGenerating: boolean
   
-  // 👈 新增：数据缓存（防止重复请求）
-  conversationsCache: Conversation[] | null
-  agentsCache: Agent[] | null
-  isLoadingConversations: boolean
-  isLoadingAgents: boolean
-  lastConversationsFetch: number
-  lastAgentsFetch: number
+  // 🔥 性能优化：缓存最后一条助手消息 ID
+  lastAssistantMessageId: string | null
+}
 
-  // 动作 (Actions)
+interface ChatActions {
+  // 智能体操作
   setSelectedAgentId: (id: string) => void
+  addCustomAgent: (agent: Agent) => void
+  setCustomAgents: (agents: Agent[] | ((prev: Agent[]) => Agent[])) => void
+  
+  // 消息操作
   setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void
   addMessage: (message: Message) => void
   updateMessage: (id: string, content: string, append?: boolean) => void
   updateMessageMetadata: (id: string, metadata: Partial<Message['metadata']>) => void
+  
+  // 输入状态
   setInputMessage: (input: string) => void
+  
+  // 会话状态
   setCurrentConversationId: (id: string | null) => void
-  addCustomAgent: (agent: Agent) => void
-  setCustomAgents: (agents: Agent[] | ((prev: Agent[]) => Agent[])) => void
   
-  // ✅ 新增：生成状态控制
+  // 生成状态
   setGenerating: (value: boolean) => void
-  
-  // 👈 新增：缓存控制
-  setConversationsCache: (conversations: Conversation[]) => void
-  setAgentsCache: (agents: Agent[]) => void
-  invalidateConversationsCache: () => void
-  invalidateAgentsCache: () => void
-  setLoadingConversations: (loading: boolean) => void
-  setLoadingAgents: (loading: boolean) => void
   
   // Getters
   getAllAgents: () => Agent[]
   getCurrentAgent: () => Agent | undefined
-  // 👈 新增：缓存获取器
-  shouldFetchConversations: () => boolean
-  shouldFetchAgents: () => boolean
 }
 
-// 缓存有效期：5分钟
-const CACHE_TTL = 5 * 60 * 1000
+type ChatStore = ChatState & ChatActions
 
-export const useChatStore = create<ChatState>()(
+// ============================================================================
+// Store Factory
+// ============================================================================
+
+export const useChatStore = create<ChatStore>()(
   persist(
     (set, get) => ({
-      // 初始状态
+      // ========== 初始状态 ==========
       selectedAgentId: 'default-chat',
       customAgents: [],
       messages: [],
       currentConversationId: null,
       inputMessage: '',
-      isGenerating: false,  // ✅ 新增：初始为 false
-      
-      // 👈 新增：缓存初始状态
-      conversationsCache: null,
-      agentsCache: null,
-      isLoadingConversations: false,
-      isLoadingAgents: false,
-      lastConversationsFetch: 0,
-      lastAgentsFetch: 0,
+      isGenerating: false,
+      lastAssistantMessageId: null,
 
-      // 动作实现
-      setSelectedAgentId: (id: string) => set({ selectedAgentId: id }),
+      // ========== 智能体操作 ==========
       
-      setMessages: (messagesOrUpdater: Message[] | ((prev: Message[]) => Message[])) => set((state: ChatState) => {
+      setSelectedAgentId: (id: string) => set({ selectedAgentId: id }),
+
+      addCustomAgent: (agent: Agent) => set((state) => ({
+        customAgents: [agent, ...state.customAgents]
+      })),
+
+      setCustomAgents: (agentsOrUpdater) => set((state) => ({
+        customAgents: typeof agentsOrUpdater === 'function'
+          ? agentsOrUpdater(state.customAgents)
+          : agentsOrUpdater
+      })),
+
+      // ========== 消息操作 ==========
+      
+      setMessages: (messagesOrUpdater) => set((state) => {
         const newMessages = typeof messagesOrUpdater === 'function'
           ? messagesOrUpdater(state.messages)
           : messagesOrUpdater
-
         return { messages: newMessages }
       }),
 
-      addMessage: (message: Message) => set((state: ChatState) => {
+      addMessage: (message: Message) => set((state) => {
         const newMessage = { ...message, id: message.id || generateId(), timestamp: Date.now() }
         const newMessages = [...state.messages, newMessage]
-        return { messages: newMessages }
+        
+        // 🔥 性能优化：更新 lastAssistantMessageId
+        const updates: Partial<ChatState> = { messages: newMessages }
+        if (message.role === 'assistant') {
+          updates.lastAssistantMessageId = newMessage.id
+        }
+        
+        return updates
       }),
 
-      updateMessage: (id: string, content: string, append?: boolean) => set((state: ChatState) => {
-        const updatedMessages = state.messages.map((msg: Message) => {
+      updateMessage: (id: string, content: string, append?: boolean) => set((state) => ({
+        messages: state.messages.map((msg) => {
           if (msg.id === id) {
             const newContent = append ? (msg.content || '') + content : content
             return { ...msg, content: newContent }
           }
           return msg
         })
-        return { messages: updatedMessages }
-      }),
+      })),
 
-      updateMessageMetadata: (id: string, metadata: Partial<Message['metadata']>) => set((state: ChatState) => {
-        const updatedMessages = state.messages.map((msg: Message) => {
+      updateMessageMetadata: (id: string, metadata: Partial<Message['metadata']>) => set((state) => ({
+        messages: state.messages.map((msg) => {
           if (msg.id === id) {
             return { 
               ...msg, 
@@ -117,64 +143,29 @@ export const useChatStore = create<ChatState>()(
           }
           return msg
         })
-        return { messages: updatedMessages }
-      }),
+      })),
 
+      // ========== 输入状态 ==========
+      
       setInputMessage: (input: string) => set({ inputMessage: input }),
 
+      // ========== 会话状态 ==========
+      
       setCurrentConversationId: (id: string | null) => set({ currentConversationId: id }),
 
-      addCustomAgent: (agent: Agent) => set((state: ChatState) => ({
-        customAgents: [agent, ...state.customAgents]
-      })),
-
-      setCustomAgents: (agentsOrUpdater: Agent[] | ((prev: Agent[]) => Agent[])) => set((state: ChatState) => ({
-        customAgents: typeof agentsOrUpdater === 'function'
-          ? agentsOrUpdater(state.customAgents)
-          : agentsOrUpdater
-      })),
-
-      // ✅ 新增：设置生成状态
+      // ========== 生成状态 ==========
+      
       setGenerating: (value: boolean) => set({ isGenerating: value }),
-      
-      // 👈 新增：缓存操作
-      setConversationsCache: (conversations: Conversation[]) => set({
-        conversationsCache: conversations,
-        lastConversationsFetch: Date.now(),
-        isLoadingConversations: false,
-      }),
-      
-      setAgentsCache: (agents: Agent[]) => set({
-        agentsCache: agents,
-        lastAgentsFetch: Date.now(),
-        isLoadingAgents: false,
-      }),
-      
-      invalidateConversationsCache: () => set({
-        conversationsCache: null,
-        lastConversationsFetch: 0,
-      }),
-      
-      invalidateAgentsCache: () => set({
-        agentsCache: null,
-        lastAgentsFetch: 0,
-      }),
-      
-      setLoadingConversations: (loading: boolean) => set({ isLoadingConversations: loading }),
-      setLoadingAgents: (loading: boolean) => set({ isLoadingAgents: loading }),
 
-      // Getters
+      // ========== Getters ==========
+      
       getAllAgents: () => {
-        const state = get()
-        // 只返回自定义智能体
-        return state.customAgents
+        return get().customAgents
       },
 
       getCurrentAgent: () => {
         const state = get()
-        // 根据selectedAgentId判断智能体类型
         if (state.selectedAgentId === SYSTEM_AGENTS.DEFAULT_CHAT) {
-          // 默认助手
           return {
             id: SYSTEM_AGENTS.DEFAULT_CHAT,
             name: getSystemAgentName(SYSTEM_AGENTS.DEFAULT_CHAT),
@@ -186,31 +177,12 @@ export const useChatStore = create<ChatState>()(
             icon: null,
             systemPrompt: ''
           }
-        } else {
-          // 自定义智能体
-          return state.customAgents.find(a => a.id === state.selectedAgentId)
         }
-      },
-      
-      // 👈 新增：缓存判断
-      shouldFetchConversations: () => {
-        const state = get()
-        if (state.isLoadingConversations) return false
-        if (!state.conversationsCache) return true
-        return Date.now() - state.lastConversationsFetch > CACHE_TTL
-      },
-      
-      shouldFetchAgents: () => {
-        const state = get()
-        if (state.isLoadingAgents) return false
-        if (!state.agentsCache) return true
-        return Date.now() - state.lastAgentsFetch > CACHE_TTL
+        return state.customAgents.find(a => a.id === state.selectedAgentId)
       }
     }),
     {
-      name: 'xpouch-chat-store', // LocalStorage key
-      // 🔥 修复：重新添加 messages 持久化，保留 thinking 等 metadata
-      // 注意：如果消息过多，可能需要定期清理或限制数量
+      name: 'xpouch-chat-store',
       partialize: (state) => ({
         selectedAgentId: state.selectedAgentId,
         customAgents: state.customAgents,
