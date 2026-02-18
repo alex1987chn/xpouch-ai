@@ -51,13 +51,18 @@ export function useChatHistoryQuery(options: { limit?: number; enabled?: boolean
     staleTime: 5 * 60 * 1000,
     // 缓存数据保留10分钟
     gcTime: 10 * 60 * 1000,
-    // 错误时重试3次
-    retry: 3,
+    // 错误时重试：401 不重试，其他错误重试2次
+    retry: (failureCount, error: any) => {
+      // 401 未授权不 retry，避免无限循环
+      if (error?.status === 401) return false
+      return failureCount < 2
+    },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     // 组件挂载时如果数据是 stale 的，自动重新获取
     refetchOnMount: 'always',
     // 窗口重新获得焦点时不自动刷新（避免打扰用户）
     refetchOnWindowFocus: false,
+    // 只有 enabled 为 true 且已登录时才发起请求
     enabled,
   })
 }
@@ -115,8 +120,9 @@ export function useDeleteConversationMutation() {
 }
 
 // 获取最近会话的 Hook（用于侧边栏）
-export function useRecentConversationsQuery(limit: number = 20) {
-  const { data, isLoading, error } = useChatHistoryQuery()
+export function useRecentConversationsQuery(limit: number = 20, options: { enabled?: boolean } = {}) {
+  const { enabled = true } = options
+  const { data, isLoading, error } = useChatHistoryQuery({ limit, enabled })
 
   // 在客户端对数据进行排序和切片
   const recentConversations = data

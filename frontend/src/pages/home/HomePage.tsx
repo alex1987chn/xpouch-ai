@@ -3,6 +3,7 @@ import { Bot, Plus, Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Tr
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
+import { useUserStore } from '@/store/userStore'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -212,11 +213,16 @@ export default function HomePage() {
   const [deletingAgentId, setDeletingAgentId] = useState<string | null>(null)
   const [deletingAgentName, setDeletingAgentName] = useState<string>('')
 
+  // 获取登录状态
+  const isAuthenticated = useUserStore(state => state.isAuthenticated)
+
   // 👈 使用 React Query 获取自定义智能体列表（自动缓存，30分钟内不会重复请求）
-  const { data: customAgents = [], refetch: refetchAgents } = useCustomAgentsQuery()
+  // 只有登录后才发起请求
+  const { data: customAgents = [], refetch: refetchAgents } = useCustomAgentsQuery({ enabled: isAuthenticated })
 
   // 👈 使用 React Query 获取会话列表
-  const { data: conversations = [] } = useChatHistoryQuery()
+  // 只有登录后才发起请求
+  const { data: conversations = [] } = useChatHistoryQuery({ enabled: isAuthenticated })
 
   // 👈 使用 React Query Mutation 删除智能体
   const deleteAgentMutation = useDeleteAgentMutation()

@@ -40,8 +40,8 @@ export interface UIAgent {
 }
 
 // 获取所有智能体的 Query Hook
-export function useAgentsQuery(options: { includeDefault?: boolean } = {}) {
-  const { includeDefault = true } = options
+export function useAgentsQuery(options: { includeDefault?: boolean; enabled?: boolean } = {}) {
+  const { includeDefault = true, enabled = true } = options
 
   return useQuery({
     queryKey: agentsKeys.list({ includeDefault }),
@@ -59,19 +59,26 @@ export function useAgentsQuery(options: { includeDefault?: boolean } = {}) {
     staleTime: 30 * 60 * 1000,
     // 缓存数据保留60分钟
     gcTime: 60 * 60 * 1000,
-    // 错误时重试2次
-    retry: 2,
+    // 错误时重试：401 不重试，其他错误重试2次
+    retry: (failureCount, error: any) => {
+      // 401 未授权不 retry，避免无限循环
+      if (error?.status === 401) return false
+      return failureCount < 2
+    },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     // 组件挂载时如果数据是 stale 的，自动重新获取
     refetchOnMount: 'always',
     // 窗口重新获得焦点时不自动刷新
     refetchOnWindowFocus: false,
+    // 只有 enabled 为 true 时才发起请求
+    enabled,
   })
 }
 
 // 获取自定义智能体的 Hook（过滤掉默认智能体）
-export function useCustomAgentsQuery() {
-  const { data, isLoading, error, refetch } = useAgentsQuery({ includeDefault: false })
+export function useCustomAgentsQuery(options: { enabled?: boolean } = {}) {
+  const { enabled = true } = options
+  const { data, isLoading, error, refetch } = useAgentsQuery({ includeDefault: false, enabled })
 
   // 转换数据格式为 UI 层需要的格式
   const customAgents: UIAgent[] = data

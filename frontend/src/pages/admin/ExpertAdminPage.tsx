@@ -15,6 +15,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { useUserStore } from '@/store/userStore'
 
 import {
   getAllExperts,
@@ -78,10 +79,19 @@ export default function ExpertAdminPage() {
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // 查询专家列表
+  // 获取登录状态
+  const isAuthenticated = useUserStore(state => state.isAuthenticated)
+
+  // 查询专家列表（只有登录后才发起请求）
   const { data: experts = [], isLoading: isLoadingExperts, error: expertsError } = useQuery({
     queryKey: ['experts'],
     queryFn: getAllExperts,
+    enabled: isAuthenticated,
+    retry: (failureCount, error: any) => {
+      // 401 未授权不 retry
+      if (error?.status === 401) return false
+      return failureCount < 2
+    },
   })
 
   // 处理查询错误
