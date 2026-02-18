@@ -3,7 +3,7 @@ import { Bot, Plus, Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Tr
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
-import { useUserStore } from '@/store/userStore'
+import { authSelectors } from '@/store/selectors'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -213,8 +213,9 @@ export default function HomePage() {
   const [deletingAgentId, setDeletingAgentId] = useState<string | null>(null)
   const [deletingAgentName, setDeletingAgentName] = useState<string>('')
 
-  // 获取登录状态
-  const isAuthenticated = useUserStore(state => state.isAuthenticated)
+  // 获取登录状态（使用优化后的 selector）
+  const isAuthenticated = authSelectors.useIsAuthenticated()
+  const { setLoginDialogOpen } = authSelectors.useLoginDialog()
 
   // 👈 使用 React Query 获取自定义智能体列表（自动缓存，30分钟内不会重复请求）
   // 只有登录后才发起请求
@@ -295,8 +296,13 @@ export default function HomePage() {
   }, [navigate, conversations])
 
   const handleCreateAgent = useCallback(() => {
+    // 🔐 未登录时弹出登录弹窗
+    if (!isAuthenticated) {
+      setLoginDialogOpen(true)
+      return
+    }
     navigate('/create-agent')
-  }, [navigate])
+  }, [navigate, isAuthenticated, setLoginDialogOpen])
 
   // 处理删除自定义 agent
   const handleDeleteAgent = useCallback((agentId: string, agentName: string) => {
@@ -328,6 +334,14 @@ export default function HomePage() {
   const handleSendMessage = useCallback(() => {
     if (!inputMessage.trim()) return
 
+    // 🔐 未登录时弹出登录弹窗
+    if (!isAuthenticated) {
+      // 保存输入内容到 pendingMessage，登录后自动发送
+      useChatStore.getState().setPendingMessage(inputMessage)
+      setLoginDialogOpen(true)
+      return
+    }
+
     const newId = crypto.randomUUID()
 
     // 🔥🔥🔥 Server-Driven UI: 导航前直接清空 Store（事件驱动）
@@ -345,7 +359,7 @@ export default function HomePage() {
     navigate(`/chat/${newId}`, {
       state: { startWith: inputMessage }
     })
-  }, [inputMessage, navigate])
+  }, [inputMessage, navigate, isAuthenticated, setLoginDialogOpen])
 
   // 推荐场景数据
   const scenes = [

@@ -69,6 +69,13 @@ export async function handleResponse<T>(response: Response, errorMessage: string
     } catch {
       // 无法解析错误响应，使用默认消息
     }
+    
+    // 401 未授权时自动弹出登录弹窗
+    if (response.status === 401) {
+      logger.warn('[Auth] 检测到 401 错误，触发登录弹窗')
+      showLoginDialog()
+    }
+    
     const error = new Error(errorDetail) as Error & { status: number }
     error.status = response.status
     throw error

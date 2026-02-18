@@ -254,11 +254,21 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         (error instanceof Error && error.message?.toLowerCase().includes('cancel')) ||
         abortControllerRef.current?.signal.aborted
       
+      // 🔐 检测 401 错误，保存消息以便登录后重发
+      const isAuthError = (error as any)?.status === 401
+      
       if (isAbortError) {
         debug('Request cancelled (user initiated)')
         if (assistantMessageId) {
           updateMessage(assistantMessageId, '', false)
         }
+      } else if (isAuthError) {
+        // 401 错误：保存消息到 pendingMessage，等待登录后重发
+        debug('Authentication error (401), saving message for retry after login')
+        useChatStore.getState().setPendingMessage(userContent)
+        // 移除刚才添加的用户消息和助手消息（因为实际没有发送成功）
+        const currentMessages = useChatStore.getState().messages
+        useChatStore.getState().setMessages(currentMessages.slice(0, -2))
       } else {
         errorHandler.handle(error, 'sendMessageCore')
 

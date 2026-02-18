@@ -3,6 +3,8 @@ import { ArrowLeft, Bot, Sparkles, Save } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { cn } from '@/lib/utils'
+import { useUserStore } from '@/store/userStore'
+import { useTaskStore } from '@/store/taskStore'
 import ModelSelector from '@/components/settings/ModelSelector'
 
 interface CreateAgentPageProps {
@@ -80,8 +82,18 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
     onSwipe: onBack
   })
 
+  // 登录状态检查
+  const isAuthenticated = useUserStore(state => state.isAuthenticated)
+  const setLoginDialogOpen = useTaskStore(state => state.setLoginDialogOpen)
+
   const handleSave = () => {
     if (!name || !systemPrompt) return
+
+    // 🔐 未登录时弹出登录弹窗
+    if (!isAuthenticated) {
+      setLoginDialogOpen(true)
+      return
+    }
 
     const agentData = {
       id: isEditMode && initialData ? initialData.id : `user-agent-${Date.now()}`,

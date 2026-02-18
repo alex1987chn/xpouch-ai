@@ -270,6 +270,45 @@ export default function UnifiedChatPage() {
   // v3.3.0: 使用合并后的 useSessionRestore，同时支持页面加载恢复和标签页切换恢复
   useSessionRestore({ enabled: !!conversationId })
 
+  // 🔐 登录后自动重发消息（Store Trigger 模式）
+  // 使用 ref 存储最新的 sendMessage 函数，避免 subscribe 闭包问题
+  const sendMessageRef = useRef(sendMessage)
+  sendMessageRef.current = sendMessage
+  
+  const normalizedAgentIdRef = useRef(normalizedAgentId)
+  normalizedAgentIdRef.current = normalizedAgentId
+  
+  useEffect(() => {
+    // 订阅 Store 变化
+    const unsubscribe = useChatStore.subscribe((state, prevState) => {
+      // 当 shouldRetrySend 从 false 变为 true 时触发
+      if (state.shouldRetrySend && !prevState.shouldRetrySend && state.pendingMessage && !isStreaming) {
+        logger.info('[UnifiedChatPage] 检测到重试标志，自动发送消息:', state.pendingMessage.substring(0, 50))
+        
+        // 使用 ref 获取最新的函数，避免闭包问题
+        const currentSendMessage = sendMessageRef.current
+        const currentAgentId = normalizedAgentIdRef.current
+        
+        // 发送消息
+        currentSendMessage(state.pendingMessage, currentAgentId)
+          .then(() => {
+            // 发送成功，清空待发送消息和标志
+            useChatStore.getState().setPendingMessage(null)
+            useChatStore.getState().setShouldRetrySend(false)
+            logger.info('[UnifiedChatPage] 消息重发成功')
+          })
+          .catch((err) => {
+            logger.error('[UnifiedChatPage] 消息重发失败:', err)
+            // 清除标志，允许下次重试
+            useChatStore.getState().setShouldRetrySend(false)
+            // 如果还是 401，会再次触发登录弹窗，pendingMessage 保留
+          })
+      }
+    })
+    
+    return () => unsubscribe()
+  }, [isStreaming]) // 只依赖 isStreaming，其他使用 ref
+
   // 发送消息处理
   const handleSend = useCallback(() => {
     if (!inputValue.trim() || isStreaming) return

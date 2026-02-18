@@ -14,12 +14,10 @@ import { zhCN, enUS, ja } from 'date-fns/locale'
 import { logger } from '@/utils/logger'
 import { useTranslation } from '@/i18n'
 import { getAvatarDisplay } from '@/utils/userSettings'
-import LoginDialog from '@/components/auth/LoginDialog'
 import { useToast } from '@/components/ui/use-toast'
 import { VERSION } from '@/constants/ui'
 import { SYSTEM_AGENTS } from '@/constants/agents'
 import { useRecentConversationsQuery } from '@/hooks/queries'
-import { useQueryClient } from '@tanstack/react-query'
 
 /**
  * =============================
@@ -76,25 +74,14 @@ export default function BauhausSidebar({
   const navigate = useNavigate()
   const location = useLocation()
   const { toast } = useToast()
-  const queryClient = useQueryClient()
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false)
-  const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false)
   const { user, isAuthenticated, logout } = useUserStore()
+  // 使用全局登录弹窗状态
+  const setLoginDialogOpen = useTaskStore(state => state.setLoginDialogOpen)
   const inputMessage = useChatStore(state => state.inputMessage)
   const setInputMessage = useChatStore(state => state.setInputMessage)
   const setMessages = useChatStore(state => state.setMessages)
   const setCurrentConversationId = useChatStore(state => state.setCurrentConversationId)
-
-  // 登录成功后刷新所有数据
-  const handleLoginSuccess = () => {
-    // 刷新所有 React Query 缓存
-    queryClient.invalidateQueries()
-    // 显示成功提示
-    toast({
-      title: '登录成功',
-      description: '欢迎回来！',
-    })
-  }
 
   // 使用 React Query 获取最近会话（自动缓存，5分钟内不会重复请求）
   // 只有登录后才发起请求
@@ -219,6 +206,13 @@ export default function BauhausSidebar({
   const handleNewChat = () => {
     // 防抖：防止快速重复点击
     if (isCreatingNewChat) return
+    
+    // 🔐 未登录时弹出登录弹窗
+    if (!isAuthenticated) {
+      setLoginDialogOpen(true)
+      return
+    }
+    
     setIsCreatingNewChat(true)
 
     // 检查当前是否在聊天页面且有未发送的消息
@@ -615,7 +609,7 @@ export default function BauhausSidebar({
           // 未登录状态 - 显示登录按钮
           isCollapsed ? (
             <button
-              onClick={() => setIsLoginDialogOpen(true)}
+              onClick={() => setLoginDialogOpen(true)}
               className="p-2 border-2 border-[var(--border-color)] bg-[var(--accent-hover)] text-black shadow-[var(--shadow-color)_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_3px_3px_0_0] transition-all"
               title="登录"
             >
@@ -625,7 +619,7 @@ export default function BauhausSidebar({
             <div className="relative group w-[230px] mx-auto">
               <div className="absolute inset-0 bg-[var(--shadow-color)] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2"></div>
               <button
-                onClick={() => setIsLoginDialogOpen(true)}
+                onClick={() => setLoginDialogOpen(true)}
                 className="relative w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-[var(--border-color)] bg-[var(--accent-hover)] text-black z-10 transition-all font-bold font-mono text-sm uppercase"
               >
                 <User className="w-5 h-5" />
@@ -748,12 +742,6 @@ export default function BauhausSidebar({
         document.body
       )}
 
-      {/* 登录弹窗 - 使用现有功能 */}
-      <LoginDialog
-        open={isLoginDialogOpen}
-        onOpenChange={setIsLoginDialogOpen}
-        onSuccess={handleLoginSuccess}
-      />
     </div>
   )
 }

@@ -31,6 +31,7 @@ export interface UISliceState {
   isWaitingForApproval: boolean
   pendingPlan: Task[]
   progress: Progress | null  // 从 ExecutionStore 迁移
+  isLoginDialogOpen: boolean  // 全局登录弹窗状态
 }
 
 export interface UISliceActions {
@@ -47,6 +48,7 @@ export interface UISliceActions {
   hasRunningTasks: () => boolean
   isTaskRunning: (taskId: string) => boolean
   setProgress: (progress: Progress | null) => void  // 新增
+  setLoginDialogOpen: (isOpen: boolean) => void  // 控制登录弹窗
 }
 
 export type UISlice = UISliceState & UISliceActions
@@ -65,6 +67,7 @@ export const createUISlice = (set: any, get: any): UISlice => ({
   isWaitingForApproval: false,
   pendingPlan: [],
   progress: null,  // 新增
+  isLoginDialogOpen: false,  // 登录弹窗初始关闭
 
   // Actions
 
@@ -149,6 +152,13 @@ export const createUISlice = (set: any, get: any): UISlice => ({
   setProgress: (progress: Progress | null) => {
     set((state: any) => {
       state.progress = progress
+    })
+  },
+
+  // 控制登录弹窗开关
+  setLoginDialogOpen: (isOpen: boolean) => {
+    set((state: any) => {
+      state.isLoginDialogOpen = isOpen
     })
   }
 })
