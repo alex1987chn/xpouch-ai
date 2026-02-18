@@ -8,9 +8,14 @@ import { MobileOverlay } from '@/components/common'
 import { SettingsDialog } from '@/components/settings/SettingsDialog'
 import { PersonalSettingsDialog } from '@/components/settings/PersonalSettingsDialog'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
+import LoginDialog from '@/components/auth/LoginDialog'
 import { useApp } from '@/providers/AppProvider'
 import { useTheme } from '@/hooks/useTheme'
+import { useTaskStore } from '@/store/taskStore'
+import { useChatStore } from '@/store/chatStore'
+import { useQueryClient } from '@tanstack/react-query'
 import { logger } from '@/utils/logger'
+import { useToast } from '@/components/ui/use-toast'
 import { Z_INDEX } from '@/constants/zIndex'
 
 /**
@@ -61,6 +66,33 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
   const { sidebar, dialogs } = useApp()
   const { theme, toggleTheme } = useTheme()
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  
+  // 全局登录弹窗状态
+  const isLoginDialogOpen = useTaskStore(state => state.isLoginDialogOpen)
+  const setLoginDialogOpen = useTaskStore(state => state.setLoginDialogOpen)
+  
+  // 登录成功回调：刷新所有查询缓存，并触发消息重发
+  const handleLoginSuccess = () => {
+    logger.info('[AppLayout] 登录成功，刷新数据')
+    queryClient.invalidateQueries()
+    
+    // 检查是否有待发送的消息
+    const { pendingMessage, setShouldRetrySend } = useChatStore.getState()
+    if (pendingMessage) {
+      logger.info('[AppLayout] 检测到待发送消息，准备导航到聊天页')
+      toast({
+        title: '登录成功',
+        description: '正在发送刚才的消息...',
+      })
+      // 导航到聊天页，携带 pendingMessage
+      const newId = crypto.randomUUID()
+      navigate(`/chat/${newId}`, { state: { startWith: pendingMessage } })
+      // 设置重试标志（ UnifiedChatPage 会处理发送）
+      setShouldRetrySend(true)
+    }
+  }
 
   // 监听全局 toggle-sidebar 事件
   useEffect(() => {
@@ -175,6 +207,13 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
         title={t('deleteAgentConfirm')}
         description={t('deleteAgentConfirmDesc')}
         itemName={dialogs.deletingAgentName}
+      />
+
+      {/* 全局登录弹窗 - 401 时自动触发 */}
+      <LoginDialog
+        open={isLoginDialogOpen}
+        onOpenChange={setLoginDialogOpen}
+        onSuccess={handleLoginSuccess}
       />
 
       {/* 主题切换按钮 - Bauhaus风格圆形按钮 */}

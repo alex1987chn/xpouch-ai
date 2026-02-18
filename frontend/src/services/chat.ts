@@ -134,6 +134,7 @@ export async function sendMessage(
     let fullContent = ''
     let finalConversationId: string | undefined = conversationId || undefined
     let isCompleted = false
+    let retryCount = 0  // 🔥 重连计数器
     
     // 🔥 心跳检测：跟踪最后活动时间
     let lastActivityTime = Date.now()
@@ -276,7 +277,29 @@ export async function sendMessage(
           safeReject(new Error('请求已取消'))
           return
         }
-        logger.error('[chat.ts] SSE 错误:', err)
+        
+        // 🔐 检测 401 错误，触发登录弹窗
+        const status = (err as any)?.status || (err as any)?.statusCode
+        if (status === 401) {
+          logger.warn('[chat.ts] SSE 收到 401 错误，触发登录弹窗')
+          import('@/store/taskStore').then(({ useTaskStore }) => {
+            useTaskStore.getState().setLoginDialogOpen(true)
+          })
+          safeReject(err)
+          return
+        }
+        
+        // 🔥 重连机制：检查重试次数
+        if (retryCount < SSE_MAX_RETRIES) {
+          retryCount++
+          const delay = SSE_RETRY_BASE_DELAY * Math.pow(2, retryCount - 1)
+          logger.warn(`[chat.ts] SSE 连接错误，${delay}ms 后第 ${retryCount} 次重连...`)
+          
+          // 返回以继续重连
+          return
+        }
+        
+        logger.error('[chat.ts] SSE 错误，超过最大重试次数:', err)
         safeReject(new Error('连接异常，请重试'))
       },
 

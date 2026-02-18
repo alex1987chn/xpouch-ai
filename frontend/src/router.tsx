@@ -5,7 +5,7 @@
 
 import { lazy, Suspense, useState, useEffect } from 'react'
 import { createBrowserRouter, useNavigate, Navigate, Outlet, useParams } from 'react-router-dom'
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, QueryCache, useQueryClient } from '@tanstack/react-query'
 import AppLayout from './components/AppLayout'
 import AdminRoute from './components/AdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -302,14 +302,37 @@ export const router = createBrowserRouter([
   }
 ])
 
+// 🔐 全局 401 错误处理 - 触发登录弹窗
+const handleGlobalError = (error: any) => {
+  if (error?.status === 401) {
+    // 动态导入避免循环依赖
+    import('@/store/taskStore').then(({ useTaskStore }) => {
+      useTaskStore.getState().setLoginDialogOpen(true)
+    })
+  }
+}
+
 // 创建 QueryClient 实例
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5分钟缓存
       refetchOnWindowFocus: false,
+      // 全局错误处理
+      retry: (failureCount, error: any) => {
+        // 401 不重试
+        if (error?.status === 401) return false
+        return failureCount < 2
+      },
+    },
+    mutations: {
+      // Mutation 全局错误处理
+      onError: handleGlobalError,
     },
   },
+  queryCache: new QueryCache({
+    onError: handleGlobalError,
+  }),
 })
 
 // 导出Provider包装组件（供main.tsx使用）

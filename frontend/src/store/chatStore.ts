@@ -41,6 +41,10 @@ interface ChatState {
   
   // 🔥 性能优化：缓存最后一条助手消息 ID
   lastAssistantMessageId: string | null
+  
+  // 🔐 登录后自动重发消息机制
+  pendingMessage: string | null  // 因 401 未发送成功的消息
+  shouldRetrySend: boolean       // 触发重试的标志
 }
 
 interface ChatActions {
@@ -67,6 +71,10 @@ interface ChatActions {
   // Getters
   getAllAgents: () => Agent[]
   getCurrentAgent: () => Agent | undefined
+  
+  // 🔐 登录后自动重发消息
+  setPendingMessage: (message: string | null) => void
+  setShouldRetrySend: (value: boolean) => void
 }
 
 type ChatStore = ChatState & ChatActions
@@ -86,6 +94,8 @@ export const useChatStore = create<ChatStore>()(
       inputMessage: '',
       isGenerating: false,
       lastAssistantMessageId: null,
+      pendingMessage: null,
+      shouldRetrySend: false,
 
       // ========== 智能体操作 ==========
       
@@ -179,7 +189,13 @@ export const useChatStore = create<ChatStore>()(
           }
         }
         return state.customAgents.find(a => a.id === state.selectedAgentId)
-      }
+      },
+
+      // ========== 登录后自动重发消息 ==========
+      
+      setPendingMessage: (message: string | null) => set({ pendingMessage: message }),
+      
+      setShouldRetrySend: (value: boolean) => set({ shouldRetrySend: value })
     }),
     {
       name: 'xpouch-chat-store',
