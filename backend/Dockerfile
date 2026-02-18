@@ -7,9 +7,11 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # 安装 uv（推荐的 Python 包管理器）
-RUN apt-get update && apt-get install -y curl && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
     curl -LsSf https://astral.sh/uv/install.sh | sh && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get purge -y --auto-remove curl && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /tmp/*
 
 ENV PATH="/root/.local/bin:${PATH}"
 
