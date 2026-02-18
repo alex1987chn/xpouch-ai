@@ -185,8 +185,9 @@ export const useUserStore = create<UserState>()(
           return
         }
 
-        // 数据恢复成功后，如果有有效的 accessToken，自动获取最新用户信息
-        if (state?.accessToken && state?.isAuthenticated) {
+        // 数据恢复成功后，如果有有效的 accessToken 且 isAuthenticated 为 true，才自动获取用户信息
+        // 注意：需要同时检查 isAuthenticated，避免未登录时发起请求
+        if (state?.accessToken && state?.isAuthenticated === true) {
           // 延迟执行，确保 store 完全初始化
           setTimeout(() => {
             if (state?.fetchUser) {

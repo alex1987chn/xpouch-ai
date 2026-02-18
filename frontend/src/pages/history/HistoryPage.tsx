@@ -10,6 +10,7 @@ import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { useApp } from '@/providers/AppProvider'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { useChatHistoryQuery, useDeleteConversationMutation } from '@/hooks/queries'
+import { useUserStore } from '@/store/userStore'
 
 interface HistoryPageProps {
   onSelectConversation: (conversation: Conversation) => void
@@ -21,8 +22,11 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
   const [searchQuery, setSearchQuery] = useState('')
   const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
 
-  // 使用 React Query 获取历史记录
-  const { data: conversations = [], isLoading: loading } = useChatHistoryQuery()
+  // 获取登录状态
+  const isAuthenticated = useUserStore(state => state.isAuthenticated)
+
+  // 使用 React Query 获取历史记录（只有登录后才发起请求）
+  const { data: conversations = [], isLoading: loading } = useChatHistoryQuery({ enabled: isAuthenticated })
 
   // 使用 React Query Mutation 删除会话
   const deleteMutation = useDeleteConversationMutation()

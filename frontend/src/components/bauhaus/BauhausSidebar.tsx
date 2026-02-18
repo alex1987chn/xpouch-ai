@@ -97,7 +97,8 @@ export default function BauhausSidebar({
   }
 
   // 使用 React Query 获取最近会话（自动缓存，5分钟内不会重复请求）
-  const { data: recentConversations = [] } = useRecentConversationsQuery(20)
+  // 只有登录后才发起请求
+  const { data: recentConversations = [] } = useRecentConversationsQuery(20, { enabled: isAuthenticated })
 
   // 判断当前页面
   const isOnHome = location.pathname === '/'

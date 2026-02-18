@@ -12,6 +12,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { Toaster } from './components/ui/toaster'
 import { useChatStore } from './store/chatStore'
 import { useTaskStore } from './store/taskStore'
+import { useUserStore } from './store/userStore'
 import { createCustomAgent, updateCustomAgent, getAllAgents } from './services/api'
 import { normalizeAgentId } from '@/utils/agentUtils'
 import { logger } from '@/utils/logger'
@@ -135,10 +136,17 @@ const EditAgentPageWrapper = () => {
   const { id } = useParams()
   const queryClient = useQueryClient()
   const setCustomAgents = useChatStore(state => state.setCustomAgents)
+  const isAuthenticated = useUserStore(state => state.isAuthenticated)
   const [agentData, setAgentData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // 未登录时重定向到首页
+    if (!isAuthenticated) {
+      navigate('/')
+      return
+    }
+    
     const loadAgent = async () => {
       if (!id) {
         navigate('/')
@@ -168,7 +176,7 @@ const EditAgentPageWrapper = () => {
       }
     }
     loadAgent()
-  }, [id, navigate])
+  }, [id, navigate, isAuthenticated])
 
   const handleSave = async (agent: any) => {
     if (!id) return

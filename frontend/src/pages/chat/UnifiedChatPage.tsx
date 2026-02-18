@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
+import { useUserStore } from '@/store/userStore'
 import { useChat } from '@/hooks/useChat'
 import { useSessionRestore } from '@/hooks/useSessionRestore'
 import { useApp } from '@/providers/AppProvider'
@@ -55,9 +56,15 @@ export default function UnifiedChatPage() {
   const [loadedAgent, setLoadedAgent] = useState<any>(null)
   const [isLoadingAgent, setIsLoadingAgent] = useState(false)
 
+  // 获取登录状态
+  const isAuthenticated = useUserStore(state => state.isAuthenticated)
+
   // 异步加载自定义 Agent
   useEffect(() => {
     if (normalizedAgentId === SYSTEM_AGENTS.DEFAULT_CHAT) return
+    
+    // 未登录时不发起请求
+    if (!isAuthenticated) return
     
     // 先在 store 中查找
     const customAgents = useChatStore.getState().customAgents
@@ -100,7 +107,7 @@ export default function UnifiedChatPage() {
     }
     
     loadAgent()
-  }, [normalizedAgentId])
+  }, [normalizedAgentId, isAuthenticated])
 
   // 计算当前智能体 (SDUI: 直接从 URL 获取 agentId，不依赖 Store)
   const currentAgent = useMemo(() => {
