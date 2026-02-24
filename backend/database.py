@@ -4,6 +4,7 @@ from models import (
     Thread, Message, User, CustomAgent, SystemExpert,
     SubTask, TaskSession, UserMemory
 )
+from models.mcp import MCPServer  # 🔥 MCP 服务器模型
 import os
 from dotenv import load_dotenv
 from pathlib import Path
