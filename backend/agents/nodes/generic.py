@@ -57,6 +57,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
+from tools import ALL_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集
 
 from agents.state import AgentState
 from agents.services.expert_manager import get_expert_config_cached
@@ -67,7 +68,7 @@ from tools import ALL_TOOLS  # 🔥 导入工具集
 from utils.prompt_utils import enhance_system_prompt_with_tools  # v3.6: 提取到工具函数
 
 
-async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]:
+async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = None, llm=None) -> Dict[str, Any]:
     """
     通用专家执行节点
 
@@ -273,8 +274,16 @@ async def generic_worker_node(state: Dict[str, Any], llm=None) -> Dict[str, Any]
             enable_tools = os.getenv("ENABLE_TOOL_CALLING", "true").lower() == "true"
             if enable_tools:
                 try:
-                    llm_to_use = llm_with_config.bind_tools(ALL_TOOLS)
-                    print(f"[GenericWorker] 🔧 工具已绑定: {len(ALL_TOOLS)} 个工具")
+                    # 🔥 MCP: 从 config 获取动态注入的工具
+                    mcp_tools = []
+                    if config and hasattr(config, 'get'):
+                        mcp_tools = config.get('configurable', {}).get('mcp_tools', [])
+                    
+                    # 🔥 MCP: 合并基础工具和动态 MCP 工具
+                    runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
+                    
+                    llm_to_use = llm_with_config.bind_tools(runtime_tools)
+                    print(f"[GenericWorker] 🔧 工具已绑定: {len(runtime_tools)} 个工具 (基础: {len(BASE_TOOLS)}, MCP: {len(mcp_tools)})")
                 except Exception as e:
                     print(f"[GenericWorker] ⚠️ 工具绑定失败（模型可能不支持工具调用）: {e}")
                     llm_to_use = llm_with_config

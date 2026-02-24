@@ -39,5 +39,8 @@ export * from './chat'
 // 管理员服务 (Admin)
 export * from './admin'
 
+// MCP 服务 (MCP Server Registry)
+export * from './mcp'
+
 // 通用工具（按需导出）
 export { getHeaders, buildUrl, handleResponse } from './common'

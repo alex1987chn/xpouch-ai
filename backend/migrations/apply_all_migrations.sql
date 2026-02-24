@@ -699,3 +699,27 @@ BEGIN
     RAISE NOTICE '========================================';
     RAISE NOTICE 'v3.1 System Core Experts migration completed successfully!';
 END $$;
+
+
+-- ============================================================================
+-- 13. MCP Server Registry Table (v3.2)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS mcp_servers (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description VARCHAR(500),
+    sse_url VARCHAR(500) NOT NULL UNIQUE,
+    is_active BOOLEAN DEFAULT TRUE,
+    icon VARCHAR(255),
+    connection_status VARCHAR(20) DEFAULT 'unknown',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_mcp_servers_name ON mcp_servers(name);
+CREATE INDEX IF NOT EXISTS idx_mcp_servers_created_at ON mcp_servers(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mcp_servers_is_active ON mcp_servers(is_active);
+
+COMMENT ON TABLE mcp_servers IS 'MCP Server Registry';
+COMMENT ON COLUMN mcp_servers.sse_url IS 'SSE endpoint URL';
+COMMENT ON COLUMN mcp_servers.connection_status IS 'Status: unknown/connected/error';

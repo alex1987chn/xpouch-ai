@@ -22,7 +22,7 @@ import { agentsKeys } from '@/hooks/queries'
 // 路由懒加载 - 代码分割优化
 const UnifiedChatPage = lazy(() => import('./pages/chat/UnifiedChatPage'))
 const HistoryPage = lazy(() => import('./pages/history/HistoryPage'))
-const KnowledgeBasePage = lazy(() => import('./pages/knowledge/KnowledgeBasePage'))
+const LibraryPage = lazy(() => import('./pages/library/LibraryPage'))
 const CreateAgentPage = lazy(() => import('./pages/agent/CreateAgentPage'))
 const ExpertAdminPage = lazy(() => import('./pages/admin/ExpertAdminPage'))
 
@@ -250,10 +250,10 @@ export const router = createBrowserRouter([
         element: <HomePage />
       },
       {
-        path: 'knowledge',
+        path: 'library',
         element: (
           <Suspense fallback={<LoadingFallback />}>
-            <KnowledgeBasePage />
+            <LibraryPage />
           </Suspense>
         )
       },

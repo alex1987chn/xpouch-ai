@@ -6,7 +6,7 @@ export type Language = 'zh' | 'en' | 'ja'
 // 更新 TranslationKey 类型定义以包含所有键
 export type TranslationKey =
   // Navigation
-  | 'newChat' | 'draftSaved' | 'draftRestored' | 'history' | 'knowledgeBase' | 'settings' | 'home' | 'recentChats'
+  | 'newChat' | 'draftSaved' | 'draftRestored' | 'history' | 'knowledgeBase' | 'library' | 'workshop' | 'settings' | 'home' | 'recentChats'
   | 'navDashboard' | 'navExperts' | 'memoryDump' | 'noDataStream'
   // Home
   | 'greeting' | 'slogan' | 'placeholder' | 'featuredAgents' | 'myAgents' | 'createAgent' | 'editAgent' | 'backToChat'
@@ -35,9 +35,15 @@ export type TranslationKey =
   | 'systemPrompt' | 'systemPromptPlaceholder' | 'systemPromptHint' | 'required'
   // Chat
   | 'startConversation' | 'initConversation' | 'analyzingRequestStream'
-  // Knowledge Base
+  // Knowledge Base & MCP
   | 'newKnowledgeBase' | 'searchKnowledge' | 'documents' | 'uploadDocument'
   | 'noKnowledgeFound' | 'noKnowledgeContent' | 'createFirstKnowledge'
+  | 'searchMCPServers' | 'noMCPServers' | 'noMatchingServers' | 'clickAddToConnect'
+  | 'mcpTools' | 'addModule' | 'confirmDeleteMCPServer' | 'removed' | 'deleteFailed'
+  | 'toggleFailed' | 'noDescription' | 'disable' | 'enable' | 'moduleName' | 'sseUrl'
+  | 'sseUrlHint' | 'connecting' | 'initializeModule' | 'mcpServerAdded' | 'failedToAddServer'
+  | 'validationError' | 'nameAndUrlRequired' | 'matching' | 'knowledgeBaseDescription'
+  | 'add' | 'deleted' | 'error' | 'success' | 'optional' | 'serverNamePlaceholder' | 'availableTools' | 'noToolsAvailable' | 'serverNotConnected' | 'serverDisabled' | 'failedToLoadTools'
   // User Menu
   | 'currentPlan' | 'logout'
   // Input & Chat

@@ -23,8 +23,11 @@ from datetime import datetime
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session
 from langchain_core.messages import BaseMessage
+from langchain_mcp_adapters.client import MultiServerMCPClient  # 🔥 MCP: SSE 客户端
+from contextlib import AsyncExitStack  # 🔥 MCP: 异步上下文管理器
 
-from models import CustomAgent, Thread
+from models import CustomAgent, Thread, MCPServer  # 🔥 MCP: 添加 MCP 模型
+from database import get_session  # 🔥 MCP: 数据库会话
 from utils.llm_factory import get_llm_instance
 from utils.exceptions import AppError
 from utils.logger import logger
@@ -47,6 +50,46 @@ class StreamService:
             from .session_service import ChatSessionService
             self._session_service = ChatSessionService(self.db)
         return self._session_service
+    
+    # ============================================================================
+    # 🔥 MCP 工具获取 (v3.2)
+    # ============================================================================
+    
+    async def _get_mcp_tools(self) -> List[Any]:
+        """
+        获取所有激活的 MCP 服务器工具
+        
+        Returns:
+            List[Tool]: MCP 工具列表
+        """
+        tools = []
+        try:
+            with get_session() as session:
+                active_servers = session.exec(
+                    select(MCPServer).where(MCPServer.is_active == True)
+                ).all()
+                
+                if not active_servers:
+                    return tools
+                
+                # 构建 MCP 客户端配置
+                mcp_config = {}
+                for server in active_servers:
+                    mcp_config[server.name] = {
+                        "url": str(server.sse_url),
+                        "transport": "sse"
+                    }
+                
+                # 🔥 langchain-mcp-adapters 0.1.0+ 直接使用实例化
+                client = MultiServerMCPClient(mcp_config)
+                tools = await client.get_tools()
+                logger.info(f"[MCP] 已加载 {len(tools)} 个 MCP 工具 from {len(active_servers)} 个服务器")
+                    
+        except Exception as e:
+            logger.error(f"[MCP] 获取 MCP 工具失败: {e}")
+            # MCP 工具加载失败不影响主流程
+            
+        return tools
     
     # ============================================================================
     # 自定义智能体流式处理
@@ -294,6 +337,9 @@ class StreamService:
             collected_task_list = []
             expert_artifacts = {}
             
+            # 🔥 MCP: 获取动态工具
+            mcp_tools = await self._get_mcp_tools()
+            
             async with get_db_connection() as conn:
                 checkpointer = AsyncPostgresSaver(conn)
                 graph = create_smart_router_workflow(checkpointer=checkpointer)
@@ -304,7 +350,8 @@ class StreamService:
                     "recursion_limit": 100,
                     "configurable": {
                         "thread_id": thread_id,
-                        "stream_queue": stream_queue
+                        "stream_queue": stream_queue,
+                        "mcp_tools": mcp_tools  # 🔥 MCP: 注入动态工具
                     }
                 }
                 
@@ -432,13 +479,19 @@ class StreamService:
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
         from utils.db import get_db_connection
         
+        # 🔥 MCP: 获取动态工具
+        mcp_tools = await self._get_mcp_tools()
+        
         async with get_db_connection() as conn:
             checkpointer = AsyncPostgresSaver(conn)
             graph = create_smart_router_workflow(checkpointer=checkpointer)
             
             config = {
                 "recursion_limit": 100,
-                "configurable": {"thread_id": thread_id}
+                "configurable": {
+                    "thread_id": thread_id,
+                    "mcp_tools": mcp_tools  # 🔥 MCP: 注入动态工具
+                }
             }
             
             await graph.aupdate_state(config, initial_state)
@@ -633,6 +686,9 @@ class StreamService:
         from utils.db import get_db_connection
         from crud.task_session import create_artifacts_batch
         
+        # 🔥 MCP: 获取动态工具
+        mcp_tools = await self._get_mcp_tools()
+        
         async with get_db_connection() as conn:
             checkpointer = AsyncPostgresSaver(conn)
             graph = create_smart_router_workflow(checkpointer=checkpointer)
@@ -641,7 +697,8 @@ class StreamService:
                 "recursion_limit": 100,
                 "configurable": {
                     "thread_id": thread_id,
-                    "stream_queue": realtime_queue
+                    "stream_queue": realtime_queue,
+                    "mcp_tools": mcp_tools  # 🔥 MCP: 注入动态工具
                 }
             }
             
