@@ -46,7 +46,7 @@ from utils.exceptions import (
 # 路由导入
 from auth import router as auth_router
 from api.admin import router as admin_router
-from routers import chat, agents, system
+from routers import chat, agents, system, mcp
 
 
 # ============================================================================
@@ -127,6 +127,7 @@ app.include_router(admin_router)
 app.include_router(chat.router)
 app.include_router(agents.router)
 app.include_router(system.router)
+app.include_router(mcp.router)
 
 
 # ============================================================================

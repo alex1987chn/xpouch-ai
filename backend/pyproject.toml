@@ -27,4 +27,6 @@ dependencies = [
     "psycopg[binary]>=3.3.0,<4.0.0",
     "alembic>=1.13.0,<2.0.0",
     "pgvector>=0.3.0,<1.0.0",  # 🔥 新增：pgvector Python 客户端，支持向量操作
+    "mcp>=1.26.0",
+    "langchain-mcp-adapters>=0.2.1",
 ]
