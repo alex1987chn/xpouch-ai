@@ -555,11 +555,13 @@ class LangSmithConfig(BaseModel):
 
 # 🔥 导入记忆模型（放在最后避免循环导入）
 from models.memory import UserMemory
+# 🔥 MCP: 导入 MCP 服务器模型
+from models.mcp import MCPServer
 
 __all__ = [
     "UserRole", "ConversationType", "ExpertType", "TaskStatus", "ExecutionMode",
     "User", "Thread", "Message", "SystemExpert", "CustomAgent",
-    "SubTask", "TaskSession", "Artifact", "UserMemory",
+    "SubTask", "TaskSession", "Artifact", "UserMemory", "MCPServer",
     "MessageResponse", "ThreadResponse",
     "CustomAgentCreate", "CustomAgentUpdate", "CustomAgentResponse",
     "SubTaskCreate", "SubTaskUpdate", "SubTaskResponse",

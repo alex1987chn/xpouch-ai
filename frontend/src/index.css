@@ -21,6 +21,19 @@
     --text-inverted: #ffffff;
     --shadow-color: #0f0f0f;
     --accent-hover: #facc15;
+    
+    /* Bauhaus Design System - 映射到标准变量 */
+    --bauhaus-bg: var(--bg-page);
+    --bauhaus-card: var(--bg-card);
+    --bauhaus-panel: var(--bg-panel);
+    --bauhaus-border: var(--border-color);
+    --bauhaus-text: var(--text-primary);
+    --bauhaus-muted: var(--text-muted);
+    --bauhaus-shadow: var(--shadow-color);
+    --bauhaus-input-bg: var(--bg-card);
+    --bauhaus-yellow: #facc15;
+    --bauhaus-blue: #2563eb;
+    --bauhaus-red: #ef4444;
 
     /* 网格和Logo */
     --grid-pattern: radial-gradient(#aaa 1.5px, transparent 1.5px);
@@ -65,6 +78,19 @@
     --text-inverted: #0a0a0a;
     --shadow-color: #3b82f6;
     --accent-hover: #fbbf24;
+    
+    /* Bauhaus Design System - 映射到标准变量 */
+    --bauhaus-bg: var(--bg-page);
+    --bauhaus-card: var(--bg-card);
+    --bauhaus-panel: var(--bg-panel);
+    --bauhaus-border: var(--border-color);
+    --bauhaus-text: var(--text-primary);
+    --bauhaus-muted: var(--text-muted);
+    --bauhaus-shadow: var(--shadow-color);
+    --bauhaus-input-bg: var(--bg-card);
+    --bauhaus-yellow: #fbbf24;
+    --bauhaus-blue: #3b82f6;
+    --bauhaus-red: #ef4444;
 
     /* 网格和Logo */
     --grid-pattern: radial-gradient(#333 1.5px, transparent 1.5px);

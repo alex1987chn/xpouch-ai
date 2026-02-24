@@ -325,6 +325,17 @@ export function apiMessageToMessage(apiMessage: ApiMessage): Message {
   }
 }
 
+// ============================================
+// MCP 服务器相关类型
+// ============================================
+
+export type {
+  MCPServer,
+  MCPServerCreate,
+  MCPServerUpdate,
+  MCPConnectionStatus
+} from './mcp'
+
 /**
  * 将数据库消息转换为 UI 消息
  */

@@ -34,7 +34,10 @@ from database import create_db_and_tables, engine, get_session
 from config import init_langchain_tracing, validate_config
 from models import User, TaskSession, SubTask, SystemExpert
 from constants import SYSTEM_AGENT_DEFAULT_CHAT
-from agents.graph import commander_graph
+from agents.graph import commander_graph, create_smart_router_workflow
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from models.mcp import MCPServer
+from database import get_session
 from agents.nodes.generic import generic_worker_node
 from agents.services.expert_manager import get_expert_config_cached
 from utils.llm_factory import get_llm_instance
@@ -330,12 +333,30 @@ async def chat_invoke_endpoint(
                 "final_response": ""
             }
 
-            final_state = await commander_graph.ainvoke(
+            # 🔥 MCP: 获取动态工具
+            mcp_tools = []
+            try:
+                with get_session() as db_session:
+                    active_servers = db_session.query(MCPServer).filter(MCPServer.is_active == True).all()
+                    if active_servers:
+                        mcp_config = {s.name: {"url": str(s.sse_url), "transport": "sse"} for s in active_servers}
+                        # 🔥 langchain-mcp-adapters 0.1.0+ 直接使用实例化
+                        client = MultiServerMCPClient(mcp_config)
+                        mcp_tools = await client.get_tools()
+            except Exception:
+                # MCP 工具加载失败不影响主流程
+                pass
+            
+            # 创建工作流实例（支持动态工具）
+            graph = create_smart_router_workflow()
+            
+            final_state = await graph.ainvoke(
                 initial_state,
                 config={
-                    "recursion_limit": 100,  # 🔥 设置递归限制（放在顶层！）
+                    "recursion_limit": 100,
                     "configurable": {
-                        "thread_id": thread_id
+                        "thread_id": thread_id,
+                        "mcp_tools": mcp_tools  # 🔥 MCP: 注入动态工具
                     }
                 }
             )

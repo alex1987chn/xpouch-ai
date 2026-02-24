@@ -80,6 +80,12 @@ export async function handleResponse<T>(response: Response, errorMessage: string
     error.status = response.status
     throw error
   }
+  
+  // 204 No Content 或空响应体，返回 undefined
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return undefined as T
+  }
+  
   return response.json()
 }
 

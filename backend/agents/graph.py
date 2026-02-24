@@ -56,6 +56,7 @@ from typing import Dict, Any, Optional
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, ToolMessage
 from langgraph.prebuilt import ToolNode  # 🔥 新增：工具执行节点
+from langchain_core.runnables import RunnableConfig  # 🔥 MCP: 用于动态工具注入
 from langgraph.checkpoint.base import BaseCheckpointSaver  # 🔥 新增：Checkpointer 基类
 from dotenv import load_dotenv
 import pathlib
@@ -76,7 +77,7 @@ from agents.nodes import (
     aggregator_node,
 )
 from agents.state import AgentState
-from tools import ALL_TOOLS  # 🔥 新增：导入工具集
+from tools import ALL_TOOLS as BASE_TOOLS  # 🔥 新增：导入基础工具集
 
 # LangSmith 链路追踪
 env_path = pathlib.Path(__file__).parent.parent / ".env"
@@ -227,9 +228,19 @@ def create_smart_router_workflow(checkpointer: Optional[BaseCheckpointSaver] = N
     workflow.add_node("generic", generic_worker_node)  # 新增：通用专家执行节点
     workflow.add_node("aggregator", aggregator_node)
 
-    # 🔥 新增：工具执行节点
-    tool_node = ToolNode(ALL_TOOLS)
-    workflow.add_node("tools", tool_node)
+    # 🔥 MCP: 动态工具执行节点
+    # 使用函数包装，支持从 config 获取动态 MCP 工具
+    async def dynamic_tool_node(state: AgentState, config: RunnableConfig = None):
+        """动态工具节点：合并基础工具和 MCP 工具"""
+        mcp_tools = []
+        if config and hasattr(config, 'get'):
+            mcp_tools = config.get('configurable', {}).get('mcp_tools', [])
+        
+        runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
+        tool_executor = ToolNode(runtime_tools)
+        return await tool_executor.ainvoke(state, config)
+    
+    workflow.add_node("tools", dynamic_tool_node)
 
     # 设置入口：现在入口是 Router！
     workflow.set_entry_point("router")

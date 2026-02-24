@@ -1,0 +1,145 @@
+/**
+ * MCP 服务器列表组件
+ * 
+ * 与 HistoryPage 风格保持一致
+ * 手风琴模式：同时只能展开一个卡片
+ */
+
+import { useState } from 'react'
+import { Server, Plus } from 'lucide-react'
+import { useMCPServers } from '@/hooks/queries/useMCPQuery'
+import { BauhausSearchInput } from '@/components/ui/bauhaus-input'
+import MCPCard from './components/MCPCard'
+import { AddMCPDialog } from './components/AddMCPDialog'
+import { useTranslation } from '@/i18n'
+import { cn } from '@/lib/utils'
+
+interface MCPListProps {
+  searchQuery?: string
+  onSearchChange?: (value: string) => void
+}
+
+export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
+  const { t } = useTranslation()
+  const { data: servers, isLoading, isError } = useMCPServers()
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  // 🔥 手风琴模式：记录当前展开的服务器 ID
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  
+  // 是否使用外部搜索（由父组件控制）
+  const isExternalSearch = searchQuery !== undefined
+  const effectiveSearchQuery = isExternalSearch ? searchQuery : ''
+
+  // 过滤
+  const filteredServers = servers?.filter(server => 
+    effectiveSearchQuery.trim() === '' || 
+    server.name.toLowerCase().includes(effectiveSearchQuery.toLowerCase())
+  ) || []
+
+  // 切换展开状态（手风琴模式）
+  const handleToggleExpand = (serverId: string) => {
+    setExpandedId(prev => prev === serverId ? null : serverId)
+  }
+
+  // 加载状态
+  if (isLoading) {
+    return (
+      <div className="text-center py-20 font-mono text-sm text-bauhaus-muted uppercase">
+        {t('loading') || 'Loading...'}
+      </div>
+    )
+  }
+
+  // 错误状态
+  if (isError) {
+    return (
+      <div className="text-center py-20 font-mono text-sm text-bauhaus-red uppercase">
+        {t('loadFailed') || 'Failed to load'}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* 工具栏：搜索 + 添加按钮 */}
+      <div className="flex items-center gap-3">
+        {/* 搜索框 - 仅在独立使用时显示 */}
+        {!isExternalSearch && (
+          <BauhausSearchInput
+            value={effectiveSearchQuery}
+            onChange={(value) => onSearchChange?.(value)}
+            placeholder={t('searchMCPServers') || 'Search MCP servers...'}
+            className="flex-1"
+          />
+        )}
+        
+        {/* 添加按钮 */}
+        <button
+          onClick={() => setIsAddOpen(true)}
+          className={cn(
+            "h-11 px-4 flex items-center gap-2",
+            "bg-bauhaus-yellow text-bauhaus-border font-mono text-xs font-bold uppercase",
+            "border-2 border-bauhaus-border shadow-hard",
+            "hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-hover",
+            "active:translate-x-0 active:translate-y-0 active:shadow-hard",
+            "transition-all"
+          )}
+        >
+          <Plus className="w-4 h-4" />
+          <span>{t('add') || 'ADD'}</span>
+        </button>
+      </div>
+
+      {/* 统计 */}
+      {!isLoading && filteredServers.length > 0 && (
+        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-bauhaus-muted">
+          <div className="w-1.5 h-1.5 bg-bauhaus-yellow" />
+          <span>
+            {effectiveSearchQuery
+              ? `${filteredServers.length} ${t('matching') || 'matching'}`
+              : `${servers?.length || 0} ${t('totalItems') || 'total'}`
+            }
+          </span>
+        </div>
+      )}
+
+      {/* 列表 */}
+      {filteredServers.length > 0 ? (
+        <div className="space-y-2">
+          {filteredServers.map((server) => (
+            <MCPCard 
+              key={server.id} 
+              server={server} 
+              isExpanded={expandedId === server.id}
+              onToggleExpand={() => handleToggleExpand(server.id)}
+            />
+          ))}
+        </div>
+      ) : (
+        /* 空状态 - 与 HistoryPage 一致 */
+        <div className="text-center py-20">
+          <div className="w-16 h-16 mx-auto mb-4 border-2 border-bauhaus-border bg-bauhaus-bg flex items-center justify-center">
+            <Server className="w-8 h-8 text-bauhaus-muted" />
+          </div>
+          <h3 className="font-mono text-base font-bold text-bauhaus-text uppercase mb-2">
+            {effectiveSearchQuery
+              ? t('noMatchingServers') || 'No matching servers'
+              : t('noMCPServers') || 'No MCP servers'
+            }
+          </h3>
+          <p className="font-mono text-xs text-bauhaus-muted uppercase">
+            {effectiveSearchQuery
+              ? t('tryOtherKeywords') || 'Try other keywords'
+              : t('clickAddToConnect') || 'Click ADD to connect an MCP server'
+            }
+          </p>
+        </div>
+      )}
+
+      {/* 添加弹窗 */}
+      <AddMCPDialog isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+    </div>
+  )
+}
+
+export default MCPList

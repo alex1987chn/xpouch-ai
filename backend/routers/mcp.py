@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/mcp", tags=["mcp"])
 # 辅助函数
 # ============================================================================
 
-async def test_mcp_connection(sse_url: str) -> bool:
+async def test_mcp_connection(sse_url: str) -> tuple[bool, str]:
     """
     测试 MCP SSE 服务器连接
     
@@ -39,30 +39,26 @@ async def test_mcp_connection(sse_url: str) -> bool:
         sse_url: SSE 连接地址
         
     Returns:
-        bool: 连接是否成功
+        tuple[bool, str]: (是否成功, 错误信息)
     """
     try:
-        # 使用 MultiServerMCPClient 测试连接
-        # 设置超时 10 秒，避免长时间阻塞
-        # 🔥 适配 langchain-mcp-adapters 0.1.0+ API
+        # 🔥 langchain-mcp-adapters 0.1.0+ 直接使用实例化
         client = MultiServerMCPClient(
             {
                 "test_server": {
-                    "transport": "sse",
                     "url": sse_url,
-                    "timeout": 10,
+                    "transport": "sse",
                 }
             }
         )
-        
         # 尝试获取工具列表验证连接
-        tools = await client.get_tools()
+        await client.get_tools()
         # 只要能连上，不管有没有工具都算成功
-        return True
+        return True, ""
             
     except Exception as e:
         # 连接失败
-        return False
+        return False, str(e)
 
 
 # ============================================================================
@@ -87,12 +83,12 @@ async def create_mcp_server(
     3. 连接失败：抛出 HTTP 400 错误
     """
     # 🔌 通电测试
-    is_connected = await test_mcp_connection(server_data.sse_url)
+    is_connected, error_msg = await test_mcp_connection(server_data.sse_url)
     
     if not is_connected:
         raise ValidationError(
-            message="MCP 服务器连接测试失败，请检查 SSE URL 是否正确",
-            details={"sse_url": server_data.sse_url}
+            message=f"MCP 服务器连接测试失败: {error_msg}",
+            details={"sse_url": server_data.sse_url, "error": error_msg}
         )
     
     # 检查 URL 是否已存在（虽然数据库有 unique 约束，但提前检查可以给更好的错误提示）
@@ -183,11 +179,11 @@ async def update_mcp_server(
             )
         
         # 重新通电测试
-        is_connected = await test_mcp_connection(update_data.sse_url)
+        is_connected, error_msg = await test_mcp_connection(update_data.sse_url)
         if not is_connected:
             raise ValidationError(
-                message="新地址连接测试失败",
-                details={"sse_url": update_data.sse_url}
+                message=f"新地址连接测试失败: {error_msg}",
+                details={"sse_url": update_data.sse_url, "error": error_msg}
             )
         
         server.sse_url = update_data.sse_url
@@ -234,3 +230,50 @@ async def delete_mcp_server(
     session.commit()
     
     return None
+
+
+@router.get(
+    "/servers/{server_id}/tools",
+    response_model=List[dict]
+)
+async def get_mcp_server_tools(
+    server_id: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    获取 MCP 服务器的工具列表
+    
+    实时连接 MCP 服务器并获取可用工具列表。
+    """
+    server = session.get(MCPServer, server_id)
+    if not server:
+        raise NotFoundError(resource="MCP 服务器")
+    
+    if not server.is_active:
+        raise ValidationError("MCP 服务器未启用")
+    
+    try:
+        # 🔥 langchain-mcp-adapters 0.1.0+ 直接使用实例化
+        client = MultiServerMCPClient(
+            {
+                server.name: {
+                    "url": str(server.sse_url),
+                    "transport": "sse",
+                }
+            }
+        )
+        tools = await client.get_tools()
+        
+        # 提取工具信息
+        tools_info = []
+        for tool in tools:
+            tools_info.append({
+                "name": getattr(tool, 'name', str(tool)),
+                "description": getattr(tool, 'description', 'No description') if hasattr(tool, 'description') else 'No description'
+            })
+        
+        return tools_info
+        
+    except Exception as e:
+        raise ValidationError(f"获取工具列表失败: {str(e)}")

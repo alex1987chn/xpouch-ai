@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Database, MessageSquare, Shield, Plus, MessageSquarePlus, User, ChevronRight, Cog, Clock, ArrowRight, Star, Plane, Crown, Globe, Lock } from 'lucide-react'
+import { Home, Library, MessageSquare, Shield, Plus, MessageSquarePlus, User, ChevronRight, Cog, Clock, ArrowRight, Star, Plane, Crown, Globe, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { The4DPocketLogo } from '@/components/bauhaus'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -89,7 +89,7 @@ export default function BauhausSidebar({
 
   // 判断当前页面
   const isOnHome = location.pathname === '/'
-  const isOnKnowledge = location.pathname === '/knowledge'
+  const isOnLibrary = location.pathname === '/library'
   const isOnHistory = location.pathname === '/history'
   const isOnAdmin = location.pathname === '/admin/experts'
 
@@ -337,17 +337,17 @@ export default function BauhausSidebar({
                 <Home className="w-4 h-4 flex-shrink-0" />
               </button>
 
-              {/* 知识库按钮 */}
+              {/* 资源工坊按钮 */}
               <button
-                onClick={() => handleMenuClick('/knowledge')}
+                onClick={() => handleMenuClick('/library')}
                 className={cn(
                   'h-9 w-9 transition-all duration-200 justify-center p-0 rounded-full border-2',
-                  isOnKnowledge
+                  isOnLibrary
                     ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
                     : 'border-[var(--border-color)] text-slate-400 hover:bg-[var(--bg-page)] hover:text-gray-700 dark:hover:text-slate-200'
                 )}
               >
-                <Database className="w-4 h-4 flex-shrink-0" />
+                <Library className="w-4 h-4 flex-shrink-0" />
               </button>
 
               {/* 历史记录按钮 */}
@@ -422,19 +422,19 @@ export default function BauhausSidebar({
                 </div>
               </button>
 
-              {/* 知识库按钮 */}
+              {/* 资源工坊按钮 */}
               <button
-                onClick={() => handleMenuClick('/knowledge')}
+                onClick={() => handleMenuClick('/library')}
                 className={cn(
                   'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2 mb-1',
-                  isOnKnowledge
+                  isOnLibrary
                     ? 'bg-[var(--accent-hover)] text-black border-[var(--border-color)] shadow-[4px_4px_0_0_var(--shadow-color)]'
                     : 'border-transparent text-[var(--text-primary)] hover:bg-[var(--bg-page)] hover:border-[var(--border-color)]'
                 )}
               >
                 <div className="flex items-center gap-3 px-3">
-                  <Database className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-mono text-xs font-bold tracking-wide uppercase">{t('knowledgeBase')}</span>
+                  <Library className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-mono text-xs font-bold tracking-wide uppercase">{t('library') || 'LIBRARY'}</span>
                 </div>
               </button>
 

@@ -28,3 +28,12 @@ export {
   agentsKeys,
   type UIAgent,
 } from './useAgentsQuery'
+
+export {
+  // MCP Queries
+  useMCPServers,
+  useCreateMCP,
+  useToggleMCP,
+  useDeleteMCP,
+  mcpKeys,
+} from './useMCPQuery'
