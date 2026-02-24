@@ -31,6 +31,7 @@ from contextlib import asynccontextmanager
 
 # 内部模块导入
 from database import create_db_and_tables, engine, get_session
+from sqlmodel import Session as SQLModelSession  # 🔥 用于非依赖注入场景
 from config import init_langchain_tracing, validate_config
 from models import User, TaskSession, SubTask, SystemExpert
 from constants import SYSTEM_AGENT_DEFAULT_CHAT
@@ -336,7 +337,7 @@ async def chat_invoke_endpoint(
             # 🔥 MCP: 获取动态工具
             mcp_tools = []
             try:
-                with get_session() as db_session:
+                with SQLModelSession(engine) as db_session:
                     active_servers = db_session.query(MCPServer).filter(MCPServer.is_active == True).all()
                     if active_servers:
                         mcp_config = {s.name: {"url": str(s.sse_url), "transport": "sse"} for s in active_servers}
