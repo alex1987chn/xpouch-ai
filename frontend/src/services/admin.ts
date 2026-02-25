@@ -1,5 +1,7 @@
 /**
  * 管理员相关 API 服务
+ * 
+ * P0 修复: 添加 credentials: 'include' 以支持 HttpOnly Cookie
  */
 
 import { getHeaders, buildUrl, handleResponse } from './common'
@@ -17,7 +19,7 @@ export interface SystemExpert {
   model: string
   temperature: number
   is_dynamic: boolean
-  is_system: boolean  // 🔥 新增：系统核心组件标记（不可删除）
+  is_system: boolean
   updated_at: string
 }
 
@@ -70,7 +72,9 @@ export interface PromoteUserRequest {
  */
 export async function getAllExperts(): Promise<SystemExpert[]> {
   const response = await fetch(buildUrl('/admin/experts'), {
-    headers: getHeaders()
+    headers: getHeaders(),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<SystemExpert[]>(response, '获取专家列表失败')
 }
@@ -85,7 +89,9 @@ export async function updateExpert(
   const response = await fetch(buildUrl(`/admin/experts/${expertKey}`), {
     method: 'PATCH',
     headers: getHeaders(),
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<SystemExpert>(response, '更新专家配置失败')
 }
@@ -99,7 +105,9 @@ export async function previewExpert(
   const response = await fetch(buildUrl('/admin/experts/preview'), {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<PreviewExpertResponse>(response, '预览专家响应失败')
 }
@@ -111,7 +119,9 @@ export async function promoteUser(data: PromoteUserRequest): Promise<void> {
   const response = await fetch(buildUrl('/admin/promote-user'), {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<void>(response, '升级用户失败')
 }
@@ -121,7 +131,9 @@ export async function promoteUser(data: PromoteUserRequest): Promise<void> {
  */
 export async function getExpert(expertKey: string): Promise<SystemExpert> {
   const response = await fetch(buildUrl(`/admin/experts/${expertKey}`), {
-    headers: getHeaders()
+    headers: getHeaders(),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<SystemExpert>(response, '获取专家配置失败')
 }
@@ -135,7 +147,9 @@ export async function generateExpertDescription(
   const response = await fetch(buildUrl('/admin/experts/generate-description'), {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<GenerateDescriptionResponse>(response, '生成描述失败')
 }
@@ -147,7 +161,9 @@ export async function createExpert(data: CreateExpertRequest): Promise<SystemExp
   const response = await fetch(buildUrl('/admin/experts'), {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<SystemExpert>(response, '创建专家失败')
 }
@@ -158,7 +174,9 @@ export async function createExpert(data: CreateExpertRequest): Promise<SystemExp
 export async function deleteExpert(expertKey: string): Promise<void> {
   const response = await fetch(buildUrl(`/admin/experts/${expertKey}`), {
     method: 'DELETE',
-    headers: getHeaders()
+    headers: getHeaders(),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<void>(response, '删除专家失败')
 }

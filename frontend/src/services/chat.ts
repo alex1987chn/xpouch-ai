@@ -1,6 +1,8 @@
 /**
  * 聊天 API 服务层
  * 
+ * P0 修复: 添加 credentials: 'include' 以支持 HttpOnly Cookie
+ * 
  * [职责]
  * 封装所有与后端聊天相关的 HTTP API 调用，包括：
  * - 会话管理（CRUD）
@@ -68,7 +70,9 @@ const SSE_RETRY_BASE_DELAY = 1000
  */
 export async function getConversations(): Promise<Conversation[]> {
   const response = await fetch(buildUrl('/threads'), {
-    headers: getHeaders()
+    headers: getHeaders(),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<Conversation[]>(response, '获取会话列表失败')
 }
@@ -78,7 +82,9 @@ export async function getConversations(): Promise<Conversation[]> {
  */
 export async function getConversation(id: string): Promise<Conversation> {
   const response = await fetch(buildUrl(`/threads/${id}`), {
-    headers: getHeaders()
+    headers: getHeaders(),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return await handleResponse<Conversation>(response, '获取会话详情失败')
 }
@@ -89,7 +95,9 @@ export async function getConversation(id: string): Promise<Conversation> {
 export async function deleteConversation(id: string): Promise<void> {
   const response = await fetch(buildUrl(`/threads/${id}`), {
     method: 'DELETE',
-    headers: getHeaders()
+    headers: getHeaders(),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<void>(response, '删除会话失败')
 }
@@ -343,7 +351,9 @@ export async function updateArtifact(
   const response = await fetch(buildUrl(`/artifacts/${params.artifactId}`), {
     method: 'PATCH',
     headers: getHeaders(),
-    body: JSON.stringify({ content: params.content })
+    body: JSON.stringify({ content: params.content }),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<UpdateArtifactResult>(response, '保存失败')
 }
@@ -382,7 +392,9 @@ export async function resumeChat(
         updated_plan: params.updatedPlan,
         approved: params.approved
       }),
-      signal: abortSignal
+      signal: abortSignal,
+      // P0 修复: 允许携带 Cookie
+      credentials: 'include'
     })
     return handleResponse<any>(response, '恢复执行失败')
   }

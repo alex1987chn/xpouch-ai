@@ -1,14 +1,21 @@
 """
 认证路由模块
 
+P0 安全修复: 2025-02-24
+- 将 Token 从 JSON 响应改为 HttpOnly Cookie
+- 防止 XSS 攻击窃取 Token
+- 新增登出端点清除 Cookie
+
 提供用户认证相关的API端点，包括：
 - 手机验证码发送
 - 手机验证码验证（登录/注册）
 - Token刷新
+- 登出（清除 Cookie）
 """
 import logging
 import os
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request, Response
+from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
@@ -20,7 +27,9 @@ from utils.jwt_handler import (
     create_access_token,
     create_refresh_token,
     verify_token,
-    AuthenticationError
+    AuthenticationError,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS
 )
 from utils.verification import (
     generate_verification_code,
@@ -64,20 +73,19 @@ class VerifyCodeRequest(BaseModel):
         return v
 
 
-class TokenResponse(BaseModel):
-    """Token响应"""
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int  # 过期时间（秒）
+class LoginResponse(BaseModel):
+    """P0 修复: 登录响应（不再包含 Token）"""
+    message: str
     user_id: str
     username: str
-    role: str  # 添加角色字段
+    role: str
+    expires_in: int  # access token 过期时间（秒）
 
 
-class RefreshTokenRequest(BaseModel):
-    """刷新Token请求"""
-    refresh_token: str = Field(..., description="刷新令牌")
+class RefreshResponse(BaseModel):
+    """P0 修复: 刷新响应"""
+    message: str
+    expires_in: int  # 新的 access token 过期时间（秒）
 
 
 class UserResponse(BaseModel):
@@ -86,43 +94,139 @@ class UserResponse(BaseModel):
     username: str
     avatar: Optional[str]
     plan: str
-    role: UserRole  # 👈 统一为枚举类型，修复 Pydantic 警告
+    role: UserRole
     phone_number: Optional[str]
     email: Optional[str]
     is_verified: bool
 
 
-# ==================== 辅助函数 ====================
+# ==================== Cookie 配置 ====================
+
+# P0 修复: Cookie 安全配置
+def get_cookie_config():
+    """获取 Cookie 配置"""
+    is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
+    return {
+        "httponly": True,      # JavaScript 无法读取
+        "secure": is_production,  # 生产环境必须使用 HTTPS
+        "samesite": "lax",     # 防止 CSRF，同时允许部分跨站导航
+        "path": "/",          # 全站可用
+    }
+
 
 # ==================== 辅助函数 ====================
 
-def get_auth_token(authorization: str = Header(default=None)) -> str:
+def set_auth_cookies(
+    response: Response,
+    access_token: str,
+    refresh_token: str
+) -> None:
     """
-    从 Authorization header 提取 Bearer token
-
+    P0 修复: 设置认证 Cookie
+    
     Args:
-        authorization: Authorization header 值
+        response: FastAPI Response 对象
+        access_token: 访问令牌
+        refresh_token: 刷新令牌
+    """
+    cookie_config = get_cookie_config()
+    
+    # Access Token: 60 分钟
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # 秒
+        **cookie_config
+    )
+    
+    # Refresh Token: 60 天
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,  # 秒
+        **cookie_config
+    )
+    
+    logger.info("[Auth] Cookie 设置完成")
 
+
+def clear_auth_cookies(response: Response) -> None:
+    """
+    P0 修复: 清除认证 Cookie（登出用）
+    
+    Args:
+        response: FastAPI Response 对象
+    """
+    cookie_config = get_cookie_config()
+    
+    response.delete_cookie(key="access_token", **cookie_config)
+    response.delete_cookie(key="refresh_token", **cookie_config)
+    
+    logger.info("[Auth] Cookie 已清除")
+
+
+def get_auth_token_from_cookie(request: Request) -> str:
+    """
+    P0 修复: 从 Cookie 获取 access token
+    
+    Args:
+        request: FastAPI Request 对象
+        
     Returns:
         JWT token 字符串
-
+        
     Raises:
-        HTTPException: header 格式无效
+        HTTPException: Cookie 不存在
+    """
+    token = request.cookies.get("access_token")
+    
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="未登录或登录已过期",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return token
+
+
+def get_refresh_token_from_cookie(request: Request) -> str:
+    """
+    P0 修复: 从 Cookie 获取 refresh token
+    
+    Args:
+        request: FastAPI Request 对象
+        
+    Returns:
+        Refresh token 字符串
+        
+    Raises:
+        HTTPException: Cookie 不存在
+    """
+    token = request.cookies.get("refresh_token")
+    
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="刷新令牌不存在，请重新登录",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return token
+
+
+# P0 修复: 保留 Header 方式作为向后兼容（用于 API 调试）
+def get_auth_token_from_header(authorization: str = Header(default=None)) -> str:
+    """
+    从 Authorization header 提取 Bearer token
+    保留此方式用于 API 调试和特殊场景
     """
     if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="缺少认证令牌",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
+        return None
+    
     if not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的认证令牌格式",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
+        return None
+    
     return authorization[len("Bearer "):]
 
 
@@ -132,14 +236,14 @@ async def get_current_user_by_token(
 ) -> User:
     """
     通过JWT token获取当前用户
-
+    
     Args:
         token: JWT access token
         session: 数据库会话
-
+        
     Returns:
         用户对象
-
+        
     Raises:
         HTTPException: token无效或用户不存在
     """
@@ -167,26 +271,40 @@ async def get_current_user_by_token(
 
 
 async def get_current_user(
-    token: str = Depends(get_auth_token),
+    request: Request,
     session: Session = Depends(get_session)
 ) -> User:
     """
-    FastAPI 依赖：从请求头获取 JWT token 并返回当前用户
-
+    P0 修复: FastAPI 依赖 - 优先从 Cookie 获取 Token
+    
+    优先级:
+    1. 从 Cookie 读取 (推荐，安全)
+    2. 从 Header 读取 (兼容，用于调试)
+    
     Args:
-        token: Authorization header 中的 JWT token
+        request: FastAPI Request 对象
         session: 数据库会话
-
+        
     Returns:
         用户对象
-
-    Raises:
-        HTTPException: token无效或用户不存在
     """
+    # 优先尝试从 Cookie 获取
+    token = get_auth_token_from_cookie(request)
+    
+    # 如果 Cookie 没有，尝试 Header（向后兼容）
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
+            token = get_auth_token_from_header(auth_header)
+    
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="未提供认证信息",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     return await get_current_user_by_token(token, session)
-
-
-
 
 
 # ==================== API端点 ====================
@@ -198,16 +316,6 @@ async def send_verification_code(
 ):
     """
     发送手机验证码
-
-    功能说明：
-    1. 验证手机号码格式
-    2. 生成6位数字验证码
-    3. 检查手机号是否已注册
-       - 如果已注册，更新验证码
-       - 如果未注册，创建新用户
-    4. 返回成功响应（开发环境返回验证码，生产环境不返回）
-
-    注意：当前为开发版本，实际发送短信需集成短信服务商
     """
     try:
         import sys
@@ -239,11 +347,10 @@ async def send_verification_code(
             
             if not success:
                 logger.warning(f"验证码短信发送失败: {error_message}")
-                # 继续返回成功，因为验证码已生成并存储，用户可能通过其他方式获取
             
             response_data = {
                 "message": "验证码已发送",
-                "expires_in": 300,  # 5分钟，单位：秒
+                "expires_in": 300,
                 "phone_masked": mask_phone_number(phone_number),
             }
             
@@ -253,8 +360,7 @@ async def send_verification_code(
                 
             return response_data
         else:
-            # 用户不存在，创建新用户（未验证状态）
-            # 生成用户ID
+            # 用户不存在，创建新用户
             import uuid
             new_user_id = str(uuid.uuid4())
             
@@ -266,7 +372,7 @@ async def send_verification_code(
                 verification_code_expires_at=expires_at,
                 auth_provider="phone",
                 is_verified=False,
-                role="user"  # 添加默认角色
+                role="user"
             )
             
             session.add(new_user)
@@ -278,7 +384,6 @@ async def send_verification_code(
             
             if not success:
                 logger.warning(f"验证码短信发送失败: {error_message}")
-                # 继续返回成功，因为验证码已生成并存储，用户可能通过其他方式获取
             
             response_data = {
                 "message": "验证码已发送（新用户注册）",
@@ -300,27 +405,20 @@ async def send_verification_code(
         )
 
 
-@router.post("/verify-code", response_model=TokenResponse)
+@router.post("/verify-code", response_model=LoginResponse)
 async def verify_code_and_login(
     request: VerifyCodeRequest,
+    response: Response,  # P0 修复: 需要设置 Cookie
     session: Session = Depends(get_session)
 ):
     """
-    验证验证码并登录/注册
+    P0 修复: 验证验证码并登录
     
     功能说明：
     1. 验证手机号码和验证码
-    2. 如果验证成功，生成JWT token
-    3. 更新用户的验证状态和token信息
-    4. 返回token和用户信息
-    
-    返回：
-    - access_token: 访问令牌（有效期30天）
-    - refresh_token: 刷新令牌（有效期60天）
-    - token_type: 令牌类型（bearer）
-    - expires_in: 过期时间（秒）
-    - user_id: 用户ID
-    - username: 用户名
+    2. 如果验证成功，生成 JWT token
+    3. 设置 HttpOnly Cookie（不再返回 Token）
+    4. 返回用户基本信息
     """
     phone_number = request.phone_number
     code = request.code
@@ -362,46 +460,51 @@ async def verify_code_and_login(
     user.is_verified = True
     user.access_token = access_token
     user.refresh_token = refresh_token
-    user.token_expires_at = datetime.utcnow() + timedelta(days=30)
-    user.verification_code = None  # 清空验证码
+    user.token_expires_at = datetime.now(datetime.timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    user.verification_code = None
     user.verification_code_expires_at = None
     
     session.add(user)
     session.commit()
     session.refresh(user)
     
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
-        expires_in=30 * 24 * 3600,  # 30天，单位：秒
+    # P0 修复: 设置 Cookie（不再返回 Token）
+    set_auth_cookies(response, access_token, refresh_token)
+    
+    logger.info(f"[Auth] 用户 {user.id} 登录成功，Token 已设置到 Cookie")
+    
+    return LoginResponse(
+        message="登录成功",
         user_id=user.id,
         username=user.username,
-        role=str(user.role) if user.role else "user"  # 添加角色字段（现在 role 是字符串）
+        role=str(user.role) if user.role else "user",
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60  # 秒
     )
 
 
-@router.post("/refresh-token", response_model=TokenResponse)
-async def refresh_access_token(
-    request: RefreshTokenRequest,
+@router.post("/refresh-token", response_model=RefreshResponse)
+async def refresh_access_token_endpoint(
+    request: Request,  # P0 修复: 从 Cookie 读取
+    response: Response,  # P0 修复: 设置新 Cookie
     session: Session = Depends(get_session)
 ):
     """
-    刷新访问令牌
+    P0 修复: 刷新访问令牌
     
     功能说明：
-    1. 验证refresh token
-    2. 生成新的access token
-    3. 更新用户的token信息
-    4. 返回新的token
-    
-    注意：refresh token本身不会更新，仍然有效60天
+    1. 从 Cookie 读取 refresh token
+    2. 验证 refresh token
+    3. 生成新的 access token
+    4. 设置新的 Cookie
     """
     from utils.jwt_handler import refresh_access_token as jwt_refresh
     
     try:
-        # 验证refresh token
-        payload = verify_token(request.refresh_token, token_type="refresh")
+        # P0 修复: 从 Cookie 获取 refresh token
+        refresh_token = get_refresh_token_from_cookie(request)
+        
+        # 验证 refresh token
+        payload = verify_token(refresh_token, token_type="refresh")
         user_id = payload["sub"]
         
         # 获取用户
@@ -412,24 +515,25 @@ async def refresh_access_token(
                 detail="用户不存在"
             )
         
-        # 生成新的access token
-        new_access_token = jwt_refresh(request.refresh_token)
+        # 生成新的 access token
+        new_access_token = jwt_refresh(refresh_token)
         
-        # 更新用户的access token
+        # 更新用户的 access token
         user.access_token = new_access_token
-        user.token_expires_at = datetime.utcnow() + timedelta(days=30)
+        user.token_expires_at = datetime.now(datetime.timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         
         session.add(user)
         session.commit()
         session.refresh(user)
         
-        return TokenResponse(
-            access_token=new_access_token,
-            refresh_token=request.refresh_token,  # refresh token不变
-            token_type="bearer",
-            expires_in=30 * 24 * 3600,
-            user_id=user.id,
-            username=user.username
+        # P0 修复: 设置新的 Cookie（refresh token 不变）
+        set_auth_cookies(response, new_access_token, refresh_token)
+        
+        logger.info(f"[Auth] 用户 {user_id} Token 刷新成功")
+        
+        return RefreshResponse(
+            message="Token 刷新成功",
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
         
     except AuthenticationError as e:
@@ -438,3 +542,44 @@ async def refresh_access_token(
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+@router.post("/logout")
+async def logout(
+    response: Response,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    P0 修复: 用户登出
+    
+    功能说明：
+    1. 清除认证 Cookie
+    2. 可选：将 Token 加入黑名单（如果需要）
+    """
+    # 清除 Cookie
+    clear_auth_cookies(response)
+    
+    logger.info(f"[Auth] 用户 {current_user.id} 已登出")
+    
+    return {"message": "登出成功"}
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_info(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    获取当前登录用户信息
+    
+    需要认证：自动从 Cookie 读取 Token
+    """
+    return UserResponse(
+        id=current_user.id,
+        username=current_user.username,
+        avatar=current_user.avatar,
+        plan=current_user.plan or "free",
+        role=current_user.role,
+        phone_number=current_user.phone_number,
+        email=current_user.email,
+        is_verified=current_user.is_verified
+    )
