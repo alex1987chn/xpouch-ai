@@ -29,4 +29,5 @@ dependencies = [
     "pgvector>=0.3.0,<1.0.0",  # 🔥 新增：pgvector Python 客户端，支持向量操作
     "mcp>=1.26.0",
     "langchain-mcp-adapters>=0.2.1",
+    "tenacity>=9.0.0",  # P1 新增: 重试机制
 ]

@@ -1,12 +1,14 @@
 """
 智能体路由模块 - 包含自定义智能体 CRUD
+
+P1 优化: 添加分页支持
 """
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 
 from database import get_session
 from dependencies import get_current_user
@@ -15,6 +17,15 @@ from utils.exceptions import AppError, NotFoundError
 
 
 router = APIRouter(prefix="/api", tags=["agents"])
+
+
+# P1 优化: 分页响应模型
+class PaginatedAgentsResponse(BaseModel):
+    items: list
+    total: int
+    page: int
+    page_size: int
+    pages: int
 
 
 @router.post("/agents")
@@ -43,13 +54,19 @@ async def create_custom_agent(
     return custom_agent
 
 
-@router.get("/agents")
+@router.get("/agents", response_model=PaginatedAgentsResponse)
 async def get_all_agents(
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量")
 ):
     """
-    获取当前用户的所有自定义智能体
+    获取当前用户的所有自定义智能体（支持分页）
+
+    P1 优化:
+    - 添加分页支持
+    - 默认每页 20 条，最大 100 条
 
     返回列表：
     - 用户自定义智能体（按创建时间降序，最新的在前）
@@ -59,19 +76,34 @@ async def get_all_agents(
     - 默认助手（简单模式）由前端硬编码，不在此接口返回
     """
     try:
-        # 获取用户自定义智能体（按创建时间降序，最新的在前）
-        statement = select(CustomAgent).where(
+        # P1 优化: 计算分页偏移
+        offset = (page - 1) * page_size
+
+        # 获取总数
+        count_statement = select(func.count()).select_from(CustomAgent).where(
             CustomAgent.user_id == current_user.id,
             CustomAgent.is_default == False
-        ).order_by(CustomAgent.created_at.desc())
+        )
+        total = session.exec(count_statement).one()
+
+        # 获取分页数据（按创建时间降序，最新的在前）
+        statement = (
+            select(CustomAgent)
+            .where(
+                CustomAgent.user_id == current_user.id,
+                CustomAgent.is_default == False
+            )
+            .order_by(CustomAgent.created_at.desc())
+            .offset(offset)
+            .limit(page_size)
+        )
 
         custom_agents = session.exec(statement).all()
 
         # 构建返回结果
-        result = []
-
+        items = []
         for agent in custom_agents:
-            result.append({
+            items.append({
                 "id": str(agent.id),
                 "name": agent.name,
                 "description": agent.description or "",
@@ -86,7 +118,14 @@ async def get_all_agents(
                 "is_builtin": False
             })
 
-        return result
+        # P1 优化: 返回分页格式
+        return PaginatedAgentsResponse(
+            items=items,
+            total=total,
+            page=page,
+            page_size=page_size,
+            pages=(total + page_size - 1) // page_size
+        )
 
     except Exception as e:
         import traceback

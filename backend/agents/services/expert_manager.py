@@ -3,11 +3,18 @@
 
 从 SystemExpert 表动态加载专家 Prompt 和配置
 提供专家配置管理、缓存和格式化功能
+
+P1 修复: 添加线程锁保护全局缓存
 """
+import threading
+import time
 from typing import Dict, Optional, List
 from sqlmodel import Session, select
 from models import SystemExpert
 from utils.llm_factory import get_effective_model
+
+# P1 修复: 添加线程锁保护全局缓存
+_cache_lock = threading.Lock()
 
 # 内存缓存（避免每次查询数据库）
 _expert_cache: Dict[str, Dict] = {}
@@ -160,6 +167,8 @@ def get_expert_prompt_cached(
     - 后续请求直接从内存读取
     - 可选：定期刷新缓存（如每60秒）
 
+    P1 修复: 使用线程锁保护缓存访问
+
     Args:
         expert_key: 专家类型标识
         session: 数据库会话（可选，如果缓存为空时使用）
@@ -169,14 +178,15 @@ def get_expert_prompt_cached(
     """
     global _expert_cache, _cache_timestamp
 
-    # 如果缓存为空且提供了 session，加载所有专家
-    if not _expert_cache and session:
-        _expert_cache = load_all_experts(session)
-        import time
-        _cache_timestamp = time.time()
+    # P1 修复: 使用锁保护缓存访问
+    with _cache_lock:
+        # 如果缓存为空且提供了 session，加载所有专家
+        if not _expert_cache and session:
+            _expert_cache = load_all_experts(session)
+            _cache_timestamp = time.time()
 
-    # 从缓存读取
-    config = _expert_cache.get(expert_key)
+        # 从缓存读取
+        config = _expert_cache.get(expert_key)
 
     if not config:
         print(f"[ExpertManager] Expert '{expert_key}' not found in cache")
@@ -192,6 +202,8 @@ def get_expert_config_cached(
     """
     获取专家完整配置（带缓存）
 
+    P1 修复: 使用线程锁保护缓存访问
+
     Args:
         expert_key: 专家类型标识
         session: 数据库会话（可选，如果缓存为空时使用）
@@ -201,14 +213,15 @@ def get_expert_config_cached(
     """
     global _expert_cache, _cache_timestamp
 
-    # 如果缓存为空且提供了 session，加载所有专家
-    if not _expert_cache and session:
-        _expert_cache = load_all_experts(session)
-        import time
-        _cache_timestamp = time.time()
+    # P1 修复: 使用锁保护缓存访问
+    with _cache_lock:
+        # 如果缓存为空且提供了 session，加载所有专家
+        if not _expert_cache and session:
+            _expert_cache = load_all_experts(session)
+            _cache_timestamp = time.time()
 
-    # 从缓存读取
-    return _expert_cache.get(expert_key)
+        # 从缓存读取
+        return _expert_cache.get(expert_key)
 
 
 def refresh_cache(session: Optional[Session] = None):
@@ -217,14 +230,17 @@ def refresh_cache(session: Optional[Session] = None):
 
     管理员更新专家配置后，可调用此函数刷新缓存
 
+    P1 修复: 使用线程锁保护缓存更新
+
     Args:
         session: 数据库会话（可选，如果不提供则使用全局缓存）
     """
     global _expert_cache, _cache_timestamp
-    import time
 
-    _expert_cache = load_all_experts(session)
-    _cache_timestamp = time.time()
+    # P1 修复: 使用锁保护缓存更新
+    with _cache_lock:
+        _expert_cache = load_all_experts(session)
+        _cache_timestamp = time.time()
 
 
 def force_refresh_all():
@@ -232,13 +248,15 @@ def force_refresh_all():
     强制刷新所有专家配置（不依赖 session）
 
     用于 API 调用后立即刷新缓存
+
+    P1 修复: 使用线程锁保护缓存清空
     """
     global _expert_cache, _cache_timestamp
-    import time
 
-    # 清空缓存，下次查询时会自动重新加载
-    _expert_cache = {}
-    _cache_timestamp = None
+    # P1 修复: 使用锁保护缓存清空
+    with _cache_lock:
+        _expert_cache = {}
+        _cache_timestamp = None
 
 
 def get_all_expert_list(db_session: Optional[Session] = None) -> List[tuple]:
