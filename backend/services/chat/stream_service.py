@@ -60,8 +60,8 @@ class StreamService:
         获取所有激活的 MCP 服务器工具
         
         P0 修复:
-        - 使用 async with 确保连接关闭 (防止连接泄漏)
         - 添加超时控制 (10秒)
+        - 使用直接实例化 (0.2.1 不支持 async with)
         
         Returns:
             List[Tool]: MCP 工具列表
@@ -84,12 +84,12 @@ class StreamService:
                         "transport": "sse"
                     }
                 
-                # P0 修复: 使用 async with 确保连接关闭
+                # P0 修复: 使用超时控制
+                # 注意: 0.2.1 版本不支持 async with，使用直接实例化
                 async with asyncio.timeout(10):  # 10秒超时
-                    async with MultiServerMCPClient(mcp_config) as client:
-                        tools = await client.get_tools()
-                        logger.info(f"[MCP] 已加载 {len(tools)} 个 MCP 工具 from {len(active_servers)} 个服务器")
-                    # 连接自动关闭
+                    client = MultiServerMCPClient(mcp_config)
+                    tools = await client.get_tools()
+                    logger.info(f"[MCP] 已加载 {len(tools)} 个 MCP 工具 from {len(active_servers)} 个服务器")
                     
         except asyncio.TimeoutError:
             logger.error("[MCP] 获取 MCP 工具超时 (10秒)")
