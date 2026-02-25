@@ -8,6 +8,7 @@ v3.2 重构：移除对 dynamic_experts.py 的依赖
 v3.3 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
 """
 from typing import Dict, Any
+from langchain_core.runnables import RunnableConfig
 from agents.state import AgentState
 from agents.services.expert_manager import get_expert_config, get_expert_config_cached
 from utils.exceptions import AppError
@@ -15,10 +16,12 @@ from database import engine
 from sqlmodel import Session
 
 
-async def expert_dispatcher_node(state: AgentState) -> Dict[str, Any]:
+async def expert_dispatcher_node(state: AgentState, config: RunnableConfig = None) -> Dict[str, Any]:
     """
     专家分发器节点（简化版）
 
+    P1 优化: 统一 Node 签名，添加 config 参数
+    
     v3.2 重构：
     - 移除专家执行逻辑（不再调用专家函数）
     - 仅负责检查专家是否存在并返回空字典
