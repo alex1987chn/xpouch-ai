@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Dict, Any, Literal
 from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
 from agents.state import AgentState
@@ -25,13 +26,15 @@ class RoutingDecision(BaseModel):
     decision_type: Literal["simple", "complex"] = Field(description="决策类型")
 
 
-async def router_node(state: AgentState) -> Dict[str, Any]:
+async def router_node(state: AgentState, config: RunnableConfig = None) -> Dict[str, Any]:
     """
     [网关] 只负责分类，不负责回答
 
     根据用户输入判断应该使用 simple 模式（直接回复）
     还是 complex 模式（多专家协作）
 
+    P1 优化: 统一 Node 签名，添加 config 参数
+    
     🔥 新增：检索长期记忆，提供个性化决策
     🔥 修复：每次用户新输入都重新判断，不受历史 task_list 影响
     🔥 Phase 3: 发送 router.start 和 router.decision SSE 事件
@@ -181,11 +184,14 @@ def _fill_router_placeholders(
     return system_prompt
 
 
-async def direct_reply_node(state: AgentState) -> Dict[str, Any]:
+async def direct_reply_node(state: AgentState, config: RunnableConfig = None) -> Dict[str, Any]:
     """
     [直连节点] 负责 Simple 模式下的流式回复
     
     直接调用 LLM 生成回复，不经过复杂的多专家流程
+    
+    P1 优化: 统一 Node 签名，添加 config 参数
+    
     🔥 新增：集成长期记忆，提供个性化回复
     """
     print(f"[DIRECT_REPLY] 节点开始执行")
