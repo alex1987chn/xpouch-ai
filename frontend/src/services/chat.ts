@@ -208,7 +208,10 @@ export async function sendMessage(
 
       async onopen(response) {
         handleSSEConnectionError(response, 'chat.ts')
-        lastActivityTime = Date.now() // 🔥 更新活动时间
+        // P0 修复: 连接成功后重置重连计数器和活动时间
+        retryCount = 0
+        lastActivityTime = Date.now()
+        logger.debug('[chat.ts] SSE 连接已建立，重置重连计数器')
       },
 
       async onmessage(msg: EventSourceMessage) {
@@ -389,6 +392,7 @@ export async function resumeChat(
   return new Promise((resolve, reject) => {
     let fullContent = ''
     let isCompleted = false
+    let retryCount = 0  // 🔥 P0 修复: 添加重连计数器
     let lastActivityTime = Date.now()
     
     // 🔥 使用统一的心跳超时常量
@@ -458,7 +462,10 @@ export async function resumeChat(
 
       async onopen(response) {
         handleSSEConnectionError(response, 'chat.ts resume', cleanup)
+        // P0 修复: 连接成功后重置重连计数器和活动时间
+        retryCount = 0
         lastActivityTime = Date.now()
+        logger.debug('[chat.ts] Resume SSE 连接已建立，重置重连计数器')
       },
 
       async onmessage(msg: EventSourceMessage) {
@@ -524,8 +531,29 @@ export async function resumeChat(
           return
         }
         
-        logger.error('[chat.ts] Resume SSE 错误:', err)
-        safeReject(new Error('连接异常断开，请重试'))
+        // 🔐 检测 401 错误，触发登录弹窗
+        const status = (err as any)?.status || (err as any)?.statusCode
+        if (status === 401) {
+          logger.warn('[chat.ts] Resume SSE 收到 401 错误，触发登录弹窗')
+          import('@/store/taskStore').then(({ useTaskStore }) => {
+            useTaskStore.getState().setLoginDialogOpen(true)
+          })
+          safeReject(err)
+          return
+        }
+        
+        // 🔥 P0 修复: 添加重连机制
+        if (retryCount < SSE_MAX_RETRIES) {
+          retryCount++
+          const delay = SSE_RETRY_BASE_DELAY * Math.pow(2, retryCount - 1)
+          logger.warn(`[chat.ts] Resume SSE 连接错误，${delay}ms 后第 ${retryCount} 次重连...`)
+          
+          // 返回以继续重连
+          return
+        }
+        
+        logger.error('[chat.ts] Resume SSE 错误，超过最大重试次数:', err)
+        safeReject(new Error('连接异常，请重试'))
       },
 
       onclose() {

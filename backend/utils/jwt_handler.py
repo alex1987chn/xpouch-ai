@@ -3,9 +3,14 @@ JWT工具函数模块
 
 提供JWT令牌的生成、验证和刷新功能。
 支持access token和refresh token双令牌机制。
+
+P0 修复: 2025-02-24
+- 移除默认密钥，强制使用环境变量
+- 缩短 Access Token 过期时间至 60 分钟
+- 修复 datetime.utcnow() 已废弃的问题
 """
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
@@ -14,11 +19,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# JWT配置
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+# ============================================================================
+# P0 修复: JWT 安全配置
+# ============================================================================
+
+# P0 修复: 移除默认密钥，强制使用环境变量
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError(
+        "JWT_SECRET_KEY environment variable is required. "
+        "Please set a secure random key in your .env file. "
+        "You can generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+    )
+
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_DAYS = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 60
+
+# P0 修复: 缩短 Access Token 过期时间
+# 从 30 天缩短至 60 分钟，符合安全最佳实践
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "60"))
 
 # 密码加密上下文
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -83,6 +102,10 @@ def create_access_token(user_id: str, additional_claims: Optional[Dict] = None) 
     """
     创建访问令牌
     
+    P0 修复:
+    - 使用分钟而非天作为过期单位
+    - 使用 timezone.utc 替代已废弃的 utcnow()
+    
     Args:
         user_id: 用户ID
         additional_claims: 额外的声明信息
@@ -90,7 +113,8 @@ def create_access_token(user_id: str, additional_claims: Optional[Dict] = None) 
     Returns:
         JWT access token
     """
-    expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+    # P0 修复: 使用 timezone.utc
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
     payload = {
         "sub": user_id,
@@ -108,13 +132,16 @@ def create_refresh_token(user_id: str) -> str:
     """
     创建刷新令牌
     
+    P0 修复: 使用 timezone.utc 替代已废弃的 utcnow()
+    
     Args:
         user_id: 用户ID
         
     Returns:
         JWT refresh token
     """
-    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    # P0 修复: 使用 timezone.utc
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     
     payload = {
         "sub": user_id,
@@ -184,7 +211,8 @@ def get_token_expiry(token: str) -> Optional[datetime]:
         payload = jwt.decode(token, options={"verify_signature": False})
         exp_timestamp = payload.get("exp")
         if exp_timestamp:
-            return datetime.fromtimestamp(exp_timestamp)
+            # P0 修复: 返回带时区的 datetime
+            return datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
         return None
     except Exception:
         return None
@@ -193,6 +221,8 @@ def get_token_expiry(token: str) -> Optional[datetime]:
 def is_token_expired(token: str) -> bool:
     """
     检查令牌是否已过期
+    
+    P0 修复: 使用 timezone.utc
     
     Args:
         token: JWT令牌
@@ -204,7 +234,8 @@ def is_token_expired(token: str) -> bool:
         payload = jwt.decode(token, options={"verify_signature": False})
         exp_timestamp = payload.get("exp")
         if exp_timestamp:
-            return datetime.utcnow().timestamp() > exp_timestamp
+            # P0 修复: 使用带时区的当前时间
+            return datetime.now(timezone.utc).timestamp() > exp_timestamp
         return True
     except Exception:
         return True
