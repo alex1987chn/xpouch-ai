@@ -19,7 +19,7 @@ from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from database import get_session
 from models import User, UserRole
@@ -460,7 +460,7 @@ async def verify_code_and_login(
     user.is_verified = True
     user.access_token = access_token
     user.refresh_token = refresh_token
-    user.token_expires_at = datetime.now(datetime.timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    user.token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     user.verification_code = None
     user.verification_code_expires_at = None
     
@@ -520,7 +520,7 @@ async def refresh_access_token_endpoint(
         
         # 更新用户的 access token
         user.access_token = new_access_token
-        user.token_expires_at = datetime.now(datetime.timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        user.token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         
         session.add(user)
         session.commit()
