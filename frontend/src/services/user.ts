@@ -1,5 +1,7 @@
 /**
  * 用户相关 API 服务
+ * 
+ * P0 修复: 添加 credentials: 'include' 以支持 HttpOnly Cookie
  */
 
 import { getHeaders, buildUrl, handleResponse } from './common'
@@ -17,7 +19,9 @@ export type { UserProfile }
  */
 export async function getUserProfile(): Promise<UserProfile> {
   const response = await fetch(buildUrl('/user/me'), {
-    headers: getHeaders()
+    headers: getHeaders(),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<UserProfile>(response, '获取用户资料失败')
 }
@@ -31,7 +35,9 @@ export async function updateUserProfile(
   const response = await fetch(buildUrl('/user/me'), {
     method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<UserProfile>(response, '更新用户资料失败')
 }

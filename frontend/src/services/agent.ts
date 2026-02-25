@@ -1,5 +1,7 @@
 /**
  * 智能体相关 API 服务
+ * 
+ * P0 修复: 添加 credentials: 'include' 以支持 HttpOnly Cookie
  */
 
 import { getHeaders, buildUrl, handleResponse } from './common'
@@ -55,7 +57,9 @@ export async function createCustomAgent(
   const response = await fetch(buildUrl('/agents'), {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(agent)
+    body: JSON.stringify(agent),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<CustomAgent>(response, '创建智能体失败')
 }
@@ -76,7 +80,9 @@ export interface PaginatedAgentsResponse {
  */
 export async function getAllAgents(page: number = 1, pageSize: number = 20): Promise<AgentDisplay[]> {
   const response = await fetch(buildUrl(`/agents?page=${page}&page_size=${pageSize}`), {
-    headers: getHeaders()
+    headers: getHeaders(),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   const data = await handleResponse<PaginatedAgentsResponse>(response, '获取智能体列表失败')
 
@@ -95,7 +101,9 @@ export async function getAllAgents(page: number = 1, pageSize: number = 20): Pro
  */
 export async function getCustomAgent(id: string): Promise<CustomAgent> {
   const response = await fetch(buildUrl(`/agents/${id}`), {
-    headers: getHeaders()
+    headers: getHeaders(),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<CustomAgent>(response, '获取智能体详情失败')
 }
@@ -110,7 +118,9 @@ export async function updateCustomAgent(
   const response = await fetch(buildUrl(`/agents/${id}`), {
     method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify(agent)
+    body: JSON.stringify(agent),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<CustomAgent>(response, '更新智能体失败')
 }
@@ -121,7 +131,9 @@ export async function updateCustomAgent(
 export async function deleteCustomAgent(id: string): Promise<void> {
   const response = await fetch(buildUrl(`/agents/${id}`), {
     method: 'DELETE',
-    headers: getHeaders()
+    headers: getHeaders(),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<void>(response, '删除智能体失败')
 }

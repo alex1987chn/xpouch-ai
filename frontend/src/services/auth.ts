@@ -1,5 +1,7 @@
 /**
  * 认证相关 API 服务
+ * 
+ * P0 修复: Token 改为 HttpOnly Cookie，不再从响应中读取
  */
 
 import { buildUrl, handleResponse } from './common'
@@ -26,6 +28,22 @@ export interface VerifyCodeRequest {
   code: string
 }
 
+// P0 修复: 新的登录响应（不包含 Token）
+export interface LoginResponse {
+  message: string
+  user_id: string
+  username: string
+  role: 'user' | 'admin'
+  expires_in: number
+}
+
+// P0 修复: 刷新响应
+export interface RefreshResponse {
+  message: string
+  expires_in: number
+}
+
+// P0 修复: 保留旧类型用于向后兼容（某些地方可能还在用）
 export interface TokenResponse {
   access_token: string
   refresh_token: string
@@ -53,28 +71,47 @@ export async function sendVerificationCode(phoneNumber: string): Promise<SendCod
 }
 
 /**
- * 验证码登录
+ * P0 修复: 验证码登录
+ * Token 现在通过 HttpOnly Cookie 自动管理
  */
 export async function verifyCodeAndLogin(
   phoneNumber: string,
   code: string
-): Promise<TokenResponse> {
+): Promise<LoginResponse> {
   const response = await fetch(buildUrl('/auth/verify-code'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include',
     body: JSON.stringify({ phone_number: phoneNumber, code })
   })
-  return handleResponse<TokenResponse>(response, '验证失败')
+  return handleResponse<LoginResponse>(response, '验证失败')
 }
 
 /**
- * 刷新 access token
+ * P0 修复: 刷新 access token
+ * 从 Cookie 自动读取 refresh token
  */
-export async function refreshTokenApi(refreshToken: string): Promise<TokenResponse> {
+export async function refreshTokenApi(): Promise<RefreshResponse> {
   const response = await fetch(buildUrl('/auth/refresh-token'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: refreshToken })
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
-  return handleResponse<TokenResponse>(response, '刷新 token 失败')
+  return handleResponse<RefreshResponse>(response, '刷新 token 失败')
+}
+
+/**
+ * P0 修复: 用户登出
+ * 调用后端清除 Cookie
+ */
+export async function logoutApi(): Promise<{ message: string }> {
+  const response = await fetch(buildUrl('/auth/logout'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
+  })
+  return handleResponse<{ message: string }>(response, '登出失败')
 }

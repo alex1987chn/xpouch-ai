@@ -1,7 +1,7 @@
 /**
  * MCP 服务器相关 API 服务
  * 
- * 提供 MCP 服务器的 CRUD 操作
+ * P0 修复: 添加 credentials: 'include' 以支持 HttpOnly Cookie
  */
 
 import { getHeaders, buildUrl, handleResponse } from './common'
@@ -19,7 +19,9 @@ export type { MCPServer, MCPServerCreate, MCPServerUpdate }
  */
 export async function getMCPServers(): Promise<MCPServer[]> {
   const response = await fetch(buildUrl('/mcp/servers'), {
-    headers: getHeaders()
+    headers: getHeaders(),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<MCPServer[]>(response, '获取 MCP 服务器列表失败')
 }
@@ -33,7 +35,9 @@ export async function createMCPServer(data: MCPServerCreate): Promise<MCPServer>
   const response = await fetch(buildUrl('/mcp/servers'), {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<MCPServer>(response, '添加 MCP 服务器失败')
 }
@@ -50,7 +54,9 @@ export async function updateMCPServer(
   const response = await fetch(buildUrl(`/mcp/servers/${id}`), {
     method: 'PATCH',
     headers: getHeaders(),
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<MCPServer>(response, '更新 MCP 服务器失败')
 }
@@ -61,7 +67,9 @@ export async function updateMCPServer(
 export async function deleteMCPServer(id: string): Promise<void> {
   const response = await fetch(buildUrl(`/mcp/servers/${id}`), {
     method: 'DELETE',
-    headers: getHeaders()
+    headers: getHeaders(),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<void>(response, '删除 MCP 服务器失败')
 }
@@ -79,7 +87,9 @@ export interface MCPTool {
  */
 export async function getMCPServerTools(id: string): Promise<MCPTool[]> {
   const response = await fetch(buildUrl(`/mcp/servers/${id}/tools`), {
-    headers: getHeaders()
+    headers: getHeaders(),
+    // P0 修复: 允许携带 Cookie
+    credentials: 'include'
   })
   return handleResponse<MCPTool[]>(response, '获取工具列表失败')
 }

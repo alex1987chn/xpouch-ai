@@ -1,5 +1,7 @@
 /**
  * 通用 API 工具函数
+ * 
+ * P0 修复: 添加 credentials: 'include' 以支持 HttpOnly Cookie
  */
 
 // 从环境变量读取 API 基础 URL
@@ -23,29 +25,21 @@ export function getClientId(): string {
 }
 
 /**
- * 统一请求头（优先使用 JWT，回退到 X-User-ID）
+ * P0 修复: 统一请求头
+ * 
+ * 注意: JWT Token 现在通过 HttpOnly Cookie 自动发送，
+ * 不需要再手动设置 Authorization 头。
+ * 保留 X-User-ID 用于开发环境回退。
  */
 export function getHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
 
-  // 优先使用 JWT token（从 Zustand persist 读取）
-  const storageData = localStorage.getItem('xpouch-user-storage')
-  if (storageData) {
-    try {
-      const parsed = JSON.parse(storageData)
-      const accessToken = parsed.state?.accessToken
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`
-        return headers
-      }
-    } catch (e) {
-      logger.warn('[API Headers] 解析 token 失败:', e)
-    }
-  }
-
-  // 回退到 X-User-ID（向后兼容）
+  // P0 修复: 不再从 localStorage 读取 Token
+  // Cookie 会自动随请求发送
+  
+  // 开发环境回退到 X-User-ID
   headers['X-User-ID'] = getClientId()
   return headers
 }
@@ -55,6 +49,25 @@ export function getHeaders(): Record<string, string> {
  */
 export function buildUrl(path: string): string {
   return `${API_BASE_URL}${path.startsWith('/') ? path : '/' + path}`
+}
+
+/**
+ * P0 修复: 带认证的 fetch 包装
+ * 
+ * 自动添加 credentials: 'include' 以携带 HttpOnly Cookie
+ */
+export async function authenticatedFetch(
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  return fetch(url, {
+    ...options,
+    credentials: 'include',  // P0 修复: 允许携带 Cookie
+    headers: {
+      ...getHeaders(),
+      ...(options.headers || {})
+    }
+  })
 }
 
 /**
@@ -106,4 +119,16 @@ export function handleSSEConnectionError(
     throw error
   }
   logger.debug(`[${context}] SSE 连接已打开`)
+}
+
+/**
+ * 显示登录弹窗
+ */
+function showLoginDialog(): void {
+  // 动态导入以避免循环依赖
+  import('@/store/taskStore').then(({ useTaskStore }) => {
+    useTaskStore.getState().setLoginDialogOpen(true)
+  }).catch(err => {
+    logger.error('[Auth] 无法显示登录弹窗:', err)
+  })
 }
