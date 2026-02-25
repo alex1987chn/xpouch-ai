@@ -10,6 +10,7 @@ import { RouterProvider } from 'react-router-dom'
 import { I18nProvider } from './i18n'
 import { ThemeProvider } from './hooks/useTheme'
 import { AppProvider } from './providers/AppProvider'
+import { AuthInitializer } from './components/AuthInitializer'
 import { router, AppProviders } from './router'
 import './index.css'
 
@@ -73,11 +74,13 @@ root.render(
   <StrictMode>
     <AppProviders>
       <AppProvider>
-        <I18nProvider>
-          <ThemeProvider>
-            <RouterProvider router={router} />
-          </ThemeProvider>
-        </I18nProvider>
+        <AuthInitializer>
+          <I18nProvider>
+            <ThemeProvider>
+              <RouterProvider router={router} />
+            </ThemeProvider>
+          </I18nProvider>
+        </AuthInitializer>
       </AppProvider>
     </AppProviders>
   </StrictMode>,
