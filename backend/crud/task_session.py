@@ -3,9 +3,10 @@ TaskSession / SubTask / Artifact 数据访问层
 提供复杂模式任务会话的 CRUD 操作
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
 from sqlmodel import Session, select
+from sqlalchemy.orm import selectinload
 from models import (
     TaskSession, SubTask, Artifact,
     TaskSessionCreate, TaskSessionUpdate,
@@ -448,15 +449,17 @@ def get_task_session_full(db: Session, session_id: str) -> Optional[TaskSession]
     """
     获取完整的任务会话（包含子任务和产物）
     
+    P1 修复: 使用 selectinload 避免 N+1 查询
+    
     用于从历史记录恢复复杂模式对话
     """
-    task_session = get_task_session(db, session_id)
-    if not task_session:
-        return None
-    
-    # 确保加载所有关联数据
-    for subtask in task_session.sub_tasks:
-        # 访问 artifacts 会触发加载
-        _ = subtask.artifacts
-    
-    return task_session
+    # P1 修复: 使用 selectinload 预加载关联数据
+    statement = (
+        select(TaskSession)
+        .where(TaskSession.session_id == session_id)
+        .options(
+            selectinload(TaskSession.sub_tasks)
+            .selectinload(SubTask.artifacts)
+        )
+    )
+    return db.exec(statement).first()

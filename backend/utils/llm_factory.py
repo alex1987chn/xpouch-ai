@@ -4,6 +4,7 @@ LLM 工厂模块
 统一管理和创建 LLM 实例，完全基于配置文件（providers.yaml）
 消除硬编码，支持动态添加新提供商
 
+P1 优化: 添加重试机制，提升稳定性
 P2 优化: 添加 LLM 实例缓存池，复用实例减少创建开销
 
 使用示例：
@@ -24,6 +25,18 @@ from providers_config import (
     is_provider_configured
 )
 import httpx
+
+# P1 优化: 添加重试机制
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log
+)
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # P2 优化: LLM 实例缓存池
@@ -447,3 +460,62 @@ if __name__ == "__main__":
     print("\n测试提供商连接...")
     for provider in get_all_providers().keys():
         test_provider_connection(provider)
+
+
+# ============================================================================
+# P1 优化: 带重试的 LLM 调用函数
+# ============================================================================
+
+@retry(
+    retry=retry_if_exception_type((Exception,)),
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
+    reraise=True
+)
+async def invoke_llm_with_retry(llm: ChatOpenAI, messages: list, **kwargs) -> Any:
+    """
+    带重试机制的 LLM 调用 (非流式)
+    
+    P1 优化:
+    - 最多重试 3 次
+    - 指数退避: 2s, 4s, 8s
+    - 记录警告日志
+    
+    Args:
+        llm: ChatOpenAI 实例
+        messages: 消息列表
+        **kwargs: 其他参数
+        
+    Returns:
+        LLM 响应
+    """
+    return await llm.ainvoke(messages, **kwargs)
+
+
+@retry(
+    retry=retry_if_exception_type((Exception,)),
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
+    reraise=True
+)
+async def stream_llm_with_retry(llm: ChatOpenAI, messages: list, **kwargs):
+    """
+    带重试机制的 LLM 调用 (流式)
+    
+    P1 优化:
+    - 最多重试 3 次
+    - 指数退避: 2s, 4s, 8s
+    - 记录警告日志
+    
+    Args:
+        llm: ChatOpenAI 实例
+        messages: 消息列表
+        **kwargs: 其他参数
+        
+    Yields:
+        流式响应块
+    """
+    async for chunk in llm.astream(messages, **kwargs):
+        yield chunk
