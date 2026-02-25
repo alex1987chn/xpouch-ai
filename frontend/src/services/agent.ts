@@ -61,16 +61,27 @@ export async function createCustomAgent(
 }
 
 /**
- * 获取所有自定义智能体
+ * 分页响应结构
  */
-export async function getAllAgents(): Promise<AgentDisplay[]> {
-  const response = await fetch(buildUrl('/agents'), {
+export interface PaginatedAgentsResponse {
+  items: CustomAgent[]
+  total: number
+  page: number
+  page_size: number
+  pages: number
+}
+
+/**
+ * 获取所有自定义智能体（支持分页）
+ */
+export async function getAllAgents(page: number = 1, pageSize: number = 20): Promise<AgentDisplay[]> {
+  const response = await fetch(buildUrl(`/agents?page=${page}&page_size=${pageSize}`), {
     headers: getHeaders()
   })
-  const data = await handleResponse<CustomAgent[]>(response, '获取智能体列表失败')
+  const data = await handleResponse<PaginatedAgentsResponse>(response, '获取智能体列表失败')
 
   // 转换为显示格式
-  return data.map((agent): AgentDisplay => ({
+  return data.items.map((agent): AgentDisplay => ({
     id: agent.id,
     name: agent.name,
     description: agent.description || '',
