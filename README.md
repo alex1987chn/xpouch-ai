@@ -40,28 +40,39 @@ AI 不再是"黑盒"。Commander 生成任务计划后，**暂停等待你的确
 <tr>
 <td width="50%">
 
-### 📦 智能 Artifact 系统
-代码、图表、文档、网页预览——AI 输出转化为**结构化可视化工件**，支持实时编辑、PDF/Markdown 导出。
+### 🔌 MCP 生态支持
+原生支持 [Model Context Protocol](https://modelcontextprotocol.io/)，轻松接入外部工具服务。Web 搜索、数据库查询、API 调用——**按需扩展，无限可能**。
 
 </td>
 <td width="50%">
 
-### 🧠 长期记忆
-基于 pgvector 的向量检索，自动提取和存储用户偏好、习惯，实现**个性化 AI 体验**。
+### 📦 智能 Artifact 系统
+代码、图表、文档、网页预览——AI 输出转化为**结构化可视化工件**，支持实时编辑、PDF/Markdown 导出。
 
 </td>
 </tr>
 <tr>
 <td width="50%">
 
-### 🔀 智能路由
-后端自动判断简单/复杂模式：日常对话直接响应，复杂任务自动触发多专家协作，无需手动切换。
+### 🧠 长期记忆
+基于 pgvector 的向量检索，自动提取和存储用户偏好、习惯，实现**个性化 AI 体验**。
 
 </td>
 <td width="50%">
 
+### 🔀 智能路由
+后端自动判断简单/复杂模式：日常对话直接响应，复杂任务自动触发多专家协作，无需手动切换。
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
 ### 🎨 Server-Driven UI
 后端驱动 UI，通过 SSE 实时推送状态更新。前端作为"投影仪"，只负责渲染，逻辑由后端统一控制。
+
+</td>
+<td width="50%">
 
 </td>
 </tr>
@@ -139,6 +150,33 @@ LANGCHAIN_API_KEY=lsv2_pt_your-key
 ```
 
 **支持的 LLM 提供商**：DeepSeek、OpenAI、Anthropic、Google Gemini、MiniMax、Moonshot
+
+</details>
+
+<details>
+<summary>🔌 MCP Server 配置</summary>
+
+XPouch AI 支持通过 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 接入外部工具服务。
+
+**配置方式**：
+1. 访问 Library 页面 (`/library`)
+2. 点击「添加 MCP Server」
+3. 填写 Server 信息：
+   - **名称**: 唯一标识（如 `fetch-server`）
+   - **描述**: 功能说明
+   - **SSE URL**: MCP Server 的 SSE 端点（如 `http://localhost:3001/sse`）
+4. 系统会自动测试连接
+5. 启用后，工具将自动注入 LangGraph 运行时
+
+**示例 MCP Servers**：
+- [MCP Fetch](https://github.com/modelcontextprotocol/servers/tree/main/src/fetch) - Web 内容获取
+- [MCP Filesystem](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem) - 文件系统操作
+- [MCP GitHub](https://github.com/modelcontextprotocol/servers/tree/main/src/github) - GitHub API 集成
+
+**技术细节**：
+- 传输协议：SSE (Server-Sent Events)
+- 客户端：[langchain-mcp-adapters](https://github.com/langchain-ai/langchain-mcp-adapters)
+- 工具优先级：MCP 专业工具 > 内置通用工具
 
 </details>
 
@@ -223,15 +261,19 @@ xpouch-ai/
 │   │   ├── store/          # Zustand Store (Slice 模式)
 │   │   ├── handlers/       # SSE 事件处理
 │   │   ├── hooks/          # 自定义 Hooks
-│   │   └── services/       # API 服务 (Barrel 模式)
+│   │   ├── services/       # API 服务 (Barrel 模式)
+│   │   └── pages/          # 页面组件
+│   │       └── library/    # MCP Server 管理页面 ⭐
 │   └── Dockerfile
 ├── backend/                # FastAPI + LangGraph
 │   ├── agents/             # LangGraph 工作流
 │   │   ├── nodes/          # Router/Commander/Generic/Aggregator
 │   │   └── services/       # Expert/Task Manager
 │   ├── routers/            # REST API 路由
+│   │   └── mcp.py          # MCP Server 管理 API ⭐
 │   ├── tools/              # Function Calling 工具
 │   ├── models/             # SQLModel 数据模型
+│   │   └── mcp_server.py   # MCP Server 模型 ⭐
 │   └── Dockerfile
 ├── docker-compose.yml
 └── CHANGELOG.md            # 更新日志
@@ -290,6 +332,7 @@ cd frontend && pnpm dev
 
 ## 🗺️ 路线图
 
+- [x] **MCP 生态支持** ✅ —— 接入外部工具服务，动态扩展 AI 能力
 - [ ] 多租户支持
 - [ ] 插件系统
 - [ ] 更多 LLM 提供商支持
