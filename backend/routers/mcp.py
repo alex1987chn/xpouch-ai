@@ -5,19 +5,17 @@ MCP 服务器管理路由 - 配电盘式注册中心
 所有接口需要登录权限。
 
 P0 修复: 2025-02-24
-- 修复 MCP 连接泄漏 (使用 async with 确保关闭)
 - 添加 URL 验证和 SSRF 防护
 - 添加连接超时控制
+- 使用直接实例化 (langchain-mcp-adapters 0.2.1 不支持 async with)
 """
 
 import asyncio
 import re
-from contextlib import AsyncExitStack
 from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, status
-from pydantic import validator
 from sqlmodel import Session, select
 
 from database import get_session
@@ -97,9 +95,9 @@ async def test_mcp_connection(sse_url: str, timeout: int = 10) -> tuple[bool, st
     测试 MCP SSE 服务器连接
     
     P0 修复:
-    - 使用 async with 确保连接关闭 (防止连接泄漏)
     - 添加超时控制
     - 添加 URL 验证 (SSRF 防护)
+    - 使用直接实例化 (0.2.1 不支持 async with)
     
     Args:
         sse_url: SSE 连接地址
@@ -114,20 +112,21 @@ async def test_mcp_connection(sse_url: str, timeout: int = 10) -> tuple[bool, st
         return False, error_msg
     
     try:
-        # P0 修复: 使用 async with 确保连接关闭
+        # P0 修复: 使用超时控制
+        # 注意: langchain-mcp-adapters 0.2.1 不支持 async with
+        # get_tools() 内部会自动管理会话
         async with asyncio.timeout(timeout):
-            async with MultiServerMCPClient(
+            client = MultiServerMCPClient(
                 {
                     "test_server": {
                         "url": sse_url,
                         "transport": "sse",
                     }
                 }
-            ) as client:
-                # 尝试获取工具列表验证连接
-                await client.get_tools()
-                # 连接成功，自动关闭
-                return True, ""
+            )
+            # 尝试获取工具列表验证连接
+            await client.get_tools()
+            return True, ""
                 
     except asyncio.TimeoutError:
         return False, f"连接超时 ({timeout}秒)"
@@ -261,7 +260,7 @@ async def update_mcp_server(
                 details={"sse_url": update_data.sse_url}
             )
         
-        # P0 修复: 重新通电测试（带超时和连接关闭）
+        # P0 修复: 重新通电测试（带超时）
         is_connected, error_msg = await test_mcp_connection(update_data.sse_url)
         if not is_connected:
             raise ValidationError(
@@ -328,7 +327,6 @@ async def get_mcp_server_tools(
     获取 MCP 服务器的工具列表
     
     实时连接 MCP 服务器并获取可用工具列表。
-    P0 修复: 使用 async with 确保连接关闭
     """
     server = session.get(MCPServer, server_id)
     if not server:
@@ -343,27 +341,28 @@ async def get_mcp_server_tools(
         raise ValidationError(f"URL 验证失败: {error_msg}")
     
     try:
-        # P0 修复: 使用 async with 确保连接关闭
+        # P0 修复: 使用超时控制
+        # 注意: 0.2.1 版本不支持 async with，使用直接实例化
         async with asyncio.timeout(10):  # 10秒超时
-            async with MultiServerMCPClient(
+            client = MultiServerMCPClient(
                 {
                     server.name: {
                         "url": str(server.sse_url),
                         "transport": "sse",
                     }
                 }
-            ) as client:
-                tools = await client.get_tools()
-                
-                # 提取工具信息
-                tools_info = []
-                for tool in tools:
-                    tools_info.append({
-                        "name": getattr(tool, 'name', str(tool)),
-                        "description": getattr(tool, 'description', 'No description') if hasattr(tool, 'description') else 'No description'
-                    })
-                
-                return tools_info
+            )
+            tools = await client.get_tools()
+            
+            # 提取工具信息
+            tools_info = []
+            for tool in tools:
+                tools_info.append({
+                    "name": getattr(tool, 'name', str(tool)),
+                    "description": getattr(tool, 'description', 'No description') if hasattr(tool, 'description') else 'No description'
+                })
+            
+            return tools_info
         
     except asyncio.TimeoutError:
         raise ValidationError("获取工具列表超时 (10秒)")
