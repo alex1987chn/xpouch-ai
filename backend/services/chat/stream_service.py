@@ -434,9 +434,7 @@ class StreamService:
                                 await self._update_thread_mode(thread_id, router_decision)
                 
                 except Exception as e:
-                    import traceback
-                    logger.error(f"[StreamService] 流式处理异常: {e}")
-                    traceback.print_exc()
+                    logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
                     yield self._build_error_event("GRAPH_ERROR", str(e))
                 
                 # 🔥🔥🔥 HITL 检测：检查是否处于 interrupt 状态
@@ -629,9 +627,7 @@ class StreamService:
                         create_artifacts_batch(self.db, db_subtask.id, expert_artifacts[task_id])
                         logger.info(f"[StreamService] ✅ artifacts 保存成功")
                     except Exception as e:
-                        logger.error(f"[StreamService] 保存 artifacts 失败: {e}")
-                        import traceback
-                        traceback.print_exc()
+                        logger.error(f"[StreamService] 保存 artifacts 失败: {e}", exc_info=True)
                 else:
                     logger.warning(f"[StreamService] ⚠️ task_id={task_id} 在 expert_artifacts 中未找到")
         
@@ -835,9 +831,7 @@ class StreamService:
                         await asyncio.sleep(0.1)
 
                 except Exception as e:
-                    import traceback
-                    logger.error(f"[StreamService] Producer 错误: {e}")
-                    traceback.print_exc()
+                    logger.error(f"[StreamService] Producer 错误: {e}", exc_info=True)
                 finally:
                     await sse_queue.put({"type": "done"})
             

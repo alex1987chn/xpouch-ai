@@ -168,9 +168,7 @@ class RecoveryService:
                 await self._process_collected_artifacts(thread_id, stream_queue)
                 
             except Exception as e:
-                logger.error(f"[HITL RESUME] 流式执行错误: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
                 yield self._build_error_event("RESUME_ERROR", str(e))
         
         return StreamingResponse(

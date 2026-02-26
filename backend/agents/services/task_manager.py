@@ -234,9 +234,7 @@ def save_expert_execution_result(
         return True
 
     except Exception as e:
-        logger.error(f"[TaskManager] 保存专家执行结果失败: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"[TaskManager] 保存专家执行结果失败: {e}", exc_info=True)
         return False
 
 

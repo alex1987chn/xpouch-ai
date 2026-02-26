@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 """
 Commander 节点 - 任务规划与拆解
 
@@ -416,9 +420,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
             }
 
         except Exception as e:
-            print(f"[ERROR] Commander 规划失败: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"[ERROR] Commander 规划失败: {e}", exc_info=True)
             return {
                 "task_list": [],
                 "strategy": f"Error: {str(e)}",

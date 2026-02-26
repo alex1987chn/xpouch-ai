@@ -85,22 +85,21 @@ export {
   useCurrentConversationId,
   useInputMessage,
   useIsGenerating,
-  useIsTyping,
   useSelectedAgentId,
-  
+
   // 复杂 Selectors
   useMessages,
   useLastMessage,
   useLastAssistantMessage,
   useCustomAgents,
-  
+
   // Actions
   useChatActions,
   useAddMessageAction,
   useUpdateMessageAction,
   useSetGeneratingAction,
   useSetInputMessageAction,
-  
+
   // 派生 Selectors
   useMessageStats,
   useHasMessages,
