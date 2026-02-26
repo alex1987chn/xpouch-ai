@@ -196,8 +196,59 @@ const performRestore = useCallback(async () => {
 - SSE 连接保持（openWhenHidden: true）
 - 防抖处理（会话恢复 5s 防抖）
 - 统一错误处理减少重复代码
+- MCP 工具缓存（TTL 5分钟）
 
-## 8. MCP 技术规范
+## 8. React 19 最佳实践（v3.4.0+）
+
+### 8.1 乐观更新 (useOptimisticUpdate)
+
+**适用场景**：发送消息、编辑 artifact、删除会话
+
+```typescript
+// ✅ 使用乐观更新 hook
+const { optimisticState, execute, isPending } = useOptimisticUpdate({
+  actualState: messages,
+  setActualState: setMessages
+})
+
+// 执行乐观更新
+await execute(
+  [...messages, optimisticMessage],  // 立即显示的乐观状态
+  () => apiSendMessage(content)      // 实际 API 请求
+)
+// 失败时自动回滚到 originalState
+```
+
+**文件位置**：`frontend/src/hooks/useOptimisticUpdate.ts`
+
+### 8.2 Suspense 查询 (useSuspenseQuery)
+
+**适用场景**：会话详情、用户资料等数据获取
+
+```typescript
+// ✅ 配合 Suspense 使用
+const { data, isLoading, error } = useSuspenseQuery(
+  () => getConversation(id),
+  { deps: [id] }
+)
+```
+
+**注意**：React 19 正式发布后可替换为 `use()`
+
+```typescript
+// React 19 正式语法（未来迁移）
+const conversation = use(getConversation(id))
+```
+
+### 8.3 与现有代码的对比
+
+| 场景 | 老方式 | React 19 方式 |
+|------|--------|---------------|
+| 发送消息 | useEffect + 手动错误处理 | useOptimisticUpdate |
+| 数据获取 | useEffect + useState | useSuspenseQuery / use() |
+| 记忆化 | useMemo/useCallback | React Compiler（未来）|
+
+## 9. MCP 技术规范
 
 ### 8.1 MultiServerMCPClient 使用规范
 

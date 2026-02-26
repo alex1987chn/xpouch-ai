@@ -2,6 +2,13 @@
 
 ## Current Status
 
+### ✅ Completed (v3.4.0 - Code Review P0/P1/P2)
+- [x] P0 安全修复：JWT HttpOnly Cookie、MCP 连接泄漏修复
+- [x] P1 性能优化：N+1 查询、LangGraph Node 签名统一、重试机制
+- [x] P2 类型优化：TypeScript any 清理、useOptimistic hook
+- [x] P2 缓存优化：MCP 工具 TTL 缓存 (5分钟)
+- [x] React 19 准备：useSuspenseQuery、usePromise hooks
+
 ### ✅ Completed (v3.3.0 - MCP Integration)
 - [x] MCP Server 管理：完整的 CRUD API (backend/routers/mcp.py)
 - [x] MCP Library 页面：Bauhaus 风格设计，支持增删改查
