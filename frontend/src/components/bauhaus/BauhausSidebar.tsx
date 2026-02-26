@@ -149,6 +149,8 @@ export default function BauhausSidebar({
     // 👈 关键：先清空当前状态，避免显示旧会话内容
     setMessages([])
     setCurrentConversationId(null)
+    // 🔥 重置 taskStore 所有状态（包括 selectedTaskId、mode、artifacts 等）
+    useTaskStore.getState().resetAll(true)
     
     // 👈 默认助手不添加 agentId 参数，让后端自动使用默认助手
     if (agentId && agentId !== SYSTEM_AGENTS.DEFAULT_CHAT && agentId !== 'default-chat') {

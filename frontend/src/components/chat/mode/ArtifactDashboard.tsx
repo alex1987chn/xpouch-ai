@@ -162,6 +162,14 @@ export default function ArtifactDashboard({
     setSelectedIndex(0)
   }, [selectedTaskId])
 
+  // 🔥 额外监听 artifacts 数组变化（切换会话时 selectedTaskId 可能不变）
+  useEffect(() => {
+    // 如果当前选中的索引超出范围，重置为 0
+    if (selectedIndex >= artifacts.length) {
+      setSelectedIndex(0)
+    }
+  }, [artifacts.length, selectedIndex])
+
   // 重置编辑状态当 artifact 变化时
   useEffect(() => {
     setIsEditing(false)

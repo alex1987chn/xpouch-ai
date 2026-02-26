@@ -54,8 +54,9 @@ const HistoryPageWrapper = () => {
     // 目标页面会通过 API 或 localStorage 恢复新会话的数据
     setMessages([])
     setCurrentConversationId(null)
-    // 重置 taskStore 当前状态（不影响 localStorage 中的持久化数据）
-    useTaskStore.getState().resetTasks(true)
+    // 🔥 重置 taskStore 所有状态（包括 selectedTaskId）
+    // 使用 force=true 强制重置，避免运行中任务的保护逻辑
+    useTaskStore.getState().resetAll(true)
 
     // 从 conversation 对象中提取所需参数
     const conversationId = conversation.id

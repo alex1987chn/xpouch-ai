@@ -71,6 +71,8 @@ export function useSessionRestore(
   const resetAll = useTaskStore((state) => state.resetAll)
   const restoreFromSession = useTaskStore((state) => state.restoreFromSession)
   const setIsWaitingForApproval = useTaskStore((state) => state.setIsWaitingForApproval)
+  const setMode = useTaskStore((state) => state.setMode)
+  const setIsInitialized = useTaskStore((state) => state.setIsInitialized)
   const addMessage = useChatStore((state) => state.addMessage)
   const setMessages = useChatStore((state) => state.setMessages)
   const setCurrentConversationId = useChatStore((state) => state.setCurrentConversationId)
@@ -150,8 +152,14 @@ export function useSessionRestore(
         // 3. 其他情况 -> 保留本地数据
         if (taskStore.tasks.size === 0) {
           restoreFromSession(task_session, subTasks)
+          // 🔥 恢复成功后设置 UI 状态
+          setMode('complex')
+          setIsInitialized(true)
         } else if (apiArtifactCount > 0 && localArtifactCount === 0) {
           restoreFromSession(task_session, subTasks)
+          // 🔥 恢复成功后设置 UI 状态
+          setMode('complex')
+          setIsInitialized(true)
         }
         
         // 检查是否还有运行中的任务
@@ -179,18 +187,25 @@ export function useSessionRestore(
       onRestored?.()
       
       return true
-    } catch (err) {
+    } catch (err: any) {
+      // 🔥 404 错误静默处理：新会话在后端还不存在，这是预期行为
+      if (err?.status === 404) {
+        logger.debug('[useSessionRestore] 会话不存在（新会话），跳过恢复')
+        setIsRestored(true) // 标记为已恢复，避免重复尝试
+        return true
+      }
+
       const error = err instanceof Error ? err : new Error(String(err))
       logger.error('[useSessionRestore] 恢复失败:', error)
       setError(error)
-      
+
       // 恢复失败时清空本地状态，避免显示过期数据
       resetAll()
       return false
     } finally {
       setIsRestoring(false)
     }
-  }, [conversationId, enabled, isInitialized, restoreFromSession, setIsWaitingForApproval, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
+  }, [conversationId, enabled, isInitialized, restoreFromSession, setIsWaitingForApproval, setMode, setIsInitialized, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
 
   /**
    * 公开的手动恢复方法
