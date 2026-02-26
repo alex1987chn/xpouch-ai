@@ -38,6 +38,11 @@ from config import HEARTBEAT_INTERVAL, FORCE_HEARTBEAT_INTERVAL, STREAM_TIMEOUT
 class StreamService:
     """流式处理服务"""
     
+    # 🔥 P2: MCP 工具缓存 (TTL 5分钟)
+    _mcp_tools_cache: Optional[tuple[List[Any], datetime]] = None
+    _mcp_cache_lock = asyncio.Lock()
+    _mcp_cache_ttl_seconds = 300  # 5分钟
+    
     def __init__(self, db_session: Session):
         self.db = db_session
         # 延迟初始化 session_service，避免循环依赖问题
@@ -59,6 +64,10 @@ class StreamService:
         """
         获取所有激活的 MCP 服务器工具
         
+        P2 优化:
+        - 添加 TTL 缓存 (5分钟)，避免频繁创建连接
+        - 缓存键: 激活服务器列表的哈希
+        
         P0 修复:
         - 添加超时控制 (10秒)
         - 使用直接实例化 (0.2.1 不支持 async with)
@@ -66,6 +75,18 @@ class StreamService:
         Returns:
             List[Tool]: MCP 工具列表
         """
+        # 🔥 P2: 检查缓存
+        async with self._mcp_cache_lock:
+            if self._mcp_tools_cache is not None:
+                tools, cached_at = self._mcp_tools_cache
+                elapsed = (datetime.now() - cached_at).total_seconds()
+                if elapsed < self._mcp_cache_ttl_seconds:
+                    logger.debug(f"[MCP] 使用缓存工具 ({elapsed:.1f}s)")
+                    return tools
+                else:
+                    logger.debug("[MCP] 缓存过期，重新获取")
+                    self._mcp_tools_cache = None
+        
         tools = []
         try:
             with get_session() as session:
@@ -91,6 +112,10 @@ class StreamService:
                     tools = await client.get_tools()
                     logger.info(f"[MCP] 已加载 {len(tools)} 个 MCP 工具 from {len(active_servers)} 个服务器")
                     
+                    # 🔥 P2: 更新缓存
+                    async with self._mcp_cache_lock:
+                        self._mcp_tools_cache = (tools, datetime.now())
+                    
         except asyncio.TimeoutError:
             logger.error("[MCP] 获取 MCP 工具超时 (10秒)")
         except Exception as e:
@@ -98,6 +123,13 @@ class StreamService:
             # MCP 工具加载失败不影响主流程
             
         return tools
+    
+    @classmethod
+    async def invalidate_mcp_cache(cls):
+        """手动使 MCP 工具缓存失效"""
+        async with cls._mcp_cache_lock:
+            cls._mcp_tools_cache = None
+            logger.info("[MCP] 工具缓存已清除")
     
     # ============================================================================
     # 自定义智能体流式处理

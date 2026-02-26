@@ -39,6 +39,9 @@ export { useAsyncError } from './useAsyncError'
 // React 19 乐观更新
 export { useOptimisticUpdate, useOptimisticList } from './useOptimisticUpdate'
 
+// React 19 Suspense 查询
+export { useSuspenseQuery, usePromise, createCachedPromise } from './useSuspenseQuery'
+
 // ============================================================================
 // 🔥🔥🔥 性能优化 Selectors (v3.1.0)
 // 使用 Zustand Selector 模式避免不必要的重渲染
