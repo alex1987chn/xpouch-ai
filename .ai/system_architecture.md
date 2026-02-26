@@ -272,7 +272,7 @@ Unified in `useSessionRestore.ts` with 5s debounce.
 - **MCP**: Use direct instantiation for MultiServerMCPClient (no `async with`)
 - **MCP**: Handle connection failures gracefully (don't break main flow)
 
-## Recent Changes (v3.3.0)
+## Recent Changes (v3.1.0)
 
 1. **MCP Integration**: Dynamic tool loading from external MCP Servers
 2. **Library Page**: Bauhaus-style MCP management UI

@@ -93,7 +93,7 @@
 ## Artifact Handling
 
 ### Generation Rules
-1. **Batch Delivery Only** (v3.2.0+): Complete content delivered via `artifact.generated`
+1. **Batch Delivery Only** (v3.1.0+): Complete content delivered via `artifact.generated`
 2. **No Streaming**: Deprecated `artifact.chunk` events
 3. **One Artifact Per Task**: Most tasks produce single artifact
 4. **Storage**: Artifacts persisted to DB with full content
@@ -159,13 +159,13 @@ Task Events             → chat.ts handleServerEvent → eventHandlers.ts → T
 - XSS prevention via React's default escaping
 - MCP Server URLs validated (must be valid HTTP/HTTPS URL)
 
-## Recent Architectural Decisions (v3.3.0)
+## Recent Architectural Decisions (v3.1.0)
 
 1. **MCP Integration**: External tool servers via SSE protocol
 2. **Tool Priority**: MCP professional tools > Built-in generic tools
 3. **Graceful Degradation**: MCP failures don't break main chat flow
 
-## Recent Architectural Decisions (v3.2.0)
+## Recent Architectural Decisions (v3.1.0)
 
 1. **Artifact Batch Delivery**: Eliminated streaming complexity
 2. **Event Unification**: Single handler path for Task events

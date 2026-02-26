@@ -198,7 +198,7 @@ const performRestore = useCallback(async () => {
 - 统一错误处理减少重复代码
 - MCP 工具缓存（TTL 5分钟）
 
-## 8. React 19 最佳实践（v3.4.0+）
+## 8. React 19 最佳实践（可选优化）
 
 ### 8.1 乐观更新 (useOptimisticUpdate)
 
