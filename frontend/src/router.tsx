@@ -48,11 +48,12 @@ const HistoryPageWrapper = () => {
   const setCurrentConversationId = useChatStore(state => state.setCurrentConversationId)
 
   const handleSelectConversation = (conversation: any) => {
-    // 🔥🔥🔥 Server-Driven UI: 导航前清空所有 Store（事件驱动）
-    // 避免旧任务/执行状态阻止新会话加载
+    // 🔥 Server-Driven UI: 导航前重置当前状态
+    // 目标页面会通过 API 或 localStorage 恢复新会话的数据
     setMessages([])
     setCurrentConversationId(null)
-    useTaskStore.getState().resetAll()
+    // 重置 taskStore 当前状态（不影响 localStorage 中的持久化数据）
+    useTaskStore.getState().resetTasks(true)
 
     // 从 conversation 对象中提取所需参数
     const conversationId = conversation.id

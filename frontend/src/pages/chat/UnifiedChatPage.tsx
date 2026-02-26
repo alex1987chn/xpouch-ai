@@ -51,6 +51,13 @@ export default function UnifiedChatPage() {
   // 使用 ref 标记初始化状态，防止无限循环
   const initializedRef = useRef(false)
   const conversationLoadedRef = useRef(false)
+  const loadConversationRef = useRef(loadConversation)
+  loadConversationRef.current = loadConversation
+  
+  // conversationId 变化时重置加载标记
+  useEffect(() => {
+    conversationLoadedRef.current = false
+  }, [conversationId])
 
   // 加载自定义 Agent 的状态
   const [loadedAgent, setLoadedAgent] = useState<any>(null)
@@ -176,7 +183,6 @@ export default function UnifiedChatPage() {
     
     // 执行中不加载（避免干扰流式输出）
     if (isTaskStoreExecuting) {
-      console.log('[UnifiedChatPage] 执行中，跳过加载')
       return
     }
 
@@ -185,25 +191,30 @@ export default function UnifiedChatPage() {
     const storeCurrentId = useChatStore.getState().currentConversationId
     const currentMessages = useChatStore.getState().messages
     
-    // 🔥 检测是否是页面刷新
-    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
-    const isPageRefresh = navigation?.type === 'reload'
+    // 防止重复加载：使用 ref 标记
+    if (conversationLoadedRef.current) {
+      return
+    }
     
     // 是否需要重新加载
-    // 页面刷新时强制重新加载（避免 persist 恢复的数据跳过加载）
-    if (!isPageRefresh && storeCurrentId === conversationId && currentMessages.length > 0) {
-      // 已加载且不是刷新，跳过
+    if (storeCurrentId === conversationId && currentMessages.length > 0) {
+      // 已加载，跳过
+      conversationLoadedRef.current = true
+      return
+    }
+    
+    // 检查是否已经有 tasks 数据（由 persist 恢复）
+    const taskStore = useTaskStore.getState()
+    if (taskStore.tasks.size > 0) {
+      conversationLoadedRef.current = true
       return
     }
 
-    logger.debug('[UnifiedChatPage] 需要加载会话:', {
-      storeCurrentId,
-      conversationId,
-      messagesCount: currentMessages.length
-    })
+    // 标记为已加载，防止重复调用
+    conversationLoadedRef.current = true
 
     // 加载历史会话（仅从历史记录进入的场景）
-    loadConversation(conversationId)
+    loadConversationRef.current(conversationId)
       .catch((error: any) => {
         if (error?.status === 404) {
           // 会话不存在，重置状态
@@ -234,15 +245,10 @@ export default function UnifiedChatPage() {
       return
     }
 
-    // 🚀 核心修复：使用 setTimeout 延迟执行
-    // 这样做的目的是：在 React 严格模式的 "Mount -> Unmount" 瞬间，
-    // 这里的 timer 会被下面的 cleanup 清除，从而根本不会发出那个注定要被 Abort 的请求。
-    // 只有第二次稳定的 Mount，timer 才会真正跑完并发送请求。
+    // 使用 setTimeout 延迟执行，绕过 React 严格模式的抖动
     const timer = setTimeout(() => {
       // 双重检查：防止在 timeout 等待期间状态发生变化
       if (hasSentInitialMessage.current) return
-
-      console.log('[UnifiedChatPage] 准备发送首页传来的消息 (Delayed):', initialMessage.substring(0, 50))
 
       // 标记为已发送
       hasSentInitialMessage.current = true
@@ -268,6 +274,7 @@ export default function UnifiedChatPage() {
 
   // v3.0: 状态恢复/水合（使用独立的 Hook）
   // v3.3.0: 使用合并后的 useSessionRestore，同时支持页面加载恢复和标签页切换恢复
+  // 🔥 始终启用 useSessionRestore，它会内部处理重复恢复
   useSessionRestore({ enabled: !!conversationId })
 
   // 🔐 登录后自动重发消息（Store Trigger 模式）
@@ -283,8 +290,6 @@ export default function UnifiedChatPage() {
     const unsubscribe = useChatStore.subscribe((state, prevState) => {
       // 当 shouldRetrySend 从 false 变为 true 时触发
       if (state.shouldRetrySend && !prevState.shouldRetrySend && state.pendingMessage && !isStreaming) {
-        logger.info('[UnifiedChatPage] 检测到重试标志，自动发送消息:', state.pendingMessage.substring(0, 50))
-        
         // 使用 ref 获取最新的函数，避免闭包问题
         const currentSendMessage = sendMessageRef.current
         const currentAgentId = normalizedAgentIdRef.current
@@ -295,7 +300,6 @@ export default function UnifiedChatPage() {
             // 发送成功，清空待发送消息和标志
             useChatStore.getState().setPendingMessage(null)
             useChatStore.getState().setShouldRetrySend(false)
-            logger.info('[UnifiedChatPage] 消息重发成功')
           })
           .catch((err) => {
             logger.error('[UnifiedChatPage] 消息重发失败:', err)

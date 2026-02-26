@@ -47,7 +47,7 @@ providers:
     temperature: 0.7
     context_window: 128000
     priority: 3
-    enabled: true
+    enabled: false  # 未配置 OPENAI_API_KEY，禁用
 
   # -------------------------------------------------------------------------
   # Anthropic - Claude 系列，长文本和研究

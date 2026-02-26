@@ -78,8 +78,8 @@ export interface TaskSliceActions {
   // Session restore
   restoreFromSession: (session: ApiTaskSession, subTasks: SubTask[]) => void
   
-  // Clear all tasks
-  clearTasks: (force?: boolean) => void
+  // Reset all tasks
+  resetTasks: (force?: boolean) => void
   
   // Cache sync (for other slices to call)
   syncTasksCache: () => void
@@ -325,15 +325,12 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
     })
   },
 
-  clearTasks: (force: boolean = false) => {
+  resetTasks: (force: boolean = false) => {
     set((state: any) => {
-      // 🔥 保护：如果有运行中的任务，禁止清空（防止复杂模式执行中误清空）
-      // 除非强制清空（force=true，用于从历史记录加载会话）
+      // 🔥 保护：如果有运行中的任务，禁止重置（防止复杂模式执行中误重置）
+      // 除非强制重置（force=true，用于从历史记录加载会话）
       if (!force && state.runningTaskIds && state.runningTaskIds.size > 0) {
-        console.warn('[TaskStore] clearTasks 被阻止：有任务正在运行中', {
-          runningCount: state.runningTaskIds.size,
-          runningIds: Array.from(state.runningTaskIds)
-        })
+        console.warn('[TaskStore] resetTasks 被阻止：有任务正在运行中')
         return
       }
       
@@ -357,11 +354,9 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
       }
 
       state.tasks = new Map()
-      // 🔥 移除：state.runningTaskIds = new Set()（这是 UISlice 的状态）
 
       subTasks.forEach((subTask, index) => {
         const taskStatus = (subTask.status as TaskStatus) || 'pending'
-        // 🔥 移除：runningTaskIds 修改（这是 UISlice 的状态）
 
         const artifacts: Artifact[] = (subTask.artifacts || []).map((art: any, artIndex: number) => ({
           id: art.id || `${subTask.id}-artifact-${artIndex}`,
@@ -386,7 +381,7 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
         })
       })
 
-      // 🔥 移除以下跨 Slice 状态修改：
+      // 移除以下跨 Slice 状态修改：
       // state.mode = 'complex'（UISlice 状态）
       // state.isInitialized = true（UISlice 状态）
       // state.selectedTaskId = ...（UISlice 状态）

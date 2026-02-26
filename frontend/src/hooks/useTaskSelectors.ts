@@ -111,7 +111,7 @@ export const useTaskActions = () => useTaskStore(
     failTask: state.failTask,
     addArtifact: state.addArtifact,
     selectTask: state.selectTask,
-    clearTasks: state.clearTasks,
+    resetTasks: state.resetTasks,
     resetAll: state.resetAll,
     setMode: state.setMode,
     updateTasksFromPlan: state.updateTasksFromPlan,
@@ -127,7 +127,7 @@ export const useTaskActions = () => useTaskStore(
  * 获取单个 Action (当只需要一个 action 时使用)
  */
 export const useSelectTaskAction = () => useTaskStore(state => state.selectTask)
-export const useClearTasksAction = () => useTaskStore(state => state.clearTasks)
+export const useResetTasksAction = () => useTaskStore(state => state.resetTasks)
 export const useResetAllAction = () => useTaskStore(state => state.resetAll)
 export const useInitializePlanAction = () => useTaskStore(state => state.initializePlan)
 
