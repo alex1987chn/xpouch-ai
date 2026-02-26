@@ -147,9 +147,7 @@ async def log_requests(request: Request, call_next) -> Response:
         print(f"[RESPONSE] {response.status_code} {request.url.path}")
         return response
     except Exception as e:
-        print(f"[ERROR] Exception in {request.method} {request.url.path}: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"[ERROR] Exception in {request.method} {request.url.path}: {str(e)}", exc_info=True)
         raise
 
 
@@ -212,10 +210,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(AppError)
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     """处理自定义应用异常"""
-    print(f"[APP ERROR] {exc.code}: {exc.message}")
-    if exc.original_error:
-        import traceback
-        traceback.print_exception(type(exc.original_error), exc.original_error, exc.original_error.__traceback__)
+    logger.error(f"[APP ERROR] {exc.code}: {exc.message}", exc_info=exc.original_error is not None)
     return JSONResponse(
         status_code=exc.status_code,
         content=exc.to_dict(),
@@ -242,15 +237,11 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """处理未捕获的异常"""
     import traceback
-    print("=" * 80)
-    print("[UNHANDLED ERROR] Global exception caught:")
-    print(f"[UNHANDLED ERROR] Request path: {request.url.path}")
-    print(f"[UNHANDLED ERROR] Exception type: {type(exc).__name__}")
-    print(f"[UNHANDLED ERROR] Exception message: {str(exc)}")
-    print("[UNHANDLED ERROR] Stack trace:")
-    traceback.print_exc()
-    print("=" * 80)
-    
+    logger.error(
+        f"[UNHANDLED ERROR] {type(exc).__name__}: {str(exc)} | Path: {request.url.path}",
+        exc_info=True
+    )
+
     app_error = handle_error(exc)
     return JSONResponse(
         status_code=app_error.status_code,
@@ -502,7 +493,5 @@ if __name__ == "__main__":
     try:
         uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False, log_level="info")
     except Exception as e:
-        print(f"[STARTUP ERROR] {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"[STARTUP ERROR] {type(e).__name__}: {e}", exc_info=True)
         raise

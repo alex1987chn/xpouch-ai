@@ -25,9 +25,7 @@ export const useInputMessage = () =>
 export const useIsGenerating = () => 
   useChatStore(state => state.isGenerating)
 
-/** 获取输入状态 */
-export const useIsTyping = () => 
-  useChatStore(state => state.isTyping)
+
 
 /** 获取选中的智能体ID */
 export const useSelectedAgentId = () => 
@@ -97,9 +95,6 @@ export const useChatActions = () => useChatStore(
     setCurrentConversationId: state.setCurrentConversationId,
     setSelectedAgentId: state.setSelectedAgentId,
     setGenerating: state.setGenerating,
-    setIsTyping: state.setIsTyping,
-    updateLastMessageThoughts: state.updateLastMessageThoughts,
-    rebuildThinkingFromPlan: state.rebuildThinkingFromPlan,
   }))
 )
 

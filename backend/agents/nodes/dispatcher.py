@@ -7,6 +7,7 @@ v3.2 重构：移除对 dynamic_experts.py 的依赖
 仅负责检查专家存在，流转逻辑由 graph.py 决定
 v3.3 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
 """
+import logging
 from typing import Dict, Any
 from langchain_core.runnables import RunnableConfig
 from agents.state import AgentState
@@ -14,6 +15,8 @@ from agents.services.expert_manager import get_expert_config, get_expert_config_
 from utils.exceptions import AppError
 from database import engine
 from sqlmodel import Session
+
+logger = logging.getLogger(__name__)
 
 
 async def expert_dispatcher_node(state: AgentState, config: RunnableConfig = None) -> Dict[str, Any]:
@@ -70,7 +73,5 @@ async def expert_dispatcher_node(state: AgentState, config: RunnableConfig = Non
         return {}
 
     except Exception as e:
-        print(f"[DISPATCHER_NODE] 检查专家失败: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"[DISPATCHER_NODE] 检查专家失败: {e}", exc_info=True)
         raise AppError(message=f"专家配置错误: {str(e)}", code="EXPERT_NOT_FOUND")

@@ -3,7 +3,10 @@
 
 P1 优化: 添加分页支持
 """
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -128,8 +131,7 @@ async def get_all_agents(
         )
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.error(f"[Agents API] 获取智能体列表失败: {e}", exc_info=True)
         raise AppError(message=str(e), original_error=e)
 
 
