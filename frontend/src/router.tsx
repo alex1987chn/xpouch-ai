@@ -18,6 +18,8 @@ import { normalizeAgentId } from '@/utils/agentUtils'
 import { logger } from '@/utils/logger'
 import { SYSTEM_AGENTS } from '@/constants/agents'
 import { agentsKeys } from '@/hooks/queries'
+import type { Conversation, Agent } from '@/types'
+import type { AgentDisplay, CreateAgentRequest } from '@/services/agent'
 
 // 路由懒加载 - 代码分割优化
 const UnifiedChatPage = lazy(() => import('./pages/chat/UnifiedChatPage'))
@@ -47,7 +49,7 @@ const HistoryPageWrapper = () => {
   const setMessages = useChatStore(state => state.setMessages)
   const setCurrentConversationId = useChatStore(state => state.setCurrentConversationId)
 
-  const handleSelectConversation = (conversation: any) => {
+  const handleSelectConversation = (conversation: Conversation) => {
     // 🔥 Server-Driven UI: 导航前重置当前状态
     // 目标页面会通过 API 或 localStorage 恢复新会话的数据
     setMessages([])
@@ -92,7 +94,7 @@ const CreateAgentPageWrapper = () => {
   const queryClient = useQueryClient()
   const addCustomAgent = useChatStore(state => state.addCustomAgent)
 
-  const handleSave = async (agent: any) => {
+  const handleSave = async (agent: CreateAgentRequest & { icon: string; color?: string }) => {
     try {
       const savedAgent = await createCustomAgent({
         name: agent.name,
@@ -155,7 +157,7 @@ const EditAgentPageWrapper = () => {
       }
       try {
         const agents = await getAllAgents()
-        const agent = agents.find((a: any) => a.id === id)
+        const agent = agents.find((a: AgentDisplay) => a.id === id)
         if (!agent) {
           logger.error('智能体不存在:', id)
           navigate('/')
@@ -304,7 +306,12 @@ export const router = createBrowserRouter([
 ])
 
 // 🔐 全局 401 错误处理 - 触发登录弹窗
-const handleGlobalError = (error: any) => {
+interface ApiError {
+  status?: number
+  message?: string
+}
+
+const handleGlobalError = (error: ApiError) => {
   if (error?.status === 401) {
     // 动态导入避免循环依赖
     import('@/store/taskStore').then(({ useTaskStore }) => {
@@ -320,9 +327,10 @@ const queryClient = new QueryClient({
       staleTime: 1000 * 60 * 5, // 5分钟缓存
       refetchOnWindowFocus: false,
       // 全局错误处理
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error: unknown) => {
         // 401 不重试
-        if (error?.status === 401) return false
+        const apiError = error as ApiError
+        if (apiError?.status === 401) return false
         return failureCount < 2
       },
     },
