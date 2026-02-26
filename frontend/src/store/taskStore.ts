@@ -68,8 +68,8 @@ export const useTaskStore = create<TaskStore>()(
       // 全局重置方法 - 组合各 Slice 的重置逻辑
       resetAll: (force: boolean = false) => {
         // 🔥 按依赖顺序重置各 Slice 状态
-        get().resetArtifacts()   // 1. 清空 Artifacts（在 Task 之前）
-        get().clearTasks(force)  // 2. 清空 Task 数据
+        get().resetArtifacts()   // 1. 重置 Artifacts（在 Task 之前）
+        get().resetTasks(force)  // 2. 重置 Task 数据
         get().resetUI()          // 3. 重置 UI 状态（依赖 Task 数据）
         get().resetPlanning()    // 4. 重置 Planning 状态
       }
@@ -99,24 +99,7 @@ export const useTaskStore = create<TaskStore>()(
       // 自定义序列化：处理 Map/Set
       serialize: (state: any) => {
         try {
-          const serialized = JSON.stringify(state)
-          
-          // 调试模式日志
-          if (import.meta.env.VITE_DEBUG_MODE === 'true') {
-            let totalArtifacts = 0
-            if (state.tasks && Array.isArray(state.tasks)) {
-              state.tasks.forEach((entry: any) => {
-                const task = entry[1]
-                totalArtifacts += task?.artifacts?.length || 0
-              })
-            }
-            console.log('[TaskStore] serialize:', {
-              tasksCount: state.tasks?.length || 0,
-              totalArtifacts,
-              hasSession: !!state.session
-            })
-          }
-          return serialized
+          return JSON.stringify(state)
         } catch (error) {
           console.error('[TaskStore] serialize 失败:', error)
           throw error
@@ -135,28 +118,19 @@ export const useTaskStore = create<TaskStore>()(
           if (parsed.tasks && Array.isArray(parsed.tasks)) {
             parsed.tasks = new Map(parsed.tasks)
             
-            // 调试模式日志
-            if (import.meta.env.VITE_DEBUG_MODE === 'true') {
-              let totalArtifacts = 0
-              parsed.tasks.forEach((task: any) => {
-                totalArtifacts += task?.artifacts?.length || 0
-              })
-              console.log('[TaskStore] deserialize:', {
-                tasksCount: parsed.tasks.size,
-                totalArtifacts
-              })
-            }
+            // 重建 tasksCache
+            parsed.tasksCache = Array.from(parsed.tasks.values())
+              .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
           } else {
             parsed.tasks = new Map()
+            parsed.tasksCache = []
           }
 
           // 恢复 Set: ['id1', 'id2', ...] => Set
           if (parsed.runningTaskIds && Array.isArray(parsed.runningTaskIds)) {
             parsed.runningTaskIds = new Set(parsed.runningTaskIds)
-            console.log('[TaskStore] deserialize: 恢复 Set, 运行中任务数:', parsed.runningTaskIds.size)
           } else {
             parsed.runningTaskIds = new Set()
-            console.warn('[TaskStore] deserialize: runningTaskIds 无效，创建空 Set')
           }
 
           return parsed
@@ -166,6 +140,7 @@ export const useTaskStore = create<TaskStore>()(
           return {
             session: null,
             tasks: new Map(),
+            tasksCache: [],
             runningTaskIds: new Set(),
             selectedTaskId: null,
             isInitialized: false,

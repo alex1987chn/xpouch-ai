@@ -44,13 +44,7 @@ const formatTaskOutput = (outputResult: any): string => {
   return formattedText
 }
 
-// Dev environment check
-const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
 
-// Unified debug log function
-const debug = DEBUG
-  ? (...args: unknown[]) => console.log('[useConversation]', ...args)
-  : () => {}
 
 /**
  * Conversation management Hook
@@ -70,7 +64,7 @@ export function useConversation() {
   const { 
     initializePlan,
     restoreFromSession,
-    clearTasks,
+    resetTasks,
   } = useTaskActions()
 
   /**
@@ -83,47 +77,19 @@ export function useConversation() {
       const currentId = store.currentConversationId
 
       // 🔥🔥🔥 简化判断：检查是否需要重新加载
-      // 1. 会话不匹配：需要加载
-      // 2. 消息未加载：需要加载
       const isSameConversation = currentId === targetConversationId
       const hasMessages = store.messages.length > 0
       
-      // 如果会话和消息都已加载，检查是否是页面刷新
+      // 🔥 如果已有 task 数据，跳过加载（保留 persist 恢复的数据）
+      if (taskStore.tasks.size > 0) {
+        debug('已有 task 数据，跳过加载')
+        return null
+      }
+      
+      // 如果会话和消息都已加载，跳过
       if (isSameConversation && hasMessages) {
-        // 🔥 区分"刷新页面"和"Tab切换/路由切换"
-        // 刷新页面：总是从 API 获取最新数据
-        // Tab切换：由 useSessionRestore 统一处理恢复逻辑
-        const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
-        const isPageRefresh = navigation?.type === 'reload'
-        
-        if (isPageRefresh) {
-          debug('检测到页面刷新，从 API 获取最新数据')
-          const conversation = await getConversation(targetConversationId)
-          
-          if (conversation.task_session && conversation.task_session.sub_tasks?.length > 0) {
-            debug('从 API 恢复 tasks:', conversation.task_session.session_id, 'sub_tasks:', conversation.task_session.sub_tasks?.length)
-            clearTasks(true)
-            restoreFromSession(conversation.task_session, conversation.task_session.sub_tasks)
-          }
-          return conversation
-        }
-        
-        // Tab 切换或路由切换，检查 localStorage 是否有数据
-        if (taskStore.tasks.size > 0 && taskStore.session) {
-          debug('Tab 切换，使用 localStorage 恢复的数据')
-          return null
-        }
-        
-        // localStorage 没有数据，从 API 获取
-        debug('localStorage 未恢复 tasks，从 API 获取')
-        const conversation = await getConversation(targetConversationId)
-        
-        if (conversation.task_session && conversation.task_session.sub_tasks?.length > 0) {
-          debug('从 API 恢复 tasks:', conversation.task_session.session_id)
-          clearTasks(true)
-          restoreFromSession(conversation.task_session, conversation.task_session.sub_tasks)
-        }
-        return conversation
+        debug('会话已加载，跳过')
+        return null
       }
 
       // 需要重新加载
@@ -133,7 +99,6 @@ export function useConversation() {
 
       // 清空旧消息
       if (currentId !== targetConversationId) {
-        debug('清空旧消息，准备加载新会话')
         setMessages([])
       }
 
@@ -142,10 +107,8 @@ export function useConversation() {
       // 设置消息
       if (conversation.messages && conversation.messages.length > 0) {
         setMessages(conversation.messages)
-        debug('设置会话消息:', conversation.messages.length, '条')
       } else {
         setMessages([])
-        debug('会话无消息，清空消息列表')
       }
 
       // 设置 agent
@@ -153,26 +116,44 @@ export function useConversation() {
         setSelectedAgentId(normalizeAgentId(conversation.agent_id))
       }
 
-      // 清空旧任务状态
-      clearTasks(true)
-
-      // 恢复 task_session
-      debug('conversation.task_session:', conversation.task_session)
-      debug('conversation.task_session_id:', conversation.task_session_id)
-      debug('conversation.agent_type:', conversation.agent_type)
-
-      if (conversation.task_session) {
-        debug('恢复 task_session:', conversation.task_session.session_id || conversation.task_session.id, 'sub_tasks:', conversation.task_session.sub_tasks?.length)
-        restoreFromSession(conversation.task_session, conversation.task_session.sub_tasks || [])
+      // 智能恢复：比较 API 数据和本地数据
+      const subTasks = conversation.task_session?.sub_tasks || []
+      const apiArtifactCount = subTasks.reduce((sum: number, t: any) => 
+        sum + (t.artifacts?.length || 0), 0)
+      
+      // 检查本地数据
+      let localArtifactCount = 0
+      try {
+        const stored = localStorage.getItem('xpouch-task-store@2')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (parsed.tasks && Array.isArray(parsed.tasks)) {
+            localArtifactCount = parsed.tasks.reduce((sum: number, entry: any) => {
+              const task = entry[1]
+              return sum + (task?.artifacts?.length || 0)
+            }, 0)
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+      
+      // 如果 API 没有 artifacts 但本地有，保留本地数据
+      if (apiArtifactCount === 0 && localArtifactCount > 0) {
+        // 保留本地数据，跳过恢复
       } else {
-        debug('无 task_session')
+        // 清空旧任务状态并恢复
+        resetTasks(true)
+        
+        if (conversation.task_session) {
+          restoreFromSession(conversation.task_session, subTasks)
+        }
       }
 
       return conversation
     } catch (error: any) {
       // 404 错误：会话不存在（可能是新会话还没在后端创建）
       if (error?.status === 404) {
-        debug('会话不存在，可能是新会话')
         return null
       }
       
@@ -183,7 +164,7 @@ export function useConversation() {
     setMessages,
     setCurrentConversationId,
     setSelectedAgentId,
-    clearTasks,
+    resetTasks,
     restoreFromSession
   ])
 
@@ -192,7 +173,6 @@ export function useConversation() {
    */
   const deleteConversation = useCallback(async (conversationId: string) => {
     try {
-      debug('Deleting conversation:', conversationId)
       await apiDeleteConversation(conversationId)
 
       if (currentConversationId === conversationId) {

@@ -19,7 +19,7 @@
 - [x] 后端修复：graph.py logger、ChatRequest snake_case、时间注入提取
 - [x] 专家类型同步：后端添加 designer/architect，前端添加 memorize_expert
 
-### Previous (v3.2.0)
+### Previous (v3.1.0)
 - [x] 架构重构：批处理 Artifact + 消除事件脑裂
 - [x] 修复 Slice 污染：clearTasks 职责分离，新增 resetAll
 - [x] 统一事件分发：chat.ts 分流 Chat/Task 事件

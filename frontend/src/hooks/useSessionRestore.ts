@@ -20,9 +20,6 @@ import { getEventHandler } from '@/handlers/eventHandlers'
 import { logger } from '@/utils/logger'
 import { getConversation } from '@/services/chat'
 
-// 开发环境判断
-const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
-
 interface UseSessionRestoreOptions {
   /** 是否启用恢复 */
   enabled?: boolean
@@ -75,6 +72,8 @@ export function useSessionRestore(
   const restoreFromSession = useTaskStore((state) => state.restoreFromSession)
   const setIsWaitingForApproval = useTaskStore((state) => state.setIsWaitingForApproval)
   const addMessage = useChatStore((state) => state.addMessage)
+  const setMessages = useChatStore((state) => state.setMessages)
+  const setCurrentConversationId = useChatStore((state) => state.setCurrentConversationId)
 
   /**
    * 核心恢复逻辑
@@ -88,18 +87,12 @@ export function useSessionRestore(
     // 防抖检查：5 秒内不重复恢复
     const now = Date.now()
     if (now - lastRestoreTimeRef.current < 5000) {
-      if (DEBUG) {
-        logger.debug('[useSessionRestore] 防抖间隔内，跳过恢复')
-      }
       return false
     }
     
     // 检查是否有活跃的 SSE 连接
     const chatStore = useChatStore.getState()
     if (chatStore.isGenerating) {
-      if (DEBUG) {
-        logger.debug('[useSessionRestore] 正在生成中，连接活跃，跳过恢复')
-      }
       hasActiveStreamRef.current = true
       return false
     }
@@ -107,17 +100,7 @@ export function useSessionRestore(
     // 如果页面隐藏前有活跃流，但现在 isGenerating 为 false
     // 说明可能是浏览器后台节流导致的连接中断
     if (hasActiveStreamRef.current) {
-      logger.warn('[useSessionRestore] 检测到可能的 SSE 中断（浏览器后台节流），开始状态恢复')
       hasActiveStreamRef.current = false
-    }
-
-    // 如果已经有初始化的任务且没有运行中的任务，不需要恢复
-    const taskStore = useTaskStore.getState()
-    if (taskStore.isInitialized && taskStore.runningTaskIds.size === 0) {
-      if (DEBUG) {
-        logger.debug('[useSessionRestore] 已有初始化会话且无运行中任务，跳过恢复')
-      }
-      return false
     }
 
     lastRestoreTimeRef.current = now
@@ -125,76 +108,58 @@ export function useSessionRestore(
     setError(null)
 
     try {
-      if (DEBUG) {
-        logger.debug('[useSessionRestore] 开始恢复会话:', conversationId)
-      }
-
-      // 🔥 首先检查本地 localStorage 是否已有数据
+      // 检查本地 localStorage 是否已有数据
       const persistedState = localStorage.getItem('xpouch-task-store@2')
       const hasLocalData = persistedState && JSON.parse(persistedState).session
-      
-      if (hasLocalData && DEBUG) {
-        logger.debug('[useSessionRestore] 发现本地持久化数据，优先使用')
-      }
 
       // 从服务端获取会话详情
       const conversation = await getConversation(conversationId)
       
       // 检查是否是复杂模式（有 task_session）
       if (!conversation.task_session && !conversation.task_session_id) {
-        if (DEBUG) {
-          logger.debug('[useSessionRestore] 非复杂模式，无需恢复')
-        }
         setIsRestored(true)
         setIsRestoring(false)
         return true
       }
 
-      // 恢复任务状态
+      // 简化：只恢复消息，tasks 由 persist 恢复
+      if (conversation.messages && conversation.messages.length > 0) {
+        setMessages(conversation.messages)
+      }
+      setCurrentConversationId(conversationId)
+      
+      // 恢复任务状态（智能合并）
       const { task_session } = conversation
       if (task_session?.sub_tasks) {
         const subTasks = task_session.sub_tasks || []
         
-        // 🔥 智能恢复策略：
-        // 1. 如果本地已有持久化数据且 subTasks 为空，保留本地数据
-        // 2. 否则使用 API 返回的数据（API 数据更权威）
-        const hasApiData = subTasks.length > 0 && subTasks.some((t: any) => 
-          t.artifacts && t.artifacts.length > 0
-        )
+        // 统计 API 返回的 artifacts 数量
+        const apiArtifactCount = subTasks.reduce((sum: number, t: any) => 
+          sum + (t.artifacts?.length || 0), 0)
         
-        if (!hasApiData && hasLocalData) {
-          if (DEBUG) {
-            logger.debug('[useSessionRestore] API 数据不完整，使用本地持久化数据')
-          }
-          // 不调用 restoreFromSession，保留 localStorage 中的数据
-          // 只需要更新一些关键状态
-          const localState = JSON.parse(persistedState)
-          if (localState.isInitialized) {
-            setIsRestored(true)
-            setIsRestoring(false)
-            return true
-          }
+        // 检查本地数据
+        const taskStore = useTaskStore.getState()
+        let localArtifactCount = 0
+        taskStore.tasks.forEach((task: any) => {
+          localArtifactCount += task?.artifacts?.length || 0
+        })
+        
+        // 智能决策：
+        // 1. 本地无数据 -> 从 API 恢复
+        // 2. API 有 artifacts 但本地没有 -> 从 API 恢复（数据更完整）
+        // 3. 其他情况 -> 保留本地数据
+        if (taskStore.tasks.size === 0) {
+          restoreFromSession(task_session, subTasks)
+        } else if (apiArtifactCount > 0 && localArtifactCount === 0) {
+          restoreFromSession(task_session, subTasks)
         }
-        
-        // 恢复任务状态到 Store
-        restoreFromSession(task_session, subTasks)
         
         // 检查是否还有运行中的任务
         const hasRunningTask = subTasks.some((t: any) => t.status === 'running')
         const hasPendingTask = subTasks.some((t: any) => t.status === 'pending')
         
-        if (DEBUG) {
-          logger.debug('[useSessionRestore] 状态恢复完成:', {
-            taskCount: subTasks.length,
-            hasRunningTask,
-            hasPendingTask,
-            sessionStatus: task_session.status
-          })
-        }
-        
         // 如果有运行中的任务，提示用户任务仍在进行
         if (hasRunningTask) {
-          logger.info('[useSessionRestore] 检测到运行中的任务，任务仍在后台执行')
           
           // 添加系统消息提示用户
           addMessage({
@@ -206,7 +171,6 @@ export function useSessionRestore(
         
         // 检查会话状态是否需要用户干预（如 HITL 等待确认）
         if (task_session.status === 'waiting_for_approval' && hasPendingTask) {
-          logger.info('[useSessionRestore] 检测到 HITL 等待确认状态')
           setIsWaitingForApproval(true)
         }
       }
@@ -226,7 +190,7 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [conversationId, enabled, isInitialized, restoreFromSession, setIsWaitingForApproval, addMessage, resetAll, onRestored])
+  }, [conversationId, enabled, isInitialized, restoreFromSession, setIsWaitingForApproval, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
 
   /**
    * 公开的手动恢复方法
@@ -293,13 +257,15 @@ export function useSessionRestore(
  */
 export function hasRestorableSession(conversationId: string): boolean {
   try {
-    const key = `xpouch-task-store@1`
+    const key = `xpouch-task-store@2`
     const stored = localStorage.getItem(key)
     if (!stored) return false
     
     const parsed = JSON.parse(stored)
-    // 检查存储的会话是否匹配当前对话
-    return parsed.session?.sessionId && parsed.isInitialized
+    // 检查存储的会话是否匹配当前对话（使用 tasks 检查替代 isInitialized）
+    const hasTasks = parsed.tasks && 
+      (Array.isArray(parsed.tasks) ? parsed.tasks.length > 0 : parsed.tasks.size > 0)
+    return parsed.session?.sessionId && hasTasks
   } catch {
     return false
   }
@@ -310,15 +276,11 @@ export function hasRestorableSession(conversationId: string): boolean {
  */
 export function clearSessionRestoreData(): void {
   try {
-    const key = `xpouch-task-store@1`
+    const key = `xpouch-task-store@2`
     localStorage.removeItem(key)
     
     // 同时清除事件处理器的已处理事件记录
     getEventHandler().clearProcessedEvents()
-    
-    if (DEBUG) {
-      logger.debug('[useSessionRestore] 清除恢复数据')
-    }
   } catch (e) {
     logger.error('[useSessionRestore] 清除恢复数据失败:', e)
   }
