@@ -36,6 +36,9 @@ export { useSwipeBack } from './useSwipeBack'
 // 异步错误处理
 export { useAsyncError } from './useAsyncError'
 
+// React 19 乐观更新
+export { useOptimisticUpdate, useOptimisticList } from './useOptimisticUpdate'
+
 // ============================================================================
 // 🔥🔥🔥 性能优化 Selectors (v3.1.0)
 // 使用 Zustand Selector 模式避免不必要的重渲染
