@@ -114,6 +114,7 @@ export const useTaskActions = () => useTaskStore(
     resetTasks: state.resetTasks,
     resetAll: state.resetAll,
     setMode: state.setMode,
+    setIsInitialized: state.setIsInitialized,
     updateTasksFromPlan: state.updateTasksFromPlan,
     setPendingPlan: state.setPendingPlan,
     clearPendingPlan: state.clearPendingPlan,

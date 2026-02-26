@@ -8,7 +8,7 @@
 import { useCallback } from 'react'
 import { getConversation, deleteConversation as apiDeleteConversation } from '@/services/chat'
 import { normalizeAgentId } from '@/utils/agentUtils'
-import { errorHandler } from '@/utils/logger'
+import { errorHandler, logger } from '@/utils/logger'
 import type { Conversation } from '@/types'
 
 // Performance Optimized Selectors (v3.1.0)
@@ -61,10 +61,12 @@ export function useConversation() {
     setSelectedAgentId 
   } = useChatActions()
   
-  const { 
+  const {
     initializePlan,
     restoreFromSession,
     resetTasks,
+    setMode,
+    setIsInitialized,
   } = useTaskActions()
 
   /**
@@ -82,18 +84,18 @@ export function useConversation() {
       
       // 🔥 如果已有 task 数据，跳过加载（保留 persist 恢复的数据）
       if (taskStore.tasks.size > 0) {
-        debug('已有 task 数据，跳过加载')
+        logger.debug('已有 task 数据，跳过加载')
         return null
       }
       
       // 如果会话和消息都已加载，跳过
       if (isSameConversation && hasMessages) {
-        debug('会话已加载，跳过')
+        logger.debug('会话已加载，跳过')
         return null
       }
 
       // 需要重新加载
-      debug('开始加载会话:', targetConversationId, '当前会话:', currentId)
+      logger.debug('开始加载会话:', targetConversationId, '当前会话:', currentId)
 
       const conversation = await getConversation(targetConversationId)
 
@@ -144,9 +146,12 @@ export function useConversation() {
       } else {
         // 清空旧任务状态并恢复
         resetTasks(true)
-        
+
         if (conversation.task_session) {
           restoreFromSession(conversation.task_session, subTasks)
+          // 🔥 恢复成功后设置 UI 状态
+          setMode('complex')
+          setIsInitialized(true)
         }
       }
 
@@ -165,7 +170,9 @@ export function useConversation() {
     setCurrentConversationId,
     setSelectedAgentId,
     resetTasks,
-    restoreFromSession
+    restoreFromSession,
+    setMode,
+    setIsInitialized
   ])
 
   /**
