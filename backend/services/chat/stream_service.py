@@ -21,13 +21,13 @@ import uuid
 from typing import List, Dict, Optional, AsyncGenerator, Any, Callable
 from datetime import datetime
 from fastapi.responses import StreamingResponse
-from sqlmodel import Session
+from sqlmodel import Session, select
 from langchain_core.messages import BaseMessage
 from langchain_mcp_adapters.client import MultiServerMCPClient  # 🔥 MCP: SSE 客户端
-from contextlib import AsyncExitStack  # 🔥 MCP: 异步上下文管理器
+from contextlib import AsyncExitStack, asynccontextmanager  # 🔥 MCP: 异步上下文管理器
 
 from models import CustomAgent, Thread, MCPServer  # 🔥 MCP: 添加 MCP 模型
-from database import get_session  # 🔥 MCP: 数据库会话
+from database import engine  # 🔥 MCP: 数据库引擎
 from utils.llm_factory import get_llm_instance
 from utils.exceptions import AppError
 from utils.logger import logger
@@ -89,7 +89,8 @@ class StreamService:
         
         tools = []
         try:
-            with get_session() as session:
+            # Python 3.13: 在异步函数中使用同步上下文管理器
+            with Session(engine) as session:
                 active_servers = session.exec(
                     select(MCPServer).where(MCPServer.is_active == True)
                 ).all()
