@@ -109,9 +109,10 @@ class StreamService:
                         "transport": transport
                     }
                 
-                # P0 修复: 使用超时控制
+                # P0 修复: 使用超时控制（streamable_http 需要更长时间）
                 # 注意: 0.2.1 版本不支持 async with，使用直接实例化
-                async with asyncio.timeout(10):  # 10秒超时
+                timeout_seconds = 30 if any(cfg.get("transport") == "streamable_http" for cfg in mcp_config.values()) else 15
+                async with asyncio.timeout(timeout_seconds):
                     client = MultiServerMCPClient(mcp_config)
                     tools = await client.get_tools()
                     logger.info(f"[MCP] 已加载 {len(tools)} 个 MCP 工具 from {len(active_servers)} 个服务器")
