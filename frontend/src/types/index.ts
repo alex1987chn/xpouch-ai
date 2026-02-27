@@ -262,7 +262,7 @@ export type StreamCallback = (
  * Artifact 类型枚举 - 统一前后端定义
  * 注意：修改此枚举需要同步更新后端代码
  */
-export type ArtifactType = 'code' | 'markdown' | 'search' | 'html' | 'text' | 'image'
+export type ArtifactType = 'code' | 'markdown' | 'search' | 'html' | 'text' | 'image' | 'video' | 'media'
 
 /**
  * Artifact（代码/图表等）类型 - 权威定义
