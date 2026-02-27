@@ -30,4 +30,5 @@ dependencies = [
     "mcp>=1.26.0",
     "langchain-mcp-adapters>=0.2.1",
     "tenacity>=9.0.0",  # P1 新增: 重试机制
+    "cachetools>=5.3.0",  # P1 新增: TTL 缓存
 ]
