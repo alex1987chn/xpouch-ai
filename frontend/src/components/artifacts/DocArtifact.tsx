@@ -81,6 +81,10 @@ export default function DocArtifact({ content, className, isStreaming }: DocArti
               const shouldRenderAsVideo = hasVideoExt
               
               if (shouldRenderAsImage) {
+                // 检查 OSS 链接是否可能已过期
+                const expireMatch = linkHref.match(/[?&]Expires=(\d+)/)
+                const isExpired = expireMatch && Number(expireMatch[1]) * 1000 < Date.now()
+                
                 return (
                   <span className="block my-3">
                     <img
@@ -94,6 +98,11 @@ export default function DocArtifact({ content, className, isStreaming }: DocArti
                         target.style.display = 'none'
                       }}
                     />
+                    {isExpired && (
+                      <span className="text-xs text-amber-600 dark:text-amber-400 block mt-1">
+                        ⚠️ 图片链接已过期，请重新生成
+                      </span>
+                    )}
                     <a
                       href={linkHref}
                       target="_blank"
