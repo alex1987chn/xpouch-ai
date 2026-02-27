@@ -394,9 +394,21 @@ async def preview_expert(
 
     try:
         # 使用工厂方法创建 LLM 实例
+        # 🔥 修复：需要传入 provider 参数
+        from providers_config import get_model_config
+        model_id = expert_config.get("model", "deepseek-chat")
+        model_config = get_model_config(model_id)
+        
+        if not model_config:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"不支持的模型: {model_id}"
+            )
+        
         llm = get_llm_instance(
-            model=expert_config["model"],
-            temperature=expert_config["temperature"]
+            provider=model_config.get("provider", "deepseek"),
+            model=model_config.get("model", model_id),
+            temperature=expert_config.get("temperature", 0.7)
         )
 
         response = await llm.ainvoke([
