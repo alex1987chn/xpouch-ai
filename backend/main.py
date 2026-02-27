@@ -28,6 +28,7 @@ from datetime import datetime
 import uuid
 from sqlmodel import Session, select
 from contextlib import asynccontextmanager
+from utils.logger import logger
 
 # 内部模块导入
 from database import create_db_and_tables, engine, get_session
