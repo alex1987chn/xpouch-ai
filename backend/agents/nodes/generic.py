@@ -362,6 +362,10 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
                     # 🔥 MCP: 合并基础工具和动态 MCP 工具
                     runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
                     
+                    # 🔥 警告：如果 MCP 工具为空但预期应该有
+                    if not mcp_tools and os.getenv("MCP_SERVERS"):
+                        print(f"[GenericWorker] ⚠️ MCP 工具为空！请检查 MCP 服务器连接")
+                    
                     llm_to_use = llm_with_config.bind_tools(runtime_tools)
                     print(f"[GenericWorker] 🔧 工具已绑定: {len(runtime_tools)} 个工具 (基础: {len(BASE_TOOLS)}, MCP: {len(mcp_tools)})")
                 except Exception as e:
