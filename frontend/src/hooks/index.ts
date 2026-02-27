@@ -36,11 +36,7 @@ export { useSwipeBack } from './useSwipeBack'
 // 异步错误处理
 export { useAsyncError } from './useAsyncError'
 
-// React 19 乐观更新
-export { useOptimisticUpdate, useOptimisticList } from './useOptimisticUpdate'
 
-// React 19 Suspense 查询
-export { useSuspenseQuery, usePromise, createCachedPromise } from './useSuspenseQuery'
 
 // ============================================================================
 // 🔥🔥🔥 性能优化 Selectors (v3.1.0)
