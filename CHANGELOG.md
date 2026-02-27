@@ -15,12 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔐 安全修复 (P0)
 
-**JWT Token 安全重构**:
+**JWT Token 安全重构 + 自动刷新**:
 - 从 localStorage 迁移至 HttpOnly Cookie
 - 移除 JWT 默认密钥，强制使用环境变量
 - Access Token 过期时间从 30 天缩短至 60 分钟
-- 添加刷新 Token 机制
+- **新增自动 Token 刷新机制**：前端拦截器静默刷新，用户无感知
+  - 拦截 401 错误 → 调用 `/auth/refresh-token` → 重试原请求
+  - 刷新失败时才弹出登录框，实现 60 天免登录体验
 - 新增 `AuthInitializer` 组件处理页面刷新后的会话恢复
+
+**MCP 工具调用修复**:
+- 修复 ToolMessage content 格式问题（DeepSeek/MiniMax 只接受字符串）
+- 添加模型特定的 `content_mode` 配置（string/auto）
+- 支持多模态模型（OpenAI/Anthropic/Gemini/Kimi）保留原生 list[str|dict] 格式
 
 **MCP 连接安全**:
 - 修复 MCP SSE 连接泄漏问题

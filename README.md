@@ -355,7 +355,8 @@ cd frontend && pnpm dev
 
 ### 认证安全
 - **HttpOnly Cookie**: JWT Token 存储在 HttpOnly Cookie 中，防止 XSS 攻击
-- **短时效 Token**: Access Token 60 分钟过期，Refresh Token 7 天过期
+- **短时效 Token**: Access Token 60 分钟过期，Refresh Token 60 天过期
+- **自动刷新**: 前端拦截器实现静默 Token 刷新，用户无感知续期
 - **密码安全**: 使用 bcrypt 哈希存储，支持密码强度验证
 
 ### 数据安全
@@ -372,6 +373,7 @@ cd frontend && pnpm dev
 
 - [x] **MCP 生态支持** ✅ —— 接入外部工具服务，动态扩展 AI 能力
 - [x] **代码审查修复** ✅ —— P0/P1/P2 全面修复，项目评分 8.2/10
+- [x] **自动 Token 刷新** ✅ —— 工业级认证机制，60 天免登录体验
 - [ ] 多租户支持
 - [ ] 插件系统
 - [ ] 更多 LLM 提供商支持
