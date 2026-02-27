@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-02-27] - v3.2.1 - MCP 增强与媒体渲染优化
+
+### 🎉 新增功能
+
+**MCP Streamable HTTP 支持**:
+- 新增 `transport` 字段支持 `streamable_http` 协议（MCP 新标准，2025年3月发布）
+- 向后兼容 SSE 协议（legacy，已弃用）
+- 数据库迁移：`mcp_servers` 表新增 `transport` 列（默认 'sse'）
+
+**MCP 工具超时与错误处理**:
+- 添加 60 秒工具调用超时，防止外部 MCP 服务挂起
+- 超时/错误时返回友好提示给 LLM，而非崩溃整个工作流
+- 支持通义万相等长耗时服务（如视频生成）的优雅降级
+
+**媒体内容自动渲染**:
+- 自动识别并渲染 MCP 生成的图片/视频链接
+- 支持 Markdown 链接 `[text](image.png)` 和行内代码 `` `image.png` `` 格式
+- 支持 OSS 对象存储链接（阿里云、AWS S3 等）
+- 添加链接过期检测和警告提示
+
+### 🐛 Bug 修复
+
+- 修复 MessageItem 和 DocArtifact 中的图片渲染逻辑
+- 修复 ToolMessage content 兼容性问题（DeepSeek/MiniMax）
+
+---
+
 ## [2026-02-27] - v3.2.0 - MCP 生态正式版 + 工业级认证
 
 ### 🎉 重大更新
