@@ -63,7 +63,7 @@ from tools import ALL_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集
 from agents.state import AgentState
 from agents.services.expert_manager import get_expert_config_cached
 from utils.llm_factory import get_effective_model, get_expert_llm
-from providers_config import get_model_config
+from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from tools import ALL_TOOLS  # 🔥 导入工具集
 from utils.prompt_utils import enhance_system_prompt_with_tools  # v3.6: 提取到工具函数
@@ -93,22 +93,30 @@ def normalize_message_content(content: Union[str, List, Any]) -> str:
     return str(content)
 
 
-def normalize_messages_for_llm(messages: List[BaseMessage]) -> List[BaseMessage]:
+def normalize_messages_for_llm(messages: List[BaseMessage], content_mode: str = "auto") -> List[BaseMessage]:
     """
-    规范化消息列表，确保所有消息的 content 都是字符串。
+    规范化消息列表，根据模型要求处理 content 格式。
     
-    主要针对 ToolMessage 的 content 可能是 list/dict 的情况。
+    不同模型对 message content 的要求不同：
+    - string 模式：content 必须是字符串（DeepSeek, MiniMax, Moonshot 等国产模型）
+    - auto 模式：原生支持 list[str | dict]（OpenAI, Anthropic, Gemini 等）
     
     Args:
         messages: 原始消息列表
+        content_mode: 内容模式，"string" 或 "auto"
         
     Returns:
         List[BaseMessage]: 规范化后的消息列表
     """
+    # auto 模式下不需要转换，直接返回原消息
+    if content_mode == "auto":
+        return messages
+    
+    # string 模式下需要转换 ToolMessage content
     normalized = []
     for msg in messages:
         if isinstance(msg, ToolMessage):
-            # ToolMessage 的 content 可能是 list/dict，需要转换
+            # ToolMessage 的 content 可能是 list/dict，需要转换为字符串
             normalized_content = normalize_message_content(msg.content)
             if normalized_content != msg.content:
                 # 创建新的 ToolMessage，保留其他字段
@@ -232,11 +240,20 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
         if model_config:
             actual_model = model_config.get("model", effective_model)
             temperature = model_config.get("temperature", expert_config.get("temperature", 0.7))
+            provider = model_config.get("provider")
         else:
             actual_model = effective_model
             temperature = expert_config.get("temperature", 0.7)
+            provider = None
         
-        print(f"[GenericWorker] Running '{expert_type}' ({expert_name}) with model={actual_model}, temp={temperature}")
+        # 🔥🔥🔥 获取 provider 的 content_mode 配置
+        content_mode = "string"  # 默认使用 string 模式（安全）
+        if provider:
+            providers_config = load_providers_config()
+            provider_config = providers_config.get("providers", {}).get(provider, {})
+            content_mode = provider_config.get("content_mode", "string")
+        
+        print(f"[GenericWorker] Running '{expert_type}' ({expert_name}) with model={actual_model}, temp={temperature}, content_mode={content_mode}")
         
         # 如果没有提供 LLM 实例，根据配置创建
         if llm is None:
@@ -274,8 +291,8 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
                 has_tool_message = True
             
             # 🔥🔥🔥 关键修复：规范化 ToolMessage content
-            # DeepSeek 等模型要求 content 必须是字符串，但 ToolMessage content 可能是 list/dict
-            normalized_existing = normalize_messages_for_llm(existing_messages)
+            # 根据 provider 的 content_mode 决定是否转换（string 模式需转换，auto 模式保持原样）
+            normalized_existing = normalize_messages_for_llm(existing_messages, content_mode)
             
             messages_for_llm = [
                 SystemMessage(content=enhanced_system_prompt),
