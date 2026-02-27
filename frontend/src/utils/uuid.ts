@@ -1,33 +1,21 @@
 /**
  * UUID 生成工具
- * 统一使用 uuid 库，兼容 crypto.randomUUID()
+ * 统一使用 uuid 库 v4
  */
-
 import { v4 as uuidv4 } from 'uuid'
 
 /**
- * 生成 UUID v4
+ * 生成标准 UUID v4
+ * 用于消息ID、会话ID等需要全局唯一的场景
  */
 export function generateUUID(): string {
-  // 优先使用 uuid 库
-  if (typeof uuidv4 === 'function') {
-    return uuidv4()
-  }
-  // 回退到 crypto.randomUUID()
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  // 最后回退到手动生成
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0
-    const v = c == 'x' ? r : (r & 0x3 | 0x8)
-    return v.toString(16)
-  })
+  return uuidv4()
 }
 
 /**
- * 短 ID 生成（用于本地缓存等场景）
+ * 生成短ID（8位随机字符）
+ * 用于临时标识、本地缓存key等场景
  */
 export function generateShortId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2, 9)
+  return Math.random().toString(36).substring(2, 10)
 }
