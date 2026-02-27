@@ -12,6 +12,8 @@ providers:
   # -------------------------------------------------------------------------
   # MiniMax - 响应速度快，推荐用于 Router 节点
   # 文档: https://platform.minimaxi.com/docs/api-reference/text-openai-api
+  # 注意: MiniMax 是 OpenAI 兼容 API，经测试 ToolMessage content 为 list 时会报错，
+  #       因此使用 string 模式将 content 转为 JSON 字符串
   # -------------------------------------------------------------------------
   minimax:
     name: MiniMax
@@ -22,10 +24,12 @@ providers:
     context_window: 1000000
     priority: 1                             # Router 优先级（数字越小越优先）
     enabled: true
-    content_mode: string                    # 消息 content 必须是字符串（ToolMessage 需转换）
+    content_mode: string                    # ToolMessage content 转为 JSON 字符串
 
   # -------------------------------------------------------------------------
   # DeepSeek - 性价比高，通用对话
+  # 注意: DeepSeek Chat API 目前 ToolMessage content 为 list 时会报错，
+  #       因此使用 string 模式。后续如果支持多模态可改为 auto
   # -------------------------------------------------------------------------
   deepseek:
     name: DeepSeek
@@ -36,7 +40,7 @@ providers:
     context_window: 128000
     priority: 2
     enabled: true
-    content_mode: string                    # 消息 content 必须是字符串（ToolMessage 需转换）
+    content_mode: string                    # ToolMessage content 转为 JSON 字符串
 
   # -------------------------------------------------------------------------
   # OpenAI - GPT 系列，代码和复杂任务
@@ -84,7 +88,7 @@ providers:
     content_mode: auto                       # 原生支持多模态 content，无需转换
 
   # -------------------------------------------------------------------------
-  # Moonshot (月之暗面) - Kimi 系列，长文本处理
+  # Moonshot (月之暗面) - Kimi K2.5 多模态模型，支持文本/图像/视频
   # -------------------------------------------------------------------------
   moonshot:
     name: Moonshot
@@ -95,7 +99,7 @@ providers:
     context_window: 256000
     priority: 6
     enabled: true
-    content_mode: string                    # 消息 content 必须是字符串（ToolMessage 需转换）
+    content_mode: auto                      # Kimi 支持多模态，原生接受 list[str|dict]
 
 # ============================================================================
 # 嵌入模型配置（用于长期记忆系统）
