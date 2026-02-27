@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-02-27] - v3.2.0 - MCP 生态正式版 + 工业级认证
+
 ### 🎉 重大更新
 
-**完整代码审查修复 - v3.1.0 稳定性与安全性全面提升**
+**MCP 生态正式可用**:
+- MCP 工具调用完整流程验证通过（高德地图等外部工具）
+- 修复 ToolMessage content 格式问题，支持多模型兼容
+- 生产环境稳定运行，可接入任意 MCP Server
 
-经过全面的代码审查，修复了 P0/P1/P2 级别的问题，项目评分从 7.1/10 提升至 8.2/10。
+**工业级自动认证机制**:
+- 前端拦截器实现静默 Token 刷新
+- 用户 60 天免登录体验
+- 刷新失败时才弹出登录框，无缝衔接
 
-### 🔐 安全修复 (P0)
+### 🔐 安全与稳定性 (P0)
 
 **JWT Token 安全重构 + 自动刷新**:
 - 从 localStorage 迁移至 HttpOnly Cookie
