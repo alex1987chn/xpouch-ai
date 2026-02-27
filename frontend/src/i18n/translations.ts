@@ -81,9 +81,7 @@ export const zh: Record<TranslationKey, string> = {
   response: '响应',
 
   // Error
-  error: {
-    title: '操作失败',
-  },
+  error: '错误',
   operationFailed: '操作失败',
 
   // Chat
@@ -511,6 +509,9 @@ export const en: Record<TranslationKey, string> = {
   nameAndUrlRequired: 'Name and URL are required',
   matching: 'matching',
 
+  // Error
+  error: 'Error',
+
   // User Menu
   currentPlan: 'Current Plan',
   logout: 'Logout',
@@ -847,6 +848,9 @@ export const ja: Record<TranslationKey, string> = {
   validationError: '検証エラー',
   nameAndUrlRequired: '名前とURLは必須です',
   matching: '件一致',
+
+  // Error
+  error: 'エラー',
 
   // User Menu
   currentPlan: '現在のプラン',
