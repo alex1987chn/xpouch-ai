@@ -328,6 +328,27 @@ export default function MessageItem({
                   />
                 )
               },
+              // 🔥 新增：处理 Markdown 图片 ![alt](url)
+              img: ({ src, alt, ...props }) => {
+                const imageSrc = typeof src === 'string' ? src : ''
+                const imageAlt = typeof alt === 'string' ? alt : 'Image'
+                
+                if (!imageSrc) return null
+                
+                return (
+                  <img
+                    src={imageSrc}
+                    alt={imageAlt}
+                    className="max-w-full max-h-[300px] rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity my-3"
+                    loading="lazy"
+                    onClick={() => window.open(imageSrc, '_blank')}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      target.style.display = 'none'
+                    }}
+                  />
+                )
+              },
             }}
           >
             {content}
