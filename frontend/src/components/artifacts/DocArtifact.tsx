@@ -171,6 +171,54 @@ export default function DocArtifact({ content, className, isStreaming }: DocArti
 
               // 行内代码
               if (isInline) {
+                // 🔥 检测行内代码是否是媒体链接（被 ` ` 包裹的链接）
+                const hasImageExt = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(codeContent)
+                const hasVideoExt = /\.(mp4|webm|ogg|mov|mkv)(\?.*)?$/i.test(codeContent)
+                
+                if (hasImageExt || hasVideoExt) {
+                  const expireMatch = codeContent.match(/[?&]Expires=(\d+)/)
+                  const isExpired = expireMatch && Number(expireMatch[1]) * 1000 < Date.now()
+                  
+                  return (
+                    <span className="block my-3">
+                      {hasImageExt ? (
+                        <img
+                          src={codeContent}
+                          alt="Image"
+                          className="max-w-full max-h-[400px] rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+                          loading="lazy"
+                          onClick={() => window.open(codeContent, '_blank')}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                          }}
+                        />
+                      ) : (
+                        <video
+                          src={codeContent}
+                          controls
+                          className="max-w-full max-h-[400px] rounded-lg shadow-md"
+                          preload="metadata"
+                          onError={(e) => {
+                            const target = e.target as HTMLVideoElement
+                            target.style.display = 'none'
+                          }}
+                        >
+                          您的浏览器不支持视频播放
+                        </video>
+                      )}
+                      {isExpired && (
+                        <span className="text-xs text-amber-600 dark:text-amber-400 block mt-1">
+                          ⚠️ 链接已过期，请重新生成
+                        </span>
+                      )}
+                      <code className="block mt-1 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 text-xs text-slate-600 dark:text-slate-400 font-mono rounded">
+                        {codeContent.slice(0, 60)}...
+                      </code>
+                    </span>
+                  )
+                }
+                
                 return (
                   <code className="bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 border border-border/50 text-sm text-slate-800 dark:text-slate-200 font-mono rounded">
                     {children}
