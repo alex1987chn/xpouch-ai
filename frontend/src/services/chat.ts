@@ -36,7 +36,7 @@
  */
 
 import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
-import { getHeaders, buildUrl, handleResponse, handleSSEConnectionError } from './common'
+import { getHeaders, buildUrl, handleResponse, handleSSEConnectionError, authenticatedFetch } from './common'
 import { ApiMessage, StreamCallback, Conversation } from '@/types'
 import { logger } from '@/utils/logger'
 import { handleServerEvent } from '@/handlers/eventHandlers'
@@ -69,10 +69,8 @@ const SSE_RETRY_BASE_DELAY = 1000
  * 获取会话列表
  */
 export async function getConversations(): Promise<Conversation[]> {
-  const response = await fetch(buildUrl('/threads'), {
-    headers: getHeaders(),
-    // P0 修复: 允许携带 Cookie
-    credentials: 'include'
+  const response = await authenticatedFetch(buildUrl('/threads'), {
+    headers: getHeaders()
   })
   return handleResponse<Conversation[]>(response, '获取会话列表失败')
 }
@@ -81,10 +79,8 @@ export async function getConversations(): Promise<Conversation[]> {
  * 获取单个会话详情
  */
 export async function getConversation(id: string): Promise<Conversation> {
-  const response = await fetch(buildUrl(`/threads/${id}`), {
-    headers: getHeaders(),
-    // P0 修复: 允许携带 Cookie
-    credentials: 'include'
+  const response = await authenticatedFetch(buildUrl(`/threads/${id}`), {
+    headers: getHeaders()
   })
   return await handleResponse<Conversation>(response, '获取会话详情失败')
 }
@@ -93,11 +89,9 @@ export async function getConversation(id: string): Promise<Conversation> {
  * 删除会话
  */
 export async function deleteConversation(id: string): Promise<void> {
-  const response = await fetch(buildUrl(`/threads/${id}`), {
+  const response = await authenticatedFetch(buildUrl(`/threads/${id}`), {
     method: 'DELETE',
-    headers: getHeaders(),
-    // P0 修复: 允许携带 Cookie
-    credentials: 'include'
+    headers: getHeaders()
   })
   return handleResponse<void>(response, '删除会话失败')
 }
@@ -348,12 +342,10 @@ export interface UpdateArtifactResult {
 export async function updateArtifact(
   params: UpdateArtifactParams
 ): Promise<UpdateArtifactResult> {
-  const response = await fetch(buildUrl(`/artifacts/${params.artifactId}`), {
+  const response = await authenticatedFetch(buildUrl(`/artifacts/${params.artifactId}`), {
     method: 'PATCH',
     headers: getHeaders(),
-    body: JSON.stringify({ content: params.content }),
-    // P0 修复: 允许携带 Cookie
-    credentials: 'include'
+    body: JSON.stringify({ content: params.content })
   })
   return handleResponse<UpdateArtifactResult>(response, '保存失败')
 }

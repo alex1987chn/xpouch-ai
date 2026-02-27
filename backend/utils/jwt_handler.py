@@ -34,8 +34,9 @@ if not SECRET_KEY:
 
 ALGORITHM = "HS256"
 
-# P0 修复: 缩短 Access Token 过期时间
-# 从 30 天缩短至 60 分钟，符合安全最佳实践
+# Access Token 过期时间: 默认 60 分钟 (工业标准)
+# 双 Token 架构: Access Token 短期 + Refresh Token 长期 (60天)
+# 前端会自动静默刷新，用户无感知
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "60"))
 
