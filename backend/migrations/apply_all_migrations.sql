@@ -723,3 +723,21 @@ CREATE INDEX IF NOT EXISTS idx_mcp_servers_is_active ON mcp_servers(is_active);
 COMMENT ON TABLE mcp_servers IS 'MCP Server Registry';
 COMMENT ON COLUMN mcp_servers.sse_url IS 'SSE endpoint URL';
 COMMENT ON COLUMN mcp_servers.connection_status IS 'Status: unknown/connected/error';
+
+-- ============================================================================
+-- 14. MCP Servers: Add transport column (v3.2.0)
+-- ============================================================================
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'mcp_servers' AND column_name = 'transport'
+    ) THEN
+        ALTER TABLE mcp_servers ADD COLUMN transport VARCHAR(20) DEFAULT 'sse';
+        RAISE NOTICE '  -> Added mcp_servers.transport column';
+    ELSE
+        RAISE NOTICE '  -> Column already exists, skipping';
+    END IF;
+END $$;
+
+COMMENT ON COLUMN mcp_servers.transport IS 'Transport protocol: sse or streamable_http';
