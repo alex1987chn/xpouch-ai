@@ -230,15 +230,61 @@ def create_smart_router_workflow(checkpointer: Optional[BaseCheckpointSaver] = N
 
     # 🔥 MCP: 动态工具执行节点
     # 使用函数包装，支持从 config 获取动态 MCP 工具
+    # P1 修复: 添加工具调用错误处理和超时控制
     async def dynamic_tool_node(state: AgentState, config: RunnableConfig = None):
-        """动态工具节点：合并基础工具和 MCP 工具"""
+        """动态工具节点：合并基础工具和 MCP 工具
+        
+        P1 修复:
+        - 添加工具调用超时控制（60秒）
+        - 捕获工具调用异常，返回友好错误信息
+        - 防止单个 MCP 工具失败导致整个流程崩溃
+        """
+        import asyncio
+        from langchain_core.messages import ToolMessage
+        
         mcp_tools = []
         if config and hasattr(config, 'get'):
             mcp_tools = config.get('configurable', {}).get('mcp_tools', [])
         
         runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
         tool_executor = ToolNode(runtime_tools)
-        return await tool_executor.ainvoke(state, config)
+        
+        try:
+            # P1 修复: 添加 60 秒超时控制
+            async with asyncio.timeout(60):
+                return await tool_executor.ainvoke(state, config)
+        except asyncio.TimeoutError:
+            # 工具调用超时，返回错误信息
+            logger.error("[ToolNode] 工具调用超时 (60秒)")
+            # 获取最后一条 AI Message 的 tool_calls
+            messages = state.get("messages", [])
+            tool_messages = []
+            for msg in reversed(messages):
+                if hasattr(msg, "tool_calls") and msg.tool_calls:
+                    for tc in msg.tool_calls:
+                        tool_messages.append(ToolMessage(
+                            content="工具调用超时 (60秒)。该服务可能暂时不可用或响应过慢，请稍后重试或尝试其他工具。",
+                            tool_call_id=tc.get("id", "unknown"),
+                            name=tc.get("name", "unknown")
+                        ))
+                    break
+            return {"messages": tool_messages}
+        except Exception as e:
+            # P1 修复: 捕获其他异常，返回友好错误信息
+            logger.error(f"[ToolNode] 工具调用失败: {e}")
+            messages = state.get("messages", [])
+            tool_messages = []
+            for msg in reversed(messages):
+                if hasattr(msg, "tool_calls") and msg.tool_calls:
+                    for tc in msg.tool_calls:
+                        error_msg = f"工具调用失败: {str(e)[:200]}"
+                        tool_messages.append(ToolMessage(
+                            content=f"该工具执行时出错。{error_msg}",
+                            tool_call_id=tc.get("id", "unknown"),
+                            name=tc.get("name", "unknown")
+                        ))
+                    break
+            return {"messages": tool_messages}
     
     workflow.add_node("tools", dynamic_tool_node)
 
