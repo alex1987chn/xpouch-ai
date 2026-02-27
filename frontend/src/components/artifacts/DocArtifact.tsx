@@ -178,31 +178,47 @@ export default function DocArtifact({ content, className, isStreaming }: DocArti
                 {children}
               </sup>
             ),
-            img: ({ src, alt }) => (
-              <img
-                src={src}
-                alt={alt || 'Image'}
-                className="rounded-lg shadow-md max-w-full h-auto my-4"
-                loading="lazy"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement
-                  target.style.display = 'none'
-                }}
-              />
-            ),
-            video: ({ src, controls = true, autoPlay = false, loop = false }) => (
-              <video
-                src={src}
-                controls={controls}
-                autoPlay={autoPlay}
-                loop={loop}
-                className="rounded-lg shadow-md max-w-full h-auto my-4"
-                onError={(e) => {
-                  const target = e.target as HTMLVideoElement
-                  target.style.display = 'none'
-                }}
-              />
-            ),
+            img: ({ src, alt, ...props }) => {
+              // 确保 src 是字符串
+              const imageSrc = typeof src === 'string' ? src : ''
+              const imageAlt = typeof alt === 'string' ? alt : 'Image'
+              
+              if (!imageSrc) return null
+              
+              return (
+                <img
+                  src={imageSrc}
+                  alt={imageAlt}
+                  className="rounded-lg shadow-md max-w-full h-auto my-4 cursor-pointer hover:opacity-90 transition-opacity"
+                  loading="lazy"
+                  onClick={() => window.open(imageSrc, '_blank')}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement
+                    target.style.display = 'none'
+                  }}
+                />
+              )
+            },
+            video: ({ src, controls = true, autoPlay = false, loop = false, ...props }) => {
+              const videoSrc = typeof src === 'string' ? src : ''
+              
+              if (!videoSrc) return null
+              
+              return (
+                <video
+                  src={videoSrc}
+                  controls={controls}
+                  autoPlay={autoPlay}
+                  loop={loop}
+                  className="rounded-lg shadow-md max-w-full h-auto my-4"
+                  preload="metadata"
+                  onError={(e) => {
+                    const target = e.target as HTMLVideoElement
+                    target.style.display = 'none'
+                  }}
+                />
+              )
+            },
           }}
         >
           {content}
