@@ -53,9 +53,10 @@ Generic Worker 节点 - 通用专家执行
 import os
 import re
 import asyncio  # 🔥 用于异步保存专家执行结果
+import json
 from datetime import datetime
-from typing import Dict, Any, Optional
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from typing import Dict, Any, Optional, List, Union
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage, BaseMessage
 from langchain_core.runnables import RunnableConfig
 from tools import ALL_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集
 
@@ -66,6 +67,63 @@ from providers_config import get_model_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from tools import ALL_TOOLS  # 🔥 导入工具集
 from utils.prompt_utils import enhance_system_prompt_with_tools  # v3.6: 提取到工具函数
+
+
+def normalize_message_content(content: Union[str, List, Any]) -> str:
+    """
+    将消息内容规范化为字符串格式。
+    
+    某些模型（如 DeepSeek）要求 message content 必须是字符串，
+    但 ToolMessage 的 content 可能是 list[str | dict]，需要转换。
+    
+    Args:
+        content: 原始内容，可能是 str, list, dict 等
+        
+    Returns:
+        str: 规范化后的字符串内容
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        # 将列表转换为 JSON 字符串
+        return json.dumps(content, ensure_ascii=False)
+    if isinstance(content, dict):
+        return json.dumps(content, ensure_ascii=False)
+    # 其他类型转为字符串
+    return str(content)
+
+
+def normalize_messages_for_llm(messages: List[BaseMessage]) -> List[BaseMessage]:
+    """
+    规范化消息列表，确保所有消息的 content 都是字符串。
+    
+    主要针对 ToolMessage 的 content 可能是 list/dict 的情况。
+    
+    Args:
+        messages: 原始消息列表
+        
+    Returns:
+        List[BaseMessage]: 规范化后的消息列表
+    """
+    normalized = []
+    for msg in messages:
+        if isinstance(msg, ToolMessage):
+            # ToolMessage 的 content 可能是 list/dict，需要转换
+            normalized_content = normalize_message_content(msg.content)
+            if normalized_content != msg.content:
+                # 创建新的 ToolMessage，保留其他字段
+                normalized.append(ToolMessage(
+                    content=normalized_content,
+                    tool_call_id=msg.tool_call_id,
+                    name=msg.name,
+                    additional_kwargs=msg.additional_kwargs,
+                    response_metadata=msg.response_metadata,
+                ))
+            else:
+                normalized.append(msg)
+        else:
+            normalized.append(msg)
+    return normalized
 
 
 async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = None, llm=None) -> Dict[str, Any]:
@@ -214,9 +272,14 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
             # 检查最后一条是否是 ToolMessage
             if existing_messages and isinstance(existing_messages[-1], ToolMessage):
                 has_tool_message = True
+            
+            # 🔥🔥🔥 关键修复：规范化 ToolMessage content
+            # DeepSeek 等模型要求 content 必须是字符串，但 ToolMessage content 可能是 list/dict
+            normalized_existing = normalize_messages_for_llm(existing_messages)
+            
             messages_for_llm = [
                 SystemMessage(content=enhanced_system_prompt),
-                *existing_messages  # 包含 AIMessage(tool_calls) 和 ToolMessage
+                *normalized_existing  # 包含 AIMessage(tool_calls) 和 ToolMessage
             ]
         else:
             # 首次调用：创建新的消息列表
