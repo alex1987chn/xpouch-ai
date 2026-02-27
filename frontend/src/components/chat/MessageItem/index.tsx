@@ -284,6 +284,11 @@ export default function MessageItem({
                 const shouldRenderAsImage = hasImageExt || (isOssImage && textSuggestsImage) || urlHasImageParam
                 const shouldRenderAsVideo = hasVideoExt
                 
+                // 🔥 DEBUG: 在控制台输出检测信息
+                if (href.includes('aliyuncs') || hasImageExt) {
+                  console.log('[MessageItem] Link detected:', { href: href.slice(0, 50), hasImageExt, isOssImage, textSuggestsImage, shouldRenderAsImage })
+                }
+                
                 if (shouldRenderAsImage) {
                   return (
                     <span className="block my-3">
