@@ -9,8 +9,12 @@ XPouch AI Backend - 入口文件
 - Linux/Mac: python main.py 或 uvicorn main:app
 """
 import pathlib
+import logging
 from dotenv import load_dotenv
 import os
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 # Load .env from the same directory as this file
 env_path = pathlib.Path(__file__).parent / ".env"
