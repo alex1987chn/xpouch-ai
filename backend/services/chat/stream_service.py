@@ -99,11 +99,14 @@ class StreamService:
                     return tools
                 
                 # 构建 MCP 客户端配置
+                # 支持多种传输协议：sse, streamable_http
                 mcp_config = {}
                 for server in active_servers:
+                    # 获取传输协议，默认为 sse（兼容旧数据）
+                    transport = getattr(server, 'transport', None) or "sse"
                     mcp_config[server.name] = {
                         "url": str(server.sse_url),
-                        "transport": "sse"
+                        "transport": transport
                     }
                 
                 # P0 修复: 使用超时控制

@@ -90,17 +90,23 @@ def validate_mcp_url(url: str) -> tuple[bool, str]:
 # 辅助函数
 # ============================================================================
 
-async def test_mcp_connection(sse_url: str, timeout: int = 10) -> tuple[bool, str]:
+async def test_mcp_connection(
+    sse_url: str, 
+    transport: str = "sse",
+    timeout: int = 10
+) -> tuple[bool, str]:
     """
-    测试 MCP SSE 服务器连接
+    测试 MCP 服务器连接
     
     P0 修复:
     - 添加超时控制
     - 添加 URL 验证 (SSRF 防护)
     - 使用直接实例化 (0.2.1 不支持 async with)
+    - 支持多种传输协议 (sse, streamable_http)
     
     Args:
-        sse_url: SSE 连接地址
+        sse_url: 服务器连接地址
+        transport: 传输协议 (sse 或 streamable_http)
         timeout: 连接超时时间（秒）
         
     Returns:
@@ -112,7 +118,7 @@ async def test_mcp_connection(sse_url: str, timeout: int = 10) -> tuple[bool, st
         return False, error_msg
     
     try:
-        # P0 修复: 使用超时控制
+        # 支持多种传输协议
         # 注意: langchain-mcp-adapters 0.2.1 不支持 async with
         # get_tools() 内部会自动管理会话
         async with asyncio.timeout(timeout):
@@ -120,7 +126,7 @@ async def test_mcp_connection(sse_url: str, timeout: int = 10) -> tuple[bool, st
                 {
                     "test_server": {
                         "url": sse_url,
-                        "transport": "sse",
+                        "transport": transport,  # 使用指定的传输协议
                     }
                 }
             )
@@ -152,17 +158,23 @@ async def create_mcp_server(
     """
     添加 MCP 服务器
     
-    1. 执行 SSE 通电测试 (带超时和 URL 验证)
+    1. 执行连接测试 (带超时和 URL 验证)
     2. 连接成功：connection_status="connected" 并入库
     3. 连接失败：抛出 HTTP 400 错误
     """
+    # 获取传输协议，默认为 sse
+    transport = server_data.transport or "sse"
+    
     # P0 修复: 通电测试（带 URL 验证和超时）
-    is_connected, error_msg = await test_mcp_connection(server_data.sse_url)
+    is_connected, error_msg = await test_mcp_connection(
+        server_data.sse_url, 
+        transport=transport
+    )
     
     if not is_connected:
         raise ValidationError(
             message=f"MCP 服务器连接测试失败: {error_msg}",
-            details={"sse_url": server_data.sse_url, "error": error_msg}
+            details={"sse_url": server_data.sse_url, "transport": transport, "error": error_msg}
         )
     
     # 检查 URL 是否已存在（虽然数据库有 unique 约束，但提前检查可以给更好的错误提示）
@@ -181,6 +193,7 @@ async def create_mcp_server(
         name=server_data.name,
         description=server_data.description,
         sse_url=server_data.sse_url,
+        transport=transport,  # 保存传输协议
         icon=server_data.icon,
         connection_status="connected",  # 测试通过
         is_active=True,
@@ -343,12 +356,14 @@ async def get_mcp_server_tools(
     try:
         # P0 修复: 使用超时控制
         # 注意: 0.2.1 版本不支持 async with，使用直接实例化
+        # 支持多种传输协议
+        transport = getattr(server, 'transport', None) or "sse"
         async with asyncio.timeout(10):  # 10秒超时
             client = MultiServerMCPClient(
                 {
                     server.name: {
                         "url": str(server.sse_url),
-                        "transport": "sse",
+                        "transport": transport,
                     }
                 }
             )

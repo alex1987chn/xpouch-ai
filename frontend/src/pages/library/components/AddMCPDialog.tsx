@@ -12,6 +12,7 @@ import { BauhausInput } from '@/components/ui/bauhaus-input'
 import { useTranslation } from '@/i18n'
 import { logger } from '@/utils/logger'
 import { useToast } from '@/components/ui/use-toast'
+import type { MCPTransport } from '@/types/mcp'
 
 interface AddMCPDialogProps {
   isOpen: boolean
@@ -26,13 +27,14 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    sse_url: ''
+    sse_url: '',
+    transport: 'sse' as MCPTransport
   })
 
   // 打开时重置表单
   useEffect(() => {
     if (isOpen) {
-      setFormData({ name: '', description: '', sse_url: '' })
+      setFormData({ name: '', description: '', sse_url: '', transport: 'sse' })
     }
   }, [isOpen])
 
@@ -52,7 +54,8 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
       {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        sse_url: formData.sse_url.trim()
+        sse_url: formData.sse_url.trim(),
+        transport: formData.transport
       },
       {
         onSuccess: () => {
@@ -60,7 +63,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
             title: t('success') || 'Success',
             description: t('mcpServerAdded') || 'MCP server added successfully',
           })
-          setFormData({ name: '', description: '', sse_url: '' })
+          setFormData({ name: '', description: '', sse_url: '', transport: 'sse' })
           onClose()
         },
         onError: (error: any) => {
@@ -146,12 +149,48 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
             />
           </section>
 
+          {/* 传输协议 */}
+          <section>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                {t('transportProtocol') || 'Protocol'}
+              </span>
+            </div>
+            <div className="flex gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="transport"
+                  value="sse"
+                  checked={formData.transport === 'sse'}
+                  onChange={(e) => setFormData({ ...formData, transport: e.target.value as MCPTransport })}
+                  disabled={createMutation.isPending}
+                  className="w-4 h-4 accent-[var(--accent-hover)]"
+                />
+                <span className="font-mono text-xs">{t('transportSSE') || 'SSE'}</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="transport"
+                  value="streamable_http"
+                  checked={formData.transport === 'streamable_http'}
+                  onChange={(e) => setFormData({ ...formData, transport: e.target.value as MCPTransport })}
+                  disabled={createMutation.isPending}
+                  className="w-4 h-4 accent-[var(--accent-hover)]"
+                />
+                <span className="font-mono text-xs">{t('transportStreamableHTTP') || 'Streamable HTTP'}</span>
+              </label>
+            </div>
+          </section>
+
           {/* SSE URL */}
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                SSE Endpoint URL *
+                Endpoint URL *
               </span>
             </div>
             <BauhausInput
@@ -159,12 +198,14 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
               type="url"
               value={formData.sse_url}
               onChange={(e) => setFormData({ ...formData, sse_url: e.target.value })}
-              placeholder="https://mcp.example.com/sse"
+              placeholder={formData.transport === 'sse' ? 'https://mcp.example.com/sse' : 'https://mcp.example.com/mcp'}
               disabled={createMutation.isPending}
               className="font-mono text-sm"
             />
             <p className="mt-2 font-mono text-[10px] text-[var(--text-secondary)]">
-              {t('sseUrlHint') || 'The SSE endpoint URL of the MCP server'}
+              {formData.transport === 'sse' 
+                ? 'SSE endpoint URL for Server-Sent Events transport'
+                : 'HTTP endpoint URL for Streamable HTTP transport'}
             </p>
           </section>
         </form>

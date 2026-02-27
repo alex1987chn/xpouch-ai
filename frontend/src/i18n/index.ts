@@ -40,6 +40,7 @@ export type TranslationKey =
   | 'noKnowledgeFound' | 'noKnowledgeContent' | 'createFirstKnowledge'
   | 'searchMCPServers' | 'noMCPServers' | 'noMatchingServers' | 'clickAddToConnect'
   | 'mcpTools' | 'addModule' | 'mcpDescriptionPlaceholder' | 'confirmDeleteMCPServer' | 'removed' | 'deleteFailed'
+  | 'transport' | 'transportProtocol' | 'transportSSE' | 'transportStreamableHTTP'
   | 'toggleFailed' | 'noDescription' | 'disable' | 'enable' | 'moduleName' | 'sseUrl'
   | 'sseUrlHint' | 'connecting' | 'initializeModule' | 'mcpServerAdded' | 'failedToAddServer'
   | 'validationError' | 'nameAndUrlRequired' | 'matching' | 'knowledgeBaseDescription'
