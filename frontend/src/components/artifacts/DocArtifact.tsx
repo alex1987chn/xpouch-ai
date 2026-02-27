@@ -66,16 +66,84 @@ export default function DocArtifact({ content, className, isStreaming }: DocArti
                 {children}
               </p>
             ),
-            a: ({ children, href }) => (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                {children}
-              </a>
-            ),
+            a: ({ children, href }) => {
+              const linkHref = typeof href === 'string' ? href : ''
+              const linkText = String(children || '')
+              
+              // 🔥 检测是否为媒体链接
+              const hasImageExt = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(linkHref)
+              const hasVideoExt = /\.(mp4|webm|ogg|mov|mkv)(\?.*)?$/i.test(linkHref)
+              const isOssImage = /(oss-|aliyuncs|s3\.amazonaws|cloudfront|storage\.googleapis|blob\.core\.windows)\.com.*(watermark|image|img|photo|pic)/i.test(linkHref)
+              const textSuggestsImage = /图片|image|photo|pic|图/i.test(linkText)
+              const urlHasImageParam = /[?&](image|img|url|src)=/i.test(linkHref)
+              
+              const shouldRenderAsImage = hasImageExt || (isOssImage && textSuggestsImage) || urlHasImageParam
+              const shouldRenderAsVideo = hasVideoExt
+              
+              if (shouldRenderAsImage) {
+                return (
+                  <span className="block my-3">
+                    <img
+                      src={linkHref}
+                      alt={linkText || 'Image'}
+                      className="max-w-full max-h-[400px] rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+                      loading="lazy"
+                      onClick={() => window.open(linkHref, '_blank')}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                      }}
+                    />
+                    <a
+                      href={linkHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 dark:text-blue-400 hover:underline text-xs block mt-1"
+                    >
+                      {children}
+                    </a>
+                  </span>
+                )
+              }
+              
+              if (shouldRenderAsVideo) {
+                return (
+                  <span className="block my-3">
+                    <video
+                      src={linkHref}
+                      controls
+                      className="max-w-full max-h-[400px] rounded-lg shadow-md"
+                      preload="metadata"
+                      onError={(e) => {
+                        const target = e.target as HTMLVideoElement
+                        target.style.display = 'none'
+                      }}
+                    >
+                      您的浏览器不支持视频播放
+                    </video>
+                    <a
+                      href={linkHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 dark:text-blue-400 hover:underline text-xs block mt-1"
+                    >
+                      {children}
+                    </a>
+                  </span>
+                )
+              }
+              
+              return (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {children}
+                </a>
+              )
+            },
             ul: ({ children }) => (
               <ul className="list-disc pl-6 mb-4 text-slate-700 dark:text-slate-200 space-y-1">
                 {children}
