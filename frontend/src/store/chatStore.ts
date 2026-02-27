@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { type Agent } from '@/types'
-import { generateId } from '@/utils/storage'
+import { generateUUID } from '@/utils/uuid'
 import { type Message } from '@/types'
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 
@@ -121,7 +121,7 @@ export const useChatStore = create<ChatStore>()(
       }),
 
       addMessage: (message: Message) => set((state) => {
-        const newMessage = { ...message, id: message.id || generateId(), timestamp: Date.now() }
+        const newMessage = { ...message, id: message.id || generateUUID(), timestamp: Date.now() }
         const newMessages = [...state.messages, newMessage]
         
         // 🔥 性能优化：更新 lastAssistantMessageId
