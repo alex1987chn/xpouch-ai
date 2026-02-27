@@ -2,6 +2,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# P1 优化: 统一使用 tenacity 进行重试
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_fixed,
+    retry_if_exception_type,
+    before_sleep_log
+)
+
 """
 Commander 节点 - 任务规划与拆解
 
@@ -474,6 +483,55 @@ def _extract_json_string(content: str) -> str:
     return content
 
 
+async def _generate_plan_once(
+    llm_with_config,
+    enhanced_system_prompt: str,
+    human_prompt: str,
+    preview_session_id: str,
+    event_queue: list
+) -> ExecutionPlan:
+    """
+    单次生成执行计划（用于 tenacity 重试）
+    """
+    from utils.event_generator import event_plan_thinking, sse_event_to_string
+    
+    json_mode_llm = llm_with_config.bind(
+        response_format={"type": "json_object"}
+    )
+    
+    response = await json_mode_llm.ainvoke(
+        [
+            SystemMessage(content=enhanced_system_prompt),
+            HumanMessage(content=human_prompt)
+        ],
+        config=RunnableConfig(
+            tags=["commander", "json_mode"],
+            metadata={"node_type": "commander", "mode": "json_object"}
+        )
+    )
+    
+    raw_content = response.content if hasattr(response, 'content') else str(response)
+    
+    # 发送 thinking 事件
+    thinking_preview = raw_content[:200] + "..." if len(raw_content) > 200 else raw_content
+    thinking_event = event_plan_thinking(
+        session_id=preview_session_id,
+        delta=f"[规划分析中...]\n{thinking_preview}"
+    )
+    event_queue.append({"type": "sse", "event": sse_event_to_string(thinking_event)})
+    
+    # 提取和校验 JSON
+    cleaned_content = _extract_json_string(raw_content)
+    return ExecutionPlan.model_validate_json(cleaned_content)
+
+
+@retry(
+    retry=retry_if_exception_type((ValidationError, Exception)),
+    stop=stop_after_attempt(2),
+    wait=wait_fixed(0.5),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
+    reraise=True
+)
 async def _generate_plan_with_json_mode(
     llm_with_config,
     system_prompt: str,
@@ -484,94 +542,23 @@ async def _generate_plan_with_json_mode(
     """
     Commander 2.0: 使用 JSON Mode + Pydantic 强校验生成执行计划
     
-    兼容 DeepSeek 等不支持 json_schema 但支持 json_object 的模型
-    
-    流程:
-    1. 开启 JSON Mode (response_format={"type": "json_object"})
-    2. 调用 LLM 获取原始 JSON 字符串
-    3. 使用 parse_llm_json 提取和清洗
-    4. 使用 ExecutionPlan.model_validate_json() 强校验
-    5. 失败时自动重试 (最多 2 次)
+    P1 优化: 使用 tenacity 统一重试机制
     """
-    from utils.event_generator import event_plan_thinking, sse_event_to_string
-    from langchain_openai import ChatOpenAI
-    
-    # 增强 System Prompt，强制 JSON 输出
     enhanced_system_prompt = system_prompt + """
 
 IMPORTANT: You MUST output a valid JSON object. No conversation, no markdown code blocks, just raw JSON text."""
     
-    max_retries = 2
-    last_error = None
-    
-    for attempt in range(max_retries):
-        try:
-            print(f"[COMMANDER] JSON Mode 尝试 {attempt + 1}/{max_retries}...")
-            
-            # 🔥 核心：使用 JSON Mode (DeepSeek 兼容)
-            # LangChain 的 bind 方法直接传递 kwargs 到 OpenAI API
-            json_mode_llm = llm_with_config.bind(
-                response_format={"type": "json_object"}
-            )
-            
-            # 调用 LLM 生成 JSON
-            response = await json_mode_llm.ainvoke(
-                [
-                    SystemMessage(content=enhanced_system_prompt),
-                    HumanMessage(content=human_prompt)
-                ],
-                config=RunnableConfig(
-                    tags=["commander", "json_mode"],
-                    metadata={"node_type": "commander", "mode": "json_object", "attempt": attempt + 1}
-                )
-            )
-            
-            # 获取原始内容
-            raw_content = response.content if hasattr(response, 'content') else str(response)
-            
-            # 发送 thinking 事件（显示原始内容的前缀部分）
-            thinking_preview = raw_content[:200] + "..." if len(raw_content) > 200 else raw_content
-            thinking_event = event_plan_thinking(
-                session_id=preview_session_id,
-                delta=f"[规划分析中...]\n{thinking_preview}"
-            )
-            event_queue.append({"type": "sse", "event": sse_event_to_string(thinking_event)})
-            
-            # 🔥 步骤 2: 提取和清洗 JSON
-            print(f"[COMMANDER] 提取 JSON，原始内容长度: {len(raw_content)}")
-            cleaned_content = _extract_json_string(raw_content)
-            
-            # 🔥 步骤 3: Pydantic 强校验
-            print("[COMMANDER] 执行 Pydantic 模型校验...")
-            execution_plan = ExecutionPlan.model_validate_json(cleaned_content)
-            
-            print(f"[COMMANDER] JSON Mode + Pydantic 校验成功，生成 {len(execution_plan.tasks)} 个任务")
-            return execution_plan
-            
-        except ValidationError as ve:
-            # Pydantic 校验失败，记录详细错误
-            last_error = f"Pydantic 校验失败: {ve}"
-            print(f"[COMMANDER] 尝试 {attempt + 1} 校验失败: {ve}")
-            
-            # 如果是最后一次尝试，抛出异常
-            if attempt == max_retries - 1:
-                raise ValueError(f"JSON Mode 生成计划失败（{max_retries}次尝试）: {last_error}")
-            
-            # 否则继续重试
-            await asyncio.sleep(0.5)
-            
-        except Exception as e:
-            # 其他错误（网络、解析等）
-            last_error = str(e)
-            print(f"[COMMANDER] 尝试 {attempt + 1} 发生错误: {e}")
-            
-            if attempt == max_retries - 1:
-                raise ValueError(f"JSON Mode 生成计划失败（{max_retries}次尝试）: {last_error}")
-            
-            await asyncio.sleep(0.5)
-    
-    # 理论上不会到达这里，但为了类型检查
-    raise ValueError(f"JSON Mode 生成计划失败: {last_error}")
+    try:
+        return await _generate_plan_once(
+            llm_with_config, enhanced_system_prompt, human_prompt,
+            preview_session_id, event_queue
+        )
+    except ValidationError as e:
+        logger.warning(f"[COMMANDER] Pydantic 校验失败: {e}")
+        raise
+    except Exception as e:
+        logger.warning(f"[COMMANDER] 生成计划失败: {e}")
+        raise
 
 
 # 保留旧函数作为兜底（当 JSON Mode 完全不可用时）
