@@ -1,16 +1,16 @@
 """
-MCP 服务器模型 - 管理外部 MCP SSE 服务器配置
+MCP 服务器模型 - 管理外部 MCP 服务器配置
 
 用途：
-- 存储用户添加的 MCP 服务器（如高德地图、文件系统等）
-- 支持配电盘式 UI 管理
+- 存储用户添加的 MCP 服务器（如高德地图、文件系统、通义万相等）
+- 支持多种传输协议：SSE、Streamable HTTP
 - 提供连接状态追踪
 """
 
 from sqlmodel import SQLModel, Field
 from pydantic import BaseModel, Field as PydanticField
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 import uuid
 
 
@@ -22,7 +22,8 @@ class MCPServer(SQLModel, table=True):
     """
     MCP 服务器配置表
     
-    存储外部 MCP SSE 服务器的连接信息，支持用户动态添加/删除。
+    存储外部 MCP 服务器的连接信息，支持用户动态添加/删除。
+    支持多种传输协议：sse、streamable_http
     通过 is_active 字段控制是否启用该服务器。
     """
     __tablename__ = "mcp_servers"
@@ -42,7 +43,11 @@ class MCPServer(SQLModel, table=True):
     )
     sse_url: str = Field(
         unique=True,
-        description="SSE 连接地址（如 https://mcp.amap.com/sse）"
+        description="MCP 服务器连接地址（如 https://mcp.amap.com/sse）"
+    )
+    transport: str = Field(
+        default="sse",
+        description="传输协议：sse (Server-Sent Events) 或 streamable_http"
     )
     is_active: bool = Field(
         default=True,
@@ -75,7 +80,7 @@ class MCPServer(SQLModel, table=True):
 class MCPServerCreate(BaseModel):
     """创建 MCP 服务器的 DTO
     
-    添加新服务器时，后端会执行 SSE 通电测试，
+    添加新服务器时，后端会执行连接测试，
     只有连接成功才会入库。
     """
     name: str = PydanticField(
@@ -91,7 +96,11 @@ class MCPServerCreate(BaseModel):
     )
     sse_url: str = PydanticField(
         ...,
-        description="SSE 连接地址"
+        description="MCP 服务器连接地址"
+    )
+    transport: Optional[str] = PydanticField(
+        default="sse",
+        description="传输协议：sse 或 streamable_http"
     )
     icon: Optional[str] = PydanticField(
         default=None,
@@ -114,6 +123,7 @@ class MCPServerUpdate(BaseModel):
         max_length=500
     )
     sse_url: Optional[str] = None
+    transport: Optional[str] = None
     is_active: Optional[bool] = None
     icon: Optional[str] = None
 
@@ -127,6 +137,7 @@ class MCPServerResponse(BaseModel):
     name: str
     description: Optional[str]
     sse_url: str
+    transport: str
     is_active: bool
     icon: Optional[str]
     connection_status: str

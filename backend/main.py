@@ -331,7 +331,11 @@ async def chat_invoke_endpoint(
                 with SQLModelSession(engine) as db_session:
                     active_servers = db_session.query(MCPServer).filter(MCPServer.is_active == True).all()
                     if active_servers:
-                        mcp_config = {s.name: {"url": str(s.sse_url), "transport": "sse"} for s in active_servers}
+                        # 支持多种传输协议：sse, streamable_http
+                        mcp_config = {}
+                        for s in active_servers:
+                            transport = getattr(s, 'transport', None) or "sse"
+                            mcp_config[s.name] = {"url": str(s.sse_url), "transport": transport}
                         # 🔥 langchain-mcp-adapters 0.1.0+ 直接使用实例化
                         client = MultiServerMCPClient(mcp_config)
                         mcp_tools = await client.get_tools()

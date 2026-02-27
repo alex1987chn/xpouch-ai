@@ -10,6 +10,11 @@
 
 export type MCPConnectionStatus = 'unknown' | 'connected' | 'error'
 
+/**
+ * MCP 传输协议类型
+ */
+export type MCPTransport = 'sse' | 'streamable_http'
+
 // ============================================================================
 // 数据模型
 // ============================================================================
@@ -22,6 +27,7 @@ export interface MCPServer {
   name: string
   description?: string
   sse_url: string
+  transport: MCPTransport
   is_active: boolean
   icon?: string
   connection_status: MCPConnectionStatus
@@ -36,6 +42,7 @@ export interface MCPServerCreate {
   name: string
   description?: string
   sse_url: string
+  transport?: MCPTransport
   icon?: string
 }
 
@@ -46,6 +53,7 @@ export interface MCPServerUpdate {
   name?: string
   description?: string
   sse_url?: string
+  transport?: MCPTransport
   is_active?: boolean
   icon?: string
 }
