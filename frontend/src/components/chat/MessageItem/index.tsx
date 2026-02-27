@@ -4,11 +4,11 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Copy, Check, RefreshCw, Eye } from 'lucide-react'
+import { Copy, Check, RefreshCw, Eye, ImageIcon, Video } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useTaskStore } from '@/store/taskStore'
 import type { MessageItemProps } from '../types'
-import { extractCodeBlocks, detectContentType } from '../utils'
+import { extractCodeBlocks, detectContentType, detectMediaUrl } from '../utils'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -46,13 +46,56 @@ export default function MessageItem({
   // 🔥 修复：确保 content 是字符串
   const content = message.content || ''
   
-  // 检查是否有可预览的代码块
+  // 检查是否有可预览的代码块或媒体内容
   const codeBlocks = extractCodeBlocks(content)
-  const hasPreviewContent = codeBlocks.length > 0 || content.length > 200
+  const mediaInfo = detectMediaUrl(content)
+  const hasPreviewContent = codeBlocks.length > 0 || content.length > 200 || !!mediaInfo.url
 
   // 处理预览 - 将内容发送到 artifact 区域（使用新协议 taskStore）
   const handlePreview = useCallback(() => {
     const taskStore = useTaskStore.getState()
+    
+    // 🔥 优先检测媒体内容（图片/视频）
+    const mediaInfo = detectMediaUrl(content)
+    if (mediaInfo.type && mediaInfo.url) {
+      const artifact = {
+        id: crypto.randomUUID(),
+        type: mediaInfo.type,  // 'image' 或 'video'
+        title: mediaInfo.type === 'video' ? '视频预览' : '图片预览',
+        content: mediaInfo.url,
+        sort_order: 0
+      }
+      
+      // 创建 Simple 模式任务来承载媒体预览
+      taskStore.setMode('simple')
+      taskStore.initializePlan({
+        session_id: 'media_preview',
+        summary: '媒体预览模式',
+        estimated_steps: 1,
+        execution_mode: 'sequential',
+        tasks: [{
+          id: SIMPLE_TASK_ID,
+          expert_type: 'media',
+          description: '媒体内容预览',
+          status: 'completed',
+          sort_order: 0
+        }]
+      })
+      
+      taskStore.replaceArtifacts(SIMPLE_TASK_ID, [{
+        id: artifact.id,
+        type: artifact.type as any,
+        title: artifact.title,
+        content: artifact.content,
+        sortOrder: artifact.sort_order,
+        createdAt: new Date().toISOString(),
+        isPreview: true
+      }])
+      
+      taskStore.selectTask(SIMPLE_TASK_ID)
+      return
+    }
+    
     const detected = detectContentType(codeBlocks, content)
     
     if (!detected && content.length <= 200) return
@@ -220,18 +263,71 @@ export default function MessageItem({
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeHighlight]}
             components={{
-              a: ({ node, ...props }) => (
-                <a
-                  {...props}
-                  onClick={(e) => {
-                    if (props.href?.startsWith('#')) {
-                      e.preventDefault()
-                      onLinkClick?.(props.href)
-                    }
-                  }}
-                  className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                />
-              ),
+              a: ({ node, ...props }) => {
+                const href = props.href || ''
+                // 检测是否为媒体链接
+                const isImage = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(href)
+                const isVideo = /\.(mp4|webm|ogg|mov|mkv)(\?.*)?$/i.test(href)
+                
+                if (isImage) {
+                  return (
+                    <span className="block my-3">
+                      <img
+                        src={href}
+                        alt={props.children?.toString() || 'Image'}
+                        className="max-w-full max-h-[300px] rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+                        loading="lazy"
+                        onClick={() => window.open(href, '_blank')}
+                        onError={(e) => {
+                          // 加载失败时回退到普通链接
+                          const target = e.target as HTMLImageElement
+                          target.style.display = 'none'
+                          target.nextElementSibling?.classList.remove('hidden')
+                        }}
+                      />
+                      <a {...props} className="hidden text-blue-600 dark:text-blue-400 hover:underline text-xs">
+                        {props.children}
+                      </a>
+                    </span>
+                  )
+                }
+                
+                if (isVideo) {
+                  return (
+                    <span className="block my-3">
+                      <video
+                        src={href}
+                        controls
+                        className="max-w-full max-h-[300px] rounded-lg shadow-md"
+                        preload="metadata"
+                        onError={(e) => {
+                          const target = e.target as HTMLVideoElement
+                          target.style.display = 'none'
+                          target.nextElementSibling?.classList.remove('hidden')
+                        }}
+                      >
+                        您的浏览器不支持视频播放
+                      </video>
+                      <a {...props} className="hidden text-blue-600 dark:text-blue-400 hover:underline text-xs">
+                        {props.children}
+                      </a>
+                    </span>
+                  )
+                }
+                
+                return (
+                  <a
+                    {...props}
+                    onClick={(e) => {
+                      if (href.startsWith('#')) {
+                        e.preventDefault()
+                        onLinkClick?.(href)
+                      }
+                    }}
+                    className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                  />
+                )
+              },
             }}
           >
             {content}

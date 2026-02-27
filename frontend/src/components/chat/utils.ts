@@ -141,6 +141,44 @@ export function detectContentType(
 }
 
 /**
+ * 检测内容中的媒体链接
+ * 返回检测到的媒体类型和 URL
+ */
+export function detectMediaUrl(content: string): { type: 'image' | 'video' | null; url: string | null } {
+  if (!content) return { type: null, url: null }
+  
+  // 匹配 Markdown 链接中的 URL [text](url)
+  const markdownMatch = content.match(/\[([^\]]*)\]\((https?:\/\/[^)]+)\)/)
+  if (markdownMatch) {
+    const url = markdownMatch[2]
+    const lowerUrl = url.toLowerCase()
+    
+    if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(lowerUrl)) {
+      return { type: 'image', url }
+    }
+    if (/\.(mp4|webm|ogg|mov|mkv)(\?.*)?$/i.test(lowerUrl)) {
+      return { type: 'video', url }
+    }
+  }
+  
+  // 匹配纯 URL
+  const urlMatch = content.match(/(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/i)
+  if (urlMatch) {
+    const url = urlMatch[1]
+    const lowerUrl = url.toLowerCase()
+    
+    if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(lowerUrl)) {
+      return { type: 'image', url }
+    }
+    if (/\.(mp4|webm|ogg|mov|mkv)(\?.*)?$/i.test(lowerUrl)) {
+      return { type: 'video', url }
+    }
+  }
+  
+  return { type: null, url: null }
+}
+
+/**
  * 翻译专家名称
  */
 export function translateExpertName(name: string, t: (key: string) => string): string {

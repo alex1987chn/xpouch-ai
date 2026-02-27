@@ -47,6 +47,9 @@ const DocArtifact = lazy(() =>
 const HtmlArtifact = lazy(() =>
   import('@/components/artifacts/HtmlArtifact').then((m) => ({ default: m.default }))
 )
+const MediaArtifact = lazy(() =>
+  import('@/components/artifacts/MediaArtifact').then((m) => ({ default: m.default }))
+)
 
 interface ArtifactDashboardProps {
   isFullscreen?: boolean
@@ -550,6 +553,13 @@ export default function ArtifactDashboard({
                     <div id={contentElementId} className="h-full w-full overflow-auto bauhaus-scrollbar p-4 bg-card">
                       {currentArtifact.type === 'html' ? (
                         <HtmlArtifact content={currentArtifact.content} className="h-full" />
+                      ) : currentArtifact.type === 'image' || currentArtifact.type === 'video' || currentArtifact.type === 'media' ? (
+                        <MediaArtifact
+                          content={currentArtifact.content}
+                          type={currentArtifact.type as 'image' | 'video' | 'media'}
+                          title={currentArtifact.title}
+                          className="h-full"
+                        />
                       ) : currentArtifact.type === 'markdown' ||
                         currentArtifact.content.includes('#') ||
                         currentArtifact.content.includes('**') ? (
