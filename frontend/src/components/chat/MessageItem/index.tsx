@@ -265,16 +265,31 @@ export default function MessageItem({
             components={{
               a: ({ node, ...props }) => {
                 const href = props.href || ''
-                // 检测是否为媒体链接
-                const isImage = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(href)
-                const isVideo = /\.(mp4|webm|ogg|mov|mkv)(\?.*)?$/i.test(href)
+                const linkText = props.children?.toString() || ''
                 
-                if (isImage) {
+                // 🔥 检测是否为媒体链接（多种策略）
+                // 策略1：文件扩展名
+                const hasImageExt = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(href)
+                const hasVideoExt = /\.(mp4|webm|ogg|mov|mkv)(\?.*)?$/i.test(href)
+                
+                // 策略2：OSS/对象存储图片服务（常见无扩展名但有图片特征）
+                const isOssImage = /(oss-|aliyuncs|s3\.amazonaws|cloudfront|storage\.googleapis|blob\.core\.windows)\.com.*(watermark|image|img|photo|pic)/i.test(href)
+                
+                // 策略3：链接文字暗示是图片
+                const textSuggestsImage = /图片|image|photo|pic|图/i.test(linkText)
+                
+                // 策略4：URL 参数中包含图片信息
+                const urlHasImageParam = /[?&](image|img|url|src)=/i.test(href)
+                
+                const shouldRenderAsImage = hasImageExt || (isOssImage && textSuggestsImage) || urlHasImageParam
+                const shouldRenderAsVideo = hasVideoExt
+                
+                if (shouldRenderAsImage) {
                   return (
                     <span className="block my-3">
                       <img
                         src={href}
-                        alt={props.children?.toString() || 'Image'}
+                        alt={linkText || 'Image'}
                         className="max-w-full max-h-[300px] rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
                         loading="lazy"
                         onClick={() => window.open(href, '_blank')}
@@ -292,7 +307,7 @@ export default function MessageItem({
                   )
                 }
                 
-                if (isVideo) {
+                if (shouldRenderAsVideo) {
                   return (
                     <span className="block my-3">
                       <video
