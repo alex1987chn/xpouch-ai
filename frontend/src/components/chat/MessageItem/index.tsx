@@ -284,12 +284,11 @@ export default function MessageItem({
                 const shouldRenderAsImage = hasImageExt || (isOssImage && textSuggestsImage) || urlHasImageParam
                 const shouldRenderAsVideo = hasVideoExt
                 
-                // 🔥 DEBUG: 在控制台输出检测信息
-                if (href.includes('aliyuncs') || hasImageExt) {
-                  console.log('[MessageItem] Link detected:', { href: href.slice(0, 50), hasImageExt, isOssImage, textSuggestsImage, shouldRenderAsImage })
-                }
-                
                 if (shouldRenderAsImage) {
+                  // 检查 OSS 链接是否可能已过期（URL 中有 Expires 参数且时间已过期）
+                  const expireMatch = href.match(/[?&]Expires=(\d+)/)
+                  const isExpired = expireMatch && Number(expireMatch[1]) * 1000 < Date.now()
+                  
                   return (
                     <span className="block my-3">
                       <img
@@ -305,6 +304,11 @@ export default function MessageItem({
                           target.nextElementSibling?.classList.remove('hidden')
                         }}
                       />
+                      {isExpired && (
+                        <span className="text-xs text-amber-600 dark:text-amber-400 block mt-1">
+                          ⚠️ 图片链接已过期，请重新生成
+                        </span>
+                      )}
                       <a {...props} className="hidden text-blue-600 dark:text-blue-400 hover:underline text-xs">
                         {props.children}
                       </a>
