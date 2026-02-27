@@ -141,7 +141,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
               type="text"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder={t('descriptionPlaceholder') || 'Brief description of capabilities'}
+              placeholder={t('mcpDescriptionPlaceholder') || 'Describe what this MCP server provides...'}
               disabled={createMutation.isPending}
             />
           </section>

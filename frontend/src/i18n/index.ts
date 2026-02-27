@@ -39,7 +39,7 @@ export type TranslationKey =
   | 'newKnowledgeBase' | 'searchKnowledge' | 'documents' | 'uploadDocument'
   | 'noKnowledgeFound' | 'noKnowledgeContent' | 'createFirstKnowledge'
   | 'searchMCPServers' | 'noMCPServers' | 'noMatchingServers' | 'clickAddToConnect'
-  | 'mcpTools' | 'addModule' | 'confirmDeleteMCPServer' | 'removed' | 'deleteFailed'
+  | 'mcpTools' | 'addModule' | 'mcpDescriptionPlaceholder' | 'confirmDeleteMCPServer' | 'removed' | 'deleteFailed'
   | 'toggleFailed' | 'noDescription' | 'disable' | 'enable' | 'moduleName' | 'sseUrl'
   | 'sseUrlHint' | 'connecting' | 'initializeModule' | 'mcpServerAdded' | 'failedToAddServer'
   | 'validationError' | 'nameAndUrlRequired' | 'matching' | 'knowledgeBaseDescription'
