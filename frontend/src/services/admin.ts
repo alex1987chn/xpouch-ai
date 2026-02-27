@@ -54,7 +54,11 @@ export interface PreviewExpertRequest {
 }
 
 export interface PreviewExpertResponse {
-  response: string
+  expert_name: string
+  test_input: string
+  preview_response: string
+  model: string
+  temperature: number
   execution_time_ms: number
 }
 

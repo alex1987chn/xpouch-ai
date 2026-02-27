@@ -365,15 +365,20 @@ export default function ExpertEditor({
 
                 {previewResult && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 bg-[var(--accent-hover)]" />
-                      <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                        {'Preview Result'}
-                      </label>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-[var(--accent-hover)]" />
+                        <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                          {t('previewResults')}
+                        </label>
+                      </div>
+                      <span className="font-mono text-[9px] text-[var(--text-secondary)]">
+                        {previewResult.model} · {previewResult.temperature} · {(previewResult.execution_time_ms / 1000).toFixed(2)}s
+                      </span>
                     </div>
                     <div className="p-4 border-2 border-[var(--border-color)] bg-[var(--bg-page)] min-h-[200px]">
                       <pre className="font-mono text-sm whitespace-pre-wrap">
-                        {previewResult.content}
+                        {previewResult.preview_response}
                       </pre>
                     </div>
                   </div>
