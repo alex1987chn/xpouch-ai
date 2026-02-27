@@ -22,6 +22,7 @@ providers:
     context_window: 1000000
     priority: 1                             # Router 优先级（数字越小越优先）
     enabled: true
+    content_mode: string                    # 消息 content 必须是字符串（ToolMessage 需转换）
 
   # -------------------------------------------------------------------------
   # DeepSeek - 性价比高，通用对话
@@ -35,9 +36,11 @@ providers:
     context_window: 128000
     priority: 2
     enabled: true
+    content_mode: string                    # 消息 content 必须是字符串（ToolMessage 需转换）
 
   # -------------------------------------------------------------------------
   # OpenAI - GPT 系列，代码和复杂任务
+  # 支持多模态 content (list[str | dict])
   # -------------------------------------------------------------------------
   openai:
     name: OpenAI
@@ -47,10 +50,12 @@ providers:
     temperature: 0.7
     context_window: 128000
     priority: 3
-    enabled: false  # 未配置 OPENAI_API_KEY，禁用
+    enabled: false                           # 未配置 OPENAI_API_KEY，禁用
+    content_mode: auto                       # 原生支持多模态 content，无需转换
 
   # -------------------------------------------------------------------------
   # Anthropic - Claude 系列，长文本和研究
+  # 支持多模态 content (list[str | dict])
   # -------------------------------------------------------------------------
   anthropic:
     name: Anthropic
@@ -60,10 +65,12 @@ providers:
     temperature: 0.7
     context_window: 200000
     priority: 4
-    enabled: false                         # 默认不启用，需配置 API Key
+    enabled: false                           # 默认不启用，需配置 API Key
+    content_mode: auto                       # 原生支持多模态 content，无需转换
 
   # -------------------------------------------------------------------------
   # Google - Gemini 系列，多模态
+  # 支持多模态 content (list[str | dict])
   # -------------------------------------------------------------------------
   google:
     name: Google
@@ -74,6 +81,7 @@ providers:
     context_window: 1048576
     priority: 5
     enabled: false
+    content_mode: auto                       # 原生支持多模态 content，无需转换
 
   # -------------------------------------------------------------------------
   # Moonshot (月之暗面) - Kimi 系列，长文本处理
@@ -87,6 +95,7 @@ providers:
     context_window: 256000
     priority: 6
     enabled: true
+    content_mode: string                    # 消息 content 必须是字符串（ToolMessage 需转换）
 
 # ============================================================================
 # 嵌入模型配置（用于长期记忆系统）
