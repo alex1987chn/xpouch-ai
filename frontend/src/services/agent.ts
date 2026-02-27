@@ -4,7 +4,7 @@
  * P0 修复: 添加 credentials: 'include' 以支持 HttpOnly Cookie
  */
 
-import { getHeaders, buildUrl, handleResponse } from './common'
+import { getHeaders, buildUrl, handleResponse, authenticatedFetch } from './common'
 import type { Agent } from '@/types'
 
 // 重新导出类型供外部使用（Agent 类型来自 @/types）
@@ -54,12 +54,10 @@ export interface AgentDisplay {
 export async function createCustomAgent(
   agent: CreateAgentRequest
 ): Promise<CustomAgent> {
-  const response = await fetch(buildUrl('/agents'), {
+  const response = await authenticatedFetch(buildUrl('/agents'), {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(agent),
-    // P0 修复: 允许携带 Cookie
-    credentials: 'include'
+    body: JSON.stringify(agent)
   })
   return handleResponse<CustomAgent>(response, '创建智能体失败')
 }
@@ -79,10 +77,8 @@ export interface PaginatedAgentsResponse {
  * 获取所有自定义智能体（支持分页）
  */
 export async function getAllAgents(page: number = 1, pageSize: number = 20): Promise<AgentDisplay[]> {
-  const response = await fetch(buildUrl(`/agents?page=${page}&page_size=${pageSize}`), {
-    headers: getHeaders(),
-    // P0 修复: 允许携带 Cookie
-    credentials: 'include'
+  const response = await authenticatedFetch(buildUrl(`/agents?page=${page}&page_size=${pageSize}`), {
+    headers: getHeaders()
   })
   const data = await handleResponse<PaginatedAgentsResponse>(response, '获取智能体列表失败')
 
@@ -100,10 +96,8 @@ export async function getAllAgents(page: number = 1, pageSize: number = 20): Pro
  * 获取单个自定义智能体
  */
 export async function getCustomAgent(id: string): Promise<CustomAgent> {
-  const response = await fetch(buildUrl(`/agents/${id}`), {
-    headers: getHeaders(),
-    // P0 修复: 允许携带 Cookie
-    credentials: 'include'
+  const response = await authenticatedFetch(buildUrl(`/agents/${id}`), {
+    headers: getHeaders()
   })
   return handleResponse<CustomAgent>(response, '获取智能体详情失败')
 }
@@ -115,12 +109,10 @@ export async function updateCustomAgent(
   id: string,
   agent: Partial<CreateAgentRequest>
 ): Promise<CustomAgent> {
-  const response = await fetch(buildUrl(`/agents/${id}`), {
+  const response = await authenticatedFetch(buildUrl(`/agents/${id}`), {
     method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify(agent),
-    // P0 修复: 允许携带 Cookie
-    credentials: 'include'
+    body: JSON.stringify(agent)
   })
   return handleResponse<CustomAgent>(response, '更新智能体失败')
 }
@@ -129,11 +121,9 @@ export async function updateCustomAgent(
  * 删除自定义智能体
  */
 export async function deleteCustomAgent(id: string): Promise<void> {
-  const response = await fetch(buildUrl(`/agents/${id}`), {
+  const response = await authenticatedFetch(buildUrl(`/agents/${id}`), {
     method: 'DELETE',
-    headers: getHeaders(),
-    // P0 修复: 允许携带 Cookie
-    credentials: 'include'
+    headers: getHeaders()
   })
   return handleResponse<void>(response, '删除智能体失败')
 }
