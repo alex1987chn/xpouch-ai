@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ExpertEditor - 专家编辑器组件
  *
  * [职责]
@@ -110,12 +110,12 @@ export default function ExpertEditor({
 
   if (!expert) {
     return (
-      <div className="flex-1 flex items-center justify-center border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0]">
+      <div className="flex-1 flex items-center justify-center border-2 border-border-default bg-surface-card shadow-[rgb(var(--shadow-color))_4px_4px_0_0]">
         <div className="text-center">
-          <div className="w-12 h-12 border-2 border-[var(--border-color)] bg-[var(--bg-page)] mx-auto mb-4 flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-[var(--text-secondary)]" />
+          <div className="w-12 h-12 border-2 border-border-default bg-surface-page mx-auto mb-4 flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-content-secondary" />
           </div>
-          <p className="font-mono text-sm text-[var(--text-secondary)]">
+          <p className="font-mono text-sm text-content-secondary">
             选择专家以编辑
           </p>
         </div>
@@ -124,12 +124,12 @@ export default function ExpertEditor({
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0]">
+    <div className="flex-1 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-[rgb(var(--shadow-color))_4px_4px_0_0]">
       {/* 头部 */}
-      <div className="flex items-center justify-between px-4 py-3 border-b-2 border-[var(--border-color)] shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-[var(--accent-hover)]" />
-          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+          <div className="w-2 h-2 bg-[rgb(var(--accent-hover))]" />
+          <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
             /// {expert.name.toUpperCase()}
           </span>
         </div>
@@ -139,8 +139,8 @@ export default function ExpertEditor({
             className={cn(
               'flex items-center gap-2 px-3 py-1.5 border-2 font-mono text-xs font-bold uppercase transition-all',
               previewMode
-                ? 'border-[var(--accent-hover)] bg-[var(--accent-hover)] text-black'
-                : 'border-[var(--border-color)] bg-[var(--bg-page)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
+                ? 'border-[var(--accent-hover)] bg-[rgb(var(--accent-hover))] text-black'
+                : 'border-border-default bg-surface-page text-content-secondary hover:border-[var(--text-secondary)]'
             )}
           >
             <Play className="w-3.5 h-3.5" />
@@ -150,8 +150,8 @@ export default function ExpertEditor({
       </div>
 
       {/* 更新时间 */}
-      <div className="px-4 py-2 border-b-2 border-[var(--border-color)] bg-[var(--bg-page)]">
-        <span className="font-mono text-[10px] text-[var(--text-secondary)]">
+      <div className="px-4 py-2 border-b-2 border-border-default bg-surface-page">
+        <span className="font-mono text-[10px] text-content-secondary">
           {t('lastUpdated')}: {new Date(expert.updated_at).toLocaleString()}
         </span>
       </div>
@@ -172,22 +172,22 @@ export default function ExpertEditor({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                     {t('temperature')}: {formData.temperature?.toFixed(1)}
                   </label>
                 </div>
                 <div
-                  className="relative h-8 bg-[var(--bg-page)] border-2 border-[var(--border-color)]"
+                  className="relative h-8 bg-surface-page border-2 border-border-default"
                   style={{ zIndex: 10 }}
                 >
                   <div
-                    className="absolute top-0 left-0 h-full bg-[var(--accent-hover)] transition-all pointer-events-none"
+                    className="absolute top-0 left-0 h-full bg-[rgb(var(--accent-hover))] transition-all pointer-events-none"
                     style={{
                       width: `${((formData.temperature ?? 0.5) / 2) * 100}%`,
                     }}
                   />
                   <div
-                    className="absolute top-0 w-4 h-full bg-[var(--text-primary)] border-2 border-[var(--border-color)] transition-all pointer-events-none"
+                    className="absolute top-0 w-4 h-full bg-[var(--text-primary)] border-2 border-border-default transition-all pointer-events-none"
                     style={{
                       left: `calc(${((formData.temperature ?? 0.5) / 2) * 100}% - 8px)`,
                     }}
@@ -205,7 +205,7 @@ export default function ExpertEditor({
                     style={{ WebkitAppearance: 'none', appearance: 'none' }}
                   />
                 </div>
-                <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
+                <div className="flex justify-between font-mono text-[9px] text-content-secondary">
                   <span>0.0 ({t('conservative')})</span>
                   <span>1.0 ({t('balanced')})</span>
                   <span>2.0 ({t('creative')})</span>
@@ -217,7 +217,7 @@ export default function ExpertEditor({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
-                    <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                    <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                       {t('expertDescription')}
                     </label>
                   </div>
@@ -226,8 +226,8 @@ export default function ExpertEditor({
                     disabled={isGeneratingDescription || formData.system_prompt.length < 10}
                     className={cn(
                       'flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase',
-                      'border border-[var(--border-color)] bg-[var(--bg-page)]',
-                      'hover:bg-[var(--accent-hover)] hover:text-black hover:border-[var(--accent-hover)]',
+                      'border border-border-default bg-surface-page',
+                      'hover:bg-[rgb(var(--accent-hover))] hover:text-black hover:border-[var(--accent-hover)]',
                       'transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                     )}
                     title={t('autoGenerateDescriptionTooltip')}
@@ -250,9 +250,9 @@ export default function ExpertEditor({
                   onChange={(e) => handleFieldChange('description', e.target.value)}
                   placeholder={t('expertDescriptionPlaceholder')}
                   rows={3}
-                  className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[80px] bauhaus-scrollbar"
+                  className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[80px] bauhaus-scrollbar"
                 />
-                <p className="font-mono text-[9px] text-[var(--text-secondary)]">
+                <p className="font-mono text-[9px] text-content-secondary">
                   {t('expertDescriptionTooltip')}
                 </p>
               </div>
@@ -261,7 +261,7 @@ export default function ExpertEditor({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                     {t('systemPrompt')}
                   </label>
                 </div>
@@ -270,9 +270,9 @@ export default function ExpertEditor({
                   onChange={(e) => handleFieldChange('system_prompt', e.target.value)}
                   placeholder={t('systemPromptPlaceholder')}
                   rows={10}
-                  className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[150px] bauhaus-scrollbar"
+                  className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[150px] bauhaus-scrollbar"
                 />
-                <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
+                <div className="flex justify-between font-mono text-[9px] text-content-secondary">
                   <span>{formData.system_prompt.length} {t('chars')}</span>
                   <span className={formData.system_prompt.length < 10 ? 'text-red-500' : ''}>
                     {t('minChars')}: 10
@@ -281,15 +281,15 @@ export default function ExpertEditor({
               </div>
 
               {/* 保存按钮 */}
-              <div className="flex justify-end pt-4 border-t-2 border-[var(--border-color)]">
+              <div className="flex justify-end pt-4 border-t-2 border-border-default">
                 <button
                   onClick={handleSave}
                   disabled={isSaving || formData.system_prompt.length < 10}
                   className={cn(
-                    'flex items-center gap-2 px-6 py-2 border-2 border-[var(--border-color)]',
-                    'bg-[var(--accent-hover)] text-black font-mono text-xs font-bold uppercase',
-                    'shadow-[var(--shadow-color)_3px_3px_0_0]',
-                    'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_4px_4px_0_0]',
+                    'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
+                    'bg-[rgb(var(--accent-hover))] text-black font-mono text-xs font-bold uppercase',
+                    'shadow-[rgb(var(--shadow-color))_3px_3px_0_0]',
+                    'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_4px_4px_0_0]',
                     'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
                     'transition-all',
                     'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0'
@@ -316,7 +316,7 @@ export default function ExpertEditor({
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
-                    <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                    <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                       {t('testInput')}
                     </label>
                   </div>
@@ -325,9 +325,9 @@ export default function ExpertEditor({
                     onChange={(e) => setTestInput(e.target.value)}
                     placeholder={t('testInputPlaceholder')}
                     rows={5}
-                    className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-none"
+                    className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-none"
                   />
-                  <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
+                  <div className="flex justify-between font-mono text-[9px] text-content-secondary">
                     <span>{testInput.length} {t('chars')}</span>
                     <span className={testInput.length < 10 ? 'text-red-500' : ''}>
                       {t('minChars')}: 10
@@ -340,10 +340,10 @@ export default function ExpertEditor({
                     onClick={handlePreview}
                     disabled={isPreviewing || testInput.length < 10}
                     className={cn(
-                      'flex items-center gap-2 px-6 py-2 border-2 border-[var(--border-color)]',
-                      'bg-[var(--accent-hover)] text-black font-mono text-xs font-bold uppercase',
-                      'shadow-[var(--shadow-color)_3px_3px_0_0]',
-                      'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_4px_4px_0_0]',
+                      'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
+                      'bg-[rgb(var(--accent-hover))] text-black font-mono text-xs font-bold uppercase',
+                      'shadow-[rgb(var(--shadow-color))_3px_3px_0_0]',
+                      'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_4px_4px_0_0]',
                       'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
                       'transition-all',
                       'disabled:opacity-50 disabled:cursor-not-allowed'
@@ -367,16 +367,16 @@ export default function ExpertEditor({
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-[var(--accent-hover)]" />
-                        <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                        <div className="w-1.5 h-1.5 bg-[rgb(var(--accent-hover))]" />
+                        <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                           {t('previewResults')}
                         </label>
                       </div>
-                      <span className="font-mono text-[9px] text-[var(--text-secondary)]">
+                      <span className="font-mono text-[9px] text-content-secondary">
                         {previewResult.model} · {previewResult.temperature} · {(previewResult.execution_time_ms / 1000).toFixed(2)}s
                       </span>
                     </div>
-                    <div className="p-4 border-2 border-[var(--border-color)] bg-[var(--bg-page)] min-h-[200px]">
+                    <div className="p-4 border-2 border-border-default bg-surface-page min-h-[200px]">
                       <pre className="font-mono text-sm whitespace-pre-wrap">
                         {previewResult.preview_response}
                       </pre>

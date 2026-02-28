@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AlertTriangle, X } from 'lucide-react'
 import { useTranslation } from '@/i18n'
@@ -50,21 +50,21 @@ export function DeleteConfirmDialog({
       onClick={handleClose}
     >
       <div
-        className="relative bg-[var(--bg-card)] border-2 border-[var(--border-color)] shadow-[var(--shadow-color)_8px_8px_0_0] w-[400px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface-card border-2 border-border-default shadow-[rgb(var(--shadow-color))_8px_8px_0_0] w-[400px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - Bauhaus风格 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-[var(--border-color)]">
+        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-red-500"></div>
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// WARNING
             </span>
           </div>
           <button
             onClick={handleClose}
             disabled={isDeleting}
-            className="w-6 h-6 flex items-center justify-center border border-[var(--border-color)] hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50"
+            className="w-6 h-6 flex items-center justify-center border border-border-default hover:bg-[rgb(var(--accent-hover))] transition-colors disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -81,7 +81,7 @@ export function DeleteConfirmDialog({
 
           {/* 标题和描述 */}
           <div className="text-center space-y-3">
-            <h2 className="text-lg font-black uppercase tracking-tight text-[var(--text-primary)]">
+            <h2 className="text-lg font-black uppercase tracking-tight text-content-primary">
               {title || t('confirmDeleteTitle')}
             </h2>
             {itemName && (
@@ -89,18 +89,18 @@ export function DeleteConfirmDialog({
                 {itemName}
               </div>
             )}
-            <p className="text-xs font-mono text-[var(--text-secondary)] leading-relaxed">
+            <p className="text-xs font-mono text-content-secondary leading-relaxed">
               {description || t('confirmDeleteDescription')}
             </p>
           </div>
         </div>
 
         {/* 底部按钮 */}
-        <div className="flex gap-0 border-t-2 border-[var(--border-color)]">
+        <div className="flex gap-0 border-t-2 border-border-default">
           <button
             onClick={handleClose}
             disabled={isDeleting}
-            className="flex-1 py-3 font-mono text-sm font-bold uppercase border-r-2 border-[var(--border-color)] hover:bg-[var(--bg-page)] transition-colors disabled:opacity-50"
+            className="flex-1 py-3 font-mono text-sm font-bold uppercase border-r-2 border-border-default hover:bg-surface-page transition-colors disabled:opacity-50"
           >
             {t('cancel')}
           </button>

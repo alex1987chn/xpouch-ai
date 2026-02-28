@@ -1,4 +1,4 @@
-/**
+﻿/**
  * MCP 服务器卡片组件
  * 
  * 手风琴模式：点击展开显示工具列表
@@ -72,7 +72,7 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
     <>
       <div
         className={cn(
-          "group relative bg-[var(--bg-card)] border-2 border-bauhaus-border",
+          "group relative bg-surface-card border-2 border-bauhaus-border",
           "shadow-hard transition-all",
           isExpanded ? "" : "hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-hover"
         )}
@@ -143,7 +143,7 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
               >
                 <div 
                   className={cn(
-                    "w-4 h-4 bg-[var(--bg-card)] border-2 border-bauhaus-border transition-transform duration-200",
+                    "w-4 h-4 bg-surface-card border-2 border-bauhaus-border transition-transform duration-200",
                     server.is_active ? 'translate-x-[20px]' : 'translate-x-0'
                   )} 
                 />
@@ -176,7 +176,7 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
                   {tools.map((tool) => (
                     <div 
                       key={tool.name}
-                      className="bg-[var(--bg-card)] border border-bauhaus-border/50 p-2"
+                      className="bg-surface-card border border-bauhaus-border/50 p-2"
                     >
                       <div className="font-mono text-xs font-bold text-bauhaus-text">
                         {tool.name}

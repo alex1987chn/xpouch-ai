@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ExpertAdminPage - 专家管理页面
  * 
  * [职责]
@@ -46,7 +46,7 @@ function BauhausToast({
   return (
     <div
       className={cn(
-        'fixed bottom-4 right-4 z-50 px-4 py-3 border-2 shadow-[var(--shadow-color)_4px_4px_0_0] font-mono text-xs font-bold uppercase',
+        'fixed bottom-4 right-4 z-50 px-4 py-3 border-2 shadow-[rgb(var(--shadow-color))_4px_4px_0_0] font-mono text-xs font-bold uppercase',
         type === 'success'
           ? 'border-green-500 bg-green-50 text-green-700'
           : 'border-red-500 bg-red-50 text-red-700'
@@ -221,14 +221,14 @@ export default function ExpertAdminPage() {
   if (isLoadingExperts) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="w-8 h-8 border-2 border-[var(--border-color)] border-t-[var(--accent-hover)] animate-spin" />
-        <span className="ml-3 font-mono text-sm text-[var(--text-secondary)]">{(t as any)('loading')}</span>
+        <div className="w-8 h-8 border-2 border-border-default border-t-[var(--accent-hover)] animate-spin" />
+        <span className="ml-3 font-mono text-sm text-content-secondary">{(t as any)('loading')}</span>
       </div>
     )
   }
 
   return (
-    <div className="flex gap-4 h-[100dvh] p-4 bg-[var(--bg-page)]">
+    <div className="flex gap-4 h-[100dvh] p-4 bg-surface-page">
       {/* Toast */}
       {toast && (
         <BauhausToast

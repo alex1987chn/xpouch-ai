@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ExpertFormDialog - 专家表单对话框
  * 
  * [职责]
@@ -113,19 +113,19 @@ export default function ExpertFormDialog({
       {/* 遮罩 */}
       <div className="fixed inset-0 bg-black/50 z-50" onClick={handleClose} />
       {/* 对话框容器 */}
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] z-50 max-h-[90vh] overflow-y-auto">
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg border-2 border-border-default bg-surface-card shadow-[rgb(var(--shadow-color))_4px_4px_0_0] z-50 max-h-[90vh] overflow-y-auto">
         {/* 标题 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-[var(--border-color)]">
+        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-[var(--accent-hover)]" />
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+            <div className="w-2 h-2 bg-[rgb(var(--accent-hover))]" />
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// {title}
             </span>
           </div>
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="w-7 h-7 flex items-center justify-center border border-[var(--border-color)] hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50"
+            className="w-7 h-7 flex items-center justify-center border border-border-default hover:bg-[rgb(var(--accent-hover))] transition-colors disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -137,7 +137,7 @@ export default function ExpertFormDialog({
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
-              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('expertKey')}
               </label>
             </div>
@@ -148,17 +148,17 @@ export default function ExpertFormDialog({
               placeholder={t('expertKeyPlaceholder')}
               disabled={isSubmitting || !isCreate}
               className={cn(
-                'w-full px-3 py-2 border-2 bg-[var(--bg-page)] font-mono text-sm focus:outline-none transition-colors',
+                'w-full px-3 py-2 border-2 bg-surface-page font-mono text-sm focus:outline-none transition-colors',
                 keyError
                   ? 'border-red-500 focus:border-red-500'
-                  : 'border-[var(--border-color)] focus:border-[var(--accent-hover)]',
+                  : 'border-border-default focus:border-[var(--accent-hover)]',
                 !isCreate && 'opacity-60 cursor-not-allowed'
               )}
             />
             {keyError && (
               <p className="font-mono text-[9px] text-red-500">{keyError}</p>
             )}
-            <p className="font-mono text-[9px] text-[var(--text-secondary)]">
+            <p className="font-mono text-[9px] text-content-secondary">
               {t('expertKeyHint')}
             </p>
           </div>
@@ -167,7 +167,7 @@ export default function ExpertFormDialog({
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
-              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {'Name'}
               </label>
             </div>
@@ -179,7 +179,7 @@ export default function ExpertFormDialog({
               }
               placeholder={t('namePlaceholder')}
               disabled={isSubmitting}
-              className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
+              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
             />
           </div>
 
@@ -187,7 +187,7 @@ export default function ExpertFormDialog({
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
-              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('expertDescription')}
               </label>
             </div>
@@ -199,7 +199,7 @@ export default function ExpertFormDialog({
               placeholder={t('expertDescriptionPlaceholder')}
               rows={2}
               disabled={isSubmitting}
-              className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[60px]"
+              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[60px]"
             />
           </div>
 
@@ -216,17 +216,17 @@ export default function ExpertFormDialog({
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
-              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('temperature')}: {formData.temperature.toFixed(1)}
               </label>
             </div>
-            <div className="relative h-8 bg-[var(--bg-page)] border-2 border-[var(--border-color)]">
+            <div className="relative h-8 bg-surface-page border-2 border-border-default">
               <div
-                className="absolute top-0 left-0 h-full bg-[var(--accent-hover)] transition-all pointer-events-none"
+                className="absolute top-0 left-0 h-full bg-[rgb(var(--accent-hover))] transition-all pointer-events-none"
                 style={{ width: `${(formData.temperature / 2) * 100}%` }}
               />
               <div
-                className="absolute top-0 w-4 h-full bg-[var(--text-primary)] border-2 border-[var(--border-color)] transition-all pointer-events-none"
+                className="absolute top-0 w-4 h-full bg-[var(--text-primary)] border-2 border-border-default transition-all pointer-events-none"
                 style={{
                   left: `calc(${(formData.temperature / 2) * 100}% - 8px)`,
                 }}
@@ -248,7 +248,7 @@ export default function ExpertFormDialog({
                 style={{ WebkitAppearance: 'none', appearance: 'none' }}
               />
             </div>
-            <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
+            <div className="flex justify-between font-mono text-[9px] text-content-secondary">
               <span>0.0 ({t('conservative')})</span>
               <span>1.0 ({t('balanced')})</span>
               <span>2.0 ({t('creative')})</span>
@@ -259,7 +259,7 @@ export default function ExpertFormDialog({
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
-              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('systemPrompt')}
               </label>
             </div>
@@ -274,9 +274,9 @@ export default function ExpertFormDialog({
               placeholder={t('systemPromptPlaceholder')}
               rows={5}
               disabled={isSubmitting}
-              className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[100px]"
+              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[100px]"
             />
-            <div className="flex justify-between font-mono text-[9px] text-[var(--text-secondary)]">
+            <div className="flex justify-between font-mono text-[9px] text-content-secondary">
               <span>{formData.system_prompt.length} {t('chars')}</span>
               <span
                 className={formData.system_prompt.length < 10 ? 'text-red-500' : ''}
@@ -288,11 +288,11 @@ export default function ExpertFormDialog({
         </div>
 
         {/* 底部按钮 */}
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t-2 border-[var(--border-color)]">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t-2 border-border-default">
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-4 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-xs font-bold uppercase hover:bg-[var(--accent-hover)] hover:text-black transition-colors disabled:opacity-50"
+            className="px-4 py-2 border-2 border-border-default bg-surface-page font-mono text-xs font-bold uppercase hover:bg-[rgb(var(--accent-hover))] hover:text-black transition-colors disabled:opacity-50"
           >
             {t('cancel')}
           </button>
@@ -307,10 +307,10 @@ export default function ExpertFormDialog({
               !!keyError
             }
             className={cn(
-              'flex items-center gap-2 px-4 py-2 border-2 border-[var(--border-color)]',
-              'bg-[var(--accent-hover)] text-black font-mono text-xs font-bold uppercase',
-              'shadow-[var(--shadow-color)_2px_2px_0_0]',
-              'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_3px_3px_0_0]',
+              'flex items-center gap-2 px-4 py-2 border-2 border-border-default',
+              'bg-[rgb(var(--accent-hover))] text-black font-mono text-xs font-bold uppercase',
+              'shadow-[rgb(var(--shadow-color))_2px_2px_0_0]',
+              'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0]',
               'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
               'transition-all',
               'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0'

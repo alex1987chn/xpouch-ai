@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { ArrowLeft, Bot, Sparkles, Save } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
@@ -37,10 +37,10 @@ function BauhausProgressBar({ current, max }: { current: number; max: number }) 
             <div
               key={i}
               className={cn(
-                'w-3 h-4 border border-[var(--border-color)] transition-all duration-200',
+                'w-3 h-4 border border-border-default transition-all duration-200',
                 isFilled
-                  ? 'bg-[var(--accent-hover)]'
-                  : 'bg-[var(--bg-page)]'
+                  ? 'bg-[rgb(var(--accent-hover))]'
+                  : 'bg-surface-page'
               )}
             />
           )
@@ -49,7 +49,7 @@ function BauhausProgressBar({ current, max }: { current: number; max: number }) 
 
       {/* 字数统计 */}
       <div className="flex items-center justify-between font-mono text-[10px]">
-        <span className="text-[var(--text-secondary)]">
+        <span className="text-content-secondary">
           {current} / {max} {t('chars')}
         </span>
         <span className={cn(
@@ -58,7 +58,7 @@ function BauhausProgressBar({ current, max }: { current: number; max: number }) 
             ? 'text-green-600'
             : progress >= 0.8
               ? 'text-[var(--accent-hover)]'
-              : 'text-[var(--text-secondary)]'
+              : 'text-content-secondary'
         )}>
           {progress >= 1 ? t('complete') : progress >= 0.8 ? t('almost') : t('input')}
         </span>
@@ -114,20 +114,20 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
   return (
     <div className="flex flex-col h-full bg-transparent">
       {/* 顶部 Bauhaus Header */}
-      <header className="sticky top-0 z-40 w-full h-14 px-6 border-b-2 border-[var(--border-color)] bg-[var(--bg-card)] shrink-0">
+      <header className="sticky top-0 z-40 w-full h-14 px-6 border-b-2 border-border-default bg-surface-card shrink-0">
         <div className="w-full max-w-7xl mx-auto h-full flex items-center justify-between">
           {/* 左侧：返回按钮 */}
           <button
             onClick={onBack}
-            className="flex items-center justify-center w-9 h-9 border-2 border-[var(--border-color)] hover:bg-[var(--accent-hover)] transition-colors"
+            className="flex items-center justify-center w-9 h-9 border-2 border-border-default hover:bg-[rgb(var(--accent-hover))] transition-colors"
           >
             <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
           </button>
 
           {/* 标题 */}
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-[var(--accent-hover)]"></div>
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+            <div className="w-2 h-2 bg-[rgb(var(--accent-hover))]"></div>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// {isEditMode ? t('editAgent') : t('createAgent')}
             </span>
           </div>
@@ -138,7 +138,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
             disabled={!name || !systemPrompt}
             className={cn(
               'flex items-center gap-2 px-4 py-2 border-2 border-black',
-              'bg-[var(--accent-hover)] text-black font-mono text-xs font-bold uppercase',
+              'bg-[rgb(var(--accent-hover))] text-black font-mono text-xs font-bold uppercase',
               'shadow-[3px_3px_0_0_rgba(0,0,0,1)]',
               'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)]',
               'active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0_0_rgba(0,0,0,1)]',
@@ -167,7 +167,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                     {t('agentName')} <span className="text-[var(--accent-hover)]">*</span>
                   </label>
                 </div>
@@ -176,7 +176,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={t('giveName')}
-                  className="w-full px-4 py-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
+                  className="w-full px-4 py-3 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
                 />
               </div>
 
@@ -184,7 +184,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                     {t('category')}
                   </label>
                 </div>
@@ -196,8 +196,8 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                       className={cn(
                         'px-4 py-2 border-2 font-mono text-xs font-bold uppercase transition-all',
                         category === cat
-                          ? 'border-[var(--accent-hover)] bg-[var(--accent-hover)] text-black shadow-[var(--shadow-color)_2px_2px_0_0]'
-                          : 'border-[var(--border-color)] bg-[var(--bg-page)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
+                          ? 'border-[var(--accent-hover)] bg-[rgb(var(--accent-hover))] text-black shadow-[rgb(var(--shadow-color))_2px_2px_0_0]'
+                          : 'border-border-default bg-surface-page text-content-secondary hover:border-[var(--text-secondary)]'
                       )}
                     >
                       {cat}
@@ -217,7 +217,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                     {t('description')}
                   </label>
                 </div>
@@ -226,7 +226,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={t('simpleDescription')}
-                  className="w-full px-4 py-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
+                  className="w-full px-4 py-3 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
                 />
               </div>
 
@@ -234,11 +234,11 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                     {t('systemPrompt')} <span className="text-[var(--accent-hover)]">*</span>
                   </label>
                 </div>
-                <p className="font-mono text-[10px] text-[var(--text-secondary)] opacity-60">
+                <p className="font-mono text-[10px] text-content-secondary opacity-60">
                   {t('defineBehavior')}
                 </p>
                 <textarea
@@ -247,7 +247,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                   placeholder={t('writingAssistantPlaceholder')}
                   rows={10}
                   maxLength={2000}
-                  className="w-full px-4 py-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm leading-relaxed focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-none"
+                  className="w-full px-4 py-3 border-2 border-border-default bg-surface-page font-mono text-sm leading-relaxed focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-none"
                 />
 
                 {/* Bauhaus 风格进度条 */}
@@ -255,10 +255,10 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               </div>
 
               {/* 提示信息 */}
-              <div className="p-4 border-2 border-[var(--accent-hover)]/50 bg-[var(--accent-hover)]/10">
+              <div className="p-4 border-2 border-[var(--accent-hover)]/50 bg-[rgb(var(--accent-hover))]/10">
                 <div className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 bg-[var(--accent-hover)] mt-1.5 shrink-0"></div>
-                  <p className="font-mono text-[10px] text-[var(--text-primary)] leading-relaxed">
+                  <div className="w-1.5 h-1.5 bg-[rgb(var(--accent-hover))] mt-1.5 shrink-0"></div>
+                  <p className="font-mono text-[10px] text-content-primary leading-relaxed">
                     <span className="font-bold">{t('tip')}: </span>
                     {t('tipDescription')}
                   </p>
