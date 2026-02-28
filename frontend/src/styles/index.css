@@ -85,25 +85,25 @@
    ============================================ */
 
 @layer utilities {
-  /* Bauhaus 硬阴影 */
+  /* Bauhaus 硬阴影 - 使用 opacity 变量 */
   .shadow-hard {
-    box-shadow: 4px 4px 0 0 rgb(var(--shadow-color));
+    box-shadow: 4px 4px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
   .shadow-hard-sm {
-    box-shadow: 2px 2px 0 0 rgb(var(--shadow-color));
+    box-shadow: 2px 2px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
   .shadow-hard-md {
-    box-shadow: 4px 4px 0 0 rgb(var(--shadow-color));
+    box-shadow: 4px 4px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
   .shadow-hard-lg {
-    box-shadow: 6px 6px 0 0 rgb(var(--shadow-color));
+    box-shadow: 6px 6px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
   .shadow-hard-xl {
-    box-shadow: 8px 8px 0 0 rgb(var(--shadow-color));
+    box-shadow: 8px 8px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
   /* Bauhaus 按下效果 */
