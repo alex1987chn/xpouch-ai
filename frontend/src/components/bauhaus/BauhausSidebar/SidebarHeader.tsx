@@ -2,6 +2,8 @@
  * =============================
  * SidebarHeader - Logo 区域
  * =============================
+ * 
+ * 使用语义化颜色系统
  */
 
 import { The4DPocketLogo } from '@/components/bauhaus'
@@ -32,14 +34,17 @@ export function SidebarHeader({ isCollapsed, onLogoClick }: SidebarHeaderProps) 
             <div className="flex flex-col justify-center">
               {/* 工业风格 Logo: [ XPOUCH ] */}
               <h1 className="text-xl font-black tracking-tighter uppercase leading-none flex items-center">
-                <span className="text-gray-400">[</span>
-                <span className="text-yellow-400">X</span>
-                <span className="text-slate-900 dark:text-slate-100">POUCH</span>
-                <span className="text-gray-400">]</span>
+                {/* 使用语义变量替代硬编码颜色 */}
+                <span className="text-content-muted">[</span>
+                <span className="text-accent">X</span>
+                <span className="text-content-primary">POUCH</span>
+                <span className="text-content-muted">]</span>
               </h1>
               <div className="flex items-center gap-2 mt-0.5">
-                <div className="w-1.5 h-1.5 bg-[var(--accent-hover)] rounded-full animate-pulse"></div>
-                <span className="font-mono text-[10px] text-[var(--text-secondary)] tracking-widest group-hover:text-[var(--text-primary)] transition-colors">OS {VERSION.CURRENT}</span>
+                <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
+                <span className="font-mono text-[10px] text-content-secondary tracking-widest group-hover:text-content-primary transition-colors">
+                  OS {VERSION.CURRENT}
+                </span>
               </div>
             </div>
           </div>

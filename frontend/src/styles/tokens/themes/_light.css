@@ -1,0 +1,53 @@
+/**
+ * ============================================
+ * THEME: Light (明亮主题)
+ * ============================================
+ * 适用于：默认主题、日常使用
+ * 特点：高对比度、清晰易读
+ */
+
+@layer base {
+  [data-theme="light"] {
+    /* Surface */
+    --surface-page: 244 244 245;
+    --surface-card: 255 255 255;
+    --surface-elevated: 250 250 250;
+    --surface-input: 255 255 255;
+    --surface-overlay: 0 0 0;
+    --surface-scrim: 0 0 0;
+
+    /* Content */
+    --content-primary: 24 24 27;
+    --content-secondary: 82 82 91;
+    --content-muted: 161 161 170;
+    --content-inverted: 255 255 255;
+    --content-disabled: 212 212 216;
+
+    /* Border */
+    --border-default: 228 228 231;
+    --border-hover: 212 212 216;
+    --border-focus: 24 24 27;
+    --border-divider: 228 228 231;
+    --border-disabled: 244 244 245;
+
+    /* Accent */
+    --accent-brand: 234 179 8;
+    --accent-hover: 250 204 21;
+    --accent-active: 202 138 4;
+    --accent-subtle: 254 252 232;
+    --accent-destructive: 239 68 68;
+    --accent-success: 34 197 94;
+    --accent-warning: 249 115 22;
+    --accent-info: 59 130 246;
+
+    /* Shadow */
+    --shadow-color: 24 24 27;
+    --shadow-opacity: 0.1;
+
+    /* Radius */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+  }
+}
