@@ -1,7 +1,18 @@
-import * as React from "react"
+/**
+ * ============================================
+ * Card Component - 卡片组件
+ * ============================================
+ * 
+ * Bauhaus 风格卡片：粗边框、硬阴影、悬停效果
+ * 使用语义化颜色系统
+ */
 
+import * as React from "react"
 import { cn } from "@/lib/utils"
 
+/**
+ * Card 根组件
+ */
 const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -9,10 +20,14 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "border-2 border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] " +
-        "shadow-[var(--shadow-color)_6px_6px_0_0] " +
-        "transition-all duration-200 " +
-        "hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[var(--accent-hover)_10px_10px_0_0] hover:border-[var(--accent-hover)]",
+      // 基础样式：边框、背景、文字颜色
+      "border-2 border-border-default bg-surface-card text-content-primary",
+      // Bauhaus 硬阴影
+      "shadow-hard",
+      // 动画
+      "transition-all duration-fast",
+      // 悬停效果：位移 + 放大阴影 + 边框变色
+      "hover:-translate-x-1 hover:-translate-y-1 hover:shadow-hard-lg hover:border-accent",
       className
     )}
     {...props}
@@ -20,6 +35,9 @@ const Card = React.forwardRef<
 ))
 Card.displayName = "Card"
 
+/**
+ * CardHeader 头部区域
+ */
 const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -32,6 +50,9 @@ const CardHeader = React.forwardRef<
 ))
 CardHeader.displayName = "CardHeader"
 
+/**
+ * CardTitle 标题
+ */
 const CardTitle = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLHeadingElement>
@@ -39,7 +60,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-2xl font-semibold leading-none tracking-tight text-content-primary",
       className
     )}
     {...props}
@@ -47,18 +68,24 @@ const CardTitle = React.forwardRef<
 ))
 CardTitle.displayName = "CardTitle"
 
+/**
+ * CardDescription 描述文字
+ */
 const CardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-sm text-content-secondary", className)}
     {...props}
   />
 ))
 CardDescription.displayName = "CardDescription"
 
+/**
+ * CardContent 内容区域
+ */
 const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -67,6 +94,9 @@ const CardContent = React.forwardRef<
 ))
 CardContent.displayName = "CardContent"
 
+/**
+ * CardFooter 底部区域
+ */
 const CardFooter = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
