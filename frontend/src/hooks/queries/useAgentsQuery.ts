@@ -14,6 +14,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAllAgents, deleteCustomAgent, type Agent } from '@/services/agent'
 import { logger } from '@/utils/logger'
+import { CACHE_TIMES } from '@/config/query'
 import { chatHistoryKeys } from './useChatHistoryQuery'
 
 // Query Key 工厂函数
@@ -55,10 +56,9 @@ export function useAgentsQuery(options: { includeDefault?: boolean; enabled?: bo
         throw error
       }
     },
-    // 30分钟内数据被视为新鲜（智能体列表不常变化）
-    staleTime: 30 * 60 * 1000,
-    // 缓存数据保留60分钟
-    gcTime: 60 * 60 * 1000,
+    // 智能体列表不常变化，使用较长缓存时间
+    staleTime: CACHE_TIMES.AGENTS.staleTime,
+    gcTime: CACHE_TIMES.AGENTS.gcTime,
     // 错误时重试：401 不重试，其他错误重试2次
     retry: (failureCount, error: any) => {
       // 401 未授权不 retry，避免无限循环

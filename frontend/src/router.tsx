@@ -6,6 +6,7 @@
 import { lazy, Suspense, useState, useEffect } from 'react'
 import { createBrowserRouter, useNavigate, Navigate, Outlet, useParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider, QueryCache, useQueryClient } from '@tanstack/react-query'
+import { DEFAULT_CACHE_CONFIG } from '@/config/query'
 import AppLayout from './components/AppLayout'
 import AdminRoute from './components/AdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -325,7 +326,7 @@ const handleGlobalError = (error: ApiError) => {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5分钟缓存
+      staleTime: DEFAULT_CACHE_CONFIG.staleTime, // 使用统一缓存配置
       refetchOnWindowFocus: false,
       // 全局错误处理
       retry: (failureCount, error: unknown) => {

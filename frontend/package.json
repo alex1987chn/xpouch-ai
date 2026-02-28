@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@microsoft/fetch-event-source": "^2.0.1",
@@ -69,7 +71,9 @@
     "eslint-plugin-react-refresh": "^0.4.14",
     "globals": "^15.12.0",
     "typescript-eslint": "^8.15.0",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.8"
   },
   "overrides": {
     "react-is": "^19.0.0"
