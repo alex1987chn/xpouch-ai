@@ -9,7 +9,6 @@ v3.6 更新：使用 prompt_utils.inject_current_time 替代内联实现
 from datetime import datetime
 from typing import Dict, Any, Literal
 from langchain_core.messages import SystemMessage
-from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
@@ -77,19 +76,19 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> Dict[
     )
     print(f"[Router] System Prompt 已加载并填充占位符")
 
-    parser = PydanticOutputParser(pydantic_object=RoutingDecision)
     try:
-        # 关键：动态 SystemPrompt（含记忆）+ 动态 Messages
+        # 🔥 v3.7: 使用 with_structured_output 替代 PydanticOutputParser
+        # 更现代、类型安全，利用模型原生 JSON 模式
         from agents.graph import get_router_llm_lazy
-        response = await get_router_llm_lazy().ainvoke(
+        llm_structured = get_router_llm_lazy().with_structured_output(RoutingDecision)
+        decision = await llm_structured.ainvoke(
             [
                 SystemMessage(content=system_prompt),
                 *messages  # 用户的输入在这里
             ],
             config={"tags": ["router"], "metadata": {"node_type": "router"}}
         )
-        decision = parser.parse(response.content)
-        print(f"[Router] 决策结果: {decision.decision_type}")
+        print(f"[Router] 决策结果: {decision.decision_type if hasattr(decision, 'decision_type') else decision}")
 
         # 🔥 Phase 3: 发送 router.decision 事件
         decision_event = event_router_decision(
