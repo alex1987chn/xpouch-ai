@@ -25,6 +25,7 @@ import {
   type MCPTool
 } from '@/services/mcp'
 import { logger } from '@/utils/logger'
+import { CACHE_TIMES } from '@/config/query'
 
 // ============================================================================
 // Query Key 工厂函数
@@ -61,9 +62,9 @@ export function useMCPServers(options: { enabled?: boolean } = {}) {
         throw error
       }
     },
-    // MCP 服务器列表不常变化，设置较长的缓存时间
-    staleTime: 5 * 60 * 1000,    // 5分钟内数据被视为新鲜
-    gcTime: 10 * 60 * 1000,       // 缓存数据保留10分钟
+    // MCP 服务器列表不常变化，使用统一缓存配置
+    staleTime: CACHE_TIMES.MCP_SERVERS.staleTime,
+    gcTime: CACHE_TIMES.MCP_SERVERS.gcTime,
     // 错误时重试：401 不重试，其他错误重试2次
     retry: (failureCount, error: any) => {
       if (error?.status === 401) return false
@@ -201,9 +202,9 @@ export function useMCPServerTools(serverId: string, options: { enabled?: boolean
         throw error
       }
     },
-    // 工具列表缓存 1 分钟
-    staleTime: 60 * 1000,
-    gcTime: 5 * 60 * 1000,
+    // MCP 工具列表使用统一缓存配置
+    staleTime: CACHE_TIMES.MCP_TOOLS.staleTime,
+    gcTime: CACHE_TIMES.MCP_TOOLS.gcTime,
     // 失败不重试（可能是服务器未连接）
     retry: false,
     enabled: enabled && !!serverId,

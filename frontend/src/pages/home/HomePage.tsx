@@ -3,7 +3,7 @@ import { Bot, Plus, Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Tr
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
-import { authSelectors } from '@/store/selectors'
+import { useIsAuthenticated, useLoginDialog } from '@/hooks'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -214,8 +214,8 @@ export default function HomePage() {
   const [deletingAgentName, setDeletingAgentName] = useState<string>('')
 
   // 获取登录状态（使用优化后的 selector）
-  const isAuthenticated = authSelectors.useIsAuthenticated()
-  const { setLoginDialogOpen } = authSelectors.useLoginDialog()
+  const isAuthenticated = useIsAuthenticated()
+  const { setLoginDialogOpen } = useLoginDialog()
 
   // 👈 使用 React Query 获取自定义智能体列表（自动缓存，30分钟内不会重复请求）
   // 只有登录后才发起请求

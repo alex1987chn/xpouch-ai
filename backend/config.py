@@ -168,7 +168,7 @@ validate_config()
 # 心跳间隔配置
 HEARTBEAT_INTERVAL: float = 15.0          # 正常心跳间隔(秒)
 FORCE_HEARTBEAT_INTERVAL: float = 30.0     # 强制心跳间隔(秒)
-STREAM_TIMEOUT: float = 30.0               # 流式超时(秒)
+STREAM_TIMEOUT: float = 120.0              # 流式超时(秒) - 支持复杂工作流
 
 # 执行限制
 RECURSION_LIMIT: int = 100                 # 递归深度限制

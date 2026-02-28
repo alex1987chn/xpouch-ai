@@ -20,6 +20,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getConversations, deleteConversation, type Conversation } from '@/services/chat'
 import { logger } from '@/utils/logger'
+import { CACHE_TIMES } from '@/config/query'
 
 // Query Key 工厂函数 - 统一管理中心化 Query Keys
 export const chatHistoryKeys = {
@@ -47,10 +48,9 @@ export function useChatHistoryQuery(options: { limit?: number; enabled?: boolean
         throw error
       }
     },
-    // 5分钟内数据被视为新鲜，不会重新请求
-    staleTime: 5 * 60 * 1000,
-    // 缓存数据保留10分钟
-    gcTime: 10 * 60 * 1000,
+    // 聊天历史使用统一缓存配置
+    staleTime: CACHE_TIMES.CHAT_HISTORY.staleTime,
+    gcTime: CACHE_TIMES.CHAT_HISTORY.gcTime,
     // 错误时重试：401 不重试，其他错误重试2次
     retry: (failureCount, error: any) => {
       // 401 未授权不 retry，避免无限循环
@@ -91,8 +91,8 @@ export function useChatSessionQuery(conversationId: string | null) {
     },
     // 只在有 conversationId 时启用
     enabled: !!conversationId,
-    staleTime: 2 * 60 * 1000, // 2分钟
-    gcTime: 5 * 60 * 1000, // 5分钟
+    staleTime: CACHE_TIMES.CHAT_SESSION.staleTime,
+    gcTime: CACHE_TIMES.CHAT_SESSION.gcTime,
     retry: 2,
   })
 }

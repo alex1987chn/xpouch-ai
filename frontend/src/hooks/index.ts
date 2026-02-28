@@ -36,8 +36,6 @@ export { useSwipeBack } from './useSwipeBack'
 // 异步错误处理
 export { useAsyncError } from './useAsyncError'
 
-
-
 // ============================================================================
 // 🔥🔥🔥 性能优化 Selectors (v3.1.0)
 // 使用 Zustand Selector 模式避免不必要的重渲染
@@ -101,3 +99,19 @@ export {
   useHasMessages,
   useMessageCount,
 } from './useChatSelectors'
+
+// ============================================================================
+// AuthStore Selectors
+// ============================================================================
+export {
+  // 基础 Selectors
+  useIsAuthenticated,
+  useUser,
+  useIsAuthLoading,
+  
+  // 复杂 Selectors
+  useAuth,
+  
+  // 登录弹窗控制
+  useLoginDialog,
+} from './useAuthSelectors'
