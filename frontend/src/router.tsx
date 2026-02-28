@@ -3,7 +3,7 @@
  * 从 main.tsx 抽离，保持入口文件简洁
  */
 
-import { lazy, useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import { createBrowserRouter, useNavigate, Navigate, Outlet, useParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider, QueryCache, useQueryClient } from '@tanstack/react-query'
 import { DEFAULT_CACHE_CONFIG } from '@/config/query'
