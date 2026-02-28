@@ -7,5 +7,5 @@
  * 此文件保留以保持向后兼容
  */
 
-export { default } from './BauhausSidebar'
-export type { BauhausSidebarProps } from './BauhausSidebar'
+export { default } from './BauhausSidebar/index'
+export type { BauhausSidebarProps } from './BauhausSidebar/index'
