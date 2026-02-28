@@ -88,18 +88,25 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> Dict[
             ],
             config={"tags": ["router"], "metadata": {"node_type": "router"}}
         )
-        print(f"[Router] 决策结果: {decision.decision_type if hasattr(decision, 'decision_type') else decision}")
+        
+        # 🔥 健壮性处理：支持 Pydantic 对象或字典返回
+        if isinstance(decision, dict):
+            decision_type = decision.get("decision_type", "complex")
+        else:
+            decision_type = decision.decision_type
+        
+        print(f"[Router] 决策结果: {decision_type}")
 
         # 🔥 Phase 3: 发送 router.decision 事件
         decision_event = event_router_decision(
-            decision=decision.decision_type,
+            decision=decision_type,
             reason=f"Based on query complexity analysis"
         )
         event_queue.append({"type": "sse", "event": sse_event_to_string(decision_event)})
         print(f"[Router] 已发送 router.decision 事件: {decision.decision_type}")
 
         return {
-            "router_decision": decision.decision_type,
+            "router_decision": decision_type,
             "event_queue": event_queue  # 返回事件队列
         }
     except Exception as e:
