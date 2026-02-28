@@ -79,18 +79,43 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> Dict[
 
     parser = PydanticOutputParser(pydantic_object=RoutingDecision)
     try:
-        # 关键：动态 SystemPrompt（含记忆）+ 动态 Messages
+        # 🔥 v3.7: 智能模式选择 - 先尝试 with_structured_output，不支持则降级
         from agents.graph import get_router_llm_lazy
-        response = await get_router_llm_lazy().ainvoke(
-            [
-                SystemMessage(content=system_prompt),
-                *messages  # 用户的输入在这里
-            ],
-            config={"tags": ["router"], "metadata": {"node_type": "router"}}
-        )
-        decision = parser.parse(response.content)
-        decision_type = decision.decision_type
-        print(f"[Router] 决策结果: {decision_type}")
+        llm = get_router_llm_lazy()
+        
+        # 尝试使用原生结构化输出（OpenAI, Kimi 等支持）
+        try:
+            llm_structured = llm.with_structured_output(RoutingDecision)
+            decision = await llm_structured.ainvoke(
+                [
+                    SystemMessage(content=system_prompt),
+                    *messages
+                ],
+                config={"tags": ["router"], "metadata": {"node_type": "router"}}
+            )
+            # 健壮性处理：支持 Pydantic 对象或字典返回
+            if isinstance(decision, dict):
+                decision_type = decision.get("decision_type", "complex")
+            else:
+                decision_type = decision.decision_type
+            print(f"[Router] 使用结构化输出，决策结果: {decision_type}")
+        except Exception as structured_error:
+            # 模型不支持 structured_output（如 DeepSeek），降级到 PydanticOutputParser
+            if "response_format" in str(structured_error).lower() or "400" in str(structured_error):
+                print(f"[Router] 模型不支持结构化输出，降级到 PydanticOutputParser")
+                response = await llm.ainvoke(
+                    [
+                        SystemMessage(content=system_prompt),
+                        *messages
+                    ],
+                    config={"tags": ["router"], "metadata": {"node_type": "router"}}
+                )
+                decision = parser.parse(response.content)
+                decision_type = decision.decision_type
+                print(f"[Router] 使用 PydanticOutputParser，决策结果: {decision_type}")
+            else:
+                # 其他错误，继续抛出
+                raise
 
         # 🔥 Phase 3: 发送 router.decision 事件
         decision_event = event_router_decision(
