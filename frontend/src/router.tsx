@@ -3,13 +3,14 @@
  * 从 main.tsx 抽离，保持入口文件简洁
  */
 
-import { lazy, Suspense, useState, useEffect } from 'react'
+import { lazy, useState, useEffect } from 'react'
 import { createBrowserRouter, useNavigate, Navigate, Outlet, useParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider, QueryCache, useQueryClient } from '@tanstack/react-query'
 import { DEFAULT_CACHE_CONFIG } from '@/config/query'
 import AppLayout from './components/AppLayout'
 import AdminRoute from './components/AdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
+import { SuspenseWithErrorBoundary } from './components/SuspenseWithErrorBoundary'
 import { Toaster } from './components/ui/toaster'
 import { useChatStore } from './store/chatStore'
 import { useTaskStore } from './store/taskStore'
@@ -257,9 +258,9 @@ export const router = createBrowserRouter([
       {
         path: 'library',
         element: (
-          <Suspense fallback={<LoadingFallback />}>
+          <SuspenseWithErrorBoundary fallback={<LoadingFallback />}>
             <LibraryPage />
-          </Suspense>
+          </SuspenseWithErrorBoundary>
         )
       },
       {
@@ -278,9 +279,9 @@ export const router = createBrowserRouter([
         path: 'admin/experts',
         element: (
           <AdminRoute>
-            <Suspense fallback={<LoadingFallback />}>
+            <SuspenseWithErrorBoundary fallback={<LoadingFallback />}>
               <ExpertAdminPage />
-            </Suspense>
+            </SuspenseWithErrorBoundary>
           </AdminRoute>
         )
       },

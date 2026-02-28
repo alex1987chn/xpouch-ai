@@ -64,7 +64,8 @@ export {
   // Actions
   useTaskActions,
   useSelectTaskAction,
-  useClearTasksAction,
+  useResetTasksAction,
+  useResetAllAction,
   useInitializePlanAction,
   
   // 条件 Selectors
