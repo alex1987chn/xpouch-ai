@@ -1,4 +1,7 @@
 from sqlmodel import SQLModel, create_engine, Session
+
+# 🔥 用于非依赖注入场景的 Session 别名
+SQLModelSession = Session
 # 🔥 从 models 包导入所有模型（包括 UserMemory）
 from models import (
     Thread, Message, User, CustomAgent, SystemExpert,
