@@ -22,12 +22,12 @@ const Card = React.forwardRef<
     className={cn(
       // 基础样式：边框、背景、文字颜色
       "border-2 border-border-default bg-surface-card text-content-primary",
-      // Bauhaus 硬阴影
-      "shadow-hard",
+      // Bauhaus 硬阴影（默认黑色）
+      "shadow-[rgb(var(--shadow-color))_6px_6px_0_0]",
       // 动画
-      "transition-all duration-fast",
-      // 悬停效果：位移 + 放大阴影 + 边框变色
-      "hover:-translate-x-1 hover:-translate-y-1 hover:shadow-hard-lg hover:border-accent",
+      "transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+      // 悬停效果：位移 + 黄色大阴影 + 黄色边框
+      "hover:-translate-x-1.5 hover:-translate-y-1.5 hover:shadow-[rgb(var(--accent-hover))_10px_10px_0_0] hover:border-accent",
       className
     )}
     {...props}

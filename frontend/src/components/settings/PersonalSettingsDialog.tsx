@@ -109,13 +109,13 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
       onClick={handleClose}
     >
       <div
-        className="relative bg-surface-card border-2 border-border-default shadow-[rgb(var(--shadow-color))_8px_8px_0_0] w-[420px] max-w-[90vw] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface-card border-2 border-border-default shadow-hard w-[420px] max-w-[90vw] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - Bauhaus风格 */}
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-[rgb(var(--accent-hover))]"></div>
+            <div className="w-2 h-2 bg-accent-hover"></div>
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// {t('userConfig')}
             </span>
@@ -123,7 +123,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
           <button
             onClick={handleClose}
             disabled={isSaving}
-            className="w-6 h-6 flex items-center justify-center border border-border-default hover:bg-[rgb(var(--accent-hover))] transition-colors disabled:opacity-50"
+            className="w-6 h-6 flex items-center justify-center border border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -134,7 +134,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
           {/* 头像设置 */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+              <div className="w-1.5 h-1.5 bg-content-secondary"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('avatarSetup')}
               </span>
@@ -154,7 +154,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
                 </div>
 
                 {/* 上传按钮 */}
-                <label className="absolute -bottom-1 -right-1 w-7 h-7 bg-[rgb(var(--accent-hover))] border-2 border-border-default flex items-center justify-center cursor-pointer hover:brightness-95 transition-all">
+                <label className="absolute -bottom-1 -right-1 w-7 h-7 bg-accent-hover border-2 border-border-default flex items-center justify-center cursor-pointer hover:brightness-95 transition-all">
                   <Camera className="w-3.5 h-3.5 text-black" />
                   <input
                     type="file"
@@ -199,7 +199,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
           {/* 用户名设置 */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+              <div className="w-1.5 h-1.5 bg-content-secondary"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('username')}
               </span>
@@ -213,7 +213,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder={t('usernamePlaceholder')}
                 maxLength={20}
-                className="w-full pl-10 pr-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
+                className="w-full pl-10 pr-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors"
               />
             </div>
             <p className="font-mono text-[10px] text-content-secondary mt-2 opacity-60">
@@ -234,7 +234,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex-1 py-3 bg-[rgb(var(--accent-hover))] text-black font-mono text-sm font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
+            className="flex-1 py-3 bg-accent-hover text-black font-mono text-sm font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
           >
             {isSaving ? (
               <span className="flex items-center justify-center gap-2">

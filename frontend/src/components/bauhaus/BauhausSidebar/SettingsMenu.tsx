@@ -110,7 +110,7 @@ export function SettingsMenu({
                 className={cn(
                   'flex items-center justify-center gap-1.5 px-2 py-2 border-2 font-mono text-[10px] font-bold uppercase transition-all',
                   language === lang
-                    ? 'bg-[var(--accent-hover)] text-black border-black'
+                    ? 'bg-[rgb(var(--accent-hover))] text-black border-black'
                     : 'border-[rgb(var(--border-default))] hover:border-[rgb(var(--content-secondary))] text-[rgb(var(--content-primary))]'
                 )}
               >

@@ -104,7 +104,7 @@ const TaskStatusIndicator = memo(function TaskStatusIndicator() {
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
         <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
       </span>
-      <span className="text-primary truncate max-w-[80px] sm:max-w-[150px]">
+      <span className="text-content-primary truncate max-w-[80px] sm:max-w-[150px]">
         {runningTask.expert_type}
       </span>
       <span className="text-muted-foreground hidden sm:inline">running</span>
@@ -291,11 +291,11 @@ export default function ArtifactDashboard({
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-page overflow-hidden">
       {/* Tab bar */}
-      <div className="h-10 flex items-center border-b-2 border-border bg-panel shrink-0 px-2">
+      <div className="h-10 flex items-center border-b-2 border-border-default bg-panel shrink-0 px-2">
         <div className="flex-1 flex items-center gap-1 min-w-0 overflow-hidden">
           {artifacts.length > 0 && (
             <>
-              <div className="h-7 px-2 flex items-center gap-1.5 bg-accent text-accent-foreground border-2 border-border shrink-0">
+              <div className="h-7 px-2 flex items-center gap-1.5 bg-accent text-accent-foreground border-2 border-border-default shrink-0">
                 <span className="font-mono text-[10px] font-bold uppercase">{expertName}</span>
                 <span className="text-[9px] opacity-70">({artifacts.length})</span>
               </div>
@@ -317,8 +317,8 @@ export default function ArtifactDashboard({
                   className={cn(
                     'h-7 px-2 flex items-center gap-1.5 transition-all shrink-0 cursor-pointer',
                     selectedIndex === idx
-                      ? 'h-8 bg-card border-2 border-border border-b-0 top-[2px] z-10 text-primary shadow-[0_-2px_0_0_hsl(var(--accent))]'
-                      : 'bg-panel border-2 border-border/30 border-b-0 opacity-60 hover:opacity-100 text-muted-foreground'
+                      ? 'h-8 bg-surface-card border-2 border-border-default border-b-0 top-[2px] z-10 text-content-primary shadow-[0_-2px_0_0_rgb(var(--accent-brand))]'
+                      : 'bg-panel border-2 border-border-default/30 border-b-0 opacity-60 hover:opacity-100 text-muted-foreground'
                   )}
                 >
                   <FileCode className="w-3 h-3 shrink-0 pointer-events-none" />
@@ -332,29 +332,29 @@ export default function ArtifactDashboard({
         </div>
 
         {/* 状态指示器 */}
-        <div className="flex-none flex items-center pl-3 ml-2 border-l border-border/50 shrink-0">
+        <div className="flex-none flex items-center pl-3 ml-2 border-l border-border-default/50 shrink-0">
           <TaskStatusIndicator />
         </div>
       </div>
 
       {/* Content area */}
-      <div className="flex-1 bg-card p-4 overflow-hidden relative min-h-0 min-w-0">
+      <div className="flex-1 bg-surface-card p-4 overflow-hidden relative min-h-0 min-w-0">
         <div className="absolute inset-0 dot-grid opacity-30 pointer-events-none" />
-        <div className="absolute inset-4 border border-border bg-card shadow-sm flex flex-col overflow-hidden min-w-0">
+        <div className="absolute inset-4 border border-border-default bg-surface-card shadow-sm flex flex-col overflow-hidden min-w-0">
           {!currentArtifact ? (
             <EmptyState variant="detailed" />
           ) : (
             <div className="h-full flex flex-col">
               {/* Toolbar */}
-              <div className="flex items-center justify-between px-2 py-1.5 border-b border-border bg-panel shrink-0">
+              <div className="flex items-center justify-between px-2 py-1.5 border-b border-border-default bg-panel shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="flex items-end gap-1">
-                    <div className="w-3 h-3 bg-accent border border-border" />
-                    <div className="w-2 h-2 bg-card border-2 border-border" />
-                    <div className="w-1.5 h-1.5 bg-primary/60 border border-border/50" />
+                    <div className="w-3 h-3 bg-accent border border-border-default" />
+                    <div className="w-2 h-2 bg-surface-card border-2 border-border-default" />
+                    <div className="w-1.5 h-1.5 bg-primary/60 border border-border-default/50" />
                   </div>
                   <div className="w-px h-4 bg-border mx-1" />
-                  <div className="flex items-center gap-1 text-[10px] font-mono text-primary uppercase">
+                  <div className="flex items-center gap-1 text-[10px] font-mono text-content-primary uppercase">
                     <FileCode className="w-3 h-3 text-accent" />
                     <span className="font-bold">
                       {isEditing ? 'Editing' : currentArtifact.language || currentArtifact.type}
@@ -385,8 +385,8 @@ export default function ArtifactDashboard({
                         className={cn(
                           'w-7 h-7 flex items-center justify-center border-2 transition-all',
                           isSaving
-                            ? 'bg-panel text-muted-foreground border-border cursor-not-allowed'
-                            : 'bg-panel text-primary border-border hover:border-red-500 hover:text-red-500'
+                            ? 'bg-panel text-muted-foreground border-border-default cursor-not-allowed'
+                            : 'bg-panel text-content-primary border-border-default hover:border-red-500 hover:text-red-500'
                         )}
                         title="Cancel"
                       >
@@ -402,7 +402,7 @@ export default function ArtifactDashboard({
                             onClick={handleEdit}
                             className={cn(
                               'w-7 h-7 flex items-center justify-center border-2 transition-all',
-                              'bg-panel text-primary border-border hover:border-primary hover:bg-card'
+                              'bg-panel text-content-primary border-border-default hover:border-primary hover:bg-surface-card'
                             )}
                             title="Edit"
                           >
@@ -419,7 +419,7 @@ export default function ArtifactDashboard({
                               'w-7 h-7 flex items-center justify-center border-2 transition-all',
                               viewMode === 'code'
                                 ? 'bg-primary text-primary-foreground border-primary'
-                                : 'bg-panel text-primary border-border hover:border-primary hover:bg-card'
+                                : 'bg-panel text-content-primary border-border-default hover:border-primary hover:bg-surface-card'
                             )}
                             title="Code"
                           >
@@ -431,7 +431,7 @@ export default function ArtifactDashboard({
                               'w-7 h-7 flex items-center justify-center border-2 transition-all',
                               viewMode === 'preview'
                                 ? 'bg-primary text-primary-foreground border-primary'
-                                : 'bg-panel text-primary border-border hover:border-primary hover:bg-card'
+                                : 'bg-panel text-content-primary border-border-default hover:border-primary hover:bg-surface-card'
                             )}
                             title="Preview"
                           >
@@ -449,7 +449,7 @@ export default function ArtifactDashboard({
                             'h-7 px-1.5 flex items-center gap-0.5 border-2 transition-all',
                             isExportingPDF
                               ? 'bg-primary/50 text-primary-foreground border-primary/50 cursor-wait'
-                              : 'bg-panel text-primary border-border hover:border-primary hover:bg-card'
+                              : 'bg-panel text-content-primary border-border-default hover:border-primary hover:bg-surface-card'
                           )}
                           title="Export"
                         >
@@ -464,18 +464,18 @@ export default function ArtifactDashboard({
                         </button>
 
                         {showExportMenu && (
-                          <div className="absolute right-0 top-full mt-1 z-50 w-[150px] bg-card border-2 border-border shadow-lg">
+                          <div className="absolute right-0 top-full mt-1 z-50 w-[150px] bg-surface-card border-2 border-border-default shadow-lg">
                             <button
                               onClick={handleExportMarkdown}
-                              className="w-full px-3 py-2 text-left text-xs text-primary hover:bg-accent hover:text-accent-foreground transition-colors flex items-center justify-between"
+                              className="w-full px-3 py-2 text-left text-xs text-content-primary hover:bg-accent hover:text-accent-foreground transition-colors flex items-center justify-between"
                             >
                               <span>Markdown</span>
                               <span className="text-[10px] text-muted-foreground font-mono">.md</span>
                             </button>
-                            <div className="border-t border-border" />
+                            <div className="border-t border-border-default" />
                             <button
                               onClick={handleExportPDF}
-                              className="w-full px-3 py-2 text-left text-xs text-primary hover:bg-accent hover:text-accent-foreground transition-colors flex items-center justify-between"
+                              className="w-full px-3 py-2 text-left text-xs text-content-primary hover:bg-accent hover:text-accent-foreground transition-colors flex items-center justify-between"
                             >
                               <span>PDF</span>
                               <span className="text-[10px] text-muted-foreground font-mono">.pdf</span>
@@ -491,7 +491,7 @@ export default function ArtifactDashboard({
                           'w-7 h-7 flex items-center justify-center border-2 transition-all',
                           copied
                             ? 'bg-green-500 text-white border-green-500'
-                            : 'bg-panel text-primary border-border hover:border-primary hover:bg-card'
+                            : 'bg-panel text-content-primary border-border-default hover:border-primary hover:bg-surface-card'
                         )}
                         title={copied ? 'Copied' : 'Copy'}
                       >
@@ -507,7 +507,7 @@ export default function ArtifactDashboard({
                       'w-7 h-7 flex items-center justify-center border-2 transition-all',
                       isFullscreen
                         ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-panel text-primary border-border hover:border-primary hover:bg-card'
+                        : 'bg-panel text-content-primary border-border-default hover:border-primary hover:bg-surface-card'
                     )}
                     title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
                   >
@@ -540,7 +540,7 @@ export default function ArtifactDashboard({
                   </div>
                 ) : viewMode === 'code' ? (
                   <Suspense fallback={<ArtifactLoader />}>
-                    <div id={contentElementId} className="h-full w-full overflow-auto bauhaus-scrollbar p-0 bg-card">
+                    <div id={contentElementId} className="h-full w-full overflow-auto bauhaus-scrollbar p-0 bg-surface-card">
                       <CodeArtifact
                         content={currentArtifact.content}
                         language={currentArtifact.language || currentArtifact.type}
@@ -550,7 +550,7 @@ export default function ArtifactDashboard({
                   </Suspense>
                 ) : (
                   <Suspense fallback={<ArtifactLoader />}>
-                    <div id={contentElementId} className="h-full w-full overflow-auto bauhaus-scrollbar p-4 bg-card">
+                    <div id={contentElementId} className="h-full w-full overflow-auto bauhaus-scrollbar p-4 bg-surface-card">
                       {currentArtifact.type === 'html' ? (
                         <HtmlArtifact content={currentArtifact.content} className="h-full" />
                       ) : currentArtifact.type === 'image' || currentArtifact.type === 'video' || currentArtifact.type === 'media' ? (
@@ -585,7 +585,7 @@ export default function ArtifactDashboard({
       </div>
 
       {/* Bottom status bar */}
-      <div className="bg-primary text-primary-foreground border-t-2 border-border px-3 py-1.5 flex justify-between items-center text-[9px] font-mono shrink-0">
+      <div className="bg-primary text-primary-foreground border-t-2 border-border-default px-3 py-1.5 flex justify-between items-center text-[9px] font-mono shrink-0">
         <div className="flex gap-4">
           <span>CPU: 12%</span>
           <span>MEM: 402MB</span>

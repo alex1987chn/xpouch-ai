@@ -31,18 +31,18 @@ export default function LibraryPage() {
       {/* Header - 与 HistoryPage 保持一致 */}
       <header
         className={cn(
-          "fixed top-0 left-0 right-0 z-40 h-[60px] px-6 border-b-2 border-bauhaus-border bg-surface-card transition-all duration-200",
+          "fixed top-0 left-0 right-0 z-40 h-[60px] px-6 border-b-2 border-border-default bg-surface-card transition-all duration-200",
           sidebar.isCollapsed ? "lg:pl-[88px]" : "lg:pl-[320px]"
         )}
       >
         <div className="w-full max-w-5xl mx-auto h-full flex items-center">
           {/* 左侧：标题 */}
           <div className="flex items-center h-full gap-3">
-            <div className="w-2 h-2 bg-bauhaus-yellow" />
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-bauhaus-muted">
+            <div className="w-2 h-2 bg-accent-brand" />
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               ///
             </span>
-            <h1 className="text-base font-black uppercase tracking-tight text-bauhaus-text">
+            <h1 className="text-base font-black uppercase tracking-tight text-content-primary">
               {t('workshop') || 'WORKSHOP'}
             </h1>
           </div>
@@ -58,7 +58,7 @@ export default function LibraryPage() {
       >
         {/* Tabs 导航 - 移到内容区顶部 */}
         <div className="w-full max-w-5xl mx-auto px-6 md:px-12 py-4">
-          <div className="flex gap-1 border-b-2 border-bauhaus-border">
+          <div className="flex gap-1 border-b-2 border-border-default">
             {/* Knowledge Base Tab */}
             <TabButton
               isActive={activeTab === 'knowledge'}
@@ -127,8 +127,8 @@ function TabButton({ isActive, onClick, icon, label }: TabButtonProps) {
         "relative flex items-center gap-2 px-4 py-2 font-bold font-mono text-xs uppercase tracking-wide transition-all",
         "border-2 border-b-0 -mb-[2px]",
         isActive
-          ? "bg-surface-card text-bauhaus-text border-bauhaus-border z-10"
-          : "bg-bauhaus-bg text-bauhaus-muted border-bauhaus-border/40 hover:border-bauhaus-border hover:text-bauhaus-text"
+          ? "bg-surface-card text-content-primary border-border-default z-10"
+          : "bg-surface-page text-content-secondary border-border-default/40 hover:border-border-default hover:text-content-primary"
       )}
     >
       {icon}
@@ -150,13 +150,13 @@ function KnowledgeBaseContent({ searchQuery }: KnowledgeBaseContentProps) {
   // 空状态
   return (
     <div className="text-center py-20">
-      <div className="w-16 h-16 mx-auto mb-4 border-2 border-bauhaus-border bg-bauhaus-bg flex items-center justify-center">
-        <Database className="w-8 h-8 text-bauhaus-muted" />
+      <div className="w-16 h-16 mx-auto mb-4 border-2 border-border-default bg-surface-page flex items-center justify-center">
+        <Database className="w-8 h-8 text-content-secondary" />
       </div>
-      <h3 className="font-mono text-base font-bold text-bauhaus-text uppercase mb-2">
+      <h3 className="font-mono text-base font-bold text-content-primary uppercase mb-2">
         {t('comingSoon') || 'Coming Soon'}
       </h3>
-      <p className="font-mono text-xs text-bauhaus-muted uppercase max-w-sm mx-auto">
+      <p className="font-mono text-xs text-content-secondary uppercase max-w-sm mx-auto">
         {t('knowledgeBaseDescription') || 'Knowledge base feature is under development'}
       </p>
     </div>

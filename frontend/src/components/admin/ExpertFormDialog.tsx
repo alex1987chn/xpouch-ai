@@ -136,7 +136,7 @@ export default function ExpertFormDialog({
           {/* Expert Key - 仅创建时可编辑 */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+              <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]" />
               <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('expertKey')}
               </label>
@@ -151,7 +151,7 @@ export default function ExpertFormDialog({
                 'w-full px-3 py-2 border-2 bg-surface-page font-mono text-sm focus:outline-none transition-colors',
                 keyError
                   ? 'border-red-500 focus:border-red-500'
-                  : 'border-border-default focus:border-[var(--accent-hover)]',
+                  : 'border-border-default focus:border-[rgb(var(--accent-hover))]',
                 !isCreate && 'opacity-60 cursor-not-allowed'
               )}
             />
@@ -166,7 +166,7 @@ export default function ExpertFormDialog({
           {/* Name */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+              <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]" />
               <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {'Name'}
               </label>
@@ -179,14 +179,14 @@ export default function ExpertFormDialog({
               }
               placeholder={t('namePlaceholder')}
               disabled={isSubmitting}
-              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
+              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors"
             />
           </div>
 
           {/* Description */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+              <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]" />
               <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('expertDescription')}
               </label>
@@ -199,7 +199,7 @@ export default function ExpertFormDialog({
               placeholder={t('expertDescriptionPlaceholder')}
               rows={2}
               disabled={isSubmitting}
-              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[60px]"
+              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors resize-y min-h-[60px]"
             />
           </div>
 
@@ -215,7 +215,7 @@ export default function ExpertFormDialog({
           {/* Temperature */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+              <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]" />
               <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('temperature')}: {formData.temperature.toFixed(1)}
               </label>
@@ -226,7 +226,7 @@ export default function ExpertFormDialog({
                 style={{ width: `${(formData.temperature / 2) * 100}%` }}
               />
               <div
-                className="absolute top-0 w-4 h-full bg-[var(--text-primary)] border-2 border-border-default transition-all pointer-events-none"
+                className="absolute top-0 w-4 h-full bg-[rgb(var(--content-primary))] border-2 border-border-default transition-all pointer-events-none"
                 style={{
                   left: `calc(${(formData.temperature / 2) * 100}% - 8px)`,
                 }}
@@ -258,7 +258,7 @@ export default function ExpertFormDialog({
           {/* System Prompt */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]" />
+              <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]" />
               <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('systemPrompt')}
               </label>
@@ -274,7 +274,7 @@ export default function ExpertFormDialog({
               placeholder={t('systemPromptPlaceholder')}
               rows={5}
               disabled={isSubmitting}
-              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-y min-h-[100px]"
+              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors resize-y min-h-[100px]"
             />
             <div className="flex justify-between font-mono text-[9px] text-content-secondary">
               <span>{formData.system_prompt.length} {t('chars')}</span>

@@ -330,7 +330,7 @@ export default function UnifiedChatPage() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <div className="w-6 h-6 border-2 border-[var(--border-color)] border-t-[var(--accent)] animate-spin mx-auto mb-2" />
+          <div className="w-6 h-6 border-2 border-[rgb(var(--border-default))] border-t-[rgb(var(--accent-brand))] animate-spin mx-auto mb-2" />
           <p className="font-mono text-sm">Loading agent...</p>
         </div>
       </div>
@@ -343,7 +343,7 @@ export default function UnifiedChatPage() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <p className="font-mono text-sm text-red-500">Agent not found</p>
-          <p className="font-mono text-xs text-[var(--text-secondary)] mt-1">
+          <p className="font-mono text-xs text-[rgb(var(--content-secondary))] mt-1">
             ID: {normalizedAgentId}
           </p>
         </div>

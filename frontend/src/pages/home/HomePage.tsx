@@ -115,9 +115,9 @@ function ConstructCard({
               className={cn(
                 "w-7 h-7 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))]",
                 "flex items-center justify-center",
-                "hover:bg-[rgb(var(--accent-hover))] hover:text-black hover:border-[var(--accent-hover)]",
+                "hover:bg-[rgb(var(--accent-hover))] hover:text-black hover:border-[rgb(var(--accent-hover))]",
                 "transition-all duration-150",
-                "shadow-[2px_2px_0_0_var(--shadow-color)]",
+                "shadow-[2px_2px_0_0_rgb(var(--shadow-color))]",
                 "active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
               )}
               title={t('edit')}
@@ -136,7 +136,7 @@ function ConstructCard({
                 "flex items-center justify-center",
                 "hover:bg-red-500 hover:text-white hover:border-red-500",
                 "transition-all duration-150",
-                "shadow-[2px_2px_0_0_var(--shadow-color)]",
+                "shadow-[2px_2px_0_0_rgb(var(--shadow-color))]",
                 "active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
               )}
               title={t('delete')}
@@ -181,9 +181,9 @@ function CreateNewCard({ onClick }: { onClick?: () => void }) {
   return (
     <div
       onClick={onClick}
-      className="border-2 border-dashed border-[var(--text-secondary)] p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-[rgb(var(--surface-card))] hover:border-solid hover:border-[var(--accent-hover)] hover:shadow-[8px_8px_0_0_var(--accent-hover)] transition-all"
+      className="border-2 border-dashed border-[rgb(var(--content-secondary))] p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-[rgb(var(--surface-card))] hover:border-solid hover:border-[rgb(var(--accent-hover))] hover:shadow-[8px_8px_0_0_rgb(var(--accent-hover))] transition-all"
     >
-      <div className="w-12 h-12 border-2 border-[var(--text-primary)] flex items-center justify-center mb-4 text-3xl group-hover:bg-[rgb(var(--accent-hover))] group-hover:border-[var(--accent-hover)] group-hover:text-black transition-colors bg-[rgb(var(--surface-page))]">
+      <div className="w-12 h-12 border-2 border-[rgb(var(--content-primary))] flex items-center justify-center mb-4 text-3xl group-hover:bg-[rgb(var(--accent-hover))] group-hover:border-[rgb(var(--accent-hover))] group-hover:text-black transition-colors bg-[rgb(var(--surface-page))]">
         +
       </div>
       <span className="font-bold font-mono uppercase tracking-wider text-sm group-hover:text-[rgb(var(--content-primary))]">
@@ -418,7 +418,7 @@ export default function HomePage() {
           <div className="flex-none flex flex-col items-start justify-center mb-10 select-none">
             {/* 状态标签 - 左上角 */}
             <div className="flex gap-2 mb-4">
-              <span className="px-2 py-1 text-[10px] font-mono font-bold border border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-black shadow-[2px_2px_0_0_var(--shadow-color)]">
+              <span className="px-2 py-1 text-[10px] font-mono font-bold border border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-black shadow-[2px_2px_0_0_rgb(var(--shadow-color))]">
                 READY
               </span>
               <span className="px-2 py-1 text-[10px] font-mono font-bold border border-[rgb(var(--border-default))] text-[rgb(var(--content-secondary))]">
@@ -444,7 +444,7 @@ export default function HomePage() {
             </div>
 
             {/* Shadow Layer */}
-            <div className="absolute inset-0 bg-[var(--shadow-color)] translate-x-2 translate-y-2 group-focus-within:translate-x-3 group-focus-within:translate-y-3 group-focus-within:bg-[rgb(var(--accent-hover))] transition-all" />
+            <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-2 translate-y-2 group-focus-within:translate-x-3 group-focus-within:translate-y-3 group-focus-within:bg-[rgb(var(--accent-hover))] transition-all" />
 
             {/* Input Container */}
             <div className="relative border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-card))] flex flex-col">

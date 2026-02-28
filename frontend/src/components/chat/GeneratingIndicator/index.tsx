@@ -33,12 +33,12 @@ export default function GeneratingIndicator({
   // 根据模式配置
   const config = mode === 'complex'
     ? {
-        icon: <Terminal className="w-3 h-3 text-[var(--accent)]" />,
+        icon: <Terminal className="w-3 h-3 text-[rgb(var(--accent-brand))]" />,
         title: 'Complex Mode Active',
         subtitle: t('detectingComplexTask'),
       }
     : {
-        icon: <Loader2 className="w-3 h-3 text-[var(--accent)] animate-spin" />,
+        icon: <Loader2 className="w-3 h-3 text-[rgb(var(--accent-brand))] animate-spin" />,
         title: 'Processing',
         subtitle: t('analyzingRequestStream'),
       }
@@ -49,7 +49,7 @@ export default function GeneratingIndicator({
         // 布局
         'flex flex-col items-start w-full max-w-3xl ml-4 pl-4',
         // 左侧装饰边框
-        'border-l-[2px] border-l-[var(--accent)]',
+        'border-l-[2px] border-l-[rgb(var(--accent-brand))]',
         // 底部间距
         'pb-4',
         className
@@ -58,15 +58,15 @@ export default function GeneratingIndicator({
       {/* 主容器：工业卡片风格 */}
       <div className="bg-card border border-border shadow-sm relative overflow-hidden">
         {/* 顶部状态条（简化） */}
-        <div className="h-[2px] w-full bg-[var(--accent)]/60" />
+        <div className="h-[2px] w-full bg-[rgb(var(--accent-brand))]/60" />
 
         {/* 内容区域 */}
         <div className="px-4 py-3 flex items-center gap-4">
           {/* 左侧：旋转图标 */}
           <div className="relative flex-shrink-0">
             {/* 外圈旋转 */}
-            <div className="w-8 h-8 border border-border border-t-[var(--accent)] animate-spin">
-              <Cpu className="w-4 h-4 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[var(--accent)]" />
+            <div className="w-8 h-8 border border-border border-t-[rgb(var(--accent-brand))] animate-spin">
+              <Cpu className="w-4 h-4 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[rgb(var(--accent-brand))]" />
             </div>
           </div>
 
@@ -75,7 +75,7 @@ export default function GeneratingIndicator({
             {/* 主标题 */}
             <div className="flex items-center gap-2">
               {config.icon}
-              <span className="font-mono text-xs font-bold text-[var(--accent)] uppercase tracking-wider">
+              <span className="font-mono text-xs font-bold text-[rgb(var(--accent-brand))] uppercase tracking-wider">
                 {config.title}
               </span>
             </div>

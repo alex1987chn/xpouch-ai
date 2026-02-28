@@ -5,7 +5,7 @@
  * ============================================
  * 
  * 导入顺序（必须严格遵循）：
- * 1. CSS @import（必须在最顶部）
+ * 1. CSS @import（必须放在最顶部，先于任何其他规则）
  * 2. Tailwind 指令
  * 3. 工具类和其他样式
  */
@@ -183,7 +183,10 @@
     --logo-item-active: rgb(var(--accent-hover));
     --logo-base: rgb(var(--accent-info));
     
-    /* 注意：--shadow-color 和 --accent-hover 是 RGB 数字格式，
+    /* Accent - 简化别名（RGB 格式，需要用 rgb(var(--accent))） */
+    --accent: var(--accent-brand);
+    
+    /* 注意：--shadow-color、--accent-hover 等是 RGB 数字格式，
        使用时需要包裹在 rgb() 中：rgb(var(--shadow-color)) */
   }
 }

@@ -68,7 +68,7 @@ export function IndustrialHeader({
         {onMenuClick && (
           <button
             onClick={onMenuClick}
-            className="lg:hidden w-8 h-8 flex items-center justify-center border-2 border-border hover:bg-[var(--accent-hover)] transition-colors mr-1"
+            className="lg:hidden w-8 h-8 flex items-center justify-center border-2 border-border hover:bg-[rgb(var(--accent-hover))] transition-colors mr-1"
           >
             <Menu className="w-4 h-4" />
           </button>
@@ -84,7 +84,7 @@ export function IndustrialHeader({
 
         {/* 版本号 - 工业风格分隔符 (桌面端显示) */}
         <span className="hidden md:flex text-[10px] font-mono text-primary/60 font-normal items-center gap-2">
-          <span className="text-[var(--text-secondary)]">///</span>
+          <span className="text-[rgb(var(--content-secondary))]">///</span>
           <span>OS {version}</span>
         </span>
       </div>

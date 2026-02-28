@@ -72,7 +72,7 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
     <>
       <div
         className={cn(
-          "group relative bg-surface-card border-2 border-bauhaus-border",
+          "group relative bg-surface-card border-2 border-border-default",
           "shadow-hard transition-all",
           isExpanded ? "" : "hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-hover"
         )}
@@ -90,13 +90,13 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
                   className={cn("w-2 h-2 rounded-full", getStatusColor(server.connection_status))}
                   title={server.connection_status}
                 />
-                <h3 className="font-mono text-sm font-bold text-bauhaus-text truncate">
+                <h3 className="font-mono text-sm font-bold text-content-primary truncate">
                   {server.name}
                 </h3>
                 {canShowTools && (
                   <ChevronDown 
                     className={cn(
-                      "w-4 h-4 text-bauhaus-muted transition-transform ml-1",
+                      "w-4 h-4 text-content-muted transition-transform ml-1",
                       isExpanded && "rotate-180"
                     )} 
                   />
@@ -104,12 +104,12 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
               </div>
               
               {/* 描述 */}
-              <p className="font-mono text-xs text-bauhaus-muted line-clamp-1 mt-1">
+              <p className="font-mono text-xs text-content-muted line-clamp-1 mt-1">
                 {server.description || t('noDescription')}
               </p>
               
               {/* URL */}
-              <p className="font-mono text-[10px] text-bauhaus-muted truncate mt-1">
+              <p className="font-mono text-[10px] text-content-muted truncate mt-1">
                 {server.sse_url}
               </p>
             </div>
@@ -122,7 +122,7 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
                   e.stopPropagation()
                   setIsDeleteDialogOpen(true)
                 }}
-                className="w-8 h-8 flex items-center justify-center border border-bauhaus-border text-bauhaus-muted hover:bg-bauhaus-red hover:text-white hover:border-bauhaus-red transition-colors opacity-0 group-hover:opacity-100"
+                className="w-8 h-8 flex items-center justify-center border border-border-default text-content-muted hover:bg-accent-destructive hover:text-white hover:border-accent-destructive transition-colors opacity-0 group-hover:opacity-100"
                 title={t('delete') || 'Delete'}
               >
                 <span className="font-mono text-xs font-bold">×</span>
@@ -136,14 +136,14 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
                 }}
                 disabled={toggleMutation.isPending}
                 className={cn(
-                  "relative w-12 h-6 border-2 border-bauhaus-border flex items-center p-0.5 cursor-pointer transition-colors",
-                  server.is_active ? 'bg-bauhaus-yellow' : 'bg-bauhaus-bg'
+                  "relative w-12 h-6 border-2 border-border-default flex items-center p-0.5 cursor-pointer transition-colors",
+                  server.is_active ? 'bg-accent-brand' : 'bg-surface-page'
                 )}
                 aria-label={server.is_active ? t('disable') : t('enable')}
               >
                 <div 
                   className={cn(
-                    "w-4 h-4 bg-surface-card border-2 border-bauhaus-border transition-transform duration-200",
+                    "w-4 h-4 bg-surface-card border-2 border-border-default transition-transform duration-200",
                     server.is_active ? 'translate-x-[20px]' : 'translate-x-0'
                   )} 
                 />
@@ -154,21 +154,21 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
 
         {/* 展开的工具列表 */}
         {isExpanded && canShowTools && (
-          <div className="border-t-2 border-bauhaus-border bg-bauhaus-bg/50">
+          <div className="border-t-2 border-border-default bg-surface-page/50">
             <div className="p-3">
               <div className="flex items-center gap-2 mb-3">
-                <Wrench className="w-3.5 h-3.5 text-bauhaus-muted" />
-                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-bauhaus-muted">
+                <Wrench className="w-3.5 h-3.5 text-content-muted" />
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-muted">
                   {t('availableTools') || 'Available Tools'} ({tools?.length ?? 0})
                 </span>
               </div>
               
               {isLoadingTools ? (
-                <div className="py-4 text-center font-mono text-xs text-bauhaus-muted">
+                <div className="py-4 text-center font-mono text-xs text-content-muted">
                   {t('loading') || 'Loading...'}
                 </div>
               ) : isToolsError ? (
-                <div className="py-4 text-center font-mono text-xs text-bauhaus-red">
+                <div className="py-4 text-center font-mono text-xs text-accent-destructive">
                   {t('failedToLoadTools') || 'Failed to load tools'}
                 </div>
               ) : tools && tools.length > 0 ? (
@@ -176,19 +176,19 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
                   {tools.map((tool) => (
                     <div 
                       key={tool.name}
-                      className="bg-surface-card border border-bauhaus-border/50 p-2"
+                      className="bg-surface-card border border-border-default/50 p-2"
                     >
-                      <div className="font-mono text-xs font-bold text-bauhaus-text">
+                      <div className="font-mono text-xs font-bold text-content-primary">
                         {tool.name}
                       </div>
-                      <div className="font-mono text-[10px] text-bauhaus-muted mt-0.5 line-clamp-2">
+                      <div className="font-mono text-[10px] text-content-muted mt-0.5 line-clamp-2">
                         {tool.description}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="py-4 text-center font-mono text-xs text-bauhaus-muted">
+                <div className="py-4 text-center font-mono text-xs text-content-muted">
                   {t('noToolsAvailable') || 'No tools available'}
                 </div>
               )}
@@ -198,8 +198,8 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
         
         {/* 未连接时的提示 */}
         {isExpanded && !canShowTools && (
-          <div className="border-t-2 border-bauhaus-border bg-bauhaus-bg/50 p-3">
-            <div className="font-mono text-xs text-bauhaus-muted text-center">
+          <div className="border-t-2 border-border-default bg-surface-page/50 p-3">
+            <div className="font-mono text-xs text-content-muted text-center">
               {server.connection_status !== 'connected' 
                 ? (t('serverNotConnected') || 'Server not connected')
                 : (t('serverDisabled') || 'Server is disabled')

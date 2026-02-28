@@ -37,22 +37,22 @@ const BauhausInput = React.forwardRef<HTMLInputElement, BauhausInputProps>(
           // 直角无圆角
           "rounded-none",
           // 边框
-          "border-2 border-bauhaus-border",
+          "border-2 border-border-default",
           // Focus状态 - 只变色不变粗（统一风格）
           "focus:outline-none",
-          variant === "default" && "focus:border-bauhaus-blue",
-          variant === "ghost" && "focus:border-bauhaus-border",
+          variant === "default" && "focus:border-accent-info",
+          variant === "ghost" && "focus:border-border-default",
           // 背景色
-          variant === "ghost" ? "bg-transparent" : "bg-bauhaus-bg",
+          variant === "ghost" ? "bg-transparent" : "bg-surface-page",
           // 字体 - mono（统一风格）
           "px-4 py-2 font-mono text-sm",
-          "text-bauhaus-text placeholder:text-bauhaus-muted",
+          "text-content-primary placeholder:text-content-secondary",
           // 过渡动画
           "transition-colors duration-150 ease-out",
           // 禁用状态
           "disabled:cursor-not-allowed disabled:opacity-50",
           // 错误状态
-          error && "border-bauhaus-red focus:border-bauhaus-red",
+          error && "border-accent-destructive focus:border-accent-destructive",
           className
         )}
         ref={ref}
@@ -81,7 +81,7 @@ const BauhausSearchInput = React.forwardRef<
 >(({ className, value, onChange, error, ...props }, ref) => {
   return (
     <div className="relative flex items-center w-full">
-      <Search className="absolute left-3 w-4 h-4 text-bauhaus-muted pointer-events-none z-10" />
+      <Search className="absolute left-3 w-4 h-4 text-content-secondary pointer-events-none z-10" />
       <input
         type="text"
         value={value}
@@ -92,20 +92,20 @@ const BauhausSearchInput = React.forwardRef<
           // 直角无圆角
           "rounded-none",
           // 边框
-          "border-2 border-bauhaus-border",
+          "border-2 border-border-default",
           // Focus状态 - 只变色不变粗（与其他页面一致）
-          "focus:outline-none focus:border-bauhaus-yellow",
+          "focus:outline-none focus:border-accent-brand",
           // 背景色 - 使用 page 背景（与其他页面一致）
-          "bg-bauhaus-bg",
+          "bg-surface-page",
           // 字体 - mono（与其他页面一致）
           "pl-10 pr-4 py-2 font-mono text-sm",
-          "text-bauhaus-text placeholder:text-bauhaus-muted",
+          "text-content-primary placeholder:text-content-secondary",
           // 过渡动画
           "transition-colors duration-150 ease-out",
           // 禁用状态
           "disabled:cursor-not-allowed disabled:opacity-50",
           // 错误状态
-          error && "border-bauhaus-red focus:border-bauhaus-red",
+          error && "border-accent-destructive focus:border-accent-destructive",
           className
         )}
         ref={ref}
@@ -136,20 +136,20 @@ const BauhausTextarea = React.forwardRef<
         // 直角无圆角
         "rounded-none",
         // 边框
-        "border-2 border-bauhaus-border",
+        "border-2 border-border-default",
         // Focus状态 - 只变色不变粗
-        "focus:outline-none focus:border-bauhaus-blue",
+        "focus:outline-none focus:border-accent-info",
         // 背景色 - 使用 page 背景
-        "bg-bauhaus-bg",
+        "bg-surface-page",
         // 字体 - mono
         "px-4 py-3 font-mono text-sm",
-        "text-bauhaus-text placeholder:text-bauhaus-muted",
+        "text-content-primary placeholder:text-content-secondary",
         // 过渡动画
         "transition-colors duration-150 ease-out",
         // 禁用状态
         "disabled:cursor-not-allowed disabled:opacity-50",
         // 错误状态
-        error && "border-bauhaus-red focus:border-bauhaus-red",
+        error && "border-accent-destructive focus:border-accent-destructive",
         // resize控制
         "resize-y",
         className
@@ -171,7 +171,7 @@ const BauhausLabel = React.forwardRef<
   <label
     ref={ref}
     className={cn(
-      "text-sm font-bold uppercase tracking-wider text-bauhaus-text",
+      "text-sm font-bold uppercase tracking-wider text-content-primary",
       className
     )}
     {...props}

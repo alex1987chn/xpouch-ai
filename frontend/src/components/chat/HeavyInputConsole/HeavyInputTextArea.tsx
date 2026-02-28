@@ -21,7 +21,7 @@ export default function HeavyInputTextArea({
       onKeyDown={onKeyDown}
       disabled={disabled}
       placeholder={t('inputPlaceholder')}
-      className="flex-1 bg-transparent border-none p-4 font-mono text-sm focus:ring-0 outline-none resize-none leading-relaxed placeholder:text-primary/40 disabled:opacity-50"
+      className="flex-1 bg-transparent border-none p-4 font-mono text-sm focus:ring-0 outline-none resize-none leading-relaxed placeholder:text-content-secondary disabled:opacity-50"
       rows={3}
     />
   )

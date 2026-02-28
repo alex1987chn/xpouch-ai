@@ -57,7 +57,7 @@ function BauhausProgressBar({ current, max }: { current: number; max: number }) 
           progress >= 1
             ? 'text-green-600'
             : progress >= 0.8
-              ? 'text-[var(--accent-hover)]'
+              ? 'text-[rgb(var(--accent-hover))]'
               : 'text-content-secondary'
         )}>
           {progress >= 1 ? t('complete') : progress >= 0.8 ? t('almost') : t('input')}
@@ -166,9 +166,9 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               {/* 智能体名称 */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+                  <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]"></div>
                   <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
-                    {t('agentName')} <span className="text-[var(--accent-hover)]">*</span>
+                    {t('agentName')} <span className="text-[rgb(var(--accent-hover))]">*</span>
                   </label>
                 </div>
                 <input
@@ -176,14 +176,14 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={t('giveName')}
-                  className="w-full px-4 py-3 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
+                  className="w-full px-4 py-3 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors"
                 />
               </div>
 
               {/* 分类选择 */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+                  <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]"></div>
                   <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                     {t('category')}
                   </label>
@@ -196,8 +196,8 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                       className={cn(
                         'px-4 py-2 border-2 font-mono text-xs font-bold uppercase transition-all',
                         category === cat
-                          ? 'border-[var(--accent-hover)] bg-[rgb(var(--accent-hover))] text-black shadow-[rgb(var(--shadow-color))_2px_2px_0_0]'
-                          : 'border-border-default bg-surface-page text-content-secondary hover:border-[var(--text-secondary)]'
+                          ? 'border-[rgb(var(--accent-hover))] bg-[rgb(var(--accent-hover))] text-black shadow-[rgb(var(--shadow-color))_2px_2px_0_0]'
+                          : 'border-border-default bg-surface-page text-content-secondary hover:border-[rgb(var(--content-secondary))]'
                       )}
                     >
                       {cat}
@@ -216,7 +216,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               {/* 描述 */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+                  <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]"></div>
                   <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                     {t('description')}
                   </label>
@@ -226,16 +226,16 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={t('simpleDescription')}
-                  className="w-full px-4 py-3 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
+                  className="w-full px-4 py-3 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors"
                 />
               </div>
 
               {/* 系统提示词 */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+                  <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]"></div>
                   <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
-                    {t('systemPrompt')} <span className="text-[var(--accent-hover)]">*</span>
+                    {t('systemPrompt')} <span className="text-[rgb(var(--accent-hover))]">*</span>
                   </label>
                 </div>
                 <p className="font-mono text-[10px] text-content-secondary opacity-60">
@@ -247,7 +247,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                   placeholder={t('writingAssistantPlaceholder')}
                   rows={10}
                   maxLength={2000}
-                  className="w-full px-4 py-3 border-2 border-border-default bg-surface-page font-mono text-sm leading-relaxed focus:outline-none focus:border-[var(--accent-hover)] transition-colors resize-none"
+                  className="w-full px-4 py-3 border-2 border-border-default bg-surface-page font-mono text-sm leading-relaxed focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors resize-none"
                 />
 
                 {/* Bauhaus 风格进度条 */}
@@ -255,7 +255,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               </div>
 
               {/* 提示信息 */}
-              <div className="p-4 border-2 border-[var(--accent-hover)]/50 bg-[rgb(var(--accent-hover))]/10">
+              <div className="p-4 border-2 border-[rgb(var(--accent-hover))]/50 bg-[rgb(var(--accent-hover))]/10">
                 <div className="flex items-start gap-3">
                   <div className="w-1.5 h-1.5 bg-[rgb(var(--accent-hover))] mt-1.5 shrink-0"></div>
                   <p className="font-mono text-[10px] text-content-primary leading-relaxed">
