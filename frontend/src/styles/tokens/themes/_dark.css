@@ -6,8 +6,7 @@
  * 特点：降低亮度、护眼舒适
  */
 
-@layer base {
-  [data-theme="dark"] {
+[data-theme="dark"] {
     /* Surface */
     --surface-page: 9 9 11;                /* zinc-950 */
     --surface-card: 24 24 27;              /* zinc-900 */
@@ -49,5 +48,4 @@
     --radius-md: 0.5rem;
     --radius-lg: 0.75rem;
     --radius-xl: 1rem;
-  }
 }

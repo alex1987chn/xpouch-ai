@@ -7,8 +7,7 @@
  * 设计灵感：Bauhaus + Neo-Brutalism
  */
 
-@layer base {
-  [data-theme="bauhaus"] {
+[data-theme="bauhaus"] {
     /* ============================================
        Surface - 魏玛纸张色系
        ============================================ */
@@ -67,5 +66,4 @@
     --radius-md: 0;
     --radius-lg: 0;
     --radius-xl: 0;
-  }
 }

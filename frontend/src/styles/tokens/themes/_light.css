@@ -6,8 +6,7 @@
  * 特点：高对比度、清晰易读
  */
 
-@layer base {
-  [data-theme="light"] {
+[data-theme="light"] {
     /* Surface */
     --surface-page: 244 244 245;
     --surface-card: 255 255 255;
@@ -49,5 +48,4 @@
     --radius-md: 0.5rem;
     --radius-lg: 0.75rem;
     --radius-xl: 1rem;
-  }
 }

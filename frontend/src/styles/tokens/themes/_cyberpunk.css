@@ -7,8 +7,7 @@
  * 设计灵感：Blade Runner / Cyberpunk 2077
  */
 
-@layer base {
-  [data-theme="cyberpunk"] {
+[data-theme="cyberpunk"] {
     /* ============================================
        Surface - 深邃夜空
        ============================================ */
@@ -65,5 +64,4 @@
     --radius-md: 0.25rem;
     --radius-lg: 0.5rem;
     --radius-xl: 1rem;
-  }
 }
