@@ -39,9 +39,9 @@
     --accent-warning: 249 115 22;
     --accent-info: 59 130 246;
 
-    /* Shadow */
-    --shadow-color: 24 24 27;
-    --shadow-opacity: 0.1;
+    /* Shadow - 明亮主题使用更深的阴影提高可见度 */
+    --shadow-color: 0 0 0;
+    --shadow-opacity: 0.15;
 
     /* Radius */
     --radius-sm: 0.375rem;

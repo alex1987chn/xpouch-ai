@@ -1,7 +1,7 @@
 import { ReactNode, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { Menu, Sun, Moon } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { BauhausSidebar } from '@/components/bauhaus'
 import { MobileOverlay } from '@/components/common'
@@ -10,7 +10,7 @@ import { PersonalSettingsDialog } from '@/components/settings/PersonalSettingsDi
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import LoginDialog from '@/components/auth/LoginDialog'
 import { useApp } from '@/providers/AppProvider'
-import { useTheme } from '@/hooks/useTheme'
+import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher'
 import { useTaskStore } from '@/store/taskStore'
 import { useChatStore } from '@/store/chatStore'
 import { useQueryClient } from '@tanstack/react-query'
@@ -64,7 +64,7 @@ interface AppLayoutProps {
 export default function AppLayout({ children, hideMobileMenu = false }: AppLayoutProps) {
   const navigate = useNavigate()
   const { sidebar, dialogs } = useApp()
-  const { theme, toggleTheme } = useTheme()
+
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -216,19 +216,9 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
         onSuccess={handleLoginSuccess}
       />
 
-      {/* 主题切换按钮 - Bauhaus风格圆形按钮 */}
+      {/* 主题切换按钮 - 浮动模式 */}
       <div className="fixed bottom-8 right-8" style={{ zIndex: Z_INDEX.DROPDOWN }}>
-        <button
-          onClick={toggleTheme}
-          className="w-12 h-12 flex items-center justify-center border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--accent-hover)_2px_2px_0_0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all overflow-hidden theme-toggle-btn"
-          title={theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
-        >
-          {theme === 'dark' ? (
-            <Sun className="w-5 h-5 stroke-[2.5]" />
-          ) : (
-            <Moon className="w-5 h-5 stroke-[2.5]" />
-          )}
-        </button>
+        <ThemeSwitcher variant="floating" />
       </div>
     </div>
   )

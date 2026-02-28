@@ -8,7 +8,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { I18nProvider } from './i18n'
-import { ThemeProvider } from './hooks/useTheme'
+import { ThemeProvider, ThemeInitializer } from './hooks/useTheme'
 import { AppProvider } from './providers/AppProvider'
 import { AuthInitializer } from './components/AuthInitializer'
 import { router, AppProviders } from './router'
@@ -77,6 +77,7 @@ root.render(
         <AuthInitializer>
           <I18nProvider>
             <ThemeProvider>
+              <ThemeInitializer />
               <RouterProvider router={router} />
             </ThemeProvider>
           </I18nProvider>

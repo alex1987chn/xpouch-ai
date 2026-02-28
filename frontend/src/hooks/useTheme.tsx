@@ -1,55 +1,57 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+/**
+ * ============================================
+ * useTheme Hook - 主题管理
+ * ============================================
+ * 
+ * 兼容层：将旧的 useTheme API 映射到新的 themeStore
+ * 支持 4 个主题：light / dark / bauhaus / cyberpunk
+ * 
+ * 使用方式：
+ * const { theme, setTheme, toggleTheme } = useTheme()
+ */
 
-type Theme = 'light' | 'dark'
+import { useEffect } from 'react'
+import { useThemeStore, type Theme } from '@/store/themeStore'
 
-interface ThemeContextType {
+interface UseThemeReturn {
   theme: Theme
   toggleTheme: () => void
   setTheme: (theme: Theme) => void
 }
 
-const ThemeContext = createContext<ThemeContextType | null>(null)
-
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return 'light'
-    const stored = window.localStorage.getItem('xpouch-theme') as Theme | null
-    if (stored) return stored
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  })
-
-  useEffect(() => {
-    const root = document.documentElement
-
-    // 只添加 dark class，light 是默认主题不需要额外 class
-    if (theme === 'dark') {
-      root.classList.add('dark')
-    } else {
-      root.classList.remove('dark')
-    }
-
-    window.localStorage.setItem('xpouch-theme', theme)
-  }, [theme])
-
-  const toggleTheme = () => {
-    setThemeState(prev => prev === 'light' ? 'dark' : 'light')
+/**
+ * 主题 Hook - 兼容旧 API
+ * 内部使用新的 themeStore
+ */
+export function useTheme(): UseThemeReturn {
+  const { theme, setTheme, toggleTheme } = useThemeStore()
+  
+  return {
+    theme,
+    setTheme,
+    toggleTheme
   }
-
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme)
-  }
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  )
 }
 
-export function useTheme() {
-  const context = useContext(ThemeContext)
-  if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider')
-  }
-  return context
+/**
+ * 主题初始化组件
+ * 在应用启动时初始化主题
+ */
+export function ThemeInitializer() {
+  useEffect(() => {
+    // 初始化主题（应用 persisted 的主题设置）
+    useThemeStore.getState().initTheme()
+  }, [])
+  
+  return null
+}
+
+/**
+ * 主题 Provider - 已弃用
+ * 新系统不需要 Provider，直接调用 useThemeStore 即可
+ * 保留此导出用于向后兼容
+ */
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  // 新系统自动初始化，不需要 Provider
+  return <>{children}</>
 }
