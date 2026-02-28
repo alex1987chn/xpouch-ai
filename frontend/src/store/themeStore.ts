@@ -114,8 +114,10 @@ export const useThemeStore = create<ThemeState>()(
        * 设置主题
        */
       setTheme: (theme: Theme) => {
+        console.log('[ThemeStore] setTheme 被调用:', theme)
         applyTheme(theme)
         set({ theme, followSystem: false })
+        console.log('[ThemeStore] data-theme 已设置为:', document.documentElement.getAttribute('data-theme'))
         
         // 可选：添加切换动画类
         if (typeof document !== 'undefined') {
@@ -154,14 +156,19 @@ export const useThemeStore = create<ThemeState>()(
        * 从 localStorage 恢复或应用默认主题
        */
       initTheme: () => {
-        const { theme, followSystem } = get()
+        const state = get()
+        const { theme, followSystem } = state
+        
+        console.log('[ThemeStore] initTheme 被调用, 当前主题:', theme, 'followSystem:', followSystem)
         
         if (followSystem) {
           const systemTheme = getSystemTheme()
           applyTheme(systemTheme)
           set({ theme: systemTheme })
+          console.log('[ThemeStore] 已应用系统主题:', systemTheme)
         } else {
           applyTheme(theme)
+          console.log('[ThemeStore] 已应用主题:', theme)
         }
         
         // 监听系统主题变化（仅在 followSystem 时）

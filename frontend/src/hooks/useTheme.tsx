@@ -40,7 +40,12 @@ export function useTheme(): UseThemeReturn {
 export function ThemeInitializer() {
   useEffect(() => {
     // 初始化主题（应用 persisted 的主题设置）
-    useThemeStore.getState().initTheme()
+    const store = useThemeStore.getState()
+    store.initTheme()
+    
+    // 调试：打印当前主题
+    console.log('[Theme] 初始化主题:', store.theme)
+    console.log('[Theme] data-theme 属性:', document.documentElement.getAttribute('data-theme'))
   }, [])
   
   return null
