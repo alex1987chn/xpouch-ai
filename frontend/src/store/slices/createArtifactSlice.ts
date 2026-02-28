@@ -26,6 +26,7 @@ import type { Artifact } from '@/types'
 // State & Actions Interfaces
 // ============================================================================
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ArtifactSliceState {
   // 移除 streamingArtifacts Map，不再需要流式状态
 }

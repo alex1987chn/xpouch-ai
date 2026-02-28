@@ -197,7 +197,7 @@ export async function authenticatedFetch(
   options: RequestInit = {}
 ): Promise<Response> {
   // 发送请求
-  let response = await fetch(url, {
+  const response = await fetch(url, {
     ...options,
     credentials: 'include',
     headers: {
