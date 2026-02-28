@@ -14,7 +14,7 @@
    1. CSS 导入（必须放在最顶部）
    ============================================ */
 
-/* 语义变量定义 - 默认明亮主题 */
+/* 语义变量定义 - 默认 Bauhaus 主题 */
 @import './tokens/_semantic.css';
 
 /* 主题覆盖 - 按优先级排序 */
@@ -160,24 +160,42 @@
 
 /* ============================================
    5. 旧变量兼容（迁移期后删除）
-   ============================================ */
+   ============================================
+   
+   重要说明：
+   这些变量是为了兼容旧代码而定义的。
+   新的代码应该直接使用语义变量：
+   - bg-surface-page 替代 bg-[var(--bg-page)]
+   - border-border-default 替代 border-[var(--border-color)]
+   - text-content-primary 替代 text-[var(--text-primary)]
+   - shadow-hard 替代 shadow-[var(--shadow-color)_...]
+   
+   注意：--shadow-color 和 --accent-hover 本身是 RGB 数字格式，
+   需要在 rgb() 中使用。旧代码中直接使用 var(--shadow-color) 作为
+   颜色值是不正确的。
+*/
 
 @layer base {
   :root {
-    /* 兼容旧代码中的变量引用 */
+    /* Surface */
     --bg-page: rgb(var(--surface-page));
     --bg-card: rgb(var(--surface-card));
     --bg-panel: rgb(var(--surface-elevated));
+    
+    /* Border */
     --border-color: rgb(var(--border-default));
+    
+    /* Content */
     --text-primary: rgb(var(--content-primary));
     --text-secondary: rgb(var(--content-secondary));
     --text-muted: rgb(var(--content-muted));
-    --shadow-color: rgb(var(--shadow-color));
-    --accent-hover: rgb(var(--accent-hover));
     
     /* Logo 动画专用变量 */
     --logo-item: rgb(var(--accent-brand));
     --logo-item-active: rgb(var(--accent-hover));
     --logo-base: rgb(var(--accent-info));
+    
+    /* 注意：--shadow-color 和 --accent-hover 是 RGB 数字格式，
+       使用时需要包裹在 rgb() 中：rgb(var(--shadow-color)) */
   }
 }
