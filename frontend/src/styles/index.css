@@ -36,9 +36,29 @@
    ============================================ */
 
 @layer base {
-  /* 根元素默认使用 bauhaus 主题 */
+  /* 根元素默认使用 light color-scheme（Bauhaus 是浅色主题） */
   :root {
     color-scheme: light;
+  }
+  
+  /* Bauhaus 主题使用 light color-scheme */
+  [data-theme="bauhaus"] {
+    color-scheme: light;
+  }
+  
+  /* Light 主题 */
+  [data-theme="light"] {
+    color-scheme: light;
+  }
+  
+  /* Dark 主题 */
+  [data-theme="dark"] {
+    color-scheme: dark;
+  }
+  
+  /* Cyberpunk 主题 */
+  [data-theme="cyberpunk"] {
+    color-scheme: dark;
   }
 
   /* 确保 html 和 body 使用主题变量 */
