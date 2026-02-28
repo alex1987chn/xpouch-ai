@@ -134,6 +134,7 @@ export async function sendMessage(
 
   return new Promise((resolve, reject) => {
     let fullContent = ''
+    // eslint-disable-next-line prefer-const
     let finalConversationId: string | undefined = conversationId || undefined
     let isCompleted = false
     let retryCount = 0  // 🔥 重连计数器

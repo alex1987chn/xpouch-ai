@@ -69,12 +69,7 @@ export function PlanReviewCard({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
 
-  // 状态驱动 UI
-  if (!isWaitingForApproval) {
-    return null
-  }
-
-  // Update task description
+  // Update task description - 必须在条件检查之前定义 Hooks
   const handleUpdateDescription = useCallback((taskId: string, newDescription: string) => {
     setEditedPlan(prev => 
       prev.map(task => 
@@ -182,6 +177,11 @@ export function PlanReviewCard({
       setIsSubmitting(false)
     }
   }, [editedPlan, conversationId, resumeExecution, updateTasksFromPlan, setIsWaitingForApproval, addMessage])
+
+  // 状态驱动 UI - 在所有 Hooks 定义之后进行条件渲染
+  if (!isWaitingForApproval) {
+    return null
+  }
 
   return (
     <AnimatePresence>

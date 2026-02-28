@@ -453,7 +453,7 @@ export class EventHandler {
     const { updateMessage, addMessage, messages } = useChatStore.getState()
 
     // 查找消息（前端应该在 useChatCore 中已经创建空消息）
-    let message = messages.find((m) => m.id === event.data.message_id)
+    const message = messages.find((m) => m.id === event.data.message_id)
 
     if (!message) {
       // v3.1: 如果找不到消息（例如复杂模式下 aggregator 延迟），自动创建消息
