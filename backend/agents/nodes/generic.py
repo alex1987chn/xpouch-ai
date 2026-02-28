@@ -462,8 +462,8 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
 
         # 🔥🔥🔥 关键修复：创建 task_list 副本触发 LangGraph 状态更新
         # 直接修改列表元素不会改变引用，LangGraph 检测不到变化
-        import copy
-        task_list = copy.deepcopy(task_list)
+        # 使用浅拷贝即可：新列表引用触发更新，内部字典共享节省内存
+        task_list = list(task_list)
         
         # ✅ 更新任务列表中的任务状态
         task_list[current_index]["output_result"] = {"content": response.content}
@@ -585,9 +585,8 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
         # ✅ 失败时也要增加 index，否则会卡死循环
         next_index = current_index + 1
 
-        # 🔥 创建副本触发状态更新
-        import copy
-        task_list = copy.deepcopy(task_list)
+        # 🔥 创建副本触发状态更新（浅拷贝即可）
+        task_list = list(task_list)
         
         # 更新任务状态为失败
         task_list[current_index]["status"] = "failed"
