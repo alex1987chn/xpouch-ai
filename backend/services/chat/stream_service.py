@@ -18,6 +18,8 @@ SSE 流式输出核心服务
 import os
 import asyncio
 import uuid
+import hashlib
+import json
 from typing import List, Dict, Optional, AsyncGenerator, Any, Callable
 from datetime import datetime
 from fastapi.responses import StreamingResponse
@@ -39,7 +41,8 @@ class StreamService:
     """流式处理服务"""
     
     # 🔥 P2: MCP 工具缓存 (TTL 5分钟)
-    _mcp_tools_cache: Optional[tuple[List[Any], datetime]] = None
+    # 缓存结构: (工具列表, 缓存时间, 服务器配置哈希)
+    _mcp_tools_cache: Optional[tuple[List[Any], datetime, str]] = None
     _mcp_cache_lock = asyncio.Lock()
     _mcp_cache_ttl_seconds = 300  # 5分钟
     
@@ -78,7 +81,7 @@ class StreamService:
         # 🔥 P2: 检查缓存
         async with self._mcp_cache_lock:
             if self._mcp_tools_cache is not None:
-                tools, cached_at = self._mcp_tools_cache
+                tools, cached_at, cached_hash = self._mcp_tools_cache
                 elapsed = (datetime.now() - cached_at).total_seconds()
                 if elapsed < self._mcp_cache_ttl_seconds:
                     logger.debug(f"[MCP] 使用缓存工具 ({elapsed:.1f}s)")
@@ -96,7 +99,23 @@ class StreamService:
                 ).all()
                 
                 if not active_servers:
+                    # 清空缓存（如果没有激活服务器）
+                    async with self._mcp_cache_lock:
+                        self._mcp_tools_cache = None
                     return tools
+                
+                # 🔥 P2: 计算当前服务器配置哈希
+                current_servers_hash = hashlib.md5(
+                    json.dumps([{"name": s.name, "url": str(s.sse_url)} for s in active_servers], sort_keys=True).encode()
+                ).hexdigest()
+                
+                # 🔥 P2: 检查缓存哈希是否匹配
+                async with self._mcp_cache_lock:
+                    if self._mcp_tools_cache is not None:
+                        _, _, cached_hash = self._mcp_tools_cache
+                        if cached_hash != current_servers_hash:
+                            logger.debug("[MCP] 服务器配置变化，缓存失效")
+                            self._mcp_tools_cache = None
                 
                 # 构建 MCP 客户端配置
                 # 支持多种传输协议：sse, streamable_http
@@ -117,9 +136,12 @@ class StreamService:
                     tools = await client.get_tools()
                     logger.info(f"[MCP] 已加载 {len(tools)} 个 MCP 工具 from {len(active_servers)} 个服务器")
                     
-                    # 🔥 P2: 更新缓存
+                    # 🔥 P2: 计算服务器配置哈希并更新缓存
+                    current_servers_hash = hashlib.md5(
+                        json.dumps([{"name": s.name, "url": str(s.sse_url)} for s in active_servers], sort_keys=True).encode()
+                    ).hexdigest()
                     async with self._mcp_cache_lock:
-                        self._mcp_tools_cache = (tools, datetime.now())
+                        self._mcp_tools_cache = (tools, datetime.now(), current_servers_hash)
                     
         except asyncio.TimeoutError:
             logger.error("[MCP] 获取 MCP 工具超时 (10秒)")

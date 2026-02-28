@@ -11,16 +11,54 @@ export default defineConfig({
     },
   },
   build: {
-    // 🔥 减少代码分割，避免动态导入问题
+    // 🔥 细致的代码分割配置，按类别分包
     rollupOptions: {
       output: {
-        // 将 node_modules 打包成一个 vendor chunk
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['framer-motion', 'lucide-react', '@radix-ui/react-dialog'],
+          // React 核心生态
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // UI 动画和图标
+          'ui-vendor': ['framer-motion', 'lucide-react'],
+          // Radix UI 组件库
+          'radix-ui': [
+            '@radix-ui/react-avatar',
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-label',
+            '@radix-ui/react-scroll-area',
+            '@radix-ui/react-select',
+            '@radix-ui/react-separator',
+            '@radix-ui/react-slot',
+            '@radix-ui/react-switch',
+            '@radix-ui/react-toggle',
+            '@radix-ui/react-toggle-group',
+          ],
+          // 图表库
+          'charts': ['recharts'],
+          // Markdown 渲染相关
+          'markdown': [
+            'react-markdown',
+            'remark-gfm',
+            'rehype-highlight',
+            'rehype-katex',
+            'katex',
+          ],
+          // 状态管理
+          'state': ['zustand', 'immer', '@tanstack/react-query'],
+          // 工具库
+          'utils': ['date-fns', 'uuid', 'clsx', 'class-variance-authority', 'tailwind-merge'],
+          // 图表可视化 (Mermaid)
+          'mermaid': ['mermaid'],
+          // PDF 生成相关
+          'pdf': ['jspdf', 'html2canvas'],
+          // 代码高亮
+          'prism': ['prism-react-renderer', 'prismjs'],
+          // 监控
+          'sentry': ['@sentry/react'],
         },
       },
     },
+    // 块大小警告限制 (KB)
+    chunkSizeWarningLimit: 500,
     // 清理旧的构建文件
     emptyOutDir: true,
     // 源映射（生产调试用）
