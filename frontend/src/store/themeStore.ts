@@ -96,6 +96,20 @@ export const useThemeStore = create<ThemeState>()(
       // 默认：Bauhaus 明亮主题
       theme: 'light',
       followSystem: false,
+      
+      /**
+       * 修复旧主题值（迁移逻辑）
+       * 将 bauhaus/cyberpunk 转换为 light/dark
+       */
+      _migrateTheme: () => {
+        const currentTheme = get().theme
+        if (currentTheme === 'bauhaus' || currentTheme === 'cyberpunk') {
+          const newTheme: Theme = 'light'
+          applyTheme(newTheme)
+          set({ theme: newTheme })
+          console.log('[ThemeStore] 已迁移旧主题:', currentTheme, '->', newTheme)
+        }
+      },
 
       /**
        * 设置主题
@@ -139,6 +153,9 @@ export const useThemeStore = create<ThemeState>()(
        * 从 localStorage 恢复或应用默认主题
        */
       initTheme: () => {
+        // 先迁移旧主题值
+        get()._migrateTheme()
+        
         const state = get()
         const { theme, followSystem } = state
         

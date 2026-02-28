@@ -34,8 +34,13 @@
    ============================================ */
 
 @layer base {
-  /* 根元素默认使用 light color-scheme（Bauhaus 是浅色主题） */
+  /* 根元素默认使用 light color-scheme */
   :root {
+    color-scheme: light;
+  }
+  
+  /* Light 主题 */
+  [data-theme="light"] {
     color-scheme: light;
   }
   
