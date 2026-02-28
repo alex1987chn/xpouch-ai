@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-02-28] - v3.2.2 - 代码质量重构与架构优化
+
+### 🏗️ 架构重构
+
+**后端 Service 层抽取**:
+- 重构 `main.py`：业务逻辑迁移到 `services/invoke_service.py`
+- `main.py` 从 ~500 行减少到 ~310 行
+- 引入 FastAPI 依赖注入模式：`service: InvokeService = Depends(get_invoke_service)`
+- 提升可测试性：Service 层可独立单元测试
+
+**前端组件拆分**:
+- `BauhausSidebar.tsx` (750行) 拆分为 7 个子组件
+- `translations.ts` (1043行) 拆分为 6 个模块
+
+### 🔧 代码质量 (P0/P1 修复)
+
+**P0 严重问题修复 (9项)**:
+- 修复 `useAsyncError` 不存在导出
+- 修复 MCP transport 参数传递 bug
+- 添加 ESLint 配置（React Hooks 规则）
+- 修复 React 19 `forwardRef` 兼容性
+- 修复 Zustand Slice 类型定义
+- 修复 N+1 查询问题（TaskSession 预加载）
+- 修复 SSRF 防护增强（MCP URL 验证）
+- 提取 `formatTaskOutput` 公共函数
+
+**P1 重要优化 (14项)**:
+- Selector 统一：创建 `useAuthSelectors.ts`，删除重复定义
+- Query 缓存配置：创建 `src/config/query.ts` 统一配置
+- Suspense + ErrorBoundary 包装懒加载路由
+- STREAM_TIMEOUT 从 30s 提升到 120s
+- JSON Mode 智能降级（支持 DeepSeek 等模型）
+- LangGraph deepcopy → list() 优化
+- MCP 缓存键添加服务器配置哈希
+- Vite 代码分割：11 个 manualChunks
+- Prettier 配置添加 Tailwind CSS 插件
+- TypeScript 配置统一（合并 tsconfig.app.json）
+
+### 🐛 Bug 修复
+
+**认证体验**:
+- 修复未登录用户点击侧边栏资源库/历史记录不弹登录框的问题
+- Sidebar `handleMenuClick` 添加登录检查
+- Router 新增 `useRequireAuth` hook 保护 `/library` 和 `/history`
+
+### 📦 工具链
+
+**代码质量工具**:
+- ESLint：React Hooks 规则（rules-of-hooks: error, exhaustive-deps: warn）
+- Prettier：添加 `prettier-plugin-tailwindcss` 插件
+- 格式化脚本：`format`, `format:check`
+
+### 🔧 Dependencies
+
+- **新增**: `tenacity>=9.0.0` (后端重试机制)
+- **新增**: `cachetools>=5.3.0` (后端 TTL 缓存)
+- **新增**: `prettier`, `prettier-plugin-tailwindcss` (前端)
+
 ## [2026-02-27] - v3.2.1 - MCP 增强与媒体渲染优化
 
 ### 🎉 新增功能
