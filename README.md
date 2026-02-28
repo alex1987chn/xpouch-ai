@@ -276,12 +276,14 @@ xpouch-ai/
 ├── frontend/               # React 19 + TypeScript
 │   ├── src/
 │   │   ├── components/     # UI 组件
+│   │   │   ├── bauhaus/    # Bauhaus 风格组件 ⭐
 │   │   │   ├── chat/       # 聊天相关组件
 │   │   │   ├── layout/     # 布局组件
 │   │   │   └── ui/         # shadcn/ui 基础组件
 │   │   ├── store/          # Zustand Store (Slice 模式)
 │   │   ├── handlers/       # SSE 事件处理
 │   │   ├── hooks/          # 自定义 Hooks
+│   │   ├── i18n/           # 国际化 (模块化) ⭐
 │   │   ├── services/       # API 服务 (Barrel 模式)
 │   │   └── pages/          # 页面组件
 │   │       └── library/    # MCP Server 管理页面 ⭐
@@ -289,9 +291,12 @@ xpouch-ai/
 ├── backend/                # FastAPI + LangGraph
 │   ├── agents/             # LangGraph 工作流
 │   │   ├── nodes/          # Router/Commander/Generic/Aggregator
+│   │   │   └── router.py   # 智能降级 JSON Mode ⭐
 │   │   └── services/       # Expert/Task Manager
 │   ├── routers/            # REST API 路由
 │   │   └── mcp.py          # MCP Server 管理 API ⭐
+│   ├── services/           # 业务逻辑层 ⭐
+│   │   └── invoke_service.py  # 双模调用服务 ⭐
 │   ├── tools/              # Function Calling 工具
 │   ├── models/             # SQLModel 数据模型
 │   │   └── mcp_server.py   # MCP Server 模型 ⭐
