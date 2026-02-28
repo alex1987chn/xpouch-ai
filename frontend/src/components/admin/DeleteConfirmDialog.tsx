@@ -38,7 +38,7 @@ export default function DeleteConfirmDialog({
         onClick={!isDeleting ? onClose : undefined}
       />
       {/* 对话框容器 */}
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md border-2 border-border-default bg-surface-card shadow-[rgb(var(--shadow-color))_4px_4px_0_0] z-50">
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md border-2 border-border-default bg-surface-card shadow-hard z-50">
         {/* 标题 */}
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
@@ -50,7 +50,7 @@ export default function DeleteConfirmDialog({
           <button
             onClick={onClose}
             disabled={isDeleting}
-            className="w-7 h-7 flex items-center justify-center border border-border-default hover:bg-[rgb(var(--accent-hover))] transition-colors disabled:opacity-50"
+            className="w-7 h-7 flex items-center justify-center border border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -68,7 +68,7 @@ export default function DeleteConfirmDialog({
           <button
             onClick={onClose}
             disabled={isDeleting}
-            className="px-4 py-2 border-2 border-border-default bg-surface-page font-mono text-xs font-bold uppercase hover:bg-[rgb(var(--accent-hover))] hover:text-black transition-colors disabled:opacity-50"
+            className="px-4 py-2 border-2 border-border-default bg-surface-page font-mono text-xs font-bold uppercase hover:bg-accent-hover hover:text-black transition-colors disabled:opacity-50"
           >
             {t('cancel')}
           </button>

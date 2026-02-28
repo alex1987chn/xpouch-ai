@@ -80,6 +80,9 @@ AI 不再是"黑盒"。Commander 生成任务计划后，**暂停等待你的确
 </td>
 <td width="50%">
 
+### 🎨 语义化主题系统
+基于 Design Tokens 的主题系统，支持 Light/Dark 双主题。使用语义化变量（`surface-*`, `content-*`, `border-*`, `accent-*`），新增主题无需修改组件代码。
+
 </td>
 </tr>
 </table>

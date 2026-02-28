@@ -92,13 +92,13 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
       onClick={handleClose}
     >
       <div
-        className="relative bg-surface-card border-2 border-border-default shadow-[rgb(var(--shadow-color))_8px_8px_0_0] w-[420px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface-card border-2 border-border-default shadow-hard-xl w-[420px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - 与 PersonalSettingsDialog 统一 */}
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-[rgb(var(--accent-hover))]"></div>
+            <div className="w-2 h-2 bg-accent-hover"></div>
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// {t('addModule') || 'Add Module'}
             </span>
@@ -106,7 +106,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
           <button
             onClick={handleClose}
             disabled={createMutation.isPending}
-            className="w-6 h-6 flex items-center justify-center border border-border-default hover:bg-[rgb(var(--accent-hover))] transition-colors disabled:opacity-50"
+            className="w-6 h-6 flex items-center justify-center border border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -117,7 +117,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
           {/* 模块名称 */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+              <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('moduleName') || 'Module Name'} *
               </span>
@@ -135,7 +135,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
           {/* 描述 */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+              <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('description') || 'Description'} ({t('optional') || 'Optional'})
               </span>
@@ -152,7 +152,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
           {/* 传输协议 */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+              <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('transportProtocol') || 'Protocol'}
               </span>
@@ -166,7 +166,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
                   checked={formData.transport === 'sse'}
                   onChange={(e) => setFormData({ ...formData, transport: e.target.value as MCPTransport })}
                   disabled={createMutation.isPending}
-                  className="w-4 h-4 accent-[var(--accent-hover)]"
+                  className="w-4 h-4 accent-accent-hover"
                 />
                 <span className="font-mono text-xs">{t('transportSSE') || 'SSE'}</span>
               </label>
@@ -178,7 +178,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
                   checked={formData.transport === 'streamable_http'}
                   onChange={(e) => setFormData({ ...formData, transport: e.target.value as MCPTransport })}
                   disabled={createMutation.isPending}
-                  className="w-4 h-4 accent-[var(--accent-hover)]"
+                  className="w-4 h-4 accent-accent-hover"
                 />
                 <span className="font-mono text-xs">{t('transportStreamableHTTP') || 'Streamable HTTP'}</span>
               </label>
@@ -188,7 +188,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
           {/* SSE URL */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
+              <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 Endpoint URL *
               </span>
@@ -224,7 +224,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
             type="submit"
             onClick={handleSubmit}
             disabled={createMutation.isPending}
-            className="flex-1 py-3 bg-[rgb(var(--accent-hover))] text-black font-mono text-sm font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
+            className="flex-1 py-3 bg-accent-hover text-black font-mono text-sm font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
           >
             {createMutation.isPending ? (
               <span className="flex items-center justify-center gap-2">

@@ -212,19 +212,19 @@ export default function MessageItem({
     }
   }, [message.id, onRegenerate])
 
-  // 用户消息：深色代码块风格
+  // 用户消息：使用 surface 颜色，与背景形成层次感
   if (isUser) {
     return (
       <div className="flex flex-col items-end group user-message">
         <div className="flex items-center gap-2 mb-1 opacity-60 group-hover:opacity-100 transition-opacity">
-          <span className="font-mono text-[9px] uppercase text-primary/50">
+          <span className="font-mono text-[9px] uppercase text-content-muted">
             ID: {String(message.id ?? '').slice(0, 6)} // USER
           </span>
         </div>
-        <div className="bg-primary text-inverted p-5 shadow-hard border-2 border-transparent w-fit max-w-[80%] select-text">
+        <div className="bg-surface-elevated text-content-primary p-5 shadow-hard border-2 border-border-default w-fit max-w-[80%] select-text">
           <div className="flex gap-3">
-            <span className="font-mono text-[var(--accent)] font-bold shrink-0">&gt;_</span>
-            <p className="font-mono text-sm leading-relaxed whitespace-pre-wrap select-text text-inverted">
+            <span className="font-mono text-accent-brand font-bold shrink-0">&gt;_</span>
+            <p className="font-mono text-sm leading-relaxed whitespace-pre-wrap select-text text-content-primary">
               {content}
             </p>
           </div>

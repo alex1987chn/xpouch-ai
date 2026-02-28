@@ -221,7 +221,7 @@ export default function ExpertAdminPage() {
   if (isLoadingExperts) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="w-8 h-8 border-2 border-border-default border-t-[var(--accent-hover)] animate-spin" />
+        <div className="w-8 h-8 border-2 border-border-default border-t-[rgb(var(--accent-hover))] animate-spin" />
         <span className="ml-3 font-mono text-sm text-content-secondary">{(t as any)('loading')}</span>
       </div>
     )

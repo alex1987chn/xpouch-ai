@@ -5,34 +5,48 @@
  * ============================================
  * 
  * 导入顺序（必须严格遵循）：
- * 1. Tailwind 指令
- * 2. 语义变量定义（_semantic.css）
- * 3. 主题覆盖（themes/*.css）
- * 4. 工具类
+ * 1. CSS @import（必须放在最顶部，先于任何其他规则）
+ * 2. Tailwind 指令
+ * 3. 工具类和其他样式
  */
 
-/* 1. Tailwind 核心指令 */
+/* ============================================
+   1. CSS 导入（必须放在最顶部）
+   ============================================ */
+
+/* 语义变量定义 - 默认 Bauhaus 主题 */
+@import './styles/tokens/_semantic.css';
+
+/* 主题覆盖 - 按优先级排序 */
+@import './styles/tokens/themes/_light.css';
+@import './styles/tokens/themes/_dark.css';
+
+/* ============================================
+   2. Tailwind 核心指令
+   ============================================ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* 2. 语义变量定义 - 默认明亮主题 */
-@import './tokens/_semantic.css';
-
-/* 3. 主题覆盖 - 按优先级排序 */
-@import './tokens/themes/_light.css';
-@import './tokens/themes/_dark.css';
-@import './tokens/themes/_bauhaus.css';
-@import './tokens/themes/_cyberpunk.css';
-
 /* ============================================
-   全局基础样式
+   3. 全局基础样式
    ============================================ */
 
 @layer base {
-  /* 根元素默认使用 bauhaus 主题 */
+  /* 根元素默认使用 light color-scheme */
   :root {
     color-scheme: light;
+  }
+  
+  /* Light 主题 */
+  [data-theme="light"] {
+    color-scheme: light;
+  }
+  
+  /* Dark 主题（Bauhaus 暗色版） */
+  [data-theme="dark"] {
+    color-scheme: dark;
   }
 
   /* 确保 html 和 body 使用主题变量 */
@@ -50,8 +64,8 @@
 
   /* 选中文字样式 */
   ::selection {
-    background-color: rgb(var(--accent-brand) / 0.3);
-    color: rgb(var(--content-primary));
+    background-color: rgb(var(--accent-brand) / 0.5);
+    color: rgb(var(--content-inverted));
   }
 
   /* 滚动条基础样式 */
@@ -75,29 +89,29 @@
 }
 
 /* ============================================
-   Bauhaus 特有工具类
+   4. Bauhaus 特有工具类
    ============================================ */
 
 @layer utilities {
-  /* Bauhaus 硬阴影 */
+  /* Bauhaus 硬阴影 - 使用 opacity 变量 */
   .shadow-hard {
-    box-shadow: 4px 4px 0 0 rgb(var(--shadow-color));
+    box-shadow: 4px 4px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
   .shadow-hard-sm {
-    box-shadow: 2px 2px 0 0 rgb(var(--shadow-color));
+    box-shadow: 2px 2px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
   .shadow-hard-md {
-    box-shadow: 4px 4px 0 0 rgb(var(--shadow-color));
+    box-shadow: 4px 4px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
   .shadow-hard-lg {
-    box-shadow: 6px 6px 0 0 rgb(var(--shadow-color));
+    box-shadow: 6px 6px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
   .shadow-hard-xl {
-    box-shadow: 8px 8px 0 0 rgb(var(--shadow-color));
+    box-shadow: 8px 8px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
   /* Bauhaus 按下效果 */
@@ -130,23 +144,85 @@
   .bg-noise {
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
   }
+
+  /* ============================================
+     Bauhaus Scrollbar - 直角无圆角，hover时才显示
+     ============================================ */
+  .bauhaus-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .bauhaus-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .bauhaus-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .bauhaus-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 0;
+  }
+
+  /* hover时显示滚动条 */
+  .bauhaus-scrollbar:hover {
+    scrollbar-color: rgb(var(--border-default)) transparent;
+  }
+
+  .bauhaus-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgb(var(--border-default));
+    opacity: 0.4;
+  }
+
+  .bauhaus-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--accent-hover));
+    opacity: 1;
+  }
 }
 
 /* ============================================
-   旧变量兼容（迁移期后删除）
-   ============================================ */
+   5. 旧变量兼容（迁移期后删除）
+   ============================================
+   
+   重要说明：
+   这些变量是为了兼容旧代码而定义的。
+   新的代码应该直接使用语义变量：
+   - bg-surface-page 替代 bg-[var(--bg-page)]
+   - border-border-default 替代 border-[var(--border-color)]
+   - text-content-primary 替代 text-[var(--text-primary)]
+   - shadow-hard 替代 shadow-[var(--shadow-color)_...]
+   
+   注意：--shadow-color 和 --accent-hover 本身是 RGB 数字格式，
+   需要在 rgb() 中使用。旧代码中直接使用 var(--shadow-color) 作为
+   颜色值是不正确的。
+*/
 
 @layer base {
   :root {
-    /* 兼容旧代码中的变量引用 */
+    /* Surface */
     --bg-page: rgb(var(--surface-page));
     --bg-card: rgb(var(--surface-card));
     --bg-panel: rgb(var(--surface-elevated));
+    
+    /* Border */
     --border-color: rgb(var(--border-default));
+    
+    /* Content */
     --text-primary: rgb(var(--content-primary));
     --text-secondary: rgb(var(--content-secondary));
     --text-muted: rgb(var(--content-muted));
-    --shadow-color: rgb(var(--shadow-color));
-    --accent-hover: rgb(var(--accent-hover));
+    
+    /* Logo 动画专用变量 */
+    --logo-item: rgb(var(--accent-brand));
+    --logo-item-active: rgb(var(--accent-hover));
+    --logo-base: rgb(var(--accent-info));
+    
+    /* Accent - 简化别名（RGB 格式，需要用 rgb(var(--accent))） */
+    --accent: var(--accent-brand);
+    
+    /* 注意：--shadow-color、--accent-hover 等是 RGB 数字格式，
+       使用时需要包裹在 rgb() 中：rgb(var(--shadow-color)) */
   }
 }

@@ -67,7 +67,7 @@ export default function IndustrialChatLayout({
   isFullscreen = false,
 }: IndustrialChatLayoutProps) {
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-panel font-sans selection:bg-[var(--accent)] selection:text-primary">
+    <div className="h-full flex flex-col overflow-hidden bg-surface-card font-sans selection:bg-[rgb(var(--accent-brand))] selection:text-content-primary">
       {/* Header 由父组件直接提供，不在此层渲染容器 */}
 
       {/* 主内容区 - 双栏布局 */}
@@ -75,7 +75,7 @@ export default function IndustrialChatLayout({
         {/* 左侧：聊天流面板 (55% -> 大屏 50%) */}
         <div
           className={cn(
-            'flex-1 flex flex-col min-w-[400px] border-r-2 border-border bg-panel relative',
+            'flex-1 flex flex-col min-w-[400px] border-r-2 border-border bg-surface-card relative',
             // 移动端：当 viewMode 为 preview 时隐藏左栏
             viewMode === 'preview' && 'hidden md:flex',
             // 全屏时隐藏左栏（确保在移动端和桌面端都隐藏）

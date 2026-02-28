@@ -170,7 +170,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                   maxLength={11}
                   disabled={loading}
                   autoFocus
-                  className="w-full px-3 py-2.5 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] font-mono text-sm focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
+                  className="w-full px-3 py-2.5 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] font-mono text-sm focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors"
                 />
               </div>
 
@@ -204,7 +204,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                   maxLength={6}
                   disabled={loading}
                   autoFocus
-                  className="w-full px-3 py-2.5 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] font-mono text-lg text-center tracking-[0.3em] focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
+                  className="w-full px-3 py-2.5 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] font-mono text-lg text-center tracking-[0.3em] focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors"
                 />
                 <div className="font-mono text-[9px] text-[rgb(var(--content-secondary))] opacity-50">
                   验证码已发送至 {phoneNumber.slice(0, 3)}****{phoneNumber.slice(-4)}
@@ -239,7 +239,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
 
               {/* 开发环境显示验证码 */}
               {import.meta.env.DEV && countdown > 0 && (
-                <div className="p-3 bg-[rgb(var(--accent-hover))]/10 border-2 border-[var(--accent-hover)]">
+                <div className="p-3 bg-[rgb(var(--accent-hover))]/10 border-2 border-[rgb(var(--accent-hover))]">
                   <div className="font-mono text-[10px] text-[rgb(var(--content-primary))]">
                     <div className="font-bold mb-1">🔧 DEV_MODE</div>
                     <div>CODE: <span className="text-lg font-bold">{debugCode}</span></div>

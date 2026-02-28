@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils"
  * 
  * @example
  * <BauhausButton>点击我</BauhausButton>
- * <BauhausButton variant="yellow">黄色强调</BauhausButton>
- * <BauhausButton variant="blue">蓝色按钮</BauhausButton>
+ * <BauhausButton variant="accent">黄色强调</BauhausButton>
+ * <BauhausButton variant="info">蓝色按钮</BauhausButton>
  * <BauhausButton size="lg">大按钮</BauhausButton>
  */
 
@@ -25,7 +25,7 @@ const bauhausButtonVariants = cva(
   [
     "inline-flex items-center justify-center gap-2 whitespace-nowrap",
     "text-sm font-bold uppercase tracking-wider",
-    "rounded-none border-2 border-bauhaus-border",
+    "rounded-none border-2 border-border-default",
     "transition-all duration-100 ease-out",
     "focus-visible:outline-none focus-visible:ring-0",
     "disabled:pointer-events-none disabled:opacity-50",
@@ -38,35 +38,35 @@ const bauhausButtonVariants = cva(
   {
     variants: {
       variant: {
-        // 默认：黑底白字
+        // 默认：主色底白字
         default: [
-          "bg-bauhaus-border text-white",
-          "hover:bg-bauhaus-text",
+          "bg-content-primary text-content-inverted",
+          "hover:bg-content-secondary",
         ],
-        // 轮廓：白底黑框
+        // 轮廓：卡片底黑字
         outline: [
-          "bg-bauhaus-card text-bauhaus-border",
-          "hover:bg-bauhaus-bg",
+          "bg-surface-card text-content-primary",
+          "hover:bg-surface-page",
         ],
-        // Bauhaus 黄：强调色
-        yellow: [
-          "bg-bauhaus-yellow text-bauhaus-border border-bauhaus-border",
+        // 强调色（黄色）
+        accent: [
+          "bg-accent-brand text-content-primary border-border-default",
           "hover:brightness-110",
         ],
-        // Bauhaus 蓝：主色调
-        blue: [
-          "bg-bauhaus-blue text-white border-bauhaus-blue",
-          "hover:bg-blue-600",
+        // 信息色（蓝色）
+        info: [
+          "bg-accent-info text-content-inverted border-accent-info",
+          "hover:brightness-110",
         ],
-        // Bauhaus 红：危险/强调
-        red: [
-          "bg-bauhaus-red text-white border-bauhaus-red",
-          "hover:bg-red-600",
+        // 危险色（红色）
+        destructive: [
+          "bg-accent-destructive text-content-inverted border-accent-destructive",
+          "hover:brightness-110",
         ],
         // 幽灵按钮：无边框背景
         ghost: [
-          "bg-transparent text-bauhaus-border border-transparent shadow-none",
-          "hover:bg-bauhaus-bg",
+          "bg-transparent text-content-primary border-transparent shadow-none",
+          "hover:bg-surface-page",
           "active:shadow-none active:translate-x-0 active:translate-y-0",
         ],
       },

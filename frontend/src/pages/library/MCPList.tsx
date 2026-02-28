@@ -44,7 +44,7 @@ export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
   // 加载状态
   if (isLoading) {
     return (
-      <div className="text-center py-20 font-mono text-sm text-bauhaus-muted uppercase">
+      <div className="text-center py-20 font-mono text-sm text-content-muted uppercase">
         {t('loading') || 'Loading...'}
       </div>
     )
@@ -53,7 +53,7 @@ export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
   // 错误状态
   if (isError) {
     return (
-      <div className="text-center py-20 font-mono text-sm text-bauhaus-red uppercase">
+      <div className="text-center py-20 font-mono text-sm text-accent-destructive uppercase">
         {t('loadFailed') || 'Failed to load'}
       </div>
     )
@@ -78,8 +78,9 @@ export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
           onClick={() => setIsAddOpen(true)}
           className={cn(
             "h-11 px-4 flex items-center gap-2",
-            "bg-bauhaus-yellow text-bauhaus-border font-mono text-xs font-bold uppercase",
-            "border-2 border-bauhaus-border shadow-hard",
+            "bg-surface-elevated text-content-primary font-mono text-xs font-bold uppercase",
+            "border-2 border-border-default shadow-hard",
+            "hover:bg-accent-brand hover:text-content-inverted hover:border-accent-brand",
             "hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-hover",
             "active:translate-x-0 active:translate-y-0 active:shadow-hard",
             "transition-all"
@@ -92,8 +93,8 @@ export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
 
       {/* 统计 */}
       {!isLoading && filteredServers.length > 0 && (
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-bauhaus-muted">
-          <div className="w-1.5 h-1.5 bg-bauhaus-yellow" />
+        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-content-muted">
+          <div className="w-1.5 h-1.5 bg-accent-brand" />
           <span>
             {effectiveSearchQuery
               ? `${filteredServers.length} ${t('matching') || 'matching'}`
@@ -118,16 +119,16 @@ export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
       ) : (
         /* 空状态 - 与 HistoryPage 一致 */
         <div className="text-center py-20">
-          <div className="w-16 h-16 mx-auto mb-4 border-2 border-bauhaus-border bg-bauhaus-bg flex items-center justify-center">
-            <Server className="w-8 h-8 text-bauhaus-muted" />
+          <div className="w-16 h-16 mx-auto mb-4 border-2 border-border-default bg-surface-page flex items-center justify-center">
+            <Server className="w-8 h-8 text-content-muted" />
           </div>
-          <h3 className="font-mono text-base font-bold text-bauhaus-text uppercase mb-2">
+          <h3 className="font-mono text-base font-bold text-content-primary uppercase mb-2">
             {effectiveSearchQuery
               ? t('noMatchingServers') || 'No matching servers'
               : t('noMCPServers') || 'No MCP servers'
             }
           </h3>
-          <p className="font-mono text-xs text-bauhaus-muted uppercase">
+          <p className="font-mono text-xs text-content-muted uppercase">
             {effectiveSearchQuery
               ? t('tryOtherKeywords') || 'Try other keywords'
               : t('clickAddToConnect') || 'Click ADD to connect an MCP server'

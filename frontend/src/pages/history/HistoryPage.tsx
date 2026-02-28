@@ -187,7 +187,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
               placeholder={t('searchHistory') || '搜索历史记录...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-10 pr-4 border-2 border-border-default bg-surface-page font-mono text-sm text-content-primary placeholder:text-content-secondary focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
+              className="w-full h-11 pl-10 pr-4 border-2 border-border-default bg-surface-page font-mono text-sm text-content-primary placeholder:text-content-secondary focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors"
             />
           </div>
         </div>

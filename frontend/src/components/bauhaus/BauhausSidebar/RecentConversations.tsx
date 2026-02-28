@@ -38,7 +38,7 @@ export function RecentConversations({
 
             <div className="flex-1 min-w-0">
               {/* 标题: 等宽字体，像日志 */}
-              <div className="font-mono text-[11px] font-bold text-[rgb(var(--content-secondary))] truncate group-hover:text-[var(--text-primary)] transition-colors">
+              <div className="font-mono text-[11px] font-bold text-[rgb(var(--content-secondary))] truncate group-hover:text-[rgb(var(--content-primary))] transition-colors">
                 {conv.title || t('newChat')}
               </div>
               {/* 时间: 极小字体 */}

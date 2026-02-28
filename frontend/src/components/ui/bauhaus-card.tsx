@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
  * 设计特点：
  * - 直角无圆角 (rounded-none)
  * - 实线粗边框 (border-2)
- * - 纯实色背景 (bg-bauhaus-card)
+ * - 纯实色背景 (bg-surface-card)
  * - 硬阴影 (shadow-hard)
  * - 悬浮效果：上移+阴影增强 (hover:translate-y-[-2px] hover:shadow-hard-hover)
  * 
@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils"
 const BauhausCard = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
-    variant?: "default" | "yellow" | "blue" | "red"
+    variant?: "default" | "accent" | "info" | "destructive"
     hover?: boolean
   }
 >(({ className, variant = "default", hover = true, ...props }, ref) => (
@@ -35,10 +35,10 @@ const BauhausCard = React.forwardRef<
       // 基础几何
       "rounded-none border-2",
       // 背景色
-      variant === "default" && "bg-bauhaus-card border-bauhaus-border",
-      variant === "yellow" && "bg-bauhaus-yellow border-bauhaus-border",
-      variant === "blue" && "bg-bauhaus-blue border-bauhaus-blue",
-      variant === "red" && "bg-bauhaus-red border-bauhaus-red",
+      variant === "default" && "bg-surface-card border-border-default",
+      variant === "accent" && "bg-accent-brand border-border-default",
+      variant === "info" && "bg-accent-info border-accent-info",
+      variant === "destructive" && "bg-accent-destructive border-accent-destructive",
       // 硬阴影
       "shadow-hard",
       // 悬浮效果
@@ -48,8 +48,8 @@ const BauhausCard = React.forwardRef<
         "hover:shadow-hard-hover",
       ],
       // 文本颜色
-      (variant === "blue" || variant === "red") && "text-white",
-      variant === "yellow" && "text-bauhaus-border",
+      (variant === "info" || variant === "destructive") && "text-content-inverted",
+      variant === "accent" && "text-content-primary",
       className
     )}
     {...props}
@@ -65,7 +65,7 @@ const BauhausCardHeader = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "flex flex-col space-y-1.5 p-5 border-b-2 border-bauhaus-border",
+      "flex flex-col space-y-1.5 p-5 border-b-2 border-border-default",
       className
     )}
     {...props}
@@ -96,7 +96,7 @@ const BauhausCardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm text-bauhaus-muted", className)}
+    className={cn("text-sm text-content-secondary", className)}
     {...props}
   />
 ))
@@ -119,7 +119,7 @@ const BauhausCardFooter = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "flex items-center p-5 border-t-2 border-bauhaus-border",
+      "flex items-center p-5 border-t-2 border-border-default",
       className
     )}
     {...props}

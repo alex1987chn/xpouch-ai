@@ -14,12 +14,27 @@
       // 防止主题闪烁：在 React 加载前应用主题
       (function() {
         try {
-          var savedTheme = localStorage.getItem('xpouch-theme');
-          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          var isDark = savedTheme ? savedTheme === 'dark' : prefersDark;
-          if (isDark) {
-            document.documentElement.classList.add('dark');
+          var saved = localStorage.getItem('xpouch-theme');
+          var theme = 'light';
+          if (saved) {
+            try {
+              var parsed = JSON.parse(saved);
+              var storedTheme = parsed.theme || parsed.state?.theme;
+              // 迁移旧主题值
+              if (storedTheme === 'bauhaus' || storedTheme === 'cyberpunk') {
+                theme = 'light';
+              } else if (storedTheme === 'dark') {
+                theme = 'dark';
+              }
+            } catch (e) {
+              // 旧格式直接是字符串
+              if (saved === 'dark') theme = 'dark';
+            }
+          } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            theme = 'dark';
           }
+          document.documentElement.setAttribute('data-theme', theme);
+          document.documentElement.style.colorScheme = theme;
         } catch (e) {}
       })();
     </script>
