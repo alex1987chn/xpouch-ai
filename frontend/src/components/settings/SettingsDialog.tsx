@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Save, Info, X, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -38,20 +38,20 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
       onClick={handleClose}
     >
       <div
-        className="relative bg-[var(--bg-card)] border-2 border-[var(--border-color)] shadow-[var(--shadow-color)_8px_8px_0_0] w-[600px] max-w-[90vw] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface-card border-2 border-border-default shadow-[rgb(var(--shadow-color))_8px_8px_0_0] w-[600px] max-w-[90vw] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - Bauhaus风格 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-[var(--border-color)] shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-[var(--accent-hover)]"></div>
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+            <div className="w-2 h-2 bg-[rgb(var(--accent-hover))]"></div>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// {t('systemConfig')}
             </span>
           </div>
           <button
             onClick={handleClose}
-            className="w-6 h-6 flex items-center justify-center border border-[var(--border-color)] hover:bg-[var(--accent-hover)] transition-colors"
+            className="w-6 h-6 flex items-center justify-center border border-border-default hover:bg-[rgb(var(--accent-hover))] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -63,7 +63,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('defaultModel')}
               </span>
             </div>
@@ -76,20 +76,20 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                   className={cn(
                     'flex items-center gap-3 p-3 border-2 cursor-pointer transition-all',
                     selectedModelId === model.id
-                      ? 'border-[var(--accent-hover)] bg-[var(--accent-hover)]/10'
-                      : 'border-[var(--border-color)] hover:border-[var(--text-secondary)]'
+                      ? 'border-[var(--accent-hover)] bg-[rgb(var(--accent-hover))]/10'
+                      : 'border-border-default hover:border-[var(--text-secondary)]'
                   )}
                 >
                   <div className="flex-1">
-                    <div className="font-mono text-sm font-bold text-[var(--text-primary)]">
+                    <div className="font-mono text-sm font-bold text-content-primary">
                       {model.name}
                     </div>
-                    <div className="font-mono text-[10px] text-[var(--text-secondary)] mt-0.5">
+                    <div className="font-mono text-[10px] text-content-secondary mt-0.5">
                       {model.description}
                     </div>
                   </div>
                   {selectedModelId === model.id && (
-                    <div className="w-5 h-5 border-2 border-[var(--accent-hover)] bg-[var(--accent-hover)] flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-[var(--accent-hover)] bg-[rgb(var(--accent-hover))] flex items-center justify-center">
                       <Check className="w-3 h-3 text-black" />
                     </div>
                   )}
@@ -99,13 +99,13 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           </section>
 
           {/* 分隔线 */}
-          <div className="border-t-2 border-[var(--border-color)]"></div>
+          <div className="border-t-2 border-border-default"></div>
 
           {/* API Key 配置说明 */}
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('apiKeyConfig')}
               </span>
             </div>
@@ -114,13 +114,13 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <h4 className="font-mono text-xs font-bold text-[var(--text-primary)] mb-1">
+                  <h4 className="font-mono text-xs font-bold text-content-primary mb-1">
                     {t('apiKeyConfigTitle')}
                   </h4>
-                  <p className="font-mono text-[10px] text-[var(--text-secondary)] mb-1">
+                  <p className="font-mono text-[10px] text-content-secondary mb-1">
                     {t('apiKeyConfigDesc')}
                   </p>
-                  <p className="font-mono text-[9px] text-[var(--text-secondary)] opacity-60">
+                  <p className="font-mono text-[9px] text-content-secondary opacity-60">
                     {t('apiKeyConfigHint')}
                   </p>
                 </div>
@@ -131,16 +131,16 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
         </div>
 
         {/* 底部按钮 */}
-        <div className="flex gap-0 border-t-2 border-[var(--border-color)] shrink-0">
+        <div className="flex gap-0 border-t-2 border-border-default shrink-0">
           <button
             onClick={handleClose}
-            className="flex-1 py-3 font-mono text-sm font-bold uppercase border-r-2 border-[var(--border-color)] hover:bg-[var(--bg-page)] transition-colors"
+            className="flex-1 py-3 font-mono text-sm font-bold uppercase border-r-2 border-border-default hover:bg-surface-page transition-colors"
           >
             取消
           </button>
           <button
             onClick={handleSave}
-            className="flex-1 py-3 bg-[var(--accent-hover)] text-black font-mono text-sm font-bold uppercase hover:brightness-95 transition-colors"
+            className="flex-1 py-3 bg-[rgb(var(--accent-hover))] text-black font-mono text-sm font-bold uppercase hover:brightness-95 transition-colors"
           >
             <span className="flex items-center justify-center gap-2">
               <Save className="w-4 h-4" />

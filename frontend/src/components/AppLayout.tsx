@@ -39,7 +39,7 @@ import { Z_INDEX } from '@/constants/zIndex'
  *
  * [样式风格]
  * Bauhaus 工业风格：硬边、黑色边框、锐利阴影
- * - 阴影：shadow-[var(--shadow-color)_4px_4px_0_0]
+ * - 阴影：shadow-[rgb(var(--shadow-color))_4px_4px_0_0]
  * - 边框：border-2 border-[var(--border-color)]
  * - 强调色：var(--accent-hover) #facc15
  *

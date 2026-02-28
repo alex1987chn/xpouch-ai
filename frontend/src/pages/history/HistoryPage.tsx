@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+﻿import { useState, useCallback, useMemo } from 'react'
 import { MessageSquare, Clock, Trash2, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
@@ -152,7 +152,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
       {/* Bauhaus Header - 硬边风格 */}
       <header
         className={cn(
-          "fixed top-0 left-0 right-0 z-40 h-[60px] px-6 border-b-2 border-[var(--border-color)] bg-[var(--bg-card)] transition-all duration-300",
+          "fixed top-0 left-0 right-0 z-40 h-[60px] px-6 border-b-2 border-border-default bg-surface-card transition-all duration-300",
           "lg:px-6",
           sidebar.isCollapsed ? "lg:pl-[88px]" : "lg:pl-[320px]"
         )}
@@ -160,11 +160,11 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
         <div className="w-full max-w-5xl mx-auto h-full flex items-center">
           {/* 左侧：标题 */}
           <div className="flex items-center h-full gap-3">
-            <div className="w-2 h-2 bg-[var(--accent-hover)]"></div>
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+            <div className="w-2 h-2 bg-[rgb(var(--accent-hover))]"></div>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               ///
             </span>
-            <h1 className="text-base font-black uppercase tracking-tight text-[var(--text-primary)]">
+            <h1 className="text-base font-black uppercase tracking-tight text-content-primary">
               {t('history')}
             </h1>
           </div>
@@ -181,13 +181,13 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
         {/* 搜索框 - Bauhaus风格 */}
         <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 mt-6">
           <div className="relative flex items-center">
-            <Search className="absolute left-3 w-4 h-4 text-[var(--text-secondary)]" />
+            <Search className="absolute left-3 w-4 h-4 text-content-secondary" />
             <input
               type="text"
               placeholder={t('searchHistory') || '搜索历史记录...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-10 pr-4 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
+              className="w-full h-11 pl-10 pr-4 border-2 border-border-default bg-surface-page font-mono text-sm text-content-primary placeholder:text-content-secondary focus:outline-none focus:border-[var(--accent-hover)] transition-colors"
             />
           </div>
         </div>
@@ -195,8 +195,8 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
         {/* 数据统计信息 - Bauhaus风格 */}
         {!loading && filteredConversations.length > 0 && (
           <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4">
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">
-              <div className="w-1.5 h-1.5 bg-[var(--accent-hover)]"></div>
+            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-content-secondary">
+              <div className="w-1.5 h-1.5 bg-[rgb(var(--accent-hover))]"></div>
               <span>
                 {searchQuery
                   ? `${filteredConversations.length} ${t('matchingHistory') || 'matching'}`
@@ -209,25 +209,25 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
 
         <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20">
           {loading ? (
-             <div className="text-center py-20 font-mono text-sm text-[var(--text-secondary)] uppercase">Loading...</div>
+             <div className="text-center py-20 font-mono text-sm text-content-secondary uppercase">Loading...</div>
           ) : filteredConversations.length > 0 ? (
             <div className="space-y-2">
               {filteredConversations.map((conversation) => (
                 <div
                   key={conversation.id}
                   onClick={() => onSelectConversation(conversation)}
-                  className="group relative bg-[var(--bg-card)] border-2 border-[var(--border-color)] p-3 cursor-pointer shadow-[var(--shadow-color)_3px_3px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[var(--shadow-color)_5px_5px_0_0] transition-all"
+                  className="group relative bg-surface-card border-2 border-border-default p-3 cursor-pointer shadow-[rgb(var(--shadow-color))_3px_3px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[rgb(var(--shadow-color))_5px_5px_0_0] transition-all"
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-mono text-sm font-bold text-[var(--text-primary)] truncate">
+                      <h3 className="font-mono text-sm font-bold text-content-primary truncate">
                         {conversation.title || t('newChat')}
                       </h3>
-                      <p className="font-mono text-xs text-[var(--text-secondary)] line-clamp-2 mt-1 mb-2">
+                      <p className="font-mono text-xs text-content-secondary line-clamp-2 mt-1 mb-2">
                         {getLastMessagePreview(conversation)}
                       </p>
 
-                      <div className="flex items-center gap-4 font-mono text-[10px] text-[var(--text-secondary)] uppercase">
+                      <div className="flex items-center gap-4 font-mono text-[10px] text-content-secondary uppercase">
                         <span className="flex items-center gap-1" title={conversation.updated_at || '-'}>
                           <Clock className="w-3 h-3" />
                           {formatRelativeTime(conversation.updated_at)}
@@ -242,7 +242,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                     <div className="flex flex-col items-end gap-2">
                       <button
                         onClick={(e) => handleDelete(e, conversation.id, conversation.title || '')}
-                        className="w-8 h-8 flex items-center justify-center border border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                        className="w-8 h-8 flex items-center justify-center border border-border-default text-content-secondary hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors opacity-0 group-hover:opacity-100"
                         title="Delete conversation"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -254,16 +254,16 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
             </div>
           ) : (
             <div className="text-center py-20">
-              <div className="w-16 h-16 mx-auto mb-4 border-2 border-[var(--border-color)] bg-[var(--bg-page)] flex items-center justify-center">
-                <MessageSquare className="w-8 h-8 text-[var(--text-secondary)]" />
+              <div className="w-16 h-16 mx-auto mb-4 border-2 border-border-default bg-surface-page flex items-center justify-center">
+                <MessageSquare className="w-8 h-8 text-content-secondary" />
               </div>
-              <h3 className="font-mono text-base font-bold text-[var(--text-primary)] uppercase mb-2">
+              <h3 className="font-mono text-base font-bold text-content-primary uppercase mb-2">
                 {searchQuery
                   ? t('noMatchingHistory') || 'No matching history'
                   : t('noHistory') || 'No conversation history'
                 }
               </h3>
-              <p className="font-mono text-xs text-[var(--text-secondary)] uppercase">
+              <p className="font-mono text-xs text-content-secondary uppercase">
                 {searchQuery
                   ? t('tryOtherKeywords') || 'Try other keywords'
                   : t('startChat') || 'Start a new chat to see it here'

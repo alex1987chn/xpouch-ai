@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 资源工坊页面 (Library/Workshop)
  * 
  * 统一的资源管理中枢，整合：
@@ -31,7 +31,7 @@ export default function LibraryPage() {
       {/* Header - 与 HistoryPage 保持一致 */}
       <header
         className={cn(
-          "fixed top-0 left-0 right-0 z-40 h-[60px] px-6 border-b-2 border-bauhaus-border bg-[var(--bg-card)] transition-all duration-200",
+          "fixed top-0 left-0 right-0 z-40 h-[60px] px-6 border-b-2 border-bauhaus-border bg-surface-card transition-all duration-200",
           sidebar.isCollapsed ? "lg:pl-[88px]" : "lg:pl-[320px]"
         )}
       >
@@ -127,7 +127,7 @@ function TabButton({ isActive, onClick, icon, label }: TabButtonProps) {
         "relative flex items-center gap-2 px-4 py-2 font-bold font-mono text-xs uppercase tracking-wide transition-all",
         "border-2 border-b-0 -mb-[2px]",
         isActive
-          ? "bg-[var(--bg-card)] text-bauhaus-text border-bauhaus-border z-10"
+          ? "bg-surface-card text-bauhaus-text border-bauhaus-border z-10"
           : "bg-bauhaus-bg text-bauhaus-muted border-bauhaus-border/40 hover:border-bauhaus-border hover:text-bauhaus-text"
       )}
     >

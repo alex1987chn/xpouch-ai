@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { models } from '@/config/models'
@@ -78,7 +78,7 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
       {label && (
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 bg-[var(--text-secondary)]"></div>
-          <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+          <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
             {label}
           </label>
         </div>
@@ -87,21 +87,21 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
       <div className="grid grid-cols-2 gap-3">
         {/* 供应商选择 */}
         <div className="relative" ref={providerDropdownRef}>
-          <label className="font-mono text-[9px] text-[var(--text-secondary)] mb-1 block uppercase">
+          <label className="font-mono text-[9px] text-content-secondary mb-1 block uppercase">
             {t('provider')}
           </label>
           <button
             type="button"
             onClick={() => setShowProviderDropdown(!showProviderDropdown)}
-            className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-xs text-left flex items-center justify-between hover:border-[var(--accent-hover)] transition-colors"
+            className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-xs text-left flex items-center justify-between hover:border-[var(--accent-hover)] transition-colors"
           >
             <span className="uppercase">{effectiveProvider}</span>
-            <span className="text-[var(--text-secondary)]">▼</span>
+            <span className="text-content-secondary">▼</span>
           </button>
           {showProviderDropdown && createPortal(
             <div
               data-provider-dropdown
-              className="fixed border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[4px_4px_0_0_rgba(0,0,0,0.3)] z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
+              className="fixed border-2 border-border-default bg-surface-card shadow-[4px_4px_0_0_rgba(0,0,0,0.3)] z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
               style={{
                 width: providerDropdownRef.current?.getBoundingClientRect().width || 200,
                 left: providerDropdownRef.current?.getBoundingClientRect().left || 0,
@@ -115,10 +115,10 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
                   onClick={() => handleProviderSelect(provider)}
                   className={cn(
                     'w-full px-3 py-2.5 text-left font-mono text-xs uppercase transition-all pointer-events-auto relative',
-                    'hover:bg-[var(--accent-hover)] hover:text-black',
+                    'hover:bg-[rgb(var(--accent-hover))] hover:text-black',
                     effectiveProvider === provider
-                      ? 'bg-[var(--accent-hover)] text-black font-bold'
-                      : 'bg-transparent text-[var(--text-primary)]'
+                      ? 'bg-[rgb(var(--accent-hover))] text-black font-bold'
+                      : 'bg-transparent text-content-primary'
                   )}
                 >
                   <span className="flex items-center gap-2">
@@ -136,21 +136,21 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
 
         {/* 模型选择 */}
         <div className="relative" ref={modelDropdownRef}>
-          <label className="font-mono text-[9px] text-[var(--text-secondary)] mb-1 block uppercase">
+          <label className="font-mono text-[9px] text-content-secondary mb-1 block uppercase">
             {t('model')}
           </label>
           <button
             type="button"
             onClick={() => setShowModelDropdown(!showModelDropdown)}
-            className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-xs text-left flex items-center justify-between hover:border-[var(--accent-hover)] transition-colors"
+            className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-xs text-left flex items-center justify-between hover:border-[var(--accent-hover)] transition-colors"
           >
             <span>{models.find(m => m.id === value)?.name || 'Select'}</span>
-            <span className="text-[var(--text-secondary)]">▼</span>
+            <span className="text-content-secondary">▼</span>
           </button>
           {showModelDropdown && createPortal(
             <div
               data-model-dropdown
-              className="fixed border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[4px_4px_0_0_rgba(0,0,0,0.3)] z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
+              className="fixed border-2 border-border-default bg-surface-card shadow-[4px_4px_0_0_rgba(0,0,0,0.3)] z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
               style={{
                 width: modelDropdownRef.current?.getBoundingClientRect().width || 200,
                 left: modelDropdownRef.current?.getBoundingClientRect().left || 0,
@@ -164,10 +164,10 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
                   onClick={() => handleModelSelect(model.id)}
                   className={cn(
                     'w-full px-3 py-2.5 text-left font-mono text-xs transition-all pointer-events-auto relative',
-                    'hover:bg-[var(--accent-hover)] hover:text-black',
+                    'hover:bg-[rgb(var(--accent-hover))] hover:text-black',
                     value === model.id
-                      ? 'bg-[var(--accent-hover)] text-black font-bold'
-                      : 'bg-transparent text-[var(--text-primary)]'
+                      ? 'bg-[rgb(var(--accent-hover))] text-black font-bold'
+                      : 'bg-transparent text-content-primary'
                   )}
                 >
                   <span className="flex items-center gap-2">

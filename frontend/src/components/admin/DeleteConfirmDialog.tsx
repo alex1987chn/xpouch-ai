@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DeleteConfirmDialog - 删除确认对话框
  * 
  * [职责]
@@ -38,19 +38,19 @@ export default function DeleteConfirmDialog({
         onClick={!isDeleting ? onClose : undefined}
       />
       {/* 对话框容器 */}
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] z-50">
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md border-2 border-border-default bg-surface-card shadow-[rgb(var(--shadow-color))_4px_4px_0_0] z-50">
         {/* 标题 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-[var(--border-color)]">
+        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-red-500" />
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// {t('confirmDeleteExpert')}
             </span>
           </div>
           <button
             onClick={onClose}
             disabled={isDeleting}
-            className="w-7 h-7 flex items-center justify-center border border-[var(--border-color)] hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50"
+            className="w-7 h-7 flex items-center justify-center border border-border-default hover:bg-[rgb(var(--accent-hover))] transition-colors disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -58,17 +58,17 @@ export default function DeleteConfirmDialog({
 
         {/* 内容 */}
         <div className="p-4">
-          <p className="font-mono text-sm text-[var(--text-primary)]">
+          <p className="font-mono text-sm text-content-primary">
             {t('deleteExpertWarning').replace('{name}', expert.name)}
           </p>
         </div>
 
         {/* 底部按钮 */}
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t-2 border-[var(--border-color)]">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t-2 border-border-default">
           <button
             onClick={onClose}
             disabled={isDeleting}
-            className="px-4 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-page)] font-mono text-xs font-bold uppercase hover:bg-[var(--accent-hover)] hover:text-black transition-colors disabled:opacity-50"
+            className="px-4 py-2 border-2 border-border-default bg-surface-page font-mono text-xs font-bold uppercase hover:bg-[rgb(var(--accent-hover))] hover:text-black transition-colors disabled:opacity-50"
           >
             {t('cancel')}
           </button>
