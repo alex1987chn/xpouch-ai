@@ -9,6 +9,7 @@ import { useCallback } from 'react'
 import { getConversation, deleteConversation as apiDeleteConversation } from '@/services/chat'
 import { normalizeAgentId } from '@/utils/agentUtils'
 import { errorHandler, logger } from '@/utils/logger'
+import { formatTaskOutput } from '@/utils/formatters'
 import type { Conversation } from '@/types'
 
 // Performance Optimized Selectors (v3.1.0)
@@ -20,30 +21,6 @@ import {
 import { useTaskActions } from '@/hooks/useTaskSelectors'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
-
-// Helper function: Convert backend JSON output to Markdown string
-const formatTaskOutput = (outputResult: any): string => {
-  if (!outputResult) return ''
-
-  if (typeof outputResult === 'string') return outputResult
-
-  let formattedText = outputResult.content || ''
-
-  if (outputResult.source && Array.isArray(outputResult.source) && outputResult.source.length > 0) {
-    formattedText += '\n\n---\n**参考来源：**\n'
-    outputResult.source.forEach((src: any, index: number) => {
-      const title = src.title || '未知来源'
-      const url = src.url || '#'
-      formattedText += `> ${index + 1}. [${title}](${url})\n`
-    })
-  }
-  else if (outputResult.sources) {
-    formattedText += '\n\n**参考资料:** ' + JSON.stringify(outputResult.sources)
-  }
-
-  return formattedText
-}
-
 
 
 /**

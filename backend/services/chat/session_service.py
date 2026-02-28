@@ -40,16 +40,61 @@ class ChatSessionService:
             user_id: 用户ID
             
         Returns:
-            线程列表，包含基本信息和消息预览
+            线程列表，包含基本信息和消息预览（仅最近20条消息）
         """
+        # 1. 查询所有线程（不预加载消息）
         statement = (
             select(Thread)
             .where(Thread.user_id == user_id)
-            .options(selectinload(Thread.messages))
             .order_by(Thread.updated_at.desc())
         )
         threads = self.db.exec(statement).all()
         
+        if not threads:
+            return []
+        
+        # 2. 获取所有线程ID
+        thread_ids = [t.id for t in threads]
+        
+        # 3. 使用子查询获取每个线程的最近20条消息
+        # 使用 ROW_NUMBER() 窗口函数为每个线程的消息按时间倒序编号
+        from sqlalchemy import text
+        
+        # 构建 IN 子句参数
+        placeholders = ', '.join([f':id_{i}' for i in range(len(thread_ids))])
+        params = {f'id_{i}': tid for i, tid in enumerate(thread_ids)}
+        
+        # 使用原始SQL获取最近消息（兼容PostgreSQL和SQLite）
+        # 使用 correlated subquery 或 window function
+        recent_messages_sql = text(f"""
+            SELECT * FROM (
+                SELECT 
+                    id,
+                    thread_id,
+                    role,
+                    content,
+                    timestamp,
+                    ROW_NUMBER() OVER (PARTITION BY thread_id ORDER BY timestamp DESC) as rn
+                FROM message
+                WHERE thread_id IN ({placeholders})
+            ) ranked
+            WHERE rn <= 20
+            ORDER BY thread_id, timestamp ASC
+        """)
+        
+        result_rows = self.db.exec(recent_messages_sql, params=params).all()
+        
+        # 4. 将消息按线程ID分组
+        messages_by_thread: dict[str, list] = {tid: [] for tid in thread_ids}
+        for row in result_rows:
+            messages_by_thread[row.thread_id].append({
+                "id": row.id,
+                "role": row.role,
+                "content": row.content,
+                "timestamp": row.timestamp.isoformat() if row.timestamp else None
+            })
+        
+        # 5. 组装返回结果
         result = []
         for thread in threads:
             result.append({
@@ -62,15 +107,7 @@ class ChatSessionService:
                 "task_session_id": thread.task_session_id,
                 "created_at": thread.created_at.isoformat() if thread.created_at else None,
                 "updated_at": thread.updated_at.isoformat() if thread.updated_at else None,
-                "messages": [
-                    {
-                        "id": msg.id,
-                        "role": msg.role,
-                        "content": msg.content,
-                        "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
-                    }
-                    for msg in thread.messages
-                ]
+                "messages": messages_by_thread.get(thread.id, [])
             })
         return result
     
