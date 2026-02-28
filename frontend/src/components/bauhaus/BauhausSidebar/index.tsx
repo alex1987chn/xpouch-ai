@@ -121,8 +121,16 @@ export default function BauhausSidebar({
     }
   }
 
+  // 需要登录才能访问的路由
+  const authRequiredPaths = ['/library', '/history']
+
   // 处理导航点击
   const handleMenuClick = (path: string) => {
+    // 检查是否需要登录
+    if (authRequiredPaths.includes(path) && !isAuthenticated) {
+      setLoginDialogOpen(true)
+      return
+    }
     navigate(path)
     onMobileClose?.()
   }

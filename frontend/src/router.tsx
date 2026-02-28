@@ -3,7 +3,7 @@
  * 从 main.tsx 抽离，保持入口文件简洁
  */
 
-import { lazy, Suspense, useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect, useCallback } from 'react'
 import { createBrowserRouter, useNavigate, Navigate, Outlet, useParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider, QueryCache, useQueryClient } from '@tanstack/react-query'
 import { DEFAULT_CACHE_CONFIG } from '@/config/query'
@@ -45,11 +45,35 @@ function LoadingFallback() {
   )
 }
 
+// 🔐 需要登录的路由守卫 Hook
+const useRequireAuth = () => {
+  const navigate = useNavigate()
+  const isAuthenticated = useUserStore(state => state.isAuthenticated)
+  const setLoginDialogOpen = useTaskStore(state => state.setLoginDialogOpen)
+  
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLoginDialogOpen(true)
+      navigate('/', { replace: true })
+    }
+  }, [isAuthenticated, navigate, setLoginDialogOpen])
+  
+  return isAuthenticated
+}
+
 // 包装 HistoryPage 以适应 Router
 const HistoryPageWrapper = () => {
   const navigate = useNavigate()
   const setMessages = useChatStore(state => state.setMessages)
   const setCurrentConversationId = useChatStore(state => state.setCurrentConversationId)
+  
+  // 🔐 检查登录状态
+  const isAuthenticated = useRequireAuth()
+  
+  // 未登录时显示 loading（会被重定向）
+  if (!isAuthenticated) {
+    return <LoadingFallback />
+  }
 
   const handleSelectConversation = (conversation: Conversation) => {
     // 🔥 Server-Driven UI: 导航前重置当前状态
@@ -88,6 +112,21 @@ const HistoryPageWrapper = () => {
         onSelectConversation={handleSelectConversation}
       />
     </Suspense>
+  )
+}
+
+// 🔐 包装 LibraryPage（需要登录）
+const LibraryPageWrapper = () => {
+  const isAuthenticated = useRequireAuth()
+  
+  if (!isAuthenticated) {
+    return <LoadingFallback />
+  }
+  
+  return (
+    <SuspenseWithErrorBoundary fallback={<LoadingFallback />}>
+      <LibraryPage />
+    </SuspenseWithErrorBoundary>
   )
 }
 
@@ -257,11 +296,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'library',
-        element: (
-          <SuspenseWithErrorBoundary fallback={<LoadingFallback />}>
-            <LibraryPage />
-          </SuspenseWithErrorBoundary>
-        )
+        element: <LibraryPageWrapper />
       },
       {
         path: 'history',

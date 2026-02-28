@@ -21,30 +21,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
-from typing import List, Optional
-import json
+from typing import Optional
 import uvicorn
-from datetime import datetime
-import uuid
 from sqlmodel import Session, select
 from contextlib import asynccontextmanager
 from utils.logger import logger
 
 # 内部模块导入
 from database import create_db_and_tables, engine, get_session
-from sqlmodel import Session as SQLModelSession  # 🔥 用于非依赖注入场景
 from config import init_langchain_tracing, validate_config
-from models import User, TaskSession, SubTask, SystemExpert
+from models import User, SystemExpert
 from constants import SYSTEM_AGENT_DEFAULT_CHAT
-from agents.graph import commander_graph, create_smart_router_workflow
-from langchain_mcp_adapters.client import MultiServerMCPClient
-from models.mcp import MCPServer
-from database import get_session
-from agents.nodes.generic import generic_worker_node
-from agents.services.expert_manager import get_expert_config_cached
-from utils.llm_factory import get_llm_instance
 from utils.exceptions import (
-    AppError, ValidationError, NotFoundError,
+    AppError, ValidationError,
     handle_error
 )
 
@@ -251,8 +240,13 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 
 # ============================================================================
-# 双模路由：保留在 main.py（新开发的功能，稳定后再迁移）
+# 双模路由端点
+# 业务逻辑已迁移到 services/invoke_service.py
 # ============================================================================
+
+from services.invoke_service import InvokeService, get_invoke_service
+from dependencies import get_current_user
+
 
 class ChatInvokeRequest(BaseModel):
     """双模路由请求模型"""
@@ -262,227 +256,42 @@ class ChatInvokeRequest(BaseModel):
     thread_id: Optional[str] = None  # LangSmith 线程 ID
 
 
-from dependencies import get_current_user
-
-
 @app.post("/api/v1/chat/invoke")
 async def chat_invoke_endpoint(
     request: ChatInvokeRequest,
-    session: Session = Depends(get_session),
+    service: InvokeService = Depends(get_invoke_service),
     current_user: User = Depends(get_current_user)
 ):
     """
     双模路由端点：支持 Auto 和 Direct 两种执行模式
-
+    
     Auto 模式：完整的多专家协作流程（commander_graph）
     Direct 模式：直接调用单个专家
     """
-    print(f"[INVOKE] 模式: {request.mode}, Agent: {request.agent_id}")
-
-    # 1. 模式验证
-    if request.mode not in ["auto", "direct"]:
-        raise ValidationError(f"无效的执行模式: {request.mode}，必须是 'auto' 或 'direct'")
-
-    # 2. Direct 模式需要 agent_id
-    if request.mode == "direct" and not request.agent_id:
-        raise ValidationError("Direct 模式需要指定 agent_id")
-
-    # 3. 验证 agent_id 是否存在（使用 expert_loader）
-    if request.mode == "direct":
-        expert_config = get_expert_config_cached(request.agent_id)
-        if not expert_config:
-            raise ValidationError(f"未知的专家类型: {request.agent_id}")
-
-    # 4. 创建 TaskSession 记录
-    from langchain_core.messages import HumanMessage
+    logger.info(f"[INVOKE] 模式: {request.mode}, Agent: {request.agent_id}")
     
-    thread_id = request.thread_id or str(uuid.uuid4())
-    task_session = TaskSession(
-        session_id=thread_id,
-        user_query=request.message,
-        status="running",
-        created_at=datetime.now(),
-        updated_at=datetime.now()
-    )
-    session.add(task_session)
-    session.commit()
-    session.refresh(task_session)
-
-    # 使用工厂函数获取 LLM 实例
-    llm = get_llm_instance(streaming=True, temperature=0.7)
-
-    # 5. 根据模式执行
     try:
-        if request.mode == "auto":
-            # Auto 模式：完整的多专家协作流程
-            print("[AUTO MODE] 启动完整工作流")
-
-            initial_state = {
-                "messages": [HumanMessage(content=request.message)],
-                "task_list": [],
-                "current_task_index": 0,
-                "strategy": "",
-                "expert_results": [],
-                "final_response": ""
-            }
-
-            # 🔥 MCP: 获取动态工具
-            mcp_tools = []
-            try:
-                with SQLModelSession(engine) as db_session:
-                    active_servers = db_session.query(MCPServer).filter(MCPServer.is_active == True).all()
-                    if active_servers:
-                        # 支持多种传输协议：sse, streamable_http
-                        mcp_config = {}
-                        for s in active_servers:
-                            transport = getattr(s, 'transport', None) or "sse"
-                            mcp_config[s.name] = {"url": str(s.sse_url), "transport": transport}
-                        # 🔥 langchain-mcp-adapters 0.1.0+ 直接使用实例化
-                        client = MultiServerMCPClient(mcp_config)
-                        mcp_tools = await client.get_tools()
-            except Exception:
-                # MCP 工具加载失败不影响主流程
-                pass
-            
-            # 创建工作流实例（支持动态工具）
-            graph = create_smart_router_workflow()
-            
-            final_state = await graph.ainvoke(
-                initial_state,
-                config={
-                    "recursion_limit": 100,
-                    "configurable": {
-                        "thread_id": thread_id,
-                        "mcp_tools": mcp_tools  # 🔥 MCP: 注入动态工具
-                    }
-                }
-            )
-
-            # 保存 SubTask 到数据库
-            for subtask in final_state["task_list"]:
-                artifacts = subtask.get("artifact")
-                if artifacts:
-                    artifacts = [artifacts] if isinstance(artifacts, dict) else artifacts
-
-                db_subtask = SubTask(
-                    id=subtask["id"],
-                    expert_type=subtask["expert_type"],
-                    task_description=subtask["description"],
-                    input_data=subtask["input_data"],
-                    status=subtask["status"],
-                    output_result=subtask["output_result"],
-                    artifacts=artifacts,
-                    started_at=subtask.get("started_at"),
-                    completed_at=subtask.get("completed_at"),
-                    created_at=subtask.get("created_at"),
-                    updated_at=subtask.get("updated_at"),
-                    task_session_id=task_session.session_id
-                )
-                session.add(db_subtask)
-
-            # 更新 TaskSession
-            task_session.final_response = final_state["final_response"]
-            task_session.status = "completed"
-            task_session.completed_at = datetime.now()
-            task_session.updated_at = datetime.now()
-            session.commit()
-
-            print(f"[AUTO MODE] 完成，执行了 {len(final_state['expert_results'])} 个专家")
-
-            return {
-                "mode": "auto",
-                "thread_id": thread_id,
-                "session_id": task_session.session_id,
-                "user_query": request.message,
-                "strategy": final_state["strategy"],
-                "final_response": final_state["final_response"],
-                "expert_results": final_state["expert_results"],
-                "sub_tasks_count": len(final_state["task_list"]),
-                "status": "completed"
-            }
-
-        else:
-            # Direct 模式：直接调用单个专家
-            print(f"[DIRECT MODE] 直接调用专家: {request.agent_id}")
-
-            subtask_dict = {
-                "id": str(uuid.uuid4()),
-                "expert_type": request.agent_id,
-                "description": request.message,
-                "input_data": {},
-                "status": "pending",
-                "created_at": datetime.now(),
-                "updated_at": datetime.now()
-            }
-
-            initial_state = {
-                "messages": [HumanMessage(content=request.message)],
-                "task_list": [subtask_dict],
-                "current_task_index": 0,
-                "strategy": f"直接模式: {request.agent_id} 专家",
-                "expert_results": [],
-                "final_response": ""
-            }
-
-            # 使用 generic_worker_node 统一执行专家
-            result = await generic_worker_node(initial_state)
-
-            # 保存 SubTask 到数据库
-            db_subtask = SubTask(
-                id=subtask_dict["id"],
-                expert_type=subtask_dict["expert_type"],
-                task_description=subtask_dict["description"],
-                input_data=subtask_dict["input_data"],
-                status=result.get("status", "completed"),
-                output_result={"content": result.get("output_result", "")},
-                started_at=result.get("started_at"),
-                completed_at=result.get("completed_at"),
-                created_at=subtask_dict["created_at"],
-                updated_at=subtask_dict["updated_at"],
-                task_session_id=task_session.session_id
-            )
-            session.add(db_subtask)
-
-            expert_result = {
-                "task_id": subtask_dict["id"],
-                "expert_type": request.agent_id,
-                "description": request.message,
-                "output": result.get("output_result", ""),
-                "status": result.get("status", "unknown"),
-                "started_at": result.get("started_at"),
-                "completed_at": result.get("completed_at"),
-                "duration_ms": result.get("duration_ms", 0)
-            }
-
-            # 更新 TaskSession
-            task_session.final_response = result.get("output_result", "")
-            task_session.status = "completed"
-            task_session.completed_at = datetime.now()
-            task_session.updated_at = datetime.now()
-            session.commit()
-
-            print(f"[DIRECT MODE] 完成，专家: {request.agent_id}")
-
-            return {
-                "mode": "direct",
-                "thread_id": thread_id,
-                "session_id": task_session.session_id,
-                "user_query": request.message,
-                "expert_type": request.agent_id,
-                "final_response": result.get("output_result", ""),
-                "expert_results": [expert_result],
-                "sub_tasks_count": 1,
-                "status": "completed"
-            }
-
+        # 使用 InvokeService 执行业务逻辑
+        result = await service.invoke(
+            message=request.message,
+            mode=request.mode,
+            agent_id=request.agent_id,
+            thread_id=request.thread_id,
+            user=current_user
+        )
+        
+        return {
+            **result,
+            "user_query": request.message,
+            "status": "completed"
+        }
+        
+    except ValidationError:
+        # 验证错误已包含详细信息，直接抛出
+        raise
     except Exception as e:
-        # 错误处理
-        task_session.status = "failed"
-        task_session.final_response = f"执行失败: {str(e)}"
-        task_session.updated_at = datetime.now()
-        session.commit()
-
-        print(f"[ERROR] 执行失败: {e}")
+        # 其他错误包装为 AppError
+        logger.error(f"[INVOKE ERROR] {e}", exc_info=True)
         raise AppError(message=f"执行失败: {str(e)}", original_error=e)
 
 
