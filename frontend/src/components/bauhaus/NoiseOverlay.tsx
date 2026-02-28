@@ -81,7 +81,7 @@ export function GridPattern({
         className
       )}
       style={{
-        backgroundImage: `radial-gradient(var(--text-secondary) ${dotSize}px, transparent ${dotSize}px)`,
+        backgroundImage: `radial-gradient(rgb(var(--content-secondary)) ${dotSize}px, transparent ${dotSize}px)`,
         backgroundSize: `${spacing}px ${spacing}px`,
         opacity,
       }}

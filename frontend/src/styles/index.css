@@ -174,5 +174,10 @@
     --text-muted: rgb(var(--content-muted));
     --shadow-color: rgb(var(--shadow-color));
     --accent-hover: rgb(var(--accent-hover));
+    
+    /* Logo 动画专用变量 */
+    --logo-item: rgb(var(--accent-brand));
+    --logo-item-active: rgb(var(--accent-hover));
+    --logo-base: rgb(var(--accent-info));
   }
 }

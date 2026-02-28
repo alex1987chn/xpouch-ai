@@ -232,7 +232,7 @@ export default function BauhausSidebar({
   return (
     <div
       className={cn(
-        "w-full h-full flex flex-col text-[var(--text-primary)]",
+        "w-full h-full flex flex-col text-[rgb(var(--content-primary))]",
         className
       )}
     >

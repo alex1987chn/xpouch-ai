@@ -26,7 +26,7 @@ export function UserSection({
 
   return (
     <div className={cn(
-      'border-t-2 border-[var(--border-color)] shrink-0',
+      'border-t-2 border-[rgb(var(--border-default))] shrink-0',
       isCollapsed ? 'p-2 flex flex-col items-center gap-2' : 'p-3'
     )}>
       {isAuthenticated ? (
@@ -36,9 +36,9 @@ export function UserSection({
             <div
               onClick={onAvatarClick}
               data-avatar-button=""
-              className="flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-[var(--bg-page)] rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+              className="flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-[rgb(var(--surface-page))] rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
             >
-              <Avatar className="h-8 w-8 border-2 border-[var(--border-color)] shadow-[var(--shadow-color)_2px_2px_0_0]">
+              <Avatar className="h-8 w-8 border-2 border-[rgb(var(--border-default))] shadow-[rgb(var(--shadow-color))_2px_2px_0_0]">
                 <AvatarImage src={avatar} alt="Avatar" />
                 <AvatarFallback className="bg-gradient-to-br from-violet-500 to-blue-600 text-[10px] font-bold text-white">
                   {getAvatarDisplay(avatar || '', username)}
@@ -49,7 +49,7 @@ export function UserSection({
             {onToggleCollapsed && (
               <button
                 onClick={onToggleCollapsed}
-                className="p-1.5 border-2 border-[var(--border-color)] bg-[var(--bg-page)] shadow-[var(--shadow-color)_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_3px_3px_0_0]"
+                className="p-1.5 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0]"
                 title="展开侧边栏"
               >
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -58,18 +58,18 @@ export function UserSection({
           </div>
         ) : (
           <div className="relative group cursor-pointer w-[230px] mx-auto mb-2">
-            <div className="absolute inset-0 bg-[var(--shadow-color)] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2"></div>
+            <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2"></div>
             <div
               onClick={onAvatarClick}
               data-avatar-button=""
-              className="relative flex items-center gap-3 px-4 py-3 border-2 border-[var(--border-color)] bg-[var(--bg-page)] z-10 transition-all"
+              className="relative flex items-center gap-3 px-4 py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] z-10 transition-all"
               style={{ width: '230px', height: '63px' }}
             >
               {/* 头像 */}
               {avatar ? (
-                <img src={avatar} alt="Avatar" className="w-8 h-8 border-2 border-[var(--border-color)] shrink-0" />
+                <img src={avatar} alt="Avatar" className="w-8 h-8 border-2 border-[rgb(var(--border-default))] shrink-0" />
               ) : (
-                <div className="w-8 h-8 bg-[var(--text-primary)] text-[var(--bg-card)] flex items-center justify-center font-bold text-sm shrink-0 border-2 border-[var(--border-color)]">
+                <div className="w-8 h-8 bg-[rgb(var(--content-primary))] text-[rgb(var(--surface-card))] flex items-center justify-center font-bold text-sm shrink-0 border-2 border-[rgb(var(--border-default))]">
                   {username.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -78,12 +78,12 @@ export function UserSection({
                 <div className="font-bold text-sm uppercase" title={username}>
                   {username}
                 </div>
-                <div className="text-[10px] font-mono text-[var(--text-secondary)]">
+                <div className="text-[10px] font-mono text-[rgb(var(--content-secondary))]">
                   PLAN: {planLabel}
                 </div>
               </div>
               {/* 状态指示点 */}
-              <div className="w-2 h-2 bg-green-500 rounded-full border border-[var(--border-color)] shrink-0"></div>
+              <div className="w-2 h-2 bg-green-500 rounded-full border border-[rgb(var(--border-default))] shrink-0"></div>
             </div>
           </div>
         )
@@ -92,17 +92,17 @@ export function UserSection({
         isCollapsed ? (
           <button
             onClick={onLoginClick}
-            className="p-2 border-2 border-[var(--border-color)] bg-[var(--accent-hover)] text-black shadow-[var(--shadow-color)_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--shadow-color)_3px_3px_0_0] transition-all"
+            className="p-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-black shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] transition-all"
             title="登录"
           >
             <User className="w-5 h-5" />
           </button>
         ) : (
           <div className="relative group w-[230px] mx-auto">
-            <div className="absolute inset-0 bg-[var(--shadow-color)] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2"></div>
+            <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2"></div>
             <button
               onClick={onLoginClick}
-              className="relative w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-[var(--border-color)] bg-[var(--accent-hover)] text-black z-10 transition-all font-bold font-mono text-sm uppercase"
+              className="relative w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-black z-10 transition-all font-bold font-mono text-sm uppercase"
             >
               <User className="w-5 h-5" />
               <span>登录 / LOGIN</span>
