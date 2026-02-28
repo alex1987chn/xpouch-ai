@@ -95,26 +95,26 @@ export default class ErrorBoundary extends Component<Props, State> {
     
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-cashmere-page dark:bg-ai-bg-light flex items-center justify-center p-4">
-          <div className="max-w-md w-full p-6 bg-white/60 dark:bg-ai-card-light rounded-2xl border border-cashmere-border dark:border-ai-card-light shadow-[0_10px_30px_rgba(74,55,40,0.05)]">
+        <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+          <div className="max-w-md w-full p-6 bg-surface-card/60 rounded-2xl border border-border-default shadow-soft">
             {/* 错误图标 */}
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
               <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
             
-            <h1 className="text-xl font-bold text-cashmere-text dark:text-ai-text-light mb-2 text-center">
+            <h1 className="text-xl font-bold text-content-primary mb-2 text-center">
               出错了
             </h1>
-            <p className="text-sm text-cashmere-muted dark:text-ai-text-light/80 mb-2 text-center">
+            <p className="text-sm text-content-muted mb-2 text-center">
               应用遇到了意外错误
             </p>
             
             {/* 错误详情（开发环境显示） */}
             {import.meta.env.DEV && this.state.error && (
-              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg overflow-auto max-h-32">
-                <p className="text-xs font-mono text-red-600 dark:text-red-400">
+              <div className="mb-4 p-3 bg-red-50 rounded-lg overflow-auto max-h-32">
+                <p className="text-xs font-mono text-red-600">
                   {this.state.error.message}
                 </p>
               </div>
@@ -124,13 +124,13 @@ export default class ErrorBoundary extends Component<Props, State> {
             <div className="flex gap-3">
               <button
                 onClick={this.handleReset}
-                className="flex-1 h-10 rounded-xl border border-cashmere-border dark:border-ai-card-light text-cashmere-text dark:text-ai-text-light hover:bg-cashmere-page dark:hover:bg-ai-bg-light transition-all"
+                className="flex-1 h-10 rounded-xl border border-border-default text-content-primary hover:bg-surface-elevated transition-all"
               >
                 重试
               </button>
               <button
                 onClick={() => window.location.reload()}
-                className="flex-1 h-10 rounded-xl bg-gradient-to-r from-cashmere-primary to-cashmere-hover hover:from-cashmere-hover hover:to-cashmere-primary text-cashmere-text shadow-sm transition-all hover:scale-105"
+                className="flex-1 h-10 rounded-xl bg-gradient-to-r from-accent to-accent-hover hover:from-accent-hover hover:to-accent text-content-inverted shadow-sm transition-all hover:scale-105"
               >
                 刷新页面
               </button>

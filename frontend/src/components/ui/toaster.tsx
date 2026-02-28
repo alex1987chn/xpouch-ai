@@ -16,7 +16,7 @@ export function Toaster() {
             'animate-in slide-in-from-bottom-2',
             toast.variant === 'destructive'
               ? 'bg-red-500 text-white'
-              : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
+              : 'bg-surface-card text-content-primary'
           )}
         >
           <div className="flex-1 space-y-1">

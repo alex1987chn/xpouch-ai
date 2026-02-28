@@ -120,7 +120,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
   return (
     <div
       className={cn(
-        'flex w-full bg-[var(--bg-page)] dark:bg-[var(--bg-page)] transition-colors duration-200 overflow-hidden',
+        'flex w-full bg-[var(--bg-page)] transition-colors duration-200 overflow-hidden',
         'h-[100dvh]'
       )}
     >

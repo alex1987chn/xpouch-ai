@@ -212,7 +212,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
           href={url} 
           target="_blank" 
           rel="noopener noreferrer"
-          className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate block"
+          className="text-xs text-accent hover:underline truncate block"
         >
           {url}
         </a>

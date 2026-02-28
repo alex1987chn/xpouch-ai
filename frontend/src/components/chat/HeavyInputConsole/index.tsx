@@ -45,7 +45,7 @@ export default function HeavyInputConsole({
         )}>
           {/* 行号 + 文本域 */}
           <div className="flex min-h-[100px]">
-            <div className="w-10 py-4 text-right pr-3 font-mono text-xs text-primary/50 dark:text-primary/40 bg-page border-r-2 border-border/20 select-none leading-relaxed">
+            <div className="w-10 py-4 text-right pr-3 font-mono text-xs text-primary/50 bg-page border-r-2 border-border/20 select-none leading-relaxed">
               01<br/>02<br/>03
             </div>
             <HeavyInputTextArea

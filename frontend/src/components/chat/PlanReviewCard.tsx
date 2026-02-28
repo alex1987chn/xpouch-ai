@@ -25,15 +25,15 @@ import { cn } from '@/lib/utils'
 
 // 专家颜色编码 - 简化版
 const EXPERT_COLORS: Record<string, string> = {
-  search: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300',
-  coder: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300',
-  researcher: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300',
-  analyzer: 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300',
-  writer: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300',
-  planner: 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300',
-  image_analyzer: 'bg-pink-100 text-pink-700 border-pink-300 dark:bg-pink-900/30 dark:text-pink-300',
-  memorize_expert: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300',
-  generic: 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400',
+  search: 'bg-blue-100 text-blue-700 border-blue-300',
+  coder: 'bg-yellow-100 text-yellow-700 border-yellow-300',
+  researcher: 'bg-red-100 text-red-700 border-red-300',
+  analyzer: 'bg-surface-elevated text-content-secondary border-border-default',
+  writer: 'bg-green-100 text-green-700 border-green-300',
+  planner: 'bg-purple-100 text-purple-700 border-purple-300',
+  image_analyzer: 'bg-pink-100 text-pink-700 border-pink-300',
+  memorize_expert: 'bg-surface-elevated text-content-secondary border-border-default',
+  generic: 'bg-surface-elevated text-content-muted border-border-default/50',
 }
 
 const getExpertColor = (expertType: string) => {
@@ -191,23 +191,23 @@ export function PlanReviewCard({
         exit={{ opacity: 0, y: -10 }}
         transition={{ duration: 0.15 }}
         className={cn(
-          "my-3 border-2 border-amber-400 dark:border-amber-600",
-          "bg-amber-50 dark:bg-amber-950/30",
+          "my-3 border-2 border-amber-400",
+          "bg-amber-50",
           "rounded-lg overflow-hidden"
         )}
       >
         {/* 标题区 - 简洁 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-amber-200 dark:border-amber-800 bg-amber-100/50 dark:bg-amber-900/30">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-amber-200 bg-amber-100/50">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-            <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+            <AlertTriangle className="w-5 h-5 text-amber-600" />
+            <h3 className="text-sm font-semibold text-amber-800">
               计划审核
             </h3>
-            <span className="text-xs text-amber-600 dark:text-amber-400">
+            <span className="text-xs text-amber-600">
               {editedPlan.length} 个任务
             </span>
           </div>
-          <span className="px-2 py-0.5 text-xs font-medium bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 rounded">
+          <span className="px-2 py-0.5 text-xs font-medium bg-amber-200 text-amber-800 rounded">
             HITL
           </span>
         </div>
@@ -224,14 +224,14 @@ export function PlanReviewCard({
                 exit={{ opacity: 0, x: 10, scale: 0.95 }}
                 transition={{ delay: index * 0.03 }}
                 className={cn(
-                  "p-2.5 border border-gray-200 dark:border-gray-700",
-                  "bg-white dark:bg-gray-800 rounded-md",
-                  "hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                  "p-2.5 border border-border-default",
+                  "bg-surface-card rounded-md",
+                  "hover:border-border-hover transition-colors"
                 )}
               >
                 <div className="flex items-start gap-2">
                   {/* 序号 */}
-                  <span className="text-xs text-gray-400 dark:text-gray-500 font-mono w-5 flex-shrink-0">
+                  <span className="text-xs text-content-muted font-mono w-5 flex-shrink-0">
                     {index + 1}.
                   </span>
                   
@@ -253,15 +253,15 @@ export function PlanReviewCard({
                         onChange={(e) => handleUpdateDescription(task.id, e.target.value)}
                         className={cn(
                           "w-full p-2 text-sm",
-                          "border border-gray-300 dark:border-gray-600 rounded",
-                          "bg-white dark:bg-gray-700 dark:text-white",
+                          "border border-border-default rounded",
+                          "bg-surface-card text-content-primary",
                           "focus:outline-none focus:ring-1 focus:ring-amber-400",
                           "resize-none min-h-[50px]"
                         )}
                         rows={2}
                       />
                     ) : (
-                      <div className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
+                      <div className="text-sm text-content-secondary line-clamp-2">
                         {task.description}
                       </div>
                     )}
@@ -271,7 +271,7 @@ export function PlanReviewCard({
                   {isEditing && editedPlan.length > 1 && (
                     <button
                       onClick={() => handleDeleteTask(task.id)}
-                      className="p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                      className="p-1 text-red-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                       title="删除任务"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -284,15 +284,15 @@ export function PlanReviewCard({
         </div>
 
         {/* 操作按钮区 - 简洁 */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-amber-200 bg-amber-50/50">
           <button
             onClick={() => setIsEditing(!isEditing)}
             disabled={isSubmitting}
             className={cn(
               "px-3 py-1.5 text-xs font-medium",
-              "border border-gray-300 dark:border-gray-600 rounded",
-              "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300",
-              "hover:bg-gray-50 dark:hover:bg-gray-700",
+              "border border-border-default rounded",
+              "bg-surface-card text-content-secondary",
+              "hover:bg-surface-elevated",
               "disabled:opacity-50 disabled:cursor-not-allowed",
               "transition-colors flex items-center gap-1.5"
             )}
@@ -316,9 +316,9 @@ export function PlanReviewCard({
               disabled={isSubmitting}
               className={cn(
                 "px-3 py-1.5 text-xs font-medium",
-                "border border-red-300 dark:border-red-700 rounded",
-                "bg-white dark:bg-transparent text-red-600 dark:text-red-400",
-                "hover:bg-red-50 dark:hover:bg-red-900/20",
+                "border border-red-300 rounded",
+                "bg-surface-card text-red-600",
+                "hover:bg-red-50",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 "transition-colors flex items-center gap-1.5"
               )}
@@ -369,35 +369,35 @@ export function PlanReviewCard({
                 exit={{ scale: 0.95, y: 10 }}
                 className={cn(
                   "w-full max-w-xs",
-                  "border border-gray-200 dark:border-gray-700",
-                  "bg-white dark:bg-gray-800 rounded-lg overflow-hidden",
+                  "border border-border-default",
+                  "bg-surface-card rounded-lg overflow-hidden",
                   "shadow-lg"
                 )}
               >
                 {/* 对话框头部 */}
-                <div className="flex items-center gap-2 p-3 border-b border-gray-200 dark:border-gray-700 bg-red-50 dark:bg-red-900/20">
-                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                  <h3 className="text-sm font-medium text-red-700 dark:text-red-300">
+                <div className="flex items-center gap-2 p-3 border-b border-border-default bg-red-50">
+                  <AlertTriangle className="w-4 h-4 text-red-600" />
+                  <h3 className="text-sm font-medium text-red-700">
                     确认取消
                   </h3>
                 </div>
                 
                 {/* 对话框内容 */}
                 <div className="p-3">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-sm text-content-muted">
                     确定要取消执行吗？这会清理所有计划状态。
                   </p>
                 </div>
                 
                 {/* 对话框按钮 */}
-                <div className="flex gap-2 p-3 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex gap-2 p-3 border-t border-border-default">
                   <button
                     onClick={() => setShowConfirmDialog(false)}
                     className={cn(
                       "flex-1 px-3 py-1.5 text-xs font-medium",
-                      "border border-gray-300 dark:border-gray-600 rounded",
-                      "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300",
-                      "hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                      "border border-border-default rounded",
+                      "bg-surface-card text-content-secondary",
+                      "hover:bg-surface-elevated transition-colors"
                     )}
                   >
                     再想想

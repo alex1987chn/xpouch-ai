@@ -78,12 +78,12 @@ export function IndustrialHeader({
         <div className="flex items-center gap-1">
           <span className="text-lg font-black tracking-tighter text-gray-400">[</span>
           <span className="text-lg font-black tracking-tighter text-yellow-400">X</span>
-          <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-slate-100">POUCH</span>
+          <span className="text-lg font-black tracking-tighter text-content-primary">POUCH</span>
           <span className="text-lg font-black tracking-tighter text-gray-400">]</span>
         </div>
 
         {/* 版本号 - 工业风格分隔符 (桌面端显示) */}
-        <span className="hidden md:flex text-[10px] font-mono text-primary/60 dark:text-primary/50 font-normal items-center gap-2">
+        <span className="hidden md:flex text-[10px] font-mono text-primary/60 font-normal items-center gap-2">
           <span className="text-[var(--text-secondary)]">///</span>
           <span>OS {version}</span>
         </span>
@@ -119,7 +119,7 @@ export function IndustrialHeader({
           </div>
         )}
 
-        <div className="flex items-center gap-2 px-3 py-1 bg-panel dark:bg-panel/80 border border-border/20">
+        <div className="flex items-center gap-2 px-3 py-1 bg-panel border border-border/20">
           <div
             className={cn(
               'w-2 h-2 rounded-full animate-pulse',
@@ -130,7 +130,7 @@ export function IndustrialHeader({
                   : 'bg-red-500'
             )}
           />
-          <span className="font-mono text-[10px] text-primary/70 dark:text-primary/60 font-bold uppercase">
+          <span className="font-mono text-[10px] text-primary/70 font-bold uppercase">
             {status}
           </span>
         </div>

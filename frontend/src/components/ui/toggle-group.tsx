@@ -9,8 +9,8 @@ const toggleGroupVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-slate-100 dark:bg-slate-800",
-        outline: "border border-slate-200 dark:border-slate-700",
+        default: "bg-surface-elevated",
+        outline: "border border-border-default",
       },
     },
     defaultVariants: {
@@ -52,8 +52,8 @@ const ToggleGroupItem = React.forwardRef<
       ref={ref}
       className={cn(
         toggleGroupVariants({ variant: context || variant }),
-        "hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 focus:bg-slate-200 dark:focus:bg-slate-700 focus:text-slate-900 dark:focus:text-slate-100",
-        "data-[state=on]:bg-white dark:data-[state=on]:bg-white data-[state=on]:text-slate-900 dark:data-[state=on]:text-slate-900 data-[state=on]:shadow-sm",
+        "hover:bg-surface-page hover:text-content-primary focus:bg-surface-page focus:text-content-primary",
+        "data-[state=on]:bg-surface-card data-[state=on]:text-content-primary data-[state=on]:shadow-sm",
         "min-w-[40px] h-9 px-3 rounded-full transition-all duration-200",
         className
       )}

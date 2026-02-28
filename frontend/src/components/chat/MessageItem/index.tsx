@@ -217,7 +217,7 @@ export default function MessageItem({
     return (
       <div className="flex flex-col items-end group user-message">
         <div className="flex items-center gap-2 mb-1 opacity-60 group-hover:opacity-100 transition-opacity">
-          <span className="font-mono text-[9px] uppercase text-primary/50 dark:text-primary/40">
+          <span className="font-mono text-[9px] uppercase text-primary/50">
             ID: {String(message.id ?? '').slice(0, 6)} // USER
           </span>
         </div>
@@ -252,11 +252,11 @@ export default function MessageItem({
       </div>
 
       {/* 内容区：无气泡背景，直接展示 */}
-      <div className="w-full pl-7 prose prose-sm max-w-none dark:prose-invert 
-        prose-headings:text-sm prose-headings:font-bold prose-headings:text-foreground
-        prose-p:text-sm prose-p:leading-relaxed prose-p:text-foreground/90
-        prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-muted/50 
-        prose-pre:border prose-pre:border-border/30 prose-a:text-blue-600 dark:prose-a:text-blue-400 
+      <div className="w-full pl-7 prose prose-sm max-w-none
+        prose-headings:text-sm prose-headings:font-bold prose-headings:text-content-primary
+        prose-p:text-sm prose-p:leading-relaxed prose-p:text-content-primary/90
+        prose-strong:text-content-primary prose-code:text-content-primary prose-pre:bg-surface-elevated/50 
+        prose-pre:border prose-pre:border-border-default/30 prose-a:text-accent hover:prose-a:text-accent-hover
         select-text">
         {content ? (
           <ReactMarkdown
@@ -305,11 +305,11 @@ export default function MessageItem({
                         }}
                       />
                       {isExpired && (
-                        <span className="text-xs text-amber-600 dark:text-amber-400 block mt-1">
+                        <span className="text-xs text-amber-600 block mt-1">
                           ⚠️ 图片链接已过期，请重新生成
                         </span>
                       )}
-                      <a {...props} className="hidden text-blue-600 dark:text-blue-400 hover:underline text-xs">
+                      <a {...props} className="hidden text-accent hover:underline text-xs">
                         {props.children}
                       </a>
                     </span>
@@ -332,7 +332,7 @@ export default function MessageItem({
                       >
                         您的浏览器不支持视频播放
                       </video>
-                      <a {...props} className="hidden text-blue-600 dark:text-blue-400 hover:underline text-xs">
+                      <a {...props} className="hidden text-accent hover:underline text-xs">
                         {props.children}
                       </a>
                     </span>
@@ -348,7 +348,7 @@ export default function MessageItem({
                         onLinkClick?.(href)
                       }
                     }}
-                    className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                    className="text-accent hover:underline cursor-pointer"
                   />
                 )
               },
@@ -416,7 +416,7 @@ export default function MessageItem({
                           </video>
                         )}
                         {isExpired && (
-                          <span className="text-xs text-amber-600 dark:text-amber-400 block mt-1">
+                          <span className="text-xs text-amber-600 block mt-1">
                             ⚠️ 链接已过期，请重新生成
                           </span>
                         )}

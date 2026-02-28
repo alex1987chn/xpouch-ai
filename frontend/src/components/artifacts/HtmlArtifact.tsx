@@ -90,7 +90,7 @@ export default function HtmlArtifact({ content, className }: HtmlArtifactProps) 
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-slate-400">
+        <div className="w-full h-full flex items-center justify-center text-content-muted">
           加载中...
         </div>
       )}
