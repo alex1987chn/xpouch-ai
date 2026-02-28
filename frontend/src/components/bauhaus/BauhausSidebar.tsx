@@ -93,9 +93,9 @@ export default function BauhausSidebar({
   const isOnHistory = location.pathname === '/history'
   const isOnAdmin = location.pathname === '/admin/experts'
 
-  // 判断是否显示专家配置入口：对所有用户可见，但非管理员带锁
+  // 判断是否显示专家配置入口：对所有用户（包括未登录）可见，但仅管理员可进入
   const isAdmin = user?.role === 'admin'
-  const showExpertAdmin = isAuthenticated && !isMobileOpen
+  const showExpertAdmin = !isMobileOpen
 
   // 用户数据
   const username = user?.username || 'User'
