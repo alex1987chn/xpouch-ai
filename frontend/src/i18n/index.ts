@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { zh, en, ja } from './translations'
+import { zh, en, ja } from './translations/index'
 
 export type Language = 'zh' | 'en' | 'ja'
 
