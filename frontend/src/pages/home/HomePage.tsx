@@ -54,10 +54,10 @@ function SceneCard({
       <div className="absolute bottom-0 right-0 w-0 h-0 border-b-[20px] border-r-[20px] border-b-[rgb(var(--accent-hover))] border-r-transparent transition-all group-hover:border-b-[40px] group-hover:border-r-[40px]" />
 
       <div className="flex justify-between items-start">
-        <div className="p-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] group-hover:bg-white transition-colors">
+        <div className="p-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] group-hover:bg-surface-card transition-colors">
           <Icon className="w-6 h-6 stroke-[2.5]" />
         </div>
-        <div className="font-mono text-[10px] bg-[var(--text-primary)] text-[var(--bg-page)] px-1">{tag}</div>
+        <div className="font-mono text-[10px] bg-[rgb(var(--content-primary))] text-[rgb(var(--surface-page))] px-1">{tag}</div>
       </div>
       <div>
         <h4 className="font-black text-lg mb-1 group-hover:underline decoration-2 underline-offset-4">{title}</h4>
