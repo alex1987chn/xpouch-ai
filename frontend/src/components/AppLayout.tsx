@@ -120,13 +120,13 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
   return (
     <div
       className={cn(
-        'flex w-full bg-[var(--bg-page)] transition-colors duration-200 overflow-hidden',
+        'flex w-full bg-surface-page transition-colors duration-200 overflow-hidden',
         'h-[100dvh]'
       )}
     >
-      {/* 网格背景 */}
-      <div className="fixed inset-0 pointer-events-none bg-[var(--bg-page)] opacity-50" style={{
-        backgroundImage: 'radial-gradient(var(--text-secondary) 1.5px, transparent 1.5px)',
+      {/* 网格背景 - 使用新的语义变量 */}
+      <div className="fixed inset-0 pointer-events-none bg-surface-page" style={{
+        backgroundImage: 'radial-gradient(rgb(var(--content-muted) / 0.3) 1.5px, transparent 1.5px)',
         backgroundSize: '32px 32px',
         zIndex: Z_INDEX.BACKGROUND
       }} aria-hidden="true" />
@@ -139,7 +139,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
 
       {/* Bauhaus 侧边栏 - 还原原型 flex 布局 */}
       <aside className={cn(
-        'h-full flex-shrink-0 transition-all duration-300 border-r-2 border-[var(--border-color)] bg-[var(--bg-card)] overflow-hidden',
+        'h-full flex-shrink-0 transition-all duration-300 border-r-2 border-border-default bg-surface-card overflow-hidden',
         sidebar.isCollapsed ? 'w-[72px]' : 'w-[280px]',
         'hidden lg:flex lg:flex-col'
       )} style={{ zIndex: Z_INDEX.SIDEBAR }}>
@@ -156,7 +156,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
 
       {/* 移动端侧边栏 */}
       {sidebar.isMobileOpen && (
-        <aside className="fixed left-0 top-0 h-[100dvh] w-[280px] border-r-2 border-[var(--border-color)] bg-[var(--bg-card)] lg:hidden" style={{ zIndex: Z_INDEX.MOBILE_SIDEBAR }}>
+        <aside className="fixed left-0 top-0 h-[100dvh] w-[280px] border-r-2 border-border-default bg-surface-card lg:hidden" style={{ zIndex: Z_INDEX.MOBILE_SIDEBAR }}>
           <div className="h-full w-full">
             <BauhausSidebar
               isCollapsed={false}
@@ -178,7 +178,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
           <div className="lg:hidden absolute top-4 left-4" style={{ zIndex: Z_INDEX.HEADER }}>
             <button
               onClick={sidebar.toggleMobile}
-              className="p-2 border-2 border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-color)_4px_4px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[var(--accent-hover)_2px_2px_0_0]"
+              className="p-2 border-2 border-border-default bg-surface-card shadow-hard hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--accent-hover))_2px_2px_0_0]"
             >
               <Menu className="w-5 h-5 stroke-[2.5]" />
             </button>
