@@ -4,7 +4,7 @@
  * ============================================
  * 
  * 功能：
- * 1. 主题切换（light/dark/bauhaus/cyberpunk）
+ * 1. 主题切换（light/dark）- 基于 Bauhaus 设计风格
  * 2. 主题持久化（localStorage）
  * 3. 系统主题监听（prefers-color-scheme）
  * 4. 主题切换动画过渡
@@ -16,8 +16,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-/** 支持的主题类型 */
-export type Theme = 'light' | 'dark' | 'bauhaus' | 'cyberpunk'
+/** 支持的主题类型 - 只有 Light 和 Dark（Bauhaus 风格） */
+export type Theme = 'light' | 'dark'
 
 /** 主题配置元数据 */
 export interface ThemeMeta {
@@ -27,31 +27,19 @@ export interface ThemeMeta {
   icon: string
 }
 
-/** 所有可用主题 */
+/** 可用主题 - Bauhaus 风格的 Light 和 Dark */
 export const THEMES: ThemeMeta[] = [
-  {
-    id: 'bauhaus',
-    name: 'Bauhaus',
-    description: '包豪斯工业风 - 粗边框、硬阴影',
-    icon: 'Square'
-  },
   {
     id: 'light',
     name: 'Light',
-    description: '明亮主题 - 清晰易读',
+    description: 'Bauhaus 明亮主题 - 粗边框、硬阴影',
     icon: 'Sun'
   },
   {
     id: 'dark',
     name: 'Dark',
-    description: '暗黑主题 - 夜间护眼',
+    description: 'Bauhaus 暗黑主题 - 夜间护眼',
     icon: 'Moon'
-  },
-  {
-    id: 'cyberpunk',
-    name: 'Cyberpunk',
-    description: '赛博朋克 - 霓虹发光',
-    icon: 'Zap'
   }
 ]
 
@@ -66,7 +54,7 @@ interface ThemeState {
   /** 设置主题 */
   setTheme: (theme: Theme) => void
   
-  /** 切换到下一下主题 */
+  /** 切换到下一主题 */
   toggleTheme: () => void
   
   /** 设置是否跟随系统 */
@@ -84,9 +72,8 @@ function applyTheme(theme: Theme): void {
   if (typeof document !== 'undefined') {
     document.documentElement.setAttribute('data-theme', theme)
     
-    // 同时更新 color-scheme（影响浏览器默认样式，如滚动条）
-    const colorScheme = theme === 'dark' || theme === 'cyberpunk' ? 'dark' : 'light'
-    document.documentElement.style.colorScheme = colorScheme
+    // 更新 color-scheme
+    document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'light'
   }
 }
 
@@ -106,18 +93,16 @@ function getSystemTheme(): Theme {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      // 默认值
-      theme: 'bauhaus',
+      // 默认：Bauhaus 明亮主题
+      theme: 'light',
       followSystem: false,
 
       /**
        * 设置主题
        */
       setTheme: (theme: Theme) => {
-        console.log('[ThemeStore] setTheme 被调用:', theme)
         applyTheme(theme)
         set({ theme, followSystem: false })
-        console.log('[ThemeStore] data-theme 已设置为:', document.documentElement.getAttribute('data-theme'))
         
         // 可选：添加切换动画类
         if (typeof document !== 'undefined') {
@@ -129,13 +114,11 @@ export const useThemeStore = create<ThemeState>()(
       },
 
       /**
-       * 切换主题（循环切换）
+       * 切换主题（Light <-> Dark）
        */
       toggleTheme: () => {
-        const themes: Theme[] = ['bauhaus', 'light', 'dark', 'cyberpunk']
-        const currentIndex = themes.indexOf(get().theme)
-        const nextIndex = (currentIndex + 1) % themes.length
-        const nextTheme = themes[nextIndex]
+        const currentTheme = get().theme
+        const nextTheme: Theme = currentTheme === 'light' ? 'dark' : 'light'
         get().setTheme(nextTheme)
       },
 
@@ -159,16 +142,12 @@ export const useThemeStore = create<ThemeState>()(
         const state = get()
         const { theme, followSystem } = state
         
-        console.log('[ThemeStore] initTheme 被调用, 当前主题:', theme, 'followSystem:', followSystem)
-        
         if (followSystem) {
           const systemTheme = getSystemTheme()
           applyTheme(systemTheme)
           set({ theme: systemTheme })
-          console.log('[ThemeStore] 已应用系统主题:', systemTheme)
         } else {
           applyTheme(theme)
-          console.log('[ThemeStore] 已应用主题:', theme)
         }
         
         // 监听系统主题变化（仅在 followSystem 时）
@@ -197,15 +176,6 @@ export const useThemeStore = create<ThemeState>()(
 
 /**
  * 初始化主题（在应用入口调用）
- * 需要在 useEffect 中调用，避免 SSR 问题
- * 
- * 使用示例：
- * function App() {
- *   useEffect(() => {
- *     useThemeStore.getState().initTheme()
- *   }, [])
- *   return <AppContent />
- * }
  */
 export function initTheme(): void {
   if (typeof window !== 'undefined') {
