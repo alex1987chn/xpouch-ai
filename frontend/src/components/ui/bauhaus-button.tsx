@@ -42,19 +42,16 @@ const bauhausButtonVariants = cva(
         default: [
           "bg-bauhaus-border text-white",
           "hover:bg-bauhaus-text",
-          "dark:bg-white dark:text-bauhaus-border dark:hover:bg-gray-200",
         ],
         // 轮廓：白底黑框
         outline: [
           "bg-bauhaus-card text-bauhaus-border",
           "hover:bg-bauhaus-bg",
-          "dark:bg-bauhaus-card dark:text-white dark:hover:bg-bauhaus-border/10",
         ],
         // Bauhaus 黄：强调色
         yellow: [
           "bg-bauhaus-yellow text-bauhaus-border border-bauhaus-border",
           "hover:brightness-110",
-          "dark:text-bauhaus-border",
         ],
         // Bauhaus 蓝：主色调
         blue: [
@@ -70,7 +67,6 @@ const bauhausButtonVariants = cva(
         ghost: [
           "bg-transparent text-bauhaus-border border-transparent shadow-none",
           "hover:bg-bauhaus-bg",
-          "dark:text-white",
           "active:shadow-none active:translate-x-0 active:translate-y-0",
         ],
       },

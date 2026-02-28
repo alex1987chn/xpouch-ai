@@ -521,19 +521,19 @@ export default function ArtifactDashboard({
                 {isEditing ? (
                   <div className="h-full w-full flex flex-col">
                     {saveError && (
-                      <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
-                        <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
+                      <div className="px-4 py-2 bg-red-50 border-b border-red-200">
+                        <div className="flex items-center gap-2 text-xs text-red-600">
                           <XCircle className="w-3.5 h-3.5" />
                           <span>{saveError}</span>
                         </div>
                       </div>
                     )}
-                    <div className="flex-1 bg-gray-50 dark:bg-gray-900">
+                    <div className="flex-1 bg-surface-elevated">
                       <textarea
                         value={editContent}
                         onChange={(e) => setEditContent(e.target.value)}
                         disabled={isSaving}
-                        className="w-full h-full p-4 font-mono text-sm bg-transparent border-0 resize-none focus:outline-none focus:ring-0 text-gray-900 dark:text-gray-100 disabled:opacity-50"
+                        className="w-full h-full p-4 font-mono text-sm bg-transparent border-0 resize-none focus:outline-none focus:ring-0 text-content-primary disabled:opacity-50"
                         spellCheck={false}
                       />
                     </div>

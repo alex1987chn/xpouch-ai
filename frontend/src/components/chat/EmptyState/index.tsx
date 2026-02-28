@@ -29,7 +29,7 @@ export default function EmptyState({
         <div className="w-16 h-16 border-2 border-dashed border-border/60 flex items-center justify-center mb-4 text-primary/60">
           <Terminal className="w-8 h-8" />
         </div>
-        <p className="font-mono text-xs uppercase tracking-widest text-primary/70 dark:text-primary/60">
+        <p className="font-mono text-xs uppercase tracking-widest text-primary/70">
           {t('initConversation')}
         </p>
       </div>

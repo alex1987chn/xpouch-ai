@@ -100,8 +100,8 @@ export function InlineCode({ children, className }: InlineCodeProps) {
     <code
       className={cn(
         'px-1.5 py-0.5 rounded text-sm font-mono',
-        'bg-gray-100 dark:bg-gray-800',
-        'text-gray-800 dark:text-gray-200',
+        'bg-surface-elevated',
+        'text-content-primary',
         className
       )}
     >

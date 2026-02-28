@@ -24,7 +24,7 @@ export function LanguageSelector({ className }: LanguageSelectorProps) {
       type="single"
       value={language}
       onValueChange={(value) => value && setLanguage(value as Language)}
-      className={cn("bg-slate-200 dark:bg-slate-700 rounded-full p-0.5 w-fit", className)}
+      className={cn("bg-surface-elevated rounded-full p-0.5 w-fit", className)}
     >
       {languages.map((lang) => (
         <ToggleGroupItem
