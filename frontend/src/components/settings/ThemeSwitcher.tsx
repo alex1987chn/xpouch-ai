@@ -1,14 +1,14 @@
 /**
  * ============================================
- * ThemeSwitcher - 多主题切换组件
+ * ThemeSwitcher - 主题切换组件
  * ============================================
  * 
- * 支持 4 个主题：Light / Dark / Bauhaus / Cyberpunk
+ * 支持 2 个主题：Light / Dark（Bauhaus 风格）
  * 点击浮动按钮展开主题选择面板
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { Sun, Moon, Square, Zap, Check, Palette } from 'lucide-react'
+import { Sun, Moon, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useThemeStore, THEMES, type Theme } from '@/store/themeStore'
 
@@ -23,18 +23,14 @@ interface ThemeSwitcherProps {
 const themeIcons: Record<Theme, React.ReactNode> = {
   light: <Sun className="w-4 h-4" />,
   dark: <Moon className="w-4 h-4" />,
-  bauhaus: <Square className="w-4 h-4" />,
-  cyberpunk: <Zap className="w-4 h-4" />,
 }
 
 /**
  * 主题预览色块（展示主题的代表色）
  */
 const themePreview: Record<Theme, string> = {
-  light: 'bg-yellow-400',
-  dark: 'bg-indigo-500',
-  bauhaus: 'bg-yellow-400 border-2 border-black',
-  cyberpunk: 'bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)]',
+  light: 'bg-yellow-400 border-2 border-black',
+  dark: 'bg-slate-700 border-2 border-slate-500',
 }
 
 /**

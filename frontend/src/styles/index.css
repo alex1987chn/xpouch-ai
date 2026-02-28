@@ -20,8 +20,6 @@
 /* 主题覆盖 - 按优先级排序 */
 @import './tokens/themes/_light.css';
 @import './tokens/themes/_dark.css';
-@import './tokens/themes/_bauhaus.css';
-@import './tokens/themes/_cyberpunk.css';
 
 /* ============================================
    2. Tailwind 核心指令
@@ -41,23 +39,8 @@
     color-scheme: light;
   }
   
-  /* Bauhaus 主题使用 light color-scheme */
-  [data-theme="bauhaus"] {
-    color-scheme: light;
-  }
-  
-  /* Light 主题 */
-  [data-theme="light"] {
-    color-scheme: light;
-  }
-  
-  /* Dark 主题 */
+  /* Dark 主题（Bauhaus 暗色版） */
   [data-theme="dark"] {
-    color-scheme: dark;
-  }
-  
-  /* Cyberpunk 主题 */
-  [data-theme="cyberpunk"] {
     color-scheme: dark;
   }
 
