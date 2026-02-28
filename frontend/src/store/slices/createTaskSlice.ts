@@ -15,6 +15,8 @@ import type {
   TaskInfo
 } from '@/types/events'
 import type { TaskSession as ApiTaskSession, SubTask, Artifact } from '@/types'
+import { formatTaskOutput } from '@/utils/formatters'
+import type { TaskStore } from '../taskStore'
 
 // ============================================================================
 // Types
@@ -102,32 +104,21 @@ export const rebuildTasksCache = (state: TaskSliceState) => {
   state.tasksCacheVersion++
 }
 
-const formatTaskOutput = (outputResult: any): string => {
-  if (!outputResult) return ''
-  if (typeof outputResult === 'string') return outputResult
-
-  let formattedText = outputResult.content || ''
-
-  if (outputResult.source && Array.isArray(outputResult.source) && outputResult.source.length > 0) {
-    formattedText += '\n\n---\n**Sources:**\n'
-    outputResult.source.forEach((src: any, index: number) => {
-      const title = src.title || 'Unknown Source'
-      const url = src.url || '#'
-      formattedText += `> ${index + 1}. [${title}](${url})\n`
-    })
-  } else if (outputResult.sources) {
-    formattedText += '\n\n**References:** ' + JSON.stringify(outputResult.sources)
-  }
-
-  return formattedText
-}
 
 // ============================================================================
 // Slice Factory
 // ============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createTaskSlice = (set: any, get: any): TaskSlice => ({
+// Immer-enabled set type - allows direct mutation of draft state
+// Using TaskStore to allow cross-slice state access (e.g., runningTaskIds in resetTasks)
+type TaskSliceSetter = (fn: (draft: TaskStore) => void) => void
+type TaskSliceGetter = () => TaskStore
+
+export const createTaskSlice = (
+  set: TaskSliceSetter,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _get: TaskSliceGetter
+): TaskSlice => ({
   // Initial state
   session: null,
   tasks: new Map(),
@@ -144,7 +135,7 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
     // ⚠️ 跨 Slice 修改已移除
     // UI 状态切换应通过 UISlice.setMode 处理
     // TaskSlice 只关注 Task 数据本身的清理
-    set((state: any) => {
+    set((state) => {
       if (mode === 'simple') {
         // 只清理 TaskSlice 自己的状态
         state.session = null
@@ -155,11 +146,11 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
   },
 
   initializePlan: (data: PlanCreatedData) => {
-    set((state: any) => {
+    set((state) => {
       if (state.session?.sessionId === data.session_id) {
-        const newTaskIds = new Set(data.tasks.map((t: any) => t.id))
+        const newTaskIds = new Set(data.tasks.map((t) => t.id))
 
-        state.tasks.forEach((_: any, id: string) => {
+        state.tasks.forEach((_, id: string) => {
           if (!newTaskIds.has(id)) {
             state.tasks.delete(id)
           }
@@ -167,7 +158,7 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
 
         state.session.estimatedSteps = data.estimated_steps + 1
 
-        data.tasks.forEach((taskInfo: any) => {
+        data.tasks.forEach((taskInfo) => {
           if (!state.tasks.has(taskInfo.id)) {
             state.tasks.set(taskInfo.id, {
               ...taskInfo,
@@ -203,7 +194,7 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
   },
 
   updateTasksFromPlan: (newPlan) => {
-    set((state: any) => {
+    set((state) => {
       // 🔥 修复：移除 session 检查，HITL 确认时 session 可能未初始化
       // 直接更新 tasks Map，让 BusRail 能显示专家头像
 
@@ -222,7 +213,7 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
       }
 
       const existingTaskStatuses = new Map<string, TaskStatus>()
-      state.tasks.forEach((task: any, id: string) => {
+      state.tasks.forEach((task, id) => {
         if (task.status === 'completed' || task.status === 'running') {
           existingTaskStatuses.set(id, task.status)
         }
@@ -249,7 +240,7 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
   },
 
   startTask: (data: TaskStartedData) => {
-    set((state: any) => {
+    set((state) => {
       const task = state.tasks.get(data.task_id)
       if (task) {
         task.status = 'running'
@@ -263,7 +254,7 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
   },
 
   completeTask: (data: TaskCompletedData) => {
-    set((state: any) => {
+    set((state) => {
       const completedTask = state.tasks.get(data.task_id)
       if (completedTask) {
         completedTask.status = 'completed'
@@ -281,7 +272,7 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
   },
 
   failTask: (data: TaskFailedData) => {
-    set((state: any) => {
+    set((state) => {
       const task = state.tasks.get(data.task_id)
       if (task) {
         task.status = 'failed'
@@ -295,14 +286,14 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
   },
 
   addTask: (task: Task) => {
-    set((state: any) => {
+    set((state) => {
       state.tasks.set(task.id, task)
       rebuildTasksCache(state)
     })
   },
 
   updateTask: (taskId: string, updates: Partial<Task>) => {
-    set((state: any) => {
+    set((state) => {
       const task = state.tasks.get(taskId)
       if (task) {
         Object.assign(task, updates)
@@ -312,21 +303,21 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
   },
 
   deleteTask: (taskId: string) => {
-    set((state: any) => {
+    set((state) => {
       state.tasks.delete(taskId)
       rebuildTasksCache(state)
     })
   },
 
   setTasks: (tasks: Map<string, Task>) => {
-    set((state: any) => {
+    set((state) => {
       state.tasks = tasks
       rebuildTasksCache(state)
     })
   },
 
   resetTasks: (force: boolean = false) => {
-    set((state: any) => {
+    set((state) => {
       // 🔥 保护：如果有运行中的任务，禁止重置（防止复杂模式执行中误重置）
       // 除非强制重置（force=true，用于从历史记录加载会话）
       if (!force && state.runningTaskIds && state.runningTaskIds.size > 0) {
@@ -343,7 +334,7 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
   },
 
   restoreFromSession: (session: ApiTaskSession, subTasks: SubTask[]) => {
-    set((state: any) => {
+    set((state) => {
       // 使用 state 直接修改（Immer 会处理不可变性）
       state.session = {
         sessionId: session.session_id,
@@ -358,7 +349,7 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
       subTasks.forEach((subTask, index) => {
         const taskStatus = (subTask.status as TaskStatus) || 'pending'
 
-        const artifacts: Artifact[] = (subTask.artifacts || []).map((art: any, artIndex: number) => ({
+        const artifacts: Artifact[] = (subTask.artifacts || []).map((art, artIndex) => ({
           id: art.id || `${subTask.id}-artifact-${artIndex}`,
           type: art.type || 'text',
           title: art.title || `${subTask.expert_type} Result`,
@@ -392,7 +383,7 @@ export const createTaskSlice = (set: any, get: any): TaskSlice => ({
   },
 
   syncTasksCache: () => {
-    set((state: any) => {
+    set((state) => {
       rebuildTasksCache(state)
     })
   }

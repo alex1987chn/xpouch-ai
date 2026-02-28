@@ -11,9 +11,12 @@ P0 修复: 2025-02-24
 """
 
 import asyncio
+import ipaddress
 import re
+import socket
 from datetime import datetime
 from typing import List
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select
@@ -35,26 +38,83 @@ router = APIRouter(prefix="/api/mcp", tags=["mcp"])
 # URL 验证和 SSRF 防护 (P0 修复)
 # ============================================================================
 
-# 内网地址模式 (用于 SSRF 防护)
-PRIVATE_IP_PATTERNS = [
-    r"^http://127\.",
-    r"^http://10\.",
-    r"^http://172\.(1[6-9]|2[0-9]|3[01])\.",
-    r"^http://192\.168\.",
-    r"^http://localhost",
-    r"^https://127\.",
-    r"^https://10\.",
-    r"^https://172\.(1[6-9]|2[0-9]|3[01])\.",
-    r"^https://192\.168\.",
-    r"^https://localhost",
-]
+def is_private_url(url: str) -> tuple[bool, str]:
+    """
+    检查 URL 是否指向内网地址 (SSRF 防护增强版)
+    
+    使用 ipaddress 模块严格检查 IP 地址，并支持域名解析后检查。
+    
+    Returns:
+        tuple[bool, str]: (是否为内网/危险地址, 错误信息)
+    """
+    try:
+        parsed = urlparse(url)
+        if not parsed.hostname:
+            return True, "无效的 URL: 无法解析主机名"
+        
+        hostname = parsed.hostname.lower()
+        
+        # 1. 检查是否是纯 IP 地址
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_multicast:
+                return True, f"禁止连接内网/保留地址: {hostname} (SSRF 防护)"
+            if ip.is_link_local:
+                return True, f"禁止连接链路本地地址: {hostname} (SSRF 防护)"
+            return False, ""
+        except ValueError:
+            # 不是 IP 地址，是域名，继续检查
+            pass
+        
+        # 2. 检查常见内网域名/别名
+        private_hostnames = {
+            'localhost', 'localhost.localdomain',
+            'ip6-localhost', 'ip6-loopback',
+            '0.0.0.0', '::', '::1',
+        }
+        if hostname in private_hostnames:
+            return True, f"禁止连接内网域名: {hostname} (SSRF 防护)"
+        
+        # 检查 localhost 的子域名 (如 localhost.example.com 不是 localhost，但 localhost. 是)
+        if hostname == 'localhost' or hostname.startswith('localhost.'):
+            return True, f"禁止连接 localhost 域名: {hostname} (SSRF 防护)"
+        
+        # 3. 尝试解析域名并检查解析后的 IP
+        try:
+            # 获取所有解析的 IP 地址 (IPv4 和 IPv6)
+            addr_info = socket.getaddrinfo(hostname, None)
+            resolved_ips = set()
+            for info in addr_info:
+                ip_str = info[4][0]
+                try:
+                    ip = ipaddress.ip_address(ip_str)
+                    resolved_ips.add(ip)
+                except ValueError:
+                    continue
+            
+            # 检查所有解析的 IP
+            for ip in resolved_ips:
+                if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_multicast:
+                    return True, f"禁止连接解析到内网地址的域名: {hostname} -> {ip} (SSRF 防护)"
+                if ip.is_link_local:
+                    return True, f"禁止连接解析到链路本地地址的域名: {hostname} -> {ip} (SSRF 防护)"
+        except (socket.gaierror, OSError):
+            # DNS 解析失败，不视为内网，但记录警告
+            # 实际场景中可能需要根据安全策略决定是否允许
+            pass
+        
+        return False, ""
+        
+    except Exception as e:
+        # URL 解析失败，视为不安全
+        return True, f"URL 安全检查失败: {str(e)}"
 
 
 def validate_mcp_url(url: str) -> tuple[bool, str]:
     """
     验证 MCP URL 的安全性
     
-    P0 修复: 防止 SSRF 攻击
+    P0 修复: 防止 SSRF 攻击 (增强版)
     
     Returns:
         tuple[bool, str]: (是否有效, 错误信息)
@@ -63,25 +123,29 @@ def validate_mcp_url(url: str) -> tuple[bool, str]:
     if not url.startswith(("http://", "https://")):
         return False, "SSE URL 必须以 http:// 或 https:// 开头"
     
-    # 2. 禁止 file:// 协议
-    if url.startswith("file://"):
-        return False, "禁止 file 协议"
+    # 2. 禁止 file:// 协议和其他危险协议
+    dangerous_protocols = ('file://', 'ftp://', 'sftp://', 'dict://', 'gopher://', 
+                          'ldap://', 'ldaps://', 'tftp://', 'ssh://')
+    if url.lower().startswith(dangerous_protocols):
+        return False, f"禁止使用的协议 (SSRF 防护)"
     
-    # 3. SSRF 防护：禁止内网地址
-    for pattern in PRIVATE_IP_PATTERNS:
-        if re.match(pattern, url, re.IGNORECASE):
-            return False, "禁止连接内网地址 (SSRF 防护)"
-    
-    # 4. 检查 URL 格式是否有效
+    # 3. 检查 URL 格式是否有效
     try:
-        from urllib.parse import urlparse
         parsed = urlparse(url)
         if not parsed.hostname:
-            return False, "无效的 URL 格式"
+            return False, "无效的 URL 格式: 缺少主机名"
         if parsed.port and (parsed.port < 1 or parsed.port > 65535):
             return False, "无效的端口号"
+        # 禁止用户名密码在 URL 中 (防止凭证泄露和某些攻击)
+        if parsed.username or parsed.password:
+            return False, "URL 中不允许包含认证信息"
     except Exception as e:
         return False, f"URL 解析失败: {str(e)}"
+    
+    # 4. SSRF 防护：使用严格的内网地址检查
+    is_private, error_msg = is_private_url(url)
+    if is_private:
+        return False, error_msg
     
     return True, ""
 
@@ -274,7 +338,7 @@ async def update_mcp_server(
             )
         
         # P0 修复: 重新通电测试（带超时）
-        is_connected, error_msg = await test_mcp_connection(update_data.sse_url)
+        is_connected, error_msg = await test_mcp_connection(update_data.sse_url, transport=server.transport)
         if not is_connected:
             raise ValidationError(
                 message=f"新地址连接测试失败: {error_msg}",
