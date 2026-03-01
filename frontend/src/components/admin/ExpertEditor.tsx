@@ -288,7 +288,7 @@ export default function ExpertEditor({
                   className={cn(
                     'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
                     'bg-[rgb(var(--accent-hover))] text-content-primary font-mono text-xs font-bold uppercase',
-                    'shadow-[rgb(var(--shadow-color))_3px_3px_0_0]',
+                    'shadow-hard-3',
                     'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard',
                     'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
                     'transition-all',
@@ -342,7 +342,7 @@ export default function ExpertEditor({
                     className={cn(
                       'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
                       'bg-[rgb(var(--accent-hover))] text-content-primary font-mono text-xs font-bold uppercase',
-                      'shadow-[rgb(var(--shadow-color))_3px_3px_0_0]',
+                      'shadow-hard-3',
                       'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard',
                       'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
                       'transition-all',

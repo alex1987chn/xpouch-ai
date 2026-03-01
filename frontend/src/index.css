@@ -180,6 +180,21 @@
     box-shadow: 6px 6px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
+  /* 3px 阴影（特殊尺寸） */
+  .shadow-hard-3 {
+    box-shadow: 3px 3px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
+  }
+
+  /* 5px 阴影（卡片默认） */
+  .shadow-hard-5 {
+    box-shadow: 5px 5px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
+  }
+
+  /* 10px 阴影（卡片悬停） */
+  .shadow-hard-10 {
+    box-shadow: 10px 10px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
+  }
+
   /* Bauhaus 按下效果 */
   .active\:shadow-pressed:active {
     transform: translate(2px, 2px);

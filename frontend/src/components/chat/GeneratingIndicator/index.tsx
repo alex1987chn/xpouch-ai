@@ -65,7 +65,7 @@ export default function GeneratingIndicator({
           {/* 左侧：旋转图标 */}
           <div className="relative flex-shrink-0">
             {/* 外圈旋转 */}
-            <div className="w-8 h-8 border border-border border-t-[rgb(var(--accent-brand))] animate-spin">
+            <div className="w-8 h-8 border border-border border-t-accent-brand animate-spin">
               <Cpu className="w-4 h-4 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[rgb(var(--accent-brand))]" />
             </div>
           </div>

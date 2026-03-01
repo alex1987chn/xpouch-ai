@@ -17,8 +17,8 @@ export function RecentConversations({
     <div className="flex-1 min-h-0 flex flex-col py-4 overflow-hidden w-full">
       {/* 小标题: 模拟终端注释 - 左对齐 */}
       <div className="px-4 mb-2 flex items-center gap-2 opacity-50 mx-auto" style={{ width: DIMENSIONS.SIDEBAR_CONTENT_WIDTH }}>
-        <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]"></div>
-        <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[rgb(var(--content-secondary))]">
+        <div className="w-1.5 h-1.5 bg-content-secondary"></div>
+        <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
           /// {t('memoryDump')}
         </span>
       </div>
@@ -30,7 +30,7 @@ export function RecentConversations({
           <button
             key={conv.id}
             onClick={() => onConversationClick(conv.id, conv.agent_id)}
-            className="group w-full text-left flex items-center gap-3 px-3 py-1.5 border border-transparent hover:border-[rgb(var(--border-default))] hover:bg-[rgb(var(--surface-page))] transition-all"
+            className="group w-full text-left flex items-center gap-3 px-3 py-1.5 border border-transparent hover:border-border hover:bg-surface-page transition-all"
           >
             {/* 装饰性光标: Hover时出现 */}
             <span className="text-[rgb(var(--accent-hover))] font-black text-xs opacity-0 group-hover:opacity-100 transition-opacity">
@@ -39,11 +39,11 @@ export function RecentConversations({
 
             <div className="flex-1 min-w-0">
               {/* 标题: 等宽字体，像日志 */}
-              <div className="font-mono text-[11px] font-bold text-[rgb(var(--content-secondary))] truncate group-hover:text-[rgb(var(--content-primary))] transition-colors">
+              <div className="font-mono text-[11px] font-bold text-content-secondary truncate group-hover:text-content-primary transition-colors">
                 {conv.title || t('newChat')}
               </div>
               {/* 时间: 极小字体 */}
-              <div className="font-mono text-[9px] text-[rgb(var(--content-secondary))] opacity-50 truncate">
+              <div className="font-mono text-[9px] text-content-secondary opacity-50 truncate">
                 LOG_ID: {conv.id.slice(0, 6)} • {formatRelativeTime(conv.updated_at)}
               </div>
             </div>
@@ -52,14 +52,14 @@ export function RecentConversations({
 
         {/* 如果没有会话，显示空状态 */}
         {conversations.length === 0 && (
-          <div className="px-3 py-2 font-mono text-[10px] text-[rgb(var(--content-secondary))] opacity-40">
+          <div className="px-3 py-2 font-mono text-[10px] text-content-secondary opacity-40">
             {t('noDataStream')}
           </div>
         )}
       </div>
 
       {/* 底部渐变遮罩: 提示还有更多内容 */}
-      <div className="h-4 bg-gradient-to-t from-[rgb(var(--surface-card))] to-transparent pointer-events-none shrink-0 mx-auto" style={{ width: DIMENSIONS.SIDEBAR_CONTENT_WIDTH }} />
+      <div className="h-4 bg-gradient-to-t from-surface-card to-transparent pointer-events-none shrink-0 mx-auto" style={{ width: DIMENSIONS.SIDEBAR_CONTENT_WIDTH }} />
     </div>
   )
 }
