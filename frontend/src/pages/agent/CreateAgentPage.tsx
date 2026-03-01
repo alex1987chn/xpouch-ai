@@ -5,8 +5,6 @@ import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
 import { useApp } from '@/providers/AppProvider'
-
-import { useApp } from '@/providers/AppProvider'
 import ModelSelector from '@/components/settings/ModelSelector'
 import BauhausSelect from '@/components/ui/bauhaus-select'
 
