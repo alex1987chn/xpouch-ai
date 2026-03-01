@@ -179,7 +179,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
               <button
                 onClick={handleSendCode}
                 disabled={!phoneNumber || phoneNumber.length !== 11 || loading}
-                className="w-full py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-black font-bold font-mono text-sm uppercase shadow-[rgb(var(--shadow-color))_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[rgb(var(--shadow-color))_6px_6px_0_0] active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-content-primary font-bold font-mono text-sm uppercase shadow-[rgb(var(--shadow-color))_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[rgb(var(--shadow-color))_6px_6px_0_0] active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'SENDING...' : t('sendCode')}
               </button>
@@ -216,7 +216,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
               <button
                 onClick={handleVerifyCode}
                 disabled={!code || code.length < 4 || loading}
-                className="w-full py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-black font-bold font-mono text-sm uppercase shadow-[rgb(var(--shadow-color))_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[rgb(var(--shadow-color))_6px_6px_0_0] active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-content-primary font-bold font-mono text-sm uppercase shadow-[rgb(var(--shadow-color))_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[rgb(var(--shadow-color))_6px_6px_0_0] active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'VERIFYING...' : '登录 / LOGIN'}
               </button>

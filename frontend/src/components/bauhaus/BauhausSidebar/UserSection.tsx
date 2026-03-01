@@ -84,7 +84,7 @@ export function UserSection({
                 </div>
               </div>
               {/* 状态指示点 */}
-              <div className="w-2 h-2 bg-green-500 rounded-full border border-[rgb(var(--border-default))] shrink-0"></div>
+              <div className="w-2 h-2 bg-status-online rounded-full border border-[rgb(var(--border-default))] shrink-0"></div>
             </div>
           </div>
         )
@@ -93,7 +93,7 @@ export function UserSection({
         isCollapsed ? (
           <button
             onClick={onLoginClick}
-            className="p-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-black shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] transition-all"
+            className="p-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-content-primary shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] transition-all"
             title={t('login')}
           >
             <User className="w-5 h-5" />
@@ -103,7 +103,7 @@ export function UserSection({
             <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2"></div>
             <button
               onClick={onLoginClick}
-              className="relative w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-black z-10 transition-all font-bold font-mono text-sm uppercase"
+              className="relative w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-content-primary z-10 transition-all font-bold font-mono text-sm uppercase"
             >
               <User className="w-5 h-5" />
               <span>登录 / LOGIN</span>

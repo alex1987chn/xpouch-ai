@@ -73,7 +73,7 @@ const TaskStatusIndicator = memo(function TaskStatusIndicator() {
     return (
       <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
         <span className="relative flex h-2 w-2">
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-status-online" />
         </span>
         <span>Ready</span>
       </div>
@@ -88,7 +88,7 @@ const TaskStatusIndicator = memo(function TaskStatusIndicator() {
       <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
         {allCompleted ? (
           <>
-            <CheckCircle2 className="w-3 h-3 text-green-500" />
+            <CheckCircle2 className="w-3 h-3 text-status-online" />
             <span>Completed</span>
           </>
         ) : (
@@ -101,8 +101,8 @@ const TaskStatusIndicator = memo(function TaskStatusIndicator() {
   return (
     <div className="flex items-center gap-2 text-xs font-mono">
       <span className="relative flex h-2 w-2 shrink-0">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-info opacity-75" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-status-info" />
       </span>
       <span className="text-content-primary truncate max-w-[80px] sm:max-w-[150px]">
         {runningTask.expert_type}
@@ -372,8 +372,8 @@ export default function ArtifactDashboard({
                         className={cn(
                           'w-7 h-7 flex items-center justify-center border-2 transition-all',
                           isSaving
-                            ? 'bg-green-400 text-white border-green-400 cursor-not-allowed'
-                            : 'bg-green-600 text-white border-green-600 hover:bg-green-700'
+                            ? 'bg-status-online text-white border-status-online cursor-not-allowed'
+                            : 'bg-status-online text-white border-status-online hover:bg-status-online/90'
                         )}
                         title={isSaving ? 'Saving...' : 'Save'}
                       >
@@ -386,7 +386,7 @@ export default function ArtifactDashboard({
                           'w-7 h-7 flex items-center justify-center border-2 transition-all',
                           isSaving
                             ? 'bg-panel text-muted-foreground border-border-default cursor-not-allowed'
-                            : 'bg-panel text-content-primary border-border-default hover:border-red-500 hover:text-red-500'
+                            : 'bg-panel text-content-primary border-border-default hover:border-status-offline hover:text-status-offline'
                         )}
                         title="Cancel"
                       >
@@ -490,7 +490,7 @@ export default function ArtifactDashboard({
                         className={cn(
                           'w-7 h-7 flex items-center justify-center border-2 transition-all',
                           copied
-                            ? 'bg-green-500 text-white border-green-500'
+                            ? 'bg-status-online text-white border-status-online'
                             : 'bg-panel text-content-primary border-border-default hover:border-primary hover:bg-surface-card'
                         )}
                         title={copied ? 'Copied' : 'Copy'}
@@ -521,8 +521,8 @@ export default function ArtifactDashboard({
                 {isEditing ? (
                   <div className="h-full w-full flex flex-col">
                     {saveError && (
-                      <div className="px-4 py-2 bg-red-50 border-b border-red-200">
-                        <div className="flex items-center gap-2 text-xs text-red-600">
+                      <div className="px-4 py-2 bg-status-offline/10 border-b border-status-offline/20">
+                        <div className="flex items-center gap-2 text-xs text-status-offline">
                           <XCircle className="w-3.5 h-3.5" />
                           <span>{saveError}</span>
                         </div>

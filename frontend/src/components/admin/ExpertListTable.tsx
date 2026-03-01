@@ -59,7 +59,7 @@ export default function ExpertListTable({
         <div className="flex items-center gap-2">
           <button
             onClick={onCreateClick}
-            className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase border border-border-default bg-surface-page hover:bg-[rgb(var(--accent-hover))] hover:text-black hover:border-[rgb(var(--accent-hover))] transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase border border-border-default bg-surface-page hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary hover:border-[rgb(var(--accent-hover))] transition-colors"
             title={t('newExpert')}
           >
             <Plus className="w-3.5 h-3.5" />
@@ -100,13 +100,13 @@ export default function ExpertListTable({
               className={cn(
                 'w-full text-left px-3 py-3 border-2 transition-all relative group',
                 selectedExpertKey === expert.expert_key
-                  ? 'border-[rgb(var(--accent-hover))] bg-[rgb(var(--accent-hover))] text-black shadow-[rgb(var(--shadow-color))_2px_2px_0_0]'
+                  ? 'border-[rgb(var(--accent-hover))] bg-[rgb(var(--accent-hover))] text-content-primary shadow-[rgb(var(--shadow-color))_2px_2px_0_0]'
                   : 'border-transparent hover:border-border-default hover:bg-surface-page'
               )}
             >
               {/* 选中指示器 */}
               {selectedExpertKey === expert.expert_key && (
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-black" />
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-content-primary" />
               )}
 
               {/* 删除按钮（仅对非系统核心组件显示） */}
@@ -116,8 +116,8 @@ export default function ExpertListTable({
                   className={cn(
                     'absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded transition-colors opacity-0 group-hover:opacity-100',
                     selectedExpertKey === expert.expert_key
-                      ? 'hover:bg-black/20 text-black/70 hover:text-black'
-                      : 'hover:bg-red-100 text-content-secondary hover:text-red-500'
+                      ? 'hover:bg-content-primary/20 text-content-primary/70 hover:text-content-primary'
+                      : 'hover:bg-status-offline/10 text-content-secondary hover:text-status-offline'
                   )}
                   title={t('deleteExpert')}
                 >
@@ -129,7 +129,7 @@ export default function ExpertListTable({
                 className={cn(
                   'font-mono text-sm font-bold',
                   selectedExpertKey === expert.expert_key
-                    ? 'text-black'
+                    ? 'text-content-primary'
                     : 'text-content-primary',
                   !expert.is_system && 'pr-6'
                 )}
@@ -140,7 +140,7 @@ export default function ExpertListTable({
                 className={cn(
                   'font-mono text-[9px] mt-1 uppercase',
                   selectedExpertKey === expert.expert_key
-                    ? 'text-black/70'
+                    ? 'text-content-primary/70'
                     : 'text-content-secondary'
                 )}
               >

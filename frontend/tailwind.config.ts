@@ -93,6 +93,16 @@ const config: Config = {
           color: "rgb(var(--shadow-color) / <alpha-value>)",
         },
 
+        /* ------------------------------------------
+           Status - 状态颜色
+           ------------------------------------------ */
+        status: {
+          online: "rgb(var(--status-online) / <alpha-value>)",
+          offline: "rgb(var(--status-offline) / <alpha-value>)",
+          busy: "rgb(var(--status-busy) / <alpha-value>)",
+          info: "rgb(var(--status-info) / <alpha-value>)",
+        },
+
         /* ============================================
            Shadcn UI 兼容变量
            保持与 shadcn/ui 组件库兼容

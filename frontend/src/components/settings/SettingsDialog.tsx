@@ -90,7 +90,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                   </div>
                   {selectedModelId === model.id && (
                     <div className="w-5 h-5 border-2 border-accent-hover bg-accent-hover flex items-center justify-center">
-                      <Check className="w-3 h-3 text-black" />
+                      <Check className="w-3 h-3 text-content-primary" />
                     </div>
                   )}
                 </div>
@@ -110,9 +110,9 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               </span>
             </div>
 
-            <div className="p-3 border-2 border-blue-500/50 bg-blue-500/10">
+            <div className="p-3 border-2 border-status-info/50 bg-status-info/10">
               <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                <Info className="w-5 h-5 text-status-info flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <h4 className="font-mono text-xs font-bold text-content-primary mb-1">
                     {t('apiKeyConfigTitle')}
@@ -140,7 +140,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           </button>
           <button
             onClick={handleSave}
-            className="flex-1 py-3 bg-accent-hover text-black font-mono text-sm font-bold uppercase hover:brightness-95 transition-colors"
+            className="flex-1 py-3 bg-accent-hover text-content-primary font-mono text-sm font-bold uppercase hover:brightness-95 transition-colors"
           >
             <span className="flex items-center justify-center gap-2">
               <Save className="w-4 h-4" />

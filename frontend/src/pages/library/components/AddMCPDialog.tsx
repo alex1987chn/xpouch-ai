@@ -224,11 +224,11 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
             type="submit"
             onClick={handleSubmit}
             disabled={createMutation.isPending}
-            className="flex-1 py-3 bg-accent-hover text-black font-mono text-sm font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
+            className="flex-1 py-3 bg-accent-hover text-content-primary font-mono text-sm font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
           >
             {createMutation.isPending ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-black/30 border-t-black animate-spin"></span>
+                <span className="w-4 h-4 border-2 border-content-primary/30 border-t-content-primary animate-spin"></span>
                 {t('connecting') || 'Connecting...'}
               </span>
             ) : (

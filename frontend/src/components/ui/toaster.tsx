@@ -15,7 +15,7 @@ export function Toaster() {
             'min-w-[300px] max-w-md',
             'animate-in slide-in-from-bottom-2',
             toast.variant === 'destructive'
-              ? 'bg-red-500 text-white'
+              ? 'bg-status-offline text-white'
               : 'bg-surface-card text-content-primary'
           )}
         >

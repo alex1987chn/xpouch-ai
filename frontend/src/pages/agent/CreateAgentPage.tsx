@@ -137,8 +137,8 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
             onClick={handleSave}
             disabled={!name || !systemPrompt}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 border-2 border-black',
-              'bg-[rgb(var(--accent-hover))] text-black font-mono text-xs font-bold uppercase',
+              'flex items-center gap-2 px-4 py-2 border-2 border-content-primary',
+              'bg-[rgb(var(--accent-hover))] text-content-primary font-mono text-xs font-bold uppercase',
               'shadow-[3px_3px_0_0_rgba(0,0,0,1)]',
               'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)]',
               'active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0_0_rgba(0,0,0,1)]',
@@ -196,7 +196,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                       className={cn(
                         'px-4 py-2 border-2 font-mono text-xs font-bold uppercase transition-all',
                         category === cat
-                          ? 'border-[rgb(var(--accent-hover))] bg-[rgb(var(--accent-hover))] text-black shadow-[rgb(var(--shadow-color))_2px_2px_0_0]'
+                          ? 'border-[rgb(var(--accent-hover))] bg-[rgb(var(--accent-hover))] text-content-primary shadow-[rgb(var(--shadow-color))_2px_2px_0_0]'
                           : 'border-border-default bg-surface-page text-content-secondary hover:border-[rgb(var(--content-secondary))]'
                       )}
                     >

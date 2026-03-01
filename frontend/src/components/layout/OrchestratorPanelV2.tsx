@@ -66,7 +66,7 @@ export function ExpertRailSimple({ hasArtifact }: { hasArtifact: boolean }) {
       return <div className="w-3 h-3 border-2 border-yellow-500 border-t-transparent animate-spin rounded-full" />
     }
     if (status === 'completed') {
-      return <div className="w-3 h-3 bg-green-500 rounded-full" />
+      return <div className="w-3 h-3 bg-status-online rounded-full" />
     }
     return <div className="w-3 h-3 bg-muted-foreground rounded-full" />
   }

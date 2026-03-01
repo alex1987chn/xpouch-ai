@@ -155,7 +155,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
 
                 {/* 上传按钮 */}
                 <label className="absolute -bottom-1 -right-1 w-7 h-7 bg-accent-hover border-2 border-border-default flex items-center justify-center cursor-pointer hover:brightness-95 transition-all">
-                  <Camera className="w-3.5 h-3.5 text-black" />
+                  <Camera className="w-3.5 h-3.5 text-content-primary" />
                   <input
                     type="file"
                     accept="image/*"
@@ -180,7 +180,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
                 {avatarPreview && (
                   <button
                     onClick={handleRemoveAvatar}
-                    className="flex items-center justify-center gap-2 px-3 py-2 border-2 border-red-500/50 text-red-500 hover:bg-red-500/10 transition-colors"
+                    className="flex items-center justify-center gap-2 px-3 py-2 border-2 border-status-offline/50 text-status-offline hover:bg-status-offline/10 transition-colors"
                   >
                     <X className="w-4 h-4" />
                     <span className="font-mono text-xs font-bold uppercase">{t('removeAvatar')}</span>
@@ -234,11 +234,11 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex-1 py-3 bg-accent-hover text-black font-mono text-sm font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
+            className="flex-1 py-3 bg-accent-hover text-content-primary font-mono text-sm font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
           >
             {isSaving ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-black/30 border-t-black animate-spin"></span>
+                <span className="w-4 h-4 border-2 border-content-primary/30 border-t-content-primary animate-spin"></span>
                 {t('savingUserSettings')}
               </span>
             ) : (

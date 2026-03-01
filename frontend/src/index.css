@@ -131,6 +131,10 @@
     box-shadow: 8px 8px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
+  .shadow-hard-hover {
+    box-shadow: 6px 6px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
+  }
+
   /* Bauhaus 按下效果 */
   .active\:shadow-pressed:active {
     transform: translate(2px, 2px);
