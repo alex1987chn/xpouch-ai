@@ -348,12 +348,6 @@ export default function ArtifactDashboard({
               {/* Toolbar */}
               <div className="flex items-center justify-between px-2 py-1.5 border-b border-border-default bg-panel shrink-0">
                 <div className="flex items-center gap-2">
-                  <div className="flex items-end gap-1">
-                    <div className="w-3 h-3 bg-accent border border-border-default" />
-                    <div className="w-2 h-2 bg-surface-card border-2 border-border-default" />
-                    <div className="w-1.5 h-1.5 bg-primary/60 border border-border-default/50" />
-                  </div>
-                  <div className="w-px h-4 bg-border mx-1" />
                   <div className="flex items-center gap-1 text-[10px] font-mono text-content-primary uppercase">
                     <FileCode className="w-3 h-3 text-accent" />
                     <span className="font-bold">
