@@ -67,7 +67,7 @@ export default function IndustrialChatLayout({
   isFullscreen = false,
 }: IndustrialChatLayoutProps) {
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-surface-card font-sans selection:bg-[rgb(var(--accent-brand))] selection:text-content-primary">
+    <div className="h-full flex flex-col overflow-hidden bg-page font-sans selection:bg-[rgb(var(--accent-brand))] selection:text-content-primary">
       {/* Header 由父组件直接提供，不在此层渲染容器 */}
 
       {/* 主内容区 - 双栏布局 */}
