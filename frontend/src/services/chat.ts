@@ -39,7 +39,7 @@ import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-sou
 import { getHeaders, buildUrl, handleResponse, handleSSEConnectionError, authenticatedFetch } from './common'
 import { ApiMessage, StreamCallback, Conversation } from '@/types'
 import { logger } from '@/utils/logger'
-import { handleServerEvent } from '@/handlers/eventHandlers'
+import { handleServerEvent } from '@/handlers'
 import { createSSEPromiseHelpers, SSE_HEARTBEAT_TIMEOUT, SSE_HEARTBEAT_CHECK_INTERVAL } from '@/utils/sseUtils'
 import { showLoginDialog } from '@/utils/authUtils'
 
