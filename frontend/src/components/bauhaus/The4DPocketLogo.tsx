@@ -64,7 +64,7 @@ export function The4DPocketLogo({ className }: The4DPocketLogoProps) {
     >
       {/* 掉落的方块 (Pocket Item) */}
       <motion.div
-        className="absolute left-[13px] w-4 h-4 border-2 border-[rgb(var(--border-default))] z-[5]"
+        className="absolute left-[13px] w-4 h-4 border-2 border-border z-[5]"
         style={{
           // 增加默认背景色防止 CSS 变量未加载时不可见
           backgroundColor: "var(--logo-item, #facc15)", 
@@ -76,7 +76,7 @@ export function The4DPocketLogo({ className }: The4DPocketLogoProps) {
 
       {/* 口袋底座 (Pocket Base) */}
       <motion.div
-        className="absolute bottom-2 left-[3px] w-9 h-5 border-2 border-t-0 border-[rgb(var(--border-default))] z-10"
+        className="absolute bottom-2 left-[3px] w-9 h-5 border-2 border-t-0 border-border z-10"
         style={{
           // 增加默认背景色
           backgroundColor: "var(--logo-base, #2563eb)",

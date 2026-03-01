@@ -117,7 +117,7 @@ export default function ExpertFormDialog({
         {/* 标题 */}
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-[rgb(var(--accent-hover))]" />
+            <div className="w-2 h-2 bg-accent-hover" />
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// {title}
             </span>
@@ -125,7 +125,7 @@ export default function ExpertFormDialog({
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="w-7 h-7 flex items-center justify-center border border-border-default hover:bg-[rgb(var(--accent-hover))] transition-colors disabled:opacity-50"
+            className="w-7 h-7 flex items-center justify-center border border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -151,7 +151,7 @@ export default function ExpertFormDialog({
                 'w-full px-3 py-2 border-2 bg-surface-page font-mono text-sm focus:outline-none transition-colors',
                 keyError
                   ? 'border-status-offline focus:border-status-offline'
-                  : 'border-border-default focus:border-[rgb(var(--accent-hover))]',
+                  : 'border-border-default focus:border-accent-hover',
                 !isCreate && 'opacity-60 cursor-not-allowed'
               )}
             />
@@ -179,7 +179,7 @@ export default function ExpertFormDialog({
               }
               placeholder={t('namePlaceholder')}
               disabled={isSubmitting}
-              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors"
+              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors"
             />
           </div>
 
@@ -199,7 +199,7 @@ export default function ExpertFormDialog({
               placeholder={t('expertDescriptionPlaceholder')}
               rows={2}
               disabled={isSubmitting}
-              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors resize-y min-h-[60px]"
+              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors resize-y min-h-[60px]"
             />
           </div>
 
@@ -222,7 +222,7 @@ export default function ExpertFormDialog({
             </div>
             <div className="relative h-8 bg-surface-page border-2 border-border-default">
               <div
-                className="absolute top-0 left-0 h-full bg-[rgb(var(--accent-hover))] transition-all pointer-events-none"
+                className="absolute top-0 left-0 h-full bg-accent-hover transition-all pointer-events-none"
                 style={{ width: `${(formData.temperature / 2) * 100}%` }}
               />
               <div
@@ -274,7 +274,7 @@ export default function ExpertFormDialog({
               placeholder={t('systemPromptPlaceholder')}
               rows={5}
               disabled={isSubmitting}
-              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors resize-y min-h-[100px]"
+              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors resize-y min-h-[100px]"
             />
             <div className="flex justify-between font-mono text-[9px] text-content-secondary">
               <span>{formData.system_prompt.length} {t('chars')}</span>
@@ -292,7 +292,7 @@ export default function ExpertFormDialog({
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-4 py-2 border-2 border-border-default bg-surface-page font-mono text-xs font-bold uppercase hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary transition-colors disabled:opacity-50"
+            className="px-4 py-2 border-2 border-border-default bg-surface-page font-mono text-xs font-bold uppercase hover:bg-accent-hover hover:text-content-primary transition-colors disabled:opacity-50"
           >
             {t('cancel')}
           </button>
@@ -308,7 +308,7 @@ export default function ExpertFormDialog({
             }
             className={cn(
               'flex items-center gap-2 px-4 py-2 border-2 border-border-default',
-              'bg-[rgb(var(--accent-hover))] text-content-primary font-mono text-xs font-bold uppercase',
+              'bg-accent-hover text-content-primary font-mono text-xs font-bold uppercase',
               'shadow-hard-sm',
               'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-3',
               'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',

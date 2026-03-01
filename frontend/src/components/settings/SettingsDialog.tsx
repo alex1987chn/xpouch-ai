@@ -77,7 +77,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                     'flex items-center gap-3 p-3 border-2 cursor-pointer transition-all',
                     selectedModelId === model.id
                       ? 'border-accent-hover bg-accent-hover/10'
-                      : 'border-border-default hover:border-[rgb(var(--content-secondary))]'
+                      : 'border-border-default hover:border-content-secondary'
                   )}
                 >
                   <div className="flex-1">

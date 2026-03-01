@@ -62,14 +62,14 @@ export default function HeavyInputConsole({
             <div className="flex items-center gap-4 pl-2">
               <button
                 disabled={disabled}
-                className="text-content-primary hover:text-[rgb(var(--accent-brand))] transition-colors disabled:opacity-50"
+                className="text-content-primary hover:text-accent-brand transition-colors disabled:opacity-50"
                 title={t('attachment')}
               >
                 <Paperclip className="w-4 h-4" />
               </button>
               <button
                 disabled={disabled}
-                className="text-content-primary hover:text-[rgb(var(--accent-brand))] transition-colors disabled:opacity-50"
+                className="text-content-primary hover:text-accent-brand transition-colors disabled:opacity-50"
                 title={t('webSearch')}
               >
                 <Globe className="w-4 h-4" />
