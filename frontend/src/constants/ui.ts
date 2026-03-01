@@ -95,6 +95,8 @@ export const DIMENSIONS = {
   HEADER_HEIGHT: 64,
   /** 底部输入框最小高度 (px) */
   INPUT_MIN_HEIGHT: 80,
+  /** 最近会话列表最大高度 (px) */
+  RECENT_LIST_MAX_HEIGHT: 360,
 } as const
 
 // 防抖配置

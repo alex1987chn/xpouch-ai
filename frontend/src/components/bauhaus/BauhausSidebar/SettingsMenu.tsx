@@ -31,12 +31,8 @@ export function SettingsMenu({
   return createPortal(
     <div
       data-settings-menu
-      className="fixed bottom-[60px] bg-surface-card backdrop-blur-2xl border-2 border-border shadow-hard z-[200] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
-      style={{
-        width: '280px',
-        maxWidth: 'calc(100vw - 32px)',
-        left: '32px',
-      }}
+      className="fixed bottom-[60px] left-8 w-[280px] bg-surface-card backdrop-blur-2xl border-2 border-border shadow-hard z-[200] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
+      style={{ maxWidth: 'calc(100vw - 32px)' }}
     >
       <div className="p-4 space-y-2">
         {/* 用户信息 */}

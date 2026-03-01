@@ -41,7 +41,7 @@ export default function HeavyInputConsole({
       <div className="p-6 pb-6 pt-4 bg-page">
         <div className={cn(
           "bg-card border-2 border-border shadow-hard relative group transition-all",
-          !disabled && "focus-within:shadow-[6px_6px_0_0_#facc15]"
+          !disabled && "focus-within:shadow-hard-accent-md"
         )}>
           {/* 行号 + 文本域 */}
           <div className="flex min-h-[100px]">

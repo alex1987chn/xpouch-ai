@@ -181,7 +181,7 @@ function CreateNewCard({ onClick }: { onClick?: () => void }) {
   return (
     <div
       onClick={onClick}
-      className="border-2 border-dashed border-content-secondary p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-surface-card hover:border-solid hover:border-accent-hover hover:shadow-[8px_8px_0_0_rgb(var(--accent-hover))] transition-all"
+      className="border-2 border-dashed border-content-secondary p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-surface-card hover:border-solid hover:border-accent-hover hover:shadow-hard-accent-lg transition-all"
     >
       <div className="w-12 h-12 border-2 border-content-primary flex items-center justify-center mb-4 text-3xl group-hover:bg-accent-hover group-hover:border-accent-hover group-hover:text-content-primary transition-colors bg-surface-page">
         +
@@ -403,7 +403,7 @@ export default function HomePage() {
       {/* 移动端菜单按钮 */}
       <button
         onClick={sidebar.toggleMobile}
-        className="lg:hidden fixed top-4 left-4 z-30 p-2 border-2 border-border bg-surface-card shadow-hard hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--accent-hover))_2px_2px_0_0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+        className="lg:hidden fixed top-4 left-4 z-30 p-2 border-2 border-border bg-surface-card shadow-hard hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-accent-sm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
       >
         <Menu className="w-5 h-5 stroke-[2.5]" />
       </button>

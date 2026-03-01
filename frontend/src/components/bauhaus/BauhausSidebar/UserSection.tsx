@@ -63,8 +63,7 @@ export function UserSection({
             <div
               onClick={onAvatarClick}
               data-avatar-button=""
-              className="relative flex items-center gap-3 px-4 py-3 border-2 border-border bg-surface-page z-10 transition-all"
-              style={{ width: '230px', height: '63px' }}
+              className="relative flex items-center gap-3 px-4 py-3 border-2 border-border bg-surface-page z-10 transition-all w-[230px] h-[63px]"
             >
               {/* 头像 */}
               {avatar ? (

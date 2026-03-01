@@ -4,7 +4,6 @@
  * =============================
  */
 
-import { DIMENSIONS } from '@/constants/ui'
 import type { RecentConversationsProps } from './types'
 
 export function RecentConversations({
@@ -16,7 +15,7 @@ export function RecentConversations({
   return (
     <div className="flex-1 min-h-0 flex flex-col py-4 overflow-hidden w-full">
       {/* 小标题: 模拟终端注释 - 左对齐 */}
-      <div className="px-4 mb-2 flex items-center gap-2 opacity-50 mx-auto" style={{ width: DIMENSIONS.SIDEBAR_CONTENT_WIDTH }}>
+      <div className="px-4 mb-2 flex items-center gap-2 opacity-50 mx-auto w-[230px]">
         <div className="w-1.5 h-1.5 bg-content-secondary"></div>
         <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
           /// {t('memoryDump')}
@@ -24,7 +23,7 @@ export function RecentConversations({
       </div>
 
       {/* 滚动区域: Bauhaus风格滚动条 - 最大高度显示8条，超出滚动 */}
-      <div className="overflow-y-auto px-3 space-y-1 mx-auto bauhaus-scrollbar" style={{ maxHeight: '360px', width: DIMENSIONS.SIDEBAR_CONTENT_WIDTH }}>
+      <div className="overflow-y-auto px-3 space-y-1 mx-auto bauhaus-scrollbar max-h-[360px] w-[230px]">
         {/* 列表项: 极简、紧凑、数据感 */}
         {conversations.map((conv) => (
           <button
@@ -59,7 +58,7 @@ export function RecentConversations({
       </div>
 
       {/* 底部渐变遮罩: 提示还有更多内容 */}
-      <div className="h-4 bg-gradient-to-t from-surface-card to-transparent pointer-events-none shrink-0 mx-auto" style={{ width: DIMENSIONS.SIDEBAR_CONTENT_WIDTH }} />
+      <div className="h-4 bg-gradient-to-t from-surface-card to-transparent pointer-events-none shrink-0 mx-auto w-[230px]" />
     </div>
   )
 }
