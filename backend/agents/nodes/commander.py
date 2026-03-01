@@ -1,6 +1,4 @@
-import logging
-
-logger = logging.getLogger(__name__)
+from utils.logger import logger
 
 # P1 优化: 统一使用 tenacity 进行重试
 from tenacity import (
@@ -141,7 +139,7 @@ async def _preload_expert_configs(task_list: List[Dict], db_session: Any) -> Non
     if not expert_types:
         return
     
-    print(f"[COMMANDER] P1优化: 预加载 {len(expert_types)} 个专家配置...")
+    logger.info(f"[COMMANDER] P1优化: 预加载 {len(expert_types)} 个专家配置...")
     
     # 并行加载所有专家配置
     from agents.services.expert_manager import get_expert_config_cached
@@ -161,9 +159,9 @@ async def _preload_expert_configs(task_list: List[Dict], db_session: Any) -> Non
             if config:
                 loaded_count += 1
         except Exception as e:
-            print(f"[COMMANDER] 预加载专家 '{expert_type}' 失败: {e}")
+            logger.warning(f"[COMMANDER] 预加载专家 '{expert_type}' 失败: {e}")
     
-    print(f"[COMMANDER] P1优化: 成功预加载 {loaded_count}/{len(expert_types)} 个专家配置")
+    logger.info(f"[COMMANDER] P1优化: 成功预加载 {loaded_count}/{len(expert_types)} 个专家配置")
 
 
 async def commander_node(state: AgentState, config: RunnableConfig = None) -> Dict[str, Any]:
@@ -209,13 +207,13 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                 system_prompt = COMMANDER_SYSTEM_PROMPT
                 model = os.getenv("MODEL_NAME", "deepseek-chat")
                 temperature = 0.5
-                print(f"[COMMANDER] 使用默认回退配置: model={model}")
+                logger.info(f"[COMMANDER] 使用默认回退配置: model={model}")
             else:
                 # 使用数据库配置
                 system_prompt = commander_config["system_prompt"]
                 model = commander_config["model"]
                 temperature = commander_config["temperature"]
-                print(f"[COMMANDER] 加载配置: model={model}, temperature={temperature}")
+    logger.info(f"[COMMANDER] 加载配置: model={model}, temperature={temperature}")
             
             # 🔥🔥🔥 Commander 2.0: 占位符自动填充
             # 填充 {user_query} 和 {dynamic_expert_list}
@@ -235,17 +233,17 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                     placeholder_pattern = f"{{{placeholder}}}"
                     if placeholder_pattern in system_prompt:
                         system_prompt = system_prompt.replace(placeholder_pattern, value)
-                        print(f"[COMMANDER] 已注入占位符: {{{placeholder}}}")
+                        logger.info(f"[COMMANDER] 已注入占位符: {{{placeholder}}}")
                 
                 # 检查是否还有未填充的占位符（警告但不中断）
                 import re
                 remaining_placeholders = re.findall(r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}', system_prompt)
                 if remaining_placeholders:
-                    print(f"[COMMANDER] 警告: 以下占位符未填充: {remaining_placeholders}")
+                    logger.warning(f"[COMMANDER] 警告: 以下占位符未填充: {remaining_placeholders}")
                     
             except Exception as e:
                 # 注入失败时不中断流程，保留原始 Prompt
-                print(f"[COMMANDER] 占位符填充失败（已忽略）: {e}")
+                logger.warning(f"[COMMANDER] 占位符填充失败（已忽略）: {e}")
             
             # 执行 LLM 进行规划
             # 从模型名称推断 provider
@@ -266,11 +264,11 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                     streaming=True,
                     temperature=final_temperature
                 )
-                print(f"[COMMANDER] 模型 '{model}' -> '{actual_model}' 使用 provider: {provider}, temperature: {final_temperature}")
+                logger.info(f"[COMMANDER] 模型 '{model}' -> '{actual_model}' 使用 provider: {provider}, temperature: {final_temperature}")
                 llm_with_config = llm.bind(model=actual_model, temperature=final_temperature)
             else:
                 # 回退到 commander_llm（硬编码的 provider 优先级）
-                print(f"[COMMANDER] 模型 '{model}' 未找到 provider 配置，回退到 commander_llm")
+                logger.warning(f"[COMMANDER] 模型 '{model}' 未找到 provider 配置，回退到 commander_llm")
                 llm_with_config = get_commander_llm_lazy().bind(model=model, temperature=temperature)
 
             # 🔥🔥🔥 Commander 2.0: JSON Mode + Pydantic 强校验
@@ -286,15 +284,15 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                     status="running"
                 )
                 event_queue.append({"type": "sse", "event": sse_event_to_string(started_event)})
-                print(f"[COMMANDER] 发送 plan.started: {preview_session_id}")
+                logger.info(f"[COMMANDER] 发送 plan.started: {preview_session_id}")
             else:
-                print(f"[COMMANDER] 复用 chat.py 发送的 plan.started: {preview_session_id}")
+                logger.info(f"[COMMANDER] 复用 chat.py 发送的 plan.started: {preview_session_id}")
             
             # 2️⃣ 使用 JSON Mode + Pydantic 强校验生成计划
             # 🔥 Commander 2.0: DeepSeek 兼容的 JSON Mode 实现
             human_prompt = f"用户查询: {user_query}\n\n请分析需求并生成执行计划。"
             
-            print("[COMMANDER] 使用 JSON Mode + Pydantic 校验生成执行计划...")
+            logger.info("[COMMANDER] 使用 JSON Mode + Pydantic 校验生成执行计划...")
             commander_response = await _generate_plan_with_json_mode(
                 llm_with_config, system_prompt, human_prompt, 
                 preview_session_id, event_queue
@@ -304,7 +302,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
             for idx, task in enumerate(commander_response.tasks):
                 if not task.id:
                     task.id = f"task_{idx}"
-                    print(f"[COMMANDER] 自动为任务 {idx} 生成 id: {task.id}")
+                    logger.info(f"[COMMANDER] 自动为任务 {idx} 生成 id: {task.id}")
             
             # v3.2: 修复依赖上下文注入 - 将 dependencies 中的索引格式转换为 ID 格式
             task_id_map = {str(idx): task.id for idx, task in enumerate(commander_response.tasks)}
@@ -319,7 +317,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                             # 如果已经是正确的 ID 格式（如 "task_0"），保持不变
                             new_dependencies.append(dep)
                     task.dependencies = new_dependencies
-                    print(f"[COMMANDER] 任务 {task.id} 的依赖已转换: {new_dependencies}")
+                    logger.info(f"[COMMANDER] 任务 {task.id} 的依赖已转换: {new_dependencies}")
 
             # v3.0: 准备子任务数据（支持显式依赖关系 DAG）
             # 🔥 关键修复：传递 task_id 用于 depends_on 映射
@@ -351,7 +349,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                     session_id=preview_session_id  # 🔥 传入预览时使用的 session_id
                 )
                 session_source = "复用" if is_reused else "新建"
-                print(f"[COMMANDER] TaskSession {session_source}: {task_session.session_id}")
+                logger.info(f"[COMMANDER] TaskSession {session_source}: {task_session.session_id}")
                 
                 # 🔥🔥🔥 关键修复：更新 thread.task_session_id，确保前端能查询到
                 from models import Thread
@@ -361,7 +359,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                     thread.agent_type = "ai"  # 🔥 同时更新 agent_type
                     db_session.add(thread)
                     db_session.commit()
-                    print(f"[COMMANDER] ✅ 已更新 thread.task_session_id: {task_session.session_id}")
+                    logger.info(f"[COMMANDER] ✅ 已更新 thread.task_session_id: {task_session.session_id}")
 
             # 转换为内部字典格式（用于 LangGraph 状态流转）
             sub_tasks_list = task_session.sub_tasks if task_session else []
@@ -382,7 +380,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                     "completed_at": None
                 })
 
-            print(f"[COMMANDER] 生成了 {len(task_list)} 个任务。策略: {commander_response.strategy}")
+            logger.info(f"[COMMANDER] 生成了 {len(task_list)} 个任务。策略: {commander_response.strategy}")
 
             # P1 优化: 预加载所有专家配置到缓存
             await _preload_expert_configs(task_list, db_session)
@@ -580,7 +578,7 @@ async def _streaming_planning_fallback(
     json_buffer = ""
     is_json_phase = False
     
-    print("[COMMANDER] Fallback: 使用流式解析...")
+    logger.info("[COMMANDER] Fallback: 使用流式解析...")
     
     async for chunk in llm_with_config.astream(
         [
@@ -637,8 +635,8 @@ async def _streaming_planning_fallback(
             strict=False,
             clean_markdown=False
         )
-        print(f"[COMMANDER] 流式解析成功，生成 {len(commander_response.tasks)} 个任务")
+        logger.info(f"[COMMANDER] 流式解析成功，生成 {len(commander_response.tasks)} 个任务")
         return commander_response
     except Exception as parse_err:
-        print(f"[COMMANDER] 流式解析失败: {parse_err}")
+        logger.warning(f"[COMMANDER] 流式解析失败: {parse_err}")
         raise

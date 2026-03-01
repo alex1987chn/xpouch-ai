@@ -67,6 +67,7 @@ from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from tools import ALL_TOOLS  # 🔥 导入工具集
 from utils.prompt_utils import enhance_system_prompt_with_tools  # v3.6: 提取到工具函数
+from utils.logger import logger
 
 
 def normalize_message_content(content: Union[str, List, Any]) -> str:
@@ -192,7 +193,7 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
     
     # 如果缓存中没有，可能是自定义专家，尝试直接查数据库
     if not expert_config:
-        print(f"[GenericWorker] 缓存中未找到 '{expert_type}'，尝试从数据库加载...")
+        logger.info(f"[GenericWorker] 缓存中未找到 '{expert_type}'，尝试从数据库加载...")
         from database import engine
         from sqlmodel import Session
         from agents.services.expert_manager import get_expert_config
@@ -200,7 +201,7 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
         with Session(engine) as session:
             expert_config = get_expert_config(expert_type, session)
             if expert_config:
-                print(f"[GenericWorker] 从数据库加载 '{expert_type}' 成功")
+        logger.info(f"[GenericWorker] 从数据库加载 '{expert_type}' 成功")
     
     if not expert_config:
         return {
@@ -224,7 +225,7 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
     # 将 started 事件放入 state 的 event_queue，让 dispatcher 或其他节点处理
     initial_event_queue = state.get("event_queue", [])
     initial_event_queue.append({"type": "sse", "event": sse_event_to_string(started_event)})
-    print(f"[GenericWorker] 已生成 task.started 事件: {expert_type}")
+    logger.info(f"[GenericWorker] 已生成 task.started 事件: {expert_type}")
 
     try:
         # 获取专家配置参数
@@ -253,7 +254,7 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
             provider_config = providers_config.get("providers", {}).get(provider, {})
             content_mode = provider_config.get("content_mode", "string")
         
-        print(f"[GenericWorker] Running '{expert_type}' ({expert_name}) with model={actual_model}, temp={temperature}, content_mode={content_mode}")
+        logger.info(f"[GenericWorker] Running '{expert_type}' ({expert_name}) with model={actual_model}, temp={temperature}, content_mode={content_mode}")
         
         # 如果没有提供 LLM 实例，根据配置创建
         if llm is None:
@@ -274,7 +275,7 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
         # 填充 {input} 占位符（任务描述）
         if "{input}" in system_prompt:
             system_prompt = system_prompt.replace("{input}", description)
-            print(f"[GenericWorker] 已注入占位符: {{input}} = {description[:50]}...")
+            logger.info(f"[GenericWorker] 已注入占位符: {{input}} = {description[:50]}...")
         
         # 增强 System Prompt (注入时间 + 工具指令)
         enhanced_system_prompt = enhance_system_prompt_with_tools(system_prompt)
@@ -319,10 +320,10 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
                     )
                     if dep_result and dep_result.get("output"):
                         context_parts.append(f"【上游任务 {dep_id} 的输出】:\n{dep_result['output'][:2000]}...")
-                        print(f"[GenericWorker] ✅ 找到依赖 {dep_id}: {len(dep_result['output'])} 字符")
+                        logger.info(f"[GenericWorker] ✅ 找到依赖 {dep_id}: {len(dep_result['output'])} 字符")
                     else:
                         missing_deps.append(dep_id)
-                        print(f"[GenericWorker] ⚠️ 未找到依赖 {dep_id}, 可用结果: {[r.get('task_id') for r in expert_results]}")
+                        logger.warning(f"[GenericWorker] ⚠️ 未找到依赖 {dep_id}, 可用结果: {[r.get('task_id') for r in expert_results]}")
             
             # 组装任务提示
             task_prompt = f"任务描述: {description}\n\n"
@@ -364,15 +365,15 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
                     
                     # 🔥 警告：如果 MCP 工具为空但预期应该有
                     if not mcp_tools and os.getenv("MCP_SERVERS"):
-                        print(f"[GenericWorker] ⚠️ MCP 工具为空！请检查 MCP 服务器连接")
+                        logger.warning(f"[GenericWorker] ⚠️ MCP 工具为空！请检查 MCP 服务器连接")
                     
                     llm_to_use = llm_with_config.bind_tools(runtime_tools)
-                    print(f"[GenericWorker] 🔧 工具已绑定: {len(runtime_tools)} 个工具 (基础: {len(BASE_TOOLS)}, MCP: {len(mcp_tools)})")
+                    logger.info(f"[GenericWorker] 🔧 工具已绑定: {len(runtime_tools)} 个工具 (基础: {len(BASE_TOOLS)}, MCP: {len(mcp_tools)})")
                 except Exception as e:
-                    print(f"[GenericWorker] ⚠️ 工具绑定失败（模型可能不支持工具调用）: {e}")
+                    logger.warning(f"[GenericWorker] ⚠️ 工具绑定失败（模型可能不支持工具调用）: {e}")
                     llm_to_use = llm_with_config
             else:
-                print(f"[GenericWorker] ⏭️ 工具调用已禁用（ENABLE_TOOL_CALLING=false）")
+                logger.info(f"[GenericWorker] ⏭️ 工具调用已禁用（ENABLE_TOOL_CALLING=false）")
                 llm_to_use = llm_with_config
 
         # 🔥 关键优化：当 has_tool_message=True 时，在消息末尾添加明确的"任务完成"提示
@@ -399,9 +400,9 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
         has_tool_calls = hasattr(response, "tool_calls") and response.tool_calls
 
         if has_tool_calls:
-            print(f"[GenericWorker] 🔧 LLM 返回了工具调用！数量: {len(response.tool_calls)}")
+            logger.info(f"[GenericWorker] 🔧 LLM 返回了工具调用！数量: {len(response.tool_calls)}")
             for tool_call in response.tool_calls:
-                print(f"[GenericWorker]   - 工具: {tool_call.get('name', 'unknown')}")
+                logger.info(f"[GenericWorker]   - 工具: {tool_call.get('name', 'unknown')}")
             # 🔥🔥 关键：返回 messages 让 ToolNode 处理工具调用
             # 此时不生成 task.completed 事件，因为任务还没完成
             return {
@@ -419,12 +420,12 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
             }
 
         # 没有工具调用，正常完成任务
-        print(f"[GenericWorker] ℹ️ LLM 返回了普通文本响应，未调用工具")
+        logger.info(f"[GenericWorker] ℹ️ LLM 返回了普通文本响应，未调用工具")
 
         completed_at = datetime.now()
         duration_ms = int((completed_at - started_at).total_seconds() * 1000)
 
-        print(f"[GenericWorker] '{expert_type}' completed (耗时: {duration_ms/1000:.2f}s)")
+        logger.info(f"[GenericWorker] '{expert_type}' completed (耗时: {duration_ms/1000:.2f}s)")
 
         # -------------------------------------------------------------
         # 🔥 新增逻辑：如果是记忆专家，执行"写入数据库"操作
@@ -435,7 +436,7 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
             user_id = state.get("user_id", "default_user")
             
             if memory_content:
-                print(f"[GenericWorker] 正在保存记忆: {memory_content}")
+                logger.info(f"[GenericWorker] 正在保存记忆: {memory_content}")
                 try:
                     # 异步调用 memory_manager 保存 (内部使用了 to_thread)
                     await memory_manager.add_memory(
@@ -444,12 +445,12 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
                         source="conversation",
                         memory_type="fact"
                     )
-                    print(f"[GenericWorker] 记忆保存成功!")
+                    logger.info(f"[GenericWorker] 记忆保存成功!")
                     # 修改返回给用户的 output，让反馈更自然
                     response_content_original = response.content
                     response.content = f"已为您记录：{response_content_original}"
                 except Exception as mem_err:
-                    print(f"[GenericWorker] 记忆保存失败: {mem_err}")
+                    logger.warning(f"[GenericWorker] 记忆保存失败: {mem_err}")
                     response.content = f"记录时遇到问题，但我会记住：{memory_content}"
         # -------------------------------------------------------------
 
@@ -487,7 +488,7 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
             "duration_ms": duration_ms
         }
         
-        print(f"[GenericWorker] 保存专家结果: task_id={record_id}, db_uuid={db_uuid}, expert={expert_type}")
+        logger.info(f"[GenericWorker] 保存专家结果: task_id={record_id}, db_uuid={db_uuid}, expert={expert_type}")
 
         # 获取现有的 expert_results 并追加新结果
         expert_results = state.get("expert_results", [])
@@ -516,11 +517,11 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
                     artifact_data=artifact,
                     duration_ms=duration_ms
                 ))
-                print(f"[GenericWorker] ✅ 专家执行结果已提交后台线程池保存: {expert_type}")
+                logger.info(f"[GenericWorker] ✅ 专家执行结果已提交后台线程池保存: {expert_type}")
             except Exception as save_err:
-                print(f"[GenericWorker] ⚠️ 后台保存提交失败: {save_err}")
+                logger.warning(f"[GenericWorker] ⚠️ 后台保存提交失败: {save_err}")
         else:
-            print(f"[GenericWorker] ⚠️ 跳过保存: task_id={task_id}")
+            logger.warning(f"[GenericWorker] ⚠️ 跳过保存: task_id={task_id}")
 
         # ✅ 生成事件队列（用于前端展示专家和 artifact）
         from utils.event_generator import (
@@ -540,7 +541,7 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
             title=f"{expert_name}结果"
         )
         event_queue.append({"type": "sse", "event": sse_event_to_string(artifact_event)})
-        print(f"[GenericWorker] 已生成 artifact.generated 事件: {artifact_type}")
+        logger.info(f"[GenericWorker] 已生成 artifact.generated 事件: {artifact_type}")
 
         # 1. 发送 task.completed 事件（专家执行完成）
         task_completed_event = event_task_completed(
@@ -552,7 +553,7 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
             artifact_count=1
         )
         event_queue.append({"type": "sse", "event": sse_event_to_string(task_completed_event)})
-        print(f"[GenericWorker] 已生成 task.completed 事件: {expert_type}")
+        logger.info(f"[GenericWorker] 已生成 task.completed 事件: {expert_type}")
 
         # ✅ 合并 started 事件和 completed 事件
         full_event_queue = initial_event_queue + event_queue
@@ -580,7 +581,7 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
         }
         
     except Exception as e:
-        print(f"[GenericWorker] '{expert_type}' failed: {e}")
+        logger.warning(f"[GenericWorker] '{expert_type}' failed: {e}")
 
         # ✅ 失败时也要增加 index，否则会卡死循环
         next_index = current_index + 1
@@ -620,7 +621,7 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
             error=str(e)
         )
         event_queue.append({"type": "sse", "event": sse_event_to_string(failed_event)})
-        print(f"[GenericWorker] 已生成 task.failed 事件: {expert_type}")
+        logger.info(f"[GenericWorker] 已生成 task.failed 事件: {expert_type}")
 
         # ✅ 合并 started 事件和 failed 事件
         full_event_queue = initial_event_queue + event_queue

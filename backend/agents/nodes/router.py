@@ -19,6 +19,7 @@ from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from utils.event_generator import event_router_start, event_router_decision, sse_event_to_string
 from agents.services.expert_manager import get_expert_config_cached
 from utils.prompt_utils import inject_current_time  # v3.6: 提取到工具函数
+from utils.logger import logger
 
 
 class RoutingDecision(BaseModel):
@@ -51,19 +52,19 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> Dict[
     # 后续可以从请求 header 或上下文传递 user_id
     user_id = state.get("user_id", "default_user")
 
-    print(f"--- [Router] 正在思考: {user_query[:100]}... ---")
+    logger.info(f"--- [Router] 正在思考: {user_query[:100]}... ---")
 
     # 🔥 Phase 3: 初始化事件队列，发送 router.start 事件
     event_queue = state.get("event_queue", [])
     start_event = event_router_start(query=user_query[:200])  # 限制长度
     event_queue.append({"type": "sse", "event": sse_event_to_string(start_event)})
-    print(f"[Router] 已发送 router.start 事件")
+    logger.info(f"[Router] 已发送 router.start 事件")
 
     # 1. 🔥 检索长期记忆（异步）
     try:
         relevant_memories = await memory_manager.search_relevant_memories(user_id, user_query, limit=3)
     except Exception as e:
-        print(f"[Router] 记忆检索失败: {e}")
+        logger.warning(f"[Router] 记忆检索失败: {e}")
         relevant_memories = ""
 
     # 2. 🔥 v3.5: 加载 System Prompt（DB -> Cache -> Constants 兜底）
@@ -75,7 +76,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> Dict[
         user_query=user_query,
         relevant_memories=relevant_memories
     )
-    print(f"[Router] System Prompt 已加载并填充占位符")
+    logger.info(f"[Router] System Prompt 已加载并填充占位符")
 
     parser = PydanticOutputParser(pydantic_object=RoutingDecision)
     try:
@@ -98,11 +99,11 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> Dict[
                 decision_type = decision.get("decision_type", "complex")
             else:
                 decision_type = decision.decision_type
-            print(f"[Router] 使用结构化输出，决策结果: {decision_type}")
+            logger.info(f"[Router] 使用结构化输出，决策结果: {decision_type}")
         except Exception as structured_error:
             # 模型不支持 structured_output（如 DeepSeek），降级到 PydanticOutputParser
             if "response_format" in str(structured_error).lower() or "400" in str(structured_error):
-                print(f"[Router] 模型不支持结构化输出，降级到 PydanticOutputParser")
+                logger.warning(f"[Router] 模型不支持结构化输出，降级到 PydanticOutputParser")
                 response = await llm.ainvoke(
                     [
                         SystemMessage(content=system_prompt),
@@ -112,7 +113,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> Dict[
                 )
                 decision = parser.parse(response.content)
                 decision_type = decision.decision_type
-                print(f"[Router] 使用 PydanticOutputParser，决策结果: {decision_type}")
+            logger.info(f"[Router] 使用 PydanticOutputParser，决策结果: {decision_type}")
             else:
                 # 其他错误，继续抛出
                 raise
@@ -123,14 +124,14 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> Dict[
             reason=f"Based on query complexity analysis"
         )
         event_queue.append({"type": "sse", "event": sse_event_to_string(decision_event)})
-        print(f"[Router] 已发送 router.decision 事件: {decision_type}")
+        logger.info(f"[Router] 已发送 router.decision 事件: {decision_type}")
 
         return {
             "router_decision": decision_type,
             "event_queue": event_queue  # 返回事件队列
         }
     except Exception as e:
-        print(f"[ROUTER ERROR] {e}")
+        logger.error(f"[ROUTER ERROR] {e}")
 
         # 🔥 Phase 3: 错误时也发送 decision 事件（fallback 到 complex）
         decision_event = event_router_decision(
@@ -138,7 +139,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> Dict[
             reason=f"Router error, fallback to complex mode: {str(e)}"
         )
         event_queue.append({"type": "sse", "event": sse_event_to_string(decision_event)})
-        print(f"[Router] 错误，已发送 fallback router.decision 事件")
+        logger.info(f"[Router] 错误，已发送 fallback router.decision 事件")
 
         return {
             "router_decision": "complex",
@@ -158,13 +159,13 @@ def _load_router_system_prompt() -> str:
     try:
         config = get_expert_config_cached("router")
         if config and config.get("system_prompt"):
-            print("[Router] 从数据库/缓存加载 System Prompt")
+            logger.info("[Router] 从数据库/缓存加载 System Prompt")
             return config["system_prompt"]
     except Exception as e:
-        print(f"[Router] 从数据库加载失败: {e}")
+        logger.warning(f"[Router] 从数据库加载失败: {e}")
     
     # L3: 兜底到静态常量
-    print("[Router] 使用静态常量 System Prompt (L3兜底)")
+    logger.info("[Router] 使用静态常量 System Prompt (L3兜底)")
     return ROUTER_SYSTEM_PROMPT
 
 
@@ -199,13 +200,13 @@ def _fill_router_placeholders(
         placeholder_pattern = f"{{{placeholder}}}"
         if placeholder_pattern in system_prompt:
             system_prompt = system_prompt.replace(placeholder_pattern, value)
-            print(f"[Router] 已注入占位符: {{{placeholder}}}")
+            logger.info(f"[Router] 已注入占位符: {{{placeholder}}}")
     
     # 检查是否还有未填充的占位符（警告但不中断）
     import re
     remaining_placeholders = re.findall(r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}', system_prompt)
     if remaining_placeholders:
-        print(f"[Router] 警告: 以下占位符未填充: {remaining_placeholders}")
+        logger.warning(f"[Router] 警告: 以下占位符未填充: {remaining_placeholders}")
     
     return system_prompt
 
@@ -220,7 +221,7 @@ async def direct_reply_node(state: AgentState, config: RunnableConfig = None) ->
     
     🔥 新增：集成长期记忆，提供个性化回复
     """
-    print(f"[DIRECT_REPLY] 节点开始执行")
+    logger.info(f"[DIRECT_REPLY] 节点开始执行")
     messages = state["messages"]
     last_message = messages[-1]
     user_query = last_message.content if hasattr(last_message, 'content') else str(last_message)
@@ -232,13 +233,13 @@ async def direct_reply_node(state: AgentState, config: RunnableConfig = None) ->
     try:
         relevant_memories = await memory_manager.search_relevant_memories(user_id, user_query, limit=5)
     except Exception as e:
-        print(f"[DirectReply] 记忆检索失败: {e}")
+        logger.warning(f"[DirectReply] 记忆检索失败: {e}")
         relevant_memories = ""
 
     # 2. 🔥 构建 System Prompt（注入记忆和时间）
     system_prompt = DEFAULT_ASSISTANT_PROMPT
     if relevant_memories:
-        print(f"[DirectReply] 激活记忆:\n{relevant_memories}")
+        logger.info(f"[DirectReply] 激活记忆:\n{relevant_memories}")
         system_prompt += f"""
 
 【关于该用户的已知信息】:
@@ -247,7 +248,7 @@ async def direct_reply_node(state: AgentState, config: RunnableConfig = None) ->
 
     # 🔥 核心修改：注入当前时间
     system_prompt = inject_current_time(system_prompt)
-    print(f"[DirectReply] 已注入当前时间到 System Prompt")
+    logger.info(f"[DirectReply] 已注入当前时间到 System Prompt")
 
     # 使用流式配置，添加 metadata 便于追踪
     config = {"tags": ["direct_reply"], "metadata": {"node_type": "direct_reply"}}
@@ -262,7 +263,7 @@ async def direct_reply_node(state: AgentState, config: RunnableConfig = None) ->
         config=config
     )
 
-    print(f"[DIRECT_REPLY] 节点完成，回复长度: {len(response.content)}")
+    logger.info(f"[DIRECT_REPLY] 节点完成，回复长度: {len(response.content)}")
 
     # 直接返回 response 对象（保留完整元数据），并添加 final_response 字段
     return {

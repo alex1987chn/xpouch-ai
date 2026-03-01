@@ -21,6 +21,7 @@ from agents.services.task_manager import complete_task_session, save_aggregator_
 from agents.services.expert_manager import get_expert_config_cached
 from database import engine
 from constants import AGGREGATOR_SYSTEM_PROMPT
+from utils.logger import logger
 
 
 async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> Dict[str, Any]:
@@ -49,14 +50,14 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
             "event_queue": event_queue
         }
 
-    print(f"[AGG] 正在聚合 {len(expert_results)} 个结果，调用 LLM 生成总结...")
+    logger.info(f"[AGG] 正在聚合 {len(expert_results)} 个结果，调用 LLM 生成总结...")
 
     # v3.5: 构建 Aggregator 的 Prompt（专家成果摘要）
     aggregator_input = _build_aggregator_input(expert_results, strategy)
     
     # v3.5: 三层兜底加载 System Prompt (L1: DB -> L2: Cache -> L3: Constants)
     system_prompt = _load_aggregator_system_prompt(aggregator_input)
-    print(f"[AGG] System Prompt 长度: {len(system_prompt)} 字符")
+    logger.info(f"[AGG] System Prompt 长度: {len(system_prompt)} 字符")
     
     # v3.1: 获取 Aggregator LLM（带兜底逻辑）
     aggregator_llm = get_aggregator_llm()
@@ -90,7 +91,7 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
         final_response = "".join(final_response_chunks)
         
     except Exception as e:
-        print(f"[AGG] LLM 总结失败，回退到简单拼接: {e}")
+        logger.warning(f"[AGG] LLM 总结失败，回退到简单拼接: {e}")
         # 兜底：使用简单拼接
         final_response = _build_markdown_response(expert_results, strategy)
         
@@ -125,9 +126,9 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
                 if thread_id:
                     save_aggregator_message(db_session, thread_id, final_response)
         except Exception as e:
-            print(f"[AGG] 保存任务会话失败: {e}")
+            logger.warning(f"[AGG] 保存任务会话失败: {e}")
     
-    print(f"[AGG] 聚合完成，回复长度: {len(final_response)}")
+    logger.info(f"[AGG] 聚合完成，回复长度: {len(final_response)}")
 
     # ✅ 返回 task_list 以确保 chat.py 能收集到所有任务状态
     return {
@@ -158,19 +159,19 @@ def _load_aggregator_system_prompt(input_data: str) -> str:
         config = get_expert_config_cached("aggregator")
         if config and config.get("system_prompt"):
             system_prompt = config["system_prompt"]
-            print("[AGG] 从数据库/缓存加载 System Prompt")
+            logger.info("[AGG] 从数据库/缓存加载 System Prompt")
     except Exception as e:
-        print(f"[AGG] 从数据库加载失败: {e}")
+        logger.warning(f"[AGG] 从数据库加载失败: {e}")
     
     # L3: 兜底到静态常量
     if not system_prompt:
         system_prompt = AGGREGATOR_SYSTEM_PROMPT
-        print("[AGG] 使用静态常量 System Prompt (L3兜底)")
+        logger.info("[AGG] 使用静态常量 System Prompt (L3兜底)")
     
     # 注入 {input} 占位符
     if "{input}" in system_prompt:
         system_prompt = system_prompt.replace("{input}", input_data)
-        print("[AGG] 已注入 {input} 占位符")
+        logger.info("[AGG] 已注入 {input} 占位符")
     
     return system_prompt
 

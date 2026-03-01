@@ -11,6 +11,7 @@ from sqlmodel import Session, select
 from cachetools import TTLCache
 from models import SystemExpert
 from utils.llm_factory import get_effective_model
+from utils.logger import logger
 
 # P1 优化: 使用 TTLCache 替代自定义缓存 + 锁
 # - 自动 TTL 过期 (5分钟)
@@ -44,7 +45,7 @@ def get_expert_config(
     ).first()
 
     if not expert:
-        print(f"[ExpertManager] Expert '{expert_key}' not found in database")
+        logger.warning(f"[ExpertManager] Expert '{expert_key}' not found in database")
         return None
 
     return _build_config(expert)
@@ -158,7 +159,7 @@ def get_expert_prompt_cached(
         if config:
             return config.get("system_prompt")
 
-    print(f"[ExpertManager] Expert '{expert_key}' not found in cache")
+    logger.warning(f"[ExpertManager] Expert '{expert_key}' not found in cache")
     return None
 
 
@@ -233,7 +234,7 @@ def get_all_expert_list(db_session: Optional[Session] = None) -> List[tuple]:
     ]
 
     if db_session is None:
-        print("[ExpertManager] 未提供数据库会话，使用硬编码专家列表")
+        logger.info("[ExpertManager] 未提供数据库会话，使用硬编码专家列表")
         return fallback_experts
 
     try:
@@ -245,11 +246,11 @@ def get_all_expert_list(db_session: Optional[Session] = None) -> List[tuple]:
             (e.expert_key, e.name, e.description or "暂无描述")
             for e in experts
         ]
-        print(f"[ExpertManager] 从数据库加载了 {len(result)} 个专家")
+        logger.info(f"[ExpertManager] 从数据库加载了 {len(result)} 个专家")
         return result
 
     except Exception as e:
-        print(f"[ExpertManager] 获取专家列表失败: {e}，使用硬编码列表")
+        logger.warning(f"[ExpertManager] 获取专家列表失败: {e}，使用硬编码列表")
         return fallback_experts
 
 

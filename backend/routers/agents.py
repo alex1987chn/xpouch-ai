@@ -7,6 +7,7 @@ import logging
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+from utils.logger import logger as app_logger
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -180,14 +181,14 @@ async def delete_custom_agent(
 
     # 先删除关联的 Thread（会自动级联删除 messages 和 task_session）
     for thread in related_threads:
-        print(f"[DELETE] 删除智能体 {agent_id} 的关联会话: {thread.id}")
+        app_logger.info(f"[DELETE] 删除智能体 {agent_id} 的关联会话: {thread.id}")
         session.delete(thread)
 
     # 删除智能体
     session.delete(agent)
     session.commit()
 
-    print(f"[DELETE] 已删除智能体 {agent_id} 及其 {len(related_threads)} 个关联会话")
+    app_logger.info(f"[DELETE] 已删除智能体 {agent_id} 及其 {len(related_threads)} 个关联会话")
     return {"ok": True, "deleted_threads_count": len(related_threads)}
 
 
