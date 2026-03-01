@@ -5,6 +5,7 @@
  */
 
 import { type Conversation } from '@/services/chat'
+import { TranslationKey } from '@/i18n'
 
 export interface BauhausSidebarProps {
   className?: string
@@ -26,7 +27,7 @@ export interface NewChatButtonProps {
   isCollapsed: boolean
   isCreatingNewChat: boolean
   onNewChat: () => void
-  t: (key: string) => string
+  t: (key: TranslationKey) => string
 }
 
 export interface NavigationMenuProps {
@@ -38,7 +39,7 @@ export interface NavigationMenuProps {
   isAdmin: boolean
   showExpertAdmin: boolean
   onMenuClick: (path: string) => void
-  t: (key: string) => string
+  t: (key: TranslationKey) => string
   toast: (options: { title: string; description: string; variant: 'default' | 'destructive' }) => void
 }
 
@@ -46,7 +47,7 @@ export interface RecentConversationsProps {
   conversations: Conversation[]
   onConversationClick: (conversationId: string, agentId?: string) => void
   formatRelativeTime: (dateString: string | undefined) => string
-  t: (key: string) => string
+  t: (key: TranslationKey) => string
 }
 
 export interface UserSectionProps {
@@ -61,9 +62,9 @@ export interface UserSectionProps {
   currentPlan: 'Free' | 'Pilot' | 'Maestro'
   planLabel: string
   onAvatarClick: () => void
-  onToggleCollapsed?: () => void
   onLoginClick: () => void
-  t: (key: string) => string
+  onToggleCollapsed?: () => void
+  t: (key: TranslationKey) => string
 }
 
 export interface SettingsMenuProps {
@@ -82,5 +83,5 @@ export interface SettingsMenuProps {
   onLogout: () => void
   onLanguageChange: (lang: 'zh' | 'en' | 'ja') => void
   onClose: () => void
-  t: (key: string) => string
+  t: (key: TranslationKey) => string
 }
