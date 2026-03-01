@@ -225,7 +225,7 @@ export default function ChatStreamPanel({
       {/* Message list area */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-6 space-y-8 dot-grid scrollbar-hide"
+        className="flex-1 overflow-y-auto p-4 space-y-8 dot-grid scrollbar-hide"
       >
         {displayMessages.length === 0 ? (
           <EmptyState />
