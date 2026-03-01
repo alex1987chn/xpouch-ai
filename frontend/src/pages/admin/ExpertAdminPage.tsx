@@ -33,7 +33,7 @@ import { logger } from '@/utils/logger'
 import ExpertListTable from '@/components/admin/ExpertListTable'
 import ExpertEditor from '@/components/admin/ExpertEditor'
 import ExpertFormDialog from '@/components/admin/ExpertFormDialog'
-import DeleteConfirmDialog from '@/components/admin/DeleteConfirmDialog'
+import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 
 // Toast 组件
 function BauhausToast({
@@ -249,10 +249,17 @@ export default function ExpertAdminPage() {
       {/* 删除确认对话框 */}
       <DeleteConfirmDialog
         isOpen={isDeleteDialogOpen}
-        expert={expertToDelete}
-        isDeleting={isDeleting}
+        onClose={() => {
+          setIsDeleteDialogOpen(false)
+          setExpertToDelete(null)
+        }}
         onConfirm={handleDeleteExpert}
-        onClose={() => setIsDeleteDialogOpen(false)}
+        title={(t as any)('confirmDeleteExpert')}
+        description={(t as any)('deleteExpertWarning').replace('{name}', expertToDelete?.name || '')}
+        itemName={expertToDelete?.name}
+        confirmText={(t as any)('delete')}
+        isDeleting={isDeleting}
+        variant="warning"
       />
 
       {/* 左侧：专家列表 */}

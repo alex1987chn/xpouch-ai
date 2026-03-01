@@ -1,6 +1,6 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, X } from 'lucide-react'
+import { AlertTriangle, X, Trash2 } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { logger } from '@/utils/logger'
 
@@ -8,9 +8,18 @@ interface DeleteConfirmDialogProps {
   isOpen: boolean
   onClose: () => void
   onConfirm: () => Promise<void> | void
+  /** 弹窗标题（覆盖默认翻译） */
   title?: string
+  /** 弹窗描述（覆盖默认翻译） */
   description?: string
+  /** 要删除的项名称（高亮显示） */
   itemName?: string
+  /** 删除按钮文本（覆盖默认翻译） */
+  confirmText?: string
+  /** 是否正在删除中（外部控制loading状态） */
+  isDeleting?: boolean
+  /** 警告类型：danger(红色删除) / warning(黄色警告) */
+  variant?: 'danger' | 'warning'
 }
 
 export function DeleteConfirmDialog({
@@ -20,19 +29,29 @@ export function DeleteConfirmDialog({
   title,
   description,
   itemName,
+  confirmText,
+  isDeleting: externalIsDeleting,
+  variant = 'danger',
 }: DeleteConfirmDialogProps) {
   const { t } = useTranslation()
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [internalIsDeleting, setInternalIsDeleting] = useState(false)
+  
+  // 优先使用外部控制的 isDeleting，否则使用内部状态
+  const isDeleting = externalIsDeleting !== undefined ? externalIsDeleting : internalIsDeleting
 
   const handleConfirm = async () => {
-    setIsDeleting(true)
+    if (externalIsDeleting === undefined) {
+      setInternalIsDeleting(true)
+    }
     try {
       await onConfirm()
       onClose()
     } catch (error) {
       logger.error('Delete failed:', error)
     } finally {
-      setIsDeleting(false)
+      if (externalIsDeleting === undefined) {
+        setInternalIsDeleting(false)
+      }
     }
   }
 
@@ -56,9 +75,9 @@ export function DeleteConfirmDialog({
         {/* 弹窗头部 - Bauhaus风格 */}
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-status-offline"></div>
+            <div className={`w-2 h-2 ${variant === 'danger' ? 'bg-status-offline' : 'bg-amber-500'}`}></div>
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
-              /// WARNING
+              /// {variant === 'danger' ? 'WARNING' : 'CAUTION'}
             </span>
           </div>
           <button
@@ -74,8 +93,16 @@ export function DeleteConfirmDialog({
         <div className="p-6 space-y-5">
           {/* 警告图标 */}
           <div className="flex justify-center">
-            <div className="w-16 h-16 border-2 border-status-offline bg-status-offline/10 flex items-center justify-center">
-              <AlertTriangle className="w-8 h-8 text-status-offline" />
+            <div className={`w-16 h-16 border-2 flex items-center justify-center ${
+              variant === 'danger' 
+                ? 'border-status-offline bg-status-offline/10' 
+                : 'border-amber-500 bg-amber-500/10'
+            }`}>
+              {variant === 'danger' ? (
+                <AlertTriangle className="w-8 h-8 text-status-offline" />
+              ) : (
+                <Trash2 className="w-8 h-8 text-amber-600" />
+              )}
             </div>
           </div>
 
@@ -85,7 +112,11 @@ export function DeleteConfirmDialog({
               {title || t('confirmDeleteTitle')}
             </h2>
             {itemName && (
-              <div className="font-mono text-sm font-bold text-status-offline border-2 border-status-offline/30 bg-status-offline/10 py-2 px-4 inline-block">
+              <div className={`font-mono text-sm font-bold border-2 py-2 px-4 inline-block ${
+                variant === 'danger'
+                  ? 'text-status-offline border-status-offline/30 bg-status-offline/10'
+                  : 'text-amber-700 border-amber-500/30 bg-amber-500/10'
+              }`}>
                 {itemName}
               </div>
             )}
@@ -107,7 +138,11 @@ export function DeleteConfirmDialog({
           <button
             onClick={handleConfirm}
             disabled={isDeleting}
-            className="flex-1 py-3 bg-status-offline text-white font-mono text-sm font-bold uppercase hover:bg-status-offline transition-colors disabled:opacity-50"
+            className={`flex-1 py-3 font-mono text-sm font-bold uppercase transition-colors disabled:opacity-50 ${
+              variant === 'danger'
+                ? 'bg-status-offline text-white hover:bg-status-offline/90'
+                : 'bg-amber-500 text-white hover:bg-amber-600'
+            }`}
           >
             {isDeleting ? (
               <span className="flex items-center justify-center gap-2">
@@ -115,7 +150,7 @@ export function DeleteConfirmDialog({
                 {t('deleting')}
               </span>
             ) : (
-              t('confirmDelete')
+              confirmText || t('confirmDelete')
             )}
           </button>
         </div>
