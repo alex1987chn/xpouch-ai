@@ -165,31 +165,6 @@ def clear_auth_cookies(response: Response) -> None:
     logger.info("[Auth] Cookie 已清除")
 
 
-def get_auth_token_from_cookie(request: Request) -> str:
-    """
-    P0 修复: 从 Cookie 获取 access token
-    
-    Args:
-        request: FastAPI Request 对象
-        
-    Returns:
-        JWT token 字符串
-        
-    Raises:
-        HTTPException: Cookie 不存在
-    """
-    token = request.cookies.get("access_token")
-    
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="未登录或登录已过期",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    return token
-
-
 def get_refresh_token_from_cookie(request: Request) -> str:
     """
     P0 修复: 从 Cookie 获取 refresh token
@@ -215,96 +190,8 @@ def get_refresh_token_from_cookie(request: Request) -> str:
     return token
 
 
-# P0 修复: 保留 Header 方式作为向后兼容（用于 API 调试）
-def get_auth_token_from_header(authorization: str = Header(default=None)) -> str:
-    """
-    从 Authorization header 提取 Bearer token
-    保留此方式用于 API 调试和特殊场景
-    """
-    if not authorization:
-        return None
-    
-    if not authorization.startswith("Bearer "):
-        return None
-    
-    return authorization[len("Bearer "):]
-
-
-async def get_current_user_by_token(
-    token: str,
-    session: Session
-) -> User:
-    """
-    通过JWT token获取当前用户
-    
-    Args:
-        token: JWT access token
-        session: 数据库会话
-        
-    Returns:
-        用户对象
-        
-    Raises:
-        HTTPException: token无效或用户不存在
-    """
-    try:
-        # 验证token
-        payload = verify_token(token, token_type="access")
-        user_id = payload["sub"]
-
-        # 获取用户
-        user = session.get(User, user_id)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="用户不存在"
-            )
-
-        return user
-
-    except AuthenticationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-
-async def get_current_user(
-    request: Request,
-    session: Session = Depends(get_session)
-) -> User:
-    """
-    P0 修复: FastAPI 依赖 - 优先从 Cookie 获取 Token
-    
-    优先级:
-    1. 从 Cookie 读取 (推荐，安全)
-    2. 从 Header 读取 (兼容，用于调试)
-    
-    Args:
-        request: FastAPI Request 对象
-        session: 数据库会话
-        
-    Returns:
-        用户对象
-    """
-    # 优先尝试从 Cookie 获取
-    token = get_auth_token_from_cookie(request)
-    
-    # 如果 Cookie 没有，尝试 Header（向后兼容）
-    if not token:
-        auth_header = request.headers.get("Authorization")
-        if auth_header:
-            token = get_auth_token_from_header(auth_header)
-    
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="未提供认证信息",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    return await get_current_user_by_token(token, session)
+# 从 dependencies 导入统一的 get_current_user
+from dependencies import get_current_user
 
 
 # ==================== API端点 ====================

@@ -5,13 +5,9 @@
 import os
 import logging
 from typing import Optional
-from dotenv import load_dotenv
 
 # 配置日志
 logger = logging.getLogger(__name__)
-
-# 加载环境变量
-load_dotenv()
 
 # ============================================================================
 # API 配置
@@ -93,31 +89,6 @@ DATABASE_FILE = os.path.join("data", "database.db")
 
 # 数据库连接 URL
 DATABASE_URL = f"sqlite:///{DATABASE_FILE}"
-
-
-# ============================================================================
-# 专家类型配置（超智能体系统）
-# ============================================================================
-
-# 可用的专家类型
-EXPERT_TYPES = [
-    "search",       # 信息搜索专家
-    "coder",       # 编程专家
-    "researcher",  # 研究专家
-    "analyzer",    # 分析专家
-    "writer",      # 写作专家
-    "planner",     # 规划专家
-]
-
-# 专家显示名称映射
-EXPERT_NAMES = {
-    "search": "信息搜索专家",
-    "coder": "编程专家",
-    "researcher": "研究专家",
-    "analyzer": "分析专家",
-    "writer": "写作专家",
-    "planner": "规划专家",
-}
 
 
 # ============================================================================

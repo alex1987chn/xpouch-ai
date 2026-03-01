@@ -9,12 +9,6 @@ from models import (
 )
 from models.mcp import MCPServer  # 🔥 MCP 服务器模型
 import os
-from dotenv import load_dotenv
-from pathlib import Path
-
-# 加载环境变量
-env_path = Path(__file__).parent / ".env"
-load_dotenv(dotenv_path=env_path, override=True)
 
 # 使用环境变量中的数据库URL
 DATABASE_URL = os.getenv("DATABASE_URL")

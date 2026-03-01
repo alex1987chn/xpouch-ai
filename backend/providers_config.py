@@ -18,11 +18,6 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from functools import lru_cache
-from dotenv import load_dotenv
-
-# 加载环境变量
-env_path = Path(__file__).parent / ".env"
-load_dotenv(dotenv_path=env_path, override=True)
 
 try:
     import yaml

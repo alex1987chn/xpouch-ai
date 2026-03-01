@@ -5,12 +5,6 @@ LangGraph 数据库连接工具
 from contextlib import asynccontextmanager
 from psycopg_pool import AsyncConnectionPool
 import os
-from dotenv import load_dotenv
-from pathlib import Path
-
-# 加载环境变量
-env_path = Path(__file__).parent.parent / ".env"
-load_dotenv(dotenv_path=env_path, override=True)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
