@@ -47,7 +47,7 @@ export default function EmptyState({
         </div>
         <div className="space-y-2">
           <h3 className="text-sm font-bold uppercase tracking-wide text-primary">
-            {title || '暂无交付物'}
+            {title || t('noArtifacts')}
           </h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
             {description || '等待专家生成交付物。任务进行时，交付物将显示在这里。'}

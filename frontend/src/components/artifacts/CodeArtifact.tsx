@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { CodeBlock } from '@/components/ui/code-block'
 import { MermaidRenderer } from './renderers/MermaidRenderer'
@@ -29,6 +30,7 @@ export default function CodeArtifact({
   showHeader = false,
   isDarkTheme = true
 }: CodeArtifactProps) {
+  const { t } = useTranslation()
   // 默认看预览（对于可视化内容），但允许切换回源码
   const [showSource, setShowSource] = useState(false)
 
@@ -78,7 +80,7 @@ export default function CodeArtifact({
                 : "bg-gray-200 hover:bg-gray-300 text-gray-700"
             )}
           >
-            {showSource ? '预览' : '源码'}
+            {showSource ? t('preview') : t('source')}
           </button>
         </div>
       )}

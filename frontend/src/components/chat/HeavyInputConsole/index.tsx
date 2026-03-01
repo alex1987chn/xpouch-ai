@@ -63,14 +63,14 @@ export default function HeavyInputConsole({
               <button
                 disabled={disabled}
                 className="text-content-primary hover:text-[rgb(var(--accent-brand))] transition-colors disabled:opacity-50"
-                title="附件"
+                title={t('attachment')}
               >
                 <Paperclip className="w-4 h-4" />
               </button>
               <button
                 disabled={disabled}
                 className="text-content-primary hover:text-[rgb(var(--accent-brand))] transition-colors disabled:opacity-50"
-                title="网络搜索"
+                title={t('webSearch')}
               >
                 <Globe className="w-4 h-4" />
               </button>

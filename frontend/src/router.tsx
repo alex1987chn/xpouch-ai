@@ -19,6 +19,7 @@ import { createCustomAgent, updateCustomAgent, getAllAgents } from './services/a
 import { normalizeAgentId } from '@/utils/agentUtils'
 import { logger } from '@/utils/logger'
 import { SYSTEM_AGENTS } from '@/constants/agents'
+import { useTranslation } from '@/i18n'
 import { agentsKeys } from '@/hooks/queries'
 import type { Conversation, Agent } from '@/types'
 import type { AgentDisplay, CreateAgentRequest } from '@/services/agent'
@@ -135,6 +136,7 @@ const CreateAgentPageWrapper = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const addCustomAgent = useChatStore(state => state.addCustomAgent)
+  const { t } = useTranslation()
 
   const handleSave = async (agent: CreateAgentRequest & { icon: string; color?: string }) => {
     try {
@@ -161,7 +163,7 @@ const CreateAgentPageWrapper = () => {
       navigate('/', { state: { agentTab: 'my' } })
     } catch (error) {
       logger.error('保存智能体失败:', error)
-      alert('保存失败，请稍后重试')
+      alert(t('saveFailedLater'))
     }
   }
 
@@ -184,6 +186,7 @@ const EditAgentPageWrapper = () => {
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
   const [agentData, setAgentData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const { t } = useTranslation()
 
   useEffect(() => {
     // 未登录时重定向到首页
@@ -210,7 +213,7 @@ const EditAgentPageWrapper = () => {
           name: agent.name,
           description: agent.description || '',
           systemPrompt: agent.system_prompt || '',
-          category: agent.category || '综合',
+          category: agent.category || t('general'),
           modelId: agent.model_id || 'deepseek-chat'
         })
       } catch (error) {
@@ -250,7 +253,7 @@ const EditAgentPageWrapper = () => {
       navigate('/', { state: { agentTab: 'my' } })
     } catch (error) {
       logger.error('更新智能体失败:', error)
-      alert('更新失败，请稍后重试')
+      alert(t('updateFailedLater'))
     }
   }
 

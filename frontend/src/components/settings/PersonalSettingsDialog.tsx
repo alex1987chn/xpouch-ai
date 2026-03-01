@@ -35,13 +35,13 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
     if (file) {
       // 验证文件类型
       if (!file.type.startsWith('image/')) {
-        alert(t('uploadImage') || '请上传图片文件')
+        alert(t('uploadImageFile'))
         return
       }
 
       // 验证文件大小（最大 2MB）
       if (file.size > 2 * 1024 * 1024) {
-        alert(t('avatarHint') || '图片大小不能超过 2MB')
+        alert(t('imageSizeExceeded'))
         return
       }
 
@@ -51,7 +51,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
         setAvatarPreview(base64)
       } catch (error) {
         logger.error('Failed to process image:', error)
-        alert(t('operationFailed') || '图片处理失败，请重试')
+        alert(t('imageProcessFailed'))
       }
     }
   }
@@ -66,17 +66,17 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
   const handleSave = async () => {
     // 验证用户名
     if (!username.trim()) {
-      alert(t('required') || '用户名不能为空')
+      alert(t('usernameRequired'))
       return
     }
 
     if (username.length < 2) {
-      alert(t('usernameHint') || '用户名至少需要2个字符')
+      alert(t('usernameMinLength'))
       return
     }
 
     if (username.length > 20) {
-      alert(t('usernameHint') || '用户名不能超过20个字符')
+      alert(t('usernameMaxLength'))
       return
     }
 
@@ -89,7 +89,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
       onClose()
     } catch (error) {
       logger.error('[PersonalSettingsDialog] Failed to save settings:', error)
-      alert(t('saveFailed') || '保存失败，请重试')
+      alert(t('saveFailedLater'))
     } finally {
       setIsSaving(false)
     }

@@ -83,7 +83,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
     if (pendingMessage) {
       logger.info('[AppLayout] 检测到待发送消息，准备导航到聊天页')
       toast({
-        title: '登录成功',
+        title: t('loginSuccess'),
         description: '正在发送刚才的消息...',
       })
       // 导航到聊天页，携带 pendingMessage

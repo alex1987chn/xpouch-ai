@@ -74,7 +74,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
   const [name, setName] = useState(initialData?.name || '')
   const [description, setDescription] = useState(initialData?.description || '')
   const [systemPrompt, setSystemPrompt] = useState(initialData?.systemPrompt || '')
-  const [category, setCategory] = useState(initialData?.category || '综合')
+  const [category, setCategory] = useState(initialData?.category || t('general'))
   const [selectedModel, setSelectedModel] = useState(initialData?.modelId || 'deepseek-chat')
 
   const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({

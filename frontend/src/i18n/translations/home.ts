@@ -35,6 +35,12 @@ export const zh: Record<string, string> = {
   almost: '即将完成',
   input: '输入中',
   giveName: '给你的智能体起个名字...',
+
+  // 首页场景示例
+  createAgentDesc: '自定义属于你的专属智能体',
+  sceneCodeGen: '帮我编写一个React组件',
+  sceneDeepResearch: '帮我调研一下最新的前端技术趋势',
+  sceneQuickQA: '今天天气怎么样？',
   categoryGeneral: '通用',
   categoryDev: '开发',
   categoryCreate: '创作',
@@ -94,6 +100,12 @@ export const en: Record<string, string> = {
   almost: 'Almost',
   input: 'Input',
   giveName: 'Give your agent a name...',
+
+  // Home scene examples
+  createAgentDesc: 'Customize your own exclusive agent',
+  sceneCodeGen: 'Help me write a React component',
+  sceneDeepResearch: 'Help me research the latest frontend technology trends',
+  sceneQuickQA: 'What is the weather like today?',
   categoryGeneral: 'General',
   categoryDev: 'Development',
   categoryCreate: 'Creation',
@@ -153,6 +165,12 @@ export const ja: Record<string, string> = {
   almost: 'もう少し',
   input: '入力中',
   giveName: 'エージェントに名前をつけてください...',
+
+  // ホームシーン例
+  createAgentDesc: 'あなた専用のエージェントをカスタマイズ',
+  sceneCodeGen: 'Reactコンポーネントを作成してください',
+  sceneDeepResearch: '最新のフロントエンド技術トレンドを調査してください',
+  sceneQuickQA: '今日の天気はどうですか？',
   categoryGeneral: '一般',
   categoryDev: '開発',
   categoryCreate: '作成',

@@ -96,6 +96,13 @@ export type TranslationKey =
   | 'expertKeyPlaceholder' | 'expertKeyHint' | 'expertKeyExists' | 'invalidExpertKey'
   | 'namePlaceholder' | 'creating' | 'createSuccess' | 'createFailed'
   | 'deleteSuccess' | 'deleteFailed' | 'cannotDeleteSystemExpert'
+  // Validation
+  | 'uploadImageFile' | 'usernameRequired' | 'usernameMinLength' | 'usernameMaxLength'
+  | 'imageSizeExceeded' | 'imageProcessFailed' | 'saveFailedLater' | 'updateFailedLater'
+  // Time & General
+  | 'justNow' | 'secondsAgo' | 'general'
+  // Language selector
+  | 'langZh' | 'langEn' | 'langJa'
 
 
 interface I18nContextType {

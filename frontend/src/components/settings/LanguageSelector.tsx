@@ -8,13 +8,13 @@ interface LanguageSelectorProps {
 }
 
 export function LanguageSelector({ className }: LanguageSelectorProps) {
-  const { language, setLanguage } = useTranslation()
+  const { t, language, setLanguage } = useTranslation()
 
   const getShortName = (code: string) => {
     switch (code) {
-      case 'en': return 'En'
-      case 'zh': return '中'
-      case 'ja': return 'Ja'
+      case 'en': return t('langEn')
+      case 'zh': return t('langZh')
+      case 'ja': return t('langJa')
       default: return code
     }
   }
