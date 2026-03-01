@@ -584,15 +584,6 @@ export default function ArtifactDashboard({
         </div>
       </div>
 
-      {/* Bottom status bar */}
-      <div className="bg-primary text-primary-foreground border-t-2 border-border-default px-3 py-1.5 flex justify-between items-center text-[9px] font-mono shrink-0">
-        <div className="flex gap-4">
-          <span>CPU: 12%</span>
-          <span>MEM: 402MB</span>
-          <span className="text-accent">NET: CONNECTED</span>
-        </div>
-        <span>Ln 1, Col 1</span>
-      </div>
     </div>
   )
 }
