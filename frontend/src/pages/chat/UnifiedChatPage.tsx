@@ -345,7 +345,7 @@ export default function UnifiedChatPage() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <p className="font-mono text-sm text-red-500">Agent not found</p>
-          <p className="font-mono text-xs text-[rgb(var(--content-secondary))] mt-1">
+          <p className="font-mono text-xs text-content-secondary mt-1">
             ID: {normalizedAgentId}
           </p>
         </div>
