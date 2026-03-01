@@ -58,6 +58,9 @@ export const zh: Record<string, string> = {
   clickExpertToView: '点击专家状态栏中的专家查看交付物',
   closePreview: '关闭预览模式',
 
+  // Preview Button
+  preview: '预览',
+
   // Thinking Process
   thinking: '思考过程',
   thinkingSteps: '执行步骤',
@@ -161,6 +164,9 @@ export const en: Record<string, string> = {
   clickExpertToView: 'Click on expert in status bar to view artifacts',
   closePreview: 'Close Preview Mode',
 
+  // Preview Button
+  preview: 'Preview',
+
   // Thinking Process
   thinking: 'Thinking',
   thinkingSteps: 'Execution Steps',
@@ -263,6 +269,9 @@ export const ja: Record<string, string> = {
   noArtifacts: 'アーティファクトなし',
   clickExpertToView: 'ステータスバーのエキスパートをクリックしてアーティファクトを表示',
   closePreview: 'プレビューモードを閉じる',
+
+  // Preview Button
+  preview: 'プレビュー',
 
   // Thinking Process
   thinking: '思考プロセス',
