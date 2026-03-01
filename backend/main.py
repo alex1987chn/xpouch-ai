@@ -25,6 +25,7 @@ from typing import Optional
 import uvicorn
 from sqlmodel import Session, select
 from contextlib import asynccontextmanager
+import traceback
 from utils.logger import logger
 
 # 内部模块导入
@@ -210,7 +211,7 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """处理 FastAPI HTTP 异常"""
-    print(f"[HTTP ERROR] {exc.status_code}: {exc.detail}")
+    logger.error(f"[HTTP ERROR] {exc.status_code}: {exc.detail}")
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -226,10 +227,11 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """处理未捕获的异常"""
-    import traceback
+    # 仅在开发环境输出完整堆栈
+    is_debug = os.getenv("ENVIRONMENT", "development").lower() == "development"
     logger.error(
         f"[UNHANDLED ERROR] {type(exc).__name__}: {str(exc)} | Path: {request.url.path}",
-        exc_info=True
+        exc_info=is_debug
     )
 
     app_error = handle_error(exc)
