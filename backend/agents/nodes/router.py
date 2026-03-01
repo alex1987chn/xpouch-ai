@@ -113,7 +113,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> Dict[
                 )
                 decision = parser.parse(response.content)
                 decision_type = decision.decision_type
-            logger.info(f"[Router] 使用 PydanticOutputParser，决策结果: {decision_type}")
+                logger.info(f"[Router] 使用 PydanticOutputParser，决策结果: {decision_type}")
             else:
                 # 其他错误，继续抛出
                 raise
