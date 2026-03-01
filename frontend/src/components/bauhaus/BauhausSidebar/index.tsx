@@ -298,7 +298,7 @@ export default function BauhausSidebar({
         currentPlan={currentPlan}
         planLabel={planLabel}
         onAvatarClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)}
-        onLoginClick={() => setLoginDialogOpen(true)}
+        onLoginClick={() => openLogin()}
         onToggleCollapsed={onToggleCollapsed}
         t={t}
       />
