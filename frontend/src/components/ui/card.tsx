@@ -27,7 +27,7 @@ const Card = React.forwardRef<
       // 动画
       "transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
       // 悬停效果：位移 + 黄色大阴影 + 黄色边框
-      "hover:-translate-x-1.5 hover:-translate-y-1.5 hover:shadow-hard-10 hover:border-accent",
+      "hover:-translate-x-1.5 hover:-translate-y-1.5 hover:shadow-hard-accent hover:border-accent",
       className
     )}
     {...props}

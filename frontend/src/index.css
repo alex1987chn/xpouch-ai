@@ -195,6 +195,11 @@
     box-shadow: 10px 10px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
+  /* 10px 黄色阴影（强调色悬停效果） */
+  .shadow-hard-accent {
+    box-shadow: 10px 10px 0 0 rgb(var(--accent-hover));
+  }
+
   /* Bauhaus 按下效果 */
   .active\:shadow-pressed:active {
     transform: translate(2px, 2px);

@@ -240,7 +240,7 @@ export default function BauhausSidebar({
       <SidebarHeader isCollapsed={isCollapsed} onLogoClick={() => handleMenuClick('/')} />
 
       {/* 菜单区域 */}
-      <div className="flex-1 flex flex-col items-center overflow-hidden min-h-0">
+      <div className="flex-1 flex flex-col items-center overflow-hidden min-h-0 pt-2">
         {/* 新建会话按钮 */}
         <NewChatButton
           isCollapsed={isCollapsed}
