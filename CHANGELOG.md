@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-03-01] - v3.2.3 - 代码重构与智能体创建优化
+
+### 🔧 后端代码重构
+
+**消除重复代码**:
+- 删除 5 处重复的 `load_dotenv()` 调用，统一在 `main.py` 加载环境变量
+- 统一 JWT 验证逻辑，从 `dependencies` 导入 `get_current_user`
+- 删除 `jwt_handler.py` 中 4 个未使用的函数/类
+- 删除 `config.py` 中 2 个废弃配置项
+
+**抽象公共服务**:
+- 新增 `mcp_tools_service.py`，统一 MCP 工具获取逻辑（含 TTL 缓存）
+
+### ⚛️ 前端代码重构
+
+**提取通用工具函数**:
+- 新增 `sseUtils.ts`：提取 SSE 心跳检测通用逻辑
+- 新增 `authUtils.ts`：提取登录弹窗触发函数
+- 替换 12 个文件中的 `console.log` 为统一的 `logger`
+
+**配置优化**:
+- 删除 `package.json` 中重复的 `workspaces` 字段
+- 修复 `clean` 脚本跨平台兼容性（使用 `rimraf`）
+
+### 🎨 智能体创建页面重构
+
+**布局优化（方案 B）**:
+- 左侧表单改为两列紧凑布局（名称 + 分类）
+- 右侧新增实时预览面板：智能体卡片、系统提示词预览、示例对话
+
+**新增通用组件**:
+- `BauhausSelect`：通用的 Bauhaus 风格下拉选择组件
+- 统一分类选择与模型选择的交互风格
+
+**国际化**:
+- 新增 9 个翻译键：preview, unnamedAgent, noDescription, noSystemPrompt 等
+
 ## [2026-03-01] - v3.2.5 - UI 细节优化与代码清理
 
 ### 🎨 UI 优化
