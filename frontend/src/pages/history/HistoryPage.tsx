@@ -88,17 +88,17 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
 
       // 处理未来时间（服务器时间比客户端快）
       if (diffMs < 0) {
-        return '刚刚'
+        return t('justNow')
       }
 
       // 小于 1 秒显示"刚刚"而不是 "now"
       if (diffSec < 1) {
-        return '刚刚'
+        return t('justNow')
       }
 
       // 小于 60 秒显示具体秒数
       if (diffSec < 60) {
-        return `${diffSec} 秒前`
+        return `${diffSec} ${t('secondsAgo')}`
       }
 
       return formatDistanceToNow(date, {

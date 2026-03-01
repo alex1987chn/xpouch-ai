@@ -58,9 +58,7 @@ export const zh: Record<string, string> = {
   copy: '复制',
   copied: '已复制',
   regenerate: '重新生成',
-  resend: '重新发送',
   retry: '重试',
-  preview: '预览',
 
   // Delete Dialog
   confirmDeleteTitle: '确认删除',
@@ -70,6 +68,43 @@ export const zh: Record<string, string> = {
   // Common states
   success: '成功',
   loading: '加载中...',
+
+  // 权限与通用提示
+  permissionDenied: '权限不足',
+  adminOnly: '该功能仅限管理员使用',
+  loginSuccess: '登录成功',
+  welcomeBack: '欢迎回来',
+  verifyIdentity: '验证身份',
+  sendCode: '发送验证码',
+  sending: '发送中...',
+  canceling: '取消中...',
+  confirmCancel: '确定取消',
+  justNow: '刚刚',
+  secondsAgo: '秒前',
+  general: '综合',
+  expandSidebar: '展开侧边栏',
+  login: '登录',
+  attachment: '附件',
+  webSearch: '网络搜索',
+  source: '源码',
+  mediaFile: '媒体文件',
+
+  // 验证提示
+  enterValidPhone: '请输入有效的手机号码',
+  enterCode: '请输入验证码',
+  uploadImageFile: '请上传图片文件',
+  usernameRequired: '用户名不能为空',
+  usernameMinLength: '用户名至少需要2个字符',
+  usernameMaxLength: '用户名不能超过20个字符',
+  imageSizeExceeded: '图片大小不能超过 2MB',
+  imageProcessFailed: '图片处理失败，请重试',
+  saveFailedLater: '保存失败，请稍后重试',
+  updateFailedLater: '更新失败，请稍后重试',
+
+  // 语言选择
+  langZh: '中',
+  langEn: 'EN',
+  langJa: '日',
 }
 
 export const en: Record<string, string> = {
@@ -128,9 +163,7 @@ export const en: Record<string, string> = {
   copy: 'COPY',
   copied: 'COPIED',
   regenerate: 'Regenerate',
-  resend: 'Resend',
   retry: 'RETRY',
-  preview: 'Preview',
 
   // Delete Dialog
   confirmDeleteTitle: 'Confirm Delete',
@@ -140,6 +173,43 @@ export const en: Record<string, string> = {
   // Common states
   success: 'Success',
   loading: 'Loading...',
+
+  // 权限与通用提示
+  permissionDenied: 'Permission Denied',
+  adminOnly: 'This feature is for administrators only',
+  loginSuccess: 'Login Successful',
+  welcomeBack: 'Welcome Back',
+  verifyIdentity: 'Verify Identity',
+  sendCode: 'Send Code',
+  sending: 'SENDING...',
+  canceling: 'Canceling...',
+  confirmCancel: 'Confirm Cancel',
+  justNow: 'just now',
+  secondsAgo: 'seconds ago',
+  general: 'General',
+  expandSidebar: 'Expand Sidebar',
+  login: 'Login',
+  attachment: 'Attachment',
+  webSearch: 'Web Search',
+  source: 'Source',
+  mediaFile: 'Media File',
+
+  // 验证提示
+  enterValidPhone: 'Please enter a valid phone number',
+  enterCode: 'Please enter the verification code',
+  uploadImageFile: 'Please upload an image file',
+  usernameRequired: 'Username is required',
+  usernameMinLength: 'Username must be at least 2 characters',
+  usernameMaxLength: 'Username cannot exceed 20 characters',
+  imageSizeExceeded: 'Image size cannot exceed 2MB',
+  imageProcessFailed: 'Image processing failed, please try again',
+  saveFailedLater: 'Save failed, please try again later',
+  updateFailedLater: 'Update failed, please try again later',
+
+  // 语言选择
+  langZh: '中',
+  langEn: 'EN',
+  langJa: '日',
 }
 
 export const ja: Record<string, string> = {
@@ -198,9 +268,7 @@ export const ja: Record<string, string> = {
   copy: 'コピー',
   copied: 'コピー済み',
   regenerate: '再生成',
-  resend: '再送信',
   retry: '再試行',
-  preview: 'プレビュー',
 
   // Delete Dialog
   confirmDeleteTitle: '削除の確認',
@@ -210,4 +278,41 @@ export const ja: Record<string, string> = {
   // Common states
   success: '成功',
   loading: '読み込み中...',
+
+  // 权限与通用提示
+  permissionDenied: '権限がありません',
+  adminOnly: 'この機能は管理者のみ使用可能です',
+  loginSuccess: 'ログイン成功',
+  welcomeBack: 'おかえりなさい',
+  verifyIdentity: '身分を証明',
+  sendCode: '認証コードを送信',
+  sending: '送信中...',
+  canceling: 'キャンセル中...',
+  confirmCancel: 'キャンセルを確定',
+  justNow: 'たった今',
+  secondsAgo: '秒前',
+  general: '一般',
+  expandSidebar: 'サイドバーを展開',
+  login: 'ログイン',
+  attachment: '添付ファイル',
+  webSearch: 'ウェブ検索',
+  source: 'ソース',
+  mediaFile: 'メディアファイル',
+
+  // 验证提示
+  enterValidPhone: '有効な電話番号を入力してください',
+  enterCode: '認証コードを入力してください',
+  uploadImageFile: '画像ファイルをアップロードしてください',
+  usernameRequired: 'ユーザー名は必須です',
+  usernameMinLength: 'ユーザー名は2文字以上である必要があります',
+  usernameMaxLength: 'ユーザー名は20文字を超えることはできません',
+  imageSizeExceeded: '画像サイズは2MBを超えることはできません',
+  imageProcessFailed: '画像の処理に失敗しました。もう一度お試しください',
+  saveFailedLater: '保存に失敗しました。後でもう一度お試しください',
+  updateFailedLater: '更新に失敗しました。後でもう一度お試しください',
+
+  // 语言选择
+  langZh: '中',
+  langEn: 'EN',
+  langJa: '日',
 }

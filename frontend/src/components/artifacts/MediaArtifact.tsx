@@ -9,6 +9,7 @@
 import { useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { ImageIcon, Video, Loader2, AlertCircle } from 'lucide-react'
+import { useTranslation } from '@/i18n'
 
 interface MediaArtifactProps {
   content: string  // 媒体 URL 或包含 URL 的文本
@@ -72,6 +73,7 @@ function detectMediaType(url: string, explicitType?: string): 'image' | 'video' 
 }
 
 export default function MediaArtifact({ content, type = 'media', className, title }: MediaArtifactProps) {
+  const { t } = useTranslation()
   const url = extractUrl(content)
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
@@ -118,7 +120,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
             <ImageIcon className="w-4 h-4 text-green-500" />
           )}
           <span className="text-xs font-mono text-muted-foreground truncate flex-1">
-            {title || url.split('/').pop() || '媒体文件'}
+            {title || url.split('/').pop() || t('mediaFile')}
           </span>
         </div>
       )}

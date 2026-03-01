@@ -77,6 +77,32 @@ export const zh: Record<string, string> = {
   generateReportDesc: '汇总分析结果，输出结构化数据',
   designUI: '设计 UI 组件',
   designUIDesc: '基于 Figma 设计稿实现 React 组件',
+
+  // Thinking Steps
+  thinkingSearch: '搜索',
+  thinkingReading: '深度阅读',
+  thinkingAnalysis: '分析思考',
+  thinkingCoding: '代码生成',
+  thinkingPlanning: '任务规划',
+  thinkingWriting: '写作生成',
+  thinkingArtifact: '生成产物',
+  thinkingMemory: '记忆检索',
+  thinkingExecution: '任务执行',
+  thinkingDefault: '思考',
+
+  // 预览相关
+  videoPreview: '视频预览',
+  imagePreview: '图片预览',
+  codePreview: '代码预览',
+  messagePreview: '消息预览',
+  mediaPreviewMode: '媒体预览模式',
+  simpleChatMode: '简单对话模式',
+  mediaPreviewDesc: '媒体内容预览',
+  simpleChatPreviewDesc: '简单对话预览',
+
+  // 其他提示
+  minOneTask: '至少需要保留一个任务',
+  deleteTask: '删除任务',
 }
 
 export const en: Record<string, string> = {
@@ -154,6 +180,32 @@ export const en: Record<string, string> = {
   generateReportDesc: 'Summarize analysis results and output structured data',
   designUI: 'Design UI Components',
   designUIDesc: 'Implement React components based on Figma designs',
+
+  // Thinking Steps
+  thinkingSearch: 'Search',
+  thinkingReading: 'Deep Reading',
+  thinkingAnalysis: 'Analysis',
+  thinkingCoding: 'Code Generation',
+  thinkingPlanning: 'Task Planning',
+  thinkingWriting: 'Writing',
+  thinkingArtifact: 'Artifact Generation',
+  thinkingMemory: 'Memory Retrieval',
+  thinkingExecution: 'Task Execution',
+  thinkingDefault: 'Thinking',
+
+  // Preview Related
+  videoPreview: 'Video Preview',
+  imagePreview: 'Image Preview',
+  codePreview: 'Code Preview',
+  messagePreview: 'Message Preview',
+  mediaPreviewMode: 'Media Preview Mode',
+  simpleChatMode: 'Simple Chat Mode',
+  mediaPreviewDesc: 'Media content preview',
+  simpleChatPreviewDesc: 'Simple conversation preview',
+
+  // Other Messages
+  minOneTask: 'At least one task must be kept',
+  deleteTask: 'Delete Task',
 }
 
 export const ja: Record<string, string> = {
@@ -231,4 +283,30 @@ export const ja: Record<string, string> = {
   generateReportDesc: '分析結果を要約して構造化データを出力',
   designUI: 'UIコンポーネントを設計',
   designUIDesc: 'Figmaデザインに基づいてReactコンポーネントを実装',
+
+  // Thinking Steps
+  thinkingSearch: '検索',
+  thinkingReading: '深度読解',
+  thinkingAnalysis: '分析思考',
+  thinkingCoding: 'コード生成',
+  thinkingPlanning: 'タスク計画',
+  thinkingWriting: 'ライティング',
+  thinkingArtifact: '成果物生成',
+  thinkingMemory: '記憶検索',
+  thinkingExecution: 'タスク実行',
+  thinkingDefault: '思考',
+
+  // プレビュー関連
+  videoPreview: '動画プレビュー',
+  imagePreview: '画像プレビュー',
+  codePreview: 'コードプレビュー',
+  messagePreview: 'メッセージプレビュー',
+  mediaPreviewMode: 'メディアプレビューモード',
+  simpleChatMode: 'シンプルチャットモード',
+  mediaPreviewDesc: 'メディア内容のプレビュー',
+  simpleChatPreviewDesc: '簡単な会話のプレビュー',
+
+  // その他メッセージ
+  minOneTask: '最低1つのタスクを保持する必要があります',
+  deleteTask: 'タスクを削除',
 }

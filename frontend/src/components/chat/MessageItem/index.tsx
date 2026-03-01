@@ -61,7 +61,7 @@ export default function MessageItem({
       const artifact = {
         id: crypto.randomUUID(),
         type: mediaInfo.type,  // 'image' 或 'video'
-        title: mediaInfo.type === 'video' ? '视频预览' : '图片预览',
+        title: mediaInfo.type === 'video' ? t('videoPreview') : t('imagePreview'),
         content: mediaInfo.url,
         sort_order: 0
       }
@@ -70,13 +70,13 @@ export default function MessageItem({
       taskStore.setMode('simple')
       taskStore.initializePlan({
         session_id: 'media_preview',
-        summary: '媒体预览模式',
+        summary: t('mediaPreviewMode'),
         estimated_steps: 1,
         execution_mode: 'sequential',
         tasks: [{
           id: SIMPLE_TASK_ID,
           expert_type: 'media',
-          description: '媒体内容预览',
+          description: t('mediaPreviewDesc'),
           status: 'completed',
           sort_order: 0
         }]
@@ -105,9 +105,9 @@ export default function MessageItem({
     const artifact = {
       id: crypto.randomUUID(),
       type: detected?.type || 'markdown',
-      title: detected?.type === 'code' ? '代码预览' 
+      title: detected?.type === 'code' ? t('codePreview') 
         : detected?.type === 'html' ? 'HTML 预览' 
-        : '消息预览',
+        : t('messagePreview'),
       content: detected?.content || content,
       language: detected?.language,  // 👈 从 ContentTypeResult 获取
       sort_order: 0
@@ -125,13 +125,13 @@ export default function MessageItem({
       taskStore.setMode('simple')
       taskStore.initializePlan({
         session_id: 'simple_preview',
-        summary: '简单对话模式',
+        summary: t('simpleChatMode'),
         estimated_steps: 1,
         execution_mode: 'sequential',
         tasks: [{
           id: SIMPLE_TASK_ID,
           expert_type: 'assistant',
-          description: '简单对话预览',
+          description: t('simpleChatPreviewDesc'),
           status: 'completed',
           sort_order: 0
         }]

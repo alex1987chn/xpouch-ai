@@ -8,6 +8,7 @@ import { User, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { getAvatarDisplay } from '@/utils/userSettings'
+import { useTranslation } from '@/i18n'
 import type { UserSectionProps } from './types'
 
 export function UserSection({
@@ -19,8 +20,8 @@ export function UserSection({
   onAvatarClick,
   onToggleCollapsed,
   onLoginClick,
-  t,
 }: UserSectionProps) {
+  const { t } = useTranslation()
   const username = user?.username || 'User'
   const avatar = user?.avatar
 
@@ -50,7 +51,7 @@ export function UserSection({
               <button
                 onClick={onToggleCollapsed}
                 className="p-1.5 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0]"
-                title="展开侧边栏"
+                title={t('expandSidebar')}
               >
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -93,7 +94,7 @@ export function UserSection({
           <button
             onClick={onLoginClick}
             className="p-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-black shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] transition-all"
-            title="登录"
+            title={t('login')}
           >
             <User className="w-5 h-5" />
           </button>

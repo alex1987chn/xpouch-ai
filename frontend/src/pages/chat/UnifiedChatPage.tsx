@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useTranslation } from '@/i18n'
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
@@ -27,6 +28,7 @@ import { IndustrialHeader } from '@/components/chat/IndustrialHeader'
  * - 前端是银幕：只负责展示后端推送的状态
  */
 export default function UnifiedChatPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const { id: pathConversationId } = useParams()
@@ -92,7 +94,7 @@ export default function UnifiedChatPage() {
             id: agent.id,
             name: agent.name,
             description: agent.description || '',
-            category: agent.category || '综合',
+            category: agent.category || t('general'),
             isCustom: true,
             is_builtin: false,
             modelId: agent.model_id || 'deepseek-chat',
@@ -126,7 +128,7 @@ export default function UnifiedChatPage() {
         id: SYSTEM_AGENTS.DEFAULT_CHAT,
         name: getSystemAgentName(SYSTEM_AGENTS.DEFAULT_CHAT),
         description: '日常对话、通用任务、智能问答',
-        category: '通用',
+        category: t('general'),
         isCustom: false,
         is_builtin: false,
         modelId: 'deepseek-chat',

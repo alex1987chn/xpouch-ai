@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from '@/i18n'
 import { createPortal } from 'react-dom'
 import { The4DPocketLogo } from '@/components/bauhaus'
 import { useUserStore } from '@/store/userStore'
@@ -11,6 +12,7 @@ interface LoginDialogProps {
 }
 
 export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDialogProps) {
+  const { t } = useTranslation()
   const [phoneNumber, setPhoneNumber] = useState('')
   const [code, setCode] = useState('')
   const [countdown, setCountdown] = useState(0)
@@ -32,7 +34,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
   // 发送验证码
   const handleSendCode = async () => {
     if (!phoneNumber || phoneNumber.length !== 11) {
-      alert('请输入有效的手机号码')
+      alert(t('enterValidPhone'))
       return
     }
 
@@ -56,7 +58,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
   // 验证验证码并登录
   const handleVerifyCode = async () => {
     if (!code || code.length < 4) {
-      alert('请输入验证码')
+      alert(t('enterCode'))
       return
     }
 
@@ -138,7 +140,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
               <The4DPocketLogo />
             </div>
             <h2 className="text-lg font-black uppercase tracking-tight mb-1 text-[rgb(var(--content-primary))]">
-              {step === 'phone' ? '欢迎回来' : '验证身份'}
+              {step === 'phone' ? t('welcomeBack') : t('verifyIdentity')}
             </h2>
             <p className="text-xs font-mono text-[rgb(var(--content-secondary))]">
               {step === 'phone' ? 'WELCOME BACK' : 'VERIFY IDENTITY'}
@@ -179,7 +181,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                 disabled={!phoneNumber || phoneNumber.length !== 11 || loading}
                 className="w-full py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-black font-bold font-mono text-sm uppercase shadow-[rgb(var(--shadow-color))_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[rgb(var(--shadow-color))_6px_6px_0_0] active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'SENDING...' : '发送验证码'}
+                {loading ? 'SENDING...' : t('sendCode')}
               </button>
 
               <div className="text-center font-mono text-[10px] text-[rgb(var(--content-secondary))] opacity-60">
@@ -225,7 +227,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                   disabled={countdown > 0 || loading}
                   className="flex-1 py-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-card))] font-mono text-xs uppercase hover:bg-[rgb(var(--surface-page))] transition-colors disabled:opacity-50"
                 >
-                  {countdown > 0 ? `${countdown}s` : '重新发送'}
+                  {countdown > 0 ? `${countdown}s` : t('resend')}
                 </button>
 
                 <button

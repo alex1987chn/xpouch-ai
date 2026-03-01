@@ -12,6 +12,7 @@
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, Edit3, CheckCircle2, XCircle, Play, Loader2, AlertTriangle } from 'lucide-react'
+import { useTranslation } from '@/i18n'
 import type { ResumeChatParams } from '@/services/chat'
 
 // 使用 TaskStore
@@ -50,6 +51,9 @@ export function PlanReviewCard({
   conversationId,
   resumeExecution,
 }: PlanReviewCardProps) {
+  // 使用 i18n
+  const { t } = useTranslation()
+  
   // 使用 TaskStore
   const isWaitingForApproval = useIsWaitingForApproval()
   const pendingPlan = usePendingPlan()
@@ -124,7 +128,7 @@ export function PlanReviewCard({
   // Confirm and execute plan
   const handleApprove = useCallback(async () => {
     if (editedPlan.length === 0) {
-      alert('至少需要保留一个任务')
+      alert(t('minOneTask'))
       return
     }
 
@@ -272,7 +276,7 @@ export function PlanReviewCard({
                     <button
                       onClick={() => handleDeleteTask(task.id)}
                       className="p-1 text-red-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                      title="删除任务"
+                      title={t('deleteTask')}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -413,7 +417,7 @@ export function PlanReviewCard({
                       "transition-colors"
                     )}
                   >
-                    {isCancelling ? '取消中...' : '确定取消'}
+                    {isCancelling ? t('canceling') : t('confirmCancel')}
                   </button>
                 </div>
               </motion.div>

@@ -244,8 +244,8 @@ export default function HomePage() {
 
     const createAgentCard: Agent = {
       id: 'create-agent-card',
-      name: '创建智能体',
-      description: '自定义属于你的专属智能体',
+      name: t('createAgent'),
+      description: t('createAgentDesc'),
       icon: <Plus className="w-5 h-5" />,
       modelId: '',
       isDefault: false,
@@ -370,7 +370,7 @@ export default function HomePage() {
       subtitle: 'Python / JS / Rust',
       tag: 'DEV',
       onClick: () => {
-        setInputMessage('帮我编写一个React组件')
+        setInputMessage(t('sceneCodeGen'))
       },
     },
     {
@@ -380,7 +380,7 @@ export default function HomePage() {
       subtitle: 'Web Analysis & Summary',
       tag: 'RSRCH',
       onClick: () => {
-        setInputMessage('帮我调研一下最新的前端技术趋势')
+        setInputMessage(t('sceneDeepResearch'))
       },
     },
     {
@@ -390,7 +390,7 @@ export default function HomePage() {
       subtitle: 'GPT-4o Instant',
       tag: 'FAST',
       onClick: () => {
-        setInputMessage('今天天气怎么样？')
+        setInputMessage(t('sceneQuickQA'))
       },
     },
   ]

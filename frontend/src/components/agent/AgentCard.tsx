@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from '@/i18n'
 import { Card, CardContent } from '@/components/ui/card'
 import type { Agent } from '@/types'
 import { cn } from '@/lib/utils'
@@ -48,6 +49,7 @@ const STYLES = {
 } as const
 
 function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: AgentCardProps) {
+  const { t } = useTranslation()
   const isDefaultAgent = agent.isDefault === true
   const isCreateCard = agent.isCreateCard === true
   const style = isDefaultAgent ? STYLES.defaultAgent : STYLES.default
@@ -202,7 +204,7 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: Agen
                     'hover:shadow-sm hover:shadow-accent-destructive/30',
                     'border border-transparent hover:border-accent-destructive/30'
                   )}
-                  title="删除"
+                  title={t('delete')}
                 >
                   <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>

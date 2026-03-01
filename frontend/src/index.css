@@ -58,8 +58,25 @@
   body {
     background-color: rgb(var(--surface-page));
     color: rgb(var(--content-primary));
-    /* 平滑的主题过渡（可选） */
-    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* ============================================
+     主题过渡动画 - 所有使用主题变量的属性都添加平滑过渡
+     ============================================ */
+  *,
+  *::before,
+  *::after {
+    transition: background-color 0.25s ease,
+                border-color 0.25s ease,
+                color 0.25s ease,
+                fill 0.25s ease,
+                stroke 0.25s ease,
+                box-shadow 0.25s ease;
+  }
+
+  /* 对于颜色变化频繁的元素，优化性能 */
+  .theme-transition-optimized {
+    will-change: background-color, border-color, color;
   }
 
   /* 选中文字样式 */

@@ -17,6 +17,7 @@
  */
 
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { useTranslation } from '@/i18n'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Search, 
@@ -69,18 +70,7 @@ const typeIcons: Record<NonNullable<ThinkingStep['type']>, React.ElementType> = 
   default: Brain
 }
 
-const typeLabels: Record<NonNullable<ThinkingStep['type']>, string> = {
-  search: '搜索',
-  reading: '深度阅读',
-  analysis: '分析思考',
-  coding: '代码生成',
-  planning: '任务规划',
-  writing: '写作生成',
-  artifact: '生成产物',
-  memory: '记忆检索',  // 🔥 新增：Memory 类型标签
-  execution: '任务执行',  // 🔥 任务执行类型
-  default: '思考'
-}
+
 
 // ============================================================================
 // 状态图标组件
@@ -109,7 +99,20 @@ interface StepItemProps {
 }
 
 const StepItem = ({ step, index }: StepItemProps) => {
+  const { t } = useTranslation()
   const Icon = typeIcons[step.type || 'default']
+  const typeLabels: Record<NonNullable<ThinkingStep['type']>, string> = {
+    search: t('thinkingSearch'),
+    reading: t('thinkingReading'),
+    analysis: t('thinkingAnalysis'),
+    coding: t('thinkingCoding'),
+    planning: t('thinkingPlanning'),
+    writing: t('thinkingWriting'),
+    artifact: t('thinkingArtifact'),
+    memory: t('thinkingMemory'),
+    execution: t('thinkingExecution'),
+    default: t('thinkingDefault')
+  }
   const label = typeLabels[step.type || 'default']
   const isReading = step.type === 'reading'
   
@@ -200,6 +203,7 @@ const StepItem = ({ step, index }: StepItemProps) => {
 // ============================================================================
 
 export default function ThinkingProcess({ steps, isThinking, className, totalSteps: fixedTotalSteps }: ThinkingProcessProps) {
+  const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(true)
   const autoCollapseTimer = useRef<NodeJS.Timeout | null>(null)
   // 🔥 修复：使用 ref 记录是否已经自动折叠过，避免重复触发
@@ -275,19 +279,19 @@ export default function ThinkingProcess({ steps, isThinking, className, totalSte
       >
         <div className="flex items-center gap-3">
           <Brain className="w-4 h-4 text-primary" />
-          <span className="font-medium">思考过程</span>
+          <span className="font-medium">{t('thinkingProcess')}</span>
           <span className="text-xs text-muted-foreground">
             ({completedSteps}/{totalSteps})
           </span>
           {runningSteps > 0 && (
             <span className="flex items-center gap-1 text-xs text-yellow-600">
               <Loader2 className="w-3 h-3 animate-spin" />
-              进行中
+              {t('thinkingInProgress')}
             </span>
           )}
           {isAllDone && (
             <span className="text-xs text-green-600">
-              已完成
+              {t('thinkingCompleted')}
             </span>
           )}
         </div>

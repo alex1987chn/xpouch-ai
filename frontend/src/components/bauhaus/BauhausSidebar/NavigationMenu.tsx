@@ -62,8 +62,8 @@ export function NavigationMenu({
                   onMenuClick('/admin/experts')
                 } else {
                   toast({
-                    title: '权限不足',
-                    description: '该功能仅限管理员使用',
+                    title: t('permissionDenied'),
+                    description: t('adminOnly'),
                     variant: 'destructive'
                   })
                 }
@@ -121,8 +121,8 @@ export function NavigationMenu({
                 onMenuClick('/admin/experts')
               } else {
                 toast({
-                  title: '权限不足',
-                  description: '该功能仅限管理员使用',
+                  title: t('permissionDenied'),
+                  description: t('adminOnly'),
                   variant: 'destructive'
                 })
               }
@@ -209,7 +209,7 @@ function AdminButtonCollapsed({ isActive, isAdmin, onClick, t }: AdminButtonColl
   return (
     <button
       onClick={onClick}
-      title={isAdmin ? t('navExperts') : '该功能仅限管理员使用'}
+      title={isAdmin ? t('navExperts') : t('adminOnly')}
       className={cn(
         'h-9 w-9 transition-all duration-200 justify-center p-0 rounded-full border-2 relative',
         isActive
@@ -242,7 +242,7 @@ function AdminButtonExpanded({ isActive, isAdmin, onClick, t }: AdminButtonExpan
   return (
     <button
       onClick={onClick}
-      title={isAdmin ? t('navExperts') : '该功能仅限管理员使用'}
+      title={isAdmin ? t('navExperts') : t('adminOnly')}
       className={cn(
         'h-[44px] transition-all duration-200 justify-center py-0 w-[230px] border-2 relative',
         isActive
