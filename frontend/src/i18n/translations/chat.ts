@@ -63,9 +63,12 @@ export const zh: Record<string, string> = {
 
   // Thinking Process
   thinking: '思考过程',
+  thinkingProcess: '思考过程',
   thinkingSteps: '执行步骤',
   showThinking: '显示思考',
   hideThinking: '隐藏思考',
+  thinkingCompleted: '思考完成',
+  thinkingInProgress: '思考中',
 
   // Workflow Steps (Expert Drawer)
   receiveTask: '接收任务',
@@ -169,9 +172,12 @@ export const en: Record<string, string> = {
 
   // Thinking Process
   thinking: 'Thinking',
+  thinkingProcess: 'Thinking Process',
   thinkingSteps: 'Execution Steps',
   showThinking: 'Show Thinking',
   hideThinking: 'Hide Thinking',
+  thinkingCompleted: 'Thinking Completed',
+  thinkingInProgress: 'Thinking in Progress',
 
   // Workflow Steps (Expert Drawer)
   receiveTask: 'Receive Task',
@@ -275,9 +281,12 @@ export const ja: Record<string, string> = {
 
   // Thinking Process
   thinking: '思考プロセス',
+  thinkingProcess: '思考プロセス',
   thinkingSteps: '実行ステップ',
   showThinking: '思考を表示',
   hideThinking: '思考を隠す',
+  thinkingCompleted: '思考完了',
+  thinkingInProgress: '思考中',
 
   // Workflow Steps (Expert Drawer)
   receiveTask: 'タスクを受信',
