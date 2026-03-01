@@ -172,7 +172,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
       )}
 
       {/* 主内容区域 - 右侧交互区 */}
-      <main className="flex-1 w-full h-full relative overflow-y-auto min-w-0" style={{ zIndex: Z_INDEX.CONTENT }}>
+      <main className="flex-1 w-full h-full relative overflow-y-auto min-w-0 bauhaus-scrollbar" style={{ zIndex: Z_INDEX.CONTENT }}>
         {/* 移动端汉堡菜单按钮 - Bauhaus 风格 */}
         {!hideMobileMenu && (
           <div className="lg:hidden absolute top-4 left-4" style={{ zIndex: Z_INDEX.HEADER }}>
