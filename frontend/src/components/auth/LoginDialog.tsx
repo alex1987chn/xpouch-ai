@@ -241,7 +241,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
 
               {/* 开发环境显示验证码 */}
               {import.meta.env.DEV && countdown > 0 && (
-                <div className="p-3 bg-accent-hover/10 border-2 border-[rgb(var(--accent-hover))]">
+                <div className="p-3 bg-accent-hover/10 border-2 border-accent-hover">
                   <div className="font-mono text-[10px] text-content-primary">
                     <div className="font-bold mb-1">🔧 DEV_MODE</div>
                     <div>CODE: <span className="text-lg font-bold">{debugCode}</span></div>

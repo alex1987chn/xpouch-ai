@@ -49,7 +49,7 @@ export function SettingsMenu({
               {avatar ? (
                 <img src={avatar} alt="Avatar" className="w-10 h-10 border-2 border-border shadow-hard-sm" />
               ) : (
-                <div className="w-10 h-10 bg-[rgb(var(--content-primary))] text-[rgb(var(--surface-card))] flex items-center justify-center font-bold border-2 border-border shadow-hard-sm">
+                <div className="w-10 h-10 bg-content-primary text-surface-card flex items-center justify-center font-bold border-2 border-border shadow-hard-sm">
                   {username.charAt(0).toUpperCase()}
                 </div>
               )}
