@@ -38,7 +38,7 @@ export default function HeavyInputConsole({
       </div>
 
       {/* 输入区域 */}
-      <div className="p-6 pb-6 pt-4 bg-page">
+      <div className="p-4 pb-4 pt-3 bg-page">
         <div className={cn(
           "bg-card border-2 border-border shadow-hard relative group transition-all",
           !disabled && "focus-within:shadow-hard-accent-md"
