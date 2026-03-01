@@ -11,7 +11,9 @@ import type { MessageItemProps } from '../types'
 import { extractCodeBlocks, detectContentType, detectMediaUrl } from '../utils'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import rehypeHighlight from 'rehype-highlight'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.css'
+import { CodeBlock } from '@/components/ui/code-block'
 import { SIMPLE_TASK_ID } from '@/constants/task'
 import { StatusAvatar } from '@/components/ui/StatusAvatar'
 import { logger } from '@/utils/logger'
@@ -261,7 +263,7 @@ export default function MessageItem({
         {content ? (
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeHighlight]}
+            rehypePlugins={[rehypeKatex]}
             components={{
               a: ({ node, ...props }) => {
                 const href = props.href || ''
@@ -373,13 +375,16 @@ export default function MessageItem({
                   />
                 )
               },
-              // 🔥 新增：处理行内代码 `content`（可能是被包裹的链接）
+              // 🔥 统一使用 CodeBlock 渲染代码，与 Artifact 保持一致
               code: ({ children, className }) => {
-                const codeContent = String(children || '')
+                const codeContent = String(children || '').replace(/\n$/, '')
                 const isInline = !className?.includes('language-')
+                const match = /language-(\w+)/.exec(className || '')
+                const lang = match ? match[1] : ''
                 
-                // 检测行内代码是否是媒体链接
+                // 行内代码保持原样
                 if (isInline) {
+                  // 检测行内代码是否是媒体链接
                   const hasImageExt = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(codeContent)
                   const hasVideoExt = /\.(mp4|webm|ogg|mov|mkv)(\?.*)?$/i.test(codeContent)
                   
@@ -426,12 +431,22 @@ export default function MessageItem({
                       </span>
                     )
                   }
+                  
+                  return (
+                    <code className="bg-muted px-1.5 py-0.5 rounded text-sm">
+                      {children}
+                    </code>
+                  )
                 }
                 
+                // 代码块使用 CodeBlock 组件（与 Artifact 一致）
                 return (
-                  <code className={className || 'bg-muted px-1.5 py-0.5 rounded text-sm'}>
-                    {children}
-                  </code>
+                  <CodeBlock
+                    code={codeContent}
+                    language={lang}
+                    showLineNumbers={true}
+                    className="my-3 rounded-lg overflow-hidden"
+                  />
                 )
               },
             }}
