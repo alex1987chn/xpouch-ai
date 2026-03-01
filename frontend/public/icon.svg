@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 42 42" fill="none">
+  <!-- 口袋主体（更深更窄） -->
+  <path 
+    d="M9 22 h24 v2 a10 10 0 0 1 -10 10 h-4 a10 10 0 0 1 -10 -10 z" 
+    fill="#2563eb"
+    stroke="#1e3a8a"
+    stroke-width="2"
+  />
+  
+  <!-- 口袋内部阴影 -->
+  <path 
+    d="M11 22 h20 v1 a8 8 0 0 1 -8 8 h-4 a8 8 0 0 1 -8 -8 z" 
+    fill="#1d4ed8"
+  />
+  
+  <!-- 倾斜的掉落方块（向右倾斜，部分在口袋里） -->
+  <g transform="rotate(12, 21, 20)">
+    <rect 
+      x="14" 
+      y="11" 
+      width="13" 
+      height="13" 
+      rx="1.5"
+      fill="#facc15"
+      stroke="#a16207"
+      stroke-width="1.5"
+    />
+    <!-- 方块高光 -->
+    <rect 
+      x="15" 
+      y="12" 
+      width="3.5" 
+      height="3.5" 
+      rx="0.8"
+      fill="#fef08a"
+    />
+  </g>
+</svg>
