@@ -63,7 +63,7 @@ export default function OrchestratorPanelV2({
 export function ExpertRailSimple({ hasArtifact }: { hasArtifact: boolean }) {
   const StatusIcon = ({ status }: { status: string }) => {
     if (status === 'running') {
-      return <div className="w-3 h-3 border-2 border-yellow-500 border-t-transparent animate-spin rounded-full" />
+      return <div className="w-3 h-3 border-2 border-accent-brand border-t-transparent animate-spin rounded-full" />
     }
     if (status === 'completed') {
       return <div className="w-3 h-3 bg-status-online rounded-full" />
