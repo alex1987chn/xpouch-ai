@@ -70,7 +70,7 @@ export function UserSection({
               {avatar ? (
                 <img src={avatar} alt="Avatar" className="w-8 h-8 border-2 border-border shrink-0" />
               ) : (
-                <div className="w-8 h-8 bg-[rgb(var(--content-primary))] text-[rgb(var(--surface-card))] flex items-center justify-center font-bold text-sm shrink-0 border-2 border-border">
+                <div className="w-8 h-8 bg-content-primary text-surface-card flex items-center justify-center font-bold text-sm shrink-0 border-2 border-border">
                   {username.charAt(0).toUpperCase()}
                 </div>
               )}

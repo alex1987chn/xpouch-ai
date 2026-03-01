@@ -171,7 +171,7 @@ export default function ExpertEditor({
               {/* 温度参数 */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]" />
+                  <div className="w-1.5 h-1.5 bg-content-secondary" />
                   <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                     {t('temperature')}: {formData.temperature?.toFixed(1)}
                   </label>
@@ -187,7 +187,7 @@ export default function ExpertEditor({
                     }}
                   />
                   <div
-                    className="absolute top-0 w-4 h-full bg-[rgb(var(--content-primary))] border-2 border-border-default transition-all pointer-events-none"
+                    className="absolute top-0 w-4 h-full bg-content-primary border-2 border-border-default transition-all pointer-events-none"
                     style={{
                       left: `calc(${((formData.temperature ?? 0.5) / 2) * 100}% - 8px)`,
                     }}
@@ -216,7 +216,7 @@ export default function ExpertEditor({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]" />
+                    <div className="w-1.5 h-1.5 bg-content-secondary" />
                     <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                       {t('expertDescription')}
                     </label>
@@ -260,7 +260,7 @@ export default function ExpertEditor({
               {/* 系统提示词 */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]" />
+                  <div className="w-1.5 h-1.5 bg-content-secondary" />
                   <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                     {t('systemPrompt')}
                   </label>
@@ -315,7 +315,7 @@ export default function ExpertEditor({
               <div className="space-y-6">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]" />
+                    <div className="w-1.5 h-1.5 bg-content-secondary" />
                     <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                       {t('testInput')}
                     </label>

@@ -33,7 +33,7 @@ export function RecentConversations({
             className="group w-full text-left flex items-center gap-3 px-3 py-1.5 border border-transparent hover:border-border hover:bg-surface-page transition-all"
           >
             {/* 装饰性光标: Hover时出现 */}
-            <span className="text-[rgb(var(--accent-hover))] font-black text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-accent-hover font-black text-xs opacity-0 group-hover:opacity-100 transition-opacity">
               &gt;
             </span>
 
