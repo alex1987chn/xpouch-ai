@@ -39,7 +39,7 @@ export function UserSection({
               data-avatar-button=""
               className="flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-[rgb(var(--surface-page))] rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
             >
-              <Avatar className="h-8 w-8 border-2 border-[rgb(var(--border-default))] shadow-[rgb(var(--shadow-color))_2px_2px_0_0]">
+              <Avatar className="h-8 w-8 border-2 border-[rgb(var(--border-default))] shadow-hard-sm">
                 <AvatarImage src={avatar} alt="Avatar" />
                 <AvatarFallback className="bg-gradient-to-br from-violet-500 to-blue-600 text-[10px] font-bold text-white">
                   {getAvatarDisplay(avatar || '', username)}
@@ -50,7 +50,7 @@ export function UserSection({
             {onToggleCollapsed && (
               <button
                 onClick={onToggleCollapsed}
-                className="p-1.5 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0]"
+                className="p-1.5 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] shadow-hard-sm hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-sm"
                 title={t('expandSidebar')}
               >
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -93,7 +93,7 @@ export function UserSection({
         isCollapsed ? (
           <button
             onClick={onLoginClick}
-            className="p-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-content-primary shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] transition-all"
+            className="p-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-content-primary shadow-hard-sm hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-sm transition-all"
             title={t('login')}
           >
             <User className="w-5 h-5" />

@@ -79,8 +79,16 @@ export const ANIMATION_DURATION = {
 
 // 布局尺寸
 export const DIMENSIONS = {
-  /** 侧边栏宽度 (px) */
+  /** 侧边栏展开宽度 (px) */
   SIDEBAR_WIDTH: 280,
+  /** 侧边栏折叠宽度 (px) */
+  SIDEBAR_COLLAPSED_WIDTH: 72,
+  /** 侧边栏内容区宽度 (px) - 导航按钮等 */
+  SIDEBAR_CONTENT_WIDTH: 230,
+  /** 导航按钮高度 (px) */
+  NAV_ITEM_HEIGHT: 44,
+  /** 新建聊天按钮高度 (px) */
+  NEW_CHAT_BUTTON_HEIGHT: 60,
   /** ExpertRail 宽度 (px) */
   RAIL_WIDTH: 56,
   /** 顶部 Header 高度 (px) */

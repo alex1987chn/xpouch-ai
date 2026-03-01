@@ -113,7 +113,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
       onClick={handleClose}
     >
       <div
-        className="relative bg-[rgb(var(--surface-card))] border-2 border-[rgb(var(--border-default))] shadow-[rgb(var(--shadow-color))_8px_8px_0_0] w-[380px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-[rgb(var(--surface-card))] border-2 border-[rgb(var(--border-default))] shadow-hard-xl w-[380px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - Bauhaus风格 */}
@@ -179,7 +179,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
               <button
                 onClick={handleSendCode}
                 disabled={!phoneNumber || phoneNumber.length !== 11 || loading}
-                className="w-full py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-content-primary font-bold font-mono text-sm uppercase shadow-[rgb(var(--shadow-color))_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[rgb(var(--shadow-color))_6px_6px_0_0] active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-content-primary font-bold font-mono text-sm uppercase shadow-hard hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-lg active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'SENDING...' : t('sendCode')}
               </button>
@@ -216,7 +216,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
               <button
                 onClick={handleVerifyCode}
                 disabled={!code || code.length < 4 || loading}
-                className="w-full py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-content-primary font-bold font-mono text-sm uppercase shadow-[rgb(var(--shadow-color))_4px_4px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[rgb(var(--shadow-color))_6px_6px_0_0] active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-content-primary font-bold font-mono text-sm uppercase shadow-hard hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-lg active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'VERIFYING...' : '登录 / LOGIN'}
               </button>

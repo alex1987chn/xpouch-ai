@@ -110,7 +110,7 @@ export default function ExpertEditor({
 
   if (!expert) {
     return (
-      <div className="flex-1 flex items-center justify-center border-2 border-border-default bg-surface-card shadow-[rgb(var(--shadow-color))_4px_4px_0_0]">
+      <div className="flex-1 flex items-center justify-center border-2 border-border-default bg-surface-card shadow-hard">
         <div className="text-center">
           <div className="w-12 h-12 border-2 border-border-default bg-surface-page mx-auto mb-4 flex items-center justify-center">
             <Sparkles className="w-6 h-6 text-content-secondary" />
@@ -124,7 +124,7 @@ export default function ExpertEditor({
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-[rgb(var(--shadow-color))_4px_4px_0_0]">
+    <div className="flex-1 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-hard">
       {/* 头部 */}
       <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default shrink-0">
         <div className="flex items-center gap-2">
@@ -289,7 +289,7 @@ export default function ExpertEditor({
                     'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
                     'bg-[rgb(var(--accent-hover))] text-content-primary font-mono text-xs font-bold uppercase',
                     'shadow-[rgb(var(--shadow-color))_3px_3px_0_0]',
-                    'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_4px_4px_0_0]',
+                    'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard',
                     'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
                     'transition-all',
                     'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0'
@@ -343,7 +343,7 @@ export default function ExpertEditor({
                       'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
                       'bg-[rgb(var(--accent-hover))] text-content-primary font-mono text-xs font-bold uppercase',
                       'shadow-[rgb(var(--shadow-color))_3px_3px_0_0]',
-                      'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_4px_4px_0_0]',
+                      'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard',
                       'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
                       'transition-all',
                       'disabled:opacity-50 disabled:cursor-not-allowed'

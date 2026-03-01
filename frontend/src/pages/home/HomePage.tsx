@@ -51,7 +51,7 @@ function SceneCard({
       </div>
 
       {/* 右下角倒角装饰 */}
-      <div className="absolute bottom-0 right-0 w-0 h-0 border-b-[20px] border-r-[20px] border-b-[rgb(var(--accent-hover))] border-r-transparent transition-all group-hover:border-b-[40px] group-hover:border-r-[40px]" />
+      <div className="absolute bottom-0 right-0 w-0 h-0 border-b-[20px] border-r-[20px] border-b-accent-hover border-r-transparent transition-all duration-300 group-hover:border-b-[40px] group-hover:border-r-[40px]" />
 
       <div className="flex justify-between items-start">
         <div className="p-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] group-hover:bg-surface-card transition-colors">
@@ -468,8 +468,7 @@ export default function HomePage() {
                     }
                   }}
                   placeholder={t('inputPlaceholder')}
-                  className="flex-1 w-full h-[135px] bg-transparent py-6 text-[20px] leading-[28px] font-bold font-mono text-[rgb(var(--content-primary))] placeholder:text-[rgb(var(--content-secondary))] focus:outline-none focus:ring-0 border-none resize-none z-10 relative"
-                  style={{ paddingLeft: '24px', paddingRight: '24px', paddingTop: '24px', paddingBottom: '24px' }}
+                  className="flex-1 w-full min-h-[135px] max-h-[240px] bg-transparent px-6 py-6 text-[20px] leading-[28px] font-bold font-mono text-content-primary placeholder:text-content-secondary focus:outline-none focus:ring-0 border-none resize-none z-10 relative"
                 />
               </div>
 

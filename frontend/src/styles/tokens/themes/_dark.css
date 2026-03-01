@@ -29,9 +29,9 @@
     --border-divider: 58 58 60;            /* 灰 divider */
     --border-disabled: 44 44 46;           /* 暗灰 - 禁用 */
 
-    /* Accent - 暗色下的强调色（保持 Bauhaus 黄色） */
-    --accent-brand: 250 204 21;            /* 标志性黄色 */
-    --accent-hover: 251 191 36;            /* 亮黄悬停 */
+    /* Accent - 暗色下的强调色（略微降低亮度，减少夜间视觉疲劳） */
+    --accent-brand: 234 179 8;             /* 金黄色 - 比亮黄柔和 */
+    --accent-hover: 250 204 21;            /* 亮黄悬停 */
     --accent-active: 245 158 11;           /* 深黄按下 */
     --accent-subtle: 66 57 25;             /* 暗黄背景 */
     --accent-destructive: 239 68 68;       /* 红色 */
@@ -39,9 +39,9 @@
     --accent-warning: 249 115 22;          /* 橙色 */
     --accent-info: 59 130 246;             /* 蓝色 */
 
-    /* Shadow - 暗色阴影 */
-    --shadow-color: 250 204 21;            /* 黄色发光阴影 */
-    --shadow-opacity: 0.3;                 /* 半透明 */
+    /* Shadow - 暗色阴影（使用深色阴影更自然） */
+    --shadow-color: 0 0 0;                 /* 纯黑阴影 */
+    --shadow-opacity: 0.5;                 /* 半透明 */
 
     /* Radius - Bauhaus 无圆角 */
     --radius-sm: 0;

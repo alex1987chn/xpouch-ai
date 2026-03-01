@@ -47,7 +47,7 @@ export default function ExpertListTable({
   )
 
   return (
-    <div className="w-80 flex-shrink-0 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-[rgb(var(--shadow-color))_4px_4px_0_0]">
+    <div className="w-80 flex-shrink-0 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-hard">
       {/* 头部 */}
       <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default shrink-0">
         <div className="flex items-center gap-2">
@@ -100,7 +100,7 @@ export default function ExpertListTable({
               className={cn(
                 'w-full text-left px-3 py-3 border-2 transition-all relative group',
                 selectedExpertKey === expert.expert_key
-                  ? 'border-[rgb(var(--accent-hover))] bg-[rgb(var(--accent-hover))] text-content-primary shadow-[rgb(var(--shadow-color))_2px_2px_0_0]'
+                  ? 'border-[rgb(var(--accent-hover))] bg-[rgb(var(--accent-hover))] text-content-primary shadow-hard-sm'
                   : 'border-transparent hover:border-border-default hover:bg-surface-page'
               )}
             >
