@@ -113,20 +113,20 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
       onClick={handleClose}
     >
       <div
-        className="relative bg-[rgb(var(--surface-card))] border-2 border-[rgb(var(--border-default))] shadow-hard-xl w-[380px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface-card border-2 border-border shadow-hard-xl w-[380px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - Bauhaus风格 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-[rgb(var(--border-default))]">
+        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-[rgb(var(--accent-hover))]"></div>
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[rgb(var(--content-secondary))]">
+            <div className="w-2 h-2 bg-accent-hover"></div>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// AUTHENTICATION
             </span>
           </div>
           <button
             onClick={handleClose}
-            className="w-6 h-6 flex items-center justify-center border border-[rgb(var(--border-default))] hover:bg-[rgb(var(--accent-hover))] transition-colors"
+            className="w-6 h-6 flex items-center justify-center border border-border hover:bg-accent-hover transition-colors"
           >
             <span className="text-xs font-bold">×</span>
           </button>
@@ -136,20 +136,20 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
         <div className="p-6 space-y-5">
           {/* Logo和标题 */}
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-4 border-2 border-border bg-surface-page flex items-center justify-center">
               <The4DPocketLogo />
             </div>
-            <h2 className="text-lg font-black uppercase tracking-tight mb-1 text-[rgb(var(--content-primary))]">
+            <h2 className="text-lg font-black uppercase tracking-tight mb-1 text-content-primary">
               {step === 'phone' ? t('welcomeBack') : t('verifyIdentity')}
             </h2>
-            <p className="text-xs font-mono text-[rgb(var(--content-secondary))]">
+            <p className="text-xs font-mono text-content-secondary">
               {step === 'phone' ? 'WELCOME BACK' : 'VERIFY IDENTITY'}
             </p>
           </div>
 
           {/* 调试信息 */}
           {import.meta.env.DEV && (
-            <div className="p-2 bg-[rgb(var(--surface-page))] border border-[rgb(var(--border-default))] font-mono text-[10px] text-[rgb(var(--content-secondary))]">
+            <div className="p-2 bg-surface-page border border-border font-mono text-[10px] text-content-secondary">
               <div>🔍 DEBUG_MODE</div>
               <div>STEP: {step}</div>
               <div>CODE: {debugCode || 'NONE'}</div>
@@ -161,7 +161,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
           {step === 'phone' && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="font-mono text-[10px] font-bold uppercase text-[rgb(var(--content-secondary))]">
+                <label className="font-mono text-[10px] font-bold uppercase text-content-secondary">
                   PHONE_NUMBER
                 </label>
                 <input
@@ -172,19 +172,19 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                   maxLength={11}
                   disabled={loading}
                   autoFocus
-                  className="w-full px-3 py-2.5 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] font-mono text-sm focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors"
+                  className="w-full px-3 py-2.5 border-2 border-border bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors"
                 />
               </div>
 
               <button
                 onClick={handleSendCode}
                 disabled={!phoneNumber || phoneNumber.length !== 11 || loading}
-                className="w-full py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-content-primary font-bold font-mono text-sm uppercase shadow-hard hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-lg active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 border-2 border-border bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-hard hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-lg active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'SENDING...' : t('sendCode')}
               </button>
 
-              <div className="text-center font-mono text-[10px] text-[rgb(var(--content-secondary))] opacity-60">
+              <div className="text-center font-mono text-[10px] text-content-secondary opacity-60">
                 首次登录将自动注册账号
               </div>
             </div>
@@ -194,7 +194,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
           {step === 'code' && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="font-mono text-[10px] font-bold uppercase text-[rgb(var(--content-secondary))]">
+                <label className="font-mono text-[10px] font-bold uppercase text-content-secondary">
                   VERIFICATION_CODE
                 </label>
                 <input
@@ -206,9 +206,9 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                   maxLength={6}
                   disabled={loading}
                   autoFocus
-                  className="w-full px-3 py-2.5 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] font-mono text-lg text-center tracking-[0.3em] focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors"
+                  className="w-full px-3 py-2.5 border-2 border-border bg-surface-page font-mono text-lg text-center tracking-[0.3em] focus:outline-none focus:border-accent-hover transition-colors"
                 />
-                <div className="font-mono text-[9px] text-[rgb(var(--content-secondary))] opacity-50">
+                <div className="font-mono text-[9px] text-content-secondary opacity-50">
                   验证码已发送至 {phoneNumber.slice(0, 3)}****{phoneNumber.slice(-4)}
                 </div>
               </div>
@@ -216,7 +216,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
               <button
                 onClick={handleVerifyCode}
                 disabled={!code || code.length < 4 || loading}
-                className="w-full py-3 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-content-primary font-bold font-mono text-sm uppercase shadow-hard hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-lg active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 border-2 border-border bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-hard hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-lg active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'VERIFYING...' : '登录 / LOGIN'}
               </button>
@@ -225,7 +225,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                 <button
                   onClick={handleSendCode}
                   disabled={countdown > 0 || loading}
-                  className="flex-1 py-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-card))] font-mono text-xs uppercase hover:bg-[rgb(var(--surface-page))] transition-colors disabled:opacity-50"
+                  className="flex-1 py-2 border-2 border-border bg-surface-card font-mono text-xs uppercase hover:bg-surface-page transition-colors disabled:opacity-50"
                 >
                   {countdown > 0 ? `${countdown}s` : t('resend')}
                 </button>
@@ -233,7 +233,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                 <button
                   onClick={() => setStep('phone')}
                   disabled={loading}
-                  className="flex-1 py-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-card))] font-mono text-xs uppercase text-[rgb(var(--content-secondary))] hover:bg-[rgb(var(--surface-page))] transition-colors"
+                  className="flex-1 py-2 border-2 border-border bg-surface-card font-mono text-xs uppercase text-content-secondary hover:bg-surface-page transition-colors"
                 >
                   修改手机号
                 </button>
@@ -241,8 +241,8 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
 
               {/* 开发环境显示验证码 */}
               {import.meta.env.DEV && countdown > 0 && (
-                <div className="p-3 bg-[rgb(var(--accent-hover))]/10 border-2 border-[rgb(var(--accent-hover))]">
-                  <div className="font-mono text-[10px] text-[rgb(var(--content-primary))]">
+                <div className="p-3 bg-accent-hover/10 border-2 border-[rgb(var(--accent-hover))]">
+                  <div className="font-mono text-[10px] text-content-primary">
                     <div className="font-bold mb-1">🔧 DEV_MODE</div>
                     <div>CODE: <span className="text-lg font-bold">{debugCode}</span></div>
                   </div>

@@ -332,7 +332,7 @@ export default function UnifiedChatPage() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <div className="w-6 h-6 border-2 border-[rgb(var(--border-default))] border-t-[rgb(var(--accent-brand))] animate-spin mx-auto mb-2" />
+          <div className="w-6 h-6 border-2 border-border border-t-accent-brand animate-spin mx-auto mb-2" />
           <p className="font-mono text-sm">Loading agent...</p>
         </div>
       </div>

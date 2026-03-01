@@ -310,7 +310,7 @@ export default function ExpertFormDialog({
               'flex items-center gap-2 px-4 py-2 border-2 border-border-default',
               'bg-[rgb(var(--accent-hover))] text-content-primary font-mono text-xs font-bold uppercase',
               'shadow-hard-sm',
-              'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0]',
+              'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-3',
               'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
               'transition-all',
               'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0'

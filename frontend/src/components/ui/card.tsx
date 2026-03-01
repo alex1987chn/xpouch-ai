@@ -23,11 +23,11 @@ const Card = React.forwardRef<
       // 基础样式：边框、背景、文字颜色
       "border-2 border-border-default bg-surface-card text-content-primary",
       // Bauhaus 硬阴影（默认黑色）
-      "shadow-[rgb(var(--shadow-color))_6px_6px_0_0]",
+      "shadow-hard-5",
       // 动画
       "transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
       // 悬停效果：位移 + 黄色大阴影 + 黄色边框
-      "hover:-translate-x-1.5 hover:-translate-y-1.5 hover:shadow-[rgb(var(--accent-hover))_10px_10px_0_0] hover:border-accent",
+      "hover:-translate-x-1.5 hover:-translate-y-1.5 hover:shadow-hard-10 hover:border-accent",
       className
     )}
     {...props}
