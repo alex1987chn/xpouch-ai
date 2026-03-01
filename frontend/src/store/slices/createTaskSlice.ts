@@ -317,11 +317,12 @@ export const createTaskSlice = (
     })
   },
 
-  resetTasks: (force: boolean = false) => {
+  resetTasks: (force: boolean = false, hasRunningTasks?: () => boolean) => {
     set((state) => {
       // 🔥 保护：如果有运行中的任务，禁止重置（防止复杂模式执行中误重置）
       // 除非强制重置（force=true，用于从历史记录加载会话）
-      if (!force && state.runningTaskIds && state.runningTaskIds.size > 0) {
+      // P0 修复：通过参数传入检查函数，避免直接访问 UISlice 状态
+      if (!force && hasRunningTasks?.()) {
         logger.warn('[TaskStore] resetTasks 被阻止：有任务正在运行中')
         return
       }

@@ -38,11 +38,12 @@ router = APIRouter(prefix="/api/mcp", tags=["mcp"])
 # URL 验证和 SSRF 防护 (P0 修复)
 # ============================================================================
 
-def is_private_url(url: str) -> tuple[bool, str]:
+async def is_private_url(url: str) -> tuple[bool, str]:
     """
     检查 URL 是否指向内网地址 (SSRF 防护增强版)
     
     使用 ipaddress 模块严格检查 IP 地址，并支持域名解析后检查。
+    P0 修复：使用异步 DNS 解析避免阻塞事件循环
     
     Returns:
         tuple[bool, str]: (是否为内网/危险地址, 错误信息)
@@ -81,8 +82,9 @@ def is_private_url(url: str) -> tuple[bool, str]:
         
         # 3. 尝试解析域名并检查解析后的 IP
         try:
-            # 获取所有解析的 IP 地址 (IPv4 和 IPv6)
-            addr_info = socket.getaddrinfo(hostname, None)
+            # P0 修复：使用 asyncio.to_thread 避免阻塞事件循环
+            import asyncio
+            addr_info = await asyncio.to_thread(socket.getaddrinfo, hostname, None)
             resolved_ips = set()
             for info in addr_info:
                 ip_str = info[4][0]
@@ -110,7 +112,7 @@ def is_private_url(url: str) -> tuple[bool, str]:
         return True, f"URL 安全检查失败: {str(e)}"
 
 
-def validate_mcp_url(url: str) -> tuple[bool, str]:
+async def validate_mcp_url(url: str) -> tuple[bool, str]:
     """
     验证 MCP URL 的安全性
     
@@ -143,7 +145,7 @@ def validate_mcp_url(url: str) -> tuple[bool, str]:
         return False, f"URL 解析失败: {str(e)}"
     
     # 4. SSRF 防护：使用严格的内网地址检查
-    is_private, error_msg = is_private_url(url)
+    is_private, error_msg = await is_private_url(url)
     if is_private:
         return False, error_msg
     
@@ -177,7 +179,7 @@ async def test_mcp_connection(
         tuple[bool, str]: (是否成功, 错误信息)
     """
     # P0 修复: URL 验证
-    is_valid, error_msg = validate_mcp_url(sse_url)
+    is_valid, error_msg = await validate_mcp_url(sse_url)
     if not is_valid:
         return False, error_msg
     
@@ -316,7 +318,7 @@ async def update_mcp_server(
     # 如果更新 SSE URL，需要重新测试连接
     if update_data.sse_url and update_data.sse_url != server.sse_url:
         # P0 修复: URL 验证
-        is_valid, error_msg = validate_mcp_url(update_data.sse_url)
+        is_valid, error_msg = await validate_mcp_url(update_data.sse_url)
         if not is_valid:
             raise ValidationError(
                 message=f"URL 验证失败: {error_msg}",
@@ -413,7 +415,7 @@ async def get_mcp_server_tools(
         raise ValidationError("MCP 服务器未启用")
     
     # P0 修复: URL 验证
-    is_valid, error_msg = validate_mcp_url(str(server.sse_url))
+    is_valid, error_msg = await validate_mcp_url(str(server.sse_url))
     if not is_valid:
         raise ValidationError(f"URL 验证失败: {error_msg}")
     

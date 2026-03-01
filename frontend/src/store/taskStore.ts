@@ -70,7 +70,8 @@ export const useTaskStore = create<TaskStore>()(
       resetAll: (force: boolean = false) => {
         // 🔥 按依赖顺序重置各 Slice 状态
         get().resetArtifacts()   // 1. 重置 Artifacts（在 Task 之前）
-        get().resetTasks(force)  // 2. 重置 Task 数据
+        // P0 修复：传入 hasRunningTasks 检查函数，避免 TaskSlice 直接访问 UISlice 状态
+        get().resetTasks(force, () => get().hasRunningTasks())  // 2. 重置 Task 数据
         get().resetUI()          // 3. 重置 UI 状态（依赖 Task 数据）
         get().resetPlanning()    // 4. 重置 Planning 状态
       }
