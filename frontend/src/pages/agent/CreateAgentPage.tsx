@@ -86,14 +86,14 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
 
   // 登录状态检查
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
-  const setLoginDialogOpen = useTaskStore(state => state.setLoginDialogOpen)
+  const { dialogs: { openLogin } } = useApp()
 
   const handleSave = () => {
     if (!name || !systemPrompt) return
 
     // 🔐 未登录时弹出登录弹窗
     if (!isAuthenticated) {
-      setLoginDialogOpen(true)
+      openLogin()
       return
     }
 
