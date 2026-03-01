@@ -34,7 +34,7 @@ export default function DeleteConfirmDialog({
     <>
       {/* 遮罩 */}
       <div
-        className="fixed inset-0 bg-black/50 z-50"
+        className="fixed inset-0 bg-content-primary/50 z-50"
         onClick={!isDeleting ? onClose : undefined}
       />
       {/* 对话框容器 */}
@@ -42,7 +42,7 @@ export default function DeleteConfirmDialog({
         {/* 标题 */}
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-red-500" />
+            <div className="w-2 h-2 bg-status-offline" />
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// {t('confirmDeleteExpert')}
             </span>
@@ -68,7 +68,7 @@ export default function DeleteConfirmDialog({
           <button
             onClick={onClose}
             disabled={isDeleting}
-            className="px-4 py-2 border-2 border-border-default bg-surface-page font-mono text-xs font-bold uppercase hover:bg-accent-hover hover:text-black transition-colors disabled:opacity-50"
+            className="px-4 py-2 border-2 border-border-default bg-surface-page font-mono text-xs font-bold uppercase hover:bg-accent-hover hover:text-content-primary transition-colors disabled:opacity-50"
           >
             {t('cancel')}
           </button>
@@ -76,10 +76,10 @@ export default function DeleteConfirmDialog({
             onClick={onConfirm}
             disabled={isDeleting}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 border-2 border-red-500',
-              'bg-red-500 text-white font-mono text-xs font-bold uppercase',
-              'shadow-[rgba(239,68,68,0.3)_2px_2px_0_0]',
-              'hover:bg-red-600 hover:border-red-600',
+              'flex items-center gap-2 px-4 py-2 border-2 border-status-offline',
+              'bg-status-offline text-content-primary font-mono text-xs font-bold uppercase',
+              'shadow-[rgb(var(--shadow-color))_2px_2px_0_0]',
+              'hover:bg-status-offline/80 hover:border-status-offline/80',
               'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
               'transition-all',
               'disabled:opacity-50 disabled:cursor-not-allowed'
@@ -87,7 +87,7 @@ export default function DeleteConfirmDialog({
           >
             {isDeleting ? (
               <>
-                <div className="w-3 h-3 border-2 border-white/30 border-t-white animate-spin" />
+                <div className="w-3 h-3 border-2 border-content-primary/30 border-t-content-primary animate-spin" />
                 {t('deleting')}
               </>
             ) : (

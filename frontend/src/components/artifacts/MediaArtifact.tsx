@@ -115,9 +115,9 @@ export default function MediaArtifact({ content, type = 'media', className, titl
       {(title || url) && (
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-panel shrink-0">
           {mediaType === 'video' ? (
-            <Video className="w-4 h-4 text-blue-500" />
+            <Video className="w-4 h-4 text-status-info" />
           ) : (
-            <ImageIcon className="w-4 h-4 text-green-500" />
+            <ImageIcon className="w-4 h-4 text-status-online" />
           )}
           <span className="text-xs font-mono text-muted-foreground truncate flex-1">
             {title || url.split('/').pop() || t('mediaFile')}
@@ -155,7 +155,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
             {hasError && (
               <div className="absolute inset-0 flex items-center justify-center bg-background/90">
                 <div className="flex flex-col items-center gap-3">
-                  <AlertCircle className="w-10 h-10 text-red-500" />
+                  <AlertCircle className="w-10 h-10 text-status-offline" />
                   <span className="text-sm text-muted-foreground">视频加载失败</span>
                   <button
                     onClick={handleRetry}
@@ -193,7 +193,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
             {hasError && (
               <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
                 <div className="flex flex-col items-center gap-3">
-                  <AlertCircle className="w-10 h-10 text-red-500" />
+                  <AlertCircle className="w-10 h-10 text-status-offline" />
                   <span className="text-sm text-muted-foreground">图片加载失败</span>
                   <button
                     onClick={handleRetry}

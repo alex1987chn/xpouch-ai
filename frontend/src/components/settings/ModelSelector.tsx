@@ -115,15 +115,15 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
                   onClick={() => handleProviderSelect(provider)}
                   className={cn(
                     'w-full px-3 py-2.5 text-left font-mono text-xs uppercase transition-all pointer-events-auto relative',
-                    'hover:bg-accent-hover hover:text-black',
+                    'hover:bg-accent-hover hover:text-content-primary',
                     effectiveProvider === provider
-                      ? 'bg-accent-hover text-black font-bold'
+                      ? 'bg-accent-hover text-content-primary font-bold'
                       : 'bg-transparent text-content-primary'
                   )}
                 >
                   <span className="flex items-center gap-2">
                     {effectiveProvider === provider && (
-                      <span className="w-1.5 h-1.5 bg-black rounded-full" />
+                      <span className="w-1.5 h-1.5 bg-content-primary rounded-full" />
                     )}
                     {provider}
                   </span>
@@ -164,15 +164,15 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
                   onClick={() => handleModelSelect(model.id)}
                   className={cn(
                     'w-full px-3 py-2.5 text-left font-mono text-xs transition-all pointer-events-auto relative',
-                    'hover:bg-accent-hover hover:text-black',
+                    'hover:bg-accent-hover hover:text-content-primary',
                     value === model.id
-                      ? 'bg-accent-hover text-black font-bold'
+                      ? 'bg-accent-hover text-content-primary font-bold'
                       : 'bg-transparent text-content-primary'
                   )}
                 >
                   <span className="flex items-center gap-2">
                     {value === model.id && (
-                      <span className="w-1.5 h-1.5 bg-black rounded-full" />
+                      <span className="w-1.5 h-1.5 bg-content-primary rounded-full" />
                     )}
                     {model.name}
                   </span>

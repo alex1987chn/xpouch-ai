@@ -29,11 +29,11 @@ const StatusIcon = ({ status }: { status: string }) => {
       )
     case 'completed':
       return (
-        <div className="w-2 h-2 bg-green-500 rounded-full" />
+        <div className="w-2 h-2 bg-status-online rounded-full" />
       )
     case 'failed':
       return (
-        <div className="w-2 h-2 bg-red-500 rounded-full" />
+        <div className="w-2 h-2 bg-status-offline rounded-full" />
       )
     default:
       return (
@@ -78,7 +78,7 @@ function ExpertNode({ task, isSelected, isRunning, index, onClick }: ExpertNodeP
           // Completed 状态
           task.status === 'completed' && "opacity-80 border-2 border-primary grayscale-0",
           // Failed 状态
-          task.status === 'failed' && "opacity-80 border-2 border-red-500",
+          task.status === 'failed' && "opacity-80 border-2 border-status-offline",
           // 选中状态
           isSelected && "shadow-hard scale-110 bg-accent"
         )}

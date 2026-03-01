@@ -56,7 +56,7 @@ export function DeleteConfirmDialog({
         {/* 弹窗头部 - Bauhaus风格 */}
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-red-500"></div>
+            <div className="w-2 h-2 bg-status-offline"></div>
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// WARNING
             </span>
@@ -74,8 +74,8 @@ export function DeleteConfirmDialog({
         <div className="p-6 space-y-5">
           {/* 警告图标 */}
           <div className="flex justify-center">
-            <div className="w-16 h-16 border-2 border-red-500 bg-red-500/10 flex items-center justify-center">
-              <AlertTriangle className="w-8 h-8 text-red-500" />
+            <div className="w-16 h-16 border-2 border-status-offline bg-status-offline/10 flex items-center justify-center">
+              <AlertTriangle className="w-8 h-8 text-status-offline" />
             </div>
           </div>
 
@@ -85,7 +85,7 @@ export function DeleteConfirmDialog({
               {title || t('confirmDeleteTitle')}
             </h2>
             {itemName && (
-              <div className="font-mono text-sm font-bold text-red-500 border-2 border-red-500/30 bg-red-500/10 py-2 px-4 inline-block">
+              <div className="font-mono text-sm font-bold text-status-offline border-2 border-status-offline/30 bg-status-offline/10 py-2 px-4 inline-block">
                 {itemName}
               </div>
             )}
@@ -107,7 +107,7 @@ export function DeleteConfirmDialog({
           <button
             onClick={handleConfirm}
             disabled={isDeleting}
-            className="flex-1 py-3 bg-red-500 text-white font-mono text-sm font-bold uppercase hover:bg-red-600 transition-colors disabled:opacity-50"
+            className="flex-1 py-3 bg-status-offline text-white font-mono text-sm font-bold uppercase hover:bg-status-offline transition-colors disabled:opacity-50"
           >
             {isDeleting ? (
               <span className="flex items-center justify-center gap-2">

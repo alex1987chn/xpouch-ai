@@ -275,7 +275,7 @@ export function PlanReviewCard({
                   {isEditing && editedPlan.length > 1 && (
                     <button
                       onClick={() => handleDeleteTask(task.id)}
-                      className="p-1 text-red-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                      className="p-1 text-status-offline hover:text-status-offline hover:bg-status-offline/10 rounded transition-colors"
                       title={t('deleteTask')}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -320,9 +320,9 @@ export function PlanReviewCard({
               disabled={isSubmitting}
               className={cn(
                 "px-3 py-1.5 text-xs font-medium",
-                "border border-red-300 rounded",
-                "bg-surface-card text-red-600",
-                "hover:bg-red-50",
+                "border border-status-offline/30 rounded",
+                "bg-surface-card text-status-offline",
+                "hover:bg-status-offline/10",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 "transition-colors flex items-center gap-1.5"
               )}
@@ -336,8 +336,8 @@ export function PlanReviewCard({
               disabled={isSubmitting || editedPlan.length === 0}
               className={cn(
                 "px-3 py-1.5 text-xs font-medium",
-                "bg-blue-600 text-white rounded",
-                "hover:bg-blue-700",
+                "bg-status-info text-white rounded",
+                "hover:bg-status-info/90",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 "transition-colors flex items-center gap-1.5"
               )}
@@ -379,9 +379,9 @@ export function PlanReviewCard({
                 )}
               >
                 {/* 对话框头部 */}
-                <div className="flex items-center gap-2 p-3 border-b border-border-default bg-red-50">
-                  <AlertTriangle className="w-4 h-4 text-red-600" />
-                  <h3 className="text-sm font-medium text-red-700">
+                <div className="flex items-center gap-2 p-3 border-b border-border-default bg-status-offline/10">
+                  <AlertTriangle className="w-4 h-4 text-status-offline" />
+                  <h3 className="text-sm font-medium text-status-offline">
                     确认取消
                   </h3>
                 </div>
@@ -411,8 +411,8 @@ export function PlanReviewCard({
                     disabled={isCancelling}
                     className={cn(
                       "flex-1 px-3 py-1.5 text-xs font-medium",
-                      "bg-red-600 text-white rounded",
-                      "hover:bg-red-700",
+                      "bg-status-offline text-white rounded",
+                      "hover:bg-status-offline/90",
                       "disabled:opacity-50 disabled:cursor-not-allowed",
                       "transition-colors"
                     )}

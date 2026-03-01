@@ -58,7 +58,7 @@ export function StatusAvatar({
       )}
       {isError && (
         /* 红色呼吸光环 - 错误状态 */
-        <div className="absolute inset-[-2px] rounded-full bg-red-500 animate-pulse blur-sm opacity-60" />
+        <div className="absolute inset-[-2px] rounded-full bg-status-offline animate-pulse blur-sm opacity-60" />
       )}
       
       {/* 遮罩层 (防止光环溢出到头像内部) */}

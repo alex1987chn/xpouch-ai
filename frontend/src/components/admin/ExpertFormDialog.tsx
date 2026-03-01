@@ -111,7 +111,7 @@ export default function ExpertFormDialog({
   return createPortal(
     <>
       {/* 遮罩 */}
-      <div className="fixed inset-0 bg-black/50 z-50" onClick={handleClose} />
+      <div className="fixed inset-0 bg-content-primary/50 z-50" onClick={handleClose} />
       {/* 对话框容器 */}
       <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg border-2 border-border-default bg-surface-card shadow-[rgb(var(--shadow-color))_4px_4px_0_0] z-50 max-h-[90vh] overflow-y-auto">
         {/* 标题 */}
@@ -150,13 +150,13 @@ export default function ExpertFormDialog({
               className={cn(
                 'w-full px-3 py-2 border-2 bg-surface-page font-mono text-sm focus:outline-none transition-colors',
                 keyError
-                  ? 'border-red-500 focus:border-red-500'
+                  ? 'border-status-offline focus:border-status-offline'
                   : 'border-border-default focus:border-[rgb(var(--accent-hover))]',
                 !isCreate && 'opacity-60 cursor-not-allowed'
               )}
             />
             {keyError && (
-              <p className="font-mono text-[9px] text-red-500">{keyError}</p>
+              <p className="font-mono text-[9px] text-status-offline">{keyError}</p>
             )}
             <p className="font-mono text-[9px] text-content-secondary">
               {t('expertKeyHint')}
@@ -279,7 +279,7 @@ export default function ExpertFormDialog({
             <div className="flex justify-between font-mono text-[9px] text-content-secondary">
               <span>{formData.system_prompt.length} {t('chars')}</span>
               <span
-                className={formData.system_prompt.length < 10 ? 'text-red-500' : ''}
+                className={formData.system_prompt.length < 10 ? 'text-status-offline' : ''}
               >
                 {t('minChars')}: 10
               </span>
@@ -292,7 +292,7 @@ export default function ExpertFormDialog({
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-4 py-2 border-2 border-border-default bg-surface-page font-mono text-xs font-bold uppercase hover:bg-[rgb(var(--accent-hover))] hover:text-black transition-colors disabled:opacity-50"
+            className="px-4 py-2 border-2 border-border-default bg-surface-page font-mono text-xs font-bold uppercase hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary transition-colors disabled:opacity-50"
           >
             {t('cancel')}
           </button>
@@ -308,7 +308,7 @@ export default function ExpertFormDialog({
             }
             className={cn(
               'flex items-center gap-2 px-4 py-2 border-2 border-border-default',
-              'bg-[rgb(var(--accent-hover))] text-black font-mono text-xs font-bold uppercase',
+              'bg-[rgb(var(--accent-hover))] text-content-primary font-mono text-xs font-bold uppercase',
               'shadow-[rgb(var(--shadow-color))_2px_2px_0_0]',
               'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0]',
               'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
@@ -318,7 +318,7 @@ export default function ExpertFormDialog({
           >
             {isSubmitting ? (
               <>
-                <div className="w-3 h-3 border-2 border-black/30 border-t-black animate-spin" />
+                <div className="w-3 h-3 border-2 border-content-primary/30 border-t-content-primary animate-spin" />
                 {isCreate ? t('creating') : t('saving')}
               </>
             ) : (

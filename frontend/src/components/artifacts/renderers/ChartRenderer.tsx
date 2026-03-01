@@ -89,9 +89,9 @@ export function ChartRenderer({ code }: ChartRendererProps) {
       <div className="w-full h-[200px] bg-[#1e1e1e] rounded-lg p-4 my-4 border border-gray-700 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-gray-500">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            <div className="w-2 h-2 bg-status-info rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-2 h-2 bg-status-info rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <div className="w-2 h-2 bg-status-info rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
           </div>
           <span className="text-sm">图表生成中...</span>
         </div>

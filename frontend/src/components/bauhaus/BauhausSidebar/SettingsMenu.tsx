@@ -76,7 +76,7 @@ export function SettingsMenu({
             onClose()
             onMobileClose?.()
           }}
-          className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[rgb(var(--border-default))] hover:bg-[rgb(var(--accent-hover))] hover:text-black transition-all font-mono text-xs shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] active:translate-x-0 active:translate-y-0 active:shadow-[rgb(var(--shadow-color))_2px_2px_0_0]"
+          className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[rgb(var(--border-default))] hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary transition-all font-mono text-xs shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] active:translate-x-0 active:translate-y-0 active:shadow-[rgb(var(--shadow-color))_2px_2px_0_0]"
         >
           <User className="w-4 h-4" />
           <span className="font-bold uppercase">{t('personalSettings')}</span>
@@ -88,7 +88,7 @@ export function SettingsMenu({
             onClose()
             onMobileClose?.()
           }}
-          className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[rgb(var(--border-default))] hover:bg-[rgb(var(--accent-hover))] hover:text-black transition-all font-mono text-xs shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] active:translate-x-0 active:translate-y-0 active:shadow-[rgb(var(--shadow-color))_2px_2px_0_0]"
+          className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[rgb(var(--border-default))] hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary transition-all font-mono text-xs shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] active:translate-x-0 active:translate-y-0 active:shadow-[rgb(var(--shadow-color))_2px_2px_0_0]"
         >
           <Cog className="w-4 h-4" />
           <span className="font-bold uppercase">{t('modelConfig')}</span>
@@ -110,13 +110,13 @@ export function SettingsMenu({
                 className={cn(
                   'flex items-center justify-center gap-1.5 px-2 py-2 border-2 font-mono text-[10px] font-bold uppercase transition-all',
                   language === lang
-                    ? 'bg-[rgb(var(--accent-hover))] text-black border-black'
+                    ? 'bg-[rgb(var(--accent-hover))] text-content-primary border-content-primary'
                     : 'border-[rgb(var(--border-default))] hover:border-[rgb(var(--content-secondary))] text-[rgb(var(--content-primary))]'
                 )}
               >
                 <span className={cn(
                   'w-1.5 h-1.5 rounded-full',
-                  language === lang ? 'bg-black' : 'bg-[rgb(var(--content-secondary))]'
+                  language === lang ? 'bg-content-primary' : 'bg-[rgb(var(--content-secondary))]'
                 )} />
                 {lang === 'zh' ? '中文' : lang === 'en' ? 'EN' : '日本語'}
               </button>
@@ -128,7 +128,7 @@ export function SettingsMenu({
         {isAuthenticated && (
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[rgb(var(--border-default))] hover:bg-[rgb(var(--accent-hover))] hover:text-black transition-all font-mono text-xs text-[rgb(var(--content-primary))] shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] active:translate-x-0 active:translate-y-0 active:shadow-[rgb(var(--shadow-color))_2px_2px_0_0] mt-2"
+            className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[rgb(var(--border-default))] hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary transition-all font-mono text-xs text-[rgb(var(--content-primary))] shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] active:translate-x-0 active:translate-y-0 active:shadow-[rgb(var(--shadow-color))_2px_2px_0_0] mt-2"
           >
             <ArrowRight className="w-4 h-4" />
             <span className="font-bold uppercase">{t('logout')}</span>

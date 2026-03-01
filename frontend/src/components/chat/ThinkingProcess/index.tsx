@@ -81,9 +81,9 @@ const StatusIcon = ({ status }: { status: ThinkingStep['status'] }) => {
     case 'running':
       return <Loader2 className="w-4 h-4 text-yellow-500 animate-spin" />
     case 'completed':
-      return <CheckCircle2 className="w-4 h-4 text-green-500" />
+      return <CheckCircle2 className="w-4 h-4 text-status-online" />
     case 'failed':
-      return <XCircle className="w-4 h-4 text-red-500" />
+      return <XCircle className="w-4 h-4 text-status-offline" />
     default:
       return <div className="w-4 h-4 rounded-full bg-muted" />
   }
@@ -131,8 +131,8 @@ const StepItem = ({ step, index }: StepItemProps) => {
       className={cn(
         "relative flex items-start gap-3 p-3 rounded-lg border",
         step.status === 'running' && "bg-yellow-500/5 border-yellow-500/20",
-        step.status === 'completed' && "bg-green-500/5 border-green-500/20",
-        step.status === 'failed' && "bg-red-500/5 border-red-500/20",
+        step.status === 'completed' && "bg-status-online/5 border-status-online/20",
+        step.status === 'failed' && "bg-status-offline/5 border-status-offline/20",
         step.status === 'pending' && "bg-muted/30 border-border"
       )}
     >
@@ -144,7 +144,7 @@ const StepItem = ({ step, index }: StepItemProps) => {
       {/* 图标 */}
       <div className={cn(
         "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center",
-        step.type === 'search' && "bg-blue-500/10 text-blue-500",
+        step.type === 'search' && "bg-status-info/10 text-status-info",
         step.type === 'reading' && "bg-purple-500/10 text-purple-500",
         step.type === 'analysis' && "bg-amber-500/10 text-amber-500",
         step.type === 'coding' && "bg-emerald-500/10 text-emerald-500",
@@ -290,7 +290,7 @@ export default function ThinkingProcess({ steps, isThinking, className, totalSte
             </span>
           )}
           {isAllDone && (
-            <span className="text-xs text-green-600">
+            <span className="text-xs text-status-online">
               {t('thinkingCompleted')}
             </span>
           )}
@@ -300,7 +300,7 @@ export default function ThinkingProcess({ steps, isThinking, className, totalSte
           {/* 状态指示点 */}
           <div className="flex items-center gap-1">
             {failedSteps > 0 && (
-              <span className="flex items-center gap-0.5 text-[10px] text-red-500">
+              <span className="flex items-center gap-0.5 text-[10px] text-status-offline">
                 <XCircle className="w-3 h-3" />
                 {failedSteps}
               </span>

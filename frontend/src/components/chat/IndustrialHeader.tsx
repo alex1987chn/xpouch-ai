@@ -124,10 +124,10 @@ export function IndustrialHeader({
             className={cn(
               'w-2 h-2 rounded-full animate-pulse',
               status === 'online'
-                ? 'bg-green-500'
+                ? 'bg-status-online'
                 : status === 'busy'
                   ? 'bg-yellow-500'
-                  : 'bg-red-500'
+                  : 'bg-status-offline'
             )}
           />
           <span className="font-mono text-[10px] text-primary/70 font-bold uppercase">
@@ -139,7 +139,7 @@ export function IndustrialHeader({
         {onClose && (
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center border-2 border-border hover:bg-red-500 hover:text-white transition-colors"
+            className="w-8 h-8 flex items-center justify-center border-2 border-border hover:bg-status-offline hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
