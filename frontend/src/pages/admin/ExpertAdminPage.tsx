@@ -259,7 +259,6 @@ export default function ExpertAdminPage() {
         itemName={expertToDelete?.name}
         confirmText={(t as any)('delete')}
         isDeleting={isDeleting}
-        variant="warning"
       />
 
       {/* 左侧：专家列表 */}
