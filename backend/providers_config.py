@@ -19,10 +19,12 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from functools import lru_cache
 
+from utils.logger import logger
+
 try:
     import yaml
 except ImportError:
-    print("[ERROR] 请先安装 PyYAML: pip install pyyaml")
+    logger.error("[ERROR] 请先安装 PyYAML: pip install pyyaml")
     sys.exit(1)
 
 
@@ -97,12 +99,12 @@ def _security_check(config: Dict, config_path: Path) -> None:
     try:
         check_dict(config)
     except ValueError as e:
-        print(f"\n{'='*60}")
-        print("配置安全检查失败！")
-        print(f"{'='*60}")
-        print(e)
-        print(f"\n文件位置: {config_path}")
-        print(f"{'='*60}\n")
+        logger.error(f"\n{'='*60}")
+        logger.error("配置安全检查失败！")
+        logger.error(f"{'='*60}")
+        logger.error(e)
+        logger.error(f"\n文件位置: {config_path}")
+        logger.error(f"{'='*60}\n")
         raise
 
 
@@ -279,30 +281,30 @@ def print_embedding_status():
         provider = get_default_embedding_provider()
         config = get_embedding_provider_config(provider)
 
-        print("\n" + "="*60)
-        print("嵌入模型配置状态")
-        print("="*60)
+        logger.info("\n" + "="*60)
+        logger.info("嵌入模型配置状态")
+        logger.info("="*60)
 
         if config and config.get('enabled', True):
             env_key = config.get('env_key')
             has_key = os.getenv(env_key) is not None
 
             if has_key:
-                print(f"\n[OK] 已配置:")
-                print(f"   - {config.get('name')} ({provider})")
-                print(f"   - 模型: {config.get('default_model')}")
-                print(f"   - 向量维度: {config.get('dimensions')}")
+                logger.info(f"\n[OK] 已配置:")
+                logger.info(f"   - {config.get('name')} ({provider})")
+                logger.info(f"   - 模型: {config.get('default_model')}")
+                logger.info(f"   - 向量维度: {config.get('dimensions')}")
             else:
-                print(f"\n[WARN] 未配置 API Key:")
-                print(f"   - 请设置环境变量: {env_key}")
+                logger.warning(f"\n[WARN] 未配置 API Key:")
+                logger.warning(f"   - 请设置环境变量: {env_key}")
         else:
-            print(f"\n[DISABLED] 嵌入提供商已禁用: {provider}")
+            logger.info(f"\n[DISABLED] 嵌入提供商已禁用: {provider}")
 
-        print("="*60 + "\n")
+        logger.info("="*60 + "\n")
         return has_key
 
     except Exception as e:
-        print(f"\n[ERROR] 嵌入模型配置错误: {e}\n")
+        logger.error(f"\n[ERROR] 嵌入模型配置错误: {e}\n")
         return False
 
 
@@ -459,33 +461,33 @@ def print_provider_status():
     """
     results = validate_all_providers()
     
-    print("\n" + "="*60)
-    print("LLM 提供商配置状态")
-    print("="*60)
+    logger.info("\n" + "="*60)
+    logger.info("LLM 提供商配置状态")
+    logger.info("="*60)
     
     if results['configured']:
-        print(f"\n[OK] 已配置 ({len(results['configured'])}):")
+        logger.info(f"\n[OK] 已配置 ({len(results['configured'])}):")
         for p in results['configured']:
-            print(f"   - {p['display_name']} ({p['name']}) - {p['default_model']}")
+            logger.info(f"   - {p['display_name']} ({p['name']}) - {p['default_model']}")
     
     if results['missing_key']:
-        print(f"\n[WARN] 未配置 API Key ({len(results['missing_key'])}):")
+        logger.warning(f"\n[WARN] 未配置 API Key ({len(results['missing_key'])}):")
         for p in results['missing_key']:
-            print(f"   - {p['name']} - 请设置 {p['env_key']}")
+            logger.warning(f"   - {p['name']} - 请设置 {p['env_key']}")
     
     if results['disabled']:
-        print(f"\n[DISABLED] 已禁用 ({len(results['disabled'])}):")
+        logger.info(f"\n[DISABLED] 已禁用 ({len(results['disabled'])}):")
         for name in results['disabled']:
-            print(f"   - {name}")
+            logger.info(f"   - {name}")
     
     # Router 推荐
     router_provider = get_best_router_provider()
     if router_provider:
-        print(f"\n[Router] 将使用: {router_provider}")
+        logger.info(f"\n[Router] 将使用: {router_provider}")
     else:
-        print("\n[ERROR] 没有可用的 LLM 提供商！")
+        logger.error("\n[ERROR] 没有可用的 LLM 提供商！")
     
-    print("="*60 + "\n")
+    logger.info("="*60 + "\n")
     
     return len(results['configured']) > 0
 
@@ -500,7 +502,7 @@ def reload_config():
     """
     global load_providers_config
     load_providers_config.cache_clear()
-    print("[INFO] 提供商配置已重新加载")
+    logger.info("[INFO] 提供商配置已重新加载")
 
 
 # ============================================================================

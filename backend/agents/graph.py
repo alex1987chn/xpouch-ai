@@ -338,10 +338,10 @@ def create_smart_router_workflow(checkpointer: Optional[BaseCheckpointSaver] = N
     # ---------------------------------------------------------
     # 如果未传入 checkpointer，使用 MemorySaver 作为 fallback
     if checkpointer is None:
-        print("[Graph] Using MemorySaver (non-persistent, for dev/test only)")
+        logger.info("[Graph] Using MemorySaver (non-persistent, for dev/test only)")
         checkpointer = MemorySaver()
     else:
-        print(f"[Graph] Using persistent checkpointer: {type(checkpointer).__name__}")
+        logger.info(f"[Graph] Using persistent checkpointer: {type(checkpointer).__name__}")
 
     # 编译时传入 checkpointer
     # 🔥🔥🔥 HITL 中断点：在 expert_dispatcher 前暂停，允许人类审核计划
@@ -395,7 +395,7 @@ async def execute_commander_workflow(
     Returns:
         最终状态
     """
-    print(f"--- [START] 查询: {user_query} ---")
+    logger.info(f"--- [START] 查询: {user_query} ---")
     
     # 根据是否传入 checkpointer 创建 graph
     if checkpointer:
@@ -423,18 +423,18 @@ async def execute_commander_workflow(
             }
         }
     )
-    print("--- [DONE] ---")
+    logger.info("--- [DONE] ---")
     return final_state
 
 if __name__ == "__main__":
     import asyncio
     async def test():
         # 测试 1: 简单闲聊
-        print("\n=== 测试 1: 简单模式 ===")
+        logger.info("\n=== 测试 1: 简单模式 ===")
         await execute_commander_workflow("你好，在吗？")
         
         # 测试 2: 复杂任务
-        print("\n=== 测试 2: 复杂模式 ===")
+        logger.info("\n=== 测试 2: 复杂模式 ===")
         await execute_commander_workflow("帮我写一个 Python 脚本来抓取股票价格。")
     
     asyncio.run(test())
