@@ -2,14 +2,7 @@
  * 聊天核心逻辑 Hook
  * 负责消息发送、停止生成、加载状态管理等核心功能
  * 
- * 重构：移除 ExecutionStore，统一使用 TaskStore
- * - 移除 dispatchEventToExecutionStore 函数
- * - 事件处理统一由 eventHandlers.ts 负责
- * - 符合 SDUI 原则：单一数据源
- * 
- * v3.1.0 性能优化：使用 Zustand Selectors 避免流式输出时的无效重计算
- * v3.1.0 状态机解析：实时分离 thinking 标签和正文内容
- * v3.1.0 重构：提取 useStreamHandler，消除 sendMessageCore 和 resumeExecution 的代码重复
+ * 符合 SDUI 原则：单一数据源
  */
 
 import { useCallback, useRef, useEffect } from 'react'
@@ -26,7 +19,6 @@ import type { Message } from '@/types'
 import { errorHandler, logger } from '@/utils/logger'
 import { isValidApiMessageRole } from '@/types'
 
-// Performance Optimized Selectors (v3.1.0)
 import {
   useMessages,
   useInputMessage,
@@ -39,9 +31,6 @@ import { useTaskMode, useTaskActions } from '@/hooks/useTaskSelectors'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
 
-// ============================================================================
-// v3.1.0: 流式处理器 Hook - 消除代码重复
-// ============================================================================
 import { useStreamHandler } from './useStreamHandler'
 
 // Dev environment check
@@ -83,7 +72,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   // Refactored: Hook only manages AbortController
   const abortControllerRef = useRef<AbortController | null>(null)
   
-  // Performance Optimized Selectors (v3.1.0)
   const conversationMode = useTaskMode() || 'simple'
   
   // Chat store selectors
@@ -105,7 +93,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   
   const { setMode } = useTaskActions()
   
-  // v3.2.0: 流式处理器 - 消除代码重复
   const { reset: resetStreamHandler, createChunkHandler } = useStreamHandler()
 
   /**
@@ -142,7 +129,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     // Reset taskStore mode, wait for backend Router decision
     setMode('simple')
     
-    // v3.1.0: 重置流式处理器
     resetStreamHandler()
 
     const agentId = overrideAgentId || selectedAgentId
@@ -202,13 +188,12 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       debug('Preparing to call sendMessage')
 
-      // v3.1.0: 创建 chunk 处理器（绑定 messageId）
       const handleChunk = createChunkHandler(assistantMessageId, onChunk)
 
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
         conversationId?: string,
-        _expertEvent?: AnyServerEvent  // v3.2.0: 事件处理由 eventHandlers.ts 直接处理，此处保留参数以兼容类型
+        _expertEvent?: AnyServerEvent  // 事件处理由 eventHandlers.ts 直接处理，此处保留参数以兼容类型
       ) => {
         if (conversationId && conversationId !== actualConversationId) {
           actualConversationId = conversationId
@@ -223,7 +208,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
             logger.debug('[useChatCore] Received chunk, length:', chunk.length, 'Message ID:', assistantMessageId)
           }
           
-          // v3.1.0: 使用工厂方法处理 chunk
           handleChunk(chunk)
         }
       }
@@ -322,8 +306,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   }, [])
 
   /**
-   * v3.1.0 HITL: Resume interrupted execution flow
-   */
   const resumeExecution = useCallback(async (
     params: ResumeChatParams
   ): Promise<string> => {
@@ -349,23 +331,20 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       }
     })
     
-    // v3.1.0: 重置流式处理器
     resetStreamHandler()
     
-    // v3.1.0: 创建 chunk 处理器（绑定 messageId）
     const handleChunk = createChunkHandler(assistantMessageId, onChunk)
 
     try {
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
         conversationId?: string,
-        _expertEvent?: AnyServerEvent  // v3.2.0: 事件处理由 eventHandlers.ts 直接处理
+        _expertEvent?: AnyServerEvent  // 事件处理由 eventHandlers.ts 直接处理
       ) => {
         if (chunk) {
           // 累积完整响应
           fullContent += chunk
           
-          // v3.1.0: 使用工厂方法处理 chunk
           handleChunk(chunk)
         }
       }

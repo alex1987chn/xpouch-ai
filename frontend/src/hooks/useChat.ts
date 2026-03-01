@@ -6,9 +6,7 @@
  * - useChatCore: 核心聊天逻辑（发送、停止、加载状态）
  * - useConversation: 会话管理（加载、删除）
  *
- * v3.2.0 架构重构：
- * - 移除 useExpertHandler，所有事件处理统一由 eventHandlers.ts 处理
- * - 符合 SDUI 原则：Backend -> SSE -> EventHandler -> Store
+ * 符合 SDUI 原则：Backend -> SSE -> EventHandler -> Store
  *
  * @returns {
  *   sendMessage: 发送消息函数
@@ -39,7 +37,6 @@ import { useConversation } from './chat/useConversation'
 import { errorHandler } from '@/utils/logger'
 import { SYSTEM_AGENTS } from '@/constants/agents'
 
-// Performance Optimized Selectors (v3.1.0)
 import {
   useInputMessage,
   useSetInputMessageAction,
@@ -48,12 +45,8 @@ import {
 export function useChat() {
   const navigate = useNavigate()
 
-  // Performance Optimized Selectors (v3.1.0)
   const inputMessage = useInputMessage()
   const setInputMessage = useSetInputMessageAction()
-
-  // v3.2.0: 所有会话逻辑（Chat & Task）均由 eventHandlers 统一处理，由后端驱动
-  // 移除了 useExpertHandler 中间层，简化事件处理链路
 
   // 1. Get chat core logic with callbacks
   const chatCore = useChatCore({
@@ -72,7 +65,6 @@ export function useChat() {
         })
       }
     }, [navigate]),
-    // v3.2.0: onExpertEvent 已移除，事件处理由 eventHandlers.ts 直接处理
   })
 
   // 2. Get conversation manager
