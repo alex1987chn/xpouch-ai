@@ -7,8 +7,9 @@
     PYTHONPATH=/path/to/backend:$PYTHONPATH python scripts/init_db.py
 """
 from database import create_db_and_tables
+from utils.logger import logger
 
 if __name__ == "__main__":
-    print("[InitDB] 正在检查和创建数据库表...")
+    logger.info("[InitDB] 正在检查和创建数据库表...")
     create_db_and_tables()
-    print("[InitDB] 数据库表初始化完成！")
+    logger.info("[InitDB] 数据库表初始化完成！")

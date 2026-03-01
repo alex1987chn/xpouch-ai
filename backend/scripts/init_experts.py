@@ -35,6 +35,7 @@ from sqlmodel import Session, select
 from expert_config import EXPERT_DEFAULTS, DEFAULT_EXPERT_MODEL
 from database import engine
 from constants import COMMANDER_SYSTEM_PROMPT
+from utils.logger import logger
 
 
 def get_session_class_and_engine():
@@ -43,13 +44,13 @@ def get_session_class_and_engine():
     try:
         from sqlalchemy.ext.asyncio import AsyncEngine
         if isinstance(engine, AsyncEngine):
-            print("[Info] Using AsyncSession (async engine detected)")
+            logger.info("[Info] Using AsyncSession (async engine detected)")
             return AsyncSession, engine
     except ImportError:
         pass
     
     # 回退到同步会话
-    print("[Info] Using Session (sync engine)")
+    logger.info("[Info] Using Session (sync engine)")
     return Session, engine
 
 
@@ -99,7 +100,7 @@ async def process_experts(session, update_existing=False, update_commander=False
         existing_experts = session.exec(select(SystemExpert)).all()
     
     existing_keys = {e.expert_key for e in existing_experts}
-    print(f"Found {len(existing_experts)} existing experts in database")
+    logger.info(f"Found {len(existing_experts)} existing experts in database")
     
     updated_count = 0
     created_count = 0
@@ -118,15 +119,15 @@ async def process_experts(session, update_existing=False, update_commander=False
                 await _update_expert(session, expert_config)
                 updated_count += 1
                 commander_updated = True
-                print(f"✓ Commander updated to enable thinking chain!")
+                logger.info(f"✓ Commander updated to enable thinking chain!")
             else:
-                print(f"⚠ Skipping existing expert: {expert_key}")
+                logger.warning(f"⚠ Skipping existing expert: {expert_key}")
         else:
             # 创建新专家
             expert = SystemExpert(**expert_config)
             session.add(expert)
             created_count += 1
-            print(f"✓ Created expert: {expert_key}")
+            logger.info(f"✓ Created expert: {expert_key}")
     
     # 提交事务
     if isinstance(session, AsyncSession):
@@ -134,13 +135,13 @@ async def process_experts(session, update_existing=False, update_commander=False
     else:
         session.commit()
     
-    print(f"\nInitialization complete:")
-    print(f"  - Created: {created_count} experts")
-    print(f"  - Updated: {updated_count} experts")
-    print(f"  - Total: {len(EXPERT_DEFAULTS)} experts")
+    logger.info(f"\nInitialization complete:")
+    logger.info(f"  - Created: {created_count} experts")
+    logger.info(f"  - Updated: {updated_count} experts")
+    logger.info(f"  - Total: {len(EXPERT_DEFAULTS)} experts")
     
     if update_commander and not commander_updated:
-        print("\n⚠️  Warning: Commander not found in database, cannot update.")
+        logger.warning("\n⚠️  Warning: Commander not found in database, cannot update.")
 
 
 async def _update_expert(session, expert_config):
@@ -166,7 +167,7 @@ async def _update_expert(session, expert_config):
         expert.model = expert_config["model"]
         expert.temperature = expert_config["temperature"]
         session.add(expert)
-        print(f"✓ Updated expert: {expert_key}")
+        logger.info(f"✓ Updated expert: {expert_key}")
 
 def init_experts(update_existing=False, update_commander=False):
     """同步包装器，向后兼容"""
@@ -195,16 +196,16 @@ async def list_experts_process(session):
     else:
         experts = session.exec(select(SystemExpert)).all()
     
-    print(f"\nTotal experts in database: {len(experts)}\n")
+    logger.info(f"\nTotal experts in database: {len(experts)}\n")
     
     for expert in experts:
-        print(f"Expert Key: {expert.expert_key}")
-        print(f"  Name: {expert.name}")
-        print(f"  Model: {expert.model}")
-        print(f"  Temperature: {expert.temperature}")
-        print(f"  Updated: {expert.updated_at}")
-        print(f"  Prompt Length: {len(expert.system_prompt)} characters")
-        print()
+        logger.info(f"Expert Key: {expert.expert_key}")
+        logger.info(f"  Name: {expert.name}")
+        logger.info(f"  Model: {expert.model}")
+        logger.info(f"  Temperature: {expert.temperature}")
+        logger.info(f"  Updated: {expert.updated_at}")
+        logger.info(f"  Prompt Length: {len(expert.system_prompt)} characters")
+        logger.info("")
 
 def list_experts():
     """同步包装器，向后兼容"""
@@ -222,7 +223,7 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if not args:
         # 无参数：安全模式初始化（只创建缺失的专家，包括 memorize_expert）
-        print("Initializing system experts (safe mode, no overwrite)...")
+        logger.info("Initializing system experts (safe mode, no overwrite)...")
         init_experts(update_existing=False, update_commander=False)
         list_experts()
     elif args[0] == "list":
@@ -232,13 +233,13 @@ if __name__ == "__main__":
         for arg in args:
             if arg == "--update":
                 update_existing = True
-                print("⚠ Update mode enabled: existing experts will be overwritten!")
+                logger.warning("⚠ Update mode enabled: existing experts will be overwritten!")
             elif arg == "--update-commander":
                 update_commander = True
-                print("📝 Commander update mode: only commander prompt will be updated for thinking chain!")
+                logger.info("📝 Commander update mode: only commander prompt will be updated for thinking chain!")
             elif arg == "--safe":
                 update_existing = False
-                print("Safe mode: skipping existing experts (no overwrite)")
+                logger.info("Safe mode: skipping existing experts (no overwrite)")
             elif arg == "--help":
                 print("Usage: python init_experts.py [options]")
                 print("\nModes:")
@@ -260,8 +261,8 @@ if __name__ == "__main__":
                 print("  python init_experts.py --update")
                 sys.exit(0)
             else:
-                print(f"Warning: Unknown argument '{arg}'")
+                logger.warning(f"Warning: Unknown argument '{arg}'")
         
-        print("Initializing system experts...")
+        logger.info("Initializing system experts...")
         init_experts(update_existing=update_existing, update_commander=update_commander)
         list_experts()
