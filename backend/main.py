@@ -62,13 +62,13 @@ async def lifespan(app: FastAPI):
     from utils.db import init_checkpointer_tables
     try:
         await init_checkpointer_tables()
-        print("[Lifespan] Checkpointer tables verified for HITL")
+        logger.info("[Lifespan] Checkpointer tables verified for HITL")
     except Exception as e:
-        print(f"[Lifespan WARN] Failed to verify checkpointer tables: {e}")
+        logger.warning(f"[Lifespan WARN] Failed to verify checkpointer tables: {e}")
         # 非致命错误，继续启动
-        print("[Lifespan INFO] Run migrations if complex mode is not working:")
-        print("              - Linux/macOS: cd backend/migrations && ./run_all_migrations.sh")
-        print("              - Windows: cd backend/migrations && .\\run_all_migrations.ps1")
+        logger.info("[Lifespan INFO] Run migrations if complex mode is not working:")
+        logger.info("              - Linux/macOS: cd backend/migrations && ./run_all_migrations.sh")
+        logger.info("              - Windows: cd backend/migrations && .\\run_all_migrations.ps1")
 
     # 初始化系统专家数据
     from expert_config import EXPERT_DEFAULTS
@@ -78,31 +78,31 @@ async def lifespan(app: FastAPI):
         existing_keys = {e.expert_key for e in existing_experts}
 
         if not existing_experts:
-            print("[Lifespan] No experts found, initializing default experts...")
+            logger.info("[Lifespan] No experts found, initializing default experts...")
             for expert_config in EXPERT_DEFAULTS:
                 expert = SystemExpert(**expert_config)
                 session.add(expert)
             session.commit()
-            print(f"[Lifespan] Initialized {len(EXPERT_DEFAULTS)} experts")
+            logger.info(f"[Lifespan] Initialized {len(EXPERT_DEFAULTS)} experts")
         else:
-            print(f"[Lifespan] Found {len(existing_experts)} experts in database")
+            logger.info(f"[Lifespan] Found {len(existing_experts)} experts in database")
 
     # 清空专家缓存，确保使用最新的兜底机制重新加载
     from agents.services.expert_manager import force_refresh_all
     force_refresh_all()
-    print("[Lifespan] Expert cache cleared for fresh start")
+    logger.info("[Lifespan] Expert cache cleared for fresh start")
 
-    print("[Lifespan] Startup complete, yielding control to Uvicorn...")
+    logger.info("[Lifespan] Startup complete, yielding control to Uvicorn...")
     yield
-    print("[Lifespan] Shutdown started...")
+    logger.info("[Lifespan] Shutdown started...")
     
     # 🔥 关闭连接池
     from utils.db import close_connection_pool
     try:
         await close_connection_pool()
-        print("[Lifespan] Connection pool closed")
+        logger.info("[Lifespan] Connection pool closed")
     except Exception as e:
-        print(f"[Lifespan WARN] Failed to close connection pool: {e}")
+        logger.warning(f"[Lifespan WARN] Failed to close connection pool: {e}")
 
 
 # ============================================================================
@@ -132,10 +132,10 @@ app.include_router(mcp.router)
 @app.middleware("http")
 async def log_requests(request: Request, call_next) -> Response:
     """请求日志中间件"""
-    print(f"[REQUEST] {request.method} {request.url.path}")
+    logger.info(f"[REQUEST] {request.method} {request.url.path}")
     try:
         response = await call_next(request)
-        print(f"[RESPONSE] {response.status_code} {request.url.path}")
+        logger.info(f"[RESPONSE] {response.status_code} {request.url.path}")
         return response
     except Exception as e:
         logger.error(f"[ERROR] Exception in {request.method} {request.url.path}: {str(e)}", exc_info=True)
@@ -164,16 +164,16 @@ def get_cors_origins():
     cors_origins_str = os.getenv("CORS_ORIGINS", "").strip()
     if cors_origins_str:
         origins = [origin.strip() for origin in cors_origins_str.split(",")]
-        print(f"[CORS] 允许的来源: {origins}")
+        logger.info(f"[CORS] 允许的来源: {origins}")
         return origins
     
     environment = os.getenv("ENVIRONMENT", "development").lower()
     if environment == "production":
-        print("[WARN] 生产环境未设置 CORS_ORIGINS，CORS 将拒绝所有跨域请求")
+        logger.warning("[WARN] 生产环境未设置 CORS_ORIGINS，CORS 将拒绝所有跨域请求")
         return []
     else:
         default_origin = "http://localhost:5173"
-        print(f"[CORS] 开发环境默认允许来源: {default_origin}")
+        logger.info(f"[CORS] 开发环境默认允许来源: {default_origin}")
         return [default_origin]
 
 
@@ -303,8 +303,8 @@ async def chat_invoke_endpoint(
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 3002))
-    print(f"[STARTUP] Starting Uvicorn server on port {port}...")
-    print(f"[STARTUP] Host: 0.0.0.0, Port: {port}")
+    logger.info(f"[STARTUP] Starting Uvicorn server on port {port}...")
+    logger.info(f"[STARTUP] Host: 0.0.0.0, Port: {port}")
 
     try:
         uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False, log_level="info")
