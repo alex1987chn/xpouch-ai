@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-03-01] - v3.2.6 - 前端架构重构（事件处理与路由）
+
+### 🏗️ 事件处理器模块化重构
+
+**拆分 eventHandlers.ts (736行 → 模块化)**:
+```
+handlers/
+├── types.ts              # 共享类型定义
+├── utils.ts              # getLastAssistantMessage 工具
+├── taskEvents.ts         # plan.* + task.* 事件 (197行)
+├── artifactEvents.ts     # artifact.generated (49行)
+├── chatEvents.ts         # message.* 事件 (134行)
+├── systemEvents.ts       # router.* + HITL + error (110行)
+├── index.ts              # 统一导出 + EventHandler 类
+└── __tests__/            # 42个单元测试
+```
+
+**改进**:
+- 按业务域拆分，单一职责
+- 引入 HandlerContext 模式，便于测试
+- 所有处理器函数可独立测试
+- 保持原有 API 兼容性（`handleServerEvent`, `getEventHandler`）
+
+### 🛣️ 路由层模块化重构
+
+**拆分 router.tsx (398行 → 模块化)**:
+```
+router/
+├── index.tsx             # 纯路由配置 (110行，-72%)
+├── providers.tsx         # QueryClient + 全局错误处理
+├── components/
+│   └── LoadingFallback.tsx
+├── hooks/
+│   ├── useRequireAuth.ts # 认证守卫
+│   ├── useCreateAgent.ts # 创建智能体逻辑
+│   ├── useEditAgent.ts   # 编辑智能体逻辑
+│   └── index.ts
+├── wrappers/
+│   ├── HistoryPageWrapper.tsx
+│   ├── LibraryPageWrapper.tsx
+│   ├── CreateAgentPageWrapper.tsx
+│   ├── EditAgentPageWrapper.tsx
+│   └── UnifiedChatPageWrapper.tsx
+└── __tests__/
+    └── hooks.test.ts
+```
+
+**改进**:
+- 业务逻辑下沉到 Hooks，可复用可测试
+- Wrapper 组件专注渲染和布局
+- 路由配置纯净，只负责路由定义
+- 统一的加载状态和错误处理
+
+### ✅ 测试覆盖
+
+- **eventHandlers**: 42 个单元测试，覆盖所有事件类型
+- **router hooks**: 4 个单元测试，验证 Hook 导出
+
 ## [2026-03-01] - v3.2.3 - 代码重构与智能体创建优化
 
 ### 🔧 后端代码重构
