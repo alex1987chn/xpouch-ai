@@ -44,6 +44,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **国际化**:
 - 新增 9 个翻译键：preview, unnamedAgent, noDescription, noSystemPrompt 等
 
+### 📐 侧边栏交互重构
+
+**边缘把手设计**:
+- 展开状态：用户卡片右侧竖直把手（20px 窄条）
+- 收拢状态：头像下方横置把手（点击展开）
+
+**方圆结合风格**:
+- 收拢状态：圆形按钮（像机械仪表盘旋钮）
+- 展开状态：方形按钮（像控制面板开关）
+- 统一 hover 效果：位移 + 黄色阴影 + 边框变色
+
+**代码优化**:
+- 提取 `constants.ts`：统一尺寸常量（230px 宽度、44px/60px 按钮高度）
+- 共享 `collapsedButtonStyles`：收拢按钮样式统一
+- 移除硬编码颜色：头像 fallback、套餐图标改用语义化变量
+- 新增 `expandSidebar`/`collapseSidebar` 国际化翻译
+
 ## [2026-03-01] - v3.2.5 - UI 细节优化与代码清理
 
 ### 🎨 UI 优化
