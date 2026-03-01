@@ -49,11 +49,22 @@ export const zh: Record<string, string> = {
   simpleDescription: '简单描述一下这个智能体的功能...',
   defineBehavior: '定义智能体应该如何行为和响应用户',
   writingAssistantPlaceholder: '你是一位专业的写作助手，擅长...',
+  systemPromptPlaceholder: '你是一个专业的 AI 助手，擅长...',
   tip: '提示',
   tipDescription: '好的系统提示词可以引导智能体产生更好的回复',
   realtimePreview: '实时预览',
   previewDescription: '在右侧预览你的智能体卡片展示效果',
   submitTaskPlaceholder: '描述你的任务，AI 会帮你拆解...',
+  
+  // Create Agent Page - Preview
+  preview: '预览',
+  unnamedAgent: '未命名智能体',
+  noDescription: '暂无描述',
+  noSystemPrompt: '暂未配置系统提示词',
+  exampleChat: '示例对话',
+  exampleUserMessage: '你好，可以帮我一个忙吗？',
+  exampleAiResponseWithPrompt: '好的，我明白了。我会根据我的设定来帮助你。',
+  exampleAiResponseNoPrompt: '你好！我已准备好为你服务。请先配置系统提示词来定义我的行为。',
 
   // Expert Names
   aiAssistant: 'AI 助手',
@@ -114,11 +125,22 @@ export const en: Record<string, string> = {
   simpleDescription: 'Briefly describe what this agent does...',
   defineBehavior: 'Define how the agent should behave and respond',
   writingAssistantPlaceholder: 'You are a professional writing assistant who specializes in...',
+  systemPromptPlaceholder: 'You are a professional AI assistant, skilled in...',
   tip: 'Tip',
   tipDescription: 'A good system prompt guides the agent to produce better responses',
   realtimePreview: 'Realtime Preview',
   previewDescription: 'Preview how your agent card will appear on the right',
   submitTaskPlaceholder: 'Describe your task, AI will help break it down...',
+  
+  // Create Agent Page - Preview
+  preview: 'PREVIEW',
+  unnamedAgent: 'Unnamed Agent',
+  noDescription: 'No description provided',
+  noSystemPrompt: 'No system prompt configured',
+  exampleChat: 'EXAMPLE',
+  exampleUserMessage: 'Hello, can you help me?',
+  exampleAiResponseWithPrompt: 'Sure, I understand. I will help you according to my instructions.',
+  exampleAiResponseNoPrompt: 'Hello! I am ready to assist you. Please configure a system prompt to define my behavior.',
 
   // Expert Names
   aiAssistant: 'AI Assistant',
@@ -179,11 +201,22 @@ export const ja: Record<string, string> = {
   simpleDescription: 'このエージェントの機能を簡単に説明してください...',
   defineBehavior: 'エージェントがどのように動作し、応答するかを定義します',
   writingAssistantPlaceholder: 'あなたは専門的なライティングアシスタントで、...',
+  systemPromptPlaceholder: 'あなたは専門的なAIアシスタントで、...',
   tip: 'ヒント',
   tipDescription: '良いシステムプロンプトは、エージェントにより良い応答を導きます',
   realtimePreview: 'リアルタイムプレビュー',
   previewDescription: '右側でエージェントカードの表示効果をプレビューします',
   submitTaskPlaceholder: 'タスクを説明すると、AIが分解してくれます...',
+  
+  // Create Agent Page - Preview
+  preview: 'プレビュー',
+  unnamedAgent: '名前未設定エージェント',
+  noDescription: '説明はありません',
+  noSystemPrompt: 'システムプロンプトが設定されていません',
+  exampleChat: 'サンプル',
+  exampleUserMessage: 'こんにちは、手伝っていただけますか？',
+  exampleAiResponseWithPrompt: 'はい、承知しました。私の設定に従ってお手伝いします。',
+  exampleAiResponseNoPrompt: 'こんにちは！お手伝いできる状態です。システムプロンプトを設定して、私の動作を定義してください。',
 
   // Expert Names
   aiAssistant: 'AI アシスタント',
