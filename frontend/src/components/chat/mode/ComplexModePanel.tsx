@@ -25,10 +25,6 @@ const BusRail = lazy(() =>
   import('@/components/layout/ExpertRail/BusRail').then((m) => ({ default: m.default }))
 )
 
-// PlanReviewCard 可能需要额外的 props，暂时直接渲染条件
-// const PlanReviewCard = lazy(() =>
-//   import('@/components/chat/PlanReviewCard').then((m) => ({ default: m.default }))
-// )
 
 interface ComplexModePanelProps {
   isFullscreen?: boolean

@@ -218,26 +218,6 @@
     box-shadow: 0 0 0 0 rgb(var(--shadow-color));
   }
 
-  /* 霓虹发光效果（赛博朋克） */
-  .glow-primary {
-    box-shadow: 0 0 10px rgb(var(--accent-brand)), 0 0 20px rgb(var(--accent-brand));
-  }
-
-  .glow-border {
-    box-shadow: 0 0 5px rgb(var(--border-default)), 0 0 10px rgb(var(--border-default));
-  }
-
-  /* 文本发光 */
-  .text-glow {
-    text-shadow: 0 0 10px rgb(var(--content-primary) / 0.5);
-  }
-
-  /* 网格背景（Bauhaus） */
-  .bg-grid {
-    background-image: radial-gradient(rgb(var(--content-muted) / 0.2) 1px, transparent 1px);
-    background-size: 20px 20px;
-  }
-
   /* 点阵网格背景（用于 ChatStreamPanel 和 ArtifactDashboard） */
   .dot-grid {
     background-image: radial-gradient(rgb(var(--content-muted) / 0.15) 1px, transparent 1px);
