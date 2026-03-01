@@ -1,10 +1,20 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { visualizer } from 'rollup-plugin-visualizer'
 import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // 🔥 Bundle 分析器 - 运行 pnpm build:analyze 生成报告
+    visualizer({
+      open: false,           // 构建后不自动打开浏览器
+      gzipSize: true,        // 显示 gzip 压缩后大小
+      brotliSize: true,      // 显示 brotli 压缩后大小
+      filename: 'dist/stats.html',  // 输出文件位置
+    }) as any,
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
