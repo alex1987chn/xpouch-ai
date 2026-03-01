@@ -257,7 +257,7 @@ export default function UnifiedChatPage() {
 
       // 发送消息
       sendMessage(initialMessage, normalizedAgentId)
-        .catch(err => console.error('[UnifiedChatPage] 发送消息失败:', err))
+        .catch(err => logger.error('[UnifiedChatPage] 发送消息失败:', err))
 
       // 🔥 修复：使用 isNew: false 标记会话已创建，避免触发 loadConversation 404 错误
       setTimeout(() => {

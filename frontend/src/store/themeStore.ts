@@ -15,6 +15,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { logger } from '@/utils/logger'
 
 /** 支持的主题类型 - 只有 Light 和 Dark（Bauhaus 风格） */
 export type Theme = 'light' | 'dark'
@@ -107,7 +108,7 @@ export const useThemeStore = create<ThemeState>()(
           const newTheme: Theme = 'light'
           applyTheme(newTheme)
           set({ theme: newTheme })
-          console.log('[ThemeStore] 已迁移旧主题:', currentTheme, '->', newTheme)
+          logger.info('[ThemeStore] 已迁移旧主题:', currentTheme, '->', newTheme)
         }
       },
 

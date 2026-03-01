@@ -80,11 +80,10 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
         return '-'
       }
 
-      // 调试：打印时间差（强制输出，不受 DEBUG 开关影响）
+      // 调试：打印时间差
       const diffMs = now.getTime() - date.getTime()
       const diffSec = Math.floor(diffMs / 1000)
-      // eslint-disable-next-line no-console
-      console.log('[HistoryPage Time Debug]', { dateString, diffMs, diffSec, now: now.toISOString(), date: date.toISOString() })
+      logger.debug('[HistoryPage Time Debug]', { dateString, diffMs, diffSec, now: now.toISOString(), date: date.toISOString() })
 
       // 处理未来时间（服务器时间比客户端快）
       if (diffMs < 0) {

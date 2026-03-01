@@ -16,6 +16,7 @@ import type {
 } from '@/types/events'
 import type { TaskSession as ApiTaskSession, SubTask, Artifact } from '@/types'
 import { formatTaskOutput } from '@/utils/formatters'
+import { logger } from '@/utils/logger'
 import type { TaskStore } from '../taskStore'
 
 // ============================================================================
@@ -321,7 +322,7 @@ export const createTaskSlice = (
       // 🔥 保护：如果有运行中的任务，禁止重置（防止复杂模式执行中误重置）
       // 除非强制重置（force=true，用于从历史记录加载会话）
       if (!force && state.runningTaskIds && state.runningTaskIds.size > 0) {
-        console.warn('[TaskStore] resetTasks 被阻止：有任务正在运行中')
+        logger.warn('[TaskStore] resetTasks 被阻止：有任务正在运行中')
         return
       }
       

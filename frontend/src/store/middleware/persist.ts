@@ -4,6 +4,7 @@
  */
 
 import type { StateCreator, StoreMutatorIdentifier } from 'zustand'
+import { logger } from '@/utils/logger'
 
 // 持久化配置选项
 interface PersistOptions<T> {
@@ -67,10 +68,10 @@ export const persist: Persist = (initializer, options) => {
       const stored = localStorage.getItem(storageKey)
       if (stored) {
         restoredState = deserialize(stored)
-        console.log(`[Persist] 恢复状态: ${name}`)
+        logger.debug(`[Persist] 恢复状态: ${name}`)
       }
     } catch (e) {
-      console.warn(`[Persist] 恢复状态失败: ${name}`, e)
+      logger.warn(`[Persist] 恢复状态失败: ${name}`, e)
     }
 
     // 创建包装后的 set 函数
@@ -84,7 +85,7 @@ export const persist: Persist = (initializer, options) => {
         const toPersist = partialize(state)
         localStorage.setItem(storageKey, serialize(toPersist))
       } catch (e) {
-        console.warn(`[Persist] 保存状态失败: ${name}`, e)
+        logger.warn(`[Persist] 保存状态失败: ${name}`, e)
       }
     }
 
@@ -104,9 +105,9 @@ export const persist: Persist = (initializer, options) => {
     ;(api as any).clearPersist = () => {
       try {
         localStorage.removeItem(storageKey)
-        console.log(`[Persist] 清除状态: ${name}`)
+        logger.debug(`[Persist] 清除状态: ${name}`)
       } catch (e) {
-        console.warn(`[Persist] 清除状态失败: ${name}`, e)
+        logger.warn(`[Persist] 清除状态失败: ${name}`, e)
       }
     }
 
@@ -125,9 +126,9 @@ export function clearAllPersistedStates(prefix = '') {
         localStorage.removeItem(key)
       }
     })
-    console.log('[Persist] 清除所有状态')
+    logger.debug('[Persist] 清除所有状态')
   } catch (e) {
-    console.warn('[Persist] 清除所有状态失败', e)
+    logger.warn('[Persist] 清除所有状态失败', e)
   }
 }
 
@@ -141,7 +142,7 @@ export function getPersistedState<T>(name: string, version = 0): T | null {
       return JSON.parse(stored) as T
     }
   } catch (e) {
-    console.warn(`[Persist] 获取状态失败: ${name}`, e)
+    logger.warn(`[Persist] 获取状态失败: ${name}`, e)
   }
   return null
 }

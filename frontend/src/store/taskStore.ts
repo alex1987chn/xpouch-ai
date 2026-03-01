@@ -32,6 +32,7 @@
 
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
+import { logger } from '@/utils/logger'
 import { enableMapSet } from 'immer'
 import { persist } from './middleware/persist'
 
@@ -101,14 +102,14 @@ export const useTaskStore = create<TaskStore>()(
         try {
           return JSON.stringify(state)
         } catch (error) {
-          console.error('[TaskStore] serialize 失败:', error)
+          logger.error('[TaskStore] serialize 失败:', error)
           throw error
         }
       },
       deserialize: (str: string) => {
         try {
           if (!str) {
-            console.warn('[TaskStore] deserialize: 空字符串')
+            logger.warn('[TaskStore] deserialize: 空字符串')
             return {}
           }
 
@@ -135,7 +136,7 @@ export const useTaskStore = create<TaskStore>()(
 
           return parsed
         } catch (error) {
-          console.error('[TaskStore] deserialize 失败:', error)
+          logger.error('[TaskStore] deserialize 失败:', error)
           // 返回一个安全的默认状态
           return {
             session: null,

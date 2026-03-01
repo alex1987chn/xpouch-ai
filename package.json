@@ -11,14 +11,12 @@
     "preview": "pnpm --prefix frontend run preview",
     "test": "pnpm --prefix frontend run test",
     "lint": "pnpm --prefix frontend run lint",
-    "clean": "rm -rf frontend/node_modules backend/.venv frontend/dist backend/__pycache__"
+    "clean": "rimraf frontend/node_modules backend/.venv frontend/dist backend/__pycache__ .ruff_cache"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "rimraf": "^6.0.1"
   },
-  "workspaces": [
-    "frontend"
-  ],
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"

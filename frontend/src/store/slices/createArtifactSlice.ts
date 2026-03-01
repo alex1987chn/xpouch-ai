@@ -21,6 +21,7 @@ import type {
   ArtifactGeneratedData
 } from '@/types/events'
 import type { Artifact } from '@/types'
+import { logger } from '@/utils/logger'
 
 // ============================================================================
 // State & Actions Interfaces
@@ -59,7 +60,7 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
       if (!task) {
         // 🔥 调试日志：task 不存在时记录信息
         if (import.meta.env.VITE_DEBUG_MODE === 'true') {
-          console.error('[ArtifactSlice] addArtifact: Task not found!', {
+          logger.error('[ArtifactSlice] addArtifact: Task not found!', {
             taskId: data.task_id,
             availableTaskIds: Array.from(state.tasks.keys()),
             artifactId: data.artifact.id
@@ -98,7 +99,7 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
       
       // 🔥 调试日志：记录添加成功
       if (import.meta.env.VITE_DEBUG_MODE === 'true') {
-        console.log('[ArtifactSlice] addArtifact: 成功添加', {
+        logger.debug('[ArtifactSlice] addArtifact: 成功添加', {
           taskId: data.task_id,
           artifactId: data.artifact.id,
           totalArtifacts: task.artifacts.length
@@ -140,13 +141,13 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
     const task = state.tasks.get(taskId)
     
     if (!task) {
-      console.error('[ArtifactSlice] Task not found:', taskId)
+      logger.error('[ArtifactSlice] Task not found:', taskId)
       return false
     }
 
     const artifact = task.artifacts.find((a: any) => a.id === artifactId)
     if (!artifact) {
-      console.error('[ArtifactSlice] Artifact not found:', artifactId)
+      logger.error('[ArtifactSlice] Artifact not found:', artifactId)
       return false
     }
 
@@ -170,10 +171,10 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
         artifactId,
         content: newContent
       })
-      console.log('[ArtifactSlice] Artifact updated successfully:', artifactId)
+      logger.info('[ArtifactSlice] Artifact updated successfully:', artifactId)
       return true
     } catch (error) {
-      console.error('[ArtifactSlice] Failed to update artifact, rolling back:', error)
+      logger.error('[ArtifactSlice] Failed to update artifact, rolling back:', error)
 
       set((state: any) => {
         const taskToRollback = state.tasks.get(taskId)
