@@ -11,7 +11,7 @@ import { I18nProvider } from './i18n'
 import { ThemeProvider, ThemeInitializer } from './hooks/useTheme'
 import { AppProvider } from './providers/AppProvider'
 import { AuthInitializer } from './components/AuthInitializer'
-import { router, AppProviders } from './router'
+import { router, AppProviders } from '@/router'
 import { logger } from '@/utils/logger'
 import './index.css'
 
