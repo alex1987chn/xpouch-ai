@@ -11,6 +11,7 @@ import os
 
 from database import get_session
 from models import User
+from utils.logger import logger
 
 
 async def get_current_user(
@@ -90,7 +91,7 @@ async def get_current_user(
             session.add(new_user)
             session.commit()
             session.refresh(new_user)
-            print(f"[Auth] 开发环境自动创建用户: {user_id}")
+            logger.info(f"[Auth] 开发环境自动创建用户: {user_id}")
             return new_user
 
     # 严格认证模式：抛出 401 错误

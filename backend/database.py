@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, create_engine, Session
+from utils.logger import logger
 
 # 🔥 用于非依赖注入场景的 Session 别名
 SQLModelSession = Session
@@ -34,16 +35,16 @@ engine = create_engine(
     # 🔥 每次取连接前 ping 一下，确保连接活着 (虽然有一点点性能损耗，但极其稳定)
     pool_pre_ping=True
 )
-print(f"[Database] Using PostgreSQL: {DATABASE_URL}")
-print(f"[Database] Connection pool: size=20, max_overflow=10, pool_recycle=1800s, pool_pre_ping=True")
+logger.info(f"[Database] Using PostgreSQL: {DATABASE_URL}")
+logger.info(f"[Database] Connection pool: size=20, max_overflow=10, pool_recycle=1800s, pool_pre_ping=True")
 
 def create_db_and_tables():
     """创建数据库表（如果不存在）"""
     # PostgreSQL 使用 SQLModel 自动创建表
     # checkfirst=True 是默认值：表存在则不操作，不存在则创建
-    print("[Database] Checking database tables...")
+    logger.info("[Database] Checking database tables...")
     SQLModel.metadata.create_all(engine, checkfirst=True)
-    print("[Database] Database tables ready")
+    logger.info("[Database] Database tables ready")
 
 def get_session():
     with Session(engine) as session:

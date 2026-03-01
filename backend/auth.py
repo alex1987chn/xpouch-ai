@@ -14,6 +14,7 @@ P0 安全修复: 2025-02-24
 """
 import logging
 import os
+from utils.logger import logger
 from fastapi import APIRouter, Depends, HTTPException, status, Header, Request, Response
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
@@ -206,9 +207,9 @@ async def send_verification_code(
     """
     try:
         import sys
-        print(f"[Auth] 收到发送验证码请求，方法: POST")
+        logger.info(f"[Auth] 收到发送验证码请求，方法: POST")
         phone_number = request.phone_number
-        print(f"[Auth] 请求体已解析，手机号: {phone_number}")
+        logger.info(f"[Auth] 请求体已解析，手机号: {phone_number}")
         
         # 生成验证码（6位数字）
         code = generate_verification_code(length=6)
