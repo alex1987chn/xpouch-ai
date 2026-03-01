@@ -5,6 +5,9 @@
  */
 
 import { MessageSquarePlus } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { collapsedButtonStyles } from './NavigationMenu'
+import { TW } from './constants'
 
 import type { NewChatButtonProps } from './types'
 
@@ -15,13 +18,13 @@ export function NewChatButton({
   t,
 }: NewChatButtonProps) {
   return (
-    <div className="pb-4 w-full flex justify-center max-w-[230px]">
+    <div className={cn('pb-4 w-full flex justify-center', 'max-w-[230px]')}>
       {isCollapsed ? (
         <div className="flex justify-center">
           <button
             onClick={onNewChat}
             disabled={isCreatingNewChat}
-            className="w-9 h-9 rounded-full border-2 border-border bg-surface-card text-content-primary shadow-hard hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-accent-md hover:bg-accent-hover hover:text-content-primary hover:border-content-primary active:translate-x-[2px] active:translate-y-[2px] active:shadow-none relative group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-hard"
+            className={collapsedButtonStyles(false)}
             title={t('newChat')}
           >
             <MessageSquarePlus className="w-4 h-4 relative z-10" />
@@ -31,7 +34,15 @@ export function NewChatButton({
         <button
           onClick={onNewChat}
           disabled={isCreatingNewChat}
-          className="rounded-lg flex items-center justify-center gap-2 border-2 border-border bg-surface-card text-content-primary shadow-hard hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-accent-md hover:bg-accent-hover hover:text-content-primary hover:border-content-primary active:translate-x-[2px] active:translate-y-[2px] active:shadow-none relative group px-2 w-[230px] h-[60px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-hard"
+          className={cn(
+            'flex items-center justify-center gap-2 border-2 border-border bg-surface-card text-content-primary',
+            'shadow-hard hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-accent-md',
+            'hover:bg-accent-hover hover:text-content-primary hover:border-content-primary',
+            'active:translate-x-[2px] active:translate-y-[2px] active:shadow-none',
+            'relative group px-2 disabled:opacity-50 disabled:cursor-not-allowed',
+            'disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-hard',
+            TW.BUTTON_WIDTH, TW.BUTTON_HEIGHT_LARGE
+          )}
         >
           <MessageSquarePlus className="w-4 h-4" />
           <span className="group-hover:text-content-primary">{t('newChat')}</span>

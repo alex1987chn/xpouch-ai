@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
 
 /**
  * =============================
@@ -67,8 +67,12 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  // Sidebar 状态
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  // Sidebar 状态 - 从 localStorage 读取初始值
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const saved = localStorage.getItem('xpouch:sidebar-collapsed')
+    return saved === 'true'
+  })
   const [isSidebarMobileOpen, setIsSidebarMobileOpen] = useState(false)
 
   // Dialogs 状态
@@ -80,7 +84,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Sidebar 方法
   const toggleSidebarCollapsed = useCallback(() => {
-    setIsSidebarCollapsed(prev => !prev)
+    setIsSidebarCollapsed(prev => {
+      const newValue = !prev
+      localStorage.setItem('xpouch:sidebar-collapsed', String(newValue))
+      return newValue
+    })
   }, [])
 
   const toggleSidebarMobile = useCallback(() => {

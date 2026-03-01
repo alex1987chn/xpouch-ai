@@ -99,10 +99,14 @@ export type TranslationKey =
   // Validation
   | 'uploadImageFile' | 'usernameRequired' | 'usernameMinLength' | 'usernameMaxLength'
   | 'imageSizeExceeded' | 'imageProcessFailed' | 'saveFailedLater' | 'updateFailedLater'
+  // Auth & Permission
+  | 'permissionDenied' | 'adminOnly' | 'login'
   // Time & General
   | 'justNow' | 'secondsAgo' | 'general'
   // Language selector
   | 'langZh' | 'langEn' | 'langJa'
+  // Sidebar
+  | 'expandSidebar' | 'collapseSidebar'
 
 
 interface I18nContextType {

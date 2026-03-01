@@ -9,6 +9,8 @@
 
 import { Home, Library, MessageSquare, Shield, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { TranslationKey } from '@/i18n'
+import { TW } from './constants'
 
 import type { NavigationMenuProps } from './types'
 
@@ -82,7 +84,7 @@ export function NavigationMenu({
       {/* 主菜单 - 首页、知识库、历史记录 - 固定不滚动 */}
       <div className="shrink-0 flex flex-col items-center py-2">
         {/* 导航标题 */}
-        <div className="px-1 py-2 w-[230px]">
+        <div className={cn('px-1 py-2', TW.CONTENT_WIDTH)}>
           <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider font-mono text-[10px]">
             /// Navigation
           </h3>
@@ -137,6 +139,20 @@ export function NavigationMenu({
 }
 
 /**
+ * 收拢状态按钮基础样式（共享）
+ * 导出供 NewChatButton 使用
+ */
+export const collapsedButtonStyles = (isActive: boolean) => cn(
+  'h-9 w-9 flex items-center justify-center transition-all duration-200 p-0 rounded-full border-2',
+  isActive
+    ? 'bg-accent text-content-inverted border-border shadow-hard'
+    : 'border-border text-content-muted bg-surface-card shadow-hard ' +
+      'hover:translate-x-[-2px] hover:translate-y-[-2px] ' +
+      'hover:shadow-hard-accent-md hover:bg-accent-hover hover:text-content-primary hover:border-content-primary ' +
+      'active:translate-x-[2px] active:translate-y-[2px] active:shadow-none'
+)
+
+/**
  * 折叠状态下的导航按钮
  */
 interface NavButtonCollapsedProps {
@@ -151,14 +167,7 @@ function NavButtonCollapsed({ isActive, onClick, icon, label }: NavButtonCollaps
     <button
       onClick={onClick}
       title={label}
-      className={cn(
-        'h-9 w-9 transition-all duration-200 justify-center p-0 rounded-full border-2',
-        isActive
-          // 激活状态：品牌色背景、硬阴影
-          ? 'bg-accent text-content-inverted border-border-default shadow-hard'
-          // 非激活状态：透明背景、悬停效果
-          : 'border-border-default text-content-muted hover:bg-surface-page hover:text-content-primary'
-      )}
+      className={collapsedButtonStyles(isActive)}
     >
       {icon}
     </button>
@@ -180,7 +189,7 @@ function NavButtonExpanded({ isActive, onClick, icon, label }: NavButtonExpanded
     <button
       onClick={onClick}
       className={cn(
-        'transition-all duration-200 justify-center py-0 border-2 mb-1 h-[44px] w-[230px]',
+        cn('transition-all duration-200 justify-center py-0 border-2 mb-1', TW.BUTTON_HEIGHT, TW.BUTTON_WIDTH),
         isActive
           // 激活状态
           ? 'bg-accent text-content-inverted border-border-default shadow-hard'
@@ -203,7 +212,7 @@ interface AdminButtonCollapsedProps {
   isActive: boolean
   isAdmin: boolean
   onClick: () => void
-  t: (key: string) => string
+  t: (key: TranslationKey) => string
 }
 
 function AdminButtonCollapsed({ isActive, isAdmin, onClick, t }: AdminButtonCollapsedProps) {
@@ -212,16 +221,14 @@ function AdminButtonCollapsed({ isActive, isAdmin, onClick, t }: AdminButtonColl
       onClick={onClick}
       title={isAdmin ? t('navExperts') : t('adminOnly')}
       className={cn(
-        'h-9 w-9 transition-all duration-200 justify-center p-0 rounded-full border-2 relative',
-        isActive
-          ? 'bg-accent text-content-inverted border-border-default shadow-hard'
-          : 'border-border-default text-content-muted hover:bg-surface-page hover:text-content-primary',
+        collapsedButtonStyles(isActive),
+        'relative',
         !isAdmin && 'opacity-50'
       )}
     >
       <Shield className="w-4 h-4 flex-shrink-0" />
       {!isAdmin && (
-        <div className="absolute -bottom-1 -right-1 bg-surface-overlay text-content-inverted rounded-full p-0.5">
+        <div className="absolute -bottom-1 -right-1 bg-surface-overlay text-content-inverted p-0.5">
           <Lock className="w-2.5 h-2.5" />
         </div>
       )}
@@ -236,7 +243,7 @@ interface AdminButtonExpandedProps {
   isActive: boolean
   isAdmin: boolean
   onClick: () => void
-  t: (key: string) => string
+  t: (key: TranslationKey) => string
 }
 
 function AdminButtonExpanded({ isActive, isAdmin, onClick, t }: AdminButtonExpandedProps) {
@@ -245,7 +252,7 @@ function AdminButtonExpanded({ isActive, isAdmin, onClick, t }: AdminButtonExpan
       onClick={onClick}
       title={isAdmin ? t('navExperts') : t('adminOnly')}
       className={cn(
-        'transition-all duration-200 justify-center py-0 border-2 relative h-[44px] w-[230px]',
+        cn('transition-all duration-200 justify-center py-0 border-2 relative', TW.BUTTON_HEIGHT, TW.BUTTON_WIDTH),
         isActive
           ? 'bg-accent text-content-inverted border-border-default shadow-hard'
           : 'border-transparent text-content-primary hover:bg-surface-page hover:border-border-default',

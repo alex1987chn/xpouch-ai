@@ -23,7 +23,7 @@
  * - 移动端：全屏抽屉，带遮罩层
  *
  * [交互细节]
- * - 展开/折叠：ChevronRight 按钮
+ * - 展开/折叠：UserSection 右侧把手按钮
  * - 设置菜单：头像点击弹出，支持 Portal 渲染
  * - 语言切换：下拉菜单，支持 zh/en/ja
  * - 专家管理：仅 admin 角色显示
@@ -85,8 +85,6 @@ export default function BauhausSidebar({
   const showExpertAdmin = true
 
   // 用户数据
-  const username = user?.username || 'User'
-  const avatar = user?.avatar
   const currentPlan = (user?.plan as 'Free' | 'Pilot' | 'Maestro') || 'Free'
 
   // 套餐权益文案
@@ -108,7 +106,7 @@ export default function BauhausSidebar({
       // 小于1秒显示"刚刚"
       if (diffSec < 1) return t('justNow')
       // 小于60秒显示具体秒数
-      if (diffSec < 60) return t('secondsAgo', { count: diffSec })
+      if (diffSec < 60) return `${diffSec}${t('secondsAgo')}`
 
       // 使用 date-fns 的 formatDistanceToNow
       const localeMap = { zh: zhCN, en: enUS, ja }
@@ -232,12 +230,15 @@ export default function BauhausSidebar({
   return (
     <div
       className={cn(
-        "w-full h-full flex flex-col text-content-primary",
+        "w-full h-full flex flex-col text-content-primary relative",
         className
       )}
     >
       {/* Logo 区域 */}
-      <SidebarHeader isCollapsed={isCollapsed} onLogoClick={() => handleMenuClick('/')} />
+      <SidebarHeader 
+        isCollapsed={isCollapsed} 
+        onLogoClick={() => handleMenuClick('/')} 
+      />
 
       {/* 菜单区域 */}
       <div className="flex-1 flex flex-col items-center overflow-hidden min-h-0 pt-2">
@@ -296,8 +297,8 @@ export default function BauhausSidebar({
         currentPlan={currentPlan}
         planLabel={planLabel}
         onAvatarClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)}
-        onToggleCollapsed={onToggleCollapsed}
         onLoginClick={() => setLoginDialogOpen(true)}
+        onToggleCollapsed={onToggleCollapsed}
         t={t}
       />
 
