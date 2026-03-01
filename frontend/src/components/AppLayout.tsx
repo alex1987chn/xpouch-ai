@@ -84,7 +84,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
       logger.info('[AppLayout] 检测到待发送消息，准备导航到聊天页')
       toast({
         title: t('loginSuccess'),
-        description: '正在发送刚才的消息...',
+        description: t('sendingPendingMessage'),
       })
       // 导航到聊天页，携带 pendingMessage
       const newId = crypto.randomUUID()

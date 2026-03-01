@@ -127,7 +127,7 @@ export default function UnifiedChatPage() {
       return {
         id: SYSTEM_AGENTS.DEFAULT_CHAT,
         name: getSystemAgentName(SYSTEM_AGENTS.DEFAULT_CHAT),
-        description: '日常对话、通用任务、智能问答',
+        description: t('defaultAgentDescription'),
         category: t('general'),
         isCustom: false,
         is_builtin: false,
