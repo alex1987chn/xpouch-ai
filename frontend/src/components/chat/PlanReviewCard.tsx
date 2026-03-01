@@ -217,7 +217,7 @@ export function PlanReviewCard({
         </div>
 
         {/* 任务列表 - 简洁 */}
-        <div className="p-3 space-y-2 max-h-64 overflow-y-auto">
+        <div className="p-3 space-y-2 max-h-64 overflow-y-auto bauhaus-scrollbar">
           <AnimatePresence mode="popLayout">
             {editedPlan.map((task, index) => (
               <motion.div

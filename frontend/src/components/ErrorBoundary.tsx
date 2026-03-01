@@ -113,7 +113,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             
             {/* 错误详情（开发环境显示） */}
             {import.meta.env.DEV && this.state.error && (
-              <div className="mb-4 p-3 bg-status-offline/10 rounded-lg overflow-auto max-h-32">
+              <div className="mb-4 p-3 bg-status-offline/10 rounded-lg overflow-auto max-h-32 bauhaus-scrollbar">
                 <p className="text-xs font-mono text-status-offline">
                   {this.state.error.message}
                 </p>

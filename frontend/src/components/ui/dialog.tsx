@@ -150,7 +150,7 @@ const DialogContentFullscreen = React.forwardRef<
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
       </div>
-      <div className="h-full overflow-auto">
+      <div className="h-full overflow-auto bauhaus-scrollbar">
         {children}
       </div>
     </DialogPrimitive.Content>
