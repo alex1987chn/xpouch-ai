@@ -7,6 +7,7 @@ import { useUserStore } from '@/store/userStore'
 import { useTaskStore } from '@/store/taskStore'
 import { useApp } from '@/providers/AppProvider'
 import ModelSelector from '@/components/settings/ModelSelector'
+import BauhausSelect from '@/components/ui/bauhaus-select'
 
 interface CreateAgentPageProps {
   onBack: () => void
@@ -111,7 +112,13 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
     onSave(agentData)
   }
 
-  const categories = [t('categoryGeneral'), t('categoryDev'), t('categoryCreate'), t('categoryAnalyze'), t('categoryResearch')]
+  const categories = [
+    { value: t('categoryGeneral'), label: t('categoryGeneral') },
+    { value: t('categoryDev'), label: t('categoryDev') },
+    { value: t('categoryCreate'), label: t('categoryCreate') },
+    { value: t('categoryAnalyze'), label: t('categoryAnalyze') },
+    { value: t('categoryResearch'), label: t('categoryResearch') },
+  ]
 
   return (
     <div className="flex flex-col h-full bg-transparent">
@@ -197,15 +204,12 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                       {t('category')}
                     </label>
                   </div>
-                  <select
+                  <BauhausSelect
                     value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors cursor-pointer"
-                  >
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                    onChange={setCategory}
+                    options={categories}
+                    placeholder={t('selectCategory') || '选择分类...'}
+                  />
                 </div>
               </div>
 
