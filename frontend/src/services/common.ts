@@ -10,6 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 import { logger } from '@/utils/logger'
 import { generateUUID } from '@/utils'
+import { showLoginDialog } from '@/utils/authUtils'
 
 // ============================================================================
 // P1 增强: Token 刷新状态管理
@@ -31,18 +32,6 @@ const MAX_RETRY_COUNT = 1
 
 /** 请求重试计数器 (用于避免无限循环) */
 const retryCountMap = new WeakMap<RequestInit, number>()
-
-/**
- * 显示登录弹窗
- */
-function showLoginDialog(): void {
-  // 动态导入以避免循环依赖
-  import('@/store/taskStore').then(({ useTaskStore }) => {
-    useTaskStore.getState().setLoginDialogOpen(true)
-  }).catch(err => {
-    logger.error('[Auth] 无法显示登录弹窗:', err)
-  })
-}
 
 /**
  * 执行 Token 刷新
