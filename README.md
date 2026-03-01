@@ -12,7 +12,7 @@
 
 <img src="https://github.com/user-attachments/assets/c4554212-e24e-47dd-a61d-8df4f69ce233" alt="XPouch AI Screenshot" width="800">
 
-**下一代 LangGraph 智能协作平台 v3.2.5** — 引入 HITL 人机回环、MCP 生态、Streamable HTTP 传输、媒体内容自动渲染与工业级交互体验。
+**下一代 LangGraph 智能协作平台 v3.2.3** — 引入 HITL 人机回环、MCP 生态、Streamable HTTP 传输、媒体内容自动渲染与工业级交互体验。
 
 [🚀 在线演示](https://xpouch.ai) · [🐛 问题反馈](https://github.com/alex1987chn/xpouch-ai/issues) · [💬 讨论](https://github.com/alex1987chn/xpouch-ai/discussions)
 
