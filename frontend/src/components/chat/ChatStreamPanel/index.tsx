@@ -12,7 +12,7 @@
  *
  * [核心功能]
  * 1. 消息流渲染：用户消息 + AI 消息 + 路由指示器
- * 2. Markdown 支持：GFM 表格、代码高亮 (rehype-highlight)
+ * 2. Markdown 支持：GFM 表格、代码高亮 (CodeBlock)
  * 3. 输入控制台：Heavy Input Console（机械风格）
  * 4. 工具按钮：附件、网络搜索
  * 5. Server-Driven UI：思维链可视化
