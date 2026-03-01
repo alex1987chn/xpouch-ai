@@ -305,7 +305,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     }
   }, [])
 
-  /**
   const resumeExecution = useCallback(async (
     params: ResumeChatParams
   ): Promise<string> => {
