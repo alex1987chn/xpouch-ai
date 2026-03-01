@@ -1,5 +1,5 @@
 /**
- * 会话恢复 Hook（合并版）
+ * 会话恢复 Hook
  * 支持页面加载自动恢复和 visibilitychange 唤醒恢复
  * 
  * @features
@@ -7,9 +7,6 @@
  * - visibilitychange 事件监听（标签页切换恢复）
  * - 5 秒防抖机制（防止重复恢复）
  * - 检测活跃的 SSE 连接，避免重复恢复
- * 
- * @description
- * v3.3.0: 合并 useSessionRestore 和 useSessionRecovery，统一恢复逻辑
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react'

@@ -7,8 +7,6 @@
  * - 解析状态用 Ref 存储，避免触发重渲染
  * - createChunkHandler 工厂方法支持动态 messageId 绑定
  * - 保持 processStreamingChunk 作为纯函数，便于测试
- * 
- * v3.1.0 重构：提取公共流式处理逻辑
  */
 
 import { useRef, useCallback } from 'react'

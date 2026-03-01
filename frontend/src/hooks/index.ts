@@ -22,9 +22,7 @@ export {
 
 // 聊天相关
 export { useChat } from './useChat'
-
 export { useChatCore } from './chat/useChatCore'
-// v3.2.0: useExpertHandler 已移除，事件处理由 eventHandlers.ts 直接处理
 export { useConversation } from './chat/useConversation'
 
 // 主题相关
@@ -37,7 +35,7 @@ export { useSwipeBack } from './useSwipeBack'
 export { useAsyncError } from './useAsyncError'
 
 // ============================================================================
-// 🔥🔥🔥 性能优化 Selectors (v3.1.0)
+// 性能优化 Selectors
 // 使用 Zustand Selector 模式避免不必要的重渲染
 // 特别适用于高频 SSE 更新场景
 // ============================================================================
