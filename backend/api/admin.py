@@ -18,6 +18,7 @@ from auth import get_current_user
 from models import User, SystemExpert, UserRole
 from database import get_session
 from agents.services.expert_manager import refresh_cache
+from utils.logger import logger
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -291,14 +292,14 @@ async def update_expert(
     session.commit()
     session.refresh(expert)
 
-    print(f"[Admin] Expert '{expert_key}' updated by admin")
+    logger.info(f"[Admin] Expert '{expert_key}' updated by admin")
 
     # 自动刷新 LangGraph 缓存（无需重启）
     try:
         refresh_cache(session)
-        print(f"[Admin] LangGraph cache refreshed successfully")
+        logger.info(f"[Admin] LangGraph cache refreshed successfully")
     except Exception as e:
-        print(f"[Admin] Warning: Failed to refresh cache: {e}")
+        logger.warning(f"[Admin] Warning: Failed to refresh cache: {e}")
         # 缓存刷新失败不影响保存操作，只是下次任务可能会使用旧缓存
 
     return {
@@ -346,7 +347,7 @@ async def promote_user(
     session.add(user)
     session.commit()
 
-    print(f"[Admin] User '{user.username}' promoted to admin")
+    logger.info(f"[Admin] User '{user.username}' promoted to admin")
 
     return {
         "message": "用户已升级为管理员",
@@ -556,14 +557,14 @@ async def create_expert(
     session.commit()
     session.refresh(new_expert)
     
-    print(f"[Admin] Expert '{expert_create.expert_key}' created by admin")
+    logger.info(f"[Admin] Expert '{expert_create.expert_key}' created by admin")
     
     # 自动刷新 LangGraph 缓存
     try:
         refresh_cache(session)
-        print(f"[Admin] LangGraph cache refreshed successfully")
+        logger.info(f"[Admin] LangGraph cache refreshed successfully")
     except Exception as e:
-        print(f"[Admin] Warning: Failed to refresh cache: {e}")
+        logger.warning(f"[Admin] Warning: Failed to refresh cache: {e}")
     
     return ExpertResponse(
         id=new_expert.id,
@@ -623,14 +624,14 @@ async def delete_expert(
     session.delete(expert)
     session.commit()
     
-    print(f"[Admin] Expert '{expert_key}' deleted by admin")
+    logger.info(f"[Admin] Expert '{expert_key}' deleted by admin")
     
     # 自动刷新 LangGraph 缓存
     try:
         refresh_cache(session)
-        print(f"[Admin] LangGraph cache refreshed successfully")
+        logger.info(f"[Admin] LangGraph cache refreshed successfully")
     except Exception as e:
-        print(f"[Admin] Warning: Failed to refresh cache: {e}")
+        logger.warning(f"[Admin] Warning: Failed to refresh cache: {e}")
     
     return {
         "message": "专家已删除",
