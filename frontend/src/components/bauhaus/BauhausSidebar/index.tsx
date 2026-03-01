@@ -34,7 +34,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
 import { useChatStore } from '@/store/chatStore'
-import { useTaskStore } from '@/store/taskStore'
+import { useApp } from '@/providers/AppProvider'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
 import { useTranslation } from '@/i18n'
@@ -65,7 +65,7 @@ export default function BauhausSidebar({
   const { toast } = useToast()
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false)
   const { user, isAuthenticated, logout } = useUserStore()
-  const setLoginDialogOpen = useTaskStore(state => state.setLoginDialogOpen)
+  const { dialogs: { openLogin } } = useApp()
   const inputMessage = useChatStore(state => state.inputMessage)
   const setInputMessage = useChatStore(state => state.setInputMessage)
   const setMessages = useChatStore(state => state.setMessages)
@@ -126,7 +126,7 @@ export default function BauhausSidebar({
   const handleMenuClick = (path: string) => {
     // 检查是否需要登录
     if (authRequiredPaths.includes(path) && !isAuthenticated) {
-      setLoginDialogOpen(true)
+      openLogin()
       return
     }
     navigate(path)
@@ -191,7 +191,7 @@ export default function BauhausSidebar({
     
     // 未登录时弹出登录弹窗
     if (!isAuthenticated) {
-      setLoginDialogOpen(true)
+      openLogin()
       return
     }
     

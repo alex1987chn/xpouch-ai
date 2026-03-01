@@ -11,7 +11,7 @@ import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import LoginDialog from '@/components/auth/LoginDialog'
 import { useApp } from '@/providers/AppProvider'
 import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher'
-import { useTaskStore } from '@/store/taskStore'
+
 import { useChatStore } from '@/store/chatStore'
 import { useQueryClient } from '@tanstack/react-query'
 import { logger } from '@/utils/logger'
@@ -69,14 +69,14 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
   const queryClient = useQueryClient()
   const { toast } = useToast()
   
-  // 全局登录弹窗状态
-  const isLoginDialogOpen = useTaskStore(state => state.isLoginDialogOpen)
-  const setLoginDialogOpen = useTaskStore(state => state.setLoginDialogOpen)
+  // 全局登录弹窗状态（从 AppProvider 获取）
+  const { loginOpen, openLogin, closeLogin } = dialogs
   
   // 登录成功回调：刷新所有查询缓存，并触发消息重发
   const handleLoginSuccess = () => {
     logger.info('[AppLayout] 登录成功，刷新数据')
     queryClient.invalidateQueries()
+    closeLogin() // 关闭登录弹窗
     
     // 检查是否有待发送的消息
     const { pendingMessage, setShouldRetrySend } = useChatStore.getState()
@@ -211,8 +211,8 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
 
       {/* 全局登录弹窗 - 401 时自动触发 */}
       <LoginDialog
-        open={isLoginDialogOpen}
-        onOpenChange={setLoginDialogOpen}
+        open={loginOpen}
+        onOpenChange={(open) => open ? openLogin() : closeLogin()}
         onSuccess={handleLoginSuccess}
       />
 
