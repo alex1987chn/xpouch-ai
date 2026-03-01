@@ -124,16 +124,10 @@ export default function UnifiedChatPage() {
     const effectiveAgentId = normalizedAgentId
     
     if (effectiveAgentId === SYSTEM_AGENTS.DEFAULT_CHAT) {
+      // 返回简化对象，仅用于存在性检查
       return {
         id: SYSTEM_AGENTS.DEFAULT_CHAT,
         name: getSystemAgentName(SYSTEM_AGENTS.DEFAULT_CHAT),
-        description: t('defaultAgentDescription'),
-        category: t('general'),
-        isCustom: false,
-        is_builtin: false,
-        modelId: 'deepseek-chat',
-        icon: null,
-        systemPrompt: ''
       }
     }
     

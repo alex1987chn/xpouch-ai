@@ -70,7 +70,6 @@ interface ChatActions {
   
   // Getters
   getAllAgents: () => Agent[]
-  getCurrentAgent: () => Agent | undefined
   
   // 🔐 登录后自动重发消息
   setPendingMessage: (message: string | null) => void
@@ -171,24 +170,6 @@ export const useChatStore = create<ChatStore>()(
       
       getAllAgents: () => {
         return get().customAgents
-      },
-
-      getCurrentAgent: () => {
-        const state = get()
-        if (state.selectedAgentId === SYSTEM_AGENTS.DEFAULT_CHAT) {
-          return {
-            id: SYSTEM_AGENTS.DEFAULT_CHAT,
-            name: getSystemAgentName(SYSTEM_AGENTS.DEFAULT_CHAT),
-            description: 'defaultAgentDescription',  // 翻译 key，组件层使用 t()
-            category: 'general',  // 翻译 key
-            isCustom: false,
-            is_builtin: false,
-            modelId: 'deepseek-chat',
-            icon: null,
-            systemPrompt: ''
-          }
-        }
-        return state.customAgents.find(a => a.id === state.selectedAgentId)
       },
 
       // ========== 登录后自动重发消息 ==========
