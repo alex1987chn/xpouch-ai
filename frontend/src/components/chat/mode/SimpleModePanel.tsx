@@ -25,7 +25,7 @@ function SimpleExpertRail({ hasArtifact }: { hasArtifact: boolean }) {
   }
 
   return (
-    <div className="w-14 border-r-2 border-border bg-page flex flex-col items-center py-2 shrink-0">
+    <div className="w-14 border-r-2 border-border bg-surface-elevated flex flex-col items-center py-2 shrink-0">
       <div className="w-[1px] h-4 bg-border/50 mb-2" />
       <div className="relative group">
         <div className="w-10 h-10 border-2 border-border bg-card shadow-[2px_2px_0_0_rgba(0,0,0,0.2)] flex items-center justify-center">

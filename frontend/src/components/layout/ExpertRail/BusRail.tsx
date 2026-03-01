@@ -118,7 +118,7 @@ export default function BusRail({ tasks, selectedTaskId, onTaskClick }: BusRailP
   const isSystemBusy = runningTaskIds.size > 0
 
   return (
-    <div className="w-20 py-4 relative shrink-0 overflow-visible flex flex-col items-center">
+    <div className="w-20 py-4 relative shrink-0 overflow-visible flex flex-col items-center bg-surface-elevated border-r-2 border-border">
       {/* 背景总线 - The Spine - 居中 */}
       <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-border/40 z-0">
         {/* 刻度装饰 */}
