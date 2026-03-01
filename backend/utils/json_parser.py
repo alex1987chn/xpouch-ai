@@ -6,6 +6,7 @@ import json
 import re
 from typing import TypeVar, Type, Optional
 from pydantic import BaseModel, ValidationError
+from utils.logger import logger
 
 
 T = TypeVar('T', bound=BaseModel)
@@ -52,13 +53,13 @@ def parse_llm_json(
             json_data = json.loads(json_str, strict=False)
         except json.JSONDecodeError:
             # 🔥 步骤 4: 使用状态机修复字符串内部的未转义字符
-            print("[JSON Parser] 直接解析失败，使用状态机修复...")
+            logger.warning("[JSON Parser] 直接解析失败，使用状态机修复...")
             repaired_str = _repair_json_string(json_str)
             try:
                 json_data = json.loads(repaired_str, strict=False)
             except json.JSONDecodeError as e:
                 # 步骤 5: 如果还是失败，尝试最后的暴力清理
-                print("[JSON Parser] 状态机修复失败，尝试暴力清理...")
+                logger.warning("[JSON Parser] 状态机修复失败，尝试暴力清理...")
                 final_str = _aggressive_clean(repaired_str)
                 try:
                     json_data = json.loads(final_str, strict=False)

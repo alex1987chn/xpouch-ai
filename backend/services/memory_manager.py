@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from database import engine
 from models.memory import UserMemory
 from providers_config import get_embedding_client
+from utils.logger import logger
 
 
 def get_embedding(text: str) -> List[float]:
@@ -24,7 +25,7 @@ def get_embedding(text: str) -> List[float]:
         )
         return response.data[0].embedding
     except Exception as e:
-        print(f"[Memory] Embedding Error: {e}")
+        logger.error(f"[Memory] Embedding Error: {e}")
         return []
 
 
@@ -40,7 +41,7 @@ class MemoryManager:
         # 1. 转向量
         vector = get_embedding(content)
         if not vector:
-            print(f"[Memory] ❌ 向量生成失败，跳过存储: {content[:50]}...")
+            logger.warning(f"[Memory] ❌ 向量生成失败，跳过存储: {content[:50]}...")
             return
 
         # 2. 存入数据库
@@ -56,9 +57,9 @@ class MemoryManager:
                 )
                 session.add(memory)
                 session.commit()
-                print(f"[Memory] ✅ 已记住: {content[:80]}...")
+                logger.info(f"[Memory] ✅ 已记住: {content[:80]}...")
         except Exception as e:
-            print(f"[Memory] ❌ 数据库写入失败: {e}")
+            logger.error(f"[Memory] ❌ 数据库写入失败: {e}")
 
     def _search_sync(self, user_id: str, query: str, limit: int = 5) -> str:
         """同步检索相关记忆"""
@@ -92,7 +93,7 @@ class MemoryManager:
             return "\n".join([f"- {m}" for m in memories])
 
         except Exception as e:
-            print(f"[Memory] ❌ 检索失败: {e}")
+            logger.error(f"[Memory] ❌ 检索失败: {e}")
             return ""
 
     def _get_all_memories_sync(self, user_id: str, limit: int = 50) -> List[UserMemory]:
@@ -104,7 +105,7 @@ class MemoryManager:
                 ).order_by(UserMemory.created_at.desc()).limit(limit)
                 return session.exec(statement).all()
         except Exception as e:
-            print(f"[Memory] ❌ 获取记忆失败: {e}")
+            logger.error(f"[Memory] ❌ 获取记忆失败: {e}")
             return []
 
     def _delete_memory_sync(self, memory_id: int, user_id: str) -> bool:
@@ -118,7 +119,7 @@ class MemoryManager:
                     return True
                 return False
         except Exception as e:
-            print(f"[Memory] ❌ 删除记忆失败: {e}")
+            logger.error(f"[Memory] ❌ 删除记忆失败: {e}")
             return False
 
     # --- 异步入口 (供 Agent 调用) ---

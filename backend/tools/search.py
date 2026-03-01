@@ -6,6 +6,7 @@ P1 优化: 添加异步支持
 """
 import os
 from langchain_core.tools import tool
+from utils.logger import logger
 
 # -----------------------------------------------------------
 # 核心修复：兼容性导入逻辑
@@ -13,12 +14,12 @@ from langchain_core.tools import tool
 try:
     # 优先尝试新版（官方推荐）
     from langchain_tavily import TavilySearchResults
-    print("[Search] [OK] 使用 langchain_tavily (新版)")
+    logger.info("[Search] [OK] 使用 langchain_tavily (新版)")
 except ImportError:
     try:
         # 回退到旧版（社区版）
         from langchain_community.tools.tavily_search import TavilySearchResults
-        print("[Search] [WARN] 使用 langchain_community.tools.tavily_search (旧版)")
+        logger.warning("[Search] [WARN] 使用 langchain_community.tools.tavily_search (旧版)")
     except ImportError:
         # 如果都没装，直接抛出异常，不要吞掉！
         raise ImportError(
@@ -58,18 +59,18 @@ def search_web(query: str) -> str:
         # include_answer=True 让 Tavily 直接生成一段总结，效果更好
         tavily_tool = TavilySearchResults(max_results=3, include_answer=True)
 
-        print(f"--- [Tool] 正在搜索: {query} ---")
+        logger.info(f"--- [Tool] 正在搜索: {query} ---")
         results = tavily_tool.invoke({"query": query})
 
         # 调试日志：看看搜到了啥
-        print(f"[Debug] 搜索原始结果类型: {type(results)}")
+        logger.debug(f"[Debug] 搜索原始结果类型: {type(results)}")
 
         return f"【搜索结果】:\n{results}"
 
     except Exception as e:
         # 捕获运行时错误（比如 Key 填错了，或者断网了）
         error_msg = f"❌ 搜索工具执行失败: {str(e)}"
-        print(error_msg)
+        logger.error(error_msg)
         return error_msg
 
 
@@ -103,7 +104,7 @@ async def asearch_web(query: str) -> str:
         # P1 优化: 使用异步 HTTP 客户端直接调用 Tavily API
         # 而不是使用 LangChain 的同步工具
         async with httpx.AsyncClient(timeout=30.0) as client:
-            print(f"--- [Tool] 正在异步搜索: {query} ---")
+            logger.info(f"--- [Tool] 正在异步搜索: {query} ---")
             
             response = await client.post(
                 "https://api.tavily.com/search",
@@ -134,14 +135,14 @@ async def asearch_web(query: str) -> str:
                     results.append(f"   来源: {result.get('url', '未知')}")
             
             output = "\n".join(results) if results else "未找到搜索结果"
-            print(f"[Debug] 异步搜索完成，结果长度: {len(output)}")
+            logger.debug(f"[Debug] 异步搜索完成，结果长度: {len(output)}")
             return output
 
     except httpx.TimeoutException:
         error_msg = "❌ 搜索超时 (30秒)"
-        print(error_msg)
+        logger.error(error_msg)
         return error_msg
     except Exception as e:
         error_msg = f"❌ 异步搜索工具执行失败: {str(e)}"
-        print(error_msg)
+        logger.error(error_msg)
         return error_msg

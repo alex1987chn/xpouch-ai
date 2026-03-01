@@ -8,6 +8,7 @@
 import re
 from typing import Tuple, Optional
 import json
+from utils.logger import logger
 
 
 def parse_thinking(content: str) -> Tuple[str, Optional[dict]]:
@@ -165,11 +166,11 @@ if __name__ == "__main__":
     ]
 
     for i, test in enumerate(test_cases, 1):
-        print(f"\n=== 测试用例 {i} ===")
-        print(f"原文:\n{test}\n")
+        logger.info(f"\n=== 测试用例 {i} ===")
+        logger.info(f"原文:\n{test}\n")
         clean, thinking = parse_thinking(test)
-        print(f"清理后:\n{clean}\n")
+        logger.info(f"清理后:\n{clean}\n")
         if thinking:
-            print(f"Thinking 数据:\n{json.dumps(thinking, indent=2, ensure_ascii=False)}\n")
+            logger.info(f"Thinking 数据:\n{json.dumps(thinking, indent=2, ensure_ascii=False)}\n")
         else:
-            print("未找到 thought 标签")
+            logger.info("未找到 thought 标签")

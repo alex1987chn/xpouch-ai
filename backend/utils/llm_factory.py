@@ -20,6 +20,7 @@ from providers_config import (
     get_best_router_provider,
     is_provider_configured
 )
+from utils.logger import logger as custom_logger
 import httpx
 from tenacity import (
     retry,
@@ -53,7 +54,7 @@ def get_effective_model(configured_model: Optional[str]) -> str:
     
     # 强制兜底模式
     if os.getenv("FORCE_MODEL_FALLBACK", "").lower() == "true":
-        print(f"[ModelFallback] 强制兜底模式，使用 '{default_model}'")
+        custom_logger.info(f"[ModelFallback] 强制兜底模式，使用 '{default_model}'")
         return default_model
     
     # 未配置时使用默认
@@ -67,7 +68,7 @@ def get_effective_model(configured_model: Optional[str]) -> str:
         if model_config and 'model' in model_config:
             resolved_model = model_config['model']
             if resolved_model != configured_model:
-                print(f"[ModelFallback] 模型别名解析: '{configured_model}' -> '{resolved_model}'")
+                custom_logger.info(f"[ModelFallback] 模型别名解析: '{configured_model}' -> '{resolved_model}'")
                 configured_model = resolved_model
     except ImportError:
         pass
@@ -82,7 +83,7 @@ def get_effective_model(configured_model: Optional[str]) -> str:
         return configured_model
     
     # 兜底到默认模型
-    print(f"[ModelFallback] 检测到 OpenAI 模型 '{configured_model}'，切换为 '{default_model}'")
+    custom_logger.info(f"[ModelFallback] 检测到 OpenAI 模型 '{configured_model}'，切换为 '{default_model}'")
     return default_model
 
 
@@ -278,4 +279,4 @@ if __name__ == "__main__":
     from providers_config import print_provider_status, get_all_providers
     
     print_provider_status()
-    print(f"\n缓存信息: {get_llm_cache_info()}")
+    custom_logger.info(f"\n缓存信息: {get_llm_cache_info()}")
