@@ -78,7 +78,7 @@ export default function DeleteConfirmDialog({
             className={cn(
               'flex items-center gap-2 px-4 py-2 border-2 border-status-offline',
               'bg-status-offline text-content-primary font-mono text-xs font-bold uppercase',
-              'shadow-[rgb(var(--shadow-color))_2px_2px_0_0]',
+              'shadow-hard-sm',
               'hover:bg-status-offline/80 hover:border-status-offline/80',
               'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
               'transition-all',

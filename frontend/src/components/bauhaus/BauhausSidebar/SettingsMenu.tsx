@@ -31,7 +31,7 @@ export function SettingsMenu({
   return createPortal(
     <div
       data-settings-menu
-      className="fixed bottom-[60px] bg-[rgb(var(--surface-card))] backdrop-blur-2xl border-2 border-[rgb(var(--border-default))] shadow-[rgb(var(--shadow-color))_4px_4px_0_0] z-[200] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
+      className="fixed bottom-[60px] bg-[rgb(var(--surface-card))] backdrop-blur-2xl border-2 border-[rgb(var(--border-default))] shadow-hard z-[200] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
       style={{
         width: '280px',
         maxWidth: 'calc(100vw - 32px)',
@@ -47,9 +47,9 @@ export function SettingsMenu({
           <div className="flex items-center gap-3">
             <div className="relative">
               {avatar ? (
-                <img src={avatar} alt="Avatar" className="w-10 h-10 border-2 border-[rgb(var(--border-default))] shadow-[rgb(var(--shadow-color))_2px_2px_0_0]" />
+                <img src={avatar} alt="Avatar" className="w-10 h-10 border-2 border-[rgb(var(--border-default))] shadow-hard-sm" />
               ) : (
-                <div className="w-10 h-10 bg-[rgb(var(--content-primary))] text-[rgb(var(--surface-card))] flex items-center justify-center font-bold border-2 border-[rgb(var(--border-default))] shadow-[rgb(var(--shadow-color))_2px_2px_0_0]">
+                <div className="w-10 h-10 bg-[rgb(var(--content-primary))] text-[rgb(var(--surface-card))] flex items-center justify-center font-bold border-2 border-[rgb(var(--border-default))] shadow-hard-sm">
                   {username.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -76,7 +76,7 @@ export function SettingsMenu({
             onClose()
             onMobileClose?.()
           }}
-          className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[rgb(var(--border-default))] hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary transition-all font-mono text-xs shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] active:translate-x-0 active:translate-y-0 active:shadow-[rgb(var(--shadow-color))_2px_2px_0_0]"
+          className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[rgb(var(--border-default))] hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary transition-all font-mono text-xs shadow-hard-sm hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-hard-sm"
         >
           <User className="w-4 h-4" />
           <span className="font-bold uppercase">{t('personalSettings')}</span>
@@ -88,7 +88,7 @@ export function SettingsMenu({
             onClose()
             onMobileClose?.()
           }}
-          className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[rgb(var(--border-default))] hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary transition-all font-mono text-xs shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] active:translate-x-0 active:translate-y-0 active:shadow-[rgb(var(--shadow-color))_2px_2px_0_0]"
+          className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[rgb(var(--border-default))] hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary transition-all font-mono text-xs shadow-hard-sm hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-hard-sm"
         >
           <Cog className="w-4 h-4" />
           <span className="font-bold uppercase">{t('modelConfig')}</span>
@@ -128,7 +128,7 @@ export function SettingsMenu({
         {isAuthenticated && (
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[rgb(var(--border-default))] hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary transition-all font-mono text-xs text-[rgb(var(--content-primary))] shadow-[rgb(var(--shadow-color))_2px_2px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0] active:translate-x-0 active:translate-y-0 active:shadow-[rgb(var(--shadow-color))_2px_2px_0_0] mt-2"
+            className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-[rgb(var(--border-default))] hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary transition-all font-mono text-xs text-[rgb(var(--content-primary))] shadow-hard-sm hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-hard-sm mt-2"
           >
             <ArrowRight className="w-4 h-4" />
             <span className="font-bold uppercase">{t('logout')}</span>

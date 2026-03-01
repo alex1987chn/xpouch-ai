@@ -7,7 +7,7 @@
  */
 
 import { The4DPocketLogo } from '@/components/bauhaus'
-import { VERSION } from '@/constants/ui'
+import { VERSION, DIMENSIONS } from '@/constants/ui'
 import type { SidebarHeaderProps } from './types'
 
 export function SidebarHeader({ isCollapsed, onLogoClick }: SidebarHeaderProps) {
@@ -26,7 +26,8 @@ export function SidebarHeader({ isCollapsed, onLogoClick }: SidebarHeaderProps) 
         <div className="w-full pt-4 pb-8 px-2 flex justify-center">
           <div
             onClick={onLogoClick}
-            className="cursor-pointer flex items-center gap-4 group select-none w-[230px] h-[60px]"
+            className="cursor-pointer flex items-center gap-4 group select-none"
+            style={{ width: DIMENSIONS.SIDEBAR_CONTENT_WIDTH, height: DIMENSIONS.NEW_CHAT_BUTTON_HEIGHT }}
           >
             <div className="shrink-0 flex items-center">
               <The4DPocketLogo />

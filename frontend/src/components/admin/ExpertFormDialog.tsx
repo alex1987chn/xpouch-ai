@@ -113,7 +113,7 @@ export default function ExpertFormDialog({
       {/* 遮罩 */}
       <div className="fixed inset-0 bg-content-primary/50 z-50" onClick={handleClose} />
       {/* 对话框容器 */}
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg border-2 border-border-default bg-surface-card shadow-[rgb(var(--shadow-color))_4px_4px_0_0] z-50 max-h-[90vh] overflow-y-auto">
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg border-2 border-border-default bg-surface-card shadow-hard z-50 max-h-[90vh] overflow-y-auto">
         {/* 标题 */}
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
@@ -309,7 +309,7 @@ export default function ExpertFormDialog({
             className={cn(
               'flex items-center gap-2 px-4 py-2 border-2 border-border-default',
               'bg-[rgb(var(--accent-hover))] text-content-primary font-mono text-xs font-bold uppercase',
-              'shadow-[rgb(var(--shadow-color))_2px_2px_0_0]',
+              'shadow-hard-sm',
               'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--shadow-color))_3px_3px_0_0]',
               'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
               'transition-all',
