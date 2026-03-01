@@ -201,7 +201,7 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
         with Session(engine) as session:
             expert_config = get_expert_config(expert_type, session)
             if expert_config:
-        logger.info(f"[GenericWorker] 从数据库加载 '{expert_type}' 成功")
+                logger.info(f"[GenericWorker] 从数据库加载 '{expert_type}' 成功")
     
     if not expert_config:
         return {
