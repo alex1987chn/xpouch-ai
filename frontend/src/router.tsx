@@ -13,7 +13,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { SuspenseWithErrorBoundary } from './components/SuspenseWithErrorBoundary'
 import { Toaster } from './components/ui/toaster'
 import { useChatStore } from './store/chatStore'
-
+import { useTaskStore } from './store/taskStore'
 import { useUserStore } from './store/userStore'
 import { createCustomAgent, updateCustomAgent, getAllAgents } from './services/api'
 import { normalizeAgentId } from '@/utils/agentUtils'
