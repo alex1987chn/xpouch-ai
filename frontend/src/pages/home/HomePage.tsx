@@ -54,14 +54,14 @@ function SceneCard({
       <div className="absolute bottom-0 right-0 w-0 h-0 border-b-[20px] border-r-[20px] border-b-accent-hover border-r-transparent transition-all duration-300 group-hover:border-b-[40px] group-hover:border-r-[40px]" />
 
       <div className="flex justify-between items-start">
-        <div className="p-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] group-hover:bg-surface-card transition-colors">
+        <div className="p-2 border-2 border-border bg-surface-page group-hover:bg-surface-card transition-colors">
           <Icon className="w-6 h-6 stroke-[2.5]" />
         </div>
-        <div className="font-mono text-[10px] bg-[rgb(var(--content-primary))] text-[rgb(var(--surface-page))] px-1">{tag}</div>
+        <div className="font-mono text-[10px] bg-content-primary text-[rgb(var(--surface-page))] px-1">{tag}</div>
       </div>
       <div>
         <h4 className="font-black text-lg mb-1 group-hover:underline decoration-2 underline-offset-4">{title}</h4>
-        <p className="text-xs font-mono text-[rgb(var(--content-secondary))] leading-tight">{subtitle}</p>
+        <p className="text-xs font-mono text-content-secondary leading-tight">{subtitle}</p>
       </div>
     </Card>
   )
@@ -95,10 +95,10 @@ function ConstructCard({
     >
       {/* 左侧色条 */}
       <div
-        className="w-4 h-full border-r-2 border-[rgb(var(--border-default))] z-10 flex flex-col items-center justify-center gap-1 py-2 transition-colors"
+        className="w-4 h-full border-r-2 border-border z-10 flex flex-col items-center justify-center gap-1 py-2 transition-colors"
         style={{ backgroundColor: sideColor }}
       >
-        <div className="w-1 h-1 bg-[rgb(var(--surface-card))] rounded-full" />
+        <div className="w-1 h-1 bg-surface-card rounded-full" />
         <div className="w-1 h-1 bg-[rgb(var(--surface-card))] rounded-full" />
         <div className="w-1 h-1 bg-[rgb(var(--surface-card))] rounded-full" />
       </div>
@@ -113,9 +113,9 @@ function ConstructCard({
                 onEdit()
               }}
               className={cn(
-                "w-7 h-7 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))]",
+                "w-7 h-7 border-2 border-border bg-surface-page",
                 "flex items-center justify-center",
-                "hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary hover:border-[rgb(var(--accent-hover))]",
+                "hover:bg-accent-hover hover:text-content-primary hover:border-accent-hover",
                 "transition-all duration-150",
                 "shadow-[2px_2px_0_0_rgb(var(--shadow-color))]",
                 "active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
@@ -132,7 +132,7 @@ function ConstructCard({
                 onDelete()
               }}
               className={cn(
-                "w-7 h-7 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))]",
+                "w-7 h-7 border-2 border-border bg-surface-page",
                 "flex items-center justify-center",
                 "hover:bg-red-500 hover:text-white hover:border-red-500",
                 "transition-all duration-150",
@@ -150,7 +150,7 @@ function ConstructCard({
           <h4 className="font-black text-xl tracking-tight">
             {name}
           </h4>
-          <div className="flex items-center gap-1 border border-[rgb(var(--border-default))] px-1 bg-[rgb(var(--surface-page))]">
+          <div className="flex items-center gap-1 border border-border px-1 bg-surface-page">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
             <span className="font-mono text-[9px] font-bold">
               {t('online')}
@@ -158,12 +158,12 @@ function ConstructCard({
           </div>
         </div>
         <div>
-          <p className="font-mono text-xs text-[rgb(var(--content-secondary))] mb-3">/// {type}</p>
+          <p className="font-mono text-xs text-content-secondary mb-3">/// {type}</p>
           <div className="flex gap-1 flex-wrap">
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="px-2 py-0.5 text-[9px] font-bold border border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))]"
+                className="px-2 py-0.5 text-[9px] font-bold border border-border bg-surface-page"
               >
                 {tag}
               </span>
@@ -183,10 +183,10 @@ function CreateNewCard({ onClick }: { onClick?: () => void }) {
       onClick={onClick}
       className="border-2 border-dashed border-[rgb(var(--content-secondary))] p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-[rgb(var(--surface-card))] hover:border-solid hover:border-[rgb(var(--accent-hover))] hover:shadow-[8px_8px_0_0_rgb(var(--accent-hover))] transition-all"
     >
-      <div className="w-12 h-12 border-2 border-[rgb(var(--content-primary))] flex items-center justify-center mb-4 text-3xl group-hover:bg-[rgb(var(--accent-hover))] group-hover:border-[rgb(var(--accent-hover))] group-hover:text-content-primary transition-colors bg-[rgb(var(--surface-page))]">
+      <div className="w-12 h-12 border-2 border-[rgb(var(--content-primary))] flex items-center justify-center mb-4 text-3xl group-hover:bg-accent-hover group-hover:border-accent-hover group-hover:text-content-primary transition-colors bg-surface-page">
         +
       </div>
-      <span className="font-bold font-mono uppercase tracking-wider text-sm group-hover:text-[rgb(var(--content-primary))]">
+      <span className="font-bold font-mono uppercase tracking-wider text-sm group-hover:text-content-primary">
         {t('initializeNew')}
       </span>
     </div>
@@ -403,7 +403,7 @@ export default function HomePage() {
       {/* 移动端菜单按钮 */}
       <button
         onClick={sidebar.toggleMobile}
-        className="lg:hidden fixed top-4 left-4 z-30 p-2 border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-card))] shadow-[rgb(var(--shadow-color))_4px_4px_0_0] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--accent-hover))_2px_2px_0_0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+        className="lg:hidden fixed top-4 left-4 z-30 p-2 border-2 border-border bg-[rgb(var(--surface-card))] shadow-hard hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--accent-hover))_2px_2px_0_0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
       >
         <Menu className="w-5 h-5 stroke-[2.5]" />
       </button>
@@ -418,17 +418,17 @@ export default function HomePage() {
           <div className="flex-none flex flex-col items-start justify-center mb-10 select-none">
             {/* 状态标签 - 左上角 */}
             <div className="flex gap-2 mb-4">
-              <span className="px-2 py-1 text-[10px] font-mono font-bold border border-[rgb(var(--border-default))] bg-[rgb(var(--accent-hover))] text-content-primary shadow-[2px_2px_0_0_rgb(var(--shadow-color))]">
+              <span className="px-2 py-1 text-[10px] font-mono font-bold border border-border bg-[rgb(var(--accent-hover))] text-content-primary shadow-[2px_2px_0_0_rgb(var(--shadow-color))]">
                 READY
               </span>
-              <span className="px-2 py-1 text-[10px] font-mono font-bold border border-[rgb(var(--border-default))] text-[rgb(var(--content-secondary))]">
+              <span className="px-2 py-1 text-[10px] font-mono font-bold border border-border text-content-secondary">
                 IDLE
               </span>
             </div>
 
             {/* The Monolith Style Slogan */}
             <div className="flex flex-col leading-none tracking-tighter">
-              <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-[rgb(var(--content-primary))]">
+              <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-content-primary">
                 INFINITE MINDS.
               </h2>
               <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-[rgb(var(--accent-hover))]">
@@ -439,7 +439,7 @@ export default function HomePage() {
 
           {/* Command Input */}
           <div className="flex-none mb-16 relative group">
-            <div className="absolute -top-3 left-4 bg-[rgb(var(--surface-page))] px-2 font-mono text-xs font-bold border-2 border-[rgb(var(--border-default))] z-20 text-[rgb(var(--content-secondary))]">
+            <div className="absolute -top-3 left-4 bg-surface-page px-2 font-mono text-xs font-bold border-2 border-border z-20 text-content-secondary">
               {t('commandInput')}
             </div>
 
@@ -447,12 +447,12 @@ export default function HomePage() {
             <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-2 translate-y-2 group-focus-within:translate-x-3 group-focus-within:translate-y-3 group-focus-within:bg-[rgb(var(--accent-hover))] transition-all" />
 
             {/* Input Container */}
-            <div className="relative border-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-card))] flex flex-col">
+            <div className="relative border-2 border-border bg-[rgb(var(--surface-card))] flex flex-col">
               {/* Textarea with Line Numbers */}
               <div className="flex-1 relative flex">
                 {/* Line Numbers */}
-                <div className="flex-none w-12 py-6 pl-4 border-r-2 border-[rgb(var(--border-default))]">
-                  <div className="font-mono text-sm text-[rgb(var(--content-secondary))] opacity-30 select-none leading-relaxed">
+                <div className="flex-none w-12 py-6 pl-4 border-r-2 border-border">
+                  <div className="font-mono text-sm text-content-secondary opacity-30 select-none leading-relaxed">
                     01<br />02<br />03
                   </div>
                 </div>
@@ -473,20 +473,20 @@ export default function HomePage() {
               </div>
 
               {/* Toolbar */}
-              <div className="flex justify-between items-center p-2 sm:p-3 border-t-2 border-[rgb(var(--border-default))] bg-[rgb(var(--surface-page))] gap-2">
+              <div className="flex justify-between items-center p-2 sm:p-3 border-t-2 border-border bg-surface-page gap-2">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   {/* 附件按钮 */}
                   <div className="flex gap-1 flex-shrink-0">
-                    <button className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-[rgb(var(--surface-card))] hover:border-[rgb(var(--border-default))] transition-all">
+                    <button className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-[rgb(var(--surface-card))] hover:border-border transition-all">
                       <Image className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
                     </button>
-                    <button className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-[rgb(var(--surface-card))] hover:border-[rgb(var(--border-default))] transition-all">
+                    <button className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-[rgb(var(--surface-card))] hover:border-border transition-all">
                       <Paperclip className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
                     </button>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-                  <span className="font-mono text-[10px] text-[rgb(var(--content-secondary))] hidden sm:inline">ENTER TO SEND</span>
+                  <span className="font-mono text-[10px] text-content-secondary hidden sm:inline">ENTER TO SEND</span>
                   <Button
                     onClick={handleSendMessage}
                     disabled={!inputMessage.trim()}
@@ -503,12 +503,12 @@ export default function HomePage() {
           {/* Recommended Section */}
           <div className="space-y-12 pb-10">
             <div>
-              <div className="flex justify-between items-end mb-6 border-b-2 border-[rgb(var(--border-default))] pb-2 w-full">
+              <div className="flex justify-between items-end mb-6 border-b-2 border-border pb-2 w-full">
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-[rgb(var(--accent-hover))] border border-[rgb(var(--border-default))]" />
+                  <div className="w-3 h-3 bg-[rgb(var(--accent-hover))] border border-border" />
                   <h3 className="text-sm font-black uppercase tracking-widest">{t('recommended')}</h3>
                 </div>
-                <div className="font-mono text-[10px] text-[rgb(var(--content-secondary))]">SHOWING 3 OF 12</div>
+                <div className="font-mono text-[10px] text-content-secondary">SHOWING 3 OF 12</div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -520,9 +520,9 @@ export default function HomePage() {
 
             {/* My Constructs Section */}
             <div className="pt-8">
-              <div className="flex justify-between items-end mb-6 border-b-2 border-[rgb(var(--border-default))] pb-2 w-full">
+              <div className="flex justify-between items-end mb-6 border-b-2 border-border pb-2 w-full">
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-accent border border-[rgb(var(--border-default))]" />
+                  <div className="w-3 h-3 bg-accent border border-border" />
                   <h3 className="text-sm font-black uppercase tracking-widest">{t('myConstructs')}</h3>
                 </div>
               </div>

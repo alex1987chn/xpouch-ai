@@ -160,7 +160,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
         <div className="w-full max-w-5xl mx-auto h-full flex items-center">
           {/* 左侧：标题 */}
           <div className="flex items-center h-full gap-3">
-            <div className="w-2 h-2 bg-[rgb(var(--accent-hover))]"></div>
+            <div className="w-2 h-2 bg-accent-hover"></div>
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
               ///
             </span>
@@ -187,7 +187,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
               placeholder={t('searchHistory') || '搜索历史记录...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-10 pr-4 border-2 border-border-default bg-surface-page font-mono text-sm text-content-primary placeholder:text-content-secondary focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors"
+              className="w-full h-11 pl-10 pr-4 border-2 border-border-default bg-surface-page font-mono text-sm text-content-primary placeholder:text-content-secondary focus:outline-none focus:border-accent-hover transition-colors"
             />
           </div>
         </div>
@@ -196,7 +196,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
         {!loading && filteredConversations.length > 0 && (
           <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4">
             <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-content-secondary">
-              <div className="w-1.5 h-1.5 bg-[rgb(var(--accent-hover))]"></div>
+              <div className="w-1.5 h-1.5 bg-accent-hover"></div>
               <span>
                 {searchQuery
                   ? `${filteredConversations.length} ${t('matchingHistory') || 'matching'}`
@@ -216,7 +216,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                 <div
                   key={conversation.id}
                   onClick={() => onSelectConversation(conversation)}
-                  className="group relative bg-surface-card border-2 border-border-default p-3 cursor-pointer shadow-[rgb(var(--shadow-color))_3px_3px_0_0] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[rgb(var(--shadow-color))_5px_5px_0_0] transition-all"
+                  className="group relative bg-surface-card border-2 border-border-default p-3 cursor-pointer shadow-hard-3 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-5 transition-all"
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1 min-w-0">

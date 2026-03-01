@@ -117,7 +117,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
           {/* 模块名称 */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]"></div>
+              <div className="w-1.5 h-1.5 bg-content-secondary"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('moduleName') || 'Module Name'} *
               </span>
@@ -135,7 +135,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
           {/* 描述 */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]"></div>
+              <div className="w-1.5 h-1.5 bg-content-secondary"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('description') || 'Description'} ({t('optional') || 'Optional'})
               </span>
@@ -152,7 +152,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
           {/* 传输协议 */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]"></div>
+              <div className="w-1.5 h-1.5 bg-content-secondary"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 {t('transportProtocol') || 'Protocol'}
               </span>
@@ -188,7 +188,7 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
           {/* SSE URL */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1.5 h-1.5 bg-[rgb(var(--content-secondary))]"></div>
+              <div className="w-1.5 h-1.5 bg-content-secondary"></div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                 Endpoint URL *
               </span>

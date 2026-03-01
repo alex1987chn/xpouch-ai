@@ -46,7 +46,7 @@ function BauhausToast({
   return (
     <div
       className={cn(
-        'fixed bottom-4 right-4 z-50 px-4 py-3 border-2 shadow-[rgb(var(--shadow-color))_4px_4px_0_0] font-mono text-xs font-bold uppercase',
+        'fixed bottom-4 right-4 z-50 px-4 py-3 border-2 shadow-hard font-mono text-xs font-bold uppercase',
         type === 'success'
           ? 'border-green-500 bg-green-50 text-green-700'
           : 'border-red-500 bg-red-50 text-red-700'
@@ -221,7 +221,7 @@ export default function ExpertAdminPage() {
   if (isLoadingExperts) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="w-8 h-8 border-2 border-border-default border-t-[rgb(var(--accent-hover))] animate-spin" />
+        <div className="w-8 h-8 border-2 border-border-default border-t-accent-hover animate-spin" />
         <span className="ml-3 font-mono text-sm text-content-secondary">{(t as any)('loading')}</span>
       </div>
     )
