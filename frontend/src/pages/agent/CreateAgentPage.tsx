@@ -139,9 +139,9 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
             className={cn(
               'flex items-center gap-2 px-4 py-2 border-2 border-content-primary',
               'bg-accent-hover text-content-primary font-mono text-xs font-bold uppercase',
-              'shadow-[3px_3px_0_0_rgba(0,0,0,1)]',
-              'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)]',
-              'active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0_0_rgba(0,0,0,1)]',
+              'shadow-hard-3',
+              'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard',
+              'active:translate-x-[1px] active:translate-y-[1px] active:shadow-hard-sm',
               'transition-all',
               'disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0'
             )}

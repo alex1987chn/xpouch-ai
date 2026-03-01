@@ -178,7 +178,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
           <div className="lg:hidden absolute top-4 left-4" style={{ zIndex: Z_INDEX.HEADER }}>
             <button
               onClick={sidebar.toggleMobile}
-              className="p-2 border-2 border-border-default bg-surface-card shadow-hard hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--accent-hover))_2px_2px_0_0]"
+              className="p-2 border-2 border-border-default bg-surface-card shadow-hard hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-accent-sm"
             >
               <Menu className="w-5 h-5 stroke-[2.5]" />
             </button>

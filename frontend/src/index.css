@@ -195,9 +195,21 @@
     box-shadow: 10px 10px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
   }
 
-  /* 10px 黄色阴影（强调色悬停效果） */
+  /* 黄色强调阴影系列（不同尺寸） */
   .shadow-hard-accent {
     box-shadow: 10px 10px 0 0 rgb(var(--accent-hover));
+  }
+  
+  .shadow-hard-accent-sm {
+    box-shadow: 2px 2px 0 0 rgb(var(--accent-hover));
+  }
+  
+  .shadow-hard-accent-md {
+    box-shadow: 6px 6px 0 0 rgb(var(--accent-hover));
+  }
+  
+  .shadow-hard-accent-lg {
+    box-shadow: 8px 8px 0 0 rgb(var(--accent-hover));
   }
 
   /* Bauhaus 按下效果 */

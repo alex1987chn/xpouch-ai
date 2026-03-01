@@ -101,7 +101,7 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
           {showProviderDropdown && createPortal(
             <div
               data-provider-dropdown
-              className="fixed border-2 border-border-default bg-surface-card shadow-[4px_4px_0_0_rgba(0,0,0,0.3)] z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
+              className="fixed border-2 border-border-default bg-surface-card shadow-hard z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
               style={{
                 width: providerDropdownRef.current?.getBoundingClientRect().width || 200,
                 left: providerDropdownRef.current?.getBoundingClientRect().left || 0,
@@ -150,7 +150,7 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
           {showModelDropdown && createPortal(
             <div
               data-model-dropdown
-              className="fixed border-2 border-border-default bg-surface-card shadow-[4px_4px_0_0_rgba(0,0,0,0.3)] z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
+              className="fixed border-2 border-border-default bg-surface-card shadow-hard z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
               style={{
                 width: modelDropdownRef.current?.getBoundingClientRect().width || 200,
                 left: modelDropdownRef.current?.getBoundingClientRect().left || 0,

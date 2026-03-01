@@ -9,7 +9,7 @@
 
 import { Home, Library, MessageSquare, Shield, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { DIMENSIONS } from '@/constants/ui'
+
 import type { NavigationMenuProps } from './types'
 
 export function NavigationMenu({
@@ -82,7 +82,7 @@ export function NavigationMenu({
       {/* 主菜单 - 首页、知识库、历史记录 - 固定不滚动 */}
       <div className="shrink-0 flex flex-col items-center py-2">
         {/* 导航标题 */}
-        <div className="px-1 py-2" style={{ width: DIMENSIONS.SIDEBAR_CONTENT_WIDTH }}>
+        <div className="px-1 py-2 w-[230px]">
           <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider font-mono text-[10px]">
             /// Navigation
           </h3>
@@ -180,14 +180,13 @@ function NavButtonExpanded({ isActive, onClick, icon, label }: NavButtonExpanded
     <button
       onClick={onClick}
       className={cn(
-        'transition-all duration-200 justify-center py-0 border-2 mb-1',
+        'transition-all duration-200 justify-center py-0 border-2 mb-1 h-[44px] w-[230px]',
         isActive
           // 激活状态
           ? 'bg-accent text-content-inverted border-border-default shadow-hard'
           // 非激活状态
           : 'border-transparent text-content-primary hover:bg-surface-page hover:border-border-default'
       )}
-      style={{ height: DIMENSIONS.NAV_ITEM_HEIGHT, width: DIMENSIONS.SIDEBAR_CONTENT_WIDTH }}
     >
       <div className="flex items-center gap-3 px-3">
         {icon}
@@ -246,13 +245,12 @@ function AdminButtonExpanded({ isActive, isAdmin, onClick, t }: AdminButtonExpan
       onClick={onClick}
       title={isAdmin ? t('navExperts') : t('adminOnly')}
       className={cn(
-        'transition-all duration-200 justify-center py-0 border-2 relative',
+        'transition-all duration-200 justify-center py-0 border-2 relative h-[44px] w-[230px]',
         isActive
           ? 'bg-accent text-content-inverted border-border-default shadow-hard'
           : 'border-transparent text-content-primary hover:bg-surface-page hover:border-border-default',
         !isAdmin && 'opacity-50'
       )}
-      style={{ height: DIMENSIONS.NAV_ITEM_HEIGHT, width: DIMENSIONS.SIDEBAR_CONTENT_WIDTH }}
     >
       <div className="flex items-center gap-3 px-3">
         <Shield className="w-5 h-5 flex-shrink-0" />
