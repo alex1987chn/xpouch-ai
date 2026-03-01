@@ -76,10 +76,10 @@ export function IndustrialHeader({
 
         {/* 工业风格 Logo: [ XPOUCH ] */}
         <div className="flex items-center gap-1">
-          <span className="text-lg font-black tracking-tighter text-gray-400">[</span>
-          <span className="text-lg font-black tracking-tighter text-yellow-400">X</span>
+          <span className="text-lg font-black tracking-tighter text-content-muted">[</span>
+          <span className="text-lg font-black tracking-tighter text-accent-brand">X</span>
           <span className="text-lg font-black tracking-tighter text-content-primary">POUCH</span>
-          <span className="text-lg font-black tracking-tighter text-gray-400">]</span>
+          <span className="text-lg font-black tracking-tighter text-content-muted">]</span>
         </div>
 
         {/* 版本号 - 工业风格分隔符 (桌面端显示) */}
@@ -99,8 +99,8 @@ export function IndustrialHeader({
               className={cn(
                 'h-6 px-2 border-2 border-border transition-all',
                 viewMode === 'chat'
-                  ? 'bg-primary text-inverted border-primary'
-                  : 'bg-panel text-secondary hover:border-primary hover:text-primary'
+                  ? 'bg-accent-brand text-content-inverted border-accent-brand'
+                  : 'bg-surface-elevated text-content-secondary hover:border-accent-brand hover:text-accent-brand'
               )}
             >
               CHAT
@@ -110,8 +110,8 @@ export function IndustrialHeader({
               className={cn(
                 'h-6 px-2 border-2 border-border border-l-0 transition-all',
                 viewMode === 'preview'
-                  ? 'bg-primary text-inverted border-primary'
-                  : 'bg-panel text-secondary hover:border-primary hover:text-primary'
+                  ? 'bg-accent-brand text-content-inverted border-accent-brand'
+                  : 'bg-surface-elevated text-content-secondary hover:border-accent-brand hover:text-accent-brand'
               )}
             >
               PREV

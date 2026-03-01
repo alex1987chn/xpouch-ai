@@ -29,8 +29,8 @@ const themeIcons: Record<Theme, React.ReactNode> = {
  * 主题预览色块（展示主题的代表色）
  */
 const themePreview: Record<Theme, string> = {
-  light: 'bg-yellow-400 border-2 border-content-primary',
-  dark: 'bg-slate-700 border-2 border-slate-500',
+  light: 'bg-accent-brand border-2 border-content-primary',
+  dark: 'bg-surface-card border-2 border-border-default',
 }
 
 /**

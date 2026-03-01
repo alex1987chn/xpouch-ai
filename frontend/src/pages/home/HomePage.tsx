@@ -468,7 +468,7 @@ export default function HomePage() {
                     }
                   }}
                   placeholder={t('inputPlaceholder')}
-                  className="flex-1 w-full min-h-[135px] max-h-[240px] bg-transparent px-6 py-6 text-[20px] leading-[28px] font-bold font-mono text-content-primary placeholder:text-content-secondary focus:outline-none focus:ring-0 border-none resize-none z-10 relative"
+                  className="flex-1 w-full min-h-[180px] max-h-[300px] bg-transparent px-6 py-6 text-[20px] leading-[28px] font-bold font-mono text-content-primary placeholder:text-content-secondary focus:outline-none focus:ring-0 border-none resize-none z-10 relative"
                 />
               </div>
 

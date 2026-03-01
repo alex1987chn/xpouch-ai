@@ -25,7 +25,7 @@ const StatusIcon = ({ status }: { status: string }) => {
   switch (status) {
     case 'running':
       return (
-        <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+        <div className="w-2 h-2 bg-accent-brand rounded-full animate-pulse" />
       )
     case 'completed':
       return (
@@ -59,7 +59,7 @@ function ExpertNode({ task, isSelected, isRunning, index, onClick }: ExpertNodeP
       {/* 连接线 */}
       <div className={cn(
         "w-3 h-0.5 -z-10 transition-colors duration-300",
-        isRunning ? "bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.3)]" : "bg-border/40"
+        isRunning ? "bg-accent-brand shadow-[0_0_8px_rgb(var(--accent-brand)/0.3)]" : "bg-border/40"
       )} />
       
       {/* 节点 */}
@@ -71,8 +71,8 @@ function ExpertNode({ task, isSelected, isRunning, index, onClick }: ExpertNodeP
           task.status === 'pending' && "opacity-50 grayscale border-dashed",
           // Running 状态
           task.status === 'running' && cn(
-            "opacity-100 border-yellow-400 scale-105",
-            "shadow-[0_0_10px_rgba(250,204,21,0.5)]",
+            "opacity-100 border-accent-brand scale-105",
+            "shadow-[0_0_10px_rgb(var(--accent-brand)/0.5)]",
             "animate-pulse-glow"
           ),
           // Completed 状态
@@ -129,7 +129,7 @@ export default function BusRail({ tasks, selectedTaskId, onTaskClick }: BusRailP
         {isSystemBusy && (
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-yellow-400/30 to-transparent w-full animate-bus-flow">
             {/* 光晕效果 */}
-            <div className="absolute inset-0 bg-yellow-400/10 blur-sm" />
+            <div className="absolute inset-0 bg-accent-brand/10 blur-sm" />
           </div>
         )}
       </div>
