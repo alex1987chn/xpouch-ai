@@ -106,6 +106,12 @@ export const zh: Record<string, string> = {
   langZh: '中',
   langEn: 'EN',
   langJa: '日',
+
+  // 默认助手
+  defaultAgentDescription: '日常对话、通用任务、智能问答',
+
+  // 登录后消息重发
+  sendingPendingMessage: '正在发送刚才的消息...',
 }
 
 export const en: Record<string, string> = {
@@ -212,6 +218,12 @@ export const en: Record<string, string> = {
   langZh: '中',
   langEn: 'EN',
   langJa: '日',
+
+  // Default Agent
+  defaultAgentDescription: 'Daily conversations, general tasks, intelligent Q&A',
+
+  // Post-login message retry
+  sendingPendingMessage: 'Sending your previous message...',
 }
 
 export const ja: Record<string, string> = {
@@ -318,4 +330,10 @@ export const ja: Record<string, string> = {
   langZh: '中',
   langEn: 'EN',
   langJa: '日',
+
+  // デフォルトアシスタント
+  defaultAgentDescription: '日常会話、一般的なタスク、知能Q&A',
+
+  // ログイン後のメッセージ再送信
+  sendingPendingMessage: '先ほどのメッセージを送信中...',
 }

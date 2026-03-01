@@ -179,8 +179,8 @@ export const useChatStore = create<ChatStore>()(
           return {
             id: SYSTEM_AGENTS.DEFAULT_CHAT,
             name: getSystemAgentName(SYSTEM_AGENTS.DEFAULT_CHAT),
-            description: '日常对话、通用任务、智能问答',
-            category: '通用',
+            description: 'defaultAgentDescription',  // 翻译 key，组件层使用 t()
+            category: 'general',  // 翻译 key
             isCustom: false,
             is_builtin: false,
             modelId: 'deepseek-chat',

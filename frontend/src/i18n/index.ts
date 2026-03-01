@@ -107,6 +107,8 @@ export type TranslationKey =
   | 'langZh' | 'langEn' | 'langJa'
   // Sidebar
   | 'expandSidebar' | 'collapseSidebar'
+  // Default Agent & Messages
+  | 'defaultAgentDescription' | 'sendingPendingMessage'
 
 
 interface I18nContextType {
