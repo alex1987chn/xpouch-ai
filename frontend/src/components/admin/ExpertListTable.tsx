@@ -51,7 +51,7 @@ export default function ExpertListTable({
       {/* 头部 */}
       <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-[rgb(var(--accent-hover))]" />
+          <div className="w-2 h-2 bg-accent-hover" />
           <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
             /// {t('expertsHeader')}
           </span>
@@ -59,7 +59,7 @@ export default function ExpertListTable({
         <div className="flex items-center gap-2">
           <button
             onClick={onCreateClick}
-            className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase border border-border-default bg-surface-page hover:bg-[rgb(var(--accent-hover))] hover:text-content-primary hover:border-[rgb(var(--accent-hover))] transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase border border-border-default bg-surface-page hover:bg-accent-hover hover:text-content-primary hover:border-accent-hover transition-colors"
             title={t('newExpert')}
           >
             <Plus className="w-3.5 h-3.5" />
@@ -68,7 +68,7 @@ export default function ExpertListTable({
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="w-7 h-7 flex items-center justify-center border border-border-default hover:bg-[rgb(var(--accent-hover))] transition-colors disabled:opacity-50"
+            className="w-7 h-7 flex items-center justify-center border border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"
             title={t('refresh')}
           >
             <RefreshCw className={cn('w-3.5 h-3.5', isLoading && 'animate-spin')} />
@@ -85,7 +85,7 @@ export default function ExpertListTable({
             placeholder={t('searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border-2 border-border-default bg-surface-page font-mono text-xs focus:outline-none focus:border-[rgb(var(--accent-hover))] transition-colors"
+            className="w-full pl-9 pr-3 py-2 border-2 border-border-default bg-surface-page font-mono text-xs focus:outline-none focus:border-accent-hover transition-colors"
           />
         </div>
       </div>
@@ -100,7 +100,7 @@ export default function ExpertListTable({
               className={cn(
                 'w-full text-left px-3 py-3 border-2 transition-all relative group',
                 selectedExpertKey === expert.expert_key
-                  ? 'border-[rgb(var(--accent-hover))] bg-[rgb(var(--accent-hover))] text-content-primary shadow-hard-sm'
+                  ? 'border-accent-hover bg-accent-hover text-content-primary shadow-hard-sm'
                   : 'border-transparent hover:border-border-default hover:bg-surface-page'
               )}
             >
