@@ -5,6 +5,7 @@ import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
 import { useTaskStore } from '@/store/taskStore'
+import { useApp } from '@/providers/AppProvider'
 import ModelSelector from '@/components/settings/ModelSelector'
 
 interface CreateAgentPageProps {
@@ -69,6 +70,7 @@ function BauhausProgressBar({ current, max }: { current: number; max: number }) 
 
 export default function CreateAgentPage({ onBack, onSave, initialData, isEditMode = false }: CreateAgentPageProps) {
   const { t } = useTranslation()
+  const { sidebar } = useApp()
   // 直接用 initialData 初始化状态，避免 useEffect 同步 Props 反模式
   // 父组件通过 key 属性控制组件重置时机
   const [name, setName] = useState(initialData?.name || '')
@@ -114,22 +116,27 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
   return (
     <div className="flex flex-col h-full bg-transparent">
       {/* 顶部 Bauhaus Header */}
-      <header className="sticky top-0 z-40 w-full h-14 px-6 border-b-2 border-border-default bg-surface-card shrink-0">
+      <header
+        className={cn(
+          "fixed top-0 left-0 right-0 z-40 h-14 px-6 border-b-2 border-border-default bg-surface-card transition-all duration-200",
+          sidebar.isCollapsed ? "lg:pl-[88px]" : "lg:pl-[320px]"
+        )}
+      >
         <div className="w-full max-w-7xl mx-auto h-full flex items-center justify-between">
-          {/* 左侧：返回按钮 */}
-          <button
-            onClick={onBack}
-            className="flex items-center justify-center w-9 h-9 border-2 border-border-default hover:bg-accent-hover transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
-          </button>
-
-          {/* 标题 */}
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-accent-hover"></div>
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
-              /// {isEditMode ? t('editAgent') : t('createAgent')}
-            </span>
+          {/* 左侧：返回按钮 + 标题 */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onBack}
+              className="flex items-center justify-center w-9 h-9 border-2 border-border-default hover:bg-accent-hover transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-accent-hover"></div>
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
+                /// {isEditMode ? t('editAgent') : t('createAgent')}
+              </span>
+            </div>
           </div>
 
           {/* 右侧：保存按钮 */}
@@ -152,69 +159,58 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
         </div>
       </header>
 
-      {/* 主内容区 - 双栏布局 */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      {/* 主内容区 */}
+      <div className="flex-1 min-h-0 overflow-hidden pt-14">
         <div className="h-full max-w-7xl mx-auto flex">
           {/* 左侧：表单区 */}
           <div
-            className="flex-1 min-h-0 overflow-y-auto bauhaus-scrollbar overscroll-behavior-y-contain p-6 md:p-12 pb-24 md:pb-20"
+            className="flex-1 min-h-0 overflow-y-auto bauhaus-scrollbar overscroll-behavior-y-contain p-6 md:p-8 pb-24 md:pb-20"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
-            <div className="max-w-xl mx-auto space-y-8">
-              {/* 智能体名称 */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
-                    {t('agentName')} <span className="text-accent-hover">*</span>
-                  </label>
+            <div className="max-w-xl mx-auto space-y-6">
+              {/* 基本信息 - 两列布局 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 智能体名称 */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-content-secondary"></div>
+                    <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                      {t('agentName')} <span className="text-accent-hover">*</span>
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t('giveName')}
+                    className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors"
+                  />
                 </div>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t('giveName')}
-                  className="w-full px-4 py-3 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors"
-                />
-              </div>
 
-              {/* 分类选择 */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
-                    {t('category')}
-                  </label>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setCategory(cat)}
-                      className={cn(
-                        'px-4 py-2 border-2 font-mono text-xs font-bold uppercase transition-all',
-                        category === cat
-                          ? 'border-accent-hover bg-accent-hover text-content-primary shadow-hard-sm'
-                          : 'border-border-default bg-surface-page text-content-secondary hover:border-content-secondary'
-                      )}
-                    >
-                      {cat}
-                    </button>
-                  ))}
+                {/* 分类选择 */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-content-secondary"></div>
+                    <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                      {t('category')}
+                    </label>
+                  </div>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors cursor-pointer"
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
-
-              {/* 模型选择 - 使用可复用组件 */}
-              <ModelSelector
-                value={selectedModel}
-                onChange={setSelectedModel}
-                label="MODEL"
-              />
 
               {/* 描述 */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-content-secondary"></div>
                   <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
@@ -226,17 +222,29 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={t('simpleDescription')}
-                  className="w-full px-4 py-3 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors"
+                  className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors"
                 />
               </div>
 
+              {/* 模型选择 */}
+              <ModelSelector
+                value={selectedModel}
+                onChange={setSelectedModel}
+                label="MODEL"
+              />
+
               {/* 系统提示词 */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
-                    {t('systemPrompt')} <span className="text-accent-hover">*</span>
-                  </label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-content-secondary"></div>
+                    <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                      {t('systemPrompt')} <span className="text-accent-hover">*</span>
+                    </label>
+                  </div>
+                  <span className="font-mono text-[10px] text-content-secondary opacity-60">
+                    {systemPrompt.length}/2000
+                  </span>
                 </div>
                 <p className="font-mono text-[10px] text-content-secondary opacity-60">
                   {t('defineBehavior')}
@@ -244,10 +252,10 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                 <textarea
                   value={systemPrompt}
                   onChange={(e) => setSystemPrompt(e.target.value.slice(0, 2000))}
-                  placeholder={t('writingAssistantPlaceholder')}
-                  rows={10}
+                  placeholder={t('systemPromptPlaceholder')}
+                  rows={8}
                   maxLength={2000}
-                  className="w-full px-4 py-3 border-2 border-border-default bg-surface-page font-mono text-sm leading-relaxed focus:outline-none focus:border-accent-hover transition-colors resize-none"
+                  className="w-full px-3 py-3 border-2 border-border-default bg-surface-page font-mono text-sm leading-relaxed focus:outline-none focus:border-accent-hover transition-colors resize-none"
                 />
 
                 {/* Bauhaus 风格进度条 */}
@@ -262,6 +270,104 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                     <span className="font-bold">{t('tip')}: </span>
                     {t('tipDescription')}
                   </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 右侧：实时预览 */}
+          <div className="hidden lg:flex lg:w-[400px] xl:w-[450px] border-l-2 border-border-default bg-surface-page/50">
+            <div className="flex-1 overflow-y-auto bauhaus-scrollbar p-6">
+              {/* 预览标题 */}
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-2 h-2 bg-accent-hover"></div>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                  /// {t('preview') || 'PREVIEW'}
+                </span>
+              </div>
+
+              {/* 智能体卡片预览 */}
+              <div className="border-2 border-border-default bg-surface-card p-5 shadow-hard-3">
+                {/* 头像和名称 */}
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-14 h-14 border-2 border-border-default bg-accent-hover flex items-center justify-center">
+                    <Bot className="w-7 h-7 text-content-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-mono text-sm font-bold text-content-primary truncate">
+                      {name || t('unnamedAgent') || 'Unnamed Agent'}
+                    </h3>
+                    <span className="font-mono text-[10px] text-content-secondary uppercase">
+                      {category}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 描述 */}
+                <p className="font-mono text-xs text-content-secondary mb-4 min-h-[40px]">
+                  {description || t('noDescription') || 'No description provided'}
+                </p>
+
+                {/* 模型标签 */}
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="font-mono text-[10px] text-content-secondary uppercase">
+                    MODEL:
+                  </span>
+                  <span className="font-mono text-[10px] px-2 py-1 border border-border-default bg-surface-page">
+                    {selectedModel}
+                  </span>
+                </div>
+
+                {/* 分隔线 */}
+                <div className="h-0.5 bg-border-default mb-4"></div>
+
+                {/* 系统提示词预览 */}
+                <div className="space-y-2">
+                  <span className="font-mono text-[10px] font-bold uppercase text-content-secondary">
+                    {t('systemPrompt') || 'System Prompt'}
+                  </span>
+                  <div className="p-3 border border-border-default bg-surface-page min-h-[100px]">
+                    <p className="font-mono text-[11px] text-content-secondary leading-relaxed line-clamp-6">
+                      {systemPrompt || t('noSystemPrompt') || 'No system prompt configured'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 示例对话预览 */}
+              <div className="mt-6 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-content-secondary"></div>
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                    /// {t('exampleChat') || 'EXAMPLE'}
+                  </span>
+                </div>
+
+                <div className="space-y-3 opacity-60">
+                  {/* 用户消息 */}
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 border border-border-default bg-surface-card shrink-0"></div>
+                    <div className="flex-1 p-3 border border-border-default bg-surface-card">
+                      <p className="font-mono text-[11px] text-content-secondary">
+                        {t('exampleUserMessage') || 'Hello, can you help me?'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* AI 回复 */}
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 border border-border-default bg-accent-hover shrink-0 flex items-center justify-center">
+                      <Bot className="w-4 h-4 text-content-primary" />
+                    </div>
+                    <div className="flex-1 p-3 border border-border-default bg-surface-card">
+                      <p className="font-mono text-[11px] text-content-secondary">
+                        {systemPrompt 
+                          ? (t('exampleAiResponseWithPrompt') || 'I understand. I will respond according to my instructions.')
+                          : (t('exampleAiResponseNoPrompt') || 'I am ready to help. Please provide a system prompt to define my behavior.')
+                        }
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
