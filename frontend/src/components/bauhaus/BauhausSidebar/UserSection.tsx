@@ -44,7 +44,7 @@ export function UserSection({
             >
               <Avatar className="h-8 w-8 border-2 border-border shadow-hard-sm">
                 <AvatarImage src={avatar} alt="Avatar" />
-                <AvatarFallback className="bg-gradient-to-br from-violet-500 to-blue-600 text-[10px] font-bold text-white">
+                <AvatarFallback className="bg-content-primary text-surface-card text-[10px] font-bold">
                   {getAvatarDisplay(avatar || '', username)}
                 </AvatarFallback>
               </Avatar>
@@ -94,7 +94,7 @@ export function UserSection({
             <div
               onClick={onAvatarClick}
               data-avatar-button=""
-              className="relative flex items-center gap-3 px-4 py-3 border-2 border-border bg-surface-page z-10 transition-all w-[230px] h-[63px]"
+              className={cn('relative flex items-center gap-3 px-4 py-3 border-2 border-border bg-surface-page z-10 transition-all', TW.CONTENT_WIDTH, 'h-[63px]')}
             >
               {avatar ? (
                 <img src={avatar} alt="Avatar" className="w-8 h-8 border-2 border-border shrink-0" />
