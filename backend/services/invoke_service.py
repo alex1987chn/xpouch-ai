@@ -11,13 +11,12 @@ import json
 import hashlib
 import asyncio
 
-from sqlmodel import Session, select
+from sqlmodel import Session
 from langchain_core.messages import HumanMessage
-from langchain_mcp_adapters.client import MultiServerMCPClient
 
-from database import engine, SQLModelSession
+from database import SQLModelSession
 from models import TaskSession, SubTask, User
-from models.mcp import MCPServer
+from services.mcp_tools_service import mcp_tools_service
 from agents.graph import create_smart_router_workflow
 from agents.nodes.generic import generic_worker_node
 from agents.services.expert_manager import get_expert_config_cached
@@ -142,52 +141,12 @@ class InvokeService:
         """
         获取 MCP 动态工具
         
+        使用统一的 MCPToolsService，自动处理缓存和配置变化检测
+        
         注意: langchain-mcp-adapters 0.2.1 采用无状态设计，
         每次调用自动创建和清理会话，无需显式关闭。
         """
-        tools: List[Any] = []
-        
-        try:
-            with SQLModelSession(engine) as db_session:
-                active_servers = db_session.exec(
-                    select(MCPServer).where(MCPServer.is_active == True)
-                ).all()
-                
-                if not active_servers:
-                    return tools
-                
-                # 构建 MCP 配置
-                mcp_config = {}
-                for server in active_servers:
-                    transport = getattr(server, 'transport', None) or "sse"
-                    mcp_config[server.name] = {
-                        "url": str(server.sse_url),
-                        "transport": transport
-                    }
-                
-                # 根据传输协议设置超时
-                timeout_seconds = 30 if any(
-                    cfg.get("transport") == "streamable_http" 
-                    for cfg in mcp_config.values()
-                ) else 15
-                
-                # 获取工具（0.2.1 不支持 async with，直接实例化）
-                async with asyncio.timeout(timeout_seconds):
-                    client = MultiServerMCPClient(mcp_config)
-                    tools = await client.get_tools()
-                    
-                logger.info(
-                    f"[InvokeService] 已加载 {len(tools)} 个 MCP 工具 "
-                    f"from {len(active_servers)} 个服务器"
-                )
-                
-        except asyncio.TimeoutError:
-            logger.error("[InvokeService] 获取 MCP 工具超时")
-        except Exception as e:
-            logger.warning(f"[InvokeService] 获取 MCP 工具失败: {e}")
-            # MCP 工具加载失败不影响主流程
-        
-        return tools
+        return await mcp_tools_service.get_tools()
     
     async def _execute_auto_mode(
         self, 

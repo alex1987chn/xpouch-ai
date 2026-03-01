@@ -18,33 +18,23 @@ SSE 流式输出核心服务
 import os
 import asyncio
 import uuid
-import hashlib
-import json
 from typing import List, Dict, Optional, AsyncGenerator, Any, Callable
 from datetime import datetime
 from fastapi.responses import StreamingResponse
-from sqlmodel import Session, select
 from langchain_core.messages import BaseMessage
-from langchain_mcp_adapters.client import MultiServerMCPClient  # 🔥 MCP: SSE 客户端
-from contextlib import AsyncExitStack, asynccontextmanager  # 🔥 MCP: 异步上下文管理器
+from sqlmodel import Session
 
-from models import CustomAgent, Thread, MCPServer  # 🔥 MCP: 添加 MCP 模型
-from database import engine  # 🔥 MCP: 数据库引擎
+from models import CustomAgent, Thread
 from utils.llm_factory import get_llm_instance
 from utils.exceptions import AppError
 from utils.logger import logger
 from providers_config import get_model_config, get_provider_config, get_provider_api_key
 from config import HEARTBEAT_INTERVAL, FORCE_HEARTBEAT_INTERVAL, STREAM_TIMEOUT
+from services.mcp_tools_service import mcp_tools_service
 
 
 class StreamService:
     """流式处理服务"""
-    
-    # 🔥 P2: MCP 工具缓存 (TTL 5分钟)
-    # 缓存结构: (工具列表, 缓存时间, 服务器配置哈希)
-    _mcp_tools_cache: Optional[tuple[List[Any], datetime, str]] = None
-    _mcp_cache_lock = asyncio.Lock()
-    _mcp_cache_ttl_seconds = 300  # 5分钟
     
     def __init__(self, db_session: Session):
         self.db = db_session
@@ -60,103 +50,24 @@ class StreamService:
         return self._session_service
     
     # ============================================================================
-    # 🔥 MCP 工具获取 (v3.2)
+    # 🔥 MCP 工具获取 (v3.3 - 使用统一服务)
     # ============================================================================
     
     async def _get_mcp_tools(self) -> List[Any]:
         """
         获取所有激活的 MCP 服务器工具
         
-        P2 优化:
-        - 添加 TTL 缓存 (5分钟)，避免频繁创建连接
-        - 缓存键: 激活服务器列表的哈希
-        
-        P0 修复:
-        - 添加超时控制 (10秒)
-        - 使用直接实例化 (0.2.1 不支持 async with)
+        使用统一的 MCPToolsService，自动处理缓存和配置变化检测
         
         Returns:
             List[Tool]: MCP 工具列表
         """
-        # 🔥 P2: 检查缓存
-        async with self._mcp_cache_lock:
-            if self._mcp_tools_cache is not None:
-                tools, cached_at, cached_hash = self._mcp_tools_cache
-                elapsed = (datetime.now() - cached_at).total_seconds()
-                if elapsed < self._mcp_cache_ttl_seconds:
-                    logger.debug(f"[MCP] 使用缓存工具 ({elapsed:.1f}s)")
-                    return tools
-                else:
-                    logger.debug("[MCP] 缓存过期，重新获取")
-                    self._mcp_tools_cache = None
-        
-        tools = []
-        try:
-            # Python 3.13: 在异步函数中使用同步上下文管理器
-            with Session(engine) as session:
-                active_servers = session.exec(
-                    select(MCPServer).where(MCPServer.is_active == True)
-                ).all()
-                
-                if not active_servers:
-                    # 清空缓存（如果没有激活服务器）
-                    async with self._mcp_cache_lock:
-                        self._mcp_tools_cache = None
-                    return tools
-                
-                # 🔥 P2: 计算当前服务器配置哈希
-                current_servers_hash = hashlib.md5(
-                    json.dumps([{"name": s.name, "url": str(s.sse_url)} for s in active_servers], sort_keys=True).encode()
-                ).hexdigest()
-                
-                # 🔥 P2: 检查缓存哈希是否匹配
-                async with self._mcp_cache_lock:
-                    if self._mcp_tools_cache is not None:
-                        _, _, cached_hash = self._mcp_tools_cache
-                        if cached_hash != current_servers_hash:
-                            logger.debug("[MCP] 服务器配置变化，缓存失效")
-                            self._mcp_tools_cache = None
-                
-                # 构建 MCP 客户端配置
-                # 支持多种传输协议：sse, streamable_http
-                mcp_config = {}
-                for server in active_servers:
-                    # 获取传输协议，默认为 sse（兼容旧数据）
-                    transport = getattr(server, 'transport', None) or "sse"
-                    mcp_config[server.name] = {
-                        "url": str(server.sse_url),
-                        "transport": transport
-                    }
-                
-                # P0 修复: 使用超时控制（streamable_http 需要更长时间）
-                # 注意: 0.2.1 版本不支持 async with，使用直接实例化
-                timeout_seconds = 30 if any(cfg.get("transport") == "streamable_http" for cfg in mcp_config.values()) else 15
-                async with asyncio.timeout(timeout_seconds):
-                    client = MultiServerMCPClient(mcp_config)
-                    tools = await client.get_tools()
-                    logger.info(f"[MCP] 已加载 {len(tools)} 个 MCP 工具 from {len(active_servers)} 个服务器")
-                    
-                    # 🔥 P2: 计算服务器配置哈希并更新缓存
-                    current_servers_hash = hashlib.md5(
-                        json.dumps([{"name": s.name, "url": str(s.sse_url)} for s in active_servers], sort_keys=True).encode()
-                    ).hexdigest()
-                    async with self._mcp_cache_lock:
-                        self._mcp_tools_cache = (tools, datetime.now(), current_servers_hash)
-                    
-        except asyncio.TimeoutError:
-            logger.error("[MCP] 获取 MCP 工具超时 (10秒)")
-        except Exception as e:
-            logger.error(f"[MCP] 获取 MCP 工具失败: {e}")
-            # MCP 工具加载失败不影响主流程
-            
-        return tools
+        return await mcp_tools_service.get_tools()
     
     @classmethod
     async def invalidate_mcp_cache(cls):
         """手动使 MCP 工具缓存失效"""
-        async with cls._mcp_cache_lock:
-            cls._mcp_tools_cache = None
-            logger.info("[MCP] 工具缓存已清除")
+        await mcp_tools_service.invalidate_cache()
     
     # ============================================================================
     # 自定义智能体流式处理

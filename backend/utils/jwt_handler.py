@@ -15,9 +15,6 @@ from typing import Optional, Dict
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # ============================================================================
 # P0 修复: JWT 安全配置
@@ -42,24 +39,6 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "60"))
 
 # 密码加密上下文
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-class TokenPayload:
-    """Token载荷结构"""
-    def __init__(self, user_id: str, token_type: str = "access", exp: Optional[datetime] = None):
-        self.user_id = user_id
-        self.token_type = token_type
-        self.exp = exp
-
-    def to_dict(self) -> Dict:
-        """转换为字典"""
-        payload = {
-            "sub": self.user_id,
-            "type": self.token_type
-        }
-        if self.exp:
-            payload["exp"] = self.exp.timestamp()
-        return payload
 
 
 class AuthenticationError(HTTPException):
@@ -180,66 +159,6 @@ def verify_token(token: str, token_type: str = "access") -> Dict:
         raise AuthenticationError("Token has expired")
     except jwt.InvalidTokenError as e:
         raise AuthenticationError(f"Invalid token: {str(e)}")
-
-
-def decode_token_without_verification(token: str) -> Optional[Dict]:
-    """
-    解码令牌但不验证签名（用于调试）
-    
-    Args:
-        token: JWT令牌
-        
-    Returns:
-        解码后的payload，如果失败则返回None
-    """
-    try:
-        return jwt.decode(token, options={"verify_signature": False})
-    except Exception:
-        return None
-
-
-def get_token_expiry(token: str) -> Optional[datetime]:
-    """
-    获取令牌的过期时间
-    
-    Args:
-        token: JWT令牌
-        
-    Returns:
-        过期时间，如果失败则返回None
-    """
-    try:
-        payload = jwt.decode(token, options={"verify_signature": False})
-        exp_timestamp = payload.get("exp")
-        if exp_timestamp:
-            # P0 修复: 返回带时区的 datetime
-            return datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
-        return None
-    except Exception:
-        return None
-
-
-def is_token_expired(token: str) -> bool:
-    """
-    检查令牌是否已过期
-    
-    P0 修复: 使用 timezone.utc
-    
-    Args:
-        token: JWT令牌
-        
-    Returns:
-        是否过期
-    """
-    try:
-        payload = jwt.decode(token, options={"verify_signature": False})
-        exp_timestamp = payload.get("exp")
-        if exp_timestamp:
-            # P0 修复: 使用带时区的当前时间
-            return datetime.now(timezone.utc).timestamp() > exp_timestamp
-        return True
-    except Exception:
-        return True
 
 
 def refresh_access_token(refresh_token_str: str) -> str:
