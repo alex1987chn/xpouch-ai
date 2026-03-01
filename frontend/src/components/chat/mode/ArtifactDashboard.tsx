@@ -338,9 +338,9 @@ export default function ArtifactDashboard({
       </div>
 
       {/* Content area */}
-      <div className="flex-1 bg-surface-card p-4 overflow-hidden relative min-h-0 min-w-0">
+      <div className="flex-1 bg-surface-card p-2 overflow-hidden relative min-h-0 min-w-0">
         <div className="absolute inset-0 dot-grid opacity-30 pointer-events-none" />
-        <div className="absolute inset-4 border border-border-default bg-surface-card shadow-sm flex flex-col overflow-hidden min-w-0">
+        <div className="absolute inset-2 border border-border-default bg-surface-card shadow-sm flex flex-col overflow-hidden min-w-0">
           {!currentArtifact ? (
             <EmptyState variant="detailed" />
           ) : (
