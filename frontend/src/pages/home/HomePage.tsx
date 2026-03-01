@@ -57,7 +57,7 @@ function SceneCard({
         <div className="p-2 border-2 border-border bg-surface-page group-hover:bg-surface-card transition-colors">
           <Icon className="w-6 h-6 stroke-[2.5]" />
         </div>
-        <div className="font-mono text-[10px] bg-content-primary text-[rgb(var(--surface-page))] px-1">{tag}</div>
+        <div className="font-mono text-[10px] bg-content-primary text-surface-page px-1">{tag}</div>
       </div>
       <div>
         <h4 className="font-black text-lg mb-1 group-hover:underline decoration-2 underline-offset-4">{title}</h4>
@@ -99,8 +99,8 @@ function ConstructCard({
         style={{ backgroundColor: sideColor }}
       >
         <div className="w-1 h-1 bg-surface-card rounded-full" />
-        <div className="w-1 h-1 bg-[rgb(var(--surface-card))] rounded-full" />
-        <div className="w-1 h-1 bg-[rgb(var(--surface-card))] rounded-full" />
+        <div className="w-1 h-1 bg-surface-card rounded-full" />
+        <div className="w-1 h-1 bg-surface-card rounded-full" />
       </div>
 
       <div className="p-5 flex-1 flex flex-col justify-between z-10 relative" onClick={onClick}>
@@ -117,7 +117,7 @@ function ConstructCard({
                 "flex items-center justify-center",
                 "hover:bg-accent-hover hover:text-content-primary hover:border-accent-hover",
                 "transition-all duration-150",
-                "shadow-[2px_2px_0_0_rgb(var(--shadow-color))]",
+                "shadow-hard-sm",
                 "active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
               )}
               title={t('edit')}
@@ -136,7 +136,7 @@ function ConstructCard({
                 "flex items-center justify-center",
                 "hover:bg-red-500 hover:text-white hover:border-red-500",
                 "transition-all duration-150",
-                "shadow-[2px_2px_0_0_rgb(var(--shadow-color))]",
+                "shadow-hard-sm",
                 "active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
               )}
               title={t('delete')}
@@ -181,9 +181,9 @@ function CreateNewCard({ onClick }: { onClick?: () => void }) {
   return (
     <div
       onClick={onClick}
-      className="border-2 border-dashed border-[rgb(var(--content-secondary))] p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-[rgb(var(--surface-card))] hover:border-solid hover:border-[rgb(var(--accent-hover))] hover:shadow-[8px_8px_0_0_rgb(var(--accent-hover))] transition-all"
+      className="border-2 border-dashed border-content-secondary p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-surface-card hover:border-solid hover:border-accent-hover hover:shadow-[8px_8px_0_0_rgb(var(--accent-hover))] transition-all"
     >
-      <div className="w-12 h-12 border-2 border-[rgb(var(--content-primary))] flex items-center justify-center mb-4 text-3xl group-hover:bg-accent-hover group-hover:border-accent-hover group-hover:text-content-primary transition-colors bg-surface-page">
+      <div className="w-12 h-12 border-2 border-content-primary flex items-center justify-center mb-4 text-3xl group-hover:bg-accent-hover group-hover:border-accent-hover group-hover:text-content-primary transition-colors bg-surface-page">
         +
       </div>
       <span className="font-bold font-mono uppercase tracking-wider text-sm group-hover:text-content-primary">
@@ -403,7 +403,7 @@ export default function HomePage() {
       {/* 移动端菜单按钮 */}
       <button
         onClick={sidebar.toggleMobile}
-        className="lg:hidden fixed top-4 left-4 z-30 p-2 border-2 border-border bg-[rgb(var(--surface-card))] shadow-hard hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--accent-hover))_2px_2px_0_0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+        className="lg:hidden fixed top-4 left-4 z-30 p-2 border-2 border-border bg-surface-card shadow-hard hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[rgb(var(--accent-hover))_2px_2px_0_0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
       >
         <Menu className="w-5 h-5 stroke-[2.5]" />
       </button>
@@ -418,7 +418,7 @@ export default function HomePage() {
           <div className="flex-none flex flex-col items-start justify-center mb-10 select-none">
             {/* 状态标签 - 左上角 */}
             <div className="flex gap-2 mb-4">
-              <span className="px-2 py-1 text-[10px] font-mono font-bold border border-border bg-[rgb(var(--accent-hover))] text-content-primary shadow-[2px_2px_0_0_rgb(var(--shadow-color))]">
+              <span className="px-2 py-1 text-[10px] font-mono font-bold border border-border bg-accent-hover text-content-primary shadow-hard-sm">
                 READY
               </span>
               <span className="px-2 py-1 text-[10px] font-mono font-bold border border-border text-content-secondary">
@@ -431,7 +431,7 @@ export default function HomePage() {
               <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-content-primary">
                 INFINITE MINDS.
               </h2>
-              <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-[rgb(var(--accent-hover))]">
+              <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-accent-hover">
                 ONE POUCH.
               </h2>
             </div>
@@ -444,10 +444,10 @@ export default function HomePage() {
             </div>
 
             {/* Shadow Layer */}
-            <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-2 translate-y-2 group-focus-within:translate-x-3 group-focus-within:translate-y-3 group-focus-within:bg-[rgb(var(--accent-hover))] transition-all" />
+            <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-2 translate-y-2 group-focus-within:translate-x-3 group-focus-within:translate-y-3 group-focus-within:bg-accent-hover transition-all" />
 
             {/* Input Container */}
-            <div className="relative border-2 border-border bg-[rgb(var(--surface-card))] flex flex-col">
+            <div className="relative border-2 border-border bg-surface-card flex flex-col">
               {/* Textarea with Line Numbers */}
               <div className="flex-1 relative flex">
                 {/* Line Numbers */}
@@ -477,10 +477,10 @@ export default function HomePage() {
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   {/* 附件按钮 */}
                   <div className="flex gap-1 flex-shrink-0">
-                    <button className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-[rgb(var(--surface-card))] hover:border-border transition-all">
+                    <button className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-surface-card hover:border-border transition-all">
                       <Image className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
                     </button>
-                    <button className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-[rgb(var(--surface-card))] hover:border-border transition-all">
+                    <button className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-surface-card hover:border-border transition-all">
                       <Paperclip className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
                     </button>
                   </div>
@@ -505,7 +505,7 @@ export default function HomePage() {
             <div>
               <div className="flex justify-between items-end mb-6 border-b-2 border-border pb-2 w-full">
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-[rgb(var(--accent-hover))] border border-border" />
+                  <div className="w-3 h-3 bg-accent-hover border border-border" />
                   <h3 className="text-sm font-black uppercase tracking-widest">{t('recommended')}</h3>
                 </div>
                 <div className="font-mono text-[10px] text-content-secondary">SHOWING 3 OF 12</div>
