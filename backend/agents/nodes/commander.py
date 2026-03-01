@@ -1,3 +1,5 @@
+import logging
+
 from utils.logger import logger
 
 # P1 优化: 统一使用 tenacity 进行重试
@@ -213,7 +215,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                 system_prompt = commander_config["system_prompt"]
                 model = commander_config["model"]
                 temperature = commander_config["temperature"]
-    logger.info(f"[COMMANDER] 加载配置: model={model}, temperature={temperature}")
+            logger.info(f"[COMMANDER] 加载配置: model={model}, temperature={temperature}")
             
             # 🔥🔥🔥 Commander 2.0: 占位符自动填充
             # 填充 {user_query} 和 {dynamic_expert_list}
