@@ -44,7 +44,6 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.12.0",
     "recharts": "^3.7.0",
-    "rehype-highlight": "^7.0.2",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.0",
     "tailwind-merge": "^2.6.0",
