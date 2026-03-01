@@ -255,7 +255,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               </div>
 
               {/* 提示信息 */}
-              <div className="p-4 border-2 border-[rgb(var(--accent-hover))]/50 bg-[rgb(var(--accent-hover))]/10">
+              <div className="p-4 border-2 border-accent-hover/50 bg-accent-hover/10">
                 <div className="flex items-start gap-3">
                   <div className="w-1.5 h-1.5 bg-accent-hover mt-1.5 shrink-0"></div>
                   <p className="font-mono text-[10px] text-content-primary leading-relaxed">
