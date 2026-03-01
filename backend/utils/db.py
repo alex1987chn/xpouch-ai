@@ -5,6 +5,7 @@ LangGraph 数据库连接工具
 from contextlib import asynccontextmanager
 from psycopg_pool import AsyncConnectionPool
 import os
+from utils.logger import logger
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -43,7 +44,7 @@ async def reset_connection_pool():
         except:
             pass
         _pool = None
-        print("[DB] Connection pool reset")
+        logger.info("[DB] Connection pool reset")
 
 
 @asynccontextmanager
@@ -73,7 +74,7 @@ async def init_checkpointer_tables():
     """
     import psycopg
     
-    print("[HITL] Checking checkpointer tables...")
+    logger.info("[HITL] Checking checkpointer tables...")
     
     try:
         with psycopg.connect(PSYCOPG_DATABASE_URL) as conn:
@@ -89,13 +90,13 @@ async def init_checkpointer_tables():
                 missing = [t for t in required if t not in tables]
                 
                 if missing:
-                    print(f"[HITL WARN] Missing tables: {missing}")
-                    print("[HITL] Please run: uv run python fix_checkpoint_table.py")
+                    logger.warning(f"[HITL WARN] Missing tables: {missing}")
+                    logger.warning("[HITL] Please run: uv run python fix_checkpoint_table.py")
                 else:
-                    print("[HITL] All checkpointer tables exist")
+                    logger.info("[HITL] All checkpointer tables exist")
                     
     except Exception as e:
-        print(f"[HITL WARN] Failed to check tables: {e}")
+        logger.warning(f"[HITL WARN] Failed to check tables: {e}")
 
 
 async def close_connection_pool():
@@ -103,4 +104,4 @@ async def close_connection_pool():
     global _pool
     if _pool is not None and not _pool.closed:
         await _pool.close()
-        print("[DB] Connection pool closed")
+        logger.info("[DB] Connection pool closed")

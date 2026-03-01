@@ -5,6 +5,7 @@ P1 优化: 添加异步支持
 """
 import httpx
 from langchain_core.tools import tool
+from utils.logger import logger
 
 # P1 优化: 导入同步 requests 保持兼容
 import requests
@@ -27,7 +28,7 @@ def read_webpage(url: str) -> str:
     if not url.startswith("http"):
         return "❌ 错误: URL 必须以 http 或 https 开头"
 
-    print(f"--- [Tool] 正在深度阅读网页: {url} ---")
+    logger.info(f"--- [Tool] 正在深度阅读网页: {url} ---")
     
     # 🔥 魔法：在 URL 前加 r.jina.ai，直接获取 Markdown
     jina_url = f"https://r.jina.ai/{url}"
@@ -83,7 +84,7 @@ async def aread_webpage(url: str) -> str:
     if not url.startswith("http"):
         return "❌ 错误: URL 必须以 http 或 https 开头"
 
-    print(f"--- [Tool] 正在异步深度阅读网页: {url} ---")
+    logger.info(f"--- [Tool] 正在异步深度阅读网页: {url} ---")
     
     # 🔥 魔法：在 URL 前加 r.jina.ai，直接获取 Markdown
     jina_url = f"https://r.jina.ai/{url}"
@@ -114,7 +115,7 @@ async def aread_webpage(url: str) -> str:
             if len(content) > 15000:
                 truncated_content += "\n\n...(内容过长，已截断)..."
             
-            print(f"[Debug] 异步网页读取完成，内容长度: {len(truncated_content)}")
+            logger.debug(f"[Debug] 异步网页读取完成，内容长度: {len(truncated_content)}")
             return f"【网页内容 (URL: {url})】:\n{truncated_content}"
 
     except httpx.TimeoutException:
