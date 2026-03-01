@@ -112,7 +112,4 @@ export {
   
   // 复杂 Selectors
   useAuth,
-  
-  // 登录弹窗控制
-  useLoginDialog,
 } from './useAuthSelectors'

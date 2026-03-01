@@ -3,7 +3,7 @@ import { Bot, Plus, Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Tr
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
-import { useIsAuthenticated, useLoginDialog } from '@/hooks'
+import { useIsAuthenticated } from '@/hooks'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -213,9 +213,9 @@ export default function HomePage() {
   const [deletingAgentId, setDeletingAgentId] = useState<string | null>(null)
   const [deletingAgentName, setDeletingAgentName] = useState<string>('')
 
-  // 获取登录状态（使用优化后的 selector）
+  // 获取登录状态和登录弹窗控制
   const isAuthenticated = useIsAuthenticated()
-  const { setLoginDialogOpen } = useLoginDialog()
+  const { dialogs: { openLogin } } = useApp()
 
   // 👈 使用 React Query 获取自定义智能体列表（自动缓存，30分钟内不会重复请求）
   // 只有登录后才发起请求
@@ -298,7 +298,7 @@ export default function HomePage() {
   const handleCreateAgent = useCallback(() => {
     // 🔐 未登录时弹出登录弹窗
     if (!isAuthenticated) {
-      setLoginDialogOpen(true)
+      openLogin()
       return
     }
     navigate('/create-agent')
@@ -338,7 +338,7 @@ export default function HomePage() {
     if (!isAuthenticated) {
       // 保存输入内容到 pendingMessage，登录后自动发送
       useChatStore.getState().setPendingMessage(inputMessage)
-      setLoginDialogOpen(true)
+      openLogin()
       return
     }
 
