@@ -61,11 +61,19 @@
   }
 
   /* ============================================
-     主题过渡动画 - 所有使用主题变量的属性都添加平滑过渡
+     主题过渡动画 - 仅对需要过渡的元素生效
+     避免全局 * 选择器带来的性能开销
      ============================================ */
-  *,
-  *::before,
-  *::after {
+  html,
+  body,
+  [data-theme] {
+    transition: background-color 0.25s ease,
+                border-color 0.25s ease,
+                color 0.25s ease;
+  }
+
+  /* 需要主题过渡的组件类 */
+  .theme-transition {
     transition: background-color 0.25s ease,
                 border-color 0.25s ease,
                 color 0.25s ease,
@@ -77,6 +85,43 @@
   /* 对于颜色变化频繁的元素，优化性能 */
   .theme-transition-optimized {
     will-change: background-color, border-color, color;
+  }
+
+  /* ============================================
+     焦点样式 - 可访问性：确保键盘导航可见
+     ============================================ */
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent-brand));
+    outline-offset: 2px;
+  }
+
+  /* 按钮和链接的焦点样式 */
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid rgb(var(--accent-brand));
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgb(var(--accent-brand) / 0.2);
+  }
+
+  /* 输入框的焦点样式 */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none;
+    border-color: rgb(var(--accent-brand));
+    box-shadow: 0 0 0 3px rgb(var(--accent-brand) / 0.2);
+  }
+
+  /* 减少动画（可访问性）：尊重用户偏好 */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
   /* 选中文字样式 */
