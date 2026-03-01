@@ -6,7 +6,7 @@
 
 import { useShallow } from 'zustand/react/shallow'
 import { useUserStore } from '@/store/userStore'
-import { useTaskStore } from '@/store/taskStore'
+import { useApp } from '@/providers/AppProvider'
 
 // ============================================================================
 // 基础 Selectors (返回原始值)
@@ -39,15 +39,23 @@ export const useAuth = () => useUserStore(
 )
 
 // ============================================================================
-// 登录弹窗控制 (来自 TaskStore)
+// 登录弹窗控制 (来自 AppProvider)
 // ============================================================================
 
 /**
  * 获取登录弹窗状态和控制方法
+ * @deprecated 直接使用 useApp().dialogs 替代
  */
-export const useLoginDialog = () => useTaskStore(
-  useShallow(state => ({
-    isLoginDialogOpen: state.isLoginDialogOpen,
-    setLoginDialogOpen: state.setLoginDialogOpen,
-  }))
-)
+export const useLoginDialog = () => {
+  const { dialogs } = useApp()
+  return {
+    isLoginDialogOpen: dialogs.loginOpen,
+    setLoginDialogOpen: (isOpen: boolean) => {
+      if (isOpen) {
+        dialogs.openLogin()
+      } else {
+        dialogs.closeLogin()
+      }
+    },
+  }
+}

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
+import { registerLoginDialogCallback } from '@/utils/authUtils'
 
 /**
  * =============================
@@ -53,12 +54,15 @@ interface AppContextType {
     deleteConfirmOpen: boolean // 删除确认弹窗
     deletingAgentId: string | null // 正在删除的智能体ID
     deletingAgentName: string // 正在删除的智能体名称
+    loginOpen: boolean // 登录弹窗
     openSettings: () => void // 打开系统设置
     closeSettings: () => void // 关闭系统设置
     openPersonalSettings: () => void // 打开个人设置
     closePersonalSettings: () => void // 关闭个人设置
     openDeleteConfirm: (id: string, name: string) => void // 打开删除确认
     closeDeleteConfirm: () => void // 关闭删除确认
+    openLogin: () => void // 打开登录弹窗
+    closeLogin: () => void // 关闭登录弹窗
   }
   /** 创建智能体回调（由各页面设置） */
   onCreateAgent?: () => void
@@ -81,6 +85,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deletingAgentId, setDeletingAgentId] = useState<string | null>(null)
   const [deletingAgentName, setDeletingAgentName] = useState('')
+  const [loginOpen, setLoginOpen] = useState(false)
 
   // Sidebar 方法
   const toggleSidebarCollapsed = useCallback(() => {
@@ -128,6 +133,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDeletingAgentName('')
   }, [])
 
+  // Login Dialog 方法
+  const openLogin = useCallback(() => {
+    setLoginOpen(true)
+  }, [])
+
+  const closeLogin = useCallback(() => {
+    setLoginOpen(false)
+  }, [])
+
+  // 注册登录弹窗回调（供非 React 代码使用，如 API 错误处理）
+  useEffect(() => {
+    registerLoginDialogCallback(openLogin)
+  }, [openLogin])
+
+  // 监听全局登录弹窗事件（降级方案）
+  useEffect(() => {
+    const handleShowLogin = () => {
+      setLoginOpen(true)
+    }
+    window.addEventListener('show-login-dialog', handleShowLogin)
+    return () => window.removeEventListener('show-login-dialog', handleShowLogin)
+  }, [])
+
   const contextValue: AppContextType = {
     sidebar: {
       isCollapsed: isSidebarCollapsed,
@@ -142,12 +170,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deleteConfirmOpen,
       deletingAgentId,
       deletingAgentName,
+      loginOpen,
       openSettings,
       closeSettings,
       openPersonalSettings,
       closePersonalSettings,
       openDeleteConfirm,
-      closeDeleteConfirm
+      closeDeleteConfirm,
+      openLogin,
+      closeLogin
     },
     onCreateAgent: undefined // 由各页面设置
   }
