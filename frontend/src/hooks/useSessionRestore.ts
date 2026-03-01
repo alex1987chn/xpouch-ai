@@ -16,7 +16,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTaskStore } from '@/store/taskStore'
 import { useChatStore } from '@/store/chatStore'
-import { getEventHandler } from '@/handlers/eventHandlers'
+import { getEventHandler } from '@/handlers'
 import { logger } from '@/utils/logger'
 import { getConversation } from '@/services/chat'
 
