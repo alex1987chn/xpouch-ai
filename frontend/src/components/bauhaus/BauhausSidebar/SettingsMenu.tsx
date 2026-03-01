@@ -5,7 +5,7 @@
  */
 
 import { createPortal } from 'react-dom'
-import { User, Cog, ArrowRight, Star, Plane, Crown } from 'lucide-react'
+import { User, Cog, ArrowRight, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SettingsMenuProps } from './types'
 
@@ -13,7 +13,6 @@ export function SettingsMenu({
   isOpen,
   isAuthenticated,
   user,
-  currentPlan,
   language,
   onPersonalSettingsClick,
   onSettingsClick,
@@ -51,9 +50,7 @@ export function SettingsMenu({
               )}
               {/* 套餐图标 - Bauhaus方形风格 */}
               <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 border-2 border-border bg-surface-card flex items-center justify-center shadow-sm">
-                {currentPlan === 'Free' && <Star className="w-1.5 h-1.5 text-purple-500" />}
-                {currentPlan === 'Pilot' && <Plane className="w-1.5 h-1.5 text-cyan-500" />}
-                {currentPlan === 'Maestro' && <Crown className="w-1.5 h-1.5 text-amber-500" />}
+                <Star className="w-1.5 h-1.5 text-content-primary" />
               </div>
             </div>
             <div className="flex-1 min-w-0">
