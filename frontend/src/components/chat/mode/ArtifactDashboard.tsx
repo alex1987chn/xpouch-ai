@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { downloadMarkdown, downloadPDF, getArtifactMarkdown } from '@/utils/export'
+import { logger } from '@/utils/logger'
 import { useTaskActions, useTaskMode, useTasksCache, useSelectedTaskId } from '@/hooks/useTaskSelectors'
 import EmptyState from '@/components/chat/EmptyState'
 
@@ -228,7 +229,7 @@ export default function ArtifactDashboard({
     try {
       await downloadPDF(`artifact-content-${currentArtifact.id}`, currentArtifact.title || currentArtifact.type)
     } catch (err) {
-      console.error('PDF export failed:', err)
+      logger.error('PDF export failed:', err)
     } finally {
       setIsExportingPDF(false)
     }

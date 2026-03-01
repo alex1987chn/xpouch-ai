@@ -645,7 +645,7 @@ export class EventHandler {
         }
         updateMessageMetadata(lastAi.id, { thinking })
         if (DEBUG) {
-          console.log('[EventHandler] router.decision: router step 已标记为 completed')
+          logger.debug('[EventHandler] router.decision: router step 已标记为 completed')
         }
       }
     }

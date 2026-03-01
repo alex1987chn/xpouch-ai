@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
+import { logger } from '@/utils/logger'
 
 interface MermaidRendererProps {
   code: string
@@ -103,7 +104,7 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
       } catch (e) {
         // 渲染失败但不显示错误，继续显示加载状态
         // 可能是语法还没写完，等待下次更新
-        console.debug('Mermaid render pending:', e)
+        logger.debug('Mermaid render pending:', e)
         setIsReady(false)
       }
     }

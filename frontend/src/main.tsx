@@ -12,6 +12,7 @@ import { ThemeProvider, ThemeInitializer } from './hooks/useTheme'
 import { AppProvider } from './providers/AppProvider'
 import { AuthInitializer } from './components/AuthInitializer'
 import { router, AppProviders } from './router'
+import { logger } from '@/utils/logger'
 import './index.css'
 
 // 🔥 全局错误处理：捕获动态导入失败并自动刷新
@@ -21,7 +22,7 @@ window.addEventListener('error', (event) => {
   // 检查是否是动态导入失败
   if (errorMessage.includes('Failed to fetch dynamically imported module') ||
       errorMessage.includes('Importing a module script failed')) {
-    console.error('[Global Error] 动态导入失败，准备刷新页面:', errorMessage)
+    logger.error('[Global Error] 动态导入失败，准备刷新页面:', errorMessage)
     
     // 清除缓存并刷新（使用 hard reload）
     if ('caches' in window) {
@@ -42,7 +43,7 @@ window.addEventListener('unhandledrejection', (event) => {
   
   if (errorMessage.includes('Failed to fetch dynamically imported module') ||
       errorMessage.includes('Importing a module script failed')) {
-    console.error('[Unhandled Promise] 动态导入失败，准备刷新页面:', errorMessage)
+    logger.error('[Unhandled Promise] 动态导入失败，准备刷新页面:', errorMessage)
     event.preventDefault()
     
     if ('caches' in window) {

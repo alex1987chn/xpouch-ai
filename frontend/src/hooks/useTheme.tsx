@@ -12,6 +12,7 @@
 
 import { useEffect } from 'react'
 import { useThemeStore, type Theme } from '@/store/themeStore'
+import { logger } from '@/utils/logger'
 
 interface UseThemeReturn {
   theme: Theme
@@ -44,8 +45,8 @@ export function ThemeInitializer() {
     store.initTheme()
     
     // 调试：打印当前主题
-    console.log('[Theme] 初始化主题:', store.theme)
-    console.log('[Theme] data-theme 属性:', document.documentElement.getAttribute('data-theme'))
+    logger.debug('[Theme] 初始化主题:', store.theme)
+    logger.debug('[Theme] data-theme 属性:', document.documentElement.getAttribute('data-theme'))
   }, [])
   
   return null
