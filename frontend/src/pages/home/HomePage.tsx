@@ -302,7 +302,7 @@ export default function HomePage() {
       return
     }
     navigate('/create-agent')
-  }, [navigate, isAuthenticated, setLoginDialogOpen])
+  }, [navigate, isAuthenticated, openLogin])
 
   // 处理删除自定义 agent
   const handleDeleteAgent = useCallback((agentId: string, agentName: string) => {
@@ -359,7 +359,7 @@ export default function HomePage() {
     navigate(`/chat/${newId}`, {
       state: { startWith: inputMessage }
     })
-  }, [inputMessage, navigate, isAuthenticated, setLoginDialogOpen])
+  }, [inputMessage, navigate, isAuthenticated, openLogin])
 
   // 推荐场景数据
   const scenes = [
