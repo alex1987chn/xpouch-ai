@@ -21,8 +21,8 @@ interface NoiseOverlayProps {
   opacity?: number
   /** 层级 */
   zIndex?: number
-  /** 混合模式 */
-  blendMode?: "overlay" | "multiply" | "screen" | "normal"
+  /** 混合模式 - 默认使用 opacity 以获得更好性能，可选 overlay 增强效果 */
+  blendMode?: "overlay" | "multiply" | "screen" | "normal" | null
   /** 附加类名 */
   className?: string
 }
@@ -30,7 +30,7 @@ interface NoiseOverlayProps {
 export function NoiseOverlay({
   opacity = 0.6,
   zIndex = 9999,
-  blendMode = "overlay",
+  blendMode = null, // 默认不使用 blend mode，优化性能
   className,
 }: NoiseOverlayProps) {
   // SVG 噪点纹理 - Base64 编码
@@ -46,7 +46,10 @@ export function NoiseOverlay({
         backgroundImage: `url("${noiseSvg}")`,
         opacity,
         zIndex,
-        mixBlendMode: blendMode,
+        // 性能优化：默认不使用 mix-blend-mode，如有需要可传入 blendMode
+        ...(blendMode && { mixBlendMode: blendMode }),
+        // 性能优化：提示浏览器此元素会变化
+        willChange: 'opacity',
       }}
       aria-hidden="true"
     />

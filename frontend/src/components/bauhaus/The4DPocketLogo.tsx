@@ -22,17 +22,18 @@ export function The4DPocketLogo({ className }: The4DPocketLogoProps) {
     },
   }
 
-  // 核心修复：下落动画
+  // 优化：下落动画 - 缩短周期，添加缩小消失效果
   const dropProcessVariants = {
     animate: {
-      // 1. 位置：从更高(-35px)开始，0.35才到底部(10px)
-      top: ["-35px", "-10px", "10px", "10px", "10px", "10px", "10px"],
+      // 位置：从更高处开始，更快到达底部
+      top: ["-35px", "-15px", "10px", "10px", "10px", "10px", "10px"],
       
-      // 2. 透明度：0.1的时候就完全显示了，这样能看到空中的轨迹
-      opacity: [0, 1, 1, 1, 1, 1, 0],
+      // 透明度：全程可见，最后缩小消失
+      opacity: [0, 1, 1, 1, 1, 0.8, 0],
       
-      rotate: [0, 0, 0, 10, -10, 0, 0],
-      scale: [1, 1, 1, 1, 1, 1, 0],
+      rotate: [0, 0, 0, 8, -8, 0, 0],
+      // 优化：最后阶段缩小消失，更自然
+      scale: [1, 1, 1, 1, 1, 0.6, 0],
       
       // 颜色循环
       backgroundColor: [
@@ -46,13 +47,10 @@ export function The4DPocketLogo({ className }: The4DPocketLogoProps) {
       ],
       
       transition: {
-        duration: 3,
+        duration: 2.5, // 缩短周期：3s -> 2.5s
         repeat: Infinity,
-        // 关键时间点调整：
-        // 0 -> 0.1: 快速现身
-        // 0 -> 0.35: 下落过程 (给足够的时间让人眼捕捉)
-        // 0.35: 接触底部
-        times: [0, 0.1, 0.35, 0.5, 0.6, 0.8, 1],
+        // 优化时间点
+        times: [0, 0.08, 0.3, 0.45, 0.55, 0.85, 1],
         ease: "easeInOut" as const,
       },
     },

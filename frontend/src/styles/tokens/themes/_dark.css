@@ -22,10 +22,10 @@
     --content-inverted: 28 28 30;          /* 深灰 - 反色文字 */
     --content-disabled: 80 80 80;          /* 禁用状态 */
 
-    /* Border - 暗色边框（保持 Bauhaus 粗边框风格） */
-    --border-default: 250 204 21;          /* 黄色边框 - 标志性 */
-    --border-hover: 251 191 36;            /* 亮黄 - 悬停 */
-    --border-focus: 250 204 21;            /* 黄色 - 聚焦 */
+    /* Border - 暗色边框（优化：主要边框使用灰色，交互状态使用黄色） */
+    --border-default: 80 80 80;            /* 灰色边框 - 减少视觉疲劳 */
+    --border-hover: 250 204 21;            /* 黄色 - 悬停时强调 */
+    --border-focus: 250 204 21;            /* 黄色 - 聚焦时强调 */
     --border-divider: 58 58 60;            /* 灰 divider */
     --border-disabled: 44 44 46;           /* 暗灰 - 禁用 */
 
