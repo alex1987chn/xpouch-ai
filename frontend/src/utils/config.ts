@@ -2,6 +2,7 @@
 // 提供便捷的配置访问方法
 
 import { defaultModel, models as modelConfigs, agentDefaultModels } from '@/config/models'
+import { logger } from '@/utils/logger'
 
 // 导出可用模型列表（兼容旧代码）
 export const AVAILABLE_MODELS = modelConfigs.map(m => ({

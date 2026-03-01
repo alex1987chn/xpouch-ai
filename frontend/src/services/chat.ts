@@ -40,6 +40,8 @@ import { getHeaders, buildUrl, handleResponse, handleSSEConnectionError, authent
 import { ApiMessage, StreamCallback, Conversation } from '@/types'
 import { logger } from '@/utils/logger'
 import { handleServerEvent } from '@/handlers/eventHandlers'
+import { createSSEPromiseHelpers, SSE_HEARTBEAT_TIMEOUT, SSE_HEARTBEAT_CHECK_INTERVAL } from '@/utils/sseUtils'
+import { showLoginDialog } from '@/utils/authUtils'
 
 // 重新导出类型供外部使用（Conversation 类型来自 @/types）
 export type { Conversation }
@@ -49,11 +51,7 @@ import { useTaskStore } from '@/store/taskStore'
 // SSE 常量配置
 // ============================================================================
 
-/** 心跳超时时间（毫秒）- 超过此时间无活动视为连接断开 */
-const SSE_HEARTBEAT_TIMEOUT = 45000 // 45秒（后端心跳间隔 15秒的 3 倍）
-
-/** 心跳检查间隔 */
-const SSE_HEARTBEAT_CHECK_INTERVAL = 10000 // 10秒检查一次
+// 注意：SSE_HEARTBEAT_TIMEOUT 和 SSE_HEARTBEAT_CHECK_INTERVAL 从 sseUtils.ts 导入
 
 /** 最大重连次数 */
 const SSE_MAX_RETRIES = 3
@@ -136,53 +134,23 @@ export async function sendMessage(
     let fullContent = ''
     // eslint-disable-next-line prefer-const
     let finalConversationId: string | undefined = conversationId || undefined
-    let isCompleted = false
     let retryCount = 0  // 🔥 重连计数器
-    
-    // 🔥 心跳检测：跟踪最后活动时间
-    let lastActivityTime = Date.now()
-    let heartbeatCheck: NodeJS.Timeout | null = null
 
     const ctrl = new AbortController()
-
-    // 🔥 安全清理函数
-    const cleanup = () => {
-      if (heartbeatCheck) {
-        clearInterval(heartbeatCheck)
-        heartbeatCheck = null
+    
+    // 🔥 使用 SSE 工具函数处理心跳和 Promise 状态
+    const { safeResolve, safeReject, startHeartbeat, updateActivity, getIsCompleted } = createSSEPromiseHelpers(
+      resolve, 
+      reject, 
+      {
+        timeout: SSE_HEARTBEAT_TIMEOUT,
+        checkInterval: SSE_HEARTBEAT_CHECK_INTERVAL,
+        onTimeout: () => ctrl.abort(),
+        context: 'chat.ts'
       }
-    }
-
-    // 🔥 包装 resolve/reject 确保清理
-    const safeResolve = (value: string) => {
-      cleanup()
-      if (!isCompleted) {
-        isCompleted = true
-        resolve(value)
-      }
-    }
-
-    const safeReject = (error: Error) => {
-      cleanup()
-      if (!isCompleted) {
-        isCompleted = true
-        reject(error)
-      }
-    }
-
-    // 🔥 心跳检测：定期检查连接活性
-    heartbeatCheck = setInterval(() => {
-      if (isCompleted) {
-        cleanup()
-        return
-      }
-      const elapsed = Date.now() - lastActivityTime
-      if (elapsed > SSE_HEARTBEAT_TIMEOUT) {
-        logger.warn('[chat.ts] SSE 心跳超时，连接可能已断开')
-        ctrl.abort()
-        safeReject(new Error('连接超时，请重试'))
-      }
-    }, SSE_HEARTBEAT_CHECK_INTERVAL)
+    )
+    
+    startHeartbeat()
 
     if (abortSignal) {
       abortSignal.addEventListener('abort', () => {
@@ -213,12 +181,12 @@ export async function sendMessage(
         handleSSEConnectionError(response, 'chat.ts')
         // P0 修复: 连接成功后重置重连计数器和活动时间
         retryCount = 0
-        lastActivityTime = Date.now()
+        updateActivity()
         logger.debug('[chat.ts] SSE 连接已建立，重置重连计数器')
       },
 
       async onmessage(msg: EventSourceMessage) {
-        lastActivityTime = Date.now() // 🔥 更新活动时间
+        updateActivity() // 🔥 更新活动时间
         
         if (msg.data === '[DONE]') {
           logger.debug('[chat.ts] 收到 [DONE]，流式响应完成')
@@ -288,9 +256,7 @@ export async function sendMessage(
         const status = (err as any)?.status || (err as any)?.statusCode
         if (status === 401) {
           logger.warn('[chat.ts] SSE 收到 401 错误，触发登录弹窗')
-          import('@/store/taskStore').then(({ useTaskStore }) => {
-            useTaskStore.getState().setLoginDialogOpen(true)
-          })
+          showLoginDialog()
           safeReject(err)
           return
         }
@@ -311,7 +277,7 @@ export async function sendMessage(
 
       onclose() {
         logger.debug('[chat.ts] SSE 连接已关闭')
-        if (!isCompleted) {
+        if (!getIsCompleted()) {
           // 🔥 宽容处理：连接关闭但未收到完成标志时，视为成功
           // 后端可能直接关闭连接而不发送 [DONE]
           safeResolve(fullContent)
@@ -396,53 +362,23 @@ export async function resumeChat(
   // 🔥 心跳检测：超时处理，防止 Promise 无限等待
   return new Promise((resolve, reject) => {
     let fullContent = ''
-    let isCompleted = false
     let retryCount = 0  // 🔥 P0 修复: 添加重连计数器
-    let lastActivityTime = Date.now()
-    
-    // 🔥 使用统一的心跳超时常量
-    let heartbeatCheck: NodeJS.Timeout | null = null
-    
-    // 安全的清理函数，确保在任何情况下都能清理 interval
-    const cleanup = () => {
-      if (heartbeatCheck) {
-        clearInterval(heartbeatCheck)
-        heartbeatCheck = null
-      }
-    }
-    
-    // 包装 resolve/reject 确保清理
-    const safeResolve = (value: string) => {
-      cleanup()
-      if (!isCompleted) {
-        isCompleted = true
-        resolve(value)
-      }
-    }
-    
-    const safeReject = (error: Error) => {
-      cleanup()
-      if (!isCompleted) {
-        isCompleted = true
-        reject(error)
-      }
-    }
-    
-    // 🔥 心跳检测：定期检查连接活性
-    heartbeatCheck = setInterval(() => {
-      if (isCompleted) {
-        cleanup()
-        return
-      }
-      const elapsed = Date.now() - lastActivityTime
-      if (elapsed > SSE_HEARTBEAT_TIMEOUT) {
-        logger.warn('[chat.ts] Resume SSE 心跳超时，连接可能已断开')
-        ctrl.abort()
-        safeReject(new Error('连接超时，请重试'))
-      }
-    }, SSE_HEARTBEAT_CHECK_INTERVAL)
 
     const ctrl = new AbortController()
+    
+    // 🔥 使用 SSE 工具函数处理心跳和 Promise 状态
+    const { safeResolve, safeReject, startHeartbeat, updateActivity, getIsCompleted } = createSSEPromiseHelpers(
+      resolve, 
+      reject, 
+      {
+        timeout: SSE_HEARTBEAT_TIMEOUT,
+        checkInterval: SSE_HEARTBEAT_CHECK_INTERVAL,
+        onTimeout: () => ctrl.abort(),
+        context: 'chat.ts resume'
+      }
+    )
+    
+    startHeartbeat()
 
     if (abortSignal) {
       abortSignal.addEventListener('abort', () => {
@@ -466,15 +402,15 @@ export async function resumeChat(
       openWhenHidden: true,
 
       async onopen(response) {
-        handleSSEConnectionError(response, 'chat.ts resume', cleanup)
+        handleSSEConnectionError(response, 'chat.ts resume')
         // P0 修复: 连接成功后重置重连计数器和活动时间
         retryCount = 0
-        lastActivityTime = Date.now()
+        updateActivity()
         logger.debug('[chat.ts] Resume SSE 连接已建立，重置重连计数器')
       },
 
       async onmessage(msg: EventSourceMessage) {
-        lastActivityTime = Date.now()  // 🔥 更新活动时间
+        updateActivity()  // 🔥 更新活动时间
         
         if (msg.data === '[DONE]') {
           logger.debug('[chat.ts] Resume 收到 [DONE]，流式响应完成')
@@ -540,9 +476,7 @@ export async function resumeChat(
         const status = (err as any)?.status || (err as any)?.statusCode
         if (status === 401) {
           logger.warn('[chat.ts] Resume SSE 收到 401 错误，触发登录弹窗')
-          import('@/store/taskStore').then(({ useTaskStore }) => {
-            useTaskStore.getState().setLoginDialogOpen(true)
-          })
+          showLoginDialog()
           safeReject(err)
           return
         }
@@ -566,7 +500,7 @@ export async function resumeChat(
         
         // ✅ 宽容处理：当连接正常关闭但没有收到完成标志时，视为成功
         // 原因：后端 LangGraph 完成 resume 操作后直接关闭连接，不会发送 [DONE] 标志
-        if (!isCompleted) {
+        if (!getIsCompleted()) {
           logger.warn('[chat.ts] Resume SSE 流正常关闭但未收到完成标志，视为成功')
           safeResolve(fullContent)
         }

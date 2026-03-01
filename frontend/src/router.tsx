@@ -18,6 +18,7 @@ import { useUserStore } from './store/userStore'
 import { createCustomAgent, updateCustomAgent, getAllAgents } from './services/api'
 import { normalizeAgentId } from '@/utils/agentUtils'
 import { logger } from '@/utils/logger'
+import { showLoginDialog } from '@/utils/authUtils'
 import { SYSTEM_AGENTS } from '@/constants/agents'
 import { useTranslation } from '@/i18n'
 import { agentsKeys } from '@/hooks/queries'
@@ -354,10 +355,7 @@ interface ApiError {
 
 const handleGlobalError = (error: ApiError) => {
   if (error?.status === 401) {
-    // 动态导入避免循环依赖
-    import('@/store/taskStore').then(({ useTaskStore }) => {
-      useTaskStore.getState().setLoginDialogOpen(true)
-    })
+    showLoginDialog()
   }
 }
 
