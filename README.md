@@ -70,6 +70,15 @@ AI 不再是"黑盒"。Commander 生成任务计划后，**暂停等待你的确
 后端自动判断简单/复杂模式：日常对话直接响应，复杂任务自动触发多专家协作，无需手动切换。
 
 </td>
+<td width="50%">
+
+### 🗄️ Alembic 数据库迁移
+全自动数据库架构管理：
+- 新部署自动创建所有表
+- 更新自动应用增量迁移
+- 支持回滚和版本控制
+
+</td>
 </tr>
 <tr>
 <td width="50%">
@@ -111,12 +120,11 @@ cd xpouch-ai
 cp backend/.env.example backend/.env
 # 编辑 backend/.env，添加你的 LLM API Key
 
-# 3. 启动服务
+# 3. 启动服务（自动执行数据库迁移）
 docker-compose up -d --build
 
-# 4. 初始化数据
-docker exec -it xpouch-backend uv run scripts/init_experts.py
-docker exec -it xpouch-backend uv run scripts/init_checkpoints.py
+# 4. 数据库已自动初始化，无需手动执行 SQL
+# Alembic 会自动创建表结构和初始数据
 ```
 
 访问 http://localhost:8080 🎉

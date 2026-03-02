@@ -60,6 +60,33 @@ GET /api/threads/{id}/messages # 消息（完整内容）
 - `frontend/src/components/AdminRoute.tsx` - 等待认证检查
 - `frontend/src/i18n/translations/common.ts` - 批量删除翻译
 
+### 🗄️ 数据库迁移（Alembic）
+
+**引入 Alembic 替代手动 SQL 脚本**：
+- 全自动数据库架构管理
+- 新部署：`alembic upgrade head` 自动创建所有表
+- 更新部署：自动应用增量迁移
+- 支持回滚：`alembic downgrade`
+
+**迁移文件**：
+- `backend/alembic.ini` - Alembic 配置
+- `backend/migrations/env.py` - 环境配置（读取 DATABASE_URL）
+- `backend/migrations/versions/001_initial_schema_v3_2_4.py` - 初始迁移（完整表结构）
+
+**开发工作流**：
+```bash
+# 修改 SQLModel 后生成迁移
+cd backend
+alembic revision --autogenerate -m "Add new table"
+
+# 生产部署自动执行
+./deploy.sh  # 内置 alembic upgrade head
+```
+
+### 📁 其他变更
+- `backend/Dockerfile` - 启动时自动执行迁移
+- `deploy.sh` - 添加 Alembic 状态检查和自动迁移
+
 ---
 
 ## [2026-03-01] - v3.2.3 - 代码重构与设计系统优化
@@ -642,7 +669,7 @@ router/
 - PostgreSQL 数据库容器化
 - 前端静态资源 Nginx 托管
 - 后端容器健康检查
-- 数据库迁移脚本（幂等性设计）
+- ~~数据库迁移脚本（幂等性设计）~~ → 已迁移至 Alembic（v3.2.4）
 - CORS 和安全头部配置
 
 ### 📊 代码统计
