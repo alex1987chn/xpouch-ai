@@ -7,13 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # 安装 uv（推荐的 Python 包管理器）
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates && \
-    curl -LsSf https://astral.sh/uv/install.sh | sh && \
-    apt-get purge -y --auto-remove curl && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /tmp/*
-
-ENV PATH="/root/.local/bin:${PATH}"
+# 使用 pip 安装 uv 更可靠
+RUN pip install --no-cache-dir uv
 
 # 复制依赖锁定文件和 pyproject.toml
 COPY pyproject.toml uv.lock ./
