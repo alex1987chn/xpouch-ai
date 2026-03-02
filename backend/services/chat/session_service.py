@@ -64,7 +64,13 @@ class ChatSessionService:
         threads = self.db.exec(statement).all()
         
         if not threads:
-            return []
+            return {
+                "items": [],
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "pages": (total + limit - 1) // limit if total > 0 else 1
+            }
         
         # 2. 获取所有线程ID
         thread_ids = [t.id for t in threads]
@@ -81,7 +87,7 @@ class ChatSessionService:
             SELECT 
                 thread_id,
                 COUNT(*) as message_count,
-                MAX(CASE WHEN rn = 1 THEN SUBSTRING(content, 1, 100) ELSE NULL END) as last_preview
+                MAX(CASE WHEN rn = 1 THEN LEFT(content, 100) ELSE NULL END) as last_preview
             FROM (
                 SELECT 
                     thread_id,
