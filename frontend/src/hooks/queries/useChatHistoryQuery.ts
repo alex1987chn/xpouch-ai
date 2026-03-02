@@ -18,7 +18,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getConversations, deleteConversation, type Conversation } from '@/services/chat'
+import { getConversations, getConversation, getThreadMessages, deleteConversation, type Conversation } from '@/services/chat'
 import { logger } from '@/utils/logger'
 import { CACHE_TIMES } from '@/config/query'
 
@@ -68,6 +68,7 @@ export function useChatHistoryQuery(options: { limit?: number; enabled?: boolean
 }
 
 // 获取单个会话详情的 Query Hook
+// P0-5 优化：使用分离的 API 获取会话详情和消息列表
 export function useChatSessionQuery(conversationId: string | null) {
   return useQuery({
     queryKey: chatHistoryKeys.detail(conversationId || ''),
@@ -76,14 +77,16 @@ export function useChatSessionQuery(conversationId: string | null) {
         throw new Error('Conversation ID is required')
       }
       try {
-        // 这里假设有一个获取单个会话详情的 API
-        // 目前通过列表 API 获取完整详情，后续可以优化为独立 API
-        const conversations = await getConversations()
-        const conversation = conversations.find(c => c.id === conversationId)
-        if (!conversation) {
-          throw new Error(`Conversation ${conversationId} not found`)
+        // P0-5 优化：分离获取会话详情和消息列表
+        // 1. 获取会话详情（包含元数据）
+        const conversation = await getConversation(conversationId)
+        // 2. 获取消息列表（完整内容）
+        const messages = await getThreadMessages(conversationId)
+        // 3. 合并返回
+        return {
+          ...conversation,
+          messages
         }
-        return conversation
       } catch (error) {
         logger.error('[useChatSessionQuery] Failed to fetch conversation:', error)
         throw error
