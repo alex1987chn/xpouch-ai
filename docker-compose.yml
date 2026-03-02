@@ -27,7 +27,7 @@ services:
     container_name: xpouch-backend
     restart: always
     env_file:
-      - ./.env
+      - ./backend/.env
     environment:
       - PORT=3000
       # PostgreSQL 连接串（服务器部署时）
