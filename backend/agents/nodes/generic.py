@@ -49,6 +49,8 @@ Generic Worker 节点 - 通用专家执行
 - task_list[current_index]: 更新 output_result, status, completed_at
 - expert_results: 追加执行结果（供下游任务使用）
 - event_queue: 推送 task.started/completed 事件
+
+v3.7 优化: P0 修复 + TTLCache 本地内存缓存高频查询
 """
 import os
 import re
@@ -56,6 +58,7 @@ import asyncio  # 🔥 用于异步保存专家执行结果
 import json
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Union
+from cachetools import TTLCache
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage, BaseMessage
 from langchain_core.runnables import RunnableConfig
 from tools import ALL_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集
@@ -68,6 +71,9 @@ from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from tools import ALL_TOOLS  # 🔥 导入工具集
 from utils.prompt_utils import enhance_system_prompt_with_tools  # v3.6: 提取到工具函数
 from utils.logger import logger
+
+# P0 优化: 本地内存缓存高频专家配置查询 (5分钟TTL, 最大200条)
+_generic_expert_cache: TTLCache = TTLCache(maxsize=200, ttl=300)
 
 
 def normalize_message_content(content: Union[str, List, Any]) -> str:
@@ -188,24 +194,35 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
             "completed_at": datetime.now().isoformat()
         }
     
-    # 从缓存加载专家配置
-    expert_config = get_expert_config_cached(expert_type)
-    
-    # 如果缓存中没有，可能是自定义专家，尝试直接查数据库
-    if not expert_config:
-        logger.info(f"[GenericWorker] 缓存中未找到 '{expert_type}'，尝试从数据库加载...")
-        from database import engine
-        from sqlmodel import Session
-        from agents.services.expert_manager import get_expert_config
-        
-        # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
-        def _load_expert_config():
-            with Session(engine) as session:
-                return get_expert_config(expert_type, session)
-        
-        expert_config = await asyncio.to_thread(_load_expert_config)
+    # P0 修复 + 优化: 优先使用本地内存缓存，缓存未命中才查数据库
+    # 1️⃣ 优先从本地内存缓存读取（不走线程池，零阻塞）
+    expert_config = _generic_expert_cache.get(expert_type)
+    if expert_config:
+        logger.info(f"[GenericWorker] 本地缓存命中: {expert_type}")
+    else:
+        # 2️⃣ 检查全局缓存
+        expert_config = get_expert_config_cached(expert_type)
         if expert_config:
-            logger.info(f"[GenericWorker] 从数据库加载 '{expert_type}' 成功")
+            logger.info(f"[GenericWorker] 全局缓存命中: {expert_type}")
+            # 同步到本地缓存
+            _generic_expert_cache[expert_type] = expert_config
+        else:
+            # 3️⃣ 缓存未命中，可能是自定义专家，尝试直接查数据库
+            logger.info(f"[GenericWorker] 缓存未命中，查询数据库: {expert_type}")
+            from database import engine
+            from sqlmodel import Session
+            from agents.services.expert_manager import get_expert_config
+            
+            # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
+            def _load_expert_config():
+                with Session(engine) as session:
+                    return get_expert_config(expert_type, session)
+            
+            expert_config = await asyncio.to_thread(_load_expert_config)
+            if expert_config:
+                logger.info(f"[GenericWorker] 从数据库加载成功: {expert_type}")
+                # 4️⃣ 写入本地缓存
+                _generic_expert_cache[expert_type] = expert_config
     
     if not expert_config:
         return {
