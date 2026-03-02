@@ -35,7 +35,7 @@ from sqlmodel import Session
 
 from database import get_session
 from dependencies import get_current_user, get_current_user_with_auth
-from models import User, Thread, Message, ThreadListResponse, ThreadDetailResponse, MessageResponse
+from models import User, Thread, Message, ThreadListResponse, ThreadDetailResponse, MessageResponse, PaginatedThreadListResponse
 from utils.exceptions import NotFoundError, AuthorizationError
 
 # 🔥 Service 层导入（backend 是 Python 路径根）
@@ -98,19 +98,23 @@ class ArtifactUpdateResponse(BaseModel):
 # 线程管理 API
 # ============================================================================
 
-@router.get("/threads", response_model=List[ThreadListResponse])
+@router.get("/threads", response_model=PaginatedThreadListResponse)
 async def get_threads(
+    page: int = 1,
+    limit: int = 20,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
     """
-    获取当前用户的所有线程列表（轻量级）
+    获取当前用户的线程列表（轻量级，支持分页）
     
-    只返回线程元数据，不包含消息内容。
-    需要获取消息请调用 GET /threads/{id}/messages
+    - page: 页码（从1开始）
+    - limit: 每页条数（默认20，最大100）
+    - 只返回线程元数据，不包含消息内容
+    - 需要获取消息请调用 GET /threads/{id}/messages
     """
     service = ChatSessionService(session)
-    return await service.list_threads(current_user.id)
+    return await service.list_threads(current_user.id, page=page, limit=limit)
 
 
 @router.get("/threads/{thread_id}", response_model=ThreadDetailResponse)
@@ -143,16 +147,59 @@ async def get_thread_messages(
     return await service.get_thread_messages(thread_id, current_user.id)
 
 
+class BatchDeleteRequest(BaseModel):
+    """批量删除请求"""
+    thread_ids: List[str]
+
+
+class BatchDeleteResponse(BaseModel):
+    """批量删除响应"""
+    success: bool
+    deleted_count: int
+    failed_ids: List[str] = []
+
+
 @router.delete("/threads/{thread_id}")
 async def delete_thread(
     thread_id: str,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    """删除线程"""
+    """删除单个线程"""
     service = ChatSessionService(session)
     await service.delete_thread(thread_id, current_user.id)
     return {"ok": True}
+
+
+@router.post("/threads/batch-delete", response_model=BatchDeleteResponse)
+async def batch_delete_threads(
+    request: BatchDeleteRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    批量删除线程
+    
+    - 同时删除多个会话
+    - 验证所有会话属于当前用户
+    - 返回成功删除数量和失败ID列表
+    """
+    service = ChatSessionService(session)
+    deleted_count = 0
+    failed_ids = []
+    
+    for thread_id in request.thread_ids:
+        try:
+            await service.delete_thread(thread_id, current_user.id)
+            deleted_count += 1
+        except Exception:
+            failed_ids.append(thread_id)
+    
+    return BatchDeleteResponse(
+        success=deleted_count > 0,
+        deleted_count=deleted_count,
+        failed_ids=failed_ids
+    )
 
 
 # ============================================================================

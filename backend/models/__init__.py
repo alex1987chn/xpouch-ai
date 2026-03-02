@@ -209,6 +209,18 @@ class ThreadDetailResponse(BaseModel):
         from_attributes = True
 
 
+class PaginatedThreadListResponse(BaseModel):
+    """分页会话列表响应模型"""
+    items: List[ThreadListResponse]  # 当前页数据
+    total: int                       # 总记录数
+    page: int                        # 当前页码
+    limit: int                       # 每页条数
+    pages: int                       # 总页数
+
+    class Config:
+        from_attributes = True
+
+
 # ============================================================================
 # 新增模型：用户自定义智能体（简单对话模式）
 # ============================================================================

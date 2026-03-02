@@ -1,5 +1,5 @@
-﻿import { useState, useCallback, useMemo } from 'react'
-import { MessageSquare, Clock, Trash2, Search } from 'lucide-react'
+﻿import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { MessageSquare, Clock, Trash2, Search, Loader2, CheckSquare, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { type Conversation } from '@/services/chat'
@@ -9,7 +9,7 @@ import { logger } from '@/utils/logger'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { useApp } from '@/providers/AppProvider'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
-import { useChatHistoryQuery, useDeleteConversationMutation } from '@/hooks/queries'
+import { useChatHistoryQuery, useDeleteConversationMutation, useBatchDeleteConversationsMutation } from '@/hooks/queries'
 import { useUserStore } from '@/store/userStore'
 
 interface HistoryPageProps {
@@ -20,21 +20,39 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
   const { t, language } = useTranslation()
   const { sidebar } = useApp()
   const [searchQuery, setSearchQuery] = useState('')
-  const { swipeProgress, handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // 获取登录状态
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
 
-  // 使用 React Query 获取历史记录（只有登录后才发起请求）
-  const { data: conversations = [], isLoading: loading } = useChatHistoryQuery({ enabled: isAuthenticated })
+  // 使用 React Query Infinite Query 获取历史记录（分页加载）
+  const {
+    data,
+    isLoading: loading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useChatHistoryQuery({ enabled: isAuthenticated, limit: 20 })
+
+  // 合并所有页的数据
+  const conversations = useMemo(() => {
+    return data?.pages.flatMap(page => page.items) || []
+  }, [data])
 
   // 使用 React Query Mutation 删除会话
   const deleteMutation = useDeleteConversationMutation()
+  const batchDeleteMutation = useBatchDeleteConversationsMutation()
 
-  // 删除确认状态
+  // 删除确认状态（单个删除）
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null)
   const [deletingConversationTitle, setDeletingConversationTitle] = useState('')
+
+  // 批量删除状态
+  const [isBatchMode, setIsBatchMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false)
 
   // 处理删除 - 打开确认对话框
   const handleDelete = useCallback((e: React.MouseEvent, id: string, title: string) => {
@@ -56,6 +74,54 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
       setDeleteDialogOpen(false)
     }
   }, [deletingConversationId, deleteMutation])
+
+  // ==================== 批量删除功能 ====================
+
+  // 进入/退出批量模式
+  const toggleBatchMode = useCallback(() => {
+    setIsBatchMode(prev => !prev)
+    setSelectedIds(new Set()) // 清除选择
+  }, [])
+
+  // 切换选中状态
+  const toggleSelection = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }, [])
+
+  // 打开批量删除确认对话框
+  const handleBatchDelete = useCallback(() => {
+    if (selectedIds.size === 0) return
+    setBatchDeleteDialogOpen(true)
+  }, [selectedIds.size])
+
+  // 确认批量删除
+  const handleConfirmBatchDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return
+
+    try {
+      await batchDeleteMutation.mutateAsync(Array.from(selectedIds))
+      setBatchDeleteDialogOpen(false)
+      setSelectedIds(new Set())
+      setIsBatchMode(false)
+    } catch (error) {
+      logger.error('Failed to batch delete conversations:', error)
+      setBatchDeleteDialogOpen(false)
+    }
+  }, [selectedIds, batchDeleteMutation])
+
+  // 取消批量模式
+  const exitBatchMode = useCallback(() => {
+    setIsBatchMode(false)
+    setSelectedIds(new Set())
+  }, [])
 
   const getLocale = () => {
     switch (language) {
@@ -122,21 +188,54 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
     return conversation.message_count || 0
   }
 
-  // 过滤搜索结果
+  // 滚动加载更多
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container || !hasNextPage || isFetchingNextPage) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          logger.debug('[HistoryPage] 滚动到底部，加载更多')
+          fetchNextPage()
+        }
+      },
+      { root: container, threshold: 0.1 }
+    )
+
+    // 监听一个底部的占位元素
+    const sentinel = document.getElementById('history-load-more-sentinel')
+    if (sentinel) {
+      observer.observe(sentinel)
+    }
+
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  // 过滤搜索结果（前端搜索已加载的数据）
   const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) {
       return conversations
     }
     const query = searchQuery.toLowerCase()
     return conversations.filter(conv => {
-      // 搜索标题和最后一条消息
+      // 搜索标题和最后一条消息预览
       const titleMatch = (conv.title || t('newChat')).toLowerCase().includes(query)
-      const messageMatch = conv.messages && conv.messages.length > 0
-        ? conv.messages[conv.messages.length - 1].content.toLowerCase().includes(query)
-        : false
-      return titleMatch || messageMatch
+      const previewMatch = (conv.last_message_preview || '').toLowerCase().includes(query)
+      return titleMatch || previewMatch
     })
   }, [conversations, searchQuery, t])
+
+  // 全选/取消全选（移到 filteredConversations 之后）
+  const toggleSelectAll = useCallback(() => {
+    if (selectedIds.size === filteredConversations.length && filteredConversations.length > 0) {
+      // 已全选，取消全选
+      setSelectedIds(new Set())
+    } else {
+      // 全选
+      setSelectedIds(new Set(filteredConversations.map(c => c.id)))
+    }
+  }, [selectedIds.size, filteredConversations])
 
 
 
@@ -166,6 +265,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
 
       {/* 可滚动内容区 - Bauhaus风格 */}
       <div
+        ref={scrollContainerRef}
         className="h-full overflow-y-auto bauhaus-scrollbar overflow-x-hidden pt-[60px]"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -185,65 +285,195 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
           </div>
         </div>
 
-        {/* 数据统计信息 - Bauhaus风格 */}
+        {/* 数据统计信息 / 批量操作栏 - Bauhaus风格 */}
         {!loading && filteredConversations.length > 0 && (
           <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4">
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-content-secondary">
-              <div className="w-1.5 h-1.5 bg-accent-hover"></div>
-              <span>
-                {searchQuery
-                  ? `${filteredConversations.length} ${t('matchingHistory') || 'matching'}`
-                  : `${conversations.length} ${t('totalHistory') || 'total items'}`
-                }
-              </span>
-            </div>
+            {!isBatchMode ? (
+              /* 普通模式：显示统计 + Select 按钮 */
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-content-secondary">
+                  <div className="w-1.5 h-1.5 bg-accent-hover"></div>
+                  <span>
+                    {searchQuery
+                      ? `${filteredConversations.length} ${t('matchingHistory') || 'matching'}`
+                      : `${conversations.length} / ${data?.pages[0]?.total || 0} ${t('totalHistory') || 'loaded'}`
+                    }
+                  </span>
+                  {hasNextPage && !searchQuery && (
+                    <span className="text-accent-hover">({t('moreAvailable') || 'more'})</span>
+                  )}
+                </div>
+                
+                {/* 进入批量模式按钮 */}
+                <button
+                  onClick={toggleBatchMode}
+                  className="px-3 py-1.5 font-mono text-xs uppercase tracking-wider border-2 border-border-default text-content-secondary hover:border-accent-hover hover:text-accent-hover transition-colors"
+                >
+                  {t('select')}
+                </button>
+              </div>
+            ) : (
+              /* 批量模式：显示操作栏 */
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {/* 全选/取消全选 */}
+                  <button
+                    onClick={toggleSelectAll}
+                    className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-content-secondary hover:text-accent-hover transition-colors"
+                  >
+                    {selectedIds.size === filteredConversations.length && filteredConversations.length > 0 ? (
+                      <CheckSquare className="w-4 h-4" />
+                    ) : (
+                      <Square className="w-4 h-4" />
+                    )}
+                    <span>
+                      {selectedIds.size === filteredConversations.length && filteredConversations.length > 0
+                        ? t('deselectAll')
+                        : t('selectAll')
+                      }
+                    </span>
+                  </button>
+                  
+                  {/* 选中计数 */}
+                  {selectedIds.size > 0 && (
+                    <span className="font-mono text-xs text-accent-hover">
+                      ({t('selectedCount', { count: selectedIds.size }) || `${selectedIds.size} selected`})
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* 取消批量模式按钮 */}
+                  <button
+                    onClick={exitBatchMode}
+                    className="px-3 py-1.5 font-mono text-xs uppercase tracking-wider border-2 border-border-default text-content-secondary hover:border-accent-hover hover:text-accent-hover transition-colors"
+                  >
+                    {t('cancel')}
+                  </button>
+
+                  {/* 批量删除按钮 */}
+                  <button
+                    onClick={handleBatchDelete}
+                    disabled={selectedIds.size === 0 || batchDeleteMutation.isPending}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider border-2 transition-colors",
+                      selectedIds.size > 0
+                        ? "border-accent-destructive text-accent-destructive hover:bg-accent-destructive hover:text-white"
+                        : "border-border-default text-content-secondary cursor-not-allowed"
+                    )}
+                  >
+                    {batchDeleteMutation.isPending ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3 h-3" />
+                    )}
+                    <span>{t('delete')} ({selectedIds.size})</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20">
           {loading ? (
-             <div className="text-center py-20 font-mono text-sm text-content-secondary uppercase">Loading...</div>
+             <div className="text-center py-20 font-mono text-sm text-content-secondary uppercase">{t('loading')}</div>
           ) : filteredConversations.length > 0 ? (
             <div className="space-y-2">
-              {filteredConversations.map((conversation) => (
-                <div
-                  key={conversation.id}
-                  onClick={() => onSelectConversation(conversation)}
-                  className="group relative bg-surface-card border-2 border-border-default p-3 cursor-pointer shadow-hard-3 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-5 transition-all"
-                >
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-mono text-sm font-bold text-content-primary truncate">
-                        {conversation.title || t('newChat')}
-                      </h3>
-                      <p className="font-mono text-xs text-content-secondary line-clamp-2 mt-1 mb-2">
-                        {getLastMessagePreview(conversation)}
-                      </p>
+              {filteredConversations.map((conversation) => {
+                const isSelected = selectedIds.has(conversation.id)
+                return (
+                  <div
+                    key={conversation.id}
+                    onClick={() => {
+                      if (isBatchMode) {
+                        toggleSelection(conversation.id)
+                      } else {
+                        onSelectConversation(conversation)
+                      }
+                    }}
+                    className={cn(
+                      "group relative bg-surface-card border-2 p-3 transition-all",
+                      isSelected
+                        ? "border-accent-hover shadow-hard-3"
+                        : "border-border-default shadow-hard-3 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-5 cursor-pointer"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* 批量模式：显示 Checkbox */}
+                      {isBatchMode && (
+                        <div 
+                          className="flex-shrink-0 pt-0.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={() => toggleSelection(conversation.id)}
+                            className={cn(
+                              "w-5 h-5 flex items-center justify-center border-2 transition-colors",
+                              isSelected
+                                ? "border-accent-hover bg-accent-hover text-white"
+                                : "border-border-default hover:border-accent-hover"
+                            )}
+                          >
+                            {isSelected && <CheckSquare className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      )}
 
-                      <div className="flex items-center gap-4 font-mono text-[10px] text-content-secondary uppercase">
-                        <span className="flex items-center gap-1" title={conversation.updated_at || '-'}>
-                          <Clock className="w-3 h-3" />
-                          {formatRelativeTime(conversation.updated_at)}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <MessageSquare className="w-3 h-3" />
-                          {getMessageCount(conversation)} msgs
-                        </span>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-mono text-sm font-bold text-content-primary truncate">
+                          {conversation.title || t('newChat')}
+                        </h3>
+                        <p className="font-mono text-xs text-content-secondary line-clamp-2 mt-1 mb-2">
+                          {getLastMessagePreview(conversation)}
+                        </p>
+
+                        <div className="flex items-center gap-4 font-mono text-[10px] text-content-secondary uppercase">
+                          <span className="flex items-center gap-1" title={conversation.updated_at || '-'}>
+                            <Clock className="w-3 h-3" />
+                            {formatRelativeTime(conversation.updated_at)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3" />
+                            {getMessageCount(conversation)} msgs
+                          </span>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex flex-col items-end gap-2">
-                      <button
-                        onClick={(e) => handleDelete(e, conversation.id, conversation.title || '')}
-                        className="w-8 h-8 flex items-center justify-center border border-border-default text-content-secondary hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                        title="Delete conversation"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {/* 普通模式：显示删除按钮 */}
+                      {!isBatchMode && (
+                        <div className="flex flex-col items-end gap-2">
+                          <button
+                            onClick={(e) => handleDelete(e, conversation.id, conversation.title || '')}
+                            className="w-8 h-8 flex items-center justify-center border border-border-default text-content-secondary hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Delete conversation"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
+              
+              {/* 加载更多指示器 */}
+              <div id="history-load-more-sentinel" className="py-4 flex justify-center">
+                {isFetchingNextPage ? (
+                  <div className="flex items-center gap-2 font-mono text-xs text-content-secondary">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{t('loading')}</span>
+                  </div>
+                ) : hasNextPage ? (
+                  <div className="font-mono text-xs text-content-secondary">
+                    {t('loadMore')}
+                  </div>
+                ) : conversations.length > 0 ? (
+                  <div className="font-mono text-xs text-content-secondary">
+                    {t('noMoreRecords')}
+                  </div>
+                ) : null}
+              </div>
             </div>
           ) : (
             <div className="text-center py-20">
@@ -267,7 +497,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
         </div>
       </div>
 
-      {/* 删除确认对话框 */}
+      {/* 单个删除确认对话框 */}
       <DeleteConfirmDialog
         isOpen={deleteDialogOpen}
         onClose={() => {
@@ -279,6 +509,16 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
         title={t('confirmDeleteTitle')}
         description={t('confirmDeleteDescription')}
         itemName={deletingConversationTitle}
+      />
+
+      {/* 批量删除确认对话框 */}
+      <DeleteConfirmDialog
+        isOpen={batchDeleteDialogOpen}
+        onClose={() => setBatchDeleteDialogOpen(false)}
+        onConfirm={handleConfirmBatchDelete}
+        title={t('batchDelete')}
+        description={t('batchDeleteConfirm', { count: selectedIds.size })}
+        itemName={t('selectedCount', { count: selectedIds.size })}
       />
     </div>
   )
