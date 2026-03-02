@@ -58,6 +58,7 @@ import asyncio
 import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from cachetools import TTLCache
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field, field_validator, ValidationError
@@ -68,6 +69,12 @@ from utils.json_parser import parse_llm_json
 from utils.llm_factory import get_llm_instance
 from constants import COMMANDER_SYSTEM_PROMPT
 from database import engine
+
+# P0 优化: 本地内存缓存高频查询 (5分钟TTL)
+# commander 配置缓存（单例，很少变化）
+_commander_config_cache: TTLCache = TTLCache(maxsize=10, ttl=300)
+# 专家列表缓存（相对稳定）
+_all_experts_cache: TTLCache = TTLCache(maxsize=5, ttl=60)  # 1分钟TTL，更频繁更新
 
 
 # ============================================================================
@@ -198,18 +205,29 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
     thread_id = state.get("thread_id")
     
     # 🔥 使用独立的数据库会话（避免 MemorySaver 序列化问题）
-    # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
+    # P0 修复 + 优化: 优先使用本地内存缓存，缓存未命中才走线程池
     try:
-        # 加载配置 (数据库或回退)
-        def _load_commander_config():
-            with Session(engine) as db_session:
-                return get_expert_config("commander", db_session)
-        
-        commander_config = await asyncio.to_thread(_load_commander_config)
-        
-        # 如果数据库读取失败，回退到缓存
-        if not commander_config:
+        # 1️⃣ 优先从本地内存缓存读取 commander 配置（零阻塞）
+        commander_config = _commander_config_cache.get("commander")
+        if commander_config:
+            logger.info("[COMMANDER] 本地缓存命中: commander 配置")
+        else:
+            # 2️⃣ 检查全局缓存
             commander_config = get_expert_config_cached("commander")
+            if commander_config:
+                logger.info("[COMMANDER] 全局缓存命中: commander 配置")
+                _commander_config_cache["commander"] = commander_config
+            else:
+                # 3️⃣ 缓存未命中，使用线程池查数据库
+                logger.info("[COMMANDER] 缓存未命中，查询数据库: commander 配置")
+                def _load_commander_config():
+                    with Session(engine) as db_session:
+                        return get_expert_config("commander", db_session)
+                
+                commander_config = await asyncio.to_thread(_load_commander_config)
+                # 4️⃣ 写入本地缓存
+                if commander_config:
+                    _commander_config_cache["commander"] = commander_config
         
         if not commander_config:
             # 回退：使用常量中的 Prompt 和硬编码的模型
@@ -228,12 +246,22 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
             # 填充 {user_query} 和 {dynamic_expert_list}
             try:
                 # 获取所有可用专家（包括动态创建的专家）
-                # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
-                def _load_all_experts():
-                    with Session(engine) as db_session:
-                        return get_all_expert_list(db_session)
+                # P0 修复 + 优化: 优先使用本地内存缓存
+                all_experts = _all_experts_cache.get("all_experts")
+                if all_experts:
+                    logger.info("[COMMANDER] 本地缓存命中: 专家列表")
+                else:
+                    logger.info("[COMMANDER] 缓存未命中，查询数据库: 专家列表")
+                    # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
+                    def _load_all_experts():
+                        with Session(engine) as db_session:
+                            return get_all_expert_list(db_session)
+                    
+                    all_experts = await asyncio.to_thread(_load_all_experts)
+                    # 写入本地缓存
+                    if all_experts:
+                        _all_experts_cache["all_experts"] = all_experts
                 
-                all_experts = await asyncio.to_thread(_load_all_experts)
                 expert_list_str = format_expert_list_for_prompt(all_experts)
                 
                 # 构建占位符映射

@@ -4,9 +4,12 @@ Aggregator 节点 - 结果聚合器
 整合多个专家的输出结果，生成自然语言的最终回复
 v3.2 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
 v3.5 更新：实现三层兜底提示词体系 (DB -> Cache -> Constants)
+v3.6 优化: P0 修复 + TTLCache 本地内存缓存高频查询
 """
 from typing import Dict, Any, List
 import uuid
+import asyncio
+from cachetools import TTLCache
 from langchain_core.messages import SystemMessage, HumanMessage
 from sqlmodel import Session
 
@@ -22,6 +25,9 @@ from agents.services.expert_manager import get_expert_config_cached
 from database import engine
 from constants import AGGREGATOR_SYSTEM_PROMPT
 from utils.logger import logger
+
+# P0 优化: 本地内存缓存 aggregator 配置 (5分钟TTL)
+_aggregator_config_cache: TTLCache = TTLCache(maxsize=10, ttl=300)
 
 
 async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> Dict[str, Any]:
@@ -145,9 +151,11 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
 def _load_aggregator_system_prompt(input_data: str) -> str:
     """
     v3.5: 三层兜底加载 Aggregator System Prompt
+    v3.6: 添加本地内存缓存层 (L0)
     
+    L0: 本地内存缓存 (最快)
     L1: SystemExpert 数据库表
-    L2: 内存缓存
+    L2: 全局内存缓存
     L3: constants.AGGREGATOR_SYSTEM_PROMPT (静态兜底)
     
     Args:
@@ -158,14 +166,22 @@ def _load_aggregator_system_prompt(input_data: str) -> str:
     """
     system_prompt = None
     
-    # L1/L2: 尝试从数据库/缓存加载
-    try:
-        config = get_expert_config_cached("aggregator")
-        if config and config.get("system_prompt"):
-            system_prompt = config["system_prompt"]
-            logger.info("[AGG] 从数据库/缓存加载 System Prompt")
-    except Exception as e:
-        logger.warning(f"[AGG] 从数据库加载失败: {e}")
+    # L0: 优先从本地内存缓存读取
+    cached_config = _aggregator_config_cache.get("aggregator")
+    if cached_config and cached_config.get("system_prompt"):
+        system_prompt = cached_config["system_prompt"]
+        logger.info("[AGG] 本地缓存命中: System Prompt")
+    else:
+        # L1/L2: 尝试从数据库/全局缓存加载
+        try:
+            config = get_expert_config_cached("aggregator")
+            if config and config.get("system_prompt"):
+                system_prompt = config["system_prompt"]
+                # 同步到本地缓存
+                _aggregator_config_cache["aggregator"] = config
+                logger.info("[AGG] 全局缓存命中: System Prompt")
+        except Exception as e:
+            logger.warning(f"[AGG] 从数据库加载失败: {e}")
     
     # L3: 兜底到静态常量
     if not system_prompt:

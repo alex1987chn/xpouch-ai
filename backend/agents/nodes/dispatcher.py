@@ -6,15 +6,21 @@ Expert Dispatcher 节点 - 专家分发器
 v3.2 重构：移除对 dynamic_experts.py 的依赖
 仅负责检查专家存在，流转逻辑由 graph.py 决定
 v3.3 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
+v3.4 优化：P0 修复 + TTLCache 缓存高频查询
 """
+import asyncio
 from typing import Dict, Any
+from cachetools import TTLCache
 from utils.logger import logger
 from langchain_core.runnables import RunnableConfig
 from agents.state import AgentState
-from agents.services.expert_manager import get_expert_config, get_expert_config_cached
+from agents.services.expert_manager import get_expert_config
 from utils.exceptions import AppError
 from database import engine
 from sqlmodel import Session
+
+# P0 优化: 本地内存缓存高频专家配置查询 (5分钟TTL)
+_dispatcher_expert_cache: TTLCache = TTLCache(maxsize=200, ttl=300)
 
 
 
@@ -50,20 +56,28 @@ async def expert_dispatcher_node(state: AgentState, config: RunnableConfig = Non
     logger.info(f"[DISPATCHER_NODE] 当前任务: {expert_type}, status={current_task.get('status')}")
     
     # 🔥 使用独立的数据库会话（避免 MemorySaver 序列化问题）
-    # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
+    # P0 修复 + 优化: 优先使用 TTLCache，缓存未命中才走线程池查数据库
     try:
         logger.info(f"[DISPATCHER_NODE] 开始加载专家配置...")
         
-        def _load_expert_config():
-            with Session(engine) as db_session:
-                return get_expert_config(expert_type, db_session)
-        
-        expert_config = await asyncio.to_thread(_load_expert_config)
-        
-        if not expert_config:
-            # 缓存回退
-            logger.info(f"[DISPATCHER_NODE] 数据库未找到，尝试缓存...")
-            expert_config = get_expert_config_cached(expert_type)
+        # 1️⃣ 优先从本地内存缓存读取（不走线程池，零阻塞）
+        expert_config = _dispatcher_expert_cache.get(expert_type)
+        if expert_config:
+            logger.info(f"[DISPATCHER_NODE] 缓存命中: {expert_type}")
+        else:
+            logger.info(f"[DISPATCHER_NODE] 缓存未命中，查询数据库: {expert_type}")
+            
+            # 2️⃣ 缓存未命中，使用线程池查数据库（避免阻塞事件循环）
+            def _load_expert_config():
+                with Session(engine) as db_session:
+                    return get_expert_config(expert_type, db_session)
+            
+            expert_config = await asyncio.to_thread(_load_expert_config)
+            
+            # 3️⃣ 写入本地缓存
+            if expert_config:
+                _dispatcher_expert_cache[expert_type] = expert_config
+                logger.info(f"[DISPATCHER_NODE] 已缓存专家配置: {expert_type}")
         
         if not expert_config:
             logger.warning(f"[DISPATCHER_NODE] 专家 '{expert_type}' 不存在")
