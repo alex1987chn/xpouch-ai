@@ -19,7 +19,8 @@ COPY frontend/tsconfig.node.json ./frontend/
 COPY frontend/tailwind.config.ts ./frontend/
 COPY frontend/postcss.config.js ./frontend/
 COPY frontend/index.html ./frontend/
-COPY frontend/.env ./frontend/
+# P0 修复: 不复制 .env 文件，避免敏感信息泄露到镜像中
+# 环境变量通过构建参数或运行时注入
 COPY frontend/src ./frontend/src/
 COPY frontend/public ./frontend/public/
 
