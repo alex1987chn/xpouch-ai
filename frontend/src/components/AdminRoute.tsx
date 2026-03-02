@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useUserStore } from '@/store/userStore'
 import { useToast } from '@/components/ui/use-toast'
 import { useTranslation } from '@/i18n'
+import { LoadingFallback } from '@/router/components/LoadingFallback'
 
 interface AdminRouteProps {
   children: React.ReactNode
@@ -9,10 +10,15 @@ interface AdminRouteProps {
 }
 
 export default function AdminRoute({ children, requiredRole = 'admin' }: AdminRouteProps) {
-  const { user, isAuthenticated } = useUserStore()
+  const { user, isAuthenticated, isAuthChecked } = useUserStore()
   const location = useLocation()
   const { toast } = useToast()
   const { t } = useTranslation()
+
+  // P0-6 修复: 等待认证检查完成
+  if (!isAuthChecked) {
+    return <LoadingFallback />
+  }
 
   // 检查是否已登录
   if (!isAuthenticated || !user) {

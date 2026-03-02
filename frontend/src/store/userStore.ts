@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 // P0 修复: 移除 persist，Token 改为 HttpOnly Cookie
 import { getUserProfile, updateUserProfile, type UserProfile } from '@/services/user'
-import { sendVerificationCode, verifyCodeAndLogin, logoutApi, type LoginResponse } from '@/services/auth'
+import { sendVerificationCode, verifyCodeAndLogin, logoutApi } from '@/services/auth'
 import { logger, errorHandler } from '@/utils/logger'
 
 interface UserState {
@@ -9,10 +9,11 @@ interface UserState {
   isLoading: boolean
   error: string | null
   isAuthenticated: boolean
+  isAuthChecked: boolean  // P0-6 新增：认证检查是否完成
 
   // Auth methods
   loginWithPhone: (phoneNumber: string, code: string) => Promise<void>
-  sendVerificationCode: (phoneNumber: string) => Promise<void>
+  sendVerificationCode: (phoneNumber: string) => Promise<unknown>
   logout: () => Promise<void>
   checkAuth: () => Promise<boolean>
 
@@ -28,6 +29,7 @@ export const useUserStore = create<UserState>()(
     isLoading: false,
     error: null,
     isAuthenticated: false,
+    isAuthChecked: false,  // P0-6 新增：初始状态为未检查
 
     // Auth: Send verification code
     sendVerificationCode: async (phoneNumber: string) => {
@@ -48,7 +50,7 @@ export const useUserStore = create<UserState>()(
       set({ isLoading: true, error: null })
       try {
         // P0 修复: 登录接口现在只返回用户信息，Token 在 Cookie 中
-        const data: LoginResponse = await verifyCodeAndLogin(phoneNumber, code)
+        await verifyCodeAndLogin(phoneNumber, code)
 
         // 获取用户信息
         try {
@@ -56,6 +58,7 @@ export const useUserStore = create<UserState>()(
           set({
             user,
             isAuthenticated: true,
+            isAuthChecked: true,
             isLoading: false
           })
         } catch (profileError) {
@@ -64,20 +67,20 @@ export const useUserStore = create<UserState>()(
         }
       } catch (error) {
         errorHandler.handleSync(error, 'loginWithPhone')
-        set({ error: errorHandler.getUserMessage(error), isLoading: false, isAuthenticated: false })
+        set({ error: errorHandler.getUserMessage(error), isLoading: false, isAuthenticated: false, isAuthChecked: true })
         throw error
       }
     },
 
-    // P0 修复: 检查认证状态（通过调用 /api/auth/me）
+    // P0-6 修复: 检查认证状态（通过调用 /api/auth/me）
     checkAuth: async () => {
       try {
         const user = await getUserProfile()
-        set({ user, isAuthenticated: true })
+        set({ user, isAuthenticated: true, isAuthChecked: true })
         return true
       } catch (error) {
         // 401 或其他错误表示未认证
-        set({ user: null, isAuthenticated: false })
+        set({ user: null, isAuthenticated: false, isAuthChecked: true })
         return false
       }
     },
@@ -95,6 +98,7 @@ export const useUserStore = create<UserState>()(
       set({
         user: null,
         isAuthenticated: false,
+        isAuthChecked: true,  // 登出后也算检查完成
         error: null
       })
     },

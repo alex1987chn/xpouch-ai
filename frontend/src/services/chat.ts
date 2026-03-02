@@ -64,13 +64,27 @@ const SSE_RETRY_BASE_DELAY = 1000
 // ============================================================================
 
 /**
- * 获取会话列表
+ * 分页会话列表响应
  */
-export async function getConversations(): Promise<Conversation[]> {
-  const response = await authenticatedFetch(buildUrl('/threads'), {
-    headers: getHeaders()
-  })
-  return handleResponse<Conversation[]>(response, '获取会话列表失败')
+export interface PaginatedConversations {
+  items: Conversation[]
+  total: number
+  page: number
+  limit: number
+  pages: number
+}
+
+/**
+ * 获取会话列表（支持分页）
+ * @param page 页码（从1开始）
+ * @param limit 每页条数（默认20）
+ */
+export async function getConversations(page: number = 1, limit: number = 20): Promise<PaginatedConversations> {
+  const response = await authenticatedFetch(
+    buildUrl(`/threads?page=${page}&limit=${limit}`), 
+    { headers: getHeaders() }
+  )
+  return handleResponse<PaginatedConversations>(response, '获取会话列表失败')
 }
 
 /**
@@ -94,7 +108,7 @@ export async function getThreadMessages(threadId: string): Promise<ApiMessage[]>
 }
 
 /**
- * 删除会话
+ * 删除单个会话
  */
 export async function deleteConversation(id: string): Promise<void> {
   const response = await authenticatedFetch(buildUrl(`/threads/${id}`), {
@@ -102,6 +116,24 @@ export async function deleteConversation(id: string): Promise<void> {
     headers: getHeaders()
   })
   return handleResponse<void>(response, '删除会话失败')
+}
+
+/**
+ * 批量删除会话
+ */
+export interface BatchDeleteResult {
+  success: boolean
+  deleted_count: number
+  failed_ids: string[]
+}
+
+export async function deleteConversationsBatch(ids: string[]): Promise<BatchDeleteResult> {
+  const response = await authenticatedFetch(buildUrl('/threads/batch-delete'), {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ thread_ids: ids })
+  })
+  return handleResponse<BatchDeleteResult>(response, '批量删除会话失败')
 }
 
 /**

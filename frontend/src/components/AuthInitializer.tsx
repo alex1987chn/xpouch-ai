@@ -18,7 +18,6 @@ interface AuthInitializerProps {
 export function AuthInitializer({ children }: AuthInitializerProps) {
   const [isChecking, setIsChecking] = useState(true)
   const checkAuth = useUserStore(state => state.checkAuth)
-  const isAuthenticated = useUserStore(state => state.isAuthenticated)
 
   useEffect(() => {
     // 应用启动时检查认证状态

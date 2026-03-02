@@ -3,7 +3,7 @@
  * Chat History Query Hook
  * =============================
  *
- * 使用 React Query 管理聊天历史记录数据获取
+ * 使用 React Query 管理聊天历史记录数据获取（支持分页）
  * 替代传统的 useEffect + useState 模式
  *
  * [优势]
@@ -11,14 +11,16 @@
  * 2. 后台刷新：staleTime 过期后自动重新获取
  * 3. 错误重试：内置指数退避重试机制
  * 4. 乐观更新：支持乐观更新 UI
+ * 5. 分页加载：支持无限滚动加载更多
  *
  * [配置]
  * - staleTime: 5分钟，避免频繁请求
  * - gcTime: 10分钟，缓存数据保留时间
+ * - limit: 每页20条，减少首屏加载时间
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getConversations, getConversation, getThreadMessages, deleteConversation, type Conversation } from '@/services/chat'
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
+import { getConversations, getConversation, getThreadMessages, deleteConversation, deleteConversationsBatch, type Conversation } from '@/services/chat'
 import { logger } from '@/utils/logger'
 import { CACHE_TIMES } from '@/config/query'
 
@@ -32,22 +34,37 @@ export const chatHistoryKeys = {
   detail: (id: string) => [...chatHistoryKeys.details(), id] as const,
 }
 
-// 获取历史记录列表的 Query Hook
+/**
+ * 获取历史记录列表的 Infinite Query Hook（分页/无限滚动）
+ * 
+ * 使用 useInfiniteQuery 实现滚动加载更多功能
+ * - 首屏只加载20条，大幅提升加载速度
+ * - 滚动到底部自动加载下一页
+ * - 缓存每一页数据，避免重复请求
+ */
 export function useChatHistoryQuery(options: { limit?: number; enabled?: boolean } = {}) {
-  const { limit, enabled = true } = options
+  const { limit = 20, enabled = true } = options
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: chatHistoryKeys.list({ limit }),
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 1 }) => {
       try {
-        const conversations = await getConversations()
-        logger.debug('[useChatHistoryQuery] Fetched conversations:', conversations.length)
-        return conversations
+        const result = await getConversations(pageParam, limit)
+        logger.debug('[useChatHistoryQuery] Fetched page:', pageParam, 'count:', result.items.length, 'total:', result.total)
+        return result
       } catch (error) {
         logger.error('[useChatHistoryQuery] Failed to fetch conversations:', error)
         throw error
       }
     },
+    getNextPageParam: (lastPage) => {
+      // 如果还有下一页，返回下一页页码
+      if (lastPage.page < lastPage.pages) {
+        return lastPage.page + 1
+      }
+      return undefined
+    },
+    initialPageParam: 1,
     // 聊天历史使用统一缓存配置
     staleTime: CACHE_TIMES.CHAT_HISTORY.staleTime,
     gcTime: CACHE_TIMES.CHAT_HISTORY.gcTime,
@@ -122,23 +139,49 @@ export function useDeleteConversationMutation() {
   })
 }
 
+// 批量删除会话的 Mutation Hook
+export function useBatchDeleteConversationsMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (conversationIds: string[]) => {
+      const result = await deleteConversationsBatch(conversationIds)
+      return result
+    },
+    onSuccess: (result) => {
+      // 成功删除后，重新获取列表
+      queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
+      // 同时移除单个会话的缓存
+      result.failed_ids.forEach((id) => {
+        queryClient.removeQueries({ queryKey: chatHistoryKeys.detail(id) })
+      })
+      logger.debug('[useBatchDeleteConversationsMutation] Batch deleted:', result.deleted_count, 'failed:', result.failed_ids.length)
+    },
+    onError: (error) => {
+      logger.error('[useBatchDeleteConversationsMutation] Failed to batch delete conversations:', error)
+    },
+  })
+}
+
 // 获取最近会话的 Hook（用于侧边栏）
+// 使用 useQuery 直接获取第一页数据（简化版，不需要无限滚动）
 export function useRecentConversationsQuery(limit: number = 20, options: { enabled?: boolean } = {}) {
   const { enabled = true } = options
-  const { data, isLoading, error } = useChatHistoryQuery({ limit, enabled })
-
-  // 在客户端对数据进行排序和切片
-  const recentConversations = data
-    ? [...data]
-        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-        .slice(0, limit)
-    : []
+  
+  const { data, isLoading, error } = useQuery({
+    queryKey: [...chatHistoryKeys.list({ limit }), 'recent'],
+    queryFn: async () => {
+      const result = await getConversations(1, limit)
+      return result.items
+    },
+    staleTime: CACHE_TIMES.CHAT_HISTORY.staleTime,
+    gcTime: CACHE_TIMES.CHAT_HISTORY.gcTime,
+    enabled,
+  })
 
   return {
-    data: recentConversations,
+    data: data || [],
     isLoading,
     error,
-    // 原始数据也暴露出来，以备需要
-    allConversations: data,
   }
 }

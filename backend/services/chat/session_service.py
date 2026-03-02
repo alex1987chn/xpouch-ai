@@ -32,22 +32,34 @@ class ChatSessionService:
     # 线程管理
     # ============================================================================
     
-    async def list_threads(self, user_id: str) -> List[dict]:
+    async def list_threads(self, user_id: str, page: int = 1, limit: int = 20) -> dict:
         """
-        获取用户的所有线程列表（轻量级，不包含消息内容）
+        获取用户的线程列表（轻量级，不包含消息内容，支持分页）
         
         Args:
             user_id: 用户ID
+            page: 页码（从1开始）
+            limit: 每页条数（默认20，最大100）
             
         Returns:
-            线程列表，只包含元数据，不包含消息内容
+            分页结果，包含线程列表和分页信息
             需要消息内容请调用 get_thread_messages(thread_id)
         """
-        # 1. 查询所有线程（不预加载消息）
+        # 限制每页最大条数
+        limit = min(limit, 100)
+        offset = (page - 1) * limit
+        
+        # 1. 查询总记录数
+        count_statement = select(Thread).where(Thread.user_id == user_id)
+        total = len(self.db.exec(count_statement).all())
+        
+        # 2. 查询当前页线程（不预加载消息）
         statement = (
             select(Thread)
             .where(Thread.user_id == user_id)
             .order_by(Thread.updated_at.desc())
+            .offset(offset)
+            .limit(limit)
         )
         threads = self.db.exec(statement).all()
         
@@ -91,10 +103,10 @@ class ChatSessionService:
         }
         
         # 4. 组装返回结果（轻量级）
-        result = []
+        items = []
         for thread in threads:
             stats = stats_by_thread.get(thread.id, {"message_count": 0, "last_preview": None})
-            result.append({
+            items.append({
                 "id": thread.id,
                 "title": thread.title,
                 "agent_id": thread.agent_id,
@@ -107,7 +119,16 @@ class ChatSessionService:
                 "message_count": stats["message_count"],
                 "last_message_preview": stats["last_preview"]
             })
-        return result
+        
+        # 5. 返回分页结果
+        pages = (total + limit - 1) // limit if total > 0 else 1
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "pages": pages
+        }
     
     async def get_thread_messages(self, thread_id: str, user_id: str) -> List[dict]:
         """

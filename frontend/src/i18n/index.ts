@@ -109,12 +109,15 @@ export type TranslationKey =
   | 'expandSidebar' | 'collapseSidebar'
   // Default Agent & Messages
   | 'defaultAgentDescription' | 'sendingPendingMessage'
+  // Batch Delete
+  | 'select' | 'selectAll' | 'deselectAll' | 'selectedCount' | 'batchDelete' | 'batchDeleteConfirm'
+  | 'moreAvailable' | 'loadMore' | 'noMoreRecords'
 
 
 interface I18nContextType {
   language: Language
   setLanguage: (lang: Language) => void
-  t: (key: TranslationKey) => string
+  t: (key: TranslationKey, params?: Record<string, number | string>) => string
 }
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined)
@@ -144,9 +147,18 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = language
   }, [language])
 
-  const t = (key: TranslationKey) => {
+  const t = (key: TranslationKey, params?: Record<string, number | string>) => {
     const translations = language === 'zh' ? zh : language === 'ja' ? ja : en
-    return translations[key] || key
+    let text = translations[key] || key
+    
+    // 支持参数插值，如 {count}
+    if (params) {
+      Object.entries(params).forEach(([paramKey, value]) => {
+        text = text.replace(new RegExp(`{${paramKey}}`, 'g'), String(value))
+      })
+    }
+    
+    return text
   }
 
   return React.createElement(
