@@ -5,15 +5,8 @@
 
 import { logger } from '@/utils/logger'
 
-/**
- * SSE 心跳超时时间（毫秒）
- * 超过此时间无活动视为连接断开
- * 
- * 🔥 复杂模式优化：增加到 120 秒（原来 45 秒）
- * 原因：复杂模式下 LangGraph 专家执行可能超过 45 秒（如搜索、写作等）
- * 后端 STREAM_TIMEOUT = 120 秒，前端应匹配或更长
- */
-export const SSE_HEARTBEAT_TIMEOUT = 120000 // 120秒（2分钟）
+/** SSE 心跳超时时间（毫秒）- 120秒以支持复杂模式长时间执行 */
+export const SSE_HEARTBEAT_TIMEOUT = 120000
 
 /**
  * SSE 心跳检测间隔（毫秒）

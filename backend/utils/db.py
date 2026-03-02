@@ -15,57 +15,37 @@ if not DATABASE_URL:
 # 转换为 psycopg 格式（去掉 +asyncpg 等驱动后缀）
 PSYCOPG_DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg", "postgresql").replace("postgresql+psycopg", "postgresql")
 
-# 🔥 HITL 优化：添加 TCP keepalive 参数到连接 URL
-# 防止长时间等待（如 HITL 用户确认）时连接被网络设备/数据库关闭
-# keepalives_idle: 开始发送 keepalive 前的空闲时间（秒）
-# keepalives_interval: keepalive 包发送间隔（秒）  
-# keepalives_count: 关闭连接前的失败次数
+# 添加 TCP keepalive 参数，防止长时间等待时连接被关闭
 if "keepalives" not in PSYCOPG_DATABASE_URL:
     separator = "&" if "?" in PSYCOPG_DATABASE_URL else "?"
     PSYCOPG_DATABASE_URL += f"{separator}keepalives=1&keepalives_idle=60&keepalives_interval=30&keepalives_count=3"
 
 async def _configure_connection(conn):
-    """配置新连接 - 设置 TCP keepalive 防止长时间等待时断开
-    
-    注意：不能执行会产生事务状态的 SQL，否则连接会被丢弃
-    """
-    # TCP keepalive 已经在连接 URL 中配置
-    # 这里只设置连接级别的参数，不涉及事务
-    # 如果 future 需要执行 SQL，必须使用 AUTOCOMMIT 模式
+    """配置新连接（当前无额外配置，TCP keepalive 已在 URL 中设置）"""
     pass
 
 
 async def _check_connection(conn):
-    """连接健康检查 - 确保连接可用
-    
-    注意：使用 autocommit 执行，避免留下事务状态
-    """
+    """连接健康检查"""
     try:
-        # 保存原始 autocommit 状态
         orig_autocommit = conn.autocommit
-        # 临时启用 autocommit，这样 SELECT 不会开启事务
         conn.autocommit = True
         try:
             await conn.execute("SELECT 1")
             return True
         finally:
-            # 恢复原始状态
             conn.autocommit = orig_autocommit
     except Exception:
         return False
 
 
 async def _reset_connection(conn):
-    """连接重置 - 确保连接返回到池中是干净的
-    
-    在连接返回到连接池之前调用，清理任何残留的事务状态
-    """
+    """连接重置 - 清理残留事务状态"""
     try:
-        # 如果连接在事务中，回滚它
         if conn.info.transaction_status != 0:
             await conn.rollback()
     except Exception:
-        pass  # 如果回滚失败，连接会被丢弃
+        pass
 
 
 # 全局连接池（单例模式）
@@ -73,29 +53,21 @@ _pool = None
 
 
 def get_connection_pool() -> AsyncConnectionPool:
-    """获取或创建异步连接池
-    
-    配置优化以支持长时间运行的 HITL (Human-in-the-Loop) 任务：
-    - max_idle: 30分钟（支持长时间等待用户确认）
-    - max_lifetime: 2小时（支持复杂多步骤任务）
-    - configure: 配置 TCP keepalive
-    - check: 检查连接健康状态
-    """
+    """获取或创建异步连接池"""
     global _pool
     if _pool is None:
         _pool = AsyncConnectionPool(
             conninfo=PSYCOPG_DATABASE_URL,
-            open=False,  # 延迟打开
-            min_size=5,  # 增加最小连接数（原来2）
-            max_size=20,  # 增加最大连接数（原来10）
+            open=False,
+            min_size=5,
+            max_size=20,
             timeout=30,
-            # 🔥 HITL 优化：增加空闲时间和生命周期，支持长时间等待
-            max_idle=1800,  # 30分钟空闲（默认10分钟太短，HITL等待时连接被关闭）
-            max_lifetime=7200,  # 2小时生命周期（默认1小时）
-            configure=_configure_connection,  # 配置新连接
-            check=_check_connection,  # 连接健康检查
-            reset=_reset_connection,  # 连接返回到池前清理状态
-            reconnect_timeout=60,  # 重连超时
+            max_idle=1800,  # 30分钟，支持 HITL 长时间等待
+            max_lifetime=7200,  # 2小时
+            configure=_configure_connection,
+            check=_check_connection,
+            reset=_reset_connection,
+            reconnect_timeout=60,
         )
     return _pool
 
