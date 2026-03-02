@@ -17,7 +17,7 @@ from utils.logger import logger
 async def get_current_user(
     request: Request,
     session: Session = Depends(get_session),
-    require_auth: bool = False
+    require_auth: bool = True  # P0 修复: 安全机制默认拦截（Fail Closed）
 ) -> User:
     """
     P0 修复: 获取当前用户（优先 Cookie，兼容 Header）
