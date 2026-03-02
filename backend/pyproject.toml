@@ -27,8 +27,8 @@ dependencies = [
     "psycopg[binary]>=3.3.0,<4.0.0",
     "alembic>=1.13.0,<2.0.0",
     "pgvector>=0.3.0,<1.0.0",  # 🔥 新增：pgvector Python 客户端，支持向量操作
-    "mcp>=1.26.0",
+    "mcp>=1.26.0,<2.0.0",  # P0 修复: 添加版本上限，防止破坏性更新
     "langchain-mcp-adapters>=0.2.1",
-    "tenacity>=9.0.0",  # P1 新增: 重试机制
-    "cachetools>=5.3.0",  # P1 新增: TTL 缓存
+    "tenacity>=9.0.0,<10.0.0",  # P1 新增: 重试机制
+    "cachetools>=5.3.0,<6.0.0",  # P1 新增: TTL 缓存
 ]
