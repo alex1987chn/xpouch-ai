@@ -13,8 +13,10 @@
 
 Author: XPouch AI Team
 Created: 2026-02-05
+Updated: 2026-03-02 - P0 修复: 单例模式改用 lru_cache，避免 asyncio.Lock 事件循环问题
 """
 import asyncio
+import functools
 import traceback
 from typing import Callable, Any, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
@@ -26,21 +28,19 @@ class AsyncTaskQueue:
     异步任务队列
     
     使用后台线程池执行同步 I/O 操作，不阻塞主事件循环。
+    
+    P0 修复: 单例模式改用 functools.lru_cache，避免以下问题：
+    - asyncio.Lock() 在模块加载时创建，可能绑定到错误的事件循环
+    - __new__ 模式在 async 环境下可能出现 RuntimeError
     """
     
-    _instance = None
-    _lock = asyncio.Lock()
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
-    
     def __init__(self, max_workers: int = 4):
-        if self._initialized:
-            return
-            
+        """
+        初始化任务队列
+        
+        Args:
+            max_workers: 线程池最大工作线程数
+        """
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="async_io_")
         self._tasks: list = []
         self._stats = {
@@ -48,7 +48,19 @@ class AsyncTaskQueue:
             "completed": 0,
             "failed": 0
         }
-        self._initialized = True
+        # P0 修复: 延迟初始化 Lock，避免在模块加载时创建
+        self._lock: Optional[asyncio.Lock] = None
+    
+    async def _get_lock(self) -> asyncio.Lock:
+        """
+        P0 修复: 延迟获取 Lock，确保绑定到正确的事件循环
+        
+        Returns:
+            asyncio.Lock: 绑定到当前事件循环的锁
+        """
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
     
     async def submit(self, func: Callable, *args, **kwargs) -> asyncio.Future:
         """
@@ -61,10 +73,13 @@ class AsyncTaskQueue:
         Returns:
             Future 对象，可用于等待结果（但通常不需要）
         """
-        loop = asyncio.get_event_loop()
-        future = loop.run_in_executor(self._executor, self._wrap_task, func, *args, **kwargs)
-        self._stats["submitted"] += 1
-        return future
+        # P0 修复: 使用延迟初始化的锁
+        lock = await self._get_lock()
+        async with lock:
+            loop = asyncio.get_event_loop()
+            future = loop.run_in_executor(self._executor, self._wrap_task, func, *args, **kwargs)
+            self._stats["submitted"] += 1
+            return future
     
     def _wrap_task(self, func: Callable, *args, **kwargs) -> Any:
         """包装任务，添加错误处理和统计"""
@@ -85,8 +100,23 @@ class AsyncTaskQueue:
         self._executor.shutdown(wait=wait)
 
 
-# 全局单例
-task_queue = AsyncTaskQueue()
+# P0 修复: 使用 functools.lru_cache 实现真正的单例
+# 避免 __new__ 模式在 async 环境下的问题
+@functools.lru_cache(maxsize=1)
+def _get_task_queue() -> AsyncTaskQueue:
+    """
+    获取全局单例任务队列
+    
+    使用 lru_cache 确保只有一个实例，且延迟初始化。
+    
+    Returns:
+        AsyncTaskQueue: 全局任务队列实例
+    """
+    return AsyncTaskQueue(max_workers=4)
+
+
+# 全局单例（通过函数包装保持向后兼容）
+task_queue = _get_task_queue()
 
 
 def _sync_save_wrapper(
