@@ -36,12 +36,36 @@ async def _configure_connection(conn):
 
 
 async def _check_connection(conn):
-    """连接健康检查 - 确保连接可用"""
+    """连接健康检查 - 确保连接可用
+    
+    注意：使用 autocommit 执行，避免留下事务状态
+    """
     try:
-        await conn.execute("SELECT 1")
-        return True
+        # 保存原始 autocommit 状态
+        orig_autocommit = conn.autocommit
+        # 临时启用 autocommit，这样 SELECT 不会开启事务
+        conn.autocommit = True
+        try:
+            await conn.execute("SELECT 1")
+            return True
+        finally:
+            # 恢复原始状态
+            conn.autocommit = orig_autocommit
     except Exception:
         return False
+
+
+async def _reset_connection(conn):
+    """连接重置 - 确保连接返回到池中是干净的
+    
+    在连接返回到连接池之前调用，清理任何残留的事务状态
+    """
+    try:
+        # 如果连接在事务中，回滚它
+        if conn.info.transaction_status != 0:
+            await conn.rollback()
+    except Exception:
+        pass  # 如果回滚失败，连接会被丢弃
 
 
 # 全局连接池（单例模式）
@@ -70,6 +94,7 @@ def get_connection_pool() -> AsyncConnectionPool:
             max_lifetime=7200,  # 2小时生命周期（默认1小时）
             configure=_configure_connection,  # 配置新连接
             check=_check_connection,  # 连接健康检查
+            reset=_reset_connection,  # 连接返回到池前清理状态
             reconnect_timeout=60,  # 重连超时
         )
     return _pool
