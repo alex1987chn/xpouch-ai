@@ -62,8 +62,8 @@ def get_connection_pool() -> AsyncConnectionPool:
         _pool = AsyncConnectionPool(
             conninfo=PSYCOPG_DATABASE_URL,
             open=False,  # 延迟打开
-            min_size=2,
-            max_size=10,
+            min_size=5,  # 增加最小连接数（原来2）
+            max_size=20,  # 增加最大连接数（原来10）
             timeout=30,
             # 🔥 HITL 优化：增加空闲时间和生命周期，支持长时间等待
             max_idle=1800,  # 30分钟空闲（默认10分钟太短，HITL等待时连接被关闭）
