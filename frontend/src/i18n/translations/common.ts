@@ -121,7 +121,6 @@ export const zh: Record<string, string> = {
   batchDelete: '批量删除',
   batchDeleteConfirm: '确定要删除 {count} 条会话记录吗？此操作无法撤销。',
   moreAvailable: '更多',
-  loading: '加载中...',
   loadMore: '滚动加载更多',
   noMoreRecords: '没有更多记录了',
 }
@@ -245,7 +244,6 @@ export const en: Record<string, string> = {
   batchDelete: 'Batch Delete',
   batchDeleteConfirm: 'Are you sure you want to delete {count} conversations? This action cannot be undone.',
   moreAvailable: 'more',
-  loading: 'Loading...',
   loadMore: 'Scroll to load more',
   noMoreRecords: 'No more records',
 }
@@ -369,7 +367,6 @@ export const ja: Record<string, string> = {
   batchDelete: '一括削除',
   batchDeleteConfirm: '{count}件の会話を削除してもよろしいですか？この操作は取り消せません。',
   moreAvailable: 'その他',
-  loading: '読み込み中...',
   loadMore: 'スクロールしてさらに読み込む',
   noMoreRecords: 'これ以上記録はありません',
 }
