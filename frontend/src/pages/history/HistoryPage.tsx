@@ -111,21 +111,15 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
   }
 
   // 辅助函数：获取最后一条消息的内容摘要
+  // P0-5 优化：使用后端返回的 last_message_preview 字段
   const getLastMessagePreview = (conversation: Conversation) => {
-    // 这里的逻辑可能需要根据后端实际返回的数据结构调整
-    // 如果后端在列表接口里没有返回 messages 详情，可能需要后端调整 API 或这里只显示 title
-    // 目前后端 Conversation 模型有 messages 关系，但不确定默认是否加载
-    // 假设后端列表接口返回了 messages
-    if (conversation.messages && conversation.messages.length > 0) {
-        const lastMsg = conversation.messages[conversation.messages.length - 1]
-        return lastMsg.content
-    }
-    return ''
+    return conversation.last_message_preview || ''
   }
 
   // 辅助函数：计算消息数量
+  // P0-5 优化：使用后端返回的 message_count 字段
   const getMessageCount = (conversation: Conversation) => {
-      return conversation.messages?.length || 0
+    return conversation.message_count || 0
   }
 
   // 过滤搜索结果

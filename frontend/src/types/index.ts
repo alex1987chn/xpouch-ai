@@ -98,22 +98,32 @@ export interface DBMessage {
 export type ConversationAgentType = 'default' | 'custom' | 'ai'
 
 /**
- * 会话接口
+ * 会话列表项接口（轻量级，不包含消息内容）
  */
 export interface Conversation {
   id: string
   title: string
   agent_id: string
-  agent_type?: ConversationAgentType  // 会话类型：default（默认助手）、custom（自定义智能体）、ai（AI助手/复杂模式）
+  agent_type?: ConversationAgentType
   user_id: string
   created_at: string
   updated_at: string
-  status?: string  // 线程状态：idle（空闲）、running（运行中）、paused（暂停）
-  thread_mode?: 'simple' | 'complex'  // 线程模式：simple（普通对话）、complex（复杂协作）
+  status?: string
+  thread_mode?: 'simple' | 'complex'
+  task_session_id?: string
+  // P0-5 优化：列表接口不再返回完整消息，只返回数量和预览
+  message_count?: number
+  last_message_preview?: string
+  // messages 现在需要通过单独的 API 获取
   messages?: Message[]
-  messageCount?: number
-  task_session_id?: string  // 关联的任务会话ID（仅复杂模式）
-  task_session?: TaskSession  // 任务会话详情（仅复杂模式）
+  task_session?: TaskSession
+}
+
+/**
+ * 会话详情接口（包含完整消息）
+ */
+export interface ConversationDetail extends Conversation {
+  messages: Message[]
 }
 
 /**

@@ -74,13 +74,23 @@ export async function getConversations(): Promise<Conversation[]> {
 }
 
 /**
- * 获取单个会话详情
+ * 获取单个会话详情（包含完整消息）
  */
 export async function getConversation(id: string): Promise<Conversation> {
   const response = await authenticatedFetch(buildUrl(`/threads/${id}`), {
     headers: getHeaders()
   })
   return await handleResponse<Conversation>(response, '获取会话详情失败')
+}
+
+/**
+ * 获取会话消息列表（单独端点，P0-5 优化）
+ */
+export async function getThreadMessages(threadId: string): Promise<ApiMessage[]> {
+  const response = await authenticatedFetch(buildUrl(`/threads/${threadId}/messages`), {
+    headers: getHeaders()
+  })
+  return handleResponse<ApiMessage[]>(response, '获取消息列表失败')
 }
 
 /**
