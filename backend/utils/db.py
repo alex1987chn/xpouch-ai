@@ -25,17 +25,14 @@ if "keepalives" not in PSYCOPG_DATABASE_URL:
     PSYCOPG_DATABASE_URL += f"{separator}keepalives=1&keepalives_idle=60&keepalives_interval=30&keepalives_count=3"
 
 async def _configure_connection(conn):
-    """配置新连接 - 设置 TCP keepalive 防止长时间等待时断开"""
-    # 启用 TCP keepalive (Linux/macOS)
-    # keepalives_idle: 开始发送 keepalive 前的空闲时间
-    # keepalives_interval: keepalive 包发送间隔
-    # keepalives_count: 关闭连接前的失败次数
-    try:
-        await conn.execute("""
-            SET application_name = 'xpouch_ai_langgraph';
-        """)
-    except Exception:
-        pass  # 某些参数可能不受支持
+    """配置新连接 - 设置 TCP keepalive 防止长时间等待时断开
+    
+    注意：不能执行会产生事务状态的 SQL，否则连接会被丢弃
+    """
+    # TCP keepalive 已经在连接 URL 中配置
+    # 这里只设置连接级别的参数，不涉及事务
+    # 如果 future 需要执行 SQL，必须使用 AUTOCOMMIT 模式
+    pass
 
 
 async def _check_connection(conn):
