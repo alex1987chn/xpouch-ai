@@ -80,7 +80,7 @@ export default function HeavyInputConsole({
             {disabled && onStop ? (
               <button
                 onClick={onStop}
-                className="px-6 py-1.5 bg-surface-card text-content-primary font-bold text-[10px] uppercase border-2 border-border transition-all flex items-center gap-2 shadow-sm hover:bg-accent-destructive hover:text-content-inverted hover:border-accent-destructive active:translate-y-[1px]"
+                className="px-6 py-1.5 bg-accent-destructive text-content-inverted font-bold text-[10px] uppercase border-2 border-accent-destructive transition-all flex items-center gap-2 shadow-sm hover:bg-accent-destructive/90 active:translate-y-[1px]"
                 title={t('stop')}
               >
                 <Square className="w-3 h-3" />
