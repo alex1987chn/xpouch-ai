@@ -35,7 +35,7 @@ from sqlmodel import Session
 
 from database import get_session
 from dependencies import get_current_user, get_current_user_with_auth
-from models import User, Thread, Message
+from models import User, Thread, Message, ThreadListResponse, ThreadDetailResponse, MessageResponse
 from utils.exceptions import NotFoundError, AuthorizationError
 
 # 🔥 Service 层导入（backend 是 Python 路径根）
@@ -98,25 +98,49 @@ class ArtifactUpdateResponse(BaseModel):
 # 线程管理 API
 # ============================================================================
 
-@router.get("/threads")
+@router.get("/threads", response_model=List[ThreadListResponse])
 async def get_threads(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    """获取当前用户的所有线程列表"""
+    """
+    获取当前用户的所有线程列表（轻量级）
+    
+    只返回线程元数据，不包含消息内容。
+    需要获取消息请调用 GET /threads/{id}/messages
+    """
     service = ChatSessionService(session)
     return await service.list_threads(current_user.id)
 
 
-@router.get("/threads/{thread_id}")
+@router.get("/threads/{thread_id}", response_model=ThreadDetailResponse)
 async def get_thread(
     thread_id: str,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    """获取单个线程详情（包含 TaskSession/SubTasks/Artifacts）"""
+    """
+    获取单个线程详情（包含 TaskSession/SubTasks/Artifacts）
+    
+    包含完整的消息列表，适合进入聊天页后加载。
+    """
     service = ChatSessionService(session)
     return await service.get_thread_detail(thread_id, current_user.id)
+
+
+@router.get("/threads/{thread_id}/messages", response_model=List[MessageResponse])
+async def get_thread_messages(
+    thread_id: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    获取指定线程的消息列表（完整内容）
+    
+    单独的端点，避免列表接口加载大量消息内容。
+    """
+    service = ChatSessionService(session)
+    return await service.get_thread_messages(thread_id, current_user.id)
 
 
 @router.delete("/threads/{thread_id}")

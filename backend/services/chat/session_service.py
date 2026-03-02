@@ -34,13 +34,14 @@ class ChatSessionService:
     
     async def list_threads(self, user_id: str) -> List[dict]:
         """
-        获取用户的所有线程列表
+        获取用户的所有线程列表（轻量级，不包含消息内容）
         
         Args:
             user_id: 用户ID
             
         Returns:
-            线程列表，包含基本信息和消息预览（仅最近20条消息）
+            线程列表，只包含元数据，不包含消息内容
+            需要消息内容请调用 get_thread_messages(thread_id)
         """
         # 1. 查询所有线程（不预加载消息）
         statement = (
@@ -56,47 +57,43 @@ class ChatSessionService:
         # 2. 获取所有线程ID
         thread_ids = [t.id for t in threads]
         
-        # 3. 使用子查询获取每个线程的最近20条消息
-        # 使用 ROW_NUMBER() 窗口函数为每个线程的消息按时间倒序编号
-        from sqlalchemy import text
+        # 3. 只获取消息数量和最后一条消息的预览
+        from sqlalchemy import text, func
         
         # 构建 IN 子句参数
         placeholders = ', '.join([f':id_{i}' for i in range(len(thread_ids))])
         params = {f'id_{i}': tid for i, tid in enumerate(thread_ids)}
         
-        # 使用原始SQL获取最近消息（兼容PostgreSQL和SQLite）
-        # 使用 correlated subquery 或 window function
-        recent_messages_sql = text(f"""
-            SELECT * FROM (
+        # 查询每个线程的消息数量和最后一条消息
+        stats_sql = text(f"""
+            SELECT 
+                thread_id,
+                COUNT(*) as message_count,
+                MAX(CASE WHEN rn = 1 THEN SUBSTRING(content, 1, 100) ELSE NULL END) as last_preview
+            FROM (
                 SELECT 
-                    id,
                     thread_id,
-                    role,
                     content,
-                    timestamp,
                     ROW_NUMBER() OVER (PARTITION BY thread_id ORDER BY timestamp DESC) as rn
                 FROM message
                 WHERE thread_id IN ({placeholders})
             ) ranked
-            WHERE rn <= 20
-            ORDER BY thread_id, timestamp ASC
+            GROUP BY thread_id
         """)
         
-        result_rows = self.db.exec(recent_messages_sql, params=params).all()
+        stats_rows = self.db.exec(stats_sql, params=params).all()
+        stats_by_thread: dict[str, dict] = {
+            row.thread_id: {
+                "message_count": row.message_count,
+                "last_preview": row.last_preview
+            }
+            for row in stats_rows
+        }
         
-        # 4. 将消息按线程ID分组
-        messages_by_thread: dict[str, list] = {tid: [] for tid in thread_ids}
-        for row in result_rows:
-            messages_by_thread[row.thread_id].append({
-                "id": row.id,
-                "role": row.role,
-                "content": row.content,
-                "timestamp": row.timestamp.isoformat() if row.timestamp else None
-            })
-        
-        # 5. 组装返回结果
+        # 4. 组装返回结果（轻量级）
         result = []
         for thread in threads:
+            stats = stats_by_thread.get(thread.id, {"message_count": 0, "last_preview": None})
             result.append({
                 "id": thread.id,
                 "title": thread.title,
@@ -107,9 +104,53 @@ class ChatSessionService:
                 "task_session_id": thread.task_session_id,
                 "created_at": thread.created_at.isoformat() if thread.created_at else None,
                 "updated_at": thread.updated_at.isoformat() if thread.updated_at else None,
-                "messages": messages_by_thread.get(thread.id, [])
+                "message_count": stats["message_count"],
+                "last_message_preview": stats["last_preview"]
             })
         return result
+    
+    async def get_thread_messages(self, thread_id: str, user_id: str) -> List[dict]:
+        """
+        获取指定线程的消息列表（完整内容）
+        
+        Args:
+            thread_id: 线程ID
+            user_id: 用户ID（用于权限验证）
+            
+        Returns:
+            消息列表，包含完整内容
+            
+        Raises:
+            NotFoundError: 线程不存在
+            AuthorizationError: 无权访问此线程
+        """
+        # 1. 验证线程存在且属于当前用户
+        thread = self.db.get(Thread, thread_id)
+        if not thread:
+            raise NotFoundError(resource="会话")
+        
+        if thread.user_id != user_id:
+            raise AuthorizationError("没有权限访问此会话")
+        
+        # 2. 查询消息（按时间正序）
+        statement = (
+            select(Message)
+            .where(Message.thread_id == thread_id)
+            .order_by(Message.timestamp.asc())
+        )
+        messages = self.db.exec(statement).all()
+        
+        # 3. 返回完整消息
+        return [
+            {
+                "id": msg.id,
+                "role": msg.role,
+                "content": msg.content,
+                "timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
+                "extra_data": msg.extra_data
+            }
+            for msg in messages
+        ]
     
     async def get_thread_detail(self, thread_id: str, user_id: str) -> dict:
         """

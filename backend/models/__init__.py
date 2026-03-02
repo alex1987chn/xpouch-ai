@@ -175,8 +175,25 @@ class MessageResponse(BaseModel):
         from_attributes = True
 
 
-class ThreadResponse(BaseModel):
-    """会话响应模型（用于列表）"""
+class ThreadListResponse(BaseModel):
+    """会话列表响应模型（轻量级，不包含消息内容）"""
+    id: Optional[str] = None
+    title: str
+    agent_type: str
+    agent_id: str
+    user_id: str
+    task_session_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    message_count: int = 0  # 消息数量，替代完整消息列表
+    last_message_preview: Optional[str] = None  # 最后一条消息的预览（前100字）
+
+    class Config:
+        from_attributes = True
+
+
+class ThreadDetailResponse(BaseModel):
+    """会话详情响应模型（完整数据，包含所有消息）"""
     id: Optional[str] = None
     title: str
     agent_type: str
@@ -186,6 +203,7 @@ class ThreadResponse(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     messages: List[MessageResponse] = []
+    task_session: Optional[dict] = None  # 复杂模式下的任务会话数据
 
     class Config:
         from_attributes = True
@@ -562,7 +580,7 @@ __all__ = [
     "UserRole", "ConversationType", "ExpertType", "TaskStatus", "ExecutionMode",
     "User", "Thread", "Message", "SystemExpert", "CustomAgent",
     "SubTask", "TaskSession", "Artifact", "UserMemory", "MCPServer",
-    "MessageResponse", "ThreadResponse",
+    "MessageResponse", "ThreadListResponse", "ThreadDetailResponse",
     "CustomAgentCreate", "CustomAgentUpdate", "CustomAgentResponse",
     "SubTaskCreate", "SubTaskUpdate", "SubTaskResponse",
     "ArtifactCreate", "ArtifactResponse",
