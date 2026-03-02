@@ -116,15 +116,19 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> D
     
     # v3.2: 更新任务会话状态并持久化聚合消息 (通过 TaskManager)
     # 🔥 使用独立的数据库会话（避免 MemorySaver 序列化问题）
+    # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
     if task_session_id:
         try:
-            with Session(engine) as db_session:
-                # 标记任务会话为已完成
-                complete_task_session(db_session, task_session_id, final_response)
+            def _save_task_session():
+                with Session(engine) as db_session:
+                    # 标记任务会话为已完成
+                    complete_task_session(db_session, task_session_id, final_response)
 
-                # 持久化聚合消息到数据库
-                if thread_id:
-                    save_aggregator_message(db_session, thread_id, final_response)
+                    # 持久化聚合消息到数据库
+                    if thread_id:
+                        save_aggregator_message(db_session, thread_id, final_response)
+            
+            await asyncio.to_thread(_save_task_session)
         except Exception as e:
             logger.warning(f"[AGG] 保存任务会话失败: {e}")
     

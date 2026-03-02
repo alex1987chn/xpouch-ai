@@ -198,10 +198,14 @@ async def generic_worker_node(state: Dict[str, Any], config: RunnableConfig = No
         from sqlmodel import Session
         from agents.services.expert_manager import get_expert_config
         
-        with Session(engine) as session:
-            expert_config = get_expert_config(expert_type, session)
-            if expert_config:
-                logger.info(f"[GenericWorker] 从数据库加载 '{expert_type}' 成功")
+        # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
+        def _load_expert_config():
+            with Session(engine) as session:
+                return get_expert_config(expert_type, session)
+        
+        expert_config = await asyncio.to_thread(_load_expert_config)
+        if expert_config:
+            logger.info(f"[GenericWorker] 从数据库加载 '{expert_type}' 成功")
     
     if not expert_config:
         return {

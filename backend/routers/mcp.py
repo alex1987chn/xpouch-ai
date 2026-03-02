@@ -101,11 +101,10 @@ async def is_private_url(url: str) -> tuple[bool, str]:
                 if ip.is_link_local:
                     return True, f"禁止连接解析到链路本地地址的域名: {hostname} -> {ip} (SSRF 防护)"
         except (socket.gaierror, OSError):
-            # DNS 解析失败，不视为内网，但记录警告
-            # 实际场景中可能需要根据安全策略决定是否允许
-            pass
-        
-        return False, ""
+            # P0 修复: DNS 解析失败时应该拒绝访问（Fail Closed 原则）
+            # 防止攻击者使用无法解析的域名绕过 SSRF 防护
+            logger.warning(f"[SSRF] DNS 解析失败，拒绝访问: {hostname}")
+            return True, f"DNS 解析失败，禁止访问: {hostname} (SSRF 防护)"
         
     except Exception as e:
         # URL 解析失败，视为不安全
