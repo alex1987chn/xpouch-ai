@@ -122,18 +122,19 @@ SubTaskOutput = Task
 CommanderOutput = ExecutionPlan
 
 
-async def _preload_expert_configs(task_list: List[Dict], db_session: Any) -> None:
+async def _preload_expert_configs(task_list: List[Dict]) -> None:
     """
     P1 优化: 预加载所有专家配置到缓存
     
     在 Commander 阶段就并行加载所有需要的专家配置，
     避免 GenericWorker 执行时再逐个查询数据库。
     
+    P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
+    
     Args:
         task_list: 任务列表
-        db_session: 数据库会话
     """
-    if not task_list or not db_session:
+    if not task_list:
         return
     
     # 提取所有唯一的专家类型
@@ -143,26 +144,28 @@ async def _preload_expert_configs(task_list: List[Dict], db_session: Any) -> Non
     
     logger.info(f"[COMMANDER] P1优化: 预加载 {len(expert_types)} 个专家配置...")
     
-    # 并行加载所有专家配置
-    from agents.services.expert_manager import get_expert_config_cached
+    # P0 修复: 将数据库操作包装在 to_thread 中
+    def _load_configs():
+        from agents.services.expert_manager import get_expert_config_cached, get_expert_config
+        loaded_count = 0
+        with Session(engine) as db_session:
+            for expert_type in expert_types:
+                try:
+                    # 先从缓存检查
+                    cached = get_expert_config_cached(expert_type)
+                    if cached:
+                        loaded_count += 1
+                        continue
+                    
+                    # 缓存未命中，从数据库加载
+                    config = get_expert_config(expert_type, db_session)
+                    if config:
+                        loaded_count += 1
+                except Exception as e:
+                    logger.warning(f"[COMMANDER] 预加载专家 '{expert_type}' 失败: {e}")
+        return loaded_count
     
-    loaded_count = 0
-    for expert_type in expert_types:
-        try:
-            # 先从缓存检查
-            cached = get_expert_config_cached(expert_type)
-            if cached:
-                loaded_count += 1
-                continue
-            
-            # 缓存未命中，从数据库加载
-            from agents.services.expert_manager import get_expert_config
-            config = get_expert_config(expert_type, db_session)
-            if config:
-                loaded_count += 1
-        except Exception as e:
-            logger.warning(f"[COMMANDER] 预加载专家 '{expert_type}' 失败: {e}")
-    
+    loaded_count = await asyncio.to_thread(_load_configs)
     logger.info(f"[COMMANDER] P1优化: 成功预加载 {loaded_count}/{len(expert_types)} 个专家配置")
 
 
@@ -195,33 +198,42 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
     thread_id = state.get("thread_id")
     
     # 🔥 使用独立的数据库会话（避免 MemorySaver 序列化问题）
-    with Session(engine) as db_session:
-        try:
-            # 加载配置 (数据库或回退)
-            commander_config = get_expert_config("commander", db_session)
-            
-            # 如果数据库读取失败，回退到缓存
-            if not commander_config:
-                commander_config = get_expert_config_cached("commander")
-            
-            if not commander_config:
-                # 回退：使用常量中的 Prompt 和硬编码的模型
-                system_prompt = COMMANDER_SYSTEM_PROMPT
-                model = os.getenv("MODEL_NAME", "deepseek-chat")
-                temperature = 0.5
-                logger.info(f"[COMMANDER] 使用默认回退配置: model={model}")
-            else:
-                # 使用数据库配置
-                system_prompt = commander_config["system_prompt"]
-                model = commander_config["model"]
-                temperature = commander_config["temperature"]
+    # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
+    try:
+        # 加载配置 (数据库或回退)
+        def _load_commander_config():
+            with Session(engine) as db_session:
+                return get_expert_config("commander", db_session)
+        
+        commander_config = await asyncio.to_thread(_load_commander_config)
+        
+        # 如果数据库读取失败，回退到缓存
+        if not commander_config:
+            commander_config = get_expert_config_cached("commander")
+        
+        if not commander_config:
+            # 回退：使用常量中的 Prompt 和硬编码的模型
+            system_prompt = COMMANDER_SYSTEM_PROMPT
+            model = os.getenv("MODEL_NAME", "deepseek-chat")
+            temperature = 0.5
+            logger.info(f"[COMMANDER] 使用默认回退配置: model={model}")
+        else:
+            # 使用数据库配置
+            system_prompt = commander_config["system_prompt"]
+            model = commander_config["model"]
+            temperature = commander_config["temperature"]
             logger.info(f"[COMMANDER] 加载配置: model={model}, temperature={temperature}")
             
             # 🔥🔥🔥 Commander 2.0: 占位符自动填充
             # 填充 {user_query} 和 {dynamic_expert_list}
             try:
                 # 获取所有可用专家（包括动态创建的专家）
-                all_experts = get_all_expert_list(db_session)
+                # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
+                def _load_all_experts():
+                    with Session(engine) as db_session:
+                        return get_all_expert_list(db_session)
+                
+                all_experts = await asyncio.to_thread(_load_all_experts)
                 expert_list_str = format_expert_list_for_prompt(all_experts)
                 
                 # 构建占位符映射
@@ -338,29 +350,43 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
 
             # v3.0: 立即持久化到数据库 (通过 TaskManager)
             # 🔥 v3.3: 使用 preview_session_id 确保事件和数据库记录一致
+            # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
             task_session = None
-            if db_session and thread_id:
-                task_session, is_reused = get_or_create_task_session(
-                    db=db_session,
-                    thread_id=thread_id,
-                    user_query=user_query,
-                    plan_summary=commander_response.strategy,
-                    estimated_steps=commander_response.estimated_steps,
-                    subtasks_data=subtasks_data,
-                    execution_mode="sequential",
-                    session_id=preview_session_id  # 🔥 传入预览时使用的 session_id
-                )
+            if thread_id:
+                def _create_task_session():
+                    with Session(engine) as db_session:
+                        return get_or_create_task_session(
+                            db=db_session,
+                            thread_id=thread_id,
+                            user_query=user_query,
+                            plan_summary=commander_response.strategy,
+                            estimated_steps=commander_response.estimated_steps,
+                            subtasks_data=subtasks_data,
+                            execution_mode="sequential",
+                            session_id=preview_session_id
+                        )
+                
+                task_session, is_reused = await asyncio.to_thread(_create_task_session)
                 session_source = "复用" if is_reused else "新建"
                 logger.info(f"[COMMANDER] TaskSession {session_source}: {task_session.session_id}")
                 
                 # 🔥🔥🔥 关键修复：更新 thread.task_session_id，确保前端能查询到
+                # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
                 from models import Thread
-                thread = db_session.get(Thread, thread_id)
-                if thread:
-                    thread.task_session_id = task_session.session_id
-                    thread.agent_type = "ai"  # 🔥 同时更新 agent_type
-                    db_session.add(thread)
-                    db_session.commit()
+                
+                def _update_thread():
+                    with Session(engine) as db_session:
+                        thread = db_session.get(Thread, thread_id)
+                        if thread:
+                            thread.task_session_id = task_session.session_id
+                            thread.agent_type = "ai"  # 🔥 同时更新 agent_type
+                            db_session.add(thread)
+                            db_session.commit()
+                            return True
+                        return False
+                
+                updated = await asyncio.to_thread(_update_thread)
+                if updated:
                     logger.info(f"[COMMANDER] ✅ 已更新 thread.task_session_id: {task_session.session_id}")
 
             # 转换为内部字典格式（用于 LangGraph 状态流转）
@@ -385,7 +411,8 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
             logger.info(f"[COMMANDER] 生成了 {len(task_list)} 个任务。策略: {commander_response.strategy}")
 
             # P1 优化: 预加载所有专家配置到缓存
-            await _preload_expert_configs(task_list, db_session)
+            # P0 修复: 传入 engine 而不是 db_session，让函数内部自己管理会话
+            await _preload_expert_configs(task_list)
 
             # 🔥 v3.3: 使用 preview_session_id 保持一致性，TaskSession 创建后会使用相同的 ID
             # 注意：这里不再创建新的 event_queue，而是复用之前的事件队列

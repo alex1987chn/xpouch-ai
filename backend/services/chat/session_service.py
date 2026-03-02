@@ -343,7 +343,7 @@ class ChatSessionService:
         
         # 创建新线程
         if not thread_id:
-            thread_id = str(datetime.now().timestamp())  # 简化ID生成
+            thread_id = str(uuid.uuid4())  # 使用 UUID 确保唯一性
             
         # 处理 agent_id
         if not agent_id or agent_id.strip() == "":

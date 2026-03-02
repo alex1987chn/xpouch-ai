@@ -50,10 +50,15 @@ async def expert_dispatcher_node(state: AgentState, config: RunnableConfig = Non
     logger.info(f"[DISPATCHER_NODE] 当前任务: {expert_type}, status={current_task.get('status')}")
     
     # 🔥 使用独立的数据库会话（避免 MemorySaver 序列化问题）
+    # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
     try:
         logger.info(f"[DISPATCHER_NODE] 开始加载专家配置...")
-        with Session(engine) as db_session:
-            expert_config = get_expert_config(expert_type, db_session)
+        
+        def _load_expert_config():
+            with Session(engine) as db_session:
+                return get_expert_config(expert_type, db_session)
+        
+        expert_config = await asyncio.to_thread(_load_expert_config)
         
         if not expert_config:
             # 缓存回退
