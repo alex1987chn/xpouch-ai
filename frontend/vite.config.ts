@@ -48,7 +48,6 @@ export default defineConfig({
           'markdown': [
             'react-markdown',
             'remark-gfm',
-            'rehype-highlight',
             'rehype-katex',
             'katex',
           ],
