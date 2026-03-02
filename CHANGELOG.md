@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-03-01] - v3.2.4 - 会话历史性能优化与批量删除
+
+### 🚀 性能优化
+
+**分页加载（P0-5 修复）**:
+- 后端 `GET /threads` 接口支持分页（`page` + `limit` 参数）
+- 前端使用 `useInfiniteQuery` 实现无限滚动加载
+- 首屏只加载 20 条记录，滚动到底部自动加载更多
+- 加载性能：~3s (500条) → ~200ms (20条)
+
+**API 分离**:
+```
+GET /api/threads              # 列表（轻量级，无消息内容）
+GET /api/threads/{id}         # 详情（元数据）
+GET /api/threads/{id}/messages # 消息（完整内容）
+```
+- `ThreadListResponse` 新增 `message_count` 和 `last_message_preview`
+- 避免 base64 图片等内容导致内存溢出
+
+### 🗑️ 批量删除
+
+**新增批量删除功能**:
+- 历史页面右上角添加 "Select" 按钮进入批量模式
+- 支持单条勾选、全选/取消全选
+- 批量删除确认对话框
+- 后端新增 `POST /threads/batch-delete` 接口
+
+### 🌍 国际化
+
+**新增翻译键（中/英/日）**:
+- `select`, `selectAll`, `deselectAll`, `selectedCount`
+- `batchDelete`, `batchDeleteConfirm`
+- `moreAvailable`, `loadMore`, `noMoreRecords`
+
+### 🐛 Bug 修复
+
+**页面刷新跳转问题（P0-6 修复）**:
+- 新增 `isAuthChecked` 状态标记认证检查是否完成
+- `useRequireAuth` 和 `AdminRoute` 等待检查完成后再跳转
+- 修复：历史页面、资源库、专家管理页面刷新后跳回首页的问题
+
+### 📁 变更文件
+- `backend/routers/chat.py` - 分页和批量删除端点
+- `backend/models/__init__.py` - PaginatedThreadListResponse
+- `backend/services/chat/session_service.py` - 分页查询逻辑
+- `frontend/src/pages/history/HistoryPage.tsx` - 批量删除 UI
+- `frontend/src/hooks/queries/useChatHistoryQuery.ts` - 无限滚动
+- `frontend/src/services/chat.ts` - API 函数更新
+- `frontend/src/store/userStore.ts` - isAuthChecked 状态
+- `frontend/src/router/hooks/useRequireAuth.ts` - 等待认证检查
+- `frontend/src/components/AdminRoute.tsx` - 等待认证检查
+- `frontend/src/i18n/translations/common.ts` - 批量删除翻译
+
+---
+
 ## [2026-03-01] - v3.2.3 - 代码重构与设计系统优化
 
 ### 🏗️ 事件处理器模块化重构
