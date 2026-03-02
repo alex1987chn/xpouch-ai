@@ -483,14 +483,14 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                 }
             }
 
-        except Exception as e:
-            logger.error(f"[ERROR] Commander 规划失败: {e}", exc_info=True)
-            return {
-                "task_list": [],
-                "strategy": f"Error: {str(e)}",
-                "current_task_index": 0,
-                "event_queue": []
-            }
+    except Exception as e:
+        logger.error(f"[ERROR] Commander 规划失败: {e}", exc_info=True)
+        return {
+            "task_list": [],
+            "strategy": f"Error: {str(e)}",
+            "current_task_index": 0,
+            "event_queue": []
+        }
 
 
 def _extract_json_string(content: str) -> str:
