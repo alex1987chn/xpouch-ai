@@ -11,7 +11,7 @@ import type { Agent, Conversation } from '@/types'
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { logger } from '@/utils/logger'
 import { useApp } from '@/providers/AppProvider'
-import { useCustomAgentsQuery, useDeleteAgentMutation, useChatHistoryQuery } from '@/hooks/queries'
+import { useCustomAgentsQuery, useDeleteAgentMutation, useRecentConversationsQuery } from '@/hooks/queries'
 
 // shadcn Components
 import { Button } from '@/components/ui/button'
@@ -221,9 +221,9 @@ export default function HomePage() {
   // 只有登录后才发起请求
   const { data: customAgents = [], refetch: refetchAgents } = useCustomAgentsQuery({ enabled: isAuthenticated })
 
-  // 👈 使用 React Query 获取会话列表
+  // 👈 使用 React Query 获取会话列表（返回数组格式）
   // 只有登录后才发起请求
-  const { data: conversations = [] } = useChatHistoryQuery({ enabled: isAuthenticated })
+  const { data: conversations = [] } = useRecentConversationsQuery(100, { enabled: isAuthenticated })
 
   // 👈 使用 React Query Mutation 删除智能体
   const deleteAgentMutation = useDeleteAgentMutation()
