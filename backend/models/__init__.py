@@ -3,7 +3,7 @@ import uuid
 from typing import List, Optional
 from datetime import datetime
 from sqlmodel import Field, SQLModel, Relationship, JSON, Session, select, Column
-from sqlalchemy import String, Index
+from sqlalchemy import String, Index, func
 from pydantic import BaseModel, Field as PydanticField
 from enum import Enum
 
@@ -62,7 +62,11 @@ class SystemExpert(SQLModel, table=True):
     is_dynamic: bool = Field(default=True, description="是否为动态专家，false=系统内置，true=用户创建")
     # 🔥 新增：系统核心组件标记（不可删除）
     is_system: bool = Field(default=False, description="是否为系统核心组件，true=禁止删除")
-    updated_at: datetime = Field(default_factory=datetime.now, description="最后更新时间")
+    updated_at: datetime = Field(
+        default_factory=datetime.now,
+        sa_column_kwargs={"onupdate": func.now()},
+        description="最后更新时间"
+    )
 
 
 class User(SQLModel, table=True):
@@ -86,10 +90,16 @@ class User(SQLModel, table=True):
     token_expires_at: Optional[datetime] = Field(default=None)
     is_verified: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(
+        default_factory=datetime.now,
+        sa_column_kwargs={"onupdate": func.now()}
+    )
 
     threads: List["Thread"] = Relationship(back_populates="user")
-    custom_agents: List["CustomAgent"] = Relationship(back_populates="user")
+    custom_agents: List["CustomAgent"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
 class Thread(SQLModel, table=True):
     """
@@ -131,7 +141,10 @@ class Thread(SQLModel, table=True):
 
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(
+        default_factory=datetime.now,
+        sa_column_kwargs={"onupdate": func.now()}
+    )
 
     # 关联关系
     user: Optional[User] = Relationship(back_populates="threads")
@@ -255,7 +268,10 @@ class CustomAgent(SQLModel, table=True):
     
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(
+        default_factory=datetime.now,
+        sa_column_kwargs={"onupdate": func.now()}
+    )
     
     # 关联
     user: Optional[User] = Relationship(back_populates="custom_agents")
@@ -377,7 +393,10 @@ class SubTask(SQLModel, table=True):
 
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(
+        default_factory=datetime.now,
+        sa_column_kwargs={"onupdate": func.now()}
+    )
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
@@ -432,7 +451,10 @@ class TaskSession(SQLModel, table=True):
 
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(
+        default_factory=datetime.now,
+        sa_column_kwargs={"onupdate": func.now()}
+    )
     completed_at: Optional[datetime] = None
 
     # 关联关系

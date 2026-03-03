@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 from sqlmodel import SQLModel, Field
 from sqlalchemy import Column
@@ -15,7 +16,7 @@ class UserMemory(SQLModel, table=True):
     # 🔥 BAAI/bge-m3 的维度是 1024
     embedding: List[float] = Field(sa_column=Column(Vector(1024)))
 
-    created_at: str = Field(description="创建时间 ISO 格式")
+    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     source: str = Field(default="conversation", description="记忆来源: conversation/user_profile/system")
     memory_type: str = Field(default="fact", description="记忆类型: fact/preference/habit/important")
 
