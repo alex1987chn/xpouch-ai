@@ -21,6 +21,7 @@ RUN uv sync --frozen --no-dev
 # 只有以下目录变更时才会使后续层失效
 COPY main.py ./
 COPY database.py ./
+COPY config.py ./
 COPY models/ ./models/
 COPY routers/ ./routers/
 COPY services/ ./services/
