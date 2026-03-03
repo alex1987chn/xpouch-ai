@@ -28,6 +28,7 @@ COPY event_types/ ./event_types/
 COPY agents/ ./agents/
 COPY crud/ ./crud/
 COPY migrations/ ./migrations/
+COPY alembic.ini ./
 
 # 暴露端口（与 .env.example 和 docker-compose.yml 保持一致）
 EXPOSE 3000
