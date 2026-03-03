@@ -149,6 +149,7 @@ export const useTaskStore = create<TaskStore>()(
             mode: null,
             isWaitingForApproval: false,
             pendingPlan: [],
+            pendingPlanVersion: 1,
             planThinkingContent: '',
             progress: null
           }

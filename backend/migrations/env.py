@@ -1,9 +1,18 @@
 from logging.config import fileConfig
 import os
 import sys
+from pathlib import Path
 
 # Add project root to sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from dotenv import load_dotenv
+
+# Load environment variables for Alembic commands.
+# Prefer backend/.env, then fallback to repo root .env
+backend_dir = Path(__file__).resolve().parents[1]
+repo_root = backend_dir.parent
+load_dotenv(backend_dir / ".env", override=False)
+load_dotenv(repo_root / ".env", override=False)
 
 from sqlalchemy import create_engine, pool
 from alembic import context

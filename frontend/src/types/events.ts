@@ -238,6 +238,7 @@ export type ErrorEvent = SSEEvent<ErrorData>
 
 export interface HumanInterruptData {
   type: 'plan_review'
+  plan_version: number
   current_plan: Array<{
     id: string
     expert_type: string

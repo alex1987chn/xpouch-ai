@@ -25,26 +25,26 @@ Router 层仅负责：
 - GET /api/threads/{id}: 获取会话详情
 - DELETE /api/threads/{id}: 删除会话
 """
-from typing import List, Optional, Dict, Any
-from datetime import datetime
-from pydantic import Field
+from typing import Any
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlmodel import Session
 
 from database import get_session
-from dependencies import get_current_user, get_current_user_with_auth
-from models import User, Thread, Message, ThreadListResponse, ThreadDetailResponse, MessageResponse, PaginatedThreadListResponse
-from utils.exceptions import NotFoundError, AuthorizationError
+from dependencies import get_current_user
+from models import (
+    MessageResponse,
+    PaginatedThreadListResponse,
+    ThreadDetailResponse,
+    User,
+)
+from services.chat.artifact_service import ArtifactService
+from services.chat.recovery_service import RecoveryService
 
 # 🔥 Service 层导入（backend 是 Python 路径根）
 from services.chat.session_service import ChatSessionService
 from services.chat.stream_service import StreamService
-from services.chat.artifact_service import ArtifactService
-from services.chat.recovery_service import RecoveryService
-
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
@@ -57,26 +57,27 @@ class ChatMessageDTO(BaseModel):
     """聊天消息 DTO"""
     role: str
     content: str
-    id: Optional[str] = None
-    timestamp: Optional[str] = None
+    id: str | None = None
+    timestamp: str | None = None
 
 
 class ChatRequest(BaseModel):
     """聊天请求"""
     message: str = Field(..., max_length=10000, description="用户输入消息，最大10000字符")
-    history: List[ChatMessageDTO]
-    conversation_id: Optional[str] = None
-    agent_id: Optional[str] = "assistant"
-    stream: Optional[bool] = True
-    message_id: Optional[str] = None
+    history: list[ChatMessageDTO]
+    conversation_id: str | None = None
+    agent_id: str | None = "assistant"
+    stream: bool | None = True
+    message_id: str | None = None
 
 
 class ResumeRequest(BaseModel):
     """HITL 恢复请求"""
     thread_id: str
-    updated_plan: Optional[List[Dict[str, Any]]] = None
+    updated_plan: list[dict[str, Any]] | None = None
+    plan_version: int | None = Field(default=None, ge=1)
     approved: bool = True
-    message_id: Optional[str] = None  # 前端传入的消息ID，用于关联流式输出
+    message_id: str | None = None  # 前端传入的消息ID，用于关联流式输出
 
 
 class ArtifactUpdateRequest(BaseModel):
@@ -88,9 +89,9 @@ class ArtifactUpdateResponse(BaseModel):
     """Artifact 更新响应"""
     id: str
     type: str
-    title: Optional[str]
+    title: str | None
     content: str
-    language: Optional[str]
+    language: str | None
     sort_order: int
     updated: bool
 
@@ -108,7 +109,7 @@ async def get_threads(
 ):
     """
     获取当前用户的线程列表（轻量级，支持分页）
-    
+
     - page: 页码（从1开始）
     - limit: 每页条数（默认20，最大100）
     - 只返回线程元数据，不包含消息内容
@@ -126,14 +127,14 @@ async def get_thread(
 ):
     """
     获取单个线程详情（包含 TaskSession/SubTasks/Artifacts）
-    
+
     包含完整的消息列表，适合进入聊天页后加载。
     """
     service = ChatSessionService(session)
     return await service.get_thread_detail(thread_id, current_user.id)
 
 
-@router.get("/threads/{thread_id}/messages", response_model=List[MessageResponse])
+@router.get("/threads/{thread_id}/messages", response_model=list[MessageResponse])
 async def get_thread_messages(
     thread_id: str,
     session: Session = Depends(get_session),
@@ -141,7 +142,7 @@ async def get_thread_messages(
 ):
     """
     获取指定线程的消息列表（完整内容）
-    
+
     单独的端点，避免列表接口加载大量消息内容。
     """
     service = ChatSessionService(session)
@@ -150,14 +151,14 @@ async def get_thread_messages(
 
 class BatchDeleteRequest(BaseModel):
     """批量删除请求"""
-    thread_ids: List[str]
+    thread_ids: list[str]
 
 
 class BatchDeleteResponse(BaseModel):
     """批量删除响应"""
     success: bool
     deleted_count: int
-    failed_ids: List[str] = []
+    failed_ids: list[str] = []
 
 
 @router.delete("/threads/{thread_id}")
@@ -180,7 +181,7 @@ async def batch_delete_threads(
 ):
     """
     批量删除线程
-    
+
     - 同时删除多个会话
     - 验证所有会话属于当前用户
     - 返回成功删除数量和失败ID列表
@@ -188,14 +189,14 @@ async def batch_delete_threads(
     service = ChatSessionService(session)
     deleted_count = 0
     failed_ids = []
-    
+
     for thread_id in request.thread_ids:
         try:
             await service.delete_thread(thread_id, current_user.id)
             deleted_count += 1
         except Exception:
             failed_ids.append(thread_id)
-    
+
     return BatchDeleteResponse(
         success=deleted_count > 0,
         deleted_count=deleted_count,
@@ -215,14 +216,14 @@ async def chat_endpoint(
 ):
     """
     统一聊天端点（简单模式 + 复杂模式）
-    
+
     - 自定义智能体：直接流式调用
     - 系统默认助手：通过 LangGraph Router 分发
     """
     # 初始化服务
     session_service = ChatSessionService(session)
     stream_service = StreamService(session)
-    
+
     # 1. 获取或创建线程
     thread = await session_service.get_or_create_thread(
         thread_id=request.conversation_id,
@@ -231,19 +232,19 @@ async def chat_endpoint(
         message=request.message
     )
     thread_id = thread.id
-    
+
     # 2. 保存用户消息
     await session_service.save_user_message(thread_id, request.message)
-    
+
     # 3. 构建 LangChain 消息列表
     langchain_messages = await session_service.build_langchain_messages(thread_id)
-    
+
     # 4. 获取自定义智能体（如果有）
     custom_agent = await session_service.get_custom_agent(
         agent_id=request.agent_id or "assistant",
         user_id=current_user.id
     )
-    
+
     # 5. 路由到对应的处理逻辑
     if custom_agent:
         # 自定义智能体模式
@@ -263,7 +264,7 @@ async def chat_endpoint(
                 thread=thread,
                 message_id=request.message_id
             )
-    
+
     # 系统默认助手模式：通过 LangGraph 处理
     initial_state = {
         "messages": langchain_messages,
@@ -278,7 +279,7 @@ async def chat_endpoint(
         "thread_id": thread_id,
         "user_id": thread.user_id
     }
-    
+
     if request.stream:
         return await stream_service.handle_langgraph_stream(
             initial_state=initial_state,
@@ -308,7 +309,7 @@ async def resume_chat(
 ):
     """
     恢复被中断的 HITL 流程
-    
+
     当用户在前端审核计划后，调用此接口继续执行。
     返回 SSE 流，包含后续所有任务执行事件。
     """
@@ -318,6 +319,7 @@ async def resume_chat(
         user_id=current_user.id,
         approved=request.approved,
         updated_plan=request.updated_plan,
+        plan_version=request.plan_version,
         message_id=request.message_id
     )
 
@@ -350,7 +352,7 @@ async def update_artifact(
 ):
     """
     更新 Artifact 内容（用于用户编辑 AI 生成的产物）
-    
+
     此端点实现 Artifact 编辑的持久化，确保用户修改后的内容：
     1. 保存到数据库
     2. 后续任务执行时读取的是修改后的版本

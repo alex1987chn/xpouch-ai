@@ -30,6 +30,7 @@ export interface UISliceState {
   isInitialized: boolean
   isWaitingForApproval: boolean
   pendingPlan: Task[]
+  pendingPlanVersion: number
   progress: Progress | null  // 从 ExecutionStore 迁移
 }
 
@@ -37,7 +38,7 @@ export interface UISliceActions {
   setMode: (mode: 'simple' | 'complex') => void
   selectTask: (taskId: string | null) => void
   setIsInitialized: (initialized: boolean) => void
-  setPendingPlan: (plan: Task[]) => void
+  setPendingPlan: (plan: Task[], planVersion?: number) => void
   clearPendingPlan: () => void
   setIsWaitingForApproval: (waiting: boolean) => void
   addRunningTaskId: (taskId: string) => void
@@ -64,6 +65,7 @@ export const createUISlice = (set: any, get: any): UISlice => ({
   isInitialized: false,
   isWaitingForApproval: false,
   pendingPlan: [],
+  pendingPlanVersion: 1,
   progress: null,  // 新增
 
   // Actions
@@ -87,9 +89,10 @@ export const createUISlice = (set: any, get: any): UISlice => ({
     })
   },
 
-  setPendingPlan: (plan: Task[]) => {
+  setPendingPlan: (plan: Task[], planVersion: number = 1) => {
     set((state: any) => {
       state.pendingPlan = plan
+      state.pendingPlanVersion = planVersion
       state.isWaitingForApproval = true
     })
   },
@@ -97,6 +100,7 @@ export const createUISlice = (set: any, get: any): UISlice => ({
   clearPendingPlan: () => {
     set((state: any) => {
       state.pendingPlan = []
+      state.pendingPlanVersion = 1
       state.isWaitingForApproval = false
     })
   },
@@ -133,6 +137,7 @@ export const createUISlice = (set: any, get: any): UISlice => ({
       state.isInitialized = false
       state.isWaitingForApproval = false
       state.pendingPlan = []
+      state.pendingPlanVersion = 1
       state.progress = null  // 重置进度
     })
   },

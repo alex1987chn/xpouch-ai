@@ -3,40 +3,41 @@ SSE 事件类型定义
 统一前后端事件协议
 """
 
-from typing import List, Optional, Dict, Any
 from datetime import datetime
+from enum import StrEnum
+from typing import Any
+
 from pydantic import BaseModel, Field
-from enum import Enum
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     """SSE 事件类型枚举"""
     # 规划阶段
     PLAN_CREATED = "plan.created"           # Planner 生成计划
     PLAN_STARTED = "plan.started"           # 🔥 新增：规划开始（设置标题）
     PLAN_THINKING = "plan.thinking"         # 🔥 新增：规划思考流式内容
-    
+
     # 任务执行阶段
     TASK_STARTED = "task.started"           # 专家开始执行
     TASK_PROGRESS = "task.progress"         # 专家执行进度（可选）
     TASK_COMPLETED = "task.completed"       # 专家完成
     TASK_FAILED = "task.failed"             # 专家失败
-    
+
     # 产物阶段
     ARTIFACT_GENERATED = "artifact.generated"  # 产物生成
-    
+
     # 🔥 新增：Artifact 流式事件（Real-time Streaming）
     ARTIFACT_START = "artifact.start"       # 开始生成 Artifact
     ARTIFACT_CHUNK = "artifact.chunk"       # 内容片段
     ARTIFACT_COMPLETED = "artifact.completed"  # 生成完成
-    
+
     # 消息阶段
     MESSAGE_DELTA = "message.delta"         # 最终回复流式块
     MESSAGE_DONE = "message.done"           # 最终回复完成
-    
+
     # 🔥🔥🔥 v3.1.0 HITL: 人类审核中断事件
     HUMAN_INTERRUPT = "human.interrupt"     # 中断等待用户确认
-    
+
     # 系统事件
     ROUTER_START = "router.start"           # 路由开始（意图分析）
     ROUTER_DECISION = "router.decision"     # 路由决策
@@ -52,7 +53,7 @@ class SSEEvent(BaseModel):
     id: str = Field(description="事件唯一ID（用于去重和排序）")
     timestamp: str = Field(description="ISO 8601 格式时间戳")
     type: EventType = Field(description="事件类型")
-    data: Dict[str, Any] = Field(description="事件数据")
+    data: dict[str, Any] = Field(description="事件数据")
 
 
 # ============================================================================
@@ -74,7 +75,7 @@ class PlanCreatedData(BaseModel):
     summary: str
     estimated_steps: int
     execution_mode: str  # sequential | parallel
-    tasks: List[TaskInfo]
+    tasks: list[TaskInfo]
 
 
 # 🔥 新增：Commander 流式思考事件数据模型
@@ -110,7 +111,7 @@ class TaskProgressData(BaseModel):
     task_id: str
     expert_type: str
     progress: float  # 0.0 - 1.0
-    message: Optional[str] = None  # 进度消息，如"正在搜索..."
+    message: str | None = None  # 进度消息，如"正在搜索..."
 
 
 class TaskCompletedData(BaseModel):
@@ -119,7 +120,7 @@ class TaskCompletedData(BaseModel):
     expert_type: str
     description: str
     status: str = "completed"
-    output: Optional[str] = None
+    output: str | None = None
     duration_ms: int
     completed_at: str
     artifact_count: int = 0  # 产物数量
@@ -142,9 +143,9 @@ class ArtifactInfo(BaseModel):
     """产物信息"""
     id: str
     type: str  # code | html | markdown | json | text
-    title: Optional[str]
+    title: str | None
     content: str
-    language: Optional[str]
+    language: str | None
     sort_order: int
 
 
@@ -170,8 +171,8 @@ class MessageDoneData(BaseModel):
     """message.done 事件数据"""
     message_id: str
     full_content: str
-    total_tokens: Optional[int] = None
-    thinking: Optional[Dict[str, Any]] = None  # 思考过程数据（类似 DeepSeek Chat）
+    total_tokens: int | None = None
+    thinking: dict[str, Any] | None = None  # 思考过程数据（类似 DeepSeek Chat）
 
 
 # ============================================================================
@@ -187,14 +188,14 @@ class RouterStartData(BaseModel):
 class RouterDecisionData(BaseModel):
     """router.decision 事件数据"""
     decision: str  # simple | complex
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class ErrorData(BaseModel):
     """error 事件数据"""
     code: str
     message: str
-    details: Optional[Dict[str, Any]] = None
+    details: dict[str, Any] | None = None
 
 
 # ============================================================================
@@ -204,7 +205,8 @@ class ErrorData(BaseModel):
 class HumanInterruptData(BaseModel):
     """human.interrupt 事件数据 - HITL 中断等待用户确认"""
     type: str = "plan_review"  # 中断类型，目前仅支持 plan_review
-    current_plan: List[Dict[str, Any]]  # 当前计划任务列表
+    current_plan: list[dict[str, Any]]  # 当前计划任务列表
+    plan_version: int = 1  # 计划版本号（乐观锁）
 
 
 # ============================================================================
@@ -214,21 +216,21 @@ class HumanInterruptData(BaseModel):
 def build_sse_event(
     event_type: EventType,
     data: BaseModel,
-    event_id: Optional[str] = None
+    event_id: str | None = None
 ) -> SSEEvent:
     """
     构建标准化 SSE 事件
-    
+
     Args:
         event_type: 事件类型
         data: 事件数据（Pydantic 模型）
         event_id: 事件ID（可选，自动生成）
-    
+
     Returns:
         SSEEvent 对象
     """
     import uuid
-    
+
     return SSEEvent(
         id=event_id or str(uuid.uuid4()),
         timestamp=datetime.now().isoformat(),
@@ -240,15 +242,15 @@ def build_sse_event(
 def sse_event_to_string(event: SSEEvent) -> str:
     """
     将 SSE 事件转换为 SSE 格式的字符串
-    
+
     格式：
         id: <id>
         event: <type>
         data: <json>
-    
+
     """
     import json
-    
+
     lines = [
         f"id: {event.id}",
         f"event: {event.type.value}",
