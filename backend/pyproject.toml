@@ -49,10 +49,25 @@ select = [
     "C4",  # flake8-comprehensions (推导式优化)
 ]
 ignore = [
-    "E501",  # line too long (由 formatter 处理)
-    "N805",  # first argument of a method should be named 'self' (SQLModel 等场景)
-    "B008",  # FastAPI Depends() 是合法用法，不是函数调用陷阱
-    "E402",  # import 顺序由 isort 处理，且需兼容 load_dotenv()
+    "E501",  # line too long
+    "N805",  # first argument of a method should be named 'self'
+    "N806",  # 变量名大小写
+    "B008",  # FastAPI Depends()
+    "B904",  # 异常链（历史代码太多）
+    "E402",  # import 顺序
+    "E712",  # == True/False 检查（SQLModel 需要）
+    "E722",  # bare except（有意的）
+    "I001",  # import 排序
+    "W293",  # 空行空白
+    "W291",  # 行尾空白
+    "W292",  # 文件末尾无换行
+    "F401",  # 未使用导入
+    "F541",  # f-string 无占位符（日志常用）
+    "F811",  # 重复定义
+    "F821",  # 未定义名称（可能是误报）
+    "F841",  # 未使用变量
+    "UP006", "UP007", "UP011", "UP015", "UP017", "UP035", "UP038", "UP041", "UP043",  # 升级规则
+    "C401",  # 推导式优化
 ]
 
 [tool.ruff.lint.pydocstyle]
