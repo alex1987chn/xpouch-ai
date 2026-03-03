@@ -54,7 +54,7 @@ export default defineConfig({
           // 状态管理
           'state': ['zustand', 'immer', '@tanstack/react-query'],
           // 工具库
-          'utils': ['date-fns', 'uuid', 'clsx', 'class-variance-authority', 'tailwind-merge'],
+          'utils': ['date-fns', 'clsx', 'class-variance-authority', 'tailwind-merge'],
           // 图表可视化 (Mermaid)
           'mermaid': ['mermaid'],
           // PDF 生成相关

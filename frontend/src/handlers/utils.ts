@@ -4,6 +4,7 @@
 
 import type { useChatStore } from '@/store/chatStore'
 import type { LastAssistantMessageResult } from './types'
+import { findMessageById } from '@/utils/normalize'
 
 /**
  * 🔥 性能优化：获取最后一条助手消息
@@ -16,7 +17,8 @@ export function getLastAssistantMessage(
 
   // 优先使用缓存 ID
   if (lastAssistantMessageId) {
-    const msg = messages.find((m) => m.id === lastAssistantMessageId)
+    // 🔥 使用规范化工具查找
+    const msg = findMessageById(messages, lastAssistantMessageId)
     if (msg) {
       return { message: msg, id: lastAssistantMessageId }
     }

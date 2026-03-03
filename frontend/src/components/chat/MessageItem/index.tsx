@@ -1,10 +1,15 @@
 /**
  * 消息项组件
  * 展示单条消息，支持用户消息和AI消息两种样式
+ * 
+ * [性能优化] v3.2.0
+ * - 使用 React.memo + areEqual 深度比对
+ * - 提取 Markdown 渲染组件到外部，避免重复创建
+ * - 使用 useMemo 缓存 components 对象
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { Copy, Check, RefreshCw, Eye, ImageIcon, Video } from 'lucide-react'
+import { useState, useCallback, useRef, useEffect, memo, useMemo } from 'react'
+import { Copy, Check, RefreshCw, Eye } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useTaskStore } from '@/store/taskStore'
 import type { MessageItemProps } from '../types'
@@ -17,11 +22,224 @@ import { CodeBlock } from '@/components/ui/code-block'
 import { SIMPLE_TASK_ID } from '@/constants/task'
 import { StatusAvatar } from '@/components/ui/StatusAvatar'
 import { logger } from '@/utils/logger'
+import type { Components } from 'react-markdown'
 
 // 开发环境调试开关
 const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
 
-export default function MessageItem({
+// ============================================================================
+// 提取的 Markdown 渲染组件 (避免每次渲染重新创建)
+// ============================================================================
+
+interface MarkdownLinkProps {
+  href?: string
+  children?: React.ReactNode
+  onLinkClick?: (href: string) => void
+}
+
+/**
+ * Markdown 链接渲染组件
+ * 支持图片/视频预览和普通链接
+ */
+const MarkdownLink = memo(function MarkdownLink({ 
+  href = '', 
+  children,
+  onLinkClick 
+}: MarkdownLinkProps) {
+  const linkText = children?.toString() || ''
+  
+  // 🔥 检测是否为媒体链接（多种策略）
+  const hasImageExt = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(href)
+  const hasVideoExt = /\.(mp4|webm|ogg|mov|mkv)(\?.*)?$/i.test(href)
+  const isOssImage = /(oss-|aliyuncs|s3\.amazonaws|cloudfront|storage\.googleapis|blob\.core\.windows)\.com.*(watermark|image|img|photo|pic)/i.test(href)
+  const textSuggestsImage = /图片|image|photo|pic|图/i.test(linkText)
+  const urlHasImageParam = /[?&](image|img|url|src)=/i.test(href)
+  
+  const shouldRenderAsImage = hasImageExt || (isOssImage && textSuggestsImage) || urlHasImageParam
+  const shouldRenderAsVideo = hasVideoExt
+  
+  if (shouldRenderAsImage) {
+    const expireMatch = href.match(/[?&]Expires=(\d+)/)
+    const isExpired = expireMatch && Number(expireMatch[1]) * 1000 < Date.now()
+    
+    return (
+      <span className="block my-3">
+        <img
+          src={href}
+          alt={linkText || 'Image'}
+          className="max-w-full max-h-[300px] rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+          loading="lazy"
+          onClick={() => window.open(href, '_blank')}
+          onError={(e) => {
+            const target = e.target as HTMLImageElement
+            target.style.display = 'none'
+            target.nextElementSibling?.classList.remove('hidden')
+          }}
+        />
+        {isExpired && (
+          <span className="text-xs text-amber-600 block mt-1">
+            ⚠️ 图片链接已过期，请重新生成
+          </span>
+        )}
+        <a href={href} className="hidden text-accent hover:underline text-xs">
+          {children}
+        </a>
+      </span>
+    )
+  }
+  
+  if (shouldRenderAsVideo) {
+    return (
+      <span className="block my-3">
+        <video
+          src={href}
+          controls
+          className="max-w-full max-h-[300px] rounded-lg shadow-md"
+          preload="metadata"
+          onError={(e) => {
+            const target = e.target as HTMLVideoElement
+            target.style.display = 'none'
+            target.nextElementSibling?.classList.remove('hidden')
+          }}
+        >
+          您的浏览器不支持视频播放
+        </video>
+        <a href={href} className="hidden text-accent hover:underline text-xs">
+          {children}
+        </a>
+      </span>
+    )
+  }
+  
+  return (
+    <a
+      href={href}
+      onClick={(e) => {
+        if (href.startsWith('#')) {
+          e.preventDefault()
+          onLinkClick?.(href)
+        }
+      }}
+      className="text-accent hover:underline cursor-pointer"
+    >
+      {children}
+    </a>
+  )
+})
+
+/**
+ * Markdown 图片渲染组件
+ */
+const MarkdownImage = memo(function MarkdownImage({ 
+  src, 
+  alt 
+}: { src?: string; alt?: string }) {
+  const imageSrc = typeof src === 'string' ? src : ''
+  const imageAlt = typeof alt === 'string' ? alt : 'Image'
+  
+  if (!imageSrc) return null
+  
+  return (
+    <img
+      src={imageSrc}
+      alt={imageAlt}
+      className="max-w-full max-h-[300px] rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity my-3"
+      loading="lazy"
+      onClick={() => window.open(imageSrc, '_blank')}
+      onError={(e) => {
+        const target = e.target as HTMLImageElement
+        target.style.display = 'none'
+      }}
+    />
+  )
+})
+
+interface MarkdownCodeProps {
+  children?: React.ReactNode
+  className?: string
+}
+
+/**
+ * Markdown 代码渲染组件
+ */
+const MarkdownCode = memo(function MarkdownCode({ children, className }: MarkdownCodeProps) {
+  const codeContent = String(children || '').replace(/\n$/, '')
+  const isInline = !className?.includes('language-')
+  const match = /language-(\w+)/.exec(className || '')
+  const lang = match ? match[1] : ''
+  
+  // 行内代码
+  if (isInline) {
+    const hasImageExt = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(codeContent)
+    const hasVideoExt = /\.(mp4|webm|ogg|mov|mkv)(\?.*)?$/i.test(codeContent)
+    
+    if (hasImageExt || hasVideoExt) {
+      const expireMatch = codeContent.match(/[?&]Expires=(\d+)/)
+      const isExpired = expireMatch && Number(expireMatch[1]) * 1000 < Date.now()
+      
+      return (
+        <span className="block my-3">
+          {hasImageExt ? (
+            <img
+              src={codeContent}
+              alt="Image"
+              className="max-w-full max-h-[300px] rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+              loading="lazy"
+              onClick={() => window.open(codeContent, '_blank')}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+              }}
+            />
+          ) : (
+            <video
+              src={codeContent}
+              controls
+              className="max-w-full max-h-[300px] rounded-lg shadow-md"
+              preload="metadata"
+              onError={(e) => {
+                const target = e.target as HTMLVideoElement
+                target.style.display = 'none'
+              }}
+            >
+              您的浏览器不支持视频播放
+            </video>
+          )}
+          {isExpired && (
+            <span className="text-xs text-amber-600 block mt-1">
+              ⚠️ 链接已过期，请重新生成
+            </span>
+          )}
+          <code className="block mt-1 text-xs bg-muted px-1 py-0.5 rounded">
+            {codeContent.slice(0, 60)}...
+          </code>
+        </span>
+      )
+    }
+    
+    return (
+      <code className="bg-muted px-1.5 py-0.5 rounded text-sm">
+        {children}
+      </code>
+    )
+  }
+  
+  // 代码块
+  return (
+    <CodeBlock
+      code={codeContent}
+      language={lang}
+      showLineNumbers={true}
+      className="my-3 rounded-lg overflow-hidden"
+    />
+  )
+})
+
+// ============================================================================
+// 主组件
+// ============================================================================
+
+function MessageItem({
   message,
   activeExpert,
   aiStatus = 'idle',
@@ -62,13 +280,12 @@ export default function MessageItem({
     if (mediaInfo.type && mediaInfo.url) {
       const artifact = {
         id: crypto.randomUUID(),
-        type: mediaInfo.type,  // 'image' 或 'video'
+        type: mediaInfo.type,
         title: mediaInfo.type === 'video' ? t('videoPreview') : t('imagePreview'),
         content: mediaInfo.url,
         sort_order: 0
       }
       
-      // 创建 Simple 模式任务来承载媒体预览
       taskStore.setMode('simple')
       taskStore.initializePlan({
         session_id: 'media_preview',
@@ -99,11 +316,8 @@ export default function MessageItem({
     }
     
     const detected = detectContentType(codeBlocks, content)
-    
     if (!detected && content.length <= 200) return
 
-    // 构造符合新协议的 artifact 数据（使用下划线命名匹配后端协议）
-    // 🔥 3 Core Types 架构：language 字段从 detected 中获取（由 utils.ts 统一处理）
     const artifact = {
       id: crypto.randomUUID(),
       type: detected?.type || 'markdown',
@@ -111,19 +325,14 @@ export default function MessageItem({
         : detected?.type === 'html' ? 'HTML 预览' 
         : t('messagePreview'),
       content: detected?.content || content,
-      language: detected?.language,  // 👈 从 ContentTypeResult 获取
+      language: detected?.language,
       sort_order: 0
     }
 
-    // Simple 模式：创建/复用一个虚拟任务来承载 artifact
-    // 检查当前是否已经有 Simple 模式任务
     const hasSimpleTask = taskStore.mode === 'simple' && taskStore.tasks.has(SIMPLE_TASK_ID)
     
     if (!hasSimpleTask) {
-      // 需要初始化：先设置模式（这会清空 tasks），然后创建任务
-      if (DEBUG) {
-        logger.debug('[Preview] Initializing simple mode')
-      }
+      if (DEBUG) logger.debug('[Preview] Initializing simple mode')
       taskStore.setMode('simple')
       taskStore.initializePlan({
         session_id: 'simple_preview',
@@ -139,14 +348,10 @@ export default function MessageItem({
         }]
       })
     } else {
-      // 已经有 Simple 任务，确保模式是 simple（不会清空已有 tasks）
       taskStore.setMode('simple')
     }
     
-    // 替换 artifact 到虚拟任务（简单模式：替换而不是追加）
-    if (DEBUG) {
-      logger.debug('[Preview] Replacing artifact:', artifact.title, 'to task:', SIMPLE_TASK_ID)
-    }
+    if (DEBUG) logger.debug('[Preview] Replacing artifact:', artifact.title, 'to task:', SIMPLE_TASK_ID)
     taskStore.replaceArtifacts(SIMPLE_TASK_ID, [{
       id: artifact.id,
       type: artifact.type as any,
@@ -155,17 +360,11 @@ export default function MessageItem({
       language: artifact.language,
       sortOrder: artifact.sort_order,
       createdAt: new Date().toISOString(),
-      isPreview: true  // 🔥 标记为预览 artifact，禁止编辑
+      isPreview: true
     }])
     
-    // 选中该任务
     taskStore.selectTask(SIMPLE_TASK_ID)
-    
-    if (DEBUG) {
-      logger.debug('[Preview] Current tasksCache:', taskStore.tasksCache)
-      logger.debug('[Preview] Current mode:', taskStore.mode)
-    }
-  }, [content, codeBlocks, onPreview])
+  }, [content, codeBlocks, t])
 
   // 处理复制
   const handleCopy = useCallback(async () => {
@@ -173,7 +372,6 @@ export default function MessageItem({
     if (!textToCopy) return
 
     try {
-      // 首选: Clipboard API
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(textToCopy)
         setCopied(true)
@@ -181,7 +379,6 @@ export default function MessageItem({
         return
       }
 
-      // 降级方案
       const textarea = document.createElement('textarea')
       textarea.value = textToCopy
       textarea.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;'
@@ -205,7 +402,7 @@ export default function MessageItem({
     } catch {
       // 复制失败静默处理
     }
-  }, [message])
+  }, [content])
 
   // 处理重试
   const handleRetry = useCallback(() => {
@@ -213,6 +410,13 @@ export default function MessageItem({
       onRegenerate(message.id)
     }
   }, [message.id, onRegenerate])
+
+  // 🔥 性能优化：使用 useMemo 缓存 Markdown components 对象
+  const markdownComponents = useMemo<Components>(() => ({
+    a: ({ node, ...props }) => <MarkdownLink {...props} onLinkClick={onLinkClick} />,
+    img: ({ node, ...props }) => <MarkdownImage {...props} />,
+    code: ({ node, ...props }) => <MarkdownCode {...props} />
+  }), [onLinkClick])
 
   // 用户消息：使用 surface 颜色，与背景形成层次感
   if (isUser) {
@@ -240,7 +444,6 @@ export default function MessageItem({
     <div className="flex flex-col items-start w-full select-text ai-message group">
       {/* 头部：头像 + 标签 + 时间 */}
       <div className="flex items-center gap-2 mb-3">
-        {/* 头像容器 - 使用 StatusAvatar 组件 */}
         <StatusAvatar 
           status={aiStatus}
           className="w-6 h-6"
@@ -264,197 +467,11 @@ export default function MessageItem({
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeKatex]}
-            components={{
-              a: ({ node, ...props }) => {
-                const href = props.href || ''
-                const linkText = props.children?.toString() || ''
-                
-                // 🔥 检测是否为媒体链接（多种策略）
-                // 策略1：文件扩展名
-                const hasImageExt = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(href)
-                const hasVideoExt = /\.(mp4|webm|ogg|mov|mkv)(\?.*)?$/i.test(href)
-                
-                // 策略2：OSS/对象存储图片服务（常见无扩展名但有图片特征）
-                const isOssImage = /(oss-|aliyuncs|s3\.amazonaws|cloudfront|storage\.googleapis|blob\.core\.windows)\.com.*(watermark|image|img|photo|pic)/i.test(href)
-                
-                // 策略3：链接文字暗示是图片
-                const textSuggestsImage = /图片|image|photo|pic|图/i.test(linkText)
-                
-                // 策略4：URL 参数中包含图片信息
-                const urlHasImageParam = /[?&](image|img|url|src)=/i.test(href)
-                
-                const shouldRenderAsImage = hasImageExt || (isOssImage && textSuggestsImage) || urlHasImageParam
-                const shouldRenderAsVideo = hasVideoExt
-                
-                if (shouldRenderAsImage) {
-                  // 检查 OSS 链接是否可能已过期（URL 中有 Expires 参数且时间已过期）
-                  const expireMatch = href.match(/[?&]Expires=(\d+)/)
-                  const isExpired = expireMatch && Number(expireMatch[1]) * 1000 < Date.now()
-                  
-                  return (
-                    <span className="block my-3">
-                      <img
-                        src={href}
-                        alt={linkText || 'Image'}
-                        className="max-w-full max-h-[300px] rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
-                        loading="lazy"
-                        onClick={() => window.open(href, '_blank')}
-                        onError={(e) => {
-                          // 加载失败时回退到普通链接
-                          const target = e.target as HTMLImageElement
-                          target.style.display = 'none'
-                          target.nextElementSibling?.classList.remove('hidden')
-                        }}
-                      />
-                      {isExpired && (
-                        <span className="text-xs text-amber-600 block mt-1">
-                          ⚠️ 图片链接已过期，请重新生成
-                        </span>
-                      )}
-                      <a {...props} className="hidden text-accent hover:underline text-xs">
-                        {props.children}
-                      </a>
-                    </span>
-                  )
-                }
-                
-                if (shouldRenderAsVideo) {
-                  return (
-                    <span className="block my-3">
-                      <video
-                        src={href}
-                        controls
-                        className="max-w-full max-h-[300px] rounded-lg shadow-md"
-                        preload="metadata"
-                        onError={(e) => {
-                          const target = e.target as HTMLVideoElement
-                          target.style.display = 'none'
-                          target.nextElementSibling?.classList.remove('hidden')
-                        }}
-                      >
-                        您的浏览器不支持视频播放
-                      </video>
-                      <a {...props} className="hidden text-accent hover:underline text-xs">
-                        {props.children}
-                      </a>
-                    </span>
-                  )
-                }
-                
-                return (
-                  <a
-                    {...props}
-                    onClick={(e) => {
-                      if (href.startsWith('#')) {
-                        e.preventDefault()
-                        onLinkClick?.(href)
-                      }
-                    }}
-                    className="text-accent hover:underline cursor-pointer"
-                  />
-                )
-              },
-              // 🔥 新增：处理 Markdown 图片 ![alt](url)
-              img: ({ src, alt, ...props }) => {
-                const imageSrc = typeof src === 'string' ? src : ''
-                const imageAlt = typeof alt === 'string' ? alt : 'Image'
-                
-                if (!imageSrc) return null
-                
-                return (
-                  <img
-                    src={imageSrc}
-                    alt={imageAlt}
-                    className="max-w-full max-h-[300px] rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity my-3"
-                    loading="lazy"
-                    onClick={() => window.open(imageSrc, '_blank')}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement
-                      target.style.display = 'none'
-                    }}
-                  />
-                )
-              },
-              // 🔥 统一使用 CodeBlock 渲染代码，与 Artifact 保持一致
-              code: ({ children, className }) => {
-                const codeContent = String(children || '').replace(/\n$/, '')
-                const isInline = !className?.includes('language-')
-                const match = /language-(\w+)/.exec(className || '')
-                const lang = match ? match[1] : ''
-                
-                // 行内代码保持原样
-                if (isInline) {
-                  // 检测行内代码是否是媒体链接
-                  const hasImageExt = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(codeContent)
-                  const hasVideoExt = /\.(mp4|webm|ogg|mov|mkv)(\?.*)?$/i.test(codeContent)
-                  
-                  if (hasImageExt || hasVideoExt) {
-                    const expireMatch = codeContent.match(/[?&]Expires=(\d+)/)
-                    const isExpired = expireMatch && Number(expireMatch[1]) * 1000 < Date.now()
-                    
-                    return (
-                      <span className="block my-3">
-                        {hasImageExt ? (
-                          <img
-                            src={codeContent}
-                            alt="Image"
-                            className="max-w-full max-h-[300px] rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
-                            loading="lazy"
-                            onClick={() => window.open(codeContent, '_blank')}
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement
-                              target.style.display = 'none'
-                            }}
-                          />
-                        ) : (
-                          <video
-                            src={codeContent}
-                            controls
-                            className="max-w-full max-h-[300px] rounded-lg shadow-md"
-                            preload="metadata"
-                            onError={(e) => {
-                              const target = e.target as HTMLVideoElement
-                              target.style.display = 'none'
-                            }}
-                          >
-                            您的浏览器不支持视频播放
-                          </video>
-                        )}
-                        {isExpired && (
-                          <span className="text-xs text-amber-600 block mt-1">
-                            ⚠️ 链接已过期，请重新生成
-                          </span>
-                        )}
-                        <code className="block mt-1 text-xs bg-muted px-1 py-0.5 rounded">
-                          {codeContent.slice(0, 60)}...
-                        </code>
-                      </span>
-                    )
-                  }
-                  
-                  return (
-                    <code className="bg-muted px-1.5 py-0.5 rounded text-sm">
-                      {children}
-                    </code>
-                  )
-                }
-                
-                // 代码块使用 CodeBlock 组件（与 Artifact 一致）
-                return (
-                  <CodeBlock
-                    code={codeContent}
-                    language={lang}
-                    showLineNumbers={true}
-                    className="my-3 rounded-lg overflow-hidden"
-                  />
-                )
-              },
-            }}
+            components={markdownComponents}
           >
             {content}
           </ReactMarkdown>
         ) : aiStatus !== 'idle' ? (
-          /* 🔥 占位状态：正在生成中但内容为空 */
           <span className="text-muted-foreground/50 italic">
             {aiStatus === 'thinking' ? '思考中...' : '生成中...'}
           </span>
@@ -463,7 +480,6 @@ export default function MessageItem({
 
       {/* 底部操作栏：悬停显示，更简洁 */}
       <div className="pl-7 mt-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        {/* 预览按钮 */}
         {hasPreviewContent && (
           <button
             onClick={(e) => {
@@ -514,3 +530,35 @@ export default function MessageItem({
     </div>
   )
 }
+
+// ============================================================================
+// 性能优化：自定义 areEqual 函数
+// 只比较影响 UI 的关键字段，忽略函数引用变化
+// ============================================================================
+
+function areEqual(prevProps: MessageItemProps, nextProps: MessageItemProps): boolean {
+  // 比较 message 关键字段
+  const prevMsg = prevProps.message
+  const nextMsg = nextProps.message
+  
+  if (prevMsg.id !== nextMsg.id) return false
+  if (prevMsg.content !== nextMsg.content) return false
+  if (prevMsg.role !== nextMsg.role) return false
+  if (prevMsg.timestamp !== nextMsg.timestamp) return false
+  
+  // 比较 metadata.thinking 长度（thinking 步骤变化）
+  const prevThinkingLength = prevMsg.metadata?.thinking?.length ?? 0
+  const nextThinkingLength = nextMsg.metadata?.thinking?.length ?? 0
+  if (prevThinkingLength !== nextThinkingLength) return false
+  
+  // 比较其他 UI 相关 props
+  if (prevProps.aiStatus !== nextProps.aiStatus) return false
+  if (prevProps.activeExpert !== nextProps.activeExpert) return false
+  if (prevProps.isLast !== nextProps.isLast) return false
+  
+  // 🔥 忽略函数引用变化：onRegenerate, onLinkClick, onPreview
+  // 这些函数应该由父组件用 useCallback 缓存
+  return true
+}
+
+export default memo(MessageItem, areEqual)

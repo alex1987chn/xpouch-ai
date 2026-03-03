@@ -70,13 +70,18 @@ export function useChat() {
   // 2. Get conversation manager
   const conversationManager = useConversation()
 
-  // 3. Retry last user message
+  // 3. Retry last user message (重新发送最后一条用户消息)
   const retry = useCallback(() => {
     const lastMessage = conversationManager.messages.filter(m => m.role === 'user').pop()
     if (lastMessage?.content) {
       chatCore.sendMessage(lastMessage.content)
     }
   }, [conversationManager.messages, chatCore])
+
+  // 4. Regenerate AI response (重新生成指定 AI 消息的回复，不重复添加用户消息)
+  const regenerate = useCallback((messageId: string | number) => {
+    chatCore.regenerateMessage(messageId)
+  }, [chatCore])
 
   return {
     // ========== State ==========
@@ -95,7 +100,8 @@ export function useChat() {
     loadConversation: conversationManager.loadConversation,
     deleteConversation: conversationManager.deleteConversation,
 
-    // Retry
+    // Retry / Regenerate
     retry,
+    regenerate,
   }
 }

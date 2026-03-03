@@ -9,6 +9,7 @@
 import type { MessageDeltaEvent, MessageDoneEvent } from './types'
 import type { HandlerContext } from './types'
 import { logger } from '@/utils/logger'
+import { findMessageById } from '@/utils/normalize'
 
 // 🔥 防重：已处理过的 message.done 消息ID集合
 const processedMessageDones = new Set<string>()
@@ -19,6 +20,14 @@ const processedMessageDones = new Set<string>()
  */
 export function clearProcessedMessageDones(): void {
   processedMessageDones.clear()
+}
+
+/**
+ * 清除特定消息 ID 的去重记录
+ * 用于重新生成消息时允许再次处理相同 ID
+ */
+export function clearProcessedMessageDone(messageId: string): void {
+  processedMessageDones.delete(messageId)
 }
 
 /**
@@ -36,7 +45,8 @@ export function handleMessageDelta(
   const { updateMessage, addMessage, messages } = chatStore
 
   // 查找消息（前端应该在 useChatCore 中已经创建空消息）
-  const message = messages.find((m) => m.id === event.data.message_id)
+  // 🔥 使用规范化工具查找
+  const message = findMessageById(messages, event.data.message_id)
 
   if (!message) {
     // v3.1: 如果找不到消息（例如复杂模式下 aggregator 延迟），自动创建消息
@@ -90,7 +100,8 @@ export function handleMessageDone(
   processedMessageDones.add(event.data.message_id)
 
   // 查找消息
-  const message = messages.find((m) => m.id === event.data.message_id)
+  // 🔥 使用规范化工具查找
+  const message = findMessageById(messages, event.data.message_id)
 
   if (debug) {
     logger.debug(
@@ -143,7 +154,8 @@ export function handleMessageDone(
 
   // 🔥🔥🔥 关键修复：message.done 时将所有 thinking steps 标记为 completed
   // 防止流结束后仍有 running 状态的步骤导致 UI 一直转圈
-  const finalMessage = messages.find((m) => m.id === event.data.message_id)
+  // 🔥 使用规范化工具查找
+  const finalMessage = findMessageById(messages, event.data.message_id)
   if (debug) {
     logger.debug(
       '[ChatEvents] message.done: finalMessage=',

@@ -303,7 +303,14 @@ export async function sendMessage(
           return
         }
         
-        // 🔥 重连机制：检查重试次数
+        // 🔥 4xx 客户端错误不应该重试（如 422 参数错误）
+        if (status >= 400 && status < 500) {
+          logger.error(`[chat.ts] SSE 收到 ${status} 客户端错误，停止重试:`, err)
+          safeReject(err)
+          return
+        }
+        
+        // 🔥 重连机制：检查重试次数（仅针对 5xx 或网络错误）
         if (retryCount < SSE_MAX_RETRIES) {
           retryCount++
           const delay = SSE_RETRY_BASE_DELAY * Math.pow(2, retryCount - 1)
