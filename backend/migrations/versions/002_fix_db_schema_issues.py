@@ -38,17 +38,33 @@ def upgrade() -> None:
     op.add_column('user_memories', sa.Column('created_at_new', sa.DateTime(), nullable=True))
     
     # 迁移数据：将现有数据转换到新列
-    # embedding: 如果现有数据是有效的向量文本，尝试转换；否则设为 NULL
-    op.execute("""
-        UPDATE user_memories 
-        SET embedding_new = embedding,
-            created_at_new = 
-                CASE 
-                    WHEN created_at ~ '^\\d{4}-\\d{2}-\\d{2}' THEN created_at::timestamp
-                    WHEN created_at ~ '^\\d{10}(\\.\\d+)?$' THEN to_timestamp(created_at::bigint)::timestamp
-                    ELSE NOW()
-                END
-    """)
+    # 先检查 created_at 的当前类型
+    conn = op.get_bind()
+    result = conn.execute(text("""
+        SELECT data_type FROM information_schema.columns 
+        WHERE table_name = 'user_memories' AND column_name = 'created_at'
+    """))
+    created_at_type = result.scalar()
+    
+    if created_at_type == 'timestamp without time zone':
+        # 已经是 timestamp 类型，直接复制
+        op.execute("""
+            UPDATE user_memories 
+            SET embedding_new = embedding,
+                created_at_new = created_at
+        """)
+    else:
+        # 是 string 类型，需要转换
+        op.execute("""
+            UPDATE user_memories 
+            SET embedding_new = embedding,
+                created_at_new = 
+                    CASE 
+                        WHEN created_at::text ~ '^\\d{4}-\\d{2}-\\d{2}' THEN created_at::timestamp
+                        WHEN created_at::text ~ '^\\d{10}(\\.\\d+)?$' THEN to_timestamp(created_at::bigint)::timestamp
+                        ELSE NOW()
+                    END
+        """)
     
     # 删除旧列
     op.drop_column('user_memories', 'embedding')
