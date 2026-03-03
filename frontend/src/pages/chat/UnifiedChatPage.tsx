@@ -47,6 +47,7 @@ export default function UnifiedChatPage() {
     stopGeneration,
     loadConversation,
     retry,
+    regenerate,  // 🔥 用于重新生成指定 AI 消息的回复
     resumeExecution  // 🔥🔥🔥 v3.1.0 HITL
   } = useChat()
 
@@ -316,6 +317,20 @@ export default function UnifiedChatPage() {
     setInputValue('')
   }, [inputValue, isStreaming, sendMessage, normalizedAgentId])
 
+  // 缓存回调函数，避免 ChatStreamPanel 不必要的重渲染
+  const handleInputChange = useCallback((value: string) => {
+    setInputValue(value)
+  }, [setInputValue])
+
+  // 🔥 修复：使用 regenerate 而不是 retry，避免重复发送用户消息
+  const handleRegenerate = useCallback((messageId: string | number) => {
+    regenerate(messageId)
+  }, [regenerate])
+
+  const handlePreview = useCallback(() => {
+    setViewMode('preview')
+  }, [setViewMode])
+
   // 缓存全屏切换回调
   const toggleFullscreen = useCallback(() => {
     setIsFullscreen(prev => !prev)
@@ -363,11 +378,11 @@ export default function UnifiedChatPage() {
         chatStreamPanel={
           <ChatStreamPanel
             inputValue={inputValue}
-            onInputChange={setInputValue}
+            onInputChange={handleInputChange}
             onSend={handleSend}
             onStop={stopGeneration}
-            onRegenerate={() => retry()}
-            onPreview={() => setViewMode('preview')}
+            onRegenerate={handleRegenerate}
+            onPreview={handlePreview}
             resumeExecution={resumeExecution}  // 🔥🔥🔥 v3.1.0 HITL
           />
         }

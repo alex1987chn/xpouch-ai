@@ -12,7 +12,7 @@ export interface MessageListProps {
   messages: Message[]
   isGenerating: boolean
   activeExpert?: string | null
-  onRegenerate?: (messageId: string) => void
+  onRegenerate?: (messageId: string | number) => void
   onLinkClick?: (href: string) => void
 }
 
@@ -25,7 +25,7 @@ export interface MessageItemProps {
   activeExpert?: string | null
   /** AI 状态 - 用于头像光环动画 */
   aiStatus?: AvatarStatus
-  onRegenerate?: (messageId: string) => void
+  onRegenerate?: (messageId: string | number) => void
   onLinkClick?: (href: string) => void
   /** 点击预览按钮回调（用于移动端切换到 preview 视图） */
   onPreview?: () => void

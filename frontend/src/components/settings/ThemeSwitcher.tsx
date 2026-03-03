@@ -138,12 +138,7 @@ function FloatingThemeSwitcher({ className }: { className?: string }) {
             ))}
           </div>
 
-          {/* 快捷键提示 */}
-          <div className="mt-2 pt-2 border-t border-border-divider">
-            <div className="text-[10px] font-mono text-content-muted px-2">
-              快捷键：Shift + T
-            </div>
-          </div>
+
         </div>
       )}
     </div>
@@ -285,22 +280,4 @@ export function ThemeSwitcher({ className, variant = 'floating' }: ThemeSwitcher
   }
 }
 
-/**
- * 主题切换快捷键 Hook
- * 按 Shift + T 循环切换主题
- */
-export function useThemeShortcut() {
-  const { toggleTheme } = useThemeStore()
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.shiftKey && event.key === 'T') {
-        event.preventDefault()
-        toggleTheme()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [toggleTheme])
-}

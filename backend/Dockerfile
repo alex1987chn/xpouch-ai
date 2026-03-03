@@ -14,10 +14,20 @@ RUN pip install --no-cache-dir uv
 COPY pyproject.toml uv.lock ./
 
 # 使用 uv 安装依赖（更快更可靠）
+# ✅ 这一层会被缓存，只有依赖变更时才会重新安装
 RUN uv sync --frozen --no-dev
 
-# 复制源码
-COPY . .
+# 明确复制源代码（优化缓存）
+# 只有以下目录变更时才会使后续层失效
+COPY main.py ./
+COPY models/ ./models/
+COPY routers/ ./routers/
+COPY services/ ./services/
+COPY utils/ ./utils/
+COPY event_types/ ./event_types/
+COPY agents/ ./agents/
+COPY crud/ ./crud/
+COPY migrations/ ./migrations/
 
 # 暴露端口（与 .env.example 和 docker-compose.yml 保持一致）
 EXPOSE 3000

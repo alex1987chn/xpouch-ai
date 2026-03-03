@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { type Agent } from '@/types'
 import { generateUUID } from '@/utils/uuid'
+import { isSameId } from '@/utils/normalize'
 import { type Message } from '@/types'
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 
@@ -134,7 +135,8 @@ export const useChatStore = create<ChatStore>()(
 
       updateMessage: (id: string, content: string, append?: boolean) => set((state) => ({
         messages: state.messages.map((msg) => {
-          if (msg.id === id) {
+          // 🔥 使用规范化工具比较 ID
+          if (isSameId(msg.id, id)) {
             const newContent = append ? (msg.content || '') + content : content
             return { ...msg, content: newContent }
           }
@@ -144,7 +146,8 @@ export const useChatStore = create<ChatStore>()(
 
       updateMessageMetadata: (id: string, metadata: Partial<Message['metadata']>) => set((state) => ({
         messages: state.messages.map((msg) => {
-          if (msg.id === id) {
+          // 🔥 使用规范化工具比较 ID
+          if (isSameId(msg.id, id)) {
             return { 
               ...msg, 
               metadata: { ...msg.metadata, ...metadata }

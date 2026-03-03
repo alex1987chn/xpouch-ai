@@ -1,15 +1,17 @@
 /**
  * UUID 生成工具
- * 统一使用 uuid 库 v4
+ * 使用浏览器原生 crypto.randomUUID()，无需额外依赖
+ * 
+ * 浏览器兼容性：Chrome 92+, Firefox 95+, Safari 15.4+, Edge 92+
+ * 详见：https://caniuse.com/mdn-api_crypto_randomuuid
  */
-import { v4 as uuidv4 } from 'uuid'
 
 /**
  * 生成标准 UUID v4
  * 用于消息ID、会话ID等需要全局唯一的场景
  */
 export function generateUUID(): string {
-  return uuidv4()
+  return crypto.randomUUID()
 }
 
 /**

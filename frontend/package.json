@@ -47,7 +47,6 @@
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.0",
     "tailwind-merge": "^2.6.0",
-    "uuid": "^10.0.0",
     "zustand": "^5.0.10"
   },
   "devDependencies": {
@@ -55,11 +54,10 @@
     "@sentry/vite-plugin": "^4.7.0",
     "@tailwindcss/typography": "^0.5.19",
     "@types/dompurify": "^3.0.5",
-    "@types/node": "^20.0.0",
+    "@types/node": "^24.0.0",
     "@types/prismjs": "^1.26.5",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
-    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^5.1.2",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.15.0",
@@ -80,6 +78,6 @@
     "react-is": "^19.0.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=24.14.0"
   }
 }

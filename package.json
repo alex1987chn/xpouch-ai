@@ -9,7 +9,7 @@
     "dev:backend": "cd backend && uv run main.py",
     "build": "pnpm --prefix frontend run build",
     "preview": "pnpm --prefix frontend run preview",
-    "test": "echo 'No tests specified yet' && exit 0",  // P0 修复: 临时占位，避免 CI 失败
+    "test": "echo 'No tests specified yet' && exit 0",
     "lint": "pnpm --prefix frontend run lint",
     "clean": "rimraf frontend/node_modules backend/.venv frontend/dist backend/__pycache__ .ruff_cache"
   },
@@ -18,7 +18,7 @@
     "rimraf": "^6.0.1"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": ">=24.14.0",
     "pnpm": ">=8.0.0"
   },
   "packageManager": "pnpm@10.28.1"

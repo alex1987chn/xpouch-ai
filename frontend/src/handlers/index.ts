@@ -204,7 +204,7 @@ export {
 
 export { handleArtifactGenerated } from './artifactEvents'
 
-export { handleMessageDelta, handleMessageDone, clearProcessedMessageDones } from './chatEvents'
+export { handleMessageDelta, handleMessageDone, clearProcessedMessageDones, clearProcessedMessageDone } from './chatEvents'
 
 export {
   handleRouterStart,

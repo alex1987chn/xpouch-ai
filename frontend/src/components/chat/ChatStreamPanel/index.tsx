@@ -32,7 +32,7 @@
  * - 流式输出时组件保持静止
  */
 
-import { useRef, useEffect, useLayoutEffect } from 'react'
+import { useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import type { Message } from '@/types'
 import EmptyState from '../EmptyState'
 import MessageItem from '../MessageItem'
@@ -69,7 +69,7 @@ interface ChatStreamPanelProps {
   /** 停止生成回调 */
   onStop?: () => void
   /** 重新生成消息回调 */
-  onRegenerate?: (messageId: string) => void
+  onRegenerate?: (messageId: string | number) => void
   /** 链接点击回调 */
   onLinkClick?: (href: string) => void
   /** 点击消息预览回调（用于移动端切换到 preview 视图） */
@@ -161,10 +161,23 @@ export default function ChatStreamPanel({
   }, [messages, isGenerating])
 
   // Handle send
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     if (!inputValue.trim() || isGenerating) return
     onSend()
-  }
+  }, [inputValue, isGenerating, onSend])
+
+  // 缓存回调函数，避免 MessageItem 不必要的重渲染
+  const handleRegenerate = useCallback((messageId: string | number) => {
+    onRegenerate?.(messageId)
+  }, [onRegenerate])
+
+  const handleLinkClick = useCallback((href: string) => {
+    onLinkClick?.(href)
+  }, [onLinkClick])
+
+  const handlePreview = useCallback(() => {
+    onPreview?.()
+  }, [onPreview])
 
   // Check if message has real content (for filtering)
   const hasRealContent = (msg: Message): boolean => {
@@ -187,7 +200,8 @@ export default function ChatStreamPanel({
         // 保留有实际内容的AI消息
         if (hasRealContent(msg)) return true
         // 🔥 保留正在生成中的AI消息（最后一条且正在生成）
-        const isLast = msg.id === messages[messages.length - 1]?.id
+        // 🔥 使用规范化工具比较 ID
+        const isLast = isSameId(msg.id, messages[messages.length - 1]?.id)
         return isGenerating && isLast
       })
     : messages
@@ -277,9 +291,9 @@ export default function ChatStreamPanel({
                     isLast={index === displayMessages.length - 1}
                     activeExpert={activeExpert}
                     aiStatus={getMessageStatus(msg, index)}
-                    onRegenerate={onRegenerate}
-                    onLinkClick={onLinkClick}
-                    onPreview={onPreview}
+                    onRegenerate={handleRegenerate}
+                    onLinkClick={handleLinkClick}
+                    onPreview={handlePreview}
                   />
                 )}
               </div>
