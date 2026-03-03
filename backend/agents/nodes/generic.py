@@ -64,6 +64,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, To
 from langchain_core.runnables import RunnableConfig
 
 from agents.services.expert_manager import get_expert_config_cached
+from agents.state_patch import append_sse_event, get_event_queue_snapshot, replace_task_item
 from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from tools import ALL_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集
@@ -245,8 +246,10 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
     )
     # 将 started 事件放入 state 的 event_queue，让 dispatcher 或其他节点处理
     # 使用不可变更新，避免原地修改上游 state 对象
-    started_event_entry = {"type": "sse", "event": sse_event_to_string(started_event)}
-    initial_event_queue = [*state.get("event_queue", []), started_event_entry]
+    initial_event_queue = append_sse_event(
+        get_event_queue_snapshot(state),
+        sse_event_to_string(started_event),
+    )
     logger.info(f"[GenericWorker] 已生成 task.started 事件: {expert_type}")
 
     try:
@@ -484,17 +487,15 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
         next_index = current_index + 1
 
         # 构造新的 task item + 新 task_list，避免对原状态做原地修改
-        updated_task = {
-            **current_task,
-            "output_result": {"content": response.content},
-            "status": "completed",
-            "completed_at": completed_at.isoformat(),
-        }
-        updated_task_list = [
-            *task_list[:current_index],
-            updated_task,
-            *task_list[current_index + 1:],
-        ]
+        updated_task_list = replace_task_item(
+            task_list,
+            current_index,
+            {
+                "output_result": {"content": response.content},
+                "status": "completed",
+                "completed_at": completed_at.isoformat(),
+            },
+        )
 
         # ✅ 添加到 expert_results（用于后续任务依赖和最终聚合）
         # 🔥🔥🔥 关键修复：使用 task_id (Commander ID, 如 "task_0") 而不是 id (UUID)
@@ -579,11 +580,11 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
         logger.info(f"[GenericWorker] 已生成 task.completed 事件: {expert_type}")
 
         # ✅ 合并 started / artifact.generated / task.completed 事件（不可变）
-        full_event_queue = [
-            *initial_event_queue,
-            {"type": "sse", "event": sse_event_to_string(artifact_event)},
-            {"type": "sse", "event": sse_event_to_string(task_completed_event)},
-        ]
+        full_event_queue = append_sse_event(initial_event_queue, sse_event_to_string(artifact_event))
+        full_event_queue = append_sse_event(
+            full_event_queue,
+            sse_event_to_string(task_completed_event),
+        )
 
         return {
             "messages": [response],  # 🔥🔥🔥 核心修复：必须把 LLM 的最终回复更新到图状态的消息历史中！🔥🔥🔥
@@ -614,15 +615,13 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
         next_index = current_index + 1
 
         # 构造新的 task item + 新 task_list，避免原地修改
-        failed_task = {
-            **current_task,
-            "status": "failed",
-        }
-        failed_task_list = [
-            *task_list[:current_index],
-            failed_task,
-            *task_list[current_index + 1:],
-        ]
+        failed_task_list = replace_task_item(
+            task_list,
+            current_index,
+            {
+                "status": "failed",
+            },
+        )
 
         # 获取现有的 expert_results 并添加失败记录
         expert_results = state.get("expert_results", [])
@@ -654,10 +653,7 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
         logger.info(f"[GenericWorker] 已生成 task.failed 事件: {expert_type}")
 
         # ✅ 合并 started 事件和 failed 事件（不可变）
-        full_event_queue = [
-            *initial_event_queue,
-            {"type": "sse", "event": sse_event_to_string(failed_event)},
-        ]
+        full_event_queue = append_sse_event(initial_event_queue, sse_event_to_string(failed_event))
 
         return {
             "task_list": failed_task_list,

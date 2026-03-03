@@ -18,6 +18,7 @@ from sqlmodel import Session
 from agents.services.expert_manager import get_expert_config_cached
 from agents.services.task_manager import complete_task_session, save_aggregator_message
 from agents.state import AgentState
+from agents.state_patch import append_sse_event, append_sse_events, get_event_queue_snapshot
 from constants import AGGREGATOR_SYSTEM_PROMPT
 from database import engine
 from utils.event_generator import event_message_delta, event_message_done, sse_event_to_string
@@ -42,7 +43,7 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
 
     # 获取 task_session_id 和其他状态
     task_session_id = state.get("task_session_id")
-    base_event_queue = state.get("event_queue", [])
+    base_event_queue = get_event_queue_snapshot(state)
     # v3.0: 获取前端传递的 message_id（如果有的话）
     message_id = state.get("message_id", str(uuid.uuid4()))
     thread_id = state.get("thread_id")  # 🔥 用于保存消息到正确线程
@@ -68,8 +69,7 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
 
     # v3.1: 流式生成总结
     final_response_chunks = []
-
-    delta_events = []
+    delta_event_payloads = []
 
     try:
         # 🔥 关键修复：添加 metadata 标记为 aggregator 节点
@@ -111,18 +111,15 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
                 is_final=False
             )
             event_str = sse_event_to_string(delta_event)
-            delta_events.append({"type": "sse", "event": event_str})
+            delta_event_payloads.append(event_str)
 
     # 发送 message.done 事件
     done_event = event_message_done(
         message_id=message_id,
         full_content=final_response
     )
-    full_event_queue = [
-        *base_event_queue,
-        *delta_events,
-        {"type": "sse", "event": sse_event_to_string(done_event)},
-    ]
+    full_event_queue = append_sse_events(base_event_queue, delta_event_payloads)
+    full_event_queue = append_sse_event(full_event_queue, sse_event_to_string(done_event))
 
     # v3.2: 更新任务会话状态并持久化聚合消息 (通过 TaskManager)
     # 🔥 使用独立的数据库会话（避免 MemorySaver 序列化问题）
