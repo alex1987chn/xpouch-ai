@@ -15,6 +15,7 @@ import type {
   PlanStartedEvent,
   PlanThinkingEvent,
   TaskStartedEvent,
+  TaskProgressEvent,
   TaskCompletedEvent,
   TaskFailedEvent
 } from './types'
@@ -204,6 +205,26 @@ export function handleTaskStarted(
 
   if (debug) {
     logger.debug('[TaskEvents] 任务开始:', event.data.task_id)
+  }
+}
+
+/**
+ * 处理 task.progress 事件
+ * 可选事件：用于展示运行中任务的阶段性提示
+ */
+export function handleTaskProgress(
+  event: TaskProgressEvent,
+  context: HandlerContext
+): void {
+  const { taskStore, debug } = context
+  const { updateTask } = taskStore
+
+  if (event.data.message) {
+    updateTask(event.data.task_id, { output: event.data.message })
+  }
+
+  if (debug) {
+    logger.debug('[TaskEvents] 任务进度:', event.data.task_id, event.data.progress)
   }
 }
 

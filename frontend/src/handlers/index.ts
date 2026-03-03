@@ -24,6 +24,7 @@ import {
   handlePlanStarted,
   handlePlanThinking,
   handleTaskStarted,
+  handleTaskProgress,
   handleTaskCompleted,
   handleTaskFailed
 } from './taskEvents'
@@ -90,6 +91,9 @@ export class EventHandler {
         break
       case 'task.started':
         handleTaskStarted(event, context)
+        break
+      case 'task.progress':
+        handleTaskProgress(event, context)
         break
       case 'task.completed':
         handleTaskCompleted(event, context)
@@ -198,6 +202,7 @@ export {
   handlePlanStarted,
   handlePlanThinking,
   handleTaskStarted,
+  handleTaskProgress,
   handleTaskCompleted,
   handleTaskFailed
 } from './taskEvents'

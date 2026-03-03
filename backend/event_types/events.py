@@ -26,11 +26,6 @@ class EventType(StrEnum):
     # 产物阶段
     ARTIFACT_GENERATED = "artifact.generated"  # 产物生成
 
-    # 🔥 新增：Artifact 流式事件（Real-time Streaming）
-    ARTIFACT_START = "artifact.start"       # 开始生成 Artifact
-    ARTIFACT_CHUNK = "artifact.chunk"       # 内容片段
-    ARTIFACT_COMPLETED = "artifact.completed"  # 生成完成
-
     # 消息阶段
     MESSAGE_DELTA = "message.delta"         # 最终回复流式块
     MESSAGE_DONE = "message.done"           # 最终回复完成
