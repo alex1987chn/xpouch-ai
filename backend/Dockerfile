@@ -20,6 +20,7 @@ RUN uv sync --frozen --no-dev
 # 明确复制源代码（优化缓存）
 # 只有以下目录变更时才会使后续层失效
 COPY *.py ./
+COPY *.yaml ./
 COPY models/ ./models/
 COPY routers/ ./routers/
 COPY services/ ./services/
@@ -27,6 +28,9 @@ COPY utils/ ./utils/
 COPY event_types/ ./event_types/
 COPY agents/ ./agents/
 COPY crud/ ./crud/
+COPY api/ ./api/
+COPY tools/ ./tools/
+COPY scripts/ ./scripts/
 COPY migrations/ ./migrations/
 COPY alembic.ini ./
 
