@@ -448,6 +448,10 @@ class TaskSession(SQLModel, table=True):
 
     # 会话状态：pending | running | completed | failed
     status: str = Field(default="pending", index=True)
+    
+    # 乐观锁版本号：用于 HITL 计划更新冲突检测
+    # 每次用户确认/更新计划时递增
+    plan_version: int = Field(default=1)
 
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
@@ -582,6 +586,7 @@ class TaskSessionResponse(BaseModel):
     sub_tasks: List[SubTaskResponse]
     final_response: Optional[str]
     status: str
+    plan_version: int
     created_at: datetime
     updated_at: datetime
     completed_at: Optional[datetime]

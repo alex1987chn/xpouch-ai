@@ -32,6 +32,9 @@ export const useIsWaitingForApproval = () => useTaskStore(state => state.isWaiti
 /** 获取待审批计划 */
 export const usePendingPlan = () => useTaskStore(state => state.pendingPlan)
 
+/** 获取待审批计划版本号（乐观锁） */
+export const usePendingPlanVersion = () => useTaskStore(state => state.pendingPlanVersion)
+
 /** 获取运行中的任务ID集合 */
 export const useRunningTaskIds = () => useTaskStore(state => state.runningTaskIds)
 

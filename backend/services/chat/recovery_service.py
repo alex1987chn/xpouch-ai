@@ -10,27 +10,29 @@ HITL (Human-in-the-Loop) 恢复服务
 - LangGraph 导入在方法内部进行，防止循环引用
 - 复用 StreamService.execute_langgraph_stream 进行流式处理，不重复实现
 """
-import os
 import asyncio
-import psycopg
-from typing import List, Dict, Any, Optional, Union
+import os
 from datetime import datetime
+from typing import Any
+
+import psycopg
 from fastapi.responses import StreamingResponse
+from sqlalchemy import update
 from sqlmodel import Session, select
 
-from models import Thread, TaskSession
-from utils.exceptions import NotFoundError, AuthorizationError
+from models import TaskSession, Thread
+from utils.exceptions import AppError, AuthorizationError, NotFoundError, ValidationError
 from utils.logger import logger
 
 
 class RecoveryService:
     """HITL 恢复服务"""
-    
+
     def __init__(self, db_session: Session):
         self.db = db_session
         # 延迟初始化其他服务
         self._stream_service = None
-    
+
     @property
     def stream_service(self):
         """延迟初始化 StreamService"""
@@ -38,24 +40,25 @@ class RecoveryService:
             from .stream_service import StreamService
             self._stream_service = StreamService(self.db)
         return self._stream_service
-    
+
     # ============================================================================
     # 核心恢复方法
     # ============================================================================
-    
+
     async def resume_chat(
         self,
         thread_id: str,
         user_id: str,
         approved: bool,
-        updated_plan: Optional[List[Dict[str, Any]]] = None,
-        message_id: Optional[str] = None
-    ) -> Union[StreamingResponse, Dict[str, str]]:
+        updated_plan: list[dict[str, Any]] | None = None,
+        plan_version: int | None = None,
+        message_id: str | None = None
+    ) -> StreamingResponse | dict[str, str]:
         """
         恢复被中断的 HITL 流程
-        
+
         当用户在前端审核计划后，调用此接口继续执行。
-        
+
         Args:
             thread_id: 线程ID
             user_id: 用户ID（用于权限验证）
@@ -68,88 +71,94 @@ class RecoveryService:
                 - sort_order: int 排序
                 - status: str 状态
                 - depends_on: Optional[List[str]] 依赖任务ID列表
+            plan_version: 客户端当前看到的计划版本号（乐观锁）
             message_id: 前端传入的消息ID（用于关联流式输出）
-                
+
         Returns:
             approved=True: StreamingResponse SSE流
             approved=False: {"status": "cancelled", "message": "..."}
-            
+
         Raises:
             NotFoundError: 线程不存在
             AuthorizationError: 无权访问此线程
         """
         logger.info(f"[HITL RESUME] thread_id={thread_id}, approved={approved}")
-        
+
         # 1. 验证线程存在且属于当前用户
         thread = self.db.get(Thread, thread_id)
         if not thread:
             raise NotFoundError(f"Thread not found: {thread_id}")
-        
+
         if thread.user_id != user_id:
             raise AuthorizationError("无权访问此线程")
-        
+
         # 2. 处理用户拒绝
         if not approved:
             return await self._handle_rejection(thread_id)
-        
+
         # 3. 处理用户批准 - 流式恢复
-        return await self._handle_approval(thread_id, updated_plan, message_id)
-    
-    async def _handle_rejection(self, thread_id: str) -> Dict[str, str]:
+        return await self._handle_approval(thread_id, updated_plan, plan_version, message_id)
+
+    async def _handle_rejection(self, thread_id: str) -> dict[str, str]:
         """
         处理用户拒绝计划
-        
+
         清理状态：
         - 清理 LangGraph checkpoints
         - 更新 TaskSession 状态为 cancelled
-        
+
         Args:
             thread_id: 线程ID
-            
+
         Returns:
             取消状态响应
         """
         logger.info("[HITL RESUME] 用户拒绝了计划，清理状态")
-        
+
         # 清理 checkpoints
         await self._cleanup_checkpoints(thread_id)
-        
+
         # 更新 TaskSession
         await self._cancel_task_session(thread_id)
-        
+
         return {"status": "cancelled", "message": "计划已被用户拒绝"}
-    
+
     async def _handle_approval(
         self,
         thread_id: str,
-        updated_plan: Optional[List[Dict[str, Any]]] = None,
-        message_id: Optional[str] = None
+        updated_plan: list[dict[str, Any]] | None = None,
+        plan_version: int | None = None,
+        message_id: str | None = None
     ) -> StreamingResponse:
         """
         处理用户批准计划 - 流式恢复执行
-        
+
         不复用 SSE 生成器，而是调用 StreamService.execute_langgraph_stream
-        
+
         Args:
             thread_id: 线程ID
             updated_plan: 用户修改后的计划
+            plan_version: 客户端当前看到的计划版本号
             message_id: 前端传入的消息ID（用于关联流式输出）
-            
+
         Returns:
             StreamingResponse SSE流
         """
         import uuid
-        
+
         logger.info("[HITL RESUME] 用户批准，开始流式恢复")
-        
+
+        # 关键一致性保障：计划更新前执行乐观锁校验与版本递增
+        self._bump_plan_version_with_cas(thread_id, plan_version)
+
         # 生成 message_id（如果没有提供）
         actual_message_id = message_id or str(uuid.uuid4())
-        
+
         # 创建队列
         stream_queue = asyncio.Queue()      # 用于 artifact 收集
         sse_queue = asyncio.Queue()         # 用于 SSE 事件收集
         realtime_queue = asyncio.Queue()    # 用于实时推送
-        
+
         async def event_generator():
             """事件生成器 - 复用 StreamService 的核心流式逻辑"""
             try:
@@ -163,14 +172,14 @@ class RecoveryService:
                     message_id=actual_message_id
                 ):
                     yield event
-                
+
                 # 处理完成后，收集 artifacts 并保存
                 await self._process_collected_artifacts(thread_id, stream_queue)
-                
+
             except Exception as e:
                 logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
                 yield self._build_error_event("RESUME_ERROR", str(e))
-        
+
         return StreamingResponse(
             event_generator(),
             media_type="text/event-stream",
@@ -180,7 +189,60 @@ class RecoveryService:
                 "X-Accel-Buffering": "no"
             }
         )
-    
+
+    def _bump_plan_version_with_cas(self, thread_id: str, expected_plan_version: int | None) -> None:
+        """
+        使用 CAS（Compare-And-Set）方式递增 plan_version。
+
+        规则：
+        - 客户端必须携带当前看到的 plan_version
+        - 版本一致才允许更新并 +1
+        - 不一致返回 409 冲突
+        """
+        if expected_plan_version is None:
+            raise ValidationError("缺少 plan_version，无法进行并发校验")
+
+        task_session = self.db.exec(
+            select(TaskSession)
+            .where(TaskSession.thread_id == thread_id)
+            .order_by(TaskSession.created_at.desc())
+        ).first()
+
+        if not task_session:
+            raise NotFoundError("TaskSession")
+
+        stmt = (
+            update(TaskSession)
+            .where(
+                TaskSession.session_id == task_session.session_id,
+                TaskSession.plan_version == expected_plan_version
+            )
+            .values(
+                plan_version=TaskSession.plan_version + 1,
+                updated_at=datetime.now()
+            )
+        )
+        result = self.db.exec(stmt)
+
+        if result.rowcount == 0:
+            self.db.rollback()
+            latest = self.db.exec(
+                select(TaskSession.plan_version)
+                .where(TaskSession.session_id == task_session.session_id)
+            ).first()
+            raise AppError(
+                message="计划已被更新，请刷新后重试",
+                code="PLAN_VERSION_CONFLICT",
+                status_code=409,
+                details={
+                    "thread_id": thread_id,
+                    "expected_plan_version": expected_plan_version,
+                    "current_plan_version": latest
+                }
+            )
+
+        self.db.commit()
+
     async def _process_collected_artifacts(
         self,
         thread_id: str,
@@ -188,9 +250,9 @@ class RecoveryService:
     ):
         """处理收集到的 artifacts 并保存"""
         from crud.task_session import create_artifacts_batch
-        
+
         artifacts_by_task = {}
-        
+
         # 收集所有 artifacts
         while not stream_queue.empty():
             try:
@@ -204,12 +266,12 @@ class RecoveryService:
                         artifacts_by_task[task_id].append(artifact_data)
             except asyncio.QueueEmpty:
                 break
-        
+
         # 保存 artifacts（需要查询对应的 subtask_id）
         task_session = self.db.exec(
             select(TaskSession).where(TaskSession.thread_id == thread_id)
         ).first()
-        
+
         if task_session:
             for task_id, artifacts in artifacts_by_task.items():
                 # 查询对应的 SubTask
@@ -220,34 +282,34 @@ class RecoveryService:
                         SubTask.id == task_id
                     )
                 ).first()
-                
+
                 if subtask:
                     try:
                         create_artifacts_batch(self.db, subtask.id, artifacts)
                         logger.info(f"[HITL RESUME] 保存 {len(artifacts)} 个 artifacts 到 SubTask {subtask.id}")
                     except Exception as e:
                         logger.error(f"[HITL RESUME] 保存 artifacts 失败: {e}")
-    
+
     # ============================================================================
     # 状态清理
     # ============================================================================
-    
+
     async def _cleanup_checkpoints(self, thread_id: str):
         """
         清理 LangGraph checkpoints（防止僵尸状态）
-        
+
         使用同步连接（Windows兼容）
         """
         try:
             db_url = os.getenv("DATABASE_URL", "")
             db_url = db_url.replace("postgresql+asyncpg", "postgresql").replace("postgresql+psycopg", "postgresql")
-            
+
             with psycopg.connect(db_url) as conn:
                 with conn.cursor() as cur:
                     # 检查表是否存在
                     cur.execute("""
                         SELECT EXISTS (
-                            SELECT FROM information_schema.tables 
+                            SELECT FROM information_schema.tables
                             WHERE table_name = 'checkpoints'
                         )
                     """)
@@ -261,18 +323,18 @@ class RecoveryService:
                     else:
                         logger.info("[HITL RESUME] checkpoints 表不存在，跳过清理")
                 conn.commit()
-        
+
         except Exception as e:
             # 如果表不存在或其他错误，记录但不阻断流程
             logger.warning(f"[HITL RESUME] 清理 checkpoint 失败: {e}")
-    
+
     async def _cancel_task_session(self, thread_id: str):
         """将 TaskSession 标记为 cancelled"""
         try:
             task_session = self.db.exec(
                 select(TaskSession).where(TaskSession.thread_id == thread_id)
             ).first()
-            
+
             if task_session:
                 task_session.status = "cancelled"
                 task_session.final_response = "计划被用户取消"
@@ -280,21 +342,21 @@ class RecoveryService:
                 self.db.add(task_session)
                 self.db.commit()
                 logger.info(f"[HITL RESUME] TaskSession {task_session.session_id} 已标记为 cancelled")
-        
+
         except Exception as e:
             logger.warning(f"[HITL RESUME] 更新 task_session 失败: {e}")
-    
+
     # ============================================================================
     # 辅助方法
     # ============================================================================
-    
+
     def _build_error_event(self, code: str, message: str) -> str:
         """构建 error 事件"""
-        import json
-        from event_types.events import EventType, ErrorData, build_sse_event
-        from utils.event_generator import sse_event_to_string
         import uuid
-        
+
+        from event_types.events import ErrorData, EventType, build_sse_event
+        from utils.event_generator import sse_event_to_string
+
         event = build_sse_event(
             EventType.ERROR,
             ErrorData(code=code, message=message),

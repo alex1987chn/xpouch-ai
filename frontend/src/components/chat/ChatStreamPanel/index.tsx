@@ -40,6 +40,7 @@ import ThinkingProcess from '../ThinkingProcess'
 import HeavyInputConsole from '../HeavyInputConsole'
 import PlanReviewCard from '../PlanReviewCard'
 import { parseThinkTags, formatThinkingAsSteps } from '@/utils/thinkParser'
+import { isSameId } from '@/utils/normalize'
 import type { ResumeChatParams } from '@/services/chat'
 import type { AvatarStatus } from '@/components/ui/StatusAvatar'
 

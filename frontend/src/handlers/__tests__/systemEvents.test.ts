@@ -222,6 +222,7 @@ describe('System Events', () => {
         type: 'human.interrupt' as const,
         data: {
           interrupt_type: 'plan_review' as const,
+          plan_version: 3,
           current_plan: [
             { id: 'task-1', description: 'step 1' },
             { id: 'task-2', description: 'step 2' }
@@ -233,7 +234,8 @@ describe('System Events', () => {
       handleHumanInterrupt(event, mockContext)
 
       expect(mockContext.taskStore.setPendingPlan).toHaveBeenCalledWith(
-        event.data.current_plan
+        event.data.current_plan,
+        3
       )
     })
 
@@ -245,6 +247,7 @@ describe('System Events', () => {
         type: 'human.interrupt' as const,
         data: {
           interrupt_type: 'plan_review' as const,
+          plan_version: 1,
           current_plan: [],
           message: '请审核'
         }

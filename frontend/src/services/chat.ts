@@ -372,6 +372,7 @@ export async function updateArtifact(
  */
 export interface ResumeChatParams {
   threadId: string
+  planVersion: number
   updatedPlan?: Array<{
     id: string
     expert_type: string
@@ -397,6 +398,7 @@ export async function resumeChat(
       headers: getHeaders(),
       body: JSON.stringify({
         thread_id: params.threadId,
+        plan_version: params.planVersion,
         updated_plan: params.updatedPlan,
         approved: params.approved
       }),
@@ -444,6 +446,7 @@ export async function resumeChat(
       },
       body: JSON.stringify({
         thread_id: params.threadId,
+        plan_version: params.planVersion,
         updated_plan: params.updatedPlan,
         approved: params.approved
       }),

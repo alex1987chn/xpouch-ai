@@ -19,6 +19,7 @@ import type { ResumeChatParams } from '@/services/chat'
 import {
   useIsWaitingForApproval,
   usePendingPlan,
+  usePendingPlanVersion,
   useTaskActions,
 } from '@/hooks/useTaskSelectors'
 import { useAddMessageAction } from '@/hooks/useChatSelectors'
@@ -47,6 +48,25 @@ interface PlanReviewCardProps {
   resumeExecution: (params: ResumeChatParams) => Promise<string>
 }
 
+function isPlanVersionConflictError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+
+  const maybeError = error as {
+    status?: number
+    code?: string
+    message?: string
+  }
+
+  const code = maybeError.code || ''
+  const message = maybeError.message || ''
+  return (
+    maybeError.status === 409 ||
+    code === 'PLAN_VERSION_CONFLICT' ||
+    message.includes('PLAN_VERSION_CONFLICT') ||
+    message.includes('API Error: 409')
+  )
+}
+
 export function PlanReviewCard({ 
   conversationId,
   resumeExecution,
@@ -57,6 +77,7 @@ export function PlanReviewCard({
   // 使用 TaskStore
   const isWaitingForApproval = useIsWaitingForApproval()
   const pendingPlan = usePendingPlan()
+  const pendingPlanVersion = usePendingPlanVersion()
   const { 
     clearPendingPlan,
     setIsWaitingForApproval,
@@ -107,6 +128,7 @@ export function PlanReviewCard({
     try {
       await resumeExecution({
         threadId: conversationId,
+        planVersion: pendingPlanVersion,
         approved: false
       })
       
@@ -115,7 +137,7 @@ export function PlanReviewCard({
         content: '计划已取消，状态已清理',
         timestamp: Date.now()
       })
-    } catch (error) {
+    } catch (_error) {
       // 恢复 plan 状态
       setIsWaitingForApproval(true)
       alert('取消失败，请重试')
@@ -123,7 +145,7 @@ export function PlanReviewCard({
       setIsSubmitting(false)
       setIsCancelling(false)
     }
-  }, [conversationId, resumeExecution, clearPendingPlan, setIsWaitingForApproval, setMode, addMessage])
+  }, [conversationId, pendingPlanVersion, resumeExecution, clearPendingPlan, setIsWaitingForApproval, setMode, addMessage])
 
   // Confirm and execute plan
   const handleApprove = useCallback(async () => {
@@ -153,6 +175,7 @@ export function PlanReviewCard({
     try {
       const resumeParams: ResumeChatParams = {
         threadId: conversationId,
+        planVersion: pendingPlanVersion,
         updatedPlan: editedPlan.map((task, index) => ({
           id: task.id,
           expert_type: task.expert_type,
@@ -168,19 +191,25 @@ export function PlanReviewCard({
     } catch (error) {
       // 恢复状态
       setIsWaitingForApproval(true)
+
+      const conflictMessage = '计划已被其他操作更新，请刷新后重新确认'
+      const fallbackMessage = '启动失败，请检查网络后重试'
+      const userMessage = isPlanVersionConflictError(error)
+        ? conflictMessage
+        : fallbackMessage
       
       addMessage({
         id: tempMessageId,
         role: 'system',
-        content: '启动失败，请检查网络后重试',
+        content: userMessage,
         timestamp: Date.now()
       })
       
-      alert('恢复执行失败，请重试')
+      alert(userMessage)
     } finally {
       setIsSubmitting(false)
     }
-  }, [editedPlan, conversationId, resumeExecution, updateTasksFromPlan, setIsWaitingForApproval, addMessage])
+  }, [editedPlan, conversationId, pendingPlanVersion, resumeExecution, updateTasksFromPlan, setIsWaitingForApproval, addMessage, setMode, t])
 
   // 状态驱动 UI - 在所有 Hooks 定义之后进行条件渲染
   if (!isWaitingForApproval) {

@@ -240,6 +240,7 @@ def create_smart_router_workflow(checkpointer: Optional[BaseCheckpointSaver] = N
         - 防止单个 MCP 工具失败导致整个流程崩溃
         """
         import asyncio
+        import httpx
         from langchain_core.messages import ToolMessage
         
         mcp_tools = []
@@ -248,11 +249,42 @@ def create_smart_router_workflow(checkpointer: Optional[BaseCheckpointSaver] = N
         
         runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
         tool_executor = ToolNode(runtime_tools)
+
+        def _is_transient_connect_error(err: Exception) -> bool:
+            """识别可重试的网络连接类错误。"""
+            err_str = str(err).lower()
+            return (
+                isinstance(err, httpx.ConnectError)
+                or "connecterror" in err_str
+                or "connection reset" in err_str
+                or "connection aborted" in err_str
+                or "temporarily unavailable" in err_str
+                or "network is unreachable" in err_str
+            )
         
         try:
             # P1 修复: 添加 60 秒超时控制
-            async with asyncio.timeout(60):
-                return await tool_executor.ainvoke(state, config)
+            # P0 增强: 网络连接类错误自动重试，降低 MCP 短暂抖动影响
+            retry_delays = [0.8, 1.6]  # 最多 3 次尝试
+            attempts = len(retry_delays) + 1
+            for attempt in range(1, attempts + 1):
+                try:
+                    async with asyncio.timeout(60):
+                        return await tool_executor.ainvoke(state, config)
+                except Exception as err:
+                    is_last_attempt = attempt >= attempts
+                    if _is_transient_connect_error(err) and not is_last_attempt:
+                        delay = retry_delays[attempt - 1]
+                        logger.warning(
+                            "[ToolNode] MCP 工具连接失败，准备重试 (%s/%s), %.1fs 后重试: %s",
+                            attempt,
+                            attempts,
+                            delay,
+                            err,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    raise
         except asyncio.TimeoutError:
             # 工具调用超时，返回错误信息
             logger.error("[ToolNode] 工具调用超时 (60秒)")

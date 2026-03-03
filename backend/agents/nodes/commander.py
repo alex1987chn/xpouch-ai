@@ -379,11 +379,14 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
             # v3.0: 立即持久化到数据库 (通过 TaskManager)
             # 🔥 v3.3: 使用 preview_session_id 确保事件和数据库记录一致
             # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
-            task_session = None
+            task_session_id = None
+            sub_tasks_list = []
             if thread_id:
                 def _create_task_session():
+                    from crud.task_session import get_subtasks_by_session
+
                     with Session(engine) as db_session:
-                        return get_or_create_task_session(
+                        created_session, is_reused = get_or_create_task_session(
                             db=db_session,
                             thread_id=thread_id,
                             user_query=user_query,
@@ -393,10 +396,27 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                             execution_mode="sequential",
                             session_id=preview_session_id
                         )
-                
-                task_session, is_reused = await asyncio.to_thread(_create_task_session)
+
+                        # 在会话关闭前完成子任务数据读取，避免 detached 实例懒加载
+                        persisted_subtasks = get_subtasks_by_session(
+                            db_session, created_session.session_id
+                        )
+                        serialized_subtasks = [
+                            {
+                                "id": subtask.id,
+                                "expert_type": subtask.expert_type,
+                                "task_description": subtask.task_description,
+                                "input_data": subtask.input_data,
+                                "sort_order": subtask.sort_order,
+                                "status": subtask.status,
+                            }
+                            for subtask in persisted_subtasks
+                        ]
+                        return created_session.session_id, is_reused, serialized_subtasks
+
+                task_session_id, is_reused, sub_tasks_list = await asyncio.to_thread(_create_task_session)
                 session_source = "复用" if is_reused else "新建"
-                logger.info(f"[COMMANDER] TaskSession {session_source}: {task_session.session_id}")
+                logger.info(f"[COMMANDER] TaskSession {session_source}: {task_session_id}")
                 
                 # 🔥🔥🔥 关键修复：更新 thread.task_session_id，确保前端能查询到
                 # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
@@ -406,7 +426,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                     with Session(engine) as db_session:
                         thread = db_session.get(Thread, thread_id)
                         if thread:
-                            thread.task_session_id = task_session.session_id
+                            thread.task_session_id = task_session_id
                             thread.agent_type = "ai"  # 🔥 同时更新 agent_type
                             db_session.add(thread)
                             db_session.commit()
@@ -415,21 +435,20 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                 
                 updated = await asyncio.to_thread(_update_thread)
                 if updated:
-                    logger.info(f"[COMMANDER] ✅ 已更新 thread.task_session_id: {task_session.session_id}")
+                    logger.info(f"[COMMANDER] ✅ 已更新 thread.task_session_id: {task_session_id}")
 
             # 转换为内部字典格式（用于 LangGraph 状态流转）
-            sub_tasks_list = task_session.sub_tasks if task_session else []
             task_list = []
             for idx, subtask in enumerate(sub_tasks_list):
                 commander_task = commander_response.tasks[idx]
                 task_list.append({
-                    "id": subtask.id,
+                    "id": subtask["id"],
                     "task_id": commander_task.id,
-                    "expert_type": subtask.expert_type,
-                    "description": subtask.task_description,
-                    "input_data": subtask.input_data,
-                    "sort_order": subtask.sort_order,
-                    "status": subtask.status,
+                    "expert_type": subtask["expert_type"],
+                    "description": subtask["task_description"],
+                    "input_data": subtask["input_data"],
+                    "sort_order": subtask["sort_order"],
+                    "status": subtask["status"],
                     "depends_on": commander_task.dependencies if commander_task.dependencies else [],
                     "output_result": None,
                     "started_at": None,
@@ -446,23 +465,23 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
             # 注意：这里不再创建新的 event_queue，而是复用之前的事件队列
             
             # 4️⃣ 发送 plan.created 事件（完成状态）
-            if task_session:
+            if task_session_id:
                 plan_event = event_plan_created(
-                    session_id=task_session.session_id,
+                    session_id=task_session_id,
                     summary=commander_response.strategy,
                     estimated_steps=commander_response.estimated_steps,
                     execution_mode="sequential",
                     tasks=[
                         {
-                            "id": t.id,
+                            "id": t["id"],
                             "task_id": commander_response.tasks[idx].id,
-                            "expert_type": t.expert_type,
-                            "description": t.task_description,
-                            "sort_order": t.sort_order,
-                            "status": t.status,
+                            "expert_type": t["expert_type"],
+                            "description": t["task_description"],
+                            "sort_order": t["sort_order"],
+                            "status": t["status"],
                             "depends_on": commander_response.tasks[idx].dependencies if commander_response.tasks[idx].dependencies else []
                         }
-                        for idx, t in enumerate(task_session.sub_tasks)
+                        for idx, t in enumerate(sub_tasks_list)
                     ]
                 )
                 event_queue.append({"type": "sse", "event": sse_event_to_string(plan_event)})
@@ -472,7 +491,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> Di
                 "strategy": commander_response.strategy,
                 "current_task_index": 0,
                 "expert_results": [],
-                "task_session_id": task_session.session_id if task_session else None,
+                "task_session_id": task_session_id,
                 "event_queue": event_queue,
                 # 保留前端兼容的元数据
                 "__task_plan": {

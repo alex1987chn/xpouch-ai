@@ -138,12 +138,14 @@ export function handleHumanInterrupt(
 
   // 直接获取 current_plan
   const currentPlan = event.data?.current_plan
+  const planVersion = event.data?.plan_version
 
   // 将待审核计划存入 Store，触发 UI 显示
   if (currentPlan?.length > 0) {
-    setPendingPlan(currentPlan)
+    setPendingPlan(currentPlan, planVersion ?? 1)
     logger.info('[SystemEvents] 🔴 HITL 中断: 计划等待审核', {
-      taskCount: currentPlan.length
+      taskCount: currentPlan.length,
+      planVersion: planVersion ?? 1
     })
   } else {
     logger.warn('[SystemEvents] ⚠️ HITL 事件数据不完整:', event)
