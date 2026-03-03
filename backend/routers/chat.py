@@ -27,6 +27,7 @@ Router 层仅负责：
 """
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from pydantic import Field
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -62,7 +63,7 @@ class ChatMessageDTO(BaseModel):
 
 class ChatRequest(BaseModel):
     """聊天请求"""
-    message: str
+    message: str = Field(..., max_length=10000, description="用户输入消息，最大10000字符")
     history: List[ChatMessageDTO]
     conversation_id: Optional[str] = None
     agent_id: Optional[str] = "assistant"
