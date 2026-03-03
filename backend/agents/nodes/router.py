@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from agents.services.expert_manager import get_expert_config_cached
 from agents.state import AgentState
+from agents.state_patch import append_sse_event, get_event_queue_snapshot
 from constants import DEFAULT_ASSISTANT_PROMPT, ROUTER_SYSTEM_PROMPT
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from utils.event_generator import event_router_decision, event_router_start, sse_event_to_string
@@ -56,12 +57,9 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
     logger.info(f"--- [Router] 正在思考: {user_query[:100]}... ---")
 
     # 🔥 Phase 3: 初始化事件队列，发送 router.start 事件（不可变更新）
-    base_event_queue = state.get("event_queue", [])
+    base_event_queue = get_event_queue_snapshot(state)
     start_event = event_router_start(query=user_query[:200])  # 限制长度
-    event_queue = [
-        *base_event_queue,
-        {"type": "sse", "event": sse_event_to_string(start_event)},
-    ]
+    event_queue = append_sse_event(base_event_queue, sse_event_to_string(start_event))
     logger.info("[Router] 已发送 router.start 事件")
 
     # 1. 🔥 检索长期记忆（异步）
@@ -127,10 +125,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
             decision=decision_type,
             reason="Based on query complexity analysis"
         )
-        full_event_queue = [
-            *event_queue,
-            {"type": "sse", "event": sse_event_to_string(decision_event)},
-        ]
+        full_event_queue = append_sse_event(event_queue, sse_event_to_string(decision_event))
         logger.info(f"[Router] 已发送 router.decision 事件: {decision_type}")
 
         return {
@@ -145,10 +140,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
             decision="complex",
             reason=f"Router error, fallback to complex mode: {str(e)}"
         )
-        full_event_queue = [
-            *event_queue,
-            {"type": "sse", "event": sse_event_to_string(decision_event)},
-        ]
+        full_event_queue = append_sse_event(event_queue, sse_event_to_string(decision_event))
         logger.info("[Router] 错误，已发送 fallback router.decision 事件")
 
         return {
