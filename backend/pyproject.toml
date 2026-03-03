@@ -23,7 +23,7 @@ dependencies = [
     "PyJWT>=2.8.0,<3.0.0",
     "passlib[bcrypt]>=1.7.0,<2.0.0",
     "bcrypt>=4.0.0,<5.0.0",
-    "python-multipart>=0.0.6,<1.0.0",
+    "python-multipart>=0.0.0,<1.0.0",
     "psycopg[binary]>=3.3.0,<4.0.0",
     "alembic>=1.13.0,<2.0.0",
     "pgvector>=0.3.0,<1.0.0",  # 🔥 新增：pgvector Python 客户端，支持向量操作
@@ -32,3 +32,31 @@ dependencies = [
     "tenacity>=9.0.0,<10.0.0",  # P1 新增: 重试机制
     "cachetools>=5.3.0,<6.0.0",  # P1 新增: TTL 缓存
 ]
+
+[tool.ruff]
+target-version = "py313"  # Python 3.13
+line-length = 100  # 行长度限制
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # Pyflakes
+    "I",   # isort (import 排序)
+    "N",   # pep8-naming (命名规范)
+    "W",   # pycodestyle warnings
+    "UP",  # pyupgrade (Python 升级检查)
+    "B",   # flake8-bugbear (常见 bug)
+    "C4",  # flake8-comprehensions (推导式优化)
+]
+ignore = [
+    "E501",  # line too long (由 formatter 处理)
+    "N805",  # first argument of a method should be named 'self' (SQLModel 等场景)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"  # Google 风格文档字符串
+
+[tool.ruff.format]
+quote-style = "double"  # 使用双引号
+indent-style = "space"   # 使用空格缩进
+line-ending = "lf"       # Unix 风格换行
