@@ -12,8 +12,8 @@ from alembic import context
 from sqlmodel import SQLModel
 # Import all models to ensure metadata includes all tables
 from models import (
-    User, Thread, Message, CustomAgent, TaskSession, 
-    SubTask, Artifact, SystemExpert, UserMemory
+    User, Thread, Message, CustomAgent, TaskSession,
+    SubTask, Artifact, SystemExpert, UserMemory, MCPServer
 )
 
 # Alembic Config object
@@ -36,9 +36,9 @@ def get_database_url():
             "Please set it in your .env file or environment."
         )
     
-    # Convert asyncpg/psycopg URL to standard PostgreSQL URL
-    # Alembic uses synchronous connection
-    url = database_url.replace("+asyncpg", "").replace("+psycopg", "")
+    # Convert asyncpg URL to psycopg (sync) for Alembic
+    # psycopg (v3) is already installed and supports sync mode
+    url = database_url.replace("+asyncpg", "+psycopg")
     return url
 
 

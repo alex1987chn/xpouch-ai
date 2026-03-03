@@ -10,6 +10,7 @@ import type { MessageDeltaEvent, MessageDoneEvent } from './types'
 import type { HandlerContext } from './types'
 import { logger } from '@/utils/logger'
 import { findMessageById } from '@/utils/normalize'
+import { useChatStore } from '@/store/chatStore'
 
 // 🔥 防重：已处理过的 message.done 消息ID集合
 const processedMessageDones = new Set<string>()
@@ -154,8 +155,9 @@ export function handleMessageDone(
 
   // 🔥🔥🔥 关键修复：message.done 时将所有 thinking steps 标记为 completed
   // 防止流结束后仍有 running 状态的步骤导致 UI 一直转圈
-  // 🔥 使用规范化工具查找
-  const finalMessage = findMessageById(messages, event.data.message_id)
+  // 🔥 修复：从 store 获取最新消息，而不是使用传入的快照
+  const latestMessages = useChatStore.getState().messages
+  const finalMessage = findMessageById(latestMessages, event.data.message_id)
   if (debug) {
     logger.debug(
       '[ChatEvents] message.done: finalMessage=',
