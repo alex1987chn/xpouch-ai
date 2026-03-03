@@ -29,9 +29,6 @@ export type EventType =
   // 系统事件
   | 'router.start'
   | 'router.decision'
-  // 工作流事件
-  | 'workflow.completed'
-  | 'workflow.cancelled'
   | 'error'
 
 // ============================================================================
@@ -199,31 +196,6 @@ export interface RouterDecisionData {
 
 export type RouterDecisionEvent = SSEEvent<RouterDecisionData>
 
-// ============================================================================
-// 工作流事件
-// ============================================================================
-
-export interface WorkflowCompletedData {
-  session_id: string
-  total_tasks: number
-  completed_tasks: number
-  failed_tasks: number
-  duration_ms: number
-  completed_at: string
-}
-
-export type WorkflowCompletedEvent = SSEEvent<WorkflowCompletedData>
-
-export interface WorkflowCancelledData {
-  session_id: string
-  reason: string
-  cancelled_at: string
-  completed_tasks: number
-  pending_tasks: number
-}
-
-export type WorkflowCancelledEvent = SSEEvent<WorkflowCancelledData>
-
 export interface ErrorData {
   code: string
   message: string
@@ -269,8 +241,6 @@ export type AnyServerEvent =
   | HumanInterruptEvent     // 🔥🔥🔥 v3.1.0 HITL
   | RouterStartEvent
   | RouterDecisionEvent
-  | WorkflowCompletedEvent  // 🔥 新增
-  | WorkflowCancelledEvent  // 🔥 新增
   | ErrorEvent
 
 // ============================================================================
