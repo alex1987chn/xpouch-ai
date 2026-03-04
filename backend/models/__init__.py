@@ -62,6 +62,8 @@ class SystemExpert(SQLModel, table=True):
     is_dynamic: bool = Field(default=True, description="是否为动态专家，false=系统内置，true=用户创建")
     # 🔥 新增：系统核心组件标记（不可删除）
     is_system: bool = Field(default=False, description="是否为系统核心组件，true=禁止删除")
+    # 🔥 新增：配置版本号（乐观锁，用于并发更新检测）
+    config_version: int = Field(default=0, description="配置版本号，每次更新自动递增")
     created_at: datetime = Field(
         default_factory=datetime.now,
         description="创建时间"

@@ -76,6 +76,7 @@ class ExpertResponse(BaseModel):
     temperature: float
     is_dynamic: bool
     is_system: bool  # 🔥 新增：系统核心组件标记
+    config_version: int  # 🔥 新增：配置版本号（乐观锁）
     updated_at: str
 
 
@@ -86,6 +87,7 @@ class ExpertUpdate(BaseModel):
     description: str | None = PydanticField(default=None, description="专家能力描述，用于 Planner 决定任务分配")
     model: str = PydanticField(default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="模型名称")
     temperature: float = PydanticField(default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）")
+    expected_version: int = PydanticField(default=0, description="期望的配置版本号（乐观锁）")
 
     @field_validator('system_prompt')
     @classmethod
@@ -202,6 +204,7 @@ async def get_all_experts(
             temperature=expert.temperature,
             is_dynamic=expert.is_dynamic,
             is_system=expert.is_system,  # 🔥 新增
+            config_version=expert.config_version,  # 🔥 新增：版本号
             updated_at=expert.updated_at.isoformat()
         )
         for expert in experts
@@ -239,6 +242,7 @@ async def get_expert(
         temperature=expert.temperature,
         is_dynamic=expert.is_dynamic,
         is_system=expert.is_system,  # 🔥 新增
+        config_version=expert.config_version,  # 🔥 新增：版本号
         updated_at=expert.updated_at.isoformat()
     )
 
@@ -274,6 +278,13 @@ async def update_expert(
             detail=f"专家 '{expert_key}' 不存在"
         )
 
+    # 🔥 乐观锁检查：防止并发更新覆盖
+    if expert.config_version != expert_update.expected_version:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"专家配置已被他人修改（当前版本: {expert.config_version}, 期望版本: {expert_update.expected_version}），请刷新后重试"
+        )
+
     # 更新字段
     # 只有动态专家可以修改 name
     if expert_update.name is not None:
@@ -289,12 +300,13 @@ async def update_expert(
     expert.model = expert_update.model
     expert.temperature = expert_update.temperature
     expert.updated_at = datetime.now()
+    expert.config_version += 1  # 🔥 版本号递增
 
     session.add(expert)
     session.commit()
     session.refresh(expert)
 
-    logger.info(f"[Admin] Expert '{expert_key}' updated by admin")
+    logger.info(f"[Admin] Expert '{expert_key}' updated by admin (version {expert.config_version})")
 
     # 自动刷新 LangGraph 缓存（无需重启）
     try:
@@ -307,6 +319,7 @@ async def update_expert(
     return {
         "message": "专家配置已更新，下次任务生效",
         "expert_key": expert_key,
+        "config_version": expert.config_version,
         "updated_at": expert.updated_at.isoformat()
     }
 
@@ -596,6 +609,7 @@ async def create_expert(
         temperature=new_expert.temperature,
         is_dynamic=new_expert.is_dynamic,
         is_system=new_expert.is_system if hasattr(new_expert, 'is_system') else False,  # 🔥 新增
+        config_version=new_expert.config_version,  # 🔥 新增：版本号
         updated_at=new_expert.updated_at.isoformat()
     )
 
