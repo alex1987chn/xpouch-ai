@@ -12,6 +12,7 @@ HITL (Human-in-the-Loop) 恢复服务
 """
 import asyncio
 import os
+import threading
 from datetime import datetime
 from typing import Any
 
@@ -27,6 +28,9 @@ from utils.logger import logger
 
 class RecoveryService:
     """HITL 恢复服务"""
+
+    _inflight_resume_by_thread: dict[str, str] = {}
+    _inflight_lock = threading.Lock()
 
     def __init__(self, db_session: Session):
         self.db = db_session
@@ -52,7 +56,8 @@ class RecoveryService:
         approved: bool,
         updated_plan: list[dict[str, Any]] | None = None,
         plan_version: int | None = None,
-        message_id: str | None = None
+        message_id: str | None = None,
+        idempotency_key: str | None = None
     ) -> StreamingResponse | dict[str, str]:
         """
         恢复被中断的 HITL 流程
@@ -73,6 +78,7 @@ class RecoveryService:
                 - depends_on: Optional[List[str]] 依赖任务ID列表
             plan_version: 客户端当前看到的计划版本号（乐观锁）
             message_id: 前端传入的消息ID（用于关联流式输出）
+            idempotency_key: 幂等键（推荐传入，防止重复恢复请求）
 
         Returns:
             approved=True: StreamingResponse SSE流
@@ -97,7 +103,13 @@ class RecoveryService:
             return await self._handle_rejection(thread_id)
 
         # 3. 处理用户批准 - 流式恢复
-        return await self._handle_approval(thread_id, updated_plan, plan_version, message_id)
+        return await self._handle_approval(
+            thread_id,
+            updated_plan,
+            plan_version,
+            message_id,
+            idempotency_key,
+        )
 
     async def _handle_rejection(self, thread_id: str) -> dict[str, str]:
         """
@@ -128,7 +140,8 @@ class RecoveryService:
         thread_id: str,
         updated_plan: list[dict[str, Any]] | None = None,
         plan_version: int | None = None,
-        message_id: str | None = None
+        message_id: str | None = None,
+        idempotency_key: str | None = None
     ) -> StreamingResponse:
         """
         处理用户批准计划 - 流式恢复执行
@@ -140,11 +153,20 @@ class RecoveryService:
             updated_plan: 用户修改后的计划
             plan_version: 客户端当前看到的计划版本号
             message_id: 前端传入的消息ID（用于关联流式输出）
+            idempotency_key: 幂等键（推荐传入，防止重复恢复请求）
 
         Returns:
             StreamingResponse SSE流
         """
         import uuid
+
+        resume_key = self._build_resume_key(thread_id, plan_version, message_id, idempotency_key)
+        self._enter_inflight_resume(thread_id, resume_key)
+        try:
+            self._mark_thread_running(thread_id)
+        except Exception:
+            self._exit_inflight_resume(thread_id, resume_key)
+            raise
 
         logger.info("[HITL RESUME] 用户批准，开始流式恢复")
 
@@ -179,6 +201,9 @@ class RecoveryService:
             except Exception as e:
                 logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
                 yield self._build_error_event("RESUME_ERROR", str(e))
+            finally:
+                self._mark_thread_idle(thread_id)
+                self._exit_inflight_resume(thread_id, resume_key)
 
         return StreamingResponse(
             event_generator(),
@@ -189,6 +214,90 @@ class RecoveryService:
                 "X-Accel-Buffering": "no"
             }
         )
+
+    @classmethod
+    def _enter_inflight_resume(cls, thread_id: str, resume_key: str) -> None:
+        """进程内幂等保护：防止重复恢复请求并发进入。"""
+        with cls._inflight_lock:
+            existing = cls._inflight_resume_by_thread.get(thread_id)
+            if existing is None:
+                cls._inflight_resume_by_thread[thread_id] = resume_key
+                return
+
+            if existing == resume_key:
+                raise AppError(
+                    message="恢复请求处理中，请勿重复提交",
+                    code="RESUME_DUPLICATE_REQUEST",
+                    status_code=409,
+                    details={"thread_id": thread_id, "idempotency_key": resume_key},
+                )
+
+            raise AppError(
+                message="当前线程已有恢复流程在执行",
+                code="RESUME_IN_PROGRESS",
+                status_code=409,
+                details={"thread_id": thread_id, "running_idempotency_key": existing},
+            )
+
+    @classmethod
+    def _exit_inflight_resume(cls, thread_id: str, resume_key: str) -> None:
+        """释放进程内恢复请求占位（仅释放自己持有的 key）。"""
+        with cls._inflight_lock:
+            existing = cls._inflight_resume_by_thread.get(thread_id)
+            if existing == resume_key:
+                cls._inflight_resume_by_thread.pop(thread_id, None)
+
+    @staticmethod
+    def _build_resume_key(
+        thread_id: str,
+        plan_version: int | None,
+        message_id: str | None,
+        idempotency_key: str | None,
+    ) -> str:
+        """构建恢复请求幂等键。"""
+        if idempotency_key:
+            return idempotency_key
+        if message_id:
+            return f"msg:{message_id}"
+        return f"{thread_id}:{plan_version}"
+
+    def _mark_thread_running(self, thread_id: str) -> None:
+        """
+        标记线程为 running。
+
+        说明:
+        - 作为跨请求的并发保护补充，避免同一线程被重复恢复。
+        - 若线程已在运行中，则拒绝新的恢复请求。
+        """
+        thread = self.db.get(Thread, thread_id)
+        if not thread:
+            raise NotFoundError(f"Thread not found: {thread_id}")
+
+        if thread.status == "running":
+            raise AppError(
+                message="当前线程已有恢复流程在执行",
+                code="RESUME_IN_PROGRESS",
+                status_code=409,
+                details={"thread_id": thread_id},
+            )
+
+        thread.status = "running"
+        thread.updated_at = datetime.now()
+        self.db.add(thread)
+        self.db.commit()
+
+    def _mark_thread_idle(self, thread_id: str) -> None:
+        """恢复流程结束后，将线程状态归位为 idle。"""
+        try:
+            thread = self.db.get(Thread, thread_id)
+            if not thread:
+                return
+            thread.status = "idle"
+            thread.updated_at = datetime.now()
+            self.db.add(thread)
+            self.db.commit()
+        except Exception as e:
+            logger.warning(f"[HITL RESUME] 重置线程状态失败: {e}")
 
     def _bump_plan_version_with_cas(self, thread_id: str, expected_plan_version: int | None) -> None:
         """

@@ -78,6 +78,7 @@ class ResumeRequest(BaseModel):
     plan_version: int | None = Field(default=None, ge=1)
     approved: bool = True
     message_id: str | None = None  # 前端传入的消息ID，用于关联流式输出
+    idempotency_key: str | None = Field(default=None, min_length=8, max_length=128)
 
 
 class ArtifactUpdateRequest(BaseModel):
@@ -320,7 +321,8 @@ async def resume_chat(
         approved=request.approved,
         updated_plan=request.updated_plan,
         plan_version=request.plan_version,
-        message_id=request.message_id
+        message_id=request.message_id,
+        idempotency_key=request.idempotency_key
     )
 
 

@@ -35,8 +35,8 @@ jobs:
         run: uv run ruff check .
         continue-on-error: true  # 🔥 确立基线：暂时允许历史债务，不阻塞部署
 
-      - name: Run protocol guard tests
-        run: uv run pytest tests/test_sse_protocol_contract.py tests/test_event_queue_immutability.py
+      - name: Run backend guard and smoke tests
+        run: uv run pytest tests/test_sse_protocol_contract.py tests/test_event_queue_immutability.py tests/test_recovery_idempotency.py tests/test_chat_resume_smoke.py
 
   frontend-check:
     name: Frontend Checks
