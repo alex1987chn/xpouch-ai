@@ -30,6 +30,7 @@ class MCPToolsService:
     _cache: Optional[tuple[List[Any], datetime, str]] = None
     _cache_lock = asyncio.Lock()
     _cache_ttl_seconds = 300  # 5分钟
+    _inflight_task: Optional[asyncio.Task[List[Any]]] = None
     
     async def get_tools(self) -> List[Any]:
         """
@@ -57,8 +58,27 @@ class MCPToolsService:
                 else:
                     logger.debug("[MCP] 缓存过期，重新获取")
                     self._cache = None
+
+            # ARCH-13: single-flight 防雪崩
+            # 若已有并发请求在拉取工具，则复用同一个任务，避免瞬时并发打爆 MCP Server。
+            if self._inflight_task is not None and not self._inflight_task.done():
+                logger.debug("[MCP] 复用进行中的工具拉取任务（single-flight）")
+                inflight = self._inflight_task
+            else:
+                self._inflight_task = asyncio.create_task(self._load_tools())
+                inflight = self._inflight_task
+
+        try:
+            return await inflight
+        finally:
+            async with self._cache_lock:
+                if self._inflight_task is inflight and inflight.done():
+                    self._inflight_task = None
+
+    async def _load_tools(self) -> List[Any]:
+        """实际执行 MCP 工具拉取（由 get_tools single-flight 调用）。"""
+        tools: List[Any] = []
         
-        tools = []
         try:
             # Python 3.13: 在异步函数中使用同步上下文管理器
             with Session(engine) as session:
@@ -123,6 +143,7 @@ class MCPToolsService:
         """手动使 MCP 工具缓存失效"""
         async with self._cache_lock:
             self._cache = None
+            self._inflight_task = None
             logger.info("[MCP] 工具缓存已清除")
 
 

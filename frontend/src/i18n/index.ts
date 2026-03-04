@@ -57,6 +57,8 @@ export type TranslationKey =
   | 'pending' | 'running' | 'completed'
   // Delete Dialog
   | 'confirmDeleteTitle' | 'confirmDeleteDescription' | 'deleting'
+  // Cancel Dialog
+  | 'confirmCancelTitle' | 'confirmCancelDescription' | 'canceling' | 'confirmCancel'
   // Create Agent Page
   | 'simpleDescription' | 'defineBehavior' | 'writingAssistantPlaceholder' | 'tip' | 'tipDescription'
   | 'realtimePreview' | 'previewDescription' | 'submitTaskPlaceholder'

@@ -11,6 +11,7 @@ XPouch AI Backend - 入口文件
 import pathlib
 from dotenv import load_dotenv
 import os
+import asyncio
 
 # Load .env from the same directory as this file
 env_path = pathlib.Path(__file__).parent / ".env"
@@ -93,8 +94,17 @@ async def lifespan(app: FastAPI):
     logger.info("[Lifespan] Expert cache cleared for fresh start")
 
     logger.info("[Lifespan] Startup complete, yielding control to Uvicorn...")
+    from services.session_cleanup_service import run_session_cleanup_loop
+
+    cleanup_task = asyncio.create_task(run_session_cleanup_loop())
     yield
     logger.info("[Lifespan] Shutdown started...")
+
+    cleanup_task.cancel()
+    try:
+        await cleanup_task
+    except asyncio.CancelledError:
+        logger.info("[Lifespan] Session cleanup task stopped")
     
     # 🔥 关闭连接池
     from utils.db import close_connection_pool

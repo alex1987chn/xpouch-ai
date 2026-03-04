@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, Edit3, CheckCircle2, XCircle, Play, Loader2, AlertTriangle } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import type { ResumeChatParams } from '@/services/chat'
+import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 
 // 使用 TaskStore
 import {
@@ -386,73 +387,17 @@ export function PlanReviewCard({
           </div>
         </div>
         
-        {/* 确认对话框 - 简洁 */}
-        <AnimatePresence>
-          {showConfirmDialog && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-              onClick={(e) => e.target === e.currentTarget && setShowConfirmDialog(false)}
-            >
-              <motion.div
-                initial={{ scale: 0.95, y: 10 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.95, y: 10 }}
-                className={cn(
-                  "w-full max-w-xs",
-                  "border border-border-default",
-                  "bg-surface-card rounded-lg overflow-hidden",
-                  "shadow-lg"
-                )}
-              >
-                {/* 对话框头部 */}
-                <div className="flex items-center gap-2 p-3 border-b border-border-default bg-status-offline/10">
-                  <AlertTriangle className="w-4 h-4 text-status-offline" />
-                  <h3 className="text-sm font-medium text-status-offline">
-                    确认取消
-                  </h3>
-                </div>
-                
-                {/* 对话框内容 */}
-                <div className="p-3">
-                  <p className="text-sm text-content-muted">
-                    确定要取消执行吗？这会清理所有计划状态。
-                  </p>
-                </div>
-                
-                {/* 对话框按钮 */}
-                <div className="flex gap-2 p-3 border-t border-border-default">
-                  <button
-                    onClick={() => setShowConfirmDialog(false)}
-                    className={cn(
-                      "flex-1 px-3 py-1.5 text-xs font-medium",
-                      "border border-border-default rounded",
-                      "bg-surface-card text-content-secondary",
-                      "hover:bg-surface-elevated transition-colors"
-                    )}
-                  >
-                    再想想
-                  </button>
-                  <button
-                    onClick={doCancel}
-                    disabled={isCancelling}
-                    className={cn(
-                      "flex-1 px-3 py-1.5 text-xs font-medium",
-                      "bg-status-offline text-white rounded",
-                      "hover:bg-status-offline/90",
-                      "disabled:opacity-50 disabled:cursor-not-allowed",
-                      "transition-colors"
-                    )}
-                  >
-                    {isCancelling ? t('canceling') : t('confirmCancel')}
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* 确认取消对话框 - 使用统一组件 */}
+        <DeleteConfirmDialog
+          isOpen={showConfirmDialog}
+          onClose={() => setShowConfirmDialog(false)}
+          onConfirm={doCancel}
+          title={t('confirmCancelTitle')}
+          description={t('confirmCancelDescription')}
+          confirmText={isCancelling ? t('canceling') : t('confirmCancel')}
+          isDeleting={isCancelling}
+          variant="warning"
+        />
       </motion.div>
     </AnimatePresence>
   )

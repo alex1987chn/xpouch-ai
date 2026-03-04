@@ -64,6 +64,10 @@ export const zh: Record<string, string> = {
   confirmDeleteTitle: '确认删除',
   confirmDeleteDescription: '此操作无法撤销，请确认是否继续？',
   deleting: '删除中...',
+  
+  // Cancel Dialog
+  confirmCancelTitle: '确认取消',
+  confirmCancelDescription: '确定要取消执行吗？这会清理所有计划状态。',
 
   // Common states
   success: '成功',
@@ -187,6 +191,10 @@ export const en: Record<string, string> = {
   confirmDeleteTitle: 'Confirm Delete',
   confirmDeleteDescription: 'This action cannot be undone. Are you sure you want to continue?',
   deleting: 'Deleting...',
+  
+  // Cancel Dialog
+  confirmCancelTitle: 'Confirm Cancel',
+  confirmCancelDescription: 'Are you sure you want to cancel? This will clear all plan states.',
 
   // Common states
   success: 'Success',
@@ -310,6 +318,10 @@ export const ja: Record<string, string> = {
   confirmDeleteTitle: '削除の確認',
   confirmDeleteDescription: 'この操作は取り消せません。続行しますか？',
   deleting: '削除中...',
+  
+  // Cancel Dialog
+  confirmCancelTitle: 'キャンセルの確認',
+  confirmCancelDescription: '実行をキャンセルしてもよろしいですか？すべての計画状態がクリアされます。',
 
   // Common states
   success: '成功',

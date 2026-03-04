@@ -1,12 +1,13 @@
 import os
 import uuid
-from typing import List, Optional
 from datetime import datetime
-from sqlmodel import Field, SQLModel, Relationship, JSON, Session, select, Column
-from sqlalchemy import String, Index, func
-from pydantic import BaseModel, Field as PydanticField
 from enum import Enum
+from typing import List, Optional
 
+from pydantic import BaseModel
+from pydantic import Field as PydanticField
+from sqlalchemy import Index, String, func
+from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
 
 # ============================================================================
 # 枚举类型
@@ -50,7 +51,7 @@ class SystemExpert(SQLModel, table=True):
         description="专家类型标识（对应 ExpertType 枚举，如 'coder', 'search'）"
     )
     name: str = Field(description="专家显示名称")
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None,
         description="专家能力描述，用于 Planner 决定任务分配"
     )
@@ -62,6 +63,10 @@ class SystemExpert(SQLModel, table=True):
     is_dynamic: bool = Field(default=True, description="是否为动态专家，false=系统内置，true=用户创建")
     # 🔥 新增：系统核心组件标记（不可删除）
     is_system: bool = Field(default=False, description="是否为系统核心组件，true=禁止删除")
+    created_at: datetime = Field(
+        default_factory=datetime.now,
+        description="创建时间"
+    )
     updated_at: datetime = Field(
         default_factory=datetime.now,
         sa_column_kwargs={"onupdate": func.now()},
@@ -72,22 +77,22 @@ class SystemExpert(SQLModel, table=True):
 class User(SQLModel, table=True):
     id: str = Field(primary_key=True) # 前端生成的 UUID
     username: str = Field(default="User")
-    avatar: Optional[str] = None
+    avatar: str | None = None
     plan: str = Field(default="Free") # Free, Pilot, Maestro
     role: UserRole = Field(
         default=UserRole.USER,
         sa_column=Column(String(10))  # 使用 String 类型映射，保持数据库列为 VARCHAR
     )
-    phone_number: Optional[str] = Field(default=None, unique=True, index=True)
-    email: Optional[str] = Field(default=None, unique=True, index=True)
-    password_hash: Optional[str] = Field(default=None)
-    verification_code: Optional[str] = Field(default=None)
-    verification_code_expires_at: Optional[datetime] = Field(default=None)
-    auth_provider: Optional[str] = Field(default=None)  # 'phone', 'email', 'github', 'google', 'wechat'
-    provider_id: Optional[str] = Field(default=None, index=True)
-    access_token: Optional[str] = Field(default=None)
-    refresh_token: Optional[str] = Field(default=None)
-    token_expires_at: Optional[datetime] = Field(default=None)
+    phone_number: str | None = Field(default=None, unique=True, index=True)
+    email: str | None = Field(default=None, unique=True, index=True)
+    password_hash: str | None = Field(default=None)
+    verification_code: str | None = Field(default=None)
+    verification_code_expires_at: datetime | None = Field(default=None)
+    auth_provider: str | None = Field(default=None)  # 'phone', 'email', 'github', 'google', 'wechat'
+    provider_id: str | None = Field(default=None, index=True)
+    access_token: str | None = Field(default=None)
+    refresh_token: str | None = Field(default=None)
+    token_expires_at: datetime | None = Field(default=None)
     is_verified: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(
@@ -95,8 +100,8 @@ class User(SQLModel, table=True):
         sa_column_kwargs={"onupdate": func.now()}
     )
 
-    threads: List["Thread"] = Relationship(back_populates="user")
-    custom_agents: List["CustomAgent"] = Relationship(
+    threads: list["Thread"] = Relationship(back_populates="user")
+    custom_agents: list["CustomAgent"] = Relationship(
         back_populates="user",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
@@ -110,7 +115,7 @@ class Thread(SQLModel, table=True):
     """
     __tablename__ = 'thread'  # 👈 显式指定表名为 thread（单数形式，符合数据库实际命名）
 
-    id: Optional[str] = Field(default=None, primary_key=True)
+    id: str | None = Field(default=None, primary_key=True)
     title: str
 
     # 会话类型：明确区分三种模式
@@ -126,7 +131,7 @@ class Thread(SQLModel, table=True):
     user_id: str = Field(foreign_key="user.id", index=True)
 
     # 关联的任务会话（仅复杂模式有值）
-    task_session_id: Optional[str] = Field(default=None, index=True)
+    task_session_id: str | None = Field(default=None, index=True)
 
     # 新增：线程状态（记录线程的执行状态）
     # - idle: 空闲/完成状态
@@ -147,21 +152,21 @@ class Thread(SQLModel, table=True):
     )
 
     # 关联关系
-    user: Optional[User] = Relationship(back_populates="threads")
-    messages: List["Message"] = Relationship(back_populates="thread", sa_relationship_kwargs={"cascade": "all, delete"})
+    user: User | None = Relationship(back_populates="threads")
+    messages: list["Message"] = Relationship(back_populates="thread", sa_relationship_kwargs={"cascade": "all, delete"})
     task_session: Optional["TaskSession"] = Relationship(
         back_populates="thread",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
 class Message(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     thread_id: str = Field(foreign_key="thread.id", index=True)
     role: str
     content: str
     timestamp: datetime = Field(default_factory=datetime.now)
     # 👈 新增：extra_data 字段存储 thinking、reasoning 等额外信息（metadata 是 SQLAlchemy 保留字）
-    extra_data: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    extra_data: dict | None = Field(default=None, sa_column=Column(JSON))
 
     thread: Thread = Relationship(back_populates="messages")
 
@@ -178,11 +183,11 @@ class Message(SQLModel, table=True):
 
 class MessageResponse(BaseModel):
     """消息响应模型"""
-    id: Optional[int] = None
+    id: int | None = None
     role: str
     content: str
-    timestamp: Optional[datetime] = None
-    extra_data: Optional[dict] = None  # 👈 新增：extra_data 字段（原 metadata，避免保留字冲突）
+    timestamp: datetime | None = None
+    extra_data: dict | None = None  # 👈 新增：extra_data 字段（原 metadata，避免保留字冲突）
 
     class Config:
         from_attributes = True
@@ -190,16 +195,16 @@ class MessageResponse(BaseModel):
 
 class ThreadListResponse(BaseModel):
     """会话列表响应模型（轻量级，不包含消息内容）"""
-    id: Optional[str] = None
+    id: str | None = None
     title: str
     agent_type: str
     agent_id: str
     user_id: str
-    task_session_id: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    task_session_id: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
     message_count: int = 0  # 消息数量，替代完整消息列表
-    last_message_preview: Optional[str] = None  # 最后一条消息的预览（前100字）
+    last_message_preview: str | None = None  # 最后一条消息的预览（前100字）
 
     class Config:
         from_attributes = True
@@ -207,16 +212,16 @@ class ThreadListResponse(BaseModel):
 
 class ThreadDetailResponse(BaseModel):
     """会话详情响应模型（完整数据，包含所有消息）"""
-    id: Optional[str] = None
+    id: str | None = None
     title: str
     agent_type: str
     agent_id: str
     user_id: str
-    task_session_id: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    messages: List[MessageResponse] = []
-    task_session: Optional[dict] = None  # 复杂模式下的任务会话数据
+    task_session_id: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    messages: list[MessageResponse] = []
+    task_session: dict | None = None  # 复杂模式下的任务会话数据
 
     class Config:
         from_attributes = True
@@ -224,7 +229,7 @@ class ThreadDetailResponse(BaseModel):
 
 class PaginatedThreadListResponse(BaseModel):
     """分页会话列表响应模型"""
-    items: List[ThreadListResponse]  # 当前页数据
+    items: list[ThreadListResponse]  # 当前页数据
     total: int                       # 总记录数
     page: int                        # 当前页码
     limit: int                       # 每页条数
@@ -246,35 +251,35 @@ class CustomAgent(SQLModel, table=True):
     不经过 LangGraph 的专家工作流。
     """
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    
+
     # 关联用户
     user_id: str = Field(foreign_key="user.id", index=True)
-    
+
     # 基本信息
     name: str = Field(index=True)  # 智能体名称
-    description: Optional[str] = None  # 描述
-    
+    description: str | None = None  # 描述
+
     # 核心配置
     system_prompt: str  # 用户自定义的系统提示词（关键！）
     model_id: str = Field(default="deepseek-chat")  # 使用的模型
-    
+
     # 新增：是否为默认助手
     is_default: bool = Field(default=False, index=True)
-    
+
     # 分类和统计
     category: str = Field(default="综合")  # 分类（写作、编程、创意等）
     is_public: bool = Field(default=False)  # 是否公开（未来扩展）
     conversation_count: int = Field(default=0)  # 使用次数
-    
+
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(
         default_factory=datetime.now,
         sa_column_kwargs={"onupdate": func.now()}
     )
-    
+
     # 关联
-    user: Optional[User] = Relationship(back_populates="custom_agents")
+    user: User | None = Relationship(back_populates="custom_agents")
 
 
 # 在 User 模型中添加关联
@@ -289,7 +294,7 @@ class CustomAgent(SQLModel, table=True):
 class CustomAgentCreate(BaseModel):
     """创建自定义智能体的 DTO"""
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     system_prompt: str = PydanticField(alias="systemPrompt")  # 必填，前端字段为 systemPrompt
     category: str = "综合"
     model_id: str = PydanticField(default="deepseek-chat", alias="modelId")
@@ -297,11 +302,11 @@ class CustomAgentCreate(BaseModel):
 
 class CustomAgentUpdate(BaseModel):
     """更新自定义智能体的 DTO"""
-    name: Optional[str] = None
-    description: Optional[str] = None
-    system_prompt: Optional[str] = PydanticField(default=None, alias="systemPrompt")
-    category: Optional[str] = None
-    model_id: Optional[str] = PydanticField(default=None, alias="modelId")
+    name: str | None = None
+    description: str | None = None
+    system_prompt: str | None = PydanticField(default=None, alias="systemPrompt")
+    category: str | None = None
+    model_id: str | None = PydanticField(default=None, alias="modelId")
 
 
 class CustomAgentResponse(BaseModel):
@@ -309,7 +314,7 @@ class CustomAgentResponse(BaseModel):
     id: str
     user_id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     system_prompt: str
     model_id: str
     is_default: bool
@@ -371,7 +376,7 @@ class SubTask(SQLModel, table=True):
     task_description: str = Field(index=True)
 
     # 输入数据：JSON 格式的任务参数
-    input_data: Optional[dict] = Field(default=None, sa_type=JSON)
+    input_data: dict | None = Field(default=None, sa_type=JSON)
 
     # 任务状态
     status: str = Field(default="pending", index=True)  # 存储 TaskStatus 枚举值
@@ -380,16 +385,16 @@ class SubTask(SQLModel, table=True):
     execution_mode: str = Field(default="sequential")  # sequential | parallel
 
     # 依赖任务：并行模式下可能依赖其他任务（可选）
-    depends_on: Optional[List[str]] = Field(default=None, sa_type=JSON)
+    depends_on: list[str] | None = Field(default=None, sa_type=JSON)
 
     # 输出结果：JSON 格式的执行结果
-    output_result: Optional[dict] = Field(default=None, sa_type=JSON)
+    output_result: dict | None = Field(default=None, sa_type=JSON)
 
     # 错误信息
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
     # 执行耗时（毫秒）
-    duration_ms: Optional[int] = None
+    duration_ms: int | None = None
 
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
@@ -397,14 +402,14 @@ class SubTask(SQLModel, table=True):
         default_factory=datetime.now,
         sa_column_kwargs={"onupdate": func.now()}
     )
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     # 关联关系
     task_session: Optional["TaskSession"] = Relationship(back_populates="sub_tasks")
-    
+
     # 关联的 Artifacts（多产物支持）
-    artifacts: List["Artifact"] = Relationship(
+    artifacts: list["Artifact"] = Relationship(
         back_populates="sub_task",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
@@ -429,7 +434,7 @@ class TaskSession(SQLModel, table=True):
     user_query: str = Field(index=True)
 
     # 规划摘要：Commander 生成的策略概述
-    plan_summary: Optional[str] = Field(default=None)
+    plan_summary: str | None = Field(default=None)
 
     # 预计步骤数
     estimated_steps: int = Field(default=0)
@@ -438,17 +443,17 @@ class TaskSession(SQLModel, table=True):
     execution_mode: str = Field(default="sequential")  # sequential | parallel
 
     # 关联的子任务列表
-    sub_tasks: List[SubTask] = Relationship(
+    sub_tasks: list[SubTask] = Relationship(
         back_populates="task_session",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "SubTask.sort_order"}
     )
 
     # 最终响应：整合所有子任务结果的最终答案
-    final_response: Optional[str] = Field(default=None)
+    final_response: str | None = Field(default=None)
 
     # 会话状态：pending | running | completed | failed
     status: str = Field(default="pending", index=True)
-    
+
     # 乐观锁版本号：用于 HITL 计划更新冲突检测
     # 每次用户确认/更新计划时递增
     plan_version: int = Field(default=1)
@@ -459,10 +464,10 @@ class TaskSession(SQLModel, table=True):
         default_factory=datetime.now,
         sa_column_kwargs={"onupdate": func.now()}
     )
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
     # 关联关系
-    thread: Optional[Thread] = Relationship(back_populates="task_session")
+    thread: Thread | None = Relationship(back_populates="task_session")
 
 
 # ============================================================================
@@ -474,60 +479,60 @@ class Artifact(SQLModel, table=True):
     产物模型 - 支持一个专家生成多个产物
     """
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    
+
     # 关联的子任务
     sub_task_id: str = Field(foreign_key="subtask.id", index=True)
-    
+
     # 产物类型：code | html | markdown | json | text
     type: str = Field(index=True)
-    
+
     # 产物标题
-    title: Optional[str] = None
-    
+    title: str | None = None
+
     # 产物内容
     content: str
-    
+
     # 代码语言（如果是代码类型）
-    language: Optional[str] = None
-    
+    language: str | None = None
+
     # 排序顺序（同一专家的多产物排序）
     sort_order: int = Field(default=0)
-    
+
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
-    
+
     # 关联关系
-    sub_task: Optional[SubTask] = Relationship(back_populates="artifacts")
+    sub_task: SubTask | None = Relationship(back_populates="artifacts")
 
 
 class SubTaskCreate(BaseModel):
     """创建子任务的 DTO"""
     expert_type: str  # ExpertType 枚举值
     task_description: str
-    input_data: Optional[dict] = None
+    input_data: dict | None = None
     sort_order: int = 0
     execution_mode: str = "sequential"
-    depends_on: Optional[List[str]] = None
-    task_id: Optional[str] = None  # 🔥 Commander 生成的 task ID（如 task_1），用于 depends_on 映射
+    depends_on: list[str] | None = None
+    task_id: str | None = None  # 🔥 Commander 生成的 task ID（如 task_1），用于 depends_on 映射
 
 
 class SubTaskUpdate(BaseModel):
     """更新子任务的 DTO"""
-    status: Optional[str] = None  # TaskStatus 枚举值
-    output_result: Optional[dict] = None
-    error_message: Optional[str] = None
-    duration_ms: Optional[int] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    status: str | None = None  # TaskStatus 枚举值
+    output_result: dict | None = None
+    error_message: str | None = None
+    duration_ms: int | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
 
 class ArtifactCreate(BaseModel):
     """创建产物的 DTO"""
-    id: Optional[str] = None  # 可选：指定 artifact ID（用于前端编辑）
+    id: str | None = None  # 可选：指定 artifact ID（用于前端编辑）
     type: str
-    title: Optional[str] = None
+    title: str | None = None
     content: str
-    language: Optional[str] = None
+    language: str | None = None
     sort_order: int = 0
 
 
@@ -535,9 +540,9 @@ class ArtifactResponse(BaseModel):
     """产物响应 DTO"""
     id: str
     type: str
-    title: Optional[str]
+    title: str | None
     content: str
-    language: Optional[str]
+    language: str | None
     sort_order: int
     created_at: datetime
 
@@ -550,29 +555,29 @@ class SubTaskResponse(BaseModel):
     status: str
     sort_order: int
     execution_mode: str
-    depends_on: Optional[List[str]]
-    output_result: Optional[dict]
-    error_message: Optional[str]
-    duration_ms: Optional[int]
-    artifacts: List[ArtifactResponse]
-    started_at: Optional[datetime]
-    completed_at: Optional[datetime]
+    depends_on: list[str] | None
+    output_result: dict | None
+    error_message: str | None
+    duration_ms: int | None
+    artifacts: list[ArtifactResponse]
+    started_at: datetime | None
+    completed_at: datetime | None
     created_at: datetime
 
 
 class TaskSessionCreate(BaseModel):
     """创建任务会话的 DTO"""
     user_query: str
-    plan_summary: Optional[str] = None
+    plan_summary: str | None = None
     estimated_steps: int = 0
     execution_mode: str = "sequential"
 
 
 class TaskSessionUpdate(BaseModel):
     """更新任务会话的 DTO"""
-    status: Optional[str] = None
-    final_response: Optional[str] = None
-    completed_at: Optional[datetime] = None
+    status: str | None = None
+    final_response: str | None = None
+    completed_at: datetime | None = None
 
 
 class TaskSessionResponse(BaseModel):
@@ -580,16 +585,16 @@ class TaskSessionResponse(BaseModel):
     session_id: str
     thread_id: str
     user_query: str
-    plan_summary: Optional[str]
+    plan_summary: str | None
     estimated_steps: int
     execution_mode: str
-    sub_tasks: List[SubTaskResponse]
-    final_response: Optional[str]
+    sub_tasks: list[SubTaskResponse]
+    final_response: str | None
     status: str
     plan_version: int
     created_at: datetime
     updated_at: datetime
-    completed_at: Optional[datetime]
+    completed_at: datetime | None
 
 
 # ============================================================================
@@ -599,10 +604,10 @@ class TaskSessionResponse(BaseModel):
 class LangSmithConfig(BaseModel):
     """LangSmith 追踪配置"""
     enabled: bool = False
-    api_key: Optional[str] = None
+    api_key: str | None = None
     project_name: str = "xpouch-ai"
     tracing_v2: bool = False
-    
+
     @classmethod
     def from_env(cls) -> "LangSmithConfig":
         """从环境变量加载配置"""
@@ -611,9 +616,9 @@ class LangSmithConfig(BaseModel):
 
 
 # 🔥 导入记忆模型（放在最后避免循环导入）
-from models.memory import UserMemory
 # 🔥 MCP: 导入 MCP 服务器模型
 from models.mcp import MCPServer
+from models.memory import UserMemory
 
 __all__ = [
     "UserRole", "ConversationType", "ExpertType", "TaskStatus", "ExecutionMode",
