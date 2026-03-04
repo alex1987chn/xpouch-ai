@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Column, Index
+from sqlalchemy import JSON, Column, Index, func
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -102,7 +102,7 @@ class SubTask(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(
         default_factory=datetime.now,
-        sa_column_kwargs={"onupdate": datetime.now},
+        sa_column_kwargs={"onupdate": func.now},
     )
     started_at: datetime | None = None
     completed_at: datetime | None = None

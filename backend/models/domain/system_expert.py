@@ -8,7 +8,7 @@
 import os
 from datetime import datetime
 
-from sqlalchemy import Index
+from sqlalchemy import Index, func
 from sqlmodel import Field, SQLModel
 
 
@@ -65,6 +65,6 @@ class SystemExpert(SQLModel, table=True):
     )
     updated_at: datetime = Field(
         default_factory=datetime.now,
-        sa_column_kwargs={"onupdate": datetime.now},
+        sa_column_kwargs={"onupdate": func.now},
         description="最后更新时间",
     )
