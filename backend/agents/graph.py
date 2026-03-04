@@ -52,6 +52,7 @@ AgentState:
 import logging
 import pathlib
 from datetime import datetime, timedelta
+from functools import lru_cache
 from typing import Any
 
 from dotenv import load_dotenv
@@ -81,11 +82,6 @@ langsmith_config = get_langsmith_config()
 if langsmith_config["enabled"]:
     init_langchain_tracing(langsmith_config)
 
-# v3.0: 延迟初始化 LLM - 避免模块加载时就创建实例
-_router_llm = None
-_commander_llm = None
-_simple_llm = None
-
 TOOL_LOOP_WINDOW = 20
 TOOL_LOOP_MAX_TOTAL = 12
 TOOL_LOOP_MAX_SAME_TOOL_STREAK = 4
@@ -96,39 +92,44 @@ TOOL_LOOP_MAX_IN_TIME_WINDOW = 8
 
 def get_router_llm_lazy():
     """延迟初始化 Router LLM"""
-    global _router_llm
-    if _router_llm is None:
-        from utils.llm_factory import get_router_llm
-
-        _router_llm = get_router_llm()
-    return _router_llm
+    return _get_router_llm_cached()
 
 
 def get_commander_llm_lazy():
     """延迟初始化 Commander LLM"""
-    global _commander_llm
-    if _commander_llm is None:
-        from utils.llm_factory import get_commander_llm
-
-        _commander_llm = get_commander_llm()
-    return _commander_llm
+    return _get_commander_llm_cached()
 
 
 def get_simple_llm_lazy():
     """延迟初始化 Simple 模式 LLM"""
-    global _simple_llm
-    if _simple_llm is None:
-        from providers_config import is_provider_configured
-        from utils.llm_factory import get_llm_instance, get_router_llm
+    return _get_simple_llm_cached()
 
-        try:
-            if is_provider_configured("minimax"):
-                _simple_llm = get_llm_instance(provider="minimax", streaming=True, temperature=0.7)
-            else:
-                _simple_llm = get_router_llm()
-        except Exception:
-            _simple_llm = get_router_llm()
-    return _simple_llm
+
+@lru_cache(maxsize=1)
+def _get_router_llm_cached():
+    from utils.llm_factory import get_router_llm
+
+    return get_router_llm()
+
+
+@lru_cache(maxsize=1)
+def _get_commander_llm_cached():
+    from utils.llm_factory import get_commander_llm
+
+    return get_commander_llm()
+
+
+@lru_cache(maxsize=1)
+def _get_simple_llm_cached():
+    from providers_config import is_provider_configured
+    from utils.llm_factory import get_llm_instance, get_router_llm
+
+    try:
+        if is_provider_configured("minimax"):
+            return get_llm_instance(provider="minimax", streaming=True, temperature=0.7)
+    except Exception:
+        pass
+    return get_router_llm()
 
 
 # ============================================================================
@@ -481,22 +482,14 @@ def create_smart_router_workflow(checkpointer: BaseCheckpointSaver | None = None
 # ============================================================================
 # 全局默认 Graph（向后兼容）
 # ============================================================================
-# 使用 MemorySaver 的默认 graph，用于向后兼容和测试
-# 生产环境建议使用 create_smart_router_workflow() 传入 AsyncPostgresSaver
-_commander_graph_default = None
-
-
 def get_default_commander_graph():
-    """获取默认的 commander graph（使用 MemorySaver）"""
-    global _commander_graph_default
-    if _commander_graph_default is None:
-        _commander_graph_default = create_smart_router_workflow()
-    return _commander_graph_default
+    """获取默认 commander graph（使用 MemorySaver，缓存实例）。"""
+    return _get_default_commander_graph_cached()
 
 
-# 为了保持向后兼容，仍然导出 commander_graph
-# 但请注意：这在导入时就会创建，使用 MemorySaver
-commander_graph = get_default_commander_graph()
+@lru_cache(maxsize=1)
+def _get_default_commander_graph_cached():
+    return create_smart_router_workflow()
 
 
 # ============================================================================

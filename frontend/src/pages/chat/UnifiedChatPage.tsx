@@ -348,6 +348,24 @@ export default function UnifiedChatPage() {
     setIsFullscreen(prev => !prev)
   }, [])
 
+  const chatStreamInput = useMemo(
+    () => ({
+      value: inputValue,
+      onChange: handleInputChange,
+    }),
+    [inputValue, handleInputChange]
+  )
+
+  const chatStreamActions = useMemo(
+    () => ({
+      onSend: handleSend,
+      onStop: stopGeneration,
+      onRegenerate: handleRegenerate,
+      onPreview: handlePreview,
+    }),
+    [handleSend, stopGeneration, handleRegenerate, handlePreview]
+  )
+
   // 加载中状态：agent 正在从后端获取
   if (isLoadingAgent) {
     return (
@@ -389,12 +407,8 @@ export default function UnifiedChatPage() {
         isFullscreen={isFullscreen}
         chatStreamPanel={
           <ChatStreamPanel
-            inputValue={inputValue}
-            onInputChange={handleInputChange}
-            onSend={handleSend}
-            onStop={stopGeneration}
-            onRegenerate={handleRegenerate}
-            onPreview={handlePreview}
+            input={chatStreamInput}
+            actions={chatStreamActions}
             resumeExecution={resumeExecution}  // 🔥🔥🔥 v3.1.0 HITL
           />
         }

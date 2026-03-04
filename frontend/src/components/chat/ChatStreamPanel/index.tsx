@@ -32,7 +32,7 @@
  * - 流式输出时组件保持静止
  */
 
-import { useRef, useEffect, useLayoutEffect, useCallback } from 'react'
+import { useRef, useLayoutEffect, useCallback } from 'react'
 import type { Message } from '@/types'
 import EmptyState from '../EmptyState'
 import MessageItem from '../MessageItem'
@@ -57,24 +57,22 @@ import {
   useIsWaitingForApproval,
   useRunningTaskIds,
   usePendingPlan,
-  useTaskActions,
 } from '@/hooks/useTaskSelectors'
 
 interface ChatStreamPanelProps {
-  /** 当前输入值 */
-  inputValue: string
-  /** 输入框变化回调 */
-  onInputChange: (value: string) => void
-  /** 发送消息回调 */
-  onSend: () => void
-  /** 停止生成回调 */
-  onStop?: () => void
-  /** 重新生成消息回调 */
-  onRegenerate?: (messageId: string | number) => void
-  /** 链接点击回调 */
-  onLinkClick?: (href: string) => void
-  /** 点击消息预览回调（用于移动端切换到 preview 视图） */
-  onPreview?: () => void
+  /** 输入态（避免扁平 props 过多） */
+  input: {
+    value: string
+    onChange: (value: string) => void
+  }
+  /** 行为回调（避免扁平 props 过多） */
+  actions: {
+    onSend: () => void
+    onStop?: () => void
+    onRegenerate?: (messageId: string | number) => void
+    onLinkClick?: (href: string) => void
+    onPreview?: () => void
+  }
   /** v3.1.0 HITL: 恢复执行回调 */
   resumeExecution?: (params: ResumeChatParams) => Promise<string>
 }
@@ -100,18 +98,6 @@ function getMessageThinkingSteps(msg: Message) {
 }
 
 /**
- * 检查消息是否有思考内容（用于控制 indicator 显示）
- * Phase 2: Server-Driven UI - 简化逻辑
- */
-function hasActiveThinking(msg: Message, isStreaming: boolean): boolean {
-  const steps = getMessageThinkingSteps(msg)
-  if (steps.length === 0) return false
-  
-  const hasRunning = steps.some(s => s.status === 'running')
-  return hasRunning || isStreaming
-}
-
-/**
  * 左侧聊天流面板 - Industrial Style
  *
  * 包含：
@@ -120,13 +106,8 @@ function hasActiveThinking(msg: Message, isStreaming: boolean): boolean {
  * 3. 底部输入控制台 (Heavy Input Console)
  */
 export default function ChatStreamPanel({
-  inputValue,
-  onInputChange,
-  onSend,
-  onStop,
-  onRegenerate,
-  onLinkClick,
-  onPreview,
+  input,
+  actions,
   resumeExecution,
 }: ChatStreamPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -163,22 +144,22 @@ export default function ChatStreamPanel({
 
   // Handle send
   const handleSend = useCallback(() => {
-    if (!inputValue.trim() || isGenerating) return
-    onSend()
-  }, [inputValue, isGenerating, onSend])
+    if (!input.value.trim() || isGenerating) return
+    actions.onSend()
+  }, [input.value, isGenerating, actions])
 
   // 缓存回调函数，避免 MessageItem 不必要的重渲染
   const handleRegenerate = useCallback((messageId: string | number) => {
-    onRegenerate?.(messageId)
-  }, [onRegenerate])
+    actions.onRegenerate?.(messageId)
+  }, [actions])
 
   const handleLinkClick = useCallback((href: string) => {
-    onLinkClick?.(href)
-  }, [onLinkClick])
+    actions.onLinkClick?.(href)
+  }, [actions])
 
   const handlePreview = useCallback(() => {
-    onPreview?.()
-  }, [onPreview])
+    actions.onPreview?.()
+  }, [actions])
 
   // Check if message has real content (for filtering)
   const hasRealContent = (msg: Message): boolean => {
@@ -207,10 +188,6 @@ export default function ChatStreamPanel({
       })
     : messages
 
-  // Check if last message has active thinking
-  const lastMessage = displayMessages[displayMessages.length - 1]
-  const hasThinkingActive = lastMessage?.role === 'assistant' && hasActiveThinking(lastMessage, isGenerating)
-  
   /**
    * 计算消息的 AI 状态
    * 只有最后一条 AI 消息根据全局状态显示 thinking/streaming
@@ -315,10 +292,10 @@ export default function ChatStreamPanel({
 
       {/* Bottom input console */}
       <HeavyInputConsole
-        value={inputValue}
-        onChange={onInputChange}
+        value={input.value}
+        onChange={input.onChange}
         onSend={handleSend}
-        onStop={onStop}
+        onStop={actions.onStop}
         disabled={isGenerating}
       />
     </>
