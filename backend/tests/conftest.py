@@ -1,7 +1,20 @@
+import os
 import sys
 from pathlib import Path
 
-import pytest
+# 🔥 在导入任何 backend 模块前，先设置测试环境变量
+# 注意：database.py 限制为 PostgreSQL 方言，这里用 postgresql+psycopg 作为兜底
+os.environ.setdefault(
+    "DATABASE_URL",
+    "postgresql+psycopg://xpouch_test:test_pass@localhost:5432/xpouch_test",
+)
+os.environ.setdefault("MINIMAX_API_KEY", "test-key")
+os.environ.setdefault("DEEPSEEK_API_KEY", "test-key")
+os.environ.setdefault("MOONSHOT_API_KEY", "test-key")
+os.environ.setdefault("SILICON_API_KEY", "test-key")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-ci-only")
+
+import pytest  # noqa: E402
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
