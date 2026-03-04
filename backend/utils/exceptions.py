@@ -3,7 +3,9 @@
 提供统一的错误处理机制
 """
 
-from typing import Optional, Any, Dict
+from typing import Any, Dict, Optional
+
+from utils.error_codes import ErrorCode, as_error_code
 
 
 class AppError(Exception):
@@ -12,14 +14,14 @@ class AppError(Exception):
     def __init__(
         self, 
         message: str, 
-        code: str = "INTERNAL_ERROR",
+        code: str | ErrorCode = ErrorCode.INTERNAL_ERROR,
         status_code: int = 500,
         details: Optional[Dict[str, Any]] = None,
         original_error: Optional[Exception] = None
     ):
         super().__init__(message)
         self.message = message
-        self.code = code
+        self.code = as_error_code(code)
         self.status_code = status_code
         self.details = details or {}
         self.original_error = original_error
@@ -43,7 +45,7 @@ class ValidationError(AppError):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            code="VALIDATION_ERROR",
+            code=ErrorCode.VALIDATION_ERROR,
             status_code=400,
             details=details
         )
@@ -54,7 +56,7 @@ class AuthenticationError(AppError):
     def __init__(self, message: str = "认证失败", details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            code="AUTHENTICATION_ERROR",
+            code=ErrorCode.AUTHENTICATION_ERROR,
             status_code=401,
             details=details
         )
@@ -65,7 +67,7 @@ class AuthorizationError(AppError):
     def __init__(self, message: str = "没有权限", details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            code="AUTHORIZATION_ERROR",
+            code=ErrorCode.AUTHORIZATION_ERROR,
             status_code=403,
             details=details
         )
@@ -76,7 +78,7 @@ class NotFoundError(AppError):
     def __init__(self, resource: str = "资源", details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=f"{resource} 未找到",
-            code="NOT_FOUND",
+            code=ErrorCode.NOT_FOUND,
             status_code=404,
             details=details
         )
@@ -89,7 +91,7 @@ class LLMError(AppError):
         details["provider"] = provider
         super().__init__(
             message=message,
-            code="LLM_ERROR",
+            code=ErrorCode.LLM_ERROR,
             status_code=502,  # Bad Gateway
             details=details
         )
@@ -102,7 +104,7 @@ class DatabaseError(AppError):
         details["operation"] = operation
         super().__init__(
             message=message,
-            code="DATABASE_ERROR",
+            code=ErrorCode.DATABASE_ERROR,
             status_code=503,  # Service Unavailable
             details=details
         )
@@ -115,7 +117,7 @@ class ExternalServiceError(AppError):
         details["service"] = service
         super().__init__(
             message=f"{service} 服务错误: {message}",
-            code="EXTERNAL_SERVICE_ERROR",
+            code=ErrorCode.EXTERNAL_SERVICE_ERROR,
             status_code=502,
             details=details
         )
@@ -129,7 +131,7 @@ class RateLimitError(AppError):
             details["retry_after"] = retry_after
         super().__init__(
             message=message,
-            code="RATE_LIMIT",
+            code=ErrorCode.RATE_LIMIT,
             status_code=429,
             details=details
         )

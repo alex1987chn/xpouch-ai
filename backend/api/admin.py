@@ -7,17 +7,19 @@
 3. 升级用户为管理员
 4. 自动生成专家描述
 """
-from typing import List, Optional
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
 import os
-from pydantic import BaseModel, Field as PydanticField, field_validator
+from datetime import datetime
 
-from auth import get_current_user
-from models import User, SystemExpert, UserRole
-from database import get_session
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, field_validator
+from pydantic import Field as PydanticField
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import Session, select
+
 from agents.services.expert_manager import refresh_cache
+from auth import get_current_user
+from database import get_session
+from models import SystemExpert, User, UserRole
 from utils.logger import logger
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -68,7 +70,7 @@ class ExpertResponse(BaseModel):
     id: int
     expert_key: str
     name: str
-    description: Optional[str]
+    description: str | None
     system_prompt: str
     model: str
     temperature: float
@@ -79,9 +81,9 @@ class ExpertResponse(BaseModel):
 
 class ExpertUpdate(BaseModel):
     """专家更新 DTO"""
-    name: Optional[str] = PydanticField(default=None, description="专家显示名称（仅动态专家可修改）")
+    name: str | None = PydanticField(default=None, description="专家显示名称（仅动态专家可修改）")
     system_prompt: str = PydanticField(..., min_length=10, description="系统提示词（至少10个字符）")
-    description: Optional[str] = PydanticField(default=None, description="专家能力描述，用于 Planner 决定任务分配")
+    description: str | None = PydanticField(default=None, description="专家能力描述，用于 Planner 决定任务分配")
     model: str = PydanticField(default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="模型名称")
     temperature: float = PydanticField(default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）")
 
@@ -97,7 +99,7 @@ class ExpertCreate(BaseModel):
     """专家创建 DTO"""
     expert_key: str = PydanticField(..., min_length=1, description="专家类型标识（唯一）")
     name: str = PydanticField(..., min_length=1, description="专家显示名称")
-    description: Optional[str] = PydanticField(default=None, description="专家能力描述，用于 Planner 决定任务分配")
+    description: str | None = PydanticField(default=None, description="专家能力描述，用于 Planner 决定任务分配")
     system_prompt: str = PydanticField(..., min_length=10, description="系统提示词（至少10个字符）")
     model: str = PydanticField(default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="模型名称")
     temperature: float = PydanticField(default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）")
@@ -174,7 +176,7 @@ class UserPromoteRequest(BaseModel):
 # API 端点
 # ============================================================================
 
-@router.get("/experts", response_model=List[ExpertResponse])
+@router.get("/experts", response_model=list[ExpertResponse])
 async def get_all_experts(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_view_admin)  # 需要 VIEW_ADMIN 或 EDIT_ADMIN 权限
@@ -281,7 +283,7 @@ async def update_expert(
                 detail="系统内置专家的名称不可修改"
             )
         expert.name = expert_update.name
-    
+
     expert.system_prompt = expert_update.system_prompt
     expert.description = expert_update.description
     expert.model = expert_update.model
@@ -297,7 +299,7 @@ async def update_expert(
     # 自动刷新 LangGraph 缓存（无需重启）
     try:
         refresh_cache(session)
-        logger.info(f"[Admin] LangGraph cache refreshed successfully")
+        logger.info("[Admin] LangGraph cache refreshed successfully")
     except Exception as e:
         logger.warning(f"[Admin] Warning: Failed to refresh cache: {e}")
         # 缓存刷新失败不影响保存操作，只是下次任务可能会使用旧缓存
@@ -376,9 +378,10 @@ async def preview_expert(
     注意：此 API 不会刷新缓存，仅用于预览效果
     """
     from datetime import datetime
-    from langchain_core.messages import SystemMessage, HumanMessage
+
+    from langchain_core.messages import HumanMessage, SystemMessage
+
     from agents.services.expert_manager import get_expert_config
-    from database import get_session as get_db_session
     from utils.llm_factory import get_llm_instance
 
     # 获取专家配置（不从缓存读取，确保使用最新配置）
@@ -399,13 +402,13 @@ async def preview_expert(
         from providers_config import get_model_config
         model_id = expert_config.get("model", "deepseek-chat")
         model_config = get_model_config(model_id)
-        
+
         if not model_config:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"不支持的模型: {model_id}"
             )
-        
+
         llm = get_llm_instance(
             provider=model_config.get("provider", "deepseek"),
             model=model_config.get("model", model_id),
@@ -433,7 +436,7 @@ async def preview_expert(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"预览失败: {str(e)}"
-        )
+        ) from e
 
 
 @router.post("/experts/generate-description", response_model=GenerateDescriptionResponse)
@@ -457,7 +460,9 @@ async def generate_expert_description(
     - 不会保存到数据库，仅返回生成的描述供前端使用
     """
     from datetime import datetime
-    from langchain_core.messages import SystemMessage, HumanMessage
+
+    from langchain_core.messages import HumanMessage, SystemMessage
+
     from utils.llm_factory import get_router_llm
 
     # 构建生成描述的 Prompt
@@ -480,7 +485,7 @@ System Prompt:
         # 使用 Router LLM 生成描述（温度稍高以获得更有创意的描述）
         started_at = datetime.now()
         llm = get_router_llm()
-        
+
         # 获取温度参数
         from providers_config import get_router_config
         router_config = get_router_config()
@@ -495,7 +500,7 @@ System Prompt:
 
         # 清理可能的引号
         description = description.strip('"').strip("'")
-        
+
         completed_at = datetime.now()
         execution_time_ms = int((completed_at - started_at).total_seconds() * 1000)
 
@@ -510,7 +515,7 @@ System Prompt:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"生成描述失败: {str(e)}"
-        )
+        ) from e
 
 
 @router.post("/experts", response_model=ExpertResponse)
@@ -529,18 +534,18 @@ async def create_expert(
     - 新创建的专家 is_dynamic 默认为 True（用户创建的专家）
     """
     from datetime import datetime
-    
+
     # 检查 expert_key 是否已存在
     existing_expert = session.exec(
         select(SystemExpert).where(SystemExpert.expert_key == expert_create.expert_key)
     ).first()
-    
+
     if existing_expert:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"专家 '{expert_create.expert_key}' 已存在"
         )
-    
+
     # 创建新专家
     new_expert = SystemExpert(
         expert_key=expert_create.expert_key,
@@ -552,20 +557,35 @@ async def create_expert(
         is_dynamic=True,  # 用户创建的专家默认为动态专家
         updated_at=datetime.now()
     )
-    
+
     session.add(new_expert)
-    session.commit()
-    session.refresh(new_expert)
-    
+    try:
+        session.commit()
+        session.refresh(new_expert)
+    except IntegrityError as exc:
+        session.rollback()
+        logger.warning(f"[Admin] Create expert integrity error: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="创建专家失败：expert_key 重复或字段约束不满足"
+        ) from exc
+    except Exception as exc:
+        session.rollback()
+        logger.error(f"[Admin] Create expert failed: {exc}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="创建专家失败：数据库写入异常"
+        ) from exc
+
     logger.info(f"[Admin] Expert '{expert_create.expert_key}' created by admin")
-    
+
     # 自动刷新 LangGraph 缓存
     try:
         refresh_cache(session)
-        logger.info(f"[Admin] LangGraph cache refreshed successfully")
+        logger.info("[Admin] LangGraph cache refreshed successfully")
     except Exception as e:
         logger.warning(f"[Admin] Warning: Failed to refresh cache: {e}")
-    
+
     return ExpertResponse(
         id=new_expert.id,
         expert_key=new_expert.expert_key,
@@ -599,40 +619,40 @@ async def delete_expert(
     expert = session.exec(
         select(SystemExpert).where(SystemExpert.expert_key == expert_key)
     ).first()
-    
+
     if not expert:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"专家 '{expert_key}' 不存在"
         )
-    
+
     # 🔥 检查是否为系统核心组件（优先检查 is_system）
     if expert.is_system:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="系统核心组件禁止删除"
         )
-    
+
     # 兼容旧逻辑：检查 is_dynamic（旧数据可能没有 is_system 字段）
     if not expert.is_dynamic:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="系统内置专家不可删除"
         )
-    
+
     # 删除专家
     session.delete(expert)
     session.commit()
-    
+
     logger.info(f"[Admin] Expert '{expert_key}' deleted by admin")
-    
+
     # 自动刷新 LangGraph 缓存
     try:
         refresh_cache(session)
-        logger.info(f"[Admin] LangGraph cache refreshed successfully")
+        logger.info("[Admin] LangGraph cache refreshed successfully")
     except Exception as e:
         logger.warning(f"[Admin] Warning: Failed to refresh cache: {e}")
-    
+
     return {
         "message": "专家已删除",
         "expert_key": expert_key

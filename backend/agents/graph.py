@@ -52,7 +52,7 @@ AgentState:
 import logging
 
 logger = logging.getLogger(__name__)
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, ToolMessage
 from langgraph.prebuilt import ToolNode  # 🔥 新增：工具执行节点
@@ -91,6 +91,11 @@ if langsmith_config["enabled"]:
 _router_llm = None
 _commander_llm = None
 _simple_llm = None
+
+TOOL_LOOP_WINDOW = 20
+TOOL_LOOP_MAX_TOTAL = 12
+TOOL_LOOP_MAX_SAME_TOOL_STREAK = 4
+TOOL_LOOP_MAX_PING_PONG = 8
 
 def get_router_llm_lazy():
     """延迟初始化 Router LLM"""
@@ -166,7 +171,7 @@ def route_generic(state: AgentState) -> str:
     2. 如果工具执行完成（最后一条是 ToolMessage），回到 Generic 继续处理
     3. 如果没有工具调用，检查任务是否完成
     """
-    from langchain_core.messages import ToolMessage, AIMessage
+    from langchain_core.messages import ToolMessage
 
     messages = state.get("messages", [])
     current_index = state.get("current_task_index", 0)
@@ -178,11 +183,10 @@ def route_generic(state: AgentState) -> str:
     # 获取最后一条消息
     last_message = messages[-1]
 
-    # 🔥🔥🔥 熔断机制 (Circuit Breaker) 🔥🔥🔥
-    # 检查最近的 ToolMessage 数量，防止无限循环
-    recent_tool_count = sum(1 for msg in messages[-10:] if isinstance(msg, ToolMessage))
-    if recent_tool_count >= 5:
-        logger.warning(f"[RouteGeneric] 熔断触发：最近已执行 {recent_tool_count} 次工具，强制结束任务")
+    # ARCH-11: 更稳健的工具循环检测（总量 + 连续同工具 + ping-pong）
+    should_break, reason = _should_trip_tool_loop_guard(messages)
+    if should_break:
+        logger.warning("[RouteGeneric] 熔断触发：%s，强制结束任务", reason)
         return "aggregator"
 
     # 情况1：LLM 返回了 tool_calls，需要执行工具
@@ -201,6 +205,38 @@ def route_generic(state: AgentState) -> str:
 
     # 情况4：还有任务，继续执行
     return route_dispatcher(state)
+
+
+def _should_trip_tool_loop_guard(messages: list[Any]) -> tuple[bool, str]:
+    """检测工具调用是否进入可疑循环。"""
+    recent_messages = messages[-TOOL_LOOP_WINDOW:]
+    tool_names = [msg.name for msg in recent_messages if isinstance(msg, ToolMessage) and getattr(msg, "name", "")]
+
+    if len(tool_names) >= TOOL_LOOP_MAX_TOTAL:
+        return True, f"最近 {TOOL_LOOP_WINDOW} 条内工具调用过多({len(tool_names)})"
+
+    # 连续同一个工具反复调用
+    if tool_names:
+        tail_name = tool_names[-1]
+        same_streak = 0
+        for name in reversed(tool_names):
+            if name == tail_name:
+                same_streak += 1
+            else:
+                break
+        if same_streak >= TOOL_LOOP_MAX_SAME_TOOL_STREAK:
+            return True, f"工具 {tail_name} 连续调用 {same_streak} 次"
+
+    # ABAB... 的 ping-pong 循环（常见于工具失败重试抖动）
+    if len(tool_names) >= TOOL_LOOP_MAX_PING_PONG:
+        tail = tool_names[-TOOL_LOOP_MAX_PING_PONG:]
+        first, second = tail[0], tail[1]
+        if first != second and all(
+            name == (first if idx % 2 == 0 else second) for idx, name in enumerate(tail)
+        ):
+            return True, f"检测到工具 ping-pong 循环({first}<->{second})"
+
+    return False, ""
 
 # ============================================================================
 # 5. 构建工作流图

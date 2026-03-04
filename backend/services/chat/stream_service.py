@@ -29,6 +29,7 @@ from config import FORCE_HEARTBEAT_INTERVAL, HEARTBEAT_INTERVAL, STREAM_TIMEOUT
 from models import CustomAgent, TaskSession, Thread
 from providers_config import get_model_config, get_provider_api_key, get_provider_config
 from services.mcp_tools_service import mcp_tools_service
+from utils.error_codes import ErrorCode, as_error_code
 from utils.exceptions import AppError
 from utils.llm_factory import get_llm_instance
 from utils.logger import logger
@@ -138,7 +139,7 @@ class StreamService:
 
                     except TimeoutError:
                         # 心跳保活
-                        yield ": keep-alive\n\n"
+                        yield self._build_heartbeat_event()
                         last_heartbeat_time = datetime.now()
                         continue
 
@@ -146,11 +147,11 @@ class StreamService:
                     current_time = datetime.now()
                     time_since_last = (current_time - last_heartbeat_time).total_seconds()
                     if time_since_last >= FORCE_HEARTBEAT_INTERVAL:
-                        yield ": keep-alive\n\n"
+                        yield self._build_heartbeat_event()
                         last_heartbeat_time = current_time
 
             except Exception as e:
-                yield self._build_error_event("STREAM_ERROR", str(e))
+                yield self._build_error_event(ErrorCode.STREAM_ERROR, str(e))
 
             # 解析 thinking 并保存消息
             from utils.thinking_parser import parse_thinking
@@ -372,7 +373,7 @@ class StreamService:
 
                 except Exception as e:
                     logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
-                    yield self._build_error_event("GRAPH_ERROR", str(e))
+                    yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
 
                 # 🔥🔥🔥 HITL 检测：检查是否处于 interrupt 状态
                 # 获取当前状态，检查是否有待执行的任务（被 interrupt 暂停）
@@ -786,7 +787,7 @@ class StreamService:
                     if item.get("type") == "sse" and item.get("event"):
                         yield item["event"]
                 except TimeoutError:
-                    yield ": keep-alive\n\n"
+                    yield self._build_heartbeat_event()
 
             await producer_task
             # message.done 由 aggregator_node 通过 event_queue 发送
@@ -1022,14 +1023,20 @@ class StreamService:
         )
         return sse_event_to_string(event)
 
-    def _build_error_event(self, code: str, message: str) -> str:
+    def _build_heartbeat_event(self) -> str:
+        """构建 heartbeat 事件，供前端更新活跃时间。"""
+        import json
+
+        return f"event: heartbeat\ndata: {json.dumps({'ts': datetime.now().isoformat()})}\n\n"
+
+    def _build_error_event(self, code: str | ErrorCode, message: str) -> str:
         """构建 error 事件"""
         from event_types.events import ErrorData, EventType, build_sse_event
         from utils.event_generator import sse_event_to_string
 
         event = build_sse_event(
             EventType.ERROR,
-            ErrorData(code=code, message=message),
+            ErrorData(code=as_error_code(code), message=message),
             str(uuid.uuid4())
         )
         return sse_event_to_string(event)

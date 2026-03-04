@@ -22,6 +22,7 @@ from sqlalchemy import update
 from sqlmodel import Session, select
 
 from models import TaskSession, Thread
+from utils.error_codes import ErrorCode, as_error_code
 from utils.exceptions import AppError, AuthorizationError, NotFoundError, ValidationError
 from utils.logger import logger
 
@@ -200,7 +201,7 @@ class RecoveryService:
 
             except Exception as e:
                 logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
-                yield self._build_error_event("RESUME_ERROR", str(e))
+                yield self._build_error_event(ErrorCode.RESUME_ERROR, str(e))
             finally:
                 self._mark_thread_idle(thread_id)
                 self._exit_inflight_resume(thread_id, resume_key)
@@ -227,14 +228,14 @@ class RecoveryService:
             if existing == resume_key:
                 raise AppError(
                     message="恢复请求处理中，请勿重复提交",
-                    code="RESUME_DUPLICATE_REQUEST",
+                    code=ErrorCode.RESUME_DUPLICATE_REQUEST,
                     status_code=409,
                     details={"thread_id": thread_id, "idempotency_key": resume_key},
                 )
 
             raise AppError(
                 message="当前线程已有恢复流程在执行",
-                code="RESUME_IN_PROGRESS",
+                code=ErrorCode.RESUME_IN_PROGRESS,
                 status_code=409,
                 details={"thread_id": thread_id, "running_idempotency_key": existing},
             )
@@ -276,7 +277,7 @@ class RecoveryService:
         if thread.status == "running":
             raise AppError(
                 message="当前线程已有恢复流程在执行",
-                code="RESUME_IN_PROGRESS",
+                code=ErrorCode.RESUME_IN_PROGRESS,
                 status_code=409,
                 details={"thread_id": thread_id},
             )
@@ -341,7 +342,7 @@ class RecoveryService:
             ).first()
             raise AppError(
                 message="计划已被更新，请刷新后重试",
-                code="PLAN_VERSION_CONFLICT",
+                code=ErrorCode.PLAN_VERSION_CONFLICT,
                 status_code=409,
                 details={
                     "thread_id": thread_id,
@@ -459,7 +460,7 @@ class RecoveryService:
     # 辅助方法
     # ============================================================================
 
-    def _build_error_event(self, code: str, message: str) -> str:
+    def _build_error_event(self, code: str | ErrorCode, message: str) -> str:
         """构建 error 事件"""
         import uuid
 
@@ -468,7 +469,7 @@ class RecoveryService:
 
         event = build_sse_event(
             EventType.ERROR,
-            ErrorData(code=code, message=message),
+            ErrorData(code=as_error_code(code), message=message),
             str(uuid.uuid4())
         )
         return sse_event_to_string(event)
