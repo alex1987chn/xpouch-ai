@@ -9,7 +9,7 @@ import { SettingsDialog } from '@/components/settings/SettingsDialog'
 import { PersonalSettingsDialog } from '@/components/settings/PersonalSettingsDialog'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import LoginDialog from '@/components/auth/LoginDialog'
-import { useApp } from '@/providers/AppProvider'
+import { useAppUISelectors } from '@/hooks'
 import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher'
 
 import { useChatStore } from '@/store/chatStore'
@@ -63,7 +63,7 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children, hideMobileMenu = false }: AppLayoutProps) {
   const navigate = useNavigate()
-  const { sidebar, dialogs } = useApp()
+  const { sidebar, dialogs } = useAppUISelectors()
 
   const { t } = useTranslation()
   const queryClient = useQueryClient()

@@ -1,6 +1,6 @@
-"""InvokeService persistence helpers.
+"""Invoke 持久化层：仅负责事务与 TaskSession/SubTask 的读写。
 
-将 InvokeService 的数据库读写逻辑下沉到 CRUD，减少 Service 对 ORM 细节的耦合。
+供 InvokeService（编排层）调用，Service 不直接依赖 ORM 字段结构。
 """
 
 from __future__ import annotations
@@ -12,6 +12,51 @@ from typing import Any
 from sqlmodel import Session
 
 from models import SubTask, TaskSession
+
+
+class InvokePersistence:
+    """
+    双模调用的持久化门面：创建会话、保存结果、标记完成/失败。
+    编排层只传高层 payload，不关心 SubTask/TaskSession 字段细节。
+    """
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def create_task_session(self, message: str, thread_id: str | None) -> TaskSession:
+        """创建 running 状态 TaskSession，提交并返回。"""
+        return create_running_task_session(self.session, message, thread_id)
+
+    def save_auto_result(
+        self,
+        task_session: TaskSession,
+        task_list: list[dict[str, Any]],
+        final_response: str,
+    ) -> None:
+        """Auto 模式：保存子任务列表并将会话标记为完成。"""
+        create_subtasks_for_auto_mode(self.session, task_session.session_id, task_list)
+        mark_task_session_completed(self.session, task_session, final_response)
+
+    def save_direct_result(
+        self,
+        task_session: TaskSession,
+        subtask_payload: dict[str, Any],
+        subtask_result: dict[str, Any],
+        final_response: str,
+    ) -> None:
+        """Direct 模式：保存单个子任务并将会话标记为完成。"""
+        create_subtask_for_direct_mode(
+            self.session, task_session.session_id, subtask_payload, subtask_result
+        )
+        mark_task_session_completed(self.session, task_session, final_response)
+
+    def mark_completed(self, task_session: TaskSession, response: str) -> None:
+        """将会话标记为完成（仅更新状态，不写子任务）。"""
+        mark_task_session_completed(self.session, task_session, response)
+
+    def mark_failed(self, task_session: TaskSession, error: str) -> None:
+        """将会话标记为失败并提交。"""
+        mark_task_session_failed(self.session, task_session, error)
 
 
 def create_running_task_session(session: Session, message: str, thread_id: str | None) -> TaskSession:

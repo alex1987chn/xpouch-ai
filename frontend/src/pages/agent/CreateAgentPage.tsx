@@ -1,10 +1,10 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { ArrowLeft, Bot, Sparkles, Save } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
-import { useApp } from '@/providers/AppProvider'
+import { useAppUISelectors } from '@/hooks'
 import ModelSelector from '@/components/settings/ModelSelector'
 import BauhausSelect from '@/components/ui/bauhaus-select'
 
@@ -70,7 +70,7 @@ function BauhausProgressBar({ current, max }: { current: number; max: number }) 
 
 export default function CreateAgentPage({ onBack, onSave, initialData, isEditMode = false }: CreateAgentPageProps) {
   const { t } = useTranslation()
-  const { sidebar } = useApp()
+  const { sidebar, dialogs } = useAppUISelectors()
   // 直接用 initialData 初始化状态，避免 useEffect 同步 Props 反模式
   // 父组件通过 key 属性控制组件重置时机
   const [name, setName] = useState(initialData?.name || '')
@@ -86,7 +86,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
 
   // 登录状态检查
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
-  const { dialogs: { openLogin } } = useApp()
+  const openLogin = dialogs.openLogin
 
   const handleSave = () => {
     if (!name || !systemPrompt) return

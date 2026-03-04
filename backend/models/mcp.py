@@ -8,7 +8,7 @@ MCP 服务器模型 - 管理外部 MCP 服务器配置
 """
 
 from sqlmodel import SQLModel, Field
-from pydantic import BaseModel, Field as PydanticField
+from pydantic import BaseModel, ConfigDict, Field as PydanticField
 from datetime import datetime
 from typing import Optional, Literal
 import uuid
@@ -144,8 +144,7 @@ class MCPServerResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================

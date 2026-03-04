@@ -71,7 +71,7 @@ async def dynamic_tool_node(
         try:
             async with asyncio.timeout(TOOL_TIMEOUT_SECONDS):
                 return await tool_executor.ainvoke(state, config)
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             logger.error("[ToolNode] 工具调用超时 (%ss)", TOOL_TIMEOUT_SECONDS)
             return {
                 "messages": _tool_messages_for_error(

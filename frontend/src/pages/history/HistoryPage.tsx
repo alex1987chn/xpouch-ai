@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { MessageSquare, Clock, Trash2, Search, Loader2, CheckSquare, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
@@ -7,7 +7,7 @@ import { formatDistanceToNow, parseISO, isValid } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
 import { logger } from '@/utils/logger'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
-import { useApp } from '@/providers/AppProvider'
+import { useAppUISelectors } from '@/hooks'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { useChatHistoryQuery, useDeleteConversationMutation, useBatchDeleteConversationsMutation } from '@/hooks/queries'
 import { useUserStore } from '@/store/userStore'
@@ -18,7 +18,7 @@ interface HistoryPageProps {
 
 export default function HistoryPage({ onSelectConversation }: HistoryPageProps) {
   const { t, language } = useTranslation()
-  const { sidebar } = useApp()
+  const { sidebar } = useAppUISelectors()
   const [searchQuery, setSearchQuery] = useState('')
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
   const scrollContainerRef = useRef<HTMLDivElement>(null)
