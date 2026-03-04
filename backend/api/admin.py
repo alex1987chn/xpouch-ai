@@ -12,7 +12,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
 from pydantic import Field as PydanticField
-from sqlalchemy import text
+from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
@@ -285,31 +285,25 @@ async def update_expert(
             detail="系统内置专家的名称不可修改"
         )
 
-    # 🔥 原子递增乐观锁：使用 SQL 层原子更新，消除竞态条件
-    # 更新条件：config_version 必须等于期望版本
-    update_name = expert_update.name if expert.is_dynamic else None
+    # 🔥 最佳实践：使用 SQLAlchemy Core 的 update() 构造器实现原子乐观锁
+    # 优势：1. 类型安全 2. ORM 原生支持 3. 数据库层原子递增
+    update_values = {
+        "system_prompt": expert_update.system_prompt,
+        "description": expert_update.description,
+        "model": expert_update.model,
+        "temperature": expert_update.temperature,
+        "config_version": SystemExpert.config_version + 1,  # 数据库层原子递增
+    }
+
+    # 只有动态专家才能修改 name
+    if expert.is_dynamic and expert_update.name is not None:
+        update_values["name"] = expert_update.name
 
     result = session.execute(
-        text("""
-            UPDATE systemexpert
-            SET config_version = config_version + 1,
-                name = COALESCE(:update_name, name),
-                system_prompt = :system_prompt,
-                description = :description,
-                model = :model,
-                temperature = :temperature,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = :expert_id AND config_version = :expected_version
-        """),
-        {
-            "update_name": update_name,
-            "system_prompt": expert_update.system_prompt,
-            "description": expert_update.description,
-            "model": expert_update.model,
-            "temperature": expert_update.temperature,
-            "expert_id": expert.id,
-            "expected_version": expert_update.expected_version
-        }
+        update(SystemExpert)
+        .where(SystemExpert.id == expert.id)
+        .where(SystemExpert.config_version == expert_update.expected_version)
+        .values(**update_values)
     )
 
     # 检查是否更新成功（rowcount == 0 表示版本号不匹配）
