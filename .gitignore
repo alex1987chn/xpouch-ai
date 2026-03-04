@@ -40,6 +40,11 @@ __pycache__/
 .venv/
 venv/
 .env/
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
 
 # Database
 backend/data/*.db
@@ -54,8 +59,6 @@ postgres_data/
 *.temp
 $null
 *.bat
-# Ignore files with special characters (common in Windows)
-*[^a-zA-Z0-9._/-]*
 upload-package/
 
 # Local documentation (private notes, not for GitHub)
@@ -73,6 +76,7 @@ deploy.sh
 .ai/
 
 # Code Review Report (private, for internal use only)
+code review/
 CODE_REVIEW_REPORT.md
 
 # Deployment documentation (local only)
