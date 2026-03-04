@@ -4,16 +4,12 @@
 """
 import json
 import re
-from typing import TypeVar
-
 from pydantic import BaseModel, ValidationError
 
 from utils.logger import logger
 
-T = TypeVar('T', bound=BaseModel)
 
-
-def parse_llm_json(
+def parse_llm_json[T: BaseModel](
     content: str,
     response_model: type[T],
     strict: bool = False,
@@ -215,7 +211,7 @@ def _aggressive_clean(json_str: str) -> str:
     return json_str
 
 
-def _fix_and_parse(json_data: dict, response_model: type[T]) -> T:
+def _fix_and_parse[T: BaseModel](json_data: dict, response_model: type[T]) -> T:
     """
     尝试修复并解析 JSON 数据
 
