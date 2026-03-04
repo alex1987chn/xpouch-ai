@@ -18,14 +18,20 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # 1) 先添加可空列，避免历史数据迁移失败
-    op.add_column("tasksession", sa.Column("plan_version", sa.Integer(), nullable=True))
+    # 检查列是否已存在（避免重复执行报错）
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [col['name'] for col in inspector.get_columns('tasksession')]
 
-    # 2) 回填历史数据
-    op.execute("UPDATE tasksession SET plan_version = 1 WHERE plan_version IS NULL")
+    if 'plan_version' not in columns:
+        # 1) 先添加可空列，避免历史数据迁移失败
+        op.add_column("tasksession", sa.Column("plan_version", sa.Integer(), nullable=True))
 
-    # 3) 设置非空约束
-    op.alter_column("tasksession", "plan_version", nullable=False)
+        # 2) 回填历史数据
+        op.execute("UPDATE tasksession SET plan_version = 1 WHERE plan_version IS NULL")
+
+        # 3) 设置非空约束
+        op.alter_column("tasksession", "plan_version", nullable=False)
 
 
 def downgrade() -> None:
