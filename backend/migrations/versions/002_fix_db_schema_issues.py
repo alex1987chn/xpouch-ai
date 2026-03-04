@@ -42,7 +42,7 @@ def upgrade() -> None:
     # 先检查 created_at 的当前类型
     conn = op.get_bind()
     result = conn.execute(text("""
-        SELECT data_type FROM information_schema.columns 
+        SELECT data_type FROM information_schema.columns
         WHERE table_name = 'user_memories' AND column_name = 'created_at'
     """))
     created_at_type = result.scalar()
@@ -50,17 +50,17 @@ def upgrade() -> None:
     if created_at_type == 'timestamp without time zone':
         # 已经是 timestamp 类型，直接复制
         op.execute("""
-            UPDATE user_memories 
+            UPDATE user_memories
             SET embedding_new = embedding,
                 created_at_new = created_at
         """)
     else:
         # 是 string 类型，需要转换
         op.execute("""
-            UPDATE user_memories 
+            UPDATE user_memories
             SET embedding_new = embedding,
-                created_at_new = 
-                    CASE 
+                created_at_new =
+                    CASE
                         WHEN created_at::text ~ '^\\d{4}-\\d{2}-\\d{2}' THEN created_at::timestamp
                         WHEN created_at::text ~ '^\\d{10}(\\.\\d+)?$' THEN to_timestamp(created_at::bigint)::timestamp
                         ELSE NOW()
@@ -78,9 +78,9 @@ def upgrade() -> None:
     # 修改 embedding 列为 Vector 类型（使用 USING 转换）
     # 注意：如果 embedding 列有数据，需要确保数据格式正确
     op.execute("""
-        ALTER TABLE user_memories 
-        ALTER COLUMN embedding TYPE vector(1024) 
-        USING CASE 
+        ALTER TABLE user_memories
+        ALTER COLUMN embedding TYPE vector(1024)
+        USING CASE
             WHEN embedding IS NULL THEN NULL
             WHEN embedding ~ '^\\[' THEN embedding::vector(1024)
             ELSE NULL

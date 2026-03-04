@@ -3,7 +3,7 @@ LangGraph 节点模块
 
 包含所有工作流节点的实现：
 - router: 意图识别节点
-- commander: 任务规划节点  
+- commander: 任务规划节点
 - dispatcher: 专家分发节点
 - aggregator: 结果聚合节点
 - generic: 通用专家执行节点

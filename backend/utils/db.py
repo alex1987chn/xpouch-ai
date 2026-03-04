@@ -120,7 +120,7 @@ async def init_checkpointer_tables():
             with conn.cursor() as cur:
                 # 检查所有必需的表
                 cur.execute("""
-                    SELECT table_name FROM information_schema.tables 
+                    SELECT table_name FROM information_schema.tables
                     WHERE table_schema = 'public' AND table_name LIKE 'checkpoint%'
                 """)
                 tables = [row[0] for row in cur.fetchall()]
