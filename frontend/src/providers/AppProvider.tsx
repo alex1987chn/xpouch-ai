@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, ReactNode } from 'react'
 import { registerLoginDialogCallback } from '@/utils/authUtils'
+import { useAppUIStore } from '@/store/appUIStore'
 
 /**
  * =============================
@@ -71,76 +72,26 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  // Sidebar 状态 - 从 localStorage 读取初始值
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return false
-    const saved = localStorage.getItem('xpouch:sidebar-collapsed')
-    return saved === 'true'
-  })
-  const [isSidebarMobileOpen, setIsSidebarMobileOpen] = useState(false)
+  const isSidebarCollapsed = useAppUIStore((state) => state.isSidebarCollapsed)
+  const isSidebarMobileOpen = useAppUIStore((state) => state.isSidebarMobileOpen)
+  const settingsOpen = useAppUIStore((state) => state.settingsOpen)
+  const personalSettingsOpen = useAppUIStore((state) => state.personalSettingsOpen)
+  const deleteConfirmOpen = useAppUIStore((state) => state.deleteConfirmOpen)
+  const deletingAgentId = useAppUIStore((state) => state.deletingAgentId)
+  const deletingAgentName = useAppUIStore((state) => state.deletingAgentName)
+  const loginOpen = useAppUIStore((state) => state.loginOpen)
 
-  // Dialogs 状态
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [personalSettingsOpen, setPersonalSettingsOpen] = useState(false)
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
-  const [deletingAgentId, setDeletingAgentId] = useState<string | null>(null)
-  const [deletingAgentName, setDeletingAgentName] = useState('')
-  const [loginOpen, setLoginOpen] = useState(false)
-
-  // Sidebar 方法
-  const toggleSidebarCollapsed = useCallback(() => {
-    setIsSidebarCollapsed(prev => {
-      const newValue = !prev
-      localStorage.setItem('xpouch:sidebar-collapsed', String(newValue))
-      return newValue
-    })
-  }, [])
-
-  const toggleSidebarMobile = useCallback(() => {
-    setIsSidebarMobileOpen(prev => !prev)
-  }, [])
-
-  const closeSidebarMobile = useCallback(() => {
-    setIsSidebarMobileOpen(false)
-  }, [])
-
-  // Dialogs 方法
-  const openSettings = useCallback(() => {
-    setSettingsOpen(true)
-  }, [])
-
-  const closeSettings = useCallback(() => {
-    setSettingsOpen(false)
-  }, [])
-
-  const openPersonalSettings = useCallback(() => {
-    setPersonalSettingsOpen(true)
-  }, [])
-
-  const closePersonalSettings = useCallback(() => {
-    setPersonalSettingsOpen(false)
-  }, [])
-
-  const openDeleteConfirm = useCallback((id: string, name: string) => {
-    setDeletingAgentId(id)
-    setDeletingAgentName(name)
-    setDeleteConfirmOpen(true)
-  }, [])
-
-  const closeDeleteConfirm = useCallback(() => {
-    setDeleteConfirmOpen(false)
-    setDeletingAgentId(null)
-    setDeletingAgentName('')
-  }, [])
-
-  // Login Dialog 方法
-  const openLogin = useCallback(() => {
-    setLoginOpen(true)
-  }, [])
-
-  const closeLogin = useCallback(() => {
-    setLoginOpen(false)
-  }, [])
+  const toggleSidebarCollapsed = useAppUIStore((state) => state.toggleSidebarCollapsed)
+  const toggleSidebarMobile = useAppUIStore((state) => state.toggleSidebarMobile)
+  const closeSidebarMobile = useAppUIStore((state) => state.closeSidebarMobile)
+  const openSettings = useAppUIStore((state) => state.openSettings)
+  const closeSettings = useAppUIStore((state) => state.closeSettings)
+  const openPersonalSettings = useAppUIStore((state) => state.openPersonalSettings)
+  const closePersonalSettings = useAppUIStore((state) => state.closePersonalSettings)
+  const openDeleteConfirm = useAppUIStore((state) => state.openDeleteConfirm)
+  const closeDeleteConfirm = useAppUIStore((state) => state.closeDeleteConfirm)
+  const openLogin = useAppUIStore((state) => state.openLogin)
+  const closeLogin = useAppUIStore((state) => state.closeLogin)
 
   // 注册登录弹窗回调（供非 React 代码使用，如 API 错误处理）
   useEffect(() => {
@@ -150,21 +101,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // 监听全局登录弹窗事件（降级方案）
   useEffect(() => {
     const handleShowLogin = () => {
-      setLoginOpen(true)
+      openLogin()
     }
     window.addEventListener('show-login-dialog', handleShowLogin)
     return () => window.removeEventListener('show-login-dialog', handleShowLogin)
-  }, [])
+  }, [openLogin])
 
-  const contextValue: AppContextType = {
-    sidebar: {
-      isCollapsed: isSidebarCollapsed,
-      isMobileOpen: isSidebarMobileOpen,
-      toggleCollapsed: toggleSidebarCollapsed,
-      toggleMobile: toggleSidebarMobile,
-      closeMobile: closeSidebarMobile
-    },
-    dialogs: {
+  const contextValue: AppContextType = useMemo(
+    () => ({
+      sidebar: {
+        isCollapsed: isSidebarCollapsed,
+        isMobileOpen: isSidebarMobileOpen,
+        toggleCollapsed: toggleSidebarCollapsed,
+        toggleMobile: toggleSidebarMobile,
+        closeMobile: closeSidebarMobile,
+      },
+      dialogs: {
+        settingsOpen,
+        personalSettingsOpen,
+        deleteConfirmOpen,
+        deletingAgentId,
+        deletingAgentName,
+        loginOpen,
+        openSettings,
+        closeSettings,
+        openPersonalSettings,
+        closePersonalSettings,
+        openDeleteConfirm,
+        closeDeleteConfirm,
+        openLogin,
+        closeLogin,
+      },
+      onCreateAgent: undefined, // 由各页面设置
+    }),
+    [
+      isSidebarCollapsed,
+      isSidebarMobileOpen,
+      toggleSidebarCollapsed,
+      toggleSidebarMobile,
+      closeSidebarMobile,
       settingsOpen,
       personalSettingsOpen,
       deleteConfirmOpen,
@@ -178,10 +153,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       openDeleteConfirm,
       closeDeleteConfirm,
       openLogin,
-      closeLogin
-    },
-    onCreateAgent: undefined // 由各页面设置
-  }
+      closeLogin,
+    ]
+  )
 
   // React 19: Context 可以直接作为 Provider 使用
   return (
@@ -191,6 +165,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useApp() {
   const context = useContext(AppContext)
   if (context === undefined) {
@@ -199,5 +174,3 @@ export function useApp() {
   return context
 }
 
-// React 19: 支持 use() hook 的导出
-export { AppContext }

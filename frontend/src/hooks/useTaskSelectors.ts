@@ -5,7 +5,7 @@
  * 适用于高频更新场景（SSE 流式事件）
  */
 
-import { useCallback } from 'react'
+import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTaskStore } from '@/store/taskStore'
 import type { Task } from '@/store/taskStore'
@@ -89,14 +89,16 @@ export const useRunningTasks = (): Task[] => useTaskStore(
  * 获取任务统计信息
  * 返回一个稳定的对象，避免频繁重渲染
  */
-export const useTaskStats = () => useTaskStore(
-  useShallow(state => ({
-    total: state.tasksCache.length,
-    running: state.runningTaskIds.size,
-    initialized: state.isInitialized,
-    hasSession: !!state.session,
-  }))
-)
+export const useTaskStats = () => {
+  const total = useTaskStore(state => state.tasksCache.length)
+  const running = useTaskStore(state => state.runningTaskIds.size)
+  const initialized = useTaskStore(state => state.isInitialized)
+  const hasSession = useTaskStore(state => !!state.session)
+  return useMemo(
+    () => ({ total, running, initialized, hasSession }),
+    [total, running, initialized, hasSession]
+  )
+}
 
 // ============================================================================
 // Actions Selectors (稳定引用，不会触发重渲染)
@@ -106,26 +108,63 @@ export const useTaskStats = () => useTaskStore(
  * 获取任务相关的 Actions
  * 使用 useShallow 返回一个稳定的 actions 对象
  */
-export const useTaskActions = () => useTaskStore(
-  useShallow(state => ({
-    initializePlan: state.initializePlan,
-    startTask: state.startTask,
-    completeTask: state.completeTask,
-    failTask: state.failTask,
-    addArtifact: state.addArtifact,
-    selectTask: state.selectTask,
-    resetTasks: state.resetTasks,
-    resetAll: state.resetAll,
-    setMode: state.setMode,
-    setIsInitialized: state.setIsInitialized,
-    updateTasksFromPlan: state.updateTasksFromPlan,
-    setPendingPlan: state.setPendingPlan,
-    clearPendingPlan: state.clearPendingPlan,
-    setIsWaitingForApproval: state.setIsWaitingForApproval,
-    restoreFromSession: state.restoreFromSession,
-    updateArtifactContent: state.updateArtifactContent,
-  }))
-)
+export const useTaskActions = () => {
+  const initializePlan = useTaskStore(state => state.initializePlan)
+  const startTask = useTaskStore(state => state.startTask)
+  const completeTask = useTaskStore(state => state.completeTask)
+  const failTask = useTaskStore(state => state.failTask)
+  const addArtifact = useTaskStore(state => state.addArtifact)
+  const selectTask = useTaskStore(state => state.selectTask)
+  const resetTasks = useTaskStore(state => state.resetTasks)
+  const resetAll = useTaskStore(state => state.resetAll)
+  const setMode = useTaskStore(state => state.setMode)
+  const setIsInitialized = useTaskStore(state => state.setIsInitialized)
+  const updateTasksFromPlan = useTaskStore(state => state.updateTasksFromPlan)
+  const setPendingPlan = useTaskStore(state => state.setPendingPlan)
+  const clearPendingPlan = useTaskStore(state => state.clearPendingPlan)
+  const setIsWaitingForApproval = useTaskStore(state => state.setIsWaitingForApproval)
+  const restoreFromSession = useTaskStore(state => state.restoreFromSession)
+  const updateArtifactContent = useTaskStore(state => state.updateArtifactContent)
+
+  return useMemo(
+    () => ({
+      initializePlan,
+      startTask,
+      completeTask,
+      failTask,
+      addArtifact,
+      selectTask,
+      resetTasks,
+      resetAll,
+      setMode,
+      setIsInitialized,
+      updateTasksFromPlan,
+      setPendingPlan,
+      clearPendingPlan,
+      setIsWaitingForApproval,
+      restoreFromSession,
+      updateArtifactContent,
+    }),
+    [
+      initializePlan,
+      startTask,
+      completeTask,
+      failTask,
+      addArtifact,
+      selectTask,
+      resetTasks,
+      resetAll,
+      setMode,
+      setIsInitialized,
+      updateTasksFromPlan,
+      setPendingPlan,
+      clearPendingPlan,
+      setIsWaitingForApproval,
+      restoreFromSession,
+      updateArtifactContent,
+    ]
+  )
+}
 
 /**
  * 获取单个 Action (当只需要一个 action 时使用)

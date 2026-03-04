@@ -6,6 +6,7 @@
  */
 
 import { useShallow } from 'zustand/react/shallow'
+import { useMemo } from 'react'
 import { useChatStore } from '@/store/chatStore'
 import type { Message } from '@/types'
 
@@ -85,18 +86,39 @@ export const useCustomAgents = () => useChatStore(
  * 获取所有 Actions
  * 使用 useShallow 确保返回的对象引用稳定
  */
-export const useChatActions = () => useChatStore(
-  useShallow(state => ({
-    setMessages: state.setMessages,
-    addMessage: state.addMessage,
-    updateMessage: state.updateMessage,
-    updateMessageMetadata: state.updateMessageMetadata,
-    setInputMessage: state.setInputMessage,
-    setCurrentConversationId: state.setCurrentConversationId,
-    setSelectedAgentId: state.setSelectedAgentId,
-    setGenerating: state.setGenerating,
-  }))
-)
+export const useChatActions = () => {
+  const setMessages = useChatStore(state => state.setMessages)
+  const addMessage = useChatStore(state => state.addMessage)
+  const updateMessage = useChatStore(state => state.updateMessage)
+  const updateMessageMetadata = useChatStore(state => state.updateMessageMetadata)
+  const setInputMessage = useChatStore(state => state.setInputMessage)
+  const setCurrentConversationId = useChatStore(state => state.setCurrentConversationId)
+  const setSelectedAgentId = useChatStore(state => state.setSelectedAgentId)
+  const setGenerating = useChatStore(state => state.setGenerating)
+
+  return useMemo(
+    () => ({
+      setMessages,
+      addMessage,
+      updateMessage,
+      updateMessageMetadata,
+      setInputMessage,
+      setCurrentConversationId,
+      setSelectedAgentId,
+      setGenerating,
+    }),
+    [
+      setMessages,
+      addMessage,
+      updateMessage,
+      updateMessageMetadata,
+      setInputMessage,
+      setCurrentConversationId,
+      setSelectedAgentId,
+      setGenerating,
+    ]
+  )
+}
 
 /**
  * 获取单个 Action (性能最优，只订阅单个函数)
@@ -120,13 +142,15 @@ export const useSetInputMessageAction = () =>
 /**
  * 获取消息统计
  */
-export const useMessageStats = () => useChatStore(
-  useShallow(state => ({
-    total: state.messages.length,
-    isGenerating: state.isGenerating,
-    hasConversation: !!state.currentConversationId,
-  }))
-)
+export const useMessageStats = () => {
+  const total = useChatStore(state => state.messages.length)
+  const isGenerating = useChatStore(state => state.isGenerating)
+  const hasConversation = useChatStore(state => !!state.currentConversationId)
+  return useMemo(
+    () => ({ total, isGenerating, hasConversation }),
+    [total, isGenerating, hasConversation]
+  )
+}
 
 /**
  * 检查是否有消息

@@ -15,8 +15,15 @@ from sqlmodel import Session
 from agents.graph import create_smart_router_workflow
 from agents.nodes.generic import generic_worker_node
 from agents.services.expert_manager import get_expert_config_cached
+from crud.invoke_session import (
+    create_running_task_session,
+    create_subtask_for_direct_mode,
+    create_subtasks_for_auto_mode,
+    mark_task_session_completed,
+    mark_task_session_failed,
+)
 from database import get_session
-from models import SubTask, TaskSession, User
+from models import TaskSession, User
 from services.mcp_tools_service import mcp_tools_service
 from utils.exceptions import ValidationError
 from utils.logger import logger
@@ -130,19 +137,8 @@ class InvokeService:
         thread_id: str | None
     ) -> TaskSession:
         """创建 TaskSession 记录"""
-        session_id = thread_id or str(uuid.uuid4())
-        task_session = TaskSession(
-            session_id=session_id,
-            user_query=message,
-            status="running",
-            created_at=datetime.now(),
-            updated_at=datetime.now()
-        )
-        self.session.add(task_session)
-        self.session.commit()
-        self.session.refresh(task_session)
-
-        logger.info(f"[InvokeService] 创建 TaskSession: {session_id}")
+        task_session = create_running_task_session(self.session, message, thread_id)
+        logger.info(f"[InvokeService] 创建 TaskSession: {task_session.session_id}")
         return task_session
 
     async def _get_mcp_tools(self) -> list[Any]:
@@ -277,27 +273,7 @@ class InvokeService:
         task_list: list[dict[str, Any]]
     ) -> None:
         """批量保存 SubTask"""
-        for subtask in task_list:
-            # 处理 artifacts
-            artifacts = subtask.get("artifact")
-            if artifacts:
-                artifacts = [artifacts] if isinstance(artifacts, dict) else artifacts
-
-            db_subtask = SubTask(
-                id=subtask["id"],
-                expert_type=subtask["expert_type"],
-                task_description=subtask["description"],
-                input_data=subtask.get("input_data", {}),
-                status=subtask["status"],
-                output_result=subtask.get("output_result"),
-                artifacts=artifacts,
-                started_at=subtask.get("started_at"),
-                completed_at=subtask.get("completed_at"),
-                created_at=subtask.get("created_at"),
-                updated_at=subtask.get("updated_at"),
-                task_session_id=session_id
-            )
-            self.session.add(db_subtask)
+        create_subtasks_for_auto_mode(self.session, session_id, task_list)
 
     def _save_direct_subtask(
         self,
@@ -306,20 +282,7 @@ class InvokeService:
         result: dict[str, Any]
     ) -> None:
         """保存 Direct 模式的单个 SubTask"""
-        db_subtask = SubTask(
-            id=subtask_dict["id"],
-            expert_type=subtask_dict["expert_type"],
-            task_description=subtask_dict["description"],
-            input_data=subtask_dict.get("input_data", {}),
-            status=result.get("status", "completed"),
-            output_result={"content": result.get("output_result", "")},
-            started_at=result.get("started_at"),
-            completed_at=result.get("completed_at"),
-            created_at=subtask_dict["created_at"],
-            updated_at=subtask_dict["updated_at"],
-            task_session_id=session_id
-        )
-        self.session.add(db_subtask)
+        create_subtask_for_direct_mode(self.session, session_id, subtask_dict, result)
 
     def _update_session_completed(
         self,
@@ -327,11 +290,7 @@ class InvokeService:
         response: str
     ) -> None:
         """更新 TaskSession 为完成状态"""
-        task_session.final_response = response
-        task_session.status = "completed"
-        task_session.completed_at = datetime.now()
-        task_session.updated_at = datetime.now()
-
+        mark_task_session_completed(self.session, task_session, response)
         logger.info(f"[InvokeService] TaskSession {task_session.session_id} 完成")
 
     def _update_session_failed(
@@ -340,11 +299,7 @@ class InvokeService:
         error: str
     ) -> None:
         """更新 TaskSession 为失败状态"""
-        task_session.status = "failed"
-        task_session.final_response = f"执行失败: {error}"
-        task_session.updated_at = datetime.now()
-        self.session.commit()
-
+        mark_task_session_failed(self.session, task_session, error)
         logger.error(f"[InvokeService] TaskSession {task_session.session_id} 失败: {error}")
 
 

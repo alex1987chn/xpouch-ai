@@ -1,19 +1,20 @@
 import os
 import uuid
 from datetime import datetime
-from enum import Enum
-from typing import List, Optional
+from enum import StrEnum
+from typing import Optional
 
 from pydantic import BaseModel
 from pydantic import Field as PydanticField
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Index, String, func
-from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
+from sqlmodel import JSON, Column, Field, Relationship, SQLModel
 
 # ============================================================================
 # 枚举类型
 # ============================================================================
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     """用户角色枚举"""
     USER = "user"              # 普通用户
     ADMIN = "admin"            # 完全管理员
@@ -21,7 +22,7 @@ class UserRole(str, Enum):
     EDIT_ADMIN = "edit_admin"    # 编辑管理员（可修改专家配置）
 
 
-class ConversationType(str, Enum):
+class ConversationType(StrEnum):
     """会话类型枚举"""
     DEFAULT = "default"      # 默认助手（简单模式）
     CUSTOM = "custom"        # 自定义智能体（简单模式）
@@ -51,8 +52,8 @@ class SystemExpert(SQLModel, table=True):
 
     # DB-10: 主键策略统一为 UUID
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    expert_key: str = Field(description="专家类型标识（对应 ExpertType 枚举，如 'coder', 'search'）")
-    name: str = Field(description="专家显示名称")
+    expert_key: str = Field(max_length=64, description="专家类型标识（对应 ExpertType 枚举，如 'coder', 'search'）")
+    name: str = Field(max_length=255, description="专家显示名称")
     description: str | None = Field(
         default=None,
         description="专家能力描述，用于 Planner 决定任务分配"
@@ -60,7 +61,11 @@ class SystemExpert(SQLModel, table=True):
     system_prompt: str = Field(
         description="专家系统提示词（核心字段，管理员可修改）"
     )
-    model: str = Field(default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="使用的模型")
+    model: str = Field(
+        default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"),
+        max_length=128,
+        description="使用的模型",
+    )
     temperature: float = Field(default=0.5, description="温度参数（0.0-2.0）")
     is_dynamic: bool = Field(default=True, description="是否为动态专家，false=系统内置，true=用户创建")
     # 🔥 新增：系统核心组件标记（不可删除）
@@ -78,20 +83,20 @@ class SystemExpert(SQLModel, table=True):
 
 class User(SQLModel, table=True):
     id: str = Field(primary_key=True) # 前端生成的 UUID
-    username: str = Field(default="User")
+    username: str = Field(default="User", max_length=50)
     avatar: str | None = None
-    plan: str = Field(default="Free") # Free, Pilot, Maestro
+    plan: str = Field(default="Free", max_length=20) # Free, Pilot, Maestro
     role: UserRole = Field(
         default=UserRole.USER,
-        sa_column=Column(String(10))  # 使用 String 类型映射，保持数据库列为 VARCHAR
+        sa_column=Column(SAEnum(UserRole, name="user_role_enum", native_enum=True))  # DB-12: 使用 PostgreSQL ENUM
     )
-    phone_number: str | None = Field(default=None, unique=True, index=True)
-    email: str | None = Field(default=None, unique=True, index=True)
-    password_hash: str | None = Field(default=None)
-    verification_code: str | None = Field(default=None)
+    phone_number: str | None = Field(default=None, max_length=32, unique=True, index=True)
+    email: str | None = Field(default=None, max_length=254, unique=True, index=True)
+    password_hash: str | None = Field(default=None, max_length=255)
+    verification_code: str | None = Field(default=None, max_length=16)
     verification_code_expires_at: datetime | None = Field(default=None)
-    auth_provider: str | None = Field(default=None)  # 'phone', 'email', 'github', 'google', 'wechat'
-    provider_id: str | None = Field(default=None, index=True)
+    auth_provider: str | None = Field(default=None, max_length=32)  # 'phone', 'email', 'github', 'google', 'wechat'
+    provider_id: str | None = Field(default=None, max_length=128, index=True)
     access_token: str | None = Field(default=None)
     refresh_token: str | None = Field(default=None)
     token_expires_at: datetime | None = Field(default=None)
@@ -118,33 +123,42 @@ class Thread(SQLModel, table=True):
     __tablename__ = 'thread'  # 👈 显式指定表名为 thread（单数形式，符合数据库实际命名）
 
     id: str | None = Field(default=None, primary_key=True)
-    title: str
+    title: str = Field(max_length=512)
 
     # 会话类型：明确区分三种模式
-    agent_type: str = Field(index=True, default=ConversationType.DEFAULT.value)
+    agent_type: ConversationType = Field(
+        default=ConversationType.DEFAULT,
+        sa_column=Column(SAEnum(ConversationType, name="conversation_type_enum", native_enum=True), index=True),
+    )
 
     # 智能体ID
     # - agent_type='default' 时，存储默认助手的UUID
     # - agent_type='custom' 时，存储自定义智能体的UUID
     # - agent_type='ai' 时，存储固定的'ai-assistant'标识
-    agent_id: str = Field(index=True, default='sys-default-chat')
+    agent_id: str = Field(index=True, default='sys-default-chat', max_length=128)
 
     # 用户ID
-    user_id: str = Field(foreign_key="user.id", index=True)
+    user_id: str = Field(foreign_key="user.id", index=True, max_length=64)
 
     # 关联的任务会话（仅复杂模式有值）
-    task_session_id: str | None = Field(default=None, index=True)
+    task_session_id: str | None = Field(default=None, index=True, max_length=64)
 
     # 新增：线程状态（记录线程的执行状态）
     # - idle: 空闲/完成状态
     # - running: 正在运行
     # - paused: 暂停
-    status: str = Field(default="idle", index=True)
+    status: str = Field(
+        default="idle",
+        sa_column=Column(String(32), nullable=False, index=True),
+    )
 
     # 新增：线程模式（记录路由模式）
     # - simple: 普通对话模式（不自动展开面板）
     # - complex: 复杂协作模式（自动展开面板）
-    thread_mode: str = Field(default="simple", index=True)
+    thread_mode: str = Field(
+        default="simple",
+        sa_column=Column(String(16), nullable=False, index=True),
+    )
 
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
@@ -163,8 +177,8 @@ class Thread(SQLModel, table=True):
 
 class Message(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    thread_id: str = Field(foreign_key="thread.id", index=True)
-    role: str
+    thread_id: str = Field(foreign_key="thread.id", index=True, max_length=64)
+    role: str = Field(max_length=20)
     content: str
     timestamp: datetime = Field(default_factory=datetime.now)
     # 👈 新增：extra_data 字段存储 thinking、reasoning 等额外信息（metadata 是 SQLAlchemy 保留字）
@@ -248,28 +262,28 @@ class PaginatedThreadListResponse(BaseModel):
 class CustomAgent(SQLModel, table=True):
     """
     用户智能体（包括默认助手和自定义智能体）
-    
+
     用于简单的对话场景，直接使用用户的 system_prompt 调用 LLM，
     不经过 LangGraph 的专家工作流。
     """
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
 
     # 关联用户
-    user_id: str = Field(foreign_key="user.id", index=True)
+    user_id: str = Field(foreign_key="user.id", index=True, max_length=64)
 
     # 基本信息
-    name: str = Field(index=True)  # 智能体名称
+    name: str = Field(index=True, max_length=255)  # 智能体名称
     description: str | None = None  # 描述
 
     # 核心配置
     system_prompt: str  # 用户自定义的系统提示词（关键！）
-    model_id: str = Field(default="deepseek-chat")  # 使用的模型
+    model_id: str = Field(default="deepseek-chat", max_length=128)  # 使用的模型
 
     # 新增：是否为默认助手
     is_default: bool = Field(default=False, index=True)
 
     # 分类和统计
-    category: str = Field(default="综合")  # 分类（写作、编程、创意等）
+    category: str = Field(default="综合", max_length=64)  # 分类（写作、编程、创意等）
     is_public: bool = Field(default=False)  # 是否公开（未来扩展）
     conversation_count: int = Field(default=0)  # 使用次数
 
@@ -331,7 +345,7 @@ class CustomAgentResponse(BaseModel):
 # 新增模型：超智能体基础设施
 # ============================================================================
 
-class ExpertType(str, Enum):
+class ExpertType(StrEnum):
     """专家类型枚举"""
     SEARCH = "search"
     CODER = "coder"
@@ -342,7 +356,7 @@ class ExpertType(str, Enum):
     IMAGE_ANALYZER = "image_analyzer"
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     """子任务状态枚举"""
     PENDING = "pending"
     RUNNING = "running"
@@ -350,7 +364,7 @@ class TaskStatus(str, Enum):
     FAILED = "failed"
 
 
-class ExecutionMode(str, Enum):
+class ExecutionMode(StrEnum):
     """任务执行模式"""
     SEQUENTIAL = "sequential"  # 串行执行
     PARALLEL = "parallel"      # 并行执行
@@ -359,20 +373,20 @@ class ExecutionMode(str, Enum):
 class SubTask(SQLModel, table=True):
     """
     子任务模型 - 专家执行的具体任务
-    
+
     每个专家任务产生一个或多个交付物（Artifacts）
     支持串行和并行执行模式
     """
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
 
     # 关联的任务会话
-    task_session_id: str = Field(foreign_key="tasksession.session_id", index=True)
+    task_session_id: str = Field(foreign_key="tasksession.session_id", index=True, max_length=64)
 
     # 排序顺序：用于前端展示和串行执行顺序
     sort_order: int = Field(default=0, index=True)
 
     # 专家类型：指定由哪个专家执行
-    expert_type: str = Field(index=True)  # 存储 ExpertType 枚举值
+    expert_type: str = Field(index=True, max_length=64)  # 存储 ExpertType 枚举值
 
     # 任务描述：自然语言描述的任务内容
     task_description: str = Field(index=True)
@@ -381,10 +395,16 @@ class SubTask(SQLModel, table=True):
     input_data: dict | None = Field(default=None, sa_type=JSON)
 
     # 任务状态
-    status: str = Field(default="pending", index=True)  # 存储 TaskStatus 枚举值
+    status: TaskStatus = Field(
+        default=TaskStatus.PENDING,
+        sa_column=Column(SAEnum(TaskStatus, name="task_status_enum", native_enum=True), index=True),
+    )  # DB-12: 使用 PostgreSQL ENUM
 
     # 执行模式：串行或并行
-    execution_mode: str = Field(default="sequential")  # sequential | parallel
+    execution_mode: ExecutionMode = Field(
+        default=ExecutionMode.SEQUENTIAL,
+        sa_column=Column(SAEnum(ExecutionMode, name="execution_mode_enum", native_enum=True)),
+    )  # DB-12: 使用 PostgreSQL ENUM
 
     # 依赖任务：并行模式下可能依赖其他任务（可选）
     depends_on: list[str] | None = Field(default=None, sa_type=JSON)
@@ -430,7 +450,7 @@ class TaskSession(SQLModel, table=True):
     session_id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
 
     # 关联的会话ID（核心！用于从历史记录加载）
-    thread_id: str = Field(foreign_key="thread.id", index=True)
+    thread_id: str = Field(foreign_key="thread.id", index=True, max_length=64)
 
     # 用户查询：原始用户输入
     user_query: str = Field(index=True)
@@ -442,7 +462,10 @@ class TaskSession(SQLModel, table=True):
     estimated_steps: int = Field(default=0)
 
     # 执行模式：串行或并行
-    execution_mode: str = Field(default="sequential")  # sequential | parallel
+    execution_mode: ExecutionMode = Field(
+        default=ExecutionMode.SEQUENTIAL,
+        sa_column=Column(SAEnum(ExecutionMode, name="execution_mode_enum", native_enum=True)),
+    )  # DB-12: 使用 PostgreSQL ENUM
 
     # 关联的子任务列表
     sub_tasks: list[SubTask] = Relationship(
@@ -454,7 +477,10 @@ class TaskSession(SQLModel, table=True):
     final_response: str | None = Field(default=None)
 
     # 会话状态：pending | running | completed | failed
-    status: str = Field(default="pending", index=True)
+    status: TaskStatus = Field(
+        default=TaskStatus.PENDING,
+        sa_column=Column(SAEnum(TaskStatus, name="task_status_enum", native_enum=True), index=True),
+    )  # DB-12: 使用 PostgreSQL ENUM
 
     # 乐观锁版本号：用于 HITL 计划更新冲突检测
     # 每次用户确认/更新计划时递增
@@ -483,19 +509,19 @@ class Artifact(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
 
     # 关联的子任务
-    sub_task_id: str = Field(foreign_key="subtask.id", index=True)
+    sub_task_id: str = Field(foreign_key="subtask.id", index=True, max_length=64)
 
     # 产物类型：code | html | markdown | json | text
-    type: str = Field(index=True)
+    type: str = Field(index=True, max_length=32)
 
     # 产物标题
-    title: str | None = None
+    title: str | None = Field(default=None, max_length=255)
 
     # 产物内容
     content: str
 
     # 代码语言（如果是代码类型）
-    language: str | None = None
+    language: str | None = Field(default=None, max_length=64)
 
     # 排序顺序（同一专家的多产物排序）
     sort_order: int = Field(default=0)
@@ -619,8 +645,8 @@ class LangSmithConfig(BaseModel):
 
 # 🔥 导入记忆模型（放在最后避免循环导入）
 # 🔥 MCP: 导入 MCP 服务器模型
-from models.mcp import MCPServer
-from models.memory import UserMemory
+from models.mcp import MCPServer  # noqa: E402
+from models.memory import UserMemory  # noqa: E402
 
 __all__ = [
     "UserRole", "ConversationType", "ExpertType", "TaskStatus", "ExecutionMode",

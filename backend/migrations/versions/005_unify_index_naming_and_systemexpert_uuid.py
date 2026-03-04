@@ -47,9 +47,25 @@ INDEX_RENAMES_UP = [
 INDEX_RENAMES_DOWN = [(new, old) for old, new in INDEX_RENAMES_UP]
 
 
+def _index_exists(index_name: str) -> bool:
+    """Check index existence in current schema."""
+    bind = op.get_bind()
+    result = bind.execute(
+        sa.text("SELECT to_regclass(:index_name)"),
+        {"index_name": index_name},
+    ).scalar_one()
+    return result is not None
+
+
 def _rename_indexes(pairs: list[tuple[str, str]]) -> None:
     for old, new in pairs:
-        op.execute(sa.text(f'ALTER INDEX IF EXISTS "{old}" RENAME TO "{new}"'))
+        # Idempotent rename:
+        # - old exists and new missing -> rename
+        # - new already exists -> skip to avoid DuplicateTable
+        # - old missing -> skip
+        if _index_exists(new) or not _index_exists(old):
+            continue
+        op.execute(sa.text(f'ALTER INDEX "{old}" RENAME TO "{new}"'))
 
 
 def upgrade() -> None:
