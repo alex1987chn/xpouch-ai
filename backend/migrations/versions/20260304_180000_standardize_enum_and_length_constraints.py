@@ -19,7 +19,9 @@ depends_on: str | Sequence[str] | None = None
 
 user_role_enum = sa.Enum("user", "admin", "view_admin", "edit_admin", name="user_role_enum")
 conversation_type_enum = sa.Enum("default", "custom", "ai", name="conversation_type_enum")
-task_status_enum = sa.Enum("pending", "running", "completed", "failed", name="task_status_enum")
+task_status_enum = sa.Enum(
+    "pending", "running", "completed", "failed", "cancelled", name="task_status_enum"
+)
 execution_mode_enum = sa.Enum("sequential", "parallel", name="execution_mode_enum")
 
 
@@ -74,14 +76,14 @@ def upgrade() -> None:
         table_name="subtask",
         column_name="status",
         enum_name="task_status_enum",
-        allowed_values=("pending", "running", "completed", "failed"),
+        allowed_values=("pending", "running", "completed", "failed", "cancelled"),
         fallback_value="pending",
     )
     _alter_to_enum_with_fallback(
         table_name="tasksession",
         column_name="status",
         enum_name="task_status_enum",
-        allowed_values=("pending", "running", "completed", "failed"),
+        allowed_values=("pending", "running", "completed", "failed", "cancelled"),
         fallback_value="pending",
     )
     _alter_to_enum_with_fallback(
