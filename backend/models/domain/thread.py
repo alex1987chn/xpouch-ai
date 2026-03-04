@@ -5,21 +5,14 @@
 - Thread: 会话表
 """
 
-from __future__ import annotations
-
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import Optional
 
 from sqlalchemy import Column, String, func
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
 from models.enums import ConversationType, _enum_values
-
-if TYPE_CHECKING:
-    from models.domain.message import Message
-    from models.domain.task_session import TaskSession
-    from models.domain.user import User
 
 
 class Thread(SQLModel, table=True):
@@ -86,16 +79,16 @@ class Thread(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(
         default_factory=datetime.now,
-        sa_column_kwargs={"onupdate": func.now},
+        sa_column_kwargs={"onupdate": func.now()},
     )
 
-    # 关联关系
-    user: User | None = Relationship(back_populates="threads")
-    messages: list[Message] = Relationship(
+    # 关联关系（使用字符串避免循环导入）
+    user: Optional["User"] = Relationship(back_populates="threads")  # noqa: F821
+    messages: list["Message"] = Relationship(  # noqa: F821
         back_populates="thread",
         sa_relationship_kwargs={"cascade": "all, delete"},
     )
-    task_session: TaskSession | None = Relationship(
+    task_session: Optional["TaskSession"] = Relationship(  # noqa: F821
         back_populates="thread",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )

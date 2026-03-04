@@ -5,16 +5,10 @@
 - Message: 消息表
 """
 
-from __future__ import annotations
-
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, Column, Index
 from sqlmodel import Field, Relationship, SQLModel
-
-if TYPE_CHECKING:
-    from models.domain.thread import Thread
 
 
 class Message(SQLModel, table=True):
@@ -34,7 +28,8 @@ class Message(SQLModel, table=True):
         default=None, sa_column=Column(JSON)
     )
 
-    thread: Thread = Relationship(back_populates="messages")
+    # 关联关系（使用字符串避免循环导入）
+    thread: "Thread" = Relationship(back_populates="messages")  # noqa: F821
 
     # 复合索引：优化消息查询
     # 场景：加载对话历史时，查询 WHERE thread_id = ? ORDER BY timestamp DESC

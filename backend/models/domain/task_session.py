@@ -5,20 +5,14 @@
 - TaskSession: 任务会话表（复杂模式）
 """
 
-from __future__ import annotations
-
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import Optional
 
 from sqlalchemy import Column, func
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
 from models.enums import ExecutionMode, TaskStatus, _enum_values
-
-if TYPE_CHECKING:
-    from models.domain.subtask import SubTask
-    from models.domain.thread import Thread
 
 
 class TaskSession(SQLModel, table=True):
@@ -60,8 +54,8 @@ class TaskSession(SQLModel, table=True):
         ),
     )  # DB-12: 使用 PostgreSQL ENUM
 
-    # 关联的子任务列表
-    sub_tasks: list[SubTask] = Relationship(
+    # 关联的子任务列表（使用字符串避免循环导入）
+    sub_tasks: list["SubTask"] = Relationship(  # noqa: F821
         back_populates="task_session",
         sa_relationship_kwargs={
             "cascade": "all, delete-orphan",
@@ -94,9 +88,9 @@ class TaskSession(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(
         default_factory=datetime.now,
-        sa_column_kwargs={"onupdate": func.now},
+        sa_column_kwargs={"onupdate": func.now()},
     )
     completed_at: datetime | None = None
 
-    # 关联关系
-    thread: Thread | None = Relationship(back_populates="task_session")
+    # 关联关系（使用字符串避免循环导入）
+    thread: Optional["Thread"] = Relationship(back_populates="task_session")  # noqa: F821

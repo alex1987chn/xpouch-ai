@@ -5,20 +5,13 @@
 - User: 用户表
 """
 
-from __future__ import annotations
-
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, func
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
 from models.enums import UserRole, _enum_values
-
-if TYPE_CHECKING:
-    from models.domain.custom_agent import CustomAgent
-    from models.domain.thread import Thread
 
 
 class User(SQLModel, table=True):
@@ -63,12 +56,12 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(
         default_factory=datetime.now,
-        sa_column_kwargs={"onupdate": func.now},
+        sa_column_kwargs={"onupdate": func.now()},
     )
 
-    # 关联关系
-    threads: list[Thread] = Relationship(back_populates="user")
-    custom_agents: list[CustomAgent] = Relationship(
+    # 关联关系（使用字符串避免循环导入）
+    threads: list["Thread"] = Relationship(back_populates="user")  # noqa: F821
+    custom_agents: list["CustomAgent"] = Relationship(  # noqa: F821
         back_populates="user",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
