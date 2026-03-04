@@ -12,8 +12,9 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
 from pydantic import Field as PydanticField
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, select, text
+from sqlmodel import Session, select
 
 from agents.services.expert_manager import refresh_cache
 from auth import get_current_user
@@ -288,7 +289,7 @@ async def update_expert(
     # 更新条件：config_version 必须等于期望版本
     update_name = expert_update.name if expert.is_dynamic else None
 
-    result = session.exec(
+    result = session.execute(
         text("""
             UPDATE systemexpert
             SET config_version = config_version + 1,
