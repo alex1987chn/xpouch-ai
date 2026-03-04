@@ -72,7 +72,6 @@ async def lifespan(app: FastAPI):
 
     with Session(engine) as session:
         existing_experts = session.exec(select(SystemExpert)).all()
-        existing_keys = {e.expert_key for e in existing_experts}
 
         if not existing_experts:
             logger.info("[Lifespan] No experts found, initializing default experts...")

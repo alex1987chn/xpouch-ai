@@ -26,7 +26,6 @@ from crud.task_session import (
     get_subtask,
     get_subtasks_by_session,
     get_task_session_by_thread,
-    update_subtask_status,
     update_task_session_status,
 )
 from models import Message as MessageModel

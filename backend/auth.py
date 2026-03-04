@@ -12,7 +12,6 @@ P0 安全修复: 2025-02-24
 - Token刷新
 - 登出（清除 Cookie）
 """
-import logging
 import os
 from datetime import UTC, datetime, timedelta
 
@@ -43,7 +42,6 @@ from utils.verification import (
 )
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
-logger = logging.getLogger(__name__)
 
 
 # ==================== Pydantic模型 ====================

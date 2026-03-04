@@ -11,6 +11,7 @@
 - backend.crud.task_session (TaskSession相关CRUD)
 - backend.models (SQLModel模型)
 """
+import uuid
 from datetime import datetime
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage

@@ -86,7 +86,7 @@ class AsyncTaskQueue:
             result = func(*args, **kwargs)
             self._stats["completed"] += 1
             return result
-        except Exception as e:
+        except Exception:
             self._stats["failed"] += 1
             raise
 
