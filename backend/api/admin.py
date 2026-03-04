@@ -8,13 +8,12 @@
 4. 自动生成专家描述
 """
 import os
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
 from pydantic import Field as PydanticField
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, select
+from sqlmodel import Session, select, text
 
 from agents.services.expert_manager import refresh_cache
 from auth import get_current_user
@@ -255,7 +254,7 @@ async def update_expert(
     _: User = Depends(get_current_admin)  # 需要 EDIT_ADMIN 或 ADMIN 权限
 ):
     """
-    更新系统专家配置
+    更新系统专家配置（原子递增乐观锁）
 
     权限：EDIT_ADMIN, ADMIN
 
@@ -267,7 +266,7 @@ async def update_expert(
 
     注意：更新后会自动刷新 LangGraph 缓存，下次任务立即生效
     """
-    # 查找专家
+    # 先查询专家（用于权限检查等）
     expert = session.exec(
         select(SystemExpert).where(SystemExpert.expert_key == expert_key)
     ).first()
@@ -278,35 +277,60 @@ async def update_expert(
             detail=f"专家 '{expert_key}' 不存在"
         )
 
-    # 🔥 乐观锁检查：防止并发更新覆盖
-    if expert.config_version != expert_update.expected_version:
+    # 🔥 权限检查：只有动态专家可以修改 name
+    if expert_update.name is not None and not expert.is_dynamic:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"专家配置已被他人修改（当前版本: {expert.config_version}, 期望版本: {expert_update.expected_version}），请刷新后重试"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="系统内置专家的名称不可修改"
         )
 
-    # 更新字段
-    # 只有动态专家可以修改 name
-    if expert_update.name is not None:
-        if not expert.is_dynamic:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="系统内置专家的名称不可修改"
-            )
-        expert.name = expert_update.name
+    # 🔥 原子递增乐观锁：使用 SQL 层原子更新，消除竞态条件
+    # 更新条件：config_version 必须等于期望版本
+    update_name = expert_update.name if expert.is_dynamic else None
 
-    expert.system_prompt = expert_update.system_prompt
-    expert.description = expert_update.description
-    expert.model = expert_update.model
-    expert.temperature = expert_update.temperature
-    expert.updated_at = datetime.now()
-    expert.config_version += 1  # 🔥 版本号递增
+    result = session.exec(
+        text("""
+            UPDATE systemexpert
+            SET config_version = config_version + 1,
+                name = COALESCE(:update_name, name),
+                system_prompt = :system_prompt,
+                description = :description,
+                model = :model,
+                temperature = :temperature,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :expert_id AND config_version = :expected_version
+        """),
+        {
+            "update_name": update_name,
+            "system_prompt": expert_update.system_prompt,
+            "description": expert_update.description,
+            "model": expert_update.model,
+            "temperature": expert_update.temperature,
+            "expert_id": expert.id,
+            "expected_version": expert_update.expected_version
+        }
+    )
 
-    session.add(expert)
+    # 检查是否更新成功（rowcount == 0 表示版本号不匹配）
+    if result.rowcount == 0:
+        # 获取当前版本号用于错误提示
+        current_expert = session.exec(
+            select(SystemExpert).where(SystemExpert.expert_key == expert_key)
+        ).first()
+        current_version = current_expert.config_version if current_expert else "未知"
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"专家配置已被他人修改（当前版本: {current_version}, 期望版本: {expert_update.expected_version}），请刷新后重试"
+        )
+
     session.commit()
-    session.refresh(expert)
 
-    logger.info(f"[Admin] Expert '{expert_key}' updated by admin (version {expert.config_version})")
+    # 重新查询获取更新后的值
+    updated_expert = session.exec(
+        select(SystemExpert).where(SystemExpert.expert_key == expert_key)
+    ).first()
+
+    logger.info(f"[Admin] Expert '{expert_key}' updated by admin (version {updated_expert.config_version})")
 
     # 自动刷新 LangGraph 缓存（无需重启）
     try:
@@ -319,8 +343,8 @@ async def update_expert(
     return {
         "message": "专家配置已更新，下次任务生效",
         "expert_key": expert_key,
-        "config_version": expert.config_version,
-        "updated_at": expert.updated_at.isoformat()
+        "config_version": updated_expert.config_version,
+        "updated_at": updated_expert.updated_at.isoformat()
     }
 
 
