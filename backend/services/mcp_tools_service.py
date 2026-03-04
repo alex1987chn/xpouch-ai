@@ -84,7 +84,7 @@ class MCPToolsService:
             # Python 3.13: 在异步函数中使用同步上下文管理器
             with Session(engine) as session:
                 active_servers = session.exec(
-                    select(MCPServer).where(MCPServer.is_active == True)
+                    select(MCPServer).where(MCPServer.is_active)
                 ).all()
 
                 if not active_servers:

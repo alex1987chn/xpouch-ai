@@ -58,7 +58,7 @@ def parse_llm_json(
             repaired_str = _repair_json_string(json_str)
             try:
                 json_data = json.loads(repaired_str, strict=False)
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError:
                 # 步骤 5: 如果还是失败，尝试最后的暴力清理
                 logger.warning("[JSON Parser] 状态机修复失败，尝试暴力清理...")
                 final_str = _aggressive_clean(repaired_str)
@@ -76,7 +76,7 @@ def parse_llm_json(
         # 步骤 6: 验证并转换为 Pydantic 对象
         try:
             return response_model(**json_data)
-        except ValidationError as e:
+        except ValidationError:
             if strict:
                 raise
             # 非严格模式：尝试修复常见错误
