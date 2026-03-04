@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 稳定性与运维（2026-03-03～03-04）
+
+**HITL 与恢复**:
+- HITL 恢复流程幂等性加固，避免重复提交导致的状态错乱
+- Recovery 并发保护与 session 状态一致性
+
+**后台任务**:
+- 新增 SessionCleanup 定时任务：自动清理过期/僵死会话（可配置间隔与保留天数）
+- 应用启动时注册清理循环，随 Lifespan 启停
+
+**数据库迁移**:
+- `004_add_common_query_indexes`：常用查询索引
+- `005_unify_index_naming_and_systemexpert_uuid`：索引命名统一、SystemExpert.id 改为 UUID
+- `20260304_180000_standardize_enum_and_length_constraints`：枚举与长度约束标准化
+
+**开发体验与门禁**:
+- Husky + lint-staged：提交前自动跑前端 lint
+- Node 版本要求提升至 ≥24.14（与 package.json engines 一致）
+
+**影响面与升级注意**:
+- 新迁移需在部署时执行 `alembic upgrade head`
+- 若从旧版升级，请按 004 → 005 → 20260304 顺序应用
+
+---
+
 ## [2026-03-01] - v3.2.4 - 会话历史性能优化与批量删除
 
 ### 🚀 性能优化

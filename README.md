@@ -12,7 +12,7 @@
 
 <img src="https://github.com/user-attachments/assets/c4554212-e24e-47dd-a61d-8df4f69ce233" alt="XPouch AI Screenshot" width="800">
 
-**下一代 LangGraph 智能协作平台 v3.2.4** — 引入 HITL 人机回环、MCP 生态、Streamable HTTP 传输、会话历史分页加载、批量删除与工业级交互体验。
+**下一代 LangGraph 智能协作平台 v3.2.4** — 引入 HITL 人机回环、MCP 生态、Streamable HTTP 传输、会话历史分页加载、批量删除与工业级交互体验。近期：HITL 恢复幂等、会话后台清理、数据库迁移与索引统一、husky/lint-staged 门禁。
 
 [🚀 在线演示](https://xpouch.ai) · [🐛 问题反馈](https://github.com/alex1987chn/xpouch-ai/issues) · [💬 讨论](https://github.com/alex1987chn/xpouch-ai/discussions)
 
@@ -108,7 +108,7 @@ AI 不再是"黑盒"。Commander 生成任务计划后，**暂停等待你的确
 |------|---------|
 | Docker | 20.0+ |
 | Docker Compose | 2.0+ |
-| Node.js (本地开发) | 18.0+ |
+| Node.js (本地开发) | 24.14+ |
 | Python (本地开发) | 3.13+ |
 
 ### Docker 一键部署（推荐）
@@ -120,6 +120,7 @@ cd xpouch-ai
 
 # 2. 配置环境变量
 cp backend/.env.example backend/.env
+# 可选：根目录创建 .env 供 docker-compose 变量替换（如 POSTGRES_*）
 # 编辑 backend/.env，添加你的 LLM API Key
 
 # 3. 启动服务（自动执行数据库迁移）
@@ -312,7 +313,7 @@ xpouch-ai/
 │   │   └── invoke_service.py  # 双模调用服务 ⭐
 │   ├── tools/              # Function Calling 工具
 │   ├── models/             # SQLModel 数据模型
-│   │   └── mcp_server.py   # MCP Server 模型 ⭐
+│   │   └── mcp.py          # MCP Server 模型 ⭐
 │   └── Dockerfile
 ├── docker-compose.yml
 └── CHANGELOG.md            # 更新日志
