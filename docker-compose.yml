@@ -5,8 +5,7 @@ services:
     image: pgvector/pgvector:pg15
     container_name: xpouch-postgres
     restart: always
-    ports:
-      - "5432:5432"
+    # 生产默认不对外暴露数据库端口；如需本机调试，可临时恢复 "5432:5432" 映射
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     environment:
@@ -26,12 +25,16 @@ services:
     build: ./backend
     container_name: xpouch-backend
     restart: always
+    # 变量来源说明（按最终生效优先级）:
+    # 1) environment（当前服务内显式声明，最高优先级）
+    # 2) env_file: ./backend/.env（业务密钥与后端运行配置）
+    # 3) 根目录 .env（仅供 compose 在解析 ${...} 时插值）
     env_file:
       - ./backend/.env
     environment:
       - PORT=3000
-      # PostgreSQL 连接串（服务器部署时）
-      # Docker Compose 会自动替换服务名 db 为实际容器IP
+      # 容器内后端数据库连接的最终来源（覆盖 backend/.env 里同名 DATABASE_URL）
+      # compose 会将服务名 db 解析为内部网络地址
       - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
 
     # 注：生产环境如需 gunicorn，请先在 Dockerfile 中确保 gunicorn 在 PATH 中
