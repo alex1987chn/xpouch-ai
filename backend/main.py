@@ -299,7 +299,7 @@ async def chat_invoke_endpoint(
     except Exception as e:
         # 其他错误包装为 AppError
         logger.error(f"[INVOKE ERROR] {e}", exc_info=True)
-        raise AppError(message=f"执行失败: {str(e)}", original_error=e)
+        raise AppError(message=f"执行失败: {str(e)}", original_error=e) from e
 
 
 # ============================================================================
