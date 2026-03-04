@@ -20,9 +20,17 @@
  */
 
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
-import { getConversations, getConversation, getThreadMessages, deleteConversation, deleteConversationsBatch, type Conversation } from '@/services/chat'
+import { getConversations, getConversation, getThreadMessages, deleteConversation, deleteConversationsBatch } from '@/services/chat'
 import { logger } from '@/utils/logger'
 import { CACHE_TIMES } from '@/config/query'
+
+interface StatusError {
+  status?: number
+}
+
+function isStatusError(error: unknown): error is StatusError {
+  return typeof error === 'object' && error !== null && 'status' in error
+}
 
 // Query Key 工厂函数 - 统一管理中心化 Query Keys
 export const chatHistoryKeys = {
@@ -69,9 +77,9 @@ export function useChatHistoryQuery(options: { limit?: number; enabled?: boolean
     staleTime: CACHE_TIMES.CHAT_HISTORY.staleTime,
     gcTime: CACHE_TIMES.CHAT_HISTORY.gcTime,
     // 错误时重试：401 不重试，其他错误重试2次
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: unknown) => {
       // 401 未授权不 retry，避免无限循环
-      if (error?.status === 401) return false
+      if (isStatusError(error) && error.status === 401) return false
       return failureCount < 2
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),

@@ -4,6 +4,10 @@ import { getUserProfile, updateUserProfile, type UserProfile } from '@/services/
 import { sendVerificationCode, verifyCodeAndLogin, logoutApi } from '@/services/auth'
 import { logger, errorHandler } from '@/utils/logger'
 
+function isStatusError(error: unknown): error is { status?: number } {
+  return typeof error === 'object' && error !== null && 'status' in error
+}
+
 interface UserState {
   user: UserProfile | null
   isLoading: boolean
@@ -78,7 +82,7 @@ export const useUserStore = create<UserState>()(
         const user = await getUserProfile()
         set({ user, isAuthenticated: true, isAuthChecked: true })
         return true
-      } catch (error) {
+      } catch (_error) {
         // 401 或其他错误表示未认证
         set({ user: null, isAuthenticated: false, isAuthChecked: true })
         return false
@@ -127,7 +131,7 @@ export const useUserStore = create<UserState>()(
         errorHandler.handleSync(error, 'fetchUser')
         set({ error: errorHandler.getUserMessage(error), isLoading: false })
         // If user fetch fails (e.g., 401), logout
-        if ((error as any)?.status === 401) {
+        if (isStatusError(error) && error.status === 401) {
           set({ user: null, isAuthenticated: false })
         }
       }

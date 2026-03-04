@@ -7,6 +7,7 @@
  */
 
 import type { PlanStartedData, PlanThinkingData } from '@/types/events'
+import type { TaskStore } from '../taskStore'
 
 // ============================================================================
 // State & Actions Interfaces
@@ -26,12 +27,17 @@ export interface PlanningSliceActions {
 
 export type PlanningSlice = PlanningSliceState & PlanningSliceActions
 
+type PlanningSliceSetter = (fn: (draft: TaskStore) => void) => void
+type PlanningSliceGetter = () => TaskStore
+
 // ============================================================================
 // Slice Factory
 // ============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createPlanningSlice = (set: any, _get: any): PlanningSlice => ({
+export const createPlanningSlice = (
+  set: PlanningSliceSetter,
+  _get: PlanningSliceGetter
+): PlanningSlice => ({
   // Initial state
   planThinkingContent: '',
 
@@ -40,31 +46,31 @@ export const createPlanningSlice = (set: any, _get: any): PlanningSlice => ({
   startPlan: (data: PlanStartedData) => {
     // v3.2.0: 仅更新本 Slice 的状态，不涉及其他 Slice
     // session/tasks/isInitialized 等状态由组件层调用 resetAll() 统一重置
-    set((state: any) => {
+    set((state) => {
       state.planThinkingContent = data.content
     })
   },
 
   appendPlanThinking: (data: PlanThinkingData) => {
-    set((state: any) => {
+    set((state) => {
       state.planThinkingContent += data.delta
     })
   },
 
   setPlanThinkingContent: (content: string) => {
-    set((state: any) => {
+    set((state) => {
       state.planThinkingContent = content
     })
   },
 
   clearPlanThinking: () => {
-    set((state: any) => {
+    set((state) => {
       state.planThinkingContent = ''
     })
   },
 
   resetPlanning: () => {
-    set((state: any) => {
+    set((state) => {
       state.planThinkingContent = ''
     })
   }

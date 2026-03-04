@@ -67,7 +67,7 @@ async def get_current_view_admin(
 
 class ExpertResponse(BaseModel):
     """专家响应 DTO"""
-    id: int
+    id: str
     expert_key: str
     name: str
     description: str | None

@@ -44,12 +44,14 @@ class SystemExpert(SQLModel, table=True):
     管理员可以通过前端动态修改专家的 system_prompt，
     LangGraph 执行任务时从数据库读取最新配置。
     """
-    id: int = Field(default=None, primary_key=True)
-    expert_key: str = Field(
-        unique=True,
-        index=True,
-        description="专家类型标识（对应 ExpertType 枚举，如 'coder', 'search'）"
+    __table_args__ = (
+        # DB-8: 统一索引命名前缀
+        Index("idx_systemexpert_expert_key", "expert_key", unique=True),
     )
+
+    # DB-10: 主键策略统一为 UUID
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    expert_key: str = Field(description="专家类型标识（对应 ExpertType 枚举，如 'coder', 'search'）")
     name: str = Field(description="专家显示名称")
     description: str | None = Field(
         default=None,

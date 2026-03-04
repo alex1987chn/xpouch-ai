@@ -22,6 +22,10 @@ interface PersistOptions<T> {
   enabled?: boolean
 }
 
+interface PersistCapableApi {
+  clearPersist?: () => void
+}
+
 type Persist = <
   T,
   Mps extends [StoreMutatorIdentifier, unknown][] = [],
@@ -62,7 +66,7 @@ export const persist: Persist = (initializer, options) => {
 
     // 尝试从 localStorage 恢复状态
     const storageKey = `${name}@${version}`
-    let restoredState: Partial<typeof initializer> | undefined
+    let restoredState: Partial<T> | undefined
 
     try {
       const stored = localStorage.getItem(storageKey)
@@ -97,12 +101,12 @@ export const persist: Persist = (initializer, options) => {
       // 使用 setTimeout 确保在下一个 tick 合并状态
       // 这样可以避免在初始化时触发订阅者
       setTimeout(() => {
-        setWithPersist(restoredState as any)
+        setWithPersist(restoredState as Partial<T>)
       }, 0)
     }
 
     // 添加清除方法
-    ;(api as any).clearPersist = () => {
+    ;(api as PersistCapableApi).clearPersist = () => {
       try {
         localStorage.removeItem(storageKey)
         logger.debug(`[Persist] 清除状态: ${name}`)

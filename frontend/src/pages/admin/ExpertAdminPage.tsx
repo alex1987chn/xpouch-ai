@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ExpertAdminPage - 专家管理页面
  * 
  * [职责]
@@ -57,6 +57,10 @@ function BauhausToast({
   )
 }
 
+function isStatusError(error: unknown): error is { status?: number } {
+  return typeof error === 'object' && error !== null && 'status' in error
+}
+
 export default function ExpertAdminPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -87,9 +91,9 @@ export default function ExpertAdminPage() {
     queryKey: ['experts'],
     queryFn: getAllExperts,
     enabled: isAuthenticated,
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: unknown) => {
       // 401 未授权不 retry
-      if (error?.status === 401) return false
+      if (isStatusError(error) && error.status === 401) return false
       return failureCount < 2
     },
   })
@@ -98,7 +102,7 @@ export default function ExpertAdminPage() {
   useEffect(() => {
     if (expertsError) {
       logger.error('Failed to load experts:', expertsError)
-      setToast({ message: (t as any)('loadExpertsFailed'), type: 'error' })
+      setToast({ message: t('loadExpertsFailed'), type: 'error' })
     }
   }, [expertsError, t])
 
@@ -123,11 +127,11 @@ export default function ExpertAdminPage() {
       const result = await generateExpertDescription({
         system_prompt: systemPrompt,
       })
-      setToast({ message: (t as any)('descriptionGenerated'), type: 'success' })
+      setToast({ message: t('descriptionGenerated'), type: 'success' })
       return result.description
     } catch (error) {
       logger.error('Failed to generate description:', error)
-      setToast({ message: (t as any)('generateDescriptionFailed'), type: 'error' })
+      setToast({ message: t('generateDescriptionFailed'), type: 'error' })
       throw error
     } finally {
       setIsGeneratingDescription(false)
@@ -143,10 +147,10 @@ export default function ExpertAdminPage() {
       await updateExpert(selectedExpert.expert_key, data)
       queryClient.invalidateQueries({ queryKey: ['experts'] })
       queryClient.invalidateQueries({ queryKey: ['expert', selectedExpert.expert_key] })
-      setToast({ message: (t as any)('saveSuccess'), type: 'success' })
+      setToast({ message: t('saveSuccess'), type: 'success' })
     } catch (error) {
       logger.error('Failed to update expert:', error)
-      setToast({ message: (t as any)('saveFailed'), type: 'error' })
+      setToast({ message: t('saveFailed'), type: 'error' })
     } finally {
       setIsSaving(false)
     }
@@ -157,18 +161,18 @@ export default function ExpertAdminPage() {
     async (data: CreateExpertRequest | UpdateExpertRequest) => {
       // 创建模式需要 CreateExpertRequest
       if (!('expert_key' in data)) return
-      const createData = data as CreateExpertRequest
+      const createData = data
       
       setIsCreating(true)
       try {
         await createExpert(createData)
         queryClient.invalidateQueries({ queryKey: ['experts'] })
-        setToast({ message: (t as any)('createSuccess'), type: 'success' })
+        setToast({ message: t('createSuccess'), type: 'success' })
         setIsCreateDialogOpen(false)
         setSelectedExpertKey(createData.expert_key)
       } catch (error) {
         logger.error('Failed to create expert:', error)
-        setToast({ message: (t as any)('createFailed'), type: 'error' })
+        setToast({ message: t('createFailed'), type: 'error' })
       } finally {
         setIsCreating(false)
       }
@@ -181,7 +185,7 @@ export default function ExpertAdminPage() {
     (expert: SystemExpert, e: React.MouseEvent) => {
       e.stopPropagation()
       if (!expert.is_dynamic) {
-        setToast({ message: (t as any)('cannotDeleteSystemExpert'), type: 'error' })
+        setToast({ message: t('cannotDeleteSystemExpert'), type: 'error' })
         return
       }
       setExpertToDelete(expert)
@@ -201,11 +205,11 @@ export default function ExpertAdminPage() {
       if (selectedExpertKey === expertToDelete.expert_key) {
         setSelectedExpertKey(null)
       }
-      setToast({ message: (t as any)('deleteSuccess'), type: 'success' })
+      setToast({ message: t('deleteSuccess'), type: 'success' })
       setIsDeleteDialogOpen(false)
     } catch (error) {
       logger.error('Failed to delete expert:', error)
-      setToast({ message: (t as any)('deleteFailed'), type: 'error' })
+      setToast({ message: t('deleteFailed'), type: 'error' })
     } finally {
       setIsDeleting(false)
       setExpertToDelete(null)
@@ -215,14 +219,14 @@ export default function ExpertAdminPage() {
   // 刷新列表
   const handleRefresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['experts'] })
-    setToast({ message: (t as any)('refreshSuccess'), type: 'success' })
+    setToast({ message: t('refreshSuccess'), type: 'success' })
   }, [queryClient, t])
 
   if (isLoadingExperts) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="w-8 h-8 border-2 border-border-default border-t-accent-hover animate-spin" />
-        <span className="ml-3 font-mono text-sm text-content-secondary">{(t as any)('loading')}</span>
+        <span className="ml-3 font-mono text-sm text-content-secondary">{t('loading')}</span>
       </div>
     )
   }
@@ -254,10 +258,10 @@ export default function ExpertAdminPage() {
           setExpertToDelete(null)
         }}
         onConfirm={handleDeleteExpert}
-        title={(t as any)('confirmDeleteExpert')}
-        description={(t as any)('deleteExpertWarning').replace('{name}', expertToDelete?.name || '')}
+        title={t('confirmDeleteExpert')}
+        description={t('deleteExpertWarning').replace('{name}', expertToDelete?.name || '')}
         itemName={expertToDelete?.name}
-        confirmText={(t as any)('delete')}
+        confirmText={t('delete')}
         isDeleting={isDeleting}
       />
 

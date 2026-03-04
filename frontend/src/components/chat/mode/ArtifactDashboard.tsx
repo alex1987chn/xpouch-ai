@@ -57,6 +57,13 @@ interface ArtifactDashboardProps {
   onToggleFullscreen?: () => void
 }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+  return '保存失败'
+}
+
 // ============================================================================
 // 提取的子组件（使用 React.memo 优化性能）
 // ============================================================================
@@ -160,6 +167,9 @@ export default function ArtifactDashboard({
   
   const { updateArtifactContent } = useTaskActions()
   const currentArtifact = artifacts[selectedIndex] || null
+  const currentArtifactId = currentArtifact?.id
+  const currentArtifactContent = currentArtifact?.content
+  const currentArtifactType = currentArtifact?.type
 
   // 重置选中索引当任务变化时
   useEffect(() => {
@@ -178,18 +188,18 @@ export default function ArtifactDashboard({
   useEffect(() => {
     setIsEditing(false)
     setSaveError(null)
-    if (currentArtifact) {
-      setEditContent(currentArtifact.content)
-      setViewMode(currentArtifact.type === 'html' ? 'preview' : 'code')
+    if (currentArtifactContent !== undefined && currentArtifactType !== undefined) {
+      setEditContent(currentArtifactContent)
+      setViewMode(currentArtifactType === 'html' ? 'preview' : 'code')
     }
-  }, [currentArtifact?.id])
+  }, [currentArtifactId, currentArtifactContent, currentArtifactType])
 
   // 同步流式内容
   useEffect(() => {
-    if (!isEditing && currentArtifact) {
-      setEditContent(currentArtifact.content)
+    if (!isEditing && currentArtifactContent !== undefined) {
+      setEditContent(currentArtifactContent)
     }
-  }, [currentArtifact?.content, isEditing])
+  }, [currentArtifactContent, isEditing])
 
   // 点击外部关闭导出菜单
   useEffect(() => {
@@ -248,7 +258,7 @@ export default function ArtifactDashboard({
       await navigator.clipboard.writeText(text)
       setCopied(true)
       copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
-    } catch (err) {
+    } catch (_err) {
       // Silent fail
     }
   }, [currentArtifact])
@@ -269,8 +279,8 @@ export default function ArtifactDashboard({
     try {
       await updateArtifactContent(selectedTaskId, currentArtifact.id, editContent)
       setIsEditing(false)
-    } catch (err: any) {
-      setSaveError(err.message || '保存失败')
+    } catch (err: unknown) {
+      setSaveError(getErrorMessage(err))
     } finally {
       setIsSaving(false)
     }

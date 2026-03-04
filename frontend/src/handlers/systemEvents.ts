@@ -17,6 +17,7 @@ import type {
 import type { HandlerContext } from './types'
 import { getLastAssistantMessage } from './utils'
 import { logger } from '@/utils/logger'
+import type { ThinkingStep } from '@/types'
 
 /**
  * 处理 router.start 事件
@@ -37,7 +38,7 @@ export function handleRouterStart(
 
     // 查找或创建 router 的 thinking 步骤
     const routerStepIndex = existingThinking.findIndex(
-      (s: any) => s.expertType === 'router'
+      (s: ThinkingStep) => s.expertType === 'router'
     )
     const routerStep = {
       id: `router-${event.id}`,
@@ -99,7 +100,7 @@ export function handleRouterDecision(
 
   if (lastAi?.message.metadata?.thinking) {
     const thinking = [...lastAi.message.metadata.thinking]
-    const routerStepIndex = thinking.findIndex((s: any) => s.expertType === 'router')
+    const routerStepIndex = thinking.findIndex((s: ThinkingStep) => s.expertType === 'router')
 
     if (debug) {
       logger.debug('[SystemEvents] router.decision: routerStepIndex=', routerStepIndex)

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ExpertFormDialog - 专家表单对话框
  * 
  * [职责]
@@ -37,7 +37,7 @@ export default function ExpertFormDialog({
   const [keyError, setKeyError] = useState('')
 
   // 表单数据
-  const [formData, setFormData] = useState<CreateExpertRequest & { id?: number }>({
+  const [formData, setFormData] = useState<CreateExpertRequest & { id?: string }>({
     expert_key: '',
     name: '',
     description: '',
@@ -106,7 +106,7 @@ export default function ExpertFormDialog({
   if (!isOpen) return null
 
   const isCreate = mode === 'create'
-  const title = isCreate ? (t as any)('createExpert') : (t as any)('editExpert')
+  const title = isCreate ? t('createExpert') : t('editExpert')
 
   return createPortal(
     <>

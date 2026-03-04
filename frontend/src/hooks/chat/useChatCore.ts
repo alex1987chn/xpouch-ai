@@ -14,14 +14,12 @@ import {
 import type { ApiMessage, StreamCallback } from '@/types'
 import { normalizeAgentId, getAgentType } from '@/utils/agentUtils'
 import { generateUUID } from '@/utils'
-import { useTranslation } from '@/i18n'
 import { findMessageById, isSameId } from '@/utils/normalize'
 import type { Message } from '@/types'
 import { errorHandler, logger } from '@/utils/logger'
-import { isValidApiMessageRole } from '@/types'
+import type { AnyServerEvent } from '@/types/events'
 
 import {
-  useMessages,
   useInputMessage,
   useSelectedAgentId,
   useCurrentConversationId,
@@ -30,7 +28,6 @@ import {
 } from '@/hooks/useChatSelectors'
 import { useTaskMode, useTaskActions } from '@/hooks/useTaskSelectors'
 import { useChatStore } from '@/store/chatStore'
-import { useTaskStore } from '@/store/taskStore'
 
 import { useStreamHandler } from './useStreamHandler'
 import { clearProcessedMessageDone } from '@/handlers/chatEvents'
@@ -43,20 +40,6 @@ const debug = DEBUG
   ? (...args: unknown[]) => logger.debug('[useChatCore]', ...args)
   : () => {}
 
-/**
- * ApiMessage type guard function
- */
-function isApiMessage(obj: any): obj is ApiMessage {
-  return (
-    obj &&
-    typeof obj === 'object' &&
-    'role' in obj &&
-    'content' in obj &&
-    isValidApiMessageRole(obj.role) &&
-    typeof obj.content === 'string'
-  )
-}
-
 interface UseChatCoreOptions {
   /** Handle streaming content callback */
   onChunk?: (chunk: string) => void
@@ -64,11 +47,16 @@ interface UseChatCoreOptions {
   onNewConversation?: (conversationId: string, agentId: string) => void
 }
 
+function getErrorStatus(error: unknown): number | undefined {
+  if (typeof error !== 'object' || error === null) return undefined
+  const maybe = error as { status?: number }
+  return maybe.status
+}
+
 /**
  * Chat core logic Hook
  */
 export function useChatCore(options: UseChatCoreOptions = {}) {
-  const { t } = useTranslation()
   const { onChunk, onNewConversation } = options
 
   // Refactored: Hook only manages AbortController
@@ -77,7 +65,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   const conversationMode = useTaskMode() || 'simple'
   
   // Chat store selectors
-  const messages = useMessages()
   const inputMessage = useInputMessage()
   const selectedAgentId = useSelectedAgentId()
   const currentConversationId = useCurrentConversationId()
@@ -241,7 +228,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         abortControllerRef.current?.signal.aborted
       
       // 🔐 检测 401 错误，保存消息以便登录后重发
-      const isAuthError = (error as any)?.status === 401
+      const isAuthError = getErrorStatus(error) === 401
       
       if (isAbortError) {
         debug('Request cancelled (user initiated)')
@@ -295,9 +282,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     setCurrentConversationId,
     addMessage,
     updateMessage,
-    t,
     resetStreamHandler,
-    createChunkHandler
+    createChunkHandler,
+    forceFlush,
   ])
 
   // Component unmount cleanup
@@ -343,7 +330,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     try {
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
-        conversationId?: string,
+        _conversationId?: string,
         _expertEvent?: AnyServerEvent  // 事件处理由 eventHandlers.ts 直接处理
       ) => {
         if (chunk) {
@@ -384,7 +371,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       setGenerating(false)
       abortControllerRef.current = null
     }
-  }, [isGenerating, conversationMode, onChunk, setGenerating, addMessage, resetStreamHandler, createChunkHandler, forceFlush])
+  }, [isGenerating, onChunk, setGenerating, addMessage, resetStreamHandler, createChunkHandler, forceFlush])
 
   /**
    * 重新生成指定 AI 消息的回复

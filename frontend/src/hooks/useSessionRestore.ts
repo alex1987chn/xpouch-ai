@@ -16,6 +16,7 @@ import { useChatStore } from '@/store/chatStore'
 import { getEventHandler } from '@/handlers'
 import { logger } from '@/utils/logger'
 import { getConversation } from '@/services/chat'
+import type { SubTask } from '@/types'
 
 interface UseSessionRestoreOptions {
   /** 是否启用恢复 */
@@ -33,6 +34,10 @@ interface UseSessionRestoreReturn {
   error: Error | null
   /** 手动触发恢复 */
   restore: () => Promise<void>
+}
+
+function isStatusError(error: unknown): error is { status?: number } {
+  return typeof error === 'object' && error !== null && 'status' in error
 }
 
 /**
@@ -63,8 +68,6 @@ export function useSessionRestore(
   const hasActiveStreamRef = useRef(false)
   
   // 从 Store 获取状态（使用 Selectors 模式）
-  const isInitialized = useTaskStore((state) => state.isInitialized)
-  const session = useTaskStore((state) => state.session)
   const resetAll = useTaskStore((state) => state.resetAll)
   const restoreFromSession = useTaskStore((state) => state.restoreFromSession)
   const setIsWaitingForApproval = useTaskStore((state) => state.setIsWaitingForApproval)
@@ -108,9 +111,6 @@ export function useSessionRestore(
 
     try {
       // 检查本地 localStorage 是否已有数据
-      const persistedState = localStorage.getItem('xpouch-task-store@2')
-      const hasLocalData = persistedState && JSON.parse(persistedState).session
-
       // 从服务端获取会话详情
       const conversation = await getConversation(conversationId)
       
@@ -133,13 +133,13 @@ export function useSessionRestore(
         const subTasks = task_session.sub_tasks || []
         
         // 统计 API 返回的 artifacts 数量
-        const apiArtifactCount = subTasks.reduce((sum: number, t: any) => 
+        const apiArtifactCount = subTasks.reduce((sum: number, t: SubTask) =>
           sum + (t.artifacts?.length || 0), 0)
         
         // 检查本地数据
         const taskStore = useTaskStore.getState()
         let localArtifactCount = 0
-        taskStore.tasks.forEach((task: any) => {
+        taskStore.tasks.forEach((task) => {
           localArtifactCount += task?.artifacts?.length || 0
         })
         
@@ -160,8 +160,8 @@ export function useSessionRestore(
         }
         
         // 检查是否还有运行中的任务
-        const hasRunningTask = subTasks.some((t: any) => t.status === 'running')
-        const hasPendingTask = subTasks.some((t: any) => t.status === 'pending')
+        const hasRunningTask = subTasks.some((t: SubTask) => t.status === 'running')
+        const hasPendingTask = subTasks.some((t: SubTask) => t.status === 'pending')
         
         // 如果有运行中的任务，提示用户任务仍在进行
         if (hasRunningTask) {
@@ -184,9 +184,9 @@ export function useSessionRestore(
       onRestored?.()
       
       return true
-    } catch (err: any) {
+    } catch (err: unknown) {
       // 🔥 404 错误静默处理：新会话在后端还不存在，这是预期行为
-      if (err?.status === 404) {
+      if (isStatusError(err) && err.status === 404) {
         logger.debug('[useSessionRestore] 会话不存在（新会话），跳过恢复')
         setIsRestored(true) // 标记为已恢复，避免重复尝试
         return true
@@ -202,7 +202,7 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [conversationId, enabled, isInitialized, restoreFromSession, setIsWaitingForApproval, setMode, setIsInitialized, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
+  }, [conversationId, enabled, restoreFromSession, setIsWaitingForApproval, setMode, setIsInitialized, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
 
   /**
    * 公开的手动恢复方法
@@ -267,7 +267,7 @@ export function useSessionRestore(
 /**
  * 检查是否有可恢复的会话
  */
-export function hasRestorableSession(conversationId: string): boolean {
+export function hasRestorableSession(_conversationId: string): boolean {
   try {
     const key = `xpouch-task-store@2`
     const stored = localStorage.getItem(key)

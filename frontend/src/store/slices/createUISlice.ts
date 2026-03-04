@@ -11,6 +11,7 @@
  */
 
 import type { Task } from './createTaskSlice'
+import type { TaskStore } from '../taskStore'
 
 // ============================================================================
 // State & Actions Interfaces
@@ -52,12 +53,14 @@ export interface UISliceActions {
 
 export type UISlice = UISliceState & UISliceActions
 
+type UISliceSetter = (fn: (draft: TaskStore) => void) => void
+type UISliceGetter = () => TaskStore
+
 // ============================================================================
 // Slice Factory
 // ============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createUISlice = (set: any, get: any): UISlice => ({
+export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice => ({
   // Initial state
   mode: null,
   runningTaskIds: new Set(),
@@ -71,26 +74,26 @@ export const createUISlice = (set: any, get: any): UISlice => ({
   // Actions
 
   setMode: (mode: 'simple' | 'complex') => {
-    set((state: any) => {
+    set((state) => {
       if (state.mode === mode) return
       state.mode = mode
     })
   },
 
   selectTask: (taskId: string | null) => {
-    set((state: any) => {
+    set((state) => {
       state.selectedTaskId = taskId
     })
   },
 
   setIsInitialized: (initialized: boolean) => {
-    set((state: any) => {
+    set((state) => {
       state.isInitialized = initialized
     })
   },
 
   setPendingPlan: (plan: Task[], planVersion: number = 1) => {
-    set((state: any) => {
+    set((state) => {
       state.pendingPlan = plan
       state.pendingPlanVersion = planVersion
       state.isWaitingForApproval = true
@@ -98,7 +101,7 @@ export const createUISlice = (set: any, get: any): UISlice => ({
   },
 
   clearPendingPlan: () => {
-    set((state: any) => {
+    set((state) => {
       state.pendingPlan = []
       state.pendingPlanVersion = 1
       state.isWaitingForApproval = false
@@ -106,31 +109,31 @@ export const createUISlice = (set: any, get: any): UISlice => ({
   },
 
   setIsWaitingForApproval: (waiting: boolean) => {
-    set((state: any) => {
+    set((state) => {
       state.isWaitingForApproval = waiting
     })
   },
 
   addRunningTaskId: (taskId: string) => {
-    set((state: any) => {
+    set((state) => {
       state.runningTaskIds.add(taskId)
     })
   },
 
   removeRunningTaskId: (taskId: string) => {
-    set((state: any) => {
+    set((state) => {
       state.runningTaskIds.delete(taskId)
     })
   },
 
   clearRunningTaskIds: () => {
-    set((state: any) => {
+    set((state) => {
       state.runningTaskIds = new Set()
     })
   },
 
   resetUI: () => {
-    set((state: any) => {
+    set((state) => {
       state.mode = null
       state.runningTaskIds = new Set()
       state.selectedTaskId = null
@@ -152,7 +155,7 @@ export const createUISlice = (set: any, get: any): UISlice => ({
 
   // 新增进度设置方法
   setProgress: (progress: Progress | null) => {
-    set((state: any) => {
+    set((state) => {
       state.progress = progress
     })
   }

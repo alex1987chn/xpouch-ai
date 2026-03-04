@@ -23,6 +23,7 @@ import { SIMPLE_TASK_ID } from '@/constants/task'
 import { StatusAvatar } from '@/components/ui/StatusAvatar'
 import { logger } from '@/utils/logger'
 import type { Components } from 'react-markdown'
+import type { ArtifactType } from '@/types'
 
 // 开发环境调试开关
 const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
@@ -245,7 +246,6 @@ function MessageItem({
   aiStatus = 'idle',
   onRegenerate,
   onLinkClick,
-  onPreview,
 }: MessageItemProps) {
   const isUser = message.role === 'user'
   const [copied, setCopied] = useState(false)
@@ -303,7 +303,7 @@ function MessageItem({
       
       taskStore.replaceArtifacts(SIMPLE_TASK_ID, [{
         id: artifact.id,
-        type: artifact.type as any,
+        type: artifact.type as ArtifactType,
         title: artifact.title,
         content: artifact.content,
         sortOrder: artifact.sort_order,
@@ -354,7 +354,7 @@ function MessageItem({
     if (DEBUG) logger.debug('[Preview] Replacing artifact:', artifact.title, 'to task:', SIMPLE_TASK_ID)
     taskStore.replaceArtifacts(SIMPLE_TASK_ID, [{
       id: artifact.id,
-      type: artifact.type as any,
+      type: artifact.type as ArtifactType,
       title: artifact.title,
       content: artifact.content,
       language: artifact.language,
@@ -413,9 +413,9 @@ function MessageItem({
 
   // 🔥 性能优化：使用 useMemo 缓存 Markdown components 对象
   const markdownComponents = useMemo<Components>(() => ({
-    a: ({ node, ...props }) => <MarkdownLink {...props} onLinkClick={onLinkClick} />,
-    img: ({ node, ...props }) => <MarkdownImage {...props} />,
-    code: ({ node, ...props }) => <MarkdownCode {...props} />
+    a: ({ node: _node, ...props }) => <MarkdownLink {...props} onLinkClick={onLinkClick} />,
+    img: ({ node: _node, ...props }) => <MarkdownImage {...props} />,
+    code: ({ node: _node, ...props }) => <MarkdownCode {...props} />
   }), [onLinkClick])
 
   // 用户消息：使用 surface 颜色，与背景形成层次感

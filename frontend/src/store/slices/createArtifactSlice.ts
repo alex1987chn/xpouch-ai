@@ -22,6 +22,7 @@ import type {
 } from '@/types/events'
 import type { Artifact } from '@/types'
 import { logger } from '@/utils/logger'
+import type { TaskStore } from '../taskStore'
 
 // ============================================================================
 // State & Actions Interfaces
@@ -44,18 +45,23 @@ export interface ArtifactSliceActions {
 
 export type ArtifactSlice = ArtifactSliceState & ArtifactSliceActions
 
+type ArtifactSliceSetter = (fn: (draft: TaskStore) => void) => void
+type ArtifactSliceGetter = () => TaskStore
+
 // ============================================================================
 // Slice Factory
 // ============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
+export const createArtifactSlice = (
+  set: ArtifactSliceSetter,
+  get: ArtifactSliceGetter
+): ArtifactSlice => ({
   // Initial state - 不再需要 streamingArtifacts
 
   // Actions
 
   addArtifact: (data: ArtifactGeneratedData) => {
-    set((state: any) => {
+    set((state) => {
       const task = state.tasks.get(data.task_id)
       if (!task) {
         // 🔥 调试日志：task 不存在时记录信息
@@ -69,7 +75,7 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
         return
       }
 
-      const existingIndex = task.artifacts.findIndex((a: any) => a.id === data.artifact.id)
+      const existingIndex = task.artifacts.findIndex((a) => a.id === data.artifact.id)
       
       if (existingIndex >= 0) {
         task.artifacts[existingIndex] = {
@@ -93,7 +99,7 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
         })
       }
 
-      task.artifacts.sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      task.artifacts.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
       // 🔥 移除：state.selectedTaskId = data.task_id（这是 UISlice 的状态）
       // 选中 Task 应由 UISlice 处理
       
@@ -111,7 +117,7 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
   },
 
   replaceArtifacts: (taskId: string, artifacts: Artifact[]) => {
-    set((state: any) => {
+    set((state) => {
       const task = state.tasks.get(taskId)
       if (!task) return
       task.artifacts = artifacts
@@ -122,11 +128,11 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
 
   deleteArtifact: (taskId: string, artifactId: string) => {
     let shouldSync = false
-    set((state: any) => {
+    set((state) => {
       const task = state.tasks.get(taskId)
       if (!task) return
 
-      const index = task.artifacts.findIndex((a: any) => a.id === artifactId)
+      const index = task.artifacts.findIndex((a) => a.id === artifactId)
       if (index >= 0) {
         task.artifacts.splice(index, 1)
         shouldSync = true
@@ -145,7 +151,7 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
       return false
     }
 
-    const artifact = task.artifacts.find((a: any) => a.id === artifactId)
+    const artifact = task.artifacts.find((a) => a.id === artifactId)
     if (!artifact) {
       logger.error('[ArtifactSlice] Artifact not found:', artifactId)
       return false
@@ -153,11 +159,11 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
 
     const oldContent = artifact.content
 
-    set((state: any) => {
+    set((state) => {
       const taskToUpdate = state.tasks.get(taskId)
       if (!taskToUpdate) return
 
-      const artifactToUpdate = taskToUpdate.artifacts.find((a: any) => a.id === artifactId)
+      const artifactToUpdate = taskToUpdate.artifacts.find((a) => a.id === artifactId)
       if (!artifactToUpdate) return
 
       artifactToUpdate.content = newContent
@@ -176,11 +182,11 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
     } catch (error) {
       logger.error('[ArtifactSlice] Failed to update artifact, rolling back:', error)
 
-      set((state: any) => {
+      set((state) => {
         const taskToRollback = state.tasks.get(taskId)
         if (!taskToRollback) return
 
-        const artifactToRollback = taskToRollback.artifacts.find((a: any) => a.id === artifactId)
+        const artifactToRollback = taskToRollback.artifacts.find((a) => a.id === artifactId)
         if (!artifactToRollback) return
 
         artifactToRollback.content = oldContent
@@ -197,9 +203,9 @@ export const createArtifactSlice = (set: any, get: any): ArtifactSlice => ({
    * 用于 resetAll 时清理 Artifact 状态
    */
   resetArtifacts: () => {
-    set((state: any) => {
+    set((state) => {
       // 清空每个 task 的 artifacts 数组
-      state.tasks.forEach((task: any) => {
+      state.tasks.forEach((task) => {
         task.artifacts = []
       })
     })

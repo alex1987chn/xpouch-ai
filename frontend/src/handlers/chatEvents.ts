@@ -11,6 +11,7 @@ import type { HandlerContext } from './types'
 import { logger } from '@/utils/logger'
 import { findMessageById } from '@/utils/normalize'
 import { useChatStore } from '@/store/chatStore'
+import type { ThinkingStep } from '@/types'
 
 // 🔥 防重：已处理过的 message.done 消息ID集合
 const processedMessageDones = new Set<string>()
@@ -43,7 +44,7 @@ export function handleMessageDelta(
   context: HandlerContext
 ): void {
   const { chatStore, debug } = context
-  const { updateMessage, addMessage, messages } = chatStore
+  const { addMessage, messages } = chatStore
 
   // 查找消息（前端应该在 useChatCore 中已经创建空消息）
   // 🔥 使用规范化工具查找
@@ -131,10 +132,10 @@ export function handleMessageDone(
     const newSteps = event.data.thinking.steps
 
     // 合并：保留现有步骤，添加后端返回的新步骤（去重）
-    const existingIds = new Set(existingThinking.map((s: any) => s.id))
+    const existingIds = new Set(existingThinking.map((s: ThinkingStep) => s.id))
     const mergedThinking = [
       ...existingThinking,
-      ...newSteps.filter((s: any) => !existingIds.has(s.id))
+      ...newSteps.filter((s: ThinkingStep) => !existingIds.has(s.id))
     ]
 
     updateMessageMetadata(event.data.message_id, {
@@ -168,13 +169,13 @@ export function handleMessageDone(
   }
   if (finalMessage?.metadata?.thinking?.length > 0) {
     const hasRunningSteps = finalMessage.metadata.thinking.some(
-      (s: any) => s.status === 'running'
+      (s: ThinkingStep) => s.status === 'running'
     )
     if (debug) {
       logger.debug('[ChatEvents] message.done: hasRunningSteps=', hasRunningSteps)
     }
     if (hasRunningSteps) {
-      const completedThinking = finalMessage.metadata.thinking.map((s: any) => ({
+      const completedThinking = finalMessage.metadata.thinking.map((s: ThinkingStep) => ({
         ...s,
         status: 'completed' as const
       }))
