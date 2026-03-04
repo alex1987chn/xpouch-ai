@@ -324,16 +324,16 @@ async def verify_code_and_login(
             provided_code=code,
             expires_at=user.verification_code_expires_at
         )
-    except VerificationCodeExpiredError as e:
+    except VerificationCodeExpiredError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="验证码已过期，请重新发送"
-        ) from e
+        ) from None
     except VerificationCodeInvalidError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
-        ) from e
+        ) from None
 
     # 验证成功，生成token
     access_token = create_access_token(user.id)
@@ -424,7 +424,7 @@ async def refresh_access_token_endpoint(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
-        ) from e
+        ) from None
 
 
 @router.post("/logout")
