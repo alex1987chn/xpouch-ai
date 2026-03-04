@@ -22,11 +22,11 @@ except ImportError:
         # 回退到旧版（社区版）
         from langchain_community.tools.tavily_search import TavilySearchResults
         logger.warning("[Search] [WARN] 使用 langchain_community.tools.tavily_search (旧版)")
-    except ImportError:
+    except ImportError as e:
         # 如果都没装，直接抛出异常，不要吞掉！
         raise ImportError(
             "[ERROR] 严重错误: 未找到 Tavily 库。请运行: uv add langchain-tavily langchain-community"
-        )
+        ) from e
 
 # P1 优化: 导入异步 HTTP 客户端
 import httpx

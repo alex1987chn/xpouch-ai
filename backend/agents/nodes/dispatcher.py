@@ -95,4 +95,4 @@ async def expert_dispatcher_node(state: AgentState, config: RunnableConfig = Non
 
     except Exception as e:
         logger.error(f"[DISPATCHER_NODE] 检查专家失败: {e}", exc_info=True)
-        raise AppError(message=f"专家配置错误: {str(e)}", code="EXPERT_NOT_FOUND")
+        raise AppError(message=f"专家配置错误: {str(e)}", code="EXPERT_NOT_FOUND") from e

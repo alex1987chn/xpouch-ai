@@ -67,7 +67,7 @@ def parse_llm_json[T: BaseModel](
                     raise ValueError(
                         f"JSON 解析彻底失败: {e2}\n"
                         f"错误位置: {error_pos}, 附近内容: ...{final_str[start:end]}..."
-                    )
+                    ) from e2
 
         # 步骤 6: 验证并转换为 Pydantic 对象
         try:
@@ -81,7 +81,7 @@ def parse_llm_json[T: BaseModel](
     except Exception as e:
         if strict:
             raise
-        raise ValueError(f"解析失败: {e}\n原始内容: {content[:500]}...")
+        raise ValueError(f"解析失败: {e}\n原始内容: {content[:500]}...") from e
 
 
 def _repair_json_string(s: str) -> str:
