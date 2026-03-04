@@ -50,7 +50,7 @@ def kill_process_on_port(port):
                         try:
                             subprocess.run(['taskkill', '/PID', pid, '/F'], capture_output=True)
                             logger.info(f"[Cleanup] Killed process {pid} on port {port}")
-                        except:
+                        except Exception:
                             pass
     except Exception as e:
         logger.warning(f"[Cleanup] {e}")
@@ -92,7 +92,7 @@ def start_server():
     try:
         signal.signal(signal.SIGINT, handle_signal)
         signal.signal(signal.SIGTERM, handle_signal)
-    except:
+    except (ValueError, OSError):
         pass  # Windows 可能不支持 SIGTERM
 
     # 5. 启动 Server

@@ -80,7 +80,7 @@ async def reset_connection_pool():
     if _pool is not None:
         try:
             await _pool.close()
-        except:
+        except Exception:
             pass
         _pool = None
         logger.info("[DB] Connection pool reset")
@@ -101,7 +101,7 @@ async def get_db_connection():
         try:
             if conn.info.transaction_status != 0:
                 await conn.rollback()
-        except:
+        except Exception:
             pass
         yield conn
 

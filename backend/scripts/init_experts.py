@@ -72,14 +72,14 @@ async def init_experts_async(update_existing=False, update_commander=False):
         update_existing: 是否更新所有现有专家（覆盖自定义配置）
         update_commander: 是否只更新 commander（用于启用思维链功能）
     """
-    SessionClass, engine = get_session_class_and_engine()
+    session_class, engine = get_session_class_and_engine()
 
     # 选择上下文管理器
-    if SessionClass == AsyncSession:
-        async with SessionClass(engine) as session:
+    if session_class == AsyncSession:
+        async with session_class(engine) as session:
             await process_experts(session, update_existing, update_commander)
     else:
-        with SessionClass(engine) as session:
+        with session_class(engine) as session:
             # 同步会话，但我们仍可以调用异步函数
             await process_experts(session, update_existing, update_commander)
 
@@ -179,13 +179,13 @@ def init_experts(update_existing=False, update_commander=False):
 
 async def list_experts_async():
     """异步列出所有专家"""
-    SessionClass, engine = get_session_class_and_engine()
+    session_class, engine = get_session_class_and_engine()
 
-    if SessionClass == AsyncSession:
-        async with SessionClass(engine) as session:
+    if session_class == AsyncSession:
+        async with session_class(engine) as session:
             await list_experts_process(session)
     else:
-        with SessionClass(engine) as session:
+        with session_class(engine) as session:
             await list_experts_process(session)
 
 async def list_experts_process(session):
