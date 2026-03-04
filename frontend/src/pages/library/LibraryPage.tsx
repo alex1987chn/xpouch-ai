@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 资源工坊页面 (Library/Workshop)
  * 
  * 统一的资源管理中枢，整合：
@@ -13,7 +13,7 @@ import { Database, Wrench } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
-import { useApp } from '@/providers/AppProvider'
+import { useAppUISelectors } from '@/hooks'
 import { BauhausSearchInput } from '@/components/ui/bauhaus-input'
 import { MCPList } from './MCPList'
 
@@ -21,7 +21,7 @@ type TabType = 'knowledge' | 'mcp'
 
 export default function LibraryPage() {
   const { t } = useTranslation()
-  const { sidebar } = useApp()
+  const { sidebar } = useAppUISelectors()
   const [activeTab, setActiveTab] = useState<TabType>('knowledge')
   const [searchQuery, setSearchQuery] = useState('')
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })

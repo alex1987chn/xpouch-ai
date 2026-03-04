@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import type { Agent, Conversation } from '@/types'
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { logger } from '@/utils/logger'
-import { useApp } from '@/providers/AppProvider'
+import { useAppUISelectors } from '@/hooks'
 import { useCustomAgentsQuery, useDeleteAgentMutation, useRecentConversationsQuery } from '@/hooks/queries'
 
 // shadcn Components
@@ -205,7 +205,7 @@ export default function HomePage() {
     setSelectedAgentId,
   } = useChatStore()
 
-  const { sidebar } = useApp()
+  const { sidebar, dialogs } = useAppUISelectors()
 
   const [inputMessage, setInputMessage] = useState('')
 
@@ -215,7 +215,7 @@ export default function HomePage() {
 
   // 获取登录状态和登录弹窗控制
   const isAuthenticated = useIsAuthenticated()
-  const { dialogs: { openLogin } } = useApp()
+  const openLogin = dialogs.openLogin
 
   // 👈 使用 React Query 获取自定义智能体列表（自动缓存，30分钟内不会重复请求）
   // 只有登录后才发起请求

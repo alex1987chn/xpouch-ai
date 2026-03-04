@@ -1,8 +1,8 @@
 """
-双模调用服务 (Auto/Direct)
+双模调用服务 (Auto/Direct) — 编排层
 
-将 main.py 中的 chat_invoke_endpoint 业务逻辑迁移到 Service 层，
-支持依赖注入和独立单元测试。
+只做模式校验、流程控制与调用持久化层；不直接操作 ORM 细节。
+持久化由 crud.invoke_session.InvokePersistence 负责。
 """
 import uuid
 from datetime import datetime
@@ -15,13 +15,7 @@ from sqlmodel import Session
 from agents.graph import create_smart_router_workflow
 from agents.nodes.generic import generic_worker_node
 from agents.services.expert_manager import get_expert_config_cached
-from crud.invoke_session import (
-    create_running_task_session,
-    create_subtask_for_direct_mode,
-    create_subtasks_for_auto_mode,
-    mark_task_session_completed,
-    mark_task_session_failed,
-)
+from crud.invoke_session import InvokePersistence
 from database import get_session
 from models import TaskSession, User
 from services.mcp_tools_service import mcp_tools_service
@@ -31,20 +25,13 @@ from utils.logger import logger
 
 class InvokeService:
     """
-    双模调用服务：支持 Auto 和 Direct 两种执行模式
-
-    Responsibilities:
-    - 模式验证（auto/direct）
-    - TaskSession 生命周期管理
-    - MCP 工具获取
-    - LangGraph 工作流执行（Auto 模式）
-    - 单专家直接调用（Direct 模式）
-    - SubTask 批量保存
-    - 错误处理和状态回滚
+    双模调用编排：校验 -> 创建会话 -> 取工具 -> 执行 -> 持久化结果/失败。
+    所有 DB 写操作通过 InvokePersistence 完成。
     """
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session) -> None:
         self.session = session
+        self._persistence = InvokePersistence(session)
         self._mcp_tools: list[Any] = []
 
     async def invoke(
@@ -53,60 +40,45 @@ class InvokeService:
         mode: str,
         agent_id: str | None = None,
         thread_id: str | None = None,
-        user: User | None = None
+        user: User | None = None,
     ) -> dict[str, Any]:
-        """
-        执行双模调用
-
-        Args:
-            message: 用户消息
-            mode: "auto" 或 "direct"
-            agent_id: Direct 模式必需
-            thread_id: LangSmith 线程 ID
-            user: 当前用户
-
-        Returns:
-            执行结果字典
-
-        Raises:
-            ValidationError: 参数验证失败
-            AppError: 执行过程中的业务错误
-        """
-        # 1. 验证模式
+        """执行双模调用；结果与异常时的失败状态均由持久化层落库。"""
         self._validate_mode(mode, agent_id)
 
-        # 2. 创建 TaskSession（单独提交，确保失败也能记录状态）
-        task_session = self._create_task_session(message, thread_id)
+        task_session = self._persistence.create_task_session(message, thread_id)
+        logger.info("[InvokeService] 创建 TaskSession: %s", task_session.session_id)
 
         try:
-            # 3. 获取 MCP 工具
             self._mcp_tools = await self._get_mcp_tools()
 
-            # 4. 执行对应模式
             if mode == "auto":
                 result = await self._execute_auto_mode(message, task_session)
             else:
                 result = await self._execute_direct_mode(message, agent_id, task_session)
 
-            # 5. 统一事务边界：子任务落库 + 会话状态更新要么全部成功，要么全部回滚
-            response_payload = dict(result)
+            response_payload = {k: v for k, v in result.items() if k not in ("task_list", "subtask_payload", "subtask_result")}
+
             with self.session.begin():
                 if mode == "auto":
-                    task_list = response_payload.pop("task_list", [])
-                    self._save_subtasks(task_session.session_id, task_list)
+                    self._persistence.save_auto_result(
+                        task_session,
+                        result["task_list"],
+                        result["final_response"],
+                    )
                 else:
-                    subtask_payload = response_payload.pop("subtask_payload")
-                    subtask_result = response_payload.pop("subtask_result")
-                    self._save_direct_subtask(task_session.session_id, subtask_payload, subtask_result)
-
-                self._update_session_completed(task_session, response_payload["final_response"])
+                    self._persistence.save_direct_result(
+                        task_session,
+                        result["subtask_payload"],
+                        result["subtask_result"],
+                        result["final_response"],
+                    )
 
             return response_payload
 
         except Exception as e:
-            # 6. 错误处理：先回滚执行过程中的数据库变更，再单独落库失败状态
             self.session.rollback()
-            self._update_session_failed(task_session, str(e))
+            self._persistence.mark_failed(task_session, str(e))
+            logger.error("[InvokeService] TaskSession %s 失败: %s", task_session.session_id, e)
             raise
 
     def _validate_mode(self, mode: str, agent_id: str | None) -> None:
@@ -130,16 +102,6 @@ class InvokeService:
                     f"未知的专家类型: {agent_id}",
                     details={"agent_id": agent_id}
                 )
-
-    def _create_task_session(
-        self,
-        message: str,
-        thread_id: str | None
-    ) -> TaskSession:
-        """创建 TaskSession 记录"""
-        task_session = create_running_task_session(self.session, message, thread_id)
-        logger.info(f"[InvokeService] 创建 TaskSession: {task_session.session_id}")
-        return task_session
 
     async def _get_mcp_tools(self) -> list[Any]:
         """
@@ -266,42 +228,6 @@ class InvokeService:
             "subtask_payload": subtask_dict,
             "subtask_result": result,
         }
-
-    def _save_subtasks(
-        self,
-        session_id: str,
-        task_list: list[dict[str, Any]]
-    ) -> None:
-        """批量保存 SubTask"""
-        create_subtasks_for_auto_mode(self.session, session_id, task_list)
-
-    def _save_direct_subtask(
-        self,
-        session_id: str,
-        subtask_dict: dict[str, Any],
-        result: dict[str, Any]
-    ) -> None:
-        """保存 Direct 模式的单个 SubTask"""
-        create_subtask_for_direct_mode(self.session, session_id, subtask_dict, result)
-
-    def _update_session_completed(
-        self,
-        task_session: TaskSession,
-        response: str
-    ) -> None:
-        """更新 TaskSession 为完成状态"""
-        mark_task_session_completed(self.session, task_session, response)
-        logger.info(f"[InvokeService] TaskSession {task_session.session_id} 完成")
-
-    def _update_session_failed(
-        self,
-        task_session: TaskSession,
-        error: str
-    ) -> None:
-        """更新 TaskSession 为失败状态"""
-        mark_task_session_failed(self.session, task_session, error)
-        logger.error(f"[InvokeService] TaskSession {task_session.session_id} 失败: {error}")
-
 
 def get_invoke_service(session: Session = Depends(get_session)) -> InvokeService:
     """获取 InvokeService 实例（FastAPI Depends）"""

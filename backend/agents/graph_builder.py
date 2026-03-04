@@ -73,8 +73,6 @@ def create_smart_router_workflow(
     """
     创建智能路由工作流（Router -> Commander -> HITL -> Dispatcher -> Generic -> Tools -> Aggregator）。
     """
-    from agents.routing_policy import route_dispatcher, route_generic, route_router
-    from agents.tool_runtime import dynamic_tool_node
     from agents.nodes import (
         aggregator_node,
         commander_node,
@@ -83,6 +81,8 @@ def create_smart_router_workflow(
         generic_worker_node,
         router_node,
     )
+    from agents.routing_policy import route_generic, route_router
+    from agents.tool_runtime import dynamic_tool_node
 
     workflow = StateGraph(AgentState)
 

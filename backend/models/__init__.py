@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from pydantic import Field as PydanticField
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Index, String, func
@@ -20,7 +20,6 @@ from models.enums import (
     UserRole,
     _enum_values,
 )
-
 
 # ============================================================================
 # 现有模型：用户、会话、消息
@@ -213,8 +212,7 @@ class MessageResponse(BaseModel):
     timestamp: datetime | None = None
     extra_data: dict | None = None  # 👈 新增：extra_data 字段（原 metadata，避免保留字冲突）
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ThreadListResponse(BaseModel):
@@ -230,8 +228,7 @@ class ThreadListResponse(BaseModel):
     message_count: int = 0  # 消息数量，替代完整消息列表
     last_message_preview: str | None = None  # 最后一条消息的预览（前100字）
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ThreadDetailResponse(BaseModel):
@@ -247,8 +244,7 @@ class ThreadDetailResponse(BaseModel):
     messages: list[MessageResponse] = []
     task_session: dict | None = None  # 复杂模式下的任务会话数据
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaginatedThreadListResponse(BaseModel):
@@ -259,8 +255,7 @@ class PaginatedThreadListResponse(BaseModel):
     limit: int                       # 每页条数
     pages: int                       # 总页数
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================

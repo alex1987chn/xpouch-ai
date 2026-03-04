@@ -8,13 +8,13 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUserStore } from '@/store/userStore'
-import { useApp } from '@/providers/AppProvider'
+import { useAppUISelectors } from '@/hooks'
 
 export function useRequireAuth(): boolean {
   const navigate = useNavigate()
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
   const isAuthChecked = useUserStore(state => state.isAuthChecked)
-  const { dialogs: { openLogin } } = useApp()
+  const { dialogs: { openLogin } } = useAppUISelectors()
 
   useEffect(() => {
     // P0-6 修复: 只有认证检查完成后才判断是否跳转

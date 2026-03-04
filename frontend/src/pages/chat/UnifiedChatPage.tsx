@@ -6,7 +6,7 @@ import { useTaskStore } from '@/store/taskStore'
 import { useUserStore } from '@/store/userStore'
 import { useChat } from '@/hooks/useChat'
 import { useSessionRestore } from '@/hooks/useSessionRestore'
-import { useApp } from '@/providers/AppProvider'
+import { useAppUISelectors } from '@/hooks'
 
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { normalizeAgentId } from '@/utils/agentUtils'
@@ -33,7 +33,7 @@ export default function UnifiedChatPage() {
   const location = useLocation()
   const { id: pathConversationId } = useParams()
   const [searchParams] = useSearchParams()
-  const { sidebar } = useApp()
+  const { sidebar } = useAppUISelectors()
 
   const conversationId = pathConversationId || ''
   const agentId = searchParams.get('agentId') || 'default-chat'

@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
-import { useApp } from '@/providers/AppProvider'
+import { useAppUISelectors } from '@/hooks'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
 import { useTranslation } from '@/i18n'
@@ -66,7 +66,7 @@ export default function BauhausSidebar({
   const { toast } = useToast()
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false)
   const { user, isAuthenticated, logout } = useUserStore()
-  const { dialogs: { openLogin } } = useApp()
+  const { dialogs: { openLogin } } = useAppUISelectors()
   const inputMessage = useChatStore(state => state.inputMessage)
   const setInputMessage = useChatStore(state => state.setInputMessage)
   const setMessages = useChatStore(state => state.setMessages)
