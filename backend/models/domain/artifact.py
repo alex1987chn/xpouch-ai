@@ -5,15 +5,10 @@
 - Artifact: 产物表
 """
 
-from __future__ import annotations
-
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import Optional
 
 from sqlmodel import Field, Relationship, SQLModel
-
-if TYPE_CHECKING:
-    from models.domain.subtask import SubTask
 
 
 class Artifact(SQLModel, table=True):
@@ -51,5 +46,5 @@ class Artifact(SQLModel, table=True):
     # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
 
-    # 关联关系
-    sub_task: SubTask | None = Relationship(back_populates="artifacts")
+    # 关联关系（使用字符串避免循环导入）
+    sub_task: Optional["SubTask"] = Relationship(back_populates="artifacts")  # noqa: F821

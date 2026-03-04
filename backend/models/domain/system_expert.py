@@ -5,6 +5,8 @@
 - SystemExpert: 系统专家配置表
 """
 
+from __future__ import annotations
+
 import os
 from datetime import datetime
 
@@ -65,6 +67,6 @@ class SystemExpert(SQLModel, table=True):
     )
     updated_at: datetime = Field(
         default_factory=datetime.now,
-        sa_column_kwargs={"onupdate": func.now},
+        sa_column_kwargs={"onupdate": func.now()},
         description="最后更新时间",
     )

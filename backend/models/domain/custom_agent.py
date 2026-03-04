@@ -5,16 +5,11 @@
 - CustomAgent: 用户自定义智能体表
 """
 
-from __future__ import annotations
-
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import Optional
 
 from sqlalchemy import func
 from sqlmodel import Field, Relationship, SQLModel
-
-if TYPE_CHECKING:
-    from models.domain.user import User
 
 
 class CustomAgent(SQLModel, table=True):
@@ -59,8 +54,8 @@ class CustomAgent(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(
         default_factory=datetime.now,
-        sa_column_kwargs={"onupdate": func.now},
+        sa_column_kwargs={"onupdate": func.now()},
     )
 
-    # 关联
-    user: User | None = Relationship(back_populates="custom_agents")
+    # 关联关系（使用字符串避免循环导入）
+    user: Optional["User"] = Relationship(back_populates="custom_agents")  # noqa: F821

@@ -5,8 +5,6 @@
 - SubTask: 子任务表
 """
 
-from __future__ import annotations
-
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -102,18 +100,16 @@ class SubTask(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(
         default_factory=datetime.now,
-        sa_column_kwargs={"onupdate": func.now},
+        sa_column_kwargs={"onupdate": func.now()},
     )
     started_at: datetime | None = None
     completed_at: datetime | None = None
 
-    # 关联关系
-    task_session: TaskSession = Relationship(
-        back_populates="sub_tasks"
-    )
+    # 关联关系（使用字符串避免循环导入）
+    task_session: "TaskSession" = Relationship(back_populates="sub_tasks")  # noqa: F821
 
     # 关联的 Artifacts（多产物支持）
-    artifacts: list[Artifact] = Relationship(
+    artifacts: list["Artifact"] = Relationship(  # noqa: F821
         back_populates="sub_task",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
