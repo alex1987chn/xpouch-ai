@@ -1,7 +1,6 @@
 import os
 import uuid
 from datetime import datetime
-from enum import StrEnum
 from typing import Optional
 
 from pydantic import BaseModel
@@ -11,27 +10,16 @@ from sqlalchemy import Index, String, func
 from sqlmodel import JSON, Column, Field, Relationship, SQLModel
 
 # ============================================================================
-# 枚举类型
+# 枚举类型（集中定义于 models.enums，此处统一导出供本包及迁移使用）
 # ============================================================================
-
-class UserRole(StrEnum):
-    """用户角色枚举"""
-    USER = "user"              # 普通用户
-    ADMIN = "admin"            # 完全管理员
-    VIEW_ADMIN = "view_admin"    # 查看管理员（只读专家配置）
-    EDIT_ADMIN = "edit_admin"    # 编辑管理员（可修改专家配置）
-
-
-class ConversationType(StrEnum):
-    """会话类型枚举"""
-    DEFAULT = "default"      # 默认助手（简单模式）
-    CUSTOM = "custom"        # 自定义智能体（简单模式）
-    AI = "ai"               # AI助手（复杂模式）
-
-
-def _enum_values(enum_cls: type[StrEnum]) -> list[str]:
-    """Use enum .value for DB persistence/reading instead of member names."""
-    return [member.value for member in enum_cls]
+from models.enums import (
+    ConversationType,
+    ExecutionMode,
+    ExpertType,
+    TaskStatus,
+    UserRole,
+    _enum_values,
+)
 
 
 # ============================================================================
@@ -364,32 +352,6 @@ class CustomAgentResponse(BaseModel):
 # ============================================================================
 # 新增模型：超智能体基础设施
 # ============================================================================
-
-class ExpertType(StrEnum):
-    """专家类型枚举"""
-    SEARCH = "search"
-    CODER = "coder"
-    RESEARCHER = "researcher"
-    ANALYZER = "analyzer"
-    WRITER = "writer"
-    PLANNER = "planner"
-    IMAGE_ANALYZER = "image_analyzer"
-
-
-class TaskStatus(StrEnum):
-    """子任务状态枚举"""
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-
-
-class ExecutionMode(StrEnum):
-    """任务执行模式"""
-    SEQUENTIAL = "sequential"  # 串行执行
-    PARALLEL = "parallel"      # 并行执行
-
 
 class SubTask(SQLModel, table=True):
     """
