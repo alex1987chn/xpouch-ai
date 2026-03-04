@@ -22,6 +22,7 @@ RUN uv sync --frozen --no-dev
 COPY *.py ./
 COPY *.yaml ./
 COPY models/ ./models/
+COPY schemas/ ./schemas/
 COPY routers/ ./routers/
 COPY services/ ./services/
 COPY utils/ ./utils/
