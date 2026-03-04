@@ -33,6 +33,10 @@ def _alter_to_enum_with_fallback(
     fallback_value: str,
 ) -> None:
     allowed_sql = ", ".join(f"'{value}'" for value in allowed_values)
+    
+    # P0 修复: 先删除默认值，改完类型再加回来（避免 PostgreSQL 无法自动转换默认值）
+    op.execute(sa.text(f'ALTER TABLE "{table_name}" ALTER COLUMN {column_name} DROP DEFAULT'))
+    
     op.execute(
         sa.text(
             f"""
@@ -48,6 +52,9 @@ def _alter_to_enum_with_fallback(
             """
         )
     )
+    
+    # 恢复默认值
+    op.execute(sa.text(f'ALTER TABLE "{table_name}" ALTER COLUMN {column_name} SET DEFAULT \'{fallback_value}\'::{enum_name}'))
 
 
 def upgrade() -> None:
