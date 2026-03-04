@@ -144,13 +144,30 @@ export default function ExpertAdminPage() {
 
     setIsSaving(true)
     try {
-      await updateExpert(selectedExpert.expert_key, data)
+      // 🔥 乐观锁：传入当前版本号
+      const dataWithVersion = {
+        ...data,
+        expected_version: selectedExpert.config_version
+      }
+      await updateExpert(selectedExpert.expert_key, dataWithVersion)
       queryClient.invalidateQueries({ queryKey: ['experts'] })
       queryClient.invalidateQueries({ queryKey: ['expert', selectedExpert.expert_key] })
       setToast({ message: t('saveSuccess'), type: 'success' })
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to update expert:', error)
-      setToast({ message: t('saveFailed'), type: 'error' })
+      
+      // 🔥 乐观锁冲突：配置已被他人修改
+      if (error.status === 409) {
+        // 自动刷新获取最新数据
+        await queryClient.invalidateQueries({ queryKey: ['experts'] })
+        await queryClient.invalidateQueries({ queryKey: ['expert', selectedExpert.expert_key] })
+        setToast({ 
+          message: '配置已被他人修改，已为您刷新最新数据，请确认后重试', 
+          type: 'warning' 
+        })
+      } else {
+        setToast({ message: t('saveFailed'), type: 'error' })
+      }
     } finally {
       setIsSaving(false)
     }

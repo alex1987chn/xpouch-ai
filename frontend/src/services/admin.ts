@@ -20,6 +20,7 @@ export interface SystemExpert {
   temperature: number
   is_dynamic: boolean
   is_system: boolean
+  config_version: number  // 🔥 乐观锁版本号
   updated_at: string
 }
 
@@ -28,6 +29,7 @@ export interface UpdateExpertRequest {
   description?: string
   model: string
   temperature: number
+  expected_version: number  // 🔥 乐观锁：必须传当前版本号
 }
 
 export interface CreateExpertRequest {
