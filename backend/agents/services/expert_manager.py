@@ -195,15 +195,42 @@ def refresh_cache(session: Session | None = None):
     """
     刷新专家配置缓存
 
-    管理员更新专家配置后，可调用此函数刷新缓存
+    管理员更新专家配置后，可调用此函数刷新缓存。
+    会清除所有级别的缓存（全局缓存 + 各模块本地缓存）。
 
     Args:
         session: 数据库会话（可选）
     """
+    # 1. 清除全局缓存
     _expert_cache.clear()
+    logger.info("[ExpertManager] 全局缓存已清除")
+
+    # 2. 清除各模块本地缓存（避免多实例/多模块间缓存不一致）
+    try:
+        from agents.nodes import commander, generic
+
+        # Commander 模块缓存
+        if hasattr(commander, '_commander_config_cache'):
+            commander._commander_config_cache.clear()
+            logger.info("[ExpertManager] Commander 配置缓存已清除")
+
+        if hasattr(commander, '_all_experts_cache'):
+            commander._all_experts_cache.clear()
+            logger.info("[ExpertManager] Commander 专家列表缓存已清除")
+
+        # Generic Worker 模块缓存
+        if hasattr(generic, '_generic_expert_cache'):
+            generic._generic_expert_cache.clear()
+            logger.info("[ExpertManager] GenericWorker 缓存已清除")
+
+    except ImportError as e:
+        logger.warning(f"[ExpertManager] 清除本地缓存时部分模块未找到: {e}")
+
+    # 3. 重新加载到全局缓存（如果提供了 session）
     if session:
         experts = load_all_experts(session)
         _expert_cache.update(experts)
+        logger.info(f"[ExpertManager] 已重新加载 {len(experts)} 个专家到缓存")
 
 
 def force_refresh_all():
