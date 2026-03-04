@@ -5,13 +5,13 @@
 类似 DeepSeek Chat 和 Kimi Chat 的展开/收起功能
 """
 
-import re
-from typing import Tuple, Optional
 import json
+import re
+
 from utils.logger import logger
 
 
-def parse_thinking(content: str) -> Tuple[str, Optional[dict]]:
+def parse_thinking(content: str) -> tuple[str, dict | None]:
     """
     从消息内容中解析 <thought> 或 <think> 标签
 
@@ -118,7 +118,7 @@ def _parse_thinking_steps(thought_text: str) -> list:
     return steps
 
 
-def extract_thinking_for_stream(content: str) -> Tuple[bool, str, Optional[str]]:
+def extract_thinking_for_stream(content: str) -> tuple[bool, str, str | None]:
     """
     流式处理时提取 thinking 内容
 

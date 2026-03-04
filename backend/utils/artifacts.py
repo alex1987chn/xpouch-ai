@@ -4,10 +4,9 @@ Artifacts 解析工具
 用于从LLM响应中提取代码块、HTML等内容，生成Artifacts。
 """
 import re
-from typing import List, Dict, Optional
 
 
-def parse_artifacts_from_response(response: str) -> List[Dict]:
+def parse_artifacts_from_response(response: str) -> list[dict]:
     """
     从LLM响应中解析Artifacts
 
@@ -92,7 +91,7 @@ def parse_artifacts_from_response(response: str) -> List[Dict]:
     return artifacts
 
 
-def generate_artifact_event(artifact: Dict) -> str:
+def generate_artifact_event(artifact: dict) -> str:
     """
     生成Artifact的SSE事件
 

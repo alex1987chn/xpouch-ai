@@ -4,10 +4,10 @@
 
 P0 修复: 优先从 Cookie 获取 Token，提高安全性
 """
-from fastapi import Request, Depends, HTTPException
-from sqlmodel import Session
-from typing import Optional
 import os
+
+from fastapi import Depends, HTTPException, Request
+from sqlmodel import Session
 
 from database import get_session
 from models import User
@@ -36,7 +36,8 @@ async def get_current_user(
     Returns:
         用户对象
     """
-    from utils.jwt_handler import verify_token, AuthenticationError as JWTAuthError
+    from utils.jwt_handler import AuthenticationError as JWTAuthError
+    from utils.jwt_handler import verify_token
 
     # P0 修复: 策略1 - 优先从 Cookie 获取 JWT token（最安全）
     token = request.cookies.get("access_token")
@@ -44,7 +45,7 @@ async def get_current_user(
         try:
             payload = verify_token(token, token_type="access")
             user_id = payload["sub"]
-            
+
             user = session.get(User, user_id)
             if user:
                 return user
@@ -59,7 +60,7 @@ async def get_current_user(
         try:
             payload = verify_token(token, token_type="access")
             user_id = payload["sub"]
-            
+
             user = session.get(User, user_id)
             if user:
                 return user
@@ -78,7 +79,7 @@ async def get_current_user(
             user = session.get(User, user_id)
             if user:
                 return user
-            
+
             # 开发环境自动创建用户（方便开发调试）
             # ⚠️ 生产环境不会执行到这里
             new_user = User(

@@ -5,12 +5,12 @@ XPouch Backend 启动脚本（Windows 兼容版 + 显式 Loop 注入）
 1. 强制创建 SelectorEventLoop，完全绕过 Uvicorn 的 Loop 初始化逻辑
 2. 将父目录添加到 sys.path，支持绝对导入（如 from backend.config import）
 """
-import sys
 import asyncio
-import signal
+import logging
 import os
 import pathlib
-import logging
+import signal
+import sys
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -39,7 +39,7 @@ def kill_process_on_port(port):
             text=True,
             shell=True
         )
-        
+
         if result.returncode == 0 and result.stdout:
             lines = result.stdout.strip().split('\n')
             for line in lines:
@@ -60,17 +60,16 @@ def start_server():
     """
     强制创建一个 SelectorEventLoop，并在其中运行 Uvicorn。
     """
-    import uvicorn
     from uvicorn import Config, Server
-    
+
     # 🔥 启动前清理端口
     logger.info(f"[Cleanup] Checking port {PORT}...")
     kill_process_on_port(PORT)
-    
+
     # 稍微等待确保端口释放
     import time
     time.sleep(0.5)
-    
+
     # 1. 设置策略
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -84,12 +83,12 @@ def start_server():
     # 3. 配置 Uvicorn
     config = Config("main:app", host=HOST, port=PORT, reload=False, loop="asyncio")
     server = Server(config)
-    
+
     # 4. 信号处理
     def handle_signal(sig, frame):
         logger.info("\n[Signal] Shutdown signal received...")
         asyncio.run_coroutine_threadsafe(server.shutdown(), loop)
-    
+
     try:
         signal.signal(signal.SIGINT, handle_signal)
         signal.signal(signal.SIGTERM, handle_signal)
@@ -99,7 +98,7 @@ def start_server():
     # 5. 启动 Server
     logger.info(f"Starting Uvicorn on {HOST}:{PORT}...")
     logger.info("Press Ctrl+C to stop\n")
-    
+
     try:
         loop.run_until_complete(server.serve())
     except KeyboardInterrupt:
@@ -125,7 +124,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     logger.info("Starting XPouch Backend (Explicit Loop Mode)...\n")
-    
+
     try:
         run_process(".", target=start_server)
     except TypeError:

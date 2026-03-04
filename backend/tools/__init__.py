@@ -6,9 +6,9 @@ P1 优化: 添加异步工具版本
 """
 
 # 同步工具
-from .search import search_web, asearch_web
-from .utils import get_current_time, calculator
-from .browser import read_webpage, aread_webpage
+from .browser import aread_webpage, read_webpage
+from .search import asearch_web, search_web
+from .utils import calculator, get_current_time
 
 # 定义同步工具全家桶列表，用于 LangGraph 集成
 BASE_TOOLS = [

@@ -32,10 +32,10 @@ Chat 服务层 - XPouch AI 后端核心服务
         return await stream_service.handle_langgraph_stream(...)
 """
 
-from .session_service import ChatSessionService
-from .stream_service import StreamService
 from .artifact_service import ArtifactService
 from .recovery_service import RecoveryService
+from .session_service import ChatSessionService
+from .stream_service import StreamService
 
 __all__ = [
     "ChatSessionService",

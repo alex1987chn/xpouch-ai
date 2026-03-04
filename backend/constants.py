@@ -6,7 +6,7 @@ XPouch AI 后端常量配置
 - 其他全局配置常量
 """
 
-from typing import Dict, Final
+from typing import Final
 
 # ============================================================================
 # 系统提示词（System Prompts）
@@ -169,7 +169,7 @@ AGGREGATOR_SYSTEM_PROMPT = """
 # ============================================================================
 
 # 专家描述字典（用于前端展示和日志）
-EXPERT_DESCRIPTIONS: Dict[str, str] = {
+EXPERT_DESCRIPTIONS: dict[str, str] = {
     "search": "搜索专家",
     "coder": "编程专家",
     "researcher": "研究专家",
@@ -183,7 +183,7 @@ EXPERT_DESCRIPTIONS: Dict[str, str] = {
 }
 
 # 专家提示词字典（默认值，数据库无配置时使用）
-EXPERT_PROMPTS: Dict[str, str] = {
+EXPERT_PROMPTS: dict[str, str] = {
     "search": """你是一个信息搜索专家。
 
 职责：根据任务要求搜索相关信息，整理归纳。
@@ -352,19 +352,19 @@ SYSTEM_AGENT_DEFAULT_CHAT: Final[str] = "sys-default-chat"
 SYSTEM_AGENT_ORCHESTRATOR: Final[str] = "sys-task-orchestrator"
 
 # 系统智能体 ID 列表
-SYSTEM_AGENT_IDS: Dict[str, str] = {
+SYSTEM_AGENT_IDS: dict[str, str] = {
     "sys-default-chat": SYSTEM_AGENT_DEFAULT_CHAT,
     "sys-task-orchestrator": SYSTEM_AGENT_ORCHESTRATOR,
 }
 
 # 旧 ID 到新 ID 的映射（用于向后兼容）
-OLD_TO_NEW_AGENT_ID_MAPPING: Dict[str, str] = {
+OLD_TO_NEW_AGENT_ID_MAPPING: dict[str, str] = {
     "default-assistant": SYSTEM_AGENT_DEFAULT_CHAT,
     "ai-assistant": SYSTEM_AGENT_ORCHESTRATOR,
 }
 
 # 新 ID 到旧 ID 的映射（用于向后兼容）
-NEW_TO_OLD_AGENT_ID_MAPPING: Dict[str, str] = {
+NEW_TO_OLD_AGENT_ID_MAPPING: dict[str, str] = {
     SYSTEM_AGENT_DEFAULT_CHAT: "default-assistant",
     SYSTEM_AGENT_ORCHESTRATOR: "ai-assistant",
 }

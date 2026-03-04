@@ -1,4 +1,4 @@
 # Routers package
-from . import chat, agents, system
+from . import agents, chat, system
 
 __all__ = ["chat", "agents", "system"]

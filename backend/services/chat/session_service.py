@@ -11,27 +11,27 @@
 - backend.crud.task_session (TaskSession相关CRUD)
 - backend.models (SQLModel模型)
 """
-from typing import List, Optional, Any
 from datetime import datetime
+
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
-from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 
-from models import User, Thread, Message, CustomAgent, TaskSession, SubTask
-from utils.exceptions import NotFoundError, AuthorizationError
-from constants import normalize_agent_id, SYSTEM_AGENT_DEFAULT_CHAT, SYSTEM_AGENT_ORCHESTRATOR
+from constants import SYSTEM_AGENT_DEFAULT_CHAT, SYSTEM_AGENT_ORCHESTRATOR, normalize_agent_id
+from models import CustomAgent, Message, SubTask, TaskSession, Thread
+from utils.exceptions import AuthorizationError, NotFoundError
 
 
 class ChatSessionService:
     """聊天会话管理服务"""
-    
+
     def __init__(self, db_session: Session):
         self.db = db_session
-    
+
     # ============================================================================
     # 线程管理
     # ============================================================================
-    
+
     async def list_threads(self, user_id: str, page: int = 1, limit: int = 20) -> dict:
         """
         获取用户的线程列表（轻量级，不包含消息内容，支持分页）
@@ -48,11 +48,11 @@ class ChatSessionService:
         # 限制每页最大条数
         limit = min(limit, 100)
         offset = (page - 1) * limit
-        
+
         # 1. 查询总记录数
         count_statement = select(Thread).where(Thread.user_id == user_id)
         total = len(self.db.exec(count_statement).all())
-        
+
         # 2. 查询当前页线程（不预加载消息）
         statement = (
             select(Thread)
@@ -62,7 +62,7 @@ class ChatSessionService:
             .limit(limit)
         )
         threads = self.db.exec(statement).all()
-        
+
         if not threads:
             return {
                 "items": [],
@@ -71,13 +71,13 @@ class ChatSessionService:
                 "limit": limit,
                 "pages": (total + limit - 1) // limit if total > 0 else 1
             }
-        
+
         # 2. 获取所有线程ID
         thread_ids = [t.id for t in threads]
-        
+
         # 3. 只获取消息数量和最后一条消息的预览（使用纯 SQLAlchemy 避免编码问题）
         from sqlalchemy import func
-        
+
         # 查询每个线程的消息数量和最后一条消息ID
         stats_stmt = (
             select(
@@ -88,10 +88,10 @@ class ChatSessionService:
             .where(Message.thread_id.in_(thread_ids))
             .group_by(Message.thread_id)
         )
-        
+
         stats_rows = self.db.exec(stats_stmt).all()
         stats_by_thread: dict[str, dict] = {}
-        
+
         for row in stats_rows:
             # 查询该线程的最后一条消息内容
             last_msg_stmt = (
@@ -103,12 +103,12 @@ class ChatSessionService:
             last_msg = self.db.exec(last_msg_stmt).first()
             # 截取前100字符作为预览
             preview = last_msg[:100] if last_msg else None
-            
+
             stats_by_thread[row.thread_id] = {
                 "message_count": row.message_count,
                 "last_preview": preview
             }
-        
+
         # 4. 组装返回结果（轻量级）
         items = []
         for thread in threads:
@@ -126,7 +126,7 @@ class ChatSessionService:
                 "message_count": stats["message_count"],
                 "last_message_preview": stats["last_preview"]
             })
-        
+
         # 5. 返回分页结果
         pages = (total + limit - 1) // limit if total > 0 else 1
         return {
@@ -136,8 +136,8 @@ class ChatSessionService:
             "limit": limit,
             "pages": pages
         }
-    
-    async def get_thread_messages(self, thread_id: str, user_id: str) -> List[dict]:
+
+    async def get_thread_messages(self, thread_id: str, user_id: str) -> list[dict]:
         """
         获取指定线程的消息列表（完整内容）
         
@@ -156,10 +156,10 @@ class ChatSessionService:
         thread = self.db.get(Thread, thread_id)
         if not thread:
             raise NotFoundError(resource="会话")
-        
+
         if thread.user_id != user_id:
             raise AuthorizationError("没有权限访问此会话")
-        
+
         # 2. 查询消息（按时间正序）
         statement = (
             select(Message)
@@ -167,7 +167,7 @@ class ChatSessionService:
             .order_by(Message.timestamp.asc())
         )
         messages = self.db.exec(statement).all()
-        
+
         # 3. 返回完整消息
         return [
             {
@@ -179,7 +179,7 @@ class ChatSessionService:
             }
             for msg in messages
         ]
-    
+
     async def get_thread_detail(self, thread_id: str, user_id: str) -> dict:
         """
         获取单个线程详情
@@ -201,26 +201,26 @@ class ChatSessionService:
             .options(selectinload(Thread.messages))
         )
         thread = self.db.exec(statement).first()
-        
+
         if not thread:
             raise NotFoundError(resource="会话")
-        
+
         if thread.user_id != user_id:
             raise AuthorizationError("没有权限访问此会话")
-        
+
         # 如果是AI助手线程（复杂模式），加载TaskSession和SubTask
         if thread.agent_type == "ai" and thread.task_session_id:
             return await self._build_complex_thread_response(thread)
-        
+
         # 简单模式返回
         return self._build_simple_thread_response(thread)
-    
+
     async def _build_complex_thread_response(self, thread: Thread) -> dict:
         """构建复杂模式的线程响应（包含TaskSession详情）"""
         task_session = self.db.get(TaskSession, thread.task_session_id)
         if not task_session:
             return self._build_simple_thread_response(thread)
-        
+
         # 预加载 artifacts 关系，避免 N+1 查询
         statement = (
             select(SubTask)
@@ -229,7 +229,7 @@ class ChatSessionService:
             .order_by(SubTask.sort_order)
         )
         sub_tasks = self.db.exec(statement).all()
-        
+
         base_response = self._build_simple_thread_response(thread)
         base_response["task_session"] = {
             "id": task_session.session_id,
@@ -265,7 +265,7 @@ class ChatSessionService:
             ]
         }
         return base_response
-    
+
     def _build_simple_thread_response(self, thread: Thread) -> dict:
         """构建简单模式的线程响应"""
         return {
@@ -288,7 +288,7 @@ class ChatSessionService:
                 for msg in thread.messages
             ]
         }
-    
+
     async def delete_thread(self, thread_id: str, user_id: str) -> bool:
         """
         删除线程
@@ -307,19 +307,19 @@ class ChatSessionService:
         thread = self.db.get(Thread, thread_id)
         if not thread:
             raise NotFoundError(resource="会话")
-        
+
         if thread.user_id != user_id:
             raise AuthorizationError("没有权限访问此会话")
-        
+
         self.db.delete(thread)
         self.db.commit()
         return True
-    
+
     async def get_or_create_thread(
         self,
-        thread_id: Optional[str],
+        thread_id: str | None,
         user_id: str,
-        agent_id: Optional[str],
+        agent_id: str | None,
         message: str
     ) -> Thread:
         """
@@ -340,21 +340,21 @@ class ChatSessionService:
                 if thread.user_id != user_id:
                     raise AuthorizationError("没有权限访问此会话")
                 return thread
-        
+
         # 创建新线程
         if not thread_id:
             thread_id = str(uuid.uuid4())  # 使用 UUID 确保唯一性
-            
+
         # 处理 agent_id
         if not agent_id or agent_id.strip() == "":
             frontend_agent_id = SYSTEM_AGENT_DEFAULT_CHAT
         else:
             frontend_agent_id = normalize_agent_id(agent_id)
-        
+
         # sys-task-orchestrator 是内部实现，不应在 URL 中暴露
         if frontend_agent_id == SYSTEM_AGENT_ORCHESTRATOR:
             frontend_agent_id = SYSTEM_AGENT_DEFAULT_CHAT
-        
+
         # 判断 agent 类型
         custom_agent_check = self.db.get(CustomAgent, frontend_agent_id)
         if custom_agent_check and custom_agent_check.user_id == user_id:
@@ -363,7 +363,7 @@ class ChatSessionService:
         else:
             agent_type = "default"
             final_agent_id = SYSTEM_AGENT_DEFAULT_CHAT
-        
+
         # 初始 thread_mode 为 simple，Router 会在处理时更新它
         thread = Thread(
             id=thread_id,
@@ -379,11 +379,11 @@ class ChatSessionService:
         self.db.commit()
         self.db.refresh(thread)
         return thread
-    
+
     # ============================================================================
     # 消息管理
     # ============================================================================
-    
+
     async def save_user_message(self, thread_id: str, content: str) -> Message:
         """
         保存用户消息
@@ -404,13 +404,13 @@ class ChatSessionService:
         self.db.add(message)
         self.db.commit()
         return message
-    
+
     async def save_assistant_message(
         self,
         thread_id: str,
         content: str,
-        thinking_data: Optional[dict] = None,
-        message_id: Optional[str] = None
+        thinking_data: dict | None = None,
+        message_id: str | None = None
     ) -> Message:
         """
         保存助手消息
@@ -425,19 +425,19 @@ class ChatSessionService:
             保存的消息实例
         """
         from utils.thinking_parser import parse_thinking
-        
+
         # 解析 thinking 标签
         clean_content, parsed_thinking = parse_thinking(content)
-        
+
         # 合并传入的 thinking_data
         final_thinking = thinking_data or parsed_thinking
-        
+
         # 🔥 修复：Message 表的 id 是 INTEGER 自增，不要传入 UUID 字符串
         # 如果传入了 message_id，放入 extra_data 中供前端关联
         extra_data = {'thinking': final_thinking} if final_thinking else {}
         if message_id:
             extra_data['frontend_message_id'] = message_id
-        
+
         message = Message(
             thread_id=thread_id,
             role="assistant",
@@ -446,17 +446,17 @@ class ChatSessionService:
             timestamp=datetime.now()
         )
         self.db.add(message)
-        
+
         # 更新线程时间
         thread = self.db.get(Thread, thread_id)
         if thread:
             thread.updated_at = datetime.now()
             self.db.add(thread)
-        
+
         self.db.commit()
         return message
-    
-    async def build_langchain_messages(self, thread_id: str) -> List[BaseMessage]:
+
+    async def build_langchain_messages(self, thread_id: str) -> list[BaseMessage]:
         """
         构建 LangChain 消息列表
         
@@ -472,25 +472,25 @@ class ChatSessionService:
             .order_by(Message.timestamp)
         )
         db_messages = self.db.exec(statement).all()
-        
+
         langchain_messages = []
         for msg in db_messages:
             if msg.role == "user":
                 langchain_messages.append(HumanMessage(content=msg.content))
             elif msg.role == "assistant":
                 langchain_messages.append(AIMessage(content=msg.content))
-        
+
         return langchain_messages
-    
+
     # ============================================================================
     # 自定义智能体验证
     # ============================================================================
-    
+
     async def get_custom_agent(
         self,
         agent_id: str,
         user_id: str
-    ) -> Optional[CustomAgent]:
+    ) -> CustomAgent | None:
         """
         获取并验证自定义智能体
         
@@ -502,36 +502,36 @@ class ChatSessionService:
             CustomAgent实例（验证通过）或None（系统默认）
         """
         normalized_agent_id = normalize_agent_id(agent_id)
-        
+
         # sys-task-orchestrator 转换为系统默认
         if normalized_agent_id == SYSTEM_AGENT_ORCHESTRATOR:
             normalized_agent_id = SYSTEM_AGENT_DEFAULT_CHAT
-        
+
         # 系统默认助手
         if normalized_agent_id == SYSTEM_AGENT_DEFAULT_CHAT:
             return None
-        
+
         custom_agent = self.db.get(CustomAgent, normalized_agent_id)
-        
+
         if custom_agent and custom_agent.user_id == user_id:
             # 增加对话计数
             custom_agent.conversation_count += 1
             self.db.add(custom_agent)
             self.db.commit()
             return custom_agent
-        
+
         # 未找到或无权访问，回退到系统默认
         return None
-    
+
     # ============================================================================
     # TaskSession 管理
     # ============================================================================
-    
+
     async def create_task_session(
         self,
         thread_id: str,
         user_query: str,
-        plan_summary: Optional[str] = None,
+        plan_summary: str | None = None,
         estimated_steps: int = 0
     ) -> TaskSession:
         """
@@ -547,7 +547,7 @@ class ChatSessionService:
             创建的 TaskSession 实例
         """
         from crud.task_session import create_task_session as crud_create_task_session
-        
+
         return crud_create_task_session(
             db=self.db,
             thread_id=thread_id,
@@ -556,12 +556,12 @@ class ChatSessionService:
             estimated_steps=estimated_steps,
             execution_mode="sequential"
         )
-    
+
     async def update_thread_agent_type(
         self,
         thread_id: str,
         agent_type: str,
-        task_session_id: Optional[str] = None
+        task_session_id: str | None = None
     ) -> None:
         """
         更新线程的 agent_type 和 task_session_id

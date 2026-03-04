@@ -12,15 +12,15 @@ v3.1 重构：从 graph.py 拆分节点到独立模块
 """
 
 # 从各节点模块导入
-from agents.nodes.router import router_node, direct_reply_node
+from agents.nodes.aggregator import aggregator_node
 from agents.nodes.commander import commander_node
 from agents.nodes.dispatcher import expert_dispatcher_node
-from agents.nodes.aggregator import aggregator_node
 from agents.nodes.generic import generic_worker_node
+from agents.nodes.router import direct_reply_node, router_node
 
 __all__ = [
     "router_node",
-    "direct_reply_node", 
+    "direct_reply_node",
     "commander_node",
     "expert_dispatcher_node",
     "aggregator_node",

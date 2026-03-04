@@ -14,34 +14,33 @@ P0 安全修复: 2025-02-24
 """
 import logging
 import os
-from utils.logger import logger
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Request, Response
-from fastapi.responses import JSONResponse
-from sqlmodel import Session, select
-from typing import Optional
+from datetime import UTC, datetime, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
-from datetime import datetime, timedelta, timezone
+from sqlmodel import Session, select
 
 from database import get_session
 from models import User, UserRole
 from utils.jwt_handler import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    AuthenticationError,
     create_access_token,
     create_refresh_token,
     verify_token,
-    AuthenticationError,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-    REFRESH_TOKEN_EXPIRE_DAYS
 )
-from utils.verification import (
-    generate_verification_code,
-    verify_code,
-    get_code_expiry_duration,
-    validate_phone_number,
-    mask_phone_number,
-    VerificationCodeExpiredError,
-    VerificationCodeInvalidError
-)
+from utils.logger import logger
 from utils.sms_service import send_verification_code_with_fallback
+from utils.verification import (
+    VerificationCodeExpiredError,
+    VerificationCodeInvalidError,
+    generate_verification_code,
+    get_code_expiry_duration,
+    mask_phone_number,
+    validate_phone_number,
+    verify_code,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 logger = logging.getLogger(__name__)
@@ -52,7 +51,7 @@ logger = logging.getLogger(__name__)
 class SendCodeRequest(BaseModel):
     """发送验证码请求"""
     phone_number: str = Field(..., description="手机号码")
-    
+
     @field_validator('phone_number')
     @classmethod
     def validate_phone(cls, v: str) -> str:
@@ -65,7 +64,7 @@ class VerifyCodeRequest(BaseModel):
     """验证验证码请求"""
     phone_number: str = Field(..., description="手机号码")
     code: str = Field(..., min_length=4, max_length=6, description="验证码")
-    
+
     @field_validator('phone_number')
     @classmethod
     def validate_phone(cls, v: str) -> str:
@@ -93,11 +92,11 @@ class UserResponse(BaseModel):
     """用户信息响应"""
     id: str
     username: str
-    avatar: Optional[str]
+    avatar: str | None
     plan: str
     role: UserRole
-    phone_number: Optional[str]
-    email: Optional[str]
+    phone_number: str | None
+    email: str | None
     is_verified: bool
 
 
@@ -131,7 +130,7 @@ def set_auth_cookies(
         refresh_token: 刷新令牌
     """
     cookie_config = get_cookie_config()
-    
+
     # Access Token: 60 分钟
     response.set_cookie(
         key="access_token",
@@ -139,7 +138,7 @@ def set_auth_cookies(
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # 秒
         **cookie_config
     )
-    
+
     # Refresh Token: 60 天
     response.set_cookie(
         key="refresh_token",
@@ -147,7 +146,7 @@ def set_auth_cookies(
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,  # 秒
         **cookie_config
     )
-    
+
     logger.info("[Auth] Cookie 设置完成")
 
 
@@ -159,10 +158,10 @@ def clear_auth_cookies(response: Response) -> None:
         response: FastAPI Response 对象
     """
     cookie_config = get_cookie_config()
-    
+
     response.delete_cookie(key="access_token", **cookie_config)
     response.delete_cookie(key="refresh_token", **cookie_config)
-    
+
     logger.info("[Auth] Cookie 已清除")
 
 
@@ -180,20 +179,19 @@ def get_refresh_token_from_cookie(request: Request) -> str:
         HTTPException: Cookie 不存在
     """
     token = request.cookies.get("refresh_token")
-    
+
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="刷新令牌不存在，请重新登录",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     return token
 
 
 # 从 dependencies 导入统一的 get_current_user
 from dependencies import get_current_user
-
 
 # ==================== API端点 ====================
 
@@ -206,52 +204,51 @@ async def send_verification_code(
     发送手机验证码
     """
     try:
-        import sys
-        logger.info(f"[Auth] 收到发送验证码请求，方法: POST")
+        logger.info("[Auth] 收到发送验证码请求，方法: POST")
         phone_number = request.phone_number
         logger.info(f"[Auth] 请求体已解析，手机号: {phone_number}")
-        
+
         # 生成验证码（6位数字）
         code = generate_verification_code(length=6)
         expires_at = get_code_expiry_duration(minutes=5)
-        
+
         # 判断是否开发环境
         is_development = os.getenv("ENVIRONMENT", "development").lower() == "development"
-        
+
         # 查询用户是否存在
         user = session.exec(
             select(User).where(User.phone_number == phone_number)
         ).first()
-        
+
         if user:
             # 用户已存在，更新验证码
             user.verification_code = code
             user.verification_code_expires_at = expires_at
             session.add(user)
             session.commit()
-            
+
             # 发送验证码短信
             success, error_message = send_verification_code_with_fallback(phone_number, code, expire_minutes=5)
-            
+
             if not success:
                 logger.warning(f"验证码短信发送失败: {error_message}")
-            
+
             response_data = {
                 "message": "验证码已发送",
                 "expires_in": 300,
                 "phone_masked": mask_phone_number(phone_number),
             }
-            
+
             # 开发环境返回验证码用于调试
             if is_development:
                 response_data["_debug_code"] = code
-                
+
             return response_data
         else:
             # 用户不存在，创建新用户
             import uuid
             new_user_id = str(uuid.uuid4())
-            
+
             new_user = User(
                 id=new_user_id,
                 username=f"用户{phone_number[-4:]}",
@@ -262,28 +259,28 @@ async def send_verification_code(
                 is_verified=False,
                 role="user"
             )
-            
+
             session.add(new_user)
             session.commit()
             session.refresh(new_user)
-            
+
             # 发送验证码短信
             success, error_message = send_verification_code_with_fallback(phone_number, code, expire_minutes=5)
-            
+
             if not success:
                 logger.warning(f"验证码短信发送失败: {error_message}")
-            
+
             response_data = {
                 "message": "验证码已发送（新用户注册）",
                 "expires_in": 300,
                 "phone_masked": mask_phone_number(phone_number),
                 "user_id": new_user_id,
             }
-            
+
             # 开发环境返回验证码用于调试
             if is_development:
                 response_data["_debug_code"] = code
-                
+
             return response_data
     except Exception as e:
         logger.error(f"发送验证码处理异常: {str(e)}", exc_info=True)
@@ -310,18 +307,18 @@ async def verify_code_and_login(
     """
     phone_number = request.phone_number
     code = request.code
-    
+
     # 查询用户
     user = session.exec(
         select(User).where(User.phone_number == phone_number)
     ).first()
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="用户不存在，请先发送验证码"
         )
-    
+
     # 验证验证码
     try:
         verify_code(
@@ -339,28 +336,28 @@ async def verify_code_and_login(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
-    
+
     # 验证成功，生成token
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
-    
+
     # 更新用户信息
     user.is_verified = True
     user.access_token = access_token
     user.refresh_token = refresh_token
-    user.token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    user.token_expires_at = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     user.verification_code = None
     user.verification_code_expires_at = None
-    
+
     session.add(user)
     session.commit()
     session.refresh(user)
-    
+
     # P0 修复: 设置 Cookie（不再返回 Token）
     set_auth_cookies(response, access_token, refresh_token)
-    
+
     logger.info(f"[Auth] 用户 {user.id} 登录成功，Token 已设置到 Cookie")
-    
+
     return LoginResponse(
         message="登录成功",
         user_id=user.id,
@@ -386,15 +383,15 @@ async def refresh_access_token_endpoint(
     4. 设置新的 Cookie
     """
     from utils.jwt_handler import refresh_access_token as jwt_refresh
-    
+
     try:
         # P0 修复: 从 Cookie 获取 refresh token
         refresh_token = get_refresh_token_from_cookie(request)
-        
+
         # 验证 refresh token
         payload = verify_token(refresh_token, token_type="refresh")
         user_id = payload["sub"]
-        
+
         # 获取用户
         user = session.get(User, user_id)
         if not user:
@@ -402,28 +399,28 @@ async def refresh_access_token_endpoint(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="用户不存在"
             )
-        
+
         # 生成新的 access token
         new_access_token = jwt_refresh(refresh_token)
-        
+
         # 更新用户的 access token
         user.access_token = new_access_token
-        user.token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        
+        user.token_expires_at = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
         session.add(user)
         session.commit()
         session.refresh(user)
-        
+
         # P0 修复: 设置新的 Cookie（refresh token 不变）
         set_auth_cookies(response, new_access_token, refresh_token)
-        
+
         logger.info(f"[Auth] 用户 {user_id} Token 刷新成功")
-        
+
         return RefreshResponse(
             message="Token 刷新成功",
             expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
-        
+
     except AuthenticationError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -446,9 +443,9 @@ async def logout(
     """
     # 清除 Cookie
     clear_auth_cookies(response)
-    
+
     logger.info(f"[Auth] 用户 {current_user.id} 已登出")
-    
+
     return {"message": "登出成功"}
 
 

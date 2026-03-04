@@ -1,14 +1,10 @@
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import Session, SQLModel, create_engine
+
 from utils.logger import logger
 
 # 🔥 用于非依赖注入场景的 Session 别名
 SQLModelSession = Session
 # 🔥 从 models 包导入所有模型（包括 UserMemory）
-from models import (
-    Thread, Message, User, CustomAgent, SystemExpert,
-    SubTask, TaskSession, UserMemory
-)
-from models.mcp import MCPServer  # 🔥 MCP 服务器模型
 import os
 
 # 使用环境变量中的数据库URL
@@ -36,7 +32,7 @@ engine = create_engine(
     pool_pre_ping=True
 )
 logger.info(f"[Database] Using PostgreSQL: {DATABASE_URL}")
-logger.info(f"[Database] Connection pool: size=20, max_overflow=10, pool_recycle=1800s, pool_pre_ping=True")
+logger.info("[Database] Connection pool: size=20, max_overflow=10, pool_recycle=1800s, pool_pre_ping=True")
 
 def create_db_and_tables():
     """创建数据库表（如果不存在）"""
