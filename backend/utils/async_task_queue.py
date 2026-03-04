@@ -17,10 +17,9 @@ Updated: 2026-03-02 - P0 修复: 单例模式改用 lru_cache，避免 asyncio.L
 """
 import asyncio
 import functools
-import traceback
-from typing import Callable, Any, Dict, Optional
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from typing import Any
 
 
 class AsyncTaskQueue:
@@ -33,7 +32,7 @@ class AsyncTaskQueue:
     - asyncio.Lock() 在模块加载时创建，可能绑定到错误的事件循环
     - __new__ 模式在 async 环境下可能出现 RuntimeError
     """
-    
+
     def __init__(self, max_workers: int = 4):
         """
         初始化任务队列
@@ -49,8 +48,8 @@ class AsyncTaskQueue:
             "failed": 0
         }
         # P0 修复: 延迟初始化 Lock，避免在模块加载时创建
-        self._lock: Optional[asyncio.Lock] = None
-    
+        self._lock: asyncio.Lock | None = None
+
     async def _get_lock(self) -> asyncio.Lock:
         """
         P0 修复: 延迟获取 Lock，确保绑定到正确的事件循环
@@ -61,7 +60,7 @@ class AsyncTaskQueue:
         if self._lock is None:
             self._lock = asyncio.Lock()
         return self._lock
-    
+
     async def submit(self, func: Callable, *args, **kwargs) -> asyncio.Future:
         """
         提交任务到后台线程池执行
@@ -80,7 +79,7 @@ class AsyncTaskQueue:
             future = loop.run_in_executor(self._executor, self._wrap_task, func, *args, **kwargs)
             self._stats["submitted"] += 1
             return future
-    
+
     def _wrap_task(self, func: Callable, *args, **kwargs) -> Any:
         """包装任务，添加错误处理和统计"""
         try:
@@ -90,11 +89,11 @@ class AsyncTaskQueue:
         except Exception as e:
             self._stats["failed"] += 1
             raise
-    
-    def get_stats(self) -> Dict[str, int]:
+
+    def get_stats(self) -> dict[str, int]:
         """获取队列统计信息"""
         return self._stats.copy()
-    
+
     def shutdown(self, wait: bool = True):
         """关闭线程池"""
         self._executor.shutdown(wait=wait)
@@ -123,8 +122,8 @@ def _sync_save_wrapper(
     task_id: str,
     expert_type: str,
     output_result: str,
-    artifact_data: Optional[Dict[str, Any]] = None,
-    duration_ms: Optional[int] = None
+    artifact_data: dict[str, Any] | None = None,
+    duration_ms: int | None = None
 ) -> None:
     """
     同步包装函数：在独立的线程中保存专家执行结果
@@ -139,8 +138,8 @@ def _sync_save_wrapper(
         artifact_data: Artifact 数据（可选）
         duration_ms: 执行耗时（毫秒，可选）
     """
-    from database import engine, Session
     from agents.services.task_manager import save_expert_execution_result
+    from database import Session, engine
 
     # 🔥 核心修复：在后台线程里创建全新的同步 Session
     # Session 的生命周期完全由这个后台线程控制，与主线程无关
@@ -164,8 +163,8 @@ async def async_save_expert_result(
     task_id: str,
     expert_type: str,
     output_result: str,
-    artifact_data: Optional[Dict[str, Any]] = None,
-    duration_ms: Optional[int] = None
+    artifact_data: dict[str, Any] | None = None,
+    duration_ms: int | None = None
 ) -> None:
     """
     异步代理函数：将同步保存任务扔到线程池
@@ -192,6 +191,6 @@ async def async_save_expert_result(
     )
 
 
-def get_async_stats() -> Dict[str, int]:
+def get_async_stats() -> dict[str, int]:
     """获取异步任务统计"""
     return task_queue.get_stats()

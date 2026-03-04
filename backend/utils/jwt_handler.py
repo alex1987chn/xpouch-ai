@@ -9,12 +9,12 @@ P0 修复: 2025-02-24
 - 缩短 Access Token 过期时间至 60 分钟
 - 修复 datetime.utcnow() 已废弃的问题
 """
-import jwt
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict
-from passlib.context import CryptContext
-from fastapi import HTTPException, status
 import os
+from datetime import UTC, datetime, timedelta
+
+import jwt
+from fastapi import HTTPException, status
+from passlib.context import CryptContext
 
 # ============================================================================
 # P0 修复: JWT 安全配置
@@ -78,7 +78,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def create_access_token(user_id: str, additional_claims: Optional[Dict] = None) -> str:
+def create_access_token(user_id: str, additional_claims: dict | None = None) -> str:
     """
     创建访问令牌
     
@@ -94,17 +94,17 @@ def create_access_token(user_id: str, additional_claims: Optional[Dict] = None) 
         JWT access token
     """
     # P0 修复: 使用 timezone.utc
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    
+    expire = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
     payload = {
         "sub": user_id,
         "type": "access",
         "exp": expire.timestamp()
     }
-    
+
     if additional_claims:
         payload.update(additional_claims)
-    
+
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -121,18 +121,18 @@ def create_refresh_token(user_id: str) -> str:
         JWT refresh token
     """
     # P0 修复: 使用 timezone.utc
-    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    
+    expire = datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+
     payload = {
         "sub": user_id,
         "type": "refresh",
         "exp": expire.timestamp()
     }
-    
+
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def verify_token(token: str, token_type: str = "access") -> Dict:
+def verify_token(token: str, token_type: str = "access") -> dict:
     """
     验证令牌
     
@@ -148,13 +148,13 @@ def verify_token(token: str, token_type: str = "access") -> Dict:
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        
+
         # 验证令牌类型
         if payload.get("type") != token_type:
             raise AuthenticationError(f"Invalid token type. Expected {token_type}, got {payload.get('type')}")
-        
+
         return payload
-        
+
     except jwt.ExpiredSignatureError:
         raise AuthenticationError("Token has expired")
     except jwt.InvalidTokenError as e:
@@ -177,6 +177,6 @@ def refresh_access_token(refresh_token_str: str) -> str:
     # 验证刷新令牌
     payload = verify_token(refresh_token_str, token_type="refresh")
     user_id = payload["sub"]
-    
+
     # 生成新的访问令牌
     return create_access_token(user_id)

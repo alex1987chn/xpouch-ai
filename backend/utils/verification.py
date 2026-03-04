@@ -7,7 +7,6 @@
 import random
 import string
 from datetime import datetime, timedelta
-from typing import Optional
 
 
 class VerificationCodeError(Exception):
@@ -39,9 +38,9 @@ def generate_verification_code(length: int = 6) -> str:
 
 
 def verify_code(
-    stored_code: Optional[str],
+    stored_code: str | None,
     provided_code: str,
-    expires_at: Optional[datetime],
+    expires_at: datetime | None,
     max_attempts: int = 3
 ) -> bool:
     """
@@ -63,15 +62,15 @@ def verify_code(
     # 检查验证码是否存在
     if not stored_code:
         raise VerificationCodeInvalidError("验证码不存在")
-    
+
     # 检查是否过期
     if expires_at and datetime.utcnow() > expires_at:
         raise VerificationCodeExpiredError("验证码已过期")
-    
+
     # 验证验证码
     if stored_code != provided_code:
         raise VerificationCodeInvalidError("验证码错误")
-    
+
     return True
 
 
@@ -145,10 +144,10 @@ def mask_phone_number(phone: str, visible_digits: int = 4) -> str:
     phone = format_phone_number(phone)
     if len(phone) != 11:
         return phone
-    
+
     if visible_digits <= 0:
         return '*' * 11
-    
+
     masked_length = 11 - visible_digits
     return phone[:3] + '*' * masked_length + phone[-visible_digits:]
 
@@ -165,15 +164,15 @@ def mask_email(email: str) -> str:
     """
     if '@' not in email:
         return email
-    
+
     username, domain = email.split('@', 1)
-    
+
     # 用户名保留第一个字符和最后一个字符，中间用*代替
     if len(username) <= 2:
         masked_username = '*' * len(username)
     else:
         masked_username = username[0] + '*' * (len(username) - 2) + username[-1]
-    
+
     # 域名保留第一部分和后缀，中间用*代替
     domain_parts = domain.split('.')
     if len(domain_parts) >= 2:
@@ -185,5 +184,5 @@ def mask_email(email: str) -> str:
             masked_domain = main_domain[0] + '*' * (len(main_domain) - 1) + '.' + tld
     else:
         masked_domain = domain
-    
+
     return masked_username + '@' + masked_domain

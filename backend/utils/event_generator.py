@@ -3,19 +3,31 @@ SSE 事件生成器
 提供标准化的事件生成和发送功能
 """
 
-from typing import Optional, List, Dict, Any, AsyncGenerator
-from datetime import datetime
 import uuid
-from event_types.events import (
-    EventType, SSEEvent,
-    PlanCreatedData, PlanStartedData, PlanThinkingData,  # 🔥 新增
-    TaskInfo,
-    TaskStartedData, TaskProgressData, TaskCompletedData, TaskFailedData,
-    ArtifactGeneratedData, ArtifactInfo,
+from collections.abc import AsyncGenerator
+from datetime import datetime
+from typing import Any
 
-    MessageDeltaData, MessageDoneData,
-    RouterStartData, RouterDecisionData, ErrorData,
-    build_sse_event, sse_event_to_string
+from event_types.events import (
+    ArtifactGeneratedData,
+    ArtifactInfo,
+    ErrorData,
+    EventType,
+    MessageDeltaData,
+    MessageDoneData,
+    PlanCreatedData,  # 🔥 新增
+    PlanStartedData,
+    PlanThinkingData,
+    RouterDecisionData,
+    RouterStartData,
+    SSEEvent,
+    TaskCompletedData,
+    TaskFailedData,
+    TaskInfo,
+    TaskProgressData,
+    TaskStartedData,
+    build_sse_event,
+    sse_event_to_string,
 )
 
 
@@ -25,26 +37,26 @@ class EventGenerator:
     
     用于在 LangGraph 工作流中生成标准化事件
     """
-    
+
     def __init__(self):
         self._event_counter = 0
-    
+
     def _next_event_id(self) -> str:
         """生成下一个事件ID"""
         self._event_counter += 1
         return f"evt_{self._event_counter}_{uuid.uuid4().hex[:8]}"
-    
+
     # ========================================================================
     # 规划阶段事件
     # ========================================================================
-    
+
     def plan_created(
         self,
         session_id: str,
         summary: str,
         estimated_steps: int,
         execution_mode: str,
-        tasks: List[Dict[str, Any]]
+        tasks: list[dict[str, Any]]
     ) -> SSEEvent:
         """
         生成 plan.created 事件
@@ -66,7 +78,7 @@ class EventGenerator:
             )
             for task in tasks
         ]
-        
+
         data = PlanCreatedData(
             session_id=session_id,
             summary=summary,
@@ -74,11 +86,11 @@ class EventGenerator:
             execution_mode=execution_mode,
             tasks=task_infos
         )
-        
+
         return build_sse_event(EventType.PLAN_CREATED, data, self._next_event_id())
-    
+
     # 🔥 新增：Commander 流式思考事件方法
-    
+
     def plan_started(
         self,
         session_id: str,
@@ -94,7 +106,7 @@ class EventGenerator:
             status=status
         )
         return build_sse_event(EventType.PLAN_STARTED, data, self._next_event_id())
-    
+
     def plan_thinking(
         self,
         session_id: str,
@@ -106,11 +118,11 @@ class EventGenerator:
             delta=delta
         )
         return build_sse_event(EventType.PLAN_THINKING, data, self._next_event_id())
-    
+
     # ========================================================================
     # 任务执行阶段事件
     # ========================================================================
-    
+
     def task_started(
         self,
         task_id: str,
@@ -125,13 +137,13 @@ class EventGenerator:
             started_at=datetime.now().isoformat()
         )
         return build_sse_event(EventType.TASK_STARTED, data, self._next_event_id())
-    
+
     def task_progress(
         self,
         task_id: str,
         expert_type: str,
         progress: float,
-        message: Optional[str] = None
+        message: str | None = None
     ) -> SSEEvent:
         """生成 task.progress 事件"""
         data = TaskProgressData(
@@ -141,13 +153,13 @@ class EventGenerator:
             message=message
         )
         return build_sse_event(EventType.TASK_PROGRESS, data, self._next_event_id())
-    
+
     def task_completed(
         self,
         task_id: str,
         expert_type: str,
         description: str,
-        output: Optional[str],
+        output: str | None,
         duration_ms: int,
         artifact_count: int = 0
     ) -> SSEEvent:
@@ -163,7 +175,7 @@ class EventGenerator:
             artifact_count=artifact_count
         )
         return build_sse_event(EventType.TASK_COMPLETED, data, self._next_event_id())
-    
+
     def task_failed(
         self,
         task_id: str,
@@ -180,11 +192,11 @@ class EventGenerator:
             failed_at=datetime.now().isoformat()
         )
         return build_sse_event(EventType.TASK_FAILED, data, self._next_event_id())
-    
+
     # ========================================================================
     # 产物阶段事件
     # ========================================================================
-    
+
     def artifact_generated(
         self,
         task_id: str,
@@ -192,8 +204,8 @@ class EventGenerator:
         artifact_id: str,
         artifact_type: str,
         content: str,
-        title: Optional[str] = None,
-        language: Optional[str] = None,
+        title: str | None = None,
+        language: str | None = None,
         sort_order: int = 0
     ) -> SSEEvent:
         """生成 artifact.generated 事件"""
@@ -205,18 +217,18 @@ class EventGenerator:
             language=language,
             sort_order=sort_order
         )
-        
+
         data = ArtifactGeneratedData(
             task_id=task_id,
             expert_type=expert_type,
             artifact=artifact_info
         )
         return build_sse_event(EventType.ARTIFACT_GENERATED, data, self._next_event_id())
-    
+
     # ========================================================================
     # 消息阶段事件
     # ========================================================================
-    
+
     def message_delta(
         self,
         message_id: str,
@@ -230,12 +242,12 @@ class EventGenerator:
             is_final=is_final
         )
         return build_sse_event(EventType.MESSAGE_DELTA, data, self._next_event_id())
-    
+
     def message_done(
         self,
         message_id: str,
         full_content: str,
-        total_tokens: Optional[int] = None
+        total_tokens: int | None = None
     ) -> SSEEvent:
         """生成 message.done 事件"""
         data = MessageDoneData(
@@ -244,7 +256,7 @@ class EventGenerator:
             total_tokens=total_tokens
         )
         return build_sse_event(EventType.MESSAGE_DONE, data, self._next_event_id())
-    
+
     # ========================================================================
     # 系统事件
     # ========================================================================
@@ -263,7 +275,7 @@ class EventGenerator:
     def router_decision(
         self,
         decision: str,
-        reason: Optional[str] = None
+        reason: str | None = None
     ) -> SSEEvent:
         """生成 router.decision 事件"""
         data = RouterDecisionData(
@@ -271,12 +283,12 @@ class EventGenerator:
             reason=reason
         )
         return build_sse_event(EventType.ROUTER_DECISION, data, self._next_event_id())
-    
+
     def error(
         self,
         code: str,
         message: str,
-        details: Optional[Dict[str, Any]] = None
+        details: dict[str, Any] | None = None
     ) -> SSEEvent:
         """生成 error 事件"""
         data = ErrorData(
@@ -366,8 +378,8 @@ def event_error(*args, **kwargs) -> SSEEvent:
 # ============================================================================
 
 async def sse_stream_from_events(
-    events: AsyncGenerator[SSEEvent, None]
-) -> AsyncGenerator[str, None]:
+    events: AsyncGenerator[SSEEvent]
+) -> AsyncGenerator[str]:
     """
     将事件异步流转换为 SSE 格式的字符串流
     
@@ -384,6 +396,6 @@ async def sse_stream_from_events(
     """
     async for event in events:
         yield sse_event_to_string(event)
-    
+
     # 发送结束标记
     yield "data: [DONE]\n\n"

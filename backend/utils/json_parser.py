@@ -4,17 +4,18 @@
 """
 import json
 import re
-from typing import TypeVar, Type, Optional
-from pydantic import BaseModel, ValidationError
-from utils.logger import logger
+from typing import TypeVar
 
+from pydantic import BaseModel, ValidationError
+
+from utils.logger import logger
 
 T = TypeVar('T', bound=BaseModel)
 
 
 def parse_llm_json(
     content: str,
-    response_model: Type[T],
+    response_model: type[T],
     strict: bool = False,
     clean_markdown: bool = True
 ) -> T:
@@ -99,20 +100,20 @@ def _repair_json_string(s: str) -> str:
     result = []
     in_string = False
     escape = False
-    
+
     for char in s:
         # 1. 处理转义符 (比如 \")
         if char == '\\':
             escape = not escape  # 翻转转义状态
             result.append(char)
             continue
-        
+
         # 2. 处理双引号 (切换字符串状态)
         if char == '"' and not escape:
             in_string = not in_string
             result.append(char)
             continue
-            
+
         # 3. 处理字符串内部的特殊字符
         if in_string:
             if char == '\n':
@@ -128,7 +129,7 @@ def _repair_json_string(s: str) -> str:
         else:
             # 字符串外部：保留结构字符
             result.append(char)
-        
+
         # 重置转义状态 (如果当前不是转义符)
         if escape:
             escape = False
@@ -204,17 +205,17 @@ def _aggressive_clean(json_str: str) -> str:
     """
     # 1. 移除所有 ASCII 控制字符 (除了 \n \r \t)
     json_str = ''.join(c for c in json_str if ord(c) >= 32 or c in '\n\r\t')
-    
+
     # 2. 替换 Unicode 特殊字符
     json_str = json_str.replace('\u00A0', ' ').replace('\uFEFF', '')
-    
+
     # 3. 移除尾部逗号 (如 {"a": 1,})
     json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
-    
+
     return json_str
 
 
-def _fix_and_parse(json_data: dict, response_model: Type[T]) -> T:
+def _fix_and_parse(json_data: dict, response_model: type[T]) -> T:
     """
     尝试修复并解析 JSON 数据
 

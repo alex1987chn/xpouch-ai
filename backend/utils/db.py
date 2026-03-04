@@ -2,9 +2,11 @@
 LangGraph 数据库连接工具
 提供异步连接池给 AsyncPostgresSaver 使用
 """
-from contextlib import asynccontextmanager
-from psycopg_pool import AsyncConnectionPool
 import os
+from contextlib import asynccontextmanager
+
+from psycopg_pool import AsyncConnectionPool
+
 from utils.logger import logger
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -93,7 +95,7 @@ async def get_db_connection():
     pool = get_connection_pool()
     if pool.closed:
         await pool.open()
-    
+
     async with pool.connection() as conn:
         # 重置连接状态
         try:
@@ -110,9 +112,9 @@ async def init_checkpointer_tables():
     注意：表结构已由 fix_checkpoint_table.py 创建，这里仅做检查
     """
     import psycopg
-    
+
     logger.info("[HITL] Checking checkpointer tables...")
-    
+
     try:
         with psycopg.connect(PSYCOPG_DATABASE_URL) as conn:
             with conn.cursor() as cur:
@@ -122,16 +124,16 @@ async def init_checkpointer_tables():
                     WHERE table_schema = 'public' AND table_name LIKE 'checkpoint%'
                 """)
                 tables = [row[0] for row in cur.fetchall()]
-                
+
                 required = ['checkpoints', 'checkpoint_blobs', 'checkpoint_writes', 'checkpoint_migrations']
                 missing = [t for t in required if t not in tables]
-                
+
                 if missing:
                     logger.warning(f"[HITL WARN] Missing tables: {missing}")
                     logger.warning("[HITL] Please run: uv run python fix_checkpoint_table.py")
                 else:
                     logger.info("[HITL] All checkpointer tables exist")
-                    
+
     except Exception as e:
         logger.warning(f"[HITL WARN] Failed to check tables: {e}")
 

@@ -14,23 +14,23 @@
 Author: XPouch AI Team
 Created: 2026-02-05
 """
-from typing import Dict, Any, List, Optional
 from datetime import datetime
-from sqlmodel import Session
-from utils.logger import logger
-from models import SubTaskCreate, SubTaskUpdate, ArtifactCreate
-from models import Message as MessageModel
-from crud.task_session import (
-    create_task_session_with_subtasks,
-    get_task_session_by_thread,
-    get_subtasks_by_session,
-    create_subtask,
-    update_task_session_status,
-    update_subtask_status,
-    create_artifacts_batch,
-    get_subtask,
-)
+from typing import Any
 
+from sqlmodel import Session
+
+from crud.task_session import (
+    create_artifacts_batch,
+    create_subtask,
+    create_task_session_with_subtasks,
+    get_subtask,
+    get_subtasks_by_session,
+    get_task_session_by_thread,
+    update_subtask_status,
+    update_task_session_status,
+)
+from models import Message as MessageModel
+from utils.logger import logger
 
 # =============================================================================
 # TaskSession 管理
@@ -42,9 +42,9 @@ def get_or_create_task_session(
     user_query: str,
     plan_summary: str,
     estimated_steps: int,
-    subtasks_data: List[Any],
+    subtasks_data: list[Any],
     execution_mode: str = "sequential",
-    session_id: Optional[str] = None  # 🔥 新增：可选的 session_id
+    session_id: str | None = None  # 🔥 新增：可选的 session_id
 ) -> tuple[Any, bool]:
     """
     获取或创建任务会话
@@ -94,9 +94,9 @@ def get_or_create_task_session(
         db.add(existing_session)
 
         # 🔥 关键修复：批量创建子任务并正确映射 depends_on
-        task_id_to_subtask: Dict[str, Any] = {}
-        subtask_data_list: List[tuple] = []
-        
+        task_id_to_subtask: dict[str, Any] = {}
+        subtask_data_list: list[tuple] = []
+
         for subtask_data in subtasks_data:
             subtask = create_subtask(
                 db=db,
@@ -108,12 +108,12 @@ def get_or_create_task_session(
                 execution_mode=subtask_data.execution_mode,
                 depends_on=None  # 先不设置
             )
-            
+
             # 建立映射
             if subtask_data.task_id:
                 task_id_to_subtask[subtask_data.task_id] = subtask
             subtask_data_list.append((subtask, subtask_data.depends_on))
-        
+
         # 更新 depends_on
         for subtask, original_depends_on in subtask_data_list:
             if original_depends_on:
@@ -178,8 +178,8 @@ def save_expert_execution_result(
     task_id: str,
     expert_type: str,
     output_result: str,
-    artifact_data: Optional[Dict[str, Any]] = None,
-    duration_ms: Optional[int] = None
+    artifact_data: dict[str, Any] | None = None,
+    duration_ms: int | None = None
 ) -> bool:
     """
     实时保存专家执行结果到数据库
@@ -246,7 +246,7 @@ def save_aggregator_message(
     db: Session,
     thread_id: str,
     content: str
-) -> Optional[MessageModel]:
+) -> MessageModel | None:
     """
     保存聚合器生成的最终消息到数据库
 
@@ -289,8 +289,8 @@ def update_subtask_status(
     db: Session,
     subtask_id: str,
     status: str,
-    output_result: Optional[str] = None,
-    error_message: Optional[str] = None
+    output_result: str | None = None,
+    error_message: str | None = None
 ) -> bool:
     """
     更新子任务状态
@@ -324,7 +324,7 @@ def update_subtask_status(
         return False
 
 
-def get_subtask_by_id(db: Session, subtask_id: str) -> Optional[Any]:
+def get_subtask_by_id(db: Session, subtask_id: str) -> Any | None:
     """
     根据 ID 获取子任务
 

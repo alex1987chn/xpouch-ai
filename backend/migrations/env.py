@@ -1,6 +1,6 @@
-from logging.config import fileConfig
 import os
 import sys
+from logging.config import fileConfig
 from pathlib import Path
 
 # Add project root to sys.path
@@ -14,16 +14,13 @@ repo_root = backend_dir.parent
 load_dotenv(backend_dir / ".env", override=False)
 load_dotenv(repo_root / ".env", override=False)
 
-from sqlalchemy import create_engine, pool
 from alembic import context
+from sqlalchemy import create_engine, pool
 
 # Import SQLModel and all models
 from sqlmodel import SQLModel
+
 # Import all models to ensure metadata includes all tables
-from models import (
-    User, Thread, Message, CustomAgent, TaskSession,
-    SubTask, Artifact, SystemExpert, UserMemory, MCPServer
-)
 
 # Alembic Config object
 config = context.config
@@ -44,7 +41,7 @@ def get_database_url():
             "DATABASE_URL environment variable is not set. "
             "Please set it in your .env file or environment."
         )
-    
+
     # Convert asyncpg URL to psycopg (sync) for Alembic
     # psycopg (v3) is already installed and supports sync mode
     url = database_url.replace("+asyncpg", "+psycopg")

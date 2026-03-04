@@ -1,20 +1,17 @@
 """
 系统路由模块 - 包含健康检查、调试接口、用户管理
 """
-import sys
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
+from sqlalchemy.orm import Session as SASession
 from sqlmodel import Session, select
-from sqlalchemy.orm import selectinload, Session as SASession
 
-from database import get_session, engine
-from dependencies import get_current_user, get_current_user_with_auth
-from models import User, Thread, CustomAgent
+from database import engine, get_session
+from dependencies import get_current_user_with_auth
+from models import CustomAgent, Thread, User
 from utils.exceptions import NotFoundError
-
 
 router = APIRouter(prefix="/api", tags=["system"])
 
@@ -24,9 +21,9 @@ router = APIRouter(prefix="/api", tags=["system"])
 # ============================================================================
 
 class UpdateUserRequest(BaseModel):
-    username: Optional[str] = None
-    avatar: Optional[str] = None
-    plan: Optional[str] = None
+    username: str | None = None
+    avatar: str | None = None
+    plan: str | None = None
 
 
 # ============================================================================
@@ -66,7 +63,7 @@ async def update_user_me(
     """更新当前用户信息"""
     # 记录更新时间戳
     current_user.updated_at = datetime.now()
-    
+
     if request.username is not None:
         current_user.username = request.username
     if request.avatar is not None:
@@ -131,7 +128,8 @@ async def debug_verify_token(
     if not auth_header or not auth_header.startswith("Bearer "):
         return {"error": "No Authorization header"}
 
-    from utils.jwt_handler import verify_token, AuthenticationError as JWTAuthError
+    from utils.jwt_handler import AuthenticationError as JWTAuthError
+    from utils.jwt_handler import verify_token
 
     token = auth_header.split(" ")[1]
     try:

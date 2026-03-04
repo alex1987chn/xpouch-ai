@@ -2,9 +2,8 @@
 后端配置管理
 用于加载环境变量、初始化 LangChain 客户端和 LangSmith 追踪
 """
-import os
 import logging
-from typing import Optional
+import os
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -47,7 +46,7 @@ def get_langsmith_config() -> dict:
     tracing_v2 = os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true"
     api_key = os.getenv("LANGCHAIN_API_KEY")
     project_name = os.getenv("LANGCHAIN_PROJECT", "xpouch-ai")
-    
+
     return {
         "enabled": tracing_v2,  # 复用 tracing_v2 值
         "api_key": api_key,
@@ -63,7 +62,7 @@ def init_langchain_tracing():
     在应用启动时调用此函数，配置全局追踪设置
     """
     config = get_langsmith_config()
-    
+
     if not config["enabled"]:
         logger.info("LangSmith 追踪未启用（设置 LANGCHAIN_TRACING_V2=true 启用）")
         return
@@ -103,7 +102,7 @@ def validate_config() -> bool:
         bool: 配置是否有效
     """
     # 导入新的配置验证
-    from providers_config import print_provider_status, print_embedding_status
+    from providers_config import print_embedding_status, print_provider_status
 
     # 验证 LLM 提供商配置
     has_llm = print_provider_status()

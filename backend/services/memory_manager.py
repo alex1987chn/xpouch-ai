@@ -1,15 +1,15 @@
-import os
 import asyncio
-from typing import List
 from datetime import datetime
+
 from sqlmodel import Session, select
+
 from database import engine
 from models.memory import UserMemory
 from providers_config import get_embedding_client
 from utils.logger import logger
 
 
-def get_embedding(text: str) -> List[float]:
+def get_embedding(text: str) -> list[float]:
     """
     获取向量嵌入
 
@@ -96,7 +96,7 @@ class MemoryManager:
             logger.error(f"[Memory] ❌ 检索失败: {e}")
             return ""
 
-    def _get_all_memories_sync(self, user_id: str, limit: int = 50) -> List[UserMemory]:
+    def _get_all_memories_sync(self, user_id: str, limit: int = 50) -> list[UserMemory]:
         """获取用户所有记忆（用于调试或导出）"""
         try:
             with Session(engine) as session:
@@ -131,7 +131,7 @@ class MemoryManager:
         """异步检索相关记忆 - 使用 to_thread 防止阻塞心跳"""
         return await asyncio.to_thread(self._search_sync, user_id, query, limit)
 
-    async def get_user_memories(self, user_id: str, limit: int = 50) -> List[UserMemory]:
+    async def get_user_memories(self, user_id: str, limit: int = 50) -> list[UserMemory]:
         """异步获取用户所有记忆"""
         return await asyncio.to_thread(self._get_all_memories_sync, user_id, limit)
 

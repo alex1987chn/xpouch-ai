@@ -6,9 +6,10 @@
 
 P1 优化: 使用 cachetools.TTLCache 替代自定义缓存
 """
-from typing import Dict, Optional, List
-from sqlmodel import Session, select
+
 from cachetools import TTLCache
+from sqlmodel import Session, select
+
 from models import SystemExpert
 from utils.llm_factory import get_effective_model
 from utils.logger import logger
@@ -23,7 +24,7 @@ _expert_cache: TTLCache = TTLCache(maxsize=100, ttl=300)
 def get_expert_config(
     expert_key: str,
     session: Session
-) -> Optional[Dict]:
+) -> dict | None:
     """
     从数据库获取专家配置
 
@@ -51,7 +52,7 @@ def get_expert_config(
     return _build_config(expert)
 
 
-def _build_config(expert: SystemExpert) -> Dict:
+def _build_config(expert: SystemExpert) -> dict:
     """构建专家配置（提取公共逻辑）"""
     # 应用模型兜底机制
     effective_model = get_effective_model(expert.model)
@@ -70,7 +71,7 @@ def _build_config(expert: SystemExpert) -> Dict:
     return config
 
 
-def _infer_provider(model: str) -> Optional[str]:
+def _infer_provider(model: str) -> str | None:
     """从模型名称推断 provider"""
     try:
         from providers_config import get_model_config
@@ -99,7 +100,7 @@ def _infer_provider(model: str) -> Optional[str]:
 def get_expert_prompt(
     expert_key: str,
     session: Session
-) -> Optional[str]:
+) -> str | None:
     """
     获取专家 Prompt（便捷函数）
 
@@ -114,7 +115,7 @@ def get_expert_prompt(
     return config["system_prompt"] if config else None
 
 
-def load_all_experts(session: Session) -> Dict[str, Dict]:
+def load_all_experts(session: Session) -> dict[str, dict]:
     """
     从数据库加载所有专家配置
 
@@ -130,8 +131,8 @@ def load_all_experts(session: Session) -> Dict[str, Dict]:
 
 def get_expert_prompt_cached(
     expert_key: str,
-    session: Optional[Session] = None
-) -> Optional[str]:
+    session: Session | None = None
+) -> str | None:
     """
     获取专家 Prompt（带缓存）
 
@@ -165,8 +166,8 @@ def get_expert_prompt_cached(
 
 def get_expert_config_cached(
     expert_key: str,
-    session: Optional[Session] = None
-) -> Optional[Dict]:
+    session: Session | None = None
+) -> dict | None:
     """
     获取专家完整配置（带缓存）
 
@@ -190,7 +191,7 @@ def get_expert_config_cached(
     return None
 
 
-def refresh_cache(session: Optional[Session] = None):
+def refresh_cache(session: Session | None = None):
     """
     刷新专家配置缓存
 
@@ -214,7 +215,7 @@ def force_refresh_all():
     _expert_cache.clear()
 
 
-def get_all_expert_list(db_session: Optional[Session] = None) -> List[tuple]:
+def get_all_expert_list(db_session: Session | None = None) -> list[tuple]:
     """
     获取所有可用专家的列表（包括动态创建的专家）
 
@@ -254,7 +255,7 @@ def get_all_expert_list(db_session: Optional[Session] = None) -> List[tuple]:
         return fallback_experts
 
 
-def format_expert_list_for_prompt(experts: List[tuple]) -> str:
+def format_expert_list_for_prompt(experts: list[tuple]) -> str:
     """
     将专家列表格式化为适合插入 Prompt 的字符串
 

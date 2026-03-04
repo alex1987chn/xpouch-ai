@@ -8,42 +8,38 @@ XPouch AI Backend - 入口文件
 - Windows: python run.py (已处理事件循环兼容性)
 - Linux/Mac: python main.py 或 uvicorn main:app
 """
-import pathlib
-from dotenv import load_dotenv
-import os
 import asyncio
+import os
+import pathlib
+
+from dotenv import load_dotenv
 
 # Load .env from the same directory as this file
 env_path = pathlib.Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path, override=True)
 
-from fastapi import FastAPI, Request, Response, Depends, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel
-from typing import Optional
-import uvicorn
-from sqlmodel import Session, select
 from contextlib import asynccontextmanager
-import traceback
-from utils.logger import logger
 
-# 内部模块导入
-from database import create_db_and_tables, engine, get_session
-from config import init_langchain_tracing, validate_config
-from models import User, SystemExpert
-from constants import SYSTEM_AGENT_DEFAULT_CHAT
-from utils.exceptions import (
-    AppError, ValidationError,
-    handle_error
-)
+import uvicorn
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from sqlmodel import Session, select
+
+from api.admin import router as admin_router
 
 # 路由导入
 from auth import router as auth_router
-from api.admin import router as admin_router
-from routers import chat, agents, system, mcp
+from config import init_langchain_tracing, validate_config
 
+# 内部模块导入
+from database import create_db_and_tables, engine
+from models import SystemExpert, User
+from routers import agents, chat, mcp, system
+from utils.exceptions import AppError, ValidationError, handle_error
+from utils.logger import logger
 
 # ============================================================================
 # Lifespan - 应用生命周期管理
@@ -105,7 +101,7 @@ async def lifespan(app: FastAPI):
         await cleanup_task
     except asyncio.CancelledError:
         logger.info("[Lifespan] Session cleanup task stopped")
-    
+
     # 🔥 关闭连接池
     from utils.db import close_connection_pool
     try:
@@ -176,7 +172,7 @@ def get_cors_origins():
         origins = [origin.strip() for origin in cors_origins_str.split(",")]
         logger.info(f"[CORS] 允许的来源: {origins}")
         return origins
-    
+
     environment = os.getenv("ENVIRONMENT", "development").lower()
     if environment == "production":
         logger.warning("[WARN] 生产环境未设置 CORS_ORIGINS，CORS 将拒绝所有跨域请求")
@@ -256,16 +252,16 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 # 业务逻辑已迁移到 services/invoke_service.py
 # ============================================================================
 
-from services.invoke_service import InvokeService, get_invoke_service
 from dependencies import get_current_user
+from services.invoke_service import InvokeService, get_invoke_service
 
 
 class ChatInvokeRequest(BaseModel):
     """双模路由请求模型"""
     message: str
     mode: str = "auto"  # "auto" 或 "direct"
-    agent_id: Optional[str] = None  # direct 模式下必填
-    thread_id: Optional[str] = None  # LangSmith 线程 ID
+    agent_id: str | None = None  # direct 模式下必填
+    thread_id: str | None = None  # LangSmith 线程 ID
 
 
 @app.post("/api/v1/chat/invoke")
@@ -281,7 +277,7 @@ async def chat_invoke_endpoint(
     Direct 模式：直接调用单个专家
     """
     logger.info(f"[INVOKE] 模式: {request.mode}, Agent: {request.agent_id}")
-    
+
     try:
         # 使用 InvokeService 执行业务逻辑
         result = await service.invoke(
@@ -291,13 +287,13 @@ async def chat_invoke_endpoint(
             thread_id=request.thread_id,
             user=current_user
         )
-        
+
         return {
             **result,
             "user_query": request.message,
             "status": "completed"
         }
-        
+
     except ValidationError:
         # 验证错误已包含详细信息，直接抛出
         raise

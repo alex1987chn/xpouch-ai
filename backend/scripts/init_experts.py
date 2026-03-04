@@ -30,11 +30,12 @@
   python -m backend.scripts.init_experts list
 """
 import asyncio
-from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
-from sqlmodel import Session, select
-from expert_config import EXPERT_DEFAULTS, DEFAULT_EXPERT_MODEL
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import Session
+
 from database import engine
-from constants import COMMANDER_SYSTEM_PROMPT
+from expert_config import EXPERT_DEFAULTS
 from utils.logger import logger
 
 
@@ -48,7 +49,7 @@ def get_session_class_and_engine():
             return AsyncSession, engine
     except ImportError:
         pass
-    
+
     # 回退到同步会话
     logger.info("[Info] Using Session (sync engine)")
     return Session, engine
@@ -72,7 +73,7 @@ async def init_experts_async(update_existing=False, update_commander=False):
         update_commander: 是否只更新 commander（用于启用思维链功能）
     """
     SessionClass, engine = get_session_class_and_engine()
-    
+
     # 选择上下文管理器
     if SessionClass == AsyncSession:
         async with SessionClass(engine) as session:
@@ -90,25 +91,26 @@ async def process_experts(session, update_existing=False, update_commander=False
         update_commander: 是否只更新 commander（用于启用思维链功能）
     """
     from sqlmodel import select
+
     from models import SystemExpert
-    
+
     # 检查现有专家
     if isinstance(session, AsyncSession):
         result = await session.execute(select(SystemExpert))
         existing_experts = result.scalars().all()
     else:
         existing_experts = session.exec(select(SystemExpert)).all()
-    
+
     existing_keys = {e.expert_key for e in existing_experts}
     logger.info(f"Found {len(existing_experts)} existing experts in database")
-    
+
     updated_count = 0
     created_count = 0
     commander_updated = False
-    
+
     for expert_config in EXPERT_DEFAULTS:
         expert_key = expert_config["expert_key"]
-        
+
         if expert_key in existing_keys:
             # 情况1：强制更新所有专家
             if update_existing:
@@ -119,7 +121,7 @@ async def process_experts(session, update_existing=False, update_commander=False
                 await _update_expert(session, expert_config)
                 updated_count += 1
                 commander_updated = True
-                logger.info(f"✓ Commander updated to enable thinking chain!")
+                logger.info("✓ Commander updated to enable thinking chain!")
             else:
                 logger.warning(f"⚠ Skipping existing expert: {expert_key}")
         else:
@@ -128,18 +130,18 @@ async def process_experts(session, update_existing=False, update_commander=False
             session.add(expert)
             created_count += 1
             logger.info(f"✓ Created expert: {expert_key}")
-    
+
     # 提交事务
     if isinstance(session, AsyncSession):
         await session.commit()
     else:
         session.commit()
-    
-    logger.info(f"\nInitialization complete:")
+
+    logger.info("\nInitialization complete:")
     logger.info(f"  - Created: {created_count} experts")
     logger.info(f"  - Updated: {updated_count} experts")
     logger.info(f"  - Total: {len(EXPERT_DEFAULTS)} experts")
-    
+
     if update_commander and not commander_updated:
         logger.warning("\n⚠️  Warning: Commander not found in database, cannot update.")
 
@@ -147,10 +149,11 @@ async def process_experts(session, update_existing=False, update_commander=False
 async def _update_expert(session, expert_config):
     """更新单个专家的辅助函数"""
     from sqlmodel import select
+
     from models import SystemExpert
-    
+
     expert_key = expert_config["expert_key"]
-    
+
     if isinstance(session, AsyncSession):
         result = await session.execute(
             select(SystemExpert).where(SystemExpert.expert_key == expert_key)
@@ -160,7 +163,7 @@ async def _update_expert(session, expert_config):
         expert = session.exec(
             select(SystemExpert).where(SystemExpert.expert_key == expert_key)
         ).first()
-    
+
     if expert:
         expert.name = expert_config["name"]
         expert.system_prompt = expert_config["system_prompt"]
@@ -177,7 +180,7 @@ def init_experts(update_existing=False, update_commander=False):
 async def list_experts_async():
     """异步列出所有专家"""
     SessionClass, engine = get_session_class_and_engine()
-    
+
     if SessionClass == AsyncSession:
         async with SessionClass(engine) as session:
             await list_experts_process(session)
@@ -188,16 +191,17 @@ async def list_experts_async():
 async def list_experts_process(session):
     """处理列出专家逻辑"""
     from sqlmodel import select
+
     from models import SystemExpert
-    
+
     if isinstance(session, AsyncSession):
         result = await session.execute(select(SystemExpert))
         experts = result.scalars().all()
     else:
         experts = session.exec(select(SystemExpert)).all()
-    
+
     logger.info(f"\nTotal experts in database: {len(experts)}\n")
-    
+
     for expert in experts:
         logger.info(f"Expert Key: {expert.expert_key}")
         logger.info(f"  Name: {expert.name}")
@@ -214,11 +218,11 @@ def list_experts():
 
 if __name__ == "__main__":
     import sys
-    
+
     # 默认安全模式（不覆盖现有专家）
     update_existing = False
     update_commander = False
-    
+
     # 解析命令行参数
     args = sys.argv[1:]
     if not args:
@@ -262,7 +266,7 @@ if __name__ == "__main__":
                 sys.exit(0)
             else:
                 logger.warning(f"Warning: Unknown argument '{arg}'")
-        
+
         logger.info("Initializing system experts...")
         init_experts(update_existing=update_existing, update_commander=update_commander)
         list_experts()

@@ -5,7 +5,9 @@ Tavily 是专为 AI Agent 设计的搜索引擎，返回整理好的文本片段
 P1 优化: 添加异步支持
 """
 import os
+
 from langchain_core.tools import tool
+
 from utils.logger import logger
 
 # -----------------------------------------------------------
@@ -28,7 +30,6 @@ except ImportError:
 
 # P1 优化: 导入异步 HTTP 客户端
 import httpx
-from langchain_core.tools import ToolException
 
 # -----------------------------------------------------------
 
@@ -105,7 +106,7 @@ async def asearch_web(query: str) -> str:
         # 而不是使用 LangChain 的同步工具
         async with httpx.AsyncClient(timeout=30.0) as client:
             logger.info(f"--- [Tool] 正在异步搜索: {query} ---")
-            
+
             response = await client.post(
                 "https://api.tavily.com/search",
                 headers={"Content-Type": "application/json"},
@@ -118,14 +119,14 @@ async def asearch_web(query: str) -> str:
             )
             response.raise_for_status()
             data = response.json()
-            
+
             # 格式化结果
             results = []
-            
+
             # 添加总结（如果有）
             if data.get("answer"):
                 results.append(f"【回答】: {data['answer']}")
-            
+
             # 添加搜索结果
             if data.get("results"):
                 results.append("【搜索结果】:")
@@ -133,7 +134,7 @@ async def asearch_web(query: str) -> str:
                     results.append(f"{i}. {result.get('title', '无标题')}")
                     results.append(f"   {result.get('content', '无内容')[:200]}...")
                     results.append(f"   来源: {result.get('url', '未知')}")
-            
+
             output = "\n".join(results) if results else "未找到搜索结果"
             logger.debug(f"[Debug] 异步搜索完成，结果长度: {len(output)}")
             return output
