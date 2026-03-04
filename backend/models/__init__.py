@@ -29,6 +29,11 @@ class ConversationType(StrEnum):
     AI = "ai"               # AI助手（复杂模式）
 
 
+def _enum_values(enum_cls: type[StrEnum]) -> list[str]:
+    """Use enum .value for DB persistence/reading instead of member names."""
+    return [member.value for member in enum_cls]
+
+
 # ============================================================================
 # 现有模型：用户、会话、消息
 # ============================================================================
@@ -88,7 +93,14 @@ class User(SQLModel, table=True):
     plan: str = Field(default="Free", max_length=20) # Free, Pilot, Maestro
     role: UserRole = Field(
         default=UserRole.USER,
-        sa_column=Column(SAEnum(UserRole, name="user_role_enum", native_enum=True))  # DB-12: 使用 PostgreSQL ENUM
+        sa_column=Column(
+            SAEnum(
+                UserRole,
+                name="user_role_enum",
+                native_enum=True,
+                values_callable=_enum_values,
+            )
+        ),  # DB-12: 使用 PostgreSQL ENUM
     )
     phone_number: str | None = Field(default=None, max_length=32, unique=True, index=True)
     email: str | None = Field(default=None, max_length=254, unique=True, index=True)
@@ -128,7 +140,15 @@ class Thread(SQLModel, table=True):
     # 会话类型：明确区分三种模式
     agent_type: ConversationType = Field(
         default=ConversationType.DEFAULT,
-        sa_column=Column(SAEnum(ConversationType, name="conversation_type_enum", native_enum=True), index=True),
+        sa_column=Column(
+            SAEnum(
+                ConversationType,
+                name="conversation_type_enum",
+                native_enum=True,
+                values_callable=_enum_values,
+            ),
+            index=True,
+        ),
     )
 
     # 智能体ID
@@ -362,6 +382,7 @@ class TaskStatus(StrEnum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class ExecutionMode(StrEnum):
@@ -397,13 +418,28 @@ class SubTask(SQLModel, table=True):
     # 任务状态
     status: TaskStatus = Field(
         default=TaskStatus.PENDING,
-        sa_column=Column(SAEnum(TaskStatus, name="task_status_enum", native_enum=True), index=True),
+        sa_column=Column(
+            SAEnum(
+                TaskStatus,
+                name="task_status_enum",
+                native_enum=True,
+                values_callable=_enum_values,
+            ),
+            index=True,
+        ),
     )  # DB-12: 使用 PostgreSQL ENUM
 
     # 执行模式：串行或并行
     execution_mode: ExecutionMode = Field(
         default=ExecutionMode.SEQUENTIAL,
-        sa_column=Column(SAEnum(ExecutionMode, name="execution_mode_enum", native_enum=True)),
+        sa_column=Column(
+            SAEnum(
+                ExecutionMode,
+                name="execution_mode_enum",
+                native_enum=True,
+                values_callable=_enum_values,
+            )
+        ),
     )  # DB-12: 使用 PostgreSQL ENUM
 
     # 依赖任务：并行模式下可能依赖其他任务（可选）
@@ -464,7 +500,14 @@ class TaskSession(SQLModel, table=True):
     # 执行模式：串行或并行
     execution_mode: ExecutionMode = Field(
         default=ExecutionMode.SEQUENTIAL,
-        sa_column=Column(SAEnum(ExecutionMode, name="execution_mode_enum", native_enum=True)),
+        sa_column=Column(
+            SAEnum(
+                ExecutionMode,
+                name="execution_mode_enum",
+                native_enum=True,
+                values_callable=_enum_values,
+            )
+        ),
     )  # DB-12: 使用 PostgreSQL ENUM
 
     # 关联的子任务列表
@@ -479,7 +522,15 @@ class TaskSession(SQLModel, table=True):
     # 会话状态：pending | running | completed | failed
     status: TaskStatus = Field(
         default=TaskStatus.PENDING,
-        sa_column=Column(SAEnum(TaskStatus, name="task_status_enum", native_enum=True), index=True),
+        sa_column=Column(
+            SAEnum(
+                TaskStatus,
+                name="task_status_enum",
+                native_enum=True,
+                values_callable=_enum_values,
+            ),
+            index=True,
+        ),
     )  # DB-12: 使用 PostgreSQL ENUM
 
     # 乐观锁版本号：用于 HITL 计划更新冲突检测
