@@ -385,7 +385,7 @@ gantt
       "description": "搜索关于...",
       "input_data": { "query": "..." },
       "priority": 10,
-      "dependencies": [] 
+      "dependencies": []
     },
     {
       "id": "task_2",

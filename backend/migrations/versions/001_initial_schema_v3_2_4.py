@@ -1,7 +1,7 @@
 """Initial schema v3.2.4
 
 Revision ID: 001
-Revises: 
+Revises:
 Create Date: 2026-03-02 13:44:00.000000
 
 """
