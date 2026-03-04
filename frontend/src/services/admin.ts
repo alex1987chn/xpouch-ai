@@ -11,7 +11,7 @@ import { getHeaders, buildUrl, handleResponse, authenticatedFetch } from './comm
 // ============================================================================
 
 export interface SystemExpert {
-  id: number
+  id: string
   expert_key: string
   name: string
   description?: string

@@ -1,5 +1,6 @@
 import asyncio
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from langchain_core.messages import ToolMessage
@@ -9,7 +10,11 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from agents.graph import _should_trip_tool_loop_guard  # noqa: E402
-from agents.state_patch import EVENT_QUEUE_MAX_SIZE, append_sse_event, append_sse_events  # noqa: E402
+from agents.state_patch import (  # noqa: E402
+    EVENT_QUEUE_MAX_SIZE,
+    append_sse_event,
+    append_sse_events,
+)
 from services.mcp_tools_service import MCPToolsService  # noqa: E402
 from utils.error_codes import ErrorCode, as_error_code  # noqa: E402
 from utils.exceptions import AppError  # noqa: E402
@@ -27,12 +32,27 @@ def test_event_queue_is_capped_to_prevent_growth():
 
 def test_tool_loop_guard_detects_same_tool_streak():
     msgs = [
-        ToolMessage(content="ok", tool_call_id=f"id-{idx}", name="search_web")
-        for idx in range(5)
+        ToolMessage(content="ok", tool_call_id=f"id-{idx}", name="search_web") for idx in range(5)
     ]
     tripped, reason = _should_trip_tool_loop_guard(msgs)
     assert tripped is True
     assert "连续调用" in reason
+
+
+def test_tool_loop_guard_detects_dense_calls_in_time_window():
+    now = datetime.now()
+    msgs = [
+        ToolMessage(
+            content="ok",
+            tool_call_id=f"id-{idx}",
+            name=f"tool-{idx % 2}",
+            additional_kwargs={"ts": (now - timedelta(seconds=idx)).isoformat()},
+        )
+        for idx in range(8)
+    ]
+    tripped, reason = _should_trip_tool_loop_guard(msgs)
+    assert tripped is True
+    assert "内工具调用过多" in reason
 
 
 def test_error_code_enum_is_serialized_consistently():

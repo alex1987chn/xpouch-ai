@@ -6,6 +6,7 @@
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import type { Root } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { I18nProvider } from './i18n'
 import { ThemeProvider, ThemeInitializer } from './hooks/useTheme'
@@ -63,7 +64,7 @@ const container = document.getElementById('root')!
 
 // 定义 HMR 根缓存类型
 interface HMRRootContainer extends HTMLElement {
-  _reactRoot?: any
+  _reactRoot?: Root
 }
 
 // 使用类型断言（HMR 特殊场景）

@@ -20,12 +20,18 @@ import {
   deleteMCPServer,
   getMCPServerTools,
   type MCPServer,
-  type MCPServerCreate,
-  type MCPServerUpdate,
-  type MCPTool
+  type MCPServerCreate
 } from '@/services/mcp'
 import { logger } from '@/utils/logger'
 import { CACHE_TIMES } from '@/config/query'
+
+interface StatusError {
+  status?: number
+}
+
+function isStatusError(error: unknown): error is StatusError {
+  return typeof error === 'object' && error !== null && 'status' in error
+}
 
 // ============================================================================
 // Query Key 工厂函数
@@ -66,8 +72,8 @@ export function useMCPServers(options: { enabled?: boolean } = {}) {
     staleTime: CACHE_TIMES.MCP_SERVERS.staleTime,
     gcTime: CACHE_TIMES.MCP_SERVERS.gcTime,
     // 错误时重试：401 不重试，其他错误重试2次
-    retry: (failureCount, error: any) => {
-      if (error?.status === 401) return false
+    retry: (failureCount, error: unknown) => {
+      if (isStatusError(error) && error.status === 401) return false
       return failureCount < 2
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
@@ -155,7 +161,7 @@ export function useToggleMCP() {
     },
     
     // 无论成功失败，最终刷新确保状态同步
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, _variables) => {
       queryClient.invalidateQueries({ queryKey: mcpKeys.lists() })
       logger.debug('[useToggleMCP] Settled, cache invalidated')
     },

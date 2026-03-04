@@ -83,7 +83,7 @@ export const useTaskStore = create<TaskStore>()(
       name: 'xpouch-task-store',
       version: 2,  // 版本升级
       // 只持久化关键字段
-      partialize: (state: TaskStore): any => ({
+      partialize: (state: TaskStore) => ({
         // TaskSlice
         session: state.session,
         tasks: Array.from(state.tasks.entries()),
@@ -99,7 +99,7 @@ export const useTaskStore = create<TaskStore>()(
         planThinkingContent: state.planThinkingContent,
       }),
       // 自定义序列化：处理 Map/Set
-      serialize: (state: any) => {
+      serialize: (state: unknown) => {
         try {
           return JSON.stringify(state)
         } catch (error) {
@@ -122,7 +122,7 @@ export const useTaskStore = create<TaskStore>()(
             
             // 重建 tasksCache
             parsed.tasksCache = Array.from(parsed.tasks.values())
-              .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+              .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
           } else {
             parsed.tasks = new Map()
             parsed.tasksCache = []

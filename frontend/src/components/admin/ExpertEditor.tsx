@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ExpertEditor - 专家编辑器组件
  *
  * [职责]
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import ModelSelector from '@/components/settings/ModelSelector'
 import type {
   SystemExpert,
+  PreviewExpertResponse,
   UpdateExpertRequest,
 } from '@/services/admin'
 import { previewExpert } from '@/services/admin'
@@ -54,7 +55,7 @@ export default function ExpertEditor({
 
   const [previewMode, setPreviewMode] = useState(false)
   const [testInput, setTestInput] = useState('')
-  const [previewResult, setPreviewResult] = useState<any>(null)
+  const [previewResult, setPreviewResult] = useState<PreviewExpertResponse | null>(null)
   const [isPreviewing, setIsPreviewing] = useState(false)
 
   // 表单字段更新
@@ -77,7 +78,7 @@ export default function ExpertEditor({
       const description = await onGenerateDescription(formData.system_prompt)
       setFormData((prev) => ({ ...prev, description }))
       onShowToast(t('descriptionGenerated'), 'success')
-    } catch (error) {
+    } catch (_error) {
       onShowToast(t('generateDescriptionFailed'), 'error')
     }
   }
@@ -101,7 +102,7 @@ export default function ExpertEditor({
         `${t('executionCompleted')} (${(result.execution_time_ms / 1000).toFixed(2)}${t('secondsAbbr')})`,
         'success'
       )
-    } catch (error) {
+    } catch (_error) {
       onShowToast(t('previewFailed'), 'error')
     } finally {
       setIsPreviewing(false)

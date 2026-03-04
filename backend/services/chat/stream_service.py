@@ -29,10 +29,17 @@ from config import FORCE_HEARTBEAT_INTERVAL, HEARTBEAT_INTERVAL, STREAM_TIMEOUT
 from models import CustomAgent, TaskSession, Thread
 from providers_config import get_model_config, get_provider_api_key, get_provider_config
 from services.mcp_tools_service import mcp_tools_service
-from utils.error_codes import ErrorCode, as_error_code
+from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
 from utils.llm_factory import get_llm_instance
 from utils.logger import logger
+from utils.sse_builder import (
+    build_error_event,
+    build_heartbeat_event,
+    build_human_interrupt_event,
+    build_message_delta_event,
+    build_message_done_event,
+)
 
 
 class StreamService:
@@ -1001,45 +1008,19 @@ class StreamService:
 
     def _build_message_delta_event(self, message_id: str, content: str) -> str:
         """构建 message.delta 事件"""
-        from event_types.events import EventType, MessageDeltaData, build_sse_event
-        from utils.event_generator import sse_event_to_string
-
-        event = build_sse_event(
-            EventType.MESSAGE_DELTA,
-            MessageDeltaData(message_id=message_id, content=content),
-            str(uuid.uuid4())
-        )
-        return sse_event_to_string(event)
+        return build_message_delta_event(message_id=message_id, content=content)
 
     def _build_message_done_event(self, message_id: str, content: str) -> str:
         """构建 message.done 事件"""
-        from event_types.events import EventType, MessageDoneData, build_sse_event
-        from utils.event_generator import sse_event_to_string
-
-        event = build_sse_event(
-            EventType.MESSAGE_DONE,
-            MessageDoneData(message_id=message_id, full_content=content),
-            str(uuid.uuid4())
-        )
-        return sse_event_to_string(event)
+        return build_message_done_event(message_id=message_id, content=content)
 
     def _build_heartbeat_event(self) -> str:
         """构建 heartbeat 事件，供前端更新活跃时间。"""
-        import json
-
-        return f"event: heartbeat\ndata: {json.dumps({'ts': datetime.now().isoformat()})}\n\n"
+        return build_heartbeat_event()
 
     def _build_error_event(self, code: str | ErrorCode, message: str) -> str:
         """构建 error 事件"""
-        from event_types.events import ErrorData, EventType, build_sse_event
-        from utils.event_generator import sse_event_to_string
-
-        event = build_sse_event(
-            EventType.ERROR,
-            ErrorData(code=as_error_code(code), message=message),
-            str(uuid.uuid4())
-        )
-        return sse_event_to_string(event)
+        return build_error_event(code=code, message=message)
 
     def _get_plan_version(self, thread_id: str) -> int:
         """获取当前线程的计划版本号（乐观锁）"""
@@ -1057,16 +1038,8 @@ class StreamService:
         plan_version: int
     ) -> str:
         """构建 human.interrupt 事件 (HITL)"""
-        from event_types.events import EventType, HumanInterruptData, build_sse_event
-        from utils.event_generator import sse_event_to_string
-
-        event = build_sse_event(
-            EventType.HUMAN_INTERRUPT,
-            HumanInterruptData(
-                type='plan_review',
-                current_plan=current_plan,
-                plan_version=plan_version
-            ),
-            str(uuid.uuid4())
+        return build_human_interrupt_event(
+            thread_id=thread_id,
+            current_plan=current_plan,
+            plan_version=plan_version,
         )
-        return sse_event_to_string(event)

@@ -12,10 +12,18 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getAllAgents, deleteCustomAgent, type Agent } from '@/services/agent'
+import { getAllAgents, deleteCustomAgent } from '@/services/agent'
 import { logger } from '@/utils/logger'
 import { CACHE_TIMES } from '@/config/query'
 import { chatHistoryKeys } from './useChatHistoryQuery'
+
+interface StatusError {
+  status?: number
+}
+
+function isStatusError(error: unknown): error is StatusError {
+  return typeof error === 'object' && error !== null && 'status' in error
+}
 
 // Query Key 工厂函数
 export const agentsKeys = {
@@ -60,9 +68,9 @@ export function useAgentsQuery(options: { includeDefault?: boolean; enabled?: bo
     staleTime: CACHE_TIMES.AGENTS.staleTime,
     gcTime: CACHE_TIMES.AGENTS.gcTime,
     // 错误时重试：401 不重试，其他错误重试2次
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: unknown) => {
       // 401 未授权不 retry，避免无限循环
-      if (error?.status === 401) return false
+      if (isStatusError(error) && error.status === 401) return false
       return failureCount < 2
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),

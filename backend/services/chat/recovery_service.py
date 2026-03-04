@@ -22,9 +22,10 @@ from sqlalchemy import update
 from sqlmodel import Session, select
 
 from models import TaskSession, Thread
-from utils.error_codes import ErrorCode, as_error_code
+from utils.error_codes import ErrorCode
 from utils.exceptions import AppError, AuthorizationError, NotFoundError, ValidationError
 from utils.logger import logger
+from utils.sse_builder import build_error_event
 
 
 class RecoveryService:
@@ -462,14 +463,4 @@ class RecoveryService:
 
     def _build_error_event(self, code: str | ErrorCode, message: str) -> str:
         """构建 error 事件"""
-        import uuid
-
-        from event_types.events import ErrorData, EventType, build_sse_event
-        from utils.event_generator import sse_event_to_string
-
-        event = build_sse_event(
-            EventType.ERROR,
-            ErrorData(code=as_error_code(code), message=message),
-            str(uuid.uuid4())
-        )
-        return sse_event_to_string(event)
+        return build_error_event(code=code, message=message)

@@ -7,8 +7,7 @@ import { useCallback } from 'react'
 import { getConversation, deleteConversation as apiDeleteConversation } from '@/services/chat'
 import { normalizeAgentId } from '@/utils/agentUtils'
 import { errorHandler, logger } from '@/utils/logger'
-import { formatTaskOutput } from '@/utils/formatters'
-import type { Conversation } from '@/types'
+import type { SubTask } from '@/types'
 
 import {
   useMessages,
@@ -24,6 +23,10 @@ import { useTaskStore } from '@/store/taskStore'
  * Conversation management Hook
  */
 export function useConversation() {
+  function isStatusError(error: unknown): error is { status?: number } {
+    return typeof error === 'object' && error !== null && 'status' in error
+  }
+
   const messages = useMessages()
   const currentConversationId = useCurrentConversationId()
   
@@ -35,7 +38,6 @@ export function useConversation() {
   } = useChatActions()
   
   const {
-    initializePlan,
     restoreFromSession,
     resetTasks,
     setMode,
@@ -93,7 +95,7 @@ export function useConversation() {
 
       // 智能恢复：比较 API 数据和本地数据
       const subTasks = conversation.task_session?.sub_tasks || []
-      const apiArtifactCount = subTasks.reduce((sum: number, t: any) => 
+      const apiArtifactCount = subTasks.reduce((sum: number, t: SubTask) =>
         sum + (t.artifacts?.length || 0), 0)
       
       // 检查本地数据
@@ -103,13 +105,13 @@ export function useConversation() {
         if (stored) {
           const parsed = JSON.parse(stored)
           if (parsed.tasks && Array.isArray(parsed.tasks)) {
-            localArtifactCount = parsed.tasks.reduce((sum: number, entry: any) => {
+            localArtifactCount = parsed.tasks.reduce((sum: number, entry: [string, { artifacts?: unknown[] }]) => {
               const task = entry[1]
               return sum + (task?.artifacts?.length || 0)
             }, 0)
           }
         }
-      } catch (e) {
+      } catch {
         // ignore
       }
       
@@ -129,9 +131,9 @@ export function useConversation() {
       }
 
       return conversation
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 404 错误：会话不存在（可能是新会话还没在后端创建）
-      if (error?.status === 404) {
+      if (isStatusError(error) && error.status === 404) {
         return null
       }
       

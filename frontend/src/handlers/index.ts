@@ -120,7 +120,7 @@ export class EventHandler {
         handleError(event, context)
         break
       default:
-        logger.warn('[EventHandler] 未知事件类型:', (event as any).type)
+        logger.warn('[EventHandler] 未知事件类型:', (event as { type?: string }).type)
     }
   }
 

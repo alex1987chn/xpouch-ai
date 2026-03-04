@@ -6,6 +6,7 @@
 
 import type { useTaskStore } from '@/store/taskStore'
 import type { useChatStore } from '@/store/chatStore'
+import type { Message } from '@/types'
 import type {
   AnyServerEvent,
   PlanCreatedEvent,
@@ -64,11 +65,11 @@ export type EventHandlerFn<T extends AnyServerEvent = AnyServerEvent> = (
  * 消息和ID的返回类型
  */
 export interface LastAssistantMessageResult {
-  message: any
+  message: Message
   id: string
 }
 
 /**
  * 事件处理器注册表
  */
-export type EventHandlerRegistry = Map<string, EventHandlerFn<any>>
+export type EventHandlerRegistry = Map<string, EventHandlerFn<AnyServerEvent>>

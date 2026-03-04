@@ -42,10 +42,10 @@ import { logger } from '@/utils/logger'
 import { handleServerEvent } from '@/handlers'
 import { createSSEPromiseHelpers, SSE_HEARTBEAT_TIMEOUT, SSE_HEARTBEAT_CHECK_INTERVAL } from '@/utils/sseUtils'
 import { showLoginDialog } from '@/utils/authUtils'
+import type { AnyServerEvent, EventType } from '@/types/events'
 
 // 重新导出类型供外部使用（Conversation 类型来自 @/types）
 export type { Conversation }
-import { useTaskStore } from '@/store/taskStore'
 
 // ============================================================================
 // SSE 常量配置
@@ -58,6 +58,171 @@ const SSE_MAX_RETRIES = 3
 
 /** 重连基础延迟（毫秒） */
 const SSE_RETRY_BASE_DELAY = 1000
+
+type StreamRunOptions = {
+  url: string
+  requestBody: Record<string, unknown>
+  errorContext: string
+  logPrefix: string
+  conversationId?: string
+  onChunk?: StreamCallback
+  abortSignal?: AbortSignal
+  resolveOnMessageDone?: boolean
+}
+
+function extractErrorStatus(err: unknown): number | undefined {
+  if (typeof err !== 'object' || err === null) return undefined
+  const maybe = err as { status?: number; statusCode?: number }
+  return maybe.status ?? maybe.statusCode
+}
+
+function runSSEStream({
+  url,
+  requestBody,
+  errorContext,
+  logPrefix,
+  conversationId,
+  onChunk,
+  abortSignal,
+  resolveOnMessageDone = false,
+}: StreamRunOptions): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let fullContent = ''
+    let retryCount = 0
+    const ctrl = new AbortController()
+
+    const { safeResolve, safeReject, startHeartbeat, updateActivity, getIsCompleted } = createSSEPromiseHelpers(
+      resolve,
+      reject,
+      {
+        timeout: SSE_HEARTBEAT_TIMEOUT,
+        checkInterval: SSE_HEARTBEAT_CHECK_INTERVAL,
+        onTimeout: () => ctrl.abort(),
+        context: errorContext
+      }
+    )
+    startHeartbeat()
+
+    if (abortSignal) {
+      abortSignal.addEventListener('abort', () => {
+        ctrl.abort()
+        safeReject(new Error('请求已取消'))
+      })
+    }
+
+    fetchEventSource(url, {
+      method: 'POST',
+      headers: {
+        ...getHeaders(),
+        'Accept': 'text/event-stream',
+      },
+      body: JSON.stringify(requestBody),
+      signal: ctrl.signal,
+      openWhenHidden: true,
+
+      async onopen(response) {
+        handleSSEConnectionError(response, errorContext)
+        retryCount = 0
+        updateActivity()
+        logger.debug(`[chat.ts] ${logPrefix}SSE 连接已建立，重置重连计数器`)
+      },
+
+      async onmessage(msg: EventSourceMessage) {
+        updateActivity()
+
+        if (msg.data === '[DONE]') {
+          logger.debug(`[chat.ts] ${logPrefix}收到 [DONE]，流式响应完成`)
+          safeResolve(fullContent)
+          return
+        }
+
+        if (msg.data === '' || msg.event === 'heartbeat') {
+          return
+        }
+
+        try {
+          const eventType = msg.event
+          const eventData = JSON.parse(msg.data)
+
+          if (eventType) {
+            const fullEvent: AnyServerEvent = {
+              id: msg.id || crypto.randomUUID(),
+              timestamp: new Date().toISOString(),
+              type: eventType as EventType,
+              data: eventData
+            }
+
+            const isChatEvent = eventType.startsWith('message.') || eventType === 'error'
+
+            if (isChatEvent && onChunk) {
+              if (eventType === 'message.delta') {
+                const content = eventData.content
+                if (content && typeof content === 'string') {
+                  await onChunk(content, conversationId)
+                  fullContent += content
+                }
+              } else if (eventType === 'message.done') {
+                handleServerEvent(fullEvent)
+                await onChunk(undefined, conversationId, fullEvent)
+              } else {
+                await onChunk(undefined, conversationId, fullEvent)
+              }
+            } else if (!isChatEvent) {
+              handleServerEvent(fullEvent)
+            }
+
+            if (resolveOnMessageDone && eventType === 'message.done') {
+              logger.debug(`[chat.ts] ${logPrefix}收到 message.done，流结束`)
+              safeResolve(fullContent)
+            }
+          }
+        } catch {
+          logger.debug(`[chat.ts] ${logPrefix}解析 SSE 数据失败，跳过:`, msg.data.substring(0, 100))
+        }
+      },
+
+      onerror(err: unknown) {
+        const errorLike = err as { name?: string }
+        if (errorLike.name === 'AbortError' || ctrl.signal.aborted) {
+          logger.debug(`[chat.ts] ${logPrefix}请求已取消`)
+          safeReject(new Error('请求已取消'))
+          return
+        }
+
+        const status = extractErrorStatus(err)
+        if (status === 401) {
+          logger.warn(`[chat.ts] ${logPrefix}SSE 收到 401 错误，触发登录弹窗`)
+          showLoginDialog()
+          safeReject(err instanceof Error ? err : new Error('认证失败'))
+          return
+        }
+
+        if (status >= 400 && status < 500) {
+          logger.error(`[chat.ts] ${logPrefix}SSE 收到 ${status} 客户端错误，停止重试:`, err)
+          safeReject(err instanceof Error ? err : new Error(`客户端错误: ${status}`))
+          return
+        }
+
+        if (retryCount < SSE_MAX_RETRIES) {
+          retryCount++
+          const delay = SSE_RETRY_BASE_DELAY * Math.pow(2, retryCount - 1)
+          logger.warn(`[chat.ts] ${logPrefix}SSE 连接错误，${delay}ms 后第 ${retryCount} 次重连...`)
+          return
+        }
+
+        logger.error(`[chat.ts] ${logPrefix}SSE 错误，超过最大重试次数:`, err)
+        safeReject(new Error('连接异常，请重试'))
+      },
+
+      onclose() {
+        logger.debug(`[chat.ts] ${logPrefix}SSE 连接已关闭`)
+        if (!getIsCompleted()) {
+          safeResolve(fullContent)
+        }
+      },
+    })
+  })
+}
 
 // ============================================================================
 // API 函数
@@ -169,170 +334,25 @@ export async function sendMessage(
       }),
       signal: abortSignal
     })
-    return handleResponse<any>(response, '发送消息失败')
+    const result = await handleResponse<unknown>(response, '发送消息失败')
+    return typeof result === 'string' ? result : JSON.stringify(result)
   }
 
-  return new Promise((resolve, reject) => {
-    let fullContent = ''
-    // eslint-disable-next-line prefer-const
-    let finalConversationId: string | undefined = conversationId || undefined
-    let retryCount = 0  // 🔥 重连计数器
-
-    const ctrl = new AbortController()
-    
-    // 🔥 使用 SSE 工具函数处理心跳和 Promise 状态
-    const { safeResolve, safeReject, startHeartbeat, updateActivity, getIsCompleted } = createSSEPromiseHelpers(
-      resolve, 
-      reject, 
-      {
-        timeout: SSE_HEARTBEAT_TIMEOUT,
-        checkInterval: SSE_HEARTBEAT_CHECK_INTERVAL,
-        onTimeout: () => ctrl.abort(),
-        context: 'chat.ts'
-      }
-    )
-    
-    startHeartbeat()
-
-    if (abortSignal) {
-      abortSignal.addEventListener('abort', () => {
-        ctrl.abort()
-        safeReject(new Error('请求已取消'))
-      })
-    }
-
-    fetchEventSource(url, {
-      method: 'POST',
-      headers: {
-        ...getHeaders(),
-        'Accept': 'text/event-stream',
-      },
-      body: JSON.stringify({
-        message: messageContent,
-        history: history.map(m => ({ role: m.role, content: m.content })),
-        agent_id: agentId,
-        conversation_id: conversationId,
-        stream: true,
-        message_id: assistantMessageId,  // v3.0: 传递助手消息 ID
-      }),
-      signal: ctrl.signal,
-      // v3.0: 保持连接即使页面隐藏（防止切换标签页导致任务重新开始）
-      openWhenHidden: true,
-
-      async onopen(response) {
-        handleSSEConnectionError(response, 'chat.ts')
-        // P0 修复: 连接成功后重置重连计数器和活动时间
-        retryCount = 0
-        updateActivity()
-        logger.debug('[chat.ts] SSE 连接已建立，重置重连计数器')
-      },
-
-      async onmessage(msg: EventSourceMessage) {
-        updateActivity() // 🔥 更新活动时间
-        
-        if (msg.data === '[DONE]') {
-          logger.debug('[chat.ts] 收到 [DONE]，流式响应完成')
-          safeResolve(fullContent)
-          return
-        }
-
-        // 🔥 心跳事件处理（后端发送的空注释心跳）
-        if (msg.data === '' || msg.event === 'heartbeat') {
-          return
-        }
-
-        try {
-          // v3.0: SSE 格式通过 msg.event 获取事件类型
-          const eventType = msg.event
-          const eventData = JSON.parse(msg.data)
-          
-          // v3.0: 构建标准事件对象
-          if (eventType) {
-            const fullEvent = {
-              id: msg.id || crypto.randomUUID(),
-              timestamp: new Date().toISOString(),
-              type: eventType,
-              data: eventData
-            }
-            
-            // 🔥 事件分流：Chat 流式 vs Task 批处理 (SDUI 原则)
-            // message.* 事件 -> onChunk (给 ChatStore 处理对话流)
-            // router/plan/task/artifact 事件 -> handleServerEvent (给 TaskStore 处理任务流)
-            const isChatEvent = eventType.startsWith('message.') || eventType === 'error'
-            
-            if (isChatEvent && onChunk) {
-              if (eventType === 'message.delta') {
-                // 文本流事件：传递内容
-                const rawContent = eventData.content
-                if (rawContent && typeof rawContent === 'string') {
-                  await onChunk(rawContent, finalConversationId)
-                  fullContent += rawContent
-                }
-              } else if (eventType === 'message.done') {
-                // message.done 事件：给 handleServerEvent 处理 thinking 状态更新
-                // 注意：onChunk 对 message.done 不处理（chunk 为 undefined）
-                handleServerEvent(fullEvent as any)
-              } else {
-                // error 等其他事件：传递事件对象
-                await onChunk(undefined, finalConversationId, fullEvent as any)
-              }
-            } else if (!isChatEvent) {
-              // Task 相关事件：直接给 eventHandlers，不经过 onChunk
-              handleServerEvent(fullEvent as any)
-            }
-          }
-          
-        } catch (e) {
-          logger.debug('[chat.ts] 解析 SSE 数据失败，跳过:', msg.data.substring(0, 100))
-        }
-      },
-
-      onerror(err) {
-        if (err.name === 'AbortError' || ctrl.signal.aborted) {
-          logger.debug('[chat.ts] 请求已取消')
-          safeReject(new Error('请求已取消'))
-          return
-        }
-        
-        // 🔐 检测 401 错误，触发登录弹窗
-        const status = (err as any)?.status || (err as any)?.statusCode
-        if (status === 401) {
-          logger.warn('[chat.ts] SSE 收到 401 错误，触发登录弹窗')
-          showLoginDialog()
-          safeReject(err)
-          return
-        }
-        
-        // 🔥 4xx 客户端错误不应该重试（如 422 参数错误）
-        if (status >= 400 && status < 500) {
-          logger.error(`[chat.ts] SSE 收到 ${status} 客户端错误，停止重试:`, err)
-          safeReject(err)
-          return
-        }
-        
-        // 🔥 重连机制：检查重试次数（仅针对 5xx 或网络错误）
-        if (retryCount < SSE_MAX_RETRIES) {
-          retryCount++
-          const delay = SSE_RETRY_BASE_DELAY * Math.pow(2, retryCount - 1)
-          logger.warn(`[chat.ts] SSE 连接错误，${delay}ms 后第 ${retryCount} 次重连...`)
-          
-          // 返回以继续重连
-          return
-        }
-        
-        logger.error('[chat.ts] SSE 错误，超过最大重试次数:', err)
-        safeReject(new Error('连接异常，请重试'))
-      },
-
-      onclose() {
-        logger.debug('[chat.ts] SSE 连接已关闭')
-        if (!getIsCompleted()) {
-          // 🔥 宽容处理：连接关闭但未收到完成标志时，视为成功
-          // 后端可能直接关闭连接而不发送 [DONE]
-          safeResolve(fullContent)
-        }
-      },
-    })
+  return runSSEStream({
+    url,
+    requestBody: {
+      message: messageContent,
+      history: history.map(m => ({ role: m.role, content: m.content })),
+      agent_id: agentId,
+      conversation_id: conversationId,
+      stream: true,
+      message_id: assistantMessageId,
+    },
+    errorContext: 'chat.ts',
+    logPrefix: '',
+    conversationId: conversationId || undefined,
+    onChunk,
+    abortSignal,
   })
 }
 
@@ -406,157 +426,25 @@ export async function resumeChat(
       // P0 修复: 允许携带 Cookie
       credentials: 'include'
     })
-    return handleResponse<any>(response, '恢复执行失败')
+    const result = await handleResponse<unknown>(response, '恢复执行失败')
+    return typeof result === 'string' ? result : JSON.stringify(result)
   }
 
   // 🔥 流式响应：复用与 sendMessage 完全相同的 SSE 处理逻辑
   // 🔥 心跳检测：超时处理，防止 Promise 无限等待
-  return new Promise((resolve, reject) => {
-    let fullContent = ''
-    let retryCount = 0  // 🔥 P0 修复: 添加重连计数器
-
-    const ctrl = new AbortController()
-    
-    // 🔥 使用 SSE 工具函数处理心跳和 Promise 状态
-    const { safeResolve, safeReject, startHeartbeat, updateActivity, getIsCompleted } = createSSEPromiseHelpers(
-      resolve, 
-      reject, 
-      {
-        timeout: SSE_HEARTBEAT_TIMEOUT,
-        checkInterval: SSE_HEARTBEAT_CHECK_INTERVAL,
-        onTimeout: () => ctrl.abort(),
-        context: 'chat.ts resume'
-      }
-    )
-    
-    startHeartbeat()
-
-    if (abortSignal) {
-      abortSignal.addEventListener('abort', () => {
-        ctrl.abort()
-        safeReject(new Error('请求已取消'))
-      })
-    }
-
-    fetchEventSource(url, {
-      method: 'POST',
-      headers: {
-        ...getHeaders(),
-        'Accept': 'text/event-stream',
-      },
-      body: JSON.stringify({
-        thread_id: params.threadId,
-        plan_version: params.planVersion,
-        updated_plan: params.updatedPlan,
-        approved: params.approved
-      }),
-      signal: ctrl.signal,
-      openWhenHidden: true,
-
-      async onopen(response) {
-        handleSSEConnectionError(response, 'chat.ts resume')
-        // P0 修复: 连接成功后重置重连计数器和活动时间
-        retryCount = 0
-        updateActivity()
-        logger.debug('[chat.ts] Resume SSE 连接已建立，重置重连计数器')
-      },
-
-      async onmessage(msg: EventSourceMessage) {
-        updateActivity()  // 🔥 更新活动时间
-        
-        if (msg.data === '[DONE]') {
-          logger.debug('[chat.ts] Resume 收到 [DONE]，流式响应完成')
-          safeResolve(fullContent)
-          return
-        }
-
-        // 🔥 心跳事件处理
-        if (msg.data === '' || msg.event === 'heartbeat') {
-          return
-        }
-
-        try {
-          const eventType = msg.event
-          const eventData = JSON.parse(msg.data)
-          
-          if (eventType) {
-            const fullEvent = {
-              id: msg.id || crypto.randomUUID(),
-              timestamp: new Date().toISOString(),
-              type: eventType,
-              data: eventData
-            }
-            
-            // 🔥 事件分流：Chat 流式 vs Task 批处理
-            const isChatEvent = eventType.startsWith('message.') || eventType === 'error'
-            
-            if (isChatEvent && onChunk) {
-              if (eventType === 'message.delta') {
-                const content = eventData.content
-                if (content && typeof content === 'string') {
-                  await onChunk(content, params.threadId)
-                  fullContent += content
-                }
-              } else {
-                await onChunk(undefined, params.threadId, fullEvent as any)
-              }
-            } else if (!isChatEvent) {
-              // Task 相关事件：直接给 eventHandlers
-              handleServerEvent(fullEvent as any)
-            }
-            
-            // 🔥 检查是否是 message.done 事件，表示流结束
-            if (eventType === 'message.done') {
-              logger.debug('[chat.ts] Resume 收到 message.done，流结束')
-              safeResolve(fullContent)
-            }
-          }
-          
-        } catch (e) {
-          logger.debug('[chat.ts] Resume 解析 SSE 数据失败，跳过:', msg.data.substring(0, 100))
-        }
-      },
-
-      onerror(err) {
-        if (err.name === 'AbortError' || ctrl.signal.aborted) {
-          logger.debug('[chat.ts] Resume 请求已取消')
-          safeReject(new Error('请求已取消'))
-          return
-        }
-        
-        // 🔐 检测 401 错误，触发登录弹窗
-        const status = (err as any)?.status || (err as any)?.statusCode
-        if (status === 401) {
-          logger.warn('[chat.ts] Resume SSE 收到 401 错误，触发登录弹窗')
-          showLoginDialog()
-          safeReject(err)
-          return
-        }
-        
-        // 🔥 P0 修复: 添加重连机制
-        if (retryCount < SSE_MAX_RETRIES) {
-          retryCount++
-          const delay = SSE_RETRY_BASE_DELAY * Math.pow(2, retryCount - 1)
-          logger.warn(`[chat.ts] Resume SSE 连接错误，${delay}ms 后第 ${retryCount} 次重连...`)
-          
-          // 返回以继续重连
-          return
-        }
-        
-        logger.error('[chat.ts] Resume SSE 错误，超过最大重试次数:', err)
-        safeReject(new Error('连接异常，请重试'))
-      },
-
-      onclose() {
-        logger.debug('[chat.ts] Resume SSE 连接已关闭')
-        
-        // ✅ 宽容处理：当连接正常关闭但没有收到完成标志时，视为成功
-        // 原因：后端 LangGraph 完成 resume 操作后直接关闭连接，不会发送 [DONE] 标志
-        if (!getIsCompleted()) {
-          logger.warn('[chat.ts] Resume SSE 流正常关闭但未收到完成标志，视为成功')
-          safeResolve(fullContent)
-        }
-      },
-    })
+  return runSSEStream({
+    url,
+    requestBody: {
+      thread_id: params.threadId,
+      plan_version: params.planVersion,
+      updated_plan: params.updatedPlan,
+      approved: params.approved
+    },
+    errorContext: 'chat.ts resume',
+    logPrefix: 'Resume ',
+    conversationId: params.threadId,
+    onChunk,
+    abortSignal,
+    resolveOnMessageDone: true,
   })
 }

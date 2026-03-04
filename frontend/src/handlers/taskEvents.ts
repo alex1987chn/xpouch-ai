@@ -22,6 +22,7 @@ import type {
 import type { HandlerContext } from './types'
 import { getLastAssistantMessage } from './utils'
 import { logger } from '@/utils/logger'
+import type { ThinkingStep } from '@/types'
 
 /**
  * 处理 plan.created 事件
@@ -178,7 +179,7 @@ export function handleTaskStarted(
     const existingThinking = lastAi.message.metadata?.thinking || []
     // 检查是否已存在该 task 的 step
     const existingIndex = existingThinking.findIndex(
-      (s: any) => s.id === event.data.task_id
+      (s: ThinkingStep) => s.id === event.data.task_id
     )
 
     if (existingIndex < 0) {
@@ -256,7 +257,7 @@ export function handleTaskCompleted(
   if (lastAi?.message.metadata?.thinking) {
     const thinking = [...lastAi.message.metadata.thinking]
     const taskStepIndex = thinking.findIndex(
-      (s: any) => s.id === event.data.task_id
+      (s: ThinkingStep) => s.id === event.data.task_id
     )
 
     if (taskStepIndex >= 0) {

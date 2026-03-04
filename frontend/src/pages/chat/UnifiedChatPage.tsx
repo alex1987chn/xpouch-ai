@@ -38,21 +38,19 @@ export default function UnifiedChatPage() {
   const conversationId = pathConversationId || ''
   const agentId = searchParams.get('agentId') || 'default-chat'
   const normalizedAgentId = normalizeAgentId(agentId)
-  const isNewConversation = (location.state as { isNew?: boolean })?.isNew === true
-  const initialMessage = (location.state as { startWith?: string })?.startWith
+  type ChatRouteState = { isNew?: boolean; startWith?: string }
+  const routeState = (location.state as ChatRouteState | null) ?? null
+  const initialMessage = routeState?.startWith
 
   const {
     isStreaming,
     sendMessage,
     stopGeneration,
     loadConversation,
-    retry,
     regenerate,  // 🔥 用于重新生成指定 AI 消息的回复
     resumeExecution  // 🔥🔥🔥 v3.1.0 HITL
   } = useChat()
 
-  // 使用 ref 标记初始化状态，防止无限循环
-  const initializedRef = useRef(false)
   const conversationLoadedRef = useRef(false)
   const loadConversationRef = useRef(loadConversation)
   loadConversationRef.current = loadConversation
@@ -63,7 +61,18 @@ export default function UnifiedChatPage() {
   }, [conversationId])
 
   // 加载自定义 Agent 的状态
-  const [loadedAgent, setLoadedAgent] = useState<any>(null)
+  type LoadedAgent = {
+    id: string
+    name: string
+    description: string
+    category: string
+    isCustom: boolean
+    is_builtin: boolean
+    modelId: string
+    icon: null
+    systemPrompt: string
+  }
+  const [loadedAgent, setLoadedAgent] = useState<LoadedAgent | null>(null)
   const [isLoadingAgent, setIsLoadingAgent] = useState(false)
 
   // 获取登录状态
@@ -89,7 +98,7 @@ export default function UnifiedChatPage() {
       setIsLoadingAgent(true)
       try {
         const agents = await getAllAgents()
-        const agent = agents.find((a: any) => a.id === normalizedAgentId)
+        const agent = agents.find((a: { id: string }) => a.id === normalizedAgentId)
         if (agent) {
           const formattedAgent = {
             id: agent.id,
@@ -117,7 +126,7 @@ export default function UnifiedChatPage() {
     }
     
     loadAgent()
-  }, [normalizedAgentId, isAuthenticated])
+  }, [normalizedAgentId, isAuthenticated, t])
 
   // 计算当前智能体 (SDUI: 直接从 URL 获取 agentId，不依赖 Store)
   const currentAgent = useMemo(() => {
@@ -158,7 +167,7 @@ export default function UnifiedChatPage() {
         useChatStore.getState().setCurrentConversationId(conversationId)
       }
     }
-  }, [])
+  }, [conversationId])
 
   // 🔥🔥🔥 Server-Driven UI: 简化会话加载逻辑
   // 依赖：key={id} 强制重新挂载 + 导航时清空 Store
@@ -212,8 +221,11 @@ export default function UnifiedChatPage() {
 
     // 加载历史会话（仅从历史记录进入的场景）
     loadConversationRef.current(conversationId)
-      .catch((error: any) => {
-        if (error?.status === 404) {
+      .catch((error: unknown) => {
+        const status = (typeof error === 'object' && error !== null && 'status' in error)
+          ? (error as { status?: number }).status
+          : undefined
+        if (status === 404) {
           // 会话不存在，重置状态
           useChatStore.getState().setMessages([])
           useTaskStore.getState().resetAll()
@@ -230,7 +242,7 @@ export default function UnifiedChatPage() {
         localStorage.removeItem('xpouch_chat_draft')
       }
     }
-  }, [conversationId])
+  }, [conversationId, inputValue])
 
   // 处理首页传来的消息（新建会话）
   // 👈 使用 ref 锁住初始消息，确保只发送一次
