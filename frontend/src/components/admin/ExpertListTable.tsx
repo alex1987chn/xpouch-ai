@@ -13,6 +13,7 @@ import { Search, RefreshCw, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { SystemExpert } from '@/services/admin'
+import { useEffect, useRef } from 'react'
 
 interface ExpertListTableProps {
   experts: SystemExpert[]
@@ -38,6 +39,8 @@ export default function ExpertListTable({
   onCreateClick,
 }: ExpertListTableProps) {
   const { t } = useTranslation()
+  const listContainerRef = useRef<HTMLDivElement>(null)
+  const selectedItemRef = useRef<HTMLButtonElement>(null)
 
   // 过滤专家列表
   const filteredExperts = experts.filter(
@@ -45,6 +48,34 @@ export default function ExpertListTable({
       expert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       expert.expert_key.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  // 当选中项变化时，自动滚动到选中的专家
+  useEffect(() => {
+    if (selectedExpertKey && selectedItemRef.current && listContainerRef.current) {
+      selectedItemRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+    }
+  }, [selectedExpertKey])
+
+  // 当列表数据变化且选中的是最后一条时（新创建的专家），滚动到底部
+  useEffect(() => {
+    if (
+      filteredExperts.length > 0 &&
+      selectedExpertKey &&
+      listContainerRef.current
+    ) {
+      const lastExpert = filteredExperts[filteredExperts.length - 1]
+      // 如果选中的是最后一条（新创建的），滚动到底部
+      if (selectedExpertKey === lastExpert.expert_key) {
+        listContainerRef.current.scrollTo({
+          top: listContainerRef.current.scrollHeight,
+          behavior: 'smooth',
+        })
+      }
+    }
+  }, [filteredExperts, selectedExpertKey])
 
   return (
     <div className="w-80 flex-shrink-0 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-hard">
@@ -91,11 +122,12 @@ export default function ExpertListTable({
       </div>
 
       {/* 专家列表 */}
-      <div className="flex-1 overflow-y-auto bauhaus-scrollbar p-2">
+      <div ref={listContainerRef} className="flex-1 overflow-y-auto bauhaus-scrollbar p-2">
         <div className="space-y-1">
           {filteredExperts.map((expert) => (
             <button
               key={expert.id}
+              ref={expert.expert_key === selectedExpertKey ? selectedItemRef : undefined}
               onClick={() => onSelectExpert(expert.expert_key)}
               className={cn(
                 'w-full text-left px-3 py-3 border-2 transition-all relative group',

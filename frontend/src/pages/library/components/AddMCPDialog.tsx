@@ -17,9 +17,11 @@ import type { MCPTransport } from '@/types/mcp'
 interface AddMCPDialogProps {
   isOpen: boolean
   onClose: () => void
+  /** 创建成功回调，返回新服务器 ID */
+  onSuccess?: (serverId: string) => void
 }
 
-export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
+export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const createMutation = useCreateMCP()
@@ -58,12 +60,13 @@ export function AddMCPDialog({ isOpen, onClose }: AddMCPDialogProps) {
         transport: formData.transport
       },
       {
-        onSuccess: () => {
+        onSuccess: (newServer) => {
           toast({
             title: t('success') || 'Success',
             description: t('mcpServerAdded') || 'MCP server added successfully',
           })
           setFormData({ name: '', description: '', sse_url: '', transport: 'sse' })
+          onSuccess?.(newServer.id)
           onClose()
         },
         onError: (error: any) => {

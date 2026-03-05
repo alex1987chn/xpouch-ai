@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 交互体验优化（2026-03-05）
+
+**管理列表"创建-反馈"模式**：
+- **专家管理（ExpertAdminPage）**：创建专家后自动选中并滚动到底部（新项目在列表底部）
+  - 排序修复：从 UUID 排序改为 `created_at` 排序，确保新项目出现在底部
+  - 自动滚动：`useRef` + `scrollIntoView` 实现平滑滚动
+- **MCP 服务器列表（MCPList）**：创建服务器后自动展开并滚动到底部
+  - 新增 `onSuccess` 回调传递新服务器 ID
+  - `useEffect` 监听数据变化，自动展开并滚动
+
+**最佳实践**：管理后台列表的统一交互模式——创建 → 选中/展开 → 滚动到可视区域
+
 ### 配置管理重构（2026-03-05）
 
 **Pydantic Settings 配置管理（最佳实践）**：

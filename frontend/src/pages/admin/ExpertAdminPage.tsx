@@ -183,9 +183,13 @@ export default function ExpertAdminPage() {
       setIsCreating(true)
       try {
         await createExpert(createData)
-        queryClient.invalidateQueries({ queryKey: ['experts'] })
         setToast({ message: t('createSuccess'), type: 'success' })
         setIsCreateDialogOpen(false)
+        
+        // 等待列表刷新完成后再选中新专家
+        await queryClient.invalidateQueries({ queryKey: ['experts'] })
+        
+        // 选中新创建的专家（新专家会在列表底部）
         setSelectedExpertKey(createData.expert_key)
       } catch (error) {
         logger.error('Failed to create expert:', error)
