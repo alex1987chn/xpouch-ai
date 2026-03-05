@@ -1,21 +1,22 @@
 services:
   # PostgreSQL 数据库服务 (带 pgvector 插件，支持向量检索)
   db:
-    # ✅ 使用 pgvector 镜像，固定版本 0.8.2 修复 CVE-2026-3172
-    image: pgvector/pgvector:0.8.2-pg15
+    # 使用 pgvector 镜像，PG 18
+    image: pgvector/pgvector:pg18-bookworm
     container_name: xpouch-postgres
     restart: always
     # 生产默认不对外暴露数据库端口；如需本机调试，可临时恢复 "5432:5432" 映射
-    # ports:
-    #   - "5432:5432"
+    ports:
+      - "5432:5432"
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+      # PG 18+ 新格式：挂载到 /var/lib/postgresql（非 data 子目录）
+      - ./postgres_data:/var/lib/postgresql
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,20 +28,11 @@ services:
     build: ./backend
     container_name: xpouch-backend
     restart: always
-    # 变量来源说明（按最终生效优先级）:
-    # 1) environment（当前服务内显式声明，最高优先级）
-    # 2) env_file: ./backend/.env（业务密钥与后端运行配置）
-    # 3) 根目录 .env（仅供 compose 在解析 ${...} 时插值）
     env_file:
       - ./backend/.env
     environment:
       - PORT=3000
-      # 容器内后端数据库连接的最终来源（覆盖 backend/.env 里同名 DATABASE_URL）
-      # compose 会将服务名 db 解析为内部网络地址
       - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-
-    # 注：生产环境如需 gunicorn，请先在 Dockerfile 中确保 gunicorn 在 PATH 中
-    # 当前使用 Dockerfile 默认的 uvicorn 命令
     depends_on:
       db:
         condition: service_healthy
@@ -55,7 +47,6 @@ services:
     container_name: xpouch-frontend
     restart: always
     ports:
-      # 映射到宿主机的 8080 端口，配合宿主机 Nginx 使用
       - "8080:80"
     depends_on:
       - backend

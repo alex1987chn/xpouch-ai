@@ -13,7 +13,7 @@
 
 - Node.js >= 18.0.0
 - Python >= 3.13
-- PostgreSQL 15+
+- PostgreSQL 18+
 - pnpm >= 8.0.0
 
 ### 本地开发

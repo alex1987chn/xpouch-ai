@@ -17,21 +17,106 @@ from tools import ALL_TOOLS as BASE_TOOLS
 
 logger = logging.getLogger(__name__)
 
-TOOL_TIMEOUT_SECONDS = 60
-TOOL_RETRY_DELAYS = [0.8, 1.6]
+# ============================================================================
+# 超时配置
+# ============================================================================
+
+# 基础工具超时（本地工具，较快）
+BASE_TOOL_TIMEOUT = 30
+# MCP 工具超时（外部服务，可能需要更长时间）
+MCP_TOOL_TIMEOUT = 90
+# 最大重试次数
+MAX_RETRIES = 2
+# 重试延迟（指数退避）
+RETRY_DELAYS = [1.0, 2.0]
 
 
-def _is_transient_connect_error(err: Exception) -> bool:
-    """识别可重试的网络连接类错误。"""
+# ============================================================================
+# 错误分类
+# ============================================================================
+
+
+class ToolErrorCategory:
+    """工具错误分类"""
+
+    TRANSIENT_NETWORK = "transient_network"  # 临时网络错误，可重试
+    MCP_UNAVAILABLE = "mcp_unavailable"  # MCP 服务不可用
+    TIMEOUT = "timeout"  # 超时
+    UNKNOWN = "unknown"  # 未知错误
+
+
+def classify_tool_error(err: Exception) -> tuple[ToolErrorCategory, str]:
+    """
+    分类工具错误，返回错误类别和用户友好的消息。
+
+    Returns:
+        tuple: (错误类别, 用户友好消息)
+    """
+    # 超时错误（MCP 工具通常需要更长时间）
+    if isinstance(err, TimeoutError):
+        return (
+            ToolErrorCategory.TIMEOUT,
+            "工具调用超时。外部服务响应较慢，请稍后重试。",
+        )
+
+    # HTTP 连接错误
+    if isinstance(err, httpx.ConnectTimeout):
+        return (
+            ToolErrorCategory.TRANSIENT_NETWORK,
+            "连接外部服务超时（可能是高德地图 MCP 服务暂时不可用）。请稍后重试，或尝试不使用地图功能的查询。",
+        )
+
+    if isinstance(err, httpx.ConnectError):
+        return (
+            ToolErrorCategory.TRANSIENT_NETWORK,
+            "无法连接到外部服务。请检查网络或 MCP 服务器配置。",
+        )
+
+    if isinstance(err, httpx.TimeoutException):
+        return (
+            ToolErrorCategory.TIMEOUT,
+            "请求外部服务超时。服务可能暂时不可用，请稍后重试。",
+        )
+
+    # MCP 特定的错误（通过错误消息判断）
     err_str = str(err).lower()
+    if "mcp" in err_str or "sse" in err_str:
+        if "timeout" in err_str or "connect" in err_str:
+            return (
+                ToolErrorCategory.MCP_UNAVAILABLE,
+                "MCP 工具连接失败（外部地图服务暂时不可用）。已自动降级，请稍后重试或使用其他工具。",
+            )
+
+    # 默认可重试的网络错误
+    if any(
+        keyword in err_str
+        for keyword in [
+            "connection reset",
+            "connection aborted",
+            "temporarily unavailable",
+            "network is unreachable",
+        ]
+    ):
+        return (
+            ToolErrorCategory.TRANSIENT_NETWORK,
+            "网络连接不稳定，请稍后重试。",
+        )
+
+    # 其他未知错误
     return (
-        isinstance(err, httpx.ConnectError)
-        or "connecterror" in err_str
-        or "connection reset" in err_str
-        or "connection aborted" in err_str
-        or "temporarily unavailable" in err_str
-        or "network is unreachable" in err_str
+        ToolErrorCategory.UNKNOWN,
+        f"工具执行时出错: {str(err)[:150]}",
     )
+
+
+def is_retryable_error(err: Exception) -> bool:
+    """判断错误是否可重试"""
+    return isinstance(err, httpx.ConnectError | httpx.ConnectTimeout | httpx.TimeoutException)
+
+
+# ============================================================================
+# 错误处理
+# ============================================================================
 
 
 def _tool_messages_for_error(state: AgentState, content: str) -> list[ToolMessage]:
@@ -52,13 +137,22 @@ def _tool_messages_for_error(state: AgentState, content: str) -> list[ToolMessag
     return tool_messages
 
 
+# ============================================================================
+# 主函数
+# ============================================================================
+
+
 async def dynamic_tool_node(
     state: AgentState, config: RunnableConfig | None = None
 ) -> dict[str, Any]:
     """
     动态工具节点：合并基础工具与 MCP 工具，带超时与重试。
 
-    🔥 日志增强：记录工具调用详情，用于后续分析和优化
+    特性：
+    1. 智能超时：基础工具 30s，MCP 工具 90s
+    2. 分类错误处理：区分网络错误、MCP 错误、超时
+    3. 指数退避重试：1s, 2s 延迟
+    4. 友好降级：用户可理解的错误信息
     """
     mcp_tools = []
     if config and hasattr(config, "get"):
@@ -66,9 +160,12 @@ async def dynamic_tool_node(
 
     runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
     tool_executor = ToolNode(runtime_tools)
-    attempts = len(TOOL_RETRY_DELAYS) + 1
 
-    # 🔥 获取工具调用信息用于日志
+    # 如果有 MCP 工具，使用更长的超时
+    has_mcp_tools = len(mcp_tools) > 0
+    timeout_seconds = MCP_TOOL_TIMEOUT if has_mcp_tools else BASE_TOOL_TIMEOUT
+
+    # 获取工具调用信息用于日志
     messages = (
         state.get("messages", []) if isinstance(state, dict) else getattr(state, "messages", [])
     )
@@ -78,51 +175,55 @@ async def dynamic_tool_node(
             tool_calls = msg.tool_calls
             break
 
-    # 🔥 记录工具调用请求
+    # 记录工具调用请求
     for tc in tool_calls:
         tool_name = tc.get("name", "unknown")
         tool_args = tc.get("args", {})
         logger.info(
-            "[ToolNode] 🔧 工具调用请求 | 工具: %s | 参数: %s",
+            "[ToolNode] 🔧 工具调用请求 | 工具: %s | 类型: %s | 参数: %s",
             tool_name,
-            str(tool_args)[:200],  # 截断避免日志过长
+            "MCP" if has_mcp_tools else "BASE",
+            str(tool_args)[:200],
         )
 
-    for attempt in range(1, attempts + 1):
+    # 执行工具调用（带重试）
+    for attempt in range(1, MAX_RETRIES + 1):
         try:
-            async with asyncio.timeout(TOOL_TIMEOUT_SECONDS):
+            async with asyncio.timeout(timeout_seconds):
                 result = await tool_executor.ainvoke(state, config)
-                # 🔥 记录工具调用成功
-                for tc in tool_calls:
-                    logger.info("[ToolNode] ✅ 工具调用成功 | 工具: %s", tc.get("name", "unknown"))
-                return result
-        except TimeoutError:
-            logger.error("[ToolNode] 工具调用超时 (%ss)", TOOL_TIMEOUT_SECONDS)
-            return {
-                "messages": _tool_messages_for_error(
-                    state,
-                    "工具调用超时 (60秒)。该服务可能暂时不可用或响应过慢，请稍后重试或尝试其他工具。",
-                )
-            }
+
+            # 记录成功
+            for tc in tool_calls:
+                logger.info("[ToolNode] ✅ 工具调用成功 | 工具: %s", tc.get("name", "unknown"))
+            return result
+
         except Exception as err:
-            is_last = attempt >= attempts
-            if _is_transient_connect_error(err) and not is_last:
-                delay = TOOL_RETRY_DELAYS[attempt - 1]
+            is_last_attempt = attempt >= MAX_RETRIES
+            error_category, user_msg = classify_tool_error(err)
+
+            # 可重试错误且不是最后一次
+            if is_retryable_error(err) and not is_last_attempt:
+                delay = RETRY_DELAYS[attempt - 1]
                 logger.warning(
-                    "[ToolNode] MCP 工具连接失败，准备重试 (%s/%s), %.1fs 后重试: %s",
+                    "[ToolNode] 工具调用失败，准备重试 (%s/%s), %.1fs 后重试 | 类别: %s | 错误: %s",
                     attempt,
-                    attempts,
+                    MAX_RETRIES,
                     delay,
+                    error_category,
                     err,
                 )
                 await asyncio.sleep(delay)
                 continue
-            logger.error("[ToolNode] 工具调用失败: %s", err)
-            return {
-                "messages": _tool_messages_for_error(
-                    state,
-                    f"该工具执行时出错。{str(err)[:200]}",
-                )
-            }
+
+            # 记录最终失败
+            logger.error(
+                "[ToolNode] 工具调用最终失败 | 工具: %s | 类别: %s | 错误: %s",
+                tool_calls[0].get("name", "unknown") if tool_calls else "unknown",
+                error_category,
+                err,
+            )
+
+            # 返回降级消息
+            return {"messages": _tool_messages_for_error(state, user_msg)}
 
     return {"messages": []}
