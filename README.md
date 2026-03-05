@@ -282,7 +282,7 @@ docker-compose up -d --build
 | **后端框架** | FastAPI 0.135 + Python 3.13 |
 | **ORM** | SQLModel 0.0.37 (SQLAlchemy 2.0 + Pydantic v2) |
 | **AI 框架** | LangGraph + LangChain |
-| **数据库** | PostgreSQL 15 + pgvector |
+| **数据库** | PostgreSQL 18 + pgvector |
 | **部署** | Docker + Docker Compose |
 
 ---

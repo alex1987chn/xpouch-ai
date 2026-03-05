@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 基础设施升级（2026-03-05）
+
+**PostgreSQL 15 → 18 升级**：
+- 升级 PostgreSQL 15 至 18.2，使用 `pgvector/pgvector:pg18-bookworm` 镜像
+- 更新 docker-compose.yml 数据卷挂载路径（PG 18+ 新格式：`/var/lib/postgresql`）
+- 更新文档：README.md 和 CONTRIBUTING.md 反映 PG18 要求
+- deploy.sh 部署脚本自动检测并处理 PG15→18 升级（备份→清理→恢复）
+
 ### 专家管理增强（2026-03-05）
 
 **动态工具列表与使用指南**：

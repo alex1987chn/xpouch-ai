@@ -16,7 +16,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:17-alpine
+        image: pgvector/pgvector:pg18-bookworm
         env:
           POSTGRES_USER: xpouch_test
           POSTGRES_PASSWORD: test_pass
