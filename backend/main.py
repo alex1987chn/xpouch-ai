@@ -117,7 +117,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="XPouch AI Backend",
     description="Python + SQLModel + LangGraph backend",
-    version="2.0.0",
+    version="3.2.5",
     lifespan=lifespan
 )
 
