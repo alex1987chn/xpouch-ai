@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 
 MIGRATION_DIR = Path(__file__).resolve().parents[1] / "migrations" / "versions"
-LEGACY_REVISIONS = {"001", "002", "003", "004", "005"}
+LEGACY_REVISIONS = {"001", "002", "003", "004", "005", "006"}
 TIMESTAMP_REVISION_PATTERN = re.compile(r"^\d{8}_\d{6}$")
 
 
