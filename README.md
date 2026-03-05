@@ -12,7 +12,7 @@
 
 <img src="https://github.com/user-attachments/assets/c4554212-e24e-47dd-a61d-8df4f69ce233" alt="XPouch AI Screenshot" width="800">
 
-**下一代 LangGraph 智能协作平台 v3.2.5** — 引入 HITL 人机回环、MCP 生态、Streamable HTTP 传输、会话历史分页加载、批量删除与工业级交互体验。近期：Models 架构拆分（ORM/DTO 分离）、SQLAlchemy 2.0 兼容、专家乐观锁、HITL 恢复幂等、会话后台清理、数据库迁移与索引统一、husky/lint-staged 门禁。
+**下一代 LangGraph 智能协作平台 v3.2.5** — 引入 HITL 人机回环、MCP 生态、Streamable HTTP 传输、会话历史分页加载、批量删除与工业级交互体验。近期：Pydantic Settings 配置管理（类型安全、自动验证）、Models 架构拆分（ORM/DTO 分离）、SQLAlchemy 2.0 兼容、专家乐观锁、HITL 恢复幂等、会话后台清理、数据库迁移与索引统一、husky/lint-staged 门禁。
 
 [🚀 在线演示](https://xpouch.ai) · [🐛 问题反馈](https://github.com/alex1987chn/xpouch-ai/issues) · [💬 讨论](https://github.com/alex1987chn/xpouch-ai/discussions)
 

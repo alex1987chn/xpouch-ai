@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 配置管理重构（2026-03-05）
+
+**Pydantic Settings 配置管理（最佳实践）**：
+- 引入 `pydantic-settings` 替代分散的 `os.getenv` 调用
+- 集中式配置管理：`backend/config.py` 统一所有配置项
+- 类型安全：自动类型转换和验证（int/float/str/SecretStr）
+- 敏感保护：`SecretStr` 自动脱敏，日志不泄露 API Key
+- 环境感知：`is_production` / `is_development` 属性
+- 便捷方法：`get_llm_key()` / `get_jwt_secret()` / `init_langsmith()` / `validate()`
+- 完全兼容：现有 `.env` 文件无需修改，新增配置项有合理默认值
+- Ruff 代码规范：`main.py` 添加至 `per-file-ignores`（E402 导入位置规则）
+
+**影响范围**：
+- 修改：`backend/config.py`（完全重写）、`main.py`、`agents/graph_builder.py`
+- 修改：`schemas/common.py`、`services/chat/stream_service.py`、`pyproject.toml`
+- 文档：`backend/.env.example` 添加新配置项说明
+
 ### 架构重构（2026-03-04～03-05）
 
 **Models 完全拆分**：
