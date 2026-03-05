@@ -25,7 +25,7 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import BaseMessage
 from sqlmodel import Session, select
 
-from config import FORCE_HEARTBEAT_INTERVAL, HEARTBEAT_INTERVAL, STREAM_TIMEOUT
+from config import settings
 from models import CustomAgent, TaskSession, Thread
 from providers_config import get_model_config, get_provider_api_key, get_provider_config
 from services.mcp_tools_service import mcp_tools_service
@@ -126,7 +126,7 @@ class StreamService:
                     try:
                         return await asyncio.wait_for(
                             iterator.__anext__(),
-                            timeout=HEARTBEAT_INTERVAL
+                            timeout=settings.heartbeat_interval
                         )
                     except StopAsyncIteration:
                         return None
@@ -153,7 +153,7 @@ class StreamService:
                     # 强制心跳
                     current_time = datetime.now()
                     time_since_last = (current_time - last_heartbeat_time).total_seconds()
-                    if time_since_last >= FORCE_HEARTBEAT_INTERVAL:
+                    if time_since_last >= settings.force_heartbeat_interval:
                         yield self._build_heartbeat_event()
                         last_heartbeat_time = current_time
 
@@ -788,7 +788,7 @@ class StreamService:
             # 消费并 yield 事件
             while True:
                 try:
-                    item = await asyncio.wait_for(sse_queue.get(), timeout=STREAM_TIMEOUT)
+                    item = await asyncio.wait_for(sse_queue.get(), timeout=settings.stream_timeout)
                     if item.get("type") == "done":
                         break
                     if item.get("type") == "sse" and item.get("event"):

@@ -12,15 +12,14 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
 from agents.state import AgentState
-from config import get_langsmith_config, init_langchain_tracing
+from config import settings
 
 logger = logging.getLogger(__name__)
 
 env_path = pathlib.Path(__file__).resolve().parents[1] / ".env"
 load_dotenv(dotenv_path=env_path)
-langsmith_config = get_langsmith_config()
-if langsmith_config["enabled"]:
-    init_langchain_tracing(langsmith_config)
+if settings.langchain_tracing_v2:
+    settings.init_langsmith()
 
 
 # ---------------------------------------------------------------------------

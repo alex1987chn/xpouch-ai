@@ -16,6 +16,11 @@ class LangSmithConfig(BaseModel):
     @classmethod
     def from_env(cls) -> "LangSmithConfig":
         """从环境变量加载配置"""
-        from config import get_langsmith_config
+        from config import settings
 
-        return get_langsmith_config()
+        return {
+            "enabled": settings.langchain_tracing_v2,
+            "api_key": settings.langchain_api_key.get_secret_value() if settings.langchain_api_key else None,
+            "project_name": settings.langchain_project,
+            "tracing_v2": settings.langchain_tracing_v2,
+        }
