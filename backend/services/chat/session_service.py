@@ -262,6 +262,8 @@ class ChatSessionService:
 
     def _build_simple_thread_response(self, thread: Thread) -> dict:
         """构建简单模式的线程响应"""
+        # 🔥 后端兜底排序：确保消息按时间戳升序排列
+        sorted_messages = sorted(thread.messages, key=lambda m: m.timestamp or datetime.min)
         return {
             "id": thread.id,
             "title": thread.title,
@@ -279,7 +281,7 @@ class ChatSessionService:
                     "timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
                     "extra_data": msg.extra_data,
                 }
-                for msg in thread.messages
+                for msg in sorted_messages
             ],
         }
 

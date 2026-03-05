@@ -114,20 +114,27 @@ export function useSessionRestore(
       // 从服务端获取会话详情
       const conversation = await getConversation(conversationId)
       
+      // 🔥 恢复消息（无论简单模式还是复杂模式）
+      if (conversation.messages && conversation.messages.length > 0) {
+        // 🔥🔥🔥 前端暴力排序：确保消息按 timestamp 升序排列
+        const sortedMessages = [...conversation.messages].sort((a, b) => {
+          const timeA = new Date(a.timestamp || 0).getTime()
+          const timeB = new Date(b.timestamp || 0).getTime()
+          return timeA - timeB
+        })
+        setMessages(sortedMessages)
+      }
+      setCurrentConversationId(conversationId)
+      
       // 检查是否是复杂模式（有 task_session）
       if (!conversation.task_session && !conversation.task_session_id) {
+        // 简单模式：只恢复消息即可
         setIsRestored(true)
         setIsRestoring(false)
         return true
       }
-
-      // 简化：只恢复消息，tasks 由 persist 恢复
-      if (conversation.messages && conversation.messages.length > 0) {
-        setMessages(conversation.messages)
-      }
-      setCurrentConversationId(conversationId)
       
-      // 恢复任务状态（智能合并）
+      // 复杂模式：恢复任务状态（智能合并）
       const { task_session } = conversation
       if (task_session?.sub_tasks) {
         const subTasks = task_session.sub_tasks || []

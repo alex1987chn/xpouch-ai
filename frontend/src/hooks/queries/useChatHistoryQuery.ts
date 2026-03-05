@@ -184,6 +184,7 @@ export function useRecentConversationsQuery(limit: number = 20, options: { enabl
     },
     staleTime: CACHE_TIMES.CHAT_HISTORY.staleTime,
     gcTime: CACHE_TIMES.CHAT_HISTORY.gcTime,
+    refetchOnMount: 'always',
     enabled,
   })
 

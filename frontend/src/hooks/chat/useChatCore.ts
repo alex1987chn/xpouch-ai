@@ -187,6 +187,10 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         if (conversationId && conversationId !== actualConversationId) {
           actualConversationId = conversationId
           setCurrentConversationId(conversationId)
+          // 🔥 触发新会话回调，让上层组件更新 URL
+          if (onNewConversation) {
+            onNewConversation(conversationId, normalizedAgentId)
+          }
         }
 
         if (chunk) {

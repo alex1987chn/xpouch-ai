@@ -136,8 +136,14 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
     if (!dateString) return '-'
 
     try {
-      // 使用 parseISO 正确解析 ISO 8601 格式时间字符串
-      const date = parseISO(dateString)
+      // 🔥 修复时区问题：后端返回 UTC 时间，需要正确解析
+      let date: Date
+      if (dateString.endsWith('Z')) {
+        date = parseISO(dateString)
+      } else {
+        // 无时区标记，按 UTC 解析
+        date = new Date(dateString + 'Z')
+      }
       const now = new Date()
 
       // 验证日期是否有效

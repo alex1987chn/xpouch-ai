@@ -99,7 +99,18 @@ export default function BauhausSidebar({
   const formatRelativeTime = (dateString: string | undefined): string => {
     if (!dateString) return '-'
     try {
-      const date = parseISO(dateString)
+      // 🔥 修复时区问题：后端返回的是 UTC 时间（无时区标记），需要明确按 UTC 解析
+      // ISO 8601 格式如 "2024-01-15T10:30:00" 没有 'Z' 后缀，parseISO 会当作本地时间
+      // 我们统一按 UTC 解析，然后转换为本地时间显示
+      let date: Date
+      if (dateString.endsWith('Z')) {
+        // 已经有 Z 后缀，直接解析
+        date = parseISO(dateString)
+      } else {
+        // 没有时区标记，假设是 UTC 时间
+        date = new Date(dateString + 'Z')
+      }
+      
       const now = new Date()
       const diffMs = now.getTime() - date.getTime()
       const diffSec = Math.floor(diffMs / 1000)
