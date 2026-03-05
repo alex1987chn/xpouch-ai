@@ -57,6 +57,8 @@ async def dynamic_tool_node(
 ) -> dict[str, Any]:
     """
     动态工具节点：合并基础工具与 MCP 工具，带超时与重试。
+
+    🔥 日志增强：记录工具调用详情，用于后续分析和优化
     """
     mcp_tools = []
     if config and hasattr(config, "get"):
@@ -66,10 +68,34 @@ async def dynamic_tool_node(
     tool_executor = ToolNode(runtime_tools)
     attempts = len(TOOL_RETRY_DELAYS) + 1
 
+    # 🔥 获取工具调用信息用于日志
+    messages = (
+        state.get("messages", []) if isinstance(state, dict) else getattr(state, "messages", [])
+    )
+    tool_calls = []
+    for msg in reversed(messages):
+        if hasattr(msg, "tool_calls") and msg.tool_calls:
+            tool_calls = msg.tool_calls
+            break
+
+    # 🔥 记录工具调用请求
+    for tc in tool_calls:
+        tool_name = tc.get("name", "unknown")
+        tool_args = tc.get("args", {})
+        logger.info(
+            "[ToolNode] 🔧 工具调用请求 | 工具: %s | 参数: %s",
+            tool_name,
+            str(tool_args)[:200],  # 截断避免日志过长
+        )
+
     for attempt in range(1, attempts + 1):
         try:
             async with asyncio.timeout(TOOL_TIMEOUT_SECONDS):
-                return await tool_executor.ainvoke(state, config)
+                result = await tool_executor.ainvoke(state, config)
+                # 🔥 记录工具调用成功
+                for tc in tool_calls:
+                    logger.info("[ToolNode] ✅ 工具调用成功 | 工具: %s", tc.get("name", "unknown"))
+                return result
         except TimeoutError:
             logger.error("[ToolNode] 工具调用超时 (%ss)", TOOL_TIMEOUT_SECONDS)
             return {

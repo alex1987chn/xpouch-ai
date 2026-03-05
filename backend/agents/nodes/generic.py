@@ -461,7 +461,19 @@ async def generic_worker_node(
         if has_tool_calls:
             logger.info(f"[GenericWorker] 🔧 LLM 返回了工具调用！数量: {len(response.tool_calls)}")
             for tool_call in response.tool_calls:
-                logger.info(f"[GenericWorker]   - 工具: {tool_call.get('name', 'unknown')}")
+                tool_name = tool_call.get("name", "unknown")
+                tool_args = tool_call.get("args", {})
+                logger.info(
+                    f"[GenericWorker]   - 工具: {tool_name} | 专家: {expert_type} | 任务: {task_id}"
+                )
+                # 🔥 详细的工具调用日志（用于分析）
+                logger.info(
+                    "[ToolUsage] expert=%s tool=%s task_id=%s args=%s",
+                    expert_type,
+                    tool_name,
+                    task_id,
+                    str(tool_args)[:200],
+                )
             # 🔥🔥 关键：返回 messages 让 ToolNode 处理工具调用
             # 此时不生成 task.completed 事件，因为任务还没完成
             return {
@@ -730,7 +742,7 @@ def _format_input_data(data: dict) -> str:
 
     lines = []
     for key, value in data.items():
-        if isinstance(value, (list, dict)):
+        if isinstance(value, list | dict):
             lines.append(f"- {key}: {value}")
         else:
             lines.append(f"- {key}: {value}")

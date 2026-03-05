@@ -85,6 +85,20 @@ export const zh: Record<string, string> = {
   deleteSuccess: '删除成功',
   deleteFailed: '删除失败',
   cannotDeleteSystemExpert: '系统内置专家不可删除',
+
+  // Tool Tips (v3.1)
+  showToolTips: '工具使用指南',
+  hideToolTips: '收起指南',
+  toolTipsDescription: '专家可以调用以下工具来增强能力，建议在 System Prompt 中指导何时使用',
+  availableTools: '可用工具',
+  toolSearchDesc: '联网搜索，获取实时信息（新闻、股价、天气等）',
+  toolReadWebpageDesc: '读取网页内容，获取 URL 链接的详细内容',
+  toolCalculatorDesc: '数学计算，确保复杂计算准确',
+  toolTimeDesc: '获取当前时间，处理时间相关问题',
+  toolMcpDesc: 'MCP 工具：管理员配置的自定义工具（如地图、文件系统等）',
+  toolUsageExample: '使用示例',
+  loadingTools: '加载工具列表中...',
+  noToolsAvailable: '暂无可用工具',
 }
 
 export const en: Record<string, string> = {
@@ -170,6 +184,20 @@ export const en: Record<string, string> = {
   deleteSuccess: 'Deleted successfully',
   deleteFailed: 'Failed to delete',
   cannotDeleteSystemExpert: 'System built-in experts cannot be deleted',
+
+  // Tool Tips (v3.1)
+  showToolTips: 'Tool Usage Guide',
+  hideToolTips: 'Hide Guide',
+  toolTipsDescription: 'Experts can use these tools to enhance capabilities. Guide when to use them in System Prompt',
+  availableTools: 'Available Tools',
+  toolSearchDesc: 'Web search for real-time info (news, stock prices, weather)',
+  toolReadWebpageDesc: 'Read webpage content from URL links',
+  toolCalculatorDesc: 'Math calculations for accuracy',
+  toolTimeDesc: 'Get current time for time-related queries',
+  toolMcpDesc: 'MCP Tools: Admin-configured custom tools (maps, file system, etc.)',
+  toolUsageExample: 'Usage Example',
+  loadingTools: 'Loading tools...',
+  noToolsAvailable: 'No tools available',
 }
 
 export const ja: Record<string, string> = {
@@ -255,4 +283,18 @@ export const ja: Record<string, string> = {
   deleteSuccess: '削除しました',
   deleteFailed: '削除に失敗しました',
   cannotDeleteSystemExpert: 'システム組み込みのエキスパートは削除できません',
+
+  // Tool Tips (v3.1)
+  showToolTips: 'ツール使用ガイド',
+  hideToolTips: 'ガイドを閉じる',
+  toolTipsDescription: 'エキスパートは以下のツールを使用して能力を強化できます。System Promptで使用タイミングを指導してください',
+  availableTools: '利用可能なツール',
+  toolSearchDesc: 'ウェブ検索、リアルタイム情報取得（ニュース、株価、天気など）',
+  toolReadWebpageDesc: 'URLリンクのウェブページコンテンツを読み取る',
+  toolCalculatorDesc: '数学計算、複雑な計算の正確性を確保',
+  toolTimeDesc: '現在時刻取得、時間関連の問題処理',
+  toolMcpDesc: 'MCPツール：管理者設定のカスタムツール（地図、ファイルシステムなど）',
+  toolUsageExample: '使用例',
+  loadingTools: 'ツールリスト読み込み中...',
+  noToolsAvailable: '利用可能なツールがありません',
 }
