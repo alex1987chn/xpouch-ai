@@ -366,6 +366,18 @@ cd frontend && pnpm dev
   ```
 - **代码风格**: ESLint + Prettier (前端), Ruff (后端)
 - **类型安全**: TypeScript 严格模式
+- **Pre-commit Hooks**: 自动代码检查（推荐安装）
+  ```bash
+  # 安装 pre-commit hooks（只需一次）
+  pip install pre-commit
+  pre-commit install
+  
+  # 或者使用 Just
+  just install-hooks
+  
+  # 手动运行检查
+  just pre-commit-check
+  ```
 
 ---
 

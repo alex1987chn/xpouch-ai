@@ -68,6 +68,25 @@ lint: lint-backend lint-frontend
 lint-fix: lint-backend-fix lint-frontend-fix
 
 # =============================================================================
+# Pre-commit Hooks（本地提交前检查）
+# =============================================================================
+
+# 安装 pre-commit hooks
+install-hooks:
+    pip install pre-commit
+    pre-commit install
+    @echo "Pre-commit hooks installed!"
+
+# 手动运行 pre-commit 检查所有文件
+pre-commit-check:
+    pre-commit run --all-files
+
+# 跳过 pre-commit 提交（紧急情况下使用）
+commit-no-verify msg:
+    git add -A
+    git commit -m "{{msg}}" --no-verify
+
+# =============================================================================
 # 数据库
 # =============================================================================
 

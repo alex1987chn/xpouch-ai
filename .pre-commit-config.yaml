@@ -1,0 +1,46 @@
+# XPouch AI Pre-commit Hooks
+# 安装: pip install pre-commit && pre-commit install
+# 手动运行: pre-commit run --all-files
+
+repos:
+  # Ruff - Python 代码检查和格式化
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.9
+    hooks:
+      # 代码检查并自动修复
+      - id: ruff
+        args: [--fix]
+        files: ^backend/.*\.py$
+      # 代码格式化
+      - id: ruff-format
+        files: ^backend/.*\.py$
+
+  # ESLint - 前端代码检查
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint (Frontend)
+        entry: pnpm --prefix frontend exec eslint --cache
+        language: system
+        files: ^frontend/.*\.(js|jsx|ts|tsx)$
+        pass_filenames: true
+
+  # 通用检查
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # 检查合并冲突标记
+      - id: check-merge-conflict
+      # 检查 YAML 语法
+      - id: check-yaml
+      # 检查 JSON 语法
+      - id: check-json
+      # 去除行尾空格
+      - id: trailing-whitespace
+        exclude: ^(frontend/|backend/)
+      # 确保文件末尾有空行
+      - id: end-of-file-fixer
+        exclude: ^(frontend/|backend/)
+      # 检查超大文件
+      - id: check-added-large-files
+        args: ['--maxkb=500']
