@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 专家管理增强（2026-03-05）
+
+**动态工具列表与使用指南**：
+- 新增 `/api/tools/available` 端点，动态返回可用工具列表（基础工具 + MCP 工具）
+- 前端工具使用指南：新建/编辑专家时显示可用工具列表及使用示例
+- 支持国际化：中英日三语翻译（`loadingTools`, `noToolsAvailable`, `toolTipsDescription` 等）
+- MCP 工具实时同步：管理员添加 MCP 服务器后，工具列表自动更新
+
+**工具调用日志增强**：
+- `generic.py`：记录专家类型、任务 ID、工具名称和参数
+- `tool_runtime.py`：记录工具调用请求和成功状态
+- 结构化日志 `[ToolUsage]` 便于后续分析和成本统计
+
+**相关文件**：
+- 后端：`api/tools.py`, `agents/nodes/generic.py`, `agents/tool_runtime.py`
+- 前端：`ExpertFormDialog.tsx`, `ExpertEditor.tsx`, `services/admin.ts`
+- 翻译：`i18n/translations/admin.ts`
+
 ### 交互体验优化（2026-03-05）
 
 **管理列表"创建-反馈"模式**：
@@ -84,6 +102,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **开发体验与门禁**:
 - Husky + lint-staged：提交前自动跑前端 lint
 - Node 版本要求提升至 ≥24.14（与 package.json engines 一致）
+- 修复 ESLint pre-commit hook：`pass_filenames: true` 改为只检查修改的文件，避免全项目既有错误阻塞提交
 
 **影响面与升级注意**:
 - 新迁移需在部署时执行 `alembic upgrade head`
