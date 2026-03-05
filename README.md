@@ -12,7 +12,7 @@
 
 <img src="https://github.com/user-attachments/assets/c4554212-e24e-47dd-a61d-8df4f69ce233" alt="XPouch AI Screenshot" width="800">
 
-**下一代 LangGraph 智能协作平台 v3.2.4** — 引入 HITL 人机回环、MCP 生态、Streamable HTTP 传输、会话历史分页加载、批量删除与工业级交互体验。近期：HITL 恢复幂等、会话后台清理、数据库迁移与索引统一、husky/lint-staged 门禁。
+**下一代 LangGraph 智能协作平台 v3.2.5** — 引入 HITL 人机回环、MCP 生态、Streamable HTTP 传输、会话历史分页加载、批量删除与工业级交互体验。近期：Models 架构拆分（ORM/DTO 分离）、SQLAlchemy 2.0 兼容、专家乐观锁、HITL 恢复幂等、会话后台清理、数据库迁移与索引统一、husky/lint-staged 门禁。
 
 [🚀 在线演示](https://xpouch.ai) · [🐛 问题反馈](https://github.com/alex1987chn/xpouch-ai/issues) · [💬 讨论](https://github.com/alex1987chn/xpouch-ai/discussions)
 
@@ -275,8 +275,8 @@ docker-compose up -d --build
 | **服务端状态** | TanStack Query 5 (React Query) |
 | **UI 组件** | shadcn/ui + Radix UI + Tailwind CSS 3 |
 | **动画** | Framer Motion 12 |
-| **后端框架** | FastAPI + Python 3.13 |
-| **ORM** | SQLModel (SQLAlchemy + Pydantic) |
+| **后端框架** | FastAPI 0.135 + Python 3.13 |
+| **ORM** | SQLModel 0.0.37 (SQLAlchemy 2.0 + Pydantic v2) |
 | **AI 框架** | LangGraph + LangChain |
 | **数据库** | PostgreSQL 15 + pgvector |
 | **部署** | Docker + Docker Compose |
@@ -311,9 +311,19 @@ xpouch-ai/
 │   │   └── mcp.py          # MCP Server 管理 API ⭐
 │   ├── services/           # 业务逻辑层 ⭐
 │   │   └── invoke_service.py  # 双模调用服务 ⭐
+│   ├── schemas/            # Pydantic DTO 模型 ⭐ NEW
+│   │   ├── user.py         # 用户相关 DTO
+│   │   ├── conversation.py # 对话相关 DTO
+│   │   ├── task.py         # 任务相关 DTO
+│   │   └── custom_agent.py # 智能体 DTO
+│   ├── models/             # SQLModel ORM 模型
+│   │   ├── domain/         # ORM 表模型（按领域拆分）⭐ NEW
+│   │   │   ├── user.py
+│   │   │   ├── conversation.py
+│   │   │   ├── task.py
+│   │   │   └── expert.py
+│   │   └── enums.py        # 枚举定义 ⭐ NEW
 │   ├── tools/              # Function Calling 工具
-│   ├── models/             # SQLModel 数据模型
-│   │   └── mcp.py          # MCP Server 模型 ⭐
 │   └── Dockerfile
 ├── docker-compose.yml
 └── CHANGELOG.md            # 更新日志
@@ -392,6 +402,7 @@ cd frontend && pnpm dev
 
 - [x] **MCP 生态支持** ✅ —— 接入外部工具服务，动态扩展 AI 能力
 - [x] **代码审查修复** ✅ 
+- [x] **Models 架构拆分** ✅ 
 - [x] **自动 Token 刷新** ✅ 
 - [ ] 多租户支持
 - [ ] 插件系统

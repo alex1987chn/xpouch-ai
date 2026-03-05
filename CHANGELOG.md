@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### 稳定性与运维（2026-03-03～03-04）
+### 架构重构（2026-03-04～03-05）
+
+**Models 完全拆分**：
+- ORM 模型迁移至 `backend/models/domain/`（user, conversation, task, expert 按领域组织）
+- Pydantic DTO 独立为 `backend/schemas/`（请求/响应模型分离）
+- 枚举集中至 `backend/models/enums.py`，统一 `_enum_values` 工厂
+- 消除 `models/__init__.py` 臃肿问题，职责边界清晰
+
+**SQLAlchemy 2.0 兼容性修复**：
+- 移除 `__future__.annotations`（与 SQLAlchemy 2.0 不兼容）
+- 修复 `func.now()` 调用（添加括号）
+- 升级 SQLModel 0.0.31 → **0.0.37**，SQLAlchemy 2.0.45 → **2.0.48**
+- 升级 FastAPI 0.128 → **0.135.1**，Starlette 0.52.1（安全修复）
+
+**代码规范（Ruff 清理）**：
+- 修复 ~810 处 lint 警告（UP006/007、F401、I001、W291/293 等）
+- 统一现代 Python 类型注解风格（`List[X]` → `list[X]`，`Optional[X]` → `X | None`）
+
+### 专家管理优化（2026-03-04）
+
+**缓存一致性修复（P0）**：
+- `refresh_cache()` 现在统一清除三级缓存：全局缓存、Commander 本地缓存、GenericWorker 本地缓存
+- 解决管理员更新专家配置后，LangGraph 执行仍读取旧缓存的问题
+
+**乐观锁并发控制（P1）**：
+- 新增 `SystemExpert.config_version` 字段（迁移 006）
+- 更新专家时校验 `expected_version`，不匹配返回 409 Conflict
+- 前端提示用户"配置已被修改，请刷新后重试"
+- 使用 SQLAlchemy Core `update()` 实现数据库层原子递增
+
+### 稳定性与运维（2026-03-03～03-05）
 
 **HITL 与恢复**:
 - HITL 恢复流程幂等性加固，避免重复提交导致的状态错乱
