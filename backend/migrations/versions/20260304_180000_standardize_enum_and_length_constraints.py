@@ -54,7 +54,11 @@ def _alter_to_enum_with_fallback(
     )
 
     # 恢复默认值
-    op.execute(sa.text(f'ALTER TABLE "{table_name}" ALTER COLUMN {column_name} SET DEFAULT \'{fallback_value}\'::{enum_name}'))
+    op.execute(
+        sa.text(
+            f"ALTER TABLE \"{table_name}\" ALTER COLUMN {column_name} SET DEFAULT '{fallback_value}'::{enum_name}"
+        )
+    )
 
 
 def upgrade() -> None:
@@ -190,14 +194,22 @@ def downgrade() -> None:
 
     # 再将 ENUM 列回退为 VARCHAR
     op.execute(sa.text('ALTER TABLE "user" ALTER COLUMN role TYPE VARCHAR USING role::text'))
-    op.execute(sa.text('ALTER TABLE "thread" ALTER COLUMN agent_type TYPE VARCHAR USING agent_type::text'))
-    op.execute(sa.text('ALTER TABLE "subtask" ALTER COLUMN status TYPE VARCHAR USING status::text'))
-    op.execute(sa.text('ALTER TABLE "tasksession" ALTER COLUMN status TYPE VARCHAR USING status::text'))
     op.execute(
-        sa.text('ALTER TABLE "subtask" ALTER COLUMN execution_mode TYPE VARCHAR USING execution_mode::text')
+        sa.text('ALTER TABLE "thread" ALTER COLUMN agent_type TYPE VARCHAR USING agent_type::text')
+    )
+    op.execute(sa.text('ALTER TABLE "subtask" ALTER COLUMN status TYPE VARCHAR USING status::text'))
+    op.execute(
+        sa.text('ALTER TABLE "tasksession" ALTER COLUMN status TYPE VARCHAR USING status::text')
     )
     op.execute(
-        sa.text('ALTER TABLE "tasksession" ALTER COLUMN execution_mode TYPE VARCHAR USING execution_mode::text')
+        sa.text(
+            'ALTER TABLE "subtask" ALTER COLUMN execution_mode TYPE VARCHAR USING execution_mode::text'
+        )
+    )
+    op.execute(
+        sa.text(
+            'ALTER TABLE "tasksession" ALTER COLUMN execution_mode TYPE VARCHAR USING execution_mode::text'
+        )
     )
 
     bind = op.get_bind()

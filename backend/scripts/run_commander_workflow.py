@@ -2,6 +2,7 @@
 本地调试：执行 Commander 工作流（简单/复杂各跑一次）。
 原逻辑来自 agents/graph.py 的 __main__ 与 execute_commander_workflow。
 """
+
 import asyncio
 import logging
 from typing import Any
@@ -49,6 +50,7 @@ async def execute_commander_workflow(
 
 
 if __name__ == "__main__":
+
     async def test():
         logger.info("\n=== 测试 1: 简单模式 ===")
         await execute_commander_workflow("你好，在吗？")

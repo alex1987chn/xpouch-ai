@@ -15,6 +15,7 @@ SSE 流式输出核心服务
 注意:
 - LangGraph 导入在方法内部进行，防止循环引用
 """
+
 import asyncio
 import uuid
 from collections.abc import AsyncGenerator
@@ -55,6 +56,7 @@ class StreamService:
         """延迟初始化 ChatSessionService"""
         if self._session_service is None:
             from .session_service import ChatSessionService
+
             self._session_service = ChatSessionService(self.db)
         return self._session_service
 
@@ -88,7 +90,7 @@ class StreamService:
         messages: list[BaseMessage],
         thread_id: str,
         thread: Thread,
-        message_id: str | None = None
+        message_id: str | None = None,
     ) -> StreamingResponse:
         """
         自定义智能体流式响应处理
@@ -103,6 +105,7 @@ class StreamService:
         Returns:
             StreamingResponse SSE流
         """
+
         async def event_generator():
             full_response = ""
             actual_message_id = message_id or str(uuid.uuid4())
@@ -125,8 +128,7 @@ class StreamService:
                 async def get_next_chunk():
                     try:
                         return await asyncio.wait_for(
-                            iterator.__anext__(),
-                            timeout=settings.heartbeat_interval
+                            iterator.__anext__(), timeout=settings.heartbeat_interval
                         )
                     except StopAsyncIteration:
                         return None
@@ -140,9 +142,7 @@ class StreamService:
                         content = chunk.content
                         if content:
                             full_response += content
-                            yield self._build_message_delta_event(
-                                actual_message_id, content
-                            )
+                            yield self._build_message_delta_event(actual_message_id, content)
 
                     except TimeoutError:
                         # 心跳保活
@@ -162,6 +162,7 @@ class StreamService:
 
             # 解析 thinking 并保存消息
             from utils.thinking_parser import parse_thinking
+
             clean_content, thinking_data = parse_thinking(full_response)
 
             # 使用 session_service 保存消息
@@ -169,7 +170,7 @@ class StreamService:
                 thread_id=thread_id,
                 content=full_response,
                 thinking_data=thinking_data,
-                message_id=actual_message_id
+                message_id=actual_message_id,
             )
 
             # 发送完成事件
@@ -181,8 +182,8 @@ class StreamService:
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
-                "X-Accel-Buffering": "no"
-            }
+                "X-Accel-Buffering": "no",
+            },
         )
 
     async def handle_custom_agent_sync(
@@ -191,7 +192,7 @@ class StreamService:
         messages: list[BaseMessage],
         thread_id: str,
         thread: Thread,
-        message_id: str | None = None
+        message_id: str | None = None,
     ) -> dict:
         """
         自定义智能体非流式处理（兼容旧版）
@@ -217,20 +218,17 @@ class StreamService:
 
         # 解析 thinking 并保存
         from utils.thinking_parser import parse_thinking
+
         clean_content, thinking_data = parse_thinking(full_response)
 
         await self.session_service.save_assistant_message(
             thread_id=thread_id,
             content=full_response,
             thinking_data=thinking_data,
-            message_id=actual_message_id
+            message_id=actual_message_id,
         )
 
-        return {
-            "role": "assistant",
-            "content": full_response,
-            "conversationId": thread_id
-        }
+        return {"role": "assistant", "content": full_response, "conversationId": thread_id}
 
     async def _build_custom_agent_llm(self, custom_agent: CustomAgent):
         """构建自定义智能体的 LLM 实例"""
@@ -238,8 +236,8 @@ class StreamService:
         model_config = get_model_config(model_id)
 
         if model_config:
-            provider = model_config.get('provider')
-            actual_model = model_config.get('model', model_id)
+            provider = model_config.get("provider")
+            actual_model = model_config.get("model", model_id)
             provider_config = get_provider_config(provider)
 
             if not provider_config:
@@ -248,23 +246,17 @@ class StreamService:
             if not get_provider_api_key(provider):
                 raise ValueError(f"提供商 {provider} 的 API Key 未设置")
 
-            temperature = model_config.get('temperature', 0.7)
+            temperature = model_config.get("temperature", 0.7)
 
             return get_llm_instance(
-                provider=provider,
-                model=actual_model,
-                streaming=True,
-                temperature=temperature
+                provider=provider, model=actual_model, streaming=True, temperature=temperature
             )
         else:
             # Fallback
             return get_llm_instance(streaming=True, model=model_id, temperature=0.7)
 
     async def _inject_memories(
-        self,
-        custom_agent: CustomAgent,
-        messages: list[BaseMessage],
-        user_id: str
+        self, custom_agent: CustomAgent, messages: list[BaseMessage], user_id: str
     ) -> list:
         """注入长期记忆到 system prompt"""
         from services.memory_manager import memory_manager
@@ -276,7 +268,9 @@ class StreamService:
 
         system_prompt = custom_agent.system_prompt
         if relevant_memories:
-            system_prompt += f"\n\n【关于用户的已知信息】:\n{relevant_memories}\n(请在回答时自然地利用这些信息)"
+            system_prompt += (
+                f"\n\n【关于用户的已知信息】:\n{relevant_memories}\n(请在回答时自然地利用这些信息)"
+            )
 
         result = [("system", system_prompt)]
         result.extend(messages)
@@ -292,7 +286,7 @@ class StreamService:
         thread_id: str,
         thread: Thread,
         user_message: str,
-        message_id: str | None = None
+        message_id: str | None = None,
     ) -> StreamingResponse:
         """
         LangGraph 复杂模式流式处理
@@ -336,8 +330,8 @@ class StreamService:
                     "configurable": {
                         "thread_id": thread_id,
                         "stream_queue": stream_queue,
-                        "mcp_tools": mcp_tools  # 🔥 MCP: 注入动态工具
-                    }
+                        "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
+                    },
                 }
 
                 # 注入初始状态
@@ -373,7 +367,11 @@ class StreamService:
 
                         # 检测 router_decision
                         if event_type == "on_chain_end" and name == "router":
-                            if output and isinstance(output, dict) and output.get("router_decision"):
+                            if (
+                                output
+                                and isinstance(output, dict)
+                                and output.get("router_decision")
+                            ):
                                 router_decision = output["router_decision"]
                                 # 更新线程模式
                                 await self._update_thread_mode(thread_id, router_decision)
@@ -403,7 +401,8 @@ class StreamService:
                             "description": task.get("description", ""),
                             "sort_order": i,
                             "status": "pending",
-                            "depends_on": task.get("depends_on") or []  # 🔥 关键：传递依赖关系到前端
+                            "depends_on": task.get("depends_on")
+                            or [],  # 🔥 关键：传递依赖关系到前端
                         }
                         for i, task in enumerate(task_list)
                     ]
@@ -414,7 +413,9 @@ class StreamService:
                     return  # 结束流，等待用户通过 /chat/resume 恢复
 
                 # 正常流程：获取最终结果
-                last_message = state_values.get("messages", [])[-1] if state_values.get("messages") else None
+                last_message = (
+                    state_values.get("messages", [])[-1] if state_values.get("messages") else None
+                )
 
                 if last_message:
                     full_response = last_message.content
@@ -428,7 +429,7 @@ class StreamService:
                         router_decision=router_decision,
                         task_list=collected_task_list,
                         expert_artifacts=expert_artifacts,
-                        message_id=actual_message_id
+                        message_id=actual_message_id,
                     )
 
                 # 🔥 修复：只有简单模式才在这里发送 message.done
@@ -443,16 +444,12 @@ class StreamService:
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
-                "X-Accel-Buffering": "no"
-            }
+                "X-Accel-Buffering": "no",
+            },
         )
 
     async def handle_langgraph_sync(
-        self,
-        initial_state: dict,
-        thread_id: str,
-        thread: Thread,
-        user_message: str
+        self, initial_state: dict, thread_id: str, thread: Thread, user_message: str
     ) -> dict:
         """LangGraph 非流式处理（内部使用流式）"""
         # 非流式也使用流式获取，但返回完整结果
@@ -475,8 +472,8 @@ class StreamService:
                 "recursion_limit": 100,
                 "configurable": {
                     "thread_id": thread_id,
-                    "mcp_tools": mcp_tools  # 🔥 MCP: 注入动态工具
-                }
+                    "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
+                },
             }
 
             await graph.aupdate_state(config, initial_state)
@@ -497,14 +494,14 @@ class StreamService:
                     router_decision=router_decision,
                     task_list=result.get("task_list", []),
                     expert_artifacts={},
-                    message_id=str(uuid.uuid4())
+                    message_id=str(uuid.uuid4()),
                 )
 
         return {
             "role": "assistant",
             "content": full_response,
             "conversationId": thread_id,
-            "threadMode": router_decision
+            "threadMode": router_decision,
         }
 
     async def _save_langgraph_result(
@@ -516,7 +513,7 @@ class StreamService:
         router_decision: str,
         task_list: list[dict],
         expert_artifacts: dict,
-        message_id: str
+        message_id: str,
     ):
         """保存 LangGraph 执行结果"""
         from crud.task_session import create_artifacts_batch
@@ -524,9 +521,7 @@ class StreamService:
 
         # 复杂模式：创建 TaskSession 和 SubTasks
         if router_decision == "complex":
-            await self.session_service.update_thread_agent_type(
-                thread_id, "ai"
-            )
+            await self.session_service.update_thread_agent_type(thread_id, "ai")
 
             task_session = TaskSession(
                 session_id=str(uuid.uuid4()),
@@ -536,7 +531,7 @@ class StreamService:
                 final_response=last_message.content,
                 created_at=datetime.now(),
                 updated_at=datetime.now(),
-                completed_at=datetime.now()
+                completed_at=datetime.now(),
             )
             self.db.add(task_session)
             self.db.flush()
@@ -559,30 +554,34 @@ class StreamService:
                     completed_at=subtask.get("completed_at"),
                     created_at=datetime.now(),
                     updated_at=datetime.now(),
-                    task_session_id=task_session.session_id
+                    task_session_id=task_session.session_id,
                 )
                 self.db.add(db_subtask)
                 self.db.flush()
 
                 # 🔥 保存 artifacts（使用 task_id 匹配）
                 task_id = subtask.get("id")
-                logger.info(f"[StreamService] 尝试保存 artifacts: task_id={task_id}, expert_artifacts keys={list(expert_artifacts.keys())}")
+                logger.info(
+                    f"[StreamService] 尝试保存 artifacts: task_id={task_id}, expert_artifacts keys={list(expert_artifacts.keys())}"
+                )
 
                 if task_id and task_id in expert_artifacts:
                     try:
-                        logger.info(f"[StreamService] 找到 artifacts: {len(expert_artifacts[task_id])} 个")
+                        logger.info(
+                            f"[StreamService] 找到 artifacts: {len(expert_artifacts[task_id])} 个"
+                        )
                         create_artifacts_batch(self.db, db_subtask.id, expert_artifacts[task_id])
                         logger.info("[StreamService] ✅ artifacts 保存成功")
                     except Exception as e:
                         logger.error(f"[StreamService] 保存 artifacts 失败: {e}", exc_info=True)
                 else:
-                    logger.warning(f"[StreamService] ⚠️ task_id={task_id} 在 expert_artifacts 中未找到")
+                    logger.warning(
+                        f"[StreamService] ⚠️ task_id={task_id} 在 expert_artifacts 中未找到"
+                    )
 
         # 保存 AI 消息
         await self.session_service.save_assistant_message(
-            thread_id=thread_id,
-            content=last_message.content,
-            message_id=message_id
+            thread_id=thread_id, content=last_message.content, message_id=message_id
         )
 
     async def _update_thread_mode(self, thread_id: str, mode: str):
@@ -593,12 +592,7 @@ class StreamService:
             self.db.add(thread)
             self.db.commit()
 
-    def _collect_execution_results(
-        self,
-        token,
-        task_list: list[dict],
-        expert_artifacts: dict
-    ):
+    def _collect_execution_results(self, token, task_list: list[dict], expert_artifacts: dict):
         """收集 LangGraph 执行结果"""
         # 🔥 修复：跳过非字典类型的 token
         if not isinstance(token, dict):
@@ -612,27 +606,33 @@ class StreamService:
             if output and isinstance(output, dict) and output.get("__expert_info"):
                 # 收集任务结果
                 task_result = output.get("__expert_info", {})
-                task_list.append({
-                    "id": task_result.get("task_id"),
-                    "expert_type": task_result.get("expert_type"),
-                    "status": task_result.get("status"),
-                    "description": output.get("description", ""),
-                    "output_result": output.get("output_result"),
-                    "input_data": output.get("input_data", {}),
-                    "started_at": output.get("started_at"),
-                    "completed_at": output.get("completed_at"),
-                    "artifact": output.get("artifact")
-                })
+                task_list.append(
+                    {
+                        "id": task_result.get("task_id"),
+                        "expert_type": task_result.get("expert_type"),
+                        "status": task_result.get("status"),
+                        "description": output.get("description", ""),
+                        "output_result": output.get("output_result"),
+                        "input_data": output.get("input_data", {}),
+                        "started_at": output.get("started_at"),
+                        "completed_at": output.get("completed_at"),
+                        "artifact": output.get("artifact"),
+                    }
+                )
 
                 # 收集 artifacts
                 task_id = task_result.get("task_id")
                 artifact_data = output.get("artifact")
-                logger.info(f"[_collect_execution_results] 收集 artifacts: task_id={task_id}, has_artifact={artifact_data is not None}")
+                logger.info(
+                    f"[_collect_execution_results] 收集 artifacts: task_id={task_id}, has_artifact={artifact_data is not None}"
+                )
                 if task_id and artifact_data:
                     if task_id not in expert_artifacts:
                         expert_artifacts[task_id] = []
                     expert_artifacts[task_id].append(artifact_data)
-                    logger.info(f"[_collect_execution_results] ✅ artifacts 已收集: task_id={task_id}, count={len(expert_artifacts[task_id])}")
+                    logger.info(
+                        f"[_collect_execution_results] ✅ artifacts 已收集: task_id={task_id}, count={len(expert_artifacts[task_id])}"
+                    )
 
     # ============================================================================
     # 公共流式方法（供 RecoveryService 复用）
@@ -645,7 +645,7 @@ class StreamService:
         sse_queue: asyncio.Queue,
         realtime_queue: asyncio.Queue,
         updated_plan: list[dict] | None = None,
-        message_id: str | None = None
+        message_id: str | None = None,
     ) -> AsyncGenerator[str]:
         """
         执行 LangGraph 流式处理（供 RecoveryService 复用）
@@ -681,8 +681,8 @@ class StreamService:
                 "configurable": {
                     "thread_id": thread_id,
                     "stream_queue": realtime_queue,
-                    "mcp_tools": mcp_tools  # 🔥 MCP: 注入动态工具
-                }
+                    "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
+                },
             }
 
             # 如果提供了更新后的计划，应用它
@@ -724,7 +724,9 @@ class StreamService:
                             # 🔥 检测 aggregator 节点开始执行
                             if event_type == "on_chain_start" and name == "aggregator":
                                 aggregator_executed = True
-                                logger.info(f"[Producer] 检测到 aggregator 开始执行 (loop {loop_count})")
+                                logger.info(
+                                    f"[Producer] 检测到 aggregator 开始执行 (loop {loop_count})"
+                                )
 
                             # 处理 event_queue 中的事件（artifact.start/chunk/completed 等）
                             if event_type == "on_chain_end":
@@ -735,39 +737,38 @@ class StreamService:
                                     for queued_event in event_queue:
                                         if queued_event.get("type") == "sse":
                                             # 🔥 修复：使用 queued_event["event"] 而不是未定义的 event_str
-                                            await sse_queue.put({
-                                                "type": "sse",
-                                                "event": queued_event["event"]
-                                            })
+                                            await sse_queue.put(
+                                                {"type": "sse", "event": queued_event["event"]}
+                                            )
 
                                     # 🔥🔥🔥 关键修复：检测 aggregator 执行完成
                                     # 如果 aggregator 节点已完成且有输出，标记为已执行并跳出
                                     if name == "aggregator" and output.get("final_response"):
                                         aggregator_executed = True
-                                        logger.info(f"[Producer] aggregator 执行完成，准备退出 (loop {loop_count})")
+                                        logger.info(
+                                            f"[Producer] aggregator 执行完成，准备退出 (loop {loop_count})"
+                                        )
                                         # 发送完当前事件后立即退出内层循环
                                         break
 
                             event_str = self.transform_langgraph_event(token, message_id)
                             if event_str:
-                                await sse_queue.put({
-                                    "type": "sse",
-                                    "event": event_str
-                                })
+                                await sse_queue.put({"type": "sse", "event": event_str})
 
                                 # 🔥 如果发送了 message.done 事件，说明 aggregator 已完成
                                 if "message.done" in event_str:
-                                    logger.info("[Producer] 已发送 message.done，标记 aggregator 完成")
+                                    logger.info(
+                                        "[Producer] 已发送 message.done，标记 aggregator 完成"
+                                    )
                                     aggregator_executed = True
 
                             # 收集 artifacts
                             data = token.get("data", {}) or {}
                             output = data.get("output", {}) or {}
                             if output and isinstance(output, dict) and output.get("artifact"):
-                                await stream_queue.put({
-                                    "type": "artifact",
-                                    "data": output["artifact"]
-                                })
+                                await stream_queue.put(
+                                    {"type": "artifact", "data": output["artifact"]}
+                                )
 
                         # 🔥 如果 aggregator 已执行，退出外层循环
                         if aggregator_executed:
@@ -800,12 +801,7 @@ class StreamService:
             # message.done 由 aggregator_node 通过 event_queue 发送
             # 这里不再重复发送
 
-    async def _apply_updated_plan(
-        self,
-        graph,
-        config: dict,
-        updated_plan: list[dict]
-    ):
+    async def _apply_updated_plan(self, graph, config: dict, updated_plan: list[dict]):
         """
         应用用户更新后的计划
 
@@ -843,7 +839,9 @@ class StreamService:
                     # 🔥🔥🔥 关键修复：保留 task_id (Commander ID) 和 output_result
                     merged_task["task_id"] = existing_task.get("task_id") or task.get("task_id")
                     merged_task["output_result"] = existing_task.get("output_result")
-                    merged_task["status"] = existing_task.get("status", task.get("status", "pending"))
+                    merged_task["status"] = existing_task.get(
+                        "status", task.get("status", "pending")
+                    )
 
             # 🔥 兜底：确保 task_id 字段存在（如果前端没传，从现有状态复制）
             if not merged_task.get("task_id") and existing_task:
@@ -851,10 +849,7 @@ class StreamService:
 
             # 清理依赖关系
             if merged_task.get("depends_on"):
-                cleaned_deps = [
-                    dep for dep in merged_task["depends_on"]
-                    if dep in kept_task_ids
-                ]
+                cleaned_deps = [dep for dep in merged_task["depends_on"] if dep in kept_task_ids]
                 merged_task["depends_on"] = cleaned_deps if cleaned_deps else None
 
             merged_plan.append(merged_task)
@@ -875,12 +870,15 @@ class StreamService:
         updated_messages = list(current_messages) + [approval_message]
 
         # 更新 LangGraph 状态（保留已完成任务的结果）
-        await graph.aupdate_state(config, {
-            "task_list": merged_plan,
-            "current_task_index": next_task_index,  # 🔥 使用正确的索引，而不是重置为 0
-            "messages": updated_messages,
-            "expert_results": current_expert_results  # 🔥 保留已有结果，而不是清空
-        })
+        await graph.aupdate_state(
+            config,
+            {
+                "task_list": merged_plan,
+                "current_task_index": next_task_index,  # 🔥 使用正确的索引，而不是重置为 0
+                "messages": updated_messages,
+                "expert_results": current_expert_results,  # 🔥 保留已有结果，而不是清空
+            },
+        )
 
     # ============================================================================
     # 事件转换和构建
@@ -922,8 +920,12 @@ class StreamService:
                 if output and isinstance(output, dict) and "content" in output:
                     content = output["content"]
                     # 如果 content 是 { "decision_type": "..." } 格式，过滤掉
-                    if isinstance(content, str) and ('"decision_type"' in content or '{"decision_type"' in content):
-                        logger.debug(f"[transform_langgraph_event] 过滤 router decision JSON: {content[:50]}...")
+                    if isinstance(content, str) and (
+                        '"decision_type"' in content or '{"decision_type"' in content
+                    ):
+                        logger.debug(
+                            f"[transform_langgraph_event] 过滤 router decision JSON: {content[:50]}..."
+                        )
                         return None
 
         # 处理消息流
@@ -940,12 +942,16 @@ class StreamService:
 
                 # 拦截条件1：明确的节点类型为 commander 或 expert
                 if node_type in ["commander", "expert"]:
-                    logger.debug(f"[transform_langgraph_event] 拦截 {node_type} 节点的 message.delta: {chunk.content[:50]}...")
+                    logger.debug(
+                        f"[transform_langgraph_event] 拦截 {node_type} 节点的 message.delta: {chunk.content[:50]}..."
+                    )
                     return None
 
                 # 拦截条件2：包含 streaming 和 generic_worker 标签（向后兼容）
                 if "streaming" in tags and "generic_worker" in tags:
-                    logger.debug(f"[transform_langgraph_event] GenericWorker 流式专家内容跳过 message.delta: {chunk.content[:50]}...")
+                    logger.debug(
+                        f"[transform_langgraph_event] GenericWorker 流式专家内容跳过 message.delta: {chunk.content[:50]}..."
+                    )
                     return None
 
                 # 拦截条件3：router 节点的任何消息（额外保险）
@@ -958,7 +964,9 @@ class StreamService:
                 event_data = {"content": chunk.content}
                 if message_id:
                     event_data["message_id"] = message_id
-                logger.debug(f"[transform_langgraph_event] 允许 message.delta (node_type={node_type}, tags={tags}): {chunk.content[:50]}...")
+                logger.debug(
+                    f"[transform_langgraph_event] 允许 message.delta (node_type={node_type}, tags={tags}): {chunk.content[:50]}..."
+                )
                 return f"event: message.delta\ndata: {json.dumps(event_data)}\n\n"
 
         # 处理 chain 事件
@@ -976,7 +984,7 @@ class StreamService:
                         "task_id": task.get("id"),
                         "expert_type": task.get("expert_type"),
                         "description": task.get("description"),
-                        "started_at": datetime.now().isoformat()
+                        "started_at": datetime.now().isoformat(),
                     }
                     return f"event: task.started\ndata: {json.dumps(event_data)}\n\n"
 
@@ -997,7 +1005,7 @@ class StreamService:
                         "task_id": task_result.get("task_id"),
                         "expert_type": task_result.get("expert_type"),
                         "status": "completed",
-                        "completed_at": datetime.now().isoformat()
+                        "completed_at": datetime.now().isoformat(),
                     }
                     return f"event: task.completed\ndata: {json.dumps(event_data)}\n\n"
 
@@ -1032,10 +1040,7 @@ class StreamService:
         return int(task_session.plan_version) if task_session else 1
 
     def _build_human_interrupt_event(
-        self,
-        thread_id: str,
-        current_plan: list[dict],
-        plan_version: int
+        self, thread_id: str, current_plan: list[dict], plan_version: int
     ) -> str:
         """构建 human.interrupt 事件 (HITL)"""
         return build_human_interrupt_event(

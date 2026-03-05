@@ -11,6 +11,7 @@
 - backend.crud.task_session (TaskSession相关CRUD)
 - backend.models (SQLModel模型)
 """
+
 import uuid
 from datetime import datetime
 
@@ -70,7 +71,7 @@ class ChatSessionService:
                 "total": total,
                 "page": page,
                 "limit": limit,
-                "pages": (total + limit - 1) // limit if total > 0 else 1
+                "pages": (total + limit - 1) // limit if total > 0 else 1,
             }
 
         # 2. 获取所有线程ID
@@ -84,7 +85,7 @@ class ChatSessionService:
             select(
                 Message.thread_id,
                 func.count(Message.id).label("message_count"),
-                func.max(Message.timestamp).label("last_timestamp")
+                func.max(Message.timestamp).label("last_timestamp"),
             )
             .where(Message.thread_id.in_(thread_ids))
             .group_by(Message.thread_id)
@@ -107,36 +108,32 @@ class ChatSessionService:
 
             stats_by_thread[row.thread_id] = {
                 "message_count": row.message_count,
-                "last_preview": preview
+                "last_preview": preview,
             }
 
         # 4. 组装返回结果（轻量级）
         items = []
         for thread in threads:
             stats = stats_by_thread.get(thread.id, {"message_count": 0, "last_preview": None})
-            items.append({
-                "id": thread.id,
-                "title": thread.title,
-                "agent_id": thread.agent_id,
-                "agent_type": thread.agent_type,
-                "thread_mode": thread.thread_mode,
-                "user_id": thread.user_id,
-                "task_session_id": thread.task_session_id,
-                "created_at": thread.created_at.isoformat() if thread.created_at else None,
-                "updated_at": thread.updated_at.isoformat() if thread.updated_at else None,
-                "message_count": stats["message_count"],
-                "last_message_preview": stats["last_preview"]
-            })
+            items.append(
+                {
+                    "id": thread.id,
+                    "title": thread.title,
+                    "agent_id": thread.agent_id,
+                    "agent_type": thread.agent_type,
+                    "thread_mode": thread.thread_mode,
+                    "user_id": thread.user_id,
+                    "task_session_id": thread.task_session_id,
+                    "created_at": thread.created_at.isoformat() if thread.created_at else None,
+                    "updated_at": thread.updated_at.isoformat() if thread.updated_at else None,
+                    "message_count": stats["message_count"],
+                    "last_message_preview": stats["last_preview"],
+                }
+            )
 
         # 5. 返回分页结果
         pages = (total + limit - 1) // limit if total > 0 else 1
-        return {
-            "items": items,
-            "total": total,
-            "page": page,
-            "limit": limit,
-            "pages": pages
-        }
+        return {"items": items, "total": total, "page": page, "limit": limit, "pages": pages}
 
     async def get_thread_messages(self, thread_id: str, user_id: str) -> list[dict]:
         """
@@ -163,9 +160,7 @@ class ChatSessionService:
 
         # 2. 查询消息（按时间正序）
         statement = (
-            select(Message)
-            .where(Message.thread_id == thread_id)
-            .order_by(Message.timestamp.asc())
+            select(Message).where(Message.thread_id == thread_id).order_by(Message.timestamp.asc())
         )
         messages = self.db.exec(statement).all()
 
@@ -176,7 +171,7 @@ class ChatSessionService:
                 "role": msg.role,
                 "content": msg.content,
                 "timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
-                "extra_data": msg.extra_data
+                "extra_data": msg.extra_data,
             }
             for msg in messages
         ]
@@ -197,9 +192,7 @@ class ChatSessionService:
             AuthorizationError: 无权访问此线程
         """
         statement = (
-            select(Thread)
-            .where(Thread.id == thread_id)
-            .options(selectinload(Thread.messages))
+            select(Thread).where(Thread.id == thread_id).options(selectinload(Thread.messages))
         )
         thread = self.db.exec(statement).first()
 
@@ -255,15 +248,15 @@ class ChatSessionService:
                             "content": art.content,
                             "language": art.language,
                             "sort_order": art.sort_order,
-                            "created_at": art.created_at.isoformat() if art.created_at else None
+                            "created_at": art.created_at.isoformat() if art.created_at else None,
                         }
                         for art in (st.artifacts or [])
                     ],
                     "duration_ms": st.duration_ms,
-                    "created_at": st.created_at.isoformat() if st.created_at else None
+                    "created_at": st.created_at.isoformat() if st.created_at else None,
                 }
                 for st in sub_tasks
-            ]
+            ],
         }
         return base_response
 
@@ -284,10 +277,10 @@ class ChatSessionService:
                     "role": msg.role,
                     "content": msg.content,
                     "timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
-                    "extra_data": msg.extra_data
+                    "extra_data": msg.extra_data,
                 }
                 for msg in thread.messages
-            ]
+            ],
         }
 
     async def delete_thread(self, thread_id: str, user_id: str) -> bool:
@@ -317,11 +310,7 @@ class ChatSessionService:
         return True
 
     async def get_or_create_thread(
-        self,
-        thread_id: str | None,
-        user_id: str,
-        agent_id: str | None,
-        message: str
+        self, thread_id: str | None, user_id: str, agent_id: str | None, message: str
     ) -> Thread:
         """
         获取或创建线程
@@ -374,7 +363,7 @@ class ChatSessionService:
             thread_mode="simple",
             user_id=user_id,
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
         self.db.add(thread)
         self.db.commit()
@@ -397,10 +386,7 @@ class ChatSessionService:
             保存的消息实例
         """
         message = Message(
-            thread_id=thread_id,
-            role="user",
-            content=content,
-            timestamp=datetime.now()
+            thread_id=thread_id, role="user", content=content, timestamp=datetime.now()
         )
         self.db.add(message)
         self.db.commit()
@@ -411,7 +397,7 @@ class ChatSessionService:
         thread_id: str,
         content: str,
         thinking_data: dict | None = None,
-        message_id: str | None = None
+        message_id: str | None = None,
     ) -> Message:
         """
         保存助手消息
@@ -435,16 +421,16 @@ class ChatSessionService:
 
         # 🔥 修复：Message 表的 id 是 INTEGER 自增，不要传入 UUID 字符串
         # 如果传入了 message_id，放入 extra_data 中供前端关联
-        extra_data = {'thinking': final_thinking} if final_thinking else {}
+        extra_data = {"thinking": final_thinking} if final_thinking else {}
         if message_id:
-            extra_data['frontend_message_id'] = message_id
+            extra_data["frontend_message_id"] = message_id
 
         message = Message(
             thread_id=thread_id,
             role="assistant",
             content=clean_content,
             extra_data=extra_data if extra_data else None,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
         self.db.add(message)
 
@@ -468,9 +454,7 @@ class ChatSessionService:
             LangChain BaseMessage 列表（用于 LLM 调用）
         """
         statement = (
-            select(Message)
-            .where(Message.thread_id == thread_id)
-            .order_by(Message.timestamp)
+            select(Message).where(Message.thread_id == thread_id).order_by(Message.timestamp)
         )
         db_messages = self.db.exec(statement).all()
 
@@ -487,11 +471,7 @@ class ChatSessionService:
     # 自定义智能体验证
     # ============================================================================
 
-    async def get_custom_agent(
-        self,
-        agent_id: str,
-        user_id: str
-    ) -> CustomAgent | None:
+    async def get_custom_agent(self, agent_id: str, user_id: str) -> CustomAgent | None:
         """
         获取并验证自定义智能体
 
@@ -533,7 +513,7 @@ class ChatSessionService:
         thread_id: str,
         user_query: str,
         plan_summary: str | None = None,
-        estimated_steps: int = 0
+        estimated_steps: int = 0,
     ) -> TaskSession:
         """
         创建 TaskSession（复杂模式）
@@ -555,14 +535,11 @@ class ChatSessionService:
             user_query=user_query,
             plan_summary=plan_summary,
             estimated_steps=estimated_steps,
-            execution_mode="sequential"
+            execution_mode="sequential",
         )
 
     async def update_thread_agent_type(
-        self,
-        thread_id: str,
-        agent_type: str,
-        task_session_id: str | None = None
+        self, thread_id: str, agent_type: str, task_session_id: str | None = None
     ) -> None:
         """
         更新线程的 agent_type 和 task_session_id

@@ -29,10 +29,13 @@ engine = create_engine(
     # 🔥 每 1800秒 (30分钟) 回收连接，防止数据库端断开导致的"死链接"
     pool_recycle=1800,
     # 🔥 每次取连接前 ping 一下，确保连接活着 (虽然有一点点性能损耗，但极其稳定)
-    pool_pre_ping=True
+    pool_pre_ping=True,
 )
 logger.info(f"[Database] Using PostgreSQL: {DATABASE_URL}")
-logger.info("[Database] Connection pool: size=20, max_overflow=10, pool_recycle=1800s, pool_pre_ping=True")
+logger.info(
+    "[Database] Connection pool: size=20, max_overflow=10, pool_recycle=1800s, pool_pre_ping=True"
+)
+
 
 def create_db_and_tables():
     """创建数据库表（如果不存在）"""
@@ -41,6 +44,7 @@ def create_db_and_tables():
     logger.info("[Database] Checking database tables...")
     SQLModel.metadata.create_all(engine, checkfirst=True)
     logger.info("[Database] Database tables ready")
+
 
 def get_session():
     with Session(engine) as session:

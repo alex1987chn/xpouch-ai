@@ -6,6 +6,7 @@ Router 节点 - 意图识别
 v3.5 更新：使用数据库配置 + 占位符动态填充
 v3.6 更新：使用 prompt_utils.inject_current_time 替代内联实现
 """
+
 from datetime import datetime
 from typing import Any, Literal
 
@@ -26,6 +27,7 @@ from utils.prompt_utils import inject_current_time  # v3.6: 提取到工具函�
 
 class RoutingDecision(BaseModel):
     """v2.7 网关决策结构（Router只负责分类）"""
+
     decision_type: Literal["simple", "complex"] = Field(description="决策类型")
 
 
@@ -44,7 +46,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
     """
     messages = state["messages"]
     last_message = messages[-1]
-    user_query = last_message.content if hasattr(last_message, 'content') else str(last_message)
+    user_query = last_message.content if hasattr(last_message, "content") else str(last_message)
 
     # v3.1 修复：移除断点恢复检查，每次用户新输入都重新判断
     # 之前的逻辑会导致 Complex 模式结束后，新消息仍被判定为 Complex
@@ -64,7 +66,9 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
 
     # 1. 🔥 检索长期记忆（异步）
     try:
-        relevant_memories = await memory_manager.search_relevant_memories(user_id, user_query, limit=3)
+        relevant_memories = await memory_manager.search_relevant_memories(
+            user_id, user_query, limit=3
+        )
     except Exception as e:
         logger.warning(f"[Router] 记忆检索失败: {e}")
         relevant_memories = ""
@@ -74,9 +78,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
 
     # 3. 🔥 v3.5: 填充占位符
     system_prompt = _fill_router_placeholders(
-        system_prompt=system_prompt,
-        user_query=user_query,
-        relevant_memories=relevant_memories
+        system_prompt=system_prompt, user_query=user_query, relevant_memories=relevant_memories
     )
     logger.info("[Router] System Prompt 已加载并填充占位符")
 
@@ -84,17 +86,15 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
     try:
         # 🔥 v3.7: 智能模式选择 - 先尝试 with_structured_output，不支持则降级
         from agents.graph import get_router_llm_lazy
+
         llm = get_router_llm_lazy()
 
         # 尝试使用原生结构化输出（OpenAI, Kimi 等支持）
         try:
             llm_structured = llm.with_structured_output(RoutingDecision)
             decision = await llm_structured.ainvoke(
-                [
-                    SystemMessage(content=system_prompt),
-                    *messages
-                ],
-                config={"tags": ["router"], "metadata": {"node_type": "router"}}
+                [SystemMessage(content=system_prompt), *messages],
+                config={"tags": ["router"], "metadata": {"node_type": "router"}},
             )
             # 健壮性处理：支持 Pydantic 对象或字典返回
             if isinstance(decision, dict):
@@ -107,11 +107,8 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
             if "response_format" in str(structured_error).lower() or "400" in str(structured_error):
                 logger.warning("[Router] 模型不支持结构化输出，降级到 PydanticOutputParser")
                 response = await llm.ainvoke(
-                    [
-                        SystemMessage(content=system_prompt),
-                        *messages
-                    ],
-                    config={"tags": ["router"], "metadata": {"node_type": "router"}}
+                    [SystemMessage(content=system_prompt), *messages],
+                    config={"tags": ["router"], "metadata": {"node_type": "router"}},
                 )
                 decision = parser.parse(response.content)
                 decision_type = decision.decision_type
@@ -122,31 +119,26 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
 
         # 🔥 Phase 3: 发送 router.decision 事件
         decision_event = event_router_decision(
-            decision=decision_type,
-            reason="Based on query complexity analysis"
+            decision=decision_type, reason="Based on query complexity analysis"
         )
         full_event_queue = append_sse_event(event_queue, sse_event_to_string(decision_event))
         logger.info(f"[Router] 已发送 router.decision 事件: {decision_type}")
 
         return {
             "router_decision": decision_type,
-            "event_queue": full_event_queue  # 返回事件队列
+            "event_queue": full_event_queue,  # 返回事件队列
         }
     except Exception as e:
         logger.error(f"[ROUTER ERROR] {e}")
 
         # 🔥 Phase 3: 错误时也发送 decision 事件（fallback 到 complex）
         decision_event = event_router_decision(
-            decision="complex",
-            reason=f"Router error, fallback to complex mode: {str(e)}"
+            decision="complex", reason=f"Router error, fallback to complex mode: {str(e)}"
         )
         full_event_queue = append_sse_event(event_queue, sse_event_to_string(decision_event))
         logger.info("[Router] 错误，已发送 fallback router.decision 事件")
 
-        return {
-            "router_decision": "complex",
-            "event_queue": full_event_queue
-        }
+        return {"router_decision": "complex", "event_queue": full_event_queue}
 
 
 def _load_router_system_prompt() -> str:
@@ -171,11 +163,7 @@ def _load_router_system_prompt() -> str:
     return ROUTER_SYSTEM_PROMPT
 
 
-def _fill_router_placeholders(
-    system_prompt: str,
-    user_query: str,
-    relevant_memories: str
-) -> str:
+def _fill_router_placeholders(system_prompt: str, user_query: str, relevant_memories: str) -> str:
     """
     v3.5: 填充 Router System Prompt 中的占位符
 
@@ -194,7 +182,7 @@ def _fill_router_placeholders(
     placeholder_map = {
         "user_query": user_query,
         "current_time": time_str,
-        "relevant_memories": relevant_memories if relevant_memories else "（暂无记忆）"
+        "relevant_memories": relevant_memories if relevant_memories else "（暂无记忆）",
     }
 
     # 替换所有支持的占位符
@@ -206,7 +194,8 @@ def _fill_router_placeholders(
 
     # 检查是否还有未填充的占位符（警告但不中断）
     import re
-    remaining_placeholders = re.findall(r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}', system_prompt)
+
+    remaining_placeholders = re.findall(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", system_prompt)
     if remaining_placeholders:
         logger.warning(f"[Router] 警告: 以下占位符未填充: {remaining_placeholders}")
 
@@ -226,14 +215,16 @@ async def direct_reply_node(state: AgentState, config: RunnableConfig = None) ->
     logger.info("[DIRECT_REPLY] 节点开始执行")
     messages = state["messages"]
     last_message = messages[-1]
-    user_query = last_message.content if hasattr(last_message, 'content') else str(last_message)
+    user_query = last_message.content if hasattr(last_message, "content") else str(last_message)
 
     # 🔥 从 state 获取 user_id
     user_id = state.get("user_id", "default_user")
 
     # 1. 🔥 检索长期记忆（异步）
     try:
-        relevant_memories = await memory_manager.search_relevant_memories(user_id, user_query, limit=5)
+        relevant_memories = await memory_manager.search_relevant_memories(
+            user_id, user_query, limit=5
+        )
     except Exception as e:
         logger.warning(f"[DirectReply] 记忆检索失败: {e}")
         relevant_memories = ""
@@ -257,18 +248,16 @@ async def direct_reply_node(state: AgentState, config: RunnableConfig = None) ->
 
     # Simple 模式使用 MiniMax（响应最快）
     from agents.graph import get_simple_llm_lazy
+
     response = await get_simple_llm_lazy().ainvoke(
         [
             SystemMessage(content=system_prompt),
-            *messages  # 用户的历史消息上下文
+            *messages,  # 用户的历史消息上下文
         ],
-        config=config
+        config=config,
     )
 
     logger.info(f"[DIRECT_REPLY] 节点完成，回复长度: {len(response.content)}")
 
     # 直接返回 response 对象（保留完整元数据），并添加 final_response 字段
-    return {
-        "messages": [response],
-        "final_response": response.content
-    }
+    return {"messages": [response], "final_response": response.content}

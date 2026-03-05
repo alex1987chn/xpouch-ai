@@ -371,10 +371,10 @@ cd frontend && pnpm dev
   # 安装 pre-commit hooks（只需一次）
   uv tool install pre-commit
   pre-commit install
-  
+
   # 或者使用 Just
   just install-hooks
-  
+
   # 手动运行检查
   just pre-commit-check
   ```
@@ -413,9 +413,9 @@ cd frontend && pnpm dev
 ## 🗺️ 路线图
 
 - [x] **MCP 生态支持** ✅ —— 接入外部工具服务，动态扩展 AI 能力
-- [x] **代码审查修复** ✅ 
-- [x] **Models 架构拆分** ✅ 
-- [x] **自动 Token 刷新** ✅ 
+- [x] **代码审查修复** ✅
+- [x] **Models 架构拆分** ✅
+- [x] **自动 Token 刷新** ✅
 - [ ] 多租户支持
 - [ ] 插件系统
 - [ ] 更多 LLM 提供商支持

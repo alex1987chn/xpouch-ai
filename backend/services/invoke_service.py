@@ -4,6 +4,7 @@
 只做模式校验、流程控制与调用持久化层；不直接操作 ORM 细节。
 持久化由 crud.invoke_session.InvokePersistence 负责。
 """
+
 import uuid
 from datetime import datetime
 from typing import Any
@@ -56,7 +57,11 @@ class InvokeService:
             else:
                 result = await self._execute_direct_mode(message, agent_id, task_session)
 
-            response_payload = {k: v for k, v in result.items() if k not in ("task_list", "subtask_payload", "subtask_result")}
+            response_payload = {
+                k: v
+                for k, v in result.items()
+                if k not in ("task_list", "subtask_payload", "subtask_result")
+            }
 
             with self.session.begin():
                 if mode == "auto":
@@ -85,23 +90,16 @@ class InvokeService:
         """验证执行模式"""
         if mode not in ["auto", "direct"]:
             raise ValidationError(
-                f"无效的执行模式: {mode}，必须是 'auto' 或 'direct'",
-                details={"mode": mode}
+                f"无效的执行模式: {mode}，必须是 'auto' 或 'direct'", details={"mode": mode}
             )
 
         if mode == "direct":
             if not agent_id:
-                raise ValidationError(
-                    "Direct 模式需要指定 agent_id",
-                    details={"mode": mode}
-                )
+                raise ValidationError("Direct 模式需要指定 agent_id", details={"mode": mode})
 
             expert = get_expert_config_cached(agent_id)
             if not expert:
-                raise ValidationError(
-                    f"未知的专家类型: {agent_id}",
-                    details={"agent_id": agent_id}
-                )
+                raise ValidationError(f"未知的专家类型: {agent_id}", details={"agent_id": agent_id})
 
     async def _get_mcp_tools(self) -> list[Any]:
         """
@@ -114,11 +112,7 @@ class InvokeService:
         """
         return await mcp_tools_service.get_tools()
 
-    async def _execute_auto_mode(
-        self,
-        message: str,
-        task_session: TaskSession
-    ) -> dict[str, Any]:
+    async def _execute_auto_mode(self, message: str, task_session: TaskSession) -> dict[str, Any]:
         """
         执行 Auto 模式（完整多专家协作）
 
@@ -133,7 +127,7 @@ class InvokeService:
             "current_task_index": 0,
             "strategy": "",
             "expert_results": [],
-            "final_response": ""
+            "final_response": "",
         }
 
         # 创建工作流实例
@@ -146,14 +140,13 @@ class InvokeService:
                 "recursion_limit": 100,
                 "configurable": {
                     "thread_id": task_session.session_id,
-                    "mcp_tools": self._mcp_tools
-                }
-            }
+                    "mcp_tools": self._mcp_tools,
+                },
+            },
         )
 
         logger.info(
-            f"[InvokeService] Auto 模式完成，"
-            f"执行了 {len(final_state['expert_results'])} 个专家"
+            f"[InvokeService] Auto 模式完成，执行了 {len(final_state['expert_results'])} 个专家"
         )
 
         return {
@@ -168,10 +161,7 @@ class InvokeService:
         }
 
     async def _execute_direct_mode(
-        self,
-        message: str,
-        agent_id: str,
-        task_session: TaskSession
+        self, message: str, agent_id: str, task_session: TaskSession
     ) -> dict[str, Any]:
         """
         执行 Direct 模式（单专家直接调用）
@@ -188,7 +178,7 @@ class InvokeService:
             "input_data": {},
             "status": "pending",
             "created_at": datetime.now(),
-            "updated_at": datetime.now()
+            "updated_at": datetime.now(),
         }
 
         initial_state = {
@@ -197,7 +187,7 @@ class InvokeService:
             "current_task_index": 0,
             "strategy": f"直接模式: {agent_id} 专家",
             "expert_results": [],
-            "final_response": ""
+            "final_response": "",
         }
 
         # 使用 generic_worker_node 执行
@@ -212,7 +202,7 @@ class InvokeService:
             "status": result.get("status", "unknown"),
             "started_at": result.get("started_at"),
             "completed_at": result.get("completed_at"),
-            "duration_ms": result.get("duration_ms", 0)
+            "duration_ms": result.get("duration_ms", 0),
         }
 
         logger.info(f"[InvokeService] Direct 模式完成，专家: {agent_id}")
@@ -228,6 +218,7 @@ class InvokeService:
             "subtask_payload": subtask_dict,
             "subtask_result": result,
         }
+
 
 def get_invoke_service(session: Session = Depends(get_session)) -> InvokeService:
     """获取 InvokeService 实例（FastAPI Depends）"""

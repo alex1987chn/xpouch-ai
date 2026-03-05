@@ -20,7 +20,9 @@ class LangSmithConfig(BaseModel):
 
         return {
             "enabled": settings.langchain_tracing_v2,
-            "api_key": settings.langchain_api_key.get_secret_value() if settings.langchain_api_key else None,
+            "api_key": settings.langchain_api_key.get_secret_value()
+            if settings.langchain_api_key
+            else None,
             "project_name": settings.langchain_project,
             "tracing_v2": settings.langchain_tracing_v2,
         }

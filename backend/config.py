@@ -14,6 +14,7 @@ XPouch AI 配置管理 - Pydantic Settings 最佳实践
     - 本模块只定义配置，不执行初始化（避免循环导入）
     - 初始化在 main.py lifespan 中执行
 """
+
 from functools import lru_cache
 from typing import Literal
 
@@ -25,6 +26,7 @@ class Settings(BaseSettings):
     """
     应用配置 - 从 backend/.env 读取
     """
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -39,10 +41,7 @@ class Settings(BaseSettings):
     port: int = Field(default=3002, alias="PORT")
 
     # 数据库
-    database_url: str = Field(
-        default="sqlite:///data/database.db",
-        alias="DATABASE_URL"
-    )
+    database_url: str = Field(default="sqlite:///data/database.db", alias="DATABASE_URL")
 
     # LLM API Keys（自动脱敏）
     deepseek_api_key: SecretStr | None = Field(default=None, alias="DEEPSEEK_API_KEY")
@@ -53,10 +52,7 @@ class Settings(BaseSettings):
     google_api_key: SecretStr | None = Field(default=None, alias="GOOGLE_API_KEY")
 
     # 认证
-    jwt_secret_key: SecretStr = Field(
-        default=SecretStr("dev-secret-only"),
-        alias="JWT_SECRET_KEY"
-    )
+    jwt_secret_key: SecretStr = Field(default=SecretStr("dev-secret-only"), alias="JWT_SECRET_KEY")
     access_token_expire_days: int = Field(default=30, alias="ACCESS_TOKEN_EXPIRE_DAYS")
     refresh_token_expire_days: int = Field(default=60, alias="REFRESH_TOKEN_EXPIRE_DAYS")
 
@@ -75,7 +71,9 @@ class Settings(BaseSettings):
     enable_memory: bool = Field(default=True, alias="ENABLE_MEMORY")
 
     # 会话清理
-    session_cleanup_interval_minutes: int = Field(default=60, alias="SESSION_CLEANUP_INTERVAL_MINUTES")
+    session_cleanup_interval_minutes: int = Field(
+        default=60, alias="SESSION_CLEANUP_INTERVAL_MINUTES"
+    )
     thread_retention_days: int = Field(default=90, alias="THREAD_RETENTION_DAYS")
 
     # SSE 流式配置
@@ -90,7 +88,9 @@ class Settings(BaseSettings):
 
     # 腾讯云短信（可选）
     tencent_cloud_secret_id: str | None = Field(default=None, alias="TENCENT_CLOUD_SECRET_ID")
-    tencent_cloud_secret_key: SecretStr | None = Field(default=None, alias="TENCENT_CLOUD_SECRET_KEY")
+    tencent_cloud_secret_key: SecretStr | None = Field(
+        default=None, alias="TENCENT_CLOUD_SECRET_KEY"
+    )
     sms_sdk_app_id: str | None = Field(default=None, alias="SMS_SDK_APP_ID")
     sms_sign_name: str | None = Field(default=None, alias="SMS_SIGN_NAME")
     sms_template_id: str | None = Field(default=None, alias="SMS_TEMPLATE_ID")
@@ -159,12 +159,14 @@ class Settings(BaseSettings):
 
         logger = logging.getLogger(__name__)
 
-        has_llm = any([
-            self.get_llm_key("deepseek"),
-            self.get_llm_key("openai"),
-            self.get_llm_key("anthropic"),
-            self.get_llm_key("minimax"),
-        ])
+        has_llm = any(
+            [
+                self.get_llm_key("deepseek"),
+                self.get_llm_key("openai"),
+                self.get_llm_key("anthropic"),
+                self.get_llm_key("minimax"),
+            ]
+        )
 
         has_embedding = bool(self.silicon_api_key)
 

@@ -21,7 +21,7 @@ def index_exists(conn, table_name, index_name):
     """检查索引是否存在"""
     inspector = inspect(conn)
     indexes = inspector.get_indexes(table_name)
-    return any(idx['name'] == index_name for idx in indexes)
+    return any(idx["name"] == index_name for idx in indexes)
 
 
 def upgrade() -> None:
@@ -30,10 +30,7 @@ def upgrade() -> None:
     # Thread 表的索引
     if not index_exists(conn, "thread", "idx_thread_user_updated"):
         op.create_index(
-            "idx_thread_user_updated",
-            "thread",
-            ["user_id", "updated_at"],
-            unique=False
+            "idx_thread_user_updated", "thread", ["user_id", "updated_at"], unique=False
         )
 
     # CustomAgent 表的索引
@@ -51,7 +48,7 @@ def upgrade() -> None:
             "idx_tasksession_thread_created",
             "tasksession",
             ["thread_id", "created_at"],
-            unique=False
+            unique=False,
         )
 
 

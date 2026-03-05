@@ -12,6 +12,7 @@ P0 安全修复: 2025-02-24
 - Token刷新
 - 登出（清除 Cookie）
 """
+
 import os
 from datetime import UTC, datetime, timedelta
 
@@ -46,33 +47,37 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 # ==================== Pydantic模型 ====================
 
+
 class SendCodeRequest(BaseModel):
     """发送验证码请求"""
+
     phone_number: str = Field(..., description="手机号码")
 
-    @field_validator('phone_number')
+    @field_validator("phone_number")
     @classmethod
     def validate_phone(cls, v: str) -> str:
         if not validate_phone_number(v):
-            raise ValueError('请输入有效的手机号码')
+            raise ValueError("请输入有效的手机号码")
         return v
 
 
 class VerifyCodeRequest(BaseModel):
     """验证验证码请求"""
+
     phone_number: str = Field(..., description="手机号码")
     code: str = Field(..., min_length=4, max_length=6, description="验证码")
 
-    @field_validator('phone_number')
+    @field_validator("phone_number")
     @classmethod
     def validate_phone(cls, v: str) -> str:
         if not validate_phone_number(v):
-            raise ValueError('请输入有效的手机号码')
+            raise ValueError("请输入有效的手机号码")
         return v
 
 
 class LoginResponse(BaseModel):
     """P0 修复: 登录响应（不再包含 Token）"""
+
     message: str
     user_id: str
     username: str
@@ -82,12 +87,14 @@ class LoginResponse(BaseModel):
 
 class RefreshResponse(BaseModel):
     """P0 修复: 刷新响应"""
+
     message: str
     expires_in: int  # 新的 access token 过期时间（秒）
 
 
 class UserResponse(BaseModel):
     """用户信息响应"""
+
     id: str
     username: str
     avatar: str | None
@@ -100,25 +107,23 @@ class UserResponse(BaseModel):
 
 # ==================== Cookie 配置 ====================
 
+
 # P0 修复: Cookie 安全配置
 def get_cookie_config():
     """获取 Cookie 配置"""
     is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
     return {
-        "httponly": True,      # JavaScript 无法读取
+        "httponly": True,  # JavaScript 无法读取
         "secure": is_production,  # 生产环境必须使用 HTTPS
-        "samesite": "lax",     # 防止 CSRF，同时允许部分跨站导航
-        "path": "/",          # 全站可用
+        "samesite": "lax",  # 防止 CSRF，同时允许部分跨站导航
+        "path": "/",  # 全站可用
     }
 
 
 # ==================== 辅助函数 ====================
 
-def set_auth_cookies(
-    response: Response,
-    access_token: str,
-    refresh_token: str
-) -> None:
+
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
     """
     P0 修复: 设置认证 Cookie
 
@@ -134,7 +139,7 @@ def set_auth_cookies(
         key="access_token",
         value=access_token,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # 秒
-        **cookie_config
+        **cookie_config,
     )
 
     # Refresh Token: 60 天
@@ -142,7 +147,7 @@ def set_auth_cookies(
         key="refresh_token",
         value=refresh_token,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,  # 秒
-        **cookie_config
+        **cookie_config,
     )
 
     logger.info("[Auth] Cookie 设置完成")
@@ -193,11 +198,9 @@ from dependencies import get_current_user
 
 # ==================== API端点 ====================
 
+
 @router.post("/send-code")
-async def send_verification_code(
-    request: SendCodeRequest,
-    session: Session = Depends(get_session)
-):
+async def send_verification_code(request: SendCodeRequest, session: Session = Depends(get_session)):
     """
     发送手机验证码
     """
@@ -214,9 +217,7 @@ async def send_verification_code(
         is_development = os.getenv("ENVIRONMENT", "development").lower() == "development"
 
         # 查询用户是否存在
-        user = session.exec(
-            select(User).where(User.phone_number == phone_number)
-        ).first()
+        user = session.exec(select(User).where(User.phone_number == phone_number)).first()
 
         if user:
             # 用户已存在，更新验证码
@@ -226,7 +227,9 @@ async def send_verification_code(
             session.commit()
 
             # 发送验证码短信
-            success, error_message = send_verification_code_with_fallback(phone_number, code, expire_minutes=5)
+            success, error_message = send_verification_code_with_fallback(
+                phone_number, code, expire_minutes=5
+            )
 
             if not success:
                 logger.warning(f"验证码短信发送失败: {error_message}")
@@ -245,6 +248,7 @@ async def send_verification_code(
         else:
             # 用户不存在，创建新用户
             import uuid
+
             new_user_id = str(uuid.uuid4())
 
             new_user = User(
@@ -255,7 +259,7 @@ async def send_verification_code(
                 verification_code_expires_at=expires_at,
                 auth_provider="phone",
                 is_verified=False,
-                role="user"
+                role="user",
             )
 
             session.add(new_user)
@@ -263,7 +267,9 @@ async def send_verification_code(
             session.refresh(new_user)
 
             # 发送验证码短信
-            success, error_message = send_verification_code_with_fallback(phone_number, code, expire_minutes=5)
+            success, error_message = send_verification_code_with_fallback(
+                phone_number, code, expire_minutes=5
+            )
 
             if not success:
                 logger.warning(f"验证码短信发送失败: {error_message}")
@@ -283,8 +289,7 @@ async def send_verification_code(
     except Exception as e:
         logger.error(f"发送验证码处理异常: {str(e)}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"服务器内部错误: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"服务器内部错误: {str(e)}"
         ) from e
 
 
@@ -292,7 +297,7 @@ async def send_verification_code(
 async def verify_code_and_login(
     request: VerifyCodeRequest,
     response: Response,  # P0 修复: 需要设置 Cookie
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ):
     """
     P0 修复: 验证验证码并登录
@@ -307,14 +312,11 @@ async def verify_code_and_login(
     code = request.code
 
     # 查询用户
-    user = session.exec(
-        select(User).where(User.phone_number == phone_number)
-    ).first()
+    user = session.exec(select(User).where(User.phone_number == phone_number)).first()
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不存在，请先发送验证码"
+            status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在，请先发送验证码"
         )
 
     # 验证验证码
@@ -322,18 +324,14 @@ async def verify_code_and_login(
         verify_code(
             stored_code=user.verification_code,
             provided_code=code,
-            expires_at=user.verification_code_expires_at
+            expires_at=user.verification_code_expires_at,
         )
     except VerificationCodeExpiredError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="验证码已过期，请重新发送"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="验证码已过期，请重新发送"
         ) from None
     except VerificationCodeInvalidError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        ) from None
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from None
 
     # 验证成功，生成token
     access_token = create_access_token(user.id)
@@ -361,7 +359,7 @@ async def verify_code_and_login(
         user_id=user.id,
         username=user.username,
         role=str(user.role) if user.role else "user",
-        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60  # 秒
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # 秒
     )
 
 
@@ -369,7 +367,7 @@ async def verify_code_and_login(
 async def refresh_access_token_endpoint(
     request: Request,  # P0 修复: 从 Cookie 读取
     response: Response,  # P0 修复: 设置新 Cookie
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ):
     """
     P0 修复: 刷新访问令牌
@@ -393,10 +391,7 @@ async def refresh_access_token_endpoint(
         # 获取用户
         user = session.get(User, user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="用户不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
 
         # 生成新的 access token
         new_access_token = jwt_refresh(refresh_token)
@@ -415,8 +410,7 @@ async def refresh_access_token_endpoint(
         logger.info(f"[Auth] 用户 {user_id} Token 刷新成功")
 
         return RefreshResponse(
-            message="Token 刷新成功",
-            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            message="Token 刷新成功", expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
 
     except AuthenticationError as e:
@@ -428,10 +422,7 @@ async def refresh_access_token_endpoint(
 
 
 @router.post("/logout")
-async def logout(
-    response: Response,
-    current_user: User = Depends(get_current_user)
-):
+async def logout(response: Response, current_user: User = Depends(get_current_user)):
     """
     P0 修复: 用户登出
 
@@ -448,9 +439,7 @@ async def logout(
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(
-    current_user: User = Depends(get_current_user)
-):
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
     """
     获取当前登录用户信息
 
@@ -464,5 +453,5 @@ async def get_current_user_info(
         role=current_user.role,
         phone_number=current_user.phone_number,
         email=current_user.email,
-        is_verified=current_user.is_verified
+        is_verified=current_user.is_verified,
     )

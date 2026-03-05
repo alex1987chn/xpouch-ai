@@ -2,6 +2,7 @@
 图条件路由逻辑：Router / Dispatcher / Generic 之后的分支判定。
 与 graph_builder 解耦，便于单测与策略调整。
 """
+
 import logging
 from datetime import datetime, timedelta
 from typing import Any
@@ -66,8 +67,7 @@ def should_trip_tool_loop_guard(messages: list[Any]) -> tuple[bool, str]:
     """检测工具调用是否进入可疑循环（总量/同工具连续/ping-pong/时间窗口）。"""
     recent_messages = messages[-TOOL_LOOP_WINDOW:]
     tool_messages = [
-        msg for msg in recent_messages
-        if isinstance(msg, ToolMessage) and getattr(msg, "name", "")
+        msg for msg in recent_messages if isinstance(msg, ToolMessage) and getattr(msg, "name", "")
     ]
     tool_names = [getattr(m, "name", "") for m in tool_messages]
 

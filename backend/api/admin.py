@@ -7,6 +7,7 @@
 3. 升级用户为管理员
 4. 自动生成专家描述
 """
+
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -29,35 +30,26 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 # 权限依赖
 # ============================================================================
 
-async def get_current_admin(
-    current_user: User = Depends(get_current_user)
-) -> User:
+
+async def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     """
     获取当前管理员用户
 
     验证用户是否为管理员，否则抛出 403 错误
     """
     if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="需要管理员权限"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要管理员权限")
     return current_user
 
 
-async def get_current_view_admin(
-    current_user: User = Depends(get_current_user)
-) -> User:
+async def get_current_view_admin(current_user: User = Depends(get_current_user)) -> User:
     """
     获取当前查看权限用户（VIEW_ADMIN 角色）
 
     适用于只读场景，不要求完全的 ADMIN 权限
     """
     if current_user.role not in [UserRole.ADMIN, UserRole.USER]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="权限不足"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="权限不足")
     return current_user
 
 
@@ -65,8 +57,10 @@ async def get_current_view_admin(
 # Pydantic 模型
 # ============================================================================
 
+
 class ExpertResponse(BaseModel):
     """专家响应 DTO"""
+
     id: str
     expert_key: str
     name: str
@@ -82,14 +76,21 @@ class ExpertResponse(BaseModel):
 
 class ExpertUpdate(BaseModel):
     """专家更新 DTO"""
+
     name: str | None = PydanticField(default=None, description="专家显示名称（仅动态专家可修改）")
     system_prompt: str = PydanticField(..., min_length=10, description="系统提示词（至少10个字符）")
-    description: str | None = PydanticField(default=None, description="专家能力描述，用于 Planner 决定任务分配")
-    model: str = PydanticField(default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="模型名称")
-    temperature: float = PydanticField(default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）")
+    description: str | None = PydanticField(
+        default=None, description="专家能力描述，用于 Planner 决定任务分配"
+    )
+    model: str = PydanticField(
+        default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="模型名称"
+    )
+    temperature: float = PydanticField(
+        default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）"
+    )
     expected_version: int = PydanticField(default=0, description="期望的配置版本号（乐观锁）")
 
-    @field_validator('system_prompt')
+    @field_validator("system_prompt")
     @classmethod
     def validate_prompt(cls, v: str) -> str:
         if not v or len(v.strip()) < 10:
@@ -99,32 +100,40 @@ class ExpertUpdate(BaseModel):
 
 class ExpertCreate(BaseModel):
     """专家创建 DTO"""
+
     expert_key: str = PydanticField(..., min_length=1, description="专家类型标识（唯一）")
     name: str = PydanticField(..., min_length=1, description="专家显示名称")
-    description: str | None = PydanticField(default=None, description="专家能力描述，用于 Planner 决定任务分配")
+    description: str | None = PydanticField(
+        default=None, description="专家能力描述，用于 Planner 决定任务分配"
+    )
     system_prompt: str = PydanticField(..., min_length=10, description="系统提示词（至少10个字符）")
-    model: str = PydanticField(default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="模型名称")
-    temperature: float = PydanticField(default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）")
+    model: str = PydanticField(
+        default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="模型名称"
+    )
+    temperature: float = PydanticField(
+        default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）"
+    )
 
-    @field_validator('expert_key')
+    @field_validator("expert_key")
     @classmethod
     def validate_expert_key(cls, v: str) -> str:
         if not v or len(v.strip()) < 1:
             raise ValueError("expert_key 不能为空")
         # 只允许小写字母、数字和下划线
         import re
-        if not re.match(r'^[a-z][a-z0-9_]*$', v.strip()):
+
+        if not re.match(r"^[a-z][a-z0-9_]*$", v.strip()):
             raise ValueError("expert_key 必须以字母开头，只能包含小写字母、数字和下划线")
         return v.strip()
 
-    @field_validator('name')
+    @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
         if not v or len(v.strip()) < 1:
             raise ValueError("name 不能为空")
         return v.strip()
 
-    @field_validator('system_prompt')
+    @field_validator("system_prompt")
     @classmethod
     def validate_prompt(cls, v: str) -> str:
         if not v or len(v.strip()) < 10:
@@ -134,12 +143,14 @@ class ExpertCreate(BaseModel):
 
 class ExpertPreviewRequest(BaseModel):
     """专家预览请求 DTO"""
+
     expert_key: str
     test_input: str = PydanticField(..., min_length=10, description="测试输入（至少10个字符）")
 
 
 class ExpertPreviewResponse(BaseModel):
     """专家预览响应 DTO"""
+
     expert_name: str
     test_input: str
     preview_response: str
@@ -150,11 +161,13 @@ class ExpertPreviewResponse(BaseModel):
 
 class GenerateDescriptionRequest(BaseModel):
     """生成专家描述请求 DTO"""
+
     system_prompt: str = PydanticField(..., min_length=10, description="系统提示词")
 
 
 class GenerateDescriptionResponse(BaseModel):
     """生成专家描述响应 DTO"""
+
     description: str
     generated_at: str
     temperature: float
@@ -163,25 +176,26 @@ class GenerateDescriptionResponse(BaseModel):
 
 class UserPromoteRequest(BaseModel):
     """用户升级请求 DTO"""
+
     email: str = PydanticField(..., description="用户邮箱地址")
 
-    @field_validator('email')
+    @field_validator("email")
     @classmethod
     def validate_email(cls, v: str) -> str:
-        if not v or '@' not in v:
+        if not v or "@" not in v:
             raise ValueError("请输入有效的邮箱地址")
         return v.strip().lower()
-
 
 
 # ============================================================================
 # API 端点
 # ============================================================================
 
+
 @router.get("/experts", response_model=list[ExpertResponse])
 async def get_all_experts(
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_view_admin)  # 需要 VIEW_ADMIN 或 EDIT_ADMIN 权限
+    current_user: User = Depends(get_current_view_admin),  # 需要 VIEW_ADMIN 或 EDIT_ADMIN 权限
 ):
     """
     获取所有系统专家列表
@@ -189,9 +203,7 @@ async def get_all_experts(
     权限：VIEW_ADMIN, EDIT_ADMIN, ADMIN
     """
     # 按创建时间排序，确保新创建的专家在最底部
-    experts = session.exec(
-        select(SystemExpert).order_by(SystemExpert.created_at)
-    ).all()
+    experts = session.exec(select(SystemExpert).order_by(SystemExpert.created_at)).all()
 
     return [
         ExpertResponse(
@@ -205,7 +217,7 @@ async def get_all_experts(
             is_dynamic=expert.is_dynamic,
             is_system=expert.is_system,  # 🔥 新增
             config_version=expert.config_version,  # 🔥 新增：版本号
-            updated_at=expert.updated_at.isoformat()
+            updated_at=expert.updated_at.isoformat(),
         )
         for expert in experts
     ]
@@ -215,21 +227,18 @@ async def get_all_experts(
 async def get_expert(
     expert_key: str,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin)  # 需要管理员权限
+    _: User = Depends(get_current_admin),  # 需要管理员权限
 ):
     """
     获取单个专家配置
 
     权限：Admin
     """
-    expert = session.exec(
-        select(SystemExpert).where(SystemExpert.expert_key == expert_key)
-    ).first()
+    expert = session.exec(select(SystemExpert).where(SystemExpert.expert_key == expert_key)).first()
 
     if not expert:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"专家 '{expert_key}' 不存在"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"专家 '{expert_key}' 不存在"
         )
 
     return ExpertResponse(
@@ -243,7 +252,7 @@ async def get_expert(
         is_dynamic=expert.is_dynamic,
         is_system=expert.is_system,  # 🔥 新增
         config_version=expert.config_version,  # 🔥 新增：版本号
-        updated_at=expert.updated_at.isoformat()
+        updated_at=expert.updated_at.isoformat(),
     )
 
 
@@ -252,7 +261,7 @@ async def update_expert(
     expert_key: str,
     expert_update: ExpertUpdate,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin)  # 需要 EDIT_ADMIN 或 ADMIN 权限
+    _: User = Depends(get_current_admin),  # 需要 EDIT_ADMIN 或 ADMIN 权限
 ):
     """
     更新系统专家配置（原子递增乐观锁）
@@ -268,21 +277,17 @@ async def update_expert(
     注意：更新后会自动刷新 LangGraph 缓存，下次任务立即生效
     """
     # 先查询专家（用于权限检查等）
-    expert = session.exec(
-        select(SystemExpert).where(SystemExpert.expert_key == expert_key)
-    ).first()
+    expert = session.exec(select(SystemExpert).where(SystemExpert.expert_key == expert_key)).first()
 
     if not expert:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"专家 '{expert_key}' 不存在"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"专家 '{expert_key}' 不存在"
         )
 
     # 🔥 权限检查：只有动态专家可以修改 name
     if expert_update.name is not None and not expert.is_dynamic:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="系统内置专家的名称不可修改"
+            status_code=status.HTTP_403_FORBIDDEN, detail="系统内置专家的名称不可修改"
         )
 
     # 🔥 最佳实践：使用 SQLAlchemy Core 的 update() 构造器实现原子乐观锁
@@ -315,7 +320,7 @@ async def update_expert(
         current_version = current_expert.config_version if current_expert else "未知"
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"专家配置已被他人修改（当前版本: {current_version}, 期望版本: {expert_update.expected_version}），请刷新后重试"
+            detail=f"专家配置已被他人修改（当前版本: {current_version}, 期望版本: {expert_update.expected_version}），请刷新后重试",
         )
 
     session.commit()
@@ -325,7 +330,9 @@ async def update_expert(
         select(SystemExpert).where(SystemExpert.expert_key == expert_key)
     ).first()
 
-    logger.info(f"[Admin] Expert '{expert_key}' updated by admin (version {updated_expert.config_version})")
+    logger.info(
+        f"[Admin] Expert '{expert_key}' updated by admin (version {updated_expert.config_version})"
+    )
 
     # 自动刷新 LangGraph 缓存（无需重启）
     try:
@@ -339,7 +346,7 @@ async def update_expert(
         "message": "专家配置已更新，下次任务生效",
         "expert_key": expert_key,
         "config_version": updated_expert.config_version,
-        "updated_at": updated_expert.updated_at.isoformat()
+        "updated_at": updated_expert.updated_at.isoformat(),
     }
 
 
@@ -347,7 +354,7 @@ async def update_expert(
 async def promote_user(
     request: UserPromoteRequest,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin)  # 需要管理员权限
+    _: User = Depends(get_current_admin),  # 需要管理员权限
 ):
     """
     升级指定用户为管理员
@@ -358,23 +365,16 @@ async def promote_user(
         request: 包含用户邮箱的请求体
     """
     # 查找用户
-    user = session.exec(
-        select(User).where(User.email == request.email)
-    ).first()
+    user = session.exec(select(User).where(User.email == request.email)).first()
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"用户 '{request.email}' 不存在"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"用户 '{request.email}' 不存在"
         )
 
     # 检查是否已经是管理员
     if user.role == UserRole.ADMIN:
-        return {
-            "message": "用户已经是管理员",
-            "username": user.username,
-            "email": user.email
-        }
+        return {"message": "用户已经是管理员", "username": user.username, "email": user.email}
 
     # 升级为管理员
     user.role = UserRole.ADMIN
@@ -383,18 +383,14 @@ async def promote_user(
 
     logger.info(f"[Admin] User '{user.username}' promoted to admin")
 
-    return {
-        "message": "用户已升级为管理员",
-        "username": user.username,
-        "email": user.email
-    }
+    return {"message": "用户已升级为管理员", "username": user.username, "email": user.email}
 
 
 @router.post("/experts/preview", response_model=ExpertPreviewResponse)
 async def preview_expert(
     request: ExpertPreviewRequest,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_view_admin)  # 需要 VIEW_ADMIN 或 EDIT_ADMIN 权限
+    _: User = Depends(get_current_view_admin),  # 需要 VIEW_ADMIN 或 EDIT_ADMIN 权限
 ):
     """
     预览专家响应（模拟执行）
@@ -421,8 +417,7 @@ async def preview_expert(
 
     if not expert_config:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"专家 '{request.expert_key}' 不存在"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"专家 '{request.expert_key}' 不存在"
         )
 
     # 调用 LLM 进行预览
@@ -432,25 +427,27 @@ async def preview_expert(
         # 使用工厂方法创建 LLM 实例
         # 🔥 修复：需要传入 provider 参数
         from providers_config import get_model_config
+
         model_id = expert_config.get("model", "deepseek-chat")
         model_config = get_model_config(model_id)
 
         if not model_config:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"不支持的模型: {model_id}"
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"不支持的模型: {model_id}"
             )
 
         llm = get_llm_instance(
             provider=model_config.get("provider", "deepseek"),
             model=model_config.get("model", model_id),
-            temperature=expert_config.get("temperature", 0.7)
+            temperature=expert_config.get("temperature", 0.7),
         )
 
-        response = await llm.ainvoke([
-            SystemMessage(content=expert_config["system_prompt"]),
-            HumanMessage(content=request.test_input)
-        ])
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=expert_config["system_prompt"]),
+                HumanMessage(content=request.test_input),
+            ]
+        )
 
         completed_at = datetime.now()
         execution_time_ms = int((completed_at - started_at).total_seconds() * 1000)
@@ -461,20 +458,19 @@ async def preview_expert(
             preview_response=response.content,
             model=expert_config["model"],
             temperature=expert_config["temperature"],
-            execution_time_ms=execution_time_ms
+            execution_time_ms=execution_time_ms,
         )
 
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"预览失败: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"预览失败: {str(e)}"
         ) from e
 
 
 @router.post("/experts/generate-description", response_model=GenerateDescriptionResponse)
 async def generate_expert_description(
     request: GenerateDescriptionRequest,
-    _: User = Depends(get_current_admin)  # 需要管理员权限
+    _: User = Depends(get_current_admin),  # 需要管理员权限
 ):
     """
     根据 System Prompt 自动生成专家描述
@@ -520,13 +516,16 @@ System Prompt:
 
         # 获取温度参数
         from providers_config import get_router_config
-        router_config = get_router_config()
-        temperature = router_config.get('temperature', 0.5)
 
-        response = await llm.ainvoke([
-            SystemMessage(content="你是一个专业的 AI 助手描述生成器。"),
-            HumanMessage(content=description_prompt)
-        ])
+        router_config = get_router_config()
+        temperature = router_config.get("temperature", 0.5)
+
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content="你是一个专业的 AI 助手描述生成器。"),
+                HumanMessage(content=description_prompt),
+            ]
+        )
 
         description = response.content.strip()
 
@@ -540,13 +539,12 @@ System Prompt:
             description=description,
             generated_at=completed_at.isoformat(),
             temperature=temperature,
-            execution_time_ms=execution_time_ms
+            execution_time_ms=execution_time_ms,
         )
 
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"生成描述失败: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"生成描述失败: {str(e)}"
         ) from e
 
 
@@ -554,7 +552,7 @@ System Prompt:
 async def create_expert(
     expert_create: ExpertCreate,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin)  # 需要管理员权限
+    _: User = Depends(get_current_admin),  # 需要管理员权限
 ):
     """
     创建新专家
@@ -574,8 +572,7 @@ async def create_expert(
 
     if existing_expert:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"专家 '{expert_create.expert_key}' 已存在"
+            status_code=status.HTTP_409_CONFLICT, detail=f"专家 '{expert_create.expert_key}' 已存在"
         )
 
     # 创建新专家
@@ -587,7 +584,7 @@ async def create_expert(
         model=expert_create.model,
         temperature=expert_create.temperature,
         is_dynamic=True,  # 用户创建的专家默认为动态专家
-        updated_at=datetime.now()
+        updated_at=datetime.now(),
     )
 
     session.add(new_expert)
@@ -599,14 +596,13 @@ async def create_expert(
         logger.warning(f"[Admin] Create expert integrity error: {exc}")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="创建专家失败：expert_key 重复或字段约束不满足"
+            detail="创建专家失败：expert_key 重复或字段约束不满足",
         ) from exc
     except Exception as exc:
         session.rollback()
         logger.error(f"[Admin] Create expert failed: {exc}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="创建专家失败：数据库写入异常"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="创建专家失败：数据库写入异常"
         ) from exc
 
     logger.info(f"[Admin] Expert '{expert_create.expert_key}' created by admin")
@@ -627,9 +623,9 @@ async def create_expert(
         model=new_expert.model,
         temperature=new_expert.temperature,
         is_dynamic=new_expert.is_dynamic,
-        is_system=new_expert.is_system if hasattr(new_expert, 'is_system') else False,  # 🔥 新增
+        is_system=new_expert.is_system if hasattr(new_expert, "is_system") else False,  # 🔥 新增
         config_version=new_expert.config_version,  # 🔥 新增：版本号
-        updated_at=new_expert.updated_at.isoformat()
+        updated_at=new_expert.updated_at.isoformat(),
     )
 
 
@@ -637,7 +633,7 @@ async def create_expert(
 async def delete_expert(
     expert_key: str,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin)  # 需要管理员权限
+    _: User = Depends(get_current_admin),  # 需要管理员权限
 ):
     """
     删除专家
@@ -649,29 +645,20 @@ async def delete_expert(
     - 删除后会自动刷新 LangGraph 缓存
     """
     # 查找专家
-    expert = session.exec(
-        select(SystemExpert).where(SystemExpert.expert_key == expert_key)
-    ).first()
+    expert = session.exec(select(SystemExpert).where(SystemExpert.expert_key == expert_key)).first()
 
     if not expert:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"专家 '{expert_key}' 不存在"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"专家 '{expert_key}' 不存在"
         )
 
     # 🔥 检查是否为系统核心组件（优先检查 is_system）
     if expert.is_system:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="系统核心组件禁止删除"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="系统核心组件禁止删除")
 
     # 兼容旧逻辑：检查 is_dynamic（旧数据可能没有 is_system 字段）
     if not expert.is_dynamic:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="系统内置专家不可删除"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="系统内置专家不可删除")
 
     # 删除专家
     session.delete(expert)
@@ -686,8 +673,4 @@ async def delete_expert(
     except Exception as e:
         logger.warning(f"[Admin] Warning: Failed to refresh cache: {e}")
 
-    return {
-        "message": "专家已删除",
-        "expert_key": expert_key
-    }
-
+    return {"message": "专家已删除", "expert_key": expert_key}

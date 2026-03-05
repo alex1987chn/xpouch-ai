@@ -127,5 +127,7 @@ class AgentService:
         self.session.delete(agent)
         self.session.commit()
 
-        app_logger.info("[DELETE] 已删除智能体 %s 及其 %s 个关联会话", agent_id, len(related_threads))
+        app_logger.info(
+            "[DELETE] 已删除智能体 %s 及其 %s 个关联会话", agent_id, len(related_threads)
+        )
         return {"ok": True, "deleted_threads_count": len(related_threads)}

@@ -59,7 +59,9 @@ class InvokePersistence:
         mark_task_session_failed(self.session, task_session, error)
 
 
-def create_running_task_session(session: Session, message: str, thread_id: str | None) -> TaskSession:
+def create_running_task_session(
+    session: Session, message: str, thread_id: str | None
+) -> TaskSession:
     session_id = thread_id or str(uuid.uuid4())
     task_session = TaskSession(
         session_id=session_id,

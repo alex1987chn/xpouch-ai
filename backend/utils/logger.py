@@ -3,10 +3,11 @@
 
 提供统一的日志记录器获取方式
 """
+
 import logging
 
 # 默认日志格式
-DEFAULT_FORMAT = '%(levelname)s: %(message)s'
+DEFAULT_FORMAT = "%(levelname)s: %(message)s"
 
 
 def get_logger(name: str) -> logging.Logger:

@@ -15,6 +15,7 @@ Author: XPouch AI Team
 Created: 2026-02-05
 Updated: 2026-03-02 - P0 修复: 单例模式改用 lru_cache，避免 asyncio.Lock 事件循环问题
 """
+
 import asyncio
 import functools
 from collections.abc import Callable
@@ -42,11 +43,7 @@ class AsyncTaskQueue:
         """
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="async_io_")
         self._tasks: list = []
-        self._stats = {
-            "submitted": 0,
-            "completed": 0,
-            "failed": 0
-        }
+        self._stats = {"submitted": 0, "completed": 0, "failed": 0}
         # P0 修复: 延迟初始化 Lock，避免在模块加载时创建
         self._lock: asyncio.Lock | None = None
 
@@ -123,7 +120,7 @@ def _sync_save_wrapper(
     expert_type: str,
     output_result: str,
     artifact_data: dict[str, Any] | None = None,
-    duration_ms: int | None = None
+    duration_ms: int | None = None,
 ) -> None:
     """
     同步包装函数：在独立的线程中保存专家执行结果
@@ -152,7 +149,7 @@ def _sync_save_wrapper(
                 expert_type,
                 output_result,
                 artifact_data,
-                duration_ms
+                duration_ms,
             )
         except Exception:
             new_session.rollback()  # 回滚防止脏数据
@@ -164,7 +161,7 @@ async def async_save_expert_result(
     expert_type: str,
     output_result: str,
     artifact_data: dict[str, Any] | None = None,
-    duration_ms: int | None = None
+    duration_ms: int | None = None,
 ) -> None:
     """
     异步代理函数：将同步保存任务扔到线程池
@@ -182,12 +179,7 @@ async def async_save_expert_result(
     # 🔥 关键：asyncio.to_thread 会把 _sync_save_wrapper 扔到线程池去跑
     # Python 3.9+ 原生支持，不需要额外导入
     await asyncio.to_thread(
-        _sync_save_wrapper,
-        task_id,
-        expert_type,
-        output_result,
-        artifact_data,
-        duration_ms
+        _sync_save_wrapper, task_id, expert_type, output_result, artifact_data, duration_ms
     )
 
 

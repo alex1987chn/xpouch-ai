@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 # 模型兜底机制
 # ============================================================================
 
+
 def get_default_model() -> str:
     """获取默认模型"""
     return os.getenv("MODEL_NAME", "deepseek-chat")
@@ -66,11 +67,14 @@ def get_effective_model(configured_model: str | None) -> str:
     # 解析模型别名映射
     try:
         from providers_config import get_model_config
+
         model_config = get_model_config(configured_model)
-        if model_config and 'model' in model_config:
-            resolved_model = model_config['model']
+        if model_config and "model" in model_config:
+            resolved_model = model_config["model"]
             if resolved_model != configured_model:
-                custom_logger.info(f"[ModelFallback] 模型别名解析: '{configured_model}' -> '{resolved_model}'")
+                custom_logger.info(
+                    f"[ModelFallback] 模型别名解析: '{configured_model}' -> '{resolved_model}'"
+                )
                 configured_model = resolved_model
     except ImportError:
         pass
@@ -85,7 +89,9 @@ def get_effective_model(configured_model: str | None) -> str:
         return configured_model
 
     # 兜底到默认模型
-    custom_logger.info(f"[ModelFallback] 检测到 OpenAI 模型 '{configured_model}'，切换为 '{default_model}'")
+    custom_logger.info(
+        f"[ModelFallback] 检测到 OpenAI 模型 '{configured_model}'，切换为 '{default_model}'"
+    )
     return default_model
 
 
@@ -93,12 +99,10 @@ def get_effective_model(configured_model: str | None) -> str:
 # LLM 实例工厂 - 使用 lru_cache 缓存
 # ============================================================================
 
+
 @lru_cache(maxsize=32)
 def _create_llm_instance(
-    provider: str,
-    model: str | None,
-    streaming: bool,
-    temperature: float | None
+    provider: str, model: str | None, streaming: bool, temperature: float | None
 ) -> ChatOpenAI:
     """
     创建 LLM 实例（内部函数，使用 lru_cache 缓存）
@@ -109,31 +113,31 @@ def _create_llm_instance(
     if not config:
         raise ValueError(f"未知的提供商: {provider}")
 
-    if not config.get('enabled', True):
+    if not config.get("enabled", True):
         raise ValueError(f"提供商 {provider} 已在配置中禁用")
 
     api_key = get_provider_api_key(provider)
     if not api_key:
-        env_key = config.get('env_key', f'{provider.upper()}_API_KEY')
-        raise ValueError(f"未配置 {provider} 的 API Key，请在 .env 文件中设置: {env_key}=your-api-key")
+        env_key = config.get("env_key", f"{provider.upper()}_API_KEY")
+        raise ValueError(
+            f"未配置 {provider} 的 API Key，请在 .env 文件中设置: {env_key}=your-api-key"
+        )
 
     llm_config = {
-        'model': model or config.get('default_model'),
-        'api_key': api_key,
-        'base_url': config.get('base_url'),
-        'streaming': streaming,
+        "model": model or config.get("default_model"),
+        "api_key": api_key,
+        "base_url": config.get("base_url"),
+        "streaming": streaming,
     }
 
     # 温度参数
-    llm_config['temperature'] = temperature if temperature is not None else config.get('temperature', 0.7)
+    llm_config["temperature"] = (
+        temperature if temperature is not None else config.get("temperature", 0.7)
+    )
 
     # HTTP 客户端配置
-    http_client = httpx.Client(
-        http2=False,
-        timeout=600.0,
-        verify=True
-    )
-    llm_config['http_client'] = http_client
+    http_client = httpx.Client(http2=False, timeout=600.0, verify=True)
+    llm_config["http_client"] = http_client
 
     return ChatOpenAI(**llm_config)
 
@@ -170,9 +174,7 @@ def get_llm_by_model(model_id: str, streaming: bool = False) -> ChatOpenAI:
         raise ValueError(f"未知的模型 ID: {model_id}")
 
     return get_llm_instance(
-        provider=model_config.get('provider'),
-        model=model_config.get('model'),
-        streaming=streaming
+        provider=model_config.get("provider"), model=model_config.get("model"), streaming=streaming
     )
 
 
@@ -184,47 +186,52 @@ def get_router_llm() -> ChatOpenAI:
         raise ValueError("没有可用的 LLM 提供商用于 Router")
 
     from providers_config import get_router_config
+
     router_config = get_router_config()
 
     return get_llm_instance(
         provider=provider,
-        streaming=router_config.get('streaming', False),
-        temperature=router_config.get('temperature', 0.1)
+        streaming=router_config.get("streaming", False),
+        temperature=router_config.get("temperature", 0.1),
     )
 
 
 def get_expert_llm(
-    provider: str | None = None,
-    model: str | None = None,
-    temperature: float | None = None
+    provider: str | None = None, model: str | None = None, temperature: float | None = None
 ) -> ChatOpenAI:
     """获取 Expert 节点专用的 LLM 实例"""
     if provider:
-        return get_llm_instance(provider=provider, model=model, streaming=True, temperature=temperature)
+        return get_llm_instance(
+            provider=provider, model=model, streaming=True, temperature=temperature
+        )
 
-    if is_provider_configured('deepseek'):
-        return get_llm_instance(provider='deepseek', model=model, streaming=True, temperature=temperature or 0.7)
+    if is_provider_configured("deepseek"):
+        return get_llm_instance(
+            provider="deepseek", model=model, streaming=True, temperature=temperature or 0.7
+        )
 
-    return get_llm_instance(provider=get_best_router_provider(), model=model, streaming=True, temperature=temperature)
+    return get_llm_instance(
+        provider=get_best_router_provider(), model=model, streaming=True, temperature=temperature
+    )
 
 
 def get_commander_llm() -> ChatOpenAI:
     """获取 Commander 节点专用的 LLM 实例"""
-    if is_provider_configured('deepseek'):
-        return get_llm_instance(provider='deepseek', streaming=True, temperature=0.5)
-    if is_provider_configured('openai'):
-        return get_llm_instance(provider='openai', streaming=True, temperature=0.5)
+    if is_provider_configured("deepseek"):
+        return get_llm_instance(provider="deepseek", streaming=True, temperature=0.5)
+    if is_provider_configured("openai"):
+        return get_llm_instance(provider="openai", streaming=True, temperature=0.5)
     return get_router_llm()
 
 
 def get_aggregator_llm() -> ChatOpenAI:
     """获取 Aggregator 节点专用的 LLM 实例"""
-    if is_provider_configured('deepseek'):
-        return get_llm_instance(provider='deepseek', streaming=True, temperature=0.7)
-    if is_provider_configured('openai'):
-        return get_llm_instance(provider='openai', streaming=True, temperature=0.7)
-    if is_provider_configured('minimax'):
-        return get_llm_instance(provider='minimax', streaming=True, temperature=0.7)
+    if is_provider_configured("deepseek"):
+        return get_llm_instance(provider="deepseek", streaming=True, temperature=0.7)
+    if is_provider_configured("openai"):
+        return get_llm_instance(provider="openai", streaming=True, temperature=0.7)
+    if is_provider_configured("minimax"):
+        return get_llm_instance(provider="minimax", streaming=True, temperature=0.7)
     return get_router_llm()
 
 
@@ -232,9 +239,11 @@ def get_aggregator_llm() -> ChatOpenAI:
 # 便捷函数
 # ============================================================================
 
+
 def list_available_providers() -> list:
     """列出所有可用的提供商"""
     from providers_config import get_active_providers
+
     return list(get_active_providers().keys())
 
 
@@ -252,12 +261,13 @@ def get_llm_cache_info():
 # P1 优化: 带重试的 LLM 调用函数
 # ============================================================================
 
+
 @retry(
     retry=retry_if_exception_type((Exception,)),
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
     before_sleep=before_sleep_log(logger, logging.WARNING),
-    reraise=True
+    reraise=True,
 )
 async def invoke_llm_with_retry(llm: ChatOpenAI, messages: list, **kwargs) -> Any:
     """带重试机制的 LLM 调用 (非流式)"""
@@ -269,7 +279,7 @@ async def invoke_llm_with_retry(llm: ChatOpenAI, messages: list, **kwargs) -> An
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
     before_sleep=before_sleep_log(logger, logging.WARNING),
-    reraise=True
+    reraise=True,
 )
 async def stream_llm_with_retry(llm: ChatOpenAI, messages: list, **kwargs):
     """带重试机制的 LLM 调用 (流式)"""

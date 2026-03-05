@@ -32,6 +32,6 @@ def test_timestamp_migration_filename_starts_with_revision():
         assert revision is not None
         if revision in LEGACY_REVISIONS:
             continue
-        assert migration_file.name.startswith(
-            revision
-        ), f"{migration_file.name} 文件名应以 revision {revision} 开头"
+        assert migration_file.name.startswith(revision), (
+            f"{migration_file.name} 文件名应以 revision {revision} 开头"
+        )

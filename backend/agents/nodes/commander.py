@@ -40,6 +40,7 @@ CommanderOutput:
 - 用户可修改/删除/重排任务
 - 确认后 Dispatcher 按新计划执行
 """
+
 import asyncio
 import logging
 import os
@@ -77,8 +78,10 @@ _all_experts_cache: TTLCache = TTLCache(maxsize=5, ttl=60)  # 1分钟TTL，更�
 # Commander 2.0: Pydantic 结构化输出模型
 # ============================================================================
 
+
 class Task(BaseModel):
     """任务定义 - 支持 DAG 依赖关系"""
+
     id: str = Field(default="", description="任务唯一标识符（短ID，如 task_1, task_2）")
     expert_type: str = Field(description="执行此任务的专家类型")
     description: str = Field(description="任务描述")
@@ -86,7 +89,7 @@ class Task(BaseModel):
     priority: int = Field(default=0, description="优先级 (0=最高)")
     dependencies: list[str] = Field(default=[], description="依赖的任务ID列表")
 
-    @field_validator('dependencies', mode='before')
+    @field_validator("dependencies", mode="before")
     @classmethod
     def parse_dependencies(cls, v):
         """兼容处理：整数依赖转为字符串"""
@@ -105,19 +108,13 @@ class ExecutionPlan(BaseModel):
 
     使用 Pydantic 结构化输出，确保 LLM 生成符合 Schema 的数据
     """
+
     thought_process: str = Field(
-        default="",
-        description="规划思考过程：分析需求、拆解步骤、分配专家的推理过程"
+        default="", description="规划思考过程：分析需求、拆解步骤、分配专家的推理过程"
     )
-    strategy: str = Field(
-        description="执行策略概述：如'并行执行'、'顺序执行'、'分阶段交付'等"
-    )
-    estimated_steps: int = Field(
-        description="预计步骤数"
-    )
-    tasks: list[Task] = Field(
-        description="子任务列表，支持依赖关系（DAG）"
-    )
+    strategy: str = Field(description="执行策略概述：如'并行执行'、'顺序执行'、'分阶段交付'等")
+    estimated_steps: int = Field(description="预计步骤数")
+    tasks: list[Task] = Field(description="子任务列表，支持依赖关系（DAG）")
 
 
 # 向后兼容：保留旧模型别名
@@ -150,6 +147,7 @@ async def _preload_expert_configs(task_list: list[dict]) -> None:
     # P0 修复: 将数据库操作包装在 to_thread 中
     def _load_configs():
         from agents.services.expert_manager import get_expert_config, get_expert_config_cached
+
         loaded_count = 0
         with Session(engine) as db_session:
             for expert_type in expert_types:
@@ -201,7 +199,11 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
     messages = state["messages"]
     last_message = messages[-1]
-    user_query = last_message.content if isinstance(last_message, HumanMessage) else str(last_message.content)
+    user_query = (
+        last_message.content
+        if isinstance(last_message, HumanMessage)
+        else str(last_message.content)
+    )
 
     # 获取 thread_id
     thread_id = state.get("thread_id")
@@ -222,6 +224,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
             else:
                 # 3️⃣ 缓存未命中，使用线程池查数据库
                 logger.info("[COMMANDER] 缓存未命中，查询数据库: commander 配置")
+
                 def _load_commander_config():
                     with Session(engine) as db_session:
                         return get_expert_config("commander", db_session)
@@ -254,6 +257,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                     logger.info("[COMMANDER] 本地缓存命中: 专家列表")
                 else:
                     logger.info("[COMMANDER] 缓存未命中，查询数据库: 专家列表")
+
                     # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
                     def _load_all_experts():
                         with Session(engine) as db_session:
@@ -267,10 +271,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                 expert_list_str = format_expert_list_for_prompt(all_experts)
 
                 # 构建占位符映射
-                placeholder_map = {
-                    "user_query": user_query,
-                    "dynamic_expert_list": expert_list_str
-                }
+                placeholder_map = {"user_query": user_query, "dynamic_expert_list": expert_list_str}
 
                 # 替换所有支持的占位符
                 for placeholder, value in placeholder_map.items():
@@ -281,7 +282,8 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
                 # 检查是否还有未填充的占位符（警告但不中断）
                 import re
-                remaining_placeholders = re.findall(r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}', system_prompt)
+
+                remaining_placeholders = re.findall(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", system_prompt)
                 if remaining_placeholders:
                     logger.warning(f"[COMMANDER] 警告: 以下占位符未填充: {remaining_placeholders}")
 
@@ -296,24 +298,28 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
             model_config = get_model_config(model)
 
-            if model_config and 'provider' in model_config:
+            if model_config and "provider" in model_config:
                 # 使用推断出的 provider 创建 LLM
-                provider = model_config['provider']
+                provider = model_config["provider"]
                 # 优先使用模型配置中的 temperature（如果有）
-                final_temperature = model_config.get('temperature', temperature)
+                final_temperature = model_config.get("temperature", temperature)
                 # 获取实际的 API 模型名称（providers.yaml 中定义的 model 字段）
-                actual_model = model_config.get('model', model)
+                actual_model = model_config.get("model", model)
                 llm = get_llm_instance(
-                    provider=provider,
-                    streaming=True,
-                    temperature=final_temperature
+                    provider=provider, streaming=True, temperature=final_temperature
                 )
-                logger.info(f"[COMMANDER] 模型 '{model}' -> '{actual_model}' 使用 provider: {provider}, temperature: {final_temperature}")
+                logger.info(
+                    f"[COMMANDER] 模型 '{model}' -> '{actual_model}' 使用 provider: {provider}, temperature: {final_temperature}"
+                )
                 llm_with_config = llm.bind(model=actual_model, temperature=final_temperature)
             else:
                 # 回退到 commander_llm（硬编码的 provider 优先级）
-                logger.warning(f"[COMMANDER] 模型 '{model}' 未找到 provider 配置，回退到 commander_llm")
-                llm_with_config = get_commander_llm_lazy().bind(model=model, temperature=temperature)
+                logger.warning(
+                    f"[COMMANDER] 模型 '{model}' 未找到 provider 配置，回退到 commander_llm"
+                )
+                llm_with_config = get_commander_llm_lazy().bind(
+                    model=model, temperature=temperature
+                )
 
             # 🔥🔥🔥 Commander 2.0: JSON Mode + Pydantic 强校验
             # 1️⃣ 获取或生成 session_id
@@ -325,7 +331,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                     session_id=preview_session_id,
                     title="任务规划",
                     content="正在分析需求...",
-                    status="running"
+                    status="running",
                 )
                 event_queue = append_sse_event(event_queue, sse_event_to_string(started_event))
                 logger.info(f"[COMMANDER] 发送 plan.started: {preview_session_id}")
@@ -338,8 +344,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
             logger.info("[COMMANDER] 使用 JSON Mode + Pydantic 校验生成执行计划...")
             commander_response, event_queue = await _generate_plan_with_json_mode(
-                llm_with_config, system_prompt, human_prompt,
-                preview_session_id, event_queue
+                llm_with_config, system_prompt, human_prompt, preview_session_id, event_queue
             )
 
             # v3.1: 兜底处理 - 如果 LLM 没有生成 id，自动生成
@@ -373,7 +378,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                     sort_order=idx,
                     execution_mode="sequential",
                     depends_on=task.dependencies if task.dependencies else None,
-                    task_id=task.id  # 🔥 关键：传递 Commander 生成的 task ID
+                    task_id=task.id,  # 🔥 关键：传递 Commander 生成的 task ID
                 )
                 for idx, task in enumerate(commander_response.tasks)
             ]
@@ -384,6 +389,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
             task_session_id = None
             sub_tasks_list = []
             if thread_id:
+
                 def _create_task_session():
                     from crud.task_session import get_subtasks_by_session
 
@@ -396,7 +402,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                             estimated_steps=commander_response.estimated_steps,
                             subtasks_data=subtasks_data,
                             execution_mode="sequential",
-                            session_id=preview_session_id
+                            session_id=preview_session_id,
                         )
 
                         # 在会话关闭前完成子任务数据读取，避免 detached 实例懒加载
@@ -416,7 +422,9 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                         ]
                         return created_session.session_id, is_reused, serialized_subtasks
 
-                task_session_id, is_reused, sub_tasks_list = await asyncio.to_thread(_create_task_session)
+                task_session_id, is_reused, sub_tasks_list = await asyncio.to_thread(
+                    _create_task_session
+                )
                 session_source = "复用" if is_reused else "新建"
                 logger.info(f"[COMMANDER] TaskSession {session_source}: {task_session_id}")
 
@@ -443,21 +451,27 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
             task_list = []
             for idx, subtask in enumerate(sub_tasks_list):
                 commander_task = commander_response.tasks[idx]
-                task_list.append({
-                    "id": subtask["id"],
-                    "task_id": commander_task.id,
-                    "expert_type": subtask["expert_type"],
-                    "description": subtask["task_description"],
-                    "input_data": subtask["input_data"],
-                    "sort_order": subtask["sort_order"],
-                    "status": subtask["status"],
-                    "depends_on": commander_task.dependencies if commander_task.dependencies else [],
-                    "output_result": None,
-                    "started_at": None,
-                    "completed_at": None
-                })
+                task_list.append(
+                    {
+                        "id": subtask["id"],
+                        "task_id": commander_task.id,
+                        "expert_type": subtask["expert_type"],
+                        "description": subtask["task_description"],
+                        "input_data": subtask["input_data"],
+                        "sort_order": subtask["sort_order"],
+                        "status": subtask["status"],
+                        "depends_on": commander_task.dependencies
+                        if commander_task.dependencies
+                        else [],
+                        "output_result": None,
+                        "started_at": None,
+                        "completed_at": None,
+                    }
+                )
 
-            logger.info(f"[COMMANDER] 生成了 {len(task_list)} 个任务。策略: {commander_response.strategy}")
+            logger.info(
+                f"[COMMANDER] 生成了 {len(task_list)} 个任务。策略: {commander_response.strategy}"
+            )
 
             # P1 优化: 预加载所有专家配置到缓存
             # P0 修复: 传入 engine 而不是 db_session，让函数内部自己管理会话
@@ -481,10 +495,12 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                             "description": t["task_description"],
                             "sort_order": t["sort_order"],
                             "status": t["status"],
-                            "depends_on": commander_response.tasks[idx].dependencies if commander_response.tasks[idx].dependencies else []
+                            "depends_on": commander_response.tasks[idx].dependencies
+                            if commander_response.tasks[idx].dependencies
+                            else [],
                         }
                         for idx, t in enumerate(sub_tasks_list)
-                    ]
+                    ],
                 )
                 event_queue = append_sse_event(event_queue, sse_event_to_string(plan_event))
 
@@ -500,8 +516,8 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                     "task_count": len(task_list),
                     "strategy": commander_response.strategy,
                     "estimated_steps": commander_response.estimated_steps,
-                    "tasks": task_list
-                }
+                    "tasks": task_list,
+                },
             }
 
     except Exception as e:
@@ -510,7 +526,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
             "task_list": [],
             "strategy": f"Error: {str(e)}",
             "current_task_index": 0,
-            "event_queue": []
+            "event_queue": [],
         }
 
 
@@ -553,7 +569,7 @@ def _extract_json_string(content: str) -> str:
     end = content.rfind("}")
 
     if start != -1 and end != -1 and end > start:
-        return content[start:end+1]
+        return content[start : end + 1]
 
     # 情况 3: 已经是纯 JSON
     return content
@@ -571,28 +587,22 @@ async def _generate_plan_once(
     """
     from utils.event_generator import event_plan_thinking, sse_event_to_string
 
-    json_mode_llm = llm_with_config.bind(
-        response_format={"type": "json_object"}
-    )
+    json_mode_llm = llm_with_config.bind(response_format={"type": "json_object"})
 
     response = await json_mode_llm.ainvoke(
-        [
-            SystemMessage(content=enhanced_system_prompt),
-            HumanMessage(content=human_prompt)
-        ],
+        [SystemMessage(content=enhanced_system_prompt), HumanMessage(content=human_prompt)],
         config=RunnableConfig(
             tags=["commander", "json_mode"],
-            metadata={"node_type": "commander", "mode": "json_object"}
-        )
+            metadata={"node_type": "commander", "mode": "json_object"},
+        ),
     )
 
-    raw_content = response.content if hasattr(response, 'content') else str(response)
+    raw_content = response.content if hasattr(response, "content") else str(response)
 
     # 发送 thinking 事件
     thinking_preview = raw_content[:200] + "..." if len(raw_content) > 200 else raw_content
     thinking_event = event_plan_thinking(
-        session_id=preview_session_id,
-        delta=f"[规划分析中...]\n{thinking_preview}"
+        session_id=preview_session_id, delta=f"[规划分析中...]\n{thinking_preview}"
     )
     next_event_queue = append_sse_event(event_queue, sse_event_to_string(thinking_event))
 
@@ -606,7 +616,7 @@ async def _generate_plan_once(
     stop=stop_after_attempt(2),
     wait=wait_fixed(0.5),
     before_sleep=before_sleep_log(logger, logging.WARNING),
-    reraise=True
+    reraise=True,
 )
 async def _generate_plan_with_json_mode(
     llm_with_config,
@@ -620,14 +630,16 @@ async def _generate_plan_with_json_mode(
 
     P1 优化: 使用 tenacity 统一重试机制
     """
-    enhanced_system_prompt = system_prompt + """
+    enhanced_system_prompt = (
+        system_prompt
+        + """
 
 IMPORTANT: You MUST output a valid JSON object. No conversation, no markdown code blocks, just raw JSON text."""
+    )
 
     try:
         return await _generate_plan_once(
-            llm_with_config, enhanced_system_prompt, human_prompt,
-            preview_session_id, event_queue
+            llm_with_config, enhanced_system_prompt, human_prompt, preview_session_id, event_queue
         )
     except ValidationError as e:
         logger.warning(f"[COMMANDER] Pydantic 校验失败: {e}")
@@ -659,14 +671,11 @@ async def _streaming_planning_fallback(
     logger.info("[COMMANDER] Fallback: 使用流式解析...")
 
     async for chunk in llm_with_config.astream(
-        [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=human_prompt)
-        ],
+        [SystemMessage(content=system_prompt), HumanMessage(content=human_prompt)],
         config=RunnableConfig(
             tags=["commander", "streaming", "fallback"],
-            metadata={"node_type": "commander", "mode": "fallback"}
-        )
+            metadata={"node_type": "commander", "mode": "fallback"},
+        ),
     ):
         content = chunk.content if hasattr(chunk, "content") else str(chunk)
         if not content:
@@ -679,8 +688,7 @@ async def _streaming_planning_fallback(
                 if before_json.strip():
                     thinking_content += before_json
                     thinking_event = event_plan_thinking(
-                        session_id=preview_session_id,
-                        delta=before_json
+                        session_id=preview_session_id, delta=before_json
                     )
                     event_queue = append_sse_event(event_queue, sse_event_to_string(thinking_event))
                 json_parts = content.split("```", 1)
@@ -689,10 +697,7 @@ async def _streaming_planning_fallback(
                 continue
 
             thinking_content += content
-            thinking_event = event_plan_thinking(
-                session_id=preview_session_id,
-                delta=content
-            )
+            thinking_event = event_plan_thinking(session_id=preview_session_id, delta=content)
             event_queue = append_sse_event(event_queue, sse_event_to_string(thinking_event))
         else:
             if "```" in content:
@@ -708,10 +713,7 @@ async def _streaming_planning_fallback(
 
     try:
         commander_response = parse_llm_json(
-            json_str,
-            ExecutionPlan,
-            strict=False,
-            clean_markdown=False
+            json_str, ExecutionPlan, strict=False, clean_markdown=False
         )
         logger.info(f"[COMMANDER] 流式解析成功，生成 {len(commander_response.tasks)} 个任务")
         return commander_response, event_queue

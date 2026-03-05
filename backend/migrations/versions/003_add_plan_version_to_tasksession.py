@@ -5,6 +5,7 @@ Revises: 002
 Create Date: 2026-03-03 22:40:00.000000
 
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -21,9 +22,9 @@ def upgrade() -> None:
     # 检查列是否已存在（避免重复执行报错）
     conn = op.get_bind()
     inspector = sa.inspect(conn)
-    columns = [col['name'] for col in inspector.get_columns('tasksession')]
+    columns = [col["name"] for col in inspector.get_columns("tasksession")]
 
-    if 'plan_version' not in columns:
+    if "plan_version" not in columns:
         # 1) 先添加可空列，避免历史数据迁移失败
         op.add_column("tasksession", sa.Column("plan_version", sa.Integer(), nullable=True))
 

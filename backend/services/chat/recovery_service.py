@@ -10,6 +10,7 @@ HITL (Human-in-the-Loop) 恢复服务
 - LangGraph 导入在方法内部进行，防止循环引用
 - 复用 StreamService.execute_langgraph_stream 进行流式处理，不重复实现
 """
+
 import asyncio
 import os
 import threading
@@ -44,6 +45,7 @@ class RecoveryService:
         """延迟初始化 StreamService"""
         if self._stream_service is None:
             from .stream_service import StreamService
+
             self._stream_service = StreamService(self.db)
         return self._stream_service
 
@@ -59,7 +61,7 @@ class RecoveryService:
         updated_plan: list[dict[str, Any]] | None = None,
         plan_version: int | None = None,
         message_id: str | None = None,
-        idempotency_key: str | None = None
+        idempotency_key: str | None = None,
     ) -> StreamingResponse | dict[str, str]:
         """
         恢复被中断的 HITL 流程
@@ -143,7 +145,7 @@ class RecoveryService:
         updated_plan: list[dict[str, Any]] | None = None,
         plan_version: int | None = None,
         message_id: str | None = None,
-        idempotency_key: str | None = None
+        idempotency_key: str | None = None,
     ) -> StreamingResponse:
         """
         处理用户批准计划 - 流式恢复执行
@@ -179,9 +181,9 @@ class RecoveryService:
         actual_message_id = message_id or str(uuid.uuid4())
 
         # 创建队列
-        stream_queue = asyncio.Queue()      # 用于 artifact 收集
-        sse_queue = asyncio.Queue()         # 用于 SSE 事件收集
-        realtime_queue = asyncio.Queue()    # 用于实时推送
+        stream_queue = asyncio.Queue()  # 用于 artifact 收集
+        sse_queue = asyncio.Queue()  # 用于 SSE 事件收集
+        realtime_queue = asyncio.Queue()  # 用于实时推送
 
         async def event_generator():
             """事件生成器 - 复用 StreamService 的核心流式逻辑"""
@@ -193,7 +195,7 @@ class RecoveryService:
                     sse_queue=sse_queue,
                     realtime_queue=realtime_queue,
                     updated_plan=updated_plan,
-                    message_id=actual_message_id
+                    message_id=actual_message_id,
                 ):
                     yield event
 
@@ -213,8 +215,8 @@ class RecoveryService:
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
-                "X-Accel-Buffering": "no"
-            }
+                "X-Accel-Buffering": "no",
+            },
         )
 
     @classmethod
@@ -301,7 +303,9 @@ class RecoveryService:
         except Exception as e:
             logger.warning(f"[HITL RESUME] 重置线程状态失败: {e}")
 
-    def _bump_plan_version_with_cas(self, thread_id: str, expected_plan_version: int | None) -> None:
+    def _bump_plan_version_with_cas(
+        self, thread_id: str, expected_plan_version: int | None
+    ) -> None:
         """
         使用 CAS（Compare-And-Set）方式递增 plan_version。
 
@@ -326,20 +330,18 @@ class RecoveryService:
             update(TaskSession)
             .where(
                 TaskSession.session_id == task_session.session_id,
-                TaskSession.plan_version == expected_plan_version
+                TaskSession.plan_version == expected_plan_version,
             )
-            .values(
-                plan_version=TaskSession.plan_version + 1,
-                updated_at=datetime.now()
-            )
+            .values(plan_version=TaskSession.plan_version + 1, updated_at=datetime.now())
         )
         result = self.db.exec(stmt)
 
         if result.rowcount == 0:
             self.db.rollback()
             latest = self.db.exec(
-                select(TaskSession.plan_version)
-                .where(TaskSession.session_id == task_session.session_id)
+                select(TaskSession.plan_version).where(
+                    TaskSession.session_id == task_session.session_id
+                )
             ).first()
             raise AppError(
                 message="计划已被更新，请刷新后重试",
@@ -348,17 +350,13 @@ class RecoveryService:
                 details={
                     "thread_id": thread_id,
                     "expected_plan_version": expected_plan_version,
-                    "current_plan_version": latest
-                }
+                    "current_plan_version": latest,
+                },
             )
 
         self.db.commit()
 
-    async def _process_collected_artifacts(
-        self,
-        thread_id: str,
-        stream_queue: asyncio.Queue
-    ):
+    async def _process_collected_artifacts(self, thread_id: str, stream_queue: asyncio.Queue):
         """处理收集到的 artifacts 并保存"""
         from crud.task_session import create_artifacts_batch
 
@@ -387,17 +385,19 @@ class RecoveryService:
             for task_id, artifacts in artifacts_by_task.items():
                 # 查询对应的 SubTask
                 from models import SubTask
+
                 subtask = self.db.exec(
                     select(SubTask).where(
-                        SubTask.task_session_id == task_session.session_id,
-                        SubTask.id == task_id
+                        SubTask.task_session_id == task_session.session_id, SubTask.id == task_id
                     )
                 ).first()
 
                 if subtask:
                     try:
                         create_artifacts_batch(self.db, subtask.id, artifacts)
-                        logger.info(f"[HITL RESUME] 保存 {len(artifacts)} 个 artifacts 到 SubTask {subtask.id}")
+                        logger.info(
+                            f"[HITL RESUME] 保存 {len(artifacts)} 个 artifacts 到 SubTask {subtask.id}"
+                        )
                     except Exception as e:
                         logger.error(f"[HITL RESUME] 保存 artifacts 失败: {e}")
 
@@ -413,7 +413,9 @@ class RecoveryService:
         """
         try:
             db_url = os.getenv("DATABASE_URL", "")
-            db_url = db_url.replace("postgresql+asyncpg", "postgresql").replace("postgresql+psycopg", "postgresql")
+            db_url = db_url.replace("postgresql+asyncpg", "postgresql").replace(
+                "postgresql+psycopg", "postgresql"
+            )
 
             with psycopg.connect(db_url) as conn:
                 with conn.cursor() as cur:
@@ -425,10 +427,7 @@ class RecoveryService:
                         )
                     """)
                     if cur.fetchone()[0]:
-                        cur.execute(
-                            "DELETE FROM checkpoints WHERE thread_id = %s",
-                            (thread_id,)
-                        )
+                        cur.execute("DELETE FROM checkpoints WHERE thread_id = %s", (thread_id,))
                         deleted = cur.rowcount
                         logger.info(f"[HITL RESUME] 清理了 {deleted} 个 checkpoint(s)")
                     else:
@@ -452,7 +451,9 @@ class RecoveryService:
                 task_session.updated_at = datetime.now()
                 self.db.add(task_session)
                 self.db.commit()
-                logger.info(f"[HITL RESUME] TaskSession {task_session.session_id} 已标记为 cancelled")
+                logger.info(
+                    f"[HITL RESUME] TaskSession {task_session.session_id} 已标记为 cancelled"
+                )
 
         except Exception as e:
             logger.warning(f"[HITL RESUME] 更新 task_session 失败: {e}")

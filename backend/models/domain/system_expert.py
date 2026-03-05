@@ -41,9 +41,7 @@ class SystemExpert(SQLModel, table=True):
         default=None,
         description="专家能力描述，用于 Planner 决定任务分配",
     )
-    system_prompt: str = Field(
-        description="专家系统提示词（核心字段，管理员可修改）"
-    )
+    system_prompt: str = Field(description="专家系统提示词（核心字段，管理员可修改）")
     model: str = Field(
         default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"),
         max_length=128,
@@ -55,16 +53,10 @@ class SystemExpert(SQLModel, table=True):
         description="是否为动态专家，false=系统内置，true=用户创建",
     )
     # 系统核心组件标记（不可删除）
-    is_system: bool = Field(
-        default=False, description="是否为系统核心组件，true=禁止删除"
-    )
+    is_system: bool = Field(default=False, description="是否为系统核心组件，true=禁止删除")
     # 配置版本号（乐观锁，用于并发更新检测）
-    config_version: int = Field(
-        default=0, description="配置版本号，每次更新自动递增"
-    )
-    created_at: datetime = Field(
-        default_factory=datetime.now, description="创建时间"
-    )
+    config_version: int = Field(default=0, description="配置版本号，每次更新自动递增")
+    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     updated_at: datetime = Field(
         default_factory=datetime.now,
         sa_column_kwargs={"onupdate": func.now()},

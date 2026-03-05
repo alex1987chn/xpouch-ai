@@ -3,6 +3,7 @@
 
 此模块仅包含专家的默认配置数据，不导入任何数据库模型，避免循环导入问题。
 """
+
 import os
 
 # 从环境变量读取默认模型，默认使用 deepseek-chat
@@ -51,7 +52,7 @@ EXPERT_DEFAULTS = [
 # User Query
 {input}""",
         "model": "deepseek-chat",
-        "temperature": 0.2
+        "temperature": 0.2,
     },
     {
         "expert_key": "coder",
@@ -102,7 +103,7 @@ if __name__ == "__main__":
 # User Task
 {input}""",
         "model": "deepseek-chat",
-        "temperature": 0.0
+        "temperature": 0.0,
     },
     {
         "expert_key": "researcher",
@@ -149,7 +150,7 @@ if __name__ == "__main__":
 # User Research Task
 {input}""",
         "model": "deepseek-chat",
-        "temperature": 0.2
+        "temperature": 0.2,
     },
     {
         "expert_key": "analyzer",
@@ -202,7 +203,7 @@ if __name__ == "__main__":
 # Input Data / Context
 {input}""",
         "model": "deepseek-chat",
-        "temperature": 0.1
+        "temperature": 0.1,
     },
     {
         "expert_key": "writer",
@@ -241,7 +242,7 @@ if __name__ == "__main__":
 # User Task
 {input}""",
         "model": "deepseek-chat",
-        "temperature": 0.2
+        "temperature": 0.2,
     },
     {
         "expert_key": "planner",
@@ -305,7 +306,7 @@ gantt
 # User Requirement
 {input}""",
         "model": "deepseek-chat",
-        "temperature": 0.1
+        "temperature": 0.1,
     },
     {
         "expert_key": "image_analyzer",
@@ -351,7 +352,7 @@ gantt
 # User Input / Context
 {input} (Context regarding the image, if provided)""",
         "model": "deepseek-chat",
-        "temperature": 0.1
+        "temperature": 0.1,
     },
     {
         "expert_key": "commander",
@@ -401,7 +402,7 @@ gantt
 # User Query
 {user_query}""",
         "model": "deepseek-chat",
-        "temperature": 0.0
+        "temperature": 0.0,
     },
     {
         "expert_key": "story_writer",
@@ -409,7 +410,7 @@ gantt
         "description": "世界观设定、背景故事创作",
         "system_prompt": """顶级知名小说家，擅长写修真小说""",
         "model": "kimi-k2.5",
-        "temperature": 1.0
+        "temperature": 1.0,
     },
     {
         "expert_key": "memorize_expert",
@@ -465,6 +466,6 @@ Output:
 # User Input
 {input}""",
         "model": "deepseek-chat",
-        "temperature": 0.1
-    }
+        "temperature": 0.1,
+    },
 ]

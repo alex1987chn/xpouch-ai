@@ -1,4 +1,5 @@
 """集中定义所有用于 DB 持久化的 StrEnum；DB 列必须使用 .value 映射。"""
+
 from enum import StrEnum
 
 
@@ -9,6 +10,7 @@ def _enum_values(enum_cls: type[StrEnum]) -> list[str]:
 
 class UserRole(StrEnum):
     """用户角色枚举"""
+
     USER = "user"
     ADMIN = "admin"
     VIEW_ADMIN = "view_admin"
@@ -17,6 +19,7 @@ class UserRole(StrEnum):
 
 class ConversationType(StrEnum):
     """会话类型枚举"""
+
     DEFAULT = "default"
     CUSTOM = "custom"
     AI = "ai"
@@ -24,6 +27,7 @@ class ConversationType(StrEnum):
 
 class ExpertType(StrEnum):
     """专家类型枚举"""
+
     SEARCH = "search"
     CODER = "coder"
     RESEARCHER = "researcher"
@@ -35,6 +39,7 @@ class ExpertType(StrEnum):
 
 class TaskStatus(StrEnum):
     """子任务状态枚举"""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -44,5 +49,6 @@ class TaskStatus(StrEnum):
 
 class ExecutionMode(StrEnum):
     """任务执行模式"""
+
     SEQUENTIAL = "sequential"
     PARALLEL = "parallel"

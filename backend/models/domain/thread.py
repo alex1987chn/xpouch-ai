@@ -46,17 +46,13 @@ class Thread(SQLModel, table=True):
     # - agent_type='default' 时，存储默认助手的UUID
     # - agent_type='custom' 时，存储自定义智能体的UUID
     # - agent_type='ai' 时，存储固定的'ai-assistant'标识
-    agent_id: str = Field(
-        index=True, default="sys-default-chat", max_length=128
-    )
+    agent_id: str = Field(index=True, default="sys-default-chat", max_length=128)
 
     # 用户ID
     user_id: str = Field(foreign_key="user.id", index=True, max_length=64)
 
     # 关联的任务会话（仅复杂模式有值）
-    task_session_id: str | None = Field(
-        default=None, index=True, max_length=64
-    )
+    task_session_id: str | None = Field(default=None, index=True, max_length=64)
 
     # 线程状态（记录线程的执行状态）
     # - idle: 空闲/完成状态

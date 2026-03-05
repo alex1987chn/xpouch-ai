@@ -32,6 +32,7 @@ except ImportError:
 # 配置加载
 # ============================================================================
 
+
 @lru_cache
 def load_providers_config() -> dict[str, Any]:
     """
@@ -45,7 +46,7 @@ def load_providers_config() -> dict[str, Any]:
     if not config_path.exists():
         raise FileNotFoundError(f"配置文件不存在: {config_path}")
 
-    with open(config_path, encoding='utf-8') as f:
+    with open(config_path, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     # 安全检查
@@ -65,7 +66,7 @@ def _security_check(config: dict, config_path: Path) -> None:
     Raises:
         ValueError: 如果发现敏感信息
     """
-    forbidden_keys = ['api_key', 'apikey', 'key', 'secret', 'password', 'token']
+    forbidden_keys = ["api_key", "apikey", "key", "secret", "password", "token"]
 
     def check_dict(d: dict, path: str = ""):
         for key, value in d.items():
@@ -73,7 +74,7 @@ def _security_check(config: dict, config_path: Path) -> None:
 
             # 检查 key 名是否包含敏感词
             if any(forbidden in key.lower() for forbidden in forbidden_keys):
-                if key != 'env_key':  # env_key 是允许的
+                if key != "env_key":  # env_key 是允许的
                     raise ValueError(
                         f"[安全错误] providers.yaml 包含敏感字段: {current_path}\n"
                         f"API Key 等敏感信息必须在 .env 文件中设置，"
@@ -82,7 +83,7 @@ def _security_check(config: dict, config_path: Path) -> None:
 
             # 检查值是否看起来像 API Key
             if isinstance(value, str):
-                if value.startswith(('sk-', 'ak-', 'pk-')) and len(value) > 20:
+                if value.startswith(("sk-", "ak-", "pk-")) and len(value) > 20:
                     raise ValueError(
                         f"[安全错误] providers.yaml 可能包含 API Key: {current_path}\n"
                         f"请将此值移至 .env 文件！"
@@ -99,18 +100,19 @@ def _security_check(config: dict, config_path: Path) -> None:
     try:
         check_dict(config)
     except ValueError as e:
-        logger.error(f"\n{'='*60}")
+        logger.error(f"\n{'=' * 60}")
         logger.error("配置安全检查失败！")
-        logger.error(f"{'='*60}")
+        logger.error(f"{'=' * 60}")
         logger.error(e)
         logger.error(f"\n文件位置: {config_path}")
-        logger.error(f"{'='*60}\n")
+        logger.error(f"{'=' * 60}\n")
         raise
 
 
 # ============================================================================
 # 提供商配置获取
 # ============================================================================
+
 
 def get_provider_config(provider: str) -> dict[str, Any] | None:
     """
@@ -123,7 +125,7 @@ def get_provider_config(provider: str) -> dict[str, Any] | None:
         配置字典，如果不存在返回 None
     """
     config = load_providers_config()
-    return config.get('providers', {}).get(provider)
+    return config.get("providers", {}).get(provider)
 
 
 def get_all_providers() -> dict[str, dict[str, Any]]:
@@ -134,7 +136,7 @@ def get_all_providers() -> dict[str, dict[str, Any]]:
         Dict: 所有提供商的配置字典
     """
     config = load_providers_config()
-    return config.get('providers', {})
+    return config.get("providers", {})
 
 
 def get_active_providers() -> dict[str, dict[str, Any]]:
@@ -148,10 +150,10 @@ def get_active_providers() -> dict[str, dict[str, Any]]:
     active = {}
 
     for name, config in all_providers.items():
-        if not config.get('enabled', True):
+        if not config.get("enabled", True):
             continue
 
-        env_key = config.get('env_key')
+        env_key = config.get("env_key")
         if env_key and os.getenv(env_key):
             active[name] = config
 
@@ -172,7 +174,7 @@ def get_provider_api_key(provider: str) -> str | None:
     if not config:
         return None
 
-    env_key = config.get('env_key')
+    env_key = config.get("env_key")
     if env_key:
         return os.getenv(env_key)
 
@@ -196,6 +198,7 @@ def is_provider_configured(provider: str) -> bool:
 # 嵌入模型配置获取
 # ============================================================================
 
+
 def get_embeddings_config() -> dict[str, Any]:
     """
     获取嵌入模型配置
@@ -204,7 +207,7 @@ def get_embeddings_config() -> dict[str, Any]:
         Dict: 包含 'providers' 和 'default_provider' 的配置字典
     """
     config = load_providers_config()
-    embeddings = config.get('embeddings', {})
+    embeddings = config.get("embeddings", {})
 
     if not embeddings:
         raise ValueError("providers.yaml 中未找到 embeddings 配置")
@@ -235,7 +238,7 @@ def get_default_embedding_provider() -> str:
         str: 默认提供商名称
     """
     embeddings = get_embeddings_config()
-    return embeddings.get('default_provider', 'siliconflow')
+    return embeddings.get("default_provider", "siliconflow")
 
 
 def get_embedding_client():
@@ -251,10 +254,10 @@ def get_embedding_client():
     if not config:
         raise ValueError(f"未找到嵌入提供商配置: {provider}")
 
-    if not config.get('enabled', True):
+    if not config.get("enabled", True):
         raise ValueError(f"嵌入提供商已禁用: {provider}")
 
-    env_key = config.get('env_key')
+    env_key = config.get("env_key")
     api_key = os.getenv(env_key)
 
     if not api_key:
@@ -262,13 +265,10 @@ def get_embedding_client():
 
     from openai import OpenAI
 
-    client = OpenAI(
-        api_key=api_key,
-        base_url=config.get('base_url')
-    )
+    client = OpenAI(api_key=api_key, base_url=config.get("base_url"))
 
-    model = config.get('default_model')
-    dimensions = config.get('dimensions', 1024)
+    model = config.get("default_model")
+    dimensions = config.get("dimensions", 1024)
 
     return client, model, dimensions
 
@@ -281,12 +281,12 @@ def print_embedding_status():
         provider = get_default_embedding_provider()
         config = get_embedding_provider_config(provider)
 
-        logger.info("\n" + "="*60)
+        logger.info("\n" + "=" * 60)
         logger.info("嵌入模型配置状态")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
-        if config and config.get('enabled', True):
-            env_key = config.get('env_key')
+        if config and config.get("enabled", True):
+            env_key = config.get("env_key")
             has_key = os.getenv(env_key) is not None
 
             if has_key:
@@ -300,7 +300,7 @@ def print_embedding_status():
         else:
             logger.info(f"\n[DISABLED] 嵌入提供商已禁用: {provider}")
 
-        logger.info("="*60 + "\n")
+        logger.info("=" * 60 + "\n")
         return has_key
 
     except Exception as e:
@@ -311,6 +311,7 @@ def print_embedding_status():
 # ============================================================================
 # 模型配置获取
 # ============================================================================
+
 
 def get_model_config(model_id: str) -> dict[str, Any] | None:
     """
@@ -324,17 +325,17 @@ def get_model_config(model_id: str) -> dict[str, Any] | None:
         注意：会合并 provider 的默认配置（如 temperature）
     """
     config = load_providers_config()
-    model_config = config.get('models', {}).get(model_id)
+    model_config = config.get("models", {}).get(model_id)
 
     if model_config:
         # 合并 provider 默认配置到模型配置
-        provider_name = model_config.get('provider')
+        provider_name = model_config.get("provider")
         if provider_name:
             provider_config = get_provider_config(provider_name)
             if provider_config:
                 # 如果模型没有 temperature，使用 provider 默认值
-                if 'temperature' not in model_config and 'temperature' in provider_config:
-                    model_config = {**model_config, 'temperature': provider_config['temperature']}
+                if "temperature" not in model_config and "temperature" in provider_config:
+                    model_config = {**model_config, "temperature": provider_config["temperature"]}
 
     return model_config
 
@@ -352,12 +353,9 @@ def get_models_by_provider(provider: str) -> list[dict[str, Any]]:
     config = load_providers_config()
     models = []
 
-    for model_id, model_config in config.get('models', {}).items():
-        if model_config.get('provider') == provider:
-            models.append({
-                'id': model_id,
-                **model_config
-            })
+    for model_id, model_config in config.get("models", {}).items():
+        if model_config.get("provider") == provider:
+            models.append({"id": model_id, **model_config})
 
     return models
 
@@ -365,6 +363,7 @@ def get_models_by_provider(provider: str) -> list[dict[str, Any]]:
 # ============================================================================
 # Router 配置获取
 # ============================================================================
+
 
 def get_router_config() -> dict[str, Any]:
     """
@@ -374,7 +373,7 @@ def get_router_config() -> dict[str, Any]:
         Router 配置字典
     """
     config = load_providers_config()
-    return config.get('router', {})
+    return config.get("router", {})
 
 
 def get_router_priority_providers() -> list[str]:
@@ -385,15 +384,12 @@ def get_router_priority_providers() -> list[str]:
         List[str]: 按优先级排序的提供商名称列表
     """
     router_config = get_router_config()
-    priority = router_config.get('priority_providers', [])
+    priority = router_config.get("priority_providers", [])
 
     # 如果没有配置，按 priority 字段排序
     if not priority:
         providers = get_active_providers()
-        sorted_providers = sorted(
-            providers.items(),
-            key=lambda x: x[1].get('priority', 99)
-        )
+        sorted_providers = sorted(providers.items(), key=lambda x: x[1].get("priority", 99))
         priority = [name for name, _ in sorted_providers]
 
     return priority
@@ -419,6 +415,7 @@ def get_best_router_provider() -> str | None:
 # 配置验证和诊断
 # ============================================================================
 
+
 def validate_all_providers() -> dict[str, Any]:
     """
     验证所有提供商配置
@@ -427,30 +424,24 @@ def validate_all_providers() -> dict[str, Any]:
         Dict: 验证结果
     """
     all_providers = get_all_providers()
-    results = {
-        'configured': [],
-        'missing_key': [],
-        'disabled': [],
-        'total': len(all_providers)
-    }
+    results = {"configured": [], "missing_key": [], "disabled": [], "total": len(all_providers)}
 
     for name, config in all_providers.items():
-        if not config.get('enabled', True):
-            results['disabled'].append(name)
+        if not config.get("enabled", True):
+            results["disabled"].append(name)
             continue
 
         if is_provider_configured(name):
-            results['configured'].append({
-                'name': name,
-                'display_name': config.get('name', name),
-                'default_model': config.get('default_model'),
-                'env_key': config.get('env_key')
-            })
+            results["configured"].append(
+                {
+                    "name": name,
+                    "display_name": config.get("name", name),
+                    "default_model": config.get("default_model"),
+                    "env_key": config.get("env_key"),
+                }
+            )
         else:
-            results['missing_key'].append({
-                'name': name,
-                'env_key': config.get('env_key')
-            })
+            results["missing_key"].append({"name": name, "env_key": config.get("env_key")})
 
     return results
 
@@ -461,23 +452,23 @@ def print_provider_status():
     """
     results = validate_all_providers()
 
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("LLM 提供商配置状态")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
-    if results['configured']:
+    if results["configured"]:
         logger.info(f"\n[OK] 已配置 ({len(results['configured'])}):")
-        for p in results['configured']:
+        for p in results["configured"]:
             logger.info(f"   - {p['display_name']} ({p['name']}) - {p['default_model']}")
 
-    if results['missing_key']:
+    if results["missing_key"]:
         logger.warning(f"\n[WARN] 未配置 API Key ({len(results['missing_key'])}):")
-        for p in results['missing_key']:
+        for p in results["missing_key"]:
             logger.warning(f"   - {p['name']} - 请设置 {p['env_key']}")
 
-    if results['disabled']:
+    if results["disabled"]:
         logger.info(f"\n[DISABLED] 已禁用 ({len(results['disabled'])}):")
-        for name in results['disabled']:
+        for name in results["disabled"]:
             logger.info(f"   - {name}")
 
     # Router 推荐
@@ -487,14 +478,15 @@ def print_provider_status():
     else:
         logger.error("\n[ERROR] 没有可用的 LLM 提供商！")
 
-    logger.info("="*60 + "\n")
+    logger.info("=" * 60 + "\n")
 
-    return len(results['configured']) > 0
+    return len(results["configured"]) > 0
 
 
 # ============================================================================
 # 热重载支持（开发环境）
 # ============================================================================
+
 
 def reload_config():
     """

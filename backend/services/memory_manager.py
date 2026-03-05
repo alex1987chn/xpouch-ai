@@ -19,10 +19,7 @@ def get_embedding(text: str) -> list[float]:
         # 从统一配置获取客户端
         client, model, dimensions = get_embedding_client()
 
-        response = client.embeddings.create(
-            input=text.replace("\n", " "),
-            model=model
-        )
+        response = client.embeddings.create(input=text.replace("\n", " "), model=model)
         return response.data[0].embedding
     except Exception as e:
         logger.error(f"[Memory] Embedding Error: {e}")
@@ -33,7 +30,9 @@ class MemoryManager:
     """记忆管理器 - 处理用户长期记忆的存储和检索"""
 
     # --- 同步方法 (运行在线程池中) ---
-    def _add_memory_sync(self, user_id: str, content: str, source: str = "conversation", memory_type: str = "fact"):
+    def _add_memory_sync(
+        self, user_id: str, content: str, source: str = "conversation", memory_type: str = "fact"
+    ):
         """同步添加记忆到数据库"""
         if not content or not content.strip():
             return
@@ -53,7 +52,7 @@ class MemoryManager:
                     embedding=vector,
                     created_at=datetime.now().isoformat(),
                     source=source,
-                    memory_type=memory_type
+                    memory_type=memory_type,
                 )
                 session.add(memory)
                 session.commit()
@@ -73,11 +72,12 @@ class MemoryManager:
         try:
             with Session(engine) as session:
                 # 🔥 向量相似度排序 (cosine_distance 越小越相似)
-                statement = select(UserMemory).where(
-                    UserMemory.user_id == user_id
-                ).order_by(
-                    UserMemory.embedding.cosine_distance(query_vector)
-                ).limit(limit)
+                statement = (
+                    select(UserMemory)
+                    .where(UserMemory.user_id == user_id)
+                    .order_by(UserMemory.embedding.cosine_distance(query_vector))
+                    .limit(limit)
+                )
 
                 results = session.exec(statement).all()
 
@@ -100,9 +100,12 @@ class MemoryManager:
         """获取用户所有记忆（用于调试或导出）"""
         try:
             with Session(engine) as session:
-                statement = select(UserMemory).where(
-                    UserMemory.user_id == user_id
-                ).order_by(UserMemory.created_at.desc()).limit(limit)
+                statement = (
+                    select(UserMemory)
+                    .where(UserMemory.user_id == user_id)
+                    .order_by(UserMemory.created_at.desc())
+                    .limit(limit)
+                )
                 return session.exec(statement).all()
         except Exception as e:
             logger.error(f"[Memory] ❌ 获取记忆失败: {e}")
@@ -123,7 +126,9 @@ class MemoryManager:
             return False
 
     # --- 异步入口 (供 Agent 调用) ---
-    async def add_memory(self, user_id: str, content: str, source: str = "conversation", memory_type: str = "fact"):
+    async def add_memory(
+        self, user_id: str, content: str, source: str = "conversation", memory_type: str = "fact"
+    ):
         """异步添加记忆 - 使用 to_thread 防止阻塞主线程"""
         await asyncio.to_thread(self._add_memory_sync, user_id, content, source, memory_type)
 

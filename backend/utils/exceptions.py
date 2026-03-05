@@ -17,7 +17,7 @@ class AppError(Exception):
         code: str | ErrorCode = ErrorCode.INTERNAL_ERROR,
         status_code: int = 500,
         details: dict[str, Any] | None = None,
-        original_error: Exception | None = None
+        original_error: Exception | None = None,
     ):
         super().__init__(message)
         self.message = message
@@ -28,13 +28,7 @@ class AppError(Exception):
 
     def to_dict(self) -> dict[str, Any]:
         """转换为字典格式，用于API响应"""
-        return {
-            "error": {
-                "code": self.code,
-                "message": self.message,
-                "details": self.details
-            }
-        }
+        return {"error": {"code": self.code, "message": self.message, "details": self.details}}
 
     def __str__(self) -> str:
         return f"[{self.code}] {self.message}"
@@ -42,76 +36,75 @@ class AppError(Exception):
 
 class ValidationError(AppError):
     """数据验证错误"""
+
     def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(
-            message=message,
-            code=ErrorCode.VALIDATION_ERROR,
-            status_code=400,
-            details=details
+            message=message, code=ErrorCode.VALIDATION_ERROR, status_code=400, details=details
         )
 
 
 class AuthenticationError(AppError):
     """认证错误"""
+
     def __init__(self, message: str = "认证失败", details: dict[str, Any] | None = None):
         super().__init__(
-            message=message,
-            code=ErrorCode.AUTHENTICATION_ERROR,
-            status_code=401,
-            details=details
+            message=message, code=ErrorCode.AUTHENTICATION_ERROR, status_code=401, details=details
         )
 
 
 class AuthorizationError(AppError):
     """授权错误"""
+
     def __init__(self, message: str = "没有权限", details: dict[str, Any] | None = None):
         super().__init__(
-            message=message,
-            code=ErrorCode.AUTHORIZATION_ERROR,
-            status_code=403,
-            details=details
+            message=message, code=ErrorCode.AUTHORIZATION_ERROR, status_code=403, details=details
         )
 
 
 class NotFoundError(AppError):
     """资源未找到错误"""
+
     def __init__(self, resource: str = "资源", details: dict[str, Any] | None = None):
         super().__init__(
-            message=f"{resource} 未找到",
-            code=ErrorCode.NOT_FOUND,
-            status_code=404,
-            details=details
+            message=f"{resource} 未找到", code=ErrorCode.NOT_FOUND, status_code=404, details=details
         )
 
 
 class LLMError(AppError):
     """LLM API调用错误"""
-    def __init__(self, message: str, provider: str = "unknown", details: dict[str, Any] | None = None):
+
+    def __init__(
+        self, message: str, provider: str = "unknown", details: dict[str, Any] | None = None
+    ):
         details = details or {}
         details["provider"] = provider
         super().__init__(
             message=message,
             code=ErrorCode.LLM_ERROR,
             status_code=502,  # Bad Gateway
-            details=details
+            details=details,
         )
 
 
 class DatabaseError(AppError):
     """数据库错误"""
-    def __init__(self, message: str, operation: str = "unknown", details: dict[str, Any] | None = None):
+
+    def __init__(
+        self, message: str, operation: str = "unknown", details: dict[str, Any] | None = None
+    ):
         details = details or {}
         details["operation"] = operation
         super().__init__(
             message=message,
             code=ErrorCode.DATABASE_ERROR,
             status_code=503,  # Service Unavailable
-            details=details
+            details=details,
         )
 
 
 class ExternalServiceError(AppError):
     """外部服务错误"""
+
     def __init__(self, service: str, message: str, details: dict[str, Any] | None = None):
         details = details or {}
         details["service"] = service
@@ -119,21 +112,19 @@ class ExternalServiceError(AppError):
             message=f"{service} 服务错误: {message}",
             code=ErrorCode.EXTERNAL_SERVICE_ERROR,
             status_code=502,
-            details=details
+            details=details,
         )
 
 
 class RateLimitError(AppError):
     """速率限制错误"""
+
     def __init__(self, message: str = "请求过于频繁", retry_after: int | None = None):
         details = {}
         if retry_after:
             details["retry_after"] = retry_after
         super().__init__(
-            message=message,
-            code=ErrorCode.RATE_LIMIT,
-            status_code=429,
-            details=details
+            message=message, code=ErrorCode.RATE_LIMIT, status_code=429, details=details
         )
 
 
@@ -152,7 +143,4 @@ def handle_error(error: Exception) -> AppError:
         return ValidationError(f"类型错误: {error}")
 
     # 默认内部错误
-    return AppError(
-        message=str(error),
-        original_error=error
-    )
+    return AppError(message=str(error), original_error=error)

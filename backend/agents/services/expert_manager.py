@@ -21,10 +21,7 @@ from utils.logger import logger
 _expert_cache: TTLCache = TTLCache(maxsize=100, ttl=300)
 
 
-def get_expert_config(
-    expert_key: str,
-    session: Session
-) -> dict | None:
+def get_expert_config(expert_key: str, session: Session) -> dict | None:
     """
     从数据库获取专家配置
 
@@ -41,9 +38,7 @@ def get_expert_config(
             "temperature": float
         }
     """
-    expert = session.exec(
-        select(SystemExpert).where(SystemExpert.expert_key == expert_key)
-    ).first()
+    expert = session.exec(select(SystemExpert).where(SystemExpert.expert_key == expert_key)).first()
 
     if not expert:
         logger.warning(f"[ExpertManager] Expert '{expert_key}' not found in database")
@@ -62,7 +57,7 @@ def _build_config(expert: SystemExpert) -> dict:
         "name": expert.name,
         "system_prompt": expert.system_prompt,
         "model": effective_model,
-        "temperature": expert.temperature
+        "temperature": expert.temperature,
     }
 
     # 推断 provider
@@ -75,32 +70,30 @@ def _infer_provider(model: str) -> str | None:
     """从模型名称推断 provider"""
     try:
         from providers_config import get_model_config
+
         model_config = get_model_config(model)
-        if model_config and 'provider' in model_config:
-            return model_config['provider']
+        if model_config and "provider" in model_config:
+            return model_config["provider"]
     except ImportError:
         pass
 
     # 启发式推断
     model_lower = model.lower()
-    if model_lower.startswith('minimax'):
-        return 'minimax'
-    elif model_lower.startswith('deepseek'):
-        return 'deepseek'
-    elif model_lower.startswith('gpt'):
-        return 'openai'
-    elif model_lower.startswith('kimi'):
-        return 'moonshot'
-    elif model_lower.startswith('claude'):
-        return 'anthropic'
+    if model_lower.startswith("minimax"):
+        return "minimax"
+    elif model_lower.startswith("deepseek"):
+        return "deepseek"
+    elif model_lower.startswith("gpt"):
+        return "openai"
+    elif model_lower.startswith("kimi"):
+        return "moonshot"
+    elif model_lower.startswith("claude"):
+        return "anthropic"
 
     return None
 
 
-def get_expert_prompt(
-    expert_key: str,
-    session: Session
-) -> str | None:
+def get_expert_prompt(expert_key: str, session: Session) -> str | None:
     """
     获取专家 Prompt（便捷函数）
 
@@ -129,10 +122,7 @@ def load_all_experts(session: Session) -> dict[str, dict]:
     return {expert.expert_key: _build_config(expert) for expert in experts}
 
 
-def get_expert_prompt_cached(
-    expert_key: str,
-    session: Session | None = None
-) -> str | None:
+def get_expert_prompt_cached(expert_key: str, session: Session | None = None) -> str | None:
     """
     获取专家 Prompt（带缓存）
 
@@ -164,10 +154,7 @@ def get_expert_prompt_cached(
     return None
 
 
-def get_expert_config_cached(
-    expert_key: str,
-    session: Session | None = None
-) -> dict | None:
+def get_expert_config_cached(expert_key: str, session: Session | None = None) -> dict | None:
     """
     获取专家完整配置（带缓存）
 
@@ -210,16 +197,16 @@ def refresh_cache(session: Session | None = None):
         from agents.nodes import commander, generic
 
         # Commander 模块缓存
-        if hasattr(commander, '_commander_config_cache'):
+        if hasattr(commander, "_commander_config_cache"):
             commander._commander_config_cache.clear()
             logger.info("[ExpertManager] Commander 配置缓存已清除")
 
-        if hasattr(commander, '_all_experts_cache'):
+        if hasattr(commander, "_all_experts_cache"):
             commander._all_experts_cache.clear()
             logger.info("[ExpertManager] Commander 专家列表缓存已清除")
 
         # Generic Worker 模块缓存
-        if hasattr(generic, '_generic_expert_cache'):
+        if hasattr(generic, "_generic_expert_cache"):
             generic._generic_expert_cache.clear()
             logger.info("[ExpertManager] GenericWorker 缓存已清除")
 
@@ -266,14 +253,9 @@ def get_all_expert_list(db_session: Session | None = None) -> list[tuple]:
         return fallback_experts
 
     try:
-        experts = db_session.exec(
-            select(SystemExpert).order_by(SystemExpert.expert_key)
-        ).all()
+        experts = db_session.exec(select(SystemExpert).order_by(SystemExpert.expert_key)).all()
 
-        result = [
-            (e.expert_key, e.name, e.description or "暂无描述")
-            for e in experts
-        ]
+        result = [(e.expert_key, e.name, e.description or "暂无描述") for e in experts]
         logger.info(f"[ExpertManager] 从数据库加载了 {len(result)} 个专家")
         return result
 
@@ -295,7 +277,4 @@ def format_expert_list_for_prompt(experts: list[tuple]) -> str:
     if not experts:
         return "（暂无可用专家）"
 
-    return "\n".join(
-        f"- {key} ({name}): {desc}"
-        for key, name, desc in experts
-    )
+    return "\n".join(f"- {key} ({name}): {desc}" for key, name, desc in experts)

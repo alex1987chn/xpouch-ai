@@ -9,6 +9,7 @@ P0 修复: 2025-02-24
 - 缩短 Access Token 过期时间至 60 分钟
 - 修复 datetime.utcnow() 已废弃的问题
 """
+
 import os
 from datetime import UTC, datetime, timedelta
 
@@ -26,7 +27,7 @@ if not SECRET_KEY:
     raise ValueError(
         "JWT_SECRET_KEY environment variable is required. "
         "Please set a secure random key in your .env file. "
-        "You can generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+        'You can generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
     )
 
 ALGORITHM = "HS256"
@@ -43,6 +44,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class AuthenticationError(HTTPException):
     """认证错误"""
+
     def __init__(self, detail: str = "Authentication failed"):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -96,11 +98,7 @@ def create_access_token(user_id: str, additional_claims: dict | None = None) -> 
     # P0 修复: 使用 timezone.utc
     expire = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    payload = {
-        "sub": user_id,
-        "type": "access",
-        "exp": expire.timestamp()
-    }
+    payload = {"sub": user_id, "type": "access", "exp": expire.timestamp()}
 
     if additional_claims:
         payload.update(additional_claims)
@@ -123,11 +121,7 @@ def create_refresh_token(user_id: str) -> str:
     # P0 修复: 使用 timezone.utc
     expire = datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
 
-    payload = {
-        "sub": user_id,
-        "type": "refresh",
-        "exp": expire.timestamp()
-    }
+    payload = {"sub": user_id, "type": "refresh", "exp": expire.timestamp()}
 
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -151,7 +145,9 @@ def verify_token(token: str, token_type: str = "access") -> dict:
 
         # 验证令牌类型
         if payload.get("type") != token_type:
-            raise AuthenticationError(f"Invalid token type. Expected {token_type}, got {payload.get('type')}")
+            raise AuthenticationError(
+                f"Invalid token type. Expected {token_type}, got {payload.get('type')}"
+            )
 
         return payload
 

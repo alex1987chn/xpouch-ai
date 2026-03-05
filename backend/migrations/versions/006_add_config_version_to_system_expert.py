@@ -5,6 +5,7 @@ Revises: 20260304_180000
 Create Date: 2026-03-04 15:30:00.000000
 
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -21,7 +22,7 @@ depends_on: str | Sequence[str] | None = None
 def column_exists(conn, table_name, column_name):
     """检查列是否存在"""
     inspector = inspect(conn)
-    columns = [col['name'] for col in inspector.get_columns(table_name)]
+    columns = [col["name"] for col in inspector.get_columns(table_name)]
     return column_name in columns
 
 
@@ -32,7 +33,7 @@ def upgrade() -> None:
     if not column_exists(conn, "systemexpert", "config_version"):
         op.add_column(
             "systemexpert",
-            sa.Column("config_version", sa.Integer(), nullable=True, server_default="0")
+            sa.Column("config_version", sa.Integer(), nullable=True, server_default="0"),
         )
 
 
