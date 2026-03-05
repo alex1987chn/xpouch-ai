@@ -64,12 +64,12 @@ class SMSService:
     def send_verification_code(self, phone_number: str, code: str, expire_minutes: int = 5) -> tuple[bool, str | None]:
         """
         发送验证码短信
-        
+
         Args:
             phone_number: 手机号码（11位，不需要+86前缀）
             code: 验证码（6位数字）
             expire_minutes: 验证码有效期（分钟）
-            
+
         Returns:
             (success: bool, message: Optional[str])
         """
@@ -123,10 +123,10 @@ class SMSService:
     def send_batch_verification_codes(self, phone_codes: list) -> tuple[bool, dict]:
         """
         批量发送验证码短信
-        
+
         Args:
             phone_codes: 列表，每个元素为(phone_number, code, expire_minutes)
-            
+
         Returns:
             (success: bool, results: dict)
         """
@@ -167,12 +167,12 @@ except Exception as e:
 def send_verification_code_with_fallback(phone_number: str, code: str, expire_minutes: int = 5) -> tuple[bool, str | None]:
     """
     发送验证码，如果短信服务不可用则使用控制台输出
-    
+
     Args:
         phone_number: 手机号码
         code: 验证码
         expire_minutes: 有效期（分钟）
-        
+
     Returns:
         (success: bool, message: Optional[str])
     """

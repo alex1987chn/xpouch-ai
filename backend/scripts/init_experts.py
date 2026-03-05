@@ -67,7 +67,7 @@ def get_session_class_and_engine():
 
 async def init_experts_async(update_existing=False, update_commander=False):
     """异步初始化系统专家数据
-    
+
     Args:
         update_existing: 是否更新所有现有专家（覆盖自定义配置）
         update_commander: 是否只更新 commander（用于启用思维链功能）
@@ -85,7 +85,7 @@ async def init_experts_async(update_existing=False, update_commander=False):
 
 async def process_experts(session, update_existing=False, update_commander=False):
     """处理专家插入/更新逻辑
-    
+
     Args:
         update_existing: 是否更新所有现有专家（覆盖自定义配置）
         update_commander: 是否只更新 commander（用于启用思维链功能）

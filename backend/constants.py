@@ -377,16 +377,16 @@ NEW_TO_OLD_AGENT_ID_MAPPING: dict[str, str] = {
 def normalize_agent_id(agent_id: str) -> str:
     """
     规范化智能体 ID
-    
+
     将旧的硬编码 ID 映射到新的语义化 ID
     如果已经是新 ID, 则直接返回
-    
+
     Args:
         agent_id: 智能体 ID(可能是旧 ID 或新 ID)
-    
+
     Returns:
         str: 规范化后的智能体 ID
-    
+
     Examples:
         >>> normalize_agent_id('default-assistant')
         'sys-default-chat'
@@ -402,13 +402,13 @@ def normalize_agent_id(agent_id: str) -> str:
 def is_system_agent(agent_id: str) -> bool:
     """
     判断是否为系统智能体
-    
+
     Args:
         agent_id: 智能体 ID
-    
+
     Returns:
         bool: 是否为系统智能体
-    
+
     Examples:
         >>> is_system_agent('sys-default-chat')
         True

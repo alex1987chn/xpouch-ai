@@ -32,7 +32,7 @@ def create_task_session(
 ) -> TaskSession:
     """
     创建任务会话
-    
+
     Args:
         db: 数据库会话
         thread_id: 关联的对话ID
@@ -40,7 +40,7 @@ def create_task_session(
         plan_summary: 规划摘要
         estimated_steps: 预计步骤数
         execution_mode: 执行模式 (sequential/parallel)
-    
+
     Returns:
         创建的任务会话
     """
@@ -133,7 +133,7 @@ def create_subtask(
 ) -> SubTask:
     """
     创建子任务
-    
+
     Args:
         db: 数据库会话
         task_session_id: 关联的任务会话ID
@@ -143,7 +143,7 @@ def create_subtask(
         input_data: 输入数据
         execution_mode: 执行模式
         depends_on: 依赖的任务ID列表
-    
+
     Returns:
         创建的子任务
     """
@@ -255,7 +255,7 @@ def create_artifact(
 ) -> Artifact:
     """
     创建产物
-    
+
     Args:
         db: 数据库会话
         sub_task_id: 关联的子任务ID
@@ -264,7 +264,7 @@ def create_artifact(
         title: 产物标题
         language: 代码语言（如果是代码类型）
         sort_order: 排序顺序
-    
+
     Returns:
         创建的产物
     """
@@ -344,7 +344,7 @@ def delete_artifact(db: Session, artifact_id: str) -> bool:
 
 def update_artifact_content(db: Session, artifact_id: str, content: str) -> Artifact | None:
     """更新产物内容
-    
+
     用于用户编辑 AI 生成的 Artifact 后持久化到数据库
     """
     artifact = get_artifact(db, artifact_id)
@@ -374,7 +374,7 @@ def create_task_session_with_subtasks(
 ) -> TaskSession:
     """
     批量创建任务会话和子任务（Commander 阶段使用）
-    
+
     Args:
         db: 数据库会话
         thread_id: 关联的对话ID
@@ -384,7 +384,7 @@ def create_task_session_with_subtasks(
         subtasks_data: 子任务列表
         execution_mode: 执行模式
         session_id: 可选的自定义 session_id（用于流式预览时保持一致性）
-    
+
     Returns:
         创建的任务会话（包含所有子任务）
     """
@@ -451,9 +451,9 @@ def create_task_session_with_subtasks(
 def get_task_session_full(db: Session, session_id: str) -> TaskSession | None:
     """
     获取完整的任务会话（包含子任务和产物）
-    
+
     P1 修复: 使用 selectinload 避免 N+1 查询
-    
+
     用于从历史记录恢复复杂模式对话
     """
     # P1 修复: 使用 selectinload 预加载关联数据

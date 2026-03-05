@@ -18,16 +18,16 @@ Chat 服务层 - XPouch AI 后端核心服务
 
 使用示例:
     from services.chat import ChatSessionService, StreamService
-    
+
     # 在 Router 中使用
     @router.post("/chat")
     async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_session)):
         session_service = ChatSessionService(db)
         stream_service = StreamService(db)
-        
+
         # 获取或创建线程
         thread = await session_service.get_or_create_thread(...)
-        
+
         # 执行流式处理
         return await stream_service.handle_langgraph_stream(...)
 """

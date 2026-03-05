@@ -39,15 +39,15 @@ class ArtifactService:
     ) -> dict[str, Any]:
         """
         获取 Artifact 详情（含权限验证）
-        
+
         Args:
             artifact_id: Artifact ID
             user_id: 用户ID（用于权限验证）
             include_content: 是否包含完整内容（调试时可能只需要摘要）
-            
+
         Returns:
             Artifact 详情字典
-            
+
         Raises:
             NotFoundError: Artifact 不存在
             AuthorizationError: 无权访问此产物
@@ -81,11 +81,11 @@ class ArtifactService:
     ) -> list[dict[str, Any]]:
         """
         获取 SubTask 的所有 Artifacts
-        
+
         Args:
             subtask_id: SubTask ID
             user_id: 用户ID（用于权限验证）
-            
+
         Returns:
             Artifact 列表
         """
@@ -128,20 +128,20 @@ class ArtifactService:
     ) -> dict[str, Any]:
         """
         更新 Artifact 内容
-        
+
         此端点实现 Artifact 编辑的持久化，确保用户修改后的内容：
         1. 保存到数据库
         2. 后续任务执行时读取的是修改后的版本
         3. 页面刷新后修改不会丢失
-        
+
         Args:
             artifact_id: Artifact ID
             content: 新内容
             user_id: 用户ID（用于权限验证）
-            
+
         Returns:
             更新后的 Artifact 详情
-            
+
         Raises:
             NotFoundError: Artifact 或关联资源不存在
             AuthorizationError: 无权修改此产物
@@ -181,16 +181,16 @@ class ArtifactService:
     ) -> bool:
         """
         验证用户对 Artifact 的访问权限
-        
+
         验证链：Artifact -> SubTask -> TaskSession -> Thread -> User
-        
+
         Args:
             artifact: Artifact 实例
             user_id: 用户ID
-            
+
         Returns:
             是否有权限
-            
+
         Raises:
             NotFoundError: 关联资源不存在
             AuthorizationError: 无权访问
@@ -219,7 +219,7 @@ class ArtifactService:
     ) -> bool:
         """
         验证完整的权限链（用于修改操作，更严格的检查）
-        
+
         与 _verify_artifact_permission 相同，但语义上强调修改权限
         """
         return await self._verify_artifact_permission(artifact, user_id)
@@ -231,12 +231,12 @@ class ArtifactService:
     def parse_artifacts_from_llm_response(self, response: str) -> list[dict[str, Any]]:
         """
         从 LLM 响应中解析 Artifacts
-        
+
         包装 backend.utils.artifacts.parse_artifacts_from_response
-        
+
         Args:
             response: LLM 响应文本
-            
+
         Returns:
             Artifacts 列表
         """
@@ -249,11 +249,11 @@ class ArtifactService:
     ) -> list[dict[str, Any]]:
         """
         提取代码块
-        
+
         Args:
             response: LLM 响应文本
             language_filter: 语言过滤（如 'python', 'javascript'）
-            
+
         Returns:
             代码块列表
         """
@@ -279,11 +279,11 @@ class ArtifactService:
     ) -> list[dict[str, Any]]:
         """
         批量更新 Artifacts
-        
+
         Args:
             updates: 更新列表，每项包含 artifact_id 和 content
             user_id: 用户ID
-            
+
         Returns:
             更新结果列表
         """

@@ -54,10 +54,10 @@ class AuthenticationError(HTTPException):
 def hash_password(password: str) -> str:
     """
     哈希密码
-    
+
     Args:
         password: 明文密码
-        
+
     Returns:
         哈希后的密码
     """
@@ -67,11 +67,11 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     验证密码
-    
+
     Args:
         plain_password: 明文密码
         hashed_password: 哈希密码
-        
+
     Returns:
         是否匹配
     """
@@ -81,15 +81,15 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(user_id: str, additional_claims: dict | None = None) -> str:
     """
     创建访问令牌
-    
+
     P0 修复:
     - 使用分钟而非天作为过期单位
     - 使用 timezone.utc 替代已废弃的 utcnow()
-    
+
     Args:
         user_id: 用户ID
         additional_claims: 额外的声明信息
-        
+
     Returns:
         JWT access token
     """
@@ -111,12 +111,12 @@ def create_access_token(user_id: str, additional_claims: dict | None = None) -> 
 def create_refresh_token(user_id: str) -> str:
     """
     创建刷新令牌
-    
+
     P0 修复: 使用 timezone.utc 替代已废弃的 utcnow()
-    
+
     Args:
         user_id: 用户ID
-        
+
     Returns:
         JWT refresh token
     """
@@ -135,14 +135,14 @@ def create_refresh_token(user_id: str) -> str:
 def verify_token(token: str, token_type: str = "access") -> dict:
     """
     验证令牌
-    
+
     Args:
         token: JWT令牌
         token_type: 期望的令牌类型（access 或 refresh）
-        
+
     Returns:
         解码后的payload
-        
+
     Raises:
         AuthenticationError: 令牌无效或过期
     """
@@ -164,13 +164,13 @@ def verify_token(token: str, token_type: str = "access") -> dict:
 def refresh_access_token(refresh_token_str: str) -> str:
     """
     使用刷新令牌生成新的访问令牌
-    
+
     Args:
         refresh_token_str: 刷新令牌
-        
+
     Returns:
         新的访问令牌
-        
+
     Raises:
         AuthenticationError: 刷新令牌无效
     """

@@ -36,15 +36,15 @@ class MCPToolsService:
     async def get_tools(self) -> list[Any]:
         """
         获取所有激活的 MCP 服务器工具
-        
+
         P2 优化:
         - 添加 TTL 缓存 (5分钟)，避免频繁创建连接
         - 缓存键: 激活服务器列表的哈希
-        
+
         P0 修复:
         - 添加超时控制 (10秒)
         - 使用直接实例化 (0.2.1 不支持 async with)
-        
+
         Returns:
             List[Tool]: MCP 工具列表
         """

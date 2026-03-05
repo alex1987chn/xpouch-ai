@@ -21,7 +21,7 @@ from sqlmodel import Field, SQLModel
 class MCPServer(SQLModel, table=True):
     """
     MCP 服务器配置表
-    
+
     存储外部 MCP 服务器的连接信息，支持用户动态添加/删除。
     支持多种传输协议：sse、streamable_http
     通过 is_active 字段控制是否启用该服务器。
@@ -79,7 +79,7 @@ class MCPServer(SQLModel, table=True):
 
 class MCPServerCreate(BaseModel):
     """创建 MCP 服务器的 DTO
-    
+
     添加新服务器时，后端会执行连接测试，
     只有连接成功才会入库。
     """
@@ -110,7 +110,7 @@ class MCPServerCreate(BaseModel):
 
 class MCPServerUpdate(BaseModel):
     """更新 MCP 服务器的 DTO
-    
+
     支持部分更新，所有字段均为可选。
     """
     name: str | None = PydanticField(
@@ -130,7 +130,7 @@ class MCPServerUpdate(BaseModel):
 
 class MCPServerResponse(BaseModel):
     """MCP 服务器响应 DTO
-    
+
     包含 connection_status 字段供前端展示状态灯。
     """
     id: str

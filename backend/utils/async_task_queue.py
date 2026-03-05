@@ -25,9 +25,9 @@ from typing import Any
 class AsyncTaskQueue:
     """
     异步任务队列
-    
+
     使用后台线程池执行同步 I/O 操作，不阻塞主事件循环。
-    
+
     P0 修复: 单例模式改用 functools.lru_cache，避免以下问题：
     - asyncio.Lock() 在模块加载时创建，可能绑定到错误的事件循环
     - __new__ 模式在 async 环境下可能出现 RuntimeError
@@ -36,7 +36,7 @@ class AsyncTaskQueue:
     def __init__(self, max_workers: int = 4):
         """
         初始化任务队列
-        
+
         Args:
             max_workers: 线程池最大工作线程数
         """
@@ -53,7 +53,7 @@ class AsyncTaskQueue:
     async def _get_lock(self) -> asyncio.Lock:
         """
         P0 修复: 延迟获取 Lock，确保绑定到正确的事件循环
-        
+
         Returns:
             asyncio.Lock: 绑定到当前事件循环的锁
         """
@@ -64,11 +64,11 @@ class AsyncTaskQueue:
     async def submit(self, func: Callable, *args, **kwargs) -> asyncio.Future:
         """
         提交任务到后台线程池执行
-        
+
         Args:
             func: 要执行的同步函数
             *args, **kwargs: 函数参数
-            
+
         Returns:
             Future 对象，可用于等待结果（但通常不需要）
         """
@@ -105,9 +105,9 @@ class AsyncTaskQueue:
 def _get_task_queue() -> AsyncTaskQueue:
     """
     获取全局单例任务队列
-    
+
     使用 lru_cache 确保只有一个实例，且延迟初始化。
-    
+
     Returns:
         AsyncTaskQueue: 全局任务队列实例
     """

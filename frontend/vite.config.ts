@@ -55,19 +55,29 @@ export default defineConfig({
           'state': ['zustand', 'immer', '@tanstack/react-query'],
           // 工具库
           'utils': ['date-fns', 'clsx', 'class-variance-authority', 'tailwind-merge'],
-          // 图表可视化 (Mermaid)
+          // 图表可视化 (Mermaid) - 延迟加载
           'mermaid': ['mermaid'],
-          // PDF 生成相关
-          'pdf': ['jspdf', 'html2canvas'],
-          // 代码高亮
+          // 代码高亮 - 延迟加载
           'prism': ['prism-react-renderer', 'prismjs'],
           // 监控
           'sentry': ['@sentry/react'],
+          // ⚠️ PDF 库已改为动态导入，不再打包到主 bundle
         },
       },
     },
-    // 块大小警告限制 (KB)
-    chunkSizeWarningLimit: 500,
+    // 🔥 启用 Terser 压缩，移除 console 和 debugger
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+      format: {
+        comments: false,
+      },
+    },
+    // 块大小警告限制 (KB) - 提高到 600KB，因为 PDF/Mermaid  chunk 本身就大
+    chunkSizeWarningLimit: 600,
     // 清理旧的构建文件
     emptyOutDir: true,
     // 源映射（生产调试用）

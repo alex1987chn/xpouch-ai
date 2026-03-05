@@ -48,9 +48,8 @@ jobs:
 
       - name: Run Ruff check
         run: uv run ruff check .
-        continue-on-error: true  # 🔥 确立基线：暂时允许历史债务，不阻塞部署
 
-      - name: Run backend guard and smoke tests
+      - name: Run all backend tests
         env:
           # 使用 CI 服务中的 PostgreSQL
           DATABASE_URL: postgresql+psycopg://xpouch_test:test_pass@localhost:5432/xpouch_test
@@ -60,7 +59,7 @@ jobs:
           MOONSHOT_API_KEY: test-key
           SILICON_API_KEY: test-key
           JWT_SECRET_KEY: test-secret-key-for-ci-only
-        run: uv run pytest tests/test_sse_protocol_contract.py tests/test_event_queue_immutability.py tests/test_recovery_idempotency.py tests/test_chat_resume_smoke.py
+        run: uv run pytest tests/
 
   frontend-check:
     name: Frontend Checks

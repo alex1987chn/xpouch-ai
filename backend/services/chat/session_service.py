@@ -36,12 +36,12 @@ class ChatSessionService:
     async def list_threads(self, user_id: str, page: int = 1, limit: int = 20) -> dict:
         """
         获取用户的线程列表（轻量级，不包含消息内容，支持分页）
-        
+
         Args:
             user_id: 用户ID
             page: 页码（从1开始）
             limit: 每页条数（默认20，最大100）
-            
+
         Returns:
             分页结果，包含线程列表和分页信息
             需要消息内容请调用 get_thread_messages(thread_id)
@@ -141,14 +141,14 @@ class ChatSessionService:
     async def get_thread_messages(self, thread_id: str, user_id: str) -> list[dict]:
         """
         获取指定线程的消息列表（完整内容）
-        
+
         Args:
             thread_id: 线程ID
             user_id: 用户ID（用于权限验证）
-            
+
         Returns:
             消息列表，包含完整内容
-            
+
         Raises:
             NotFoundError: 线程不存在
             AuthorizationError: 无权访问此线程
@@ -184,14 +184,14 @@ class ChatSessionService:
     async def get_thread_detail(self, thread_id: str, user_id: str) -> dict:
         """
         获取单个线程详情
-        
+
         Args:
             thread_id: 线程ID
             user_id: 用户ID（用于权限验证）
-            
+
         Returns:
             线程详情，包含消息、TaskSession、SubTasks、Artifacts
-            
+
         Raises:
             NotFoundError: 线程不存在
             AuthorizationError: 无权访问此线程
@@ -293,14 +293,14 @@ class ChatSessionService:
     async def delete_thread(self, thread_id: str, user_id: str) -> bool:
         """
         删除线程
-        
+
         Args:
             thread_id: 线程ID
             user_id: 用户ID（用于权限验证）
-            
+
         Returns:
             是否删除成功
-            
+
         Raises:
             NotFoundError: 线程不存在
             AuthorizationError: 无权删除此线程
@@ -325,13 +325,13 @@ class ChatSessionService:
     ) -> Thread:
         """
         获取或创建线程
-        
+
         Args:
             thread_id: 现有线程ID（可为None）
             user_id: 用户ID
             agent_id: 智能体ID
             message: 用户消息（用于生成标题）
-            
+
         Returns:
             Thread实例（新建或现有）
         """
@@ -388,11 +388,11 @@ class ChatSessionService:
     async def save_user_message(self, thread_id: str, content: str) -> Message:
         """
         保存用户消息
-        
+
         Args:
             thread_id: 线程ID
             content: 消息内容
-            
+
         Returns:
             保存的消息实例
         """
@@ -415,13 +415,13 @@ class ChatSessionService:
     ) -> Message:
         """
         保存助手消息
-        
+
         Args:
             thread_id: 线程ID
             content: 消息内容
             thinking_data: thinking过程数据（可选）
             message_id: 指定的消息ID（可选）
-            
+
         Returns:
             保存的消息实例
         """
@@ -460,10 +460,10 @@ class ChatSessionService:
     async def build_langchain_messages(self, thread_id: str) -> list[BaseMessage]:
         """
         构建 LangChain 消息列表
-        
+
         Args:
             thread_id: 线程ID
-            
+
         Returns:
             LangChain BaseMessage 列表（用于 LLM 调用）
         """
@@ -494,11 +494,11 @@ class ChatSessionService:
     ) -> CustomAgent | None:
         """
         获取并验证自定义智能体
-        
+
         Args:
             agent_id: 智能体ID
             user_id: 用户ID（用于权限验证）
-            
+
         Returns:
             CustomAgent实例（验证通过）或None（系统默认）
         """
@@ -537,13 +537,13 @@ class ChatSessionService:
     ) -> TaskSession:
         """
         创建 TaskSession（复杂模式）
-        
+
         Args:
             thread_id: 关联的线程ID
             user_query: 用户原始查询
             plan_summary: 规划摘要
             estimated_steps: 预计步骤数
-            
+
         Returns:
             创建的 TaskSession 实例
         """
@@ -566,7 +566,7 @@ class ChatSessionService:
     ) -> None:
         """
         更新线程的 agent_type 和 task_session_id
-        
+
         Args:
             thread_id: 线程ID
             agent_type: agent 类型 (simple/complex/ai)

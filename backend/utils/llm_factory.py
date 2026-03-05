@@ -47,7 +47,7 @@ def get_default_model() -> str:
 def get_effective_model(configured_model: str | None) -> str:
     """
     获取有效的模型名称（模型兜底机制）
-    
+
     逻辑：
     1. 如果未配置模型，使用环境变量 MODEL_NAME 或默认值
     2. 如果配置的是 OpenAI 模型，自动切换为默认模型（除非 ALLOW_OPENAI_MODELS=true）
@@ -102,7 +102,7 @@ def _create_llm_instance(
 ) -> ChatOpenAI:
     """
     创建 LLM 实例（内部函数，使用 lru_cache 缓存）
-    
+
     注意：参数必须是可哈希的（str, bool, float 等），所以 model 和 temperature 用 Optional[str/float]
     """
     config = get_provider_config(provider)
@@ -146,15 +146,15 @@ def get_llm_instance(
 ) -> ChatOpenAI:
     """
     统一的 LLM 工厂函数
-    
+
     P1 优化: 使用 lru_cache 自动缓存实例
-    
+
     Args:
         provider: 提供商标识（如 'minimax', 'deepseek'）
         model: 模型名称
         streaming: 是否启用流式输出
         temperature: 温度参数
-        
+
     Returns:
         ChatOpenAI: 配置好的 LLM 实例
     """
