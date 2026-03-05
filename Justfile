@@ -71,9 +71,9 @@ lint-fix: lint-backend-fix lint-frontend-fix
 # Pre-commit Hooks（本地提交前检查）
 # =============================================================================
 
-# 安装 pre-commit hooks
+# 安装 pre-commit hooks（使用 uv）
 install-hooks:
-    pip install pre-commit
+    uv tool install pre-commit
     pre-commit install
     @echo "Pre-commit hooks installed!"
 
