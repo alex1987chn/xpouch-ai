@@ -34,7 +34,7 @@ def parse_thinking(content: str) -> tuple[str, dict | None]:
 
     # 匹配 <thought>...</thought> 或 <think>...</think>（支持多行）
     # 使用非贪婪匹配，支持嵌套（虽然实际很少用）
-    thought_pattern = r'<(thought|think)>(.*?)</\1>'
+    thought_pattern = r"<(thought|think)>(.*?)</\1>"
     matches = list(re.finditer(thought_pattern, content, re.DOTALL | re.IGNORECASE))
 
     if not matches:
@@ -50,16 +50,16 @@ def parse_thinking(content: str) -> tuple[str, dict | None]:
     combined_thought = "\n\n".join(thought_texts)
 
     # 移除 thought 标签，保留其他内容
-    clean_content = re.sub(thought_pattern, '', content, flags=re.DOTALL | re.IGNORECASE).strip()
+    clean_content = re.sub(thought_pattern, "", content, flags=re.DOTALL | re.IGNORECASE).strip()
 
     # 移除可能的前导空行
-    clean_content = re.sub(r'^\s+', '', clean_content, flags=re.MULTILINE)
+    clean_content = re.sub(r"^\s+", "", clean_content, flags=re.MULTILINE)
 
     # 构建 thinking 数据结构
     # 兼容前端 ThinkingSection 组件的格式
     thinking_data = {
-        'text': combined_thought,  # 原始文本（用于显示）
-        'steps': _parse_thinking_steps(combined_thought)  # 结构化步骤（可选）
+        "text": combined_thought,  # 原始文本（用于显示）
+        "steps": _parse_thinking_steps(combined_thought),  # 结构化步骤（可选）
     }
 
     return clean_content, thinking_data
@@ -79,41 +79,42 @@ def _parse_thinking_steps(thought_text: str) -> list:
 
     # 尝试按常见分隔符拆分
     # 1. 数字编号: 1. 2. 3.
-    numbered_steps = re.split(r'\n(?=\d+\.|\d+、)', thought_text)
+    numbered_steps = re.split(r"\n(?=\d+\.|\d+、)", thought_text)
     if len(numbered_steps) > 1:
         for i, step in enumerate(numbered_steps, 1):
             step = step.strip()
             if step:
-                steps.append({
-                    'id': f'step_{i}',
-                    'expertName': '思考',  # 通用标识
-                    'content': step,
-                    'status': 'completed'
-                })
+                steps.append(
+                    {
+                        "id": f"step_{i}",
+                        "expertName": "思考",  # 通用标识
+                        "content": step,
+                        "status": "completed",
+                    }
+                )
         return steps
 
     # 2. 项目符号: - 或 *
-    bullet_steps = re.split(r'\n(?=\s*[-*]\s)', thought_text)
+    bullet_steps = re.split(r"\n(?=\s*[-*]\s)", thought_text)
     if len(bullet_steps) > 1:
         for i, step in enumerate(bullet_steps, 1):
             step = step.strip()
             if step:
-                steps.append({
-                    'id': f'step_{i}',
-                    'expertName': '思考',
-                    'content': step,
-                    'status': 'completed'
-                })
+                steps.append(
+                    {
+                        "id": f"step_{i}",
+                        "expertName": "思考",
+                        "content": step,
+                        "status": "completed",
+                    }
+                )
         return steps
 
     # 3. 无法结构化，作为单个步骤
     if thought_text:
-        steps.append({
-            'id': 'step_1',
-            'expertName': '思考',
-            'content': thought_text,
-            'status': 'completed'
-        })
+        steps.append(
+            {"id": "step_1", "expertName": "思考", "content": thought_text, "status": "completed"}
+        )
 
     return steps
 
@@ -129,8 +130,8 @@ def extract_thinking_for_stream(content: str) -> tuple[bool, str, str | None]:
         Tuple[是否在thought标签内, 当前thinking内容, 已完成的thinking内容]
     """
     # 检查是否在 <thought> 标签内
-    opening_tags = re.findall(r'<(thought|think)>', content, re.IGNORECASE)
-    closing_tags = re.findall(r'</(thought|think)>', content, re.IGNORECASE)
+    opening_tags = re.findall(r"<(thought|think)>", content, re.IGNORECASE)
+    closing_tags = re.findall(r"</(thought|think)>", content, re.IGNORECASE)
 
     in_thought = len(opening_tags) > len(closing_tags)
 
@@ -138,16 +139,16 @@ def extract_thinking_for_stream(content: str) -> tuple[bool, str, str | None]:
     if in_thought:
         # 找到最后一个打开的标签位置
         last_open_match = None
-        for match in re.finditer(r'<(thought|think)>', content, re.IGNORECASE):
+        for match in re.finditer(r"<(thought|think)>", content, re.IGNORECASE):
             last_open_match = match
 
         if last_open_match:
-            current_thought = content[last_open_match.end():].strip()
+            current_thought = content[last_open_match.end() :].strip()
             return True, current_thought, None
 
     # 提取已完成的 thought
     completed_thought = None
-    thought_pattern = r'<(thought|think)>(.*?)</\1>'
+    thought_pattern = r"<(thought|think)>(.*?)</\1>"
     matches = list(re.finditer(thought_pattern, content, re.DOTALL | re.IGNORECASE))
     if matches:
         # 合并所有已完成的 thought

@@ -22,13 +22,14 @@ from models import (
 # TaskSession CRUD
 # ============================================================================
 
+
 def create_task_session(
     db: Session,
     thread_id: str,
     user_query: str,
     plan_summary: str | None = None,
     estimated_steps: int = 0,
-    execution_mode: str = "sequential"
+    execution_mode: str = "sequential",
 ) -> TaskSession:
     """
     创建任务会话
@@ -50,7 +51,7 @@ def create_task_session(
         plan_summary=plan_summary,
         estimated_steps=estimated_steps,
         execution_mode=execution_mode,
-        status="pending"
+        status="pending",
     )
     db.add(task_session)
     db.commit()
@@ -73,9 +74,7 @@ def get_task_session_by_thread(db: Session, thread_id: str) -> TaskSession | Non
 
 
 def update_task_session(
-    db: Session,
-    session_id: str,
-    update_data: TaskSessionUpdate
+    db: Session, session_id: str, update_data: TaskSessionUpdate
 ) -> TaskSession | None:
     """更新任务会话"""
     task_session = get_task_session(db, session_id)
@@ -94,10 +93,7 @@ def update_task_session(
 
 
 def update_task_session_status(
-    db: Session,
-    session_id: str,
-    status: str,
-    final_response: str | None = None
+    db: Session, session_id: str, status: str, final_response: str | None = None
 ) -> TaskSession | None:
     """更新任务会话状态和最终响应"""
     task_session = get_task_session(db, session_id)
@@ -121,6 +117,7 @@ def update_task_session_status(
 # SubTask CRUD
 # ============================================================================
 
+
 def create_subtask(
     db: Session,
     task_session_id: str,
@@ -129,7 +126,7 @@ def create_subtask(
     sort_order: int = 0,
     input_data: dict | None = None,
     execution_mode: str = "sequential",
-    depends_on: list[str] | None = None
+    depends_on: list[str] | None = None,
 ) -> SubTask:
     """
     创建子任务
@@ -155,7 +152,7 @@ def create_subtask(
         input_data=input_data,
         execution_mode=execution_mode,
         depends_on=depends_on,
-        status="pending"
+        status="pending",
     )
     db.add(subtask)
     db.commit()
@@ -187,7 +184,7 @@ def update_subtask_status(
     status: str,
     output_result: dict | None = None,
     error_message: str | None = None,
-    duration_ms: int | None = None
+    duration_ms: int | None = None,
 ) -> SubTask | None:
     """更新子任务状态"""
     subtask = get_subtask(db, subtask_id)
@@ -219,11 +216,7 @@ def update_subtask_status(
     return subtask
 
 
-def update_subtask(
-    db: Session,
-    subtask_id: str,
-    update_data: SubTaskUpdate
-) -> SubTask | None:
+def update_subtask(db: Session, subtask_id: str, update_data: SubTaskUpdate) -> SubTask | None:
     """更新子任务（通用）"""
     subtask = get_subtask(db, subtask_id)
     if not subtask:
@@ -244,6 +237,7 @@ def update_subtask(
 # Artifact CRUD
 # ============================================================================
 
+
 def create_artifact(
     db: Session,
     sub_task_id: str,
@@ -251,7 +245,7 @@ def create_artifact(
     content: str,
     title: str | None = None,
     language: str | None = None,
-    sort_order: int = 0
+    sort_order: int = 0,
 ) -> Artifact:
     """
     创建产物
@@ -274,7 +268,7 @@ def create_artifact(
         title=title,
         content=content,
         language=language,
-        sort_order=sort_order
+        sort_order=sort_order,
     )
     db.add(artifact)
     db.commit()
@@ -283,9 +277,7 @@ def create_artifact(
 
 
 def create_artifacts_batch(
-    db: Session,
-    sub_task_id: str,
-    artifacts_data: list[ArtifactCreate]
+    db: Session, sub_task_id: str, artifacts_data: list[ArtifactCreate]
 ) -> list[Artifact]:
     """批量创建产物"""
     artifacts = []
@@ -297,7 +289,7 @@ def create_artifacts_batch(
             "title": data.title,
             "content": data.content,
             "language": data.language,
-            "sort_order": data.sort_order if data.sort_order is not None else idx
+            "sort_order": data.sort_order if data.sort_order is not None else idx,
         }
         if data.id:
             artifact_kwargs["id"] = data.id
@@ -323,9 +315,7 @@ def get_artifact(db: Session, artifact_id: str) -> Artifact | None:
 def get_artifacts_by_subtask(db: Session, sub_task_id: str) -> list[Artifact]:
     """获取子任务的所有产物（按 sort_order 排序）"""
     statement = (
-        select(Artifact)
-        .where(Artifact.sub_task_id == sub_task_id)
-        .order_by(Artifact.sort_order)
+        select(Artifact).where(Artifact.sub_task_id == sub_task_id).order_by(Artifact.sort_order)
     )
     results = db.exec(statement).all()
     return list(results)
@@ -362,6 +352,7 @@ def update_artifact_content(db: Session, artifact_id: str, content: str) -> Arti
 # 批量操作
 # ============================================================================
 
+
 def create_task_session_with_subtasks(
     db: Session,
     thread_id: str,
@@ -370,7 +361,7 @@ def create_task_session_with_subtasks(
     estimated_steps: int,
     subtasks_data: list[SubTaskCreate],
     execution_mode: str = "sequential",
-    session_id: str | None = None  # 🔥 新增：可选的自定义 session_id
+    session_id: str | None = None,  # 🔥 新增：可选的自定义 session_id
 ) -> TaskSession:
     """
     批量创建任务会话和子任务（Commander 阶段使用）
@@ -396,7 +387,7 @@ def create_task_session_with_subtasks(
         "plan_summary": plan_summary,
         "estimated_steps": estimated_steps,
         "execution_mode": execution_mode,
-        "status": "running"
+        "status": "running",
     }
 
     if session_id:
@@ -420,7 +411,7 @@ def create_task_session_with_subtasks(
             input_data=data.input_data,
             execution_mode=data.execution_mode,
             depends_on=None,  # 先不设置，后面再更新
-            status="pending"
+            status="pending",
         )
         db.add(subtask)
         db.flush()  # 获取 subtask.id
@@ -460,9 +451,6 @@ def get_task_session_full(db: Session, session_id: str) -> TaskSession | None:
     statement = (
         select(TaskSession)
         .where(TaskSession.session_id == session_id)
-        .options(
-            selectinload(TaskSession.sub_tasks)
-            .selectinload(SubTask.artifacts)
-        )
+        .options(selectinload(TaskSession.sub_tasks).selectinload(SubTask.artifacts))
     )
     return db.exec(statement).first()

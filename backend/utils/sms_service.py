@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 class SMSServiceError(Exception):
     """短信服务错误"""
+
     pass
 
 
@@ -61,7 +62,9 @@ class SMSService:
             logger.error(error_msg)
             raise SMSServiceError(error_msg)
 
-    def send_verification_code(self, phone_number: str, code: str, expire_minutes: int = 5) -> tuple[bool, str | None]:
+    def send_verification_code(
+        self, phone_number: str, code: str, expire_minutes: int = 5
+    ) -> tuple[bool, str | None]:
         """
         发送验证码短信
 
@@ -75,7 +78,7 @@ class SMSService:
         """
         try:
             # 验证手机号格式
-            if not phone_number or len(phone_number) != 11 or not phone_number.startswith('1'):
+            if not phone_number or len(phone_number) != 11 or not phone_number.startswith("1"):
                 error_msg = f"无效的手机号格式: {phone_number}"
                 logger.error(error_msg)
                 return False, error_msg
@@ -135,10 +138,7 @@ class SMSService:
 
         for phone_number, code, expire_minutes in phone_codes:
             success, message = self.send_verification_code(phone_number, code, expire_minutes)
-            results[phone_number] = {
-                "success": success,
-                "message": message
-            }
+            results[phone_number] = {"success": success, "message": message}
             if not success:
                 overall_success = False
 
@@ -164,7 +164,9 @@ except Exception as e:
     logger.warning(f"短信服务初始化失败: {str(e)}，将使用控制台输出模式")
 
 
-def send_verification_code_with_fallback(phone_number: str, code: str, expire_minutes: int = 5) -> tuple[bool, str | None]:
+def send_verification_code_with_fallback(
+    phone_number: str, code: str, expire_minutes: int = 5
+) -> tuple[bool, str | None]:
     """
     发送验证码，如果短信服务不可用则使用控制台输出
 
@@ -181,5 +183,7 @@ def send_verification_code_with_fallback(phone_number: str, code: str, expire_mi
     else:
         # 控制台输出模式（开发环境备用）
         masked_phone = f"{phone_number[:3]}****{phone_number[-4:]}"
-        logger.warning(f"短信服务不可用，控制台输出验证码: {masked_phone} -> {code} (有效期{expire_minutes}分钟)")
+        logger.warning(
+            f"短信服务不可用，控制台输出验证码: {masked_phone} -> {code} (有效期{expire_minutes}分钟)"
+        )
         return True, None

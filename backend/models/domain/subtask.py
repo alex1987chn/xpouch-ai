@@ -35,17 +35,13 @@ class SubTask(SQLModel, table=True):
     )
 
     # 关联的任务会话
-    task_session_id: str = Field(
-        foreign_key="tasksession.session_id", index=True, max_length=64
-    )
+    task_session_id: str = Field(foreign_key="tasksession.session_id", index=True, max_length=64)
 
     # 排序顺序：用于前端展示和串行执行顺序
     sort_order: int = Field(default=0, index=True)
 
     # 专家类型：指定由哪个专家执行
-    expert_type: str = Field(
-        index=True, max_length=64
-    )  # 存储 ExpertType 枚举值
+    expert_type: str = Field(index=True, max_length=64)  # 存储 ExpertType 枚举值
 
     # 任务描述：自然语言描述的任务内容
     task_description: str = Field(index=True)
@@ -81,14 +77,10 @@ class SubTask(SQLModel, table=True):
     )  # DB-12: 使用 PostgreSQL ENUM
 
     # 依赖任务：并行模式下可能依赖其他任务（可选）
-    depends_on: list[str] | None = Field(
-        default=None, sa_column=Column(JSON)
-    )
+    depends_on: list[str] | None = Field(default=None, sa_column=Column(JSON))
 
     # 输出结果：JSON 格式的执行结果
-    output_result: dict | None = Field(
-        default=None, sa_column=Column(JSON)
-    )
+    output_result: dict | None = Field(default=None, sa_column=Column(JSON))
 
     # 错误信息
     error_message: str | None = None
@@ -116,6 +108,4 @@ class SubTask(SQLModel, table=True):
 
     # 复合索引：优化高频查询场景
     # 场景：每次加载会话时，查询 WHERE task_session_id = ? AND status = ?
-    __table_args__ = (
-        Index("idx_subtask_session_status", "task_session_id", "status"),
-    )
+    __table_args__ = (Index("idx_subtask_session_status", "task_session_id", "status"),)

@@ -8,6 +8,7 @@ v3.2 重构：移除对 dynamic_experts.py 的依赖
 v3.3 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
 v3.4 优化：P0 修复 + TTLCache 缓存高频查询
 """
+
 import asyncio
 from typing import Any
 
@@ -25,9 +26,9 @@ from utils.logger import logger
 _dispatcher_expert_cache: TTLCache = TTLCache(maxsize=200, ttl=300)
 
 
-
-
-async def expert_dispatcher_node(state: AgentState, config: RunnableConfig = None) -> dict[str, Any]:
+async def expert_dispatcher_node(
+    state: AgentState, config: RunnableConfig = None
+) -> dict[str, Any]:
     """
     专家分发器节点（简化版）
 
@@ -44,7 +45,9 @@ async def expert_dispatcher_node(state: AgentState, config: RunnableConfig = Non
     task_list = state["task_list"]
     current_index = state["current_task_index"]
 
-    logger.info(f"[DISPATCHER_NODE] 进入节点, current_index={current_index}, task_count={len(task_list)}")
+    logger.info(
+        f"[DISPATCHER_NODE] 进入节点, current_index={current_index}, task_count={len(task_list)}"
+    )
 
     # 检查是否还有任务
     if current_index >= len(task_list):
@@ -86,7 +89,9 @@ async def expert_dispatcher_node(state: AgentState, config: RunnableConfig = Non
             raise Exception(f"Expert '{expert_type}' not found")
 
         logger.info("[DISPATCHER_NODE] 专家配置加载成功，准备返回")
-        logger.info(f"[Dispatcher] 任务 [{current_index + 1}/{len(task_list)}] - {expert_type}: {description}")
+        logger.info(
+            f"[Dispatcher] 任务 [{current_index + 1}/{len(task_list)}] - {expert_type}: {description}"
+        )
         logger.info("[Dispatcher] 专家存在，继续流转到下一个节点")
 
         # 返回空字典，让 Generic Worker 继续执行

@@ -2,6 +2,7 @@
 工作流图构建：节点注册与边连接。
 依赖 routing_policy（路由判定）与 tool_runtime（工具节点），与策略/运行时解耦。
 """
+
 import logging
 import pathlib
 from functools import lru_cache
@@ -26,6 +27,7 @@ if settings.langchain_tracing_v2:
 # LLM 延迟初始化（供 nodes 使用）
 # ---------------------------------------------------------------------------
 
+
 def get_router_llm_lazy():
     return _get_router_llm_cached()
 
@@ -41,12 +43,14 @@ def get_simple_llm_lazy():
 @lru_cache(maxsize=1)
 def _get_router_llm_cached():
     from utils.llm_factory import get_router_llm
+
     return get_router_llm()
 
 
 @lru_cache(maxsize=1)
 def _get_commander_llm_cached():
     from utils.llm_factory import get_commander_llm
+
     return get_commander_llm()
 
 
@@ -54,6 +58,7 @@ def _get_commander_llm_cached():
 def _get_simple_llm_cached():
     from providers_config import is_provider_configured
     from utils.llm_factory import get_llm_instance, get_router_llm
+
     try:
         if is_provider_configured("minimax"):
             return get_llm_instance(provider="minimax", streaming=True, temperature=0.7)
@@ -65,6 +70,7 @@ def _get_simple_llm_cached():
 # ---------------------------------------------------------------------------
 # 图构建
 # ---------------------------------------------------------------------------
+
 
 def create_smart_router_workflow(
     checkpointer: BaseCheckpointSaver | None = None,

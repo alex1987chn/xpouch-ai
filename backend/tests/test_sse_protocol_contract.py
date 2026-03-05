@@ -21,10 +21,7 @@ def _extract_frontend_event_types() -> set[str]:
     )
     assert event_type_block is not None, "frontend EventType 定义块未找到"
 
-    return {
-        match.group(1)
-        for match in re.finditer(r"\|\s*'([^']+)'", event_type_block.group(1))
-    }
+    return {match.group(1) for match in re.finditer(r"\|\s*'([^']+)'", event_type_block.group(1))}
 
 
 def _extract_frontend_handled_event_types() -> set[str]:

@@ -4,6 +4,7 @@ Tavily 是专为 AI Agent 设计的搜索引擎，返回整理好的文本片段
 
 P1 优化: 添加异步支持
 """
+
 import os
 
 from langchain_core.tools import tool
@@ -16,11 +17,13 @@ from utils.logger import logger
 try:
     # 优先尝试新版（官方推荐）
     from langchain_tavily import TavilySearchResults
+
     logger.info("[Search] [OK] 使用 langchain_tavily (新版)")
 except ImportError:
     try:
         # 回退到旧版（社区版）
         from langchain_community.tools.tavily_search import TavilySearchResults
+
         logger.warning("[Search] [WARN] 使用 langchain_community.tools.tavily_search (旧版)")
     except ImportError as e:
         # 如果都没装，直接抛出异常，不要吞掉！
@@ -32,6 +35,7 @@ except ImportError:
 import httpx
 
 # -----------------------------------------------------------
+
 
 @tool
 def search_web(query: str) -> str:
@@ -110,12 +114,7 @@ async def asearch_web(query: str) -> str:
             response = await client.post(
                 "https://api.tavily.com/search",
                 headers={"Content-Type": "application/json"},
-                json={
-                    "api_key": api_key,
-                    "query": query,
-                    "max_results": 3,
-                    "include_answer": True
-                }
+                json={"api_key": api_key, "query": query, "max_results": 3, "include_answer": True},
             )
             response.raise_for_status()
             data = response.json()

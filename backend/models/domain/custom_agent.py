@@ -36,17 +36,13 @@ class CustomAgent(SQLModel, table=True):
 
     # 核心配置
     system_prompt: str  # 用户自定义的系统提示词（关键！）
-    model_id: str = Field(
-        default="deepseek-chat", max_length=128
-    )  # 使用的模型
+    model_id: str = Field(default="deepseek-chat", max_length=128)  # 使用的模型
 
     # 新增：是否为默认助手
     is_default: bool = Field(default=False, index=True)
 
     # 分类和统计
-    category: str = Field(
-        default="综合", max_length=64
-    )  # 分类（写作、编程、创意等）
+    category: str = Field(default="综合", max_length=64)  # 分类（写作、编程、创意等）
     is_public: bool = Field(default=False)  # 是否公开（未来扩展）
     conversation_count: int = Field(default=0)  # 使用次数
 

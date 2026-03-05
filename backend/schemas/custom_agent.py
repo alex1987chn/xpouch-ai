@@ -13,13 +13,9 @@ class CustomAgentCreate(BaseModel):
 
     name: str
     description: str | None = None
-    system_prompt: str = PydanticField(
-        alias="systemPrompt"
-    )  # 必填，前端字段为 systemPrompt
+    system_prompt: str = PydanticField(alias="systemPrompt")  # 必填，前端字段为 systemPrompt
     category: str = "综合"
-    model_id: str = PydanticField(
-        default="deepseek-chat", alias="modelId"
-    )
+    model_id: str = PydanticField(default="deepseek-chat", alias="modelId")
 
 
 class CustomAgentUpdate(BaseModel):
@@ -27,9 +23,7 @@ class CustomAgentUpdate(BaseModel):
 
     name: str | None = None
     description: str | None = None
-    system_prompt: str | None = PydanticField(
-        default=None, alias="systemPrompt"
-    )
+    system_prompt: str | None = PydanticField(default=None, alias="systemPrompt")
     category: str | None = None
     model_id: str | None = PydanticField(default=None, alias="modelId")
 

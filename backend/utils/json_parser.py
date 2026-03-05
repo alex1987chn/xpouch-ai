@@ -2,6 +2,7 @@
 通用 LLM JSON 响应解析器
 支持多模型兼容性，处理各种 JSON 格式边缘情况
 """
+
 import json
 import re
 
@@ -11,10 +12,7 @@ from utils.logger import logger
 
 
 def parse_llm_json[T: BaseModel](
-    content: str,
-    response_model: type[T],
-    strict: bool = False,
-    clean_markdown: bool = True
+    content: str, response_model: type[T], strict: bool = False, clean_markdown: bool = True
 ) -> T:
     """
     解析 LLM 返回的 JSON 响应，支持多种格式和边缘情况
@@ -62,7 +60,7 @@ def parse_llm_json[T: BaseModel](
                 try:
                     json_data = json.loads(final_str, strict=False)
                 except json.JSONDecodeError as e2:
-                    error_pos = getattr(e2, 'pos', 0)
+                    error_pos = getattr(e2, "pos", 0)
                     start = max(0, error_pos - 50)
                     end = min(len(final_str), error_pos + 50)
                     raise ValueError(
@@ -100,7 +98,7 @@ def _repair_json_string(s: str) -> str:
 
     for char in s:
         # 1. 处理转义符 (比如 \")
-        if char == '\\':
+        if char == "\\":
             escape = not escape  # 翻转转义状态
             result.append(char)
             continue
@@ -113,11 +111,11 @@ def _repair_json_string(s: str) -> str:
 
         # 3. 处理字符串内部的特殊字符
         if in_string:
-            if char == '\n':
-                result.append('\\n')  # 强制转义换行
-            elif char == '\t':
-                result.append('\\t')  # 强制转义 Tab
-            elif char == '\r':
+            if char == "\n":
+                result.append("\\n")  # 强制转义换行
+            elif char == "\t":
+                result.append("\\t")  # 强制转义 Tab
+            elif char == "\r":
                 pass  # 忽略回车符
             elif ord(char) < 32:
                 pass  # 忽略其他控制字符
@@ -144,13 +142,13 @@ def _clean_markdown_blocks(content: str) -> str:
     - ~~~json ... ~~~
     """
     # 移除 ```json ... ```
-    content = re.sub(r'```json\s*\n?([\s\S]*?)\n?```', r'\1', content, flags=re.IGNORECASE)
+    content = re.sub(r"```json\s*\n?([\s\S]*?)\n?```", r"\1", content, flags=re.IGNORECASE)
 
     # 移除 ``` ... ```
-    content = re.sub(r'```\s*\n?([\s\S]*?)\n?```', r'\1', content)
+    content = re.sub(r"```\s*\n?([\s\S]*?)\n?```", r"\1", content)
 
     # 移除 ~~~json ... ~~~
-    content = re.sub(r'~~~json\s*\n?([\s\S]*?)\n?~~~', r'\1', content, flags=re.IGNORECASE)
+    content = re.sub(r"~~~json\s*\n?([\s\S]*?)\n?~~~", r"\1", content, flags=re.IGNORECASE)
 
     return content.strip()
 
@@ -172,7 +170,7 @@ def _extract_json(content: str) -> str:
         pass
 
     # 尝试 2: 查找 {...} 大括号包裹的 JSON
-    pattern = r'\{[\s\S]*\}'
+    pattern = r"\{[\s\S]*\}"
     matches = re.findall(pattern, content)
 
     for match in matches:
@@ -183,7 +181,7 @@ def _extract_json(content: str) -> str:
             continue
 
     # 尝试 3: 查找 [...] 数组包裹的 JSON
-    pattern = r'\[[\s\S]*\]'
+    pattern = r"\[[\s\S]*\]"
     matches = re.findall(pattern, content)
 
     for match in matches:
@@ -201,13 +199,13 @@ def _aggressive_clean(json_str: str) -> str:
     暴力清理 - 当所有方法都失败时使用
     """
     # 1. 移除所有 ASCII 控制字符 (除了 \n \r \t)
-    json_str = ''.join(c for c in json_str if ord(c) >= 32 or c in '\n\r\t')
+    json_str = "".join(c for c in json_str if ord(c) >= 32 or c in "\n\r\t")
 
     # 2. 替换 Unicode 特殊字符
-    json_str = json_str.replace('\u00A0', ' ').replace('\uFEFF', '')
+    json_str = json_str.replace("\u00a0", " ").replace("\ufeff", "")
 
     # 3. 移除尾部逗号 (如 {"a": 1,})
-    json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
+    json_str = re.sub(r",(\s*[}\]])", r"\1", json_str)
 
     return json_str
 
@@ -253,12 +251,12 @@ def extract_json_blocks(content: str) -> list[str]:
         >>> print(len(blocks))
         2
     """
-    pattern = r'```json\s*\n?([\s\S]*?)\n?```'
+    pattern = r"```json\s*\n?([\s\S]*?)\n?```"
     matches = re.findall(pattern, content, flags=re.IGNORECASE)
 
     if not matches:
         # 尝试不带 json 标记的代码块
-        pattern = r'```\s*\n?([\s\S]*?)\n?```'
+        pattern = r"```\s*\n?([\s\S]*?)\n?```"
         matches = re.findall(pattern, content)
 
     return matches

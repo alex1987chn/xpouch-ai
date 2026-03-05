@@ -14,6 +14,7 @@
 Author: XPouch AI Team
 Created: 2026-02-05
 """
+
 from datetime import datetime
 from typing import Any
 
@@ -35,6 +36,7 @@ from utils.logger import logger
 # TaskSession 管理
 # =============================================================================
 
+
 def get_or_create_task_session(
     db: Session,
     thread_id: str,
@@ -43,7 +45,7 @@ def get_or_create_task_session(
     estimated_steps: int,
     subtasks_data: list[Any],
     execution_mode: str = "sequential",
-    session_id: str | None = None  # 🔥 新增：可选的 session_id
+    session_id: str | None = None,  # 🔥 新增：可选的 session_id
 ) -> tuple[Any, bool]:
     """
     获取或创建任务会话
@@ -105,7 +107,7 @@ def get_or_create_task_session(
                 sort_order=subtask_data.sort_order,
                 input_data=subtask_data.input_data,
                 execution_mode=subtask_data.execution_mode,
-                depends_on=None  # 先不设置
+                depends_on=None,  # 先不设置
             )
 
             # 建立映射
@@ -139,16 +141,12 @@ def get_or_create_task_session(
         estimated_steps=estimated_steps,
         subtasks_data=subtasks_data,
         execution_mode=execution_mode,
-        session_id=session_id  # 🔥 传入预览时使用的 session_id
+        session_id=session_id,  # 🔥 传入预览时使用的 session_id
     )
     return task_session, False
 
 
-def complete_task_session(
-    db: Session,
-    task_session_id: str,
-    final_response: str
-) -> None:
+def complete_task_session(db: Session, task_session_id: str, final_response: str) -> None:
     """
     标记任务会话为已完成
 
@@ -160,17 +158,13 @@ def complete_task_session(
     Example:
         >>> complete_task_session(db, "session_abc", "所有任务已完成，结果是...")
     """
-    update_task_session_status(
-        db,
-        task_session_id,
-        "completed",
-        final_response=final_response
-    )
+    update_task_session_status(db, task_session_id, "completed", final_response=final_response)
 
 
 # =============================================================================
 # 专家执行结果实时保存
 # =============================================================================
+
 
 def save_expert_execution_result(
     db: Session,
@@ -178,7 +172,7 @@ def save_expert_execution_result(
     expert_type: str,
     output_result: str,
     artifact_data: dict[str, Any] | None = None,
-    duration_ms: int | None = None
+    duration_ms: int | None = None,
 ) -> bool:
     """
     实时保存专家执行结果到数据库
@@ -220,13 +214,14 @@ def save_expert_execution_result(
         # 3. 创建 Artifact (如果有)
         if artifact_data:
             from models import ArtifactCreate
+
             artifact_create = ArtifactCreate(
                 id=artifact_data.get("artifact_id"),  # 使用前端传入的 artifact_id
                 type=artifact_data.get("type", "markdown"),
                 title=artifact_data.get("title", f"{expert_type}结果"),
                 content=artifact_data.get("content", output_result),
                 language=artifact_data.get("language"),
-                sort_order=artifact_data.get("sort_order", 0)
+                sort_order=artifact_data.get("sort_order", 0),
             )
             create_artifacts_batch(db, task_id, [artifact_create])
 
@@ -241,11 +236,8 @@ def save_expert_execution_result(
 # 消息持久化
 # =============================================================================
 
-def save_aggregator_message(
-    db: Session,
-    thread_id: str,
-    content: str
-) -> MessageModel | None:
+
+def save_aggregator_message(db: Session, thread_id: str, content: str) -> MessageModel | None:
     """
     保存聚合器生成的最终消息到数据库
 
@@ -266,11 +258,7 @@ def save_aggregator_message(
         >>> print(f"消息已保存: {message.id}")
     """
     try:
-        message_record = MessageModel(
-            thread_id=thread_id,
-            role="assistant",
-            content=content
-        )
+        message_record = MessageModel(thread_id=thread_id, role="assistant", content=content)
         db.add(message_record)
         db.commit()
         return message_record
@@ -284,12 +272,13 @@ def save_aggregator_message(
 # 子任务管理
 # =============================================================================
 
+
 def update_subtask_status(
     db: Session,
     subtask_id: str,
     status: str,
     output_result: str | None = None,
-    error_message: str | None = None
+    error_message: str | None = None,
 ) -> bool:
     """
     更新子任务状态
@@ -315,7 +304,7 @@ def update_subtask_status(
             subtask_id=subtask_id,
             status=status,
             output_result=output_result,
-            error_message=error_message
+            error_message=error_message,
         )
         return True
     except Exception as e:
@@ -335,4 +324,5 @@ def get_subtask_by_id(db: Session, subtask_id: str) -> Any | None:
         SubTask 对象，如果不存在则返回 None
     """
     from crud.task_session import get_subtask
+
     return get_subtask(db, subtask_id)

@@ -2,6 +2,7 @@
 迁移命名规范检查：revision 文件须符合 NNN_description 或 YYYYMMDD_HHMMSS_description。
 见 .ai/CHANGE_CONTRACT.md 与 code review 报告 7.3。
 """
+
 import re
 from pathlib import Path
 

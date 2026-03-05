@@ -86,7 +86,9 @@ def upgrade() -> None:
         batch.alter_column("id_uuid", existing_type=sa.String(), nullable=False)
         batch.drop_constraint("systemexpert_pkey", type_="primary")
         batch.drop_column("id")
-        batch.alter_column("id_uuid", new_column_name="id", existing_type=sa.String(), nullable=False)
+        batch.alter_column(
+            "id_uuid", new_column_name="id", existing_type=sa.String(), nullable=False
+        )
         batch.create_primary_key("systemexpert_pkey", ["id"])
 
 
@@ -113,7 +115,9 @@ def downgrade() -> None:
         batch.alter_column("id_int", existing_type=sa.Integer(), nullable=False)
         batch.drop_constraint("systemexpert_pkey", type_="primary")
         batch.drop_column("id")
-        batch.alter_column("id_int", new_column_name="id", existing_type=sa.Integer(), nullable=False)
+        batch.alter_column(
+            "id_int", new_column_name="id", existing_type=sa.Integer(), nullable=False
+        )
         batch.create_primary_key("systemexpert_pkey", ["id"])
 
     _rename_indexes(INDEX_RENAMES_DOWN)

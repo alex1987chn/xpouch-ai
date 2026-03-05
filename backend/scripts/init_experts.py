@@ -29,6 +29,7 @@
   # 列出所有专家
   python -m backend.scripts.init_experts list
 """
+
 import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,6 +45,7 @@ def get_session_class_and_engine():
     # 检查引擎是否为异步引擎
     try:
         from sqlalchemy.ext.asyncio import AsyncEngine
+
         if isinstance(engine, AsyncEngine):
             logger.info("[Info] Using AsyncSession (async engine detected)")
             return AsyncSession, engine
@@ -55,14 +57,7 @@ def get_session_class_and_engine():
     return Session, engine
 
 
-
-
-
-
-
 # EXPERT_DEFAULTS 已移至 config/experts.py，避免重复导入数据库模型
-
-
 
 
 async def init_experts_async(update_existing=False, update_commander=False):
@@ -82,6 +77,7 @@ async def init_experts_async(update_existing=False, update_commander=False):
         with session_class(engine) as session:
             # 同步会话，但我们仍可以调用异步函数
             await process_experts(session, update_existing, update_commander)
+
 
 async def process_experts(session, update_existing=False, update_commander=False):
     """处理专家插入/更新逻辑
@@ -172,6 +168,7 @@ async def _update_expert(session, expert_config):
         session.add(expert)
         logger.info(f"✓ Updated expert: {expert_key}")
 
+
 def init_experts(update_existing=False, update_commander=False):
     """同步包装器，向后兼容"""
     asyncio.run(init_experts_async(update_existing, update_commander))
@@ -187,6 +184,7 @@ async def list_experts_async():
     else:
         with session_class(engine) as session:
             await list_experts_process(session)
+
 
 async def list_experts_process(session):
     """处理列出专家逻辑"""
@@ -210,6 +208,7 @@ async def list_experts_process(session):
         logger.info(f"  Updated: {expert.updated_at}")
         logger.info(f"  Prompt Length: {len(expert.system_prompt)} characters")
         logger.info("")
+
 
 def list_experts():
     """同步包装器，向后兼容"""
@@ -240,28 +239,40 @@ if __name__ == "__main__":
                 logger.warning("⚠ Update mode enabled: existing experts will be overwritten!")
             elif arg == "--update-commander":
                 update_commander = True
-                logger.info("📝 Commander update mode: only commander prompt will be updated for thinking chain!")
+                logger.info(
+                    "📝 Commander update mode: only commander prompt will be updated for thinking chain!"
+                )
             elif arg == "--safe":
                 update_existing = False
                 logger.info("Safe mode: skipping existing experts (no overwrite)")
             elif arg == "--help":
                 print("Usage: python init_experts.py [options]")
                 print("\nModes:")
-                print("  (no args)               Safe mode: only create missing experts (RECOMMENDED for upgrade)")
+                print(
+                    "  (no args)               Safe mode: only create missing experts (RECOMMENDED for upgrade)"
+                )
                 print("  list                    List all experts in database")
                 print("\nOptions:")
-                print("  --update                Update ALL existing experts (overwrite with defaults)")
-                print("  --update-commander      Only update commander prompt (enable thinking chain)")
+                print(
+                    "  --update                Update ALL existing experts (overwrite with defaults)"
+                )
+                print(
+                    "  --update-commander      Only update commander prompt (enable thinking chain)"
+                )
                 print("  --safe                  Safe mode: only create missing experts (default)")
                 print("  --help                  Show this help message")
                 print("\nExamples:")
-                print("  # Upgrade: add missing experts (memorize_expert) without overwriting custom prompts")
+                print(
+                    "  # Upgrade: add missing experts (memorize_expert) without overwriting custom prompts"
+                )
                 print("  python init_experts.py")
                 print("")
                 print("  # Enable thinking chain for commander (update only commander prompt)")
                 print("  python init_experts.py --update-commander")
                 print("")
-                print("  # Force update all experts to defaults (DANGER: overwrites custom prompts)")
+                print(
+                    "  # Force update all experts to defaults (DANGER: overwrites custom prompts)"
+                )
                 print("  python init_experts.py --update")
                 sys.exit(0)
             else:

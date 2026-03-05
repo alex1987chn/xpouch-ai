@@ -34,21 +34,15 @@ class User(SQLModel, table=True):
             )
         ),  # DB-12: 使用 PostgreSQL ENUM
     )
-    phone_number: str | None = Field(
-        default=None, max_length=32, unique=True, index=True
-    )
-    email: str | None = Field(
-        default=None, max_length=254, unique=True, index=True
-    )
+    phone_number: str | None = Field(default=None, max_length=32, unique=True, index=True)
+    email: str | None = Field(default=None, max_length=254, unique=True, index=True)
     password_hash: str | None = Field(default=None, max_length=255)
     verification_code: str | None = Field(default=None, max_length=16)
     verification_code_expires_at: datetime | None = Field(default=None)
     auth_provider: str | None = Field(
         default=None, max_length=32
     )  # 'phone', 'email', 'github', 'google', 'wechat'
-    provider_id: str | None = Field(
-        default=None, max_length=128, index=True
-    )
+    provider_id: str | None = Field(default=None, max_length=128, index=True)
     access_token: str | None = Field(default=None)
     refresh_token: str | None = Field(default=None)
     token_expires_at: datetime | None = Field(default=None)

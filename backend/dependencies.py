@@ -4,6 +4,7 @@
 
 P0 修复: 优先从 Cookie 获取 Token，提高安全性
 """
+
 import os
 
 from fastapi import Depends, HTTPException, Request
@@ -17,7 +18,7 @@ from utils.logger import logger
 async def get_current_user(
     request: Request,
     session: Session = Depends(get_session),
-    require_auth: bool = True  # P0 修复: 安全机制默认拦截（Fail Closed）
+    require_auth: bool = True,  # P0 修复: 安全机制默认拦截（Fail Closed）
 ) -> User:
     """
     P0 修复: 获取当前用户（优先 Cookie，兼容 Header）
@@ -87,7 +88,7 @@ async def get_current_user(
                 username=f"dev_user_{user_id[:8]}",
                 auth_provider="dev",
                 is_verified=True,
-                role="user"
+                role="user",
             )
             session.add(new_user)
             session.commit()
@@ -96,15 +97,11 @@ async def get_current_user(
             return new_user
 
     # 严格认证模式：抛出 401 错误
-    raise HTTPException(
-        status_code=401,
-        detail="Unauthorized. Please login first."
-    )
+    raise HTTPException(status_code=401, detail="Unauthorized. Please login first.")
 
 
 async def get_current_user_with_auth(
-    request: Request,
-    session: Session = Depends(get_session)
+    request: Request, session: Session = Depends(get_session)
 ) -> User:
     """要求强制 JWT 认证的依赖（包装 get_current_user）"""
     return await get_current_user(request, session, require_auth=True)

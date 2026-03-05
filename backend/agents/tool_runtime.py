@@ -2,6 +2,7 @@
 工具节点运行时：超时、重试、错误降级。
 供 graph_builder 组装进 StateGraph，与图定义解耦。
 """
+
 import asyncio
 import logging
 from typing import Any
@@ -33,9 +34,7 @@ def _is_transient_connect_error(err: Exception) -> bool:
     )
 
 
-def _tool_messages_for_error(
-    state: AgentState, content: str
-) -> list[ToolMessage]:
+def _tool_messages_for_error(state: AgentState, content: str) -> list[ToolMessage]:
     """根据 state 中最后一条 AI 的 tool_calls 生成错误 ToolMessage 列表。"""
     messages = state.get("messages", [])
     tool_messages = []
@@ -85,7 +84,10 @@ async def dynamic_tool_node(
                 delay = TOOL_RETRY_DELAYS[attempt - 1]
                 logger.warning(
                     "[ToolNode] MCP 工具连接失败，准备重试 (%s/%s), %.1fs 后重试: %s",
-                    attempt, attempts, delay, err,
+                    attempt,
+                    attempts,
+                    delay,
+                    err,
                 )
                 await asyncio.sleep(delay)
                 continue

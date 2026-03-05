@@ -25,6 +25,7 @@ Router 层仅负责：
 - GET /api/threads/{id}: 获取会话详情
 - DELETE /api/threads/{id}: 删除会话
 """
+
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -53,8 +54,10 @@ router = APIRouter(prefix="/api", tags=["chat"])
 # Pydantic 请求/响应模型
 # ============================================================================
 
+
 class ChatMessageDTO(BaseModel):
     """聊天消息 DTO"""
+
     role: str
     content: str
     id: str | None = None
@@ -63,6 +66,7 @@ class ChatMessageDTO(BaseModel):
 
 class ChatRequest(BaseModel):
     """聊天请求"""
+
     message: str = Field(..., max_length=10000, description="用户输入消息，最大10000字符")
     history: list[ChatMessageDTO]
     conversation_id: str | None = None
@@ -73,6 +77,7 @@ class ChatRequest(BaseModel):
 
 class ResumeRequest(BaseModel):
     """HITL 恢复请求"""
+
     thread_id: str
     updated_plan: list[dict[str, Any]] | None = None
     plan_version: int | None = Field(default=None, ge=1)
@@ -83,11 +88,13 @@ class ResumeRequest(BaseModel):
 
 class ArtifactUpdateRequest(BaseModel):
     """Artifact 更新请求"""
+
     content: str
 
 
 class ArtifactUpdateResponse(BaseModel):
     """Artifact 更新响应"""
+
     id: str
     type: str
     title: str | None
@@ -101,12 +108,13 @@ class ArtifactUpdateResponse(BaseModel):
 # 线程管理 API
 # ============================================================================
 
+
 @router.get("/threads", response_model=PaginatedThreadListResponse)
 async def get_threads(
     page: int = 1,
     limit: int = 20,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     获取当前用户的线程列表（轻量级，支持分页）
@@ -124,7 +132,7 @@ async def get_threads(
 async def get_thread(
     thread_id: str,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     获取单个线程详情（包含 TaskSession/SubTasks/Artifacts）
@@ -139,7 +147,7 @@ async def get_thread(
 async def get_thread_messages(
     thread_id: str,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     获取指定线程的消息列表（完整内容）
@@ -152,11 +160,13 @@ async def get_thread_messages(
 
 class BatchDeleteRequest(BaseModel):
     """批量删除请求"""
+
     thread_ids: list[str]
 
 
 class BatchDeleteResponse(BaseModel):
     """批量删除响应"""
+
     success: bool
     deleted_count: int
     failed_ids: list[str] = []
@@ -166,7 +176,7 @@ class BatchDeleteResponse(BaseModel):
 async def delete_thread(
     thread_id: str,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """删除单个线程"""
     service = ChatSessionService(session)
@@ -178,7 +188,7 @@ async def delete_thread(
 async def batch_delete_threads(
     request: BatchDeleteRequest,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     批量删除线程
@@ -199,9 +209,7 @@ async def batch_delete_threads(
             failed_ids.append(thread_id)
 
     return BatchDeleteResponse(
-        success=deleted_count > 0,
-        deleted_count=deleted_count,
-        failed_ids=failed_ids
+        success=deleted_count > 0, deleted_count=deleted_count, failed_ids=failed_ids
     )
 
 
@@ -209,11 +217,12 @@ async def batch_delete_threads(
 # 主要聊天端点
 # ============================================================================
 
+
 @router.post("/chat")
 async def chat_endpoint(
     request: ChatRequest,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     统一聊天端点（简单模式 + 复杂模式）
@@ -230,7 +239,7 @@ async def chat_endpoint(
         thread_id=request.conversation_id,
         user_id=current_user.id,
         agent_id=request.agent_id,
-        message=request.message
+        message=request.message,
     )
     thread_id = thread.id
 
@@ -242,8 +251,7 @@ async def chat_endpoint(
 
     # 4. 获取自定义智能体（如果有）
     custom_agent = await session_service.get_custom_agent(
-        agent_id=request.agent_id or "assistant",
-        user_id=current_user.id
+        agent_id=request.agent_id or "assistant", user_id=current_user.id
     )
 
     # 5. 路由到对应的处理逻辑
@@ -255,7 +263,7 @@ async def chat_endpoint(
                 messages=langchain_messages,
                 thread_id=thread_id,
                 thread=thread,
-                message_id=request.message_id
+                message_id=request.message_id,
             )
         else:
             return await stream_service.handle_custom_agent_sync(
@@ -263,7 +271,7 @@ async def chat_endpoint(
                 messages=langchain_messages,
                 thread_id=thread_id,
                 thread=thread,
-                message_id=request.message_id
+                message_id=request.message_id,
             )
 
     # 系统默认助手模式：通过 LangGraph 处理
@@ -278,7 +286,7 @@ async def chat_endpoint(
         "context": {},
         "router_decision": "",
         "thread_id": thread_id,
-        "user_id": thread.user_id
+        "user_id": thread.user_id,
     }
 
     if request.stream:
@@ -287,14 +295,14 @@ async def chat_endpoint(
             thread_id=thread_id,
             thread=thread,
             user_message=request.message,
-            message_id=request.message_id
+            message_id=request.message_id,
         )
     else:
         return await stream_service.handle_langgraph_sync(
             initial_state=initial_state,
             thread_id=thread_id,
             thread=thread,
-            user_message=request.message
+            user_message=request.message,
         )
 
 
@@ -302,11 +310,12 @@ async def chat_endpoint(
 # HITL (Human-in-the-Loop) 恢复接口
 # ============================================================================
 
+
 @router.post("/chat/resume")
 async def resume_chat(
     request: ResumeRequest,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     恢复被中断的 HITL 流程
@@ -322,7 +331,7 @@ async def resume_chat(
         updated_plan=request.updated_plan,
         plan_version=request.plan_version,
         message_id=request.message_id,
-        idempotency_key=request.idempotency_key
+        idempotency_key=request.idempotency_key,
     )
 
 
@@ -330,18 +339,19 @@ async def resume_chat(
 # Artifact API
 # ============================================================================
 
+
 @router.get("/artifacts/{artifact_id}")
 async def get_artifact_endpoint(
     artifact_id: str,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """获取单个 Artifact（调试用，返回内容摘要）"""
     service = ArtifactService(session)
     return await service.get_artifact_detail(
         artifact_id=artifact_id,
         user_id=current_user.id,
-        include_content=False  # 返回摘要
+        include_content=False,  # 返回摘要
     )
 
 
@@ -350,7 +360,7 @@ async def update_artifact(
     artifact_id: str,
     request: ArtifactUpdateRequest,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     更新 Artifact 内容（用于用户编辑 AI 生成的产物）
@@ -362,8 +372,6 @@ async def update_artifact(
     """
     service = ArtifactService(session)
     result = await service.update_artifact(
-        artifact_id=artifact_id,
-        content=request.content,
-        user_id=current_user.id
+        artifact_id=artifact_id, content=request.content, user_id=current_user.id
     )
     return ArtifactUpdateResponse(**result)

@@ -6,6 +6,7 @@ v3.2 更新：使用独立数据库会话，避免 MemorySaver 序列化问题
 v3.5 更新：实现三层兜底提示词体系 (DB -> Cache -> Constants)
 v3.6 优化: P0 修复 + TTLCache 本地内存缓存高频查询
 """
+
 import asyncio
 import uuid
 from typing import Any
@@ -76,19 +77,15 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
         # transform_langgraph_event 会识别并允许 aggregator 节点的 message.delta
         # 这样通过 LangGraph 的 on_chat_model_stream 事件发送，避免与 event_queue 重复
         aggregator_config = RunnableConfig(
-            tags=["aggregator"],
-            metadata={"node_type": "aggregator"}
+            tags=["aggregator"], metadata={"node_type": "aggregator"}
         )
 
         # 使用流式输出（通过 LangGraph 的 on_chat_model_stream 事件发送 message.delta）
         async for chunk in aggregator_llm.astream(
-            [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=aggregator_input)
-            ],
-            config=aggregator_config
+            [SystemMessage(content=system_prompt), HumanMessage(content=aggregator_input)],
+            config=aggregator_config,
         ):
-            content = chunk.content if hasattr(chunk, 'content') else str(chunk)
+            content = chunk.content if hasattr(chunk, "content") else str(chunk)
             if content:
                 final_response_chunks.append(content)
                 # 🔥 移除：不再通过 event_queue 发送 message.delta
@@ -104,20 +101,13 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
         # 🔥 兜底情况：通过 event_queue 发送（因为没有 LLM 调用）
         chunk_size = 100
         for i in range(0, len(final_response), chunk_size):
-            chunk = final_response[i:i + chunk_size]
-            delta_event = event_message_delta(
-                message_id=message_id,
-                content=chunk,
-                is_final=False
-            )
+            chunk = final_response[i : i + chunk_size]
+            delta_event = event_message_delta(message_id=message_id, content=chunk, is_final=False)
             event_str = sse_event_to_string(delta_event)
             delta_event_payloads.append(event_str)
 
     # 发送 message.done 事件
-    done_event = event_message_done(
-        message_id=message_id,
-        full_content=final_response
-    )
+    done_event = event_message_done(message_id=message_id, full_content=final_response)
     full_event_queue = append_sse_events(base_event_queue, delta_event_payloads)
     full_event_queue = append_sse_event(full_event_queue, sse_event_to_string(done_event))
 
@@ -126,6 +116,7 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
     # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
     if task_session_id:
         try:
+
             def _save_task_session():
                 with Session(engine) as db_session:
                     # 标记任务会话为已完成
@@ -214,7 +205,7 @@ def _build_aggregator_input(expert_results: list[dict[str, Any]], strategy: str)
         f"【执行策略】: {strategy}",
         "",
         f"【专家成果汇总】: 共 {len(expert_results)} 位专家参与分析",
-        ""
+        "",
     ]
 
     for i, res in enumerate(expert_results, 1):

@@ -28,9 +28,7 @@ class TaskSession(SQLModel, table=True):
     )
 
     # 关联的会话ID（核心！用于从历史记录加载）
-    thread_id: str = Field(
-        foreign_key="thread.id", index=True, max_length=64
-    )
+    thread_id: str = Field(foreign_key="thread.id", index=True, max_length=64)
 
     # 用户查询：原始用户输入
     user_query: str = Field(index=True)

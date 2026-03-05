@@ -3,6 +3,7 @@
 
 P1 优化: 添加异步支持
 """
+
 import httpx
 
 # P1 优化: 导入同步 requests 保持兼容
@@ -35,10 +36,7 @@ def read_webpage(url: str) -> str:
     jina_url = f"https://r.jina.ai/{url}"
 
     # 告诉 Jina 我们是开发者，有些网站会放行
-    headers = {
-        "User-Agent": "XPouch-Agent/1.0",
-        "X-Return-Format": "markdown"
-    }
+    headers = {"User-Agent": "XPouch-Agent/1.0", "X-Return-Format": "markdown"}
 
     try:
         # 设置 15秒 超时，防止卡死
@@ -51,7 +49,9 @@ def read_webpage(url: str) -> str:
 
         # 简单的清理：如果内容太短，可能没读到
         if len(content) < 100:
-            return f"⚠️ 警告: 读取内容过短，可能是因为该网站需要登录或有强反爬。\n原始内容: {content}"
+            return (
+                f"⚠️ 警告: 读取内容过短，可能是因为该网站需要登录或有强反爬。\n原始内容: {content}"
+            )
 
         # 截断保护：防止一本小说直接把 Token 撑爆
         # 15000 字符大约对应 3k-5k token，足够覆盖绝大多数技术文章
@@ -91,10 +91,7 @@ async def aread_webpage(url: str) -> str:
     jina_url = f"https://r.jina.ai/{url}"
 
     # 告诉 Jina 我们是开发者，有些网站会放行
-    headers = {
-        "User-Agent": "XPouch-Agent/1.0",
-        "X-Return-Format": "markdown"
-    }
+    headers = {"User-Agent": "XPouch-Agent/1.0", "X-Return-Format": "markdown"}
 
     try:
         # P1 优化: 使用异步 HTTP 客户端

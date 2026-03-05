@@ -52,6 +52,7 @@ Generic Worker 节点 - 通用专家执行
 
 v3.7 优化: P0 修复 + TTLCache 本地内存缓存高频查询
 """
+
 import asyncio  # 🔥 用于异步保存专家执行结果
 import json
 import os
@@ -108,7 +109,9 @@ def normalize_message_content(content: str | list | Any) -> str:
     return str(content)
 
 
-def normalize_messages_for_llm(messages: list[BaseMessage], content_mode: str = "auto") -> list[BaseMessage]:
+def normalize_messages_for_llm(
+    messages: list[BaseMessage], content_mode: str = "auto"
+) -> list[BaseMessage]:
     """
     规范化消息列表，根据模型要求处理 content 格式。
 
@@ -135,13 +138,15 @@ def normalize_messages_for_llm(messages: list[BaseMessage], content_mode: str = 
             normalized_content = normalize_message_content(msg.content)
             if normalized_content != msg.content:
                 # 创建新的 ToolMessage，保留其他字段
-                normalized.append(ToolMessage(
-                    content=normalized_content,
-                    tool_call_id=msg.tool_call_id,
-                    name=msg.name,
-                    additional_kwargs=msg.additional_kwargs,
-                    response_metadata=msg.response_metadata,
-                ))
+                normalized.append(
+                    ToolMessage(
+                        content=normalized_content,
+                        tool_call_id=msg.tool_call_id,
+                        name=msg.name,
+                        additional_kwargs=msg.additional_kwargs,
+                        response_metadata=msg.response_metadata,
+                    )
+                )
             else:
                 normalized.append(msg)
         else:
@@ -149,7 +154,9 @@ def normalize_messages_for_llm(messages: list[BaseMessage], content_mode: str = 
     return normalized
 
 
-async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = None, llm=None) -> dict[str, Any]:
+async def generic_worker_node(
+    state: dict[str, Any], config: RunnableConfig = None, llm=None
+) -> dict[str, Any]:
     """
     通用专家执行节点
 
@@ -185,7 +192,7 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
             "status": "failed",
             "error": "Task index out of range",
             "started_at": datetime.now().isoformat(),
-            "completed_at": datetime.now().isoformat()
+            "completed_at": datetime.now().isoformat(),
         }
 
     current_task = task_list[current_index]
@@ -199,7 +206,7 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
             "status": "failed",
             "error": "Missing expert_type in task",
             "started_at": datetime.now().isoformat(),
-            "completed_at": datetime.now().isoformat()
+            "completed_at": datetime.now().isoformat(),
         }
 
     # P0 修复 + 优化: 优先使用本地内存缓存，缓存未命中才查数据库
@@ -239,18 +246,17 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
             "status": "failed",
             "error": f"Expert '{expert_type}' not found in database",
             "started_at": datetime.now().isoformat(),
-            "completed_at": datetime.now().isoformat()
+            "completed_at": datetime.now().isoformat(),
         }
 
     started_at = datetime.now()
 
     # ✅ 发送 task.started 事件（专家开始执行）
     from utils.event_generator import event_task_started, sse_event_to_string
+
     task_id = current_task.get("id", str(current_index))
     started_event = event_task_started(
-        task_id=task_id,
-        expert_type=expert_type,
-        description=description
+        task_id=task_id, expert_type=expert_type, description=description
     )
     # 将 started 事件放入 state 的 event_queue，让 dispatcher 或其他节点处理
     # 使用不可变更新，避免原地修改上游 state 对象
@@ -287,7 +293,9 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
             provider_config = providers_config.get("providers", {}).get(provider, {})
             content_mode = provider_config.get("content_mode", "string")
 
-        logger.info(f"[GenericWorker] Running '{expert_type}' ({expert_name}) with model={actual_model}, temp={temperature}, content_mode={content_mode}")
+        logger.info(
+            f"[GenericWorker] Running '{expert_type}' ({expert_name}) with model={actual_model}, temp={temperature}, content_mode={content_mode}"
+        )
 
         # 如果没有提供 LLM 实例，根据配置创建
         if llm is None:
@@ -299,10 +307,7 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
                 llm = get_expert_llm(model=actual_model, temperature=temperature)
 
         # 绑定模型和温度参数
-        llm_with_config = llm.bind(
-            model=actual_model,
-            temperature=temperature
-        )
+        llm_with_config = llm.bind(model=actual_model, temperature=temperature)
 
         # 🔥🔥🔥 GenericWorker 2.0: 占位符填充 + System Prompt 增强
         # 填充 {input} 占位符（任务描述）
@@ -330,7 +335,7 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
 
             messages_for_llm = [
                 SystemMessage(content=enhanced_system_prompt),
-                *normalized_existing  # 包含 AIMessage(tool_calls) 和 ToolMessage
+                *normalized_existing,  # 包含 AIMessage(tool_calls) 和 ToolMessage
             ]
         else:
             # 首次调用：创建新的消息列表
@@ -347,16 +352,25 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
                 # 🔥🔥🔥 关键修复：双保险匹配，支持 task_id 和 db_uuid
                 for dep_id in depends_on:
                     dep_result = next(
-                        (r for r in expert_results
-                         if r.get("task_id") == dep_id or r.get("db_uuid") == dep_id),
-                        None
+                        (
+                            r
+                            for r in expert_results
+                            if r.get("task_id") == dep_id or r.get("db_uuid") == dep_id
+                        ),
+                        None,
                     )
                     if dep_result and dep_result.get("output"):
-                        context_parts.append(f"【上游任务 {dep_id} 的输出】:\n{dep_result['output'][:2000]}...")
-                        logger.info(f"[GenericWorker] ✅ 找到依赖 {dep_id}: {len(dep_result['output'])} 字符")
+                        context_parts.append(
+                            f"【上游任务 {dep_id} 的输出】:\n{dep_result['output'][:2000]}..."
+                        )
+                        logger.info(
+                            f"[GenericWorker] ✅ 找到依赖 {dep_id}: {len(dep_result['output'])} 字符"
+                        )
                     else:
                         missing_deps.append(dep_id)
-                        logger.warning(f"[GenericWorker] ⚠️ 未找到依赖 {dep_id}, 可用结果: {[r.get('task_id') for r in expert_results]}")
+                        logger.warning(
+                            f"[GenericWorker] ⚠️ 未找到依赖 {dep_id}, 可用结果: {[r.get('task_id') for r in expert_results]}"
+                        )
 
             # 组装任务提示
             task_prompt = f"任务描述: {description}\n\n"
@@ -366,7 +380,7 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
 
             # 🔥 关键：注入容错指令
             if missing_deps:
-                task_prompt += f"""⚠️ 注意：部分上游依赖任务 ({', '.join(missing_deps)}) 已被移除或未执行。
+                task_prompt += f"""⚠️ 注意：部分上游依赖任务 ({", ".join(missing_deps)}) 已被移除或未执行。
 如果任务描述中引用了这些缺失部分（如代码、数据等），请忽略该引用，
 并基于当前现有的信息，尽最大努力完成任务。不要在输出中抱怨缺少信息。\n\n"""
 
@@ -374,7 +388,7 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
 
             messages_for_llm = [
                 SystemMessage(content=enhanced_system_prompt),
-                HumanMessage(content=task_prompt)
+                HumanMessage(content=task_prompt),
             ]
 
         # 🔥 关键修复：根据是否有 ToolMessage 决定是否绑定工具
@@ -390,8 +404,8 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
                 try:
                     # 🔥 MCP: 从 config 获取动态注入的工具
                     mcp_tools = []
-                    if config and hasattr(config, 'get'):
-                        mcp_tools = config.get('configurable', {}).get('mcp_tools', [])
+                    if config and hasattr(config, "get"):
+                        mcp_tools = config.get("configurable", {}).get("mcp_tools", [])
 
                     # 🔥 MCP: 合并基础工具和动态 MCP 工具
                     runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
@@ -401,7 +415,9 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
                         logger.warning("[GenericWorker] ⚠️ MCP 工具为空！请检查 MCP 服务器连接")
 
                     llm_to_use = llm_with_config.bind_tools(runtime_tools)
-                    logger.info(f"[GenericWorker] 🔧 工具已绑定: {len(runtime_tools)} 个工具 (基础: {len(BASE_TOOLS)}, MCP: {len(mcp_tools)})")
+                    logger.info(
+                        f"[GenericWorker] 🔧 工具已绑定: {len(runtime_tools)} 个工具 (基础: {len(BASE_TOOLS)}, MCP: {len(mcp_tools)})"
+                    )
                 except Exception as e:
                     logger.warning(f"[GenericWorker] ⚠️ 工具绑定失败（模型可能不支持工具调用）: {e}")
                     llm_to_use = llm_with_config
@@ -412,7 +428,11 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
         # 🔥 关键优化：当 has_tool_message=True 时，在消息末尾添加明确的"任务完成"提示
         if has_tool_message:
             # 在消息列表末尾添加一个 HumanMessage，明确告诉 LLM 任务完成
-            messages_for_llm.append(HumanMessage(content="[系统提示：以上是工具执行结果，请基于此结果生成最终回复，任务已完成，不要再调用任何工具]"))
+            messages_for_llm.append(
+                HumanMessage(
+                    content="[系统提示：以上是工具执行结果，请基于此结果生成最终回复，任务已完成，不要再调用任何工具]"
+                )
+            )
 
         # 🔥🔥🔥 v4.0 重构：统一使用批处理模式
         # 所有专家统一使用 ainvoke 等待完整响应
@@ -422,8 +442,8 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
                 messages_for_llm,
                 config=RunnableConfig(
                     tags=["expert", expert_type, "generic_worker"],
-                    metadata={"node_type": "expert", "expert_type": expert_type}
-                )
+                    metadata={"node_type": "expert", "expert_type": expert_type},
+                ),
             )
         except TimeoutError as exc:
             raise ExpertExecutionError("LLM 调用超时") from exc
@@ -432,6 +452,7 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
 
         # 生成 artifact_id
         import uuid
+
         artifact_id = str(uuid.uuid4())
 
         # 🔥 关键修复：检查响应中是否包含工具调用
@@ -453,8 +474,8 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
                     "expert_name": expert_name,
                     "task_id": task_id,
                     "status": "waiting_for_tool",
-                    "tool_calls": response.tool_calls
-                }
+                    "tool_calls": response.tool_calls,
+                },
             }
 
         # 没有工具调用，正常完成任务
@@ -463,7 +484,7 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
         completed_at = datetime.now()
         duration_ms = int((completed_at - started_at).total_seconds() * 1000)
 
-        logger.info(f"[GenericWorker] '{expert_type}' completed (耗时: {duration_ms/1000:.2f}s)")
+        logger.info(f"[GenericWorker] '{expert_type}' completed (耗时: {duration_ms / 1000:.2f}s)")
 
         # -------------------------------------------------------------
         # 🔥 新增逻辑：如果是记忆专家，执行"写入数据库"操作
@@ -481,7 +502,7 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
                         user_id=user_id,
                         content=memory_content,
                         source="conversation",
-                        memory_type="fact"
+                        memory_type="fact",
                     )
                     logger.info("[GenericWorker] 记忆保存成功!")
                     # 修改返回给用户的 output，让反馈更自然
@@ -519,15 +540,17 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
 
         expert_result = {
             "task_id": record_id,  # 🔥 关键：使用 Commander ID 让下游能匹配到
-            "db_uuid": db_uuid,    # 保留 UUID 方便调试
+            "db_uuid": db_uuid,  # 保留 UUID 方便调试
             "expert_type": expert_type,
             "description": description,
             "output": response.content,
             "status": "completed",
-            "duration_ms": duration_ms
+            "duration_ms": duration_ms,
         }
 
-        logger.info(f"[GenericWorker] 保存专家结果: task_id={record_id}, db_uuid={db_uuid}, expert={expert_type}")
+        logger.info(
+            f"[GenericWorker] 保存专家结果: task_id={record_id}, db_uuid={db_uuid}, expert={expert_type}"
+        )
 
         # 获取现有的 expert_results 并追加新结果
         expert_results = state.get("expert_results", [])
@@ -539,8 +562,8 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
             "title": f"{expert_name}结果",
             "content": response.content,
             "language": None,  # 可选字段，Pydantic 模型需要
-            "sort_order": 0,   # 默认排序
-            "artifact_id": artifact_id
+            "sort_order": 0,  # 默认排序
+            "artifact_id": artifact_id,
         }
 
         # ✅ 异步保存专家执行结果到数据库（P0 优化：不阻塞主流程）
@@ -548,14 +571,17 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
         if task_id:
             try:
                 from utils.async_task_queue import async_save_expert_result
+
                 # 使用后台线程异步保存，不阻塞 LLM 响应返回
-                asyncio.create_task(async_save_expert_result(
-                    task_id=task_id,
-                    expert_type=expert_type,
-                    output_result=response.content,
-                    artifact_data=artifact,
-                    duration_ms=duration_ms
-                ))
+                asyncio.create_task(
+                    async_save_expert_result(
+                        task_id=task_id,
+                        expert_type=expert_type,
+                        output_result=response.content,
+                        artifact_data=artifact,
+                        duration_ms=duration_ms,
+                    )
+                )
                 logger.info(f"[GenericWorker] ✅ 专家执行结果已提交后台线程池保存: {expert_type}")
             except (RuntimeError, ValueError) as save_err:
                 logger.warning(f"[GenericWorker] ⚠️ 后台保存提交失败: {save_err}")
@@ -577,7 +603,7 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
             artifact_id=artifact_id,
             artifact_type=artifact_type,
             content=response.content,
-            title=f"{expert_name}结果"
+            title=f"{expert_name}结果",
         )
         logger.info(f"[GenericWorker] 已生成 artifact.generated 事件: {artifact_type}")
 
@@ -586,21 +612,27 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
             task_id=task_id,
             expert_type=expert_type,
             description=description,
-            output=response.content[:500] + "..." if len(response.content) > 500 else response.content,
+            output=response.content[:500] + "..."
+            if len(response.content) > 500
+            else response.content,
             duration_ms=duration_ms,
-            artifact_count=1
+            artifact_count=1,
         )
         logger.info(f"[GenericWorker] 已生成 task.completed 事件: {expert_type}")
 
         # ✅ 合并 started / artifact.generated / task.completed 事件（不可变）
-        full_event_queue = append_sse_event(initial_event_queue, sse_event_to_string(artifact_event))
+        full_event_queue = append_sse_event(
+            initial_event_queue, sse_event_to_string(artifact_event)
+        )
         full_event_queue = append_sse_event(
             full_event_queue,
             sse_event_to_string(task_completed_event),
         )
 
         return {
-            "messages": [response],  # 🔥🔥🔥 核心修复：必须把 LLM 的最终回复更新到图状态的消息历史中！🔥🔥🔥
+            "messages": [
+                response
+            ],  # 🔥🔥🔥 核心修复：必须把 LLM 的最终回复更新到图状态的消息历史中！🔥🔥🔥
             "task_list": updated_task_list,
             "expert_results": expert_results,
             "current_task_index": next_index,  # ✅ 增加 index
@@ -617,8 +649,8 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
                 "expert_name": expert_name,
                 "task_id": task_id,
                 "status": "completed",
-                "artifact_id": artifact_id  # 🔥 包含 artifact_id
-            }
+                "artifact_id": artifact_id,  # 🔥 包含 artifact_id
+            },
         }
 
     except Exception as e:
@@ -653,7 +685,7 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
             "output": f"专家执行失败: {str(e)}",
             "status": "failed",
             "error": str(e),
-            "duration_ms": 0
+            "duration_ms": 0,
         }
         expert_results = expert_results + [expert_result]
 
@@ -661,10 +693,7 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
         from utils.event_generator import event_task_failed, sse_event_to_string
 
         failed_event = event_task_failed(
-            task_id=task_id,
-            expert_type=expert_type,
-            description=description,
-            error=str(e)
+            task_id=task_id, expert_type=expert_type, description=description, error=str(e)
         )
         logger.info(f"[GenericWorker] 已生成 task.failed 事件: {expert_type}")
 
@@ -684,11 +713,13 @@ async def generic_worker_node(state: dict[str, Any], config: RunnableConfig = No
             # ✅ 添加 __expert_info 用于标识失败的专家
             "__expert_info": {
                 "expert_type": expert_type,
-                "expert_name": expert_config.get("name", expert_type) if expert_config else expert_type,
+                "expert_name": expert_config.get("name", expert_type)
+                if expert_config
+                else expert_type,
                 "task_id": task_id,
                 "status": "failed",
-                "error": str(e)
-            }
+                "error": str(e),
+            },
         }
 
 
@@ -716,19 +747,21 @@ def _detect_artifact_type(content: str, expert_key: str) -> str:
     content_lower = content.lower().strip()
 
     # 1. HTML 检测
-    if (content_lower.startswith("<!doctype html") or
-        content_lower.startswith("<html") or
-        ("<html" in content_lower and "</html>" in content_lower)):
+    if (
+        content_lower.startswith("<!doctype html")
+        or content_lower.startswith("<html")
+        or ("<html" in content_lower and "</html>" in content_lower)
+    ):
         return "html"
 
     # 检测 HTML 代码块
-    html_code_block = re.search(r'```html\n([\s\S]*?)```', content, re.IGNORECASE)
+    html_code_block = re.search(r"```html\n([\s\S]*?)```", content, re.IGNORECASE)
     if html_code_block:
         return "html"
 
     # 2. Markdown 检测
-    has_markdown = any(marker in content for marker in ['# ', '## ', '### ', '> ', '- ', '* '])
-    has_code_block = '```' in content
+    has_markdown = any(marker in content for marker in ["# ", "## ", "### ", "> ", "- ", "* "])
+    has_code_block = "```" in content
 
     if has_markdown or has_code_block:
         return "markdown"

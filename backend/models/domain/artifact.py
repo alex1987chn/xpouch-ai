@@ -24,9 +24,7 @@ class Artifact(SQLModel, table=True):
     )
 
     # 关联的子任务
-    sub_task_id: str = Field(
-        foreign_key="subtask.id", index=True, max_length=64
-    )
+    sub_task_id: str = Field(foreign_key="subtask.id", index=True, max_length=64)
 
     # 产物类型：code | html | markdown | json | text
     type: str = Field(index=True, max_length=32)

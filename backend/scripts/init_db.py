@@ -6,6 +6,7 @@
 或设置 PYTHONPATH:
     PYTHONPATH=/path/to/backend:$PYTHONPATH python scripts/init_db.py
 """
+
 from database import create_db_and_tables
 from utils.logger import logger
 

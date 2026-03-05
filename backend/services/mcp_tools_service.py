@@ -10,6 +10,7 @@ MCP 工具服务
     from services.mcp_tools_service import mcp_tools_service
     tools = await mcp_tools_service.get_tools()
 """
+
 import asyncio
 import hashlib
 import json
@@ -83,9 +84,7 @@ class MCPToolsService:
         try:
             # Python 3.13: 在异步函数中使用同步上下文管理器
             with Session(engine) as session:
-                active_servers = session.exec(
-                    select(MCPServer).where(MCPServer.is_active)
-                ).all()
+                active_servers = session.exec(select(MCPServer).where(MCPServer.is_active)).all()
 
                 if not active_servers:
                     # 清空缓存（如果没有激活服务器）
@@ -95,7 +94,10 @@ class MCPToolsService:
 
                 # 🔥 P2: 计算当前服务器配置哈希
                 current_servers_hash = hashlib.md5(
-                    json.dumps([{"name": s.name, "url": str(s.sse_url)} for s in active_servers], sort_keys=True).encode()
+                    json.dumps(
+                        [{"name": s.name, "url": str(s.sse_url)} for s in active_servers],
+                        sort_keys=True,
+                    ).encode()
                 ).hexdigest()
 
                 # 🔥 P2: 检查缓存哈希是否匹配
@@ -111,23 +113,29 @@ class MCPToolsService:
                 mcp_config = {}
                 for server in active_servers:
                     # 获取传输协议，默认为 sse（兼容旧数据）
-                    transport = getattr(server, 'transport', None) or "sse"
-                    mcp_config[server.name] = {
-                        "url": str(server.sse_url),
-                        "transport": transport
-                    }
+                    transport = getattr(server, "transport", None) or "sse"
+                    mcp_config[server.name] = {"url": str(server.sse_url), "transport": transport}
 
                 # P0 修复: 使用超时控制（streamable_http 需要更长时间）
                 # 注意: 0.2.1 版本不支持 async with，使用直接实例化
-                timeout_seconds = 30 if any(cfg.get("transport") == "streamable_http" for cfg in mcp_config.values()) else 15
+                timeout_seconds = (
+                    30
+                    if any(cfg.get("transport") == "streamable_http" for cfg in mcp_config.values())
+                    else 15
+                )
                 async with asyncio.timeout(timeout_seconds):
                     client = MultiServerMCPClient(mcp_config)
                     tools = await client.get_tools()
-                    logger.info(f"[MCP] 已加载 {len(tools)} 个 MCP 工具 from {len(active_servers)} 个服务器")
+                    logger.info(
+                        f"[MCP] 已加载 {len(tools)} 个 MCP 工具 from {len(active_servers)} 个服务器"
+                    )
 
                     # 🔥 P2: 计算服务器配置哈希并更新缓存
                     current_servers_hash = hashlib.md5(
-                        json.dumps([{"name": s.name, "url": str(s.sse_url)} for s in active_servers], sort_keys=True).encode()
+                        json.dumps(
+                            [{"name": s.name, "url": str(s.sse_url)} for s in active_servers],
+                            sort_keys=True,
+                        ).encode()
                     ).hexdigest()
                     async with self._cache_lock:
                         self._cache = (tools, datetime.now(), current_servers_hash)

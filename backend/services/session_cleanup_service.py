@@ -41,7 +41,9 @@ def _cleanup_once() -> dict[str, Any]:
 
     with Session(engine) as session:
         stale_running_threads = session.exec(
-            select(Thread).where(Thread.status == "running", Thread.updated_at < stale_running_before)
+            select(Thread).where(
+                Thread.status == "running", Thread.updated_at < stale_running_before
+            )
         ).all()
         for thread in stale_running_threads:
             thread.status = "idle"

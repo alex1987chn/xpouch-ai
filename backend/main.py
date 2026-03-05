@@ -8,6 +8,7 @@ XPouch AI Backend - 入口文件
 - Windows: python run.py (已处理事件循环兼容性)
 - Linux/Mac: python main.py 或 uvicorn main:app
 """
+
 import asyncio
 import pathlib
 
@@ -44,6 +45,7 @@ from utils.logger import logger
 # Lifespan - 应用生命周期管理
 # ============================================================================
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 初始化配置
@@ -59,6 +61,7 @@ async def lifespan(app: FastAPI):
     # 🔥🔥🔥 v3.1.0: 检查 LangGraph Checkpointer 表
     # 注意：Checkpoint 表由 migrations/checkpoint_tables.sql 创建，支持复杂模式
     from utils.db import init_checkpointer_tables
+
     try:
         await init_checkpointer_tables()
         logger.info("[Lifespan] Checkpointer tables verified for HITL")
@@ -87,6 +90,7 @@ async def lifespan(app: FastAPI):
 
     # 清空专家缓存，确保使用最新的兜底机制重新加载
     from agents.services.expert_manager import force_refresh_all
+
     force_refresh_all()
     logger.info("[Lifespan] Expert cache cleared for fresh start")
 
@@ -105,6 +109,7 @@ async def lifespan(app: FastAPI):
 
     # 🔥 关闭连接池
     from utils.db import close_connection_pool
+
     try:
         await close_connection_pool()
         logger.info("[Lifespan] Connection pool closed")
@@ -120,7 +125,7 @@ app = FastAPI(
     title="XPouch AI Backend",
     description="Python + SQLModel + LangGraph backend",
     version=settings.version,
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # 注册路由
@@ -136,6 +141,7 @@ app.include_router(mcp.router)
 # 中间件
 # ============================================================================
 
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next) -> Response:
     """请求日志中间件"""
@@ -145,7 +151,9 @@ async def log_requests(request: Request, call_next) -> Response:
         logger.info(f"[RESPONSE] {response.status_code} {request.url.path}")
         return response
     except Exception as e:
-        logger.error(f"[ERROR] Exception in {request.method} {request.url.path}: {str(e)}", exc_info=True)
+        logger.error(
+            f"[ERROR] Exception in {request.method} {request.url.path}: {str(e)}", exc_info=True
+        )
         raise
 
 
@@ -156,7 +164,9 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    csp_policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+    csp_policy = (
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+    )
     response.headers["Content-Security-Policy"] = csp_policy
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     return response
@@ -179,8 +189,11 @@ app.add_middleware(
 # 异常处理器
 # ============================================================================
 
+
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
     return JSONResponse(
         status_code=422,
         content={"detail": exc.errors(), "body": exc.body},
@@ -203,13 +216,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     logger.error(f"[HTTP ERROR] {exc.status_code}: {exc.detail}")
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "error": {
-                "code": "HTTP_ERROR",
-                "message": str(exc.detail),
-                "details": {}
-            }
-        },
+        content={"error": {"code": "HTTP_ERROR", "message": str(exc.detail), "details": {}}},
     )
 
 
@@ -220,7 +227,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     is_debug = settings.is_development
     logger.error(
         f"[UNHANDLED ERROR] {type(exc).__name__}: {str(exc)} | Path: {request.url.path}",
-        exc_info=is_debug
+        exc_info=is_debug,
     )
 
     app_error = handle_error(exc)
@@ -241,6 +248,7 @@ from services.invoke_service import InvokeService, get_invoke_service
 
 class ChatInvokeRequest(BaseModel):
     """双模路由请求模型"""
+
     message: str
     mode: str = "auto"  # "auto" 或 "direct"
     agent_id: str | None = None  # direct 模式下必填
@@ -251,7 +259,7 @@ class ChatInvokeRequest(BaseModel):
 async def chat_invoke_endpoint(
     request: ChatInvokeRequest,
     service: InvokeService = Depends(get_invoke_service),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     双模路由端点：支持 Auto 和 Direct 两种执行模式
@@ -268,14 +276,10 @@ async def chat_invoke_endpoint(
             mode=request.mode,
             agent_id=request.agent_id,
             thread_id=request.thread_id,
-            user=current_user
+            user=current_user,
         )
 
-        return {
-            **result,
-            "user_query": request.message,
-            "status": "completed"
-        }
+        return {**result, "user_query": request.message, "status": "completed"}
 
     except ValidationError:
         # 验证错误已包含详细信息，直接抛出

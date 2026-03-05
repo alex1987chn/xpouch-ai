@@ -2,6 +2,7 @@
 LangGraph 数据库连接工具
 提供异步连接池给 AsyncPostgresSaver 使用
 """
+
 import os
 from contextlib import asynccontextmanager
 
@@ -15,12 +16,17 @@ if not DATABASE_URL:
     raise ValueError("DATABASE_URL is not set in environment variables")
 
 # 转换为 psycopg 格式（去掉 +asyncpg 等驱动后缀）
-PSYCOPG_DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg", "postgresql").replace("postgresql+psycopg", "postgresql")
+PSYCOPG_DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg", "postgresql").replace(
+    "postgresql+psycopg", "postgresql"
+)
 
 # 添加 TCP keepalive 参数，防止长时间等待时连接被关闭
 if "keepalives" not in PSYCOPG_DATABASE_URL:
     separator = "&" if "?" in PSYCOPG_DATABASE_URL else "?"
-    PSYCOPG_DATABASE_URL += f"{separator}keepalives=1&keepalives_idle=60&keepalives_interval=30&keepalives_count=3"
+    PSYCOPG_DATABASE_URL += (
+        f"{separator}keepalives=1&keepalives_idle=60&keepalives_interval=30&keepalives_count=3"
+    )
+
 
 async def _configure_connection(conn):
     """配置新连接（当前无额外配置，TCP keepalive 已在 URL 中设置）"""
@@ -125,7 +131,12 @@ async def init_checkpointer_tables():
                 """)
                 tables = [row[0] for row in cur.fetchall()]
 
-                required = ['checkpoints', 'checkpoint_blobs', 'checkpoint_writes', 'checkpoint_migrations']
+                required = [
+                    "checkpoints",
+                    "checkpoint_blobs",
+                    "checkpoint_writes",
+                    "checkpoint_migrations",
+                ]
                 missing = [t for t in required if t not in tables]
 
                 if missing:

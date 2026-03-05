@@ -1,6 +1,7 @@
 """
 工具函数集合 - 时间查询和数学计算
 """
+
 import math
 from datetime import datetime
 
@@ -73,7 +74,7 @@ def calculator(expression: str) -> str:
                 return str(int(result))
             else:
                 # 最多保留 6 位小数
-                return f"{result:.6f}".rstrip('0').rstrip('.')
+                return f"{result:.6f}".rstrip("0").rstrip(".")
         else:
             return str(result)
 

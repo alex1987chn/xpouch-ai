@@ -179,7 +179,7 @@ EXPERT_DESCRIPTIONS: dict[str, str] = {
     "image_analyzer": "图片分析专家",
     "memorize_expert": "记忆助理",  # 🔥 新增：记忆专家
     "designer": "设计专家",  # 🔥 新增：映射到 generic
-    "architect": "架构专家"  # 🔥 新增：映射到 generic
+    "architect": "架构专家",  # 🔥 新增：映射到 generic
 }
 
 # 专家提示词字典（默认值，数据库无配置时使用）
@@ -199,7 +199,6 @@ EXPERT_PROMPTS: dict[str, str] = {
 - 需要计算时，使用 calculator
 
 输出要求：清晰的结构化信息，关键要点提炼。""",
-
     "coder": """你是一个编程专家。
 
 职责：编写清晰、高效且遵循最佳实践的代码，并使用可视化图表解释代码结构。
@@ -223,7 +222,6 @@ EXPERT_PROMPTS: dict[str, str] = {
 使用 ```mermaid 代码块包裹，严禁 ASCII 字符画。
 
 输出要求：完整可运行的代码，包含必要的注释和 Mermaid 可视化图表。""",
-
     "researcher": """你是一个研究专家。
 
 职责：进行深入的文献和技术调研。
@@ -238,7 +236,6 @@ EXPERT_PROMPTS: dict[str, str] = {
 - 涉及数据分析时，使用 calculator
 
 输出要求：系统化的研究报告，深度分析。""",
-
     "analyzer": """你是一个分析专家。
 
 职责：进行逻辑严密的分析和推理。
@@ -253,7 +250,6 @@ EXPERT_PROMPTS: dict[str, str] = {
 - 涉及数值计算时，使用 calculator
 
 输出要求：结构化的分析报告，明确结论。""",
-
     "writer": """你是一个写作专家。
 
 职责：创作生动、优美且易读的内容，并使用可视化图表增强表达。
@@ -279,7 +275,6 @@ EXPERT_PROMPTS: dict[str, str] = {
 使用 ```mermaid 代码块包裹，严禁 ASCII 字符画。
 
 输出要求：清晰的结构，准确的表达，配合 Mermaid 可视化图表。""",
-
     "planner": """你是一个规划专家。
 
 职责：制定详细的执行计划和方案。
@@ -294,7 +289,6 @@ EXPERT_PROMPTS: dict[str, str] = {
 - 涉及时间规划或成本计算时，使用相应工具
 
 输出要求：分阶段计划，明确分工。""",
-
     "image_analyzer": """你是一个图片分析专家。
 
 职责：分析图片内容，识别物体和场景。
@@ -309,7 +303,6 @@ EXPERT_PROMPTS: dict[str, str] = {
 - 涉及像素计算时，使用 calculator
 
 输出要求：详细的视觉描述。""",
-
     # 🔥 新增：designer 和 architect 映射到 generic（使用通用专家逻辑）
     "designer": """你是一个设计专家。
 
@@ -325,7 +318,6 @@ EXPERT_PROMPTS: dict[str, str] = {
 - 涉及尺寸计算或比例换算时，使用 calculator
 
 输出要求：具体的设计建议，包含尺寸、颜色、布局等可执行方案。""",
-
     "architect": """你是一个架构专家。
 
 职责：提供系统架构设计、技术选型建议和技术方案评估。
@@ -339,7 +331,7 @@ EXPERT_PROMPTS: dict[str, str] = {
 - 需要了解最新技术趋势或架构模式时，使用 search_web
 - 涉及性能估算或容量规划时，使用 calculator
 
-输出要求: 清晰的架构图(使用 Mermaid), 技术选型理由和实现步骤。"""
+输出要求: 清晰的架构图(使用 Mermaid), 技术选型理由和实现步骤。""",
 }
 
 
@@ -373,6 +365,7 @@ NEW_TO_OLD_AGENT_ID_MAPPING: dict[str, str] = {
 # ============================================================================
 # 辅助函数
 # ============================================================================
+
 
 def normalize_agent_id(agent_id: str) -> str:
     """
@@ -418,4 +411,3 @@ def is_system_agent(agent_id: str) -> bool:
         False
     """
     return agent_id in SYSTEM_AGENT_IDS
-

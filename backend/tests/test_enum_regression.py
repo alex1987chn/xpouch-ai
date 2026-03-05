@@ -2,6 +2,7 @@
 枚举防回归：确保 DB 使用 .value 映射，避免存成 name。
 见 code review 报告 3.3 / .ai/CHANGE_CONTRACT.md。
 """
+
 import pytest
 
 from models.enums import (

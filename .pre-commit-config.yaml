@@ -23,7 +23,7 @@ repos:
         entry: pnpm --prefix frontend exec eslint --cache
         language: system
         files: ^frontend/.*\.(js|jsx|ts|tsx)$
-        pass_filenames: true
+        pass_filenames: false  # 由 eslint 自己处理文件列表
 
   # 通用检查
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -33,13 +33,16 @@ repos:
       - id: check-merge-conflict
       # 检查 YAML 语法
       - id: check-yaml
-      # 检查 JSON 语法
+      # 检查 JSON 语法（排除 tsconfig.json，因为它可能有注释）
       - id: check-json
-      # 去除行尾空格
+        exclude: tsconfig\.json$
+      # 去除行尾空格（仅对根目录配置文件，避免大范围格式化）
       - id: trailing-whitespace
+        files: \.(md|yml|yaml|txt)$
         exclude: ^(frontend/|backend/)
-      # 确保文件末尾有空行
+      # 确保文件末尾有空行（仅对根目录配置文件）
       - id: end-of-file-fixer
+        files: \.(md|yml|yaml|txt|sh)$
         exclude: ^(frontend/|backend/)
       # 检查超大文件
       - id: check-added-large-files

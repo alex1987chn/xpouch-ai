@@ -10,6 +10,7 @@ Artifact 业务处理服务
 - backend.crud.task_session (Artifact CRUD)
 - backend.utils.artifacts (Artifact 解析)
 """
+
 from typing import Any
 
 from sqlmodel import Session
@@ -32,10 +33,7 @@ class ArtifactService:
     # ============================================================================
 
     async def get_artifact_detail(
-        self,
-        artifact_id: str,
-        user_id: str,
-        include_content: bool = True
+        self, artifact_id: str, user_id: str, include_content: bool = True
     ) -> dict[str, Any]:
         """
         获取 Artifact 详情（含权限验证）
@@ -71,14 +69,10 @@ class ArtifactService:
             "language": artifact.language,
             "sort_order": artifact.sort_order,
             "sub_task_id": artifact.sub_task_id,
-            "created_at": artifact.created_at.isoformat() if artifact.created_at else None
+            "created_at": artifact.created_at.isoformat() if artifact.created_at else None,
         }
 
-    async def get_artifacts_by_subtask(
-        self,
-        subtask_id: str,
-        user_id: str
-    ) -> list[dict[str, Any]]:
+    async def get_artifacts_by_subtask(self, subtask_id: str, user_id: str) -> list[dict[str, Any]]:
         """
         获取 SubTask 的所有 Artifacts
 
@@ -111,7 +105,7 @@ class ArtifactService:
                 "content": art.content,
                 "language": art.language,
                 "sort_order": art.sort_order,
-                "created_at": art.created_at.isoformat() if art.created_at else None
+                "created_at": art.created_at.isoformat() if art.created_at else None,
             }
             for art in artifacts
         ]
@@ -120,12 +114,7 @@ class ArtifactService:
     # Artifact 更新
     # ============================================================================
 
-    async def update_artifact(
-        self,
-        artifact_id: str,
-        content: str,
-        user_id: str
-    ) -> dict[str, Any]:
+    async def update_artifact(self, artifact_id: str, content: str, user_id: str) -> dict[str, Any]:
         """
         更新 Artifact 内容
 
@@ -160,6 +149,7 @@ class ArtifactService:
 
         if not updated_artifact:
             from utils.exceptions import AppError
+
             raise AppError("更新失败，请重试")
 
         logger.info(f"[ARTIFACT UPDATE] 用户 {user_id} 更新了 Artifact {artifact_id}")
@@ -171,14 +161,10 @@ class ArtifactService:
             "content": updated_artifact.content,
             "language": updated_artifact.language,
             "sort_order": updated_artifact.sort_order,
-            "updated": True
+            "updated": True,
         }
 
-    async def _verify_artifact_permission(
-        self,
-        artifact: Artifact,
-        user_id: str
-    ) -> bool:
+    async def _verify_artifact_permission(self, artifact: Artifact, user_id: str) -> bool:
         """
         验证用户对 Artifact 的访问权限
 
@@ -212,11 +198,7 @@ class ArtifactService:
 
         return True
 
-    async def _verify_full_permission_chain(
-        self,
-        artifact: Artifact,
-        user_id: str
-    ) -> bool:
+    async def _verify_full_permission_chain(self, artifact: Artifact, user_id: str) -> bool:
         """
         验证完整的权限链（用于修改操作，更严格的检查）
 
@@ -243,9 +225,7 @@ class ArtifactService:
         return parse_artifacts_from_response(response)
 
     def extract_code_blocks(
-        self,
-        response: str,
-        language_filter: str | None = None
+        self, response: str, language_filter: str | None = None
     ) -> list[dict[str, Any]]:
         """
         提取代码块
@@ -261,10 +241,7 @@ class ArtifactService:
         code_artifacts = [a for a in artifacts if a.get("type") == "code"]
 
         if language_filter:
-            code_artifacts = [
-                a for a in code_artifacts
-                if a.get("language") == language_filter
-            ]
+            code_artifacts = [a for a in code_artifacts if a.get("language") == language_filter]
 
         return code_artifacts
 
@@ -273,9 +250,7 @@ class ArtifactService:
     # ============================================================================
 
     async def batch_update_artifacts(
-        self,
-        updates: list[dict[str, str]],
-        user_id: str
+        self, updates: list[dict[str, str]], user_id: str
     ) -> list[dict[str, Any]]:
         """
         批量更新 Artifacts
@@ -291,9 +266,7 @@ class ArtifactService:
         for update in updates:
             try:
                 result = await self.update_artifact(
-                    artifact_id=update["artifact_id"],
-                    content=update["content"],
-                    user_id=user_id
+                    artifact_id=update["artifact_id"], content=update["content"], user_id=user_id
                 )
                 results.append({"success": True, "data": result})
             except Exception as e:

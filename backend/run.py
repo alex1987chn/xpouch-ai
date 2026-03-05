@@ -5,6 +5,7 @@ XPouch Backend 启动脚本（Windows 兼容版 + 显式 Loop 注入）
 1. 强制创建 SelectorEventLoop，完全绕过 Uvicorn 的 Loop 初始化逻辑
 2. 将父目录添加到 sys.path，支持绝对导入（如 from backend.config import）
 """
+
 import asyncio
 import logging
 import os
@@ -13,7 +14,7 @@ import signal
 import sys
 
 # 配置日志
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # 🔥 修复：将项目根目录添加到 sys.path，支持绝对导入
@@ -31,24 +32,25 @@ HOST = os.getenv("HOST", "0.0.0.0")
 def kill_process_on_port(port):
     """查找并终止占用指定端口的进程"""
     import subprocess
+
     try:
         # 使用 netstat 查找占用端口的进程
         result = subprocess.run(
-            ['netstat', '-ano', '|', 'findstr', f':{port}'],
+            ["netstat", "-ano", "|", "findstr", f":{port}"],
             capture_output=True,
             text=True,
-            shell=True
+            shell=True,
         )
 
         if result.returncode == 0 and result.stdout:
-            lines = result.stdout.strip().split('\n')
+            lines = result.stdout.strip().split("\n")
             for line in lines:
-                if 'LISTENING' in line:
+                if "LISTENING" in line:
                     parts = line.strip().split()
                     if len(parts) >= 5:
                         pid = parts[-1]
                         try:
-                            subprocess.run(['taskkill', '/PID', pid, '/F'], capture_output=True)
+                            subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True)
                             logger.info(f"[Cleanup] Killed process {pid} on port {port}")
                         except Exception:
                             pass
@@ -68,12 +70,15 @@ def start_server():
 
     # 稍微等待确保端口释放
     import time
+
     time.sleep(0.5)
 
     # 1. 设置策略
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-        logger.info(f"[WinFix] Event Loop Policy: {asyncio.get_event_loop_policy().__class__.__name__}")
+        logger.info(
+            f"[WinFix] Event Loop Policy: {asyncio.get_event_loop_policy().__class__.__name__}"
+        )
 
     # 2. 显式创建 Loop
     loop = asyncio.new_event_loop()
