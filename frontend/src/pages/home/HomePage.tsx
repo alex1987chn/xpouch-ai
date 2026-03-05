@@ -357,7 +357,7 @@ export default function HomePage() {
 
     // 👈 直接导航到 /chat/:id 格式，首页始终使用默认助手
     navigate(`/chat/${newId}`, {
-      state: { startWith: inputMessage }
+      state: { startWith: inputMessage, isNew: true }
     })
   }, [inputMessage, navigate, isAuthenticated, openLogin])
 

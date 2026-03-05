@@ -29,6 +29,40 @@ import type { ArtifactType } from '@/types'
 const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
 
 // ============================================================================
+// 时间格式化工具
+// ============================================================================
+
+/**
+ * 格式化消息时间戳
+ * 显示为 MM-DD HH:mm 格式，跨年时显示年份
+ */
+function formatMessageTime(timestamp: string | number | Date | undefined): string {
+  if (!timestamp) return ''
+  
+  try {
+    const date = new Date(timestamp)
+    const now = new Date()
+    const isSameYear = date.getFullYear() === now.getFullYear()
+    
+    // 格式化数字，补零
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    const month = pad(date.getMonth() + 1)
+    const day = pad(date.getDate())
+    const hours = pad(date.getHours())
+    const minutes = pad(date.getMinutes())
+    
+    // 同年显示 MM-DD HH:mm，跨年显示 YYYY-MM-DD HH:mm
+    if (isSameYear) {
+      return `${month}-${day} ${hours}:${minutes}`
+    } else {
+      return `${date.getFullYear()}-${month}-${day} ${hours}:${minutes}`
+    }
+  } catch {
+    return ''
+  }
+}
+
+// ============================================================================
 // 提取的 Markdown 渲染组件 (避免每次渲染重新创建)
 // ============================================================================
 
@@ -424,7 +458,7 @@ function MessageItem({
       <div className="flex flex-col items-end group user-message">
         <div className="flex items-center gap-2 mb-1 opacity-60 group-hover:opacity-100 transition-opacity">
           <span className="font-mono text-[9px] uppercase text-content-muted">
-            ID: {String(message.id ?? '').slice(0, 6)} // USER
+            {message.timestamp ? formatMessageTime(message.timestamp) : ''}
           </span>
         </div>
         <div className="bg-surface-elevated text-content-primary p-5 shadow-hard border-2 border-border-default w-fit max-w-[80%] select-text">
@@ -452,7 +486,7 @@ function MessageItem({
           {activeExpert ? `${activeExpert.toUpperCase()}_AGENT` : 'ASSISTANT'}
         </span>
         <span className="font-mono text-[9px] text-muted-foreground/50">
-          {message.timestamp ? new Date(message.timestamp).toLocaleTimeString() : ''}
+          {formatMessageTime(message.timestamp)}
         </span>
       </div>
 

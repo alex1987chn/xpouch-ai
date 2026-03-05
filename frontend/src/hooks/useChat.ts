@@ -97,7 +97,6 @@ export function useChat() {
     resumeExecution: chatCore.resumeExecution,
 
     // Conversation management
-    loadConversation: conversationManager.loadConversation,
     deleteConversation: conversationManager.deleteConversation,
 
     // Retry / Regenerate

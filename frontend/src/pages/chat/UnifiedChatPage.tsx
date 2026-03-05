@@ -1,12 +1,14 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from '@/i18n'
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
 import { useUserStore } from '@/store/userStore'
 import { useChat } from '@/hooks/useChat'
 import { useSessionRestore } from '@/hooks/useSessionRestore'
 import { useAppUISelectors } from '@/hooks'
+import { chatHistoryKeys } from '@/hooks/queries'
 
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { normalizeAgentId } from '@/utils/agentUtils'
@@ -41,23 +43,28 @@ export default function UnifiedChatPage() {
   type ChatRouteState = { isNew?: boolean; startWith?: string }
   const routeState = (location.state as ChatRouteState | null) ?? null
   const initialMessage = routeState?.startWith
+  
+  // 🔥 提前定义 isNewConversation，供后续 useEffect 使用
+  const isNewConversation = routeState?.isNew ?? false
+
+  const queryClient = useQueryClient()
 
   const {
     isStreaming,
     sendMessage,
     stopGeneration,
-    loadConversation,
     regenerate,  // 🔥 用于重新生成指定 AI 消息的回复
     resumeExecution  // 🔥🔥🔥 v3.1.0 HITL
   } = useChat()
 
   const conversationLoadedRef = useRef(false)
-  const loadConversationRef = useRef(loadConversation)
-  loadConversationRef.current = loadConversation
   
-  // conversationId 变化时重置加载标记
+  // conversationId 变化时重置加载标记，并清空 persisted 消息避免显示旧数据
   useEffect(() => {
     conversationLoadedRef.current = false
+    // 🔥 清空本地消息和任务，避免 persist 恢复的旧数据闪烁
+    useChatStore.getState().setMessages([])
+    useTaskStore.getState().resetAll()
   }, [conversationId])
 
   // 加载自定义 Agent 的状态
@@ -193,7 +200,7 @@ export default function UnifiedChatPage() {
     }
 
     // 🔥🔥🔥 简化判断：只检查会话和消息是否已加载
-    // tasks 的恢复由 loadConversation 内部处理
+    // tasks 的恢复由 useSessionRestore 内部处理
     const storeCurrentId = useChatStore.getState().currentConversationId
     const currentMessages = useChatStore.getState().messages
     
@@ -219,19 +226,14 @@ export default function UnifiedChatPage() {
     // 标记为已加载，防止重复调用
     conversationLoadedRef.current = true
 
-    // 加载历史会话（仅从历史记录进入的场景）
-    loadConversationRef.current(conversationId)
-      .catch((error: unknown) => {
-        const status = (typeof error === 'object' && error !== null && 'status' in error)
-          ? (error as { status?: number }).status
-          : undefined
-        if (status === 404) {
-          // 会话不存在，重置状态
-          useChatStore.getState().setMessages([])
-          useTaskStore.getState().resetAll()
-        }
-      })
-  }, [conversationId, initialMessage])
+    // 🔥 修复：如果是新建会话（isNew: true），跳过加载历史，避免 404
+    if (routeState?.isNew) {
+      return
+    }
+
+    // 🔥 所有历史会话加载都由 useSessionRestore 统一处理
+    // 无需额外调用 loadConversation
+  }, [conversationId, initialMessage, isNewConversation])
 
   // 恢复草稿（只依赖 conversationId）
   useEffect(() => {
@@ -264,9 +266,13 @@ export default function UnifiedChatPage() {
 
       // 发送消息
       sendMessage(initialMessage, normalizedAgentId)
+        .then(() => {
+          // 🔥 刷新会话列表，让首页能看到新创建的会话
+          queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
+        })
         .catch(err => logger.error('[UnifiedChatPage] 发送消息失败:', err))
 
-      // 🔥 修复：使用 isNew: false 标记会话已创建，避免触发 loadConversation 404 错误
+      // 🔥 修复：使用 isNew: false 标记会话已创建，避免 useSessionRestore 404 错误
       setTimeout(() => {
         navigate(`/chat/${conversationId}${searchParams.toString() ? '?' + searchParams.toString() : ''}`, {
           replace: true,
@@ -283,8 +289,8 @@ export default function UnifiedChatPage() {
 
   // v3.0: 状态恢复/水合（使用独立的 Hook）
   // v3.3.0: 使用合并后的 useSessionRestore，同时支持页面加载恢复和标签页切换恢复
-  // 🔥 始终启用 useSessionRestore，它会内部处理重复恢复
-  useSessionRestore({ enabled: !!conversationId })
+  // 🔥 使用 useSessionRestore 替代 loadConversation，避免重复加载
+  useSessionRestore({ enabled: !!conversationId && !isNewConversation })
 
   // 🔐 登录后自动重发消息（Store Trigger 模式）
   // 使用 ref 存储最新的 sendMessage 函数，避免 subscribe 闭包问题
@@ -326,8 +332,12 @@ export default function UnifiedChatPage() {
   const handleSend = useCallback(() => {
     if (!inputValue.trim() || isStreaming) return
     sendMessage(inputValue, normalizedAgentId)
+      .then(() => {
+        // 🔥 刷新会话列表，确保首页能看到最新会话
+        queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
+      })
     setInputValue('')
-  }, [inputValue, isStreaming, sendMessage, normalizedAgentId])
+  }, [inputValue, isStreaming, sendMessage, normalizedAgentId, queryClient])
 
   // 缓存回调函数，避免 ChatStreamPanel 不必要的重渲染
   const handleInputChange = useCallback((value: string) => {
