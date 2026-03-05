@@ -20,10 +20,10 @@ repos:
     hooks:
       - id: eslint
         name: ESLint (Frontend)
-        entry: pnpm --prefix frontend exec eslint --cache
+        entry: pnpm --prefix frontend exec eslint
         language: system
         files: ^frontend/.*\.(js|jsx|ts|tsx)$
-        pass_filenames: false  # 由 eslint 自己处理文件列表
+        pass_filenames: true  # 只检查修改的文件
 
   # 通用检查
   - repo: https://github.com/pre-commit/pre-commit-hooks
