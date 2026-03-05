@@ -29,6 +29,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from api.admin import router as admin_router
+from api.tools import router as tools_router
 
 # 路由导入
 from auth import router as auth_router
@@ -131,6 +132,7 @@ app = FastAPI(
 # 注册路由
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(tools_router)
 app.include_router(chat.router)
 app.include_router(agents.router)
 app.include_router(system.router)

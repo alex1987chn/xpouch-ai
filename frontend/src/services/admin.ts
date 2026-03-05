@@ -69,6 +69,20 @@ export interface PromoteUserRequest {
   role: 'admin'
 }
 
+// 🔥 工具相关类型
+export interface ToolInfo {
+  name: string
+  description: string
+  category: 'builtin' | 'mcp'
+}
+
+export interface ToolsListResponse {
+  tools: ToolInfo[]
+  total: number
+  builtin_count: number
+  mcp_count: number
+}
+
 // ============================================================================
 // API 函数
 // ============================================================================
@@ -169,4 +183,14 @@ export async function deleteExpert(expertKey: string): Promise<void> {
     headers: getHeaders()
   })
   return handleResponse<void>(response, '删除专家失败')
+}
+
+/**
+ * 获取可用工具列表
+ */
+export async function getAvailableTools(): Promise<ToolsListResponse> {
+  const response = await authenticatedFetch(buildUrl('/tools/available'), {
+    headers: getHeaders()
+  })
+  return handleResponse<ToolsListResponse>(response, '获取工具列表失败')
 }

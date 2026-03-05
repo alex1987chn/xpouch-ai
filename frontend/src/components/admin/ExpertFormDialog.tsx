@@ -10,11 +10,12 @@
 
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Plus } from 'lucide-react'
+import { X, Plus, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/utils'
 import ModelSelector from '@/components/settings/ModelSelector'
-import type { SystemExpert, CreateExpertRequest, UpdateExpertRequest } from '@/services/admin'
+import type { SystemExpert, CreateExpertRequest, UpdateExpertRequest, ToolInfo } from '@/services/admin'
+import { getAvailableTools } from '@/services/admin'
 
 interface ExpertFormDialogProps {
   mode: 'create' | 'edit'
@@ -45,6 +46,29 @@ export default function ExpertFormDialog({
     model: 'gpt-4o',
     temperature: 0.5,
   })
+
+  // 🔥 工具提示展开状态
+  const [showToolTips, setShowToolTips] = useState(false)
+  // 🔥 工具列表
+  const [tools, setTools] = useState<ToolInfo[]>([])
+  const [isLoadingTools, setIsLoadingTools] = useState(false)
+
+  // 获取工具列表
+  useEffect(() => {
+    if (isOpen) {
+      setIsLoadingTools(true)
+      getAvailableTools()
+        .then((response) => {
+          setTools(response.tools)
+        })
+        .catch((err) => {
+          console.error('Failed to load tools:', err)
+        })
+        .finally(() => {
+          setIsLoadingTools(false)
+        })
+    }
+  }, [isOpen])
 
   // 编辑模式下初始化表单数据
   useEffect(() => {
@@ -257,12 +281,68 @@ export default function ExpertFormDialog({
 
           {/* System Prompt */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-content-secondary" />
-              <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
-                {t('systemPrompt')}
-              </label>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-content-secondary" />
+                <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                  {t('systemPrompt')}
+                </label>
+              </div>
+              {/* 🔥 工具使用提示 */}
+              <button
+                type="button"
+                onClick={() => setShowToolTips(!showToolTips)}
+                className="flex items-center gap-1 font-mono text-[9px] text-accent-hover hover:text-accent transition-colors"
+              >
+                <Lightbulb className="w-3 h-3" />
+                {showToolTips ? t('hideToolTips') : t('showToolTips')}
+                {showToolTips ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
             </div>
+            
+            {/* 🔥 工具使用说明模板 */}
+            {showToolTips && (
+              <div className="p-3 border-2 border-accent-hover/30 bg-accent-hover/5 space-y-2">
+                <p className="font-mono text-[9px] text-content-secondary">
+                  {t('toolTipsDescription')}
+                </p>
+                <div className="space-y-1">
+                  <p className="font-mono text-[9px] font-bold text-content-secondary">
+                    {t('availableTools')}:
+                    {isLoadingTools && <span className="ml-2 text-content-secondary/50">({t('loading')})</span>}
+                  </p>
+                  {tools.length > 0 ? (
+                    <ul className="font-mono text-[9px] text-content-secondary space-y-1 ml-2 max-h-32 overflow-y-auto bauhaus-scrollbar">
+                      {tools.map((tool) => (
+                        <li key={tool.name}>
+                          • <code className="bg-surface-page px-1">{tool.name}</code>
+                          <span className="text-content-secondary/70"> - {tool.description}</span>
+                          {tool.category === 'mcp' && (
+                            <span className="ml-1 text-[8px] text-accent-hover">(MCP)</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="font-mono text-[9px] text-content-secondary/50 ml-2">
+                      {isLoadingTools ? t('loadingTools') : t('noToolsAvailable')}
+                    </p>
+                  )}
+                </div>
+                <div className="pt-1 border-t border-border-default">
+                  <p className="font-mono text-[9px] font-bold text-content-secondary mb-1">{t('toolUsageExample')}:</p>
+                  <pre className="font-mono text-[8px] text-content-secondary bg-surface-page p-2 overflow-x-auto">
+{`# Tools & Constraints
+1. **Mandatory Tool Use**: 当需要实时信息时，必须使用 \`search_web\`。
+2. **Date Awareness**: 当前时间是 {current_time}。
+
+# Output Format
+...`}
+                  </pre>
+                </div>
+              </div>
+            )}
+            
             <textarea
               value={formData.system_prompt}
               onChange={(e) =>
