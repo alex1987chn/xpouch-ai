@@ -76,6 +76,8 @@ ignore = [
 "migrations/env.py" = ["F401", "E402"]
 "models/__init__.py" = ["F401"]
 "main.py" = ["E402"]  # load_dotenv 后导入，符合项目模式
+"auth.py" = ["E402"]  # 函数定义后导入，避免循环依赖
+"routers/system.py" = ["E402"]  # 注释后条件导入
 # SQLAlchemy 兼容性：保留字符串引用和 Optional 写法
 "models/domain/*.py" = ["UP037", "UP045"]
 

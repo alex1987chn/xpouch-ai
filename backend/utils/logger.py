@@ -12,10 +12,10 @@ DEFAULT_FORMAT = '%(levelname)s: %(message)s'
 def get_logger(name: str) -> logging.Logger:
     """
     获取一个配置好的日志记录器
-    
+
     Args:
         name: 记录器名称，通常使用 __name__
-        
+
     Returns:
         配置好的 Logger 实例
     """

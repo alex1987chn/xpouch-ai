@@ -1,10 +1,18 @@
 /**
  * Artifact 导出工具函数
  * 支持 Markdown 和 PDF 两种格式导出
+ * 
+ * 🔥 PDF 相关库使用动态导入，减少首屏加载
  */
 
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
+// 动态导入 PDF 库（仅在需要时加载）
+const loadPdfLibs = async () => {
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import('html2canvas'),
+    import('jspdf'),
+  ])
+  return { html2canvas, jsPDF }
+}
 
 /**
  * 生成带时间戳的文件名
@@ -83,6 +91,9 @@ export async function downloadPDF(elementId: string, filename: string): Promise<
   try {
     // 等待一帧让 DOM 渲染
     await new Promise(resolve => requestAnimationFrame(resolve))
+    
+    // 🔥 动态加载 PDF 库
+    const { html2canvas, jsPDF } = await loadPdfLibs()
     
     // 使用 html2canvas 捕获
     const canvas = await html2canvas(container, {

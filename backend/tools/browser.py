@@ -16,7 +16,7 @@ from utils.logger import logger
 def read_webpage(url: str) -> str:
     """
     读取指定网页的【完整】内容。
-    
+
     当搜索结果信息不足，或者用户提供具体链接要求总结/分析时，使用此工具。
     该工具会将网页转换为 Markdown 格式，方便阅读。
 
@@ -71,7 +71,7 @@ def read_webpage(url: str) -> str:
 async def aread_webpage(url: str) -> str:
     """
     异步读取指定网页的【完整】内容。
-    
+
     P1 优化:
     - 使用异步 HTTP 请求，不阻塞事件循环
     - 与 read_webpage 功能完全相同，但支持并发执行

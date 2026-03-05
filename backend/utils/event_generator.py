@@ -34,7 +34,7 @@ from event_types.events import (
 class EventGenerator:
     """
     SSE 事件生成器
-    
+
     用于在 LangGraph 工作流中生成标准化事件
     """
 
@@ -60,7 +60,7 @@ class EventGenerator:
     ) -> SSEEvent:
         """
         生成 plan.created 事件
-        
+
         Args:
             session_id: 任务会话ID
             summary: 规划摘要
@@ -382,13 +382,13 @@ async def sse_stream_from_events(
 ) -> AsyncGenerator[str]:
     """
     将事件异步流转换为 SSE 格式的字符串流
-    
+
     用法：
         async def event_generator():
             yield event_plan_created(...)
             yield event_task_started(...)
             ...
-        
+
         return StreamingResponse(
             sse_stream_from_events(event_generator()),
             media_type="text/event-stream"

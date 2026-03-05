@@ -59,9 +59,9 @@ def inject_current_time(system_prompt: str) -> str:
 def enhance_system_prompt_with_tools(system_prompt: str) -> str:
     """
     【增强版】System Prompt 注入
-    
+
     功能: 注入时间 + 强制工具使用指令 + 防偷懒逻辑
-    
+
     用于 Generic Worker 节点，强制模型使用工具而非脑补答案。
     """
     now = datetime.now()

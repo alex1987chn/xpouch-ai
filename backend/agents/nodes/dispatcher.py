@@ -32,12 +32,12 @@ async def expert_dispatcher_node(state: AgentState, config: RunnableConfig = Non
     专家分发器节点（简化版）
 
     P1 优化: 统一 Node 签名，添加 config 参数
-    
+
     v3.2 重构：
     - 移除专家执行逻辑（不再调用专家函数）
     - 仅负责检查专家是否存在并返回空字典
     - 流转逻辑由 graph.py 中的连线决定
-    
+
     v3.3 更新：
     - 使用独立数据库会话，避免 MemorySaver 序列化问题
     """

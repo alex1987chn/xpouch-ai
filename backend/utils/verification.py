@@ -27,10 +27,10 @@ class VerificationCodeInvalidError(VerificationCodeError):
 def generate_verification_code(length: int = 6) -> str:
     """
     生成数字验证码
-    
+
     Args:
         length: 验证码长度，默认6位
-        
+
     Returns:
         数字验证码字符串
     """
@@ -45,16 +45,16 @@ def verify_code(
 ) -> bool:
     """
     验证验证码
-    
+
     Args:
         stored_code: 存储的验证码
         provided_code: 用户提供的验证码
         expires_at: 过期时间
         max_attempts: 最大验证次数
-        
+
     Returns:
         是否验证成功
-        
+
     Raises:
         VerificationCodeExpiredError: 验证码已过期
         VerificationCodeInvalidError: 验证码无效
@@ -77,10 +77,10 @@ def verify_code(
 def get_code_expiry_duration(minutes: int = 5) -> datetime:
     """
     获取验证码过期时间
-    
+
     Args:
         minutes: 有效期（分钟）
-        
+
     Returns:
         过期时间
     """
@@ -90,10 +90,10 @@ def get_code_expiry_duration(minutes: int = 5) -> datetime:
 def format_phone_number(phone: str) -> str:
     """
     格式化手机号码
-    
+
     Args:
         phone: 原始手机号码
-        
+
     Returns:
         格式化后的手机号码（去除空格和特殊字符）
     """
@@ -103,10 +103,10 @@ def format_phone_number(phone: str) -> str:
 def validate_phone_number(phone: str) -> bool:
     """
     验证手机号码格式
-    
+
     Args:
         phone: 手机号码
-        
+
     Returns:
         是否有效
     """
@@ -118,10 +118,10 @@ def validate_phone_number(phone: str) -> bool:
 def validate_email(email: str) -> bool:
     """
     验证邮箱格式
-    
+
     Args:
         email: 邮箱地址
-        
+
     Returns:
         是否有效
     """
@@ -133,11 +133,11 @@ def validate_email(email: str) -> bool:
 def mask_phone_number(phone: str, visible_digits: int = 4) -> str:
     """
     脱敏手机号码
-    
+
     Args:
         phone: 原始手机号码
         visible_digits: 可见的数字位数（从末尾开始）
-        
+
     Returns:
         脱敏后的手机号码
     """
@@ -155,10 +155,10 @@ def mask_phone_number(phone: str, visible_digits: int = 4) -> str:
 def mask_email(email: str) -> str:
     """
     脱敏邮箱地址
-    
+
     Args:
         email: 邮箱地址
-        
+
     Returns:
         脱敏后的邮箱地址
     """

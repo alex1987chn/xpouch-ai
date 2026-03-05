@@ -28,7 +28,7 @@ def column_exists(conn, table_name, column_name):
 def upgrade() -> None:
     """Add config_version column to SystemExpert for optimistic locking."""
     conn = op.get_bind()
-    
+
     if not column_exists(conn, "systemexpert", "config_version"):
         op.add_column(
             "systemexpert",
@@ -39,6 +39,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Remove config_version column from SystemExpert."""
     conn = op.get_bind()
-    
+
     if column_exists(conn, "systemexpert", "config_version"):
         op.drop_column("systemexpert", "config_version")

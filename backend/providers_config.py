@@ -36,7 +36,7 @@ except ImportError:
 def load_providers_config() -> dict[str, Any]:
     """
     加载 providers.yaml 配置文件（带缓存）
-    
+
     Returns:
         Dict: 完整的配置字典
     """
@@ -57,11 +57,11 @@ def load_providers_config() -> dict[str, Any]:
 def _security_check(config: dict, config_path: Path) -> None:
     """
     安全检查：确保 yaml 文件中不包含敏感信息
-    
+
     Args:
         config: 配置字典
         config_path: 配置文件路径
-    
+
     Raises:
         ValueError: 如果发现敏感信息
     """
@@ -115,10 +115,10 @@ def _security_check(config: dict, config_path: Path) -> None:
 def get_provider_config(provider: str) -> dict[str, Any] | None:
     """
     获取指定提供商的完整配置
-    
+
     Args:
         provider: 提供商标识（如 'minimax', 'deepseek'）
-    
+
     Returns:
         配置字典，如果不存在返回 None
     """
@@ -129,7 +129,7 @@ def get_provider_config(provider: str) -> dict[str, Any] | None:
 def get_all_providers() -> dict[str, dict[str, Any]]:
     """
     获取所有提供商配置
-    
+
     Returns:
         Dict: 所有提供商的配置字典
     """
@@ -140,7 +140,7 @@ def get_all_providers() -> dict[str, dict[str, Any]]:
 def get_active_providers() -> dict[str, dict[str, Any]]:
     """
     获取所有已激活且有 API Key 的提供商
-    
+
     Returns:
         Dict: 已激活的提供商配置
     """
@@ -161,10 +161,10 @@ def get_active_providers() -> dict[str, dict[str, Any]]:
 def get_provider_api_key(provider: str) -> str | None:
     """
     获取指定提供商的 API Key（从环境变量）
-    
+
     Args:
         provider: 提供商标识
-    
+
     Returns:
         API Key 或 None
     """
@@ -342,10 +342,10 @@ def get_model_config(model_id: str) -> dict[str, Any] | None:
 def get_models_by_provider(provider: str) -> list[dict[str, Any]]:
     """
     获取指定提供商的所有模型
-    
+
     Args:
         provider: 提供商标识
-    
+
     Returns:
         List: 模型配置列表
     """
@@ -369,7 +369,7 @@ def get_models_by_provider(provider: str) -> list[dict[str, Any]]:
 def get_router_config() -> dict[str, Any]:
     """
     获取 Router 节点的专用配置
-    
+
     Returns:
         Router 配置字典
     """
@@ -380,7 +380,7 @@ def get_router_config() -> dict[str, Any]:
 def get_router_priority_providers() -> list[str]:
     """
     获取 Router 的优先级提供商列表
-    
+
     Returns:
         List[str]: 按优先级排序的提供商名称列表
     """
@@ -402,7 +402,7 @@ def get_router_priority_providers() -> list[str]:
 def get_best_router_provider() -> str | None:
     """
     获取最适合 Router 使用的提供商（已配置且优先级最高）
-    
+
     Returns:
         str: 提供商名称，如果没有可用的返回 None
     """
@@ -422,7 +422,7 @@ def get_best_router_provider() -> str | None:
 def validate_all_providers() -> dict[str, Any]:
     """
     验证所有提供商配置
-    
+
     Returns:
         Dict: 验证结果
     """

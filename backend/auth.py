@@ -121,7 +121,7 @@ def set_auth_cookies(
 ) -> None:
     """
     P0 修复: 设置认证 Cookie
-    
+
     Args:
         response: FastAPI Response 对象
         access_token: 访问令牌
@@ -151,7 +151,7 @@ def set_auth_cookies(
 def clear_auth_cookies(response: Response) -> None:
     """
     P0 修复: 清除认证 Cookie（登出用）
-    
+
     Args:
         response: FastAPI Response 对象
     """
@@ -166,13 +166,13 @@ def clear_auth_cookies(response: Response) -> None:
 def get_refresh_token_from_cookie(request: Request) -> str:
     """
     P0 修复: 从 Cookie 获取 refresh token
-    
+
     Args:
         request: FastAPI Request 对象
-        
+
     Returns:
         Refresh token 字符串
-        
+
     Raises:
         HTTPException: Cookie 不存在
     """
@@ -296,7 +296,7 @@ async def verify_code_and_login(
 ):
     """
     P0 修复: 验证验证码并登录
-    
+
     功能说明：
     1. 验证手机号码和验证码
     2. 如果验证成功，生成 JWT token
@@ -373,7 +373,7 @@ async def refresh_access_token_endpoint(
 ):
     """
     P0 修复: 刷新访问令牌
-    
+
     功能说明：
     1. 从 Cookie 读取 refresh token
     2. 验证 refresh token
@@ -434,7 +434,7 @@ async def logout(
 ):
     """
     P0 修复: 用户登出
-    
+
     功能说明：
     1. 清除认证 Cookie
     2. 可选：将 Token 加入黑名单（如果需要）
@@ -453,7 +453,7 @@ async def get_current_user_info(
 ):
     """
     获取当前登录用户信息
-    
+
     需要认证：自动从 Cookie 读取 Token
     """
     return UserResponse(
