@@ -369,7 +369,7 @@ cd frontend && pnpm dev
 - **Pre-commit Hooks**: 自动代码检查（推荐安装）
   ```bash
   # 安装 pre-commit hooks（只需一次）
-  pip install pre-commit
+  uv tool install pre-commit
   pre-commit install
   
   # 或者使用 Just
