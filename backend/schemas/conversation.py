@@ -2,9 +2,11 @@
 会话相关 DTO
 """
 
+import json
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class MessageResponse(BaseModel):
@@ -17,6 +19,23 @@ class MessageResponse(BaseModel):
     extra_data: dict | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("extra_data", mode="before")
+    @classmethod
+    def parse_extra_data(cls, v: Any) -> dict | None:
+        """兼容字符串格式的 JSON 数据"""
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            return v
+        if isinstance(v, str):
+            if v == "null":
+                return None
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return None
+        return None
 
 
 class ThreadListResponse(BaseModel):
