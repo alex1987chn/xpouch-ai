@@ -9,7 +9,6 @@ XPouch AI Backend - 入口文件
 - Linux/Mac: python main.py 或 uvicorn main:app
 """
 import asyncio
-import os
 import pathlib
 
 from dotenv import load_dotenv
@@ -32,7 +31,7 @@ from api.admin import router as admin_router
 
 # 路由导入
 from auth import router as auth_router
-from config import init_langchain_tracing, validate_config
+from config import settings
 
 # 内部模块导入
 from database import create_db_and_tables, engine
@@ -47,10 +46,13 @@ from utils.logger import logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 初始化 LangSmith 追踪
-    init_langchain_tracing()
-    # 验证配置
-    validate_config()
+    # 初始化配置
+    logger.info(f"启动环境: {settings.environment}")
+    settings.init_langsmith()
+    if not settings.validate():
+        logger.error("配置验证失败")
+        if settings.is_production:
+            raise RuntimeError("生产环境配置验证失败")
     # 创建数据库表
     create_db_and_tables()
 
@@ -117,7 +119,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="XPouch AI Backend",
     description="Python + SQLModel + LangGraph backend",
-    version="3.2.5",
+    version=settings.version,
     lifespan=lifespan
 )
 
@@ -164,27 +166,9 @@ async def add_security_headers(request: Request, call_next):
 # CORS 配置
 # ============================================================================
 
-def get_cors_origins():
-    """从环境变量 CORS_ORIGINS 读取允许的来源"""
-    cors_origins_str = os.getenv("CORS_ORIGINS", "").strip()
-    if cors_origins_str:
-        origins = [origin.strip() for origin in cors_origins_str.split(",")]
-        logger.info(f"[CORS] 允许的来源: {origins}")
-        return origins
-
-    environment = os.getenv("ENVIRONMENT", "development").lower()
-    if environment == "production":
-        logger.warning("[WARN] 生产环境未设置 CORS_ORIGINS，CORS 将拒绝所有跨域请求")
-        return []
-    else:
-        default_origin = "http://localhost:5173"
-        logger.info(f"[CORS] 开发环境默认允许来源: {default_origin}")
-        return [default_origin]
-
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=get_cors_origins(),
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,  # P0 修复: 允许携带 Cookie（HttpOnly Token）
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-User-ID", "X-Request-ID"],
@@ -233,7 +217,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """处理未捕获的异常"""
     # 仅在开发环境输出完整堆栈
-    is_debug = os.getenv("ENVIRONMENT", "development").lower() == "development"
+    is_debug = settings.is_development
     logger.error(
         f"[UNHANDLED ERROR] {type(exc).__name__}: {str(exc)} | Path: {request.url.path}",
         exc_info=is_debug
@@ -271,7 +255,7 @@ async def chat_invoke_endpoint(
 ):
     """
     双模路由端点：支持 Auto 和 Direct 两种执行模式
-    
+
     Auto 模式：完整的多专家协作流程（commander_graph）
     Direct 模式：直接调用单个专家
     """
@@ -307,7 +291,7 @@ async def chat_invoke_endpoint(
 # ============================================================================
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 3002))
+    port = settings.port
     logger.info(f"[STARTUP] Starting Uvicorn server on port {port}...")
     logger.info(f"[STARTUP] Host: 0.0.0.0, Port: {port}")
 

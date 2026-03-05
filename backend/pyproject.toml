@@ -71,9 +71,11 @@ ignore = [
 # 对特定文件放宽规则（副作用导入、循环引用等特殊场景）
 [tool.ruff.lint.per-file-ignores]
 # F401: 这些文件导入模型是为了注册到 SQLModel.metadata，不是真的未使用
+# E402: 模块级导入不在顶部（需要 load_dotenv 后再导入）
 "database.py" = ["F401", "E402"]
 "migrations/env.py" = ["F401", "E402"]
 "models/__init__.py" = ["F401"]
+"main.py" = ["E402"]  # load_dotenv 后导入，符合项目模式
 # SQLAlchemy 兼容性：保留字符串引用和 Optional 写法
 "models/domain/*.py" = ["UP037", "UP045"]
 
