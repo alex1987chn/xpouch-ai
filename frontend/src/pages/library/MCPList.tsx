@@ -5,7 +5,7 @@
  * 手风琴模式：同时只能展开一个卡片
  */
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Server, Plus } from 'lucide-react'
 import { useMCPServers } from '@/hooks/queries/useMCPQuery'
 import { BauhausSearchInput } from '@/components/ui/bauhaus-input'
@@ -25,6 +25,10 @@ export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
   const [isAddOpen, setIsAddOpen] = useState(false)
   // 🔥 手风琴模式：记录当前展开的服务器 ID
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  // 🔥 记录最后创建的服务器 ID，用于自动展开和滚动
+  const [lastCreatedId, setLastCreatedId] = useState<string | null>(null)
+  // 列表容器 ref，用于滚动
+  const listContainerRef = useRef<HTMLDivElement>(null)
   
   // 是否使用外部搜索（由父组件控制）
   const isExternalSearch = searchQuery !== undefined
@@ -35,6 +39,26 @@ export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
     effectiveSearchQuery.trim() === '' || 
     server.name.toLowerCase().includes(effectiveSearchQuery.toLowerCase())
   ) || []
+
+  // 🔥 自动展开并滚动到新创建的服务器
+  useEffect(() => {
+    if (lastCreatedId && servers) {
+      const newServerExists = servers.some(s => s.id === lastCreatedId)
+      if (newServerExists) {
+        // 自动展开新服务器
+        setExpandedId(lastCreatedId)
+        // 滚动到底部（新项目通常在最后）
+        setTimeout(() => {
+          listContainerRef.current?.scrollTo({
+            top: listContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          })
+        }, 100)
+        // 清理状态
+        setLastCreatedId(null)
+      }
+    }
+  }, [servers, lastCreatedId])
 
   // 切换展开状态（手风琴模式）
   const handleToggleExpand = (serverId: string) => {
@@ -106,7 +130,7 @@ export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
 
       {/* 列表 */}
       {filteredServers.length > 0 ? (
-        <div className="space-y-2">
+        <div ref={listContainerRef} className="space-y-2 max-h-[60vh] overflow-y-auto">
           {filteredServers.map((server) => (
             <MCPCard 
               key={server.id} 
@@ -138,7 +162,11 @@ export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
       )}
 
       {/* 添加弹窗 */}
-      <AddMCPDialog isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+      <AddMCPDialog 
+        isOpen={isAddOpen} 
+        onClose={() => setIsAddOpen(false)}
+        onSuccess={(serverId) => setLastCreatedId(serverId)}
+      />
     </div>
   )
 }

@@ -188,9 +188,9 @@ async def get_all_experts(
 
     权限：VIEW_ADMIN, EDIT_ADMIN, ADMIN
     """
-    # 按 id 排序，确保顺序始终一致
+    # 按创建时间排序，确保新创建的专家在最底部
     experts = session.exec(
-        select(SystemExpert).order_by(SystemExpert.id)
+        select(SystemExpert).order_by(SystemExpert.created_at)
     ).all()
 
     return [
