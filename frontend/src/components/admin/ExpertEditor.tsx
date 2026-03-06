@@ -134,12 +134,12 @@ export default function ExpertEditor({
 
   if (!expert) {
     return (
-      <div className="flex-1 flex items-center justify-center border-2 border-border-default bg-surface-card shadow-hard">
+      <div className="flex-1 flex items-center justify-center border-2 border-border-default bg-surface-card shadow-theme-card">
         <div className="text-center">
           <div className="w-12 h-12 border-2 border-border-default bg-surface-page mx-auto mb-4 flex items-center justify-center">
             <Sparkles className="w-6 h-6 text-content-secondary" />
           </div>
-          <p className="font-mono text-sm text-content-secondary">
+          <p className="text-sm text-content-secondary">
             选择专家以编辑
           </p>
         </div>
@@ -148,12 +148,12 @@ export default function ExpertEditor({
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-hard">
+    <div className="flex-1 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-theme-card">
       {/* 头部 */}
       <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-accent-hover" />
-          <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
+          <span className="text-xs font-bold uppercase tracking-widest text-content-secondary">
             /// {expert.name.toUpperCase()}
           </span>
         </div>
@@ -161,7 +161,7 @@ export default function ExpertEditor({
           <button
             onClick={() => setPreviewMode(!previewMode)}
             className={cn(
-              'flex items-center gap-2 px-3 py-1.5 border-2 font-mono text-xs font-bold uppercase transition-all',
+              'flex items-center gap-2 px-3 py-1.5 border-2 border-border-default text-xs font-bold uppercase transition-all',
               previewMode
                 ? 'border-accent-hover bg-accent-hover text-content-primary'
                 : 'border-border-default bg-surface-page text-content-secondary hover:border-content-secondary'
@@ -175,7 +175,7 @@ export default function ExpertEditor({
 
       {/* 更新时间 */}
       <div className="px-4 py-2 border-b-2 border-border-default bg-surface-page">
-        <span className="font-mono text-[10px] text-content-secondary">
+        <span className="text-[10px] text-content-secondary">
           {t('lastUpdated')}: {new Date(expert.updated_at).toLocaleString()}
         </span>
       </div>
@@ -196,20 +196,22 @@ export default function ExpertEditor({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-content-secondary" />
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                     {t('temperature')}: {formData.temperature?.toFixed(1)}
                   </label>
                 </div>
                 <div
-                  className="relative h-8 bg-surface-page border-2 border-border-default"
+                  className="relative h-8 bg-surface-page border-2 border-border-default shadow-theme-input"
                   style={{ zIndex: 10 }}
                 >
+                  {/* 进度条 - 使用品牌强调色 */}
                   <div
-                    className="absolute top-0 left-0 h-full bg-accent-hover transition-all pointer-events-none"
+                    className="absolute top-0 left-0 h-full bg-accent transition-all pointer-events-none"
                     style={{
                       width: `${((formData.temperature ?? 0.5) / 2) * 100}%`,
                     }}
                   />
+                  {/* Thumb - 使用内容主色，带主题边框 */}
                   <div
                     className="absolute top-0 w-4 h-full bg-content-primary border-2 border-border-default transition-all pointer-events-none"
                     style={{
@@ -229,7 +231,7 @@ export default function ExpertEditor({
                     style={{ WebkitAppearance: 'none', appearance: 'none' }}
                   />
                 </div>
-                <div className="flex justify-between font-mono text-[9px] text-content-secondary">
+                <div className="flex justify-between text-[9px] text-content-secondary">
                   <span>0.0 ({t('conservative')})</span>
                   <span>1.0 ({t('balanced')})</span>
                   <span>2.0 ({t('creative')})</span>
@@ -241,7 +243,7 @@ export default function ExpertEditor({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary" />
-                    <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                       {t('expertDescription')}
                     </label>
                   </div>
@@ -249,8 +251,8 @@ export default function ExpertEditor({
                     onClick={handleGenerateDescription}
                     disabled={isGeneratingDescription || formData.system_prompt.length < 10}
                     className={cn(
-                      'flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase',
-                      'border border-border-default bg-surface-page',
+                      'flex items-center gap-1 px-2 py-1 text-[10px] uppercase',
+                      'border-2 border-border-default bg-surface-page',
                       'hover:bg-accent-hover hover:text-content-primary hover:border-accent-hover',
                       'transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                     )}
@@ -258,7 +260,7 @@ export default function ExpertEditor({
                   >
                     {isGeneratingDescription ? (
                       <>
-                        <div className="w-3 h-3 border-2 border-current border-t-transparent animate-spin" />
+                        <div className="w-3 h-3 border border-current border-t-transparent animate-spin" />
                         {t('generating')}
                       </>
                     ) : (
@@ -274,9 +276,9 @@ export default function ExpertEditor({
                   onChange={(e) => handleFieldChange('description', e.target.value)}
                   placeholder={t('expertDescriptionPlaceholder')}
                   rows={3}
-                  className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors resize-y min-h-[80px] bauhaus-scrollbar"
+                  className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-y min-h-[80px] bauhaus-scrollbar"
                 />
-                <p className="font-mono text-[9px] text-content-secondary">
+                <p className="text-[9px] text-content-secondary">
                   {t('expertDescriptionTooltip')}
                 </p>
               </div>
@@ -286,7 +288,7 @@ export default function ExpertEditor({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary" />
-                    <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                       {t('systemPrompt')}
                     </label>
                   </div>
@@ -294,7 +296,7 @@ export default function ExpertEditor({
                   <button
                     type="button"
                     onClick={() => setShowToolTips(!showToolTips)}
-                    className="flex items-center gap-1 font-mono text-[9px] text-accent-hover hover:text-accent transition-colors"
+                    className="flex items-center gap-1 text-[9px] text-accent-hover hover:text-accent transition-colors"
                   >
                     <Lightbulb className="w-3 h-3" />
                     {showToolTips ? t('hideToolTips') : t('showToolTips')}
@@ -304,17 +306,17 @@ export default function ExpertEditor({
 
                 {/* 🔥 工具使用说明模板 */}
                 {showToolTips && (
-                  <div className="p-3 border-2 border-accent-hover/30 bg-accent-hover/5 space-y-2">
-                    <p className="font-mono text-[9px] text-content-secondary">
+                  <div className="p-3 border-2 border-border-default bg-accent-hover/5 space-y-2">
+                    <p className="text-[9px] text-content-secondary">
                       {t('toolTipsDescription')}
                     </p>
                     <div className="space-y-1">
-                      <p className="font-mono text-[9px] font-bold text-content-secondary">
+                      <p className="text-[9px] font-bold text-content-secondary">
                         {t('availableTools')}:
                         {isLoadingTools && <span className="ml-2 text-content-secondary/50">({t('loading')})</span>}
                       </p>
                       {tools.length > 0 ? (
-                        <ul className="font-mono text-[9px] text-content-secondary space-y-1 ml-2 max-h-32 overflow-y-auto bauhaus-scrollbar">
+                        <ul className="text-[9px] text-content-secondary space-y-1 ml-2 max-h-32 overflow-y-auto bauhaus-scrollbar">
                           {tools.map((tool) => (
                             <li key={tool.name}>
                               • <code className="bg-surface-page px-1">{tool.name}</code>
@@ -326,14 +328,14 @@ export default function ExpertEditor({
                           ))}
                         </ul>
                       ) : (
-                        <p className="font-mono text-[9px] text-content-secondary/50 ml-2">
+                        <p className="text-[9px] text-content-secondary/50 ml-2">
                           {isLoadingTools ? t('loadingTools') : t('noToolsAvailable')}
                         </p>
                       )}
                     </div>
                     <div className="pt-1 border-t border-border-default">
-                      <p className="font-mono text-[9px] font-bold text-content-secondary mb-1">{t('toolUsageExample')}:</p>
-                      <pre className="font-mono text-[8px] text-content-secondary bg-surface-page p-2 overflow-x-auto">
+                      <p className="text-[9px] font-bold text-content-secondary mb-1">{t('toolUsageExample')}:</p>
+                      <pre className="text-[8px] text-content-secondary bg-surface-page p-2 overflow-x-auto">
 {`# Tools & Constraints
 1. **Mandatory Tool Use**: 当需要实时信息时，必须使用 \`search_web\`。
 2. **Date Awareness**: 当前时间是 {current_time}。
@@ -350,9 +352,9 @@ export default function ExpertEditor({
                   onChange={(e) => handleFieldChange('system_prompt', e.target.value)}
                   placeholder={t('systemPromptPlaceholder')}
                   rows={10}
-                  className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors resize-y min-h-[150px] bauhaus-scrollbar"
+                  className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-y min-h-[150px] bauhaus-scrollbar"
                 />
-                <div className="flex justify-between font-mono text-[9px] text-content-secondary">
+                <div className="flex justify-between text-[9px] text-content-secondary">
                   <span>{formData.system_prompt.length} {t('chars')}</span>
                   <span className={formData.system_prompt.length < 10 ? 'text-status-offline' : ''}>
                     {t('minChars')}: 10
@@ -367,17 +369,17 @@ export default function ExpertEditor({
                   disabled={isSaving || formData.system_prompt.length < 10}
                   className={cn(
                     'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
-                    'bg-accent-hover text-content-primary font-mono text-xs font-bold uppercase',
-                    'shadow-hard-3',
-                    'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard',
-                    'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
+                    'bg-accent-hover text-content-primary text-xs font-bold uppercase',
+                    'shadow-theme-button-lg',
+                    'hover:[transform:var(--transform-button-lg-hover)] hover:shadow-theme-button-lg-hover',
+                    'active:[transform:var(--transform-button-active)] active:shadow-theme-button-active',
                     'transition-all',
-                    'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0'
+                    'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:[transform:none]'
                   )}
                 >
                   {isSaving ? (
                     <>
-                      <div className="w-3 h-3 border-2 border-content-primary/30 border-t-content-primary animate-spin" />
+                      <div className="w-3 h-3 border border-content-primary/30 border-t-content-primary animate-spin" />
                       {t('saving')}
                     </>
                   ) : (
@@ -396,7 +398,7 @@ export default function ExpertEditor({
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary" />
-                    <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                       {t('testInput')}
                     </label>
                   </div>
@@ -405,9 +407,9 @@ export default function ExpertEditor({
                     onChange={(e) => setTestInput(e.target.value)}
                     placeholder={t('testInputPlaceholder')}
                     rows={5}
-                    className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors resize-none"
+                    className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-none"
                   />
-                  <div className="flex justify-between font-mono text-[9px] text-content-secondary">
+                  <div className="flex justify-between text-[9px] text-content-secondary">
                     <span>{testInput.length} {t('chars')}</span>
                     <span className={testInput.length < 10 ? 'text-status-offline' : ''}>
                       {t('minChars')}: 10
@@ -421,17 +423,17 @@ export default function ExpertEditor({
                     disabled={isPreviewing || testInput.length < 10}
                     className={cn(
                       'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
-                      'bg-accent-hover text-content-primary font-mono text-xs font-bold uppercase',
-                      'shadow-hard-3',
-                      'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard',
-                      'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
+                      'bg-accent-hover text-content-primary text-xs font-bold uppercase',
+                      'shadow-theme-button-lg',
+                      'hover:[transform:var(--transform-button-lg-hover)] hover:shadow-theme-button-lg-hover',
+                      'active:[transform:var(--transform-button-active)] active:shadow-theme-button-active',
                       'transition-all',
                       'disabled:opacity-50 disabled:cursor-not-allowed'
                     )}
                   >
                     {isPreviewing ? (
                       <>
-                        <div className="w-3 h-3 border-2 border-content-primary/30 border-t-content-primary animate-spin" />
+                        <div className="w-3 h-3 border border-content-primary/30 border-t-content-primary animate-spin" />
                         {t('running')}
                       </>
                     ) : (
@@ -448,16 +450,16 @@ export default function ExpertEditor({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 bg-accent-hover" />
-                        <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
                           {t('previewResults')}
                         </label>
                       </div>
-                      <span className="font-mono text-[9px] text-content-secondary">
+                      <span className="text-[9px] text-content-secondary">
                         {previewResult.model} · {previewResult.temperature} · {(previewResult.execution_time_ms / 1000).toFixed(2)}s
                       </span>
                     </div>
                     <div className="p-4 border-2 border-border-default bg-surface-page min-h-[200px]">
-                      <pre className="font-mono text-sm whitespace-pre-wrap">
+                      <pre className="text-sm whitespace-pre-wrap">
                         {previewResult.preview_response}
                       </pre>
                     </div>

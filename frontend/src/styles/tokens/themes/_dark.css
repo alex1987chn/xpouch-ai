@@ -2,50 +2,64 @@
  * ============================================
  * THEME: Dark (Bauhaus Dark)
  * ============================================
- * 适用于：夜间使用
- * 特点：Bauhaus 工业风的暗色版本
  */
 
 [data-theme="dark"] {
-    /* Surface - 暗色表面 */
-    --surface-page: 28 28 30;              /* 深灰黑 - 页面底色 */
-    --surface-card: 44 44 46;              /* 暗灰 - 卡片背景 */
-    --surface-elevated: 58 58 60;          /* 稍亮灰 - 悬浮表面 */
-    --surface-input: 44 44 46;             /* 暗灰 - 输入框 */
-    --surface-overlay: 0 0 0;              /* 纯黑遮罩 */
-    --surface-scrim: 0 0 0;                /* 纯黑模态背景 */
+    /* ========================================
+       Typography - 字体（Bauhaus 风格）
+       ======================================== */
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-display: 'Space Grotesk', 'Geist', system-ui, sans-serif;
+    --font-mono: 'Space Mono', monospace;
+    
+    /* 字重 - Dark 主题使用相同字重 */
+    --font-weight-display: 700;
 
-    /* Content - 暗色内容 */
-    --content-primary: 250 250 250;        /* 近白 - 主文字 */
-    --content-secondary: 170 170 170;      /* 中灰 - 次要文字 */
-    --content-muted: 120 120 120;          /* 深灰 - 辅助文字 */
-    --content-inverted: 28 28 30;          /* 深灰 - 反色文字 */
-    --content-disabled: 80 80 80;          /* 禁用状态 */
+    /* Bauhaus 点阵背景（暗色版）- 使用 content-muted */
+    --bg-pattern: radial-gradient(rgb(120 120 120 / 0.15) 1.5px, transparent 1.5px);
+    --bg-pattern-size: 32px 32px;
 
-    /* Border - 暗色边框（优化：主要边框使用灰色，交互状态使用黄色） */
-    --border-default: 80 80 80;            /* 灰色边框 - 减少视觉疲劳 */
-    --border-hover: 250 204 21;            /* 黄色 - 悬停时强调 */
-    --border-focus: 250 204 21;            /* 黄色 - 聚焦时强调 */
-    --border-divider: 58 58 60;            /* 灰 divider */
-    --border-disabled: 44 44 46;           /* 暗灰 - 禁用 */
+    /* Color Tokens */
+    --surface-page: 28 28 30;
+    --surface-card: 44 44 46;
+    --surface-elevated: 58 58 60;
+    --surface-input: 44 44 46;
+    --surface-overlay: 0 0 0;
+    --surface-scrim: 0 0 0;
 
-    /* Accent - 暗色下的强调色（略微降低亮度，减少夜间视觉疲劳） */
-    --accent-brand: 234 179 8;             /* 金黄色 - 比亮黄柔和 */
-    --accent-hover: 250 204 21;            /* 亮黄悬停 */
-    --accent-active: 245 158 11;           /* 深黄按下 */
-    --accent-subtle: 66 57 25;             /* 暗黄背景 */
-    --accent-destructive: 239 68 68;       /* 红色 */
-    --accent-success: 34 197 94;           /* 绿色 */
-    --accent-warning: 249 115 22;          /* 橙色 */
-    --accent-info: 59 130 246;             /* 蓝色 */
+    --content-primary: 250 250 250;
+    --content-secondary: 170 170 170;
+    --content-muted: 120 120 120;
+    --content-inverted: 28 28 30;
+    --content-disabled: 80 80 80;
 
-    /* Shadow - 暗色阴影（使用深色阴影更自然） */
-    --shadow-color: 0 0 0;                 /* 纯黑阴影 */
-    --shadow-opacity: 0.5;                 /* 半透明 */
+    --border-default: 80 80 80;
+    --border-hover: 250 204 21;    /* yellow-400 - hover 亮黄 */
+    --border-focus: 234 179 8;     /* amber-500 - focus 品牌黄 */
+    --border-divider: 58 58 60;
+    --border-disabled: 44 44 46;
 
-    /* Radius - Bauhaus 无圆角 */
-    --radius-sm: 0;
-    --radius-md: 0;
-    --radius-lg: 0;
-    --radius-xl: 0;
+    --accent-brand: 234 179 8;     /* amber-500 - 品牌深黄 */
+    --accent-hover: 251 191 36;    /* amber-400 - hover 次色（比 brand 稍亮） */
+    --accent-active: 202 138 4;    /* amber-600 - active 深黄（明显深于 brand） */
+    --accent-subtle: 66 57 25;
+    --accent-destructive: 239 68 68;
+    --accent-success: 34 197 94;
+    --accent-warning: 249 115 22;
+    --accent-info: 59 130 246;
+
+    /* 阴影 - 使用深灰而非纯黑，更柔和 */
+    --shadow-color: 28 28 30;  /* surface-page 同色 */
+    --shadow-opacity: 0.6;
+
+    /* Radius/Animation 继承 _semantic.css 默认值 */
+
+    /* 边框宽度继承 _layout.css 默认值 */
+
+    /* ========================================
+       阴影/变换系统
+       Dark 主题通过 --shadow-color 和 --shadow-opacity 控制
+       继承 _layout.css 默认值，只需覆盖 focus 透明度
+       ======================================== */
+    --shadow-focus: 0 0 0 4px rgb(var(--accent-brand) / 0.3);
 }

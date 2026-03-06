@@ -11,6 +11,7 @@ import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import LoginDialog from '@/components/auth/LoginDialog'
 import { useAppUISelectors } from '@/hooks'
 import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher'
+import { useThemeStore } from '@/store/themeStore'
 
 import { useChatStore } from '@/store/chatStore'
 import { useQueryClient } from '@tanstack/react-query'
@@ -27,7 +28,7 @@ import { Z_INDEX } from '@/constants/zIndex'
  *
  * [功能描述]
  * 提供全局应用的固定布局结构，包括：
- * - 左侧 Bauhaus 风格侧边栏（导航+用户）
+ * - 左侧侧边栏（导航+用户）
  * - 右侧主内容区域（页面内容）
  * - 全局 Dialogs（设置、删除确认）
  * - 主题切换按钮
@@ -38,10 +39,10 @@ import { Z_INDEX } from '@/constants/zIndex'
  * - 移动端: 抽屉式侧边栏，带遮罩层
  *
  * [样式风格]
- * Bauhaus 工业风格：硬边、黑色边框、锐利阴影
- * - 阴影：shadow-hard
- * - 边框：border-2 border-border-default
- * - 强调色：bg-accent-hover
+ * 主题自适应：视觉风格由 CSS 变量控制
+ * - 阴影：shadow-theme-card
+ * - 边框：border-theme-card
+ * - 圆角：rounded-md（主题自适应）
  *
  * [使用示例]
  * ```tsx
@@ -64,6 +65,7 @@ interface AppLayoutProps {
 export default function AppLayout({ children, hideMobileMenu = false }: AppLayoutProps) {
   const navigate = useNavigate()
   const { sidebar, dialogs } = useAppUISelectors()
+  const { theme } = useThemeStore()
 
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -124,12 +126,17 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
         'h-[100dvh]'
       )}
     >
-      {/* 网格背景 - 使用新的语义变量 */}
-      <div className="fixed inset-0 pointer-events-none bg-surface-page" style={{
-        backgroundImage: 'radial-gradient(rgb(var(--content-muted) / 0.3) 1.5px, transparent 1.5px)',
-        backgroundSize: '32px 32px',
-        zIndex: Z_INDEX.BACKGROUND
-      }} aria-hidden="true" />
+      {/* 背景图案 - 主题可控 */}
+      <div 
+        className={cn(
+          "fixed inset-0 pointer-events-none",
+          theme === 'glass' ? "bg-gradient-to-br from-[#f8fafc] to-[#f1f5f9]" :
+          theme === 'kyoto' ? "bg-gradient-to-b from-[#faf7f2] to-[#fcfaf6]" :
+          "bg-surface-page bg-dot-pattern"
+        )}
+        style={{ zIndex: Z_INDEX.BACKGROUND }}
+        aria-hidden="true" 
+      />
 
       {/* 移动端侧边栏遮罩 */}
       <MobileOverlay
@@ -137,7 +144,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
         onClick={sidebar.closeMobile}
       />
 
-      {/* Bauhaus 侧边栏 - 还原原型 flex 布局 */}
+      {/* 侧边栏 - 使用语义化边框 */}
       <aside className={cn(
         'h-full flex-shrink-0 transition-all duration-300 border-r-2 border-border-default bg-surface-card overflow-hidden',
         sidebar.isCollapsed ? 'w-[72px]' : 'w-[280px]',
@@ -173,12 +180,12 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
 
       {/* 主内容区域 - 右侧交互区 */}
       <main className="flex-1 w-full h-full relative overflow-y-auto min-w-0 bauhaus-scrollbar" style={{ zIndex: Z_INDEX.CONTENT }}>
-        {/* 移动端汉堡菜单按钮 - Bauhaus 风格 */}
+        {/* 移动端汉堡菜单按钮 - 主题自适应 */}
         {!hideMobileMenu && (
           <div className="lg:hidden absolute top-4 left-4" style={{ zIndex: Z_INDEX.HEADER }}>
             <button
               onClick={sidebar.toggleMobile}
-              className="p-2 border-2 border-border-default bg-surface-card shadow-hard hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-accent-sm"
+              className="p-2 border-2 border-border-default bg-surface-card shadow-theme-button hover:shadow-theme-button-hover transition-all"
             >
               <Menu className="w-5 h-5 stroke-[2.5]" />
             </button>
@@ -223,5 +230,3 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
     </div>
   )
 }
-
-

@@ -1,0 +1,17 @@
+/**
+ * Kyoto Theme - Minimal Compatibility Overrides
+ * ==============================================
+ * 仅保留必要的最小覆盖，用于无法立即改造的遗留组件
+ */
+
+/* 强制圆角 */
+[data-theme="kyoto"] .rounded-none:not(.rounded-full):not(.no-radius-override) {
+    border-radius: var(--radius-md);
+}
+
+/* 阴影覆盖 */
+[data-theme="kyoto"] .shadow-hard,
+[data-theme="kyoto"] .shadow-hard-md,
+[data-theme="kyoto"] .shadow-hard-lg {
+    box-shadow: var(--shadow-card);
+}

@@ -113,11 +113,11 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
       onClick={handleClose}
     >
       <div
-        className="relative bg-surface-card border-2 border-border shadow-hard-xl w-[380px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface-card border-2 border-border-default shadow-theme-modal w-[380px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200 rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 弹窗头部 - Bauhaus风格 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border">
+        {/* 弹窗头部 */}
+        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-accent-hover"></div>
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
@@ -126,7 +126,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
           </div>
           <button
             onClick={handleClose}
-            className="w-6 h-6 flex items-center justify-center border border-border hover:bg-accent-hover transition-colors"
+            className="w-6 h-6 flex items-center justify-center border-2 border-border-default hover:bg-accent-hover transition-colors rounded"
           >
             <span className="text-xs font-bold">×</span>
           </button>
@@ -136,7 +136,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
         <div className="p-6 space-y-5">
           {/* Logo和标题 */}
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 border-2 border-border bg-surface-page flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-4 border-2 border-border-default bg-surface-page flex items-center justify-center rounded-md">
               <The4DPocketLogo />
             </div>
             <h2 className="text-lg font-black uppercase tracking-tight mb-1 text-content-primary">
@@ -149,7 +149,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
 
           {/* 调试信息 */}
           {import.meta.env.DEV && (
-            <div className="p-2 bg-surface-page border border-border font-mono text-[10px] text-content-secondary">
+            <div className="p-2 bg-surface-page border-2 border-border-default font-mono text-[10px] text-content-secondary rounded">
               <div>🔍 DEBUG_MODE</div>
               <div>STEP: {step}</div>
               <div>CODE: {debugCode || 'NONE'}</div>
@@ -172,14 +172,14 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                   maxLength={11}
                   disabled={loading}
                   autoFocus
-                  className="w-full px-3 py-2.5 border-2 border-border bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors"
+                  className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
                 />
               </div>
 
               <button
                 onClick={handleSendCode}
                 disabled={!phoneNumber || phoneNumber.length !== 11 || loading}
-                className="w-full py-3 border-2 border-border bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-hard hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-lg active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 border-2 border-border-default bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
               >
                 {loading ? 'SENDING...' : t('sendCode')}
               </button>
@@ -206,7 +206,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                   maxLength={6}
                   disabled={loading}
                   autoFocus
-                  className="w-full px-3 py-2.5 border-2 border-border bg-surface-page font-mono text-lg text-center tracking-[0.3em] focus:outline-none focus:border-accent-hover transition-colors"
+                  className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-lg text-center tracking-[0.3em] focus:outline-none focus:border-accent-hover transition-colors rounded-md"
                 />
                 <div className="font-mono text-[9px] text-content-secondary opacity-50">
                   验证码已发送至 {phoneNumber.slice(0, 3)}****{phoneNumber.slice(-4)}
@@ -216,7 +216,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
               <button
                 onClick={handleVerifyCode}
                 disabled={!code || code.length < 4 || loading}
-                className="w-full py-3 border-2 border-border bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-hard hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-lg active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 border-2 border-border-default bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
               >
                 {loading ? 'VERIFYING...' : '登录 / LOGIN'}
               </button>
@@ -225,7 +225,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                 <button
                   onClick={handleSendCode}
                   disabled={countdown > 0 || loading}
-                  className="flex-1 py-2 border-2 border-border bg-surface-card font-mono text-xs uppercase hover:bg-surface-page transition-colors disabled:opacity-50"
+                  className="flex-1 py-2 border-2 border-border-default bg-surface-card font-mono text-xs uppercase hover:bg-surface-page transition-colors disabled:opacity-50 rounded-md"
                 >
                   {countdown > 0 ? `${countdown}s` : t('resend')}
                 </button>
@@ -233,7 +233,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                 <button
                   onClick={() => setStep('phone')}
                   disabled={loading}
-                  className="flex-1 py-2 border-2 border-border bg-surface-card font-mono text-xs uppercase text-content-secondary hover:bg-surface-page transition-colors"
+                  className="flex-1 py-2 border-2 border-border-default bg-surface-card font-mono text-xs uppercase text-content-secondary hover:bg-surface-page transition-colors rounded-md"
                 >
                   修改手机号
                 </button>
@@ -241,7 +241,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
 
               {/* 开发环境显示验证码 */}
               {import.meta.env.DEV && countdown > 0 && (
-                <div className="p-3 bg-accent-hover/10 border-2 border-accent-hover">
+                <div className="p-3 bg-accent-hover/10 border border-theme-card border-accent-hover rounded-md">
                   <div className="font-mono text-[10px] text-content-primary">
                     <div className="font-bold mb-1">🔧 DEV_MODE</div>
                     <div>CODE: <span className="text-lg font-bold">{debugCode}</span></div>

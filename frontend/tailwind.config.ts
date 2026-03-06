@@ -22,11 +22,12 @@ const config: Config = {
     
     extend: {
       /* ============================================
-         字体配置
+         字体配置 - 使用 CSS 变量实现主题自适应
          ============================================ */
       fontFamily: {
-        sans: ['DM Sans', 'system-ui', 'sans-serif'],
-        mono: ['Space Mono', 'monospace'],
+        sans: ['var(--font-sans, "Geist")', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display, "Space Grotesk")', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono, "Space Mono")', 'monospace'],
       },
 
       /* ============================================
@@ -186,7 +187,7 @@ const config: Config = {
         'lg': '0 10px 15px -3px rgb(var(--shadow-color) / 0.1), 0 4px 6px -4px rgb(var(--shadow-color) / 0.1)',
         'xl': '0 20px 25px -5px rgb(var(--shadow-color) / 0.1), 0 8px 10px -6px rgb(var(--shadow-color) / 0.1)',
         
-        // Bauhaus 硬阴影
+        // Bauhaus 硬阴影（遗留兼容）
         'hard': '4px 4px 0 0 rgb(var(--shadow-color))',
         'hard-sm': '2px 2px 0 0 rgb(var(--shadow-color))',
         'hard-md': '4px 4px 0 0 rgb(var(--shadow-color))',
@@ -197,8 +198,56 @@ const config: Config = {
         'glow': '0 0 10px rgb(var(--accent-brand)), 0 0 20px rgb(var(--accent-brand))',
         'glow-sm': '0 0 5px rgb(var(--accent-brand))',
         'glow-lg': '0 0 20px rgb(var(--accent-brand)), 0 0 40px rgb(var(--accent-brand))',
+        
+        // ==========================================
+        // 语义化阴影 - 主题自适应（推荐新组件使用）
+        // ==========================================
+        // 卡片
+        'theme-card': 'var(--shadow-card)',
+        'theme-card-hover': 'var(--shadow-card-hover)',
+        'theme-card-accent': 'var(--shadow-card-accent)',
+        // 按钮 - 三级层次
+        'theme-button-sm': 'var(--shadow-button-sm)',
+        'theme-button': 'var(--shadow-button)',
+        'theme-button-lg': 'var(--shadow-button-lg)',
+        'theme-button-sm-hover': 'var(--shadow-button-sm-hover)',
+        'theme-button-hover': 'var(--shadow-button-hover)',
+        'theme-button-lg-hover': 'var(--shadow-button-lg-hover)',
+        'theme-button-active': 'var(--shadow-button-active)',
+        // 下拉菜单/弹窗
+        'theme-dropdown': 'var(--shadow-dropdown)',
+        'theme-modal': 'var(--shadow-modal)',
+        'theme-input': 'var(--shadow-input)',
+        'theme-focus': 'var(--shadow-focus)',
+      },
+      
+      /* ============================================
+         边框宽度 - 语义化
+         ============================================ */
+      borderWidth: {
+        'theme-thin': 'var(--border-width-thin)',
+        'theme-thick': 'var(--border-width-thick)',
+        'theme-card': 'var(--border-width-card)',
+        'theme-button': 'var(--border-width-button)',
+        'theme-input': 'var(--border-width-input)',
       },
 
+      /* ============================================
+         Transform - 语义化变换
+         ============================================ */
+      translate: {
+        'theme-hover': 'var(--transform-translate-hover, -2px)',
+        'theme-active': 'var(--transform-translate-active, 0px)',
+      },
+      
+      /* ============================================
+         Transform - 自定义 hover 变换
+         ============================================ */
+      transform: {
+        'card-hover': 'var(--transform-card-hover)',
+        'button-hover': 'var(--transform-button-hover)',
+      },
+      
       /* ============================================
          动画
          ============================================ */

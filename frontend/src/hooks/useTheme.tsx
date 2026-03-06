@@ -4,7 +4,7 @@
  * ============================================
  * 
  * 兼容层：将旧的 useTheme API 映射到新的 themeStore
- * 支持 4 个主题：light / dark / bauhaus / cyberpunk
+ * 支持 4 个主题：light / dark / glass / kyoto
  * 
  * 使用方式：
  * const { theme, setTheme, toggleTheme } = useTheme()

@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { useAppUISelectors } from '@/hooks'
-import { BauhausSearchInput } from '@/components/ui/bauhaus-input'
+import { SearchInput } from '@/components/ui/input'
 import { MCPList } from './MCPList'
 
 type TabType = 'knowledge' | 'mcp'
@@ -81,7 +81,7 @@ export default function LibraryPage() {
         <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24">
           {/* 搜索框 - 两个标签共用 */}
           <div className="mb-4">
-            <BauhausSearchInput
+            <SearchInput
               value={searchQuery}
               onChange={setSearchQuery}
               placeholder={activeTab === 'knowledge' 

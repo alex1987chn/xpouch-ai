@@ -1,0 +1,139 @@
+/**
+ * ============================================
+ * THEME: Kyoto (京都日系)
+ * ============================================
+ * 
+ * 最佳实践：只修改变量，不覆盖类
+ * 组件使用 CSS 变量自动适配
+ */
+
+[data-theme="kyoto"] {
+    /* ========================================
+       Typography - 字体（日式优雅）
+       ======================================== */
+    --font-sans: 'Noto Serif JP', 'Noto Sans JP', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+    --font-display: 'Noto Serif JP', 'Noto Sans JP', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+    --font-mono: 'Noto Sans JP', 'Hiragino Sans', sans-serif;  /* Kyoto 不使用等宽 */
+    
+    /* 字重 - 日系风格更细 */
+    --font-weight-display: 600;
+
+    /* ========================================
+       Color Tokens - 颜色
+       ======================================== */
+    --surface-page: 250 247 242;           /* #faf7f2 - 象牙 */
+    --surface-card: 255 253 250;           /* #fffdfa - 生成色 */
+    --surface-elevated: 255 255 253;
+    --surface-input: 255 253 250;
+    --surface-overlay: 60 55 50;
+    --surface-scrim: 40 38 35;
+
+    --content-primary: 45 42 38;           /* #2d2a26 - 墨色 */
+    --content-secondary: 120 115 108;
+    --content-muted: 160 155 148;
+    --content-inverted: 255 253 250;
+    --content-disabled: 195 190 183;
+
+    --border-default: 210 205 198;         /* #d2cdc6 - 银鼠 */
+    --border-hover: 180 170 158;
+    --border-focus: 165 105 95;            /* #a5695f - 焦茶 */
+    --border-divider: 232 228 222;
+    --border-disabled: 220 215 208;
+
+    --accent-brand: 180 95 85;             /* #b45f55 - 茜色 */
+    --accent-hover: 165 85 75;
+    --accent-active: 150 75 65;
+    --accent-subtle: 250 240 238;
+    --accent-destructive: 185 80 70;
+    --accent-success: 120 150 120;
+    --accent-warning: 195 160 100;
+    --accent-info: 130 160 180;
+
+    --shadow-color: 45 42 38;
+    --shadow-opacity: 0.06;
+
+    /* ========================================
+       Radius Tokens - 圆角（克制）
+       ======================================== */
+    --radius-sm: 2px;
+    --radius-md: 3px;
+    --radius-lg: 4px;
+    --radius-xl: 6px;
+    --radius-none: 0;
+    --radius-full: 9999px;
+
+    /* ========================================
+       Animation Tokens - 动画
+       ======================================== */
+    --duration-instant: 0ms;
+    --duration-fast: 200ms;
+    --duration-normal: 300ms;
+    --duration-slow: 400ms;
+    --duration-slower: 600ms;
+
+    /* ========================================
+       Background - 和纸纹理背景
+       ======================================== */
+    --bg-pattern: linear-gradient(to bottom, rgb(250 247 242) 0%, rgb(252 250 246) 50%, rgb(250 247 242) 100%);
+    --bg-pattern-size: 100% 100%;
+
+    /* ========================================
+       Layout Tokens - 布局风格（覆盖 _layout.css）
+       ======================================== */
+    
+    /* 边框宽度 - 和纸细线 */
+    --border-width-thin: 1px;
+    --border-width-thick: 1px;
+    --border-width-card: 1px;
+    --border-width-button: 1px;
+    --border-width-input: 1px;
+
+    /* ========================================
+       阴影系统 - 若隐若现
+       ======================================== */
+    --shadow-card: 0 1px 3px rgb(45 42 38 / 0.04);
+    --shadow-card-hover: 0 4px 12px rgb(45 42 38 / 0.08);
+    --shadow-card-accent: 0 4px 12px rgb(180 95 85 / 0.15);
+    
+    /* 按钮阴影 - 极淡 */
+    --shadow-button-sm: 0 1px 2px rgb(45 42 38 / 0.02);
+    --shadow-button: 0 1px 2px rgb(45 42 38 / 0.03);
+    --shadow-button-lg: 0 2px 4px rgb(45 42 38 / 0.04);
+    --shadow-button-sm-hover: 0 1px 3px rgb(45 42 38 / 0.03);
+    --shadow-button-hover: 0 2px 4px rgb(45 42 38 / 0.04);
+    --shadow-button-lg-hover: 0 3px 8px rgb(180 95 85 / 0.08);
+    --shadow-button-active: inset 0 1px 2px rgb(45 42 38 / 0.05);
+    
+    --shadow-dropdown: 0 4px 16px rgb(45 42 38 / 0.06);
+    --shadow-modal: 0 8px 32px rgb(45 42 38 / 0.08);
+    --shadow-input: inset 0 1px 2px rgb(45 42 38 / 0.03);
+    --shadow-focus: 0 0 0 2px rgb(180 95 85 / 0.1);
+
+    /* ========================================
+       变换系统 - 东方含蓄
+       ======================================== */
+    --transform-card-hover: translateY(-0.5px);
+    --transform-button-sm-hover: translateY(-0.5px);
+    --transform-button-hover: translateY(-0.5px);
+    --transform-button-lg-hover: translateY(-1px);
+    --transform-button-active: translateY(0.5px);
+}
+
+/* ============================================
+   最小化覆盖（仅用于旧组件兼容）
+   ============================================ */
+
+/* 滚动条极简 */
+[data-theme="kyoto"] ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+[data-theme="kyoto"] ::-webkit-scrollbar-thumb {
+    background: rgb(var(--content-muted) / 0.15);
+    border-radius: 2px;
+}
+
+[data-theme="kyoto"] ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--accent-brand) / 0.3);
+}

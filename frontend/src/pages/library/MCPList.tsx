@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Server, Plus } from 'lucide-react'
 import { useMCPServers } from '@/hooks/queries/useMCPQuery'
-import { BauhausSearchInput } from '@/components/ui/bauhaus-input'
+import { SearchInput } from '@/components/ui/input'
 import MCPCard from './components/MCPCard'
 import { AddMCPDialog } from './components/AddMCPDialog'
 import { useTranslation } from '@/i18n'
@@ -89,7 +89,7 @@ export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
       <div className="flex items-center gap-3">
         {/* 搜索框 - 仅在独立使用时显示 */}
         {!isExternalSearch && (
-          <BauhausSearchInput
+          <SearchInput
             value={effectiveSearchQuery}
             onChange={(value) => onSearchChange?.(value)}
             placeholder={t('searchMCPServers') || 'Search MCP servers...'}
