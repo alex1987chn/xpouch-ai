@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { User, Cog, ArrowRight, Star, Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/utils/logger'
 import type { SettingsMenuProps } from './types'
 
 /**
@@ -49,7 +50,7 @@ export function SettingsMenu({
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
-      console.error('Failed to copy UID:', err)
+      logger.error('Failed to copy UID', err)
     }
   }
 

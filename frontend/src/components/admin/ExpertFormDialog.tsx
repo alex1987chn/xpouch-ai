@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom'
 import { X, Plus, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { logger } from '@/utils/logger'
 import ModelSelector from '@/components/settings/ModelSelector'
 import type { SystemExpert, CreateExpertRequest, UpdateExpertRequest, ToolInfo } from '@/services/admin'
 import { getAvailableTools } from '@/services/admin'
@@ -62,7 +63,7 @@ export default function ExpertFormDialog({
           setTools(response.tools)
         })
         .catch((err) => {
-          console.error('Failed to load tools:', err)
+          logger.error('Failed to load tools', err)
         })
         .finally(() => {
           setIsLoadingTools(false)
