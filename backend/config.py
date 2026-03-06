@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = Field(default=10, alias="MAX_UPLOAD_SIZE_MB")
     request_timeout_seconds: int = Field(default=120, alias="REQUEST_TIMEOUT_SECONDS")
 
+    # 初始管理员配置（方案1：环境变量）
+    initial_admin_email: str | None = Field(default=None, alias="INITIAL_ADMIN_EMAIL")
+    initial_admin_phone: str | None = Field(default=None, alias="INITIAL_ADMIN_PHONE")
+
     # 腾讯云短信（可选）
     tencent_cloud_secret_id: str | None = Field(default=None, alias="TENCENT_CLOUD_SECRET_ID")
     tencent_cloud_secret_key: SecretStr | None = Field(

@@ -94,6 +94,19 @@ async def lifespan(app: FastAPI):
     # 初始化系统专家数据（使用 asyncio.to_thread 避免阻塞事件循环）
     await asyncio.to_thread(_init_experts_sync)
 
+    # 🔥 初始化管理员（从环境变量）
+    from utils.admin_init import init_admin_from_env
+
+    def _init_admin_sync():
+        """同步初始化管理员（在后台线程中执行）"""
+        with Session(engine) as session:
+            init_admin_from_env(session, settings.initial_admin_email, settings.initial_admin_phone)
+
+    try:
+        await asyncio.to_thread(_init_admin_sync)
+    except Exception as e:
+        logger.warning(f"[Lifespan] 初始化管理员失败（非致命错误）: {e}")
+
     # 清空专家缓存，确保使用最新的兜底机制重新加载
     from agents.services.expert_manager import force_refresh_all
 
