@@ -36,11 +36,9 @@ export interface NavigationMenuProps {
   isOnLibrary: boolean
   isOnHistory: boolean
   isOnAdmin: boolean
-  isAdmin: boolean
   showExpertAdmin: boolean
   onMenuClick: (path: string) => void
   t: (key: TranslationKey) => string
-  toast: (options: { title: string; description: string; variant: 'default' | 'destructive' }) => void
 }
 
 export interface RecentConversationsProps {

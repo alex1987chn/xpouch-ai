@@ -16,7 +16,7 @@ import socket
 from datetime import datetime
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 # 🔥 MCP 连接测试
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -25,12 +25,28 @@ from sqlmodel import Session, select
 from crud.query_helpers import get_mcp_server_or_404
 from database import get_session
 from dependencies import get_current_user
-from models import User
+from models import User, UserRole
 from models.mcp import MCPServer, MCPServerCreate, MCPServerResponse, MCPServerUpdate
 from utils.exceptions import ValidationError
 from utils.logger import logger
 
 router = APIRouter(prefix="/api/mcp", tags=["mcp"])
+
+
+# ============================================================================
+# 权限依赖
+# ============================================================================
+
+
+async def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
+    """
+    获取当前管理员用户
+
+    验证用户是否为管理员，否则抛出 403 错误
+    """
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要管理员权限")
+    return current_user
 
 
 # ============================================================================
@@ -231,7 +247,7 @@ async def test_mcp_connection(
 async def create_mcp_server(
     server_data: MCPServerCreate,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin),  # 🔥 仅管理员可创建
 ):
     """
     添加 MCP 服务器
@@ -303,7 +319,7 @@ async def update_mcp_server(
     server_id: str,
     update_data: MCPServerUpdate,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin),  # 🔥 仅管理员可更新
 ):
     """
     更新 MCP 服务器
@@ -371,7 +387,7 @@ async def update_mcp_server(
 async def delete_mcp_server(
     server_id: str,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin),  # 🔥 仅管理员可删除
 ):
     """
     删除 MCP 服务器

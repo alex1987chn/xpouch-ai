@@ -15,7 +15,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Save, Play, Sparkles, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react'
+import { Save, Play, Sparkles, Lightbulb, ChevronDown, ChevronUp, Lock } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { logger } from '@/utils/logger'
@@ -30,6 +30,7 @@ import { previewExpert, getAvailableTools } from '@/services/admin'
 
 interface ExpertEditorProps {
   expert: SystemExpert | null
+  isAdmin: boolean
   isSaving: boolean
   isGeneratingDescription: boolean
   onSave: (data: UpdateExpertRequest) => void
@@ -39,6 +40,7 @@ interface ExpertEditorProps {
 
 export default function ExpertEditor({
   expert,
+  isAdmin,
   isSaving,
   isGeneratingDescription,
   onSave,
@@ -148,7 +150,24 @@ export default function ExpertEditor({
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-theme-card">
+    <div className="flex-1 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-theme-card relative">
+      {/* 非管理员遮罩层 */}
+      {!isAdmin && (
+        <div className="absolute inset-0 z-50 bg-surface-page/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-2 border-border-default bg-surface-card mx-auto mb-4 flex items-center justify-center">
+              <Lock className="w-8 h-8 text-content-muted" />
+            </div>
+            <p className="text-sm font-bold text-content-primary mb-2">
+              {t('adminOnly')}
+            </p>
+            <p className="text-xs text-content-secondary">
+              仅管理员可编辑专家配置
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 头部 */}
       <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default shrink-0">
         <div className="flex items-center gap-2">
@@ -186,11 +205,13 @@ export default function ExpertEditor({
           {!previewMode ? (
             <>
               {/* 模型选择 */}
-              <ModelSelector
-                value={formData.model}
-                onChange={(modelId) => handleFieldChange('model', modelId)}
-                label={t('modelConfig')}
-              />
+              <div>
+                <ModelSelector
+                  value={formData.model}
+                  onChange={(modelId) => handleFieldChange('model', modelId)}
+                  label={t('modelConfig')}
+                />
+              </div>
 
               {/* 温度参数 */}
               <div className="space-y-3">
@@ -247,6 +268,8 @@ export default function ExpertEditor({
                       {t('expertDescription')}
                     </label>
                   </div>
+                  {/* 自动生成按钮 - 仅管理员可见 */}
+                  {isAdmin && (
                   <button
                     onClick={handleGenerateDescription}
                     disabled={isGeneratingDescription || formData.system_prompt.length < 10}
@@ -270,6 +293,7 @@ export default function ExpertEditor({
                       </>
                     )}
                   </button>
+                  )}
                 </div>
                 <textarea
                   value={formData.description || ''}
@@ -363,33 +387,35 @@ export default function ExpertEditor({
               </div>
 
               {/* 保存按钮 */}
-              <div className="flex justify-end pt-4 border-t-2 border-border-default">
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving || formData.system_prompt.length < 10}
-                  className={cn(
-                    'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
-                    'bg-accent-hover text-content-primary text-xs font-bold uppercase',
-                    'shadow-theme-button-lg',
-                    'hover:[transform:var(--transform-button-lg-hover)] hover:shadow-theme-button-lg-hover',
-                    'active:[transform:var(--transform-button-active)] active:shadow-theme-button-active',
-                    'transition-all',
-                    'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:[transform:none]'
-                  )}
-                >
-                  {isSaving ? (
-                    <>
-                      <div className="w-3 h-3 border border-content-primary/30 border-t-content-primary animate-spin" />
-                      {t('saving')}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      {t('saveConfig')}
-                    </>
-                  )}
-                </button>
-              </div>
+              {isAdmin && (
+                <div className="flex justify-end pt-4 border-t-2 border-border-default">
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving || formData.system_prompt.length < 10}
+                    className={cn(
+                      'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
+                      'bg-accent-hover text-content-primary text-xs font-bold uppercase',
+                      'shadow-theme-button-lg',
+                      'hover:[transform:var(--transform-button-lg-hover)] hover:shadow-theme-button-lg-hover',
+                      'active:[transform:var(--transform-button-active)] active:shadow-theme-button-active',
+                      'transition-all',
+                      'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:[transform:none]'
+                    )}
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="w-3 h-3 border border-content-primary/30 border-t-content-primary animate-spin" />
+                        {t('saving')}
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        {t('saveConfig')}
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <>

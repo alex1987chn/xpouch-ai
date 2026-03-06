@@ -83,8 +83,10 @@ export default function ExpertAdminPage() {
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // 获取登录状态
+  // 获取登录状态和管理员权限
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
+  const user = useUserStore(state => state.user)
+  const isAdmin = user?.role === 'admin'
 
   // 查询专家列表（只有登录后才发起请求）
   const { data: experts = [], isLoading: isLoadingExperts, error: expertsError } = useQuery({
@@ -292,6 +294,7 @@ export default function ExpertAdminPage() {
         selectedExpertKey={selectedExpertKey}
         searchQuery={searchQuery}
         isLoading={isLoadingExperts}
+        isAdmin={isAdmin}
         onSelectExpert={handleSelectExpert}
         onDeleteExpert={handleOpenDeleteDialog}
         onSearchChange={setSearchQuery}
@@ -303,6 +306,7 @@ export default function ExpertAdminPage() {
       <ExpertEditor
         key={selectedExpert?.expert_key || 'empty'}
         expert={selectedExpert || null}
+        isAdmin={isAdmin}
         isSaving={isSaving}
         isGeneratingDescription={isGeneratingDescription}
         onSave={handleSave}

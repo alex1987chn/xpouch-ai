@@ -63,7 +63,7 @@ export const router = createBrowserRouter([
       {
         path: 'admin/experts',
         element: (
-          <AdminRoute>
+          <AdminRoute requiredRole="user">
             <SuspenseWithErrorBoundary fallback={<LoadingFallback />}>
               <ExpertAdminPage />
             </SuspenseWithErrorBoundary>

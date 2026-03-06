@@ -82,7 +82,6 @@ export default function BauhausSidebar({
   const isOnAdmin = location.pathname === '/admin/experts'
 
   // 判断是否显示专家配置入口
-  const isAdmin = user?.role === 'admin'
   const showExpertAdmin = true
 
   // 用户数据
@@ -270,7 +269,6 @@ export default function BauhausSidebar({
             isOnLibrary={isOnLibrary}
             isOnHistory={isOnHistory}
             isOnAdmin={isOnAdmin}
-            isAdmin={isAdmin}
             showExpertAdmin={showExpertAdmin}
             onMenuClick={handleMenuClick}
             t={t}
@@ -284,7 +282,6 @@ export default function BauhausSidebar({
               isOnLibrary={isOnLibrary}
               isOnHistory={isOnHistory}
               isOnAdmin={isOnAdmin}
-              isAdmin={isAdmin}
               showExpertAdmin={showExpertAdmin}
               onMenuClick={handleMenuClick}
               t={t}

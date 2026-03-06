@@ -17,10 +17,25 @@ import type { MCPServer } from '@/types/mcp'
 interface MCPCardProps {
   server: MCPServer
   isExpanded: boolean
+  isAdmin?: boolean
   onToggleExpand: () => void
 }
 
-export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
+// URL 脱敏处理：遮盖域名后的所有路径和参数
+// 示例: https://api.example.com/sse/xxx?key=abc => https://api.example.com/******
+function maskUrl(url: string): string {
+  try {
+    const urlObj = new URL(url)
+    // 只显示域名，后面的全部遮盖
+    return `${urlObj.origin}/******`
+  } catch {
+    // URL解析失败，返回简单遮盖
+    if (url.length <= 30) return url
+    return url.slice(0, 25) + '...' + url.slice(-5)
+  }
+}
+
+export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }: MCPCardProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const toggleMutation = useToggleMCP()
@@ -108,13 +123,14 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
                 {server.description || t('noDescription')}
               </p>
               
-              {/* URL */}
-              <p className="font-mono text-[10px] text-content-muted truncate mt-1">
-                {server.sse_url}
+              {/* URL - 脱敏显示 */}
+              <p className="font-mono text-[10px] text-content-muted truncate mt-1" title={isAdmin ? server.sse_url : undefined}>
+                {isAdmin ? server.sse_url : maskUrl(server.sse_url)}
               </p>
             </div>
 
-            {/* 右侧操作区 */}
+            {/* 右侧操作区 - 仅管理员可见 */}
+            {isAdmin && (
             <div className="flex flex-col items-end gap-2">
               {/* 删除按钮 */}
               <button
@@ -127,7 +143,7 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
               >
                 <span className="font-mono text-xs font-bold">×</span>
               </button>
-              
+
               {/* Toggle 开关 */}
               <button
                 onClick={(e) => {
@@ -141,14 +157,15 @@ export function MCPCard({ server, isExpanded, onToggleExpand }: MCPCardProps) {
                 )}
                 aria-label={server.is_active ? t('disable') : t('enable')}
               >
-                <div 
+                <div
                   className={cn(
                     "w-4 h-4 bg-surface-card border-2 border-border-default transition-transform duration-200",
                     server.is_active ? 'translate-x-[20px]' : 'translate-x-0'
-                  )} 
+                  )}
                 />
               </button>
             </div>
+            )}
           </div>
         </div>
 

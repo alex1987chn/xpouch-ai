@@ -6,7 +6,7 @@ import { LoadingFallback } from '@/router/components/LoadingFallback'
 
 interface AdminRouteProps {
   children: React.ReactNode
-  requiredRole?: 'admin' | 'edit_admin' | 'view_admin'  // 所需角色
+  requiredRole?: 'admin' | 'edit_admin' | 'view_admin' | 'user'  // 所需角色
 }
 
 export default function AdminRoute({ children, requiredRole = 'admin' }: AdminRouteProps) {
@@ -34,6 +34,8 @@ export default function AdminRoute({ children, requiredRole = 'admin' }: AdminRo
         return user.role === 'admin' || user.role === 'edit_admin'
       case 'view_admin':
         return user.role === 'admin' || user.role === 'edit_admin' || user.role === 'view_admin'
+      case 'user':
+        return user.role === 'admin' || user.role === 'edit_admin' || user.role === 'view_admin' || user.role === 'user'
       default:
         return false
     }

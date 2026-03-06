@@ -102,7 +102,7 @@ export type TranslationKey =
   | 'uploadImageFile' | 'usernameRequired' | 'usernameMinLength' | 'usernameMaxLength'
   | 'imageSizeExceeded' | 'imageProcessFailed' | 'saveFailedLater' | 'updateFailedLater'
   // Auth & Permission
-  | 'permissionDenied' | 'adminOnly' | 'login'
+  | 'permissionDenied' | 'adminOnly' | 'readOnly' | 'login'
   // Time & General
   | 'justNow' | 'secondsAgo' | 'general'
   // Language selector

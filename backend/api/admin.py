@@ -390,12 +390,12 @@ async def promote_user(
 async def preview_expert(
     request: ExpertPreviewRequest,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_view_admin),  # 需要 VIEW_ADMIN 或 EDIT_ADMIN 权限
+    _: User = Depends(get_current_admin),  # 🔥 修改：仅管理员可预览（会产生 LLM 调用费用）
 ):
     """
     预览专家响应（模拟执行）
 
-    权限：VIEW_ADMIN, EDIT_ADMIN, ADMIN
+    权限：ADMIN（仅管理员，因为会产生 LLM 调用费用）
 
     功能：
     - 使用当前数据库配置的 Prompt

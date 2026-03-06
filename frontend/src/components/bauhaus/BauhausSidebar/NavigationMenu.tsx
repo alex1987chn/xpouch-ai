@@ -7,7 +7,7 @@
  * 所有视觉风格（边框、阴影、变换）由 CSS 变量控制
  */
 
-import { Home, Library, MessageSquare, Shield, Lock } from 'lucide-react'
+import { Home, Library, MessageSquare, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TranslationKey } from '@/i18n'
 import { TW } from './constants'
@@ -20,11 +20,9 @@ export function NavigationMenu({
   isOnLibrary,
   isOnHistory,
   isOnAdmin,
-  isAdmin,
   showExpertAdmin,
   onMenuClick,
   t,
-  toast,
 }: NavigationMenuProps) {
   if (isCollapsed) {
     return (
@@ -59,18 +57,7 @@ export function NavigationMenu({
           {showExpertAdmin && (
             <AdminButtonCollapsed
               isActive={isOnAdmin}
-              isAdmin={isAdmin}
-              onClick={() => {
-                if (isAdmin) {
-                  onMenuClick('/admin/experts')
-                } else {
-                  toast({
-                    title: t('permissionDenied'),
-                    description: t('adminOnly'),
-                    variant: 'destructive'
-                  })
-                }
-              }}
+              onClick={() => onMenuClick('/admin/experts')}
               t={t}
             />
           )}
@@ -118,18 +105,7 @@ export function NavigationMenu({
         {showExpertAdmin && (
           <AdminButtonExpanded
             isActive={isOnAdmin}
-            isAdmin={isAdmin}
-            onClick={() => {
-              if (isAdmin) {
-                onMenuClick('/admin/experts')
-              } else {
-                toast({
-                  title: t('permissionDenied'),
-                  description: t('adminOnly'),
-                  variant: 'destructive'
-                })
-              }
-            }}
+            onClick={() => onMenuClick('/admin/experts')}
             t={t}
           />
         )}
@@ -213,28 +189,18 @@ function NavButtonExpanded({ isActive, onClick, icon, label }: NavButtonExpanded
  */
 interface AdminButtonCollapsedProps {
   isActive: boolean
-  isAdmin: boolean
   onClick: () => void
   t: (key: TranslationKey) => string
 }
 
-function AdminButtonCollapsed({ isActive, isAdmin, onClick, t }: AdminButtonCollapsedProps) {
+function AdminButtonCollapsed({ isActive, onClick, t }: AdminButtonCollapsedProps) {
   return (
     <button
       onClick={onClick}
-      title={isAdmin ? t('navExperts') : t('adminOnly')}
-      className={cn(
-        collapsedButtonStyles(isActive),
-        'relative',
-        !isAdmin && 'opacity-50'
-      )}
+      title={t('navExperts')}
+      className={collapsedButtonStyles(isActive)}
     >
       <Shield className="w-4 h-4 flex-shrink-0" />
-      {!isAdmin && (
-        <div className="absolute -bottom-1 -right-1 bg-surface-overlay text-content-inverted p-0.5 rounded-full">
-          <Lock className="w-2.5 h-2.5" />
-        </div>
-      )}
     </button>
   )
 }
@@ -244,32 +210,25 @@ function AdminButtonCollapsed({ isActive, isAdmin, onClick, t }: AdminButtonColl
  */
 interface AdminButtonExpandedProps {
   isActive: boolean
-  isAdmin: boolean
   onClick: () => void
   t: (key: TranslationKey) => string
 }
 
-function AdminButtonExpanded({ isActive, isAdmin, onClick, t }: AdminButtonExpandedProps) {
+function AdminButtonExpanded({ isActive, onClick, t }: AdminButtonExpandedProps) {
   return (
     <button
       onClick={onClick}
-      title={isAdmin ? t('navExperts') : t('adminOnly')}
+      title={t('navExperts')}
       className={cn(
         cn('transition-all duration-200 justify-center py-0 border-2 relative', TW.BUTTON_HEIGHT, TW.BUTTON_WIDTH),
         isActive
           ? 'bg-accent text-content-inverted border-border-default shadow-theme-button'
-          : 'border-transparent text-content-primary hover:bg-surface-page hover:border-border-default',
-        !isAdmin && 'opacity-50'
+          : 'border-transparent text-content-primary hover:bg-surface-page hover:border-border-default'
       )}
     >
       <div className="flex items-center gap-3 px-3">
         <Shield className="w-5 h-5 flex-shrink-0" />
         <span className="text-xs font-bold tracking-wide uppercase">{t('navExperts')}</span>
-        {!isAdmin && (
-          <div className="absolute right-3 bg-surface-overlay text-content-inverted rounded-full p-0.5">
-            <Lock className="w-3 h-3" />
-          </div>
-        )}
       </div>
     </button>
   )

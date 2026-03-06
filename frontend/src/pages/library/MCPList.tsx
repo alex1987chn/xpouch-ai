@@ -17,9 +17,10 @@ import { cn } from '@/lib/utils'
 interface MCPListProps {
   searchQuery?: string
   onSearchChange?: (value: string) => void
+  isAdmin?: boolean
 }
 
-export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
+export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPListProps) {
   const { t } = useTranslation()
   const { data: servers, isLoading, isError } = useMCPServers()
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -96,23 +97,25 @@ export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
             className="flex-1"
           />
         )}
-        
-        {/* 添加按钮 */}
-        <button
-          onClick={() => setIsAddOpen(true)}
-          className={cn(
-            "h-11 px-4 flex items-center gap-2",
-            "bg-surface-elevated text-content-primary font-mono text-xs font-bold uppercase",
-            "border-2 border-border-default shadow-hard",
-            "hover:bg-accent-brand hover:text-content-inverted hover:border-accent-brand",
-            "hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-hover",
-            "active:translate-x-0 active:translate-y-0 active:shadow-hard",
-            "transition-all"
-          )}
-        >
-          <Plus className="w-4 h-4" />
-          <span>{t('add') || 'ADD'}</span>
-        </button>
+
+        {/* 添加按钮 - 仅管理员可见 */}
+        {isAdmin && (
+          <button
+            onClick={() => setIsAddOpen(true)}
+            className={cn(
+              "h-11 px-4 flex items-center gap-2",
+              "bg-surface-elevated text-content-primary font-mono text-xs font-bold uppercase",
+              "border-2 border-border-default shadow-hard",
+              "hover:bg-accent-brand hover:text-content-inverted hover:border-accent-brand",
+              "hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-hover",
+              "active:translate-x-0 active:translate-y-0 active:shadow-hard",
+              "transition-all"
+            )}
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t('add') || 'ADD'}</span>
+          </button>
+        )}
       </div>
 
       {/* 统计 */}
@@ -132,10 +135,11 @@ export function MCPList({ searchQuery, onSearchChange }: MCPListProps) {
       {filteredServers.length > 0 ? (
         <div ref={listContainerRef} className="space-y-2 max-h-[60vh] overflow-y-auto">
           {filteredServers.map((server) => (
-            <MCPCard 
-              key={server.id} 
-              server={server} 
+            <MCPCard
+              key={server.id}
+              server={server}
               isExpanded={expandedId === server.id}
+              isAdmin={isAdmin}
               onToggleExpand={() => handleToggleExpand(server.id)}
             />
           ))}

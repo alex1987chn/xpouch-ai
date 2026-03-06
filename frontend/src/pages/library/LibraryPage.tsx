@@ -16,6 +16,7 @@ import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { useAppUISelectors } from '@/hooks'
 import { SearchInput } from '@/components/ui/input'
 import { MCPList } from './MCPList'
+import { useUserStore } from '@/store/userStore'
 
 type TabType = 'knowledge' | 'mcp'
 
@@ -25,6 +26,10 @@ export default function LibraryPage() {
   const [activeTab, setActiveTab] = useState<TabType>('knowledge')
   const [searchQuery, setSearchQuery] = useState('')
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
+
+  // 获取管理员权限
+  const user = useUserStore(state => state.user)
+  const isAdmin = user?.role === 'admin'
 
   return (
     <div className="bg-transparent overflow-x-hidden w-full h-full flex flex-col">
@@ -98,9 +103,10 @@ export default function LibraryPage() {
 
           {/* MCP Tools 内容 */}
           {activeTab === 'mcp' && (
-            <MCPList 
-              searchQuery={searchQuery} 
+            <MCPList
+              searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
+              isAdmin={isAdmin}
             />
           )}
         </div>
