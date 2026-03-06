@@ -17,8 +17,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { logger } from '@/utils/logger'
 
-/** 支持的主题类型 - 只有 Light 和 Dark（Bauhaus 风格） */
-export type Theme = 'light' | 'dark'
+/** 支持的主题类型 - Bauhaus + Glass + Kyoto */
+export type Theme = 'light' | 'dark' | 'glass' | 'kyoto'
 
 /** 主题配置元数据 */
 export interface ThemeMeta {
@@ -28,7 +28,7 @@ export interface ThemeMeta {
   icon: string
 }
 
-/** 可用主题 - Bauhaus 风格的 Light 和 Dark */
+/** 可用主题 - Bauhaus + Glass + Kyoto */
 export const THEMES: ThemeMeta[] = [
   {
     id: 'light',
@@ -41,6 +41,18 @@ export const THEMES: ThemeMeta[] = [
     name: 'Dark',
     description: 'Bauhaus 暗黑主题 - 夜间护眼',
     icon: 'Moon'
+  },
+  {
+    id: 'glass',
+    name: 'Glass',
+    description: '玻璃极简 - 通透石英白质感',
+    icon: 'Sparkles'
+  },
+  {
+    id: 'kyoto',
+    name: 'Kyoto',
+    description: '京都日系 - 东方非对称美学',
+    icon: 'Cherry'
   }
 ]
 
@@ -63,6 +75,12 @@ interface ThemeState {
   
   /** 初始化主题（应用启动时调用） */
   initTheme: () => void
+  
+  /** @internal 获取下一个主题 */
+  _getNextTheme: () => Theme
+  
+  /** @internal 迁移旧主题 */
+  _migrateTheme: () => void
 }
 
 /**
@@ -103,13 +121,25 @@ export const useThemeStore = create<ThemeState>()(
        * 将 bauhaus/cyberpunk 转换为 light/dark
        */
       _migrateTheme: () => {
-        const currentTheme = get().theme
+        const currentTheme = get().theme as string
         if (currentTheme === 'bauhaus' || currentTheme === 'cyberpunk') {
           const newTheme: Theme = 'light'
           applyTheme(newTheme)
           set({ theme: newTheme })
           logger.info('[ThemeStore] 已迁移旧主题:', currentTheme, '->', newTheme)
         }
+      },
+
+      /**
+       * 获取下一个主题（用于循环切换）
+       * Light -> Dark -> Glass -> Kyoto -> Light
+       */
+      _getNextTheme: (): Theme => {
+        const currentTheme = get().theme
+        const themeOrder: Theme[] = ['light', 'dark', 'glass', 'kyoto']
+        const currentIndex = themeOrder.indexOf(currentTheme)
+        const nextIndex = (currentIndex + 1) % themeOrder.length
+        return themeOrder[nextIndex]
       },
 
       /**
@@ -129,11 +159,10 @@ export const useThemeStore = create<ThemeState>()(
       },
 
       /**
-       * 切换主题（Light <-> Dark）
+       * 切换主题（Light -> Dark -> Glass -> Kyoto -> Light）
        */
       toggleTheme: () => {
-        const currentTheme = get().theme
-        const nextTheme: Theme = currentTheme === 'light' ? 'dark' : 'light'
+        const nextTheme = get()._getNextTheme()
         get().setTheme(nextTheme)
       },
 

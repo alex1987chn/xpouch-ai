@@ -19,6 +19,21 @@
    ============================================ */
 :root {
     /* ------------------------------------------
+       Typography - 字体配置
+       主题自适应字体系统
+       ------------------------------------------ */
+    --font-sans: 'Geist', system-ui, sans-serif;  /* 现代几何无衬线 - 正文 */
+    --font-display: 'Space Grotesk', 'Geist', system-ui, sans-serif;  /* 几何宽体 - Logo/标题 */
+    --font-mono: 'Space Mono', monospace;  /* 工业等宽字体 */
+    
+    /* 字重语义化 */
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --font-weight-display: 700;  /* Logo/大标题字重 */
+
+    /* ------------------------------------------
        Surface - 表面层级
        魏玛纸张色系
        ------------------------------------------ */
@@ -44,8 +59,8 @@
        包豪斯粗黑边
        ------------------------------------------ */
     --border-default: 15 15 15;            /* #0f0f0f - 标志性粗黑边 */
-    --border-hover: 15 15 15;              /* #0f0f0f - 悬停 */
-    --border-focus: 15 15 15;              /* #0f0f0f - 聚焦 */
+    --border-hover: 250 204 21;            /* yellow-400 - hover 亮黄 */
+    --border-focus: 250 204 21;            /* yellow-400 - focus 品牌黄 */
     --border-divider: 228 228 231;         /* #e4e4e7 - 分割线 */
     --border-disabled: 200 200 200;        /* #c8c8c8 - 禁用边框 */
 
@@ -53,9 +68,9 @@
        Accent - 品牌/强调色
        包豪斯三原色：黄 #facc15 / 蓝 #2563eb / 红 #ef4444
        ------------------------------------------ */
-    --accent-brand: 250 204 21;            /* #facc15 - 标志性黄色 */
-    --accent-hover: 251 191 36;            /* #fbbf24 - 悬停亮黄 */
-    --accent-active: 245 158 11;           /* #f59e0b - 按下深黄 */
+    --accent-brand: 250 204 21;            /* yellow-400 - 品牌黄 */
+    --accent-hover: 251 191 36;            /* amber-400 - hover 次色 */
+    --accent-active: 245 158 11;           /* amber-500 - active 深黄 */
     --accent-subtle: 254 249 195;          /* #fef9c3 - 浅黄背景 */
     --accent-destructive: 239 68 68;       /* #ef4444 - 包豪斯红 */
     --accent-success: 34 197 94;           /* #22c55e - 绿 */
@@ -96,4 +111,12 @@
     --radius-xl: 0;
     --radius-none: 0;
     --radius-full: 9999px;
+
+    /* ------------------------------------------
+       Background - 页面背景图案
+       各主题在 themes/_*.css 中覆盖
+       ------------------------------------------ */
+    --bg-pattern: none;
+    --bg-pattern-size: 100% 100%;
+
 }

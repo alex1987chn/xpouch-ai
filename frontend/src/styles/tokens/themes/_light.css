@@ -1,18 +1,33 @@
 /**
  * ============================================
- * THEME: Light (Bauhaus Light) - 默认主题
+ * THEME: Light (Bauhaus Light)
  * ============================================
- * 
- * Light 主题变量已经在 _semantic.css 的 :root 中定义
- * 这个文件保留用于明确覆盖，但通常不需要额外定义
- * 因为 :root 默认就是 Light 主题
+ * 默认主题
  */
 
-/* 
-   注意：Light 主题是默认主题，变量定义在 _semantic.css 的 :root 中
-   如果需要覆盖特定 Light 主题样式，可以在这里添加
-*/
-
 [data-theme="light"] {
-  /* 空 - 使用 :root 默认值 */
+    /* ========================================
+       Typography - 字体（Bauhaus 风格）
+       ======================================== */
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-display: 'Space Grotesk', 'Geist', system-ui, sans-serif;
+    --font-mono: 'Space Mono', monospace;
+    
+    /* 字重 - Light 主题使用标准字重 */
+    --font-weight-display: 700;
+
+    /* Bauhaus 点阵背景 */
+    --bg-pattern: radial-gradient(rgb(var(--content-muted) / 0.3) 1.5px, transparent 1.5px);
+    --bg-pattern-size: 32px 32px;
+
+    /* Bauhaus 边框 - hover/focus 时变黄 */
+    --border-hover: 250 204 21;    /* yellow-400 - hover 亮黄 */
+    --border-focus: 250 204 21;    /* yellow-400 - focus 品牌黄 */
+
+    /* 边框宽度继承 _layout.css 默认值 */
+
+    /* ========================================
+       阴影/变换系统
+       继承 _layout.css 默认值，Light 主题无需覆盖
+       ======================================== */
 }

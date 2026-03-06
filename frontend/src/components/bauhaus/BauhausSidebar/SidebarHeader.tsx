@@ -37,7 +37,7 @@ export function SidebarHeader({ isCollapsed, onLogoClick }: SidebarHeaderProps) 
           <The4DPocketLogo />
         </div>
         <div className="flex flex-col justify-center">
-          <h1 className="text-xl font-black tracking-tighter uppercase leading-none flex items-center">
+          <h1 className="text-xl font-bold font-display tracking-tighter uppercase leading-none flex items-center">
             <span className="text-content-muted">[</span>
             <span className="text-accent">X</span>
             <span className="text-content-primary">POUCH</span>

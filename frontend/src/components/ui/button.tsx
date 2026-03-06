@@ -3,8 +3,8 @@
  * Button Component - 按钮组件
  * ============================================
  * 
- * 使用新的语义化颜色系统，完全主题无关
- * 支持透明度修饰符（如 bg-surface-card/50）
+ * 使用语义化 CSS 变量，完全主题自适应
+ * 所有视觉风格由 CSS 变量控制，组件只定义结构
  */
 
 import * as React from "react"
@@ -15,11 +15,11 @@ import { cn } from "@/lib/utils"
 
 /**
  * 按钮变体样式定义
- * 使用语义变量：surface-*, content-*, border-*, accent-*
+ * 使用语义化类名：theme-card, theme-button 等
  */
 const buttonVariants = cva(
   // 基础样式
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-bold tracking-wide " +
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium tracking-wide " +
   "ring-offset-surface-page transition-all duration-fast " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 " +
   "disabled:pointer-events-none disabled:opacity-50 " +
@@ -28,16 +28,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         /**
-         * 默认变体 - Bauhaus 风格硬阴影按钮
+         * 默认变体 - 主题自适应
          */
         default: [
-          // 基础状态
           "bg-surface-card border-2 border-border-default text-content-primary",
-          "shadow-hard",
-          // 悬停状态
-          "hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard-lg hover:bg-accent hover:text-content-inverted hover:border-border-focus",
-          // 激活状态
-          "active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
+          "shadow-theme-button",
+          "hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover hover:bg-accent hover:text-content-inverted hover:border-border-focus",
+          "active:[transform:var(--transform-button-active)] active:shadow-theme-button-active",
         ],
 
         /**
@@ -49,17 +46,17 @@ const buttonVariants = cva(
         ],
 
         /**
-         * 轮廓变体 - 带边框但无背景填充
+         * 轮廓变体
          */
         outline: [
           "bg-surface-card border-2 border-border-default text-content-primary",
-          "shadow-hard",
-          "hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard-lg hover:bg-accent hover:text-content-inverted hover:border-border-focus",
-          "active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
+          "shadow-theme-button",
+          "hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover hover:bg-accent hover:text-content-inverted hover:border-border-focus",
+          "active:[transform:var(--transform-button-active)] active:shadow-theme-button-active",
         ],
 
         /**
-         * 幽灵变体 - 无边框，仅悬停时显示背景
+         * 幽灵变体
          */
         ghost: [
           "text-content-primary",
@@ -67,7 +64,7 @@ const buttonVariants = cva(
         ],
 
         /**
-         * 链接变体 - 纯文字链接样式
+         * 链接变体
          */
         link: [
           "text-accent underline-offset-4",
@@ -75,7 +72,7 @@ const buttonVariants = cva(
         ],
 
         /**
-         * 危险变体 - 删除/警告操作
+         * 危险变体
          */
         destructive: [
           "bg-accent-destructive text-content-inverted",
@@ -86,10 +83,10 @@ const buttonVariants = cva(
          * 品牌主色变体
          */
         brand: [
-          "bg-accent text-content-inverted border-2 border-border-focus",
-          "shadow-hard",
-          "hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard-lg hover:bg-accent-hover",
-          "active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
+          "bg-accent text-content-inverted border border-border-focus",
+          "shadow-theme-button",
+          "hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover hover:bg-accent-hover",
+          "active:[transform:var(--transform-button-active)] active:shadow-theme-button-active",
         ],
       },
       

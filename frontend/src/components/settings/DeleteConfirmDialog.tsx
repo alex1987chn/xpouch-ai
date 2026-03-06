@@ -69,21 +69,21 @@ export function DeleteConfirmDialog({
       onClick={handleClose}
     >
       <div
-        className="relative bg-surface-card border-2 border-border-default shadow-hard-xl w-[400px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface-card border-2 border-border-default shadow-theme-modal w-[400px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - Bauhaus风格 */}
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 ${variant === 'danger' ? 'bg-status-offline' : 'bg-amber-500'}`}></div>
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
+            <span className="text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// {variant === 'danger' ? 'WARNING' : 'CAUTION'}
             </span>
           </div>
           <button
             onClick={handleClose}
             disabled={isDeleting}
-            className="w-6 h-6 flex items-center justify-center border border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"
+            className="w-6 h-6 flex items-center justify-center border-2 border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -112,7 +112,7 @@ export function DeleteConfirmDialog({
               {title || t('confirmDeleteTitle')}
             </h2>
             {itemName && (
-              <div className={`font-mono text-sm font-bold border-2 py-2 px-4 inline-block ${
+              <div className={`text-sm font-bold border-2 py-2 px-4 inline-block ${
                 variant === 'danger'
                   ? 'text-status-offline border-status-offline/30 bg-status-offline/10'
                   : 'text-amber-700 border-amber-500/30 bg-amber-500/10'
@@ -120,7 +120,7 @@ export function DeleteConfirmDialog({
                 {itemName}
               </div>
             )}
-            <p className="text-xs font-mono text-content-secondary leading-relaxed">
+            <p className="text-xs text-content-secondary leading-relaxed">
               {description || t('confirmDeleteDescription')}
             </p>
           </div>
@@ -131,14 +131,14 @@ export function DeleteConfirmDialog({
           <button
             onClick={handleClose}
             disabled={isDeleting}
-            className="flex-1 py-3 font-mono text-sm font-bold uppercase border-r-2 border-border-default hover:bg-surface-page transition-colors disabled:opacity-50"
+            className="flex-1 py-3 text-sm font-bold uppercase border-r-2 border-border-default hover:bg-surface-page transition-colors disabled:opacity-50"
           >
             {t('cancel')}
           </button>
           <button
             onClick={handleConfirm}
             disabled={isDeleting}
-            className={`flex-1 py-3 font-mono text-sm font-bold uppercase transition-colors disabled:opacity-50 ${
+            className={`flex-1 py-3 text-sm font-bold uppercase transition-colors disabled:opacity-50 ${
               variant === 'danger'
                 ? 'bg-status-offline text-white hover:bg-status-offline/90'
                 : 'bg-amber-500 text-white hover:bg-amber-600'

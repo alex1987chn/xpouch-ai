@@ -2,6 +2,8 @@
  * =============================
  * SettingsMenu - 设置弹出菜单 (Portal)
  * =============================
+ * 
+ * 使用语义化 CSS 变量，完全主题自适应
  */
 
 import { useState } from 'react'
@@ -57,26 +59,26 @@ export function SettingsMenu({
   return createPortal(
     <div
       data-settings-menu
-      className="fixed bottom-[60px] left-8 w-[280px] bg-surface-card backdrop-blur-2xl border-2 border-border shadow-hard z-[200] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
+      className="fixed bottom-[60px] left-8 w-[280px] bg-surface-card backdrop-blur-2xl border-2 border-border-default shadow-theme-card z-[200] mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 rounded-lg"
       style={{ maxWidth: 'calc(100vw - 32px)' }}
     >
       <div className="p-4 space-y-2">
         {/* 用户信息 */}
-        <div className="pb-3 border-b-2 border-border">
-          <div className="font-mono text-[10px] text-content-secondary mb-2">
+        <div className="pb-3 border-b-2 border-border-default">
+          <div className="text-[10px] text-content-secondary mb-2 uppercase tracking-wider">
             /// {t('userSettings')}
           </div>
           <div className="flex items-center gap-3">
             <div className="relative">
               {avatar ? (
-                <img src={avatar} alt="Avatar" className="w-10 h-10 border-2 border-border shadow-hard-sm" />
+                <img src={avatar} alt="Avatar" className="w-10 h-10" />
               ) : (
-                <div className="w-10 h-10 bg-content-primary text-surface-card flex items-center justify-center font-bold border-2 border-border shadow-hard-sm">
+                <div className="w-10 h-10 bg-content-primary text-surface-card flex items-center justify-center font-bold">
                   {username.charAt(0).toUpperCase()}
                 </div>
               )}
-              {/* 套餐图标 - Bauhaus方形风格 */}
-              <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 border-2 border-border bg-surface-card flex items-center justify-center shadow-sm">
+              {/* 套餐图标 */}
+              <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 bg-surface-card flex items-center justify-center">
                 <Star className="w-1.5 h-1.5 text-content-primary" />
               </div>
             </div>
@@ -89,7 +91,7 @@ export function SettingsMenu({
               {/* 套餐 + UID 行 */}
               <div className="flex items-center gap-2">
                 {/* 套餐标签 */}
-                <span className="text-[10px] font-mono text-content-secondary uppercase shrink-0">
+                <span className="text-[10px] text-content-secondary uppercase shrink-0">
                   {isAuthenticated ? (user?.plan || 'Free') : 'Guest'}
                 </span>
                 
@@ -100,7 +102,7 @@ export function SettingsMenu({
                     <button
                       onClick={handleCopyUID}
                       className={cn(
-                        'group flex items-center gap-1 text-[10px] font-mono transition-all',
+                        'group flex items-center gap-1 text-[10px] transition-all',
                         copied
                           ? 'text-status-success'
                           : 'text-content-secondary/60 hover:text-content-primary'
@@ -122,14 +124,14 @@ export function SettingsMenu({
           </div>
         </div>
 
-        {/* 设置选项 - Bauhaus风格 */}
+        {/* 设置选项 */}
         <button
           onClick={() => {
             onPersonalSettingsClick?.()
             onClose()
             onMobileClose?.()
           }}
-          className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-border hover:bg-accent-hover hover:text-content-primary transition-all font-mono text-xs shadow-hard-sm hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-hard-sm"
+          className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-border-default hover:bg-accent-hover hover:text-content-primary transition-all text-xs shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active"
         >
           <User className="w-4 h-4" />
           <span className="font-bold uppercase">{t('personalSettings')}</span>
@@ -141,15 +143,15 @@ export function SettingsMenu({
             onClose()
             onMobileClose?.()
           }}
-          className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-border hover:bg-accent-hover hover:text-content-primary transition-all font-mono text-xs shadow-hard-sm hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-hard-sm"
+          className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-border-default hover:bg-accent-hover hover:text-content-primary transition-all text-xs shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active"
         >
           <Cog className="w-4 h-4" />
           <span className="font-bold uppercase">{t('modelConfig')}</span>
         </button>
 
-        {/* 语言切换 - Bauhaus风格 水平排列 */}
+        {/* 语言切换 - 水平排列 */}
         <div className="pt-1">
-          <div className="font-mono text-[10px] text-content-secondary uppercase px-1 mb-2">
+          <div className="text-[10px] text-content-secondary uppercase px-1 mb-2 tracking-wider">
             /// {t('language')}
           </div>
           <div className="grid grid-cols-3 gap-1">
@@ -161,10 +163,10 @@ export function SettingsMenu({
                   // 语言切换后不关闭菜单，让用户看到切换效果
                 }}
                 className={cn(
-                  'flex items-center justify-center gap-1.5 px-2 py-2 border-2 font-mono text-[10px] font-bold uppercase transition-all',
+                  'flex items-center justify-center gap-1.5 px-2 py-2 border font-mono text-[10px] font-bold uppercase transition-all rounded-md',
                   language === lang
-                    ? 'bg-accent-hover text-content-primary border-content-primary'
-                    : 'border-border hover:border-content-secondary text-content-primary'
+                    ? 'bg-accent-hover text-content-primary border-accent'
+                    : 'border-border-default hover:border-content-secondary text-content-primary'
                 )}
               >
                 <span className={cn(
@@ -177,11 +179,11 @@ export function SettingsMenu({
           </div>
         </div>
 
-        {/* 退出登录 - 统一风格 */}
+        {/* 退出登录 */}
         {isAuthenticated && (
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-border hover:bg-accent-hover hover:text-content-primary transition-all font-mono text-xs text-content-primary shadow-hard-sm hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-sm active:translate-x-0 active:translate-y-0 active:shadow-hard-sm mt-2"
+            className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-border-default hover:bg-accent-hover hover:text-content-primary transition-all text-xs text-content-primary shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active mt-2"
           >
             <ArrowRight className="w-4 h-4" />
             <span className="font-bold uppercase">{t('logout')}</span>

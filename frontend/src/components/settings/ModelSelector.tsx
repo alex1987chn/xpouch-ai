@@ -78,7 +78,7 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
       {label && (
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-          <label className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
             {label}
           </label>
         </div>
@@ -87,13 +87,13 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
       <div className="grid grid-cols-2 gap-3">
         {/* 供应商选择 */}
         <div className="relative" ref={providerDropdownRef}>
-          <label className="font-mono text-[9px] text-content-secondary mb-1 block uppercase">
+          <label className="text-[9px] text-content-secondary mb-1 block uppercase">
             {t('provider')}
           </label>
           <button
             type="button"
             onClick={() => setShowProviderDropdown(!showProviderDropdown)}
-            className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-xs text-left flex items-center justify-between hover:border-accent-hover transition-colors"
+            className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-xs text-left flex items-center justify-between hover:border-border-focus transition-colors"
           >
             <span className="uppercase">{effectiveProvider}</span>
             <span className="text-content-secondary">▼</span>
@@ -101,7 +101,7 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
           {showProviderDropdown && createPortal(
             <div
               data-provider-dropdown
-              className="fixed border-2 border-border-default bg-surface-card shadow-hard z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
+              className="fixed border-2 border-border-default bg-surface-card shadow-theme-card z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
               style={{
                 width: providerDropdownRef.current?.getBoundingClientRect().width || 200,
                 left: providerDropdownRef.current?.getBoundingClientRect().left || 0,
@@ -114,7 +114,7 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
                   type="button"
                   onClick={() => handleProviderSelect(provider)}
                   className={cn(
-                    'w-full px-3 py-2.5 text-left font-mono text-xs uppercase transition-all pointer-events-auto relative',
+                    'w-full px-3 py-2.5 text-left text-xs uppercase transition-all pointer-events-auto relative',
                     'hover:bg-accent-hover hover:text-content-primary',
                     effectiveProvider === provider
                       ? 'bg-accent-hover text-content-primary font-bold'
@@ -136,13 +136,13 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
 
         {/* 模型选择 */}
         <div className="relative" ref={modelDropdownRef}>
-          <label className="font-mono text-[9px] text-content-secondary mb-1 block uppercase">
+          <label className="text-[9px] text-content-secondary mb-1 block uppercase">
             {t('model')}
           </label>
           <button
             type="button"
             onClick={() => setShowModelDropdown(!showModelDropdown)}
-            className="w-full px-3 py-2 border-2 border-border-default bg-surface-page font-mono text-xs text-left flex items-center justify-between hover:border-accent-hover transition-colors"
+            className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-xs text-left flex items-center justify-between hover:border-border-focus transition-colors"
           >
             <span>{models.find(m => m.id === value)?.name || 'Select'}</span>
             <span className="text-content-secondary">▼</span>
@@ -150,7 +150,7 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
           {showModelDropdown && createPortal(
             <div
               data-model-dropdown
-              className="fixed border-2 border-border-default bg-surface-card shadow-hard z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
+              className="fixed border-2 border-border-default bg-surface-card shadow-theme-card z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
               style={{
                 width: modelDropdownRef.current?.getBoundingClientRect().width || 200,
                 left: modelDropdownRef.current?.getBoundingClientRect().left || 0,
@@ -163,7 +163,7 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
                   type="button"
                   onClick={() => handleModelSelect(model.id)}
                   className={cn(
-                    'w-full px-3 py-2.5 text-left font-mono text-xs transition-all pointer-events-auto relative',
+                    'w-full px-3 py-2.5 text-left text-xs transition-all pointer-events-auto relative',
                     'hover:bg-accent-hover hover:text-content-primary',
                     value === model.id
                       ? 'bg-accent-hover text-content-primary font-bold'

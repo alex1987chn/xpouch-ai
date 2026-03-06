@@ -17,9 +17,18 @@
 /* 语义变量定义 - 默认 Bauhaus 主题 */
 @import './styles/tokens/_semantic.css';
 
+/* 布局与视觉风格变量 */
+@import './styles/tokens/_layout.css';
+
 /* 主题覆盖 - 按优先级排序 */
 @import './styles/tokens/themes/_light.css';
 @import './styles/tokens/themes/_dark.css';
+@import './styles/tokens/themes/_glass.css';
+@import './styles/tokens/themes/_kyoto.css';
+
+/* 兼容性覆盖（用于旧组件） */
+@import './styles/tokens/themes/_glass-compat.css';
+@import './styles/tokens/themes/_kyoto-compat.css';
 
 /* ============================================
    2. Tailwind 核心指令
@@ -32,6 +41,14 @@
 /* ============================================
    3. 全局基础样式
    ============================================ */
+
+@layer utilities {
+  /* 背景图案 */
+  .bg-dot-pattern {
+    background-image: radial-gradient(rgb(var(--content-muted) / 0.3) 1.5px, transparent 1.5px);
+    background-size: 32px 32px;
+  }
+}
 
 @layer base {
   /* 根元素默认使用 light color-scheme */

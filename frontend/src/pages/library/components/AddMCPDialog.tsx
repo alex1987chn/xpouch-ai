@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { useCreateMCP } from '@/hooks/queries/useMCPQuery'
-import { BauhausInput } from '@/components/ui/bauhaus-input'
+import { Input } from '@/components/ui/input'
 import { useTranslation } from '@/i18n'
 import { logger } from '@/utils/logger'
 import { useToast } from '@/components/ui/use-toast'
@@ -125,7 +125,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
                 {t('moduleName') || 'Module Name'} *
               </span>
             </div>
-            <BauhausInput
+            <Input
               required
               type="text"
               value={formData.name}
@@ -143,7 +143,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
                 {t('description') || 'Description'} ({t('optional') || 'Optional'})
               </span>
             </div>
-            <BauhausInput
+            <Input
               type="text"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -196,7 +196,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
                 Endpoint URL *
               </span>
             </div>
-            <BauhausInput
+            <Input
               required
               type="url"
               value={formData.sse_url}

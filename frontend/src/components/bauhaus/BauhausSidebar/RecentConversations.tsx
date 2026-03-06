@@ -2,6 +2,8 @@
  * =============================
  * RecentConversations - 最近会话列表
  * =============================
+ * 
+ * 使用语义化 CSS 变量，完全主题自适应
  */
 
 import { cn } from '@/lib/utils'
@@ -19,19 +21,19 @@ export function RecentConversations({
       {/* 小标题: 模拟终端注释 - 左对齐 */}
       <div className={cn('px-4 mb-2 flex items-center gap-2 opacity-50 mx-auto', TW.CONTENT_WIDTH)}>
         <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-        <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
           /// {t('memoryDump')}
         </span>
       </div>
 
-      {/* 滚动区域: Bauhaus风格滚动条 - 最大高度显示8条，超出滚动 */}
+      {/* 滚动区域 - 最大高度显示8条，超出滚动 */}
       <div className={cn('overflow-y-auto px-3 space-y-1 mx-auto bauhaus-scrollbar max-h-[360px]', TW.CONTENT_WIDTH)}>
         {/* 列表项: 极简、紧凑、数据感 */}
         {conversations.map((conv) => (
           <button
             key={conv.id}
             onClick={() => onConversationClick(conv.id, conv.agent_id)}
-            className="group w-full text-left flex items-center gap-3 px-3 py-1.5 border border-transparent hover:border-border hover:bg-surface-page transition-all"
+            className="group w-full text-left flex items-center gap-3 px-3 py-1.5 border border-transparent hover:border-border-default hover:bg-surface-page transition-all"
           >
             {/* 装饰性光标: Hover时出现 */}
             <span className="text-accent-hover font-black text-xs opacity-0 group-hover:opacity-100 transition-opacity">
@@ -39,12 +41,12 @@ export function RecentConversations({
             </span>
 
             <div className="flex-1 min-w-0">
-              {/* 标题: 等宽字体，像日志 */}
-              <div className="font-mono text-[11px] font-bold text-content-secondary truncate group-hover:text-content-primary transition-colors">
+              {/* 标题 */}
+              <div className="text-[11px] font-bold text-content-secondary truncate group-hover:text-content-primary transition-colors">
                 {conv.title || t('newChat')}
               </div>
               {/* 时间: 极小字体 */}
-              <div className="font-mono text-[9px] text-content-secondary opacity-50 truncate">
+              <div className="text-[9px] text-content-secondary opacity-50 truncate uppercase tracking-wider">
                 LOG_ID: {conv.id.slice(0, 6)} • {formatRelativeTime(conv.updated_at)}
               </div>
             </div>
@@ -53,7 +55,7 @@ export function RecentConversations({
 
         {/* 如果没有会话，显示空状态 */}
         {conversations.length === 0 && (
-          <div className="px-3 py-2 font-mono text-[10px] text-content-secondary opacity-40">
+          <div className="px-3 py-2 text-[10px] text-content-secondary opacity-40">
             {t('noDataStream')}
           </div>
         )}

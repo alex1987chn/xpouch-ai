@@ -6,6 +6,8 @@
  * [设计] 机械开关风格
  * - 展开时：用户卡片右侧有一条竖直把手
  * - 收拢时：头像下方有一条横置把手
+ * 
+ * 语义化改造：使用 CSS 变量控制阴影和边框
  */
 
 import { User, GripVertical, GripHorizontal } from 'lucide-react'
@@ -34,7 +36,7 @@ export function UserSection({
       <div className="flex flex-col">
         {/* 用户区域 */}
         <div className={cn(
-          'border-t-2 border-border shrink-0 p-2 flex flex-col items-center gap-2'
+          'border-t-2 border-border-default shrink-0 p-2 flex flex-col items-center gap-2'
         )}>
           {isAuthenticated ? (
             <div
@@ -42,7 +44,7 @@ export function UserSection({
               data-avatar-button=""
               className="flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-surface-page p-2 focus:outline-none focus:ring-2 focus:ring-accent/50"
             >
-              <Avatar className="h-8 w-8 border-2 border-border shadow-hard-sm">
+              <Avatar className="h-8 w-8 border-2 border-border-default shadow-theme-button">
                 <AvatarImage src={avatar} alt="Avatar" />
                 <AvatarFallback className="bg-content-primary text-surface-card text-[10px] font-bold">
                   {getAvatarDisplay(avatar || '', username)}
@@ -52,7 +54,7 @@ export function UserSection({
           ) : (
             <button
               onClick={onLoginClick}
-              className="p-2 border-2 border-border bg-accent-hover text-content-primary shadow-hard-sm hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-sm transition-all"
+              className="p-2 border-2 border-border-default bg-accent-hover text-content-primary shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all"
               title={t('login')}
             >
               <User className="w-5 h-5" />
@@ -66,7 +68,7 @@ export function UserSection({
             onClick={onToggleCollapsed}
             className={cn(
               'w-full h-5 flex items-center justify-center',
-              'bg-surface-elevated border-t border-border',
+              'bg-surface-elevated border-t-2 border-border-default',
               'hover:bg-accent-hover',
               'text-content-muted/50 hover:text-accent',
               'transition-all duration-200',
@@ -86,20 +88,21 @@ export function UserSection({
     <div className="flex">
       {/* 用户区域 */}
       <div className={cn(
-        'flex-1 border-t-2 border-border shrink-0 p-3'
+        'flex-1 border-t-2 border-border-default shrink-0 p-3'
       )}>
         {isAuthenticated ? (
           <div className={cn('relative group cursor-pointer mx-auto', TW.CONTENT_WIDTH)}>
-            <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2"></div>
+            {/* 硬阴影效果 - 使用 CSS 变量 */}
+            <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-1.5 group-hover:translate-y-1.5"></div>
             <div
               onClick={onAvatarClick}
               data-avatar-button=""
-              className={cn('relative flex items-center gap-3 px-4 py-3 border-2 border-border bg-surface-page z-10 transition-all', TW.CONTENT_WIDTH, 'h-[63px]')}
+              className={cn('relative flex items-center gap-3 px-4 py-3 border-2 border-border-default bg-surface-page z-10 transition-all', TW.CONTENT_WIDTH, 'h-[63px]')}
             >
               {avatar ? (
-                <img src={avatar} alt="Avatar" className="w-8 h-8 border-2 border-border shrink-0" />
+                <img src={avatar} alt="Avatar" className="w-8 h-8 border-2 border-border-default shrink-0" />
               ) : (
-                <div className="w-8 h-8 bg-content-primary text-surface-card flex items-center justify-center font-bold text-sm shrink-0 border-2 border-border">
+                <div className="w-8 h-8 bg-content-primary text-surface-card flex items-center justify-center font-bold text-sm shrink-0 border-2 border-border-default">
                   {username.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -107,19 +110,20 @@ export function UserSection({
                 <div className="font-bold text-sm uppercase" title={username}>
                   {username}
                 </div>
-                <div className="text-[10px] font-mono text-content-secondary">
+                <div className="text-[10px] text-content-secondary uppercase tracking-wider">
                   PLAN: {planLabel}
                 </div>
               </div>
-              <div className="w-2 h-2 bg-status-online border border-border shrink-0"></div>
+              <div className="w-2 h-2 bg-status-online border border-border-default shrink-0"></div>
             </div>
           </div>
         ) : (
           <div className="relative group w-[230px] mx-auto">
-            <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2"></div>
+            {/* 硬阴影效果 */}
+            <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-1.5 group-hover:translate-y-1.5"></div>
             <button
               onClick={onLoginClick}
-              className="relative w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-border bg-accent-hover text-content-primary z-10 transition-all font-bold font-mono text-sm uppercase"
+              className="relative w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-border-default bg-accent-hover text-content-primary z-10 transition-all font-bold text-sm uppercase"
             >
               <User className="w-5 h-5" />
               <span>登录 / LOGIN</span>
@@ -133,7 +137,7 @@ export function UserSection({
         <button
           onClick={onToggleCollapsed}
           className={cn(
-            'w-5 border-t-2 border-l border-border',
+            'w-5 border-t border-l border-border-default',
             'bg-surface-elevated',
             'hover:bg-status-offline/10',
             'flex items-center justify-center',

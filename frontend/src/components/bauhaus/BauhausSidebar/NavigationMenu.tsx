@@ -3,8 +3,8 @@
  * NavigationMenu - 主导航菜单
  * =============================
  * 
- * 使用语义化颜色系统，完全主题无关
- * 不再使用 dark: 前缀，所有颜色通过 CSS 变量控制
+ * 使用语义化 CSS 变量，完全主题自适应
+ * 所有视觉风格（边框、阴影、变换）由 CSS 变量控制
  */
 
 import { Home, Library, MessageSquare, Shield, Lock } from 'lucide-react'
@@ -85,7 +85,7 @@ export function NavigationMenu({
       <div className="shrink-0 flex flex-col items-center py-2">
         {/* 导航标题 */}
         <div className={cn('px-1 py-2', TW.CONTENT_WIDTH)}>
-          <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider font-mono text-[10px]">
+          <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider text-[10px]">
             /// Navigation
           </h3>
         </div>
@@ -141,15 +141,18 @@ export function NavigationMenu({
 /**
  * 收拢状态按钮基础样式（共享）
  * 导出供 NewChatButton 使用
+ * 
+ * [设计] 圆形按钮与 Bauhaus 方形形成反差
+ * 小按钮使用更克制的阴影：默认 2px / hover 4px
  */
 export const collapsedButtonStyles = (isActive: boolean) => cn(
-  'h-9 w-9 flex items-center justify-center transition-all duration-200 p-0 rounded-full border-2',
+  'h-10 w-10 flex items-center justify-center transition-all duration-200 p-0 border-2 rounded-full',
   isActive
-    ? 'bg-accent text-content-inverted border-border shadow-hard'
-    : 'border-border text-content-muted bg-surface-card shadow-hard ' +
-      'hover:translate-x-[-2px] hover:translate-y-[-2px] ' +
-      'hover:shadow-hard-accent-md hover:bg-accent-hover hover:text-content-primary hover:border-content-primary ' +
-      'active:translate-x-[2px] active:translate-y-[2px] active:shadow-none'
+    ? 'bg-accent text-content-inverted border-border-default shadow-theme-button-sm'
+    : 'border-border-default text-content-muted bg-surface-card shadow-theme-button-sm ' +
+      'hover:[transform:var(--transform-button-sm-hover)] ' +
+      'hover:shadow-theme-button hover:bg-accent-hover hover:text-content-primary hover:border-accent ' +
+      'active:[transform:var(--transform-button-active)] active:shadow-theme-button-active'
 )
 
 /**
@@ -192,14 +195,14 @@ function NavButtonExpanded({ isActive, onClick, icon, label }: NavButtonExpanded
         cn('transition-all duration-200 justify-center py-0 border-2 mb-1', TW.BUTTON_HEIGHT, TW.BUTTON_WIDTH),
         isActive
           // 激活状态
-          ? 'bg-accent text-content-inverted border-border-default shadow-hard'
+          ? 'bg-accent text-content-inverted border-border-default shadow-theme-button'
           // 非激活状态
           : 'border-transparent text-content-primary hover:bg-surface-page hover:border-border-default'
       )}
     >
       <div className="flex items-center gap-3 px-3">
         {icon}
-        <span className="font-mono text-xs font-bold tracking-wide uppercase">{label}</span>
+        <span className="text-xs font-bold tracking-wide uppercase">{label}</span>
       </div>
     </button>
   )
@@ -228,7 +231,7 @@ function AdminButtonCollapsed({ isActive, isAdmin, onClick, t }: AdminButtonColl
     >
       <Shield className="w-4 h-4 flex-shrink-0" />
       {!isAdmin && (
-        <div className="absolute -bottom-1 -right-1 bg-surface-overlay text-content-inverted p-0.5">
+        <div className="absolute -bottom-1 -right-1 bg-surface-overlay text-content-inverted p-0.5 rounded-full">
           <Lock className="w-2.5 h-2.5" />
         </div>
       )}
@@ -254,14 +257,14 @@ function AdminButtonExpanded({ isActive, isAdmin, onClick, t }: AdminButtonExpan
       className={cn(
         cn('transition-all duration-200 justify-center py-0 border-2 relative', TW.BUTTON_HEIGHT, TW.BUTTON_WIDTH),
         isActive
-          ? 'bg-accent text-content-inverted border-border-default shadow-hard'
+          ? 'bg-accent text-content-inverted border-border-default shadow-theme-button'
           : 'border-transparent text-content-primary hover:bg-surface-page hover:border-border-default',
         !isAdmin && 'opacity-50'
       )}
     >
       <div className="flex items-center gap-3 px-3">
         <Shield className="w-5 h-5 flex-shrink-0" />
-        <span className="font-mono text-xs font-bold tracking-wide uppercase">{t('navExperts')}</span>
+        <span className="text-xs font-bold tracking-wide uppercase">{t('navExperts')}</span>
         {!isAdmin && (
           <div className="absolute right-3 bg-surface-overlay text-content-inverted rounded-full p-0.5">
             <Lock className="w-3 h-3" />

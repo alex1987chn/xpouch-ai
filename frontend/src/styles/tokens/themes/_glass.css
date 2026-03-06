@@ -1,0 +1,140 @@
+/**
+ * ============================================
+ * THEME: Glass (玻璃极简)
+ * ============================================
+ * 
+ * 最佳实践：只修改变量，不覆盖类
+ * 组件使用 CSS 变量自动适配
+ */
+
+[data-theme="glass"] {
+    /* ========================================
+       Typography - 字体（现代极简）
+       ======================================== */
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-display: 'Space Grotesk', 'Geist', system-ui, sans-serif;
+    --font-mono: 'Geist', system-ui, sans-serif;  /* Glass 不使用等宽字体 */
+    
+    /* 字重 - Glass 主题更轻盈 */
+    --font-weight-display: 600;
+
+    /* ========================================
+       Color Tokens - 颜色
+       ======================================== */
+    --surface-page: 248 250 252;           /* #f8fafc - 冰白 */
+    --surface-card: 255 255 255;           /* #ffffff */
+    --surface-elevated: 251 252 254;       /* #fbfcfe */
+    --surface-input: 255 255 255;
+    --surface-overlay: 15 23 42;
+    --surface-scrim: 0 0 0;
+
+    --content-primary: 24 24 27;           /* #18181b */
+    --content-secondary: 113 113 122;
+    --content-muted: 161 161 170;
+    --content-inverted: 255 255 255;
+    --content-disabled: 212 212 216;
+
+    --border-default: 226 232 240;         /* #e2e8f0 - 冰灰 */
+    --border-hover: 203 213 225;
+    --border-focus: 59 130 246;            /* #3b82f6 - 冰川蓝 */
+    --border-divider: 241 245 249;
+    --border-disabled: 226 232 240;
+
+    --accent-brand: 59 130 246;            /* #3b82f6 - 冰川蓝 */
+    --accent-hover: 37 99 235;
+    --accent-active: 29 78 216;
+    --accent-subtle: 239 246 255;
+    --accent-destructive: 239 68 68;
+    --accent-success: 34 197 94;
+    --accent-warning: 245 158 11;
+    --accent-info: 99 102 241;
+
+    --shadow-color: 15 23 42;
+    --shadow-opacity: 0.08;
+
+    /* ========================================
+       Radius Tokens - 圆角
+       ======================================== */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-none: 0;
+    --radius-full: 9999px;
+
+    /* ========================================
+       Animation Tokens - 动画
+       ======================================== */
+    --duration-instant: 0ms;
+    --duration-fast: 150ms;
+    --duration-normal: 250ms;
+    --duration-slow: 350ms;
+    --duration-slower: 500ms;
+
+    /* ========================================
+       Background - 柔和渐变背景
+       ======================================== */
+    --bg-pattern: linear-gradient(135deg, rgb(248 250 252) 0%, rgb(241 245 249) 100%);
+    --bg-pattern-size: 100% 100%;
+
+    /* ========================================
+       Layout Tokens - 布局风格（覆盖 _layout.css）
+       ======================================== */
+    
+    /* 边框宽度 - 细边框 */
+    --border-width-thin: 1px;
+    --border-width-thick: 1px;
+    --border-width-card: 1px;
+    --border-width-button: 1px;
+    --border-width-input: 1px;
+
+    /* ========================================
+       阴影系统 - 柔和扩散式
+       ======================================== */
+    --shadow-card: 0 4px 20px rgb(15 23 42 / 0.06);
+    --shadow-card-hover: 0 12px 40px rgb(15 23 42 / 0.12);
+    --shadow-card-accent: 0 12px 40px rgb(59 130 246 / 0.2);
+    
+    /* 按钮阴影 - 柔和层次 */
+    --shadow-button-sm: 0 1px 4px rgb(15 23 42 / 0.04);
+    --shadow-button: 0 2px 8px rgb(15 23 42 / 0.05);
+    --shadow-button-lg: 0 4px 12px rgb(15 23 42 / 0.08);
+    --shadow-button-sm-hover: 0 2px 6px rgb(15 23 42 / 0.06);
+    --shadow-button-hover: 0 4px 12px rgb(15 23 42 / 0.08);
+    --shadow-button-lg-hover: 0 6px 20px rgb(59 130 246 / 0.15);
+    --shadow-button-active: inset 0 1px 3px rgb(15 23 42 / 0.05);
+    
+    --shadow-dropdown: 0 10px 40px rgb(15 23 42 / 0.1);
+    --shadow-modal: 0 20px 60px rgb(15 23 42 / 0.15);
+    --shadow-input: inset 0 1px 2px rgb(15 23 42 / 0.03);
+    --shadow-focus: 0 0 0 3px rgb(59 130 246 / 0.15);
+
+    /* ========================================
+       变换系统 - 微妙上浮
+       ======================================== */
+    --transform-card-hover: translateY(-2px);
+    --transform-button-sm-hover: translateY(-1px);
+    --transform-button-hover: translateY(-1px);
+    --transform-button-lg-hover: translateY(-2px);
+    --transform-button-active: translateY(0);
+}
+
+/* ============================================
+   最小化覆盖（仅用于旧组件兼容）
+   新组件应使用 CSS 变量
+   ============================================ */
+
+/* 滚动条优化 */
+[data-theme="glass"] ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+[data-theme="glass"] ::-webkit-scrollbar-thumb {
+    background: rgb(var(--content-muted) / 0.2);
+    border-radius: 3px;
+}
+
+[data-theme="glass"] ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--content-muted) / 0.3);
+}

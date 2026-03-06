@@ -1,0 +1,70 @@
+/**
+ * ============================================
+ * LAYOUT DESIGN TOKENS - 布局与视觉风格变量
+ * ============================================
+ * 
+ * 这些变量控制组件的视觉风格
+ * 每个主题只修改这些变量，不需要覆盖类
+ */
+
+/* ============================================
+   DEFAULT TOKENS (Bauhaus Theme)
+   ============================================ */
+:root {
+    /* ========================================
+       布局尺寸 - Sidebar
+       ======================================== */
+    --sidebar-width-expanded: 280px;
+    --sidebar-width-collapsed: 72px;
+    --sidebar-content-width: 230px;
+    --sidebar-button-height: 44px;
+    --sidebar-button-height-large: 60px;
+    
+    /* 边框宽度 */
+    --border-width-thin: 1px;
+    --border-width-thick: 2px;
+    --border-width-card: 2px;
+    --border-width-button: 2px;
+    --border-width-input: 2px;
+
+    /* ========================================
+       阴影系统 - 细化层级（使用 --shadow-opacity）
+       ======================================== */
+    /* 卡片阴影 */
+    --shadow-card: 4px 4px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
+    --shadow-card-hover: 8px 8px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
+    --shadow-card-accent: 8px 8px 0 0 rgb(var(--accent-brand));
+    
+    /* 按钮阴影 - 三级层次 */
+    --shadow-button-sm: 2px 2px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
+    --shadow-button: 4px 4px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
+    --shadow-button-lg: 6px 6px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
+    
+    /* 按钮 hover 阴影 */
+    --shadow-button-sm-hover: 3px 3px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
+    --shadow-button-hover: 6px 6px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
+    --shadow-button-lg-hover: 8px 8px 0 0 rgb(var(--accent-brand));
+    
+    /* 按钮 active 阴影 */
+    --shadow-button-active: 0 0 0 0 rgb(var(--shadow-color));
+    
+    /* 下拉菜单/弹窗 */
+    --shadow-dropdown: 4px 4px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
+    --shadow-modal: 8px 8px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
+    
+    /* 输入框 */
+    --shadow-input: none;
+    --shadow-focus: 0 0 0 4px rgb(var(--accent-brand) / 0.2);
+
+    /* ========================================
+       变换系统 - 细化层级
+       ======================================== */
+    /* 卡片位移 - 大幅度 */
+    --transform-card-hover: translate(-4px, -4px);
+    
+    /* 按钮位移 - 三级层次 */
+    --transform-button-sm-hover: translate(-1px, -1px);   /* 小按钮 */
+    --transform-button-hover: translate(-2px, -2px);      /* 普通按钮 */
+    --transform-button-lg-hover: translate(-3px, -3px);   /* 重要按钮 */
+    --transform-button-active: translate(2px, 2px);
+}

@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 主题系统语义化改造（2026-03-06）
+
+**架构升级**：
+- 新增 Glass/Kyoto 两主题，共支持 Light/Dark/Glass/Kyoto 四主题
+- 引入细化层级变量：
+  - 阴影三级：`shadow-button-sm` / `shadow-button` / `shadow-button-lg`
+  - 位移三级：`transform-button-sm-hover` / `transform-button-hover` / `transform-button-lg-hover`
+- 新增字体变量：`--font-sans`, `--font-mono`（主题自适应）
+
+**组件改造**：
+- 30+ 组件语义化改造：`ui/*`, `admin/*`, `settings/*`, `bauhaus/*`, `chat/*`
+- 统一边框类：`border-2 border-border-default`
+- 统一阴影类：`shadow-theme-card`, `shadow-theme-button-lg` 等
+- 统一位移类：`[transform:var(--transform-button-hover)]`
+
+**主题风格**：
+| 主题 | 边框 | 阴影 | 位移 | 字体 |
+|------|------|------|------|------|
+| Bauhaus (Light/Dark) | 2px 粗硬边 | 硬阴影 4-8px | 大幅度 2-4px | Space Mono |
+| Glass | 1px 细边 | 柔和扩散 4-20px | 微浮动 1-2px | DM Sans |
+| Kyoto | 1px 细边 | 极淡 1-4px | 极微 0.5-1px | Noto Serif JP |
+
+**新增文档**：
+- `THEME_GUIDE.md`：完整的主题开发指南
+
 ### 代码审查修复（2026-03-06）
 
 **P0 关键问题修复**：

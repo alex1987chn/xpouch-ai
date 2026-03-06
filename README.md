@@ -96,7 +96,10 @@ AI 不再是"黑盒"。Commander 生成任务计划后，**暂停等待你的确
 <td width="50%">
 
 ### 🎨 语义化主题系统
-基于 Design Tokens 的主题系统，支持 Light/Dark 双主题。使用语义化变量（`surface-*`, `content-*`, `border-*`, `accent-*`），新增主题无需修改组件代码。
+基于 Design Tokens 的主题系统，支持 **Light/Dark/Glass/Kyoto** 四主题。使用语义化变量（`surface-*`, `content-*`, `border-*`, `accent-*`, `shadow-*`, `transform-*`），新增主题只需定义 CSS 变量，无需修改组件代码。
+- **Bauhaus** (Light/Dark): 2px 粗硬边框、硬朗位移、Space Mono 字体
+- **Glass**: 1px 细边框、柔和阴影、现代无衬线
+- **Kyoto**: 1px 细边框、极淡阴影、Noto Serif JP 衬线字体
 
 </td>
 </tr>

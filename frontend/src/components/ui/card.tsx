@@ -3,8 +3,8 @@
  * Card Component - 卡片组件
  * ============================================
  * 
- * Bauhaus 风格卡片：粗边框、硬阴影、悬停效果
- * 使用语义化颜色系统
+ * 使用语义化 CSS 变量，完全主题自适应
+ * 视觉风格（边框、阴影、圆角、变换）由主题变量控制
  */
 
 import * as React from "react"
@@ -20,14 +20,14 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      // 基础样式：边框、背景、文字颜色
+      // 基础样式：边框、背景、文字颜色（使用语义变量）
       "border-2 border-border-default bg-surface-card text-content-primary",
-      // Bauhaus 硬阴影（默认黑色）
-      "shadow-hard-5",
+      // 阴影（主题自适应）
+      "shadow-theme-card",
       // 动画
       "transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-      // 悬停效果：位移 + 黄色大阴影 + 黄色边框
-      "hover:-translate-x-1.5 hover:-translate-y-1.5 hover:shadow-hard-accent hover:border-accent",
+      // 悬停效果：位移 + 黄色阴影 + 黄色边框
+      "hover:[transform:var(--transform-card-hover)] hover:shadow-theme-card-accent hover:border-accent",
       className
     )}
     {...props}
