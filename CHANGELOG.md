@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 代码审查修复（2026-03-06）
+
+**P0 关键问题修复**：
+- `utils/db.py`：将静默异常 `except Exception: pass` 改为 `logger.warning()`，记录异常信息
+- `services/chat/session_service.py`：消除 N+1 查询，使用子查询一次性获取所有线程的最后消息
+
+**P1 重要问题修复**：
+- `main.py`：使用 `asyncio.to_thread` 包装同步专家初始化，避免阻塞事件循环
+- `main.py`：删除 `/api/v1` 前缀，统一 API 路由风格
+- `config.py`：数据库连接池参数可配置化（`DB_POOL_MIN_SIZE`, `DB_POOL_MAX_SIZE`, `DB_POOL_TIMEOUT` 等）
+- 工具链简化：删除 Husky 和 lint-staged，统一使用 pre-commit
+
+**P2 性能优化**：
+- Ruff：添加 SIM 规则（代码简化建议）
+- 前端：清理 `prismjs` 冗余依赖，减少 ~100KB 包体积
+- Pre-commit：修复 ESLint hook 配置，支持 PowerShell 环境
+
+**文档完善**：
+- `CONTRIBUTING.md`：添加 pre-commit hooks 安装说明
+
 ### HITL 状态持久化（2026-03-06）
 
 **方案1实施：添加 `waiting_for_approval` 状态**
