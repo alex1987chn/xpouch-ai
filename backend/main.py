@@ -47,6 +47,24 @@ from utils.logger import logger
 # ============================================================================
 
 
+def _init_experts_sync():
+    """同步初始化系统专家数据（在后台线程中执行）"""
+    from expert_config import EXPERT_DEFAULTS
+
+    with Session(engine) as session:
+        existing_experts = session.exec(select(SystemExpert)).all()
+
+        if not existing_experts:
+            logger.info("[Lifespan] No experts found, initializing default experts...")
+            for expert_config in EXPERT_DEFAULTS:
+                expert = SystemExpert(**expert_config)
+                session.add(expert)
+            session.commit()
+            logger.info(f"[Lifespan] Initialized {len(EXPERT_DEFAULTS)} experts")
+        else:
+            logger.info(f"[Lifespan] Found {len(existing_experts)} experts in database")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 初始化配置
@@ -73,21 +91,8 @@ async def lifespan(app: FastAPI):
         logger.info("              - Linux/macOS: cd backend/migrations && ./run_all_migrations.sh")
         logger.info("              - Windows: cd backend/migrations && .\\run_all_migrations.ps1")
 
-    # 初始化系统专家数据
-    from expert_config import EXPERT_DEFAULTS
-
-    with Session(engine) as session:
-        existing_experts = session.exec(select(SystemExpert)).all()
-
-        if not existing_experts:
-            logger.info("[Lifespan] No experts found, initializing default experts...")
-            for expert_config in EXPERT_DEFAULTS:
-                expert = SystemExpert(**expert_config)
-                session.add(expert)
-            session.commit()
-            logger.info(f"[Lifespan] Initialized {len(EXPERT_DEFAULTS)} experts")
-        else:
-            logger.info(f"[Lifespan] Found {len(existing_experts)} experts in database")
+    # 初始化系统专家数据（使用 asyncio.to_thread 避免阻塞事件循环）
+    await asyncio.to_thread(_init_experts_sync)
 
     # 清空专家缓存，确保使用最新的兜底机制重新加载
     from agents.services.expert_manager import force_refresh_all
@@ -257,7 +262,7 @@ class ChatInvokeRequest(BaseModel):
     thread_id: str | None = None  # LangSmith 线程 ID
 
 
-@app.post("/api/v1/chat/invoke")
+@app.post("/api/chat/invoke")
 async def chat_invoke_endpoint(
     request: ChatInvokeRequest,
     service: InvokeService = Depends(get_invoke_service),
