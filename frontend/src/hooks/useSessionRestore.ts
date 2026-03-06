@@ -71,6 +71,7 @@ export function useSessionRestore(
   const resetAll = useTaskStore((state) => state.resetAll)
   const restoreFromSession = useTaskStore((state) => state.restoreFromSession)
   const setIsWaitingForApproval = useTaskStore((state) => state.setIsWaitingForApproval)
+  const setPendingPlan = useTaskStore((state) => state.setPendingPlan)
   const setMode = useTaskStore((state) => state.setMode)
   const setIsInitialized = useTaskStore((state) => state.setIsInitialized)
   const addMessage = useChatStore((state) => state.addMessage)
@@ -182,8 +183,24 @@ export function useSessionRestore(
         }
         
         // 检查会话状态是否需要用户干预（如 HITL 等待确认）
+        // 🔥 方案1：从 subTasks 恢复 pendingPlan
         if (task_session.status === 'waiting_for_approval' && hasPendingTask) {
-          setIsWaitingForApproval(true)
+          // 从 subTasks 构建 pendingPlan
+          const pendingPlan = subTasks
+            .filter((t: SubTask) => t.status === 'pending')
+            .map((t: SubTask, index: number) => ({
+              id: t.id,
+              expert_type: t.expert_type,
+              description: t.task_description,
+              sort_order: index,
+              status: 'pending' as const,
+              depends_on: t.depends_on || [],
+            }))
+
+          if (pendingPlan.length > 0) {
+            setPendingPlan(pendingPlan, task_session.plan_version || 1)
+            logger.debug('[useSessionRestore] HITL 恢复: pendingPlan 已设置', pendingPlan.length, '个任务')
+          }
         }
       }
 
@@ -209,7 +226,7 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [conversationId, enabled, restoreFromSession, setIsWaitingForApproval, setMode, setIsInitialized, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
+  }, [conversationId, enabled, restoreFromSession, setIsWaitingForApproval, setPendingPlan, setMode, setIsInitialized, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
 
   /**
    * 公开的手动恢复方法

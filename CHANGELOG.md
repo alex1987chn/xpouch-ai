@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### HITL 状态持久化（2026-03-06）
+
+**方案1实施：添加 `waiting_for_approval` 状态**
+
+- 新增 `TaskStatus.WAITING_FOR_APPROVAL` 枚举值（`backend/models/enums.py`）
+- 数据库迁移：`20260306_120000_add_waiting_for_approval_status.py`
+- 后端逻辑：
+  - `stream_service.py`：HITL 中断时更新 `TaskSession.status = 'waiting_for_approval'`
+  - `recovery_service.py`：用户批准后更新 `status = 'running'`
+- 前端恢复：
+  - `useSessionRestore.ts`：刷新页面后恢复 HITL 弹窗状态和 `pendingPlan`
+
+**状态流转**：
+```
+pending → waiting_for_approval → running → completed
+                                ↘ cancelled
+```
+
+**问题解决**：刷新页面后 HITL 弹窗状态丢失 → 现在正确恢复
+
 ### 前端架构优化（2026-03-06）
 
 **会话加载逻辑重构**：

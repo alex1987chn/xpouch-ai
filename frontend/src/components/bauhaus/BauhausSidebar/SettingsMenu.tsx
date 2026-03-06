@@ -4,10 +4,21 @@
  * =============================
  */
 
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { User, Cog, ArrowRight, Star } from 'lucide-react'
+import { User, Cog, ArrowRight, Star, Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SettingsMenuProps } from './types'
+
+/**
+ * 格式化 UID 显示：前4位 + ... + 后4位
+ * 例如：a1b2...c3d4
+ */
+function formatUID(uid: string | undefined): string {
+  if (!uid) return ''
+  if (uid.length <= 10) return uid
+  return `${uid.slice(0, 4)}...${uid.slice(-4)}`
+}
 
 export function SettingsMenu({
   isOpen,
@@ -26,6 +37,19 @@ export function SettingsMenu({
 
   const username = user?.username || 'User'
   const avatar = user?.avatar
+  const userId = user?.id
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyUID = async () => {
+    if (!userId) return
+    try {
+      await navigator.clipboard.writeText(userId)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy UID:', err)
+    }
+  }
 
   return createPortal(
     <div
@@ -54,9 +78,42 @@ export function SettingsMenu({
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-sm truncate">{username}</div>
-              <div className="text-[10px] font-mono text-content-secondary uppercase">
-                {isAuthenticated ? (user?.plan || 'Free') : 'Guest'}
+              {/* 用户名 - 单行截断 */}
+              <div className="font-bold text-sm truncate" title={username}>
+                {username}
+              </div>
+              
+              {/* 套餐 + UID 行 */}
+              <div className="flex items-center gap-2">
+                {/* 套餐标签 */}
+                <span className="text-[10px] font-mono text-content-secondary uppercase shrink-0">
+                  {isAuthenticated ? (user?.plan || 'Free') : 'Guest'}
+                </span>
+                
+                {/* UID 可复制标签 */}
+                {isAuthenticated && userId && (
+                  <>
+                    <span className="text-[10px] text-content-secondary/40">|</span>
+                    <button
+                      onClick={handleCopyUID}
+                      className={cn(
+                        'group flex items-center gap-1 text-[10px] font-mono transition-all',
+                        copied
+                          ? 'text-status-success'
+                          : 'text-content-secondary/60 hover:text-content-primary'
+                      )}
+                      title={copied ? '已复制' : '点击复制 UID'}
+                    >
+                      <span className="uppercase">UID:</span>
+                      <span className="tracking-tight">{formatUID(userId)}</span>
+                      {copied ? (
+                        <Check className="w-3 h-3" />
+                      ) : (
+                        <Copy className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      )}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
