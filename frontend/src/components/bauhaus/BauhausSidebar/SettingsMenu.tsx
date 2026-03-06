@@ -33,12 +33,14 @@ export function SettingsMenu({
   onClose,
   t,
 }: SettingsMenuProps) {
+  // Hooks 必须在条件返回之前调用
+  const [copied, setCopied] = useState(false)
+
   if (!isOpen) return null
 
   const username = user?.username || 'User'
   const avatar = user?.avatar
   const userId = user?.id
-  const [copied, setCopied] = useState(false)
 
   const handleCopyUID = async () => {
     if (!userId) return
