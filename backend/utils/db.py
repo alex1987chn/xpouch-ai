@@ -43,7 +43,8 @@ async def _check_connection(conn):
             return True
         finally:
             conn.autocommit = orig_autocommit
-    except Exception:
+    except Exception as e:
+        logger.warning(f"[DB] Connection health check failed: {e}")
         return False
 
 
@@ -52,8 +53,8 @@ async def _reset_connection(conn):
     try:
         if conn.info.transaction_status != 0:
             await conn.rollback()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"[DB] Connection reset failed: {e}")
 
 
 # 全局连接池（单例模式）
@@ -86,8 +87,8 @@ async def reset_connection_pool():
     if _pool is not None:
         try:
             await _pool.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[DB] Failed to close connection pool: {e}")
         _pool = None
         logger.info("[DB] Connection pool reset")
 
@@ -107,8 +108,8 @@ async def get_db_connection():
         try:
             if conn.info.transaction_status != 0:
                 await conn.rollback()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[DB] Failed to reset connection state: {e}")
         yield conn
 
 
