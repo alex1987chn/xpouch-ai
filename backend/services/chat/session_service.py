@@ -77,39 +77,49 @@ class ChatSessionService:
         # 2. 获取所有线程ID
         thread_ids = [t.id for t in threads]
 
-        # 3. 只获取消息数量和最后一条消息的预览（使用纯 SQLAlchemy 避免编码问题）
+        # 3. 使用子查询一次性获取消息数量和最后一条消息（避免 N+1 查询）
         from sqlalchemy import func
 
-        # 查询每个线程的消息数量和最后一条消息ID
-        stats_stmt = (
+        # 3.1 查询每个线程的消息数量
+        count_stmt = (
             select(
                 Message.thread_id,
                 func.count(Message.id).label("message_count"),
-                func.max(Message.timestamp).label("last_timestamp"),
             )
             .where(Message.thread_id.in_(thread_ids))
             .group_by(Message.thread_id)
         )
+        count_rows = self.db.exec(count_stmt).all()
 
-        stats_rows = self.db.exec(stats_stmt).all()
-        stats_by_thread: dict[str, dict] = {}
-
-        for row in stats_rows:
-            # 查询该线程的最后一条消息内容
-            last_msg_stmt = (
-                select(Message.content)
-                .where(Message.thread_id == row.thread_id)
-                .order_by(Message.timestamp.desc())
-                .limit(1)
+        # 3.2 使用子查询获取每个线程的最大时间戳，再关联获取消息内容
+        subquery = (
+            select(
+                Message.thread_id,
+                func.max(Message.timestamp).label("max_timestamp"),
             )
-            last_msg = self.db.exec(last_msg_stmt).first()
-            # 截取前100字符作为预览
-            preview = last_msg[:100] if last_msg else None
+            .where(Message.thread_id.in_(thread_ids))
+            .group_by(Message.thread_id)
+            .subquery()
+        )
 
+        last_msg_stmt = select(Message.thread_id, Message.content).join(
+            subquery,
+            (Message.thread_id == subquery.c.thread_id)
+            & (Message.timestamp == subquery.c.max_timestamp),
+        )
+        last_msg_rows = self.db.exec(last_msg_stmt).all()
+
+        # 3.3 组装统计信息
+        stats_by_thread: dict[str, dict] = {}
+        for row in count_rows:
             stats_by_thread[row.thread_id] = {
                 "message_count": row.message_count,
-                "last_preview": preview,
+                "last_preview": None,
             }
+
+        for row in last_msg_rows:
+            if row.thread_id in stats_by_thread and row.content:
+                stats_by_thread[row.thread_id]["last_preview"] = row.content[:100]
 
         # 4. 组装返回结果（轻量级）
         items = []
