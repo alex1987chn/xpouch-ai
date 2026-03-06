@@ -63,16 +63,18 @@ _pool = None
 
 def get_connection_pool() -> AsyncConnectionPool:
     """获取或创建异步连接池"""
+    from config import settings
+
     global _pool
     if _pool is None:
         _pool = AsyncConnectionPool(
             conninfo=PSYCOPG_DATABASE_URL,
             open=False,
-            min_size=5,
-            max_size=20,
-            timeout=30,
-            max_idle=1800,  # 30分钟，支持 HITL 长时间等待
-            max_lifetime=7200,  # 2小时
+            min_size=settings.db_pool_min_size,
+            max_size=settings.db_pool_max_size,
+            timeout=settings.db_pool_timeout,
+            max_idle=settings.db_pool_max_idle,
+            max_lifetime=settings.db_pool_max_lifetime,
             configure=_configure_connection,
             check=_check_connection,
             reset=_reset_connection,

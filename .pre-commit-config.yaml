@@ -15,15 +15,15 @@ repos:
       - id: ruff-format
         files: ^backend/.*\.py$
 
-  # ESLint - 前端代码检查
+  # ESLint - 前端代码检查（增量模式）
   - repo: local
     hooks:
       - id: eslint
         name: ESLint (Frontend)
-        entry: pnpm --prefix frontend exec eslint .
+        entry: pnpm --prefix frontend exec eslint
         language: system
         files: ^frontend/.*\.(js|jsx|ts|tsx)$
-        pass_filenames: false  # 不传递文件名，让 ESLint 检查整个目录
+        pass_filenames: true  # 传递文件名，实现增量检查
 
   # 通用检查
   - repo: https://github.com/pre-commit/pre-commit-hooks

@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     # 数据库
     database_url: str = Field(default="sqlite:///data/database.db", alias="DATABASE_URL")
 
+    # 数据库连接池配置（用于 LangGraph Checkpointer）
+    db_pool_min_size: int = Field(default=5, alias="DB_POOL_MIN_SIZE")
+    db_pool_max_size: int = Field(default=20, alias="DB_POOL_MAX_SIZE")
+    db_pool_timeout: float = Field(default=30.0, alias="DB_POOL_TIMEOUT")
+    db_pool_max_idle: float = Field(default=1800.0, alias="DB_POOL_MAX_IDLE")  # 30 分钟
+    db_pool_max_lifetime: float = Field(default=7200.0, alias="DB_POOL_MAX_LIFETIME")  # 2 小时
+
     # LLM API Keys（自动脱敏）
     deepseek_api_key: SecretStr | None = Field(default=None, alias="DEEPSEEK_API_KEY")
     openai_api_key: SecretStr | None = Field(default=None, alias="OPENAI_API_KEY")
