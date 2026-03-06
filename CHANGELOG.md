@@ -21,7 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **P2 性能优化**：
 - Ruff：添加 SIM 规则（代码简化建议）
+- Ruff：简化 6 处嵌套 if/with 语句（SIM102/SIM117）
 - 前端：清理 `prismjs` 冗余依赖，减少 ~100KB 包体积
+- 前端：清理 3 处 `console.error`，统一使用 logger
 - Pre-commit：修复 ESLint hook 配置，支持 PowerShell 环境
 
 **文档完善**：
