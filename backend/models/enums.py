@@ -41,6 +41,7 @@ class TaskStatus(StrEnum):
     """子任务状态枚举"""
 
     PENDING = "pending"
+    WAITING_FOR_APPROVAL = "waiting_for_approval"  # HITL: 等待用户审核计划
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"

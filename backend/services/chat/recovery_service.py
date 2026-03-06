@@ -174,6 +174,9 @@ class RecoveryService:
 
         logger.info("[HITL RESUME] 用户批准，开始流式恢复")
 
+        # 🔥 方案1：更新 TaskSession 状态为 running（用户已批准）
+        self._update_task_session_status(thread_id, "running")
+
         # 关键一致性保障：计划更新前执行乐观锁校验与版本递增
         self._bump_plan_version_with_cas(thread_id, plan_version)
 
@@ -437,6 +440,27 @@ class RecoveryService:
         except Exception as e:
             # 如果表不存在或其他错误，记录但不阻断流程
             logger.warning(f"[HITL RESUME] 清理 checkpoint 失败: {e}")
+
+    def _update_task_session_status(self, thread_id: str, status: str) -> None:
+        """
+        更新 TaskSession 状态
+
+        Args:
+            thread_id: 线程ID
+            status: 新状态（pending, waiting_for_approval, running, completed, failed, cancelled）
+        """
+        from models.enums import TaskStatus
+
+        task_session = self.db.exec(
+            select(TaskSession).where(TaskSession.thread_id == thread_id)
+        ).first()
+
+        if task_session:
+            task_session.status = TaskStatus(status)
+            task_session.updated_at = datetime.now()
+            self.db.add(task_session)
+            self.db.commit()
+            logger.info(f"[HITL RESUME] TaskSession {task_session.session_id} 状态更新为 {status}")
 
     async def _cancel_task_session(self, thread_id: str):
         """将 TaskSession 标记为 cancelled"""

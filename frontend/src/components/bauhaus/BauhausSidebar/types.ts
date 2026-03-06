@@ -54,6 +54,7 @@ export interface UserSectionProps {
   isCollapsed: boolean
   isAuthenticated: boolean
   user: {
+    id?: string
     username?: string
     avatar?: string
     plan?: string
@@ -71,6 +72,7 @@ export interface SettingsMenuProps {
   isOpen: boolean
   isAuthenticated: boolean
   user: {
+    id?: string
     username?: string
     avatar?: string
     plan?: string

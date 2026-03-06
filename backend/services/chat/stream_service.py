@@ -393,6 +393,9 @@ class StreamService:
                 if task_list and current_task_index == 0 and len(collected_task_list) == 0:
                     logger.info("[StreamService] HITL 中断检测：任务规划完成，等待用户审核")
 
+                    # 🔥 方案1：更新 TaskSession 状态为 waiting_for_approval
+                    self._update_task_session_status(thread_id, "waiting_for_approval")
+
                     # 构建当前计划数据
                     current_plan = [
                         {
@@ -1038,6 +1041,31 @@ class StreamService:
             .order_by(TaskSession.created_at.desc())
         ).first()
         return int(task_session.plan_version) if task_session else 1
+
+    def _update_task_session_status(self, thread_id: str, status: str) -> None:
+        """
+        更新 TaskSession 状态
+
+        Args:
+            thread_id: 线程ID
+            status: 新状态（pending, waiting_for_approval, running, completed, failed, cancelled）
+        """
+        from models.enums import TaskStatus
+
+        task_session = self.db.exec(
+            select(TaskSession)
+            .where(TaskSession.thread_id == thread_id)
+            .order_by(TaskSession.created_at.desc())
+        ).first()
+
+        if task_session:
+            task_session.status = TaskStatus(status)
+            task_session.updated_at = datetime.now()
+            self.db.add(task_session)
+            self.db.commit()
+            logger.info(
+                f"[StreamService] TaskSession {task_session.session_id} 状态更新为 {status}"
+            )
 
     def _build_human_interrupt_event(
         self, thread_id: str, current_plan: list[dict], plan_version: int
