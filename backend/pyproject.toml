@@ -62,6 +62,7 @@ select = [
     "UP",  # pyupgrade (Python 升级检查)
     "B",   # flake8-bugbear (常见 bug)
     "C4",  # flake8-comprehensions (推导式优化)
+    "SIM", # flake8-simplify (代码简化建议)
 ]
 ignore = [
     "E501",  # line too long (由 formatter 处理)

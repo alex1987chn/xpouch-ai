@@ -58,7 +58,7 @@ export default defineConfig({
           // 图表可视化 (Mermaid) - 延迟加载
           'mermaid': ['mermaid'],
           // 代码高亮 - 延迟加载
-          'prism': ['prism-react-renderer', 'prismjs'],
+          'prism': ['prism-react-renderer'],
           // 监控
           'sentry': ['@sentry/react'],
           // ⚠️ PDF 库已改为动态导入，不再打包到主 bundle
