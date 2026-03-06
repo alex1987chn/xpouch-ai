@@ -15,6 +15,7 @@ interface ExpertListTableProps {
   selectedExpertKey: string | null
   searchQuery: string
   isLoading: boolean
+  isAdmin: boolean
   onSelectExpert: (expertKey: string) => void
   onDeleteExpert: (expert: SystemExpert, e: React.MouseEvent) => void
   onSearchChange: (query: string) => void
@@ -27,6 +28,7 @@ export default function ExpertListTable({
   selectedExpertKey,
   searchQuery,
   isLoading,
+  isAdmin,
   onSelectExpert,
   onDeleteExpert,
   onSearchChange,
@@ -83,14 +85,17 @@ export default function ExpertListTable({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={onCreateClick}
-            className="flex items-center gap-1 px-2 py-1 text-[10px] uppercase border-2 border-border-default bg-surface-page hover:bg-accent-hover hover:text-content-primary hover:border-border-focus transition-colors"
-            title={t('newExpert')}
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{t('newExpert')}</span>
-          </button>
+          {/* 创建按钮 - 仅管理员可见 */}
+          {isAdmin && (
+            <button
+              onClick={onCreateClick}
+              className="flex items-center gap-1 px-2 py-1 text-[10px] uppercase border-2 border-border-default bg-surface-page hover:bg-accent-hover hover:text-content-primary hover:border-border-focus transition-colors"
+              title={t('newExpert')}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t('newExpert')}</span>
+            </button>
+          )}
           <button
             onClick={onRefresh}
             disabled={isLoading}
@@ -132,8 +137,8 @@ export default function ExpertListTable({
               )}
             >
 
-              {/* 删除按钮（仅对非系统核心组件显示） */}
-              {!expert.is_system && (
+              {/* 删除按钮（仅对非系统核心组件且管理员显示） */}
+              {!expert.is_system && isAdmin && (
                 <div
                   onClick={(e) => onDeleteExpert(expert, e)}
                   className={cn(

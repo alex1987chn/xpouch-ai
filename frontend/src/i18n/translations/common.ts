@@ -76,6 +76,7 @@ export const zh: Record<string, string> = {
   // 权限与通用提示
   permissionDenied: '权限不足',
   adminOnly: '该功能仅限管理员使用',
+  readOnly: '只读',
   loginSuccess: '登录成功',
   welcomeBack: '欢迎回来',
   verifyIdentity: '验证身份',
@@ -203,6 +204,7 @@ export const en: Record<string, string> = {
   // 权限与通用提示
   permissionDenied: 'Permission Denied',
   adminOnly: 'This feature is for administrators only',
+  readOnly: 'Read Only',
   loginSuccess: 'Login Successful',
   welcomeBack: 'Welcome Back',
   verifyIdentity: 'Verify Identity',
@@ -330,6 +332,7 @@ export const ja: Record<string, string> = {
   // 权限与通用提示
   permissionDenied: '権限がありません',
   adminOnly: 'この機能は管理者のみ使用可能です',
+  readOnly: '読み取り専用',
   loginSuccess: 'ログイン成功',
   welcomeBack: 'おかえりなさい',
   verifyIdentity: '身分を証明',
