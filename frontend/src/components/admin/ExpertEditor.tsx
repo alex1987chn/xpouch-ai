@@ -18,6 +18,7 @@ import { useState, useEffect } from 'react'
 import { Save, Play, Sparkles, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { logger } from '@/utils/logger'
 import ModelSelector from '@/components/settings/ModelSelector'
 import type {
   SystemExpert,
@@ -78,7 +79,7 @@ export default function ExpertEditor({
         setTools(response.tools)
       })
       .catch((err) => {
-        console.error('Failed to load tools:', err)
+        logger.error('Failed to load tools', err)
       })
       .finally(() => {
         setIsLoadingTools(false)
