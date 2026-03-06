@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 前端架构优化（2026-03-06）
+
+**会话加载逻辑重构**：
+- 统一使用 `useSessionRestore` 处理所有会话恢复场景
+- 删除冗余的 `loadConversation` 函数（useConversation.ts 和 useChat.ts）
+- 清理 UnifiedChatPage.tsx 中的相关引用和逻辑
+- 修复 `isNew` 状态传递，新建会话时正确跳过历史加载
+- 添加 `refetchOnMount: 'always'` 确保会话列表及时刷新
+- 切换会话时清空 persisted 消息，避免旧数据闪烁
+
+**时间显示和时区修复**：
+- 用户消息上方从显示 ID 改为显示时间 `MM-DD HH:mm`
+- 修复后端 UTC 时间解析：前端按 UTC 解析（`dateString + 'Z'`）
+- 跨年自动显示年份格式：`YYYY-MM-DD HH:mm`
+- 影响范围：侧边栏、会话记录页、对话消息
+
+**消息排序双重防御**：
+- 前端防御：`useSessionRestore` 中按 `timestamp` 升序排序
+- 后端防御：`session_service.py` 中按 `timestamp` 排序
+
 ### 基础设施升级（2026-03-05）
 
 **PostgreSQL 15 → 18 升级**：
