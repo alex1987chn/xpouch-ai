@@ -366,15 +366,16 @@ class StreamService:
                         )
 
                         # 检测 router_decision
-                        if event_type == "on_chain_end" and name == "router":
-                            if (
-                                output
-                                and isinstance(output, dict)
-                                and output.get("router_decision")
-                            ):
-                                router_decision = output["router_decision"]
-                                # 更新线程模式
-                                await self._update_thread_mode(thread_id, router_decision)
+                        if (
+                            event_type == "on_chain_end"
+                            and name == "router"
+                            and output
+                            and isinstance(output, dict)
+                            and output.get("router_decision")
+                        ):
+                            router_decision = output["router_decision"]
+                            # 更新线程模式
+                            await self._update_thread_mode(thread_id, router_decision)
 
                 except Exception as e:
                     logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)

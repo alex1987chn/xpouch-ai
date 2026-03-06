@@ -80,12 +80,11 @@ def classify_tool_error(err: Exception) -> tuple[ToolErrorCategory, str]:
 
     # MCP 特定的错误（通过错误消息判断）
     err_str = str(err).lower()
-    if "mcp" in err_str or "sse" in err_str:
-        if "timeout" in err_str or "connect" in err_str:
-            return (
-                ToolErrorCategory.MCP_UNAVAILABLE,
-                "MCP 工具连接失败（外部地图服务暂时不可用）。已自动降级，请稍后重试或使用其他工具。",
-            )
+    if ("mcp" in err_str or "sse" in err_str) and ("timeout" in err_str or "connect" in err_str):
+        return (
+            ToolErrorCategory.MCP_UNAVAILABLE,
+            "MCP 工具连接失败（外部地图服务暂时不可用）。已自动降级，请稍后重试或使用其他工具。",
+        )
 
     # 默认可重试的网络错误
     if any(

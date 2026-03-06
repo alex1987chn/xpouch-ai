@@ -73,21 +73,23 @@ def _security_check(config: dict, config_path: Path) -> None:
             current_path = f"{path}.{key}" if path else key
 
             # 检查 key 名是否包含敏感词
-            if any(forbidden in key.lower() for forbidden in forbidden_keys):
-                if key != "env_key":  # env_key 是允许的
-                    raise ValueError(
-                        f"[安全错误] providers.yaml 包含敏感字段: {current_path}\n"
-                        f"API Key 等敏感信息必须在 .env 文件中设置，"
-                        f"不要在 providers.yaml 中硬编码！"
-                    )
+            if any(forbidden in key.lower() for forbidden in forbidden_keys) and key != "env_key":
+                raise ValueError(
+                    f"[安全错误] providers.yaml 包含敏感字段: {current_path}\n"
+                    f"API Key 等敏感信息必须在 .env 文件中设置，"
+                    f"不要在 providers.yaml 中硬编码！"
+                )
 
             # 检查值是否看起来像 API Key
-            if isinstance(value, str):
-                if value.startswith(("sk-", "ak-", "pk-")) and len(value) > 20:
-                    raise ValueError(
-                        f"[安全错误] providers.yaml 可能包含 API Key: {current_path}\n"
-                        f"请将此值移至 .env 文件！"
-                    )
+            if (
+                isinstance(value, str)
+                and value.startswith(("sk-", "ak-", "pk-"))
+                and len(value) > 20
+            ):
+                raise ValueError(
+                    f"[安全错误] providers.yaml 可能包含 API Key: {current_path}\n"
+                    f"请将此值移至 .env 文件！"
+                )
 
             # 递归检查
             if isinstance(value, dict):
@@ -332,10 +334,13 @@ def get_model_config(model_id: str) -> dict[str, Any] | None:
         provider_name = model_config.get("provider")
         if provider_name:
             provider_config = get_provider_config(provider_name)
-            if provider_config:
-                # 如果模型没有 temperature，使用 provider 默认值
-                if "temperature" not in model_config and "temperature" in provider_config:
-                    model_config = {**model_config, "temperature": provider_config["temperature"]}
+            # 如果模型没有 temperature，使用 provider 默认值
+            if (
+                provider_config
+                and "temperature" not in model_config
+                and "temperature" in provider_config
+            ):
+                model_config = {**model_config, "temperature": provider_config["temperature"]}
 
     return model_config
 
