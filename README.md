@@ -165,6 +165,10 @@ POSTGRES_DB=xpouch_ai
 # 可选配置
 # ============================================================================
 
+# 初始管理员配置（用户注册后自动提升）
+# INITIAL_ADMIN_EMAIL=admin@example.com
+# INITIAL_ADMIN_PHONE=13800138000  # 纯数字，不带+86
+
 # 联网搜索（Tavily）
 TAVILY_API_KEY=tvly-your-tavily-key
 
@@ -177,6 +181,55 @@ LANGCHAIN_API_KEY=lsv2_pt_your-key
 ```
 
 **支持的 LLM 提供商**：DeepSeek、OpenAI、Anthropic、Google Gemini、MiniMax、Moonshot
+
+</details>
+
+<details>
+<summary>🔐 管理员权限配置</summary>
+
+XPouch AI 支持两种方式设置管理员：
+
+### 方式一：环境变量自动提升（推荐）
+
+在 `backend/.env` 中配置：
+```env
+# 邮箱（优先级更高）
+INITIAL_ADMIN_EMAIL=admin@example.com
+
+# 或手机号（纯数字，不带+86）
+INITIAL_ADMIN_PHONE=13800138000
+```
+
+**流程**：
+1. 首次部署时先不配置管理员
+2. 正常登录注册账号
+3. 在 `.env` 中添加你的邮箱或手机号
+4. 重启应用，账号自动提升为管理员
+
+### 方式二：命令行脚本
+
+```bash
+# 进入 backend 目录
+cd backend
+
+# 通过邮箱提升
+uv run python scripts/promote_admin.py admin@example.com
+
+# 通过手机号提升（纯数字）
+uv run python scripts/promote_admin.py 13800138000 --phone
+
+# 查看所有管理员
+uv run python scripts/promote_admin.py --list
+
+# 降级管理员
+uv run python scripts/promote_admin.py admin@example.com --demote
+```
+
+**权限说明**：
+- `admin`: 完全权限（管理专家、MCP、用户等）
+- `edit_admin`: 可编辑专家和 MCP，无用户管理权限
+- `view_admin`: 只读访问管理后台
+- `user`: 普通用户
 
 </details>
 
