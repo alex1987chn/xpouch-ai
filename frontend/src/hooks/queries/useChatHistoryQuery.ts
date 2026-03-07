@@ -152,8 +152,8 @@ export function useBatchDeleteConversationsMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (conversationIds: string[]) => {
-      const result = await deleteConversationsBatch(conversationIds)
+    mutationFn: async (threadIds: string[]) => {
+      const result = await deleteConversationsBatch(threadIds)
       return result
     },
     onSuccess: (result) => {

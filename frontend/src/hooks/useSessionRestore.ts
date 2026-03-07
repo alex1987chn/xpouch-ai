@@ -69,7 +69,7 @@ export function useSessionRestore(
   
   // 从 Store 获取状态（使用 Selectors 模式）
   const resetAll = useTaskStore((state) => state.resetAll)
-  const restoreFromSession = useTaskStore((state) => state.restoreFromSession)
+  const restoreFromExecutionPlan = useTaskStore((state) => state.restoreFromExecutionPlan)
   const setPendingPlan = useTaskStore((state) => state.setPendingPlan)
   const setMode = useTaskStore((state) => state.setMode)
   const setIsInitialized = useTaskStore((state) => state.setIsInitialized)
@@ -155,12 +155,12 @@ export function useSessionRestore(
         // 2. API 有 artifacts 但本地没有 -> 从 API 恢复（数据更完整）
         // 3. 其他情况 -> 保留本地数据
         if (taskStore.tasks.size === 0) {
-          restoreFromSession(execution_plan, subTasks)
+          restoreFromExecutionPlan(execution_plan, subTasks)
           // 🔥 恢复成功后设置 UI 状态
           setMode('complex')
           setIsInitialized(true)
         } else if (apiArtifactCount > 0 && localArtifactCount === 0) {
-          restoreFromSession(execution_plan, subTasks)
+          restoreFromExecutionPlan(execution_plan, subTasks)
           // 🔥 恢复成功后设置 UI 状态
           setMode('complex')
           setIsInitialized(true)
@@ -230,7 +230,7 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [threadId, enabled, restoreFromSession, setPendingPlan, setMode, setIsInitialized, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
+  }, [threadId, enabled, restoreFromExecutionPlan, setPendingPlan, setMode, setIsInitialized, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
 
   /**
    * 公开的手动恢复方法
@@ -305,7 +305,7 @@ export function hasRestorableSession(_threadId: string): boolean {
     // 检查存储的会话是否匹配当前对话（使用 tasks 检查替代 isInitialized）
     const hasTasks = parsed.tasks && 
       (Array.isArray(parsed.tasks) ? parsed.tasks.length > 0 : parsed.tasks.size > 0)
-    return parsed.session?.sessionId && hasTasks
+    return parsed.executionPlan?.executionPlanId && hasTasks
   } catch {
     return false
   }

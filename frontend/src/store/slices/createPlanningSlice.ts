@@ -45,7 +45,7 @@ export const createPlanningSlice = (
 
   startPlan: (data: PlanStartedData) => {
     // v3.2.0: 仅更新本 Slice 的状态，不涉及其他 Slice
-    // session/tasks/isInitialized 等状态由组件层调用 resetAll() 统一重置
+    // executionPlan/tasks/isInitialized 等状态由组件层调用 resetAll() 统一重置
     set((state) => {
       state.planThinkingContent = data.content
     })
