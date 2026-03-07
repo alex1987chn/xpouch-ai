@@ -27,6 +27,11 @@ from langchain_core.messages import BaseMessage
 from sqlmodel import Session, select
 
 from config import settings
+from crud.agent_run import (
+    mark_run_failed_by_id,
+    touch_run_heartbeat_by_id,
+    update_run_status_by_id,
+)
 from models import AgentRun, CustomAgent, ExecutionPlan, RunStatus, Thread
 from providers_config import get_model_config, get_provider_api_key, get_provider_config
 from services.mcp_tools_service import mcp_tools_service
@@ -138,6 +143,7 @@ class StreamService:
                         return None
 
                 while True:
+                    self._raise_if_run_cancelled(agent_run.id)
                     try:
                         chunk = await get_next_chunk()
                         if chunk is None:
@@ -150,6 +156,7 @@ class StreamService:
 
                     except TimeoutError:
                         # 心跳保活
+                        self._touch_agent_run(agent_run.id, current_node="custom_agent")
                         yield self._build_heartbeat_event()
                         last_heartbeat_time = datetime.now()
                         continue
@@ -158,12 +165,21 @@ class StreamService:
                     current_time = datetime.now()
                     time_since_last = (current_time - last_heartbeat_time).total_seconds()
                     if time_since_last >= settings.force_heartbeat_interval:
+                        self._touch_agent_run(agent_run.id, current_node="custom_agent")
                         yield self._build_heartbeat_event()
                         last_heartbeat_time = current_time
 
+            except AppError as e:
+                if e.code == ErrorCode.RUN_CANCELLED:
+                    yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
+                    return
+                self._mark_agent_run_failed(agent_run.id, str(e))
+                yield self._build_error_event(ErrorCode.STREAM_ERROR, str(e))
+                return
             except Exception as e:
                 self._mark_agent_run_failed(agent_run.id, str(e))
                 yield self._build_error_event(ErrorCode.STREAM_ERROR, str(e))
+                return
 
             # 解析 thinking 并保存消息
             from utils.thinking_parser import parse_thinking
@@ -190,6 +206,7 @@ class StreamService:
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
                 "X-Thread-ID": thread_id,
+                "X-Run-ID": agent_run.id,
             },
         )
 
@@ -221,9 +238,15 @@ class StreamService:
 
             # 流式获取完整响应
             async for chunk in llm.astream(messages_with_system):
+                self._raise_if_run_cancelled(agent_run.id)
                 if chunk.content:
                     full_response += chunk.content
 
+        except AppError as e:
+            if e.code == ErrorCode.RUN_CANCELLED:
+                raise
+            self._mark_agent_run_failed(agent_run.id, str(e))
+            raise AppError(f"自定义智能体调用失败: {str(e)}") from e
         except Exception as e:
             self._mark_agent_run_failed(agent_run.id, str(e))
             raise AppError(f"自定义智能体调用失败: {str(e)}") from e
@@ -358,6 +381,9 @@ class StreamService:
                         if not isinstance(token, dict):
                             continue
 
+                        self._raise_if_run_cancelled(agent_run.id)
+                        self._sync_run_progress_from_token(token, agent_run.id)
+
                         event_type = token.get("event", "")
                         name = token.get("name", "")
                         data = token.get("data", {}) or {}
@@ -392,10 +418,20 @@ class StreamService:
                             # 更新线程模式
                             await self._update_thread_mode(thread_id, router_decision)
 
+                except AppError as e:
+                    if e.code == ErrorCode.RUN_CANCELLED:
+                        logger.info("[StreamService] 运行已取消，结束 LangGraph 流")
+                        yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
+                        return
+                    logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
+                    self._mark_agent_run_failed(agent_run.id, str(e))
+                    yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
+                    return
                 except Exception as e:
                     logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
                     self._mark_agent_run_failed(agent_run.id, str(e))
                     yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
+                    return
 
                 # 🔥🔥🔥 HITL 检测：检查是否处于 interrupt 状态
                 # 获取当前状态，检查是否有待执行的任务（被 interrupt 暂停）
@@ -481,6 +517,7 @@ class StreamService:
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
                 "X-Thread-ID": thread_id,
+                "X-Run-ID": agent_run.id,
             },
         )
 
@@ -692,6 +729,7 @@ class StreamService:
         realtime_queue: asyncio.Queue,
         updated_plan: list[dict] | None = None,
         message_id: str | None = None,
+        run_id: str | None = None,
     ) -> AsyncGenerator[str]:
         """
         执行 LangGraph 流式处理（供 RecoveryService 复用）
@@ -705,6 +743,7 @@ class StreamService:
             realtime_queue: 实时推送队列
             updated_plan: 用户修改后的计划（可选）
             message_id: 前端传入的消息ID（用于关联流式输出）
+            run_id: 关联的 AgentRun ID（可选）
 
         Yields:
             SSE 事件字符串
@@ -745,6 +784,8 @@ class StreamService:
                     aggregator_executed = False  # 🔥 标记 aggregator 是否已执行
 
                     while loop_count < max_loops:
+                        if run_id:
+                            self._raise_if_run_cancelled(run_id)
                         loop_count += 1
 
                         # 获取当前状态
@@ -762,6 +803,11 @@ class StreamService:
                             # 🔥 修复：token 可能是字符串，跳过非字典类型
                             if not isinstance(token, dict):
                                 continue
+
+                            if run_id:
+                                self._raise_if_run_cancelled(run_id)
+                            if run_id:
+                                self._sync_run_progress_from_token(token, run_id)
 
                             event_type = token.get("event", "")
                             metadata = token.get("metadata", {})
@@ -824,6 +870,8 @@ class StreamService:
                         # 短暂等待，让状态更新
                         await asyncio.sleep(0.1)
 
+                except AppError:
+                    raise
                 except Exception as e:
                     logger.error(f"[StreamService] Producer 错误: {e}", exc_info=True)
                 finally:
@@ -841,6 +889,9 @@ class StreamService:
                     if item.get("type") == "sse" and item.get("event"):
                         yield item["event"]
                 except TimeoutError:
+                    if run_id:
+                        self._touch_agent_run(run_id)
+                        self._raise_if_run_cancelled(run_id)
                     yield self._build_heartbeat_event()
 
             await producer_task
@@ -1076,6 +1127,36 @@ class StreamService:
         """构建 error 事件"""
         return build_error_event(code=code, message=message)
 
+    def _touch_agent_run(self, run_id: str, *, current_node: str | None = None) -> None:
+        """轻量刷新运行心跳，可选同步当前节点。"""
+        updated = touch_run_heartbeat_by_id(self.db, run_id, current_node=current_node)
+        if updated is not None:
+            self.db.commit()
+
+    def _raise_if_run_cancelled(self, run_id: str) -> None:
+        """在流式执行中协作检查运行是否已被取消。"""
+        agent_run = self.db.get(AgentRun, run_id)
+        if agent_run and agent_run.status == RunStatus.CANCELLED:
+            raise AppError(
+                message="运行已取消",
+                code=ErrorCode.RUN_CANCELLED,
+                status_code=409,
+                details={"run_id": run_id},
+            )
+
+    def _sync_run_progress_from_token(self, token: dict[str, Any], run_id: str) -> None:
+        """从 LangGraph token 中提取当前节点，并刷新运行心跳。"""
+        event_type = token.get("event", "")
+        if event_type != "on_chain_start":
+            return
+
+        metadata = token.get("metadata", {}) or {}
+        node_name = metadata.get("name") or token.get("name")
+        if not node_name:
+            return
+
+        self._touch_agent_run(run_id, current_node=str(node_name))
+
     def _get_latest_execution_plan(self, thread_id: str) -> ExecutionPlan | None:
         """获取线程最新的 ExecutionPlan。"""
         return self.db.exec(
@@ -1092,26 +1173,24 @@ class StreamService:
         current_node: str | None = None,
     ) -> None:
         """更新 AgentRun 状态。"""
-        agent_run = self.db.get(AgentRun, run_id)
-        if not agent_run:
-            return
-        agent_run.status = status
-        agent_run.current_node = current_node
-        agent_run.last_heartbeat_at = datetime.now()
-        agent_run.updated_at = datetime.now()
-        self.db.add(agent_run)
-        self.db.commit()
+        updated = update_run_status_by_id(
+            self.db,
+            run_id,
+            status,
+            current_node=current_node,
+        )
+        if updated is not None:
+            self.db.commit()
 
     def _mark_agent_run_failed(self, run_id: str, error_message: str) -> None:
         """将 AgentRun 标记为失败。"""
-        agent_run = self.db.get(AgentRun, run_id)
-        if not agent_run:
-            return
-        agent_run.status = RunStatus.FAILED
-        agent_run.error_message = error_message
-        agent_run.updated_at = datetime.now()
-        self.db.add(agent_run)
-        self.db.commit()
+        updated = mark_run_failed_by_id(
+            self.db,
+            run_id,
+            error_message=error_message,
+        )
+        if updated is not None:
+            self.db.commit()
 
     def _get_plan_version(self, thread_id: str) -> int:
         """获取当前线程的计划版本号（乐观锁）"""

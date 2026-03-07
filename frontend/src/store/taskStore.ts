@@ -37,7 +37,7 @@ import { enableMapSet } from 'immer'
 import { persist } from './middleware/persist'
 
 // 导入 Slices
-import { createTaskSlice, type TaskSlice } from './slices/createTaskSlice'
+import { createTaskSlice, type Task, type TaskSlice } from './slices/createTaskSlice'
 import { createArtifactSlice, type ArtifactSlice } from './slices/createArtifactSlice'
 import { createUISlice, type UISlice } from './slices/createUISlice'
 import { createPlanningSlice, type PlanningSlice } from './slices/createPlanningSlice'
@@ -97,7 +97,7 @@ export const useTaskStore = create<TaskStore>()(
         // 这些状态应该在页面刷新后通过 API 恢复
         // PlanningSlice
         planThinkingContent: state.planThinkingContent,
-      }),
+      } as unknown as Partial<TaskStore>),
       // 自定义序列化：处理 Map/Set
       serialize: (state: unknown) => {
         try {
@@ -127,8 +127,8 @@ export const useTaskStore = create<TaskStore>()(
             parsed.tasks = new Map(parsed.tasks)
             
             // 重建 tasksCache
-            parsed.tasksCache = Array.from(parsed.tasks.values())
-              .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+            parsed.tasksCache = Array.from(parsed.tasks.values() as Iterable<Task>)
+              .sort((a: Task, b: Task) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
           } else {
             parsed.tasks = new Map()
             parsed.tasksCache = []
@@ -153,6 +153,7 @@ export const useTaskStore = create<TaskStore>()(
             selectedTaskId: null,
             isInitialized: false,
             mode: null,
+            activeRunId: null,
             isWaitingForApproval: false,
             pendingPlan: [],
             pendingPlanVersion: 1,

@@ -274,10 +274,37 @@ class ChatThreadService:
         }
         return base_response
 
+    def _get_latest_run(self, thread_id: str) -> AgentRun | None:
+        """获取线程最近一次运行实例。"""
+        return self.db.exec(
+            select(AgentRun)
+            .where(AgentRun.thread_id == thread_id)
+            .order_by(AgentRun.created_at.desc())
+        ).first()
+
+    @staticmethod
+    def _serialize_run(agent_run: AgentRun | None) -> dict | None:
+        """序列化线程最近一次运行摘要。"""
+        if agent_run is None:
+            return None
+
+        return {
+            "id": agent_run.id,
+            "status": agent_run.status,
+            "current_node": agent_run.current_node,
+            "created_at": agent_run.created_at.isoformat() if agent_run.created_at else None,
+            "updated_at": agent_run.updated_at.isoformat() if agent_run.updated_at else None,
+            "last_heartbeat_at": (
+                agent_run.last_heartbeat_at.isoformat() if agent_run.last_heartbeat_at else None
+            ),
+            "completed_at": agent_run.completed_at.isoformat() if agent_run.completed_at else None,
+        }
+
     def _build_simple_thread_response(self, thread: Thread) -> dict:
         """构建简单模式的线程响应"""
         # 🔥 后端兜底排序：确保消息按时间戳升序排列
         sorted_messages = sorted(thread.messages, key=lambda m: m.timestamp or datetime.min)
+        latest_run = self._get_latest_run(thread.id)
         return {
             "id": thread.id,
             "title": thread.title,
@@ -287,6 +314,7 @@ class ChatThreadService:
             "execution_plan_id": thread.execution_plan_id,
             "created_at": thread.created_at.isoformat() if thread.created_at else None,
             "updated_at": thread.updated_at.isoformat() if thread.updated_at else None,
+            "latest_run": self._serialize_run(latest_run),
             "messages": [
                 {
                     "id": msg.id,

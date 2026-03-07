@@ -174,6 +174,13 @@ class BatchDeleteResponse(BaseModel):
     failed_ids: list[str] = []
 
 
+class CancelRunResponse(BaseModel):
+    """取消运行响应"""
+
+    status: str
+    message: str
+
+
 @router.delete("/threads/{thread_id}")
 async def delete_thread(
     thread_id: str,
@@ -351,6 +358,17 @@ async def resume_chat(
         message_id=request.message_id,
         idempotency_key=request.idempotency_key,
     )
+
+
+@router.post("/runs/{run_id}/cancel", response_model=CancelRunResponse)
+async def cancel_run(
+    run_id: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """显式取消指定运行实例。"""
+    service = RecoveryService(session)
+    return await service.cancel_run(run_id, current_user.id)
 
 
 # ============================================================================

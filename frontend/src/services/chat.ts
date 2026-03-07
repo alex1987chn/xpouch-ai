@@ -37,7 +37,7 @@
 
 import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
 import { getHeaders, buildUrl, handleResponse, handleSSEConnectionError, authenticatedFetch } from './common'
-import { ApiMessage, StreamCallback, Conversation } from '@/types'
+import { ApiMessage, StreamCallback, Conversation, StreamRuntimeMeta } from '@/types'
 import { logger } from '@/utils/logger'
 import { handleServerEvent } from '@/handlers'
 import { createSSEPromiseHelpers, SSE_HEARTBEAT_TIMEOUT, SSE_HEARTBEAT_CHECK_INTERVAL } from '@/utils/sseUtils'
@@ -89,6 +89,8 @@ function runSSEStream({
   return new Promise((resolve, reject) => {
     let fullContent = ''
     let retryCount = 0
+    let activeThreadId = threadId
+    let activeRunId: string | undefined
     const ctrl = new AbortController()
 
     const { safeResolve, safeReject, startHeartbeat, updateActivity, getIsCompleted } = createSSEPromiseHelpers(
@@ -127,8 +129,19 @@ function runSSEStream({
         logger.debug(`[chat.ts] ${logPrefix}SSE 连接已建立，重置重连计数器`)
 
         const responseThreadId = response.headers.get('X-Thread-ID')
-        if (responseThreadId && onChunk) {
-          await onChunk(undefined, responseThreadId)
+        const responseRunId = response.headers.get('X-Run-ID')
+        if (responseThreadId) {
+          activeThreadId = responseThreadId
+        }
+        if (responseRunId) {
+          activeRunId = responseRunId
+        }
+        if (onChunk && (responseThreadId || responseRunId)) {
+          const runtimeMeta: StreamRuntimeMeta = {
+            threadId: activeThreadId,
+            runId: activeRunId,
+          }
+          await onChunk(undefined, activeThreadId, undefined, undefined, undefined, runtimeMeta)
         }
       },
 
@@ -150,6 +163,10 @@ function runSSEStream({
           const eventData = JSON.parse(msg.data)
 
           if (eventType) {
+            const runtimeMeta: StreamRuntimeMeta = {
+              threadId: activeThreadId,
+              runId: activeRunId,
+            }
             const fullEvent: AnyServerEvent = {
               id: msg.id || crypto.randomUUID(),
               timestamp: new Date().toISOString(),
@@ -163,14 +180,14 @@ function runSSEStream({
               if (eventType === 'message.delta') {
                 const content = eventData.content
                 if (content && typeof content === 'string') {
-                  await onChunk(content, threadId)
+                  await onChunk(content, activeThreadId, undefined, undefined, undefined, runtimeMeta)
                   fullContent += content
                 }
               } else if (eventType === 'message.done') {
                 handleServerEvent(fullEvent)
-                await onChunk(undefined, threadId, fullEvent)
+                await onChunk(undefined, activeThreadId, fullEvent, undefined, undefined, runtimeMeta)
               } else {
-                await onChunk(undefined, threadId, fullEvent)
+                await onChunk(undefined, activeThreadId, fullEvent, undefined, undefined, runtimeMeta)
               }
             } else if (!isChatEvent) {
               handleServerEvent(fullEvent)
@@ -202,7 +219,7 @@ function runSSEStream({
           return
         }
 
-        if (status >= 400 && status < 500) {
+        if (status !== undefined && status >= 400 && status < 500) {
           logger.error(`[chat.ts] ${logPrefix}SSE 收到 ${status} 客户端错误，停止重试:`, err)
           safeReject(err instanceof Error ? err : new Error(`客户端错误: ${status}`))
           return
@@ -455,4 +472,12 @@ export async function resumeChat(
     abortSignal,
     resolveOnMessageDone: true,
   })
+}
+
+export async function cancelRun(runId: string): Promise<{ status: string; message: string }> {
+  const response = await authenticatedFetch(buildUrl(`/runs/${runId}/cancel`), {
+    method: 'POST',
+    headers: getHeaders(),
+  })
+  return handleResponse<{ status: string; message: string }>(response, '取消运行失败')
 }

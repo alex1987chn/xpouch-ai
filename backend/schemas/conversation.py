@@ -55,6 +55,20 @@ class ThreadListResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AgentRunSummaryResponse(BaseModel):
+    """线程详情中的最近一次运行摘要。"""
+
+    id: str
+    status: str
+    current_node: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    last_heartbeat_at: datetime | None = None
+    completed_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ThreadDetailResponse(BaseModel):
     """会话详情响应模型（完整数据，包含所有消息）"""
 
@@ -68,6 +82,7 @@ class ThreadDetailResponse(BaseModel):
     updated_at: datetime | None = None
     messages: list[MessageResponse] = []
     execution_plan: dict | None = None  # 复杂模式下的执行计划数据
+    latest_run: AgentRunSummaryResponse | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

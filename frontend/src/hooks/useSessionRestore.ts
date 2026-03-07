@@ -73,6 +73,8 @@ export function useSessionRestore(
   const setPendingPlan = useTaskStore((state) => state.setPendingPlan)
   const setMode = useTaskStore((state) => state.setMode)
   const setIsInitialized = useTaskStore((state) => state.setIsInitialized)
+  const setActiveRunId = useTaskStore((state) => state.setActiveRunId)
+  const clearActiveRunId = useTaskStore((state) => state.clearActiveRunId)
   const addMessage = useChatStore((state) => state.addMessage)
   const setMessages = useChatStore((state) => state.setMessages)
   const setCurrentConversationId = useChatStore((state) => state.setCurrentConversationId)
@@ -125,6 +127,19 @@ export function useSessionRestore(
         setMessages(sortedMessages)
       }
       setCurrentConversationId(threadId)
+
+      const latestRun = conversation.latest_run
+      const latestRunStatus = latestRun?.status
+      const isLatestRunControllable =
+        latestRunStatus === 'running' ||
+        latestRunStatus === 'resuming' ||
+        latestRunStatus === 'waiting_for_approval'
+
+      if (isLatestRunControllable && latestRun?.id) {
+        setActiveRunId(latestRun.id)
+      } else {
+        clearActiveRunId()
+      }
       
       // 检查是否是复杂模式（有 execution_plan）
       if (!conversation.execution_plan && !conversation.execution_plan_id) {
@@ -169,9 +184,13 @@ export function useSessionRestore(
         // 检查是否还有运行中的任务
         const hasRunningTask = subTasks.some((t: SubTask) => t.status === 'running')
         const hasPendingTask = subTasks.some((t: SubTask) => t.status === 'pending')
+        const isRunActive = latestRunStatus === 'running' || latestRunStatus === 'resuming'
+        const isWaitingForApproval =
+          latestRunStatus === 'waiting_for_approval' ||
+          execution_plan.status === 'waiting_for_approval'
         
         // 如果有运行中的任务，提示用户任务仍在进行
-        if (hasRunningTask) {
+        if (hasRunningTask || isRunActive) {
           
           // 添加系统消息提示用户
           addMessage({
@@ -183,7 +202,7 @@ export function useSessionRestore(
         
         // 检查会话状态是否需要用户干预（如 HITL 等待确认）
         // 🔥 方案1：从 subTasks 恢复 pendingPlan
-        if (execution_plan.status === 'waiting_for_approval' && hasPendingTask) {
+        if (isWaitingForApproval && hasPendingTask) {
           // 从 subTasks 构建 pendingPlan
           const pendingPlan = subTasks
             .filter((t: SubTask) => t.status === 'pending')
@@ -194,13 +213,14 @@ export function useSessionRestore(
               sort_order: index,
               status: 'pending' as const,
               depends_on: t.depends_on || [],
+              artifacts: [],
             }))
 
           if (pendingPlan.length > 0) {
             setPendingPlan(
               pendingPlan,
               execution_plan.plan_version || 1,
-              execution_plan.run_id || null,
+              latestRun?.id || execution_plan.run_id || null,
               execution_plan.execution_plan_id || null,
             )
             logger.debug('[useSessionRestore] HITL 恢复: pendingPlan 已设置', pendingPlan.length, '个任务')
@@ -230,7 +250,7 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [threadId, enabled, restoreFromExecutionPlan, setPendingPlan, setMode, setIsInitialized, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
+  }, [threadId, enabled, restoreFromExecutionPlan, setPendingPlan, setMode, setIsInitialized, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
 
   /**
    * 公开的手动恢复方法

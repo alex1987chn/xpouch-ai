@@ -9,9 +9,10 @@ import { useCallback, useRef, useEffect } from 'react'
 import { 
   sendMessage as apiSendMessage, 
   resumeChat as apiResumeChat,
+  cancelRun as apiCancelRun,
   type ResumeChatParams
 } from '@/services/chat'
-import type { ApiMessage, StreamCallback } from '@/types'
+import type { ApiMessage, StreamCallback, StreamRuntimeMeta } from '@/types'
 import { normalizeAgentId, getAgentType } from '@/utils/agentUtils'
 import { generateUUID } from '@/utils'
 import { findMessageById, isSameId } from '@/utils/normalize'
@@ -26,7 +27,7 @@ import {
   useIsGenerating,
   useChatActions,
 } from '@/hooks/useChatSelectors'
-import { useTaskMode, useTaskActions } from '@/hooks/useTaskSelectors'
+import { useActiveRunId, useTaskMode, useTaskActions } from '@/hooks/useTaskSelectors'
 import { useChatStore } from '@/store/chatStore'
 
 import { useStreamHandler } from './useStreamHandler'
@@ -63,6 +64,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   const abortControllerRef = useRef<AbortController | null>(null)
   
   const conversationMode = useTaskMode() || 'simple'
+  const activeRunId = useActiveRunId()
   
   // Chat store selectors
   const inputMessage = useInputMessage()
@@ -80,7 +82,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     setGenerating 
   } = useChatActions()
   
-  const { setMode } = useTaskActions()
+  const { setMode, setActiveRunId, clearActiveRunId } = useTaskActions()
   
   const { reset: resetStreamHandler, createChunkHandler, forceFlush } = useStreamHandler()
 
@@ -88,11 +90,34 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
    * Stop generation
    */
   const stopGeneration = useCallback(() => {
-    if (abortControllerRef.current) {
-      debug('Stop generation')
-      abortControllerRef.current.abort()
+    const finalizeAbort = () => {
+      if (abortControllerRef.current) {
+        debug('Stop generation')
+        abortControllerRef.current.abort()
+      }
+      clearActiveRunId()
     }
-  }, [])
+
+    if (!activeRunId) {
+      finalizeAbort()
+      return
+    }
+
+    void apiCancelRun(activeRunId)
+      .catch((error) => {
+        logger.warn('[useChatCore] cancelRun failed, fallback to local abort:', error)
+      })
+      .finally(() => {
+        finalizeAbort()
+      })
+  }, [activeRunId, clearActiveRunId])
+
+  const syncRuntimeMeta = useCallback((runtimeMeta?: StreamRuntimeMeta) => {
+    const runId = runtimeMeta?.runId
+    if (runId) {
+      setActiveRunId(runId)
+    }
+  }, [setActiveRunId])
 
   /**
    * Send message core logic
@@ -182,8 +207,12 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
         threadId?: string,
-        _expertEvent?: AnyServerEvent  // 事件处理由 eventHandlers.ts 直接处理，此处保留参数以兼容类型
+        _expertEvent?: AnyServerEvent,  // 事件处理由 eventHandlers.ts 直接处理，此处保留参数以兼容类型
+        _artifact?,
+        _expertId?,
+        runtimeMeta?: StreamRuntimeMeta,
       ) => {
+        syncRuntimeMeta(runtimeMeta)
         if (threadId && threadId !== actualThreadId) {
           actualThreadId = threadId
           setCurrentConversationId(threadId)
@@ -260,6 +289,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       forceFlush()
       
       setGenerating(false)
+      clearActiveRunId()
       abortControllerRef.current = null
 
       if (conversationMode === 'complex' && assistantMessageId) {
@@ -289,6 +319,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     resetStreamHandler,
     createChunkHandler,
     forceFlush,
+    syncRuntimeMeta,
+    clearActiveRunId,
   ])
 
   // Component unmount cleanup
@@ -299,8 +331,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         abortControllerRef.current.abort()
         abortControllerRef.current = null
       }
+      clearActiveRunId()
     }
-  }, [])
+  }, [clearActiveRunId])
 
   const resumeExecution = useCallback(async (
     params: ResumeChatParams
@@ -335,8 +368,12 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
         _threadId?: string,
-        _expertEvent?: AnyServerEvent  // 事件处理由 eventHandlers.ts 直接处理
+        _expertEvent?: AnyServerEvent,  // 事件处理由 eventHandlers.ts 直接处理
+        _artifact?,
+        _expertId?,
+        runtimeMeta?: StreamRuntimeMeta,
       ) => {
+        syncRuntimeMeta(runtimeMeta)
         if (chunk) {
           // 累积完整响应
           fullContent += chunk
@@ -373,9 +410,10 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       forceFlush()
       
       setGenerating(false)
+      clearActiveRunId()
       abortControllerRef.current = null
     }
-  }, [isGenerating, onChunk, setGenerating, addMessage, resetStreamHandler, createChunkHandler, forceFlush])
+  }, [isGenerating, onChunk, setGenerating, addMessage, resetStreamHandler, createChunkHandler, forceFlush, syncRuntimeMeta, clearActiveRunId])
 
   /**
    * 重新生成指定 AI 消息的回复
@@ -462,8 +500,12 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
         threadId?: string,
-        _expertEvent?: AnyServerEvent
+        _expertEvent?: AnyServerEvent,
+        _artifact?,
+        _expertId?,
+        runtimeMeta?: StreamRuntimeMeta,
       ) => {
+        syncRuntimeMeta(runtimeMeta)
         if (threadId && threadId !== storeState.currentConversationId) {
           setCurrentConversationId(threadId)
         }
@@ -494,9 +536,10 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     } finally {
       forceFlush()
       setGenerating(false)
+      clearActiveRunId()
       abortControllerRef.current = null
     }
-  }, [isGenerating, selectedAgentId, currentConversationId, setGenerating, setMode, setMessages, resetStreamHandler, createChunkHandler, onChunk, setCurrentConversationId, updateMessage, forceFlush])
+  }, [isGenerating, selectedAgentId, currentConversationId, setGenerating, setMode, setMessages, resetStreamHandler, createChunkHandler, onChunk, setCurrentConversationId, updateMessage, forceFlush, syncRuntimeMeta, clearActiveRunId])
 
   return {
     sendMessage: sendMessageCore,
