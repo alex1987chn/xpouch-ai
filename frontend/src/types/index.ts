@@ -1,6 +1,8 @@
 // 统一类型定义文件
 // 消除类型定义分散的问题
 
+import type { AnyServerEvent } from './events'
+
 // ============================================
 // 消息相关类型
 // ============================================
@@ -117,6 +119,7 @@ export interface Conversation {
   // messages 现在需要通过单独的 API 获取
   messages?: Message[]
   execution_plan?: ExecutionPlan
+  latest_run?: AgentRunSummary
 }
 
 /**
@@ -124,6 +127,21 @@ export interface Conversation {
  */
 export interface ConversationDetail extends Conversation {
   messages: Message[]
+}
+
+export interface AgentRunSummary {
+  id: string
+  status: string
+  current_node?: string | null
+  created_at?: string
+  updated_at?: string
+  last_heartbeat_at?: string | null
+  completed_at?: string | null
+}
+
+export interface StreamRuntimeMeta {
+  threadId?: string
+  runId?: string
 }
 
 /**
@@ -151,6 +169,7 @@ export interface SubTask {
   execution_plan_id: string
   expert_type: string
   task_description: string
+  depends_on?: string[]
   status?: string
   output_result?: Record<string, unknown> | string | null  // 后端返回的原始输出结果
   error_message?: string  // 后端返回的错误信息
@@ -266,9 +285,10 @@ export interface ChatPageState {
 export type StreamCallback = (
   chunk: string | undefined,
   threadId?: string,
-  expertEvent?: ExpertEvent,
+  expertEvent?: AnyServerEvent,
   artifact?: Artifact,
-  expertId?: string
+  expertId?: string,
+  runtimeMeta?: StreamRuntimeMeta
 ) => Promise<void> | void
 
 /**

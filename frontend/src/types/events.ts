@@ -52,6 +52,7 @@ export interface TaskInfo {
   description: string
   sort_order: number
   status: 'pending' | 'running' | 'completed' | 'failed'
+  depends_on?: string[]
 }
 
 export interface PlanCreatedData {

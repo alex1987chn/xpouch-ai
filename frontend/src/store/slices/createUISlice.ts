@@ -29,6 +29,7 @@ export interface UISliceState {
   runningTaskIds: Set<string>
   selectedTaskId: string | null
   isInitialized: boolean
+  activeRunId: string | null
   isWaitingForApproval: boolean
   pendingPlan: Task[]
   pendingPlanVersion: number
@@ -41,6 +42,8 @@ export interface UISliceActions {
   setMode: (mode: 'simple' | 'complex') => void
   selectTask: (taskId: string | null) => void
   setIsInitialized: (initialized: boolean) => void
+  setActiveRunId: (runId: string | null) => void
+  clearActiveRunId: () => void
   setPendingPlan: (
     plan: Task[],
     planVersion?: number,
@@ -73,6 +76,7 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
   runningTaskIds: new Set(),
   selectedTaskId: null,
   isInitialized: false,
+  activeRunId: null,
   isWaitingForApproval: false,
   pendingPlan: [],
   pendingPlanVersion: 1,
@@ -98,6 +102,18 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
   setIsInitialized: (initialized: boolean) => {
     set((state) => {
       state.isInitialized = initialized
+    })
+  },
+
+  setActiveRunId: (runId: string | null) => {
+    set((state) => {
+      state.activeRunId = runId
+    })
+  },
+
+  clearActiveRunId: () => {
+    set((state) => {
+      state.activeRunId = null
     })
   },
 
@@ -156,6 +172,7 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
       state.runningTaskIds = new Set()
       state.selectedTaskId = null
       state.isInitialized = false
+      state.activeRunId = null
       state.isWaitingForApproval = false
       state.pendingPlan = []
       state.pendingPlanVersion = 1

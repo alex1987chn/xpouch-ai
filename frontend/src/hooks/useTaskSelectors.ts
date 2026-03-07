@@ -26,6 +26,9 @@ export const useSelectedTaskId = () => useTaskStore(state => state.selectedTaskI
 /** 获取任务初始化状态 */
 export const useTaskInitialized = () => useTaskStore(state => state.isInitialized)
 
+/** 获取当前活跃运行 ID */
+export const useActiveRunId = () => useTaskStore(state => state.activeRunId)
+
 /** 获取等待审批状态 */
 export const useIsWaitingForApproval = () => useTaskStore(state => state.isWaitingForApproval)
 
@@ -125,6 +128,8 @@ export const useTaskActions = () => {
   const resetAll = useTaskStore(state => state.resetAll)
   const setMode = useTaskStore(state => state.setMode)
   const setIsInitialized = useTaskStore(state => state.setIsInitialized)
+  const setActiveRunId = useTaskStore(state => state.setActiveRunId)
+  const clearActiveRunId = useTaskStore(state => state.clearActiveRunId)
   const updateTasksFromPlan = useTaskStore(state => state.updateTasksFromPlan)
   const setPendingPlan = useTaskStore(state => state.setPendingPlan)
   const clearPendingPlan = useTaskStore(state => state.clearPendingPlan)
@@ -144,6 +149,8 @@ export const useTaskActions = () => {
       resetAll,
       setMode,
       setIsInitialized,
+      setActiveRunId,
+      clearActiveRunId,
       updateTasksFromPlan,
       setPendingPlan,
       clearPendingPlan,
@@ -162,6 +169,8 @@ export const useTaskActions = () => {
       resetAll,
       setMode,
       setIsInitialized,
+      setActiveRunId,
+      clearActiveRunId,
       updateTasksFromPlan,
       setPendingPlan,
       clearPendingPlan,

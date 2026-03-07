@@ -82,7 +82,7 @@ export interface TaskSliceActions {
   restoreFromExecutionPlan: (executionPlan: ApiExecutionPlan, subTasks: SubTask[]) => void
   
   // Reset all tasks
-  resetTasks: (force?: boolean) => void
+  resetTasks: (force?: boolean, hasRunningTasks?: () => boolean) => void
   
   // Cache sync (for other slices to call)
   syncTasksCache: () => void
@@ -357,8 +357,8 @@ export const createTaskSlice = (
           title: art.title || `${subTask.expert_type} Result`,
           content: art.content || '',
           language: art.language,
-          sortOrder: art.sort_order || artIndex,
-          createdAt: art.created_at || new Date().toISOString()
+          sortOrder: art.sortOrder || artIndex,
+          createdAt: art.createdAt || new Date().toISOString()
         }))
 
         state.tasks.set(subTask.id, {

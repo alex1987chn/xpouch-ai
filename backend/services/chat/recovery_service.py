@@ -22,6 +22,11 @@ from sqlalchemy import update
 from sqlmodel import Session, select
 
 from config import settings
+from crud.agent_run import (
+    mark_run_cancelled_by_id,
+    mark_run_failed_by_id,
+    update_run_status_by_id,
+)
 from models import AgentRun, ExecutionPlan, RunStatus, Thread
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError, AuthorizationError, NotFoundError, ValidationError
@@ -146,6 +151,45 @@ class RecoveryService:
 
         return {"status": "cancelled", "message": "计划已被用户拒绝"}
 
+    async def cancel_run(self, run_id: str, user_id: str) -> dict[str, str]:
+        """显式取消指定运行实例。"""
+        agent_run = self.db.get(AgentRun, run_id)
+        if not agent_run:
+            raise NotFoundError(f"AgentRun not found: {run_id}")
+        if agent_run.user_id != user_id:
+            raise AuthorizationError("无权取消此运行实例")
+
+        if agent_run.status in {
+            RunStatus.COMPLETED,
+            RunStatus.FAILED,
+            RunStatus.CANCELLED,
+            RunStatus.TIMED_OUT,
+        }:
+            return {
+                "status": str(agent_run.status),
+                "message": "运行已处于终态，无需重复取消",
+            }
+
+        cancelled = mark_run_cancelled_by_id(
+            self.db,
+            run_id,
+            current_node=agent_run.current_node,
+        )
+        if cancelled is not None:
+            self.db.commit()
+
+        execution_plan = self.db.exec(
+            select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)
+        ).first()
+        if execution_plan:
+            execution_plan.status = "cancelled"
+            execution_plan.updated_at = datetime.now()
+            execution_plan.final_response = execution_plan.final_response or "运行已取消"
+            self.db.add(execution_plan)
+            self.db.commit()
+
+        return {"status": "cancelled", "message": "运行已取消"}
+
     async def _handle_approval(
         self,
         thread_id: str,
@@ -208,6 +252,7 @@ class RecoveryService:
                     realtime_queue=realtime_queue,
                     updated_plan=updated_plan,
                     message_id=actual_message_id,
+                    run_id=run_id,
                 ):
                     yield event
 
@@ -215,6 +260,13 @@ class RecoveryService:
                 await self._process_collected_artifacts(thread_id, stream_queue)
                 self._update_run_status(run_id, RunStatus.COMPLETED)
 
+            except AppError as e:
+                if e.code == ErrorCode.RUN_CANCELLED:
+                    yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
+                else:
+                    logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
+                    self._mark_run_failed(run_id, str(e))
+                    yield self._build_error_event(ErrorCode.RESUME_ERROR, str(e))
             except Exception as e:
                 logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
                 self._mark_run_failed(run_id, str(e))
@@ -230,6 +282,8 @@ class RecoveryService:
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
+                "X-Thread-ID": thread_id,
+                "X-Run-ID": run_id,
             },
         )
 
@@ -290,25 +344,19 @@ class RecoveryService:
 
     def _update_run_status(self, run_id: str, status: RunStatus) -> None:
         """更新指定运行实例的状态。"""
-        agent_run = self.db.get(AgentRun, run_id)
-        if not agent_run:
-            return
-        agent_run.status = status
-        agent_run.updated_at = datetime.now()
-        agent_run.last_heartbeat_at = datetime.now()
-        self.db.add(agent_run)
-        self.db.commit()
+        updated = update_run_status_by_id(self.db, run_id, status)
+        if updated is not None:
+            self.db.commit()
 
     def _mark_run_failed(self, run_id: str, error_message: str) -> None:
         """将指定运行实例标记为失败。"""
-        agent_run = self.db.get(AgentRun, run_id)
-        if not agent_run:
-            return
-        agent_run.status = RunStatus.FAILED
-        agent_run.error_message = error_message
-        agent_run.updated_at = datetime.now()
-        self.db.add(agent_run)
-        self.db.commit()
+        updated = mark_run_failed_by_id(
+            self.db,
+            run_id,
+            error_message=error_message,
+        )
+        if updated is not None:
+            self.db.commit()
 
     def _mark_thread_running(self, thread_id: str) -> None:
         """

@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from models import AgentRun, ExecutionPlan, Thread
+from models import AgentRun, ExecutionPlan, RunStatus, Thread
 from services.chat.thread_service import ChatThreadService
 
 
@@ -44,7 +44,8 @@ class _FakeThreadSession:
         if "FROM executionplan" in statement_text:
             return _ExecResult(all_value=self.execution_plans)
         if "FROM agentrun" in statement_text:
-            return _ExecResult(all_value=self.agent_runs)
+            latest_run = self.agent_runs[0] if self.agent_runs else None
+            return _ExecResult(first_value=latest_run, all_value=self.agent_runs)
         return _ExecResult()
 
     def add(self, _obj):
@@ -133,3 +134,33 @@ async def test_delete_thread_removes_execution_plans_and_runs_in_safe_order():
     assert session.flush_called is True
     assert session.commit_called is True
     assert session.deleted == [execution_plan, agent_run, thread]
+
+
+def test_build_simple_thread_response_includes_latest_run_summary():
+    thread = Thread(
+        id="thread-1",
+        title="history",
+        user_id="user-1",
+        agent_type="ai",
+        agent_id="sys-default-chat",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    agent_run = AgentRun(
+        id="run-1",
+        thread_id="thread-1",
+        user_id="user-1",
+        status=RunStatus.WAITING_FOR_APPROVAL,
+        current_node="waiting_for_approval",
+        created_at=datetime.now(),
+        started_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    session = _FakeThreadSession(thread, agent_runs=[agent_run])
+    service = ChatThreadService(session)
+
+    response = service._build_simple_thread_response(thread)
+
+    assert response["latest_run"]["id"] == "run-1"
+    assert response["latest_run"]["status"] == "waiting_for_approval"
+    assert response["latest_run"]["current_node"] == "waiting_for_approval"
