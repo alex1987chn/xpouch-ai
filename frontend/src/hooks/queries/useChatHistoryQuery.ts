@@ -156,11 +156,12 @@ export function useBatchDeleteConversationsMutation() {
       const result = await deleteConversationsBatch(threadIds)
       return result
     },
-    onSuccess: (result) => {
+    onSuccess: (result, threadIds) => {
       // 成功删除后，重新获取列表
       queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
-      // 同时移除单个会话的缓存
-      result.failed_ids.forEach((id) => {
+      // 同时移除成功删除的会话缓存
+      const deletedIds = threadIds.filter((id) => !result.failed_ids.includes(id))
+      deletedIds.forEach((id) => {
         queryClient.removeQueries({ queryKey: chatHistoryKeys.detail(id) })
       })
       logger.debug('[useBatchDeleteConversationsMutation] Batch deleted:', result.deleted_count, 'failed:', result.failed_ids.length)
