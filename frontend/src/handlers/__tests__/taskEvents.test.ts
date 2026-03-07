@@ -54,7 +54,7 @@ describe('Task Events', () => {
         id: 'evt-1',
         type: 'plan.created' as const,
         data: {
-          session_id: 'session-1',
+          execution_plan_id: 'session-1',
           tasks: [{ id: 'task-1', description: 'test' }]
         }
       }
@@ -72,7 +72,7 @@ describe('Task Events', () => {
       const event = {
         id: 'evt-1',
         type: 'plan.started' as const,
-        data: { session_id: 'session-1' }
+        data: { execution_plan_id: 'session-1' }
       }
 
       mockContext.chatStore.messages = [
@@ -92,7 +92,7 @@ describe('Task Events', () => {
       const event = {
         id: 'evt-1',
         type: 'plan.thinking' as const,
-        data: { session_id: 'session-1', delta: 'new content' }
+        data: { execution_plan_id: 'session-1', delta: 'new content' }
       }
 
       mockContext.chatStore.messages = [

@@ -1,5 +1,5 @@
 """
-聊天会话生命周期管理服务
+聊天线程生命周期管理服务
 
 职责:
 - 线程(Thread)的CRUD操作
@@ -8,7 +8,7 @@
 - LangChain消息列表构建
 
 依赖:
-- backend.crud.task_session (ExecutionPlan 相关 CRUD，待重命名)
+- backend.crud.execution_plan (ExecutionPlan 相关 CRUD)
 - backend.models (SQLModel模型)
 """
 
@@ -24,8 +24,8 @@ from models import CustomAgent, ExecutionPlan, Message, SubTask, Thread
 from utils.exceptions import AuthorizationError, NotFoundError
 
 
-class ChatSessionService:
-    """聊天会话管理服务"""
+class ChatThreadService:
+    """聊天线程管理服务"""
 
     def __init__(self, db_session: Session):
         self.db = db_session
@@ -542,9 +542,9 @@ class ChatSessionService:
         Returns:
             创建的 ExecutionPlan 实例
         """
-        from crud.task_session import create_task_session as crud_create_task_session
+        from crud.execution_plan import create_execution_plan as crud_create_execution_plan
 
-        return crud_create_task_session(
+        return crud_create_execution_plan(
             db=self.db,
             thread_id=thread_id,
             user_query=user_query,

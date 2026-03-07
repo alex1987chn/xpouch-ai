@@ -11,7 +11,7 @@ from typing import Any
 
 from sqlmodel import Session
 
-from crud.task_session import create_artifacts_batch
+from crud.execution_plan import create_artifacts_batch
 from models import ExecutionPlan, SubTask
 from schemas import ArtifactCreate
 
@@ -37,7 +37,7 @@ class InvokePersistence:
         task_list: list[dict[str, Any]],
         final_response: str,
     ) -> None:
-        """Auto 模式：保存子任务列表并将会话标记为完成。"""
+        """Auto 模式：保存子任务列表并将执行计划标记为完成。"""
         create_subtasks_for_auto_mode(self.session, execution_plan.id, task_list)
         mark_execution_plan_completed(self.session, execution_plan, final_response)
 
@@ -48,7 +48,7 @@ class InvokePersistence:
         subtask_result: dict[str, Any],
         final_response: str,
     ) -> None:
-        """Direct 模式：保存单个子任务并将会话标记为完成。"""
+        """Direct 模式：保存单个子任务并将执行计划标记为完成。"""
         create_subtask_for_direct_mode(
             self.session, execution_plan.id, subtask_payload, subtask_result
         )

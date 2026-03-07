@@ -145,7 +145,7 @@ export default function BauhausSidebar({
   }
 
   // 处理会话点击
-  const handleConversationClick = (conversationId: string, agentId?: string) => {
+  const handleConversationClick = (threadId: string, agentId?: string) => {
     // 先清空当前状态，避免显示旧会话内容
     setMessages([])
     setCurrentConversationId(null)
@@ -154,9 +154,9 @@ export default function BauhausSidebar({
     
     // 默认助手不添加 agentId 参数
     if (agentId && agentId !== SYSTEM_AGENTS.DEFAULT_CHAT && agentId !== 'default-chat') {
-      navigate(`/chat/${conversationId}?agentId=${agentId}`)
+      navigate(`/chat/${threadId}?agentId=${agentId}`)
     } else {
-      navigate(`/chat/${conversationId}`)
+      navigate(`/chat/${threadId}`)
     }
     onMobileClose?.()
   }

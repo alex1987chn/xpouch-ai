@@ -44,7 +44,7 @@ interface UseChatCoreOptions {
   /** Handle streaming content callback */
   onChunk?: (chunk: string) => void
   /** New conversation created callback */
-  onNewConversation?: (conversationId: string, agentId: string) => void
+  onNewConversation?: (threadId: string, agentId: string) => void
 }
 
 function getErrorStatus(error: unknown): number | undefined {
@@ -173,7 +173,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       let finalResponseContent = ''
       const storeState2 = useChatStore.getState()
-      let actualConversationId = storeState2.currentConversationId || currentConversationId
+      let actualThreadId = storeState2.currentConversationId || currentConversationId
 
       debug('Preparing to call sendMessage')
 
@@ -181,15 +181,15 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
-        conversationId?: string,
+        threadId?: string,
         _expertEvent?: AnyServerEvent  // 事件处理由 eventHandlers.ts 直接处理，此处保留参数以兼容类型
       ) => {
-        if (conversationId && conversationId !== actualConversationId) {
-          actualConversationId = conversationId
-          setCurrentConversationId(conversationId)
+        if (threadId && threadId !== actualThreadId) {
+          actualThreadId = threadId
+          setCurrentConversationId(threadId)
           // 🔥 触发新会话回调，让上层组件更新 URL
           if (onNewConversation) {
-            onNewConversation(conversationId, normalizedAgentId)
+            onNewConversation(threadId, normalizedAgentId)
           }
         }
 
@@ -209,15 +209,15 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         chatMessages,
         normalizedAgentId,
         streamCallback,
-        actualConversationId,
+        actualThreadId,
         abortControllerRef.current.signal,
         assistantMessageId
       )
 
       const storeState3 = useChatStore.getState()
-      const initialConversationId = storeState3.currentConversationId
-      if (actualConversationId && actualConversationId !== initialConversationId) {
-        onNewConversation?.(actualConversationId, selectedAgentId)
+      const initialThreadId = storeState3.currentConversationId
+      if (actualThreadId && actualThreadId !== initialThreadId) {
+        onNewConversation?.(actualThreadId, selectedAgentId)
       }
 
       debug(`Task completed, final content length: ${finalResponseContent?.length || 0}`)
@@ -334,7 +334,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     try {
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
-        _conversationId?: string,
+        _threadId?: string,
         _expertEvent?: AnyServerEvent  // 事件处理由 eventHandlers.ts 直接处理
       ) => {
         if (chunk) {
@@ -461,11 +461,11 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
-        conversationId?: string,
+        threadId?: string,
         _expertEvent?: AnyServerEvent
       ) => {
-        if (conversationId && conversationId !== storeState.currentConversationId) {
-          setCurrentConversationId(conversationId)
+        if (threadId && threadId !== storeState.currentConversationId) {
+          setCurrentConversationId(threadId)
         }
 
         if (chunk) {

@@ -94,19 +94,19 @@ export function useChatHistoryQuery(options: { limit?: number; enabled?: boolean
 
 // 获取单个会话详情的 Query Hook
 // P0-5 优化：使用分离的 API 获取会话详情和消息列表
-export function useChatSessionQuery(conversationId: string | null) {
+export function useChatSessionQuery(threadId: string | null) {
   return useQuery({
-    queryKey: chatHistoryKeys.detail(conversationId || ''),
+    queryKey: chatHistoryKeys.detail(threadId || ''),
     queryFn: async () => {
-      if (!conversationId) {
+      if (!threadId) {
         throw new Error('Conversation ID is required')
       }
       try {
         // P0-5 优化：分离获取会话详情和消息列表
         // 1. 获取会话详情（包含元数据）
-        const conversation = await getConversation(conversationId)
+        const conversation = await getConversation(threadId)
         // 2. 获取消息列表（完整内容）
-        const messages = await getThreadMessages(conversationId)
+        const messages = await getThreadMessages(threadId)
         // 3. 合并返回
         return {
           ...conversation,
@@ -117,8 +117,8 @@ export function useChatSessionQuery(conversationId: string | null) {
         throw error
       }
     },
-    // 只在有 conversationId 时启用
-    enabled: !!conversationId,
+    // 只在有 threadId 时启用
+    enabled: !!threadId,
     staleTime: CACHE_TIMES.CHAT_SESSION.staleTime,
     gcTime: CACHE_TIMES.CHAT_SESSION.gcTime,
     retry: 2,
@@ -130,9 +130,9 @@ export function useDeleteConversationMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (conversationId: string) => {
-      await deleteConversation(conversationId)
-      return conversationId
+    mutationFn: async (threadId: string) => {
+      await deleteConversation(threadId)
+      return threadId
     },
     onSuccess: (deletedId) => {
       // 成功删除后，重新获取列表

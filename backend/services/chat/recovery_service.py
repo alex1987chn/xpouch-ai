@@ -56,6 +56,7 @@ class RecoveryService:
     async def resume_chat(
         self,
         thread_id: str,
+        run_id: str,
         user_id: str,
         approved: bool,
         updated_plan: list[dict[str, Any]] | None = None,
@@ -92,7 +93,7 @@ class RecoveryService:
             NotFoundError: 线程不存在
             AuthorizationError: 无权访问此线程
         """
-        logger.info(f"[HITL RESUME] thread_id={thread_id}, approved={approved}")
+        logger.info(f"[HITL RESUME] thread_id={thread_id}, run_id={run_id}, approved={approved}")
 
         # 1. 验证线程存在且属于当前用户
         thread = self.db.get(Thread, thread_id)
@@ -102,20 +103,25 @@ class RecoveryService:
         if thread.user_id != user_id:
             raise AuthorizationError("无权访问此线程")
 
+        agent_run = self._get_run_or_raise(run_id, thread_id)
+        if agent_run.user_id != user_id:
+            raise AuthorizationError("无权访问此运行实例")
+
         # 2. 处理用户拒绝
         if not approved:
-            return await self._handle_rejection(thread_id)
+            return await self._handle_rejection(thread_id, run_id)
 
         # 3. 处理用户批准 - 流式恢复
         return await self._handle_approval(
             thread_id,
+            run_id,
             updated_plan,
             plan_version,
             message_id,
             idempotency_key,
         )
 
-    async def _handle_rejection(self, thread_id: str) -> dict[str, str]:
+    async def _handle_rejection(self, thread_id: str, run_id: str) -> dict[str, str]:
         """
         处理用户拒绝计划
 
@@ -136,13 +142,14 @@ class RecoveryService:
 
         # 更新 ExecutionPlan
         await self._cancel_execution_plan(thread_id)
-        self._update_latest_run_status(thread_id, RunStatus.CANCELLED)
+        self._update_run_status(run_id, RunStatus.CANCELLED)
 
         return {"status": "cancelled", "message": "计划已被用户拒绝"}
 
     async def _handle_approval(
         self,
         thread_id: str,
+        run_id: str,
         updated_plan: list[dict[str, Any]] | None = None,
         plan_version: int | None = None,
         message_id: str | None = None,
@@ -165,7 +172,7 @@ class RecoveryService:
         """
         import uuid
 
-        resume_key = self._build_resume_key(thread_id, plan_version, message_id, idempotency_key)
+        resume_key = self._build_resume_key(run_id, plan_version, message_id, idempotency_key)
         self._enter_inflight_resume(thread_id, resume_key)
         try:
             self._mark_thread_running(thread_id)
@@ -174,7 +181,7 @@ class RecoveryService:
             raise
 
         logger.info("[HITL RESUME] 用户批准，开始流式恢复")
-        self._update_latest_run_status(thread_id, RunStatus.RESUMING)
+        self._update_run_status(run_id, RunStatus.RESUMING)
 
         # 🔥 方案1：更新 ExecutionPlan 状态为 running（用户已批准）
         self._update_execution_plan_status(thread_id, "running")
@@ -206,11 +213,11 @@ class RecoveryService:
 
                 # 处理完成后，收集 artifacts 并保存
                 await self._process_collected_artifacts(thread_id, stream_queue)
-                self._update_latest_run_status(thread_id, RunStatus.COMPLETED)
+                self._update_run_status(run_id, RunStatus.COMPLETED)
 
             except Exception as e:
                 logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
-                self._mark_latest_run_failed(thread_id, str(e))
+                self._mark_run_failed(run_id, str(e))
                 yield self._build_error_event(ErrorCode.RESUME_ERROR, str(e))
             finally:
                 self._mark_thread_idle(thread_id)
@@ -260,7 +267,7 @@ class RecoveryService:
 
     @staticmethod
     def _build_resume_key(
-        thread_id: str,
+        run_id: str,
         plan_version: int | None,
         message_id: str | None,
         idempotency_key: str | None,
@@ -270,19 +277,20 @@ class RecoveryService:
             return idempotency_key
         if message_id:
             return f"msg:{message_id}"
-        return f"{thread_id}:{plan_version}"
+        return f"{run_id}:{plan_version}"
 
-    def _get_latest_run(self, thread_id: str) -> AgentRun | None:
-        """获取线程最新的 AgentRun。"""
-        return self.db.exec(
-            select(AgentRun)
-            .where(AgentRun.thread_id == thread_id)
-            .order_by(AgentRun.created_at.desc())
-        ).first()
+    def _get_run_or_raise(self, run_id: str, thread_id: str) -> AgentRun:
+        """获取指定运行实例，并校验其属于当前线程。"""
+        agent_run = self.db.get(AgentRun, run_id)
+        if not agent_run:
+            raise NotFoundError(f"AgentRun not found: {run_id}")
+        if agent_run.thread_id != thread_id:
+            raise ValidationError("run_id 与 thread_id 不匹配")
+        return agent_run
 
-    def _update_latest_run_status(self, thread_id: str, status: RunStatus) -> None:
-        """更新线程最新运行的状态。"""
-        agent_run = self._get_latest_run(thread_id)
+    def _update_run_status(self, run_id: str, status: RunStatus) -> None:
+        """更新指定运行实例的状态。"""
+        agent_run = self.db.get(AgentRun, run_id)
         if not agent_run:
             return
         agent_run.status = status
@@ -291,9 +299,9 @@ class RecoveryService:
         self.db.add(agent_run)
         self.db.commit()
 
-    def _mark_latest_run_failed(self, thread_id: str, error_message: str) -> None:
-        """将线程最新运行标记为失败。"""
-        agent_run = self._get_latest_run(thread_id)
+    def _mark_run_failed(self, run_id: str, error_message: str) -> None:
+        """将指定运行实例标记为失败。"""
+        agent_run = self.db.get(AgentRun, run_id)
         if not agent_run:
             return
         agent_run.status = RunStatus.FAILED
@@ -395,7 +403,7 @@ class RecoveryService:
 
     async def _process_collected_artifacts(self, thread_id: str, stream_queue: asyncio.Queue):
         """处理收集到的 artifacts 并保存"""
-        from crud.task_session import create_artifacts_batch
+        from crud.execution_plan import create_artifacts_batch
 
         artifacts_by_task = {}
 

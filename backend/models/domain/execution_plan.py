@@ -1,8 +1,8 @@
 """
 复杂模式执行计划领域模型
 
-`ExecutionPlan` 是原 `TaskSession` 的语义升级版，负责承载复杂模式下的
-计划摘要、执行状态、版本控制与子任务明细。
+`ExecutionPlan` 负责承载复杂模式下的计划摘要、执行状态、
+版本控制与子任务明细。
 """
 
 from datetime import datetime

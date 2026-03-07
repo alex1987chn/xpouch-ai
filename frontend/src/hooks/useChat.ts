@@ -34,7 +34,6 @@ import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useChatCore } from './chat/useChatCore'
 import { useConversation } from './chat/useConversation'
-import { errorHandler } from '@/utils/logger'
 import { SYSTEM_AGENTS } from '@/constants/agents'
 
 import {
@@ -50,16 +49,16 @@ export function useChat() {
 
   // 1. Get chat core logic with callbacks
   const chatCore = useChatCore({
-    onNewConversation: useCallback((conversationId: string, agentId: string) => {
+    onNewConversation: useCallback((threadId: string, agentId: string) => {
       // 🔥 修复：保留 isNew 状态，避免触发不必要的 loadConversation
       // 后端已创建会话，标记 isNew: false 表示会话已存在
       if (agentId && agentId !== SYSTEM_AGENTS.DEFAULT_CHAT && agentId !== 'default-chat') {
-        navigate(`/chat/${conversationId}?agentId=${agentId}`, { 
+        navigate(`/chat/${threadId}?agentId=${agentId}`, { 
           replace: true,
           state: { isNew: false }
         })
       } else {
-        navigate(`/chat/${conversationId}`, { 
+        navigate(`/chat/${threadId}`, { 
           replace: true,
           state: { isNew: false }
         })

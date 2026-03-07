@@ -32,6 +32,8 @@ export interface UISliceState {
   isWaitingForApproval: boolean
   pendingPlan: Task[]
   pendingPlanVersion: number
+  pendingRunId: string | null
+  pendingExecutionPlanId: string | null
   progress: Progress | null  // 从 ExecutionStore 迁移
 }
 
@@ -39,7 +41,12 @@ export interface UISliceActions {
   setMode: (mode: 'simple' | 'complex') => void
   selectTask: (taskId: string | null) => void
   setIsInitialized: (initialized: boolean) => void
-  setPendingPlan: (plan: Task[], planVersion?: number) => void
+  setPendingPlan: (
+    plan: Task[],
+    planVersion?: number,
+    runId?: string | null,
+    executionPlanId?: string | null,
+  ) => void
   clearPendingPlan: () => void
   setIsWaitingForApproval: (waiting: boolean) => void
   addRunningTaskId: (taskId: string) => void
@@ -69,6 +76,8 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
   isWaitingForApproval: false,
   pendingPlan: [],
   pendingPlanVersion: 1,
+  pendingRunId: null,
+  pendingExecutionPlanId: null,
   progress: null,  // 新增
 
   // Actions
@@ -92,10 +101,17 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
     })
   },
 
-  setPendingPlan: (plan: Task[], planVersion: number = 1) => {
+  setPendingPlan: (
+    plan: Task[],
+    planVersion: number = 1,
+    runId: string | null = null,
+    executionPlanId: string | null = null,
+  ) => {
     set((state) => {
       state.pendingPlan = plan
       state.pendingPlanVersion = planVersion
+      state.pendingRunId = runId
+      state.pendingExecutionPlanId = executionPlanId
       state.isWaitingForApproval = true
     })
   },
@@ -104,6 +120,8 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
     set((state) => {
       state.pendingPlan = []
       state.pendingPlanVersion = 1
+      state.pendingRunId = null
+      state.pendingExecutionPlanId = null
       state.isWaitingForApproval = false
     })
   },
@@ -141,6 +159,8 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
       state.isWaitingForApproval = false
       state.pendingPlan = []
       state.pendingPlanVersion = 1
+      state.pendingRunId = null
+      state.pendingExecutionPlanId = null
       state.progress = null  // 重置进度
     })
   },

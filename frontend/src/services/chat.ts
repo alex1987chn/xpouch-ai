@@ -17,7 +17,7 @@
  * 
  * [关键函数]
  * - sendMessageStream: 核心流式发送，处理简单/复杂模式
- * - resumeTaskSession: HITL 恢复执行，支持用户修改后的计划
+ * - resumeChat: HITL 恢复执行，支持用户修改后的计划
  * - updateArtifact: Artifact 编辑保存
  * 
  * [事件协议]
@@ -64,7 +64,7 @@ type StreamRunOptions = {
   requestBody: Record<string, unknown>
   errorContext: string
   logPrefix: string
-  conversationId?: string
+  threadId?: string
   onChunk?: StreamCallback
   abortSignal?: AbortSignal
   resolveOnMessageDone?: boolean
@@ -81,7 +81,7 @@ function runSSEStream({
   requestBody,
   errorContext,
   logPrefix,
-  conversationId,
+  threadId,
   onChunk,
   abortSignal,
   resolveOnMessageDone = false,
@@ -158,14 +158,14 @@ function runSSEStream({
               if (eventType === 'message.delta') {
                 const content = eventData.content
                 if (content && typeof content === 'string') {
-                  await onChunk(content, conversationId)
+                  await onChunk(content, threadId)
                   fullContent += content
                 }
               } else if (eventType === 'message.done') {
                 handleServerEvent(fullEvent)
-                await onChunk(undefined, conversationId, fullEvent)
+                await onChunk(undefined, threadId, fullEvent)
               } else {
-                await onChunk(undefined, conversationId, fullEvent)
+                await onChunk(undefined, threadId, fullEvent)
               }
             } else if (!isChatEvent) {
               handleServerEvent(fullEvent)
@@ -350,7 +350,7 @@ export async function sendMessage(
     },
     errorContext: 'chat.ts',
     logPrefix: '',
-    conversationId: threadId || undefined,
+    threadId: threadId || undefined,
     onChunk,
     abortSignal,
   })
@@ -392,6 +392,7 @@ export async function updateArtifact(
  */
 export interface ResumeChatParams {
   threadId: string
+  runId: string
   planVersion: number
   updatedPlan?: Array<{
     id: string
@@ -418,6 +419,7 @@ export async function resumeChat(
       headers: getHeaders(),
       body: JSON.stringify({
         thread_id: params.threadId,
+        run_id: params.runId,
         plan_version: params.planVersion,
         updated_plan: params.updatedPlan,
         approved: params.approved
@@ -436,13 +438,14 @@ export async function resumeChat(
     url,
     requestBody: {
       thread_id: params.threadId,
+      run_id: params.runId,
       plan_version: params.planVersion,
       updated_plan: params.updatedPlan,
       approved: params.approved
     },
     errorContext: 'chat.ts resume',
     logPrefix: 'Resume ',
-    conversationId: params.threadId,
+    threadId: params.threadId,
     onChunk,
     abortSignal,
     resolveOnMessageDone: true,

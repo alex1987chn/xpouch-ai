@@ -265,7 +265,7 @@ export interface ChatPageState {
  */
 export type StreamCallback = (
   chunk: string | undefined,
-  conversationId?: string,
+  threadId?: string,
   expertEvent?: ExpertEvent,
   artifact?: Artifact,
   expertId?: string
