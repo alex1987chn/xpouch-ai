@@ -8,7 +8,7 @@ SSE 流式输出核心服务
 - 心跳保活机制
 
 依赖:
-- backend.services.chat.session_service (线程/消息保存)
+- backend.services.chat.thread_service (线程/消息保存)
 - backend.utils.event_generator (SSE事件生成)
 - backend.utils.thinking_parser (Think标签解析)
 
@@ -55,7 +55,7 @@ class StreamService:
     def thread_service(self):
         """延迟初始化 ChatThreadService"""
         if self._thread_service is None:
-            from .session_service import ChatThreadService
+            from .thread_service import ChatThreadService
 
             self._thread_service = ChatThreadService(self.db)
         return self._thread_service

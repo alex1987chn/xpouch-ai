@@ -43,10 +43,10 @@ from models import (
 )
 from services.chat.artifact_service import ArtifactService
 from services.chat.recovery_service import RecoveryService
+from services.chat.stream_service import StreamService
 
 # 🔥 Service 层导入（backend 是 Python 路径根）
-from services.chat.session_service import ChatThreadService
-from services.chat.stream_service import StreamService
+from services.chat.thread_service import ChatThreadService
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
