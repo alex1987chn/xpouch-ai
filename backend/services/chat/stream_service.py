@@ -189,6 +189,7 @@ class StreamService:
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
+                "X-Thread-ID": thread_id,
             },
         )
 
@@ -479,6 +480,7 @@ class StreamService:
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
+                "X-Thread-ID": thread_id,
             },
         )
 

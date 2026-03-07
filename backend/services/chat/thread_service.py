@@ -20,7 +20,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from constants import SYSTEM_AGENT_DEFAULT_CHAT, SYSTEM_AGENT_ORCHESTRATOR, normalize_agent_id
-from models import CustomAgent, ExecutionPlan, Message, SubTask, Thread
+from models import AgentRun, CustomAgent, ExecutionPlan, Message, SubTask, Thread
 from utils.exceptions import AuthorizationError, NotFoundError
 
 
@@ -212,8 +212,9 @@ class ChatThreadService:
         if thread.user_id != user_id:
             raise AuthorizationError("没有权限访问此会话")
 
-        # 如果是AI助手线程（复杂模式），加载 ExecutionPlan 和 SubTask
-        if thread.agent_type == "ai" and thread.execution_plan_id:
+        # 复杂模式的真相源是 execution_plan_id，而不是 agent_type。
+        # 历史数据或重构过程中的线程可能仍保留 default/custom agent_type。
+        if thread.execution_plan_id:
             return await self._build_complex_thread_response(thread)
 
         # 简单模式返回
@@ -319,6 +320,24 @@ class ChatThreadService:
 
         if thread.user_id != user_id:
             raise AuthorizationError("没有权限访问此会话")
+
+        execution_plans = self.db.exec(
+            select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)
+        ).all()
+        agent_runs = self.db.exec(select(AgentRun).where(AgentRun.thread_id == thread_id)).all()
+
+        # Thread.execution_plan_id 与 ExecutionPlan.thread_id 形成双向引用。
+        # 删除前先断开 Thread -> ExecutionPlan 的引用，避免数据库外键约束报错。
+        if thread.execution_plan_id is not None:
+            thread.execution_plan_id = None
+            self.db.add(thread)
+            self.db.flush()
+
+        for execution_plan in execution_plans:
+            self.db.delete(execution_plan)
+
+        for agent_run in agent_runs:
+            self.db.delete(agent_run)
 
         self.db.delete(thread)
         self.db.commit()

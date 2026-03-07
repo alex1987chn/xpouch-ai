@@ -125,6 +125,11 @@ function runSSEStream({
         retryCount = 0
         updateActivity()
         logger.debug(`[chat.ts] ${logPrefix}SSE 连接已建立，重置重连计数器`)
+
+        const responseThreadId = response.headers.get('X-Thread-ID')
+        if (responseThreadId && onChunk) {
+          await onChunk(undefined, responseThreadId)
+        }
       },
 
       async onmessage(msg: EventSourceMessage) {
