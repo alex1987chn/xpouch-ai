@@ -34,8 +34,8 @@ Chat 服务层 - XPouch AI 后端核心服务
 
 from .artifact_service import ArtifactService
 from .recovery_service import RecoveryService
-from .session_service import ChatThreadService
 from .stream_service import StreamService
+from .thread_service import ChatThreadService
 
 __all__ = [
     "ChatThreadService",
