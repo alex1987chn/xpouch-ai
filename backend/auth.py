@@ -13,13 +13,13 @@ P0 安全修复: 2025-02-24
 - 登出（清除 Cookie）
 """
 
-import os
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 from sqlmodel import Session, select
 
+from config import settings
 from database import get_session
 from models import User, UserRole
 from utils.jwt_handler import (
@@ -35,9 +35,14 @@ from utils.sms_service import send_verification_code_with_fallback
 from utils.verification import (
     VerificationCodeExpiredError,
     VerificationCodeInvalidError,
+    VerificationCodeRateLimitError,
+    apply_failed_verification_attempt,
+    enforce_send_rate_limit,
     generate_verification_code,
     get_code_expiry_duration,
     mask_phone_number,
+    register_code_send,
+    utcnow,
     validate_phone_number,
     verify_code,
 )
@@ -111,13 +116,25 @@ class UserResponse(BaseModel):
 # P0 修复: Cookie 安全配置
 def get_cookie_config():
     """获取 Cookie 配置"""
-    is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
     return {
         "httponly": True,  # JavaScript 无法读取
-        "secure": is_production,  # 生产环境必须使用 HTTPS
+        "secure": settings.is_production,  # 生产环境必须使用 HTTPS
         "samesite": "lax",  # 防止 CSRF，同时允许部分跨站导航
         "path": "/",  # 全站可用
     }
+
+
+def _reset_verification_state(user: User) -> None:
+    """重置验证码失败计数和锁定状态。"""
+    user.verification_code_attempts = 0
+    user.verification_code_locked_until = None
+
+
+def _clear_verification_code(user: User) -> None:
+    """清理验证码及其临时状态。"""
+    user.verification_code = None
+    user.verification_code_expires_at = None
+    _reset_verification_state(user)
 
 
 # ==================== 辅助函数 ====================
@@ -205,87 +222,81 @@ async def send_verification_code(request: SendCodeRequest, session: Session = De
     发送手机验证码
     """
     try:
-        logger.info("[Auth] 收到发送验证码请求，方法: POST")
         phone_number = request.phone_number
-        logger.info(f"[Auth] 请求体已解析，手机号: {phone_number}")
+        masked_phone = mask_phone_number(phone_number)
+        logger.info("[Auth] 收到发送验证码请求: %s", masked_phone)
 
-        # 生成验证码（6位数字）
-        code = generate_verification_code(length=6)
-        expires_at = get_code_expiry_duration(minutes=5)
-
-        # 判断是否开发环境
-        is_development = os.getenv("ENVIRONMENT", "development").lower() == "development"
-
-        # 查询用户是否存在
         user = session.exec(select(User).where(User.phone_number == phone_number)).first()
-
-        if user:
-            # 用户已存在，更新验证码
-            user.verification_code = code
-            user.verification_code_expires_at = expires_at
-            session.add(user)
-            session.commit()
-
-            # 发送验证码短信
-            success, error_message = send_verification_code_with_fallback(
-                phone_number, code, expire_minutes=5
-            )
-
-            if not success:
-                logger.warning(f"验证码短信发送失败: {error_message}")
-
-            response_data = {
-                "message": "验证码已发送",
-                "expires_in": 300,
-                "phone_masked": mask_phone_number(phone_number),
-            }
-
-            # 开发环境返回验证码用于调试
-            if is_development:
-                response_data["_debug_code"] = code
-
-            return response_data
-        else:
-            # 用户不存在，创建新用户
+        is_new_user = user is None
+        if user is None:
             import uuid
 
-            new_user_id = str(uuid.uuid4())
-
-            new_user = User(
-                id=new_user_id,
+            user = User(
+                id=str(uuid.uuid4()),
                 username=f"用户{phone_number[-4:]}",
                 phone_number=phone_number,
-                verification_code=code,
-                verification_code_expires_at=expires_at,
                 auth_provider="phone",
                 is_verified=False,
                 role="user",
             )
 
-            session.add(new_user)
-            session.commit()
-            session.refresh(new_user)
+        enforce_send_rate_limit(
+            last_sent_at=user.verification_code_last_sent_at,
+            send_count=user.verification_code_send_count,
+            send_count_reset_at=user.verification_code_send_count_reset_at,
+            min_interval_seconds=settings.verification_code_send_cooldown_seconds,
+            max_send_per_window=settings.verification_code_max_sends_per_window,
+            window_minutes=settings.verification_code_send_window_minutes,
+        )
 
-            # 发送验证码短信
-            success, error_message = send_verification_code_with_fallback(
-                phone_number, code, expire_minutes=5
+        code = generate_verification_code(length=settings.verification_code_length)
+        expires_at = get_code_expiry_duration(minutes=settings.verification_code_expire_minutes)
+        send_count, send_count_reset_at = register_code_send(
+            send_count=user.verification_code_send_count,
+            send_count_reset_at=user.verification_code_send_count_reset_at,
+            window_minutes=settings.verification_code_send_window_minutes,
+        )
+
+        user.verification_code = code
+        user.verification_code_expires_at = expires_at
+        user.verification_code_last_sent_at = utcnow()
+        user.verification_code_send_count = send_count
+        user.verification_code_send_count_reset_at = send_count_reset_at
+        _reset_verification_state(user)
+
+        success, error_message = send_verification_code_with_fallback(
+            phone_number,
+            code,
+            expire_minutes=settings.verification_code_expire_minutes,
+        )
+        if not success:
+            session.rollback()
+            logger.warning("[Auth] 验证码短信发送失败: %s", error_message)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="验证码发送失败，请稍后重试",
             )
 
-            if not success:
-                logger.warning(f"验证码短信发送失败: {error_message}")
+        session.add(user)
+        session.commit()
+        session.refresh(user)
 
-            response_data = {
-                "message": "验证码已发送（新用户注册）",
-                "expires_in": 300,
-                "phone_masked": mask_phone_number(phone_number),
-                "user_id": new_user_id,
-            }
+        response_data = {
+            "message": "验证码已发送（新用户注册）" if is_new_user else "验证码已发送",
+            "expires_in": settings.verification_code_expire_minutes * 60,
+            "phone_masked": masked_phone,
+        }
+        if is_new_user:
+            response_data["user_id"] = user.id
 
-            # 开发环境返回验证码用于调试
-            if is_development:
-                response_data["_debug_code"] = code
+        if settings.is_development:
+            response_data["_debug_code"] = code
 
-            return response_data
+        return response_data
+    except VerificationCodeRateLimitError as e:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e)) from None
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"发送验证码处理异常: {str(e)}", exc_info=True)
         raise HTTPException(
@@ -325,12 +336,32 @@ async def verify_code_and_login(
             stored_code=user.verification_code,
             provided_code=code,
             expires_at=user.verification_code_expires_at,
+            locked_until=user.verification_code_locked_until,
         )
     except VerificationCodeExpiredError:
+        _clear_verification_code(user)
+        session.add(user)
+        session.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="验证码已过期，请重新发送"
         ) from None
+    except VerificationCodeRateLimitError as e:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e)) from None
     except VerificationCodeInvalidError as e:
+        attempts, locked_until = apply_failed_verification_attempt(
+            current_attempts=user.verification_code_attempts,
+            max_attempts=settings.verification_code_max_attempts,
+            lockout_minutes=settings.verification_code_lockout_minutes,
+        )
+        user.verification_code_attempts = attempts
+        user.verification_code_locked_until = locked_until
+        session.add(user)
+        session.commit()
+        if locked_until is not None:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="验证码尝试次数过多，请稍后再试",
+            ) from None
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from None
 
     # 验证成功，生成token
@@ -342,8 +373,7 @@ async def verify_code_and_login(
     user.access_token = access_token
     user.refresh_token = refresh_token
     user.token_expires_at = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    user.verification_code = None
-    user.verification_code_expires_at = None
+    _clear_verification_code(user)
 
     session.add(user)
     session.commit()

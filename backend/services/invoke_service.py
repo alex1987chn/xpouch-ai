@@ -16,11 +16,12 @@ from sqlmodel import Session
 from agents.graph import create_smart_router_workflow
 from agents.nodes.generic import generic_worker_node
 from agents.services.expert_manager import get_expert_config_cached
+from crud.agent_run import create_agent_run, mark_run_completed, mark_run_failed
 from crud.invoke_session import InvokePersistence
 from database import get_session
-from models import TaskSession, User
+from models import AgentRun, ExecutionPlan, Thread, User
 from services.mcp_tools_service import mcp_tools_service
-from utils.exceptions import ValidationError
+from utils.exceptions import AuthorizationError, ValidationError
 from utils.logger import logger
 
 
@@ -45,46 +46,104 @@ class InvokeService:
     ) -> dict[str, Any]:
         """执行双模调用；结果与异常时的失败状态均由持久化层落库。"""
         self._validate_mode(mode, agent_id)
+        thread = self._get_or_create_thread(thread_id, user, message, agent_id)
 
-        task_session = self._persistence.create_task_session(message, thread_id)
-        logger.info("[InvokeService] 创建 TaskSession: %s", task_session.session_id)
+        self.session.add(thread)
+        agent_run = create_agent_run(
+            self.session,
+            thread_id=thread.id,
+            user_id=user.id,
+            entrypoint="invoke",
+            mode=mode,
+            checkpoint_namespace=thread.id,
+        )
+        execution_plan = self._persistence.create_execution_plan(message, thread.id, agent_run.id)
+        thread.execution_plan_id = execution_plan.id
+        thread.agent_type = "ai"
+        thread.thread_mode = "complex"
+        self.session.commit()
+        self.session.refresh(execution_plan)
+
+        logger.info(
+            "[InvokeService] 创建 ExecutionPlan: %s (thread=%s)",
+            execution_plan.id,
+            thread.id,
+        )
 
         try:
             self._mcp_tools = await self._get_mcp_tools()
 
             if mode == "auto":
-                result = await self._execute_auto_mode(message, task_session)
+                result = await self._execute_auto_mode(message, execution_plan)
             else:
-                result = await self._execute_direct_mode(message, agent_id, task_session)
+                result = await self._execute_direct_mode(message, agent_id, execution_plan)
 
             response_payload = {
                 k: v
                 for k, v in result.items()
                 if k not in ("task_list", "subtask_payload", "subtask_result")
             }
+            response_payload["thread_id"] = thread.id
+            response_payload["run_id"] = agent_run.id
 
-            with self.session.begin():
-                if mode == "auto":
-                    self._persistence.save_auto_result(
-                        task_session,
-                        result["task_list"],
-                        result["final_response"],
-                    )
-                else:
-                    self._persistence.save_direct_result(
-                        task_session,
-                        result["subtask_payload"],
-                        result["subtask_result"],
-                        result["final_response"],
-                    )
+            if mode == "auto":
+                self._persistence.save_auto_result(
+                    execution_plan,
+                    result["task_list"],
+                    result["final_response"],
+                )
+            else:
+                self._persistence.save_direct_result(
+                    execution_plan,
+                    result["subtask_payload"],
+                    result["subtask_result"],
+                    result["final_response"],
+                )
+            mark_run_completed(self.session, agent_run)
+            self.session.commit()
 
             return response_payload
 
         except Exception as e:
             self.session.rollback()
-            self._persistence.mark_failed(task_session, str(e))
-            logger.error("[InvokeService] TaskSession %s 失败: %s", task_session.session_id, e)
+            self._persistence.mark_failed(execution_plan, str(e))
+            failure_run = self.session.get(AgentRun, agent_run.id)
+            if failure_run is not None:
+                mark_run_failed(self.session, failure_run, error_message=str(e))
+            self.session.commit()
+            logger.error("[InvokeService] ExecutionPlan %s 失败: %s", execution_plan.id, e)
             raise
+
+    def _get_or_create_thread(
+        self,
+        thread_id: str | None,
+        user: User | None,
+        message: str,
+        agent_id: str | None,
+    ) -> Thread:
+        """为 invoke 链路获取或创建一个合法 Thread。"""
+        if user is None:
+            raise ValidationError("Invoke 调用缺少当前用户上下文")
+
+        if thread_id:
+            thread = self.session.get(Thread, thread_id)
+            if not thread:
+                raise ValidationError("指定的 thread_id 不存在", details={"thread_id": thread_id})
+            if thread.user_id != user.id:
+                raise AuthorizationError("没有权限访问此会话")
+            return thread
+
+        return Thread(
+            id=str(uuid.uuid4()),
+            title=message[:30] + "..." if len(message) > 30 else message,
+            agent_id=agent_id or "assistant",
+            agent_type="ai",
+            thread_mode="complex",
+            user_id=user.id,
+            status="idle",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
 
     def _validate_mode(self, mode: str, agent_id: str | None) -> None:
         """验证执行模式"""
@@ -112,7 +171,9 @@ class InvokeService:
         """
         return await mcp_tools_service.get_tools()
 
-    async def _execute_auto_mode(self, message: str, task_session: TaskSession) -> dict[str, Any]:
+    async def _execute_auto_mode(
+        self, message: str, execution_plan: ExecutionPlan
+    ) -> dict[str, Any]:
         """
         执行 Auto 模式（完整多专家协作）
 
@@ -139,7 +200,7 @@ class InvokeService:
             config={
                 "recursion_limit": 100,
                 "configurable": {
-                    "thread_id": task_session.session_id,
+                    "thread_id": execution_plan.thread_id,
                     "mcp_tools": self._mcp_tools,
                 },
             },
@@ -151,8 +212,8 @@ class InvokeService:
 
         return {
             "mode": "auto",
-            "thread_id": task_session.session_id,
-            "session_id": task_session.session_id,
+            "thread_id": execution_plan.thread_id,
+            "execution_plan_id": execution_plan.id,
             "strategy": final_state["strategy"],
             "final_response": final_state["final_response"],
             "expert_results": final_state["expert_results"],
@@ -161,7 +222,7 @@ class InvokeService:
         }
 
     async def _execute_direct_mode(
-        self, message: str, agent_id: str, task_session: TaskSession
+        self, message: str, agent_id: str, execution_plan: ExecutionPlan
     ) -> dict[str, Any]:
         """
         执行 Direct 模式（单专家直接调用）
@@ -209,8 +270,8 @@ class InvokeService:
 
         return {
             "mode": "direct",
-            "thread_id": task_session.session_id,
-            "session_id": task_session.session_id,
+            "thread_id": execution_plan.thread_id,
+            "execution_plan_id": execution_plan.id,
             "expert_type": agent_id,
             "final_response": result.get("output_result", ""),
             "expert_results": [expert_result],

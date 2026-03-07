@@ -1,16 +1,17 @@
 """
 短信服务模块
 
-提供腾讯云短信发送功能，用于发送手机验证码。
-支持开发和生产环境统一使用真实短信服务。
+提供腾讯云短信发送功能，并为开发环境提供显式开关控制的 fallback。
 """
 
 import logging
-import os
 
 from tencentcloud.common import credential
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 from tencentcloud.sms.v20210111 import models, sms_client
+
+from config import settings
+from utils.verification import mask_phone_number
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +26,17 @@ class SMSService:
     """腾讯云短信服务"""
 
     def __init__(self):
-        """初始化短信服务，从环境变量读取配置"""
-        self.secret_id = os.getenv("TENCENT_CLOUD_SECRET_ID")
-        self.secret_key = os.getenv("TENCENT_CLOUD_SECRET_KEY")
-        self.sdk_app_id = os.getenv("SMS_SDK_APP_ID")
-        self.sign_name = os.getenv("SMS_SIGN_NAME")
-        self.template_id = os.getenv("SMS_TEMPLATE_ID")
-        self.region = os.getenv("SMS_REGION", "ap-guangzhou")
+        """初始化短信服务，从统一配置读取参数。"""
+        self.secret_id = settings.tencent_cloud_secret_id
+        self.secret_key = (
+            settings.tencent_cloud_secret_key.get_secret_value()
+            if settings.tencent_cloud_secret_key
+            else None
+        )
+        self.sdk_app_id = settings.sms_sdk_app_id
+        self.sign_name = settings.sms_sign_name
+        self.template_id = settings.sms_template_id
+        self.region = settings.sms_region
 
         # 检查必要配置
         self._validate_config()
@@ -79,7 +84,7 @@ class SMSService:
         try:
             # 验证手机号格式
             if not phone_number or len(phone_number) != 11 or not phone_number.startswith("1"):
-                error_msg = f"无效的手机号格式: {phone_number}"
+                error_msg = "无效的手机号格式"
                 logger.error(error_msg)
                 return False, error_msg
 
@@ -92,9 +97,12 @@ class SMSService:
             req.PhoneNumberSet = [f"+86{phone_number}"]
             req.SessionContext = "XPouch AI 验证码"
 
-            # 调试日志：记录发送的详细信息
-            logger.debug(f"短信发送调试 - 模板ID: {self.template_id}, 签名: {self.sign_name}")
-            logger.debug(f"短信发送调试 - 参数数量: 1, 参数内容: [{code}]")
+            logger.debug(
+                "短信发送请求已构建 | 模板ID=%s | 签名=%s | 手机号=%s",
+                self.template_id,
+                self.sign_name,
+                mask_phone_number(phone_number),
+            )
 
             # 发送短信
             resp = self.client.SendSms(req)
@@ -103,7 +111,7 @@ class SMSService:
             if resp.SendStatusSet and len(resp.SendStatusSet) > 0:
                 status = resp.SendStatusSet[0]
                 if status.Code == "Ok":
-                    logger.info(f"验证码短信发送成功: {phone_number[:3]}****{phone_number[-4:]}")
+                    logger.info("验证码短信发送成功: %s", mask_phone_number(phone_number))
                     return True, None
                 else:
                     error_msg = f"短信发送失败: {status.Code} - {status.Message}"
@@ -153,15 +161,15 @@ try:
 except SMSServiceError as e:
     sms_service = None
     SMS_SERVICE_AVAILABLE = False
-    logger.warning(f"短信服务不可用: {str(e)}，将使用控制台输出模式")
+    logger.warning("短信服务不可用: %s", str(e))
 except ImportError as e:
     sms_service = None
     SMS_SERVICE_AVAILABLE = False
-    logger.warning(f"tencentcloud-sdk未安装: {str(e)}，将使用控制台输出模式")
+    logger.warning("tencentcloud-sdk 未安装: %s", str(e))
 except Exception as e:
     sms_service = None
     SMS_SERVICE_AVAILABLE = False
-    logger.warning(f"短信服务初始化失败: {str(e)}，将使用控制台输出模式")
+    logger.warning("短信服务初始化失败: %s", str(e))
 
 
 def send_verification_code_with_fallback(
@@ -180,10 +188,14 @@ def send_verification_code_with_fallback(
     """
     if SMS_SERVICE_AVAILABLE and sms_service:
         return sms_service.send_verification_code(phone_number, code, expire_minutes)
-    else:
-        # 控制台输出模式（开发环境备用）
-        masked_phone = f"{phone_number[:3]}****{phone_number[-4:]}"
+
+    if settings.is_development and settings.sms_console_fallback_enabled:
         logger.warning(
-            f"短信服务不可用，控制台输出验证码: {masked_phone} -> {code} (有效期{expire_minutes}分钟)"
+            "短信服务不可用，已启用开发环境 fallback | 手机号=%s | 有效期=%s分钟",
+            mask_phone_number(phone_number),
+            expire_minutes,
         )
         return True, None
+
+    logger.error("短信服务不可用，验证码发送失败: %s", mask_phone_number(phone_number))
+    return False, "短信服务当前不可用，请稍后重试"

@@ -20,6 +20,8 @@ from sqlalchemy import create_engine, pool
 # Import SQLModel and all models
 from sqlmodel import SQLModel
 
+from config import settings
+
 # Import all models to ensure metadata includes all tables
 
 # Alembic Config object
@@ -34,18 +36,8 @@ target_metadata = SQLModel.metadata
 
 
 def get_database_url():
-    """Get database URL from environment variable"""
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        raise ValueError(
-            "DATABASE_URL environment variable is not set. "
-            "Please set it in your .env file or environment."
-        )
-
-    # Convert asyncpg URL to psycopg (sync) for Alembic
-    # psycopg (v3) is already installed and supports sync mode
-    url = database_url.replace("+asyncpg", "+psycopg")
-    return url
+    """使用统一配置获取 Alembic 所需的同步数据库连接串。"""
+    return settings.get_database_url(sync_driver="psycopg")
 
 
 def run_migrations_offline() -> None:

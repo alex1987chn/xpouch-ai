@@ -46,7 +46,7 @@ class ThreadListResponse(BaseModel):
     agent_type: str
     agent_id: str
     user_id: str
-    task_session_id: str | None = None
+    execution_plan_id: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     message_count: int = 0  # 消息数量，替代完整消息列表
@@ -63,11 +63,11 @@ class ThreadDetailResponse(BaseModel):
     agent_type: str
     agent_id: str
     user_id: str
-    task_session_id: str | None = None
+    execution_plan_id: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     messages: list[MessageResponse] = []
-    task_session: dict | None = None  # 复杂模式下的任务会话数据
+    execution_plan: dict | None = None  # 复杂模式下的执行计划数据
 
     model_config = ConfigDict(from_attributes=True)
 

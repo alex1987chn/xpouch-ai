@@ -9,21 +9,23 @@
 - 统一导出在 models/__init__.py
 """
 
+from models.domain.agent_run import AgentRun
 from models.domain.artifact import Artifact
 from models.domain.custom_agent import CustomAgent
+from models.domain.execution_plan import ExecutionPlan
 from models.domain.message import Message
 from models.domain.subtask import SubTask
 from models.domain.system_expert import SystemExpert
-from models.domain.task_session import TaskSession
 from models.domain.thread import Thread
 from models.domain.user import User
 
 __all__ = [
     "User",
+    "AgentRun",
     "CustomAgent",
     "Thread",
     "Message",
-    "TaskSession",
+    "ExecutionPlan",
     "SubTask",
     "Artifact",
     "SystemExpert",

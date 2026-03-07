@@ -1,13 +1,13 @@
 """
 验证码工具模块
 
-提供验证码的生成、验证和管理功能。
-支持手机验证码和邮箱验证码。
+提供验证码生成、校验和基础风控辅助逻辑。
 """
 
-import random
+import hmac
+import secrets
 import string
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 
 class VerificationCodeError(Exception):
@@ -28,6 +28,17 @@ class VerificationCodeInvalidError(VerificationCodeError):
     pass
 
 
+class VerificationCodeRateLimitError(VerificationCodeError):
+    """验证码请求过于频繁或已被临时锁定"""
+
+    pass
+
+
+def utcnow() -> datetime:
+    """返回与现有数据库字段兼容的 naive UTC 时间。"""
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 def generate_verification_code(length: int = 6) -> str:
     """
     生成数字验证码
@@ -38,11 +49,68 @@ def generate_verification_code(length: int = 6) -> str:
     Returns:
         数字验证码字符串
     """
-    return "".join(random.choices(string.digits, k=length))
+    if length <= 0:
+        raise ValueError("验证码长度必须大于 0")
+    return "".join(secrets.choice(string.digits) for _ in range(length))
+
+
+def enforce_send_rate_limit(
+    *,
+    last_sent_at: datetime | None,
+    send_count: int,
+    send_count_reset_at: datetime | None,
+    min_interval_seconds: int,
+    max_send_per_window: int,
+    window_minutes: int,
+) -> None:
+    """校验发送频率限制。"""
+    now = utcnow()
+    if (
+        last_sent_at is not None
+        and min_interval_seconds > 0
+        and (now - last_sent_at).total_seconds() < min_interval_seconds
+    ):
+        raise VerificationCodeRateLimitError("验证码发送过于频繁，请稍后再试")
+
+    if send_count_reset_at is None or now >= send_count_reset_at:
+        return
+
+    if send_count >= max_send_per_window:
+        raise VerificationCodeRateLimitError("验证码发送次数过多，请稍后再试")
+
+
+def register_code_send(
+    *,
+    send_count: int,
+    send_count_reset_at: datetime | None,
+    window_minutes: int,
+) -> tuple[int, datetime]:
+    """根据窗口统计返回新的发送计数和重置时间。"""
+    now = utcnow()
+    if send_count_reset_at is None or now >= send_count_reset_at:
+        return 1, now + timedelta(minutes=window_minutes)
+    return send_count + 1, send_count_reset_at
+
+
+def apply_failed_verification_attempt(
+    *,
+    current_attempts: int,
+    max_attempts: int,
+    lockout_minutes: int,
+) -> tuple[int, datetime | None]:
+    """根据失败次数计算新的尝试计数与锁定时间。"""
+    new_attempts = current_attempts + 1
+    if new_attempts >= max_attempts:
+        return new_attempts, utcnow() + timedelta(minutes=lockout_minutes)
+    return new_attempts, None
 
 
 def verify_code(
-    stored_code: str | None, provided_code: str, expires_at: datetime | None, max_attempts: int = 3
+    stored_code: str | None,
+    provided_code: str,
+    expires_at: datetime | None,
+    *,
+    locked_until: datetime | None = None,
 ) -> bool:
     """
     验证验证码
@@ -51,8 +119,6 @@ def verify_code(
         stored_code: 存储的验证码
         provided_code: 用户提供的验证码
         expires_at: 过期时间
-        max_attempts: 最大验证次数
-
     Returns:
         是否验证成功
 
@@ -60,16 +126,18 @@ def verify_code(
         VerificationCodeExpiredError: 验证码已过期
         VerificationCodeInvalidError: 验证码无效
     """
-    # 检查验证码是否存在
+    now = utcnow()
+
+    if locked_until and now < locked_until:
+        raise VerificationCodeRateLimitError("验证码尝试次数过多，请稍后再试")
+
     if not stored_code:
         raise VerificationCodeInvalidError("验证码不存在")
 
-    # 检查是否过期
-    if expires_at and datetime.utcnow() > expires_at:
+    if expires_at and now > expires_at:
         raise VerificationCodeExpiredError("验证码已过期")
 
-    # 验证验证码
-    if stored_code != provided_code:
+    if not hmac.compare_digest(stored_code, provided_code):
         raise VerificationCodeInvalidError("验证码错误")
 
     return True
@@ -85,7 +153,7 @@ def get_code_expiry_duration(minutes: int = 5) -> datetime:
     Returns:
         过期时间
     """
-    return datetime.utcnow() + timedelta(minutes=minutes)
+    return utcnow() + timedelta(minutes=minutes)
 
 
 def format_phone_number(phone: str) -> str:
@@ -149,9 +217,11 @@ def mask_phone_number(phone: str, visible_digits: int = 4) -> str:
 
     if visible_digits <= 0:
         return "*" * 11
+    if visible_digits >= 8:
+        return phone
 
-    masked_length = 11 - visible_digits
-    return phone[:3] + "*" * masked_length + phone[-visible_digits:]
+    middle_length = len(phone) - 3 - visible_digits
+    return phone[:3] + "*" * middle_length + phone[-visible_digits:]
 
 
 def mask_email(email: str) -> str:

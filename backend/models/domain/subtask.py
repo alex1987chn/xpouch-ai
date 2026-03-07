@@ -16,7 +16,7 @@ from models.enums import ExecutionMode, TaskStatus, _enum_values
 
 if TYPE_CHECKING:
     from models.domain.artifact import Artifact
-    from models.domain.task_session import TaskSession
+    from models.domain.execution_plan import ExecutionPlan
 
 
 class SubTask(SQLModel, table=True):
@@ -34,8 +34,8 @@ class SubTask(SQLModel, table=True):
         primary_key=True,
     )
 
-    # 关联的任务会话
-    task_session_id: str = Field(foreign_key="tasksession.session_id", index=True, max_length=64)
+    # 关联的复杂执行计划
+    execution_plan_id: str = Field(foreign_key="executionplan.id", index=True, max_length=64)
 
     # 排序顺序：用于前端展示和串行执行顺序
     sort_order: int = Field(default=0, index=True)
@@ -98,7 +98,7 @@ class SubTask(SQLModel, table=True):
     completed_at: datetime | None = None
 
     # 关联关系（使用字符串避免循环导入）
-    task_session: "TaskSession" = Relationship(back_populates="sub_tasks")  # noqa: F821
+    execution_plan: "ExecutionPlan" = Relationship(back_populates="sub_tasks")  # noqa: F821
 
     # 关联的 Artifacts（多产物支持）
     artifacts: list["Artifact"] = Relationship(  # noqa: F821
@@ -107,5 +107,5 @@ class SubTask(SQLModel, table=True):
     )
 
     # 复合索引：优化高频查询场景
-    # 场景：每次加载会话时，查询 WHERE task_session_id = ? AND status = ?
-    __table_args__ = (Index("idx_subtask_session_status", "task_session_id", "status"),)
+    # 场景：每次加载执行计划时，查询 WHERE execution_plan_id = ? AND status = ?
+    __table_args__ = (Index("idx_subtask_execution_plan_status", "execution_plan_id", "status"),)

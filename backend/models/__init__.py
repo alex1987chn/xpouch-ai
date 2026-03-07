@@ -23,12 +23,13 @@
 # ORM 领域模型（数据库表）
 # ============================================================================
 from models.domain import (
+    AgentRun,
     Artifact,
     CustomAgent,
+    ExecutionPlan,
     Message,
     SubTask,
     SystemExpert,
-    TaskSession,
     Thread,
     User,
 )
@@ -36,6 +37,7 @@ from models.enums import (
     ConversationType,
     ExecutionMode,
     ExpertType,
+    RunStatus,
     TaskStatus,
     UserRole,
     _enum_values,
@@ -59,6 +61,9 @@ from schemas import (
     CustomAgentCreate,
     CustomAgentResponse,
     CustomAgentUpdate,
+    ExecutionPlanCreate,
+    ExecutionPlanResponse,
+    ExecutionPlanUpdate,
     # Common
     LangSmithConfig,
     # Conversation
@@ -67,9 +72,6 @@ from schemas import (
     SubTaskCreate,
     SubTaskResponse,
     SubTaskUpdate,
-    TaskSessionCreate,
-    TaskSessionResponse,
-    TaskSessionUpdate,
     ThreadDetailResponse,
     ThreadListResponse,
 )
@@ -83,16 +85,18 @@ __all__ = [
     "ConversationType",
     "ExpertType",
     "TaskStatus",
+    "RunStatus",
     "ExecutionMode",
     "_enum_values",
     # ORM 模型
     "User",
+    "AgentRun",
     "Thread",
     "Message",
     "SystemExpert",
     "CustomAgent",
     "SubTask",
-    "TaskSession",
+    "ExecutionPlan",
     "Artifact",
     "UserMemory",
     "MCPServer",
@@ -111,9 +115,9 @@ __all__ = [
     "SubTaskResponse",
     "ArtifactCreate",
     "ArtifactResponse",
-    "TaskSessionCreate",
-    "TaskSessionUpdate",
-    "TaskSessionResponse",
+    "ExecutionPlanCreate",
+    "ExecutionPlanUpdate",
+    "ExecutionPlanResponse",
     # Common
     "LangSmithConfig",
 ]

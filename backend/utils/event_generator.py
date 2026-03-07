@@ -52,7 +52,7 @@ class EventGenerator:
 
     def plan_created(
         self,
-        session_id: str,
+        execution_plan_id: str,
         summary: str,
         estimated_steps: int,
         execution_mode: str,
@@ -62,7 +62,7 @@ class EventGenerator:
         生成 plan.created 事件
 
         Args:
-            session_id: 任务会话ID
+            execution_plan_id: 执行计划ID
             summary: 规划摘要
             estimated_steps: 预计步骤数
             execution_mode: 执行模式 (sequential/parallel)
@@ -80,7 +80,7 @@ class EventGenerator:
         ]
 
         data = PlanCreatedData(
-            session_id=session_id,
+            execution_plan_id=execution_plan_id,
             summary=summary,
             estimated_steps=estimated_steps,
             execution_mode=execution_mode,
@@ -93,18 +93,23 @@ class EventGenerator:
 
     def plan_started(
         self,
-        session_id: str,
+        execution_plan_id: str,
         title: str = "任务规划",
         content: str = "正在分析需求...",
         status: str = "running",
     ) -> SSEEvent:
         """生成 plan.started 事件 - 通知前端开始规划"""
-        data = PlanStartedData(session_id=session_id, title=title, content=content, status=status)
+        data = PlanStartedData(
+            execution_plan_id=execution_plan_id,
+            title=title,
+            content=content,
+            status=status,
+        )
         return build_sse_event(EventType.PLAN_STARTED, data, self._next_event_id())
 
-    def plan_thinking(self, session_id: str, delta: str) -> SSEEvent:
+    def plan_thinking(self, execution_plan_id: str, delta: str) -> SSEEvent:
         """生成 plan.thinking 事件 - 流式思考内容增量"""
-        data = PlanThinkingData(session_id=session_id, delta=delta)
+        data = PlanThinkingData(execution_plan_id=execution_plan_id, delta=delta)
         return build_sse_event(EventType.PLAN_THINKING, data, self._next_event_id())
 
     # ========================================================================

@@ -39,6 +39,11 @@ class User(SQLModel, table=True):
     password_hash: str | None = Field(default=None, max_length=255)
     verification_code: str | None = Field(default=None, max_length=16)
     verification_code_expires_at: datetime | None = Field(default=None)
+    verification_code_attempts: int = Field(default=0)
+    verification_code_locked_until: datetime | None = Field(default=None)
+    verification_code_last_sent_at: datetime | None = Field(default=None)
+    verification_code_send_count: int = Field(default=0)
+    verification_code_send_count_reset_at: datetime | None = Field(default=None)
     auth_provider: str | None = Field(
         default=None, max_length=32
     )  # 'phone', 'email', 'github', 'google', 'wechat'

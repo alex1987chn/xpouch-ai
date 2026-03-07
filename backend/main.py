@@ -214,9 +214,14 @@ app.add_middleware(
 async def validation_exception_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
+    logger.warning(
+        "[VALIDATION ERROR] path=%s errors=%s body_omitted=true",
+        request.url.path,
+        exc.errors(),
+    )
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors(), "body": exc.body},
+        content={"detail": exc.errors()},
     )
 
 
@@ -272,7 +277,7 @@ class ChatInvokeRequest(BaseModel):
     message: str
     mode: str = "auto"  # "auto" 或 "direct"
     agent_id: str | None = None  # direct 模式下必填
-    thread_id: str | None = None  # LangSmith 线程 ID
+    thread_id: str | None = None  # 已有会话 ID；为空时由后端创建
 
 
 @app.post("/api/chat/invoke")

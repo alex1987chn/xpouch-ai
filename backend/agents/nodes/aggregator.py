@@ -17,7 +17,7 @@ from langchain_core.runnables import RunnableConfig
 from sqlmodel import Session
 
 from agents.services.expert_manager import get_expert_config_cached
-from agents.services.task_manager import complete_task_session, save_aggregator_message
+from agents.services.task_manager import complete_execution_plan, save_aggregator_message
 from agents.state import AgentState
 from agents.state_patch import append_sse_event, append_sse_events, get_event_queue_snapshot
 from constants import AGGREGATOR_SYSTEM_PROMPT
@@ -42,8 +42,8 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
     strategy = state["strategy"]
     task_list = state.get("task_list", [])  # ✅ 获取 task_list 以便返回
 
-    # 获取 task_session_id 和其他状态
-    task_session_id = state.get("task_session_id")
+    # 获取 execution_plan_id 和其他状态
+    execution_plan_id = state.get("execution_plan_id")
     base_event_queue = get_event_queue_snapshot(state)
     # v3.0: 获取前端传递的 message_id（如果有的话）
     message_id = state.get("message_id", str(uuid.uuid4()))
@@ -111,24 +111,24 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
     full_event_queue = append_sse_events(base_event_queue, delta_event_payloads)
     full_event_queue = append_sse_event(full_event_queue, sse_event_to_string(done_event))
 
-    # v3.2: 更新任务会话状态并持久化聚合消息 (通过 TaskManager)
+    # v3.2: 更新执行计划状态并持久化聚合消息 (通过 TaskManager)
     # 🔥 使用独立的数据库会话（避免 MemorySaver 序列化问题）
     # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
-    if task_session_id:
+    if execution_plan_id:
         try:
 
-            def _save_task_session():
+            def _save_execution_plan():
                 with Session(engine) as db_session:
-                    # 标记任务会话为已完成
-                    complete_task_session(db_session, task_session_id, final_response)
+                    # 标记执行计划为已完成
+                    complete_execution_plan(db_session, execution_plan_id, final_response)
 
                     # 持久化聚合消息到数据库
                     if thread_id:
                         save_aggregator_message(db_session, thread_id, final_response)
 
-            await asyncio.to_thread(_save_task_session)
+            await asyncio.to_thread(_save_execution_plan)
         except Exception as e:
-            logger.warning(f"[AGG] 保存任务会话失败: {e}")
+            logger.warning(f"[AGG] 保存 ExecutionPlan 失败: {e}")
 
     logger.info(f"[AGG] 聚合完成，回复长度: {len(final_response)}")
 

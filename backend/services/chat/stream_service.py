@@ -27,7 +27,7 @@ from langchain_core.messages import BaseMessage
 from sqlmodel import Session, select
 
 from config import settings
-from models import CustomAgent, TaskSession, Thread
+from models import AgentRun, CustomAgent, ExecutionPlan, RunStatus, Thread
 from providers_config import get_model_config, get_provider_api_key, get_provider_config
 from services.mcp_tools_service import mcp_tools_service
 from utils.error_codes import ErrorCode
@@ -90,6 +90,7 @@ class StreamService:
         messages: list[BaseMessage],
         thread_id: str,
         thread: Thread,
+        agent_run: AgentRun,
         message_id: str | None = None,
     ) -> StreamingResponse:
         """
@@ -115,6 +116,9 @@ class StreamService:
 
             try:
                 # 构建 LLM
+                self._update_agent_run_status(
+                    agent_run.id, RunStatus.RUNNING, current_node="custom_agent"
+                )
                 llm = await self._build_custom_agent_llm(custom_agent)
 
                 # 检索长期记忆
@@ -158,6 +162,7 @@ class StreamService:
                         last_heartbeat_time = current_time
 
             except Exception as e:
+                self._mark_agent_run_failed(agent_run.id, str(e))
                 yield self._build_error_event(ErrorCode.STREAM_ERROR, str(e))
 
             # 解析 thinking 并保存消息
@@ -174,6 +179,7 @@ class StreamService:
             )
 
             # 发送完成事件
+            self._update_agent_run_status(agent_run.id, RunStatus.COMPLETED, current_node="done")
             yield self._build_message_done_event(actual_message_id, full_response)
 
         return StreamingResponse(
@@ -192,6 +198,7 @@ class StreamService:
         messages: list[BaseMessage],
         thread_id: str,
         thread: Thread,
+        agent_run: AgentRun,
         message_id: str | None = None,
     ) -> dict:
         """
@@ -203,6 +210,9 @@ class StreamService:
         actual_message_id = message_id or str(uuid.uuid4())
 
         try:
+            self._update_agent_run_status(
+                agent_run.id, RunStatus.RUNNING, current_node="custom_agent"
+            )
             llm = await self._build_custom_agent_llm(custom_agent)
             messages_with_system = await self._inject_memories(
                 custom_agent, messages, thread.user_id
@@ -214,6 +224,7 @@ class StreamService:
                     full_response += chunk.content
 
         except Exception as e:
+            self._mark_agent_run_failed(agent_run.id, str(e))
             raise AppError(f"自定义智能体调用失败: {str(e)}") from e
 
         # 解析 thinking 并保存
@@ -228,7 +239,8 @@ class StreamService:
             message_id=actual_message_id,
         )
 
-        return {"role": "assistant", "content": full_response, "conversationId": thread_id}
+        self._update_agent_run_status(agent_run.id, RunStatus.COMPLETED, current_node="done")
+        return {"role": "assistant", "content": full_response, "thread_id": thread_id}
 
     async def _build_custom_agent_llm(self, custom_agent: CustomAgent):
         """构建自定义智能体的 LLM 实例"""
@@ -285,6 +297,7 @@ class StreamService:
         initial_state: dict,
         thread_id: str,
         thread: Thread,
+        agent_run: AgentRun,
         user_message: str,
         message_id: str | None = None,
     ) -> StreamingResponse:
@@ -311,6 +324,7 @@ class StreamService:
             actual_message_id = message_id or str(uuid.uuid4())
             full_response = ""
             router_decision = "simple"
+            self._update_agent_run_status(agent_run.id, RunStatus.RUNNING, current_node="router")
 
             # 收集任务列表和产物
             collected_task_list = []
@@ -379,6 +393,7 @@ class StreamService:
 
                 except Exception as e:
                     logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
+                    self._mark_agent_run_failed(agent_run.id, str(e))
                     yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
 
                 # 🔥🔥🔥 HITL 检测：检查是否处于 interrupt 状态
@@ -394,8 +409,8 @@ class StreamService:
                 if task_list and current_task_index == 0 and len(collected_task_list) == 0:
                     logger.info("[StreamService] HITL 中断检测：任务规划完成，等待用户审核")
 
-                    # 🔥 方案1：更新 TaskSession 状态为 waiting_for_approval
-                    self._update_task_session_status(thread_id, "waiting_for_approval")
+                    # 🔥 方案1：更新 ExecutionPlan 状态为 waiting_for_approval
+                    self._update_execution_plan_status(thread_id, "waiting_for_approval")
 
                     # 构建当前计划数据
                     current_plan = [
@@ -413,7 +428,19 @@ class StreamService:
 
                     # 发送 human.interrupt 事件（包含计划版本号，供乐观锁校验）
                     plan_version = self._get_plan_version(thread_id)
-                    yield self._build_human_interrupt_event(thread_id, current_plan, plan_version)
+                    execution_plan = self._get_latest_execution_plan(thread_id)
+                    self._update_agent_run_status(
+                        agent_run.id,
+                        RunStatus.WAITING_FOR_APPROVAL,
+                        current_node="waiting_for_approval",
+                    )
+                    yield self._build_human_interrupt_event(
+                        thread_id,
+                        current_plan,
+                        plan_version,
+                        run_id=agent_run.id,
+                        execution_plan_id=execution_plan.id if execution_plan else None,
+                    )
                     return  # 结束流，等待用户通过 /chat/resume 恢复
 
                 # 正常流程：获取最终结果
@@ -435,6 +462,9 @@ class StreamService:
                         expert_artifacts=expert_artifacts,
                         message_id=actual_message_id,
                     )
+                    self._update_agent_run_status(
+                        agent_run.id, RunStatus.COMPLETED, current_node="done"
+                    )
 
                 # 🔥 修复：只有简单模式才在这里发送 message.done
                 # 复杂模式由 aggregator 通过 event_queue 发送
@@ -453,7 +483,12 @@ class StreamService:
         )
 
     async def handle_langgraph_sync(
-        self, initial_state: dict, thread_id: str, thread: Thread, user_message: str
+        self,
+        initial_state: dict,
+        thread_id: str,
+        thread: Thread,
+        agent_run: AgentRun,
+        user_message: str,
     ) -> dict:
         """LangGraph 非流式处理（内部使用流式）"""
         # 非流式也使用流式获取，但返回完整结果
@@ -467,6 +502,7 @@ class StreamService:
 
         # 🔥 MCP: 获取动态工具
         mcp_tools = await self._get_mcp_tools()
+        self._update_agent_run_status(agent_run.id, RunStatus.RUNNING, current_node="router")
 
         async with get_db_connection() as conn:
             checkpointer = AsyncPostgresSaver(conn)
@@ -500,11 +536,15 @@ class StreamService:
                     expert_artifacts={},
                     message_id=str(uuid.uuid4()),
                 )
+                self._update_agent_run_status(
+                    agent_run.id, RunStatus.COMPLETED, current_node="done"
+                )
 
         return {
             "role": "assistant",
             "content": full_response,
-            "conversationId": thread_id,
+            "thread_id": thread_id,
+            "run_id": agent_run.id,
             "threadMode": router_decision,
         }
 
@@ -521,14 +561,14 @@ class StreamService:
     ):
         """保存 LangGraph 执行结果"""
         from crud.task_session import create_artifacts_batch
-        from models import SubTask, TaskSession
+        from models import ExecutionPlan, SubTask
 
-        # 复杂模式：创建 TaskSession 和 SubTasks
+        # 复杂模式：创建 ExecutionPlan 和 SubTasks
         if router_decision == "complex":
             await self.session_service.update_thread_agent_type(thread_id, "ai")
 
-            task_session = TaskSession(
-                session_id=str(uuid.uuid4()),
+            execution_plan = ExecutionPlan(
+                id=str(uuid.uuid4()),
                 thread_id=thread_id,
                 user_query=user_message,
                 status="completed",
@@ -537,11 +577,11 @@ class StreamService:
                 updated_at=datetime.now(),
                 completed_at=datetime.now(),
             )
-            self.db.add(task_session)
+            self.db.add(execution_plan)
             self.db.flush()
 
             # 更新 thread
-            thread.task_session_id = task_session.session_id
+            thread.execution_plan_id = execution_plan.id
             self.db.add(thread)
 
             # 保存 SubTasks
@@ -558,7 +598,7 @@ class StreamService:
                     completed_at=subtask.get("completed_at"),
                     created_at=datetime.now(),
                     updated_at=datetime.now(),
-                    task_session_id=task_session.session_id,
+                    execution_plan_id=execution_plan.id,
                 )
                 self.db.add(db_subtask)
                 self.db.flush()
@@ -1034,18 +1074,55 @@ class StreamService:
         """构建 error 事件"""
         return build_error_event(code=code, message=message)
 
+    def _get_latest_execution_plan(self, thread_id: str) -> ExecutionPlan | None:
+        """获取线程最新的 ExecutionPlan。"""
+        return self.db.exec(
+            select(ExecutionPlan)
+            .where(ExecutionPlan.thread_id == thread_id)
+            .order_by(ExecutionPlan.created_at.desc())
+        ).first()
+
+    def _update_agent_run_status(
+        self,
+        run_id: str,
+        status: RunStatus,
+        *,
+        current_node: str | None = None,
+    ) -> None:
+        """更新 AgentRun 状态。"""
+        agent_run = self.db.get(AgentRun, run_id)
+        if not agent_run:
+            return
+        agent_run.status = status
+        agent_run.current_node = current_node
+        agent_run.last_heartbeat_at = datetime.now()
+        agent_run.updated_at = datetime.now()
+        self.db.add(agent_run)
+        self.db.commit()
+
+    def _mark_agent_run_failed(self, run_id: str, error_message: str) -> None:
+        """将 AgentRun 标记为失败。"""
+        agent_run = self.db.get(AgentRun, run_id)
+        if not agent_run:
+            return
+        agent_run.status = RunStatus.FAILED
+        agent_run.error_message = error_message
+        agent_run.updated_at = datetime.now()
+        self.db.add(agent_run)
+        self.db.commit()
+
     def _get_plan_version(self, thread_id: str) -> int:
         """获取当前线程的计划版本号（乐观锁）"""
-        task_session = self.db.exec(
-            select(TaskSession)
-            .where(TaskSession.thread_id == thread_id)
-            .order_by(TaskSession.created_at.desc())
+        execution_plan = self.db.exec(
+            select(ExecutionPlan)
+            .where(ExecutionPlan.thread_id == thread_id)
+            .order_by(ExecutionPlan.created_at.desc())
         ).first()
-        return int(task_session.plan_version) if task_session else 1
+        return int(execution_plan.plan_version) if execution_plan else 1
 
-    def _update_task_session_status(self, thread_id: str, status: str) -> None:
+    def _update_execution_plan_status(self, thread_id: str, status: str) -> None:
         """
-        更新 TaskSession 状态
+        更新 ExecutionPlan 状态
 
         Args:
             thread_id: 线程ID
@@ -1053,27 +1130,32 @@ class StreamService:
         """
         from models.enums import TaskStatus
 
-        task_session = self.db.exec(
-            select(TaskSession)
-            .where(TaskSession.thread_id == thread_id)
-            .order_by(TaskSession.created_at.desc())
+        execution_plan = self.db.exec(
+            select(ExecutionPlan)
+            .where(ExecutionPlan.thread_id == thread_id)
+            .order_by(ExecutionPlan.created_at.desc())
         ).first()
 
-        if task_session:
-            task_session.status = TaskStatus(status)
-            task_session.updated_at = datetime.now()
-            self.db.add(task_session)
+        if execution_plan:
+            execution_plan.status = TaskStatus(status)
+            execution_plan.updated_at = datetime.now()
+            self.db.add(execution_plan)
             self.db.commit()
-            logger.info(
-                f"[StreamService] TaskSession {task_session.session_id} 状态更新为 {status}"
-            )
+            logger.info(f"[StreamService] ExecutionPlan {execution_plan.id} 状态更新为 {status}")
 
     def _build_human_interrupt_event(
-        self, thread_id: str, current_plan: list[dict], plan_version: int
+        self,
+        thread_id: str,
+        current_plan: list[dict],
+        plan_version: int,
+        run_id: str | None = None,
+        execution_plan_id: str | None = None,
     ) -> str:
         """构建 human.interrupt 事件 (HITL)"""
         return build_human_interrupt_event(
             thread_id=thread_id,
             current_plan=current_plan,
             plan_version=plan_version,
+            run_id=run_id,
+            execution_plan_id=execution_plan_id,
         )

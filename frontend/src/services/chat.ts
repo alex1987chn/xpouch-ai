@@ -309,7 +309,7 @@ export async function sendMessage(
   messages: ApiMessage[],
   agentId: string = 'default-chat',
   onChunk?: StreamCallback,
-  conversationId?: string | null,
+  threadId?: string | null,
   abortSignal?: AbortSignal,
   assistantMessageId?: string | undefined  // v3.0: 前端传递的助手消息 ID
 ): Promise<string> {
@@ -328,7 +328,7 @@ export async function sendMessage(
         message: messageContent,
         history: history.map(m => ({ role: m.role, content: m.content })),
         agent_id: agentId,
-        conversation_id: conversationId,
+        thread_id: threadId,
         stream: false,
         message_id: assistantMessageId,  // v3.0: 传递助手消息 ID
       }),
@@ -344,13 +344,13 @@ export async function sendMessage(
       message: messageContent,
       history: history.map(m => ({ role: m.role, content: m.content })),
       agent_id: agentId,
-      conversation_id: conversationId,
+      thread_id: threadId,
       stream: true,
       message_id: assistantMessageId,
     },
     errorContext: 'chat.ts',
     logPrefix: '',
-    conversationId: conversationId || undefined,
+    conversationId: threadId || undefined,
     onChunk,
     abortSignal,
   })

@@ -3,7 +3,7 @@ Artifact 业务处理服务
 
 职责:
 - Artifact 的查询和更新
-- 权限验证（Artifact -> SubTask -> TaskSession -> Thread -> User）
+- 权限验证（Artifact -> SubTask -> ExecutionPlan -> Thread -> User）
 - 复用 utils.artifacts 进行解析
 
 依赖:
@@ -16,7 +16,7 @@ from typing import Any
 from sqlmodel import Session
 
 from crud.task_session import get_artifact, update_artifact_content
-from models import Artifact, SubTask, TaskSession, Thread
+from models import Artifact, ExecutionPlan, SubTask, Thread
 from utils.artifacts import parse_artifacts_from_response
 from utils.exceptions import AuthorizationError, NotFoundError
 from utils.logger import logger
@@ -90,9 +90,9 @@ class ArtifactService:
         if not subtask:
             raise NotFoundError(f"SubTask not found: {subtask_id}")
 
-        task_session = self.db.get(TaskSession, subtask.task_session_id)
-        if task_session:
-            thread = self.db.get(Thread, task_session.thread_id)
+        execution_plan = self.db.get(ExecutionPlan, subtask.execution_plan_id)
+        if execution_plan:
+            thread = self.db.get(Thread, execution_plan.thread_id)
             if thread and thread.user_id != user_id:
                 raise AuthorizationError("无权访问此产物的产物")
 
@@ -168,7 +168,7 @@ class ArtifactService:
         """
         验证用户对 Artifact 的访问权限
 
-        验证链：Artifact -> SubTask -> TaskSession -> Thread -> User
+        验证链：Artifact -> SubTask -> ExecutionPlan -> Thread -> User
 
         Args:
             artifact: Artifact 实例
@@ -185,11 +185,11 @@ class ArtifactService:
         if not subtask:
             raise NotFoundError("Associated task not found")
 
-        task_session = self.db.get(TaskSession, subtask.task_session_id)
-        if not task_session:
+        execution_plan = self.db.get(ExecutionPlan, subtask.execution_plan_id)
+        if not execution_plan:
             raise NotFoundError("Associated session not found")
 
-        thread = self.db.get(Thread, task_session.thread_id)
+        thread = self.db.get(Thread, execution_plan.thread_id)
         if not thread:
             raise NotFoundError("Associated thread not found")
 

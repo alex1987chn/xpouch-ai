@@ -17,6 +17,7 @@ XPouch AI 配置管理 - Pydantic Settings 最佳实践
 
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -41,7 +42,7 @@ class Settings(BaseSettings):
     port: int = Field(default=3002, alias="PORT")
 
     # 数据库
-    database_url: str = Field(default="sqlite:///data/database.db", alias="DATABASE_URL")
+    database_url: str = Field(default="", alias="DATABASE_URL")
 
     # 数据库连接池配置（用于 LangGraph Checkpointer）
     db_pool_min_size: int = Field(default=5, alias="DB_POOL_MIN_SIZE")
@@ -106,9 +107,29 @@ class Settings(BaseSettings):
     sms_sign_name: str | None = Field(default=None, alias="SMS_SIGN_NAME")
     sms_template_id: str | None = Field(default=None, alias="SMS_TEMPLATE_ID")
     sms_region: str = Field(default="ap-guangzhou", alias="SMS_REGION")
+    sms_console_fallback_enabled: bool = Field(default=False, alias="SMS_CONSOLE_FALLBACK_ENABLED")
 
     # CORS
     cors_origins: str = Field(default="http://localhost:5173", alias="CORS_ORIGINS")
+
+    # 验证码风控
+    verification_code_length: int = Field(default=6, alias="VERIFICATION_CODE_LENGTH")
+    verification_code_expire_minutes: int = Field(
+        default=5, alias="VERIFICATION_CODE_EXPIRE_MINUTES"
+    )
+    verification_code_max_attempts: int = Field(default=5, alias="VERIFICATION_CODE_MAX_ATTEMPTS")
+    verification_code_lockout_minutes: int = Field(
+        default=10, alias="VERIFICATION_CODE_LOCKOUT_MINUTES"
+    )
+    verification_code_send_cooldown_seconds: int = Field(
+        default=60, alias="VERIFICATION_CODE_SEND_COOLDOWN_SECONDS"
+    )
+    verification_code_send_window_minutes: int = Field(
+        default=30, alias="VERIFICATION_CODE_SEND_WINDOW_MINUTES"
+    )
+    verification_code_max_sends_per_window: int = Field(
+        default=5, alias="VERIFICATION_CODE_MAX_SENDS_PER_WINDOW"
+    )
 
     # ==================== 计算属性 ====================
 
@@ -124,6 +145,38 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         """CORS 来源列表"""
         return [o.strip() for o in self.cors_origins.split(",")]
+
+    def get_database_url(self, *, sync_driver: str | None = None) -> str:
+        """获取数据库连接串，并统一约束 PostgreSQL。"""
+        database_url = self.database_url.strip()
+        if not database_url:
+            raise ValueError("必须设置 DATABASE_URL，且当前项目仅支持 PostgreSQL")
+        if not database_url.startswith(("postgresql", "postgres")):
+            raise ValueError(f"当前项目仅支持 PostgreSQL，收到: {database_url}")
+
+        if sync_driver == "psycopg":
+            return database_url.replace("+asyncpg", "+psycopg")
+        if sync_driver == "plain":
+            return database_url.replace("+asyncpg", "").replace("+psycopg", "")
+        return database_url
+
+    def get_masked_database_url(self) -> str:
+        """返回脱敏后的数据库连接串，避免日志泄露凭据。"""
+        raw_url = self.get_database_url()
+        parsed = urlsplit(raw_url)
+        hostname = parsed.hostname or ""
+        if parsed.port:
+            hostname = f"{hostname}:{parsed.port}"
+
+        user = parsed.username or ""
+        auth = ""
+        if user:
+            auth = f"{user}:***@"
+
+        masked_netloc = f"{auth}{hostname}" if hostname else auth.rstrip("@")
+        return urlunsplit(
+            (parsed.scheme, masked_netloc, parsed.path, parsed.query, parsed.fragment)
+        )
 
     # ==================== 便捷方法 ====================
 
@@ -191,6 +244,12 @@ class Settings(BaseSettings):
             except ValueError as e:
                 logger.error(f"JWT 配置错误: {e}")
                 return False
+
+        try:
+            self.get_database_url()
+        except ValueError as e:
+            logger.error(f"数据库配置错误: {e}")
+            return False
 
         if self.langchain_tracing_v2 and not self.langchain_api_key:
             logger.warning("LangSmith 已启用但未设置 LANGCHAIN_API_KEY")

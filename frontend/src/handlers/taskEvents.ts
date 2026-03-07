@@ -61,7 +61,7 @@ export function handlePlanCreated(
   }
 
   if (debug) {
-    logger.debug('[TaskEvents] 任务计划已初始化:', event.data.session_id)
+    logger.debug('[TaskEvents] 任务计划已初始化:', event.data.execution_plan_id)
   }
 }
 
@@ -89,7 +89,7 @@ export function handlePlanStarted(
 
     // 创建新的 planning step
     const planStep = {
-      id: `plan-${event.data.session_id}`,
+      id: `plan-${event.data.execution_plan_id}`,
       expertType: 'planner',
       expertName: '任务规划',
       content: '',
@@ -110,7 +110,7 @@ export function handlePlanStarted(
   }
 
   if (debug) {
-    logger.debug('[TaskEvents] 规划开始，title 常驻:', event.data.session_id)
+    logger.debug('[TaskEvents] 规划开始，title 常驻:', event.data.execution_plan_id)
   }
 }
 

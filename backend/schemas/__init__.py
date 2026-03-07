@@ -24,12 +24,12 @@ from schemas.custom_agent import (
 from schemas.task import (
     ArtifactCreate,
     ArtifactResponse,
+    ExecutionPlanCreate,
+    ExecutionPlanResponse,
+    ExecutionPlanUpdate,
     SubTaskCreate,
     SubTaskResponse,
     SubTaskUpdate,
-    TaskSessionCreate,
-    TaskSessionResponse,
-    TaskSessionUpdate,
 )
 
 __all__ = [
@@ -50,7 +50,7 @@ __all__ = [
     "SubTaskResponse",
     "ArtifactCreate",
     "ArtifactResponse",
-    "TaskSessionCreate",
-    "TaskSessionUpdate",
-    "TaskSessionResponse",
+    "ExecutionPlanCreate",
+    "ExecutionPlanUpdate",
+    "ExecutionPlanResponse",
 ]

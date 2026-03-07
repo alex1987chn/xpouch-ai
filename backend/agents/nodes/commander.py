@@ -10,7 +10,7 @@ Commander 节点 - 任务规划与拆解
 [执行流程]
 1. 分析用户查询意图
 2. 生成任务列表（使用结构化输出 CommanderOutput）
-3. 创建 TaskSession 和 SubTasks（数据库持久化）
+3. 创建 ExecutionPlan 和 SubTasks（数据库持久化）
 4. 预加载专家配置到缓存（P1 优化）
 5. 发送 plan.created 事件（驱动前端显示 Thinking Steps）
 6. 触发 HITL 中断（等待用户确认计划）
@@ -31,7 +31,7 @@ CommanderOutput:
 - 容错：缺失依赖时提示 LLM 基于现有信息尽力完成
 
 [数据库操作]
-- 创建 TaskSession（任务会话）
+- 创建 ExecutionPlan（复杂执行计划）
 - 批量创建 SubTask（子任务）
 - 关联 Thread（对话线程）
 
@@ -95,7 +95,7 @@ class Task(BaseModel):
         """兼容处理：整数依赖转为字符串"""
         if v is None:
             return []
-        if isinstance(v, (int, str)):
+        if isinstance(v, int | str):
             return [str(v)]
         if isinstance(v, list):
             return [str(item) for item in v]
@@ -186,7 +186,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
         get_expert_config,
         get_expert_config_cached,
     )
-    from agents.services.task_manager import get_or_create_task_session
+    from agents.services.task_manager import get_or_create_execution_plan
     from models import SubTaskCreate
     from utils.event_generator import (
         event_plan_created,
@@ -323,20 +323,22 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
             # 🔥🔥🔥 Commander 2.0: JSON Mode + Pydantic 强校验
             # 1️⃣ 获取或生成 session_id
-            preview_session_id = state.get("preview_session_id") or str(uuid.uuid4())
+            preview_execution_plan_id = state.get("preview_execution_plan_id") or str(uuid.uuid4())
 
             # 🔥 只有在 chat.py 没有发送 plan.started 的情况下，才在这里发送
-            if not state.get("preview_session_id"):
+            if not state.get("preview_execution_plan_id"):
                 started_event = event_plan_started(
-                    session_id=preview_session_id,
+                    execution_plan_id=preview_execution_plan_id,
                     title="任务规划",
                     content="正在分析需求...",
                     status="running",
                 )
                 event_queue = append_sse_event(event_queue, sse_event_to_string(started_event))
-                logger.info(f"[COMMANDER] 发送 plan.started: {preview_session_id}")
+                logger.info(f"[COMMANDER] 发送 plan.started: {preview_execution_plan_id}")
             else:
-                logger.info(f"[COMMANDER] 复用 chat.py 发送的 plan.started: {preview_session_id}")
+                logger.info(
+                    f"[COMMANDER] 复用 chat.py 发送的 plan.started: {preview_execution_plan_id}"
+                )
 
             # 2️⃣ 使用 JSON Mode + Pydantic 强校验生成计划
             # 🔥 Commander 2.0: DeepSeek 兼容的 JSON Mode 实现
@@ -344,7 +346,11 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
             logger.info("[COMMANDER] 使用 JSON Mode + Pydantic 校验生成执行计划...")
             commander_response, event_queue = await _generate_plan_with_json_mode(
-                llm_with_config, system_prompt, human_prompt, preview_session_id, event_queue
+                llm_with_config,
+                system_prompt,
+                human_prompt,
+                preview_execution_plan_id,
+                event_queue,
             )
 
             # v3.1: 兜底处理 - 如果 LLM 没有生成 id，自动生成
@@ -384,17 +390,17 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
             ]
 
             # v3.0: 立即持久化到数据库 (通过 TaskManager)
-            # 🔥 v3.3: 使用 preview_session_id 确保事件和数据库记录一致
+            # 🔥 v3.3: 使用 preview_execution_plan_id 确保事件和数据库记录一致
             # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
-            task_session_id = None
+            execution_plan_id = None
             sub_tasks_list = []
             if thread_id:
 
-                def _create_task_session():
+                def _create_execution_plan():
                     from crud.task_session import get_subtasks_by_session
 
                     with Session(engine) as db_session:
-                        created_session, is_reused = get_or_create_task_session(
+                        created_plan, is_reused = get_or_create_execution_plan(
                             db=db_session,
                             thread_id=thread_id,
                             user_query=user_query,
@@ -402,13 +408,11 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                             estimated_steps=commander_response.estimated_steps,
                             subtasks_data=subtasks_data,
                             execution_mode="sequential",
-                            session_id=preview_session_id,
+                            execution_plan_id=preview_execution_plan_id,
                         )
 
                         # 在会话关闭前完成子任务数据读取，避免 detached 实例懒加载
-                        persisted_subtasks = get_subtasks_by_session(
-                            db_session, created_session.session_id
-                        )
+                        persisted_subtasks = get_subtasks_by_session(db_session, created_plan.id)
                         serialized_subtasks = [
                             {
                                 "id": subtask.id,
@@ -420,15 +424,15 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                             }
                             for subtask in persisted_subtasks
                         ]
-                        return created_session.session_id, is_reused, serialized_subtasks
+                        return created_plan.id, is_reused, serialized_subtasks
 
-                task_session_id, is_reused, sub_tasks_list = await asyncio.to_thread(
-                    _create_task_session
+                execution_plan_id, is_reused, sub_tasks_list = await asyncio.to_thread(
+                    _create_execution_plan
                 )
                 session_source = "复用" if is_reused else "新建"
-                logger.info(f"[COMMANDER] TaskSession {session_source}: {task_session_id}")
+                logger.info(f"[COMMANDER] ExecutionPlan {session_source}: {execution_plan_id}")
 
-                # 🔥🔥🔥 关键修复：更新 thread.task_session_id，确保前端能查询到
+                # 🔥🔥🔥 更新 thread.execution_plan_id，确保前端能查询到
                 # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
                 from models import Thread
 
@@ -436,7 +440,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                     with Session(engine) as db_session:
                         thread = db_session.get(Thread, thread_id)
                         if thread:
-                            thread.task_session_id = task_session_id
+                            thread.execution_plan_id = execution_plan_id
                             thread.agent_type = "ai"  # 🔥 同时更新 agent_type
                             db_session.add(thread)
                             db_session.commit()
@@ -445,7 +449,9 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
                 updated = await asyncio.to_thread(_update_thread)
                 if updated:
-                    logger.info(f"[COMMANDER] ✅ 已更新 thread.task_session_id: {task_session_id}")
+                    logger.info(
+                        f"[COMMANDER] ✅ 已更新 thread.execution_plan_id: {execution_plan_id}"
+                    )
 
             # 转换为内部字典格式（用于 LangGraph 状态流转）
             task_list = []
@@ -477,13 +483,13 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
             # P0 修复: 传入 engine 而不是 db_session，让函数内部自己管理会话
             await _preload_expert_configs(task_list)
 
-            # 🔥 v3.3: 使用 preview_session_id 保持一致性，TaskSession 创建后会使用相同的 ID
+            # 🔥 v3.3: 使用 preview_execution_plan_id 保持一致性
             # 注意：这里不再创建新的 event_queue，而是复用之前的事件队列
 
             # 4️⃣ 发送 plan.created 事件（完成状态）
-            if task_session_id:
+            if execution_plan_id:
                 plan_event = event_plan_created(
-                    session_id=task_session_id,
+                    execution_plan_id=execution_plan_id,
                     summary=commander_response.strategy,
                     estimated_steps=commander_response.estimated_steps,
                     execution_mode="sequential",
@@ -509,7 +515,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                 "strategy": commander_response.strategy,
                 "current_task_index": 0,
                 "expert_results": [],
-                "task_session_id": task_session_id,
+                "execution_plan_id": execution_plan_id,
                 "event_queue": event_queue,
                 # 保留前端兼容的元数据
                 "__task_plan": {
@@ -579,7 +585,7 @@ async def _generate_plan_once(
     llm_with_config,
     enhanced_system_prompt: str,
     human_prompt: str,
-    preview_session_id: str,
+    preview_execution_plan_id: str,
     event_queue: list[dict[str, Any]],
 ) -> tuple[ExecutionPlan, list[dict[str, Any]]]:
     """
@@ -602,7 +608,8 @@ async def _generate_plan_once(
     # 发送 thinking 事件
     thinking_preview = raw_content[:200] + "..." if len(raw_content) > 200 else raw_content
     thinking_event = event_plan_thinking(
-        session_id=preview_session_id, delta=f"[规划分析中...]\n{thinking_preview}"
+        execution_plan_id=preview_execution_plan_id,
+        delta=f"[规划分析中...]\n{thinking_preview}",
     )
     next_event_queue = append_sse_event(event_queue, sse_event_to_string(thinking_event))
 
@@ -622,7 +629,7 @@ async def _generate_plan_with_json_mode(
     llm_with_config,
     system_prompt: str,
     human_prompt: str,
-    preview_session_id: str,
+    preview_execution_plan_id: str,
     event_queue: list[dict[str, Any]],
 ) -> tuple[ExecutionPlan, list[dict[str, Any]]]:
     """
@@ -639,7 +646,11 @@ IMPORTANT: You MUST output a valid JSON object. No conversation, no markdown cod
 
     try:
         return await _generate_plan_once(
-            llm_with_config, enhanced_system_prompt, human_prompt, preview_session_id, event_queue
+            llm_with_config,
+            enhanced_system_prompt,
+            human_prompt,
+            preview_execution_plan_id,
+            event_queue,
         )
     except ValidationError as e:
         logger.warning(f"[COMMANDER] Pydantic 校验失败: {e}")
@@ -654,7 +665,7 @@ async def _streaming_planning_fallback(
     llm_with_config,
     system_prompt: str,
     human_prompt: str,
-    preview_session_id: str,
+    preview_execution_plan_id: str,
     event_queue: list[dict[str, Any]],
 ) -> tuple[ExecutionPlan, list[dict[str, Any]]]:
     """
@@ -688,7 +699,7 @@ async def _streaming_planning_fallback(
                 if before_json.strip():
                     thinking_content += before_json
                     thinking_event = event_plan_thinking(
-                        session_id=preview_session_id, delta=before_json
+                        execution_plan_id=preview_execution_plan_id, delta=before_json
                     )
                     event_queue = append_sse_event(event_queue, sse_event_to_string(thinking_event))
                 json_parts = content.split("```", 1)
@@ -697,7 +708,9 @@ async def _streaming_planning_fallback(
                 continue
 
             thinking_content += content
-            thinking_event = event_plan_thinking(session_id=preview_session_id, delta=content)
+            thinking_event = event_plan_thinking(
+                execution_plan_id=preview_execution_plan_id, delta=content
+            )
             event_queue = append_sse_event(event_queue, sse_event_to_string(thinking_event))
         else:
             if "```" in content:

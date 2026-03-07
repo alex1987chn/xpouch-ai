@@ -110,13 +110,13 @@ export interface Conversation {
   updated_at: string
   status?: string
   thread_mode?: 'simple' | 'complex'
-  task_session_id?: string
+  execution_plan_id?: string
   // P0-5 优化：列表接口不再返回完整消息，只返回数量和预览
   message_count?: number
   last_message_preview?: string
   // messages 现在需要通过单独的 API 获取
   messages?: Message[]
-  task_session?: TaskSession
+  execution_plan?: ExecutionPlan
 }
 
 /**
@@ -129,13 +129,16 @@ export interface ConversationDetail extends Conversation {
 /**
  * 任务会话接口 - 记录一次完整的多专家协作过程（仅复杂模式）
  */
-export interface TaskSession {
-  session_id: string
+export interface ExecutionPlan {
+  id: string
+  execution_plan_id: string
+  run_id?: string
   thread_id: string  // 关联的线程ID
   user_query: string
   final_response?: string
   status?: string
   sub_tasks?: SubTask[]
+  plan_version?: number
   created_at?: string
   updated_at?: string
 }
@@ -145,7 +148,7 @@ export interface TaskSession {
  */
 export interface SubTask {
   id: string
-  task_session_id: string
+  execution_plan_id: string
   expert_type: string
   task_description: string
   status?: string

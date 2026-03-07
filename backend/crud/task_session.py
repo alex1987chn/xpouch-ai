@@ -1,6 +1,6 @@
 """
-TaskSession / SubTask / Artifact 数据访问层
-提供复杂模式任务会话的 CRUD 操作
+ExecutionPlan / SubTask / Artifact 数据访问层
+提供复杂模式执行计划的 CRUD 操作
 """
 
 from datetime import datetime
@@ -11,15 +11,15 @@ from sqlmodel import Session, select
 from models import (
     Artifact,
     ArtifactCreate,
+    ExecutionPlan,
+    ExecutionPlanUpdate,
     SubTask,
     SubTaskCreate,
     SubTaskUpdate,
-    TaskSession,
-    TaskSessionUpdate,
 )
 
 # ============================================================================
-# TaskSession CRUD
+# ExecutionPlan CRUD
 # ============================================================================
 
 
@@ -30,7 +30,7 @@ def create_task_session(
     plan_summary: str | None = None,
     estimated_steps: int = 0,
     execution_mode: str = "sequential",
-) -> TaskSession:
+) -> ExecutionPlan:
     """
     创建任务会话
 
@@ -45,7 +45,7 @@ def create_task_session(
     Returns:
         创建的任务会话
     """
-    task_session = TaskSession(
+    execution_plan = ExecutionPlan(
         thread_id=thread_id,
         user_query=user_query,
         plan_summary=plan_summary,
@@ -53,29 +53,29 @@ def create_task_session(
         execution_mode=execution_mode,
         status="pending",
     )
-    db.add(task_session)
+    db.add(execution_plan)
     db.commit()
-    db.refresh(task_session)
-    return task_session
+    db.refresh(execution_plan)
+    return execution_plan
 
 
-def get_task_session(db: Session, session_id: str) -> TaskSession | None:
+def get_task_session(db: Session, session_id: str) -> ExecutionPlan | None:
     """获取任务会话详情（包含子任务和产物）"""
-    statement = select(TaskSession).where(TaskSession.session_id == session_id)
+    statement = select(ExecutionPlan).where(ExecutionPlan.id == session_id)
     result = db.exec(statement).first()
     return result
 
 
-def get_task_session_by_thread(db: Session, thread_id: str) -> TaskSession | None:
+def get_task_session_by_thread(db: Session, thread_id: str) -> ExecutionPlan | None:
     """通过对话ID获取任务会话"""
-    statement = select(TaskSession).where(TaskSession.thread_id == thread_id)
+    statement = select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)
     result = db.exec(statement).first()
     return result
 
 
 def update_task_session(
-    db: Session, session_id: str, update_data: TaskSessionUpdate
-) -> TaskSession | None:
+    db: Session, session_id: str, update_data: ExecutionPlanUpdate
+) -> ExecutionPlan | None:
     """更新任务会话"""
     task_session = get_task_session(db, session_id)
     if not task_session:
@@ -94,7 +94,7 @@ def update_task_session(
 
 def update_task_session_status(
     db: Session, session_id: str, status: str, final_response: str | None = None
-) -> TaskSession | None:
+) -> ExecutionPlan | None:
     """更新任务会话状态和最终响应"""
     task_session = get_task_session(db, session_id)
     if not task_session:
@@ -120,7 +120,7 @@ def update_task_session_status(
 
 def create_subtask(
     db: Session,
-    task_session_id: str,
+    execution_plan_id: str,
     expert_type: str,
     task_description: str,
     sort_order: int = 0,
@@ -145,7 +145,7 @@ def create_subtask(
         创建的子任务
     """
     subtask = SubTask(
-        task_session_id=task_session_id,
+        execution_plan_id=execution_plan_id,
         expert_type=expert_type,
         task_description=task_description,
         sort_order=sort_order,
@@ -171,7 +171,7 @@ def get_subtasks_by_session(db: Session, task_session_id: str) -> list[SubTask]:
     """获取任务会话的所有子任务（按 sort_order 排序）"""
     statement = (
         select(SubTask)
-        .where(SubTask.task_session_id == task_session_id)
+        .where(SubTask.execution_plan_id == task_session_id)
         .order_by(SubTask.sort_order)
     )
     results = db.exec(statement).all()
@@ -361,8 +361,8 @@ def create_task_session_with_subtasks(
     estimated_steps: int,
     subtasks_data: list[SubTaskCreate],
     execution_mode: str = "sequential",
-    session_id: str | None = None,  # 🔥 新增：可选的自定义 session_id
-) -> TaskSession:
+    session_id: str | None = None,  # 待统一重命名为 execution_plan_id
+) -> ExecutionPlan:
     """
     批量创建任务会话和子任务（Commander 阶段使用）
 
@@ -393,7 +393,12 @@ def create_task_session_with_subtasks(
     if session_id:
         task_session_data["session_id"] = session_id
 
-    task_session = TaskSession(**task_session_data)
+    if session_id:
+        task_session_data["id"] = session_id
+
+    task_session_data.pop("session_id", None)
+
+    task_session = ExecutionPlan(**task_session_data)
     db.add(task_session)
     db.flush()  # 获取 session_id（如果是自动生成的）
 
@@ -404,7 +409,7 @@ def create_task_session_with_subtasks(
 
     for idx, data in enumerate(subtasks_data):
         subtask = SubTask(
-            task_session_id=task_session.session_id,
+            execution_plan_id=task_session.id,
             expert_type=data.expert_type,
             task_description=data.task_description,
             sort_order=data.sort_order if data.sort_order is not None else idx,
@@ -439,7 +444,7 @@ def create_task_session_with_subtasks(
     return task_session
 
 
-def get_task_session_full(db: Session, session_id: str) -> TaskSession | None:
+def get_task_session_full(db: Session, session_id: str) -> ExecutionPlan | None:
     """
     获取完整的任务会话（包含子任务和产物）
 
@@ -449,8 +454,8 @@ def get_task_session_full(db: Session, session_id: str) -> TaskSession | None:
     """
     # P1 修复: 使用 selectinload 预加载关联数据
     statement = (
-        select(TaskSession)
-        .where(TaskSession.session_id == session_id)
-        .options(selectinload(TaskSession.sub_tasks).selectinload(SubTask.artifacts))
+        select(ExecutionPlan)
+        .where(ExecutionPlan.id == session_id)
+        .options(selectinload(ExecutionPlan.sub_tasks).selectinload(SubTask.artifacts))
     )
     return db.exec(statement).first()
