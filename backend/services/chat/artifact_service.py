@@ -7,7 +7,7 @@ Artifact 业务处理服务
 - 复用 utils.artifacts 进行解析
 
 依赖:
-- backend.crud.task_session (Artifact CRUD)
+- backend.crud.execution_plan (Artifact CRUD)
 - backend.utils.artifacts (Artifact 解析)
 """
 
@@ -15,7 +15,7 @@ from typing import Any
 
 from sqlmodel import Session
 
-from crud.task_session import get_artifact, update_artifact_content
+from crud.execution_plan import get_artifact, update_artifact_content
 from models import Artifact, ExecutionPlan, SubTask, Thread
 from utils.artifacts import parse_artifacts_from_response
 from utils.exceptions import AuthorizationError, NotFoundError
@@ -83,7 +83,7 @@ class ArtifactService:
         Returns:
             Artifact 列表
         """
-        from crud.task_session import get_artifacts_by_subtask as crud_get_artifacts
+        from crud.execution_plan import get_artifacts_by_subtask as crud_get_artifacts
 
         # 验证 SubTask 权限
         subtask = self.db.get(SubTask, subtask_id)
@@ -187,7 +187,7 @@ class ArtifactService:
 
         execution_plan = self.db.get(ExecutionPlan, subtask.execution_plan_id)
         if not execution_plan:
-            raise NotFoundError("Associated session not found")
+            raise NotFoundError("Associated execution plan not found")
 
         thread = self.db.get(Thread, execution_plan.thread_id)
         if not thread:

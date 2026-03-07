@@ -322,7 +322,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                 )
 
             # 🔥🔥🔥 Commander 2.0: JSON Mode + Pydantic 强校验
-            # 1️⃣ 获取或生成 session_id
+            # 1️⃣ 获取或生成 execution_plan_id（预览阶段）
             preview_execution_plan_id = state.get("preview_execution_plan_id") or str(uuid.uuid4())
 
             # 🔥 只有在 chat.py 没有发送 plan.started 的情况下，才在这里发送
@@ -397,7 +397,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
             if thread_id:
 
                 def _create_execution_plan():
-                    from crud.task_session import get_subtasks_by_session
+                    from crud.execution_plan import get_subtasks_by_execution_plan
 
                     with Session(engine) as db_session:
                         created_plan, is_reused = get_or_create_execution_plan(
@@ -412,7 +412,9 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                         )
 
                         # 在会话关闭前完成子任务数据读取，避免 detached 实例懒加载
-                        persisted_subtasks = get_subtasks_by_session(db_session, created_plan.id)
+                        persisted_subtasks = get_subtasks_by_execution_plan(
+                            db_session, created_plan.id
+                        )
                         serialized_subtasks = [
                             {
                                 "id": subtask.id,

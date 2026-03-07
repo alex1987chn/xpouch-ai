@@ -116,7 +116,7 @@ export default function ChatStreamPanel({
   // Only re-render when these specific values change
   const messages = useMessages()
   const isGenerating = useIsGenerating()
-  const conversationId = useCurrentConversationId()
+  const threadId = useCurrentConversationId()
   
   // Phase 2: Server-Driven UI - 使用 TaskStore
   const mode = useTaskMode()
@@ -281,10 +281,10 @@ export default function ChatStreamPanel({
 
         {/* Phase 2: Server-Driven UI - Plan review card 基于 executionStatus */}
         {/* 使用 key 强制重新挂载，避免 useEffect 同步 Props 反模式 */}
-        {isWaitingForApproval && conversationId && resumeExecution && (
+        {isWaitingForApproval && threadId && resumeExecution && (
           <PlanReviewCard 
-            key={`plan-review-${conversationId}`}
-            conversationId={conversationId} 
+            key={`plan-review-${threadId}`}
+            threadId={threadId} 
             resumeExecution={resumeExecution}
           />
         )}

@@ -4,65 +4,47 @@
  */
 
 import { useCallback } from 'react'
-import { getConversation, deleteConversation as apiDeleteConversation } from '@/services/chat'
-import { normalizeAgentId } from '@/utils/agentUtils'
-import { errorHandler, logger } from '@/utils/logger'
-import type { SubTask } from '@/types'
+import { deleteConversation as apiDeleteConversation } from '@/services/chat'
+import { errorHandler } from '@/utils/logger'
 
 import {
   useMessages,
   useCurrentConversationId,
   useChatActions,
 } from '@/hooks/useChatSelectors'
-import { useTaskActions } from '@/hooks/useTaskSelectors'
-import { useChatStore } from '@/store/chatStore'
-import { useTaskStore } from '@/store/taskStore'
-
-
 /**
  * Conversation management Hook
  */
 export function useConversation() {
-  function isStatusError(error: unknown): error is { status?: number } {
-    return typeof error === 'object' && error !== null && 'status' in error
-  }
 
   const messages = useMessages()
-  const currentConversationId = useCurrentConversationId()
+  const currentThreadId = useCurrentConversationId()
   
   // Actions
   const { 
     setMessages, 
     setCurrentConversationId, 
-    setSelectedAgentId 
   } = useChatActions()
-  
-  const {
-    restoreFromSession,
-    resetTasks,
-    setMode,
-    setIsInitialized,
-  } = useTaskActions()
 
   /**
    * Delete conversation
    */
-  const deleteConversation = useCallback(async (conversationId: string) => {
+  const deleteConversation = useCallback(async (threadId: string) => {
     try {
-      await apiDeleteConversation(conversationId)
+      await apiDeleteConversation(threadId)
 
-      if (currentConversationId === conversationId) {
+      if (currentThreadId === threadId) {
         setMessages([])
         setCurrentConversationId(null)
       }
     } catch (error) {
       errorHandler.handle(error, 'deleteConversation')
     }
-  }, [currentConversationId, setMessages, setCurrentConversationId])
+  }, [currentThreadId, setMessages, setCurrentConversationId])
 
   return {
     messages,
     deleteConversation,
-    currentConversationId,
+    currentConversationId: currentThreadId,
   }
 }

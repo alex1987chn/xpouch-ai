@@ -58,7 +58,7 @@ describe('EventHandler', () => {
       const event = {
         id: 'evt-1',
         type: 'plan.created' as const,
-        data: { session_id: 's1', tasks: [] }
+        data: { execution_plan_id: 's1', tasks: [] }
       }
 
       handler.handle(event)
@@ -81,7 +81,7 @@ describe('EventHandler', () => {
       handler.handle({
         id: 'evt-0',
         type: 'plan.created' as const,
-        data: { session_id: 's1', tasks: [] }
+        data: { execution_plan_id: 's1', tasks: [] }
       })
 
       expect(mockTaskStore.initializePlan).toHaveBeenCalledTimes(1)
@@ -93,7 +93,7 @@ describe('EventHandler', () => {
       const planCreatedEvent = {
         id: 'evt-1',
         type: 'plan.created' as const,
-        data: { session_id: 's1', tasks: [] }
+        data: { execution_plan_id: 's1', tasks: [] }
       }
 
       handler.handle(planCreatedEvent)
@@ -124,7 +124,7 @@ describe('EventHandler', () => {
       const event = {
         id: 'evt-1',
         type: 'plan.created' as const,
-        data: { session_id: 's1', tasks: [] }
+        data: { execution_plan_id: 's1', tasks: [] }
       }
 
       handler.handle(event)
@@ -156,7 +156,7 @@ describe('便捷函数', () => {
       const event = {
         id: 'evt-1',
         type: 'plan.created' as const,
-        data: { session_id: 's1', tasks: [] }
+        data: { execution_plan_id: 's1', tasks: [] }
       }
 
       handleServerEvent(event)
@@ -193,7 +193,7 @@ describe('便捷函数', () => {
       const event = {
         id: 'evt-1',
         type: 'plan.created' as const,
-        data: { session_id: 's1', tasks: [] }
+        data: { execution_plan_id: 's1', tasks: [] }
       }
 
       handleServerEvent(event)

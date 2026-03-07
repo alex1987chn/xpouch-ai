@@ -33,11 +33,11 @@ export default function UnifiedChatPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const { id: pathConversationId } = useParams()
+  const { id: pathThreadId } = useParams()
   const [searchParams] = useSearchParams()
   const { sidebar } = useAppUISelectors()
 
-  const conversationId = pathConversationId || ''
+  const threadId = pathThreadId || ''
   const agentId = searchParams.get('agentId') || 'default-chat'
   const normalizedAgentId = normalizeAgentId(agentId)
   type ChatRouteState = { isNew?: boolean; startWith?: string }
@@ -59,13 +59,13 @@ export default function UnifiedChatPage() {
 
   const conversationLoadedRef = useRef(false)
   
-  // conversationId 变化时重置加载标记，并清空 persisted 消息避免显示旧数据
+  // threadId 变化时重置加载标记，并清空 persisted 消息避免显示旧数据
   useEffect(() => {
     conversationLoadedRef.current = false
     // 🔥 清空本地消息和任务，避免 persist 恢复的旧数据闪烁
     useChatStore.getState().setMessages([])
     useTaskStore.getState().resetAll()
-  }, [conversationId])
+  }, [threadId])
 
   // 加载自定义 Agent 的状态
   type LoadedAgent = {
@@ -168,18 +168,18 @@ export default function UnifiedChatPage() {
 
   // 同步会话 ID 到 store（仅用于 API 调用）
   useEffect(() => {
-    if (conversationId) {
+    if (threadId) {
       const currentId = useChatStore.getState().currentConversationId
-      if (currentId !== conversationId) {
-        useChatStore.getState().setCurrentConversationId(conversationId)
+      if (currentId !== threadId) {
+        useChatStore.getState().setCurrentConversationId(threadId)
       }
     }
-  }, [conversationId])
+  }, [threadId])
 
   // 🔥🔥🔥 Server-Driven UI: 简化会话加载逻辑
   // 依赖：key={id} 强制重新挂载 + 导航时清空 Store
   useEffect(() => {
-    if (!conversationId) {
+    if (!threadId) {
       // 无会话 ID 时重置状态
       useTaskStore.getState().resetAll()
       return
@@ -210,7 +210,7 @@ export default function UnifiedChatPage() {
     }
     
     // 是否需要重新加载
-    if (storeCurrentId === conversationId && currentMessages.length > 0) {
+    if (storeCurrentId === threadId && currentMessages.length > 0) {
       // 已加载，跳过
       conversationLoadedRef.current = true
       return
@@ -233,18 +233,18 @@ export default function UnifiedChatPage() {
 
     // 🔥 所有历史会话加载都由 useSessionRestore 统一处理
     // 无需额外调用 loadConversation
-  }, [conversationId, initialMessage, isNewConversation])
+  }, [threadId, initialMessage, isNewConversation, routeState])
 
-  // 恢复草稿（只依赖 conversationId）
+  // 恢复草稿（只依赖 threadId）
   useEffect(() => {
-    if (!conversationId) {
+    if (!threadId) {
       const draft = localStorage.getItem('xpouch_chat_draft')
       if (draft && !inputValue) {
         setInputValue(draft)
         localStorage.removeItem('xpouch_chat_draft')
       }
     }
-  }, [conversationId, inputValue])
+  }, [threadId, inputValue])
 
   // 处理首页传来的消息（新建会话）
   // 👈 使用 ref 锁住初始消息，确保只发送一次
@@ -274,7 +274,7 @@ export default function UnifiedChatPage() {
 
       // 🔥 修复：使用 isNew: false 标记会话已创建，避免 useSessionRestore 404 错误
       setTimeout(() => {
-        navigate(`/chat/${conversationId}${searchParams.toString() ? '?' + searchParams.toString() : ''}`, {
+        navigate(`/chat/${threadId}${searchParams.toString() ? '?' + searchParams.toString() : ''}`, {
           replace: true,
           state: { isNew: false }
         })
@@ -285,12 +285,12 @@ export default function UnifiedChatPage() {
     return () => {
       clearTimeout(timer)
     }
-  }, [initialMessage, conversationId, normalizedAgentId, sendMessage, navigate, searchParams, isStreaming])
+  }, [initialMessage, threadId, normalizedAgentId, sendMessage, navigate, searchParams, isStreaming, queryClient])
 
   // v3.0: 状态恢复/水合（使用独立的 Hook）
   // v3.3.0: 使用合并后的 useSessionRestore，同时支持页面加载恢复和标签页切换恢复
   // 🔥 使用 useSessionRestore 替代 loadConversation，避免重复加载
-  useSessionRestore({ enabled: !!conversationId && !isNewConversation })
+  useSessionRestore({ enabled: !!threadId && !isNewConversation })
 
   // 🔐 登录后自动重发消息（Store Trigger 模式）
   // 使用 ref 存储最新的 sendMessage 函数，避免 subscribe 闭包问题

@@ -42,7 +42,7 @@ export function HistoryPageWrapper() {
     useTaskStore.getState().resetAll(true)
 
     // 从 conversation 对象中提取所需参数
-    const conversationId = conversation.id
+    const threadId = conversation.id
     const agentId = conversation.agent_id || 'default-chat'
     const normalizedAgentId = normalizeAgentId(agentId)
 
@@ -56,10 +56,10 @@ export function HistoryPageWrapper() {
       // 自定义智能体：需要携带 agentId
       const searchParams = new URLSearchParams()
       searchParams.set('agentId', normalizedAgentId)
-      navigate(`/chat/${conversationId}?${searchParams.toString()}`)
+      navigate(`/chat/${threadId}?${searchParams.toString()}`)
     } else {
       // 系统默认助手：纯净 URL，后端自动处理模式
-      navigate(`/chat/${conversationId}`)
+      navigate(`/chat/${threadId}`)
     }
   }
 

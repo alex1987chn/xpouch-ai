@@ -17,6 +17,7 @@ import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import {
   useIsWaitingForApproval,
   usePendingPlan,
+  usePendingRunId,
   usePendingPlanVersion,
   useTaskActions,
 } from '@/hooks/useTaskSelectors'
@@ -24,7 +25,7 @@ import { useAddMessageAction } from '@/hooks/useChatSelectors'
 import { cn } from '@/lib/utils'
 
 interface PlanReviewCardProps {
-  conversationId: string
+  threadId: string
   resumeExecution: (params: ResumeChatParams) => Promise<string>
 }
 
@@ -40,10 +41,11 @@ function isPlanVersionConflictError(error: unknown): boolean {
   )
 }
 
-export function PlanReviewCard({ conversationId, resumeExecution }: PlanReviewCardProps) {
+export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProps) {
   const { t } = useTranslation()
   const isWaitingForApproval = useIsWaitingForApproval()
   const pendingPlan = usePendingPlan()
+  const pendingRunId = usePendingRunId()
   const pendingPlanVersion = usePendingPlanVersion()
   const { clearPendingPlan, setIsWaitingForApproval, updateTasksFromPlan, setMode } = useTaskActions()
   const addMessage = useAddMessageAction()
@@ -67,6 +69,11 @@ export function PlanReviewCard({ conversationId, resumeExecution }: PlanReviewCa
   const handleReject = useCallback(() => setShowConfirmDialog(true), [])
 
   const doCancel = useCallback(async () => {
+    if (!pendingRunId) {
+      alert('缺少运行实例 ID，无法取消当前计划')
+      return
+    }
+
     setShowConfirmDialog(false)
     setIsCancelling(true)
     setIsSubmitting(true)
@@ -76,7 +83,12 @@ export function PlanReviewCard({ conversationId, resumeExecution }: PlanReviewCa
     setMode('simple')
 
     try {
-      await resumeExecution({ threadId: conversationId, planVersion: pendingPlanVersion, approved: false })
+      await resumeExecution({
+        threadId,
+        runId: pendingRunId,
+        planVersion: pendingPlanVersion,
+        approved: false,
+      })
       addMessage({ role: 'system', content: '计划已取消，状态已清理', timestamp: Date.now() })
     } catch {
       setIsWaitingForApproval(true)
@@ -85,11 +97,15 @@ export function PlanReviewCard({ conversationId, resumeExecution }: PlanReviewCa
       setIsSubmitting(false)
       setIsCancelling(false)
     }
-  }, [conversationId, pendingPlanVersion, resumeExecution, clearPendingPlan, setIsWaitingForApproval, setMode, addMessage])
+  }, [threadId, pendingPlanVersion, pendingRunId, resumeExecution, clearPendingPlan, setIsWaitingForApproval, setMode, addMessage])
 
   const handleApprove = useCallback(async () => {
     if (editedPlan.length === 0) {
       alert(t('minOneTask'))
+      return
+    }
+    if (!pendingRunId) {
+      alert('缺少运行实例 ID，无法恢复执行')
       return
     }
 
@@ -108,7 +124,8 @@ export function PlanReviewCard({ conversationId, resumeExecution }: PlanReviewCa
 
     try {
       await resumeExecution({
-        threadId: conversationId,
+        threadId,
+        runId: pendingRunId,
         planVersion: pendingPlanVersion,
         updatedPlan: editedPlan.map((task, index) => ({
           id: task.id,
@@ -130,7 +147,7 @@ export function PlanReviewCard({ conversationId, resumeExecution }: PlanReviewCa
     } finally {
       setIsSubmitting(false)
     }
-  }, [editedPlan, conversationId, pendingPlanVersion, resumeExecution, updateTasksFromPlan, setIsWaitingForApproval, addMessage, setMode, t])
+  }, [editedPlan, threadId, pendingPlanVersion, pendingRunId, resumeExecution, updateTasksFromPlan, setIsWaitingForApproval, addMessage, setMode, t])
 
   if (!isWaitingForApproval) return null
 

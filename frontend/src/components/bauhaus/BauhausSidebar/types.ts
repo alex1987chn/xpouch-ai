@@ -43,7 +43,7 @@ export interface NavigationMenuProps {
 
 export interface RecentConversationsProps {
   conversations: Conversation[]
-  onConversationClick: (conversationId: string, agentId?: string) => void
+  onConversationClick: (threadId: string, agentId?: string) => void
   formatRelativeTime: (dateString: string | undefined) => string
   t: (key: TranslationKey) => string
 }

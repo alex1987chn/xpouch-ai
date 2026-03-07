@@ -12,7 +12,7 @@ Router 层仅负责：
 
 [业务逻辑]
 所有业务逻辑已迁移至 backend.services.chat/ 服务层：
-- ChatSessionService: 会话生命周期管理
+- ChatThreadService: 线程生命周期管理
 - StreamService: SSE 流式处理
 - ArtifactService: Artifact 业务处理
 - RecoveryService: HITL 恢复逻辑
@@ -45,7 +45,7 @@ from services.chat.artifact_service import ArtifactService
 from services.chat.recovery_service import RecoveryService
 
 # 🔥 Service 层导入（backend 是 Python 路径根）
-from services.chat.session_service import ChatSessionService
+from services.chat.session_service import ChatThreadService
 from services.chat.stream_service import StreamService
 
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -80,6 +80,7 @@ class ResumeRequest(BaseModel):
     """HITL 恢复请求"""
 
     thread_id: str
+    run_id: str
     updated_plan: list[dict[str, Any]] | None = None
     plan_version: int | None = Field(default=None, ge=1)
     approved: bool = True
@@ -125,7 +126,7 @@ async def get_threads(
     - 只返回线程元数据，不包含消息内容
     - 需要获取消息请调用 GET /threads/{id}/messages
     """
-    service = ChatSessionService(session)
+    service = ChatThreadService(session)
     return await service.list_threads(current_user.id, page=page, limit=limit)
 
 
@@ -140,7 +141,7 @@ async def get_thread(
 
     包含完整的消息列表，适合进入聊天页后加载。
     """
-    service = ChatSessionService(session)
+    service = ChatThreadService(session)
     return await service.get_thread_detail(thread_id, current_user.id)
 
 
@@ -155,7 +156,7 @@ async def get_thread_messages(
 
     单独的端点，避免列表接口加载大量消息内容。
     """
-    service = ChatSessionService(session)
+    service = ChatThreadService(session)
     return await service.get_thread_messages(thread_id, current_user.id)
 
 
@@ -180,7 +181,7 @@ async def delete_thread(
     current_user: User = Depends(get_current_user),
 ):
     """删除单个线程"""
-    service = ChatSessionService(session)
+    service = ChatThreadService(session)
     await service.delete_thread(thread_id, current_user.id)
     return {"ok": True}
 
@@ -198,7 +199,7 @@ async def batch_delete_threads(
     - 验证所有会话属于当前用户
     - 返回成功删除数量和失败ID列表
     """
-    service = ChatSessionService(session)
+    service = ChatThreadService(session)
     deleted_count = 0
     failed_ids = []
 
@@ -232,11 +233,11 @@ async def chat_endpoint(
     - 系统默认助手：通过 LangGraph Router 分发
     """
     # 初始化服务
-    session_service = ChatSessionService(session)
+    thread_service = ChatThreadService(session)
     stream_service = StreamService(session)
 
     # 1. 获取或创建线程
-    thread = await session_service.get_or_create_thread(
+    thread = await thread_service.get_or_create_thread(
         thread_id=request.thread_id,
         user_id=current_user.id,
         agent_id=request.agent_id,
@@ -245,13 +246,13 @@ async def chat_endpoint(
     thread_id = thread.id
 
     # 2. 保存用户消息
-    await session_service.save_user_message(thread_id, request.message)
+    await thread_service.save_user_message(thread_id, request.message)
 
     # 3. 构建 LangChain 消息列表
-    langchain_messages = await session_service.build_langchain_messages(thread_id)
+    langchain_messages = await thread_service.build_langchain_messages(thread_id)
 
     # 4. 获取自定义智能体（如果有）
-    custom_agent = await session_service.get_custom_agent(
+    custom_agent = await thread_service.get_custom_agent(
         agent_id=request.agent_id or "assistant", user_id=current_user.id
     )
 
@@ -342,6 +343,7 @@ async def resume_chat(
     service = RecoveryService(session)
     return await service.resume_chat(
         thread_id=request.thread_id,
+        run_id=request.run_id,
         user_id=current_user.id,
         approved=request.approved,
         updated_plan=request.updated_plan,

@@ -1,7 +1,10 @@
 """
-ExecutionPlan / SubTask / Artifact 数据访问层
-提供复杂模式执行计划的 CRUD 操作
+ExecutionPlan / SubTask / Artifact 数据访问层。
+
+提供复杂模式执行计划的 CRUD 操作。
 """
+
+from __future__ import annotations
 
 from datetime import datetime
 
@@ -18,12 +21,8 @@ from models import (
     SubTaskUpdate,
 )
 
-# ============================================================================
-# ExecutionPlan CRUD
-# ============================================================================
 
-
-def create_task_session(
+def create_execution_plan(
     db: Session,
     thread_id: str,
     user_query: str,
@@ -31,20 +30,7 @@ def create_task_session(
     estimated_steps: int = 0,
     execution_mode: str = "sequential",
 ) -> ExecutionPlan:
-    """
-    创建任务会话
-
-    Args:
-        db: 数据库会话
-        thread_id: 关联的对话ID
-        user_query: 用户原始查询
-        plan_summary: 规划摘要
-        estimated_steps: 预计步骤数
-        execution_mode: 执行模式 (sequential/parallel)
-
-    Returns:
-        创建的任务会话
-    """
+    """创建执行计划。"""
     execution_plan = ExecutionPlan(
         thread_id=thread_id,
         user_query=user_query,
@@ -59,63 +45,61 @@ def create_task_session(
     return execution_plan
 
 
-def get_task_session(db: Session, session_id: str) -> ExecutionPlan | None:
-    """获取任务会话详情（包含子任务和产物）"""
-    statement = select(ExecutionPlan).where(ExecutionPlan.id == session_id)
-    result = db.exec(statement).first()
-    return result
+def get_execution_plan(db: Session, execution_plan_id: str) -> ExecutionPlan | None:
+    """获取执行计划详情。"""
+    statement = select(ExecutionPlan).where(ExecutionPlan.id == execution_plan_id)
+    return db.exec(statement).first()
 
 
-def get_task_session_by_thread(db: Session, thread_id: str) -> ExecutionPlan | None:
-    """通过对话ID获取任务会话"""
+def get_execution_plan_by_thread(db: Session, thread_id: str) -> ExecutionPlan | None:
+    """通过线程 ID 获取执行计划。"""
     statement = select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)
-    result = db.exec(statement).first()
-    return result
+    return db.exec(statement).first()
 
 
-def update_task_session(
-    db: Session, session_id: str, update_data: ExecutionPlanUpdate
+def update_execution_plan(
+    db: Session,
+    execution_plan_id: str,
+    update_data: ExecutionPlanUpdate,
 ) -> ExecutionPlan | None:
-    """更新任务会话"""
-    task_session = get_task_session(db, session_id)
-    if not task_session:
+    """更新执行计划。"""
+    execution_plan = get_execution_plan(db, execution_plan_id)
+    if not execution_plan:
         return None
 
     update_dict = update_data.model_dump(exclude_unset=True)
     for key, value in update_dict.items():
-        setattr(task_session, key, value)
+        setattr(execution_plan, key, value)
 
-    task_session.updated_at = datetime.now()
-    db.add(task_session)
+    execution_plan.updated_at = datetime.now()
+    db.add(execution_plan)
     db.commit()
-    db.refresh(task_session)
-    return task_session
+    db.refresh(execution_plan)
+    return execution_plan
 
 
-def update_task_session_status(
-    db: Session, session_id: str, status: str, final_response: str | None = None
+def update_execution_plan_status(
+    db: Session,
+    execution_plan_id: str,
+    status: str,
+    final_response: str | None = None,
 ) -> ExecutionPlan | None:
-    """更新任务会话状态和最终响应"""
-    task_session = get_task_session(db, session_id)
-    if not task_session:
+    """更新执行计划状态和最终响应。"""
+    execution_plan = get_execution_plan(db, execution_plan_id)
+    if not execution_plan:
         return None
 
-    task_session.status = status
+    execution_plan.status = status
     if final_response is not None:
-        task_session.final_response = final_response
+        execution_plan.final_response = final_response
     if status in ["completed", "failed"]:
-        task_session.completed_at = datetime.now()
-    task_session.updated_at = datetime.now()
+        execution_plan.completed_at = datetime.now()
+    execution_plan.updated_at = datetime.now()
 
-    db.add(task_session)
+    db.add(execution_plan)
     db.commit()
-    db.refresh(task_session)
-    return task_session
-
-
-# ============================================================================
-# SubTask CRUD
-# ============================================================================
+    db.refresh(execution_plan)
+    return execution_plan
 
 
 def create_subtask(
@@ -128,22 +112,7 @@ def create_subtask(
     execution_mode: str = "sequential",
     depends_on: list[str] | None = None,
 ) -> SubTask:
-    """
-    创建子任务
-
-    Args:
-        db: 数据库会话
-        task_session_id: 关联的任务会话ID
-        expert_type: 专家类型
-        task_description: 任务描述
-        sort_order: 排序顺序
-        input_data: 输入数据
-        execution_mode: 执行模式
-        depends_on: 依赖的任务ID列表
-
-    Returns:
-        创建的子任务
-    """
+    """创建子任务。"""
     subtask = SubTask(
         execution_plan_id=execution_plan_id,
         expert_type=expert_type,
@@ -161,21 +130,19 @@ def create_subtask(
 
 
 def get_subtask(db: Session, subtask_id: str) -> SubTask | None:
-    """获取子任务详情（包含产物列表）"""
+    """获取子任务详情。"""
     statement = select(SubTask).where(SubTask.id == subtask_id)
-    result = db.exec(statement).first()
-    return result
+    return db.exec(statement).first()
 
 
-def get_subtasks_by_session(db: Session, task_session_id: str) -> list[SubTask]:
-    """获取任务会话的所有子任务（按 sort_order 排序）"""
+def get_subtasks_by_execution_plan(db: Session, execution_plan_id: str) -> list[SubTask]:
+    """获取执行计划的所有子任务。"""
     statement = (
         select(SubTask)
-        .where(SubTask.execution_plan_id == task_session_id)
+        .where(SubTask.execution_plan_id == execution_plan_id)
         .order_by(SubTask.sort_order)
     )
-    results = db.exec(statement).all()
-    return list(results)
+    return list(db.exec(statement).all())
 
 
 def update_subtask_status(
@@ -186,30 +153,24 @@ def update_subtask_status(
     error_message: str | None = None,
     duration_ms: int | None = None,
 ) -> SubTask | None:
-    """更新子任务状态"""
+    """更新子任务状态。"""
     subtask = get_subtask(db, subtask_id)
     if not subtask:
         return None
 
     subtask.status = status
-
     if status == "running" and not subtask.started_at:
         subtask.started_at = datetime.now()
-
     if status in ["completed", "failed"]:
         subtask.completed_at = datetime.now()
-
     if output_result is not None:
         subtask.output_result = output_result
-
     if error_message is not None:
         subtask.error_message = error_message
-
     if duration_ms is not None:
         subtask.duration_ms = duration_ms
 
     subtask.updated_at = datetime.now()
-
     db.add(subtask)
     db.commit()
     db.refresh(subtask)
@@ -217,7 +178,7 @@ def update_subtask_status(
 
 
 def update_subtask(db: Session, subtask_id: str, update_data: SubTaskUpdate) -> SubTask | None:
-    """更新子任务（通用）"""
+    """通用子任务更新。"""
     subtask = get_subtask(db, subtask_id)
     if not subtask:
         return None
@@ -233,11 +194,6 @@ def update_subtask(db: Session, subtask_id: str, update_data: SubTaskUpdate) -> 
     return subtask
 
 
-# ============================================================================
-# Artifact CRUD
-# ============================================================================
-
-
 def create_artifact(
     db: Session,
     sub_task_id: str,
@@ -247,21 +203,7 @@ def create_artifact(
     language: str | None = None,
     sort_order: int = 0,
 ) -> Artifact:
-    """
-    创建产物
-
-    Args:
-        db: 数据库会话
-        sub_task_id: 关联的子任务ID
-        artifact_type: 产物类型 (code/html/markdown/json/text)
-        content: 产物内容
-        title: 产物标题
-        language: 代码语言（如果是代码类型）
-        sort_order: 排序顺序
-
-    Returns:
-        创建的产物
-    """
+    """创建产物。"""
     artifact = Artifact(
         sub_task_id=sub_task_id,
         type=artifact_type,
@@ -277,12 +219,13 @@ def create_artifact(
 
 
 def create_artifacts_batch(
-    db: Session, sub_task_id: str, artifacts_data: list[ArtifactCreate]
+    db: Session,
+    sub_task_id: str,
+    artifacts_data: list[ArtifactCreate],
 ) -> list[Artifact]:
-    """批量创建产物"""
+    """批量创建产物。"""
     artifacts = []
     for idx, data in enumerate(artifacts_data):
-        # 如果传入了 id 则使用，否则数据库自动生成
         artifact_kwargs = {
             "sub_task_id": sub_task_id,
             "type": data.type,
@@ -306,23 +249,21 @@ def create_artifacts_batch(
 
 
 def get_artifact(db: Session, artifact_id: str) -> Artifact | None:
-    """获取产物详情"""
+    """获取产物详情。"""
     statement = select(Artifact).where(Artifact.id == artifact_id)
-    result = db.exec(statement).first()
-    return result
+    return db.exec(statement).first()
 
 
 def get_artifacts_by_subtask(db: Session, sub_task_id: str) -> list[Artifact]:
-    """获取子任务的所有产物（按 sort_order 排序）"""
+    """获取子任务的所有产物。"""
     statement = (
         select(Artifact).where(Artifact.sub_task_id == sub_task_id).order_by(Artifact.sort_order)
     )
-    results = db.exec(statement).all()
-    return list(results)
+    return list(db.exec(statement).all())
 
 
 def delete_artifact(db: Session, artifact_id: str) -> bool:
-    """删除产物"""
+    """删除产物。"""
     artifact = get_artifact(db, artifact_id)
     if not artifact:
         return False
@@ -333,10 +274,7 @@ def delete_artifact(db: Session, artifact_id: str) -> bool:
 
 
 def update_artifact_content(db: Session, artifact_id: str, content: str) -> Artifact | None:
-    """更新产物内容
-
-    用于用户编辑 AI 生成的 Artifact 后持久化到数据库
-    """
+    """更新产物内容。"""
     artifact = get_artifact(db, artifact_id)
     if not artifact:
         return None
@@ -348,12 +286,7 @@ def update_artifact_content(db: Session, artifact_id: str, content: str) -> Arti
     return artifact
 
 
-# ============================================================================
-# 批量操作
-# ============================================================================
-
-
-def create_task_session_with_subtasks(
+def create_execution_plan_with_subtasks(
     db: Session,
     thread_id: str,
     user_query: str,
@@ -361,27 +294,10 @@ def create_task_session_with_subtasks(
     estimated_steps: int,
     subtasks_data: list[SubTaskCreate],
     execution_mode: str = "sequential",
-    session_id: str | None = None,  # 待统一重命名为 execution_plan_id
+    execution_plan_id: str | None = None,
 ) -> ExecutionPlan:
-    """
-    批量创建任务会话和子任务（Commander 阶段使用）
-
-    Args:
-        db: 数据库会话
-        thread_id: 关联的对话ID
-        user_query: 用户原始查询
-        plan_summary: 规划摘要
-        estimated_steps: 预计步骤数
-        subtasks_data: 子任务列表
-        execution_mode: 执行模式
-        session_id: 可选的自定义 session_id（用于流式预览时保持一致性）
-
-    Returns:
-        创建的任务会话（包含所有子任务）
-    """
-    # 1. 创建任务会话
-    # 🔥 如果传入了 session_id，使用它；否则数据库自动生成
-    task_session_data = {
+    """批量创建执行计划和子任务。"""
+    execution_plan_data = {
         "thread_id": thread_id,
         "user_query": user_query,
         "plan_summary": plan_summary,
@@ -389,73 +305,55 @@ def create_task_session_with_subtasks(
         "execution_mode": execution_mode,
         "status": "running",
     }
+    if execution_plan_id:
+        execution_plan_data["id"] = execution_plan_id
 
-    if session_id:
-        task_session_data["session_id"] = session_id
+    execution_plan = ExecutionPlan(**execution_plan_data)
+    db.add(execution_plan)
+    db.flush()
 
-    if session_id:
-        task_session_data["id"] = session_id
-
-    task_session_data.pop("session_id", None)
-
-    task_session = ExecutionPlan(**task_session_data)
-    db.add(task_session)
-    db.flush()  # 获取 session_id（如果是自动生成的）
-
-    # 2. 批量创建子任务（先创建，不设置 depends_on）
-    # 🔥 关键修复：建立 task_id → subtask UUID 的映射
     task_id_to_subtask: dict[str, SubTask] = {}
-    subtask_list: list[SubTask] = []
+    subtask_list: list[tuple[SubTask, list[str] | None]] = []
 
     for idx, data in enumerate(subtasks_data):
         subtask = SubTask(
-            execution_plan_id=task_session.id,
+            execution_plan_id=execution_plan.id,
             expert_type=data.expert_type,
             task_description=data.task_description,
             sort_order=data.sort_order if data.sort_order is not None else idx,
             input_data=data.input_data,
             execution_mode=data.execution_mode,
-            depends_on=None,  # 先不设置，后面再更新
+            depends_on=None,
             status="pending",
         )
         db.add(subtask)
-        db.flush()  # 获取 subtask.id
+        db.flush()
 
-        # 建立映射：Commander 的 task_id -> 数据库 subtask
         if data.task_id:
             task_id_to_subtask[data.task_id] = subtask
         subtask_list.append((subtask, data.depends_on))
 
-    # 3. 更新 depends_on：将 task ID 替换为 subtask UUID
     for subtask, original_depends_on in subtask_list:
-        if original_depends_on:
-            new_depends_on = []
-            for dep_id in original_depends_on:
-                if dep_id in task_id_to_subtask:
-                    # 将 task_id 替换为 subtask UUID
-                    new_depends_on.append(str(task_id_to_subtask[dep_id].id))
-                else:
-                    # 保留原值（可能是 UUID 格式）
-                    new_depends_on.append(dep_id)
-            subtask.depends_on = new_depends_on
+        if not original_depends_on:
+            continue
+        new_depends_on = []
+        for dep_id in original_depends_on:
+            if dep_id in task_id_to_subtask:
+                new_depends_on.append(str(task_id_to_subtask[dep_id].id))
+            else:
+                new_depends_on.append(dep_id)
+        subtask.depends_on = new_depends_on
 
     db.commit()
-    db.refresh(task_session)
-    return task_session
+    db.refresh(execution_plan)
+    return execution_plan
 
 
-def get_task_session_full(db: Session, session_id: str) -> ExecutionPlan | None:
-    """
-    获取完整的任务会话（包含子任务和产物）
-
-    P1 修复: 使用 selectinload 避免 N+1 查询
-
-    用于从历史记录恢复复杂模式对话
-    """
-    # P1 修复: 使用 selectinload 预加载关联数据
+def get_execution_plan_full(db: Session, execution_plan_id: str) -> ExecutionPlan | None:
+    """获取完整执行计划（包含子任务和产物）。"""
     statement = (
         select(ExecutionPlan)
-        .where(ExecutionPlan.id == session_id)
+        .where(ExecutionPlan.id == execution_plan_id)
         .options(selectinload(ExecutionPlan.sub_tasks).selectinload(SubTask.artifacts))
     )
     return db.exec(statement).first()

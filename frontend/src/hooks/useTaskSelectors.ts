@@ -17,8 +17,8 @@ import type { Task } from '@/store/taskStore'
 /** 获取当前模式 */
 export const useTaskMode = () => useTaskStore(state => state.mode)
 
-/** 获取任务会话 */
-export const useTaskSession = () => useTaskStore(state => state.session)
+/** 获取当前执行计划 */
+export const useExecutionPlan = () => useTaskStore(state => state.session)
 
 /** 获取选中的任务ID */
 export const useSelectedTaskId = () => useTaskStore(state => state.selectedTaskId)
@@ -34,6 +34,12 @@ export const usePendingPlan = () => useTaskStore(state => state.pendingPlan)
 
 /** 获取待审批计划版本号（乐观锁） */
 export const usePendingPlanVersion = () => useTaskStore(state => state.pendingPlanVersion)
+
+/** 获取待审批运行 ID */
+export const usePendingRunId = () => useTaskStore(state => state.pendingRunId)
+
+/** 获取待审批执行计划 ID */
+export const usePendingExecutionPlanId = () => useTaskStore(state => state.pendingExecutionPlanId)
 
 /** 获取运行中的任务ID集合 */
 export const useRunningTaskIds = () => useTaskStore(state => state.runningTaskIds)

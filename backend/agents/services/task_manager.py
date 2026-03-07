@@ -20,14 +20,14 @@ from typing import Any
 
 from sqlmodel import Session
 
-from crud.task_session import (
+from crud.execution_plan import (
     create_artifacts_batch,
+    create_execution_plan_with_subtasks,
     create_subtask,
-    create_task_session_with_subtasks,
+    get_execution_plan_by_thread,
     get_subtask,
-    get_subtasks_by_session,
-    get_task_session_by_thread,
-    update_task_session_status,
+    get_subtasks_by_execution_plan,
+    update_execution_plan_status,
 )
 from models import Message as MessageModel
 from utils.logger import logger
@@ -66,7 +66,7 @@ def get_or_create_execution_plan(
     Returns:
         tuple: (execution_plan, is_reused)
             - execution_plan: ExecutionPlan 对象
-            - is_reused: 是否复用了已存在的会话
+            - is_reused: 是否复用了已存在的执行计划
 
     Example:
         >>> execution_plan, reused = get_or_create_execution_plan(
@@ -77,12 +77,12 @@ def get_or_create_execution_plan(
         >>> print(f"Plan: {execution_plan.id}, Reused: {reused}")
     """
     # 先检查是否已存在
-    existing_plan = get_task_session_by_thread(db, thread_id)
+    existing_plan = get_execution_plan_by_thread(db, thread_id)
 
     if existing_plan:
         # ✅ 修复：删除旧的 SubTasks，根据新的 subtasks_data 创建新的
         # 这样可以确保 task_list 与数据库一致
-        old_subtasks = get_subtasks_by_session(db, existing_plan.id)
+        old_subtasks = get_subtasks_by_execution_plan(db, existing_plan.id)
         if old_subtasks:
             for old_subtask in old_subtasks:
                 db.delete(old_subtask)
@@ -131,7 +131,7 @@ def get_or_create_execution_plan(
         db.refresh(existing_plan)
         return existing_plan, True
 
-    execution_plan = create_task_session_with_subtasks(
+    execution_plan = create_execution_plan_with_subtasks(
         db=db,
         thread_id=thread_id,
         user_query=user_query,
@@ -146,7 +146,7 @@ def get_or_create_execution_plan(
 
 def complete_execution_plan(db: Session, execution_plan_id: str, final_response: str) -> None:
     """
-    标记任务会话为已完成
+    标记执行计划为已完成
 
     Args:
         db: 数据库会话
@@ -156,7 +156,7 @@ def complete_execution_plan(db: Session, execution_plan_id: str, final_response:
     Example:
         >>> complete_execution_plan(db, "plan_abc", "所有任务已完成，结果是...")
     """
-    update_task_session_status(db, execution_plan_id, "completed", final_response=final_response)
+    update_execution_plan_status(db, execution_plan_id, "completed", final_response=final_response)
 
 
 # =============================================================================
@@ -241,7 +241,7 @@ def save_aggregator_message(db: Session, thread_id: str, content: str) -> Messag
 
     Args:
         db: 数据库会话
-        thread_id: 会话/线程 ID (对应 conversation_id)
+        thread_id: 线程 ID
         content: 消息内容
 
     Returns:
@@ -294,7 +294,7 @@ def update_subtask_status(
     Example:
         >>> update_subtask_status(db, "subtask_1", "completed", output_result="结果数据")
     """
-    from crud.task_session import update_subtask
+    from crud.execution_plan import update_subtask
 
     try:
         update_subtask(
@@ -321,6 +321,6 @@ def get_subtask_by_id(db: Session, subtask_id: str) -> Any | None:
     Returns:
         SubTask 对象，如果不存在则返回 None
     """
-    from crud.task_session import get_subtask
+    from crud.execution_plan import get_subtask
 
     return get_subtask(db, subtask_id)

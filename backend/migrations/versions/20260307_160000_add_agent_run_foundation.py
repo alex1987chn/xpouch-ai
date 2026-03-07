@@ -136,6 +136,20 @@ def upgrade() -> None:
             if fk_name in fk_names:
                 op.drop_constraint(fk_name, "thread", type_="foreignkey")
         if "execution_plan_id" in _column_names(conn, "thread"):
+            conn.execute(
+                sa.text(
+                    """
+                    UPDATE thread
+                    SET execution_plan_id = NULL
+                    WHERE execution_plan_id IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM executionplan
+                          WHERE executionplan.id = thread.execution_plan_id
+                      )
+                    """
+                )
+            )
             op.create_foreign_key(
                 "fk_thread_execution_plan_id_executionplan",
                 "thread",
@@ -151,6 +165,19 @@ def upgrade() -> None:
             if fk_name in fk_names:
                 op.drop_constraint(fk_name, "subtask", type_="foreignkey")
         if "execution_plan_id" in _column_names(conn, "subtask"):
+            conn.execute(
+                sa.text(
+                    """
+                    DELETE FROM subtask
+                    WHERE execution_plan_id IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM executionplan
+                          WHERE executionplan.id = subtask.execution_plan_id
+                      )
+                    """
+                )
+            )
             op.create_foreign_key(
                 "subtask_execution_plan_id_fkey",
                 "subtask",

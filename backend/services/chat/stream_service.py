@@ -8,7 +8,7 @@ SSE 流式输出核心服务
 - 心跳保活机制
 
 依赖:
-- backend.services.chat.session_service (消息保存)
+- backend.services.chat.session_service (线程/消息保存)
 - backend.utils.event_generator (SSE事件生成)
 - backend.utils.thinking_parser (Think标签解析)
 
@@ -48,17 +48,17 @@ class StreamService:
 
     def __init__(self, db_session: Session):
         self.db = db_session
-        # 延迟初始化 session_service，避免循环依赖问题
-        self._session_service = None
+        # 延迟初始化 thread_service，避免循环依赖问题
+        self._thread_service = None
 
     @property
-    def session_service(self):
-        """延迟初始化 ChatSessionService"""
-        if self._session_service is None:
-            from .session_service import ChatSessionService
+    def thread_service(self):
+        """延迟初始化 ChatThreadService"""
+        if self._thread_service is None:
+            from .session_service import ChatThreadService
 
-            self._session_service = ChatSessionService(self.db)
-        return self._session_service
+            self._thread_service = ChatThreadService(self.db)
+        return self._thread_service
 
     # ============================================================================
     # 🔥 MCP 工具获取 (v3.3 - 使用统一服务)
@@ -170,8 +170,8 @@ class StreamService:
 
             clean_content, thinking_data = parse_thinking(full_response)
 
-            # 使用 session_service 保存消息
-            await self.session_service.save_assistant_message(
+            # 使用 thread_service 保存消息
+            await self.thread_service.save_assistant_message(
                 thread_id=thread_id,
                 content=full_response,
                 thinking_data=thinking_data,
@@ -232,7 +232,7 @@ class StreamService:
 
         clean_content, thinking_data = parse_thinking(full_response)
 
-        await self.session_service.save_assistant_message(
+        await self.thread_service.save_assistant_message(
             thread_id=thread_id,
             content=full_response,
             thinking_data=thinking_data,
@@ -560,12 +560,12 @@ class StreamService:
         message_id: str,
     ):
         """保存 LangGraph 执行结果"""
-        from crud.task_session import create_artifacts_batch
+        from crud.execution_plan import create_artifacts_batch
         from models import ExecutionPlan, SubTask
 
         # 复杂模式：创建 ExecutionPlan 和 SubTasks
         if router_decision == "complex":
-            await self.session_service.update_thread_agent_type(thread_id, "ai")
+            await self.thread_service.update_thread_agent_type(thread_id, "ai")
 
             execution_plan = ExecutionPlan(
                 id=str(uuid.uuid4()),
@@ -624,7 +624,7 @@ class StreamService:
                     )
 
         # 保存 AI 消息
-        await self.session_service.save_assistant_message(
+        await self.thread_service.save_assistant_message(
             thread_id=thread_id, content=last_message.content, message_id=message_id
         )
 

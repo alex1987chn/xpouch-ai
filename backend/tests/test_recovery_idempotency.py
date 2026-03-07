@@ -39,7 +39,7 @@ class _FakeSession:
 
 def test_build_resume_key_prefers_idempotency_key():
     key = RecoveryService._build_resume_key(
-        thread_id="t1",
+        run_id="r1",
         plan_version=3,
         message_id="m1",
         idempotency_key="idem-1",
@@ -49,7 +49,7 @@ def test_build_resume_key_prefers_idempotency_key():
 
 def test_build_resume_key_falls_back_to_message_id():
     key = RecoveryService._build_resume_key(
-        thread_id="t1",
+        run_id="r1",
         plan_version=3,
         message_id="m1",
         idempotency_key=None,

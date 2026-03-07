@@ -26,6 +26,7 @@ def test_resume_endpoint_smoke(sample_user, monkeypatch):
         "/api/chat/resume",
         json={
             "thread_id": "thread-smoke",
+            "run_id": "run-smoke-001",
             "approved": True,
             "plan_version": 1,
             "idempotency_key": "resume-smoke-001",
@@ -59,6 +60,7 @@ def test_resume_endpoint_validates_idempotency_key_length(sample_user, monkeypat
         "/api/chat/resume",
         json={
             "thread_id": "thread-smoke",
+            "run_id": "run-smoke-001",
             "approved": True,
             "plan_version": 1,
             "idempotency_key": "short",

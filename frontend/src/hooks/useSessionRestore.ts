@@ -57,7 +57,7 @@ export function useSessionRestore(
   options: UseSessionRestoreOptions = {}
 ): UseSessionRestoreReturn {
   const { enabled = true, onRestored } = options
-  const { id: conversationId } = useParams<{ id: string }>()
+  const { id: threadId } = useParams<{ id: string }>()
   
   const [isRestoring, setIsRestoring] = useState(false)
   const [isRestored, setIsRestored] = useState(false)
@@ -70,7 +70,6 @@ export function useSessionRestore(
   // 从 Store 获取状态（使用 Selectors 模式）
   const resetAll = useTaskStore((state) => state.resetAll)
   const restoreFromSession = useTaskStore((state) => state.restoreFromSession)
-  const setIsWaitingForApproval = useTaskStore((state) => state.setIsWaitingForApproval)
   const setPendingPlan = useTaskStore((state) => state.setPendingPlan)
   const setMode = useTaskStore((state) => state.setMode)
   const setIsInitialized = useTaskStore((state) => state.setIsInitialized)
@@ -83,7 +82,7 @@ export function useSessionRestore(
    * 支持两种触发方式：初始加载 和 visibilitychange
    */
   const performRestore = useCallback(async (): Promise<boolean> => {
-    if (!conversationId || !enabled) {
+    if (!threadId || !enabled) {
       return false
     }
 
@@ -113,7 +112,7 @@ export function useSessionRestore(
     try {
       // 检查本地 localStorage 是否已有数据
       // 从服务端获取会话详情
-      const conversation = await getConversation(conversationId)
+      const conversation = await getConversation(threadId)
       
       // 🔥 恢复消息（无论简单模式还是复杂模式）
       if (conversation.messages && conversation.messages.length > 0) {
@@ -125,7 +124,7 @@ export function useSessionRestore(
         })
         setMessages(sortedMessages)
       }
-      setCurrentConversationId(conversationId)
+      setCurrentConversationId(threadId)
       
       // 检查是否是复杂模式（有 execution_plan）
       if (!conversation.execution_plan && !conversation.execution_plan_id) {
@@ -198,7 +197,12 @@ export function useSessionRestore(
             }))
 
           if (pendingPlan.length > 0) {
-            setPendingPlan(pendingPlan, execution_plan.plan_version || 1)
+            setPendingPlan(
+              pendingPlan,
+              execution_plan.plan_version || 1,
+              execution_plan.run_id || null,
+              execution_plan.execution_plan_id || null,
+            )
             logger.debug('[useSessionRestore] HITL 恢复: pendingPlan 已设置', pendingPlan.length, '个任务')
           }
         }
@@ -226,7 +230,7 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [conversationId, enabled, restoreFromSession, setIsWaitingForApproval, setPendingPlan, setMode, setIsInitialized, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
+  }, [threadId, enabled, restoreFromSession, setPendingPlan, setMode, setIsInitialized, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
 
   /**
    * 公开的手动恢复方法
@@ -239,10 +243,10 @@ export function useSessionRestore(
    * 初始恢复：页面加载时自动触发
    */
   useEffect(() => {
-    if (enabled && conversationId && !isRestored && !isRestoring) {
+    if (enabled && threadId && !isRestored && !isRestoring) {
       performRestore()
     }
-  }, [enabled, conversationId, isRestored, isRestoring, performRestore])
+  }, [enabled, threadId, isRestored, isRestoring, performRestore])
 
   /**
    * visibilitychange 恢复：标签页切换时触发
@@ -257,7 +261,7 @@ export function useSessionRestore(
       }
       
       // 页面重新可见时触发恢复
-      if (enabled && conversationId) {
+      if (enabled && threadId) {
         performRestore()
       }
     }
@@ -267,7 +271,7 @@ export function useSessionRestore(
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [enabled, conversationId, performRestore])
+  }, [enabled, threadId, performRestore])
 
   /**
    * 清理：会话切换时重置状态
@@ -278,7 +282,7 @@ export function useSessionRestore(
       setError(null)
       lastRestoreTimeRef.current = 0
     }
-  }, [conversationId])
+  }, [threadId])
 
   return {
     isRestoring,
@@ -291,7 +295,7 @@ export function useSessionRestore(
 /**
  * 检查是否有可恢复的会话
  */
-export function hasRestorableSession(_conversationId: string): boolean {
+export function hasRestorableSession(_threadId: string): boolean {
   try {
     const key = `xpouch-task-store@2`
     const stored = localStorage.getItem(key)

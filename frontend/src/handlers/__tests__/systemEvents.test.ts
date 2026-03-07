@@ -221,7 +221,9 @@ describe('System Events', () => {
         id: 'evt-1',
         type: 'human.interrupt' as const,
         data: {
-          interrupt_type: 'plan_review' as const,
+          type: 'plan_review' as const,
+          run_id: 'run-1',
+          execution_plan_id: 'plan-1',
           plan_version: 3,
           current_plan: [
             { id: 'task-1', description: 'step 1' },
@@ -235,7 +237,9 @@ describe('System Events', () => {
 
       expect(mockContext.taskStore.setPendingPlan).toHaveBeenCalledWith(
         event.data.current_plan,
-        3
+        3,
+        'run-1',
+        'plan-1',
       )
     })
 
@@ -246,10 +250,9 @@ describe('System Events', () => {
         id: 'evt-1',
         type: 'human.interrupt' as const,
         data: {
-          interrupt_type: 'plan_review' as const,
+          type: 'plan_review' as const,
           plan_version: 1,
           current_plan: [],
-          message: '请审核'
         }
       }
 
