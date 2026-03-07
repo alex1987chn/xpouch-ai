@@ -163,7 +163,7 @@ export const useTaskStore = create<TaskStore>()(
 // 类型导出（供组件和 Hooks 使用）
 // ============================================================================
 
-export type { Task, TaskStatus, TaskSession } from './slices/createTaskSlice'
+export type { ExecutionPlanState, Task, TaskStatus } from './slices/createTaskSlice'
 export type { ArtifactSlice, ArtifactSliceActions } from './slices/createArtifactSlice'
 export type { UISlice, UISliceState, UISliceActions, AppMode, Progress } from './slices/createUISlice'
 export type { PlanningSlice, PlanningSliceState, PlanningSliceActions } from './slices/createPlanningSlice'

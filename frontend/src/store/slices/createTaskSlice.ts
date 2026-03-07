@@ -14,7 +14,7 @@ import type {
   TaskFailedData,
   TaskInfo
 } from '@/types/events'
-import type { TaskSession as ApiTaskSession, SubTask, Artifact } from '@/types'
+import type { ExecutionPlan as ApiExecutionPlan, SubTask, Artifact } from '@/types'
 import { formatTaskOutput } from '@/utils/formatters'
 import { logger } from '@/utils/logger'
 import type { TaskStore } from '../taskStore'
@@ -34,7 +34,7 @@ export interface Task extends TaskInfo {
   artifacts: Artifact[]
 }
 
-export interface TaskSession {
+export interface ExecutionPlanState {
   sessionId: string
   summary: string
   estimatedSteps: number
@@ -47,7 +47,7 @@ export interface TaskSession {
 // ============================================================================
 
 export interface TaskSliceState {
-  session: TaskSession | null
+  session: ExecutionPlanState | null
   tasks: Map<string, Task>
   tasksCache: Task[]
   tasksCacheVersion: number
@@ -79,7 +79,7 @@ export interface TaskSliceActions {
   setTasks: (tasks: Map<string, Task>) => void
   
   // Session restore
-  restoreFromSession: (session: ApiTaskSession, subTasks: SubTask[]) => void
+  restoreFromSession: (session: ApiExecutionPlan, subTasks: SubTask[]) => void
   
   // Reset all tasks
   resetTasks: (force?: boolean) => void
@@ -148,7 +148,7 @@ export const createTaskSlice = (
 
   initializePlan: (data: PlanCreatedData) => {
     set((state) => {
-      if (state.session?.sessionId === data.session_id) {
+      if (state.session?.sessionId === data.execution_plan_id) {
         const newTaskIds = new Set(data.tasks.map((t) => t.id))
 
         state.tasks.forEach((_, id: string) => {
@@ -170,7 +170,7 @@ export const createTaskSlice = (
         })
       } else {
         state.session = {
-          sessionId: data.session_id,
+          sessionId: data.execution_plan_id,
           summary: data.summary,
           estimatedSteps: data.estimated_steps + 1,
           executionMode: data.execution_mode as 'sequential' | 'parallel',
@@ -335,11 +335,11 @@ export const createTaskSlice = (
     })
   },
 
-  restoreFromSession: (session: ApiTaskSession, subTasks: SubTask[]) => {
+  restoreFromSession: (session: ApiExecutionPlan, subTasks: SubTask[]) => {
     set((state) => {
       // 使用 state 直接修改（Immer 会处理不可变性）
       state.session = {
-        sessionId: session.session_id,
+        sessionId: session.execution_plan_id,
         summary: session.user_query || '',
         estimatedSteps: subTasks.length + 1,
         executionMode: 'sequential',

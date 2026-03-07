@@ -106,6 +106,32 @@ function getSystemTheme(): Theme {
   return 'light'
 }
 
+let mediaQueryList: MediaQueryList | null = null
+let mediaQueryListener: ((event: MediaQueryListEvent) => void) | null = null
+
+function ensureSystemThemeListener(setThemeFromSystem: (theme: Theme) => void, shouldFollowSystem: () => boolean): void {
+  if (typeof window === 'undefined' || !window.matchMedia) {
+    return
+  }
+
+  if (mediaQueryList && mediaQueryListener) {
+    return
+  }
+
+  mediaQueryList = window.matchMedia('(prefers-color-scheme: dark)')
+  mediaQueryListener = (event: MediaQueryListEvent) => {
+    if (!shouldFollowSystem()) {
+      return
+    }
+
+    const newTheme: Theme = event.matches ? 'dark' : 'light'
+    applyTheme(newTheme)
+    setThemeFromSystem(newTheme)
+  }
+
+  mediaQueryList.addEventListener('change', mediaQueryListener)
+}
+
 /**
  * 主题状态管理 Store
  */
@@ -197,17 +223,10 @@ export const useThemeStore = create<ThemeState>()(
           applyTheme(theme)
         }
         
-        // 监听系统主题变化（仅在 followSystem 时）
-        if (typeof window !== 'undefined' && window.matchMedia) {
-          const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-          mediaQuery.addEventListener('change', (e) => {
-            if (get().followSystem) {
-              const newTheme = e.matches ? 'dark' : 'light'
-              applyTheme(newTheme)
-              set({ theme: newTheme })
-            }
-          })
-        }
+        ensureSystemThemeListener(
+          (newTheme) => set({ theme: newTheme }),
+          () => get().followSystem
+        )
       }
     }),
     {

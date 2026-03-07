@@ -32,6 +32,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
+from crud.agent_run import create_agent_run
 from database import get_session
 from dependencies import get_current_user
 from models import (
@@ -69,7 +70,7 @@ class ChatRequest(BaseModel):
 
     message: str = Field(..., max_length=10000, description="用户输入消息，最大10000字符")
     history: list[ChatMessageDTO]
-    conversation_id: str | None = None
+    thread_id: str | None = None
     agent_id: str | None = "assistant"
     stream: bool | None = True
     message_id: str | None = None
@@ -135,7 +136,7 @@ async def get_thread(
     current_user: User = Depends(get_current_user),
 ):
     """
-    获取单个线程详情（包含 TaskSession/SubTasks/Artifacts）
+    获取单个线程详情（包含 ExecutionPlan/SubTasks/Artifacts）
 
     包含完整的消息列表，适合进入聊天页后加载。
     """
@@ -236,7 +237,7 @@ async def chat_endpoint(
 
     # 1. 获取或创建线程
     thread = await session_service.get_or_create_thread(
-        thread_id=request.conversation_id,
+        thread_id=request.thread_id,
         user_id=current_user.id,
         agent_id=request.agent_id,
         message=request.message,
@@ -254,6 +255,17 @@ async def chat_endpoint(
         agent_id=request.agent_id or "assistant", user_id=current_user.id
     )
 
+    agent_run = create_agent_run(
+        session,
+        thread_id=thread_id,
+        user_id=current_user.id,
+        entrypoint="chat",
+        mode="custom" if custom_agent else "router",
+        checkpoint_namespace=thread_id,
+    )
+    session.commit()
+    session.refresh(agent_run)
+
     # 5. 路由到对应的处理逻辑
     if custom_agent:
         # 自定义智能体模式
@@ -263,6 +275,7 @@ async def chat_endpoint(
                 messages=langchain_messages,
                 thread_id=thread_id,
                 thread=thread,
+                agent_run=agent_run,
                 message_id=request.message_id,
             )
         else:
@@ -271,6 +284,7 @@ async def chat_endpoint(
                 messages=langchain_messages,
                 thread_id=thread_id,
                 thread=thread,
+                agent_run=agent_run,
                 message_id=request.message_id,
             )
 
@@ -294,6 +308,7 @@ async def chat_endpoint(
             initial_state=initial_state,
             thread_id=thread_id,
             thread=thread,
+            agent_run=agent_run,
             user_message=request.message,
             message_id=request.message_id,
         )
@@ -302,6 +317,7 @@ async def chat_endpoint(
             initial_state=initial_state,
             thread_id=thread_id,
             thread=thread,
+            agent_run=agent_run,
             user_message=request.message,
         )
 

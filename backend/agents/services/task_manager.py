@@ -1,8 +1,8 @@
 """
-任务会话管理服务 (Task Manager)
+执行计划管理服务 (Task Manager)
 
-负责 TaskSession 和 SubTask 的数据库操作，包括：
-- 任务会话的创建、查询、更新
+负责 ExecutionPlan 和 SubTask 的数据库操作，包括：
+- 执行计划的创建、查询、更新
 - 子任务的创建、状态更新
 - 聚合结果的持久化
 
@@ -33,11 +33,11 @@ from models import Message as MessageModel
 from utils.logger import logger
 
 # =============================================================================
-# TaskSession 管理
+# ExecutionPlan 管理
 # =============================================================================
 
 
-def get_or_create_task_session(
+def get_or_create_execution_plan(
     db: Session,
     thread_id: str,
     user_query: str,
@@ -45,13 +45,13 @@ def get_or_create_task_session(
     estimated_steps: int,
     subtasks_data: list[Any],
     execution_mode: str = "sequential",
-    session_id: str | None = None,  # 🔥 新增：可选的 session_id
+    execution_plan_id: str | None = None,
 ) -> tuple[Any, bool]:
     """
-    获取或创建任务会话
+    获取或创建执行计划
 
-    如果指定 thread_id 的 TaskSession 已存在，则复用并更新；
-    否则创建新的 TaskSession。
+    如果指定 thread_id 的 ExecutionPlan 已存在，则复用并更新；
+    否则创建新的 ExecutionPlan。
 
     Args:
         db: 数据库会话
@@ -61,38 +61,38 @@ def get_or_create_task_session(
         estimated_steps: 预计步骤数
         subtasks_data: 子任务数据列表 (SubTaskCreate)
         execution_mode: 执行模式 (sequential/parallel)
-        session_id: 可选的 session_id（用于流式预览时保持一致性）
+        execution_plan_id: 可选的执行计划 ID（用于流式预览时保持一致性）
 
     Returns:
-        tuple: (task_session, is_reused)
-            - task_session: TaskSession 对象
+        tuple: (execution_plan, is_reused)
+            - execution_plan: ExecutionPlan 对象
             - is_reused: 是否复用了已存在的会话
 
     Example:
-        >>> task_session, reused = get_or_create_task_session(
+        >>> execution_plan, reused = get_or_create_execution_plan(
         ...     db, thread_id="abc123", user_query="查询天气",
         ...     plan_summary="分步执行", estimated_steps=3,
         ...     subtasks_data=[subtask1, subtask2]
         ... )
-        >>> print(f"Session: {task_session.session_id}, Reused: {reused}")
+        >>> print(f"Plan: {execution_plan.id}, Reused: {reused}")
     """
     # 先检查是否已存在
-    existing_session = get_task_session_by_thread(db, thread_id)
+    existing_plan = get_task_session_by_thread(db, thread_id)
 
-    if existing_session:
+    if existing_plan:
         # ✅ 修复：删除旧的 SubTasks，根据新的 subtasks_data 创建新的
         # 这样可以确保 task_list 与数据库一致
-        old_subtasks = get_subtasks_by_session(db, existing_session.session_id)
+        old_subtasks = get_subtasks_by_session(db, existing_plan.id)
         if old_subtasks:
             for old_subtask in old_subtasks:
                 db.delete(old_subtask)
 
         # 更新 session 的信息
-        existing_session.plan_summary = plan_summary
-        existing_session.estimated_steps = estimated_steps
-        existing_session.execution_mode = execution_mode
-        existing_session.status = "running"  # 重置状态为 running
-        db.add(existing_session)
+        existing_plan.plan_summary = plan_summary
+        existing_plan.estimated_steps = estimated_steps
+        existing_plan.execution_mode = execution_mode
+        existing_plan.status = "running"
+        db.add(existing_plan)
 
         # 🔥 关键修复：批量创建子任务并正确映射 depends_on
         task_id_to_subtask: dict[str, Any] = {}
@@ -101,7 +101,7 @@ def get_or_create_task_session(
         for subtask_data in subtasks_data:
             subtask = create_subtask(
                 db=db,
-                task_session_id=existing_session.session_id,
+                execution_plan_id=existing_plan.id,
                 expert_type=subtask_data.expert_type,
                 task_description=subtask_data.task_description,
                 sort_order=subtask_data.sort_order,
@@ -128,12 +128,10 @@ def get_or_create_task_session(
                 db.add(subtask)
 
         db.commit()
-        db.refresh(existing_session)
-        return existing_session, True
+        db.refresh(existing_plan)
+        return existing_plan, True
 
-    # 创建新的 TaskSession
-    # 🔥 传入 session_id（如果提供了）
-    task_session = create_task_session_with_subtasks(
+    execution_plan = create_task_session_with_subtasks(
         db=db,
         thread_id=thread_id,
         user_query=user_query,
@@ -141,24 +139,24 @@ def get_or_create_task_session(
         estimated_steps=estimated_steps,
         subtasks_data=subtasks_data,
         execution_mode=execution_mode,
-        session_id=session_id,  # 🔥 传入预览时使用的 session_id
+        execution_plan_id=execution_plan_id,
     )
-    return task_session, False
+    return execution_plan, False
 
 
-def complete_task_session(db: Session, task_session_id: str, final_response: str) -> None:
+def complete_execution_plan(db: Session, execution_plan_id: str, final_response: str) -> None:
     """
     标记任务会话为已完成
 
     Args:
         db: 数据库会话
-        task_session_id: 任务会话 ID
+        execution_plan_id: 执行计划 ID
         final_response: 最终聚合结果
 
     Example:
-        >>> complete_task_session(db, "session_abc", "所有任务已完成，结果是...")
+        >>> complete_execution_plan(db, "plan_abc", "所有任务已完成，结果是...")
     """
-    update_task_session_status(db, task_session_id, "completed", final_response=final_response)
+    update_task_session_status(db, execution_plan_id, "completed", final_response=final_response)
 
 
 # =============================================================================

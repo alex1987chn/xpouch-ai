@@ -12,7 +12,6 @@ HITL (Human-in-the-Loop) 恢复服务
 """
 
 import asyncio
-import os
 import threading
 from datetime import datetime
 from typing import Any
@@ -22,7 +21,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import update
 from sqlmodel import Session, select
 
-from models import TaskSession, Thread
+from config import settings
+from models import AgentRun, ExecutionPlan, RunStatus, Thread
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError, AuthorizationError, NotFoundError, ValidationError
 from utils.logger import logger
@@ -121,7 +121,7 @@ class RecoveryService:
 
         清理状态：
         - 清理 LangGraph checkpoints
-        - 更新 TaskSession 状态为 cancelled
+        - 更新 ExecutionPlan 状态为 cancelled
 
         Args:
             thread_id: 线程ID
@@ -134,8 +134,9 @@ class RecoveryService:
         # 清理 checkpoints
         await self._cleanup_checkpoints(thread_id)
 
-        # 更新 TaskSession
-        await self._cancel_task_session(thread_id)
+        # 更新 ExecutionPlan
+        await self._cancel_execution_plan(thread_id)
+        self._update_latest_run_status(thread_id, RunStatus.CANCELLED)
 
         return {"status": "cancelled", "message": "计划已被用户拒绝"}
 
@@ -173,9 +174,10 @@ class RecoveryService:
             raise
 
         logger.info("[HITL RESUME] 用户批准，开始流式恢复")
+        self._update_latest_run_status(thread_id, RunStatus.RESUMING)
 
-        # 🔥 方案1：更新 TaskSession 状态为 running（用户已批准）
-        self._update_task_session_status(thread_id, "running")
+        # 🔥 方案1：更新 ExecutionPlan 状态为 running（用户已批准）
+        self._update_execution_plan_status(thread_id, "running")
 
         # 关键一致性保障：计划更新前执行乐观锁校验与版本递增
         self._bump_plan_version_with_cas(thread_id, plan_version)
@@ -204,9 +206,11 @@ class RecoveryService:
 
                 # 处理完成后，收集 artifacts 并保存
                 await self._process_collected_artifacts(thread_id, stream_queue)
+                self._update_latest_run_status(thread_id, RunStatus.COMPLETED)
 
             except Exception as e:
                 logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
+                self._mark_latest_run_failed(thread_id, str(e))
                 yield self._build_error_event(ErrorCode.RESUME_ERROR, str(e))
             finally:
                 self._mark_thread_idle(thread_id)
@@ -268,6 +272,36 @@ class RecoveryService:
             return f"msg:{message_id}"
         return f"{thread_id}:{plan_version}"
 
+    def _get_latest_run(self, thread_id: str) -> AgentRun | None:
+        """获取线程最新的 AgentRun。"""
+        return self.db.exec(
+            select(AgentRun)
+            .where(AgentRun.thread_id == thread_id)
+            .order_by(AgentRun.created_at.desc())
+        ).first()
+
+    def _update_latest_run_status(self, thread_id: str, status: RunStatus) -> None:
+        """更新线程最新运行的状态。"""
+        agent_run = self._get_latest_run(thread_id)
+        if not agent_run:
+            return
+        agent_run.status = status
+        agent_run.updated_at = datetime.now()
+        agent_run.last_heartbeat_at = datetime.now()
+        self.db.add(agent_run)
+        self.db.commit()
+
+    def _mark_latest_run_failed(self, thread_id: str, error_message: str) -> None:
+        """将线程最新运行标记为失败。"""
+        agent_run = self._get_latest_run(thread_id)
+        if not agent_run:
+            return
+        agent_run.status = RunStatus.FAILED
+        agent_run.error_message = error_message
+        agent_run.updated_at = datetime.now()
+        self.db.add(agent_run)
+        self.db.commit()
+
     def _mark_thread_running(self, thread_id: str) -> None:
         """
         标记线程为 running。
@@ -280,17 +314,19 @@ class RecoveryService:
         if not thread:
             raise NotFoundError(f"Thread not found: {thread_id}")
 
-        if thread.status == "running":
+        result = self.db.exec(
+            update(Thread)
+            .where(Thread.id == thread_id, Thread.status != "running")
+            .values(status="running", updated_at=datetime.now())
+        )
+        if result.rowcount == 0:
+            self.db.rollback()
             raise AppError(
                 message="当前线程已有恢复流程在执行",
                 code=ErrorCode.RESUME_IN_PROGRESS,
                 status_code=409,
                 details={"thread_id": thread_id},
             )
-
-        thread.status = "running"
-        thread.updated_at = datetime.now()
-        self.db.add(thread)
         self.db.commit()
 
     def _mark_thread_idle(self, thread_id: str) -> None:
@@ -320,31 +356,29 @@ class RecoveryService:
         if expected_plan_version is None:
             raise ValidationError("缺少 plan_version，无法进行并发校验")
 
-        task_session = self.db.exec(
-            select(TaskSession)
-            .where(TaskSession.thread_id == thread_id)
-            .order_by(TaskSession.created_at.desc())
+        execution_plan = self.db.exec(
+            select(ExecutionPlan)
+            .where(ExecutionPlan.thread_id == thread_id)
+            .order_by(ExecutionPlan.created_at.desc())
         ).first()
 
-        if not task_session:
-            raise NotFoundError("TaskSession")
+        if not execution_plan:
+            raise NotFoundError("ExecutionPlan")
 
         stmt = (
-            update(TaskSession)
+            update(ExecutionPlan)
             .where(
-                TaskSession.session_id == task_session.session_id,
-                TaskSession.plan_version == expected_plan_version,
+                ExecutionPlan.id == execution_plan.id,
+                ExecutionPlan.plan_version == expected_plan_version,
             )
-            .values(plan_version=TaskSession.plan_version + 1, updated_at=datetime.now())
+            .values(plan_version=ExecutionPlan.plan_version + 1, updated_at=datetime.now())
         )
         result = self.db.exec(stmt)
 
         if result.rowcount == 0:
             self.db.rollback()
             latest = self.db.exec(
-                select(TaskSession.plan_version).where(
-                    TaskSession.session_id == task_session.session_id
-                )
+                select(ExecutionPlan.plan_version).where(ExecutionPlan.id == execution_plan.id)
             ).first()
             raise AppError(
                 message="计划已被更新，请刷新后重试",
@@ -380,18 +414,18 @@ class RecoveryService:
                 break
 
         # 保存 artifacts（需要查询对应的 subtask_id）
-        task_session = self.db.exec(
-            select(TaskSession).where(TaskSession.thread_id == thread_id)
+        execution_plan = self.db.exec(
+            select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)
         ).first()
 
-        if task_session:
+        if execution_plan:
             for task_id, artifacts in artifacts_by_task.items():
                 # 查询对应的 SubTask
                 from models import SubTask
 
                 subtask = self.db.exec(
                     select(SubTask).where(
-                        SubTask.task_session_id == task_session.session_id, SubTask.id == task_id
+                        SubTask.execution_plan_id == execution_plan.id, SubTask.id == task_id
                     )
                 ).first()
 
@@ -415,10 +449,7 @@ class RecoveryService:
         使用同步连接（Windows兼容）
         """
         try:
-            db_url = os.getenv("DATABASE_URL", "")
-            db_url = db_url.replace("postgresql+asyncpg", "postgresql").replace(
-                "postgresql+psycopg", "postgresql"
-            )
+            db_url = settings.get_database_url(sync_driver="plain")
 
             with psycopg.connect(db_url) as conn:
                 with conn.cursor() as cur:
@@ -441,9 +472,9 @@ class RecoveryService:
             # 如果表不存在或其他错误，记录但不阻断流程
             logger.warning(f"[HITL RESUME] 清理 checkpoint 失败: {e}")
 
-    def _update_task_session_status(self, thread_id: str, status: str) -> None:
+    def _update_execution_plan_status(self, thread_id: str, status: str) -> None:
         """
-        更新 TaskSession 状态
+        更新 ExecutionPlan 状态
 
         Args:
             thread_id: 线程ID
@@ -451,36 +482,34 @@ class RecoveryService:
         """
         from models.enums import TaskStatus
 
-        task_session = self.db.exec(
-            select(TaskSession).where(TaskSession.thread_id == thread_id)
+        execution_plan = self.db.exec(
+            select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)
         ).first()
 
-        if task_session:
-            task_session.status = TaskStatus(status)
-            task_session.updated_at = datetime.now()
-            self.db.add(task_session)
+        if execution_plan:
+            execution_plan.status = TaskStatus(status)
+            execution_plan.updated_at = datetime.now()
+            self.db.add(execution_plan)
             self.db.commit()
-            logger.info(f"[HITL RESUME] TaskSession {task_session.session_id} 状态更新为 {status}")
+            logger.info(f"[HITL RESUME] ExecutionPlan {execution_plan.id} 状态更新为 {status}")
 
-    async def _cancel_task_session(self, thread_id: str):
-        """将 TaskSession 标记为 cancelled"""
+    async def _cancel_execution_plan(self, thread_id: str):
+        """将 ExecutionPlan 标记为 cancelled"""
         try:
-            task_session = self.db.exec(
-                select(TaskSession).where(TaskSession.thread_id == thread_id)
+            execution_plan = self.db.exec(
+                select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)
             ).first()
 
-            if task_session:
-                task_session.status = "cancelled"
-                task_session.final_response = "计划被用户取消"
-                task_session.updated_at = datetime.now()
-                self.db.add(task_session)
+            if execution_plan:
+                execution_plan.status = "cancelled"
+                execution_plan.final_response = "计划被用户取消"
+                execution_plan.updated_at = datetime.now()
+                self.db.add(execution_plan)
                 self.db.commit()
-                logger.info(
-                    f"[HITL RESUME] TaskSession {task_session.session_id} 已标记为 cancelled"
-                )
+                logger.info(f"[HITL RESUME] ExecutionPlan {execution_plan.id} 已标记为 cancelled")
 
         except Exception as e:
-            logger.warning(f"[HITL RESUME] 更新 task_session 失败: {e}")
+            logger.warning(f"[HITL RESUME] 更新 execution_plan 失败: {e}")
 
     # ============================================================================
     # 辅助方法

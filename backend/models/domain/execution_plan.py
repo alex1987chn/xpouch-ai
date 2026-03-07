@@ -1,8 +1,8 @@
 """
-任务会话领域模型
+复杂模式执行计划领域模型
 
-包含：
-- TaskSession: 任务会话表（复杂模式）
+`ExecutionPlan` 是原 `TaskSession` 的语义升级版，负责承载复杂模式下的
+计划摘要、执行状态、版本控制与子任务明细。
 """
 
 from datetime import datetime
@@ -15,31 +15,23 @@ from sqlmodel import Field, Relationship, SQLModel
 from models.enums import ExecutionMode, TaskStatus, _enum_values
 
 
-class TaskSession(SQLModel, table=True):
-    """
-    任务会话模型 - 记录一次完整的多专家协作过程（仅复杂模式）
-    """
+class ExecutionPlan(SQLModel, table=True):
+    """复杂模式下的一次任务编排计划。"""
 
-    __tablename__ = "tasksession"
+    __tablename__ = "executionplan"
 
-    session_id: str = Field(
-        default_factory=lambda: __import__("uuid").uuid4(),
+    id: str = Field(
+        default_factory=lambda: str(__import__("uuid").uuid4()),
         primary_key=True,
+        max_length=64,
     )
-
-    # 关联的会话ID（核心！用于从历史记录加载）
     thread_id: str = Field(foreign_key="thread.id", index=True, max_length=64)
+    run_id: str | None = Field(default=None, foreign_key="agentrun.id", index=True, max_length=64)
 
-    # 用户查询：原始用户输入
     user_query: str = Field(index=True)
-
-    # 规划摘要：Commander 生成的策略概述
     plan_summary: str | None = Field(default=None)
-
-    # 预计步骤数
     estimated_steps: int = Field(default=0)
 
-    # 执行模式：串行或并行
     execution_mode: ExecutionMode = Field(
         default=ExecutionMode.SEQUENTIAL,
         sa_column=Column(
@@ -50,21 +42,17 @@ class TaskSession(SQLModel, table=True):
                 values_callable=_enum_values,
             )
         ),
-    )  # DB-12: 使用 PostgreSQL ENUM
+    )
 
-    # 关联的子任务列表（使用字符串避免循环导入）
     sub_tasks: list["SubTask"] = Relationship(  # noqa: F821
-        back_populates="task_session",
+        back_populates="execution_plan",
         sa_relationship_kwargs={
             "cascade": "all, delete-orphan",
             "order_by": "SubTask.sort_order",
         },
     )
 
-    # 最终响应：整合所有子任务结果的最终答案
     final_response: str | None = Field(default=None)
-
-    # 会话状态：pending | running | completed | failed
     status: TaskStatus = Field(
         default=TaskStatus.PENDING,
         sa_column=Column(
@@ -76,13 +64,9 @@ class TaskSession(SQLModel, table=True):
             ),
             index=True,
         ),
-    )  # DB-12: 使用 PostgreSQL ENUM
-
-    # 乐观锁版本号：用于 HITL 计划更新冲突检测
-    # 每次用户确认/更新计划时递增
+    )
     plan_version: int = Field(default=1)
 
-    # 时间戳
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(
         default_factory=datetime.now,
@@ -90,5 +74,10 @@ class TaskSession(SQLModel, table=True):
     )
     completed_at: datetime | None = None
 
-    # 关联关系（使用字符串避免循环导入）
-    thread: Optional["Thread"] = Relationship(back_populates="task_session")  # noqa: F821
+    thread: Optional["Thread"] = Relationship(  # noqa: F821
+        back_populates="execution_plan",
+        sa_relationship_kwargs={"foreign_keys": "ExecutionPlan.thread_id"},
+    )
+    agent_run: Optional["AgentRun"] = Relationship(  # noqa: F821
+        back_populates="execution_plan"
+    )

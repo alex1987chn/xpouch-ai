@@ -19,7 +19,21 @@ class _FakeSession:
     def add(self, _obj):
         return None
 
+    def exec(self, statement):
+        class _Result:
+            def __init__(self, rowcount: int):
+                self.rowcount = rowcount
+
+        if getattr(statement, "table", None) is not None and self._thread.status != "running":
+            self._thread.status = "running"
+            self._thread.updated_at = datetime.now()
+            return _Result(1)
+        return _Result(0)
+
     def commit(self):
+        return None
+
+    def rollback(self):
         return None
 
 

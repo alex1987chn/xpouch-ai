@@ -8,7 +8,7 @@
 - LangChain消息列表构建
 
 依赖:
-- backend.crud.task_session (TaskSession相关CRUD)
+- backend.crud.task_session (ExecutionPlan 相关 CRUD，待重命名)
 - backend.models (SQLModel模型)
 """
 
@@ -20,7 +20,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from constants import SYSTEM_AGENT_DEFAULT_CHAT, SYSTEM_AGENT_ORCHESTRATOR, normalize_agent_id
-from models import CustomAgent, Message, SubTask, TaskSession, Thread
+from models import CustomAgent, ExecutionPlan, Message, SubTask, Thread
 from utils.exceptions import AuthorizationError, NotFoundError
 
 
@@ -133,7 +133,7 @@ class ChatSessionService:
                     "agent_type": thread.agent_type,
                     "thread_mode": thread.thread_mode,
                     "user_id": thread.user_id,
-                    "task_session_id": thread.task_session_id,
+                    "execution_plan_id": thread.execution_plan_id,
                     "created_at": thread.created_at.isoformat() if thread.created_at else None,
                     "updated_at": thread.updated_at.isoformat() if thread.updated_at else None,
                     "message_count": stats["message_count"],
@@ -195,7 +195,7 @@ class ChatSessionService:
             user_id: 用户ID（用于权限验证）
 
         Returns:
-            线程详情，包含消息、TaskSession、SubTasks、Artifacts
+            线程详情，包含消息、ExecutionPlan、SubTasks、Artifacts
 
         Raises:
             NotFoundError: 线程不存在
@@ -212,39 +212,42 @@ class ChatSessionService:
         if thread.user_id != user_id:
             raise AuthorizationError("没有权限访问此会话")
 
-        # 如果是AI助手线程（复杂模式），加载TaskSession和SubTask
-        if thread.agent_type == "ai" and thread.task_session_id:
+        # 如果是AI助手线程（复杂模式），加载 ExecutionPlan 和 SubTask
+        if thread.agent_type == "ai" and thread.execution_plan_id:
             return await self._build_complex_thread_response(thread)
 
         # 简单模式返回
         return self._build_simple_thread_response(thread)
 
     async def _build_complex_thread_response(self, thread: Thread) -> dict:
-        """构建复杂模式的线程响应（包含TaskSession详情）"""
-        task_session = self.db.get(TaskSession, thread.task_session_id)
-        if not task_session:
+        """构建复杂模式的线程响应（包含 ExecutionPlan 详情）"""
+        execution_plan = self.db.get(ExecutionPlan, thread.execution_plan_id)
+        if not execution_plan:
             return self._build_simple_thread_response(thread)
 
         # 预加载 artifacts 关系，避免 N+1 查询
         statement = (
             select(SubTask)
-            .where(SubTask.task_session_id == task_session.session_id)
+            .where(SubTask.execution_plan_id == execution_plan.id)
             .options(selectinload(SubTask.artifacts))
             .order_by(SubTask.sort_order)
         )
         sub_tasks = self.db.exec(statement).all()
 
         base_response = self._build_simple_thread_response(thread)
-        base_response["task_session"] = {
-            "id": task_session.session_id,
-            "session_id": task_session.session_id,
-            "user_query": task_session.user_query,
-            "final_response": task_session.final_response,
-            "status": task_session.status,
+        base_response["execution_plan"] = {
+            "id": execution_plan.id,
+            "execution_plan_id": execution_plan.id,
+            "thread_id": execution_plan.thread_id,
+            "run_id": execution_plan.run_id,
+            "user_query": execution_plan.user_query,
+            "final_response": execution_plan.final_response,
+            "status": execution_plan.status,
+            "plan_version": execution_plan.plan_version,
             "sub_tasks": [
                 {
                     "id": st.id,
-                    "task_session_id": st.task_session_id,
+                    "execution_plan_id": st.execution_plan_id,
                     "expert_type": st.expert_type,
                     "task_description": st.task_description,
                     "status": st.status,
@@ -280,7 +283,7 @@ class ChatSessionService:
             "agent_id": thread.agent_id,
             "agent_type": thread.agent_type,
             "user_id": thread.user_id,
-            "task_session_id": thread.task_session_id,
+            "execution_plan_id": thread.execution_plan_id,
             "created_at": thread.created_at.isoformat() if thread.created_at else None,
             "updated_at": thread.updated_at.isoformat() if thread.updated_at else None,
             "messages": [
@@ -517,18 +520,18 @@ class ChatSessionService:
         return None
 
     # ============================================================================
-    # TaskSession 管理
+    # ExecutionPlan 管理
     # ============================================================================
 
-    async def create_task_session(
+    async def create_execution_plan(
         self,
         thread_id: str,
         user_query: str,
         plan_summary: str | None = None,
         estimated_steps: int = 0,
-    ) -> TaskSession:
+    ) -> ExecutionPlan:
         """
-        创建 TaskSession（复杂模式）
+        创建 ExecutionPlan（复杂模式）
 
         Args:
             thread_id: 关联的线程ID
@@ -537,7 +540,7 @@ class ChatSessionService:
             estimated_steps: 预计步骤数
 
         Returns:
-            创建的 TaskSession 实例
+            创建的 ExecutionPlan 实例
         """
         from crud.task_session import create_task_session as crud_create_task_session
 
@@ -551,20 +554,20 @@ class ChatSessionService:
         )
 
     async def update_thread_agent_type(
-        self, thread_id: str, agent_type: str, task_session_id: str | None = None
+        self, thread_id: str, agent_type: str, execution_plan_id: str | None = None
     ) -> None:
         """
-        更新线程的 agent_type 和 task_session_id
+        更新线程的 agent_type 和 execution_plan_id
 
         Args:
             thread_id: 线程ID
             agent_type: agent 类型 (simple/complex/ai)
-            task_session_id: 关联的 TaskSession ID（可选）
+            execution_plan_id: 关联的 ExecutionPlan ID（可选）
         """
         thread = self.db.get(Thread, thread_id)
         if thread:
             thread.agent_type = agent_type
-            if task_session_id:
-                thread.task_session_id = task_session_id
+            if execution_plan_id:
+                thread.execution_plan_id = execution_plan_id
             self.db.add(thread)
             self.db.commit()

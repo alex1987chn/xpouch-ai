@@ -55,7 +55,7 @@ export interface TaskInfo {
 }
 
 export interface PlanCreatedData {
-  session_id: string
+  execution_plan_id: string
   summary: string
   estimated_steps: number
   execution_mode: 'sequential' | 'parallel'
@@ -67,14 +67,14 @@ export type PlanCreatedEvent = SSEEvent<PlanCreatedData>
 // 🔥 新增：Commander 流式思考事件数据类型
 
 export interface PlanStartedData {
-  session_id: string
+  execution_plan_id: string
   title: string
   content: string
   status: 'running'
 }
 
 export interface PlanThinkingData {
-  session_id: string
+  execution_plan_id: string
   delta: string
 }
 
@@ -210,6 +210,8 @@ export type ErrorEvent = SSEEvent<ErrorData>
 
 export interface HumanInterruptData {
   type: 'plan_review'
+  run_id?: string
+  execution_plan_id?: string
   plan_version: number
   current_plan: Array<{
     id: string

@@ -16,8 +16,8 @@ from .expert_manager import (
     refresh_cache,
 )
 from .task_manager import (
-    complete_task_session,
-    get_or_create_task_session,
+    complete_execution_plan,
+    get_or_create_execution_plan,
     get_subtask_by_id,
     save_aggregator_message,
     update_subtask_status,
@@ -35,8 +35,8 @@ __all__ = [
     "get_all_expert_list",
     "format_expert_list_for_prompt",
     # Task Manager
-    "get_or_create_task_session",
-    "complete_task_session",
+    "get_or_create_execution_plan",
+    "complete_execution_plan",
     "save_aggregator_message",
     "update_subtask_status",
     "get_subtask_by_id",

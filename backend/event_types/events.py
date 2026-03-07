@@ -72,7 +72,7 @@ class TaskInfo(BaseModel):
 class PlanCreatedData(BaseModel):
     """plan.created 事件数据"""
 
-    session_id: str
+    execution_plan_id: str
     summary: str
     estimated_steps: int
     execution_mode: str  # sequential | parallel
@@ -85,7 +85,7 @@ class PlanCreatedData(BaseModel):
 class PlanStartedData(BaseModel):
     """plan.started 事件数据 - 通知前端开始规划"""
 
-    session_id: str
+    execution_plan_id: str
     title: str = "任务规划"
     content: str = "正在分析需求..."
     status: str = "running"
@@ -94,7 +94,7 @@ class PlanStartedData(BaseModel):
 class PlanThinkingData(BaseModel):
     """plan.thinking 事件数据 - 流式思考内容增量"""
 
-    session_id: str
+    execution_plan_id: str
     delta: str  # 思考内容的增量
 
 
@@ -226,6 +226,8 @@ class HumanInterruptData(BaseModel):
     """human.interrupt 事件数据 - HITL 中断等待用户确认"""
 
     type: str = "plan_review"  # 中断类型，目前仅支持 plan_review
+    run_id: str | None = None
+    execution_plan_id: str | None = None
     current_plan: list[dict[str, Any]]  # 当前计划任务列表
     plan_version: int = 1  # 计划版本号（乐观锁）
 

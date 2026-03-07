@@ -48,6 +48,19 @@ class TaskStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class RunStatus(StrEnum):
+    """统一运行时状态枚举。"""
+
+    QUEUED = "queued"
+    RUNNING = "running"
+    WAITING_FOR_APPROVAL = "waiting_for_approval"
+    RESUMING = "resuming"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    TIMED_OUT = "timed_out"
+
+
 class ExecutionMode(StrEnum):
     """任务执行模式"""
 

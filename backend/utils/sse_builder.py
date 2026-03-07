@@ -55,11 +55,15 @@ def build_human_interrupt_event(
     thread_id: str,
     current_plan: list[dict],
     plan_version: int,
+    run_id: str | None = None,
+    execution_plan_id: str | None = None,
 ) -> str:
     event = build_sse_event(
         EventType.HUMAN_INTERRUPT,
         HumanInterruptData(
             type="plan_review",
+            run_id=run_id,
+            execution_plan_id=execution_plan_id,
             current_plan=current_plan,
             plan_version=plan_version,
         ),

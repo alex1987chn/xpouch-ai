@@ -127,8 +127,8 @@ export function useSessionRestore(
       }
       setCurrentConversationId(conversationId)
       
-      // 检查是否是复杂模式（有 task_session）
-      if (!conversation.task_session && !conversation.task_session_id) {
+      // 检查是否是复杂模式（有 execution_plan）
+      if (!conversation.execution_plan && !conversation.execution_plan_id) {
         // 简单模式：只恢复消息即可
         setIsRestored(true)
         setIsRestoring(false)
@@ -136,9 +136,9 @@ export function useSessionRestore(
       }
       
       // 复杂模式：恢复任务状态（智能合并）
-      const { task_session } = conversation
-      if (task_session?.sub_tasks) {
-        const subTasks = task_session.sub_tasks || []
+      const { execution_plan } = conversation
+      if (execution_plan?.sub_tasks) {
+        const subTasks = execution_plan.sub_tasks || []
         
         // 统计 API 返回的 artifacts 数量
         const apiArtifactCount = subTasks.reduce((sum: number, t: SubTask) =>
@@ -156,12 +156,12 @@ export function useSessionRestore(
         // 2. API 有 artifacts 但本地没有 -> 从 API 恢复（数据更完整）
         // 3. 其他情况 -> 保留本地数据
         if (taskStore.tasks.size === 0) {
-          restoreFromSession(task_session, subTasks)
+          restoreFromSession(execution_plan, subTasks)
           // 🔥 恢复成功后设置 UI 状态
           setMode('complex')
           setIsInitialized(true)
         } else if (apiArtifactCount > 0 && localArtifactCount === 0) {
-          restoreFromSession(task_session, subTasks)
+          restoreFromSession(execution_plan, subTasks)
           // 🔥 恢复成功后设置 UI 状态
           setMode('complex')
           setIsInitialized(true)
@@ -184,7 +184,7 @@ export function useSessionRestore(
         
         // 检查会话状态是否需要用户干预（如 HITL 等待确认）
         // 🔥 方案1：从 subTasks 恢复 pendingPlan
-        if (task_session.status === 'waiting_for_approval' && hasPendingTask) {
+        if (execution_plan.status === 'waiting_for_approval' && hasPendingTask) {
           // 从 subTasks 构建 pendingPlan
           const pendingPlan = subTasks
             .filter((t: SubTask) => t.status === 'pending')
@@ -198,7 +198,7 @@ export function useSessionRestore(
             }))
 
           if (pendingPlan.length > 0) {
-            setPendingPlan(pendingPlan, task_session.plan_version || 1)
+            setPendingPlan(pendingPlan, execution_plan.plan_version || 1)
             logger.debug('[useSessionRestore] HITL 恢复: pendingPlan 已设置', pendingPlan.length, '个任务')
           }
         }

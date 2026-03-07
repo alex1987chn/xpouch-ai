@@ -72,8 +72,8 @@ class SubTaskResponse(BaseModel):
     created_at: datetime
 
 
-class TaskSessionCreate(BaseModel):
-    """创建任务会话的 DTO"""
+class ExecutionPlanCreate(BaseModel):
+    """创建复杂执行计划的 DTO。"""
 
     user_query: str
     plan_summary: str | None = None
@@ -81,18 +81,20 @@ class TaskSessionCreate(BaseModel):
     execution_mode: str = "sequential"
 
 
-class TaskSessionUpdate(BaseModel):
-    """更新任务会话的 DTO"""
+class ExecutionPlanUpdate(BaseModel):
+    """更新复杂执行计划的 DTO。"""
 
     status: str | None = None
     final_response: str | None = None
     completed_at: datetime | None = None
 
 
-class TaskSessionResponse(BaseModel):
-    """任务会话响应 DTO"""
+class ExecutionPlanResponse(BaseModel):
+    """复杂执行计划响应 DTO。"""
 
-    session_id: str
+    id: str
+    execution_plan_id: str
+    run_id: str | None = None
     thread_id: str
     user_query: str
     plan_summary: str | None
