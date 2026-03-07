@@ -35,7 +35,7 @@ export interface Task extends TaskInfo {
 }
 
 export interface ExecutionPlanState {
-  sessionId: string
+  executionPlanId: string
   summary: string
   estimatedSteps: number
   executionMode: 'sequential' | 'parallel'
@@ -47,14 +47,14 @@ export interface ExecutionPlanState {
 // ============================================================================
 
 export interface TaskSliceState {
-  session: ExecutionPlanState | null
+  executionPlan: ExecutionPlanState | null
   tasks: Map<string, Task>
   tasksCache: Task[]
   tasksCacheVersion: number
 }
 
 export interface TaskSliceActions {
-  // Mode & Session
+  // Mode & ExecutionPlan
   setMode: (mode: 'simple' | 'complex') => void
   
   // Plan initialization
@@ -78,8 +78,8 @@ export interface TaskSliceActions {
   deleteTask: (taskId: string) => void
   setTasks: (tasks: Map<string, Task>) => void
   
-  // Session restore
-  restoreFromSession: (session: ApiExecutionPlan, subTasks: SubTask[]) => void
+  // ExecutionPlan restore
+  restoreFromExecutionPlan: (executionPlan: ApiExecutionPlan, subTasks: SubTask[]) => void
   
   // Reset all tasks
   resetTasks: (force?: boolean) => void
@@ -117,11 +117,10 @@ type TaskSliceGetter = () => TaskStore
 
 export const createTaskSlice = (
   set: TaskSliceSetter,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _get: TaskSliceGetter
 ): TaskSlice => ({
   // Initial state
-  session: null,
+  executionPlan: null,
   tasks: new Map(),
   tasksCache: [],
   tasksCacheVersion: 0,
@@ -139,7 +138,7 @@ export const createTaskSlice = (
     set((state) => {
       if (mode === 'simple') {
         // 只清理 TaskSlice 自己的状态
-        state.session = null
+        state.executionPlan = null
         state.tasks = new Map()
         rebuildTasksCache(state)
       }
@@ -148,7 +147,7 @@ export const createTaskSlice = (
 
   initializePlan: (data: PlanCreatedData) => {
     set((state) => {
-      if (state.session?.sessionId === data.execution_plan_id) {
+      if (state.executionPlan?.executionPlanId === data.execution_plan_id) {
         const newTaskIds = new Set(data.tasks.map((t) => t.id))
 
         state.tasks.forEach((_, id: string) => {
@@ -157,7 +156,7 @@ export const createTaskSlice = (
           }
         })
 
-        state.session.estimatedSteps = data.estimated_steps + 1
+        state.executionPlan.estimatedSteps = data.estimated_steps + 1
 
         data.tasks.forEach((taskInfo) => {
           if (!state.tasks.has(taskInfo.id)) {
@@ -169,8 +168,8 @@ export const createTaskSlice = (
           }
         })
       } else {
-        state.session = {
-          sessionId: data.execution_plan_id,
+        state.executionPlan = {
+          executionPlanId: data.execution_plan_id,
           summary: data.summary,
           estimatedSteps: data.estimated_steps + 1,
           executionMode: data.execution_mode as 'sequential' | 'parallel',
@@ -196,16 +195,16 @@ export const createTaskSlice = (
 
   updateTasksFromPlan: (newPlan) => {
     set((state) => {
-      // 🔥 修复：移除 session 检查，HITL 确认时 session 可能未初始化
+      // 🔥 修复：移除 executionPlan 检查，HITL 确认时执行计划可能未初始化
       // 直接更新 tasks Map，让 BusRail 能显示专家头像
 
-      // 更新或创建 session（如果不存在）
-      if (state.session) {
-        state.session.estimatedSteps = newPlan.length + 1
+      // 更新或创建 executionPlan（如果不存在）
+      if (state.executionPlan) {
+        state.executionPlan.estimatedSteps = newPlan.length + 1
       } else {
-        // HITL 确认时 session 可能未初始化，创建临时 session
-        state.session = {
-          sessionId: `hitl-${Date.now()}`,
+        // HITL 确认时 executionPlan 可能未初始化，创建临时 executionPlan
+        state.executionPlan = {
+          executionPlanId: `hitl-${Date.now()}`,
           summary: 'HITL 恢复执行',
           estimatedSteps: newPlan.length + 1,
           executionMode: 'sequential',
@@ -320,7 +319,7 @@ export const createTaskSlice = (
   resetTasks: (force: boolean = false, hasRunningTasks?: () => boolean) => {
     set((state) => {
       // 🔥 保护：如果有运行中的任务，禁止重置（防止复杂模式执行中误重置）
-      // 除非强制重置（force=true，用于从历史记录加载会话）
+      // 除非强制重置（force=true，用于从历史记录加载线程详情）
       // P0 修复：通过参数传入检查函数，避免直接访问 UISlice 状态
       if (!force && hasRunningTasks?.()) {
         logger.warn('[TaskStore] resetTasks 被阻止：有任务正在运行中')
@@ -328,22 +327,23 @@ export const createTaskSlice = (
       }
       
       // 只清理 TaskSlice 自己的状态
-      state.session = null
+      state.executionPlan = null
       state.tasks = new Map()
       state.tasksCache = []
       state.tasksCacheVersion++
     })
   },
 
-  restoreFromSession: (session: ApiExecutionPlan, subTasks: SubTask[]) => {
+  restoreFromExecutionPlan: (executionPlan: ApiExecutionPlan, subTasks: SubTask[]) => {
     set((state) => {
       // 使用 state 直接修改（Immer 会处理不可变性）
-      state.session = {
-        sessionId: session.execution_plan_id,
-        summary: session.user_query || '',
+      state.executionPlan = {
+        executionPlanId: executionPlan.execution_plan_id,
+        summary: executionPlan.user_query || '',
         estimatedSteps: subTasks.length + 1,
         executionMode: 'sequential',
-        status: (session.status as 'pending' | 'running' | 'completed' | 'failed') || 'running'
+        status:
+          (executionPlan.status as 'pending' | 'running' | 'completed' | 'failed') || 'running'
       }
 
       state.tasks = new Map()

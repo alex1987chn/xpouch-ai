@@ -322,7 +322,7 @@ function MessageItem({
       
       taskStore.setMode('simple')
       taskStore.initializePlan({
-        session_id: 'media_preview',
+        execution_plan_id: 'media_preview',
         summary: t('mediaPreviewMode'),
         estimated_steps: 1,
         execution_mode: 'sequential',
@@ -369,7 +369,7 @@ function MessageItem({
       if (DEBUG) logger.debug('[Preview] Initializing simple mode')
       taskStore.setMode('simple')
       taskStore.initializePlan({
-        session_id: 'simple_preview',
+        execution_plan_id: 'simple_preview',
         summary: t('simpleChatMode'),
         estimated_steps: 1,
         execution_mode: 'sequential',

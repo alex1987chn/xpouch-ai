@@ -127,7 +127,7 @@ export interface ConversationDetail extends Conversation {
 }
 
 /**
- * 任务会话接口 - 记录一次完整的多专家协作过程（仅复杂模式）
+ * 执行计划接口 - 记录复杂模式下的一次完整任务编排过程
  */
 export interface ExecutionPlan {
   id: string

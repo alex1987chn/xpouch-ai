@@ -26,8 +26,8 @@
  * - Selectors 模式避免不必要重渲染
  * 
  * [持久化]
- * - 不持久化到 localStorage（会话级状态）
- * - 页面刷新后通过 API 恢复会话状态
+ * - 不将运行时临时态作为长期会话真相源
+ * - 页面刷新后通过 API 恢复 thread / execution plan 状态
  */
 
 import { create } from 'zustand'
@@ -81,11 +81,11 @@ export const useTaskStore = create<TaskStore>()(
     // ============================================================================
     {
       name: 'xpouch-task-store',
-      version: 2,  // 版本升级
+      version: 2,  // 自定义 deserialize 已兼容旧 session 持久化字段
       // 只持久化关键字段
       partialize: (state: TaskStore) => ({
         // TaskSlice
-        session: state.session,
+        executionPlan: state.executionPlan,
         tasks: Array.from(state.tasks.entries()),
         tasksCacheVersion: state.tasksCacheVersion,
         // UISlice
@@ -116,6 +116,12 @@ export const useTaskStore = create<TaskStore>()(
 
           const parsed = JSON.parse(str)
 
+          // 兼容旧持久化字段：session -> executionPlan
+          if (parsed.session && !parsed.executionPlan) {
+            parsed.executionPlan = parsed.session
+          }
+          delete parsed.session
+
           // 恢复 Map
           if (parsed.tasks && Array.isArray(parsed.tasks)) {
             parsed.tasks = new Map(parsed.tasks)
@@ -140,7 +146,7 @@ export const useTaskStore = create<TaskStore>()(
           logger.error('[TaskStore] deserialize 失败:', error)
           // 返回一个安全的默认状态
           return {
-            session: null,
+            executionPlan: null,
             tasks: new Map(),
             tasksCache: [],
             runningTaskIds: new Set(),

@@ -18,7 +18,7 @@ import type { Task } from '@/store/taskStore'
 export const useTaskMode = () => useTaskStore(state => state.mode)
 
 /** 获取当前执行计划 */
-export const useExecutionPlan = () => useTaskStore(state => state.session)
+export const useExecutionPlan = () => useTaskStore(state => state.executionPlan)
 
 /** 获取选中的任务ID */
 export const useSelectedTaskId = () => useTaskStore(state => state.selectedTaskId)
@@ -99,10 +99,10 @@ export const useTaskStats = () => {
   const total = useTaskStore(state => state.tasksCache.length)
   const running = useTaskStore(state => state.runningTaskIds.size)
   const initialized = useTaskStore(state => state.isInitialized)
-  const hasSession = useTaskStore(state => !!state.session)
+  const hasExecutionPlan = useTaskStore(state => !!state.executionPlan)
   return useMemo(
-    () => ({ total, running, initialized, hasSession }),
-    [total, running, initialized, hasSession]
+    () => ({ total, running, initialized, hasExecutionPlan }),
+    [total, running, initialized, hasExecutionPlan]
   )
 }
 
@@ -129,7 +129,7 @@ export const useTaskActions = () => {
   const setPendingPlan = useTaskStore(state => state.setPendingPlan)
   const clearPendingPlan = useTaskStore(state => state.clearPendingPlan)
   const setIsWaitingForApproval = useTaskStore(state => state.setIsWaitingForApproval)
-  const restoreFromSession = useTaskStore(state => state.restoreFromSession)
+  const restoreFromExecutionPlan = useTaskStore(state => state.restoreFromExecutionPlan)
   const updateArtifactContent = useTaskStore(state => state.updateArtifactContent)
 
   return useMemo(
@@ -148,7 +148,7 @@ export const useTaskActions = () => {
       setPendingPlan,
       clearPendingPlan,
       setIsWaitingForApproval,
-      restoreFromSession,
+      restoreFromExecutionPlan,
       updateArtifactContent,
     }),
     [
@@ -166,7 +166,7 @@ export const useTaskActions = () => {
       setPendingPlan,
       clearPendingPlan,
       setIsWaitingForApproval,
-      restoreFromSession,
+      restoreFromExecutionPlan,
       updateArtifactContent,
     ]
   )
