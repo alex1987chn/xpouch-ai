@@ -47,6 +47,7 @@ def upgrade() -> None:
         "cancelled",
         "timed_out",
         name="run_status_enum",
+        create_type=False,
     )
     run_status_enum.create(conn, checkfirst=True)
 
