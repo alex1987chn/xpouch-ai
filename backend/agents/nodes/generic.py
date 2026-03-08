@@ -66,6 +66,7 @@ from langchain_core.runnables import RunnableConfig
 
 from agents.services.expert_manager import get_expert_config_cached
 from agents.state_patch import append_sse_event, get_event_queue_snapshot, replace_task_item
+from agents.tool_policy import filter_tools_for_binding
 from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from tools import ALL_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集
@@ -429,15 +430,31 @@ async def generic_worker_node(
 
                     # 🔥 MCP: 合并基础工具和动态 MCP 工具
                     runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
+                    bindable_tools, blocked_tools = filter_tools_for_binding(
+                        runtime_tools,
+                        expert_type=expert_type,
+                    )
 
                     # 🔥 警告：如果 MCP 工具为空但预期应该有
                     if not mcp_tools and os.getenv("MCP_SERVERS"):
                         logger.warning("[GenericWorker] ⚠️ MCP 工具为空！请检查 MCP 服务器连接")
 
-                    llm_to_use = llm_with_config.bind_tools(runtime_tools)
+                    llm_to_use = llm_with_config.bind_tools(bindable_tools)
                     logger.info(
-                        f"[GenericWorker] 🔧 工具已绑定: {len(runtime_tools)} 个工具 (基础: {len(BASE_TOOLS)}, MCP: {len(mcp_tools)})"
+                        "[GenericWorker] 🔧 工具已绑定: %s 个工具 (基础: %s, MCP: %s, 被治理层过滤: %s)",
+                        len(bindable_tools),
+                        len(BASE_TOOLS),
+                        len(mcp_tools),
+                        len(blocked_tools),
                     )
+                    for blocked in blocked_tools:
+                        logger.info(
+                            "[GenericWorker] 工具未暴露给当前 expert | expert=%s tool=%s action=%s reason=%s",
+                            expert_type,
+                            blocked.tool_name,
+                            blocked.action,
+                            blocked.reason,
+                        )
                 except Exception as e:
                     logger.warning(f"[GenericWorker] ⚠️ 工具绑定失败（模型可能不支持工具调用）: {e}")
                     llm_to_use = llm_with_config

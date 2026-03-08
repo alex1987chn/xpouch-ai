@@ -74,6 +74,9 @@ export interface ToolInfo {
   name: string
   description: string
   category: 'builtin' | 'mcp'
+  risk_tier?: 'low' | 'medium' | 'high'
+  approval_required?: boolean
+  policy_note?: string | null
 }
 
 export interface ToolsListResponse {
