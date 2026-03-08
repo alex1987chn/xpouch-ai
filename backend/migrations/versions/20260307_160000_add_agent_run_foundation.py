@@ -37,7 +37,7 @@ def _index_names(conn, table_name: str) -> set[str]:
 def upgrade() -> None:
     conn = op.get_bind()
 
-    # 幂等创建枚举，避免重复迁移或部分失败后重跑时报 DuplicateObject
+    # 幂等创建枚举类型
     op.execute(
         """
         DO $$ BEGIN
@@ -50,48 +50,33 @@ def upgrade() -> None:
         END $$
         """
     )
-    run_status_enum = sa.Enum(
-        "queued",
-        "running",
-        "waiting_for_approval",
-        "resuming",
-        "completed",
-        "failed",
-        "cancelled",
-        "timed_out",
-        name="run_status_enum",
-        create_type=False,
-    )
 
+    # 使用原生 SQL 创建表，避免 SQLAlchemy 触发 enum 自动创建
     if not _table_exists(conn, "agentrun"):
-        op.create_table(
-            "agentrun",
-            sa.Column("id", sa.String(length=64), primary_key=True, nullable=False),
-            sa.Column(
-                "thread_id", sa.String(length=64), sa.ForeignKey("thread.id"), nullable=False
-            ),
-            sa.Column("user_id", sa.String(length=64), sa.ForeignKey("user.id"), nullable=False),
-            sa.Column("entrypoint", sa.String(length=32), nullable=False),
-            sa.Column("mode", sa.String(length=32), nullable=False),
-            sa.Column("status", run_status_enum, nullable=False),
-            sa.Column("idempotency_key", sa.String(length=128), nullable=True),
-            sa.Column("checkpoint_namespace", sa.String(length=128), nullable=True),
-            sa.Column("current_node", sa.String(length=128), nullable=True),
-            sa.Column("error_code", sa.String(length=64), nullable=True),
-            sa.Column("error_message", sa.Text(), nullable=True),
-            sa.Column(
-                "retry_of_run_id",
-                sa.String(length=64),
-                sa.ForeignKey("agentrun.id"),
-                nullable=True,
-            ),
-            sa.Column("created_at", sa.DateTime(), nullable=False),
-            sa.Column("started_at", sa.DateTime(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), nullable=False),
-            sa.Column("last_heartbeat_at", sa.DateTime(), nullable=True),
-            sa.Column("completed_at", sa.DateTime(), nullable=True),
-            sa.Column("cancelled_at", sa.DateTime(), nullable=True),
-            sa.Column("timed_out_at", sa.DateTime(), nullable=True),
+        op.execute(
+            """
+            CREATE TABLE agentrun (
+                id VARCHAR(64) PRIMARY KEY NOT NULL,
+                thread_id VARCHAR(64) NOT NULL REFERENCES "thread"(id),
+                user_id VARCHAR(64) NOT NULL REFERENCES "user"(id),
+                entrypoint VARCHAR(32) NOT NULL,
+                mode VARCHAR(32) NOT NULL,
+                status run_status_enum NOT NULL,
+                idempotency_key VARCHAR(128),
+                checkpoint_namespace VARCHAR(128),
+                current_node VARCHAR(128),
+                error_code VARCHAR(64),
+                error_message TEXT,
+                retry_of_run_id VARCHAR(64) REFERENCES agentrun(id),
+                created_at TIMESTAMP NOT NULL,
+                started_at TIMESTAMP NOT NULL,
+                updated_at TIMESTAMP NOT NULL,
+                last_heartbeat_at TIMESTAMP,
+                completed_at TIMESTAMP,
+                cancelled_at TIMESTAMP,
+                timed_out_at TIMESTAMP
+            )
+            """
         )
         op.create_index("ix_agentrun_thread_id", "agentrun", ["thread_id"], unique=False)
         op.create_index("ix_agentrun_user_id", "agentrun", ["user_id"], unique=False)
