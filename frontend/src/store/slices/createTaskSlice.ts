@@ -351,15 +351,25 @@ export const createTaskSlice = (
       subTasks.forEach((subTask, index) => {
         const taskStatus = (subTask.status as TaskStatus) || 'pending'
 
-        const artifacts: Artifact[] = (subTask.artifacts || []).map((art, artIndex) => ({
-          id: art.id || `${subTask.id}-artifact-${artIndex}`,
-          type: art.type || 'text',
-          title: art.title || `${subTask.expert_type} Result`,
-          content: art.content || '',
-          language: art.language,
-          sortOrder: art.sortOrder || artIndex,
-          createdAt: art.createdAt || new Date().toISOString()
-        }))
+        const artifacts: Artifact[] = (subTask.artifacts || []).map((art, artIndex) => {
+          const backendArtifact = art as Artifact & {
+            sort_order?: number
+            created_at?: string
+          }
+
+          return {
+            id: art.id || `${subTask.id}-artifact-${artIndex}`,
+            type: art.type || 'text',
+            title: art.title || `${subTask.expert_type} Result`,
+            content: art.content || '',
+            language: art.language,
+            sortOrder: backendArtifact.sortOrder ?? backendArtifact.sort_order ?? artIndex,
+            createdAt:
+              backendArtifact.createdAt ??
+              backendArtifact.created_at ??
+              new Date().toISOString()
+          }
+        })
 
         state.tasks.set(subTask.id, {
           id: subTask.id,

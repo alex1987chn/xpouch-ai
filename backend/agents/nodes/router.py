@@ -7,6 +7,7 @@ v3.5 更新：使用数据库配置 + 占位符动态填充
 v3.6 更新：使用 prompt_utils.inject_current_time 替代内联实现
 """
 
+import re
 from datetime import datetime
 from typing import Any, Literal
 
@@ -63,6 +64,20 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
     start_event = event_router_start(query=user_query[:200])  # 限制长度
     event_queue = append_sse_event(base_event_queue, sse_event_to_string(start_event))
     logger.info("[Router] 已发送 router.start 事件")
+
+    # 0. 确定性兜底：某些任务必须进入 complex，避免路由模型误判。
+    forced_complex_reason = _get_forced_complex_reason(user_query)
+    if forced_complex_reason:
+        decision_event = event_router_decision(
+            decision="complex",
+            reason=forced_complex_reason,
+        )
+        full_event_queue = append_sse_event(event_queue, sse_event_to_string(decision_event))
+        logger.info("[Router] 命中复杂模式兜底规则: %s", forced_complex_reason)
+        return {
+            "router_decision": "complex",
+            "event_queue": full_event_queue,
+        }
 
     # 1. 🔥 检索长期记忆（异步）
     try:
@@ -200,6 +215,47 @@ def _fill_router_placeholders(system_prompt: str, user_query: str, relevant_memo
         logger.warning(f"[Router] 警告: 以下占位符未填充: {remaining_placeholders}")
 
     return system_prompt
+
+
+def _get_forced_complex_reason(user_query: str) -> str | None:
+    """对高风险误判场景进行确定性复杂模式兜底。"""
+    normalized_query = re.sub(r"\s+", "", user_query.lower())
+
+    direct_complex_keywords = (
+        "记住",
+        "保存",
+        "记下来",
+        "天气",
+        "新闻",
+        "股票",
+        "汇率",
+        "实时",
+        "最新",
+        "生成图片",
+        "生成文档",
+        "分析文件",
+        "运行代码",
+    )
+    if any(keyword in normalized_query for keyword in direct_complex_keywords):
+        return "deterministic_complex_keyword"
+
+    travel_keywords = (
+        "怎么去",
+        "怎么过去",
+        "怎么走",
+        "路线",
+        "路程",
+        "多远",
+        "距离",
+        "地铁",
+        "公交",
+        "打车",
+        "导航",
+    )
+    if any(keyword in normalized_query for keyword in travel_keywords):
+        return "deterministic_travel_planning"
+
+    return None
 
 
 async def direct_reply_node(state: AgentState, config: RunnableConfig = None) -> dict[str, Any]:
