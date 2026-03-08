@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from config import settings
 from crud.agent_run import (
     create_agent_run,
     derive_thread_status_from_run_status,
@@ -11,12 +12,14 @@ from crud.agent_run import (
     update_run_status,
 )
 from models import AgentRun, RunStatus, Thread
+from utils.error_codes import ErrorCode
 
 
 class _FakeSession:
     def __init__(self, thread: Thread):
         self.thread = thread
         self.runs: dict[str, AgentRun] = {}
+        self.commit_called = False
 
     def add(self, obj):
         if isinstance(obj, AgentRun):
@@ -26,6 +29,9 @@ class _FakeSession:
 
     def flush(self):
         return None
+
+    def commit(self):
+        self.commit_called = True
 
     def get(self, model, object_id):
         if model is Thread and object_id == self.thread.id:
@@ -44,7 +50,7 @@ def test_derive_thread_status_from_run_status():
     assert derive_thread_status_from_run_status(RunStatus.FAILED) == "idle"
 
 
-def test_agent_run_status_updates_sync_thread_status():
+def test_agent_run_status_updates_sync_thread_status(monkeypatch):
     thread = Thread(
         id="thread-1",
         title="demo",
@@ -56,6 +62,7 @@ def test_agent_run_status_updates_sync_thread_status():
         updated_at=datetime.now(),
     )
     session = _FakeSession(thread)
+    monkeypatch.setattr(settings, "run_deadline_seconds", 30)
 
     run = create_agent_run(
         session,
@@ -67,6 +74,8 @@ def test_agent_run_status_updates_sync_thread_status():
     run.id = "run-1"
     session.runs[run.id] = run
     assert thread.status == "running"
+    assert run.deadline_at is not None
+    assert int((run.deadline_at - run.started_at).total_seconds()) == 30
 
     update_run_status(session, run, RunStatus.WAITING_FOR_APPROVAL, current_node="approval")
     assert thread.status == "paused"
@@ -136,6 +145,7 @@ def test_touch_and_timeout_helpers_update_run_and_thread():
     timed_out = mark_run_timed_out_by_id(session, "run-1", current_node="generic")
     assert timed_out is not None
     assert timed_out.status == RunStatus.TIMED_OUT
+    assert timed_out.error_code == ErrorCode.RUN_TIMED_OUT
     assert timed_out.timed_out_at is not None
     assert thread.status == "idle"
 
@@ -168,5 +178,6 @@ def test_mark_run_cancelled_syncs_thread_status_to_idle():
 
     assert cancelled is not None
     assert cancelled.status == RunStatus.CANCELLED
+    assert cancelled.error_code == ErrorCode.RUN_CANCELLED
     assert cancelled.cancelled_at is not None
     assert thread.status == "idle"

@@ -395,6 +395,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
             execution_plan_id = None
             sub_tasks_list = []
             if thread_id:
+                run_id = state.get("run_id")
 
                 def _create_execution_plan():
                     from crud.execution_plan import get_subtasks_by_execution_plan
@@ -403,6 +404,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                         created_plan, is_reused = get_or_create_execution_plan(
                             db=db_session,
                             thread_id=thread_id,
+                            run_id=run_id,
                             user_query=user_query,
                             plan_summary=commander_response.strategy,
                             estimated_steps=commander_response.estimated_steps,

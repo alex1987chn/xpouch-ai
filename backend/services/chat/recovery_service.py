@@ -218,56 +218,60 @@ class RecoveryService:
 
         resume_key = self._build_resume_key(run_id, plan_version, message_id, idempotency_key)
         self._enter_inflight_resume(run_id, resume_key)
+        try:
+            logger.info("[HITL RESUME] 用户批准，开始流式恢复")
+            self._update_run_status(run_id, RunStatus.RESUMING)
 
-        logger.info("[HITL RESUME] 用户批准，开始流式恢复")
-        self._update_run_status(run_id, RunStatus.RESUMING)
+            # 🔥 方案1：更新 ExecutionPlan 状态为 running（用户已批准）
+            self._update_execution_plan_status(run_id, "running")
 
-        # 🔥 方案1：更新 ExecutionPlan 状态为 running（用户已批准）
-        self._update_execution_plan_status(run_id, "running")
+            # 关键一致性保障：计划更新前执行乐观锁校验与版本递增
+            self._bump_plan_version_with_cas(run_id, plan_version)
 
-        # 关键一致性保障：计划更新前执行乐观锁校验与版本递增
-        self._bump_plan_version_with_cas(run_id, plan_version)
+            # 生成 message_id（如果没有提供）
+            actual_message_id = message_id or str(uuid.uuid4())
 
-        # 生成 message_id（如果没有提供）
-        actual_message_id = message_id or str(uuid.uuid4())
+            # 创建队列
+            stream_queue = asyncio.Queue()  # 用于 artifact 收集
+            sse_queue = asyncio.Queue()  # 用于 SSE 事件收集
+            realtime_queue = asyncio.Queue()  # 用于实时推送
 
-        # 创建队列
-        stream_queue = asyncio.Queue()  # 用于 artifact 收集
-        sse_queue = asyncio.Queue()  # 用于 SSE 事件收集
-        realtime_queue = asyncio.Queue()  # 用于实时推送
+            async def event_generator():
+                """事件生成器 - 复用 StreamService 的核心流式逻辑"""
+                try:
+                    # 调用 StreamService 执行 LangGraph 流式处理
+                    async for event in self.stream_service.execute_langgraph_stream(
+                        thread_id=thread_id,
+                        stream_queue=stream_queue,
+                        sse_queue=sse_queue,
+                        realtime_queue=realtime_queue,
+                        updated_plan=updated_plan,
+                        message_id=actual_message_id,
+                        run_id=run_id,
+                    ):
+                        yield event
 
-        async def event_generator():
-            """事件生成器 - 复用 StreamService 的核心流式逻辑"""
-            try:
-                # 调用 StreamService 执行 LangGraph 流式处理
-                async for event in self.stream_service.execute_langgraph_stream(
-                    thread_id=thread_id,
-                    stream_queue=stream_queue,
-                    sse_queue=sse_queue,
-                    realtime_queue=realtime_queue,
-                    updated_plan=updated_plan,
-                    message_id=actual_message_id,
-                    run_id=run_id,
-                ):
-                    yield event
+                    # 处理完成后，收集 artifacts 并保存
+                    await self._process_collected_artifacts(run_id, stream_queue)
+                    self._update_run_status(run_id, RunStatus.COMPLETED)
 
-                # 处理完成后，收集 artifacts 并保存
-                await self._process_collected_artifacts(run_id, stream_queue)
-                self._update_run_status(run_id, RunStatus.COMPLETED)
-
-            except AppError as e:
-                if e.code == ErrorCode.RUN_CANCELLED:
-                    yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
-                else:
+                except AppError as e:
+                    if e.code == ErrorCode.RUN_CANCELLED:
+                        yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
+                    else:
+                        logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
+                        self._mark_run_failed(run_id, str(e))
+                        yield self._build_error_event(ErrorCode.RESUME_ERROR, str(e))
+                except Exception as e:
                     logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
                     self._mark_run_failed(run_id, str(e))
                     yield self._build_error_event(ErrorCode.RESUME_ERROR, str(e))
-            except Exception as e:
-                logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
-                self._mark_run_failed(run_id, str(e))
-                yield self._build_error_event(ErrorCode.RESUME_ERROR, str(e))
-            finally:
-                self._exit_inflight_resume(run_id, resume_key)
+                finally:
+                    self._exit_inflight_resume(run_id, resume_key)
+
+        except Exception:
+            self._exit_inflight_resume(run_id, resume_key)
+            raise
 
         return StreamingResponse(
             event_generator(),

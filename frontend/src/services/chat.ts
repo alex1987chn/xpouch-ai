@@ -59,6 +59,16 @@ const SSE_MAX_RETRIES = 3
 /** 重连基础延迟（毫秒） */
 const SSE_RETRY_BASE_DELAY = 1000
 
+class FatalSSEError extends Error {
+  status?: number
+
+  constructor(message: string, status?: number) {
+    super(message)
+    this.name = 'FatalSSEError'
+    this.status = status
+  }
+}
+
 type StreamRunOptions = {
   url: string
   requestBody: Record<string, unknown>
@@ -123,7 +133,14 @@ function runSSEStream({
       openWhenHidden: true,
 
       async onopen(response) {
-        handleSSEConnectionError(response, errorContext)
+        try {
+          handleSSEConnectionError(response, errorContext)
+        } catch (error) {
+          const status = extractErrorStatus(error)
+          safeReject(error instanceof Error ? error : new Error('SSE 连接失败'))
+          ctrl.abort()
+          throw new FatalSSEError(`SSE 连接失败: ${status ?? 'unknown'}`, status)
+        }
         retryCount = 0
         updateActivity()
         logger.debug(`[chat.ts] ${logPrefix}SSE 连接已建立，重置重连计数器`)
@@ -216,13 +233,13 @@ function runSSEStream({
           logger.warn(`[chat.ts] ${logPrefix}SSE 收到 401 错误，触发登录弹窗`)
           showLoginDialog()
           safeReject(err instanceof Error ? err : new Error('认证失败'))
-          return
+          throw new FatalSSEError('认证失败', status)
         }
 
         if (status !== undefined && status >= 400 && status < 500) {
           logger.error(`[chat.ts] ${logPrefix}SSE 收到 ${status} 客户端错误，停止重试:`, err)
           safeReject(err instanceof Error ? err : new Error(`客户端错误: ${status}`))
-          return
+          throw new FatalSSEError(`客户端错误: ${status}`, status)
         }
 
         if (retryCount < SSE_MAX_RETRIES) {

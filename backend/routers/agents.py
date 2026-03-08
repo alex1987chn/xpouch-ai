@@ -99,7 +99,7 @@ async def delete_custom_agent(
     - 只能删除用户自己的智能体
     - 级联删除关联的所有会话记录
     """
-    return AgentService(session).delete_custom_agent(agent_id, current_user.id)
+    return await AgentService(session).delete_custom_agent(agent_id, current_user.id)
 
 
 @router.put("/agents/{agent_id}")

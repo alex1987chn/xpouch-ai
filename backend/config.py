@@ -89,6 +89,8 @@ class Settings(BaseSettings):
     force_heartbeat_interval: float = Field(default=30.0, alias="FORCE_HEARTBEAT_INTERVAL")
     stream_timeout: float = Field(default=120.0, alias="STREAM_TIMEOUT")
     recursion_limit: int = Field(default=100, alias="RECURSION_LIMIT")
+    run_deadline_seconds: int = Field(default=900, alias="RUN_DEADLINE_SECONDS")
+    run_max_graph_loops: int = Field(default=50, alias="RUN_MAX_GRAPH_LOOPS")
 
     # 安全限制
     max_upload_size_mb: int = Field(default=10, alias="MAX_UPLOAD_SIZE_MB")

@@ -23,6 +23,8 @@ class AgentState(TypedDict):
     router_decision: str
     # v3.0 新增：数据库持久化相关
     thread_id: str | None  # 关联的对话ID
+    run_id: str | None  # 当前运行实例 ID
+    user_id: str | None  # 当前用户 ID
     execution_plan_id: str | None  # 复杂执行计划 ID
     # v3.0 新增：事件队列（用于 SSE 推送）
     event_queue: list[dict[str, Any]]  # 待发送的事件列表

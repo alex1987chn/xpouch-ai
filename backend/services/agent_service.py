@@ -104,13 +104,15 @@ class AgentService:
         self.session.refresh(agent)
         return agent
 
-    def delete_custom_agent(self, agent_id: str, user_id: str) -> dict:
+    async def delete_custom_agent(self, agent_id: str, user_id: str) -> dict:
         agent = get_owned_custom_agent_or_404(self.session, agent_id, user_id)
 
         if agent.is_default:
             from utils.exceptions import AppError
 
             raise AppError(message="禁止删除默认助手")
+
+        from services.chat.thread_service import ChatThreadService
 
         related_threads = self.session.exec(
             select(Thread).where(
@@ -122,7 +124,7 @@ class AgentService:
 
         for thread in related_threads:
             app_logger.info("[DELETE] 删除智能体 %s 的关联会话: %s", agent_id, thread.id)
-            self.session.delete(thread)
+            await ChatThreadService(self.session).delete_thread(thread.id, user_id)
 
         self.session.delete(agent)
         self.session.commit()
