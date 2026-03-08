@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from models.enums import RunEventType
+from models.enums import RunEventType, RunStatus
 
 
 class RunEventResponse(BaseModel):
@@ -24,6 +24,30 @@ class RunEventResponse(BaseModel):
     execution_plan_id: str | None = None
     task_id: str | None = None
     note: str | None = None
+
+
+class RunSummaryResponse(BaseModel):
+    """运行实例摘要响应"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    thread_id: str
+    user_id: str
+    entrypoint: str
+    mode: str
+    status: RunStatus
+    current_node: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+    created_at: datetime
+    started_at: datetime | None = None
+    updated_at: datetime
+    last_heartbeat_at: datetime | None = None
+    completed_at: datetime | None = None
+    cancelled_at: datetime | None = None
+    timed_out_at: datetime | None = None
+    deadline_at: datetime | None = None
 
 
 class RunTimelineResponse(BaseModel):

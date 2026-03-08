@@ -1,7 +1,9 @@
 import React from 'react'
-import { X, Menu, MessageSquare, Eye } from 'lucide-react'
+import { X, Menu, MessageSquare, Eye, ExternalLink, Clock } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { VERSION } from '@/constants/ui'
+import { useTaskStore } from '@/store/taskStore'
 
 interface IndustrialHeaderProps {
   title?: string
@@ -54,6 +56,14 @@ export function IndustrialHeader({
   viewMode = 'chat',
   onViewModeChange,
 }: IndustrialHeaderProps) {
+  const navigate = useNavigate()
+  const activeRunId = useTaskStore(state => state.activeRunId)
+  const mode = useTaskStore(state => state.mode)
+  const executionPlan = useTaskStore(state => state.executionPlan)
+
+  // 优先使用 activeRunId（正在运行），其次使用 executionPlan.runId（历史记录）
+  const displayRunId = activeRunId || executionPlan?.runId
+
   return (
     <header
       className={cn(
@@ -87,6 +97,19 @@ export function IndustrialHeader({
           <span className="text-content-secondary">///</span>
           <span>OS {version}</span>
         </span>
+
+        {/* 运行状态入口 - 有 runId 时显示（正在运行或历史记录） */}
+        {displayRunId && mode === 'complex' && (
+          <button
+            onClick={() => navigate(`/run/${displayRunId}`)}
+            className="hidden md:flex items-center gap-1.5 px-2 py-1 text-[10px] font-mono font-medium text-accent-primary hover:text-accent-hover hover:bg-accent-hover/10 rounded transition-colors cursor-pointer group"
+            title="查看运行时间线"
+          >
+            <Clock className="w-3 h-3" />
+            <span>RUN #{displayRunId.slice(0, 8)}</span>
+            <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+        )}
       </div>
 
       {/* 右侧：系统状态指示器 + 移动端视图切换 + 关闭按钮 */}

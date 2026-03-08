@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { MessageSquare, Clock, Trash2, Search, Loader2, CheckSquare, Square } from 'lucide-react'
+import { MessageSquare, Clock, Trash2, Search, Loader2, CheckSquare, Square, ExternalLink } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { type Conversation } from '@/services/chat'
@@ -17,6 +18,7 @@ interface HistoryPageProps {
 }
 
 export default function HistoryPage({ onSelectConversation }: HistoryPageProps) {
+  const navigate = useNavigate()
   const { t, language } = useTranslation()
   const { sidebar } = useAppUISelectors()
   const [searchQuery, setSearchQuery] = useState('')
@@ -446,9 +448,22 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                         </div>
                       </div>
 
-                      {/* 普通模式：显示删除按钮 */}
+                      {/* 普通模式：显示操作按钮 */}
                       {!isBatchMode && (
                         <div className="flex flex-col items-end gap-2">
+                          {/* 运行时间线入口 - 仅当有 latest_run 时显示 */}
+                          {conversation.latest_run && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                navigate(`/run/${conversation.latest_run!.id}`)
+                              }}
+                              className="w-8 h-8 flex items-center justify-center border border-border-default text-accent-primary hover:bg-accent-primary hover:text-white hover:border-accent-primary transition-colors opacity-0 group-hover:opacity-100"
+                              title={`View run timeline: ${conversation.latest_run.id.slice(0, 8)}`}
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             onClick={(e) => handleDelete(e, conversation.id, conversation.title || '')}
                             className="w-8 h-8 flex items-center justify-center border border-border-default text-content-secondary hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors opacity-0 group-hover:opacity-100"

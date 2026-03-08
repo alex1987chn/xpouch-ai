@@ -121,10 +121,25 @@ class ChatThreadService:
             if row.thread_id in stats_by_thread and row.content:
                 stats_by_thread[row.thread_id]["last_preview"] = row.content[:100]
 
+        # 3.4 批量获取每个线程的最新运行实例
+        run_stmt = (
+            select(AgentRun)
+            .where(AgentRun.thread_id.in_(thread_ids))
+            .order_by(AgentRun.thread_id, AgentRun.created_at.desc())
+        )
+        all_runs = self.db.exec(run_stmt).all()
+
+        # 每个 thread 只保留最新的 run
+        latest_run_by_thread: dict[str, AgentRun] = {}
+        for run in all_runs:
+            if run.thread_id not in latest_run_by_thread:
+                latest_run_by_thread[run.thread_id] = run
+
         # 4. 组装返回结果（轻量级）
         items = []
         for thread in threads:
             stats = stats_by_thread.get(thread.id, {"message_count": 0, "last_preview": None})
+            latest_run = latest_run_by_thread.get(thread.id)
             items.append(
                 {
                     "id": thread.id,
@@ -138,6 +153,7 @@ class ChatThreadService:
                     "updated_at": thread.updated_at.isoformat() if thread.updated_at else None,
                     "message_count": stats["message_count"],
                     "last_message_preview": stats["last_preview"],
+                    "latest_run": self._serialize_run(latest_run),
                 }
             )
 

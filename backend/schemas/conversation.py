@@ -38,6 +38,20 @@ class MessageResponse(BaseModel):
         return None
 
 
+class AgentRunSummaryResponse(BaseModel):
+    """线程详情中的最近一次运行摘要。"""
+
+    id: str
+    status: str
+    current_node: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    last_heartbeat_at: datetime | None = None
+    completed_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ThreadListResponse(BaseModel):
     """会话列表响应模型（轻量级，不包含消息内容）"""
 
@@ -51,20 +65,7 @@ class ThreadListResponse(BaseModel):
     updated_at: datetime | None = None
     message_count: int = 0  # 消息数量，替代完整消息列表
     last_message_preview: str | None = None  # 最后一条消息的预览（前100字）
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class AgentRunSummaryResponse(BaseModel):
-    """线程详情中的最近一次运行摘要。"""
-
-    id: str
-    status: str
-    current_node: str | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-    last_heartbeat_at: datetime | None = None
-    completed_at: datetime | None = None
+    latest_run: AgentRunSummaryResponse | None = None  # 最近一次运行摘要
 
     model_config = ConfigDict(from_attributes=True)
 
