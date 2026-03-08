@@ -4,6 +4,7 @@ from config import settings
 from crud.agent_run import (
     create_agent_run,
     derive_thread_status_from_run_status,
+    ensure_no_active_run_for_thread,
     mark_run_cancelled_by_id,
     mark_run_completed,
     mark_run_failed,
@@ -13,6 +14,7 @@ from crud.agent_run import (
 )
 from models import AgentRun, RunEvent, RunEventType, RunStatus, Thread
 from utils.error_codes import ErrorCode
+from utils.exceptions import AppError
 
 
 class _FakeSession:
@@ -42,6 +44,28 @@ class _FakeSession:
         if model is AgentRun:
             return self.runs.get(object_id)
         return None
+
+    def exec(self, _statement):
+        active_runs = [
+            run
+            for run in self.runs.values()
+            if run.status
+            in {
+                RunStatus.QUEUED,
+                RunStatus.RUNNING,
+                RunStatus.RESUMING,
+                RunStatus.WAITING_FOR_APPROVAL,
+            }
+        ]
+        return _FakeResult(active_runs)
+
+
+class _FakeResult:
+    def __init__(self, items):
+        self._items = items
+
+    def first(self):
+        return self._items[0] if self._items else None
 
 
 def test_derive_thread_status_from_run_status():
@@ -189,3 +213,37 @@ def test_mark_run_cancelled_syncs_thread_status_to_idle():
     assert cancelled.error_code == ErrorCode.RUN_CANCELLED
     assert cancelled.cancelled_at is not None
     assert thread.status == "idle"
+
+
+def test_ensure_no_active_run_for_thread_raises_conflict():
+    thread = Thread(
+        id="thread-1",
+        title="demo",
+        user_id="user-1",
+        agent_type="ai",
+        agent_id="sys-default-chat",
+        status="running",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    run = AgentRun(
+        id="run-1",
+        thread_id="thread-1",
+        user_id="user-1",
+        status=RunStatus.WAITING_FOR_APPROVAL,
+        current_node="waiting_for_approval",
+        created_at=datetime.now(),
+        started_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    session = _FakeSession(thread)
+    session.runs[run.id] = run
+
+    try:
+        ensure_no_active_run_for_thread(session, thread_id="thread-1", user_id="user-1")
+    except AppError as exc:
+        assert exc.code == ErrorCode.ACTIVE_RUN_CONFLICT
+        assert exc.status_code == 409
+        assert exc.details["active_run_id"] == "run-1"
+    else:
+        raise AssertionError("Expected active run conflict to be raised")

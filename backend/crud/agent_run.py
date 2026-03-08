@@ -4,12 +4,20 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from config import settings
 from crud.run_event import emit_run_created, emit_run_started, emit_run_timed_out
 from models import AgentRun, RunStatus, Thread
 from utils.error_codes import ErrorCode
+from utils.exceptions import AppError
+
+ACTIVE_RUN_STATUSES = {
+    RunStatus.QUEUED,
+    RunStatus.RUNNING,
+    RunStatus.RESUMING,
+    RunStatus.WAITING_FOR_APPROVAL,
+}
 
 
 def derive_thread_status_from_run_status(status: RunStatus) -> str:
@@ -76,6 +84,57 @@ def create_agent_run(
 
     _sync_thread_status(db, thread_id, run.status)
     return run
+
+
+def get_active_run_for_thread(
+    db: Session,
+    *,
+    thread_id: str,
+    user_id: str | None = None,
+    exclude_run_id: str | None = None,
+) -> AgentRun | None:
+    """获取线程下当前活跃运行实例。"""
+    statement = (
+        select(AgentRun)
+        .where(AgentRun.thread_id == thread_id)
+        .where(AgentRun.status.in_(ACTIVE_RUN_STATUSES))
+        .order_by(AgentRun.created_at.desc())
+    )
+    if user_id is not None:
+        statement = statement.where(AgentRun.user_id == user_id)
+    if exclude_run_id is not None:
+        statement = statement.where(AgentRun.id != exclude_run_id)
+    return db.exec(statement).first()
+
+
+def ensure_no_active_run_for_thread(
+    db: Session,
+    *,
+    thread_id: str,
+    user_id: str | None = None,
+    exclude_run_id: str | None = None,
+) -> None:
+    """确保线程下没有其他活跃运行实例。"""
+    active_run = get_active_run_for_thread(
+        db,
+        thread_id=thread_id,
+        user_id=user_id,
+        exclude_run_id=exclude_run_id,
+    )
+    if active_run is None:
+        return
+
+    raise AppError(
+        message="当前会话已有进行中的任务，请先等待完成、恢复或取消后再发起新任务",
+        code=ErrorCode.ACTIVE_RUN_CONFLICT,
+        status_code=409,
+        details={
+            "thread_id": thread_id,
+            "active_run_id": active_run.id,
+            "active_run_status": str(active_run.status),
+            "current_node": active_run.current_node,
+        },
+    )
 
 
 def mark_run_completed(db: Session, run: AgentRun) -> None:

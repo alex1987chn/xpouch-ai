@@ -32,6 +32,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **数据迁移**：
 - `20260308_150000_add_run_event_ledger.py`
 
+### Regression Assets 与单线程活跃 Run 约束（2026-03-08）
+
+**Regression Assets**：
+- 新增 `backend/evals/assets/regression_cases.json`
+- 新增 `backend/evals/regression_runner.py`
+- 新增 `backend/tests/test_regression_runner.py`
+- 当前覆盖 Router、Commander 输出结构、run timeline 顺序
+
+**单线程活跃 Run 约束**：
+- 新增后端线程级活跃 run 冲突拦截
+- `/api/chat` 与 `InvokeService` 已拒绝同线程新的活跃 run
+- 前端对 409 冲突增加明确提示，不再只显示泛化错误
+
 ### 运行时重构封板（2026-03-08）
 
 **运行时语义收口**：

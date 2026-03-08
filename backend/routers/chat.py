@@ -32,7 +32,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
-from crud.agent_run import create_agent_run
+from crud.agent_run import create_agent_run, ensure_no_active_run_for_thread
 from database import get_session
 from dependencies import get_current_user
 from models import (
@@ -251,6 +251,12 @@ async def chat_endpoint(
         message=request.message,
     )
     thread_id = thread.id
+
+    ensure_no_active_run_for_thread(
+        session,
+        thread_id=thread_id,
+        user_id=current_user.id,
+    )
 
     # 2. 保存用户消息
     await thread_service.save_user_message(thread_id, request.message)

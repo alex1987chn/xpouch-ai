@@ -124,7 +124,7 @@ async function handleTokenRefresh(): Promise<boolean> {
     
     pendingRequests = []
     return success
-  } catch (error) {
+  } catch (_error) {
     isRefreshing = false
     pendingRequests = []
     return false
@@ -243,15 +243,25 @@ export async function authenticatedFetch(
 export async function handleResponse<T>(response: Response, errorMessage: string): Promise<T> {
   if (!response.ok) {
     let errorDetail = errorMessage
+    let errorCode: string | undefined
+    let errorDetails: unknown
     try {
       const errorData = await response.json()
-      errorDetail = errorData.detail || errorMessage
+      errorDetail = errorData.error?.message || errorData.detail || errorMessage
+      errorCode = errorData.error?.code
+      errorDetails = errorData.error?.details
     } catch {
       // 无法解析错误响应，使用默认消息
     }
     
-    const error = new Error(errorDetail) as Error & { status: number }
+    const error = new Error(errorDetail) as Error & {
+      status: number
+      code?: string
+      details?: unknown
+    }
     error.status = response.status
+    error.code = errorCode
+    error.details = errorDetails
     throw error
   }
   
