@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Skill Templates 与 Tool Governance v2（2026-03-08）
+
+**Skill Templates**：
+- 新增 `SkillTemplate` 数据模型与迁移
+- 新增 `GET /api/library/templates` 与管理员模板 CRUD 接口
+- 启动时自动补齐内置模板：出行路线、研究报告、写作大纲
+- `Library` 页面新增 Skill Templates 面板，可直接以模板 starter prompt 发起新会话
+
+**Tool Governance v2**：
+- 新增 `ToolPolicy` 数据模型与迁移
+- 新增 `GET /api/tools/policies`、`PUT /api/tools/policies/{source}/{tool_name}`
+- 运行时现在会把数据库策略覆盖合并到静态工具治理规则
+- `Library` 页面新增 Tool Governance 管理面板
+- 当前支持可配置项：`enabled / risk_tier / approval_required / allowed_experts / blocked_experts / policy_note`
+
 ### Run Ledger 事件账本（2026-03-08）
 
 **新增功能**：

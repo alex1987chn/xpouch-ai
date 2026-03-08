@@ -45,6 +45,16 @@ export type TranslationKey =
   | 'sseUrlHint' | 'connecting' | 'initializeModule' | 'mcpServerAdded' | 'failedToAddServer'
   | 'validationError' | 'nameAndUrlRequired' | 'matching' | 'knowledgeBaseDescription'
   | 'add' | 'deleted' | 'error' | 'success' | 'optional' | 'serverNamePlaceholder' | 'availableTools' | 'noToolsAvailable' | 'serverNotConnected' | 'serverDisabled' | 'failedToLoadTools'
+  | 'searchTemplates' | 'searchTools' | 'skillTemplates' | 'newTemplate' | 'templateRequiredFields'
+  | 'templateSaved' | 'templateDeleted' | 'templateNoDescription' | 'noTemplatesFound'
+  | 'templateDetail' | 'createTemplate' | 'templateEditorHint' | 'useTemplate' | 'templateKey'
+  | 'recommendedMode' | 'templateDescription' | 'starterPrompt' | 'systemHint'
+  | 'suggestedTags' | 'toolHints' | 'templateActive' | 'templateReadonlyHint'
+  | 'builtinTemplateCannotDelete' | 'toolGovernance' | 'governanceAdminOnly'
+  | 'approvalRequired' | 'autoAllowed' | 'riskTier' | 'riskLow' | 'riskMedium' | 'riskHigh'
+  | 'enabled' | 'disabled' | 'source' | 'allowedExperts' | 'blockedExperts'
+  | 'policyNote' | 'policySaved' | 'savePolicy' | 'noToolPolicySelected' | 'saved'
+  | 'comingSoon'
   // User Menu
   | 'currentPlan' | 'logout'
   // Input & Chat

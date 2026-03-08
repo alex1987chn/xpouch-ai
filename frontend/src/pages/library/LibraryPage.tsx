@@ -9,27 +9,31 @@
  */
 
 import { useState } from 'react'
-import { Database, Wrench } from 'lucide-react'
+import { Bot, Database, ShieldAlert, Wrench } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { useAppUISelectors } from '@/hooks'
 import { SearchInput } from '@/components/ui/input'
 import { MCPList } from './MCPList'
+import SkillTemplatePanel from './SkillTemplatePanel'
+import ToolGovernancePanel from './ToolGovernancePanel'
 import { useUserStore } from '@/store/userStore'
 
-type TabType = 'knowledge' | 'mcp'
+type TabType = 'knowledge' | 'templates' | 'mcp' | 'governance'
 
 export default function LibraryPage() {
   const { t } = useTranslation()
   const { sidebar } = useAppUISelectors()
-  const [activeTab, setActiveTab] = useState<TabType>('knowledge')
+  const [activeTab, setActiveTab] = useState<TabType>('templates')
   const [searchQuery, setSearchQuery] = useState('')
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
 
-  // 获取管理员权限
+  // Library 权限：可查看治理 Tab / 可编辑模板与策略
   const user = useUserStore(state => state.user)
-  const isAdmin = user?.role === 'admin'
+  const role = user?.role ?? ''
+  const canViewGovernance = ['admin', 'edit_admin', 'view_admin'].includes(role)
+  const canEditLibrary = ['admin', 'edit_admin'].includes(role)
 
   return (
     <div className="bg-transparent overflow-x-hidden w-full h-full flex flex-col">
@@ -72,6 +76,13 @@ export default function LibraryPage() {
               label={t('knowledgeBase') || 'KNOWLEDGE BASE'}
             />
 
+            <TabButton
+              isActive={activeTab === 'templates'}
+              onClick={() => setActiveTab('templates')}
+              icon={<Bot className="w-4 h-4" />}
+              label={t('skillTemplates') || 'SKILL TEMPLATES'}
+            />
+
             {/* MCP Tools Tab */}
             <TabButton
               isActive={activeTab === 'mcp'}
@@ -79,6 +90,15 @@ export default function LibraryPage() {
               icon={<Wrench className="w-4 h-4" />}
               label={t('mcpTools') || 'MCP TOOLS'}
             />
+
+            {canViewGovernance && (
+              <TabButton
+                isActive={activeTab === 'governance'}
+                onClick={() => setActiveTab('governance')}
+                icon={<ShieldAlert className="w-4 h-4" />}
+                label={t('toolGovernance') || 'TOOL GOVERNANCE'}
+              />
+            )}
           </div>
         </div>
 
@@ -89,9 +109,14 @@ export default function LibraryPage() {
             <SearchInput
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder={activeTab === 'knowledge' 
-                ? (t('searchKnowledge') || 'Search knowledge base...')
-                : (t('searchMCPServers') || 'Search MCP servers...')
+              placeholder={
+                activeTab === 'knowledge'
+                  ? (t('searchKnowledge') || 'Search knowledge base...')
+                  : activeTab === 'templates'
+                    ? (t('searchTemplates') || 'Search templates...')
+                    : activeTab === 'governance'
+                      ? (t('searchTools') || 'Search tools...')
+                      : (t('searchMCPServers') || 'Search MCP servers...')
               }
             />
           </div>
@@ -101,13 +126,21 @@ export default function LibraryPage() {
             <KnowledgeBaseContent searchQuery={searchQuery} />
           )}
 
+          {activeTab === 'templates' && (
+            <SkillTemplatePanel searchQuery={searchQuery} canEdit={canEditLibrary} />
+          )}
+
           {/* MCP Tools 内容 */}
           {activeTab === 'mcp' && (
             <MCPList
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
-              isAdmin={isAdmin}
+              isAdmin={canEditLibrary}
             />
+          )}
+
+          {activeTab === 'governance' && (
+            <ToolGovernancePanel searchQuery={searchQuery} canView={canViewGovernance} canEdit={canEditLibrary} />
           )}
         </div>
       </div>
@@ -150,7 +183,7 @@ interface KnowledgeBaseContentProps {
   searchQuery: string
 }
 
-function KnowledgeBaseContent({ searchQuery }: KnowledgeBaseContentProps) {
+function KnowledgeBaseContent({ searchQuery: _searchQuery }: KnowledgeBaseContentProps) {
   const { t } = useTranslation()
 
   // 空状态

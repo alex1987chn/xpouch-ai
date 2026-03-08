@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from services.tool_policy_service import ToolPolicyOverride
+
 
 class ToolRiskTier(StrEnum):
     LOW = "low"
@@ -33,6 +35,8 @@ class ToolPolicyMetadata:
     description: str
     risk_tier: ToolRiskTier
     approval_required: bool
+    enabled: bool = True
+    allowed_experts: tuple[str, ...] = ()
     blocked_experts: tuple[str, ...] = ()
     policy_note: str | None = None
 
@@ -153,13 +157,14 @@ def resolve_tool_metadata(
     *,
     source: str | None = None,
     description: str | None = None,
+    overrides: dict[tuple[str, str], ToolPolicyOverride] | None = None,
 ) -> ToolPolicyMetadata:
     """解析工具治理元数据。"""
-    if tool_name in BUILTIN_TOOL_POLICIES:
-        return BUILTIN_TOOL_POLICIES[tool_name]
     resolved_source = source or "mcp"
-    if resolved_source == "builtin":
-        return ToolPolicyMetadata(
+    if tool_name in BUILTIN_TOOL_POLICIES:
+        metadata = BUILTIN_TOOL_POLICIES[tool_name]
+    elif resolved_source == "builtin":
+        metadata = ToolPolicyMetadata(
             name=tool_name,
             source="builtin",
             description=description or tool_name,
@@ -167,7 +172,28 @@ def resolve_tool_metadata(
             approval_required=False,
             policy_note="未知内置工具，默认按中风险只读工具处理。",
         )
-    return infer_mcp_tool_metadata(tool_name, description)
+    else:
+        metadata = infer_mcp_tool_metadata(tool_name, description)
+
+    if not overrides:
+        return metadata
+
+    override = overrides.get((tool_name, metadata.source))
+    if override is None:
+        return metadata
+
+    risk_tier = ToolRiskTier(override.risk_tier)
+    return ToolPolicyMetadata(
+        name=metadata.name,
+        source=metadata.source,
+        description=metadata.description,
+        risk_tier=risk_tier,
+        approval_required=override.approval_required,
+        enabled=override.enabled,
+        allowed_experts=override.allowed_experts,
+        blocked_experts=override.blocked_experts,
+        policy_note=override.policy_note or metadata.policy_note,
+    )
 
 
 def evaluate_tool_policy(
@@ -176,9 +202,35 @@ def evaluate_tool_policy(
     expert_type: str | None = None,
     source: str | None = None,
     description: str | None = None,
+    overrides: dict[tuple[str, str], ToolPolicyOverride] | None = None,
 ) -> ToolPolicyDecision:
     """评估某个工具在当前上下文中的治理决策。"""
-    metadata = resolve_tool_metadata(tool_name, source=source, description=description)
+    metadata = resolve_tool_metadata(
+        tool_name,
+        source=source,
+        description=description,
+        overrides=overrides,
+    )
+
+    if not metadata.enabled:
+        return ToolPolicyDecision(
+            tool_name=tool_name,
+            source=metadata.source,
+            action=ToolPolicyAction.DENY,
+            risk_tier=metadata.risk_tier,
+            reason=f"工具 {tool_name} 当前被策略禁用",
+            policy_note=metadata.policy_note,
+        )
+
+    if expert_type and metadata.allowed_experts and expert_type not in metadata.allowed_experts:
+        return ToolPolicyDecision(
+            tool_name=tool_name,
+            source=metadata.source,
+            action=ToolPolicyAction.DENY,
+            risk_tier=metadata.risk_tier,
+            reason=f"专家 {expert_type} 不在工具 {tool_name} 的允许名单内",
+            policy_note=metadata.policy_note,
+        )
 
     if expert_type and expert_type in metadata.blocked_experts:
         return ToolPolicyDecision(
@@ -214,6 +266,7 @@ def filter_tools_for_binding(
     tools: list[Any],
     *,
     expert_type: str | None = None,
+    overrides: dict[tuple[str, str], ToolPolicyOverride] | None = None,
 ) -> tuple[list[Any], list[ToolPolicyDecision]]:
     """在绑定给 LLM 前先过滤明显不应暴露的工具。"""
     bindable_tools: list[Any] = []
@@ -229,6 +282,7 @@ def filter_tools_for_binding(
             expert_type=expert_type,
             source=source,
             description=description,
+            overrides=overrides,
         )
         if decision.allowed:
             bindable_tools.append(tool)

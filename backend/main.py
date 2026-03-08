@@ -29,6 +29,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from api.admin import router as admin_router
+from api.library import router as library_router
 from api.tools import router as tools_router
 
 # 路由导入
@@ -37,7 +38,7 @@ from config import settings
 
 # 内部模块导入
 from database import create_db_and_tables, engine
-from models import SystemExpert, User
+from models import SkillTemplate, SystemExpert, User
 from routers import agents, chat, mcp, runs, system
 from utils.exceptions import AppError, ValidationError, handle_error
 from utils.logger import logger
@@ -63,6 +64,21 @@ def _init_experts_sync():
             logger.info(f"[Lifespan] Initialized {len(EXPERT_DEFAULTS)} experts")
         else:
             logger.info(f"[Lifespan] Found {len(existing_experts)} experts in database")
+
+
+def _init_library_templates_sync():
+    """同步初始化 Library 默认模板。"""
+    from library_defaults import TEMPLATE_DEFAULTS
+
+    with Session(engine) as session:
+        existing_keys = {
+            template.template_key for template in session.exec(select(SkillTemplate)).all()
+        }
+        for template_config in TEMPLATE_DEFAULTS:
+            if template_config["template_key"] in existing_keys:
+                continue
+            session.add(SkillTemplate(**template_config))
+        session.commit()
 
 
 @asynccontextmanager
@@ -93,6 +109,7 @@ async def lifespan(app: FastAPI):
 
     # 初始化系统专家数据（使用 asyncio.to_thread 避免阻塞事件循环）
     await asyncio.to_thread(_init_experts_sync)
+    await asyncio.to_thread(_init_library_templates_sync)
 
     # 🔥 初始化管理员（从环境变量）
     from utils.admin_init import init_admin_from_env
@@ -150,6 +167,7 @@ app = FastAPI(
 # 注册路由
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(library_router)
 app.include_router(tools_router)
 app.include_router(chat.router)
 app.include_router(agents.router)
