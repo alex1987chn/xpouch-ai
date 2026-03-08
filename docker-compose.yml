@@ -5,7 +5,8 @@ services:
     image: pgvector/pgvector:pg18-bookworm
     container_name: xpouch-postgres
     restart: always
-    # 生产默认不对外暴露数据库端口；如需本机调试，可临时恢复 "5432:5432" 映射
+    # 当前仓库内的 compose 主要用于本地开发 / 联调，因此默认暴露 5432 到宿主机。
+    # 生产环境请通过独立部署脚本或覆盖配置移除此映射，不要直接照搬本文件。
     ports:
       - "5432:5432"
     volumes:
@@ -31,7 +32,9 @@ services:
     env_file:
       - ./backend/.env
     environment:
+      # 容器内后端固定监听 3000；本地直跑 backend/main.py 时可使用 backend/.env 中的 3002
       - PORT=3000
+      # Docker Compose 场景下由 compose 显式注入数据库连接，避免与 backend/.env 形成歧义
       - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     depends_on:
       db:

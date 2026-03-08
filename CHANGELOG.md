@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 运行时重构封板（2026-03-08）
+
+**运行时语义收口**：
+- 明确并稳定 `Thread / AgentRun / ExecutionPlan` 三层模型
+- `TaskSession` 退出现行主语义，复杂任务统一使用 `ExecutionPlan`
+- `Thread.status` 降级为展示缓存，前端恢复优先依据 `latest_run.status`
+
+**HITL / Resume / Cancel**：
+- `POST /api/chat/resume` 已围绕 `run_id` 收口
+- Commander 创建 `ExecutionPlan` 时已绑定当前 `run_id`
+- 修复 HITL 确认后 `ExecutionPlan 未找到` 的 404 问题
+- 修复恢复失败后 inflight 锁未释放导致的连续 409 问题
+- 前端对 resume 的 4xx 错误不再无限自动重试
+- `POST /api/runs/{run_id}/cancel` 已进入主链，停止生成不再只是本地 abort
+
+**运行控制面（第一层）**：
+- 新增 `AgentRun.deadline_at`
+- 新增 `RUN_TIMED_OUT` 错误码
+- 新增图循环预算保护 `RUN_MAX_GRAPH_LOOPS`
+- 运行中持续刷新 `current_node / last_heartbeat_at`
+- 后台清理任务会回收超时运行
+
+**复杂模式稳定性**：
+- 路由层为实时路线、距离、怎么去等场景增加确定性 complex 兜底
+- 修复复杂模式 artifact 恢复展示
+- 复杂模式面板恢复时优先选中有 artifact 的任务
+- 修复删除线程 / 删除自定义智能体的关联清理问题
+- 新增迁移修复 PostgreSQL enum label drift
+
+**文档更新**：
+- 重写 `.ai/langgraph_workflow.md`
+- 更新 `.ai/active_context.md`、`.ai/data_schema.md`、`.ai/system_architecture.md`
+- 更新 `code review` 目录下的运行时总结与产品化评估
+- 重写 `README.md`，对齐当前开源定位与启动方式
+
 ### 主题系统语义化改造（2026-03-06）
 
 **架构升级**：
