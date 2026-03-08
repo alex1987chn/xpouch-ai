@@ -40,10 +40,11 @@ export default function ComplexModePanel({
   const selectedTaskId = useSelectedTaskId()
   const selectTask = useSelectTaskAction()
 
-  // 自动选中第一个任务
+  // 优先选中首个有产物的任务，避免恢复后右侧面板空白。
   useEffect(() => {
     if (tasks.length && !selectedTaskId) {
-      selectTask(tasks[0].id)
+      const preferredTask = tasks.find(task => task.artifacts.length > 0) ?? tasks[0]
+      selectTask(preferredTask.id)
     }
   }, [tasks, selectedTaskId, selectTask])
 
