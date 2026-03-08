@@ -32,4 +32,4 @@ def sample_user() -> User:
 
 @pytest.fixture(autouse=True)
 def reset_recovery_inflight_state() -> None:
-    RecoveryService._inflight_resume_by_thread.clear()
+    RecoveryService._inflight_resume_by_run.clear()
