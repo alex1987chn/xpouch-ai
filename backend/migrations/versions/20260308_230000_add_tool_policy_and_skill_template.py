@@ -11,10 +11,10 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.engine.reflection import Inspector
 
 # revision identifiers, used by Alembic.
-revision = "20260308_230000"
-down_revision = "20260308_150000"
-branch_labels = None
-depends_on = None
+revision: str = "20260308_230000"
+down_revision: str | None = "20260308_150000"
+branch_labels: str | None = None
+depends_on: str | None = None
 
 
 def _table_exists(conn: Connection, table_name: str) -> bool:
