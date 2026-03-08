@@ -10,6 +10,8 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.x-green?logo=langchain)](https://langchain-ai.github.io/langgraph/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://docker.com)
 
+<img src="https://github.com/user-attachments/assets/c4554212-e24e-47dd-a61d-8df4f69ce233" alt="XPouch AI Screenshot" width="900">
+
 [问题反馈](https://github.com/alex1987chn/xpouch-ai/issues) · [功能讨论](https://github.com/alex1987chn/xpouch-ai/discussions)
 
 </div>
@@ -18,60 +20,57 @@
 
 ## 项目简介
 
-XPouch AI 不是单纯的聊天界面，而是一套围绕真实任务执行构建的 Agent Runtime。
+XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtime。系统将规划、审批、执行、恢复和产物沉淀放在同一条可追踪主链中，而不是只提供一层聊天 UI。
 
-它的核心特点是：
+当前稳定基线包括：
 
-- 有明确的 simple / complex 双模式
-- complex 模式具备 HITL 审批与恢复
-- 复杂任务会被拆成结构化计划、子任务和 artifact
-- 后端通过 SSE 驱动前端 UI，前端只做状态投影
-- 当前运行时主语义已经稳定为 `Thread / AgentRun / ExecutionPlan`
-
-如果你想找的是“可控执行”而不是“黑盒聊天”，这个项目就是为这个方向设计的。
+- simple / complex 双模式
+- complex 模式下的 HITL 审批与恢复
+- `Thread / AgentRun / ExecutionPlan` 三层运行时语义
+- artifact 持久化、恢复展示与多任务串行执行
+- SSE 驱动的 Server-Driven UI
+- MCP 动态工具接入
 
 ## 核心能力
 
-### 1. LangGraph 多专家工作流
+### LangGraph 多专家主链
 
 - `Router -> Direct Reply`
 - `Router -> Commander -> HITL -> Dispatcher -> Generic -> Tools -> Aggregator`
-- 支持 simple / complex 自动分流
+- simple / complex 自动分流
 
-### 2. HITL 审批与恢复
+### HITL 审批与恢复
 
 - Commander 生成计划后暂停
-- 用户可确认、修改、删除、调整任务
-- 恢复时围绕 `run_id` 精确执行
+- 用户可修改、删除、调整任务
+- `POST /api/chat/resume` 围绕 `run_id` 恢复执行
 
-### 3. Run-based Runtime
+### Run-based Runtime
 
-- `Thread`：会话
-- `AgentRun`：一次执行
-- `ExecutionPlan`：复杂任务计划
+- `Thread` 表达会话容器
+- `AgentRun` 表达一次真实执行
+- `ExecutionPlan` 表达复杂任务计划
 - 支持 run 级 cancel / timeout / heartbeat / current node
 
-### 4. Artifact 系统
+### Artifact 系统
 
-- 代码、Markdown、HTML、文本、多媒体 artifact
+- 支持代码、Markdown、HTML、文本等 artifact
 - artifact 持久化到数据库
 - 历史复杂会话可恢复展示 artifact
 
-### 5. MCP 动态工具接入
+### MCP 动态工具接入
 
 - 支持 `sse` / `streamable_http`
 - Generic Worker 运行时绑定 `BASE_TOOLS + MCP_TOOLS`
-- 可通过后台管理 MCP Server
+- 支持后台管理 MCP Server
 
-### 6. Server-Driven UI
+### Server-Driven UI
 
-- 后端是业务真相源
-- 前端通过 SSE 事件驱动 store 和 UI
-- 适合继续演进成可审计、可回放的 Agent 产品
+- 后端是真相源
+- 前端通过 SSE 事件驱动 store 与 UI
+- 适合继续演进为可审计、可回放的 Agent 产品
 
 ## 当前架构
-
-### 运行时主语义
 
 ```text
 Thread
@@ -83,8 +82,6 @@ AgentRun
 ExecutionPlan
   -> 复杂任务计划
 ```
-
-### 复杂模式主链
 
 ```text
 POST /api/chat
@@ -203,24 +200,10 @@ pnpm run build
 
 ## 文档
 
-### 对外文档
-
 - [CHANGELOG.md](./CHANGELOG.md)
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [LICENSE](./LICENSE)
-
-### 内部架构文档
-
-- [`.ai/active_context.md`](./.ai/active_context.md)
-- [`.ai/langgraph_workflow.md`](./.ai/langgraph_workflow.md)
-- [`.ai/data_schema.md`](./.ai/data_schema.md)
-- [`code review/RUNTIME_REFACTOR_TRACKING_2026-03-07.md`](./code%20review/RUNTIME_REFACTOR_TRACKING_2026-03-07.md)
-
-## 项目现阶段最适合的定位
-
-如果你要在 GitHub 上一句话介绍它，推荐这样讲：
-
-> XPouch AI is an open-source, controllable multi-expert Agent Runtime for real task execution, with HITL approval, run-based execution semantics, artifact persistence, and MCP tool integration.
+- [backend/.env.example](./backend/.env.example)
 
 ## 路线图
 
@@ -240,11 +223,10 @@ pnpm run build
 - skill / template abstraction
 - 同线程单活跃 run 约束
 
-## 适合谁
+## 贡献
 
-- 想研究 LangGraph 多节点 Agent Runtime 的开发者
-- 想要一个可改造的开源 Agent 执行底座的团队
-- 想做 HITL、artifact、run-based execution、MCP 集成的产品原型
+欢迎提交 issue、改进建议和 pull request。
+开发环境、代码规范和提交流程见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
 ## 许可证
 
