@@ -66,3 +66,42 @@ class ExecutionMode(StrEnum):
 
     SEQUENTIAL = "sequential"
     PARALLEL = "parallel"
+
+
+class RunEventType(StrEnum):
+    """
+    运行事件类型枚举
+
+    用于 RunEvent 账本记录，追踪 AgentRun 的完整生命周期。
+    事件命名遵循 {entity}_{action} 规范。
+    """
+
+    # 生命周期事件
+    RUN_CREATED = "run_created"  # 运行实例创建
+    RUN_STARTED = "run_started"  # 运行开始执行
+
+    # 路由事件
+    ROUTER_DECIDED = "router_decided"  # Router 决策完成
+
+    # 计划事件（复杂模式）
+    PLAN_CREATED = "plan_created"  # ExecutionPlan 创建
+    PLAN_UPDATED = "plan_updated"  # 计划被用户修改
+
+    # HITL 事件
+    HITL_INTERRUPTED = "hitl_interrupted"  # 等待用户审核
+    HITL_RESUMED = "hitl_resumed"  # 用户批准后恢复
+    HITL_REJECTED = "hitl_rejected"  # 用户拒绝计划
+
+    # 任务执行事件
+    TASK_STARTED = "task_started"  # 子任务开始执行
+    TASK_COMPLETED = "task_completed"  # 子任务完成
+    TASK_FAILED = "task_failed"  # 子任务失败
+
+    # 产物事件
+    ARTIFACT_GENERATED = "artifact_generated"  # 产物生成
+
+    # 终态事件
+    RUN_COMPLETED = "run_completed"  # 运行完成
+    RUN_FAILED = "run_failed"  # 运行失败
+    RUN_CANCELLED = "run_cancelled"  # 运行取消
+    RUN_TIMED_OUT = "run_timed_out"  # 运行超时

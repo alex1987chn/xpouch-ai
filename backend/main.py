@@ -38,7 +38,7 @@ from config import settings
 # 内部模块导入
 from database import create_db_and_tables, engine
 from models import SystemExpert, User
-from routers import agents, chat, mcp, system
+from routers import agents, chat, mcp, runs, system
 from utils.exceptions import AppError, ValidationError, handle_error
 from utils.logger import logger
 
@@ -155,6 +155,7 @@ app.include_router(chat.router)
 app.include_router(agents.router)
 app.include_router(system.router)
 app.include_router(mcp.router)
+app.include_router(runs.router)
 
 
 # ============================================================================

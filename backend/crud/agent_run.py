@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from sqlmodel import Session
 
 from config import settings
+from crud.run_event import emit_run_created
 from models import AgentRun, RunStatus, Thread
 from utils.error_codes import ErrorCode
 
@@ -57,6 +58,16 @@ def create_agent_run(
     )
     db.add(run)
     db.flush()
+
+    # 🔥 写入 run_created 事件到账本
+    emit_run_created(
+        db,
+        run_id=run.id,
+        thread_id=thread_id,
+        entrypoint=entrypoint,
+        mode=mode,
+    )
+
     _sync_thread_status(db, thread_id, run.status)
     return run
 

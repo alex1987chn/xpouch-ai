@@ -33,6 +33,12 @@ from crud.agent_run import (
     touch_run_heartbeat_by_id,
     update_run_status_by_id,
 )
+from crud.run_event import (
+    emit_hitl_interrupted,
+    emit_router_decided,
+    emit_run_completed,
+    emit_run_failed,
+)
 from models import AgentRun, CustomAgent, ExecutionPlan, RunStatus, Thread
 from providers_config import get_model_config, get_provider_api_key, get_provider_config
 from services.mcp_tools_service import mcp_tools_service
@@ -418,6 +424,14 @@ class StreamService:
                             router_decision = output["router_decision"]
                             # 更新线程模式
                             await self._update_thread_mode(thread_id, router_decision)
+                            # 🔥 写入 router_decided 事件到账本
+                            emit_router_decided(
+                                self.db,
+                                run_id=agent_run.id,
+                                thread_id=thread_id,
+                                mode=router_decision,
+                                reason=output.get("router_reason"),
+                            )
 
                 except AppError as e:
                     if e.code == ErrorCode.RUN_CANCELLED:
@@ -426,11 +440,28 @@ class StreamService:
                         return
                     logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
                     self._mark_agent_run_failed(agent_run.id, str(e))
+                    # 🔥 写入 run_failed 事件到账本
+                    emit_run_failed(
+                        self.db,
+                        run_id=agent_run.id,
+                        thread_id=thread_id,
+                        error_code=str(e.code) if e.code else None,
+                        error_message=str(e),
+                    )
+                    self.db.commit()
                     yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
                     return
                 except Exception as e:
                     logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
                     self._mark_agent_run_failed(agent_run.id, str(e))
+                    # 🔥 写入 run_failed 事件到账本
+                    emit_run_failed(
+                        self.db,
+                        run_id=agent_run.id,
+                        thread_id=thread_id,
+                        error_message=str(e),
+                    )
+                    self.db.commit()
                     yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
                     return
 
@@ -471,6 +502,17 @@ class StreamService:
                     # 发送 human.interrupt 事件（包含计划版本号，供乐观锁校验）
                     plan_version = self._get_plan_version(thread_id)
                     execution_plan = self._get_latest_execution_plan(thread_id)
+
+                    # 🔥 写入 hitl_interrupted 事件到账本
+                    emit_hitl_interrupted(
+                        self.db,
+                        run_id=agent_run.id,
+                        thread_id=thread_id,
+                        execution_plan_id=execution_plan.id if execution_plan else None,
+                        plan_version=plan_version,
+                    )
+                    self.db.commit()
+
                     self._update_agent_run_status(
                         agent_run.id,
                         RunStatus.WAITING_FOR_APPROVAL,
@@ -520,6 +562,13 @@ class StreamService:
                     self._update_agent_run_status(
                         agent_run.id, RunStatus.COMPLETED, current_node="done"
                     )
+                    # 🔥 写入 run_completed 事件到账本
+                    emit_run_completed(
+                        self.db,
+                        run_id=agent_run.id,
+                        thread_id=thread_id,
+                    )
+                    self.db.commit()
 
                 # 🔥 修复：只有简单模式才在这里发送 message.done
                 # 复杂模式由 aggregator 通过 event_queue 发送

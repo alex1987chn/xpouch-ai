@@ -27,6 +27,11 @@ from crud.agent_run import (
     mark_run_failed_by_id,
     update_run_status_by_id,
 )
+from crud.run_event import (
+    emit_hitl_rejected,
+    emit_hitl_resumed,
+    emit_run_cancelled,
+)
 from models import AgentRun, ExecutionPlan, RunStatus, Thread
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError, AuthorizationError, NotFoundError, ValidationError
@@ -146,8 +151,18 @@ class RecoveryService:
         await self._cleanup_checkpoints(thread_id)
 
         # 更新 ExecutionPlan
-        await self._cancel_execution_plan(run_id)
+        execution_plan = await self._cancel_execution_plan(run_id)
+
+        # 🔥 写入 hitl_rejected 事件到账本
+        emit_hitl_rejected(
+            self.db,
+            run_id=run_id,
+            thread_id=thread_id,
+            execution_plan_id=execution_plan.id if execution_plan else None,
+        )
+
         self._update_run_status(run_id, RunStatus.CANCELLED)
+        self.db.commit()
 
         return {"status": "cancelled", "message": "计划已被用户拒绝"}
 
@@ -188,6 +203,15 @@ class RecoveryService:
             self.db.add(execution_plan)
             self.db.commit()
 
+        # 🔥 写入 run_cancelled 事件到账本
+        emit_run_cancelled(
+            self.db,
+            run_id=run_id,
+            thread_id=agent_run.thread_id,
+            current_node=agent_run.current_node,
+        )
+        self.db.commit()
+
         return {"status": "cancelled", "message": "运行已取消"}
 
     async def _handle_approval(
@@ -227,6 +251,18 @@ class RecoveryService:
 
             # 关键一致性保障：计划更新前执行乐观锁校验与版本递增
             self._bump_plan_version_with_cas(run_id, plan_version)
+
+            # 🔥 写入 hitl_resumed 事件到账本
+            execution_plan = self._get_execution_plan_by_run(run_id)
+            emit_hitl_resumed(
+                self.db,
+                run_id=run_id,
+                thread_id=thread_id,
+                execution_plan_id=execution_plan.id if execution_plan else None,
+                plan_version=plan_version or 1,
+                plan_modified=updated_plan is not None and len(updated_plan) > 0,
+            )
+            self.db.commit()
 
             # 生成 message_id（如果没有提供）
             actual_message_id = message_id or str(uuid.uuid4())
