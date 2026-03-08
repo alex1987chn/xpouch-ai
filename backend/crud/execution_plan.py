@@ -289,6 +289,7 @@ def update_artifact_content(db: Session, artifact_id: str, content: str) -> Arti
 def create_execution_plan_with_subtasks(
     db: Session,
     thread_id: str,
+    run_id: str | None,
     user_query: str,
     plan_summary: str,
     estimated_steps: int,
@@ -299,6 +300,7 @@ def create_execution_plan_with_subtasks(
     """批量创建执行计划和子任务。"""
     execution_plan_data = {
         "thread_id": thread_id,
+        "run_id": run_id,
         "user_query": user_query,
         "plan_summary": plan_summary,
         "estimated_steps": estimated_steps,

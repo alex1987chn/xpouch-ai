@@ -12,6 +12,7 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Any
 
+from sqlalchemy import and_, or_
 from sqlmodel import Session, select
 
 from config import settings
@@ -45,7 +46,10 @@ def _cleanup_once() -> dict[str, Any]:
         stale_runs = session.exec(
             select(AgentRun).where(
                 AgentRun.status.in_([RunStatus.RUNNING, RunStatus.RESUMING]),
-                AgentRun.updated_at < stale_running_before,
+                or_(
+                    and_(AgentRun.deadline_at.is_not(None), AgentRun.deadline_at < now),
+                    AgentRun.updated_at < stale_running_before,
+                ),
             )
         ).all()
         for run in stale_runs:

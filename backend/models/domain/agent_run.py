@@ -62,6 +62,7 @@ class AgentRun(SQLModel, table=True):
         default_factory=datetime.now,
         sa_column_kwargs={"onupdate": func.now()},
     )
+    deadline_at: datetime | None = None
     last_heartbeat_at: datetime | None = None
     completed_at: datetime | None = None
     cancelled_at: datetime | None = None

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlmodel import Session
 
+from config import settings
 from models import AgentRun, RunStatus, Thread
+from utils.error_codes import ErrorCode
 
 
 def derive_thread_status_from_run_status(status: RunStatus) -> str:
@@ -40,6 +42,7 @@ def create_agent_run(
     checkpoint_namespace: str | None = None,
 ) -> AgentRun:
     """创建新的运行实例。"""
+    started_at = datetime.now()
     run = AgentRun(
         thread_id=thread_id,
         user_id=user_id,
@@ -48,8 +51,9 @@ def create_agent_run(
         status=RunStatus.RUNNING,
         idempotency_key=idempotency_key,
         checkpoint_namespace=checkpoint_namespace,
-        started_at=datetime.now(),
-        updated_at=datetime.now(),
+        started_at=started_at,
+        updated_at=started_at,
+        deadline_at=started_at + timedelta(seconds=settings.run_deadline_seconds),
     )
     db.add(run)
     db.flush()
@@ -153,6 +157,7 @@ def mark_run_timed_out_by_id(
     run_id: str,
     *,
     error_message: str = "运行超时",
+    error_code: str | None = ErrorCode.RUN_TIMED_OUT,
     current_node: str | None = None,
 ) -> AgentRun | None:
     """按 ID 将运行标记为超时。"""
@@ -161,6 +166,7 @@ def mark_run_timed_out_by_id(
         return None
     run.status = RunStatus.TIMED_OUT
     run.current_node = current_node
+    run.error_code = error_code
     run.error_message = error_message
     run.timed_out_at = datetime.now()
     run.updated_at = datetime.now()
@@ -174,6 +180,7 @@ def mark_run_cancelled_by_id(
     run_id: str,
     *,
     error_message: str = "运行已取消",
+    error_code: str | None = ErrorCode.RUN_CANCELLED,
     current_node: str | None = None,
 ) -> AgentRun | None:
     """按 ID 将运行标记为取消。"""
@@ -182,6 +189,7 @@ def mark_run_cancelled_by_id(
         return None
     run.status = RunStatus.CANCELLED
     run.current_node = current_node
+    run.error_code = error_code
     run.error_message = error_message
     run.cancelled_at = datetime.now()
     run.updated_at = datetime.now()

@@ -40,6 +40,7 @@ from utils.logger import logger
 def get_or_create_execution_plan(
     db: Session,
     thread_id: str,
+    run_id: str | None,
     user_query: str,
     plan_summary: str,
     estimated_steps: int,
@@ -56,6 +57,7 @@ def get_or_create_execution_plan(
     Args:
         db: 数据库会话
         thread_id: 线程/会话标识
+        run_id: 当前运行实例 ID
         user_query: 用户原始查询
         plan_summary: 执行策略概述
         estimated_steps: 预计步骤数
@@ -91,6 +93,7 @@ def get_or_create_execution_plan(
         existing_plan.plan_summary = plan_summary
         existing_plan.estimated_steps = estimated_steps
         existing_plan.execution_mode = execution_mode
+        existing_plan.run_id = run_id
         existing_plan.status = "running"
         db.add(existing_plan)
 
@@ -134,6 +137,7 @@ def get_or_create_execution_plan(
     execution_plan = create_execution_plan_with_subtasks(
         db=db,
         thread_id=thread_id,
+        run_id=run_id,
         user_query=user_query,
         plan_summary=plan_summary,
         estimated_steps=estimated_steps,

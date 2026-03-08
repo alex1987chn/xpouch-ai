@@ -308,6 +308,7 @@ async def chat_endpoint(
         "context": {},
         "router_decision": "",
         "thread_id": thread_id,
+        "run_id": agent_run.id,
         "user_id": thread.user_id,
     }
 

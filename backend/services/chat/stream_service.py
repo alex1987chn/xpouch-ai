@@ -23,12 +23,13 @@ from datetime import datetime
 from typing import Any
 
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage
 from sqlmodel import Session, select
 
 from config import settings
 from crud.agent_run import (
     mark_run_failed_by_id,
+    mark_run_timed_out_by_id,
     touch_run_heartbeat_by_id,
     update_run_status_by_id,
 )
@@ -443,7 +444,11 @@ class StreamService:
                 current_task_index = state_values.get("current_task_index", 0)
 
                 # 如果存在任务列表且当前任务索引为0（未开始执行），说明被 HITL 中断
-                if task_list and current_task_index == 0 and len(collected_task_list) == 0:
+                if self._should_wait_for_human_approval(
+                    task_list=task_list,
+                    current_task_index=current_task_index,
+                    collected_task_list=collected_task_list,
+                ):
                     logger.info("[StreamService] HITL 中断检测：任务规划完成，等待用户审核")
 
                     # 🔥 方案1：更新 ExecutionPlan 状态为 waiting_for_approval
@@ -488,6 +493,18 @@ class StreamService:
                 if last_message:
                     full_response = last_message.content
 
+                    if router_decision == "complex":
+                        persist_error = self._get_complex_result_persistence_error(
+                            thread_id=thread_id,
+                            last_message=last_message,
+                            task_list=collected_task_list,
+                        )
+                        if persist_error:
+                            logger.error("[StreamService] %s", persist_error)
+                            self._mark_agent_run_failed(agent_run.id, persist_error)
+                            yield self._build_error_event(ErrorCode.GRAPH_ERROR, persist_error)
+                            return
+
                     # 保存到数据库
                     await self._save_langgraph_result(
                         thread_id=thread_id,
@@ -498,6 +515,7 @@ class StreamService:
                         task_list=collected_task_list,
                         expert_artifacts=expert_artifacts,
                         message_id=actual_message_id,
+                        run_id=agent_run.id,
                     )
                     self._update_agent_run_status(
                         agent_run.id, RunStatus.COMPLETED, current_node="done"
@@ -565,6 +583,21 @@ class StreamService:
 
             if last_message:
                 full_response = last_message.content
+
+                if router_decision == "complex":
+                    persist_error = self._get_complex_result_persistence_error(
+                        thread_id=thread_id,
+                        last_message=last_message,
+                        task_list=result.get("task_list", []),
+                    )
+                    if persist_error:
+                        self._mark_agent_run_failed(agent_run.id, persist_error)
+                        raise AppError(
+                            message=persist_error,
+                            code=ErrorCode.GRAPH_ERROR,
+                            status_code=500,
+                        )
+
                 await self._save_langgraph_result(
                     thread_id=thread_id,
                     thread=thread,
@@ -574,6 +607,7 @@ class StreamService:
                     task_list=result.get("task_list", []),
                     expert_artifacts={},
                     message_id=str(uuid.uuid4()),
+                    run_id=agent_run.id,
                 )
                 self._update_agent_run_status(
                     agent_run.id, RunStatus.COMPLETED, current_node="done"
@@ -597,25 +631,26 @@ class StreamService:
         task_list: list[dict],
         expert_artifacts: dict,
         message_id: str,
+        run_id: str | None = None,
     ):
         """保存 LangGraph 执行结果"""
-        from crud.execution_plan import create_artifacts_batch
-        from models import ExecutionPlan, SubTask
+        from crud.execution_plan import create_artifacts_batch, get_subtasks_by_execution_plan
+        from models import SubTask, TaskStatus
 
         # 复杂模式：创建 ExecutionPlan 和 SubTasks
         if router_decision == "complex":
             await self.thread_service.update_thread_agent_type(thread_id, "ai")
+            execution_plan = self._get_latest_execution_plan(thread_id)
+            if execution_plan is None:
+                logger.warning("[StreamService] complex 结果保存时未找到 ExecutionPlan，跳过落库")
+                return
 
-            execution_plan = ExecutionPlan(
-                id=str(uuid.uuid4()),
-                thread_id=thread_id,
-                user_query=user_message,
-                status="completed",
-                final_response=last_message.content,
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
-                completed_at=datetime.now(),
-            )
+            execution_plan.run_id = execution_plan.run_id or run_id
+            execution_plan.user_query = execution_plan.user_query or user_message
+            execution_plan.status = TaskStatus.COMPLETED
+            execution_plan.final_response = last_message.content
+            execution_plan.updated_at = datetime.now()
+            execution_plan.completed_at = datetime.now()
             self.db.add(execution_plan)
             self.db.flush()
 
@@ -623,22 +658,32 @@ class StreamService:
             thread.execution_plan_id = execution_plan.id
             self.db.add(thread)
 
+            existing_subtasks = {
+                subtask.id: subtask
+                for subtask in get_subtasks_by_execution_plan(self.db, execution_plan.id)
+            }
+
             # 保存 SubTasks
             for subtask in task_list:
-                # ❌ 移除错误的 artifacts 赋值（artifacts 是关系字段）
-                db_subtask = SubTask(
-                    id=subtask["id"],
-                    expert_type=subtask["expert_type"],
-                    task_description=subtask["description"],
-                    input_data=subtask.get("input_data", {}),
-                    status=subtask.get("status", "completed"),
-                    output_result=subtask.get("output_result"),
-                    started_at=subtask.get("started_at"),
-                    completed_at=subtask.get("completed_at"),
-                    created_at=datetime.now(),
-                    updated_at=datetime.now(),
-                    execution_plan_id=execution_plan.id,
-                )
+                db_subtask = existing_subtasks.get(subtask["id"])
+                if db_subtask is None:
+                    db_subtask = SubTask(
+                        id=subtask["id"],
+                        expert_type=subtask["expert_type"],
+                        task_description=subtask["description"],
+                        input_data=subtask.get("input_data", {}),
+                        execution_plan_id=execution_plan.id,
+                        created_at=datetime.now(),
+                    )
+
+                db_subtask.expert_type = subtask["expert_type"]
+                db_subtask.task_description = subtask["description"]
+                db_subtask.input_data = subtask.get("input_data", {})
+                db_subtask.status = TaskStatus(subtask.get("status", "completed"))
+                db_subtask.output_result = subtask.get("output_result")
+                db_subtask.started_at = subtask.get("started_at")
+                db_subtask.completed_at = subtask.get("completed_at")
+                db_subtask.updated_at = datetime.now()
                 self.db.add(db_subtask)
                 self.db.flush()
 
@@ -665,6 +710,58 @@ class StreamService:
         # 保存 AI 消息
         await self.thread_service.save_assistant_message(
             thread_id=thread_id, content=last_message.content, message_id=message_id
+        )
+
+    def _get_complex_result_persistence_error(
+        self,
+        *,
+        thread_id: str,
+        last_message: Any,
+        task_list: list[dict],
+    ) -> str | None:
+        """在复杂模式持久化前做主流程校验，避免把半残状态误标为完成。"""
+        if not isinstance(last_message, AIMessage):
+            return "复杂模式未产出有效助手消息，已拒绝将当前结果落库为 completed"
+        if not task_list:
+            return "复杂模式未收集到任何任务结果，已拒绝将当前结果落库为 completed"
+        if self._get_latest_execution_plan(thread_id) is None:
+            return "复杂模式未找到已创建的 ExecutionPlan，已拒绝写入错误兜底结果"
+        return None
+
+    def _should_wait_for_human_approval(
+        self,
+        *,
+        task_list: list[dict],
+        current_task_index: int,
+        collected_task_list: list[dict],
+    ) -> bool:
+        """判断复杂模式是否应进入 HITL 审核等待态。"""
+        return bool(task_list) and current_task_index == 0 and len(collected_task_list) == 0
+
+    def _raise_if_loop_budget_exhausted(
+        self,
+        *,
+        loop_count: int,
+        max_loops: int,
+        aggregator_executed: bool,
+        run_id: str | None,
+    ) -> None:
+        """超过图执行循环预算时立即失败，防止无限推进。"""
+        if aggregator_executed or loop_count < max_loops:
+            return
+
+        if run_id:
+            self._mark_agent_run_failed(
+                run_id,
+                "运行超过最大图循环预算",
+                error_code=ErrorCode.LOOP_GUARD_TRIGGERED,
+            )
+
+        raise AppError(
+            message="运行超过最大图循环预算",
+            code=ErrorCode.LOOP_GUARD_TRIGGERED,
+            status_code=409,
+            details={"run_id": run_id, "max_loops": max_loops},
         )
 
     async def _update_thread_mode(self, thread_id: str, mode: str):
@@ -780,7 +877,7 @@ class StreamService:
             async def producer():
                 try:
                     loop_count = 0
-                    max_loops = 50  # 防止无限循环
+                    max_loops = settings.run_max_graph_loops
                     aggregator_executed = False  # 🔥 标记 aggregator 是否已执行
 
                     while loop_count < max_loops:
@@ -869,6 +966,13 @@ class StreamService:
 
                         # 短暂等待，让状态更新
                         await asyncio.sleep(0.1)
+
+                    self._raise_if_loop_budget_exhausted(
+                        loop_count=loop_count,
+                        max_loops=max_loops,
+                        aggregator_executed=aggregator_executed,
+                        run_id=run_id,
+                    )
 
                 except AppError:
                     raise
@@ -1134,9 +1238,28 @@ class StreamService:
             self.db.commit()
 
     def _raise_if_run_cancelled(self, run_id: str) -> None:
-        """在流式执行中协作检查运行是否已被取消。"""
+        """在流式执行中协作检查运行是否已被取消或已超出截止时间。"""
         agent_run = self.db.get(AgentRun, run_id)
-        if agent_run and agent_run.status == RunStatus.CANCELLED:
+        if agent_run is None:
+            return
+
+        if agent_run.deadline_at and agent_run.deadline_at <= datetime.now():
+            timed_out = mark_run_timed_out_by_id(
+                self.db,
+                run_id,
+                error_message="运行超过 deadline，已自动终止",
+                current_node=agent_run.current_node,
+            )
+            if timed_out is not None:
+                self.db.commit()
+            raise AppError(
+                message="运行已超时",
+                code=ErrorCode.RUN_TIMED_OUT,
+                status_code=409,
+                details={"run_id": run_id},
+            )
+
+        if agent_run.status == RunStatus.CANCELLED:
             raise AppError(
                 message="运行已取消",
                 code=ErrorCode.RUN_CANCELLED,
@@ -1182,12 +1305,19 @@ class StreamService:
         if updated is not None:
             self.db.commit()
 
-    def _mark_agent_run_failed(self, run_id: str, error_message: str) -> None:
+    def _mark_agent_run_failed(
+        self,
+        run_id: str,
+        error_message: str,
+        *,
+        error_code: str | None = None,
+    ) -> None:
         """将 AgentRun 标记为失败。"""
         updated = mark_run_failed_by_id(
             self.db,
             run_id,
             error_message=error_message,
+            error_code=error_code,
         )
         if updated is not None:
             self.db.commit()
