@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     # 基础配置
     app_name: str = Field(default="XPouch AI", alias="APP_NAME")
-    version: str = Field(default="3.2.5", alias="VERSION")
+    version: str = Field(default="3.3.0", alias="VERSION")
     environment: Literal["development", "testing", "production"] = "development"
     port: int = Field(default=3002, alias="PORT")
 

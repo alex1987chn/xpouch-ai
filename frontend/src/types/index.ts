@@ -369,6 +369,28 @@ export type {
   MCPConnectionStatus
 } from './mcp'
 
+// ============================================
+// Run 相关类型（运行时间线）
+// ============================================
+
+export type {
+  RunEventType,
+  RunStatus,
+  RunEvent,
+  RunSummary,
+  RunTimelineResponse,
+  ThreadTimelineResponse,
+} from './run'
+
+export {
+  TERMINAL_EVENTS,
+  ACTIVE_RUN_STATUSES,
+  isTerminalEvent,
+  isRunActive,
+  getEventCategory,
+  getEventDisplayName,
+} from './run'
+
 /**
  * 将数据库消息转换为 UI 消息
  */

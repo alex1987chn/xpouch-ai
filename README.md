@@ -84,6 +84,13 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - 前端通过 SSE 事件驱动 store 与 UI
 - 适合继续演进为可审计、可回放的 Agent 产品
 
+### Run Timeline（运行时间线）
+
+- 独立页面查看运行实例的完整事件时间线
+- 支持从对话页面和历史会话卡片跳转
+- 展示 16 种事件类型：run 创建、router 决策、HITL 中断/恢复、任务执行、artifact 生成、运行终态等
+- API：`GET /api/runs/{run_id}`、`GET /api/runs/{run_id}/timeline`、`GET /api/runs/thread/{thread_id}/timeline`
+
 ## 当前架构
 
 ```text

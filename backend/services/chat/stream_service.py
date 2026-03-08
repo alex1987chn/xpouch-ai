@@ -423,8 +423,10 @@ class StreamService:
                             and output.get("router_decision")
                         ):
                             router_decision = output["router_decision"]
-                            # 更新线程模式
-                            await self._update_thread_mode(thread_id, router_decision)
+                            # 更新线程模式和运行实例模式
+                            await self._update_thread_mode(
+                                thread_id, router_decision, run_id=agent_run.id
+                            )
                             # 🔥 写入 router_decided 事件到账本
                             emit_router_decided(
                                 self.db,
@@ -814,13 +816,22 @@ class StreamService:
             details={"run_id": run_id, "max_loops": max_loops},
         )
 
-    async def _update_thread_mode(self, thread_id: str, mode: str):
-        """更新线程模式"""
+    async def _update_thread_mode(self, thread_id: str, mode: str, run_id: str | None = None):
+        """更新线程模式和运行实例模式"""
         thread = self.db.get(Thread, thread_id)
         if thread:
             thread.thread_mode = mode
             self.db.add(thread)
-            self.db.commit()
+
+        # 🔥 同时更新 AgentRun.mode，确保前端能正确显示 simple/complex
+        if run_id:
+            agent_run = self.db.get(AgentRun, run_id)
+            if agent_run:
+                agent_run.mode = mode
+                agent_run.updated_at = datetime.now()
+                self.db.add(agent_run)
+
+        self.db.commit()
 
     def _collect_execution_results(self, token, task_list: list[dict], expert_artifacts: dict):
         """收集 LangGraph 执行结果"""
@@ -1349,6 +1360,10 @@ class StreamService:
             .where(ExecutionPlan.thread_id == thread_id)
             .order_by(ExecutionPlan.created_at.desc())
         ).first()
+
+    def _get_execution_plan_by_run(self, run_id: str) -> ExecutionPlan | None:
+        """按 run_id 获取 ExecutionPlan。"""
+        return self.db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)).first()
 
     def _update_agent_run_status(
         self,

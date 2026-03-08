@@ -40,6 +40,10 @@ export interface ExecutionPlanState {
   estimatedSteps: number
   executionMode: 'sequential' | 'parallel'
   status: 'pending' | 'running' | 'completed' | 'failed'
+  /** 关联的运行实例 ID（用于跳转到时间线页面） */
+  runId?: string
+  /** 关联的线程 ID */
+  threadId?: string
 }
 
 // ============================================================================
@@ -343,7 +347,10 @@ export const createTaskSlice = (
         estimatedSteps: subTasks.length + 1,
         executionMode: 'sequential',
         status:
-          (executionPlan.status as 'pending' | 'running' | 'completed' | 'failed') || 'running'
+          (executionPlan.status as 'pending' | 'running' | 'completed' | 'failed') || 'running',
+        // 🔥 保存 run_id 和 thread_id，用于跳转到时间线页面
+        runId: executionPlan.run_id,
+        threadId: executionPlan.thread_id,
       }
 
       state.tasks = new Map()

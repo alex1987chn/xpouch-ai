@@ -5,9 +5,34 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2026-03-13] - v3.3.0 更新
 
-### Skill Templates 与 Tool Governance v2（2026-03-08）
+### Run Timeline UI 与前端入口
+
+**新增功能**：
+- 新增独立页面 `RunTimelinePage`，路由 `/run/:runId`
+- 新增前端 API 服务 `frontend/src/services/runs.ts`
+- 新增 React Query hooks `useRunDetails`, `useRunTimeline`, `useThreadTimeline`
+- 新增类型定义 `frontend/src/types/run.ts`（RunEvent, RunStatus, RunEventType 等）
+- 新增 `PayloadDrawer` 抽屉组件，点击事件展示 JSON Payload（语法高亮、复制、展开功能）
+
+**前端入口**：
+- 对话页面顶部 `RUN #xxx` 链接（正在运行或历史记录进入）
+- 历史会话卡片右侧 `ExternalLink` 图标（仅当有 `latest_run` 时显示）
+
+**后端 API 补充**：
+- 新增 `GET /api/runs/{run_id}` API：获取运行实例详情
+- 新增 `RunSummaryResponse` 响应模型
+- `ThreadListResponse` 新增 `latest_run` 字段，历史列表 API 现在返回最近运行摘要
+
+**修复问题**：
+- 修复 `ExecutionPlanState` 缺少 `runId` 字段导致历史对话无法显示运行入口的问题
+- 修复 `StreamService._get_execution_plan_by_run` 方法缺失导致 HITL 确认报错的问题
+- 修复 `_update_thread_mode` 只更新 `Thread.thread_mode` 但不更新 `AgentRun.mode` 导致运行详情页面模式显示错误的问题
+
+## [2026-03-08] - v3.3.0
+
+### Skill Templates 与 Tool Governance v2
 
 **Skill Templates**：
 - 新增 `SkillTemplate` 数据模型与迁移

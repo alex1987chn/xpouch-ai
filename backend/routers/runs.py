@@ -11,7 +11,7 @@ from crud.run_event import get_run_events_by_run_id, get_run_events_by_thread_id
 from database import get_session
 from dependencies import get_current_user
 from models import AgentRun, Thread, User
-from schemas.run_event import RunTimelineResponse, ThreadTimelineResponse
+from schemas.run_event import RunSummaryResponse, RunTimelineResponse, ThreadTimelineResponse
 from utils.exceptions import AuthorizationError, NotFoundError
 from utils.logger import logger
 
@@ -34,6 +34,30 @@ def _get_thread_or_raise(db: Session, thread_id: str, user_id: str) -> Thread:
     if thread.user_id != user_id:
         raise AuthorizationError("无权访问此线程")
     return thread
+
+
+@router.get("/{run_id}", response_model=RunSummaryResponse)
+async def get_run_details(
+    run_id: str,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> RunSummaryResponse:
+    """
+    获取运行实例详情
+
+    返回指定 run_id 的运行实例信息。
+
+    Args:
+        run_id: 运行实例 ID
+        db: 数据库会话
+        current_user: 当前用户
+
+    Returns:
+        RunSummaryResponse: 运行实例摘要
+    """
+    logger.info(f"[Runs API] 获取运行详情: run_id={run_id}, user_id={current_user.id}")
+    run = _get_run_or_raise(db, run_id, current_user.id)
+    return RunSummaryResponse.model_validate(run)
 
 
 @router.get("/{run_id}/timeline", response_model=RunTimelineResponse)

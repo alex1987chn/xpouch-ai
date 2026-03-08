@@ -18,6 +18,8 @@ interface CodeBlockProps {
   className?: string
   showLineNumbers?: boolean
   isDarkTheme?: boolean
+  /** 是否启用横向滚动（默认 false，长内容时启用） */
+  enableHorizontalScroll?: boolean
 }
 
 // 语言映射（标准化语言名称）
@@ -39,7 +41,8 @@ export function CodeBlock({
   language = 'text',
   className,
   showLineNumbers = true,
-  isDarkTheme = true
+  isDarkTheme = true,
+  enableHorizontalScroll = false,
 }: CodeBlockProps) {
   const normalizedLanguage = languageMap[language.toLowerCase()] || language.toLowerCase()
   const theme = isDarkTheme ? themes.vsDark : themes.github
@@ -55,6 +58,8 @@ export function CodeBlock({
           className={cn(
             highlightClassName,
             'text-[0.875rem] leading-relaxed',
+            enableHorizontalScroll && 'whitespace-pre overflow-x-auto',
+            !enableHorizontalScroll && 'whitespace-pre-wrap break-all',
             className
           )}
           style={{
@@ -70,7 +75,7 @@ export function CodeBlock({
               key={i}
               {...getLineProps({ line })}
               className={cn(
-                'table-row',
+                enableHorizontalScroll ? 'table-row' : 'block',
                 showLineNumbers && 'before:content-[attr(data-line-number)] before:table-cell before:text-right before:pr-4 before:select-none'
               )}
               data-line-number={showLineNumbers ? i + 1 : undefined}
