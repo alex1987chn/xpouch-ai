@@ -74,7 +74,7 @@ async def get_current_user(
     # 生产环境强制使用 JWT 认证，防止用户 ID 伪造攻击
     environment = os.getenv("ENVIRONMENT", "development")
 
-    if not require_auth and environment.lower() == "development":
+    if environment.lower() == "development":
         user_id = request.headers.get("X-User-ID")
         if user_id:
             user = session.get(User, user_id)
