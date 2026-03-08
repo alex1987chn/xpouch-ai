@@ -11,10 +11,17 @@
 
 ### 前置要求
 
-- Node.js >= 18.0.0
+- Node.js >= 24.14.0
 - Python >= 3.13
 - PostgreSQL 18+
-- pnpm >= 8.0.0
+- pnpm >= 10.28.1
+- uv（后端依赖与命令管理）
+
+### 环境区分
+
+- 本地开发：通常直接运行 `frontend` + `backend`，前端默认 `5173`，后端默认 `3002`
+- Docker Compose：仓库内的 `docker-compose.yml` 主要用于本地联调，前端对外 `8080`，数据库默认映射到宿主机 `5432`
+- 生产环境：请使用单独的生产部署流程或覆盖配置，不要直接把当前 compose 文件当作生产默认模板
 
 ### 本地开发
 
@@ -28,14 +35,24 @@ cd xpouch-ai
 2. **安装依赖**
 
 ```bash
+# 根目录前端/工作区依赖
 pnpm install
+
+# 后端 Python 依赖
+cd backend
+uv sync
+cd ..
 ```
 
 3. **配置环境变量**
 
 ```bash
+# 本地开发至少需要后端配置
 cp backend/.env.example backend/.env
 # 编辑 backend/.env 文件，配置数据库和 API Key
+
+# 如果要跑 Docker Compose，再补充根目录配置
+cp .env.example .env
 ```
 
 4. **启动开发服务器**
@@ -48,6 +65,18 @@ pnpm run dev
 pnpm run dev:frontend  # http://localhost:5173
 pnpm run dev:backend   # http://localhost:3002
 ```
+
+如果你使用 Docker Compose 本地联调：
+
+```bash
+docker-compose up -d --build
+```
+
+对应入口：
+
+- 前端：`http://localhost:8080`
+- 数据库：`localhost:5432`
+- 后端由前端容器反向代理访问，不默认单独暴露宿主机端口
 
 ## 代码规范
 
