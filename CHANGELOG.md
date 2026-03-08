@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Run Ledger 事件账本（2026-03-08）
+
+**新增功能**：
+- 新增 `RunEvent` append-only 事件账本模型，追踪 AgentRun 完整生命周期
+- 新增 16 种 `RunEventType` 事件类型
+- 新增 `GET /api/runs/{run_id}/timeline` API：运行实例事件时间线
+- 新增 `GET /api/runs/thread/{thread_id}/timeline` API：线程事件时间线
+
+**接入节点**：
+- `run_created`：创建 AgentRun 时
+- `router_decided`：Router 决策完成时
+- `hitl_interrupted` / `hitl_resumed` / `hitl_rejected`：HITL 中断/恢复/拒绝
+- `run_completed` / `run_failed` / `run_cancelled`：运行终态
+
+**数据迁移**：
+- `20260308_150000_add_run_event_ledger.py`
+
 ### 运行时重构封板（2026-03-08）
 
 **运行时语义收口**：

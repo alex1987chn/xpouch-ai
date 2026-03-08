@@ -21,6 +21,7 @@ from schemas.custom_agent import (
     CustomAgentResponse,
     CustomAgentUpdate,
 )
+from schemas.run_event import RunEventResponse, RunTimelineResponse, ThreadTimelineResponse
 from schemas.task import (
     ArtifactCreate,
     ArtifactResponse,
@@ -53,4 +54,8 @@ __all__ = [
     "ExecutionPlanCreate",
     "ExecutionPlanUpdate",
     "ExecutionPlanResponse",
+    # Run Event
+    "RunEventResponse",
+    "RunTimelineResponse",
+    "ThreadTimelineResponse",
 ]
