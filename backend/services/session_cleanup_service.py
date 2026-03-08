@@ -15,7 +15,7 @@ from typing import Any
 from sqlmodel import Session, select
 
 from config import settings
-from crud.agent_run import mark_run_timed_out_by_id
+from crud.agent_run import derive_thread_status_from_run_status, mark_run_timed_out_by_id
 from database import engine
 from models import AgentRun, ExecutionPlan, RunStatus, Thread
 from utils.logger import logger
@@ -30,7 +30,7 @@ def _cleanup_once() -> dict[str, Any]:
     执行一次清理并返回统计信息。
 
     规则：
-    - running 且长时间无更新 -> 重置为 idle
+    - 历史遗留的 running 线程展示态 -> 按最近一次 AgentRun 重新同步
     - idle/paused 且超过保留周期 -> 删除线程（级联删除消息与关联数据）
     """
     now = datetime.now()
@@ -64,7 +64,16 @@ def _cleanup_once() -> dict[str, Any]:
             )
         ).all()
         for thread in stale_running_threads:
-            thread.status = "idle"
+            latest_run = session.exec(
+                select(AgentRun)
+                .where(AgentRun.thread_id == thread.id)
+                .order_by(AgentRun.created_at.desc())
+            ).first()
+            thread.status = (
+                derive_thread_status_from_run_status(latest_run.status)
+                if latest_run is not None
+                else "idle"
+            )
             thread.updated_at = now
             session.add(thread)
             stale_running_reset += 1

@@ -37,7 +37,7 @@ from utils.sse_builder import build_error_event
 class RecoveryService:
     """HITL 恢复服务"""
 
-    _inflight_resume_by_thread: dict[str, str] = {}
+    _inflight_resume_by_run: dict[str, str] = {}
     _inflight_lock = threading.Lock()
 
     def __init__(self, db_session: Session):
@@ -146,7 +146,7 @@ class RecoveryService:
         await self._cleanup_checkpoints(thread_id)
 
         # 更新 ExecutionPlan
-        await self._cancel_execution_plan(thread_id)
+        await self._cancel_execution_plan(run_id)
         self._update_run_status(run_id, RunStatus.CANCELLED)
 
         return {"status": "cancelled", "message": "计划已被用户拒绝"}
@@ -217,21 +217,16 @@ class RecoveryService:
         import uuid
 
         resume_key = self._build_resume_key(run_id, plan_version, message_id, idempotency_key)
-        self._enter_inflight_resume(thread_id, resume_key)
-        try:
-            self._mark_thread_running(thread_id)
-        except Exception:
-            self._exit_inflight_resume(thread_id, resume_key)
-            raise
+        self._enter_inflight_resume(run_id, resume_key)
 
         logger.info("[HITL RESUME] 用户批准，开始流式恢复")
         self._update_run_status(run_id, RunStatus.RESUMING)
 
         # 🔥 方案1：更新 ExecutionPlan 状态为 running（用户已批准）
-        self._update_execution_plan_status(thread_id, "running")
+        self._update_execution_plan_status(run_id, "running")
 
         # 关键一致性保障：计划更新前执行乐观锁校验与版本递增
-        self._bump_plan_version_with_cas(thread_id, plan_version)
+        self._bump_plan_version_with_cas(run_id, plan_version)
 
         # 生成 message_id（如果没有提供）
         actual_message_id = message_id or str(uuid.uuid4())
@@ -257,7 +252,7 @@ class RecoveryService:
                     yield event
 
                 # 处理完成后，收集 artifacts 并保存
-                await self._process_collected_artifacts(thread_id, stream_queue)
+                await self._process_collected_artifacts(run_id, stream_queue)
                 self._update_run_status(run_id, RunStatus.COMPLETED)
 
             except AppError as e:
@@ -272,8 +267,7 @@ class RecoveryService:
                 self._mark_run_failed(run_id, str(e))
                 yield self._build_error_event(ErrorCode.RESUME_ERROR, str(e))
             finally:
-                self._mark_thread_idle(thread_id)
-                self._exit_inflight_resume(thread_id, resume_key)
+                self._exit_inflight_resume(run_id, resume_key)
 
         return StreamingResponse(
             event_generator(),
@@ -288,12 +282,12 @@ class RecoveryService:
         )
 
     @classmethod
-    def _enter_inflight_resume(cls, thread_id: str, resume_key: str) -> None:
+    def _enter_inflight_resume(cls, run_id: str, resume_key: str) -> None:
         """进程内幂等保护：防止重复恢复请求并发进入。"""
         with cls._inflight_lock:
-            existing = cls._inflight_resume_by_thread.get(thread_id)
+            existing = cls._inflight_resume_by_run.get(run_id)
             if existing is None:
-                cls._inflight_resume_by_thread[thread_id] = resume_key
+                cls._inflight_resume_by_run[run_id] = resume_key
                 return
 
             if existing == resume_key:
@@ -301,23 +295,23 @@ class RecoveryService:
                     message="恢复请求处理中，请勿重复提交",
                     code=ErrorCode.RESUME_DUPLICATE_REQUEST,
                     status_code=409,
-                    details={"thread_id": thread_id, "idempotency_key": resume_key},
+                    details={"run_id": run_id, "idempotency_key": resume_key},
                 )
 
             raise AppError(
-                message="当前线程已有恢复流程在执行",
+                message="当前运行实例已有恢复流程在执行",
                 code=ErrorCode.RESUME_IN_PROGRESS,
                 status_code=409,
-                details={"thread_id": thread_id, "running_idempotency_key": existing},
+                details={"run_id": run_id, "running_idempotency_key": existing},
             )
 
     @classmethod
-    def _exit_inflight_resume(cls, thread_id: str, resume_key: str) -> None:
+    def _exit_inflight_resume(cls, run_id: str, resume_key: str) -> None:
         """释放进程内恢复请求占位（仅释放自己持有的 key）。"""
         with cls._inflight_lock:
-            existing = cls._inflight_resume_by_thread.get(thread_id)
+            existing = cls._inflight_resume_by_run.get(run_id)
             if existing == resume_key:
-                cls._inflight_resume_by_thread.pop(thread_id, None)
+                cls._inflight_resume_by_run.pop(run_id, None)
 
     @staticmethod
     def _build_resume_key(
@@ -358,49 +352,7 @@ class RecoveryService:
         if updated is not None:
             self.db.commit()
 
-    def _mark_thread_running(self, thread_id: str) -> None:
-        """
-        标记线程为 running。
-
-        说明:
-        - 作为跨请求的并发保护补充，避免同一线程被重复恢复。
-        - 若线程已在运行中，则拒绝新的恢复请求。
-        """
-        thread = self.db.get(Thread, thread_id)
-        if not thread:
-            raise NotFoundError(f"Thread not found: {thread_id}")
-
-        result = self.db.exec(
-            update(Thread)
-            .where(Thread.id == thread_id, Thread.status != "running")
-            .values(status="running", updated_at=datetime.now())
-        )
-        if result.rowcount == 0:
-            self.db.rollback()
-            raise AppError(
-                message="当前线程已有恢复流程在执行",
-                code=ErrorCode.RESUME_IN_PROGRESS,
-                status_code=409,
-                details={"thread_id": thread_id},
-            )
-        self.db.commit()
-
-    def _mark_thread_idle(self, thread_id: str) -> None:
-        """恢复流程结束后，将线程状态归位为 idle。"""
-        try:
-            thread = self.db.get(Thread, thread_id)
-            if not thread:
-                return
-            thread.status = "idle"
-            thread.updated_at = datetime.now()
-            self.db.add(thread)
-            self.db.commit()
-        except Exception as e:
-            logger.warning(f"[HITL RESUME] 重置线程状态失败: {e}")
-
-    def _bump_plan_version_with_cas(
-        self, thread_id: str, expected_plan_version: int | None
-    ) -> None:
+    def _bump_plan_version_with_cas(self, run_id: str, expected_plan_version: int | None) -> None:
         """
         使用 CAS（Compare-And-Set）方式递增 plan_version。
 
@@ -412,11 +364,7 @@ class RecoveryService:
         if expected_plan_version is None:
             raise ValidationError("缺少 plan_version，无法进行并发校验")
 
-        execution_plan = self.db.exec(
-            select(ExecutionPlan)
-            .where(ExecutionPlan.thread_id == thread_id)
-            .order_by(ExecutionPlan.created_at.desc())
-        ).first()
+        execution_plan = self._get_execution_plan_by_run(run_id)
 
         if not execution_plan:
             raise NotFoundError("ExecutionPlan")
@@ -441,7 +389,7 @@ class RecoveryService:
                 code=ErrorCode.PLAN_VERSION_CONFLICT,
                 status_code=409,
                 details={
-                    "thread_id": thread_id,
+                    "run_id": run_id,
                     "expected_plan_version": expected_plan_version,
                     "current_plan_version": latest,
                 },
@@ -449,7 +397,7 @@ class RecoveryService:
 
         self.db.commit()
 
-    async def _process_collected_artifacts(self, thread_id: str, stream_queue: asyncio.Queue):
+    async def _process_collected_artifacts(self, run_id: str, stream_queue: asyncio.Queue):
         """处理收集到的 artifacts 并保存"""
         from crud.execution_plan import create_artifacts_batch
 
@@ -470,9 +418,7 @@ class RecoveryService:
                 break
 
         # 保存 artifacts（需要查询对应的 subtask_id）
-        execution_plan = self.db.exec(
-            select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)
-        ).first()
+        execution_plan = self._get_execution_plan_by_run(run_id)
 
         if execution_plan:
             for task_id, artifacts in artifacts_by_task.items():
@@ -528,19 +474,17 @@ class RecoveryService:
             # 如果表不存在或其他错误，记录但不阻断流程
             logger.warning(f"[HITL RESUME] 清理 checkpoint 失败: {e}")
 
-    def _update_execution_plan_status(self, thread_id: str, status: str) -> None:
+    def _update_execution_plan_status(self, run_id: str, status: str) -> None:
         """
         更新 ExecutionPlan 状态
 
         Args:
-            thread_id: 线程ID
+            run_id: 运行实例ID
             status: 新状态（pending, waiting_for_approval, running, completed, failed, cancelled）
         """
         from models.enums import TaskStatus
 
-        execution_plan = self.db.exec(
-            select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)
-        ).first()
+        execution_plan = self._get_execution_plan_by_run(run_id)
 
         if execution_plan:
             execution_plan.status = TaskStatus(status)
@@ -549,12 +493,10 @@ class RecoveryService:
             self.db.commit()
             logger.info(f"[HITL RESUME] ExecutionPlan {execution_plan.id} 状态更新为 {status}")
 
-    async def _cancel_execution_plan(self, thread_id: str):
+    async def _cancel_execution_plan(self, run_id: str):
         """将 ExecutionPlan 标记为 cancelled"""
         try:
-            execution_plan = self.db.exec(
-                select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)
-            ).first()
+            execution_plan = self._get_execution_plan_by_run(run_id)
 
             if execution_plan:
                 execution_plan.status = "cancelled"
@@ -570,6 +512,10 @@ class RecoveryService:
     # ============================================================================
     # 辅助方法
     # ============================================================================
+
+    def _get_execution_plan_by_run(self, run_id: str) -> ExecutionPlan | None:
+        """按 run_id 获取对应的 ExecutionPlan。"""
+        return self.db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)).first()
 
     def _build_error_event(self, code: str | ErrorCode, message: str) -> str:
         """构建 error 事件"""

@@ -185,9 +185,9 @@ export function useSessionRestore(
         const hasRunningTask = subTasks.some((t: SubTask) => t.status === 'running')
         const hasPendingTask = subTasks.some((t: SubTask) => t.status === 'pending')
         const isRunActive = latestRunStatus === 'running' || latestRunStatus === 'resuming'
-        const isWaitingForApproval =
-          latestRunStatus === 'waiting_for_approval' ||
-          execution_plan.status === 'waiting_for_approval'
+        const isWaitingForApproval = latestRunStatus
+          ? latestRunStatus === 'waiting_for_approval'
+          : execution_plan.status === 'waiting_for_approval'
         
         // 如果有运行中的任务，提示用户任务仍在进行
         if (hasRunningTask || isRunActive) {
