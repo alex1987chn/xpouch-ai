@@ -74,8 +74,11 @@ export interface ToolInfo {
   name: string
   description: string
   category: 'builtin' | 'mcp'
+  enabled?: boolean
   risk_tier?: 'low' | 'medium' | 'high'
   approval_required?: boolean
+  allowed_experts?: string[] | null
+  blocked_experts?: string[] | null
   policy_note?: string | null
 }
 
@@ -84,6 +87,77 @@ export interface ToolsListResponse {
   total: number
   builtin_count: number
   mcp_count: number
+}
+
+export interface ToolPolicyRecord {
+  id?: string | null
+  tool_name: string
+  source: 'builtin' | 'mcp'
+  enabled: boolean
+  risk_tier: 'low' | 'medium' | 'high'
+  approval_required: boolean
+  allowed_experts?: string[] | null
+  blocked_experts?: string[] | null
+  policy_note?: string | null
+  description?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export interface ToolPolicyListResponse {
+  policies: ToolPolicyRecord[]
+  total: number
+}
+
+export interface ToolPolicyUpdateRequest {
+  enabled?: boolean
+  risk_tier?: 'low' | 'medium' | 'high'
+  approval_required?: boolean
+  allowed_experts?: string[] | null
+  blocked_experts?: string[] | null
+  policy_note?: string | null
+}
+
+export interface SkillTemplate {
+  id: string
+  template_key: string
+  name: string
+  description?: string | null
+  category: string
+  starter_prompt: string
+  system_hint?: string | null
+  recommended_mode: 'simple' | 'complex'
+  suggested_tags?: string[] | null
+  tool_hints?: string[] | null
+  is_active: boolean
+  is_builtin: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface SkillTemplateCreateRequest {
+  template_key: string
+  name: string
+  description?: string | null
+  category: string
+  starter_prompt: string
+  system_hint?: string | null
+  recommended_mode: 'simple' | 'complex'
+  suggested_tags?: string[] | null
+  tool_hints?: string[] | null
+  is_active?: boolean
+}
+
+export interface SkillTemplateUpdateRequest {
+  name?: string
+  description?: string | null
+  category?: string
+  starter_prompt?: string
+  system_hint?: string | null
+  recommended_mode?: 'simple' | 'complex'
+  suggested_tags?: string[] | null
+  tool_hints?: string[] | null
+  is_active?: boolean
 }
 
 // ============================================================================
@@ -196,4 +270,65 @@ export async function getAvailableTools(): Promise<ToolsListResponse> {
     headers: getHeaders()
   })
   return handleResponse<ToolsListResponse>(response, '获取工具列表失败')
+}
+
+export async function getToolPolicies(): Promise<ToolPolicyListResponse> {
+  const response = await authenticatedFetch(buildUrl('/tools/policies'), {
+    headers: getHeaders(),
+  })
+  return handleResponse<ToolPolicyListResponse>(response, '获取工具治理策略失败')
+}
+
+export async function updateToolPolicy(
+  source: 'builtin' | 'mcp',
+  toolName: string,
+  data: ToolPolicyUpdateRequest
+): Promise<ToolPolicyRecord> {
+  const response = await authenticatedFetch(buildUrl(`/tools/policies/${source}/${toolName}`), {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  })
+  return handleResponse<ToolPolicyRecord>(response, '更新工具治理策略失败')
+}
+
+export async function getSkillTemplates(includeInactive = false): Promise<SkillTemplate[]> {
+  const response = await authenticatedFetch(
+    buildUrl(`/library/templates${includeInactive ? '?include_inactive=true' : ''}`),
+    {
+      headers: getHeaders(),
+    }
+  )
+  return handleResponse<SkillTemplate[]>(response, '获取模板列表失败')
+}
+
+export async function createSkillTemplate(
+  data: SkillTemplateCreateRequest
+): Promise<SkillTemplate> {
+  const response = await authenticatedFetch(buildUrl('/library/templates'), {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  })
+  return handleResponse<SkillTemplate>(response, '创建模板失败')
+}
+
+export async function updateSkillTemplate(
+  templateId: string,
+  data: SkillTemplateUpdateRequest
+): Promise<SkillTemplate> {
+  const response = await authenticatedFetch(buildUrl(`/library/templates/${templateId}`), {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  })
+  return handleResponse<SkillTemplate>(response, '更新模板失败')
+}
+
+export async function deleteSkillTemplate(templateId: string): Promise<void> {
+  const response = await authenticatedFetch(buildUrl(`/library/templates/${templateId}`), {
+    method: 'DELETE',
+    headers: getHeaders(),
+  })
+  return handleResponse<void>(response, '删除模板失败')
 }

@@ -14,6 +14,7 @@ from langgraph.prebuilt import ToolNode
 
 from agents.state import AgentState
 from agents.tool_policy import build_tool_policy_message, evaluate_tool_policy, get_tool_name
+from services.tool_policy_service import tool_policy_service
 from tools import ALL_TOOLS as BASE_TOOLS
 
 logger = logging.getLogger(__name__)
@@ -184,6 +185,7 @@ async def dynamic_tool_node(
         else {}
     )
     expert_type = current_task.get("expert_type")
+    policy_overrides = await tool_policy_service.get_overrides()
 
     # 记录工具调用请求
     for tc in tool_calls:
@@ -207,6 +209,7 @@ async def dynamic_tool_node(
             expert_type=expert_type,
             source=source,
             description=description,
+            overrides=policy_overrides,
         )
         if not decision.allowed:
             blocked_decisions.append((tc, decision))

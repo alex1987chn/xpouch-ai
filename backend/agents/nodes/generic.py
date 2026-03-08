@@ -69,6 +69,7 @@ from agents.state_patch import append_sse_event, get_event_queue_snapshot, repla
 from agents.tool_policy import filter_tools_for_binding
 from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
+from services.tool_policy_service import tool_policy_service
 from tools import ALL_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集
 from utils.llm_factory import get_effective_model, get_expert_llm
 from utils.logger import logger
@@ -430,9 +431,11 @@ async def generic_worker_node(
 
                     # 🔥 MCP: 合并基础工具和动态 MCP 工具
                     runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
+                    policy_overrides = await tool_policy_service.get_overrides()
                     bindable_tools, blocked_tools = filter_tools_for_binding(
                         runtime_tools,
                         expert_type=expert_type,
+                        overrides=policy_overrides,
                     )
 
                     # 🔥 警告：如果 MCP 工具为空但预期应该有

@@ -15,9 +15,11 @@ from models.domain.custom_agent import CustomAgent
 from models.domain.execution_plan import ExecutionPlan
 from models.domain.message import Message
 from models.domain.run_event import RunEvent
+from models.domain.skill_template import SkillTemplate
 from models.domain.subtask import SubTask
 from models.domain.system_expert import SystemExpert
 from models.domain.thread import Thread
+from models.domain.tool_policy import ToolPolicy
 from models.domain.user import User
 
 __all__ = [
@@ -25,6 +27,8 @@ __all__ = [
     "AgentRun",
     "RunEvent",
     "CustomAgent",
+    "ToolPolicy",
+    "SkillTemplate",
     "Thread",
     "Message",
     "ExecutionPlan",

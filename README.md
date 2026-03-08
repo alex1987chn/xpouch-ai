@@ -215,13 +215,16 @@ pnpm run build
 - durable run / run ledger（第一阶段）
 - 轻量 replay / eval / regression assets
 - 同线程单活跃 run 约束（第一版）
-- tool governance / selective approval（第一版）
+- tool governance / selective approval（第二版首批落地）
+- skill / template abstraction（第一版）
 - MCP 动态工具接入
 - Server-Driven UI 事件架构
 
 ### 下一阶段
 
-- skill / template abstraction
+- 交互式 selective approval UI
+- 模板导入导出 / 分享
+- run dashboard / timeline UI
 
 ## 贡献
 
