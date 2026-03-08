@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from sqlmodel import Session
 
 from config import settings
-from crud.run_event import emit_run_created
+from crud.run_event import emit_run_created, emit_run_started, emit_run_timed_out
 from models import AgentRun, RunStatus, Thread
 from utils.error_codes import ErrorCode
 
@@ -66,6 +66,12 @@ def create_agent_run(
         thread_id=thread_id,
         entrypoint=entrypoint,
         mode=mode,
+    )
+    emit_run_started(
+        db,
+        run_id=run.id,
+        thread_id=thread_id,
+        current_node="entrypoint",
     )
 
     _sync_thread_status(db, thread_id, run.status)
@@ -182,6 +188,13 @@ def mark_run_timed_out_by_id(
     run.timed_out_at = datetime.now()
     run.updated_at = datetime.now()
     db.add(run)
+    emit_run_timed_out(
+        db,
+        run_id=run.id,
+        thread_id=run.thread_id,
+        current_node=current_node,
+        deadline_at=run.deadline_at.isoformat() if run.deadline_at else None,
+    )
     _sync_thread_status(db, run.thread_id, run.status)
     return run
 

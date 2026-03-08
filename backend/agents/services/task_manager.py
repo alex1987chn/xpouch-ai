@@ -29,6 +29,7 @@ from crud.execution_plan import (
     get_subtasks_by_execution_plan,
     update_execution_plan_status,
 )
+from crud.run_event import emit_artifact_generated, emit_task_completed
 from models import Message as MessageModel
 from utils.logger import logger
 
@@ -213,6 +214,22 @@ def save_expert_execution_result(
         db.commit()
         db.refresh(subtask)
 
+        execution_plan = subtask.execution_plan
+        run_id = execution_plan.run_id if execution_plan else None
+        thread_id = execution_plan.thread_id if execution_plan else None
+
+        if run_id and thread_id:
+            emit_task_completed(
+                db,
+                run_id=run_id,
+                thread_id=thread_id,
+                execution_plan_id=subtask.execution_plan_id,
+                task_id=str(subtask.id),
+                expert_type=expert_type,
+                has_artifact=artifact_data is not None,
+                duration_ms=duration_ms,
+            )
+
         # 3. 创建 Artifact (如果有)
         if artifact_data:
             from models import ArtifactCreate
@@ -225,7 +242,22 @@ def save_expert_execution_result(
                 language=artifact_data.get("language"),
                 sort_order=artifact_data.get("sort_order", 0),
             )
-            create_artifacts_batch(db, task_id, [artifact_create])
+            created_artifacts = create_artifacts_batch(db, task_id, [artifact_create])
+            if run_id and thread_id:
+                for created_artifact in created_artifacts:
+                    emit_artifact_generated(
+                        db,
+                        run_id=run_id,
+                        thread_id=thread_id,
+                        execution_plan_id=subtask.execution_plan_id,
+                        task_id=str(subtask.id),
+                        artifact_id=created_artifact.id,
+                        artifact_type=created_artifact.type,
+                        artifact_title=created_artifact.title,
+                    )
+
+        if run_id and thread_id:
+            db.commit()
 
         return True
 

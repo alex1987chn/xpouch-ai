@@ -17,9 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **接入节点**：
 - `run_created`：创建 AgentRun 时
+- `run_started`：运行正式进入执行态时
 - `router_decided`：Router 决策完成时
+- `plan_created` / `plan_updated`：计划创建与用户修改后恢复
 - `hitl_interrupted` / `hitl_resumed` / `hitl_rejected`：HITL 中断/恢复/拒绝
-- `run_completed` / `run_failed` / `run_cancelled`：运行终态
+- `task_started` / `task_completed` / `task_failed`：任务执行生命周期
+- `artifact_generated`：产物落库
+- `run_completed` / `run_failed` / `run_cancelled` / `run_timed_out`：运行终态
+
+**修复与加固**：
+- 修正 `run_event` 迁移实现，改回标准 Alembic / PostgreSQL ENUM 方案
+- 时间线 API 增加 `run` / `thread` 归属校验，避免越权读取其他用户的运行账本
 
 **数据迁移**：
 - `20260308_150000_add_run_event_ledger.py`

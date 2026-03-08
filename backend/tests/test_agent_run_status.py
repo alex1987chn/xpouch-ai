@@ -11,7 +11,7 @@ from crud.agent_run import (
     touch_run_heartbeat_by_id,
     update_run_status,
 )
-from models import AgentRun, RunStatus, Thread
+from models import AgentRun, RunEvent, RunEventType, RunStatus, Thread
 from utils.error_codes import ErrorCode
 
 
@@ -19,11 +19,14 @@ class _FakeSession:
     def __init__(self, thread: Thread):
         self.thread = thread
         self.runs: dict[str, AgentRun] = {}
+        self.events: list[RunEvent] = []
         self.commit_called = False
 
     def add(self, obj):
         if isinstance(obj, AgentRun):
             self.runs[obj.id] = obj
+        elif isinstance(obj, RunEvent):
+            self.events.append(obj)
         elif isinstance(obj, Thread):
             self.thread = obj
 
@@ -76,6 +79,10 @@ def test_agent_run_status_updates_sync_thread_status(monkeypatch):
     assert thread.status == "running"
     assert run.deadline_at is not None
     assert int((run.deadline_at - run.started_at).total_seconds()) == 30
+    assert [event.event_type for event in session.events[:2]] == [
+        RunEventType.RUN_CREATED,
+        RunEventType.RUN_STARTED,
+    ]
 
     update_run_status(session, run, RunStatus.WAITING_FOR_APPROVAL, current_node="approval")
     assert thread.status == "paused"
@@ -148,6 +155,7 @@ def test_touch_and_timeout_helpers_update_run_and_thread():
     assert timed_out.error_code == ErrorCode.RUN_TIMED_OUT
     assert timed_out.timed_out_at is not None
     assert thread.status == "idle"
+    assert session.events[-1].event_type == RunEventType.RUN_TIMED_OUT
 
 
 def test_mark_run_cancelled_syncs_thread_status_to_idle():

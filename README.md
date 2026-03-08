@@ -212,12 +212,12 @@ pnpm run build
 - run-based runtime 语义重构
 - complex 模式 HITL / resume / artifact 主链闭环
 - run 级 cancel / timeout / heartbeat / current node
+- durable run / run ledger（第一阶段）
 - MCP 动态工具接入
 - Server-Driven UI 事件架构
 
 ### 下一阶段
 
-- durable run / run ledger
 - replay / eval / regression assets
 - tool governance / risk tier / selective approval
 - skill / template abstraction

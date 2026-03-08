@@ -156,6 +156,38 @@ def _sync_save_wrapper(
             # 可以在这里加 Sentry 监控
 
 
+def _sync_append_run_event_wrapper(
+    *,
+    run_id: str,
+    event_type: str,
+    event_data: dict[str, Any] | None = None,
+    thread_id: str | None = None,
+    execution_plan_id: str | None = None,
+    task_id: str | None = None,
+    note: str | None = None,
+) -> None:
+    """在独立线程中写入运行事件。"""
+    from crud.run_event import append_run_event_and_commit
+    from database import Session, engine
+    from models.enums import RunEventType
+
+    with Session(engine) as new_session:
+        try:
+            append_run_event_and_commit(
+                new_session,
+                run_id=run_id,
+                event_type=RunEventType(event_type),
+                event_data=event_data,
+                thread_id=thread_id,
+                execution_plan_id=execution_plan_id,
+                task_id=task_id,
+                note=note,
+            )
+        except Exception:
+            new_session.rollback()
+            raise
+
+
 async def async_save_expert_result(
     task_id: str,
     expert_type: str,
@@ -180,6 +212,29 @@ async def async_save_expert_result(
     # Python 3.9+ 原生支持，不需要额外导入
     await asyncio.to_thread(
         _sync_save_wrapper, task_id, expert_type, output_result, artifact_data, duration_ms
+    )
+
+
+async def async_append_run_event(
+    *,
+    run_id: str,
+    event_type: str,
+    event_data: dict[str, Any] | None = None,
+    thread_id: str | None = None,
+    execution_plan_id: str | None = None,
+    task_id: str | None = None,
+    note: str | None = None,
+) -> None:
+    """异步代理函数：将运行事件写入线程池。"""
+    await asyncio.to_thread(
+        _sync_append_run_event_wrapper,
+        run_id=run_id,
+        event_type=event_type,
+        event_data=event_data,
+        thread_id=thread_id,
+        execution_plan_id=execution_plan_id,
+        task_id=task_id,
+        note=note,
     )
 
 
