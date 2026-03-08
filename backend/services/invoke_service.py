@@ -16,7 +16,12 @@ from sqlmodel import Session
 from agents.graph import create_smart_router_workflow
 from agents.nodes.generic import generic_worker_node
 from agents.services.expert_manager import get_expert_config_cached
-from crud.agent_run import create_agent_run, mark_run_completed, mark_run_failed
+from crud.agent_run import (
+    create_agent_run,
+    ensure_no_active_run_for_thread,
+    mark_run_completed,
+    mark_run_failed,
+)
 from crud.invoke_session import InvokePersistence
 from database import get_session
 from models import AgentRun, ExecutionPlan, Thread, User
@@ -47,6 +52,7 @@ class InvokeService:
         """执行双模调用；结果与异常时的失败状态均由持久化层落库。"""
         self._validate_mode(mode, agent_id)
         thread = self._get_or_create_thread(thread_id, user, message, agent_id)
+        ensure_no_active_run_for_thread(self.session, thread_id=thread.id, user_id=user.id)
 
         self.session.add(thread)
         agent_run = create_agent_run(

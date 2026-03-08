@@ -61,11 +61,15 @@ const SSE_RETRY_BASE_DELAY = 1000
 
 class FatalSSEError extends Error {
   status?: number
+  code?: string
+  details?: unknown
 
-  constructor(message: string, status?: number) {
+  constructor(message: string, status?: number, code?: string, details?: unknown) {
     super(message)
     this.name = 'FatalSSEError'
     this.status = status
+    this.code = code
+    this.details = details
   }
 }
 
@@ -84,6 +88,28 @@ function extractErrorStatus(err: unknown): number | undefined {
   if (typeof err !== 'object' || err === null) return undefined
   const maybe = err as { status?: number; statusCode?: number }
   return maybe.status ?? maybe.statusCode
+}
+
+async function extractResponseError(response: Response, fallbackMessage: string): Promise<{
+  message: string
+  status: number
+  code?: string
+  details?: unknown
+}> {
+  try {
+    const payload = await response.clone().json()
+    return {
+      message: payload.error?.message || payload.detail || fallbackMessage,
+      status: response.status,
+      code: payload.error?.code,
+      details: payload.error?.details,
+    }
+  } catch {
+    return {
+      message: fallbackMessage,
+      status: response.status,
+    }
+  }
 }
 
 function runSSEStream({
@@ -133,14 +159,22 @@ function runSSEStream({
       openWhenHidden: true,
 
       async onopen(response) {
-        try {
-          handleSSEConnectionError(response, errorContext)
-        } catch (error) {
-          const status = extractErrorStatus(error)
-          safeReject(error instanceof Error ? error : new Error('SSE 连接失败'))
+        if (!response.ok) {
+          const parsedError = await extractResponseError(
+            response,
+            `SSE 连接失败: ${response.status}`
+          )
+          const fatalError = new FatalSSEError(
+            parsedError.message,
+            parsedError.status,
+            parsedError.code,
+            parsedError.details,
+          )
+          safeReject(fatalError)
           ctrl.abort()
-          throw new FatalSSEError(`SSE 连接失败: ${status ?? 'unknown'}`, status)
+          throw fatalError
         }
+        handleSSEConnectionError(response, errorContext)
         retryCount = 0
         updateActivity()
         logger.debug(`[chat.ts] ${logPrefix}SSE 连接已建立，重置重连计数器`)
@@ -239,7 +273,13 @@ function runSSEStream({
         if (status !== undefined && status >= 400 && status < 500) {
           logger.error(`[chat.ts] ${logPrefix}SSE 收到 ${status} 客户端错误，停止重试:`, err)
           safeReject(err instanceof Error ? err : new Error(`客户端错误: ${status}`))
-          throw new FatalSSEError(`客户端错误: ${status}`, status)
+          const clientError = err as { code?: string; details?: unknown }
+          throw new FatalSSEError(
+            err instanceof Error ? err.message : `客户端错误: ${status}`,
+            status,
+            clientError.code,
+            clientError.details,
+          )
         }
 
         if (retryCount < SSE_MAX_RETRIES) {

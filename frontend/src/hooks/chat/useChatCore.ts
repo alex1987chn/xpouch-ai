@@ -254,6 +254,11 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       return finalResponseContent
 
     } catch (error) {
+      const maybeConflict = error as { status?: number; code?: string; message?: string }
+      const isActiveRunConflict =
+        maybeConflict?.status === 409 &&
+        (maybeConflict?.code === 'ACTIVE_RUN_CONFLICT' ||
+          maybeConflict?.message?.includes('当前会话已有进行中的任务'))
       const isAbortError = 
         (error instanceof Error && error.name === 'AbortError') ||
         (error instanceof Error && error.message?.toLowerCase().includes('abort')) ||
@@ -275,6 +280,11 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         // 移除刚才添加的用户消息和助手消息（因为实际没有发送成功）
         const currentMessages = useChatStore.getState().messages
         useChatStore.getState().setMessages(currentMessages.slice(0, -2))
+      } else if (isActiveRunConflict) {
+        addMessage({
+          role: 'assistant',
+          content: '当前会话已有进行中的任务，请先等待完成、确认恢复、取消任务，或切换到新会话后再继续。'
+        })
       } else {
         errorHandler.handle(error, 'sendMessageCore')
 
