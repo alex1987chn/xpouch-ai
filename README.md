@@ -28,6 +28,8 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - complex 模式下的 HITL 审批与恢复
 - `Thread / AgentRun / ExecutionPlan` 三层运行时语义
 - artifact 持久化、恢复展示与多任务串行执行
+- 技能模板（Library 面板 + 内置模板 + 一键发起会话）
+- 工具治理（可配置策略 + Library 管理面板，view_admin 只读）
 - SSE 驱动的 Server-Driven UI
 - MCP 动态工具接入
 
@@ -63,6 +65,18 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - 支持 `sse` / `streamable_http`
 - Generic Worker 运行时绑定 `BASE_TOOLS + MCP_TOOLS`
 - 支持后台管理 MCP Server
+
+### 技能模板（Skill Templates）
+
+- 模板模型与 `GET/POST/PUT/DELETE /api/library/templates` 管理接口
+- 内置模板：出行路线简报、研究结论报告、写作大纲启动器
+- Library 页「Skill Templates」面板：浏览、管理、一键以 starter prompt 发起新会话
+
+### 工具治理（Tool Governance）
+
+- 统一治理层：`risk_tier`、`allow/deny/require_approval`，绑定与执行前双重校验
+- 可配置策略：`ToolPolicy` 持久化，`GET/PUT /api/tools/policies`，运行时合并数据库覆盖
+- Library 页「Tool Governance」面板：管理员查看/编辑策略（`view_admin` 只读）
 
 ### Server-Driven UI
 
