@@ -266,6 +266,26 @@ async def generic_worker_node(
     )
     logger.info(f"[GenericWorker] 已生成 task.started 事件: {expert_type}")
 
+    run_id = state.get("run_id")
+    thread_id = state.get("thread_id")
+    execution_plan_id = state.get("execution_plan_id")
+    if run_id and thread_id:
+        try:
+            from utils.async_task_queue import async_append_run_event
+
+            asyncio.create_task(
+                async_append_run_event(
+                    run_id=run_id,
+                    event_type="task_started",
+                    thread_id=thread_id,
+                    execution_plan_id=execution_plan_id,
+                    task_id=str(current_task.get("id", task_id)),
+                    event_data={"expert_type": expert_type, "description": description},
+                )
+            )
+        except (RuntimeError, ValueError) as event_err:
+            logger.warning(f"[GenericWorker] ⚠️ task_started 账本写入提交失败: {event_err}")
+
     try:
         # 获取专家配置参数
         system_prompt = expert_config["system_prompt"]
@@ -708,6 +728,26 @@ async def generic_worker_node(
             task_id=task_id, expert_type=expert_type, description=description, error=str(e)
         )
         logger.info(f"[GenericWorker] 已生成 task.failed 事件: {expert_type}")
+
+        run_id = state.get("run_id")
+        thread_id = state.get("thread_id")
+        execution_plan_id = state.get("execution_plan_id")
+        if run_id and thread_id:
+            try:
+                from utils.async_task_queue import async_append_run_event
+
+                asyncio.create_task(
+                    async_append_run_event(
+                        run_id=run_id,
+                        event_type="task_failed",
+                        thread_id=thread_id,
+                        execution_plan_id=execution_plan_id,
+                        task_id=str(db_uuid) if db_uuid else str(task_id),
+                        event_data={"expert_type": expert_type, "error_message": str(e)},
+                    )
+                )
+            except (RuntimeError, ValueError) as event_err:
+                logger.warning(f"[GenericWorker] ⚠️ task_failed 账本写入提交失败: {event_err}")
 
         # ✅ 合并 started 事件和 failed 事件（不可变）
         full_event_queue = append_sse_event(initial_event_queue, sse_event_to_string(failed_event))

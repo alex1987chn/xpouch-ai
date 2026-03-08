@@ -198,6 +198,23 @@ def emit_run_created(
     )
 
 
+def emit_run_started(
+    db: Session,
+    *,
+    run_id: str,
+    thread_id: str,
+    current_node: str | None = None,
+) -> RunEvent:
+    """发送 RUN_STARTED 事件"""
+    return append_run_event(
+        db,
+        run_id=run_id,
+        event_type=RunEventType.RUN_STARTED,
+        thread_id=thread_id,
+        event_data={"current_node": current_node},
+    )
+
+
 def emit_router_decided(
     db: Session,
     *,
@@ -233,6 +250,26 @@ def emit_plan_created(
         thread_id=thread_id,
         execution_plan_id=execution_plan_id,
         event_data={"task_count": task_count, "plan_summary": plan_summary},
+    )
+
+
+def emit_plan_updated(
+    db: Session,
+    *,
+    run_id: str,
+    thread_id: str,
+    execution_plan_id: str,
+    plan_version: int,
+    task_count: int,
+) -> RunEvent:
+    """发送 PLAN_UPDATED 事件"""
+    return append_run_event(
+        db,
+        run_id=run_id,
+        event_type=RunEventType.PLAN_UPDATED,
+        thread_id=thread_id,
+        execution_plan_id=execution_plan_id,
+        event_data={"plan_version": plan_version, "task_count": task_count},
     )
 
 

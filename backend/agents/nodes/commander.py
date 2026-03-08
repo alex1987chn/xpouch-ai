@@ -399,6 +399,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
                 def _create_execution_plan():
                     from crud.execution_plan import get_subtasks_by_execution_plan
+                    from crud.run_event import emit_plan_created
 
                     with Session(engine) as db_session:
                         created_plan, is_reused = get_or_create_execution_plan(
@@ -428,6 +429,16 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                             }
                             for subtask in persisted_subtasks
                         ]
+                        if not is_reused and run_id:
+                            emit_plan_created(
+                                db_session,
+                                run_id=run_id,
+                                thread_id=thread_id,
+                                execution_plan_id=created_plan.id,
+                                task_count=len(persisted_subtasks),
+                                plan_summary=commander_response.strategy,
+                            )
+                            db_session.commit()
                         return created_plan.id, is_reused, serialized_subtasks
 
                 execution_plan_id, is_reused, sub_tasks_list = await asyncio.to_thread(

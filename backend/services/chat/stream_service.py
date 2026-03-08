@@ -35,6 +35,7 @@ from crud.agent_run import (
 )
 from crud.run_event import (
     emit_hitl_interrupted,
+    emit_plan_updated,
     emit_router_decided,
     emit_run_completed,
     emit_run_failed,
@@ -919,6 +920,18 @@ class StreamService:
             # 如果提供了更新后的计划，应用它
             if updated_plan:
                 await self._apply_updated_plan(graph, config, updated_plan)
+                if run_id:
+                    execution_plan = self._get_execution_plan_by_run(run_id)
+                    if execution_plan:
+                        emit_plan_updated(
+                            self.db,
+                            run_id=run_id,
+                            thread_id=thread_id,
+                            execution_plan_id=execution_plan.id,
+                            plan_version=int(execution_plan.plan_version),
+                            task_count=len(updated_plan),
+                        )
+                        self.db.commit()
 
             # 🔥🔥🔥 关键修复：外层循环驱动任务执行直到完成
             # LangGraph 的 astream_events 在第一个循环结束后就返回，不会自动继续
