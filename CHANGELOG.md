@@ -45,6 +45,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/api/chat` 与 `InvokeService` 已拒绝同线程新的活跃 run
 - 前端对 409 冲突增加明确提示，不再只显示泛化错误
 
+### Tool Governance 与 Selective Approval（2026-03-08）
+
+**治理层**：
+- 新增 `backend/agents/tool_policy.py`
+- 新增统一 `risk_tier` 与 `policy action`
+- `generic` 绑定工具前会过滤不应暴露给当前 expert 的工具
+- `tool_runtime` 执行前会再次做策略校验，作为最后一道强制保护
+
+**第一版策略**：
+- `memorize_expert` 已被禁止主动调用 `search_web / read_webpage`
+- 高风险 / 副作用 MCP 工具会被要求额外审批，并在第一版中直接阻止执行
+- `/api/tools/available` 已返回 `risk_tier / approval_required / policy_note`
+
 ### 运行时重构封板（2026-03-08）
 
 **运行时语义收口**：

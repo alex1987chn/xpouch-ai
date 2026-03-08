@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
+from agents.tool_policy import BUILTIN_TOOL_POLICIES, infer_mcp_tool_metadata
 from database import get_session
 from dependencies import get_current_user
 from models import User
@@ -23,6 +24,9 @@ class ToolInfo(BaseModel):
     name: str
     description: str
     category: str  # builtin, mcp
+    risk_tier: str
+    approval_required: bool
+    policy_note: str | None = None
 
 
 class ToolsListResponse(BaseModel):
@@ -53,21 +57,33 @@ async def get_available_tools(
             name="search_web",
             description="联网搜索，获取实时信息（新闻、股价、天气等）",
             category="builtin",
+            risk_tier=BUILTIN_TOOL_POLICIES["search_web"].risk_tier.value,
+            approval_required=BUILTIN_TOOL_POLICIES["search_web"].approval_required,
+            policy_note=BUILTIN_TOOL_POLICIES["search_web"].policy_note,
         ),
         ToolInfo(
             name="read_webpage",
             description="读取网页内容，获取 URL 链接的详细内容",
             category="builtin",
+            risk_tier=BUILTIN_TOOL_POLICIES["read_webpage"].risk_tier.value,
+            approval_required=BUILTIN_TOOL_POLICIES["read_webpage"].approval_required,
+            policy_note=BUILTIN_TOOL_POLICIES["read_webpage"].policy_note,
         ),
         ToolInfo(
             name="calculator",
             description="数学计算，确保复杂计算准确",
             category="builtin",
+            risk_tier=BUILTIN_TOOL_POLICIES["calculator"].risk_tier.value,
+            approval_required=BUILTIN_TOOL_POLICIES["calculator"].approval_required,
+            policy_note=BUILTIN_TOOL_POLICIES["calculator"].policy_note,
         ),
         ToolInfo(
             name="get_current_time",
             description="获取当前时间，处理时间相关问题",
             category="builtin",
+            risk_tier=BUILTIN_TOOL_POLICIES["get_current_time"].risk_tier.value,
+            approval_required=BUILTIN_TOOL_POLICIES["get_current_time"].approval_required,
+            policy_note=BUILTIN_TOOL_POLICIES["get_current_time"].policy_note,
         ),
     ]
     tools.extend(builtin_tools)
@@ -76,11 +92,15 @@ async def get_available_tools(
     try:
         mcp_servers = session.exec(select(MCPServer).where(MCPServer.is_active)).all()
         for server in mcp_servers:
+            metadata = infer_mcp_tool_metadata(server.name, server.description)
             tools.append(
                 ToolInfo(
                     name=server.name,
                     description=server.description or f"MCP 工具: {server.name}",
                     category="mcp",
+                    risk_tier=metadata.risk_tier.value,
+                    approval_required=metadata.approval_required,
+                    policy_note=metadata.policy_note,
                 )
             )
     except Exception as e:

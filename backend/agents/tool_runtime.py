@@ -13,6 +13,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.prebuilt import ToolNode
 
 from agents.state import AgentState
+from agents.tool_policy import build_tool_policy_message, evaluate_tool_policy, get_tool_name
 from tools import ALL_TOOLS as BASE_TOOLS
 
 logger = logging.getLogger(__name__)
@@ -158,7 +159,8 @@ async def dynamic_tool_node(
         mcp_tools = config.get("configurable", {}).get("mcp_tools", [])
 
     runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
-    tool_executor = ToolNode(runtime_tools)
+    builtin_tool_names = {get_tool_name(tool) for tool in BASE_TOOLS}
+    tool_name_to_tool = {get_tool_name(tool): tool for tool in runtime_tools}
 
     # 如果有 MCP 工具，使用更长的超时
     has_mcp_tools = len(mcp_tools) > 0
@@ -174,6 +176,15 @@ async def dynamic_tool_node(
             tool_calls = msg.tool_calls
             break
 
+    task_list = state.get("task_list", []) if isinstance(state, dict) else []
+    current_task_index = state.get("current_task_index", 0) if isinstance(state, dict) else 0
+    current_task = (
+        task_list[current_task_index]
+        if isinstance(task_list, list) and 0 <= current_task_index < len(task_list)
+        else {}
+    )
+    expert_type = current_task.get("expert_type")
+
     # 记录工具调用请求
     for tc in tool_calls:
         tool_name = tc.get("name", "unknown")
@@ -184,6 +195,43 @@ async def dynamic_tool_node(
             "MCP" if has_mcp_tools else "BASE",
             str(tool_args)[:200],
         )
+
+    blocked_decisions = []
+    for tc in tool_calls:
+        tool_name = tc.get("name", "unknown")
+        tool = tool_name_to_tool.get(tool_name)
+        source = "builtin" if tool_name in builtin_tool_names else "mcp"
+        description = getattr(tool, "description", None) if tool is not None else None
+        decision = evaluate_tool_policy(
+            tool_name=tool_name,
+            expert_type=expert_type,
+            source=source,
+            description=description,
+        )
+        if not decision.allowed:
+            blocked_decisions.append((tc, decision))
+
+    if blocked_decisions:
+        for _tc, decision in blocked_decisions:
+            logger.warning(
+                "[ToolNode] 工具调用被治理层拦截 | expert=%s tool=%s action=%s reason=%s",
+                expert_type,
+                decision.tool_name,
+                decision.action,
+                decision.reason,
+            )
+        return {
+            "messages": [
+                ToolMessage(
+                    content=build_tool_policy_message(decision),
+                    tool_call_id=tc.get("id", "unknown"),
+                    name=tc.get("name", "unknown"),
+                )
+                for tc, decision in blocked_decisions
+            ]
+        }
+
+    tool_executor = ToolNode(runtime_tools)
 
     # 执行工具调用（带重试）
     for attempt in range(1, MAX_RETRIES + 1):
