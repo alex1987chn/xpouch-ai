@@ -37,6 +37,19 @@ def _index_names(conn, table_name: str) -> set[str]:
 def upgrade() -> None:
     conn = op.get_bind()
 
+    # 幂等创建枚举，避免重复迁移或部分失败后重跑时报 DuplicateObject
+    op.execute(
+        """
+        DO $$ BEGIN
+            CREATE TYPE run_status_enum AS ENUM (
+                'queued', 'running', 'waiting_for_approval', 'resuming',
+                'completed', 'failed', 'cancelled', 'timed_out'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END $$
+        """
+    )
     run_status_enum = sa.Enum(
         "queued",
         "running",
@@ -49,7 +62,6 @@ def upgrade() -> None:
         name="run_status_enum",
         create_type=False,
     )
-    run_status_enum.create(conn, checkfirst=True)
 
     if not _table_exists(conn, "agentrun"):
         op.create_table(
