@@ -13,10 +13,11 @@ Changes:
 import sqlalchemy as sa
 from alembic import op
 
-revision = "20260313_120000"
-down_revision = "20260308_230000"
-branch_labels = None
-depends_on = None
+# revision identifiers, used by Alembic.
+revision: str = "20260313_120000"
+down_revision: str | None = "20260308_230000"
+branch_labels: str | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:
