@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2026-03-13] - v3.3.0 更新
 
+### Admin Stats Dashboard（管理统计面板）
+
+**新增功能**：
+- 新增后端统计 API：`GET /api/admin/stats`（概览）、`GET /api/admin/stats/trends`（趋势）、`GET /api/admin/stats/runs`（运行列表）
+- 新增前端统计页面 `StatsPage.tsx`，路由 `/admin/stats`
+- 数据库层聚合统计：使用 `func.count` / `func.sum` / `func.avg` + `group_by`
+- 指标卡片：总运行数、成功率、HITL 使用率、平均耗时
+- 趋势图表：7 天运行趋势折线图
+- 运行列表：带分页（默认 50 条），显示状态、模式、时间、用户
+
+**主题适配**：
+- Light / Dark 主题完整适配
+- 使用透明度色值（`/10`, `/20`, `/70`）确保深色主题可见性
+
+**国际化**：
+- 中英日三语支持：stats.title、stats.metrics.*、stats.trend.*、stats.runs.*
+
+**侧边栏入口**：
+- 管理员可在侧边栏「统计」菜单进入统计页面
+- 修复笔记本屏幕下导航菜单被「最近会话」遮挡的布局问题
+
 ### Run Timeline UI 与前端入口
 
 **新增功能**：

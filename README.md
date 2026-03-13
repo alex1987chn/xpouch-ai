@@ -91,6 +91,14 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - 展示 16 种事件类型：run 创建、router 决策、HITL 中断/恢复、任务执行、artifact 生成、运行终态等
 - API：`GET /api/runs/{run_id}`、`GET /api/runs/{run_id}/timeline`、`GET /api/runs/thread/{thread_id}/timeline`
 
+### Admin Stats Dashboard（管理统计面板）
+
+- 运行统计概览：总运行数、成功率、HITL 使用率、平均耗时
+- 7 天趋势图表：按日期聚合的运行数据
+- 运行列表：带分页，显示状态、模式、时间、用户
+- 数据库层聚合：使用 `func.count` / `func.sum` / `func.avg` + `group_by`
+- API：`GET /api/admin/stats`、`GET /api/admin/stats/trends`、`GET /api/admin/stats/runs`
+
 ## 当前架构
 
 ```text
