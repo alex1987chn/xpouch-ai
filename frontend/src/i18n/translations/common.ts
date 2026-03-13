@@ -1,5 +1,3 @@
-import { TranslationKey } from '../index'
-
 // 通用翻译 - 导航、按钮、通用操作等
 
 export const zh: Record<string, string> = {
@@ -16,6 +14,7 @@ export const zh: Record<string, string> = {
   recentChats: '最近会话',
   navDashboard: '首页',
   navExperts: '专家管理',
+  navStats: '运行统计',
   memoryDump: '最近会话',
   noDataStream: '[无数据]',
 
@@ -71,7 +70,24 @@ export const zh: Record<string, string> = {
 
   // Common states
   success: '成功',
+  failed: '失败',
   loading: '加载中...',
+  
+  // StatsPage
+  globalStats: '全局统计',
+  myStats: '我的统计',
+  totalRuns: '总运行数',
+  successRate: '成功率',
+  hitlCount: 'HITL 拦截',
+  avgDuration: '平均耗时',
+  trends: '趋势',
+  days: '天',
+  noRuns: '暂无运行记录',
+  runList: '运行列表',
+  prev: '上一页',
+  next: '下一页',
+  viewDetails: '查看详情',
+  loadFailed: '加载失败',
 
   // 权限与通用提示
   permissionDenied: '权限不足',
@@ -144,6 +160,7 @@ export const en: Record<string, string> = {
   recentChats: 'Recent Chats',
   navDashboard: 'Dashboard',
   navExperts: 'Experts',
+  navStats: 'Run Stats',
   memoryDump: 'Recent Chats',
   noDataStream: '[NO DATA]',
 
@@ -199,7 +216,24 @@ export const en: Record<string, string> = {
 
   // Common states
   success: 'Success',
+  failed: 'Failed',
   loading: 'Loading...',
+  
+  // StatsPage
+  globalStats: 'Global Stats',
+  myStats: 'My Stats',
+  totalRuns: 'Total Runs',
+  successRate: 'Success Rate',
+  hitlCount: 'HITL Intercepts',
+  avgDuration: 'Avg Duration',
+  trends: 'Trends',
+  days: 'days',
+  noRuns: 'No runs yet',
+  runList: 'Run List',
+  prev: 'Prev',
+  next: 'Next',
+  viewDetails: 'View Details',
+  loadFailed: 'Load Failed',
 
   // 权限与通用提示
   permissionDenied: 'Permission Denied',
@@ -272,6 +306,7 @@ export const ja: Record<string, string> = {
   recentChats: '最近のチャット',
   navDashboard: 'ダッシュボード',
   navExperts: 'エキスパート管理',
+  navStats: '実行統計',
   memoryDump: '最近のチャット',
   noDataStream: '[データなし]',
 
@@ -327,7 +362,24 @@ export const ja: Record<string, string> = {
 
   // Common states
   success: '成功',
+  failed: '失敗',
   loading: '読み込み中...',
+  
+  // StatsPage
+  globalStats: 'グローバル統計',
+  myStats: 'マイ統計',
+  totalRuns: '総実行数',
+  successRate: '成功率',
+  hitlCount: 'HITL傍受',
+  avgDuration: '平均所要時間',
+  trends: '傾向',
+  days: '日',
+  noRuns: '実行記録なし',
+  runList: '実行リスト',
+  prev: '前へ',
+  next: '次へ',
+  viewDetails: '詳細を見る',
+  loadFailed: '読み込み失敗',
 
   // 权限与通用提示
   permissionDenied: '権限がありません',

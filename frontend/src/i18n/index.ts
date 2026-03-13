@@ -7,7 +7,7 @@ export type Language = 'zh' | 'en' | 'ja'
 export type TranslationKey =
   // Navigation
   | 'newChat' | 'draftSaved' | 'draftRestored' | 'history' | 'knowledgeBase' | 'library' | 'workshop' | 'settings' | 'home' | 'recentChats'
-  | 'navDashboard' | 'navExperts' | 'memoryDump' | 'noDataStream'
+  | 'navDashboard' | 'navExperts' | 'navStats' | 'memoryDump' | 'noDataStream'
   // Home
   | 'greeting' | 'slogan' | 'placeholder' | 'featuredAgents' | 'myAgents' | 'createAgent' | 'editAgent' | 'backToChat'
   | 'addCustomAgent' | 'createYourFirstAgent' | 'statusReady' | 'statusIdle' | 'heroTitle'
@@ -124,6 +124,9 @@ export type TranslationKey =
   // Batch Delete
   | 'select' | 'selectAll' | 'deselectAll' | 'selectedCount' | 'batchDelete' | 'batchDeleteConfirm'
   | 'moreAvailable' | 'loadMore' | 'noMoreRecords'
+  // StatsPage
+  | 'globalStats' | 'myStats' | 'totalRuns' | 'successRate' | 'hitlCount' | 'avgDuration'
+  | 'trends' | 'days' | 'noRuns' | 'runList' | 'prev' | 'next' | 'viewDetails' | 'loadFailed' | 'failed'
 
 
 interface I18nContextType {

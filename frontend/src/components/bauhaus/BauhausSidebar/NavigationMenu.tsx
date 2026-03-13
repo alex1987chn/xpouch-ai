@@ -7,7 +7,7 @@
  * 所有视觉风格（边框、阴影、变换）由 CSS 变量控制
  */
 
-import { Home, Library, MessageSquare, Shield } from 'lucide-react'
+import { BarChart3, Home, Library, MessageSquare, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TranslationKey } from '@/i18n'
 import { TW } from './constants'
@@ -20,13 +20,14 @@ export function NavigationMenu({
   isOnLibrary,
   isOnHistory,
   isOnAdmin,
+  isOnStats,
   showExpertAdmin,
   onMenuClick,
   t,
 }: NavigationMenuProps) {
   if (isCollapsed) {
     return (
-      <div className="flex-1 flex flex-col items-center">
+      <div className="shrink-0 flex flex-col items-center">
         {/* 主菜单 - 首页、知识库、历史记录 */}
         <div className="flex flex-col items-center space-y-2">
           {/* 首页按钮 */}
@@ -61,13 +62,21 @@ export function NavigationMenu({
               t={t}
             />
           )}
+
+          {/* 统计按钮 */}
+          <NavButtonCollapsed
+            isActive={isOnStats}
+            onClick={() => onMenuClick('/admin/stats')}
+            icon={<BarChart3 className="w-4 h-4 flex-shrink-0" />}
+            label={t('navStats')}
+          />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 w-full flex flex-col overflow-hidden">
+    <div className="shrink-0 w-full flex flex-col overflow-hidden">
       {/* 主菜单 - 首页、知识库、历史记录 - 固定不滚动 */}
       <div className="shrink-0 flex flex-col items-center py-2">
         {/* 导航标题 */}
@@ -109,6 +118,14 @@ export function NavigationMenu({
             t={t}
           />
         )}
+
+        {/* 统计按钮 */}
+        <NavButtonExpanded
+          isActive={isOnStats}
+          onClick={() => onMenuClick('/admin/stats')}
+          icon={<BarChart3 className="w-5 h-5 flex-shrink-0" />}
+          label={t('navStats')}
+        />
       </div>
     </div>
   )

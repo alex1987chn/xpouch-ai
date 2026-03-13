@@ -80,6 +80,7 @@ export default function BauhausSidebar({
   const isOnLibrary = location.pathname === '/library'
   const isOnHistory = location.pathname === '/history'
   const isOnAdmin = location.pathname === '/admin/experts'
+  const isOnStats = location.pathname === '/admin/stats'
 
   // 判断是否显示专家配置入口
   const showExpertAdmin = true
@@ -269,6 +270,7 @@ export default function BauhausSidebar({
             isOnLibrary={isOnLibrary}
             isOnHistory={isOnHistory}
             isOnAdmin={isOnAdmin}
+            isOnStats={isOnStats}
             showExpertAdmin={showExpertAdmin}
             onMenuClick={handleMenuClick}
             t={t}
@@ -282,6 +284,7 @@ export default function BauhausSidebar({
               isOnLibrary={isOnLibrary}
               isOnHistory={isOnHistory}
               isOnAdmin={isOnAdmin}
+              isOnStats={isOnStats}
               showExpertAdmin={showExpertAdmin}
               onMenuClick={handleMenuClick}
               t={t}

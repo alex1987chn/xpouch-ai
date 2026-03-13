@@ -33,6 +33,7 @@ import HomePage from '@/pages/home/HomePage'
 
 // 路由懒加载 - 代码分割优化
 const ExpertAdminPage = lazy(() => import('@/pages/admin/ExpertAdminPage'))
+const StatsPage = lazy(() => import('@/pages/admin/StatsPage'))
 const RunTimelinePage = lazy(() => import('@/pages/run/RunTimelinePage'))
 
 // 路由配置
@@ -69,6 +70,14 @@ export const router = createBrowserRouter([
               <ExpertAdminPage />
             </SuspenseWithErrorBoundary>
           </AdminRoute>
+        )
+      },
+      {
+        path: 'admin/stats',
+        element: (
+          <SuspenseWithErrorBoundary fallback={<LoadingFallback />}>
+            <StatsPage />
+          </SuspenseWithErrorBoundary>
         )
       },
       {

@@ -6,6 +6,7 @@
 
 import { type Conversation } from '@/services/chat'
 import { TranslationKey } from '@/i18n'
+import { type ToastFn } from '@/components/ui/use-toast'
 
 export interface BauhausSidebarProps {
   className?: string
@@ -36,9 +37,11 @@ export interface NavigationMenuProps {
   isOnLibrary: boolean
   isOnHistory: boolean
   isOnAdmin: boolean
+  isOnStats: boolean
   showExpertAdmin: boolean
   onMenuClick: (path: string) => void
   t: (key: TranslationKey) => string
+  toast?: ToastFn
 }
 
 export interface RecentConversationsProps {
