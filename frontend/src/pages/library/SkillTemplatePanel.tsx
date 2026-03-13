@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Bot, Plus, Rocket, Save, Trash2 } from 'lucide-react'
+import { Bot, FileCode, Plus, Rocket, Save, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '@/components/ui/use-toast'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,15 @@ import {
   type SkillTemplate,
   updateSkillTemplate,
 } from '@/services/admin'
+
+// Artifact 类型标签颜色映射
+const ARTIFACT_TYPE_COLORS: Record<string, string> = {
+  markdown: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  code: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  html: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  text: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+  image: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+}
 
 interface SkillTemplatePanelProps {
   searchQuery: string
@@ -29,6 +38,8 @@ interface TemplateDraft {
   recommended_mode: 'simple' | 'complex'
   suggested_tags: string
   tool_hints: string
+  expected_artifact_types: string
+  artifact_schema_hint: string
   is_active: boolean
   is_builtin: boolean
 }
@@ -43,6 +54,8 @@ const EMPTY_DRAFT: TemplateDraft = {
   recommended_mode: 'complex',
   suggested_tags: '',
   tool_hints: '',
+  expected_artifact_types: '',
+  artifact_schema_hint: '',
   is_active: true,
   is_builtin: false,
 }
@@ -59,6 +72,8 @@ function draftFromTemplate(template: SkillTemplate): TemplateDraft {
     recommended_mode: template.recommended_mode,
     suggested_tags: (template.suggested_tags ?? []).join(', '),
     tool_hints: (template.tool_hints ?? []).join(', '),
+    expected_artifact_types: (template.expected_artifact_types ?? []).join(', '),
+    artifact_schema_hint: template.artifact_schema_hint ?? '',
     is_active: template.is_active,
     is_builtin: template.is_builtin,
   }
@@ -209,6 +224,8 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
           recommended_mode: draft.recommended_mode,
           suggested_tags: splitCsv(draft.suggested_tags),
           tool_hints: splitCsv(draft.tool_hints),
+          expected_artifact_types: splitCsv(draft.expected_artifact_types),
+          artifact_schema_hint: draft.artifact_schema_hint || null,
           is_active: draft.is_active,
         })
       } else {
@@ -222,6 +239,8 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
           recommended_mode: draft.recommended_mode,
           suggested_tags: splitCsv(draft.suggested_tags),
           tool_hints: splitCsv(draft.tool_hints),
+          expected_artifact_types: splitCsv(draft.expected_artifact_types),
+          artifact_schema_hint: draft.artifact_schema_hint || null,
           is_active: draft.is_active,
         })
       }
@@ -320,6 +339,22 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
                 <p className="mt-2 line-clamp-2 text-xs text-content-secondary">
                   {template.description || t('templateNoDescription') || 'No description'}
                 </p>
+                {template.expected_artifact_types && template.expected_artifact_types.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {template.expected_artifact_types.map(type => (
+                      <span
+                        key={type}
+                        className={cn(
+                          'inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-mono uppercase',
+                          ARTIFACT_TYPE_COLORS[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                        )}
+                      >
+                        <FileCode className="h-2.5 w-2.5" />
+                        {type}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </button>
             ))}
           </div>
@@ -432,6 +467,25 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
               onChange={e => setDraft(prev => ({ ...prev, tool_hints: e.target.value }))}
               placeholder="search_web, read_webpage"
               className="w-full border-2 border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-strong"
+            />
+          </Field>
+          <Field label={t('expectedArtifactTypes') || 'Expected Artifact Types'}>
+            <input
+              value={draft.expected_artifact_types}
+              disabled={isReadonly}
+              onChange={e => setDraft(prev => ({ ...prev, expected_artifact_types: e.target.value }))}
+              placeholder="markdown, code, html"
+              className="w-full border-2 border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-strong"
+            />
+          </Field>
+          <Field label={t('artifactSchemaHint') || 'Artifact Schema Hint'} className="md:col-span-2">
+            <textarea
+              rows={6}
+              value={draft.artifact_schema_hint}
+              disabled={isReadonly}
+              onChange={e => setDraft(prev => ({ ...prev, artifact_schema_hint: e.target.value }))}
+              placeholder="产出物应包含：&#10;# 标题&#10;- 要点1&#10;- 要点2"
+              className="w-full resize-y border-2 border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary font-mono outline-none focus:border-border-strong"
             />
           </Field>
         </div>

@@ -17,6 +17,8 @@ class SkillTemplateCreate(BaseModel):
     recommended_mode: str = "complex"
     suggested_tags: list[str] | None = None
     tool_hints: list[str] | None = None
+    expected_artifact_types: list[str] | None = None
+    artifact_schema_hint: str | None = None
     is_active: bool = True
 
 
@@ -29,6 +31,8 @@ class SkillTemplateUpdate(BaseModel):
     recommended_mode: str | None = None
     suggested_tags: list[str] | None = None
     tool_hints: list[str] | None = None
+    expected_artifact_types: list[str] | None = None
+    artifact_schema_hint: str | None = None
     is_active: bool | None = None
 
 
@@ -43,6 +47,8 @@ class SkillTemplateResponse(BaseModel):
     recommended_mode: str
     suggested_tags: list[str] | None = None
     tool_hints: list[str] | None = None
+    expected_artifact_types: list[str] | None = None
+    artifact_schema_hint: str | None = None
     is_active: bool
     is_builtin: bool
     created_at: datetime

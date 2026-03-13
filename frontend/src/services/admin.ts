@@ -129,6 +129,8 @@ export interface SkillTemplate {
   recommended_mode: 'simple' | 'complex'
   suggested_tags?: string[] | null
   tool_hints?: string[] | null
+  expected_artifact_types?: string[] | null
+  artifact_schema_hint?: string | null
   is_active: boolean
   is_builtin: boolean
   created_at: string
@@ -145,6 +147,8 @@ export interface SkillTemplateCreateRequest {
   recommended_mode: 'simple' | 'complex'
   suggested_tags?: string[] | null
   tool_hints?: string[] | null
+  expected_artifact_types?: string[] | null
+  artifact_schema_hint?: string | null
   is_active?: boolean
 }
 
@@ -157,6 +161,8 @@ export interface SkillTemplateUpdateRequest {
   recommended_mode?: 'simple' | 'complex'
   suggested_tags?: string[] | null
   tool_hints?: string[] | null
+  expected_artifact_types?: string[] | null
+  artifact_schema_hint?: string | null
   is_active?: boolean
 }
 
