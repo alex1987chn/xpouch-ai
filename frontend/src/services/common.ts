@@ -11,6 +11,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 import { logger } from '@/utils/logger'
 import { generateUUID } from '@/utils'
 import { showLoginDialog } from '@/utils/authUtils'
+import { useUserStore } from '@/store/userStore'
 
 // ============================================================================
 // P1 增强: Token 刷新状态管理
@@ -147,10 +148,13 @@ export function getClientId(): string {
 
 /**
  * P0 修复: 统一请求头
- * 
+ *
  * 注意: JWT Token 现在通过 HttpOnly Cookie 自动发送，
  * 不需要再手动设置 Authorization 头。
- * 保留 X-User-ID 用于开发环境回退。
+ *
+ * 开发环境回退逻辑：
+ * - 只在未登录状态下发送 X-User-ID
+ * - 已登录用户 JWT 过期后应返回 401 触发 token 刷新，而不是静默创建新用户
  */
 export function getHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
@@ -159,9 +163,14 @@ export function getHeaders(): Record<string, string> {
 
   // P0 修复: 不再从 localStorage 读取 Token
   // Cookie 会自动随请求发送
-  
-  // 开发环境回退到 X-User-ID
-  headers['X-User-ID'] = getClientId()
+
+  // 开发环境回退到 X-User-ID（仅未登录状态）
+  if (import.meta.env.DEV) {
+    const { isAuthenticated } = useUserStore.getState()
+    if (!isAuthenticated) {
+      headers['X-User-ID'] = getClientId()
+    }
+  }
   return headers
 }
 
