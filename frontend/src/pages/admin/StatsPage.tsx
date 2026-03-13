@@ -19,8 +19,8 @@ import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
 import { getRunStats } from '@/services/stats'
 import type { RunStatsResponse, RunListItem } from '@/types/stats'
-import type { RunStatus } from '@/types/run'
 import { logger } from '@/utils/logger'
+import { RunStatusBadge } from '@/components/ui/run-status-badge'
 
 // 图标组件
 import { BarChart3, CheckCircle, XCircle, AlertTriangle, Clock, ExternalLink } from 'lucide-react'
@@ -131,31 +131,6 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
 }
 
 /**
- * 状态徽章
- */
-function StatusBadge({ status }: { status: RunStatus }) {
-  // 使用透明度适配暗色主题
-  const statusConfig: Record<string, { label: string; className: string }> = {
-    'queued': { label: 'Queued', className: 'bg-gray-500/20 text-gray-500' },
-    'running': { label: 'Running', className: 'bg-blue-500/20 text-blue-500' },
-    'waiting_for_approval': { label: 'HITL', className: 'bg-yellow-500/20 text-yellow-500' },
-    'resuming': { label: 'Resuming', className: 'bg-blue-500/20 text-blue-500' },
-    'completed': { label: 'Done', className: 'bg-green-500/20 text-green-500' },
-    'failed': { label: 'Failed', className: 'bg-red-500/20 text-red-500' },
-    'cancelled': { label: 'Cancelled', className: 'bg-gray-500/20 text-gray-500' },
-    'timed_out': { label: 'Timeout', className: 'bg-red-500/20 text-red-500' },
-  }
-
-  const config = statusConfig[status] || statusConfig['queued']
-
-  return (
-    <span className={cn('px-2 py-0.5 text-xs font-mono uppercase', config.className)}>
-      {config.label}
-    </span>
-  )
-}
-
-/**
  * 运行列表表格
  */
 function RunTable({
@@ -221,7 +196,7 @@ function RunTable({
               )}
               <td className="px-4 py-3 text-sm capitalize">{run.mode}</td>
               <td className="px-4 py-3">
-                <StatusBadge status={run.status} />
+                <RunStatusBadge status={run.status} variant="simple" />
               </td>
               <td className="px-4 py-3 font-mono text-sm">
                 {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(1)}s` : '-'}

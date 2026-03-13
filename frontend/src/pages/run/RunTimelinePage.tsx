@@ -20,33 +20,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { PayloadDrawer } from './PayloadDrawer'
-
-// ============================================
-// 状态徽章组件
-// ============================================
-
-const statusConfig: Record<RunStatus, { label: string; color: string; icon: typeof Clock }> = {
-  queued: { label: '排队中', color: 'text-content-secondary', icon: Clock },
-  running: { label: '运行中', color: 'text-accent-primary', icon: Loader2 },
-  waiting_for_approval: { label: '等待审核', color: 'text-yellow-500', icon: AlertCircle },
-  resuming: { label: '恢复中', color: 'text-accent-primary', icon: Loader2 },
-  completed: { label: '已完成', color: 'text-green-500', icon: CheckCircle },
-  failed: { label: '失败', color: 'text-red-500', icon: XCircle },
-  cancelled: { label: '已取消', color: 'text-content-secondary', icon: XCircle },
-  timed_out: { label: '超时', color: 'text-red-500', icon: AlertCircle },
-}
-
-function RunStatusBadge({ status }: { status: RunStatus }) {
-  const config = statusConfig[status] || statusConfig.queued
-  const Icon = config.icon
-
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', config.color)}>
-      <Icon className={cn('h-4 w-4', status === 'running' || status === 'resuming' ? 'animate-spin' : '')} />
-      {config.label}
-    </span>
-  )
-}
+import { RunStatusBadge } from '@/components/ui/run-status-badge'
 
 // ============================================
 // 事件图标组件
@@ -179,7 +153,7 @@ function RunInfoCard({ run }: { run: NonNullable<ReturnType<typeof useRunDetails
     <div className="border-b border-border-default bg-surface-card px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <RunStatusBadge status={run.status} />
+          <RunStatusBadge status={run.status} variant="detailed" />
           <span className="text-sm text-content-secondary">
             模式: {run.mode === 'complex' ? '复杂' : '简单'}
           </span>
