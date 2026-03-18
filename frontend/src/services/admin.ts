@@ -338,3 +338,114 @@ export async function deleteSkillTemplate(templateId: string): Promise<void> {
   })
   return handleResponse<void>(response, '删除模板失败')
 }
+
+// ============================================================================
+// 模板导入导出
+// ============================================================================
+
+export interface TemplateExportData {
+  template_key: string
+  name: string
+  description?: string | null
+  category: string
+  starter_prompt: string
+  system_hint?: string | null
+  recommended_mode: 'simple' | 'complex'
+  suggested_tags?: string[] | null
+  tool_hints?: string[] | null
+  expected_artifact_types?: string[] | null
+  artifact_schema_hint?: string | null
+}
+
+export interface TemplateExportSchema {
+  xpouch_template: {
+    version: string
+    schema_url: string
+  }
+  template: TemplateExportData
+  meta: {
+    exported_at: string
+    exported_by?: string | null
+    source_instance?: string | null
+  }
+}
+
+export interface TemplateImportPreviewResponse {
+  valid: boolean
+  version?: string | null
+  template?: TemplateExportData | null
+  conflict?: {
+    exists: boolean
+    existing_template?: {
+      id: string
+      name: string
+      template_key: string
+      is_builtin: boolean
+    } | null
+    suggested_key: string
+  } | null
+  error?: string | null
+}
+
+export interface TemplateImportResponse {
+  success: boolean
+  strategy: string
+  template_key?: string | null
+  template_id?: string | null
+  message: string
+}
+
+export type ImportStrategy = 'override' | 'clone' | 'skip'
+
+/**
+ * 导出模板
+ */
+export async function exportSkillTemplate(templateKey: string): Promise<TemplateExportSchema> {
+  const response = await authenticatedFetch(
+    buildUrl(`/library/templates/${templateKey}/export`),
+    {
+      headers: getHeaders(),
+    }
+  )
+  return handleResponse<TemplateExportSchema>(response, '导出模板失败')
+}
+
+/**
+ * 预览模板导入
+ */
+export async function previewImportSkillTemplate(
+  content: string
+): Promise<TemplateImportPreviewResponse> {
+  const response = await authenticatedFetch(
+    buildUrl('/library/templates/import-preview'),
+    {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ content }),
+    }
+  )
+  return handleResponse<TemplateImportPreviewResponse>(response, '预览导入失败')
+}
+
+/**
+ * 执行模板导入
+ */
+export async function importSkillTemplate(
+  content: string,
+  strategy: ImportStrategy = 'clone',
+  targetKey?: string
+): Promise<TemplateImportResponse> {
+  const response = await authenticatedFetch(
+    buildUrl('/library/templates/import'),
+    {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        content,
+        strategy,
+        target_key: targetKey,
+      }),
+    }
+  )
+  return handleResponse<TemplateImportResponse>(response, '导入模板失败')
+}

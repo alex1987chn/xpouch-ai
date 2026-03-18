@@ -48,7 +48,9 @@ class Settings(BaseSettings):
     db_pool_min_size: int = Field(default=5, alias="DB_POOL_MIN_SIZE")
     db_pool_max_size: int = Field(default=20, alias="DB_POOL_MAX_SIZE")
     db_pool_timeout: float = Field(default=30.0, alias="DB_POOL_TIMEOUT")
-    db_pool_max_idle: float = Field(default=1800.0, alias="DB_POOL_MAX_IDLE")  # 30 分钟
+    db_pool_max_idle: float = Field(
+        default=300.0, alias="DB_POOL_MAX_IDLE"
+    )  # 5 分钟，与 pool_recycle 保持一致，防止云数据库断开
     db_pool_max_lifetime: float = Field(default=7200.0, alias="DB_POOL_MAX_LIFETIME")  # 2 小时
 
     # LLM API Keys（自动脱敏）

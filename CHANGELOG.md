@@ -45,6 +45,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `frontend/src/components/chat/RunPollingBar.tsx`：新增轮询状态条
 - `frontend/src/services/run.ts`：新增运行状态 API
 
+### 数据库连接稳定性优化（全量物理防御）
+
+**问题背景**：
+- 长任务（如 26s search）执行期间，Checkpointer 连接被云数据库断开
+- 根因：`AsyncPostgresSaver` 持有单连接，26s 空闲期间 TCP 连接被中间防火墙掐断
+- 表现：`psycopg.OperationalError: connection was closed` 在 `aput_writes` 时抛出
+
+**优化方案（P1 + P2 + P3 激进版）**：
+- **P1: 缩短 pool_recycle**（1800s → 300s）：主动在云数据库 600s idle timeout 前回收连接
+- **P2: 缩短 db_pool_max_idle**（1800s → 300s）：与 pool_recycle 同步，确保连接池层面及时清理
+- **P3: 激进版 TCP keepalive**（60s/30s → 30s/10s）：30s 无数据即开始探测，每 10s 心跳一次，欺骗中间防火墙
+
+**关键改动**：
+- `backend/database.py`：`pool_recycle=300`
+- `backend/config.py`：`db_pool_max_idle=300`
+- `backend/utils/db.py`：`keepalives_idle=30&keepalives_interval=10`
+
+### useRunPolling 闭包陷阱修复（P0）
+
+**问题修复**：
+- **修复 `startPolling` 可能使用过期 `refetch` 函数的问题**
+  - 根因：`refetch` 来自 `useQuery`，其 identity 可能变化，导致 `startPolling` useCallback 重新创建
+  - 根因：`UnifiedChatPage` useEffect 监听 `startPolling`，但可能持有旧闭包引用
+  - 风险：调用 `startPolling()` 时可能使用错误的 `refetch`，导致轮询查询错误的 run 或失败
+  - 修复：使用 `refetchRef` 存储最新函数，绕过 `useCallback` 闭包陷阱
+  - 修复：从 `startPolling` 依赖数组中移除 `refetch`，减少不必要的重新创建
+
+**关键改动**：
+- `frontend/src/hooks/useRunPolling.ts`：添加 `refetchRef` 并在 `startPolling` 中使用 `refetchRef.current()`
+
 ### LangGraph 状态隔离修复
 
 **问题修复**：
@@ -62,6 +92,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **关键改动**：
 - `backend/services/chat/stream_service.py`：`handle_langgraph_stream` / `handle_langgraph_sync` / `execute_langgraph_stream` 统一使用 `isolated_thread_id`
 - `backend/services/chat/recovery_service.py`：`_cleanup_checkpoints` 支持清理两种格式的 thread_id
+
+### 模板导入导出功能
+
+**新增功能**：
+- **完整的模板导入导出工作流**
+  - 导出：`GET /api/library/templates/{template_key}/export`，生成标准 JSON 格式（含协议头 `xpouch_template` v1.0）
+  - 预览：`POST /api/library/templates/import-preview`，验证 JSON 有效性并检测冲突
+  - 导入：`POST /api/library/templates/import`，支持三种策略：override（覆盖）、clone（克隆重命名）、skip（跳过）
+  - 前端：Library 页面新增导出按钮和导入按钮（管理员权限）
+  - UI：四步向导对话框（upload → preview/conflict → result），支持拖拽上传、策略选择
+
+**安全与权限**：
+- 内置模板不允许覆盖
+- 仅管理员可执行导入操作
+- JSON 协议版本检查，向前兼容设计
+
+**国际化**：
+- 中英日三语完整支持
+- 新增翻译键：导入/导出相关 30+ 个
+
+**关键改动**：
+- `backend/api/library.py`：新增导出、预览、导入三个 API 端点
+- `backend/schemas/template_import_export.py`：定义导入导出数据结构
+- `frontend/src/components/library/TemplateImportDialog.tsx`：导入对话框组件
+- `frontend/src/pages/library/SkillTemplatePanel.tsx`：集成导入导出按钮
+- `frontend/src/services/admin.ts`：新增导入导出服务函数
+
+### 模板列表 UI 优化
+
+**改进**：
+- **选中效果增强**：添加左侧品牌色边框（`border-l-4 border-l-accent-brand`），多主题下选中状态更清晰
+- **删除确认弹窗**：使用 `DeleteConfirmDialog` 组件，避免误操作删除模板
+- **导入成功自动关闭对话框**：修复导入成功后对话框未关闭的问题
+
+**关键改动**：
+- `frontend/src/pages/library/SkillTemplatePanel.tsx`：选中样式、删除确认、自动关闭
+- `frontend/src/i18n/translations/library.ts`：新增确认删除翻译键
 
 ## [2026-03-13] - v3.3.0 更新
 

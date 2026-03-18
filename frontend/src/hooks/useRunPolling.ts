@@ -1,5 +1,5 @@
 /**
- * 运行状态轮询 Hook
+ * 运行状态轮询 Hook (State Machine 重构版)
  *
  * @features
  * - 3 秒轮询间隔
@@ -11,6 +11,7 @@
  * - 错误处理：404 或连续错误时停止轮询
  *
  * @design
+ * - 使用 State Machine 管理轮询生命周期
  * - 终态时仅通知，不主动刷新数据
  * - 组件层决定如何响应终态
  *
@@ -20,7 +21,7 @@
  * })
  */
 
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEffect, useRef, useCallback, useReducer } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getRunStatus } from '@/services/run'
 import { useChatStore } from '@/store/chatStore'
@@ -36,6 +37,68 @@ const TERMINAL_STATUSES: RunStatus[] = ['completed', 'failed', 'cancelled', 'tim
 
 /** HITL 状态（暂停轮询） */
 const HITL_STATUS: RunStatus = 'waiting_for_approval'
+
+// ==================== State Machine 定义 ====================
+
+type PollingState =
+  | { status: 'idle'; isPolling: false; isHITLPaused: false; isTerminal: false; hasError: false }
+  | { status: 'polling'; isPolling: true; isHITLPaused: false; isTerminal: false; hasError: false }
+  | { status: 'hitl_paused'; isPolling: true; isHITLPaused: true; isTerminal: false; hasError: false }
+  | { status: 'terminal'; isPolling: false; isHITLPaused: false; isTerminal: true; hasError: false }
+  | { status: 'error'; isPolling: false; isHITLPaused: false; isTerminal: true; hasError: true }
+
+type PollingAction =
+  | { type: 'START' }
+  | { type: 'STOP' }
+  | { type: 'HITL_PAUSED' }
+  | { type: 'HITL_RESUMED' }
+  | { type: 'TERMINAL_REACHED' }
+  | { type: 'ERROR_OCCURRED' }
+  | { type: 'RESET' }
+
+const initialState: PollingState = {
+  status: 'idle',
+  isPolling: false,
+  isHITLPaused: false,
+  isTerminal: false,
+  hasError: false,
+}
+
+function pollingReducer(state: PollingState, action: PollingAction): PollingState {
+  switch (action.type) {
+    case 'START':
+      // 终态不允许重新启动
+      if (state.isTerminal) return state
+      return { status: 'polling', isPolling: true, isHITLPaused: false, isTerminal: false, hasError: false }
+
+    case 'STOP':
+      if (state.status === 'idle') return state
+      return { status: 'idle', isPolling: false, isHITLPaused: false, isTerminal: false, hasError: false }
+
+    case 'HITL_PAUSED':
+      if (state.status !== 'polling') return state
+      return { status: 'hitl_paused', isPolling: true, isHITLPaused: true, isTerminal: false, hasError: false }
+
+    case 'HITL_RESUMED':
+      if (state.status !== 'hitl_paused') return state
+      return { status: 'polling', isPolling: true, isHITLPaused: false, isTerminal: false, hasError: false }
+
+    case 'TERMINAL_REACHED':
+      if (state.isTerminal) return state
+      return { status: 'terminal', isPolling: false, isHITLPaused: false, isTerminal: true, hasError: false }
+
+    case 'ERROR_OCCURRED':
+      return { status: 'error', isPolling: false, isHITLPaused: false, isTerminal: true, hasError: true }
+
+    case 'RESET':
+      return initialState
+
+    default:
+      return state
+  }
+}
+
+// ==================== Hook 定义 ====================
 
 interface UseRunPollingOptions {
   /** 是否启用轮询 */
@@ -61,10 +124,9 @@ interface UseRunPollingReturn {
 
 export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPollingReturn {
   const { enabled = true } = options
-  const [isPolling, setIsPolling] = useState(false)
-  const [isHITLPaused, setIsHITLPaused] = useState(false)
-  const [isTerminal, setIsTerminal] = useState(false)
-  const [hasError, setHasError] = useState(false)
+  const [state, dispatch] = useReducer(pollingReducer, initialState)
+
+  // 跟踪状态变化（用于日志）
   const previousStatusRef = useRef<RunStatus | null>(null)
   const consecutiveErrorsRef = useRef(0)
 
@@ -92,14 +154,63 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
         throw err
       }
     },
-    enabled: enabled && !!activeRunId && isPolling,
-    refetchInterval: isPolling && !isHITLPaused ? POLLING_INTERVAL : false,
+    enabled: enabled && !!activeRunId && state.isPolling,
+    refetchInterval: state.isPolling && !state.isHITLPaused ? POLLING_INTERVAL : false,
     refetchIntervalInBackground: true,
-    retry: 1, // 减少重试次数，快速失败
+    retry: 1,
     retryDelay: 1000,
   })
 
-  // 处理错误
+  // 🔥 P0 修复：使用 ref 存储最新的 refetch，绕过 useCallback 闭包陷阱
+  const refetchRef = useRef(refetch)
+  refetchRef.current = refetch
+
+  // ==================== 状态机驱动逻辑 ====================
+
+  // 核心：数据驱动状态机流转
+  useEffect(() => {
+    if (!data) return
+
+    const { status } = data
+
+    // 记录状态变化日志
+    if (status !== previousStatusRef.current) {
+      logger.info('[useRunPolling] 状态变化:', {
+        runId: activeRunId,
+        from: previousStatusRef.current,
+        to: status,
+      })
+      previousStatusRef.current = status
+    }
+
+    // 终态检测（最高优先级）
+    if (TERMINAL_STATUSES.includes(status)) {
+      if (!state.isTerminal) {
+        logger.info('[useRunPolling] 终态，停止轮询:', status)
+        dispatch({ type: 'TERMINAL_REACHED' })
+        setGenerating(false)
+        clearActiveRunId()
+      }
+      return
+    }
+
+    // HITL 状态检测
+    if (status === HITL_STATUS) {
+      if (state.status === 'polling') {
+        logger.info('[useRunPolling] HITL 状态，暂停轮询')
+        dispatch({ type: 'HITL_PAUSED' })
+      }
+      return
+    }
+
+    // 从 HITL 恢复
+    if (state.status === 'hitl_paused' && status !== HITL_STATUS) {
+      logger.info('[useRunPolling] 从 HITL 恢复，继续轮询')
+      dispatch({ type: 'HITL_RESUMED' })
+    }
+  }, [data, activeRunId, state.isTerminal, state.status, setGenerating, clearActiveRunId])
+
+  // 错误处理
   useEffect(() => {
     if (!error) return
 
@@ -107,73 +218,19 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
     logger.error('[useRunPolling] 轮询错误:', error, `连续错误: ${consecutiveErrorsRef.current}`)
 
     // 404 或连续错误过多时停止轮询
-    if (
-      error instanceof Error && error.message === 'RUN_NOT_FOUND' ||
-      consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS
-    ) {
+    const isRunNotFound = error instanceof Error && error.message === 'RUN_NOT_FOUND'
+    const shouldStop = isRunNotFound || consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS
+
+    if (shouldStop && state.status !== 'error') {
       logger.warn('[useRunPolling] 停止轮询：错误条件满足')
-      setIsPolling(false)
-      setIsTerminal(true)
-      setHasError(true)
+      dispatch({ type: 'ERROR_OCCURRED' })
       setGenerating(false)
       clearActiveRunId()
     }
-  }, [error, setGenerating, clearActiveRunId])
+  }, [error, state.status, setGenerating, clearActiveRunId])
 
-  // 🔥 关键修复：初始化时检查当前状态（处理任务在组件挂载前已完成的情况）
-  useEffect(() => {
-    if (!data) return
+  // ==================== 外部控制接口 ====================
 
-    const { status } = data
-
-    // 🔥 关键修复：如果初始状态就是终态，立即设置 isTerminal
-    // 这发生在用户切出对话，任务在后台完成，然后返回会话时
-    if (TERMINAL_STATUSES.includes(status) && !isTerminal) {
-      logger.info('[useRunPolling] 初始状态即为终态:', status)
-      setIsTerminal(true)
-      setIsPolling(false)
-      setIsHITLPaused(false)
-      setGenerating(false)
-      clearActiveRunId()
-      return
-    }
-
-    // 状态变化时记录日志
-    if (status !== previousStatusRef.current) {
-      logger.info('[useRunPolling] 状态变化:', {
-        runId: activeRunId,
-        from: previousStatusRef.current,
-        to: status,
-      })
-
-      previousStatusRef.current = status
-    }
-
-    // HITL 状态：暂停轮询
-    if (status === HITL_STATUS) {
-      setIsHITLPaused(true)
-      logger.info('[useRunPolling] HITL 状态，暂停轮询')
-      return
-    }
-
-    // 从 HITL 恢复：继续轮询
-    if (isHITLPaused && status !== HITL_STATUS) {
-      setIsHITLPaused(false)
-      logger.info('[useRunPolling] 从 HITL 恢复，继续轮询')
-    }
-
-    // 终态：停止轮询，通知组件层
-    if (TERMINAL_STATUSES.includes(status)) {
-      logger.info('[useRunPolling] 终态，停止轮询:', status)
-      setIsTerminal(true)
-      setIsPolling(false)
-      setIsHITLPaused(false)
-      setGenerating(false)
-      clearActiveRunId()
-    }
-  }, [data, activeRunId, isHITLPaused, setGenerating, clearActiveRunId, isTerminal])
-
-  // 启动轮询
   const startPolling = useCallback(() => {
     const currentRunId = useTaskStore.getState().activeRunId
     if (!currentRunId || !enabled) {
@@ -181,47 +238,40 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
       return
     }
 
-    // 🔥🔥🔥 关键修复：如果已经是终态，不要重置状态
-    // 这发生在 restoreSession() 后，但后端状态仍显示 running
-    // 此时如果重置 isTerminal，会导致终态检测失效
-    if (isTerminal) {
+    if (state.isTerminal) {
       logger.info('[useRunPolling] 已经是终态，跳过轮询启动')
       return
     }
 
     logger.info('[useRunPolling] 启动轮询:', { runId: currentRunId })
-    setIsPolling(true)
-    setIsHITLPaused(false)
-    setIsTerminal(false)
-    setHasError(false)
+    dispatch({ type: 'START' })
     consecutiveErrorsRef.current = 0
     previousStatusRef.current = null
-    refetch()
-  }, [enabled, refetch, isTerminal])
+    refetchRef.current()
+  }, [enabled, state.isTerminal])
 
-  // 停止轮询
   const stopPolling = useCallback(() => {
+    if (state.status === 'idle') return
     logger.info('[useRunPolling] 停止轮询')
-    setIsPolling(false)
-    setIsHITLPaused(false)
-  }, [])
+    dispatch({ type: 'STOP' })
+  }, [state.status])
 
-  // 清理
+  // 清理：组件卸载时停止轮询
   useEffect(() => {
     return () => {
-      if (isPolling) {
+      if (state.isPolling) {
         stopPolling()
       }
     }
-  }, [isPolling, stopPolling])
+  }, [state.isPolling, stopPolling])
 
   return {
     startPolling,
     stopPolling,
-    isPolling,
+    isPolling: state.isPolling,
     currentStatus: data?.status ?? null,
-    isHITLPaused,
-    isTerminal,
-    hasError,
+    isHITLPaused: state.isHITLPaused,
+    isTerminal: state.isTerminal,
+    hasError: state.hasError,
   }
 }

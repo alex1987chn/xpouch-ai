@@ -21,10 +21,12 @@ PSYCOPG_DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg", "postgresql").
 )
 
 # 添加 TCP keepalive 参数，防止长时间等待时连接被关闭
+# 🔥 激进版：30s 无数据就开始探测，每 10s 敲一次，连敲 3 次没回就判定死亡
+# 这样能欺骗中间防火墙，让 26s+ 的专家任务期间连接不被掐断
 if "keepalives" not in PSYCOPG_DATABASE_URL:
     separator = "&" if "?" in PSYCOPG_DATABASE_URL else "?"
     PSYCOPG_DATABASE_URL += (
-        f"{separator}keepalives=1&keepalives_idle=60&keepalives_interval=30&keepalives_count=3"
+        f"{separator}keepalives=1&keepalives_idle=30&keepalives_interval=10&keepalives_count=3"
     )
 
 
