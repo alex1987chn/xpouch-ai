@@ -41,6 +41,21 @@ function isPlanVersionConflictError(error: unknown): boolean {
   )
 }
 
+function isAbortError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  if (error instanceof Error) {
+    const name = error.name?.toLowerCase() || ''
+    const message = error.message?.toLowerCase() || ''
+    return (
+      name === 'aborterror' ||
+      message.includes('abort') ||
+      message.includes('cancel') ||
+      message.includes('取消')
+    )
+  }
+  return false
+}
+
 export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProps) {
   const { t } = useTranslation()
   const isWaitingForApproval = useIsWaitingForApproval()
@@ -90,7 +105,11 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
         approved: false,
       })
       addMessage({ role: 'system', content: '计划已取消，状态已清理', timestamp: Date.now() })
-    } catch {
+    } catch (error) {
+      // 用户导航离开导致的取消，不显示错误
+      if (isAbortError(error)) {
+        return
+      }
       setIsWaitingForApproval(true)
       alert('取消失败，请重试')
     } finally {
@@ -138,6 +157,10 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
         approved: true,
       })
     } catch (error) {
+      // 用户导航离开导致的取消，不显示错误
+      if (isAbortError(error)) {
+        return
+      }
       setIsWaitingForApproval(true)
       const userMessage = isPlanVersionConflictError(error)
         ? '计划已被其他操作更新，请刷新后重新确认'

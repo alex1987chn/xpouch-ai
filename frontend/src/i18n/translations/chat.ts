@@ -109,6 +109,12 @@ export const zh: Record<string, string> = {
   // 其他提示
   minOneTask: '至少需要保留一个任务',
   deleteTask: '删除任务',
+
+  // Polling (轮询恢复)
+  pollingRestoring: '正在恢复任务连接...',
+  pollingHitlPaused: '等待审批中...',
+  pollingRefresh: '刷新',
+  pollingError: '连接失败，请刷新重试',
 }
 
 export const en: Record<string, string> = {
@@ -218,6 +224,12 @@ export const en: Record<string, string> = {
   // Other Messages
   minOneTask: 'At least one task must be kept',
   deleteTask: 'Delete Task',
+
+  // Polling (Polling Recovery)
+  pollingRestoring: 'Restoring task connection...',
+  pollingHitlPaused: 'Waiting for approval...',
+  pollingRefresh: 'Refresh',
+  pollingError: 'Connection failed, please refresh',
 }
 
 export const ja: Record<string, string> = {
@@ -327,4 +339,10 @@ export const ja: Record<string, string> = {
   // その他メッセージ
   minOneTask: '最低1つのタスクを保持する必要があります',
   deleteTask: 'タスクを削除',
+
+  // Polling (ポーリング復旧)
+  pollingRestoring: 'タスク接続を復元中...',
+  pollingHitlPaused: '承認待ち...',
+  pollingRefresh: '更新',
+  pollingError: '接続失敗、更新してください',
 }

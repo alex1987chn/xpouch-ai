@@ -64,3 +64,12 @@ class ThreadTimelineResponse(BaseModel):
     thread_id: str
     events: list[RunEventResponse]
     total: int
+
+
+class RunStatusResponse(BaseModel):
+    """运行状态响应（轻量级，专供轮询使用）"""
+
+    id: str
+    status: RunStatus
+    current_node: str | None = None
+    completed_at: datetime | None = None

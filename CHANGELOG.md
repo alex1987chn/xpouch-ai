@@ -5,6 +5,64 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-18] - v3.3.1 修复
+
+### 会话恢复与任务续执行
+
+**新增功能**：
+- **切换会话后可继续执行中的任务**
+  - 新增 `useRunPolling` hook：3 秒轮询运行状态，后台持续执行
+  - 新增 `RunPollingBar` 组件：显示轮询状态，支持停止执行
+  - 新增 `GET /api/runs/{run_id}/status` API：轻量状态查询
+  - 切换会话时检测 `latest_run.status`，自动启动轮询
+  - 任务完成后自动刷新会话数据
+
+**实现细节**：
+- HITL 状态（`waiting_for_approval`）暂停轮询，等待用户确认
+- 终态（`completed/failed/cancelled/timed_out`）停止轮询
+- 后台轮询：标签页切换后继续执行
+- 错误处理：404 或连续 3 次错误停止轮询
+
+### 状态恢复与错误处理修复
+
+**问题修复**：
+- **修复刷新页面后状态未正确恢复的问题**
+  - 根因：`aggregator_node` 执行完成后只更新 `ExecutionPlan.status`，未更新 `AgentRun.status`
+  - 修复：`aggregator_node` 内部直接更新 `AgentRun.status = completed`，不依赖 SSE 流生命周期
+  - 影响：刷新页面后前端能正确读取 `latest_run.status === 'completed'`，UI 显示正常
+
+- **修复页面切换时弹出错误提示的问题**
+  - 根因：`resumeExecution` 和 `handleApprove` 中 abort 错误检测不完整
+  - 修复：统一 abort 检测逻辑，新增 `cancel` 和 `取消` 关键词检测
+  - 影响：用户导航离开时不再弹出错误提示
+
+**关键改动**：
+- `backend/agents/nodes/aggregator.py`：新增 `AgentRun` 状态更新
+- `backend/services/chat/stream_service.py`：改进 `CancelledError` 处理
+- `frontend/src/hooks/chat/useChatCore.ts`：完善 abort 错误检测
+- `frontend/src/components/chat/PlanReviewCard.tsx`：添加 `isAbortError` 辅助函数
+- `frontend/src/hooks/useRunPolling.ts`：新增运行状态轮询
+- `frontend/src/components/chat/RunPollingBar.tsx`：新增轮询状态条
+- `frontend/src/services/run.ts`：新增运行状态 API
+
+### LangGraph 状态隔离修复
+
+**问题修复**：
+- **修复会话恢复后发送新消息导致 AI 回显用户消息的问题**
+  - 根因：LangGraph checkpointer 使用 `thread_id` 作为状态键，同一会话的历史状态会污染新消息执行
+  - 根因：`aupdate_state` 会合并历史状态而非完全替换，导致 `task_list` 等字段继承旧值
+  - 修复：使用隔离的 `isolated_thread_id = f"{thread_id}_{run_id}"` 作为 checkpointer 键
+  - 修复：确保新消息的 LangGraph 执行从零开始，不受历史状态影响
+
+- **修复恢复流程无法找到 checkpointer 状态的问题**
+  - 根因：初始执行使用随机 UUID 生成 `isolated_thread_id`，恢复流程无法重建相同 ID
+  - 修复：使用确定性格式 `f"{thread_id}_{run_id}"`，恢复流程可精确重建相同的 thread_id
+  - 影响：复杂模式 HITL 恢复现在能正确找到并继续之前的执行状态
+
+**关键改动**：
+- `backend/services/chat/stream_service.py`：`handle_langgraph_stream` / `handle_langgraph_sync` / `execute_langgraph_stream` 统一使用 `isolated_thread_id`
+- `backend/services/chat/recovery_service.py`：`_cleanup_checkpoints` 支持清理两种格式的 thread_id
+
 ## [2026-03-13] - v3.3.0 更新
 
 ### Admin Stats Dashboard（管理统计面板）

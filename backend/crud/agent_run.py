@@ -146,6 +146,16 @@ def mark_run_completed(db: Session, run: AgentRun) -> None:
     _sync_thread_status(db, run.thread_id, run.status)
 
 
+def mark_run_completed_by_id(db: Session, run_id: str) -> AgentRun | None:
+    """按 ID 标记运行完成。"""
+    run = db.get(AgentRun, run_id)
+    if run is None:
+        return None
+    mark_run_completed(db, run)
+    db.commit()  # 🔥 关键：确保修改持久化
+    return run
+
+
 def update_run_status(
     db: Session,
     run: AgentRun,

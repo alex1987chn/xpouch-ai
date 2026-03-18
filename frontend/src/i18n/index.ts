@@ -127,6 +127,8 @@ export type TranslationKey =
   // StatsPage
   | 'globalStats' | 'myStats' | 'totalRuns' | 'successRate' | 'hitlCount' | 'avgDuration'
   | 'trends' | 'days' | 'noRuns' | 'runList' | 'prev' | 'next' | 'viewDetails' | 'loadFailed' | 'failed'
+  // Polling (轮询恢复)
+  | 'pollingRestoring' | 'pollingHitlPaused' | 'pollingRefresh' | 'pollingError'
 
 
 interface I18nContextType {

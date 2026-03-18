@@ -114,6 +114,10 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
     # v3.2: 更新执行计划状态并持久化聚合消息 (通过 TaskManager)
     # 🔥 使用独立的数据库会话（避免 MemorySaver 序列化问题）
     # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
+    # v3.7: 🔥🔥🔥 关键修复：在 aggregator 内部直接更新 AgentRun 状态
+    # 这样无论 SSE 连接是否断开，状态都会正确更新
+    run_id = state.get("run_id")  # 获取当前运行实例 ID
+
     if execution_plan_id:
         try:
 
@@ -125,6 +129,14 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
                     # 持久化聚合消息到数据库
                     if thread_id:
                         save_aggregator_message(db_session, thread_id, final_response)
+
+                    # 🔥🔥🔥 关键修复：直接更新 AgentRun 状态为 completed
+                    # 这是确保状态正确的根本方法，不依赖 SSE 流的生命周期
+                    if run_id:
+                        from crud.agent_run import mark_run_completed_by_id
+
+                        mark_run_completed_by_id(db_session, run_id)
+                        logger.info(f"[AGG] AgentRun {run_id} 状态更新为 completed")
 
             await asyncio.to_thread(_save_execution_plan)
         except Exception as e:
