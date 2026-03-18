@@ -95,6 +95,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         debug('Stop generation')
         abortControllerRef.current.abort()
       }
+      setGenerating(false)
       clearActiveRunId()
     }
 
@@ -110,7 +111,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       .finally(() => {
         finalizeAbort()
       })
-  }, [activeRunId, clearActiveRunId])
+  }, [activeRunId, clearActiveRunId, setGenerating])
 
   const syncRuntimeMeta = useCallback((runtimeMeta?: StreamRuntimeMeta) => {
     const runId = runtimeMeta?.runId
@@ -181,18 +182,25 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       const agentType = getAgentType(normalizedAgentId)
       debug('Agent type:', agentType, 'Agent ID:', normalizedAgentId)
 
-      setMessages([...storeState.messages,
-        { role: 'user', content: userContent },
-        {
-          id: assistantMessageId,
-          role: 'assistant',
-          content: '',
-          timestamp: Date.now(),
-          metadata: {
-            thinking: []
+      // 🔥🔥🔥 关键修复：使用函数式更新避免竞态条件
+      // 确保获取最新的 messages 状态，而不是使用闭包中的快照
+      setMessages((prevMessages) => {
+        const newMessages = [
+          ...prevMessages,
+          { role: 'user', content: userContent, timestamp: Date.now() },
+          {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: '',
+            timestamp: Date.now(),
+            metadata: {
+              thinking: []
+            }
           }
-        }
-      ])
+        ]
+        debug('Messages after adding new:', newMessages.length, 'AI message ID:', assistantMessageId)
+        return newMessages
+      })
 
       setInputMessage('')
 
@@ -404,6 +412,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       const isAbortError = 
         (error instanceof Error && error.name === 'AbortError') ||
         (error instanceof Error && error.message?.toLowerCase().includes('abort')) ||
+        (error instanceof Error && error.message?.toLowerCase().includes('cancel')) ||
+        (error instanceof Error && error.message?.includes('取消')) ||
         abortControllerRef.current?.signal.aborted
 
       if (!isAbortError) {
@@ -412,6 +422,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
           role: 'assistant',
           content: errorHandler.getUserMessage(error)
         })
+      } else {
+        debug('Request cancelled (user navigated away or manually aborted)')
       }
       
       throw error
@@ -537,11 +549,16 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     } catch (error) {
       const isAbortError = 
         (error instanceof Error && error.name === 'AbortError') ||
+        (error instanceof Error && error.message?.toLowerCase().includes('abort')) ||
+        (error instanceof Error && error.message?.toLowerCase().includes('cancel')) ||
+        (error instanceof Error && error.message?.includes('取消')) ||
         abortControllerRef.current?.signal.aborted
 
       if (!isAbortError) {
         errorHandler.handle(error, 'regenerateMessage')
         updateMessage(String(messageId), errorHandler.getUserMessage(error), false)
+      } else {
+        debug('Request cancelled (user navigated away or manually aborted)')
       }
     } finally {
       forceFlush()

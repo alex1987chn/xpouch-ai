@@ -1,13 +1,18 @@
 /**
- * 会话恢复 Hook
- * 支持页面加载自动恢复和 visibilitychange 唤醒恢复
- * 
- * @features
- * - 页面加载时自动恢复（初始恢复）
- * - visibilitychange 事件监听（标签页切换恢复）
- * - 5 秒防抖机制（防止重复恢复）
- * - 检测活跃的 SSE 连接，避免重复恢复
- */
+* 会话恢复 Hook
+* 支持页面加载自动恢复和 visibilitychange 唤醒恢复
+* 
+* @features
+* - 页面加载时自动恢复（初始恢复）
+* - visibilitychange 事件监听（标签页切换恢复）
+* - 5 秒防抖机制（防止重复恢复）
+* - 检测活跃的 SSE 连接，避免重复恢复
+* 
+* @design
+* - 单一职责：仅负责恢复会话数据
+* - 轮询逻辑由 useRunPolling 独立处理
+* - 组件层负责组合两个 Hook
+*/
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'react-router-dom'
@@ -34,6 +39,10 @@ interface UseSessionRestoreReturn {
   error: Error | null
   /** 手动触发恢复 */
   restore: () => Promise<void>
+  /** 最新运行是否处于可控制状态（running/resuming/waiting_for_approval） */
+  isLatestRunControllable: boolean
+  /** 最新运行实例 ID */
+  latestRunId: string | null
 }
 
 function isStatusError(error: unknown): error is { status?: number } {
@@ -62,6 +71,8 @@ export function useSessionRestore(
   const [isRestoring, setIsRestoring] = useState(false)
   const [isRestored, setIsRestored] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  const [isLatestRunControllable, setIsLatestRunControllable] = useState(false)
+  const [latestRunId, setLatestRunId] = useState<string | null>(null)
   
   // 防抖相关 refs
   const lastRestoreTimeRef = useRef(0)
@@ -78,25 +89,27 @@ export function useSessionRestore(
   const addMessage = useChatStore((state) => state.addMessage)
   const setMessages = useChatStore((state) => state.setMessages)
   const setCurrentConversationId = useChatStore((state) => state.setCurrentConversationId)
+  const setGenerating = useChatStore((state) => state.setGenerating)
 
   /**
    * 核心恢复逻辑
    * 支持两种触发方式：初始加载 和 visibilitychange
+   * @param force 是否强制恢复（跳过防抖）
    */
-  const performRestore = useCallback(async (): Promise<boolean> => {
+  const performRestore = useCallback(async (force: boolean = false): Promise<boolean> => {
     if (!threadId || !enabled) {
       return false
     }
 
-    // 防抖检查：5 秒内不重复恢复
+    // 防抖检查：5 秒内不重复恢复（强制模式跳过）
     const now = Date.now()
-    if (now - lastRestoreTimeRef.current < 5000) {
+    if (!force && now - lastRestoreTimeRef.current < 5000) {
       return false
     }
     
-    // 检查是否有活跃的 SSE 连接
+    // 检查是否有活跃的 SSE 连接（强制模式跳过）
     const chatStore = useChatStore.getState()
-    if (chatStore.isGenerating) {
+    if (!force && chatStore.isGenerating) {
       hasActiveStreamRef.current = true
       return false
     }
@@ -130,15 +143,30 @@ export function useSessionRestore(
 
       const latestRun = conversation.latest_run
       const latestRunStatus = latestRun?.status
+
+      // 🔥🔥🔥 关键修复：使用 completed_at 判断任务是否真正完成
+      // 避免状态同步延迟导致的"假 running"问题
+      const isRunActuallyCompleted = !!latestRun?.completed_at
       const isLatestRunControllable =
-        latestRunStatus === 'running' ||
-        latestRunStatus === 'resuming' ||
-        latestRunStatus === 'waiting_for_approval'
+        !isRunActuallyCompleted && (
+          latestRunStatus === 'running' ||
+          latestRunStatus === 'resuming' ||
+          latestRunStatus === 'waiting_for_approval'
+        )
 
       if (isLatestRunControllable && latestRun?.id) {
         setActiveRunId(latestRun.id)
+        // 🔥 Bug 修复：根据后端状态恢复 isGenerating，确保按钮状态正确
+        setGenerating(true)
+        // 🔥 保存最新运行状态，供组件层决定是否启动轮询
+        setIsLatestRunControllable(true)
+        setLatestRunId(latestRun.id)
       } else {
         clearActiveRunId()
+        // 🔥 确保终态时 isGenerating 为 false
+        setGenerating(false)
+        setIsLatestRunControllable(false)
+        setLatestRunId(null)
       }
       
       // 检查是否是复杂模式（有 execution_plan）
@@ -186,10 +214,14 @@ export function useSessionRestore(
         const hasPendingTask = subTasks.some((t: SubTask) => t.status === 'pending')
         const isRunActive = latestRunStatus === 'running' || latestRunStatus === 'resuming'
         const isWaitingForApproval = latestRunStatus === 'waiting_for_approval'
-        
-        // 如果有运行中的任务，提示用户任务仍在进行
-        if (hasRunningTask || isRunActive) {
-          
+
+        // 🔥🔥🔥 关键修复：使用 completed_at 判断任务是否真正完成
+        // 避免状态同步延迟导致的"假 running"问题
+        const isRunActuallyCompleted = !!latestRun?.completed_at
+
+        // 🔥🔥🔥 关键修复：只在任务真正运行中且未到达终态时添加提示
+        // 避免终态后仍然显示"后台任务"提示
+        if ((hasRunningTask || isRunActive) && !isRunActuallyCompleted) {
           // 添加系统消息提示用户
           addMessage({
             role: 'system',
@@ -228,7 +260,7 @@ export function useSessionRestore(
 
       setIsRestored(true)
       onRestored?.()
-      
+
       return true
     } catch (err: unknown) {
       // 🔥 404 错误静默处理：新会话在后端还不存在，这是预期行为
@@ -248,13 +280,14 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [threadId, enabled, restoreFromExecutionPlan, setPendingPlan, setMode, setIsInitialized, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId])
+  }, [threadId, enabled, restoreFromExecutionPlan, setPendingPlan, setMode, setIsInitialized, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId, setGenerating])
 
   /**
    * 公开的手动恢复方法
+   * @param force 是否强制恢复（跳过防抖和活跃流检查）
    */
-  const restore = useCallback(async () => {
-    await performRestore()
+  const restore = useCallback(async (force: boolean = false) => {
+    await performRestore(force)
   }, [performRestore])
 
   /**
@@ -306,7 +339,9 @@ export function useSessionRestore(
     isRestoring,
     isRestored,
     error,
-    restore
+    restore,
+    isLatestRunControllable,
+    latestRunId,
   }
 }
 

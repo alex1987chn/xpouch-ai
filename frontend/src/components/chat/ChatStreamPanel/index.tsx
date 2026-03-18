@@ -16,12 +16,14 @@
  * 3. 输入控制台：Heavy Input Console（机械风格）
  * 4. 工具按钮：附件、网络搜索
  * 5. Server-Driven UI：思维链可视化
+ * 6. 轮询状态栏：显示运行中任务的恢复状态
  *
  * [组件拆分]
  * - EmptyState: 空状态展示
  * - MessageItem: 单条消息渲染（含 StatusAvatar 状态头像）
  * - ThinkingProcess: 思维链展示（气泡外）
  * - HeavyInputConsole: 输入控制台
+ * - RunPollingBar: 轮询状态栏
  *
  * [状态管理]
  * - 所有状态通过 Props 传入，保持组件纯函数
@@ -39,10 +41,12 @@ import MessageItem from '../MessageItem'
 import ThinkingProcess from '../ThinkingProcess'
 import HeavyInputConsole from '../HeavyInputConsole'
 import PlanReviewCard from '../PlanReviewCard'
+import { RunPollingBar } from '../RunPollingBar'
 import { parseThinkTags, formatThinkingAsSteps } from '@/utils/thinkParser'
 import { isSameId } from '@/utils/normalize'
 import type { ResumeChatParams } from '@/services/chat'
 import type { AvatarStatus } from '@/components/ui/StatusAvatar'
+import type { RunStatus } from '@/types/run'
 
 // Performance Optimized Selectors (v3.1.0)
 import {
@@ -75,6 +79,14 @@ interface ChatStreamPanelProps {
   }
   /** v3.1.0 HITL: 恢复执行回调 */
   resumeExecution?: (params: ResumeChatParams) => Promise<string>
+  /** v3.4.0 轮询状态 */
+  polling?: {
+    isPolling: boolean
+    status: RunStatus | null
+    isHITLPaused: boolean
+    hasError?: boolean
+    onRefresh: () => void
+  }
 }
 
 /**
@@ -109,6 +121,7 @@ export default function ChatStreamPanel({
   input,
   actions,
   resumeExecution,
+  polling,
 }: ChatStreamPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   
@@ -289,6 +302,15 @@ export default function ChatStreamPanel({
           />
         )}
       </div>
+
+      {/* v3.4.0 轮询状态栏（输入框上方） */}
+      <RunPollingBar
+        show={polling?.isPolling ?? false}
+        status={polling?.status ?? null}
+        isHITLPaused={polling?.isHITLPaused ?? false}
+        hasError={polling?.hasError ?? false}
+        onRefresh={polling?.onRefresh ?? (() => {})}
+      />
 
       {/* Bottom input console */}
       <HeavyInputConsole

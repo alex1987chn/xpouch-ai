@@ -8,10 +8,13 @@
  * - Initialization state
  * - HITL review related UI state
  * - Progress tracking (从 ExecutionStore 迁移)
+ * - Polling state (轮询状态)
  */
 
 import type { Task } from './createTaskSlice'
 import type { TaskStore } from '../taskStore'
+import { useTaskStore } from '../taskStore'
+import type { RunStatus } from '@/types/run'
 
 // ============================================================================
 // State & Actions Interfaces
@@ -36,6 +39,10 @@ export interface UISliceState {
   pendingRunId: string | null
   pendingExecutionPlanId: string | null
   progress: Progress | null  // 从 ExecutionStore 迁移
+  // 轮询状态
+  isPolling: boolean
+  pollingStatus: RunStatus | null
+  isHITLPaused: boolean
 }
 
 export interface UISliceActions {
@@ -58,10 +65,27 @@ export interface UISliceActions {
   resetUI: () => void
   hasRunningTasks: () => boolean
   isTaskRunning: (taskId: string) => boolean
-  setProgress: (progress: Progress | null) => void  // 新增
+  setProgress: (progress: Progress | null) => void
+  // 轮询 Actions
+  setPolling: (polling: boolean) => void
+  setPollingStatus: (status: RunStatus | null) => void
+  setHITLPaused: (paused: boolean) => void
 }
 
 export type UISlice = UISliceState & UISliceActions
+
+// ============================================================================
+// 轮询状态 Selectors
+// ============================================================================
+
+/** 获取轮询状态 */
+export const useIsPolling = () => useTaskStore(state => state.isPolling)
+
+/** 获取轮询状态 */
+export const usePollingStatus = () => useTaskStore(state => state.pollingStatus)
+
+/** 获取 HITL 暂停状态 */
+export const useIsHITLPaused = () => useTaskStore(state => state.isHITLPaused)
 
 type UISliceSetter = (fn: (draft: TaskStore) => void) => void
 type UISliceGetter = () => TaskStore
@@ -82,7 +106,11 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
   pendingPlanVersion: 1,
   pendingRunId: null,
   pendingExecutionPlanId: null,
-  progress: null,  // 新增
+  progress: null,
+  // 轮询状态初始值
+  isPolling: false,
+  pollingStatus: null,
+  isHITLPaused: false,
 
   // Actions
 
@@ -178,7 +206,11 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
       state.pendingPlanVersion = 1
       state.pendingRunId = null
       state.pendingExecutionPlanId = null
-      state.progress = null  // 重置进度
+      state.progress = null
+      // 重置轮询状态
+      state.isPolling = false
+      state.pollingStatus = null
+      state.isHITLPaused = false
     })
   },
 
@@ -194,6 +226,25 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
   setProgress: (progress: Progress | null) => {
     set((state) => {
       state.progress = progress
+    })
+  },
+
+  // 轮询状态 Actions
+  setPolling: (polling: boolean) => {
+    set((state) => {
+      state.isPolling = polling
+    })
+  },
+
+  setPollingStatus: (status: RunStatus | null) => {
+    set((state) => {
+      state.pollingStatus = status
+    })
+  },
+
+  setHITLPaused: (paused: boolean) => {
+    set((state) => {
+      state.isHITLPaused = paused
     })
   }
 })

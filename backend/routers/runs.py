@@ -5,13 +5,18 @@
 """
 
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from crud.run_event import get_run_events_by_run_id, get_run_events_by_thread_id
 from database import get_session
 from dependencies import get_current_user
 from models import AgentRun, Thread, User
-from schemas.run_event import RunSummaryResponse, RunTimelineResponse, ThreadTimelineResponse
+from schemas.run_event import (
+    RunStatusResponse,
+    RunSummaryResponse,
+    RunTimelineResponse,
+    ThreadTimelineResponse,
+)
 from utils.exceptions import AuthorizationError, NotFoundError
 from utils.logger import logger
 
@@ -58,6 +63,53 @@ async def get_run_details(
     logger.info(f"[Runs API] 获取运行详情: run_id={run_id}, user_id={current_user.id}")
     run = _get_run_or_raise(db, run_id, current_user.id)
     return RunSummaryResponse.model_validate(run)
+
+
+@router.get("/{run_id}/status", response_model=RunStatusResponse)
+async def get_run_status(
+    run_id: str,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> RunStatusResponse:
+    """
+    获取运行实例状态（轻量级接口，专供轮询使用）
+
+    **极简查询**：只选取 status + current_node + completed_at 三个字段，
+    避免全量加载 ORM 对象，减少数据库 I/O 和内存占用。
+
+    Args:
+        run_id: 运行实例 ID
+        db: 数据库会话
+        current_user: 当前用户
+
+    Returns:
+        RunStatusResponse: 运行状态
+    """
+    # 极简查询：只选取需要的字段
+    statement = select(
+        AgentRun.id,
+        AgentRun.status,
+        AgentRun.current_node,
+        AgentRun.completed_at,
+        AgentRun.user_id,
+    ).where(AgentRun.id == run_id)
+    result = db.exec(statement).first()
+
+    if result is None:
+        raise NotFoundError("AgentRun")
+
+    run_id_val, status, current_node, completed_at, user_id = result
+
+    # 权限检查
+    if user_id != current_user.id:
+        raise AuthorizationError("无权访问此运行实例")
+
+    return RunStatusResponse(
+        id=run_id_val,
+        status=status,
+        current_node=current_node,
+        completed_at=completed_at,
+    )
 
 
 @router.get("/{run_id}/timeline", response_model=RunTimelineResponse)

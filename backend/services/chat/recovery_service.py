@@ -147,8 +147,8 @@ class RecoveryService:
         """
         logger.info("[HITL RESUME] 用户拒绝了计划，清理状态")
 
-        # 清理 checkpoints
-        await self._cleanup_checkpoints(thread_id)
+        # 清理 checkpoints - 使用 isolated_thread_id 格式
+        await self._cleanup_checkpoints(thread_id, run_id)
 
         # 更新 ExecutionPlan
         execution_plan = await self._cancel_execution_plan(run_id)
@@ -197,7 +197,9 @@ class RecoveryService:
             select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)
         ).first()
         if execution_plan:
-            execution_plan.status = "cancelled"
+            from models.enums import TaskStatus
+
+            execution_plan.status = TaskStatus.CANCELLED
             execution_plan.updated_at = datetime.now()
             execution_plan.final_response = execution_plan.final_response or "运行已取消"
             self.db.add(execution_plan)
@@ -291,6 +293,11 @@ class RecoveryService:
                     await self._process_collected_artifacts(run_id, stream_queue)
                     self._update_run_status(run_id, RunStatus.COMPLETED)
 
+                except asyncio.CancelledError:
+                    # 🔥 客户端断开连接（如刷新页面）
+                    # aggregator_node 内部已更新 AgentRun 状态，无需在此处理
+                    logger.info(f"[HITL RESUME] 客户端断开连接，run_id={run_id}")
+                    raise
                 except AppError as e:
                     if e.code == ErrorCode.RUN_CANCELLED:
                         yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
@@ -484,11 +491,14 @@ class RecoveryService:
     # 状态清理
     # ============================================================================
 
-    async def _cleanup_checkpoints(self, thread_id: str):
+    async def _cleanup_checkpoints(self, thread_id: str, run_id: str | None = None):
         """
         清理 LangGraph checkpoints（防止僵尸状态）
 
         使用同步连接（Windows兼容）
+        清理两种格式的 thread_id:
+        1. 原始 thread_id
+        2. isolated_thread_id 格式: {thread_id}_{run_id}
         """
         try:
             db_url = settings.get_database_url(sync_driver="plain")
@@ -503,9 +513,25 @@ class RecoveryService:
                         )
                     """)
                     if cur.fetchone()[0]:
+                        # 清理原始 thread_id 的 checkpoints
                         cur.execute("DELETE FROM checkpoints WHERE thread_id = %s", (thread_id,))
-                        deleted = cur.rowcount
-                        logger.info(f"[HITL RESUME] 清理了 {deleted} 个 checkpoint(s)")
+                        deleted_original = cur.rowcount
+
+                        # 清理 isolated_thread_id 格式的 checkpoints
+                        deleted_isolated = 0
+                        if run_id:
+                            isolated_thread_id = f"{thread_id}_{run_id}"
+                            cur.execute(
+                                "DELETE FROM checkpoints WHERE thread_id = %s",
+                                (isolated_thread_id,),
+                            )
+                            deleted_isolated = cur.rowcount
+
+                        total_deleted = deleted_original + deleted_isolated
+                        logger.info(
+                            f"[HITL RESUME] 清理了 {total_deleted} 个 checkpoint(s) "
+                            f"(原始: {deleted_original}, 隔离: {deleted_isolated})"
+                        )
                     else:
                         logger.info("[HITL RESUME] checkpoints 表不存在，跳过清理")
                 conn.commit()

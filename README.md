@@ -248,12 +248,14 @@ pnpm run build
 - skill / template abstraction（第一版）
 - MCP 动态工具接入
 - Server-Driven UI 事件架构
+- run timeline UI（运行时间线页面）
+- admin stats dashboard（管理统计面板）
+- 会话恢复与任务续执行（切换会话后可继续执行中的任务）
 
 ### 下一阶段
 
 - 交互式 selective approval UI
 - 模板导入导出 / 分享
-- run dashboard / timeline UI
 
 ## 贡献
 

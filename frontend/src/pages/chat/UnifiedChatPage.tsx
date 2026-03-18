@@ -7,6 +7,7 @@ import { useTaskStore } from '@/store/taskStore'
 import { useUserStore } from '@/store/userStore'
 import { useChat } from '@/hooks/useChat'
 import { useSessionRestore } from '@/hooks/useSessionRestore'
+import { useRunPolling } from '@/hooks/useRunPolling'
 import { useAppUISelectors } from '@/hooks'
 import { chatHistoryKeys } from '@/hooks/queries'
 
@@ -288,9 +289,67 @@ export default function UnifiedChatPage() {
   }, [initialMessage, threadId, normalizedAgentId, sendMessage, navigate, searchParams, isStreaming, queryClient])
 
   // v3.0: 状态恢复/水合（使用独立的 Hook）
-  // v3.3.0: 使用合并后的 useSessionRestore，同时支持页面加载恢复和标签页切换恢复
-  // 🔥 使用 useSessionRestore 替代 loadConversation，避免重复加载
-  useSessionRestore({ enabled: !!threadId && !isNewConversation })
+  // v3.5.0: 解耦 useSessionRestore 和 useRunPolling，组件层组合
+  // 🔥 useSessionRestore 仅负责恢复会话数据
+  const { isRestored, isLatestRunControllable, latestRunId, restore: restoreSession } = useSessionRestore({ enabled: !!threadId && !isNewConversation })
+
+  // 🔥 useRunPolling 独立运行，负责轮询状态
+  const { startPolling, stopPolling, isPolling, currentStatus: pollingStatus, isHITLPaused, isTerminal, hasError } = useRunPolling({ enabled: true })
+
+  // 🔥 从 store 获取 activeRunId（用于监听）
+  const activeRunId = useTaskStore((state) => state.activeRunId)
+
+  // 🔥 v3.5.1 修复：包装 stopGeneration，同时停止轮询
+  const handleStopGeneration = useCallback(() => {
+    stopPolling()  // 先停止轮询
+    stopGeneration()  // 再停止生成
+  }, [stopPolling, stopGeneration])
+
+  // 🔥 核心组合逻辑：会话恢复完成后，安全启动轮询
+  useEffect(() => {
+    // 等待会话恢复完成
+    if (!isRestored) return
+
+    // 检查是否有可控制的任务
+    if (!isLatestRunControllable || !latestRunId) {
+      // 没有运行中的任务，确保停止轮询
+      stopPolling()
+      return
+    }
+
+    // 检查 store 中的 activeRunId 是否已同步
+    if (activeRunId !== latestRunId) {
+      // store 还未同步，等待
+      return
+    }
+
+    // 🔥🔥🔥 关键修复：如果已经检测到终态，不要重新启动轮询
+    // 这发生在：轮询检测到终态 -> restoreSession() -> 但后端状态仍显示 running
+    // 此时如果启动轮询，会重置 isTerminal，导致终态检测失效
+    if (isTerminal) {
+      logger.info('[UnifiedChatPage] 已检测到终态，跳过轮询启动')
+      return
+    }
+
+    // 🔥 所有条件满足，安全启动轮询
+    logger.info('[UnifiedChatPage] 恢复完成，启动轮询:', { latestRunId, activeRunId })
+    startPolling()
+  }, [isRestored, isLatestRunControllable, latestRunId, activeRunId, isTerminal, startPolling, stopPolling])
+
+  // 🔥 终态时刷新数据（防抖：只触发一次）
+  const hasRefreshedRef = useRef(false)
+  useEffect(() => {
+    if (!isTerminal || hasRefreshedRef.current) return
+
+    logger.info('[UnifiedChatPage] 检测到终态，刷新数据')
+    hasRefreshedRef.current = true
+    restoreSession()
+  }, [isTerminal, restoreSession])
+
+  // 🔥 重置防抖标记（会话切换时）
+  useEffect(() => {
+    hasRefreshedRef.current = false
+  }, [threadId])
 
   // 🔐 登录后自动重发消息（Store Trigger 模式）
   // 使用 ref 存储最新的 sendMessage 函数，避免 subscribe 闭包问题
@@ -369,11 +428,30 @@ export default function UnifiedChatPage() {
   const chatStreamActions = useMemo(
     () => ({
       onSend: handleSend,
-      onStop: stopGeneration,
+      onStop: handleStopGeneration,  // 🔥 v3.5.1 使用包装函数
       onRegenerate: handleRegenerate,
       onPreview: handlePreview,
     }),
-    [handleSend, stopGeneration, handleRegenerate, handlePreview]
+    [handleSend, handleStopGeneration, handleRegenerate, handlePreview]
+  )
+
+  // v3.4.0: 轮询状态（用于恢复运行中的任务）
+  // 🔥 v3.5.1 修复：手动刷新时强制恢复，跳过防抖
+  const handleRefreshSession = useCallback(() => {
+    // 🔥 手动刷新时，重置防抖标记
+    hasRefreshedRef.current = false
+    restoreSession(true)  // force = true，跳过防抖
+  }, [restoreSession])
+
+  const chatStreamPolling = useMemo(
+    () => ({
+      isPolling,
+      status: pollingStatus,
+      isHITLPaused,
+      hasError,
+      onRefresh: handleRefreshSession,
+    }),
+    [isPolling, pollingStatus, isHITLPaused, hasError, handleRefreshSession]
   )
 
   // 加载中状态：agent 正在从后端获取
@@ -420,6 +498,7 @@ export default function UnifiedChatPage() {
             input={chatStreamInput}
             actions={chatStreamActions}
             resumeExecution={resumeExecution}  // 🔥🔥🔥 v3.1.0 HITL
+            polling={chatStreamPolling}  // 🔥 v3.4.0 轮询状态
           />
         }
         orchestratorPanel={

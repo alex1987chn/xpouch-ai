@@ -32,13 +32,6 @@ export default function HeavyInputConsole({
 
   return (
     <div className="bg-card border-t-2 border-border-default z-20 p-0">
-      {/* 输入流标签条 */}
-      <div className="bg-border-default h-1 w-full relative">
-        <div className="absolute right-0 top-[-20px] bg-surface-card text-content-secondary font-mono text-[9px] px-2 py-0.5 font-bold border-t-2 border-l-2 border-border-default">
-          INPUT_STREAM
-        </div>
-      </div>
-
       {/* 输入区域 */}
       <div className="p-4 pb-4 pt-3 bg-page">
         <div className={cn(

@@ -12,6 +12,7 @@
 
 import { useRef, useCallback, useEffect } from 'react'
 import { useChatActions } from '@/hooks/useChatSelectors'
+import { logger } from '@/utils/logger'
 
 // ============================================================================
 // 解析器状态定义
@@ -145,12 +146,14 @@ export function useStreamHandler() {
     const messageId = currentMessageIdRef.current
     
     if (!messageId) {
+      logger.warn('[useStreamHandler] flushUpdates: messageId is empty')
       rafIdRef.current = null
       return
     }
     
     // 批量更新消息内容
     if (pending.contentDelta) {
+      logger.debug('[useStreamHandler] Updating message:', messageId, 'Content length:', pending.contentDelta.length)
       updateMessage(messageId, pending.contentDelta, true)
       onChunkRef.current?.(pending.contentDelta)
     }
