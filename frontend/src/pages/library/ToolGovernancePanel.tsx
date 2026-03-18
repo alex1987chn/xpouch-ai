@@ -217,16 +217,20 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
       <div className="border-2 border-border-default bg-surface-card shadow-theme-card">
-        <div className="border-b-2 border-border-default px-4 py-3">
+        <div className="flex items-center justify-between border-b-2 border-border-default px-4 py-3">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-4 w-4 text-content-secondary" />
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
               {t('toolGovernance') || 'Tool Governance'}
             </span>
           </div>
+          <div className="flex items-center gap-2">
+            {/* 预留操作按钮位置 */}
+          </div>
         </div>
-        <div className="max-h-[70vh] overflow-y-auto bauhaus-scrollbar">
-          {filteredPolicies.map(policy => (
+        {filteredPolicies.length > 0 ? (
+          <div className="max-h-[70vh] overflow-y-auto bauhaus-scrollbar">
+            {filteredPolicies.map(policy => (
             <button
               key={`${policy.source}:${policy.tool_name}`}
               onClick={() => handleSelect(policy)}
@@ -250,7 +254,14 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
               </div>
             </button>
           ))}
-        </div>
+          </div>
+        ) : (
+          <div className="px-4 py-12 text-center">
+            <p className="font-mono text-xs uppercase text-content-muted">
+              {t('noToolPoliciesFound') || 'No tool policies found'}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="border-2 border-border-default bg-surface-card shadow-theme-card">
