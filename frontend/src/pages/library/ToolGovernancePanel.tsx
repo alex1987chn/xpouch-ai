@@ -231,10 +231,10 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
               key={`${policy.source}:${policy.tool_name}`}
               onClick={() => handleSelect(policy)}
               className={cn(
-                'w-full border-b-2 border-border-default px-4 py-3 text-left transition-colors',
+                'w-full border-b-2 border-border-default px-4 py-3 text-left transition-all relative',
                 selectedKey === `${policy.source}:${policy.tool_name}`
-                  ? 'bg-surface-elevated'
-                  : 'bg-surface-card hover:bg-surface-page'
+                  ? 'bg-surface-elevated border-l-4 border-l-accent-brand pl-3'
+                  : 'bg-surface-card hover:bg-surface-page border-l-4 border-l-transparent'
               )}
             >
               <div className="flex items-center justify-between gap-2">
