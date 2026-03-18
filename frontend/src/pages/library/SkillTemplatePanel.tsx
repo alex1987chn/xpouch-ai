@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Bot, FileCode, Plus, Rocket, Save, Trash2 } from 'lucide-react'
+import { Bot, FileCode, Plus, Rocket, Save, Trash2, Upload, Download } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '@/components/ui/use-toast'
 import { cn } from '@/lib/utils'
@@ -10,7 +10,10 @@ import {
   getSkillTemplates,
   type SkillTemplate,
   updateSkillTemplate,
+  exportSkillTemplate,
 } from '@/services/admin'
+import { TemplateImportDialog } from '@/components/library/TemplateImportDialog'
+import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 
 // Artifact 类型标签颜色映射
 const ARTIFACT_TYPE_COLORS: Record<string, string> = {
@@ -98,6 +101,9 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
   const [draft, setDraft] = useState<TemplateDraft>(EMPTY_DRAFT)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     tRef.current = t
@@ -127,7 +133,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
   const refreshTemplates = async (preferredSelectedId: string | null = null) => {
     setIsLoading(true)
     try {
-      const data = await getSkillTemplates(isAdmin)
+      const data = await getSkillTemplates(canEdit)
       applyTemplates(data, preferredSelectedId)
     } catch (error) {
       toastRef.current({
@@ -260,7 +266,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
     }
   }
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
     if (!draft.id) return
     if (draft.is_builtin) {
       toast({
@@ -270,12 +276,19 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
       })
       return
     }
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!draft.id) return
+    setIsDeleting(true)
     try {
       await deleteSkillTemplate(draft.id)
       toast({
         title: t('deleted') || 'Deleted',
         description: t('templateDeleted') || 'Template deleted successfully.',
       })
+      setIsDeleteDialogOpen(false)
       await refreshTemplates()
     } catch (error) {
       toast({
@@ -283,7 +296,40 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
         description: error instanceof Error ? error.message : t('deleteFailed'),
         variant: 'destructive',
       })
+    } finally {
+      setIsDeleting(false)
     }
+  }
+
+  const handleExport = async () => {
+    if (!selectedTemplate) return
+    try {
+      const exportData = await exportSkillTemplate(selectedTemplate.template_key)
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${selectedTemplate.template_key}-template.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast({
+        title: t('exported') || 'Exported',
+        description: t('templateExported') || 'Template exported successfully.',
+      })
+    } catch (error) {
+      toast({
+        title: t('exportFailed') || 'Export failed',
+        description: error instanceof Error ? error.message : t('exportFailed'),
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleImportSuccess = () => {
+    void refreshTemplates()
+    setIsImportDialogOpen(false)
   }
 
   if (isLoading) {
@@ -304,15 +350,26 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
               {t('skillTemplates') || 'Skill Templates'}
             </span>
           </div>
-          {canEdit && (
-            <button
-              onClick={handleCreate}
-              className="flex items-center gap-1 border-2 border-border-default bg-surface-page px-2 py-1 text-[10px] font-bold uppercase text-content-secondary transition-colors hover:border-border-strong hover:text-content-primary"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {t('newTemplate') || 'New'}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {canEdit && (
+              <>
+                <button
+                  onClick={() => setIsImportDialogOpen(true)}
+                  className="flex items-center gap-1 border-2 border-border-default bg-surface-page px-2 py-1 text-[10px] font-bold uppercase text-content-secondary transition-colors hover:border-border-strong hover:text-content-primary"
+                  title={t('importTemplate') || 'Import'}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={handleCreate}
+                  className="flex items-center gap-1 border-2 border-border-default bg-surface-page px-2 py-1 text-[10px] font-bold uppercase text-content-secondary transition-colors hover:border-border-strong hover:text-content-primary"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  {t('newTemplate') || 'New'}
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {filteredTemplates.length > 0 ? (
@@ -322,10 +379,10 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
                 key={template.id}
                 onClick={() => handleSelect(template)}
                 className={cn(
-                  'w-full border-b-2 border-border-default px-4 py-3 text-left transition-colors',
+                  'w-full border-b-2 border-border-default px-4 py-3 text-left transition-all relative',
                   selectedId === template.id
-                    ? 'bg-surface-elevated'
-                    : 'bg-surface-card hover:bg-surface-page'
+                    ? 'bg-surface-elevated border-l-4 border-l-accent-brand pl-3'
+                    : 'bg-surface-card hover:bg-surface-page border-l-4 border-l-transparent'
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -377,15 +434,26 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
               {draft.id ? selectedTemplate?.template_key : t('templateEditorHint') || 'Build a reusable starter flow.'}
             </div>
           </div>
-          {selectedTemplate && (
-            <button
-              onClick={() => handleUseTemplate(selectedTemplate)}
-              className="flex items-center gap-2 border-2 border-accent-brand bg-accent-brand px-3 py-1.5 font-mono text-[10px] font-bold uppercase text-content-inverted transition-all hover:brightness-95"
-            >
-              <Rocket className="h-3.5 w-3.5" />
-              {t('useTemplate') || 'Use'}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {selectedTemplate && canEdit && (
+              <button
+                onClick={handleExport}
+                className="flex items-center gap-2 border-2 border-border-default bg-surface-page px-3 py-1.5 font-mono text-[10px] font-bold uppercase text-content-secondary transition-all hover:border-border-strong hover:text-content-primary"
+                title={t('exportTemplate') || 'Export'}
+              >
+                <Download className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {selectedTemplate && (
+              <button
+                onClick={() => handleUseTemplate(selectedTemplate)}
+                className="flex items-center gap-2 border-2 border-accent-brand bg-accent-brand px-3 py-1.5 font-mono text-[10px] font-bold uppercase text-content-inverted transition-all hover:brightness-95"
+              >
+                <Rocket className="h-3.5 w-3.5" />
+                {t('useTemplate') || 'Use'}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid gap-4 p-4 md:grid-cols-2">
@@ -505,7 +573,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
             <div className="flex items-center gap-2">
               {draft.id && (
                 <button
-                  onClick={() => void handleDelete()}
+                  onClick={handleDeleteClick}
                   className="flex items-center gap-2 border-2 border-border-default bg-surface-page px-3 py-2 font-mono text-[10px] font-bold uppercase text-content-secondary transition-colors hover:text-accent-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -528,6 +596,24 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
           )}
         </div>
       </div>
+
+      {/* 导入对话框 */}
+      <TemplateImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        onSuccess={handleImportSuccess}
+      />
+
+      {/* 删除确认对话框 */}
+      <DeleteConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title={t('confirmDeleteTemplate') || 'Delete Template'}
+        itemName={draft.name}
+        isDeleting={isDeleting}
+        variant="danger"
+      />
     </div>
   )
 }

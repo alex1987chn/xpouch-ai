@@ -16,14 +16,15 @@ engine = create_engine(
     pool_size=20,
     # 允许临时溢出的连接数
     max_overflow=10,
-    # 🔥 每 1800秒 (30分钟) 回收连接，防止数据库端断开导致的"死链接"
-    pool_recycle=1800,
+    # 🔥 每 300秒 (5分钟) 回收连接，防止云数据库 idle timeout 导致的"死链接"
+    # 云环境通常 600s 开始清理，我们主动在 300s 时"转生"，确保连接永远"壮年"
+    pool_recycle=300,
     # 🔥 每次取连接前 ping 一下，确保连接活着 (虽然有一点点性能损耗，但极其稳定)
     pool_pre_ping=True,
 )
 logger.info("[Database] Using PostgreSQL: %s", settings.get_masked_database_url())
 logger.info(
-    "[Database] Connection pool: size=20, max_overflow=10, pool_recycle=1800s, pool_pre_ping=True"
+    "[Database] Connection pool: size=20, max_overflow=10, pool_recycle=300s, pool_pre_ping=True"
 )
 
 

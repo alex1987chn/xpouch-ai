@@ -304,8 +304,9 @@ export default function ChatStreamPanel({
       </div>
 
       {/* v3.4.0 轮询状态栏（输入框上方） */}
+      {/* 🔥 修复：HITL 审核时不显示轮询状态栏，避免与 PlanReviewCard 重复提示 */}
       <RunPollingBar
-        show={polling?.isPolling ?? false}
+        show={(polling?.isPolling ?? false) && !isWaitingForApproval}
         status={polling?.status ?? null}
         isHITLPaused={polling?.isHITLPaused ?? false}
         hasError={polling?.hasError ?? false}

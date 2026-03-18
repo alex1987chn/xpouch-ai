@@ -10,7 +10,7 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.x-green?logo=langchain)](https://langchain-ai.github.io/langgraph/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://docker.com)
 
-<img src="https://github.com/user-attachments/assets/c4554212-e24e-47dd-a61d-8df4f69ce233" alt="XPouch AI Screenshot" width="900">
+<img src="https://github.com/user-attachments/assets/7755b09f-6bed-453d-814f-6cd331e19c6c" alt="XPouch AI Screenshot" width="900">
 
 [问题反馈](https://github.com/alex1987chn/xpouch-ai/issues) · [功能讨论](https://github.com/alex1987chn/xpouch-ai/discussions)
 
@@ -29,6 +29,7 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - `Thread / AgentRun / ExecutionPlan` 三层运行时语义
 - artifact 持久化、恢复展示与多任务串行执行
 - 技能模板（Library 面板 + 内置模板 + 一键发起会话）
+- 模板导入导出（支持 override/clone/skip 策略的 JSON 导入导出）
 - 工具治理（可配置策略 + Library 管理面板，view_admin 只读）
 - SSE 驱动的 Server-Driven UI
 - MCP 动态工具接入
@@ -251,11 +252,12 @@ pnpm run build
 - run timeline UI（运行时间线页面）
 - admin stats dashboard（管理统计面板）
 - 会话恢复与任务续执行（切换会话后可继续执行中的任务）
+- 模板导入导出（JSON 格式，支持冲突检测与多种导入策略）
 
 ### 下一阶段
 
 - 交互式 selective approval UI
-- 模板导入导出 / 分享
+- 模板分享（Template Sharing）
 
 ## 贡献
 
