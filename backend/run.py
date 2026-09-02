@@ -34,11 +34,13 @@ def kill_process_on_port(port):
     import subprocess
 
     try:
-        # 使用 netstat 查找占用端口的进程（不经 shell，输出在 Python 内过滤）
+        # 使用 netstat 查找占用端口的进程（不经 shell，输出在 Python 内过滤；
+        # 中文 Windows 的 netstat 输出为 GBK，errors="ignore" 避免 UTF-8 解码炸掉读取线程）
         result = subprocess.run(
             ["netstat", "-ano"],
             capture_output=True,
             text=True,
+            errors="ignore",
         )
 
         if result.returncode == 0 and result.stdout:
@@ -134,5 +136,8 @@ if __name__ == "__main__":
 
     try:
         run_process(".", target=start_server)
-    except TypeError:
-        run_process(".", target=start_server)
+    except ValueError as e:
+        # Windows 下 watchfiles 通过环境变量传递变更列表，一次性变更文件过多会超过
+        # 32767 字符上限而崩溃；退化为无热重载直启，保证服务可用
+        logger.warning(f"[Watchfiles] 热重载异常（{e}），退化为无热重载模式直接启动")
+        start_server()
