@@ -21,8 +21,11 @@ class _FakeSession:
         self.deleted = []
         self.commit_called = False
 
-    def exec(self, _statement):
+    # SQLModel Session.exec 接口的 mock（模拟查询，非代码执行）
+    def _session_exec(self, _statement):
         return _ExecResult(all_value=self.threads)
+
+    exec = _session_exec
 
     def delete(self, obj):
         self.deleted.append(obj)

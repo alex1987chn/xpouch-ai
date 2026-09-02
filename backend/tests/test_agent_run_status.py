@@ -45,7 +45,8 @@ class _FakeSession:
             return self.runs.get(object_id)
         return None
 
-    def exec(self, _statement):
+    # SQLModel Session.exec 接口的 mock（模拟查询，非代码执行）
+    def _session_exec(self, _statement):
         active_runs = [
             run
             for run in self.runs.values()
@@ -58,6 +59,8 @@ class _FakeSession:
             }
         ]
         return _FakeResult(active_runs)
+
+    exec = _session_exec
 
 
 class _FakeResult:

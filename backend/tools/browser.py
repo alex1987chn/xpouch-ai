@@ -4,6 +4,9 @@
 P1 优化: 添加异步支持
 """
 
+import ipaddress
+from urllib.parse import urlsplit
+
 import httpx
 
 # P1 优化: 导入同步 requests 保持兼容
@@ -11,6 +14,30 @@ import requests
 from langchain_core.tools import tool
 
 from utils.logger import logger
+
+
+def _validate_url(url: str) -> str | None:
+    """校验待抓取的 URL：仅 http/https、禁止内网/保留地址与内嵌凭据，收敛 SSRF 面。"""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return "❌ 错误: URL 格式无效"
+    if parts.scheme not in ("http", "https"):
+        return "❌ 错误: URL 必须以 http 或 https 开头"
+    if not parts.hostname:
+        return "❌ 错误: URL 缺少主机名"
+    if parts.username or parts.password:
+        return "❌ 错误: URL 不允许携带用户名/密码"
+    host = parts.hostname
+    try:
+        ip = ipaddress.ip_address(host)
+        if not ip.is_global:
+            return "❌ 错误: 不允许访问内网或保留地址"
+    except ValueError:
+        # 非裸 IP 主机名：拦截常见内网命名
+        if host == "localhost" or host.endswith((".local", ".internal", ".lan", ".home")):
+            return "❌ 错误: 不允许访问内网地址"
+    return None
 
 
 @tool
@@ -27,20 +54,21 @@ def read_webpage(url: str) -> str:
     Returns:
         网页的 Markdown 内容 (截取前 15000 字符以防超长)
     """
-    if not url.startswith("http"):
-        return "❌ 错误: URL 必须以 http 或 https 开头"
+    error = _validate_url(url)
+    if error:
+        return error
 
     logger.info(f"--- [Tool] 正在深度阅读网页: {url} ---")
-
-    # 🔥 魔法：在 URL 前加 r.jina.ai，直接获取 Markdown
-    jina_url = f"https://r.jina.ai/{url}"
 
     # 告诉 Jina 我们是开发者，有些网站会放行
     headers = {"User-Agent": "XPouch-Agent/1.0", "X-Return-Format": "markdown"}
 
     try:
         # 设置 15秒 超时，防止卡死
-        response = requests.get(jina_url, headers=headers, timeout=15)
+        # POST 固定端点 + 请求体传目标 URL：抓取地址不再进入请求 URL（且天然支持 # 锚点路由）
+        response = requests.post(
+            "https://r.jina.ai/", headers=headers, json={"url": url}, timeout=15
+        )
 
         if response.status_code != 200:
             return f"❌ 读取失败 (状态码 {response.status_code}): 可能是网站反爬或链接无效。"
@@ -82,21 +110,20 @@ async def aread_webpage(url: str) -> str:
     Returns:
         网页的 Markdown 内容 (截取前 15000 字符以防超长)
     """
-    if not url.startswith("http"):
-        return "❌ 错误: URL 必须以 http 或 https 开头"
+    error = _validate_url(url)
+    if error:
+        return error
 
     logger.info(f"--- [Tool] 正在异步深度阅读网页: {url} ---")
-
-    # 🔥 魔法：在 URL 前加 r.jina.ai，直接获取 Markdown
-    jina_url = f"https://r.jina.ai/{url}"
 
     # 告诉 Jina 我们是开发者，有些网站会放行
     headers = {"User-Agent": "XPouch-Agent/1.0", "X-Return-Format": "markdown"}
 
     try:
         # P1 优化: 使用异步 HTTP 客户端
+        # POST 固定端点 + 请求体传目标 URL：抓取地址不再进入请求 URL（且天然支持 # 锚点路由）
         async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.get(jina_url, headers=headers)
+            response = await client.post("https://r.jina.ai/", headers=headers, json={"url": url})
 
             if response.status_code != 200:
                 return f"❌ 读取失败 (状态码 {response.status_code}): 可能是网站反爬或链接无效。"

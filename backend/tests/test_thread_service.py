@@ -37,7 +37,8 @@ class _FakeThreadSession:
                     return execution_plan
         return None
 
-    def exec(self, _statement):
+    # SQLModel Session.exec 接口的 mock（模拟查询，非代码执行）
+    def _session_exec(self, _statement):
         statement_text = str(_statement)
         if "FROM thread" in statement_text:
             return _ExecResult(first_value=self.thread)
@@ -47,6 +48,8 @@ class _FakeThreadSession:
             latest_run = self.agent_runs[0] if self.agent_runs else None
             return _ExecResult(first_value=latest_run, all_value=self.agent_runs)
         return _ExecResult()
+
+    exec = _session_exec
 
     def add(self, _obj):
         return None

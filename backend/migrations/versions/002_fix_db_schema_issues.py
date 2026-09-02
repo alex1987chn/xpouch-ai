@@ -109,28 +109,49 @@ def upgrade() -> None:
         $$ LANGUAGE plpgsql
     """)
 
-    # 需要添加触发器的表
-    tables_with_updated_at = [
-        "user",
-        "thread",
-        "customagent",
-        "subtask",
-        "tasksession",
-        "systemexpert",
-        "mcp_servers",
-    ]
-
-    for table in tables_with_updated_at:
-        trigger_name = f"trg_{table}_updated_at"
-        # 先删除已存在的触发器（避免重复）
-        op.execute(f'DROP TRIGGER IF EXISTS {trigger_name} ON "{table}"')
-        # 创建新触发器
-        op.execute(f"""
-            CREATE TRIGGER {trigger_name}
-            BEFORE UPDATE ON \"{table}\"
-            FOR EACH ROW
-            EXECUTE FUNCTION update_updated_at_column()
-        """)
+    # 为固定白名单表添加触发器（纯字面量 SQL，不做任何拼接或变量传递）
+    # user
+    op.execute('DROP TRIGGER IF EXISTS trg_user_updated_at ON "user"')
+    op.execute(
+        'CREATE TRIGGER trg_user_updated_at BEFORE UPDATE ON "user" '
+        "FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()"
+    )
+    # thread
+    op.execute('DROP TRIGGER IF EXISTS trg_thread_updated_at ON "thread"')
+    op.execute(
+        'CREATE TRIGGER trg_thread_updated_at BEFORE UPDATE ON "thread" '
+        "FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()"
+    )
+    # customagent
+    op.execute('DROP TRIGGER IF EXISTS trg_customagent_updated_at ON "customagent"')
+    op.execute(
+        'CREATE TRIGGER trg_customagent_updated_at BEFORE UPDATE ON "customagent" '
+        "FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()"
+    )
+    # subtask
+    op.execute('DROP TRIGGER IF EXISTS trg_subtask_updated_at ON "subtask"')
+    op.execute(
+        'CREATE TRIGGER trg_subtask_updated_at BEFORE UPDATE ON "subtask" '
+        "FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()"
+    )
+    # tasksession
+    op.execute('DROP TRIGGER IF EXISTS trg_tasksession_updated_at ON "tasksession"')
+    op.execute(
+        'CREATE TRIGGER trg_tasksession_updated_at BEFORE UPDATE ON "tasksession" '
+        "FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()"
+    )
+    # systemexpert
+    op.execute('DROP TRIGGER IF EXISTS trg_systemexpert_updated_at ON "systemexpert"')
+    op.execute(
+        'CREATE TRIGGER trg_systemexpert_updated_at BEFORE UPDATE ON "systemexpert" '
+        "FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()"
+    )
+    # mcp_servers
+    op.execute('DROP TRIGGER IF EXISTS trg_mcp_servers_updated_at ON "mcp_servers"')
+    op.execute(
+        'CREATE TRIGGER trg_mcp_servers_updated_at BEFORE UPDATE ON "mcp_servers" '
+        "FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()"
+    )
 
     # ==========================================================================
     # 3. 修复 customagent 外键约束（添加级联删除）
@@ -164,18 +185,14 @@ def upgrade() -> None:
 def downgrade() -> None:
     """回滚迁移（谨慎使用）"""
 
-    # 删除触发器
-    tables_with_updated_at = [
-        "user",
-        "thread",
-        "customagent",
-        "subtask",
-        "tasksession",
-        "systemexpert",
-        "mcp_servers",
-    ]
-    for table in tables_with_updated_at:
-        op.execute(f'DROP TRIGGER IF EXISTS trg_{table}_updated_at ON "{table}"')
+    # 删除触发器（固定白名单，纯字面量 SQL）
+    op.execute('DROP TRIGGER IF EXISTS trg_user_updated_at ON "user"')
+    op.execute('DROP TRIGGER IF EXISTS trg_thread_updated_at ON "thread"')
+    op.execute('DROP TRIGGER IF EXISTS trg_customagent_updated_at ON "customagent"')
+    op.execute('DROP TRIGGER IF EXISTS trg_subtask_updated_at ON "subtask"')
+    op.execute('DROP TRIGGER IF EXISTS trg_tasksession_updated_at ON "tasksession"')
+    op.execute('DROP TRIGGER IF EXISTS trg_systemexpert_updated_at ON "systemexpert"')
+    op.execute('DROP TRIGGER IF EXISTS trg_mcp_servers_updated_at ON "mcp_servers"')
 
     # 删除触发器函数
     op.execute("DROP FUNCTION IF EXISTS update_updated_at_column()")

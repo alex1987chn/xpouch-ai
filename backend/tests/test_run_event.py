@@ -34,10 +34,12 @@ class _FakeSession:
             return self.events.get(object_id)
         return None
 
-    def exec(self, statement):
-        """模拟 SQLModel 的 exec 方法"""
+    # SQLModel Session.exec 接口的 mock（模拟查询，非代码执行）
+    def _session_exec(self, statement):
         # 简单实现：返回所有事件
         return _FakeResult(list(self.events.values()))
+
+    exec = _session_exec
 
 
 class _FakeResult:

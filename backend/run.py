@@ -34,21 +34,23 @@ def kill_process_on_port(port):
     import subprocess
 
     try:
-        # 使用 netstat 查找占用端口的进程
+        # 使用 netstat 查找占用端口的进程（不经 shell，输出在 Python 内过滤）
         result = subprocess.run(
-            ["netstat", "-ano", "|", "findstr", f":{port}"],
+            ["netstat", "-ano"],
             capture_output=True,
             text=True,
-            shell=True,
         )
 
         if result.returncode == 0 and result.stdout:
             lines = result.stdout.strip().split("\n")
+            port_marker = f":{port} "
             for line in lines:
-                if "LISTENING" in line:
+                if "LISTENING" in line and port_marker in line:
                     parts = line.strip().split()
                     if len(parts) >= 5:
                         pid = parts[-1]
+                        if not pid.isdigit():
+                            continue
                         try:
                             subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True)
                             logger.info(f"[Cleanup] Killed process {pid} on port {port}")
