@@ -263,7 +263,16 @@ def _resolve_simple_llm(state: AgentState):
     from agents.graph import get_simple_llm_lazy
 
     preferred_model = state.get("simple_model")
+    thinking = state.get("simple_thinking")
     if not preferred_model:
+        # 未自选模型但显式设置了思考开关：对系统默认模型应用该偏好
+        if thinking in ("enabled", "disabled"):
+            try:
+                from utils.llm_factory import get_default_model, get_llm_by_model
+
+                return get_llm_by_model(get_default_model(), streaming=True, thinking=thinking)
+            except Exception as e:
+                logger.warning(f"[DirectReply] 默认模型应用思考偏好失败，回落系统默认: {e}")
         return get_simple_llm_lazy()
 
     try:
@@ -273,9 +282,7 @@ def _resolve_simple_llm(state: AgentState):
         if not get_model_config(preferred_model):
             raise ValueError(f"未知模型 ID: {preferred_model}")
 
-        return get_llm_by_model(
-            preferred_model, streaming=True, thinking=state.get("simple_thinking")
-        )
+        return get_llm_by_model(preferred_model, streaming=True, thinking=thinking)
     except Exception as e:
         logger.warning(f"[DirectReply] 用户偏好模型 '{preferred_model}' 不可用，回落系统默认: {e}")
         return get_simple_llm_lazy()
