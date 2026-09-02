@@ -5,7 +5,6 @@
  */
 
 import { buildUrl, handleResponse } from './common'
-import { logger } from '@/utils/logger'
 
 // ============================================================================
 // 类型定义

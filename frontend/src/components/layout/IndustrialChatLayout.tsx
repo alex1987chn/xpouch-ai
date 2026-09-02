@@ -63,7 +63,6 @@ export default function IndustrialChatLayout({
   orchestratorPanel,
   hideOrchestrator = false,
   viewMode = 'chat',
-  onViewModeChange,
   isFullscreen = false,
 }: IndustrialChatLayoutProps) {
   return (

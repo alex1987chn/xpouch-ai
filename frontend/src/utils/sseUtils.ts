@@ -53,11 +53,11 @@ export interface SSEPromiseHelpersOptions {
   context?: string
 }
 
-export interface SSEPromiseHelpers {
+export interface SSEPromiseHelpers<T = unknown> {
   /** 清理函数：清除心跳定时器 */
   cleanup: () => void
   /** 安全 resolve：确保只执行一次并清理资源 */
-  safeResolve: <T>(value: T) => void
+  safeResolve: (value: T) => void
   /** 安全 reject：确保只执行一次并清理资源 */
   safeReject: (error: Error) => void
   /** 启动心跳检测 */
@@ -72,7 +72,7 @@ export function createSSEPromiseHelpers<T>(
   resolve: (value: T) => void,
   reject: (error: Error) => void,
   options: SSEPromiseHelpersOptions
-): SSEPromiseHelpers {
+): SSEPromiseHelpers<T> {
   const { timeout = SSE_HEARTBEAT_TIMEOUT, checkInterval = SSE_HEARTBEAT_CHECK_INTERVAL, onTimeout, context = 'SSE' } = options
   
   let isCompleted = false

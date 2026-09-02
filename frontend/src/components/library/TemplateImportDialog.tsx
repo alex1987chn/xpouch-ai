@@ -44,7 +44,7 @@ export function TemplateImportDialog({
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [step, setStep] = useState<ImportStep>('upload')
-  const [fileName, setFileName] = useState('')
+  const [, setFileName] = useState('')
   const [fileContent, setFileContent] = useState('')
   const [preview, setPreview] = useState<TemplateImportPreviewResponse | null>(null)
   const [selectedStrategy, setSelectedStrategy] = useState<ImportStrategy>('clone')

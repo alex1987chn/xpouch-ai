@@ -166,7 +166,7 @@ export function ChartRenderer({ code }: ChartRendererProps) {
               outerRadius={100}
               paddingAngle={5}
             >
-              {config.items.map((item, index) => (
+              {config.items.map((_item, index) => (
                 <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
               ))}
             </Pie>

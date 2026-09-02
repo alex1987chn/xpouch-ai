@@ -5,6 +5,136 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-09-02] - v3.3.6 TypeScript 存量错误清零 + 升级 6.0.3：tsc 288 → 0
+
+### TypeScript 5.7.3 → 6.0.3（为 TS 7 铺路）
+
+- TS 7.0（原生 Go 编译器）已 GA 但 typescript-eslint 尚不支持（peer `<6.1.0`，v9 待发布），先升官方桥接版 6.0.3，行为与 5.7 一致并提前暴露 7.0 弃用项
+- **移除已弃用的 `baseUrl`**（TS 7.0 停效；`paths` 保持相对写法不受影响）
+- **显式声明 `"types": ["node"]`**：TS 6.0 改变了 `@types` 包的自动全量包含行为，pnpm workspace 符号链接布局下 `@types/node` 的全局命名空间（`NodeJS.Timeout` 等）不再被自动引入；显式包含后正常（react/react-dom 走模块导入不受影响）
+- 验证：tsc 0 错误、vite build ✓、eslint 0 错误（57 条存量 warning 不变）
+
+### 问题分布与修复
+
+- **i18n 联合类型缺 92 键**（单一根因）：`TranslationKey` 联合类型落后于翻译文案，补齐全部键
+- **未使用符号清理 33 处**：含死代码文件删除（`config/models.ts`、`types/model-provider.ts` 等，v3.3.4 起由 /api/models 替代）
+- **SSE 事件判别联合改造**：`SSEEvent<T, K>` 增加字面量类型参数，14 个事件别名绑定各自 `type` 字面量，消除事件类型断言
+- **~20 个真实类型 bug**：
+  - `ExpertEditor` 保存时未传 `expected_version`（乐观锁实际失效，冲突场景会静默覆盖他人修改）
+  - `UserProfile.role` 扩宽为四级角色（`user/view_admin/edit_admin/admin`，与后端一致）
+  - `chatEvents` 思考步骤空值安全、zustand persist 中间件泛型重写、`toggle-group` variant 类型收窄等
+- **vitest 测试目录移出 tsc 检查**：项目未安装 vitest，测试文件引用其类型全量报错（`tsconfig exclude`，测试文件本身保留）
+
+### 验证
+
+- `tsc --noEmit` 0 错误（项目历史首次）；`vite build` ✓ 22s；eslint 0 错误、warning 90 → 57
+- 浏览器实测 + DOM 结构检查：首页关键元素（侧边栏/标题/登录入口）完整，无 Error/undefined 渲染，Bauhaus 主题无损
+
+### 意义
+
+TS 7（编译器重写版）升级的前置债务已还清，后续迁移不再被存量错误淹没
+
+## [2026-09-02] - v3.3.5 依赖全面升级：LangChain 1.6 / Tailwind 4 / Vite 8 (rolldown) / bcrypt 5
+
+### 后端（~66 个包升级）
+
+- **LangChain 全家桶**：langchain-openai 1.1.7→1.6.0、langchain-core 1.2.7→1.6.1、langchain 1.2.6→1.3.18、langgraph 1.0.6→1.2.11（含 checkpoint/prebuilt/sdk）、langsmith 0.6.3→0.12.1、openai SDK 2.15→3.7
+- **框架层**：fastapi 0.135→0.141、starlette 0.52→1.6、cryptography 46→50、psycopg/sqlalchemy/sqlmodel/alembic 等全部最新
+- **passlib 移除**：认证层（jwt_handler）迁移为 bcrypt 5 原生调用（passlib 已停更且与 bcrypt 5 不兼容）；$2b$ 哈希与历史数据完全兼容，非法哈希防御性返回 False
+- **Tavily 适配**：langchain-tavily 0.2.x 将 `TavilySearchResults` 更名为 `TavilySearch`，search.py 导入链已适配（langchain-community 已停止维护，仅作兜底）
+- **ChatDeepSeek 集成**：deepseek provider 改用 `ChatDeepSeek`（ChatOpenAI 不透传第三方 reasoning 字段），`reasoning_content` 现落入 `additional_kwargs`——为前端展示思考过程铺路（实测 thinking=enabled 捕获 301 字符，disabled 为 0）
+- **pyproject 约束解锁**：mcp<3、bcrypt<6、gunicorn<27、watchfiles<2、cachetools<8；新增依赖 langchain-deepseek 1.1.0
+
+### 前端
+
+- **批量 minor/patch**：react 19.2.8、react-router-dom 7.18、@tanstack/react-query 5.102、@sentry/react 10.73、radix-ui 全系、recharts 3.10、mermaid 11.17 等；删除已废弃的 @types/dompurify
+- **大版本**：lucide-react 1.39（1.0 里程碑）、framer-motion 13、katex 0.18、eslint-plugin-react-hooks 7、tailwind-merge 3
+- **Tailwind 3 → 4**：`@tailwindcss/vite` 插件替代 postcss + autoprefixer 链路（postcss.config.js 删除）；通过 `@config` 兼容模式挂载原 tailwind.config.ts，全部主题 token（surface/content/border/accent/shadow 语义色、动画、阴影）验证无损；`tw-animate-css` 替代 tailwindcss-animate；`@custom-variant` 精确复刻 v3 darkMode 语义（项目实际经 data-theme 切换，dark: 变体历史上即未生效，行为不变）
+- **Vite 7 → 8（rolldown 内核）**：`manualChunks` 由对象形式改为函数形式（rolldown 仅支持函数）；构建时间 41s → 22s；vendor 分包结构与 terser drop_console 压缩验证不变
+- **pnpm 10 → 11.25**：适配 pnpm 11 新策略——`minimumReleaseAge: 0`（关闭"拒绝过新包"的供应链防护，本项目需跟进最新依赖）、`allowBuilds`（批准 esbuild/core-js 的 postinstall）
+- **Sentry 移除**：`@sentry/react`、`@sentry/vite-plugin` 及 `src/lib/sentry.ts` 整体移除（集成代码从未被任何模块消费，DSN 也未配置），vite 分包表同步清理
+- **视觉回归**：Tailwind 4 与 Vite 8 构建产物经浏览器实测截图验证，Bauhaus 主题（品牌黄强调、硬阴影、点阵背景、边框系统）渲染完整无样式缺失
+
+### 有意保留
+
+- TypeScript 先保持 5.7.x（TS 7 为编译器重写，且项目存在 279 个 tsc 存量错误，需先还债再迁移；存量错误已在 v3.3.6 清零并升入 6.0.3，TS 7 待 typescript-eslint v9 支持后跟进）
+- mcp 停在 1.29（langchain-mcp-adapters 0.3.2 的 resolver 锁定）；pydantic-core 跟随 pydantic 协调
+
+### 验证
+
+- 后端：全量 86 项测试通过、ruff 无告警、真实 API 冒烟（默认/thinking 开/关、Tavily 实例化）全部通过
+- 前端：vite build ✓、eslint 0 错误（90 条存量 warning）、产物 CSS token 完整性逐项核对 ✓、浏览器视觉回归 ✓
+
+## [2026-09-02] - v3.3.4 用户级模型配置：Simple 模式模型选择与思考模式开关
+
+### 新增功能
+
+- **「模型配置」页激活**（头像菜单 → 模型配置，原为纯写不读的占位页）：
+  - Simple 模式模型自选：用户可选择对话模型，或"跟随系统默认"；偏好存入新表 `user_settings`（JSONB 弹性字段，多端同步）
+  - 思考模式三态开关（跟随默认 / 开启 / 关闭），仅对声明 `thinking_toggle` 的模型开放（当前为 DeepSeek V4 系）；不支持开关的模型自动禁用并提示
+  - Complex 模式区域为只读说明（模型仍由管理员在专家管理配置）
+- **GET /api/models**：模型列表单一真相源，来自 providers.yaml（过滤已停用 provider 与隐藏别名），前端模型选择器（设置页 / 专家表单 / 创建智能体）全部改为消费此接口，删除前端硬编码模型列表与死代码（含内嵌 env API Key 的 `providerConfigs`）
+- **GET/PUT /api/user/settings**：用户偏好读写（校验模型有效性与 thinking 取值）
+- **thinking 参数归一化**：`get_llm_by_model(model_id, thinking=)` 按模型能力声明归一化生成 `extra_body`，请求级覆盖 provider 级默认；v1 仅 DeepSeek 映射
+
+### 行为说明
+
+- 未设置偏好时行为与 v3.3.3 完全一致（deepseek-v4-flash + 思考关闭）
+- simple 模式（direct_reply）按用户偏好实时选模，偏好无效时静默回落系统默认
+- 开启思考后 DeepSeek 的推理内容经 `reasoning_content` 返回，当前 langchain-openai 1.1.7 不透传该字段，v1 不展示思考过程（不影响正文生成与计费）
+
+### 关键改动
+
+- 后端：`routers/system.py`（/models、/user/settings）、`models/domain/user_settings.py` + 迁移 `20260902_120000`、`providers_config.get_available_models()`、`utils/llm_factory.py`（thinking 归一化）、`agents/state.py` + `routers/chat.py` + `agents/nodes/router.py`（偏好注入与选模）
+- 前端：`services/models.ts`、`useModelsQuery`/`useUserSettingsQuery`、`SettingsDialog` 重写、`ModelSelector` 改为 API 数据源、删除 `config/models.ts` 与 `types/model-provider.ts`、清理 `utils/config.ts`、i18n 三语 13 个新 key
+- 测试：新增 `tests/test_model_preferences.py`（8 项：模型列表过滤、thinking 矩阵、偏好默认值合并/脏数据防御），全量 86 项通过
+
+### 升级注意
+
+- 部署时执行 Alembic 迁移自动建表（deploy.sh 已含 `alembic upgrade head`）
+- 旧 localStorage 中的默认模型选择（`xpouch-app-config.defaultModelId`）已废弃，静默忽略
+
+## [2026-09-02] - v3.3.3 模型层迁移：停用 MiniMax，全面切换 DeepSeek V4 Flash
+
+### 背景与根因
+
+- **MiniMax 停用**：账户余额耗尽且生成质量不达预期，全链路切换 DeepSeek
+- **DeepSeek 旧模型 ID 停用风险**：官方已于 2026-04-24 宣布旧别名 `deepseek-chat` / `deepseek-reasoner` 于 2026-07-24 停用（实测服务端仍临时映射到 `deepseek-v4-flash` 的非思考模式，但随时可能真正下线）。全项目显式迁移至 `deepseek-v4-flash`
+- **V4 默认开启思考模式**：思考 token 按输出计费且增加首字延迟，与原 `deepseek-chat` 行为不一致
+
+### 变更内容
+
+**停用 MiniMax**：
+- `providers.yaml`：`minimax.enabled: false`，从 Router 优先级列表移除，模型别名注释保留
+- 双重拦截：工厂函数对 disabled 提供商直接抛错；`backend/.env` 注释 `MINIMAX_API_KEY`
+- Simple 模式（direct_reply）首选提供商从 MiniMax 改为 DeepSeek（temperature 0.7，不再走 Router 兜底的 0.1）
+- 前端模型选择器移除 MiniMax 条目
+
+**DeepSeek V4 Flash 迁移**：
+- `default_model`：`deepseek-chat` → `deepseek-v4-flash`，上下文窗口 128K → 1M
+- 旧 ID `deepseek-chat` / `deepseek-reasoner` 保留为兼容别名（解析到 v4-flash），数据库中已存储的旧模型 ID 无需迁移
+- 后端全部硬编码默认值同步更新（expert_config 9 个专家、llm_factory、commander、admin API、模型/schema 默认值）
+- 前端模型列表、智能体默认模型映射、会话兜底值同步更新
+
+**新增能力：提供商级 `extra_body` 透传**：
+- `providers.yaml` 提供商配置支持 `extra_body` 字段，经 `ChatOpenAI(extra_body=...)` 透传给 OpenAI 兼容 API
+- DeepSeek 配置 `thinking.type: disabled` 关闭思考模式，保持与旧 `deepseek-chat` 行为一致（更快、更省）；需要思考模式时删除该配置即可
+
+### 关键改动
+
+- `backend/providers.yaml`：MiniMax 停用、DeepSeek V4 Flash 配置、extra_body、兼容别名
+- `backend/utils/llm_factory.py`：默认模型更新、extra_body 透传
+- `backend/agents/graph_builder.py`：Simple 模式 LLM 首选 DeepSeek
+- `backend/expert_config.py` / `backend/agents/nodes/commander.py` / `backend/api/admin.py` / `backend/models/domain/*` / `backend/schemas/custom_agent.py` / `backend/services/chat/stream_service.py`：默认模型更新
+- `frontend/src/config/models.ts` 及 4 处模型兜底值：前端同步
+- `backend/.env.example` / `README.md`：环境变量说明同步
+
+### 升级注意
+
+- **部署后无需修改服务器 `.env`**：yaml 层已硬性禁用 MiniMax（即使 Key 仍存在也会被拦截）
+- 数据库中仍有智能体选择 MiniMax 模型的，需在界面手动切换为 DeepSeek，否则调用会报模型不存在
+- 实测验证：旧 ID 别名解析、MiniMax 拦截、真实 API 调用（思考模式已关闭）均通过
+
 ## [2026-03-18] - v3.3.1 修复
 
 ### 会话恢复与任务续执行

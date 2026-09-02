@@ -1,5 +1,3 @@
-import { TranslationKey } from '../index'
-
 // 管理后台翻译 - 专家管理、专家配置等
 
 export const zh: Record<string, string> = {

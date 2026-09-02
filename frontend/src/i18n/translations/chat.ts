@@ -1,5 +1,3 @@
-import { TranslationKey } from '../index'
-
 // 聊天页翻译 - 对话、输入、专家状态等
 
 export const zh: Record<string, string> = {

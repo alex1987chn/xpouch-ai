@@ -127,9 +127,9 @@ export function handleMessageDone(
 
   // 🔥 修复：合并 thinking 数据，而不是覆盖
   // 优先使用前端累积的 thinking，后端返回的作为补充
-  if (event.data.thinking?.steps?.length > 0) {
+  const newSteps = event.data.thinking?.steps ?? []
+  if (newSteps.length > 0) {
     const existingThinking = message.metadata?.thinking || []
-    const newSteps = event.data.thinking.steps
 
     // 合并：保留现有步骤，添加后端返回的新步骤（去重）
     const existingIds = new Set(existingThinking.map((s: ThinkingStep) => s.id))
@@ -164,18 +164,19 @@ export function handleMessageDone(
       '[ChatEvents] message.done: finalMessage=',
       !!finalMessage,
       'thinking=',
-      finalMessage?.metadata?.thinking?.length
+      finalMessage?.metadata?.thinking?.length ?? 0
     )
   }
-  if (finalMessage?.metadata?.thinking?.length > 0) {
-    const hasRunningSteps = finalMessage.metadata.thinking.some(
+  const finalThinking = finalMessage?.metadata?.thinking ?? []
+  if (finalThinking.length > 0) {
+    const hasRunningSteps = finalThinking.some(
       (s: ThinkingStep) => s.status === 'running'
     )
     if (debug) {
       logger.debug('[ChatEvents] message.done: hasRunningSteps=', hasRunningSteps)
     }
     if (hasRunningSteps) {
-      const completedThinking = finalMessage.metadata.thinking.map((s: ThinkingStep) => ({
+      const completedThinking = finalThinking.map((s: ThinkingStep) => ({
         ...s,
         status: 'completed' as const
       }))

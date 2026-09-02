@@ -26,18 +26,12 @@ interface PersistCapableApi {
   clearPersist?: () => void
 }
 
-type Persist = <
-  T,
-  Mps extends [StoreMutatorIdentifier, unknown][] = [],
-  Mcs extends [StoreMutatorIdentifier, unknown][] = []
->(
-  initializer: StateCreator<T, Mps, Mcs>,
-  options: PersistOptions<T>
-) => StateCreator<T, Mps, Mcs>
-
 /**
  * 持久化中间件
- * 
+ *
+ * 注意：泛型参数必须写在实现函数上（而非通过 `const persist: SomeType = ...` 标注），
+ * 否则 T 在函数体内不可见。
+ *
  * 用法：
  * ```ts
  * const useStore = create<MyState>()(
@@ -48,8 +42,15 @@ type Persist = <
  * )
  * ```
  */
-export const persist: Persist = (initializer, options) => {
-  return (set, get, api) => {
+export const persist = <
+  T,
+  Mps extends [StoreMutatorIdentifier, unknown][] = [],
+  Mcs extends [StoreMutatorIdentifier, unknown][] = []
+>(
+  initializer: StateCreator<T, Mps, Mcs>,
+  options: PersistOptions<T>
+): StateCreator<T, Mps, Mcs> =>
+  (set, get, api) => {
     const {
       name,
       partialize = (state) => state,
@@ -78,12 +79,13 @@ export const persist: Persist = (initializer, options) => {
       logger.warn(`[Persist] 恢复状态失败: ${name}`, e)
     }
 
-    // 创建包装后的 set 函数
-    const setWithPersist: typeof set = (partial, replace) => {
-      // 先执行原始 set
-      set(partial, replace)
+    // 创建包装后的 set 函数：先执行原始 set，再持久化到 localStorage
+    // 注意：zustand 的 setState 是重载联合类型，无法直接对箭头函数做上下文标注，
+    // 先收敛为单一签名再在出口处断言回原类型
+    const setBase = set as unknown as (partial: unknown, replace?: boolean) => void
+    const setWithPersist = ((partial: unknown, replace?: boolean) => {
+      setBase(partial, replace)
 
-      // 然后持久化到 localStorage
       try {
         const state = get()
         const toPersist = partialize(state)
@@ -91,7 +93,7 @@ export const persist: Persist = (initializer, options) => {
       } catch (e) {
         logger.warn(`[Persist] 保存状态失败: ${name}`, e)
       }
-    }
+    }) as typeof set
 
     // 初始化 store
     const store = initializer(setWithPersist, get, api)
@@ -100,8 +102,9 @@ export const persist: Persist = (initializer, options) => {
     if (restoredState) {
       // 使用 setTimeout 确保在下一个 tick 合并状态
       // 这样可以避免在初始化时触发订阅者
+      // （恢复走 setBase 即可：状态本就读自 localStorage，无需回写）
       setTimeout(() => {
-        setWithPersist(restoredState as Partial<T>)
+        setBase(restoredState as Partial<T>)
       }, 0)
     }
 
@@ -117,7 +120,6 @@ export const persist: Persist = (initializer, options) => {
 
     return store
   }
-}
 
 /**
  * 清除所有持久化状态

@@ -8,13 +8,13 @@
  */
 
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Clock, AlertCircle, CheckCircle, XCircle, Loader2, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Clock, AlertCircle, CheckCircle, Loader2, ChevronRight } from 'lucide-react'
 import { format, formatDistanceToNow, differenceInSeconds } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { useState, useCallback } from 'react'
 
 import { useRunDetails, useRunTimeline } from '@/hooks/queries/useRunTimelineQuery'
-import type { RunEvent, RunEventType, RunStatus } from '@/types/run'
+import type { RunEvent, RunEventType } from '@/types/run'
 import { getEventDisplayName, getEventCategory } from '@/types/run'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -117,13 +117,13 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
               <span>模式: {event.event_data.mode === 'complex' ? '复杂模式' : '简单模式'}</span>
             )}
             {event.event_type === 'task_started' && (
-              <span>专家: {event.event_data.expert_type || 'unknown'}</span>
+              <span>专家: {String(event.event_data.expert_type || 'unknown')}</span>
             )}
             {event.event_type === 'task_completed' && (
               <span>耗时: {event.event_data.duration_ms ? `${Math.round(event.event_data.duration_ms as number / 1000)}s` : '-'}</span>
             )}
             {event.event_type === 'artifact_generated' && (
-              <span>类型: {event.event_data.artifact_type || 'unknown'}</span>
+              <span>类型: {String(event.event_data.artifact_type || 'unknown')}</span>
             )}
             {event.event_type === 'hitl_interrupted' && (
               <span>等待用户审核执行计划</span>

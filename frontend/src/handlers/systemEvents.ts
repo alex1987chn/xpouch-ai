@@ -145,7 +145,12 @@ export function handleHumanInterrupt(
 
   // 将待审核计划存入 Store，触发 UI 显示
   if (currentPlan?.length > 0) {
-    setPendingPlan(currentPlan, planVersion ?? 1, runId, executionPlanId)
+    setPendingPlan(
+      currentPlan.map((t) => ({ ...t, artifacts: [] })),
+      planVersion ?? 1,
+      runId,
+      executionPlanId
+    )
     logger.info('[SystemEvents] 🔴 HITL 中断: 计划等待审核', {
       taskCount: currentPlan.length,
       planVersion: planVersion ?? 1,

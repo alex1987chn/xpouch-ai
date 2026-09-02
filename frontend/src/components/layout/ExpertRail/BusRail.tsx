@@ -20,28 +20,6 @@ const expertLabels: Record<string, string> = {
   default: 'AGENT',
 }
 
-// 状态图标组件
-const StatusIcon = ({ status }: { status: string }) => {
-  switch (status) {
-    case 'running':
-      return (
-        <div className="w-2 h-2 bg-accent-brand rounded-full animate-pulse" />
-      )
-    case 'completed':
-      return (
-        <div className="w-2 h-2 bg-status-online rounded-full" />
-      )
-    case 'failed':
-      return (
-        <div className="w-2 h-2 bg-status-offline rounded-full" />
-      )
-    default:
-      return (
-        <div className="w-2 h-2 bg-border rounded-full" />
-      )
-  }
-}
-
 // 单个专家节点组件
 interface ExpertNodeProps {
   task: Task

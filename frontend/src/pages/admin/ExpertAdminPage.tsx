@@ -41,7 +41,7 @@ function BauhausToast({
   type,
 }: {
   message: string
-  type: 'success' | 'error'
+  type: 'success' | 'error' | 'warning'
 }) {
   return (
     <div
@@ -66,7 +66,7 @@ export default function ExpertAdminPage() {
   const queryClient = useQueryClient()
 
   // Toast 状态
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null)
 
   // 搜索和选中状态
   const [searchQuery, setSearchQuery] = useState('')

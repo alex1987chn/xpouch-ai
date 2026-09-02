@@ -1,14 +1,14 @@
-import { useState, useMemo, useCallback } from 'react'
-import { Bot, Plus, Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Trash2, Pencil } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import { Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Trash2, Pencil } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
 import { useIsAuthenticated } from '@/hooks'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import type { Agent, Conversation } from '@/types'
-import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
+import type { Conversation } from '@/types'
+import { SYSTEM_AGENTS } from '@/constants/agents'
 import { logger } from '@/utils/logger'
 import { useAppUISelectors } from '@/hooks'
 import { useCustomAgentsQuery, useDeleteAgentMutation, useRecentConversationsQuery } from '@/hooks/queries'
@@ -71,7 +71,6 @@ function SceneCard({
 function ConstructCard({
   name,
   type,
-  status,
   tags,
   sideColor,
   onClick,
@@ -196,9 +195,7 @@ function CreateNewCard({ onClick }: { onClick?: () => void }) {
 export default function HomePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const location = useLocation()
   // 判断当前页面
-  const isOnHome = location.pathname === '/'
 
   const {
     selectedAgentId,
@@ -219,7 +216,7 @@ export default function HomePage() {
 
   // 👈 使用 React Query 获取自定义智能体列表（自动缓存，30分钟内不会重复请求）
   // 只有登录后才发起请求
-  const { data: customAgents = [], refetch: refetchAgents } = useCustomAgentsQuery({ enabled: isAuthenticated })
+  const { data: customAgents = [] } = useCustomAgentsQuery({ enabled: isAuthenticated })
 
   // 👈 使用 React Query 获取会话列表（返回数组格式）
   // 只有登录后才发起请求
@@ -233,29 +230,6 @@ export default function HomePage() {
   // 但如果需要强制刷新，可以调用 refetchAgents()
 
   // 构建显示的智能体列表
-  // 👈 注意：默认助手 (sys-default-chat) 不在列表中展示
-  // 用户通过首页底部的输入框与默认助手交互，避免重复创建 thread
-  const displayedAgents = useMemo<Agent[]>(() => {
-    // 为 customAgents 添加图标（React Query 返回的数据没有 icon）
-    const customAgentsWithIcon = customAgents.map(a => ({
-      ...a,
-      icon: <Bot className="w-5 h-5" />
-    }))
-
-    const createAgentCard: Agent = {
-      id: 'create-agent-card',
-      name: t('createAgent'),
-      description: t('createAgentDesc'),
-      icon: <Plus className="w-5 h-5" />,
-      modelId: '',
-      isDefault: false,
-      isCreateCard: true
-    }
-
-    // 只展示：创建卡片 + 自定义智能体（不展示默认助手）
-    return [createAgentCard, ...customAgentsWithIcon]
-  }, [customAgents])
-
   // 点击智能体卡片 - 恢复该智能体的最近会话或创建新会话
   const handleAgentClick = useCallback(async (agentId: string) => {
     // 👈 先清空消息和 task 状态，避免显示旧会话的缓存

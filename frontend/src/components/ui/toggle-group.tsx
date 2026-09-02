@@ -20,7 +20,7 @@ const toggleGroupVariants = cva(
 )
 
 const ToggleGroupContext = React.createContext<
-  VariantProps<typeof toggleGroupVariants> | undefined
+  NonNullable<VariantProps<typeof toggleGroupVariants>['variant']> | undefined
 >(undefined)
 
 const ToggleGroup = React.forwardRef<
@@ -33,7 +33,7 @@ const ToggleGroup = React.forwardRef<
     className={cn("flex items-center justify-center gap-1", className)}
     {...props}
   >
-    <ToggleGroupContext.Provider value={variant}>
+    <ToggleGroupContext.Provider value={variant ?? undefined}>
       {children}
     </ToggleGroupContext.Provider>
   </ToggleGroupPrimitive.Root>

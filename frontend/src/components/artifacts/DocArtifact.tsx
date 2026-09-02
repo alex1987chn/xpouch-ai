@@ -303,7 +303,7 @@ export default function DocArtifact({ content, className, isStreaming }: DocArti
                 {children}
               </sup>
             ),
-            img: ({ src, alt, ...props }) => {
+            img: ({ src, alt }) => {
               // 确保 src 是字符串
               const imageSrc = typeof src === 'string' ? src : ''
               const imageAlt = typeof alt === 'string' ? alt : 'Image'
@@ -324,7 +324,7 @@ export default function DocArtifact({ content, className, isStreaming }: DocArti
                 />
               )
             },
-            video: ({ src, controls = true, autoPlay = false, loop = false, ...props }) => {
+            video: ({ src, controls = true, autoPlay = false, loop = false }) => {
               const videoSrc = typeof src === 'string' ? src : ''
               
               if (!videoSrc) return null

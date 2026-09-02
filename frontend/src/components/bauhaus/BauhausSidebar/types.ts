@@ -6,7 +6,9 @@
 
 import { type Conversation } from '@/services/chat'
 import { TranslationKey } from '@/i18n'
-import { type ToastFn } from '@/components/ui/use-toast'
+import { type Toast } from '@/components/ui/use-toast'
+
+export type ToastFn = (props: Omit<Toast, 'id'>) => void
 
 export interface BauhausSidebarProps {
   className?: string

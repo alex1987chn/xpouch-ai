@@ -61,7 +61,9 @@ export class EventHandler {
     // 限制已处理事件数量（防止内存泄漏）
     if (this.processedEventIds.size > 1000) {
       const first = this.processedEventIds.values().next().value
-      this.processedEventIds.delete(first)
+      if (first !== undefined) {
+        this.processedEventIds.delete(first)
+      }
     }
 
     if (DEBUG) {

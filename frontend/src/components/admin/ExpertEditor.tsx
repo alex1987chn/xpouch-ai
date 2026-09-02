@@ -54,6 +54,7 @@ export default function ExpertEditor({
     system_prompt: expert?.system_prompt || '',
     description: expert?.description || '',
     model: expert?.model || 'gpt-4o',
+    expected_version: expert?.config_version ?? 0,
     temperature: expert?.temperature ?? 0.5,
   })
 

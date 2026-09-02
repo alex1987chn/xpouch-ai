@@ -23,7 +23,7 @@ import { logger } from '@/utils/logger'
 import { RunStatusBadge } from '@/components/ui/run-status-badge'
 
 // 图标组件
-import { BarChart3, CheckCircle, XCircle, AlertTriangle, Clock, ExternalLink } from 'lucide-react'
+import { BarChart3, CheckCircle, AlertTriangle, Clock, ExternalLink } from 'lucide-react'
 
 /**
  * 指标卡片组件

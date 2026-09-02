@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 // P0 修复: 移除 persist，Token 改为 HttpOnly Cookie
 import { getUserProfile, updateUserProfile, type UserProfile } from '@/services/user'
-import { sendVerificationCode, verifyCodeAndLogin, logoutApi } from '@/services/auth'
+import { sendVerificationCode, verifyCodeAndLogin, logoutApi, type SendCodeResponse } from '@/services/auth'
 import { logger, errorHandler } from '@/utils/logger'
 
 function isStatusError(error: unknown): error is { status?: number } {
@@ -17,7 +17,7 @@ interface UserState {
 
   // Auth methods
   loginWithPhone: (phoneNumber: string, code: string) => Promise<void>
-  sendVerificationCode: (phoneNumber: string) => Promise<unknown>
+  sendVerificationCode: (phoneNumber: string) => Promise<SendCodeResponse>
   logout: () => Promise<void>
   checkAuth: () => Promise<boolean>
 

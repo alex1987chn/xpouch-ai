@@ -26,6 +26,9 @@ export type TranslationKey =
   | 'model' | 'temp' | 'response' | 'secondsAbbr' | 'temperatureValue' | 'characters' | 'provider'
   // Settings
   | 'theme' | 'language' | 'systemSettings' | 'userSettings' | 'personalSettings' | 'modelConfig'
+  | 'simpleMode' | 'followSystemDefault' | 'thinkingMode' | 'thinkingAuto' | 'thinkingOn' | 'thinkingOff'
+  | 'thinkingUnsupported' | 'thinkingCostHint' | 'complexMode' | 'complexModeDesc'
+  | 'modelsLoading' | 'modelsLoadFailed'
   // Common
   | 'save' | 'cancel' | 'delete' | 'edit' | 'confirmDelete' | 'noHistory' | 'startChat'
   | 'totalHistory' | 'totalItems' | 'matchingHistory' | 'matchingItems' | 'searchHistory'
@@ -129,6 +132,27 @@ export type TranslationKey =
   | 'trends' | 'days' | 'noRuns' | 'runList' | 'prev' | 'next' | 'viewDetails' | 'loadFailed' | 'failed'
   // Polling (轮询恢复)
   | 'pollingRestoring' | 'pollingHitlPaused' | 'pollingRefresh' | 'pollingError'
+  // 历史遗漏键补齐（2026-09 tsc 清零：译文已存在于字典，仅缺联合类型声明）
+  | 'artifactSchemaHint' | 'attachment' | 'browseFiles' | 'builtinTemplate' | 'clone'
+  | 'cloneDescription' | 'close' | 'codePreview' | 'confirmDeleteTemplate' | 'createAgentDesc'
+  | 'customTemplate' | 'deleteTask' | 'detectingComplexTask' | 'dragAndDropJson' | 'editExpert'
+  | 'enterCode' | 'enterValidPhone' | 'exampleAiResponseNoPrompt' | 'exampleAiResponseWithPrompt' | 'exampleChat'
+  | 'exampleUserMessage' | 'existingTemplate' | 'expectedArtifactTypes' | 'exportFailed' | 'exportTemplate'
+  | 'exported' | 'fileReadError' | 'hideToolTips' | 'imagePreview' | 'import'
+  | 'importFailed' | 'importSkipped' | 'importStrategy' | 'importSuccess' | 'importTemplate'
+  | 'importing' | 'invalidFileType' | 'invalidTemplate' | 'key' | 'loadExpertsFailed'
+  | 'loadingTools' | 'loginSuccess' | 'mediaFile' | 'mediaPreviewDesc' | 'mediaPreviewMode'
+  | 'messagePreview' | 'minOneTask' | 'mode' | 'name' | 'noData'
+  | 'noSystemPrompt' | 'noToolPoliciesFound' | 'or' | 'override' | 'overrideDescription'
+  | 'pleaseSelectJsonFile' | 'sceneCodeGen' | 'sceneDeepResearch' | 'sceneQuickQA' | 'selectCategory'
+  | 'sendCode' | 'showToolTips' | 'simpleChatMode' | 'simpleChatPreviewDesc' | 'skip'
+  | 'skipDescription' | 'templateExists' | 'templateExported' | 'templateInfo' | 'templateKeyConflict'
+  | 'templateValid' | 'thinkingAnalysis' | 'thinkingArtifact' | 'thinkingCoding' | 'thinkingCompleted'
+  | 'thinkingDefault' | 'thinkingExecution' | 'thinkingInProgress' | 'thinkingMemory' | 'thinkingPlanning'
+  | 'thinkingProcess' | 'thinkingReading' | 'thinkingSearch' | 'thinkingWriting' | 'toolTipsDescription'
+  | 'toolUsageExample' | 'unknownError' | 'unnamedAgent' | 'verifyIdentity' | 'videoPreview'
+  | 'webSearch' | 'welcomeBack'
+
 
 
 interface I18nContextType {

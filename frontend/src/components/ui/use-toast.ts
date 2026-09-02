@@ -9,7 +9,7 @@ export interface Toast {
 
 // 全局 toast 状态（单例模式）
 let globalToasts: Toast[] = []
-const globalListeners: Set<() => void> = new Set()
+const globalListeners: Set<(toasts: Toast[]) => void> = new Set()
 
 export function dismissToast(id: string) {
   globalToasts = globalToasts.filter(t => t.id !== id)
@@ -57,5 +57,4 @@ export function useToast() {
   }
 }
 
-export type { Toast }
 

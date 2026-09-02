@@ -151,7 +151,7 @@ export function useToggleMCP() {
     },
     
     // 错误时回滚
-    onError: (error, variables, context) => {
+    onError: (error, _variables, context) => {
       logger.error('[useToggleMCP] Failed to toggle server:', error)
       
       // 回滚到之前的状态

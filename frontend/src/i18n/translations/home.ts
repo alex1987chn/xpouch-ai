@@ -1,5 +1,3 @@
-import { TranslationKey } from '../index'
-
 // 首页翻译 - 智能体相关、首页展示等
 
 export const zh: Record<string, string> = {

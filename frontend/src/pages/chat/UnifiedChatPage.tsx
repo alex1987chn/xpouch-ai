@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from '@/i18n'
+import type { Agent } from '@/types'
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useChatStore } from '@/store/chatStore'
@@ -69,17 +70,7 @@ export default function UnifiedChatPage() {
   }, [threadId])
 
   // 加载自定义 Agent 的状态
-  type LoadedAgent = {
-    id: string
-    name: string
-    description: string
-    category: string
-    isCustom: boolean
-    is_builtin: boolean
-    modelId: string
-    icon: null
-    systemPrompt: string
-  }
+  type LoadedAgent = Agent
   const [loadedAgent, setLoadedAgent] = useState<LoadedAgent | null>(null)
   const [isLoadingAgent, setIsLoadingAgent] = useState(false)
 
@@ -115,8 +106,8 @@ export default function UnifiedChatPage() {
             category: agent.category || t('general'),
             isCustom: true,
             is_builtin: false,
-            modelId: agent.model_id || 'deepseek-chat',
-            icon: null,
+            modelId: agent.model_id || 'deepseek-v4-flash',
+            icon: 'bot',
             systemPrompt: agent.system_prompt || ''
           }
           setLoadedAgent(formattedAgent)
@@ -440,7 +431,7 @@ export default function UnifiedChatPage() {
   const handleRefreshSession = useCallback(() => {
     // 🔥 手动刷新时，重置防抖标记
     hasRefreshedRef.current = false
-    restoreSession(true)  // force = true，跳过防抖
+    restoreSession()  // 防抖标记已在上方重置
   }, [restoreSession])
 
   const chatStreamPolling = useMemo(

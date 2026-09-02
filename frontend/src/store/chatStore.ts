@@ -4,7 +4,6 @@ import { type Agent } from '@/types'
 import { generateUUID } from '@/utils/uuid'
 import { isSameId } from '@/utils/normalize'
 import { type Message } from '@/types'
-import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 
 /**
  * ChatStore - 聊天状态管理

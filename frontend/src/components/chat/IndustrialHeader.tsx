@@ -1,5 +1,4 @@
-import React from 'react'
-import { X, Menu, MessageSquare, Eye, ExternalLink, Clock } from 'lucide-react'
+import { X, Menu, ExternalLink, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { VERSION } from '@/constants/ui'
@@ -47,7 +46,6 @@ interface IndustrialHeaderProps {
  * ```
  */
 export function IndustrialHeader({
-  title = 'XPOUCH',
   version = VERSION.CURRENT,
   status = 'online',
   onClose,

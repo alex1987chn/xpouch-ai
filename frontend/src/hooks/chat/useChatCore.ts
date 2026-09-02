@@ -187,10 +187,10 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       setMessages((prevMessages) => {
         const newMessages = [
           ...prevMessages,
-          { role: 'user', content: userContent, timestamp: Date.now() },
+          { role: 'user' as const, content: userContent, timestamp: Date.now() },
           {
             id: assistantMessageId,
-            role: 'assistant',
+            role: 'assistant' as const,
             content: '',
             timestamp: Date.now(),
             metadata: {
@@ -574,5 +574,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     resumeExecution,
     regenerateMessage,
     conversationMode,
+    isGenerating,
   }
 }

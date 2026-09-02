@@ -40,7 +40,7 @@ interface PendingUpdate {
 function processStreamingChunk(
   chunk: string,
   state: StreamingParserState,
-  isFirstChunk: boolean = false
+  _isFirstChunk: boolean = false
 ): { content: string; thinking: string; hasUpdate: boolean } {
   let outputContent = ''
   let outputThinking = ''
@@ -255,7 +255,6 @@ export function useStreamHandler() {
     if (!thinkingIdRef.current) {
       thinkingIdRef.current = `streaming-think-${messageId}`
     }
-    const stableThinkingId = thinkingIdRef.current
     
     // 保存消息 ID 和回调到 ref
     currentMessageIdRef.current = messageId

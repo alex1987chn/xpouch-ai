@@ -35,10 +35,10 @@ export type EventType =
 // 基础事件结构
 // ============================================================================
 
-export interface SSEEvent<T = unknown> {
+export interface SSEEvent<T = unknown, K extends EventType = EventType> {
   id: string
   timestamp: string
-  type: EventType
+  type: K
   data: T
 }
 
@@ -63,7 +63,7 @@ export interface PlanCreatedData {
   tasks: TaskInfo[]
 }
 
-export type PlanCreatedEvent = SSEEvent<PlanCreatedData>
+export type PlanCreatedEvent = SSEEvent<PlanCreatedData, 'plan.created'>
 
 // 🔥 新增：Commander 流式思考事件数据类型
 
@@ -79,8 +79,8 @@ export interface PlanThinkingData {
   delta: string
 }
 
-export type PlanStartedEvent = SSEEvent<PlanStartedData>
-export type PlanThinkingEvent = SSEEvent<PlanThinkingData>
+export type PlanStartedEvent = SSEEvent<PlanStartedData, 'plan.started'>
+export type PlanThinkingEvent = SSEEvent<PlanThinkingData, 'plan.thinking'>
 
 // ============================================================================
 // 任务执行阶段事件
@@ -94,7 +94,7 @@ export interface TaskStartedData {
 }
 
 
-export type TaskStartedEvent = SSEEvent<TaskStartedData>
+export type TaskStartedEvent = SSEEvent<TaskStartedData, 'task.started'>
 
 export interface TaskCompletedData {
   task_id: string
@@ -107,7 +107,7 @@ export interface TaskCompletedData {
   artifact_count: number
 }
 
-export type TaskCompletedEvent = SSEEvent<TaskCompletedData>
+export type TaskCompletedEvent = SSEEvent<TaskCompletedData, 'task.completed'>
 
 export interface TaskFailedData {
   task_id: string
@@ -117,7 +117,7 @@ export interface TaskFailedData {
   failed_at: string
 }
 
-export type TaskFailedEvent = SSEEvent<TaskFailedData>
+export type TaskFailedEvent = SSEEvent<TaskFailedData, 'task.failed'>
 
 // ============================================================================
 // 任务进度事件（可选）
@@ -130,7 +130,7 @@ export interface TaskProgressData {
   message?: string // 进度消息，如"正在搜索..."
 }
 
-export type TaskProgressEvent = SSEEvent<TaskProgressData>
+export type TaskProgressEvent = SSEEvent<TaskProgressData, 'task.progress'>
 
 // ============================================================================
 // 产物阶段事件
@@ -151,7 +151,7 @@ export interface ArtifactGeneratedData {
   artifact: ArtifactInfo
 }
 
-export type ArtifactGeneratedEvent = SSEEvent<ArtifactGeneratedData>
+export type ArtifactGeneratedEvent = SSEEvent<ArtifactGeneratedData, 'artifact.generated'>
 
 // ============================================================================
 // 消息阶段事件
@@ -168,7 +168,7 @@ export interface MessageDeltaData {
   is_final?: boolean
 }
 
-export type MessageDeltaEvent = SSEEvent<MessageDeltaData>
+export type MessageDeltaEvent = SSEEvent<MessageDeltaData, 'message.delta'>
 
 export interface MessageDoneData {
   message_id: string
@@ -177,7 +177,7 @@ export interface MessageDoneData {
   thinking?: ThinkingData  // 思考过程数据（类似 DeepSeek Chat）
 }
 
-export type MessageDoneEvent = SSEEvent<MessageDoneData>
+export type MessageDoneEvent = SSEEvent<MessageDoneData, 'message.done'>
 
 // ============================================================================
 // 系统事件
@@ -188,14 +188,14 @@ export interface RouterStartData {
   timestamp: string
 }
 
-export type RouterStartEvent = SSEEvent<RouterStartData>
+export type RouterStartEvent = SSEEvent<RouterStartData, 'router.start'>
 
 export interface RouterDecisionData {
   decision: 'simple' | 'complex'
   reason?: string
 }
 
-export type RouterDecisionEvent = SSEEvent<RouterDecisionData>
+export type RouterDecisionEvent = SSEEvent<RouterDecisionData, 'router.decision'>
 
 export interface ErrorData {
   code: string
@@ -203,7 +203,7 @@ export interface ErrorData {
   details?: Record<string, unknown>
 }
 
-export type ErrorEvent = SSEEvent<ErrorData>
+export type ErrorEvent = SSEEvent<ErrorData, 'error'>
 
 // ============================================================================
 // 🔥🔥🔥 v3.1.0 HITL: 人类审核中断事件
@@ -224,7 +224,7 @@ export interface HumanInterruptData {
   }>
 }
 
-export type HumanInterruptEvent = SSEEvent<HumanInterruptData>
+export type HumanInterruptEvent = SSEEvent<HumanInterruptData, 'human.interrupt'>
 
 // ============================================================================
 // 联合类型
