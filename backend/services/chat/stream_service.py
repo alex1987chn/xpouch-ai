@@ -276,7 +276,7 @@ class StreamService:
 
     async def _build_custom_agent_llm(self, custom_agent: CustomAgent):
         """构建自定义智能体的 LLM 实例"""
-        model_id = custom_agent.model_id or "deepseek-chat"
+        model_id = custom_agent.model_id or "deepseek-v4-flash"
         model_config = get_model_config(model_id)
 
         if model_config:

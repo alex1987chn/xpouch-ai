@@ -131,7 +131,7 @@ POST /api/chat
 ### 环境要求
 
 - Node.js `>= 24.14.0`
-- pnpm `10.28.1`（或兼容的 pnpm 10）
+- pnpm `11.25.0`（或兼容的 pnpm 11）
 - Python `>= 3.13`
 - PostgreSQL `18+`
 - `uv`（后端依赖与命令管理）
@@ -196,9 +196,9 @@ DATABASE_URL=postgresql+psycopg://user:password@host:5432/dbname
 JWT_SECRET_KEY=your-secret
 
 # 至少一个 LLM 提供商
-DEEPSEEK_API_KEY=...
-# 或 MINIMAX_API_KEY=...
+DEEPSEEK_API_KEY=...   # 推荐，默认模型 deepseek-v4-flash
 # 或 OPENAI_API_KEY=...
+# 或 MOONSHOT_API_KEY=...
 ```
 
 常用可选项：

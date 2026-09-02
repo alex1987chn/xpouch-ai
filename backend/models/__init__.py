@@ -35,6 +35,7 @@ from models.domain import (
     Thread,
     ToolPolicy,
     User,
+    UserSettings,
 )
 from models.enums import (
     ConversationType,
@@ -104,6 +105,7 @@ __all__ = [
     "_enum_values",
     # ORM 模型
     "User",
+    "UserSettings",
     "AgentRun",
     "RunEvent",
     "ToolPolicy",

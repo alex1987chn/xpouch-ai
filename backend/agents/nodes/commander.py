@@ -237,7 +237,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
         if not commander_config:
             # 回退：使用常量中的 Prompt 和硬编码的模型
             system_prompt = COMMANDER_SYSTEM_PROMPT
-            model = os.getenv("MODEL_NAME", "deepseek-chat")
+            model = os.getenv("MODEL_NAME", "deepseek-v4-flash")
             temperature = 0.5
             logger.info(f"[COMMANDER] 使用默认回退配置: model={model}")
         else:

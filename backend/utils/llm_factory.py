@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 def get_default_model() -> str:
     """获取默认模型"""
-    return os.getenv("MODEL_NAME", "deepseek-chat")
+    return os.getenv("MODEL_NAME", "deepseek-v4-flash")
 
 
 def get_effective_model(configured_model: str | None) -> str:
@@ -102,7 +102,11 @@ def get_effective_model(configured_model: str | None) -> str:
 
 @lru_cache(maxsize=32)
 def _create_llm_instance(
-    provider: str, model: str | None, streaming: bool, temperature: float | None
+    provider: str,
+    model: str | None,
+    streaming: bool,
+    temperature: float | None,
+    thinking: str | None = None,
 ) -> ChatOpenAI:
     """
     创建 LLM 实例（内部函数，使用 lru_cache 缓存）
@@ -135,9 +139,26 @@ def _create_llm_instance(
         temperature if temperature is not None else config.get("temperature", 0.7)
     )
 
+    # 提供商级附加请求参数，经 extra_body 透传给 OpenAI 兼容 API
+    # （如 DeepSeek V4 的 thinking 开关：thinking.type=enabled/disabled）
+    extra_body = dict(config.get("extra_body") or {})
+    # 请求级 thinking 覆盖优先于 provider 级默认（能力校验在 get_llm_by_model 中完成）
+    if thinking in ("enabled", "disabled"):
+        extra_body["thinking"] = {"type": thinking}
+    if extra_body:
+        llm_config["extra_body"] = extra_body
+
     # HTTP 客户端配置
     http_client = httpx.Client(http2=False, timeout=600.0, verify=True)
     llm_config["http_client"] = http_client
+
+    # DeepSeek 使用 ChatDeepSeek：原生捕获 reasoning_content 到 additional_kwargs
+    # （ChatOpenAI 明确不透传第三方 reasoning 字段）；注意其 base URL 字段名为 api_base
+    if provider == "deepseek":
+        from langchain_deepseek import ChatDeepSeek
+
+        llm_config["api_base"] = llm_config.pop("base_url")
+        return ChatDeepSeek(**llm_config)
 
     return ChatOpenAI(**llm_config)
 
@@ -147,6 +168,7 @@ def get_llm_instance(
     model: str | None = None,
     streaming: bool = False,
     temperature: float | None = None,
+    thinking: str | None = None,
 ) -> ChatOpenAI:
     """
     统一的 LLM 工厂函数
@@ -158,23 +180,39 @@ def get_llm_instance(
         model: 模型名称
         streaming: 是否启用流式输出
         temperature: 温度参数
+        thinking: 思考模式覆盖（'enabled'/'disabled'，None 表示跟随 provider 默认）
 
     Returns:
         ChatOpenAI: 配置好的 LLM 实例
     """
-    return _create_llm_instance(provider, model, streaming, temperature)
+    return _create_llm_instance(provider, model, streaming, temperature, thinking)
 
 
-def get_llm_by_model(model_id: str, streaming: bool = False) -> ChatOpenAI:
-    """通过模型 ID 获取 LLM 实例"""
+def get_llm_by_model(
+    model_id: str, streaming: bool = False, thinking: str | None = None
+) -> ChatOpenAI:
+    """通过模型 ID 获取 LLM 实例。
+
+    thinking 三态归一化：仅当模型在 providers.yaml 中声明 thinking_toggle: true
+    且 thinking 为 'enabled'/'disabled' 时才下发覆盖参数，否则忽略（跟随 provider 默认）。
+    """
     from providers_config import get_model_config
 
     model_config = get_model_config(model_id)
     if not model_config:
         raise ValueError(f"未知的模型 ID: {model_id}")
 
+    effective_thinking = (
+        thinking
+        if thinking in ("enabled", "disabled") and model_config.get("thinking_toggle")
+        else None
+    )
+
     return get_llm_instance(
-        provider=model_config.get("provider"), model=model_config.get("model"), streaming=streaming
+        provider=model_config.get("provider"),
+        model=model_config.get("model"),
+        streaming=streaming,
+        thinking=effective_thinking,
     )
 
 

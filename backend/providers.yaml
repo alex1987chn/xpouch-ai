@@ -10,10 +10,11 @@
 
 providers:
   # -------------------------------------------------------------------------
-  # MiniMax - 响应速度快，推荐用于 Router 节点
+  # MiniMax - 已停用（2026-09）：余额耗尽且生成质量一般，全面切换 DeepSeek
   # 文档: https://platform.minimaxi.com/docs/api-reference/text-openai-api
   # 注意: MiniMax 是 OpenAI 兼容 API，经测试 ToolMessage content 为 list 时会报错，
   #       因此使用 string 模式将 content 转为 JSON 字符串
+  # 恢复方法：改回 enabled: true，并在 .env 中配置 MINIMAX_API_KEY
   # -------------------------------------------------------------------------
   minimax:
     name: MiniMax
@@ -23,7 +24,7 @@ providers:
     temperature: 0.1                        # Router 用低温度
     context_window: 1000000
     priority: 1                             # Router 优先级（数字越小越优先）
-    enabled: true
+    enabled: false                          # 2026-09 停用：余额耗尽、效果一般
     content_mode: string                    # ToolMessage content 转为 JSON 字符串
 
   # -------------------------------------------------------------------------
@@ -35,12 +36,15 @@ providers:
     name: DeepSeek
     base_url: https://api.deepseek.com/v1
     env_key: DEEPSEEK_API_KEY
-    default_model: deepseek-chat
+    default_model: deepseek-v4-flash        # DeepSeek V4 Flash（旧别名 deepseek-chat 已于 2026-07-24 停用）
     temperature: 0.7
-    context_window: 128000
-    priority: 2
+    context_window: 1000000                 # V4 Flash 支持 1M 上下文
+    priority: 1
     enabled: true
     content_mode: string                    # ToolMessage content 转为 JSON 字符串
+    extra_body:
+      thinking:
+        type: disabled                      # V4 默认开启思考模式；关闭以保持与旧 deepseek-chat 行为一致（更快、更省）
 
   # -------------------------------------------------------------------------
   # OpenAI - GPT 系列，代码和复杂任务
@@ -130,34 +134,44 @@ default_provider: siliconflow
 # 模型别名映射（用于前端展示和后端调用）
 # ============================================================================
 models:
-  # MiniMax
-  minimax-m2.1:
-    provider: minimax
-    model: MiniMax-M2.1
-    name: MiniMax M2.1
-  
+  # MiniMax - 已停用（2026-09），别名保留以兼容数据库中已存储的旧模型 ID
+  # minimax-m2.1:
+  #   provider: minimax
+  #   model: MiniMax-M2.1
+  #   name: MiniMax M2.1
+
   # 大写别名（兼容数据库中存储的格式）
-  MiniMax-M2.1:
-    provider: minimax
-    model: MiniMax-M2.1
-    name: MiniMax M2.1
-  
+  # MiniMax-M2.1:
+  #   provider: minimax
+  #   model: MiniMax-M2.1
+  #   name: MiniMax M2.1
+
   # 其他常见变体
-  MiniMax-M2-1:
-    provider: minimax
-    model: MiniMax-M2.1
-    name: MiniMax M2.1
-    
-  # DeepSeek
+  # MiniMax-M2-1:
+  #   provider: minimax
+  #   model: MiniMax-M2.1
+  #   name: MiniMax M2.1
+
+  # DeepSeek - V4 Flash（旧 ID deepseek-chat/deepseek-reasoner 已于 2026-07-24 停用，
+  # 保留映射仅为兼容数据库中已存储的旧模型 ID）
+  deepseek-v4-flash:
+    provider: deepseek
+    model: deepseek-v4-flash
+    name: DeepSeek V4 Flash
+    thinking_toggle: true                # 支持思考模式开关（请求级 thinking.type 覆盖）
+
+  # 兼容别名（hidden: 不出现在 /api/models 可选列表中）
   deepseek-chat:
     provider: deepseek
-    model: deepseek-chat
-    name: DeepSeek Chat
-    
+    model: deepseek-v4-flash
+    name: DeepSeek V4 Flash
+    hidden: true
+
   deepseek-reasoner:
     provider: deepseek
-    model: deepseek-reasoner
-    name: DeepSeek Reasoner
+    model: deepseek-v4-flash
+    name: DeepSeek V4 Flash
+    hidden: true
     
   # OpenAI
   gpt-4o:
@@ -189,10 +203,10 @@ router:
   # 优先级列表（按顺序尝试）
   # 注意：MiniMax-Text-01 输出包含 <think> 标签，不适合需要 JSON 输出的 Router
   # 所以 Router 优先使用 DeepSeek（输出干净，适合 JSON 解析）
+  # 2026-09：MiniMax 已停用，从列表移除
   priority_providers:
     - deepseek
     - openai
-    - minimax
   
   # Router 专用参数
   temperature: 0.1

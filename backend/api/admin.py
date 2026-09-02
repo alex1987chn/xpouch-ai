@@ -83,7 +83,7 @@ class ExpertUpdate(BaseModel):
         default=None, description="专家能力描述，用于 Planner 决定任务分配"
     )
     model: str = PydanticField(
-        default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="模型名称"
+        default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-v4-flash"), description="模型名称"
     )
     temperature: float = PydanticField(
         default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）"
@@ -108,7 +108,7 @@ class ExpertCreate(BaseModel):
     )
     system_prompt: str = PydanticField(..., min_length=10, description="系统提示词（至少10个字符）")
     model: str = PydanticField(
-        default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-chat"), description="模型名称"
+        default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-v4-flash"), description="模型名称"
     )
     temperature: float = PydanticField(
         default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）"
@@ -428,7 +428,7 @@ async def preview_expert(
         # 🔥 修复：需要传入 provider 参数
         from providers_config import get_model_config
 
-        model_id = expert_config.get("model", "deepseek-chat")
+        model_id = expert_config.get("model", "deepseek-v4-flash")
         model_config = get_model_config(model_id)
 
         if not model_config:

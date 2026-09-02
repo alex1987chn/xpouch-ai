@@ -60,8 +60,9 @@ def _get_simple_llm_cached():
     from utils.llm_factory import get_llm_instance, get_router_llm
 
     try:
-        if is_provider_configured("minimax"):
-            return get_llm_instance(provider="minimax", streaming=True, temperature=0.7)
+        # 2026-09: MiniMax 已停用（余额耗尽、效果一般），Simple 模式改用 DeepSeek
+        if is_provider_configured("deepseek"):
+            return get_llm_instance(provider="deepseek", streaming=True, temperature=0.7)
     except Exception:
         pass
     return get_router_llm()

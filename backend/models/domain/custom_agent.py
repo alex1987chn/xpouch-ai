@@ -36,7 +36,7 @@ class CustomAgent(SQLModel, table=True):
 
     # 核心配置
     system_prompt: str  # 用户自定义的系统提示词（关键！）
-    model_id: str = Field(default="deepseek-chat", max_length=128)  # 使用的模型
+    model_id: str = Field(default="deepseek-v4-flash", max_length=128)  # 使用的模型
 
     # 新增：是否为默认助手
     is_default: bool = Field(default=False, index=True)

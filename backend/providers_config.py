@@ -365,6 +365,47 @@ def get_models_by_provider(provider: str) -> list[dict[str, Any]]:
     return models
 
 
+def get_available_models() -> list[dict[str, Any]]:
+    """
+    列出所有可供用户选择的模型（provider 已启用且未标记 hidden）
+
+    供 GET /api/models 与前端模型选择器使用，作为模型列表的单一真相源。
+
+    Returns:
+        List[Dict]: 模型列表，按 provider 优先级排序
+    """
+    active = get_active_providers()
+    config = load_providers_config()
+
+    result = []
+    for model_id, model_config in config.get("models", {}).items():
+        provider = model_config.get("provider")
+        if provider not in active:
+            continue
+        if model_config.get("hidden", False):
+            continue
+
+        provider_config = active[provider]
+        result.append(
+            {
+                "id": model_id,
+                "provider": provider,
+                "provider_name": provider_config.get("name", provider),
+                "model": model_config.get("model"),
+                "name": model_config.get("name", model_id),
+                "context_window": provider_config.get("context_window"),
+                "thinking_toggle": bool(model_config.get("thinking_toggle", False)),
+            }
+        )
+
+    def _sort_key(entry: dict[str, Any]) -> tuple:
+        provider_priority = active.get(entry["provider"], {}).get("priority", 99)
+        return (provider_priority, entry["id"])
+
+    result.sort(key=_sort_key)
+    return result
+
+
 # ============================================================================
 # Router 配置获取
 # ============================================================================
