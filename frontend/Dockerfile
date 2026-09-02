@@ -1,8 +1,9 @@
 # 阶段 1: 构建
 FROM node:24-alpine AS builder
 
-# 安装 pnpm
-RUN npm install -g pnpm
+# 安装 pnpm（钉住大版本 11，与根 package.json 的 packageManager 大版本一致；
+# pnpm 11 的 allowBuilds / minimumReleaseAge 策略读取根 pnpm-workspace.yaml）
+RUN npm install -g pnpm@11
 
 WORKDIR /app
 
@@ -12,12 +13,12 @@ COPY pnpm-workspace.yaml ./
 COPY package.json ./
 
 # 复制前端项目文件
+# 注：Tailwind 4 迁移后 postcss.config.js 已删除（改用 @tailwindcss/vite 插件），勿再复制
 COPY frontend/package.json ./frontend/
 COPY frontend/vite.config.ts ./frontend/
 COPY frontend/tsconfig.json ./frontend/
 COPY frontend/tsconfig.node.json ./frontend/
 COPY frontend/tailwind.config.ts ./frontend/
-COPY frontend/postcss.config.js ./frontend/
 COPY frontend/index.html ./frontend/
 # P0 修复: 不复制 .env 文件，避免敏感信息泄露到镜像中
 # 环境变量通过构建参数或运行时注入
