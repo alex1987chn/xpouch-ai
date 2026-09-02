@@ -56,7 +56,7 @@ export default class ErrorBoundary extends Component<Props, State> {
    * - LogRocket: 包含录屏的错误监控
    * - 自建上报服务
    */
-  private reportError(error: Error, errorInfo: React.ErrorInfo) {
+  private reportError(_error: Error, _errorInfo: React.ErrorInfo) {
     try {
       // TODO: 集成实际的错误监控服务
       // 示例：Sentry.captureException(error, { extra: errorInfo })

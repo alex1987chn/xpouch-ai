@@ -22,19 +22,19 @@ dependencies = [
     "sqlmodel>=0.0.37,<1.0.0",
     "tencentcloud-sdk-python>=3.0.0,<4.0.0",
     "uvicorn>=0.41.0,<1.0.0",  # 🟡 稳定性提升
-    "gunicorn>=23.0.0,<24.0.0",  # 新增：用于生产环境多 worker 部署
-    "watchfiles>=0.20.0,<1.0.0",  # 🔥 新增：Windows 热重载兼容
+    "gunicorn>=23.0.0,<27.0.0",  # 生产环境多 worker 部署
+    "watchfiles>=0.20.0,<2.0.0",  # 🔥 新增：Windows 热重载兼容
     "PyJWT>=2.8.0,<3.0.0",
-    "passlib[bcrypt]>=1.7.0,<2.0.0",
-    "bcrypt>=4.0.0,<5.0.0",
+    "bcrypt>=4.0.0,<6.0.0",  # 🔥 passlib 已移除，直接使用 bcrypt 5.x
     "python-multipart>=0.0.0,<1.0.0",
     "psycopg[binary]>=3.3.0,<4.0.0",
     "alembic>=1.13.0,<2.0.0",
     "pgvector>=0.3.0,<1.0.0",  # 🔥 新增：pgvector Python 客户端，支持向量操作
-    "mcp>=1.26.0,<2.0.0",  # P0 修复: 添加版本上限，防止破坏性更新
-    "langchain-mcp-adapters>=0.2.1",
+    "mcp>=1.26.0,<3.0.0",  # 2.x：与 langchain-mcp-adapters 0.3.x 配套
+    "langchain-mcp-adapters>=0.2.1,<0.4.0",
+    "langchain-deepseek>=0.1.0,<2.0.0",  # 🔥 ChatDeepSeek：捕获 reasoning_content
     "tenacity>=9.0.0,<10.0.0",  # P1 新增: 重试机制
-    "cachetools>=5.3.0,<6.0.0",  # P1 新增: TTL 缓存
+    "cachetools>=5.3.0,<8.0.0",  # P1 新增: TTL 缓存
 ]
 
 [dependency-groups]

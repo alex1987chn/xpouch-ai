@@ -13,9 +13,9 @@ P0 修复: 2025-02-24
 import os
 from datetime import UTC, datetime, timedelta
 
+import bcrypt
 import jwt
 from fastapi import HTTPException, status
-from passlib.context import CryptContext
 
 # ============================================================================
 # P0 修复: JWT 安全配置
@@ -38,8 +38,8 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "60"))
 
-# 密码加密上下文
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# 密码加密：直接使用 bcrypt（passlib 已停止维护且与 bcrypt 5.x 不兼容）
+# 生成的哈希为标准 $2b$ 格式，与历史 passlib 产出的哈希完全兼容
 
 
 class AuthenticationError(HTTPException):
@@ -61,9 +61,9 @@ def hash_password(password: str) -> str:
         password: 明文密码
 
     Returns:
-        哈希后的密码
+        哈希后的密码（$2b$ 格式）
     """
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -77,7 +77,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         是否匹配
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except ValueError:
+        # 哈希格式非法（如历史脏数据）视为不匹配
+        return False
 
 
 def create_access_token(user_id: str, additional_claims: dict | None = None) -> str:

@@ -15,13 +15,13 @@ from utils.logger import logger
 # 核心修复：兼容性导入逻辑
 # -----------------------------------------------------------
 try:
-    # 优先尝试新版（官方推荐）
-    from langchain_tavily import TavilySearchResults
+    # 官方包（langchain-tavily 0.2.x 起类名从 TavilySearchResults 改为 TavilySearch）
+    from langchain_tavily import TavilySearch as TavilySearchResults
 
     logger.info("[Search] [OK] 使用 langchain_tavily (新版)")
 except ImportError:
     try:
-        # 回退到旧版（社区版）
+        # 回退到旧版（社区版，langchain-community 已停止维护，仅作兜底）
         from langchain_community.tools.tavily_search import TavilySearchResults
 
         logger.warning("[Search] [WARN] 使用 langchain_community.tools.tavily_search (旧版)")

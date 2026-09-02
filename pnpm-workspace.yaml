@@ -1,2 +1,12 @@
 packages:
   - 'frontend'
+
+# 允许执行 postinstall 脚本的依赖（esbuild 需要安装平台二进制；core-js 仅为版权提示）
+allowBuilds:
+  core-js: true
+  esbuild: true
+
+# pnpm 11 供应链防护：拒绝安装发布时间过新的包（默认策略会拦截刚发布数小时的版本）。
+# 本项目需要跟进最新依赖（如 lucide-react 1.39 发布当天即安装），故关闭。
+# 如需恢复防护，删除此行或改为如 '1440'（分钟）：
+minimumReleaseAge: 0

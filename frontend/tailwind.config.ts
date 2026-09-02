@@ -322,7 +322,7 @@ const config: Config = {
   },
   
   plugins: [
-    require("tailwindcss-animate"), 
+    // tailwindcss-animate 已由 tw-animate-css 替代（在 index.css 中 @import）
     require("@tailwindcss/typography")
   ],
 }

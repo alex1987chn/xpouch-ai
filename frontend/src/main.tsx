@@ -26,7 +26,7 @@ window.addEventListener('error', (event) => {
     logger.error('[Global Error] 动态导入失败，准备刷新页面:', errorMessage)
     
     // 清除缓存并刷新（使用 hard reload）
-    if ('caches' in window) {
+    if (window.caches) {
       caches.keys().then((names) => {
         names.forEach((name) => caches.delete(name))
       }).finally(() => {
@@ -47,7 +47,7 @@ window.addEventListener('unhandledrejection', (event) => {
     logger.error('[Unhandled Promise] 动态导入失败，准备刷新页面:', errorMessage)
     event.preventDefault()
     
-    if ('caches' in window) {
+    if (window.caches) {
       caches.keys().then((names) => {
         names.forEach((name) => caches.delete(name))
       }).finally(() => {

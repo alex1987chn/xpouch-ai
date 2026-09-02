@@ -182,7 +182,7 @@ export const errorHandler = {
    * console.log(normalized.code) // 'UNKNOWN_ERROR'
    * ```
    */
-  normalizeError(error: unknown, context?: string): AppError {
+  normalizeError(error: unknown, _context?: string): AppError {
     // 已经是 AppError
     if (error instanceof AppError) {
       return error
