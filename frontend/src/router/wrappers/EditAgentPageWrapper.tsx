@@ -26,7 +26,7 @@ export function EditAgentPageWrapper() {
         key={`edit-agent-${id}`}
         onBack={handleCancel}
         onSave={handleSave}
-        initialData={agentData}
+        initialData={agentData ?? undefined}
         isEditMode={true}
       />
     </Suspense>

@@ -20,6 +20,9 @@ export const CACHE_TIMES = {
   // 用户信息 - 缓存30分钟
   USER: { staleTime: 30 * 60 * 1000, gcTime: 60 * 60 * 1000 },
 
+  // 可用模型列表 - 随服务端 providers.yaml 变化，缓存10分钟
+  MODELS: { staleTime: 10 * 60 * 1000, gcTime: 30 * 60 * 1000 },
+
   // 聊天会话详情 - 变化较频繁，缓存2分钟
   CHAT_SESSION: { staleTime: 2 * 60 * 1000, gcTime: 5 * 60 * 1000 },
 

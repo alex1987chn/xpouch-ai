@@ -42,6 +42,11 @@ export interface AgentDisplay {
   description: string
   icon: string
   isCustom?: boolean
+  /** 列表页/编辑页需要的扩展字段（后端返回但此前未声明） */
+  is_default?: boolean
+  system_prompt?: string
+  category?: string
+  model_id?: string
 }
 
 // ============================================================================
@@ -88,7 +93,11 @@ export async function getAllAgents(page: number = 1, pageSize: number = 20): Pro
     name: agent.name,
     description: agent.description || '',
     icon: 'bot', // 默认图标
-    isCustom: true
+    isCustom: true,
+    is_default: false,
+    system_prompt: agent.system_prompt || '',
+    category: agent.category || '综合',
+    model_id: agent.model_id || ''
   }))
 }
 

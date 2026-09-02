@@ -1,5 +1,3 @@
-import { TranslationKey } from '../index'
-
 // 设置相关翻译 - 系统设置、个人设置等
 
 export const zh: Record<string, string> = {
@@ -32,6 +30,20 @@ export const zh: Record<string, string> = {
   agentPrompts: '智能体 Prompt 配置',
   customized: '已自定义',
   defaultPrompt: '默认',
+
+  // Model Config Dialog (Simple 模式偏好)
+  simpleMode: 'Simple 模式（直接对话）',
+  followSystemDefault: '跟随系统默认',
+  thinkingMode: '思考模式',
+  thinkingAuto: '跟随默认',
+  thinkingOn: '开启',
+  thinkingOff: '关闭',
+  thinkingUnsupported: '当前模型不支持思考模式开关',
+  thinkingCostHint: '开启思考模式可提升复杂问题的回答质量，但响应更慢、token 消耗更高',
+  complexMode: 'Complex 模式（多专家任务）',
+  complexModeDesc: '复杂模式使用的模型（规划与各专家）由管理员在「专家管理」中配置。',
+  modelsLoading: '正在加载模型列表...',
+  modelsLoadFailed: '模型列表加载失败，请稍后重试',
 }
 
 export const en: Record<string, string> = {
@@ -64,6 +76,20 @@ export const en: Record<string, string> = {
   agentPrompts: 'AGENT PROMPTS',
   customized: 'Customized',
   defaultPrompt: 'Default',
+
+  // Model Config Dialog (Simple mode preferences)
+  simpleMode: 'SIMPLE MODE (DIRECT CHAT)',
+  followSystemDefault: 'Follow System Default',
+  thinkingMode: 'Thinking Mode',
+  thinkingAuto: 'Default',
+  thinkingOn: 'On',
+  thinkingOff: 'Off',
+  thinkingUnsupported: 'This model does not support the thinking toggle',
+  thinkingCostHint: 'Enabling thinking improves quality on complex questions, but is slower and costs more tokens',
+  complexMode: 'COMPLEX MODE (MULTI-EXPERT TASKS)',
+  complexModeDesc: 'Models used in complex mode (planner and experts) are configured by the administrator in Expert Management.',
+  modelsLoading: 'Loading model list...',
+  modelsLoadFailed: 'Failed to load model list, please retry later',
 }
 
 export const ja: Record<string, string> = {
@@ -96,4 +122,18 @@ export const ja: Record<string, string> = {
   agentPrompts: 'エージェントプロンプト',
   customized: 'カスタマイズ済み',
   defaultPrompt: 'デフォルト',
+
+  // Model Config Dialog (Simple モード設定)
+  simpleMode: 'Simpleモード（直接会話）',
+  followSystemDefault: 'システム既定に従う',
+  thinkingMode: '思考モード',
+  thinkingAuto: '既定',
+  thinkingOn: 'オン',
+  thinkingOff: 'オフ',
+  thinkingUnsupported: 'このモデルは思考モード切替に非対応です',
+  thinkingCostHint: '思考モードを有効にすると複雑な質問の品質が向上しますが、応答が遅くトークン消費も増えます',
+  complexMode: 'Complexモード（マルチエキスパート）',
+  complexModeDesc: 'Complexモードで使用するモデル（プランナーとエキスパート）は管理者が「エキスパート管理」で設定します。',
+  modelsLoading: 'モデルリストを読み込み中...',
+  modelsLoadFailed: 'モデルリストの取得に失敗しました。後でもう一度お試しください',
 }

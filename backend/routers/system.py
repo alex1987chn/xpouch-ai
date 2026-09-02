@@ -11,7 +11,7 @@ from sqlmodel import Session, select
 
 from database import engine, get_session
 from dependencies import get_current_user_with_auth
-from models import CustomAgent, Thread, User
+from models import CustomAgent, Thread, User, UserSettings
 from utils.exceptions import NotFoundError
 
 router = APIRouter(prefix="/api", tags=["system"])
@@ -26,6 +26,25 @@ class UpdateUserRequest(BaseModel):
     username: str | None = None
     avatar: str | None = None
     plan: str | None = None
+
+
+class UpdateUserSettingsRequest(BaseModel):
+    """用户偏好设置更新请求。
+
+    simple_model 为 null 表示清除选择、跟随系统默认模型；
+    simple_thinking 三态：auto（跟随系统默认）/ enabled / disabled。
+    """
+
+    simple_model: str | None = None
+    simple_thinking: str | None = None
+
+
+# 用户偏好默认值（未存储任何偏好时的行为）
+DEFAULT_USER_PREFERENCES = {
+    "simple_model": None,  # None = 跟随系统默认模型
+    "simple_thinking": "auto",
+}
+VALID_THINKING_MODES = {"auto", "enabled", "disabled"}
 
 
 # ============================================================================
@@ -78,6 +97,95 @@ async def update_user_me(
     session.refresh(current_user)
 
     return current_user
+
+
+# ============================================================================
+# 模型与用户偏好接口
+# ============================================================================
+
+
+@router.get("/models")
+async def list_models(current_user: User = Depends(get_current_user_with_auth)):
+    """列出当前可用的模型（provider 已启用且未标记 hidden），作为前端模型列表的单一真相源"""
+    from providers_config import get_available_models
+
+    return {"models": get_available_models()}
+
+
+def _load_user_preferences(session: Session, user_id: str) -> dict:
+    """读取用户偏好并与默认值合并（存储缺失或字段缺失时回落默认值）"""
+    stored = session.get(UserSettings, user_id)
+    prefs = dict(stored.preferences) if stored and stored.preferences else {}
+    merged = {**DEFAULT_USER_PREFERENCES, **prefs}
+    # 防御历史脏数据
+    if merged.get("simple_thinking") not in VALID_THINKING_MODES:
+        merged["simple_thinking"] = DEFAULT_USER_PREFERENCES["simple_thinking"]
+    return merged
+
+
+@router.get("/user/settings")
+async def get_user_settings(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_auth),
+):
+    """获取当前用户偏好设置（含默认值合并与系统默认模型信息）"""
+    from providers_config import get_provider_config
+    from utils.llm_factory import get_default_model
+
+    preferences = _load_user_preferences(session, current_user.id)
+
+    default_model = get_default_model()
+    provider_config = get_provider_config("deepseek") or {}
+    return {
+        "preferences": preferences,
+        "default_model": {
+            "id": default_model,
+            "name": provider_config.get("name", default_model),
+        },
+    }
+
+
+@router.put("/user/settings")
+async def update_user_settings(
+    request: UpdateUserSettingsRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_auth),
+):
+    """更新当前用户偏好设置（整体写入，字段校验后 upsert）"""
+    from providers_config import get_available_models
+
+    # 校验 simple_model：null 或必须存在于可用模型列表
+    if request.simple_model is not None:
+        available_ids = {m["id"] for m in get_available_models()}
+        if request.simple_model not in available_ids:
+            from utils.exceptions import ValidationError
+
+            raise ValidationError(message=f"未知或不可用的模型: {request.simple_model}")
+
+    # 校验 simple_thinking
+    if request.simple_thinking is not None and request.simple_thinking not in VALID_THINKING_MODES:
+        from utils.exceptions import ValidationError
+
+        raise ValidationError(
+            message=f"无效的 thinking 取值: {request.simple_thinking}，允许 auto/enabled/disabled"
+        )
+
+    stored = session.get(UserSettings, current_user.id)
+    preferences = {
+        "simple_model": request.simple_model,
+        "simple_thinking": request.simple_thinking or DEFAULT_USER_PREFERENCES["simple_thinking"],
+    }
+
+    if stored:
+        stored.preferences = preferences
+        session.add(stored)
+    else:
+        stored = UserSettings(user_id=current_user.id, preferences=preferences)
+        session.add(stored)
+
+    session.commit()
+
+    return {"preferences": _load_user_preferences(session, current_user.id)}
 
 
 # ============================================================================

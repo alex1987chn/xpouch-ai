@@ -26,5 +26,8 @@ class AgentState(TypedDict):
     run_id: str | None  # 当前运行实例 ID
     user_id: str | None  # 当前用户 ID
     execution_plan_id: str | None  # 复杂执行计划 ID
+    # v3.4 新增：用户模型偏好（simple 模式使用，来自 user_settings 表）
+    simple_model: str | None  # 用户选择的模型 ID，None = 跟随系统默认
+    simple_thinking: str | None  # 思考模式偏好：auto/enabled/disabled
     # v3.0 新增：事件队列（用于 SSE 推送）
     event_queue: list[dict[str, Any]]  # 待发送的事件列表

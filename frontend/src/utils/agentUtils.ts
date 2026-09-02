@@ -40,7 +40,7 @@ export function getAgentType(agentId: string): AgentType {
 /**
  * 生成 Thread ID（根据智能体类型）
  */
-export function getThreadId(agentId: string, userId?: string): string {
+export function getThreadId(agentId: string, _userId?: string): string {
   const normalizedId = normalizeAgentId(agentId)
   const agentType = getAgentType(normalizedId)
 

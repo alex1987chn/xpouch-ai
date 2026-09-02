@@ -5,7 +5,7 @@
  * 支持复用于分类选择、模型选择等场景
  */
 
-import { useState, useRef, useEffect, ReactNode } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 

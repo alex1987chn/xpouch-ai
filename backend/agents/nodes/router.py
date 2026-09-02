@@ -258,6 +258,29 @@ def _get_forced_complex_reason(user_query: str) -> str | None:
     return None
 
 
+def _resolve_simple_llm(state: AgentState):
+    """按用户偏好解析 simple 模式 LLM；未配置或解析失败时回落系统默认单例"""
+    from agents.graph import get_simple_llm_lazy
+
+    preferred_model = state.get("simple_model")
+    if not preferred_model:
+        return get_simple_llm_lazy()
+
+    try:
+        from providers_config import get_model_config
+        from utils.llm_factory import get_llm_by_model
+
+        if not get_model_config(preferred_model):
+            raise ValueError(f"未知模型 ID: {preferred_model}")
+
+        return get_llm_by_model(
+            preferred_model, streaming=True, thinking=state.get("simple_thinking")
+        )
+    except Exception as e:
+        logger.warning(f"[DirectReply] 用户偏好模型 '{preferred_model}' 不可用，回落系统默认: {e}")
+        return get_simple_llm_lazy()
+
+
 async def direct_reply_node(state: AgentState, config: RunnableConfig = None) -> dict[str, Any]:
     """
     [直连节点] 负责 Simple 模式下的流式回复
@@ -302,10 +325,10 @@ async def direct_reply_node(state: AgentState, config: RunnableConfig = None) ->
     # 使用流式配置，添加 metadata 便于追踪
     config = {"tags": ["direct_reply"], "metadata": {"node_type": "direct_reply"}}
 
-    # Simple 模式使用 MiniMax（响应最快）
-    from agents.graph import get_simple_llm_lazy
+    # Simple 模式：优先用户偏好模型（user_settings），否则系统默认 DeepSeek（2026-09 起 MiniMax 已停用）
+    llm = _resolve_simple_llm(state)
 
-    response = await get_simple_llm_lazy().ainvoke(
+    response = await llm.ainvoke(
         [
             SystemMessage(content=system_prompt),
             *messages,  # 用户的历史消息上下文

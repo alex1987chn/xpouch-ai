@@ -1,7 +1,7 @@
 ﻿import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
-import { models } from '@/config/models'
+import { useModelsQuery } from '@/hooks/queries/useModelsQuery'
 import { useTranslation } from '@/i18n'
 
 interface ModelSelectorProps {
@@ -12,6 +12,8 @@ interface ModelSelectorProps {
 
 export default function ModelSelector({ value, onChange, label }: ModelSelectorProps) {
   const { t } = useTranslation()
+  // 模型列表来自后端 GET /api/models（单一真相源）
+  const { data: models = [] } = useModelsQuery()
 
   // 使用计算属性替代 state + useEffect 同步
   // 当前选中的模型

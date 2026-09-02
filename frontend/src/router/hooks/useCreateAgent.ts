@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useChatStore } from '@/store/chatStore'
 import { createCustomAgent } from '@/services/api'
+import type { Agent } from '@/types'
 import { logger } from '@/utils/logger'
 import { useTranslation } from '@/i18n'
 import { agentsKeys } from '@/hooks/queries'
@@ -32,10 +33,14 @@ export function useCreateAgent() {
         modelId: agent.modelId
       })
 
-      const agentWithUI = {
+      const agentWithUI: Agent = {
         ...savedAgent,
-        icon: agent.icon,
-        color: agent.color
+        description: savedAgent.description || '',
+        category: savedAgent.category || '综合',
+        modelId: savedAgent.model_id,
+        icon: agent.icon || 'bot',
+        color: agent.color,
+        isCustom: true
       }
 
       addCustomAgent(agentWithUI)

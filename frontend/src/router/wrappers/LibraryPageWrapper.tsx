@@ -5,7 +5,7 @@
  * - 登录认证守卫
  */
 
-import { Suspense, lazy } from 'react'
+import { lazy } from 'react'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { LoadingFallback } from '../components/LoadingFallback'
 import { SuspenseWithErrorBoundary } from '@/components/SuspenseWithErrorBoundary'
