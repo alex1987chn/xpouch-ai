@@ -81,3 +81,10 @@ CODE_REVIEW_REPORT.md
 
 # Deployment documentation (local only)
 DEPLOY_UBUNTU.md
+
+# VS Code workspace files (personal preference)
+*.code-workspace
+
+# Local agent/scanner tool artifacts (not part of the project)
+.zcode/
+.mimosa/
