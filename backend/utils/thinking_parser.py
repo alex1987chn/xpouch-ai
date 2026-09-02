@@ -65,6 +65,21 @@ def parse_thinking(content: str) -> tuple[str, dict | None]:
     return clean_content, thinking_data
 
 
+def build_thinking_data(text: str) -> dict | None:
+    """
+    把纯思考文本（如 DeepSeek 的 reasoning_content 累积结果）构建为前端 thinking 数据结构
+
+    与 parse_thinking 的区别：输入是已提取好的思考文本，无需标签解析。
+    """
+    text = (text or "").strip()
+    if not text:
+        return None
+    return {
+        "text": text,
+        "steps": _parse_thinking_steps(text),
+    }
+
+
 def _parse_thinking_steps(thought_text: str) -> list:
     """
     将思考文本解析为结构化步骤（可选）

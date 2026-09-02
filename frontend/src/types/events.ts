@@ -23,6 +23,7 @@ export type EventType =
   | 'artifact.generated'
   // 消息阶段
   | 'message.delta'
+  | 'message.thinking'  // 🔥 新增：模型思考过程流式块（reasoning_content）
   | 'message.done'
   // 🔥🔥🔥 v3.1.0 HITL: 人类审核中断事件
   | 'human.interrupt'
@@ -170,6 +171,14 @@ export interface MessageDeltaData {
 
 export type MessageDeltaEvent = SSEEvent<MessageDeltaData, 'message.delta'>
 
+export interface MessageThinkingData {
+  message_id: string
+  /** 思考增量内容（模型 reasoning_content） */
+  content: string
+}
+
+export type MessageThinkingEvent = SSEEvent<MessageThinkingData, 'message.thinking'>
+
 export interface MessageDoneData {
   message_id: string
   full_content: string
@@ -240,6 +249,7 @@ export type AnyServerEvent =
   | TaskFailedEvent
   | ArtifactGeneratedEvent
   | MessageDeltaEvent
+  | MessageThinkingEvent  // 🔥 新增：模型思考过程流式块
   | MessageDoneEvent
   | HumanInterruptEvent     // 🔥🔥🔥 v3.1.0 HITL
   | RouterStartEvent

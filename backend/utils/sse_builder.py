@@ -18,6 +18,7 @@ from event_types.events import (
     HumanInterruptData,
     MessageDeltaData,
     MessageDoneData,
+    MessageThinkingData,
     build_sse_event,
 )
 from utils.error_codes import ErrorCode, as_error_code
@@ -28,6 +29,15 @@ def build_message_delta_event(message_id: str, content: str) -> str:
     event = build_sse_event(
         EventType.MESSAGE_DELTA,
         MessageDeltaData(message_id=message_id, content=content),
+        str(uuid.uuid4()),
+    )
+    return sse_event_to_string(event)
+
+
+def build_message_thinking_event(message_id: str, content: str) -> str:
+    event = build_sse_event(
+        EventType.MESSAGE_THINKING,
+        MessageThinkingData(message_id=message_id, content=content),
         str(uuid.uuid4()),
     )
     return sse_event_to_string(event)

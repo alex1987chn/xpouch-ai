@@ -1,12 +1,13 @@
 /**
  * Chat/Message 相关事件处理器
- * 
+ *
  * 处理的事件类型：
  * - message.delta: 流式更新消息内容
+ * - message.thinking: 流式更新模型思考过程（reasoning_content）
  * - message.done: 完成消息流式输出
  */
 
-import type { MessageDeltaEvent, MessageDoneEvent } from './types'
+import type { MessageDeltaEvent, MessageDoneEvent, MessageThinkingEvent } from './types'
 import type { HandlerContext } from './types'
 import { logger } from '@/utils/logger'
 import { findMessageById } from '@/utils/normalize'
@@ -76,6 +77,66 @@ export function handleMessageDelta(
     logger.debug(
       '[ChatEvents] message.delta: 跳过更新（已由 useChatCore 处理）',
       event.data.message_id
+    )
+  }
+}
+
+/**
+ * 处理 message.thinking 事件
+ * 流式累积模型思考过程（DeepSeek reasoning_content）
+ *
+ * 以单一 ThinkingStep（id=model_reasoning）挂在消息 metadata.thinking 上，
+ * 复用 ThinkingProcess 组件渲染；message.done 时既有逻辑会将其标记为 completed。
+ */
+export function handleMessageThinking(
+  event: MessageThinkingEvent,
+  context: HandlerContext
+): void {
+  const { chatStore, debug } = context
+  const { addMessage, updateMessageMetadata, messages } = chatStore
+
+  let message = findMessageById(messages, event.data.message_id)
+  if (!message) {
+    // 与 message.delta 相同的兜底：消息尚未创建时自动创建空消息
+    if (debug)
+      logger.debug(
+        '[ChatEvents] message.thinking: 消息不存在，自动创建:',
+        event.data.message_id
+      )
+    addMessage({
+      id: event.data.message_id,
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now()
+    })
+    message = findMessageById(useChatStore.getState().messages, event.data.message_id)
+  }
+  if (!message) return
+
+  const thinking = [...(message.metadata?.thinking ?? [])]
+  const stepIndex = thinking.findIndex((s) => s.id === 'model_reasoning')
+  if (stepIndex >= 0) {
+    thinking[stepIndex] = {
+      ...thinking[stepIndex],
+      content: thinking[stepIndex].content + event.data.content
+    }
+  } else {
+    thinking.push({
+      id: 'model_reasoning',
+      expertType: 'analysis',
+      expertName: '深度思考',
+      content: event.data.content,
+      timestamp: new Date().toISOString(),
+      status: 'running',
+      type: 'analysis'
+    })
+  }
+  updateMessageMetadata(event.data.message_id, { thinking })
+
+  if (debug) {
+    logger.debug(
+      '[ChatEvents] message.thinking 累积:',
+      event.data.content.substring(0, 30) + '...'
     )
   }
 }

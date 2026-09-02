@@ -2,8 +2,27 @@
 
 All notable changes to this project will be documented here.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2026-09-02] - v3.3.7 模型思考过程流式展示（Simple 模式）
+
+### 新增功能
+
+- **思考流实时展示**：Simple 模式开启思考后，回复气泡上方流式滚动显示 DeepSeek 的推理过程（reasoning_content），思考完成自动收起（1.5s），正文随后流式输出——"黑盒等待"变为透明思考流
+- 新增 SSE 事件 `message.thinking`（前后端事件契约测试同步覆盖）；思考关闭或模型不支持时完全不发事件，行为与此前一致
+- 思考过程随消息持久化（`extra_data.thinking`），刷新/回看历史会话时可重新展开（复用既有 ThinkingProcess 渲染与历史映射）
+- 自定义智能体直连路径同步具备转发与持久化能力（当前思考默认关闭，为未来开关预留）
+
+### 行为说明
+
+- 仅 Simple 模式 + 思考开启时可见；Complex 模式与专家流水线不受影响（其 LLM 思考本就为关闭状态）
+- 持久化优先使用原生 reasoning_content，`<think>` 标签解析降级为兜底（兼容历史消息）
+
+### 验证
+
+- 端到端实测：开思考对话产生 205 个 thinking 增量事件 + 128 个正文增量 + 567 字符思考入库；关思考零 thinking 事件
+- 后端 86 项测试通过（含 SSE 前后端事件契约一致性）；前端 tsc 0 错误、build ✓、eslint 0 错误
 
 ## [2026-09-02] - v3.3.6 TypeScript 存量错误清零 + 升级 6.0.3：tsc 288 → 0
 

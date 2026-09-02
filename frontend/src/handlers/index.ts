@@ -29,7 +29,7 @@ import {
   handleTaskFailed
 } from './taskEvents'
 import { handleArtifactGenerated } from './artifactEvents'
-import { handleMessageDelta, handleMessageDone } from './chatEvents'
+import { handleMessageDelta, handleMessageDone, handleMessageThinking } from './chatEvents'
 import {
   handleRouterStart,
   handleRouterDecision,
@@ -108,6 +108,9 @@ export class EventHandler {
         break
       case 'message.delta':
         handleMessageDelta(event, context)
+        break
+      case 'message.thinking':
+        handleMessageThinking(event, context)
         break
       case 'message.done':
         handleMessageDone(event, context)

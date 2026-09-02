@@ -53,6 +53,7 @@ from utils.sse_builder import (
     build_human_interrupt_event,
     build_message_delta_event,
     build_message_done_event,
+    build_message_thinking_event,
 )
 
 
@@ -122,6 +123,7 @@ class StreamService:
 
         async def event_generator():
             full_response = ""
+            reasoning_buffer = ""  # 模型思考过程（reasoning_content）累积，用于持久化
             actual_message_id = message_id or str(uuid.uuid4())
 
             # 心跳配置 - 从 config 导入
@@ -162,6 +164,14 @@ class StreamService:
                             full_response += content
                             yield self._build_message_delta_event(actual_message_id, content)
 
+                        # 思考过程流式块（思考 chunk 通常无正文内容，需独立于 content 判断）
+                        reasoning = getattr(chunk, "additional_kwargs", {}).get(
+                            "reasoning_content", ""
+                        )
+                        if reasoning:
+                            reasoning_buffer += reasoning
+                            yield self._build_message_thinking_event(actual_message_id, reasoning)
+
                     except TimeoutError:
                         # 心跳保活
                         self._touch_agent_run(agent_run.id, current_node="custom_agent")
@@ -189,10 +199,12 @@ class StreamService:
                 yield self._build_error_event(ErrorCode.STREAM_ERROR, str(e))
                 return
 
-            # 解析 thinking 并保存消息
-            from utils.thinking_parser import parse_thinking
+            # 解析 thinking 并保存消息（优先原生 reasoning_content，回退 <think> 标签解析）
+            from utils.thinking_parser import build_thinking_data, parse_thinking
 
-            clean_content, thinking_data = parse_thinking(full_response)
+            thinking_data = build_thinking_data(reasoning_buffer) if reasoning_buffer else None
+            if thinking_data is None:
+                _, thinking_data = parse_thinking(full_response)
 
             # 使用 thread_service 保存消息
             await self.thread_service.save_assistant_message(
@@ -233,6 +245,7 @@ class StreamService:
         实际内部使用流式获取结果，但返回完整响应
         """
         full_response = ""
+        reasoning_buffer = ""  # 模型思考过程（reasoning_content）累积，用于持久化
         actual_message_id = message_id or str(uuid.uuid4())
 
         try:
@@ -249,6 +262,9 @@ class StreamService:
                 self._raise_if_run_cancelled(agent_run.id)
                 if chunk.content:
                     full_response += chunk.content
+                reasoning = getattr(chunk, "additional_kwargs", {}).get("reasoning_content", "")
+                if reasoning:
+                    reasoning_buffer += reasoning
 
         except AppError as e:
             if e.code == ErrorCode.RUN_CANCELLED:
@@ -259,10 +275,12 @@ class StreamService:
             self._mark_agent_run_failed(agent_run.id, str(e))
             raise AppError(f"自定义智能体调用失败: {str(e)}") from e
 
-        # 解析 thinking 并保存
-        from utils.thinking_parser import parse_thinking
+        # 解析 thinking 并保存（优先原生 reasoning_content，回退 <think> 标签解析）
+        from utils.thinking_parser import build_thinking_data, parse_thinking
 
-        clean_content, thinking_data = parse_thinking(full_response)
+        thinking_data = build_thinking_data(reasoning_buffer) if reasoning_buffer else None
+        if thinking_data is None:
+            _, thinking_data = parse_thinking(full_response)
 
         await self.thread_service.save_assistant_message(
             thread_id=thread_id,
@@ -390,6 +408,8 @@ class StreamService:
                 await graph.aupdate_state(config, initial_state)
 
                 try:
+                    # 收集模型思考过程（DeepSeek reasoning_content），流结束后随消息持久化
+                    reasoning_parts: list[str] = []
                     async for token in graph.astream_events(None, config, version="v2"):
                         # 🔥 修复：跳过非字典类型的 token
                         if not isinstance(token, dict):
@@ -411,7 +431,9 @@ class StreamService:
                                     yield queued_event["event"]
 
                         # 处理其他事件（消息流、task 事件等）
-                        event_str = self.transform_langgraph_event(token, actual_message_id)
+                        event_str = self.transform_langgraph_event(
+                            token, actual_message_id, reasoning_parts
+                        )
                         if event_str:
                             yield event_str
 
@@ -567,6 +589,7 @@ class StreamService:
                         expert_artifacts=expert_artifacts,
                         message_id=actual_message_id,
                         run_id=agent_run.id,
+                        thinking_text="".join(reasoning_parts) or None,
                     )
                     self._update_agent_run_status(
                         agent_run.id, RunStatus.COMPLETED, current_node="done"
@@ -696,6 +719,7 @@ class StreamService:
         expert_artifacts: dict,
         message_id: str,
         run_id: str | None = None,
+        thinking_text: str | None = None,
     ):
         """保存 LangGraph 执行结果"""
         from crud.execution_plan import create_artifacts_batch, get_subtasks_by_execution_plan
@@ -771,9 +795,15 @@ class StreamService:
                         f"[StreamService] ⚠️ task_id={task_id} 在 expert_artifacts 中未找到"
                     )
 
-        # 保存 AI 消息
+        # 保存 AI 消息（思考过程优先使用原生 reasoning_content，无则回退 <think> 标签解析）
+        from utils.thinking_parser import build_thinking_data
+
+        thinking_data = build_thinking_data(thinking_text) if thinking_text else None
         await self.thread_service.save_assistant_message(
-            thread_id=thread_id, content=last_message.content, message_id=message_id
+            thread_id=thread_id,
+            content=last_message.content,
+            message_id=message_id,
+            thinking_data=thinking_data,
         )
 
     def _get_complex_result_persistence_error(
@@ -1309,7 +1339,9 @@ class StreamService:
     # 事件转换和构建
     # ============================================================================
 
-    def transform_langgraph_event(self, token, message_id: str | None = None) -> str | None:
+    def transform_langgraph_event(
+        self, token, message_id: str | None = None, reasoning_collector: list | None = None
+    ) -> str | None:
         """将 LangGraph 事件转换为 SSE 格式"""
         import json
 
@@ -1357,40 +1389,51 @@ class StreamService:
         if event_type == "on_chat_model_stream":
             data = token.get("data", {})
             chunk = data.get("chunk")
-            if chunk and hasattr(chunk, "content") and chunk.content:
-                # 🔥🔥🔥 P0热修：严格过滤 commander 和 expert 节点的 message.delta
-                # 这些节点的内容应通过专用事件发送（plan.thinking/artifact.chunk）
-                # 只有 aggregator 节点允许发送 message.delta
-                metadata = token.get("metadata", {})
-                tags = metadata.get("tags", [])
-                node_type = metadata.get("node_type", "")
+            if not chunk:
+                return None
 
-                # 拦截条件1：明确的节点类型为 commander 或 expert
-                if node_type in ["commander", "expert"]:
-                    logger.debug(
-                        f"[transform_langgraph_event] 拦截 {node_type} 节点的 message.delta: {chunk.content[:50]}..."
-                    )
-                    return None
+            # 🔥🔥🔥 P0热修：严格过滤 commander 和 expert 节点的 message.delta
+            # 这些节点的内容应通过专用事件发送（plan.thinking/artifact.chunk）
+            # 只有 aggregator 节点允许发送 message.delta
+            metadata = token.get("metadata", {})
+            tags = metadata.get("tags", [])
+            node_type = metadata.get("node_type", "")
 
-                # 拦截条件2：包含 streaming 和 generic_worker 标签（向后兼容）
-                if "streaming" in tags and "generic_worker" in tags:
-                    logger.debug(
-                        f"[transform_langgraph_event] GenericWorker 流式专家内容跳过 message.delta: {chunk.content[:50]}..."
-                    )
-                    return None
+            # 拦截条件1：明确的节点类型为 commander 或 expert
+            if node_type in ["commander", "expert"]:
+                logger.debug(f"[transform_langgraph_event] 拦截 {node_type} 节点的消息流")
+                return None
 
-                # 拦截条件3：router 节点的任何消息（额外保险）
-                if "router" in tags or node_type == "router":
-                    logger.debug("[transform_langgraph_event] 拦截 router 节点的 message.delta")
-                    return None
+            # 拦截条件2：包含 streaming 和 generic_worker 标签（向后兼容）
+            if "streaming" in tags and "generic_worker" in tags:
+                logger.debug("[transform_langgraph_event] GenericWorker 流式专家内容跳过")
+                return None
 
+            # 拦截条件3：router 节点的任何消息（额外保险）
+            if "router" in tags or node_type == "router":
+                logger.debug("[transform_langgraph_event] 拦截 router 节点的消息流")
+                return None
+
+            # 思考过程流式块（DeepSeek reasoning_content；思考 chunk 通常没有正文内容，
+            # 必须在 content 判空之前处理，否则会被整体丢弃）
+            reasoning = getattr(chunk, "additional_kwargs", {}).get("reasoning_content", "")
+            if reasoning:
+                if reasoning_collector is not None:
+                    reasoning_collector.append(reasoning)
+                event_data = {"content": reasoning}
+                if message_id:
+                    event_data["message_id"] = message_id
+                return f"event: message.thinking\ndata: {json.dumps(event_data)}\n\n"
+
+            content = getattr(chunk, "content", None)
+            if content:
                 # 只发送纯净数据，包含 message_id 用于前端消息关联
                 # 注意：只有 aggregator 节点会执行到这里
-                event_data = {"content": chunk.content}
+                event_data = {"content": content}
                 if message_id:
                     event_data["message_id"] = message_id
                 logger.debug(
-                    f"[transform_langgraph_event] 允许 message.delta (node_type={node_type}, tags={tags}): {chunk.content[:50]}..."
+                    f"[transform_langgraph_event] 允许 message.delta (node_type={node_type}, tags={tags}): {content[:50]}..."
                 )
                 return f"event: message.delta\ndata: {json.dumps(event_data)}\n\n"
 
@@ -1442,6 +1485,10 @@ class StreamService:
     def _build_message_delta_event(self, message_id: str, content: str) -> str:
         """构建 message.delta 事件"""
         return build_message_delta_event(message_id=message_id, content=content)
+
+    def _build_message_thinking_event(self, message_id: str, content: str) -> str:
+        """构建 message.thinking 事件"""
+        return build_message_thinking_event(message_id=message_id, content=content)
 
     def _build_message_done_event(self, message_id: str, content: str) -> str:
         """构建 message.done 事件"""

@@ -29,6 +29,7 @@ class EventType(StrEnum):
 
     # 消息阶段
     MESSAGE_DELTA = "message.delta"  # 最终回复流式块
+    MESSAGE_THINKING = "message.thinking"  # 模型思考过程流式块（reasoning_content）
     MESSAGE_DONE = "message.done"  # 最终回复完成
 
     # 🔥🔥🔥 v3.1.0 HITL: 人类审核中断事件
@@ -179,6 +180,13 @@ class MessageDeltaData(BaseModel):
     message_id: str
     content: str  # 增量内容
     is_final: bool = False
+
+
+class MessageThinkingData(BaseModel):
+    """message.thinking 事件数据（模型思考过程增量，如 DeepSeek reasoning_content）"""
+
+    message_id: str
+    content: str  # 思考增量内容
 
 
 class MessageDoneData(BaseModel):
