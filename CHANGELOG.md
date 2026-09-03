@@ -5,6 +5,22 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-09-03] - v3.3.9 流式层修复 Stage 0：invoke 下线 / message_id 贯通 / 缓存链补齐
+
+依据深度架构审查（含 LangGraph 1.2.11 源码级复核与业界流式最佳实践调研）的分阶段修复，本阶段为不动架构的快速收尾：
+
+### 变更
+
+- **下线 /api/chat/invoke**：前端零调用，且 auto 模式因 interrupt_before 在规划后被拦停、返回假 "completed" 与空结果（无任何 resume 接线）；连同 invoke_service 与 invoke_session 一并移除（git 历史可找回）
+- **message_id 全链贯通**：AgentState 新增字段并经 initial_state 注入；此前 aggregator 的 message.done 恒为随机 uuid，与流式 delta 的 ID 对不上（同一消息前端无法关联）；resume 两条路径（改计划/直接批准）均补写。实测：直接批准恢复流 delta/done 共用同一前端指定 ID
+- **专家缓存失效链补齐**：refresh_cache 此前漏清 dispatcher 与 aggregator 的本地 TTLCache，admin 改专家后聚合器最长 5 分钟用旧 system_prompt 生成
+- **移除 langgraph-sdk**：LangGraph Platform 客户端 SDK，全项目零 import 的死依赖
+
+### 验证
+
+- 88 项测试全过 + ruff 全绿
+- 真实端到端：complex 触发 HITL → 直接批准 → 恢复流 2600+ delta 与 done 的 message_id 完全一致
+
 ## [2026-09-03] - v3.3.8 Moonshot 迁移 Kimi K2.6 与工程清洁
 
 ### 变更

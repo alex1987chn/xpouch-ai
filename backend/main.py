@@ -21,11 +21,10 @@ load_dotenv(dotenv_path=env_path, override=True)
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from api.admin import router as admin_router
@@ -38,9 +37,9 @@ from config import settings
 
 # 内部模块导入
 from database import create_db_and_tables, engine
-from models import SkillTemplate, SystemExpert, User
+from models import SkillTemplate, SystemExpert
 from routers import agents, chat, mcp, runs, stats, system
-from utils.exceptions import AppError, ValidationError, handle_error
+from utils.exceptions import AppError, handle_error
 from utils.logger import logger
 
 # ============================================================================
@@ -280,59 +279,6 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         status_code=app_error.status_code,
         content=app_error.to_dict(),
     )
-
-
-# ============================================================================
-# 双模路由端点
-# 业务逻辑已迁移到 services/invoke_service.py
-# ============================================================================
-
-from dependencies import get_current_user
-from services.invoke_service import InvokeService, get_invoke_service
-
-
-class ChatInvokeRequest(BaseModel):
-    """双模路由请求模型"""
-
-    message: str
-    mode: str = "auto"  # "auto" 或 "direct"
-    agent_id: str | None = None  # direct 模式下必填
-    thread_id: str | None = None  # 已有会话 ID；为空时由后端创建
-
-
-@app.post("/api/chat/invoke")
-async def chat_invoke_endpoint(
-    request: ChatInvokeRequest,
-    service: InvokeService = Depends(get_invoke_service),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    双模路由端点：支持 Auto 和 Direct 两种执行模式
-
-    Auto 模式：完整的多专家协作流程（commander_graph）
-    Direct 模式：直接调用单个专家
-    """
-    logger.info(f"[INVOKE] 模式: {request.mode}, Agent: {request.agent_id}")
-
-    try:
-        # 使用 InvokeService 执行业务逻辑
-        result = await service.invoke(
-            message=request.message,
-            mode=request.mode,
-            agent_id=request.agent_id,
-            thread_id=request.thread_id,
-            user=current_user,
-        )
-
-        return {**result, "user_query": request.message, "status": "completed"}
-
-    except ValidationError:
-        # 验证错误已包含详细信息，直接抛出
-        raise
-    except Exception as e:
-        # 其他错误包装为 AppError
-        logger.error(f"[INVOKE ERROR] {e}", exc_info=True)
-        raise AppError(message=f"执行失败: {str(e)}", original_error=e) from e
 
 
 # ============================================================================

@@ -194,7 +194,7 @@ def refresh_cache(session: Session | None = None):
 
     # 2. 清除各模块本地缓存（避免多实例/多模块间缓存不一致）
     try:
-        from agents.nodes import commander, generic
+        from agents.nodes import aggregator, commander, dispatcher, generic
 
         # Commander 模块缓存
         if hasattr(commander, "_commander_config_cache"):
@@ -209,6 +209,16 @@ def refresh_cache(session: Session | None = None):
         if hasattr(generic, "_generic_expert_cache"):
             generic._generic_expert_cache.clear()
             logger.info("[ExpertManager] GenericWorker 缓存已清除")
+
+        # Dispatcher 模块缓存
+        if hasattr(dispatcher, "_dispatcher_expert_cache"):
+            dispatcher._dispatcher_expert_cache.clear()
+            logger.info("[ExpertManager] Dispatcher 缓存已清除")
+
+        # Aggregator 模块缓存（admin 改专家后不再最长 5 分钟用旧 system_prompt）
+        if hasattr(aggregator, "_aggregator_config_cache"):
+            aggregator._aggregator_config_cache.clear()
+            logger.info("[ExpertManager] Aggregator 缓存已清除")
 
     except ImportError as e:
         logger.warning(f"[ExpertManager] 清除本地缓存时部分模块未找到: {e}")

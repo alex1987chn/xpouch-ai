@@ -693,7 +693,7 @@ class StreamService:
                     router_decision=router_decision,
                     task_list=result.get("task_list", []),
                     expert_artifacts={},
-                    message_id=str(uuid.uuid4()),
+                    message_id=initial_state.get("message_id") or str(uuid.uuid4()),
                     run_id=agent_run.id,
                 )
                 self._update_agent_run_status(
@@ -976,7 +976,7 @@ class StreamService:
 
             # 如果提供了更新后的计划，应用它
             if updated_plan:
-                await self._apply_updated_plan(graph, config, updated_plan)
+                await self._apply_updated_plan(graph, config, updated_plan, message_id)
                 if run_id:
                     execution_plan = self._get_execution_plan_by_run(run_id)
                     if execution_plan:
@@ -989,6 +989,11 @@ class StreamService:
                             task_count=len(updated_plan),
                         )
                         self.db.commit()
+            elif message_id:
+                # 普通批准（未修改计划）：图从中断点直接续跑，state 不会经过
+                # _apply_updated_plan——单独补写 message_id，保证聚合阶段
+                # message.done 与本次流式 delta 使用同一 ID
+                await graph.aupdate_state(config, {"message_id": message_id})
 
             # 🔥🔥🔥 关键修复：外层循环驱动任务执行直到完成
             # LangGraph 的 astream_events 在第一个循环结束后就返回，不会自动继续
@@ -1256,7 +1261,9 @@ class StreamService:
         # message.done 由 aggregator_node 通过 event_queue 发送
         # 这里不再重复发送
 
-    async def _apply_updated_plan(self, graph, config: dict, updated_plan: list[dict]):
+    async def _apply_updated_plan(
+        self, graph, config: dict, updated_plan: list[dict], message_id: str | None = None
+    ):
         """
         应用用户更新后的计划
 
@@ -1325,15 +1332,16 @@ class StreamService:
         updated_messages = list(current_messages) + [approval_message]
 
         # 更新 LangGraph 状态（保留已完成任务的结果）
-        await graph.aupdate_state(
-            config,
-            {
-                "task_list": merged_plan,
-                "current_task_index": next_task_index,  # 🔥 使用正确的索引，而不是重置为 0
-                "messages": updated_messages,
-                "expert_results": current_expert_results,  # 🔥 保留已有结果，而不是清空
-            },
-        )
+        state_update = {
+            "task_list": merged_plan,
+            "current_task_index": next_task_index,  # 🔥 使用正确的索引，而不是重置为 0
+            "messages": updated_messages,
+            "expert_results": current_expert_results,  # 🔥 保留已有结果，而不是清空
+        }
+        # 恢复流的消息 ID 贯通：聚合阶段的 message.done 与本次流式 delta 使用同一 ID
+        if message_id:
+            state_update["message_id"] = message_id
+        await graph.aupdate_state(config, state_update)
 
     # ============================================================================
     # 事件转换和构建

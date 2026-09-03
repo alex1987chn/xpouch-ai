@@ -27,6 +27,7 @@ Router 层仅负责：
 """
 
 from typing import Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -311,6 +312,9 @@ async def chat_endpoint(
     except Exception:
         user_preferences = {"simple_model": None, "simple_thinking": "auto"}
 
+    # 消息 ID 贯通：state 与 SSE 事件/落库共用同一 ID（aggregator 不再随机 uuid）
+    actual_message_id = request.message_id or str(uuid4())
+
     initial_state = {
         "messages": langchain_messages,
         "current_agent": "router",
@@ -324,6 +328,7 @@ async def chat_endpoint(
         "thread_id": thread_id,
         "run_id": agent_run.id,
         "user_id": thread.user_id,
+        "message_id": actual_message_id,
         "simple_model": user_preferences.get("simple_model"),
         "simple_thinking": user_preferences.get("simple_thinking", "auto"),
     }
@@ -335,7 +340,7 @@ async def chat_endpoint(
             thread=thread,
             agent_run=agent_run,
             user_message=request.message,
-            message_id=request.message_id,
+            message_id=actual_message_id,
         )
     else:
         return await stream_service.handle_langgraph_sync(

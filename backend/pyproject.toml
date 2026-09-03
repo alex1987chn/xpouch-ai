@@ -14,7 +14,6 @@ dependencies = [
     "langchain-tavily>=0.2.0,<1.0.0",  # 🔥 新增：Tavily 官方工具包
     "tavily-python>=0.5.0,<1.0.0",  # 🔥 新增：Tavily 联网搜索 SDK
     "langgraph>=1.0.0,<2.0.0",  # 🔥 收紧：限制在主版本 1.x
-    "langgraph-sdk>=0.3.0,<1.0.0",  # 🔥 升级：LangGraph SDK 0.3.x
     "langgraph-checkpoint-postgres>=2.0.0,<4.0.0",  # 🔥🔥🔥 v3.1.0 HITL: PostgreSQL checkpointer
     "python-dotenv>=1.2.0,<2.0.0",
     "sqlalchemy>=2.0.48",  # 🟡 并发连接修复
