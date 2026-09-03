@@ -5,6 +5,16 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-09-03] - v3.3.8 Moonshot 迁移 Kimi K2.6 与工程清洁
+
+### 变更
+
+- **Moonshot 模型迁移**：`kimi-k2.5` 该 API Key 无权限（实测 404），默认模型切换为 **kimi-k2.6**（$0.95/$4 每百万 token，256K 上下文，便宜快速）
+  - K2.6 实测特性入库：默认开思考（`extra_body` 关闭保持快/省，参数约定同 DeepSeek，声明 `thinking_toggle`）；仅允许 `temperature=0.6`
+  - 旧 ID `kimi-k2.5` 保留为隐藏别名 → K2.6，数据库存量专家配置无缝兼容；新增 `kimi-k3` 旗舰可选项
+- **修复连接池健康检查告警**：psycopg3 异步连接的 `autocommit` 属性只读，原实现每次建连接都告警一次；改为事务态检查 + rollback 兜底（实测对话后告警清零）
+- **工程清洁**：ruff format 存量债清零（158 文件全格式化）；删除误入库的 `tsconfig.node.tsbuildinfo` 与本地残留物（test-output.css 等）
+
 ## [2026-09-02] - v3.3.7 模型思考过程流式展示（Simple 模式）
 
 ### 新增功能

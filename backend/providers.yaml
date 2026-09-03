@@ -92,18 +92,23 @@ providers:
     content_mode: auto                       # 原生支持多模态 content，无需转换
 
   # -------------------------------------------------------------------------
-  # Moonshot (月之暗面) - Kimi K2.5 多模态模型，支持文本/图像/视频
+  # Moonshot (月之暗面) - Kimi K2.6，便宜快速的通用模型，支持文本/图像输入
+  # 注：kimi-k2.5 该 API Key 无权限（2026-09 实测 404），已切换 K2.6 并保留旧 ID 别名；
+  #     K2.6 默认开启思考模式，extra_body 关闭以保持快/省（与 DeepSeek 配置约定一致）
   # -------------------------------------------------------------------------
   moonshot:
     name: Moonshot
     base_url: https://api.moonshot.cn/v1
     env_key: MOONSHOT_API_KEY
-    default_model: kimi-k2.5
-    temperature: 0.7
+    default_model: kimi-k2.6
+    temperature: 0.6                        # K2.6 仅允许 temperature=0.6（实测 400: only 0.6 is allowed）
     context_window: 256000
     priority: 6
     enabled: true
     content_mode: auto                      # Kimi 支持多模态，原生接受 list[str|dict]
+    extra_body:
+      thinking:
+        type: disabled                      # K2.6 默认开思考；关闭以更快更省（实测 thinking.type 参数有效）
 
 # ============================================================================
 # 嵌入模型配置（用于长期记忆系统）
@@ -190,11 +195,26 @@ models:
     name: GPT-4 Turbo
 
   # Moonshot (月之暗面)
+  kimi-k2.6:
+    provider: moonshot
+    model: kimi-k2.6
+    name: Kimi K2.6
+    temperature: 0.6                     # K2.6 仅允许 0.6（同旧 K2.5 仅允许 1 的限制）
+    thinking_toggle: true                # 思考开关参数实测有效（thinking.type，同 DeepSeek 约定）
+
+  # Kimi K3 旗舰（贵但强，按需在专家中指定）
+  kimi-k3:
+    provider: moonshot
+    model: kimi-k3
+    name: Kimi K3
+
+  # 兼容别名：kimi-k2.5（该 Key 无权限已不可用，映射到 K2.6，hidden 不出现在可选列表）
   kimi-k2.5:
     provider: moonshot
-    model: kimi-k2.5
-    name: Kimi K2.5
-    temperature: 1  # kimi-k2.5 只支持 temperature=1
+    model: kimi-k2.6
+    name: Kimi K2.6
+    temperature: 0.6
+    hidden: true
 
 # ============================================================================
 # Router 节点配置

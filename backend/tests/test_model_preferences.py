@@ -25,11 +25,13 @@ def test_available_models_excludes_hidden_aliases_and_disabled_providers():
 
     # 当前启用的 provider（deepseek/moonshot，conftest 已注入测试 Key）
     assert "deepseek-v4-flash" in ids
-    assert "kimi-k2.5" in ids
+    assert "kimi-k2.6" in ids
+    assert "kimi-k3" in ids
 
-    # hidden 兼容别名不出现
+    # hidden 兼容别名不出现（kimi-k2.5 该 Key 无权限，已降级为指向 K2.6 的隐藏别名）
     assert "deepseek-chat" not in ids
     assert "deepseek-reasoner" not in ids
+    assert "kimi-k2.5" not in ids
     # 已停用 provider 的模型不出现（minimax/openai 均为 enabled: false）
     assert not any(m["provider"] in ("minimax", "openai") for m in models)
 
@@ -43,8 +45,11 @@ def test_available_models_fields_and_capability_flags():
     assert deepseek["provider_name"] == "DeepSeek"
     assert deepseek["context_window"] > 0
 
-    kimi = models["kimi-k2.5"]
-    assert kimi["thinking_toggle"] is False
+    kimi26 = models["kimi-k2.6"]
+    assert kimi26["thinking_toggle"] is True  # thinking.type 参数实测有效
+
+    # 未声明 thinking_toggle 的模型为 False（kimi-k3 未验证开关参数，不声明）
+    assert models["kimi-k3"]["thinking_toggle"] is False
 
 
 # ============================================================================
@@ -66,9 +71,10 @@ def test_thinking_auto_follows_provider_default():
 
 
 def test_thinking_ignored_on_incapable_model():
-    """未声明 thinking_toggle 的模型忽略 thinking 参数"""
-    llm = get_llm_by_model("kimi-k2.5", thinking="enabled")
-    assert not (llm.extra_body or {})
+    """未声明 thinking_toggle 的模型忽略 thinking 覆盖（extra_body 保持 provider 级默认）"""
+    llm = get_llm_by_model("kimi-k3", thinking="enabled")
+    # 覆盖被忽略：不会变成 enabled，保持 moonshot provider 默认（disabled）
+    assert llm.extra_body == {"thinking": {"type": "disabled"}}
 
 
 def test_get_llm_by_model_unknown_id_raises():

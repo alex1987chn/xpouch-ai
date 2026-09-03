@@ -36,15 +36,16 @@ async def _configure_connection(conn):
 
 
 async def _check_connection(conn):
-    """连接健康检查"""
+    """连接健康检查。
+
+    注意：psycopg3 异步连接的 autocommit 属性只读（曾经直接赋值导致每次检查都告警），
+    SELECT 产生的事务态由这里的 rollback 与连接池的 reset 回调兜底清理。
+    """
     try:
-        orig_autocommit = conn.autocommit
-        conn.autocommit = True
-        try:
-            await conn.execute("SELECT 1")
-            return True
-        finally:
-            conn.autocommit = orig_autocommit
+        await conn.execute("SELECT 1")
+        if conn.info.transaction_status != 0:
+            await conn.rollback()
+        return True
     except Exception as e:
         logger.warning(f"[DB] Connection health check failed: {e}")
         return False
