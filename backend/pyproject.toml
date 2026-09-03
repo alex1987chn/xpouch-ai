@@ -11,7 +11,6 @@ dependencies = [
     # Note: pydantic-core 2.42.0+ 需要 pydantic 2.13.0+，但 LangChain 尚未支持，暂时保持现状
     "langchain-core>=1.0.0,<2.0.0",  # 🔥 收紧：限制在主版本 1.x，避免破坏性变更
     "langchain-openai>=1.0.0,<2.0.0",  # 🔥 收紧：与 langchain-core 版本兼容
-    "langchain-community>=0.3.0,<1.0.0",  # 🔥 收紧：限制在主版本 0.x
     "langchain-tavily>=0.2.0,<1.0.0",  # 🔥 新增：Tavily 官方工具包
     "tavily-python>=0.5.0,<1.0.0",  # 🔥 新增：Tavily 联网搜索 SDK
     "langgraph>=1.0.0,<2.0.0",  # 🔥 收紧：限制在主版本 1.x

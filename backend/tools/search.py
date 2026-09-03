@@ -7,32 +7,15 @@ P1 优化: 添加异步支持
 
 import os
 
-from langchain_core.tools import tool
-
-from utils.logger import logger
-
-# -----------------------------------------------------------
-# 核心修复：兼容性导入逻辑
-# -----------------------------------------------------------
-try:
-    # 官方包（langchain-tavily 0.2.x 起类名从 TavilySearchResults 改为 TavilySearch）
-    from langchain_tavily import TavilySearch as TavilySearchResults
-
-    logger.info("[Search] [OK] 使用 langchain_tavily (新版)")
-except ImportError:
-    try:
-        # 回退到旧版（社区版，langchain-community 已停止维护，仅作兜底）
-        from langchain_community.tools.tavily_search import TavilySearchResults
-
-        logger.warning("[Search] [WARN] 使用 langchain_community.tools.tavily_search (旧版)")
-    except ImportError as e:
-        # 如果都没装，直接抛出异常，不要吞掉！
-        raise ImportError(
-            "[ERROR] 严重错误: 未找到 Tavily 库。请运行: uv add langchain-tavily langchain-community"
-        ) from e
-
+# 说明：Tavily 官方包 langchain-tavily 0.2.x 起类名从 TavilySearchResults 改为 TavilySearch。
+# 旧的 langchain-community 兜底导入已于 2026-09-03 移除（该聚合包已停止维护，
+# 且 langchain-tavily 是 pyproject 硬依赖，兜底分支永远不可达）。
 # P1 优化: 导入异步 HTTP 客户端
 import httpx
+from langchain_core.tools import tool
+from langchain_tavily import TavilySearch as TavilySearchResults
+
+from utils.logger import logger
 
 # -----------------------------------------------------------
 

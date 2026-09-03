@@ -26,6 +26,41 @@ STALE_RUNNING_THREAD_MINUTES = max(5, settings.request_timeout_seconds // 60)
 SESSION_CLEANUP_INTERVAL_SECONDS = settings.session_cleanup_interval_minutes * 60
 
 
+def _purge_thread(session: Session, thread: Thread) -> bool:
+    """删除过期线程及其全部子数据，返回是否成功。
+
+    - 子表（message/tasksession/agentrun/executionplan/subtask/runevent）的外键
+      已由迁移 20260903_094500 统一为级联删除/SET NULL（部署时 alembic 先于应用执行），
+      删除 thread 即自动清理整棵子树。
+    - 这里仍显式删除 executionplan / agentrun，保证在仅部分级联生效的库上顺序正确。
+    - 逐线程 savepoint 隔离：单个线程删除失败只回滚自身，不影响本轮其他清理
+      （历史上一个线程的外键违例会把整轮清理事务一起顶崩）。
+    """
+    try:
+        with session.begin_nested():
+            execution_plans = session.exec(
+                select(ExecutionPlan).where(ExecutionPlan.thread_id == thread.id)
+            ).all()
+            agent_runs = session.exec(select(AgentRun).where(AgentRun.thread_id == thread.id)).all()
+
+            if thread.execution_plan_id is not None:
+                thread.execution_plan_id = None
+                session.add(thread)
+                session.flush()
+
+            for execution_plan in execution_plans:
+                session.delete(execution_plan)
+
+            for agent_run in agent_runs:
+                session.delete(agent_run)
+
+            session.delete(thread)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[SessionCleanup] 删除线程 %s 失败，已跳过: %s", thread.id, exc)
+        return False
+
+
 def _cleanup_once() -> dict[str, Any]:
     """
     执行一次清理并返回统计信息。
@@ -89,24 +124,8 @@ def _cleanup_once() -> dict[str, Any]:
             )
         ).all()
         for thread in expired_threads:
-            execution_plans = session.exec(
-                select(ExecutionPlan).where(ExecutionPlan.thread_id == thread.id)
-            ).all()
-            agent_runs = session.exec(select(AgentRun).where(AgentRun.thread_id == thread.id)).all()
-
-            if thread.execution_plan_id is not None:
-                thread.execution_plan_id = None
-                session.add(thread)
-                session.flush()
-
-            for execution_plan in execution_plans:
-                session.delete(execution_plan)
-
-            for agent_run in agent_runs:
-                session.delete(agent_run)
-
-            session.delete(thread)
-            expired_deleted += 1
+            if _purge_thread(session, thread):
+                expired_deleted += 1
 
         if stale_run_timeout or stale_running_reset or expired_deleted:
             session.commit()
