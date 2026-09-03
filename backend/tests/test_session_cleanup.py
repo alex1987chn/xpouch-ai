@@ -62,7 +62,7 @@ def test_purge_thread_deletes_children_before_thread():
     thread = _make_thread()
     session = _FakeSession(plans=[plan], runs=[run])
 
-    assert _purge_thread(session, thread) is True
+    assert _purge_thread(session, thread) == ["run-1"]
     # 删除顺序：先子（plan/run）后父（thread）
     assert session.deleted == [plan, run, thread]
     # 当前计划指针先解除
@@ -72,10 +72,10 @@ def test_purge_thread_deletes_children_before_thread():
 
 
 def test_purge_thread_isolates_failure():
-    """单个线程删除失败（如外键违例）不外抛，返回 False 由调用方跳过。"""
+    """单个线程删除失败（如外键违例）不外抛，返回 None 由调用方跳过。"""
     plan = ExecutionPlan(id="plan-1", thread_id="thread-1")
     thread = _make_thread()
     session = _FakeSession(plans=[plan], fail_on_delete_of=Thread)
 
-    assert _purge_thread(session, thread) is False
+    assert _purge_thread(session, thread) is None
     assert session.deleted == [plan]  # thread 删除失败前子数据按序尝试过

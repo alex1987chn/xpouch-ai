@@ -214,6 +214,11 @@ class RecoveryService:
         )
         self.db.commit()
 
+        # 取消即终态：清理本次运行的隔离线程 checkpoint
+        from utils.db import delete_checkpoints_for_thread
+
+        await delete_checkpoints_for_thread(agent_run.thread_id, [run_id])
+
         return {"status": "cancelled", "message": "运行已取消"}
 
     async def _handle_approval(
@@ -292,6 +297,12 @@ class RecoveryService:
                     # 处理完成后，收集 artifacts 并保存
                     await self._process_collected_artifacts(run_id, stream_queue)
                     self._update_run_status(run_id, RunStatus.COMPLETED)
+
+                    # run 终态：删除隔离线程 checkpoint + 传输级完成标记
+                    from utils.db import delete_checkpoints_for_thread
+
+                    await delete_checkpoints_for_thread(thread_id, [run_id])
+                    yield "data: [DONE]\n\n"
 
                 except asyncio.CancelledError:
                     # 🔥 客户端断开连接（如刷新页面）

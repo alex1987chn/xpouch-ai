@@ -84,7 +84,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   
   const { setMode, setActiveRunId, clearActiveRunId } = useTaskActions()
   
-  const { reset: resetStreamHandler, createChunkHandler, forceFlush } = useStreamHandler()
+  const { reset: resetStreamHandler, createChunkHandler, forceFlush, markFinalized } =
+    useStreamHandler()
 
   /**
    * Stop generation
@@ -215,7 +216,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       const streamCallback: StreamCallback = async (
         chunk: string | undefined,
         threadId?: string,
-        _expertEvent?: AnyServerEvent,  // 事件处理由 eventHandlers.ts 直接处理，此处保留参数以兼容类型
+        expertEvent?: AnyServerEvent,  // message.done 等事件（用于完成态闩锁）
         _artifact?,
         _expertId?,
         runtimeMeta?: StreamRuntimeMeta,
@@ -228,6 +229,12 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
           if (onNewConversation) {
             onNewConversation(threadId, normalizedAgentId)
           }
+        }
+
+        // message.done 的 full_content 是权威全文（chatEvents 已整体校准）；
+        // 置完成闩锁，防止 finally 的 forceFlush 再把同帧缓冲追加到尾部
+        if (expertEvent?.type === 'message.done') {
+          markFinalized()
         }
 
         if (chunk) {
@@ -278,9 +285,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       
       if (isAbortError) {
         debug('Request cancelled (user initiated)')
-        if (assistantMessageId) {
-          updateMessage(assistantMessageId, '', false)
-        }
+        // 保留已流出的部分内容（后端 cancel 流程也会持久化已生成部分），
+        // 此前整体置空会丢掉用户已经看到的半截回答
       } else if (isAuthError) {
         // 401 错误：保存消息到 pendingMessage，等待登录后重发
         debug('Authentication error (401), saving message for retry after login')

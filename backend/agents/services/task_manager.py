@@ -30,7 +30,6 @@ from crud.execution_plan import (
     update_execution_plan_status,
 )
 from crud.run_event import emit_artifact_generated, emit_task_completed
-from models import Message as MessageModel
 from utils.logger import logger
 
 # =============================================================================
@@ -264,42 +263,6 @@ def save_expert_execution_result(
     except Exception as e:
         logger.error(f"[TaskManager] 保存专家执行结果失败: {e}", exc_info=True)
         return False
-
-
-# =============================================================================
-# 消息持久化
-# =============================================================================
-
-
-def save_aggregator_message(db: Session, thread_id: str, content: str) -> MessageModel | None:
-    """
-    保存聚合器生成的最终消息到数据库
-
-    Args:
-        db: 数据库会话
-        thread_id: 线程 ID
-        content: 消息内容
-
-    Returns:
-        MessageModel: 创建的消息记录，如果失败则返回 None
-
-    Note:
-        - Message.id 由数据库自动生成 (INTEGER 自增)
-        - thread_id 用于关联到对话
-
-    Example:
-        >>> message = save_aggregator_message(db, "conv_123", "这是最终回复...")
-        >>> print(f"消息已保存: {message.id}")
-    """
-    try:
-        message_record = MessageModel(thread_id=thread_id, role="assistant", content=content)
-        db.add(message_record)
-        db.commit()
-        return message_record
-    except Exception as e:
-        logger.error(f"[TaskManager] 消息持久化失败: {e}")
-        db.rollback()
-        return None
 
 
 # =============================================================================

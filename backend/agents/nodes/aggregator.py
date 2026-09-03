@@ -17,11 +17,12 @@ from langchain_core.runnables import RunnableConfig
 from sqlmodel import Session
 
 from agents.services.expert_manager import get_expert_config_cached
-from agents.services.task_manager import complete_execution_plan, save_aggregator_message
+from agents.services.task_manager import complete_execution_plan
 from agents.state import AgentState
 from agents.state_patch import append_sse_event, append_sse_events, get_event_queue_snapshot
 from constants import AGGREGATOR_SYSTEM_PROMPT
 from database import engine
+from services.chat.thread_service import save_assistant_message_sync
 from utils.event_generator import event_message_delta, event_message_done, sse_event_to_string
 from utils.llm_factory import get_aggregator_llm
 from utils.logger import logger
@@ -126,9 +127,15 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
                     # 标记执行计划为已完成
                     complete_execution_plan(db_session, execution_plan_id, final_response)
 
-                    # 持久化聚合消息到数据库
+                    # 持久化聚合消息（统一走 thread_service 同步核心：
+                    # think 标签清洗 + frontend_message_id 写入，与 simple 模式一致）
                     if thread_id:
-                        save_aggregator_message(db_session, thread_id, final_response)
+                        save_assistant_message_sync(
+                            db_session,
+                            thread_id,
+                            final_response,
+                            message_id=state.get("message_id"),
+                        )
 
                     # 🔥🔥🔥 关键修复：直接更新 AgentRun 状态为 completed
                     # 这是确保状态正确的根本方法，不依赖 SSE 流的生命周期

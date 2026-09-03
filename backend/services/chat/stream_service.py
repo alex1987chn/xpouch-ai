@@ -217,6 +217,8 @@ class StreamService:
             # 发送完成事件
             self._update_agent_run_status(agent_run.id, RunStatus.COMPLETED, current_node="done")
             yield self._build_message_done_event(actual_message_id, full_response)
+            # 传输级完成标记：前端据此区分"正常结束"与"异常断流"
+            yield "data: [DONE]\n\n"
 
         return StreamingResponse(
             event_generator(),
@@ -556,6 +558,9 @@ class StreamService:
                         run_id=agent_run.id,
                         execution_plan_id=execution_plan.id if execution_plan else None,
                     )
+                    # HITL 中断是本轮流的正常终态：发 [DONE] 让前端干净收尾
+                    # （恢复走独立的 /chat/resume 请求）
+                    yield "data: [DONE]\n\n"
                     return  # 结束流，等待用户通过 /chat/resume 恢复
 
                 # 正常流程：获取最终结果
@@ -607,6 +612,16 @@ class StreamService:
                 if router_decision == "simple":
                     yield self._build_message_done_event(actual_message_id, full_response)
                 # 复杂模式：message.done 已由 aggregator 通过 event_queue 发送
+
+                # 传输级完成标记：前端据此区分"正常结束"与"异常断流"
+                yield "data: [DONE]\n\n"
+
+            # async-with（图连接）退出后清理本次运行的隔离线程 checkpoint：
+            # 图的最终 checkpoint 写入要等到连接归还时才全部落地，删除必须放在
+            # 此处（放在 with 内会"删后复现"，实测如此）
+            from utils.db import delete_checkpoints_for_thread
+
+            await delete_checkpoints_for_thread(thread_id, [agent_run.id])
 
         return StreamingResponse(
             event_generator(),
@@ -1087,7 +1102,8 @@ class StreamService:
                                         if "message.done" in event_str:
                                             aggregator_executed = True
 
-                                    # 收集 artifacts
+                                    # 收集 artifacts（带 task_id，恢复流的
+                                    # _process_collected_artifacts 依赖它落库到对应 SubTask）
                                     data = token.get("data", {}) or {}
                                     output = data.get("output", {}) or {}
                                     if (
@@ -1095,8 +1111,13 @@ class StreamService:
                                         and isinstance(output, dict)
                                         and output.get("artifact")
                                     ):
+                                        expert_info = output.get("__expert_info") or {}
                                         await stream_queue.put(
-                                            {"type": "artifact", "data": output["artifact"]}
+                                            {
+                                                "type": "artifact",
+                                                "task_id": expert_info.get("task_id"),
+                                                "data": output["artifact"],
+                                            }
                                         )
 
                             except Exception as e:
@@ -1174,8 +1195,13 @@ class StreamService:
                             data = token.get("data", {}) or {}
                             output = data.get("output", {}) or {}
                             if output and isinstance(output, dict) and output.get("artifact"):
+                                expert_info = output.get("__expert_info") or {}
                                 await stream_queue.put(
-                                    {"type": "artifact", "data": output["artifact"]}
+                                    {
+                                        "type": "artifact",
+                                        "task_id": expert_info.get("task_id"),
+                                        "data": output["artifact"],
+                                    }
                                 )
 
                         # 🔥 如果 aggregator 已执行，退出外层循环

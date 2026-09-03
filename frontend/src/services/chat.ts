@@ -52,12 +52,9 @@ export type { Conversation }
 // ============================================================================
 
 // 注意：SSE_HEARTBEAT_TIMEOUT 和 SSE_HEARTBEAT_CHECK_INTERVAL 从 sseUtils.ts 导入
-
-/** 最大重连次数 */
-const SSE_MAX_RETRIES = 3
-
-/** 重连基础延迟（毫秒） */
-const SSE_RETRY_BASE_DELAY = 1000
+//
+// 重连策略：POST+SSE 为非幂等请求（自动重发会重复生成/计费，并可能触发 409
+// ACTIVE_RUN_CONFLICT），因此网络错误不做自动重发，明确报错由用户决定重试。
 
 class FatalSSEError extends Error {
   status?: number
@@ -124,7 +121,8 @@ function runSSEStream({
 }: StreamRunOptions): Promise<string> {
   return new Promise((resolve, reject) => {
     let fullContent = ''
-    let retryCount = 0
+    /** 收到过完成标记（[DONE] 或 message.done）才允许 onclose 按成功收尾 */
+    let doneMarkerReceived = false
     let activeThreadId = threadId
     let activeRunId: string | undefined
     const ctrl = new AbortController()
@@ -175,9 +173,8 @@ function runSSEStream({
           throw fatalError
         }
         handleSSEConnectionError(response, errorContext)
-        retryCount = 0
         updateActivity()
-        logger.debug(`[chat.ts] ${logPrefix}SSE 连接已建立，重置重连计数器`)
+        logger.debug(`[chat.ts] ${logPrefix}SSE 连接已建立`)
 
         const responseThreadId = response.headers.get('X-Thread-ID')
         const responseRunId = response.headers.get('X-Run-ID')
@@ -201,6 +198,7 @@ function runSSEStream({
 
         if (msg.data === '[DONE]') {
           logger.debug(`[chat.ts] ${logPrefix}收到 [DONE]，流式响应完成`)
+          doneMarkerReceived = true
           safeResolve(fullContent)
           return
         }
@@ -249,6 +247,7 @@ function runSSEStream({
             }
 
             if (resolveOnMessageDone && eventType === 'message.done') {
+              doneMarkerReceived = true
               logger.debug(`[chat.ts] ${logPrefix}收到 message.done，流结束`)
               safeResolve(fullContent)
             }
@@ -286,22 +285,23 @@ function runSSEStream({
           )
         }
 
-        if (retryCount < SSE_MAX_RETRIES) {
-          retryCount++
-          const delay = SSE_RETRY_BASE_DELAY * Math.pow(2, retryCount - 1)
-          logger.warn(`[chat.ts] ${logPrefix}SSE 连接错误，${delay}ms 后第 ${retryCount} 次重连...`)
-          return
-        }
-
-        logger.error(`[chat.ts] ${logPrefix}SSE 错误，超过最大重试次数:`, err)
-        safeReject(new Error('连接异常，请重试'))
+        // POST+SSE 非幂等：自动重发会重复生成与计费（并可能触发 409 冲突），
+        // 网络错误直接终止并提示用户重发；认证/客户端错误已在上方单独处理
+        logger.error(`[chat.ts] ${logPrefix}SSE 网络错误，终止连接（不自动重发）:`, err)
+        safeReject(err instanceof Error ? err : new Error('连接异常，请重试'))
+        throw new FatalSSEError('连接异常，请重试')
       },
 
       onclose() {
         logger.debug(`[chat.ts] ${logPrefix}SSE 连接已关闭`)
-        if (!getIsCompleted()) {
+        if (getIsCompleted()) return
+        if (doneMarkerReceived) {
           safeResolve(fullContent)
+          return
         }
+        // 无完成标记的关闭 = 服务端异常断流：按错误处理，而非把截断内容当成功
+        logger.warn(`[chat.ts] ${logPrefix}连接关闭但未收到完成标记，内容可能被截断`)
+        safeReject(new Error('连接中断，回答可能不完整，请重试'))
       },
     })
   })

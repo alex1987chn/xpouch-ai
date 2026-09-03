@@ -24,6 +24,48 @@ from models import AgentRun, CustomAgent, ExecutionPlan, Message, SubTask, Threa
 from utils.exceptions import AuthorizationError, NotFoundError
 
 
+def save_assistant_message_sync(
+    db: Session,
+    thread_id: str,
+    content: str,
+    thinking_data: dict | None = None,
+    message_id: str | None = None,
+) -> Message:
+    """统一保存助手消息（同步核心，供异步服务方法与 aggregator 节点共用）。
+
+    - think 标签解析清洗（无原生 reasoning 时兜底）
+    - frontend_message_id 写入 extra_data，供前端把 SSE 消息映射到 DB 行
+    """
+    from utils.thinking_parser import parse_thinking
+
+    clean_content, parsed_thinking = parse_thinking(content)
+    final_thinking = thinking_data or parsed_thinking
+
+    # 🔥 Message 表的 id 是 INTEGER 自增，不要传入 UUID 字符串；
+    # message_id 放入 extra_data 供前端关联
+    extra_data = {"thinking": final_thinking} if final_thinking else {}
+    if message_id:
+        extra_data["frontend_message_id"] = message_id
+
+    message = Message(
+        thread_id=thread_id,
+        role="assistant",
+        content=clean_content,
+        extra_data=extra_data if extra_data else None,
+        timestamp=datetime.now(),
+    )
+    db.add(message)
+
+    # 更新线程时间
+    thread = db.get(Thread, thread_id)
+    if thread:
+        thread.updated_at = datetime.now()
+        db.add(thread)
+
+    db.commit()
+    return message
+
+
 class ChatThreadService:
     """聊天线程管理服务"""
 
@@ -489,37 +531,9 @@ class ChatThreadService:
         Returns:
             保存的消息实例
         """
-        from utils.thinking_parser import parse_thinking
-
-        # 解析 thinking 标签
-        clean_content, parsed_thinking = parse_thinking(content)
-
-        # 合并传入的 thinking_data
-        final_thinking = thinking_data or parsed_thinking
-
-        # 🔥 修复：Message 表的 id 是 INTEGER 自增，不要传入 UUID 字符串
-        # 如果传入了 message_id，放入 extra_data 中供前端关联
-        extra_data = {"thinking": final_thinking} if final_thinking else {}
-        if message_id:
-            extra_data["frontend_message_id"] = message_id
-
-        message = Message(
-            thread_id=thread_id,
-            role="assistant",
-            content=clean_content,
-            extra_data=extra_data if extra_data else None,
-            timestamp=datetime.now(),
+        return save_assistant_message_sync(
+            self.db, thread_id, content, thinking_data=thinking_data, message_id=message_id
         )
-        self.db.add(message)
-
-        # 更新线程时间
-        thread = self.db.get(Thread, thread_id)
-        if thread:
-            thread.updated_at = datetime.now()
-            self.db.add(thread)
-
-        self.db.commit()
-        return message
 
     async def build_langchain_messages(self, thread_id: str) -> list[BaseMessage]:
         """

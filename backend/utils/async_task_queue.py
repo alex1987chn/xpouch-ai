@@ -22,6 +22,8 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
+from utils.logger import logger
+
 
 class AsyncTaskQueue:
     """
@@ -153,7 +155,12 @@ def _sync_save_wrapper(
             )
         except Exception:
             new_session.rollback()  # 回滚防止脏数据
-            # 可以在这里加 Sentry 监控
+            # 专家结果/artifact 落库失败必须可见（此前静默吞掉，产出丢失无从排查）
+            logger.exception(
+                "[AsyncTaskQueue] 后台保存专家执行结果失败 task_id=%s expert=%s",
+                task_id,
+                expert_type,
+            )
 
 
 def _sync_append_run_event_wrapper(

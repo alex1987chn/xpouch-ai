@@ -19,7 +19,6 @@ from .task_manager import (
     complete_execution_plan,
     get_or_create_execution_plan,
     get_subtask_by_id,
-    save_aggregator_message,
     update_subtask_status,
 )
 
@@ -37,7 +36,6 @@ __all__ = [
     # Task Manager
     "get_or_create_execution_plan",
     "complete_execution_plan",
-    "save_aggregator_message",
     "update_subtask_status",
     "get_subtask_by_id",
 ]

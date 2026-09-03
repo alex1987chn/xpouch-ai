@@ -154,6 +154,40 @@ async def init_checkpointer_tables():
         logger.warning(f"[HITL WARN] Failed to check tables: {e}")
 
 
+async def delete_checkpoints_for_thread(thread_id: str, run_ids: list[str] | None = None) -> int:
+    """删除 thread 及其隔离线程（{thread_id}_{run_id}）的 checkpoint 数据。
+
+    LangGraph 无自动清理/TTL（此前仅"拒绝计划"路径删除，checkpoint 表随每条消息
+    新建的隔离线程无限增长）；run 到达终态或线程被清理时应调用本函数。
+    """
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+    target_ids = [thread_id] + [f"{thread_id}_{run_id}" for run_id in (run_ids or [])]
+    deleted = 0
+    remaining_after = -1
+    async with get_db_connection() as conn:
+        saver = AsyncPostgresSaver(conn)
+        for target in target_ids:
+            try:
+                await saver.adelete_thread(target)
+                deleted += 1
+            except Exception as e:
+                logger.warning(f"[DB] 删除 checkpoint 失败 thread={target}: {e}")
+        # 诊断插桩：删除后立即在同连接计数（0=删净，之后再现=有回写者）
+        row = await conn.execute(
+            "SELECT count(*) FROM checkpoints WHERE thread_id = ANY(%s)", (target_ids,)
+        )
+        remaining_after = (await row.fetchone())[0]
+    logger.info(
+        "[DB] checkpoint 清理: %s/%s 个线程, 删后残留 %s（%s...）",
+        deleted,
+        len(target_ids),
+        remaining_after,
+        thread_id[:8],
+    )
+    return deleted
+
+
 async def close_connection_pool():
     """关闭连接池"""
     global _pool

@@ -136,6 +136,12 @@ export function useStreamHandler() {
   const currentMessageIdRef = useRef<string>('')
   /** 可选的 chunk 回调 */
   const onChunkRef = useRef<((content: string) => void) | undefined>(undefined)
+  /**
+   * 完成态闩锁：message.done 的 full_content 校准落地后置位。
+   * 此后 flush 不再追加缓冲（校准已是权威全文，再追加会造成尾部内容重复）；
+   * 异常中断（无 done）时保持 false，forceFlush 仍会刷出缓冲保留半截回答。
+   */
+  const finalizedRef = useRef(false)
   
   /**
    * 执行批量更新
@@ -144,13 +150,25 @@ export function useStreamHandler() {
   const flushUpdates = useCallback(() => {
     const pending = pendingUpdateRef.current
     const messageId = currentMessageIdRef.current
-    
+
     if (!messageId) {
       logger.warn('[useStreamHandler] flushUpdates: messageId is empty')
       rafIdRef.current = null
       return
     }
-    
+
+    // 完成态：full_content 校准已是权威内容，丢弃未刷缓冲（防尾部重复）
+    if (finalizedRef.current && (pending.contentDelta || pending.thinkingBuffer)) {
+      logger.debug(
+        '[useStreamHandler] 流已完成，丢弃未刷缓冲:',
+        pending.contentDelta.length,
+        '字符'
+      )
+      pendingUpdateRef.current = { contentDelta: '', thinkingBuffer: '' }
+      rafIdRef.current = null
+      return
+    }
+
     // 批量更新消息内容
     if (pending.contentDelta) {
       logger.debug('[useStreamHandler] Updating message:', messageId, 'Content length:', pending.contentDelta.length)
@@ -222,7 +240,7 @@ export function useStreamHandler() {
   const reset = useCallback(() => {
     // 先刷新之前的更新
     forceFlush()
-    
+
     // 重置解析状态
     parserRef.current = {
       isInThinking: false,
@@ -230,15 +248,24 @@ export function useStreamHandler() {
       contentBuffer: ''
     }
     isFirstChunkRef.current = true
-    
+
     // 重置 thinking ID，下次使用时生成新的
     thinkingIdRef.current = ''
-    
+
     // 重置消息 ID 和回调
     currentMessageIdRef.current = ''
     onChunkRef.current = undefined
     pendingUpdateRef.current = { contentDelta: '', thinkingBuffer: '' }
+    finalizedRef.current = false
   }, [forceFlush])
+
+  /**
+   * 标记流已收到权威全文（message.done）。
+   * 之后 flush 丢弃缓冲而非追加，防止校准内容尾部重复。
+   */
+  const markFinalized = useCallback(() => {
+    finalizedRef.current = true
+  }, [])
   
   /**
    * 工厂方法：创建特定消息的处理器
@@ -280,10 +307,11 @@ export function useStreamHandler() {
     }
   }, [scheduleUpdate])
   
-  return { 
-    reset, 
+  return {
+    reset,
     createChunkHandler,
     forceFlush,  // 暴露强制刷新方法，供流式结束时调用
+    markFinalized,  // message.done 校准后调用，防 flush 追加造成尾部重复
     // 暴露获取当前状态的方法（用于调试）
     getState: () => ({
       parser: parserRef.current,

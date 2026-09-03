@@ -26,8 +26,8 @@ STALE_RUNNING_THREAD_MINUTES = max(5, settings.request_timeout_seconds // 60)
 SESSION_CLEANUP_INTERVAL_SECONDS = settings.session_cleanup_interval_minutes * 60
 
 
-def _purge_thread(session: Session, thread: Thread) -> bool:
-    """删除过期线程及其全部子数据，返回是否成功。
+def _purge_thread(session: Session, thread: Thread) -> list[str] | None:
+    """删除过期线程及其全部子数据，成功时返回其 run id 列表（供 checkpoint 清理），失败返回 None。
 
     - 子表（message/tasksession/agentrun/executionplan/subtask/runevent）的外键
       已由迁移 20260903_094500 统一为级联删除/SET NULL（部署时 alembic 先于应用执行），
@@ -55,10 +55,10 @@ def _purge_thread(session: Session, thread: Thread) -> bool:
                 session.delete(agent_run)
 
             session.delete(thread)
-        return True
+        return [run.id for run in agent_runs]
     except Exception as exc:  # noqa: BLE001
         logger.warning("[SessionCleanup] 删除线程 %s 失败，已跳过: %s", thread.id, exc)
-        return False
+        return None
 
 
 def _cleanup_once() -> dict[str, Any]:
@@ -76,6 +76,8 @@ def _cleanup_once() -> dict[str, Any]:
     stale_running_reset = 0
     stale_run_timeout = 0
     expired_deleted = 0
+    # 需要异步清理 checkpoint 的目标：(thread_id, [run_id, ...])，由异步循环统一执行
+    checkpoint_targets: list[tuple[str, list[str]]] = []
 
     with Session(engine) as session:
         stale_runs = session.exec(
@@ -96,6 +98,7 @@ def _cleanup_once() -> dict[str, Any]:
             )
             if timed_out is not None:
                 stale_run_timeout += 1
+                checkpoint_targets.append((run.thread_id, [run.id]))
 
         stale_running_threads = session.exec(
             select(Thread).where(
@@ -124,8 +127,10 @@ def _cleanup_once() -> dict[str, Any]:
             )
         ).all()
         for thread in expired_threads:
-            if _purge_thread(session, thread):
+            purged_run_ids = _purge_thread(session, thread)
+            if purged_run_ids is not None:
                 expired_deleted += 1
+                checkpoint_targets.append((thread.id, purged_run_ids))
 
         if stale_run_timeout or stale_running_reset or expired_deleted:
             session.commit()
@@ -136,6 +141,7 @@ def _cleanup_once() -> dict[str, Any]:
         "stale_run_timeout": stale_run_timeout,
         "stale_running_reset": stale_running_reset,
         "expired_deleted": expired_deleted,
+        "checkpoint_targets": checkpoint_targets,
         "retention_days": THREAD_RETENTION_DAYS,
         "stale_running_minutes": STALE_RUNNING_THREAD_MINUTES,
     }
@@ -158,6 +164,11 @@ async def run_session_cleanup_loop() -> None:
                 or stats["expired_deleted"]
             ):
                 logger.info("[SessionCleanup] 完成一次清理: %s", stats)
+            # run 终态/线程删除后清理对应 checkpoint（LangGraph 无自动 TTL）
+            for target_thread_id, run_ids in stats.get("checkpoint_targets", []):
+                from utils.db import delete_checkpoints_for_thread
+
+                await delete_checkpoints_for_thread(target_thread_id, run_ids)
         except Exception as exc:  # noqa: BLE001
             logger.warning("[SessionCleanup] 清理执行失败: %s", exc)
         await asyncio.sleep(SESSION_CLEANUP_INTERVAL_SECONDS)

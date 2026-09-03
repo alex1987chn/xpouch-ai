@@ -248,7 +248,8 @@ export default function ThinkingProcess({ steps, isThinking, className, totalSte
         clearTimeout(autoCollapseTimer.current)
       }
     }
-  }, [isAllDone]) // 🔥 修复：只依赖 isAllDone，避免其他状态变化导致重复触发
+  }, [isAllDone, isExpanded, isThinking]) // 修复：isThinking/isExpanded 参与判定必须入依赖，
+  // 否则思考先于正文结束时（isAllDone 先真、isThinking 后假）折叠 effect 不会重跑，永不折叠
   
   // 组件卸载时清理定时器
   useEffect(() => {

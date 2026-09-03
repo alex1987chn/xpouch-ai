@@ -5,6 +5,31 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-09-03] - v3.3.10 流式层修复 Stage 1：严重 bug 九项清零（不动架构）
+
+### 数据正确性
+
+- **回答尾部重复**：message.done 的 full_content 校准后，finally 的 forceFlush 又把同帧缓冲追加到尾部——useStreamHandler 增加完成态闩锁（message.done 置位后 flush 丢弃缓冲），异常中断时仍刷出保留半截回答
+- **断流当成功**：三处 SSE 生成器（simple/complex 完成、HITL 中断、resume、自定义智能体）补发传输级 `[DONE]`；前端无完成标记的关闭按错误处理（"连接中断，回答可能不完整"），不再静默截断
+- **盲目重连**：POST+SSE 非幂等（重发=重复生成/计费+409 冲突），移除自动重发，网络错误明确报错由用户决定重试
+- **complex 最终消息绕过统一清洗**：抽 `save_assistant_message_sync` 同步核心，aggregator 复用（think 标签清洗 + frontend_message_id），历史回放可映射；移除旁路 save_aggregator_message
+- **resume 产物永不落库**：恢复流 artifact 入队补 task_id（_process_collected_artifacts 依赖它落库到对应 SubTask）
+
+### 资源与可观测
+
+- **checkpoint 无限增长**：新增 `delete_checkpoints_for_thread`（官方 adelete_thread）；run 完成后（图连接归还之后，实测放 with 内会"删后复现"）、resume 完成、取消、超时/线程清理四处接清
+- **LLM 实例缓存泄漏**：lru_cache 换为显式 LRU（驱逐/清空时关闭实例持有的 httpx.Client）
+- **后台保存静默失败**：专家结果落库失败改为 logger.exception 可见
+
+### 体验
+
+- 停止生成保留已流出的部分内容（不再整体置空）
+- ThinkingProcess 折叠 effect 依赖补全（思考先于正文结束时不再永不折叠）
+
+### 验证
+
+- 88 测试 + ruff + tsc 0 + build + eslint 0 错误；真实冒烟：[DONE] 序列 ✓、checkpoint 事后计数 0 ✓、resume delta/done 同 ID ✓
+
 ## [2026-09-03] - v3.3.9 流式层修复 Stage 0：invoke 下线 / message_id 贯通 / 缓存链补齐
 
 依据深度架构审查（含 LangGraph 1.2.11 源码级复核与业界流式最佳实践调研）的分阶段修复，本阶段为不动架构的快速收尾：

@@ -5,13 +5,14 @@ LLM 工厂模块
 消除硬编码，支持动态添加新提供商
 
 P1 优化:
-- 使用 functools.lru_cache 简化缓存
+- LRU 实例缓存（驱逐/清空时显式关闭实例持有的 httpx.Client，防连接泄漏）
 - tenacity 重试机制
 """
 
 import logging
 import os
-from functools import lru_cache
+import threading
+from collections import OrderedDict
 from typing import Any
 
 import httpx
@@ -100,7 +101,25 @@ def get_effective_model(configured_model: str | None) -> str:
 # ============================================================================
 
 
-@lru_cache(maxsize=32)
+# ============================================================================
+# LLM 实例 LRU 缓存：驱逐/清空时显式关闭实例持有的 httpx.Client
+# （此前用 functools.lru_cache，被驱逐实例的连接池只能等 GC，常态驱逐下持续泄漏）
+# ============================================================================
+
+_LLM_CACHE_MAX = 32
+_llm_instance_cache: OrderedDict[tuple, ChatOpenAI] = OrderedDict()
+_llm_cache_lock = threading.Lock()
+
+
+def _close_llm_instance(instance: ChatOpenAI) -> None:
+    client = getattr(instance, "http_client", None)
+    if client is not None:
+        try:
+            client.close()
+        except Exception:
+            logger.debug("[LLMFactory] 关闭被驱逐实例的 httpx.Client 失败", exc_info=True)
+
+
 def _create_llm_instance(
     provider: str,
     model: str | None,
@@ -109,10 +128,34 @@ def _create_llm_instance(
     thinking: str | None = None,
 ) -> ChatOpenAI:
     """
-    创建 LLM 实例（内部函数，使用 lru_cache 缓存）
+    创建 LLM 实例（内部函数，LRU 缓存）
 
     注意：参数必须是可哈希的（str, bool, float 等），所以 model 和 temperature 用 Optional[str/float]
     """
+    key = (provider, model, streaming, temperature, thinking)
+    with _llm_cache_lock:
+        cached = _llm_instance_cache.get(key)
+        if cached is not None:
+            _llm_instance_cache.move_to_end(key)
+            return cached
+        instance = _build_llm_instance(provider, model, streaming, temperature, thinking)
+        evicted = None
+        if len(_llm_instance_cache) >= _LLM_CACHE_MAX:
+            _, evicted = _llm_instance_cache.popitem(last=False)
+        _llm_instance_cache[key] = instance
+    if evicted is not None:
+        _close_llm_instance(evicted)
+    return instance
+
+
+def _build_llm_instance(
+    provider: str,
+    model: str | None,
+    streaming: bool,
+    temperature: float | None,
+    thinking: str | None = None,
+) -> ChatOpenAI:
+    """构建 LLM 实例（无缓存；实例构建为纯对象构造，无网络 IO）"""
     config = get_provider_config(provider)
     if not config:
         raise ValueError(f"未知的提供商: {provider}")
@@ -286,13 +329,18 @@ def list_available_providers() -> list:
 
 
 def clear_llm_cache():
-    """清空 LLM 缓存"""
-    _create_llm_instance.cache_clear()
+    """清空 LLM 缓存（关闭全部实例持有的 httpx.Client）"""
+    with _llm_cache_lock:
+        instances = list(_llm_instance_cache.values())
+        _llm_instance_cache.clear()
+    for instance in instances:
+        _close_llm_instance(instance)
 
 
 def get_llm_cache_info():
     """获取缓存信息"""
-    return _create_llm_instance.cache_info()
+    with _llm_cache_lock:
+        return {"size": len(_llm_instance_cache), "maxsize": _LLM_CACHE_MAX}
 
 
 # ============================================================================
