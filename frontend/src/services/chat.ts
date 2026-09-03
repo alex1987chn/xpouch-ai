@@ -223,27 +223,20 @@ function runSSEStream({
               data: eventData
             }
 
-            const isChatEvent = eventType.startsWith('message.') || eventType === 'error'
-
-            if (isChatEvent && onChunk) {
-              if (eventType === 'message.delta') {
-                const content = eventData.content
-                if (content && typeof content === 'string') {
-                  await onChunk(content, activeThreadId, undefined, undefined, undefined, runtimeMeta)
-                  fullContent += content
-                }
-              } else if (eventType === 'message.done') {
-                handleServerEvent(fullEvent)
-                await onChunk(undefined, activeThreadId, fullEvent, undefined, undefined, runtimeMeta)
-              } else {
-                // 其余 message.* / error 事件：双通道分发（全局 EventHandler + 组件级 onChunk），
-                // 与文件头"事件分发"设计说明一致。修复：此前只走 onChunk（其第三参在
-                // useChatCore 中被忽略），EventHandler 侧的 message.thinking / error 处理永远不触发
-                handleServerEvent(fullEvent)
+            // 协议 v2 单通道收敛：所有事件统一经 EventHandler（全局唯一分发点），
+            // onChunk 只承担两类职责：message.delta 的正文流式、UI 状态同步（runtimeMeta）
+            if (eventType === 'message.delta') {
+              handleServerEvent(fullEvent)
+              const content = eventData.content
+              if (content && typeof content === 'string' && onChunk) {
+                await onChunk(content, activeThreadId, undefined, undefined, undefined, runtimeMeta)
+                fullContent += content
+              }
+            } else {
+              handleServerEvent(fullEvent)
+              if (onChunk && (eventType.startsWith('message.') || eventType === 'error')) {
                 await onChunk(undefined, activeThreadId, fullEvent, undefined, undefined, runtimeMeta)
               }
-            } else if (!isChatEvent) {
-              handleServerEvent(fullEvent)
             }
 
             if (resolveOnMessageDone && eventType === 'message.done') {

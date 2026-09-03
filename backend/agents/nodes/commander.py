@@ -59,8 +59,8 @@ from tenacity import (
     wait_fixed,
 )
 
+from agents.event_stream import emit_event
 from agents.state import AgentState
-from agents.state_patch import append_sse_event, get_event_queue_snapshot
 from constants import COMMANDER_SYSTEM_PROMPT
 from database import engine
 from utils.json_parser import parse_llm_json
@@ -191,11 +191,9 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
     from utils.event_generator import (
         event_plan_created,
         event_plan_started,
-        sse_event_to_string,
     )
 
-    # 🔥 初始化事件队列（用于收集所有事件）
-    event_queue = get_event_queue_snapshot(state)
+    # 协议 v2：事件经 emit_event 直推 custom stream，不再经 state/event_queue
 
     messages = state["messages"]
     last_message = messages[-1]
@@ -327,13 +325,14 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
             # 🔥 只有在 chat.py 没有发送 plan.started 的情况下，才在这里发送
             if not state.get("preview_execution_plan_id"):
-                started_event = event_plan_started(
-                    execution_plan_id=preview_execution_plan_id,
-                    title="任务规划",
-                    content="正在分析需求...",
-                    status="running",
+                await emit_event(
+                    event_plan_started(
+                        execution_plan_id=preview_execution_plan_id,
+                        title="任务规划",
+                        content="正在分析需求...",
+                        status="running",
+                    )
                 )
-                event_queue = append_sse_event(event_queue, sse_event_to_string(started_event))
                 logger.info(f"[COMMANDER] 发送 plan.started: {preview_execution_plan_id}")
             else:
                 logger.info(
@@ -345,12 +344,11 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
             human_prompt = f"用户查询: {user_query}\n\n请分析需求并生成执行计划。"
 
             logger.info("[COMMANDER] 使用 JSON Mode + Pydantic 校验生成执行计划...")
-            commander_response, event_queue = await _generate_plan_with_json_mode(
+            commander_response = await _generate_plan_with_json_mode(
                 llm_with_config,
                 system_prompt,
                 human_prompt,
                 preview_execution_plan_id,
-                event_queue,
             )
 
             # v3.1: 兜底处理 - 如果 LLM 没有生成 id，自动生成
@@ -499,31 +497,31 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
             await _preload_expert_configs(task_list)
 
             # 🔥 v3.3: 使用 preview_execution_plan_id 保持一致性
-            # 注意：这里不再创建新的 event_queue，而是复用之前的事件队列
 
             # 4️⃣ 发送 plan.created 事件（完成状态）
             if execution_plan_id:
-                plan_event = event_plan_created(
-                    execution_plan_id=execution_plan_id,
-                    summary=commander_response.strategy,
-                    estimated_steps=commander_response.estimated_steps,
-                    execution_mode="sequential",
-                    tasks=[
-                        {
-                            "id": t["id"],
-                            "task_id": commander_response.tasks[idx].id,
-                            "expert_type": t["expert_type"],
-                            "description": t["task_description"],
-                            "sort_order": t["sort_order"],
-                            "status": t["status"],
-                            "depends_on": commander_response.tasks[idx].dependencies
-                            if commander_response.tasks[idx].dependencies
-                            else [],
-                        }
-                        for idx, t in enumerate(sub_tasks_list)
-                    ],
+                await emit_event(
+                    event_plan_created(
+                        execution_plan_id=execution_plan_id,
+                        summary=commander_response.strategy,
+                        estimated_steps=commander_response.estimated_steps,
+                        execution_mode="sequential",
+                        tasks=[
+                            {
+                                "id": t["id"],
+                                "task_id": commander_response.tasks[idx].id,
+                                "expert_type": t["expert_type"],
+                                "description": t["task_description"],
+                                "sort_order": t["sort_order"],
+                                "status": t["status"],
+                                "depends_on": commander_response.tasks[idx].dependencies
+                                if commander_response.tasks[idx].dependencies
+                                else [],
+                            }
+                            for idx, t in enumerate(sub_tasks_list)
+                        ],
+                    )
                 )
-                event_queue = append_sse_event(event_queue, sse_event_to_string(plan_event))
 
             return {
                 "task_list": task_list,
@@ -531,7 +529,6 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                 "current_task_index": 0,
                 "expert_results": [],
                 "execution_plan_id": execution_plan_id,
-                "event_queue": event_queue,
                 # 保留前端兼容的元数据
                 "__task_plan": {
                     "task_count": len(task_list),
@@ -547,7 +544,6 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
             "task_list": [],
             "strategy": f"Error: {str(e)}",
             "current_task_index": 0,
-            "event_queue": [],
         }
 
 
@@ -601,12 +597,11 @@ async def _generate_plan_once(
     enhanced_system_prompt: str,
     human_prompt: str,
     preview_execution_plan_id: str,
-    event_queue: list[dict[str, Any]],
-) -> tuple[ExecutionPlan, list[dict[str, Any]]]:
+) -> ExecutionPlan:
     """
     单次生成执行计划（用于 tenacity 重试）
     """
-    from utils.event_generator import event_plan_thinking, sse_event_to_string
+    from utils.event_generator import event_plan_thinking
 
     json_mode_llm = llm_with_config.bind(response_format={"type": "json_object"})
 
@@ -622,15 +617,16 @@ async def _generate_plan_once(
 
     # 发送 thinking 事件
     thinking_preview = raw_content[:200] + "..." if len(raw_content) > 200 else raw_content
-    thinking_event = event_plan_thinking(
-        execution_plan_id=preview_execution_plan_id,
-        delta=f"[规划分析中...]\n{thinking_preview}",
+    await emit_event(
+        event_plan_thinking(
+            execution_plan_id=preview_execution_plan_id,
+            delta=f"[规划分析中...]\n{thinking_preview}",
+        )
     )
-    next_event_queue = append_sse_event(event_queue, sse_event_to_string(thinking_event))
 
     # 提取和校验 JSON
     cleaned_content = _extract_json_string(raw_content)
-    return ExecutionPlan.model_validate_json(cleaned_content), next_event_queue
+    return ExecutionPlan.model_validate_json(cleaned_content)
 
 
 @retry(
@@ -645,8 +641,7 @@ async def _generate_plan_with_json_mode(
     system_prompt: str,
     human_prompt: str,
     preview_execution_plan_id: str,
-    event_queue: list[dict[str, Any]],
-) -> tuple[ExecutionPlan, list[dict[str, Any]]]:
+) -> ExecutionPlan:
     """
     Commander 2.0: 使用 JSON Mode + Pydantic 强校验生成执行计划
 
@@ -665,7 +660,6 @@ IMPORTANT: You MUST output a valid JSON object. No conversation, no markdown cod
             enhanced_system_prompt,
             human_prompt,
             preview_execution_plan_id,
-            event_queue,
         )
     except ValidationError as e:
         logger.warning(f"[COMMANDER] Pydantic 校验失败: {e}")
@@ -681,14 +675,13 @@ async def _streaming_planning_fallback(
     system_prompt: str,
     human_prompt: str,
     preview_execution_plan_id: str,
-    event_queue: list[dict[str, Any]],
-) -> tuple[ExecutionPlan, list[dict[str, Any]]]:
+) -> ExecutionPlan:
     """
     兜底方案：使用流式解析生成执行计划
 
     当 JSON Mode 也完全不可用时使用
     """
-    from utils.event_generator import event_plan_thinking, sse_event_to_string
+    from utils.event_generator import event_plan_thinking
 
     thinking_content = ""
     json_buffer = ""
@@ -713,20 +706,20 @@ async def _streaming_planning_fallback(
                 before_json = content.split("```")[0]
                 if before_json.strip():
                     thinking_content += before_json
-                    thinking_event = event_plan_thinking(
-                        execution_plan_id=preview_execution_plan_id, delta=before_json
+                    await emit_event(
+                        event_plan_thinking(
+                            execution_plan_id=preview_execution_plan_id, delta=before_json
+                        )
                     )
-                    event_queue = append_sse_event(event_queue, sse_event_to_string(thinking_event))
                 json_parts = content.split("```", 1)
                 if len(json_parts) > 1:
                     json_buffer += json_parts[1]
                 continue
 
             thinking_content += content
-            thinking_event = event_plan_thinking(
-                execution_plan_id=preview_execution_plan_id, delta=content
+            await emit_event(
+                event_plan_thinking(execution_plan_id=preview_execution_plan_id, delta=content)
             )
-            event_queue = append_sse_event(event_queue, sse_event_to_string(thinking_event))
         else:
             if "```" in content:
                 json_parts = content.split("```", 1)
@@ -744,7 +737,7 @@ async def _streaming_planning_fallback(
             json_str, ExecutionPlan, strict=False, clean_markdown=False
         )
         logger.info(f"[COMMANDER] 流式解析成功，生成 {len(commander_response.tasks)} 个任务")
-        return commander_response, event_queue
+        return commander_response
     except Exception as parse_err:
         logger.warning(f"[COMMANDER] 流式解析失败: {parse_err}")
         raise

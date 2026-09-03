@@ -16,12 +16,12 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
+from agents.event_stream import emit_event
 from agents.services.expert_manager import get_expert_config_cached
 from agents.state import AgentState
-from agents.state_patch import append_sse_event, get_event_queue_snapshot
 from constants import DEFAULT_ASSISTANT_PROMPT, ROUTER_SYSTEM_PROMPT
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
-from utils.event_generator import event_router_decision, event_router_start, sse_event_to_string
+from utils.event_generator import event_router_decision, event_router_start
 from utils.logger import logger
 from utils.prompt_utils import inject_current_time  # v3.6: 提取到工具函数
 
@@ -59,24 +59,22 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
 
     logger.info(f"--- [Router] 正在思考: {user_query[:100]}... ---")
 
-    # 🔥 Phase 3: 初始化事件队列，发送 router.start 事件（不可变更新）
-    base_event_queue = get_event_queue_snapshot(state)
-    start_event = event_router_start(query=user_query[:200])  # 限制长度
-    event_queue = append_sse_event(base_event_queue, sse_event_to_string(start_event))
+    # 🔥 Phase 3 / 协议 v2: 通过 custom stream 发射 router.start（每事件恰好送达一次）
+    await emit_event(event_router_start(query=user_query[:200]))  # 限制长度
     logger.info("[Router] 已发送 router.start 事件")
 
     # 0. 确定性兜底：某些任务必须进入 complex，避免路由模型误判。
     forced_complex_reason = _get_forced_complex_reason(user_query)
     if forced_complex_reason:
-        decision_event = event_router_decision(
-            decision="complex",
-            reason=forced_complex_reason,
+        await emit_event(
+            event_router_decision(
+                decision="complex",
+                reason=forced_complex_reason,
+            )
         )
-        full_event_queue = append_sse_event(event_queue, sse_event_to_string(decision_event))
         logger.info("[Router] 命中复杂模式兜底规则: %s", forced_complex_reason)
         return {
             "router_decision": "complex",
-            "event_queue": full_event_queue,
         }
 
     # 1. 🔥 检索长期记忆（异步）
@@ -132,28 +130,29 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
                 # 其他错误，继续抛出
                 raise
 
-        # 🔥 Phase 3: 发送 router.decision 事件
-        decision_event = event_router_decision(
-            decision=decision_type, reason="Based on query complexity analysis"
+        # 🔥 Phase 3 / 协议 v2: 发送 router.decision 事件
+        await emit_event(
+            event_router_decision(
+                decision=decision_type, reason="Based on query complexity analysis"
+            )
         )
-        full_event_queue = append_sse_event(event_queue, sse_event_to_string(decision_event))
         logger.info(f"[Router] 已发送 router.decision 事件: {decision_type}")
 
         return {
             "router_decision": decision_type,
-            "event_queue": full_event_queue,  # 返回事件队列
         }
     except Exception as e:
         logger.error(f"[ROUTER ERROR] {e}")
 
         # 🔥 Phase 3: 错误时也发送 decision 事件（fallback 到 complex）
-        decision_event = event_router_decision(
-            decision="complex", reason=f"Router error, fallback to complex mode: {str(e)}"
+        await emit_event(
+            event_router_decision(
+                decision="complex", reason=f"Router error, fallback to complex mode: {str(e)}"
+            )
         )
-        full_event_queue = append_sse_event(event_queue, sse_event_to_string(decision_event))
         logger.info("[Router] 错误，已发送 fallback router.decision 事件")
 
-        return {"router_decision": "complex", "event_queue": full_event_queue}
+        return {"router_decision": "complex"}
 
 
 def _load_router_system_prompt() -> str:

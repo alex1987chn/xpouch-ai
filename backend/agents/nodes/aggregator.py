@@ -16,14 +16,14 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from sqlmodel import Session
 
+from agents.event_stream import emit_event
 from agents.services.expert_manager import get_expert_config_cached
 from agents.services.task_manager import complete_execution_plan
 from agents.state import AgentState
-from agents.state_patch import append_sse_event, append_sse_events, get_event_queue_snapshot
 from constants import AGGREGATOR_SYSTEM_PROMPT
 from database import engine
 from services.chat.thread_service import save_assistant_message_sync
-from utils.event_generator import event_message_delta, event_message_done, sse_event_to_string
+from utils.event_generator import event_message_delta, event_message_done
 from utils.llm_factory import get_aggregator_llm
 from utils.logger import logger
 
@@ -45,7 +45,6 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
 
     # 获取 execution_plan_id 和其他状态
     execution_plan_id = state.get("execution_plan_id")
-    base_event_queue = get_event_queue_snapshot(state)
     # v3.0: 获取前端传递的 message_id（如果有的话）
     message_id = state.get("message_id", str(uuid.uuid4()))
     thread_id = state.get("thread_id")  # 🔥 用于保存消息到正确线程
@@ -54,7 +53,6 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
         return {
             "task_list": state.get("task_list", []),  # ✅ 添加 task_list
             "final_response": "未生成任何执行结果。",
-            "event_queue": [*base_event_queue],
         }
 
     logger.info(f"[AGG] 正在聚合 {len(expert_results)} 个结果，调用 LLM 生成总结...")
@@ -71,7 +69,6 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
 
     # v3.1: 流式生成总结
     final_response_chunks = []
-    delta_event_payloads = []
 
     try:
         # 🔥 关键修复：添加 metadata 标记为 aggregator 节点
@@ -99,18 +96,16 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
         # 兜底：使用简单拼接
         final_response = _build_markdown_response(expert_results, strategy)
 
-        # 🔥 兜底情况：通过 event_queue 发送（因为没有 LLM 调用）
+        # 🔥 兜底情况：LLM 失败无 on_chat_model_stream，直接经 custom stream 发 delta
         chunk_size = 100
         for i in range(0, len(final_response), chunk_size):
             chunk = final_response[i : i + chunk_size]
-            delta_event = event_message_delta(message_id=message_id, content=chunk, is_final=False)
-            event_str = sse_event_to_string(delta_event)
-            delta_event_payloads.append(event_str)
+            await emit_event(
+                event_message_delta(message_id=message_id, content=chunk, is_final=False)
+            )
 
     # 发送 message.done 事件
-    done_event = event_message_done(message_id=message_id, full_content=final_response)
-    full_event_queue = append_sse_events(base_event_queue, delta_event_payloads)
-    full_event_queue = append_sse_event(full_event_queue, sse_event_to_string(done_event))
+    await emit_event(event_message_done(message_id=message_id, full_content=final_response))
 
     # v3.2: 更新执行计划状态并持久化聚合消息 (通过 TaskManager)
     # 🔥 使用独立的数据库会话（避免 MemorySaver 序列化问题）
@@ -155,7 +150,6 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
     return {
         "task_list": task_list,  # ✅ 添加 task_list
         "final_response": final_response,
-        "event_queue": full_event_queue,
     }
 
 

@@ -64,8 +64,9 @@ from cachetools import TTLCache
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 
+from agents.event_stream import emit_event
 from agents.services.expert_manager import get_expert_config_cached
-from agents.state_patch import append_sse_event, get_event_queue_snapshot, replace_task_item
+from agents.state_patch import replace_task_item
 from agents.tool_policy import filter_tools_for_binding
 from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
@@ -253,20 +254,22 @@ async def generic_worker_node(
 
     started_at = datetime.now()
 
-    # ✅ 发送 task.started 事件（专家开始执行）
-    from utils.event_generator import event_task_started, sse_event_to_string
-
     task_id = current_task.get("id", str(current_index))
-    started_event = event_task_started(
-        task_id=task_id, expert_type=expert_type, description=description
-    )
-    # 将 started 事件放入 state 的 event_queue，让 dispatcher 或其他节点处理
-    # 使用不可变更新，避免原地修改上游 state 对象
-    initial_event_queue = append_sse_event(
-        get_event_queue_snapshot(state),
-        sse_event_to_string(started_event),
-    )
-    logger.info(f"[GenericWorker] 已生成 task.started 事件: {expert_type}")
+
+    # ✅ 发送 task.started 事件（仅任务首次进入时；工具循环重入不再重复发）
+    from utils.event_generator import event_task_started
+
+    is_first_entry = current_task.get("status", "pending") != "in_progress"
+    task_list_for_return = task_list
+    if is_first_entry:
+        await emit_event(
+            event_task_started(task_id=task_id, expert_type=expert_type, description=description)
+        )
+        logger.info(f"[GenericWorker] 已生成 task.started 事件: {expert_type}")
+        # 标记 in_progress：ToolNode 循环重入本节点时据此跳过重复的 started 事件
+        task_list_for_return = replace_task_item(
+            task_list, current_index, {"status": "in_progress"}
+        )
 
     run_id = state.get("run_id")
     thread_id = state.get("thread_id")
@@ -518,9 +521,8 @@ async def generic_worker_node(
             # 此时不生成 task.completed 事件，因为任务还没完成
             return {
                 "messages": [response],  # 包含 tool_calls 的 AIMessage
-                "task_list": task_list,
+                "task_list": task_list_for_return,  # 携带 in_progress 标记（防 started 重发）
                 "current_task_index": current_index,  # 不增加 index，等工具执行完再说
-                "event_queue": initial_event_queue,  # 只返回 started 事件
                 "__expert_info": {
                     "expert_type": expert_type,
                     "expert_name": expert_name,
@@ -640,46 +642,37 @@ async def generic_worker_node(
         else:
             logger.warning(f"[GenericWorker] ⚠️ 跳过保存: task_id={task_id}")
 
-        # ✅ 生成事件队列（用于前端展示专家和 artifact）
-        from utils.event_generator import (
-            event_artifact_generated,
-            event_task_completed,
-            sse_event_to_string,
-        )
+        # ✅ 发送 artifact / 完成事件（协议 v2：custom stream 直推）
+        from utils.event_generator import event_artifact_generated, event_task_completed
 
         # 🔥 v4.0 重构：统一发送 artifact.generated 事件（批处理模式）
         # 所有专家完成后发送完整的 artifact 内容
-        artifact_event = event_artifact_generated(
-            task_id=task_id,
-            expert_type=expert_type,
-            artifact_id=artifact_id,
-            artifact_type=artifact_type,
-            content=response.content,
-            title=f"{expert_name}结果",
+        await emit_event(
+            event_artifact_generated(
+                task_id=task_id,
+                expert_type=expert_type,
+                artifact_id=artifact_id,
+                artifact_type=artifact_type,
+                content=response.content,
+                title=f"{expert_name}结果",
+            )
         )
         logger.info(f"[GenericWorker] 已生成 artifact.generated 事件: {artifact_type}")
 
         # 1. 发送 task.completed 事件（专家执行完成）
-        task_completed_event = event_task_completed(
-            task_id=task_id,
-            expert_type=expert_type,
-            description=description,
-            output=response.content[:500] + "..."
-            if len(response.content) > 500
-            else response.content,
-            duration_ms=duration_ms,
-            artifact_count=1,
+        await emit_event(
+            event_task_completed(
+                task_id=task_id,
+                expert_type=expert_type,
+                description=description,
+                output=response.content[:500] + "..."
+                if len(response.content) > 500
+                else response.content,
+                duration_ms=duration_ms,
+                artifact_count=1,
+            )
         )
         logger.info(f"[GenericWorker] 已生成 task.completed 事件: {expert_type}")
-
-        # ✅ 合并 started / artifact.generated / task.completed 事件（不可变）
-        full_event_queue = append_sse_event(
-            initial_event_queue, sse_event_to_string(artifact_event)
-        )
-        full_event_queue = append_sse_event(
-            full_event_queue,
-            sse_event_to_string(task_completed_event),
-        )
 
         return {
             "messages": [
@@ -694,7 +687,6 @@ async def generic_worker_node(
             "completed_at": completed_at.isoformat(),
             "duration_ms": duration_ms,
             "artifact": artifact,
-            "event_queue": full_event_queue,  # ✅ 添加完整事件队列（包含 started 和 completed）
             # ✅ 添加 __expert_info 用于 chat.py 识别和收集 artifacts
             "__expert_info": {
                 "expert_type": expert_type,
@@ -742,10 +734,12 @@ async def generic_worker_node(
         expert_results = expert_results + [expert_result]
 
         # ✅ 生成 task.failed 事件
-        from utils.event_generator import event_task_failed, sse_event_to_string
+        from utils.event_generator import event_task_failed
 
-        failed_event = event_task_failed(
-            task_id=task_id, expert_type=expert_type, description=description, error=str(e)
+        await emit_event(
+            event_task_failed(
+                task_id=task_id, expert_type=expert_type, description=description, error=str(e)
+            )
         )
         logger.info(f"[GenericWorker] 已生成 task.failed 事件: {expert_type}")
 
@@ -769,9 +763,6 @@ async def generic_worker_node(
             except (RuntimeError, ValueError) as event_err:
                 logger.warning(f"[GenericWorker] ⚠️ task_failed 账本写入提交失败: {event_err}")
 
-        # ✅ 合并 started 事件和 failed 事件（不可变）
-        full_event_queue = append_sse_event(initial_event_queue, sse_event_to_string(failed_event))
-
         return {
             "task_list": failed_task_list,
             "expert_results": expert_results,
@@ -781,7 +772,6 @@ async def generic_worker_node(
             "error": str(e),
             "started_at": started_at.isoformat(),
             "completed_at": datetime.now().isoformat(),
-            "event_queue": full_event_queue,  # ✅ 添加完整事件队列（包含 started 和 failed）
             # ✅ 添加 __expert_info 用于标识失败的专家
             "__expert_info": {
                 "expert_type": expert_type,

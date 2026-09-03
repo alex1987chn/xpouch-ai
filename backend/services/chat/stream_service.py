@@ -26,6 +26,7 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, BaseMessage
 from sqlmodel import Session, select
 
+from agents.event_stream import sse_payload_to_wire
 from config import settings
 from crud.agent_run import (
     mark_run_failed_by_id,
@@ -412,6 +413,8 @@ class StreamService:
                 try:
                     # 收集模型思考过程（DeepSeek reasoning_content），流结束后随消息持久化
                     reasoning_parts: list[str] = []
+                    # 协议 v2：节点事件经 adispatch_custom_event 以 on_custom_event 浮现，
+                    # 每事件恰好一次（v1 的 event_queue 逐节点全量 flush 已废弃）
                     async for token in graph.astream_events(None, config, version="v2"):
                         # 🔥 修复：跳过非字典类型的 token
                         if not isinstance(token, dict):
@@ -425,14 +428,14 @@ class StreamService:
                         data = token.get("data", {}) or {}
                         output = data.get("output", {}) or {}
 
-                        # 🔥 关键修复：处理 event_queue 中的多个事件（包括 router.start 和 router.decision）
-                        if event_type == "on_chain_end" and output and isinstance(output, dict):
-                            event_queue = output.get("event_queue", [])
-                            for queued_event in event_queue:
-                                if queued_event.get("type") == "sse" and queued_event.get("event"):
-                                    yield queued_event["event"]
+                        # 协议 v2：节点的统一事件出口（emit_event）
+                        if event_type == "on_custom_event" and name == "sse_event":
+                            event_str = sse_payload_to_wire(token)
+                            if event_str:
+                                yield event_str
+                            continue
 
-                        # 处理其他事件（消息流、task 事件等）
+                        # 处理消息流、task 事件等
                         event_str = self.transform_langgraph_event(
                             token, actual_message_id, reasoning_parts
                         )
@@ -1064,6 +1067,13 @@ class StreamService:
                                     else:
                                         name = token.get("name", "")
 
+                                    # 协议 v2：节点的统一事件出口（emit_event）
+                                    if event_type == "on_custom_event" and name == "sse_event":
+                                        event_str = sse_payload_to_wire(token)
+                                        if event_str:
+                                            await sse_queue.put({"type": "sse", "event": event_str})
+                                        continue
+
                                     # 检测 aggregator 开始执行
                                     if event_type == "on_chain_start" and name == "aggregator":
                                         aggregator_executed = True
@@ -1071,29 +1081,16 @@ class StreamService:
                                             f"[Producer-Resume] 检测到 aggregator 开始执行 (loop {loop_count})"
                                         )
 
-                                    # 处理 event_queue 中的事件
                                     if event_type == "on_chain_end":
                                         data = token.get("data", {}) or {}
                                         output = data.get("output", {}) or {}
-                                        if output and isinstance(output, dict):
-                                            event_queue = output.get("event_queue", [])
-                                            for queued_event in event_queue:
-                                                if queued_event.get("type") == "sse":
-                                                    await sse_queue.put(
-                                                        {
-                                                            "type": "sse",
-                                                            "event": queued_event["event"],
-                                                        }
-                                                    )
 
-                                            if name == "aggregator" and output.get(
-                                                "final_response"
-                                            ):
-                                                aggregator_executed = True
-                                                logger.info(
-                                                    f"[Producer-Resume] aggregator 执行完成 (loop {loop_count})"
-                                                )
-                                                break
+                                        if name == "aggregator" and output.get("final_response"):
+                                            aggregator_executed = True
+                                            logger.info(
+                                                f"[Producer-Resume] aggregator 执行完成 (loop {loop_count})"
+                                            )
+                                            break
 
                                     # 转换并推送事件给前端
                                     event_str = self.transform_langgraph_event(token, message_id)
@@ -1153,6 +1150,18 @@ class StreamService:
                             else:
                                 name = token.get("name", "")
 
+                            # 协议 v2：节点的统一事件出口（emit_event）
+                            if event_type == "on_custom_event" and name == "sse_event":
+                                custom_str = sse_payload_to_wire(token)
+                                if custom_str:
+                                    await sse_queue.put({"type": "sse", "event": custom_str})
+                                    if "message.done" in custom_str:
+                                        logger.info(
+                                            "[Producer] 已发送 message.done，标记 aggregator 完成"
+                                        )
+                                        aggregator_executed = True
+                                continue
+
                             # 🔥 检测 aggregator 节点开始执行
                             if event_type == "on_chain_start" and name == "aggregator":
                                 aggregator_executed = True
@@ -1160,25 +1169,17 @@ class StreamService:
                                     f"[Producer] 检测到 aggregator 开始执行 (loop {loop_count})"
                                 )
 
-                            # 处理 event_queue 中的事件（artifact.start/chunk/completed 等）
                             if event_type == "on_chain_end":
                                 data = token.get("data", {}) or {}
                                 output = data.get("output", {}) or {}
-                                if output and isinstance(output, dict):
-                                    event_queue = output.get("event_queue", [])
-                                    for queued_event in event_queue:
-                                        if queued_event.get("type") == "sse":
-                                            await sse_queue.put(
-                                                {"type": "sse", "event": queued_event["event"]}
-                                            )
 
-                                    # 🔥🔥🔥 关键修复：检测 aggregator 执行完成
-                                    if name == "aggregator" and output.get("final_response"):
-                                        aggregator_executed = True
-                                        logger.info(
-                                            f"[Producer] aggregator 执行完成，准备退出 (loop {loop_count})"
-                                        )
-                                        break
+                                # 🔥🔥🔥 关键修复：检测 aggregator 执行完成
+                                if name == "aggregator" and output.get("final_response"):
+                                    aggregator_executed = True
+                                    logger.info(
+                                        f"[Producer] aggregator 执行完成，准备退出 (loop {loop_count})"
+                                    )
+                                    break
 
                             event_str = self.transform_langgraph_event(token, message_id)
                             if event_str:
@@ -1471,48 +1472,9 @@ class StreamService:
                 )
                 return f"event: message.delta\ndata: {json.dumps(event_data)}\n\n"
 
-        # 处理 chain 事件
-        if event_type == "on_chain_start":
-            name = token.get("name", "")
-            if name == "generic":
-                data = token.get("data", {}) or {}
-                input_data = data.get("input", {}) or {}
-                task_list = input_data.get("task_list", [])
-                current_index = input_data.get("current_task_index", 0)
-                if task_list and current_index < len(task_list):
-                    task = task_list[current_index]
-                    # 只发送纯净数据，不包含 type 包装
-                    event_data = {
-                        "task_id": task.get("id"),
-                        "expert_type": task.get("expert_type"),
-                        "description": task.get("description"),
-                        "started_at": datetime.now().isoformat(),
-                    }
-                    return f"event: task.started\ndata: {json.dumps(event_data)}\n\n"
-
-        if event_type == "on_chain_end":
-            name = token.get("name", "")
-            data = token.get("data", {}) or {}
-            output = data.get("output", {}) or {}
-
-            # 🔥 注意：event_queue 中的事件已在 handle_langgraph_stream 中处理
-            # 这里只处理非 event_queue 的事件（如 generic worker、aggregator）
-
-            # 处理 generic worker 完成
-            if name == "generic" and output and isinstance(output, dict):
-                task_result = output.get("__task_result", {})
-                if task_result:
-                    # 只发送纯净数据，不包含 type 包装
-                    event_data = {
-                        "task_id": task_result.get("task_id"),
-                        "expert_type": task_result.get("expert_type"),
-                        "status": "completed",
-                        "completed_at": datetime.now().isoformat(),
-                    }
-                    return f"event: task.completed\ndata: {json.dumps(event_data)}\n\n"
-
-            # aggregator 完成：message.done 由 aggregator_node 通过 event_queue 发送
-            # 这里不再重复发送
+        # 协议 v2：task.started / task.completed / task.failed / artifact 均由节点
+        # 经 custom stream（emit_event）直达，此处不再手造（v1 双发源头已移除）。
+        # 本函数剩余职责：on_chat_model_stream 的 message.delta / message.thinking。
 
         return None
 

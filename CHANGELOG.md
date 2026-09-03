@@ -5,6 +5,25 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-09-03] - v3.4.0 事件协议 v2：统一事件流（消除脑裂）
+
+### 架构变更
+
+- **事件发射统一**：新增 `agents/event_stream.emit_event`（经 LangChain `adispatch_custom_event`，以 `on_custom_event` 浮现于 `astream_events`）——节点层唯一事件出口，四个节点（router/commander/generic/aggregator）全部迁移；节点不再接触 SSE 线格式、不再读写 event_queue
+- **传输通道迁移**：废弃 v1 的"state 携带 SSE 字符串 + 每个 on_chain_end 全量 flush"模式（该模式导致事件重复推送 N+1 遍、checkpoint 膨胀、节点与协议三层耦合）；三处消费端（主流程/恢复内循环/producer）统一处理 `on_custom_event`
+- **前端单通道收敛**：chat.ts 所有事件统一经 EventHandler 分发，onChunk 只承担正文流式与 UI 状态同步——双通道脑裂（死通道 bug 的温床）消除
+- **task.started 恰好一次**：generic 工具循环重入不再重复发 started（in_progress 标记守卫）
+
+### 实测等价性验证
+
+- simple：router.start/decision、delta、thinking、done、[DONE] 各恰好 1 次
+- complex+HITL：v1 的 router.start×3 / plan.created×2 → 全部 ×1
+- resume（含工具循环）：v1 的 task.started×7 → ×2（=任务数）；completed/artifact 各恰好一次；delta/done 同 ID
+
+### 契约测试
+
+- 旧 event_queue 不可变性测试重写为 v2 契约：节点唯一出口断言、消费端 on_custom_event 断言、emit_event 全链路回环（真实 StateGraph）、图外 no-op 安全性
+
 ## [2026-09-03] - v3.3.10 流式层修复 Stage 1：严重 bug 九项清零（不动架构）
 
 ### 数据正确性
