@@ -238,6 +238,10 @@ function runSSEStream({
                 handleServerEvent(fullEvent)
                 await onChunk(undefined, activeThreadId, fullEvent, undefined, undefined, runtimeMeta)
               } else {
+                // 其余 message.* / error 事件：双通道分发（全局 EventHandler + 组件级 onChunk），
+                // 与文件头"事件分发"设计说明一致。修复：此前只走 onChunk（其第三参在
+                // useChatCore 中被忽略），EventHandler 侧的 message.thinking / error 处理永远不触发
+                handleServerEvent(fullEvent)
                 await onChunk(undefined, activeThreadId, fullEvent, undefined, undefined, runtimeMeta)
               }
             } else if (!isChatEvent) {
