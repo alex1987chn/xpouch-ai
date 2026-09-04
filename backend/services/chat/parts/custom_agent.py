@@ -9,8 +9,8 @@ from __future__ import annotations
 import asyncio
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
 
+from fastapi.responses import StreamingResponse
 from langchain_core.messages import BaseMessage
 
 from config import settings
@@ -19,9 +19,6 @@ from providers_config import get_model_config, get_provider_api_key, get_provide
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
 from utils.llm_factory import get_llm_instance
-
-if TYPE_CHECKING:
-    from fastapi.responses import StreamingResponse
 
 
 class CustomAgentMixin:
