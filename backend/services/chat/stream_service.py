@@ -23,15 +23,13 @@ from datetime import datetime
 from typing import Any
 
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage
 from sqlmodel import Session, select
 
 from agents.event_stream import sse_payload_to_wire
 from config import settings
 from crud.agent_run import (
     mark_run_failed_by_id,
-    mark_run_timed_out_by_id,
-    touch_run_heartbeat_by_id,
     update_run_status_by_id,
 )
 from crud.run_event import (
@@ -41,25 +39,22 @@ from crud.run_event import (
     emit_run_completed,
     emit_run_failed,
 )
-from models import AgentRun, CustomAgent, ExecutionPlan, RunStatus, Thread
-from providers_config import get_model_config, get_provider_api_key, get_provider_config
+from models import AgentRun, ExecutionPlan, RunStatus, Thread
+from services.chat.parts.custom_agent import CustomAgentMixin
+from services.chat.parts.event_builders import EventBuildersMixin
 from services.mcp_tools_service import mcp_tools_service
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
-from utils.llm_factory import get_llm_instance
 from utils.logger import logger
-from utils.sse_builder import (
-    build_error_event,
-    build_heartbeat_event,
-    build_human_interrupt_event,
-    build_message_delta_event,
-    build_message_done_event,
-    build_message_thinking_event,
-)
 
 
-class StreamService:
-    """流式处理服务"""
+class StreamService(CustomAgentMixin, EventBuildersMixin):
+    """流式处理服务。
+
+    P3-2 增量拆分：自定义智能体双路径（parts/custom_agent.py）与
+    事件构建/运行状态助手（parts/event_builders.py）已迁出（Mixin 组合），
+    公开接口不变。
+    """
 
     def __init__(self, db_session: Session):
         self.db = db_session
@@ -94,256 +89,6 @@ class StreamService:
     async def invalidate_mcp_cache(cls):
         """手动使 MCP 工具缓存失效"""
         await mcp_tools_service.invalidate_cache()
-
-    # ============================================================================
-    # 自定义智能体流式处理
-    # ============================================================================
-
-    async def handle_custom_agent_stream(
-        self,
-        custom_agent: CustomAgent,
-        messages: list[BaseMessage],
-        thread_id: str,
-        thread: Thread,
-        agent_run: AgentRun,
-        message_id: str | None = None,
-    ) -> StreamingResponse:
-        """
-        自定义智能体流式响应处理
-
-        Args:
-            custom_agent: 自定义智能体配置
-            messages: LangChain 消息列表
-            thread_id: 线程ID
-            thread: 线程实例
-            message_id: 前端传入的消息ID
-
-        Returns:
-            StreamingResponse SSE流
-        """
-
-        async def event_generator():
-            full_response = ""
-            reasoning_buffer = ""  # 模型思考过程（reasoning_content）累积，用于持久化
-            actual_message_id = message_id or str(uuid.uuid4())
-
-            # 心跳配置 - 从 config 导入
-            last_heartbeat_time = datetime.now()
-
-            try:
-                # 构建 LLM
-                self._update_agent_run_status(
-                    agent_run.id, RunStatus.RUNNING, current_node="custom_agent"
-                )
-                llm = await self._build_custom_agent_llm(custom_agent)
-
-                # 检索长期记忆
-                messages_with_system = await self._inject_memories(
-                    custom_agent, messages, thread.user_id
-                )
-
-                # 获取流迭代器
-                iterator = llm.astream(messages_with_system)
-
-                async def get_next_chunk():
-                    try:
-                        return await asyncio.wait_for(
-                            iterator.__anext__(), timeout=settings.heartbeat_interval
-                        )
-                    except StopAsyncIteration:
-                        return None
-
-                while True:
-                    self._raise_if_run_cancelled(agent_run.id)
-                    try:
-                        chunk = await get_next_chunk()
-                        if chunk is None:
-                            break
-
-                        content = chunk.content
-                        if content:
-                            full_response += content
-                            yield self._build_message_delta_event(actual_message_id, content)
-
-                        # 思考过程流式块（思考 chunk 通常无正文内容，需独立于 content 判断）
-                        reasoning = getattr(chunk, "additional_kwargs", {}).get(
-                            "reasoning_content", ""
-                        )
-                        if reasoning:
-                            reasoning_buffer += reasoning
-                            yield self._build_message_thinking_event(actual_message_id, reasoning)
-
-                    except TimeoutError:
-                        # 心跳保活
-                        self._touch_agent_run(agent_run.id, current_node="custom_agent")
-                        yield self._build_heartbeat_event()
-                        last_heartbeat_time = datetime.now()
-                        continue
-
-                    # 强制心跳
-                    current_time = datetime.now()
-                    time_since_last = (current_time - last_heartbeat_time).total_seconds()
-                    if time_since_last >= settings.force_heartbeat_interval:
-                        self._touch_agent_run(agent_run.id, current_node="custom_agent")
-                        yield self._build_heartbeat_event()
-                        last_heartbeat_time = current_time
-
-            except AppError as e:
-                if e.code == ErrorCode.RUN_CANCELLED:
-                    yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
-                    return
-                self._mark_agent_run_failed(agent_run.id, str(e))
-                yield self._build_error_event(ErrorCode.STREAM_ERROR, str(e))
-                return
-            except Exception as e:
-                self._mark_agent_run_failed(agent_run.id, str(e))
-                yield self._build_error_event(ErrorCode.STREAM_ERROR, str(e))
-                return
-
-            # 解析 thinking 并保存消息（优先原生 reasoning_content，回退 <think> 标签解析）
-            from utils.thinking_parser import build_thinking_data, parse_thinking
-
-            thinking_data = build_thinking_data(reasoning_buffer) if reasoning_buffer else None
-            if thinking_data is None:
-                _, thinking_data = parse_thinking(full_response)
-
-            # 使用 thread_service 保存消息
-            await self.thread_service.save_assistant_message(
-                thread_id=thread_id,
-                content=full_response,
-                thinking_data=thinking_data,
-                message_id=actual_message_id,
-            )
-
-            # 发送完成事件
-            self._update_agent_run_status(agent_run.id, RunStatus.COMPLETED, current_node="done")
-            yield self._build_message_done_event(actual_message_id, full_response)
-            # 传输级完成标记：前端据此区分"正常结束"与"异常断流"
-            yield "data: [DONE]\n\n"
-
-        return StreamingResponse(
-            event_generator(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-                "X-Thread-ID": thread_id,
-                "X-Run-ID": agent_run.id,
-            },
-        )
-
-    async def handle_custom_agent_sync(
-        self,
-        custom_agent: CustomAgent,
-        messages: list[BaseMessage],
-        thread_id: str,
-        thread: Thread,
-        agent_run: AgentRun,
-        message_id: str | None = None,
-    ) -> dict:
-        """
-        自定义智能体非流式处理（兼容旧版）
-
-        实际内部使用流式获取结果，但返回完整响应
-        """
-        full_response = ""
-        reasoning_buffer = ""  # 模型思考过程（reasoning_content）累积，用于持久化
-        actual_message_id = message_id or str(uuid.uuid4())
-
-        try:
-            self._update_agent_run_status(
-                agent_run.id, RunStatus.RUNNING, current_node="custom_agent"
-            )
-            llm = await self._build_custom_agent_llm(custom_agent)
-            messages_with_system = await self._inject_memories(
-                custom_agent, messages, thread.user_id
-            )
-
-            # 流式获取完整响应
-            async for chunk in llm.astream(messages_with_system):
-                self._raise_if_run_cancelled(agent_run.id)
-                if chunk.content:
-                    full_response += chunk.content
-                reasoning = getattr(chunk, "additional_kwargs", {}).get("reasoning_content", "")
-                if reasoning:
-                    reasoning_buffer += reasoning
-
-        except AppError as e:
-            if e.code == ErrorCode.RUN_CANCELLED:
-                raise
-            self._mark_agent_run_failed(agent_run.id, str(e))
-            raise AppError(f"自定义智能体调用失败: {str(e)}") from e
-        except Exception as e:
-            self._mark_agent_run_failed(agent_run.id, str(e))
-            raise AppError(f"自定义智能体调用失败: {str(e)}") from e
-
-        # 解析 thinking 并保存（优先原生 reasoning_content，回退 <think> 标签解析）
-        from utils.thinking_parser import build_thinking_data, parse_thinking
-
-        thinking_data = build_thinking_data(reasoning_buffer) if reasoning_buffer else None
-        if thinking_data is None:
-            _, thinking_data = parse_thinking(full_response)
-
-        await self.thread_service.save_assistant_message(
-            thread_id=thread_id,
-            content=full_response,
-            thinking_data=thinking_data,
-            message_id=actual_message_id,
-        )
-
-        self._update_agent_run_status(agent_run.id, RunStatus.COMPLETED, current_node="done")
-        return {"role": "assistant", "content": full_response, "thread_id": thread_id}
-
-    async def _build_custom_agent_llm(self, custom_agent: CustomAgent):
-        """构建自定义智能体的 LLM 实例"""
-        model_id = custom_agent.model_id or "deepseek-v4-flash"
-        model_config = get_model_config(model_id)
-
-        if model_config:
-            provider = model_config.get("provider")
-            actual_model = model_config.get("model", model_id)
-            provider_config = get_provider_config(provider)
-
-            if not provider_config:
-                raise ValueError(f"提供商 {provider} 未配置")
-
-            if not get_provider_api_key(provider):
-                raise ValueError(f"提供商 {provider} 的 API Key 未设置")
-
-            temperature = model_config.get("temperature", 0.7)
-
-            return get_llm_instance(
-                provider=provider, model=actual_model, streaming=True, temperature=temperature
-            )
-        else:
-            # Fallback
-            return get_llm_instance(streaming=True, model=model_id, temperature=0.7)
-
-    async def _inject_memories(
-        self, custom_agent: CustomAgent, messages: list[BaseMessage], user_id: str
-    ) -> list:
-        """注入长期记忆到 system prompt"""
-        from services.memory_manager import memory_manager
-
-        user_query = messages[-1].content if messages else ""
-        relevant_memories = await memory_manager.search_relevant_memories(
-            user_id, user_query, limit=5
-        )
-
-        system_prompt = custom_agent.system_prompt
-        if relevant_memories:
-            system_prompt += (
-                f"\n\n【关于用户的已知信息】:\n{relevant_memories}\n(请在回答时自然地利用这些信息)"
-            )
-
-        result = [("system", system_prompt)]
-        result.extend(messages)
-        return result
-
-    # ============================================================================
-    # LangGraph 复杂模式流式处理
-    # ============================================================================
 
     async def handle_langgraph_stream(
         self,
@@ -1467,75 +1212,6 @@ class StreamService:
 
         return None
 
-    def _build_message_delta_event(self, message_id: str, content: str) -> str:
-        """构建 message.delta 事件"""
-        return build_message_delta_event(message_id=message_id, content=content)
-
-    def _build_message_thinking_event(self, message_id: str, content: str) -> str:
-        """构建 message.thinking 事件"""
-        return build_message_thinking_event(message_id=message_id, content=content)
-
-    def _build_message_done_event(self, message_id: str, content: str) -> str:
-        """构建 message.done 事件"""
-        return build_message_done_event(message_id=message_id, content=content)
-
-    def _build_heartbeat_event(self) -> str:
-        """构建 heartbeat 事件，供前端更新活跃时间。"""
-        return build_heartbeat_event()
-
-    def _build_error_event(self, code: str | ErrorCode, message: str) -> str:
-        """构建 error 事件"""
-        return build_error_event(code=code, message=message)
-
-    def _touch_agent_run(self, run_id: str, *, current_node: str | None = None) -> None:
-        """轻量刷新运行心跳，可选同步当前节点。"""
-        updated = touch_run_heartbeat_by_id(self.db, run_id, current_node=current_node)
-        if updated is not None:
-            self.db.commit()
-
-    def _raise_if_run_cancelled(self, run_id: str) -> None:
-        """在流式执行中协作检查运行是否已被取消或已超出截止时间。"""
-        agent_run = self.db.get(AgentRun, run_id)
-        if agent_run is None:
-            return
-
-        if agent_run.deadline_at and agent_run.deadline_at <= datetime.now():
-            timed_out = mark_run_timed_out_by_id(
-                self.db,
-                run_id,
-                error_message="运行超过 deadline，已自动终止",
-                current_node=agent_run.current_node,
-            )
-            if timed_out is not None:
-                self.db.commit()
-            raise AppError(
-                message="运行已超时",
-                code=ErrorCode.RUN_TIMED_OUT,
-                status_code=409,
-                details={"run_id": run_id},
-            )
-
-        if agent_run.status == RunStatus.CANCELLED:
-            raise AppError(
-                message="运行已取消",
-                code=ErrorCode.RUN_CANCELLED,
-                status_code=409,
-                details={"run_id": run_id},
-            )
-
-    def _sync_run_progress_from_token(self, token: dict[str, Any], run_id: str) -> None:
-        """从 LangGraph token 中提取当前节点，并刷新运行心跳。"""
-        event_type = token.get("event", "")
-        if event_type != "on_chain_start":
-            return
-
-        metadata = token.get("metadata", {}) or {}
-        node_name = metadata.get("name") or token.get("name")
-        if not node_name:
-            return
-
-        self._touch_agent_run(run_id, current_node=str(node_name))
-
     def _get_latest_execution_plan(self, thread_id: str) -> ExecutionPlan | None:
         """获取线程最新的 ExecutionPlan。"""
         return self.db.exec(
@@ -1613,20 +1289,3 @@ class StreamService:
             self.db.add(execution_plan)
             self.db.commit()
             logger.info(f"[StreamService] ExecutionPlan {execution_plan.id} 状态更新为 {status}")
-
-    def _build_human_interrupt_event(
-        self,
-        thread_id: str,
-        current_plan: list[dict],
-        plan_version: int,
-        run_id: str | None = None,
-        execution_plan_id: str | None = None,
-    ) -> str:
-        """构建 human.interrupt 事件 (HITL)"""
-        return build_human_interrupt_event(
-            thread_id=thread_id,
-            current_plan=current_plan,
-            plan_version=plan_version,
-            run_id=run_id,
-            execution_plan_id=execution_plan_id,
-        )
