@@ -30,6 +30,14 @@ export default defineConfig({
       'Cache-Control': 'no-store, must-revalidate',
     },
   },
+  // P4-0: 前端测试基建（vitest 接通孤儿测试）
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    globals: true,
+    include: ['src/**/__tests__/**/*.test.ts', 'src/**/__tests__/**/*.test.tsx'],
+    exclude: ['src/test/**', 'node_modules/**', 'dist/**'],
+  },
   build: {
     // 🔥 细致的代码分割配置，按类别分包
     // 注意：vite 8 (rolldown) 只支持函数形式的 manualChunks

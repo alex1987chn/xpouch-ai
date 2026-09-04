@@ -5,6 +5,7 @@ import {
   clearProcessedMessageDones
 } from '../chatEvents'
 import type { HandlerContext } from '../types'
+import { useChatStore } from '@/store/chatStore'
 
 // Mock logger
 vi.mock('@/utils/logger', () => ({
@@ -190,20 +191,29 @@ describe('Chat Events', () => {
         }
       }
 
+      const thinkingSteps = [
+        { id: 'step-1', type: 'planning', status: 'running' },
+        { id: 'step-2', type: 'execution', status: 'running' },
+        { id: 'step-3', type: 'analysis', status: 'completed' }
+      ]
+
       mockContext.chatStore.messages = [
         {
           id: 'msg-1',
           role: 'assistant',
           content: 'partial',
           metadata: {
-            thinking: [
-              { id: 'step-1', type: 'planning', status: 'running' },
-              { id: 'step-2', type: 'execution', status: 'running' },
-              { id: 'step-3', type: 'analysis', status: 'completed' }
-            ]
+            thinking: thinkingSteps
           }
         }
       ]
+
+      // 实现从 useChatStore.getState() 直读最新消息做最终校准，
+      // 需要让真实 store 返回同一消息
+      const setState = useChatStore.setState
+      setState({
+        messages: mockContext.chatStore.messages
+      })
 
       handleMessageDone(event, mockContext)
 

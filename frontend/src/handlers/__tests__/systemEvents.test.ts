@@ -236,7 +236,7 @@ describe('System Events', () => {
       handleHumanInterrupt(event, mockContext)
 
       expect(mockContext.taskStore.setPendingPlan).toHaveBeenCalledWith(
-        event.data.current_plan,
+        event.data.current_plan.map((t) => ({ ...t, artifacts: [] })),
         3,
         'run-1',
         'plan-1',
