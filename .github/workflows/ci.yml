@@ -54,7 +54,6 @@ jobs:
           # 使用 CI 服务中的 PostgreSQL
           DATABASE_URL: postgresql+psycopg://xpouch_test:test_pass@localhost:5432/xpouch_test
           # Mock API keys for tests
-          MINIMAX_API_KEY: test-key
           DEEPSEEK_API_KEY: test-key
           MOONSHOT_API_KEY: test-key
           SILICON_API_KEY: test-key
@@ -83,6 +82,15 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
 
       - name: Build
         run: pnpm build
