@@ -121,14 +121,25 @@ export const useChatStore = create<ChatStore>()(
 
       addMessage: (message: Message) => set((state) => {
         const newMessage = { ...message, id: message.id || generateUUID(), timestamp: Date.now() }
+
+        // P4-1 会话归属守卫：若消息标注了发起会话而当前会话已切换，则丢弃
+        // （修复流式中途切换会话后，错误气泡/系统消息串入新会话）
+        if (
+          message.metadata?.threadId &&
+          state.currentConversationId &&
+          message.metadata.threadId !== state.currentConversationId
+        ) {
+          return {}
+        }
+
         const newMessages = [...state.messages, newMessage]
-        
+
         // 🔥 性能优化：更新 lastAssistantMessageId
         const updates: Partial<ChatState> = { messages: newMessages }
         if (message.role === 'assistant') {
           updates.lastAssistantMessageId = newMessage.id
         }
-        
+
         return updates
       }),
 

@@ -60,6 +60,8 @@ export interface MessageMetadata {
   expertId?: string
   thinking?: ThinkingStep[]
   reasoningContent?: string
+  /** 发起该消息的会话 ID（P4-1 会话归属守卫：切换会话后不再追加旧会话消息） */
+  threadId?: string
 }
 
 /**

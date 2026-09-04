@@ -297,7 +297,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       } else if (isActiveRunConflict) {
         addMessage({
           role: 'assistant',
-          content: '当前会话已有进行中的任务，请先等待完成、确认恢复、取消任务，或切换到新会话后再继续。'
+          content: '当前会话已有进行中的任务，请先等待完成、确认恢复、取消任务，或切换到新会话后再继续。',
+          metadata: { threadId: currentConversationId ?? undefined }
         })
       } else {
         errorHandler.handle(error, 'sendMessageCore')
@@ -305,7 +306,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         const userMessage = errorHandler.getUserMessage(error)
         addMessage({
           role: 'assistant',
-          content: userMessage
+          content: userMessage,
+          metadata: { threadId: currentConversationId ?? undefined }
         })
       }
     } finally {
