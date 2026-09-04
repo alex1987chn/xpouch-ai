@@ -60,6 +60,7 @@ from tenacity import (
 )
 
 from agents.event_stream import emit_event
+from agents.services.expert_repository import register_expert_cache
 from agents.state import AgentState
 from constants import COMMANDER_SYSTEM_PROMPT
 from database import engine
@@ -69,9 +70,13 @@ from utils.logger import logger
 
 # P0 优化: 本地内存缓存高频查询 (5分钟TTL)
 # commander 配置缓存（单例，很少变化）
-_commander_config_cache: TTLCache = TTLCache(maxsize=10, ttl=300)
+_commander_config_cache: TTLCache = register_expert_cache(
+    "commander_config", TTLCache(maxsize=10, ttl=300)
+)
 # 专家列表缓存（相对稳定）
-_all_experts_cache: TTLCache = TTLCache(maxsize=5, ttl=60)  # 1分钟TTL，更频繁更新
+_all_experts_cache: TTLCache = register_expert_cache(
+    "all_experts", TTLCache(maxsize=5, ttl=60)
+)  # 1分钟TTL，更频繁更新
 
 
 # ============================================================================

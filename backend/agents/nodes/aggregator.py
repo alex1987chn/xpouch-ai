@@ -18,6 +18,7 @@ from sqlmodel import Session
 
 from agents.event_stream import emit_event
 from agents.services.expert_manager import get_expert_config_cached
+from agents.services.expert_repository import register_expert_cache
 from agents.services.task_manager import complete_execution_plan
 from agents.state import AgentState
 from constants import AGGREGATOR_SYSTEM_PROMPT
@@ -28,7 +29,9 @@ from utils.llm_factory import get_aggregator_llm
 from utils.logger import logger
 
 # P0 优化: 本地内存缓存 aggregator 配置 (5分钟TTL)
-_aggregator_config_cache: TTLCache = TTLCache(maxsize=10, ttl=300)
+_aggregator_config_cache: TTLCache = register_expert_cache(
+    "aggregator_config", TTLCache(maxsize=10, ttl=300)
+)
 
 
 async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> dict[str, Any]:

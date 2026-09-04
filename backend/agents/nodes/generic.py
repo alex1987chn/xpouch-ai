@@ -66,6 +66,7 @@ from langchain_core.runnables import RunnableConfig
 
 from agents.event_stream import emit_event
 from agents.services.expert_manager import get_expert_config_cached
+from agents.services.expert_repository import register_expert_cache
 from agents.state_patch import replace_task_item
 from agents.tool_policy import filter_tools_for_binding
 from providers_config import get_model_config, load_providers_config
@@ -77,7 +78,9 @@ from utils.logger import logger
 from utils.prompt_utils import enhance_system_prompt_with_tools  # v3.6: 提取到工具函数
 
 # P0 优化: 本地内存缓存高频专家配置查询 (5分钟TTL, 最大200条)
-_generic_expert_cache: TTLCache = TTLCache(maxsize=200, ttl=300)
+_generic_expert_cache: TTLCache = register_expert_cache(
+    "generic_expert", TTLCache(maxsize=200, ttl=300)
+)
 
 
 class GenericWorkerError(Exception):
