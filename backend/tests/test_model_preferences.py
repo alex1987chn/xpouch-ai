@@ -3,14 +3,14 @@
 覆盖：
 - GET /api/models 的数据源 get_available_models()（过滤 disabled provider 与 hidden 别名）
 - get_llm_by_model 的 thinking 三态归一化（能力声明 × 用户偏好矩阵）
-- _load_user_preferences 的默认值合并与脏数据防御
+- load_user_preferences 的默认值合并与脏数据防御
 """
 
 import pytest
 
 from models import UserSettings
 from providers_config import get_available_models
-from routers.system import _load_user_preferences
+from services.user_preferences import load_user_preferences
 from utils.llm_factory import get_llm_by_model
 
 # ============================================================================
@@ -100,16 +100,16 @@ class _StubSession:
 
 
 def test_load_user_preferences_defaults_when_no_row():
-    prefs = _load_user_preferences(_StubSession(None), "user-1")
+    prefs = load_user_preferences(_StubSession(None), "user-1")
     assert prefs == {"simple_model": None, "simple_thinking": "auto"}
 
 
 def test_load_user_preferences_merges_partial_and_sanitizes():
     stored = UserSettings(user_id="user-1", preferences={"simple_model": "deepseek-v4-flash"})
-    prefs = _load_user_preferences(_StubSession(stored), "user-1")
+    prefs = load_user_preferences(_StubSession(stored), "user-1")
     assert prefs == {"simple_model": "deepseek-v4-flash", "simple_thinking": "auto"}
 
     # 历史脏数据：非法 thinking 值回落默认
     dirty = UserSettings(user_id="user-2", preferences={"simple_thinking": "banana"})
-    prefs2 = _load_user_preferences(_StubSession(dirty), "user-2")
+    prefs2 = load_user_preferences(_StubSession(dirty), "user-2")
     assert prefs2["simple_thinking"] == "auto"

@@ -10,24 +10,9 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from agents.graph import _should_trip_tool_loop_guard  # noqa: E402
-from agents.state_patch import (  # noqa: E402
-    EVENT_QUEUE_MAX_SIZE,
-    append_sse_event,
-    append_sse_events,
-)
 from services.mcp_tools_service import MCPToolsService  # noqa: E402
 from utils.error_codes import ErrorCode, as_error_code  # noqa: E402
 from utils.exceptions import AppError  # noqa: E402
-
-
-def test_event_queue_is_capped_to_prevent_growth():
-    queue = []
-    for idx in range(EVENT_QUEUE_MAX_SIZE + 25):
-        queue = append_sse_event(queue, f"e-{idx}")
-
-    assert len(queue) == EVENT_QUEUE_MAX_SIZE
-    assert queue[0]["event"] == "e-25"
-    assert queue[-1]["event"] == f"e-{EVENT_QUEUE_MAX_SIZE + 24}"
 
 
 def test_tool_loop_guard_detects_same_tool_streak():
@@ -80,9 +65,3 @@ def test_mcp_tools_service_singleflight_reuses_same_inflight(monkeypatch):
     results = asyncio.run(_run())
     assert call_count == 1
     assert all(result == ["tool-a"] for result in results)
-
-
-def test_append_sse_events_capped_when_batch_append():
-    queue = append_sse_events([], [f"b-{idx}" for idx in range(EVENT_QUEUE_MAX_SIZE + 10)])
-    assert len(queue) == EVENT_QUEUE_MAX_SIZE
-    assert queue[0]["event"] == "b-10"

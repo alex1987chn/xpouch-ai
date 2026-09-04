@@ -306,9 +306,9 @@ async def chat_endpoint(
     # 系统默认助手模式：通过 LangGraph 处理
     # 读取用户模型偏好（simple 模式使用；失败静默降级为系统默认）
     try:
-        from routers.system import _load_user_preferences
+        from services.user_preferences import load_user_preferences
 
-        user_preferences = _load_user_preferences(session, current_user.id)
+        user_preferences = load_user_preferences(session, current_user.id)
     except Exception:
         user_preferences = {"simple_model": None, "simple_thinking": "auto"}
 

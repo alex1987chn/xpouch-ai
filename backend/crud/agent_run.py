@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 
 from config import settings
 from crud.run_event import emit_run_created, emit_run_started, emit_run_timed_out
-from models import AgentRun, RunStatus, Thread
+from models import AgentRun, RunStatus, Thread, ThreadStatus
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
 
@@ -20,13 +20,13 @@ ACTIVE_RUN_STATUSES = {
 }
 
 
-def derive_thread_status_from_run_status(status: RunStatus) -> str:
+def derive_thread_status_from_run_status(status: RunStatus) -> ThreadStatus:
     """将运行时状态映射为线程展示态。"""
     if status == RunStatus.WAITING_FOR_APPROVAL:
-        return "paused"
+        return ThreadStatus.PAUSED
     if status in {RunStatus.QUEUED, RunStatus.RUNNING, RunStatus.RESUMING}:
-        return "running"
-    return "idle"
+        return ThreadStatus.RUNNING
+    return ThreadStatus.IDLE
 
 
 def _sync_thread_status(db: Session, thread_id: str, status: RunStatus) -> None:

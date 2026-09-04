@@ -254,7 +254,9 @@ class RecoveryService:
             self._update_run_status(run_id, RunStatus.RESUMING)
 
             # 🔥 方案1：更新 ExecutionPlan 状态为 running（用户已批准）
-            self._update_execution_plan_status(run_id, "running")
+            from models.enums import TaskStatus
+
+            self._update_execution_plan_status(run_id, TaskStatus.RUNNING)
 
             # 关键一致性保障：计划更新前执行乐观锁校验与版本递增
             self._bump_plan_version_with_cas(run_id, plan_version)

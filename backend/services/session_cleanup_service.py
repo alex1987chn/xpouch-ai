@@ -18,7 +18,7 @@ from sqlmodel import Session, select
 from config import settings
 from crud.agent_run import derive_thread_status_from_run_status, mark_run_timed_out_by_id
 from database import engine
-from models import AgentRun, ExecutionPlan, RunStatus, Thread
+from models import AgentRun, ExecutionPlan, RunStatus, Thread, ThreadStatus
 from utils.logger import logger
 
 THREAD_RETENTION_DAYS = settings.thread_retention_days
@@ -102,7 +102,7 @@ def _cleanup_once() -> dict[str, Any]:
 
         stale_running_threads = session.exec(
             select(Thread).where(
-                Thread.status == "running", Thread.updated_at < stale_running_before
+                Thread.status == ThreadStatus.RUNNING, Thread.updated_at < stale_running_before
             )
         ).all()
         for thread in stale_running_threads:
@@ -114,7 +114,7 @@ def _cleanup_once() -> dict[str, Any]:
             thread.status = (
                 derive_thread_status_from_run_status(latest_run.status)
                 if latest_run is not None
-                else "idle"
+                else ThreadStatus.IDLE
             )
             thread.updated_at = now
             session.add(thread)
@@ -122,7 +122,7 @@ def _cleanup_once() -> dict[str, Any]:
 
         expired_threads = session.exec(
             select(Thread).where(
-                Thread.status.in_(["idle", "paused"]),
+                Thread.status.in_([ThreadStatus.IDLE, ThreadStatus.PAUSED]),
                 Thread.updated_at < expired_before,
             )
         ).all()

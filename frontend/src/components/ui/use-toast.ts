@@ -16,6 +16,14 @@ export function dismissToast(id: string) {
   globalListeners.forEach(listener => listener([...globalToasts]))
 }
 
+/** 模块级推注入：供非 React 上下文（SSE 事件处理器等）直接弹 toast */
+export function pushToast(props: Omit<Toast, 'id'>) {
+  const id = Math.random().toString(36).substring(2, 9)
+  globalToasts = [...globalToasts, { id, ...props }]
+  globalListeners.forEach(listener => listener([...globalToasts]))
+  setTimeout(() => dismissToast(id), 3000)
+}
+
 export function useToast() {
   const [toasts, setToasts] = useState<Toast[]>([])
 

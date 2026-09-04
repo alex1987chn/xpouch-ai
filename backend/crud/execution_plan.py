@@ -19,6 +19,7 @@ from models import (
     SubTask,
     SubTaskCreate,
     SubTaskUpdate,
+    TaskStatus,
 )
 
 
@@ -159,9 +160,9 @@ def update_subtask_status(
         return None
 
     subtask.status = status
-    if status == "running" and not subtask.started_at:
+    if status == TaskStatus.RUNNING and not subtask.started_at:
         subtask.started_at = datetime.now()
-    if status in ["completed", "failed"]:
+    if status in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
         subtask.completed_at = datetime.now()
     if output_result is not None:
         subtask.output_result = output_result
@@ -305,7 +306,7 @@ def create_execution_plan_with_subtasks(
         "plan_summary": plan_summary,
         "estimated_steps": estimated_steps,
         "execution_mode": execution_mode,
-        "status": "running",
+        "status": TaskStatus.RUNNING,
     }
     if execution_plan_id:
         execution_plan_data["id"] = execution_plan_id

@@ -154,6 +154,18 @@ async def init_checkpointer_tables():
         logger.warning(f"[HITL WARN] Failed to check tables: {e}")
 
 
+def get_checkpointer_serializer():
+    """checkpoint 序列化器（msgpack 白名单）。
+
+    state 中的自定义枚举（task_list 携带 TaskStatus）必须显式注册，
+    否则 langgraph 会警告并将在未来版本直接拒绝反序列化（HITL 恢复全挂）。
+    注意：白名单格式为 (模块点路径, 类名)；通配符会静默降级为 str，不可用。
+    """
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+
+    return JsonPlusSerializer(allowed_msgpack_modules=[("models.enums", "TaskStatus")])
+
+
 async def delete_checkpoints_for_thread(thread_id: str, run_ids: list[str] | None = None) -> int:
     """删除 thread 及其隔离线程（{thread_id}_{run_id}）的 checkpoint 数据。
 
@@ -166,7 +178,7 @@ async def delete_checkpoints_for_thread(thread_id: str, run_ids: list[str] | Non
     deleted = 0
     remaining_after = -1
     async with get_db_connection() as conn:
-        saver = AsyncPostgresSaver(conn)
+        saver = AsyncPostgresSaver(conn, serde=get_checkpointer_serializer())
         for target in target_ids:
             try:
                 await saver.adelete_thread(target)

@@ -30,6 +30,7 @@ from crud.execution_plan import (
     update_execution_plan_status,
 )
 from crud.run_event import emit_artifact_generated, emit_task_completed
+from models import TaskStatus
 from utils.logger import logger
 
 # =============================================================================
@@ -94,7 +95,7 @@ def get_or_create_execution_plan(
         existing_plan.estimated_steps = estimated_steps
         existing_plan.execution_mode = execution_mode
         existing_plan.run_id = run_id
-        existing_plan.status = "running"
+        existing_plan.status = TaskStatus.RUNNING
         db.add(existing_plan)
 
         # 🔥 关键修复：批量创建子任务并正确映射 depends_on

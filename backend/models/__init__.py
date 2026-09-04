@@ -44,6 +44,7 @@ from models.enums import (
     RunEventType,
     RunStatus,
     TaskStatus,
+    ThreadStatus,
     UserRole,
     _enum_values,
 )

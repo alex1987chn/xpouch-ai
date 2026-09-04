@@ -61,6 +61,18 @@ class RunStatus(StrEnum):
     TIMED_OUT = "timed_out"
 
 
+class ThreadStatus(StrEnum):
+    """会话展示状态（Thread.status 字段）。
+
+    由 RunStatus 经 derive_thread_status_from_run_status 推导，
+    消除散落在 service/crud 层的裸字符串双轨。
+    """
+
+    RUNNING = "running"
+    IDLE = "idle"
+    PAUSED = "paused"
+
+
 class ExecutionMode(StrEnum):
     """任务执行模式"""
 

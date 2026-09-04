@@ -276,9 +276,9 @@ async def generic_worker_node(
     execution_plan_id = state.get("execution_plan_id")
     if run_id and thread_id:
         try:
-            from utils.async_task_queue import async_append_run_event
+            from utils.async_task_queue import async_append_run_event, spawn_background
 
-            asyncio.create_task(
+            spawn_background(
                 async_append_run_event(
                     run_id=run_id,
                     event_type="task_started",
@@ -286,7 +286,8 @@ async def generic_worker_node(
                     execution_plan_id=execution_plan_id,
                     task_id=str(current_task.get("id", task_id)),
                     event_data={"expert_type": expert_type, "description": description},
-                )
+                ),
+                label=f"run_event:task_started:{expert_type}",
             )
         except (RuntimeError, ValueError) as event_err:
             logger.warning(f"[GenericWorker] ⚠️ task_started 账本写入提交失败: {event_err}")
@@ -624,17 +625,18 @@ async def generic_worker_node(
         # 🔥 修复：不传递 db_session，在 async_save_expert_result 中创建独立的 Session
         if task_id:
             try:
-                from utils.async_task_queue import async_save_expert_result
+                from utils.async_task_queue import async_save_expert_result, spawn_background
 
-                # 使用后台线程异步保存，不阻塞 LLM 响应返回
-                asyncio.create_task(
+                # 使用后台线程异步保存，不阻塞 LLM 响应返回（持引用防 GC + 失败可见）
+                spawn_background(
                     async_save_expert_result(
                         task_id=task_id,
                         expert_type=expert_type,
                         output_result=response.content,
                         artifact_data=artifact,
                         duration_ms=duration_ms,
-                    )
+                    ),
+                    label=f"save_result:{expert_type}:{task_id}",
                 )
                 logger.info(f"[GenericWorker] ✅ 专家执行结果已提交后台线程池保存: {expert_type}")
             except (RuntimeError, ValueError) as save_err:
@@ -748,9 +750,9 @@ async def generic_worker_node(
         execution_plan_id = state.get("execution_plan_id")
         if run_id and thread_id:
             try:
-                from utils.async_task_queue import async_append_run_event
+                from utils.async_task_queue import async_append_run_event, spawn_background
 
-                asyncio.create_task(
+                spawn_background(
                     async_append_run_event(
                         run_id=run_id,
                         event_type="task_failed",
@@ -758,7 +760,8 @@ async def generic_worker_node(
                         execution_plan_id=execution_plan_id,
                         task_id=str(db_uuid) if db_uuid else str(task_id),
                         event_data={"expert_type": expert_type, "error_message": str(e)},
-                    )
+                    ),
+                    label=f"run_event:task_failed:{expert_type}",
                 )
             except (RuntimeError, ValueError) as event_err:
                 logger.warning(f"[GenericWorker] ⚠️ task_failed 账本写入提交失败: {event_err}")

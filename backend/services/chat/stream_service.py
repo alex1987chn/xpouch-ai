@@ -371,7 +371,7 @@ class StreamService:
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
         from agents.graph import create_smart_router_workflow
-        from utils.db import get_db_connection
+        from utils.db import get_checkpointer_serializer, get_db_connection
 
         async def event_generator():
             actual_message_id = message_id or str(uuid.uuid4())
@@ -387,7 +387,7 @@ class StreamService:
             mcp_tools = await self._get_mcp_tools()
 
             async with get_db_connection() as conn:
-                checkpointer = AsyncPostgresSaver(conn)
+                checkpointer = AsyncPostgresSaver(conn, serde=get_checkpointer_serializer())
                 graph = create_smart_router_workflow(checkpointer=checkpointer)
 
                 stream_queue = asyncio.Queue()
@@ -654,14 +654,14 @@ class StreamService:
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
         from agents.graph import create_smart_router_workflow
-        from utils.db import get_db_connection
+        from utils.db import get_checkpointer_serializer, get_db_connection
 
         # 🔥 MCP: 获取动态工具
         mcp_tools = await self._get_mcp_tools()
         self._update_agent_run_status(agent_run.id, RunStatus.RUNNING, current_node="router")
 
         async with get_db_connection() as conn:
-            checkpointer = AsyncPostgresSaver(conn)
+            checkpointer = AsyncPostgresSaver(conn, serde=get_checkpointer_serializer())
             graph = create_smart_router_workflow(checkpointer=checkpointer)
 
             config = {
@@ -970,13 +970,13 @@ class StreamService:
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
         from agents.graph import create_smart_router_workflow
-        from utils.db import get_db_connection
+        from utils.db import get_checkpointer_serializer, get_db_connection
 
         # 🔥 MCP: 获取动态工具
         mcp_tools = await self._get_mcp_tools()
 
         async with get_db_connection() as conn:
-            checkpointer = AsyncPostgresSaver(conn)
+            checkpointer = AsyncPostgresSaver(conn, serde=get_checkpointer_serializer())
             graph = create_smart_router_workflow(checkpointer=checkpointer)
 
             # 🔥🔥🔥 关键修复：使用与初始执行相同的确定性 isolated_thread_id

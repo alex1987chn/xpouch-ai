@@ -39,13 +39,12 @@ class UpdateUserSettingsRequest(BaseModel):
     simple_thinking: str | None = None
 
 
-# 用户偏好默认值（未存储任何偏好时的行为）
-DEFAULT_USER_PREFERENCES = {
-    "simple_model": None,  # None = 跟随系统默认模型
-    "simple_thinking": "auto",
-}
-VALID_THINKING_MODES = {"auto", "enabled", "disabled"}
-
+# 用户偏好常量与读取已迁至 services/user_preferences.py（修复 router 间私有函数穿透）
+from services.user_preferences import (  # noqa: E402
+    DEFAULT_USER_PREFERENCES,
+    VALID_THINKING_MODES,
+    load_user_preferences,
+)
 
 # ============================================================================
 # 根路径和健康检查
@@ -112,17 +111,6 @@ async def list_models(current_user: User = Depends(get_current_user_with_auth)):
     return {"models": get_available_models()}
 
 
-def _load_user_preferences(session: Session, user_id: str) -> dict:
-    """读取用户偏好并与默认值合并（存储缺失或字段缺失时回落默认值）"""
-    stored = session.get(UserSettings, user_id)
-    prefs = dict(stored.preferences) if stored and stored.preferences else {}
-    merged = {**DEFAULT_USER_PREFERENCES, **prefs}
-    # 防御历史脏数据
-    if merged.get("simple_thinking") not in VALID_THINKING_MODES:
-        merged["simple_thinking"] = DEFAULT_USER_PREFERENCES["simple_thinking"]
-    return merged
-
-
 @router.get("/user/settings")
 async def get_user_settings(
     session: Session = Depends(get_session),
@@ -132,7 +120,7 @@ async def get_user_settings(
     from providers_config import get_provider_config
     from utils.llm_factory import get_default_model
 
-    preferences = _load_user_preferences(session, current_user.id)
+    preferences = load_user_preferences(session, current_user.id)
 
     default_model = get_default_model()
     provider_config = get_provider_config("deepseek") or {}
@@ -185,7 +173,7 @@ async def update_user_settings(
 
     session.commit()
 
-    return {"preferences": _load_user_preferences(session, current_user.id)}
+    return {"preferences": load_user_preferences(session, current_user.id)}
 
 
 # ============================================================================
