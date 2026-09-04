@@ -18,8 +18,8 @@ import { LoadingFallback } from '../components/LoadingFallback'
 import type { Conversation } from '@/types'
 
 // 懒加载页面组件
-import { lazy } from 'react'
-const HistoryPage = lazy(() => import('@/pages/history/HistoryPage'))
+import { lazyWithReload } from '../lazyWithReload'
+const HistoryPage = lazyWithReload(() => import('@/pages/history/HistoryPage'))
 
 export function HistoryPageWrapper() {
   const navigate = useNavigate()

@@ -6,11 +6,12 @@
  * - 数据加载状态处理
  */
 
-import { Suspense, lazy } from 'react'
+import { Suspense } from 'react'
+import { lazyWithReload } from '../lazyWithReload'
 import { useEditAgent } from '../hooks/useEditAgent'
 import { LoadingFallback } from '../components/LoadingFallback'
 
-const CreateAgentPage = lazy(() => import('@/pages/agent/CreateAgentPage'))
+const CreateAgentPage = lazyWithReload(() => import('@/pages/agent/CreateAgentPage'))
 
 export function EditAgentPageWrapper() {
   const { id, agentData, isLoading, handleSave, handleCancel } = useEditAgent()

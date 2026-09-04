@@ -23,6 +23,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  preview: {
+    // index.html 不缓存：重新构建后，已打开的页面刷新即拿到新入口，
+    // 避免旧入口引用已删除的旧哈希 chunk（懒加载路由 404）
+    headers: {
+      'Cache-Control': 'no-store, must-revalidate',
+    },
+  },
   build: {
     // 🔥 细致的代码分割配置，按类别分包
     // 注意：vite 8 (rolldown) 只支持函数形式的 manualChunks

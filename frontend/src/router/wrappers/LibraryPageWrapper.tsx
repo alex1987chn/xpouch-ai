@@ -5,12 +5,12 @@
  * - 登录认证守卫
  */
 
-import { lazy } from 'react'
+import { lazyWithReload } from '../lazyWithReload'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { LoadingFallback } from '../components/LoadingFallback'
 import { SuspenseWithErrorBoundary } from '@/components/SuspenseWithErrorBoundary'
 
-const LibraryPage = lazy(() => import('@/pages/library/LibraryPage'))
+const LibraryPage = lazyWithReload(() => import('@/pages/library/LibraryPage'))
 
 export function LibraryPageWrapper() {
   const isAuthenticated = useRequireAuth()

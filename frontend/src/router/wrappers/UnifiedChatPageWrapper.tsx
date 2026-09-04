@@ -5,11 +5,12 @@
  * - 根据 threadId 强制重新创建组件实例
  */
 
-import { Suspense, lazy } from 'react'
+import { Suspense } from 'react'
+import { lazyWithReload } from '../lazyWithReload'
 import { useParams } from 'react-router-dom'
 import { LoadingFallback } from '../components/LoadingFallback'
 
-const UnifiedChatPage = lazy(() => import('@/pages/chat/UnifiedChatPage'))
+const UnifiedChatPage = lazyWithReload(() => import('@/pages/chat/UnifiedChatPage'))
 
 export function UnifiedChatPageWrapper() {
   const { id } = useParams<{ id: string }>()

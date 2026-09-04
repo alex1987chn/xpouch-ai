@@ -12,11 +12,11 @@
  * - router/hooks/* : 业务逻辑 Hooks
  */
 
-import { lazy } from 'react'
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout'
 import AdminRoute from '@/components/AdminRoute'
 import { SuspenseWithErrorBoundary } from '@/components/SuspenseWithErrorBoundary'
+import { lazyWithReload } from './lazyWithReload'
 
 // 包装器组件
 import {
@@ -31,10 +31,10 @@ import { LoadingFallback } from './components/LoadingFallback'
 // 同步导入（轻量组件）
 import HomePage from '@/pages/home/HomePage'
 
-// 路由懒加载 - 代码分割优化
-const ExpertAdminPage = lazy(() => import('@/pages/admin/ExpertAdminPage'))
-const StatsPage = lazy(() => import('@/pages/admin/StatsPage'))
-const RunTimelinePage = lazy(() => import('@/pages/run/RunTimelinePage'))
+// 路由懒加载 - 代码分割优化（chunk 失效自动刷新拿新构建）
+const ExpertAdminPage = lazyWithReload(() => import('@/pages/admin/ExpertAdminPage'))
+const StatsPage = lazyWithReload(() => import('@/pages/admin/StatsPage'))
+const RunTimelinePage = lazyWithReload(() => import('@/pages/run/RunTimelinePage'))
 
 // 路由配置
 export const router = createBrowserRouter([
