@@ -6,12 +6,13 @@ P1 优化: 添加异步工具版本
 """
 
 # 同步工具
+from .artifacts import get_artifact
 from .browser import aread_webpage, read_webpage
 from .search import asearch_web, search_web
 from .utils import calculator, get_current_time
 
 # 定义同步工具全家桶列表，用于 LangGraph 集成
-BASE_TOOLS = [search_web, get_current_time, calculator, read_webpage]
+BASE_TOOLS = [search_web, get_current_time, calculator, read_webpage, get_artifact]
 
 # P1 优化: 定义异步工具列表
 ASYNC_TOOLS = [
@@ -19,6 +20,7 @@ ASYNC_TOOLS = [
     get_current_time,  # 纯计算，无需异步版本
     calculator,  # 纯计算，无需异步版本
     aread_webpage,
+    get_artifact,  # DB 查询很快，同步即可
 ]
 
 # 保持向后兼容
@@ -30,6 +32,7 @@ __all__ = [
     "get_current_time",
     "calculator",
     "read_webpage",
+    "get_artifact",
     # 异步工具 (P1)
     "asearch_web",
     "aread_webpage",

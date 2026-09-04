@@ -268,6 +268,26 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
                 expert_list_str = format_expert_list_for_prompt(all_experts)
 
+                # Stage 3 跨轮产物连续性：构建本会话历史产物清单
+                recent_artifacts = state.get("recent_artifacts") or []
+                artifacts_section = ""
+                if recent_artifacts:
+                    lines = []
+                    for a in recent_artifacts:
+                        title = a.get("title") or "(无标题)"
+                        head = (a.get("content_head") or "").replace("\n", " ")[:120]
+                        lines.append(
+                            f"- 产物ID: {a.get('id')} | 类型: {a.get('type')} | "
+                            f"{title} | 产出专家: {a.get('expert_type') or '未知'} | 内容开头: {head}"
+                        )
+                    artifacts_section = (
+                        "\n\n## 本会话已有产物（用户可能要求引用或修改它们）\n"
+                        "当用户的请求涉及修改/基于以下既有产物时，请在任务描述中注明产物ID，"
+                        "并指示专家使用 get_artifact 工具（参数为产物ID）读取完整内容后再修改：\n"
+                        + "\n".join(lines)
+                    )
+                    logger.info(f"[COMMANDER] 已注入历史产物清单: {len(recent_artifacts)} 个")
+
                 # 构建占位符映射
                 placeholder_map = {"user_query": user_query, "dynamic_expert_list": expert_list_str}
 
@@ -277,6 +297,13 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                     if placeholder_pattern in system_prompt:
                         system_prompt = system_prompt.replace(placeholder_pattern, value)
                         logger.info(f"[COMMANDER] 已注入占位符: {{{placeholder}}}")
+
+                # 产物清单：优先走显式占位符；DB 提示词未含占位符时兜底追加
+                if "{recent_artifacts}" in system_prompt:
+                    system_prompt = system_prompt.replace("{recent_artifacts}", artifacts_section)
+                    logger.info("[COMMANDER] 已注入占位符: {recent_artifacts}")
+                elif artifacts_section:
+                    system_prompt += artifacts_section
 
                 # 检查是否还有未填充的占位符（警告但不中断）
                 import re

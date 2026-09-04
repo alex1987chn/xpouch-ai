@@ -315,6 +315,14 @@ async def chat_endpoint(
     # 消息 ID 贯通：state 与 SSE 事件/落库共用同一 ID（aggregator 不再随机 uuid）
     actual_message_id = request.message_id or str(uuid4())
 
+    # Stage 3 跨轮产物连续性：注入本会话最近产物摘要（有界，失败静默跳过）
+    try:
+        from tools.artifacts import get_recent_artifacts_for_thread
+
+        recent_artifacts = get_recent_artifacts_for_thread(session, thread_id, limit=5)
+    except Exception:
+        recent_artifacts = []
+
     initial_state = {
         "messages": langchain_messages,
         "current_agent": "router",
@@ -329,6 +337,7 @@ async def chat_endpoint(
         "run_id": agent_run.id,
         "user_id": thread.user_id,
         "message_id": actual_message_id,
+        "recent_artifacts": recent_artifacts,
         "simple_model": user_preferences.get("simple_model"),
         "simple_thinking": user_preferences.get("simple_thinking", "auto"),
     }

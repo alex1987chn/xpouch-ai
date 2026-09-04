@@ -27,6 +27,9 @@ class AgentState(TypedDict):
     user_id: str | None  # 当前用户 ID
     execution_plan_id: str | None  # 复杂执行计划 ID
     message_id: str | None  # 本次消息 ID（SSE 事件与 DB 消息关联，贯穿全图）
+    # Stage 3 跨轮产物连续性：本会话最近产物的有界摘要（id/type/title/expert/内容头），
+    # 供 Commander 规划时知晓可引用/可修改的既有产物；完整内容由专家经 get_artifact 按需读取
+    recent_artifacts: list[dict[str, Any]]
     # v3.4 新增：用户模型偏好（simple 模式使用，来自 user_settings 表）
     simple_model: str | None  # 用户选择的模型 ID，None = 跟随系统默认
     simple_thinking: str | None  # 思考模式偏好：auto/enabled/disabled

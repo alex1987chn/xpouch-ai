@@ -5,6 +5,18 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-09-04] - v3.4.1 跨轮产物连续性：多轮协作闭环
+
+### 新增功能
+
+- **历史产物注入规划**：每条新消息自动携带本会话最近 5 个产物的有界摘要（id/类型/标题/产出专家/内容头 400 字符）进入图状态；Commander 规划 prompt 注入产物清单（支持 `{recent_artifacts}` 显式占位符，DB 提示词未配置时自动追加），规划时知晓可引用/可修改的既有产物
+- **get_artifact 工具**：专家执行「修改产物」类任务时按需读取完整产物内容（截断 2 万字符），避免全量产物塞进图状态
+- 不破坏会话隔离：仍每轮独立 isolated thread，产物上下文经 initial_state 有界注入
+
+### 端到端实测
+
+第一轮"画用户注册 mermaid 流程图"→ 产出产物；第二轮同会话"把上面的流程图改成时序图"→ Commander 计划显式引用产物 ID → coder 专家实际调用 `get_artifact(产物ID)` 读取原文 → 新产物确认为 sequenceDiagram
+
 ## [2026-09-03] - v3.4.0 事件协议 v2：统一事件流（消除脑裂）
 
 ### 架构变更
