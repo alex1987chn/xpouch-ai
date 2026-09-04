@@ -28,10 +28,13 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - complex 模式下的 HITL 审批与恢复
 - `Thread / AgentRun / ExecutionPlan` 三层运行时语义
 - artifact 持久化、恢复展示与多任务串行执行
+- 跨轮产物连续性（追问"把上面的图改成时序图"可直接引用历史产物）
+- 模型思考过程流式展示（reasoning 增量事件，与正文同管道）
+- 用户级模型配置（simple 模式自选模型与思考开关，无需重启）
 - 技能模板（Library 面板 + 内置模板 + 一键发起会话）
 - 模板导入导出（支持 override/clone/skip 策略的 JSON 导入导出）
 - 工具治理（可配置策略 + Library 管理面板，view_admin 只读）
-- SSE 驱动的 Server-Driven UI
+- SSE 驱动的 Server-Driven UI（统一事件协议，恰好一次投递）
 - MCP 动态工具接入
 
 ## 核心能力
@@ -60,6 +63,19 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - 支持代码、Markdown、HTML、文本等 artifact
 - artifact 持久化到数据库
 - 历史复杂会话可恢复展示 artifact
+- **跨轮连续性**：每条新消息自动携带本会话最近产物的摘要进入规划上下文，Commander 可生成"修改产物 X"类任务；专家经 `get_artifact` 工具按需读取完整内容，不膨胀图状态
+
+### 模型思考过程流式展示
+
+- DeepSeek 等推理模型的 `reasoning_content` 以增量事件实时推送
+- 思考流先于正文滚动展示，完成后自动收起；随消息持久化，刷新可回看
+- 思考开关由用户在设置页控制（见下），思考内容计入输出计费
+
+### 用户级模型配置
+
+- 设置页（头像菜单 → 模型配置）自选 simple 模式模型，或跟随系统默认
+- 思考模式三态开关（跟随默认 / 开启 / 关闭），仅对声明 `thinking_toggle` 的模型开放
+- 偏好存于 `user_settings` 表（JSONB），多端同步；模型列表来自 `GET /api/models`（providers.yaml 单一真相源）
 
 ### MCP 动态工具接入
 
@@ -83,13 +99,15 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 
 - 后端是真相源
 - 前端通过 SSE 事件驱动 store 与 UI
+- 事件协议 v2：节点经统一出口（`emit_event`）发射结构化事件，经 LangChain custom event 通道直达消费端——每条事件恰好一次投递，不进图状态/checkpoint；前后端事件枚举有契约测试守护
+- 传输级 `[DONE]` 完成标记，异常断流与正常结束可区分
 - 适合继续演进为可审计、可回放的 Agent 产品
 
 ### Run Timeline（运行时间线）
 
 - 独立页面查看运行实例的完整事件时间线
 - 支持从对话页面和历史会话卡片跳转
-- 展示 16 种事件类型：run 创建、router 决策、HITL 中断/恢复、任务执行、artifact 生成、运行终态等
+- 展示运行全生命周期事件：run 创建、router 决策、HITL 中断/恢复、任务执行、artifact 生成、运行终态等
 - API：`GET /api/runs/{run_id}`、`GET /api/runs/{run_id}/timeline`、`GET /api/runs/thread/{thread_id}/timeline`
 
 ### Admin Stats Dashboard（管理统计面板）
@@ -172,7 +190,7 @@ pnpm dev
 # 后端（另一个终端）
 cd backend
 uv sync
-uv run uvicorn main:app --reload --port 3002
+uv run python run.py        # Windows 兼容启动器（事件循环/热重载已处理），默认 3002
 ```
 
 本地开发默认地址：
@@ -223,6 +241,7 @@ uv run pytest tests/ -q
 # frontend
 cd frontend
 pnpm run lint
+npx tsc --noEmit
 pnpm run build
 ```
 
@@ -253,6 +272,11 @@ pnpm run build
 - admin stats dashboard（管理统计面板）
 - 会话恢复与任务续执行（切换会话后可继续执行中的任务）
 - 模板导入导出（JSON 格式，支持冲突检测与多种导入策略）
+- DeepSeek V4 Flash 迁移（旧模型 ID 别名兼容存量数据）
+- 用户级模型配置（simple 模式选模型 + 思考开关）
+- 模型思考过程流式展示（reasoning 增量事件）
+- 事件协议 v2 统一（恰好一次投递、单通道分发、契约测试）
+- 跨轮产物连续性（历史产物注入规划 + get_artifact 工具）
 
 ### 下一阶段
 
