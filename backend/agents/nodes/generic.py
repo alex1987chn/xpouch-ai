@@ -524,7 +524,8 @@ async def generic_worker_node(
                 "messages": [response],  # 包含 tool_calls 的 AIMessage
                 "task_list": task_list_for_return,  # 携带 in_progress 标记（防 started 重发）
                 "current_task_index": current_index,  # 不增加 index，等工具执行完再说
-                "__expert_info": {
+                # 正式 schema 键（替代 __expert_info 隐式契约，随 checkpoint 持久化）
+                "last_expert_result": {
                     "expert_type": expert_type,
                     "expert_name": expert_name,
                     "task_id": task_id,
@@ -689,8 +690,8 @@ async def generic_worker_node(
             "completed_at": completed_at.isoformat(),
             "duration_ms": duration_ms,
             "artifact": artifact,
-            # ✅ 添加 __expert_info 用于 chat.py 识别和收集 artifacts
-            "__expert_info": {
+            # 正式 schema 键（替代 __expert_info，服务层从 state 更新读取）
+            "last_expert_result": {
                 "expert_type": expert_type,
                 "expert_name": expert_name,
                 "task_id": task_id,
@@ -775,8 +776,8 @@ async def generic_worker_node(
             "error": str(e),
             "started_at": started_at.isoformat(),
             "completed_at": datetime.now().isoformat(),
-            # ✅ 添加 __expert_info 用于标识失败的专家
-            "__expert_info": {
+            # 正式 schema 键（替代 __expert_info）
+            "last_expert_result": {
                 "expert_type": expert_type,
                 "expert_name": expert_config.get("name", expert_type)
                 if expert_config

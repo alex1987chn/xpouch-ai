@@ -30,6 +30,9 @@ class AgentState(TypedDict):
     # Stage 3 跨轮产物连续性：本会话最近产物的有界摘要（id/type/title/expert/内容头），
     # 供 Commander 规划时知晓可引用/可修改的既有产物；完整内容由专家经 get_artifact 按需读取
     recent_artifacts: list[dict[str, Any]]
+    # 专家执行结果（正式 schema 键，随 checkpoint 持久化）：
+    # 替代 v1 依赖 LangGraph"未知键过滤后在事件流 raw output 浮现"的隐式契约（__expert_info）
+    last_expert_result: dict[str, Any]
     # v3.4 新增：用户模型偏好（simple 模式使用，来自 user_settings 表）
     simple_model: str | None  # 用户选择的模型 ID，None = 跟随系统默认
     simple_thinking: str | None  # 思考模式偏好：auto/enabled/disabled

@@ -94,11 +94,13 @@ async def lifespan(app: FastAPI):
 
     # 🔥🔥🔥 v3.1.0: 检查 LangGraph Checkpointer 表
     # 注意：Checkpoint 表由 migrations/checkpoint_tables.sql 创建，支持复杂模式
-    from utils.db import init_checkpointer_tables
+    from utils.db import init_checkpointer_tables, setup_shared_checkpointer
 
     try:
         await init_checkpointer_tables()
-        logger.info("[Lifespan] Checkpointer tables verified for HITL")
+        # 预热共享 checkpointer（绑定连接池 + msgpack 白名单 serializer + setup 建表）
+        await setup_shared_checkpointer()
+        logger.info("[Lifespan] Shared checkpointer ready (pool-backed)")
     except Exception as e:
         logger.warning(f"[Lifespan WARN] Failed to verify checkpointer tables: {e}")
         # 非致命错误，继续启动

@@ -556,13 +556,6 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                 "current_task_index": 0,
                 "expert_results": [],
                 "execution_plan_id": execution_plan_id,
-                # 保留前端兼容的元数据
-                "__task_plan": {
-                    "task_count": len(task_list),
-                    "strategy": commander_response.strategy,
-                    "estimated_steps": commander_response.estimated_steps,
-                    "tasks": task_list,
-                },
             }
 
     except Exception as e:

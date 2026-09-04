@@ -368,10 +368,8 @@ class StreamService:
             StreamingResponse SSE流
         """
         # 在方法内部导入 LangGraph，防止循环引用
-        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
         from agents.graph import create_smart_router_workflow
-        from utils.db import get_checkpointer_serializer, get_db_connection
 
         async def event_generator():
             actual_message_id = message_id or str(uuid.uuid4())
@@ -386,238 +384,236 @@ class StreamService:
             # 🔥 MCP: 获取动态工具
             mcp_tools = await self._get_mcp_tools()
 
-            async with get_db_connection() as conn:
-                checkpointer = AsyncPostgresSaver(conn, serde=get_checkpointer_serializer())
-                graph = create_smart_router_workflow(checkpointer=checkpointer)
+            # 共享 checkpointer（绑定连接池，按操作借还连接，不再每流独占）
+            from utils.db import get_shared_checkpointer
 
-                stream_queue = asyncio.Queue()
+            graph = create_smart_router_workflow(checkpointer=get_shared_checkpointer())
 
-                config = {
-                    "recursion_limit": 100,
-                    "configurable": {
-                        "thread_id": thread_id,
-                        "stream_queue": stream_queue,
-                        "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
-                    },
-                }
+            stream_queue = asyncio.Queue()
 
-                # 🔥🔥🔥 关键修复：使用确定性的隔离 thread_id，确保新消息不受旧状态影响
-                # 格式: {thread_id}_{agent_run.id} - 确定性，可在恢复时重建
-                isolated_thread_id = f"{thread_id}_{agent_run.id}"
-                config["configurable"]["thread_id"] = isolated_thread_id
-                logger.info(f"[StreamService] 使用隔离的 thread_id: {isolated_thread_id}")
+            config = {
+                "recursion_limit": 100,
+                "configurable": {
+                    "thread_id": thread_id,
+                    "stream_queue": stream_queue,
+                    "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
+                },
+            }
 
-                # 注入初始状态（现在使用隔离的 thread_id，不会与旧状态冲突）
-                await graph.aupdate_state(config, initial_state)
+            # 🔥🔥🔥 关键修复：使用确定性的隔离 thread_id，确保新消息不受旧状态影响
+            # 格式: {thread_id}_{agent_run.id} - 确定性，可在恢复时重建
+            isolated_thread_id = f"{thread_id}_{agent_run.id}"
+            config["configurable"]["thread_id"] = isolated_thread_id
+            logger.info(f"[StreamService] 使用隔离的 thread_id: {isolated_thread_id}")
 
-                try:
-                    # 收集模型思考过程（DeepSeek reasoning_content），流结束后随消息持久化
-                    reasoning_parts: list[str] = []
-                    # 协议 v2：节点事件经 adispatch_custom_event 以 on_custom_event 浮现，
-                    # 每事件恰好一次（v1 的 event_queue 逐节点全量 flush 已废弃）
-                    async for token in graph.astream_events(None, config, version="v2"):
-                        # 🔥 修复：跳过非字典类型的 token
-                        if not isinstance(token, dict):
-                            continue
+            # 注入初始状态（现在使用隔离的 thread_id，不会与旧状态冲突）
+            await graph.aupdate_state(config, initial_state)
 
-                        self._raise_if_run_cancelled(agent_run.id)
-                        self._sync_run_progress_from_token(token, agent_run.id)
+            try:
+                # 收集模型思考过程（DeepSeek reasoning_content），流结束后随消息持久化
+                reasoning_parts: list[str] = []
+                # 协议 v2：节点事件经 adispatch_custom_event 以 on_custom_event 浮现，
+                # 每事件恰好一次（v1 的 event_queue 逐节点全量 flush 已废弃）
+                async for token in graph.astream_events(None, config, version="v2"):
+                    # 🔥 修复：跳过非字典类型的 token
+                    if not isinstance(token, dict):
+                        continue
 
-                        event_type = token.get("event", "")
-                        name = token.get("name", "")
-                        data = token.get("data", {}) or {}
-                        output = data.get("output", {}) or {}
+                    self._raise_if_run_cancelled(agent_run.id)
+                    self._sync_run_progress_from_token(token, agent_run.id)
 
-                        # 协议 v2：节点的统一事件出口（emit_event）
-                        if event_type == "on_custom_event" and name == "sse_event":
-                            event_str = sse_payload_to_wire(token)
-                            if event_str:
-                                yield event_str
-                            continue
+                    event_type = token.get("event", "")
+                    name = token.get("name", "")
+                    data = token.get("data", {}) or {}
+                    output = data.get("output", {}) or {}
 
-                        # 处理消息流、task 事件等
-                        event_str = self.transform_langgraph_event(
-                            token, actual_message_id, reasoning_parts
-                        )
+                    # 协议 v2：节点的统一事件出口（emit_event）
+                    if event_type == "on_custom_event" and name == "sse_event":
+                        event_str = sse_payload_to_wire(token)
                         if event_str:
                             yield event_str
+                        continue
 
-                        # 收集任务执行结果
-                        self._collect_execution_results(
-                            token, collected_task_list, expert_artifacts
+                    # 处理消息流、task 事件等
+                    event_str = self.transform_langgraph_event(
+                        token, actual_message_id, reasoning_parts
+                    )
+                    if event_str:
+                        yield event_str
+
+                    # 收集任务执行结果
+                    self._collect_execution_results(token, collected_task_list, expert_artifacts)
+
+                    # 检测 router_decision
+                    if (
+                        event_type == "on_chain_end"
+                        and name == "router"
+                        and output
+                        and isinstance(output, dict)
+                        and output.get("router_decision")
+                    ):
+                        router_decision = output["router_decision"]
+                        # 更新线程模式和运行实例模式
+                        await self._update_thread_mode(
+                            thread_id, router_decision, run_id=agent_run.id
                         )
-
-                        # 检测 router_decision
-                        if (
-                            event_type == "on_chain_end"
-                            and name == "router"
-                            and output
-                            and isinstance(output, dict)
-                            and output.get("router_decision")
-                        ):
-                            router_decision = output["router_decision"]
-                            # 更新线程模式和运行实例模式
-                            await self._update_thread_mode(
-                                thread_id, router_decision, run_id=agent_run.id
-                            )
-                            # 🔥 写入 router_decided 事件到账本
-                            emit_router_decided(
-                                self.db,
-                                run_id=agent_run.id,
-                                thread_id=thread_id,
-                                mode=router_decision,
-                                reason=output.get("router_reason"),
-                            )
-
-                except AppError as e:
-                    if e.code == ErrorCode.RUN_CANCELLED:
-                        logger.info("[StreamService] 运行已取消，结束 LangGraph 流")
-                        yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
-                        return
-                    logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
-                    self._mark_agent_run_failed(agent_run.id, str(e))
-                    # 🔥 写入 run_failed 事件到账本
-                    emit_run_failed(
-                        self.db,
-                        run_id=agent_run.id,
-                        thread_id=thread_id,
-                        error_code=str(e.code) if e.code else None,
-                        error_message=str(e),
-                    )
-                    self.db.commit()
-                    yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
-                    return
-                except Exception as e:
-                    logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
-                    self._mark_agent_run_failed(agent_run.id, str(e))
-                    # 🔥 写入 run_failed 事件到账本
-                    emit_run_failed(
-                        self.db,
-                        run_id=agent_run.id,
-                        thread_id=thread_id,
-                        error_message=str(e),
-                    )
-                    self.db.commit()
-                    yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
-                    return
-
-                # 🔥🔥🔥 HITL 检测：检查是否处于 interrupt 状态
-                # 获取当前状态，检查是否有待执行的任务（被 interrupt 暂停）
-                final_state = await graph.aget_state(config)
-                state_values = final_state.values if final_state else {}
-
-                # 检查是否有任务列表但未完成（说明被 interrupt 暂停）
-                task_list = state_values.get("task_list", [])
-                current_task_index = state_values.get("current_task_index", 0)
-
-                # 如果存在任务列表且当前任务索引为0（未开始执行），说明被 HITL 中断
-                if self._should_wait_for_human_approval(
-                    task_list=task_list,
-                    current_task_index=current_task_index,
-                    collected_task_list=collected_task_list,
-                ):
-                    logger.info("[StreamService] HITL 中断检测：任务规划完成，等待用户审核")
-
-                    # 🔥 方案1：更新 ExecutionPlan 状态为 waiting_for_approval
-                    self._update_execution_plan_status(thread_id, "waiting_for_approval")
-
-                    # 构建当前计划数据
-                    current_plan = [
-                        {
-                            "id": task.get("id", f"task-{i}"),
-                            "expert_type": task.get("expert_type", "generic"),
-                            "description": task.get("description", ""),
-                            "sort_order": i,
-                            "status": "pending",
-                            "depends_on": task.get("depends_on")
-                            or [],  # 🔥 关键：传递依赖关系到前端
-                        }
-                        for i, task in enumerate(task_list)
-                    ]
-
-                    # 发送 human.interrupt 事件（包含计划版本号，供乐观锁校验）
-                    plan_version = self._get_plan_version(thread_id)
-                    execution_plan = self._get_latest_execution_plan(thread_id)
-
-                    # 🔥 写入 hitl_interrupted 事件到账本
-                    emit_hitl_interrupted(
-                        self.db,
-                        run_id=agent_run.id,
-                        thread_id=thread_id,
-                        execution_plan_id=execution_plan.id if execution_plan else None,
-                        plan_version=plan_version,
-                    )
-                    self.db.commit()
-
-                    self._update_agent_run_status(
-                        agent_run.id,
-                        RunStatus.WAITING_FOR_APPROVAL,
-                        current_node="waiting_for_approval",
-                    )
-                    yield self._build_human_interrupt_event(
-                        thread_id,
-                        current_plan,
-                        plan_version,
-                        run_id=agent_run.id,
-                        execution_plan_id=execution_plan.id if execution_plan else None,
-                    )
-                    # HITL 中断是本轮流的正常终态：发 [DONE] 让前端干净收尾
-                    # （恢复走独立的 /chat/resume 请求）
-                    yield "data: [DONE]\n\n"
-                    return  # 结束流，等待用户通过 /chat/resume 恢复
-
-                # 正常流程：获取最终结果
-                last_message = (
-                    state_values.get("messages", [])[-1] if state_values.get("messages") else None
-                )
-
-                if last_message:
-                    full_response = last_message.content
-
-                    if router_decision == "complex":
-                        persist_error = self._get_complex_result_persistence_error(
+                        # 🔥 写入 router_decided 事件到账本
+                        emit_router_decided(
+                            self.db,
+                            run_id=agent_run.id,
                             thread_id=thread_id,
-                            last_message=last_message,
-                            task_list=collected_task_list,
+                            mode=router_decision,
+                            reason=output.get("router_reason"),
                         )
-                        if persist_error:
-                            logger.error("[StreamService] %s", persist_error)
-                            self._mark_agent_run_failed(agent_run.id, persist_error)
-                            yield self._build_error_event(ErrorCode.GRAPH_ERROR, persist_error)
-                            return
 
-                    # 保存到数据库
-                    await self._save_langgraph_result(
-                        thread_id=thread_id,
-                        thread=thread,
-                        user_message=user_message,
-                        last_message=last_message,
-                        router_decision=router_decision,
-                        task_list=collected_task_list,
-                        expert_artifacts=expert_artifacts,
-                        message_id=actual_message_id,
-                        run_id=agent_run.id,
-                        thinking_text="".join(reasoning_parts) or None,
-                    )
-                    self._update_agent_run_status(
-                        agent_run.id, RunStatus.COMPLETED, current_node="done"
-                    )
-                    # 🔥 写入 run_completed 事件到账本
-                    emit_run_completed(
-                        self.db,
-                        run_id=agent_run.id,
-                        thread_id=thread_id,
-                    )
-                    self.db.commit()
+            except AppError as e:
+                if e.code == ErrorCode.RUN_CANCELLED:
+                    logger.info("[StreamService] 运行已取消，结束 LangGraph 流")
+                    yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
+                    return
+                logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
+                self._mark_agent_run_failed(agent_run.id, str(e))
+                # 🔥 写入 run_failed 事件到账本
+                emit_run_failed(
+                    self.db,
+                    run_id=agent_run.id,
+                    thread_id=thread_id,
+                    error_code=str(e.code) if e.code else None,
+                    error_message=str(e),
+                )
+                self.db.commit()
+                yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
+                return
+            except Exception as e:
+                logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
+                self._mark_agent_run_failed(agent_run.id, str(e))
+                # 🔥 写入 run_failed 事件到账本
+                emit_run_failed(
+                    self.db,
+                    run_id=agent_run.id,
+                    thread_id=thread_id,
+                    error_message=str(e),
+                )
+                self.db.commit()
+                yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
+                return
 
-                # 🔥 修复：只有简单模式才在这里发送 message.done
-                # 复杂模式由 aggregator 通过 event_queue 发送
-                if router_decision == "simple":
-                    yield self._build_message_done_event(actual_message_id, full_response)
-                # 复杂模式：message.done 已由 aggregator 通过 event_queue 发送
+            # 🔥🔥🔥 HITL 检测：检查是否处于 interrupt 状态
+            # 获取当前状态，检查是否有待执行的任务（被 interrupt 暂停）
+            final_state = await graph.aget_state(config)
+            state_values = final_state.values if final_state else {}
 
-                # 传输级完成标记：前端据此区分"正常结束"与"异常断流"
+            # 检查是否有任务列表但未完成（说明被 interrupt 暂停）
+            task_list = state_values.get("task_list", [])
+            current_task_index = state_values.get("current_task_index", 0)
+
+            # 如果存在任务列表且当前任务索引为0（未开始执行），说明被 HITL 中断
+            if self._should_wait_for_human_approval(
+                task_list=task_list,
+                current_task_index=current_task_index,
+                collected_task_list=collected_task_list,
+            ):
+                logger.info("[StreamService] HITL 中断检测：任务规划完成，等待用户审核")
+
+                # 🔥 方案1：更新 ExecutionPlan 状态为 waiting_for_approval
+                self._update_execution_plan_status(thread_id, "waiting_for_approval")
+
+                # 构建当前计划数据
+                current_plan = [
+                    {
+                        "id": task.get("id", f"task-{i}"),
+                        "expert_type": task.get("expert_type", "generic"),
+                        "description": task.get("description", ""),
+                        "sort_order": i,
+                        "status": "pending",
+                        "depends_on": task.get("depends_on") or [],  # 🔥 关键：传递依赖关系到前端
+                    }
+                    for i, task in enumerate(task_list)
+                ]
+
+                # 发送 human.interrupt 事件（包含计划版本号，供乐观锁校验）
+                plan_version = self._get_plan_version(thread_id)
+                execution_plan = self._get_latest_execution_plan(thread_id)
+
+                # 🔥 写入 hitl_interrupted 事件到账本
+                emit_hitl_interrupted(
+                    self.db,
+                    run_id=agent_run.id,
+                    thread_id=thread_id,
+                    execution_plan_id=execution_plan.id if execution_plan else None,
+                    plan_version=plan_version,
+                )
+                self.db.commit()
+
+                self._update_agent_run_status(
+                    agent_run.id,
+                    RunStatus.WAITING_FOR_APPROVAL,
+                    current_node="waiting_for_approval",
+                )
+                yield self._build_human_interrupt_event(
+                    thread_id,
+                    current_plan,
+                    plan_version,
+                    run_id=agent_run.id,
+                    execution_plan_id=execution_plan.id if execution_plan else None,
+                )
+                # HITL 中断是本轮流的正常终态：发 [DONE] 让前端干净收尾
+                # （恢复走独立的 /chat/resume 请求）
                 yield "data: [DONE]\n\n"
+                return  # 结束流，等待用户通过 /chat/resume 恢复
+
+            # 正常流程：获取最终结果
+            last_message = (
+                state_values.get("messages", [])[-1] if state_values.get("messages") else None
+            )
+
+            if last_message:
+                full_response = last_message.content
+
+                if router_decision == "complex":
+                    persist_error = self._get_complex_result_persistence_error(
+                        thread_id=thread_id,
+                        last_message=last_message,
+                        task_list=collected_task_list,
+                    )
+                    if persist_error:
+                        logger.error("[StreamService] %s", persist_error)
+                        self._mark_agent_run_failed(agent_run.id, persist_error)
+                        yield self._build_error_event(ErrorCode.GRAPH_ERROR, persist_error)
+                        return
+
+                # 保存到数据库
+                await self._save_langgraph_result(
+                    thread_id=thread_id,
+                    thread=thread,
+                    user_message=user_message,
+                    last_message=last_message,
+                    router_decision=router_decision,
+                    task_list=collected_task_list,
+                    expert_artifacts=expert_artifacts,
+                    message_id=actual_message_id,
+                    run_id=agent_run.id,
+                    thinking_text="".join(reasoning_parts) or None,
+                )
+                self._update_agent_run_status(
+                    agent_run.id, RunStatus.COMPLETED, current_node="done"
+                )
+                # 🔥 写入 run_completed 事件到账本
+                emit_run_completed(
+                    self.db,
+                    run_id=agent_run.id,
+                    thread_id=thread_id,
+                )
+                self.db.commit()
+
+            # 🔥 修复：只有简单模式才在这里发送 message.done
+            # 复杂模式由 aggregator 通过 event_queue 发送
+            if router_decision == "simple":
+                yield self._build_message_done_event(actual_message_id, full_response)
+            # 复杂模式：message.done 已由 aggregator 通过 event_queue 发送
+
+            # 传输级完成标记：前端据此区分"正常结束"与"异常断流"
+            yield "data: [DONE]\n\n"
 
             # async-with（图连接）退出后清理本次运行的隔离线程 checkpoint：
             # 图的最终 checkpoint 写入要等到连接归还时才全部落地，删除必须放在
@@ -651,72 +647,66 @@ class StreamService:
         full_response = ""
 
         # 在方法内部导入
-        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-
         from agents.graph import create_smart_router_workflow
-        from utils.db import get_checkpointer_serializer, get_db_connection
+        from utils.db import get_shared_checkpointer
 
         # 🔥 MCP: 获取动态工具
         mcp_tools = await self._get_mcp_tools()
         self._update_agent_run_status(agent_run.id, RunStatus.RUNNING, current_node="router")
 
-        async with get_db_connection() as conn:
-            checkpointer = AsyncPostgresSaver(conn, serde=get_checkpointer_serializer())
-            graph = create_smart_router_workflow(checkpointer=checkpointer)
+        graph = create_smart_router_workflow(checkpointer=get_shared_checkpointer())
 
-            config = {
-                "recursion_limit": 100,
-                "configurable": {
-                    "thread_id": thread_id,
-                    "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
-                },
-            }
+        config = {
+            "recursion_limit": 100,
+            "configurable": {
+                "thread_id": thread_id,
+                "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
+            },
+        }
 
-            # 🔥🔥🔥 关键修复：使用确定性的隔离 thread_id 避免状态冲突
-            # 格式: {thread_id}_{agent_run.id} - 确定性，可在恢复时重建
-            isolated_thread_id = f"{thread_id}_{agent_run.id}"
-            config["configurable"]["thread_id"] = isolated_thread_id
-            logger.info(f"[StreamService] 使用隔离的 thread_id: {isolated_thread_id}")
+        # 🔥🔥🔥 关键修复：使用确定性的隔离 thread_id 避免状态冲突
+        # 格式: {thread_id}_{agent_run.id} - 确定性，可在恢复时重建
+        isolated_thread_id = f"{thread_id}_{agent_run.id}"
+        config["configurable"]["thread_id"] = isolated_thread_id
+        logger.info(f"[StreamService] 使用隔离的 thread_id: {isolated_thread_id}")
 
-            await graph.aupdate_state(config, initial_state)
+        await graph.aupdate_state(config, initial_state)
 
-            # 执行
-            result = await graph.ainvoke(None, config)
+        # 执行
+        result = await graph.ainvoke(None, config)
 
-            last_message = result.get("messages", [])[-1] if result.get("messages") else None
-            router_decision = result.get("router_decision", "simple")
+        last_message = result.get("messages", [])[-1] if result.get("messages") else None
+        router_decision = result.get("router_decision", "simple")
 
-            if last_message:
-                full_response = last_message.content
+        if last_message:
+            full_response = last_message.content
 
-                if router_decision == "complex":
-                    persist_error = self._get_complex_result_persistence_error(
-                        thread_id=thread_id,
-                        last_message=last_message,
-                        task_list=result.get("task_list", []),
-                    )
-                    if persist_error:
-                        self._mark_agent_run_failed(agent_run.id, persist_error)
-                        raise AppError(
-                            message=persist_error,
-                            code=ErrorCode.GRAPH_ERROR,
-                            status_code=500,
-                        )
-
-                await self._save_langgraph_result(
+            if router_decision == "complex":
+                persist_error = self._get_complex_result_persistence_error(
                     thread_id=thread_id,
-                    thread=thread,
-                    user_message=user_message,
                     last_message=last_message,
-                    router_decision=router_decision,
                     task_list=result.get("task_list", []),
-                    expert_artifacts={},
-                    message_id=initial_state.get("message_id") or str(uuid.uuid4()),
-                    run_id=agent_run.id,
                 )
-                self._update_agent_run_status(
-                    agent_run.id, RunStatus.COMPLETED, current_node="done"
-                )
+                if persist_error:
+                    self._mark_agent_run_failed(agent_run.id, persist_error)
+                    raise AppError(
+                        message=persist_error,
+                        code=ErrorCode.GRAPH_ERROR,
+                        status_code=500,
+                    )
+
+            await self._save_langgraph_result(
+                thread_id=thread_id,
+                thread=thread,
+                user_message=user_message,
+                last_message=last_message,
+                router_decision=router_decision,
+                task_list=result.get("task_list", []),
+                expert_artifacts={},
+                message_id=initial_state.get("message_id") or str(uuid.uuid4()),
+                run_id=agent_run.id,
+            )
+            self._update_agent_run_status(agent_run.id, RunStatus.COMPLETED, current_node="done")
 
         return {
             "role": "assistant",
@@ -894,46 +884,49 @@ class StreamService:
         self.db.commit()
 
     def _collect_execution_results(self, token, task_list: list[dict], expert_artifacts: dict):
-        """收集 LangGraph 执行结果"""
+        """收集 LangGraph 执行结果（从 state 更新读取，替代 v1 的 raw output 捞取）"""
         # 🔥 修复：跳过非字典类型的 token
         if not isinstance(token, dict):
             return
 
         event = token.get("event", "")
-        data = token.get("data", {}) or {}
 
         if event == "on_chain_end":
-            output = data.get("output", {}) or {}
-            if output and isinstance(output, dict) and output.get("__expert_info"):
-                # 收集任务结果
-                task_result = output.get("__expert_info", {})
-                task_list.append(
-                    {
-                        "id": task_result.get("task_id"),
-                        "expert_type": task_result.get("expert_type"),
-                        "status": task_result.get("status"),
-                        "description": output.get("description", ""),
-                        "output_result": output.get("output_result"),
-                        "input_data": output.get("input_data", {}),
-                        "started_at": output.get("started_at"),
-                        "completed_at": output.get("completed_at"),
-                        "artifact": output.get("artifact"),
-                    }
-                )
+            output = token.get("data", {}).get("output", {}) or {}
+            if not (output and isinstance(output, dict)):
+                return
+            # 正式 schema 键（generic 节点返回值经 ChannelWrite 透传到事件 output）
+            expert_info = output.get("last_expert_result")
+            if not expert_info:
+                return
+            # 收集任务结果
+            task_list.append(
+                {
+                    "id": expert_info.get("task_id"),
+                    "expert_type": expert_info.get("expert_type"),
+                    "status": expert_info.get("status"),
+                    "description": output.get("description", ""),
+                    "output_result": output.get("output_result"),
+                    "input_data": output.get("input_data", {}),
+                    "started_at": output.get("started_at"),
+                    "completed_at": output.get("completed_at"),
+                    "artifact": output.get("artifact"),
+                }
+            )
 
-                # 收集 artifacts
-                task_id = task_result.get("task_id")
-                artifact_data = output.get("artifact")
+            # 收集 artifacts
+            task_id = expert_info.get("task_id")
+            artifact_data = output.get("artifact")
+            logger.info(
+                f"[_collect_execution_results] 收集 artifacts: task_id={task_id}, has_artifact={artifact_data is not None}"
+            )
+            if task_id and artifact_data:
+                if task_id not in expert_artifacts:
+                    expert_artifacts[task_id] = []
+                expert_artifacts[task_id].append(artifact_data)
                 logger.info(
-                    f"[_collect_execution_results] 收集 artifacts: task_id={task_id}, has_artifact={artifact_data is not None}"
+                    f"[_collect_execution_results] ✅ artifacts 已收集: task_id={task_id}, count={len(expert_artifacts[task_id])}"
                 )
-                if task_id and artifact_data:
-                    if task_id not in expert_artifacts:
-                        expert_artifacts[task_id] = []
-                    expert_artifacts[task_id].append(artifact_data)
-                    logger.info(
-                        f"[_collect_execution_results] ✅ artifacts 已收集: task_id={task_id}, count={len(expert_artifacts[task_id])}"
-                    )
 
     # ============================================================================
     # 公共流式方法（供 RecoveryService 复用）
@@ -967,51 +960,47 @@ class StreamService:
             SSE 事件字符串
         """
         # 在方法内部导入，防止循环引用
-        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-
         from agents.graph import create_smart_router_workflow
-        from utils.db import get_checkpointer_serializer, get_db_connection
+        from utils.db import get_shared_checkpointer
 
         # 🔥 MCP: 获取动态工具
         mcp_tools = await self._get_mcp_tools()
 
-        async with get_db_connection() as conn:
-            checkpointer = AsyncPostgresSaver(conn, serde=get_checkpointer_serializer())
-            graph = create_smart_router_workflow(checkpointer=checkpointer)
+        graph = create_smart_router_workflow(checkpointer=get_shared_checkpointer())
 
-            # 🔥🔥🔥 关键修复：使用与初始执行相同的确定性 isolated_thread_id
-            # 格式: {thread_id}_{run_id} - 必须与 handle_langgraph_stream 中的格式一致
-            isolated_thread_id = f"{thread_id}_{run_id}" if run_id else thread_id
-            config = {
-                "recursion_limit": 100,
-                "configurable": {
-                    "thread_id": isolated_thread_id,
-                    "stream_queue": realtime_queue,
-                    "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
-                },
-            }
-            logger.info(f"[StreamService] 恢复流程使用隔离的 thread_id: {isolated_thread_id}")
+        # 🔥🔥🔥 关键修复：使用与初始执行相同的确定性 isolated_thread_id
+        # 格式: {thread_id}_{run_id} - 必须与 handle_langgraph_stream 中的格式一致
+        isolated_thread_id = f"{thread_id}_{run_id}" if run_id else thread_id
+        config = {
+            "recursion_limit": 100,
+            "configurable": {
+                "thread_id": isolated_thread_id,
+                "stream_queue": realtime_queue,
+                "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
+            },
+        }
+        logger.info(f"[StreamService] 恢复流程使用隔离的 thread_id: {isolated_thread_id}")
 
-            # 如果提供了更新后的计划，应用它
-            if updated_plan:
-                await self._apply_updated_plan(graph, config, updated_plan, message_id)
-                if run_id:
-                    execution_plan = self._get_execution_plan_by_run(run_id)
-                    if execution_plan:
-                        emit_plan_updated(
-                            self.db,
-                            run_id=run_id,
-                            thread_id=thread_id,
-                            execution_plan_id=execution_plan.id,
-                            plan_version=int(execution_plan.plan_version),
-                            task_count=len(updated_plan),
-                        )
-                        self.db.commit()
-            elif message_id:
-                # 普通批准（未修改计划）：图从中断点直接续跑，state 不会经过
-                # _apply_updated_plan——单独补写 message_id，保证聚合阶段
-                # message.done 与本次流式 delta 使用同一 ID
-                await graph.aupdate_state(config, {"message_id": message_id})
+        # 如果提供了更新后的计划，应用它
+        if updated_plan:
+            await self._apply_updated_plan(graph, config, updated_plan, message_id)
+            if run_id:
+                execution_plan = self._get_execution_plan_by_run(run_id)
+                if execution_plan:
+                    emit_plan_updated(
+                        self.db,
+                        run_id=run_id,
+                        thread_id=thread_id,
+                        execution_plan_id=execution_plan.id,
+                        plan_version=int(execution_plan.plan_version),
+                        task_count=len(updated_plan),
+                    )
+                    self.db.commit()
+        elif message_id:
+            # 普通批准（未修改计划）：图从中断点直接续跑，state 不会经过
+            # _apply_updated_plan——单独补写 message_id，保证聚合阶段
+            # message.done 与本次流式 delta 使用同一 ID
+            await graph.aupdate_state(config, {"message_id": message_id})
 
             # 🔥🔥🔥 关键修复：外层循环驱动任务执行直到完成
             # LangGraph 的 astream_events 在第一个循环结束后就返回，不会自动继续
@@ -1108,7 +1097,7 @@ class StreamService:
                                         and isinstance(output, dict)
                                         and output.get("artifact")
                                     ):
-                                        expert_info = output.get("__expert_info") or {}
+                                        expert_info = output.get("last_expert_result") or {}
                                         await stream_queue.put(
                                             {
                                                 "type": "artifact",
@@ -1196,7 +1185,7 @@ class StreamService:
                             data = token.get("data", {}) or {}
                             output = data.get("output", {}) or {}
                             if output and isinstance(output, dict) and output.get("artifact"):
-                                expert_info = output.get("__expert_info") or {}
+                                expert_info = output.get("last_expert_result") or {}
                                 await stream_queue.put(
                                     {
                                         "type": "artifact",

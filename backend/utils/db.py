@@ -166,6 +166,33 @@ def get_checkpointer_serializer():
     return JsonPlusSerializer(allowed_msgpack_modules=[("models.enums", "TaskStatus")])
 
 
+# 共享 checkpointer 单例：直接绑定连接池（每个操作从池借还连接，用完即还），
+# 替代"每个聊天流独占一条池连接整个流时长"的模式（并发流会占满连接池）。
+# AsyncPostgresSaver 构造器原生支持 AsyncConnectionPool（无 pipeline 时）。
+_shared_saver = None
+
+
+def get_shared_checkpointer():
+    """获取绑定到全局连接池的共享 AsyncPostgresSaver（首次调用时创建）。"""
+    global _shared_saver
+    if _shared_saver is None:
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+        _shared_saver = AsyncPostgresSaver(
+            get_connection_pool(), serde=get_checkpointer_serializer()
+        )
+    return _shared_saver
+
+
+async def setup_shared_checkpointer() -> None:
+    """应用启动时调用：建表并预热共享 checkpointer（lifespan 钩子）。"""
+    pool = get_connection_pool()
+    if pool.closed:
+        await pool.open()
+    saver = get_shared_checkpointer()
+    await saver.setup()
+
+
 async def delete_checkpoints_for_thread(thread_id: str, run_ids: list[str] | None = None) -> int:
     """删除 thread 及其隔离线程（{thread_id}_{run_id}）的 checkpoint 数据。
 

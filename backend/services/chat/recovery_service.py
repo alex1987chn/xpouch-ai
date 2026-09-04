@@ -493,7 +493,14 @@ class RecoveryService:
 
                 if subtask:
                     try:
-                        create_artifacts_batch(self.db, subtask.id, artifacts)
+                        # 收集链送来的是 raw dict，转换为 ArtifactCreate（pydantic）
+                        from models import ArtifactCreate
+
+                        artifact_models = [
+                            ArtifactCreate.model_validate(a) if isinstance(a, dict) else a
+                            for a in artifacts
+                        ]
+                        create_artifacts_batch(self.db, subtask.id, artifact_models)
                         logger.info(
                             f"[HITL RESUME] 保存 {len(artifacts)} 个 artifacts 到 SubTask {subtask.id}"
                         )
