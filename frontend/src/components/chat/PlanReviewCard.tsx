@@ -106,11 +106,12 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
       })
       addMessage({ role: 'system', content: '计划已取消，状态已清理', timestamp: Date.now() })
     } catch (error) {
+      // 取消失败同样必须恢复审批卡片（后端 run 未取消，仍等待审批）
+      setIsWaitingForApproval(true)
       // 用户导航离开导致的取消，不显示错误
       if (isAbortError(error)) {
         return
       }
-      setIsWaitingForApproval(true)
       alert('取消失败，请重试')
     } finally {
       setIsSubmitting(false)
@@ -157,14 +158,18 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
         approved: true,
       })
     } catch (error) {
-      // 用户导航离开导致的取消，不显示错误
+      // 任何失败（含中断/重复请求）都必须恢复审批卡片：
+      // 后端 run 仍处于 waiting_for_approval，卡片丢失 = 用户被永久卡在"恢复中"
+      setIsWaitingForApproval(true)
+      // 用户导航离开导致的取消，不弹错误提示（但状态已恢复）
       if (isAbortError(error)) {
         return
       }
-      setIsWaitingForApproval(true)
       const userMessage = isPlanVersionConflictError(error)
         ? '计划已被其他操作更新，请刷新后重新确认'
-        : '启动失败，请检查网络后重试'
+        : error instanceof Error && error.message
+          ? `启动失败: ${error.message}`
+          : '启动失败，请检查网络后重试'
       addMessage({ id: tempMessageId, role: 'system', content: userMessage, timestamp: Date.now() })
       alert(userMessage)
     } finally {

@@ -364,7 +364,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   ): Promise<string> => {
     if (isGenerating) {
       debug('Request in progress, ignoring duplicate resume request')
-      return ''
+      // 修复：静默返回空串会被调用方当成功，UI 进入"恢复中"却无任何请求（实测卡死场景）。
+      // 改为显式抛错，让 PlanReviewCard 恢复审批卡片并提示用户。
+      throw new Error('已有请求正在进行，请稍后再试')
     }
 
     setGenerating(true)
