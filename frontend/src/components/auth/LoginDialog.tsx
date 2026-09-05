@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { The4DPocketLogo } from '@/components/bauhaus'
 import { useUserStore } from '@/store/userStore'
 import { logger } from '@/utils/logger'
+import { Z_INDEX } from '@/constants/zIndex'
 
 interface LoginDialogProps {
   open: boolean
@@ -109,7 +110,8 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/50 z-[300] flex items-center justify-center"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center"
+      style={{ zIndex: Z_INDEX.MODAL }}
       onClick={handleClose}
     >
       <div

@@ -58,15 +58,15 @@ export function RunPollingBar({
         'border-b-2 border-border-default',
         'text-sm font-mono',
         hasError
-          ? 'bg-red-500/10 text-red-500'
+          ? 'bg-status-offline/10 text-status-offline'
           : 'bg-surface-elevated'
       )}
     >
       <div className="flex items-center gap-2">
         {hasError ? (
           <>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-            <span className="text-red-500 font-medium">
+            <AlertTriangle className="h-4 w-4 text-status-offline" />
+            <span className="text-status-offline font-medium">
               {t('pollingError')}
             </span>
           </>

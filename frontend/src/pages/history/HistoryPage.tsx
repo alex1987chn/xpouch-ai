@@ -466,7 +466,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                           )}
                           <button
                             onClick={(e) => handleDelete(e, conversation.id, conversation.title || '')}
-                            className="w-8 h-8 flex items-center justify-center border border-border-default text-content-secondary hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                            className="w-8 h-8 flex items-center justify-center border border-border-default text-content-secondary hover:bg-status-offline hover:text-content-inverted hover:border-status-offline transition-colors opacity-0 group-hover:opacity-100"
                             title="Delete conversation"
                           >
                             <Trash2 className="w-4 h-4" />

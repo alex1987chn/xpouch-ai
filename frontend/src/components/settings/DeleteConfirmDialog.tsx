@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { AlertTriangle, X, Trash2 } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { logger } from '@/utils/logger'
+import { Z_INDEX } from '@/constants/zIndex'
 
 interface DeleteConfirmDialogProps {
   isOpen: boolean
@@ -65,7 +66,8 @@ export function DeleteConfirmDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/50 z-[300] flex items-center justify-center"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center"
+      style={{ zIndex: Z_INDEX.MODAL }}
       onClick={handleClose}
     >
       <div
@@ -75,7 +77,7 @@ export function DeleteConfirmDialog({
         {/* 弹窗头部 - Bauhaus风格 */}
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 ${variant === 'danger' ? 'bg-status-offline' : 'bg-amber-500'}`}></div>
+            <div className={`w-2 h-2 ${variant === 'danger' ? 'bg-status-offline' : 'bg-accent-warning'}`}></div>
             <span className="text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// {variant === 'danger' ? 'WARNING' : 'CAUTION'}
             </span>
@@ -94,14 +96,14 @@ export function DeleteConfirmDialog({
           {/* 警告图标 */}
           <div className="flex justify-center">
             <div className={`w-16 h-16 border-2 flex items-center justify-center ${
-              variant === 'danger' 
-                ? 'border-status-offline bg-status-offline/10' 
-                : 'border-amber-500 bg-amber-500/10'
+              variant === 'danger'
+                ? 'border-status-offline bg-status-offline/10'
+                : 'border-accent-warning bg-accent-warning/10'
             }`}>
               {variant === 'danger' ? (
                 <AlertTriangle className="w-8 h-8 text-status-offline" />
               ) : (
-                <Trash2 className="w-8 h-8 text-amber-600" />
+                <Trash2 className="w-8 h-8 text-accent-warning" />
               )}
             </div>
           </div>
@@ -115,7 +117,7 @@ export function DeleteConfirmDialog({
               <div className={`text-sm font-bold border-2 py-2 px-4 inline-block ${
                 variant === 'danger'
                   ? 'text-status-offline border-status-offline/30 bg-status-offline/10'
-                  : 'text-amber-700 border-amber-500/30 bg-amber-500/10'
+                  : 'text-accent-warning border-accent-warning/30 bg-accent-warning/10'
               }`}>
                 {itemName}
               </div>
@@ -140,8 +142,8 @@ export function DeleteConfirmDialog({
             disabled={isDeleting}
             className={`flex-1 py-3 text-sm font-bold uppercase transition-colors disabled:opacity-50 ${
               variant === 'danger'
-                ? 'bg-status-offline text-white hover:bg-status-offline/90'
-                : 'bg-amber-500 text-white hover:bg-amber-600'
+                ? 'bg-status-offline text-content-inverted hover:bg-status-offline/90'
+                : 'bg-accent-warning text-content-inverted hover:bg-accent-warning/90'
             }`}
           >
             {isDeleting ? (

@@ -6,6 +6,7 @@ import { useTranslation } from '@/i18n'
 import { useModelsQuery } from '@/hooks/queries/useModelsQuery'
 import { useUserSettingsQuery, useUpdateUserSettings } from '@/hooks/queries/useUserSettingsQuery'
 import type { ThinkingMode } from '@/services/models'
+import { Z_INDEX } from '@/constants/zIndex'
 
 interface SettingsDialogProps {
   isOpen: boolean
@@ -64,7 +65,8 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/50 z-[300] flex items-center justify-center"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center"
+      style={{ zIndex: Z_INDEX.MODAL }}
       onClick={handleClose}
     >
       <div

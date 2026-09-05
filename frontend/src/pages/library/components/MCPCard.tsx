@@ -75,9 +75,9 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
   // 状态指示灯颜色
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'connected': return 'bg-green-500'
-      case 'error': return 'bg-red-500'
-      default: return 'bg-gray-400'
+      case 'connected': return 'bg-status-online'
+      case 'error': return 'bg-status-offline'
+      default: return 'bg-content-muted'
     }
   }
 

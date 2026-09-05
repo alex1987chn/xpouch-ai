@@ -13,6 +13,7 @@ import { useTranslation } from '@/i18n'
 import { logger } from '@/utils/logger'
 import { useToast } from '@/components/ui/use-toast'
 import type { MCPTransport } from '@/types/mcp'
+import { Z_INDEX } from '@/constants/zIndex'
 
 interface AddMCPDialogProps {
   isOpen: boolean
@@ -91,7 +92,8 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/50 z-[300] flex items-center justify-center"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center"
+      style={{ zIndex: Z_INDEX.MODAL }}
       onClick={handleClose}
     >
       <div

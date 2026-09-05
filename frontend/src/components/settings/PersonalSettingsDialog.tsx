@@ -5,6 +5,7 @@ import { fileToBase64 } from '@/utils/userSettings'
 import { useUserStore } from '@/store/userStore'
 import { logger } from '@/utils/logger'
 import { useTranslation } from '@/i18n'
+import { Z_INDEX } from '@/constants/zIndex'
 
 interface PersonalSettingsDialogProps {
   isOpen: boolean
@@ -105,7 +106,8 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/50 z-[300] flex items-center justify-center"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center"
+      style={{ zIndex: Z_INDEX.MODAL }}
       onClick={handleClose}
     >
       <div

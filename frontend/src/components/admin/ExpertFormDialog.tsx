@@ -17,6 +17,7 @@ import { logger } from '@/utils/logger'
 import ModelSelector from '@/components/settings/ModelSelector'
 import type { SystemExpert, CreateExpertRequest, UpdateExpertRequest, ToolInfo } from '@/services/admin'
 import { getAvailableTools } from '@/services/admin'
+import { Z_INDEX } from '@/constants/zIndex'
 
 interface ExpertFormDialogProps {
   mode: 'create' | 'edit'
@@ -136,9 +137,9 @@ export default function ExpertFormDialog({
   return createPortal(
     <>
       {/* 遮罩 */}
-      <div className="fixed inset-0 bg-content-primary/50 z-50" onClick={handleClose} />
+      <div className="fixed inset-0 bg-content-primary/50" style={{ zIndex: Z_INDEX.MODAL }} onClick={handleClose} />
       {/* 对话框容器 */}
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg border-2 border-border-default bg-surface-card shadow-theme-modal z-50 max-h-[90vh] overflow-y-auto bauhaus-scrollbar">
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg border-2 border-border-default bg-surface-card shadow-theme-modal max-h-[90vh] overflow-y-auto bauhaus-scrollbar" style={{ zIndex: Z_INDEX.MODAL + 1 }}>
         {/* 标题 */}
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">

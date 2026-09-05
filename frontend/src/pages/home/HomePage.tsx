@@ -135,7 +135,7 @@ function ConstructCard({
               className={cn(
                 "w-7 h-7 border-2 border-border bg-surface-page",
                 "flex items-center justify-center",
-                "hover:bg-red-500 hover:text-white hover:border-red-500",
+                "hover:bg-status-offline hover:text-content-inverted hover:border-status-offline",
                 "transition-all duration-150",
                 "shadow-hard-sm",
                 "active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
@@ -152,7 +152,7 @@ function ConstructCard({
             {name}
           </h4>
           <div className="flex items-center gap-1 border border-border px-1 bg-surface-page">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            <div className="w-1.5 h-1.5 rounded-full bg-status-online animate-pulse" />
             <span className="font-mono text-[9px] font-bold">
               {t('online')}
             </span>
