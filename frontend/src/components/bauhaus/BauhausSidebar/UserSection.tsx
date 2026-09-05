@@ -139,9 +139,9 @@ export function UserSection({
           className={cn(
             'w-5 border-t border-l border-border-default',
             'bg-surface-elevated',
-            'hover:bg-status-offline/10',
+            'hover:bg-accent-hover/20',
             'flex items-center justify-center',
-            'text-content-muted/50 hover:text-status-offline',
+            'text-content-muted/50 hover:text-content-primary',
             'transition-all duration-200',
             'group'
           )}
