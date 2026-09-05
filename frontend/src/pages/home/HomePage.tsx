@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react'
-import { Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Trash2, Pencil } from 'lucide-react'
+import { Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Trash2, Pencil, ArrowUpRight } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
 import { useIsAuthenticated } from '@/hooks'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
+import { GithubMark } from '@/components/common'
+import { GITHUB_REPO_URL } from '@/constants/links'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import type { Conversation } from '@/types'
@@ -390,14 +392,21 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-12 py-12 flex flex-col w-full">
           {/* Hero Section */}
           <div className="flex-none flex flex-col items-start justify-center mb-10 select-none">
-            {/* 状态标签 - 左上角 */}
+            {/* 状态标签 - 左上角（READY 为装饰性状态，OPEN SOURCE 为仓库外链） */}
             <div className="flex gap-2 mb-4">
               <span className="px-2 py-1 text-[10px] font-mono font-bold border border-border bg-accent-hover text-content-primary shadow-hard-sm">
                 READY
               </span>
-              <span className="px-2 py-1 text-[10px] font-mono font-bold border border-border text-content-secondary">
-                IDLE
-              </span>
+              <a
+                href={GITHUB_REPO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-mono font-bold border border-border text-content-secondary hover:bg-accent-hover hover:text-content-primary hover:border-accent-hover transition-colors"
+              >
+                <GithubMark className="w-2.5 h-2.5" />
+                <span>OPEN SOURCE</span>
+                <ArrowUpRight className="w-3 h-3" />
+              </a>
             </div>
 
             {/* The Monolith Style Slogan */}

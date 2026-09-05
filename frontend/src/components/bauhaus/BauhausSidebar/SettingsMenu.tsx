@@ -8,9 +8,11 @@
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { User, Cog, ArrowRight, Star, Copy, Check } from 'lucide-react'
+import { User, Cog, ArrowRight, Star, Copy, Check, ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logger } from '@/utils/logger'
+import { GithubMark } from '@/components/common'
+import { GITHUB_REPO_URL } from '@/constants/links'
 import type { SettingsMenuProps } from './types'
 
 /**
@@ -178,6 +180,18 @@ export function SettingsMenu({
             ))}
           </div>
         </div>
+
+        {/* Open Source 仓库外链 */}
+        <a
+          href={GITHUB_REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-3 px-3 py-2.5 border-2 border-border-default hover:bg-accent-hover hover:text-content-primary transition-all text-xs shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active"
+        >
+          <GithubMark className="w-4 h-4" />
+          <span className="font-bold uppercase flex-1 text-left">{t('openSource')}</span>
+          <ArrowUpRight className="w-3.5 h-3.5" />
+        </a>
 
         {/* 退出登录 */}
         {isAuthenticated && (

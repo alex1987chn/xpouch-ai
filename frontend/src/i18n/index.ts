@@ -28,7 +28,7 @@ export type TranslationKey =
   | 'theme' | 'language' | 'systemSettings' | 'userSettings' | 'personalSettings' | 'modelConfig'
   | 'simpleMode' | 'followSystemDefault' | 'thinkingMode' | 'thinkingAuto' | 'thinkingOn' | 'thinkingOff'
   | 'thinkingUnsupported' | 'thinkingCostHint' | 'complexMode' | 'complexModeDesc'
-  | 'modelsLoading' | 'modelsLoadFailed'
+  | 'modelsLoading' | 'modelsLoadFailed' | 'openSource'
   // Common
   | 'save' | 'cancel' | 'delete' | 'edit' | 'confirmDelete' | 'noHistory' | 'startChat'
   | 'totalHistory' | 'totalItems' | 'matchingHistory' | 'matchingItems' | 'searchHistory'

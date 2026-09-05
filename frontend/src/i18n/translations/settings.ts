@@ -44,6 +44,7 @@ export const zh: Record<string, string> = {
   complexModeDesc: '复杂模式使用的模型（规划与各专家）由管理员在「专家管理」中配置。',
   modelsLoading: '正在加载模型列表...',
   modelsLoadFailed: '模型列表加载失败，请稍后重试',
+  openSource: '开源仓库',
 }
 
 export const en: Record<string, string> = {
@@ -90,6 +91,7 @@ export const en: Record<string, string> = {
   complexModeDesc: 'Models used in complex mode (planner and experts) are configured by the administrator in Expert Management.',
   modelsLoading: 'Loading model list...',
   modelsLoadFailed: 'Failed to load model list, please retry later',
+  openSource: 'Open Source',
 }
 
 export const ja: Record<string, string> = {
@@ -136,4 +138,5 @@ export const ja: Record<string, string> = {
   complexModeDesc: 'Complexモードで使用するモデル（プランナーとエキスパート）は管理者が「エキスパート管理」で設定します。',
   modelsLoading: 'モデルリストを読み込み中...',
   modelsLoadFailed: 'モデルリストの取得に失敗しました。後でもう一度お試しください',
+  openSource: 'オープンソース',
 }
