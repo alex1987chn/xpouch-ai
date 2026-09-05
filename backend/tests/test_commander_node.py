@@ -92,6 +92,23 @@ def _stub_db_stack(stack):
     """
     from types import SimpleNamespace
 
+    from sqlalchemy.pool import StaticPool
+    from sqlmodel import SQLModel, create_engine
+
+    import agents.nodes.commander as commander_mod
+    from models import Thread
+
+    # 行为测试不依赖真实数据库：把 commander 的 engine 指向一次性内存 SQLite，
+    # 规划收尾的 thread 回写按"线程不存在"静默跳过（与本地空线程行为一致）。
+    # StaticPool 共享单连接——内存库否则每个连接都是独立空库。
+    sqlite_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(sqlite_engine, tables=[Thread.__table__])
+    stack.enter_context(patch.object(commander_mod, "engine", new=sqlite_engine))
+
     def _fake_get_or_create(**kw):
         plan = _FakePlan()
         plan.task_count = len(kw.get("subtasks_data") or [])
