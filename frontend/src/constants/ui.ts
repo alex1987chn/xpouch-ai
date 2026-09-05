@@ -4,13 +4,13 @@
 // 系统版本号
 export const VERSION = {
   /** 当前 OS 版本号 */
-  CURRENT: 'v3.3.0',
+  CURRENT: 'v3.4.2',
   /** 主版本号 */
   MAJOR: 3,
   /** 次版本号 */
-  MINOR: 3,
+  MINOR: 4,
   /** 修订号 */
-  PATCH: 0,
+  PATCH: 2,
   /** 完整版本字符串 */
   get FULL() { return `XPOUCH OS ${this.CURRENT}` }
 }

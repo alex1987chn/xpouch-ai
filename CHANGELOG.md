@@ -5,6 +5,32 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-09-06] - v3.4.2 前端设计体系收敛：主题精简、语义 token、可访问性
+
+### 变更
+
+- **主题收敛为三套**：移除 Glass 主题（现存 Light / Dark / Kyoto），旧用户本地偏好自动迁移到 Light；Kyoto 页面渐变进主题 token（`--bg-app`），AppLayout 硬编码 hex 清零
+- **语义 token 化**：danger/状态色全库统一（`status-offline/online/info/warning`、`accent-destructive/warning`），清除 `red-500`/`green-500`/`amber-500` 等裸色值；微型字号 token 化（`text-nano/micro/tiny`，160+ 处收敛，零残留）；弹窗 z-index 统一走 `Z_INDEX` 常量（顺带修复弹窗与 toast 同层的隐患）
+- **可访问性**：6 个手搓 Portal 弹窗全部支持 Esc 关闭（新增 `useEscapeToClose`）；图标按钮补齐 `aria-label`/`title`；聊天输入工具图标与移动端视图切换的触控目标放大
+- **i18n 补漏**：运行时间线/详情、计划审核、Artifact 加载与错误态、登录弹窗占位与提示、设置菜单 UID tooltip 等约 40 处硬编码中文全部接入三语翻译（新增 `run` 翻译模块）
+
+### 修复
+
+- `bg-page` 幽灵类：9 处引用但 Tailwind 配置无映射，背景实际透明（新增兼容别名）
+- 聊天页 md 断点双面板 `min-w-[400px]` 相加超视口导致右侧被裁切；`!md:!` 无效 important 语法改为 v4 后缀形式
+- 首页双汉堡菜单重叠（页面自带一份与 AppLayout 重复）；移动端首屏两侧共 96px 留白
+- dark 主题浅色残留：`.dark` class 从未生效（主题走 `data-theme`），5 处 `dark:` 死变体的浅色值在暗色下刺眼，改用半透明色底 + 主题感知前景
+- tailwind-merge 不识别自定义字号 token 导致 `text-micro` 等被误判为文字颜色并在 `cn()` 合并时删除（菜单 UID/语言按钮字号回退 16px），注册 font-size 分组修复
+- 专家管理页小屏堆叠（原固定 `w-80` 列表 + 编辑器并排在手机上裁切）；StatsPage 归入内容页容器规范（`max-w-5xl`）并补表格横向滚动
+
+### 界面
+
+- 首页 hero 新增 OPEN SOURCE 仓库入口（内联 GitHub 标志，替换装饰性 IDLE 标签）；头像弹出菜单重设计（扁平行 + 紧凑语言切换 + 登出危险色语义，高度约减半）；删除确认弹窗警告色收进 `accent-warning` token
+
+### 其他
+
+- `package.json` / `frontend/package.json` / UI 版本常量从 3.3.0 同步至 3.4.2（此前 tag 已到 v3.4.1 而常量停滞）
+
 ## [2026-09-04] - v3.4.1 跨轮产物连续性：多轮协作闭环
 
 ### 新增功能

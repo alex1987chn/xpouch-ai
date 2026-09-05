@@ -36,6 +36,7 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - 工具治理（可配置策略 + Library 管理面板，view_admin 只读）
 - SSE 驱动的 Server-Driven UI（统一事件协议，恰好一次投递）
 - MCP 动态工具接入
+- 三套主题（Light / Dark / Kyoto）与中英日多语言界面
 
 ## 核心能力
 
