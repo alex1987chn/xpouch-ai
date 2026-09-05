@@ -119,4 +119,7 @@
     --bg-pattern: none;
     --bg-pattern-size: 100% 100%;
 
+    /* 应用级页面背景（AppLayout 使用；渐变类主题在 themes/_*.css 中覆盖） */
+    --bg-app: none;
+
 }

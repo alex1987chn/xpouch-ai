@@ -126,16 +126,17 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
         'h-[100dvh]'
       )}
     >
-      {/* 背景图案 - 主题可控 */}
-      <div 
+      {/* 背景图案 - 主题可控（kyoto 渐变定义于主题 token --bg-app，其余主题用点阵） */}
+      <div
         className={cn(
-          "fixed inset-0 pointer-events-none",
-          theme === 'glass' ? "bg-gradient-to-br from-[#f8fafc] to-[#f1f5f9]" :
-          theme === 'kyoto' ? "bg-gradient-to-b from-[#faf7f2] to-[#fcfaf6]" :
-          "bg-surface-page bg-dot-pattern"
+          "fixed inset-0 pointer-events-none bg-surface-page",
+          theme !== 'kyoto' && "bg-dot-pattern"
         )}
-        style={{ zIndex: Z_INDEX.BACKGROUND }}
-        aria-hidden="true" 
+        style={{
+          zIndex: Z_INDEX.BACKGROUND,
+          ...(theme === 'kyoto' && { backgroundImage: 'var(--bg-app)' })
+        }}
+        aria-hidden="true"
       />
 
       {/* 移动端侧边栏遮罩 */}

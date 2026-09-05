@@ -23,11 +23,9 @@
 /* 主题覆盖 - 按优先级排序 */
 @import './styles/tokens/themes/_light.css';
 @import './styles/tokens/themes/_dark.css';
-@import './styles/tokens/themes/_glass.css';
 @import './styles/tokens/themes/_kyoto.css';
 
 /* 兼容性覆盖（用于旧组件） */
-@import './styles/tokens/themes/_glass-compat.css';
 @import './styles/tokens/themes/_kyoto-compat.css';
 
 /* ============================================

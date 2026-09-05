@@ -18,6 +18,9 @@
     /* 字重 - 日系风格更细 */
     --font-weight-display: 600;
 
+    /* 页面背景渐变（AppLayout 通过 var(--bg-app) 使用） */
+    --bg-app: linear-gradient(to bottom, #faf7f2, #fcfaf6);
+
     /* ========================================
        Color Tokens - 颜色
        ======================================== */
