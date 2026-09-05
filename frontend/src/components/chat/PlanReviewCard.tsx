@@ -190,7 +190,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
             <span className="text-xs text-content-muted">{editedPlan.length} 个任务待确认</span>
           </div>
         </div>
-        <span className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider border border-border-default text-content-muted">
+        <span className="px-2 py-1 text-micro font-mono uppercase tracking-wider border border-border-default text-content-muted">
           HITL
         </span>
       </div>
@@ -208,7 +208,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
 
               <div className="flex-1 min-w-0 space-y-2">
                 {/* Expert Tag */}
-                <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide border border-border-default text-content-secondary">
+                <span className="inline-flex items-center px-2 py-0.5 text-micro font-medium uppercase tracking-wide border border-border-default text-content-secondary">
                   {task.expert_type}
                 </span>
 

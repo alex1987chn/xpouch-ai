@@ -95,7 +95,7 @@ export function IndustrialHeader({
         </div>
 
         {/* 版本号 - 工业风格分隔符 (桌面端显示) */}
-        <span className="hidden md:flex text-[10px] font-mono text-primary/60 font-normal items-center gap-2">
+        <span className="hidden md:flex text-micro font-mono text-primary/60 font-normal items-center gap-2">
           <span className="text-content-secondary">///</span>
           <span>OS {version}</span>
         </span>
@@ -104,7 +104,7 @@ export function IndustrialHeader({
         {displayRunId && mode === 'complex' && (
           <button
             onClick={() => navigate(`/run/${displayRunId}`)}
-            className="hidden md:flex items-center gap-1.5 px-2 py-1 text-[10px] font-mono font-medium text-accent-primary hover:text-accent-hover hover:bg-accent-hover/10 rounded transition-colors cursor-pointer group"
+            className="hidden md:flex items-center gap-1.5 px-2 py-1 text-micro font-mono font-medium text-accent-primary hover:text-accent-hover hover:bg-accent-hover/10 rounded transition-colors cursor-pointer group"
             title="查看运行时间线"
           >
             <Clock className="w-3 h-3" />
@@ -118,7 +118,7 @@ export function IndustrialHeader({
       <div className="flex items-center gap-2 md:gap-4">
         {/* 移动端视图切换 - 紧凑工业风 */}
         {onViewModeChange && (
-          <div className="md:hidden flex items-center text-[9px] font-mono font-bold">
+          <div className="md:hidden flex items-center text-nano font-mono font-bold">
             <button
               onClick={() => onViewModeChange('chat')}
               className={cn(
@@ -155,7 +155,7 @@ export function IndustrialHeader({
                   : 'bg-status-offline'
             )}
           />
-          <span className="font-mono text-[10px] text-primary/70 font-bold uppercase">
+          <span className="font-mono text-micro text-primary/70 font-bold uppercase">
             {status}
           </span>
         </div>

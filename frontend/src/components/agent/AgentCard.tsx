@@ -81,7 +81,7 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: Agen
           )}>
             <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-content-muted group-hover:text-accent transition-colors duration-300" />
           </div>
-          <span className="text-[11px] sm:text-sm font-medium text-content-secondary group-hover:text-accent transition-colors duration-300">
+          <span className="text-tiny sm:text-sm font-medium text-content-secondary group-hover:text-accent transition-colors duration-300">
             创建智能体
           </span>
         </div>
@@ -160,7 +160,7 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: Agen
                   </h3>
                   {isDefaultAgent && (
                     <span className={cn(
-                      'flex-shrink-0 px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-medium',
+                      'flex-shrink-0 px-1.5 sm:px-2 py-0.5 rounded-full text-nano sm:text-micro font-medium',
                       'bg-gradient-to-r from-violet-500 to-purple-500',
                       'text-white shadow-sm',
                       'animate-pulse opacity-60'
@@ -169,7 +169,7 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: Agen
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] sm:text-xs text-content-secondary/80 line-clamp-1 font-normal">
+                <p className="text-micro sm:text-xs text-content-secondary/80 line-clamp-1 font-normal">
                   {agent.description}
                 </p>
               </div>
@@ -179,7 +179,7 @@ function AgentCard({ agent, isSelected, onClick, onDelete, onCreateAgent }: Agen
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               {!isDefaultAgent && (
                 <span className={cn(
-                  'px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-medium',
+                  'px-1.5 sm:px-2 py-0.5 rounded-full text-nano sm:text-micro font-medium',
                   'bg-gradient-to-r from-surface-elevated to-surface-page',
                   'text-content-secondary',
                   'border border-border-default/50',

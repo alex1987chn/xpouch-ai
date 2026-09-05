@@ -48,7 +48,7 @@ function SceneCard({
       className="p-5 cursor-pointer group flex flex-col justify-between h-44 relative overflow-hidden"
     >
       {/* 编号 - 右上角 */}
-      <div className="absolute top-0 right-0 p-2 font-mono text-[10px] font-bold opacity-30">
+      <div className="absolute top-0 right-0 p-2 font-mono text-micro font-bold opacity-30">
         {number}
       </div>
 
@@ -59,7 +59,7 @@ function SceneCard({
         <div className="p-2 border-2 border-border bg-surface-page group-hover:bg-surface-card transition-colors">
           <Icon className="w-6 h-6 stroke-[2.5]" />
         </div>
-        <div className="font-mono text-[10px] bg-content-primary text-surface-page px-1">{tag}</div>
+        <div className="font-mono text-micro bg-content-primary text-surface-page px-1">{tag}</div>
       </div>
       <div>
         <h4 className="font-black text-lg mb-1 group-hover:underline decoration-2 underline-offset-4">{title}</h4>
@@ -153,7 +153,7 @@ function ConstructCard({
           </h4>
           <div className="flex items-center gap-1 border border-border px-1 bg-surface-page">
             <div className="w-1.5 h-1.5 rounded-full bg-status-online animate-pulse" />
-            <span className="font-mono text-[9px] font-bold">
+            <span className="font-mono text-nano font-bold">
               {t('online')}
             </span>
           </div>
@@ -164,7 +164,7 @@ function ConstructCard({
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="px-2 py-0.5 text-[9px] font-bold border border-border bg-surface-page"
+                className="px-2 py-0.5 text-nano font-bold border border-border bg-surface-page"
               >
                 {tag}
               </span>
@@ -386,14 +386,14 @@ export default function HomePage() {
           <div className="flex-none flex flex-col items-start justify-center mb-10 select-none">
             {/* 状态标签 - 左上角（READY 为装饰性状态，OPEN SOURCE 为仓库外链） */}
             <div className="flex gap-2 mb-4">
-              <span className="px-2 py-1 text-[10px] font-mono font-bold border border-border bg-accent-hover text-content-primary shadow-hard-sm">
+              <span className="px-2 py-1 text-micro font-mono font-bold border border-border bg-accent-hover text-content-primary shadow-hard-sm">
                 READY
               </span>
               <a
                 href={GITHUB_REPO_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-mono font-bold border border-border text-content-secondary hover:bg-accent-hover hover:text-content-primary hover:border-accent-hover transition-colors"
+                className="flex items-center gap-1.5 px-2 py-1 text-micro font-mono font-bold border border-border text-content-secondary hover:bg-accent-hover hover:text-content-primary hover:border-accent-hover transition-colors"
               >
                 <GithubMark className="w-2.5 h-2.5" />
                 <span>OPEN SOURCE</span>
@@ -461,7 +461,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-                  <span className="font-mono text-[10px] text-content-secondary hidden sm:inline">ENTER TO SEND</span>
+                  <span className="font-mono text-micro text-content-secondary hidden sm:inline">ENTER TO SEND</span>
                   <Button
                     onClick={handleSendMessage}
                     disabled={!inputMessage.trim()}
@@ -483,7 +483,7 @@ export default function HomePage() {
                   <div className="w-3 h-3 bg-accent-hover border border-border" />
                   <h3 className="text-sm font-black uppercase tracking-widest">{t('recommended')}</h3>
                 </div>
-                <div className="font-mono text-[10px] text-content-secondary">SHOWING 3 OF 12</div>
+                <div className="font-mono text-micro text-content-secondary">SHOWING 3 OF 12</div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

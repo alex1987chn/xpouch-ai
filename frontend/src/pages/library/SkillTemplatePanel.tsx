@@ -346,7 +346,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
         <div className="flex items-center justify-between border-b-2 border-border-default px-4 py-3">
           <div className="flex items-center gap-2">
             <Bot className="h-4 w-4 text-content-secondary" />
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+            <span className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
               {t('skillTemplates') || 'Skill Templates'}
             </span>
           </div>
@@ -355,14 +355,14 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
               <>
                 <button
                   onClick={() => setIsImportDialogOpen(true)}
-                  className="flex items-center gap-1 border-2 border-border-default bg-surface-page px-2 py-1 text-[10px] font-bold uppercase text-content-secondary transition-colors hover:border-border-strong hover:text-content-primary"
+                  className="flex items-center gap-1 border-2 border-border-default bg-surface-page px-2 py-1 text-micro font-bold uppercase text-content-secondary transition-colors hover:border-border-strong hover:text-content-primary"
                   title={t('importTemplate') || 'Import'}
                 >
                   <Upload className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={handleCreate}
-                  className="flex items-center gap-1 border-2 border-border-default bg-surface-page px-2 py-1 text-[10px] font-bold uppercase text-content-secondary transition-colors hover:border-border-strong hover:text-content-primary"
+                  className="flex items-center gap-1 border-2 border-border-default bg-surface-page px-2 py-1 text-micro font-bold uppercase text-content-secondary transition-colors hover:border-border-strong hover:text-content-primary"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   {t('newTemplate') || 'New'}
@@ -389,7 +389,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
                   <span className="truncate font-mono text-xs font-bold uppercase text-content-primary">
                     {template.name}
                   </span>
-                  <span className="shrink-0 text-[9px] uppercase text-content-muted">
+                  <span className="shrink-0 text-nano uppercase text-content-muted">
                     {template.recommended_mode}
                   </span>
                 </div>
@@ -402,7 +402,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
                       <span
                         key={type}
                         className={cn(
-                          'inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-mono uppercase',
+                          'inline-flex items-center gap-1 px-1.5 py-0.5 text-nano font-mono uppercase',
                           ARTIFACT_TYPE_COLORS[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
                         )}
                       >
@@ -427,7 +427,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
       <div className="border-2 border-border-default bg-surface-card shadow-theme-card">
         <div className="flex items-center justify-between border-b-2 border-border-default px-4 py-3">
           <div>
-            <div className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+            <div className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
               {draft.id ? t('templateDetail') || 'Template Detail' : t('createTemplate') || 'Create Template'}
             </div>
             <div className="mt-1 text-xs text-content-muted">
@@ -438,7 +438,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
             {selectedTemplate && canEdit && (
               <button
                 onClick={handleExport}
-                className="flex items-center gap-2 border-2 border-border-default bg-surface-page px-3 py-1.5 font-mono text-[10px] font-bold uppercase text-content-secondary transition-all hover:border-border-strong hover:text-content-primary"
+                className="flex items-center gap-2 border-2 border-border-default bg-surface-page px-3 py-1.5 font-mono text-micro font-bold uppercase text-content-secondary transition-all hover:border-border-strong hover:text-content-primary"
                 title={t('exportTemplate') || 'Export'}
               >
                 <Download className="h-3.5 w-3.5" />
@@ -447,7 +447,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
             {selectedTemplate && (
               <button
                 onClick={() => handleUseTemplate(selectedTemplate)}
-                className="flex items-center gap-2 border-2 border-accent-brand bg-accent-brand px-3 py-1.5 font-mono text-[10px] font-bold uppercase text-content-inverted transition-all hover:brightness-95"
+                className="flex items-center gap-2 border-2 border-accent-brand bg-accent-brand px-3 py-1.5 font-mono text-micro font-bold uppercase text-content-inverted transition-all hover:brightness-95"
               >
                 <Rocket className="h-3.5 w-3.5" />
                 {t('useTemplate') || 'Use'}
@@ -574,7 +574,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
               {draft.id && (
                 <button
                   onClick={handleDeleteClick}
-                  className="flex items-center gap-2 border-2 border-border-default bg-surface-page px-3 py-2 font-mono text-[10px] font-bold uppercase text-content-secondary transition-colors hover:text-accent-destructive"
+                  className="flex items-center gap-2 border-2 border-border-default bg-surface-page px-3 py-2 font-mono text-micro font-bold uppercase text-content-secondary transition-colors hover:text-accent-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   {t('delete') || 'Delete'}
@@ -583,14 +583,14 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
               <button
                 onClick={() => void handleSave()}
                 disabled={isSaving}
-                className="flex items-center gap-2 border-2 border-border-default bg-surface-elevated px-3 py-2 font-mono text-[10px] font-bold uppercase text-content-primary transition-colors hover:border-border-strong disabled:opacity-60"
+                className="flex items-center gap-2 border-2 border-border-default bg-surface-elevated px-3 py-2 font-mono text-micro font-bold uppercase text-content-primary transition-colors hover:border-border-strong disabled:opacity-60"
               >
                 <Save className="h-3.5 w-3.5" />
                 {isSaving ? t('saving') || 'Saving' : t('save') || 'Save'}
               </button>
             </div>
           ) : (
-            <div className="text-[11px] text-content-muted">
+            <div className="text-tiny text-content-muted">
               {t('templateReadonlyHint') || 'Browse templates and launch flows.'}
             </div>
           )}
@@ -629,7 +629,7 @@ function Field({
 }) {
   return (
     <div className={cn('space-y-2', className)}>
-      <div className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+      <div className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
         {label}
       </div>
       {children}

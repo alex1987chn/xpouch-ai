@@ -89,7 +89,7 @@ export default function ExpertListTable({
           {isAdmin && (
             <button
               onClick={onCreateClick}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] uppercase border-2 border-border-default bg-surface-page hover:bg-accent-hover hover:text-content-primary hover:border-border-focus transition-colors"
+              className="flex items-center gap-1 px-2 py-1 text-micro uppercase border-2 border-border-default bg-surface-page hover:bg-accent-hover hover:text-content-primary hover:border-border-focus transition-colors"
               title={t('newExpert')}
             >
               <Plus className="w-3.5 h-3.5" />
@@ -166,7 +166,7 @@ export default function ExpertListTable({
               </div>
               <div
                 className={cn(
-                  'text-[9px] mt-1 uppercase tracking-wider',
+                  'text-nano mt-1 uppercase tracking-wider',
                   selectedExpertKey === expert.expert_key
                     ? 'text-content-primary/70'
                     : 'text-content-secondary'

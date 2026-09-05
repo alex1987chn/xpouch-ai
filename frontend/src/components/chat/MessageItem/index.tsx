@@ -457,7 +457,7 @@ function MessageItem({
     return (
       <div className="flex flex-col items-end group user-message">
         <div className="flex items-center gap-2 mb-1 opacity-60 group-hover:opacity-100 transition-opacity">
-          <span className="font-mono text-[9px] uppercase text-content-muted">
+          <span className="font-mono text-nano uppercase text-content-muted">
             {message.timestamp ? formatMessageTime(message.timestamp) : ''}
           </span>
         </div>
@@ -482,10 +482,10 @@ function MessageItem({
           status={aiStatus}
           className="w-6 h-6"
         />
-        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wide">
+        <span className="font-mono text-micro text-muted-foreground uppercase tracking-wide">
           {activeExpert ? `${activeExpert.toUpperCase()}_AGENT` : 'ASSISTANT'}
         </span>
-        <span className="font-mono text-[9px] text-muted-foreground/50">
+        <span className="font-mono text-nano text-muted-foreground/50">
           {formatMessageTime(message.timestamp)}
         </span>
       </div>
@@ -520,7 +520,7 @@ function MessageItem({
               e.stopPropagation()
               handlePreview()
             }}
-            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-micro text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
             title={t('preview')}
           >
             <Eye className="w-3 h-3" />
@@ -532,7 +532,7 @@ function MessageItem({
             e.stopPropagation()
             handleCopy()
           }}
-          className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
+          className="flex items-center gap-1 text-micro text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
           title={t('copy')}
         >
           {copied ? (
@@ -553,7 +553,7 @@ function MessageItem({
               e.stopPropagation()
               handleRetry()
             }}
-            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-micro text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
             title={t('regenerate')}
           >
             <RefreshCw className="w-3 h-3" />

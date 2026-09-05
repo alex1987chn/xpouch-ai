@@ -299,7 +299,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
             {!isBatchMode ? (
               /* 普通模式：显示统计 + Select 按钮 */
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-content-secondary">
+                <div className="flex items-center gap-2 font-mono text-micro uppercase tracking-widest text-content-secondary">
                   <div className="w-1.5 h-1.5 bg-accent-hover"></div>
                   <span>
                     {searchQuery
@@ -436,7 +436,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                           {getLastMessagePreview(conversation)}
                         </p>
 
-                        <div className="flex items-center gap-4 font-mono text-[10px] text-content-secondary uppercase">
+                        <div className="flex items-center gap-4 font-mono text-micro text-content-secondary uppercase">
                           <span className="flex items-center gap-1" title={conversation.updated_at || '-'}>
                             <Clock className="w-3 h-3" />
                             {formatRelativeTime(conversation.updated_at)}

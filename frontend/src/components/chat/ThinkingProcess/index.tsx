@@ -165,7 +165,7 @@ const StepItem = ({ step, index }: StepItemProps) => {
           <span className="text-xs font-medium text-muted-foreground">{label}</span>
           <span className="text-xs font-bold text-foreground">{step.expertName}</span>
           {step.duration && (
-            <span className="text-[10px] font-mono text-muted-foreground ml-auto">
+            <span className="text-micro font-mono text-muted-foreground ml-auto">
               {formatDuration(step.duration)}
             </span>
           )}
@@ -301,7 +301,7 @@ export default function ThinkingProcess({ steps, isThinking, className, totalSte
           {/* 状态指示点 */}
           <div className="flex items-center gap-1">
             {failedSteps > 0 && (
-              <span className="flex items-center gap-0.5 text-[10px] text-status-offline">
+              <span className="flex items-center gap-0.5 text-micro text-status-offline">
                 <XCircle className="w-3 h-3" />
                 {failedSteps}
               </span>

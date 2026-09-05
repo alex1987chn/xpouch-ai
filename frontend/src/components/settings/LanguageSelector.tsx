@@ -31,7 +31,7 @@ export function LanguageSelector({ className }: LanguageSelectorProps) {
           key={lang.code}
           value={lang.code}
           aria-label={lang.name}
-          className="text-[9px] font-medium min-w-[32px] h-7 px-2"
+          className="text-nano font-medium min-w-[32px] h-7 px-2"
         >
           {getShortName(lang.code)}
         </ToggleGroupItem>

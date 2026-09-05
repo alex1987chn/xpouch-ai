@@ -120,7 +120,7 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
 
       {/* 统计 */}
       {!isLoading && filteredServers.length > 0 && (
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-content-muted">
+        <div className="flex items-center gap-2 font-mono text-micro uppercase tracking-widest text-content-muted">
           <div className="w-1.5 h-1.5 bg-accent-brand" />
           <span>
             {effectiveSearchQuery

@@ -220,7 +220,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
         <div className="flex items-center justify-between border-b-2 border-border-default px-4 py-3">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-4 w-4 text-content-secondary" />
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+            <span className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
               {t('toolGovernance') || 'Tool Governance'}
             </span>
           </div>
@@ -245,9 +245,9 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
                 <span className="font-mono text-xs font-bold uppercase text-content-primary">
                   {policy.tool_name}
                 </span>
-                <span className="text-[9px] uppercase text-content-muted">{policy.source}</span>
+                <span className="text-nano uppercase text-content-muted">{policy.source}</span>
               </div>
-              <div className="mt-2 flex items-center gap-2 text-[10px] uppercase text-content-secondary">
+              <div className="mt-2 flex items-center gap-2 text-micro uppercase text-content-secondary">
                 <span>{policy.risk_tier}</span>
                 <span>/</span>
                 <span>{policy.approval_required ? t('approvalRequired') || 'Approval' : t('autoAllowed') || 'Auto'}</span>
@@ -269,12 +269,12 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
           <>
             <div className="flex items-center justify-between border-b-2 border-border-default px-4 py-3">
               <div>
-                <div className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                <div className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
                   {selectedPolicy.tool_name}
                 </div>
                 <div className="mt-1 text-xs text-content-muted">{selectedPolicy.description}</div>
               </div>
-              <div className="flex items-center gap-2 text-[10px] uppercase text-content-secondary">
+              <div className="flex items-center gap-2 text-micro uppercase text-content-secondary">
                 <Check className="h-3.5 w-3.5" />
                 {selectedPolicy.source}
               </div>
@@ -354,7 +354,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
                 <button
                   onClick={() => void handleSave()}
                   disabled={isSaving}
-                  className="flex items-center gap-2 border-2 border-border-default bg-surface-elevated px-3 py-2 font-mono text-[10px] font-bold uppercase text-content-primary transition-colors hover:border-border-strong disabled:opacity-60"
+                  className="flex items-center gap-2 border-2 border-border-default bg-surface-elevated px-3 py-2 font-mono text-micro font-bold uppercase text-content-primary transition-colors hover:border-border-strong disabled:opacity-60"
                 >
                   <Save className="h-3.5 w-3.5" />
                   {isSaving ? t('saving') || 'Saving' : t('savePolicy') || 'Save Policy'}
@@ -383,7 +383,7 @@ function Field({
 }) {
   return (
     <div className={cn('space-y-2', className)}>
-      <div className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+      <div className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
         {label}
       </div>
       {children}

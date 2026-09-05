@@ -195,7 +195,7 @@ export default function ExpertEditor({
 
       {/* 更新时间 */}
       <div className="px-4 py-2 border-b-2 border-border-default bg-surface-page">
-        <span className="text-[10px] text-content-secondary">
+        <span className="text-micro text-content-secondary">
           {t('lastUpdated')}: {new Date(expert.updated_at).toLocaleString()}
         </span>
       </div>
@@ -218,7 +218,7 @@ export default function ExpertEditor({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-content-secondary" />
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                  <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
                     {t('temperature')}: {formData.temperature?.toFixed(1)}
                   </label>
                 </div>
@@ -253,7 +253,7 @@ export default function ExpertEditor({
                     style={{ WebkitAppearance: 'none', appearance: 'none' }}
                   />
                 </div>
-                <div className="flex justify-between text-[9px] text-content-secondary">
+                <div className="flex justify-between text-nano text-content-secondary">
                   <span>0.0 ({t('conservative')})</span>
                   <span>1.0 ({t('balanced')})</span>
                   <span>2.0 ({t('creative')})</span>
@@ -265,7 +265,7 @@ export default function ExpertEditor({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary" />
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                    <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
                       {t('expertDescription')}
                     </label>
                   </div>
@@ -275,7 +275,7 @@ export default function ExpertEditor({
                     onClick={handleGenerateDescription}
                     disabled={isGeneratingDescription || formData.system_prompt.length < 10}
                     className={cn(
-                      'flex items-center gap-1 px-2 py-1 text-[10px] uppercase',
+                      'flex items-center gap-1 px-2 py-1 text-micro uppercase',
                       'border-2 border-border-default bg-surface-page',
                       'hover:bg-accent-hover hover:text-content-primary hover:border-accent-hover',
                       'transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
@@ -303,7 +303,7 @@ export default function ExpertEditor({
                   rows={3}
                   className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-y min-h-[80px] bauhaus-scrollbar"
                 />
-                <p className="text-[9px] text-content-secondary">
+                <p className="text-nano text-content-secondary">
                   {t('expertDescriptionTooltip')}
                 </p>
               </div>
@@ -313,7 +313,7 @@ export default function ExpertEditor({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary" />
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                    <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
                       {t('systemPrompt')}
                     </label>
                   </div>
@@ -321,7 +321,7 @@ export default function ExpertEditor({
                   <button
                     type="button"
                     onClick={() => setShowToolTips(!showToolTips)}
-                    className="flex items-center gap-1 text-[9px] text-accent-hover hover:text-accent transition-colors"
+                    className="flex items-center gap-1 text-nano text-accent-hover hover:text-accent transition-colors"
                   >
                     <Lightbulb className="w-3 h-3" />
                     {showToolTips ? t('hideToolTips') : t('showToolTips')}
@@ -332,16 +332,16 @@ export default function ExpertEditor({
                 {/* 🔥 工具使用说明模板 */}
                 {showToolTips && (
                   <div className="p-3 border-2 border-border-default bg-accent-hover/5 space-y-2">
-                    <p className="text-[9px] text-content-secondary">
+                    <p className="text-nano text-content-secondary">
                       {t('toolTipsDescription')}
                     </p>
                     <div className="space-y-1">
-                      <p className="text-[9px] font-bold text-content-secondary">
+                      <p className="text-nano font-bold text-content-secondary">
                         {t('availableTools')}:
                         {isLoadingTools && <span className="ml-2 text-content-secondary/50">({t('loading')})</span>}
                       </p>
                       {tools.length > 0 ? (
-                        <ul className="text-[9px] text-content-secondary space-y-1 ml-2 max-h-32 overflow-y-auto bauhaus-scrollbar">
+                        <ul className="text-nano text-content-secondary space-y-1 ml-2 max-h-32 overflow-y-auto bauhaus-scrollbar">
                           {tools.map((tool) => (
                             <li key={tool.name}>
                               • <code className="bg-surface-page px-1">{tool.name}</code>
@@ -353,13 +353,13 @@ export default function ExpertEditor({
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-[9px] text-content-secondary/50 ml-2">
+                        <p className="text-nano text-content-secondary/50 ml-2">
                           {isLoadingTools ? t('loadingTools') : t('noToolsAvailable')}
                         </p>
                       )}
                     </div>
                     <div className="pt-1 border-t border-border-default">
-                      <p className="text-[9px] font-bold text-content-secondary mb-1">{t('toolUsageExample')}:</p>
+                      <p className="text-nano font-bold text-content-secondary mb-1">{t('toolUsageExample')}:</p>
                       <pre className="text-[8px] text-content-secondary bg-surface-page p-2 overflow-x-auto">
 {`# Tools & Constraints
 1. **Mandatory Tool Use**: 当需要实时信息时，必须使用 \`search_web\`。
@@ -379,7 +379,7 @@ export default function ExpertEditor({
                   rows={10}
                   className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-y min-h-[150px] bauhaus-scrollbar"
                 />
-                <div className="flex justify-between text-[9px] text-content-secondary">
+                <div className="flex justify-between text-nano text-content-secondary">
                   <span>{formData.system_prompt.length} {t('chars')}</span>
                   <span className={formData.system_prompt.length < 10 ? 'text-status-offline' : ''}>
                     {t('minChars')}: 10
@@ -425,7 +425,7 @@ export default function ExpertEditor({
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary" />
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                    <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
                       {t('testInput')}
                     </label>
                   </div>
@@ -436,7 +436,7 @@ export default function ExpertEditor({
                     rows={5}
                     className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-none"
                   />
-                  <div className="flex justify-between text-[9px] text-content-secondary">
+                  <div className="flex justify-between text-nano text-content-secondary">
                     <span>{testInput.length} {t('chars')}</span>
                     <span className={testInput.length < 10 ? 'text-status-offline' : ''}>
                       {t('minChars')}: 10
@@ -477,11 +477,11 @@ export default function ExpertEditor({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 bg-accent-hover" />
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+                        <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
                           {t('previewResults')}
                         </label>
                       </div>
-                      <span className="text-[9px] text-content-secondary">
+                      <span className="text-nano text-content-secondary">
                         {previewResult.model} · {previewResult.temperature} · {(previewResult.execution_time_ms / 1000).toFixed(2)}s
                       </span>
                     </div>

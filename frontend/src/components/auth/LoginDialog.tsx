@@ -154,7 +154,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
 
           {/* 调试信息 */}
           {import.meta.env.DEV && (
-            <div className="p-2 bg-surface-page border-2 border-border-default font-mono text-[10px] text-content-secondary rounded">
+            <div className="p-2 bg-surface-page border-2 border-border-default font-mono text-micro text-content-secondary rounded">
               <div>🔍 DEBUG_MODE</div>
               <div>STEP: {step}</div>
               <div>CODE: {debugCode || 'NONE'}</div>
@@ -166,7 +166,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
           {step === 'phone' && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="font-mono text-[10px] font-bold uppercase text-content-secondary">
+                <label className="font-mono text-micro font-bold uppercase text-content-secondary">
                   PHONE_NUMBER
                 </label>
                 <input
@@ -189,7 +189,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                 {loading ? 'SENDING...' : t('sendCode')}
               </button>
 
-              <div className="text-center font-mono text-[10px] text-content-secondary opacity-60">
+              <div className="text-center font-mono text-micro text-content-secondary opacity-60">
                 首次登录将自动注册账号
               </div>
             </div>
@@ -199,7 +199,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
           {step === 'code' && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="font-mono text-[10px] font-bold uppercase text-content-secondary">
+                <label className="font-mono text-micro font-bold uppercase text-content-secondary">
                   VERIFICATION_CODE
                 </label>
                 <input
@@ -213,7 +213,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                   autoFocus
                   className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-lg text-center tracking-[0.3em] focus:outline-none focus:border-accent-hover transition-colors rounded-md"
                 />
-                <div className="font-mono text-[9px] text-content-secondary opacity-50">
+                <div className="font-mono text-nano text-content-secondary opacity-50">
                   验证码已发送至 {phoneNumber.slice(0, 3)}****{phoneNumber.slice(-4)}
                 </div>
               </div>
@@ -247,7 +247,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
               {/* 开发环境显示验证码 */}
               {import.meta.env.DEV && countdown > 0 && (
                 <div className="p-3 bg-accent-hover/10 border border-theme-card border-accent-hover rounded-md">
-                  <div className="font-mono text-[10px] text-content-primary">
+                  <div className="font-mono text-micro text-content-primary">
                     <div className="font-bold mb-1">🔧 DEV_MODE</div>
                     <div>CODE: <span className="text-lg font-bold">{debugCode}</span></div>
                   </div>

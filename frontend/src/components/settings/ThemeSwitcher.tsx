@@ -188,7 +188,7 @@ function InlineThemeSwitcher({ className }: { className?: string }) {
           </span>
           
           {/* 描述 */}
-          <span className="text-[10px] text-content-muted text-center line-clamp-1">
+          <span className="text-micro text-content-muted text-center line-clamp-1">
             {themeMeta.description}
           </span>
         </button>

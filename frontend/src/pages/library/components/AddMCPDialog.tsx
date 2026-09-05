@@ -126,7 +126,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+              <span className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
                 {t('moduleName') || 'Module Name'} *
               </span>
             </div>
@@ -144,7 +144,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+              <span className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
                 {t('description') || 'Description'} ({t('optional') || 'Optional'})
               </span>
             </div>
@@ -161,7 +161,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+              <span className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
                 {t('transportProtocol') || 'Protocol'}
               </span>
             </div>
@@ -197,7 +197,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+              <span className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
                 Endpoint URL *
               </span>
             </div>
@@ -210,7 +210,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
               disabled={createMutation.isPending}
               className="font-mono text-sm"
             />
-            <p className="mt-2 font-mono text-[10px] text-content-secondary">
+            <p className="mt-2 font-mono text-micro text-content-secondary">
               {formData.transport === 'sse' 
                 ? 'SSE endpoint URL for Server-Sent Events transport'
                 : 'HTTP endpoint URL for Streamable HTTP transport'}

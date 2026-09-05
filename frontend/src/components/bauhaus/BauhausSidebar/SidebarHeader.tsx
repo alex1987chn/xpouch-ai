@@ -45,7 +45,7 @@ export function SidebarHeader({ isCollapsed, onLogoClick }: SidebarHeaderProps) 
           </h1>
           <div className="flex items-center gap-2 mt-0.5">
             <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
-            <span className="font-mono text-[10px] text-content-secondary tracking-widest group-hover:text-content-primary transition-colors">
+            <span className="font-mono text-micro text-content-secondary tracking-widest group-hover:text-content-primary transition-colors">
               OS {VERSION.CURRENT}
             </span>
           </div>

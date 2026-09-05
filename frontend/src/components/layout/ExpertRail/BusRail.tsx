@@ -62,7 +62,7 @@ function ExpertNode({ task, isSelected, isRunning, index, onClick }: ExpertNodeP
         )}
       >
         {/* 序号 */}
-        <div className="absolute -top-1 -left-1 w-4 h-4 bg-primary text-primary-foreground text-[9px] font-mono flex items-center justify-center rounded-sm border border-border">
+        <div className="absolute -top-1 -left-1 w-4 h-4 bg-primary text-primary-foreground text-nano font-mono flex items-center justify-center rounded-sm border border-border">
           {String(index + 1).padStart(2, '0')}
         </div>
         
@@ -76,7 +76,7 @@ function ExpertNode({ task, isSelected, isRunning, index, onClick }: ExpertNodeP
 
       {/* Tooltip - 显示任务描述 */}
       <div className={cn(
-        "absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-popover text-popover-foreground text-[10px] px-2 py-1 border border-border rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 max-w-[200px] truncate"
+        "absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-popover text-popover-foreground text-micro px-2 py-1 border border-border rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 max-w-[200px] truncate"
       )}>
         {task.description || task.expert_type}
       </div>

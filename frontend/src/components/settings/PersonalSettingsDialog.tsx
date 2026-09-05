@@ -140,7 +140,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+              <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
                 {t('avatarSetup')}
               </span>
             </div>
@@ -193,7 +193,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
                 )}
               </div>
             </div>
-            <p className="text-[10px] text-content-secondary mt-2 opacity-60">
+            <p className="text-micro text-content-secondary mt-2 opacity-60">
               {t('avatarHint')}
             </p>
           </section>
@@ -205,7 +205,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+              <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
                 {t('username')}
               </span>
             </div>
@@ -221,7 +221,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
                 className="w-full pl-10 pr-3 py-2.5 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
               />
             </div>
-            <p className="text-[10px] text-content-secondary mt-2 opacity-60">
+            <p className="text-micro text-content-secondary mt-2 opacity-60">
               {t('usernameHint')}
             </p>
           </section>

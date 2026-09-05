@@ -82,7 +82,7 @@ export function SettingsMenu({
       <div className="p-2">
         {/* 用户信息头 */}
         <div className="px-2 pb-3 pt-1">
-          <div className="text-[10px] text-content-secondary mb-2 uppercase tracking-wider">
+          <div className="text-micro text-content-secondary mb-2 uppercase tracking-wider">
             /// {t('userSettings')}
           </div>
           <div className="flex items-center gap-3">
@@ -108,18 +108,18 @@ export function SettingsMenu({
               {/* 套餐 + UID 行 */}
               <div className="flex items-center gap-2">
                 {/* 套餐标签 */}
-                <span className="text-[10px] text-content-secondary uppercase shrink-0">
+                <span className="text-micro text-content-secondary uppercase shrink-0">
                   {isAuthenticated ? (user?.plan || 'Free') : 'Guest'}
                 </span>
 
                 {/* UID 可复制标签 */}
                 {isAuthenticated && userId && (
                   <>
-                    <span className="text-[10px] text-content-secondary/40">|</span>
+                    <span className="text-micro text-content-secondary/40">|</span>
                     <button
                       onClick={handleCopyUID}
                       className={cn(
-                        'group flex items-center gap-1 text-[10px] transition-all',
+                        'group flex items-center gap-1 text-micro transition-all',
                         copied
                           ? 'text-status-success'
                           : 'text-content-secondary/60 hover:text-content-primary'
@@ -181,7 +181,7 @@ export function SettingsMenu({
 
         {/* 语言切换 - 紧凑单行 */}
         <div className="border-t-2 border-border-default mt-1 px-3 py-2 flex items-center justify-between gap-2">
-          <span className="text-[10px] text-content-secondary uppercase tracking-wider shrink-0">
+          <span className="text-micro text-content-secondary uppercase tracking-wider shrink-0">
             /// {t('language')}
           </span>
           <div className="flex items-center gap-1">
@@ -193,7 +193,7 @@ export function SettingsMenu({
                   // 语言切换后不关闭菜单，让用户看到切换效果
                 }}
                 className={cn(
-                  'px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase transition-colors rounded-sm',
+                  'px-1.5 py-0.5 font-mono text-micro font-bold uppercase transition-colors rounded-sm',
                   language === lang
                     ? 'bg-accent-hover text-content-primary'
                     : 'text-content-secondary hover:text-content-primary'

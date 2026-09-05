@@ -124,7 +124,7 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
               </p>
               
               {/* URL - 脱敏显示 */}
-              <p className="font-mono text-[10px] text-content-muted truncate mt-1" title={isAdmin ? server.sse_url : undefined}>
+              <p className="font-mono text-micro text-content-muted truncate mt-1" title={isAdmin ? server.sse_url : undefined}>
                 {isAdmin ? server.sse_url : maskUrl(server.sse_url)}
               </p>
             </div>
@@ -175,7 +175,7 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
             <div className="p-3">
               <div className="flex items-center gap-2 mb-3">
                 <Wrench className="w-3.5 h-3.5 text-content-muted" />
-                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-content-muted">
+                <span className="font-mono text-micro font-bold uppercase tracking-widest text-content-muted">
                   {t('availableTools') || 'Available Tools'} ({tools?.length ?? 0})
                 </span>
               </div>
@@ -198,7 +198,7 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
                       <div className="font-mono text-xs font-bold text-content-primary">
                         {tool.name}
                       </div>
-                      <div className="font-mono text-[10px] text-content-muted mt-0.5 line-clamp-2">
+                      <div className="font-mono text-micro text-content-muted mt-0.5 line-clamp-2">
                         {tool.description}
                       </div>
                     </div>

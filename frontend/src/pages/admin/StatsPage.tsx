@@ -110,7 +110,7 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
                 }}
               />
             </div>
-            <span className="text-[10px] font-mono text-content-muted">
+            <span className="text-micro font-mono text-content-muted">
               {day.date.slice(5)}
             </span>
           </div>

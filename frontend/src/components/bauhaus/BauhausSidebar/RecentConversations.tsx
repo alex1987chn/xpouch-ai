@@ -21,7 +21,7 @@ export function RecentConversations({
       {/* 小标题: 模拟终端注释 - 左对齐 */}
       <div className={cn('px-4 mb-2 flex items-center gap-2 opacity-50 mx-auto', TW.CONTENT_WIDTH)}>
         <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+        <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
           /// {t('memoryDump')}
         </span>
       </div>
@@ -42,11 +42,11 @@ export function RecentConversations({
 
             <div className="flex-1 min-w-0">
               {/* 标题 */}
-              <div className="text-[11px] font-bold text-content-secondary truncate group-hover:text-content-primary transition-colors">
+              <div className="text-tiny font-bold text-content-secondary truncate group-hover:text-content-primary transition-colors">
                 {conv.title || t('newChat')}
               </div>
               {/* 时间: 极小字体 */}
-              <div className="text-[9px] text-content-secondary opacity-50 truncate uppercase tracking-wider">
+              <div className="text-nano text-content-secondary opacity-50 truncate uppercase tracking-wider">
                 LOG_ID: {conv.id.slice(0, 6)} • {formatRelativeTime(conv.updated_at)}
               </div>
             </div>
@@ -55,7 +55,7 @@ export function RecentConversations({
 
         {/* 如果没有会话，显示空状态 */}
         {conversations.length === 0 && (
-          <div className="px-3 py-2 text-[10px] text-content-secondary opacity-40">
+          <div className="px-3 py-2 text-micro text-content-secondary opacity-40">
             {t('noDataStream')}
           </div>
         )}

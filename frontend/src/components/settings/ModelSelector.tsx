@@ -80,7 +80,7 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
       {label && (
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+          <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
             {label}
           </label>
         </div>
@@ -89,7 +89,7 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
       <div className="grid grid-cols-2 gap-3">
         {/* 供应商选择 */}
         <div className="relative" ref={providerDropdownRef}>
-          <label className="text-[9px] text-content-secondary mb-1 block uppercase">
+          <label className="text-nano text-content-secondary mb-1 block uppercase">
             {t('provider')}
           </label>
           <button
@@ -138,7 +138,7 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
 
         {/* 模型选择 */}
         <div className="relative" ref={modelDropdownRef}>
-          <label className="text-[9px] text-content-secondary mb-1 block uppercase">
+          <label className="text-nano text-content-secondary mb-1 block uppercase">
             {t('model')}
           </label>
           <button

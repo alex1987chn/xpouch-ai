@@ -307,8 +307,8 @@ export default function ArtifactDashboard({
           {artifacts.length > 0 && (
             <>
               <div className="h-7 px-2 flex items-center gap-1.5 bg-accent text-accent-foreground border-2 border-border-default shrink-0">
-                <span className="font-mono text-[10px] font-bold uppercase">{expertName}</span>
-                <span className="text-[9px] opacity-70">({artifacts.length})</span>
+                <span className="font-mono text-micro font-bold uppercase">{expertName}</span>
+                <span className="text-nano opacity-70">({artifacts.length})</span>
               </div>
               <div className="w-px h-5 bg-border mx-1 shrink-0" />
             </>
@@ -359,7 +359,7 @@ export default function ArtifactDashboard({
               {/* Toolbar */}
               <div className="flex items-center justify-between px-2 py-1.5 border-b border-border-default bg-panel shrink-0">
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 text-[10px] font-mono text-content-primary uppercase">
+                  <div className="flex items-center gap-1 text-micro font-mono text-content-primary uppercase">
                     <FileCode className="w-3 h-3 text-accent" />
                     <span className="font-bold">
                       {isEditing ? 'Editing' : currentArtifact.language || currentArtifact.type}
@@ -475,7 +475,7 @@ export default function ArtifactDashboard({
                               className="w-full px-3 py-2 text-left text-xs text-content-primary hover:bg-accent hover:text-accent-foreground transition-colors flex items-center justify-between"
                             >
                               <span>Markdown</span>
-                              <span className="text-[10px] text-muted-foreground font-mono">.md</span>
+                              <span className="text-micro text-muted-foreground font-mono">.md</span>
                             </button>
                             <div className="border-t border-border-default" />
                             <button
@@ -483,7 +483,7 @@ export default function ArtifactDashboard({
                               className="w-full px-3 py-2 text-left text-xs text-content-primary hover:bg-accent hover:text-accent-foreground transition-colors flex items-center justify-between"
                             >
                               <span>PDF</span>
-                              <span className="text-[10px] text-muted-foreground font-mono">.pdf</span>
+                              <span className="text-micro text-muted-foreground font-mono">.pdf</span>
                             </button>
                           </div>
                         )}

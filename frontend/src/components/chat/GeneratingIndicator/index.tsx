@@ -81,7 +81,7 @@ export default function GeneratingIndicator({
             </div>
 
             {/* 副标题：详细说明 */}
-            <span className="font-mono text-[10px] text-primary/70 uppercase">
+            <span className="font-mono text-micro text-primary/70 uppercase">
               {config.subtitle}
             </span>
           </div>

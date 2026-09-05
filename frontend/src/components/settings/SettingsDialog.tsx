@@ -98,7 +98,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+              <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
                 {t('simpleMode')}
               </span>
             </div>
@@ -128,7 +128,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                     <div className="text-sm font-bold text-content-primary">
                       {t('followSystemDefault')}
                     </div>
-                    <div className="text-[10px] text-content-secondary mt-0.5">
+                    <div className="text-micro text-content-secondary mt-0.5">
                       {settingsData?.default_model?.name || effectiveModelId}
                     </div>
                   </div>
@@ -155,7 +155,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                       <div className="text-sm font-bold text-content-primary">
                         {model.name}
                       </div>
-                      <div className="text-[10px] text-content-secondary mt-0.5">
+                      <div className="text-micro text-content-secondary mt-0.5">
                         {model.provider_name} - {Math.round(model.context_window / 1000)}K tokens
                         {model.thinking_toggle ? ` - ${t('thinkingMode')}` : ''}
                       </div>
@@ -175,7 +175,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+              <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
                 {t('thinkingMode')}
               </span>
             </div>
@@ -200,7 +200,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 </button>
               ))}
             </div>
-            <p className="text-[9px] text-content-secondary opacity-60 mt-2">
+            <p className="text-nano text-content-secondary opacity-60 mt-2">
               {supportsThinking ? t('thinkingCostHint') : t('thinkingUnsupported')}
             </p>
           </section>
@@ -212,7 +212,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+              <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
                 {t('complexMode')}
               </span>
             </div>
@@ -220,7 +220,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <div className="p-3 border-2 border-border-default">
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-content-secondary flex-shrink-0 mt-0.5" />
-                <p className="text-[10px] text-content-secondary">
+                <p className="text-micro text-content-secondary">
                   {t('complexModeDesc')}
                 </p>
               </div>
@@ -231,7 +231,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-content-secondary">
+              <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
                 {t('apiKeyConfig')}
               </span>
             </div>
@@ -243,10 +243,10 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                   <h4 className="text-xs font-bold text-content-primary mb-1">
                     {t('apiKeyConfigTitle')}
                   </h4>
-                  <p className="text-[10px] text-content-secondary mb-1">
+                  <p className="text-micro text-content-secondary mb-1">
                     {t('apiKeyConfigDesc')}
                   </p>
-                  <p className="text-[9px] text-content-secondary opacity-60">
+                  <p className="text-nano text-content-secondary opacity-60">
                     {t('apiKeyConfigHint')}
                   </p>
                 </div>

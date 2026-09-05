@@ -46,7 +46,7 @@ export function UserSection({
             >
               <Avatar className="h-8 w-8 border-2 border-border-default shadow-theme-button">
                 <AvatarImage src={avatar} alt="Avatar" />
-                <AvatarFallback className="bg-content-primary text-surface-card text-[10px] font-bold">
+                <AvatarFallback className="bg-content-primary text-surface-card text-micro font-bold">
                   {getAvatarDisplay(avatar || '', username)}
                 </AvatarFallback>
               </Avatar>
@@ -110,7 +110,7 @@ export function UserSection({
                 <div className="font-bold text-sm uppercase" title={username}>
                   {username}
                 </div>
-                <div className="text-[10px] text-content-secondary uppercase tracking-wider">
+                <div className="text-micro text-content-secondary uppercase tracking-wider">
                   PLAN: {planLabel}
                 </div>
               </div>

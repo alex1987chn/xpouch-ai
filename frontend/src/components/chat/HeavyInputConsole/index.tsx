@@ -77,7 +77,7 @@ export default function HeavyInputConsole({
             {disabled && onStop ? (
               <button
                 onClick={onStop}
-                className="px-6 py-1.5 bg-accent-destructive text-content-inverted font-bold text-[10px] uppercase border-2 border-accent-destructive transition-all flex items-center gap-2 shadow-theme-button hover:shadow-theme-button-hover hover:bg-accent-destructive/90 active:[transform:var(--transform-button-active)] rounded-md"
+                className="px-6 py-1.5 bg-accent-destructive text-content-inverted font-bold text-micro uppercase border-2 border-accent-destructive transition-all flex items-center gap-2 shadow-theme-button hover:shadow-theme-button-hover hover:bg-accent-destructive/90 active:[transform:var(--transform-button-active)] rounded-md"
                 title={t('stop')}
               >
                 <Square className="w-3 h-3" />
@@ -88,7 +88,7 @@ export default function HeavyInputConsole({
                 onClick={onSend}
                 disabled={!value.trim()}
                 className={cn(
-                  "px-6 py-1.5 bg-surface-elevated text-content-primary font-bold text-[10px] uppercase border-2 border-border-default transition-all flex items-center gap-2 shadow-theme-button rounded-md",
+                  "px-6 py-1.5 bg-surface-elevated text-content-primary font-bold text-micro uppercase border-2 border-border-default transition-all flex items-center gap-2 shadow-theme-button rounded-md",
                   value.trim() && "hover:bg-accent-brand hover:text-content-inverted hover:border-accent-brand hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)]"
                 )}
               >

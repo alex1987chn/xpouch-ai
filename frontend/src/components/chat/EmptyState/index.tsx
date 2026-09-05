@@ -61,7 +61,7 @@ export default function EmptyState({
           <div className="w-2 h-2 bg-border/30" />
         </div>
         <div className="pt-4 border-t border-border/20">
-          <div className="text-[9px] font-mono text-muted-foreground/70">
+          <div className="text-nano font-mono text-muted-foreground/70">
             STATUS: <span className="text-accent">WAITING_FOR_TASK</span>
           </div>
         </div>
