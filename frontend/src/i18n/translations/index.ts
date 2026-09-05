@@ -7,6 +7,7 @@ import * as chat from './chat'
 import * as library from './library'
 import * as admin from './admin'
 import * as settings from './settings'
+import * as run from './run'
 
 // 合并所有中文翻译
 export const zh: Record<TranslationKey, string> = {
@@ -16,6 +17,7 @@ export const zh: Record<TranslationKey, string> = {
   ...library.zh,
   ...admin.zh,
   ...settings.zh,
+  ...run.zh,
 } as Record<TranslationKey, string>
 
 // 合并所有英文翻译
@@ -26,6 +28,7 @@ export const en: Record<TranslationKey, string> = {
   ...library.en,
   ...admin.en,
   ...settings.en,
+  ...run.en,
 } as Record<TranslationKey, string>
 
 // 合并所有日文翻译
@@ -36,7 +39,8 @@ export const ja: Record<TranslationKey, string> = {
   ...library.ja,
   ...admin.ja,
   ...settings.ja,
+  ...run.ja,
 } as Record<TranslationKey, string>
 
 // 导出各模块（用于需要按需加载的场景）
-export { common, home, chat, library, admin, settings }
+export { common, home, chat, library, admin, settings, run }

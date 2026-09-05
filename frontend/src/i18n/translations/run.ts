@@ -1,0 +1,58 @@
+// 运行时间线 / 运行详情相关翻译
+
+export const zh: Record<string, string> = {
+  modeLabel: '模式:',
+  modeComplex: '复杂模式',
+  modeSimple: '简单模式',
+  modeComplexShort: '复杂',
+  modeSimpleShort: '简单',
+  expertLabel: '专家:',
+  durationLabel: '耗时:',
+  artifactTypeLabel: '类型:',
+  hitlWaitingApproval: '等待用户审核执行计划',
+  runCreatedAt: '创建于 {time}',
+  runBack: '返回',
+  runDetails: '运行详情',
+  runNotFound: '运行实例不存在或已被删除',
+  noEvents: '暂无事件记录',
+  payloadEmpty: '此事件无 Payload 数据',
+  selectEventHint: '选择事件查看详情',
+}
+
+export const en: Record<string, string> = {
+  modeLabel: 'Mode:',
+  modeComplex: 'Complex Mode',
+  modeSimple: 'Simple Mode',
+  modeComplexShort: 'Complex',
+  modeSimpleShort: 'Simple',
+  expertLabel: 'Expert:',
+  durationLabel: 'Duration:',
+  artifactTypeLabel: 'Type:',
+  hitlWaitingApproval: 'Waiting for user to review the plan',
+  runCreatedAt: 'Created at {time}',
+  runBack: 'Back',
+  runDetails: 'Run Details',
+  runNotFound: 'Run not found or has been deleted',
+  noEvents: 'No events yet',
+  payloadEmpty: 'No payload data for this event',
+  selectEventHint: 'Select an event to view details',
+}
+
+export const ja: Record<string, string> = {
+  modeLabel: 'モード:',
+  modeComplex: '複雑モード',
+  modeSimple: 'シンプルモード',
+  modeComplexShort: '複雑',
+  modeSimpleShort: 'シンプル',
+  expertLabel: 'エキスパート:',
+  durationLabel: '所要時間:',
+  artifactTypeLabel: 'タイプ:',
+  hitlWaitingApproval: 'ユーザーによるプラン確認待ち',
+  runCreatedAt: '{time} に作成',
+  runBack: '戻る',
+  runDetails: '実行詳細',
+  runNotFound: '実行が存在しないか削除されました',
+  noEvents: 'イベント記録はありません',
+  payloadEmpty: 'このイベントにはPayloadデータがありません',
+  selectEventHint: 'イベントを選択して詳細を表示',
+}

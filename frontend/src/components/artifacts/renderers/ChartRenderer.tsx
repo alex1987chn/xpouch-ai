@@ -12,6 +12,7 @@ import {
   Pie,
   Cell
 } from 'recharts'
+import { useTranslation } from '@/i18n'
 
 interface ChartData {
   name: string
@@ -83,6 +84,7 @@ function isJSONComplete(str: string): boolean {
 }
 
 export function ChartRenderer({ code }: ChartRendererProps) {
+  const { t } = useTranslation()
   // 🔥 防抖：如果 JSON 不完整，显示加载状态而非报错
   if (!isJSONComplete(code)) {
     return (
@@ -93,7 +95,7 @@ export function ChartRenderer({ code }: ChartRendererProps) {
             <div className="w-2 h-2 bg-status-info rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
             <div className="w-2 h-2 bg-status-info rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
           </div>
-          <span className="text-sm">图表生成中...</span>
+          <span className="text-sm">{t('artifactChartGenerating')}</span>
         </div>
       </div>
     )
@@ -108,7 +110,7 @@ export function ChartRenderer({ code }: ChartRendererProps) {
     return (
       <div className="w-full h-[200px] bg-[#1e1e1e] rounded-lg p-4 my-4 border border-gray-700 flex items-center justify-center">
         <div className="text-gray-500 text-sm flex items-center gap-2">
-          <span>图表数据格式错误</span>
+          <span>{t('artifactDataError')}</span>
         </div>
       </div>
     )

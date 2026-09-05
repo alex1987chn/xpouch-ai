@@ -32,6 +32,21 @@ export type TranslationKey =
   // Common
   | 'save' | 'cancel' | 'delete' | 'edit' | 'confirmDelete' | 'noHistory' | 'startChat'
   | 'menu' | 'image'
+  // Run 时间线/详情
+  | 'modeLabel' | 'modeComplex' | 'modeSimple' | 'modeComplexShort' | 'modeSimpleShort'
+  | 'expertLabel' | 'durationLabel' | 'artifactTypeLabel' | 'hitlWaitingApproval'
+  | 'runCreatedAt' | 'runBack' | 'runDetails' | 'runNotFound' | 'noEvents'
+  | 'payloadEmpty' | 'selectEventHint'
+  // 计划审核
+  | 'planReviewTitle' | 'tasksPendingConfirm'
+  // Artifact 加载态
+  | 'artifactChartGenerating' | 'artifactMermaidGenerating' | 'artifactDataError'
+  | 'videoLoading' | 'videoLoadFailed' | 'imageLoading' | 'imageLoadFailed'
+  | 'mediaLinkInvalid' | 'artifactSchemaHintPlaceholder'
+  // 登录弹窗
+  | 'phoneNumberPlaceholder' | 'autoRegisterHint' | 'codePlaceholder' | 'codeSentTo' | 'changePhone'
+  // UID 复制
+  | 'uidCopied' | 'clickToCopyUid'
   | 'totalHistory' | 'totalItems' | 'matchingHistory' | 'matchingItems' | 'searchHistory'
   | 'noMatchingHistory' | 'tryOtherKeywords'
   // Create Agent

@@ -186,8 +186,8 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
         <div className="flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-content-secondary" />
           <div>
-            <h3 className="text-sm font-semibold text-content-primary">计划审核</h3>
-            <span className="text-xs text-content-muted">{editedPlan.length} 个任务待确认</span>
+            <h3 className="text-sm font-semibold text-content-primary">{t('planReviewTitle')}</h3>
+            <span className="text-xs text-content-muted">{t('tasksPendingConfirm', { count: editedPlan.length })}</span>
           </div>
         </div>
         <span className="px-2 py-1 text-micro font-mono uppercase tracking-wider border border-border-default text-content-muted">

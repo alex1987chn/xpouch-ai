@@ -124,7 +124,7 @@ export function SettingsMenu({
                           ? 'text-status-success'
                           : 'text-content-secondary/60 hover:text-content-primary'
                       )}
-                      title={copied ? '已复制' : '点击复制 UID'}
+                      title={copied ? t('uidCopied') : t('clickToCopyUid')}
                     >
                       <span className="uppercase">UID:</span>
                       <span className="tracking-tight">{formatUID(userId)}</span>

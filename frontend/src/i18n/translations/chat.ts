@@ -113,6 +113,8 @@ export const zh: Record<string, string> = {
   pollingHitlPaused: '等待审批中...',
   pollingRefresh: '刷新',
   pollingError: '连接失败，请刷新重试',
+  planReviewTitle: '计划审核',
+  tasksPendingConfirm: '{count} 个任务待确认',
 }
 
 export const en: Record<string, string> = {
@@ -228,6 +230,8 @@ export const en: Record<string, string> = {
   pollingHitlPaused: 'Waiting for approval...',
   pollingRefresh: 'Refresh',
   pollingError: 'Connection failed, please refresh',
+  planReviewTitle: 'Plan Review',
+  tasksPendingConfirm: '{count} tasks to confirm',
 }
 
 export const ja: Record<string, string> = {
@@ -343,4 +347,6 @@ export const ja: Record<string, string> = {
   pollingHitlPaused: '承認待ち...',
   pollingRefresh: '更新',
   pollingError: '接続失敗、更新してください',
+  planReviewTitle: 'プラン審査',
+  tasksPendingConfirm: '{count}件のタスクが確認待ち',
 }

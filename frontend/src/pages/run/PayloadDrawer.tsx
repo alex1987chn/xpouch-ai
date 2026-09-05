@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { ANIMATION_DURATION } from '@/constants/ui'
 import type { RunEvent } from '@/types/run'
+import { useTranslation } from '@/i18n'
 
 interface PayloadDrawerProps {
   event: RunEvent | null
@@ -26,6 +27,7 @@ interface PayloadDrawerProps {
 }
 
 export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -230,7 +232,7 @@ export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-40 text-content-secondary">
-                  <div className="text-sm">此事件无 Payload 数据</div>
+                  <div className="text-sm">{t('payloadEmpty')}</div>
                   <div className="text-xs text-content-tertiary mt-1">
                     {event.event_type}
                   </div>
@@ -238,7 +240,7 @@ export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
               )
             ) : (
               <div className="flex flex-col items-center justify-center h-40 text-content-secondary">
-                <div className="text-sm">选择事件查看详情</div>
+                <div className="text-sm">{t('selectEventHint')}</div>
               </div>
             )}
           </div>

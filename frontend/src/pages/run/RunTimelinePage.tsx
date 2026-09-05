@@ -10,6 +10,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Clock, AlertCircle, CheckCircle, Loader2, ChevronRight } from 'lucide-react'
 import { format, formatDistanceToNow, differenceInSeconds } from 'date-fns'
+import { useTranslation } from '@/i18n'
 import { zhCN } from 'date-fns/locale'
 import { useState, useCallback } from 'react'
 
@@ -69,6 +70,7 @@ interface TimelineEventItemProps {
 }
 
 function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEventItemProps) {
+  const { t } = useTranslation()
   const time = new Date(event.timestamp)
   const timeAgo = formatDistanceToNow(time, { addSuffix: true, locale: zhCN })
   const timeStr = format(time, 'HH:mm:ss')
@@ -114,19 +116,19 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
         {event.event_data && Object.keys(event.event_data).length > 0 && (
           <div className="mt-2 text-sm text-content-secondary">
             {event.event_type === 'router_decided' && (
-              <span>模式: {event.event_data.mode === 'complex' ? '复杂模式' : '简单模式'}</span>
+              <span>{t('modeLabel')} {event.event_data.mode === 'complex' ? t('modeComplex') : t('modeSimple')}</span>
             )}
             {event.event_type === 'task_started' && (
-              <span>专家: {String(event.event_data.expert_type || 'unknown')}</span>
+              <span>{t('expertLabel')} {String(event.event_data.expert_type || 'unknown')}</span>
             )}
             {event.event_type === 'task_completed' && (
-              <span>耗时: {event.event_data.duration_ms ? `${Math.round(event.event_data.duration_ms as number / 1000)}s` : '-'}</span>
+              <span>{t('durationLabel')} {event.event_data.duration_ms ? `${Math.round(event.event_data.duration_ms as number / 1000)}s` : '-'}</span>
             )}
             {event.event_type === 'artifact_generated' && (
-              <span>类型: {String(event.event_data.artifact_type || 'unknown')}</span>
+              <span>{t('artifactTypeLabel')} {String(event.event_data.artifact_type || 'unknown')}</span>
             )}
             {event.event_type === 'hitl_interrupted' && (
-              <span>等待用户审核执行计划</span>
+              <span>{t('hitlWaitingApproval')}</span>
             )}
           </div>
         )}
@@ -145,6 +147,7 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
 // ============================================
 
 function RunInfoCard({ run }: { run: NonNullable<ReturnType<typeof useRunDetails>['data']> }) {
+  const { t } = useTranslation()
   const duration = run.completed_at && run.started_at
     ? differenceInSeconds(new Date(run.completed_at), new Date(run.started_at))
     : null
@@ -155,15 +158,15 @@ function RunInfoCard({ run }: { run: NonNullable<ReturnType<typeof useRunDetails
         <div className="flex items-center gap-4">
           <RunStatusBadge status={run.status} variant="detailed" />
           <span className="text-sm text-content-secondary">
-            模式: {run.mode === 'complex' ? '复杂' : '简单'}
+            {t('modeLabel')} {run.mode === 'complex' ? t('modeComplexShort') : t('modeSimpleShort')}
           </span>
         </div>
         <div className="flex items-center gap-4 text-sm text-content-secondary">
           {duration !== null && (
-            <span>耗时: {duration}s</span>
+            <span>{t('durationLabel')} {duration}s</span>
           )}
           {run.created_at && (
-            <span>创建于 {format(new Date(run.created_at), 'yyyy-MM-dd HH:mm')}</span>
+            <span>{t('runCreatedAt', { time: format(new Date(run.created_at), 'yyyy-MM-dd HH:mm') })}</span>
           )}
         </div>
       </div>
@@ -187,6 +190,7 @@ function RunInfoCard({ run }: { run: NonNullable<ReturnType<typeof useRunDetails
 export default function RunTimelinePage() {
   const { runId } = useParams<{ runId: string }>()
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   // 抽屉状态
   const [selectedEvent, setSelectedEvent] = useState<RunEvent | null>(null)
@@ -216,7 +220,7 @@ export default function RunTimelinePage() {
     return (
       <div className="flex h-full flex-col items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-accent-primary" />
-        <p className="mt-4 text-sm text-content-secondary">加载中...</p>
+        <p className="mt-4 text-sm text-content-secondary">{t('loading')}</p>
       </div>
     )
   }
@@ -226,9 +230,9 @@ export default function RunTimelinePage() {
     return (
       <div className="flex h-full flex-col items-center justify-center">
         <AlertCircle className="h-12 w-12 text-content-tertiary" />
-        <p className="mt-4 text-content-primary">运行实例不存在或已被删除</p>
+        <p className="mt-4 text-content-primary">{t('runNotFound')}</p>
         <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
-          返回
+          {t('runBack')}
         </Button>
       </div>
     )
@@ -240,11 +244,11 @@ export default function RunTimelinePage() {
       <header className="flex items-center gap-4 border-b border-border-default px-6 py-4">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          返回
+          {t('runBack')}
         </Button>
         <div className="flex-1">
           <h1 className="text-lg font-semibold text-content-primary">
-            运行详情
+            {t('runDetails')}
             <span className="ml-2 font-mono text-sm text-content-secondary">
               #{runId?.slice(0, 8)}
             </span>
@@ -261,7 +265,7 @@ export default function RunTimelinePage() {
           {events.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-content-secondary">
               <Clock className="h-8 w-8 mb-2 opacity-50" />
-              <p>暂无事件记录</p>
+              <p>{t('noEvents')}</p>
             </div>
           ) : (
             <div className="space-y-0">

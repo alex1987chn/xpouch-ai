@@ -171,7 +171,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                 </label>
                 <input
                   type="tel"
-                  placeholder="11位手机号码"
+                  placeholder={t('phoneNumberPlaceholder')}
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 11))}
                   maxLength={11}
@@ -190,7 +190,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
               </button>
 
               <div className="text-center font-mono text-micro text-content-secondary opacity-60">
-                首次登录将自动注册账号
+                {t('autoRegisterHint')}
               </div>
             </div>
           )}
@@ -205,7 +205,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                 <input
                   type="text"
                   inputMode="numeric"
-                  placeholder="6位验证码"
+                  placeholder={t('codePlaceholder')}
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   maxLength={6}
@@ -214,7 +214,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                   className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-lg text-center tracking-[0.3em] focus:outline-none focus:border-accent-hover transition-colors rounded-md"
                 />
                 <div className="font-mono text-nano text-content-secondary opacity-50">
-                  验证码已发送至 {phoneNumber.slice(0, 3)}****{phoneNumber.slice(-4)}
+                  {t('codeSentTo', { phone: `${phoneNumber.slice(0, 3)}****${phoneNumber.slice(-4)}` })}
                 </div>
               </div>
 
@@ -240,7 +240,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                   disabled={loading}
                   className="flex-1 py-2 border-2 border-border-default bg-surface-card font-mono text-xs uppercase text-content-secondary hover:bg-surface-page transition-colors rounded-md"
                 >
-                  修改手机号
+                  {t('changePhone')}
                 </button>
               </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 import { logger } from '@/utils/logger'
+import { useTranslation } from '@/i18n'
 
 interface MermaidRendererProps {
   code: string
@@ -73,6 +74,7 @@ function isMermaidComplete(code: string): boolean {
 }
 
 export function MermaidRenderer({ code }: MermaidRendererProps) {
+  const { t } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
   const [svg, setSvg] = useState('')
   const [isReady, setIsReady] = useState(false)
@@ -122,7 +124,7 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
             <div className="w-2 h-2 bg-status-online rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
             <div className="w-2 h-2 bg-status-online rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
           </div>
-          <span className="text-sm">流程图生成中...</span>
+          <span className="text-sm">{t('artifactMermaidGenerating')}</span>
         </div>
       </div>
     )

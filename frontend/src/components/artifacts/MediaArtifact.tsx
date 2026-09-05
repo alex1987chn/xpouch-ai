@@ -102,7 +102,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
       <div className={cn('w-full h-full flex items-center justify-center text-muted-foreground', className)}>
         <div className="flex flex-col items-center gap-2">
           <AlertCircle className="w-8 h-8" />
-          <span className="text-sm">无法识别有效的媒体链接</span>
+          <span className="text-sm">{t('mediaLinkInvalid')}</span>
           <code className="text-xs bg-muted px-2 py-1 rounded">{content.slice(0, 100)}...</code>
         </div>
       </div>
@@ -146,7 +146,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
               <div className="absolute inset-0 flex items-center justify-center bg-background/80">
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <span className="text-sm text-muted-foreground">加载视频中...</span>
+                  <span className="text-sm text-muted-foreground">{t('videoLoading')}</span>
                 </div>
               </div>
             )}
@@ -156,7 +156,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
               <div className="absolute inset-0 flex items-center justify-center bg-background/90">
                 <div className="flex flex-col items-center gap-3">
                   <AlertCircle className="w-10 h-10 text-status-offline" />
-                  <span className="text-sm text-muted-foreground">视频加载失败</span>
+                  <span className="text-sm text-muted-foreground">{t('videoLoadFailed')}</span>
                   <button
                     onClick={handleRetry}
                     className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
@@ -184,7 +184,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
               <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <span className="text-sm text-muted-foreground">加载图片中...</span>
+                  <span className="text-sm text-muted-foreground">{t('imageLoading')}</span>
                 </div>
               </div>
             )}
@@ -194,7 +194,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
               <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
                 <div className="flex flex-col items-center gap-3">
                   <AlertCircle className="w-10 h-10 text-status-offline" />
-                  <span className="text-sm text-muted-foreground">图片加载失败</span>
+                  <span className="text-sm text-muted-foreground">{t('imageLoadFailed')}</span>
                   <button
                     onClick={handleRetry}
                     className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"

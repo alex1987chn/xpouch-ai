@@ -552,7 +552,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
               value={draft.artifact_schema_hint}
               disabled={isReadonly}
               onChange={e => setDraft(prev => ({ ...prev, artifact_schema_hint: e.target.value }))}
-              placeholder="产出物应包含：&#10;# 标题&#10;- 要点1&#10;- 要点2"
+              placeholder={t('artifactSchemaHintPlaceholder')}
               className="w-full resize-y border-2 border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary font-mono outline-none focus:border-border-strong"
             />
           </Field>
