@@ -15,13 +15,13 @@ import {
 import { TemplateImportDialog } from '@/components/library/TemplateImportDialog'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 
-// Artifact 类型标签颜色映射
+// Artifact 类型标签颜色映射（半透明色底 + 主题感知前景，双主题通用）
 const ARTIFACT_TYPE_COLORS: Record<string, string> = {
-  markdown: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  code: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  html: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  text: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-  image: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+  markdown: 'bg-green-500/15 text-content-primary',
+  code: 'bg-blue-500/15 text-content-primary',
+  html: 'bg-purple-500/15 text-content-primary',
+  text: 'bg-surface-elevated text-content-primary',
+  image: 'bg-pink-500/15 text-content-primary',
 }
 
 interface SkillTemplatePanelProps {

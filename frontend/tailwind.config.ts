@@ -36,6 +36,8 @@ const config: Config = {
          支持透明度修饰符（如 bg-surface-card/50）
          ============================================ */
       colors: {
+        /* 兼容别名：历史组件误写的 bg-page（等价 bg-surface-page） */
+        page: "rgb(var(--surface-page) / <alpha-value>)",
         /* ------------------------------------------
            Surface - 表面层级
            ------------------------------------------ */

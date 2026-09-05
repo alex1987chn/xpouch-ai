@@ -74,7 +74,7 @@ export default function IndustrialChatLayout({
         {/* 左侧：聊天流面板 (55% -> 大屏 50%) */}
         <div
           className={cn(
-            'flex-1 flex flex-col min-w-[400px] border-r-2 border-border bg-surface-card relative',
+            'flex-1 flex flex-col min-w-0 lg:min-w-[400px] border-r-2 border-border bg-surface-card relative',
             // 移动端：当 viewMode 为 preview 时隐藏左栏
             viewMode === 'preview' && 'hidden md:flex',
             // 全屏时隐藏左栏（确保在移动端和桌面端都隐藏）
@@ -87,13 +87,13 @@ export default function IndustrialChatLayout({
         {/* 右侧：编排器面板 (55% - 全屏时占满宽度) - 无左边框，避免与左侧的右边框重叠 */}
         <div
           className={cn(
-            'w-full md:w-[55%] flex bg-card min-w-[400px]',
+            'w-full md:w-[55%] flex bg-card min-w-0 lg:min-w-[400px]',
             // 移动端：默认隐藏，viewMode 为 preview 时显示
             viewMode === 'chat' && 'hidden md:flex',
             // 隐藏右侧面板
             hideOrchestrator && 'hidden',
-            // 全屏时占满宽度
-            isFullscreen && '!w-full !md:!w-full !min-w-0'
+            // 全屏时占满宽度（Tailwind v4 important 为后缀语法）
+            isFullscreen && 'w-full! md:w-full! min-w-0!'
           )}
         >
           {orchestratorPanel}

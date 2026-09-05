@@ -291,7 +291,7 @@ export default function StatsPage() {
             </h1>
           </div>
           {isAdmin && (
-            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-mono uppercase">
+            <span className="px-2 py-1 bg-status-warning/15 text-content-primary text-xs font-mono uppercase">
               Admin
             </span>
           )}

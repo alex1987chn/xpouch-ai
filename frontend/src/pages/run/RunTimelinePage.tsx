@@ -170,8 +170,8 @@ function RunInfoCard({ run }: { run: NonNullable<ReturnType<typeof useRunDetails
 
       {/* 错误信息 */}
       {run.error_message && (
-        <div className="mt-3 rounded-md bg-red-50 dark:bg-red-950/20 p-3">
-          <p className="text-sm text-red-600 dark:text-red-400">
+        <div className="mt-3 rounded-md bg-status-offline/10 p-3">
+          <p className="text-sm text-status-offline">
             错误: {run.error_message}
           </p>
         </div>

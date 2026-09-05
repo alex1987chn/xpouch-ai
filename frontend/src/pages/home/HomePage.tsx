@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Code2, FileText, Zap, Menu, Paperclip, ArrowRight, Image, Trash2, Pencil, ArrowUpRight } from 'lucide-react'
+import { Code2, FileText, Zap, Paperclip, ArrowRight, Image, Trash2, Pencil, ArrowUpRight } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
@@ -204,7 +204,7 @@ export default function HomePage() {
     setSelectedAgentId,
   } = useChatStore()
 
-  const { sidebar, dialogs } = useAppUISelectors()
+  const { dialogs } = useAppUISelectors()
 
   const [inputMessage, setInputMessage] = useState('')
 
@@ -376,20 +376,12 @@ export default function HomePage() {
       {/* 网格背景 */}
       <GridPattern />
 
-      {/* 移动端菜单按钮 */}
-      <button
-        onClick={sidebar.toggleMobile}
-        className="lg:hidden fixed top-4 left-4 z-30 p-2 border-2 border-border bg-surface-card shadow-hard hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard-accent-sm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
-      >
-        <Menu className="w-5 h-5 stroke-[2.5]" />
-      </button>
-
       {/* Main Content */}
       <div className="flex-1 relative">
         {/* System Status Marquee */}
         <SystemStatusMarquee className="sticky top-0 z-10" />
 
-        <div className="max-w-6xl mx-auto px-12 py-12 flex flex-col w-full">
+        <div className="max-w-6xl mx-auto px-6 md:px-12 py-12 flex flex-col w-full">
           {/* Hero Section */}
           <div className="flex-none flex flex-col items-start justify-center mb-10 select-none">
             {/* 状态标签 - 左上角（READY 为装饰性状态，OPEN SOURCE 为仓库外链） */}

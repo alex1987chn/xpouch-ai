@@ -48,8 +48,8 @@ function BauhausToast({
       className={cn(
         'fixed bottom-4 right-4 z-50 px-4 py-3 border-2 shadow-hard font-mono text-xs font-bold uppercase',
         type === 'success'
-          ? 'border-green-500 bg-green-50 text-green-700'
-          : 'border-red-500 bg-red-50 text-red-700'
+          ? 'border-status-online bg-status-online/10 text-content-primary'
+          : 'border-status-offline bg-status-offline/10 text-content-primary'
       )}
     >
       {message}
