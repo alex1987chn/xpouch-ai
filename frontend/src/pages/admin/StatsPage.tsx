@@ -153,7 +153,7 @@ function RunTable({
   }
 
   return (
-    <div className="border-2 border-border-default shadow-hard overflow-hidden">
+    <div className="border-2 border-border-default shadow-hard overflow-x-auto">
       <table className="w-full">
         <thead>
           <tr className="border-b-2 border-border-default bg-surface-page">
@@ -280,8 +280,8 @@ export default function StatsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-page p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-surface-page px-6 md:px-12 py-8">
+      <div className="max-w-5xl mx-auto space-y-6">
         {/* 页面标题 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

@@ -255,7 +255,7 @@ export default function ExpertAdminPage() {
   }
 
   return (
-    <div className="flex gap-4 h-[100dvh] p-4 bg-surface-page">
+    <div className="flex flex-col lg:flex-row gap-4 h-[100dvh] p-4 bg-surface-page overflow-y-auto lg:overflow-hidden">
       {/* Toast */}
       {toast && (
         <BauhausToast

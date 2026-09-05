@@ -75,7 +75,7 @@ export default function ExpertListTable({
   }, [filteredExperts, selectedExpertKey])
 
   return (
-    <div className="w-80 flex-shrink-0 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-theme-card">
+    <div className="w-full lg:w-80 flex-shrink-0 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-theme-card max-h-[45vh] lg:max-h-none">
       {/* 头部 */}
       <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default shrink-0">
         <div className="flex items-center gap-2">
