@@ -4,6 +4,7 @@ import { AlertTriangle, X, Trash2 } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { logger } from '@/utils/logger'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 
 interface DeleteConfirmDialogProps {
   isOpen: boolean
@@ -61,6 +62,8 @@ export function DeleteConfirmDialog({
       onClose()
     }
   }
+
+  useEscapeToClose(isOpen, handleClose)
 
   if (!isOpen) return null
 

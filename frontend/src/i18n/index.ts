@@ -31,6 +31,7 @@ export type TranslationKey =
   | 'modelsLoading' | 'modelsLoadFailed' | 'openSource'
   // Common
   | 'save' | 'cancel' | 'delete' | 'edit' | 'confirmDelete' | 'noHistory' | 'startChat'
+  | 'menu' | 'image'
   | 'totalHistory' | 'totalItems' | 'matchingHistory' | 'matchingItems' | 'searchHistory'
   | 'noMatchingHistory' | 'tryOtherKeywords'
   // Create Agent

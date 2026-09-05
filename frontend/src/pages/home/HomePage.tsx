@@ -452,10 +452,10 @@ export default function HomePage() {
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   {/* 附件按钮 */}
                   <div className="flex gap-1 flex-shrink-0">
-                    <button className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-surface-card hover:border-border transition-all">
+                    <button aria-label={t('image')} title={t('image')} className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-surface-card hover:border-border transition-all">
                       <Image className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
                     </button>
-                    <button className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-surface-card hover:border-border transition-all">
+                    <button aria-label={t('attachment')} title={t('attachment')} className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-surface-card hover:border-border transition-all">
                       <Paperclip className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
                     </button>
                   </div>

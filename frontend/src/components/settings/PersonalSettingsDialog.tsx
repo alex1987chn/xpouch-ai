@@ -6,6 +6,7 @@ import { useUserStore } from '@/store/userStore'
 import { logger } from '@/utils/logger'
 import { useTranslation } from '@/i18n'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 
 interface PersonalSettingsDialogProps {
   isOpen: boolean
@@ -101,6 +102,8 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
       onClose()
     }
   }
+
+  useEscapeToClose(isOpen, handleClose)
 
   if (!isOpen) return null
 

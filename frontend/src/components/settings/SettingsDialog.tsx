@@ -7,6 +7,7 @@ import { useModelsQuery } from '@/hooks/queries/useModelsQuery'
 import { useUserSettingsQuery, useUpdateUserSettings } from '@/hooks/queries/useUserSettingsQuery'
 import type { ThinkingMode } from '@/services/models'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 
 interface SettingsDialogProps {
   isOpen: boolean
@@ -60,6 +61,8 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     if (isSaving) return
     onClose()
   }
+
+  useEscapeToClose(isOpen, handleClose)
 
   if (!isOpen) return null
 

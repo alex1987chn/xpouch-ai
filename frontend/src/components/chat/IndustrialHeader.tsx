@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { VERSION } from '@/constants/ui'
 import { useTaskStore } from '@/store/taskStore'
+import { useTranslation } from '@/i18n'
 
 interface IndustrialHeaderProps {
   title?: string
@@ -58,6 +59,7 @@ export function IndustrialHeader({
   const activeRunId = useTaskStore(state => state.activeRunId)
   const mode = useTaskStore(state => state.mode)
   const executionPlan = useTaskStore(state => state.executionPlan)
+  const { t } = useTranslation()
 
   // 优先使用 activeRunId（正在运行），其次使用 executionPlan.runId（历史记录）
   const displayRunId = activeRunId || executionPlan?.runId
@@ -76,6 +78,8 @@ export function IndustrialHeader({
         {onMenuClick && (
           <button
             onClick={onMenuClick}
+            aria-label={t('menu')}
+            title={t('menu')}
             className="lg:hidden w-8 h-8 flex items-center justify-center border-2 border-border hover:bg-accent-hover transition-colors mr-1"
           >
             <Menu className="w-4 h-4" />
@@ -118,7 +122,7 @@ export function IndustrialHeader({
             <button
               onClick={() => onViewModeChange('chat')}
               className={cn(
-                'h-6 px-2 border-2 border-border transition-all',
+                'h-8 px-2 border-2 border-border transition-all',
                 viewMode === 'chat'
                   ? 'bg-accent-brand text-content-inverted border-accent-brand'
                   : 'bg-surface-elevated text-content-secondary hover:border-accent-brand hover:text-accent-brand'
@@ -129,7 +133,7 @@ export function IndustrialHeader({
             <button
               onClick={() => onViewModeChange('preview')}
               className={cn(
-                'h-6 px-2 border-2 border-border border-l-0 transition-all',
+                'h-8 px-2 border-2 border-border border-l-0 transition-all',
                 viewMode === 'preview'
                   ? 'bg-accent-brand text-content-inverted border-accent-brand'
                   : 'bg-surface-elevated text-content-secondary hover:border-accent-brand hover:text-accent-brand'
@@ -160,7 +164,9 @@ export function IndustrialHeader({
         {onClose && (
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center border-2 border-border hover:bg-status-offline hover:text-white transition-colors"
+            aria-label={t('close')}
+            title={t('close')}
+            className="w-8 h-8 flex items-center justify-center border-2 border-border hover:bg-status-offline hover:text-content-inverted transition-colors"
           >
             <X className="w-4 h-4" />
           </button>

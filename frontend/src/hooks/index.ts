@@ -34,6 +34,9 @@ export { useSwipeBack } from './useSwipeBack'
 // 异步错误处理
 export { useAsyncError } from './useAsyncError'
 
+// 弹窗 Escape 关闭
+export { useEscapeToClose } from './useEscapeToClose'
+
 // ============================================================================
 // 性能优化 Selectors
 // 使用 Zustand Selector 模式避免不必要的重渲染

@@ -18,6 +18,7 @@ import ModelSelector from '@/components/settings/ModelSelector'
 import type { SystemExpert, CreateExpertRequest, UpdateExpertRequest, ToolInfo } from '@/services/admin'
 import { getAvailableTools } from '@/services/admin'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 
 interface ExpertFormDialogProps {
   mode: 'create' | 'edit'
@@ -128,6 +129,8 @@ export default function ExpertFormDialog({
       onClose()
     }
   }
+
+  useEscapeToClose(isOpen, handleClose)
 
   if (!isOpen) return null
 

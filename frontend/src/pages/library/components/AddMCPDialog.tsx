@@ -14,6 +14,7 @@ import { logger } from '@/utils/logger'
 import { useToast } from '@/components/ui/use-toast'
 import type { MCPTransport } from '@/types/mcp'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 
 interface AddMCPDialogProps {
   isOpen: boolean
@@ -87,6 +88,8 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
       onClose()
     }
   }
+
+  useEscapeToClose(isOpen, handleClose)
 
   if (!isOpen) return null
 

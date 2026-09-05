@@ -5,6 +5,7 @@ import { The4DPocketLogo } from '@/components/bauhaus'
 import { useUserStore } from '@/store/userStore'
 import { logger } from '@/utils/logger'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 
 interface LoginDialogProps {
   open: boolean
@@ -105,6 +106,8 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
     handleReset()
     onOpenChange(false)
   }
+
+  useEscapeToClose(open, handleClose)
 
   if (!open) return null
 
