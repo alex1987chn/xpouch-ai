@@ -145,8 +145,10 @@ class RecoveryService:
         """
         logger.info("[HITL RESUME] 用户拒绝了计划，清理状态")
 
-        # 清理 checkpoints - 使用 isolated_thread_id 格式
-        await self._cleanup_checkpoints(thread_id, run_id)
+        # 清理 checkpoints（原始 + isolated 两种格式；单一实现在 utils/db）
+        from utils.db import delete_checkpoints_for_thread
+
+        await delete_checkpoints_for_thread(thread_id, [run_id])
 
         # 更新 ExecutionPlan
         execution_plan = await self._cancel_execution_plan(run_id)
