@@ -1,19 +1,17 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { type Agent } from '@/types'
+import { type Message } from '@/types'
 import { generateUUID } from '@/utils/uuid'
 import { isSameId } from '@/utils/normalize'
-import { type Message } from '@/types'
 
 /**
  * ChatStore - 聊天状态管理
- * 
+ *
  * [职责边界]
  * ✅ 当前活跃对话的实时状态（messages, isGenerating）
  * ✅ 用户输入状态（inputMessage）
  * ✅ 智能体选择状态（selectedAgentId）
- * ✅ 用户自定义智能体（customAgents）
- * 
+ *
  * ❌ 不负责服务端数据缓存（由 React Query 处理）
  *   - 会话列表 → useChatHistoryQuery
  *   - 智能体列表 → useCustomAgentsQuery
@@ -29,8 +27,7 @@ import { type Message } from '@/types'
 interface ChatState {
   // 智能体相关
   selectedAgentId: string
-  customAgents: Agent[]
-  
+
   // 聊天相关
   messages: Message[]
   currentConversationId: string | null
@@ -38,10 +35,10 @@ interface ChatState {
 
   // 生成状态
   isGenerating: boolean
-  
+
   // 🔥 性能优化：缓存最后一条助手消息 ID
   lastAssistantMessageId: string | null
-  
+
   // 🔐 登录后自动重发消息机制
   pendingMessage: string | null  // 因 401 未发送成功的消息
   shouldRetrySend: boolean       // 触发重试的标志
@@ -50,8 +47,6 @@ interface ChatState {
 interface ChatActions {
   // 智能体操作
   setSelectedAgentId: (id: string) => void
-  addCustomAgent: (agent: Agent) => void
-  setCustomAgents: (agents: Agent[] | ((prev: Agent[]) => Agent[])) => void
   
   // 消息操作
   setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void
@@ -67,10 +62,7 @@ interface ChatActions {
   
   // 生成状态
   setGenerating: (value: boolean) => void
-  
-  // Getters
-  getAllAgents: () => Agent[]
-  
+
   // 🔐 登录后自动重发消息
   setPendingMessage: (message: string | null) => void
   setShouldRetrySend: (value: boolean) => void
@@ -84,10 +76,9 @@ type ChatStore = ChatState & ChatActions
 
 export const useChatStore = create<ChatStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // ========== 初始状态 ==========
       selectedAgentId: 'default-chat',
-      customAgents: [],
       messages: [],
       currentConversationId: null,
       inputMessage: '',
@@ -97,18 +88,10 @@ export const useChatStore = create<ChatStore>()(
       shouldRetrySend: false,
 
       // ========== 智能体操作 ==========
-      
+
       setSelectedAgentId: (id: string) => set({ selectedAgentId: id }),
-
-      addCustomAgent: (agent: Agent) => set((state) => ({
-        customAgents: [agent, ...state.customAgents]
-      })),
-
-      setCustomAgents: (agentsOrUpdater) => set((state) => ({
-        customAgents: typeof agentsOrUpdater === 'function'
-          ? agentsOrUpdater(state.customAgents)
-          : agentsOrUpdater
-      })),
+      // （智能体列表的唯一真相是 React Query —— useAgentsQuery；
+      //   此前 persisted customAgents 副本已删除，见 v3.4.4 缓存所有权收敛）
 
       // ========== 消息操作 ==========
       
@@ -176,14 +159,8 @@ export const useChatStore = create<ChatStore>()(
       setCurrentConversationId: (id: string | null) => set({ currentConversationId: id }),
 
       // ========== 生成状态 ==========
-      
-      setGenerating: (value: boolean) => set({ isGenerating: value }),
 
-      // ========== Getters ==========
-      
-      getAllAgents: () => {
-        return get().customAgents
-      },
+      setGenerating: (value: boolean) => set({ isGenerating: value }),
 
       // ========== 登录后自动重发消息 ==========
       
@@ -193,11 +170,11 @@ export const useChatStore = create<ChatStore>()(
     }),
     {
       name: 'xpouch-chat-store',
+      // 只持久化轻量 UI 偏好。messages / currentConversationId 不再持久化：
+      // 会话内容由服务端恢复（useSessionRestore），持久化副本只会造成
+      // 导航时旧数据闪烁（历史上被迫加"导航清空"hack 的根源）。
       partialize: (state) => ({
         selectedAgentId: state.selectedAgentId,
-        customAgents: state.customAgents,
-        messages: state.messages.slice(-50), // 只保留最近50条消息
-        currentConversationId: state.currentConversationId,
       })
     }
   )

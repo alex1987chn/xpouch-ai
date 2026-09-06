@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from '@/i18n'
-import type { Agent } from '@/types'
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useChatStore } from '@/store/chatStore'
@@ -9,12 +8,11 @@ import { useUserStore } from '@/store/userStore'
 import { useChat } from '@/hooks/useChat'
 import { useSessionRestore } from '@/hooks/useSessionRestore'
 import { useRunPolling } from '@/hooks/useRunPolling'
-import { useAppUISelectors } from '@/hooks'
+import { useAppUISelectors, useAgentsQuery } from '@/hooks'
 import { chatHistoryKeys } from '@/hooks/queries'
 
 import { SYSTEM_AGENTS, getSystemAgentName } from '@/constants/agents'
 import { normalizeAgentId } from '@/utils/agentUtils'
-import { getAllAgents } from '@/services/api'
 import { logger } from '@/utils/logger'
 
 // 新布局组件
@@ -60,98 +58,50 @@ export default function UnifiedChatPage() {
   } = useChat()
 
   const conversationLoadedRef = useRef(false)
-  
-  // threadId 变化时重置加载标记，并清空 persisted 消息避免显示旧数据
-  useEffect(() => {
-    conversationLoadedRef.current = false
-    // 🔥 清空本地消息和任务，避免 persist 恢复的旧数据闪烁
-    useChatStore.getState().setMessages([])
-    useTaskStore.getState().resetAll()
-  }, [threadId])
-
-  // 加载自定义 Agent 的状态
-  type LoadedAgent = Agent
-  const [loadedAgent, setLoadedAgent] = useState<LoadedAgent | null>(null)
-  const [isLoadingAgent, setIsLoadingAgent] = useState(false)
 
   // 获取登录状态
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
 
-  // 异步加载自定义 Agent
+  // threadId 变化时重置加载标记，并清空残留消息/任务
   useEffect(() => {
-    if (normalizedAgentId === SYSTEM_AGENTS.DEFAULT_CHAT) return
-    
-    // 未登录时不发起请求
-    if (!isAuthenticated) return
-    
-    // 先在 store 中查找
-    const customAgents = useChatStore.getState().customAgents
-    const cachedAgent = customAgents.find(a => a.id === normalizedAgentId)
-    if (cachedAgent) {
-      setLoadedAgent(cachedAgent)
-      return
+    conversationLoadedRef.current = false
+    useChatStore.getState().setMessages([])
+    useTaskStore.getState().resetAll()
+  }, [threadId])
+
+  // 加载自定义 Agent（唯一真相：React Query 缓存，30 分钟内不重复请求）
+  const { data: allAgents, isLoading: isLoadingAgent } = useAgentsQuery({
+    enabled: isAuthenticated && normalizedAgentId !== SYSTEM_AGENTS.DEFAULT_CHAT,
+  })
+  const loadedAgent = useMemo(() => {
+    if (normalizedAgentId === SYSTEM_AGENTS.DEFAULT_CHAT) return null
+    const agent = allAgents?.find(a => a.id === normalizedAgentId)
+    if (!agent) return null
+    return {
+      id: agent.id,
+      name: agent.name,
+      description: agent.description || '',
+      category: agent.category || t('general'),
+      isCustom: true,
+      is_builtin: false,
+      modelId: agent.model_id || 'deepseek-v4-flash',
+      icon: 'bot',
+      systemPrompt: agent.system_prompt || '',
     }
-    
-    // 如果 store 中没有，从后端加载
-    const loadAgent = async () => {
-      setIsLoadingAgent(true)
-      try {
-        const agents = await getAllAgents()
-        const agent = agents.find((a: { id: string }) => a.id === normalizedAgentId)
-        if (agent) {
-          const formattedAgent = {
-            id: agent.id,
-            name: agent.name,
-            description: agent.description || '',
-            category: agent.category || t('general'),
-            isCustom: true,
-            is_builtin: false,
-            modelId: agent.model_id || 'deepseek-v4-flash',
-            icon: 'bot',
-            systemPrompt: agent.system_prompt || ''
-          }
-          setLoadedAgent(formattedAgent)
-          // 同时更新 store
-          useChatStore.getState().setCustomAgents(prev => {
-            if (prev.find(a => a.id === agent.id)) return prev
-            return [...prev, formattedAgent]
-          })
-        }
-      } catch (error) {
-        logger.error('[UnifiedChatPage] 加载 Agent 失败:', error)
-      } finally {
-        setIsLoadingAgent(false)
-      }
-    }
-    
-    loadAgent()
-  }, [normalizedAgentId, isAuthenticated, t])
+  }, [allAgents, normalizedAgentId, t])
 
   // 计算当前智能体 (SDUI: 直接从 URL 获取 agentId，不依赖 Store)
   const currentAgent = useMemo(() => {
-    // 优先使用 URL 中的 agentId (真相源)
-    const effectiveAgentId = normalizedAgentId
-    
-    if (effectiveAgentId === SYSTEM_AGENTS.DEFAULT_CHAT) {
+    if (normalizedAgentId === SYSTEM_AGENTS.DEFAULT_CHAT) {
       // 返回简化对象，仅用于存在性检查
       return {
         id: SYSTEM_AGENTS.DEFAULT_CHAT,
         name: getSystemAgentName(SYSTEM_AGENTS.DEFAULT_CHAT),
       }
     }
-    
-    // 优先使用从后端加载的 agent
-    if (loadedAgent && loadedAgent.id === effectiveAgentId) {
-      return loadedAgent
-    }
-    
-    // 从 store 缓存中查找
-    const customAgents = useChatStore.getState().customAgents
-    const cachedAgent = customAgents.find(a => a.id === effectiveAgentId)
-    if (cachedAgent) return cachedAgent
-    
-    // 如果都没有找到，返回 null (等待异步加载完成)
-    return null
+
+    // 从 Query 缓存派生的 loadedAgent（等待异步加载时为 null）
+    return loadedAgent
   }, [normalizedAgentId, loadedAgent])
 
   const [isFullscreen, setIsFullscreen] = useState(false)

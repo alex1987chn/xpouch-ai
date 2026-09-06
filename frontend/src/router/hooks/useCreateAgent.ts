@@ -4,9 +4,7 @@
 
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { useChatStore } from '@/store/chatStore'
 import { createCustomAgent } from '@/services/api'
-import type { Agent } from '@/types'
 import { logger } from '@/utils/logger'
 import { useTranslation } from '@/i18n'
 import { agentsKeys } from '@/hooks/queries'
@@ -20,12 +18,11 @@ export interface AgentFormData extends CreateAgentRequest {
 export function useCreateAgent() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const addCustomAgent = useChatStore(state => state.addCustomAgent)
   const { t } = useTranslation()
 
   const handleSave = async (agent: AgentFormData): Promise<void> => {
     try {
-      const savedAgent = await createCustomAgent({
+      await createCustomAgent({
         name: agent.name,
         description: agent.description,
         systemPrompt: agent.systemPrompt,
@@ -33,19 +30,7 @@ export function useCreateAgent() {
         modelId: agent.modelId
       })
 
-      const agentWithUI: Agent = {
-        ...savedAgent,
-        description: savedAgent.description || '',
-        category: savedAgent.category || '综合',
-        modelId: savedAgent.model_id,
-        icon: agent.icon || 'bot',
-        color: agent.color,
-        isCustom: true
-      }
-
-      addCustomAgent(agentWithUI)
-
-      // 🔥 使用 React Query 缓存失效，确保首页能获取到最新数据
+      // 🔥 React Query 缓存失效（agents 列表唯一真相），确保首页能获取到最新数据
       queryClient.invalidateQueries({ queryKey: agentsKeys.lists() })
 
       // 导航到首页并切换到"我的智能体"标签

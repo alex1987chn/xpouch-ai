@@ -5,7 +5,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { useChatStore } from '@/store/chatStore'
 import { useUserStore } from '@/store/userStore'
 import { getAllAgents, updateCustomAgent } from '@/services/api'
 import { logger } from '@/utils/logger'
@@ -26,7 +25,6 @@ export function useEditAgent() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
-  const setCustomAgents = useChatStore(state => state.setCustomAgents)
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
   const { t } = useTranslation()
 
@@ -80,7 +78,7 @@ export function useEditAgent() {
     if (!id) return
 
     try {
-      const updatedAgent = await updateCustomAgent(id, {
+      await updateCustomAgent(id, {
         name: agent.name,
         description: agent.description,
         systemPrompt: agent.systemPrompt,
@@ -88,16 +86,7 @@ export function useEditAgent() {
         modelId: agent.modelId
       })
 
-      // 更新本地状态
-      setCustomAgents(prev =>
-        prev.map(a =>
-          a.id === id
-            ? { ...a, ...updatedAgent }
-            : a
-        )
-      )
-
-      // 🔥 使用 React Query 缓存失效
+      // 🔥 React Query 缓存失效（agents 列表唯一真相）
       queryClient.invalidateQueries({ queryKey: agentsKeys.lists() })
 
       // 导航回首页

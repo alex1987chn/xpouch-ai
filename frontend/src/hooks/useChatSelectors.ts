@@ -43,12 +43,7 @@ export const useMessages = () => useChatStore(
   useShallow(state => state.messages)
 )
 
-/**
- * 获取自定义智能体列表
- */
-export const useCustomAgents = () => useChatStore(
-  useShallow(state => state.customAgents)
-)
+// （useCustomAgents 已删除——智能体列表唯一真相是 useAgentsQuery）
 
 // ============================================================================
 // Actions Selectors (稳定引用)
