@@ -10,6 +10,8 @@
 - commit 策略：写函数内部 commit（调用方无需关心事务边界）。
 """
 
+from datetime import datetime, timedelta
+
 from sqlmodel import Session, select
 
 from crud.agent_run import mark_run_completed_by_id, mark_run_failed_by_id, update_run_status_by_id
@@ -53,6 +55,30 @@ def mark_run_failed(
         session.commit()
         return True
     return False
+
+
+def pause_deadline(session: Session, run_id: str) -> None:
+    """进入 HITL 等待时挂起执行预算（deadline_at 置空）。
+
+    用户思考/修改计划的时间不应消耗执行 deadline——否则审批页停留
+    超过预算后，恢复即被守卫击杀（等待态本身不被清理服务触碰，挂起安全）。
+    """
+    run = session.get(AgentRun, run_id)
+    if run and run.deadline_at is not None:
+        run.deadline_at = None
+        session.add(run)
+        session.commit()
+        logger.info(f"[RunLifecycle] deadline paused for run {run_id}")
+
+
+def reset_deadline(session: Session, run_id: str, budget_seconds: int) -> None:
+    """恢复执行时重置完整执行预算（每轮批准都是新的执行爆发）。"""
+    run = session.get(AgentRun, run_id)
+    if run:
+        run.deadline_at = datetime.now() + timedelta(seconds=budget_seconds)
+        session.add(run)
+        session.commit()
+        logger.info(f"[RunLifecycle] deadline reset (+{budget_seconds}s) for run {run_id}")
 
 
 def finalize_run_completed(session: Session, run_id: str, thread_id: str) -> None:

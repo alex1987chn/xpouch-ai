@@ -299,6 +299,10 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     RunStatus.WAITING_FOR_APPROVAL,
                     current_node="waiting_for_approval",
                 )
+                # 🔥 HITL 等待期挂起执行预算（用户思考时间不消耗 deadline）
+                from services.chat.run_lifecycle import pause_deadline
+
+                await asyncio.to_thread(pause_deadline, self.db, agent_run.id)
                 yield self._build_human_interrupt_event(
                     thread_id,
                     current_plan,

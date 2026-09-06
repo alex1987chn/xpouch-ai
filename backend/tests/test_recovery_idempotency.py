@@ -54,6 +54,7 @@ async def test_handle_approval_releases_inflight_when_preflight_fails(monkeypatc
         raise NotFoundError("ExecutionPlan")
 
     monkeypatch.setattr(service, "_update_run_status", _noop_update)
+    monkeypatch.setattr(service, "_reset_deadline", _noop_update)
     monkeypatch.setattr(service, "_update_execution_plan_status", _raise_not_found)
 
     with pytest.raises(NotFoundError, match="ExecutionPlan"):

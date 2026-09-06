@@ -20,6 +20,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import update
 from sqlmodel import Session, select
 
+from config import settings
 from crud.agent_run import (
     mark_run_cancelled_by_id,
 )
@@ -252,6 +253,8 @@ class RecoveryService:
         try:
             logger.info("[HITL RESUME] 用户批准，开始流式恢复")
             await self._update_run_status(run_id, RunStatus.RESUMING)
+            # 🔥 恢复执行：重置完整执行预算（等待期已挂起 deadline）
+            await self._reset_deadline(run_id)
 
             # 🔥 方案1：更新 ExecutionPlan 状态为 running（用户已批准）
             from models.enums import TaskStatus
@@ -392,6 +395,12 @@ class RecoveryService:
         from services.chat.run_lifecycle import update_run_status
 
         await asyncio.to_thread(update_run_status, self.db, run_id, status)
+
+    async def _reset_deadline(self, run_id: str) -> None:
+        """恢复执行时重置完整执行预算（单一实现在 run_lifecycle，经 to_thread）。"""
+        from services.chat.run_lifecycle import reset_deadline
+
+        await asyncio.to_thread(reset_deadline, self.db, run_id, settings.run_deadline_seconds)
 
     async def _mark_run_failed(self, run_id: str, error_message: str) -> None:
         """将指定运行实例标记为失败（单一实现在 run_lifecycle，经 to_thread）。"""

@@ -350,19 +350,17 @@ async def generic_worker_node(
         # 增强 System Prompt (注入时间 + 工具指令)
         enhanced_system_prompt = enhance_system_prompt_with_tools(system_prompt)
 
-        # 🔥 关键修复：构建消息列表
-        # 如果有现有的 messages（包含 ToolMessage），则使用它们
-        # 否则创建新的消息列表
-        has_tool_message = False
-        if existing_messages:
+        # 🔥 关键修复（v3.4.4）：仅当最后一条是 ToolMessage（工具续跑）时才沿用
+        # 现有 messages；否则一律走首次执行分支（任务描述 + 依赖上下文进 prompt）。
+        # 此前条件是 `if existing_messages:`——聊天历史恒非空，导致多任务执行时
+        # 任务描述/依赖上下文从未进入 prompt，同专家的每个任务都在回答原始请求
+        # （表现为多个任务的 artifact 内容雷同）。
+        has_tool_message = bool(existing_messages) and isinstance(
+            existing_messages[-1], ToolMessage
+        )
+        if has_tool_message:
             # 工具执行后的情况：messages 包含 AIMessage(tool_calls) + ToolMessage
             # 我们需要保留这些上下文，让 LLM 看到工具结果
-            # 检查最后一条是否是 ToolMessage
-            if existing_messages and isinstance(existing_messages[-1], ToolMessage):
-                has_tool_message = True
-
-            # 🔥🔥🔥 关键修复：规范化 ToolMessage content
-            # 根据 provider 的 content_mode 决定是否转换（string 模式需转换，auto 模式保持原样）
             normalized_existing = normalize_messages_for_llm(existing_messages, content_mode)
 
             messages_for_llm = [
@@ -488,12 +486,26 @@ async def generic_worker_node(
         # 所有专家统一使用 ainvoke 等待完整响应
         # Artifact 在 task.completed 事件中全量推送
         try:
+            # [DIAG] prompt 组装诊断（debug 级；排查多任务 prompt 组装时开启）
+            for _mi, _m in enumerate(messages_for_llm):
+                logger.debug(
+                    "[GenericWorker][DIAG] prompt[%d/%d] %s: %s",
+                    _mi + 1,
+                    len(messages_for_llm),
+                    _m.type,
+                    str(_m.content)[:600],
+                )
             response = await llm_to_use.ainvoke(
                 messages_for_llm,
                 config=RunnableConfig(
                     tags=["expert", expert_type, "generic_worker"],
                     metadata={"node_type": "expert", "expert_type": expert_type},
                 ),
+            )
+            logger.info(
+                "[GenericWorker][DIAG] response: len=%d head=%r",
+                len(response.content or ""),
+                str(response.content)[:60],
             )
         except TimeoutError as exc:
             raise ExpertExecutionError("LLM 调用超时") from exc

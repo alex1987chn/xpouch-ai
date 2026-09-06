@@ -224,7 +224,18 @@ def create_artifacts_batch(
     sub_task_id: str,
     artifacts_data: list[ArtifactCreate],
 ) -> list[Artifact]:
-    """批量创建产物。"""
+    """批量创建产物。
+
+    v3.4.4 幂等保护：跳过已存在产物的 sub_task_id。同一任务的产物可能经
+    两条路径到达（专家完成时的实时保存 + 流结束时的批量收集），此前会
+    重复插入（每个任务出现两行相同产物）。
+    """
+    existing = db.exec(
+        select(Artifact.sub_task_id).where(Artifact.sub_task_id == sub_task_id)
+    ).first()
+    if existing is not None:
+        return []
+
     artifacts = []
     for idx, data in enumerate(artifacts_data):
         artifact_kwargs = {
