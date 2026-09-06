@@ -47,8 +47,8 @@ def _sync_save_wrapper(
     output_result: str,
     artifact_data: dict[str, Any] | None = None,
     duration_ms: int | None = None,
-) -> None:
-    """在独立线程中保存专家执行结果。"""
+) -> bool:
+    """在独立线程中保存专家执行结果。返回是否成功。"""
     from agents.services.task_manager import save_expert_execution_result
     from database import Session, engine
 
@@ -64,6 +64,7 @@ def _sync_save_wrapper(
                 artifact_data,
                 duration_ms,
             )
+            return True
         except Exception:
             new_session.rollback()  # 回滚防止脏数据
             # 专家结果/artifact 落库失败必须可见（此前静默吞掉，产出丢失无从排查）
@@ -72,6 +73,7 @@ def _sync_save_wrapper(
                 task_id,
                 expert_type,
             )
+            return False
 
 
 def _sync_append_run_event_wrapper(
@@ -115,8 +117,12 @@ async def async_save_expert_result(
     artifact_data: dict[str, Any] | None = None,
     duration_ms: int | None = None,
 ) -> None:
-    """异步保存专家执行结果（线程池执行同步 DB 写入）。"""
-    await asyncio.to_thread(
+    """异步保存专家执行结果（线程池执行同步 DB 写入）。
+
+    落库失败时经 emit_event 告知前端（本协程运行在事件循环、继承节点的
+    图上下文）；无图上下文（如单测直调）时 emit_event 为 no-op，日志兜底。
+    """
+    saved = await asyncio.to_thread(
         _sync_save_wrapper,
         task_id=task_id,
         expert_type=expert_type,
@@ -124,6 +130,19 @@ async def async_save_expert_result(
         artifact_data=artifact_data,
         duration_ms=duration_ms,
     )
+    if not saved:
+        try:
+            from agents.event_stream import emit_event
+            from utils.event_generator import event_error
+
+            await emit_event(
+                event_error(
+                    "PERSISTENCE_WARNING",
+                    f"{expert_type} 的产出结果未能持久化，本轮内容可能不会保存",
+                )
+            )
+        except Exception:
+            logger.debug("[AsyncTaskQueue] 持久化失败通知未送达 task_id=%s", task_id)
 
 
 async def async_append_run_event(

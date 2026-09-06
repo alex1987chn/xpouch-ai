@@ -161,8 +161,8 @@ class RecoveryService:
             execution_plan_id=execution_plan.id if execution_plan else None,
         )
 
-        self._update_run_status(run_id, RunStatus.CANCELLED)
-        self.db.commit()
+        await self._update_run_status(run_id, RunStatus.CANCELLED)
+        await asyncio.to_thread(self.db.commit)
 
         return {"status": "cancelled", "message": "计划已被用户拒绝"}
 
@@ -256,7 +256,7 @@ class RecoveryService:
             # 🔥 方案1：更新 ExecutionPlan 状态为 running（用户已批准）
             from models.enums import TaskStatus
 
-            self._update_execution_plan_status(run_id, TaskStatus.RUNNING)
+            await self._update_execution_plan_status(run_id, TaskStatus.RUNNING)
 
             # 关键一致性保障：计划更新前执行乐观锁校验与版本递增
             self._bump_plan_version_with_cas(run_id, plan_version)
@@ -298,7 +298,7 @@ class RecoveryService:
 
                     # 处理完成后，收集 artifacts 并保存
                     await self._process_collected_artifacts(run_id, stream_queue)
-                    self._update_run_status(run_id, RunStatus.COMPLETED)
+                    await self._update_run_status(run_id, RunStatus.COMPLETED)
 
                     # run 终态：删除隔离线程 checkpoint + 传输级完成标记
                     from utils.db import delete_checkpoints_for_thread
@@ -316,11 +316,11 @@ class RecoveryService:
                         yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
                     else:
                         logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
-                        self._mark_run_failed(run_id, str(e))
+                        await self._mark_run_failed(run_id, str(e))
                         yield self._build_error_event(ErrorCode.RESUME_ERROR, str(e))
                 except Exception as e:
                     logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
-                    self._mark_run_failed(run_id, str(e))
+                    await self._mark_run_failed(run_id, str(e))
                     yield self._build_error_event(ErrorCode.RESUME_ERROR, str(e))
                 finally:
                     self._exit_inflight_resume(run_id, resume_key)
@@ -396,21 +396,22 @@ class RecoveryService:
             raise ValidationError("run_id 与 thread_id 不匹配")
         return agent_run
 
-    def _update_run_status(self, run_id: str, status: RunStatus) -> None:
-        """更新指定运行实例的状态。"""
-        updated = update_run_status_by_id(self.db, run_id, status)
+    async def _update_run_status(self, run_id: str, status: RunStatus) -> None:
+        """更新指定运行实例的状态（写路径经 to_thread）。"""
+        updated = await asyncio.to_thread(update_run_status_by_id, self.db, run_id, status)
         if updated is not None:
-            self.db.commit()
+            await asyncio.to_thread(self.db.commit)
 
-    def _mark_run_failed(self, run_id: str, error_message: str) -> None:
-        """将指定运行实例标记为失败。"""
-        updated = mark_run_failed_by_id(
+    async def _mark_run_failed(self, run_id: str, error_message: str) -> None:
+        """将指定运行实例标记为失败（写路径经 to_thread）。"""
+        updated = await asyncio.to_thread(
+            mark_run_failed_by_id,
             self.db,
             run_id,
             error_message=error_message,
         )
         if updated is not None:
-            self.db.commit()
+            await asyncio.to_thread(self.db.commit)
 
     def _bump_plan_version_with_cas(self, run_id: str, expected_plan_version: int | None) -> None:
         """
@@ -560,9 +561,9 @@ class RecoveryService:
             # 如果表不存在或其他错误，记录但不阻断流程
             logger.warning(f"[HITL RESUME] 清理 checkpoint 失败: {e}")
 
-    def _update_execution_plan_status(self, run_id: str, status: str) -> None:
+    async def _update_execution_plan_status(self, run_id: str, status: str) -> None:
         """
-        更新 ExecutionPlan 状态
+        更新 ExecutionPlan 状态（写路径经 to_thread，避免阻塞事件循环）
 
         Args:
             run_id: 运行实例ID
@@ -570,14 +571,17 @@ class RecoveryService:
         """
         from models.enums import TaskStatus
 
-        execution_plan = self._get_execution_plan_by_run(run_id)
+        def _write() -> None:
+            execution_plan = self._get_execution_plan_by_run(run_id)
 
-        if execution_plan:
-            execution_plan.status = TaskStatus(status)
-            execution_plan.updated_at = datetime.now()
-            self.db.add(execution_plan)
-            self.db.commit()
-            logger.info(f"[HITL RESUME] ExecutionPlan {execution_plan.id} 状态更新为 {status}")
+            if execution_plan:
+                execution_plan.status = TaskStatus(status)
+                execution_plan.updated_at = datetime.now()
+                self.db.add(execution_plan)
+                self.db.commit()
+                logger.info(f"[HITL RESUME] ExecutionPlan {execution_plan.id} 状态更新为 {status}")
+
+        await asyncio.to_thread(_write)
 
     async def _cancel_execution_plan(self, run_id: str):
         """将 ExecutionPlan 标记为 cancelled"""

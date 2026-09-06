@@ -17,6 +17,7 @@ SSE 流式输出核心服务
 """
 
 import asyncio
+import contextlib
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import datetime
@@ -120,7 +121,9 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             actual_message_id = message_id or str(uuid.uuid4())
             full_response = ""
             router_decision = "simple"
-            self._update_agent_run_status(agent_run.id, RunStatus.RUNNING, current_node="router")
+            await self._update_agent_run_status(
+                agent_run.id, RunStatus.RUNNING, current_node="router"
+            )
 
             # 收集任务列表和产物
             collected_task_list = []
@@ -203,7 +206,8 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                             thread_id, router_decision, run_id=agent_run.id
                         )
                         # 🔥 写入 router_decided 事件到账本
-                        emit_router_decided(
+                        await asyncio.to_thread(
+                            emit_router_decided,
                             self.db,
                             run_id=agent_run.id,
                             thread_id=thread_id,
@@ -217,29 +221,31 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
                     return
                 logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
-                self._mark_agent_run_failed(agent_run.id, str(e))
+                await self._mark_agent_run_failed(agent_run.id, str(e))
                 # 🔥 写入 run_failed 事件到账本
-                emit_run_failed(
+                await asyncio.to_thread(
+                    emit_run_failed,
                     self.db,
                     run_id=agent_run.id,
                     thread_id=thread_id,
                     error_code=str(e.code) if e.code else None,
                     error_message=str(e),
                 )
-                self.db.commit()
+                await asyncio.to_thread(self.db.commit)
                 yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
                 return
             except Exception as e:
                 logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
-                self._mark_agent_run_failed(agent_run.id, str(e))
+                await self._mark_agent_run_failed(agent_run.id, str(e))
                 # 🔥 写入 run_failed 事件到账本
-                emit_run_failed(
+                await asyncio.to_thread(
+                    emit_run_failed,
                     self.db,
                     run_id=agent_run.id,
                     thread_id=thread_id,
                     error_message=str(e),
                 )
-                self.db.commit()
+                await asyncio.to_thread(self.db.commit)
                 yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
                 return
 
@@ -261,7 +267,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                 logger.info("[StreamService] HITL 中断检测：任务规划完成，等待用户审核")
 
                 # 🔥 方案1：更新 ExecutionPlan 状态为 waiting_for_approval
-                self._update_execution_plan_status(thread_id, "waiting_for_approval")
+                await self._update_execution_plan_status(thread_id, "waiting_for_approval")
 
                 # 构建当前计划数据
                 current_plan = [
@@ -281,16 +287,17 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                 execution_plan = self._get_latest_execution_plan(thread_id)
 
                 # 🔥 写入 hitl_interrupted 事件到账本
-                emit_hitl_interrupted(
+                await asyncio.to_thread(
+                    emit_hitl_interrupted,
                     self.db,
                     run_id=agent_run.id,
                     thread_id=thread_id,
                     execution_plan_id=execution_plan.id if execution_plan else None,
                     plan_version=plan_version,
                 )
-                self.db.commit()
+                await asyncio.to_thread(self.db.commit)
 
-                self._update_agent_run_status(
+                await self._update_agent_run_status(
                     agent_run.id,
                     RunStatus.WAITING_FOR_APPROVAL,
                     current_node="waiting_for_approval",
@@ -323,7 +330,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     )
                     if persist_error:
                         logger.error("[StreamService] %s", persist_error)
-                        self._mark_agent_run_failed(agent_run.id, persist_error)
+                        await self._mark_agent_run_failed(agent_run.id, persist_error)
                         yield self._build_error_event(ErrorCode.GRAPH_ERROR, persist_error)
                         return
 
@@ -340,16 +347,17 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     run_id=agent_run.id,
                     thinking_text="".join(reasoning_parts) or None,
                 )
-                self._update_agent_run_status(
+                await self._update_agent_run_status(
                     agent_run.id, RunStatus.COMPLETED, current_node="done"
                 )
                 # 🔥 写入 run_completed 事件到账本
-                emit_run_completed(
+                await asyncio.to_thread(
+                    emit_run_completed,
                     self.db,
                     run_id=agent_run.id,
                     thread_id=thread_id,
                 )
-                self.db.commit()
+                await asyncio.to_thread(self.db.commit)
 
             # 🔥 修复：只有简单模式才在这里发送 message.done
             # 复杂模式由 aggregator 通过 event_queue 发送
@@ -397,7 +405,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
 
         # 🔥 MCP: 获取动态工具
         mcp_tools = await self._get_mcp_tools()
-        self._update_agent_run_status(agent_run.id, RunStatus.RUNNING, current_node="router")
+        await self._update_agent_run_status(agent_run.id, RunStatus.RUNNING, current_node="router")
 
         graph = create_smart_router_workflow(checkpointer=get_shared_checkpointer())
 
@@ -988,24 +996,32 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     # 使用 mark_run_completed_by_id 确保 completed_at 被正确设置
                     from crud.agent_run import mark_run_completed_by_id
 
-                    mark_run_completed_by_id(self.db, run_id)
-                    # 更新 current_node
-                    if run_id:
-                        run = self.db.get(AgentRun, run_id)
-                        if run:
-                            run.current_node = "done"
-                            self.db.add(run)
-                    # 写入 run_completed 事件到账本
-                    emit_run_completed(
-                        self.db,
-                        run_id=run_id,
-                        thread_id=thread_id,
-                    )
-                    self.db.commit()
+                    def _finalize_run() -> None:
+                        mark_run_completed_by_id(self.db, run_id)
+                        # 更新 current_node
+                        if run_id:
+                            run = self.db.get(AgentRun, run_id)
+                            if run:
+                                run.current_node = "done"
+                                self.db.add(run)
+                        # 写入 run_completed 事件到账本
+                        emit_run_completed(
+                            self.db,
+                            run_id=run_id,
+                            thread_id=thread_id,
+                        )
+                        self.db.commit()
+
+                    await asyncio.to_thread(_finalize_run)
                     logger.info(f"[StreamService] AgentRun {run_id} 状态更新为 completed")
 
             except asyncio.CancelledError:
-                # 🔥 客户端断开连接时，检查数据库中的实际状态
+                # 🔥 客户端断开连接：先取消 producer，否则 LangGraph 流会
+                # 在无消费者的情况下继续空转（烧 token）直到自然完成
+                producer_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await producer_task
+
                 # aggregator_node 已经在内部更新了 AgentRun 状态，这里只记录日志
                 if run_id:
                     agent_run = self.db.get(AgentRun, run_id)
@@ -1224,39 +1240,41 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         """按 run_id 获取 ExecutionPlan。"""
         return self.db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)).first()
 
-    def _update_agent_run_status(
+    async def _update_agent_run_status(
         self,
         run_id: str,
         status: RunStatus,
         *,
         current_node: str | None = None,
     ) -> None:
-        """更新 AgentRun 状态。"""
-        updated = update_run_status_by_id(
+        """更新 AgentRun 状态（写路径经 to_thread，避免阻塞事件循环）。"""
+        updated = await asyncio.to_thread(
+            update_run_status_by_id,
             self.db,
             run_id,
             status,
             current_node=current_node,
         )
         if updated is not None:
-            self.db.commit()
+            await asyncio.to_thread(self.db.commit)
 
-    def _mark_agent_run_failed(
+    async def _mark_agent_run_failed(
         self,
         run_id: str,
         error_message: str,
         *,
         error_code: str | None = None,
     ) -> None:
-        """将 AgentRun 标记为失败。"""
-        updated = mark_run_failed_by_id(
+        """将 AgentRun 标记为失败（写路径经 to_thread）。"""
+        updated = await asyncio.to_thread(
+            mark_run_failed_by_id,
             self.db,
             run_id,
             error_message=error_message,
             error_code=error_code,
         )
         if updated is not None:
-            self.db.commit()
+            await asyncio.to_thread(self.db.commit)
 
     def _get_plan_version(self, thread_id: str) -> int:
         """获取当前线程的计划版本号（乐观锁）"""
@@ -1267,9 +1285,9 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         ).first()
         return int(execution_plan.plan_version) if execution_plan else 1
 
-    def _update_execution_plan_status(self, thread_id: str, status: str) -> None:
+    async def _update_execution_plan_status(self, thread_id: str, status: str) -> None:
         """
-        更新 ExecutionPlan 状态
+        更新 ExecutionPlan 状态（写路径经 to_thread，避免阻塞事件循环）
 
         Args:
             thread_id: 线程ID
@@ -1277,15 +1295,20 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         """
         from models.enums import TaskStatus
 
-        execution_plan = self.db.exec(
-            select(ExecutionPlan)
-            .where(ExecutionPlan.thread_id == thread_id)
-            .order_by(ExecutionPlan.created_at.desc())
-        ).first()
+        def _write() -> None:
+            execution_plan = self.db.exec(
+                select(ExecutionPlan)
+                .where(ExecutionPlan.thread_id == thread_id)
+                .order_by(ExecutionPlan.created_at.desc())
+            ).first()
 
-        if execution_plan:
-            execution_plan.status = TaskStatus(status)
-            execution_plan.updated_at = datetime.now()
-            self.db.add(execution_plan)
-            self.db.commit()
-            logger.info(f"[StreamService] ExecutionPlan {execution_plan.id} 状态更新为 {status}")
+            if execution_plan:
+                execution_plan.status = TaskStatus(status)
+                execution_plan.updated_at = datetime.now()
+                self.db.add(execution_plan)
+                self.db.commit()
+                logger.info(
+                    f"[StreamService] ExecutionPlan {execution_plan.id} 状态更新为 {status}"
+                )
+
+        await asyncio.to_thread(_write)

@@ -15,7 +15,7 @@ from langgraph.prebuilt import ToolNode
 from agents.state import AgentState
 from agents.tool_policy import build_tool_policy_message, evaluate_tool_policy, get_tool_name
 from services.tool_policy_service import tool_policy_service
-from tools import ALL_TOOLS as BASE_TOOLS
+from tools import ASYNC_TOOLS as BASE_TOOLS
 
 logger = logging.getLogger(__name__)
 

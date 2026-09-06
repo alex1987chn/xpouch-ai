@@ -48,6 +48,7 @@ from services.chat.stream_service import StreamService
 
 # 🔥 Service 层导入（backend 是 Python 路径根）
 from services.chat.thread_service import ChatThreadService
+from utils.logger import logger
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
@@ -215,7 +216,10 @@ async def batch_delete_threads(
         try:
             await service.delete_thread(thread_id, current_user.id)
             deleted_count += 1
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "[Chat] 批量删除会话失败: thread=%s user=%s err=%s", thread_id, current_user.id, e
+            )
             failed_ids.append(thread_id)
 
     return BatchDeleteResponse(

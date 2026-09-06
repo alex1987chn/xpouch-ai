@@ -72,7 +72,7 @@ from agents.tool_policy import filter_tools_for_binding
 from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from services.tool_policy_service import tool_policy_service
-from tools import ALL_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集
+from tools import ASYNC_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集（异步版，避免阻塞事件循环）
 from utils.llm_factory import get_effective_model, get_expert_llm
 from utils.logger import logger
 from utils.prompt_utils import enhance_system_prompt_with_tools  # v3.6: 提取到工具函数
