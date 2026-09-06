@@ -38,6 +38,7 @@ providers:
     env_key: DEEPSEEK_API_KEY
     default_model: deepseek-v4-flash        # DeepSeek V4 Flash（旧别名 deepseek-chat 已于 2026-07-24 停用）
     temperature: 0.7
+    max_tokens: 32768                       # V4 输出上限 384K；不显式设置时 API 默认值偏小，长 HTML artifact 会被静默截断
     context_window: 1000000                 # V4 Flash 支持 1M 上下文
     priority: 1
     enabled: true
@@ -102,6 +103,7 @@ providers:
     env_key: MOONSHOT_API_KEY
     default_model: kimi-k2.6
     temperature: 0.6                        # K2.6 仅允许 temperature=0.6（实测 400: only 0.6 is allowed）
+    max_tokens: 32768                       # 与官方默认一致（32K），显式设置防止历史默认回落（K2 曾默认 1024）
     context_window: 256000
     priority: 6
     enabled: true

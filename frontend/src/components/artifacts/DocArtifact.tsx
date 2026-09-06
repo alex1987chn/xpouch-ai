@@ -2,7 +2,9 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.css'
+import { AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/i18n'
 import CodeArtifact from './CodeArtifact'
 import HtmlArtifact from './HtmlArtifact'
 
@@ -24,6 +26,7 @@ interface DocArtifactProps {
  * - html → HtmlArtifact 渲染
  */
 export default function DocArtifact({ content, className, isStreaming }: DocArtifactProps) {
+  const { t } = useTranslation()
   return (
     <div className={cn('w-full h-full overflow-auto bauhaus-scrollbar p-4', className)}>
       <div className="prose prose-sm max-w-none w-full min-h-0">
@@ -228,7 +231,23 @@ export default function DocArtifact({ content, className, isStreaming }: DocArti
 
               // 🔥 核心改动：HTML 交给 HtmlArtifact
               if (lang === 'html') {
-                return <HtmlArtifact content={codeContent} />
+                // 截断检测：完整 HTML 文档必然有 </html>；缺失说明被输出上限截断，
+                // 文档可能只有 <head>（无可见内容），预览会是空白
+                const isTruncatedDoc = /<html[\s>]/i.test(codeContent) && !/<\/html\s*>/i.test(codeContent)
+                return (
+                  <div className="my-4">
+                    {isTruncatedDoc && (
+                      <div className="flex items-start gap-2 mb-2 px-3 py-2 border border-amber-500/60 bg-amber-500/10 text-xs text-amber-700 dark:text-amber-400 rounded">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{t('artifactHtmlTruncated')}</span>
+                      </div>
+                    )}
+                    {/* 定高容器：HtmlArtifact 的 iframe h-full 在文档流中会塌缩成默认 150px */}
+                    <div className="h-[600px] border border-border-default rounded overflow-hidden bg-white">
+                      <HtmlArtifact content={codeContent} />
+                    </div>
+                  </div>
+                )
               }
 
               // 🔥 核心改动：其他所有（Mermaid/Chart/Python等）全交给 CodeArtifact

@@ -587,6 +587,17 @@ async def generic_worker_node(
                     response.content = f"记录时遇到问题，但我会记住：{memory_content}"
         # -------------------------------------------------------------
 
+        # 🔥 输出截断检测：finish_reason=length 说明内容被 max_tokens 掐断，
+        # artifact 可能只有半截（如 HTML 只生成了 <head>，预览整页空白）
+        finish_reason = (getattr(response, "response_metadata", None) or {}).get("finish_reason")
+        if finish_reason == "length":
+            logger.warning(
+                "[GenericWorker] ⚠️ LLM 输出被 max_tokens 截断 (finish_reason=length)，"
+                "artifact 可能不完整: expert=%s len=%d",
+                expert_type,
+                len(response.content or ""),
+            )
+
         # 🔥 检测 artifact 类型
         artifact_type = _detect_artifact_type(response.content, expert_type)
 

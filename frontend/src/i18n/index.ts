@@ -41,6 +41,7 @@ export type TranslationKey =
   | 'planReviewTitle' | 'tasksPendingConfirm'
   // Artifact 加载态
   | 'artifactChartGenerating' | 'artifactMermaidGenerating' | 'artifactDataError'
+  | 'artifactHtmlTruncated'
   | 'videoLoading' | 'videoLoadFailed' | 'imageLoading' | 'imageLoadFailed'
   | 'mediaLinkInvalid' | 'artifactSchemaHintPlaceholder'
   // 登录弹窗

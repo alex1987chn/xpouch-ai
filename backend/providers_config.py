@@ -67,13 +67,18 @@ def _security_check(config: dict, config_path: Path) -> None:
         ValueError: 如果发现敏感信息
     """
     forbidden_keys = ["api_key", "apikey", "key", "secret", "password", "token"]
+    # env_key 是密钥的环境变量名而非密钥本体；max_tokens 是整数输出上限，均非敏感信息
+    allowed_keys = {"env_key", "max_tokens"}
 
     def check_dict(d: dict, path: str = ""):
         for key, value in d.items():
             current_path = f"{path}.{key}" if path else key
 
             # 检查 key 名是否包含敏感词
-            if any(forbidden in key.lower() for forbidden in forbidden_keys) and key != "env_key":
+            if (
+                any(forbidden in key.lower() for forbidden in forbidden_keys)
+                and key not in allowed_keys
+            ):
                 raise ValueError(
                     f"[安全错误] providers.yaml 包含敏感字段: {current_path}\n"
                     f"API Key 等敏感信息必须在 .env 文件中设置，"

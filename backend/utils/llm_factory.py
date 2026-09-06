@@ -126,19 +126,22 @@ def _create_llm_instance(
     streaming: bool,
     temperature: float | None,
     thinking: str | None = None,
+    max_tokens: int | None = None,
 ) -> ChatOpenAI:
     """
     创建 LLM 实例（内部函数，LRU 缓存）
 
     注意：参数必须是可哈希的（str, bool, float 等），所以 model 和 temperature 用 Optional[str/float]
     """
-    key = (provider, model, streaming, temperature, thinking)
+    key = (provider, model, streaming, temperature, thinking, max_tokens)
     with _llm_cache_lock:
         cached = _llm_instance_cache.get(key)
         if cached is not None:
             _llm_instance_cache.move_to_end(key)
             return cached
-        instance = _build_llm_instance(provider, model, streaming, temperature, thinking)
+        instance = _build_llm_instance(
+            provider, model, streaming, temperature, thinking, max_tokens
+        )
         evicted = None
         if len(_llm_instance_cache) >= _LLM_CACHE_MAX:
             _, evicted = _llm_instance_cache.popitem(last=False)
@@ -154,6 +157,7 @@ def _build_llm_instance(
     streaming: bool,
     temperature: float | None,
     thinking: str | None = None,
+    max_tokens: int | None = None,
 ) -> ChatOpenAI:
     """构建 LLM 实例（无缓存；实例构建为纯对象构造，无网络 IO）"""
     config = get_provider_config(provider)
@@ -181,6 +185,12 @@ def _build_llm_instance(
     llm_config["temperature"] = (
         temperature if temperature is not None else config.get("temperature", 0.7)
     )
+
+    # 输出上限：请求级 > 模型级 > provider 级。不设置时部分 OpenAI 兼容 API
+    # 会退回较小的默认值（如 4k~8k），长 artifact 会被静默截断（finish_reason=length）
+    effective_max_tokens = max_tokens or config.get("max_tokens")
+    if effective_max_tokens:
+        llm_config["max_tokens"] = int(effective_max_tokens)
 
     # 提供商级附加请求参数，经 extra_body 透传给 OpenAI 兼容 API
     # （如 DeepSeek V4 的 thinking 开关：thinking.type=enabled/disabled）
@@ -212,6 +222,7 @@ def get_llm_instance(
     streaming: bool = False,
     temperature: float | None = None,
     thinking: str | None = None,
+    max_tokens: int | None = None,
 ) -> ChatOpenAI:
     """
     统一的 LLM 工厂函数
@@ -224,11 +235,12 @@ def get_llm_instance(
         streaming: 是否启用流式输出
         temperature: 温度参数
         thinking: 思考模式覆盖（'enabled'/'disabled'，None 表示跟随 provider 默认）
+        max_tokens: 输出上限覆盖（None 表示跟随 provider/model 配置）
 
     Returns:
         ChatOpenAI: 配置好的 LLM 实例
     """
-    return _create_llm_instance(provider, model, streaming, temperature, thinking)
+    return _create_llm_instance(provider, model, streaming, temperature, thinking, max_tokens)
 
 
 def get_llm_by_model(
@@ -256,6 +268,7 @@ def get_llm_by_model(
         model=model_config.get("model"),
         streaming=streaming,
         thinking=effective_thinking,
+        max_tokens=model_config.get("max_tokens"),
     )
 
 
