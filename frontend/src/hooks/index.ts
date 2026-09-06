@@ -8,7 +8,6 @@
 export {
   // Chat History
   useChatHistoryQuery,
-  useChatSessionQuery,
   useDeleteConversationMutation,
   useRecentConversationsQuery,
   chatHistoryKeys,

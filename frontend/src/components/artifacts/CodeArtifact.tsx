@@ -1,9 +1,15 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { CodeBlock } from '@/components/ui/code-block'
-import { MermaidRenderer } from './renderers/MermaidRenderer'
-import { ChartRenderer } from './renderers/ChartRenderer'
+
+// 可视化渲染器按语言懒加载：普通代码产物不再拉入 mermaid + recharts 重组件
+const MermaidRenderer = lazy(() =>
+  import('./renderers/MermaidRenderer').then(m => ({ default: m.MermaidRenderer }))
+)
+const ChartRenderer = lazy(() =>
+  import('./renderers/ChartRenderer').then(m => ({ default: m.ChartRenderer }))
+)
 
 interface CodeArtifactProps {
   content: string
@@ -15,17 +21,17 @@ interface CodeArtifactProps {
 
 /**
  * CodeArtifact - 智能代码渲染中枢（无头模式）
- * 
+ *
  * 职责：纯粹的内容渲染，不管理 header/toolbar
  * - 普通代码（python/js/ts等）→ PrismJS 语法高亮
  * - mermaid → MermaidRenderer 流程图
  * - json-chart → ChartRenderer 图表
- * 
+ *
  * Header 由外层 OrchestratorPanelV2 统一管理
  */
-export default function CodeArtifact({ 
-  content, 
-  language = 'text', 
+export default function CodeArtifact({
+  content,
+  language = 'text',
   className,
   showHeader = false,
   isDarkTheme = true
@@ -35,17 +41,25 @@ export default function CodeArtifact({
   const [showSource, setShowSource] = useState(false)
 
   const displayLanguage = language.toLowerCase() || 'text'
-  
+
   // 判断是否为可视化内容（支持预览/源码切换）
   const isVisual = ['mermaid', 'json-chart'].includes(displayLanguage)
 
-  // 核心分流逻辑：根据语言渲染不同内容
+  // 核心分流逻辑：根据语言渲染不同内容（懒加载 + Suspense 兜底）
   const renderVisual = () => {
     switch (displayLanguage) {
       case 'mermaid':
-        return <MermaidRenderer code={content} />
+        return (
+          <Suspense fallback={<VisualLoading />}>
+            <MermaidRenderer code={content} />
+          </Suspense>
+        )
       case 'json-chart':
-        return <ChartRenderer code={content} />
+        return (
+          <Suspense fallback={<VisualLoading />}>
+            <ChartRenderer code={content} />
+          </Suspense>
+        )
       default:
         return null
     }
@@ -64,8 +78,8 @@ export default function CodeArtifact({
       {showHeader && isVisual && (
         <div className={cn(
           "flex justify-between items-center px-3 py-1.5 text-xs border-b shrink-0",
-          isDarkTheme 
-            ? "bg-[#2d2d2d] text-gray-400 border-gray-700" 
+          isDarkTheme
+            ? "bg-[#2d2d2d] text-gray-400 border-gray-700"
             : "bg-gray-100 text-gray-600 border-gray-200"
         )}>
           <span className="font-mono uppercase font-bold text-blue-400">
@@ -75,8 +89,8 @@ export default function CodeArtifact({
             onClick={() => setShowSource(!showSource)}
             className={cn(
               "flex items-center gap-1 px-2 py-0.5 rounded text-xs",
-              isDarkTheme 
-                ? "bg-gray-700 hover:bg-gray-600 text-gray-300" 
+              isDarkTheme
+                ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
                 : "bg-gray-200 hover:bg-gray-300 text-gray-700"
             )}
           >
@@ -101,6 +115,14 @@ export default function CodeArtifact({
           />
         )}
       </div>
+    </div>
+  )
+}
+
+function VisualLoading() {
+  return (
+    <div className="w-full h-[200px] flex items-center justify-center text-gray-500 text-sm">
+      ...
     </div>
   )
 }

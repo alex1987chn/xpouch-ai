@@ -14,7 +14,6 @@
 export {
   // Chat History Queries
   useChatHistoryQuery,
-  useChatSessionQuery,
   useDeleteConversationMutation,
   useBatchDeleteConversationsMutation,
   useRecentConversationsQuery,

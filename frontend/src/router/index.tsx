@@ -75,9 +75,11 @@ export const router = createBrowserRouter([
       {
         path: 'admin/stats',
         element: (
-          <SuspenseWithErrorBoundary fallback={<LoadingFallback />}>
-            <StatsPage />
-          </SuspenseWithErrorBoundary>
+          <AdminRoute requiredRole="user">
+            <SuspenseWithErrorBoundary fallback={<LoadingFallback />}>
+              <StatsPage />
+            </SuspenseWithErrorBoundary>
+          </AdminRoute>
         )
       },
       {

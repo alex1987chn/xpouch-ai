@@ -34,7 +34,7 @@
  * - 流式输出时组件保持静止
  */
 
-import { useRef, useLayoutEffect, useCallback } from 'react'
+import { useRef, useLayoutEffect, useCallback, useMemo } from 'react'
 import type { Message } from '@/types'
 import EmptyState from '../EmptyState'
 import MessageItem from '../MessageItem'
@@ -201,6 +201,15 @@ export default function ChatStreamPanel({
       })
     : messages
 
+  // O(n) 预计算：最后一条带 thinking 的消息索引。
+  // 替代 map 内每项对后续消息的 O(n) 扫描（流式时整体 O(n²)/帧 的放大器）。
+  const lastThinkingIndex = useMemo(() => {
+    for (let i = displayMessages.length - 1; i >= 0; i--) {
+      if (getMessageThinkingSteps(displayMessages[i]).length > 0) return i
+    }
+    return -1
+  }, [displayMessages])
+
   /**
    * 计算消息的 AI 状态
    * 只有最后一条 AI 消息根据全局状态显示 thinking/streaming
@@ -249,10 +258,8 @@ export default function ChatStreamPanel({
             const hasActualContent = parsedContent.replace(/\s/g, '').length > 0
             
             // Only show ThinkingProcess on the last message with thinking
-            const isLastMessageWithThinking = index === displayMessages.length - 1 || 
-              !displayMessages.slice(index + 1).some(m => 
-                getMessageThinkingSteps(m).length > 0
-              )
+            // （lastThinkingIndex 已预计算；无任何 thinking 时该分支不会进入）
+            const isLastMessageWithThinking = index === lastThinkingIndex
             
             return (
               <div key={messageKey}>

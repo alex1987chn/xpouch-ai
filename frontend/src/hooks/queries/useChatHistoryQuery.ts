@@ -20,7 +20,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
-import { getConversations, getConversation, getThreadMessages, deleteConversation, deleteConversationsBatch } from '@/services/chat'
+import { getConversations, deleteConversation, deleteConversationsBatch } from '@/services/chat'
 import { logger } from '@/utils/logger'
 import { CACHE_TIMES } from '@/config/query'
 
@@ -92,38 +92,9 @@ export function useChatHistoryQuery(options: { limit?: number; enabled?: boolean
   })
 }
 
-// 获取单个会话详情的 Query Hook
-// P0-5 优化：使用分离的 API 获取会话详情和消息列表
-export function useChatSessionQuery(threadId: string | null) {
-  return useQuery({
-    queryKey: chatHistoryKeys.detail(threadId || ''),
-    queryFn: async () => {
-      if (!threadId) {
-        throw new Error('Conversation ID is required')
-      }
-      try {
-        // P0-5 优化：分离获取会话详情和消息列表
-        // 1. 获取会话详情（包含元数据）
-        const conversation = await getConversation(threadId)
-        // 2. 获取消息列表（完整内容）
-        const messages = await getThreadMessages(threadId)
-        // 3. 合并返回
-        return {
-          ...conversation,
-          messages
-        }
-      } catch (error) {
-        logger.error('[useChatSessionQuery] Failed to fetch conversation:', error)
-        throw error
-      }
-    },
-    // 只在有 threadId 时启用
-    enabled: !!threadId,
-    staleTime: CACHE_TIMES.CHAT_SESSION.staleTime,
-    gcTime: CACHE_TIMES.CHAT_SESSION.gcTime,
-    retry: 2,
-  })
-}
+// 获取单个会话详情的 Query Hook —— 已删除（零消费者）。
+// 会话恢复实际走 useSessionRestore 的 getConversation() 直取 + chatStore 持久化，
+// 此 Query 与该路径构成双缓存；如需 Query 化恢复路径，以 git 历史恢复此实现。
 
 // 删除会话的 Mutation Hook
 export function useDeleteConversationMutation() {
