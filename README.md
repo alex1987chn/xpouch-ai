@@ -248,6 +248,28 @@ pnpm run build
 
 如果仓库的 pre-commit hooks 已安装，提交时会自动执行检查。
 
+## 运维
+
+### 数据库备份
+
+仓库提供基于 `pg_dump` 的备份脚本（保留最近 N 份轮转）：
+
+```bash
+./scripts/backup_db.sh                  # 默认保留 7 份
+BACKUP_KEEP=30 ./scripts/backup_db.sh   # 自定义份数
+```
+
+服务器建议挂 crontab 每日执行（示例见脚本头部注释）。备份输出到 `backups/`（已 gitignore）。
+
+### 环境声明（Fail-closed）
+
+`ENVIRONMENT` 必须显式设置（`development` / `testing` / `production`）。未设置时按 **production** 语义处理：debug 端点关闭、`X-User-ID` 认证旁路关闭、生产级 JWT 校验生效。生产部署务必在 `backend/.env` 中显式配置。
+
+### 健康检查
+
+- 后端：`GET /api/health`（Dockerfile HEALTHCHECK 与 compose healthcheck 均已接入）
+- 前端：容器内 wget 探测（compose healthcheck）
+
 ## 文档
 
 - [CHANGELOG.md](./CHANGELOG.md)

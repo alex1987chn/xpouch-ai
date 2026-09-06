@@ -33,3 +33,9 @@ migrations/versions/__pycache__/
 
 # Logs
 *.log
+
+# Not needed in the runtime image
+tests/
+scripts/
+*.md
+.ruff_cache/

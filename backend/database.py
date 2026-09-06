@@ -29,9 +29,18 @@ logger.info(
 
 
 def create_db_and_tables():
-    """创建数据库表（如果不存在）"""
-    # PostgreSQL 使用 SQLModel 自动创建表
-    # checkfirst=True 是默认值：表存在则不操作，不存在则创建
+    """创建数据库表（仅 development / testing 环境）。
+
+    Schema 真相源是 Alembic 迁移（容器启动 CMD 执行 `alembic upgrade head`）。
+    生产环境跳过 create_all：此前双真相源并存（create_all 静默补表）会掩盖
+    "线上库缺迁移"的事实。生产若缺表应直接失败并提示执行迁移。
+    """
+    from config import settings
+
+    if settings.environment == "production":
+        logger.info("[Database] production: skipping create_all (schema managed by Alembic)")
+        return
+
     logger.info("[Database] Checking database tables...")
     SQLModel.metadata.create_all(engine, checkfirst=True)
     logger.info("[Database] Database tables ready")

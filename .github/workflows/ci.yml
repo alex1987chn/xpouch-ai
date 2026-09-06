@@ -6,10 +6,16 @@ on:
   pull_request:
     branches: [main]
 
+# 同分支新推送取消进行中的旧 run，省额度
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend-check:
     name: Backend Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: ./backend
@@ -37,6 +43,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           version: "0.6.x"
+          enable-cache: true
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -49,7 +56,7 @@ jobs:
       - name: Run Ruff check
         run: uv run ruff check .
 
-      - name: Run all backend tests
+      - name: Run all backend tests (with coverage)
         env:
           # 使用 CI 服务中的 PostgreSQL
           DATABASE_URL: postgresql+psycopg://xpouch_test:test_pass@localhost:5432/xpouch_test
@@ -58,11 +65,22 @@ jobs:
           MOONSHOT_API_KEY: test-key
           SILICON_API_KEY: test-key
           JWT_SECRET_KEY: test-secret-key-for-ci-only
-        run: uv run pytest tests/
+          ENVIRONMENT: development
+        run: |
+          uv pip install pytest-cov
+          uv run pytest tests/ --cov=. --cov-report=term --cov-report=xml
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          retention-days: 14
 
   frontend-check:
     name: Frontend Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: ./frontend
@@ -94,3 +112,17 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  docker-build:
+    name: Docker Build Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t xpouch-backend-ci ./backend
+
+      - name: Build frontend image
+        run: docker build -f frontend/Dockerfile -t xpouch-frontend-ci .

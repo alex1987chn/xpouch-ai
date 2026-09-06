@@ -31,12 +31,19 @@ COPY agents/ ./agents/
 COPY crud/ ./crud/
 COPY api/ ./api/
 COPY tools/ ./tools/
-COPY scripts/ ./scripts/
 COPY migrations/ ./migrations/
 COPY alembic.ini ./
 
 # 暴露端口（与 .env.example 和 docker-compose.yml 保持一致）
 EXPOSE 3000
+
+# 健康检查：应用级 /api/health（部署编排可另配更细粒度探针）
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:3000/api/health', timeout=3).status==200 else 1)"
+
+# 非 root 运行：镜像层创建专用用户并赋 .venv 所有权
+RUN useradd --create-home --shell /bin/sh xpouch && chown -R xpouch:xpouch /app
+USER xpouch
 
 # 启动命令：先执行数据库迁移，再启动应用
 CMD ["sh", "-c", "uv run alembic upgrade head && uv run uvicorn main:app --host 0.0.0.0 --port 3000"]
