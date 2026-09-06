@@ -36,6 +36,8 @@ class User(SQLModel, table=True):
     )
     phone_number: str | None = Field(default=None, max_length=32, unique=True, index=True)
     email: str | None = Field(default=None, max_length=254, unique=True, index=True)
+    # Deprecated：无密码登录流（当前仅手机验证码登录）。保留列避免迁移风险，
+    # bcrypt 工具函数在 utils/jwt_handler 中以备将来启用。
     password_hash: str | None = Field(default=None, max_length=255)
     verification_code: str | None = Field(default=None, max_length=16)
     verification_code_expires_at: datetime | None = Field(default=None)

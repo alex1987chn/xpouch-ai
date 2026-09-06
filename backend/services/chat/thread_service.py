@@ -17,7 +17,7 @@ from datetime import datetime
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from sqlalchemy.orm import selectinload
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from constants import SYSTEM_AGENT_DEFAULT_CHAT, SYSTEM_AGENT_ORCHESTRATOR, normalize_agent_id
 from models import AgentRun, CustomAgent, ExecutionPlan, Message, SubTask, Thread
@@ -93,9 +93,9 @@ class ChatThreadService:
         limit = min(limit, 100)
         offset = (page - 1) * limit
 
-        # 1. 查询总记录数
-        count_statement = select(Thread).where(Thread.user_id == user_id)
-        total = len(self.db.exec(count_statement).all())
+        # 1. 查询总记录数（SQL COUNT，不拉全量行）
+        count_statement = select(func.count()).select_from(Thread).where(Thread.user_id == user_id)
+        total = self.db.exec(count_statement).one()
 
         # 2. 查询当前页线程（不预加载消息）
         statement = (
@@ -120,7 +120,7 @@ class ChatThreadService:
         thread_ids = [t.id for t in threads]
 
         # 3. 使用子查询一次性获取消息数量和最后一条消息（避免 N+1 查询）
-        from sqlalchemy import func
+        # （func 已在模块级从 sqlmodel 导入）
 
         # 3.1 查询每个线程的消息数量
         count_stmt = (

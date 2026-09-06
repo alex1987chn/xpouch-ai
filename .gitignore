@@ -88,3 +88,7 @@ DEPLOY_UBUNTU.md
 # Local agent/scanner tool artifacts (not part of the project)
 .zcode/
 .mimosa/
+
+# Build artifacts (never track)
+*.tsbuildinfo
+frontend/vite.config.d.ts

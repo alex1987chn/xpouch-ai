@@ -9,7 +9,7 @@
     "dev:backend": "cd backend && uv run main.py",
     "build": "pnpm --prefix frontend run build",
     "preview": "pnpm --prefix frontend run preview",
-    "test": "echo 'No tests specified yet' && exit 0",
+    "test": "pnpm --prefix frontend run test && cd backend && uv run pytest tests/ -q",
     "lint": "pnpm --prefix frontend run lint",
     "clean": "rimraf frontend/node_modules backend/.venv frontend/dist backend/__pycache__ .ruff_cache"
   },
