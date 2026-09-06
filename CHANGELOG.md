@@ -5,6 +5,59 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-09-06] - v3.4.3 执行链路可靠性：HITL 闭环、截断防治、结构收敛
+
+### 新增功能
+
+- **HITL deadline 暂停/恢复**：进入等待审批即清空 deadline_at（用户思考审批的时间不再消耗执行预算——12 分钟的审批间隔曾导致恢复即超时）；恢复执行时发放完整新预算
+- **专家结果落库失败前端可见**：新增 PERSISTENCE_WARNING 事件推送（此前只有后端日志）
+- 备份脚本 `scripts/backup_db.sh`（pg_dump | gzip + N 份轮转），README 增补 Ops 章节
+
+### 修复
+
+后端执行链：
+
+- **HITL 确认后无动作**：驱动图的 producer 循环被误包在 `elif message_id:` 分支内，而前端确认总是携带 updated_plan，走 `if` 分支应用计划后直接落尾——恢复返回空流、run 被误标 completed、checkpoint 被清。重构为 if/else 共享循环；端到端实测 interrupt→confirm→3 任务全部执行
+- **HITL 取消必失败**：取消请求经 SSE 客户端读取 JSON 响应（后端拒绝处理器返回 JSON）必然解析失败；改走非流式 JSON 路径
+- **多任务产物雷同**：prompt 组装分支条件写错（`if existing_messages:` 在聊天历史恒非空时永真），任务描述与依赖上下文从未进入后续任务的 prompt，同一专家的每个任务都在回答原始请求；改为仅当末条为 ToolMessage（工具续跑）时才沿用现有 messages
+- **产物双写**：同一任务 artifact 经专家完成保存与流末批量收集两条路径落库，产生两行同内容记录；`create_artifacts_batch` 按 sub_task_id 幂等
+- **LLM 输出静默截断**：专家调用从不设置 max_tokens，OpenAI 兼容 API 退回较小默认值，长 HTML artifact 在 `<head>` 中途被掐断（页面无 body、预览整页空白，finish_reason=length 无任何报错）。providers.yaml 显式配置输出上限（deepseek/moonshot 32768，请求级>模型级>provider 级）；generic worker 检测 finish_reason=length 告警；前端内嵌 HTML 定高渲染并显示截断警告横幅（三语）
+- **P1 异步转换漏网**：12 处 run 状态助手调用缺 await，协程静默不执行，若干路径 AgentRun 永远停在 RUNNING
+- **GraphTaskStatus 未注册序列化白名单**：新枚举随 task_list 进 checkpoint，恢复时报 Blocked deserialization，HITL 无法恢复
+- **SSE 断连后 producer 空转**：客户端断开不取消 producer_task，LangGraph 继续执行消耗 token 至自然结束
+- **事件循环内阻塞写库**：StreamService 状态更新与账本写入全部 `asyncio.to_thread`；专家工具绑定切换到 ASYNC_TOOLS（search_web/read_webpage 原为阻塞 requests，异步版一直闲置）
+- **/api/user/me 泄漏敏感字段**：裸 ORM User 序列化出 password_hash/verification_code/access_token 等；改 UserProfileResponse 白名单（GET/PUT 同）
+- **安全加固**：`require_role` 工厂修复 expert-list 角色越权；ENVIRONMENT fail-closed（未设置即 production）；OTP/token 改 SHA-256 哈希存储（旧明文行 fail-closed 自然淘汰）；生产环境 500 不再回显异常细节；MCP SSRF 检查 DNS 解析失败时 fail-closed
+- **PDF 导出失效**：html2canvas 1.4.1 不解析 oklch()（Tailwind 4 默认调色板），抓图即抛错；换 html2canvas-pro
+- **原生 alert 全量替换**：PlanReviewCard / LoginDialog / PersonalSettingsDialog 共 16 处改 pushToast（错误用 destructive 语义）
+- **i18n 幽灵键**：5 个零翻译键存在活调用点（登录重发按钮、专家编辑标题等直接渲染键名），补齐三语；18 个有译无类型键补进联合
+- 命令器测试与真实数据库解耦（内存 SQLite），CI 空库不再 UndefinedTable
+
+### 重构与架构
+
+- **run_lifecycle 单一模块**：三处重复的 run 状态更新/失败标记/完成收尾/`_get_execution_plan_by_run`/SSE headers 归一；裸 psycopg checkpoint 清理删除，统一走连接池版
+- **状态词表枚举化**：新增 GraphTaskStatus StrEnum 命名图状态词表（原约 15 处匿名裸字符串），`to_task_status()` 作为图→DB 唯一映射，ORM 枚举列的裸字符串写入清零
+- **SSE 构建栈核实收敛**：证实 sse_builder 并非第二套格式栈（同走 build_sse_event 对象管线）而是传输层便捷层，无需合并；6 个纯转发 shim 降为别名，分层真相写入 docstring
+- **前端缓存所有权**：agents 列表唯一真相 = React Query（chatStore 去掉实体持久化，仅留 selectedAgentId）；会话编排收进 `useChatSession`（恢复→轮询交接、终态单次刷新、待发消息重试）；useChatCore 三条复制的流式流程归一（isAbortError / makeStreamCallback / finalizeStream）并删除三处死代码累积
+- **checkpointer 建表归一**：删除自研建表预检（只警告不修复），官方 `setup()` 为唯一 schema 所有者
+- 前端死代码清扫约 600 行（零消费者逐项 grep 终验后删除）
+
+### 性能
+
+- Mermaid/Chart 渲染器按语言 React.lazy 懒加载，普通代码产物不再拉入重组件 chunk
+- ChatStreamPanel lastThinkingIndex 由渲染期内每消息回扫（O(n²)）改为单次 O(n) 预计算
+- thread_service 分页计数下推 `SELECT count()`（原先整表载入内存）
+
+### 基建
+
+- Docker 加固：HEALTHCHECK、非 root 运行、.dockerignore 排除 tests/*.md；compose 服务 healthcheck 编排
+- CI：并发取消、任务超时、uv 缓存、覆盖率产物、前后端镜像构建验证 job
+- 生产环境 schema 单一来源：production 跳过 create_all（Alembic 唯一所有），缺失表快速失败
+
+### 其他
+
+- frontend `package.json` / 根 `package.json` / UI 版本常量 3.4.2 → 3.4.3，对齐后端常量
+
 ## [2026-09-06] - v3.4.2 前端设计体系收敛：主题精简、语义 token、可访问性
 
 ### 变更
