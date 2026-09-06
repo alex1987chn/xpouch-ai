@@ -8,6 +8,7 @@ import { useUserStore } from '@/store/userStore'
 import { useChat } from '@/hooks/useChat'
 import { useSessionRestore } from '@/hooks/useSessionRestore'
 import { useRunPolling } from '@/hooks/useRunPolling'
+import { useChatSessionHandoff, usePendingMessageRetry } from '@/hooks/chat/useChatSession'
 import { useAppUISelectors, useAgentsQuery } from '@/hooks'
 import { chatHistoryKeys } from '@/hooks/queries'
 
@@ -57,14 +58,11 @@ export default function UnifiedChatPage() {
     resumeExecution  // 🔥🔥🔥 v3.1.0 HITL
   } = useChat()
 
-  const conversationLoadedRef = useRef(false)
-
   // 获取登录状态
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
 
-  // threadId 变化时重置加载标记，并清空残留消息/任务
+  // threadId 变化时清空残留消息/任务（会话内容由服务端恢复，见 useSessionRestore）
   useEffect(() => {
-    conversationLoadedRef.current = false
     useChatStore.getState().setMessages([])
     useTaskStore.getState().resetAll()
   }, [threadId])
@@ -118,8 +116,9 @@ export default function UnifiedChatPage() {
     }
   }, [threadId])
 
-  // 🔥🔥🔥 Server-Driven UI: 简化会话加载逻辑
-  // 依赖：key={id} 强制重新挂载 + 导航时清空 Store
+  // 🔥🔥🔥 Server-Driven UI: 会话加载的前置守卫
+  // 真正的历史加载统一由 useSessionRestore 处理（v3.4.4 删除了此处的
+  // no-op 标记机器——原 effect 除设置自身 flag 外无任何副作用）
   useEffect(() => {
     if (!threadId) {
       // 无会话 ID 时重置状态
@@ -135,47 +134,13 @@ export default function UnifiedChatPage() {
     // 检查是否正在执行
     const { runningTaskIds, hasRunningTasks } = useTaskStore.getState()
     const isTaskStoreExecuting = hasRunningTasks ? hasRunningTasks() : runningTaskIds.size > 0
-    
+
     // 执行中不加载（避免干扰流式输出）
     if (isTaskStoreExecuting) {
       return
     }
-
-    // 🔥🔥🔥 简化判断：只检查会话和消息是否已加载
-    // tasks 的恢复由 useSessionRestore 内部处理
-    const storeCurrentId = useChatStore.getState().currentConversationId
-    const currentMessages = useChatStore.getState().messages
-    
-    // 防止重复加载：使用 ref 标记
-    if (conversationLoadedRef.current) {
-      return
-    }
-    
-    // 是否需要重新加载
-    if (storeCurrentId === threadId && currentMessages.length > 0) {
-      // 已加载，跳过
-      conversationLoadedRef.current = true
-      return
-    }
-    
-    // 检查是否已经有 tasks 数据（由 persist 恢复）
-    const taskStore = useTaskStore.getState()
-    if (taskStore.tasks.size > 0) {
-      conversationLoadedRef.current = true
-      return
-    }
-
-    // 标记为已加载，防止重复调用
-    conversationLoadedRef.current = true
-
-    // 🔥 修复：如果是新建会话（isNew: true），跳过加载历史，避免 404
-    if (routeState?.isNew) {
-      return
-    }
-
-    // 🔥 所有历史会话加载都由 useSessionRestore 统一处理
-    // 无需额外调用 loadConversation
-  }, [threadId, initialMessage, isNewConversation, routeState])
+    // 其余路径无需动作：恢复由 useSessionRestore 的 enabled 条件驱动
+  }, [threadId, initialMessage])
 
   // 恢复草稿（只依赖 threadId）
   useEffect(() => {
@@ -246,87 +211,20 @@ export default function UnifiedChatPage() {
     stopGeneration()  // 再停止生成
   }, [stopPolling, stopGeneration])
 
-  // 🔥 核心组合逻辑：会话恢复完成后，安全启动轮询
-  useEffect(() => {
-    // 等待会话恢复完成
-    if (!isRestored) return
-
-    // 检查是否有可控制的任务
-    if (!isLatestRunControllable || !latestRunId) {
-      // 没有运行中的任务，确保停止轮询
-      stopPolling()
-      return
-    }
-
-    // 检查 store 中的 activeRunId 是否已同步
-    if (activeRunId !== latestRunId) {
-      // store 还未同步，等待
-      return
-    }
-
-    // 🔥🔥🔥 关键修复：如果已经检测到终态，不要重新启动轮询
-    // 这发生在：轮询检测到终态 -> restoreSession() -> 但后端状态仍显示 running
-    // 此时如果启动轮询，会重置 isTerminal，导致终态检测失效
-    if (isTerminal) {
-      logger.info('[UnifiedChatPage] 已检测到终态，跳过轮询启动')
-      return
-    }
-
-    // 🔥 所有条件满足，安全启动轮询
-    logger.info('[UnifiedChatPage] 恢复完成，启动轮询:', { latestRunId, activeRunId })
-    startPolling()
-  }, [isRestored, isLatestRunControllable, latestRunId, activeRunId, isTerminal, startPolling, stopPolling])
-
-  // 🔥 终态时刷新数据（防抖：只触发一次）
-  const hasRefreshedRef = useRef(false)
-  useEffect(() => {
-    if (!isTerminal || hasRefreshedRef.current) return
-
-    logger.info('[UnifiedChatPage] 检测到终态，刷新数据')
-    hasRefreshedRef.current = true
-    restoreSession()
-  }, [isTerminal, restoreSession])
-
-  // 🔥 重置防抖标记（会话切换时）
-  useEffect(() => {
-    hasRefreshedRef.current = false
-  }, [threadId])
-
-  // 🔐 登录后自动重发消息（Store Trigger 模式）
-  // 使用 ref 存储最新的 sendMessage 函数，避免 subscribe 闭包问题
-  const sendMessageRef = useRef(sendMessage)
-  sendMessageRef.current = sendMessage
-  
-  const normalizedAgentIdRef = useRef(normalizedAgentId)
-  normalizedAgentIdRef.current = normalizedAgentId
-  
-  useEffect(() => {
-    // 订阅 Store 变化
-    const unsubscribe = useChatStore.subscribe((state, prevState) => {
-      // 当 shouldRetrySend 从 false 变为 true 时触发
-      if (state.shouldRetrySend && !prevState.shouldRetrySend && state.pendingMessage && !isStreaming) {
-        // 使用 ref 获取最新的函数，避免闭包问题
-        const currentSendMessage = sendMessageRef.current
-        const currentAgentId = normalizedAgentIdRef.current
-        
-        // 发送消息
-        currentSendMessage(state.pendingMessage, currentAgentId)
-          .then(() => {
-            // 发送成功，清空待发送消息和标志
-            useChatStore.getState().setPendingMessage(null)
-            useChatStore.getState().setShouldRetrySend(false)
-          })
-          .catch((err) => {
-            logger.error('[UnifiedChatPage] 消息重发失败:', err)
-            // 清除标志，允许下次重试
-            useChatStore.getState().setShouldRetrySend(false)
-            // 如果还是 401，会再次触发登录弹窗，pendingMessage 保留
-          })
-      }
-    })
-    
-    return () => unsubscribe()
-  }, [isStreaming]) // 只依赖 isStreaming，其他使用 ref
+  // 🔥 会话生命周期编排（恢复→轮询交接 / 终态单次刷新 / 登录后重发）
+  // v3.4.4 纯搬入 hooks/chat/useChatSession.ts，逻辑不变
+  const { resetTerminalRefresh } = useChatSessionHandoff({
+    threadId,
+    isRestored,
+    isLatestRunControllable,
+    latestRunId,
+    activeRunId,
+    isTerminal,
+    startPolling,
+    stopPolling,
+    restoreSession,
+  })
+  usePendingMessageRetry(sendMessage, normalizedAgentId, isStreaming)
 
   // 发送消息处理
   const handleSend = useCallback(() => {
@@ -374,10 +272,9 @@ export default function UnifiedChatPage() {
   // v3.4.0: 轮询状态（用于恢复运行中的任务）
   // 🔥 v3.5.1 修复：手动刷新时强制恢复，跳过防抖
   const handleRefreshSession = useCallback(() => {
-    // 🔥 手动刷新时，重置防抖标记
-    hasRefreshedRef.current = false
-    restoreSession()  // 防抖标记已在上方重置
-  }, [restoreSession])
+    resetTerminalRefresh()
+    restoreSession()
+  }, [resetTerminalRefresh, restoreSession])
 
   const chatStreamPolling = useMemo(
     () => ({
