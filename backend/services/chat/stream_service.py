@@ -17,7 +17,6 @@ SSE 流式输出核心服务
 """
 
 import asyncio
-import contextlib
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import datetime
@@ -990,23 +989,21 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                 await asyncio.to_thread(finalize_run_completed, self.db, run_id, thread_id)
 
         except asyncio.CancelledError:
-            # 🔥 客户端断开连接：先取消 producer，否则 LangGraph 流会
-            # 在无消费者的情况下继续空转（烧 token）直到自然完成
-            producer_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await producer_task
-
-            # aggregator_node 已经在内部更新了 AgentRun 状态，这里只记录日志
+            # 🔥 客户端断开连接 ≠ 停止任务：producer 继续在后台跑到自然完成，
+            # 结果照常落库——切走再回来的会话（banner + 轮询）能拿到完整结果。
+            # 真正的停止走协作取消：POST /runs/{run_id}/cancel 写入 DB 后，
+            # producer 在下一个 token 检查点感知并自行退出（本分支此前取消
+            # producer 的实现会把后台断连误杀成僵尸 RUNNING，已移除）。
             if run_id:
+                # 主动取回异常结果，避免孤儿任务的 "exception was never retrieved" 噪音
+                producer_task.add_done_callback(
+                    lambda t: t.exception() if not t.cancelled() else None
+                )
                 agent_run = self.db.get(AgentRun, run_id)
-                if agent_run and agent_run.status == RunStatus.COMPLETED:
-                    logger.info(
-                        f"[StreamService] AgentRun {run_id} 已由 aggregator 更新为 completed"
-                    )
-                else:
-                    logger.info(
-                        f"[StreamService] 客户端断开连接，AgentRun {run_id} 状态: {agent_run.status if agent_run else 'not found'}"
-                    )
+                logger.info(
+                    f"[StreamService] 客户端断开连接，任务转后台继续执行: "
+                    f"run={run_id} status={agent_run.status if agent_run else 'not found'}"
+                )
             raise
 
         # message.done 由 aggregator_node 通过 event_queue 发送
