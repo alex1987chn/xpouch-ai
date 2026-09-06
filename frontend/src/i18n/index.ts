@@ -47,6 +47,13 @@ export type TranslationKey =
   | 'phoneNumberPlaceholder' | 'autoRegisterHint' | 'codePlaceholder' | 'codeSentTo' | 'changePhone'
   // UID 复制
   | 'uidCopied' | 'clickToCopyUid'
+  // 既有翻译但此前缺席联合的键（v3.4.4 补全，t() 恢复类型安全）
+  | 'operationFailed' | 'sending' | 'complexTaskCompleted' | 'taskPlan' | 'aiAssistant'
+  | 'commander' | 'searchExpertName' | 'codingExpert' | 'researchExpert' | 'analyzerExpertName'
+  | 'writingExpert' | 'planningExpert' | 'imageAnalyzerExpert'
+  | 'toolSearchDesc' | 'toolReadWebpageDesc' | 'toolCalculatorDesc' | 'toolTimeDesc' | 'toolMcpDesc'
+  // 此前声明无翻译的幽灵键（v3.4.4 补三语）
+  | 'resend' | 'editExpert' | 'loadExpertsFailed' | 'noData' | 'noToolPoliciesFound'
   | 'totalHistory' | 'totalItems' | 'matchingHistory' | 'matchingItems' | 'searchHistory'
   | 'noMatchingHistory' | 'tryOtherKeywords'
   // Create Agent

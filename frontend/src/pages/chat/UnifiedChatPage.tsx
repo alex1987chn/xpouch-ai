@@ -399,10 +399,6 @@ export default function UnifiedChatPage() {
     regenerate(messageId)
   }, [regenerate])
 
-  const handlePreview = useCallback(() => {
-    setViewMode('preview')
-  }, [setViewMode])
-
   // 缓存全屏切换回调
   const toggleFullscreen = useCallback(() => {
     setIsFullscreen(prev => !prev)
@@ -421,9 +417,8 @@ export default function UnifiedChatPage() {
       onSend: handleSend,
       onStop: handleStopGeneration,  // 🔥 v3.5.1 使用包装函数
       onRegenerate: handleRegenerate,
-      onPreview: handlePreview,
     }),
-    [handleSend, handleStopGeneration, handleRegenerate, handlePreview]
+    [handleSend, handleStopGeneration, handleRegenerate]
   )
 
   // v3.4.0: 轮询状态（用于恢复运行中的任务）

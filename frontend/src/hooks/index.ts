@@ -25,7 +25,8 @@ export { useChatCore } from './chat/useChatCore'
 export { useConversation } from './chat/useConversation'
 
 // 主题相关
-export { useTheme } from './useTheme'
+// 主题初始化组件（读写主题用 useThemeStore）
+export { ThemeProvider, ThemeInitializer } from './useTheme'
 
 // 移动端滑动返回
 export { useSwipeBack } from './useSwipeBack'
@@ -84,8 +85,6 @@ export {
 
   // 复杂 Selectors
   useMessages,
-  useLastMessage,
-  useLastAssistantMessage,
   useCustomAgents,
 
   // Actions
@@ -94,11 +93,6 @@ export {
   useUpdateMessageAction,
   useSetGeneratingAction,
   useSetInputMessageAction,
-
-  // 派生 Selectors
-  useMessageStats,
-  useHasMessages,
-  useMessageCount,
 } from './useChatSelectors'
 
 // ============================================================================

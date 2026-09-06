@@ -18,7 +18,6 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTaskStore } from '@/store/taskStore'
 import { useChatStore } from '@/store/chatStore'
-import { getEventHandler } from '@/handlers'
 import { logger } from '@/utils/logger'
 import { getConversation } from '@/services/chat'
 import type { SubTask } from '@/types'
@@ -342,39 +341,5 @@ export function useSessionRestore(
     restore,
     isLatestRunControllable,
     latestRunId,
-  }
-}
-
-/**
- * 检查是否有可恢复的会话
- */
-export function hasRestorableSession(_threadId: string): boolean {
-  try {
-    const key = `xpouch-task-store@2`
-    const stored = localStorage.getItem(key)
-    if (!stored) return false
-    
-    const parsed = JSON.parse(stored)
-    // 检查存储的会话是否匹配当前对话（使用 tasks 检查替代 isInitialized）
-    const hasTasks = parsed.tasks && 
-      (Array.isArray(parsed.tasks) ? parsed.tasks.length > 0 : parsed.tasks.size > 0)
-    return parsed.executionPlan?.executionPlanId && hasTasks
-  } catch {
-    return false
-  }
-}
-
-/**
- * 清除会话恢复数据
- */
-export function clearSessionRestoreData(): void {
-  try {
-    const key = `xpouch-task-store@2`
-    localStorage.removeItem(key)
-    
-    // 同时清除事件处理器的已处理事件记录
-    getEventHandler().clearProcessedEvents()
-  } catch (e) {
-    logger.error('[useSessionRestore] 清除恢复数据失败:', e)
   }
 }

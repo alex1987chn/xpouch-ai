@@ -75,7 +75,6 @@ interface ChatStreamPanelProps {
     onStop?: () => void
     onRegenerate?: (messageId: string | number) => void
     onLinkClick?: (href: string) => void
-    onPreview?: () => void
   }
   /** v3.1.0 HITL: 恢复执行回调 */
   resumeExecution?: (params: ResumeChatParams) => Promise<string>
@@ -168,10 +167,6 @@ export default function ChatStreamPanel({
 
   const handleLinkClick = useCallback((href: string) => {
     actions.onLinkClick?.(href)
-  }, [actions])
-
-  const handlePreview = useCallback(() => {
-    actions.onPreview?.()
   }, [actions])
 
   // Check if message has real content (for filtering)
@@ -286,12 +281,10 @@ export default function ChatStreamPanel({
                       ...msg,
                       content: parsedContent
                     }}
-                    isLast={index === displayMessages.length - 1}
                     activeExpert={activeExpert}
                     aiStatus={getMessageStatus(msg, index)}
                     onRegenerate={handleRegenerate}
                     onLinkClick={handleLinkClick}
-                    onPreview={handlePreview}
                   />
                 )}
               </div>

@@ -128,6 +128,8 @@ export const zh: Record<string, string> = {
   clickToCopyUid: '点击复制 UID',
   source: '源码',
   mediaFile: '媒体文件',
+  resend: '重新发送',
+  noData: '暂无数据',
 
   // 验证提示
   enterValidPhone: '请输入有效的手机号码',
@@ -292,6 +294,8 @@ export const en: Record<string, string> = {
   clickToCopyUid: 'Click to copy UID',
   source: 'Source',
   mediaFile: 'Media File',
+  resend: 'Resend',
+  noData: 'No data',
 
   // 验证提示
   enterValidPhone: 'Please enter a valid phone number',
@@ -456,6 +460,8 @@ export const ja: Record<string, string> = {
   clickToCopyUid: 'クリックでUIDをコピー',
   source: 'ソース',
   mediaFile: 'メディアファイル',
+  resend: '再送信',
+  noData: 'データがありません',
 
   // 验证提示
   enterValidPhone: '有効な電話番号を入力してください',

@@ -117,7 +117,7 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - 7 天趋势图表：按日期聚合的运行数据
 - 运行列表：带分页，显示状态、模式、时间、用户
 - 数据库层聚合：使用 `func.count` / `func.sum` / `func.avg` + `group_by`
-- API：`GET /api/admin/stats`、`GET /api/admin/stats/trends`、`GET /api/admin/stats/runs`
+- API：`GET /api/admin/stats/runs`（概览与 7 天趋势内嵌于同一响应）
 
 ## 当前架构
 

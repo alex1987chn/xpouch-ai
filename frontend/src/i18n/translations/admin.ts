@@ -83,6 +83,8 @@ export const zh: Record<string, string> = {
   deleteSuccess: '删除成功',
   deleteFailed: '删除失败',
   cannotDeleteSystemExpert: '系统内置专家不可删除',
+  editExpert: '编辑专家',
+  loadExpertsFailed: '专家列表加载失败',
 
   // Tool Tips (v3.1)
   showToolTips: '工具使用指南',
@@ -182,6 +184,8 @@ export const en: Record<string, string> = {
   deleteSuccess: 'Deleted successfully',
   deleteFailed: 'Failed to delete',
   cannotDeleteSystemExpert: 'System built-in experts cannot be deleted',
+  editExpert: 'Edit Expert',
+  loadExpertsFailed: 'Failed to load experts',
 
   // Tool Tips (v3.1)
   showToolTips: 'Tool Usage Guide',
@@ -281,6 +285,8 @@ export const ja: Record<string, string> = {
   deleteSuccess: '削除しました',
   deleteFailed: '削除に失敗しました',
   cannotDeleteSystemExpert: 'システム組み込みのエキスパートは削除できません',
+  editExpert: 'エキスパートを編集',
+  loadExpertsFailed: 'エキスパート一覧の取得に失敗しました',
 
   // Tool Tips (v3.1)
   showToolTips: 'ツール使用ガイド',

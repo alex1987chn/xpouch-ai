@@ -76,22 +76,6 @@ export interface ApiMessage {
   isTyping?: boolean
 }
 
-/**
- * 数据库消息接口 - 用于数据库返回
- */
-export interface DBMessage {
-  id?: string | number
-  role: 'user' | 'assistant'
-  content: string
-  timestamp?: string | Date
-  extra_data?: {
-    thinking?: {
-      text?: string
-      steps?: ThinkingStep[]
-    }
-  }
-}
-
 // ============================================
 // 会话相关类型
 // ============================================
@@ -122,13 +106,6 @@ export interface Conversation {
   messages?: Message[]
   execution_plan?: ExecutionPlan
   latest_run?: AgentRunSummary
-}
-
-/**
- * 会话详情接口（包含完整消息）
- */
-export interface ConversationDetail extends Conversation {
-  messages: Message[]
 }
 
 export interface AgentRunSummary {
@@ -210,43 +187,6 @@ export interface Agent {
  */
 export type AgentType = 'system' | 'custom'
 
-/**
- * 智能体上下文 - 双轨制统一接口
- */
-export interface AgentContext {
-    type: AgentType
-    config: Agent
-    threadId: string
-}
-
-/**
- * 自定义智能体数据接口
- */
-export interface CustomAgentData {
-    id: string
-    user_id: string
-    name: string
-    description?: string
-    system_prompt: string
-    model_id: string
-    category: string
-    conversation_count: number
-    is_public: boolean
-    created_at: string
-    updated_at: string
-}
-
-/**
- * 智能体类别
- */
-export type AgentCategory =
-  | 'general'
-  | 'coding'
-  | 'writing'
-  | 'analysis'
-  | 'creative'
-  | 'education'
-
 // ============================================
 // 用户相关类型
 // ============================================
@@ -261,20 +201,6 @@ export interface UserProfile {
     plan: string
     role: 'user' | 'view_admin' | 'edit_admin' | 'admin'  // 用户角色（与后端 UserRole 一致）
     updated_at: string  // 用户信息更新时间戳，用于同步
-}
-
-// ============================================
-// 任务节点类型
-// ============================================
-// 路由状态类型
-// ============================================
-
-/**
- * 聊天页面路由状态
- */
-export interface ChatPageState {
-  startWith?: string
-  agentId?: string
 }
 
 // ============================================
@@ -318,47 +244,12 @@ export interface Artifact {
   isPreview?: boolean  // 🔥 标记为预览 artifact，禁止编辑
 }
 
-/**
- * ArtifactSession - 每个专家的交付物会话
- * 支持多个交付物的管理和切换
- */
-export interface ArtifactSession {
-  expertType: string  // 专家类型（如 'writer', 'coder'）
-  artifacts: Artifact[]  // 该专家的所有交付物
-  currentIndex: number  // 当前展示的交付物索引
-  createdAt: string  // 会话创建时间
-  updatedAt: string  // 会话最后更新时间
-}
-
 // ============================================
 // 类型守卫函数
 // ============================================
+// （v3.4.4 清理：isValidMessageRole / isValidApiMessageRole /
+//   apiMessageToMessage / dbMessageToMessage 零消费者已移除）
 
-/**
- * 检查是否为有效的消息角色
- */
-export function isValidMessageRole(role: string): role is 'user' | 'assistant' {
-  return role === 'user' || role === 'assistant'
-}
-
-/**
- * 检查是否为有效的 API 消息角色
- */
-export function isValidApiMessageRole(role: string): role is 'system' | 'user' | 'assistant' {
-  return role === 'system' || role === 'user' || role === 'assistant'
-}
-
-/**
- * 将 API 消息转换为 UI 消息
- */
-export function apiMessageToMessage(apiMessage: ApiMessage): Message {
-  return {
-    id: apiMessage.id,
-    role: apiMessage.role === 'system' ? 'assistant' : apiMessage.role, // 将 system 转换为 assistant
-    content: apiMessage.content,
-    timestamp: apiMessage.timestamp ? String(apiMessage.timestamp) : undefined
-  }
-}
 
 // ============================================
 // MCP 服务器相关类型
@@ -392,24 +283,3 @@ export {
   getEventCategory,
   getEventDisplayName,
 } from './run'
-
-/**
- * 将数据库消息转换为 UI 消息
- */
-export function dbMessageToMessage(dbMessage: DBMessage): Message {
-  const message: Message = {
-    id: dbMessage.id ? String(dbMessage.id) : undefined,
-    role: dbMessage.role,
-    content: dbMessage.content,
-    timestamp: dbMessage.timestamp ? String(dbMessage.timestamp) : undefined
-  }
-
-  // 处理 thinking 数据（类似 DeepSeek Chat 的思考过程）
-  if (dbMessage.extra_data?.thinking?.steps && dbMessage.extra_data.thinking.steps.length > 0) {
-    message.metadata = {
-      thinking: dbMessage.extra_data.thinking.steps
-    }
-  }
-
-  return message
-}

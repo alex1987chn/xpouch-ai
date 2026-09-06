@@ -4,9 +4,9 @@
   "private": true,
   "description": "XPouch AI - A modern AI assistant with LangGraph backend",
   "scripts": {
-    "dev": "concurrently \"pnpm --prefix frontend run dev\" \"cd backend && uv run main.py\"",
+    "dev": "concurrently \"pnpm --prefix frontend run dev\" \"cd backend && uv run python run.py\"",
     "dev:frontend": "pnpm --prefix frontend run dev",
-    "dev:backend": "cd backend && uv run main.py",
+    "dev:backend": "cd backend && uv run python run.py",
     "build": "pnpm --prefix frontend run build",
     "preview": "pnpm --prefix frontend run preview",
     "test": "pnpm --prefix frontend run test && cd backend && uv run pytest tests/ -q",
@@ -19,7 +19,7 @@
   },
   "engines": {
     "node": ">=24.14.0",
-    "pnpm": ">=8.0.0"
+    "pnpm": ">=11.0.0"
   },
   "packageManager": "pnpm@11.25.0"
 }

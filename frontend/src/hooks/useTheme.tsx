@@ -1,38 +1,15 @@
 /**
  * ============================================
- * useTheme Hook - 主题管理
+ * ThemeInitializer - 主题初始化
  * ============================================
- * 
- * 兼容层：将旧的 useTheme API 映射到新的 themeStore
- * 支持 3 个主题：light / dark / kyoto
- * 
- * 使用方式：
- * const { theme, setTheme, toggleTheme } = useTheme()
+ *
+ * 主题读写直接使用 useThemeStore（zustand）；
+ * 本文件只保留应用启动时的初始化组件。
  */
 
 import { useEffect } from 'react'
-import { useThemeStore, type Theme } from '@/store/themeStore'
+import { useThemeStore } from '@/store/themeStore'
 import { logger } from '@/utils/logger'
-
-interface UseThemeReturn {
-  theme: Theme
-  toggleTheme: () => void
-  setTheme: (theme: Theme) => void
-}
-
-/**
- * 主题 Hook - 兼容旧 API
- * 内部使用新的 themeStore
- */
-export function useTheme(): UseThemeReturn {
-  const { theme, setTheme, toggleTheme } = useThemeStore()
-  
-  return {
-    theme,
-    setTheme,
-    toggleTheme
-  }
-}
 
 /**
  * 主题初始化组件

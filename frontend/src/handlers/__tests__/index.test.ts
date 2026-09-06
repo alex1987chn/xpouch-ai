@@ -2,9 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   EventHandler,
   getEventHandler,
-  handleServerEvent,
-  handleServerEvents,
-  clearEventHandler
+  handleServerEvent
 } from '../index'
 
 // Mock stores
@@ -50,7 +48,7 @@ describe('EventHandler', () => {
   })
 
   afterEach(() => {
-    clearEventHandler()
+    getEventHandler().clearProcessedEvents()
   })
 
   describe('事件去重', () => {
@@ -138,7 +136,7 @@ describe('EventHandler', () => {
 
 describe('便捷函数', () => {
   afterEach(() => {
-    clearEventHandler()
+    getEventHandler().clearProcessedEvents()
     vi.clearAllMocks()
   })
 
@@ -165,31 +163,8 @@ describe('便捷函数', () => {
     })
   })
 
-  describe('handleServerEvents', () => {
-    it('应该批量处理事件', async () => {
-      const { logger } = vi.mocked(await import('@/utils/logger'), true)
-      
-      const events = [
-        {
-          id: 'evt-1',
-          type: 'error' as const,
-          data: { code: 'E1', message: 'error 1' }
-        },
-        {
-          id: 'evt-2',
-          type: 'error' as const,
-          data: { code: 'E2', message: 'error 2' }
-        }
-      ]
-
-      handleServerEvents(events)
-
-      expect(logger.error).toHaveBeenCalledTimes(2)
-    })
-  })
-
-  describe('clearEventHandler', () => {
-    it('应该清空处理器状态', () => {
+  describe('单例状态清理', () => {
+    it('clearProcessedEvents 应清空单例的去重记录', () => {
       const event = {
         id: 'evt-1',
         type: 'plan.created' as const,
@@ -197,7 +172,7 @@ describe('便捷函数', () => {
       }
 
       handleServerEvent(event)
-      clearEventHandler()
+      getEventHandler().clearProcessedEvents()
       handleServerEvent(event) // 可以再次处理
 
       expect(mockTaskStore.initializePlan).toHaveBeenCalledTimes(2)

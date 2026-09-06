@@ -1,5 +1,4 @@
 import { SYSTEM_AGENTS, isSystemAgent } from '@/constants/agents'
-import { getClientId } from '@/services/common'
 import type { AgentType } from '@/types'
 
 /**
@@ -35,38 +34,4 @@ export function getAgentType(agentId: string): AgentType {
     return 'system'
   }
   return 'custom'
-}
-
-/**
- * 生成 Thread ID（根据智能体类型）
- */
-export function getThreadId(agentId: string, _userId?: string): string {
-  const normalizedId = normalizeAgentId(agentId)
-  const agentType = getAgentType(normalizedId)
-
-  if (agentType === 'system') {
-    // 系统智能体：使用 ${userId}_${agentId}
-    const clientId = getClientId()
-    // 提取语义化的 graphId（移除 sys- 前缀）
-    const graphId = normalizedId.replace('sys-', '')
-    return `exp_${clientId}_${graphId}`
-  } else {
-    // 自定义智能体：使用 cus_${agentId}
-    return `cus_${agentId}`
-  }
-}
-
-/**
- * 从后端 Thread 数据获取对话模式
- * 
- * @param threadMode - 后端返回的 thread_mode 字段
- * @returns 'simple' | 'complex'
- * 
- * @example
- * ```typescript
- * const mode = getModeFromThread(thread.thread_mode) // 'simple' 或 'complex'
- * ```
- */
-export function getModeFromThread(threadMode?: string): 'simple' | 'complex' {
-  return threadMode === 'complex' ? 'complex' : 'simple'
 }

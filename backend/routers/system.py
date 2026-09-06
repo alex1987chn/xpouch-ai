@@ -12,6 +12,7 @@ from sqlmodel import Session, select
 from database import engine, get_session
 from dependencies import get_current_user_with_auth
 from models import CustomAgent, Thread, User, UserSettings
+from schemas.user_profile import UserProfileResponse
 from utils.exceptions import NotFoundError
 
 router = APIRouter(prefix="/api", tags=["system"])
@@ -68,19 +69,19 @@ async def health_check():
 # ============================================================================
 
 
-@router.get("/user/me")
+@router.get("/user/me", response_model=UserProfileResponse)
 async def get_user_me(current_user: User = Depends(get_current_user_with_auth)):
-    """获取当前登录用户信息"""
+    """获取当前登录用户信息（仅公开字段，不序列化内部凭证列）"""
     return current_user
 
 
-@router.put("/user/me")
+@router.put("/user/me", response_model=UserProfileResponse)
 async def update_user_me(
     request: UpdateUserRequest,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user_with_auth),
 ):
-    """更新当前用户信息"""
+    """更新当前用户信息（仅公开字段，不序列化内部凭证列）"""
     # 记录更新时间戳
     current_user.updated_at = datetime.now()
 

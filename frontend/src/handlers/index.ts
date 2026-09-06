@@ -161,21 +161,6 @@ export function handleServerEvent(event: AnyServerEvent): void {
   getEventHandler().handle(event)
 }
 
-/**
- * 批量处理 SSE 事件
- */
-export function handleServerEvents(events: AnyServerEvent[]): void {
-  const handler = getEventHandler()
-  events.forEach((event) => handler.handle(event))
-}
-
-/**
- * 清空事件处理器状态
- */
-export function clearEventHandler(): void {
-  getEventHandler().clearProcessedEvents()
-}
-
 // ============================================================================
 // 类型导出（保持向后兼容）
 // ============================================================================

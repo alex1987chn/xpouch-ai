@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     # 基础配置
     app_name: str = Field(default="XPouch AI", alias="APP_NAME")
-    version: str = Field(default="3.3.0", alias="VERSION")
+    version: str = Field(default="3.4.3", alias="VERSION")
     # Fail-closed：必须显式声明环境。未配置 ENVIRONMENT 时启动即报错，
     # 防止生产漏配时静默落入 development（debug 端点开放、X-User-ID 认证旁路）。
     environment: Literal["development", "testing", "production"] = Field(

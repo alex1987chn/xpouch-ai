@@ -8,7 +8,6 @@
 import { useShallow } from 'zustand/react/shallow'
 import { useMemo } from 'react'
 import { useChatStore } from '@/store/chatStore'
-import type { Message } from '@/types'
 
 // ============================================================================
 // 基础 Selectors (返回原始值)
@@ -42,33 +41,6 @@ export const useSelectedAgentId = () =>
  */
 export const useMessages = () => useChatStore(
   useShallow(state => state.messages)
-)
-
-/**
- * 获取最后一条消息
- * 常用于流式输出时跟踪最新消息
- */
-export const useLastMessage = (): Message | undefined => useChatStore(
-  useShallow(state => {
-    const { messages } = state
-    return messages.length > 0 ? messages[messages.length - 1] : undefined
-  })
-)
-
-/**
- * 获取最后一条助手消息
- * 用于更新 thinking 步骤
- */
-export const useLastAssistantMessage = (): Message | undefined => useChatStore(
-  useShallow(state => {
-    const { messages } = state
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === 'assistant') {
-        return messages[i]
-      }
-    }
-    return undefined
-  })
 )
 
 /**
@@ -132,34 +104,5 @@ export const useUpdateMessageAction = () =>
 export const useSetGeneratingAction = () => 
   useChatStore(state => state.setGenerating)
 
-export const useSetInputMessageAction = () => 
+export const useSetInputMessageAction = () =>
   useChatStore(state => state.setInputMessage)
-
-// ============================================================================
-// 派生 Selectors (计算值)
-// ============================================================================
-
-/**
- * 获取消息统计
- */
-export const useMessageStats = () => {
-  const total = useChatStore(state => state.messages.length)
-  const isGenerating = useChatStore(state => state.isGenerating)
-  const hasConversation = useChatStore(state => !!state.currentConversationId)
-  return useMemo(
-    () => ({ total, isGenerating, hasConversation }),
-    [total, isGenerating, hasConversation]
-  )
-}
-
-/**
- * 检查是否有消息
- */
-export const useHasMessages = () => 
-  useChatStore(state => state.messages.length > 0)
-
-/**
- * 获取消息数量
- */
-export const useMessageCount = () => 
-  useChatStore(state => state.messages.length)

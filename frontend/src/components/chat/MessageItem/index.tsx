@@ -588,9 +588,8 @@ function areEqual(prevProps: MessageItemProps, nextProps: MessageItemProps): boo
   // 比较其他 UI 相关 props
   if (prevProps.aiStatus !== nextProps.aiStatus) return false
   if (prevProps.activeExpert !== nextProps.activeExpert) return false
-  if (prevProps.isLast !== nextProps.isLast) return false
-  
-  // 🔥 忽略函数引用变化：onRegenerate, onLinkClick, onPreview
+
+  // 🔥 忽略函数引用变化：onRegenerate, onLinkClick
   // 这些函数应该由父组件用 useCallback 缓存
   return true
 }

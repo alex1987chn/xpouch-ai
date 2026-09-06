@@ -70,8 +70,3 @@ export interface LastAssistantMessageResult {
   message: Message
   id: string
 }
-
-/**
- * 事件处理器注册表
- */
-export type EventHandlerRegistry = Map<string, EventHandlerFn<AnyServerEvent>>
