@@ -11,8 +11,9 @@
 import { useState, useCallback } from 'react'
 import { Trash2, Edit3, CheckCircle2, XCircle, Play, Loader2, AlertCircle } from 'lucide-react'
 import { useTranslation } from '@/i18n'
-import type { ResumeChatParams } from '@/services/chat'
+import { resumeChat, type ResumeChatParams } from '@/services/chat'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
+import { pushToast } from '@/components/ui/use-toast'
 
 import {
   useIsWaitingForApproval,
@@ -85,7 +86,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
 
   const doCancel = useCallback(async () => {
     if (!pendingRunId) {
-      alert('缺少运行实例 ID，无法取消当前计划')
+      pushToast({ title: '缺少运行实例 ID', description: '无法取消当前计划', variant: 'destructive' })
       return
     }
 
@@ -98,12 +99,16 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
     setMode('simple')
 
     try {
-      await resumeExecution({
-        threadId,
-        runId: pendingRunId,
-        planVersion: pendingPlanVersion,
-        approved: false,
-      })
+      // 取消走非流式 JSON 路径（后端 _handle_rejection 返回 JSON，非 SSE 流）
+      await resumeChat(
+        {
+          threadId,
+          runId: pendingRunId,
+          planVersion: pendingPlanVersion,
+          approved: false,
+        },
+        undefined
+      )
       addMessage({ role: 'system', content: '计划已取消，状态已清理', timestamp: Date.now() })
     } catch (error) {
       // 取消失败同样必须恢复审批卡片（后端 run 未取消，仍等待审批）
@@ -112,20 +117,20 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
       if (isAbortError(error)) {
         return
       }
-      alert('取消失败，请重试')
+      pushToast({ title: '取消失败', description: '请重试', variant: 'destructive' })
     } finally {
       setIsSubmitting(false)
       setIsCancelling(false)
     }
-  }, [threadId, pendingPlanVersion, pendingRunId, resumeExecution, clearPendingPlan, setIsWaitingForApproval, setMode, addMessage])
+  }, [threadId, pendingPlanVersion, pendingRunId, clearPendingPlan, setIsWaitingForApproval, setMode, addMessage])
 
   const handleApprove = useCallback(async () => {
     if (editedPlan.length === 0) {
-      alert(t('minOneTask'))
+      pushToast({ title: t('minOneTask'), variant: 'destructive' })
       return
     }
     if (!pendingRunId) {
-      alert('缺少运行实例 ID，无法恢复执行')
+      pushToast({ title: '缺少运行实例 ID', description: '无法恢复执行', variant: 'destructive' })
       return
     }
 
@@ -171,7 +176,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
           ? `启动失败: ${error.message}`
           : '启动失败，请检查网络后重试'
       addMessage({ id: tempMessageId, role: 'system', content: userMessage, timestamp: Date.now() })
-      alert(userMessage)
+      pushToast({ title: userMessage, variant: 'destructive' })
     } finally {
       setIsSubmitting(false)
     }

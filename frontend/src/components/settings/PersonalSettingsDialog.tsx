@@ -4,6 +4,7 @@ import { Save, User, Camera, Upload, X } from 'lucide-react'
 import { fileToBase64 } from '@/utils/userSettings'
 import { useUserStore } from '@/store/userStore'
 import { logger } from '@/utils/logger'
+import { pushToast } from '@/components/ui/use-toast'
 import { useTranslation } from '@/i18n'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
@@ -37,13 +38,13 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
     if (file) {
       // 验证文件类型
       if (!file.type.startsWith('image/')) {
-        alert(t('uploadImageFile'))
+        pushToast({ title: t('uploadImageFile') })
         return
       }
 
       // 验证文件大小（最大 2MB）
       if (file.size > 2 * 1024 * 1024) {
-        alert(t('imageSizeExceeded'))
+        pushToast({ title: t('imageSizeExceeded') })
         return
       }
 
@@ -53,7 +54,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
         setAvatarPreview(base64)
       } catch (error) {
         logger.error('Failed to process image:', error)
-        alert(t('imageProcessFailed'))
+        pushToast({ title: t('imageProcessFailed') })
       }
     }
   }
@@ -68,17 +69,17 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
   const handleSave = async () => {
     // 验证用户名
     if (!username.trim()) {
-      alert(t('usernameRequired'))
+      pushToast({ title: t('usernameRequired') })
       return
     }
 
     if (username.length < 2) {
-      alert(t('usernameMinLength'))
+      pushToast({ title: t('usernameMinLength') })
       return
     }
 
     if (username.length > 20) {
-      alert(t('usernameMaxLength'))
+      pushToast({ title: t('usernameMaxLength') })
       return
     }
 
@@ -91,7 +92,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
       onClose()
     } catch (error) {
       logger.error('[PersonalSettingsDialog] Failed to save settings:', error)
-      alert(t('saveFailedLater'))
+      pushToast({ title: t('saveFailedLater') })
     } finally {
       setIsSaving(false)
     }

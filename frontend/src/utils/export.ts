@@ -6,9 +6,10 @@
  */
 
 // 动态导入 PDF 库（仅在需要时加载）
+// html2canvas-pro：html2canvas 的 fork，支持 oklch/color-mix（Tailwind 4 默认色域）
 const loadPdfLibs = async () => {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-    import('html2canvas'),
+    import('html2canvas-pro'),
     import('jspdf'),
   ])
   return { html2canvas, jsPDF }

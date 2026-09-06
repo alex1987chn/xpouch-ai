@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { The4DPocketLogo } from '@/components/bauhaus'
 import { useUserStore } from '@/store/userStore'
 import { logger } from '@/utils/logger'
+import { pushToast } from '@/components/ui/use-toast'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 
@@ -36,7 +37,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
   // 发送验证码
   const handleSendCode = async () => {
     if (!phoneNumber || phoneNumber.length !== 11) {
-      alert(t('enterValidPhone'))
+      pushToast({ title: t('enterValidPhone') })
       return
     }
 
@@ -51,7 +52,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
       }
     } catch (error) {
       logger.error('发送验证码失败:', error)
-      alert((error as Error).message)
+      pushToast({ title: (error as Error).message })
     } finally {
       setLoading(false)
     }
@@ -60,7 +61,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
   // 验证验证码并登录
   const handleVerifyCode = async () => {
     if (!code || code.length < 4) {
-      alert(t('enterCode'))
+      pushToast({ title: t('enterCode') })
       return
     }
 
@@ -85,7 +86,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
       }, 100)
     } catch (error) {
       logger.error('[LoginDialog] 验证失败:', error)
-      alert((error as Error).message)
+      pushToast({ title: (error as Error).message })
     } finally {
       setLoading(false)
     }
