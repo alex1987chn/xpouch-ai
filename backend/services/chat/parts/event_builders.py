@@ -1,8 +1,9 @@
 """SSE 事件构建 + 运行状态助手机（Mixin）。
 
-自 StreamService 拆出：纯事件构建（无状态）与运行实例状态/心跳交互。
-主类以 Mixin 方式组合，保持 self.db 访问语义不变。
-实现与 StreamService 原方法逐一对应（拆分搬运，非重写）。
+自 StreamService 拆出。组合两类助手：
+1. SSE 构建：staticmethod 直连 utils/sse_builder（单一对象管线的便捷层），
+   别名保持 self._build_* 调用点 API 不变——此前是 6 个纯转发方法体。
+2. 运行状态守卫：心跳刷新、取消/超时检查、节点进度同步（触 self.db）。
 """
 
 from __future__ import annotations
@@ -25,42 +26,13 @@ from utils.sse_builder import (
 class EventBuildersMixin:
     """SSE 事件构建与运行状态助手机。"""
 
-    def _build_message_delta_event(self, message_id: str, content: str) -> str:
-        """构建 message.delta 事件"""
-        return build_message_delta_event(message_id=message_id, content=content)
-
-    def _build_message_thinking_event(self, message_id: str, content: str) -> str:
-        """构建 message.thinking 事件"""
-        return build_message_thinking_event(message_id=message_id, content=content)
-
-    def _build_message_done_event(self, message_id: str, content: str) -> str:
-        """构建 message.done 事件"""
-        return build_message_done_event(message_id=message_id, content=content)
-
-    def _build_heartbeat_event(self) -> str:
-        """构建 heartbeat 事件，供前端更新活跃时间。"""
-        return build_heartbeat_event()
-
-    def _build_error_event(self, code: str | ErrorCode, message: str) -> str:
-        """构建 error 事件"""
-        return build_error_event(code=code, message=message)
-
-    def _build_human_interrupt_event(
-        self,
-        thread_id: str,
-        current_plan: list[dict],
-        plan_version: int,
-        run_id: str | None = None,
-        execution_plan_id: str | None = None,
-    ) -> str:
-        """构建 human.interrupt 事件 (HITL)"""
-        return build_human_interrupt_event(
-            thread_id=thread_id,
-            current_plan=current_plan,
-            plan_version=plan_version,
-            run_id=run_id,
-            execution_plan_id=execution_plan_id,
-        )
+    # SSE 构建：直连 sse_builder（无状态、无 self 访问）
+    _build_message_delta_event = staticmethod(build_message_delta_event)
+    _build_message_thinking_event = staticmethod(build_message_thinking_event)
+    _build_message_done_event = staticmethod(build_message_done_event)
+    _build_heartbeat_event = staticmethod(build_heartbeat_event)
+    _build_error_event = staticmethod(build_error_event)
+    _build_human_interrupt_event = staticmethod(build_human_interrupt_event)
 
     def _touch_agent_run(self, run_id: str, *, current_node: str | None = None) -> None:
         """轻量刷新运行心跳，可选同步当前节点。"""

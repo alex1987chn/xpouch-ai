@@ -1,9 +1,14 @@
 """
-SSE 事件构建工具。
+SSE 事件构建工具——传输层事件（message.*/error/human.interrupt/heartbeat）的便捷层。
 
-目标：
-- 统一 message/error/human-interrupt/heartbeat 的构建逻辑
-- 避免多个 service 重复手写 build_sse_event + sse_event_to_string
+分层职责（单一格式管线）：
+- event_types.events.build_sse_event + utils.event_generator.sse_event_to_string
+  是唯一的 SSE 对象格式管线（所有事件共用）；
+- 本模块为流式生成器场景提供 message.*/error/human.interrupt 的直接字符串
+  构建便捷函数（事件家族划分，非第二套格式）；
+- plan.*/task.*/artifact.* 业务事件的 SSEEvent 对象由 utils/event_generator
+  的 event_* 工厂构建（emit_event 通道）；
+- heartbeat 是纯传输保活，刻意不走 pydantic 模型。
 """
 
 from __future__ import annotations
