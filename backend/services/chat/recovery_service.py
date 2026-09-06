@@ -251,7 +251,7 @@ class RecoveryService:
         self._enter_inflight_resume(run_id, resume_key)
         try:
             logger.info("[HITL RESUME] 用户批准，开始流式恢复")
-            self._update_run_status(run_id, RunStatus.RESUMING)
+            await self._update_run_status(run_id, RunStatus.RESUMING)
 
             # 🔥 方案1：更新 ExecutionPlan 状态为 running（用户已批准）
             from models.enums import TaskStatus

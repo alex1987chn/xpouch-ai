@@ -47,11 +47,13 @@ def test_inflight_different_key_is_rejected_as_in_progress():
 async def test_handle_approval_releases_inflight_when_preflight_fails(monkeypatch):
     service = RecoveryService(db_session=object())
 
-    monkeypatch.setattr(service, "_update_run_status", lambda *_args, **_kwargs: None)
+    async def _noop_update(*_args, **_kwargs):
+        return None
 
-    def _raise_not_found(*_args, **_kwargs):
+    async def _raise_not_found(*_args, **_kwargs):
         raise NotFoundError("ExecutionPlan")
 
+    monkeypatch.setattr(service, "_update_run_status", _noop_update)
     monkeypatch.setattr(service, "_update_execution_plan_status", _raise_not_found)
 
     with pytest.raises(NotFoundError, match="ExecutionPlan"):

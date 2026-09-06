@@ -97,11 +97,12 @@ def test_hitl_wait_guard_stops_after_task_execution_started():
     assert should_wait is False
 
 
-def test_loop_budget_guard_raises_when_budget_exhausted():
+@pytest.mark.asyncio
+async def test_loop_budget_guard_raises_when_budget_exhausted():
     service = StreamService(_DummySession())
 
     with pytest.raises(AppError) as exc_info:
-        service._raise_if_loop_budget_exhausted(
+        await service._raise_if_loop_budget_exhausted(
             loop_count=5,
             max_loops=5,
             aggregator_executed=False,
@@ -111,10 +112,11 @@ def test_loop_budget_guard_raises_when_budget_exhausted():
     assert exc_info.value.code == ErrorCode.LOOP_GUARD_TRIGGERED
 
 
-def test_loop_budget_guard_skips_when_aggregator_finished():
+@pytest.mark.asyncio
+async def test_loop_budget_guard_skips_when_aggregator_finished():
     service = StreamService(_DummySession())
 
-    service._raise_if_loop_budget_exhausted(
+    await service._raise_if_loop_budget_exhausted(
         loop_count=5,
         max_loops=5,
         aggregator_executed=True,

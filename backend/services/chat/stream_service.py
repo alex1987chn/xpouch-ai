@@ -441,7 +441,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     task_list=result.get("task_list", []),
                 )
                 if persist_error:
-                    self._mark_agent_run_failed(agent_run.id, persist_error)
+                    await self._mark_agent_run_failed(agent_run.id, persist_error)
                     raise AppError(
                         message=persist_error,
                         code=ErrorCode.GRAPH_ERROR,
@@ -459,7 +459,9 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                 message_id=initial_state.get("message_id") or str(uuid.uuid4()),
                 run_id=agent_run.id,
             )
-            self._update_agent_run_status(agent_run.id, RunStatus.COMPLETED, current_node="done")
+            await self._update_agent_run_status(
+                agent_run.id, RunStatus.COMPLETED, current_node="done"
+            )
 
         return {
             "role": "assistant",
@@ -593,7 +595,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         """判断复杂模式是否应进入 HITL 审核等待态。"""
         return bool(task_list) and current_task_index == 0 and len(collected_task_list) == 0
 
-    def _raise_if_loop_budget_exhausted(
+    async def _raise_if_loop_budget_exhausted(
         self,
         *,
         loop_count: int,
@@ -606,7 +608,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             return
 
         if run_id:
-            self._mark_agent_run_failed(
+            await self._mark_agent_run_failed(
                 run_id,
                 "运行超过最大图循环预算",
                 error_code=ErrorCode.LOOP_GUARD_TRIGGERED,
@@ -955,7 +957,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                         # 短暂等待，让状态更新
                         await asyncio.sleep(0.1)
 
-                    self._raise_if_loop_budget_exhausted(
+                    await self._raise_if_loop_budget_exhausted(
                         loop_count=loop_count,
                         max_loops=max_loops,
                         aggregator_executed=aggregator_executed,

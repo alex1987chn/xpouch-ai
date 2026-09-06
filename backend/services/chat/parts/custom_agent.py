@@ -55,7 +55,7 @@ class CustomAgentMixin:
 
             try:
                 # 构建 LLM
-                self._update_agent_run_status(
+                await self._update_agent_run_status(
                     agent_run.id, RunStatus.RUNNING, current_node="custom_agent"
                 )
                 llm = await self._build_custom_agent_llm(custom_agent)
@@ -115,11 +115,11 @@ class CustomAgentMixin:
                 if e.code == ErrorCode.RUN_CANCELLED:
                     yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
                     return
-                self._mark_agent_run_failed(agent_run.id, str(e))
+                await self._mark_agent_run_failed(agent_run.id, str(e))
                 yield self._build_error_event(ErrorCode.STREAM_ERROR, str(e))
                 return
             except Exception as e:
-                self._mark_agent_run_failed(agent_run.id, str(e))
+                await self._mark_agent_run_failed(agent_run.id, str(e))
                 yield self._build_error_event(ErrorCode.STREAM_ERROR, str(e))
                 return
 
@@ -139,7 +139,9 @@ class CustomAgentMixin:
             )
 
             # 发送完成事件
-            self._update_agent_run_status(agent_run.id, RunStatus.COMPLETED, current_node="done")
+            await self._update_agent_run_status(
+                agent_run.id, RunStatus.COMPLETED, current_node="done"
+            )
             yield self._build_message_done_event(actual_message_id, full_response)
             # 传输级完成标记：前端据此区分"正常结束"与"异常断流"
             yield "data: [DONE]\n\n"
@@ -175,7 +177,7 @@ class CustomAgentMixin:
         actual_message_id = message_id or str(uuid.uuid4())
 
         try:
-            self._update_agent_run_status(
+            await self._update_agent_run_status(
                 agent_run.id, RunStatus.RUNNING, current_node="custom_agent"
             )
             llm = await self._build_custom_agent_llm(custom_agent)
@@ -195,10 +197,10 @@ class CustomAgentMixin:
         except AppError as e:
             if e.code == ErrorCode.RUN_CANCELLED:
                 raise
-            self._mark_agent_run_failed(agent_run.id, str(e))
+            await self._mark_agent_run_failed(agent_run.id, str(e))
             raise AppError(f"自定义智能体调用失败: {str(e)}") from e
         except Exception as e:
-            self._mark_agent_run_failed(agent_run.id, str(e))
+            await self._mark_agent_run_failed(agent_run.id, str(e))
             raise AppError(f"自定义智能体调用失败: {str(e)}") from e
 
         # 解析 thinking 并保存（优先原生 reasoning_content，回退 <think> 标签解析）
@@ -215,7 +217,7 @@ class CustomAgentMixin:
             message_id=actual_message_id,
         )
 
-        self._update_agent_run_status(agent_run.id, RunStatus.COMPLETED, current_node="done")
+        await self._update_agent_run_status(agent_run.id, RunStatus.COMPLETED, current_node="done")
         return {"role": "assistant", "content": full_response, "thread_id": thread_id}
 
     async def _build_custom_agent_llm(self, custom_agent: CustomAgent):
