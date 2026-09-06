@@ -92,17 +92,16 @@ async def lifespan(app: FastAPI):
     # 创建数据库表
     create_db_and_tables()
 
-    # 🔥🔥🔥 v3.1.0: 检查 LangGraph Checkpointer 表
-    # 注意：Checkpoint 表由 migrations/checkpoint_tables.sql 创建，支持复杂模式
-    from utils.db import init_checkpointer_tables, setup_shared_checkpointer
+    # 🔥 Checkpointer 初始化：官方 AsyncPostgresSaver.setup()（幂等，按
+    #    checkpoint_migrations 版本表补齐表结构），替代手搓检查 DDL
+    from utils.db import setup_shared_checkpointer
 
     try:
-        await init_checkpointer_tables()
         # 预热共享 checkpointer（绑定连接池 + msgpack 白名单 serializer + setup 建表）
         await setup_shared_checkpointer()
         logger.info("[Lifespan] Shared checkpointer ready (pool-backed)")
     except Exception as e:
-        logger.warning(f"[Lifespan WARN] Failed to verify checkpointer tables: {e}")
+        logger.warning(f"[Lifespan WARN] Failed to set up checkpointer: {e}")
         # 非致命错误，继续启动
         logger.info("[Lifespan INFO] Run migrations if complex mode is not working:")
         logger.info("              - Linux/macOS: cd backend/migrations && ./run_all_migrations.sh")

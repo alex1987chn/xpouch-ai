@@ -118,42 +118,6 @@ async def get_db_connection():
         yield conn
 
 
-async def init_checkpointer_tables():
-    """
-    初始化 LangGraph Checkpointer 所需的表结构
-    注意：表结构已由 fix_checkpoint_table.py 创建，这里仅做检查
-    """
-    import psycopg
-
-    logger.info("[HITL] Checking checkpointer tables...")
-
-    try:
-        with psycopg.connect(PSYCOPG_DATABASE_URL) as conn, conn.cursor() as cur:
-            # 检查所有必需的表
-            cur.execute("""
-                SELECT table_name FROM information_schema.tables
-                WHERE table_schema = 'public' AND table_name LIKE 'checkpoint%'
-            """)
-            tables = [row[0] for row in cur.fetchall()]
-
-            required = [
-                "checkpoints",
-                "checkpoint_blobs",
-                "checkpoint_writes",
-                "checkpoint_migrations",
-            ]
-            missing = [t for t in required if t not in tables]
-
-            if missing:
-                logger.warning(f"[HITL WARN] Missing tables: {missing}")
-                logger.warning("[HITL] Please run: uv run python fix_checkpoint_table.py")
-            else:
-                logger.info("[HITL] All checkpointer tables exist")
-
-    except Exception as e:
-        logger.warning(f"[HITL WARN] Failed to check tables: {e}")
-
-
 def get_checkpointer_serializer():
     """checkpoint 序列化器（msgpack 白名单）。
 
