@@ -31,6 +31,7 @@ from utils.jwt_handler import (
     verify_token,
 )
 from utils.logger import logger
+from utils.secret_hash import hash_secret
 from utils.sms_service import send_verification_code_with_fallback
 from utils.verification import (
     VerificationCodeExpiredError,
@@ -257,7 +258,7 @@ async def send_verification_code(request: SendCodeRequest, session: Session = De
             window_minutes=settings.verification_code_send_window_minutes,
         )
 
-        user.verification_code = code
+        user.verification_code = hash_secret(code)
         user.verification_code_expires_at = expires_at
         user.verification_code_last_sent_at = utcnow()
         user.verification_code_send_count = send_count
@@ -299,8 +300,10 @@ async def send_verification_code(request: SendCodeRequest, session: Session = De
         raise
     except Exception as e:
         logger.error(f"发送验证码处理异常: {str(e)}", exc_info=True)
+        # 脱敏：内部异常细节只进日志，不回传客户端
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"服务器内部错误: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="服务器内部错误，请稍后重试",
         ) from e
 
 
@@ -370,8 +373,8 @@ async def verify_code_and_login(
 
     # 更新用户信息
     user.is_verified = True
-    user.access_token = access_token
-    user.refresh_token = refresh_token
+    user.access_token = hash_secret(access_token)
+    user.refresh_token = hash_secret(refresh_token)
     user.token_expires_at = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     _clear_verification_code(user)
 
@@ -427,7 +430,7 @@ async def refresh_access_token_endpoint(
         new_access_token = jwt_refresh(refresh_token)
 
         # 更新用户的 access token
-        user.access_token = new_access_token
+        user.access_token = hash_secret(new_access_token)
         user.token_expires_at = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
         session.add(user)

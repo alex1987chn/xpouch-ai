@@ -18,8 +18,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from agents.services.expert_manager import refresh_cache
-from auth import get_current_user
 from database import get_session
+from dependencies import require_role
 from models import SystemExpert, User, UserRole
 from utils.logger import logger
 
@@ -27,30 +27,13 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 # ============================================================================
-# 权限依赖
+# 权限依赖（统一走 dependencies.require_role）
 # ============================================================================
 
-
-async def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
-    """
-    获取当前管理员用户
-
-    验证用户是否为管理员，否则抛出 403 错误
-    """
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要管理员权限")
-    return current_user
-
-
-async def get_current_view_admin(current_user: User = Depends(get_current_user)) -> User:
-    """
-    获取当前查看权限用户（VIEW_ADMIN 角色）
-
-    适用于只读场景，不要求完全的 ADMIN 权限
-    """
-    if current_user.role not in [UserRole.ADMIN, UserRole.USER]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="权限不足")
-    return current_user
+# 只读场景：ADMIN / EDIT_ADMIN / VIEW_ADMIN（不含普通 USER）
+get_current_view_admin = require_role(UserRole.ADMIN, UserRole.EDIT_ADMIN, UserRole.VIEW_ADMIN)
+# 管理场景：仅 ADMIN
+get_current_admin = require_role(UserRole.ADMIN)
 
 
 # ============================================================================

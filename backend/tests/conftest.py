@@ -13,6 +13,8 @@ os.environ.setdefault("DEEPSEEK_API_KEY", "test-key")
 os.environ.setdefault("MOONSHOT_API_KEY", "test-key")
 os.environ.setdefault("SILICON_API_KEY", "test-key")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-ci-only")
+# 显式声明测试环境：config.environment 已 fail-closed（缺省即 production 语义）
+os.environ.setdefault("ENVIRONMENT", "development")
 
 import pytest  # noqa: E402
 

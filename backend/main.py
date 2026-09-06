@@ -276,6 +276,20 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         exc_info=is_debug,
     )
 
+    # 脱敏：未捕获异常的内部细节（SQL、路径、依赖报错文本）不回传客户端；
+    # 已知业务异常（ValueError/KeyError/TypeError 等映射结果）保持原语义。
+    if settings.is_production:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "服务器内部错误，请稍后重试",
+                    "details": {},
+                }
+            },
+        )
+
     app_error = handle_error(exc)
     return JSONResponse(
         status_code=app_error.status_code,

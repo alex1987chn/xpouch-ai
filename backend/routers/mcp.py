@@ -16,7 +16,7 @@ import socket
 from datetime import datetime
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 # 🔥 MCP 连接测试
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -24,7 +24,7 @@ from sqlmodel import Session, select
 
 from crud.query_helpers import get_mcp_server_or_404
 from database import get_session
-from dependencies import get_current_user
+from dependencies import get_current_user, require_role
 from models import User, UserRole
 from models.mcp import MCPServer, MCPServerCreate, MCPServerResponse, MCPServerUpdate
 from utils.exceptions import ValidationError
@@ -34,19 +34,10 @@ router = APIRouter(prefix="/api/mcp", tags=["mcp"])
 
 
 # ============================================================================
-# 权限依赖
+# 权限依赖（统一走 dependencies.require_role）
 # ============================================================================
 
-
-async def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
-    """
-    获取当前管理员用户
-
-    验证用户是否为管理员，否则抛出 403 错误
-    """
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要管理员权限")
-    return current_user
+get_current_admin = require_role(UserRole.ADMIN)
 
 
 # ============================================================================
@@ -125,10 +116,10 @@ async def is_private_url(url: str) -> tuple[bool, str]:
             # 所有 IP 检查通过，不是内网地址
             return False, ""
         except (socket.gaierror, OSError):
-            # DNS 解析失败：记录警告但允许访问
-            # 后续连接测试会验证服务器是否真实可用
-            logger.warning(f"[SSRF] DNS 解析失败，跳过 IP 检查: {hostname}")
-            return False, ""  # 不阻止，让后续连接测试决定
+            # Fail-closed：DNS 解析失败意味着无法验证目标是否内网地址，
+            # 一律拒绝（此前放行给"后续连接测试"，存在 SSRF 绕过面）
+            logger.warning(f"[SSRF] DNS 解析失败，拒绝连接: {hostname}")
+            return True, f"无法解析域名 {hostname}，已拒绝连接 (SSRF 防护)"
 
     except Exception as e:
         # URL 解析失败，视为不安全

@@ -180,12 +180,14 @@ async def update_user_settings(
 # 调试接口（仅开发环境使用）
 # ============================================================================
 # ⚠️ 警告：以下端点仅在 development 环境启用，生产环境应禁用
+# Fail-closed：环境判断走 config.settings 单一来源（缺省即 production 语义）
 
-import os
+from config import settings
 
-# 检查是否在开发环境
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-IS_DEVELOPMENT = ENVIRONMENT.lower() == "development"
+
+def _ensure_debug_enabled() -> None:
+    if not settings.is_development:
+        raise NotFoundError(resource="端点")
 
 
 @router.get("/debug/users")
@@ -194,8 +196,7 @@ async def debug_list_users(
     current_user: User = Depends(get_current_user_with_auth),
 ):
     """列出所有用户（仅用于调试，需要登录且仅开发环境）"""
-    if not IS_DEVELOPMENT:
-        raise NotFoundError(resource="端点")
+    _ensure_debug_enabled()
 
     users = session.exec(select(User).order_by(User.created_at.desc())).all()
     return {
@@ -216,8 +217,7 @@ async def debug_list_users(
 @router.get("/debug/verify-token")
 async def debug_verify_token(request: Request, session: Session = Depends(get_session)):
     """验证JWT token并返回用户信息（仅用于调试，仅开发环境）"""
-    if not IS_DEVELOPMENT:
-        raise NotFoundError(resource="端点")
+    _ensure_debug_enabled()
 
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
@@ -256,8 +256,7 @@ async def debug_verify_token(request: Request, session: Session = Depends(get_se
 @router.delete("/debug/cleanup-users")
 async def debug_cleanup_users(current_user: User = Depends(get_current_user_with_auth)):
     """清理没有手机号的垃圾用户（仅用于调试，需要登录且仅开发环境）"""
-    if not IS_DEVELOPMENT:
-        raise NotFoundError(resource="端点")
+    _ensure_debug_enabled()
 
     # 创建新的session，不经过get_current_user依赖
     with SASession(engine) as session:

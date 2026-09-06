@@ -4,7 +4,6 @@
 提供验证码生成、校验和基础风控辅助逻辑。
 """
 
-import hmac
 import secrets
 import string
 from datetime import UTC, datetime, timedelta
@@ -137,7 +136,11 @@ def verify_code(
     if expires_at and now > expires_at:
         raise VerificationCodeExpiredError("验证码已过期")
 
-    if not hmac.compare_digest(stored_code, provided_code):
+    # stored_code 为入库哈希（auth.py 写入时经 hash_secret）；对用户输入做
+    # 同样哈希后常量时间比较。旧明文存量行比对失败 → 视为验证码错误，重发即可。
+    from utils.secret_hash import compare_hash
+
+    if not compare_hash(stored_code, provided_code):
         raise VerificationCodeInvalidError("验证码错误")
 
     return True

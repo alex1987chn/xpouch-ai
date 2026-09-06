@@ -5,13 +5,13 @@
 P0 修复: 优先从 Cookie 获取 Token，提高安全性
 """
 
-import os
-
 from fastapi import Depends, HTTPException, Request
 from sqlmodel import Session
 
+from config import settings
 from database import get_session
 from models import User
+from models.enums import UserRole
 from utils.logger import logger
 
 
@@ -71,10 +71,8 @@ async def get_current_user(
 
     # 策略3: 回退到 X-User-ID 头（仅开发环境）
     # ⚠️ 安全限制：X-User-ID 回退只在 development 环境启用
-    # 生产环境强制使用 JWT 认证，防止用户 ID 伪造攻击
-    environment = os.getenv("ENVIRONMENT", "development")
-
-    if environment.lower() == "development":
+    # Fail-closed：环境判断走 config.settings 单一来源（缺省即 production 语义）
+    if settings.is_development:
         user_id = request.headers.get("X-User-ID")
         if user_id:
             user = session.get(User, user_id)
@@ -105,3 +103,39 @@ async def get_current_user_with_auth(
 ) -> User:
     """要求强制 JWT 认证的依赖（包装 get_current_user）"""
     return await get_current_user(request, session, require_auth=True)
+
+
+# ============================================================================
+# 角色守卫（单一实现，全库路由统一使用）
+# ============================================================================
+
+
+def require_role(*roles: UserRole):
+    """角色守卫依赖工厂。
+
+    用法：
+        @router.get("/", dependencies=[Depends(require_role(UserRole.ADMIN))])
+        # 或需要注入用户时：
+        current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.EDIT_ADMIN))
+
+    角色不匹配返回 403；未认证由 get_current_user_with_auth 先行拦截。
+    """
+    allowed = set(roles)
+
+    async def _guard(
+        current_user: User = Depends(get_current_user_with_auth),
+    ) -> User:
+        if current_user.role not in allowed:
+            logger.warning(
+                "[Authz] 角色不足: user=%s role=%s required=%s",
+                current_user.id,
+                current_user.role,
+                sorted(r.value for r in allowed),
+            )
+            raise HTTPException(
+                status_code=403,
+                detail="权限不足",
+            )
+        return current_user
+
+    return _guard

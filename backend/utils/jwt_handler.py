@@ -8,35 +8,32 @@ P0 修复: 2025-02-24
 - 移除默认密钥，强制使用环境变量
 - 缩短 Access Token 过期时间至 60 分钟
 - 修复 datetime.utcnow() 已废弃的问题
+
+v3.4.3: 配置单一来源化——secret 与有效期统一从 config.settings 读取，
+消除双配置源（此前 config 的生产长度校验对签名路径从未生效）。
 """
 
-import os
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt
 from fastapi import HTTPException, status
 
+from config import settings
+
 # ============================================================================
-# P0 修复: JWT 安全配置
+# JWT 安全配置（单一来源：config.settings）
 # ============================================================================
 
-# P0 修复: 移除默认密钥，强制使用环境变量
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if not SECRET_KEY:
-    raise ValueError(
-        "JWT_SECRET_KEY environment variable is required. "
-        "Please set a secure random key in your .env file. "
-        'You can generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
-    )
+# import 时即触发 config 的生产校验（生产环境必须强密钥 >= 32 字符）
+SECRET_KEY = settings.get_jwt_secret()
 
 ALGORITHM = "HS256"
 
-# Access Token 过期时间: 默认 60 分钟 (工业标准)
-# 双 Token 架构: Access Token 短期 + Refresh Token 长期 (60天)
+# 双 Token 架构: Access 短期（默认 60 分钟）+ Refresh 长期（默认 60 天）
 # 前端会自动静默刷新，用户无感知
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "60"))
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
+REFRESH_TOKEN_EXPIRE_DAYS = settings.refresh_token_expire_days
 
 # 密码加密：直接使用 bcrypt（passlib 已停止维护且与 bcrypt 5.x 不兼容）
 # 生成的哈希为标准 $2b$ 格式，与历史 passlib 产出的哈希完全兼容

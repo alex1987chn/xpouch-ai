@@ -38,7 +38,11 @@ class Settings(BaseSettings):
     # 基础配置
     app_name: str = Field(default="XPouch AI", alias="APP_NAME")
     version: str = Field(default="3.3.0", alias="VERSION")
-    environment: Literal["development", "testing", "production"] = "development"
+    # Fail-closed：必须显式声明环境。未配置 ENVIRONMENT 时启动即报错，
+    # 防止生产漏配时静默落入 development（debug 端点开放、X-User-ID 认证旁路）。
+    environment: Literal["development", "testing", "production"] = Field(
+        default="production", alias="ENVIRONMENT"
+    )
     port: int = Field(default=3002, alias="PORT")
 
     # 数据库
@@ -61,9 +65,9 @@ class Settings(BaseSettings):
     moonshot_api_key: SecretStr | None = Field(default=None, alias="MOONSHOT_API_KEY")
     google_api_key: SecretStr | None = Field(default=None, alias="GOOGLE_API_KEY")
 
-    # 认证
+    # 认证（单一来源：utils/jwt_handler 从这里取值）
     jwt_secret_key: SecretStr = Field(default=SecretStr("dev-secret-only"), alias="JWT_SECRET_KEY")
-    access_token_expire_days: int = Field(default=30, alias="ACCESS_TOKEN_EXPIRE_DAYS")
+    access_token_expire_minutes: int = Field(default=60, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
     refresh_token_expire_days: int = Field(default=60, alias="REFRESH_TOKEN_EXPIRE_DAYS")
 
     # LangSmith
