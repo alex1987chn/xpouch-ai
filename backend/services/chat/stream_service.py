@@ -37,6 +37,7 @@ from crud.run_event import (
     emit_run_failed,
 )
 from models import AgentRun, ExecutionPlan, RunStatus, Thread
+from models.enums import GraphTaskStatus, TaskStatus, to_task_status
 from services.chat.parts.custom_agent import CustomAgentMixin
 from services.chat.parts.event_builders import EventBuildersMixin
 from services.mcp_tools_service import mcp_tools_service
@@ -263,7 +264,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                 logger.info("[StreamService] HITL 中断检测：任务规划完成，等待用户审核")
 
                 # 🔥 方案1：更新 ExecutionPlan 状态为 waiting_for_approval
-                await self._update_execution_plan_status(thread_id, "waiting_for_approval")
+                await self._update_execution_plan_status(thread_id, TaskStatus.WAITING_FOR_APPROVAL)
 
                 # 构建当前计划数据
                 current_plan = [
@@ -522,7 +523,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                 db_subtask.expert_type = subtask["expert_type"]
                 db_subtask.task_description = subtask["description"]
                 db_subtask.input_data = subtask.get("input_data", {})
-                db_subtask.status = TaskStatus(subtask.get("status", "completed"))
+                db_subtask.status = to_task_status(subtask.get("status", GraphTaskStatus.COMPLETED))
                 db_subtask.output_result = subtask.get("output_result")
                 db_subtask.started_at = subtask.get("started_at")
                 db_subtask.completed_at = subtask.get("completed_at")
@@ -1264,15 +1265,14 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         ).first()
         return int(execution_plan.plan_version) if execution_plan else 1
 
-    async def _update_execution_plan_status(self, thread_id: str, status: str) -> None:
+    async def _update_execution_plan_status(self, thread_id: str, status: TaskStatus) -> None:
         """
         更新 ExecutionPlan 状态（写路径经 to_thread，避免阻塞事件循环）
 
         Args:
             thread_id: 线程ID
-            status: 新状态（pending, waiting_for_approval, running, completed, failed, cancelled）
+            status: 新状态（TaskStatus 枚举）
         """
-        from models.enums import TaskStatus
 
         def _write() -> None:
             execution_plan = self.db.exec(
@@ -1282,7 +1282,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             ).first()
 
             if execution_plan:
-                execution_plan.status = TaskStatus(status)
+                execution_plan.status = status
                 execution_plan.updated_at = datetime.now()
                 self.db.add(execution_plan)
                 self.db.commit()

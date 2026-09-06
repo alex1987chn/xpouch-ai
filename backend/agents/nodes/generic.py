@@ -69,6 +69,7 @@ from agents.services.expert_manager import get_expert_config_cached
 from agents.services.expert_repository import register_expert_cache
 from agents.state_patch import replace_task_item
 from agents.tool_policy import filter_tools_for_binding
+from models.enums import GraphTaskStatus
 from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from services.tool_policy_service import tool_policy_service
@@ -195,7 +196,7 @@ async def generic_worker_node(
     if current_index >= len(task_list):
         return {
             "output_result": "没有待执行的任务",
-            "status": "failed",
+            "status": GraphTaskStatus.FAILED,
             "error": "Task index out of range",
             "started_at": datetime.now().isoformat(),
             "completed_at": datetime.now().isoformat(),
@@ -209,7 +210,7 @@ async def generic_worker_node(
     if not expert_type:
         return {
             "output_result": "任务缺少 expert_type 字段",
-            "status": "failed",
+            "status": GraphTaskStatus.FAILED,
             "error": "Missing expert_type in task",
             "started_at": datetime.now().isoformat(),
             "completed_at": datetime.now().isoformat(),
@@ -249,7 +250,7 @@ async def generic_worker_node(
     if not expert_config:
         return {
             "output_result": f"专家 '{expert_type}' 未找到",
-            "status": "failed",
+            "status": GraphTaskStatus.FAILED,
             "error": f"Expert '{expert_type}' not found in database",
             "started_at": datetime.now().isoformat(),
             "completed_at": datetime.now().isoformat(),
@@ -262,7 +263,9 @@ async def generic_worker_node(
     # ✅ 发送 task.started 事件（仅任务首次进入时；工具循环重入不再重复发）
     from utils.event_generator import event_task_started
 
-    is_first_entry = current_task.get("status", "pending") != "in_progress"
+    is_first_entry = (
+        current_task.get("status", GraphTaskStatus.PENDING) != GraphTaskStatus.IN_PROGRESS
+    )
     task_list_for_return = task_list
     if is_first_entry:
         await emit_event(
@@ -271,7 +274,7 @@ async def generic_worker_node(
         logger.info(f"[GenericWorker] 已生成 task.started 事件: {expert_type}")
         # 标记 in_progress：ToolNode 循环重入本节点时据此跳过重复的 started 事件
         task_list_for_return = replace_task_item(
-            task_list, current_index, {"status": "in_progress"}
+            task_list, current_index, {"status": GraphTaskStatus.IN_PROGRESS}
         )
 
     run_id = state.get("run_id")
@@ -532,7 +535,7 @@ async def generic_worker_node(
                     "expert_type": expert_type,
                     "expert_name": expert_name,
                     "task_id": task_id,
-                    "status": "waiting_for_tool",
+                    "status": GraphTaskStatus.WAITING_FOR_TOOL,
                     "tool_calls": response.tool_calls,
                 },
             }
@@ -585,7 +588,7 @@ async def generic_worker_node(
             current_index,
             {
                 "output_result": {"content": response.content},
-                "status": "completed",
+                "status": GraphTaskStatus.COMPLETED,
                 "completed_at": completed_at.isoformat(),
             },
         )
@@ -603,7 +606,7 @@ async def generic_worker_node(
             "expert_type": expert_type,
             "description": description,
             "output": response.content,
-            "status": "completed",
+            "status": GraphTaskStatus.COMPLETED,
             "duration_ms": duration_ms,
         }
 
@@ -688,7 +691,7 @@ async def generic_worker_node(
             "expert_results": expert_results,
             "current_task_index": next_index,  # ✅ 增加 index
             "output_result": response.content,
-            "status": "completed",
+            "status": GraphTaskStatus.COMPLETED,
             "started_at": started_at.isoformat(),
             "completed_at": completed_at.isoformat(),
             "duration_ms": duration_ms,
@@ -698,7 +701,7 @@ async def generic_worker_node(
                 "expert_type": expert_type,
                 "expert_name": expert_name,
                 "task_id": task_id,
-                "status": "completed",
+                "status": GraphTaskStatus.COMPLETED,
                 "artifact_id": artifact_id,  # 🔥 包含 artifact_id
             },
         }
@@ -717,7 +720,7 @@ async def generic_worker_node(
             task_list,
             current_index,
             {
-                "status": "failed",
+                "status": GraphTaskStatus.FAILED,
             },
         )
 
@@ -733,7 +736,7 @@ async def generic_worker_node(
             "expert_type": expert_type,
             "description": description,
             "output": f"专家执行失败: {str(e)}",
-            "status": "failed",
+            "status": GraphTaskStatus.FAILED,
             "error": str(e),
             "duration_ms": 0,
         }
@@ -775,7 +778,7 @@ async def generic_worker_node(
             "expert_results": expert_results,
             "current_task_index": next_index,  # ✅ 即使失败也增加 index
             "output_result": f"专家执行失败: {str(e)}",
-            "status": "failed",
+            "status": GraphTaskStatus.FAILED,
             "error": str(e),
             "started_at": started_at.isoformat(),
             "completed_at": datetime.now().isoformat(),
@@ -786,7 +789,7 @@ async def generic_worker_node(
                 if expert_config
                 else expert_type,
                 "task_id": task_id,
-                "status": "failed",
+                "status": GraphTaskStatus.FAILED,
                 "error": str(e),
             },
         }

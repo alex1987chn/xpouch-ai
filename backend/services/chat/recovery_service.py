@@ -29,6 +29,7 @@ from crud.run_event import (
     emit_run_cancelled,
 )
 from models import AgentRun, ExecutionPlan, RunStatus, Thread
+from models.enums import TaskStatus
 from services.chat.run_lifecycle import sse_stream_headers
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError, AuthorizationError, NotFoundError, ValidationError
@@ -495,21 +496,20 @@ class RecoveryService:
     # 状态清理
     # ============================================================================
 
-    async def _update_execution_plan_status(self, run_id: str, status: str) -> None:
+    async def _update_execution_plan_status(self, run_id: str, status: TaskStatus) -> None:
         """
         更新 ExecutionPlan 状态（写路径经 to_thread，避免阻塞事件循环）
 
         Args:
             run_id: 运行实例ID
-            status: 新状态（pending, waiting_for_approval, running, completed, failed, cancelled）
+            status: 新状态（TaskStatus 枚举）
         """
-        from models.enums import TaskStatus
 
         def _write() -> None:
             execution_plan = self._get_execution_plan_by_run(run_id)
 
             if execution_plan:
-                execution_plan.status = TaskStatus(status)
+                execution_plan.status = status
                 execution_plan.updated_at = datetime.now()
                 self.db.add(execution_plan)
                 self.db.commit()
@@ -523,7 +523,7 @@ class RecoveryService:
             execution_plan = self._get_execution_plan_by_run(run_id)
 
             if execution_plan:
-                execution_plan.status = "cancelled"
+                execution_plan.status = TaskStatus.CANCELLED
                 execution_plan.final_response = "计划被用户取消"
                 execution_plan.updated_at = datetime.now()
                 self.db.add(execution_plan)

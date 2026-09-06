@@ -161,7 +161,9 @@ def complete_execution_plan(db: Session, execution_plan_id: str, final_response:
     Example:
         >>> complete_execution_plan(db, "plan_abc", "所有任务已完成，结果是...")
     """
-    update_execution_plan_status(db, execution_plan_id, "completed", final_response=final_response)
+    update_execution_plan_status(
+        db, execution_plan_id, TaskStatus.COMPLETED, final_response=final_response
+    )
 
 
 # =============================================================================
@@ -204,7 +206,7 @@ def save_expert_execution_result(
             return False
 
         # 2. 更新 SubTask 状态 - 直接操作对象避免参数问题
-        subtask.status = "completed"
+        subtask.status = TaskStatus.COMPLETED
         subtask.output_result = {"content": output_result}
         subtask.completed_at = datetime.now()
         if duration_ms is not None:

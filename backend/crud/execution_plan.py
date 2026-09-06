@@ -38,7 +38,7 @@ def create_execution_plan(
         plan_summary=plan_summary,
         estimated_steps=estimated_steps,
         execution_mode=execution_mode,
-        status="pending",
+        status=TaskStatus.PENDING,
     )
     db.add(execution_plan)
     db.commit()
@@ -82,7 +82,7 @@ def update_execution_plan(
 def update_execution_plan_status(
     db: Session,
     execution_plan_id: str,
-    status: str,
+    status: TaskStatus,
     final_response: str | None = None,
 ) -> ExecutionPlan | None:
     """更新执行计划状态和最终响应。"""
@@ -93,7 +93,7 @@ def update_execution_plan_status(
     execution_plan.status = status
     if final_response is not None:
         execution_plan.final_response = final_response
-    if status in ["completed", "failed"]:
+    if status in (TaskStatus.COMPLETED, TaskStatus.FAILED):
         execution_plan.completed_at = datetime.now()
     execution_plan.updated_at = datetime.now()
 
@@ -122,7 +122,7 @@ def create_subtask(
         input_data=input_data,
         execution_mode=execution_mode,
         depends_on=depends_on,
-        status="pending",
+        status=TaskStatus.PENDING,
     )
     db.add(subtask)
     db.commit()
@@ -327,7 +327,7 @@ def create_execution_plan_with_subtasks(
             input_data=data.input_data,
             execution_mode=data.execution_mode,
             depends_on=None,
-            status="pending",
+            status=TaskStatus.PENDING,
         )
         db.add(subtask)
         db.flush()

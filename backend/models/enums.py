@@ -48,6 +48,29 @@ class TaskStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class GraphTaskStatus(StrEnum):
+    """图状态（AgentState.task_list）内部的子任务词表。
+
+    与 DB 的 TaskStatus 是两个概念：本词表描述节点执行过程中的瞬态
+    （in_progress / waiting_for_tool），持久化前须经 to_task_status() 映射；
+    直接 TaskStatus(图状态值) 对中间态会 ValueError。
+    """
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    WAITING_FOR_TOOL = "waiting_for_tool"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+def to_task_status(value: GraphTaskStatus | str) -> TaskStatus:
+    """图状态 → DB TaskStatus 映射（持久化边界的唯一转换点）。"""
+    status = GraphTaskStatus(value)
+    if status in (GraphTaskStatus.IN_PROGRESS, GraphTaskStatus.WAITING_FOR_TOOL):
+        return TaskStatus.RUNNING
+    return TaskStatus(status.value)
+
+
 class RunStatus(StrEnum):
     """统一运行时状态枚举。"""
 
