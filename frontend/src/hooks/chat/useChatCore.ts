@@ -1,13 +1,17 @@
 /**
  * 聊天核心逻辑 Hook
  * 负责消息发送、停止生成、加载状态管理等核心功能
- * 
+ *
  * 符合 SDUI 原则：单一数据源
+ *
+ * v3.4.4：发送/恢复/重生成三条流程共享的骨架收敛为
+ * isAbortError（模块级纯函数）+ makeStreamCallback（回调工厂）+
+ * finalizeStream（统一收尾）；各流程只保留差异部分。
  */
 
 import { useCallback, useRef, useEffect } from 'react'
-import { 
-  sendMessage as apiSendMessage, 
+import {
+  sendMessage as apiSendMessage,
   resumeChat as apiResumeChat,
   cancelRun as apiCancelRun,
   type ResumeChatParams
@@ -54,6 +58,18 @@ function getErrorStatus(error: unknown): number | undefined {
   return maybe.status
 }
 
+/** 统一的中断判定（用户停止 / 组件卸载 abort / 服务端取消措辞） */
+function isAbortError(error: unknown, signal?: AbortSignal | null): boolean {
+  if (signal?.aborted) return true
+  if (!(error instanceof Error)) return false
+  return (
+    error.name === 'AbortError' ||
+    error.message?.toLowerCase().includes('abort') ||
+    error.message?.toLowerCase().includes('cancel') ||
+    error.message?.includes('取消')
+  )
+}
+
 /**
  * Chat core logic Hook
  */
@@ -62,30 +78,68 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
   // Refactored: Hook only manages AbortController
   const abortControllerRef = useRef<AbortController | null>(null)
-  
+
   const conversationMode = useTaskMode() || 'simple'
   const activeRunId = useActiveRunId()
-  
+
   // Chat store selectors
   const inputMessage = useInputMessage()
   const selectedAgentId = useSelectedAgentId()
   const currentConversationId = useCurrentConversationId()
   const isGenerating = useIsGenerating()
-  
+
   // Actions
-  const { 
-    setInputMessage, 
-    setCurrentConversationId, 
-    addMessage, 
+  const {
+    setInputMessage,
+    setCurrentConversationId,
+    addMessage,
     updateMessage,
-    setMessages, 
-    setGenerating 
+    setMessages,
+    setGenerating
   } = useChatActions()
-  
+
   const { setMode, setActiveRunId, clearActiveRunId } = useTaskActions()
-  
+
   const { reset: resetStreamHandler, createChunkHandler, forceFlush, markFinalized } =
     useStreamHandler()
+
+  /** 三条流程共用的收尾：flush 缓冲 → 复位生成态 → 清 run → 释放 abort */
+  const finalizeStream = useCallback(() => {
+    forceFlush()
+    setGenerating(false)
+    clearActiveRunId()
+    abortControllerRef.current = null
+  }, [forceFlush, setGenerating, clearActiveRunId])
+
+  /**
+   * 流式回调工厂：syncRuntimeMeta + 可选的 threadId 同步 / 完成闩锁，
+   * chunk 统一交给 handleChunk（RAF 批处理层）。
+   * 完整正文一律以 API 返回值为准（回调内不做累积——历史版本的累积
+   * 均被返回值覆盖，属死代码）。
+   */
+  const makeStreamCallback = useCallback((
+    handleChunk: (chunk: string) => void,
+    handlers: {
+      onThreadId?: (threadId: string) => void
+      onDone?: () => void
+    } = {}
+  ): StreamCallback => {
+    return async (
+      chunk: string | undefined,
+      threadId?: string,
+      expertEvent?: AnyServerEvent,
+      _artifact?,
+      _expertId?,
+      runtimeMeta?: StreamRuntimeMeta,
+    ) => {
+      if (runtimeMeta?.runId) {
+        setActiveRunId(runtimeMeta.runId)
+      }
+      if (threadId) handlers.onThreadId?.(threadId)
+      if (expertEvent?.type === 'message.done') handlers.onDone?.()
+      if (chunk) handleChunk(chunk)
+    }
+  }, [setActiveRunId])
 
   /**
    * Stop generation
@@ -114,13 +168,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       })
   }, [activeRunId, clearActiveRunId, setGenerating])
 
-  const syncRuntimeMeta = useCallback((runtimeMeta?: StreamRuntimeMeta) => {
-    const runId = runtimeMeta?.runId
-    if (runId) {
-      setActiveRunId(runId)
-    }
-  }, [setActiveRunId])
-
   /**
    * Send message core logic
    */
@@ -141,10 +188,10 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     }
 
     setGenerating(true)
-    
+
     // Reset taskStore mode, wait for backend Router decision
     setMode('simple')
-    
+
     resetStreamHandler()
 
     const agentId = overrideAgentId || selectedAgentId
@@ -157,28 +204,25 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
     abortControllerRef.current = new AbortController()
 
-    let assistantMessageId: string | undefined
+    const assistantMessageId = generateUUID()
 
     try {
       const storeState = useChatStore.getState()
       const validHistoryMessages = storeState.messages
-        .filter((m): m is Message & { content: string } => 
+        .filter((m): m is Message & { content: string } =>
           !!m && typeof m.content === 'string' && m.content.length > 0
         )
         .map((m): ApiMessage => ({
           role: m.role as 'user' | 'assistant',
           content: m.content
         }))
-      
+
       const chatMessages: ApiMessage[] = [
         ...validHistoryMessages,
         { role: 'user', content: userContent }
       ]
 
       debug('Preparing to send message, history count:', storeState.messages.length, 'Current input:', userContent)
-
-      assistantMessageId = generateUUID()
-      debug('Preparing to add message, AI ID:', assistantMessageId, 'Type:', typeof assistantMessageId)
 
       const agentType = getAgentType(normalizedAgentId)
       debug('Agent type:', agentType, 'Agent ID:', normalizedAgentId)
@@ -205,51 +249,27 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       setInputMessage('')
 
-      let finalResponseContent = ''
-      const storeState2 = useChatStore.getState()
-      let actualThreadId = storeState2.currentConversationId || currentConversationId
+      let actualThreadId = useChatStore.getState().currentConversationId || currentConversationId
 
       debug('Preparing to call sendMessage')
 
       const handleChunk = createChunkHandler(assistantMessageId, onChunk)
 
-      const streamCallback: StreamCallback = async (
-        chunk: string | undefined,
-        threadId?: string,
-        expertEvent?: AnyServerEvent,  // message.done 等事件（用于完成态闩锁）
-        _artifact?,
-        _expertId?,
-        runtimeMeta?: StreamRuntimeMeta,
-      ) => {
-        syncRuntimeMeta(runtimeMeta)
-        if (threadId && threadId !== actualThreadId) {
-          actualThreadId = threadId
-          setCurrentConversationId(threadId)
-          // 🔥 触发新会话回调，让上层组件更新 URL
-          if (onNewConversation) {
-            onNewConversation(threadId, normalizedAgentId)
+      const streamCallback = makeStreamCallback(handleChunk, {
+        onThreadId: (threadId) => {
+          if (threadId !== actualThreadId) {
+            actualThreadId = threadId
+            setCurrentConversationId(threadId)
+            // 🔥 触发新会话回调，让上层组件更新 URL
+            onNewConversation?.(threadId, normalizedAgentId)
           }
-        }
-
+        },
         // message.done 的 full_content 是权威全文（chatEvents 已整体校准）；
         // 置完成闩锁，防止 finally 的 forceFlush 再把同帧缓冲追加到尾部
-        if (expertEvent?.type === 'message.done') {
-          markFinalized()
-        }
+        onDone: markFinalized,
+      })
 
-        if (chunk) {
-          // 累积完整响应（用于最终保存）
-          finalResponseContent += chunk
-          
-          if (DEBUG) {
-            logger.debug('[useChatCore] Received chunk, length:', chunk.length, 'Message ID:', assistantMessageId)
-          }
-          
-          handleChunk(chunk)
-        }
-      }
-
-      finalResponseContent = await apiSendMessage(
+      const finalResponseContent = await apiSendMessage(
         chatMessages,
         normalizedAgentId,
         streamCallback,
@@ -258,8 +278,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         assistantMessageId
       )
 
-      const storeState3 = useChatStore.getState()
-      const initialThreadId = storeState3.currentConversationId
+      const initialThreadId = useChatStore.getState().currentConversationId
       if (actualThreadId && actualThreadId !== initialThreadId) {
         onNewConversation?.(actualThreadId, selectedAgentId)
       }
@@ -274,16 +293,12 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         maybeConflict?.status === 409 &&
         (maybeConflict?.code === 'ACTIVE_RUN_CONFLICT' ||
           maybeConflict?.message?.includes('当前会话已有进行中的任务'))
-      const isAbortError = 
-        (error instanceof Error && error.name === 'AbortError') ||
-        (error instanceof Error && error.message?.toLowerCase().includes('abort')) ||
-        (error instanceof Error && error.message?.toLowerCase().includes('cancel')) ||
-        abortControllerRef.current?.signal.aborted
-      
+      const aborted = isAbortError(error, abortControllerRef.current?.signal)
+
       // 🔐 检测 401 错误，保存消息以便登录后重发
       const isAuthError = getErrorStatus(error) === 401
-      
-      if (isAbortError) {
+
+      if (aborted) {
         debug('Request cancelled (user initiated)')
         // 保留已流出的部分内容（后端 cancel 流程也会持久化已生成部分），
         // 此前整体置空会丢掉用户已经看到的半截回答
@@ -311,12 +326,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         })
       }
     } finally {
-      // P0 优化：强制刷新所有缓冲的流式内容
-      forceFlush()
-      
-      setGenerating(false)
-      clearActiveRunId()
-      abortControllerRef.current = null
+      finalizeStream()
 
       if (conversationMode === 'complex' && assistantMessageId) {
         const currentMessages = useChatStore.getState().messages
@@ -341,12 +351,11 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     setInputMessage,
     setCurrentConversationId,
     addMessage,
-    updateMessage,
     resetStreamHandler,
     createChunkHandler,
-    forceFlush,
-    syncRuntimeMeta,
-    clearActiveRunId,
+    finalizeStream,
+    makeStreamCallback,
+    markFinalized,
   ])
 
   // Component unmount cleanup
@@ -374,9 +383,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     setGenerating(true)
     abortControllerRef.current = new AbortController()
 
-    let fullContent = ''
-    
-    // 🔥 关键修复：创建助手消息来接收 resume 的流式内容
+    // 🔥 创建助手消息来接收 resume 的流式内容
     const assistantMessageId = generateUUID()
     addMessage({
       id: assistantMessageId,
@@ -387,30 +394,15 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         thinking: []
       }
     })
-    
+
     resetStreamHandler()
-    
+
     const handleChunk = createChunkHandler(assistantMessageId, onChunk)
 
     try {
-      const streamCallback: StreamCallback = async (
-        chunk: string | undefined,
-        _threadId?: string,
-        _expertEvent?: AnyServerEvent,  // 事件处理由 eventHandlers.ts 直接处理
-        _artifact?,
-        _expertId?,
-        runtimeMeta?: StreamRuntimeMeta,
-      ) => {
-        syncRuntimeMeta(runtimeMeta)
-        if (chunk) {
-          // 累积完整响应
-          fullContent += chunk
-          
-          handleChunk(chunk)
-        }
-      }
+      const streamCallback = makeStreamCallback(handleChunk)
 
-      fullContent = await apiResumeChat(
+      const fullContent = await apiResumeChat(
         params,
         streamCallback,
         abortControllerRef.current.signal
@@ -419,14 +411,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       return fullContent
 
     } catch (error) {
-      const isAbortError = 
-        (error instanceof Error && error.name === 'AbortError') ||
-        (error instanceof Error && error.message?.toLowerCase().includes('abort')) ||
-        (error instanceof Error && error.message?.toLowerCase().includes('cancel')) ||
-        (error instanceof Error && error.message?.includes('取消')) ||
-        abortControllerRef.current?.signal.aborted
-
-      if (!isAbortError) {
+      if (!isAbortError(error, abortControllerRef.current?.signal)) {
         errorHandler.handle(error, 'resumeExecution')
         addMessage({
           role: 'assistant',
@@ -435,22 +420,17 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       } else {
         debug('Request cancelled (user navigated away or manually aborted)')
       }
-      
+
       throw error
     } finally {
-      // P0 优化：强制刷新所有缓冲的流式内容
-      forceFlush()
-      
-      setGenerating(false)
-      clearActiveRunId()
-      abortControllerRef.current = null
+      finalizeStream()
     }
-  }, [isGenerating, onChunk, setGenerating, addMessage, resetStreamHandler, createChunkHandler, forceFlush, syncRuntimeMeta, clearActiveRunId])
+  }, [isGenerating, onChunk, setGenerating, addMessage, resetStreamHandler, createChunkHandler, finalizeStream, makeStreamCallback])
 
   /**
    * 重新生成指定 AI 消息的回复
    * 用于点击"重试"按钮时，不重复添加用户消息，直接重新生成 AI 回复
-   * 
+   *
    * @param messageId - 要重新生成的 AI 消息 ID
    */
   const regenerateMessage = useCallback(async (messageId: string | number) => {
@@ -461,9 +441,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
     const storeState = useChatStore.getState()
     const allMessages = storeState.messages
-    
+
     // 找到要重新生成的 AI 消息索引（支持 string 和 number 类型的 ID 比较）
-    const targetIndex = allMessages.findIndex(m => 
+    const targetIndex = allMessages.findIndex(m =>
       isSameId(m.id, messageId) && m.role === 'assistant'
     )
     if (targetIndex === -1) {
@@ -473,7 +453,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
     // 获取该 AI 消息之前的历史记录（不包括该 AI 消息本身）
     const historyMessages = allMessages.slice(0, targetIndex)
-    
+
     // 找到最近的用户消息（作为重新发送的"问题"）
     const lastUserMessage = [...historyMessages].reverse().find(m => m.role === 'user')
     if (!lastUserMessage?.content) {
@@ -501,7 +481,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     abortControllerRef.current = new AbortController()
 
     try {
-      // 🔥 关键修复：如果目标消息不是最后一条，删除它之后的所有消息
+      // 🔥 如果目标消息不是最后一条，删除它之后的所有消息
       // 这样可以确保重新生成的回复是基于正确的上下文
       if (targetIndex < allMessages.length - 1) {
         const truncatedMessages = allMessages.slice(0, targetIndex + 1)
@@ -511,7 +491,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       // 构建 API 历史记录（不包括目标 AI 消息本身，但包括之前的所有消息）
       const validHistoryMessages = historyMessages
-        .filter((m): m is Message & { content: string } => 
+        .filter((m): m is Message & { content: string } =>
           !!m && typeof m.content === 'string' && m.content.length > 0
         )
         .map((m): ApiMessage => ({
@@ -521,7 +501,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       // 清空目标 AI 消息的内容（准备重新生成）
       updateMessage(String(messageId), '', false)
-      
+
       // 重置消息的 metadata
       useChatStore.getState().updateMessageMetadata?.(String(messageId), {
         thinking: []
@@ -529,23 +509,13 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       const handleChunk = createChunkHandler(String(messageId), onChunk)
 
-      const streamCallback: StreamCallback = async (
-        chunk: string | undefined,
-        threadId?: string,
-        _expertEvent?: AnyServerEvent,
-        _artifact?,
-        _expertId?,
-        runtimeMeta?: StreamRuntimeMeta,
-      ) => {
-        syncRuntimeMeta(runtimeMeta)
-        if (threadId && threadId !== storeState.currentConversationId) {
-          setCurrentConversationId(threadId)
-        }
-
-        if (chunk) {
-          handleChunk(chunk)
-        }
-      }
+      const streamCallback = makeStreamCallback(handleChunk, {
+        onThreadId: (threadId) => {
+          if (threadId !== useChatStore.getState().currentConversationId) {
+            setCurrentConversationId(threadId)
+          }
+        },
+      })
 
       await apiSendMessage(
         validHistoryMessages,
@@ -557,26 +527,16 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       )
 
     } catch (error) {
-      const isAbortError = 
-        (error instanceof Error && error.name === 'AbortError') ||
-        (error instanceof Error && error.message?.toLowerCase().includes('abort')) ||
-        (error instanceof Error && error.message?.toLowerCase().includes('cancel')) ||
-        (error instanceof Error && error.message?.includes('取消')) ||
-        abortControllerRef.current?.signal.aborted
-
-      if (!isAbortError) {
+      if (!isAbortError(error, abortControllerRef.current?.signal)) {
         errorHandler.handle(error, 'regenerateMessage')
         updateMessage(String(messageId), errorHandler.getUserMessage(error), false)
       } else {
         debug('Request cancelled (user navigated away or manually aborted)')
       }
     } finally {
-      forceFlush()
-      setGenerating(false)
-      clearActiveRunId()
-      abortControllerRef.current = null
+      finalizeStream()
     }
-  }, [isGenerating, selectedAgentId, currentConversationId, setGenerating, setMode, setMessages, resetStreamHandler, createChunkHandler, onChunk, setCurrentConversationId, updateMessage, forceFlush, syncRuntimeMeta, clearActiveRunId])
+  }, [isGenerating, selectedAgentId, currentConversationId, setGenerating, setMode, setMessages, resetStreamHandler, createChunkHandler, onChunk, setCurrentConversationId, updateMessage, finalizeStream, makeStreamCallback])
 
   return {
     sendMessage: sendMessageCore,
