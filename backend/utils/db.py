@@ -121,13 +121,18 @@ async def get_db_connection():
 def get_checkpointer_serializer():
     """checkpoint 序列化器（msgpack 白名单）。
 
-    state 中的自定义枚举（task_list 携带 TaskStatus）必须显式注册，
-    否则 langgraph 会警告并将在未来版本直接拒绝反序列化（HITL 恢复全挂）。
-    注意：白名单格式为 (模块点路径, 类名)；通配符会静默降级为 str，不可用。
+    state 中的自定义枚举必须显式注册，否则 langgraph 会警告并将在未来
+    版本直接拒绝反序列化（HITL 恢复全挂）。白名单格式为
+    (模块点路径, 类名)；通配符会静默降级为 str，不可用。
     """
     from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
-    return JsonPlusSerializer(allowed_msgpack_modules=[("models.enums", "TaskStatus")])
+    return JsonPlusSerializer(
+        allowed_msgpack_modules=[
+            ("models.enums", "TaskStatus"),
+            ("models.enums", "GraphTaskStatus"),
+        ]
+    )
 
 
 # 共享 checkpointer 单例：直接绑定连接池（每个操作从池借还连接，用完即还），
