@@ -146,16 +146,12 @@ class CustomAgentMixin:
             # 传输级完成标记：前端据此区分"正常结束"与"异常断流"
             yield "data: [DONE]\n\n"
 
+        from services.chat.run_lifecycle import sse_stream_headers
+
         return StreamingResponse(
             event_generator(),
             media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-                "X-Thread-ID": thread_id,
-                "X-Run-ID": agent_run.id,
-            },
+            headers=sse_stream_headers(thread_id, agent_run.id),
         )
 
     async def handle_custom_agent_sync(

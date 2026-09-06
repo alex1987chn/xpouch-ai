@@ -29,10 +29,6 @@ from sqlmodel import Session, select
 
 from agents.event_stream import sse_payload_to_wire
 from config import settings
-from crud.agent_run import (
-    mark_run_failed_by_id,
-    update_run_status_by_id,
-)
 from crud.run_event import (
     emit_hitl_interrupted,
     emit_plan_updated,
@@ -375,16 +371,12 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
 
             await delete_checkpoints_for_thread(thread_id, [agent_run.id])
 
+        from services.chat.run_lifecycle import sse_stream_headers
+
         return StreamingResponse(
             event_generator(),
             media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-                "X-Thread-ID": thread_id,
-                "X-Run-ID": agent_run.id,
-            },
+            headers=sse_stream_headers(thread_id, agent_run.id),
         )
 
     async def handle_langgraph_sync(
@@ -995,27 +987,10 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
 
                 # 🔥 关键修复：更新 AgentRun 状态为 completed
                 if run_id and aggregator_executed:
-                    # 使用 mark_run_completed_by_id 确保 completed_at 被正确设置
-                    from crud.agent_run import mark_run_completed_by_id
+                    # 完成收尾单一实现在 run_lifecycle.finalize_run_completed
+                    from services.chat.run_lifecycle import finalize_run_completed
 
-                    def _finalize_run() -> None:
-                        mark_run_completed_by_id(self.db, run_id)
-                        # 更新 current_node
-                        if run_id:
-                            run = self.db.get(AgentRun, run_id)
-                            if run:
-                                run.current_node = "done"
-                                self.db.add(run)
-                        # 写入 run_completed 事件到账本
-                        emit_run_completed(
-                            self.db,
-                            run_id=run_id,
-                            thread_id=thread_id,
-                        )
-                        self.db.commit()
-
-                    await asyncio.to_thread(_finalize_run)
-                    logger.info(f"[StreamService] AgentRun {run_id} 状态更新为 completed")
+                    await asyncio.to_thread(finalize_run_completed, self.db, run_id, thread_id)
 
             except asyncio.CancelledError:
                 # 🔥 客户端断开连接：先取消 producer，否则 LangGraph 流会
@@ -1239,8 +1214,10 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         ).first()
 
     def _get_execution_plan_by_run(self, run_id: str) -> ExecutionPlan | None:
-        """按 run_id 获取 ExecutionPlan。"""
-        return self.db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)).first()
+        """按 run_id 获取 ExecutionPlan（单一实现在 run_lifecycle）。"""
+        from services.chat.run_lifecycle import get_execution_plan_by_run
+
+        return get_execution_plan_by_run(self.db, run_id)
 
     async def _update_agent_run_status(
         self,
@@ -1249,16 +1226,16 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         *,
         current_node: str | None = None,
     ) -> None:
-        """更新 AgentRun 状态（写路径经 to_thread，避免阻塞事件循环）。"""
-        updated = await asyncio.to_thread(
-            update_run_status_by_id,
+        """更新 AgentRun 状态（写路径经 to_thread；单一实现在 run_lifecycle）。"""
+        from services.chat.run_lifecycle import update_run_status
+
+        await asyncio.to_thread(
+            update_run_status,
             self.db,
             run_id,
             status,
             current_node=current_node,
         )
-        if updated is not None:
-            await asyncio.to_thread(self.db.commit)
 
     async def _mark_agent_run_failed(
         self,
@@ -1267,16 +1244,16 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         *,
         error_code: str | None = None,
     ) -> None:
-        """将 AgentRun 标记为失败（写路径经 to_thread）。"""
-        updated = await asyncio.to_thread(
-            mark_run_failed_by_id,
+        """将 AgentRun 标记为失败（写路径经 to_thread；单一实现在 run_lifecycle）。"""
+        from services.chat.run_lifecycle import mark_run_failed
+
+        await asyncio.to_thread(
+            mark_run_failed,
             self.db,
             run_id,
-            error_message=error_message,
+            error_message,
             error_code=error_code,
         )
-        if updated is not None:
-            await asyncio.to_thread(self.db.commit)
 
     def _get_plan_version(self, thread_id: str) -> int:
         """获取当前线程的计划版本号（乐观锁）"""

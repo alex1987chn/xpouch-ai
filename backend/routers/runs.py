@@ -17,6 +17,7 @@ from schemas.run_event import (
     RunTimelineResponse,
     ThreadTimelineResponse,
 )
+from services.chat.run_lifecycle import get_agent_run_or_raise
 from utils.exceptions import AuthorizationError, NotFoundError
 from utils.logger import logger
 
@@ -24,12 +25,8 @@ router = APIRouter(prefix="/api/runs", tags=["runs"])
 
 
 def _get_run_or_raise(db: Session, run_id: str, user_id: str) -> AgentRun:
-    run = db.get(AgentRun, run_id)
-    if run is None:
-        raise NotFoundError("AgentRun")
-    if run.user_id != user_id:
-        raise AuthorizationError("无权访问此运行实例")
-    return run
+    """用户归属校验（单一实现在 run_lifecycle.get_agent_run_or_raise）。"""
+    return get_agent_run_or_raise(db, run_id, user_id=user_id)
 
 
 def _get_thread_or_raise(db: Session, thread_id: str, user_id: str) -> Thread:

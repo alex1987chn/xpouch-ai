@@ -16,16 +16,12 @@ import threading
 from datetime import datetime
 from typing import Any
 
-import psycopg
 from fastapi.responses import StreamingResponse
 from sqlalchemy import update
 from sqlmodel import Session, select
 
-from config import settings
 from crud.agent_run import (
     mark_run_cancelled_by_id,
-    mark_run_failed_by_id,
-    update_run_status_by_id,
 )
 from crud.run_event import (
     emit_hitl_rejected,
@@ -33,6 +29,7 @@ from crud.run_event import (
     emit_run_cancelled,
 )
 from models import AgentRun, ExecutionPlan, RunStatus, Thread
+from services.chat.run_lifecycle import sse_stream_headers
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError, AuthorizationError, NotFoundError, ValidationError
 from utils.logger import logger
@@ -332,13 +329,7 @@ class RecoveryService:
         return StreamingResponse(
             event_generator(),
             media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-                "X-Thread-ID": thread_id,
-                "X-Run-ID": run_id,
-            },
+            headers=sse_stream_headers(thread_id, run_id),
         )
 
     @classmethod
@@ -388,30 +379,22 @@ class RecoveryService:
         return f"{run_id}:{plan_version}"
 
     def _get_run_or_raise(self, run_id: str, thread_id: str) -> AgentRun:
-        """获取指定运行实例，并校验其属于当前线程。"""
-        agent_run = self.db.get(AgentRun, run_id)
-        if not agent_run:
-            raise NotFoundError(f"AgentRun not found: {run_id}")
-        if agent_run.thread_id != thread_id:
-            raise ValidationError("run_id 与 thread_id 不匹配")
-        return agent_run
+        """获取指定运行实例，并校验其属于当前线程（单一实现在 run_lifecycle）。"""
+        from services.chat.run_lifecycle import get_agent_run_or_raise
+
+        return get_agent_run_or_raise(self.db, run_id, thread_id=thread_id)
 
     async def _update_run_status(self, run_id: str, status: RunStatus) -> None:
-        """更新指定运行实例的状态（写路径经 to_thread）。"""
-        updated = await asyncio.to_thread(update_run_status_by_id, self.db, run_id, status)
-        if updated is not None:
-            await asyncio.to_thread(self.db.commit)
+        """更新指定运行实例的状态（单一实现在 run_lifecycle，经 to_thread）。"""
+        from services.chat.run_lifecycle import update_run_status
+
+        await asyncio.to_thread(update_run_status, self.db, run_id, status)
 
     async def _mark_run_failed(self, run_id: str, error_message: str) -> None:
-        """将指定运行实例标记为失败（写路径经 to_thread）。"""
-        updated = await asyncio.to_thread(
-            mark_run_failed_by_id,
-            self.db,
-            run_id,
-            error_message=error_message,
-        )
-        if updated is not None:
-            await asyncio.to_thread(self.db.commit)
+        """将指定运行实例标记为失败（单一实现在 run_lifecycle，经 to_thread）。"""
+        from services.chat.run_lifecycle import mark_run_failed
+
+        await asyncio.to_thread(mark_run_failed, self.db, run_id, error_message)
 
     def _bump_plan_version_with_cas(self, run_id: str, expected_plan_version: int | None) -> None:
         """
@@ -511,55 +494,6 @@ class RecoveryService:
     # ============================================================================
     # 状态清理
     # ============================================================================
-
-    async def _cleanup_checkpoints(self, thread_id: str, run_id: str | None = None):
-        """
-        清理 LangGraph checkpoints（防止僵尸状态）
-
-        使用同步连接（Windows兼容）
-        清理两种格式的 thread_id:
-        1. 原始 thread_id
-        2. isolated_thread_id 格式: {thread_id}_{run_id}
-        """
-        try:
-            db_url = settings.get_database_url(sync_driver="plain")
-
-            with psycopg.connect(db_url) as conn:
-                with conn.cursor() as cur:
-                    # 检查表是否存在
-                    cur.execute("""
-                        SELECT EXISTS (
-                            SELECT FROM information_schema.tables
-                            WHERE table_name = 'checkpoints'
-                        )
-                    """)
-                    if cur.fetchone()[0]:
-                        # 清理原始 thread_id 的 checkpoints
-                        cur.execute("DELETE FROM checkpoints WHERE thread_id = %s", (thread_id,))
-                        deleted_original = cur.rowcount
-
-                        # 清理 isolated_thread_id 格式的 checkpoints
-                        deleted_isolated = 0
-                        if run_id:
-                            isolated_thread_id = f"{thread_id}_{run_id}"
-                            cur.execute(
-                                "DELETE FROM checkpoints WHERE thread_id = %s",
-                                (isolated_thread_id,),
-                            )
-                            deleted_isolated = cur.rowcount
-
-                        total_deleted = deleted_original + deleted_isolated
-                        logger.info(
-                            f"[HITL RESUME] 清理了 {total_deleted} 个 checkpoint(s) "
-                            f"(原始: {deleted_original}, 隔离: {deleted_isolated})"
-                        )
-                    else:
-                        logger.info("[HITL RESUME] checkpoints 表不存在，跳过清理")
-                conn.commit()
-
-        except Exception as e:
-            # 如果表不存在或其他错误，记录但不阻断流程
-            logger.warning(f"[HITL RESUME] 清理 checkpoint 失败: {e}")
 
     async def _update_execution_plan_status(self, run_id: str, status: str) -> None:
         """
