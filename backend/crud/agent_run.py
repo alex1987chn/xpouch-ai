@@ -289,3 +289,37 @@ def mark_run_cancelled_by_id(
     db.add(run)
     _sync_thread_status(db, run.thread_id, run.status)
     return run
+
+
+def add_run_token_usage(
+    run_id: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+) -> bool:
+    """把一次 LLM 调用的用量增量累加到 run（B5 用量记账）。
+
+    自建 Session（与 async_save_expert_result 同一模式：节点侧不持有
+    可靠的请求级会话，后台线程独立开连接）。并发增量在 SQL 层累加，
+    避免读改写竞态。返回是否成功。
+    """
+    from sqlalchemy import update
+
+    from database import Session, engine
+    from utils.logger import logger
+
+    try:
+        with Session(engine) as session:
+            session.execute(
+                update(AgentRun)
+                .where(AgentRun.id == run_id)
+                .values(
+                    prompt_tokens=AgentRun.prompt_tokens + prompt_tokens,
+                    completion_tokens=AgentRun.completion_tokens + completion_tokens,
+                    total_tokens=AgentRun.total_tokens + prompt_tokens + completion_tokens,
+                )
+            )
+            session.commit()
+        return True
+    except Exception as exc:  # 记账失败不影响执行主流程
+        logger.warning("[TokenUsage] 记账失败 run=%s: %s", run_id, exc)
+        return False

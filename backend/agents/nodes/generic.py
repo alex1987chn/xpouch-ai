@@ -507,6 +507,30 @@ async def generic_worker_node(
                 len(response.content or ""),
                 str(response.content)[:60],
             )
+
+            # 🔥 B5 用量记账：本次专家调用的 usage 增量累加到 run
+            # （后台线程独立 Session，SQL 层累加防读改写竞态）
+            usage_meta = getattr(response, "usage_metadata", None) or {}
+            task_usage = {
+                "prompt": int(usage_meta.get("input_tokens") or 0),
+                "completion": int(usage_meta.get("output_tokens") or 0),
+            }
+            if run_id and (task_usage["prompt"] or task_usage["completion"]):
+                try:
+                    from crud.agent_run import add_run_token_usage
+                    from utils.async_task_queue import spawn_background
+
+                    spawn_background(
+                        asyncio.to_thread(
+                            add_run_token_usage,
+                            run_id,
+                            task_usage["prompt"],
+                            task_usage["completion"],
+                        ),
+                        label=f"token_usage:{task_id}",
+                    )
+                except (RuntimeError, ValueError) as usage_err:
+                    logger.warning("[GenericWorker] ⚠️ 用量记账提交失败: %s", usage_err)
         except TimeoutError as exc:
             raise ExpertExecutionError("LLM 调用超时") from exc
         except Exception as exc:

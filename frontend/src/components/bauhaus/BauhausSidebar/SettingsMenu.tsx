@@ -8,7 +8,7 @@
  * 使用语义化 CSS 变量，完全主题自适应
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { User, Cog, ArrowRight, Star, Copy, Check, ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,7 @@ import { logger } from '@/utils/logger'
 import { GithubMark } from '@/components/common'
 import { GITHUB_REPO_URL } from '@/constants/links'
 import { Z_INDEX } from '@/constants/zIndex'
+import { getUsageSummary } from '@/services/usage'
 import type { SettingsMenuProps } from './types'
 
 /**
@@ -55,6 +56,24 @@ export function SettingsMenu({
 }: SettingsMenuProps) {
   // Hooks 必须在条件返回之前调用
   const [copied, setCopied] = useState(false)
+  const [usage, setUsage] = useState<{ total: number; today: number } | null>(null)
+
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated) return
+    let cancelled = false
+    getUsageSummary()
+      .then((summary) => {
+        if (!cancelled) {
+          setUsage({ total: summary.total.total_tokens, today: summary.today.total_tokens })
+        }
+      })
+      .catch((err) => {
+        logger.warn('Usage summary failed:', err)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, isAuthenticated])
 
   if (!isOpen) return null
 
@@ -140,6 +159,19 @@ export function SettingsMenu({
             </div>
           </div>
         </div>
+
+        {/* 用量（B5：token 记账可视化，菜单打开时异步获取） */}
+        {isAuthenticated && usage && usage.total > 0 && (
+          <div className="px-2 pb-2">
+            <div className="border-2 border-border-default px-2 py-1.5 flex items-center justify-between font-mono text-micro text-content-secondary">
+              <span className="uppercase tracking-wider">{t('usageLabel')}</span>
+              <span className="text-content-primary">
+                {t('usageToday')} {usage.today.toLocaleString()} · {t('usageTotal')}{' '}
+                {usage.total.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* 动作组 */}
         <div className="border-t-2 border-border-default pt-1">

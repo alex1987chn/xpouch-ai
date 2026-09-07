@@ -150,6 +150,7 @@ export type TranslationKey =
   | 'passwordSetup' | 'oldPasswordPlaceholder' | 'newPasswordPlaceholder'
   | 'passwordSetupHint' | 'passwordSaveLabel' | 'passwordMinLength'
   | 'oldPasswordRequired' | 'passwordSaved'
+  | 'usageLabel' | 'usageToday' | 'usageTotal'
   // Time & General
   | 'justNow' | 'secondsAgo' | 'general'
   // Language selector

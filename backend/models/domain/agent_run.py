@@ -54,6 +54,12 @@ class AgentRun(SQLModel, table=True):
     error_code: str | None = Field(default=None, max_length=64)
     error_message: str | None = Field(default=None)
 
+    # Token 用量记账（B5）：各专家任务 ainvoke 的 usage_metadata 增量累加；
+    # router/aggregator 的小额调用暂不统计（文档注明为近似值）
+    prompt_tokens: int = Field(default=0)
+    completion_tokens: int = Field(default=0)
+    total_tokens: int = Field(default=0)
+
     retry_of_run_id: str | None = Field(default=None, foreign_key="agentrun.id", max_length=64)
 
     created_at: datetime = Field(default_factory=datetime.now)

@@ -69,10 +69,23 @@ async def health_check():
 # ============================================================================
 
 
+def _to_profile_response(user: User) -> UserProfileResponse:
+    """ORM User -> 公开资料（has_password 只暴露布尔，不暴露哈希）"""
+    return UserProfileResponse(
+        id=user.id,
+        username=user.username,
+        avatar=user.avatar,
+        plan=user.plan,
+        role=user.role,
+        updated_at=user.updated_at,
+        has_password=bool(user.password_hash),
+    )
+
+
 @router.get("/user/me", response_model=UserProfileResponse)
 async def get_user_me(current_user: User = Depends(get_current_user_with_auth)):
     """获取当前登录用户信息（仅公开字段，不序列化内部凭证列）"""
-    return current_user
+    return _to_profile_response(current_user)
 
 
 @router.put("/user/me", response_model=UserProfileResponse)
@@ -96,7 +109,7 @@ async def update_user_me(
     session.commit()
     session.refresh(current_user)
 
-    return current_user
+    return _to_profile_response(current_user)
 
 
 # ============================================================================
@@ -288,3 +301,43 @@ async def debug_cleanup_users(current_user: User = Depends(get_current_user_with
             "deleted_count": count,
             "deleted_users": [{"id": u.id, "username": u.username} for u in users_to_delete],
         }
+
+
+# ============================================================================
+# 用量汇总（B5：token 记账可视化）
+# ============================================================================
+
+
+@router.get("/usage/summary")
+async def get_usage_summary(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_auth),
+):
+    """当前用户的 token 用量汇总（今日 / 累计；近似值：不含 router/aggregator）"""
+    from sqlalchemy import func
+
+    from models import AgentRun
+
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    def _sum_since(since: datetime | None) -> dict:
+        stmt = select(
+            func.coalesce(func.sum(AgentRun.total_tokens), 0),
+            func.coalesce(func.sum(AgentRun.prompt_tokens), 0),
+            func.coalesce(func.sum(AgentRun.completion_tokens), 0),
+            func.count(AgentRun.id),
+        ).where(AgentRun.user_id == current_user.id)
+        if since is not None:
+            stmt = stmt.where(AgentRun.started_at >= since)
+        total, prompt, completion, runs = session.exec(stmt).one()
+        return {
+            "runs": int(runs),
+            "total_tokens": int(total),
+            "prompt_tokens": int(prompt),
+            "completion_tokens": int(completion),
+        }
+
+    return {
+        "today": _sum_since(today_start),
+        "total": _sum_since(None),
+    }
