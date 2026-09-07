@@ -78,6 +78,7 @@ export default function BauhausSidebar({
   // 判断当前页面
   const isOnHome = location.pathname === '/'
   const isOnLibrary = location.pathname === '/library'
+  const isOnArtifacts = location.pathname === '/artifacts'
   const isOnHistory = location.pathname === '/history'
   const isOnAdmin = location.pathname === '/admin/experts'
   const isOnStats = location.pathname === '/admin/stats'
@@ -268,6 +269,7 @@ export default function BauhausSidebar({
             isCollapsed={true}
             isOnHome={isOnHome}
             isOnLibrary={isOnLibrary}
+            isOnArtifacts={isOnArtifacts}
             isOnHistory={isOnHistory}
             isOnAdmin={isOnAdmin}
             isOnStats={isOnStats}
@@ -282,6 +284,7 @@ export default function BauhausSidebar({
               isCollapsed={false}
               isOnHome={isOnHome}
               isOnLibrary={isOnLibrary}
+              isOnArtifacts={isOnArtifacts}
               isOnHistory={isOnHistory}
               isOnAdmin={isOnAdmin}
               isOnStats={isOnStats}

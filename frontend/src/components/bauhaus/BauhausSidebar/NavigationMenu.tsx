@@ -7,7 +7,7 @@
  * 所有视觉风格（边框、阴影、变换）由 CSS 变量控制
  */
 
-import { BarChart3, Home, Library, MessageSquare, Shield } from 'lucide-react'
+import { BarChart3, Boxes, Home, Library, MessageSquare, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TranslationKey } from '@/i18n'
 import { TW } from './constants'
@@ -18,6 +18,7 @@ export function NavigationMenu({
   isCollapsed,
   isOnHome,
   isOnLibrary,
+  isOnArtifacts,
   isOnHistory,
   isOnAdmin,
   isOnStats,
@@ -44,6 +45,14 @@ export function NavigationMenu({
             onClick={() => onMenuClick('/library')}
             icon={<Library className="w-4 h-4 flex-shrink-0" />}
             label={t('library')}
+          />
+
+          {/* 产物中心按钮 */}
+          <NavButtonCollapsed
+            isActive={isOnArtifacts}
+            onClick={() => onMenuClick('/artifacts')}
+            icon={<Boxes className="w-4 h-4 flex-shrink-0" />}
+            label={t('artifactsTitle')}
           />
 
           {/* 历史记录按钮 */}
@@ -100,6 +109,14 @@ export function NavigationMenu({
           onClick={() => onMenuClick('/library')}
           icon={<Library className="w-5 h-5 flex-shrink-0" />}
           label={t('library') || 'LIBRARY'}
+        />
+
+        {/* 产物中心按钮 */}
+        <NavButtonExpanded
+          isActive={isOnArtifacts}
+          onClick={() => onMenuClick('/artifacts')}
+          icon={<Boxes className="w-5 h-5 flex-shrink-0" />}
+          label={t('artifactsTitle')}
         />
 
         {/* 历史记录按钮 */}

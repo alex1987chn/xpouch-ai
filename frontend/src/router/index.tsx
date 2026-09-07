@@ -20,6 +20,7 @@ import { lazyWithReload } from './lazyWithReload'
 
 // 包装器组件
 import {
+  ArtifactsPageWrapper,
   HistoryPageWrapper,
   LibraryPageWrapper,
   CreateAgentPageWrapper,
@@ -49,6 +50,10 @@ export const router = createBrowserRouter([
       {
         path: 'library',
         element: <LibraryPageWrapper />
+      },
+      {
+        path: 'artifacts',
+        element: <ArtifactsPageWrapper />
       },
       {
         path: 'history',

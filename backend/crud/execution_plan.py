@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy.orm import selectinload
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from models import (
     Artifact,
@@ -20,6 +20,7 @@ from models import (
     SubTaskCreate,
     SubTaskUpdate,
     TaskStatus,
+    Thread,
 )
 
 
@@ -195,6 +196,15 @@ def update_subtask(db: Session, subtask_id: str, update_data: SubTaskUpdate) -> 
     return subtask
 
 
+def _derive_thread_id(db: Session, sub_task_id: str) -> str | None:
+    """从 subtask→executionplan 链路派生 thread_id（artifact 冗余列写入用）。"""
+    subtask = db.get(SubTask, sub_task_id)
+    if not subtask or not subtask.execution_plan_id:
+        return None
+    plan = db.get(ExecutionPlan, subtask.execution_plan_id)
+    return plan.thread_id if plan else None
+
+
 def create_artifact(
     db: Session,
     sub_task_id: str,
@@ -207,6 +217,7 @@ def create_artifact(
     """创建产物。"""
     artifact = Artifact(
         sub_task_id=sub_task_id,
+        thread_id=_derive_thread_id(db, sub_task_id),
         type=artifact_type,
         title=title,
         content=content,
@@ -236,10 +247,12 @@ def create_artifacts_batch(
     if existing is not None:
         return []
 
+    thread_id = _derive_thread_id(db, sub_task_id)
     artifacts = []
     for idx, data in enumerate(artifacts_data):
         artifact_kwargs = {
             "sub_task_id": sub_task_id,
+            "thread_id": thread_id,
             "type": data.type,
             "title": data.title,
             "content": data.content,
@@ -296,6 +309,52 @@ def update_artifact_content(db: Session, artifact_id: str, content: str) -> Arti
     db.commit()
     db.refresh(artifact)
     return artifact
+
+
+def list_artifacts_for_user(
+    db: Session,
+    user_id: str,
+    thread_id: str | None = None,
+    artifact_type: str | None = None,
+    page: int = 1,
+    limit: int = 20,
+) -> dict:
+    """按用户跨会话列出产物（artifact.thread_id 冗余列直连 thread 做归属过滤）。
+
+    分页语义与 list_threads 一致：{items, total, page, limit, pages}。
+    """
+    limit = min(limit, 100)
+    offset = (page - 1) * limit
+
+    base_filters = [Thread.user_id == user_id, Artifact.thread_id.isnot(None)]
+    if thread_id:
+        base_filters.append(Artifact.thread_id == thread_id)
+    if artifact_type:
+        base_filters.append(Artifact.type == artifact_type)
+
+    total = db.exec(
+        select(func.count())
+        .select_from(Artifact)
+        .join(Thread, Artifact.thread_id == Thread.id)
+        .where(*base_filters)
+    ).one()
+
+    items = db.exec(
+        select(Artifact)
+        .join(Thread, Artifact.thread_id == Thread.id)
+        .where(*base_filters)
+        .order_by(Artifact.created_at.desc(), Artifact.id.desc())
+        .offset(offset)
+        .limit(limit)
+    ).all()
+
+    return {
+        "items": list(items),
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": (total + limit - 1) // limit,
+    }
 
 
 def create_execution_plan_with_subtasks(

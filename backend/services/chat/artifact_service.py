@@ -15,7 +15,7 @@ from typing import Any
 
 from sqlmodel import Session
 
-from crud.execution_plan import get_artifact, update_artifact_content
+from crud.execution_plan import get_artifact, list_artifacts_for_user, update_artifact_content
 from models import Artifact, ExecutionPlan, SubTask, Thread
 from utils.artifacts import parse_artifacts_from_response
 from utils.exceptions import AuthorizationError, NotFoundError
@@ -31,6 +31,50 @@ class ArtifactService:
     # ============================================================================
     # Artifact 查询
     # ============================================================================
+
+    async def list_artifacts(
+        self,
+        user_id: str,
+        thread_id: str | None = None,
+        artifact_type: str | None = None,
+        page: int = 1,
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        """按用户跨会话列出产物（产物中心列表页）。
+
+        列表只带内容预览（前 200 字符），完整内容按需走详情接口。
+        """
+        result = list_artifacts_for_user(
+            self.db,
+            user_id=user_id,
+            thread_id=thread_id,
+            artifact_type=artifact_type,
+            page=page,
+            limit=limit,
+        )
+
+        items = [
+            {
+                "id": a.id,
+                "thread_id": a.thread_id,
+                "type": a.type,
+                "title": a.title,
+                "language": a.language,
+                "sort_order": a.sort_order,
+                "content_preview": a.content[:200],
+                "content_length": len(a.content),
+                "created_at": a.created_at,
+            }
+            for a in result["items"]
+        ]
+
+        return {
+            "items": items,
+            "total": result["total"],
+            "page": result["page"],
+            "limit": result["limit"],
+            "pages": result["pages"],
+        }
 
     async def get_artifact_detail(
         self, artifact_id: str, user_id: str, include_content: bool = True
@@ -63,12 +107,14 @@ class ArtifactService:
 
         return {
             "id": artifact.id,
+            "thread_id": artifact.thread_id,
             "type": artifact.type,
             "title": artifact.title,
             "content": content,
             "language": artifact.language,
             "sort_order": artifact.sort_order,
             "sub_task_id": artifact.sub_task_id,
+            "content_length": len(artifact.content),
             "created_at": artifact.created_at.isoformat() if artifact.created_at else None,
         }
 

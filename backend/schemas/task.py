@@ -53,6 +53,30 @@ class ArtifactResponse(BaseModel):
     created_at: datetime
 
 
+class ArtifactSummaryResponse(BaseModel):
+    """产物列表项 DTO（产物中心；只带内容预览）"""
+
+    id: str
+    thread_id: str | None
+    type: str
+    title: str | None
+    language: str | None
+    sort_order: int
+    content_preview: str
+    content_length: int
+    created_at: datetime
+
+
+class PaginatedArtifactListResponse(BaseModel):
+    """跨会话产物分页列表"""
+
+    items: list[ArtifactSummaryResponse]
+    total: int
+    page: int
+    limit: int
+    pages: int
+
+
 class SubTaskResponse(BaseModel):
     """子任务响应 DTO（包含产物列表）"""
 

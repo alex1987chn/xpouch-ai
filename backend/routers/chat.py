@@ -29,7 +29,7 @@ Router 层仅负责：
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
@@ -42,6 +42,7 @@ from models import (
     ThreadDetailResponse,
     User,
 )
+from schemas.task import PaginatedArtifactListResponse
 from services.chat.artifact_service import ArtifactService
 from services.chat.recovery_service import RecoveryService
 from services.chat.stream_service import StreamService
@@ -411,18 +412,39 @@ async def cancel_run(
 # ============================================================================
 
 
-@router.get("/artifacts/{artifact_id}")
-async def get_artifact_endpoint(
-    artifact_id: str,
+@router.get("/artifacts", response_model=PaginatedArtifactListResponse)
+async def list_artifacts_endpoint(
+    page: int = 1,
+    limit: int = 20,
+    thread_id: str | None = None,
+    artifact_type: str | None = Query(None, alias="type"),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """获取单个 Artifact（调试用，返回内容摘要）"""
+    """按用户跨会话列出产物（产物中心；列表带内容预览，详情按需另取）"""
+    service = ArtifactService(session)
+    return await service.list_artifacts(
+        user_id=current_user.id,
+        thread_id=thread_id,
+        artifact_type=artifact_type,
+        page=page,
+        limit=limit,
+    )
+
+
+@router.get("/artifacts/{artifact_id}")
+async def get_artifact_endpoint(
+    artifact_id: str,
+    full: bool = False,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """获取单个 Artifact（默认返回内容摘要；full=true 返回完整内容）"""
     service = ArtifactService(session)
     return await service.get_artifact_detail(
         artifact_id=artifact_id,
         user_id=current_user.id,
-        include_content=False,  # 返回摘要
+        include_content=full,
     )
 
 

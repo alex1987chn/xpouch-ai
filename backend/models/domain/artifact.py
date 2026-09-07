@@ -26,6 +26,10 @@ class Artifact(SQLModel, table=True):
     # 关联的子任务
     sub_task_id: str = Field(foreign_key="subtask.id", index=True, max_length=64)
 
+    # 冗余会话 ID（写入时从 subtask→executionplan 派生）：
+    # 跨会话产物列表免 4 表 join，直接按 user 的 thread 集合过滤
+    thread_id: str | None = Field(default=None, index=True, max_length=64)
+
     # 产物类型：code | html | markdown | json | text
     type: str = Field(index=True, max_length=32)
 

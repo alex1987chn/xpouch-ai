@@ -37,6 +37,7 @@ export interface NavigationMenuProps {
   isCollapsed: boolean
   isOnHome: boolean
   isOnLibrary: boolean
+  isOnArtifacts: boolean
   isOnHistory: boolean
   isOnAdmin: boolean
   isOnStats: boolean

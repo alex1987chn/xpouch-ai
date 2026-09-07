@@ -86,6 +86,33 @@ export interface ApiMessage {
 export type ConversationAgentType = 'default' | 'custom' | 'ai'
 
 /**
+ * 产物中心：跨会话产物列表项
+ * 列表接口只带 content_preview；详情接口返回完整 content
+ */
+export interface ArtifactListItem {
+  id: string
+  thread_id?: string | null
+  type: string
+  title?: string | null
+  language?: string | null
+  sort_order?: number
+  content?: string
+  content_preview?: string
+  content_length?: number
+  sub_task_id?: string
+  created_at?: string | null
+}
+
+/** 产物分页列表响应 */
+export interface PaginatedArtifacts {
+  items: ArtifactListItem[]
+  total: number
+  page: number
+  limit: number
+  pages: number
+}
+
+/**
  * 会话列表项接口（轻量级，不包含消息内容）
  */
 export interface Conversation {
