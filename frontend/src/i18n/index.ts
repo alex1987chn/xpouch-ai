@@ -144,6 +144,12 @@ export type TranslationKey =
   | 'imageSizeExceeded' | 'imageProcessFailed' | 'saveFailedLater' | 'updateFailedLater'
   // Auth & Permission
   | 'permissionDenied' | 'adminOnly' | 'readOnly' | 'login'
+  // 密码登录（v3.4.4）
+  | 'loginTabOtp' | 'passwordLoginTab' | 'identifierLabel' | 'identifierPlaceholder'
+  | 'passwordPlaceholder' | 'accountAndPasswordRequired' | 'passwordLoginHint'
+  | 'passwordSetup' | 'oldPasswordPlaceholder' | 'newPasswordPlaceholder'
+  | 'passwordSetupHint' | 'passwordSaveLabel' | 'passwordMinLength'
+  | 'oldPasswordRequired' | 'passwordSaved'
   // Time & General
   | 'justNow' | 'secondsAgo' | 'general'
   // Language selector

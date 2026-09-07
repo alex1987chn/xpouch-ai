@@ -22,8 +22,11 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState<'phone' | 'code'>('phone')
   const [debugCode, setDebugCode] = useState('')
+  const [loginMode, setLoginMode] = useState<'otp' | 'password'>('otp')
+  const [identifier, setIdentifier] = useState('')
+  const [password, setPassword] = useState('')
 
-  const { sendVerificationCode, loginWithPhone } = useUserStore()
+  const { sendVerificationCode, loginWithPhone, loginWithPassword } = useUserStore()
 
   // 验证码倒计时
   useEffect(() => {
@@ -88,6 +91,31 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
       logger.error('[LoginDialog] 验证失败:', error)
       pushToast({ title: (error as Error).message })
     } finally {
+      setLoading(false)
+    }
+  }
+
+  // 密码登录
+  const handlePasswordLogin = async () => {
+    if (!identifier.trim() || !password) {
+      pushToast({ title: t('accountAndPasswordRequired') })
+      return
+    }
+
+    setLoading(true)
+    try {
+      await loginWithPassword(identifier.trim(), password)
+
+      setTimeout(() => {
+        onOpenChange(false)
+        setIdentifier('')
+        setPassword('')
+        setLoading(false)
+        onSuccess?.()
+      }, 100)
+    } catch (error) {
+      logger.error('[LoginDialog] 密码登录失败:', error)
+      pushToast({ title: (error as Error).message })
       setLoading(false)
     }
   }
@@ -163,8 +191,81 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
             </div>
           )}
 
-          {/* 步骤1: 输入手机号 */}
-          {step === 'phone' && (
+          {/* 登录方式 Tab */}
+          <div className="grid grid-cols-2 gap-0 border-2 border-border-default rounded-md overflow-hidden">
+            <button
+              onClick={() => setLoginMode('otp')}
+              className={`py-2 font-mono text-xs font-bold uppercase tracking-wider transition-colors ${
+                loginMode === 'otp'
+                  ? 'bg-accent-hover text-content-primary'
+                  : 'bg-surface-page text-content-secondary hover:bg-surface-page/60'
+              }`}
+            >
+              {t('loginTabOtp')}
+            </button>
+            <button
+              onClick={() => setLoginMode('password')}
+              className={`py-2 font-mono text-xs font-bold uppercase tracking-wider transition-colors ${
+                loginMode === 'password'
+                  ? 'bg-accent-hover text-content-primary'
+                  : 'bg-surface-page text-content-secondary hover:bg-surface-page/60'
+              }`}
+            >
+              {t('passwordLoginTab')}
+            </button>
+          </div>
+
+          {/* 密码登录表单 */}
+          {loginMode === 'password' && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="font-mono text-micro font-bold uppercase text-content-secondary">
+                  {t('identifierLabel')}
+                </label>
+                <input
+                  type="text"
+                  placeholder={t('identifierPlaceholder')}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  disabled={loading}
+                  className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="font-mono text-micro font-bold uppercase text-content-secondary">
+                  PASSWORD
+                </label>
+                <input
+                  type="password"
+                  placeholder={t('passwordPlaceholder')}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && identifier.trim() && password && !loading) {
+                      handlePasswordLogin()
+                    }
+                  }}
+                  disabled={loading}
+                  className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
+                />
+              </div>
+
+              <button
+                onClick={handlePasswordLogin}
+                disabled={!identifier.trim() || !password || loading}
+                className="w-full py-3 border-2 border-border-default bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
+              >
+                {loading ? 'SIGNING...' : '登录 / LOGIN'}
+              </button>
+
+              <div className="text-center font-mono text-micro text-content-secondary opacity-60">
+                {t('passwordLoginHint')}
+              </div>
+            </div>
+          )}
+
+          {/* 步骤1: 输入手机号（OTP） */}
+          {loginMode === 'otp' && step === 'phone' && (
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className="font-mono text-micro font-bold uppercase text-content-secondary">
@@ -197,7 +298,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
           )}
 
           {/* 步骤2: 输入验证码 */}
-          {step === 'code' && (
+          {loginMode === 'otp' && step === 'code' && (
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className="font-mono text-micro font-bold uppercase text-content-secondary">

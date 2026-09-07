@@ -6,6 +6,7 @@ import { useUserStore } from '@/store/userStore'
 import { logger } from '@/utils/logger'
 import { pushToast } from '@/components/ui/use-toast'
 import { useTranslation } from '@/i18n'
+import { setPasswordApi } from '@/services/auth'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 
@@ -22,6 +23,10 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
   const [avatar, setAvatar] = useState('')
   const [avatarPreview, setAvatarPreview] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [oldPassword, setOldPassword] = useState('')
+  const [isSettingPassword, setIsSettingPassword] = useState(false)
+  const [hasPassword, setHasPassword] = useState(false)
 
   // 加载用户设置
   useEffect(() => {
@@ -29,6 +34,7 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
       setUsername(user.username)
       setAvatar(user.avatar || '')
       setAvatarPreview(user.avatar || '')
+      setHasPassword(Boolean((user as { has_password?: boolean }).has_password))
     }
   }, [isOpen, user])
 
@@ -66,6 +72,31 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
   }
 
   // 保存设置
+  // 设置密码
+  const handleSetPassword = async () => {
+    if (newPassword.length < 8) {
+      pushToast({ title: t('passwordMinLength') })
+      return
+    }
+    if (hasPassword && !oldPassword) {
+      pushToast({ title: t('oldPasswordRequired') })
+      return
+    }
+
+    setIsSettingPassword(true)
+    try {
+      await setPasswordApi(newPassword, hasPassword ? oldPassword : undefined)
+      pushToast({ title: t('passwordSaved') })
+      setHasPassword(true)
+      setNewPassword('')
+      setOldPassword('')
+    } catch (err) {
+      pushToast({ title: (err as Error).message, variant: 'destructive' })
+    } finally {
+      setIsSettingPassword(false)
+    }
+  }
+
   const handleSave = async () => {
     // 验证用户名
     if (!username.trim()) {
@@ -225,6 +256,47 @@ export function PersonalSettingsDialog({ isOpen, onClose }: PersonalSettingsDial
             <p className="text-micro text-content-secondary mt-2 opacity-60">
               {t('usernameHint')}
             </p>
+          </section>
+          {/* 分隔线 */}
+          <div className="border-t-2 border-border-default"></div>
+
+          {/* 密码设置 */}
+          <section>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1.5 h-1.5 bg-content-secondary"></div>
+              <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+                {t('passwordSetup')}
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {hasPassword && (
+                <input
+                  type="password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  placeholder={t('oldPasswordPlaceholder')}
+                  className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+                />
+              )}
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder={t('newPasswordPlaceholder')}
+                className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+              />
+              <p className="text-micro text-content-secondary opacity-60">
+                {t('passwordSetupHint')}
+              </p>
+              <button
+                onClick={handleSetPassword}
+                disabled={isSettingPassword || newPassword.length < 8 || (hasPassword && !oldPassword)}
+                className="px-4 py-2 border-2 border-border-default bg-accent-hover text-content-primary text-xs font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
+              >
+                {isSettingPassword ? t('savingUserSettings') : t('passwordSaveLabel')}
+              </button>
+            </div>
           </section>
         </div>
 
