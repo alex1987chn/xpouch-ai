@@ -33,6 +33,7 @@ function SceneCard({
   title,
   subtitle,
   tag,
+  badge,
   onClick,
 }: {
   number: string
@@ -40,6 +41,7 @@ function SceneCard({
   title: string
   subtitle: string
   tag: string
+  badge?: string
   onClick?: () => void
 }) {
   return (
@@ -59,7 +61,14 @@ function SceneCard({
         <div className="p-2 border-2 border-border bg-surface-page group-hover:bg-surface-card transition-colors">
           <Icon className="w-6 h-6 stroke-[2.5]" />
         </div>
-        <div className="font-mono text-micro bg-content-primary text-surface-page px-1">{tag}</div>
+        <div className="flex flex-col items-end gap-1">
+          <div className="font-mono text-micro bg-content-primary text-surface-page px-1">{tag}</div>
+          {badge && (
+            <div className="font-mono text-micro bg-accent text-content-primary px-1 border border-border">
+              {badge}
+            </div>
+          )}
+        </div>
       </div>
       <div>
         <h4 className="font-black text-lg mb-1 group-hover:underline decoration-2 underline-offset-4">{title}</h4>
@@ -307,13 +316,15 @@ export default function HomePage() {
     }
   }, [deletingAgentId, selectedAgentId, setSelectedAgentId, deleteAgentMutation])
 
-  const handleSendMessage = useCallback(() => {
-    if (!inputMessage.trim()) return
+  const handleSendMessage = useCallback((text?: string) => {
+    // 支持示例卡片直接传入文本；未传时回退到输入框内容
+    const message = (text ?? inputMessage).trim()
+    if (!message) return
 
     // 🔐 未登录时弹出登录弹窗
     if (!isAuthenticated) {
       // 保存输入内容到 pendingMessage，登录后自动发送
-      useChatStore.getState().setPendingMessage(inputMessage)
+      useChatStore.getState().setPendingMessage(message)
       openLogin()
       return
     }
@@ -325,7 +336,7 @@ export default function HomePage() {
     useChatStore.getState().setMessages([])
     useChatStore.getState().setCurrentConversationId(null)
     useTaskStore.getState().resetAll()
-    
+
     // 🔥 修复：首页始终使用默认助手，忽略残留的 selectedAgentId
     // 用户从首页输入内容 → 触发 AI 助手（复杂模式）
     // 用户点击自定义智能体卡片 → 才使用自定义智能体（简单模式）
@@ -333,11 +344,11 @@ export default function HomePage() {
 
     // 👈 直接导航到 /chat/:id 格式，首页始终使用默认助手
     navigate(`/chat/${newId}`, {
-      state: { startWith: inputMessage, isNew: true }
+      state: { startWith: message, isNew: true }
     })
   }, [inputMessage, navigate, isAuthenticated, openLogin])
 
-  // 推荐场景数据
+  // 推荐场景数据（点击即真实执行，不再是预填）
   const scenes = [
     {
       number: '01',
@@ -345,9 +356,7 @@ export default function HomePage() {
       title: 'Code Gen',
       subtitle: 'Python / JS / Rust',
       tag: 'DEV',
-      onClick: () => {
-        setInputMessage(t('sceneCodeGen'))
-      },
+      onClick: () => handleSendMessage(t('sceneCodeGen')),
     },
     {
       number: '02',
@@ -355,9 +364,7 @@ export default function HomePage() {
       title: 'Deep Research',
       subtitle: 'Web Analysis & Summary',
       tag: 'RSRCH',
-      onClick: () => {
-        setInputMessage(t('sceneDeepResearch'))
-      },
+      onClick: () => handleSendMessage(t('sceneDeepResearch')),
     },
     {
       number: '03',
@@ -365,9 +372,7 @@ export default function HomePage() {
       title: 'Quick Q&A',
       subtitle: 'GPT-4o Instant',
       tag: 'FAST',
-      onClick: () => {
-        setInputMessage(t('sceneQuickQA'))
-      },
+      onClick: () => handleSendMessage(t('sceneQuickQA')),
     },
   ]
 
@@ -463,7 +468,7 @@ export default function HomePage() {
                 <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                   <span className="font-mono text-micro text-content-secondary hidden sm:inline">ENTER TO SEND</span>
                   <Button
-                    onClick={handleSendMessage}
+                    onClick={() => handleSendMessage()}
                     disabled={!inputMessage.trim()}
                     className="px-2 sm:px-4 md:px-6 py-1.5 sm:py-2 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
                   >
@@ -488,7 +493,7 @@ export default function HomePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {scenes.map((scene) => (
-                  <SceneCard key={scene.number} {...scene} />
+                  <SceneCard key={scene.number} {...scene} badge={t('sceneLiveBadge')} />
                 ))}
               </div>
             </div>

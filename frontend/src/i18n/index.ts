@@ -12,6 +12,7 @@ export type TranslationKey =
   | 'greeting' | 'slogan' | 'placeholder' | 'featuredAgents' | 'myAgents' | 'createAgent' | 'editAgent' | 'backToChat'
   | 'addCustomAgent' | 'createYourFirstAgent' | 'statusReady' | 'statusIdle' | 'heroTitle'
   | 'commandInput' | 'initializeNew' | 'online' | 'offline' | 'recommended' | 'myConstructs'
+  | 'sceneLiveBadge'
   | 'confirmDeleteAgent' | 'deleteAgentWarning' | 'deleteAgentConfirm' | 'deleteAgentConfirmDesc'
   // Create Agent
   | 'agentName' | 'category' | 'description' | 'systemPrompt' | 'preview' | 'createAgent'

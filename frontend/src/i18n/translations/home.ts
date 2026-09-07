@@ -34,11 +34,12 @@ export const zh: Record<string, string> = {
   input: '输入中',
   giveName: '给你的智能体起个名字...',
 
-  // 首页场景示例
+  // 首页场景示例（点击即真实执行）
+  sceneLiveBadge: '真实执行 · 点击即跑',
   createAgentDesc: '自定义属于你的专属智能体',
-  sceneCodeGen: '帮我编写一个React组件',
-  sceneDeepResearch: '帮我调研一下最新的前端技术趋势',
-  sceneQuickQA: '今天天气怎么样？',
+  sceneCodeGen: '用 HTML+CSS 帮我做一个简约风格的个人主页',
+  sceneDeepResearch: '调研 2026 年主流前端框架的趋势，输出一份对比报告',
+  sceneQuickQA: '用一句话解释什么是量子计算？',
   categoryGeneral: '通用',
   categoryDev: '开发',
   categoryCreate: '创作',
@@ -111,11 +112,12 @@ export const en: Record<string, string> = {
   input: 'Input',
   giveName: 'Give your agent a name...',
 
-  // Home scene examples
+  // Home scene examples (click to run live)
+  sceneLiveBadge: 'Live run · click to start',
   createAgentDesc: 'Customize your own exclusive agent',
-  sceneCodeGen: 'Help me write a React component',
-  sceneDeepResearch: 'Help me research the latest frontend technology trends',
-  sceneQuickQA: 'What is the weather like today?',
+  sceneCodeGen: 'Build me a minimal personal homepage with HTML+CSS',
+  sceneDeepResearch: 'Research 2026 frontend framework trends and produce a comparison report',
+  sceneQuickQA: 'Explain quantum computing in one sentence',
   categoryGeneral: 'General',
   categoryDev: 'Development',
   categoryCreate: 'Creation',
@@ -188,11 +190,12 @@ export const ja: Record<string, string> = {
   input: '入力中',
   giveName: 'エージェントに名前をつけてください...',
 
-  // ホームシーン例
+  // ホームシーン例（クリックで実際に実行）
+  sceneLiveBadge: '実際に実行・クリックで開始',
   createAgentDesc: 'あなた専用のエージェントをカスタマイズ',
-  sceneCodeGen: 'Reactコンポーネントを作成してください',
-  sceneDeepResearch: '最新のフロントエンド技術トレンドを調査してください',
-  sceneQuickQA: '今日の天気はどうですか？',
+  sceneCodeGen: 'HTML+CSS でミニマルな自己紹介ページを作ってください',
+  sceneDeepResearch: '2026 年の主要フロントエンドフレームワークの動向を調査し、比較レポートにしてください',
+  sceneQuickQA: '量子コンピュータを一文で説明してください',
   categoryGeneral: '一般',
   categoryDev: '開発',
   categoryCreate: '作成',
