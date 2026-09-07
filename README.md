@@ -259,7 +259,13 @@ pnpm run build
 BACKUP_KEEP=30 ./scripts/backup_db.sh   # 自定义份数
 ```
 
-服务器建议挂 crontab 每日执行（示例见脚本头部注释）。备份输出到 `backups/`（已 gitignore）。
+服务器建议挂 crontab 每日执行，一键幂等安装：
+
+```bash
+./scripts/install_backup_cron.sh         # 安装每天 03:00 的备份任务（重复执行安全）
+```
+
+备份输出到 `backups/`（已 gitignore）。
 
 ### 环境声明（Fail-closed）
 
