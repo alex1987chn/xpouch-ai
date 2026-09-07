@@ -33,3 +33,25 @@ export async function getArtifactDetail(artifactId: string): Promise<ArtifactLis
   const response = await authenticatedFetch(url)
   return handleResponse<ArtifactListItem>(response, '获取产物详情失败')
 }
+
+/**
+ * 创建产物分享链接（返回明文 token，仅此一次）
+ */
+export async function shareArtifact(
+  artifactId: string
+): Promise<{ token: string; path: string }> {
+  const url = buildUrl(`/artifacts/${artifactId}/share`)
+  const response = await authenticatedFetch(url, { method: 'POST' })
+  return handleResponse<{ token: string; path: string }>(response, '创建分享链接失败')
+}
+
+/**
+ * 撤销产物的全部分享链接
+ */
+export async function revokeArtifactShare(
+  artifactId: string
+): Promise<{ revoked: number }> {
+  const url = buildUrl(`/artifacts/${artifactId}/share`)
+  const response = await authenticatedFetch(url, { method: 'DELETE' })
+  return handleResponse<{ revoked: number }>(response, '撤销分享失败')
+}

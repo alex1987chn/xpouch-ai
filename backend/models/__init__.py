@@ -29,6 +29,7 @@ from models.domain import (
     ExecutionPlan,
     Message,
     RunEvent,
+    ShareToken,
     SkillTemplate,
     SubTask,
     SystemExpert,

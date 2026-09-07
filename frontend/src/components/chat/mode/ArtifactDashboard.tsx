@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils'
 import { downloadMarkdown, downloadPDF, getArtifactMarkdown } from '@/utils/export'
 import { logger } from '@/utils/logger'
 import { useTaskActions, useTaskMode, useTasksCache, useSelectedTaskId } from '@/hooks/useTaskSelectors'
+import { shareArtifact } from '@/services/artifacts'
 import EmptyState from '@/components/chat/EmptyState'
 
 // 懒加载 Artifact 渲染组件
@@ -159,6 +160,8 @@ export default function ArtifactDashboard({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
   const [editContent, setEditContent] = useState('')
   
   const tabsRef = useRef<HTMLDivElement>(null)
@@ -229,6 +232,23 @@ export default function ArtifactDashboard({
     const markdown = getArtifactMarkdown(currentArtifact)
     downloadMarkdown(currentArtifact.title || currentArtifact.type, markdown)
     setShowExportMenu(false)
+  }, [currentArtifact])
+
+  // 分享链接：生成只读公开 URL 并复制到剪贴板
+  const handleShare = useCallback(async () => {
+    if (!currentArtifact) return
+    setIsSharing(true)
+    try {
+      const { path } = await shareArtifact(currentArtifact.id)
+      await navigator.clipboard.writeText(`${window.location.origin}${path}`)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+      setShowExportMenu(false)
+    } catch (err) {
+      logger.error('Share failed:', err)
+    } finally {
+      setIsSharing(false)
+    }
   }, [currentArtifact])
 
   // 导出 PDF
@@ -476,6 +496,17 @@ export default function ArtifactDashboard({
                             >
                               <span>Markdown</span>
                               <span className="text-micro text-muted-foreground font-mono">.md</span>
+                            </button>
+                            <div className="border-t border-border-default" />
+                            <button
+                              onClick={handleShare}
+                              disabled={isSharing}
+                              className="w-full px-3 py-2 text-left text-xs text-content-primary hover:bg-accent hover:text-accent-foreground transition-colors flex items-center justify-between disabled:opacity-50"
+                            >
+                              <span>分享链接</span>
+                              <span className="text-micro text-muted-foreground font-mono">
+                                {shareCopied ? '已复制' : '/s'}
+                              </span>
                             </button>
                             <div className="border-t border-border-default" />
                             <button

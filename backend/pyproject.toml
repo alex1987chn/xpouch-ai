@@ -33,6 +33,7 @@ dependencies = [
     "langchain-deepseek>=0.1.0,<2.0.0",  # 🔥 ChatDeepSeek：捕获 reasoning_content
     "tenacity>=9.0.0,<10.0.0",  # P1 新增: 重试机制
     "cachetools>=5.3.0,<8.0.0",  # P1 新增: TTL 缓存
+    "markdown-it-py>=4.2.0",
 ]
 
 [dependency-groups]

@@ -26,6 +26,7 @@ Router 层仅负责：
 - DELETE /api/threads/{id}: 删除会话
 """
 
+import asyncio
 from typing import Any
 from uuid import uuid4
 
@@ -45,6 +46,7 @@ from models import (
 from schemas.task import PaginatedArtifactListResponse
 from services.chat.artifact_service import ArtifactService
 from services.chat.recovery_service import RecoveryService
+from services.chat.share_service import ShareService
 from services.chat.stream_service import StreamService
 
 # 🔥 Service 层导入（backend 是 Python 路径根）
@@ -468,3 +470,25 @@ async def update_artifact(
         artifact_id=artifact_id, content=request.content, user_id=current_user.id
     )
     return ArtifactUpdateResponse(**result)
+
+
+@router.post("/artifacts/{artifact_id}/share")
+async def create_artifact_share(
+    artifact_id: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """创建产物分享链接（返回明文 token 一次；每次调用生成新链接）"""
+    service = ShareService(session)
+    return await asyncio.to_thread(service.create_share, artifact_id, current_user.id)
+
+
+@router.delete("/artifacts/{artifact_id}/share")
+async def revoke_artifact_share(
+    artifact_id: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """撤销该产物的全部分享链接"""
+    service = ShareService(session)
+    return await asyncio.to_thread(service.revoke_shares, artifact_id, current_user.id)

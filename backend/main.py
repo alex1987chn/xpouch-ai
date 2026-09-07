@@ -38,7 +38,7 @@ from config import settings
 # 内部模块导入
 from database import create_db_and_tables, engine
 from models import SkillTemplate, SystemExpert
-from routers import agents, chat, mcp, runs, stats, system
+from routers import agents, chat, mcp, public, runs, stats, system
 from utils.exceptions import AppError, handle_error
 from utils.logger import logger
 
@@ -175,6 +175,7 @@ app.include_router(system.router)
 app.include_router(mcp.router)
 app.include_router(runs.router)
 app.include_router(stats.router)
+app.include_router(public.router)
 
 
 # ============================================================================

@@ -15,6 +15,7 @@ from models.domain.custom_agent import CustomAgent
 from models.domain.execution_plan import ExecutionPlan
 from models.domain.message import Message
 from models.domain.run_event import RunEvent
+from models.domain.share_token import ShareToken
 from models.domain.skill_template import SkillTemplate
 from models.domain.subtask import SubTask
 from models.domain.system_expert import SystemExpert
@@ -28,6 +29,7 @@ __all__ = [
     "UserSettings",
     "AgentRun",
     "RunEvent",
+    "ShareToken",
     "CustomAgent",
     "ToolPolicy",
     "SkillTemplate",
