@@ -10,6 +10,7 @@ import { logger } from '@/utils/logger'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { useAppUISelectors } from '@/hooks'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
+import { RowSkeleton } from '@/components/ui/skeleton'
 import { useChatHistoryQuery, useDeleteConversationMutation, useBatchDeleteConversationsMutation } from '@/hooks/queries'
 import { useUserStore } from '@/store/userStore'
 
@@ -385,14 +386,19 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
 
         <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20">
           {loading ? (
-             <div className="text-center py-20 font-mono text-sm text-content-secondary uppercase">{t('loading')}</div>
+             <div className="space-y-2">
+               {Array.from({ length: 6 }, (_, i) => (
+                 <RowSkeleton key={i} />
+               ))}
+             </div>
           ) : filteredConversations.length > 0 ? (
             <div className="space-y-2">
-              {filteredConversations.map((conversation) => {
+              {filteredConversations.map((conversation, index) => {
                 const isSelected = selectedIds.has(conversation.id)
                 return (
                   <div
                     key={conversation.id}
+                    style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
                     onClick={() => {
                       if (isBatchMode) {
                         toggleSelection(conversation.id)
@@ -401,7 +407,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                       }
                     }}
                     className={cn(
-                      "group relative bg-surface-card border-2 p-3 transition-all",
+                      "stagger-item group relative bg-surface-card border-2 p-3 transition-all",
                       isSelected
                         ? "border-accent-hover shadow-hard-3"
                         : "border-border-default shadow-hard-3 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-5 cursor-pointer"

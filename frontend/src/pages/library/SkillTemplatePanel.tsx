@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Bot, FileCode, Plus, Rocket, Save, Trash2, Upload, Download } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '@/components/ui/use-toast'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import {
@@ -333,9 +334,25 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
   }
 
   if (isLoading) {
+    // 与下方两栏布局同构：左侧模板列表 + 右侧详情
     return (
-      <div className="text-center py-20 font-mono text-sm uppercase text-content-muted">
-        {t('loading') || 'Loading...'}
+      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <div className="border-2 border-border-default bg-surface-card shadow-theme-card">
+          <div className="border-b-2 border-border-default px-4 py-3">
+            <Skeleton className="h-3.5 w-32" />
+          </div>
+          <div className="p-3 space-y-2">
+            {Array.from({ length: 6 }, (_, i) => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))}
+          </div>
+        </div>
+        <div className="border-2 border-border-default bg-surface-card shadow-theme-card p-4 space-y-3">
+          <Skeleton className="h-5 w-1/3" />
+          <Skeleton className="h-3 w-2/3" />
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-3 w-1/2" />
+        </div>
       </div>
     )
   }
@@ -374,12 +391,13 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
 
         {filteredTemplates.length > 0 ? (
           <div className="max-h-[70vh] overflow-y-auto bauhaus-scrollbar">
-            {filteredTemplates.map(template => (
+            {filteredTemplates.map((template, index) => (
               <button
                 key={template.id}
                 onClick={() => handleSelect(template)}
+                style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
                 className={cn(
-                  'w-full border-b-2 border-border-default px-4 py-3 text-left transition-all relative',
+                  'stagger-item w-full border-b-2 border-border-default px-4 py-3 text-left transition-all relative',
                   selectedId === template.id
                     ? 'bg-surface-elevated border-l-4 border-l-accent-brand pl-3'
                     : 'bg-surface-card hover:bg-surface-page border-l-4 border-l-transparent'
@@ -403,7 +421,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
                         key={type}
                         className={cn(
                           'inline-flex items-center gap-1 px-1.5 py-0.5 text-nano font-mono uppercase',
-                          ARTIFACT_TYPE_COLORS[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                          ARTIFACT_TYPE_COLORS[type] || 'bg-surface-elevated text-content-primary'
                         )}
                       >
                         <FileCode className="h-2.5 w-2.5" />

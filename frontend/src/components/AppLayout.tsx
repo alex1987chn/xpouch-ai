@@ -1,5 +1,5 @@
 import { ReactNode, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { Menu } from 'lucide-react'
 import { useTranslation } from '@/i18n'
@@ -64,6 +64,7 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children, hideMobileMenu = false }: AppLayoutProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { sidebar, dialogs } = useAppUISelectors()
   const { theme } = useThemeStore()
 
@@ -195,8 +196,15 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
           </div>
         )}
 
-        {/* 主要内容 */}
-        {children}
+        {/* 主要内容（跨页面切换时按首段路径重挂载、重放入场淡入；同页参数变化如 /chat/:id
+            换会话不重挂载；受全局 prefers-reduced-motion 约束。
+            h-full 必须保留：HistoryPage 等页面根节点依赖父级高度） */}
+        <div
+          key={location.pathname.split('/')[1] || '/'}
+          className="page-enter h-full w-full"
+        >
+          {children}
+        </div>
       </main>
 
       {/* 全局 Dialogs */}

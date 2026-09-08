@@ -18,6 +18,7 @@ import { logger } from '@/utils/logger'
 import { Z_INDEX } from '@/constants/zIndex'
 import type { ArtifactListItem } from '@/types'
 import ArtifactRenderer from '@/components/artifacts/ArtifactRenderer'
+import { CardSkeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 const TYPE_FILTERS = [
@@ -132,8 +133,10 @@ export default function ArtifactsPage() {
 
         {/* 列表 */}
         {isLoading && (
-          <div className="py-20 text-center font-mono text-sm text-content-muted">
-            {t('loading')}...
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: 6 }, (_, i) => (
+              <CardSkeleton key={i} />
+            ))}
           </div>
         )}
 
@@ -151,16 +154,17 @@ export default function ArtifactsPage() {
 
         {data && data.items.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {data.items.map(item => {
+            {data.items.map((item, i) => {
               const color = TYPE_COLORS[item.type] || '#6b7280'
               return (
                 <button
                   key={item.id}
                   onClick={() => openDetail(item)}
-                  className="text-left border-2 border-border-default bg-surface-card p-4 flex flex-col gap-3 min-h-[160px] transition-all duration-150 hover:border-accent hover:[transform:var(--transform-button-sm-hover)] active:[transform:var(--transform-button-active)]"
+                  style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+                  className="stagger-item text-left border-2 border-border-default bg-surface-card p-4 flex flex-col gap-3 min-h-[160px] transition-all duration-150 hover:border-accent hover:[transform:var(--transform-button-sm-hover)] active:[transform:var(--transform-button-active)]"
                 >
                   <div
-                    className="self-start font-mono text-micro uppercase px-1 border-2 border-border text-surface-page"
+                    className="self-start font-mono text-micro uppercase px-1 border-2 border-border text-white"
                     style={{ backgroundColor: color }}
                   >
                     {item.type}

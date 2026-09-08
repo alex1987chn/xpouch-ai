@@ -51,6 +51,41 @@
     background-image: radial-gradient(rgb(var(--content-muted) / 0.3) 1.5px, transparent 1.5px);
     background-size: 32px 32px;
   }
+
+  /* ============================================
+     页面/列表入场动效（v3.4.4 C 批次）
+     - 干脆利落：150-250ms、无弹跳曲线（Bauhaus 原则）
+     - 全局 prefers-reduced-motion 规则会将其压到 0.01ms
+     - stagger-item 配合内联 animation-delay 做列表错峰（建议 40ms 步长，封顶 8 项）
+     ============================================ */
+  .page-enter {
+    animation: page-enter-fade 200ms ease-out backwards;
+  }
+
+  .stagger-item {
+    animation: stagger-fade-up 300ms ease-out backwards;
+  }
+}
+
+/* keyframes 放在 layer 外，避免被 layer 顺序影响 */
+@keyframes page-enter-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes stagger-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @layer base {
