@@ -5,6 +5,32 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-09-08] - v3.4.4 产品闭环：分享、产物中心、密码登录、用量可视化、resumable stream、UTC 统一
+
+### 新增功能
+
+- **断线续传（resumable stream）**：每个 run 一个有界事件缓冲（hub 统一分配递增 seq 到 SSE `id:`），网络中断后前端用 `GET /chat/{thread}/stream/resume?last_event_id=` 补放并跟随剩余事件；缓冲丢失（重启/超窗）返回 410，前端自动退化到"后台跑完 + 轮询刷新"。POST 从不重发（非幂等），重放只读
+- **后台继续执行**：客户端断开不再终止任务（v3.4.3 曾误杀后台断连），producer 跑完照常落库；显式停止走协作取消（producer 在 token 检查点自查）
+- **产物中心**：跨会话产物库页（类型过滤 + 分页 + 详情完整渲染）；artifact 增加 thread_id 冗余列（含存量回填）免 4 表 join；侧边栏新增入口
+- **单产物分享**：`POST/DELETE /api/artifacts/{id}/share` + 公开 `GET /s/{token}`——服务端渲染 HTML（OG 卡片 + Bauhaus 风格），markdown 安全渲染（markdown-it-py，html=False）、其余全转义；token 只存 SHA-256 哈希、明文仅返回一次、可全量撤销、公开端点按 IP 限流
+- **密码登录**：`POST /api/auth/login-password`（手机号/邮箱 + 密码，bcrypt，内存滑动窗口防爆破，未设密码账号与不存在账号同文案 404）+ `POST /api/auth/set-password`（首设免旧密）；登录弹窗双 tab，个人设置可设密码；`/api/user/me` 新增 `has_password` 布尔
+- **Token 用量可视化**：agentrun 增加 prompt/completion/total_tokens 三列，专家任务完成后增量累加（SQL 层防竞态）；`GET /api/usage/summary` 今日/累计汇总；头像菜单显示用量条（近似值：router/aggregator 小额调用不计）
+- **首页示例卡片真实执行**：三张场景卡从"预填"升级为点击即跑（未登录走 pendingMessage 登录后自动发送），标注"真实执行"
+
+### 运维
+
+- **deploy.sh 发版前置检查**：backend/.env 必须显式设置 ENVIRONMENT；production 下校验 JWT_SECRET_KEY 非默认且 ≥32 字符，否则拒绝部署（防"升级后无法登录"）
+- **备份一键挂 cron**：`scripts/install_backup_cron.sh` 幂等安装每日 03:00 备份任务
+
+### 修复
+
+- **时间统一为 UTC（P7）**：DB 此前混用两种时钟（auth 域 UTC、其余本地时间）。28 个模块统一 `utc_now_naive()`，36 个本地时间列一次性回填 -8h（迁移 20260907_000400，部署窗口内切换）；FastAPI 的 datetime 序列化全局追加 "Z"，浏览器不再按本地时区误读；用户侧时钟（prompt 时间注入、时间工具）保持本地
+- 部署前置检查随 deploy.sh 分发（该脚本按设计走 SFTP，不入库）
+
+### 其他
+
+- 版本号 3.4.3 → 3.4.4（backend config/pyproject、package.json ×2、UI 常量）
+
 ## [2026-09-06] - v3.4.3 执行链路可靠性：HITL 闭环、截断防治、结构收敛
 
 ### 新增功能
