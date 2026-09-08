@@ -248,36 +248,33 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
 
 
   return (
-    <div className="min-h-screen bg-surface-page overflow-x-hidden">
-      {/* 可滚动内容区 - Bauhaus风格（标题行内嵌文档流，定位由侧边栏承担） */}
+    <div className="min-h-screen bg-surface-page px-6 md:px-12 py-8">
+      {/* 内容区（标题行内嵌文档流，定位由侧边栏承担） */}
       <div
         ref={scrollContainerRef}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        className="max-w-5xl mx-auto space-y-6"
       >
         {/* 标题行（PageTitle 统一习语） */}
-        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pt-8">
-          <PageTitle title={t('history')} />
-        </div>
+        <PageTitle title={t('history')} />
 
         {/* 搜索框 - Bauhaus风格 */}
-        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 mt-6">
-          <div className="relative flex items-center">
-            <Search className="absolute left-3 w-4 h-4 text-content-secondary" />
-            <input
-              type="text"
-              placeholder={t('searchHistory') || '搜索历史记录...'}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-10 pr-4 border-2 border-border-default bg-surface-page font-mono text-sm text-content-primary placeholder:text-content-secondary focus:outline-none focus:border-accent-hover transition-colors"
-            />
-          </div>
+        <div className="relative flex items-center">
+          <Search className="absolute left-3 w-4 h-4 text-content-secondary" />
+          <input
+            type="text"
+            placeholder={t('searchHistory') || '搜索历史记录...'}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-11 pl-10 pr-4 border-2 border-border-default bg-surface-page font-mono text-sm text-content-primary placeholder:text-content-secondary focus:outline-none focus:border-accent-hover transition-colors"
+          />
         </div>
 
         {/* 数据统计信息 / 批量操作栏 - Bauhaus风格 */}
         {!loading && filteredConversations.length > 0 && (
-          <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4">
+          <div>
             {!isBatchMode ? (
               /* 普通模式：显示统计 + Select 按钮 */
               <div className="flex items-center justify-between">
@@ -365,7 +362,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
           </div>
         )}
 
-        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 md:pb-20">
+        <div className="pb-16 md:pb-12">
           {loading ? (
              <div className="space-y-2">
                {Array.from({ length: 6 }, (_, i) => (

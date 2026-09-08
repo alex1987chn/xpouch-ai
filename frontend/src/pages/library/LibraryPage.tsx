@@ -35,21 +35,19 @@ export default function LibraryPage() {
   const canEditLibrary = ['admin', 'edit_admin'].includes(role)
 
   return (
-    <div className="min-h-screen bg-surface-page overflow-x-hidden">
+    <div className="min-h-screen bg-surface-page px-6 md:px-12 py-8">
       {/* 内容区域（标题行内嵌文档流，定位由侧边栏承担） */}
       <div
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        className="max-w-5xl mx-auto space-y-6"
       >
         {/* 标题行（PageTitle 统一习语） */}
-        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pt-8">
-          <PageTitle title={t('workshop') || 'WORKSHOP'} />
-        </div>
+        <PageTitle title={t('workshop') || 'WORKSHOP'} />
 
         {/* Tabs 导航 */}
-        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pt-6 pb-4">
-          <div className="flex gap-1 border-b-2 border-border-default">
+        <div className="flex gap-1 border-b-2 border-border-default">
             {/* Knowledge Base Tab */}
             <TabButton
               isActive={activeTab === 'knowledge'}
@@ -81,11 +79,10 @@ export default function LibraryPage() {
                 label={t('toolGovernance') || 'TOOL GOVERNANCE'}
               />
             )}
-          </div>
         </div>
 
         {/* 页面内容 */}
-        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-24">
+        <div className="pb-16 md:pb-12">
           {/* 搜索框 - 两个标签共用 */}
           <div className="mb-4">
             <SearchInput
