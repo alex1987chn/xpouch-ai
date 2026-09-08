@@ -8,9 +8,11 @@
  */
 
 import { useState } from 'react'
+import { Expand, Share2, Shrink } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useArtifactsQuery } from '@/hooks/queries/useArtifactsQuery'
-import { getArtifactDetail } from '@/services/artifacts'
+import { getArtifactDetail, shareArtifact } from '@/services/artifacts'
+import { logger } from '@/utils/logger'
 import type { ArtifactListItem } from '@/types'
 import ArtifactRenderer from '@/components/artifacts/ArtifactRenderer'
 import { cn } from '@/lib/utils'
@@ -47,6 +49,9 @@ export default function ArtifactsPage() {
   const [typeFilter, setTypeFilter] = useState('')
   const [detail, setDetail] = useState<ArtifactListItem | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
 
   const { data, isLoading, isError, error } = useArtifactsQuery(page, typeFilter || undefined)
 
@@ -60,6 +65,22 @@ export default function ArtifactsPage() {
       // 保持占位内容，用户仍可关闭
     } finally {
       setDetailLoading(false)
+    }
+  }
+
+  // 分享当前详情产物：生成公开链接并复制到剪贴板
+  const handleShare = async () => {
+    if (!detail) return
+    setIsSharing(true)
+    try {
+      const { path } = await shareArtifact(detail.id)
+      await navigator.clipboard.writeText(`${window.location.origin}${path}`)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    } catch (err) {
+      logger.error('Share failed:', err)
+    } finally {
+      setIsSharing(false)
     }
   }
 
@@ -186,7 +207,9 @@ export default function ArtifactsPage() {
           onClick={() => setDetail(null)}
         >
           <div
-            className="bg-surface-card border-2 border-border w-full max-w-4xl h-full max-h-[85vh] flex flex-col shadow-[8px_8px_0_0_var(--color-shadow)]"
+            className={`bg-surface-card border-2 border-border w-full h-full flex flex-col shadow-[8px_8px_0_0_var(--color-shadow)] transition-all duration-200 ${
+              expanded ? 'max-w-[96vw] max-h-[94vh]' : 'max-w-4xl max-h-[85vh]'
+            }`}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border bg-surface-elevated">
@@ -203,6 +226,27 @@ export default function ArtifactsPage() {
                   </span>
                 )}
               </div>
+              <button
+                onClick={handleShare}
+                disabled={isSharing}
+                title={t('artifactShareAction')}
+                className={cn(
+                  'font-mono text-xs border-2 px-2 py-0.5 transition-colors disabled:opacity-50 flex items-center gap-1',
+                  shareCopied
+                    ? 'border-status-online text-status-online'
+                    : 'border-border-default hover:bg-accent hover:border-accent'
+                )}
+              >
+                <Share2 className="w-3 h-3" />
+                <span>{shareCopied ? t('artifactShareCopied') : t('artifactShareAction')}</span>
+              </button>
+              <button
+                onClick={() => setExpanded(v => !v)}
+                title={expanded ? t('widthNarrow') : t('widthExpand')}
+                className="font-mono text-xs border-2 border-border-default px-2 py-0.5 hover:bg-accent hover:border-accent"
+              >
+                {expanded ? <Shrink className="w-3 h-3" /> : <Expand className="w-3 h-3" />}
+              </button>
               <button
                 onClick={() => setDetail(null)}
                 className="font-mono text-xs border-2 border-border-default px-2 py-0.5 hover:bg-accent hover:border-accent"

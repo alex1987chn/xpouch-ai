@@ -77,6 +77,7 @@ export type TranslationKey =
   | 'artifactsTitle' | 'artifactsTotalSuffix' | 'artifactsEmpty'
   | 'artifactsFilterAll' | 'artifactsFilterCode' | 'artifactsFilterHtml'
   | 'artifactsFilterMarkdown' | 'artifactsFilterReport' | 'artifactsFilterImage'
+  | 'artifactShareAction' | 'artifactShareCopied' | 'widthExpand' | 'widthNarrow'
   | 'templateSaved' | 'templateDeleted' | 'templateNoDescription' | 'noTemplatesFound'
   | 'templateDetail' | 'createTemplate' | 'templateEditorHint' | 'useTemplate' | 'templateKey'
   | 'recommendedMode' | 'templateDescription' | 'starterPrompt' | 'systemHint'
