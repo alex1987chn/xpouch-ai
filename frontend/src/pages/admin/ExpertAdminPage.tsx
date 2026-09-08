@@ -15,6 +15,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from '@/i18n'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PermissionLockCard } from '@/components/ui/lock-card'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
 
@@ -84,16 +85,20 @@ export default function ExpertAdminPage() {
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // 获取登录状态和管理员权限
+  // 获取登录状态与角色分档（产品决策「可见但锁」：页面全员可达，数据/操作按角色）
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
   const user = useUserStore(state => state.user)
-  const isAdmin = user?.role === 'admin'
+  const role = user?.role ?? ''
+  // 查看档：VIEW_ADMIN 及以上（与后端列表接口一致）
+  const canViewExperts = ['admin', 'edit_admin', 'view_admin'].includes(role)
+  // 编辑档：EDIT_ADMIN 及以上（与后端 PATCH 接口一致）
+  const canEditExperts = ['admin', 'edit_admin'].includes(role)
 
-  // 查询专家列表（只有登录后才发起请求）
+  // 查询专家列表（登录 + 有查看权限才发起，避免无权限的注定 403 请求）
   const { data: experts = [], isLoading: isLoadingExperts, error: expertsError } = useQuery({
     queryKey: ['experts'],
     queryFn: getAllExperts,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && canViewExperts,
     retry: (failureCount, error: unknown) => {
       // 401 未授权不 retry
       if (isStatusError(error) && error.status === 401) return false
@@ -266,6 +271,17 @@ export default function ExpertAdminPage() {
     )
   }
 
+  // 无查看权限：渲染锁卡片（可见但锁，DESIGN.md §4.5）
+  if (isAuthenticated && !canViewExperts) {
+    return (
+      <div className="min-h-[100dvh] bg-surface-page flex items-center justify-center p-4">
+        <div className="w-full max-w-xl">
+          <PermissionLockCard description={t('expertsLockedDesc')} />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-[100dvh] p-4 bg-surface-page overflow-y-auto lg:overflow-hidden">
       {/* Toast */}
@@ -306,7 +322,7 @@ export default function ExpertAdminPage() {
         selectedExpertKey={selectedExpertKey}
         searchQuery={searchQuery}
         isLoading={isLoadingExperts}
-        isAdmin={isAdmin}
+        isAdmin={canEditExperts}
         onSelectExpert={handleSelectExpert}
         onDeleteExpert={handleOpenDeleteDialog}
         onSearchChange={setSearchQuery}
@@ -318,7 +334,7 @@ export default function ExpertAdminPage() {
       <ExpertEditor
         key={selectedExpert?.expert_key || 'empty'}
         expert={selectedExpert || null}
-        isAdmin={isAdmin}
+        isAdmin={canEditExperts}
         isSaving={isSaving}
         isGeneratingDescription={isGeneratingDescription}
         onSave={handleSave}

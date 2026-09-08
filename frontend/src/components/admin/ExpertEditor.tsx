@@ -163,7 +163,7 @@ export default function ExpertEditor({
               {t('adminOnly')}
             </p>
             <p className="text-xs text-content-secondary">
-              仅管理员可编辑专家配置
+              {t('expertsEditLockedDesc')}
             </p>
           </div>
         </div>

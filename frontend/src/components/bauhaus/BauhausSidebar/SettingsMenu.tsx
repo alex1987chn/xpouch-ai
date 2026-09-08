@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { User, Cog, ArrowRight, Star, Copy, Check, ArrowUpRight } from 'lucide-react'
+import { User, Cog, ShieldCheck, ArrowRight, Star, Copy, Check, ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logger } from '@/utils/logger'
 import { GithubMark } from '@/components/common'
@@ -47,6 +47,7 @@ export function SettingsMenu({
   user,
   language,
   onPersonalSettingsClick,
+  onSecuritySettingsClick,
   onSettingsClick,
   onMobileClose,
   onLogout,
@@ -185,6 +186,18 @@ export function SettingsMenu({
           >
             <User className="w-4 h-4" />
             <span className="font-bold uppercase">{t('personalSettings')}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onSecuritySettingsClick?.()
+              onClose()
+              onMobileClose?.()
+            }}
+            className={MENU_ROW}
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span className="font-bold uppercase">{t('accountSecurity')}</span>
           </button>
 
           <button

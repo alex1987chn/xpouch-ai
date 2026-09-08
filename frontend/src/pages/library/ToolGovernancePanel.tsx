@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Check, Lock, Save, ShieldAlert } from 'lucide-react'
+import { Check, Save, ShieldAlert } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { PermissionLockCard } from '@/components/ui/lock-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
@@ -193,17 +194,10 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
 
   if (!canView) {
     return (
-      <div className="border-2 border-border-default bg-surface-card px-6 py-16 text-center shadow-theme-card">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center border-2 border-border-default bg-surface-page">
-          <Lock className="h-8 w-8 text-content-muted" />
-        </div>
-        <h3 className="font-mono text-sm font-bold uppercase text-content-primary">
-          {t('adminOnly') || 'Admin only'}
-        </h3>
-        <p className="mt-2 text-xs text-content-secondary">
-          {t('governanceAdminOnly') || 'Tool governance is available to admins only.'}
-        </p>
-      </div>
+      <PermissionLockCard
+        title={t('adminOnly')}
+        description={t('governanceAdminOnly') || 'Tool governance is available to admins only.'}
+      />
     )
   }
 

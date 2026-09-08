@@ -5,6 +5,7 @@ type AppUIState = {
   isSidebarMobileOpen: boolean
   settingsOpen: boolean
   personalSettingsOpen: boolean
+  securitySettingsOpen: boolean
   deleteConfirmOpen: boolean
   deletingAgentId: string | null
   deletingAgentName: string
@@ -19,6 +20,8 @@ type AppUIActions = {
   closeSettings: () => void
   openPersonalSettings: () => void
   closePersonalSettings: () => void
+  openSecuritySettings: () => void
+  closeSecuritySettings: () => void
   openDeleteConfirm: (id: string, name: string) => void
   closeDeleteConfirm: () => void
   openLogin: () => void
@@ -37,6 +40,7 @@ export const useAppUIStore = create<AppUIStore>((set) => ({
   isSidebarMobileOpen: false,
   settingsOpen: false,
   personalSettingsOpen: false,
+  securitySettingsOpen: false,
   deleteConfirmOpen: false,
   deletingAgentId: null,
   deletingAgentName: '',
@@ -56,6 +60,8 @@ export const useAppUIStore = create<AppUIStore>((set) => ({
   closeSettings: () => set({ settingsOpen: false }),
   openPersonalSettings: () => set({ personalSettingsOpen: true }),
   closePersonalSettings: () => set({ personalSettingsOpen: false }),
+  openSecuritySettings: () => set({ securitySettingsOpen: true }),
+  closeSecuritySettings: () => set({ securitySettingsOpen: false }),
   openDeleteConfirm: (id: string, name: string) =>
     set({
       deletingAgentId: id,

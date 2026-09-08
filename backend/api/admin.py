@@ -33,7 +33,9 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 # 只读场景：ADMIN / EDIT_ADMIN / VIEW_ADMIN（不含普通 USER）
 get_current_view_admin = require_role(UserRole.ADMIN, UserRole.EDIT_ADMIN, UserRole.VIEW_ADMIN)
-# 管理场景：仅 ADMIN
+# 内容编辑场景：ADMIN / EDIT_ADMIN（专家配置、模板策略等运营内容）
+get_current_edit_admin = require_role(UserRole.ADMIN, UserRole.EDIT_ADMIN)
+# 管理场景：仅 ADMIN（用户晋升等敏感操作）
 get_current_admin = require_role(UserRole.ADMIN)
 
 
@@ -211,12 +213,12 @@ async def get_all_experts(
 async def get_expert(
     expert_key: str,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin),  # 需要管理员权限
+    _: User = Depends(get_current_view_admin),  # VIEW_ADMIN / EDIT_ADMIN / ADMIN
 ):
     """
     获取单个专家配置
 
-    权限：Admin
+    权限：VIEW_ADMIN, EDIT_ADMIN, ADMIN（与列表一致）
     """
     expert = session.exec(select(SystemExpert).where(SystemExpert.expert_key == expert_key)).first()
 
@@ -245,7 +247,7 @@ async def update_expert(
     expert_key: str,
     expert_update: ExpertUpdate,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin),  # 需要 EDIT_ADMIN 或 ADMIN 权限
+    _: User = Depends(get_current_edit_admin),  # 需要 EDIT_ADMIN 或 ADMIN 权限
 ):
     """
     更新系统专家配置（原子递增乐观锁）

@@ -153,6 +153,8 @@ export type TranslationKey =
   | 'oldPasswordRequired' | 'passwordSaved'
   | 'newPasswordLabel' | 'forgotPasswordLink' | 'resetPasswordTitle' | 'resetPasswordAction'
   | 'resetSendHint' | 'passwordResetSuccess' | 'backToLogin'
+  | 'passwordSaveAction' | 'passwordSaving' | 'accountSecurity' | 'accountSecurityDesc'
+  | 'expertsLockedDesc' | 'expertsEditLockedDesc'
   | 'openSourceThread'
   | 'usageLabel' | 'usageToday' | 'usageTotal'
   // Time & General

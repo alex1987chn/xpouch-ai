@@ -92,6 +92,15 @@
 - 弹窗三件套：`createPortal(到 body)` + `fixed inset-0` 遮罩 + `Z_INDEX.MODAL`（必须 portal——AppLayout 有层叠上下文，否则被侧边栏压住）+ 容器 `bg-surface-card border-2 border-border shadow-theme-modal`。
 - 浮动控件（主题切换、回到顶部）固定右下 `bottom-4 right-4`；页面级 toast `bottom-4 right-4` 堆叠（`toaster.tsx` 已统一，勿再造）。
 
+### 4.5 权限锁定态（可见但锁）
+
+产品决策：管理入口**全员可见**——开源访客要能看到功能丰富度；数据与操作按角色控制（企业自部署场景存在管理员/员工分工）。
+
+- 无权限时**禁止渲染裸空态**（会被误读为"没有数据"），统一用 `PermissionLockCard`（`src/components/ui/lock-card.tsx`）：锁图标 + 角色说明。
+- 需要展示页面结构的场景（如专家编辑器）用**内容 + `backdrop-blur` 遮罩 + 锁**的形态。
+- 前端按角色省掉注定 403 的请求（query `enabled` 加角色条件），锁卡片直接由角色推导。
+- 角色分档与后端 `require_role` 一一对应：查看=view_admin+、内容编辑=edit_admin+、敏感操作=admin。菜单入口的可见性不做角色隐藏。
+
 ## 5. 动效规范（v3.4.4 起）
 
 原则：**只做入场与反馈，不做持续动画**；全部时长 ≤300ms；全局 `prefers-reduced-motion` 已自动压平一切动画（`src/index.css`），无需逐处处理。
