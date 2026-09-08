@@ -69,9 +69,6 @@ docs/
 # CodeBuddy (project data, not for git)
 .codebuddy/
 
-# Deployment scripts (local only, upload via SFTP)
-deploy.sh
-
 # Database backups (produced by scripts/backup_db.sh)
 backups/
 
