@@ -10,7 +10,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { MessageSquare, Expand, Share2, Shrink } from 'lucide-react'
+import { Check, MessageSquare, Expand, Share2, Shrink, X } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useArtifactsQuery } from '@/hooks/queries/useArtifactsQuery'
 import { getArtifactDetail, shareArtifact } from '@/services/artifacts'
@@ -237,43 +237,47 @@ export default function ArtifactsPage() {
                   </span>
                 )}
               </div>
+              {/* 操作排：统一 w-8 h-8 图标方块（DESIGN.md §4.3），悬停 title 提示 */}
               <div className="flex items-center gap-2 shrink-0">
               {detail.thread_id && (
                 <button
                   onClick={() => navigate(`/chat/${detail.thread_id}`)}
                   title={t('openSourceThread')}
-                  className="font-mono text-xs border-2 border-border-default px-2 py-0.5 hover:bg-accent hover:border-accent flex items-center gap-1"
+                  aria-label={t('openSourceThread')}
+                  className="w-8 h-8 flex items-center justify-center border-2 border-border-default hover:bg-accent hover:border-accent transition-colors"
                 >
-                  <MessageSquare className="w-3 h-3" />
-                  <span>{t('openSourceThread')}</span>
+                  <MessageSquare className="w-3.5 h-3.5" />
                 </button>
               )}
               <button
                 onClick={handleShare}
                 disabled={isSharing}
-                title={t('artifactShareAction')}
+                title={shareCopied ? t('artifactShareCopied') : t('artifactShareAction')}
+                aria-label={t('artifactShareAction')}
                 className={cn(
-                  'font-mono text-xs border-2 px-2 py-0.5 transition-colors disabled:opacity-50 flex items-center gap-1',
+                  'w-8 h-8 flex items-center justify-center border-2 transition-colors disabled:opacity-50',
                   shareCopied
                     ? 'border-status-online text-status-online'
                     : 'border-border-default hover:bg-accent hover:border-accent'
                 )}
               >
-                <Share2 className="w-3 h-3" />
-                <span>{shareCopied ? t('artifactShareCopied') : t('artifactShareAction')}</span>
+                {shareCopied ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
               </button>
               <button
                 onClick={() => setExpanded(v => !v)}
                 title={expanded ? t('widthNarrow') : t('widthExpand')}
-                className="font-mono text-xs border-2 border-border-default px-2 py-0.5 hover:bg-accent hover:border-accent"
+                aria-label={expanded ? t('widthNarrow') : t('widthExpand')}
+                className="w-8 h-8 flex items-center justify-center border-2 border-border-default hover:bg-accent hover:border-accent transition-colors"
               >
-                {expanded ? <Shrink className="w-3 h-3" /> : <Expand className="w-3 h-3" />}
+                {expanded ? <Shrink className="w-3.5 h-3.5" /> : <Expand className="w-3.5 h-3.5" />}
               </button>
               <button
                 onClick={() => setDetail(null)}
-                className="font-mono text-xs border-2 border-border-default px-2 py-0.5 hover:bg-accent hover:border-accent"
+                title={t('close')}
+                aria-label={t('close')}
+                className="w-8 h-8 flex items-center justify-center border-2 border-border-default hover:bg-accent hover:border-accent transition-colors"
               >
-                {t('close')}
+                <X className="w-3.5 h-3.5" />
               </button>
               </div>
             </div>
