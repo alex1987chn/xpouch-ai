@@ -7,7 +7,7 @@
  * 所有视觉风格（边框、阴影、变换）由 CSS 变量控制
  */
 
-import { BarChart3, Boxes, Home, Library, MessageSquare, Shield } from 'lucide-react'
+import { BarChart3, Bot, Boxes, Home, Library, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TranslationKey } from '@/i18n'
 import { TW } from './constants'
@@ -234,7 +234,7 @@ function AdminButtonCollapsed({ isActive, onClick, t }: AdminButtonCollapsedProp
       title={t('navExperts')}
       className={collapsedButtonStyles(isActive)}
     >
-      <Shield className="w-4 h-4 flex-shrink-0" />
+      <Bot className="w-4 h-4 flex-shrink-0" />
     </button>
   )
 }
@@ -261,7 +261,7 @@ function AdminButtonExpanded({ isActive, onClick, t }: AdminButtonExpandedProps)
       )}
     >
       <div className="flex items-center gap-3 px-3">
-        <Shield className="w-5 h-5 flex-shrink-0" />
+        <Bot className="w-5 h-5 flex-shrink-0" />
         <span className="text-xs font-bold tracking-wide uppercase">{t('navExperts')}</span>
       </div>
     </button>
