@@ -34,7 +34,7 @@ const eventIconConfig: Record<string, { icon: typeof Clock; color: string }> = {
   plan: { icon: Clock, color: 'text-indigo-500' },
   hitl: { icon: AlertCircle, color: 'text-yellow-500' },
   task: { icon: Loader2, color: 'text-accent-primary' },
-  artifact: { icon: CheckCircle, color: 'text-green-500' },
+  artifact: { icon: CheckCircle, color: 'text-accent-success' },
   other: { icon: Clock, color: 'text-content-secondary' },
 }
 
@@ -47,7 +47,7 @@ function EventIcon({ eventType }: { eventType: RunEventType }) {
   const isTerminal = ['run_completed', 'run_failed', 'run_cancelled', 'run_timed_out'].includes(eventType)
   const isFailed = ['run_failed', 'run_cancelled', 'run_timed_out', 'task_failed', 'hitl_rejected'].includes(eventType)
 
-  const finalColor = isFailed ? 'text-red-500' : isTerminal ? 'text-green-500' : config.color
+  const finalColor = isFailed ? 'text-accent-destructive' : isTerminal ? 'text-accent-success' : config.color
 
   return (
     <div className={cn(

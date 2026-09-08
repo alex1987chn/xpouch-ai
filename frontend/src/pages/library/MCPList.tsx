@@ -137,14 +137,19 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
       {/* 列表 */}
       {filteredServers.length > 0 ? (
         <div ref={listContainerRef} className="space-y-2 max-h-[60vh] overflow-y-auto">
-          {filteredServers.map((server) => (
-            <MCPCard
+          {filteredServers.map((server, index) => (
+            <div
               key={server.id}
-              server={server}
-              isExpanded={expandedId === server.id}
-              isAdmin={isAdmin}
-              onToggleExpand={() => handleToggleExpand(server.id)}
-            />
+              className="stagger-item"
+              style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+            >
+              <MCPCard
+                server={server}
+                isExpanded={expandedId === server.id}
+                isAdmin={isAdmin}
+                onToggleExpand={() => handleToggleExpand(server.id)}
+              />
+            </div>
           ))}
         </div>
       ) : (

@@ -153,7 +153,7 @@ const StepItem = ({ step, index }: StepItemProps) => {
         step.type === 'artifact' && "bg-orange-500/10 text-orange-500",
         step.type === 'memory' && "bg-indigo-500/10 text-indigo-500",  // 🔥 新增：Memory 类型样式
         step.type === 'execution' && "bg-emerald-500/10 text-emerald-500",  // 🔥 任务执行类型样式
-        (!step.type || step.type === 'default') && "bg-gray-500/10 text-gray-500"
+        (!step.type || step.type === 'default') && "bg-content-muted/10 text-content-muted"
       )}>
         <Icon className="w-4 h-4" />
       </div>

@@ -22,6 +22,7 @@
 | 边框 | 静止 `border-border-default`，hover `hover:border-accent` |
 | 强调 / 品牌 | `bg-accent-hover`（按钮主底）、`bg-accent-brand`（标记块） |
 | 危险 | 仅破坏性动作用 `accent-destructive`；红色是危险信号，不作装饰 |
+| 成功 / 警告 / 提示 | `accent-success` / `accent-warning` / `accent-info`——状态语义一律走 token，不写 `green-500`/`red-500` |
 | 遮罩 | `bg-black/50`（scrim 双主题通用，勿改语义 token） |
 
 **禁令**：
@@ -55,14 +56,40 @@
   旧 `shadow-hard-*` 已整体退役（v3.4.4 迁移至语义阴影，工具类已从 config 和 index.css 删除），禁止再使用。
 - **圆角**：容器 `rounded-md` 徽章/按钮 `rounded`；整站无大圆角（`--radius-*` 变量统一控制，勿写 `rounded-2xl`）。
 
-## 4. 布局惯例（内容页）
+## 4. 布局、间距与尺寸（内容页）
 
-照抄 `ArtifactsPage` / `HistoryPage` / `LibraryPage`：
+页面骨架照抄 `ArtifactsPage` / `HistoryPage` / `LibraryPage`，间距尺寸全站只用下面这几档——**新增间距时先找表里最接近的档，不要发明新值**。
 
-- 容器：`min-h-screen bg-surface-page px-6 md:px-12 py-8` + `max-w-5xl mx-auto`（弹窗内表单页用 `max-w-2xl`）。
-- 标题行习语：左侧「`w-2 h-2` 色块 + `///` + 大写标题」，右侧对齐计数/操作，底部 `border-b-2 border-border pb-2`。
-- 卡片网格：`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5`；卡片最小高度撑齐（`min-h-[...]`）。
-- 弹窗：`createPortal(到 body)` + `Z_INDEX.MODAL`（必须 portal——AppLayout 有层叠上下文，否则被侧边栏 z-index 压住）+ 容器 `bg-surface-card border-2 border-border shadow-theme-modal`。
+### 4.1 页面骨架与宽度
+
+- 容器：`min-h-screen bg-surface-page px-6 md:px-12 py-8` + `max-w-5xl mx-auto`。**`max-w-5xl` 是全站唯一内容宽度**（弹窗内表单页 `max-w-2xl`，数据密集的 admin 页才允许 `max-w-7xl`）。
+- 区块顺序固定：标题行 → 工具/过滤行 → 内容区 → 分页。标题行习语：左侧「`w-2 h-2` 色块 + `///` + 大写标题」，右侧对齐计数/操作，底部 `border-b-2 border-border pb-2`。
+- 卡片网格：`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5`；两栏面板 `lg:grid-cols-[320px_minmax(0,1fr)] gap-4`。
+
+### 4.2 间距阶梯（垂直与水平）
+
+| 档 | 类名 | 用途 |
+| --- | --- | --- |
+| 页面区块间 | `space-y-6` | 标题行 → 过滤行 → 内容区 之间 |
+| 组件之间 | `space-y-4` / `gap-4` | 卡片与表单块、两栏面板 |
+| 相关行 | `space-y-2` / `space-y-3` | 紧凑列表、表单字段组 |
+| 行内元素 | `gap-2` / `space-y-1` | 图标+文字、按钮组内部 |
+
+网格间距只用 `gap-5`（卡片网格）和 `gap-4`（面板/表单）；`gap-1`/`gap-3` 仅存量。**`1.5`/`3.5` 等半档不新增。**
+
+### 4.3 尺寸
+
+- 内边距：卡片 `p-4`，弹窗/大面板 `p-6`，紧凑行 `px-4 py-3`；徽章 `px-1`～`px-2 + py-0.5`。
+- 按钮：主 CTA `py-3 + text-sm`，次级/行内 `py-2 + text-xs`；图标按钮行内 `w-8 h-8`、独立 `w-10 h-10`；大型输入/控件 `h-11`。
+- 网格内卡片用最小高度撑齐（如 `min-h-[160px]`）。方括号任意值**只允许用于一次性尺寸**，颜色一律走 token（见 §1）。
+- 标题 `text-xl font-black uppercase`；区块内小标题 `text-xs font-mono font-bold uppercase tracking-widest`。
+- 圆角：容器 `rounded-md`，按钮/徽章 `rounded`；直角是默认审美，能不圆就不圆。
+
+### 4.4 位置与层级
+
+- **层级唯一来源是 `src/constants/zIndex.ts` 的 `Z_INDEX` 常量**（SIDEBAR / HEADER / CONTENT / MODAL…），新代码禁止裸写 `z-[9999]`（存量两处逐步收编）。
+- 弹窗三件套：`createPortal(到 body)` + `fixed inset-0` 遮罩 + `Z_INDEX.MODAL`（必须 portal——AppLayout 有层叠上下文，否则被侧边栏压住）+ 容器 `bg-surface-card border-2 border-border shadow-theme-modal`。
+- 浮动控件（主题切换、回到顶部）固定右下 `bottom-4 right-4`；页面级 toast `bottom-4 right-4` 堆叠（`toaster.tsx` 已统一，勿再造）。
 
 ## 5. 动效规范（v3.4.4 起）
 
@@ -91,6 +118,7 @@
 - [ ] 没有 `dark:` 前缀类、没有 `gray-*` 配色？
 - [ ] 标题行、容器宽度、网格用了 §4 惯例？
 - [ ] 弹窗 `createPortal` + `Z_INDEX.MODAL`？
+- [ ] 容器 `max-w-5xl`、间距走了 §4.2 的四档、层级用 `Z_INDEX` 常量？
 - [ ] 列表 loading 是同构骨架屏？空态有文案？
 - [ ] 列表条目挂了 `.stagger-item` 错峰（≤8 项封顶）？
 - [ ] 按钮三态（hover/active/disabled）齐了，危险操作才是红？

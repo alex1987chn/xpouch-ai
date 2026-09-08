@@ -209,7 +209,7 @@ export function TemplateImportDialog({
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-sm text-content-secondary">
-          <CheckCircle className="h-4 w-4 text-green-500" />
+          <CheckCircle className="h-4 w-4 text-accent-success" />
           <span>{t('templateValid') || 'Template is valid and ready to import'}</span>
         </div>
 
@@ -441,7 +441,7 @@ export function TemplateImportDialog({
       <div className="space-y-4 text-center">
         {importResult.success ? (
           <>
-            <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
+            <CheckCircle className="mx-auto h-16 w-16 text-accent-success" />
             <h4 className="font-mono text-lg font-bold text-content-primary">
               {t('importSuccess') || 'Import Successful'}
             </h4>

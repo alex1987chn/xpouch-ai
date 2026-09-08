@@ -166,8 +166,6 @@ const config: Config = {
         none: "0",
         full: "9999px",
         // 旧兼容
-        'ai': '1.25rem',
-        'panel': '1.5rem',
         'bauhaus': '0',
       },
 

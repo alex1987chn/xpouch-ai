@@ -42,19 +42,19 @@ function MetricCard({
   icon: React.ReactNode
   color: 'green' | 'red' | 'yellow' | 'blue'
 }) {
-  // 使用语义化颜色，适配暗色主题
+  // 使用语义化颜色（accent token），适配暗色主题
   const colorClasses = {
-    green: 'border-green-500/50 bg-green-500/10',
-    red: 'border-red-500/50 bg-red-500/10',
-    yellow: 'border-yellow-500/50 bg-yellow-500/10',
-    blue: 'border-blue-500/50 bg-blue-500/10',
+    green: 'border-accent-success/50 bg-accent-success/10',
+    red: 'border-accent-destructive/50 bg-accent-destructive/10',
+    yellow: 'border-accent-warning/50 bg-accent-warning/10',
+    blue: 'border-accent-info/50 bg-accent-info/10',
   }
 
   const iconColorClasses = {
-    green: 'text-green-500',
-    red: 'text-red-500',
-    yellow: 'text-yellow-500',
-    blue: 'text-blue-500',
+    green: 'text-accent-success',
+    red: 'text-accent-destructive',
+    yellow: 'text-accent-warning',
+    blue: 'text-accent-info',
   }
 
   return (
@@ -96,7 +96,7 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
             <div className="w-full flex flex-col gap-0.5">
               {/* 成功 */}
               <div
-                className="w-full bg-green-500/70 rounded-t"
+                className="w-full bg-accent-success/70 rounded-t"
                 style={{
                   height: `${(day.success_count / maxValue) * 80}px`,
                   minHeight: day.success_count > 0 ? '4px' : '0',
@@ -104,7 +104,7 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
               />
               {/* 失败 */}
               <div
-                className="w-full bg-red-500/70 rounded-b"
+                className="w-full bg-accent-destructive/70 rounded-b"
                 style={{
                   height: `${(day.failed_count / maxValue) * 80}px`,
                   minHeight: day.failed_count > 0 ? '4px' : '0',
@@ -119,11 +119,11 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
       </div>
       <div className="flex gap-4 mt-4 text-xs text-content-secondary">
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 bg-green-500/70 rounded" />
+          <div className="w-3 h-3 bg-accent-success/70 rounded" />
           <span>{t('success')}</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 bg-red-500/70 rounded" />
+          <div className="w-3 h-3 bg-accent-destructive/70 rounded" />
           <span>{t('failed')}</span>
         </div>
       </div>
@@ -184,10 +184,11 @@ function RunTable({
           </tr>
         </thead>
         <tbody>
-          {runs.map((run) => (
+          {runs.map((run, index) => (
             <tr
               key={run.run_id}
-              className="border-b border-border-default hover:bg-surface-page transition-colors"
+              style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+              className="stagger-item border-b border-border-default hover:bg-surface-page transition-colors"
             >
               <td className="px-4 py-3 font-mono text-sm">
                 #{run.run_id.slice(0, 8)}
@@ -276,7 +277,7 @@ export default function StatsPage() {
     return (
       <div className="min-h-screen bg-surface-page p-8">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center py-16 text-red-600 font-mono">
+          <div className="text-center py-16 text-accent-destructive font-mono">
             {t('loadFailed')}
           </div>
         </div>
