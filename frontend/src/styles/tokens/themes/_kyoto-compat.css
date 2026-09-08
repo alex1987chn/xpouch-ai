@@ -9,9 +9,4 @@
     border-radius: var(--radius-md);
 }
 
-/* 阴影覆盖 */
-[data-theme="kyoto"] .shadow-hard,
-[data-theme="kyoto"] .shadow-hard-md,
-[data-theme="kyoto"] .shadow-hard-lg {
-    box-shadow: var(--shadow-card);
-}
+/* 阴影覆盖已删除：shadow-hard-* 工具类已退役，语义阴影 shadow-theme-* 随主题变量自动适配 */

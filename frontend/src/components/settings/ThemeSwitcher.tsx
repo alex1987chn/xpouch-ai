@@ -64,7 +64,7 @@ function FloatingThemeSwitcher({ className }: { className?: string }) {
         className={cn(
           'w-10 h-10 rounded-full flex items-center justify-center',
           'bg-surface-card border-2 border-border-default',
-          'shadow-hard hover:shadow-hard-lg',
+          'shadow-theme-button hover:shadow-theme-button-lg',
           'transition-all duration-fast',
           'hover:-translate-x-0.5 hover:-translate-y-0.5',
           'active:translate-x-0 active:translate-y-0 active:shadow-none',
@@ -84,7 +84,7 @@ function FloatingThemeSwitcher({ className }: { className?: string }) {
             'absolute bottom-12 right-0',
             'w-48 p-2 rounded-lg',
             'bg-surface-card border-2 border-border-default',
-            'shadow-hard-lg',
+            'shadow-theme-dropdown',
             'animate-in fade-in slide-in-from-bottom-2 duration-fast'
           )}
         >

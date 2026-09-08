@@ -24,7 +24,7 @@ const STYLES = {
     // 悬停效果
     hoverBg: 'hover:bg-surface-card',
     hoverBorder: 'hover:border-accent-hover/50',
-    hoverShadow: 'hover:shadow-hard',
+    hoverShadow: 'hover:shadow-theme-card',
     hoverTransform: 'hover:-translate-y-0.5',
     // 图标容器
     iconBg: 'bg-gradient-to-br from-surface-elevated to-surface-page',

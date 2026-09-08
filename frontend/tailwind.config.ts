@@ -46,8 +46,6 @@ const config: Config = {
          支持透明度修饰符（如 bg-surface-card/50）
          ============================================ */
       colors: {
-        /* 兼容别名：历史组件误写的 bg-page（等价 bg-surface-page） */
-        page: "rgb(var(--surface-page) / <alpha-value>)",
         /* ------------------------------------------
            Surface - 表面层级
            ------------------------------------------ */
@@ -155,21 +153,6 @@ const config: Config = {
 
         input: "rgb(var(--surface-input) / <alpha-value>)",
         ring: "rgb(var(--accent-brand) / <alpha-value>)",
-
-        /* ============================================
-           旧变量兼容（迁移期后删除）
-           ============================================ */
-        bauhaus: {
-          bg: "rgb(var(--surface-page) / <alpha-value>)",
-          card: "rgb(var(--surface-card) / <alpha-value>)",
-          border: "rgb(var(--border-default) / <alpha-value>)",
-          text: "rgb(var(--content-primary) / <alpha-value>)",
-          shadow: "rgb(var(--shadow-color) / <alpha-value>)",
-          muted: "rgb(var(--content-muted) / <alpha-value>)",
-          yellow: "rgb(var(--accent-brand) / <alpha-value>)",
-          blue: "rgb(var(--accent-info) / <alpha-value>)",
-          red: "rgb(var(--accent-destructive) / <alpha-value>)",
-        },
       },
 
       /* ============================================
@@ -198,13 +181,6 @@ const config: Config = {
         'md': '0 4px 6px -1px rgb(var(--shadow-color) / 0.1), 0 2px 4px -2px rgb(var(--shadow-color) / 0.1)',
         'lg': '0 10px 15px -3px rgb(var(--shadow-color) / 0.1), 0 4px 6px -4px rgb(var(--shadow-color) / 0.1)',
         'xl': '0 20px 25px -5px rgb(var(--shadow-color) / 0.1), 0 8px 10px -6px rgb(var(--shadow-color) / 0.1)',
-        
-        // Bauhaus 硬阴影（遗留兼容）
-        'hard': '4px 4px 0 0 rgb(var(--shadow-color))',
-        'hard-sm': '2px 2px 0 0 rgb(var(--shadow-color))',
-        'hard-md': '4px 4px 0 0 rgb(var(--shadow-color))',
-        'hard-lg': '6px 6px 0 0 rgb(var(--shadow-color))',
-        'hard-xl': '8px 8px 0 0 rgb(var(--shadow-color))',
         
         // 霓虹发光（赛博朋克）
         'glow': '0 0 10px rgb(var(--accent-brand)), 0 0 20px rgb(var(--accent-brand))',

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Check, Lock, Save, ShieldAlert } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import {
@@ -207,9 +208,25 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
   }
 
   if (isLoading) {
+    // 与下方两栏布局同构：左侧工具列表 + 右侧详情
     return (
-      <div className="text-center py-20 font-mono text-sm uppercase text-content-muted">
-        {t('loading') || 'Loading...'}
+      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <div className="border-2 border-border-default bg-surface-card shadow-theme-card">
+          <div className="border-b-2 border-border-default px-4 py-3">
+            <Skeleton className="h-3.5 w-32" />
+          </div>
+          <div className="p-3 space-y-2">
+            {Array.from({ length: 6 }, (_, i) => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))}
+          </div>
+        </div>
+        <div className="border-2 border-border-default bg-surface-card shadow-theme-card p-4 space-y-3">
+          <Skeleton className="h-5 w-1/3" />
+          <Skeleton className="h-3 w-2/3" />
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-3 w-1/2" />
+        </div>
       </div>
     )
   }

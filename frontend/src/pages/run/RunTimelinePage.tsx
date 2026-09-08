@@ -11,6 +11,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Clock, AlertCircle, CheckCircle, Loader2, ChevronRight } from 'lucide-react'
 import { format, formatDistanceToNow, differenceInSeconds } from 'date-fns'
 import { useTranslation } from '@/i18n'
+import { Skeleton } from '@/components/ui/skeleton'
 import { zhCN } from 'date-fns/locale'
 import { useState, useCallback } from 'react'
 
@@ -215,12 +216,19 @@ export default function RunTimelinePage() {
     setIsDrawerOpen(false)
   }, [])
 
-  // 加载状态
+  // 加载状态（与下方时间线布局同构：头部条 + 事件行）
   if (isLoading) {
     return (
-      <div className="flex h-full flex-col items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-accent-primary" />
-        <p className="mt-4 text-sm text-content-secondary">{t('loading')}</p>
+      <div className="flex h-full flex-col">
+        <div className="flex items-center gap-4 border-b border-border-default px-6 py-4">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-5 w-48" />
+        </div>
+        <div className="p-6 space-y-4 max-w-3xl">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Skeleton key={i} className="h-14 w-full" />
+          ))}
+        </div>
       </div>
     )
   }

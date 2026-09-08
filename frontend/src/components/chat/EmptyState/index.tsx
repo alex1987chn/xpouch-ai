@@ -41,7 +41,7 @@ export default function EmptyState({
     <div className="h-full flex flex-col items-center justify-center p-8 border-2 border-dashed border-border/30 bg-panel/50">
       <div className="text-center space-y-6">
         <div className="flex justify-center">
-          <div className="w-16 h-16 border-2 border-border bg-card shadow-hard flex items-center justify-center">
+          <div className="w-16 h-16 border-2 border-border bg-card shadow-theme-card flex items-center justify-center">
             <LayoutGrid className="w-8 h-8 text-muted-foreground" />
           </div>
         </div>

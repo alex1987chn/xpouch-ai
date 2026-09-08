@@ -152,9 +152,9 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
             className={cn(
               'flex items-center gap-2 px-4 py-2 border-2 border-content-primary',
               'bg-accent-hover text-content-primary font-mono text-xs font-bold uppercase',
-              'shadow-hard-3',
-              'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-hard',
-              'active:translate-x-[1px] active:translate-y-[1px] active:shadow-hard-sm',
+              'shadow-theme-card',
+              'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-theme-card-hover',
+              'active:translate-x-[1px] active:translate-y-[1px] active:shadow-theme-button-active',
               'transition-all',
               'disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0'
             )}
@@ -290,7 +290,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               </div>
 
               {/* 智能体卡片预览 */}
-              <div className="border-2 border-border-default bg-surface-card p-5 shadow-hard-3">
+              <div className="border-2 border-border-default bg-surface-card p-5 shadow-theme-card">
                 {/* 头像和名称 */}
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-14 h-14 border-2 border-border-default bg-accent-hover flex items-center justify-center">

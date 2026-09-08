@@ -33,7 +33,7 @@ interface OrchestratorPanelV2Props {
 // 加载占位符
 function PanelLoader() {
   return (
-    <div className="flex-1 flex h-full bg-page items-center justify-center">
+    <div className="flex-1 flex h-full bg-surface-page items-center justify-center">
       <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
         <Loader2 className="w-4 h-4 animate-spin" />
         <span>Loading Panel...</span>

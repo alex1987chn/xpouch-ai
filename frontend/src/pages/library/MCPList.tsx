@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Server, Plus } from 'lucide-react'
 import { useMCPServers } from '@/hooks/queries/useMCPQuery'
 import { SearchInput } from '@/components/ui/input'
+import { CardSkeleton } from '@/components/ui/skeleton'
 import MCPCard from './components/MCPCard'
 import { AddMCPDialog } from './components/AddMCPDialog'
 import { useTranslation } from '@/i18n'
@@ -66,11 +67,13 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
     setExpandedId(prev => prev === serverId ? null : serverId)
   }
 
-  // 加载状态
+  // 加载状态（与下方服务卡片堆叠布局同构）
   if (isLoading) {
     return (
-      <div className="text-center py-20 font-mono text-sm text-content-muted uppercase">
-        {t('loading') || 'Loading...'}
+      <div className="space-y-4">
+        {Array.from({ length: 3 }, (_, i) => (
+          <CardSkeleton key={i} />
+        ))}
       </div>
     )
   }
@@ -105,10 +108,10 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
             className={cn(
               "h-11 px-4 flex items-center gap-2",
               "bg-surface-elevated text-content-primary font-mono text-xs font-bold uppercase",
-              "border-2 border-border-default shadow-hard",
+              "border-2 border-border-default shadow-theme-card",
               "hover:bg-accent-brand hover:text-content-inverted hover:border-accent-brand",
-              "hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-hover",
-              "active:translate-x-0 active:translate-y-0 active:shadow-hard",
+              "hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-theme-card-hover",
+              "active:translate-x-0 active:translate-y-0 active:shadow-theme-card",
               "transition-all"
             )}
           >

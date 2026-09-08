@@ -11,6 +11,7 @@ import { useTranslation } from '@/i18n'
 import { logger } from '@/utils/logger'
 import { useToast } from '@/components/ui/use-toast'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { MCPServer } from '@/types/mcp'
 
@@ -88,8 +89,8 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
       <div
         className={cn(
           "group relative bg-surface-card border-2 border-border-default",
-          "shadow-hard transition-all",
-          isExpanded ? "" : "hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-hover"
+          "shadow-theme-card transition-all",
+          isExpanded ? "" : "hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-theme-card-hover"
         )}
       >
         {/* 卡片头部 - 点击展开/折叠 */}
@@ -181,8 +182,10 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
               </div>
               
               {isLoadingTools ? (
-                <div className="py-4 text-center font-mono text-xs text-content-muted">
-                  {t('loading') || 'Loading...'}
+                <div className="py-2 space-y-2">
+                  {Array.from({ length: 3 }, (_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
                 </div>
               ) : isToolsError ? (
                 <div className="py-4 text-center font-mono text-xs text-accent-destructive">

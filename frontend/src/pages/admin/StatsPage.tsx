@@ -15,6 +15,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
+import { Skeleton, CardSkeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
 import { getRunStats } from '@/services/stats'
@@ -57,7 +58,7 @@ function MetricCard({
   }
 
   return (
-    <div className={cn('border-2 p-4 shadow-hard bg-surface-card', colorClasses[color])}>
+    <div className={cn('border-2 p-4 shadow-theme-card bg-surface-card', colorClasses[color])}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-mono uppercase text-content-muted">{title}</span>
         <span className={iconColorClasses[color]}>{icon}</span>
@@ -85,7 +86,7 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
   const maxValue = Math.max(...trends.map((d) => d.total_count), 1)
 
   return (
-    <div className="border-2 border-border-default p-4 shadow-hard">
+    <div className="border-2 border-border-default p-4 shadow-theme-card">
       <h3 className="text-sm font-mono uppercase text-content-muted mb-4">
         {t('trends')} (7{t('days')})
       </h3>
@@ -153,7 +154,7 @@ function RunTable({
   }
 
   return (
-    <div className="border-2 border-border-default shadow-hard overflow-x-auto">
+    <div className="border-2 border-border-default shadow-theme-card overflow-x-auto">
       <table className="w-full">
         <thead>
           <tr className="border-b-2 border-border-default bg-surface-page">
@@ -255,11 +256,15 @@ export default function StatsPage() {
   }
 
   if (isLoading) {
+    // 与下方内容页同构：标题行 + 卡片网格
     return (
-      <div className="min-h-screen bg-surface-page p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-16 text-content-muted font-mono">
-            {t('loading')}
+      <div className="min-h-screen bg-surface-page px-6 md:px-12 py-8">
+        <div className="max-w-5xl mx-auto space-y-6">
+          <Skeleton className="h-7 w-48" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: 6 }, (_, i) => (
+              <CardSkeleton key={i} />
+            ))}
           </div>
         </div>
       </div>

@@ -84,7 +84,11 @@ interface ThemeState {
 function applyTheme(theme: Theme): void {
   if (typeof document !== 'undefined') {
     document.documentElement.setAttribute('data-theme', theme)
-    
+
+    // 生态兼容：本项目样式全走 data-theme + 语义 token，
+    // .dark 类仅供依赖 Tailwind dark: 变体约定的第三方组件使用
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+
     // 更新 color-scheme
     document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'light'
   }

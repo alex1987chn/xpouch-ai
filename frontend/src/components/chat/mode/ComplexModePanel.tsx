@@ -49,11 +49,11 @@ export default function ComplexModePanel({
   }, [tasks, selectedTaskId, selectTask])
 
   return (
-    <div className="flex-1 flex h-full bg-page relative">
+    <div className="flex-1 flex h-full bg-surface-page relative">
       {/* 左侧：Expert Rail */}
       <Suspense
         fallback={
-          <div className="w-20 border-r-2 border-border bg-page flex items-center justify-center">
+          <div className="w-20 border-r-2 border-border bg-surface-page flex items-center justify-center">
             <Loader2 className="w-4 h-4 animate-spin" />
           </div>
         }

@@ -37,7 +37,7 @@ export function ThemeShowcase() {
           />
           <ColorCard 
             name="surface-card" 
-            className="bg-surface-card border-border-default shadow-hard"
+            className="bg-surface-card border-border-default shadow-theme-card"
             description="卡片背景"
           />
           <ColorCard 
@@ -116,9 +116,9 @@ export function ThemeShowcase() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-content-primary">Shadow - 阴影系统</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <ShadowCard name="shadow-hard-sm" className="shadow-hard-sm" />
-          <ShadowCard name="shadow-hard" className="shadow-hard" />
-          <ShadowCard name="shadow-hard-lg" className="shadow-hard-lg" />
+          <ShadowCard name="shadow-theme-button-sm" className="shadow-theme-button-sm" />
+          <ShadowCard name="shadow-theme-card" className="shadow-theme-card" />
+          <ShadowCard name="shadow-theme-card-hover" className="shadow-theme-card-hover" />
           <ShadowCard name="shadow-glow" className="shadow-glow" />
         </div>
       </section>

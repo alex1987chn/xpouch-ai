@@ -60,7 +60,7 @@ const DialogContent = React.forwardRef<
         // 样式
         "gap-4 border-2 border-border-default bg-surface-card p-6",
         // 阴影（使用主题变量）
-        "shadow-hard-lg",
+        "shadow-theme-modal",
         // 动画
         "duration-fast",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
@@ -97,7 +97,7 @@ const DialogContentCentered = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed top-[50%] z-50 grid w-full max-w-lg translate-y-[-50%]",
-        "gap-4 border-2 border-border-default bg-surface-card p-6 shadow-hard-lg",
+        "gap-4 border-2 border-border-default bg-surface-card p-6 shadow-theme-modal",
         "duration-fast",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -200,7 +200,7 @@ const DialogContentPositioned = React.forwardRef<
         ref={ref}
         className={cn(
           "fixed z-50 grid w-full max-w-lg gap-4",
-          "border-2 border-border-default bg-surface-card p-6 shadow-hard-lg",
+          "border-2 border-border-default bg-surface-card p-6 shadow-theme-modal",
           "duration-fast",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -238,7 +238,7 @@ const DialogContentBauhaus = React.forwardRef<
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg",
         "translate-x-[-50%] translate-y-[-50%]",
-        "gap-4 border-2 border-border-default bg-surface-card p-6 shadow-hard-lg",
+        "gap-4 border-2 border-border-default bg-surface-card p-6 shadow-theme-modal",
         "duration-fast",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",

@@ -33,14 +33,14 @@ export default function HeavyInputConsole({
   return (
     <div className="bg-card border-t-2 border-border-default z-20 p-0">
       {/* 输入区域 */}
-      <div className="p-4 pb-4 pt-3 bg-page">
+      <div className="p-4 pb-4 pt-3 bg-surface-page">
         <div className={cn(
           "bg-card border-2 border-border-default shadow-theme-card relative group transition-all rounded-md",
           !disabled && "focus-within:shadow-theme-card-accent"
         )}>
           {/* 行号 + 文本域 */}
           <div className="flex min-h-[100px]">
-            <div className="w-10 py-4 text-right pr-3 font-mono text-xs text-content-primary/50 bg-page border-r-2 border-border-default/20 select-none leading-relaxed">
+            <div className="w-10 py-4 text-right pr-3 font-mono text-xs text-content-primary/50 bg-surface-page border-r-2 border-border-default/20 select-none leading-relaxed">
               01<br/>02<br/>03
             </div>
             <HeavyInputTextArea
@@ -52,7 +52,7 @@ export default function HeavyInputConsole({
           </div>
 
           {/* 工具栏 */}
-          <div className="flex justify-between items-center p-2 border-t-2 border-border-default bg-page">
+          <div className="flex justify-between items-center p-2 border-t-2 border-border-default bg-surface-page">
             {/* 左侧：工具按钮 */}
             <div className="flex items-center gap-4 pl-2">
               <button

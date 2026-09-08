@@ -409,8 +409,8 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                     className={cn(
                       "stagger-item group relative bg-surface-card border-2 p-3 transition-all",
                       isSelected
-                        ? "border-accent-hover shadow-hard-3"
-                        : "border-border-default shadow-hard-3 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard-5 cursor-pointer"
+                        ? "border-accent-hover shadow-theme-card"
+                        : "border-border-default shadow-theme-card hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-theme-card-hover cursor-pointer"
                     )}
                   >
                     <div className="flex items-start gap-3">

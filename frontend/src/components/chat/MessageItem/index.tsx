@@ -461,7 +461,7 @@ function MessageItem({
             {message.timestamp ? formatMessageTime(message.timestamp) : ''}
           </span>
         </div>
-        <div className="bg-surface-elevated text-content-primary p-5 shadow-hard border-2 border-border-default w-fit max-w-[80%] select-text">
+        <div className="bg-surface-elevated text-content-primary p-5 shadow-theme-card border-2 border-border-default w-fit max-w-[80%] select-text">
           <div className="flex gap-3">
             <span className="font-mono text-accent-brand font-bold shrink-0">&gt;_</span>
             <p className="font-mono text-sm leading-relaxed whitespace-pre-wrap select-text text-content-primary">

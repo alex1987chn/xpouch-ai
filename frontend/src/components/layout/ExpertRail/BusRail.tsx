@@ -58,7 +58,7 @@ function ExpertNode({ task, isSelected, isRunning, index, onClick }: ExpertNodeP
           // Failed 状态
           task.status === 'failed' && "opacity-80 border-2 border-status-offline",
           // 选中状态
-          isSelected && "shadow-hard scale-110 bg-accent"
+          isSelected && "shadow-theme-card scale-110 bg-accent"
         )}
       >
         {/* 序号 */}

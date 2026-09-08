@@ -237,7 +237,7 @@ export default function DocArtifact({ content, className, isStreaming }: DocArti
                 return (
                   <div className="my-4">
                     {isTruncatedDoc && (
-                      <div className="flex items-start gap-2 mb-2 px-3 py-2 border border-amber-500/60 bg-amber-500/10 text-xs text-amber-700 dark:text-amber-400 rounded">
+                      <div className="flex items-start gap-2 mb-2 px-3 py-2 border border-amber-500/60 bg-amber-500/10 text-xs text-amber-700 rounded">
                         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                         <span>{t('artifactHtmlTruncated')}</span>
                       </div>

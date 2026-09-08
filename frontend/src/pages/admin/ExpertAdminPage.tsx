@@ -14,6 +14,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from '@/i18n'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
 
@@ -46,7 +47,7 @@ function BauhausToast({
   return (
     <div
       className={cn(
-        'fixed bottom-4 right-4 z-50 px-4 py-3 border-2 shadow-hard font-mono text-xs font-bold uppercase',
+        'fixed bottom-4 right-4 z-50 px-4 py-3 border-2 shadow-theme-card font-mono text-xs font-bold uppercase',
         type === 'success'
           ? 'border-status-online bg-status-online/10 text-content-primary'
           : 'border-status-offline bg-status-offline/10 text-content-primary'
@@ -246,10 +247,21 @@ export default function ExpertAdminPage() {
   }, [queryClient, t])
 
   if (isLoadingExperts) {
+    // 与下方两栏布局同构：左侧专家列表 + 右侧详情/编辑区
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="w-8 h-8 border-2 border-border-default border-t-accent-hover animate-spin" />
-        <span className="ml-3 font-mono text-sm text-content-secondary">{t('loading')}</span>
+      <div className="flex flex-col lg:flex-row gap-4 h-[100dvh] p-4 bg-surface-page">
+        <div className="lg:w-[320px] border-2 border-border-default bg-surface-card p-3 space-y-2">
+          <Skeleton className="h-3.5 w-24" />
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+        <div className="flex-1 border-2 border-border-default bg-surface-card p-4 space-y-3">
+          <Skeleton className="h-5 w-1/4" />
+          <Skeleton className="h-3 w-2/3" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-3 w-1/2" />
+        </div>
       </div>
     )
   }

@@ -127,7 +127,7 @@ function ConstructCard({
                 "flex items-center justify-center",
                 "hover:bg-accent-hover hover:text-content-primary hover:border-accent-hover",
                 "transition-all duration-150",
-                "shadow-hard-sm",
+                "shadow-theme-button-sm",
                 "active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
               )}
               title={t('edit')}
@@ -146,7 +146,7 @@ function ConstructCard({
                 "flex items-center justify-center",
                 "hover:bg-status-offline hover:text-content-inverted hover:border-status-offline",
                 "transition-all duration-150",
-                "shadow-hard-sm",
+                "shadow-theme-button-sm",
                 "active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
               )}
               title={t('delete')}
@@ -191,7 +191,7 @@ function CreateNewCard({ onClick }: { onClick?: () => void }) {
   return (
     <div
       onClick={onClick}
-      className="border-2 border-dashed border-content-secondary p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-surface-card hover:border-solid hover:border-accent-hover hover:shadow-hard-accent-lg transition-all"
+      className="border-2 border-dashed border-content-secondary p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-surface-card hover:border-solid hover:border-accent-hover hover:shadow-theme-card-accent transition-all"
     >
       <div className="w-12 h-12 border-2 border-content-primary flex items-center justify-center mb-4 text-3xl group-hover:bg-accent-hover group-hover:border-accent-hover group-hover:text-content-primary transition-colors bg-surface-page">
         +
@@ -391,7 +391,7 @@ export default function HomePage() {
           <div className="flex-none flex flex-col items-start justify-center mb-10 select-none">
             {/* 状态标签 - 左上角（READY 为装饰性状态，OPEN SOURCE 为仓库外链） */}
             <div className="flex gap-2 mb-4">
-              <span className="px-2 py-1 text-micro font-mono font-bold border border-border bg-accent-hover text-content-primary shadow-hard-sm">
+              <span className="px-2 py-1 text-micro font-mono font-bold border border-border bg-accent-hover text-content-primary shadow-theme-button-sm">
                 READY
               </span>
               <a

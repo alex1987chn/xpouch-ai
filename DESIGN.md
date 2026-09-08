@@ -27,7 +27,7 @@
 **禁令**：
 
 - ❌ 写死 `gray-*` / `slate-*` / hex 到组件配色（暗色主题直接坏）。
-- ❌ 使用 `dark:` 前缀类——本项目主题走 `data-theme` 属性切换，`.dark` 类**从未被添加**，所有 `dark:` 都是死代码（见 `src/index.css:42`）。
+- ❌ 使用 `dark:` 前缀类。本项目主题走 `data-theme` 属性 + 语义 token（切主题 = 换变量值，颜色决策不该写两遍）；html 上的 `.dark` 类仅为兼容依赖该约定的第三方组件而挂载（themeStore），不是本项目的样式机制。
 - ✅ 双主题自查口诀：**token 对 token 自动适配；一旦出现固定色（hex / text-white / bg-black），必须脑内过一遍暗色下的对比度**。
 
 **类型色板（唯一固定色例外）**：产物/图表类型徽章允许固定 hex 底（`ArtifactsPage.tsx` 的 `TYPE_COLORS`），但前景必须用 `text-white` 固定白（不能用 `text-surface-page`——它在暗色下翻转成深色，压不出对比度）。语义化半透明写法参考 `SkillTemplatePanel.tsx` 的 `ARTIFACT_TYPE_COLORS`（`bg-green-500/15 text-content-primary`）。
@@ -52,7 +52,7 @@
   shadow-theme-button hover:shadow-theme-button-hover hover:[transform:var(--transform-button-hover)]
   active:shadow-theme-button-active active:[transform:var(--transform-button-active)]
   ```
-  旧 `shadow-hard-*` 仅存量维护，不扩散。
+  旧 `shadow-hard-*` 已整体退役（v3.4.4 迁移至语义阴影，工具类已从 config 和 index.css 删除），禁止再使用。
 - **圆角**：容器 `rounded-md` 徽章/按钮 `rounded`；整站无大圆角（`--radius-*` 变量统一控制，勿写 `rounded-2xl`）。
 
 ## 4. 布局惯例（内容页）

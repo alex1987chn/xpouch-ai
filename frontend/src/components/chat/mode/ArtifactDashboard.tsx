@@ -320,7 +320,7 @@ export default function ArtifactDashboard({
   const contentElementId = currentArtifact ? `artifact-content-${currentArtifact.id}` : ''
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-page overflow-hidden">
+    <div className="flex-1 flex flex-col min-w-0 bg-surface-page overflow-hidden">
       {/* Tab bar */}
       <div className="h-10 flex items-center border-b-2 border-border-default bg-panel shrink-0 px-2">
         <div className="flex-1 flex items-center gap-1 min-w-0 overflow-hidden">

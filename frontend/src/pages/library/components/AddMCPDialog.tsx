@@ -100,7 +100,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
       onClick={handleClose}
     >
       <div
-        className="relative bg-surface-card border-2 border-border-default shadow-hard-xl w-[420px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface-card border-2 border-border-default shadow-theme-modal w-[420px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - 与 PersonalSettingsDialog 统一 */}
