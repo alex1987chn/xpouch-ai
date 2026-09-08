@@ -10,7 +10,7 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.x-green?logo=langchain)](https://langchain-ai.github.io/langgraph/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://docker.com)
 
-<img src="https://github.com/user-attachments/assets/7755b09f-6bed-453d-814f-6cd331e19c6c" alt="XPouch AI Screenshot" width="900">
+<img src="./.github/images/hero-home.png" alt="XPouch AI Screenshot" width="900">
 
 [问题反馈](https://github.com/alex1987chn/xpouch-ai/issues) · [功能讨论](https://github.com/alex1987chn/xpouch-ai/discussions)
 
@@ -29,11 +29,16 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - `Thread / AgentRun / ExecutionPlan` 三层运行时语义
 - artifact 持久化、恢复展示与多任务串行执行
 - 跨轮产物连续性（追问"把上面的图改成时序图"可直接引用历史产物）
+- 产物中心：跨会话浏览全部产物，一键生成公开分享链接
+- 手机验证码 + 密码双登录，账号与安全独立管理（含忘记密码重置）
+- 断线可恢复：流式中断自动续传，关闭页面任务后台跑完
 - 模型思考过程流式展示（reasoning 增量事件，与正文同管道）
 - 用户级模型配置（simple 模式自选模型与思考开关，无需重启）
+- Token 用量可视化（今日 / 累计）
 - 技能模板（Library 面板 + 内置模板 + 一键发起会话）
 - 模板导入导出（支持 override/clone/skip 策略的 JSON 导入导出）
 - 工具治理（可配置策略 + Library 管理面板，view_admin 只读）
+- 可见但锁的权限模型：管理入口全员可见，数据与操作按角色控制
 - SSE 驱动的 Server-Driven UI（统一事件协议，恰好一次投递）
 - MCP 动态工具接入
 - 三套主题（Light / Dark / Kyoto）与中英日多语言界面
@@ -306,6 +311,11 @@ BACKUP_KEEP=30 ./scripts/backup_db.sh   # 自定义份数
 - 模型思考过程流式展示（reasoning 增量事件）
 - 事件协议 v2 统一（恰好一次投递、单通道分发、契约测试）
 - 跨轮产物连续性（历史产物注入规划 + get_artifact 工具）
+- 密码登录与忘记密码重置（「账号与安全」独立入口）
+- 产物中心 + 单产物分享链接（服务端渲染分享页）
+- 断线续传流式执行 + 任务后台继续执行
+- Token 用量记账与可视化
+- 权限锁定态（可见但锁）与 UI 设计规范文档（DESIGN.md）
 
 ### 下一阶段
 

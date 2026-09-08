@@ -5,6 +5,33 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-09-09] - v3.4.5 交互与权限打磨：账号与安全、权限锁定态、设计规范落地
+
+### 新增功能
+
+- **账号与安全独立弹窗**：密码管理从个人设置迁出（资料与凭证分离，消除「两个保存按钮」的语义冲突）；按钮动词化（设置密码）、支持回车提交、独立 loading 文案
+- **忘记密码**：登录弹窗新增重置流程（`POST /api/auth/reset-password`，手机验证码验证后重置）；验证码发送区分用途，重置场景只发已注册手机号、不自动建号；复用验证码失败锁定防爆破
+- **产物中心来源对话入口**：详情弹窗一键跳转生成该产物的会话（复用 thread_id 冗余列）
+- **统一权限锁定态（可见但锁）**：新增 `PermissionLockCard` 锁卡片组件；专家管理页无权限时展示锁卡片而非裸空列表；专家配置编辑开放给 EDIT_ADMIN（与角色定位对齐），详情接口与列表对齐为 VIEW_ADMIN+
+- **内容页标题行统一**：新增 `PageTitle` 组件，四处内容页全部换用；退役 fixed header（手动对齐侧边栏宽度、内嵌滚动区等心智税一并清除），四页容器模型与标题线宽完全一致
+- **产物详情操作排统一**：来源对话/分享/展开/关闭四个操作统一为图标方块（w-8 h-8 + aria-label），分享去静态文案改为对勾反馈
+
+### 变更
+
+- **设计规范落地（DESIGN.md）**：新增间距/尺寸/位置硬约束（max-w-5xl 唯一内容宽、间距四档、Z_INDEX 唯一层级来源）、权限锁定态规范（§4.5）、暗色自查口诀与 dark: 禁令
+- **骨架屏全覆盖**：新增 Skeleton/CardSkeleton/RowSkeleton，内容页裸「加载中」文字全部替换为同构骨架
+- **动效**：页面切换 200ms 淡入、数据列表 40ms 步长错峰入场；全部受 prefers-reduced-motion 约束
+- **主题机制补强**：切主题同步挂载/摘除 `.dark` 类（兼容依赖该约定的第三方组件）；本项目样式机制不变（data-theme + 语义 token）
+
+### 修复
+
+- **暗色模式对比度**：固定色类型徽章前景改固定白（暗色下深字压彩底不可读）；状态语义色（成功/失败/警告）全站统一走 accent token；清理失效的 `dark:` 前缀类与 36 处旧硬阴影（退役 shadow-hard-* 工具类）
+- 清理 9 处旧底色别名、无使用的旧圆角别名等存量债务
+
+### 其他
+
+- 版本号 3.4.4 → 3.4.5（backend config/pyproject、package.json ×2、UI 常量）
+
 ## [2026-09-08] - v3.4.4 产品闭环：分享、产物中心、密码登录、用量可视化、resumable stream、UTC 统一
 
 ### 新增功能
