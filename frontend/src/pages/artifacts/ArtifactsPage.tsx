@@ -8,11 +8,13 @@
  */
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Expand, Share2, Shrink } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useArtifactsQuery } from '@/hooks/queries/useArtifactsQuery'
 import { getArtifactDetail, shareArtifact } from '@/services/artifacts'
 import { logger } from '@/utils/logger'
+import { Z_INDEX } from '@/constants/zIndex'
 import type { ArtifactListItem } from '@/types'
 import ArtifactRenderer from '@/components/artifacts/ArtifactRenderer'
 import { cn } from '@/lib/utils'
@@ -200,10 +202,13 @@ export default function ArtifactsPage() {
         )}
       </div>
 
-      {/* 详情弹窗 */}
-      {detail && (
+      {/* 详情弹窗（portal 到 body：脱离 AppLayout 层叠上下文，
+          否则遮罩压不住 z=SIDEBAR 的侧边栏，展开时会被遮挡） */}
+      {detail &&
+        createPortal(
         <div
-          className="fixed inset-0 z-[200] bg-black/60 flex items-center justify-center p-4 md:p-10"
+          className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 md:p-10"
+          style={{ zIndex: Z_INDEX.MODAL }}
           onClick={() => setDetail(null)}
         >
           <div
@@ -226,6 +231,7 @@ export default function ArtifactsPage() {
                   </span>
                 )}
               </div>
+              <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={handleShare}
                 disabled={isSharing}
@@ -253,6 +259,7 @@ export default function ArtifactsPage() {
               >
                 {t('close')}
               </button>
+              </div>
             </div>
             <div className="flex-1 min-h-0 overflow-hidden bg-surface-page">
               <ArtifactRenderer
@@ -263,7 +270,8 @@ export default function ArtifactsPage() {
               />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
