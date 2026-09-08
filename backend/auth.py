@@ -61,6 +61,11 @@ class SendCodeRequest(BaseModel):
     """发送验证码请求"""
 
     phone_number: str = Field(..., description="手机号码")
+    purpose: str = Field(
+        default="login",
+        pattern="^(login|password_reset)$",
+        description="验证码用途：login=登录/注册，password_reset=忘记密码",
+    )
 
     @field_validator("phone_number")
     @classmethod
@@ -128,6 +133,21 @@ class SetPasswordRequest(BaseModel):
     old_password: str | None = Field(default=None, max_length=128)
 
 
+class ResetPasswordRequest(BaseModel):
+    """忘记密码重置请求（手机验证码通道）"""
+
+    phone_number: str = Field(..., description="手机号码")
+    code: str = Field(..., min_length=4, max_length=6, description="验证码")
+    password: str = Field(..., min_length=8, max_length=128, description="新密码（至少 8 位）")
+
+    @field_validator("phone_number")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        if not validate_phone_number(v):
+            raise ValueError("请输入有效的手机号码")
+        return v
+
+
 # ==================== Cookie 配置 ====================
 
 
@@ -153,6 +173,45 @@ def _clear_verification_code(user: User) -> None:
     user.verification_code = None
     user.verification_code_expires_at = None
     _reset_verification_state(user)
+
+
+def _verify_code_or_raise(user: User, code: str, session: Session) -> None:
+    """校验验证码；失败按语义转成 HTTPException 并落库失败计数/锁定。
+
+    登录（verify-code）与忘记密码（reset-password）共用同一套校验与防爆破语义。
+    """
+    try:
+        verify_code(
+            stored_code=user.verification_code,
+            provided_code=code,
+            expires_at=user.verification_code_expires_at,
+            locked_until=user.verification_code_locked_until,
+        )
+    except VerificationCodeExpiredError:
+        _clear_verification_code(user)
+        session.add(user)
+        session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="验证码已过期，请重新发送"
+        ) from None
+    except VerificationCodeRateLimitError as e:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e)) from None
+    except VerificationCodeInvalidError as e:
+        attempts, locked_until = apply_failed_verification_attempt(
+            current_attempts=user.verification_code_attempts,
+            max_attempts=settings.verification_code_max_attempts,
+            lockout_minutes=settings.verification_code_lockout_minutes,
+        )
+        user.verification_code_attempts = attempts
+        user.verification_code_locked_until = locked_until
+        session.add(user)
+        session.commit()
+        if locked_until is not None:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="验证码尝试次数过多，请稍后再试",
+            ) from None
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from None
 
 
 # ==================== 辅助函数 ====================
@@ -270,6 +329,14 @@ async def send_verification_code(request: SendCodeRequest, session: Session = De
         logger.info("[Auth] 收到发送验证码请求: %s", masked_phone)
 
         user = session.exec(select(User).where(User.phone_number == phone_number)).first()
+
+        # 忘记密码：验证码只发给已注册手机号，不做登录/注册那套自动建号
+        if user is None and request.purpose == "password_reset":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="账号不存在",
+            )
+
         is_new_user = user is None
         if user is None:
             import uuid
@@ -375,39 +442,8 @@ async def verify_code_and_login(
             status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在，请先发送验证码"
         )
 
-    # 验证验证码
-    try:
-        verify_code(
-            stored_code=user.verification_code,
-            provided_code=code,
-            expires_at=user.verification_code_expires_at,
-            locked_until=user.verification_code_locked_until,
-        )
-    except VerificationCodeExpiredError:
-        _clear_verification_code(user)
-        session.add(user)
-        session.commit()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="验证码已过期，请重新发送"
-        ) from None
-    except VerificationCodeRateLimitError as e:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e)) from None
-    except VerificationCodeInvalidError as e:
-        attempts, locked_until = apply_failed_verification_attempt(
-            current_attempts=user.verification_code_attempts,
-            max_attempts=settings.verification_code_max_attempts,
-            lockout_minutes=settings.verification_code_lockout_minutes,
-        )
-        user.verification_code_attempts = attempts
-        user.verification_code_locked_until = locked_until
-        session.add(user)
-        session.commit()
-        if locked_until is not None:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="验证码尝试次数过多，请稍后再试",
-            ) from None
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from None
+    # 验证验证码（登录/注册与忘记密码共用校验与防爆破语义）
+    _verify_code_or_raise(user, code, session)
 
     # 验证成功，生成token
     access_token = create_access_token(user.id)
@@ -500,6 +536,32 @@ async def login_with_password(
         role=str(user.role) if user.role else "user",
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
+
+
+@router.post("/reset-password")
+async def reset_password(
+    request: ResetPasswordRequest,
+    session: Session = Depends(get_session),
+):
+    """
+    忘记密码：手机验证码验证通过后重置密码。
+
+    - 复用验证码失败锁定（与登录同一套防爆破语义）
+    - 重置成功不自动登录，引导用户用新密码重新登录
+    """
+    user = session.exec(select(User).where(User.phone_number == request.phone_number)).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="账号不存在")
+
+    _verify_code_or_raise(user, request.code, session)
+
+    user.password_hash = hash_password(request.password)
+    _clear_verification_code(user)
+    session.add(user)
+    session.commit()
+    logger.info("[Auth] 用户 %s 通过验证码重置密码成功", mask_phone_number(request.phone_number))
+
+    return {"message": "密码已重置，请使用新密码登录"}
 
 
 @router.post("/set-password", response_model=UserResponse)

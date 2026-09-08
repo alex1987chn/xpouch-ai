@@ -18,7 +18,7 @@ interface UserState {
   // Auth methods
   loginWithPhone: (phoneNumber: string, code: string) => Promise<void>
   loginWithPassword: (identifier: string, password: string) => Promise<void>
-  sendVerificationCode: (phoneNumber: string) => Promise<SendCodeResponse>
+  sendVerificationCode: (phoneNumber: string, purpose?: 'login' | 'password_reset') => Promise<SendCodeResponse>
   logout: () => Promise<void>
   checkAuth: () => Promise<boolean>
 
@@ -37,10 +37,10 @@ export const useUserStore = create<UserState>()(
     isAuthChecked: false,  // P0-6 新增：初始状态为未检查
 
     // Auth: Send verification code
-    sendVerificationCode: async (phoneNumber: string) => {
+    sendVerificationCode: async (phoneNumber: string, purpose: 'login' | 'password_reset' = 'login') => {
       set({ isLoading: true, error: null })
       try {
-        const data = await sendVerificationCode(phoneNumber)
+        const data = await sendVerificationCode(phoneNumber, purpose)
         set({ isLoading: false })
         return data
       } catch (error) {

@@ -151,6 +151,9 @@ export type TranslationKey =
   | 'passwordSetup' | 'oldPasswordPlaceholder' | 'newPasswordPlaceholder'
   | 'passwordSetupHint' | 'passwordSaveLabel' | 'passwordMinLength'
   | 'oldPasswordRequired' | 'passwordSaved'
+  | 'newPasswordLabel' | 'forgotPasswordLink' | 'resetPasswordTitle' | 'resetPasswordAction'
+  | 'resetSendHint' | 'passwordResetSuccess' | 'backToLogin'
+  | 'openSourceThread'
   | 'usageLabel' | 'usageToday' | 'usageTotal'
   // Time & General
   | 'justNow' | 'secondsAgo' | 'general'

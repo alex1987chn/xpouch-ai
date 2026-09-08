@@ -9,7 +9,8 @@
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Expand, Share2, Shrink } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { MessageSquare, Expand, Share2, Shrink } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useArtifactsQuery } from '@/hooks/queries/useArtifactsQuery'
 import { getArtifactDetail, shareArtifact } from '@/services/artifacts'
@@ -47,6 +48,7 @@ function formatDate(iso?: string | null): string {
 
 export default function ArtifactsPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [typeFilter, setTypeFilter] = useState('')
   const [detail, setDetail] = useState<ArtifactListItem | null>(null)
@@ -232,6 +234,16 @@ export default function ArtifactsPage() {
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
+              {detail.thread_id && (
+                <button
+                  onClick={() => navigate(`/chat/${detail.thread_id}`)}
+                  title={t('openSourceThread')}
+                  className="font-mono text-xs border-2 border-border-default px-2 py-0.5 hover:bg-accent hover:border-accent flex items-center gap-1"
+                >
+                  <MessageSquare className="w-3 h-3" />
+                  <span>{t('openSourceThread')}</span>
+                </button>
+              )}
               <button
                 onClick={handleShare}
                 disabled={isSharing}

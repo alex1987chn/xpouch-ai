@@ -59,12 +59,16 @@ export interface TokenResponse {
 
 /**
  * 发送验证码
+ * @param purpose 用途：login=登录/注册，password_reset=忘记密码（不自动建号）
  */
-export async function sendVerificationCode(phoneNumber: string): Promise<SendCodeResponse> {
+export async function sendVerificationCode(
+  phoneNumber: string,
+  purpose: 'login' | 'password_reset' = 'login'
+): Promise<SendCodeResponse> {
   const response = await fetch(buildUrl('/auth/send-code'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone_number: phoneNumber })
+    body: JSON.stringify({ phone_number: phoneNumber, purpose })
   })
   return handleResponse<SendCodeResponse>(response, '发送验证码失败')
 }
@@ -130,6 +134,22 @@ export async function loginWithPasswordApi(
     body: JSON.stringify({ identifier, password })
   })
   return handleResponse<LoginResponse>(response, '登录失败')
+}
+
+/**
+ * 忘记密码：手机验证码验证通过后重置密码（不自动登录）
+ */
+export async function resetPasswordApi(
+  phoneNumber: string,
+  code: string,
+  password: string
+): Promise<{ message: string }> {
+  const response = await fetch(buildUrl('/auth/reset-password'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone_number: phoneNumber, code, password })
+  })
+  return handleResponse<{ message: string }>(response, '重置密码失败')
 }
 
 export interface SetPasswordResponse {
