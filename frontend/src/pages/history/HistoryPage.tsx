@@ -8,7 +8,7 @@ import { formatDistanceToNow, parseISO, isValid } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
 import { logger } from '@/utils/logger'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
-import { useAppUISelectors } from '@/hooks'
+import PageTitle from '@/components/layout/PageTitle'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { RowSkeleton } from '@/components/ui/skeleton'
 import { useChatHistoryQuery, useDeleteConversationMutation, useBatchDeleteConversationsMutation } from '@/hooks/queries'
@@ -21,7 +21,6 @@ interface HistoryPageProps {
 export default function HistoryPage({ onSelectConversation }: HistoryPageProps) {
   const navigate = useNavigate()
   const { t, language } = useTranslation()
-  const { sidebar } = useAppUISelectors()
   const [searchQuery, setSearchQuery] = useState('')
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -249,37 +248,19 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
 
 
   return (
-    <div className="bg-transparent overflow-x-hidden w-full h-full flex flex-col">
-      {/* Bauhaus Header - 硬边风格 */}
-      <header
-        className={cn(
-          "fixed top-0 left-0 right-0 z-40 h-[60px] px-6 border-b-2 border-border-default bg-surface-card transition-all duration-300",
-          "lg:px-6",
-          sidebar.isCollapsed ? "lg:pl-[88px]" : "lg:pl-[320px]"
-        )}
-      >
-        <div className="w-full max-w-5xl mx-auto h-full flex items-center">
-          {/* 左侧：标题 */}
-          <div className="flex items-center h-full gap-3">
-            <div className="w-2 h-2 bg-accent-hover"></div>
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
-              ///
-            </span>
-            <h1 className="text-base font-black uppercase tracking-tight text-content-primary">
-              {t('history')}
-            </h1>
-          </div>
-        </div>
-      </header>
-
-      {/* 可滚动内容区 - Bauhaus风格 */}
+    <div className="min-h-screen bg-surface-page overflow-x-hidden">
+      {/* 可滚动内容区 - Bauhaus风格（标题行内嵌文档流，定位由侧边栏承担） */}
       <div
         ref={scrollContainerRef}
-        className="h-full overflow-y-auto bauhaus-scrollbar overflow-x-hidden pt-[60px]"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
+        {/* 标题行（PageTitle 统一习语） */}
+        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pt-8">
+          <PageTitle title={t('history')} />
+        </div>
+
         {/* 搜索框 - Bauhaus风格 */}
         <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pb-4 mt-6">
           <div className="relative flex items-center">

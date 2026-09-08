@@ -19,6 +19,7 @@ import { Z_INDEX } from '@/constants/zIndex'
 import type { ArtifactListItem } from '@/types'
 import ArtifactRenderer from '@/components/artifacts/ArtifactRenderer'
 import { CardSkeleton } from '@/components/ui/skeleton'
+import PageTitle from '@/components/layout/PageTitle'
 import { cn } from '@/lib/utils'
 
 const TYPE_FILTERS = [
@@ -92,21 +93,15 @@ export default function ArtifactsPage() {
   return (
     <div className="min-h-screen bg-surface-page px-6 md:px-12 py-8">
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* 标题行（LibraryPage 习语） */}
-        <div className="flex justify-between items-end border-b-2 border-border pb-2">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 bg-accent-brand" />
-            <span className="font-mono text-content-muted">///</span>
-            <h1 className="text-xl font-black uppercase tracking-widest text-content-primary">
-              {t('artifactsTitle')}
-            </h1>
-          </div>
-          {data && (
+        {/* 标题行（PageTitle 统一习语） */}
+        <PageTitle
+          title={t('artifactsTitle')}
+          right={data ? (
             <div className="font-mono text-micro text-content-secondary">
               {data.total} {t('artifactsTotalSuffix')}
             </div>
-          )}
-        </div>
+          ) : undefined}
+        />
 
         {/* 类型过滤 */}
         <div className="flex flex-wrap gap-2">

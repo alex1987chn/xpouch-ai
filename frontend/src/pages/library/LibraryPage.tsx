@@ -13,8 +13,8 @@ import { Bot, Database, ShieldAlert, Wrench } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
-import { useAppUISelectors } from '@/hooks'
 import { SearchInput } from '@/components/ui/input'
+import PageTitle from '@/components/layout/PageTitle'
 import { MCPList } from './MCPList'
 import SkillTemplatePanel from './SkillTemplatePanel'
 import ToolGovernancePanel from './ToolGovernancePanel'
@@ -24,7 +24,6 @@ type TabType = 'knowledge' | 'templates' | 'mcp' | 'governance'
 
 export default function LibraryPage() {
   const { t } = useTranslation()
-  const { sidebar } = useAppUISelectors()
   const [activeTab, setActiveTab] = useState<TabType>('templates')
   const [searchQuery, setSearchQuery] = useState('')
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
@@ -36,37 +35,20 @@ export default function LibraryPage() {
   const canEditLibrary = ['admin', 'edit_admin'].includes(role)
 
   return (
-    <div className="bg-transparent overflow-x-hidden w-full h-full flex flex-col">
-      {/* Header - 与 HistoryPage 保持一致 */}
-      <header
-        className={cn(
-          "fixed top-0 left-0 right-0 z-40 h-[60px] px-6 border-b-2 border-border-default bg-surface-card transition-all duration-200",
-          sidebar.isCollapsed ? "lg:pl-[88px]" : "lg:pl-[320px]"
-        )}
-      >
-        <div className="w-full max-w-5xl mx-auto h-full flex items-center">
-          {/* 左侧：标题 */}
-          <div className="flex items-center h-full gap-3">
-            <div className="w-2 h-2 bg-accent-brand" />
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
-              ///
-            </span>
-            <h1 className="text-base font-black uppercase tracking-tight text-content-primary">
-              {t('workshop') || 'WORKSHOP'}
-            </h1>
-          </div>
-        </div>
-      </header>
-
-      {/* 内容区域 */}
+    <div className="min-h-screen bg-surface-page overflow-x-hidden">
+      {/* 内容区域（标题行内嵌文档流，定位由侧边栏承担） */}
       <div
-        className="h-full overflow-y-auto bauhaus-scrollbar overscroll-behavior-y-contain overflow-x-hidden pt-[60px]"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Tabs 导航 - 移到内容区顶部 */}
-        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 py-4">
+        {/* 标题行（PageTitle 统一习语） */}
+        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pt-8">
+          <PageTitle title={t('workshop') || 'WORKSHOP'} />
+        </div>
+
+        {/* Tabs 导航 */}
+        <div className="w-full max-w-5xl mx-auto px-6 md:px-12 pt-6 pb-4">
           <div className="flex gap-1 border-b-2 border-border-default">
             {/* Knowledge Base Tab */}
             <TabButton

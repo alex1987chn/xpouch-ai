@@ -64,6 +64,7 @@
 
 - 容器：`min-h-screen bg-surface-page px-6 md:px-12 py-8` + `max-w-5xl mx-auto`。**`max-w-5xl` 是全站唯一内容宽度**（弹窗内表单页 `max-w-2xl`，数据密集的 admin 页才允许 `max-w-7xl`）。
 - 区块顺序固定：标题行 → 工具/过滤行 → 内容区 → 分页。标题行习语：左侧「`w-2 h-2` 色块 + `///` + 大写标题」，右侧对齐计数/操作，底部 `border-b-2 border-border pb-2`。
+- **标题行统一用 `PageTitle` 组件**（`src/components/layout/PageTitle.tsx`），内嵌文档流、随页滚动；**禁止 fixed/sticky header**——「我在哪」由常驻侧边栏承担，仅当页面长到需要在滚动时持续访问工具行时才重新评估。
 - 卡片网格：`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5`；两栏面板 `lg:grid-cols-[320px_minmax(0,1fr)] gap-4`。
 
 ### 4.2 间距阶梯（垂直与水平）

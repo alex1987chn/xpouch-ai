@@ -15,7 +15,8 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
-import { Skeleton, CardSkeleton } from '@/components/ui/skeleton'
+import { CardSkeleton, Skeleton } from '@/components/ui/skeleton'
+import PageTitle from '@/components/layout/PageTitle'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
 import { getRunStats } from '@/services/stats'
@@ -288,20 +289,15 @@ export default function StatsPage() {
   return (
     <div className="min-h-screen bg-surface-page px-6 md:px-12 py-8">
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* 页面标题 */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BarChart3 className="w-6 h-6" />
-            <h1 className="text-xl font-bold font-mono uppercase">
-              {isAdmin ? t('globalStats') : t('myStats')}
-            </h1>
-          </div>
-          {isAdmin && (
+        {/* 页面标题（PageTitle 统一习语） */}
+        <PageTitle
+          title={isAdmin ? t('globalStats') : t('myStats')}
+          right={isAdmin ? (
             <span className="px-2 py-1 bg-status-warning/15 text-content-primary text-xs font-mono uppercase">
               Admin
             </span>
-          )}
-        </div>
+          ) : undefined}
+        />
 
         {/* 指标卡片 */}
         {data?.metrics && (
