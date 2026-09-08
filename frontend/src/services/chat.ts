@@ -125,6 +125,8 @@ function runSSEStream({
     let doneMarkerReceived = false
     let activeThreadId = threadId
     let activeRunId: string | undefined
+    /** B6 断线续传：最近收到的服务端事件 seq（hub 分配的整数 id） */
+    let lastSeq = 0
     const ctrl = new AbortController()
 
     const { safeResolve, safeReject, startHeartbeat, updateActivity, getIsCompleted } = createSSEPromiseHelpers(
@@ -143,6 +145,121 @@ function runSSEStream({
       abortSignal.addEventListener('abort', () => {
         ctrl.abort()
         safeReject(new Error('请求已取消'))
+      })
+    }
+
+    // 共享消息处理器：主连接与断线续传连接复用同一套分发/正文流式逻辑
+    const handleMessage = async (msg: EventSourceMessage) => {
+      updateActivity()
+
+      if (msg.data === '[DONE]') {
+        logger.debug(`[chat.ts] ${logPrefix}收到 [DONE]，流式响应完成`)
+        doneMarkerReceived = true
+        safeResolve(fullContent)
+        return
+      }
+
+      if (msg.data === '' || msg.event === 'heartbeat') {
+        return
+      }
+
+      // B6：hub 分配的整数 seq，用于断线后续传
+      if (msg.id && /^\d+$/.test(msg.id)) {
+        lastSeq = parseInt(msg.id, 10)
+      }
+
+      try {
+        const eventType = msg.event
+        const eventData = JSON.parse(msg.data)
+
+        if (eventType) {
+          const runtimeMeta: StreamRuntimeMeta = {
+            threadId: activeThreadId,
+            runId: activeRunId,
+          }
+          const fullEvent: AnyServerEvent = {
+            id: msg.id || crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            type: eventType as EventType,
+            data: eventData
+          }
+
+          // 协议 v2 单通道收敛：所有事件统一经 EventHandler（全局唯一分发点），
+          // onChunk 只承担两类职责：message.delta 的正文流式、UI 状态同步（runtimeMeta）
+          if (eventType === 'message.delta') {
+            handleServerEvent(fullEvent)
+            const content = eventData.content
+            if (content && typeof content === 'string' && onChunk) {
+              await onChunk(content, activeThreadId, undefined, undefined, undefined, runtimeMeta)
+              fullContent += content
+            }
+          } else {
+            handleServerEvent(fullEvent)
+            if (onChunk && (eventType.startsWith('message.') || eventType === 'error')) {
+              await onChunk(undefined, activeThreadId, fullEvent, undefined, undefined, runtimeMeta)
+            }
+          }
+
+          if (resolveOnMessageDone && eventType === 'message.done') {
+            doneMarkerReceived = true
+            logger.debug(`[chat.ts] ${logPrefix}收到 message.done，流结束`)
+            safeResolve(fullContent)
+          }
+        }
+      } catch {
+        logger.debug(`[chat.ts] ${logPrefix}解析 SSE 数据失败，跳过:`, msg.data.substring(0, 100))
+      }
+    }
+
+    /**
+     * B6 断线续传：从 lastSeq 之后重放并跟随剩余事件。
+     * 返回是否接管了连接（true = 终态处理归 resume 流负责）。
+     */
+    const attemptResume = (): Promise<boolean> => {
+      return new Promise((resolveHandover) => {
+        if (!activeRunId || !activeThreadId || lastSeq <= 0) {
+          resolveHandover(false)
+          return
+        }
+        let opened = false
+        fetchEventSource(
+          buildUrl(`/chat/${activeThreadId}/stream/resume?last_event_id=${lastSeq}`),
+          {
+            method: 'GET',
+            headers: { ...getHeaders(), Accept: 'text/event-stream' },
+            signal: ctrl.signal,
+            openWhenHidden: true,
+            async onopen(response) {
+              if (!response.ok) {
+                resolveHandover(false)
+                throw new FatalSSEError('resume unavailable', response.status)
+              }
+              opened = true
+              updateActivity()
+              resolveHandover(true)
+              logger.debug(`[chat.ts] ${logPrefix}断线续传连接已建立 (after seq=${lastSeq})`)
+            },
+            onmessage: (msg) => handleMessage(msg),
+            onerror(err) {
+              if (opened) {
+                safeReject(err instanceof Error ? err : new Error('连接中断，请重试'))
+                return
+              }
+              resolveHandover(false)
+            },
+            onclose() {
+              if (doneMarkerReceived) {
+                safeResolve(fullContent)
+                return
+              }
+              if (opened) {
+                safeReject(new Error('连接中断，回答可能不完整，请重试'))
+              }
+            },
+          }
+        ).catch(() => {
+          /* 已通过 resolveHandover/safeReject 结算，静默 */
+        })
       })
     }
 
@@ -193,62 +310,7 @@ function runSSEStream({
         }
       },
 
-      async onmessage(msg: EventSourceMessage) {
-        updateActivity()
-
-        if (msg.data === '[DONE]') {
-          logger.debug(`[chat.ts] ${logPrefix}收到 [DONE]，流式响应完成`)
-          doneMarkerReceived = true
-          safeResolve(fullContent)
-          return
-        }
-
-        if (msg.data === '' || msg.event === 'heartbeat') {
-          return
-        }
-
-        try {
-          const eventType = msg.event
-          const eventData = JSON.parse(msg.data)
-
-          if (eventType) {
-            const runtimeMeta: StreamRuntimeMeta = {
-              threadId: activeThreadId,
-              runId: activeRunId,
-            }
-            const fullEvent: AnyServerEvent = {
-              id: msg.id || crypto.randomUUID(),
-              timestamp: new Date().toISOString(),
-              type: eventType as EventType,
-              data: eventData
-            }
-
-            // 协议 v2 单通道收敛：所有事件统一经 EventHandler（全局唯一分发点），
-            // onChunk 只承担两类职责：message.delta 的正文流式、UI 状态同步（runtimeMeta）
-            if (eventType === 'message.delta') {
-              handleServerEvent(fullEvent)
-              const content = eventData.content
-              if (content && typeof content === 'string' && onChunk) {
-                await onChunk(content, activeThreadId, undefined, undefined, undefined, runtimeMeta)
-                fullContent += content
-              }
-            } else {
-              handleServerEvent(fullEvent)
-              if (onChunk && (eventType.startsWith('message.') || eventType === 'error')) {
-                await onChunk(undefined, activeThreadId, fullEvent, undefined, undefined, runtimeMeta)
-              }
-            }
-
-            if (resolveOnMessageDone && eventType === 'message.done') {
-              doneMarkerReceived = true
-              logger.debug(`[chat.ts] ${logPrefix}收到 message.done，流结束`)
-              safeResolve(fullContent)
-            }
-          }
-        } catch {
-          logger.debug(`[chat.ts] ${logPrefix}解析 SSE 数据失败，跳过:`, msg.data.substring(0, 100))
-        }
-      },
+      onmessage: handleMessage,
 
       onerror(err: unknown) {
         const errorLike = err as { name?: string }
@@ -278,8 +340,19 @@ function runSSEStream({
           )
         }
 
-        // POST+SSE 非幂等：自动重发会重复生成与计费（并可能触发 409 冲突），
-        // 网络错误直接终止并提示用户重发；认证/客户端错误已在上方单独处理
+        // POST+SSE 非幂等：不能重发 POST。优先尝试断点续传（GET，只读重放）：
+        // 成功则交接后续事件处理；失败回到"终止 + 提示重试"的原语义
+        if (!doneMarkerReceived && activeRunId && activeThreadId && lastSeq > 0) {
+          logger.warn(`[chat.ts] ${logPrefix}SSE 网络错误，尝试断点续传 (after seq=${lastSeq})`)
+          void attemptResume().then((handover) => {
+            if (!handover) {
+              safeReject(err instanceof Error ? err : new Error('连接异常，请重试'))
+            }
+          })
+          // 抛出以停止主连接重试；异常由外层 catch 静默（结算权已交接）
+          throw new FatalSSEError('CONNECTION_HANDOVER')
+        }
+
         logger.error(`[chat.ts] ${logPrefix}SSE 网络错误，终止连接（不自动重发）:`, err)
         safeReject(err instanceof Error ? err : new Error('连接异常，请重试'))
         throw new FatalSSEError('连接异常，请重试')
@@ -296,6 +369,12 @@ function runSSEStream({
         logger.warn(`[chat.ts] ${logPrefix}连接关闭但未收到完成标记，内容可能被截断`)
         safeReject(new Error('连接中断，回答可能不完整，请重试'))
       },
+    }).catch((swallowErr: unknown) => {
+      // CONNECTION_HANDOVER：结算权已交接给 resume 流；其余错误已由 safeReject 结算
+      const e = swallowErr as { message?: string }
+      if (e?.message !== 'CONNECTION_HANDOVER') {
+        logger.debug(`[chat.ts] ${logPrefix}主连接终止:`, swallowErr)
+      }
     })
   })
 }

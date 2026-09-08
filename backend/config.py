@@ -129,6 +129,10 @@ class Settings(BaseSettings):
     verification_code_lockout_minutes: int = Field(
         default=10, alias="VERIFICATION_CODE_LOCKOUT_MINUTES"
     )
+    # 密码登录防爆破：同一 identifier 在窗口内的最大失败次数（内存限流，重启清零；
+    # 叠加 bcrypt 成本后对在线爆破已足够，持久化锁定待引入集中式限流时再做）
+    password_max_attempts: int = Field(default=10, alias="PASSWORD_MAX_ATTEMPTS")
+    password_attempt_window_minutes: int = Field(default=5, alias="PASSWORD_ATTEMPT_WINDOW_MINUTES")
     verification_code_send_cooldown_seconds: int = Field(
         default=60, alias="VERIFICATION_CODE_SEND_COOLDOWN_SECONDS"
     )

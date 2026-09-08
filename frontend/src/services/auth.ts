@@ -4,7 +4,7 @@
  * P0 修复: Token 改为 HttpOnly Cookie，不再从响应中读取
  */
 
-import { buildUrl, handleResponse } from './common'
+import { authenticatedFetch, buildUrl, handleResponse } from './common'
 
 // ============================================================================
 // 类型定义
@@ -113,4 +113,41 @@ export async function logoutApi(): Promise<{ message: string }> {
     credentials: 'include'
   })
   return handleResponse<{ message: string }>(response, '登出失败')
+}
+
+/**
+ * 密码登录（identifier 支持手机号或邮箱）
+ * Token 通过 HttpOnly Cookie 自动管理
+ */
+export async function loginWithPasswordApi(
+  identifier: string,
+  password: string
+): Promise<LoginResponse> {
+  const response = await fetch(buildUrl('/auth/login-password'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ identifier, password })
+  })
+  return handleResponse<LoginResponse>(response, '登录失败')
+}
+
+export interface SetPasswordResponse {
+  id: string
+  username: string
+}
+
+/**
+ * 设置/修改密码（已登录用户；已有密码时必须提供旧密码）
+ */
+export async function setPasswordApi(
+  password: string,
+  oldPassword?: string
+): Promise<SetPasswordResponse> {
+  const response = await authenticatedFetch(buildUrl('/auth/set-password'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password, old_password: oldPassword })
+  })
+  return handleResponse<SetPasswordResponse>(response, '设置密码失败')
 }

@@ -28,6 +28,8 @@ from utils.jwt_handler import (
     AuthenticationError,
     create_access_token,
     create_refresh_token,
+    hash_password,
+    verify_password,
     verify_token,
 )
 from utils.logger import logger
@@ -109,6 +111,20 @@ class UserResponse(BaseModel):
     phone_number: str | None
     email: str | None
     is_verified: bool
+
+
+class PasswordLoginRequest(BaseModel):
+    """密码登录请求（identifier 支持手机号或邮箱）"""
+
+    identifier: str = Field(..., min_length=3, max_length=64, description="手机号或邮箱")
+    password: str = Field(..., min_length=1, max_length=128)
+
+
+class SetPasswordRequest(BaseModel):
+    """设置密码请求（已登录用户；已有密码时必须提供 old_password）"""
+
+    password: str = Field(..., min_length=8, max_length=128, description="新密码（至少 8 位）")
+    old_password: str | None = Field(default=None, max_length=128)
 
 
 # ==================== Cookie 配置 ====================
@@ -212,7 +228,32 @@ def get_refresh_token_from_cookie(request: Request) -> str:
 
 
 # 从 dependencies 导入统一的 get_current_user
+# 密码登录防爆破：内存滑动窗口（identifier 维度，进程内语义）
+from collections import defaultdict, deque
+from time import monotonic
+
 from dependencies import get_current_user
+
+_password_attempts: dict[str, deque[float]] = defaultdict(deque)
+
+
+def _password_attempts_exhausted(identifier: str) -> bool:
+    """窗口内失败次数是否已达上限（不在窗口内的旧记录顺手清理）"""
+    now = monotonic()
+    window = settings.password_attempt_window_minutes * 60
+    hits = _password_attempts[identifier]
+    while hits and now - hits[0] > window:
+        hits.popleft()
+    return len(hits) >= settings.password_max_attempts
+
+
+def _record_password_failure(identifier: str) -> None:
+    _password_attempts[identifier].append(monotonic())
+
+
+def _reset_password_failures(identifier: str) -> None:
+    _password_attempts.pop(identifier, None)
+
 
 # ==================== API端点 ====================
 
@@ -393,6 +434,113 @@ async def verify_code_and_login(
         username=user.username,
         role=str(user.role) if user.role else "user",
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # 秒
+    )
+
+
+@router.post("/login-password", response_model=LoginResponse)
+async def login_with_password(
+    request: PasswordLoginRequest,
+    response: Response,
+    session: Session = Depends(get_session),
+):
+    """
+    密码登录（identifier 支持手机号或邮箱）。
+
+    防爆破：同一 identifier 在窗口内失败超过上限后拒绝（内存限流）。
+    未设置密码的账号返回 404（与账号不存在同文案，不泄漏存在性）。
+    """
+    identifier = request.identifier.strip()
+    limiter_key = identifier.lower()
+
+    if _password_attempts_exhausted(limiter_key):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="尝试次数过多，请稍后再试",
+        )
+
+    if "@" in identifier:
+        user = session.exec(select(User).where(User.email == identifier)).first()
+    else:
+        user = session.exec(select(User).where(User.phone_number == identifier)).first()
+
+    if not user or not user.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="账号不存在或未设置密码登录",
+        )
+
+    if not verify_password(request.password, user.password_hash):
+        _record_password_failure(limiter_key)
+        logger.warning(
+            "[Auth] 密码登录失败: %s",
+            mask_phone_number(identifier) if "@" not in identifier else identifier,
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="密码错误")
+
+    _reset_password_failures(limiter_key)
+
+    access_token = create_access_token(user.id)
+    refresh_token = create_refresh_token(user.id)
+    user.is_verified = True
+    user.access_token = hash_secret(access_token)
+    user.refresh_token = hash_secret(refresh_token)
+    user.token_expires_at = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    set_auth_cookies(response, access_token, refresh_token)
+    logger.info(f"[Auth] 用户 {user.id} 密码登录成功")
+
+    return LoginResponse(
+        message="登录成功",
+        user_id=user.id,
+        username=user.username,
+        role=str(user.role) if user.role else "user",
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+
+
+@router.post("/set-password", response_model=UserResponse)
+async def set_password(
+    request: SetPasswordRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    设置/修改密码（已登录用户）。
+
+    - 首次设置：无需旧密码
+    - 已有密码：必须提供 old_password 校验
+    """
+    user = session.get(User, current_user.id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    if user.password_hash:
+        if not request.old_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="已设置过密码，请提供旧密码",
+            )
+        if not verify_password(request.old_password, user.password_hash):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="旧密码错误")
+
+    user.password_hash = hash_password(request.password)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    logger.info(f"[Auth] 用户 {user.id} 设置密码成功")
+
+    return UserResponse(
+        id=user.id,
+        username=user.username,
+        avatar=user.avatar,
+        plan=user.plan,
+        role=user.role,
+        phone_number=user.phone_number,
+        email=user.email,
+        is_verified=user.is_verified,
     )
 
 

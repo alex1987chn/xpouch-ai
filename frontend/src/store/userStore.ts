@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 // P0 修复: 移除 persist，Token 改为 HttpOnly Cookie
 import { getUserProfile, updateUserProfile, type UserProfile } from '@/services/user'
-import { sendVerificationCode, verifyCodeAndLogin, logoutApi, type SendCodeResponse } from '@/services/auth'
+import { sendVerificationCode, verifyCodeAndLogin, loginWithPasswordApi, logoutApi, type SendCodeResponse } from '@/services/auth'
 import { logger, errorHandler } from '@/utils/logger'
 
 function isStatusError(error: unknown): error is { status?: number } {
@@ -17,6 +17,7 @@ interface UserState {
 
   // Auth methods
   loginWithPhone: (phoneNumber: string, code: string) => Promise<void>
+  loginWithPassword: (identifier: string, password: string) => Promise<void>
   sendVerificationCode: (phoneNumber: string) => Promise<SendCodeResponse>
   logout: () => Promise<void>
   checkAuth: () => Promise<boolean>
@@ -71,6 +72,30 @@ export const useUserStore = create<UserState>()(
         }
       } catch (error) {
         errorHandler.handleSync(error, 'loginWithPhone')
+        set({ error: errorHandler.getUserMessage(error), isLoading: false, isAuthenticated: false, isAuthChecked: true })
+        throw error
+      }
+    },
+
+    // Auth: Login with password（手机号或邮箱）
+    loginWithPassword: async (identifier: string, password: string) => {
+      set({ isLoading: true, error: null })
+      try {
+        await loginWithPasswordApi(identifier, password)
+        try {
+          const user = await getUserProfile()
+          set({
+            user,
+            isAuthenticated: true,
+            isAuthChecked: true,
+            isLoading: false
+          })
+        } catch (profileError) {
+          errorHandler.handleSync(profileError, 'getUserProfile')
+          throw profileError
+        }
+      } catch (error) {
+        errorHandler.handleSync(error, 'loginWithPassword')
         set({ error: errorHandler.getUserMessage(error), isLoading: false, isAuthenticated: false, isAuthChecked: true })
         throw error
       }

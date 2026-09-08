@@ -811,7 +811,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                                 if event_type == "on_custom_event" and name == "sse_event":
                                     event_str = sse_payload_to_wire(token)
                                     if event_str:
-                                        await sse_queue.put({"type": "sse", "event": event_str})
+                                        await _push_event(event_str)
                                     continue
 
                                 # 检测 aggregator 开始执行
@@ -835,7 +835,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                                 # 转换并推送事件给前端
                                 event_str = self.transform_langgraph_event(token, message_id)
                                 if event_str:
-                                    await sse_queue.put({"type": "sse", "event": event_str})
+                                    await _push_event(event_str)
                                     if "message.done" in event_str:
                                         aggregator_executed = True
 
@@ -890,7 +890,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                         if event_type == "on_custom_event" and name == "sse_event":
                             custom_str = sse_payload_to_wire(token)
                             if custom_str:
-                                await sse_queue.put({"type": "sse", "event": custom_str})
+                                await _push_event(custom_str)
                                 if "message.done" in custom_str:
                                     logger.info(
                                         "[Producer] 已发送 message.done，标记 aggregator 完成"
@@ -919,7 +919,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
 
                         event_str = self.transform_langgraph_event(token, message_id)
                         if event_str:
-                            await sse_queue.put({"type": "sse", "event": event_str})
+                            await _push_event(event_str)
 
                             # 🔥 如果发送了 message.done 事件，说明 aggregator 已完成
                             if "message.done" in event_str:
@@ -959,10 +959,23 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             except Exception as e:
                 logger.error(f"[StreamService] Producer 错误: {e}", exc_info=True)
             finally:
+                if run_id:
+                    hub.close(run_id)
                 await sse_queue.put({"type": "done"})
 
         # 启动生产者
         producer_task = asyncio.create_task(producer())
+
+        # 🔥 B6 断线续传：统一事件出口——分配 seq id 写入 hub 缓冲，
+        # 再投递给当前消费者（主连接或 resume 连接各自订阅）
+        from services.chat.stream_hub import get_stream_hub
+
+        hub = get_stream_hub()
+
+        async def _push_event(event_str: str) -> None:
+            if run_id:
+                event_str = hub.publish(run_id, event_str)
+            await sse_queue.put({"type": "sse", "event": event_str})
 
         try:
             # 消费并 yield 事件

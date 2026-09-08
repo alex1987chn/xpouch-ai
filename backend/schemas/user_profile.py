@@ -21,3 +21,5 @@ class UserProfileResponse(BaseModel):
     plan: str
     role: UserRole
     updated_at: datetime | None = None
+    # 是否已设置密码（布尔，不含哈希本身）——前端据此决定是否要求旧密码
+    has_password: bool = False

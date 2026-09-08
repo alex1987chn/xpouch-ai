@@ -30,23 +30,28 @@ import asyncio
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from crud.agent_run import create_agent_run, ensure_no_active_run_for_thread
 from database import get_session
 from dependencies import get_current_user
 from models import (
+    AgentRun,
     MessageResponse,
     PaginatedThreadListResponse,
+    Thread,
     ThreadDetailResponse,
     User,
 )
+from models.enums import RunStatus
 from schemas.task import PaginatedArtifactListResponse
 from services.chat.artifact_service import ArtifactService
 from services.chat.recovery_service import RecoveryService
 from services.chat.share_service import ShareService
+from services.chat.stream_hub import get_stream_hub
 from services.chat.stream_service import StreamService
 
 # 🔥 Service 层导入（backend 是 Python 路径根）
@@ -492,3 +497,69 @@ async def revoke_artifact_share(
     """撤销该产物的全部分享链接"""
     service = ShareService(session)
     return await asyncio.to_thread(service.revoke_shares, artifact_id, current_user.id)
+
+
+# ============================================================================
+# SSE 断线续传（B6）
+# ============================================================================
+
+_RUN_TERMINAL_STATUSES = {
+    RunStatus.COMPLETED,
+    RunStatus.FAILED,
+    RunStatus.CANCELLED,
+    RunStatus.TIMED_OUT,
+}
+
+
+@router.get("/chat/{thread_id}/stream/resume")
+async def resume_stream(
+    thread_id: str,
+    last_event_id: int = 0,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """从 last_event_id 之后重放并继续推送该 run 的 SSE 事件流。
+
+    - run 已终态 / 缓冲不可用（重启丢缓冲、seq 超出窗口）：410，
+      前端退化到"后台跑完 + 轮询刷新"路径
+    - 正常返回 SSE：先补放 backlog，再跟随实时事件直到 producer 收尾
+    """
+    thread = session.get(Thread, thread_id)
+    if not thread or thread.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="会话不存在")
+
+    run = session.exec(
+        select(AgentRun).where(AgentRun.thread_id == thread_id).order_by(AgentRun.started_at.desc())
+    ).first()
+    if not run or run.status in _RUN_TERMINAL_STATUSES:
+        raise HTTPException(status_code=410, detail="执行已结束，请刷新会话查看结果")
+
+    subscription = get_stream_hub().subscribe(run.id, last_event_id)
+    if subscription is None:
+        raise HTTPException(status_code=410, detail="执行流缓冲不可用，请稍后刷新查看结果")
+    backlog, queue, closed = subscription
+
+    async def _resume_gen():
+        try:
+            for _seq, wire in backlog:
+                yield wire
+            if not closed:
+                while True:
+                    try:
+                        item = await asyncio.wait_for(queue.get(), timeout=30)
+                    except TimeoutError:
+                        # SSE 注释行：保持链路活跃，解析器忽略
+                        yield ": keepalive\n\n"
+                        continue
+                    if item is None:
+                        return
+                    _seq, wire = item
+                    yield wire
+        finally:
+            get_stream_hub().unsubscribe(run.id, queue)
+
+    return StreamingResponse(
+        _resume_gen(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
