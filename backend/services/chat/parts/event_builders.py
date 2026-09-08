@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
 from models import AgentRun
@@ -21,6 +20,7 @@ from utils.sse_builder import (
     build_message_done_event,
     build_message_thinking_event,
 )
+from utils.time import utc_now_naive
 
 
 class EventBuildersMixin:
@@ -52,7 +52,7 @@ class EventBuildersMixin:
         if agent_run is None:
             return
 
-        if agent_run.deadline_at and agent_run.deadline_at <= datetime.now():
+        if agent_run.deadline_at and agent_run.deadline_at <= utc_now_naive():
             timed_out = mark_run_timed_out_by_id(
                 self.db,
                 run_id,

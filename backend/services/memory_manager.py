@@ -1,5 +1,4 @@
 import asyncio
-from datetime import datetime
 
 from sqlmodel import Session, select
 
@@ -7,6 +6,7 @@ from database import engine
 from models.memory import UserMemory
 from providers_config import get_embedding_client
 from utils.logger import logger
+from utils.time import utc_now_naive
 
 
 def get_embedding(text: str) -> list[float]:
@@ -50,7 +50,7 @@ class MemoryManager:
                     user_id=user_id,
                     content=content,
                     embedding=vector,
-                    created_at=datetime.now().isoformat(),
+                    created_at=utc_now_naive().isoformat(),
                     source=source,
                     memory_type=memory_type,
                 )

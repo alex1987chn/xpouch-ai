@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import datetime
 
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import BaseMessage
@@ -19,6 +18,7 @@ from providers_config import get_model_config, get_provider_api_key, get_provide
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
 from utils.llm_factory import get_llm_instance
+from utils.time import utc_now_naive
 
 
 class CustomAgentMixin:
@@ -51,7 +51,7 @@ class CustomAgentMixin:
             actual_message_id = message_id or str(uuid.uuid4())
 
             # 心跳配置 - 从 config 导入
-            last_heartbeat_time = datetime.now()
+            last_heartbeat_time = utc_now_naive()
 
             try:
                 # 构建 LLM
@@ -100,11 +100,11 @@ class CustomAgentMixin:
                         # 心跳保活
                         self._touch_agent_run(agent_run.id, current_node="custom_agent")
                         yield self._build_heartbeat_event()
-                        last_heartbeat_time = datetime.now()
+                        last_heartbeat_time = utc_now_naive()
                         continue
 
                     # 强制心跳
-                    current_time = datetime.now()
+                    current_time = utc_now_naive()
                     time_since_last = (current_time - last_heartbeat_time).total_seconds()
                     if time_since_last >= settings.force_heartbeat_interval:
                         self._touch_agent_run(agent_run.id, current_node="custom_agent")

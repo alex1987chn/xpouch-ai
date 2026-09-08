@@ -8,7 +8,6 @@ v3.6 更新：使用 prompt_utils.inject_current_time 替代内联实现
 """
 
 import re
-from datetime import datetime
 from typing import Any, Literal
 
 from langchain_core.messages import SystemMessage
@@ -24,6 +23,7 @@ from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from utils.event_generator import event_router_decision, event_router_start
 from utils.logger import logger
 from utils.prompt_utils import inject_current_time  # v3.6: 提取到工具函数
+from utils.time import utc_now_naive
 
 
 class RoutingDecision(BaseModel):
@@ -187,7 +187,7 @@ def _fill_router_placeholders(system_prompt: str, user_query: str, relevant_memo
     - {relevant_memories}: 相关记忆
     """
     # 准备时间信息
-    now = datetime.now()
+    now = utc_now_naive()
     weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
     weekday_str = weekdays[now.weekday()]
     time_str = now.strftime(f"%Y年%m月%d日 %H:%M:%S {weekday_str}")

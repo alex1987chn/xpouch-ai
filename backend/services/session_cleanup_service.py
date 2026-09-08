@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import and_, or_
@@ -20,6 +20,7 @@ from crud.agent_run import derive_thread_status_from_run_status, mark_run_timed_
 from database import engine
 from models import AgentRun, ExecutionPlan, RunStatus, Thread, ThreadStatus
 from utils.logger import logger
+from utils.time import utc_now_naive
 
 THREAD_RETENTION_DAYS = settings.thread_retention_days
 STALE_RUNNING_THREAD_MINUTES = max(5, settings.request_timeout_seconds // 60)
@@ -69,7 +70,7 @@ def _cleanup_once() -> dict[str, Any]:
     - 历史遗留的 running 线程展示态 -> 按最近一次 AgentRun 重新同步
     - idle/paused 且超过保留周期 -> 删除线程（级联删除消息与关联数据）
     """
-    now = datetime.now()
+    now = utc_now_naive()
     stale_running_before = now - timedelta(minutes=STALE_RUNNING_THREAD_MINUTES)
     expired_before = now - timedelta(days=THREAD_RETENTION_DAYS)
 

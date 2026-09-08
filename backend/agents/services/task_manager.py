@@ -15,7 +15,6 @@ Author: XPouch AI Team
 Created: 2026-02-05
 """
 
-from datetime import datetime
 from typing import Any
 
 from sqlmodel import Session
@@ -32,6 +31,7 @@ from crud.execution_plan import (
 from crud.run_event import emit_artifact_generated, emit_task_completed
 from models import TaskStatus
 from utils.logger import logger
+from utils.time import utc_now_naive
 
 # =============================================================================
 # ExecutionPlan 管理
@@ -208,10 +208,10 @@ def save_expert_execution_result(
         # 2. 更新 SubTask 状态 - 直接操作对象避免参数问题
         subtask.status = TaskStatus.COMPLETED
         subtask.output_result = {"content": output_result}
-        subtask.completed_at = datetime.now()
+        subtask.completed_at = utc_now_naive()
         if duration_ms is not None:
             subtask.duration_ms = duration_ms
-        subtask.updated_at = datetime.now()
+        subtask.updated_at = utc_now_naive()
         db.add(subtask)
         db.commit()
         db.refresh(subtask)

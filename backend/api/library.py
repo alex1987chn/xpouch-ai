@@ -3,7 +3,6 @@ Library API: skill/template abstraction 第一版
 """
 
 import json
-from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
@@ -32,6 +31,7 @@ from schemas.template_import_export import (
 )
 from utils.exceptions import AuthorizationError, NotFoundError, ValidationError
 from utils.logger import logger
+from utils.time import utc_now_naive
 
 router = APIRouter(prefix="/api/library", tags=["library"])
 
@@ -128,7 +128,7 @@ async def delete_skill_template(
 
 def _generate_suggested_key(base_key: str) -> str:
     """生成建议的新 key（添加时间戳后缀）"""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = utc_now_naive().strftime("%Y%m%d_%H%M%S")
     return f"{base_key}_imported_{timestamp}"
 
 
@@ -237,7 +237,7 @@ async def export_skill_template(
             artifact_schema_hint=template.artifact_schema_hint,
         ),
         meta=TemplateExportMeta(
-            exported_at=datetime.now(),
+            exported_at=utc_now_naive(),
             exported_by=str(current_user.id) if current_user else None,
             source_instance=None,  # 可从配置读取
         ),

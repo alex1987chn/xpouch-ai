@@ -22,6 +22,7 @@ from database import get_session
 from dependencies import require_role
 from models import SystemExpert, User, UserRole
 from utils.logger import logger
+from utils.time import utc_now_naive
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -388,7 +389,6 @@ async def preview_expert(
 
     注意：此 API 不会刷新缓存，仅用于预览效果
     """
-    from datetime import datetime
 
     from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -404,7 +404,7 @@ async def preview_expert(
         )
 
     # 调用 LLM 进行预览
-    started_at = datetime.now()
+    started_at = utc_now_naive()
 
     try:
         # 使用工厂方法创建 LLM 实例
@@ -432,7 +432,7 @@ async def preview_expert(
             ]
         )
 
-        completed_at = datetime.now()
+        completed_at = utc_now_naive()
         execution_time_ms = int((completed_at - started_at).total_seconds() * 1000)
 
         return ExpertPreviewResponse(
@@ -470,7 +470,6 @@ async def generate_expert_description(
     - 描述应简洁明了，突出专家核心能力
     - 不会保存到数据库，仅返回生成的描述供前端使用
     """
-    from datetime import datetime
 
     from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -494,7 +493,7 @@ System Prompt:
 
     try:
         # 使用 Router LLM 生成描述（温度稍高以获得更有创意的描述）
-        started_at = datetime.now()
+        started_at = utc_now_naive()
         llm = get_router_llm()
 
         # 获取温度参数
@@ -515,7 +514,7 @@ System Prompt:
         # 清理可能的引号
         description = description.strip('"').strip("'")
 
-        completed_at = datetime.now()
+        completed_at = utc_now_naive()
         execution_time_ms = int((completed_at - started_at).total_seconds() * 1000)
 
         return GenerateDescriptionResponse(
@@ -546,7 +545,6 @@ async def create_expert(
     - expert_key 必须唯一
     - 新创建的专家 is_dynamic 默认为 True（用户创建的专家）
     """
-    from datetime import datetime
 
     # 检查 expert_key 是否已存在
     existing_expert = session.exec(
@@ -567,7 +565,7 @@ async def create_expert(
         model=expert_create.model,
         temperature=expert_create.temperature,
         is_dynamic=True,  # 用户创建的专家默认为动态专家
-        updated_at=datetime.now(),
+        updated_at=utc_now_naive(),
     )
 
     session.add(new_expert)

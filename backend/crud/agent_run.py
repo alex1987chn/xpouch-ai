@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sqlmodel import Session, select
 
@@ -11,6 +11,7 @@ from crud.run_event import emit_run_created, emit_run_started, emit_run_timed_ou
 from models import AgentRun, RunStatus, Thread, ThreadStatus
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
+from utils.time import utc_now_naive
 
 ACTIVE_RUN_STATUSES = {
     RunStatus.QUEUED,
@@ -36,7 +37,7 @@ def _sync_thread_status(db: Session, thread_id: str, status: RunStatus) -> None:
         return
 
     thread.status = derive_thread_status_from_run_status(status)
-    thread.updated_at = datetime.now()
+    thread.updated_at = utc_now_naive()
     db.add(thread)
 
 
@@ -51,7 +52,7 @@ def create_agent_run(
     checkpoint_namespace: str | None = None,
 ) -> AgentRun:
     """创建新的运行实例。"""
-    started_at = datetime.now()
+    started_at = utc_now_naive()
     run = AgentRun(
         thread_id=thread_id,
         user_id=user_id,
@@ -140,8 +141,8 @@ def ensure_no_active_run_for_thread(
 def mark_run_completed(db: Session, run: AgentRun) -> None:
     """标记运行完成。"""
     run.status = RunStatus.COMPLETED
-    run.completed_at = datetime.now()
-    run.updated_at = datetime.now()
+    run.completed_at = utc_now_naive()
+    run.updated_at = utc_now_naive()
     db.add(run)
     _sync_thread_status(db, run.thread_id, run.status)
 
@@ -167,8 +168,8 @@ def update_run_status(
     run.status = status
     if current_node is not None:
         run.current_node = current_node
-    run.last_heartbeat_at = datetime.now()
-    run.updated_at = datetime.now()
+    run.last_heartbeat_at = utc_now_naive()
+    run.updated_at = utc_now_naive()
     db.add(run)
     _sync_thread_status(db, run.thread_id, run.status)
 
@@ -184,7 +185,7 @@ def mark_run_failed(
     run.status = RunStatus.FAILED
     run.error_code = error_code
     run.error_message = error_message
-    run.updated_at = datetime.now()
+    run.updated_at = utc_now_naive()
     db.add(run)
     _sync_thread_status(db, run.thread_id, run.status)
 
@@ -216,7 +217,7 @@ def touch_run_heartbeat_by_id(
         return None
     if current_node is not None:
         run.current_node = current_node
-    now = datetime.now()
+    now = utc_now_naive()
     run.last_heartbeat_at = now
     run.updated_at = now
     db.add(run)
@@ -254,8 +255,8 @@ def mark_run_timed_out_by_id(
     run.current_node = current_node
     run.error_code = error_code
     run.error_message = error_message
-    run.timed_out_at = datetime.now()
-    run.updated_at = datetime.now()
+    run.timed_out_at = utc_now_naive()
+    run.updated_at = utc_now_naive()
     db.add(run)
     emit_run_timed_out(
         db,
@@ -284,8 +285,8 @@ def mark_run_cancelled_by_id(
     run.current_node = current_node
     run.error_code = error_code
     run.error_message = error_message
-    run.cancelled_at = datetime.now()
-    run.updated_at = datetime.now()
+    run.cancelled_at = utc_now_naive()
+    run.updated_at = utc_now_naive()
     db.add(run)
     _sync_thread_status(db, run.thread_id, run.status)
     return run

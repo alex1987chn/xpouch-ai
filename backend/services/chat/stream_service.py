@@ -19,7 +19,6 @@ SSE 流式输出核心服务
 import asyncio
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import datetime
 from typing import Any
 
 from fastapi.responses import StreamingResponse
@@ -43,6 +42,7 @@ from services.mcp_tools_service import mcp_tools_service
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
 from utils.logger import logger
+from utils.time import utc_now_naive
 
 
 class StreamService(CustomAgentMixin, EventBuildersMixin):
@@ -496,8 +496,8 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             execution_plan.user_query = execution_plan.user_query or user_message
             execution_plan.status = TaskStatus.COMPLETED
             execution_plan.final_response = last_message.content
-            execution_plan.updated_at = datetime.now()
-            execution_plan.completed_at = datetime.now()
+            execution_plan.updated_at = utc_now_naive()
+            execution_plan.completed_at = utc_now_naive()
             self.db.add(execution_plan)
             self.db.flush()
 
@@ -520,7 +520,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                         task_description=subtask["description"],
                         input_data=subtask.get("input_data", {}),
                         execution_plan_id=execution_plan.id,
-                        created_at=datetime.now(),
+                        created_at=utc_now_naive(),
                     )
 
                 db_subtask.expert_type = subtask["expert_type"]
@@ -530,7 +530,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                 db_subtask.output_result = subtask.get("output_result")
                 db_subtask.started_at = subtask.get("started_at")
                 db_subtask.completed_at = subtask.get("completed_at")
-                db_subtask.updated_at = datetime.now()
+                db_subtask.updated_at = utc_now_naive()
                 self.db.add(db_subtask)
                 self.db.flush()
 
@@ -629,7 +629,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             agent_run = self.db.get(AgentRun, run_id)
             if agent_run:
                 agent_run.mode = mode
-                agent_run.updated_at = datetime.now()
+                agent_run.updated_at = utc_now_naive()
                 self.db.add(agent_run)
 
         self.db.commit()
@@ -1289,7 +1289,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
 
             if execution_plan:
                 execution_plan.status = status
-                execution_plan.updated_at = datetime.now()
+                execution_plan.updated_at = utc_now_naive()
                 self.db.add(execution_plan)
                 self.db.commit()
                 logger.info(

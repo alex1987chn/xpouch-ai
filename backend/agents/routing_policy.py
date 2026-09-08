@@ -10,6 +10,7 @@ from typing import Any
 from langchain_core.messages import ToolMessage
 
 from agents.state import AgentState
+from utils.time import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ def should_trip_tool_loop_guard(messages: list[Any]) -> tuple[bool, str]:
     if len(tool_names) >= TOOL_LOOP_MAX_TOTAL:
         return True, f"最近 {TOOL_LOOP_WINDOW} 条内工具调用过多({len(tool_names)})"
 
-    now = datetime.now()
+    now = utc_now_naive()
     recent_by_time = 0
     for msg in tool_messages:
         ts = _extract_tool_message_timestamp(msg)

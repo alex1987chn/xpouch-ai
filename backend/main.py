@@ -20,8 +20,18 @@ load_dotenv(dotenv_path=env_path, override=True)
 
 from contextlib import asynccontextmanager
 
+# ============================================================================
+# 时间序列化约定（P7 UTC 化配套）
+# ============================================================================
+# DB 时间列统一存 naive UTC（utils/time.utc_now_naive）。FastAPI 默认把
+# naive datetime 序列化为无时区后缀的 ISO 串，浏览器会按本地时区解析——
+# 服务器本地化时代恰好成立，UTC 化后会把时间显示成 8 小时后。此处全局
+# 为 naive datetime 追加 "Z"，明确告知前端"这是 UTC"。
+from datetime import datetime as _dt
+
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.encoders import ENCODERS_BY_TYPE
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -41,6 +51,8 @@ from models import SkillTemplate, SystemExpert
 from routers import agents, chat, mcp, public, runs, stats, system
 from utils.exceptions import AppError, handle_error
 from utils.logger import logger
+
+ENCODERS_BY_TYPE[_dt] = lambda o: o.isoformat() + "Z"
 
 # ============================================================================
 # Lifespan - 应用生命周期管理

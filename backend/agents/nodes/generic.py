@@ -57,7 +57,6 @@ import asyncio  # 🔥 用于异步保存专家执行结果
 import json
 import os
 import re
-from datetime import datetime
 from typing import Any
 
 from cachetools import TTLCache
@@ -77,6 +76,7 @@ from tools import ASYNC_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集�
 from utils.llm_factory import get_effective_model, get_expert_llm
 from utils.logger import logger
 from utils.prompt_utils import enhance_system_prompt_with_tools  # v3.6: 提取到工具函数
+from utils.time import utc_now_naive
 
 # P0 优化: 本地内存缓存高频专家配置查询 (5分钟TTL, 最大200条)
 _generic_expert_cache: TTLCache = register_expert_cache(
@@ -198,8 +198,8 @@ async def generic_worker_node(
             "output_result": "没有待执行的任务",
             "status": GraphTaskStatus.FAILED,
             "error": "Task index out of range",
-            "started_at": datetime.now().isoformat(),
-            "completed_at": datetime.now().isoformat(),
+            "started_at": utc_now_naive().isoformat(),
+            "completed_at": utc_now_naive().isoformat(),
         }
 
     current_task = task_list[current_index]
@@ -212,8 +212,8 @@ async def generic_worker_node(
             "output_result": "任务缺少 expert_type 字段",
             "status": GraphTaskStatus.FAILED,
             "error": "Missing expert_type in task",
-            "started_at": datetime.now().isoformat(),
-            "completed_at": datetime.now().isoformat(),
+            "started_at": utc_now_naive().isoformat(),
+            "completed_at": utc_now_naive().isoformat(),
         }
 
     # P0 修复 + 优化: 优先使用本地内存缓存，缓存未命中才查数据库
@@ -252,11 +252,11 @@ async def generic_worker_node(
             "output_result": f"专家 '{expert_type}' 未找到",
             "status": GraphTaskStatus.FAILED,
             "error": f"Expert '{expert_type}' not found in database",
-            "started_at": datetime.now().isoformat(),
-            "completed_at": datetime.now().isoformat(),
+            "started_at": utc_now_naive().isoformat(),
+            "completed_at": utc_now_naive().isoformat(),
         }
 
-    started_at = datetime.now()
+    started_at = utc_now_naive()
 
     task_id = current_task.get("id", str(current_index))
 
@@ -579,7 +579,7 @@ async def generic_worker_node(
         # 没有工具调用，正常完成任务
         logger.info("[GenericWorker] ℹ️ LLM 返回了普通文本响应，未调用工具")
 
-        completed_at = datetime.now()
+        completed_at = utc_now_naive()
         duration_ms = int((completed_at - started_at).total_seconds() * 1000)
 
         logger.info(f"[GenericWorker] '{expert_type}' completed (耗时: {duration_ms / 1000:.2f}s)")
@@ -828,7 +828,7 @@ async def generic_worker_node(
             "status": GraphTaskStatus.FAILED,
             "error": str(e),
             "started_at": started_at.isoformat(),
-            "completed_at": datetime.now().isoformat(),
+            "completed_at": utc_now_naive().isoformat(),
             # 正式 schema 键（替代 __expert_info）
             "last_expert_result": {
                 "expert_type": expert_type,

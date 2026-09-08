@@ -5,7 +5,6 @@ SSE 事件生成器
 
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import datetime
 from typing import Any
 
 from event_types.events import (
@@ -29,6 +28,7 @@ from event_types.events import (
     build_sse_event,
     sse_event_to_string,
 )
+from utils.time import utc_now_naive
 
 
 class EventGenerator:
@@ -122,7 +122,7 @@ class EventGenerator:
             task_id=task_id,
             expert_type=expert_type,
             description=description,
-            started_at=datetime.now().isoformat(),
+            started_at=utc_now_naive().isoformat(),
         )
         return build_sse_event(EventType.TASK_STARTED, data, self._next_event_id())
 
@@ -155,7 +155,7 @@ class EventGenerator:
             status="completed",
             output=output,
             duration_ms=duration_ms,
-            completed_at=datetime.now().isoformat(),
+            completed_at=utc_now_naive().isoformat(),
             artifact_count=artifact_count,
         )
         return build_sse_event(EventType.TASK_COMPLETED, data, self._next_event_id())
@@ -167,7 +167,7 @@ class EventGenerator:
             expert_type=expert_type,
             description=description,
             error=error,
-            failed_at=datetime.now().isoformat(),
+            failed_at=utc_now_naive().isoformat(),
         )
         return build_sse_event(EventType.TASK_FAILED, data, self._next_event_id())
 
@@ -225,7 +225,7 @@ class EventGenerator:
 
     def router_start(self, query: str) -> SSEEvent:
         """生成 router.start 事件"""
-        data = RouterStartData(query=query, timestamp=datetime.now().isoformat())
+        data = RouterStartData(query=query, timestamp=utc_now_naive().isoformat())
         return build_sse_event(EventType.ROUTER_START, data, self._next_event_id())
 
     def router_decision(self, decision: str, reason: str | None = None) -> SSEEvent:

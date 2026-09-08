@@ -12,6 +12,7 @@ from sqlmodel import Session, select
 
 from database import engine
 from models import ToolPolicy
+from utils.time import utc_now_naive
 
 
 @dataclass(frozen=True)
@@ -33,11 +34,11 @@ class ToolPolicyService:
         self._cache_lock = asyncio.Lock()
 
     async def get_overrides(self) -> dict[tuple[str, str], ToolPolicyOverride]:
-        now = datetime.now(UTC)
+        now = utc_now_naive()
         if now < self._cache_expire_at:
             return self._cache
         async with self._cache_lock:
-            now = datetime.now(UTC)
+            now = utc_now_naive()
             if now < self._cache_expire_at:
                 return self._cache
             overrides = await asyncio.to_thread(self._load_overrides_sync)

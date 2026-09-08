@@ -3,11 +3,12 @@ SSE 事件类型定义
 统一前后端事件协议
 """
 
-from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+from utils.time import utc_now_naive
 
 
 class EventType(StrEnum):
@@ -263,7 +264,7 @@ def build_sse_event(
 
     return SSEEvent(
         id=event_id or str(uuid.uuid4()),
-        timestamp=datetime.now().isoformat(),
+        timestamp=utc_now_naive().isoformat(),
         type=event_type,
         data=data.model_dump(),
     )

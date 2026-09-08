@@ -14,7 +14,6 @@ Artifact 分享服务（B2 单产物分享）
 
 import time
 from collections import defaultdict, deque
-from datetime import datetime
 from secrets import token_urlsafe
 from typing import Any
 
@@ -25,6 +24,7 @@ from models import Artifact, ExecutionPlan, ShareToken, SubTask, Thread
 from utils.exceptions import AuthorizationError, NotFoundError
 from utils.logger import logger
 from utils.secret_hash import hash_secret
+from utils.time import utc_now_naive
 
 
 class ShareRateLimiter:
@@ -82,7 +82,7 @@ class ShareService:
             artifact_id=artifact.id,
             token_hash=hash_secret(token),
             created_by=user_id,
-            created_at=datetime.now(),
+            created_at=utc_now_naive(),
         )
         self.db.add(share)
         self.db.commit()
@@ -101,7 +101,7 @@ class ShareService:
 
         revoked = 0
         for share in self.db.query(ShareToken).filter_by(artifact_id=artifact_id, revoked_at=None):
-            share.revoked_at = datetime.now()
+            share.revoked_at = utc_now_naive()
             self.db.add(share)
             revoked += 1
         self.db.commit()

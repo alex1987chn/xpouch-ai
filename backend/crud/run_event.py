@@ -7,12 +7,12 @@ RunEvent 数据访问层
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
 from sqlmodel import Session, select
 
 from models import RunEvent, RunEventType
+from utils.time import utc_now_naive
 
 
 def append_run_event(
@@ -49,7 +49,7 @@ def append_run_event(
         thread_id=thread_id,
         execution_plan_id=execution_plan_id,
         task_id=task_id,
-        timestamp=datetime.now(),
+        timestamp=utc_now_naive(),
         note=note,
     )
     db.add(event)

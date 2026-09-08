@@ -13,7 +13,7 @@ P0 安全修复: 2025-02-24
 - 登出（清除 Cookie）
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
@@ -35,6 +35,7 @@ from utils.jwt_handler import (
 from utils.logger import logger
 from utils.secret_hash import hash_secret
 from utils.sms_service import send_verification_code_with_fallback
+from utils.time import utc_now_naive
 from utils.verification import (
     VerificationCodeExpiredError,
     VerificationCodeInvalidError,
@@ -416,7 +417,7 @@ async def verify_code_and_login(
     user.is_verified = True
     user.access_token = hash_secret(access_token)
     user.refresh_token = hash_secret(refresh_token)
-    user.token_expires_at = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    user.token_expires_at = utc_now_naive() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     _clear_verification_code(user)
 
     session.add(user)
@@ -484,7 +485,7 @@ async def login_with_password(
     user.is_verified = True
     user.access_token = hash_secret(access_token)
     user.refresh_token = hash_secret(refresh_token)
-    user.token_expires_at = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    user.token_expires_at = utc_now_naive() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -579,7 +580,7 @@ async def refresh_access_token_endpoint(
 
         # 更新用户的 access token
         user.access_token = hash_secret(new_access_token)
-        user.token_expires_at = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        user.token_expires_at = utc_now_naive() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
         session.add(user)
         session.commit()

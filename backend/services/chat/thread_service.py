@@ -22,6 +22,7 @@ from sqlmodel import Session, func, select
 from constants import SYSTEM_AGENT_DEFAULT_CHAT, SYSTEM_AGENT_ORCHESTRATOR, normalize_agent_id
 from models import AgentRun, CustomAgent, ExecutionPlan, Message, SubTask, Thread
 from utils.exceptions import AuthorizationError, NotFoundError
+from utils.time import utc_now_naive
 
 
 def save_assistant_message_sync(
@@ -52,14 +53,14 @@ def save_assistant_message_sync(
         role="assistant",
         content=clean_content,
         extra_data=extra_data if extra_data else None,
-        timestamp=datetime.now(),
+        timestamp=utc_now_naive(),
     )
     db.add(message)
 
     # 更新线程时间
     thread = db.get(Thread, thread_id)
     if thread:
-        thread.updated_at = datetime.now()
+        thread.updated_at = utc_now_naive()
         db.add(thread)
 
     db.commit()
@@ -482,8 +483,8 @@ class ChatThreadService:
             agent_type=agent_type,
             thread_mode="simple",
             user_id=user_id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=utc_now_naive(),
+            updated_at=utc_now_naive(),
         )
         self.db.add(thread)
         self.db.commit()
@@ -506,7 +507,7 @@ class ChatThreadService:
             保存的消息实例
         """
         message = Message(
-            thread_id=thread_id, role="user", content=content, timestamp=datetime.now()
+            thread_id=thread_id, role="user", content=content, timestamp=utc_now_naive()
         )
         self.db.add(message)
         self.db.commit()

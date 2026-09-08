@@ -10,7 +10,7 @@
 - commit 策略：写函数内部 commit（调用方无需关心事务边界）。
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sqlmodel import Session, select
 
@@ -20,6 +20,7 @@ from models import AgentRun, ExecutionPlan
 from models.enums import RunStatus
 from utils.exceptions import AuthorizationError, NotFoundError, ValidationError
 from utils.logger import logger
+from utils.time import utc_now_naive
 
 
 def update_run_status(
@@ -75,7 +76,7 @@ def reset_deadline(session: Session, run_id: str, budget_seconds: int) -> None:
     """恢复执行时重置完整执行预算（每轮批准都是新的执行爆发）。"""
     run = session.get(AgentRun, run_id)
     if run:
-        run.deadline_at = datetime.now() + timedelta(seconds=budget_seconds)
+        run.deadline_at = utc_now_naive() + timedelta(seconds=budget_seconds)
         session.add(run)
         session.commit()
         logger.info(f"[RunLifecycle] deadline reset (+{budget_seconds}s) for run {run_id}")

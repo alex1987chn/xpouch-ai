@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
 
 from event_types.events import (
     ErrorData,
@@ -28,6 +27,7 @@ from event_types.events import (
 )
 from utils.error_codes import ErrorCode, as_error_code
 from utils.event_generator import sse_event_to_string
+from utils.time import utc_now_naive
 
 
 def build_message_delta_event(message_id: str, content: str) -> str:
@@ -88,4 +88,4 @@ def build_human_interrupt_event(
 
 
 def build_heartbeat_event() -> str:
-    return f"event: heartbeat\ndata: {json.dumps({'ts': datetime.now().isoformat()})}\n\n"
+    return f"event: heartbeat\ndata: {json.dumps({'ts': utc_now_naive().isoformat()})}\n\n"

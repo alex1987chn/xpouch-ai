@@ -6,8 +6,6 @@ ExecutionPlan / SubTask / Artifact 数据访问层。
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, func, select
 
@@ -22,6 +20,7 @@ from models import (
     TaskStatus,
     Thread,
 )
+from utils.time import utc_now_naive
 
 
 def create_execution_plan(
@@ -73,7 +72,7 @@ def update_execution_plan(
     for key, value in update_dict.items():
         setattr(execution_plan, key, value)
 
-    execution_plan.updated_at = datetime.now()
+    execution_plan.updated_at = utc_now_naive()
     db.add(execution_plan)
     db.commit()
     db.refresh(execution_plan)
@@ -95,8 +94,8 @@ def update_execution_plan_status(
     if final_response is not None:
         execution_plan.final_response = final_response
     if status in (TaskStatus.COMPLETED, TaskStatus.FAILED):
-        execution_plan.completed_at = datetime.now()
-    execution_plan.updated_at = datetime.now()
+        execution_plan.completed_at = utc_now_naive()
+    execution_plan.updated_at = utc_now_naive()
 
     db.add(execution_plan)
     db.commit()
@@ -162,9 +161,9 @@ def update_subtask_status(
 
     subtask.status = status
     if status == TaskStatus.RUNNING and not subtask.started_at:
-        subtask.started_at = datetime.now()
+        subtask.started_at = utc_now_naive()
     if status in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
-        subtask.completed_at = datetime.now()
+        subtask.completed_at = utc_now_naive()
     if output_result is not None:
         subtask.output_result = output_result
     if error_message is not None:
@@ -172,7 +171,7 @@ def update_subtask_status(
     if duration_ms is not None:
         subtask.duration_ms = duration_ms
 
-    subtask.updated_at = datetime.now()
+    subtask.updated_at = utc_now_naive()
     db.add(subtask)
     db.commit()
     db.refresh(subtask)
@@ -189,7 +188,7 @@ def update_subtask(db: Session, subtask_id: str, update_data: SubTaskUpdate) -> 
     for key, value in update_dict.items():
         setattr(subtask, key, value)
 
-    subtask.updated_at = datetime.now()
+    subtask.updated_at = utc_now_naive()
     db.add(subtask)
     db.commit()
     db.refresh(subtask)

@@ -23,6 +23,7 @@ from sqlmodel import Session, select
 from database import engine
 from models.mcp import MCPServer
 from utils.logger import logger
+from utils.time import utc_now_naive
 
 
 class MCPToolsService:
@@ -53,7 +54,7 @@ class MCPToolsService:
         async with self._cache_lock:
             if self._cache is not None:
                 tools, cached_at, cached_hash = self._cache
-                elapsed = (datetime.now() - cached_at).total_seconds()
+                elapsed = (utc_now_naive() - cached_at).total_seconds()
                 if elapsed < self._cache_ttl_seconds:
                     logger.debug(f"[MCP] 使用缓存工具 ({elapsed:.1f}s)")
                     return tools
@@ -138,7 +139,7 @@ class MCPToolsService:
                         ).encode()
                     ).hexdigest()
                     async with self._cache_lock:
-                        self._cache = (tools, datetime.now(), current_servers_hash)
+                        self._cache = (tools, utc_now_naive(), current_servers_hash)
 
         except TimeoutError:
             logger.error("[MCP] 获取 MCP 工具超时 (10秒)")

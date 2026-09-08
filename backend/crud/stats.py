@@ -16,6 +16,7 @@ from sqlmodel import Session
 
 from models import AgentRun, RunEvent, User
 from models.enums import RunEventType, RunStatus
+from utils.time import utc_now_naive
 
 
 def get_run_metrics(
@@ -117,7 +118,7 @@ def get_daily_trends(
     Returns:
         每日趋势列表
     """
-    since = datetime.now() - timedelta(days=days)
+    since = utc_now_naive() - timedelta(days=days)
 
     # 使用 date_trunc 按天分组聚合
     # 注意：GROUP BY 必须使用与 SELECT 相同的表达式

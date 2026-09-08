@@ -8,13 +8,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from sqlmodel import Session, func, select
 
 from crud.query_helpers import get_owned_custom_agent_or_404
 from models import CustomAgent, CustomAgentCreate, CustomAgentUpdate, Thread
 from utils.logger import logger as app_logger
+from utils.time import utc_now_naive
 
 
 class AgentService:
@@ -98,7 +97,7 @@ class AgentService:
         if agent_data.model_id is not None:
             agent.model_id = agent_data.model_id
 
-        agent.updated_at = datetime.now()
+        agent.updated_at = utc_now_naive()
         self.session.add(agent)
         self.session.commit()
         self.session.refresh(agent)
