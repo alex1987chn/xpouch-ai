@@ -135,6 +135,12 @@ export default defineConfig({
         target: 'http://127.0.0.1:3002',
         changeOrigin: true,
         secure: false
+      },
+      // 产物分享页（B2）：后端 SSR 路由，若不加代理会被 SPA 回退截胡跳首页
+      '/s': {
+        target: 'http://127.0.0.1:3002',
+        changeOrigin: true,
+        secure: false
       }
     }
   }
