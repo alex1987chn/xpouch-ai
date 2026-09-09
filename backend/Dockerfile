@@ -29,7 +29,7 @@ COPY utils/ ./utils/
 COPY event_types/ ./event_types/
 COPY agents/ ./agents/
 COPY crud/ ./crud/
-COPY api/ ./api/
+COPY auth/ ./auth/
 COPY tools/ ./tools/
 COPY migrations/ ./migrations/
 COPY alembic.ini ./
