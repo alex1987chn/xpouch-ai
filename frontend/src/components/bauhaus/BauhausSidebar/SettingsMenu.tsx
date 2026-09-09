@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { User, Cog, ShieldCheck, ArrowRight, Star, Copy, Check, ArrowUpRight } from 'lucide-react'
+import { Cog, ArrowRight, Star, Copy, Check, ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logger } from '@/utils/logger'
 import { GithubMark } from '@/components/common'
@@ -46,8 +46,6 @@ export function SettingsMenu({
   isAuthenticated,
   user,
   language,
-  onPersonalSettingsClick,
-  onSecuritySettingsClick,
   onSettingsClick,
   onMobileClose,
   onLogout,
@@ -178,30 +176,6 @@ export function SettingsMenu({
         <div className="border-t-2 border-border-default pt-1">
           <button
             onClick={() => {
-              onPersonalSettingsClick?.()
-              onClose()
-              onMobileClose?.()
-            }}
-            className={MENU_ROW}
-          >
-            <User className="w-4 h-4" />
-            <span className="font-bold uppercase">{t('personalSettings')}</span>
-          </button>
-
-          <button
-            onClick={() => {
-              onSecuritySettingsClick?.()
-              onClose()
-              onMobileClose?.()
-            }}
-            className={MENU_ROW}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span className="font-bold uppercase">{t('accountSecurity')}</span>
-          </button>
-
-          <button
-            onClick={() => {
               onSettingsClick?.()
               onClose()
               onMobileClose?.()
@@ -209,7 +183,7 @@ export function SettingsMenu({
             className={MENU_ROW}
           >
             <Cog className="w-4 h-4" />
-            <span className="font-bold uppercase">{t('modelConfig')}</span>
+            <span className="font-bold uppercase">{t('settings')}</span>
           </button>
 
           <a

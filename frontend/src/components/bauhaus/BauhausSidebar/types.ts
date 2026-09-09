@@ -15,8 +15,6 @@ export interface BauhausSidebarProps {
   isCollapsed?: boolean
   onCreateAgent?: () => void
   onSettingsClick?: () => void
-  onPersonalSettingsClick?: () => void
-  onSecuritySettingsClick?: () => void
   onToggleCollapsed?: () => void
   isMobileOpen?: boolean
   onMobileClose?: () => void
@@ -84,8 +82,6 @@ export interface SettingsMenuProps {
   } | null
   currentPlan: 'Free' | 'Pilot' | 'Maestro'
   language: 'zh' | 'en' | 'ja'
-  onPersonalSettingsClick?: () => void
-  onSecuritySettingsClick?: () => void
   onSettingsClick?: () => void
   onMobileClose?: () => void
   onLogout: () => void

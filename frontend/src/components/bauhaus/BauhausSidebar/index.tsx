@@ -56,8 +56,6 @@ export default function BauhausSidebar({
   className,
   isCollapsed = false,
   onSettingsClick,
-  onPersonalSettingsClick,
-  onSecuritySettingsClick,
   onToggleCollapsed,
   onMobileClose,
 }: BauhausSidebarProps) {
@@ -327,8 +325,6 @@ export default function BauhausSidebar({
         user={user}
         currentPlan={currentPlan}
         language={language}
-        onPersonalSettingsClick={onPersonalSettingsClick}
-        onSecuritySettingsClick={onSecuritySettingsClick}
         onSettingsClick={onSettingsClick}
         onMobileClose={onMobileClose}
         onLogout={handleLogout}

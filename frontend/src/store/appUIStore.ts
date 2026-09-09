@@ -21,10 +21,6 @@ type AppUIActions = {
   openSettings: (section?: SettingsSection) => void
   closeSettings: () => void
   setSettingsSection: (section: SettingsSection) => void
-  /** 历史入口：打开并定位到个人资料分区 */
-  openPersonalSettings: () => void
-  /** 历史入口：打开并定位到账号与安全分区 */
-  openSecuritySettings: () => void
   openDeleteConfirm: (id: string, name: string) => void
   closeDeleteConfirm: () => void
   openLogin: () => void
@@ -66,8 +62,6 @@ export const useAppUIStore = create<AppUIStore>((set) => ({
     }),
   closeSettings: () => set({ settingsHubOpen: false }),
   setSettingsSection: (section) => set({ settingsHubSection: section }),
-  openPersonalSettings: () => set({ settingsHubOpen: true, settingsHubSection: 'profile' }),
-  openSecuritySettings: () => set({ settingsHubOpen: true, settingsHubSection: 'security' }),
   openDeleteConfirm: (id: string, name: string) =>
     set({
       deletingAgentId: id,

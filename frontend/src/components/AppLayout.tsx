@@ -156,9 +156,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
           isMobileOpen={sidebar.isMobileOpen}
           onMobileClose={sidebar.closeMobile}
           onCreateAgent={handleCreateAgent}
-          onSettingsClick={() => dialogs.openSettings('model')}
-          onPersonalSettingsClick={dialogs.openPersonalSettings}
-          onSecuritySettingsClick={dialogs.openSecuritySettings}
+          onSettingsClick={() => dialogs.openSettings()}
           onToggleCollapsed={sidebar.toggleCollapsed}
         />
       </aside>
@@ -172,9 +170,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
               isMobileOpen={sidebar.isMobileOpen}
               onMobileClose={sidebar.closeMobile}
               onCreateAgent={handleCreateAgent}
-              onSettingsClick={() => dialogs.openSettings('model')}
-              onPersonalSettingsClick={dialogs.openPersonalSettings}
-              onSecuritySettingsClick={dialogs.openSecuritySettings}
+              onSettingsClick={() => dialogs.openSettings()}
               onToggleCollapsed={sidebar.toggleCollapsed}
             />
           </div>

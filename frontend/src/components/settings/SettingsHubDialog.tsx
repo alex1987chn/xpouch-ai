@@ -47,7 +47,7 @@ export function SettingsHubDialog() {
     >
       <div
         {...a11y}
-        className="relative bg-surface-card border-2 border-border-default shadow-theme-modal w-[600px] max-w-[90vw] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface-card border-2 border-border-default shadow-theme-modal w-[600px] max-w-[90vw] h-[600px] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - Bauhaus风格 */}
@@ -90,10 +90,16 @@ export function SettingsHubDialog() {
           ))}
         </div>
 
-        {/* 分区内容：仅挂载当前分区，切换即重置该分区编辑态 */}
-        {section === 'profile' && <ProfileSection onClose={closeSettings} />}
-        {section === 'model' && <ModelSection onClose={closeSettings} />}
-        {section === 'security' && <SecuritySection />}
+        {/* 分区内容：固定高度外壳 + key 触发淡入，切换 tab 时壳体不跳动；
+            仅挂载当前分区，切换即重置该分区编辑态 */}
+        <div
+          key={section}
+          className="flex-1 min-h-0 flex flex-col animate-in fade-in duration-150"
+        >
+          {section === 'profile' && <ProfileSection onClose={closeSettings} />}
+          {section === 'model' && <ModelSection onClose={closeSettings} />}
+          {section === 'security' && <SecuritySection />}
+        </div>
       </div>
     </div>,
     document.body

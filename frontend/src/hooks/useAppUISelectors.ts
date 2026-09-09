@@ -20,8 +20,6 @@ export function useAppUISelectors() {
 
   const openSettings = useAppUIStore((s) => s.openSettings)
   const closeSettings = useAppUIStore((s) => s.closeSettings)
-  const openPersonalSettings = useAppUIStore((s) => s.openPersonalSettings)
-  const openSecuritySettings = useAppUIStore((s) => s.openSecuritySettings)
   const openDeleteConfirm = useAppUIStore((s) => s.openDeleteConfirm)
   const closeDeleteConfirm = useAppUIStore((s) => s.closeDeleteConfirm)
   const openLogin = useAppUIStore((s) => s.openLogin)
@@ -44,8 +42,6 @@ export function useAppUISelectors() {
       loginOpen,
       openSettings,
       closeSettings,
-      openPersonalSettings,
-      openSecuritySettings,
       openDeleteConfirm,
       closeDeleteConfirm,
       openLogin,
