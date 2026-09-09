@@ -4,6 +4,8 @@
 
 **An open-source, controllable multi-expert Agent Runtime for real task execution.**
 
+English | [简体中文](./README.zh-CN.md)
+
 [![License](https://img.shields.io/badge/License-Apache%202.0%20with%20Additional%20Terms-blue.svg)](./LICENSE)
 [![CI](https://github.com/alex1987chn/xpouch-ai/actions/workflows/ci.yml/badge.svg)](./actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue?logo=python)](https://python.org)
@@ -13,130 +15,130 @@
 
 <img src="./.github/images/hero-home.png" alt="XPouch AI Screenshot" width="900">
 
-[在线体验](https://xpouch.ai) · [问题反馈](https://github.com/alex1987chn/xpouch-ai/issues) · [功能讨论](https://github.com/alex1987chn/xpouch-ai/discussions)
+[Try it Live](https://xpouch.ai) · [Issues](https://github.com/alex1987chn/xpouch-ai/issues) · [Discussions](https://github.com/alex1987chn/xpouch-ai/discussions)
 
 </div>
 
 ---
 
-## 项目简介
+## What is XPouch AI?
 
-XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtime。系统将规划、审批、执行、恢复和产物沉淀放在同一条可追踪主链中，而不是只提供一层聊天 UI。
+XPouch AI is an open-source multi-expert Agent Runtime built for real task execution. It puts planning, approval, execution, recovery, and artifact persistence on a single, fully traceable main chain — instead of offering just another chat UI.
 
-当前稳定基线包括：
+The current stable baseline includes:
 
-- simple / complex 双模式
-- complex 模式下的 HITL 审批与恢复
-- `Thread / AgentRun / ExecutionPlan` 三层运行时语义
-- artifact 持久化、恢复展示与多任务串行执行
-- 跨轮产物连续性（追问"把上面的图改成时序图"可直接引用历史产物）
-- 产物中心：跨会话浏览全部产物，一键生成公开分享链接
-- 手机验证码 + 密码双登录，账号与安全独立管理（含忘记密码重置）
-- 断线可恢复：流式中断自动续传，关闭页面任务后台跑完
-- 模型思考过程流式展示（reasoning 增量事件，与正文同管道）
-- 用户级模型配置（simple 模式自选模型与思考开关，无需重启）
-- Token 用量可视化（今日 / 累计）
-- 技能模板（Library 面板 + 内置模板 + 一键发起会话）
-- 模板导入导出（支持 override/clone/skip 策略的 JSON 导入导出）
-- 工具治理（可配置策略 + Library 管理面板，view_admin 只读）
-- 可见但锁的权限模型：管理入口全员可见，数据与操作按角色控制
-- 可访问性基线：弹窗焦点管理（焦点陷阱/归还）、WCAG AA 对比度、全站图标按钮可访问名
-- SSE 驱动的 Server-Driven UI（统一事件协议，恰好一次投递）
-- MCP 动态工具接入
-- 三套主题（Light / Dark / Kyoto）与中英日多语言界面
+- simple / complex dual mode
+- HITL approval and recovery in complex mode
+- Three-layer runtime semantics: `Thread / AgentRun / ExecutionPlan`
+- Artifact persistence, restored rendering, and multi-task serial execution
+- Cross-turn artifact continuity (follow-ups like "turn the chart above into a sequence diagram" can reference prior artifacts)
+- **Artifact center**: browse every artifact across sessions, one-click public share links
+- **Dual login** (SMS code + password) with a standalone Account & Security dialog, incl. forgot-password reset
+- **Interruptible-resumable streaming**: auto-resume after disconnects; tasks keep running when you close the page
+- Reasoning stream (deep-thinking increments streamed alongside the answer)
+- Per-user model configuration (pick model & thinking toggle for simple mode, no restart)
+- Token usage visualization (today / total)
+- Skill templates (Library panel + built-in templates + one-click sessions)
+- Template import/export (JSON with override / clone / skip strategies)
+- Tool governance (configurable policies + Library panel, view_admin read-only)
+- **Visible-but-locked permission model**: admin entries are visible to everyone, data and actions are role-gated
+- **Accessibility baseline**: dialog focus management (trap & restore), WCAG AA contrast, accessible names on all icon buttons
+- SSE-driven Server-Driven UI (unified event protocol, exactly-once delivery)
+- MCP dynamic tool integration
+- Three themes (Light / Dark / Kyoto) and a trilingual UI (EN / 中文 / 日本語)
 
-## 核心能力
+## Core Capabilities
 
-### LangGraph 多专家主链
+### LangGraph multi-expert main chain
 
 - `Router -> Direct Reply`
 - `Router -> Commander -> HITL -> Dispatcher -> Generic -> Tools -> Aggregator`
-- simple / complex 自动分流
+- automatic simple / complex routing
 
-### HITL 审批与恢复
+### HITL approval and recovery
 
-- Commander 生成计划后暂停
-- 用户可修改、删除、调整任务
-- `POST /api/chat/resume` 围绕 `run_id` 恢复执行
+- Commander pauses after generating a plan
+- Users can edit, delete, and reorder tasks
+- `POST /api/chat/resume` resumes execution around a `run_id`
 
-### Run-based Runtime
+### Run-based runtime
 
-- `Thread` 表达会话容器
-- `AgentRun` 表达一次真实执行
-- `ExecutionPlan` 表达复杂任务计划
-- 支持 run 级 cancel / timeout / heartbeat / current node
+- `Thread` is the conversation container
+- `AgentRun` is one real execution
+- `ExecutionPlan` is a complex-task plan
+- run-level cancel / timeout / heartbeat / current node
 
-### Artifact 系统
+### Artifact system
 
-- 支持代码、Markdown、HTML、文本等 artifact
-- artifact 持久化到数据库
-- 历史复杂会话可恢复展示 artifact
-- **跨轮连续性**：每条新消息自动携带本会话最近产物的摘要进入规划上下文，Commander 可生成"修改产物 X"类任务；专家经 `get_artifact` 工具按需读取完整内容，不膨胀图状态
+- Code, Markdown, HTML, and text artifacts
+- Artifacts are persisted to the database
+- Historical complex sessions can be restored with their artifacts
+- **Cross-turn continuity**: every new message carries a summary of recent artifacts into planning context, so the Commander can emit "modify artifact X" tasks; experts read full content on demand via the `get_artifact` tool without bloating graph state
 
-### 模型思考过程流式展示
+### Reasoning stream
 
-- DeepSeek 等推理模型的 `reasoning_content` 以增量事件实时推送
-- 思考流先于正文滚动展示，完成后自动收起；随消息持久化，刷新可回看
-- 思考开关由用户在设置页控制（见下），思考内容计入输出计费
+- `reasoning_content` from models like DeepSeek is streamed as incremental events
+- The thinking stream scrolls ahead of the answer, then auto-collapses; it is persisted per message and survives refresh
+- Thinking is toggled per user in settings (see below); reasoning tokens are billed as output
 
-### 用户级模型配置
+### Per-user model configuration
 
-- 设置页（头像菜单 → 模型配置）自选 simple 模式模型，或跟随系统默认
-- 思考模式三态开关（跟随默认 / 开启 / 关闭），仅对声明 `thinking_toggle` 的模型开放
-- 偏好存于 `user_settings` 表（JSONB），多端同步；模型列表来自 `GET /api/models`（providers.yaml 单一真相源）
+- Settings (avatar menu → Model Config) let users pick the simple-mode model or follow the system default
+- Three-state thinking switch (follow default / on / off), only for models declaring `thinking_toggle`
+- Preferences live in the `user_settings` table (JSONB) and sync across devices; the model list comes from `GET /api/models` (providers.yaml as the single source of truth)
 
-### MCP 动态工具接入
+### MCP dynamic tools
 
-- 支持 `sse` / `streamable_http`
-- Generic Worker 运行时绑定 `BASE_TOOLS + MCP_TOOLS`
-- 支持后台管理 MCP Server
+- Supports `sse` / `streamable_http`
+- Generic Worker binds `BASE_TOOLS + MCP_TOOLS` at runtime
+- MCP servers are managed from the admin UI
 
-### 技能模板（Skill Templates）
+### Skill templates
 
-- 模板模型与 `GET/POST/PUT/DELETE /api/library/templates` 管理接口
-- 内置模板：出行路线简报、研究结论报告、写作大纲启动器
-- Library 页「Skill Templates」面板：浏览、管理、一键以 starter prompt 发起新会话
+- Template model + `GET/POST/PUT/DELETE /api/library/templates` management API
+- Built-in templates: travel briefing, research report, writing outline
+- Library page "Skill Templates" panel: browse, manage, and start a new session from a starter prompt
 
-### 工具治理（Tool Governance）
+### Tool governance
 
-- 统一治理层：`risk_tier`、`allow/deny/require_approval`，绑定与执行前双重校验
-- 可配置策略：`ToolPolicy` 持久化，`GET/PUT /api/tools/policies`，运行时合并数据库覆盖
-- Library 页「Tool Governance」面板：管理员查看/编辑策略（`view_admin` 只读）
+- Unified governance layer: `risk_tier`, `allow/deny/require_approval`, validated at both binding and execution time
+- Configurable policies: `ToolPolicy` persistence, `GET/PUT /api/tools/policies`, runtime merge of database overrides
+- Library page "Tool Governance" panel: admins view/edit policies (`view_admin` read-only)
 
 ### Server-Driven UI
 
-- 后端是真相源
-- 前端通过 SSE 事件驱动 store 与 UI
-- 事件协议 v2：节点经统一出口（`emit_event`）发射结构化事件，经 LangChain custom event 通道直达消费端——每条事件恰好一次投递，不进图状态/checkpoint；前后端事件枚举有契约测试守护
-- 传输级 `[DONE]` 完成标记，异常断流与正常结束可区分
-- 适合继续演进为可审计、可回放的 Agent 产品
+- The backend is the source of truth
+- The frontend is driven by SSE events into its stores
+- Event protocol v2: nodes emit structured events through a unified outlet (`emit_event`) over the LangChain custom-event channel — exactly-once delivery, never entering graph state or checkpoints; the frontend/backend event enums are guarded by contract tests
+- A transport-level `[DONE]` marker distinguishes normal completion from abnormal stream breaks
+- Ready to evolve into an auditable, replayable Agent product
 
-### Run Timeline（运行时间线）
+### Run timeline
 
-- 独立页面查看运行实例的完整事件时间线
-- 支持从对话页面和历史会话卡片跳转
-- 展示运行全生命周期事件：run 创建、router 决策、HITL 中断/恢复、任务执行、artifact 生成、运行终态等
-- API：`GET /api/runs/{run_id}`、`GET /api/runs/{run_id}/timeline`、`GET /api/runs/thread/{thread_id}/timeline`
+- A dedicated page showing the full event timeline of a run
+- Reachable from the chat page and history cards
+- Covers the whole lifecycle: run created, router decision, HITL interrupts/resumes, task execution, artifact generation, terminal states
+- API: `GET /api/runs/{run_id}`, `GET /api/runs/{run_id}/timeline`, `GET /api/runs/thread/{thread_id}/timeline`
 
-### Admin Stats Dashboard（管理统计面板）
+### Admin stats dashboard
 
-- 运行统计概览：总运行数、成功率、HITL 使用率、平均耗时
-- 7 天趋势图表：按日期聚合的运行数据
-- 运行列表：带分页，显示状态、模式、时间、用户
-- 数据库层聚合：使用 `func.count` / `func.sum` / `func.avg` + `group_by`
-- API：`GET /api/admin/stats/runs`（概览与 7 天趋势内嵌于同一响应）
+- Run overview: total runs, success rate, HITL usage, average duration
+- 7-day trend charts aggregated by date
+- Paginated run list with status, mode, duration, and user
+- Database-level aggregation via `func.count` / `func.sum` / `func.avg` + `group_by`
+- API: `GET /api/admin/stats/runs` (overview and 7-day trends in one response)
 
-## 当前架构
+## Architecture
 
 ```text
 Thread
-  -> 会话容器
+  -> conversation container
 
 AgentRun
-  -> 一次真实执行
+  -> one real execution
 
 ExecutionPlan
-  -> 复杂任务计划
+  -> plan for a complex task
 ```
 
 ```text
@@ -152,82 +154,83 @@ POST /api/chat
   -> Artifact + Message
 ```
 
-## 快速开始
+A contributor-oriented map of directories, the event protocol, and "how to add X" guides lives in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-### 环境要求
+## Quick Start
+
+### Requirements
 
 - Node.js `>= 24.14.0`
-- pnpm `11.25.0`（或兼容的 pnpm 11）
+- pnpm `11.25.0` (or a compatible pnpm 11)
 - Python `>= 3.13`
 - PostgreSQL `18+`
-- `uv`（后端依赖与命令管理）
+- `uv` (backend dependency & command management)
 
-### 方式一：Docker Compose（推荐用于本地联调）
+### Option 1: Docker Compose (recommended for local evaluation)
 
 ```bash
 git clone https://github.com/alex1987chn/xpouch-ai.git
 cd xpouch-ai
 
 cp backend/.env.example backend/.env
-# 编辑 backend/.env，至少填入一个 LLM API Key
+# Edit backend/.env — at least one LLM API key is required
 
 docker-compose up -d --build
 ```
 
-启动后：
+Once started:
 
-- 前端：`http://localhost:8080`
-- 数据库：`localhost:5432`
+- Frontend: `http://localhost:8080`
+- Database: `localhost:5432`
 
-说明：
+Notes:
 
-- 后端容器启动时会执行 `alembic upgrade head`
-- Docker Compose 会把容器内后端 `DATABASE_URL` 指向 `db` 服务
-- 仓库中的 `docker-compose.yml` 默认面向本地开发 / 联调，数据库端口会暴露到宿主机，便于调试
-- 生产环境请使用你自己的部署流程或覆盖配置，不要直接把当前 compose 视为生产默认模板
-- 根目录 `.env` 主要给 `docker-compose.yml` 做变量插值；`backend/.env` 才是后端运行配置来源
+- The backend container runs `alembic upgrade head` on startup
+- Docker Compose points the container's `DATABASE_URL` at the `db` service
+- The checked-in `docker-compose.yml` targets local development/debugging and exposes the database port to the host — do not treat it as a production template
+- The root `.env` feeds variable interpolation into `docker-compose.yml`; `backend/.env` is the actual backend configuration source
 
-### 方式二：本地开发
+### Option 2: Local development
 
 ```bash
-# 前端
+# Frontend
 cd frontend
 pnpm install
 pnpm dev
 
-# 后端（另一个终端）
+# Backend (another terminal)
 cd backend
 uv sync
-uv run python run.py        # Windows 兼容启动器（事件循环/热重载已处理），默认 3002
+uv run python run.py        # Windows-friendly launcher (event loop / hot reload handled), default port 3002
 ```
 
-本地开发默认地址：
+Local development endpoints:
 
-- 前端：`http://localhost:5173`
-- 后端：`http://localhost:3002`
-- Swagger：`http://localhost:3002/docs`
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:3002`
+- Swagger: `http://localhost:3002/docs`
 
-说明：
+Notes:
 
-- 本地直跑后端默认使用 `backend/.env`
-- 如果你使用 Docker Compose，则根目录 `.env` 与 `backend/.env` 会同时参与启动，但职责不同
-- 容器内后端监听端口是 `3000`，本地开发命令示例使用的是 `3002`
+- Running the backend directly uses `backend/.env`
+- With Docker Compose, the root `.env` and `backend/.env` both participate but serve different roles
+- The backend container listens on port `3000`; the local dev command above uses `3002`
 
-## 环境变量
+## Environment Variables
 
-最少需要：
+Minimum required:
 
 ```env
 DATABASE_URL=postgresql+psycopg://user:password@host:5432/dbname
 JWT_SECRET_KEY=your-secret
 
-# 至少一个 LLM 提供商
-DEEPSEEK_API_KEY=...   # 推荐，默认模型 deepseek-v4-flash
-# 或 OPENAI_API_KEY=...
-# 或 MOONSHOT_API_KEY=...
+# At least one LLM provider
+DEEPSEEK_API_KEY=...   # recommended, default model deepseek-v4-flash
+# or OPENAI_API_KEY=...
+# or MOONSHOT_API_KEY=...
 ```
 
-常用可选项：
+Common optional variables:
 
 - `TAVILY_API_KEY`
 - `SILICON_API_KEY`
@@ -236,9 +239,9 @@ DEEPSEEK_API_KEY=...   # 推荐，默认模型 deepseek-v4-flash
 - `RUN_DEADLINE_SECONDS`
 - `RUN_MAX_GRAPH_LOOPS`
 
-完整示例见 `backend/.env.example`。
+See `backend/.env.example` for a full example.
 
-## 开发与验证
+## Development & Verification
 
 ```bash
 # backend
@@ -253,91 +256,91 @@ npx tsc --noEmit
 pnpm run build
 ```
 
-如果仓库的 pre-commit hooks 已安装，提交时会自动执行检查。
+If the repository's pre-commit hooks are installed, checks run automatically at commit time.
 
-## 运维
+## Operations
 
-### 数据库备份
+### Database backups
 
-仓库提供基于 `pg_dump` 的备份脚本（保留最近 N 份轮转）：
-
-```bash
-./scripts/backup_db.sh                  # 默认保留 7 份
-BACKUP_KEEP=30 ./scripts/backup_db.sh   # 自定义份数
-```
-
-服务器建议挂 crontab 每日执行，一键幂等安装：
+The repository ships a `pg_dump`-based backup script (keeps the latest N copies):
 
 ```bash
-./scripts/install_backup_cron.sh         # 安装每天 03:00 的备份任务（重复执行安全）
+./scripts/backup_db.sh                  # keeps 7 by default
+BACKUP_KEEP=30 ./scripts/backup_db.sh   # custom retention
 ```
 
-备份输出到 `backups/`（已 gitignore）。
+Servers should run it daily via crontab — one-command idempotent install:
 
-### 环境声明（Fail-closed）
+```bash
+./scripts/install_backup_cron.sh         # installs a daily 03:00 backup job (safe to re-run)
+```
 
-`ENVIRONMENT` 必须显式设置（`development` / `testing` / `production`）。未设置时按 **production** 语义处理：debug 端点关闭、`X-User-ID` 认证旁路关闭、生产级 JWT 校验生效。生产部署务必在 `backend/.env` 中显式配置。
+Backups land in `backups/` (gitignored).
 
-### 健康检查
+### Environment declaration (fail-closed)
 
-- 后端：`GET /api/health`（Dockerfile HEALTHCHECK 与 compose healthcheck 均已接入）
-- 前端：容器内 wget 探测（compose healthcheck）
+`ENVIRONMENT` must be set explicitly (`development` / `testing` / `production`). When missing, **production** semantics apply: debug endpoints off, the `X-User-ID` auth bypass off, production-grade JWT validation on. Production deployments must set it explicitly in `backend/.env`.
 
-## 文档
+### Health checks
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — 架构导览（贡献者先读这篇）
+- Backend: `GET /api/health` (wired into the Dockerfile HEALTHCHECK and the compose healthcheck)
+- Frontend: in-container wget probe (compose healthcheck)
+
+## Documentation
+
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — architecture map (start here if you want to contribute)
 - [CHANGELOG.md](./CHANGELOG.md)
-- [DESIGN.md](./DESIGN.md) — UI 设计与交互规范
-- [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [DESIGN.md](./DESIGN.md) — UI & interaction conventions
+- [CONTRIBUTING.md](./CONTRIBUTING.md)（中文）
 - [SECURITY.md](./SECURITY.md)
-- [THEME_GUIDE.md](./THEME_GUIDE.md) — 主题系统
+- [THEME_GUIDE.md](./THEME_GUIDE.md) — theme system（中文）
 - [backend/.env.example](./backend/.env.example)
 
-## 路线图
+> Some guides (CONTRIBUTING, THEME_GUIDE) are currently Chinese-only; more English docs are on the way.
 
-### 已完成
+## Roadmap
 
-- run-based runtime 语义重构
-- complex 模式 HITL / resume / artifact 主链闭环
-- run 级 cancel / timeout / heartbeat / current node
-- durable run / run ledger（第一阶段）
-- 轻量 replay / eval / regression assets
-- 同线程单活跃 run 约束（第一版）
-- tool governance / selective approval（第二版首批落地）
-- skill / template abstraction（第一版）
-- MCP 动态工具接入
-- Server-Driven UI 事件架构
-- run timeline UI（运行时间线页面）
-- admin stats dashboard（管理统计面板）
-- 会话恢复与任务续执行（切换会话后可继续执行中的任务）
-- 模板导入导出（JSON 格式，支持冲突检测与多种导入策略）
-- DeepSeek V4 Flash 迁移（旧模型 ID 别名兼容存量数据）
-- 用户级模型配置（simple 模式选模型 + 思考开关）
-- 模型思考过程流式展示（reasoning 增量事件）
-- 事件协议 v2 统一（恰好一次投递、单通道分发、契约测试）
-- 跨轮产物连续性（历史产物注入规划 + get_artifact 工具）
-- 密码登录与忘记密码重置（「账号与安全」独立入口）
-- 产物中心 + 单产物分享链接（服务端渲染分享页）
-- 断线续传流式执行 + 任务后台继续执行
-- Token 用量记账与可视化
-- 权限锁定态（可见但锁）与 UI 设计规范文档（DESIGN.md）
-- 弹窗焦点管理与可访问性基线（a11y）、后端路由结构归一（auth/ 包 + routers/ 单一家族）
+### Done
 
-### 下一阶段
+- run-based runtime semantics refactor
+- complex-mode HITL / resume / artifact main loop closed
+- run-level cancel / timeout / heartbeat / current node
+- durable run / run ledger (phase 1)
+- lightweight replay / eval / regression assets
+- single-active-run constraint per thread (v1)
+- tool governance / selective approval (phase 2, first wave)
+- skill / template abstraction (v1)
+- MCP dynamic tool integration
+- Server-Driven UI event architecture
+- run timeline UI
+- admin stats dashboard
+- session recovery and task continuation (in-flight tasks survive tab switches)
+- template import/export (JSON with conflict detection and multiple strategies)
+- DeepSeek V4 Flash migration (legacy model ID aliases kept for stored data)
+- per-user model configuration (simple-mode model + thinking toggle)
+- reasoning stream (incremental thinking events)
+- event protocol v2 unification (exactly-once delivery, single channel, contract tests)
+- cross-turn artifact continuity (artifact summaries into planning + get_artifact tool)
+- password login & forgot-password reset (standalone Account & Security dialog)
+- artifact center + per-artifact share links (server-rendered share pages)
+- resumable streaming + background task continuation
+- token usage accounting & visualization
+- visible-but-locked permission model + UI design conventions (DESIGN.md)
+- dialog focus management & accessibility baseline (a11y), backend route structure unified (auth/ package + single routers/ family)
 
-- 交互式 selective approval UI
-- 模板分享（Template Sharing）
+### Next up
 
-## 贡献
+- Interactive selective approval UI
+- Template sharing
 
-欢迎提交 issue、改进建议和 pull request。
-开发环境、代码规范和提交流程见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+## Contributing
 
-## 许可证
+Issues, ideas, and pull requests are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md)（Chinese）for the dev environment, code conventions, and commit flow.
 
-本项目采用 **Apache License 2.0 + 附加条款** 开源。
-详细条款见 [LICENSE](./LICENSE)。
+## License
+
+Licensed under the **Apache License 2.0** with additional terms — see [LICENSE](./LICENSE).
 
 ---
 
-**如果这个项目对你有帮助，欢迎 Star。**
+**If this project helps you, please consider giving it a Star. ⭐**
