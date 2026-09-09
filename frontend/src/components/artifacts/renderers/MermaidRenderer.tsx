@@ -1,7 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
-import mermaid from 'mermaid'
+import type mermaid from 'mermaid'
 import { logger } from '@/utils/logger'
 import { useTranslation } from '@/i18n'
+
+// mermaid 体积大（MB 级），动态 import：只有真正渲染流程图时才下载，
+// 不进任何首屏/常规 chunk
+type MermaidInstance = typeof mermaid
+let mermaidPromise: Promise<MermaidInstance> | null = null
+
+function loadMermaid(): Promise<MermaidInstance> {
+  if (!mermaidPromise) {
+    mermaidPromise = import('mermaid').then((m) => {
+      m.default.initialize({
+        startOnLoad: false,
+        theme: 'dark',
+        securityLevel: 'loose',
+        fontFamily: 'inherit'
+      })
+      return m.default
+    })
+  }
+  return mermaidPromise
+}
 
 interface MermaidRendererProps {
   code: string
@@ -80,38 +100,35 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
   const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
-    mermaid.initialize({ 
-      startOnLoad: false, 
-      theme: 'dark', 
-      securityLevel: 'loose',
-      fontFamily: 'inherit'
-    })
-  }, [])
-  
-  useEffect(() => {
     // 🔥 防抖：如果代码不完整，不尝试渲染
     if (!isMermaidComplete(code)) {
       setIsReady(false)
       return
     }
-    
+
+    let cancelled = false
     const render = async () => {
       if (!code) return
-      
+
       try {
+        const mermaid = await loadMermaid()
         const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`
         const { svg: renderedSvg } = await mermaid.render(id, code.trim())
+        if (cancelled) return
         setSvg(renderedSvg)
         setIsReady(true)
       } catch (e) {
         // 渲染失败但不显示错误，继续显示加载状态
         // 可能是语法还没写完，等待下次更新
         logger.debug('Mermaid render pending:', e)
-        setIsReady(false)
+        if (!cancelled) setIsReady(false)
       }
     }
-    
+
     render()
+    return () => {
+      cancelled = true
+    }
   }, [code])
 
   // 🔥 流式输出中或渲染失败时显示加载状态

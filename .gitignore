@@ -92,3 +92,6 @@ DEPLOY_UBUNTU.md
 # Build artifacts (never track)
 *.tsbuildinfo
 frontend/vite.config.d.ts
+
+# 本地归档（历史评审报告等）
+archive/

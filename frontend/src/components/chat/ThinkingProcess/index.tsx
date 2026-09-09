@@ -12,14 +12,13 @@
  * - 工业风设计，匹配整体 UI
  *
  * [动画]
- * - framer-motion 实现平滑折叠
+ * - 折叠用 CSS grid-rows 过渡；步骤入场用 stagger-item 习语（原 framer-motion 已移除）
  * - 自动延迟折叠（全部完成后 1.5s）
  */
 
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { useTranslation } from '@/i18n'
-import { motion, AnimatePresence } from 'framer-motion'
-import { 
+import {
   Search, 
   BookOpen, 
   Brain, 
@@ -124,12 +123,10 @@ const StepItem = ({ step, index }: StepItemProps) => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.05 }}
+    <div
+      style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
       className={cn(
-        "relative flex items-start gap-3 p-3 rounded-lg border",
+        "stagger-item relative flex items-start gap-3 p-3 rounded-lg border",
         step.status === 'running' && "bg-yellow-500/5 border-yellow-500/20",
         step.status === 'completed' && "bg-status-online/5 border-status-online/20",
         step.status === 'failed' && "bg-status-offline/5 border-status-offline/20",
@@ -194,7 +191,7 @@ const StepItem = ({ step, index }: StepItemProps) => {
       <div className="flex-shrink-0">
         <StatusIcon status={step.status} />
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -316,27 +313,25 @@ export default function ThinkingProcess({ steps, isThinking, className, totalSte
         </div>
       </button>
       
-      {/* 展开内容 - 带动画 */}
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-          >
-            <div 
-              ref={scrollContainerRef}
-              className="border-t border-border px-4 py-3 space-y-2 max-h-[300px] overflow-y-auto bauhaus-scrollbar"
-            >
-              {steps.map((step, index) => (
-                // 🔥 修复：使用 index 作为 key 的一部分，确保唯一性
-                <StepItem key={`${step.id}-${index}`} step={step} index={index} />
-              ))}
-            </div>
-          </motion.div>
+      {/* 展开内容 - CSS grid-rows 折叠动画（原 framer-motion AnimatePresence） */}
+      <div
+        className={cn(
+          'grid transition-all duration-300 ease-in-out',
+          isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
         )}
-      </AnimatePresence>
+      >
+        <div className="overflow-hidden">
+          <div
+            ref={scrollContainerRef}
+            className="border-t border-border px-4 py-3 space-y-2 max-h-[300px] overflow-y-auto bauhaus-scrollbar"
+          >
+            {steps.map((step, index) => (
+              // 🔥 修复：使用 index 作为 key 的一部分，确保唯一性
+              <StepItem key={`${step.id}-${index}`} step={step} index={index} />
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

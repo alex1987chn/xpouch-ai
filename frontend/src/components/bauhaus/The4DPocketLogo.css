@@ -1,0 +1,63 @@
+/* The4DPocketLogo 动画（原 framer-motion 迁移为纯 CSS）：
+   方块落入底座 + 底座回弹，无限循环。CSS 变量随主题切换。 */
+
+@keyframes logo-drop {
+  0% {
+    top: -35px;
+    opacity: 0;
+    transform: rotate(0deg) scale(1);
+    background-color: var(--logo-item);
+  }
+  8% {
+    top: -15px;
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+    background-color: var(--logo-item);
+  }
+  30% {
+    top: 10px;
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+    background-color: var(--logo-item);
+  }
+  45% {
+    top: 10px;
+    opacity: 1;
+    transform: rotate(8deg) scale(1);
+    background-color: var(--logo-item-active);
+  }
+  55% {
+    top: 10px;
+    opacity: 1;
+    transform: rotate(-8deg) scale(1);
+    background-color: var(--logo-item-active);
+  }
+  85% {
+    top: 10px;
+    opacity: 0.8;
+    transform: rotate(0deg) scale(0.6);
+    background-color: var(--logo-item);
+  }
+  100% {
+    top: 10px;
+    opacity: 0;
+    transform: rotate(0deg) scale(0);
+    background-color: var(--logo-item);
+  }
+}
+
+@keyframes logo-recoil {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  35% {
+    transform: scale(1.1, 0.8);
+  }
+  45% {
+    transform: scale(0.95, 1.05);
+  }
+  55% {
+    transform: scale(1, 1);
+  }
+}
