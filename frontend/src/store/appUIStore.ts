@@ -1,11 +1,13 @@
 import { create } from 'zustand'
 
+/** 设置中心的分区；三个历史入口（设置/个人设置/账号与安全）映射为初始分区 */
+export type SettingsSection = 'profile' | 'model' | 'security'
+
 type AppUIState = {
   isSidebarCollapsed: boolean
   isSidebarMobileOpen: boolean
-  settingsOpen: boolean
-  personalSettingsOpen: boolean
-  securitySettingsOpen: boolean
+  settingsHubOpen: boolean
+  settingsHubSection: SettingsSection
   deleteConfirmOpen: boolean
   deletingAgentId: string | null
   deletingAgentName: string
@@ -16,12 +18,13 @@ type AppUIActions = {
   toggleSidebarCollapsed: () => void
   toggleSidebarMobile: () => void
   closeSidebarMobile: () => void
-  openSettings: () => void
+  openSettings: (section?: SettingsSection) => void
   closeSettings: () => void
+  setSettingsSection: (section: SettingsSection) => void
+  /** 历史入口：打开并定位到个人资料分区 */
   openPersonalSettings: () => void
-  closePersonalSettings: () => void
+  /** 历史入口：打开并定位到账号与安全分区 */
   openSecuritySettings: () => void
-  closeSecuritySettings: () => void
   openDeleteConfirm: (id: string, name: string) => void
   closeDeleteConfirm: () => void
   openLogin: () => void
@@ -38,9 +41,8 @@ function getInitialSidebarCollapsed(): boolean {
 export const useAppUIStore = create<AppUIStore>((set) => ({
   isSidebarCollapsed: getInitialSidebarCollapsed(),
   isSidebarMobileOpen: false,
-  settingsOpen: false,
-  personalSettingsOpen: false,
-  securitySettingsOpen: false,
+  settingsHubOpen: false,
+  settingsHubSection: 'profile',
   deleteConfirmOpen: false,
   deletingAgentId: null,
   deletingAgentName: '',
@@ -56,12 +58,16 @@ export const useAppUIStore = create<AppUIStore>((set) => ({
     }),
   toggleSidebarMobile: () => set((state) => ({ isSidebarMobileOpen: !state.isSidebarMobileOpen })),
   closeSidebarMobile: () => set({ isSidebarMobileOpen: false }),
-  openSettings: () => set({ settingsOpen: true }),
-  closeSettings: () => set({ settingsOpen: false }),
-  openPersonalSettings: () => set({ personalSettingsOpen: true }),
-  closePersonalSettings: () => set({ personalSettingsOpen: false }),
-  openSecuritySettings: () => set({ securitySettingsOpen: true }),
-  closeSecuritySettings: () => set({ securitySettingsOpen: false }),
+  openSettings: (section) =>
+    set({
+      settingsHubOpen: true,
+      // 兜底：误传事件对象等非分区值时回落到默认分区
+      settingsHubSection: section === 'profile' || section === 'model' || section === 'security' ? section : 'profile',
+    }),
+  closeSettings: () => set({ settingsHubOpen: false }),
+  setSettingsSection: (section) => set({ settingsHubSection: section }),
+  openPersonalSettings: () => set({ settingsHubOpen: true, settingsHubSection: 'profile' }),
+  openSecuritySettings: () => set({ settingsHubOpen: true, settingsHubSection: 'security' }),
   openDeleteConfirm: (id: string, name: string) =>
     set({
       deletingAgentId: id,

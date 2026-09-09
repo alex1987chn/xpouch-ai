@@ -11,9 +11,8 @@ export function useAppUISelectors() {
   const toggleSidebarMobile = useAppUIStore((s) => s.toggleSidebarMobile)
   const closeSidebarMobile = useAppUIStore((s) => s.closeSidebarMobile)
 
-  const settingsOpen = useAppUIStore((s) => s.settingsOpen)
-  const personalSettingsOpen = useAppUIStore((s) => s.personalSettingsOpen)
-  const securitySettingsOpen = useAppUIStore((s) => s.securitySettingsOpen)
+  const settingsHubOpen = useAppUIStore((s) => s.settingsHubOpen)
+  const settingsHubSection = useAppUIStore((s) => s.settingsHubSection)
   const deleteConfirmOpen = useAppUIStore((s) => s.deleteConfirmOpen)
   const deletingAgentId = useAppUIStore((s) => s.deletingAgentId)
   const deletingAgentName = useAppUIStore((s) => s.deletingAgentName)
@@ -22,9 +21,7 @@ export function useAppUISelectors() {
   const openSettings = useAppUIStore((s) => s.openSettings)
   const closeSettings = useAppUIStore((s) => s.closeSettings)
   const openPersonalSettings = useAppUIStore((s) => s.openPersonalSettings)
-  const closePersonalSettings = useAppUIStore((s) => s.closePersonalSettings)
   const openSecuritySettings = useAppUIStore((s) => s.openSecuritySettings)
-  const closeSecuritySettings = useAppUIStore((s) => s.closeSecuritySettings)
   const openDeleteConfirm = useAppUIStore((s) => s.openDeleteConfirm)
   const closeDeleteConfirm = useAppUIStore((s) => s.closeDeleteConfirm)
   const openLogin = useAppUIStore((s) => s.openLogin)
@@ -39,9 +36,8 @@ export function useAppUISelectors() {
       closeMobile: closeSidebarMobile,
     },
     dialogs: {
-      settingsOpen,
-      personalSettingsOpen,
-      securitySettingsOpen,
+      settingsHubOpen,
+      settingsHubSection,
       deleteConfirmOpen,
       deletingAgentId,
       deletingAgentName,
@@ -49,9 +45,7 @@ export function useAppUISelectors() {
       openSettings,
       closeSettings,
       openPersonalSettings,
-      closePersonalSettings,
       openSecuritySettings,
-      closeSecuritySettings,
       openDeleteConfirm,
       closeDeleteConfirm,
       openLogin,

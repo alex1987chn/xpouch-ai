@@ -5,9 +5,7 @@ import { Menu } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { BauhausSidebar } from '@/components/bauhaus'
 import { MobileOverlay } from '@/components/common'
-import { SettingsDialog } from '@/components/settings/SettingsDialog'
-import { PersonalSettingsDialog } from '@/components/settings/PersonalSettingsDialog'
-import { SecuritySettingsDialog } from '@/components/settings/SecuritySettingsDialog'
+import { SettingsHubDialog } from '@/components/settings/SettingsHubDialog'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import LoginDialog from '@/components/auth/LoginDialog'
 import { useAppUISelectors } from '@/hooks'
@@ -158,7 +156,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
           isMobileOpen={sidebar.isMobileOpen}
           onMobileClose={sidebar.closeMobile}
           onCreateAgent={handleCreateAgent}
-          onSettingsClick={dialogs.openSettings}
+          onSettingsClick={() => dialogs.openSettings('model')}
           onPersonalSettingsClick={dialogs.openPersonalSettings}
           onSecuritySettingsClick={dialogs.openSecuritySettings}
           onToggleCollapsed={sidebar.toggleCollapsed}
@@ -174,7 +172,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
               isMobileOpen={sidebar.isMobileOpen}
               onMobileClose={sidebar.closeMobile}
               onCreateAgent={handleCreateAgent}
-              onSettingsClick={dialogs.openSettings}
+              onSettingsClick={() => dialogs.openSettings('model')}
               onPersonalSettingsClick={dialogs.openPersonalSettings}
               onSecuritySettingsClick={dialogs.openSecuritySettings}
               onToggleCollapsed={sidebar.toggleCollapsed}
@@ -211,20 +209,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
       </main>
 
       {/* 全局 Dialogs */}
-      <SettingsDialog
-        isOpen={dialogs.settingsOpen}
-        onClose={dialogs.closeSettings}
-      />
-
-      <PersonalSettingsDialog
-        isOpen={dialogs.personalSettingsOpen}
-        onClose={dialogs.closePersonalSettings}
-      />
-
-      <SecuritySettingsDialog
-        isOpen={dialogs.securitySettingsOpen}
-        onClose={dialogs.closeSecuritySettings}
-      />
+      <SettingsHubDialog />
 
       <DeleteConfirmDialog
         isOpen={dialogs.deleteConfirmOpen}

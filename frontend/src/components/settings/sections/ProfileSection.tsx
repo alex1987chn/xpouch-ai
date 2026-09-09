@@ -1,0 +1,224 @@
+/**
+ * 个人资料分区（设置中心）。
+ * 原 PersonalSettingsDialog 正文：头像 + 用户名，显式保存。
+ */
+
+import { useState, useEffect } from 'react'
+import { Save, User, Camera, Upload, X } from 'lucide-react'
+import { fileToBase64 } from '@/utils/userSettings'
+import { useUserStore } from '@/store/userStore'
+import { logger } from '@/utils/logger'
+import { pushToast } from '@/components/ui/use-toast'
+import { useTranslation } from '@/i18n'
+
+interface ProfileSectionProps {
+  onClose: () => void
+}
+
+export function ProfileSection({ onClose }: ProfileSectionProps) {
+  const { t } = useTranslation()
+  const { user, updateUser } = useUserStore()
+
+  const [username, setUsername] = useState('')
+  const [avatar, setAvatar] = useState('')
+  const [avatarPreview, setAvatarPreview] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+
+  // 分区挂载即视为打开，回填当前用户资料（密码管理在「账号与安全」分区）
+  useEffect(() => {
+    if (user) {
+      setUsername(user.username)
+      setAvatar(user.avatar || '')
+      setAvatarPreview(user.avatar || '')
+    }
+  }, [user])
+
+  // 处理头像上传
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // 验证文件类型
+      if (!file.type.startsWith('image/')) {
+        pushToast({ title: t('uploadImageFile') })
+        return
+      }
+
+      // 验证文件大小（最大 2MB）
+      if (file.size > 2 * 1024 * 1024) {
+        pushToast({ title: t('imageSizeExceeded') })
+        return
+      }
+
+      try {
+        const base64 = await fileToBase64(file)
+        setAvatar(base64)
+        setAvatarPreview(base64)
+      } catch (error) {
+        logger.error('Failed to process image:', error)
+        pushToast({ title: t('imageProcessFailed') })
+      }
+    }
+  }
+
+  // 移除头像
+  const handleRemoveAvatar = () => {
+    setAvatar('')
+    setAvatarPreview('')
+  }
+
+  const handleSave = async () => {
+    // 验证用户名
+    if (!username.trim()) {
+      pushToast({ title: t('usernameRequired') })
+      return
+    }
+
+    if (username.length < 2) {
+      pushToast({ title: t('usernameMinLength') })
+      return
+    }
+
+    if (username.length > 20) {
+      pushToast({ title: t('usernameMaxLength') })
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      await updateUser({
+        username: username.trim(),
+        avatar
+      })
+      onClose()
+    } catch (error) {
+      logger.error('[ProfileSection] Failed to save settings:', error)
+      pushToast({ title: t('saveFailedLater') })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <>
+      <div className="flex-1 overflow-y-auto bauhaus-scrollbar px-5 py-5 space-y-6">
+        {/* 头像设置 */}
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-1.5 bg-content-secondary"></div>
+            <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+              {t('avatarSetup')}
+            </span>
+          </div>
+
+          <div className="flex items-start gap-4">
+            {/* 头像预览 */}
+            <div className="relative shrink-0">
+              <div className="w-20 h-20 border-2 border-border-default bg-surface-page flex items-center justify-center overflow-hidden">
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl font-black text-content-primary">
+                    {username.substring(0, 2).toUpperCase()}
+                  </span>
+                )}
+              </div>
+
+              {/* 上传按钮 */}
+              <label className="absolute -bottom-1 -right-1 w-7 h-7 bg-accent-hover border-2 border-border-default flex items-center justify-center cursor-pointer hover:brightness-95 transition-all">
+                <Camera className="w-3.5 h-3.5 text-content-primary" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* 头像操作按钮 */}
+            <div className="flex flex-col gap-2 flex-1">
+              <label className="flex items-center justify-center gap-2 px-3 py-2 border-2 border-border-default bg-surface-page cursor-pointer hover:bg-surface-card transition-colors">
+                <Upload className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase">{t('uploadAvatar')}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+              </label>
+              {avatarPreview && (
+                <button
+                  onClick={handleRemoveAvatar}
+                  className="flex items-center justify-center gap-2 px-3 py-2 border-2 border-status-offline/50 text-status-offline hover:bg-status-offline/10 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase">{t('removeAvatar')}</span>
+                </button>
+              )}
+            </div>
+          </div>
+          <p className="text-micro text-content-secondary mt-2 opacity-60">
+            {t('avatarHint')}
+          </p>
+        </section>
+
+        {/* 分隔线 */}
+        <div className="border-t-2 border-border-default"></div>
+
+        {/* 用户名设置 */}
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-1.5 bg-content-secondary"></div>
+            <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+              {t('username')}
+            </span>
+          </div>
+
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-content-secondary" />
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder={t('usernamePlaceholder')}
+              maxLength={20}
+              className="w-full pl-10 pr-3 py-2.5 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+            />
+          </div>
+          <p className="text-micro text-content-secondary mt-2 opacity-60">
+            {t('usernameHint')}
+          </p>
+        </section>
+      </div>
+
+      {/* 底部按钮 */}
+      <div className="flex gap-0 border-t-2 border-border-default shrink-0">
+        <button
+          onClick={onClose}
+          disabled={isSaving}
+          className="flex-1 py-3 text-sm font-bold uppercase border-r-2 border-border-default hover:bg-surface-page transition-colors disabled:opacity-50"
+        >
+          {t('cancel')}
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="flex-1 py-3 bg-accent-hover text-content-primary text-sm font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
+        >
+          {isSaving ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 border-2 border-content-primary/30 border-t-content-primary animate-spin"></span>
+              {t('savingUserSettings')}
+            </span>
+          ) : (
+            <span className="flex items-center justify-center gap-2">
+              <Save className="w-4 h-4" />
+              {t('save')}
+            </span>
+          )}
+        </button>
+      </div>
+    </>
+  )
+}
