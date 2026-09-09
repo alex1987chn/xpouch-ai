@@ -9,6 +9,9 @@ import { resetPasswordApi } from '@/services/auth'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
+import { OtpLoginForm } from './login/OtpLoginForm'
+import { PasswordLoginForm } from './login/PasswordLoginForm'
+import { ResetPasswordForm } from './login/ResetPasswordForm'
 
 interface LoginDialogProps {
   open: boolean
@@ -216,7 +219,10 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
             <div className="w-16 h-16 mx-auto mb-4 border-2 border-border-default bg-surface-page flex items-center justify-center rounded-md">
               <The4DPocketLogo />
             </div>
-            <h2 id="login-dialog-title" className="text-lg font-black uppercase tracking-tight mb-1 text-content-primary">
+            <h2
+              id="login-dialog-title"
+              className="text-lg font-black uppercase tracking-tight mb-1 text-content-primary"
+            >
               {loginMode === 'reset'
                 ? t('resetPasswordTitle')
                 : step === 'phone'
@@ -224,7 +230,11 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                   : t('verifyIdentity')}
             </h2>
             <p className="text-xs font-mono text-content-secondary">
-              {loginMode === 'reset' ? 'RESET PASSWORD' : step === 'phone' ? 'WELCOME BACK' : 'VERIFY IDENTITY'}
+              {loginMode === 'reset'
+                ? 'RESET PASSWORD'
+                : step === 'phone'
+                  ? 'WELCOME BACK'
+                  : 'VERIFY IDENTITY'}
             </p>
           </div>
 
@@ -264,251 +274,59 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
 
           {/* 密码登录表单 */}
           {loginMode === 'password' && (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="font-mono text-micro font-bold uppercase text-content-secondary">
-                  {t('identifierLabel')}
-                </label>
-                <input
-                  type="text"
-                  placeholder={t('identifierPlaceholder')}
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  disabled={loading}
-                  className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="font-mono text-micro font-bold uppercase text-content-secondary">
-                  PASSWORD
-                </label>
-                <input
-                  type="password"
-                  placeholder={t('passwordPlaceholder')}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && identifier.trim() && password && !loading) {
-                      handlePasswordLogin()
-                    }
-                  }}
-                  disabled={loading}
-                  className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
-                />
-              </div>
-
-              <button
-                onClick={handlePasswordLogin}
-                disabled={!identifier.trim() || !password || loading}
-                className="w-full py-3 border-2 border-border-default bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
-              >
-                {loading ? 'SIGNING...' : '登录 / LOGIN'}
-              </button>
-
-              <div className="flex justify-between items-center font-mono text-micro text-content-secondary">
-                <button
-                  onClick={() => {
-                    handleReset()
-                    setLoginMode('reset')
-                  }}
-                  className="hover:text-content-primary transition-colors underline underline-offset-2"
-                >
-                  {t('forgotPasswordLink')}
-                </button>
-                <span className="opacity-60">{t('passwordLoginHint')}</span>
-              </div>
-            </div>
+            <PasswordLoginForm
+              t={t}
+              identifier={identifier}
+              password={password}
+              loading={loading}
+              onIdentifierChange={setIdentifier}
+              onPasswordChange={setPassword}
+              onSubmit={handlePasswordLogin}
+              onForgotPassword={() => {
+                handleReset()
+                setLoginMode('reset')
+              }}
+            />
           )}
 
           {/* 重置密码视图（忘记密码） */}
           {loginMode === 'reset' && (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="font-mono text-micro font-bold uppercase text-content-secondary">
-                  PHONE_NUMBER
-                </label>
-                <input
-                  type="tel"
-                  placeholder={t('phoneNumberPlaceholder')}
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                  maxLength={11}
-                  disabled={loading}
-                  autoFocus
-                  className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="font-mono text-micro font-bold uppercase text-content-secondary">
-                  VERIFICATION_CODE
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder={t('codePlaceholder')}
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    maxLength={6}
-                    disabled={loading}
-                    className="flex-1 px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm tracking-[0.2em] focus:outline-none focus:border-accent-hover transition-colors rounded-md"
-                  />
-                  <button
-                    onClick={handleSendCode}
-                    disabled={!phoneNumber || phoneNumber.length !== 11 || (countdown > 0 && !debugCode) || loading}
-                    className="px-3 border-2 border-border-default bg-surface-card font-mono text-xs uppercase hover:bg-surface-page transition-colors disabled:opacity-50 whitespace-nowrap rounded-md"
-                  >
-                    {countdown > 0 ? `${countdown}s` : t('sendCode')}
-                  </button>
-                </div>
-                <div className="font-mono text-nano text-content-secondary opacity-50">
-                  {t('resetSendHint')}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="font-mono text-micro font-bold uppercase text-content-secondary">
-                  {t('newPasswordLabel')}
-                </label>
-                <input
-                  type="password"
-                  placeholder={t('newPasswordPlaceholder')}
-                  value={resetPassword}
-                  onChange={(e) => setResetPassword(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && phoneNumber.length === 11 && code.length >= 4 && resetPassword.length >= 8 && !loading) {
-                      handleResetPassword()
-                    }
-                  }}
-                  disabled={loading}
-                  className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
-                />
-              </div>
-
-              <button
-                onClick={handleResetPassword}
-                disabled={!phoneNumber || phoneNumber.length !== 11 || code.length < 4 || resetPassword.length < 8 || loading}
-                className="w-full py-3 border-2 border-border-default bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
-              >
-                {loading ? 'RESETTING...' : t('resetPasswordAction')}
-              </button>
-
-              <div className="text-center">
-                <button
-                  onClick={() => {
-                    handleReset()
-                    setLoginMode('password')
-                  }}
-                  disabled={loading}
-                  className="font-mono text-micro text-content-secondary hover:text-content-primary transition-colors underline underline-offset-2"
-                >
-                  {t('backToLogin')}
-                </button>
-              </div>
-
-              {/* 开发环境显示验证码 */}
-              {import.meta.env.DEV && debugCode && (
-                <div className="p-3 bg-accent-hover/10 border border-theme-card border-accent-hover rounded-md">
-                  <div className="font-mono text-micro text-content-primary">
-                    <div className="font-bold mb-1">🔧 DEV_MODE</div>
-                    <div>CODE: <span className="text-lg font-bold">{debugCode}</span></div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <ResetPasswordForm
+              t={t}
+              phoneNumber={phoneNumber}
+              code={code}
+              resetPassword={resetPassword}
+              loading={loading}
+              countdown={countdown}
+              debugCode={debugCode}
+              onPhoneNumberChange={setPhoneNumber}
+              onCodeChange={setCode}
+              onResetPasswordChange={setResetPassword}
+              onSendCode={handleSendCode}
+              onSubmit={handleResetPassword}
+              onBack={() => {
+                handleReset()
+                setLoginMode('password')
+              }}
+            />
           )}
 
-          {/* 步骤1: 输入手机号（OTP） */}
-          {loginMode === 'otp' && step === 'phone' && (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="font-mono text-micro font-bold uppercase text-content-secondary">
-                  PHONE_NUMBER
-                </label>
-                <input
-                  type="tel"
-                  placeholder={t('phoneNumberPlaceholder')}
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                  maxLength={11}
-                  disabled={loading}
-                  autoFocus
-                  className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
-                />
-              </div>
-
-              <button
-                onClick={handleSendCode}
-                disabled={!phoneNumber || phoneNumber.length !== 11 || loading}
-                className="w-full py-3 border-2 border-border-default bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
-              >
-                {loading ? 'SENDING...' : t('sendCode')}
-              </button>
-
-              <div className="text-center font-mono text-micro text-content-secondary opacity-60">
-                {t('autoRegisterHint')}
-              </div>
-            </div>
-          )}
-
-          {/* 步骤2: 输入验证码 */}
-          {loginMode === 'otp' && step === 'code' && (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="font-mono text-micro font-bold uppercase text-content-secondary">
-                  VERIFICATION_CODE
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder={t('codePlaceholder')}
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  maxLength={6}
-                  disabled={loading}
-                  autoFocus
-                  className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-lg text-center tracking-[0.3em] focus:outline-none focus:border-accent-hover transition-colors rounded-md"
-                />
-                <div className="font-mono text-nano text-content-secondary opacity-50">
-                  {t('codeSentTo', { phone: `${phoneNumber.slice(0, 3)}****${phoneNumber.slice(-4)}` })}
-                </div>
-              </div>
-
-              <button
-                onClick={handleVerifyCode}
-                disabled={!code || code.length < 4 || loading}
-                className="w-full py-3 border-2 border-border-default bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
-              >
-                {loading ? 'VERIFYING...' : '登录 / LOGIN'}
-              </button>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSendCode}
-                  disabled={countdown > 0 || loading}
-                  className="flex-1 py-2 border-2 border-border-default bg-surface-card font-mono text-xs uppercase hover:bg-surface-page transition-colors disabled:opacity-50 rounded-md"
-                >
-                  {countdown > 0 ? `${countdown}s` : t('resend')}
-                </button>
-
-                <button
-                  onClick={() => setStep('phone')}
-                  disabled={loading}
-                  className="flex-1 py-2 border-2 border-border-default bg-surface-card font-mono text-xs uppercase text-content-secondary hover:bg-surface-page transition-colors rounded-md"
-                >
-                  {t('changePhone')}
-                </button>
-              </div>
-
-              {/* 开发环境显示验证码 */}
-              {import.meta.env.DEV && countdown > 0 && (
-                <div className="p-3 bg-accent-hover/10 border border-theme-card border-accent-hover rounded-md">
-                  <div className="font-mono text-micro text-content-primary">
-                    <div className="font-bold mb-1">🔧 DEV_MODE</div>
-                    <div>CODE: <span className="text-lg font-bold">{debugCode}</span></div>
-                  </div>
-                </div>
-              )}
-            </div>
+          {/* 验证码登录（OTP） */}
+          {loginMode === 'otp' && (
+            <OtpLoginForm
+              t={t}
+              step={step}
+              phoneNumber={phoneNumber}
+              code={code}
+              loading={loading}
+              countdown={countdown}
+              debugCode={debugCode}
+              onPhoneNumberChange={setPhoneNumber}
+              onCodeChange={setCode}
+              onSendCode={handleSendCode}
+              onVerify={handleVerifyCode}
+              onStepChange={setStep}
+            />
           )}
         </div>
       </div>
