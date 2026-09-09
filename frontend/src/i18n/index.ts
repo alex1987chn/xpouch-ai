@@ -154,7 +154,7 @@ export type TranslationKey =
   | 'newPasswordLabel' | 'forgotPasswordLink' | 'resetPasswordTitle' | 'resetPasswordAction'
   | 'resetSendHint' | 'passwordResetSuccess' | 'backToLogin'
   | 'passwordSaveAction' | 'passwordSaving' | 'accountSecurity' | 'accountSecurityDesc'
-  | 'expertsLockedDesc' | 'expertsEditLockedDesc'
+  | 'expertsLockedDesc' | 'expertsEditLockedDesc' | 'loginRequiredDesc'
   | 'openSourceThread'
   | 'usageLabel' | 'usageToday' | 'usageTotal'
   // Time & General

@@ -1,7 +1,10 @@
+import { useEffect } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useUserStore } from '@/store/userStore'
+import { useAppUIStore } from '@/store/appUIStore'
 import { useToast } from '@/components/ui/use-toast'
 import { useTranslation } from '@/i18n'
+import { PermissionLockCard } from '@/components/ui/lock-card'
 import { LoadingFallback } from '@/router/components/LoadingFallback'
 
 interface AdminRouteProps {
@@ -11,9 +14,19 @@ interface AdminRouteProps {
 
 export default function AdminRoute({ children, requiredRole = 'admin' }: AdminRouteProps) {
   const { user, isAuthenticated, isAuthChecked } = useUserStore()
+  const openLogin = useAppUIStore((s) => s.openLogin)
   const location = useLocation()
   const { toast } = useToast()
   const { t } = useTranslation()
+
+  // 未登录：就地渲染登录锁卡片，并自动打开全局登录弹窗——
+  // 登录成功后本页直接呈现，无需回跳。
+  // 不跳 /login：那里只是回首页的占位，会造成「点了没反应」的假象。
+  useEffect(() => {
+    if (isAuthChecked && !isAuthenticated) {
+      openLogin()
+    }
+  }, [isAuthChecked, isAuthenticated, openLogin])
 
   // P0-6 修复: 等待认证检查完成
   if (!isAuthChecked) {
@@ -22,7 +35,13 @@ export default function AdminRoute({ children, requiredRole = 'admin' }: AdminRo
 
   // 检查是否已登录
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return (
+      <div className="min-h-[100dvh] bg-surface-page flex items-center justify-center p-4">
+        <div className="w-full max-w-xl">
+          <PermissionLockCard title={t('login')} description={t('loginRequiredDesc')} />
+        </div>
+      </div>
+    )
   }
 
   // 检查用户角色
