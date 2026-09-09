@@ -5,6 +5,32 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-09-09] - v3.4.6 工程治理：a11y、后端结构归一、贡献者基础设施
+
+### 新增功能
+
+- **未登录访问管理页的就地登录拦截**：点击专家管理/运行统计时自动弹出登录弹窗并展示锁卡片（此前 /login 占位路由导致「轻刷一下没反应」）；登录成功后原地进入目标页
+- **错误态/空态统一组件**：ErrorState（图标 + 原因 + 重试）与 EmptyState（带行动引导 CTA），接入产物中心、MCP 列表、运行统计
+- **ARCHITECTURE.md 架构导览**：目录职责、三层运行时语义、消息生命周期、事件协议 v2、「新增页面/接口/工具」贡献路径
+- **贡献者模板**：issue 模板（bug/功能建议）、PR 模板（自查清单）；README 加 CI badge 与 xpouch.ai 在线体验链接
+
+### 变更
+
+- **后端结构归一**：auth.py 单文件（701 行）拆为 auth/ 包（schemas/cookies/limiter/verify + 三路由模块）；api/（admin/library/tools）并入 routers/，路由家族归一，api/ 目录删除
+- **前端 a11y（P3）**：新增 useDialogA11y hook（焦点陷阱/焦点归还/role=dialog）接入 8 个自研弹窗；侧边栏与弹窗关闭按钮补 aria-label；toast 关闭钮触达面积提升至 40px 且键盘可见
+- **设计规范落地（P1/P3）**：新增 DESIGN.md（间距/尺寸/层级/权限锁定态/暗色自查）；内容页标题行统一 PageTitle；骨架屏全覆盖；页面切换淡入与列表错峰
+- **LoginDialog 拆分**：OTP/密码/重置三流程拆为独立子组件，主文件 519 → 296 行
+- 侧边栏「专家管理」图标 Shield → Bot（与产品内专家图标统一，盾牌让位安全语义）
+
+### 修复
+
+- **对比度达标（WCAG 实测）**：content-muted 两主题均未达 AA（亮 2.6:1 / 暗 3.2:1），调整为亮 5.9:1、暗 4.7:1+
+- 清理废弃代码：framer-motion（迁纯 CSS）、mermaid 改动态懒加载（独立 chunk）、腾讯云 SDK 元包改 sms 子包、36 处旧硬阴影与旧别名、失效 dark: 类、空目录
+
+### 其他
+
+- 版本号 3.4.5 → 3.4.6（backend config/pyproject、package.json ×2、UI 常量）
+
 ## [2026-09-09] - v3.4.5 交互与权限打磨：账号与安全、权限锁定态、设计规范落地
 
 ### 新增功能

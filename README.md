@@ -40,6 +40,7 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - 模板导入导出（支持 override/clone/skip 策略的 JSON 导入导出）
 - 工具治理（可配置策略 + Library 管理面板，view_admin 只读）
 - 可见但锁的权限模型：管理入口全员可见，数据与操作按角色控制
+- 可访问性基线：弹窗焦点管理（焦点陷阱/归还）、WCAG AA 对比度、全站图标按钮可访问名
 - SSE 驱动的 Server-Driven UI（统一事件协议，恰好一次投递）
 - MCP 动态工具接入
 - 三套主题（Light / Dark / Kyoto）与中英日多语言界面
@@ -320,6 +321,7 @@ BACKUP_KEEP=30 ./scripts/backup_db.sh   # 自定义份数
 - 断线续传流式执行 + 任务后台继续执行
 - Token 用量记账与可视化
 - 权限锁定态（可见但锁）与 UI 设计规范文档（DESIGN.md）
+- 弹窗焦点管理与可访问性基线（a11y）、后端路由结构归一（auth/ 包 + routers/ 单一家族）
 
 ### 下一阶段
 
