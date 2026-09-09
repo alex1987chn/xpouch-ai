@@ -5,6 +5,7 @@
 **An open-source, controllable multi-expert Agent Runtime for real task execution.**
 
 [![License](https://img.shields.io/badge/License-Apache%202.0%20with%20Additional%20Terms-blue.svg)](./LICENSE)
+[![CI](https://github.com/alex1987chn/xpouch-ai/actions/workflows/ci.yml/badge.svg)](./actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue?logo=python)](https://python.org)
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev)
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.x-green?logo=langchain)](https://langchain-ai.github.io/langgraph/)
@@ -12,7 +13,7 @@
 
 <img src="./.github/images/hero-home.png" alt="XPouch AI Screenshot" width="900">
 
-[问题反馈](https://github.com/alex1987chn/xpouch-ai/issues) · [功能讨论](https://github.com/alex1987chn/xpouch-ai/discussions)
+[在线体验](https://xpouch.ai) · [问题反馈](https://github.com/alex1987chn/xpouch-ai/issues) · [功能讨论](https://github.com/alex1987chn/xpouch-ai/discussions)
 
 </div>
 
@@ -283,9 +284,12 @@ BACKUP_KEEP=30 ./scripts/backup_db.sh   # 自定义份数
 
 ## 文档
 
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — 架构导览（贡献者先读这篇）
 - [CHANGELOG.md](./CHANGELOG.md)
+- [DESIGN.md](./DESIGN.md) — UI 设计与交互规范
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
-- [LICENSE](./LICENSE)
+- [SECURITY.md](./SECURITY.md)
+- [THEME_GUIDE.md](./THEME_GUIDE.md) — 主题系统
 - [backend/.env.example](./backend/.env.example)
 
 ## 路线图
