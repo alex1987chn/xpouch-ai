@@ -180,6 +180,7 @@ function NavButtonCollapsed({ isActive, onClick, icon, label }: NavButtonCollaps
     <button
       onClick={onClick}
       title={label}
+      aria-label={label}
       className={collapsedButtonStyles(isActive)}
     >
       {icon}
@@ -232,6 +233,7 @@ function AdminButtonCollapsed({ isActive, onClick, t }: AdminButtonCollapsedProp
     <button
       onClick={onClick}
       title={t('navExperts')}
+      aria-label={t('navExperts')}
       className={collapsedButtonStyles(isActive)}
     >
       <Bot className="w-4 h-4 flex-shrink-0" />

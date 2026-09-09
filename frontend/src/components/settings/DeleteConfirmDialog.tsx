@@ -5,6 +5,7 @@ import { useTranslation } from '@/i18n'
 import { logger } from '@/utils/logger'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
+import { useDialogA11y } from '@/hooks/useDialogA11y'
 
 interface DeleteConfirmDialogProps {
   isOpen: boolean
@@ -64,6 +65,7 @@ export function DeleteConfirmDialog({
   }
 
   useEscapeToClose(isOpen, handleClose)
+  const a11y = useDialogA11y<HTMLDivElement>(isOpen, 'delete-confirm-title')
 
   if (!isOpen) return null
 
@@ -74,6 +76,7 @@ export function DeleteConfirmDialog({
       onClick={handleClose}
     >
       <div
+        {...a11y}
         className="relative bg-surface-card border-2 border-border-default shadow-theme-modal w-[400px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
@@ -86,6 +89,7 @@ export function DeleteConfirmDialog({
             </span>
           </div>
           <button
+            aria-label={t('close')}
             onClick={handleClose}
             disabled={isDeleting}
             className="w-6 h-6 flex items-center justify-center border-2 border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"
@@ -113,7 +117,7 @@ export function DeleteConfirmDialog({
 
           {/* 标题和描述 */}
           <div className="text-center space-y-3">
-            <h2 className="text-lg font-black uppercase tracking-tight text-content-primary">
+            <h2 id="delete-confirm-title" className="text-lg font-black uppercase tracking-tight text-content-primary">
               {title || t('confirmDeleteTitle')}
             </h2>
             {itemName && (

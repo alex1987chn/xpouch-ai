@@ -19,6 +19,7 @@ import type { SystemExpert, CreateExpertRequest, UpdateExpertRequest, ToolInfo }
 import { getAvailableTools } from '@/services/admin'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
+import { useDialogA11y } from '@/hooks/useDialogA11y'
 
 interface ExpertFormDialogProps {
   mode: 'create' | 'edit'
@@ -131,6 +132,7 @@ export default function ExpertFormDialog({
   }
 
   useEscapeToClose(isOpen, handleClose)
+  const a11y = useDialogA11y<HTMLDivElement>(isOpen, 'expert-form-title')
 
   if (!isOpen) return null
 
@@ -142,16 +144,21 @@ export default function ExpertFormDialog({
       {/* 遮罩 */}
       <div className="fixed inset-0 bg-content-primary/50" style={{ zIndex: Z_INDEX.MODAL }} onClick={handleClose} />
       {/* 对话框容器 */}
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg border-2 border-border-default bg-surface-card shadow-theme-modal max-h-[90vh] overflow-y-auto bauhaus-scrollbar" style={{ zIndex: Z_INDEX.MODAL + 1 }}>
+      <div
+        {...a11y}
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg border-2 border-border-default bg-surface-card shadow-theme-modal max-h-[90vh] overflow-y-auto bauhaus-scrollbar"
+        style={{ zIndex: Z_INDEX.MODAL + 1 }}
+      >
         {/* 标题 */}
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-accent-hover" />
-            <span className="text-xs font-bold uppercase tracking-widest text-content-secondary">
+            <span id="expert-form-title" className="text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// {title}
             </span>
           </div>
           <button
+            aria-label={t('close')}
             onClick={handleClose}
             disabled={isSubmitting}
             className="w-7 h-7 flex items-center justify-center border border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"

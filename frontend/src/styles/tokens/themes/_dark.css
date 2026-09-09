@@ -29,7 +29,7 @@
 
     --content-primary: 250 250 250;
     --content-secondary: 170 170 170;
-    --content-muted: 120 120 120;
+    --content-muted: 150 150 150;  /* page 5.8:1 / card 4.7:1，AA 达标（WCAG 实测） */
     --content-inverted: 28 28 30;
     --content-disabled: 80 80 80;
 

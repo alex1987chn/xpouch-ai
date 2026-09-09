@@ -20,6 +20,7 @@ import type { ArtifactListItem } from '@/types'
 import ArtifactRenderer from '@/components/artifacts/ArtifactRenderer'
 import { CardSkeleton } from '@/components/ui/skeleton'
 import PageTitle from '@/components/layout/PageTitle'
+import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { cn } from '@/lib/utils'
 
 const TYPE_FILTERS = [
@@ -55,6 +56,7 @@ export default function ArtifactsPage() {
   const [typeFilter, setTypeFilter] = useState('')
   const [detail, setDetail] = useState<ArtifactListItem | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const a11y = useDialogA11y<HTMLDivElement>(!!detail, 'artifact-detail-title')
   const [expanded, setExpanded] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
@@ -213,6 +215,7 @@ export default function ArtifactsPage() {
           onClick={() => setDetail(null)}
         >
           <div
+            {...a11y}
             className={`bg-surface-card border-2 border-border w-full h-full flex flex-col shadow-[8px_8px_0_0_var(--color-shadow)] transition-all duration-200 ${
               expanded ? 'max-w-[96vw] max-h-[94vh]' : 'max-w-4xl max-h-[85vh]'
             }`}
@@ -220,7 +223,7 @@ export default function ArtifactsPage() {
           >
             <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border bg-surface-elevated">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="font-mono text-micro uppercase bg-content-primary text-surface-page px-1">
+                <span id="artifact-detail-title" className="font-mono text-micro uppercase bg-content-primary text-surface-page px-1">
                   {detail.type}
                 </span>
                 <span className="font-bold text-sm text-content-primary truncate">

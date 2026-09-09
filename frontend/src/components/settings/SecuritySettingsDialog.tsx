@@ -17,6 +17,7 @@ import { setPasswordApi } from '@/services/auth'
 import { useTranslation } from '@/i18n'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
+import { useDialogA11y } from '@/hooks/useDialogA11y'
 
 interface SecuritySettingsDialogProps {
   isOpen: boolean
@@ -71,6 +72,7 @@ export function SecuritySettingsDialog({ isOpen, onClose }: SecuritySettingsDial
   }
 
   useEscapeToClose(isOpen, handleClose)
+  const a11y = useDialogA11y<HTMLDivElement>(isOpen, 'security-settings-title')
 
   if (!isOpen) return null
 
@@ -84,6 +86,7 @@ export function SecuritySettingsDialog({ isOpen, onClose }: SecuritySettingsDial
       onClick={handleClose}
     >
       <div
+        {...a11y}
         className="relative bg-surface-card border-2 border-border-default shadow-theme-modal w-[420px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
@@ -91,11 +94,12 @@ export function SecuritySettingsDialog({ isOpen, onClose }: SecuritySettingsDial
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-accent-hover"></div>
-            <span className="text-xs font-bold uppercase tracking-widest text-content-secondary">
+            <span id="security-settings-title" className="text-xs font-bold uppercase tracking-widest text-content-secondary">
               /// {t('accountSecurity')}
             </span>
           </div>
           <button
+            aria-label={t('close')}
             onClick={handleClose}
             disabled={isSettingPassword}
             className="w-6 h-6 flex items-center justify-center border-2 border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"

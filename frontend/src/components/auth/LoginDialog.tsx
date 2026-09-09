@@ -8,6 +8,7 @@ import { pushToast } from '@/components/ui/use-toast'
 import { resetPasswordApi } from '@/services/auth'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
+import { useDialogA11y } from '@/hooks/useDialogA11y'
 
 interface LoginDialogProps {
   open: boolean
@@ -176,6 +177,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
   }
 
   useEscapeToClose(open, handleClose)
+  const a11y = useDialogA11y<HTMLDivElement>(open, 'login-dialog-title')
 
   if (!open) return null
 
@@ -186,6 +188,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
       onClick={handleClose}
     >
       <div
+        {...a11y}
         className="relative bg-surface-card border-2 border-border-default shadow-theme-modal w-[380px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200 rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
@@ -198,6 +201,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
             </span>
           </div>
           <button
+            aria-label={t('close')}
             onClick={handleClose}
             className="w-6 h-6 flex items-center justify-center border-2 border-border-default hover:bg-accent-hover transition-colors rounded"
           >
@@ -212,7 +216,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
             <div className="w-16 h-16 mx-auto mb-4 border-2 border-border-default bg-surface-page flex items-center justify-center rounded-md">
               <The4DPocketLogo />
             </div>
-            <h2 className="text-lg font-black uppercase tracking-tight mb-1 text-content-primary">
+            <h2 id="login-dialog-title" className="text-lg font-black uppercase tracking-tight mb-1 text-content-primary">
               {loginMode === 'reset'
                 ? t('resetPasswordTitle')
                 : step === 'phone'

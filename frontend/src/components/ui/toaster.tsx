@@ -29,9 +29,11 @@ export function Toaster() {
           </div>
           <button
             onClick={() => dismissToast(toast.id)}
+            aria-label="Dismiss"
             className={cn(
-              'opacity-0 transition-opacity hover:opacity-100',
-              'rounded-md p-1 text-current'
+              'flex items-center justify-center min-w-[40px] min-h-[40px] -my-2 -mr-2',
+              'opacity-40 hover:opacity-100 focus-visible:opacity-100 transition-opacity',
+              'rounded-md text-current'
             )}
           >
             <X className="h-4 w-4" />
