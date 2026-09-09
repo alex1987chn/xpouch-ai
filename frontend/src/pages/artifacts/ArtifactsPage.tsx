@@ -19,6 +19,7 @@ import { Z_INDEX } from '@/constants/zIndex'
 import type { ArtifactListItem } from '@/types'
 import ArtifactRenderer from '@/components/artifacts/ArtifactRenderer'
 import { CardSkeleton } from '@/components/ui/skeleton'
+import { ErrorState, EmptyState } from '@/components/ui/states'
 import PageTitle from '@/components/layout/PageTitle'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { cn } from '@/lib/utils'
@@ -61,7 +62,7 @@ export default function ArtifactsPage() {
   const [shareCopied, setShareCopied] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
 
-  const { data, isLoading, isError, error } = useArtifactsQuery(page, typeFilter || undefined)
+  const { data, isLoading, isError, error, refetch } = useArtifactsQuery(page, typeFilter || undefined)
 
   const openDetail = async (item: ArtifactListItem) => {
     setDetail(item) // 先用列表预览占位
@@ -138,15 +139,17 @@ export default function ArtifactsPage() {
         )}
 
         {isError && (
-          <div className="py-20 text-center font-mono text-sm text-status-error">
-            {(error as Error)?.message || t('loadFailed')}
-          </div>
+          <ErrorState
+            message={(error as Error)?.message}
+            onRetry={() => refetch()}
+          />
         )}
 
         {data && data.items.length === 0 && (
-          <div className="py-20 text-center font-mono text-sm text-content-muted">
-            {t('artifactsEmpty')}
-          </div>
+          <EmptyState
+            title={t('artifactsEmpty')}
+            action={{ label: t('home'), onClick: () => navigate('/') }}
+          />
         )}
 
         {data && data.items.length > 0 && (

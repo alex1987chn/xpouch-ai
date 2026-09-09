@@ -16,6 +16,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
 import { CardSkeleton, Skeleton } from '@/components/ui/skeleton'
+import { ErrorState } from '@/components/ui/states'
 import PageTitle from '@/components/layout/PageTitle'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
@@ -237,7 +238,7 @@ export default function StatsPage() {
   const limit = 50
 
   // 获取统计数据
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['run-stats', limit, offset],
     queryFn: () => getRunStats(limit, offset),
     refetchOnWindowFocus: false,
@@ -278,9 +279,7 @@ export default function StatsPage() {
     return (
       <div className="min-h-screen bg-surface-page p-8">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center py-16 text-accent-destructive font-mono">
-            {t('loadFailed')}
-          </div>
+          <ErrorState message={error instanceof Error ? error.message : undefined} onRetry={() => refetch()} />
         </div>
       </div>
     )

@@ -10,6 +10,7 @@ import { Server, Plus } from 'lucide-react'
 import { useMCPServers } from '@/hooks/queries/useMCPQuery'
 import { SearchInput } from '@/components/ui/input'
 import { CardSkeleton } from '@/components/ui/skeleton'
+import { ErrorState } from '@/components/ui/states'
 import MCPCard from './components/MCPCard'
 import { AddMCPDialog } from './components/AddMCPDialog'
 import { useTranslation } from '@/i18n'
@@ -23,7 +24,7 @@ interface MCPListProps {
 
 export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPListProps) {
   const { t } = useTranslation()
-  const { data: servers, isLoading, isError } = useMCPServers()
+  const { data: servers, isLoading, isError, refetch } = useMCPServers()
   const [isAddOpen, setIsAddOpen] = useState(false)
   // 🔥 手风琴模式：记录当前展开的服务器 ID
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -81,9 +82,10 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
   // 错误状态
   if (isError) {
     return (
-      <div className="text-center py-20 font-mono text-sm text-accent-destructive uppercase">
-        {t('loadFailed') || 'Failed to load'}
-      </div>
+      <ErrorState
+        message={t('loadFailed') || 'Failed to load'}
+        onRetry={() => refetch()}
+      />
     )
   }
 
