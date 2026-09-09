@@ -37,10 +37,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 
-from api.admin import router as admin_router
-from api.library import router as library_router
-from api.tools import router as tools_router
-
 # 路由导入
 from auth import router as auth_router
 from config import settings
@@ -48,7 +44,7 @@ from config import settings
 # 内部模块导入
 from database import create_db_and_tables, engine
 from models import SkillTemplate, SystemExpert
-from routers import agents, chat, mcp, public, runs, stats, system
+from routers import admin, agents, chat, library, mcp, public, runs, stats, system, tools
 from utils.exceptions import AppError, handle_error
 from utils.logger import logger
 
@@ -178,9 +174,9 @@ app = FastAPI(
 
 # 注册路由
 app.include_router(auth_router)
-app.include_router(admin_router)
-app.include_router(library_router)
-app.include_router(tools_router)
+app.include_router(admin.router)
+app.include_router(library.router)
+app.include_router(tools.router)
 app.include_router(chat.router)
 app.include_router(agents.router)
 app.include_router(system.router)

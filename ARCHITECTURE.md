@@ -23,10 +23,13 @@ backend/
 │   ├── event_stream.py # 事件出口（emit_event）
 │   ├── tool_policy.py / tool_runtime.py  # 工具治理执行层
 │   └── services/       # 节点协作服务
-├── routers/           # HTTP 路由（服务委托风格：薄路由 → services/crud）
+├── routers/           # HTTP 路由（chat / admin / library / tools / runs / stats / mcp / public / system）
 │   ├── chat.py         # 会话与 SSE 流、产物接口
+│   ├── admin.py        # 专家管理与用户晋升（view/edit/admin 分级守卫）
+│   ├── library.py      # 技能模板 CRUD 与导入导出
+│   ├── tools.py        # 工具列表与治理策略
 │   ├── runs.py / stats.py / mcp.py / public.py（/s/{token} 分享页）/ system.py
-├── api/               # 旧路由家族（admin/library/tools），逐步并入 routers/
+├── auth/              # 认证包：OTP、密码登录、忘记密码、cookie、限流（按子模块拆分）
 ├── auth.py            # 认证：手机验证码 / 密码登录 / 忘记密码 / cookie / 限流
 ├── services/          # 业务服务（chat/ 子域、agent_service、tool_policy_service…）
 ├── crud/              # 数据访问层（SQLModel 查询封装）

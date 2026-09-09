@@ -60,7 +60,7 @@ def mock_sms(monkeypatch):
         calls.append((phone_number, code))
         return True, None
 
-    monkeypatch.setattr("auth.send_verification_code_with_fallback", _fake_send)
+    monkeypatch.setattr("auth.routes_otp.send_verification_code_with_fallback", _fake_send)
     return calls
 
 

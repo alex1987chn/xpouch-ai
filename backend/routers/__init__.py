@@ -1,4 +1,15 @@
 # Routers package
-from . import agents, chat, system
+from . import admin, agents, chat, library, mcp, public, runs, stats, system, tools
 
-__all__ = ["chat", "agents", "system"]
+__all__ = [
+    "admin",
+    "agents",
+    "chat",
+    "library",
+    "mcp",
+    "public",
+    "runs",
+    "stats",
+    "system",
+    "tools",
+]
