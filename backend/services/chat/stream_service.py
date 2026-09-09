@@ -41,7 +41,7 @@ from services.chat.parts.event_builders import EventBuildersMixin
 from services.mcp_tools_service import mcp_tools_service
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
-from utils.logger import logger
+from utils.logger import logger, set_run_id
 from utils.time import utc_now_naive
 
 
@@ -114,6 +114,8 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         from agents.graph import create_smart_router_workflow
 
         async def event_generator():
+            # 本 run 的所有日志行自动携带 run= 字段（请求任务生命周期内有效）
+            set_run_id(agent_run.id)
             actual_message_id = message_id or str(uuid.uuid4())
             full_response = ""
             router_decision = "simple"
@@ -713,6 +715,10 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         # 在方法内部导入，防止循环引用
         from agents.graph import create_smart_router_workflow
         from utils.db import get_shared_checkpointer
+
+        # 恢复流程同样把 run_id 注入日志上下文（HITL 续跑的日志关联）
+        if run_id:
+            set_run_id(run_id)
 
         # 🔥 MCP: 获取动态工具
         mcp_tools = await self._get_mcp_tools()

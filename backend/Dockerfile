@@ -45,5 +45,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
 RUN useradd --create-home --shell /bin/sh xpouch && chown -R xpouch:xpouch /app
 USER xpouch
 
-# 启动命令：先执行数据库迁移，再启动应用
-CMD ["sh", "-c", "uv run alembic upgrade head && uv run uvicorn main:app --host 0.0.0.0 --port 3000"]
+# 启动命令：先执行数据库迁移，再启动应用（访问日志由应用中间件输出，含请求 ID 与耗时）
+CMD ["sh", "-c", "uv run alembic upgrade head && uv run uvicorn main:app --host 0.0.0.0 --port 3000 --no-access-log"]

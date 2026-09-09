@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 env_path = pathlib.Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path, override=True)
 
+import time
 from contextlib import asynccontextmanager
 
 # ============================================================================
@@ -46,7 +47,10 @@ from database import create_db_and_tables, engine
 from models import SkillTemplate, SystemExpert
 from routers import admin, agents, chat, library, mcp, public, runs, stats, system, tools
 from utils.exceptions import AppError, handle_error
-from utils.logger import logger
+from utils.logger import logger, new_request_id, reset_request_id, set_request_id, setup_logging
+
+# 日志必须在任何业务日志产生前配置好（容器内 uvicorn 直启不会配 root logger）
+setup_logging()
 
 ENCODERS_BY_TYPE[_dt] = lambda o: o.isoformat() + "Z"
 
@@ -192,18 +196,35 @@ app.include_router(public.router)
 
 
 @app.middleware("http")
-async def log_requests(request: Request, call_next) -> Response:
-    """请求日志中间件"""
-    logger.info(f"[REQUEST] {request.method} {request.url.path}")
+async def request_context(request: Request, call_next) -> Response:
+    """请求上下文中间件：请求 ID 贯穿 + 单行访问日志（含状态码与耗时）。
+
+    - X-Request-ID 可由上游（网关/前端）传入，否则生成；原样回传响应头
+    - 本中间件是唯一的访问日志来源（uvicorn access log 已关闭），
+      状态码/耗时/请求 ID 都在这一行里，与错误堆栈共用同一 rid
+    """
+    rid = request.headers.get("X-Request-ID") or new_request_id()
+    token = set_request_id(rid)
+    start = time.perf_counter()
     try:
         response = await call_next(request)
-        logger.info(f"[RESPONSE] {response.status_code} {request.url.path}")
+        elapsed_ms = int((time.perf_counter() - start) * 1000)
+        logger.info(
+            "%s %s -> %d (%dms)",
+            request.method,
+            request.url.path,
+            response.status_code,
+            elapsed_ms,
+        )
+        response.headers["X-Request-ID"] = rid
         return response
-    except Exception as e:
+    except Exception:
         logger.error(
-            f"[ERROR] Exception in {request.method} {request.url.path}: {str(e)}", exc_info=True
+            "unhandled exception in %s %s", request.method, request.url.path, exc_info=True
         )
         raise
+    finally:
+        reset_request_id(token)
 
 
 @app.middleware("http")

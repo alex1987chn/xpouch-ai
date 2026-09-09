@@ -89,8 +89,10 @@ def start_server():
     asyncio.set_event_loop(loop)
     logger.info(f"[WinFix] Active Loop: {loop.__class__.__name__}")
 
-    # 3. 配置 Uvicorn
-    config = Config("main:app", host=HOST, port=PORT, reload=False, loop="asyncio")
+    # 3. 配置 Uvicorn（访问日志由应用侧 request_context 中间件输出，含请求 ID 与耗时）
+    config = Config(
+        "main:app", host=HOST, port=PORT, reload=False, loop="asyncio", access_log=False
+    )
     server = Server(config)
 
     # 4. 信号处理

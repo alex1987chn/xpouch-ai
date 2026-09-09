@@ -33,7 +33,7 @@ from models.enums import TaskStatus
 from services.chat.run_lifecycle import sse_stream_headers
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError, AuthorizationError, NotFoundError, ValidationError
-from utils.logger import logger
+from utils.logger import logger, set_run_id
 from utils.sse_builder import build_error_event
 from utils.time import utc_now_naive
 
@@ -286,6 +286,7 @@ class RecoveryService:
 
             async def event_generator():
                 """事件生成器 - 复用 StreamService 的核心流式逻辑"""
+                set_run_id(run_id)
                 try:
                     # 调用 StreamService 执行 LangGraph 流式处理
                     async for event in self.stream_service.execute_langgraph_stream(

@@ -18,6 +18,7 @@ from providers_config import get_model_config, get_provider_api_key, get_provide
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
 from utils.llm_factory import get_llm_instance
+from utils.logger import set_run_id
 from utils.time import utc_now_naive
 
 
@@ -46,6 +47,7 @@ class CustomAgentMixin:
         """
 
         async def event_generator():
+            set_run_id(agent_run.id)
             full_response = ""
             reasoning_buffer = ""  # 模型思考过程（reasoning_content）累积，用于持久化
             actual_message_id = message_id or str(uuid.uuid4())
