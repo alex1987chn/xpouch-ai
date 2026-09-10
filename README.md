@@ -158,6 +158,8 @@ A contributor-oriented map of directories, the event protocol, and "how to add X
 
 ## Quick Start
 
+> Full self-hosting guide (admin bootstrap, reverse proxy & HTTPS, backups, FAQ): **[docs/self-hosting.md](docs/self-hosting.md)** (Chinese; English translation welcome via PR).
+
 ### Requirements
 
 - Node.js `>= 24.14.0`

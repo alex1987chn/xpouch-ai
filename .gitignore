@@ -64,7 +64,6 @@ upload-package/
 # Local documentation (private notes, not for GitHub)
 # Note: CHANGELOG.md and CHANGELOG_ARCHIVE.md are tracked in Git
 MEM.md
-docs/
 
 # CodeBuddy (project data, not for git)
 .codebuddy/

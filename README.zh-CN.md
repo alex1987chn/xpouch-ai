@@ -158,6 +158,8 @@ POST /api/chat
 
 ## 快速开始
 
+> 完整自部署指南（管理员初始化、反向代理与 HTTPS、备份恢复、常见问题）：**[docs/self-hosting.md](docs/self-hosting.md)**
+
 ### 环境要求
 
 - Node.js `>= 24.14.0`
