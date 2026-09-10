@@ -5,6 +5,9 @@
  *
  * 使用语义化 CSS 变量，完全主题自适应
  * 所有视觉风格（边框、阴影、变换）由 CSS 变量控制
+ *
+ * v3.4.7 双角色：通用功能全员可见；「系统管理」仅 admin 可见
+ * （自上而下：首页 → 资源工坊 → 产物中心 → 会话记录 → 运行统计 → 系统管理）
  */
 
 import { BarChart3, Boxes, Home, Library, MessageSquare, ShieldCheck } from 'lucide-react'
@@ -30,7 +33,7 @@ export function NavigationMenu({
     return (
       <div className="shrink-0 flex flex-col items-center">
         <div className="flex flex-col items-center space-y-2">
-          {/* 首页按钮 */}
+          {/* 首页 */}
           <NavButtonCollapsed
             isActive={isOnHome}
             onClick={() => onMenuClick('/')}
@@ -38,23 +41,7 @@ export function NavigationMenu({
             label={t('navDashboard')}
           />
 
-          {/* 统计按钮 */}
-          <NavButtonCollapsed
-            isActive={isOnStats}
-            onClick={() => onMenuClick('/admin/stats')}
-            icon={<BarChart3 className="w-4 h-4 flex-shrink-0" />}
-            label={t('navStats')}
-          />
-
-          {/* 工作台：产物中心 */}
-          <NavButtonCollapsed
-            isActive={isOnArtifacts}
-            onClick={() => onMenuClick('/artifacts')}
-            icon={<Boxes className="w-4 h-4 flex-shrink-0" />}
-            label={t('artifactsTitle')}
-          />
-
-          {/* 工作台：资源工坊 */}
+          {/* 资源工坊 */}
           <NavButtonCollapsed
             isActive={isOnLibrary}
             onClick={() => onMenuClick('/library')}
@@ -62,7 +49,15 @@ export function NavigationMenu({
             label={t('library')}
           />
 
-          {/* 工作台：会话记录 */}
+          {/* 产物中心 */}
+          <NavButtonCollapsed
+            isActive={isOnArtifacts}
+            onClick={() => onMenuClick('/artifacts')}
+            icon={<Boxes className="w-4 h-4 flex-shrink-0" />}
+            label={t('artifactsTitle')}
+          />
+
+          {/* 会话记录 */}
           <NavButtonCollapsed
             isActive={isOnHistory}
             onClick={() => onMenuClick('/history')}
@@ -70,11 +65,19 @@ export function NavigationMenu({
             label={t('history')}
           />
 
-          {/* 管理控制台（仅 admin） */}
+          {/* 运行统计 */}
+          <NavButtonCollapsed
+            isActive={isOnStats}
+            onClick={() => onMenuClick('/admin/stats')}
+            icon={<BarChart3 className="w-4 h-4 flex-shrink-0" />}
+            label={t('navStats')}
+          />
+
+          {/* 系统管理（仅 admin） */}
           {isAdmin && (
             <AdminButtonCollapsed
               isActive={isOnAdmin}
-              onClick={() => onMenuClick('/admin/console?tab=system')}
+              onClick={() => onMenuClick('/admin/console')}
               t={t}
             />
           )}
@@ -100,38 +103,23 @@ export function NavigationMenu({
         label={t('navDashboard')}
       />
 
-      {/* 运行统计（全员：普通用户=我的统计，admin=全局统计） */}
-      <NavButtonExpanded
-        isActive={isOnStats}
-        onClick={() => onMenuClick('/admin/stats')}
-        icon={<BarChart3 className="w-5 h-5 flex-shrink-0" />}
-        label={t('navStats')}
-      />
-
-      {/* 工作台组（全员） */}
-      <div className={cn('px-1 pt-3 pb-2', TW.CONTENT_WIDTH)}>
-        <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider text-micro">
-          /// {t('workspace')}
-        </h3>
-      </div>
-      <NavButtonExpanded
-        isActive={false}
-        onClick={() => onMenuClick('/chat')}
-        icon={<MessageSquare className="w-5 h-5 flex-shrink-0" />}
-        label={t('navChat')}
-      />
-      <NavButtonExpanded
-        isActive={isOnArtifacts}
-        onClick={() => onMenuClick('/artifacts')}
-        icon={<Boxes className="w-5 h-5 flex-shrink-0" />}
-        label={t('artifactsTitle')}
-      />
+      {/* 资源工坊 */}
       <NavButtonExpanded
         isActive={isOnLibrary}
         onClick={() => onMenuClick('/library')}
         icon={<Library className="w-5 h-5 flex-shrink-0" />}
         label={t('library') || 'LIBRARY'}
       />
+
+      {/* 产物中心 */}
+      <NavButtonExpanded
+        isActive={isOnArtifacts}
+        onClick={() => onMenuClick('/artifacts')}
+        icon={<Boxes className="w-5 h-5 flex-shrink-0" />}
+        label={t('artifactsTitle')}
+      />
+
+      {/* 会话记录 */}
       <NavButtonExpanded
         isActive={isOnHistory}
         onClick={() => onMenuClick('/history')}
@@ -139,41 +127,21 @@ export function NavigationMenu({
         label={t('history')}
       />
 
-      {/* 管理控制台组（仅 admin 显示，实例级管理） */}
+      {/* 运行统计 */}
+      <NavButtonExpanded
+        isActive={isOnStats}
+        onClick={() => onMenuClick('/admin/stats')}
+        icon={<BarChart3 className="w-5 h-5 flex-shrink-0" />}
+        label={t('navStats')}
+      />
+
+      {/* 系统管理（仅 admin） */}
       {isAdmin && (
-        <>
-          <div className={cn('px-1 pt-3 pb-2', TW.CONTENT_WIDTH)}>
-            <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider text-micro">
-              /// {t('navConsole')}
-            </h3>
-          </div>
-          <ConsoleSubItem
-            label={t('systemStatus')}
-            active={false}
-            onClick={() => onMenuClick('/admin/console?tab=system')}
-          />
-          <ConsoleSubItem
-            label={t('navExperts')}
-            active={false}
-            onClick={() => onMenuClick('/admin/console?tab=experts')}
-          />
-          <ConsoleSubItem
-            label={t('toolGovernance')}
-            active={false}
-            onClick={() => onMenuClick('/admin/console?tab=governance')}
-          />
-          <ConsoleSubItem
-            label={t('workshop')}
-            active={false}
-            onClick={() => onMenuClick('/admin/console?tab=templates')}
-          />
-          <ConsoleSubItem
-            label={t('userManagementComingSoon')}
-            active={false}
-            disabled
-            onClick={() => {}}
-          />
-        </>
+        <AdminButtonExpanded
+          isActive={isOnAdmin}
+          onClick={() => onMenuClick('/admin/console')}
+          t={t}
+        />
       )}
     </div>
   )
@@ -249,36 +217,7 @@ function NavButtonExpanded({ isActive, onClick, icon, label }: NavButtonExpanded
 }
 
 /**
- * 控制台子项（管理控制台组内缩进行）
- */
-interface ConsoleSubItemProps {
-  label: string
-  active: boolean
-  disabled?: boolean
-  onClick: () => void
-}
-
-function ConsoleSubItem({ label, active, disabled = false, onClick }: ConsoleSubItemProps) {
-  return (
-    <button
-      onClick={disabled ? undefined : onClick}
-      disabled={disabled}
-      className={cn(
-        'transition-all duration-200 justify-start py-0 pl-8 pr-3 border-2 mb-1 w-full',
-        disabled
-          ? 'border-transparent text-content-muted opacity-50 cursor-not-allowed'
-          : active
-            ? 'bg-accent-hover/10 border-accent-hover text-content-primary'
-            : 'border-transparent text-content-secondary hover:bg-surface-page hover:border-border-default'
-      )}
-    >
-      <span className="text-xs font-bold tracking-wide uppercase">{label}</span>
-    </button>
-  )
-}
-
-/**
- * 折叠状态的管理员按钮
+ * 折叠状态的管理员按钮（系统管理）
  */
 interface AdminButtonCollapsedProps {
   isActive: boolean
@@ -299,3 +238,30 @@ function AdminButtonCollapsed({ isActive, onClick, t }: AdminButtonCollapsedProp
   )
 }
 
+/**
+ * 展开状态的管理员按钮（系统管理）
+ */
+interface AdminButtonExpandedProps {
+  isActive: boolean
+  onClick: () => void
+  t: (key: TranslationKey) => string
+}
+
+function AdminButtonExpanded({ isActive, onClick, t }: AdminButtonExpandedProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        cn('transition-all duration-200 justify-center py-0 border-2 mb-1', TW.BUTTON_HEIGHT, TW.BUTTON_WIDTH),
+        isActive
+          ? 'bg-accent text-content-inverted border-border-default shadow-theme-button'
+          : 'border-transparent text-content-primary hover:bg-surface-page hover:border-border-default'
+      )}
+    >
+      <div className="flex items-center gap-3 px-3">
+        <ShieldCheck className="w-5 h-5 flex-shrink-0" />
+        <span className="text-xs font-bold tracking-wide uppercase">{t('navConsole')}</span>
+      </div>
+    </button>
+  )
+}

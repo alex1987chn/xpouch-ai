@@ -14,8 +14,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useNavigate } from 'react-router-dom'
-import { Bot, ShieldCheck, FileCode, BarChart3, Activity, Search } from 'lucide-react'
+import { Bot, ShieldCheck, FileCode, Activity, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { useUserStore } from '@/store/userStore'
@@ -30,7 +29,6 @@ type ConsoleTab = 'system' | 'experts' | 'governance' | 'templates'
 
 export default function ManagementConsolePage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const role = useUserStore(state => state.user?.role ?? '')
   const isAdmin = role === 'admin'
 
@@ -62,14 +60,14 @@ export default function ManagementConsolePage() {
     { key: 'system', label: t('systemStatus'), icon: Activity },
     { key: 'experts', label: t('navExperts'), icon: Bot },
     { key: 'governance', label: t('toolGovernance'), icon: ShieldCheck },
-    { key: 'templates', label: t('workshop'), icon: FileCode },
+    { key: 'templates', label: t('templateManagement'), icon: FileCode },
   ]
 
   return (
     <div className="min-h-[100dvh] bg-surface-page px-6 md:px-12 py-8">
       <div className="max-w-6xl mx-auto space-y-6">
         <PageTitle
-          title={t('managementConsole')}
+          title={t('navConsole')}
           right={
             <span className="px-2 py-1 bg-status-warning/15 text-content-primary text-xs font-mono uppercase">
               ADMIN
@@ -96,14 +94,6 @@ export default function ManagementConsolePage() {
               </button>
             ))}
 
-            {/* 运行统计直达 + 用户管理占位 */}
-            <button
-              onClick={() => navigate('/admin/stats')}
-              className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold uppercase border-2 border-transparent text-content-secondary hover:bg-surface-page hover:border-border-default transition-colors"
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span className="truncate">{t('navStats')}</span>
-            </button>
             <div className="px-3 py-2 text-micro text-content-secondary opacity-50 uppercase tracking-widest border-t-2 border-border-default mt-1">
               {t('userManagementComingSoon')}
             </div>
