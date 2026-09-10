@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { useUserStore } from '@/store/userStore'
 import { useAppUIStore } from '@/store/appUIStore'
 import { useToast } from '@/components/ui/use-toast'
@@ -15,7 +15,6 @@ interface AdminRouteProps {
 export default function AdminRoute({ children, requiredRole = 'admin' }: AdminRouteProps) {
   const { user, isAuthenticated, isAuthChecked } = useUserStore()
   const openLogin = useAppUIStore((s) => s.openLogin)
-  const location = useLocation()
   const { toast } = useToast()
   const { t } = useTranslation()
 
@@ -27,6 +26,31 @@ export default function AdminRoute({ children, requiredRole = 'admin' }: AdminRo
       openLogin()
     }
   }, [isAuthChecked, isAuthenticated, openLogin])
+
+  // 角色判定（必须在全部 hooks 之后、任何提前 return 之前完成计算）
+  const allowed = (() => {
+    if (!user) return false
+    switch (requiredRole) {
+      case 'admin':
+        return user.role === 'admin'
+      case 'user':
+        return true
+      default:
+        return false
+    }
+  })()
+
+  // 权限不足：一次性提示 + 回首页。
+  // ⚠️ toast 不能在 render 期调用（store 更新会触发无限重渲染 → React #301）
+  useEffect(() => {
+    if (isAuthChecked && isAuthenticated && user && !allowed) {
+      toast({
+        title: t('permissionDenied'),
+        description: t('adminOnly'),
+        variant: 'destructive'
+      })
+    }
+  }, [isAuthChecked, isAuthenticated, user, allowed, toast, t])
 
   // P0-6 修复: 等待认证检查完成
   if (!isAuthChecked) {
@@ -44,26 +68,8 @@ export default function AdminRoute({ children, requiredRole = 'admin' }: AdminRo
     )
   }
 
-  // 检查用户角色
-  const hasPermission = () => {
-    switch (requiredRole) {
-      case 'admin':
-        return user.role === 'admin'
-      case 'user':
-        return true
-      default:
-        return false
-    }
-  }
-
-  // 权限不足，显示提示并重定向到首页
-  if (!hasPermission()) {
-    toast({
-      title: t('permissionDenied'),
-      description: t('adminOnly'),
-      variant: 'destructive'
-    })
-    return <Navigate to="/" state={{ from: location }} replace />
+  if (!allowed) {
+    return <Navigate to="/" replace />
   }
 
   return <>{children}</>
