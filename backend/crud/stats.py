@@ -239,3 +239,19 @@ def get_run_list(
         )
 
     return result, total_count
+
+
+def get_today_token_usage(
+    db: Session,
+    *,
+    user_id: str,
+) -> int:
+    """该用户今日（UTC 日界，与配额判定同口径）已产生的 token 总量"""
+    today_start = utc_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
+    used = db.exec(
+        select(func.coalesce(func.sum(AgentRun.total_tokens), 0)).where(
+            AgentRun.user_id == user_id,
+            AgentRun.started_at >= today_start,
+        )
+    ).one()
+    return int(used or 0)

@@ -169,7 +169,7 @@ export type TranslationKey =
   | 'moreAvailable' | 'loadMore' | 'noMoreRecords'
   // StatsPage
   | 'globalStats' | 'myStats' | 'totalRuns' | 'successRate' | 'hitlCount' | 'avgDuration'
-  | 'trends' | 'days' | 'noRuns' | 'runList' | 'prev' | 'next' | 'viewDetails' | 'loadFailed' | 'failed'
+  | 'trends' | 'days' | 'noRuns' | 'noRunsHint' | 'todayTokens' | 'quotaRemaining' | 'runList' | 'prev' | 'next' | 'viewDetails' | 'loadFailed' | 'failed'
   // Polling (轮询恢复)
   | 'pollingRestoring' | 'pollingHitlPaused' | 'pollingRefresh' | 'pollingError'
   // 历史遗漏键补齐（2026-09 tsc 清零：译文已存在于字典，仅缺联合类型声明）

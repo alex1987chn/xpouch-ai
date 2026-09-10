@@ -400,6 +400,7 @@ def get_available_models() -> list[dict[str, Any]]:
                 "name": model_config.get("name", model_id),
                 "context_window": provider_config.get("context_window"),
                 "thinking_toggle": bool(model_config.get("thinking_toggle", False)),
+                "vision": bool(model_config.get("vision", False)),
             }
         )
 

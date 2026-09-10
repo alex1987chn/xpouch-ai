@@ -466,7 +466,8 @@ export async function sendMessage(
   onChunk?: StreamCallback,
   threadId?: string | null,
   abortSignal?: AbortSignal,
-  assistantMessageId?: string | undefined  // v3.0: 前端传递的助手消息 ID
+  assistantMessageId?: string | undefined,  // v3.0: 前端传递的助手消息 ID
+  images?: string[] | undefined  // v3.4.7: 当前轮图片输入（dataURL，仅视觉模型）
 ): Promise<string> {
 
   const history = messages.slice(0, -1)
@@ -481,6 +482,7 @@ export async function sendMessage(
       headers: getHeaders(),
       body: JSON.stringify({
         message: messageContent,
+        images: images ?? [],
         history: history.map(m => ({ role: m.role, content: m.content })),
         agent_id: agentId,
         thread_id: threadId,
@@ -497,6 +499,7 @@ export async function sendMessage(
     url,
     requestBody: {
       message: messageContent,
+      images: images ?? [],
       history: history.map(m => ({ role: m.role, content: m.content })),
       agent_id: agentId,
       thread_id: threadId,

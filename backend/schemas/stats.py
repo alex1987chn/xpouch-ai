@@ -51,6 +51,10 @@ class RunStatsResponse(BaseModel):
     # 权限标识
     is_admin: bool
 
+    # 今日 token 用量与每用户日配额（quota 为 null 表示不限量）
+    today_tokens: int = 0
+    daily_token_quota: int | None = None
+
     # 核心指标
     metrics: RunMetrics
 

@@ -46,6 +46,10 @@ export interface RunListItem {
  */
 export interface RunStatsResponse {
   is_admin: boolean
+
+  // 今日 token 用量与每用户日配额（null = 不限量）
+  today_tokens: number
+  daily_token_quota: number | null
   metrics: RunMetrics
   trends: DailyTrend[]
   runs: RunListItem[]

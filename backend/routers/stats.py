@@ -11,7 +11,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
-from crud.stats import get_daily_trends, get_run_list, get_run_metrics
+from crud.stats import get_daily_trends, get_run_list, get_run_metrics, get_today_token_usage
 from database import get_session
 from dependencies import get_current_user
 from models import User
@@ -25,6 +25,7 @@ router = APIRouter(prefix="/api/admin/stats", tags=["stats"])
 async def get_run_stats(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    days: int = Query(default=7, ge=1, le=30),
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> RunStatsResponse:
@@ -53,13 +54,21 @@ async def get_run_stats(
     metrics = RunMetrics(**metrics_data)
 
     # 获取每日趋势（数据库层聚合）
-    trends = get_daily_trends(db, user_id=user_id, days=7)
+    trends = get_daily_trends(db, user_id=user_id, days=days)
 
     # 获取运行列表（分页）
     runs, total_count = get_run_list(db, user_id=user_id, limit=limit, offset=offset)
 
+    # 今日 token 用量与配额（按请求者口径；配额为全局设置）
+    from services.run_quota import load_daily_token_quota
+
+    today_tokens = get_today_token_usage(db, user_id=current_user.id)
+    daily_quota = load_daily_token_quota(db)
+
     return RunStatsResponse(
         is_admin=is_admin,
+        today_tokens=today_tokens,
+        daily_token_quota=daily_quota,
         metrics=metrics,
         trends=trends,
         runs=runs,

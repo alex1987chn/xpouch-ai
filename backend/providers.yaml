@@ -165,7 +165,8 @@ models:
     provider: deepseek
     model: deepseek-flash
     name: DeepSeek V4.1 Flash
-    thinking_toggle: true                # 支持思考模式开关（请求级 thinking.type 覆盖）
+    thinking_toggle: true
+    vision: true                         # V4.1 原生多模态视觉（OpenAI image_url 格式）                # 支持思考模式开关（请求级 thinking.type 覆盖）
 
   # 兼容别名（hidden: 不出现在 /api/models 可选列表中）
   # deepseek-v4-flash / deepseek-chat / deepseek-reasoner 均为已下线旧 ID，
@@ -212,6 +213,7 @@ models:
     name: Kimi K2.6
     temperature: 0.6                     # K2.6 仅允许 0.6（同旧 K2.5 仅允许 1 的限制）
     thinking_toggle: true                # 思考开关参数实测有效（thinking.type，同 DeepSeek 约定）
+    vision: true                         # Kimi 支持文本/图像输入
 
   # Kimi K3 旗舰（贵但强，按需在专家中指定）
   kimi-k3:

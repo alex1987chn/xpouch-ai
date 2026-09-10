@@ -16,6 +16,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
 import { CardSkeleton, Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/ui/states'
 import { ErrorState } from '@/components/ui/states'
 import PageTitle from '@/components/layout/PageTitle'
 import { cn } from '@/lib/utils'
@@ -26,7 +27,7 @@ import { logger } from '@/utils/logger'
 import { RunStatusBadge } from '@/components/ui/run-status-badge'
 
 // 图标组件
-import { BarChart3, CheckCircle, AlertTriangle, Clock, ExternalLink } from 'lucide-react'
+import { BarChart3, CheckCircle, AlertTriangle, Clock, ExternalLink, Coins } from 'lucide-react'
 
 /**
  * 指标卡片组件
@@ -235,12 +236,13 @@ export default function StatsPage() {
   const isAdmin = user?.role === 'admin'
 
   const [offset, setOffset] = useState(0)
+  const [days, setDays] = useState(7)
   const limit = 50
 
   // 获取统计数据
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['run-stats', limit, offset],
-    queryFn: () => getRunStats(limit, offset),
+    queryKey: ['run-stats', limit, offset, days],
+    queryFn: () => getRunStats(limit, offset, days),
     refetchOnWindowFocus: false,
   })
 
@@ -298,8 +300,19 @@ export default function StatsPage() {
           ) : undefined}
         />
 
+        {/* 新用户空状态：引导跑第一个任务 */}
+        {data?.metrics && data.metrics.total_runs === 0 && (
+          <div className="border-2 border-border-default bg-surface-card shadow-theme-card">
+            <EmptyState
+              title={t('noRuns')}
+              description={t('noRunsHint')}
+              action={{ label: t('navDashboard'), onClick: () => navigate('/') }}
+            />
+          </div>
+        )}
+
         {/* 指标卡片 */}
-        {data?.metrics && (
+        {data?.metrics && data.metrics.total_runs > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <MetricCard
               title={t('totalRuns')}
@@ -321,6 +334,17 @@ export default function StatsPage() {
               color="yellow"
             />
             <MetricCard
+              title={t('todayTokens')}
+              value={data.today_tokens.toLocaleString()}
+              subtitle={
+                data.daily_token_quota
+                  ? `${t('quotaRemaining')} ${Math.max(0, data.daily_token_quota - data.today_tokens).toLocaleString()}`
+                  : t('quotaUnlimited')
+              }
+              icon={<Coins className="w-4 h-4" />}
+              color={data.daily_token_quota && data.today_tokens >= data.daily_token_quota ? 'red' : 'blue'}
+            />
+            <MetricCard
               title={t('avgDuration')}
               value={
                 data.metrics.avg_duration_ms > 0
@@ -334,7 +358,26 @@ export default function StatsPage() {
         )}
 
         {/* 趋势图 */}
-        {data?.trends && <TrendChart trends={data.trends} />}
+        {data?.trends && (
+          <div className="space-y-2">
+            <div className="flex justify-end gap-0 border-2 border-border-default w-fit">
+              {[7, 14, 30].map(d => (
+                <button
+                  key={d}
+                  onClick={() => setDays(d)}
+                  className={cn(
+                    'px-3 py-1 text-xs font-mono font-bold transition-colors',
+                    d !== 7 && 'border-l-2 border-border-default',
+                    days === d ? 'bg-accent-hover text-content-primary' : 'text-content-secondary hover:bg-surface-page'
+                  )}
+                >
+                  {d}D
+                </button>
+              ))}
+            </div>
+            <TrendChart trends={data.trends} />
+          </div>
+        )}
 
         {/* 运行列表 */}
         <div className="space-y-4">

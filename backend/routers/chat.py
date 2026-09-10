@@ -79,11 +79,45 @@ class ChatRequest(BaseModel):
     """聊天请求"""
 
     message: str = Field(..., max_length=10000, description="用户输入消息，最大10000字符")
+    images: list[str] = Field(
+        default_factory=list,
+        max_length=4,
+        description="当前轮图片输入（data:image/*;base64 dataURL），最多 4 张，仅视觉模型可用",
+    )
     history: list[ChatMessageDTO]
     thread_id: str | None = None
     agent_id: str | None = "assistant"
     stream: bool | None = True
     message_id: str | None = None
+
+
+def _attach_images(
+    langchain_messages: list,
+    images: list[str],
+    model_id: str,
+) -> None:
+    """把当前轮图片以 OpenAI 多部件 content 附加到最后一条 HumanMessage。
+
+    仅当目标模型声明 vision 能力时生效；不支持则显式 400（前端会禁用入口）。
+    v1 图片只作用于当前轮，不入历史重建。
+    """
+    if not images:
+        return
+    from langchain_core.messages import HumanMessage
+
+    from providers_config import get_model_config
+
+    config = get_model_config(model_id) or {}
+    if not config.get("vision"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"当前模型不支持图片输入: {model_id}",
+        )
+    last = langchain_messages[-1]
+    text = last.text_content() if hasattr(last, "text_content") else str(last.content)
+    parts: list[dict] = [{"type": "text", "text": text}]
+    parts += [{"type": "image_url", "image_url": {"url": img}} for img in images]
+    langchain_messages[-1] = HumanMessage(content=parts)
 
 
 class ResumeRequest(BaseModel):
@@ -296,6 +330,13 @@ async def chat_endpoint(
         agent_id=request.agent_id or "assistant", user_id=current_user.id
     )
 
+    if custom_agent is not None:
+        _attach_images(
+            langchain_messages,
+            request.images,
+            custom_agent.model_id or "deepseek-flash",
+        )
+
     agent_run = create_agent_run(
         session,
         thread_id=thread_id,
@@ -337,6 +378,14 @@ async def chat_endpoint(
         user_preferences = load_model_preferences(session)
     except Exception:
         user_preferences = {"simple_model": None, "simple_thinking": "auto"}
+
+    from utils.llm_factory import get_effective_model
+
+    _attach_images(
+        langchain_messages,
+        request.images,
+        get_effective_model(user_preferences.get("simple_model")),
+    )
 
     # 消息 ID 贯通：state 与 SSE 事件/落库共用同一 ID（aggregator 不再随机 uuid）
     actual_message_id = request.message_id or str(uuid4())
