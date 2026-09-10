@@ -40,10 +40,12 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - Token 用量可视化（今日 / 累计）
 - 技能模板（Library 面板 + 内置模板 + 一键发起会话）
 - 模板导入导出（支持 override/clone/skip 策略的 JSON 导入导出）
-- 工具治理（可配置策略 + Library 管理面板，view_admin 只读）
+- 工具治理（可配置策略，仅管理员）
 - **可见但锁的权限模型**：管理入口全员可见，数据与操作按角色控制
 - **可访问性基线**：弹窗焦点管理（焦点陷阱/归还）、WCAG AA 对比度、全站图标按钮可访问名
 - SSE 驱动的 Server-Driven UI（统一事件协议，恰好一次投递）
+- **图片输入（多模态）**：聊天支持附带图片，视觉模型原生理解（非视觉模型显式拒绝）
+- **模板分享链接**：公开只读导出，跨实例一键导入
 - MCP 动态工具接入
 - 三套主题（Light / Dark / Kyoto）与中英日多语言界面
 
@@ -81,7 +83,12 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - 思考流先于正文滚动展示，完成后自动收起；随消息持久化，刷新可回看
 - 思考开关由用户在设置页控制（见下），思考内容计入输出计费
 
-### 用户级模型配置
+### 模型配置（管理员）
+
+- 管理员在「系统管理」中选择全局默认 simple 模式模型与思考开关，全实例生效、无需重启
+- 可选模型清单来自 `providers.yaml` + Provider API Key（`GET /api/models` 单一真相源），管理员可控可用范围
+- 多专家任务（Complex 模式）的模型在「专家管理」中按专家配置
+- 普通用户直接使用——模型与思考治理属管理侧（见下方双角色模型）
 
 - 设置页（头像菜单 → 模型配置）自选 simple 模式模型，或跟随系统默认
 - 思考模式三态开关（跟随默认 / 开启 / 关闭），仅对声明 `thinking_toggle` 的模型开放
@@ -103,7 +110,7 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 
 - 统一治理层：`risk_tier`、`allow/deny/require_approval`，绑定与执行前双重校验
 - 可配置策略：`ToolPolicy` 持久化，`GET/PUT /api/tools/policies`，运行时合并数据库覆盖
-- Library 页「Tool Governance」面板：管理员查看/编辑策略（`view_admin` 只读）
+- Library 页「Tool Governance」面板：管理员查看/编辑策略
 
 ### Server-Driven UI
 
@@ -183,6 +190,8 @@ docker-compose up -d --build
 启动后：
 
 - 前端：`http://localhost:8080`
+- **全新部署首个注册的账号自动成为管理员**（无需环境变量；存量实例仍可用 `INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_PHONE`）
+- 打开「系统管理」确认数据库、迁移与模型 Provider 状态
 - 数据库：`localhost:5432`
 
 说明：

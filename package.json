@@ -1,6 +1,6 @@
 {
   "name": "xpouch-ai-monorepo",
-  "version": "3.4.6",
+  "version": "3.4.7",
   "private": true,
   "description": "XPouch AI - A modern AI assistant with LangGraph backend",
   "scripts": {

@@ -4,7 +4,7 @@
 // 系统版本号
 export const VERSION = {
   /** 当前 OS 版本号 */
-  CURRENT: 'v3.4.6',
+  CURRENT: 'v3.4.7',
   /** 主版本号 */
   MAJOR: 3,
   /** 次版本号 */

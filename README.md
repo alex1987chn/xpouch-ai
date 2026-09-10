@@ -40,7 +40,7 @@ The current stable baseline includes:
 - Token usage visualization (today / total)
 - Skill templates (Library panel + built-in templates + one-click sessions)
 - Template import/export (JSON with override / clone / skip strategies)
-- Tool governance (configurable policies + Library panel, view_admin read-only)
+- Tool governance (configurable policies, admin-only)
 - **Visible-but-locked permission model**: admin entries are visible to everyone, data and actions are role-gated
 - **Accessibility baseline**: dialog focus management (trap & restore), WCAG AA contrast, accessible names on all icon buttons
 - SSE-driven Server-Driven UI (unified event protocol, exactly-once delivery)
@@ -81,11 +81,22 @@ The current stable baseline includes:
 - The thinking stream scrolls ahead of the answer, then auto-collapses; it is persisted per message and survives refresh
 - Thinking is toggled per user in settings (see below); reasoning tokens are billed as output
 
-### Per-user model configuration
+### Model configuration (admin)
 
-- Settings (avatar menu → Model Config) let users pick the simple-mode model or follow the system default
-- Three-state thinking switch (follow default / on / off), only for models declaring `thinking_toggle`
-- Preferences live in the `user_settings` table (JSONB) and sync across devices; the model list comes from `GET /api/models` (providers.yaml as the single source of truth)
+- Admins pick the global default simple-mode model and the thinking toggle in **System Management** — applied instance-wide, no restart
+- The model menu itself comes from `providers.yaml` + provider API keys (`GET /api/models` as the single source of truth), so the admin can cap what is available
+- Complex mode (planner + experts) models are configured per expert in Expert Management
+- Users simply use the product — model/thinking governance is admin-side (see the two-role model below)
+
+### Multimodal image input
+
+- Attach images to a chat message; vision models (DeepSeek V4.1 Flash, Kimi K2.6) see them natively via OpenAI-style multimodal content
+- Non-vision models reject image input explicitly instead of failing silently
+
+### Template sharing
+
+- Admins publish a public read-only export link for any skill template (token is unguessable, revocable at any time)
+- Other instances paste the fetched JSON into Library → Import — the organic growth loop
 
 ### MCP dynamic tools
 
@@ -103,7 +114,7 @@ The current stable baseline includes:
 
 - Unified governance layer: `risk_tier`, `allow/deny/require_approval`, validated at both binding and execution time
 - Configurable policies: `ToolPolicy` persistence, `GET/PUT /api/tools/policies`, runtime merge of database overrides
-- Library page "Tool Governance" panel: admins view/edit policies (`view_admin` read-only)
+- Library page "Tool Governance" panel: admins view/edit policies
 
 ### Server-Driven UI
 
@@ -183,6 +194,8 @@ docker-compose up -d --build
 Once started:
 
 - Frontend: `http://localhost:8080`
+- **Register with your phone — on a fresh install the first account automatically becomes the admin** (no env var needed; existing instances can still bootstrap via `INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_PHONE`)
+- Open **System Management** (admin-only) to verify database, migrations and model providers
 - Database: `localhost:5432`
 
 Notes:

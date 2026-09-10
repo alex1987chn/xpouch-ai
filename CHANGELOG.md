@@ -5,6 +5,41 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-09-11] - v3.4.7 系统管理、图片输入与双角色收敛
+
+### 新增功能
+
+- **系统管理页（/admin/console，仅 admin）**：实例级管理统一入口——部署检查面（版本/数据库/迁移对齐漂移检测/Provider 状态/用户分布）、专家管理、工具治理、模板管理、MCP 管理五个分区原地切换；侧边栏「专家管理」入口升级为「系统管理」（仅 admin 显示）
+- **图片输入（多模态）**：聊天支持附带图片（≤4 张），视觉模型（DeepSeek V4.1 Flash / Kimi K2.6）原生理解；非视觉模型显式 400 而非静默失败；输入框缩略图可移除
+- **模板分享链接**：管理员为技能模板生成公开只读导出链接（token 不可枚举、可撤销），跨实例导入——用户带用户的增长回路
+- **首跑 bootstrap**：全新部署（user 表为空）首个注册者自动成为管理员，免去 INITIAL_ADMIN_* 环境变量；存量实例不受影响
+- **发码 IP 频控 + 用户日 token 配额**：`SMS_IP_MAX_SENDS_PER_HOUR`（默认 10/小时/IP，仅成功计费入账）；每用户日 token 上限（UTC 日界重置，管理员可调），新任务超限拦截
+- **系统状态可观测**：`LOG_FORMAT=json` 逐行 JSON 日志；X-Request-ID 贯穿访问日志与错误堆栈；run_id 写入流式日志上下文
+- **自托管文档** `docs/self-hosting.md`：部署/管理员初始化/反向代理 HTTPS/升级/备份恢复/FAQ
+
+### 变更
+
+- **角色收敛 4→2**：user / admin 双角色（view_admin→user、edit_admin→admin，迁移幂等不回滚）；「专家管理」入口升级为「系统管理」，仅 admin 可见
+- **模型配置归位**：全局默认模型/思考开关从个人设置迁入系统管理（admin 读写）；设置中心收敛为 个人资料 + 账号与安全；可选模型清单管理语义不变
+- **DeepSeek V4.1 Flash**（`deepseek-flash`）：原生多模态视觉；旧 ID 已建 hidden 别名兼容存量数据；V4.1 默认开思考，provider 级保持全局关闭
+- 运行统计增强：今日 Token 指标卡（配额余量联动、超限变红）、趋势 7/14/30 天切换、零数据空态引导
+- 头像菜单收敛为个人域（个人设置/开源仓库/语言/退出），管理入口只在侧边栏
+
+### 修复
+
+- **OTP 发码 500（重要）**：20260304 迁移曾把 verification_code 收窄 VARCHAR(16)，v3.4.3 起改存 64 位 SHA-256 哈希后写入必炸——条件加宽迁移 20260909_000100（幂等）；本地无限 varchar 环境复现不了，生产与全新迁移链必现
+- **AdminRoute 渲染期 toast 触发无限重渲染（React #301）**：提示移入 useEffect 一次性触发；/admin/console 对普通用户改为回首页 + 提醒
+- **运行统计七日趋势缺柱**：无运行的日期整行缺失导致"七天只有六根"——补零填满完整窗口
+- **聚合查询 Row 解包**：单列聚合 exec 返回 Row，int(Row) 抛 TypeError（今日 token 聚合与配额判定路径）
+- 侧边栏展开态导航左偏（重构丢失 items-center）与系统管理高亮失效（isOnAdmin 精确匹配旧路由）
+- 新会话按钮 hover：阴影回归暗色（黄影贴黄面失去深度感）并补 0.2s 过渡
+- 生产可观测性修复：容器内 uvicorn 直启时应用 INFO 日志整体丢失（setup_logging 统一接管）；uvicorn access log 关闭，访问日志由中间件单行输出（含请求 ID 与耗时）
+- Dockerfile：backend COPY 清单随结构演进更新（auth/ 等）
+
+### 其他
+
+- 版本号 3.4.6 → 3.4.7；README 中英同步（模型配置/首跑说明/双角色/能力清单）
+
 ## [2026-09-09] - v3.4.6 工程治理：a11y、后端结构归一、贡献者基础设施
 
 ### 新增功能
