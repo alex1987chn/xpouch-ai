@@ -41,6 +41,7 @@ export interface NavigationMenuProps {
   isOnAdmin: boolean
   isOnStats: boolean
   showExpertAdmin: boolean
+  isAdmin: boolean
   onMenuClick: (path: string) => void
   t: (key: TranslationKey) => string
   toast?: ToastFn

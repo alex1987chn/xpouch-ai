@@ -63,7 +63,7 @@ function isStatusError(error: unknown): error is { status?: number } {
   return typeof error === 'object' && error !== null && 'status' in error
 }
 
-export default function ExpertAdminPage() {
+export default function ExpertAdminPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
 
@@ -254,7 +254,10 @@ export default function ExpertAdminPage() {
   if (isLoadingExperts) {
     // 与下方两栏布局同构：左侧专家列表 + 右侧详情/编辑区
     return (
-      <div className="flex flex-col lg:flex-row gap-4 h-[100dvh] p-4 bg-surface-page">
+      <div className={cn(
+        "flex flex-col lg:flex-row gap-4 p-4 bg-surface-page",
+        embedded ? "h-full" : "h-[100dvh]"
+      )}>
         <div className="lg:w-[320px] border-2 border-border-default bg-surface-card p-3 space-y-2">
           <Skeleton className="h-3.5 w-24" />
           {Array.from({ length: 6 }, (_, i) => (
@@ -283,7 +286,10 @@ export default function ExpertAdminPage() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 h-[100dvh] p-4 bg-surface-page overflow-y-auto lg:overflow-hidden">
+    <div className={cn(
+      "flex flex-col lg:flex-row gap-4 p-4 bg-surface-page overflow-y-auto lg:overflow-hidden",
+      embedded ? "h-full" : "h-[100dvh]"
+    )}>
       {/* Toast */}
       {toast && (
         <BauhausToast

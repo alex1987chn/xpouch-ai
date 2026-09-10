@@ -275,6 +275,7 @@ export default function BauhausSidebar({
             isOnAdmin={isOnAdmin}
             isOnStats={isOnStats}
             showExpertAdmin={showExpertAdmin}
+          isAdmin={user?.role === 'admin'}
             onMenuClick={handleMenuClick}
             t={t}
             toast={toast}
@@ -290,6 +291,7 @@ export default function BauhausSidebar({
               isOnAdmin={isOnAdmin}
               isOnStats={isOnStats}
               showExpertAdmin={showExpertAdmin}
+          isAdmin={user?.role === 'admin'}
               onMenuClick={handleMenuClick}
               t={t}
               toast={toast}

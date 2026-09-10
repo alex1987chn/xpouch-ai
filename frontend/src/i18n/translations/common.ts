@@ -19,6 +19,8 @@ export const zh: Record<string, string> = {
   systemStatusLockedDesc: '管理控制台仅对管理员开放，包含系统状态、专家与模型、工具治理等实例级管理功能',
   userManagementComingSoon: '用户管理 · 敬请期待',
   navStats: '运行统计',
+  workspace: '工作台',
+  navChat: '对话',
   memoryDump: '最近会话',
   noDataStream: '[无数据]',
 
@@ -224,6 +226,8 @@ export const en: Record<string, string> = {
   systemStatusLockedDesc: 'The management console is admin-only: system status, experts & models, tool governance and other instance-level settings',
   userManagementComingSoon: 'User management · coming soon',
   navStats: 'Run Stats',
+  workspace: 'Workspace',
+  navChat: 'Chat',
   memoryDump: 'Recent Chats',
   noDataStream: '[NO DATA]',
 
@@ -429,6 +433,8 @@ export const ja: Record<string, string> = {
   systemStatusLockedDesc: '管理コンソールは管理者専用です。システム状態、エキスパートとモデル、ツールガバナンスなどのインスタンス設定を含みます',
   userManagementComingSoon: 'ユーザー管理 · 近日公開',
   navStats: '実行統計',
+  workspace: 'ワークスペース',
+  navChat: 'チャット',
   memoryDump: '最近のチャット',
   noDataStream: '[データなし]',
 

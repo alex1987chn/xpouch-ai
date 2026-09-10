@@ -10,10 +10,9 @@
  */
 
 import { createPortal } from 'react-dom'
-import { User, Cpu, ShieldCheck, Activity, X } from 'lucide-react'
+import { User, Cpu, ShieldCheck, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
-import { useUserStore } from '@/store/userStore'
 import { useAppUIStore, type SettingsSection } from '@/store/appUIStore'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
@@ -21,11 +20,9 @@ import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { ProfileSection } from '@/components/settings/sections/ProfileSection'
 import { ModelSection } from '@/components/settings/sections/ModelSection'
 import { SecuritySection } from '@/components/settings/sections/SecuritySection'
-import { SystemStatusSection } from '@/components/settings/sections/SystemStatusSection'
 
 export function SettingsHubDialog() {
   const { t } = useTranslation()
-  const { user } = useUserStore()
   const isOpen = useAppUIStore((s) => s.settingsHubOpen)
   const section = useAppUIStore((s) => s.settingsHubSection)
   const closeSettings = useAppUIStore((s) => s.closeSettings)
@@ -36,14 +33,10 @@ export function SettingsHubDialog() {
 
   if (!isOpen) return null
 
-  // 系统状态分区仅管理员可见（未来整体迁入管理控制台）
   const tabs: { key: SettingsSection; label: string; icon: typeof User }[] = [
     { key: 'profile', label: t('userConfig'), icon: User },
     { key: 'model', label: t('modelConfig'), icon: Cpu },
     { key: 'security', label: t('accountSecurity'), icon: ShieldCheck },
-    ...(user?.role === 'admin'
-      ? [{ key: 'system' as SettingsSection, label: t('systemStatus'), icon: Activity }]
-      : []),
   ]
 
   const renderTabButton = ({ key, label, icon: Icon }: (typeof tabs)[number]) => (
@@ -113,7 +106,6 @@ export function SettingsHubDialog() {
             {section === 'profile' && <ProfileSection onClose={closeSettings} />}
             {section === 'model' && <ModelSection onClose={closeSettings} />}
             {section === 'security' && <SecuritySection />}
-            {section === 'system' && user?.role === 'admin' && <SystemStatusSection />}
           </div>
         </div>
       </div>
