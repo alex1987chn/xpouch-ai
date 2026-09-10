@@ -31,11 +31,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 # 权限依赖（统一走 dependencies.require_role）
 # ============================================================================
 
-# 只读场景：ADMIN / EDIT_ADMIN / VIEW_ADMIN（不含普通 USER）
-get_current_view_admin = require_role(UserRole.ADMIN, UserRole.EDIT_ADMIN, UserRole.VIEW_ADMIN)
-# 内容编辑场景：ADMIN / EDIT_ADMIN（专家配置、模板策略等运营内容）
-get_current_edit_admin = require_role(UserRole.ADMIN, UserRole.EDIT_ADMIN)
-# 管理场景：仅 ADMIN（用户晋升等敏感操作）
+# v3.4.7 角色收敛：实例级管理统一 ADMIN（历史 view/edit 分层已由迁移归一）
 get_current_admin = require_role(UserRole.ADMIN)
 
 
@@ -181,12 +177,12 @@ class UserPromoteRequest(BaseModel):
 @router.get("/experts", response_model=list[ExpertResponse])
 async def get_all_experts(
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_view_admin),  # 需要 VIEW_ADMIN 或 EDIT_ADMIN 权限
+    current_user: User = Depends(get_current_admin),  # 管理员：专家配置属实例级管理
 ):
     """
     获取所有系统专家列表
 
-    权限：VIEW_ADMIN, EDIT_ADMIN, ADMIN
+    权限：ADMIN
     """
     # 按创建时间排序，确保新创建的专家在最底部
     experts = session.exec(select(SystemExpert).order_by(SystemExpert.created_at)).all()
@@ -213,12 +209,12 @@ async def get_all_experts(
 async def get_expert(
     expert_key: str,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_view_admin),  # VIEW_ADMIN / EDIT_ADMIN / ADMIN
+    _: User = Depends(get_current_admin),
 ):
     """
     获取单个专家配置
 
-    权限：VIEW_ADMIN, EDIT_ADMIN, ADMIN（与列表一致）
+    权限：ADMIN
     """
     expert = session.exec(select(SystemExpert).where(SystemExpert.expert_key == expert_key)).first()
 
@@ -247,12 +243,12 @@ async def update_expert(
     expert_key: str,
     expert_update: ExpertUpdate,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_edit_admin),  # 需要 EDIT_ADMIN 或 ADMIN 权限
+    _: User = Depends(get_current_admin),
 ):
     """
     更新系统专家配置（原子递增乐观锁）
 
-    权限：EDIT_ADMIN, ADMIN
+    权限：ADMIN
 
     可以更新：
     - system_prompt: 专家提示词
@@ -460,7 +456,7 @@ async def generate_expert_description(
     """
     根据 System Prompt 自动生成专家描述
 
-    权限：EDIT_ADMIN, ADMIN
+    权限：ADMIN
 
     功能：
     - 分析 System Prompt 的内容

@@ -31,8 +31,8 @@ export default function LibraryPage() {
   // Library 权限：可查看治理 Tab / 可编辑模板与策略
   const user = useUserStore(state => state.user)
   const role = user?.role ?? ''
-  const canViewGovernance = ['admin', 'edit_admin', 'view_admin'].includes(role)
-  const canEditLibrary = ['admin', 'edit_admin'].includes(role)
+  const canViewGovernance = role === 'admin'
+  const canEditLibrary = role === 'admin'
 
   return (
     <div className="min-h-screen bg-surface-page px-6 md:px-12 py-8">

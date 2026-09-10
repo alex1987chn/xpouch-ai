@@ -13,9 +13,9 @@ import {
 
 interface ToolGovernancePanelProps {
   searchQuery: string
-  /** 是否可查看该 Tab（admin / edit_admin / view_admin） */
+  /** 是否可查看该 Tab（admin） */
   canView: boolean
-  /** 是否可编辑策略（admin / edit_admin） */
+  /** 是否可编辑策略（admin） */
   canEdit: boolean
 }
 

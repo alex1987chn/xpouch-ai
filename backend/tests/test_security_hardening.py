@@ -28,25 +28,17 @@ class _FakeUser:
 
 @pytest.mark.asyncio
 async def test_require_role_allows_matching_role():
-    guard = require_role(UserRole.ADMIN, UserRole.EDIT_ADMIN, UserRole.VIEW_ADMIN)
-    user = await guard(_FakeUser("u1", UserRole.VIEW_ADMIN))
+    guard = require_role(UserRole.ADMIN)
+    user = await guard(_FakeUser("u1", UserRole.ADMIN))
     assert user.id == "u1"
 
 
 @pytest.mark.asyncio
 async def test_require_role_rejects_plain_user_for_admin_surface():
-    """回归：普通 USER 不得通过 admin 只读面（此前 get_current_view_admin 放行）。"""
-    guard = require_role(UserRole.ADMIN, UserRole.EDIT_ADMIN, UserRole.VIEW_ADMIN)
-    with pytest.raises(HTTPException) as exc_info:
-        await guard(_FakeUser("u2", UserRole.USER))
-    assert exc_info.value.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_require_role_rejects_non_admin():
+    """回归：普通 USER 不得通过 admin 面（v3.4.7 双角色收敛后唯一守卫语义）。"""
     guard = require_role(UserRole.ADMIN)
     with pytest.raises(HTTPException) as exc_info:
-        await guard(_FakeUser("u3", UserRole.USER))
+        await guard(_FakeUser("u2", UserRole.USER))
     assert exc_info.value.status_code == 403
 
 

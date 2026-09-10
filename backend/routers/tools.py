@@ -46,13 +46,9 @@ class ToolPolicyListResponse(BaseModel):
     total: int
 
 
-VIEWABLE_ADMIN_ROLES = {UserRole.ADMIN, UserRole.EDIT_ADMIN, UserRole.VIEW_ADMIN}
-EDITABLE_ADMIN_ROLES = {UserRole.ADMIN, UserRole.EDIT_ADMIN}
-
-
-def _require_admin(current_user: User, *, editable: bool = False) -> None:
-    allowed_roles = EDITABLE_ADMIN_ROLES if editable else VIEWABLE_ADMIN_ROLES
-    if current_user.role not in allowed_roles:
+def _require_admin(current_user: User) -> None:
+    """v3.4.7 角色收敛：工具治理查看与编辑统一 ADMIN。"""
+    if current_user.role != UserRole.ADMIN:
         raise AuthorizationError("仅管理员可访问该工具治理能力")
 
 
@@ -189,7 +185,7 @@ async def upsert_tool_policy(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    _require_admin(current_user, editable=True)
+    _require_admin(current_user)
     if source not in {"builtin", "mcp"}:
         raise ValidationError("source 仅支持 builtin 或 mcp")
 

@@ -90,9 +90,9 @@ export default function ExpertAdminPage() {
   const user = useUserStore(state => state.user)
   const role = user?.role ?? ''
   // 查看档：VIEW_ADMIN 及以上（与后端列表接口一致）
-  const canViewExperts = ['admin', 'edit_admin', 'view_admin'].includes(role)
+  const canViewExperts = role === 'admin'
   // 编辑档：EDIT_ADMIN 及以上（与后端 PATCH 接口一致）
-  const canEditExperts = ['admin', 'edit_admin'].includes(role)
+  const canEditExperts = role === 'admin'
 
   // 查询专家列表（登录 + 有查看权限才发起，避免无权限的注定 403 请求）
   const { data: experts = [], isLoading: isLoadingExperts, error: expertsError } = useQuery({

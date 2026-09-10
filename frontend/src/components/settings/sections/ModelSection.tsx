@@ -1,6 +1,6 @@
 /**
  * 模型偏好分区（设置中心）。
- * v3.4.7 起为实例级配置：管理员（ADMIN/EDIT_ADMIN）选择全局默认模型与
+ * v3.4.7 起为实例级配置：管理员（ADMIN）选择全局默认模型与
  * 思考模式，普通用户只读（与「可见但锁」体系一致的轻量锁定态）。
  * API Key 说明卡已移除（部署文档归专家管理/README，不属于用户设置）。
  */
@@ -28,7 +28,7 @@ export function ModelSection({ onClose }: ModelSectionProps) {
   const { t } = useTranslation()
   const { user } = useUserStore()
   // 全局默认模型仅管理员可写（后端 PUT 有角色守卫，前端按角色渲染）
-  const canEdit = user?.role === 'admin' || user?.role === 'edit_admin'
+  const canEdit = user?.role === 'admin'
 
   const { data: models = [], isLoading: modelsLoading, isError: modelsFailed } = useModelsQuery(true)
   const { data: settingsData } = useUserSettingsQuery(true)

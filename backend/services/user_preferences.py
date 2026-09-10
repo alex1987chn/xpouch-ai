@@ -3,7 +3,7 @@
 v3.4.7 起模型偏好从「每用户个人设置」收敛为「管理员配置的全局默认」：
 - 读取链：system_setting 全局值 → 字段默认值（simple_model=None 即跟随
   env 的系统默认模型 MODEL_NAME）
-- 写入口仅 ADMIN / EDIT_ADMIN（routers/system.py PUT /user/settings 角色守卫）
+- 写入口仅 ADMIN（routers/system.py PUT /user/settings 角色守卫）
 - 历史每用户覆盖值（user_settings.preferences）不再参与解析，列保留不迁移
 
 从 routers/system.py 抽取（修复层次穿透：chat router 不得 import 另一 router

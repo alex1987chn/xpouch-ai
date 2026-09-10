@@ -35,11 +35,10 @@ from utils.time import utc_now_naive
 
 router = APIRouter(prefix="/api/library", tags=["library"])
 
-EDITABLE_ADMIN_ROLES = {UserRole.ADMIN, UserRole.EDIT_ADMIN}
-
 
 def _require_editor(current_user: User) -> None:
-    if current_user.role not in EDITABLE_ADMIN_ROLES:
+    """v3.4.7 角色收敛：模板管理统一 ADMIN。"""
+    if current_user.role != UserRole.ADMIN:
         raise AuthorizationError("仅管理员可编辑模板库")
 
 

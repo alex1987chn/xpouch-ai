@@ -31,7 +31,7 @@ class UpdateUserRequest(BaseModel):
 
 
 class UpdateUserSettingsRequest(BaseModel):
-    """全局模型偏好更新请求（v3.4.7 起为实例级配置，仅 ADMIN/EDIT_ADMIN 可写）。
+    """全局模型偏好更新请求（v3.4.7 起为实例级配置，仅 ADMIN 可写）。
 
     simple_model 为 null 表示清除选择、跟随系统默认模型（env MODEL_NAME）；
     simple_thinking 三态：auto（跟随系统默认）/ enabled / disabled。
@@ -152,7 +152,7 @@ async def get_user_settings(
 async def update_user_settings(
     request: UpdateUserSettingsRequest,
     session: Session = Depends(get_session),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.EDIT_ADMIN)),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
     """更新全局模型偏好（仅管理员，全实例生效）"""
     from providers_config import get_available_models

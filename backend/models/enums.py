@@ -9,12 +9,15 @@ def _enum_values(enum_cls: type[StrEnum]) -> list[str]:
 
 
 class UserRole(StrEnum):
-    """用户角色枚举"""
+    """用户角色枚举。
+
+    v3.4.7 起收敛为双角色：admin 管理实例级功能（专家/模型/工具治理/
+    模板/MCP/用户角色），user 使用产品。历史值 view_admin/edit_admin 由
+    迁移 20260910_000300 归一（view→user，edit→admin）。
+    """
 
     USER = "user"
     ADMIN = "admin"
-    VIEW_ADMIN = "view_admin"
-    EDIT_ADMIN = "edit_admin"
 
 
 class ConversationType(StrEnum):

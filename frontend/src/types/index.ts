@@ -226,7 +226,7 @@ export interface UserProfile {
     username: string
     avatar?: string
     plan: string
-    role: 'user' | 'view_admin' | 'edit_admin' | 'admin'  // 用户角色（与后端 UserRole 一致）
+    role: 'user' | 'admin'  // 用户角色（与后端 UserRole 一致；v3.4.7 双角色收敛）
     updated_at: string  // 用户信息更新时间戳，用于同步
     has_password?: boolean  // 是否已设置密码（决定修改密码时是否要求旧密码）
 }

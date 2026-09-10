@@ -9,7 +9,7 @@ import { LoadingFallback } from '@/router/components/LoadingFallback'
 
 interface AdminRouteProps {
   children: React.ReactNode
-  requiredRole?: 'admin' | 'edit_admin' | 'view_admin' | 'user'  // 所需角色
+  requiredRole?: 'admin' | 'user'  // 所需角色（v3.4.7 双角色收敛）
 }
 
 export default function AdminRoute({ children, requiredRole = 'admin' }: AdminRouteProps) {
@@ -49,12 +49,8 @@ export default function AdminRoute({ children, requiredRole = 'admin' }: AdminRo
     switch (requiredRole) {
       case 'admin':
         return user.role === 'admin'
-      case 'edit_admin':
-        return user.role === 'admin' || user.role === 'edit_admin'
-      case 'view_admin':
-        return user.role === 'admin' || user.role === 'edit_admin' || user.role === 'view_admin'
       case 'user':
-        return user.role === 'admin' || user.role === 'edit_admin' || user.role === 'view_admin' || user.role === 'user'
+        return true
       default:
         return false
     }

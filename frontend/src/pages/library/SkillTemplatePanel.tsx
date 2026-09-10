@@ -27,7 +27,7 @@ const ARTIFACT_TYPE_COLORS: Record<string, string> = {
 
 interface SkillTemplatePanelProps {
   searchQuery: string
-  /** 是否可编辑模板（新建/编辑/删除），仅 admin / edit_admin */
+  /** 是否可编辑模板（新建/编辑/删除），仅 admin */
   canEdit: boolean
 }
 

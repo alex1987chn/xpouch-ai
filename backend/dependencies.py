@@ -116,7 +116,7 @@ def require_role(*roles: UserRole):
     用法：
         @router.get("/", dependencies=[Depends(require_role(UserRole.ADMIN))])
         # 或需要注入用户时：
-        current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.EDIT_ADMIN))
+        current_user: User = Depends(require_role(UserRole.ADMIN))
 
     角色不匹配返回 403；未认证由 get_current_user_with_auth 先行拦截。
     """
