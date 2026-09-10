@@ -397,7 +397,7 @@ export default function ExpertEditor({
                       'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
                       'bg-accent-hover text-content-primary text-xs font-bold uppercase',
                       'shadow-theme-button-lg',
-                      'hover:[transform:var(--transform-button-lg-hover)] hover:shadow-theme-button-lg-hover',
+                      'transition-all duration-200 hover:[transform:var(--transform-button-lg-hover)] hover:shadow-theme-button-lg-hover',
                       'active:[transform:var(--transform-button-active)] active:shadow-theme-button-active',
                       'transition-all',
                       'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:[transform:none]'
@@ -452,7 +452,7 @@ export default function ExpertEditor({
                       'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
                       'bg-accent-hover text-content-primary text-xs font-bold uppercase',
                       'shadow-theme-button-lg',
-                      'hover:[transform:var(--transform-button-lg-hover)] hover:shadow-theme-button-lg-hover',
+                      'transition-all duration-200 hover:[transform:var(--transform-button-lg-hover)] hover:shadow-theme-button-lg-hover',
                       'active:[transform:var(--transform-button-active)] active:shadow-theme-button-active',
                       'transition-all',
                       'disabled:opacity-50 disabled:cursor-not-allowed'

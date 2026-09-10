@@ -37,7 +37,7 @@ export function NewChatButton({
           onClick={onNewChat}
           disabled={isCreatingNewChat}
           className={cn(
-            'flex items-center justify-center gap-2 border-2 border-border-default bg-surface-card text-content-primary',
+            'flex items-center justify-center gap-2 border-2 border-border-default bg-surface-card text-content-primary transition-all duration-200',
             'shadow-theme-button-lg hover:[transform:var(--transform-button-lg-hover)] hover:shadow-theme-button-lg-hover',
             'hover:bg-accent-hover hover:text-content-primary hover:border-border-focus',
             'active:[transform:var(--transform-button-active)] active:shadow-theme-button-active',

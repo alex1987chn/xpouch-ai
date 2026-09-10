@@ -43,7 +43,7 @@
     /* 按钮 hover 阴影 */
     --shadow-button-sm-hover: 3px 3px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
     --shadow-button-hover: 6px 6px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
-    --shadow-button-lg-hover: 8px 8px 0 0 rgb(var(--accent-brand));
+    --shadow-button-lg-hover: 8px 8px 0 0 rgb(var(--shadow-color) / var(--shadow-opacity, 1));
     
     /* 按钮 active 阴影 */
     --shadow-button-active: 0 0 0 0 rgb(var(--shadow-color));
