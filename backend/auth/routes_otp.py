@@ -2,10 +2,12 @@
 
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from auth.cookies import set_auth_cookies
+from auth.limiter import extract_client_ip, record_sms_send, sms_ip_limit_exhausted
 from auth.schemas import LoginResponse, SendCodeRequest, VerifyCodeRequest
 from auth.verify import (
     _clear_verification_code,
@@ -33,12 +35,29 @@ from utils.verification import (
 router = APIRouter(tags=["Authentication"])
 
 
+def _is_fresh_install(session: Session) -> bool:
+    """空库判定：user 表无任何行视为全新自部署。"""
+    return session.exec(select(func.count()).select_from(User)).one() == 0
+
+
 @router.post("/send-code")
-async def send_verification_code(request: SendCodeRequest, session: Session = Depends(get_session)):
+async def send_verification_code(
+    request: SendCodeRequest, http_request: Request, session: Session = Depends(get_session)
+):
     """
     发送手机验证码
     """
     try:
+        # IP 频控：公共注册站的短信成本止损（私有部署可经 SMS_IP_MAX_SENDS_PER_HOUR 调整/关闭）
+        client_ip = extract_client_ip(http_request)
+        if settings.sms_ip_max_sends_per_hour > 0 and sms_ip_limit_exhausted(
+            client_ip, window_seconds=3600, max_sends=settings.sms_ip_max_sends_per_hour
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="该网络发送验证码过于频繁，请稍后再试",
+            )
+
         phone_number = request.phone_number
         masked_phone = mask_phone_number(phone_number)
         logger.info("[Auth] 收到发送验证码请求: %s", masked_phone)
@@ -56,13 +75,16 @@ async def send_verification_code(request: SendCodeRequest, session: Session = De
         if user is None:
             import uuid
 
+            # 首跑 bootstrap：全新部署（user 表为空）的首个注册者自动成为管理员，
+            # 免去 INITIAL_ADMIN_* 环境变量；存量实例/公共站（非空库）不受影响，
+            # 仍走 utils/admin_init.py 的环境变量 bootstrap。
             user = User(
                 id=str(uuid.uuid4()),
                 username=f"用户{phone_number[-4:]}",
                 phone_number=phone_number,
                 auth_provider="phone",
                 is_verified=False,
-                role="user",
+                role="admin" if _is_fresh_install(session) else "user",
             )
 
         enforce_send_rate_limit(
@@ -101,6 +123,9 @@ async def send_verification_code(request: SendCodeRequest, session: Session = De
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="验证码发送失败，请稍后重试",
             )
+
+        # 仅成功计费的发送计入 IP 额度
+        record_sms_send(client_ip)
 
         session.add(user)
         session.commit()

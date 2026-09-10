@@ -13,7 +13,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
 from pydantic import Field as PydanticField
-from sqlalchemy import update
+from sqlalchemy import func, update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
@@ -653,3 +653,83 @@ async def delete_expert(
         logger.warning(f"[Admin] Warning: Failed to refresh cache: {e}")
 
     return {"message": "专家已删除", "expert_key": expert_key}
+
+
+# ============================================================================
+# 部署检查面（系统状态）与实例级配置
+# ============================================================================
+
+
+class DailyTokenQuotaRequest(BaseModel):
+    """每用户日 token 配额更新请求（None/0 = 不限量）"""
+
+    daily_token_quota: int | None = PydanticField(default=None, ge=0, le=1_000_000_000)
+
+
+@router.get("/system-status")
+async def get_system_status(
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_admin),
+):
+    """部署检查面数据源：版本 / 数据库与迁移对齐 / 模型 provider / 角色分布 / 配额"""
+    from alembic.config import Config as AlembicConfig
+    from alembic.script import ScriptDirectory
+    from sqlalchemy import text as sa_text
+
+    from config import settings as app_settings
+    from providers_config import validate_all_providers
+    from services.run_quota import load_daily_token_quota
+    from utils.llm_factory import get_default_model
+
+    # 数据库连通 + 迁移对齐（漂移检测：代码内迁移链 head vs 库中 alembic_version）
+    db_connected = True
+    db_version: str | None = None
+    migration_head: str | None = None
+    try:
+        row = session.exec(sa_text("SELECT version_num FROM alembic_version")).first()
+        db_version = row[0] if row else None
+    except Exception as e:
+        db_connected = False
+        logger.warning(f"[SystemStatus] alembic_version 读取失败: {e}")
+
+    try:
+        alembic_cfg = AlembicConfig(
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini")
+        )
+        migration_head = ScriptDirectory.from_config(alembic_cfg).get_current_head()
+    except Exception as e:
+        logger.warning(f"[SystemStatus] 迁移链 head 读取失败: {e}")
+
+    user_count = session.exec(select(func.count()).select_from(User)).one()
+    admin_count = session.exec(
+        select(func.count()).select_from(User).where(User.role == UserRole.ADMIN)
+    ).one()
+
+    return {
+        "version": app_settings.version,
+        "environment": app_settings.environment,
+        "database": {
+            "connected": db_connected,
+            "applied_version": db_version,
+            "code_head": migration_head,
+            "up_to_date": bool(db_connected and db_version and db_version == migration_head),
+        },
+        "providers": validate_all_providers(),
+        "default_model": get_default_model(),
+        "users": {"total": user_count, "admin": admin_count},
+        "user_daily_token_quota": load_daily_token_quota(session),
+    }
+
+
+@router.put("/user-daily-token-quota")
+async def update_daily_token_quota(
+    request: DailyTokenQuotaRequest,
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_admin),
+):
+    """设置每用户日 token 配额（全实例生效；None/0 = 不限量）"""
+    from services.run_quota import save_daily_token_quota
+
+    quota = save_daily_token_quota(session, request.daily_token_quota)
+    logger.info(f"[Admin] 每用户日 token 配额更新为: {quota or '不限量'}")
+    return {"user_daily_token_quota": quota}

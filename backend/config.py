@@ -133,6 +133,9 @@ class Settings(BaseSettings):
     # 叠加 bcrypt 成本后对在线爆破已足够，持久化锁定待引入集中式限流时再做）
     password_max_attempts: int = Field(default=10, alias="PASSWORD_MAX_ATTEMPTS")
     password_attempt_window_minutes: int = Field(default=5, alias="PASSWORD_ATTEMPT_WINDOW_MINUTES")
+    # 发码 IP 频控：同一 IP 在窗口内的最大成功发码次数（内存限流；公共注册站
+    # 的短信成本止损，私有部署可调大或设 0 关闭——0/负值表示不限制）
+    sms_ip_max_sends_per_hour: int = Field(default=10, alias="SMS_IP_MAX_SENDS_PER_HOUR")
     verification_code_send_cooldown_seconds: int = Field(
         default=60, alias="VERIFICATION_CODE_SEND_COOLDOWN_SECONDS"
     )

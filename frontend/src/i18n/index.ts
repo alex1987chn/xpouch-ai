@@ -28,7 +28,7 @@ export type TranslationKey =
   // Settings
   | 'theme' | 'language' | 'systemSettings' | 'userSettings' | 'personalSettings' | 'modelConfig'
   | 'simpleMode' | 'followSystemDefault' | 'thinkingMode' | 'thinkingAuto' | 'thinkingOn' | 'thinkingOff'
-  | 'thinkingUnsupported' | 'thinkingCostHint' | 'complexModeDesc' | 'modelManagedByAdmin'
+  | 'thinkingUnsupported' | 'thinkingCostHint' | 'complexModeDesc' | 'modelManagedByAdmin' | 'systemStatus' | 'migrationsUpToDate' | 'missingKey' | 'dailyTokenQuota' | 'quotaUnlimited' | 'quotaHint' | 'quotaInvalid' | 'quotaSaved'
   | 'modelsLoading' | 'modelsLoadFailed' | 'openSource'
   // Common
   | 'save' | 'cancel' | 'delete' | 'edit' | 'confirmDelete' | 'noHistory' | 'startChat'

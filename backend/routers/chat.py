@@ -30,7 +30,7 @@ import asyncio
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
@@ -252,6 +252,20 @@ async def chat_endpoint(
     - 自定义智能体：直接流式调用
     - 系统默认助手：通过 LangGraph Router 分发
     """
+    # 0. 用户日 token 配额（管理员配置的全局上限；HITL 恢复走 /chat/resume 不在此拦截）
+    from services.run_quota import (
+        load_daily_token_quota,
+        quota_reset_hint,
+        today_token_usage_exceeds_quota,
+    )
+
+    daily_quota = load_daily_token_quota(session)
+    if daily_quota and today_token_usage_exceeds_quota(session, current_user.id, daily_quota):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"今日 token 用量已达配额上限（{daily_quota}），将于 {quota_reset_hint()} 重置",
+        )
+
     # 初始化服务
     thread_service = ChatThreadService(session)
     stream_service = StreamService(session)

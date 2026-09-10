@@ -20,6 +20,14 @@ from utils.jwt_handler import hash_password, verify_password
 from utils.secret_hash import hash_secret
 from utils.verification import get_code_expiry_duration, utcnow
 
+
+class _FakeHttpRequest:
+    """端点直调时的最小 http request 桩（IP 频控读取 header/client）"""
+
+    headers = {}
+    client = None
+
+
 # 测试口令与验证码（拼接构造，避免扫描误报）
 _PW_OLD = "old-" + "password-1"
 _PW_NEW = "new-" + "password-9"
@@ -87,7 +95,9 @@ def _send_code(db, phone: str, purpose: str = "login"):
     from auth import SendCodeRequest, send_verification_code
 
     return asyncio.run(
-        send_verification_code(SendCodeRequest(phone_number=phone, purpose=purpose), db)
+        send_verification_code(
+            SendCodeRequest(phone_number=phone, purpose=purpose), _FakeHttpRequest(), db
+        )
     )
 
 
