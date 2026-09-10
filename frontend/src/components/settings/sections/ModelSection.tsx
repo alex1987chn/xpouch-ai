@@ -15,7 +15,8 @@ import { useUserSettingsQuery, useUpdateUserSettings } from '@/hooks/queries/use
 import type { ThinkingMode } from '@/services/models'
 
 interface ModelSectionProps {
-  onClose: () => void
+  /** 关闭回调：设置中心内使用；管理控制台内嵌时缺省（取消=回滚草稿） */
+  onClose?: () => void
 }
 
 const THINKING_OPTIONS: { value: ThinkingMode; labelKey: 'thinkingAuto' | 'thinkingOn' | 'thinkingOff' }[] = [
@@ -61,8 +62,14 @@ export function ModelSection({ onClose }: ModelSectionProps) {
         // 不支持开关的模型一律存 auto（后端也会忽略无效覆盖）
         simple_thinking: supportsThinking ? thinking : 'auto',
       },
-      { onSuccess: () => onClose() }
+      { onSuccess: () => onClose?.() }
     )
+  }
+
+  const handleCancel = () => {
+    setSelectedModelId(settingsData?.preferences.simple_model || '')
+    setThinking(settingsData?.preferences.simple_thinking || 'auto')
+    onClose?.()
   }
 
   const thinkingLabelKey =
@@ -220,7 +227,7 @@ export function ModelSection({ onClose }: ModelSectionProps) {
       {canEdit && (
         <div className="flex gap-0 border-t-2 border-border-default shrink-0">
           <button
-            onClick={onClose}
+            onClick={handleCancel}
             disabled={isSaving}
             className="flex-1 py-3 text-sm font-bold uppercase border-r-2 border-border-default hover:bg-surface-page transition-colors disabled:opacity-40"
           >

@@ -335,7 +335,7 @@ export default function StatsPage() {
             />
             <MetricCard
               title={t('todayTokens')}
-              value={data.today_tokens.toLocaleString()}
+              value={(data.today_tokens ?? 0).toLocaleString()}
               subtitle={
                 data.daily_token_quota
                   ? `${t('quotaRemaining')} ${Math.max(0, data.daily_token_quota - data.today_tokens).toLocaleString()}`

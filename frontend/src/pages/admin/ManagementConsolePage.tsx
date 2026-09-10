@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Bot, ShieldCheck, FileCode, Activity, Search, Plug } from 'lucide-react'
+import { Bot, ShieldCheck, FileCode, Cpu, Activity, Search, Plug } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { useUserStore } from '@/store/userStore'
@@ -23,10 +23,11 @@ import { PermissionLockCard } from '@/components/ui/lock-card'
 import { SystemStatusSection } from '@/components/settings/sections/SystemStatusSection'
 import ExpertAdminPage from './ExpertAdminPage'
 import ToolGovernancePanel from '../library/ToolGovernancePanel'
+import { ModelSection } from '@/components/settings/sections/ModelSection'
 import SkillTemplatePanel from '../library/SkillTemplatePanel'
 import { MCPList } from '../library/MCPList'
 
-type ConsoleTab = 'system' | 'experts' | 'governance' | 'templates' | 'mcp'
+type ConsoleTab = 'system' | 'experts' | 'governance' | 'templates' | 'mcp' | 'model'
 
 export default function ManagementConsolePage() {
   const { t } = useTranslation()
@@ -39,7 +40,7 @@ export default function ManagementConsolePage() {
   // 侧边栏子项深链（/admin/console?tab=xxx）同步到分区
   useEffect(() => {
     const paramTab = searchParams.get('tab') as ConsoleTab | null
-    if (paramTab && ['system', 'experts', 'governance', 'templates', 'mcp'].includes(paramTab)) {
+    if (paramTab && ['system', 'experts', 'governance', 'templates', 'mcp', 'model'].includes(paramTab)) {
       setTab(paramTab)
     }
   }, [searchParams])
@@ -61,6 +62,7 @@ export default function ManagementConsolePage() {
   const tabs: { key: ConsoleTab; label: string; icon: typeof Activity }[] = [
     { key: 'system', label: t('systemStatus'), icon: Activity },
     { key: 'experts', label: t('navExperts'), icon: Bot },
+    { key: 'model', label: t('modelConfig'), icon: Cpu },
     { key: 'governance', label: t('toolGovernance'), icon: ShieldCheck },
     { key: 'templates', label: t('templateManagement'), icon: FileCode },
     { key: 'mcp', label: t('mcpManagement'), icon: Plug },
@@ -113,6 +115,7 @@ export default function ManagementConsolePage() {
               </div>
             )}
             {tab === 'experts' && <ExpertAdminPage embedded />}
+            {tab === 'model' && <ModelSection />}
             {tab === 'governance' && (
               <div className="flex-1 flex flex-col">
                 <div className="relative mb-4">

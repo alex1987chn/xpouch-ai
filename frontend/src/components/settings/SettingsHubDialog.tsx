@@ -10,7 +10,7 @@
  */
 
 import { createPortal } from 'react-dom'
-import { User, Cpu, ShieldCheck, X } from 'lucide-react'
+import { User, ShieldCheck, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { useAppUIStore, type SettingsSection } from '@/store/appUIStore'
@@ -18,7 +18,6 @@ import { Z_INDEX } from '@/constants/zIndex'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { ProfileSection } from '@/components/settings/sections/ProfileSection'
-import { ModelSection } from '@/components/settings/sections/ModelSection'
 import { SecuritySection } from '@/components/settings/sections/SecuritySection'
 
 export function SettingsHubDialog() {
@@ -35,7 +34,6 @@ export function SettingsHubDialog() {
 
   const tabs: { key: SettingsSection; label: string; icon: typeof User }[] = [
     { key: 'profile', label: t('userConfig'), icon: User },
-    { key: 'model', label: t('modelConfig'), icon: Cpu },
     { key: 'security', label: t('accountSecurity'), icon: ShieldCheck },
   ]
 
@@ -104,7 +102,6 @@ export function SettingsHubDialog() {
             className="flex-1 min-h-0 flex flex-col animate-in fade-in duration-150"
           >
             {section === 'profile' && <ProfileSection onClose={closeSettings} />}
-            {section === 'model' && <ModelSection onClose={closeSettings} />}
             {section === 'security' && <SecuritySection />}
           </div>
         </div>

@@ -254,4 +254,5 @@ def get_today_token_usage(
             AgentRun.started_at >= today_start,
         )
     ).one()
-    return int(used or 0)
+    # exec 对单列聚合返回 Row 元组，需取 [0] 解包
+    return int(used[0] or 0)

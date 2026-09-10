@@ -58,7 +58,8 @@ def today_token_usage_exceeds_quota(session: Session, user_id: str, quota: int) 
             AgentRun.started_at >= today_start,
         )
     ).one()
-    return int(used or 0) >= quota
+    # exec 对单列聚合返回 Row 元组，需取 [0] 解包
+    return int(used[0] or 0) >= quota
 
 
 def quota_reset_hint() -> str:

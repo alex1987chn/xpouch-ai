@@ -33,12 +33,15 @@ class _KVStubSession:
 
 
 class _OneResult:
-    """聚合查询结果桩（提供 .one()）"""
+    """聚合查询结果桩（提供 .one() 与下标取值）"""
 
     def __init__(self, value):
         self._value = value
 
     def one(self):
+        return self
+
+    def __getitem__(self, index):
         return self._value
 
 
