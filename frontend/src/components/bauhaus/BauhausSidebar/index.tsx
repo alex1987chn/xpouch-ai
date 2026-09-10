@@ -79,7 +79,7 @@ export default function BauhausSidebar({
   const isOnLibrary = location.pathname === '/library'
   const isOnArtifacts = location.pathname === '/artifacts'
   const isOnHistory = location.pathname === '/history'
-  const isOnAdmin = location.pathname === '/admin/experts'
+  const isOnAdmin = location.pathname.startsWith('/admin/console')
   const isOnStats = location.pathname === '/admin/stats'
 
   // 产品决策「可见但锁」（DESIGN.md §4.5）：管理入口全员可见——
