@@ -37,6 +37,12 @@ export interface HeavyInputConsoleProps {
   onSend: () => void
   onStop?: () => void
   disabled?: boolean
+  /** v3.4.7 图片输入：当前轮随消息发送的图片（dataURL） */
+  images?: string[]
+  /** 选择新图片（控制台内部完成 File→dataURL 转换，回传完整列表） */
+  onImagesSelected?: (images: string[]) => void
+  /** 移除指定序号的图片 */
+  onRemoveImage?: (index: number) => void
 }
 
 /**

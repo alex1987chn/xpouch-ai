@@ -173,7 +173,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
    */
   const sendMessageCore = useCallback(async (
     content?: string,
-    overrideAgentId?: string
+    overrideAgentId?: string,
+    images?: string[]
   ) => {
     // Deduplication: prevent duplicate submissions
     if (isGenerating) {
@@ -182,7 +183,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     }
 
     const userContent = (content || inputMessage || '').trim()
-    if (!userContent) {
+    if (!userContent && !images?.length) {
       debug('Message content is empty, skipping send')
       return
     }
@@ -275,7 +276,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         streamCallback,
         actualThreadId,
         abortControllerRef.current.signal,
-        assistantMessageId
+        assistantMessageId,
+        images
       )
 
       const initialThreadId = useChatStore.getState().currentConversationId

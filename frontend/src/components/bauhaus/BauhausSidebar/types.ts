@@ -79,6 +79,7 @@ export interface SettingsMenuProps {
     username?: string
     avatar?: string
     plan?: string
+    role?: string
   } | null
   currentPlan: 'Free' | 'Pilot' | 'Maestro'
   language: 'zh' | 'en' | 'ja'

@@ -7,7 +7,7 @@
  * 所有视觉风格（边框、阴影、变换）由 CSS 变量控制
  */
 
-import { BarChart3, Bot, Boxes, Home, Library, MessageSquare } from 'lucide-react'
+import { BarChart3, Boxes, Home, Library, MessageSquare, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TranslationKey } from '@/i18n'
 import { TW } from './constants'
@@ -67,7 +67,7 @@ export function NavigationMenu({
           {showExpertAdmin && (
             <AdminButtonCollapsed
               isActive={isOnAdmin}
-              onClick={() => onMenuClick('/admin/experts')}
+              onClick={() => onMenuClick('/admin/console')}
               t={t}
             />
           )}
@@ -131,7 +131,7 @@ export function NavigationMenu({
         {showExpertAdmin && (
           <AdminButtonExpanded
             isActive={isOnAdmin}
-            onClick={() => onMenuClick('/admin/experts')}
+            onClick={() => onMenuClick('/admin/console')}
             t={t}
           />
         )}
@@ -232,11 +232,11 @@ function AdminButtonCollapsed({ isActive, onClick, t }: AdminButtonCollapsedProp
   return (
     <button
       onClick={onClick}
-      title={t('navExperts')}
-      aria-label={t('navExperts')}
+      title={t('navConsole')}
+      aria-label={t('navConsole')}
       className={collapsedButtonStyles(isActive)}
     >
-      <Bot className="w-4 h-4 flex-shrink-0" />
+      <ShieldCheck className="w-4 h-4 flex-shrink-0" />
     </button>
   )
 }
@@ -254,7 +254,7 @@ function AdminButtonExpanded({ isActive, onClick, t }: AdminButtonExpandedProps)
   return (
     <button
       onClick={onClick}
-      title={t('navExperts')}
+      title={t('navConsole')}
       className={cn(
         cn('transition-all duration-200 justify-center py-0 border-2 relative', TW.BUTTON_HEIGHT, TW.BUTTON_WIDTH),
         isActive
@@ -263,8 +263,8 @@ function AdminButtonExpanded({ isActive, onClick, t }: AdminButtonExpandedProps)
       )}
     >
       <div className="flex items-center gap-3 px-3">
-        <Bot className="w-5 h-5 flex-shrink-0" />
-        <span className="text-xs font-bold tracking-wide uppercase">{t('navExperts')}</span>
+        <ShieldCheck className="w-5 h-5 flex-shrink-0" />
+        <span className="text-xs font-bold tracking-wide uppercase">{t('navConsole')}</span>
       </div>
     </button>
   )

@@ -35,6 +35,7 @@ import HomePage from '@/pages/home/HomePage'
 // 路由懒加载 - 代码分割优化（chunk 失效自动刷新拿新构建）
 const ExpertAdminPage = lazyWithReload(() => import('@/pages/admin/ExpertAdminPage'))
 const StatsPage = lazyWithReload(() => import('@/pages/admin/StatsPage'))
+const ManagementConsolePage = lazyWithReload(() => import('@/pages/admin/ManagementConsolePage'))
 const RunTimelinePage = lazyWithReload(() => import('@/pages/run/RunTimelinePage'))
 
 // 路由配置
@@ -68,9 +69,19 @@ export const router = createBrowserRouter([
         element: <EditAgentPageWrapper />
       },
       {
+        path: 'admin/console',
+        element: (
+          <AdminRoute requiredRole="admin">
+            <SuspenseWithErrorBoundary fallback={<LoadingFallback />}>
+              <ManagementConsolePage />
+            </SuspenseWithErrorBoundary>
+          </AdminRoute>
+        )
+      },
+      {
         path: 'admin/experts',
         element: (
-          <AdminRoute requiredRole="user">
+          <AdminRoute requiredRole="admin">
             <SuspenseWithErrorBoundary fallback={<LoadingFallback />}>
               <ExpertAdminPage />
             </SuspenseWithErrorBoundary>

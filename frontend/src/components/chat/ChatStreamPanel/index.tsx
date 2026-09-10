@@ -69,6 +69,10 @@ interface ChatStreamPanelProps {
     value: string
     onChange: (value: string) => void
   }
+  /** v3.4.7 图片输入：当前轮随消息发送的图片（dataURL，父层持有状态） */
+  images?: string[]
+  onImagesSelected?: (images: string[]) => void
+  onRemoveImage?: (index: number) => void
   /** 行为回调（避免扁平 props 过多） */
   actions: {
     onSend: () => void
@@ -119,6 +123,9 @@ function getMessageThinkingSteps(msg: Message) {
 export default function ChatStreamPanel({
   input,
   actions,
+  images,
+  onImagesSelected,
+  onRemoveImage,
   resumeExecution,
   polling,
 }: ChatStreamPanelProps) {
@@ -156,9 +163,9 @@ export default function ChatStreamPanel({
 
   // Handle send
   const handleSend = useCallback(() => {
-    if (!input.value.trim() || isGenerating) return
+    if ((!input.value.trim() && !images?.length) || isGenerating) return
     actions.onSend()
-  }, [input.value, isGenerating, actions])
+  }, [input.value, isGenerating, actions, images])
 
   // 缓存回调函数，避免 MessageItem 不必要的重渲染
   const handleRegenerate = useCallback((messageId: string | number) => {
@@ -320,6 +327,9 @@ export default function ChatStreamPanel({
         onSend={handleSend}
         onStop={actions.onStop}
         disabled={isGenerating}
+        images={images}
+        onImagesSelected={onImagesSelected}
+        onRemoveImage={onRemoveImage}
       />
     </>
   )

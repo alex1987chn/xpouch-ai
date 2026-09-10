@@ -10,7 +10,8 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Cog, ArrowRight, Star, Copy, Check, ArrowUpRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Cog, ShieldCheck, ArrowRight, Star, Copy, Check, ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logger } from '@/utils/logger'
 import { GithubMark } from '@/components/common'
@@ -54,6 +55,7 @@ export function SettingsMenu({
   t,
 }: SettingsMenuProps) {
   // Hooks 必须在条件返回之前调用
+  const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
   const [usage, setUsage] = useState<{ total: number; today: number } | null>(null)
 
@@ -185,6 +187,21 @@ export function SettingsMenu({
             <Cog className="w-4 h-4" />
             <span className="font-bold uppercase">{t('settings')}</span>
           </button>
+
+          {/* 管理控制台：仅 admin 可见（实例级管理入口） */}
+          {isAuthenticated && user?.role === 'admin' && (
+            <button
+              onClick={() => {
+                onClose()
+                onMobileClose?.()
+                navigate('/admin/console')
+              }}
+              className={MENU_ROW}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span className="font-bold uppercase">{t('managementConsole')}</span>
+            </button>
+          )}
 
           <a
             href={GITHUB_REPO_URL}

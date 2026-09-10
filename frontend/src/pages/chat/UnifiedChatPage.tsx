@@ -226,16 +226,20 @@ export default function UnifiedChatPage() {
   })
   usePendingMessageRetry(sendMessage, normalizedAgentId, isStreaming)
 
+  // v3.4.7 图片输入：当前轮随消息发送的图片（dataURL）
+  const [pendingImages, setPendingImages] = useState<string[]>([])
+
   // 发送消息处理
   const handleSend = useCallback(() => {
-    if (!inputValue.trim() || isStreaming) return
-    sendMessage(inputValue, normalizedAgentId)
+    if ((!inputValue.trim() && !pendingImages.length) || isStreaming) return
+    sendMessage(inputValue, normalizedAgentId, pendingImages)
       .then(() => {
         // 🔥 刷新会话列表，确保首页能看到最新会话
         queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
       })
     setInputValue('')
-  }, [inputValue, isStreaming, sendMessage, normalizedAgentId, queryClient])
+    setPendingImages([])
+  }, [inputValue, pendingImages, isStreaming, sendMessage, normalizedAgentId, queryClient])
 
   // 缓存回调函数，避免 ChatStreamPanel 不必要的重渲染
   const handleInputChange = useCallback((value: string) => {
@@ -328,6 +332,9 @@ export default function UnifiedChatPage() {
         isFullscreen={isFullscreen}
         chatStreamPanel={
           <ChatStreamPanel
+            images={pendingImages}
+            onImagesSelected={setPendingImages}
+            onRemoveImage={index => setPendingImages(prev => prev.filter((_, i) => i !== index))}
             input={chatStreamInput}
             actions={chatStreamActions}
             resumeExecution={resumeExecution}  // 🔥🔥🔥 v3.1.0 HITL
