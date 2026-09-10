@@ -20,7 +20,7 @@ from typing import Any
 from sqlmodel import Session
 
 from crud.execution_plan import get_artifact
-from models import Artifact, ExecutionPlan, ShareToken, SubTask, Thread
+from models import Artifact, ExecutionPlan, ShareToken, SkillTemplate, SubTask, Thread
 from utils.exceptions import AuthorizationError, NotFoundError
 from utils.logger import logger
 from utils.secret_hash import hash_secret
@@ -110,6 +110,53 @@ class ShareService:
     # ------------------------------------------------------------------
     # 公开解析
     # ------------------------------------------------------------------
+
+    def create_template_share(self, template_key: str, user_id: str) -> dict[str, Any]:
+        """为模板生成分享链接令牌（公开只读导出；撤销按模板全量撤销）"""
+        token = token_urlsafe(32)
+        share = ShareToken(
+            artifact_id=None,
+            template_key=template_key,
+            token_hash=hash_secret(token),
+            created_by=user_id,
+            created_at=utc_now_naive(),
+        )
+        self.db.add(share)
+        self.db.commit()
+        logger.info(f"[Share] 创建模板分享: template={template_key} user={user_id}")
+
+        return {
+            "token": token,
+            "path": f"/api/public/templates/shared/{token}",
+            "template_key": template_key,
+        }
+
+    def revoke_template_shares(self, template_key: str) -> dict[str, Any]:
+        """撤销该模板的全部分享链接"""
+        revoked = 0
+        for share in self.db.query(ShareToken).filter_by(
+            template_key=template_key, revoked_at=None
+        ):
+            share.revoked_at = utc_now_naive()
+            self.db.add(share)
+            revoked += 1
+        self.db.commit()
+        return {"revoked": revoked}
+
+    def resolve_template(self, token: str) -> SkillTemplate | None:
+        """token -> 未撤销分享对应的激活模板；无效/已撤销返回 None（防探测）"""
+        share = (
+            self.db.query(ShareToken)
+            .filter_by(token_hash=hash_secret(token), revoked_at=None)
+            .first()
+        )
+        if not share or not share.template_key:
+            return None
+        return (
+            self.db.query(SkillTemplate)
+            .filter_by(template_key=share.template_key, is_active=True)
+            .first()
+        )
 
     def resolve(self, token: str) -> Artifact | None:
         """token -> 未撤销的 artifact；无效/已撤销返回 None（不区分原因，防探测）"""

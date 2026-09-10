@@ -178,7 +178,7 @@ export type TranslationKey =
   | 'customTemplate' | 'deleteTask' | 'detectingComplexTask' | 'dragAndDropJson' | 'editExpert'
   | 'enterCode' | 'enterValidPhone' | 'exampleAiResponseNoPrompt' | 'exampleAiResponseWithPrompt' | 'exampleChat'
   | 'exampleUserMessage' | 'existingTemplate' | 'expectedArtifactTypes' | 'exportFailed' | 'exportTemplate'
-  | 'exported' | 'fileReadError' | 'hideToolTips' | 'imagePreview' | 'import'
+  | 'exported' | 'shareTemplate' | 'templateShareCopied' | 'templateShareHint' | 'templateShareFailed' | 'fileReadError' | 'hideToolTips' | 'imagePreview' | 'import'
   | 'importFailed' | 'importSkipped' | 'importStrategy' | 'importSuccess' | 'importTemplate'
   | 'importing' | 'invalidFileType' | 'invalidTemplate' | 'key' | 'loadExpertsFailed'
   | 'loadingTools' | 'loginSuccess' | 'mediaFile' | 'mediaPreviewDesc' | 'mediaPreviewMode'

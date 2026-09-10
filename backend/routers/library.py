@@ -197,28 +197,9 @@ def _is_valid_template_key(key: str) -> bool:
     return bool(re.match(r"^[a-z0-9_-]+$", key))
 
 
-@router.get("/templates/{template_key}/export")
-async def export_skill_template(
-    template_key: str,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    导出模板为 JSON
-
-    Returns:
-        TemplateExportSchema 结构的 JSON
-    """
-    # 查询模板
-    template = session.exec(
-        select(SkillTemplate).where(SkillTemplate.template_key == template_key)
-    ).first()
-
-    if template is None:
-        raise NotFoundError("模板")
-
-    # 构建导出数据结构
-    export_schema = TemplateExportSchema(
+def build_template_export(template: SkillTemplate, exported_by: str | None = None):
+    """构建模板导出结构（认证导出与公开分享链接共用）"""
+    return TemplateExportSchema(
         xpouch_template=XpouchTemplateHeader(
             version="1.0", schema_url="https://xpouch.ai/schema/template-v1.json"
         ),
@@ -237,14 +218,71 @@ async def export_skill_template(
         ),
         meta=TemplateExportMeta(
             exported_at=utc_now_naive(),
-            exported_by=str(current_user.id) if current_user else None,
+            exported_by=exported_by,
             source_instance=None,  # 可从配置读取
         ),
     )
 
+
+@router.get("/templates/{template_key}/export")
+async def export_skill_template(
+    template_key: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    导出模板为 JSON
+
+    Returns:
+        TemplateExportSchema 结构的 JSON
+    """
+    template = session.exec(
+        select(SkillTemplate).where(SkillTemplate.template_key == template_key)
+    ).first()
+
+    if template is None:
+        raise NotFoundError("模板")
+
     logger.info(f"[Template Export] 用户 {current_user.id} 导出模板: {template_key}")
 
-    return export_schema
+    return build_template_export(template, exported_by=str(current_user.id))
+
+
+@router.post("/templates/{template_key}/share")
+async def share_skill_template(
+    template_key: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """生成模板分享链接（仅管理员）。链接公开可读导出 JSON，供跨实例导入"""
+    from services.chat.share_service import ShareService
+
+    _require_editor(current_user)
+    template = session.exec(
+        select(SkillTemplate).where(
+            SkillTemplate.template_key == template_key,
+            SkillTemplate.is_active == True,  # noqa: E712
+        )
+    ).first()
+    if template is None:
+        raise NotFoundError("模板")
+
+    result = ShareService(session).create_template_share(template_key, str(current_user.id))
+    logger.info(f"[Template Share] 用户 {current_user.id} 分享模板: {template_key}")
+    return result
+
+
+@router.delete("/templates/{template_key}/share")
+async def revoke_template_shares(
+    template_key: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """撤销该模板的全部分享链接（仅管理员）"""
+    from services.chat.share_service import ShareService
+
+    _require_editor(current_user)
+    return ShareService(session).revoke_template_shares(template_key)
 
 
 @router.post("/templates/import-preview", response_model=TemplateImportPreviewResponse)

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Bot, FileCode, Plus, Rocket, Save, Trash2, Upload, Download } from 'lucide-react'
+import { Bot, FileCode, Plus, Rocket, Save, Trash2, Upload, Download, Link2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '@/components/ui/use-toast'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,6 +12,7 @@ import {
   type SkillTemplate,
   updateSkillTemplate,
   exportSkillTemplate,
+  shareSkillTemplate,
 } from '@/services/admin'
 import { TemplateImportDialog } from '@/components/library/TemplateImportDialog'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
@@ -302,6 +303,25 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
     }
   }
 
+  const handleShare = async () => {
+    if (!selectedTemplate || !canEdit) return
+    try {
+      const res = await shareSkillTemplate(selectedTemplate.template_key)
+      const url = `${window.location.origin}${res.path}`
+      await navigator.clipboard.writeText(url)
+      toast({
+        title: t('templateShareCopied') || 'Share link copied',
+        description: t('templateShareHint') || 'Anyone with the link can fetch this template JSON for import.',
+      })
+    } catch (error) {
+      toast({
+        title: t('templateShareFailed') || 'Share failed',
+        description: error instanceof Error ? error.message : t('templateShareFailed'),
+        variant: 'destructive',
+      })
+    }
+  }
+
   const handleExport = async () => {
     if (!selectedTemplate) return
     try {
@@ -454,13 +474,22 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
           </div>
           <div className="flex items-center gap-2">
             {selectedTemplate && canEdit && (
-              <button
-                onClick={handleExport}
-                className="flex items-center gap-2 border-2 border-border-default bg-surface-page px-3 py-1.5 font-mono text-micro font-bold uppercase text-content-secondary transition-all hover:border-border-strong hover:text-content-primary"
-                title={t('exportTemplate') || 'Export'}
-              >
-                <Download className="h-3.5 w-3.5" />
-              </button>
+              <>
+                <button
+                  onClick={handleShare}
+                  className="flex items-center gap-2 border-2 border-border-default bg-surface-page px-3 py-1.5 font-mono text-micro font-bold uppercase text-content-secondary transition-all hover:border-border-strong hover:text-content-primary"
+                  title={t('shareTemplate') || 'Share link'}
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={handleExport}
+                  className="flex items-center gap-2 border-2 border-border-default bg-surface-page px-3 py-1.5 font-mono text-micro font-bold uppercase text-content-secondary transition-all hover:border-border-strong hover:text-content-primary"
+                  title={t('exportTemplate') || 'Export'}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                </button>
+              </>
             )}
             {selectedTemplate && (
               <button

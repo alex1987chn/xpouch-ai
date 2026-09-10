@@ -1,8 +1,9 @@
 """
 分享令牌领域模型
 
-Artifact 单产物分享：明文 token 仅在创建响应中返回一次，库里只存
-SHA-256 哈希（与 OTP/token 的处理一致，utils/secret_hash）。
+产物分享与模板分享共用本表：明文 token 仅在创建响应中返回一次，库里
+只存 SHA-256 哈希（与 OTP/token 的处理一致，utils/secret_hash）。
+artifact_id / template_key 二选一，按分享对象写入。
 """
 
 from datetime import datetime
@@ -20,8 +21,13 @@ class ShareToken(SQLModel, table=True):
         primary_key=True,
     )
 
-    # 分享的产物
-    artifact_id: str = Field(foreign_key="artifact.id", index=True, max_length=64)
+    # 分享的产物（产物分享时必填；模板分享为空）
+    artifact_id: str | None = Field(
+        default=None, foreign_key="artifact.id", index=True, max_length=64
+    )
+
+    # 分享的模板（模板分享时必填）
+    template_key: str | None = Field(default=None, index=True, max_length=128)
 
     # token 的 SHA-256 哈希（唯一）；明文不落库
     token_hash: str = Field(unique=True, index=True, max_length=64)

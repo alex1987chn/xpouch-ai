@@ -18,6 +18,7 @@ from sqlmodel import Session
 
 from database import get_session
 from services.chat.share_service import ShareService, share_rate_limiter
+from utils.exceptions import NotFoundError
 
 router = APIRouter()
 
@@ -175,3 +176,16 @@ async def share_page(token: str, request: Request, session: Session = Depends(ge
     title = artifact.title or "Shared Artifact"
     og_url = str(request.url)
     return HTMLResponse(_render_share_html(artifact.type, title, artifact.content, og_url))
+
+
+@router.get("/api/public/templates/shared/{token}")
+async def get_shared_template(token: str, session: Session = Depends(get_session)):
+    """模板分享链接的公开只读导出（无认证；token 不可枚举，撤销即失效）"""
+    from routers.library import build_template_export
+    from services.chat.share_service import ShareService
+
+    template = ShareService(session).resolve_template(token)
+    if template is None:
+        raise NotFoundError("分享链接")
+
+    return build_template_export(template)

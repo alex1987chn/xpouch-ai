@@ -411,6 +411,22 @@ export async function exportSkillTemplate(templateKey: string): Promise<Template
 }
 
 /**
+ * 生成模板分享链接（仅管理员）。链接公开可读，撤销即失效
+ */
+export async function shareSkillTemplate(
+  templateKey: string
+): Promise<{ token: string; path: string; template_key: string }> {
+  const response = await authenticatedFetch(
+    buildUrl(`/library/templates/${encodeURIComponent(templateKey)}/share`),
+    {
+      method: 'POST',
+      headers: getHeaders(),
+    }
+  )
+  return handleResponse(response, '生成分享链接失败')
+}
+
+/**
  * 预览模板导入
  */
 export async function previewImportSkillTemplate(
