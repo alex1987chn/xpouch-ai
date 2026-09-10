@@ -1,16 +1,16 @@
-"""用户模型偏好与 thinking 归一化测试。
+"""全局模型偏好与 thinking 归一化测试。
 
 覆盖：
 - GET /api/models 的数据源 get_available_models()（过滤 disabled provider 与 hidden 别名）
-- get_llm_by_model 的 thinking 三态归一化（能力声明 × 用户偏好矩阵）
-- load_user_preferences 的默认值合并与脏数据防御
+- get_llm_by_model 的 thinking 三态归一化（能力声明 × 偏好矩阵）
+- load_model_preferences 的默认值合并、脏 JSON 防御与 save→load 往返
 """
 
 import pytest
 
-from models import UserSettings
+from models import SystemSetting
 from providers_config import get_available_models
-from services.user_preferences import load_user_preferences
+from services.user_preferences import load_model_preferences, save_model_preferences
 from utils.llm_factory import get_llm_by_model
 
 # ============================================================================
@@ -83,33 +83,53 @@ def test_get_llm_by_model_unknown_id_raises():
 
 
 # ============================================================================
-# 用户偏好默认值合并
+# 全局模型偏好：默认值合并、脏数据防御、save→load 往返
 # ============================================================================
 
 
 class _StubSession:
-    """仅支持 get() 的会话桩，避免依赖真实数据库"""
+    """仅支持 get/add/commit 的会话桩，避免依赖真实数据库"""
 
-    def __init__(self, stored: UserSettings | None):
+    def __init__(self, stored: SystemSetting | None = None):
         self._stored = stored
 
     def get(self, model, pk):  # noqa: ANN001 - 模拟 SQLModel Session.get 签名
-        if model is UserSettings and self._stored is not None and self._stored.user_id == pk:
+        if model is SystemSetting and self._stored is not None and self._stored.key == pk:
             return self._stored
         return None
 
+    def add(self, instance):  # noqa: ANN001
+        self._stored = instance
 
-def test_load_user_preferences_defaults_when_no_row():
-    prefs = load_user_preferences(_StubSession(None), "user-1")
+    def commit(self):
+        pass
+
+
+def test_load_model_preferences_defaults_when_unset():
+    prefs = load_model_preferences(_StubSession())
     assert prefs == {"simple_model": None, "simple_thinking": "auto"}
 
 
-def test_load_user_preferences_merges_partial_and_sanitizes():
-    stored = UserSettings(user_id="user-1", preferences={"simple_model": "deepseek-v4-flash"})
-    prefs = load_user_preferences(_StubSession(stored), "user-1")
-    assert prefs == {"simple_model": "deepseek-v4-flash", "simple_thinking": "auto"}
+def test_save_then_load_roundtrip():
+    session = _StubSession()
+    saved = save_model_preferences(session, simple_model="kimi-k2.6", simple_thinking="enabled")
+    assert saved == {"simple_model": "kimi-k2.6", "simple_thinking": "enabled"}
+    assert load_model_preferences(session) == {
+        "simple_model": "kimi-k2.6",
+        "simple_thinking": "enabled",
+    }
 
-    # 历史脏数据：非法 thinking 值回落默认
-    dirty = UserSettings(user_id="user-2", preferences={"simple_thinking": "banana"})
-    prefs2 = load_user_preferences(_StubSession(dirty), "user-2")
-    assert prefs2["simple_thinking"] == "auto"
+
+def test_load_model_preferences_dirty_json_falls_back():
+    dirty = SystemSetting(key="model_preferences", value="not-a-json")
+    prefs = load_model_preferences(_StubSession(dirty))
+    assert prefs == {"simple_model": None, "simple_thinking": "auto"}
+
+
+def test_load_model_preferences_dirty_thinking_sanitized():
+    dirty = SystemSetting(
+        key="model_preferences",
+        value='{"simple_model": "kimi-k3", "simple_thinking": "banana"}',
+    )
+    prefs = load_model_preferences(_StubSession(dirty))
+    assert prefs == {"simple_model": "kimi-k3", "simple_thinking": "auto"}

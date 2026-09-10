@@ -28,7 +28,7 @@ export type TranslationKey =
   // Settings
   | 'theme' | 'language' | 'systemSettings' | 'userSettings' | 'personalSettings' | 'modelConfig'
   | 'simpleMode' | 'followSystemDefault' | 'thinkingMode' | 'thinkingAuto' | 'thinkingOn' | 'thinkingOff'
-  | 'thinkingUnsupported' | 'thinkingCostHint' | 'complexMode' | 'complexModeDesc'
+  | 'thinkingUnsupported' | 'thinkingCostHint' | 'complexModeDesc' | 'modelManagedByAdmin'
   | 'modelsLoading' | 'modelsLoadFailed' | 'openSource'
   // Common
   | 'save' | 'cancel' | 'delete' | 'edit' | 'confirmDelete' | 'noHistory' | 'startChat'
@@ -131,8 +131,7 @@ export type TranslationKey =
   | 'username' | 'usernamePlaceholder' | 'usernameHint'
   | 'userConfig' | 'savingUserSettings'
   // Settings Dialog (System Config)
-  | 'systemConfig' | 'defaultModel' | 'apiKeyConfig' | 'apiKeyConfigTitle'
-  | 'apiKeyConfigDesc' | 'apiKeyConfigHint' | 'agentPrompts' | 'customized' | 'defaultPrompt'
+  | 'systemConfig' | 'defaultModel' | 'agentPrompts' | 'customized' | 'defaultPrompt'
   // Thinking Process
   | 'thinking' | 'thinkingSteps' | 'showThinking' | 'hideThinking'
   // Dynamic Expert (v3.0)

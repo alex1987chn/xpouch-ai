@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session as SASession
 from sqlmodel import Session, select
 
 from database import engine, get_session
-from dependencies import get_current_user_with_auth
-from models import CustomAgent, Thread, User, UserSettings
+from dependencies import get_current_user_with_auth, require_role
+from models import CustomAgent, Thread, User, UserRole
 from schemas.user_profile import UserProfileResponse
 from utils.exceptions import NotFoundError
 from utils.time import utc_now_naive
@@ -31,9 +31,9 @@ class UpdateUserRequest(BaseModel):
 
 
 class UpdateUserSettingsRequest(BaseModel):
-    """用户偏好设置更新请求。
+    """全局模型偏好更新请求（v3.4.7 起为实例级配置，仅 ADMIN/EDIT_ADMIN 可写）。
 
-    simple_model 为 null 表示清除选择、跟随系统默认模型；
+    simple_model 为 null 表示清除选择、跟随系统默认模型（env MODEL_NAME）；
     simple_thinking 三态：auto（跟随系统默认）/ enabled / disabled。
     """
 
@@ -41,11 +41,11 @@ class UpdateUserSettingsRequest(BaseModel):
     simple_thinking: str | None = None
 
 
-# 用户偏好常量与读取已迁至 services/user_preferences.py（修复 router 间私有函数穿透）
+# 全局模型偏好的读写已迁至 services/user_preferences.py（system_setting 表）
 from services.user_preferences import (  # noqa: E402
-    DEFAULT_USER_PREFERENCES,
     VALID_THINKING_MODES,
-    load_user_preferences,
+    load_model_preferences,
+    save_model_preferences,
 )
 
 # ============================================================================
@@ -131,11 +131,11 @@ async def get_user_settings(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user_with_auth),
 ):
-    """获取当前用户偏好设置（含默认值合并与系统默认模型信息）"""
+    """获取全局模型偏好（v3.4.7 起为实例级配置；普通用户只读，管理员经 PUT 修改）"""
     from providers_config import get_provider_config
     from utils.llm_factory import get_default_model
 
-    preferences = load_user_preferences(session, current_user.id)
+    preferences = load_model_preferences(session)
 
     default_model = get_default_model()
     provider_config = get_provider_config("deepseek") or {}
@@ -152,9 +152,9 @@ async def get_user_settings(
 async def update_user_settings(
     request: UpdateUserSettingsRequest,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user_with_auth),
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.EDIT_ADMIN)),
 ):
-    """更新当前用户偏好设置（整体写入，字段校验后 upsert）"""
+    """更新全局模型偏好（仅管理员，全实例生效）"""
     from providers_config import get_available_models
 
     # 校验 simple_model：null 或必须存在于可用模型列表
@@ -173,22 +173,13 @@ async def update_user_settings(
             message=f"无效的 thinking 取值: {request.simple_thinking}，允许 auto/enabled/disabled"
         )
 
-    stored = session.get(UserSettings, current_user.id)
-    preferences = {
-        "simple_model": request.simple_model,
-        "simple_thinking": request.simple_thinking or DEFAULT_USER_PREFERENCES["simple_thinking"],
-    }
+    preferences = save_model_preferences(
+        session,
+        simple_model=request.simple_model,
+        simple_thinking=request.simple_thinking or "auto",
+    )
 
-    if stored:
-        stored.preferences = preferences
-        session.add(stored)
-    else:
-        stored = UserSettings(user_id=current_user.id, preferences=preferences)
-        session.add(stored)
-
-    session.commit()
-
-    return {"preferences": load_user_preferences(session, current_user.id)}
+    return {"preferences": preferences}
 
 
 # ============================================================================

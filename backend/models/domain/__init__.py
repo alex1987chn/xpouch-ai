@@ -19,6 +19,7 @@ from models.domain.share_token import ShareToken
 from models.domain.skill_template import SkillTemplate
 from models.domain.subtask import SubTask
 from models.domain.system_expert import SystemExpert
+from models.domain.system_setting import SystemSetting
 from models.domain.thread import Thread
 from models.domain.tool_policy import ToolPolicy
 from models.domain.user import User
@@ -39,4 +40,5 @@ __all__ = [
     "SubTask",
     "Artifact",
     "SystemExpert",
+    "SystemSetting",
 ]

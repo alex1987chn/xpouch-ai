@@ -3,10 +3,10 @@
  * SettingsHubDialog - 设置中心 (Portal)
  * =============================
  *
- * 原先三个独立弹窗（个人设置 / 模型配置 / 账号与安全）整合为一个
- * 分区弹窗：顶部三分段 tab 定位，入口仍保留三个 open* 动作映射到
- * 对应初始分区（appUIStore）。
- * 各分区自带保存语义：profile/model 显式保存，security 动作即时生效。
+ * 桌面端：左侧导航栏（148px，可随分区扩展）+ 右侧内容区，固定高度壳体。
+ * 移动端：左栏塌为顶部三分段条。分区内容仅挂载当前项，切换带淡入过渡。
+ * 各分区自带保存语义：profile/model 显式保存（model 仅管理员），security
+ * 动作即时生效。
  */
 
 import { createPortal } from 'react-dom'
@@ -39,6 +39,25 @@ export function SettingsHubDialog() {
     { key: 'security', label: t('accountSecurity'), icon: ShieldCheck },
   ]
 
+  const renderTabButton = ({ key, label, icon: Icon }: (typeof tabs)[number]) => (
+    <button
+      key={key}
+      type="button"
+      role="tab"
+      aria-selected={section === key}
+      onClick={() => setSettingsSection(key)}
+      className={cn(
+        'flex items-center gap-2.5 px-3 py-2 text-xs font-bold uppercase border-2 transition-colors',
+        section === key
+          ? 'bg-accent-hover border-accent-hover text-content-primary'
+          : 'bg-transparent border-transparent text-content-secondary hover:bg-surface-page hover:border-border-default'
+      )}
+    >
+      <Icon className="w-4 h-4 shrink-0" />
+      <span className="truncate">{label}</span>
+    </button>
+  )
+
   return createPortal(
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center"
@@ -47,7 +66,7 @@ export function SettingsHubDialog() {
     >
       <div
         {...a11y}
-        className="relative bg-surface-card border-2 border-border-default shadow-theme-modal w-[600px] max-w-[90vw] h-[600px] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface-card border-2 border-border-default shadow-theme-modal w-[680px] max-w-[90vw] h-[600px] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - Bauhaus风格 */}
@@ -67,38 +86,27 @@ export function SettingsHubDialog() {
           </button>
         </div>
 
-        {/* 分区 tab（分段控件样式，与思考开关一致） */}
-        <div role="tablist" className="grid grid-cols-3 border-b-2 border-border-default shrink-0">
-          {tabs.map(({ key, label, icon: Icon }, index) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={section === key}
-              onClick={() => setSettingsSection(key)}
-              className={cn(
-                'flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase transition-colors',
-                index > 0 && 'border-l-2 border-border-default',
-                section === key
-                  ? 'bg-accent-hover/10 text-content-primary'
-                  : 'text-content-secondary hover:bg-surface-page'
-              )}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </button>
-          ))}
+        {/* 移动端分区条（sm 以下替代左栏） */}
+        <div role="tablist" className="grid grid-cols-3 border-b-2 border-border-default shrink-0 sm:hidden">
+          {tabs.map(renderTabButton)}
         </div>
 
-        {/* 分区内容：固定高度外壳 + key 触发淡入，切换 tab 时壳体不跳动；
-            仅挂载当前分区，切换即重置该分区编辑态 */}
-        <div
-          key={section}
-          className="flex-1 min-h-0 flex flex-col animate-in fade-in duration-150"
-        >
-          {section === 'profile' && <ProfileSection onClose={closeSettings} />}
-          {section === 'model' && <ModelSection onClose={closeSettings} />}
-          {section === 'security' && <SecuritySection />}
+        <div className="flex flex-1 min-h-0">
+          {/* 桌面端左侧导航栏 */}
+          <div role="tablist" className="hidden sm:flex sm:flex-col w-[148px] shrink-0 border-r-2 border-border-default p-2 gap-1">
+            {tabs.map(renderTabButton)}
+          </div>
+
+          {/* 分区内容：固定高度外壳 + key 触发淡入，切换分区壳体不跳动；
+              仅挂载当前分区，切换即重置该分区编辑态 */}
+          <div
+            key={section}
+            className="flex-1 min-h-0 flex flex-col animate-in fade-in duration-150"
+          >
+            {section === 'profile' && <ProfileSection onClose={closeSettings} />}
+            {section === 'model' && <ModelSection onClose={closeSettings} />}
+            {section === 'security' && <SecuritySection />}
+          </div>
         </div>
       </div>
     </div>,
