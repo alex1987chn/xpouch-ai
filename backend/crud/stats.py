@@ -118,7 +118,9 @@ def get_daily_trends(
     Returns:
         每日趋势列表
     """
-    since = utc_now_naive() - timedelta(days=days)
+    since = (utc_now_naive() - timedelta(days=days - 1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
 
     # 使用 date_trunc 按天分组聚合
     # 注意：GROUP BY 必须使用与 SELECT 相同的表达式
@@ -150,14 +152,22 @@ def get_daily_trends(
 
     results = db.exec(stmt).all()
 
+    # 补零填满完整窗口：没跑任务的日期也要出现（否则趋势图缺柱、间距失真）
+    by_day = {(row.date.strftime("%Y-%m-%d") if row.date else ""): row for row in results}
+    today = utc_now_naive().date()
+    window = [(today - timedelta(days=offset)).isoformat() for offset in range(days - 1, -1, -1)]
     return [
         {
-            "date": row.date.strftime("%Y-%m-%d") if row.date else "",
-            "total_count": int(row.total_count or 0),
-            "success_count": int(row.success_count or 0),
-            "failed_count": int(row.failed_count or 0),
+            "date": day,
+            "total_count": int(getattr(by_day[day], "total_count", 0) or 0) if day in by_day else 0,
+            "success_count": int(getattr(by_day[day], "success_count", 0) or 0)
+            if day in by_day
+            else 0,
+            "failed_count": int(getattr(by_day[day], "failed_count", 0) or 0)
+            if day in by_day
+            else 0,
         }
-        for row in results
+        for day in window
     ]
 
 
