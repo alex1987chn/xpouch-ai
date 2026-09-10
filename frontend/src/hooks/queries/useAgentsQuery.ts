@@ -99,7 +99,7 @@ export function useCustomAgentsQuery(options: { enabled?: boolean } = {}) {
           icon: null, // 在组件层注入图标
           systemPrompt: agent.system_prompt || '',
           category: agent.category || '综合',
-          modelId: agent.model_id || 'deepseek-v4-flash',
+          modelId: agent.model_id || 'deepseek-flash',
           isCustom: true,
           is_builtin: false,
         }))

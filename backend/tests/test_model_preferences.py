@@ -24,11 +24,12 @@ def test_available_models_excludes_hidden_aliases_and_disabled_providers():
     ids = [m["id"] for m in models]
 
     # 当前启用的 provider（deepseek/moonshot，conftest 已注入测试 Key）
-    assert "deepseek-v4-flash" in ids
+    assert "deepseek-flash" in ids
     assert "kimi-k2.6" in ids
     assert "kimi-k3" in ids
 
-    # hidden 兼容别名不出现（kimi-k2.5 该 Key 无权限，已降级为指向 K2.6 的隐藏别名）
+    # 已下线的旧 ID 转为 hidden 别名（兼容存量数据），不出现在可选列表
+    assert "deepseek-v4-flash" not in ids
     assert "deepseek-chat" not in ids
     assert "deepseek-reasoner" not in ids
     assert "kimi-k2.5" not in ids
@@ -40,7 +41,7 @@ def test_available_models_fields_and_capability_flags():
     """列表条目字段完整，且只有声明 thinking_toggle 的模型为 True"""
     models = {m["id"]: m for m in get_available_models()}
 
-    deepseek = models["deepseek-v4-flash"]
+    deepseek = models["deepseek-flash"]
     assert deepseek["thinking_toggle"] is True
     assert deepseek["provider_name"] == "DeepSeek"
     assert deepseek["context_window"] > 0
@@ -58,16 +59,28 @@ def test_available_models_fields_and_capability_flags():
 
 
 def test_thinking_override_on_capable_model():
-    llm_on = get_llm_by_model("deepseek-v4-flash", thinking="enabled")
-    llm_off = get_llm_by_model("deepseek-v4-flash", thinking="disabled")
+    llm_on = get_llm_by_model("deepseek-flash", thinking="enabled")
+    llm_off = get_llm_by_model("deepseek-flash", thinking="disabled")
     assert llm_on.extra_body == {"thinking": {"type": "enabled"}}
     assert llm_off.extra_body == {"thinking": {"type": "disabled"}}
 
 
 def test_thinking_auto_follows_provider_default():
     """None / auto 不下发覆盖，跟随 provider 级 yaml 默认（当前为 disabled）"""
-    llm_auto = get_llm_by_model("deepseek-v4-flash", thinking=None)
+    llm_auto = get_llm_by_model("deepseek-flash", thinking=None)
     assert llm_auto.extra_body == {"thinking": {"type": "disabled"}}
+
+
+def test_legacy_model_id_alias_still_resolves():
+    """存量数据（专家/智能体行）里的旧模型 ID 经 hidden 别名解析到新上游模型"""
+    from providers_config import get_model_config
+
+    config = get_model_config("deepseek-v4-flash")
+    assert config is not None
+    assert config["model"] == "deepseek-flash"
+    # 别名与主条目同样支持思考开关
+    llm = get_llm_by_model("deepseek-v4-flash", thinking="enabled")
+    assert llm.extra_body == {"thinking": {"type": "enabled"}}
 
 
 def test_thinking_ignored_on_incapable_model():

@@ -61,7 +61,7 @@ export function useEditAgent() {
           description: agent.description || '',
           systemPrompt: agent.system_prompt || '',
           category: agent.category || t('general'),
-          modelId: agent.model_id || 'deepseek-v4-flash'
+          modelId: agent.model_id || 'deepseek-flash'
         })
       } catch (error) {
         logger.error('加载智能体失败:', error)

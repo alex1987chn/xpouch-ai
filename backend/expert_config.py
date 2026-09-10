@@ -6,8 +6,8 @@
 
 import os
 
-# 从环境变量读取默认模型，默认使用 deepseek-v4-flash
-DEFAULT_EXPERT_MODEL = os.getenv("MODEL_NAME", "deepseek-v4-flash")
+# 从环境变量读取默认模型，默认使用 deepseek-flash（V4.1 Flash）
+DEFAULT_EXPERT_MODEL = os.getenv("MODEL_NAME", "deepseek-flash")
 
 # 专家默认配置（导出给 main.py 和 init_experts.py 使用）
 # 注意：此配置应与数据库中的配置保持一致
@@ -51,7 +51,7 @@ EXPERT_DEFAULTS = [
 
 # User Query
 {input}""",
-        "model": "deepseek-v4-flash",
+        "model": "deepseek-flash",
         "temperature": 0.2,
     },
     {
@@ -102,7 +102,7 @@ if __name__ == "__main__":
 
 # User Task
 {input}""",
-        "model": "deepseek-v4-flash",
+        "model": "deepseek-flash",
         "temperature": 0.0,
     },
     {
@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
 # User Research Task
 {input}""",
-        "model": "deepseek-v4-flash",
+        "model": "deepseek-flash",
         "temperature": 0.2,
     },
     {
@@ -202,7 +202,7 @@ if __name__ == "__main__":
 
 # Input Data / Context
 {input}""",
-        "model": "deepseek-v4-flash",
+        "model": "deepseek-flash",
         "temperature": 0.1,
     },
     {
@@ -241,7 +241,7 @@ if __name__ == "__main__":
 
 # User Task
 {input}""",
-        "model": "deepseek-v4-flash",
+        "model": "deepseek-flash",
         "temperature": 0.2,
     },
     {
@@ -305,7 +305,7 @@ gantt
 
 # User Requirement
 {input}""",
-        "model": "deepseek-v4-flash",
+        "model": "deepseek-flash",
         "temperature": 0.1,
     },
     {
@@ -351,7 +351,7 @@ gantt
 
 # User Input / Context
 {input} (Context regarding the image, if provided)""",
-        "model": "deepseek-v4-flash",
+        "model": "deepseek-flash",
         "temperature": 0.1,
     },
     {
@@ -423,7 +423,7 @@ gantt
 
 # User Query
 {user_query}""",
-        "model": "deepseek-v4-flash",
+        "model": "deepseek-flash",
         "temperature": 0.0,
     },
     {
@@ -487,7 +487,7 @@ Output:
 
 # User Input
 {input}""",
-        "model": "deepseek-v4-flash",
+        "model": "deepseek-flash",
         "temperature": 0.1,
     },
 ]

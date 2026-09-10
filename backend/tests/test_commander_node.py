@@ -20,16 +20,16 @@ from agents.nodes.commander import commander_node  # noqa: E402
 COMMANDER_CONFIG = {
     "name": "Commander",
     "system_prompt": "你是规划者。任务: {user_query} 专家: {dynamic_expert_list}",
-    "model": "deepseek-v4-flash",
+    "model": "deepseek-flash",
     "temperature": 0.3,
 }
 
 _PROVIDERS = {
     "providers": {"deepseek": {"content_mode": "string"}},
     "models": {
-        "deepseek-v4-flash": {
+        "deepseek-flash": {
             "provider": "deepseek",
-            "model": "deepseek-v4-flash",
+            "model": "deepseek-flash",
             "temperature": 0.6,
         }
     },

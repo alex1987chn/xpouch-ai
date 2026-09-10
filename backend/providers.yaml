@@ -36,7 +36,7 @@ providers:
     name: DeepSeek
     base_url: https://api.deepseek.com/v1
     env_key: DEEPSEEK_API_KEY
-    default_model: deepseek-v4-flash        # DeepSeek V4 Flash（旧别名 deepseek-chat 已于 2026-07-24 停用）
+    default_model: deepseek-flash           # DeepSeek V4.1 Flash（2026-09-10 发布，原生多模态视觉；旧 ID 官方临时路由兼容）
     temperature: 0.7
     max_tokens: 32768                       # V4 输出上限 384K；不显式设置时 API 默认值偏小，长 HTML artifact 会被静默截断
     context_window: 1000000                 # V4 Flash 支持 1M 上下文
@@ -159,25 +159,34 @@ models:
   #   model: MiniMax-M2.1
   #   name: MiniMax M2.1
 
-  # DeepSeek - V4 Flash（旧 ID deepseek-chat/deepseek-reasoner 已于 2026-07-24 停用，
-  # 保留映射仅为兼容数据库中已存储的旧模型 ID）
-  deepseek-v4-flash:
+  # DeepSeek - V4.1 Flash（2026-09-10 发布：原生多模态视觉理解，能力全面超越 V4 Flash/Pro；
+  # 上游模型名由 deepseek-v4-flash 更名为 deepseek-flash）
+  deepseek-flash:
     provider: deepseek
-    model: deepseek-v4-flash
-    name: DeepSeek V4 Flash
+    model: deepseek-flash
+    name: DeepSeek V4.1 Flash
     thinking_toggle: true                # 支持思考模式开关（请求级 thinking.type 覆盖）
 
   # 兼容别名（hidden: 不出现在 /api/models 可选列表中）
+  # deepseek-v4-flash / deepseek-chat / deepseek-reasoner 均为已下线旧 ID，
+  # 保留映射仅为兼容数据库中已存储的专家/智能体模型 ID，上游名统一定向 deepseek-flash
+  deepseek-v4-flash:
+    provider: deepseek
+    model: deepseek-flash
+    name: DeepSeek V4.1 Flash
+    thinking_toggle: true
+    hidden: true
+
   deepseek-chat:
     provider: deepseek
-    model: deepseek-v4-flash
-    name: DeepSeek V4 Flash
+    model: deepseek-flash
+    name: DeepSeek V4.1 Flash
     hidden: true
 
   deepseek-reasoner:
     provider: deepseek
-    model: deepseek-v4-flash
-    name: DeepSeek V4 Flash
+    model: deepseek-flash
+    name: DeepSeek V4.1 Flash
     hidden: true
     
   # OpenAI

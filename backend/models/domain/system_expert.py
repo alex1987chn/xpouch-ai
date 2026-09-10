@@ -43,7 +43,7 @@ class SystemExpert(SQLModel, table=True):
     )
     system_prompt: str = Field(description="专家系统提示词（核心字段，管理员可修改）")
     model: str = Field(
-        default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-v4-flash"),
+        default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-flash"),
         max_length=128,
         description="使用的模型",
     )

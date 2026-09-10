@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 def get_default_model() -> str:
     """获取默认模型"""
-    return os.getenv("MODEL_NAME", "deepseek-v4-flash")
+    return os.getenv("MODEL_NAME", "deepseek-flash")
 
 
 def get_effective_model(configured_model: str | None) -> str:

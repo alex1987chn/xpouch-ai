@@ -82,7 +82,7 @@ export default function UnifiedChatPage() {
       category: agent.category || t('general'),
       isCustom: true,
       is_builtin: false,
-      modelId: agent.model_id || 'deepseek-v4-flash',
+      modelId: agent.model_id || 'deepseek-flash',
       icon: 'bot',
       systemPrompt: agent.system_prompt || '',
     }

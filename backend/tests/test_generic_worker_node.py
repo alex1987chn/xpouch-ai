@@ -76,7 +76,7 @@ def _base_state(task, index=0, extra=None):
 _EXPERT_CONFIG = {
     "name": "Coder",
     "system_prompt": "你是编码专家。{input}",
-    "model": "deepseek-v4-flash",
+    "model": "deepseek-flash",
 }
 
 _CONFIG_PATCHES = {
