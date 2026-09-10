@@ -87,7 +87,7 @@ export function NavigationMenu({
   }
 
   return (
-    <div className="shrink-0 w-full flex flex-col overflow-hidden">
+    <div className="shrink-0 w-full flex flex-col items-center overflow-hidden">
       {/* 导航标题 */}
       <div className={cn('px-1 py-2', TW.CONTENT_WIDTH)}>
         <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider text-micro">

@@ -82,7 +82,7 @@ export type TranslationKey =
   | 'templateDetail' | 'createTemplate' | 'templateEditorHint' | 'useTemplate' | 'templateKey'
   | 'recommendedMode' | 'templateDescription' | 'starterPrompt' | 'systemHint'
   | 'suggestedTags' | 'toolHints' | 'templateActive' | 'templateReadonlyHint'
-  | 'builtinTemplateCannotDelete' | 'toolGovernance' | 'templateManagement' | 'governanceAdminOnly'
+  | 'builtinTemplateCannotDelete' | 'toolGovernance' | 'templateManagement' | 'mcpManagement' | 'governanceAdminOnly'
   | 'approvalRequired' | 'autoAllowed' | 'riskTier' | 'riskLow' | 'riskMedium' | 'riskHigh'
   | 'enabled' | 'disabled' | 'source' | 'allowedExperts' | 'blockedExperts'
   | 'policyNote' | 'policySaved' | 'savePolicy' | 'noToolPolicySelected' | 'saved'
