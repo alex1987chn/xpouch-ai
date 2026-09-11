@@ -161,7 +161,7 @@ export type TranslationKey =
   | 'newPasswordLabel' | 'forgotPasswordLink' | 'resetPasswordTitle' | 'resetPasswordAction'
   | 'resetSendHint' | 'passwordResetSuccess' | 'backToLogin'
   | 'passwordSaveAction' | 'passwordSaving' | 'accountSecurity' | 'accountSecurityDesc'
-  | 'expertsLockedDesc' | 'expertsEditLockedDesc' | 'loginRequiredDesc' | 'retryAction'
+  | 'expertsLockedDesc' | 'expertsEditLockedDesc' | 'loginRequiredDesc' | 'loginRequired' | 'retryAction'
   | 'openSourceThread'
   | 'usageLabel' | 'usageToday' | 'usageTotal'
   // Time & General

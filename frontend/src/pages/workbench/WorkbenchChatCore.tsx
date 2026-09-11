@@ -20,6 +20,9 @@ import { useSessionRestore } from '@/hooks/useSessionRestore'
 import { useRunPolling } from '@/hooks/useRunPolling'
 import { useChatSessionHandoff, usePendingMessageRetry } from '@/hooks/chat/useChatSession'
 import { useTaskStore } from '@/store/taskStore'
+import { useUserStore } from '@/store/userStore'
+import { useAppUIStore } from '@/store/appUIStore'
+import { pushToast } from '@/components/ui/use-toast'
 import { useChatStore } from '@/store/chatStore'
 import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery'
 import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
@@ -103,6 +106,12 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
 
   const handleSend = useCallback(() => {
     if ((!inputValue.trim() && !pendingImages.length) || isStreaming) return
+    // 未登录：先唤起登录（保留输入内容，登录后继续）
+    if (!useUserStore.getState().isAuthenticated) {
+      useAppUIStore.getState().openLogin()
+      pushToast({ title: t('loginRequired') || '请先登录' })
+      return
+    }
     sendMessage(inputValue, normalizedAgentId, pendingImages).then(() => {
       // 刷新地层 + 本线程产物投影
       queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })

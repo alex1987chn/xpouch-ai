@@ -2,7 +2,7 @@
  * 产物中心 API 服务
  */
 
-import { authenticatedFetch, buildUrl, handleResponse } from './common'
+import { authenticatedFetch, buildUrl, handleResponse, getHeaders } from './common'
 import type { ArtifactListItem, PaginatedArtifacts } from '@/types'
 
 /**
@@ -37,6 +37,18 @@ export async function getArtifactDetail(artifactId: string): Promise<ArtifactLis
 /**
  * 创建产物分享链接（返回明文 token，仅此一次）
  */
+export async function updateArtifactContent(
+  artifactId: string,
+  content: string
+): Promise<{ artifact_id: string; updated_at: string }> {
+  const response = await authenticatedFetch(buildUrl(`/artifacts/${artifactId}`), {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify({ content }),
+  })
+  return handleResponse(response, '更新产物失败')
+}
+
 export async function shareArtifact(
   artifactId: string
 ): Promise<{ token: string; path: string }> {

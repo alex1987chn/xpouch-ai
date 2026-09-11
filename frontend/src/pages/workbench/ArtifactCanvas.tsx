@@ -9,11 +9,11 @@
 
 import { useState, useCallback } from 'react'
 import { useTranslation } from '@/i18n'
-import { useQuery } from '@tanstack/react-query'
-import { Share2, Package, LayoutGrid, Download, Copy, ExternalLink, PanelRight, Check } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Share2, Package, LayoutGrid, Download, Copy, ExternalLink, PanelRight, Check, ArrowLeft, Pencil } from 'lucide-react'
 
 import { useArtifactsQuery, useThreadArtifactsQuery, artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
-import { getArtifactDetail, shareArtifact } from '@/services/artifacts'
+import { getArtifactDetail, shareArtifact, updateArtifactContent } from '@/services/artifacts'
 import ArtifactRenderer from '@/components/artifacts/ArtifactRenderer'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/states'
@@ -34,6 +34,22 @@ function toLocalDate(iso: string): Date {
   return new Date(parsed.getTime() + parsed.getTimezoneOffset() * 60_000)
 }
 
+/** 类型 → 识别色（与全站身份色板同族的低饱和色） */
+const TYPE_COLOR: Record<string, string> = {
+  code: '#6f93ad', sql: '#6f93ad', json: '#7aa5b5', chart: '#7aa5b5',
+  html: '#b45f55', markdown: '#7d9b76', report: '#7d9b76', search: '#8b7ec8',
+  image: '#a8556f', video: '#7aa5b5', media: '#7aa5b5', text: '#6f6a62',
+}
+
+/** 可编辑的文本型产物 */
+const EDITABLE_TYPES = new Set(['markdown', 'text', 'code', 'html', 'report', 'sql', 'json'])
+
+/** 类型标签 chip 样式 */
+function typeChipStyle(type: string): React.CSSProperties {
+  const color = TYPE_COLOR[type] || '#6f6a62'
+  return { backgroundColor: `${color}1f`, color }
+}
+
 /** 类型 → 下载扩展名 */
 const TYPE_EXT: Record<string, string> = {
   markdown: 'md', code: 'txt', html: 'html', text: 'txt',
@@ -45,6 +61,10 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
   const [tab, setTab] = useState<CanvasTab>('thread')
   const [detailId, setDetailId] = useState<string | null>(null)
   const [wide, setWide] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editDraft, setEditDraft] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const queryClient = useQueryClient()
   const [copied, setCopied] = useState(false)
 
   const threadQuery = useThreadArtifactsQuery(threadId)
@@ -84,6 +104,28 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
       setTimeout(() => setCopied(false), 1500)
     } catch {
       pushToast({ title: t('copyFailed') || 'Copy failed', variant: 'destructive' })
+    }
+  }
+
+  const handleStartEdit = () => {
+    if (!detail?.content) return
+    setEditDraft(detail.content)
+    setEditing(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!detail) return
+    setIsSaving(true)
+    try {
+      await updateArtifactContent(detail.id, editDraft)
+      pushToast({ title: t('saved') || 'Saved' })
+      setEditing(false)
+      queryClient.invalidateQueries({ queryKey: ['artifactDetail', detailId] })
+      queryClient.invalidateQueries({ queryKey: artifactsKeys.threadList(threadId || '') })
+    } catch (error) {
+      pushToast({ title: (error as Error).message || t('saveFailed'), variant: 'destructive' })
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -161,12 +203,6 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {detailId ? (
           <div className="flex flex-col gap-2">
-            <button
-              onClick={() => setDetailId(null)}
-              className="w-fit text-xs text-content-secondary hover:text-content-primary"
-            >
-              {t('backToList')}
-            </button>
             {detailQuery.isLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-4 w-2/3" />
@@ -177,9 +213,31 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
               <div className="flex flex-col gap-2">
                 {/* 标题 + 动作组 */}
                 <div className="flex items-center gap-1.5">
-                  <span className="min-w-0 flex-1 truncate text-xs font-bold text-content-primary">
-                    {detail.title || detail.type}
+                  <button
+                    onClick={() => { setDetailId(null); setEditing(false) }}
+                    title={t('backToList')}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-divider bg-surface-card text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary"
+                  >
+                    <ArrowLeft className="h-3 w-3" />
+                  </button>
+                  <span
+                    className="shrink-0 rounded-full px-2 py-0.5 text-nano font-medium"
+                    style={typeChipStyle(detail.type)}
+                  >
+                    {detail.type}
                   </span>
+                  <span className="min-w-0 flex-1 truncate text-xs font-bold text-content-primary">
+                    {detail.title || (detail.content_preview ?? '').slice(0, 16) || detail.type}
+                  </span>
+                  {EDITABLE_TYPES.has(detail.type) && !editing && (
+                    <button
+                      onClick={handleStartEdit}
+                      title={t('edit')}
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-content-secondary transition-colors hover:bg-surface-tint hover:text-content-primary"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  )}
                   <button
                     onClick={handleCopy}
                     title={t('copy')}
@@ -211,14 +269,40 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
                     <Share2 className="h-3 w-3" />
                   </button>
                 </div>
-                <div className="max-h-[calc(100dvh-220px)] overflow-y-auto rounded-md border border-border-divider bg-surface-page p-2">
-                  <ArtifactRenderer
-                    type={detail.type}
-                    language={detail.language}
-                    title={detail.title}
-                    content={detail.content || ''}
-                  />
-                </div>
+                {editing ? (
+                  <div className="flex flex-col gap-2">
+                    <textarea
+                      value={editDraft}
+                      onChange={e => setEditDraft(e.target.value)}
+                      className="min-h-[240px] flex-1 resize-y rounded-md border-theme-input border-border-default bg-surface-page p-3 font-mono text-xs leading-relaxed text-content-primary focus:border-border-focus focus:outline-none"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => setEditing(false)}
+                        disabled={isSaving}
+                        className="rounded-full border border-border-divider bg-surface-page px-4 py-1.5 text-xs font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
+                      >
+                        {t('cancel')}
+                      </button>
+                      <button
+                        onClick={() => void handleSaveEdit()}
+                        disabled={isSaving}
+                        className="rounded-full border border-border-divider bg-accent-brand px-5 py-1.5 text-xs font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
+                      >
+                        {isSaving ? (t('saving') || 'Saving') : (t('save') || 'Save')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="max-h-[calc(100dvh-220px)] overflow-y-auto rounded-md border border-border-divider bg-surface-page p-2">
+                    <ArtifactRenderer
+                      type={detail.type}
+                      language={detail.language}
+                      title={detail.title}
+                      content={detail.content || ''}
+                    />
+                  </div>
+                )}
               </div>
             ) : null}
           </div>
@@ -245,11 +329,14 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
                 className="w-full rounded-md border border-border-divider bg-surface-card p-2.5 text-left transition-all hover:border-border-hover hover:shadow-theme-card"
               >
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-accent-info/12 px-2 py-0.5 text-nano font-medium text-accent-info">
+                  <span
+                    className="shrink-0 rounded-full px-2 py-0.5 text-nano font-medium"
+                    style={typeChipStyle(artifact.type)}
+                  >
                     {artifact.type}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-xs font-bold text-content-primary">
-                    {artifact.title || artifact.type}
+                    {artifact.title || (artifact.content_preview ?? '').slice(0, 16) || artifact.type}
                   </span>
                 </div>
                 <div className="mt-1.5 flex items-center justify-between">

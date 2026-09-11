@@ -40,10 +40,10 @@ export function SuspenseWithErrorBoundary({
  */
 function DefaultLoadingFallback() {
   return (
-    <div className="h-screen w-full flex items-center justify-center font-mono text-sm text-secondary">
-      <div className="flex items-center gap-3">
-        <div className="w-2 h-2 bg-accent-brand animate-pulse" />
-        <span>INITIALIZING...</span>
+    <div className="flex h-full w-full items-center justify-center bg-surface-page">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-5 w-5 animate-pulse rounded-[50%_50%_50%_0] bg-accent-brand" />
+        <span className="text-xs text-content-muted">…</span>
       </div>
     </div>
   )
