@@ -32,7 +32,9 @@ export default function WorkbenchPage() {
   return (
     <div className="flex h-full min-h-0 w-full">
       <SessionStrata activeThreadId={threadId ?? null} onNewChat={handleNewChat} />
-      <WorkbenchChatCore key={threadId || 'new'} threadId={threadId ?? null} />
+      {/* 不带 key：切线程靠 ChatCore 内部清态（key 重挂会掐断首条消息
+          创建线程时进行中的 SSE 流——2026-09-12 会话空消息事故根因） */}
+      <WorkbenchChatCore threadId={threadId ?? null} />
       <ArtifactCanvas threadId={threadId ?? null} />
     </div>
   )

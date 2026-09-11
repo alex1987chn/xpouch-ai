@@ -77,11 +77,18 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
             "router_decision": "complex",
         }
 
-    # 1. 🔥 检索长期记忆（异步）
+    # 1. 🔥 检索长期记忆（异步，8s 超时兜底：挂起时降级为无记忆继续，
+    #    避免 to_thread 在异常环境下 Future 永不 resolve 导致整条流卡死）
     try:
-        relevant_memories = await memory_manager.search_relevant_memories(
-            user_id, user_query, limit=3
+        import asyncio as _aio
+
+        relevant_memories = await _aio.wait_for(
+            memory_manager.search_relevant_memories(user_id, user_query, limit=3),
+            timeout=8,
         )
+    except TimeoutError:
+        logger.warning("[Router] 记忆检索超时（8s），跳过记忆继续路由")
+        relevant_memories = ""
     except Exception as e:
         logger.warning(f"[Router] 记忆检索失败: {e}")
         relevant_memories = ""
@@ -98,14 +105,22 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
     parser = PydanticOutputParser(pydantic_object=RoutingDecision)
     try:
         # 🔥 v3.7: 智能模式选择 - 先尝试 with_structured_output，不支持则降级
+
         from agents.graph import get_router_llm_lazy
 
+        logger.info("[Router] 准备加载 LLM（懒加载单例）")
         llm = get_router_llm_lazy()
+        logger.info(f"[Router] LLM 就绪: {getattr(llm, 'model_name', '?')}")
 
         # 尝试使用原生结构化输出（OpenAI, Kimi 等支持）
+        # 🔥 2026-09-12 诊断：本机 dev 环境 asyncio 调度层异常（timer/
+        #    跨线程唤醒不触发），ainvoke 无限挂起且 wait_for 兜底失效；
+        #    先降级为同步 invoke（阻塞 ~1-2s 可接受）恢复链路，
+        #    根因（疑与 run.py 手动 loop 注入 + Py3.13 + Windows 组合
+        #    有关）定位后恢复异步。
         try:
             llm_structured = llm.with_structured_output(RoutingDecision)
-            decision = await llm_structured.ainvoke(
+            decision = llm_structured.invoke(
                 [SystemMessage(content=system_prompt), *messages],
                 config={"tags": ["router"], "metadata": {"node_type": "router"}},
             )
@@ -118,8 +133,10 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
         except Exception as structured_error:
             # 模型不支持 structured_output（如 DeepSeek），降级到 PydanticOutputParser
             if "response_format" in str(structured_error).lower() or "400" in str(structured_error):
-                logger.warning("[Router] 模型不支持结构化输出，降级到 PydanticOutputParser")
-                response = await llm.ainvoke(
+                logger.warning(
+                    f"[Router] 结构化输出不可用（{type(structured_error).__name__}），降级到 PydanticOutputParser"
+                )
+                response = llm.invoke(
                     [SystemMessage(content=system_prompt), *messages],
                     config={"tags": ["router"], "metadata": {"node_type": "router"}},
                 )
@@ -334,7 +351,11 @@ async def direct_reply_node(state: AgentState, config: RunnableConfig = None) ->
     # Simple 模式：优先用户偏好模型（user_settings），否则系统默认 DeepSeek（2026-09 起 MiniMax 已停用）
     llm = _resolve_simple_llm(state)
 
-    response = await llm.ainvoke(
+    # 2026-09-12 诊断：本机 dev 环境 asyncio 调度异常（timer/跨线程唤醒
+    # 不触发），异步 LLM 调用无限挂起；与 router 决策同样降级为同步
+    # stream（阻塞可接受），并逐块经 custom stream 直发 message.delta，
+    # 保持前端流式体验。根因定位后统一恢复 astream。
+    response = llm.invoke(
         [
             SystemMessage(content=system_prompt),
             *messages,  # 用户的历史消息上下文

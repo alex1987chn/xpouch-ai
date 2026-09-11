@@ -65,12 +65,15 @@ class MemoryManager:
         if not query or not query.strip():
             return ""
 
+        logger.info("[Memory] _search_sync start")
         query_vector = get_embedding(query)
+        logger.info(f"[Memory] embedding done, dim={len(query_vector) if query_vector else 0}")
         if not query_vector:
             return ""
 
         try:
             with Session(engine) as session:
+                logger.info("[Memory] db session acquired, querying")
                 # 🔥 向量相似度排序 (cosine_distance 越小越相似)
                 statement = (
                     select(UserMemory)
@@ -80,6 +83,7 @@ class MemoryManager:
                 )
 
                 results = session.exec(statement).all()
+            logger.info(f"[Memory] query done, {len(results)} rows")
 
             if not results:
                 return ""
@@ -133,8 +137,16 @@ class MemoryManager:
         await asyncio.to_thread(self._add_memory_sync, user_id, content, source, memory_type)
 
     async def search_relevant_memories(self, user_id: str, query: str, limit: int = 5) -> str:
-        """异步检索相关记忆 - 使用 to_thread 防止阻塞心跳"""
-        return await asyncio.to_thread(self._search_sync, user_id, query, limit)
+        """异步检索相关记忆。
+
+        2026-09-12: 临时改为协程内同步直调——asyncio.to_thread 在本机
+        dev 环境（Windows Selector loop + uvicorn 显式 loop 注入）下
+        Future 的跨线程唤醒疑似不被调度，导致整条聊天流永久挂起
+        （线程侧已完成、wait_for 定时器也不触发）。检索本身 ~1.4s
+        （embeddings + pgvector），直调阻塞可接受；待定位调度层根因后
+        再恢复 to_thread。
+        """
+        return self._search_sync(user_id, query, limit)
 
     async def get_user_memories(self, user_id: str, limit: int = 50) -> list[UserMemory]:
         """异步获取用户所有记忆"""

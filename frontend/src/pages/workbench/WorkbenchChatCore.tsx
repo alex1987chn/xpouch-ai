@@ -47,11 +47,18 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
   const agentIdParam = searchParams.get('agentId')
   const normalizedAgentId = agentIdParam || SYSTEM_AGENTS.DEFAULT_CHAT
 
-  // 同步会话 ID 到 store（与 UnifiedChatPage 同款：restore 前的 API 调用依赖它）
+  // 新建会话发送中（首条消息 navigate 过来）不清流——与 UnifiedChatPage
+  // 同守卫：restore 只对"进入已有会话"生效
+  const routeNavState = location.state as { isNew?: boolean } | null
+  const isNewConversation = routeNavState?.isNew ?? false
+
+  // 切换线程清残留（restore 前的干净起点；与 UnifiedChatPage 同款）
   useEffect(() => {
     if (threadId) {
       const currentId = useChatStore.getState().currentConversationId
       if (currentId !== threadId) {
+        useChatStore.getState().setMessages([])
+        useTaskStore.getState().resetAll()
         useChatStore.getState().setCurrentConversationId(threadId)
       }
     }
@@ -69,7 +76,7 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
   } = useChat({ threadUrlBase: '/workbench' })
 
   const { isRestored, isLatestRunControllable, latestRunId, restore: restoreSession } =
-    useSessionRestore({ enabled: !!threadId })
+    useSessionRestore({ enabled: !!threadId && !isNewConversation })
 
   const { startPolling, stopPolling, isPolling, currentStatus: pollingStatus, isHITLPaused, isTerminal, hasError } =
     useRunPolling({ enabled: true })
