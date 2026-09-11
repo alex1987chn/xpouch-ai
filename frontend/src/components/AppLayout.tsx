@@ -143,7 +143,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
 
       {/* 侧边栏 - 使用语义化边框 */}
       <aside className={cn(
-        'h-full flex-shrink-0 transition-all duration-300 border-r-2 border-border-default bg-surface-card overflow-hidden',
+        'h-full flex-shrink-0 transition-all duration-300 border-r border-border-divider bg-surface-card overflow-hidden',
         sidebar.isCollapsed ? 'w-[72px]' : 'w-[280px]',
         'hidden lg:flex lg:flex-col'
       )} style={{ zIndex: Z_INDEX.SIDEBAR }}>
@@ -159,7 +159,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
 
       {/* 移动端侧边栏 */}
       {sidebar.isMobileOpen && (
-        <aside className="fixed left-0 top-0 h-[100dvh] w-[280px] border-r-2 border-border-default bg-surface-card lg:hidden" style={{ zIndex: Z_INDEX.MOBILE_SIDEBAR }}>
+        <aside className="fixed left-0 top-0 h-[100dvh] w-[280px] border-r border-border-divider bg-surface-card lg:hidden" style={{ zIndex: Z_INDEX.MOBILE_SIDEBAR }}>
           <div className="h-full w-full">
             <BauhausSidebar
               isCollapsed={false}
@@ -182,7 +182,7 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
               onClick={sidebar.toggleMobile}
               aria-label={t('menu')}
               title={t('menu')}
-              className="p-2 border-2 border-border-default bg-surface-card shadow-theme-button hover:shadow-theme-button-hover transition-all"
+              className="p-2 border-theme-button border-border-default bg-surface-card shadow-theme-button hover:shadow-theme-button-hover transition-all"
             >
               <Menu className="w-5 h-5 stroke-[2.5]" />
             </button>

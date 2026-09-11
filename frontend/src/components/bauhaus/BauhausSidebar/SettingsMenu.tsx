@@ -25,11 +25,11 @@ import type { SettingsMenuProps } from './types'
  * 黄色 accent 保留给"选中"语义，不作 hover 色。
  */
 const MENU_ROW =
-  'w-full flex items-center gap-3 px-3 py-1.5 text-xs border-2 border-transparent hover:border-border-default hover:bg-surface-page transition-all'
+  'w-full flex items-center gap-3 px-3 py-1.5 text-xs border border-transparent hover:border-border-default hover:bg-surface-page transition-all'
 
 /** 危险行（退出登录）：同一习语的 status-offline 红变体 */
 const MENU_ROW_DANGER =
-  'w-full flex items-center gap-3 px-3 py-1.5 text-xs border-2 border-transparent hover:border-status-offline/60 hover:bg-status-offline/10 hover:text-status-offline transition-all'
+  'w-full flex items-center gap-3 px-3 py-1.5 text-xs border border-transparent hover:border-status-offline/60 hover:bg-status-offline/10 hover:text-status-offline transition-all'
 
 /**
  * 格式化 UID 显示：前4位 + ... + 后4位
@@ -94,13 +94,13 @@ export function SettingsMenu({
   return createPortal(
     <div
       data-settings-menu
-      className="fixed bottom-[60px] left-8 w-[280px] bg-surface-card backdrop-blur-2xl border-2 border-border-default shadow-theme-card mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 rounded-lg"
+      className="fixed bottom-[60px] left-8 w-[280px] bg-surface-card backdrop-blur-2xl border-theme-card border-border-default shadow-theme-card mb-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 rounded-lg"
       style={{ maxWidth: 'calc(100vw - 32px)', zIndex: Z_INDEX.DROPDOWN }}
     >
       <div className="p-2">
         {/* 用户信息头 */}
         <div className="px-2 pb-3 pt-1">
-          <div className="text-micro text-content-secondary mb-2 uppercase tracking-wider">
+          <div className="text-micro text-content-secondary mb-2 tracking-wider">
             /// {t('userSettings')}
           </div>
           <div className="flex items-center gap-3">
@@ -126,7 +126,7 @@ export function SettingsMenu({
               {/* 套餐 + UID 行 */}
               <div className="flex items-center gap-2">
                 {/* 套餐标签 */}
-                <span className="text-micro text-content-secondary uppercase shrink-0">
+                <span className="text-micro text-content-secondary shrink-0">
                   {isAuthenticated ? (user?.plan || 'Free') : 'Guest'}
                 </span>
 
@@ -144,7 +144,7 @@ export function SettingsMenu({
                       )}
                       title={copied ? t('uidCopied') : t('clickToCopyUid')}
                     >
-                      <span className="uppercase">UID:</span>
+                      <span className="tracking-tight font-mono">UID:</span>
                       <span className="tracking-tight">{formatUID(userId)}</span>
                       {copied ? (
                         <Check className="w-3 h-3" />
@@ -162,8 +162,8 @@ export function SettingsMenu({
         {/* 用量（B5：token 记账可视化，菜单打开时异步获取） */}
         {isAuthenticated && usage && usage.total > 0 && (
           <div className="px-2 pb-2">
-            <div className="border-2 border-border-default px-2 py-1.5 flex items-center justify-between font-mono text-micro text-content-secondary">
-              <span className="uppercase tracking-wider">{t('usageLabel')}</span>
+            <div className="border border-border-divider px-2 py-1.5 flex items-center justify-between font-mono text-micro text-content-secondary">
+              <span className="tracking-wider">{t('usageLabel')}</span>
               <span className="text-content-primary">
                 {t('usageToday')} {usage.today.toLocaleString()} · {t('usageTotal')}{' '}
                 {usage.total.toLocaleString()}
@@ -173,7 +173,7 @@ export function SettingsMenu({
         )}
 
         {/* 动作组 */}
-        <div className="border-t-2 border-border-default pt-1">
+        <div className="border-t border-border-divider pt-1">
           <button
             onClick={() => {
               onSettingsClick?.()
@@ -183,7 +183,7 @@ export function SettingsMenu({
             className={MENU_ROW}
           >
             <Cog className="w-4 h-4" />
-            <span className="font-bold uppercase">{t('settings')}</span>
+            <span className="font-bold">{t('settings')}</span>
           </button>
 
           <a
@@ -193,14 +193,14 @@ export function SettingsMenu({
             className={MENU_ROW}
           >
             <GithubMark className="w-4 h-4 shrink-0" />
-            <span className="font-bold uppercase flex-1">{t('openSource')}</span>
+            <span className="font-bold flex-1">{t('openSource')}</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </a>
         </div>
 
         {/* 语言切换 - 紧凑单行 */}
-        <div className="border-t-2 border-border-default mt-1 px-3 py-2 flex items-center justify-between gap-2">
-          <span className="text-micro text-content-secondary uppercase tracking-wider shrink-0">
+        <div className="border-t border-border-divider mt-1 px-3 py-2 flex items-center justify-between gap-2">
+          <span className="text-micro text-content-secondary tracking-wider shrink-0">
             /// {t('language')}
           </span>
           <div className="flex items-center gap-1">
@@ -212,9 +212,9 @@ export function SettingsMenu({
                   // 语言切换后不关闭菜单，让用户看到切换效果
                 }}
                 className={cn(
-                  'px-1.5 py-0.5 font-mono text-micro font-bold uppercase transition-colors rounded-sm',
+                  'px-1.5 py-0.5 font-mono text-micro font-bold transition-colors rounded-sm',
                   language === lang
-                    ? 'bg-accent-hover text-content-primary'
+                    ? 'bg-accent-hover text-accent-ink'
                     : 'text-content-secondary hover:text-content-primary'
                 )}
               >
@@ -226,10 +226,10 @@ export function SettingsMenu({
 
         {/* 退出登录 */}
         {isAuthenticated && (
-          <div className="border-t-2 border-border-default mt-1 pt-1">
+          <div className="border-t border-border-divider mt-1 pt-1">
             <button onClick={onLogout} className={MENU_ROW_DANGER}>
               <ArrowRight className="w-4 h-4" />
-              <span className="font-bold uppercase">{t('logout')}</span>
+              <span className="font-bold">{t('logout')}</span>
             </button>
           </div>
         )}

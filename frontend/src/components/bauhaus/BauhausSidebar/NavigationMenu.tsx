@@ -90,7 +90,7 @@ export function NavigationMenu({
     <div className="shrink-0 w-full flex flex-col items-center overflow-hidden">
       {/* 导航标题 */}
       <div className={cn('px-1 py-2', TW.CONTENT_WIDTH)}>
-        <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider text-micro">
+        <h3 className="text-xs font-semibold text-content-muted tracking-wider text-micro">
           /// Navigation
         </h3>
       </div>
@@ -155,9 +155,9 @@ export function NavigationMenu({
  * 小按钮使用更克制的阴影：默认 2px / hover 4px
  */
 export const collapsedButtonStyles = (isActive: boolean) => cn(
-  'h-10 w-10 flex items-center justify-center transition-all duration-200 p-0 border-2 rounded-full',
+  'h-10 w-10 flex items-center justify-center transition-all duration-200 p-0 border-theme-button rounded-full',
   isActive
-    ? 'bg-accent text-content-inverted border-border-default shadow-theme-button-sm'
+    ? 'bg-accent text-accent-ink border-border-default shadow-theme-button-sm'
     : 'border-border-default text-content-muted bg-surface-card shadow-theme-button-sm ' +
       'hover:[transform:var(--transform-button-sm-hover)] ' +
       'hover:shadow-theme-button hover:bg-accent-hover hover:text-content-primary hover:border-accent ' +
@@ -202,15 +202,15 @@ function NavButtonExpanded({ isActive, onClick, icon, label }: NavButtonExpanded
     <button
       onClick={onClick}
       className={cn(
-        cn('transition-all duration-200 justify-center py-0 border-2 mb-1', TW.BUTTON_HEIGHT, TW.BUTTON_WIDTH),
+        cn('transition-all duration-200 justify-center py-0 border-theme-button mb-1', TW.BUTTON_HEIGHT, TW.BUTTON_WIDTH),
         isActive
-          ? 'bg-accent text-content-inverted border-border-default shadow-theme-button'
+          ? 'bg-accent text-accent-ink border-border-default shadow-theme-button'
           : 'border-transparent text-content-primary hover:bg-surface-page hover:border-border-default'
       )}
     >
       <div className="flex items-center gap-3 px-3">
         {icon}
-        <span className="text-xs font-bold tracking-wide uppercase">{label}</span>
+        <span className="text-xs font-bold tracking-wide">{label}</span>
       </div>
     </button>
   )
@@ -252,15 +252,15 @@ function AdminButtonExpanded({ isActive, onClick, t }: AdminButtonExpandedProps)
     <button
       onClick={onClick}
       className={cn(
-        cn('transition-all duration-200 justify-center py-0 border-2 mb-1', TW.BUTTON_HEIGHT, TW.BUTTON_WIDTH),
+        cn('transition-all duration-200 justify-center py-0 border-theme-button mb-1', TW.BUTTON_HEIGHT, TW.BUTTON_WIDTH),
         isActive
-          ? 'bg-accent text-content-inverted border-border-default shadow-theme-button'
+          ? 'bg-accent text-accent-ink border-border-default shadow-theme-button'
           : 'border-transparent text-content-primary hover:bg-surface-page hover:border-border-default'
       )}
     >
       <div className="flex items-center gap-3 px-3">
         <ShieldCheck className="w-5 h-5 flex-shrink-0" />
-        <span className="text-xs font-bold tracking-wide uppercase">{t('navConsole')}</span>
+        <span className="text-xs font-bold tracking-wide">{t('navConsole')}</span>
       </div>
     </button>
   )

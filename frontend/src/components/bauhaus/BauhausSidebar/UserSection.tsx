@@ -36,7 +36,7 @@ export function UserSection({
       <div className="flex flex-col">
         {/* 用户区域 */}
         <div className={cn(
-          'border-t-2 border-border-default shrink-0 p-2 flex flex-col items-center gap-2'
+          'border-t border-border-divider shrink-0 p-2 flex flex-col items-center gap-2'
         )}>
           {isAuthenticated ? (
             <div
@@ -44,7 +44,7 @@ export function UserSection({
               data-avatar-button=""
               className="flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-surface-page p-2 focus:outline-none focus:ring-2 focus:ring-accent/50"
             >
-              <Avatar className="h-8 w-8 border-2 border-border-default shadow-theme-button">
+              <Avatar className="h-8 w-8 border-theme-card border-border-default shadow-theme-button-sm">
                 <AvatarImage src={avatar} alt="Avatar" />
                 <AvatarFallback className="bg-content-primary text-surface-card text-micro font-bold">
                   {getAvatarDisplay(avatar || '', username)}
@@ -54,7 +54,7 @@ export function UserSection({
           ) : (
             <button
               onClick={onLoginClick}
-              className="p-2 border-2 border-border-default bg-accent-hover text-content-primary shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all"
+              className="p-2 border-theme-button border-border-default bg-accent-hover text-accent-ink shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all"
               title={t('login')}
             >
               <User className="w-5 h-5" />
@@ -68,7 +68,7 @@ export function UserSection({
             onClick={onToggleCollapsed}
             className={cn(
               'w-full h-5 flex items-center justify-center',
-              'bg-surface-elevated border-t-2 border-border-default',
+              'bg-surface-elevated border-t border-border-divider',
               'hover:bg-accent-hover',
               'text-content-muted/50 hover:text-accent',
               'transition-all duration-200',
@@ -88,29 +88,27 @@ export function UserSection({
     <div className="flex">
       {/* 用户区域 */}
       <div className={cn(
-        'flex-1 border-t-2 border-border-default shrink-0 p-3'
+        'flex-1 border-t border-border-divider shrink-0 p-3'
       )}>
         {isAuthenticated ? (
           <div className={cn('relative group cursor-pointer mx-auto', TW.CONTENT_WIDTH)}>
-            {/* 硬阴影效果 - 使用 CSS 变量 */}
-            <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-1.5 group-hover:translate-y-1.5"></div>
             <div
               onClick={onAvatarClick}
               data-avatar-button=""
-              className={cn('relative flex items-center gap-3 px-4 py-3 border-2 border-border-default bg-surface-page z-10 transition-all', TW.CONTENT_WIDTH, 'h-[63px]')}
+              className={cn('relative flex items-center gap-3 px-4 py-3 border-theme-card border-border-default bg-surface-page shadow-theme-card z-10 transition-all', TW.CONTENT_WIDTH, 'h-[63px]')}
             >
               {avatar ? (
-                <img src={avatar} alt="Avatar" className="w-8 h-8 border-2 border-border-default shrink-0" />
+                <img src={avatar} alt="Avatar" className="w-8 h-8 border-theme-card border-border-default shrink-0" />
               ) : (
-                <div className="w-8 h-8 bg-content-primary text-surface-card flex items-center justify-center font-bold text-sm shrink-0 border-2 border-border-default">
+                <div className="w-8 h-8 bg-content-primary text-surface-card flex items-center justify-center font-bold text-sm shrink-0 border-theme-card border-border-default">
                   {username.charAt(0).toUpperCase()}
                 </div>
               )}
               <div className="flex-1">
-                <div className="font-bold text-sm uppercase" title={username}>
+                <div className="font-bold text-sm" title={username}>
                   {username}
                 </div>
-                <div className="text-micro text-content-secondary uppercase tracking-wider">
+                <div className="text-micro text-content-secondary tracking-wider">
                   PLAN: {planLabel}
                 </div>
               </div>
@@ -119,11 +117,9 @@ export function UserSection({
           </div>
         ) : (
           <div className="relative group w-[230px] mx-auto">
-            {/* 硬阴影效果 */}
-            <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-1 translate-y-1 transition-transform group-hover:translate-x-1.5 group-hover:translate-y-1.5"></div>
             <button
               onClick={onLoginClick}
-              className="relative w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-border-default bg-accent-hover text-content-primary z-10 transition-all font-bold text-sm uppercase"
+              className="relative w-full flex items-center justify-center gap-3 px-4 py-3 border-theme-button border-border-default bg-accent-hover text-accent-ink shadow-theme-button z-10 transition-all font-bold text-sm"
             >
               <User className="w-5 h-5" />
               <span>登录 / LOGIN</span>
@@ -137,7 +133,7 @@ export function UserSection({
         <button
           onClick={onToggleCollapsed}
           className={cn(
-            'w-5 border-t border-l border-border-default',
+            'w-5 border-t border-l border-border-divider',
             'bg-surface-elevated',
             'hover:bg-accent-hover/20',
             'flex items-center justify-center',

@@ -17,7 +17,7 @@ export function SystemStatusMarquee({
       className={`w-full overflow-hidden whitespace-nowrap ${className || ""}`}
     >
       <div
-        className="inline-block font-mono text-micro font-bold uppercase tracking-widest text-content-secondary"
+        className="inline-block font-mono text-micro font-bold tracking-widest text-content-secondary"
         style={{
           animation: `marquee ${speed}s linear infinite`,
           willChange: "transform",

@@ -21,7 +21,7 @@ export function RecentConversations({
       {/* 小标题: 模拟终端注释 - 左对齐 */}
       <div className={cn('px-4 mb-2 flex items-center gap-2 opacity-50 mx-auto', TW.CONTENT_WIDTH)}>
         <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-        <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+        <span className="text-micro font-bold tracking-widest text-content-secondary">
           /// {t('memoryDump')}
         </span>
       </div>
@@ -46,7 +46,7 @@ export function RecentConversations({
                 {conv.title || t('newChat')}
               </div>
               {/* 时间: 极小字体 */}
-              <div className="text-nano text-content-secondary opacity-50 truncate uppercase tracking-wider">
+              <div className="text-nano text-content-secondary opacity-50 truncate font-mono tracking-wider">
                 LOG_ID: {conv.id.slice(0, 6)} • {formatRelativeTime(conv.updated_at)}
               </div>
             </div>
