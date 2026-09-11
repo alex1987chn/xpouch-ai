@@ -1,5 +1,3 @@
-// XPouch v3.1.0 Industrial Layout 组件
-export { default as IndustrialChatLayout } from './IndustrialChatLayout'
-
-// ChatStreamPanel 已迁移到 @/components/chat 目录
-export { default as ChatStreamPanel } from '../chat/ChatStreamPanel'
+// XPouch 布局组件（v3.4.7 cutover 后仅存 PageTitle；
+// ChatStreamPanel 在 @/components/chat 目录）
+export { default as PageTitle } from './PageTitle'

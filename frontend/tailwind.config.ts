@@ -35,7 +35,7 @@ const config: Config = {
          text-nano=9px / text-micro=10px / text-tiny=11px
          ============================================ */
       fontSize: {
-        nano: '9px',
+        nano: '10px',
         micro: '10px',
         tiny: '11px',
       },

@@ -72,7 +72,7 @@ export function RunPollingBar({
           </>
         ) : (
           <>
-            <Loader2 className="h-4 w-4 animate-spin text-accent-primary" />
+            <Loader2 className="h-4 w-4 animate-spin text-accent-brand" />
             <span className="text-content-primary">
               {isHITLPaused
                 ? t('pollingHitlPaused')
@@ -86,7 +86,7 @@ export function RunPollingBar({
         className={cn(
           'flex items-center gap-1 px-2 py-1',
           'text-xs text-content-secondary hover:text-content-primary',
-          'hover:bg-surface-hover rounded transition-colors'
+          'hover:bg-surface-tint rounded transition-colors'
         )}
         title={t('pollingRefresh')}
       >

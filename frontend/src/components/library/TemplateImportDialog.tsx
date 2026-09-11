@@ -308,7 +308,7 @@ export function TemplateImportDialog({
                 'flex cursor-pointer items-start gap-3 border-theme-card p-3 transition-colors',
                 selectedStrategy === 'clone'
                   ? 'border-accent-brand bg-accent-brand/5'
-                  : 'border-border-default hover:border-border-strong'
+                  : 'border-border-default hover:border-border-hover'
               )}
             >
               <input
@@ -347,7 +347,7 @@ export function TemplateImportDialog({
                   'flex cursor-pointer items-start gap-3 border-theme-card p-3 transition-colors',
                   selectedStrategy === 'override'
                     ? 'border-accent-brand bg-accent-brand/5'
-                    : 'border-border-default hover:border-border-strong'
+                    : 'border-border-default hover:border-border-hover'
                 )}
               >
                 <input
@@ -377,7 +377,7 @@ export function TemplateImportDialog({
                 'flex cursor-pointer items-start gap-3 border-theme-card p-3 transition-colors',
                 selectedStrategy === 'skip'
                   ? 'border-accent-brand bg-accent-brand/5'
-                  : 'border-border-default hover:border-border-strong'
+                  : 'border-border-default hover:border-border-hover'
               )}
             >
               <input
@@ -464,7 +464,7 @@ export function TemplateImportDialog({
 
         <button
           onClick={handleClose}
-          className="mt-4 border-theme-button border-border-default bg-surface-page px-6 py-2 font-display text-xs font-bold text-content-primary transition-all hover:border-border-strong"
+          className="mt-4 border-theme-button border-border-default bg-surface-page px-6 py-2 font-display text-xs font-bold text-content-primary transition-all hover:border-border-hover"
         >
           {t('close') || 'Close'}
         </button>

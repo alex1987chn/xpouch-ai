@@ -96,7 +96,7 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
-          <div className="max-w-md w-full p-6 bg-surface-card/60 rounded-2xl border border-border-default shadow-soft">
+          <div className="max-w-md w-full p-6 bg-surface-card/60 rounded-2xl border border-border-default shadow-theme-card">
             {/* 错误图标 */}
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-status-offline/10 flex items-center justify-center">
               <svg className="w-8 h-8 text-status-offline" fill="none" stroke="currentColor" viewBox="0 0 24 24">

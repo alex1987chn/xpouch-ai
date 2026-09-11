@@ -73,7 +73,7 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
 
  if (!trends.length) {
   return (
-   <div className="rounded-md border border-border-dashed border-border-divider bg-surface-tint/30 p-8 text-center text-content-muted">
+   <div className="rounded-md border border-dashed border-border-divider bg-surface-tint/30 p-8 text-center text-content-muted">
     {t('noData')}
    </div>
   )
@@ -143,7 +143,7 @@ function RunTable({
 
  if (!runs.length) {
   return (
-   <div className="rounded-md border border-border-dashed border-border-divider bg-surface-tint/30 p-8 text-center text-content-muted">
+   <div className="rounded-md border border-dashed border-border-divider bg-surface-tint/30 p-8 text-center text-content-muted">
     {t('noRuns')}
    </div>
   )

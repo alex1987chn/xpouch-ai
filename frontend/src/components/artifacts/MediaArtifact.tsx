@@ -113,7 +113,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
     <div className={cn('w-full h-full flex flex-col', className)}>
       {/* 标题栏 */}
       {(title || url) && (
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-panel shrink-0">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-surface-tint/30 shrink-0">
           {mediaType === 'video' ? (
             <Video className="w-4 h-4 text-status-info" />
           ) : (
@@ -209,7 +209,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
       </div>
       
       {/* 底部信息 */}
-      <div className="px-3 py-2 border-t border-border bg-panel shrink-0">
+      <div className="px-3 py-2 border-t border-border bg-surface-tint/30 shrink-0">
         <a 
           href={url} 
           target="_blank" 

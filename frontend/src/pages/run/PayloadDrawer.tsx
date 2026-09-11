@@ -162,7 +162,7 @@ export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
                     <span className="font-medium text-content-primary">
                       {event.event_type}
                     </span>
-                    <span className="text-xs text-content-tertiary">
+                    <span className="text-xs text-content-muted">
                       {new Date(event.timestamp).toLocaleString()}
                     </span>
                   </div>
@@ -174,7 +174,7 @@ export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
                         JSON
                       </span>
                       {/* 横向滚动指示器 */}
-                      <span className="text-xs text-content-tertiary ml-2">
+                      <span className="text-xs text-content-muted ml-2">
                         ← 可横向滚动查看长内容
                       </span>
                     </div>
@@ -198,19 +198,19 @@ export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
                       <div className="space-y-1 font-mono">
                         {event.thread_id && (
                           <div className="flex gap-2">
-                            <span className="text-content-tertiary">thread_id:</span>
+                            <span className="text-content-muted">thread_id:</span>
                             <span className="text-content-primary">{event.thread_id}</span>
                           </div>
                         )}
                         {event.execution_plan_id && (
                           <div className="flex gap-2">
-                            <span className="text-content-tertiary">plan_id:</span>
+                            <span className="text-content-muted">plan_id:</span>
                             <span className="text-content-primary">{event.execution_plan_id}</span>
                           </div>
                         )}
                         {event.task_id && (
                           <div className="flex gap-2">
-                            <span className="text-content-tertiary">task_id:</span>
+                            <span className="text-content-muted">task_id:</span>
                             <span className="text-content-primary">{event.task_id}</span>
                           </div>
                         )}
@@ -233,7 +233,7 @@ export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
               ) : (
                 <div className="flex flex-col items-center justify-center h-40 text-content-secondary">
                   <div className="text-sm">{t('payloadEmpty')}</div>
-                  <div className="text-xs text-content-tertiary mt-1">
+                  <div className="text-xs text-content-muted mt-1">
                     {event.event_type}
                   </div>
                 </div>
