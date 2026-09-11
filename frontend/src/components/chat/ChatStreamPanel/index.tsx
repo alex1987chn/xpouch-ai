@@ -5,10 +5,10 @@
  *
  * [架构层级] Layer 5 - 聊天界面组件
  *
- * [设计风格] Industrial Terminal (工业终端)
- * - 点阵背景：dot-grid
- * - 终端风格：等宽字体、行号、命令提示符
- * - 机械控制台：重型边框、阴影、物理开关
+ * [设计风格] 柔和工作台（蓝本 docs/design：消息流 + 专家署名 + 输入台）
+ * - 暖调浅底：用户气泡 surface-tint、AI 无气泡全宽排版
+ * - 输入台：圆角大卡 + 圆形发送钮
+ * - 语义 token 驱动，随 soft/dark/bauhaus 三主题切换
  *
  * [核心功能]
  * 1. 消息流渲染：用户消息 + AI 消息 + 路由指示器
@@ -241,7 +241,7 @@ export default function ChatStreamPanel({
       {/* Message list area */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-8 dot-grid bauhaus-scrollbar"
+        className="flex-1 overflow-y-auto p-4 space-y-8"
       >
         {displayMessages.length === 0 ? (
           <EmptyState />

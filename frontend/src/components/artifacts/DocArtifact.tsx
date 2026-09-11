@@ -28,7 +28,7 @@ interface DocArtifactProps {
 export default function DocArtifact({ content, className, isStreaming }: DocArtifactProps) {
   const { t } = useTranslation()
   return (
-    <div className={cn('w-full h-full overflow-auto bauhaus-scrollbar p-4', className)}>
+    <div className={cn('w-full h-full overflow-auto p-4', className)}>
       <div className="prose prose-sm max-w-none w-full min-h-0">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}

@@ -187,7 +187,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
   return (
     <div className="my-4 border-theme-card border-border-default bg-surface-card rounded-lg">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default bg-surface-elevated">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border-divider bg-surface-card">
         <div className="flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-content-secondary" />
           <div>
@@ -195,25 +195,25 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
             <span className="text-xs text-content-muted">{t('tasksPendingConfirm', { count: editedPlan.length })}</span>
           </div>
         </div>
-        <span className="px-2 py-1 text-micro font-mono tracking-wider border border-border-default text-content-muted">
+        <span className="rounded-full border border-border-divider bg-surface-tint px-2 py-0.5 text-micro font-medium text-content-muted">
           HITL
         </span>
       </div>
 
       {/* Task List */}
-      <div className="p-4 space-y-3 max-h-72 overflow-y-auto bauhaus-scrollbar">
+      <div className="p-4 space-y-3 max-h-72 overflow-y-auto">
         {editedPlan.map((task, index) => (
           <div
             key={task.id}
-            className="group border border-border-default hover:border-border-hover transition-colors"
+            className="group rounded-md border border-border-default hover:border-border-hover transition-colors"
           >
             <div className="flex items-start gap-3 p-3">
               {/* Index */}
-              <span className="text-xs font-mono text-content-muted pt-0.5">{index + 1}</span>
+              <span className="font-display text-xs font-bold text-content-muted pt-0.5">{index + 1}</span>
 
               <div className="flex-1 min-w-0 space-y-2">
                 {/* Expert Tag */}
-                <span className="inline-flex items-center px-2 py-0.5 text-micro font-medium tracking-wide border border-border-default text-content-secondary">
+                <span className="inline-flex items-center rounded-full border border-border-default px-2 py-0.5 text-micro font-medium text-content-secondary">
                   {task.expert_type}
                 </span>
 
@@ -222,7 +222,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
                   <textarea
                     value={task.description}
                     onChange={e => handleUpdateDescription(task.id, e.target.value)}
-                    className="w-full p-2 text-sm border border-border-default bg-surface-card text-content-primary focus:outline-none focus:border-content-primary resize-none"
+                    className="w-full rounded-md p-2 text-sm border border-border-default bg-surface-card text-content-primary focus:outline-none focus:border-border-focus resize-none"
                     rows={2}
                   />
                 ) : (
@@ -246,12 +246,12 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between px-4 py-3 border-t-2 border-border-default bg-surface-elevated">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-border-divider bg-surface-card">
         <button
           onClick={() => setIsEditing(!isEditing)}
           disabled={isSubmitting}
           className={cn(
-            'flex items-center gap-2 px-3 py-2 text-xs font-medium border border-border-default',
+            'flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium border border-border-default',
             'bg-surface-card text-content-secondary hover:bg-surface-page',
             'disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
           )}

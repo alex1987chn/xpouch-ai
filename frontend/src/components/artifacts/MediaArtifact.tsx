@@ -126,7 +126,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
       )}
       
       {/* 媒体内容 */}
-      <div className="flex-1 overflow-auto bauhaus-scrollbar p-4 flex items-center justify-center bg-muted/30">
+      <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-muted/30">
         {mediaType === 'video' ? (
           <div className="w-full max-w-4xl">
             <video

@@ -26,6 +26,7 @@
     --surface-page: 232 232 227;           /* #e8e8e3 - 暖灰纸张 */
     --surface-card: 255 255 255;           /* #ffffff - 纯白卡片 */
     --surface-elevated: 248 248 248;
+    --surface-tint: 240 240 240;           /* #f0f0f0 */
     --surface-input: 255 255 255;
     --surface-overlay: 15 15 15;
     --surface-scrim: 15 15 15;

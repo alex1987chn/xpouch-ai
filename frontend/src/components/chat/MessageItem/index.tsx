@@ -20,7 +20,7 @@ import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.css'
 import { CodeBlock } from '@/components/ui/code-block'
 import { SIMPLE_TASK_ID } from '@/constants/task'
-import { StatusAvatar } from '@/components/ui/StatusAvatar'
+import { expertDotStyle, expertDisplayName } from '@/lib/expertIdentity'
 import { logger } from '@/utils/logger'
 import type { Components } from 'react-markdown'
 import type { ArtifactType } from '@/types'
@@ -452,49 +452,46 @@ function MessageItem({
     code: ({ node: _node, ...props }) => <MarkdownCode {...props} />
   }), [onLinkClick])
 
-  // 用户消息：使用 surface 颜色，与背景形成层次感
+  // 用户消息：暖调浅底圆角气泡，右对齐（蓝本 .msg-user）
   if (isUser) {
     return (
       <div className="flex flex-col items-end group user-message">
-        <div className="flex items-center gap-2 mb-1 opacity-60 group-hover:opacity-100 transition-opacity">
-          <span className="font-mono text-nano text-content-muted">
+        <div className="mb-1 opacity-60 group-hover:opacity-100 transition-opacity">
+          <span className="text-nano text-content-muted">
             {message.timestamp ? formatMessageTime(message.timestamp) : ''}
           </span>
         </div>
-        <div className="bg-surface-elevated text-content-primary p-5 shadow-theme-card border-theme-card border-border-default w-fit max-w-[80%] select-text">
-          <div className="flex gap-3">
-            <span className="font-mono text-accent-brand font-bold shrink-0">&gt;_</span>
-            <p className="font-mono text-sm leading-relaxed whitespace-pre-wrap select-text text-content-primary">
-              {content}
-            </p>
-          </div>
+        <div className="w-fit max-w-[78%] select-text rounded-md border border-border-divider bg-surface-tint p-2.5 px-3.5 shadow-theme-card">
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-content-primary">
+            {content}
+          </p>
         </div>
       </div>
     )
   }
 
-  // AI 消息：无气泡，全宽展示（现代 AI 界面风格）
+  // AI 消息：无气泡，全宽排版 + 专家署名行（识别色点 + 显示名，蓝本 .byline）
   return (
     <div className="flex flex-col items-start w-full select-text ai-message group">
-      {/* 头部：头像 + 标签 + 时间 */}
-      <div className="flex items-center gap-2 mb-3">
-        <StatusAvatar 
-          status={aiStatus}
-          className="w-6 h-6"
+      {/* 署名行：识别色点 + 专家名 + 时间 */}
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <span
+          className="h-[7px] w-[7px] rounded-full"
+          style={expertDotStyle(activeExpert || 'assistant')}
         />
-        <span className="font-mono text-micro text-muted-foreground tracking-wide">
-          {activeExpert ? `${activeExpert.toUpperCase()}_AGENT` : 'ASSISTANT'}
+        <span className="text-[11px] text-content-muted">
+          {activeExpert ? expertDisplayName(activeExpert) : t('aiBylineFallback')}
         </span>
-        <span className="font-mono text-nano text-muted-foreground/50">
+        <span className="text-nano text-content-muted/60">
           {formatMessageTime(message.timestamp)}
         </span>
       </div>
 
       {/* 内容区：无气泡背景，直接展示 */}
-      <div className="w-full pl-7 prose prose-sm max-w-none
+      <div className="w-full prose prose-sm max-w-none
         prose-headings:text-sm prose-headings:font-bold prose-headings:text-content-primary
         prose-p:text-sm prose-p:leading-relaxed prose-p:text-content-primary/90
-        prose-strong:text-content-primary prose-code:text-content-primary prose-pre:bg-surface-elevated/50 
+        prose-strong:text-content-primary prose-code:text-content-primary prose-pre:bg-surface-elevated/50
         prose-pre:border prose-pre:border-border-default/30 prose-a:text-accent hover:prose-a:text-accent-hover
         select-text">
         {content ? (
@@ -513,7 +510,7 @@ function MessageItem({
       </div>
 
       {/* 底部操作栏：悬停显示，更简洁 */}
-      <div className="pl-7 mt-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+      <div className="mt-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         {hasPreviewContent && (
           <button
             onClick={(e) => {

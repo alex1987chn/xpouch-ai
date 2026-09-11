@@ -53,6 +53,7 @@ const config: Config = {
           page: "rgb(var(--surface-page) / <alpha-value>)",
           card: "rgb(var(--surface-card) / <alpha-value>)",
           elevated: "rgb(var(--surface-elevated) / <alpha-value>)",
+          tint: "rgb(var(--surface-tint) / <alpha-value>)",
           input: "rgb(var(--surface-input) / <alpha-value>)",
           overlay: "rgb(var(--surface-overlay) / <alpha-value>)",
           scrim: "rgb(var(--surface-scrim) / <alpha-value>)",

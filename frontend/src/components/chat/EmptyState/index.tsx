@@ -3,7 +3,7 @@
  * 支持两种变体：compact（聊天区域）和 detailed（Artifact 区域）
  */
 
-import { Terminal, LayoutGrid } from 'lucide-react'
+import { Sparkles, LayoutGrid } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 
 interface EmptyStateProps {
@@ -22,14 +22,14 @@ export default function EmptyState({
 }: EmptyStateProps) {
   const { t } = useTranslation()
 
-  // Compact 变体：用于聊天区域，简洁风格
+  // Compact 变体：用于聊天区域，简洁风格（蓝本首跑空态：几何口袋 + 引导文案）
   if (variant === 'compact') {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 border-theme-card border-dashed border-border/60 flex items-center justify-center mb-4 text-primary/60">
-          <Terminal className="w-8 h-8" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-[50%_50%_50%_0] bg-accent-brand mb-4">
+          <Sparkles className="h-6 w-6 text-accent-ink" />
         </div>
-        <p className="font-mono text-xs tracking-widest text-primary/70">
+        <p className="text-sm text-content-muted">
           {t('initConversation')}
         </p>
       </div>
@@ -38,10 +38,10 @@ export default function EmptyState({
 
   // Detailed 变体：用于 Artifact 区域，更丰富的视觉
   return (
-    <div className="h-full flex flex-col items-center justify-center p-8 border-theme-card border-dashed border-border/30 bg-panel/50">
+    <div className="h-full flex flex-col items-center justify-center p-8 border-theme-card border-dashed border-border/30 bg-panel/50 rounded-lg">
       <div className="text-center space-y-6">
         <div className="flex justify-center">
-          <div className="w-16 h-16 border-theme-card border-border bg-card shadow-theme-card flex items-center justify-center">
+          <div className="w-16 h-16 rounded-lg border-theme-card border-border bg-card shadow-theme-card flex items-center justify-center">
             <LayoutGrid className="w-8 h-8 text-muted-foreground" />
           </div>
         </div>
@@ -54,15 +54,15 @@ export default function EmptyState({
           </p>
         </div>
         <div className="flex justify-center gap-2 pt-4">
-          <div className="w-2 h-2 bg-border/30" />
-          <div className="w-2 h-2 bg-border/50" />
-          <div className="w-2 h-2 bg-accent" />
-          <div className="w-2 h-2 bg-border/50" />
-          <div className="w-2 h-2 bg-border/30" />
+          <div className="h-2 w-2 rounded-full bg-border/30" />
+          <div className="h-2 w-2 rounded-full bg-border/50" />
+          <div className="h-2 w-2 rounded-full bg-accent" />
+          <div className="h-2 w-2 rounded-full bg-border/50" />
+          <div className="h-2 w-2 rounded-full bg-border/30" />
         </div>
         <div className="pt-4 border-t border-border/20">
-          <div className="text-nano font-mono text-muted-foreground/70">
-            STATUS: <span className="text-accent">WAITING_FOR_TASK</span>
+          <div className="text-nano text-muted-foreground/70">
+            {t('workbenchNewHint')}
           </div>
         </div>
       </div>

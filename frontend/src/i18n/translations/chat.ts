@@ -22,7 +22,7 @@ export const zh: Record<string, string> = {
   send: '发送',
   enterToSend: '按 Enter 发送，Shift + Enter 换行',
   describeTask: '描述你的任务，AI 会帮你拆解...',
-  inputPlaceholder: '// 准备装载...',
+  inputPlaceholder: '继续对话，或拖入图片…',
   execute: '执行',
   processing: '处理中',
 
@@ -139,7 +139,7 @@ export const en: Record<string, string> = {
   send: 'Send',
   enterToSend: 'Press Enter to send, Shift + Enter for new line',
   describeTask: 'Describe your task, AI will help break it down...',
-  inputPlaceholder: '// AWAITING PAYLOAD...',
+  inputPlaceholder: 'Continue the conversation, or drop images…',
   execute: 'EXECUTE',
   processing: 'PROCESSING',
 
@@ -256,7 +256,7 @@ export const ja: Record<string, string> = {
   send: '送信',
   enterToSend: 'Enterで送信、Shift + Enterで改行',
   describeTask: 'タスクを説明すると、AIが分解してくれます...',
-  inputPlaceholder: '// 装填準備...',
+  inputPlaceholder: '会話を続けるか、画像をドラッグ…',
   execute: '実行',
   processing: '処理中',
 

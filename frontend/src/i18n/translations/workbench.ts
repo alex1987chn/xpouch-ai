@@ -5,7 +5,13 @@
 
 export const zh: Record<string, string> = {
   workbenchTitle: '工作台',
+  strataTitle: '会话',
   strataSearch: '搜索会话…',
+  cmdSearch: '搜索、切换专家或执行命令…',
+  sbOnline: '在线',
+  sbOffline: '离线',
+  sbCommands: '命令',
+  aiBylineFallback: '助手',
   groupToday: '今天',
   groupYesterday: '昨天',
   groupThisWeek: '本周',
@@ -30,7 +36,13 @@ export const zh: Record<string, string> = {
 
 export const en: Record<string, string> = {
   workbenchTitle: 'Workbench',
+  strataTitle: 'Sessions',
   strataSearch: 'Search conversations…',
+  cmdSearch: 'Search, switch experts, or run commands…',
+  sbOnline: 'Online',
+  sbOffline: 'Offline',
+  sbCommands: 'Commands',
+  aiBylineFallback: 'Assistant',
   groupToday: 'Today',
   groupYesterday: 'Yesterday',
   groupThisWeek: 'This week',
@@ -55,7 +67,13 @@ export const en: Record<string, string> = {
 
 export const ja: Record<string, string> = {
   workbenchTitle: 'ワークベンチ',
+  strataTitle: 'セッション',
   strataSearch: '会話を検索…',
+  cmdSearch: '検索・専門家の切替・コマンド実行…',
+  sbOnline: 'オンライン',
+  sbOffline: 'オフライン',
+  sbCommands: 'コマンド',
+  aiBylineFallback: 'アシスタント',
   groupToday: '今日',
   groupYesterday: '昨日',
   groupThisWeek: '今週',

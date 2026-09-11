@@ -20,6 +20,7 @@
     --surface-page: 25 23 20;              /* #191714 - 暖炭黑（非纯黑） */
     --surface-card: 32 29 25;              /* #201d19 */
     --surface-elevated: 38 34 30;          /* #26221e */
+    --surface-tint: 42 38 32;              /* #2a2620 暖调选中底 */
     --surface-input: 32 29 25;
     --surface-overlay: 12 10 9;
     --surface-scrim: 12 10 9;

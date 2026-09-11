@@ -100,7 +100,7 @@ export default function CodeArtifact({
       )}
 
       {/* 内容区域 - 铺满剩余空间 */}
-      <div className="flex-1 w-full min-h-0 overflow-auto bauhaus-scrollbar">
+      <div className="flex-1 w-full min-h-0 overflow-auto">
         {isVisual && !showSource ? (
           // 可视化模式：渲染图表/流程图
           renderVisual()

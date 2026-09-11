@@ -55,11 +55,11 @@ export function RunPollingBar({
     <div
       className={cn(
         'flex items-center justify-between px-4 py-2',
-        'border-b-2 border-border-default',
-        'text-sm font-mono',
+        'border-b border-border-divider',
+        'text-sm',
         hasError
           ? 'bg-status-offline/10 text-status-offline'
-          : 'bg-surface-elevated'
+          : 'bg-surface-tint'
       )}
     >
       <div className="flex items-center gap-2">

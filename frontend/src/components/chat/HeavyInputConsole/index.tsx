@@ -1,13 +1,13 @@
 /**
  * 重型输入控制台
- * Industrial Terminal 风格的输入区域
- * 
+ * 蓝本 .input-console：圆角大卡 + 左附件/联网 + 圆形黄色发送钮
+ *
  * 语义化改造：使用 theme-* 类名替代硬编码样式
  */
 
 import { useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { Terminal, Paperclip, Globe, Square, X } from 'lucide-react'
+import { Paperclip, Globe, Square, X, ArrowUp } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import type { HeavyInputConsoleProps } from '../types'
 import HeavyInputTextArea from './HeavyInputTextArea'
@@ -63,105 +63,96 @@ export default function HeavyInputConsole({
   }
 
   return (
-    <div className="bg-card border-t-2 border-border-default z-20 p-0">
-      {/* 输入区域 */}
-      <div className="p-4 pb-4 pt-3 bg-surface-page">
-        <div className={cn(
-          "bg-card border-theme-card border-border-default shadow-theme-card relative group transition-all rounded-md",
-          !disabled && "focus-within:shadow-theme-card-accent"
-        )}>
-          {/* 行号 + 文本域 */}
-          <div className="flex min-h-[100px]">
-            <div className="w-10 py-4 text-right pr-3 font-mono text-xs text-content-primary/50 bg-surface-page border-r-2 border-border-default/20 select-none leading-relaxed">
-              01<br/>02<br/>03
-            </div>
-            <HeavyInputTextArea
-              value={value}
-              onChange={onChange}
-              onKeyDown={handleKeyDown}
-              disabled={disabled}
+    <div className="z-20 shrink-0 bg-surface-page px-4 pb-4 pt-1">
+      {/* 输入台卡片 */}
+      <div className={cn(
+        "relative rounded-lg border border-border-divider bg-surface-card shadow-theme-card transition-shadow",
+        !disabled && "focus-within:shadow-theme-card-accent"
+      )}>
+        {/* 文本域 */}
+        <HeavyInputTextArea
+          value={value}
+          onChange={onChange}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+        />
+
+        {/* 已选图片缩略图（带移除） */}
+        {imageList.length > 0 && (
+          <div className="flex flex-wrap gap-2 px-3 pb-1">
+            {imageList.map((img, index) => (
+              <div key={`${index}-${img.slice(-12)}`} className="relative">
+                <img
+                  src={img}
+                  alt={`image-${index + 1}`}
+                  className="h-14 w-14 rounded-md border border-border-divider object-cover"
+                />
+                <button
+                  onClick={() => onRemoveImage?.(index)}
+                  aria-label={t('close')}
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-content-primary text-surface-card transition-colors hover:bg-status-offline"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 工具栏 */}
+        <div className="flex items-center justify-between border-t border-border-divider py-1.5 pl-2.5 pr-1.5">
+          {/* 左侧：附件 / 联网 */}
+          <div className="flex items-center gap-1">
+            <button
+              disabled={disabled || imageList.length >= MAX_IMAGES}
+              onClick={() => fileInputRef.current?.click()}
+              aria-label={t('attachment')}
+              className="rounded-md p-2 text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary disabled:opacity-50"
+              title={`${t('attachment')}${imageList.length ? ` (${imageList.length}/${MAX_IMAGES})` : ''}`}
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={e => {
+                void handleFiles(e.target.files)
+              }}
             />
+            <button
+              disabled={disabled}
+              aria-label={t('webSearch')}
+              className="rounded-md p-2 text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary disabled:opacity-50"
+              title={t('webSearch')}
+            >
+              <Globe className="h-4 w-4" />
+            </button>
           </div>
 
-          {/* 已选图片缩略图（带移除） */}
-          {imageList.length > 0 && (
-            <div className="flex flex-wrap gap-2 px-4 pt-3 bg-surface-page">
-              {imageList.map((img, index) => (
-                <div key={`${index}-${img.slice(-12)}`} className="relative">
-                  <img
-                    src={img}
-                    alt={`image-${index + 1}`}
-                    className="w-14 h-14 border-theme-card border-border-default object-cover"
-                  />
-                  <button
-                    onClick={() => onRemoveImage?.(index)}
-                    aria-label={t('close')}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-content-primary text-surface-card flex items-center justify-center hover:bg-status-offline transition-colors"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
+          {/* 右侧：圆形发送钮 / 圆形停止钮（蓝本 .send / .stop-btn） */}
+          {disabled && onStop ? (
+            <button
+              onClick={onStop}
+              aria-label={t('stop')}
+              title={t('stop')}
+              className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-border-hover bg-surface-card text-content-primary transition-colors hover:bg-surface-tint"
+            >
+              <Square className="h-3 w-3" />
+            </button>
+          ) : (
+            <button
+              onClick={onSend}
+              disabled={!hasContent}
+              aria-label={t('send')}
+              title={t('send')}
+              className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-border-divider bg-accent-brand text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card-accent active:translate-y-0 active:shadow-none disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </button>
           )}
-
-          {/* 工具栏 */}
-          <div className="flex justify-between items-center p-2 border-t-2 border-border-default bg-surface-page">
-            {/* 左侧：工具按钮 */}
-            <div className="flex items-center gap-4 pl-2">
-              <button
-                disabled={disabled || imageList.length >= MAX_IMAGES}
-                onClick={() => fileInputRef.current?.click()}
-                aria-label={t('attachment')}
-                className="p-2 text-content-primary hover:text-accent-brand transition-colors disabled:opacity-50"
-                title={`${t('attachment')}${imageList.length ? ` (${imageList.length}/${MAX_IMAGES})` : ''}`}
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={e => {
-                  void handleFiles(e.target.files)
-                }}
-              />
-              <button
-                disabled={disabled}
-                aria-label={t('webSearch')}
-                className="p-2 text-content-primary hover:text-accent-brand transition-colors disabled:opacity-50"
-                title={t('webSearch')}
-              >
-                <Globe className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* 右侧：EXECUTE 按钮 / 停止按钮 */}
-            {disabled && onStop ? (
-              <button
-                onClick={onStop}
-                className="px-6 py-1.5 bg-accent-destructive text-content-inverted font-bold text-micro border-theme-button border-accent-destructive transition-all flex items-center gap-2 shadow-theme-button hover:shadow-theme-button-hover hover:bg-accent-destructive/90 active:[transform:var(--transform-button-active)] rounded-md"
-                title={t('stop')}
-              >
-                <Square className="w-3 h-3" />
-                {t('stop')}
-              </button>
-            ) : (
-              <button
-                onClick={onSend}
-                disabled={!hasContent}
-                className={cn(
-                  "px-6 py-1.5 bg-surface-elevated text-content-primary font-bold text-micro border-theme-button border-border-default transition-all flex items-center gap-2 shadow-theme-button rounded-md",
-                  value.trim() && "hover:bg-accent-brand hover:text-content-inverted hover:border-accent-brand hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)]"
-                )}
-              >
-                {t('execute')}
-                <Terminal className="w-3 h-3" />
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </div>

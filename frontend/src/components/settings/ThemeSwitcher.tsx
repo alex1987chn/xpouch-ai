@@ -14,7 +14,7 @@ import { useThemeStore, THEMES, type Theme } from '@/store/themeStore'
 
 interface ThemeSwitcherProps {
   className?: string
-  variant?: 'floating' | 'inline' | 'dropdown'
+  variant?: 'floating' | 'inline' | 'dropdown' | 'seg'
 }
 
 /**
@@ -268,6 +268,42 @@ function DropdownThemeSwitcher({ className }: { className?: string }) {
 }
 
 /**
+ * 分段胶囊模式（顶栏，蓝本 .seg 形态：柔和 | 暗色 | Bauhaus）
+ */
+function SegThemeSwitcher({ className }: { className?: string }) {
+  const { theme, setTheme } = useThemeStore()
+
+  return (
+    <div
+      role="group"
+      aria-label="Theme"
+      className={cn(
+        'flex h-[30px] items-center overflow-hidden rounded-full',
+        'border-theme-card border-border-default bg-surface-card',
+        className
+      )}
+    >
+      {THEMES.map((themeMeta, index) => (
+        <button
+          key={themeMeta.id}
+          onClick={() => setTheme(themeMeta.id)}
+          title={themeMeta.name}
+          className={cn(
+            'h-full px-3 text-xs transition-colors duration-fast',
+            index > 0 && 'border-l border-border-divider',
+            theme === themeMeta.id
+              ? 'bg-surface-tint font-bold text-content-primary'
+              : 'text-content-muted hover:text-content-primary'
+          )}
+        >
+          {themeMeta.name}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/**
  * 主题切换组件入口
  */
 export function ThemeSwitcher({ className, variant = 'floating' }: ThemeSwitcherProps) {
@@ -276,6 +312,8 @@ export function ThemeSwitcher({ className, variant = 'floating' }: ThemeSwitcher
       return <InlineThemeSwitcher className={className} />
     case 'dropdown':
       return <DropdownThemeSwitcher className={className} />
+    case 'seg':
+      return <SegThemeSwitcher className={className} />
     case 'floating':
     default:
       return <FloatingThemeSwitcher className={className} />

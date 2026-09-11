@@ -140,8 +140,8 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
     <aside className="hidden w-[236px] shrink-0 flex-col border-r border-border-divider bg-surface-card lg:flex">
       {/* 头部 */}
       <div className="flex items-center justify-between px-3 pt-3">
-        <span className="text-xs font-bold tracking-widest text-content-secondary">
-          /// {t('history')}
+        <span className="text-xs font-bold text-content-secondary">
+          {t('strataTitle')}
         </span>
         <button
           onClick={onNewChat}
@@ -164,7 +164,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
       </div>
 
       {/* 地层列表 */}
-      <div className="bauhaus-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {isLoading ? (
           <div className="space-y-2 px-1 pt-1">
             {Array.from({ length: 6 }, (_, i) => (
@@ -179,7 +179,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
           groupLabels.map(group =>
             group ? (
               <div key={group[0]} className="mb-1">
-                <div className="px-2 pb-1 pt-3 text-nano font-bold tracking-widest text-content-muted">
+                <div className="px-2 pb-1 pt-3 text-nano font-bold text-content-muted">
                   {group[1]}
                 </div>
                 {groups[group[0]].map(conv => (
@@ -189,8 +189,8 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
                     className={cn(
                       'group flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left transition-colors',
                       conv.id === activeThreadId
-                        ? 'bg-surface-elevated'
-                        : 'hover:bg-surface-page'
+                        ? 'bg-surface-tint'
+                        : 'hover:bg-surface-tint/60'
                     )}
                   >
                     <span

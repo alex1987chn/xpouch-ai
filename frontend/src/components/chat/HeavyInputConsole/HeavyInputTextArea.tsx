@@ -1,6 +1,6 @@
 /**
  * 重型输入文本域
- * 带行号的工业终端风格文本输入
+ * 输入台卡片内的多行文本输入（柔和材质）
  */
 
 import { useTranslation } from '@/i18n'
@@ -21,7 +21,7 @@ export default function HeavyInputTextArea({
       onKeyDown={onKeyDown}
       disabled={disabled}
       placeholder={t('inputPlaceholder')}
-      className="flex-1 bg-transparent border-none p-4 font-mono text-sm focus:ring-0 outline-none resize-none leading-relaxed placeholder:text-content-secondary disabled:opacity-50"
+      className="flex-1 resize-none border-none bg-transparent p-3 pb-2 text-sm leading-relaxed text-content-primary outline-none ring-0 placeholder:text-content-muted disabled:opacity-50"
       rows={3}
     />
   )

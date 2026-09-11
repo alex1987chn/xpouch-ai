@@ -1,14 +1,16 @@
 /**
  * WorkbenchLayout - 工作台专属壳（阶段 2 新 IA 的应用框架）
  *
- * [设计] 蓝本形态：顶栏（logo + ⌘K + 审批 chip + 主题切换 + 头像）
- * + 60px 三目的地图标栏（工作台/资源库/管理）+ 内容区。
- * 工作台路由脱离旧 AppLayout（旧壳的六项导航与地层功能重复）。
+ * [设计] 蓝本形态：52px 顶栏（logo + ⌘K 药丸 + 审批 chip + 主题分段胶囊）
+ * + 60px 三目的地图标栏（工作台/资源库/管理，底部头像）+ 内容区
+ * + 28px 底部环境状态栏（连接状态 · 专家数 · 快捷键提示）。
+ * 待裁决时右缘琥珀光晕（蓝本 edge-glow）作为第二注意力层。
  *
  * [边界] 旧页面仍走 AppLayout；cutover 时此壳升格为全局壳并收敛导航。
  * SettingsHubDialog/LoginDialog 自管开关（appUIStore/userStore），此处挂载。
  */
 
+import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
 import { LayoutGrid, Layers, ShieldCheck } from 'lucide-react'
@@ -17,6 +19,7 @@ import { useUserStore } from '@/store/userStore'
 import { useAppUISelectors } from '@/hooks'
 import { useIsWaitingForApproval } from '@/hooks/useTaskSelectors'
 import { useChatStore } from '@/store/chatStore'
+import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery'
 import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher'
 import { SettingsHubDialog } from '@/components/settings/SettingsHubDialog'
 import LoginDialog from '@/components/auth/LoginDialog'
@@ -42,9 +45,28 @@ export default function WorkbenchLayout() {
   const { user, isAuthenticated } = useUserStore()
   const { dialogs } = useAppUISelectors()
   const isAwaiting = useIsWaitingForApproval()
+  const { data: agents } = useAgentsQuery({ includeDefault: true })
+
+  // 连接状态（navigator.onLine，真实信号，不做假数据）
+  const [online, setOnline] = useState(() => navigator.onLine)
+  useEffect(() => {
+    const up = () => setOnline(true)
+    const down = () => setOnline(false)
+    window.addEventListener('online', up)
+    window.addEventListener('offline', down)
+    return () => {
+      window.removeEventListener('online', up)
+      window.removeEventListener('offline', down)
+    }
+  }, [])
 
   const isAdmin = user?.role === 'admin'
   const onWorkbench = location.pathname.startsWith('/workbench')
+
+  const goDecide = () => {
+    const tid = useChatStore.getState().currentConversationId
+    if (tid) navigate(`/workbench/${tid}`)
+  }
 
   const avatarNode = user?.avatar ? (
     <img src={user.avatar} alt="" className="h-7 w-7 rounded-full border border-border-default object-cover" />
@@ -57,7 +79,7 @@ export default function WorkbenchLayout() {
   return (
     <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-surface-page">
       {/* ===== 顶栏 ===== */}
-      <header className="relative z-40 flex h-[52px] shrink-0 items-center gap-3 border-b border-border-divider bg-surface-card px-4">
+      <header className="relative z-40 flex h-[52px] shrink-0 items-center gap-3.5 border-b border-border-divider bg-surface-card px-4">
         <button onClick={() => navigate('/workbench')} aria-label="xpouch">
           <LogoMark />
         </button>
@@ -65,36 +87,26 @@ export default function WorkbenchLayout() {
         {/* ⌘K 药丸（命令面板为收尾件，先行占位视觉） */}
         <button
           onClick={() => navigate('/workbench')}
-          className="mx-auto hidden h-[34px] w-[400px] items-center gap-2.5 rounded-full border-theme-input border-border-default bg-surface-page px-4 text-[13px] text-content-muted transition-all hover:border-border-hover hover:shadow-theme-card sm:flex"
-          title={t('workbenchTitle')}
+          className="mx-auto hidden h-[34px] w-[400px] items-center gap-2.5 rounded-full border-theme-input border-border-default bg-surface-page px-3.5 text-[13px] text-content-muted transition-all hover:border-border-hover hover:shadow-theme-card sm:flex"
+          title={t('cmdSearch')}
         >
-          <span className="rounded border border-border-default bg-surface-card px-1.5 py-px font-mono text-[11px] font-bold text-content-secondary">⌘K</span>
-          <span>{t('strataSearch')}</span>
+          <span className="rounded border border-border-default bg-surface-card px-1.5 py-px font-display text-[11px] font-bold text-content-secondary">⌘K</span>
+          <span className="truncate">{t('cmdSearch')}</span>
         </button>
 
         <div className="ml-auto flex items-center gap-2.5">
           {/* 审批注意力 chip：当前线程待裁决时点亮 */}
           {isAwaiting && (
             <button
-              onClick={() => {
-                const tid = useChatStore.getState().currentConversationId
-                if (tid) navigate(`/workbench/${tid}`)
-              }}
-              className="flex h-[30px] items-center gap-1.5 rounded-full border border-accent-warning/30 bg-accent-warning/10 px-3 text-xs font-medium text-accent-warning transition-all hover:shadow-theme-card"
+              onClick={goDecide}
+              className="flex h-[30px] items-center gap-1.5 rounded-full border border-border-divider bg-accent-warning/10 px-3 text-xs font-medium text-accent-warning transition-all hover:shadow-theme-card"
             >
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent-warning" />
+              <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-accent-warning" />
               {t('chipAwaiting')}
             </button>
           )}
-          <ThemeSwitcher variant="floating" />
-          {/* 头像 → 设置中心（登录态）/ 登录（未登录） */}
-          <button
-            onClick={() => (isAuthenticated ? dialogs.openSettings() : dialogs.openLogin())}
-            aria-label={isAuthenticated ? t('userSettings') : t('login')}
-            className="flex items-center"
-          >
-            {avatarNode}
-          </button>
+          {/* 主题分段胶囊（蓝本 .seg） */}
+          <ThemeSwitcher variant="seg" />
         </div>
       </header>
 
@@ -114,14 +126,25 @@ export default function WorkbenchLayout() {
               className={cn(
                 'relative flex h-[42px] w-[42px] items-center justify-center rounded-md transition-colors',
                 active
-                  ? 'bg-surface-elevated text-content-primary'
-                  : 'text-content-muted hover:bg-surface-elevated/60 hover:text-content-primary'
+                  ? 'bg-surface-tint text-content-primary'
+                  : 'text-content-muted hover:bg-surface-tint/60 hover:text-content-primary'
               )}
             >
               {active && <span className="absolute -left-[9px] top-[10px] bottom-[10px] w-[3px] rounded-full bg-accent-brand" />}
               <Icon className="h-[19px] w-[19px]" />
             </button>
           ))}
+
+          {/* 栏底：账号入口（蓝本 rail 底部头像；对话即桌面惯例同 ChatGPT/Claude） */}
+          <span className="flex-1" />
+          <button
+            onClick={() => (isAuthenticated ? dialogs.openSettings() : dialogs.openLogin())}
+            aria-label={isAuthenticated ? t('userSettings') : t('login')}
+            title={isAuthenticated ? (user?.username || '') : t('login')}
+            className="flex items-center transition-opacity hover:opacity-80"
+          >
+            {avatarNode}
+          </button>
         </nav>
 
         {/* 页面内容（工作台/资源库/管理分区） */}
@@ -129,6 +152,32 @@ export default function WorkbenchLayout() {
           <Outlet />
         </div>
       </div>
+
+      {/* ===== 右缘审批光晕（蓝本 edge-glow：有事项等你裁决） ===== */}
+      {isAwaiting && (
+        <button
+          onClick={goDecide}
+          aria-label={t('goToDecide')}
+          title={t('goToDecide')}
+          className="fixed bottom-7 right-0 top-[52px] z-30 w-[7px] bg-gradient-to-b from-transparent via-accent-warning/55 to-transparent blur-[1px]"
+        />
+      )}
+
+      {/* ===== 底部环境状态栏（蓝本 .sb，只展示真实信号） ===== */}
+      <footer className="relative z-30 flex h-7 shrink-0 items-center gap-4 border-t border-border-divider bg-surface-card px-3.5 text-nano text-content-muted">
+        <span className={cn('h-[7px] w-[7px] shrink-0 animate-pulse rounded-full', online ? 'bg-status-online' : 'bg-accent-warning')} />
+        <span>{online ? t('sbOnline') : t('sbOffline')}</span>
+        {(agents?.length ?? 0) > 0 && (
+          <>
+            <span className="h-3 w-px bg-border-divider" />
+            <span>{t('expertLabel')} · {agents?.length}</span>
+          </>
+        )}
+        <span className="ml-auto flex items-center gap-1.5">
+          <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-[9.5px] font-bold text-content-muted">⌘K</kbd>
+          {t('sbCommands')}
+        </span>
+      </footer>
 
       {/* ===== 全局弹窗（工作台壳自挂：设置中心 + 登录） ===== */}
       <SettingsHubDialog />
