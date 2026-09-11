@@ -37,7 +37,7 @@ import { downloadMarkdown, downloadPDF, getArtifactMarkdown } from '@/utils/expo
 import { logger } from '@/utils/logger'
 import { useTaskActions, useTaskMode, useTasksCache, useSelectedTaskId } from '@/hooks/useTaskSelectors'
 import { shareArtifact } from '@/services/artifacts'
-import EmptyState from '@/components/chat/EmptyState'
+import { EmptyState } from '@/components/ui/states'
 
 // 懒加载 Artifact 渲染组件
 const CodeArtifact = lazy(() =>
@@ -373,7 +373,7 @@ export default function ArtifactDashboard({
         <div className="absolute inset-0 dot-grid opacity-30 pointer-events-none" />
         <div className="absolute inset-2 border border-border-default bg-surface-card shadow-sm flex flex-col overflow-hidden min-w-0">
           {!currentArtifact ? (
-            <EmptyState variant="detailed" />
+            <EmptyState title="—" />
           ) : (
             <div className="h-full flex flex-col">
               {/* Toolbar */}

@@ -277,11 +277,13 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
           : (t('riskHigh') || 'High')
          }
         </span>
-        <PillSwitch
-         on={policy.enabled}
-         disabled={!canEdit}
-         onToggle={() => handleToggleEnabled(policy)}
-        />
+        <span onClick={e => e.stopPropagation()}>
+         <PillSwitch
+          on={policy.enabled}
+          disabled={!canEdit}
+          onToggle={() => handleToggleEnabled(policy)}
+         />
+        </span>
        </button>
       ))}
      </div>

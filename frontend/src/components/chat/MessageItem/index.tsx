@@ -155,7 +155,7 @@ const MarkdownLink = memo(function MarkdownLink({
           onLinkClick?.(href)
         }
       }}
-      className="text-accent hover:underline cursor-pointer"
+      className="cursor-pointer text-content-primary underline decoration-border-hover underline-offset-2 hover:text-accent-hover"
     >
       {children}
     </a>
@@ -492,7 +492,7 @@ function MessageItem({
         prose-headings:text-sm prose-headings:font-bold prose-headings:text-content-primary
         prose-p:text-[13.5px] prose-p:leading-[1.75] prose-p:text-content-primary/90
         prose-strong:text-content-primary prose-code:text-content-primary prose-pre:bg-surface-elevated/50
-        prose-pre:border prose-pre:border-border-default/30 prose-a:text-accent hover:prose-a:text-accent-hover
+        prose-pre:border prose-pre:border-border-default/30 prose-a:text-content-primary prose-a:underline prose-a:decoration-border-hover prose-a:underline-offset-2 hover:prose-a:text-accent-hover
         select-text">
         {content ? (
           <ReactMarkdown

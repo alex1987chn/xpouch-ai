@@ -37,14 +37,14 @@ export type TranslationKey =
   | 'modeLabel' | 'modeComplex' | 'modeSimple' | 'modeComplexShort' | 'modeSimpleShort'
   | 'expertLabel' | 'durationLabel' | 'artifactTypeLabel' | 'hitlWaitingApproval'
   | 'runCreatedAt' | 'runBack' | 'runDetails' | 'runNotFound' | 'noEvents'
-  | 'payloadEmpty' | 'selectEventHint'
+  | 'payloadEmpty' | 'selectEventHint' | 'emptyTitle' | 'emptySub' | 'emptyCardTemplate' | 'emptyCardTemplateDesc' | 'emptyCardExpert' | 'emptyCardExpertDesc' | 'emptyCardChat' | 'emptyCardChatDesc'
   // 工作台（阶段 2 新 IA）
   | 'workbenchTitle' | 'strataTitle' | 'strataSearch' | 'cmdSearch' | 'railLibrary' | 'groupToday' | 'groupYesterday' | 'groupThisWeek' | 'groupEarlier' | 'strataEmpty'
   | 'cmdGroupCommands' | 'cmdGroupSessions' | 'cmdNoResults' | 'cmdHint' | 'cmdNewSession' | 'cmdGoTheme'
   | 'sbOnline' | 'sbOffline' | 'sbCommands' | 'sbDbConnected' | 'sbDbDisconnected' | 'sbJump' | 'aiBylineFallback'
   | 'version' | 'modelProviders' | 'disabledProviders' | 'administrator' | 'userManagement' | 'uuid' | 'userRole' | 'plan' | 'registeredAt'
   | 'chipAwaiting' | 'chipRunning'
-  | 'canvasArtifacts' | 'canvasGallery' | 'canvasEmpty' | 'canvasGalleryEmpty' | 'openArtifact' | 'backToList'
+  | 'canvasArtifacts' | 'canvasGallery' | 'canvasEmpty' | 'canvasEmptyHint' | 'canvasWide' | 'canvasCompact' | 'canvasGalleryEmpty' | 'canvasGalleryEmptyHint' | 'openArtifact' | 'backToList'
   | 'taskControlTitle' | 'backToWorkbench' | 'goToDecide' | 'planCardTitle' | 'planStepCount' | 'relatedArtifacts' | 'workbenchNewHint'
   // 计划审核
   | 'planReviewTitle' | 'tasksPendingConfirm'
@@ -106,7 +106,7 @@ export type TranslationKey =
   | 'taskDescription' | 'clear' | 'expertWorkflowDetails' | 'searchExpert' | 'analyzerExpert' | 'frontendExpert'
   | 'pending' | 'running' | 'completed'
   // Delete Dialog
-  | 'confirmDeleteTitle' | 'confirmDeleteDescription' | 'deleting'
+  | 'confirmDeleteTitle' | 'confirmLogoutTitle' | 'confirmLogoutDesc' | 'confirmDeleteConversation' | 'deleteConversationWarning' | 'sessionDeleted' | 'download' | 'copyFailed' | 'confirmDeleteDescription' | 'deleting'
   // Cancel Dialog
   | 'confirmCancelTitle' | 'confirmCancelDescription' | 'canceling' | 'confirmCancel'
   // Create Agent Page

@@ -10,14 +10,18 @@
  */
 
 import { useMemo, useRef, useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import type { Locale } from 'date-fns'
 import { zhCN, enUS, ja } from 'date-fns/locale'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 
-import { useChatHistoryQuery } from '@/hooks/queries/useChatHistoryQuery'
+import { useChatHistoryQuery, chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
+import { deleteConversation } from '@/services/chat'
+import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
+import { pushToast } from '@/components/ui/use-toast'
 import { SearchInput } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/states'
 import { useChatStore } from '@/store/chatStore'
@@ -79,7 +83,10 @@ function RowTrailing({ conversation, locale }: { conversation: Conversation; loc
 export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps) {
   const { t, language } = useTranslation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<Conversation | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const { data, isLoading, fetchNextPage, hasNextPage } = useChatHistoryQuery({ limit: 20 })
   const conversations = useMemo(
@@ -121,6 +128,28 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
     observer.observe(el)
     return () => observer.disconnect()
   }, [hasNextPage, fetchNextPage])
+
+  // 删除会话：确认后调接口，刷新地层；删的是当前线程则回到新会话
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteConversation(pendingDelete.id)
+      pushToast({ title: t('sessionDeleted') })
+      if (pendingDelete.id === activeThreadId) {
+        useChatStore.getState().setMessages([])
+        useChatStore.getState().setCurrentConversationId(null)
+        useTaskStore.getState().resetAll(true)
+        navigate('/workbench')
+      }
+      queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
+    } catch (error) {
+      pushToast({ title: (error as Error).message || t('deleteFailed'), variant: 'destructive' })
+    } finally {
+      setIsDeleting(false)
+      setPendingDelete(null)
+    }
+  }
 
   // 切换会话：清空聊天态再换线程（与 HistoryPageWrapper 同一守卫序列）
   const handleSelect = (conversation: Conversation) => {
@@ -199,6 +228,17 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
                     <span className="min-w-0 flex-1 truncate text-xs text-content-secondary group-hover:text-content-primary">
                       {conv.title || t('newChat')}
                     </span>
+                    <button
+                      onClick={e => {
+                        e.stopPropagation()
+                        setPendingDelete(conv)
+                      }}
+                      aria-label={t('delete')}
+                      title={t('delete')}
+                      className="shrink-0 p-0.5 text-content-muted opacity-0 transition-opacity hover:text-accent-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                     <RowTrailing conversation={conv} locale={locale} />
                   </button>
                 ))}
@@ -208,6 +248,18 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
         )}
         {/* 加载更多哨兵 */}
         {hasNextPage && <div ref={sentinelRef} className="h-6" />}
+
+        {/* 删除确认 */}
+        <DeleteConfirmDialog
+          isOpen={!!pendingDelete}
+          onClose={() => setPendingDelete(null)}
+          onConfirm={handleConfirmDelete}
+          title={t('confirmDeleteConversation') || '删除会话'}
+          description={(t('deleteConversationWarning') || '会话及其消息、运行记录将一并删除，此操作不可恢复。')}
+          itemName={pendingDelete?.title || t('newChat')}
+          confirmText={t('delete')}
+          isDeleting={isDeleting}
+        />
       </div>
     </aside>
   )

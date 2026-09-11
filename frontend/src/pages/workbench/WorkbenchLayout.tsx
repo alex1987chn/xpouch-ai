@@ -31,17 +31,20 @@ import LoginDialog from '@/components/auth/LoginDialog'
 import { cn } from '@/lib/utils'
 import { Z_INDEX } from '@/constants/zIndex'
 
-/** 顶栏 logo 标记（原 4D 口袋 logo，42px 设计稿等比缩至 26px 适配顶栏） */
+/** 顶栏 logo：原 4D 口袋动画标（缩小）+ [XPOUCH] 字标（用户原始设计） */
 function LogoMark() {
   return (
-    <span className="flex items-center gap-1.5">
-      <span className="block h-[26px] w-[26px] overflow-visible">
-        <span className="block origin-top-left scale-[0.62]">
+    <span className="flex items-center gap-2">
+      <span className="block h-[22px] w-[22px] overflow-visible">
+        <span className="block origin-top-left scale-[0.52]">
           <The4DPocketLogo />
         </span>
       </span>
-      <span className="font-display text-[14px] font-bold tracking-tight text-content-primary">
-        xpouch
+      <span className="flex items-baseline font-display text-[14px] font-bold leading-none tracking-tight">
+        <span className="text-content-primary">[</span>
+        <span className="text-accent-brand">X</span>
+        <span className="text-content-primary">POUCH</span>
+        <span className="text-content-primary">]</span>
       </span>
     </span>
   )

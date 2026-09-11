@@ -2,16 +2,15 @@
  * ArtifactCanvas - 工作台右栏「产物画布」
  *
  * [设计] 产物是当前会话的投影：本会话产物挂在对话旁并排对照（蓝本）。
- * 两个视图：产物（当前线程，useThreadArtifactsQuery）/ 画廊（跨会话，useArtifactsQuery）。
- * 点击产物 → 内联展开预览（getArtifactDetail 拉全文，ArtifactRenderer 渲染）。
- *
- * [复用] ArtifactRenderer / getArtifactDetail / shareArtifact / TYPE_COLORS 全部来自产物中心。
+ * 两个视图：产物（当前线程）/ 画廊（跨会话）。点击产物 → 内联展开全文。
+ * [画布两档宽度] 330px 紧凑 ↔ 560px 宽屏（对照代码/文档更从容）。
+ * [详情动作] 分享 / 复制内容 / 下载文件 / HTML·图片新标签页预览。
  */
 
 import { useState, useCallback } from 'react'
 import { useTranslation } from '@/i18n'
 import { useQuery } from '@tanstack/react-query'
-import { Share2 } from 'lucide-react'
+import { Share2, Package, LayoutGrid, Download, Copy, ExternalLink, PanelRight, Check } from 'lucide-react'
 
 import { useArtifactsQuery, useThreadArtifactsQuery, artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
 import { getArtifactDetail, shareArtifact } from '@/services/artifacts'
@@ -35,10 +34,18 @@ function toLocalDate(iso: string): Date {
   return new Date(parsed.getTime() + parsed.getTimezoneOffset() * 60_000)
 }
 
+/** 类型 → 下载扩展名 */
+const TYPE_EXT: Record<string, string> = {
+  markdown: 'md', code: 'txt', html: 'html', text: 'txt',
+  sql: 'sql', json: 'json', chart: 'json', report: 'md',
+}
+
 export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
   const { t, language } = useTranslation()
   const [tab, setTab] = useState<CanvasTab>('thread')
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [wide, setWide] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const threadQuery = useThreadArtifactsQuery(threadId)
   const galleryQuery = useArtifactsQuery(1)
@@ -50,6 +57,7 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
     enabled: !!detailId,
     staleTime: 60_000,
   })
+  const detail = detailQuery.data
 
   const activeList: ArtifactListItem[] =
     tab === 'thread' ? (threadQuery.data?.items ?? []) : (galleryQuery.data?.items ?? [])
@@ -68,30 +76,89 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
     [t]
   )
 
+  const handleCopy = async () => {
+    if (!detail?.content) return
+    try {
+      await navigator.clipboard.writeText(detail.content)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      pushToast({ title: t('copyFailed') || 'Copy failed', variant: 'destructive' })
+    }
+  }
+
+  const handleDownload = () => {
+    if (!detail?.content) return
+    const ext = TYPE_EXT[detail.type] || 'txt'
+    const base = (detail.title || detail.type).replace(/[\\/:*?"<>|]/g, '_')
+    const blob = new Blob([detail.content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${base}.${ext}`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  /** HTML 全文 / 图片链接 → 新标签页打开看全貌 */
+  const handleOpenTab = () => {
+    if (!detail) return
+    const content = detail.content || ''
+    if (detail.type === 'html') {
+      const url = URL.createObjectURL(new Blob([content], { type: 'text/html' }))
+      window.open(url, '_blank')
+      // note: blob URL 随窗口存活，新标签关闭即失效
+    } else if (/^https?:|^data:image/.test(content)) {
+      window.open(content, '_blank')
+    } else {
+      handleDownload()
+    }
+  }
+
+  const canOpenTab = !!detail && (detail.type === 'html' || /^https?:|^data:image/.test(detail.content || ''))
+
   const locale = language === 'en' ? enUS : language === 'ja' ? ja : zhCN
 
   return (
-    <aside className="hidden w-[330px] shrink-0 flex-col border-l border-border-divider bg-surface-card xl:flex">
-      {/* 页签 */}
-      <div className="flex gap-1 px-3 pt-3">
+    <aside
+      className={cn(
+        'hidden shrink-0 flex-col border-l border-border-divider bg-surface-card transition-[width] duration-200 xl:flex',
+        wide ? 'w-[560px]' : 'w-[330px]'
+      )}
+    >
+      {/* 页签 + 宽度切换 */}
+      <div className="flex items-center gap-1 px-3 pt-3">
         {(['thread', 'gallery'] as const).map(key => (
           <button
             key={key}
             onClick={() => { setTab(key); setDetailId(null) }}
             className={cn(
-              'rounded-sm px-3 py-1.5 text-xs font-medium transition-colors',
+              'rounded-md px-3 py-1.5 text-xs transition-colors',
               tab === key
-                ? 'bg-surface-elevated font-bold text-content-primary'
-                : 'text-content-secondary hover:text-content-primary'
+                ? 'bg-surface-tint font-bold text-content-primary'
+                : 'font-medium text-content-secondary hover:text-content-primary'
             )}
           >
             {key === 'thread' ? t('canvasArtifacts') : t('canvasGallery')}
           </button>
         ))}
+        <span className="flex-1" />
+        <button
+          onClick={() => setWide(w => !w)}
+          title={wide ? t('canvasCompact') : t('canvasWide')}
+          className={cn(
+            'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
+            wide ? 'bg-surface-tint text-content-primary' : 'text-content-muted hover:bg-surface-tint/60 hover:text-content-primary'
+          )}
+        >
+          <PanelRight className="h-3.5 w-3.5" />
+        </button>
       </div>
 
       {/* 内容 */}
-      <div className="bauhaus-scrollbar min-h-0 flex-1 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {detailId ? (
           <div className="flex flex-col gap-2">
             <button
@@ -106,26 +173,50 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
                 <Skeleton className="h-3 w-full" />
                 <Skeleton className="h-3 w-5/6" />
               </div>
-            ) : detailQuery.data ? (
+            ) : detail ? (
               <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
+                {/* 标题 + 动作组 */}
+                <div className="flex items-center gap-1.5">
                   <span className="min-w-0 flex-1 truncate text-xs font-bold text-content-primary">
-                    {detailQuery.data.title || detailQuery.data.type}
+                    {detail.title || detail.type}
                   </span>
                   <button
-                    onClick={() => handleShare(detailQuery.data!.id)}
+                    onClick={handleCopy}
+                    title={t('copy')}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-content-secondary transition-colors hover:bg-surface-tint hover:text-content-primary"
+                  >
+                    {copied ? <Check className="h-3 w-3 text-accent-success" /> : <Copy className="h-3 w-3" />}
+                  </button>
+                  <button
+                    onClick={handleDownload}
+                    title={t('download')}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-content-secondary transition-colors hover:bg-surface-tint hover:text-content-primary"
+                  >
+                    <Download className="h-3 w-3" />
+                  </button>
+                  {canOpenTab && (
+                    <button
+                      onClick={handleOpenTab}
+                      title={t('preview')}
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-content-secondary transition-colors hover:bg-surface-tint hover:text-content-primary"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleShare(detail.id)}
                     title={t('artifactShareAction')}
-                    className="flex h-6 w-6 items-center justify-center rounded-sm border-theme-button border-border-default text-content-secondary hover:border-border-focus hover:text-content-primary"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-content-secondary transition-colors hover:bg-surface-tint hover:text-content-primary"
                   >
                     <Share2 className="h-3 w-3" />
                   </button>
                 </div>
-                <div className="max-h-[calc(100dvh-220px)] overflow-y-auto rounded-sm border-theme-card border-border-default bg-surface-page p-2">
+                <div className="max-h-[calc(100dvh-220px)] overflow-y-auto rounded-md border border-border-divider bg-surface-page p-2">
                   <ArtifactRenderer
-                    type={detailQuery.data.type}
-                    language={detailQuery.data.language}
-                    title={detailQuery.data.title}
-                    content={detailQuery.data.content || ''}
+                    type={detail.type}
+                    language={detail.language}
+                    title={detail.title}
+                    content={detail.content || ''}
                   />
                 </div>
               </div>
@@ -139,9 +230,11 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
           </div>
         ) : activeList.length === 0 ? (
           <EmptyState
-            variant="bare"
+            variant="card"
             dense
+            icon={tab === 'thread' ? Package : LayoutGrid}
             title={tab === 'thread' ? t('canvasEmpty') : t('canvasGalleryEmpty')}
+            description={tab === 'thread' ? t('canvasEmptyHint') : t('canvasGalleryEmptyHint')}
           />
         ) : (
           <div className="space-y-2">

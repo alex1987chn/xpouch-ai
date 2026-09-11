@@ -10,10 +10,14 @@
  */
 
 import { createPortal } from 'react-dom'
-import { User, ShieldCheck, X } from 'lucide-react'
+import { User, ShieldCheck, X, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { useAppUIStore, type SettingsSection } from '@/store/appUIStore'
+import { useUserStore } from '@/store/userStore'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
@@ -26,6 +30,18 @@ export function SettingsHubDialog() {
   const section = useAppUIStore((s) => s.settingsHubSection)
   const closeSettings = useAppUIStore((s) => s.closeSettings)
   const setSettingsSection = useAppUIStore((s) => s.setSettingsSection)
+
+  const logout = useUserStore(s => s.logout)
+  const isAuthenticated = useUserStore(s => s.isAuthenticated)
+  const navigate = useNavigate()
+  const [confirmLogout, setConfirmLogout] = useState(false)
+
+  const handleLogout = async () => {
+    await logout()
+    setConfirmLogout(false)
+    closeSettings()
+    navigate('/workbench')
+  }
 
   useEscapeToClose(isOpen, closeSettings)
   const a11y = useDialogA11y<HTMLDivElement>(isOpen, 'settings-hub-title')
@@ -90,6 +106,19 @@ export function SettingsHubDialog() {
           {/* 桌面端左侧导航栏 */}
           <div role="tablist" className="hidden sm:flex sm:flex-col w-[148px] shrink-0 border-r border-border-divider p-2 gap-1">
             {tabs.map(renderTabButton)}
+            {isAuthenticated && (
+              <>
+                <span className="flex-1" />
+                <button
+                  type="button"
+                  onClick={() => setConfirmLogout(true)}
+                  className="mt-auto flex items-center gap-2.5 rounded-md border-t border-border-divider px-3 py-2.5 text-[13px] font-medium text-accent-destructive transition-colors hover:bg-accent-destructive/10"
+                >
+                  <LogOut className="h-4 w-4 shrink-0" />
+                  <span>{t('logout')}</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* 分区内容：固定高度外壳 + key 触发淡入，切换分区壳体不跳动；
@@ -102,6 +131,17 @@ export function SettingsHubDialog() {
             {section === 'security' && <SecuritySection />}
           </div>
         </div>
+
+        {/* 登出确认 */}
+        <DeleteConfirmDialog
+          isOpen={confirmLogout}
+          onClose={() => setConfirmLogout(false)}
+          onConfirm={handleLogout}
+          title={t('confirmLogoutTitle')}
+          description={t('confirmLogoutDesc')}
+          confirmText={t('logout')}
+          variant="warning"
+        />
       </div>
     </div>,
     document.body

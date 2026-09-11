@@ -58,6 +58,10 @@ export const zh: Record<string, string> = {
   // User Menu
   currentPlan: '当前计划',
   logout: '退出登录',
+  confirmLogoutTitle: '确认退出登录',
+  download: '下载',
+  copyFailed: '复制失败',
+  confirmLogoutDesc: '退出后需要重新验证才能继续使用。',
 
   // Chat Actions
   copy: '复制',
@@ -67,6 +71,9 @@ export const zh: Record<string, string> = {
 
   // Delete Dialog
   confirmDeleteTitle: '确认删除',
+  confirmDeleteConversation: '删除会话',
+  deleteConversationWarning: '会话及其消息、运行记录将一并删除，此操作不可恢复。',
+  sessionDeleted: '会话已删除',
   confirmDeleteDescription: '此操作无法撤销，请确认是否继续？',
   deleting: '删除中...',
   
@@ -265,6 +272,8 @@ export const en: Record<string, string> = {
   // User Menu
   currentPlan: 'Current Plan',
   logout: 'Logout',
+  confirmLogoutTitle: 'Confirm logout',
+  confirmLogoutDesc: 'You will need to sign in again to continue.',
 
   // Chat Actions
   copy: 'COPY',
@@ -274,6 +283,11 @@ export const en: Record<string, string> = {
 
   // Delete Dialog
   confirmDeleteTitle: 'Confirm Delete',
+  confirmDeleteConversation: 'Delete conversation',
+  deleteConversationWarning: 'Conversation, its messages and runs will be deleted. This cannot be undone.',
+  sessionDeleted: 'Conversation deleted',
+  download: 'Download',
+  copyFailed: 'Copy failed',
   confirmDeleteDescription: 'This action cannot be undone. Are you sure you want to continue?',
   deleting: 'Deleting...',
   
@@ -472,6 +486,8 @@ export const ja: Record<string, string> = {
   // User Menu
   currentPlan: '現在のプラン',
   logout: 'ログアウト',
+  confirmLogoutTitle: 'ログアウトの確認',
+  confirmLogoutDesc: '続行するには再度サインインが必要です。',
 
   // Chat Actions
   copy: 'コピー',
@@ -481,6 +497,11 @@ export const ja: Record<string, string> = {
 
   // Delete Dialog
   confirmDeleteTitle: '削除の確認',
+  confirmDeleteConversation: '会話を削除',
+  deleteConversationWarning: '会話とメッセージ・実行履歴はすべて削除されます。元に戻せません。',
+  sessionDeleted: '会話を削除しました',
+  download: 'ダウンロード',
+  copyFailed: 'コピーに失敗しました',
   confirmDeleteDescription: 'この操作は取り消せません。続行しますか？',
   deleting: '削除中...',
   

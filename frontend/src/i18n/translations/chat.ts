@@ -4,6 +4,14 @@ export const zh: Record<string, string> = {
   // Chat
   startConversation: '开始对话',
   initConversation: '开始新对话',
+  emptyTitle: '把任务交给专家团队',
+  emptySub: '描述你的目标，专家协作、计划审批与产物归档都在这里完成',
+  emptyCardTemplate: '从模板开始',
+  emptyCardTemplateDesc: '用技能模板一键起跑',
+  emptyCardExpert: '新建专家',
+  emptyCardExpertDesc: '定义专属协作专家',
+  emptyCardChat: '直接开聊',
+  emptyCardChatDesc: '输入框里写下第一句话',
   analyzingRequestStream: '正在分析请求流...',
 
   // Chat messages
@@ -121,6 +129,14 @@ export const en: Record<string, string> = {
   // Chat
   startConversation: 'Start Conversation',
   initConversation: 'Initialize conversation',
+  emptyTitle: 'Hand the task to your experts',
+  emptySub: 'Describe your goal — collaboration, plan approval and artifacts live here',
+  emptyCardTemplate: 'Start from template',
+  emptyCardTemplateDesc: 'Kick off with a skill template',
+  emptyCardExpert: 'New expert',
+  emptyCardExpertDesc: 'Define a custom expert',
+  emptyCardChat: 'Just start chatting',
+  emptyCardChatDesc: 'Type your first message below',
   analyzingRequestStream: 'Analyzing request stream...',
 
   // Chat messages
@@ -238,6 +254,14 @@ export const ja: Record<string, string> = {
   // Chat
   startConversation: '会話を開始',
   initConversation: '会話を開始',
+  emptyTitle: 'タスクを専門家チームへ',
+  emptySub: '目標を書くだけで、協業・計画承認・産物管理はここで完結',
+  emptyCardTemplate: 'テンプレから開始',
+  emptyCardTemplateDesc: 'スキルテンプレで即スタート',
+  emptyCardExpert: '専門家を作成',
+  emptyCardExpertDesc: '専属の協業専門家を定義',
+  emptyCardChat: 'すぐ会話を始める',
+  emptyCardChatDesc: '下の入力欄に最初の一言を',
   analyzingRequestStream: 'リクエストストリームを分析中...',
 
   // Chat messages

@@ -1,73 +1,85 @@
 /**
- * 空状态组件 - 统一版本
- * 支持两种变体：compact（聊天区域）和 detailed（Artifact 区域）
+ * 聊天空态组件（新会话引导）
+ *
+ * [设计] 蓝本首跑空态：品牌口袋标 + 主标题 + 副文案 + 三张引导卡
+ * （从模板开始 / 新建专家[admin] / 直接开聊）。垂直居中于对话区上半部。
  */
 
-import { Sparkles, LayoutGrid } from 'lucide-react'
+import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Rocket, UserPlus, MessageSquare, type LucideIcon } from 'lucide-react'
 import { useTranslation } from '@/i18n'
+import { useUserStore } from '@/store/userStore'
 
-interface EmptyStateProps {
-  /** 变体类型：compact 用于聊天，detailed 用于 Artifact 区域 */
-  variant?: 'compact' | 'detailed'
-  /** 自定义标题（detailed 变体有效） */
-  title?: string
-  /** 自定义描述（detailed 变体有效） */
-  description?: string
+interface GuideCard {
+  icon: LucideIcon
+  label: string
+  desc: string
+  onClick: () => void
 }
 
-export default function EmptyState({
-  variant = 'compact',
-  title,
-  description
-}: EmptyStateProps) {
+export default function ChatEmptyState() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const isAdmin = useUserStore(s => s.user?.role) === 'admin'
 
-  // Compact 变体：新会话引导（自然高度、重心上移，贴近输入台的语言）
-  if (variant === 'compact') {
-    return (
-      <div className="flex flex-col items-center justify-center pt-[16vh] text-center">
-        <div className="flex h-11 w-11 items-center justify-center rounded-[50%_50%_50%_0] bg-accent-brand">
-          <Sparkles className="h-5 w-5 text-accent-ink" />
-        </div>
-        <p className="mt-3 text-sm font-bold text-content-primary">
-          {t('initConversation')}
-        </p>
-        <p className="mt-1 text-xs text-content-muted">
-          {t('workbenchNewHint')}
-        </p>
-      </div>
-    )
-  }
+  const cards = useMemo<GuideCard[]>(() => {
+    const list: GuideCard[] = [
+      {
+        icon: Rocket,
+        label: t('emptyCardTemplate'),
+        desc: t('emptyCardTemplateDesc'),
+        onClick: () => navigate('/library'),
+      },
+    ]
+    if (isAdmin) {
+      list.push({
+        icon: UserPlus,
+        label: t('emptyCardExpert'),
+        desc: t('emptyCardExpertDesc'),
+        onClick: () => navigate('/admin/console'),
+      })
+    }
+    list.push({
+      icon: MessageSquare,
+      label: t('emptyCardChat'),
+      desc: t('emptyCardChatDesc'),
+      onClick: () => {
+        // 直接开聊：聚焦输入台
+        document.querySelector<HTMLTextAreaElement>('textarea')?.focus()
+      },
+    })
+    return list
+  }, [t, navigate, isAdmin])
 
-  // Detailed 变体：用于 Artifact 区域，更丰富的视觉
   return (
-    <div className="h-full flex flex-col items-center justify-center rounded-lg border border-dashed border-border/30 bg-surface-tint/30 p-8">
-      <div className="text-center space-y-6">
-        <div className="flex justify-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-card shadow-theme-card">
-            <LayoutGrid className="h-6 w-6 text-content-secondary" />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <h3 className="text-sm font-bold text-content-primary">
-            {title || t('noArtifacts')}
-          </h3>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
-            {description || '等待专家生成交付物。任务进行时，交付物将显示在这里。'}
-          </p>
-        </div>
-        <div className="flex justify-center gap-2 pt-4">
-          <div className="h-2 w-2 rounded-full bg-border/30" />
-          <div className="h-2 w-2 rounded-full bg-border/50" />
-          <div className="h-2 w-2 rounded-full bg-accent" />
-          <div className="h-2 w-2 rounded-full bg-border/50" />
-          <div className="h-2 w-2 rounded-full bg-border/30" />
-        </div>
-        <div className="pt-4 border-t border-border/20">
-          <div className="text-nano text-muted-foreground/70">
-            {t('workbenchNewHint')}
-          </div>
-        </div>
+    <div className="flex min-h-[52vh] flex-col items-center justify-center py-8 text-center">
+      {/* 品牌口袋标 */}
+      <div className="flex h-11 w-11 items-center justify-center rounded-[50%_50%_50%_0] bg-accent-brand">
+        <span className="font-display text-base font-bold text-accent-ink">X</span>
+      </div>
+      <h2 className="mt-4 text-lg font-bold text-content-primary">
+        {t('emptyTitle')}
+      </h2>
+      <p className="mt-1.5 text-[13px] text-content-muted">
+        {t('emptySub')}
+      </p>
+
+      {/* 引导三卡（蓝本 empty-cards） */}
+      <div className="mt-7 flex flex-wrap items-stretch justify-center gap-3.5 px-2">
+        {cards.map(({ icon: Icon, label, desc, onClick }) => (
+          <button
+            key={label}
+            onClick={onClick}
+            className="flex w-[180px] flex-col items-center gap-2 rounded-lg border border-border-divider bg-surface-card px-4 py-5 transition-all hover:-translate-y-px hover:shadow-theme-card"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-tint">
+              <Icon className="h-4 w-4 text-content-secondary" />
+            </span>
+            <span className="text-[13px] font-bold text-content-primary">{label}</span>
+            <span className="text-[11.5px] leading-relaxed text-content-muted">{desc}</span>
+          </button>
+        ))}
       </div>
     </div>
   )

@@ -38,7 +38,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           variant === "ghost" ? "bg-transparent" : "bg-surface-page",
           // 字体
           "px-4 py-2 text-sm",
-          "text-content-primary placeholder:text-content-secondary",
+          "text-content-primary placeholder:text-content-muted",
           // 阴影（主题自适应）
           "shadow-theme-input",
           // 过渡动画
@@ -133,7 +133,7 @@ const Textarea = React.forwardRef<
         "bg-surface-page",
         // 字体
         "px-4 py-3 text-sm",
-        "text-content-primary placeholder:text-content-secondary",
+        "text-content-primary placeholder:text-content-muted",
         // 阴影
         "shadow-theme-input",
         // 过渡动画
