@@ -42,7 +42,7 @@ export type TranslationKey =
   | 'workbenchTitle' | 'strataTitle' | 'strataSearch' | 'cmdSearch' | 'railLibrary' | 'groupToday' | 'groupYesterday' | 'groupThisWeek' | 'groupEarlier' | 'strataEmpty'
   | 'cmdGroupCommands' | 'cmdGroupSessions' | 'cmdNoResults' | 'cmdHint' | 'cmdNewSession' | 'cmdGoTheme'
   | 'sbOnline' | 'sbOffline' | 'sbCommands' | 'sbDbConnected' | 'sbDbDisconnected' | 'sbJump' | 'aiBylineFallback'
-  | 'version' | 'modelProviders' | 'disabledProviders' | 'administrator' | 'userManagement'
+  | 'version' | 'modelProviders' | 'disabledProviders' | 'administrator' | 'userManagement' | 'uuid' | 'userRole' | 'plan' | 'registeredAt'
   | 'chipAwaiting' | 'chipRunning'
   | 'canvasArtifacts' | 'canvasGallery' | 'canvasEmpty' | 'canvasGalleryEmpty' | 'openArtifact' | 'backToList'
   | 'taskControlTitle' | 'backToWorkbench' | 'goToDecide' | 'planCardTitle' | 'planStepCount' | 'relatedArtifacts' | 'workbenchNewHint'

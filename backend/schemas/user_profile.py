@@ -20,6 +20,7 @@ class UserProfileResponse(BaseModel):
     avatar: str | None = None
     plan: str
     role: UserRole
+    created_at: datetime | None = None
     updated_at: datetime | None = None
     # 是否已设置密码（布尔，不含哈希本身）——前端据此决定是否要求旧密码
     has_password: bool = False

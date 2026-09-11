@@ -78,6 +78,7 @@ def _to_profile_response(user: User) -> UserProfileResponse:
         avatar=user.avatar,
         plan=user.plan,
         role=user.role,
+        created_at=user.created_at,
         updated_at=user.updated_at,
         has_password=bool(user.password_hash),
     )

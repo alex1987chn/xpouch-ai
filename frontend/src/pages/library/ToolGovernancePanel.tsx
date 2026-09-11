@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Check, Save, ArrowLeft } from 'lucide-react'
+import { Save, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { PermissionLockCard } from '@/components/ui/lock-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/states'
+import { PillSwitch } from '@/pages/library/components/MCPCard'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import {
@@ -277,57 +278,77 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
    <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
     {selectedPolicy && draft ? (
      <>
-      <div className="flex items-center justify-between border-b border-border-divider px-4 py-3">
-       <div>
-        <div className="text-xs font-bold text-content-primary">
-         {selectedPolicy.tool_name}
+      <div className="flex items-center justify-between gap-3 border-b border-border-divider px-5 py-3.5">
+       <div className="min-w-0">
+        <div className="flex items-center gap-2">
+         <span className="truncate text-sm font-bold text-content-primary">
+          {selectedPolicy.tool_name}
+         </span>
+         {draft.approval_required ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-accent-warning/10 px-2 py-0.5 text-nano font-medium text-accent-warning">
+           <span className="h-1 w-1 animate-pulse rounded-full bg-accent-warning" />
+           {t('approvalRequired') || 'Approval'}
+          </span>
+         ) : (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-status-online/10 px-2 py-0.5 text-nano font-medium text-status-online">
+           <span className="h-1 w-1 rounded-full bg-status-online" />
+           {t('autoAllowed') || 'Auto'}
+          </span>
+         )}
         </div>
-        <div className="mt-1 text-xs text-content-muted">{selectedPolicy.description}</div>
+        <div className="mt-0.5 truncate text-[11.5px] text-content-muted">
+         {selectedPolicy.description || '—'}
+        </div>
        </div>
-       <div className="flex items-center gap-2 text-micro text-content-secondary">
-        <Check className="h-3.5 w-3.5" />
-        {selectedPolicy.source}
-       </div>
+       <span className="shrink-0 text-nano text-content-muted">
+        {selectedPolicy.source} · {selectedPolicy.risk_tier}
+       </span>
       </div>
 
       <div className="grid gap-4 p-4 md:grid-cols-2">
        <Field label={t('riskTier') || 'Risk Tier'}>
-        <select
-         value={draft.risk_tier}
-         disabled={!canEdit}
-         onChange={e => setDraft(prev => prev ? { ...prev, risk_tier: e.target.value as PolicyDraft['risk_tier'] } : prev)}
-         className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus disabled:opacity-60"
-        >
-         <option value="low">{t('riskLow') || 'Low'}</option>
-         <option value="medium">{t('riskMedium') || 'Medium'}</option>
-         <option value="high">{t('riskHigh') || 'High'}</option>
-        </select>
+        <div className="flex h-[34px] w-fit items-center overflow-hidden rounded-full border border-border-default bg-surface-page disabled:opacity-60">
+         {(['low', 'medium', 'high'] as const).map((tier, i) => (
+          <button
+           key={tier}
+           type="button"
+           disabled={!canEdit}
+           onClick={() => setDraft(prev => prev ? { ...prev, risk_tier: tier } : prev)}
+           className={cn(
+            'h-full px-4 text-xs transition-colors',
+            i > 0 && 'border-l border-border-divider',
+            draft.risk_tier === tier
+             ? 'bg-surface-tint font-bold text-content-primary'
+             : 'text-content-muted hover:text-content-primary'
+           )}
+          >
+           {tier === 'low' ? (t('riskLow') || 'Low') : tier === 'medium' ? (t('riskMedium') || 'Medium') : (t('riskHigh') || 'High')}
+          </button>
+         ))}
+        </div>
        </Field>
        <Field label={t('enabled') || 'Enabled'}>
-        <label className="flex h-[42px] items-center gap-2 border-theme-input border-border-default bg-surface-page px-3 text-sm text-content-primary">
-         <input
-          type="checkbox"
-          checked={draft.enabled}
+        <div className="flex h-[34px] items-center gap-2.5">
+         <PillSwitch
+          on={draft.enabled}
           disabled={!canEdit}
-          onChange={e => setDraft(prev => prev ? { ...prev, enabled: e.target.checked } : prev)}
+          onToggle={() => setDraft(prev => prev ? { ...prev, enabled: !prev.enabled } : prev)}
          />
-         {draft.enabled ? t('enabled') || 'Enabled' : t('disabled') || 'Disabled'}
-        </label>
+         <span className="text-xs text-content-secondary">
+          {draft.enabled ? t('enabled') || 'Enabled' : t('disabled') || 'Disabled'}
+         </span>
+        </div>
        </Field>
        <Field label={t('approvalRequired') || 'Approval Required'}>
-        <label className="flex h-[42px] items-center gap-2 border-theme-input border-border-default bg-surface-page px-3 text-sm text-content-primary">
-         <input
-          type="checkbox"
-          checked={draft.approval_required}
+        <div className="flex h-[34px] items-center gap-2.5">
+         <PillSwitch
+          on={draft.approval_required}
           disabled={!canEdit}
-          onChange={e => setDraft(prev => prev ? { ...prev, approval_required: e.target.checked } : prev)}
+          onToggle={() => setDraft(prev => prev ? { ...prev, approval_required: !prev.approval_required } : prev)}
          />
-         {draft.approval_required ? t('approvalRequired') || 'Approval Required' : t('autoAllowed') || 'Auto Allowed'}
-        </label>
-       </Field>
-       <Field label={t('source') || 'Source'}>
-        <div className="flex h-[42px] items-center border-theme-input border-border-default bg-surface-page px-3 text-sm text-content-secondary">
-         {selectedPolicy.source}
+         <span className="text-xs text-content-secondary">
+          {draft.approval_required ? t('approvalRequired') || 'Approval Required' : t('autoAllowed') || 'Auto Allowed'}
+         </span>
         </div>
        </Field>
        <Field label={t('allowedExperts') || 'Allowed Experts'} className="md:col-span-2">

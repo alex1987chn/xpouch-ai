@@ -1,5 +1,12 @@
-﻿import { useState, useRef, useEffect } from 'react'
-import { createPortal } from 'react-dom'
+/**
+ * ModelSelector - 模型选择器
+ *
+ * [设计] 分组行卡单选（与设置中心 ModelSection 同语法）：
+ * 按 provider 分组小标题 + 模型行卡（名称 + 元信息 + 圆形 radio）。
+ * 替代原双下拉（provider/model 两个 portal 菜单）。
+ */
+
+import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { useModelsQuery } from '@/hooks/queries/useModelsQuery'
 import { useTranslation } from '@/i18n'
@@ -8,182 +15,73 @@ interface ModelSelectorProps {
   value: string
   onChange: (modelId: string) => void
   label?: string
+  disabled?: boolean
 }
 
-export default function ModelSelector({ value, onChange, label }: ModelSelectorProps) {
+export default function ModelSelector({ value, onChange, label, disabled }: ModelSelectorProps) {
   const { t } = useTranslation()
   // 模型列表来自后端 GET /api/models（单一真相源）
   const { data: models = [] } = useModelsQuery()
 
-  // 使用计算属性替代 state + useEffect 同步
-  // 当前选中的模型
-  const currentModel = models.find(m => m.id === value)
-  // 有效的 provider：优先从当前模型计算，否则使用默认值
-  const effectiveProvider = currentModel?.provider || 'deepseek'
-
-  // 内部状态只用于下拉菜单展开控制
-  const [showProviderDropdown, setShowProviderDropdown] = useState(false)
-  const [showModelDropdown, setShowModelDropdown] = useState(false)
-
-  const providerDropdownRef = useRef<HTMLDivElement>(null)
-  const modelDropdownRef = useRef<HTMLDivElement>(null)
-
-  // 获取唯一供应商列表
-  const providers = Array.from(new Set(models.map(m => m.provider)))
-
-  // 获取当前供应商的模型列表（使用计算出的 effectiveProvider）
-  const currentProviderModels = models.filter(m => m.provider === effectiveProvider)
-
-  // 点击外部关闭下拉菜单
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node
-
-      // 检查点击是否在下拉菜单容器内
-      const isClickInsideProvider = providerDropdownRef.current?.contains(target)
-      const isClickInsideModel = modelDropdownRef.current?.contains(target)
-
-      // 检查点击是否在 Portal 渲染的下拉菜单内
-      const providerDropdown = document.querySelector('[data-provider-dropdown]')
-      const modelDropdown = document.querySelector('[data-model-dropdown]')
-      const isClickInProviderDropdown = providerDropdown?.contains(target)
-      const isClickInModelDropdown = modelDropdown?.contains(target)
-
-      if (!isClickInsideProvider && !isClickInProviderDropdown) {
-        setShowProviderDropdown(false)
-      }
-      if (!isClickInsideModel && !isClickInModelDropdown) {
-        setShowModelDropdown(false)
-      }
+  // 按 provider 分组（保持后端顺序）
+  const groups = useMemo(() => {
+    const map = new Map<string, typeof models>()
+    for (const m of models) {
+      const list = map.get(m.provider) ?? []
+      list.push(m)
+      map.set(m.provider, list)
     }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const handleProviderSelect = (provider: string) => {
-    // 自动选择该 provider 的第一个模型
-    const firstModel = models.find(m => m.provider === provider)
-    if (firstModel) {
-      onChange(firstModel.id)
-    }
-    setShowProviderDropdown(false)
-  }
-
-  const handleModelSelect = (modelId: string) => {
-    onChange(modelId)
-    setShowModelDropdown(false)
-  }
+    return Array.from(map.entries())
+  }, [models])
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {label && (
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-bold text-content-secondary">
-            {label}
-          </label>
-        </div>
+        <label className="block text-xs font-bold text-content-secondary">
+          {label}
+        </label>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        {/* 供应商选择 */}
-        <div className="relative" ref={providerDropdownRef}>
-          <label className="text-nano text-content-secondary mb-1 block">
-            {t('provider')}
-          </label>
-          <button
-            type="button"
-            onClick={() => setShowProviderDropdown(!showProviderDropdown)}
-            className="w-full px-3 py-2 border-theme-input border-border-default bg-surface-page text-xs text-left flex items-center justify-between hover:border-border-focus transition-colors"
-          >
-            <span className="font-mono">{effectiveProvider}</span>
-            <span className="text-content-secondary">▼</span>
-          </button>
-          {showProviderDropdown && createPortal(
-            <div
-              data-provider-dropdown
-              className="fixed border-theme-card border-border-default bg-surface-card shadow-theme-card z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
-              style={{
-                width: providerDropdownRef.current?.getBoundingClientRect().width || 200,
-                left: providerDropdownRef.current?.getBoundingClientRect().left || 0,
-                top: (providerDropdownRef.current?.getBoundingClientRect().bottom || 0) + 4
-              }}
-            >
-              {providers.map((provider) => (
-                  <button
-                  key={provider}
-                  type="button"
-                  onClick={() => handleProviderSelect(provider)}
-                  className={cn(
-                    'w-full px-3 py-2.5 text-left text-xs transition-all pointer-events-auto relative',
-                    'hover:bg-surface-tint hover:text-content-primary',
-                    effectiveProvider === provider
-                      ? 'bg-surface-tint text-content-primary font-bold'
-                      : 'bg-transparent text-content-primary'
-                  )}
-                >
-                  <span className="flex items-center gap-2">
-                    {effectiveProvider === provider && (
-                      <span className="w-1.5 h-1.5 bg-content-primary rounded-full" />
-                    )}
-                    {provider}
-                  </span>
-                </button>
-              ))}
-            </div>,
-            document.body
-          )}
-        </div>
-
-        {/* 模型选择 */}
-        <div className="relative" ref={modelDropdownRef}>
-          <label className="text-nano text-content-secondary mb-1 block">
-            {t('model')}
-          </label>
-          <button
-            type="button"
-            onClick={() => setShowModelDropdown(!showModelDropdown)}
-            className="w-full px-3 py-2 border-theme-input border-border-default bg-surface-page text-xs text-left flex items-center justify-between hover:border-border-focus transition-colors"
-          >
-            <span>{models.find(m => m.id === value)?.name || 'Select'}</span>
-            <span className="text-content-secondary">▼</span>
-          </button>
-          {showModelDropdown && createPortal(
-            <div
-              data-model-dropdown
-              className="fixed border-theme-card border-border-default bg-surface-card shadow-theme-card z-[9999] max-h-40 overflow-y-auto bauhaus-scrollbar"
-              style={{
-                width: modelDropdownRef.current?.getBoundingClientRect().width || 200,
-                left: modelDropdownRef.current?.getBoundingClientRect().left || 0,
-                top: (modelDropdownRef.current?.getBoundingClientRect().bottom || 0) + 4
-              }}
-            >
-              {currentProviderModels.map((model) => (
-                <button
-                  key={model.id}
-                  type="button"
-                  onClick={() => handleModelSelect(model.id)}
-                  className={cn(
-                    'w-full px-3 py-2.5 text-left text-xs transition-all pointer-events-auto relative',
-                    'hover:bg-surface-tint hover:text-content-primary',
-                    value === model.id
-                      ? 'bg-surface-tint text-content-primary font-bold'
-                      : 'bg-transparent text-content-primary'
-                  )}
-                >
-                  <span className="flex items-center gap-2">
-                    {value === model.id && (
-                      <span className="w-1.5 h-1.5 bg-content-primary rounded-full" />
-                    )}
+      {groups.map(([provider, providerModels]) => (
+        <div key={provider}>
+          <div className="mb-1.5 px-1 text-[11px] font-bold text-content-muted">
+            {provider}
+          </div>
+          <div className="space-y-1.5">
+            {providerModels.map(model => (
+              <button
+                key={model.id}
+                type="button"
+                disabled={disabled}
+                onClick={() => onChange(model.id)}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-md border p-2.5 text-left transition-all',
+                  value === model.id
+                    ? 'border-border-default bg-surface-card shadow-theme-card'
+                    : 'border-border-divider bg-surface-card hover:border-border-hover',
+                  disabled && 'cursor-not-allowed opacity-60'
+                )}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13px] font-bold text-content-primary">
                     {model.name}
-                  </span>
-                </button>
-              ))}
-            </div>,
-            document.body
-          )}
+                  </div>
+                  <div className="truncate text-[11px] text-content-muted">
+                    {Math.round(model.context_window / 1000)}K tokens
+                    {model.thinking_toggle ? ` · ${t('thinkingMode')} ✓` : ''}
+                  </div>
+                </div>
+                <span
+                  className={cn(
+                    'h-4 w-4 shrink-0 rounded-full border-2 transition-all',
+                    value === model.id ? 'border-accent-brand bg-accent-brand' : 'border-border-hover'
+                  )}
+                />
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ))}
     </div>
   )
 }
