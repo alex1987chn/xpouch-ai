@@ -287,8 +287,10 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
 
   return (
     <div className={cn(
-      "flex flex-col lg:flex-row gap-4 p-4 bg-surface-page overflow-y-auto lg:overflow-hidden",
-      embedded ? "h-full" : "h-[100dvh]"
+      "flex flex-col lg:flex-row gap-4",
+      embedded
+        ? "h-full min-h-0"
+        : "h-[100dvh] p-4 bg-surface-page overflow-y-auto lg:overflow-hidden"
     )}>
       {/* Toast */}
       {toast && (
