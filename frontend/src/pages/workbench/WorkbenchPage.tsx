@@ -18,7 +18,7 @@ import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
 
 export default function WorkbenchPage() {
-  const { threadId } = useParams<{ threadId: string }>()
+  const { id: threadId } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
   // 新会话：清残留聊天态（从旧线程返回 /workbench 时）

@@ -54,7 +54,7 @@ export const router = createBrowserRouter([
         element: <WorkbenchPageWrapper />
       },
       {
-        path: 'workbench/:threadId',
+        path: 'workbench/:id',
         element: <WorkbenchPageWrapper />
       },
       {

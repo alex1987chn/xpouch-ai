@@ -10,7 +10,7 @@
  * （待裁决琥珀/执行中绿）+ 任务控制入口——审批注意力层的页内投影。
  */
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
 import { useQueryClient } from '@tanstack/react-query'
@@ -20,6 +20,7 @@ import { useSessionRestore } from '@/hooks/useSessionRestore'
 import { useRunPolling } from '@/hooks/useRunPolling'
 import { useChatSessionHandoff, usePendingMessageRetry } from '@/hooks/chat/useChatSession'
 import { useTaskStore } from '@/store/taskStore'
+import { useChatStore } from '@/store/chatStore'
 import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery'
 import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
@@ -41,6 +42,16 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
   // URL ?agentId 优先（从资源库/首页带专家进入），否则默认助手
   const agentIdParam = searchParams.get('agentId')
   const normalizedAgentId = agentIdParam || SYSTEM_AGENTS.DEFAULT_CHAT
+
+  // 同步会话 ID 到 store（与 UnifiedChatPage 同款：restore 前的 API 调用依赖它）
+  useEffect(() => {
+    if (threadId) {
+      const currentId = useChatStore.getState().currentConversationId
+      if (currentId !== threadId) {
+        useChatStore.getState().setCurrentConversationId(threadId)
+      }
+    }
+  }, [threadId])
 
   // ===== 聊天编排（与 UnifiedChatPage 同序列） =====
   const {
