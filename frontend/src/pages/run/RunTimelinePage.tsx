@@ -51,7 +51,7 @@ function EventIcon({ eventType }: { eventType: RunEventType }) {
 
   return (
     <div className={cn(
-      'flex h-8 w-8 items-center justify-center rounded-full border-2 bg-surface-card',
+      'flex h-8 w-8 items-center justify-center rounded-full border-theme-card bg-surface-card',
       finalColor.replace('text-', 'border-')
     )}>
       <Icon className={cn('h-4 w-4', finalColor)} />

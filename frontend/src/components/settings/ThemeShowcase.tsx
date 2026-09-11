@@ -56,7 +56,7 @@ export function ThemeShowcase() {
       {/* Content 文字颜色 */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-content-primary">Content - 文字颜色</h2>
-        <div className="bg-surface-card p-4 rounded-lg border-2 border-border-default space-y-3">
+        <div className="bg-surface-card p-4 rounded-lg border-theme-card border-border-default space-y-3">
           <p className="text-content-primary text-lg font-medium">
             content-primary：主标题文字
           </p>
@@ -143,10 +143,10 @@ export function ThemeShowcase() {
           <button className="px-4 py-2 bg-accent text-content-inverted rounded hover:bg-accent-hover transition-colors">
             主要按钮
           </button>
-          <button className="px-4 py-2 bg-surface-card border-2 border-border-default text-content-primary rounded hover:bg-surface-elevated transition-colors">
+          <button className="px-4 py-2 bg-surface-card border-theme-button border-border-default text-content-primary rounded hover:bg-surface-elevated transition-colors">
             次要按钮
           </button>
-          <button className="px-4 py-2 border-2 border-accent-destructive text-accent-destructive rounded hover:bg-accent-destructive hover:text-content-inverted transition-colors">
+          <button className="px-4 py-2 border-theme-button border-accent-destructive text-accent-destructive rounded hover:bg-accent-destructive hover:text-content-inverted transition-colors">
             危险按钮
           </button>
           <button className="px-4 py-2 text-content-muted hover:text-content-primary transition-colors">
@@ -176,7 +176,7 @@ export function ThemeShowcase() {
 // 颜色卡片组件
 function ColorCard({ name, className, description }: { name: string, className: string, description: string }) {
   return (
-    <div className={cn('p-4 rounded-lg border-2', className)}>
+    <div className={cn('p-4 rounded-lg border-theme-card', className)}>
       <div className="text-xs font-mono text-content-secondary mb-1">{name}</div>
       <div className="text-sm text-content-primary">{description}</div>
     </div>
@@ -186,7 +186,7 @@ function ColorCard({ name, className, description }: { name: string, className: 
 // 边框卡片组件
 function BorderCard({ name, className }: { name: string, className: string }) {
   return (
-    <div className={cn('p-4 rounded-lg border-2 bg-surface-card', className)}>
+    <div className={cn('p-4 rounded-lg border-theme-card bg-surface-card', className)}>
       <div className="text-xs font-mono text-content-secondary">{name}</div>
     </div>
   )
@@ -207,7 +207,7 @@ function AccentCard({ name, bgClass, textClass }: { name: string, bgClass: strin
 // 阴影卡片组件
 function ShadowCard({ name, className }: { name: string, className: string }) {
   return (
-    <div className={cn('p-4 rounded-lg bg-surface-card border-2 border-border-default', className)}>
+    <div className={cn('p-4 rounded-lg bg-surface-card border-theme-card border-border-default', className)}>
       <div className="text-xs font-mono text-content-secondary">{name}</div>
     </div>
   )
@@ -218,7 +218,7 @@ function OpacityCard({ opacity, className }: { opacity: string, className: strin
   return (
     <div className="relative">
       <div className="absolute inset-0 bg-surface-overlay rounded" />
-      <div className={cn('relative p-4 rounded border-2 border-border-default', className)}>
+      <div className={cn('relative p-4 rounded border-theme-card border-border-default', className)}>
         <div className="text-sm font-medium text-content-primary">{opacity}</div>
       </div>
     </div>

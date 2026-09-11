@@ -116,7 +116,7 @@ export default function ArtifactsPage() {
                 setPage(1)
               }}
               className={cn(
-                'px-3 py-1 border-2 font-mono text-xs uppercase tracking-wider transition-all duration-150',
+                'px-3 py-1 border-theme-button font-mono text-xs tracking-wider transition-all duration-150',
                 typeFilter === f.key
                   ? 'bg-content-primary text-surface-page border-border'
                   : 'bg-surface-card text-content-secondary border-border-default',
@@ -161,10 +161,10 @@ export default function ArtifactsPage() {
                   key={item.id}
                   onClick={() => openDetail(item)}
                   style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
-                  className="stagger-item text-left border-2 border-border-default bg-surface-card p-4 flex flex-col gap-3 min-h-[160px] transition-all duration-150 hover:border-accent hover:[transform:var(--transform-button-sm-hover)] active:[transform:var(--transform-button-active)]"
+                  className="stagger-item text-left border-theme-card border-border-default bg-surface-card p-4 flex flex-col gap-3 min-h-[160px] transition-all duration-150 hover:border-accent hover:[transform:var(--transform-button-sm-hover)] active:[transform:var(--transform-button-active)]"
                 >
                   <div
-                    className="self-start font-mono text-micro uppercase px-1 border-2 border-border text-white"
+                    className="self-start font-mono text-micro px-1 border-theme-button border-border text-white"
                     style={{ backgroundColor: color }}
                   >
                     {item.type}
@@ -190,7 +190,7 @@ export default function ArtifactsPage() {
             <button
               disabled={page <= 1}
               onClick={() => setPage(p => Math.max(1, p - 1))}
-              className="px-3 py-1 border-2 border-border-default font-mono text-xs disabled:opacity-40 hover:border-accent"
+              className="px-3 py-1 border-theme-button border-border-default font-mono text-xs disabled:opacity-40 hover:border-accent"
             >
               {t('prev')}
             </button>
@@ -200,7 +200,7 @@ export default function ArtifactsPage() {
             <button
               disabled={page >= data.pages}
               onClick={() => setPage(p => p + 1)}
-              className="px-3 py-1 border-2 border-border-default font-mono text-xs disabled:opacity-40 hover:border-accent"
+              className="px-3 py-1 border-theme-button border-border-default font-mono text-xs disabled:opacity-40 hover:border-accent"
             >
               {t('next')}
             </button>
@@ -219,14 +219,14 @@ export default function ArtifactsPage() {
         >
           <div
             {...a11y}
-            className={`bg-surface-card border-2 border-border w-full h-full flex flex-col shadow-[8px_8px_0_0_var(--color-shadow)] transition-all duration-200 ${
+            className={`bg-surface-card border-theme-card border-border w-full h-full flex flex-col shadow-theme-card transition-all duration-200 ${
               expanded ? 'max-w-[96vw] max-h-[94vh]' : 'max-w-4xl max-h-[85vh]'
             }`}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border bg-surface-elevated">
               <div className="flex items-center gap-2 min-w-0">
-                <span id="artifact-detail-title" className="font-mono text-micro uppercase bg-content-primary text-surface-page px-1">
+                <span id="artifact-detail-title" className="font-mono text-micro bg-content-primary text-surface-page px-1">
                   {detail.type}
                 </span>
                 <span className="font-bold text-sm text-content-primary truncate">
@@ -245,7 +245,7 @@ export default function ArtifactsPage() {
                   onClick={() => navigate(`/chat/${detail.thread_id}`)}
                   title={t('openSourceThread')}
                   aria-label={t('openSourceThread')}
-                  className="w-8 h-8 flex items-center justify-center border-2 border-border-default hover:bg-accent hover:border-accent transition-colors"
+                  className="w-8 h-8 flex items-center justify-center border-theme-button border-border-default hover:bg-accent hover:border-accent transition-colors"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
                 </button>
@@ -256,7 +256,7 @@ export default function ArtifactsPage() {
                 title={shareCopied ? t('artifactShareCopied') : t('artifactShareAction')}
                 aria-label={t('artifactShareAction')}
                 className={cn(
-                  'w-8 h-8 flex items-center justify-center border-2 transition-colors disabled:opacity-50',
+                  'w-8 h-8 flex items-center justify-center border-theme-button transition-colors disabled:opacity-50',
                   shareCopied
                     ? 'border-status-online text-status-online'
                     : 'border-border-default hover:bg-accent hover:border-accent'
@@ -268,7 +268,7 @@ export default function ArtifactsPage() {
                 onClick={() => setExpanded(v => !v)}
                 title={expanded ? t('widthNarrow') : t('widthExpand')}
                 aria-label={expanded ? t('widthNarrow') : t('widthExpand')}
-                className="w-8 h-8 flex items-center justify-center border-2 border-border-default hover:bg-accent hover:border-accent transition-colors"
+                className="w-8 h-8 flex items-center justify-center border-theme-button border-border-default hover:bg-accent hover:border-accent transition-colors"
               >
                 {expanded ? <Shrink className="w-3.5 h-3.5" /> : <Expand className="w-3.5 h-3.5" />}
               </button>
@@ -276,7 +276,7 @@ export default function ArtifactsPage() {
                 onClick={() => setDetail(null)}
                 title={t('close')}
                 aria-label={t('close')}
-                className="w-8 h-8 flex items-center justify-center border-2 border-border-default hover:bg-accent hover:border-accent transition-colors"
+                className="w-8 h-8 flex items-center justify-center border-theme-button border-border-default hover:bg-accent hover:border-accent transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>

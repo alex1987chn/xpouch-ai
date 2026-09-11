@@ -30,9 +30,9 @@ const themeIcons: Record<Theme, React.ReactNode> = {
  * 主题预览色块（展示主题的代表色）
  */
 const themePreview: Record<Theme, string> = {
-  soft: 'bg-accent-brand border-2 border-border-default',
-  dark: 'bg-surface-card border-2 border-border-default',
-  bauhaus: 'bg-accent-brand border-2 border-content-primary',
+  soft: 'bg-accent-brand border border-border-default',
+  dark: 'bg-surface-card border border-border-default',
+  bauhaus: 'bg-accent-brand border border-content-primary',
 }
 
 /**
@@ -63,7 +63,7 @@ function FloatingThemeSwitcher({ className }: { className?: string }) {
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           'w-10 h-10 rounded-full flex items-center justify-center',
-          'bg-surface-card border-2 border-border-default',
+          'bg-surface-card border-theme-card border-border-default',
           'shadow-theme-button hover:shadow-theme-button-lg',
           'transition-all duration-fast',
           'hover:-translate-x-0.5 hover:-translate-y-0.5',
@@ -83,12 +83,12 @@ function FloatingThemeSwitcher({ className }: { className?: string }) {
           className={cn(
             'absolute bottom-12 right-0',
             'w-48 p-2 rounded-lg',
-            'bg-surface-card border-2 border-border-default',
+            'bg-surface-card border-theme-card border-border-default',
             'shadow-theme-dropdown',
             'animate-in fade-in slide-in-from-bottom-2 duration-fast'
           )}
         >
-          <div className="text-xs font-mono text-content-muted uppercase tracking-wider px-2 py-1.5">
+          <div className="text-xs font-mono text-content-muted tracking-wider px-2 py-1.5">
             选择主题
           </div>
           
@@ -161,7 +161,7 @@ function InlineThemeSwitcher({ className }: { className?: string }) {
           onClick={() => setTheme(themeMeta.id)}
           className={cn(
             'flex flex-col items-center gap-2 p-3 rounded-lg',
-            'border-2 transition-all duration-fast',
+            'border-theme-button transition-all duration-fast',
             theme === themeMeta.id
               ? 'border-accent bg-accent-subtle'
               : 'border-border-default bg-surface-card hover:border-border-hover'

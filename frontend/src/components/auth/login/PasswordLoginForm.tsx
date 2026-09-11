@@ -17,7 +17,7 @@ interface PasswordLoginFormProps {
 }
 
 const INPUT_CLS =
-  'w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md'
+  'w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md'
 
 export function PasswordLoginForm({
   t,
@@ -32,7 +32,7 @@ export function PasswordLoginForm({
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <label className="font-mono text-micro font-bold uppercase text-content-secondary">
+        <label className="font-mono text-micro font-bold text-content-secondary">
           {t('identifierLabel')}
         </label>
         <input
@@ -45,7 +45,7 @@ export function PasswordLoginForm({
         />
       </div>
       <div className="space-y-1">
-        <label className="font-mono text-micro font-bold uppercase text-content-secondary">
+        <label className="font-mono text-micro font-bold text-content-secondary">
           PASSWORD
         </label>
         <input
@@ -66,7 +66,7 @@ export function PasswordLoginForm({
       <button
         onClick={onSubmit}
         disabled={!identifier.trim() || !password || loading}
-        className="w-full py-3 border-2 border-border-default bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
+        className="w-full py-3 border-theme-button border-border-default bg-accent-hover text-accent-ink font-bold font-mono text-sm shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
       >
         {loading ? 'SIGNING...' : '登录 / LOGIN'}
       </button>

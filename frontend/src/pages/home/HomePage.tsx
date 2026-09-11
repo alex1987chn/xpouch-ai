@@ -58,7 +58,7 @@ function SceneCard({
       <div className="absolute bottom-0 right-0 w-0 h-0 border-b-[20px] border-r-[20px] border-b-accent-hover border-r-transparent transition-all duration-300 group-hover:border-b-[40px] group-hover:border-r-[40px]" />
 
       <div className="flex justify-between items-start">
-        <div className="p-2 border-2 border-border bg-surface-page group-hover:bg-surface-card transition-colors">
+        <div className="p-2 border-theme-card border-border bg-surface-page group-hover:bg-surface-card transition-colors">
           <Icon className="w-6 h-6 stroke-[2.5]" />
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -123,7 +123,7 @@ function ConstructCard({
                 onEdit()
               }}
               className={cn(
-                "w-7 h-7 border-2 border-border bg-surface-page",
+                "w-7 h-7 border-theme-card border-border bg-surface-page",
                 "flex items-center justify-center",
                 "hover:bg-accent-hover hover:text-content-primary hover:border-accent-hover",
                 "transition-all duration-150",
@@ -142,7 +142,7 @@ function ConstructCard({
                 onDelete()
               }}
               className={cn(
-                "w-7 h-7 border-2 border-border bg-surface-page",
+                "w-7 h-7 border-theme-card border-border bg-surface-page",
                 "flex items-center justify-center",
                 "hover:bg-status-offline hover:text-content-inverted hover:border-status-offline",
                 "transition-all duration-150",
@@ -191,12 +191,12 @@ function CreateNewCard({ onClick }: { onClick?: () => void }) {
   return (
     <div
       onClick={onClick}
-      className="border-2 border-dashed border-content-secondary p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-surface-card hover:border-solid hover:border-accent-hover hover:shadow-theme-card-accent transition-all"
+      className="border-theme-card border-dashed border-content-secondary p-6 cursor-pointer group flex flex-col items-center justify-center h-44 bg-transparent hover:bg-surface-card hover:border-solid hover:border-accent-hover hover:shadow-theme-card-accent transition-all"
     >
-      <div className="w-12 h-12 border-2 border-content-primary flex items-center justify-center mb-4 text-3xl group-hover:bg-accent-hover group-hover:border-accent-hover group-hover:text-content-primary transition-colors bg-surface-page">
+      <div className="w-12 h-12 border-theme-card border-content-primary flex items-center justify-center mb-4 text-3xl group-hover:bg-accent-hover group-hover:border-accent-hover group-hover:text-content-primary transition-colors bg-surface-page">
         +
       </div>
-      <span className="font-bold font-mono uppercase tracking-wider text-sm group-hover:text-content-primary">
+      <span className="font-bold font-mono tracking-wider text-sm group-hover:text-content-primary">
         {t('initializeNew')}
       </span>
     </div>
@@ -419,7 +419,7 @@ export default function HomePage() {
 
           {/* Command Input */}
           <div className="flex-none mb-16 relative group">
-            <div className="absolute -top-3 left-4 bg-surface-page px-2 font-mono text-xs font-bold border-2 border-border z-20 text-content-secondary">
+            <div className="absolute -top-3 left-4 bg-surface-page px-2 font-mono text-xs font-bold border-theme-card border-border z-20 text-content-secondary">
               {t('commandInput')}
             </div>
 
@@ -427,7 +427,7 @@ export default function HomePage() {
             <div className="absolute inset-0 bg-[rgb(var(--shadow-color))] translate-x-2 translate-y-2 group-focus-within:translate-x-3 group-focus-within:translate-y-3 group-focus-within:bg-accent-hover transition-all" />
 
             {/* Input Container */}
-            <div className="relative border-2 border-border bg-surface-card flex flex-col">
+            <div className="relative border-theme-card border-border bg-surface-card flex flex-col">
               {/* Textarea with Line Numbers */}
               <div className="flex-1 relative flex">
                 {/* Line Numbers */}
@@ -457,10 +457,10 @@ export default function HomePage() {
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   {/* 附件按钮 */}
                   <div className="flex gap-1 flex-shrink-0">
-                    <button aria-label={t('image')} title={t('image')} className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-surface-card hover:border-border transition-all">
+                    <button aria-label={t('image')} title={t('image')} className="p-1.5 sm:p-2 border border-transparent hover:bg-surface-card hover:border-border transition-all">
                       <Image className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
                     </button>
-                    <button aria-label={t('attachment')} title={t('attachment')} className="p-1.5 sm:p-2 border-2 border-transparent hover:bg-surface-card hover:border-border transition-all">
+                    <button aria-label={t('attachment')} title={t('attachment')} className="p-1.5 sm:p-2 border border-transparent hover:bg-surface-card hover:border-border transition-all">
                       <Paperclip className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
                     </button>
                   </div>
@@ -486,7 +486,7 @@ export default function HomePage() {
               <div className="flex justify-between items-end mb-6 border-b-2 border-border pb-2 w-full">
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 bg-accent-hover border border-border" />
-                  <h3 className="text-sm font-black uppercase tracking-widest">{t('recommended')}</h3>
+                  <h3 className="text-sm font-black tracking-widest">{t('recommended')}</h3>
                 </div>
                 <div className="font-mono text-micro text-content-secondary">SHOWING 3 OF 12</div>
               </div>
@@ -503,7 +503,7 @@ export default function HomePage() {
               <div className="flex justify-between items-end mb-6 border-b-2 border-border pb-2 w-full">
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 bg-accent border border-border" />
-                  <h3 className="text-sm font-black uppercase tracking-widest">{t('myConstructs')}</h3>
+                  <h3 className="text-sm font-black tracking-widest">{t('myConstructs')}</h3>
                 </div>
               </div>
 

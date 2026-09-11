@@ -54,7 +54,7 @@ function BauhausProgressBar({ current, max }: { current: number; max: number }) 
           {current} / {max} {t('chars')}
         </span>
         <span className={cn(
-          'font-bold uppercase',
+          'font-bold',
           progress >= 1
             ? 'text-green-600'
             : progress >= 0.8
@@ -133,13 +133,13 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
-              className="flex items-center justify-center w-9 h-9 border-2 border-border-default hover:bg-accent-hover transition-colors"
+              className="flex items-center justify-center w-9 h-9 border-theme-button border-border-default hover:bg-accent-hover transition-colors"
             >
               <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
             </button>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-accent-hover"></div>
-              <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
+              <span className="font-mono text-xs font-bold tracking-widest text-content-secondary">
                 /// {isEditMode ? t('editAgent') : t('createAgent')}
               </span>
             </div>
@@ -150,8 +150,8 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
             onClick={handleSave}
             disabled={!name || !systemPrompt}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 border-2 border-content-primary',
-              'bg-accent-hover text-content-primary font-mono text-xs font-bold uppercase',
+              'flex items-center gap-2 px-4 py-2 border-theme-button border-content-primary',
+              'bg-accent-hover text-accent-ink font-mono text-xs font-bold',
               'shadow-theme-card',
               'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-theme-card-hover',
               'active:translate-x-[1px] active:translate-y-[1px] active:shadow-theme-button-active',
@@ -182,7 +182,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-                    <label className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
+                    <label className="font-mono text-micro font-bold tracking-widest text-content-secondary">
                       {t('agentName')} <span className="text-accent-hover">*</span>
                     </label>
                   </div>
@@ -191,7 +191,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={t('giveName')}
-                    className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors"
+                    className="w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors"
                   />
                 </div>
 
@@ -199,7 +199,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-                    <label className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
+                    <label className="font-mono text-micro font-bold tracking-widest text-content-secondary">
                       {t('category')}
                     </label>
                   </div>
@@ -216,7 +216,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-                  <label className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
+                  <label className="font-mono text-micro font-bold tracking-widest text-content-secondary">
                     {t('description')}
                   </label>
                 </div>
@@ -225,7 +225,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={t('simpleDescription')}
-                  className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors"
+                  className="w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors"
                 />
               </div>
 
@@ -241,7 +241,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-                    <label className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
+                    <label className="font-mono text-micro font-bold tracking-widest text-content-secondary">
                       {t('systemPrompt')} <span className="text-accent-hover">*</span>
                     </label>
                   </div>
@@ -258,7 +258,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
                   placeholder={t('systemPromptPlaceholder')}
                   rows={8}
                   maxLength={2000}
-                  className="w-full px-3 py-3 border-2 border-border-default bg-surface-page font-mono text-sm leading-relaxed focus:outline-none focus:border-accent-hover transition-colors resize-none"
+                  className="w-full px-3 py-3 border-theme-input border-border-default bg-surface-page font-mono text-sm leading-relaxed focus:outline-none focus:border-accent-hover transition-colors resize-none"
                 />
 
                 {/* Bauhaus 风格进度条 */}
@@ -266,7 +266,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               </div>
 
               {/* 提示信息 */}
-              <div className="p-4 border-2 border-accent-hover/50 bg-accent-hover/10">
+              <div className="p-4 border-theme-card border-accent-hover/50 bg-accent-hover/10">
                 <div className="flex items-start gap-3">
                   <div className="w-1.5 h-1.5 bg-accent-hover mt-1.5 shrink-0"></div>
                   <p className="font-mono text-micro text-content-primary leading-relaxed">
@@ -284,23 +284,23 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               {/* 预览标题 */}
               <div className="flex items-center gap-2 mb-6">
                 <div className="w-2 h-2 bg-accent-hover"></div>
-                <span className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
+                <span className="font-mono text-micro font-bold tracking-widest text-content-secondary">
                   /// {t('preview') || 'PREVIEW'}
                 </span>
               </div>
 
               {/* 智能体卡片预览 */}
-              <div className="border-2 border-border-default bg-surface-card p-5 shadow-theme-card">
+              <div className="border-theme-card border-border-default bg-surface-card p-5 shadow-theme-card">
                 {/* 头像和名称 */}
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-14 h-14 border-2 border-border-default bg-accent-hover flex items-center justify-center">
+                  <div className="w-14 h-14 border-theme-card border-border-default bg-accent-hover flex items-center justify-center">
                     <Bot className="w-7 h-7 text-content-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-mono text-sm font-bold text-content-primary truncate">
                       {name || t('unnamedAgent') || 'Unnamed Agent'}
                     </h3>
-                    <span className="font-mono text-micro text-content-secondary uppercase">
+                    <span className="font-mono text-micro text-content-secondary">
                       {category}
                     </span>
                   </div>
@@ -313,7 +313,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
 
                 {/* 模型标签 */}
                 <div className="flex items-center gap-2 mb-4">
-                  <span className="font-mono text-micro text-content-secondary uppercase">
+                  <span className="font-mono text-micro text-content-secondary">
                     MODEL:
                   </span>
                   <span className="font-mono text-micro px-2 py-1 border border-border-default bg-surface-page">
@@ -326,7 +326,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
 
                 {/* 系统提示词预览 */}
                 <div className="space-y-2">
-                  <span className="font-mono text-micro font-bold uppercase text-content-secondary">
+                  <span className="font-mono text-micro font-bold text-content-secondary">
                     {t('systemPrompt') || 'System Prompt'}
                   </span>
                   <div className="p-3 border border-border-default bg-surface-page min-h-[100px]">
@@ -341,7 +341,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
               <div className="mt-6 space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-                  <span className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
+                  <span className="font-mono text-micro font-bold tracking-widest text-content-secondary">
                     /// {t('exampleChat') || 'EXAMPLE'}
                   </span>
                 </div>

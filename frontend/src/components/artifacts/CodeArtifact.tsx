@@ -82,7 +82,7 @@ export default function CodeArtifact({
             ? "bg-[#2d2d2d] text-gray-400 border-gray-700"
             : "bg-gray-100 text-gray-600 border-gray-200"
         )}>
-          <span className="font-mono uppercase font-bold text-blue-400">
+          <span className="font-mono font-bold text-accent-info">
             {displayLanguage}
           </span>
           <button

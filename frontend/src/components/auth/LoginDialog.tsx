@@ -192,21 +192,21 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
     >
       <div
         {...a11y}
-        className="relative bg-surface-card border-2 border-border-default shadow-theme-modal w-[380px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200 rounded-lg"
+        className="relative bg-surface-card border-theme-card border-border-default shadow-theme-modal w-[380px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200 rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 */}
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-accent-hover"></div>
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-content-secondary">
+            <span className="font-mono text-xs font-bold tracking-widest text-content-secondary">
               /// AUTHENTICATION
             </span>
           </div>
           <button
             aria-label={t('close')}
             onClick={handleClose}
-            className="w-6 h-6 flex items-center justify-center border-2 border-border-default hover:bg-accent-hover transition-colors rounded"
+            className="w-6 h-6 flex items-center justify-center border-theme-button border-border-default hover:bg-accent-hover transition-colors rounded"
           >
             <span className="text-xs font-bold">×</span>
           </button>
@@ -216,12 +216,12 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
         <div className="p-6 space-y-5">
           {/* Logo和标题 */}
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 border-2 border-border-default bg-surface-page flex items-center justify-center rounded-md">
+            <div className="w-16 h-16 mx-auto mb-4 border-theme-card border-border-default bg-surface-page flex items-center justify-center rounded-md">
               <The4DPocketLogo />
             </div>
             <h2
               id="login-dialog-title"
-              className="text-lg font-black uppercase tracking-tight mb-1 text-content-primary"
+              className="text-lg font-black tracking-tight mb-1 text-content-primary"
             >
               {loginMode === 'reset'
                 ? t('resetPasswordTitle')
@@ -240,7 +240,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
 
           {/* 调试信息 */}
           {import.meta.env.DEV && (
-            <div className="p-2 bg-surface-page border-2 border-border-default font-mono text-micro text-content-secondary rounded">
+            <div className="p-2 bg-surface-page border-theme-card border-border-default font-mono text-micro text-content-secondary rounded">
               <div>🔍 DEBUG_MODE</div>
               <div>STEP: {step}</div>
               <div>CODE: {debugCode || 'NONE'}</div>
@@ -249,10 +249,10 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
           )}
 
           {/* 登录方式 Tab（reset 模式下无高亮，点任一 tab 退出重置流程） */}
-          <div className="grid grid-cols-2 gap-0 border-2 border-border-default rounded-md overflow-hidden">
+          <div className="grid grid-cols-2 gap-0 border-theme-card border-border-default rounded-md overflow-hidden">
             <button
               onClick={() => setLoginMode('otp')}
-              className={`py-2 font-mono text-xs font-bold uppercase tracking-wider transition-colors ${
+              className={`py-2 font-mono text-xs font-bold tracking-wider transition-colors ${
                 loginMode === 'otp'
                   ? 'bg-accent-hover text-content-primary'
                   : 'bg-surface-page text-content-secondary hover:bg-surface-page/60'
@@ -262,7 +262,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
             </button>
             <button
               onClick={() => setLoginMode('password')}
-              className={`py-2 font-mono text-xs font-bold uppercase tracking-wider transition-colors ${
+              className={`py-2 font-mono text-xs font-bold tracking-wider transition-colors ${
                 loginMode === 'password'
                   ? 'bg-accent-hover text-content-primary'
                   : 'bg-surface-page text-content-secondary hover:bg-surface-page/60'

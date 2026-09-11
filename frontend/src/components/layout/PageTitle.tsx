@@ -20,7 +20,7 @@ export default function PageTitle({ title, right }: PageTitleProps) {
       <div className="flex items-center gap-3">
         <div className="w-2 h-2 bg-accent-brand" />
         <span className="font-mono text-content-muted">///</span>
-        <h1 className="text-xl font-black uppercase tracking-widest text-content-primary">
+        <h1 className="text-xl font-black tracking-widest text-content-primary">
           {title}
         </h1>
       </div>

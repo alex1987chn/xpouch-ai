@@ -44,7 +44,7 @@ function ExpertNode({ task, isSelected, isRunning, index, onClick }: ExpertNodeP
       <div 
         onClick={onClick}
         className={cn(
-          "relative w-10 h-10 border-2 bg-card flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-105",
+          "relative w-10 h-10 border-theme-button bg-card flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-105",
           // Pending 状态
           task.status === 'pending' && "opacity-50 grayscale border-dashed",
           // Running 状态
@@ -54,9 +54,9 @@ function ExpertNode({ task, isSelected, isRunning, index, onClick }: ExpertNodeP
             "animate-pulse-glow"
           ),
           // Completed 状态
-          task.status === 'completed' && "opacity-80 border-2 border-primary grayscale-0",
+          task.status === 'completed' && "opacity-80 border-theme-button border-primary grayscale-0",
           // Failed 状态
-          task.status === 'failed' && "opacity-80 border-2 border-status-offline",
+          task.status === 'failed' && "opacity-80 border-theme-button border-status-offline",
           // 选中状态
           isSelected && "shadow-theme-card scale-110 bg-accent"
         )}

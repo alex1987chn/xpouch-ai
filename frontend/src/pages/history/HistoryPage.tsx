@@ -268,7 +268,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
             placeholder={t('searchHistory') || '搜索历史记录...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-11 pl-10 pr-4 border-2 border-border-default bg-surface-page font-mono text-sm text-content-primary placeholder:text-content-secondary focus:outline-none focus:border-accent-hover transition-colors"
+            className="w-full h-11 pl-10 pr-4 border-theme-input border-border-default bg-surface-page font-mono text-sm text-content-primary placeholder:text-content-secondary focus:outline-none focus:border-accent-hover transition-colors"
           />
         </div>
 
@@ -278,7 +278,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
             {!isBatchMode ? (
               /* 普通模式：显示统计 + Select 按钮 */
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 font-mono text-micro uppercase tracking-widest text-content-secondary">
+                <div className="flex items-center gap-2 font-mono text-micro tracking-widest text-content-secondary">
                   <div className="w-1.5 h-1.5 bg-accent-hover"></div>
                   <span>
                     {searchQuery
@@ -294,7 +294,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                 {/* 进入批量模式按钮 */}
                 <button
                   onClick={toggleBatchMode}
-                  className="px-3 py-1.5 font-mono text-xs uppercase tracking-wider border-2 border-border-default text-content-secondary hover:border-accent-hover hover:text-accent-hover transition-colors"
+                  className="px-3 py-1.5 font-mono text-xs tracking-wider border-theme-button border-border-default text-content-secondary hover:border-accent-hover hover:text-accent-hover transition-colors"
                 >
                   {t('select')}
                 </button>
@@ -306,7 +306,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                   {/* 全选/取消全选 */}
                   <button
                     onClick={toggleSelectAll}
-                    className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-content-secondary hover:text-accent-hover transition-colors"
+                    className="flex items-center gap-2 font-mono text-xs tracking-wider text-content-secondary hover:text-accent-hover transition-colors"
                   >
                     {selectedIds.size === filteredConversations.length && filteredConversations.length > 0 ? (
                       <CheckSquare className="w-4 h-4" />
@@ -333,7 +333,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                   {/* 取消批量模式按钮 */}
                   <button
                     onClick={exitBatchMode}
-                    className="px-3 py-1.5 font-mono text-xs uppercase tracking-wider border-2 border-border-default text-content-secondary hover:border-accent-hover hover:text-accent-hover transition-colors"
+                    className="px-3 py-1.5 font-mono text-xs tracking-wider border-theme-button border-border-default text-content-secondary hover:border-accent-hover hover:text-accent-hover transition-colors"
                   >
                     {t('cancel')}
                   </button>
@@ -343,7 +343,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                     onClick={handleBatchDelete}
                     disabled={selectedIds.size === 0 || batchDeleteMutation.isPending}
                     className={cn(
-                      "flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider border-2 transition-colors",
+                      "flex items-center gap-2 px-3 py-1.5 font-mono text-xs tracking-wider border-theme-button transition-colors",
                       selectedIds.size > 0
                         ? "border-accent-destructive text-accent-destructive hover:bg-accent-destructive hover:text-white"
                         : "border-border-default text-content-secondary cursor-not-allowed"
@@ -385,7 +385,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                       }
                     }}
                     className={cn(
-                      "stagger-item group relative bg-surface-card border-2 p-3 transition-all",
+                      "stagger-item group relative bg-surface-card border-theme-card p-3 transition-all",
                       isSelected
                         ? "border-accent-hover shadow-theme-card"
                         : "border-border-default shadow-theme-card hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-theme-card-hover cursor-pointer"
@@ -420,7 +420,7 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
                           {getLastMessagePreview(conversation)}
                         </p>
 
-                        <div className="flex items-center gap-4 font-mono text-micro text-content-secondary uppercase">
+                        <div className="flex items-center gap-4 font-mono text-micro text-content-secondary">
                           <span className="flex items-center gap-1" title={conversation.updated_at || '-'}>
                             <Clock className="w-3 h-3" />
                             {formatRelativeTime(conversation.updated_at)}
@@ -482,16 +482,16 @@ export default function HistoryPage({ onSelectConversation }: HistoryPageProps) 
             </div>
           ) : (
             <div className="text-center py-20">
-              <div className="w-16 h-16 mx-auto mb-4 border-2 border-border-default bg-surface-page flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-4 border-theme-card border-border-default bg-surface-page flex items-center justify-center">
                 <MessageSquare className="w-8 h-8 text-content-secondary" />
               </div>
-              <h3 className="font-mono text-base font-bold text-content-primary uppercase mb-2">
+              <h3 className="font-mono text-base font-bold text-content-primary mb-2">
                 {searchQuery
                   ? t('noMatchingHistory') || 'No matching history'
                   : t('noHistory') || 'No conversation history'
                 }
               </h3>
-              <p className="font-mono text-xs text-content-secondary uppercase">
+              <p className="font-mono text-xs text-content-secondary">
                 {searchQuery
                   ? t('tryOtherKeywords') || 'Try other keywords'
                   : t('startChat') || 'Start a new chat to see it here'

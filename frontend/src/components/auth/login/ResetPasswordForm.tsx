@@ -42,7 +42,7 @@ export function ResetPasswordForm({
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <label className="font-mono text-micro font-bold uppercase text-content-secondary">
+        <label className="font-mono text-micro font-bold text-content-secondary">
           PHONE_NUMBER
         </label>
         <input
@@ -53,11 +53,11 @@ export function ResetPasswordForm({
           maxLength={11}
           disabled={loading}
           autoFocus
-          className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
+          className="w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
         />
       </div>
       <div className="space-y-1">
-        <label className="font-mono text-micro font-bold uppercase text-content-secondary">
+        <label className="font-mono text-micro font-bold text-content-secondary">
           VERIFICATION_CODE
         </label>
         <div className="flex gap-2">
@@ -69,14 +69,14 @@ export function ResetPasswordForm({
             onChange={(e) => onCodeChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
             maxLength={6}
             disabled={loading}
-            className="flex-1 px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm tracking-[0.2em] focus:outline-none focus:border-accent-hover transition-colors rounded-md"
+            className="flex-1 px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-mono text-sm tracking-[0.2em] focus:outline-none focus:border-accent-hover transition-colors rounded-md"
           />
           <button
             onClick={onSendCode}
             disabled={
               !phoneNumber || phoneNumber.length !== 11 || (countdown > 0 && !debugCode) || loading
             }
-            className="px-3 border-2 border-border-default bg-surface-card font-mono text-xs uppercase hover:bg-surface-page transition-colors disabled:opacity-50 whitespace-nowrap rounded-md"
+            className="px-3 border-theme-button border-border-default bg-surface-card font-mono text-xs hover:bg-surface-page transition-colors disabled:opacity-50 whitespace-nowrap rounded-md"
           >
             {countdown > 0 ? `${countdown}s` : t('sendCode')}
           </button>
@@ -86,7 +86,7 @@ export function ResetPasswordForm({
         </div>
       </div>
       <div className="space-y-1">
-        <label className="font-mono text-micro font-bold uppercase text-content-secondary">
+        <label className="font-mono text-micro font-bold text-content-secondary">
           {t('newPasswordLabel')}
         </label>
         <input
@@ -100,14 +100,14 @@ export function ResetPasswordForm({
             }
           }}
           disabled={loading}
-          className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
+          className="w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
         />
       </div>
 
       <button
         onClick={onSubmit}
         disabled={!canSubmit}
-        className="w-full py-3 border-2 border-border-default bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
+        className="w-full py-3 border-theme-button border-border-default bg-accent-hover text-accent-ink font-bold font-mono text-sm shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
       >
         {loading ? 'RESETTING...' : t('resetPasswordAction')}
       </button>

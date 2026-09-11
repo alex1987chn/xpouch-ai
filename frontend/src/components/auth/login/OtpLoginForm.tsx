@@ -21,9 +21,9 @@ interface OtpLoginFormProps {
 }
 
 const INPUT_CLS =
-  'w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md'
+  'w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md'
 const SUBMIT_CLS =
-  'w-full py-3 border-2 border-border-default bg-accent-hover text-content-primary font-bold font-mono text-sm uppercase shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md'
+  'w-full py-3 border-theme-button border-border-default bg-accent-hover text-accent-ink font-bold font-mono text-sm shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md'
 
 export function OtpLoginForm({
   t,
@@ -43,7 +43,7 @@ export function OtpLoginForm({
     return (
       <div className="space-y-4">
         <div className="space-y-1">
-          <label className="font-mono text-micro font-bold uppercase text-content-secondary">
+          <label className="font-mono text-micro font-bold text-content-secondary">
             PHONE_NUMBER
           </label>
           <input
@@ -76,7 +76,7 @@ export function OtpLoginForm({
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <label className="font-mono text-micro font-bold uppercase text-content-secondary">
+        <label className="font-mono text-micro font-bold text-content-secondary">
           VERIFICATION_CODE
         </label>
         <input
@@ -88,7 +88,7 @@ export function OtpLoginForm({
           maxLength={6}
           disabled={loading}
           autoFocus
-          className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-lg text-center tracking-[0.3em] focus:outline-none focus:border-accent-hover transition-colors rounded-md"
+          className="w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-mono text-lg text-center tracking-[0.3em] focus:outline-none focus:border-accent-hover transition-colors rounded-md"
         />
         <div className="font-mono text-nano text-content-secondary opacity-50">
           {t('codeSentTo', { phone: `${phoneNumber.slice(0, 3)}****${phoneNumber.slice(-4)}` })}
@@ -103,7 +103,7 @@ export function OtpLoginForm({
         <button
           onClick={onSendCode}
           disabled={countdown > 0 || loading}
-          className="flex-1 py-2 border-2 border-border-default bg-surface-card font-mono text-xs uppercase hover:bg-surface-page transition-colors disabled:opacity-50 rounded-md"
+          className="flex-1 py-2 border-theme-button border-border-default bg-surface-card font-mono text-xs hover:bg-surface-page transition-colors disabled:opacity-50 rounded-md"
         >
           {countdown > 0 ? `${countdown}s` : t('resend')}
         </button>
@@ -111,7 +111,7 @@ export function OtpLoginForm({
         <button
           onClick={() => onStepChange('phone')}
           disabled={loading}
-          className="flex-1 py-2 border-2 border-border-default bg-surface-card font-mono text-xs uppercase text-content-secondary hover:bg-surface-page transition-colors rounded-md"
+          className="flex-1 py-2 border-theme-button border-border-default bg-surface-card font-mono text-xs text-content-secondary hover:bg-surface-page transition-colors rounded-md"
         >
           {t('changePhone')}
         </button>
