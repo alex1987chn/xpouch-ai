@@ -25,17 +25,22 @@ import { useUserSettingsQuery } from '@/hooks/queries/useUserSettingsQuery'
 import { getSystemStatus } from '@/services/systemStatus'
 import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher'
 import { CommandPalette } from '@/components/cmd/CommandPalette'
+import { The4DPocketLogo } from '@/components/bauhaus'
 import { SettingsHubDialog } from '@/components/settings/SettingsHubDialog'
 import LoginDialog from '@/components/auth/LoginDialog'
 import { cn } from '@/lib/utils'
 import { Z_INDEX } from '@/constants/zIndex'
 
-/** 顶栏 logo 标记（蓝本：几何口袋） */
+/** 顶栏 logo 标记（原 4D 口袋 logo，42px 设计稿等比缩至 26px 适配顶栏） */
 function LogoMark() {
   return (
-    <span className="flex items-center gap-2">
-      <span className="h-5 w-5 rounded-[50%_50%_50%_0] bg-accent-brand" />
-      <span className="font-display text-base font-bold tracking-tight text-content-primary">
+    <span className="flex items-center gap-1.5">
+      <span className="block h-[26px] w-[26px] overflow-visible">
+        <span className="block origin-top-left scale-[0.62]">
+          <The4DPocketLogo />
+        </span>
+      </span>
+      <span className="font-display text-[14px] font-bold tracking-tight text-content-primary">
         xpouch
       </span>
     </span>

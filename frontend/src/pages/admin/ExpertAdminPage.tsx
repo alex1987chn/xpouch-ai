@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
 import { Plus, ArrowLeft, Trash2 } from 'lucide-react'
 import { expertColor } from '@/lib/expertIdentity'
+import { pushToast } from '@/components/ui/use-toast'
 
 import {
   getAllExperts,
@@ -33,28 +34,6 @@ import ExpertEditor from '@/components/admin/ExpertEditor'
 import ExpertFormDialog from '@/components/admin/ExpertFormDialog'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 
-// Toast（沿用原实现）
-function ExpertToast({
-  message,
-  type,
-}: {
-  message: string
-  type: 'success' | 'error' | 'warning'
-}) {
-  return (
-    <div
-      className={cn(
-        'fixed bottom-6 right-6 z-50 rounded-lg border px-4 py-3 text-xs font-medium shadow-theme-modal',
-        type === 'success'
-          ? 'border-accent-success/30 bg-surface-card text-accent-success'
-          : 'border-accent-destructive/30 bg-surface-card text-accent-destructive'
-      )}
-    >
-      {message}
-    </div>
-  )
-}
-
 function isStatusError(error: unknown): error is { status?: number } {
   return typeof error === 'object' && error !== null && 'status' in error
 }
@@ -62,9 +41,6 @@ function isStatusError(error: unknown): error is { status?: number } {
 export default function ExpertAdminPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-
-  // Toast 状态
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null)
 
   // 选中即进入编辑视图（null = 栅格视图）
   const [selectedExpertKey, setSelectedExpertKey] = useState<string | null>(null)
@@ -102,7 +78,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
   useEffect(() => {
     if (expertsError) {
       logger.error('Failed to load experts:', expertsError)
-      setToast({ message: t('loadExpertsFailed'), type: 'error' })
+      pushToast({ title: t('loadExpertsFailed'), variant: 'destructive' })
     }
   }, [expertsError, t])
 
@@ -120,11 +96,11 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
     setIsGeneratingDescription(true)
     try {
       const result = await generateExpertDescription({ system_prompt: systemPrompt })
-      setToast({ message: t('descriptionGenerated'), type: 'success' })
+      pushToast({ title: t('descriptionGenerated') })
       return result.description
     } catch (error) {
       logger.error('Failed to generate description:', error)
-      setToast({ message: t('generateDescriptionFailed'), type: 'error' })
+      pushToast({ title: t('generateDescriptionFailed'), variant: 'destructive' })
       throw error
     } finally {
       setIsGeneratingDescription(false)
@@ -142,7 +118,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
       await updateExpert(selectedExpert.expert_key, dataWithVersion)
       queryClient.invalidateQueries({ queryKey: ['experts'] })
       queryClient.invalidateQueries({ queryKey: ['expert', selectedExpert.expert_key] })
-      setToast({ message: t('saveSuccess'), type: 'success' })
+      pushToast({ title: t('saveSuccess') })
     } catch (error: any) {
       logger.error('Failed to update expert:', error)
 
@@ -150,12 +126,9 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
         // 乐观锁冲突：配置已被他人修改
         await queryClient.invalidateQueries({ queryKey: ['experts'] })
         await queryClient.invalidateQueries({ queryKey: ['expert', selectedExpert.expert_key] })
-        setToast({
-          message: '配置已被他人修改，已为您刷新最新数据，请确认后重试',
-          type: 'warning'
-        })
+        pushToast({ title: '配置已被他人修改，已为您刷新最新数据，请确认后重试', variant: 'destructive' })
       } else {
-        setToast({ message: t('saveFailed'), type: 'error' })
+        pushToast({ title: t('saveFailed'), variant: 'destructive' })
       }
     } finally {
       setIsSaving(false)
@@ -171,7 +144,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
       setIsCreating(true)
       try {
         await createExpert(createData)
-        setToast({ message: t('createSuccess'), type: 'success' })
+        pushToast({ title: t('createSuccess') })
         setIsCreateDialogOpen(false)
 
         await queryClient.invalidateQueries({ queryKey: ['experts'] })
@@ -179,7 +152,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
         setSelectedExpertKey(createData.expert_key)
       } catch (error) {
         logger.error('Failed to create expert:', error)
-        setToast({ message: t('createFailed'), type: 'error' })
+        pushToast({ title: t('createFailed'), variant: 'destructive' })
       } finally {
         setIsCreating(false)
       }
@@ -192,7 +165,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
     (expert: SystemExpert, e: React.MouseEvent) => {
       e.stopPropagation()
       if (!expert.is_dynamic) {
-        setToast({ message: t('cannotDeleteSystemExpert'), type: 'error' })
+        pushToast({ title: t('cannotDeleteSystemExpert'), variant: 'destructive' })
         return
       }
       setExpertToDelete(expert)
@@ -212,11 +185,11 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
       if (selectedExpertKey === expertToDelete.expert_key) {
         setSelectedExpertKey(null)
       }
-      setToast({ message: t('deleteSuccess'), type: 'success' })
+      pushToast({ title: t('deleteSuccess') })
       setIsDeleteDialogOpen(false)
     } catch (error) {
       logger.error('Failed to delete expert:', error)
-      setToast({ message: t('deleteFailed'), type: 'error' })
+      pushToast({ title: t('deleteFailed'), variant: 'destructive' })
     } finally {
       setIsDeleting(false)
       setExpertToDelete(null)
@@ -246,9 +219,6 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
 
   return (
     <div className={cn(!embedded && 'min-h-full bg-surface-page')}>
-      {/* Toast */}
-      {toast && <ExpertToast message={toast.message} type={toast.type} />}
-
       {/* 创建专家对话框 */}
       <ExpertFormDialog
         mode="create"
@@ -292,7 +262,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
               isGeneratingDescription={isGeneratingDescription}
               onSave={handleSave}
               onGenerateDescription={handleGenerateDescription}
-              onShowToast={(message, type) => setToast({ message, type })}
+              onShowToast={(message) => pushToast({ title: message })}
             />
           </div>
         </div>

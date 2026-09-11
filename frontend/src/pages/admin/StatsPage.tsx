@@ -248,7 +248,7 @@ export default function StatsPage() {
    <div className="max-w-5xl mx-auto space-y-6">
     {/* 页面标题（PageTitle 统一习语） */}
     <PageTitle
-     title={isAdmin ? t('globalStats') : t('myStats')}
+     title={t('navStats')}
      right={isAdmin ? (
       <span className="rounded-full bg-accent-brand/15 px-2 py-0.5 text-micro font-bold text-content-primary">
        Admin

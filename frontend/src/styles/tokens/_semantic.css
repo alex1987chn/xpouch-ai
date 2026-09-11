@@ -39,8 +39,8 @@
        象牙暖纸色系（源自 Kyoto，预混合避免透明度运算）
        ------------------------------------------ */
     --surface-page: 250 247 242;           /* #faf7f2 - 象牙页面底 */
-    --surface-card: 255 253 250;           /* #fffdfa - 暖白卡片 */
-    --surface-elevated: 255 255 253;       /* 微凸表面 */
+    --surface-card: 255 254 251;           /* #fffefb - 暖白卡片（蓝本） */
+    --surface-elevated: 255 255 255;       /* #ffffff - 卡上卡（蓝本 card-2） */
     --surface-tint: 241 236 226;           /* #f1ece2 暖调浅底：选中态/用户气泡/分段胶囊 */
     --surface-input: 255 253 250;          /* 输入框背景 */
     --surface-overlay: 60 55 50;           /* 遮罩层（暖深褐） */
@@ -60,10 +60,10 @@
        Border - 边界颜色
        银鼠预混合色系（柔和细线，非纯黑）
        ------------------------------------------ */
-    --border-default: 210 205 198;         /* #d2cdc6 - 银鼠 */
-    --border-hover: 185 178 168;           /* hover 加深一档 */
-    --border-focus: 175 165 150;           /* focus 深暖线 */
-    --border-divider: 232 228 222;         /* 分割线 */
+    --border-default: 235 233 229;         /* 墨 9% 预混合（蓝本 rgba(45,42,38,.09) @ #fffefb） */
+    --border-hover: 214 211 207;           /* 墨 20% 预混合（蓝本 --line-strong） */
+    --border-focus: 170 163 154;           /* focus 深暖线 */
+    --border-divider: 235 233 229;         /* 分割线（蓝本与容器线同源） */
     --border-disabled: 220 215 208;        /* 禁用边框 */
 
     /* ------------------------------------------

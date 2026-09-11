@@ -98,8 +98,8 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
  return (
   <div
    className={cn(
-    'group relative flex cursor-pointer gap-4 rounded-md pb-6 transition-colors hover:bg-surface-elevation/40',
-    isSelected && 'bg-accent-subtle/50 -mx-2 px-2'
+    'group relative -mx-2 flex cursor-pointer gap-4 rounded-md px-2 pb-6 transition-colors hover:bg-surface-tint/50',
+    isSelected && 'bg-surface-tint'
    )}
    onClick={onClick}
   >

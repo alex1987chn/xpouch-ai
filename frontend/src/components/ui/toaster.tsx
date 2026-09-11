@@ -4,19 +4,19 @@ import { cn } from '@/lib/utils'
 
 /**
  * Toaster - 全局通知（统一规范）
- * 底部居中、胶囊卡：默认 = 绿点成功语汇；destructive = 红点 + 标题红。
+ * 顶部居中悬停（不打断操作区，视线自然扫到）：成功绿勾 / 失败红叹号胶囊卡。
  */
 export function Toaster() {
   const { toasts } = useToast()
 
   return (
-    <div className="pointer-events-none fixed bottom-10 left-1/2 z-[9999] flex -translate-x-1/2 flex-col items-center gap-2">
+    <div className="pointer-events-none fixed left-1/2 top-4 z-[9999] flex -translate-x-1/2 flex-col items-center gap-2">
       {toasts.map((toast) => (
         <div
           key={toast.id}
           className={cn(
             'pointer-events-auto flex items-center gap-3 rounded-full border border-border-divider bg-surface-card py-2.5 pl-4 pr-2 shadow-theme-modal',
-            'animate-in slide-in-from-bottom-2 duration-200',
+            'animate-in slide-in-from-top-2 duration-200',
             'min-w-[260px] max-w-md'
           )}
         >
