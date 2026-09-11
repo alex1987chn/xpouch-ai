@@ -240,7 +240,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
      </div>
     </div>
     {filteredPolicies.length > 0 ? (
-     <div className="max-h-[70vh] overflow-y-auto bauhaus-scrollbar">
+     <div className="max-h-[70vh] overflow-y-auto">
       {filteredPolicies.map(policy => (
       <button
        key={`${policy.source}:${policy.tool_name}`}
@@ -248,7 +248,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
        className={cn(
         'w-full border-b border-border-divider px-4 py-3 text-left transition-all relative',
         selectedKey === `${policy.source}:${policy.tool_name}`
-         ? 'bg-surface-elevated border-l-4 border-l-accent-brand pl-3'
+         ? 'bg-surface-tint border-l-2 border-l-accent-brand pl-3'
          : 'bg-surface-card hover:bg-surface-page border-l-4 border-l-transparent'
        )}
       >

@@ -358,7 +358,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
   return (
    <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
     <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
-     <div className="border-b-2 border-border-default px-4 py-3">
+     <div className="border-b border-border-divider px-4 py-3">
       <Skeleton className="h-3.5 w-32" />
      </div>
      <div className="p-3 space-y-2">
@@ -380,7 +380,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
  return (
   <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
    <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
-    <div className="flex items-center justify-between border-b-2 border-border-default px-4 py-3">
+    <div className="flex items-center justify-between border-b border-border-divider px-4 py-3">
      <div className="flex items-center gap-2">
       <Bot className="h-4 w-4 text-content-secondary" />
       <span className="text-micro font-bold text-content-secondary">
@@ -410,16 +410,16 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
     </div>
 
     {filteredTemplates.length > 0 ? (
-     <div className="max-h-[70vh] overflow-y-auto bauhaus-scrollbar">
+     <div className="max-h-[70vh] overflow-y-auto">
       {filteredTemplates.map((template, index) => (
        <button
         key={template.id}
         onClick={() => handleSelect(template)}
         style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
         className={cn(
-         'stagger-item w-full border-b-2 border-border-default px-4 py-3 text-left transition-all relative',
+         'stagger-item w-full border-b border-border-divider px-4 py-3 text-left transition-all relative',
          selectedId === template.id
-          ? 'bg-surface-elevated border-l-4 border-l-accent-brand pl-3'
+          ? 'bg-surface-tint border-l-2 border-l-accent-brand pl-3'
           : 'bg-surface-card hover:bg-surface-page border-l-4 border-l-transparent'
         )}
        >
@@ -463,7 +463,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
    </div>
 
    <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
-    <div className="flex items-center justify-between border-b-2 border-border-default px-4 py-3">
+    <div className="flex items-center justify-between border-b border-border-divider px-4 py-3">
      <div>
       <div className="text-micro font-bold text-content-secondary">
        {draft.id ? t('templateDetail') || 'Template Detail' : t('createTemplate') || 'Create Template'}

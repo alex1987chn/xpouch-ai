@@ -108,16 +108,15 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
      <button
       onClick={() => setIsAddOpen(true)}
       className={cn(
-       "h-11 px-4 flex items-center gap-2",
-       "bg-surface-elevated text-content-primary text-xs font-bold",
-       "border-theme-button border-border-default shadow-theme-button",
-       "hover:bg-accent-brand hover:text-accent-ink hover:border-accent-brand",
-       "hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover",
-       "active:[transform:var(--transform-button-active)] active:shadow-theme-button-active",
+       "flex h-9 items-center gap-2 rounded-full px-4",
+       "bg-accent-brand text-accent-ink text-xs font-bold",
+       "border border-border-divider shadow-none",
+       "hover:-translate-y-px hover:shadow-theme-card",
+       "active:translate-y-0 active:shadow-none",
        "transition-all"
       )}
      >
-      <Plus className="w-4 h-4" />
+      <Plus className="h-4 w-4" />
       <span>{t('add') || 'ADD'}</span>
      </button>
     )}
@@ -125,8 +124,8 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
 
    {/* 统计 */}
    {!isLoading && filteredServers.length > 0 && (
-    <div className="flex items-center gap-2 text-micro tracking-widest text-content-muted">
-     <div className="w-1.5 h-1.5 bg-accent-brand" />
+    <div className="flex items-center gap-2 text-micro text-content-muted">
+     <div className="h-1.5 w-1.5 rounded-full bg-accent-brand" />
      <span>
       {effectiveSearchQuery
        ? `${filteredServers.length} ${t('matching') || 'matching'}`
@@ -157,8 +156,8 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
    ) : (
     /* 空状态 - 与 HistoryPage 一致 */
     <div className="text-center py-20">
-     <div className="w-16 h-16 mx-auto mb-4 border-theme-card border-border-default bg-surface-page flex items-center justify-center">
-      <Server className="w-8 h-8 text-content-muted" />
+     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-lg border border-border-divider bg-surface-card">
+      <Server className="h-8 w-8 text-content-muted" />
      </div>
      <h3 className="text-base font-bold text-content-primary mb-2">
       {effectiveSearchQuery

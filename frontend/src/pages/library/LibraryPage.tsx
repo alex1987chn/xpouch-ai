@@ -1,11 +1,12 @@
 /**
  * 资源工坊页面 (Library/Workshop)
- * 
+ *
  * 统一的资源管理中枢，整合：
  * - 知识库 (Knowledge Base)
  * - MCP 工具 (MCP Tools)
- * 
- * 设计风格：与 HistoryPage 保持一致
+ *
+ * 布局对齐 docs/design 蓝本：卡片色头部带（标题 + 下划线页签）
+ * + 滚动正文（lib-head / lib-body / lib-tab 语法）。
  */
 
 import { useState } from 'react'
@@ -14,7 +15,6 @@ import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { SearchInput } from '@/components/ui/input'
-import PageTitle from '@/components/layout/PageTitle'
 import { MCPList } from './MCPList'
 import SkillTemplatePanel from './SkillTemplatePanel'
 import ToolGovernancePanel from './ToolGovernancePanel'
@@ -35,70 +35,64 @@ export default function LibraryPage() {
   const canEditLibrary = role === 'admin'
 
   return (
-    <div className="min-h-full bg-surface-page px-6 md:px-12 py-8">
-      {/* 内容区域（标题行内嵌文档流，定位由侧边栏承担） */}
+    <div className="flex h-full flex-col bg-surface-page">
+      {/* 头部带：标题 + 下划线页签（蓝本 lib-head / lib-tab） */}
       <div
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="max-w-5xl mx-auto space-y-6"
+        className="shrink-0 border-b border-border-divider bg-surface-card px-6 pt-4 md:px-10"
       >
-        {/* 标题行（PageTitle 统一习语） */}
-        <PageTitle title={t('workshop') || 'WORKSHOP'} />
-
-        {/* Tabs 导航（蓝本 lib-tab：浅底选中，1px 分隔线） */}
-        <div className="flex gap-1 border-b border-border-divider">
-            {/* Knowledge Base Tab */}
+        <div className="max-w-6xl">
+          <h2 className="text-[17px] font-bold text-content-primary">{t('workshop')}</h2>
+          <div className="mt-2 flex gap-0.5">
             <TabButton
               isActive={activeTab === 'knowledge'}
               onClick={() => setActiveTab('knowledge')}
-              icon={<Database className="w-4 h-4" />}
+              icon={<Database className="h-4 w-4" />}
               label={t('knowledgeBase') || 'KNOWLEDGE BASE'}
             />
-
             <TabButton
               isActive={activeTab === 'templates'}
               onClick={() => setActiveTab('templates')}
-              icon={<Bot className="w-4 h-4" />}
+              icon={<Bot className="h-4 w-4" />}
               label={t('skillTemplates') || 'SKILL TEMPLATES'}
             />
-
-            {/* MCP Tools Tab */}
             <TabButton
               isActive={activeTab === 'mcp'}
               onClick={() => setActiveTab('mcp')}
-              icon={<Wrench className="w-4 h-4" />}
+              icon={<Wrench className="h-4 w-4" />}
               label={t('mcpTools') || 'MCP TOOLS'}
             />
-
             {canViewGovernance && (
               <TabButton
                 isActive={activeTab === 'governance'}
                 onClick={() => setActiveTab('governance')}
-                icon={<ShieldAlert className="w-4 h-4" />}
+                icon={<ShieldAlert className="h-4 w-4" />}
                 label={t('toolGovernance') || 'TOOL GOVERNANCE'}
               />
             )}
-        </div>
-
-        {/* 页面内容 */}
-        <div className="pb-16 md:pb-12">
-          {/* 搜索框 - 两个标签共用 */}
-          <div className="mb-4">
-            <SearchInput
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder={
-                activeTab === 'knowledge'
-                  ? (t('searchKnowledge') || 'Search knowledge base...')
-                  : activeTab === 'templates'
-                    ? (t('searchTemplates') || 'Search templates...')
-                    : activeTab === 'governance'
-                      ? (t('searchTools') || 'Search tools...')
-                      : (t('searchMCPServers') || 'Search MCP servers...')
-              }
-            />
           </div>
+        </div>
+      </div>
+
+      {/* 正文（lib-body：页内滚动） */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 md:px-10">
+        <div className="max-w-6xl space-y-4 pb-12">
+          {/* 搜索框 - 各标签共用 */}
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder={
+              activeTab === 'knowledge'
+                ? (t('searchKnowledge') || 'Search knowledge base...')
+                : activeTab === 'templates'
+                  ? (t('searchTemplates') || 'Search templates...')
+                  : activeTab === 'governance'
+                    ? (t('searchTools') || 'Search tools...')
+                    : (t('searchMCPServers') || 'Search MCP servers...')
+            }
+          />
 
           {/* Knowledge Base 内容 */}
           {activeTab === 'knowledge' && (
@@ -128,7 +122,7 @@ export default function LibraryPage() {
 }
 
 /**
- * Tab 按钮组件
+ * Tab 按钮组件（蓝本 lib-tab：下划线选中，2px 品牌色内嵌线）
  */
 interface TabButtonProps {
   isActive: boolean
@@ -142,10 +136,10 @@ function TabButton({ isActive, onClick, icon, label }: TabButtonProps) {
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 rounded-md px-3.5 py-2 text-[13px] transition-colors",
+        '-mb-px flex items-center gap-2 rounded-t-sm border-b-2 px-[18px] py-2 text-[13px] transition-colors',
         isActive
-          ? "bg-surface-tint font-semibold text-content-primary"
-          : "text-content-secondary hover:bg-surface-tint/60 hover:text-content-primary"
+          ? 'border-accent-brand font-bold text-content-primary'
+          : 'border-transparent text-content-secondary hover:bg-surface-tint/60 hover:text-content-primary'
       )}
     >
       {icon}
