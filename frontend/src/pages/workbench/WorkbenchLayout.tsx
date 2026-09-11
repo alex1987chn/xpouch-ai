@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from '@/i18n'
-import { LayoutGrid, Layers, Settings } from 'lucide-react'
+import { LayoutGrid, Layers, Settings, LineChart } from 'lucide-react'
 
 import { useUserStore } from '@/store/userStore'
 import { useAppUISelectors } from '@/hooks'
@@ -91,6 +91,7 @@ export default function WorkbenchLayout() {
         if (k === 'w') navigate('/workbench')
         else if (k === 'l') navigate('/library')
         else if (k === 'a' && isAdmin) navigate('/admin/console')
+        else if (k === 's' && isAdmin) navigate('/admin/stats')
       }
     }
     window.addEventListener('keydown', onKey)
@@ -156,7 +157,10 @@ export default function WorkbenchLayout() {
           {([
             { key: 'work', icon: LayoutGrid, label: t('workbenchTitle'), to: '/workbench', active: onWorkbench },
             { key: 'lib', icon: Layers, label: t('railLibrary'), to: '/library', active: location.pathname.startsWith('/library') },
-            ...(isAdmin ? [{ key: 'admin', icon: Settings, label: t('navConsole'), to: '/admin/console', active: location.pathname.startsWith('/admin') }] : []),
+            ...(isAdmin ? ([
+              { key: 'stats', icon: LineChart, label: t('navStats'), to: '/admin/stats', active: location.pathname.startsWith('/admin/stats') },
+              { key: 'admin', icon: Settings, label: t('navConsole'), to: '/admin/console', active: location.pathname.startsWith('/admin/console') },
+            ] as const) : []),
           ] as const).map(({ key, icon: Icon, label, to, active }) => (
             <button
               key={key}
@@ -234,7 +238,7 @@ export default function WorkbenchLayout() {
           </span>
           <span className="hidden items-center gap-1.5 sm:flex">
             <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-[9.5px] font-bold text-content-muted">G</kbd>
-            <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-[9.5px] font-bold text-content-muted">W/L/A</kbd>
+            <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-[9.5px] font-bold text-content-muted">W/L/A/S</kbd>
             {t('sbJump')}
           </span>
         </span>

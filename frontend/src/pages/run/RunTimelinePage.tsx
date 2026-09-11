@@ -36,11 +36,11 @@ import { expertColor, expertDisplayName } from '@/lib/expertIdentity'
 // ============================================
 
 const eventIconConfig: Record<string, { icon: typeof Clock; color: string }> = {
- lifecycle: { icon: Clock, color: 'text-blue-500' },
- router: { icon: Clock, color: 'text-purple-500' },
- plan: { icon: Clock, color: 'text-indigo-500' },
- hitl: { icon: AlertCircle, color: 'text-accent-brand' },
- task: { icon: Loader2, color: 'text-accent-primary' },
+ lifecycle: { icon: Clock, color: 'text-content-muted' },
+ router: { icon: Clock, color: 'text-accent-info' },
+ plan: { icon: Clock, color: 'text-accent-info' },
+ hitl: { icon: AlertCircle, color: 'text-accent-warning' },
+ task: { icon: Loader2, color: 'text-accent-brand' },
  artifact: { icon: CheckCircle, color: 'text-accent-success' },
  other: { icon: Clock, color: 'text-content-secondary' },
 }
@@ -202,7 +202,7 @@ function PlanCard({ threadId }: { threadId: string }) {
  return (
   <div className="rounded-md border-theme-card border-border-default bg-surface-card p-4">
    <div className="mb-3 flex items-center justify-between">
-    <span className="text-xs font-bold tracking-widest text-content-secondary">
+    <span className="text-xs font-bold text-content-secondary">
      {t('planCardTitle')}
     </span>
     <span className="text-nano text-content-muted">
@@ -336,7 +336,7 @@ export default function RunTimelinePage() {
 
    {/* 主体：时间线 + 右栏 */}
    <div className="flex min-h-0 flex-1">
-    <div className="bauhaus-scrollbar min-h-0 flex-1 overflow-y-auto px-6 py-4">
+    <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
      {isAwaiting && threadId && <ApprovalRow threadId={threadId} />}
 
      {events.length === 0 ? (
@@ -403,10 +403,10 @@ function RelatedArtifacts({ threadId }: { threadId: string }) {
      {artifacts.map(artifact => (
       <button
        key={artifact.id}
-       onClick={() => navigate('/artifacts')}
-       className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1.5 text-left transition-colors hover:bg-surface-elevated"
+       onClick={() => navigate(`/workbench/${threadId}`)}
+       className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-surface-tint/60"
       >
-       <span className="rounded-sm bg-accent-info/12 px-1 py-0.5 text-nano text-accent-info">
+       <span className="rounded-full bg-accent-info/12 px-2 py-0.5 text-nano font-medium text-accent-info">
         {artifact.type}
        </span>
        <span className="min-w-0 flex-1 truncate text-xs text-content-primary">

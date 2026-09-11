@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils"
  */
 const buttonVariants = cva(
   // 基础样式
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium tracking-wide " +
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium " +
   "ring-offset-surface-page transition-all duration-fast " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 " +
   "disabled:pointer-events-none disabled:opacity-50 " +
@@ -33,16 +33,16 @@ const buttonVariants = cva(
         default: [
           "bg-surface-card border-theme-button border-border-default text-content-primary",
           "shadow-theme-button",
-          "hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover hover:bg-accent hover:text-accent-ink hover:border-border-focus",
-          "active:[transform:var(--transform-button-active)] active:shadow-theme-button-active",
+          "hover:border-border-hover hover:bg-surface-tint",
+          "active:translate-y-0 active:shadow-none",
         ],
 
         /**
          * 次要变体
          */
         secondary: [
-          "bg-surface-elevated text-content-primary",
-          "hover:bg-surface-card hover:text-accent",
+          "bg-surface-tint text-content-primary",
+          "hover:bg-surface-tint/70",
         ],
 
         /**
@@ -51,8 +51,8 @@ const buttonVariants = cva(
         outline: [
           "bg-surface-card border-theme-button border-border-default text-content-primary",
           "shadow-theme-button",
-          "hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover hover:bg-accent hover:text-accent-ink hover:border-border-focus",
-          "active:[transform:var(--transform-button-active)] active:shadow-theme-button-active",
+          "hover:border-border-hover hover:bg-surface-tint",
+          "active:translate-y-0 active:shadow-none",
         ],
 
         /**
@@ -60,7 +60,7 @@ const buttonVariants = cva(
          */
         ghost: [
           "text-content-primary",
-          "hover:bg-surface-elevated hover:text-accent",
+          "hover:bg-surface-tint/70",
         ],
 
         /**
@@ -83,10 +83,9 @@ const buttonVariants = cva(
          * 品牌主色变体
          */
         brand: [
-          "bg-accent text-accent-ink border border-border-focus",
-          "shadow-theme-button",
-          "hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover hover:bg-accent-hover",
-          "active:[transform:var(--transform-button-active)] active:shadow-theme-button-active",
+          "bg-accent-brand text-accent-ink border border-border-divider",
+          "hover:bg-accent-hover hover:-translate-y-px hover:shadow-theme-card",
+          "active:translate-y-0 active:shadow-none",
         ],
       },
       

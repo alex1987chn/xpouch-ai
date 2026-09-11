@@ -45,29 +45,22 @@ function MetricCard({
  icon: React.ReactNode
  color: 'green' | 'red' | 'yellow' | 'blue'
 }) {
- // 使用语义化颜色（accent token），适配暗色主题
- const colorClasses = {
-  green: 'border-accent-success/50 bg-accent-success/10',
-  red: 'border-accent-destructive/50 bg-accent-destructive/10',
-  yellow: 'border-accent-warning/50 bg-accent-warning/10',
-  blue: 'border-accent-info/50 bg-accent-info/10',
- }
 
- const iconColorClasses = {
-  green: 'text-accent-success',
-  red: 'text-accent-destructive',
-  yellow: 'text-accent-warning',
-  blue: 'text-accent-info',
+ const tintClasses = {
+  green: 'bg-accent-success/12 text-accent-success',
+  red: 'bg-accent-destructive/12 text-accent-destructive',
+  yellow: 'bg-accent-warning/12 text-accent-warning',
+  blue: 'bg-accent-info/12 text-accent-info',
  }
 
  return (
-  <div className={cn('border-theme-card p-4 shadow-theme-card bg-surface-card', colorClasses[color])}>
-   <div className="flex items-center justify-between mb-2">
-    <span className="text-xs text-content-muted">{title}</span>
-    <span className={iconColorClasses[color]}>{icon}</span>
+  <div className="rounded-md border border-border-divider bg-surface-card p-4">
+   <div className="flex items-center justify-between">
+    <span className="text-[11.5px] font-medium text-content-muted">{title}</span>
+    <span className={cn('flex h-7 w-7 items-center justify-center rounded-full', tintClasses[color])}>{icon}</span>
    </div>
-   <div className="text-2xl font-bold text-content-primary">{value}</div>
-   {subtitle && <div className="text-xs text-content-muted mt-1">{subtitle}</div>}
+   <div className="mt-1.5 font-display text-[19px] font-bold leading-tight text-content-primary">{value}</div>
+   {subtitle && <div className="mt-1 text-[11.5px] text-content-muted">{subtitle}</div>}
   </div>
  )
 }
@@ -80,7 +73,7 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
 
  if (!trends.length) {
   return (
-   <div className="border-theme-card border-border-default p-8 text-center text-content-muted">
+   <div className="rounded-md border border-border-dashed border-border-divider bg-surface-tint/30 p-8 text-center text-content-muted">
     {t('noData')}
    </div>
   )
@@ -89,8 +82,8 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
  const maxValue = Math.max(...trends.map((d) => d.total_count), 1)
 
  return (
-  <div className="border-theme-card border-border-default p-4 shadow-theme-card">
-   <h3 className="text-sm text-content-muted mb-4">
+  <div className="rounded-md border border-border-divider bg-surface-card p-4">
+   <h3 className="mb-3.5 text-xs font-bold text-content-secondary">
     {t('trends')} (7{t('days')})
    </h3>
    <div className="flex items-end justify-between gap-2 h-32">
@@ -99,7 +92,7 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
       <div className="w-full flex flex-col gap-0.5">
        {/* 成功 */}
        <div
-        className="w-full bg-accent-success/70 rounded-t"
+        className="w-full rounded-t-[4px] bg-accent-success/75"
         style={{
          height: `${(day.success_count / maxValue) * 80}px`,
          minHeight: day.success_count > 0 ? '4px' : '0',
@@ -107,7 +100,7 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
        />
        {/* 失败 */}
        <div
-        className="w-full bg-accent-destructive/70 rounded-b"
+        className="w-full rounded-b-[4px] bg-accent-destructive/75"
         style={{
          height: `${(day.failed_count / maxValue) * 80}px`,
          minHeight: day.failed_count > 0 ? '4px' : '0',
@@ -122,11 +115,11 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
    </div>
    <div className="flex gap-4 mt-4 text-xs text-content-secondary">
     <div className="flex items-center gap-1">
-     <div className="w-3 h-3 bg-accent-success/70 rounded" />
+     <div className="h-2.5 w-2.5 rounded-sm bg-accent-success/75" />
      <span>{t('success')}</span>
     </div>
     <div className="flex items-center gap-1">
-     <div className="w-3 h-3 bg-accent-destructive/70 rounded" />
+     <div className="h-2.5 w-2.5 rounded-sm bg-accent-destructive/75" />
      <span>{t('failed')}</span>
     </div>
    </div>
@@ -150,78 +143,41 @@ function RunTable({
 
  if (!runs.length) {
   return (
-   <div className="border-theme-card border-border-default p-8 text-center text-content-muted">
+   <div className="rounded-md border border-border-dashed border-border-divider bg-surface-tint/30 p-8 text-center text-content-muted">
     {t('noRuns')}
    </div>
   )
  }
 
  return (
-  <div className="border-theme-card border-border-default shadow-theme-card overflow-x-auto">
-   <table className="w-full">
-    <thead>
-     <tr className="border-b border-border-divider bg-surface-page">
-      <th className="px-4 py-3 text-left text-xs text-content-muted">
-       Run ID
-      </th>
-      {isAdmin && (
-       <th className="px-4 py-3 text-left text-xs text-content-muted">
-        User
-       </th>
-      )}
-      <th className="px-4 py-3 text-left text-xs text-content-muted">
-       Mode
-      </th>
-      <th className="px-4 py-3 text-left text-xs text-content-muted">
-       Status
-      </th>
-      <th className="px-4 py-3 text-left text-xs text-content-muted">
-       Duration
-      </th>
-      <th className="px-4 py-3 text-left text-xs text-content-muted">
-       Created
-      </th>
-      <th className="px-4 py-3 text-right text-xs text-content-muted">
-       Action
-      </th>
-     </tr>
-    </thead>
-    <tbody>
-     {runs.map((run, index) => (
-      <tr
-       key={run.run_id}
-       style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
-       className="stagger-item border-b border-border-default hover:bg-surface-page transition-colors"
-      >
-       <td className="px-4 py-3 text-sm">
-        #{run.run_id.slice(0, 8)}
-       </td>
-       {isAdmin && (
-        <td className="px-4 py-3 text-sm">{run.user_name || run.user_id?.slice(0, 8)}</td>
-       )}
-       <td className="px-4 py-3 text-sm capitalize">{run.mode}</td>
-       <td className="px-4 py-3">
-        <RunStatusBadge status={run.status} variant="simple" />
-       </td>
-       <td className="px-4 py-3 text-sm">
-        {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(1)}s` : '-'}
-       </td>
-       <td className="px-4 py-3 text-sm text-content-muted">
-        {new Date(run.created_at).toLocaleString()}
-       </td>
-       <td className="px-4 py-3 text-right">
-        <button
-         onClick={() => onRunClick(run.run_id)}
-         className="p-1 hover:bg-accent-hover rounded transition-colors"
-         title={t('viewDetails')}
-        >
-         <ExternalLink className="w-4 h-4" />
-        </button>
-       </td>
-      </tr>
-     ))}
-    </tbody>
-   </table>
+  <div className="space-y-2">
+   {runs.map(run => (
+    <button
+     key={run.run_id}
+     onClick={() => onRunClick(run.run_id)}
+     className="stagger-item group flex w-full items-center gap-3 rounded-md border border-border-divider bg-surface-card px-4 py-3 text-left transition-all hover:border-border-hover hover:shadow-theme-card"
+    >
+     <span className="font-display text-[13px] font-bold text-content-primary">
+      #{run.run_id.slice(0, 8)}
+     </span>
+     {isAdmin && (
+      <span className="hidden max-w-[120px] shrink-0 truncate text-xs text-content-muted md:inline">
+       {run.user_name || run.user_id?.slice(0, 8)}
+      </span>
+     )}
+     <span className="shrink-0 rounded-full bg-surface-tint px-2 py-0.5 text-nano font-medium capitalize text-content-secondary">
+      {run.mode}
+     </span>
+     <RunStatusBadge status={run.status} variant="simple" />
+     <span className="ml-auto hidden shrink-0 font-display text-xs text-content-muted sm:inline">
+      {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(1)}s` : '-'}
+     </span>
+     <span className="hidden shrink-0 text-xs text-content-muted lg:inline">
+      {new Date(run.created_at).toLocaleString()}
+     </span>
+     <ExternalLink className="h-3.5 w-3.5 shrink-0 text-content-muted transition-colors group-hover:text-content-primary" />
+    </button>
+   ))}
   </div>
  )
 }
@@ -294,7 +250,7 @@ export default function StatsPage() {
     <PageTitle
      title={isAdmin ? t('globalStats') : t('myStats')}
      right={isAdmin ? (
-      <span className="px-2 py-1 bg-status-warning/15 text-content-primary text-xs font-mono">
+      <span className="rounded-full bg-accent-brand/15 px-2 py-0.5 text-micro font-bold text-content-primary">
        Admin
       </span>
      ) : undefined}
@@ -302,7 +258,7 @@ export default function StatsPage() {
 
     {/* 新用户空状态：引导跑第一个任务 */}
     {data?.metrics && data.metrics.total_runs === 0 && (
-     <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
+     <div>
       <EmptyState
        title={t('noRuns')}
        description={t('noRunsHint')}
@@ -360,15 +316,15 @@ export default function StatsPage() {
     {/* 趋势图 */}
     {data?.trends && (
      <div className="space-y-2">
-      <div className="flex justify-end gap-0 border-theme-button border-border-default w-fit">
+      <div className="flex h-[30px] w-fit items-center overflow-hidden rounded-full border border-border-default bg-surface-card">
        {[7, 14, 30].map(d => (
         <button
          key={d}
          onClick={() => setDays(d)}
          className={cn(
-          'px-3 py-1 text-xs font-bold transition-colors',
+          'h-full px-3.5 text-xs transition-colors',
           d !== 7 && 'border-l border-border-divider',
-          days === d ? 'bg-accent-hover text-content-primary' : 'text-content-secondary hover:bg-surface-page'
+          days === d ? 'bg-surface-tint font-bold text-content-primary' : 'text-content-muted hover:text-content-primary'
          )}
         >
          {d}D
@@ -391,8 +347,8 @@ export default function StatsPage() {
          onClick={handlePrevPage}
          disabled={offset === 0}
          className={cn(
-          'px-3 py-1 text-xs border-theme-button border-border-default',
-          offset === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-card'
+          'rounded-full border border-border-divider bg-surface-card px-3.5 py-1.5 text-xs font-medium text-content-secondary',
+          offset === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:border-border-hover hover:text-content-primary'
          )}
         >
          {t('prev')}
@@ -401,10 +357,10 @@ export default function StatsPage() {
          onClick={handleNextPage}
          disabled={offset + limit >= data.total_runs_count}
          className={cn(
-          'px-3 py-1 text-xs border-theme-button border-border-default',
+          'rounded-full border border-border-divider bg-surface-card px-3.5 py-1.5 text-xs font-medium text-content-secondary',
           offset + limit >= data.total_runs_count
            ? 'opacity-50 cursor-not-allowed'
-           : 'hover:bg-surface-card'
+           : 'hover:border-border-hover hover:text-content-primary'
          )}
         >
          {t('next')}

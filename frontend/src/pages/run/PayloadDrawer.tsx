@@ -74,7 +74,7 @@ export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
       {/* 遮罩层 - 可选，点击关闭 */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/10 transition-opacity"
+          className="fixed inset-0 z-40 bg-surface-scrim/40 transition-opacity"
           style={{ opacity: isOpen ? 1 : 0 }}
           onClick={onClose}
         />
@@ -102,7 +102,7 @@ export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
               Payload
             </span>
             {event && (
-              <span className="text-xs text-content-tertiary font-mono">
+              <span className="text-xs text-content-muted">
                 #{event.id}
               </span>
             )}
@@ -170,7 +170,7 @@ export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
                   {/* JSON 高亮 - 威廉使用横向滚动处理长 JSON 行 */}
                   <div className="rounded-md border border-border-default">
                     <div className="bg-surface-elevated px-3 py-1.5 border-b border-border-default flex items-center justify-between">
-                      <span className="text-xs font-mono text-content-secondary">
+                      <span className="text-xs text-content-secondary">
                         JSON
                       </span>
                       {/* 横向滚动指示器 */}
