@@ -14,7 +14,6 @@ import { ErrorState, EmptyState } from '@/components/ui/states'
 import MCPCard from './components/MCPCard'
 import { AddMCPDialog } from './components/AddMCPDialog'
 import { useTranslation } from '@/i18n'
-import { cn } from '@/lib/utils'
 
 interface MCPListProps {
  searchQuery?: string
@@ -90,48 +89,37 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
  }
 
  return (
-  <div className="space-y-4">
-   {/* 工具栏：外置搜索时仅剩添加按钮（右对齐锚定） */}
-    <div className={cn("flex items-center gap-3", isExternalSearch && "justify-end")}>
-    {/* 搜索框 - 仅在独立使用时显示 */}
-    {!isExternalSearch && (
+  <div>
+   {/* 列表头：左侧计数文案 / 右侧小添加钮（admin），替代原浮动工具栏 */}
+   {!isLoading && (
+    <div className="mb-2.5 flex items-center justify-between">
+     <span className="text-xs font-bold text-content-secondary">
+      {filteredServers.length > 0
+       ? (effectiveSearchQuery
+          ? `${filteredServers.length} ${t('matching') || 'matching'}`
+          : `${servers?.length || 0} ${t('totalItems') || 'total'}`)
+       : ''}
+     </span>
+     {isAdmin && (
+      <button
+       onClick={() => setIsAddOpen(true)}
+       title={t('add') || 'Add'}
+       className="flex h-7 w-7 items-center justify-center rounded-full border border-border-divider bg-surface-card text-content-secondary transition-all hover:border-border-hover hover:text-content-primary"
+      >
+       <Plus className="h-3.5 w-3.5" />
+      </button>
+     )}
+    </div>
+   )}
+
+   {/* 独立使用时的内嵌搜索（外置搜索时隐藏） */}
+   {!isExternalSearch && (
+    <div className="mb-3">
      <SearchInput
       value={effectiveSearchQuery}
       onChange={(value) => onSearchChange?.(value)}
       placeholder={t('searchMCPServers') || 'Search MCP servers...'}
-      className="flex-1"
      />
-    )}
-
-    {/* 添加按钮 - 仅管理员可见 */}
-    {isAdmin && (
-     <button
-      onClick={() => setIsAddOpen(true)}
-      className={cn(
-       "flex h-9 items-center gap-2 rounded-full px-4",
-       "bg-accent-brand text-accent-ink text-xs font-bold",
-       "border border-border-divider shadow-none",
-       "hover:-translate-y-px hover:shadow-theme-card",
-       "active:translate-y-0 active:shadow-none",
-       "transition-all"
-      )}
-     >
-      <Plus className="h-4 w-4" />
-      <span>{t('add') || 'ADD'}</span>
-     </button>
-    )}
-   </div>
-
-   {/* 统计 */}
-   {!isLoading && filteredServers.length > 0 && (
-    <div className="flex items-center gap-2 text-micro text-content-muted">
-     <div className="h-1.5 w-1.5 rounded-full bg-accent-brand" />
-     <span>
-      {effectiveSearchQuery
-       ? `${filteredServers.length} ${t('matching') || 'matching'}`
-       : `${servers?.length || 0} ${t('totalItems') || 'total'}`
-      }
-     </span>
     </div>
    )}
 

@@ -24,8 +24,16 @@ from utils.logger import logger
 router = APIRouter(prefix="/api/runs", tags=["runs"])
 
 
-def _get_run_or_raise(db: Session, run_id: str, user_id: str) -> AgentRun:
-    """用户归属校验（单一实现在 run_lifecycle.get_agent_run_or_raise）。"""
+def _get_run_or_raise(db: Session, run_id: str, user_id: str, is_admin: bool = False) -> AgentRun:
+    """用户归属校验（单一实现在 run_lifecycle.get_agent_run_or_raise）。
+
+    admin 例外：运行统计（全局列表）跳转详情时允许查看任意用户的 run。
+    """
+    if is_admin:
+        run = db.get(AgentRun, run_id)
+        if run is None:
+            raise NotFoundError("AgentRun")
+        return run
     return get_agent_run_or_raise(db, run_id, user_id=user_id)
 
 
@@ -58,7 +66,7 @@ async def get_run_details(
         RunSummaryResponse: 运行实例摘要
     """
     logger.info(f"[Runs API] 获取运行详情: run_id={run_id}, user_id={current_user.id}")
-    run = _get_run_or_raise(db, run_id, current_user.id)
+    run = _get_run_or_raise(db, run_id, current_user.id, is_admin=(current_user.role == "admin"))
     return RunSummaryResponse.model_validate(run)
 
 
@@ -133,7 +141,7 @@ async def get_run_timeline(
         RunTimelineResponse: 包含事件列表的响应
     """
     logger.info(f"[Runs API] 获取运行时间线: run_id={run_id}, user_id={current_user.id}")
-    _get_run_or_raise(db, run_id, current_user.id)
+    _get_run_or_raise(db, run_id, current_user.id, is_admin=(current_user.role == "admin"))
 
     events = get_run_events_by_run_id(db, run_id, limit=limit, offset=offset)
 

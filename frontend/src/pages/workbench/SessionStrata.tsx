@@ -155,7 +155,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
       </div>
 
       {/* 搜索（统一组件 compact 变体） */}
-      <div className="px-3 pb-1">
+      <div className="px-3 pb-2.5 pt-1.5">
         <SearchInput
           size="compact"
           value={search}
