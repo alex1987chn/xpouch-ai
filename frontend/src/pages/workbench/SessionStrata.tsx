@@ -141,7 +141,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
       {/* 头部 */}
       <div className="flex items-center justify-between px-3 pt-3">
         <span className="text-xs font-bold tracking-widest text-content-secondary">
-          /// {t('workbenchTitle')}
+          /// {t('history')}
         </span>
         <button
           onClick={onNewChat}

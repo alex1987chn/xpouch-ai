@@ -34,6 +34,7 @@ import { LoadingFallback } from './components/LoadingFallback'
 import HomePage from '@/pages/home/HomePage'
 
 // 路由懒加载 - 代码分割优化（chunk 失效自动刷新拿新构建）
+const WorkbenchLayout = lazyWithReload(() => import('@/pages/workbench/WorkbenchLayout'))
 const StatsPage = lazyWithReload(() => import('@/pages/admin/StatsPage'))
 const ManagementConsolePage = lazyWithReload(() => import('@/pages/admin/ManagementConsolePage'))
 const RunTimelinePage = lazyWithReload(() => import('@/pages/run/RunTimelinePage'))
@@ -47,15 +48,6 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <HomePage />
-      },
-      {
-        // 工作台（阶段 2 新 IA，迁移期并行；cutover 时替换 '/' 与旧路由）
-        path: 'workbench',
-        element: <WorkbenchPageWrapper />
-      },
-      {
-        path: 'workbench/:id',
-        element: <WorkbenchPageWrapper />
       },
       {
         path: 'library',
@@ -114,6 +106,15 @@ export const router = createBrowserRouter([
         path: '*',
         element: <Navigate to="/" replace />
       }
+    ]
+  },
+  {
+    // 工作台（阶段 2 新 IA）：自带壳（顶栏+三目的地图标栏），迁移期与旧壳并行
+    path: '/workbench',
+    element: <WorkbenchLayout />,
+    children: [
+      { index: true, element: <WorkbenchPageWrapper /> },
+      { path: ':id', element: <WorkbenchPageWrapper /> }
     ]
   },
   {
