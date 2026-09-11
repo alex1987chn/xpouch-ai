@@ -59,45 +59,48 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 Input.displayName = "Input"
 
 /**
- * SearchInput - 带搜索图标的输入框
+ * SearchInput - 统一搜索组件（全站唯一搜索形态）
+ *
+ * 胶囊外形 + 前置图标 + 页面底色；size 变体：
+ * - default（h-10）：内容页搜索条（资源库/管理台分区）
+ * - compact（h-8，13px）：面板内/窄栏（会话地层等）
  */
 export interface SearchInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "size"> {
   value: string
   onChange: (value: string) => void
   error?: boolean
+  size?: "default" | "compact"
 }
 
 const SearchInput = React.forwardRef<
   HTMLInputElement,
   SearchInputProps
->(({ className, value, onChange, error, ...props }, ref) => {
+>(({ className, value, onChange, error, size = "default", ...props }, ref) => {
+  const compact = size === "compact"
   return (
-    <div className="relative flex items-center w-full">
-      <Search className="absolute left-3 w-4 h-4 text-content-secondary pointer-events-none z-10" />
+    <div className="relative flex w-full items-center">
+      <Search
+        className={cn(
+          "pointer-events-none z-10 text-content-muted",
+          compact ? "left-2.5 h-3.5 w-3.5" : "left-3.5 h-4 w-4"
+        )}
+      />
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          // 基础布局
-          "flex w-full h-11",
-          // 圆角
-          "rounded-md",
-          // 边框
-          "border-theme-input border-border-default",
-          // Focus状态
-          "focus:outline-none focus:border-border-focus",
-          // 背景色
-          "bg-surface-page",
-          // 字体
-          "pl-10 pr-4 py-2 text-sm",
-          "text-content-primary placeholder:text-content-secondary",
-          // 阴影
-          "shadow-theme-input",
-          // 过渡动画
-          "transition-all duration-150 ease-out",
-          // 禁用状态
+          // 布局：胶囊
+          "flex w-full rounded-full",
+          compact ? "h-8 pl-8 pr-3 text-[13px]" : "h-10 pl-10 pr-4 text-sm",
+          // 边框 + Focus
+          "border-theme-input border-border-default bg-surface-page",
+          "focus:border-border-focus focus:outline-none",
+          // 文字
+          "text-content-primary placeholder:text-content-muted",
+          // 过渡
+          "transition-colors duration-150 ease-out",
           "disabled:cursor-not-allowed disabled:opacity-50",
           // 错误状态
           error && "border-accent-destructive focus:border-accent-destructive",

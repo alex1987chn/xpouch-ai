@@ -18,6 +18,7 @@ import { zhCN, enUS, ja } from 'date-fns/locale'
 import { Plus } from 'lucide-react'
 
 import { useChatHistoryQuery } from '@/hooks/queries/useChatHistoryQuery'
+import { SearchInput } from '@/components/ui/input'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
 import type { Conversation } from '@/types'
@@ -152,14 +153,13 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
         </button>
       </div>
 
-      {/* 搜索 */}
-      <div className="p-3">
-        <input
-          type="text"
+      {/* 搜索（统一组件 compact 变体） */}
+      <div className="px-3 pb-1">
+        <SearchInput
+          size="compact"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={setSearch}
           placeholder={t('strataSearch')}
-          className="w-full rounded-sm border-theme-input border-border-default bg-surface-page px-2.5 py-1.5 text-xs text-content-primary placeholder:text-content-muted focus:border-border-focus focus:outline-none transition-colors"
         />
       </div>
 

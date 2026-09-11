@@ -24,6 +24,7 @@ import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery'
 import { useUserSettingsQuery } from '@/hooks/queries/useUserSettingsQuery'
 import { getSystemStatus } from '@/services/systemStatus'
 import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher'
+import { CommandPalette } from '@/components/cmd/CommandPalette'
 import { SettingsHubDialog } from '@/components/settings/SettingsHubDialog'
 import LoginDialog from '@/components/auth/LoginDialog'
 import { cn } from '@/lib/utils'
@@ -73,6 +74,19 @@ export default function WorkbenchLayout() {
     refetchOnWindowFocus: false,
     staleTime: 30_000,
   })
+
+  // ⌘K / Ctrl+K 全局命令面板
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen(o => !o)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // G 键两段跳转（蓝本 G W/L/A）：g 后 900ms 内按 w/l/a
   const gPendingRef = useRef(0)
@@ -125,9 +139,9 @@ export default function WorkbenchLayout() {
           <LogoMark />
         </button>
 
-        {/* ⌘K 药丸：绝对定位真居中（蓝本视觉中轴） */}
+        {/* ⌘K 药丸：打开全局命令面板 */}
         <button
-          onClick={() => navigate('/workbench')}
+          onClick={() => setPaletteOpen(true)}
           className="absolute left-1/2 top-1/2 hidden h-[34px] w-[400px] -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 rounded-full border-theme-input border-border-default bg-surface-page px-3.5 text-[13px] text-content-muted transition-all hover:border-border-hover hover:shadow-theme-card sm:flex"
           title={t('cmdSearch')}
         >
@@ -244,7 +258,8 @@ export default function WorkbenchLayout() {
         </span>
       </footer>
 
-      {/* ===== 全局弹窗（工作台壳自挂：设置中心 + 登录） ===== */}
+      {/* ===== 全局弹窗（工作台壳自挂：命令面板 + 设置中心 + 登录） ===== */}
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <SettingsHubDialog />
       <LoginDialog
         open={dialogs.loginOpen}
