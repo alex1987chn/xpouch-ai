@@ -39,7 +39,7 @@ export type TranslationKey =
   | 'runCreatedAt' | 'runBack' | 'runDetails' | 'runNotFound' | 'noEvents'
   | 'payloadEmpty' | 'selectEventHint'
   // 工作台（阶段 2 新 IA）
-  | 'workbenchTitle' | 'strataTitle' | 'strataSearch' | 'cmdSearch' | 'groupToday' | 'groupYesterday' | 'groupThisWeek' | 'groupEarlier' | 'strataEmpty'
+  | 'workbenchTitle' | 'strataTitle' | 'strataSearch' | 'cmdSearch' | 'railLibrary' | 'groupToday' | 'groupYesterday' | 'groupThisWeek' | 'groupEarlier' | 'strataEmpty'
   | 'sbOnline' | 'sbOffline' | 'sbCommands' | 'aiBylineFallback'
   | 'chipAwaiting' | 'chipRunning'
   | 'canvasArtifacts' | 'canvasGallery' | 'canvasEmpty' | 'canvasGalleryEmpty' | 'openArtifact' | 'backToList'

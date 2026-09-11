@@ -241,8 +241,10 @@ export default function ChatStreamPanel({
       {/* Message list area */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-8"
+        className="flex-1 overflow-y-auto"
       >
+        {/* 对话列：居中 760px（蓝本 conv-inner 语法） */}
+        <div className="mx-auto w-full max-w-[760px] space-y-8 px-6 pb-5 pt-5">
         {displayMessages.length === 0 ? (
           <EmptyState />
         ) : (
@@ -302,12 +304,13 @@ export default function ChatStreamPanel({
         {/* Phase 2: Server-Driven UI - Plan review card 基于 executionStatus */}
         {/* 使用 key 强制重新挂载，避免 useEffect 同步 Props 反模式 */}
         {isWaitingForApproval && threadId && resumeExecution && (
-          <PlanReviewCard 
+          <PlanReviewCard
             key={`plan-review-${threadId}`}
-            threadId={threadId} 
+            threadId={threadId}
             resumeExecution={resumeExecution}
           />
         )}
+        </div>
       </div>
 
       {/* v3.4.0 轮询状态栏（输入框上方） */}

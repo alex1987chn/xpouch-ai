@@ -63,7 +63,8 @@ export default function HeavyInputConsole({
   }
 
   return (
-    <div className="z-20 shrink-0 bg-surface-page px-4 pb-4 pt-1">
+    <div className="z-20 shrink-0 bg-surface-page px-6 pb-4 pt-1">
+      <div className="mx-auto w-full max-w-[760px]">
       {/* 输入台卡片 */}
       <div className={cn(
         "relative rounded-lg border border-border-divider bg-surface-card shadow-theme-card transition-shadow",
@@ -154,6 +155,7 @@ export default function HeavyInputConsole({
             </button>
           )}
         </div>
+      </div>
       </div>
     </div>
   )

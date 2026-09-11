@@ -33,390 +33,390 @@ import { BarChart3, CheckCircle, AlertTriangle, Clock, ExternalLink, Coins } fro
  * 指标卡片组件
  */
 function MetricCard({
-  title,
-  value,
-  subtitle,
-  icon,
-  color,
+ title,
+ value,
+ subtitle,
+ icon,
+ color,
 }: {
-  title: string
-  value: string | number
-  subtitle?: string
-  icon: React.ReactNode
-  color: 'green' | 'red' | 'yellow' | 'blue'
+ title: string
+ value: string | number
+ subtitle?: string
+ icon: React.ReactNode
+ color: 'green' | 'red' | 'yellow' | 'blue'
 }) {
-  // 使用语义化颜色（accent token），适配暗色主题
-  const colorClasses = {
-    green: 'border-accent-success/50 bg-accent-success/10',
-    red: 'border-accent-destructive/50 bg-accent-destructive/10',
-    yellow: 'border-accent-warning/50 bg-accent-warning/10',
-    blue: 'border-accent-info/50 bg-accent-info/10',
-  }
+ // 使用语义化颜色（accent token），适配暗色主题
+ const colorClasses = {
+  green: 'border-accent-success/50 bg-accent-success/10',
+  red: 'border-accent-destructive/50 bg-accent-destructive/10',
+  yellow: 'border-accent-warning/50 bg-accent-warning/10',
+  blue: 'border-accent-info/50 bg-accent-info/10',
+ }
 
-  const iconColorClasses = {
-    green: 'text-accent-success',
-    red: 'text-accent-destructive',
-    yellow: 'text-accent-warning',
-    blue: 'text-accent-info',
-  }
+ const iconColorClasses = {
+  green: 'text-accent-success',
+  red: 'text-accent-destructive',
+  yellow: 'text-accent-warning',
+  blue: 'text-accent-info',
+ }
 
-  return (
-    <div className={cn('border-theme-card p-4 shadow-theme-card bg-surface-card', colorClasses[color])}>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-mono text-content-muted">{title}</span>
-        <span className={iconColorClasses[color]}>{icon}</span>
-      </div>
-      <div className="text-2xl font-bold font-mono text-content-primary">{value}</div>
-      {subtitle && <div className="text-xs text-content-muted mt-1">{subtitle}</div>}
-    </div>
-  )
+ return (
+  <div className={cn('border-theme-card p-4 shadow-theme-card bg-surface-card', colorClasses[color])}>
+   <div className="flex items-center justify-between mb-2">
+    <span className="text-xs text-content-muted">{title}</span>
+    <span className={iconColorClasses[color]}>{icon}</span>
+   </div>
+   <div className="text-2xl font-bold text-content-primary">{value}</div>
+   {subtitle && <div className="text-xs text-content-muted mt-1">{subtitle}</div>}
+  </div>
+ )
 }
 
 /**
  * 趋势图组件（CSS 柱状图）
  */
 function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
-  const { t } = useTranslation()
+ const { t } = useTranslation()
 
-  if (!trends.length) {
-    return (
-      <div className="border-theme-card border-border-default p-8 text-center text-content-muted">
-        {t('noData')}
-      </div>
-    )
-  }
-
-  const maxValue = Math.max(...trends.map((d) => d.total_count), 1)
-
+ if (!trends.length) {
   return (
-    <div className="border-theme-card border-border-default p-4 shadow-theme-card">
-      <h3 className="text-sm font-mono text-content-muted mb-4">
-        {t('trends')} (7{t('days')})
-      </h3>
-      <div className="flex items-end justify-between gap-2 h-32">
-        {trends.map((day) => (
-          <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-            <div className="w-full flex flex-col gap-0.5">
-              {/* 成功 */}
-              <div
-                className="w-full bg-accent-success/70 rounded-t"
-                style={{
-                  height: `${(day.success_count / maxValue) * 80}px`,
-                  minHeight: day.success_count > 0 ? '4px' : '0',
-                }}
-              />
-              {/* 失败 */}
-              <div
-                className="w-full bg-accent-destructive/70 rounded-b"
-                style={{
-                  height: `${(day.failed_count / maxValue) * 80}px`,
-                  minHeight: day.failed_count > 0 ? '4px' : '0',
-                }}
-              />
-            </div>
-            <span className="text-micro font-mono text-content-muted">
-              {day.date.slice(5)}
-            </span>
-          </div>
-        ))}
-      </div>
-      <div className="flex gap-4 mt-4 text-xs text-content-secondary">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 bg-accent-success/70 rounded" />
-          <span>{t('success')}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 bg-accent-destructive/70 rounded" />
-          <span>{t('failed')}</span>
-        </div>
-      </div>
-    </div>
+   <div className="border-theme-card border-border-default p-8 text-center text-content-muted">
+    {t('noData')}
+   </div>
   )
+ }
+
+ const maxValue = Math.max(...trends.map((d) => d.total_count), 1)
+
+ return (
+  <div className="border-theme-card border-border-default p-4 shadow-theme-card">
+   <h3 className="text-sm text-content-muted mb-4">
+    {t('trends')} (7{t('days')})
+   </h3>
+   <div className="flex items-end justify-between gap-2 h-32">
+    {trends.map((day) => (
+     <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
+      <div className="w-full flex flex-col gap-0.5">
+       {/* 成功 */}
+       <div
+        className="w-full bg-accent-success/70 rounded-t"
+        style={{
+         height: `${(day.success_count / maxValue) * 80}px`,
+         minHeight: day.success_count > 0 ? '4px' : '0',
+        }}
+       />
+       {/* 失败 */}
+       <div
+        className="w-full bg-accent-destructive/70 rounded-b"
+        style={{
+         height: `${(day.failed_count / maxValue) * 80}px`,
+         minHeight: day.failed_count > 0 ? '4px' : '0',
+        }}
+       />
+      </div>
+      <span className="text-micro text-content-muted">
+       {day.date.slice(5)}
+      </span>
+     </div>
+    ))}
+   </div>
+   <div className="flex gap-4 mt-4 text-xs text-content-secondary">
+    <div className="flex items-center gap-1">
+     <div className="w-3 h-3 bg-accent-success/70 rounded" />
+     <span>{t('success')}</span>
+    </div>
+    <div className="flex items-center gap-1">
+     <div className="w-3 h-3 bg-accent-destructive/70 rounded" />
+     <span>{t('failed')}</span>
+    </div>
+   </div>
+  </div>
+ )
 }
 
 /**
  * 运行列表表格
  */
 function RunTable({
-  runs,
-  isAdmin,
-  onRunClick,
+ runs,
+ isAdmin,
+ onRunClick,
 }: {
-  runs: RunListItem[]
-  isAdmin: boolean
-  onRunClick: (runId: string) => void
+ runs: RunListItem[]
+ isAdmin: boolean
+ onRunClick: (runId: string) => void
 }) {
-  const { t } = useTranslation()
+ const { t } = useTranslation()
 
-  if (!runs.length) {
-    return (
-      <div className="border-theme-card border-border-default p-8 text-center text-content-muted">
-        {t('noRuns')}
-      </div>
-    )
-  }
-
+ if (!runs.length) {
   return (
-    <div className="border-theme-card border-border-default shadow-theme-card overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b-2 border-border-default bg-surface-page">
-            <th className="px-4 py-3 text-left text-xs font-mono text-content-muted">
-              Run ID
-            </th>
-            {isAdmin && (
-              <th className="px-4 py-3 text-left text-xs font-mono text-content-muted">
-                User
-              </th>
-            )}
-            <th className="px-4 py-3 text-left text-xs font-mono text-content-muted">
-              Mode
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-mono text-content-muted">
-              Status
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-mono text-content-muted">
-              Duration
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-mono text-content-muted">
-              Created
-            </th>
-            <th className="px-4 py-3 text-right text-xs font-mono text-content-muted">
-              Action
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {runs.map((run, index) => (
-            <tr
-              key={run.run_id}
-              style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
-              className="stagger-item border-b border-border-default hover:bg-surface-page transition-colors"
-            >
-              <td className="px-4 py-3 font-mono text-sm">
-                #{run.run_id.slice(0, 8)}
-              </td>
-              {isAdmin && (
-                <td className="px-4 py-3 text-sm">{run.user_name || run.user_id?.slice(0, 8)}</td>
-              )}
-              <td className="px-4 py-3 text-sm capitalize">{run.mode}</td>
-              <td className="px-4 py-3">
-                <RunStatusBadge status={run.status} variant="simple" />
-              </td>
-              <td className="px-4 py-3 font-mono text-sm">
-                {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(1)}s` : '-'}
-              </td>
-              <td className="px-4 py-3 text-sm text-content-muted">
-                {new Date(run.created_at).toLocaleString()}
-              </td>
-              <td className="px-4 py-3 text-right">
-                <button
-                  onClick={() => onRunClick(run.run_id)}
-                  className="p-1 hover:bg-accent-hover rounded transition-colors"
-                  title={t('viewDetails')}
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+   <div className="border-theme-card border-border-default p-8 text-center text-content-muted">
+    {t('noRuns')}
+   </div>
   )
+ }
+
+ return (
+  <div className="border-theme-card border-border-default shadow-theme-card overflow-x-auto">
+   <table className="w-full">
+    <thead>
+     <tr className="border-b-2 border-border-default bg-surface-page">
+      <th className="px-4 py-3 text-left text-xs text-content-muted">
+       Run ID
+      </th>
+      {isAdmin && (
+       <th className="px-4 py-3 text-left text-xs text-content-muted">
+        User
+       </th>
+      )}
+      <th className="px-4 py-3 text-left text-xs text-content-muted">
+       Mode
+      </th>
+      <th className="px-4 py-3 text-left text-xs text-content-muted">
+       Status
+      </th>
+      <th className="px-4 py-3 text-left text-xs text-content-muted">
+       Duration
+      </th>
+      <th className="px-4 py-3 text-left text-xs text-content-muted">
+       Created
+      </th>
+      <th className="px-4 py-3 text-right text-xs text-content-muted">
+       Action
+      </th>
+     </tr>
+    </thead>
+    <tbody>
+     {runs.map((run, index) => (
+      <tr
+       key={run.run_id}
+       style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+       className="stagger-item border-b border-border-default hover:bg-surface-page transition-colors"
+      >
+       <td className="px-4 py-3 text-sm">
+        #{run.run_id.slice(0, 8)}
+       </td>
+       {isAdmin && (
+        <td className="px-4 py-3 text-sm">{run.user_name || run.user_id?.slice(0, 8)}</td>
+       )}
+       <td className="px-4 py-3 text-sm capitalize">{run.mode}</td>
+       <td className="px-4 py-3">
+        <RunStatusBadge status={run.status} variant="simple" />
+       </td>
+       <td className="px-4 py-3 text-sm">
+        {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(1)}s` : '-'}
+       </td>
+       <td className="px-4 py-3 text-sm text-content-muted">
+        {new Date(run.created_at).toLocaleString()}
+       </td>
+       <td className="px-4 py-3 text-right">
+        <button
+         onClick={() => onRunClick(run.run_id)}
+         className="p-1 hover:bg-accent-hover rounded transition-colors"
+         title={t('viewDetails')}
+        >
+         <ExternalLink className="w-4 h-4" />
+        </button>
+       </td>
+      </tr>
+     ))}
+    </tbody>
+   </table>
+  </div>
+ )
 }
 
 /**
  * 主页面组件
  */
 export default function StatsPage() {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const { user } = useUserStore()
-  const isAdmin = user?.role === 'admin'
+ const { t } = useTranslation()
+ const navigate = useNavigate()
+ const { user } = useUserStore()
+ const isAdmin = user?.role === 'admin'
 
-  const [offset, setOffset] = useState(0)
-  const [days, setDays] = useState(7)
-  const limit = 50
+ const [offset, setOffset] = useState(0)
+ const [days, setDays] = useState(7)
+ const limit = 50
 
-  // 获取统计数据
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['run-stats', limit, offset, days],
-    queryFn: () => getRunStats(limit, offset, days),
-    refetchOnWindowFocus: false,
-  })
+ // 获取统计数据
+ const { data, isLoading, error, refetch } = useQuery({
+  queryKey: ['run-stats', limit, offset, days],
+  queryFn: () => getRunStats(limit, offset, days),
+  refetchOnWindowFocus: false,
+ })
 
-  const handleRunClick = (runId: string) => {
-    navigate(`/run/${runId}`)
+ const handleRunClick = (runId: string) => {
+  navigate(`/run/${runId}`)
+ }
+
+ const handlePrevPage = () => {
+  setOffset(Math.max(0, offset - limit))
+ }
+
+ const handleNextPage = () => {
+  if (data && offset + limit < data.total_runs_count) {
+   setOffset(offset + limit)
   }
+ }
 
-  const handlePrevPage = () => {
-    setOffset(Math.max(0, offset - limit))
-  }
-
-  const handleNextPage = () => {
-    if (data && offset + limit < data.total_runs_count) {
-      setOffset(offset + limit)
-    }
-  }
-
-  if (isLoading) {
-    // 与下方内容页同构：标题行 + 卡片网格
-    return (
-      <div className="min-h-screen bg-surface-page px-6 md:px-12 py-8">
-        <div className="max-w-5xl mx-auto space-y-6">
-          <Skeleton className="h-7 w-48" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {Array.from({ length: 6 }, (_, i) => (
-              <CardSkeleton key={i} />
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    logger.error('[StatsPage] 加载失败:', error)
-    return (
-      <div className="min-h-screen bg-surface-page p-8">
-        <div className="max-w-7xl mx-auto">
-          <ErrorState message={error instanceof Error ? error.message : undefined} onRetry={() => refetch()} />
-        </div>
-      </div>
-    )
-  }
-
+ if (isLoading) {
+  // 与下方内容页同构：标题行 + 卡片网格
   return (
-    <div className="min-h-screen bg-surface-page px-6 md:px-12 py-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* 页面标题（PageTitle 统一习语） */}
-        <PageTitle
-          title={isAdmin ? t('globalStats') : t('myStats')}
-          right={isAdmin ? (
-            <span className="px-2 py-1 bg-status-warning/15 text-content-primary text-xs font-mono">
-              Admin
-            </span>
-          ) : undefined}
-        />
-
-        {/* 新用户空状态：引导跑第一个任务 */}
-        {data?.metrics && data.metrics.total_runs === 0 && (
-          <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
-            <EmptyState
-              title={t('noRuns')}
-              description={t('noRunsHint')}
-              action={{ label: t('navDashboard'), onClick: () => navigate('/') }}
-            />
-          </div>
-        )}
-
-        {/* 指标卡片 */}
-        {data?.metrics && data.metrics.total_runs > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <MetricCard
-              title={t('totalRuns')}
-              value={data.metrics.total_runs}
-              icon={<BarChart3 className="w-4 h-4" />}
-              color="blue"
-            />
-            <MetricCard
-              title={t('successRate')}
-              value={`${data.metrics.success_rate}%`}
-              subtitle={`${data.metrics.success_count}/${data.metrics.total_runs}`}
-              icon={<CheckCircle className="w-4 h-4" />}
-              color="green"
-            />
-            <MetricCard
-              title={t('hitlCount')}
-              value={data.metrics.hitl_count}
-              icon={<AlertTriangle className="w-4 h-4" />}
-              color="yellow"
-            />
-            <MetricCard
-              title={t('todayTokens')}
-              value={(data.today_tokens ?? 0).toLocaleString()}
-              subtitle={
-                data.daily_token_quota
-                  ? `${t('quotaRemaining')} ${Math.max(0, data.daily_token_quota - data.today_tokens).toLocaleString()}`
-                  : t('quotaUnlimited')
-              }
-              icon={<Coins className="w-4 h-4" />}
-              color={data.daily_token_quota && data.today_tokens >= data.daily_token_quota ? 'red' : 'blue'}
-            />
-            <MetricCard
-              title={t('avgDuration')}
-              value={
-                data.metrics.avg_duration_ms > 0
-                  ? `${(data.metrics.avg_duration_ms / 1000).toFixed(1)}s`
-                  : '-'
-              }
-              icon={<Clock className="w-4 h-4" />}
-              color="blue"
-            />
-          </div>
-        )}
-
-        {/* 趋势图 */}
-        {data?.trends && (
-          <div className="space-y-2">
-            <div className="flex justify-end gap-0 border-theme-button border-border-default w-fit">
-              {[7, 14, 30].map(d => (
-                <button
-                  key={d}
-                  onClick={() => setDays(d)}
-                  className={cn(
-                    'px-3 py-1 text-xs font-mono font-bold transition-colors',
-                    d !== 7 && 'border-l-2 border-border-default',
-                    days === d ? 'bg-accent-hover text-content-primary' : 'text-content-secondary hover:bg-surface-page'
-                  )}
-                >
-                  {d}D
-                </button>
-              ))}
-            </div>
-            <TrendChart trends={data.trends} />
-          </div>
-        )}
-
-        {/* 运行列表 */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-mono text-content-muted">
-              {t('runList')} ({data?.total_runs_count || 0})
-            </h2>
-            {data && data.total_runs_count > limit && (
-              <div className="flex gap-2">
-                <button
-                  onClick={handlePrevPage}
-                  disabled={offset === 0}
-                  className={cn(
-                    'px-3 py-1 text-xs font-mono border-theme-button border-border-default',
-                    offset === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-card'
-                  )}
-                >
-                  {t('prev')}
-                </button>
-                <button
-                  onClick={handleNextPage}
-                  disabled={offset + limit >= data.total_runs_count}
-                  className={cn(
-                    'px-3 py-1 text-xs font-mono border-theme-button border-border-default',
-                    offset + limit >= data.total_runs_count
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'hover:bg-surface-card'
-                  )}
-                >
-                  {t('next')}
-                </button>
-              </div>
-            )}
-          </div>
-          {data?.runs && (
-            <RunTable runs={data.runs} isAdmin={isAdmin} onRunClick={handleRunClick} />
-          )}
-        </div>
-      </div>
+   <div className="min-h-full bg-surface-page px-6 md:px-12 py-8">
+    <div className="max-w-5xl mx-auto space-y-6">
+     <Skeleton className="h-7 w-48" />
+     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {Array.from({ length: 6 }, (_, i) => (
+       <CardSkeleton key={i} />
+      ))}
+     </div>
     </div>
+   </div>
   )
+ }
+
+ if (error) {
+  logger.error('[StatsPage] 加载失败:', error)
+  return (
+   <div className="min-h-full bg-surface-page p-8">
+    <div className="max-w-7xl mx-auto">
+     <ErrorState message={error instanceof Error ? error.message : undefined} onRetry={() => refetch()} />
+    </div>
+   </div>
+  )
+ }
+
+ return (
+  <div className="min-h-full bg-surface-page px-6 md:px-12 py-8">
+   <div className="max-w-5xl mx-auto space-y-6">
+    {/* 页面标题（PageTitle 统一习语） */}
+    <PageTitle
+     title={isAdmin ? t('globalStats') : t('myStats')}
+     right={isAdmin ? (
+      <span className="px-2 py-1 bg-status-warning/15 text-content-primary text-xs font-mono">
+       Admin
+      </span>
+     ) : undefined}
+    />
+
+    {/* 新用户空状态：引导跑第一个任务 */}
+    {data?.metrics && data.metrics.total_runs === 0 && (
+     <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
+      <EmptyState
+       title={t('noRuns')}
+       description={t('noRunsHint')}
+       action={{ label: t('navDashboard'), onClick: () => navigate('/') }}
+      />
+     </div>
+    )}
+
+    {/* 指标卡片 */}
+    {data?.metrics && data.metrics.total_runs > 0 && (
+     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <MetricCard
+       title={t('totalRuns')}
+       value={data.metrics.total_runs}
+       icon={<BarChart3 className="w-4 h-4" />}
+       color="blue"
+      />
+      <MetricCard
+       title={t('successRate')}
+       value={`${data.metrics.success_rate}%`}
+       subtitle={`${data.metrics.success_count}/${data.metrics.total_runs}`}
+       icon={<CheckCircle className="w-4 h-4" />}
+       color="green"
+      />
+      <MetricCard
+       title={t('hitlCount')}
+       value={data.metrics.hitl_count}
+       icon={<AlertTriangle className="w-4 h-4" />}
+       color="yellow"
+      />
+      <MetricCard
+       title={t('todayTokens')}
+       value={(data.today_tokens ?? 0).toLocaleString()}
+       subtitle={
+        data.daily_token_quota
+         ? `${t('quotaRemaining')} ${Math.max(0, data.daily_token_quota - data.today_tokens).toLocaleString()}`
+         : t('quotaUnlimited')
+       }
+       icon={<Coins className="w-4 h-4" />}
+       color={data.daily_token_quota && data.today_tokens >= data.daily_token_quota ? 'red' : 'blue'}
+      />
+      <MetricCard
+       title={t('avgDuration')}
+       value={
+        data.metrics.avg_duration_ms > 0
+         ? `${(data.metrics.avg_duration_ms / 1000).toFixed(1)}s`
+         : '-'
+       }
+       icon={<Clock className="w-4 h-4" />}
+       color="blue"
+      />
+     </div>
+    )}
+
+    {/* 趋势图 */}
+    {data?.trends && (
+     <div className="space-y-2">
+      <div className="flex justify-end gap-0 border-theme-button border-border-default w-fit">
+       {[7, 14, 30].map(d => (
+        <button
+         key={d}
+         onClick={() => setDays(d)}
+         className={cn(
+          'px-3 py-1 text-xs font-bold transition-colors',
+          d !== 7 && 'border-l-2 border-border-default',
+          days === d ? 'bg-accent-hover text-content-primary' : 'text-content-secondary hover:bg-surface-page'
+         )}
+        >
+         {d}D
+        </button>
+       ))}
+      </div>
+      <TrendChart trends={data.trends} />
+     </div>
+    )}
+
+    {/* 运行列表 */}
+    <div className="space-y-4">
+     <div className="flex items-center justify-between">
+      <h2 className="text-sm text-content-muted">
+       {t('runList')} ({data?.total_runs_count || 0})
+      </h2>
+      {data && data.total_runs_count > limit && (
+       <div className="flex gap-2">
+        <button
+         onClick={handlePrevPage}
+         disabled={offset === 0}
+         className={cn(
+          'px-3 py-1 text-xs border-theme-button border-border-default',
+          offset === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-card'
+         )}
+        >
+         {t('prev')}
+        </button>
+        <button
+         onClick={handleNextPage}
+         disabled={offset + limit >= data.total_runs_count}
+         className={cn(
+          'px-3 py-1 text-xs border-theme-button border-border-default',
+          offset + limit >= data.total_runs_count
+           ? 'opacity-50 cursor-not-allowed'
+           : 'hover:bg-surface-card'
+         )}
+        >
+         {t('next')}
+        </button>
+       </div>
+      )}
+     </div>
+     {data?.runs && (
+      <RunTable runs={data.runs} isAdmin={isAdmin} onRunClick={handleRunClick} />
+     )}
+    </div>
+   </div>
+  </div>
+ )
 }

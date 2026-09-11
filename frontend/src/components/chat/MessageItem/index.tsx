@@ -462,7 +462,7 @@ function MessageItem({
           </span>
         </div>
         <div className="w-fit max-w-[78%] select-text rounded-md border border-border-divider bg-surface-tint p-2.5 px-3.5 shadow-theme-card">
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-content-primary">
+          <p className="whitespace-pre-wrap text-[13.5px] leading-[1.65] text-content-primary">
             {content}
           </p>
         </div>
@@ -487,10 +487,10 @@ function MessageItem({
         </span>
       </div>
 
-      {/* 内容区：无气泡背景，直接展示 */}
-      <div className="w-full prose prose-sm max-w-none
+      {/* 内容区：无气泡背景，直接展示（蓝本 13.5px / 1.75 行高） */}
+      <div className="w-full text-[13.5px] leading-[1.75] prose prose-sm max-w-none
         prose-headings:text-sm prose-headings:font-bold prose-headings:text-content-primary
-        prose-p:text-sm prose-p:leading-relaxed prose-p:text-content-primary/90
+        prose-p:text-[13.5px] prose-p:leading-[1.75] prose-p:text-content-primary/90
         prose-strong:text-content-primary prose-code:text-content-primary prose-pre:bg-surface-elevated/50
         prose-pre:border prose-pre:border-border-default/30 prose-a:text-accent hover:prose-a:text-accent-hover
         select-text">

@@ -189,14 +189,15 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-divider bg-surface-card">
         <div className="flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-content-secondary" />
+          <AlertCircle className="w-5 h-5 text-accent-warning" />
           <div>
             <h3 className="text-sm font-semibold text-content-primary">{t('planReviewTitle')}</h3>
             <span className="text-xs text-content-muted">{t('tasksPendingConfirm', { count: editedPlan.length })}</span>
           </div>
         </div>
-        <span className="rounded-full border border-border-divider bg-surface-tint px-2 py-0.5 text-micro font-medium text-content-muted">
-          HITL
+        <span className="flex items-center gap-1.5 rounded-full bg-accent-warning/10 px-2 py-0.5 text-micro font-medium text-accent-warning">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent-warning" />
+          {t('chipAwaiting')}
         </span>
       </div>
 

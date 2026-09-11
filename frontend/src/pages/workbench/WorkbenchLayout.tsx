@@ -61,7 +61,11 @@ export default function WorkbenchLayout() {
   }, [])
 
   const isAdmin = user?.role === 'admin'
-  const onWorkbench = location.pathname.startsWith('/workbench')
+  // 工作台域：'/'（即工作台）、/workbench、任务控制 /run
+  const onWorkbench =
+    location.pathname === '/' ||
+    location.pathname.startsWith('/workbench') ||
+    location.pathname.startsWith('/run')
 
   const goDecide = () => {
     const tid = useChatStore.getState().currentConversationId
@@ -69,9 +73,9 @@ export default function WorkbenchLayout() {
   }
 
   const avatarNode = user?.avatar ? (
-    <img src={user.avatar} alt="" className="h-7 w-7 rounded-full border border-border-default object-cover" />
+    <img src={user.avatar} alt="" className="h-[30px] w-[30px] rounded-full border border-border-divider object-cover" />
   ) : (
-    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-content-primary text-xs font-bold text-surface-card">
+    <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#6f93ad,#b45f55)] text-xs font-bold text-white">
       {(user?.username || 'U').charAt(0).toUpperCase()}
     </span>
   )
@@ -84,10 +88,10 @@ export default function WorkbenchLayout() {
           <LogoMark />
         </button>
 
-        {/* ⌘K 药丸（命令面板为收尾件，先行占位视觉） */}
+        {/* ⌘K 药丸：绝对定位真居中（蓝本视觉中轴） */}
         <button
           onClick={() => navigate('/workbench')}
-          className="mx-auto hidden h-[34px] w-[400px] items-center gap-2.5 rounded-full border-theme-input border-border-default bg-surface-page px-3.5 text-[13px] text-content-muted transition-all hover:border-border-hover hover:shadow-theme-card sm:flex"
+          className="absolute left-1/2 top-1/2 hidden h-[34px] w-[400px] -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 rounded-full border-theme-input border-border-default bg-surface-page px-3.5 text-[13px] text-content-muted transition-all hover:border-border-hover hover:shadow-theme-card sm:flex"
           title={t('cmdSearch')}
         >
           <span className="rounded border border-border-default bg-surface-card px-1.5 py-px font-display text-[11px] font-bold text-content-secondary">⌘K</span>
@@ -115,7 +119,7 @@ export default function WorkbenchLayout() {
         <nav className="hidden w-[60px] shrink-0 flex-col items-center gap-1.5 border-r border-border-divider bg-surface-card py-3.5 md:flex">
           {([
             { key: 'work', icon: LayoutGrid, label: t('workbenchTitle'), to: '/workbench', active: onWorkbench },
-            { key: 'lib', icon: Layers, label: t('library'), to: '/library', active: location.pathname.startsWith('/library') },
+            { key: 'lib', icon: Layers, label: t('railLibrary'), to: '/library', active: location.pathname.startsWith('/library') },
             ...(isAdmin ? [{ key: 'admin', icon: ShieldCheck, label: t('navConsole'), to: '/admin/console', active: location.pathname.startsWith('/admin') }] : []),
           ] as const).map(({ key, icon: Icon, label, to, active }) => (
             <button
@@ -147,8 +151,8 @@ export default function WorkbenchLayout() {
           </button>
         </nav>
 
-        {/* 页面内容（工作台/资源库/管理分区） */}
-        <div className="min-w-0 flex-1" style={{ zIndex: Z_INDEX.CONTENT }}>
+        {/* 页面内容（工作台/资源库/管理分区；页内滚动） */}
+        <div className="min-w-0 flex-1 overflow-y-auto" style={{ zIndex: Z_INDEX.CONTENT }}>
           <Outlet />
         </div>
       </div>

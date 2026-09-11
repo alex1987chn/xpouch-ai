@@ -35,7 +35,7 @@ export default function LibraryPage() {
   const canEditLibrary = role === 'admin'
 
   return (
-    <div className="min-h-screen bg-surface-page px-6 md:px-12 py-8">
+    <div className="min-h-full bg-surface-page px-6 md:px-12 py-8">
       {/* 内容区域（标题行内嵌文档流，定位由侧边栏承担） */}
       <div
         onTouchStart={handleTouchStart}
@@ -46,8 +46,8 @@ export default function LibraryPage() {
         {/* 标题行（PageTitle 统一习语） */}
         <PageTitle title={t('workshop') || 'WORKSHOP'} />
 
-        {/* Tabs 导航 */}
-        <div className="flex gap-1 border-b-2 border-border-default">
+        {/* Tabs 导航（蓝本 lib-tab：浅底选中，1px 分隔线） */}
+        <div className="flex gap-1 border-b border-border-divider">
             {/* Knowledge Base Tab */}
             <TabButton
               isActive={activeTab === 'knowledge'}
@@ -142,11 +142,10 @@ function TabButton({ isActive, onClick, icon, label }: TabButtonProps) {
     <button
       onClick={onClick}
       className={cn(
-        "relative flex items-center gap-2 px-4 py-2 font-bold font-mono text-xs tracking-wide transition-all",
-        "border-theme-button border-b-0 -mb-[1px]",
+        "flex items-center gap-2 rounded-md px-3.5 py-2 text-[13px] transition-colors",
         isActive
-          ? "bg-surface-card text-content-primary border-border-default z-10"
-          : "bg-surface-page text-content-secondary border-border-default/40 hover:border-border-default hover:text-content-primary"
+          ? "bg-surface-tint font-semibold text-content-primary"
+          : "text-content-secondary hover:bg-surface-tint/60 hover:text-content-primary"
       )}
     >
       {icon}
@@ -168,13 +167,13 @@ function KnowledgeBaseContent({ searchQuery: _searchQuery }: KnowledgeBaseConten
   // 空状态
   return (
     <div className="text-center py-20">
-      <div className="w-16 h-16 mx-auto mb-4 border-theme-card border-border-default bg-surface-page flex items-center justify-center">
-        <Database className="w-8 h-8 text-content-secondary" />
+      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-lg border border-border-divider bg-surface-card">
+        <Database className="h-8 w-8 text-content-secondary" />
       </div>
-      <h3 className="font-mono text-base font-bold text-content-primary mb-2">
+      <h3 className="mb-2 text-base font-bold text-content-primary">
         {t('comingSoon') || 'Coming Soon'}
       </h3>
-      <p className="font-mono text-xs text-content-secondary max-w-sm mx-auto">
+      <p className="mx-auto max-w-sm text-xs text-content-secondary">
         {t('knowledgeBaseDescription') || 'Knowledge base feature is under development'}
       </p>
     </div>

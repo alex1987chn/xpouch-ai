@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -38,6 +38,7 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
+  const location = useLocation()
 
   // URL ?agentId 优先（从资源库/首页带专家进入），否则默认助手
   const agentIdParam = searchParams.get('agentId')
@@ -89,6 +90,13 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
     restoreSession,
   })
   usePendingMessageRetry(sendMessage, normalizedAgentId, isStreaming)
+
+  // 模板等外部入口带入的开场白（location.state.startWith）：一次性预填输入框
+  const routeState = location.state as { startWith?: string } | null
+  useEffect(() => {
+    if (routeState?.startWith) setInputValue(routeState.startWith)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key])
 
   // v3.4.7 图片输入：当前轮随消息发送的图片（dataURL）
   const [pendingImages, setPendingImages] = useState<string[]>([])
@@ -149,8 +157,8 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-surface-page">
-      {/* 专家与运行状态行 */}
-      <div className="flex items-center gap-2 px-4 pt-3">
+      {/* 专家与运行状态行（居中对齐对话列） */}
+      <div className="mx-auto flex w-full max-w-[760px] items-center gap-2 px-6 pt-4">
         <span className="flex items-center gap-1.5 text-xs text-content-secondary">
           <span
             className="inline-block h-2 w-2 rounded-full"
