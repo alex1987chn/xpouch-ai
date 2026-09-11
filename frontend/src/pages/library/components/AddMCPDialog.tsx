@@ -97,21 +97,21 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center"
+      className="fixed inset-0 bg-surface-scrim/60 flex items-center justify-center"
       style={{ zIndex: Z_INDEX.MODAL }}
       onClick={handleClose}
     >
       <div
         {...a11y}
-        className="relative bg-surface-card border-theme-card border-border-default shadow-theme-modal w-[420px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface-card rounded-lg border-theme-card border-border-default shadow-theme-modal w-[420px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - 与 PersonalSettingsDialog 统一 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border-divider">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-accent-hover"></div>
-            <span id="add-mcp-title" className="font-mono text-xs font-bold tracking-widest text-content-secondary">
-              /// {t('addModule') || 'Add Module'}
+            <span id="add-mcp-title" className="text-xs font-bold text-content-secondary">
+              {t('addModule') || 'Add Module'}
             </span>
           </div>
           <button
@@ -130,7 +130,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="font-mono text-micro font-bold tracking-widest text-content-secondary">
+              <span className="text-xs font-bold text-content-secondary">
                 {t('moduleName') || 'Module Name'} *
               </span>
             </div>
@@ -148,7 +148,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="font-mono text-micro font-bold tracking-widest text-content-secondary">
+              <span className="text-xs font-bold text-content-secondary">
                 {t('description') || 'Description'} ({t('optional') || 'Optional'})
               </span>
             </div>
@@ -165,7 +165,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="font-mono text-micro font-bold tracking-widest text-content-secondary">
+              <span className="text-xs font-bold text-content-secondary">
                 {t('transportProtocol') || 'Protocol'}
               </span>
             </div>
@@ -180,7 +180,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
                   disabled={createMutation.isPending}
                   className="w-4 h-4 accent-accent-hover"
                 />
-                <span className="font-mono text-xs">{t('transportSSE') || 'SSE'}</span>
+                <span className="text-xs">{t('transportSSE') || 'SSE'}</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -192,7 +192,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
                   disabled={createMutation.isPending}
                   className="w-4 h-4 accent-accent-hover"
                 />
-                <span className="font-mono text-xs">{t('transportStreamableHTTP') || 'Streamable HTTP'}</span>
+                <span className="text-xs">{t('transportStreamableHTTP') || 'Streamable HTTP'}</span>
               </label>
             </div>
           </section>
@@ -201,7 +201,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-              <span className="font-mono text-micro font-bold tracking-widest text-content-secondary">
+              <span className="text-xs font-bold text-content-secondary">
                 Endpoint URL *
               </span>
             </div>
@@ -214,7 +214,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
               disabled={createMutation.isPending}
               className="font-mono text-sm"
             />
-            <p className="mt-2 font-mono text-micro text-content-secondary">
+            <p className="mt-2 text-[11.5px] text-content-muted">
               {formData.transport === 'sse' 
                 ? 'SSE endpoint URL for Server-Sent Events transport'
                 : 'HTTP endpoint URL for Streamable HTTP transport'}
@@ -222,13 +222,13 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
           </section>
         </form>
 
-        {/* 底部按钮 - 与 PersonalSettingsDialog 统一 */}
-        <div className="flex gap-0 border-t-2 border-border-default">
+        {/* 底部按钮：右对齐胶囊组 */}
+        <div className="flex justify-end gap-2 border-t border-border-divider px-5 py-3.5">
           <button
             type="button"
             onClick={handleClose}
             disabled={createMutation.isPending}
-            className="flex-1 py-3 font-mono text-sm font-bold border-r border-border-divider hover:bg-surface-page transition-colors disabled:opacity-50"
+            className="rounded-full border border-border-divider bg-surface-page px-4 py-2 text-[13px] font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
           >
             {t('cancel') || 'Cancel'}
           </button>
@@ -236,11 +236,11 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
             type="submit"
             onClick={handleSubmit}
             disabled={createMutation.isPending}
-            className="flex-1 py-3 bg-accent-hover text-accent-ink font-mono text-sm font-bold hover:brightness-95 transition-colors disabled:opacity-50"
+            className="rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-[13px] font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
           >
             {createMutation.isPending ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-content-primary/30 border-t-content-primary animate-spin"></span>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent-ink/30 border-t-accent-ink"></span>
                 {t('connecting') || 'Connecting...'}
               </span>
             ) : (

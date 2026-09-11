@@ -81,7 +81,7 @@ export default function ExpertListTable({
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-accent-hover" />
           <span className="text-xs font-bold tracking-widest text-content-secondary">
-            /// {t('expertsHeader')}
+            {t('expertsHeader')}
           </span>
         </div>
         <div className="flex items-center gap-2">

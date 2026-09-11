@@ -58,13 +58,13 @@ export function SettingsHubDialog() {
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center"
+      className="fixed inset-0 bg-surface-scrim/60 flex items-center justify-center"
       style={{ zIndex: Z_INDEX.MODAL }}
       onClick={closeSettings}
     >
       <div
         {...a11y}
-        className="relative bg-surface-card border-theme-card border-border-default shadow-theme-modal w-[680px] max-w-[90vw] h-[600px] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200 rounded-lg"
+        className="relative bg-surface-card rounded-lg border-theme-card border-border-default shadow-theme-modal w-[680px] max-w-[90vw] h-[600px] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200 rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - Bauhaus风格 */}
@@ -72,7 +72,7 @@ export function SettingsHubDialog() {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-accent-hover"></div>
             <span id="settings-hub-title" className="text-xs font-bold tracking-widest text-content-secondary">
-              /// {t('settings')}
+              {t('settings')}
             </span>
           </div>
           <button

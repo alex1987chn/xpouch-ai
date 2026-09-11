@@ -370,7 +370,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
       </div>
 
       {canEdit && (
-       <div className="flex justify-end border-t-2 border-border-default px-4 py-3">
+       <div className="flex justify-end border-t border-border-divider px-4 py-3">
         <button
          onClick={() => void handleSave()}
          disabled={isSaving}

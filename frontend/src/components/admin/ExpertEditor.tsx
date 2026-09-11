@@ -174,7 +174,7 @@ export default function ExpertEditor({
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-accent-hover" />
           <span className="text-xs font-bold tracking-widest text-content-secondary font-display">
-            /// {expert.name.toUpperCase()}
+            {expert.name.toUpperCase()}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -194,7 +194,7 @@ export default function ExpertEditor({
       </div>
 
       {/* 更新时间 */}
-      <div className="px-4 py-2 border-b-2 border-border-default bg-surface-page">
+      <div className="px-4 py-2 border-b border-border-divider bg-surface-page">
         <span className="text-micro text-content-secondary">
           {t('lastUpdated')}: {new Date(expert.updated_at).toLocaleString()}
         </span>
@@ -389,7 +389,7 @@ export default function ExpertEditor({
 
               {/* 保存按钮 */}
               {isAdmin && (
-                <div className="flex justify-end pt-4 border-t-2 border-border-default">
+                <div className="flex justify-end pt-4 border-t border-border-divider">
                   <button
                     onClick={handleSave}
                     disabled={isSaving || formData.system_prompt.length < 10}

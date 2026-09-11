@@ -164,7 +164,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
         </section>
 
         {/* 分隔线 */}
-        <div className="border-t-2 border-border-default"></div>
+        <div className="border-t border-border-divider"></div>
 
         {/* 用户名设置 */}
         <section>
@@ -193,7 +193,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
       </div>
 
       {/* 底部按钮 */}
-      <div className="flex gap-0 border-t-2 border-border-default shrink-0">
+      <div className="flex gap-0 border-t border-border-divider shrink-0">
         <button
           onClick={onClose}
           disabled={isSaving}

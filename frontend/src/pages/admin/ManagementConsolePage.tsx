@@ -21,7 +21,6 @@ import { Bot, ShieldCheck, FileCode, Cpu, Activity, Search, Plug } from 'lucide-
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { useUserStore } from '@/store/userStore'
-import PageTitle from '@/components/layout/PageTitle'
 import { PermissionLockCard } from '@/components/ui/lock-card'
 import { SystemStatusSection } from '@/components/settings/sections/SystemStatusSection'
 import ExpertAdminPage from './ExpertAdminPage'
@@ -121,18 +120,9 @@ export default function ManagementConsolePage() {
    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-6 py-6 md:px-7">
     <div
      key={tab}
-     className="max-w-[860px] animate-in fade-in duration-150"
+     className="max-w-[1080px] animate-in fade-in duration-150"
     >
-     <PageTitle
-      title={t('navConsole')}
-      right={
-       <span className="rounded-full bg-accent-brand/15 px-2 py-0.5 text-micro font-bold text-content-primary">
-        ADMIN
-       </span>
-      }
-     />
-
-     <div className="mt-5 flex flex-col gap-4">
+     <div className="flex flex-col gap-4">
       {tab === 'system' && <SystemStatusSection />}
       {tab === 'experts' && <ExpertAdminPage embedded />}
       {tab === 'model' && <ModelSection />}

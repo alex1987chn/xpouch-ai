@@ -160,7 +160,7 @@ function RunTable({
   <div className="border-theme-card border-border-default shadow-theme-card overflow-x-auto">
    <table className="w-full">
     <thead>
-     <tr className="border-b-2 border-border-default bg-surface-page">
+     <tr className="border-b border-border-divider bg-surface-page">
       <th className="px-4 py-3 text-left text-xs text-content-muted">
        Run ID
       </th>
@@ -367,7 +367,7 @@ export default function StatsPage() {
          onClick={() => setDays(d)}
          className={cn(
           'px-3 py-1 text-xs font-bold transition-colors',
-          d !== 7 && 'border-l-2 border-border-default',
+          d !== 7 && 'border-l border-border-divider',
           days === d ? 'bg-accent-hover text-content-primary' : 'text-content-secondary hover:bg-surface-page'
          )}
         >

@@ -41,11 +41,11 @@ export default function LibraryPage() {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="shrink-0 border-b border-border-divider bg-surface-card px-6 pt-4 md:px-10"
+        className="shrink-0 border-b border-border-divider bg-surface-card px-6 pt-[18px] md:px-8"
       >
-        <div className="max-w-6xl">
-          <h2 className="text-[17px] font-bold text-content-primary">{t('workshop')}</h2>
-          <div className="mt-2 flex gap-0.5">
+        <div>
+          <h2 className="text-[17px] font-bold text-content-primary">{t('railLibrary')}</h2>
+          <div className="mt-3.5 flex gap-0.5">
             <TabButton
               isActive={activeTab === 'knowledge'}
               onClick={() => setActiveTab('knowledge')}
@@ -77,8 +77,8 @@ export default function LibraryPage() {
       </div>
 
       {/* 正文（lib-body：页内滚动） */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 md:px-10">
-        <div className="max-w-6xl space-y-4 pb-12">
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-[22px] md:px-8">
+        <div className="space-y-4 pb-12">
           {/* 搜索框 - 各标签共用 */}
           <SearchInput
             value={searchQuery}
@@ -136,7 +136,7 @@ function TabButton({ isActive, onClick, icon, label }: TabButtonProps) {
     <button
       onClick={onClick}
       className={cn(
-        '-mb-px flex items-center gap-2 rounded-t-sm border-b-2 px-[18px] py-2 text-[13px] transition-colors',
+        '-mb-px flex items-center gap-2 rounded-t-sm border-b-2 px-[18px] py-[9px] text-[13px] transition-colors',
         isActive
           ? 'border-accent-brand font-bold text-content-primary'
           : 'border-transparent text-content-secondary hover:bg-surface-tint/60 hover:text-content-primary'

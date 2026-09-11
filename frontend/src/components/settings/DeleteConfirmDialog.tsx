@@ -71,91 +71,78 @@ export function DeleteConfirmDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center"
+      className="fixed inset-0 bg-surface-scrim/60 flex items-center justify-center"
       style={{ zIndex: Z_INDEX.MODAL }}
       onClick={handleClose}
     >
       <div
         {...a11y}
-        className="relative bg-surface-card border-theme-card border-border-default shadow-theme-modal w-[400px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface-card rounded-lg border-theme-card border-border-default shadow-theme-modal w-[400px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 弹窗头部 - Bauhaus风格 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 ${variant === 'danger' ? 'bg-status-offline' : 'bg-accent-warning'}`}></div>
-            <span className="text-xs font-bold tracking-widest text-content-secondary">
-              /// {variant === 'danger' ? 'WARNING' : 'CAUTION'}
-            </span>
-          </div>
+        {/* 弹窗头部（蓝本 modal-head：标题 + 关闭） */}
+        <div className="flex items-center justify-between border-b border-border-divider px-5 py-3.5">
+          <span className="text-sm font-bold text-content-primary">
+            {title || t('confirmDeleteTitle')}
+          </span>
           <button
             aria-label={t('close')}
             onClick={handleClose}
             disabled={isDeleting}
-            className="w-6 h-6 flex items-center justify-center border-theme-button border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary disabled:opacity-50"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* 弹窗内容 */}
-        <div className="p-6 space-y-5">
-          {/* 警告图标 */}
-          <div className="flex justify-center">
-            <div className={`w-16 h-16 border-theme-card flex items-center justify-center ${
+        <div className="space-y-4 p-5">
+          <div className="flex items-start gap-3.5">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
               variant === 'danger'
-                ? 'border-status-offline bg-status-offline/10'
-                : 'border-accent-warning bg-accent-warning/10'
+                ? 'bg-status-offline/12 text-status-offline'
+                : 'bg-accent-warning/12 text-accent-warning'
             }`}>
               {variant === 'danger' ? (
-                <AlertTriangle className="w-8 h-8 text-status-offline" />
+                <AlertTriangle className="h-5 w-5" />
               ) : (
-                <Trash2 className="w-8 h-8 text-accent-warning" />
+                <Trash2 className="h-5 w-5" />
               )}
             </div>
-          </div>
-
-          {/* 标题和描述 */}
-          <div className="text-center space-y-3">
-            <h2 id="delete-confirm-title" className="text-lg font-black tracking-tight text-content-primary">
-              {title || t('confirmDeleteTitle')}
-            </h2>
-            {itemName && (
-              <div className={`text-sm font-bold border-theme-card py-2 px-4 inline-block ${
-                variant === 'danger'
-                  ? 'text-status-offline border-status-offline/30 bg-status-offline/10'
-                  : 'text-accent-warning border-accent-warning/30 bg-accent-warning/10'
-              }`}>
-                {itemName}
-              </div>
-            )}
-            <p className="text-xs text-content-secondary leading-relaxed">
-              {description || t('confirmDeleteDescription')}
-            </p>
+            <div className="min-w-0 pt-0.5">
+              {itemName && (
+                <div className="text-[13.5px] font-bold text-content-primary">
+                  {itemName}
+                </div>
+              )}
+              <p className="mt-1 text-xs leading-relaxed text-content-secondary">
+                {description || t('confirmDeleteDescription')}
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* 底部按钮 */}
-        <div className="flex gap-0 border-t-2 border-border-default">
+        {/* 底部按钮：右对齐胶囊组 */}
+        <div className="flex justify-end gap-2 border-t border-border-divider px-5 py-3.5">
           <button
             onClick={handleClose}
             disabled={isDeleting}
-            className="flex-1 py-3 text-sm font-bold border-r border-border-divider hover:bg-surface-page transition-colors disabled:opacity-50"
+            className="rounded-full border border-border-divider bg-surface-page px-4 py-2 text-[13px] font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
           >
             {t('cancel')}
           </button>
           <button
             onClick={handleConfirm}
             disabled={isDeleting}
-            className={`flex-1 py-3 text-sm font-bold transition-colors disabled:opacity-50 ${
+            className={`rounded-full px-5 py-2 text-[13px] font-bold transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none ${
               variant === 'danger'
-                ? 'bg-status-offline text-content-inverted hover:bg-status-offline/90'
-                : 'bg-accent-warning text-content-inverted hover:bg-accent-warning/90'
+                ? 'bg-accent-destructive text-content-inverted'
+                : 'bg-accent-warning text-accent-ink'
             }`}
           >
             {isDeleting ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white animate-spin"></span>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current"></span>
                 {t('deleting')}
               </span>
             ) : (

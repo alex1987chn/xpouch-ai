@@ -142,7 +142,7 @@ export type TranslationKey =
   // Thinking Process
   | 'thinking' | 'thinkingSteps' | 'showThinking' | 'hideThinking'
   // Dynamic Expert (v3.0)
-  | 'newExpert' | 'createExpert' | 'deleteExpert' | 'confirmDeleteExpert' | 'deleteExpertWarning'
+  | 'newExpert' | 'createExpert' | 'dynamicExpert' | 'builtinExpert' | 'deleteExpert' | 'confirmDeleteExpert' | 'deleteExpertWarning'
   | 'expertKeyPlaceholder' | 'expertKeyHint' | 'expertKeyExists' | 'invalidExpertKey'
   | 'namePlaceholder' | 'creating' | 'createSuccess' | 'createFailed'
   | 'deleteSuccess' | 'deleteFailed' | 'cannotDeleteSystemExpert'

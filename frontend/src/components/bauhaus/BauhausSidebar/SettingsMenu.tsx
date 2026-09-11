@@ -101,7 +101,7 @@ export function SettingsMenu({
         {/* 用户信息头 */}
         <div className="px-2 pb-3 pt-1">
           <div className="text-micro text-content-secondary mb-2 tracking-wider">
-            /// {t('userSettings')}
+            {t('userSettings')}
           </div>
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -201,7 +201,7 @@ export function SettingsMenu({
         {/* 语言切换 - 紧凑单行 */}
         <div className="border-t border-border-divider mt-1 px-3 py-2 flex items-center justify-between gap-2">
           <span className="text-micro text-content-secondary tracking-wider shrink-0">
-            /// {t('language')}
+            {t('language')}
           </span>
           <div className="flex items-center gap-1">
             {(['zh', 'en', 'ja'] as const).map((lang) => (

@@ -186,20 +186,20 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center"
+      className="fixed inset-0 bg-surface-scrim/60 flex items-center justify-center"
       style={{ zIndex: Z_INDEX.MODAL }}
       onClick={handleClose}
     >
       <div
         {...a11y}
-        className="relative bg-surface-card border-theme-card border-border-default shadow-theme-modal w-[380px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200 rounded-lg"
+        className="relative bg-surface-card rounded-lg border-theme-card border-border-default shadow-theme-modal w-[380px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200 rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border-divider">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-accent-hover"></div>
-            <span className="font-mono text-xs font-bold tracking-widest text-content-secondary">
+            <span className="text-xs font-bold text-content-secondary">
               /// AUTHENTICATION
             </span>
           </div>

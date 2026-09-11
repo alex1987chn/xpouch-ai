@@ -22,7 +22,7 @@ export function RecentConversations({
       <div className={cn('px-4 mb-2 flex items-center gap-2 opacity-50 mx-auto', TW.CONTENT_WIDTH)}>
         <div className="w-1.5 h-1.5 bg-content-secondary"></div>
         <span className="text-micro font-bold tracking-widest text-content-secondary">
-          /// {t('memoryDump')}
+          {t('memoryDump')}
         </span>
       </div>
 

@@ -168,7 +168,7 @@ function ConstructCard({
           </div>
         </div>
         <div>
-          <p className="font-mono text-xs text-content-secondary mb-3">/// {type}</p>
+          <p className="font-mono text-xs text-content-secondary mb-3">{type}</p>
           <div className="flex gap-1 flex-wrap">
             {tags.map((tag) => (
               <span

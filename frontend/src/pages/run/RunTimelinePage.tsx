@@ -203,7 +203,7 @@ function PlanCard({ threadId }: { threadId: string }) {
   <div className="rounded-md border-theme-card border-border-default bg-surface-card p-4">
    <div className="mb-3 flex items-center justify-between">
     <span className="text-xs font-bold tracking-widest text-content-secondary">
-     /// {t('planCardTitle')}
+     {t('planCardTitle')}
     </span>
     <span className="text-nano text-content-muted">
      {t('planStepCount', { count: subTasks.length })}
@@ -387,7 +387,7 @@ function RelatedArtifacts({ threadId }: { threadId: string }) {
   <div className="rounded-md border-theme-card border-border-default bg-surface-card p-4">
    <div className="mb-3 flex items-center justify-between">
     <span className="text-xs font-bold tracking-widest text-content-secondary">
-     /// {t('relatedArtifacts')}
+     {t('relatedArtifacts')}
     </span>
     <span className="text-nano text-content-muted">{artifacts.length}</span>
    </div>

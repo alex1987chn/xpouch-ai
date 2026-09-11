@@ -68,6 +68,8 @@ export const zh: Record<string, string> = {
   // Dynamic Expert (v3.0)
   newExpert: '新建专家',
   createExpert: '创建专家',
+  dynamicExpert: '自定义',
+  builtinExpert: '内置',
   deleteExpert: '删除专家',
   confirmDeleteExpert: '确认删除专家',
   deleteExpertWarning: "确定要删除专家 '{name}' 吗？此操作无法撤销。",
@@ -169,6 +171,8 @@ export const en: Record<string, string> = {
   // Dynamic Expert (v3.0)
   newExpert: 'New Expert',
   createExpert: 'Create Expert',
+  dynamicExpert: 'Custom',
+  builtinExpert: 'Built-in',
   deleteExpert: 'Delete Expert',
   confirmDeleteExpert: 'Confirm Delete Expert',
   deleteExpertWarning: "Are you sure you want to delete the expert '{name}'? This action cannot be undone.",
@@ -270,6 +274,8 @@ export const ja: Record<string, string> = {
   // Dynamic Expert (v3.0)
   newExpert: '新規エキスパート',
   createExpert: 'エキスパートを作成',
+  dynamicExpert: 'カスタム',
+  builtinExpert: '内蔵',
   deleteExpert: 'エキスパートを削除',
   confirmDeleteExpert: 'エキスパート削除の確認',
   deleteExpertWarning: "エキスパート'{name}'を削除してもよろしいですか？この操作は取り消せません。",

@@ -154,7 +154,7 @@ export default function ExpertFormDialog({
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-accent-hover" />
             <span id="expert-form-title" className="text-xs font-bold tracking-widest text-content-secondary">
-              /// {title}
+              {title}
             </span>
           </div>
           <button
