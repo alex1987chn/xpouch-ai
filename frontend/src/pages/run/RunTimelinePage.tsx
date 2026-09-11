@@ -32,7 +32,7 @@ const eventIconConfig: Record<string, { icon: typeof Clock; color: string }> = {
   lifecycle: { icon: Clock, color: 'text-blue-500' },
   router: { icon: Clock, color: 'text-purple-500' },
   plan: { icon: Clock, color: 'text-indigo-500' },
-  hitl: { icon: AlertCircle, color: 'text-yellow-500' },
+  hitl: { icon: AlertCircle, color: 'text-accent-brand' },
   task: { icon: Loader2, color: 'text-accent-primary' },
   artifact: { icon: CheckCircle, color: 'text-accent-success' },
   other: { icon: Clock, color: 'text-content-secondary' },

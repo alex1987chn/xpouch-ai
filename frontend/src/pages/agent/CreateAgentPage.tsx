@@ -56,7 +56,7 @@ function BauhausProgressBar({ current, max }: { current: number; max: number }) 
         <span className={cn(
           'font-bold',
           progress >= 1
-            ? 'text-green-600'
+            ? 'text-status-online'
             : progress >= 0.8
               ? 'text-accent-hover'
               : 'text-content-secondary'
@@ -105,7 +105,7 @@ export default function CreateAgentPage({ onBack, onSave, initialData, isEditMod
       category,
       modelId: selectedModel,
       icon: <Bot className="w-5 h-5" />,
-      color: 'from-violet-500 to-fuchsia-500'
+      color: 'from-accent-info to-accent-destructive'
     }
 
     onSave(agentData)

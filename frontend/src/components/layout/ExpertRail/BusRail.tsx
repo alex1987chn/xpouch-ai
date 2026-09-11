@@ -105,7 +105,7 @@ export default function BusRail({ tasks, selectedTaskId, onTaskClick }: BusRailP
         
         {/* 光流动画 - 系统忙碌时显示 */}
         {isSystemBusy && (
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-yellow-400/30 to-transparent w-full animate-bus-flow">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-accent-brand/30 to-transparent w-full animate-bus-flow">
             {/* 光晕效果 */}
             <div className="absolute inset-0 bg-accent-brand/10 blur-sm" />
           </div>
