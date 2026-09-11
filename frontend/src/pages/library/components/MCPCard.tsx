@@ -1,7 +1,9 @@
-﻿/**
+/**
  * MCP 服务器卡片组件
- * 
- * 手风琴模式：点击展开显示工具列表
+ *
+ * 蓝本 mcp-row 语法：状态点 + 名称 + 命令行（mono 小字）+ 胶囊开关；
+ * 点击展开工具列表（行内小卡）。
+ * 手风琴模式：同时只能展开一个（父层 MCPList 控制）。
  */
 
 import { useState } from 'react'
@@ -20,6 +22,41 @@ interface MCPCardProps {
   isExpanded: boolean
   isAdmin?: boolean
   onToggleExpand: () => void
+}
+
+/** 胶囊开关（蓝本 .switch：34×19 轨道，开启品牌色，13px 白钮） */
+export function PillSwitch({
+  on,
+  onToggle,
+  disabled,
+  ariaLabel,
+}: {
+  on: boolean
+  onToggle: () => void
+  disabled?: boolean
+  ariaLabel?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      aria-pressed={on}
+      className={cn(
+        'relative h-[19px] w-[34px] shrink-0 rounded-full border border-border-default transition-colors',
+        on ? 'bg-accent-brand' : 'bg-surface-tint',
+        disabled && 'cursor-not-allowed opacity-50'
+      )}
+    >
+      <span
+        className={cn(
+          'absolute top-[2px] h-[13px] w-[13px] rounded-full border border-border-hover bg-surface-card transition-[left] duration-200',
+          on ? 'left-[17px]' : 'left-[2px]'
+        )}
+      />
+    </button>
+  )
 }
 
 // URL 脱敏处理：遮盖域名后的所有路径和参数
@@ -42,7 +79,7 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
   const toggleMutation = useToggleMCP()
   const deleteMutation = useDeleteMCP()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  
+
   // 仅在展开时获取工具列表
   const { data: tools, isLoading: isLoadingTools, isError: isToolsError } = useMCPServerTools(
     server.id,
@@ -73,11 +110,11 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
     )
   }
 
-  // 状态指示灯颜色
+  // 状态指示灯颜色（蓝本 mcp-dot：sage=健康 / 陶土=异常 / 灰=未知）
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'connected': return 'bg-status-online'
-      case 'error': return 'bg-status-offline'
+      case 'connected': return 'bg-accent-success'
+      case 'error': return 'bg-accent-destructive'
       default: return 'bg-content-muted'
     }
   }
@@ -88,139 +125,111 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
     <>
       <div
         className={cn(
-          "group relative bg-surface-card border-theme-card border-border-default",
-          "shadow-theme-card transition-all",
-          isExpanded ? "" : "hover:[transform:var(--transform-card-hover)] hover:shadow-theme-card-hover"
+          "group mb-2.5 rounded-md border border-border-divider bg-surface-card transition-shadow",
+          isExpanded ? "" : "hover:shadow-theme-card"
         )}
       >
-        {/* 卡片头部 - 点击展开/折叠 */}
-        <div 
-          className="p-3 cursor-pointer"
+        {/* 行头 - 点击展开/折叠（蓝本 mcp-row 布局） */}
+        <div
+          className="flex cursor-pointer items-center gap-3 px-4 py-3"
           onClick={() => canShowTools && onToggleExpand()}
         >
-          <div className="flex justify-between items-start gap-4">
-            <div className="flex-1 min-w-0">
-              {/* 标题行 */}
-              <div className="flex items-center gap-2">
-                <div 
-                  className={cn("w-2 h-2 rounded-full", getStatusColor(server.connection_status))}
-                  title={server.connection_status}
+          <span
+            className={cn('h-[9px] w-[9px] shrink-0 rounded-full', getStatusColor(server.connection_status))}
+            title={server.connection_status}
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1">
+              <h3 className="truncate text-[13px] font-bold text-content-primary">
+                {server.name}
+              </h3>
+              {canShowTools && (
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0 text-content-muted transition-transform",
+                    isExpanded && "rotate-180"
+                  )}
                 />
-                <h3 className="font-mono text-sm font-bold text-content-primary truncate">
-                  {server.name}
-                </h3>
-                {canShowTools && (
-                  <ChevronDown 
-                    className={cn(
-                      "w-4 h-4 text-content-muted transition-transform ml-1",
-                      isExpanded && "rotate-180"
-                    )} 
-                  />
-                )}
-              </div>
-              
-              {/* 描述 */}
-              <p className="font-mono text-xs text-content-muted line-clamp-1 mt-1">
-                {server.description || t('noDescription')}
-              </p>
-              
-              {/* URL - 脱敏显示 */}
-              <p className="font-mono text-micro text-content-muted truncate mt-1" title={isAdmin ? server.sse_url : undefined}>
-                {isAdmin ? server.sse_url : maskUrl(server.sse_url)}
-              </p>
+              )}
             </div>
+            <p className="mt-0.5 truncate font-mono text-[11.5px] text-content-muted" title={isAdmin ? server.sse_url : undefined}>
+              {isAdmin ? server.sse_url : maskUrl(server.sse_url)}
+            </p>
+          </div>
 
-            {/* 右侧操作区 - 仅管理员可见 */}
-            {isAdmin && (
-            <div className="flex flex-col items-end gap-2">
-              {/* 删除按钮 */}
+          {/* 右侧操作区 - 仅管理员可见 */}
+          {isAdmin && (
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   setIsDeleteDialogOpen(true)
                 }}
-                className="w-8 h-8 flex items-center justify-center border border-border-default text-content-muted hover:bg-accent-destructive hover:text-white hover:border-accent-destructive transition-colors opacity-0 group-hover:opacity-100"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-content-muted transition-colors hover:bg-accent-destructive/10 hover:text-accent-destructive opacity-0 group-hover:opacity-100"
                 title={t('delete') || 'Delete'}
               >
-                <span className="font-mono text-xs font-bold">×</span>
+                <span className="text-sm font-bold">×</span>
               </button>
 
-              {/* Toggle 开关 */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleToggle()
-                }}
+              <PillSwitch
+                on={server.is_active}
+                onToggle={handleToggle}
                 disabled={toggleMutation.isPending}
-                className={cn(
-                  "relative w-12 h-6 border-2 border-border-default flex items-center p-0.5 cursor-pointer transition-colors",
-                  server.is_active ? 'bg-accent-brand' : 'bg-surface-page'
-                )}
-                aria-label={server.is_active ? t('disable') : t('enable')}
-              >
-                <div
-                  className={cn(
-                    "w-4 h-4 bg-surface-card border-2 border-border-default transition-transform duration-200",
-                    server.is_active ? 'translate-x-[20px]' : 'translate-x-0'
-                  )}
-                />
-              </button>
+                ariaLabel={server.is_active ? t('disable') : t('enable')}
+              />
             </div>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* 展开的工具列表 */}
+        {/* 展开的工具列表（浅底内嵌区） */}
         {isExpanded && canShowTools && (
-          <div className="border-t-2 border-border-default bg-surface-page/50">
-            <div className="p-3">
-              <div className="flex items-center gap-2 mb-3">
-                <Wrench className="w-3.5 h-3.5 text-content-muted" />
-                <span className="font-mono text-micro font-bold tracking-widest text-content-muted">
-                  {t('availableTools') || 'Available Tools'} ({tools?.length ?? 0})
-                </span>
-              </div>
-              
-              {isLoadingTools ? (
-                <div className="py-2 space-y-2">
-                  {Array.from({ length: 3 }, (_, i) => (
-                    <Skeleton key={i} className="h-10 w-full" />
-                  ))}
-                </div>
-              ) : isToolsError ? (
-                <div className="py-4 text-center font-mono text-xs text-accent-destructive">
-                  {t('failedToLoadTools') || 'Failed to load tools'}
-                </div>
-              ) : tools && tools.length > 0 ? (
-                <div className="space-y-2">
-                  {tools.map((tool) => (
-                    <div 
-                      key={tool.name}
-                      className="bg-surface-card border border-border-default/50 p-2"
-                    >
-                      <div className="font-mono text-xs font-bold text-content-primary">
-                        {tool.name}
-                      </div>
-                      <div className="font-mono text-micro text-content-muted mt-0.5 line-clamp-2">
-                        {tool.description}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-4 text-center font-mono text-xs text-content-muted">
-                  {t('noToolsAvailable') || 'No tools available'}
-                </div>
-              )}
+          <div className="border-t border-border-divider bg-surface-tint/40 px-4 py-3">
+            <div className="mb-2.5 flex items-center gap-1.5">
+              <Wrench className="h-3.5 w-3.5 text-content-muted" />
+              <span className="text-[11.5px] font-bold text-content-muted">
+                {t('availableTools') || 'Available Tools'} ({tools?.length ?? 0})
+              </span>
             </div>
+
+            {isLoadingTools ? (
+              <div className="space-y-2 py-1">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : isToolsError ? (
+              <div className="py-3 text-center text-xs text-accent-destructive">
+                {t('failedToLoadTools') || 'Failed to load tools'}
+              </div>
+            ) : tools && tools.length > 0 ? (
+              <div className="space-y-2">
+                {tools.map((tool) => (
+                  <div
+                    key={tool.name}
+                    className="rounded-md border border-border-divider bg-surface-card p-2.5"
+                  >
+                    <div className="text-xs font-bold text-content-primary">
+                      {tool.name}
+                    </div>
+                    <div className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-content-muted">
+                      {tool.description}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-3 text-center text-xs text-content-muted">
+                {t('noToolsAvailable') || 'No tools available'}
+              </div>
+            )}
           </div>
         )}
-        
+
         {/* 未连接时的提示 */}
         {isExpanded && !canShowTools && (
-          <div className="border-t-2 border-border-default bg-surface-page/50 p-3">
-            <div className="font-mono text-xs text-content-muted text-center">
-              {server.connection_status !== 'connected' 
+          <div className="border-t border-border-divider bg-surface-tint/40 px-4 py-3">
+            <div className="text-center text-xs text-content-muted">
+              {server.connection_status !== 'connected'
                 ? (t('serverNotConnected') || 'Server not connected')
                 : (t('serverDisabled') || 'Server is disabled')
               }

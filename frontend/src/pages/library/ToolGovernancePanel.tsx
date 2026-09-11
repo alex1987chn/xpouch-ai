@@ -231,7 +231,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
     <div className="flex items-center justify-between border-b border-border-divider px-4 py-3">
      <div className="flex items-center gap-2">
       <ShieldAlert className="h-4 w-4 text-content-secondary" />
-      <span className="text-micro font-bold tracking-widest text-content-secondary">
+      <span className="text-xs font-bold text-content-secondary">
        {t('toolGovernance') || 'Tool Governance'}
       </span>
      </div>
@@ -240,16 +240,16 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
      </div>
     </div>
     {filteredPolicies.length > 0 ? (
-     <div className="max-h-[70vh] overflow-y-auto">
+     <div className="overflow-y-auto">
       {filteredPolicies.map(policy => (
       <button
        key={`${policy.source}:${policy.tool_name}`}
        onClick={() => handleSelect(policy)}
        className={cn(
-        'w-full border-b border-border-divider px-4 py-3 text-left transition-all relative',
+        'w-full border-b border-border-divider px-4 py-3 text-left transition-colors',
         selectedKey === `${policy.source}:${policy.tool_name}`
-         ? 'bg-surface-tint border-l-2 border-l-accent-brand pl-3'
-         : 'bg-surface-card hover:bg-surface-page border-l-4 border-l-transparent'
+         ? 'bg-surface-tint border-l-2 border-l-accent-brand pl-3.5'
+         : 'bg-surface-card hover:bg-surface-tint/60 border-l-2 border-l-transparent'
        )}
       >
        <div className="flex items-center justify-between gap-2">
@@ -258,10 +258,19 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
         </span>
         <span className="text-nano text-content-muted">{policy.source}</span>
        </div>
-       <div className="mt-2 flex items-center gap-2 text-micro text-content-secondary">
-        <span>{policy.risk_tier}</span>
-        <span>/</span>
-        <span>{policy.approval_required ? t('approvalRequired') || 'Approval' : t('autoAllowed') || 'Auto'}</span>
+       <div className="mt-2 flex items-center gap-1.5">
+        {policy.approval_required ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-accent-warning/10 px-2 py-0.5 text-nano font-medium text-accent-warning">
+            <span className="h-1 w-1 animate-pulse rounded-full bg-accent-warning" />
+            {t('approvalRequired') || 'Approval'}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-status-online/10 px-2 py-0.5 text-nano font-medium text-status-online">
+            <span className="h-1 w-1 rounded-full bg-status-online" />
+            {t('autoAllowed') || 'Auto'}
+          </span>
+        )}
+        <span className="text-nano text-content-muted">· {policy.risk_tier}</span>
        </div>
       </button>
      ))}
@@ -280,7 +289,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
      <>
       <div className="flex items-center justify-between border-b border-border-divider px-4 py-3">
        <div>
-        <div className="text-micro font-bold tracking-widest text-content-secondary">
+        <div className="text-xs font-bold text-content-primary">
          {selectedPolicy.tool_name}
         </div>
         <div className="mt-1 text-xs text-content-muted">{selectedPolicy.description}</div>
@@ -297,7 +306,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
          value={draft.risk_tier}
          disabled={!canEdit}
          onChange={e => setDraft(prev => prev ? { ...prev, risk_tier: e.target.value as PolicyDraft['risk_tier'] } : prev)}
-         className="w-full border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover disabled:opacity-60"
+         className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus disabled:opacity-60"
         >
          <option value="low">{t('riskLow') || 'Low'}</option>
          <option value="medium">{t('riskMedium') || 'Medium'}</option>
@@ -337,7 +346,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
          disabled={!canEdit}
          onChange={e => setDraft(prev => prev ? { ...prev, allowed_experts: e.target.value } : prev)}
          placeholder="planner, search"
-         className="w-full border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover disabled:opacity-60"
+         className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus disabled:opacity-60"
         />
        </Field>
        <Field label={t('blockedExperts') || 'Blocked Experts'} className="md:col-span-2">
@@ -346,7 +355,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
          disabled={!canEdit}
          onChange={e => setDraft(prev => prev ? { ...prev, blocked_experts: e.target.value } : prev)}
          placeholder="memorize_expert"
-         className="w-full border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover disabled:opacity-60"
+         className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus disabled:opacity-60"
         />
        </Field>
        <Field label={t('policyNote') || 'Policy Note'} className="md:col-span-2">
@@ -355,7 +364,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
          value={draft.policy_note}
          disabled={!canEdit}
          onChange={e => setDraft(prev => prev ? { ...prev, policy_note: e.target.value } : prev)}
-         className="w-full resize-y border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover disabled:opacity-60"
+         className="w-full resize-y rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus disabled:opacity-60"
         />
        </Field>
       </div>
@@ -365,7 +374,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
         <button
          onClick={() => void handleSave()}
          disabled={isSaving}
-         className="flex items-center gap-2 border-theme-button border-border-default bg-surface-elevated px-3 py-2 text-micro font-bold text-content-primary transition-colors hover:border-border-hover disabled:opacity-60"
+         className="flex items-center gap-2 rounded-full border border-border-divider bg-accent-brand px-4 py-2 text-xs font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none"
         >
          <Save className="h-3.5 w-3.5" />
          {isSaving ? t('saving') || 'Saving' : t('savePolicy') || 'Save Policy'}

@@ -133,11 +133,7 @@ export default function ManagementConsolePage() {
      />
 
      <div className="mt-5 flex flex-col gap-4">
-      {tab === 'system' && (
-       <div className="rounded-lg border-theme-card border-border-default bg-surface-card shadow-theme-card flex flex-col">
-        <SystemStatusSection />
-       </div>
-      )}
+      {tab === 'system' && <SystemStatusSection />}
       {tab === 'experts' && <ExpertAdminPage embedded />}
       {tab === 'model' && <ModelSection />}
       {tab === 'governance' && (

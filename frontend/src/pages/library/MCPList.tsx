@@ -137,7 +137,7 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
 
    {/* 列表 */}
    {filteredServers.length > 0 ? (
-    <div ref={listContainerRef} className="space-y-2 max-h-[60vh] overflow-y-auto">
+    <div ref={listContainerRef} className="space-y-0">
      {filteredServers.map((server, index) => (
       <div
        key={server.id}

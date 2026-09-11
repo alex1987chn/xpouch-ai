@@ -383,7 +383,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
     <div className="flex items-center justify-between border-b border-border-divider px-4 py-3">
      <div className="flex items-center gap-2">
       <Bot className="h-4 w-4 text-content-secondary" />
-      <span className="text-micro font-bold text-content-secondary">
+      <span className="text-xs font-bold text-content-secondary">
        {t('skillTemplates') || 'Skill Templates'}
       </span>
      </div>
@@ -392,14 +392,14 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        <>
         <button
          onClick={() => setIsImportDialogOpen(true)}
-         className="flex items-center gap-1 border-theme-button border-border-default bg-surface-page px-2 py-1 text-micro font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary"
+         className="flex items-center gap-1 rounded-md border-theme-button border-border-default bg-surface-page px-2 py-1 text-xs font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary"
          title={t('importTemplate') || 'Import'}
         >
          <Upload className="h-3.5 w-3.5" />
         </button>
         <button
          onClick={handleCreate}
-         className="flex items-center gap-1 border-theme-button border-border-default bg-surface-page px-2 py-1 text-micro font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary"
+         className="flex items-center gap-1 rounded-md border-theme-button border-border-default bg-surface-page px-2 py-1 text-xs font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary"
         >
          <Plus className="h-3.5 w-3.5" />
          {t('newTemplate') || 'New'}
@@ -410,7 +410,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
     </div>
 
     {filteredTemplates.length > 0 ? (
-     <div className="max-h-[70vh] overflow-y-auto">
+     <div className="overflow-y-auto">
       {filteredTemplates.map((template, index) => (
        <button
         key={template.id}
@@ -427,7 +427,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
          <span className="truncate text-xs font-bold text-content-primary">
           {template.name}
          </span>
-         <span className="shrink-0 text-nano text-content-muted">
+         <span className="shrink-0 rounded-full bg-surface-tint px-2 py-0.5 text-nano font-medium text-content-secondary">
           {template.recommended_mode}
          </span>
         </div>
@@ -440,7 +440,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
            <span
             key={type}
             className={cn(
-             'inline-flex items-center gap-1 px-1.5 py-0.5 text-nano',
+             'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-nano',
              ARTIFACT_TYPE_COLORS[type] || 'bg-surface-elevated text-content-primary'
             )}
            >
@@ -465,7 +465,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
    <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
     <div className="flex items-center justify-between border-b border-border-divider px-4 py-3">
      <div>
-      <div className="text-micro font-bold text-content-secondary">
+      <div className="text-xs font-bold text-content-secondary">
        {draft.id ? t('templateDetail') || 'Template Detail' : t('createTemplate') || 'Create Template'}
       </div>
       <div className="mt-1 text-xs text-content-muted">
@@ -477,14 +477,14 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        <>
         <button
          onClick={handleShare}
-         className="flex items-center gap-2 border-theme-button border-border-default bg-surface-page px-3 py-1.5 text-micro font-bold text-content-secondary transition-all hover:border-border-hover hover:text-content-primary"
+         className="flex items-center gap-2 rounded-full border border-border-divider bg-surface-page px-3 py-1.5 text-xs font-bold text-content-secondary transition-all hover:border-border-hover hover:text-content-primary"
          title={t('shareTemplate') || 'Share link'}
         >
          <Link2 className="h-3.5 w-3.5" />
         </button>
         <button
          onClick={handleExport}
-         className="flex items-center gap-2 border-theme-button border-border-default bg-surface-page px-3 py-1.5 text-micro font-bold text-content-secondary transition-all hover:border-border-hover hover:text-content-primary"
+         className="flex items-center gap-2 rounded-full border border-border-divider bg-surface-page px-3 py-1.5 text-xs font-bold text-content-secondary transition-all hover:border-border-hover hover:text-content-primary"
          title={t('exportTemplate') || 'Export'}
         >
          <Download className="h-3.5 w-3.5" />
@@ -494,7 +494,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
       {selectedTemplate && (
        <button
         onClick={() => handleUseTemplate(selectedTemplate)}
-        className="flex items-center gap-2 border-theme-button border-accent-brand bg-accent-brand px-3 py-1.5 text-micro font-bold text-accent-ink transition-all hover:brightness-95"
+        className="flex items-center gap-2 rounded-full border border-border-divider bg-accent-brand px-3.5 py-1.5 text-xs font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card"
        >
         <Rocket className="h-3.5 w-3.5" />
         {t('useTemplate') || 'Use'}
@@ -509,7 +509,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        value={draft.template_key}
        disabled={Boolean(draft.id) || isReadonly}
        onChange={e => setDraft(prev => ({ ...prev, template_key: e.target.value }))}
-       className="w-full border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover disabled:opacity-60"
+       className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus disabled:opacity-60"
       />
      </Field>
      <Field label={t('moduleName') || 'Name'}>
@@ -517,7 +517,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        value={draft.name}
        disabled={isReadonly}
        onChange={e => setDraft(prev => ({ ...prev, name: e.target.value }))}
-       className="w-full border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover"
+       className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus"
       />
      </Field>
      <Field label={t('category') || 'Category'}>
@@ -525,7 +525,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        value={draft.category}
        disabled={isReadonly}
        onChange={e => setDraft(prev => ({ ...prev, category: e.target.value }))}
-       className="w-full border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover"
+       className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus"
       />
      </Field>
      <Field label={t('recommendedMode') || 'Recommended Mode'}>
@@ -533,7 +533,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        value={draft.recommended_mode}
        disabled={isReadonly}
        onChange={e => setDraft(prev => ({ ...prev, recommended_mode: e.target.value as 'simple' | 'complex' }))}
-       className="w-full border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover"
+       className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus"
       >
        <option value="simple">{t('simpleMode') || 'Simple'}</option>
        <option value="complex">{t('complexMode') || 'Complex'}</option>
@@ -545,7 +545,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        value={draft.description}
        disabled={isReadonly}
        onChange={e => setDraft(prev => ({ ...prev, description: e.target.value }))}
-       className="w-full resize-y border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover"
+       className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus"
       />
      </Field>
      <Field label={t('starterPrompt') || 'Starter Prompt'} className="md:col-span-2">
@@ -554,7 +554,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        value={draft.starter_prompt}
        disabled={isReadonly}
        onChange={e => setDraft(prev => ({ ...prev, starter_prompt: e.target.value }))}
-       className="w-full resize-y border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover"
+       className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus"
       />
      </Field>
      <Field label={t('systemHint') || 'System Hint'} className="md:col-span-2">
@@ -563,7 +563,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        value={draft.system_hint}
        disabled={isReadonly}
        onChange={e => setDraft(prev => ({ ...prev, system_hint: e.target.value }))}
-       className="w-full resize-y border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover"
+       className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus"
       />
      </Field>
      <Field label={t('suggestedTags') || 'Suggested Tags'}>
@@ -572,7 +572,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        disabled={isReadonly}
        onChange={e => setDraft(prev => ({ ...prev, suggested_tags: e.target.value }))}
        placeholder="research, report"
-       className="w-full border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover"
+       className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus"
       />
      </Field>
      <Field label={t('toolHints') || 'Tool Hints'}>
@@ -581,7 +581,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        disabled={isReadonly}
        onChange={e => setDraft(prev => ({ ...prev, tool_hints: e.target.value }))}
        placeholder="search_web, read_webpage"
-       className="w-full border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover"
+       className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus"
       />
      </Field>
      <Field label={t('expectedArtifactTypes') || 'Expected Artifact Types'}>
@@ -590,7 +590,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        disabled={isReadonly}
        onChange={e => setDraft(prev => ({ ...prev, expected_artifact_types: e.target.value }))}
        placeholder="markdown, code, html"
-       className="w-full border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover"
+       className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus"
       />
      </Field>
      <Field label={t('artifactSchemaHint') || 'Artifact Schema Hint'} className="md:col-span-2">
@@ -600,7 +600,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        disabled={isReadonly}
        onChange={e => setDraft(prev => ({ ...prev, artifact_schema_hint: e.target.value }))}
        placeholder={t('artifactSchemaHintPlaceholder')}
-       className="w-full resize-y border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-hover"
+       className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus"
       />
      </Field>
     </div>
@@ -621,7 +621,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        {draft.id && (
         <button
          onClick={handleDeleteClick}
-         className="flex items-center gap-2 border-theme-button border-border-default bg-surface-page px-3 py-2 text-micro font-bold text-content-secondary transition-colors hover:text-accent-destructive"
+         className="flex items-center gap-2 border-theme-button border-border-default bg-surface-page px-3 py-2 text-xs font-bold text-content-secondary transition-colors hover:text-accent-destructive"
         >
          <Trash2 className="h-3.5 w-3.5" />
          {t('delete') || 'Delete'}
@@ -630,7 +630,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        <button
         onClick={() => void handleSave()}
         disabled={isSaving}
-        className="flex items-center gap-2 border-theme-button border-border-default bg-surface-elevated px-3 py-2 text-micro font-bold text-content-primary transition-colors hover:border-border-hover disabled:opacity-60"
+        className="flex items-center gap-2 rounded-full border border-border-divider bg-accent-brand px-4 py-2 text-xs font-bold text-accent-ink transition-colors hover:border-border-hover disabled:opacity-60"
        >
         <Save className="h-3.5 w-3.5" />
         {isSaving ? t('saving') || 'Saving' : t('save') || 'Save'}
@@ -676,7 +676,7 @@ function Field({
 }) {
  return (
   <div className={cn('space-y-2', className)}>
-   <div className="text-micro font-bold text-content-secondary">
+   <div className="text-xs font-bold text-content-secondary">
     {label}
    </div>
    {children}
