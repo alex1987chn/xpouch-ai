@@ -21,7 +21,7 @@ const Card = React.forwardRef<
     ref={ref}
     className={cn(
       // 基础样式：边框、背景、文字颜色（使用语义变量）
-      "border-2 border-border-default bg-surface-card text-content-primary",
+      "border-theme-card border-border-default bg-surface-card text-content-primary",
       // 阴影（主题自适应）
       "shadow-theme-card",
       // 动画

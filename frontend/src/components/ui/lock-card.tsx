@@ -19,11 +19,11 @@ interface PermissionLockCardProps {
 export function PermissionLockCard({ title, description }: PermissionLockCardProps) {
   const { t } = useTranslation()
   return (
-    <div className="border-2 border-border-default bg-surface-card px-6 py-16 text-center shadow-theme-card">
-      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center border-2 border-border-default bg-surface-page">
+    <div className="border-theme-card border-border-default bg-surface-card px-6 py-16 text-center shadow-theme-card">
+      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center border-theme-card border-border-default bg-surface-page">
         <Lock className="h-8 w-8 text-content-muted" />
       </div>
-      <h3 className="font-mono text-sm font-bold uppercase text-content-primary">
+      <h3 className="font-mono text-sm font-bold text-content-primary">
         {title || t('adminOnly')}
       </h3>
       {description && <p className="mt-2 text-xs text-content-secondary">{description}</p>}

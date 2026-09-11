@@ -23,7 +23,7 @@ export function Skeleton({ className }: { className?: string }) {
 /** 产物/模板卡片骨架：与 ArtifactsPage、SkillTemplatePanel 卡片同构 */
 export function CardSkeleton() {
   return (
-    <div className="border-2 border-border-default bg-surface-card p-4 flex flex-col gap-3 min-h-[160px]">
+    <div className="border-theme-card border-border-default bg-surface-card p-4 flex flex-col gap-3 min-h-[160px]">
       <Skeleton className="h-4 w-14" />
       <Skeleton className="h-4 w-3/4" />
       <Skeleton className="h-3 w-full" />
@@ -36,7 +36,7 @@ export function CardSkeleton() {
 /** 行列表骨架：与 HistoryPage 行同构 */
 export function RowSkeleton() {
   return (
-    <div className="flex items-center gap-3 border-2 border-border-default bg-surface-card px-4 py-3">
+    <div className="flex items-center gap-3 border-theme-card border-border-default bg-surface-card px-4 py-3">
       <Skeleton className="w-2 h-2 shrink-0" />
       <Skeleton className="h-3.5 flex-1 max-w-[40%]" />
       <Skeleton className="h-3 w-32 hidden md:block" />

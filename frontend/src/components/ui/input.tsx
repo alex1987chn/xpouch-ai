@@ -32,7 +32,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           // 圆角（主题自适应）
           "rounded-md",
           // 边框（主题自适应）
-          "border-2 border-border-default",
+          "border-theme-input border-border-default",
           // Focus状态
           "focus:outline-none focus:border-border-focus",
           // 背景色
@@ -85,7 +85,7 @@ const SearchInput = React.forwardRef<
           // 圆角
           "rounded-md",
           // 边框
-          "border-2 border-border-default",
+          "border-theme-input border-border-default",
           // Focus状态
           "focus:outline-none focus:border-border-focus",
           // 背景色
@@ -131,7 +131,7 @@ const Textarea = React.forwardRef<
         // 圆角
         "rounded-md",
         // 边框
-        "border-2 border-border-default",
+        "border-theme-input border-border-default",
         // Focus状态
         "focus:outline-none focus:border-accent-info",
         // 背景色

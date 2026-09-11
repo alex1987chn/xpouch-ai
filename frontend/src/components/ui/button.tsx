@@ -31,9 +31,9 @@ const buttonVariants = cva(
          * 默认变体 - 主题自适应
          */
         default: [
-          "bg-surface-card border-2 border-border-default text-content-primary",
+          "bg-surface-card border-theme-button border-border-default text-content-primary",
           "shadow-theme-button",
-          "hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover hover:bg-accent hover:text-content-inverted hover:border-border-focus",
+          "hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover hover:bg-accent hover:text-accent-ink hover:border-border-focus",
           "active:[transform:var(--transform-button-active)] active:shadow-theme-button-active",
         ],
 
@@ -49,9 +49,9 @@ const buttonVariants = cva(
          * 轮廓变体
          */
         outline: [
-          "bg-surface-card border-2 border-border-default text-content-primary",
+          "bg-surface-card border-theme-button border-border-default text-content-primary",
           "shadow-theme-button",
-          "hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover hover:bg-accent hover:text-content-inverted hover:border-border-focus",
+          "hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover hover:bg-accent hover:text-accent-ink hover:border-border-focus",
           "active:[transform:var(--transform-button-active)] active:shadow-theme-button-active",
         ],
 
@@ -83,7 +83,7 @@ const buttonVariants = cva(
          * 品牌主色变体
          */
         brand: [
-          "bg-accent text-content-inverted border border-border-focus",
+          "bg-accent text-accent-ink border border-border-focus",
           "shadow-theme-button",
           "hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover hover:bg-accent-hover",
           "active:[transform:var(--transform-button-active)] active:shadow-theme-button-active",

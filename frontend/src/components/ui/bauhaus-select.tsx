@@ -52,7 +52,7 @@ export function BauhausSelect({
         ref={triggerRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page font-mono text-sm text-left flex items-center justify-between hover:border-accent-hover transition-colors"
+        className="w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-mono text-sm text-left flex items-center justify-between hover:border-accent-hover transition-colors"
       >
         <span>{selectedOption?.label || placeholder}</span>
         <span className="text-content-secondary">▼</span>
@@ -60,7 +60,7 @@ export function BauhausSelect({
 
       {isOpen && createPortal(
         <div
-          className="fixed border-2 border-border-default bg-surface-card shadow-theme-card z-[9999] max-h-60 overflow-y-auto bauhaus-scrollbar"
+          className="fixed border-theme-card border-border-default bg-surface-card shadow-theme-card z-[9999] max-h-60 overflow-y-auto bauhaus-scrollbar"
           style={{
             width: triggerRef.current?.getBoundingClientRect().width || 200,
             left: triggerRef.current?.getBoundingClientRect().left || 0,
