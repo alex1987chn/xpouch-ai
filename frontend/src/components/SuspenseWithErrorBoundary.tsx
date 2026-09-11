@@ -1,4 +1,5 @@
 import { Suspense, ReactNode } from 'react'
+import { The4DPocketLogo } from '@/components/bauhaus'
 import ErrorBoundary from './ErrorBoundary'
 
 interface SuspenseWithErrorBoundaryProps {
@@ -41,8 +42,12 @@ export function SuspenseWithErrorBoundary({
 function DefaultLoadingFallback() {
   return (
     <div className="flex h-full w-full items-center justify-center bg-surface-page">
-      <div className="flex flex-col items-center gap-3">
-        <div className="h-5 w-5 animate-pulse rounded-[50%_50%_50%_0] bg-accent-brand" />
+      <div className="flex flex-col items-center gap-2.5">
+        <div className="h-[26px] w-[26px] overflow-visible">
+          <span className="block origin-top-left scale-[0.62]">
+            <The4DPocketLogo />
+          </span>
+        </div>
         <span className="text-xs text-content-muted">…</span>
       </div>
     </div>

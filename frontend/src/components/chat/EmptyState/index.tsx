@@ -8,6 +8,7 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Rocket, UserPlus, MessageSquare, type LucideIcon } from 'lucide-react'
+import { The4DPocketLogo } from '@/components/bauhaus'
 import { useTranslation } from '@/i18n'
 import { useUserStore } from '@/store/userStore'
 
@@ -54,9 +55,9 @@ export default function ChatEmptyState() {
 
   return (
     <div className="flex min-h-[52vh] flex-col items-center justify-center py-8 text-center">
-      {/* 品牌口袋标 */}
-      <div className="flex h-11 w-11 items-center justify-center rounded-[50%_50%_50%_0] bg-accent-brand">
-        <span className="font-display text-base font-bold text-accent-ink">X</span>
+      {/* 品牌标：卡片进口袋（卡片=落入的灵感，口袋=无限可能的 AI 收纳） */}
+      <div className="flex h-[42px] w-[42px] items-center justify-center">
+        <The4DPocketLogo />
       </div>
       <h2 className="mt-4 text-lg font-bold text-content-primary">
         {t('emptyTitle')}

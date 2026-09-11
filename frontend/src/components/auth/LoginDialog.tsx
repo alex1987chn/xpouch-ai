@@ -208,7 +208,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
         <div className="p-6 space-y-5">
           {/* 品牌标 + 标题 */}
           <div className="text-center">
-            <div className="mx-auto mb-3.5 flex h-12 w-12 items-center justify-center rounded-[50%_50%_50%_0] bg-accent-brand">
+            <div className="mx-auto mb-2 flex h-[42px] w-[42px] items-center justify-center">
               <The4DPocketLogo />
             </div>
             <h2
