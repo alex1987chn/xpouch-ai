@@ -88,7 +88,7 @@ export function OtpLoginForm({
           maxLength={6}
           disabled={loading}
           autoFocus
-          className="w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-display text-lg text-center tracking-[0.3em] text-content-primary focus:border-border-focus"
+          className="w-full rounded-lg border-theme-input border-border-default bg-surface-page px-3 py-3 font-display text-lg text-center tracking-[0.3em] text-content-primary transition-colors focus:border-border-focus focus:outline-none"
         />
         <div className="text-nano text-content-muted">
           {t('codeSentTo', { phone: `${phoneNumber.slice(0, 3)}****${phoneNumber.slice(-4)}` })}
