@@ -17,6 +17,7 @@ import { useArtifactsQuery, useThreadArtifactsQuery, artifactsKeys } from '@/hoo
 import { getArtifactDetail, shareArtifact } from '@/services/artifacts'
 import ArtifactRenderer from '@/components/artifacts/ArtifactRenderer'
 import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/ui/states'
 import { pushToast } from '@/components/ui/use-toast'
 import type { ArtifactListItem } from '@/types'
 import { cn } from '@/lib/utils'
@@ -137,9 +138,11 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
             ))}
           </div>
         ) : activeList.length === 0 ? (
-          <p className="pt-8 text-center text-nano text-content-muted">
-            {tab === 'thread' ? t('canvasEmpty') : t('canvasGalleryEmpty')}
-          </p>
+          <EmptyState
+            variant="bare"
+            dense
+            title={tab === 'thread' ? t('canvasEmpty') : t('canvasGalleryEmpty')}
+          />
         ) : (
           <div className="space-y-2">
             {activeList.map(artifact => (

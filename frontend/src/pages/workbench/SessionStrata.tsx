@@ -19,6 +19,7 @@ import { Plus } from 'lucide-react'
 
 import { useChatHistoryQuery } from '@/hooks/queries/useChatHistoryQuery'
 import { SearchInput } from '@/components/ui/input'
+import { EmptyState } from '@/components/ui/states'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
 import type { Conversation } from '@/types'
@@ -172,9 +173,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <p className="px-2 pt-4 text-center text-nano text-content-muted">
-            {t('strataEmpty')}
-          </p>
+          <EmptyState variant="bare" dense title={t('strataEmpty')} />
         ) : (
           groupLabels.map(group =>
             group ? (

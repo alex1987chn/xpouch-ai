@@ -3,6 +3,7 @@ import { Check, Save, ShieldAlert } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { PermissionLockCard } from '@/components/ui/lock-card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/ui/states'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import {
@@ -276,11 +277,11 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
      ))}
      </div>
     ) : (
-     <div className="px-4 py-12 text-center">
-      <p className="text-xs text-content-muted">
-       {t('noToolPoliciesFound') || 'No tool policies found'}
-      </p>
-     </div>
+     <EmptyState
+      variant="bare"
+      dense
+      title={t('noToolPoliciesFound') || 'No tool policies found'}
+     />
     )}
    </div>
 

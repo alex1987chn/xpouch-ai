@@ -15,6 +15,7 @@ import {
  shareSkillTemplate,
 } from '@/services/admin'
 import { TemplateImportDialog } from '@/components/library/TemplateImportDialog'
+import { EmptyState } from '@/components/ui/states'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 
 // Artifact 类型标签颜色映射（半透明色底 + 主题感知前景，双主题通用）
@@ -454,11 +455,11 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
       ))}
      </div>
     ) : (
-     <div className="px-4 py-12 text-center">
-      <p className="text-xs text-content-muted">
-       {t('noTemplatesFound') || 'No templates found'}
-      </p>
-     </div>
+     <EmptyState
+      variant="bare"
+      dense
+      title={t('noTemplatesFound') || 'No templates found'}
+     />
     )}
    </div>
 

@@ -10,6 +10,7 @@ import { Bot, Database, ShieldAlert, Wrench } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { SearchInput } from '@/components/ui/input'
+import { EmptyState } from '@/components/ui/states'
 import { SubPageLayout, SubPageHeader } from '@/components/ui/sub-page-layout'
 import { MCPList } from './MCPList'
 import SkillTemplatePanel from './SkillTemplatePanel'
@@ -94,22 +95,17 @@ export default function LibraryPage() {
 }
 
 /**
- * 知识库内容（占位）
+ * 知识库内容（占位，统一空态形态）
  */
 function KnowledgeBaseContent() {
   const { t } = useTranslation()
 
   return (
-    <div className="py-20 text-center">
-      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-lg border border-border-divider bg-surface-card">
-        <Database className="h-8 w-8 text-content-secondary" />
-      </div>
-      <h3 className="mb-2 text-base font-bold text-content-primary">
-        {t('comingSoon') || 'Coming Soon'}
-      </h3>
-      <p className="mx-auto max-w-sm text-xs text-content-secondary">
-        {t('knowledgeBaseDescription') || 'Knowledge base feature is under development'}
-      </p>
-    </div>
+    <EmptyState
+      variant="card"
+      icon={Database}
+      title={t('comingSoon') || 'Coming Soon'}
+      description={t('knowledgeBaseDescription') || 'Knowledge base feature is under development'}
+    />
   )
 }

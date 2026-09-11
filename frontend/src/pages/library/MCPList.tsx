@@ -10,7 +10,7 @@ import { Server, Plus } from 'lucide-react'
 import { useMCPServers } from '@/hooks/queries/useMCPQuery'
 import { SearchInput } from '@/components/ui/input'
 import { CardSkeleton } from '@/components/ui/skeleton'
-import { ErrorState } from '@/components/ui/states'
+import { ErrorState, EmptyState } from '@/components/ui/states'
 import MCPCard from './components/MCPCard'
 import { AddMCPDialog } from './components/AddMCPDialog'
 import { useTranslation } from '@/i18n'
@@ -154,24 +154,26 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
      ))}
     </div>
    ) : (
-    /* 空状态 - 与 HistoryPage 一致 */
-    <div className="text-center py-20">
-     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-lg border border-border-divider bg-surface-card">
-      <Server className="h-8 w-8 text-content-muted" />
-     </div>
-     <h3 className="text-base font-bold text-content-primary mb-2">
-      {effectiveSearchQuery
-       ? t('noMatchingServers') || 'No matching servers'
-       : t('noMCPServers') || 'No MCP servers'
-      }
-     </h3>
-     <p className="text-xs text-content-muted">
-      {effectiveSearchQuery
-       ? t('tryOtherKeywords') || 'Try other keywords'
-       : t('clickAddToConnect') || 'Click ADD to connect an MCP server'
-      }
-     </p>
-    </div>
+    /* 空状态（统一组件）：无服务器时给管理员「添加」CTA */
+    <EmptyState
+     variant="card"
+     icon={Server}
+     title={
+      effectiveSearchQuery
+       ? (t('noMatchingServers') || 'No matching servers')
+       : (t('noMCPServers') || 'No MCP servers')
+     }
+     description={
+      effectiveSearchQuery
+       ? (t('tryOtherKeywords') || 'Try other keywords')
+       : (t('clickAddToConnect') || 'Click ADD to connect an MCP server')
+     }
+     action={
+      isAdmin && !effectiveSearchQuery
+       ? { label: t('add') || 'Add', onClick: () => setIsAddOpen(true) }
+       : undefined
+     }
+    />
    )}
 
    {/* 添加弹窗 */}
