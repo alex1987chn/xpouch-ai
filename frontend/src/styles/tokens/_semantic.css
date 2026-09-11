@@ -70,9 +70,9 @@
        品牌黄（yellow-500 档，象牙底上对比达标）
        强调色稀缺原则：只出现在主 CTA 与"待裁决"
        ------------------------------------------ */
-    --accent-brand: 234 179 8;             /* yellow-500 - 品牌黄 */
-    --accent-hover: 251 191 36;            /* yellow-400 - hover 次色 */
-    --accent-active: 202 138 4;            /* amber-600 - active 深黄 */
+    --accent-brand: 242 192 15;            /* yellow-450 自定义档 - 品牌黄（用户验收回调：500 偏深） */
+    --accent-hover: 250 204 21;            /* yellow-400 - hover 次色 */
+    --accent-active: 234 179 8;            /* yellow-500 - active 深黄 */
     --accent-subtle: 254 249 195;          /* #fef9c3 - 浅黄背景 */
     --accent-ink: 45 42 38;                /* 黄底上的文字色（深墨） */
     --accent-destructive: 190 85 75;       /* 陶土红 - 危险才红 */
