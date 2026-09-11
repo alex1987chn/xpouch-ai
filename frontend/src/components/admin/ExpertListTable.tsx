@@ -75,12 +75,12 @@ export default function ExpertListTable({
   }, [filteredExperts, selectedExpertKey])
 
   return (
-    <div className="w-full lg:w-80 flex-shrink-0 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-theme-card max-h-[45vh] lg:max-h-none">
+    <div className="w-full lg:w-80 flex-shrink-0 flex flex-col overflow-hidden border-theme-card border-border-default bg-surface-card shadow-theme-card max-h-[45vh] lg:max-h-none">
       {/* 头部 */}
-      <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border-divider shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-accent-hover" />
-          <span className="text-xs font-bold uppercase tracking-widest text-content-secondary">
+          <span className="text-xs font-bold tracking-widest text-content-secondary">
             /// {t('expertsHeader')}
           </span>
         </div>
@@ -89,7 +89,7 @@ export default function ExpertListTable({
           {isAdmin && (
             <button
               onClick={onCreateClick}
-              className="flex items-center gap-1 px-2 py-1 text-micro uppercase border-2 border-border-default bg-surface-page hover:bg-accent-hover hover:text-content-primary hover:border-border-focus transition-colors"
+              className="flex items-center gap-1 px-2 py-1 text-micro border-theme-button border-border-default bg-surface-page hover:bg-accent-hover hover:text-content-primary hover:border-border-focus transition-colors"
               title={t('newExpert')}
             >
               <Plus className="w-3.5 h-3.5" />
@@ -99,7 +99,7 @@ export default function ExpertListTable({
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="w-7 h-7 flex items-center justify-center border-2 border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"
+            className="w-7 h-7 flex items-center justify-center border-theme-button border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"
             title={t('refresh')}
           >
             <RefreshCw className={cn('w-3.5 h-3.5', isLoading && 'animate-spin')} />
@@ -108,7 +108,7 @@ export default function ExpertListTable({
       </div>
 
       {/* 搜索框 */}
-      <div className="p-3 border-b-2 border-border-default">
+      <div className="p-3 border-b border-border-divider">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-secondary" />
           <input
@@ -116,7 +116,7 @@ export default function ExpertListTable({
             placeholder={t('searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border-2 border-border-default bg-surface-page text-xs focus:outline-none focus:border-border-focus transition-colors"
+            className="w-full pl-9 pr-3 py-2 border-theme-input border-border-default bg-surface-page text-xs focus:outline-none focus:border-border-focus transition-colors"
           />
         </div>
       </div>
@@ -166,7 +166,7 @@ export default function ExpertListTable({
               </div>
               <div
                 className={cn(
-                  'text-nano mt-1 uppercase tracking-wider',
+                  'text-nano mt-1 font-mono tracking-wider',
                   selectedExpertKey === expert.expert_key
                     ? 'text-content-primary/70'
                     : 'text-content-secondary'

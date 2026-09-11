@@ -60,7 +60,7 @@ export function SecuritySection() {
       <section>
         <div className="flex items-center gap-2 mb-3">
           <ShieldCheck className="w-4 h-4 text-content-secondary" />
-          <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+          <span className="text-micro font-bold tracking-widest text-content-secondary">
             {t('passwordSetup')}
           </span>
         </div>
@@ -73,7 +73,7 @@ export function SecuritySection() {
               onChange={(e) => setOldPassword(e.target.value)}
               placeholder={t('oldPasswordPlaceholder')}
               disabled={isSettingPassword}
-              className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+              className="w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
             />
           )}
           <input
@@ -87,7 +87,7 @@ export function SecuritySection() {
             }}
             placeholder={t('newPasswordPlaceholder')}
             disabled={isSettingPassword}
-            className="w-full px-3 py-2.5 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+            className="w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
           />
           <p className="text-micro text-content-secondary opacity-60">
             {t('accountSecurityDesc')}
@@ -95,7 +95,7 @@ export function SecuritySection() {
           <button
             onClick={handleSetPassword}
             disabled={!canSubmit}
-            className="px-4 py-2 border-2 border-border-default bg-accent-hover text-content-primary text-xs font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
+            className="px-4 py-2 border-theme-button border-border-default bg-accent-hover text-accent-ink text-xs font-bold hover:brightness-95 transition-colors disabled:opacity-50"
           >
             {isSettingPassword ? t('passwordSaving') : t('passwordSaveAction')}
           </button>

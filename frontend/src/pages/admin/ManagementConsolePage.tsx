@@ -74,7 +74,7 @@ export default function ManagementConsolePage() {
         <PageTitle
           title={t('navConsole')}
           right={
-            <span className="px-2 py-1 bg-status-warning/15 text-content-primary text-xs font-mono uppercase">
+            <span className="px-2 py-1 bg-status-warning/15 text-content-primary text-xs font-mono">
               ADMIN
             </span>
           }
@@ -82,13 +82,13 @@ export default function ManagementConsolePage() {
 
         <div className="flex flex-col lg:flex-row gap-5 items-start">
           {/* 左栏：分区原地切换（与设置中心同交互） */}
-          <div className="hidden lg:flex lg:flex-col w-[200px] shrink-0 border-2 border-border-default bg-surface-card shadow-theme-card p-2 gap-1">
+          <div className="hidden lg:flex lg:flex-col w-[200px] shrink-0 border-theme-card border-border-default bg-surface-card shadow-theme-card p-2 gap-1">
             {tabs.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
                 className={cn(
-                  'flex items-center gap-2.5 px-3 py-2 text-xs font-bold uppercase border-2 transition-colors',
+                  'flex items-center gap-2.5 px-3 py-2 text-xs font-bold border-theme-button transition-colors',
                   tab === key
                     ? 'bg-accent-hover/10 border-accent-hover text-content-primary'
                     : 'bg-transparent border-transparent text-content-secondary hover:bg-surface-page hover:border-border-default'
@@ -99,7 +99,7 @@ export default function ManagementConsolePage() {
               </button>
             ))}
 
-            <div className="px-3 py-2 text-micro text-content-secondary opacity-50 uppercase tracking-widest border-t-2 border-border-default mt-1">
+            <div className="px-3 py-2 text-micro text-content-secondary opacity-50 tracking-widest border-t border-border-divider mt-1">
               {t('userManagementComingSoon')}
             </div>
           </div>
@@ -110,7 +110,7 @@ export default function ManagementConsolePage() {
             className="flex-1 min-w-0 min-h-[70vh] flex flex-col animate-in fade-in duration-150"
           >
             {tab === 'system' && (
-              <div className="border-2 border-border-default bg-surface-card shadow-theme-card flex flex-col">
+              <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card flex flex-col">
                 <SystemStatusSection />
               </div>
             )}
@@ -124,7 +124,7 @@ export default function ManagementConsolePage() {
                     value={governanceQuery}
                     onChange={e => setGovernanceQuery(e.target.value)}
                     placeholder={t('searchTools')}
-                    className="w-full pl-9 pr-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+                    className="w-full pl-9 pr-3 py-2 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
                   />
                 </div>
                 <ToolGovernancePanel searchQuery={governanceQuery} canView canEdit />
@@ -138,7 +138,7 @@ export default function ManagementConsolePage() {
                     value={templateQuery}
                     onChange={e => setTemplateQuery(e.target.value)}
                     placeholder={t('searchTemplates')}
-                    className="w-full pl-9 pr-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+                    className="w-full pl-9 pr-3 py-2 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
                   />
                 </div>
                 <SkillTemplatePanel searchQuery={templateQuery} canEdit />
@@ -152,7 +152,7 @@ export default function ManagementConsolePage() {
                     value={mcpQuery}
                     onChange={e => setMcpQuery(e.target.value)}
                     placeholder={t('searchTools')}
-                    className="w-full pl-9 pr-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+                    className="w-full pl-9 pr-3 py-2 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
                   />
                 </div>
                 <MCPList searchQuery={mcpQuery} isAdmin />

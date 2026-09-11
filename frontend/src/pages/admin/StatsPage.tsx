@@ -61,9 +61,9 @@ function MetricCard({
   }
 
   return (
-    <div className={cn('border-2 p-4 shadow-theme-card bg-surface-card', colorClasses[color])}>
+    <div className={cn('border-theme-card p-4 shadow-theme-card bg-surface-card', colorClasses[color])}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-mono uppercase text-content-muted">{title}</span>
+        <span className="text-xs font-mono text-content-muted">{title}</span>
         <span className={iconColorClasses[color]}>{icon}</span>
       </div>
       <div className="text-2xl font-bold font-mono text-content-primary">{value}</div>
@@ -80,7 +80,7 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
 
   if (!trends.length) {
     return (
-      <div className="border-2 border-border-default p-8 text-center text-content-muted">
+      <div className="border-theme-card border-border-default p-8 text-center text-content-muted">
         {t('noData')}
       </div>
     )
@@ -89,8 +89,8 @@ function TrendChart({ trends }: { trends: RunStatsResponse['trends'] }) {
   const maxValue = Math.max(...trends.map((d) => d.total_count), 1)
 
   return (
-    <div className="border-2 border-border-default p-4 shadow-theme-card">
-      <h3 className="text-sm font-mono uppercase text-content-muted mb-4">
+    <div className="border-theme-card border-border-default p-4 shadow-theme-card">
+      <h3 className="text-sm font-mono text-content-muted mb-4">
         {t('trends')} (7{t('days')})
       </h3>
       <div className="flex items-end justify-between gap-2 h-32">
@@ -150,38 +150,38 @@ function RunTable({
 
   if (!runs.length) {
     return (
-      <div className="border-2 border-border-default p-8 text-center text-content-muted">
+      <div className="border-theme-card border-border-default p-8 text-center text-content-muted">
         {t('noRuns')}
       </div>
     )
   }
 
   return (
-    <div className="border-2 border-border-default shadow-theme-card overflow-x-auto">
+    <div className="border-theme-card border-border-default shadow-theme-card overflow-x-auto">
       <table className="w-full">
         <thead>
           <tr className="border-b-2 border-border-default bg-surface-page">
-            <th className="px-4 py-3 text-left text-xs font-mono uppercase text-content-muted">
+            <th className="px-4 py-3 text-left text-xs font-mono text-content-muted">
               Run ID
             </th>
             {isAdmin && (
-              <th className="px-4 py-3 text-left text-xs font-mono uppercase text-content-muted">
+              <th className="px-4 py-3 text-left text-xs font-mono text-content-muted">
                 User
               </th>
             )}
-            <th className="px-4 py-3 text-left text-xs font-mono uppercase text-content-muted">
+            <th className="px-4 py-3 text-left text-xs font-mono text-content-muted">
               Mode
             </th>
-            <th className="px-4 py-3 text-left text-xs font-mono uppercase text-content-muted">
+            <th className="px-4 py-3 text-left text-xs font-mono text-content-muted">
               Status
             </th>
-            <th className="px-4 py-3 text-left text-xs font-mono uppercase text-content-muted">
+            <th className="px-4 py-3 text-left text-xs font-mono text-content-muted">
               Duration
             </th>
-            <th className="px-4 py-3 text-left text-xs font-mono uppercase text-content-muted">
+            <th className="px-4 py-3 text-left text-xs font-mono text-content-muted">
               Created
             </th>
-            <th className="px-4 py-3 text-right text-xs font-mono uppercase text-content-muted">
+            <th className="px-4 py-3 text-right text-xs font-mono text-content-muted">
               Action
             </th>
           </tr>
@@ -294,7 +294,7 @@ export default function StatsPage() {
         <PageTitle
           title={isAdmin ? t('globalStats') : t('myStats')}
           right={isAdmin ? (
-            <span className="px-2 py-1 bg-status-warning/15 text-content-primary text-xs font-mono uppercase">
+            <span className="px-2 py-1 bg-status-warning/15 text-content-primary text-xs font-mono">
               Admin
             </span>
           ) : undefined}
@@ -302,7 +302,7 @@ export default function StatsPage() {
 
         {/* 新用户空状态：引导跑第一个任务 */}
         {data?.metrics && data.metrics.total_runs === 0 && (
-          <div className="border-2 border-border-default bg-surface-card shadow-theme-card">
+          <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
             <EmptyState
               title={t('noRuns')}
               description={t('noRunsHint')}
@@ -360,7 +360,7 @@ export default function StatsPage() {
         {/* 趋势图 */}
         {data?.trends && (
           <div className="space-y-2">
-            <div className="flex justify-end gap-0 border-2 border-border-default w-fit">
+            <div className="flex justify-end gap-0 border-theme-button border-border-default w-fit">
               {[7, 14, 30].map(d => (
                 <button
                   key={d}
@@ -382,7 +382,7 @@ export default function StatsPage() {
         {/* 运行列表 */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-mono uppercase text-content-muted">
+            <h2 className="text-sm font-mono text-content-muted">
               {t('runList')} ({data?.total_runs_count || 0})
             </h2>
             {data && data.total_runs_count > limit && (
@@ -391,7 +391,7 @@ export default function StatsPage() {
                   onClick={handlePrevPage}
                   disabled={offset === 0}
                   className={cn(
-                    'px-3 py-1 text-xs font-mono uppercase border-2 border-border-default',
+                    'px-3 py-1 text-xs font-mono border-theme-button border-border-default',
                     offset === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-card'
                   )}
                 >
@@ -401,7 +401,7 @@ export default function StatsPage() {
                   onClick={handleNextPage}
                   disabled={offset + limit >= data.total_runs_count}
                   className={cn(
-                    'px-3 py-1 text-xs font-mono uppercase border-2 border-border-default',
+                    'px-3 py-1 text-xs font-mono border-theme-button border-border-default',
                     offset + limit >= data.total_runs_count
                       ? 'opacity-50 cursor-not-allowed'
                       : 'hover:bg-surface-card'

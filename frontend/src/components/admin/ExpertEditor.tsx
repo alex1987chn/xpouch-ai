@@ -137,9 +137,9 @@ export default function ExpertEditor({
 
   if (!expert) {
     return (
-      <div className="flex-1 flex items-center justify-center border-2 border-border-default bg-surface-card shadow-theme-card">
+      <div className="flex-1 flex items-center justify-center border-theme-card border-border-default bg-surface-card shadow-theme-card">
         <div className="text-center">
-          <div className="w-12 h-12 border-2 border-border-default bg-surface-page mx-auto mb-4 flex items-center justify-center">
+          <div className="w-12 h-12 border-theme-card border-border-default bg-surface-page mx-auto mb-4 flex items-center justify-center">
             <Sparkles className="w-6 h-6 text-content-secondary" />
           </div>
           <p className="text-sm text-content-secondary">
@@ -151,12 +151,12 @@ export default function ExpertEditor({
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border-2 border-border-default bg-surface-card shadow-theme-card relative">
+    <div className="flex-1 flex flex-col overflow-hidden border-theme-card border-border-default bg-surface-card shadow-theme-card relative">
       {/* 非管理员遮罩层 */}
       {!isAdmin && (
         <div className="absolute inset-0 z-50 bg-surface-page/80 backdrop-blur-sm flex items-center justify-center">
           <div className="text-center">
-            <div className="w-16 h-16 border-2 border-border-default bg-surface-card mx-auto mb-4 flex items-center justify-center">
+            <div className="w-16 h-16 border-theme-card border-border-default bg-surface-card mx-auto mb-4 flex items-center justify-center">
               <Lock className="w-8 h-8 text-content-muted" />
             </div>
             <p className="text-sm font-bold text-content-primary mb-2">
@@ -170,10 +170,10 @@ export default function ExpertEditor({
       )}
 
       {/* 头部 */}
-      <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border-divider shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-accent-hover" />
-          <span className="text-xs font-bold uppercase tracking-widest text-content-secondary">
+          <span className="text-xs font-bold tracking-widest text-content-secondary font-display">
             /// {expert.name.toUpperCase()}
           </span>
         </div>
@@ -181,9 +181,9 @@ export default function ExpertEditor({
           <button
             onClick={() => setPreviewMode(!previewMode)}
             className={cn(
-              'flex items-center gap-2 px-3 py-1.5 border-2 border-border-default text-xs font-bold uppercase transition-all',
+              'flex items-center gap-2 px-3 py-1.5 border-theme-button border-border-default text-xs font-bold transition-all',
               previewMode
-                ? 'border-accent-hover bg-accent-hover text-content-primary'
+                ? 'border-accent-hover bg-accent-hover text-accent-ink'
                 : 'border-border-default bg-surface-page text-content-secondary hover:border-content-secondary'
             )}
           >
@@ -218,12 +218,12 @@ export default function ExpertEditor({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-content-secondary" />
-                  <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+                  <label className="text-micro font-bold tracking-widest text-content-secondary">
                     {t('temperature')}: {formData.temperature?.toFixed(1)}
                   </label>
                 </div>
                 <div
-                  className="relative h-8 bg-surface-page border-2 border-border-default shadow-theme-input"
+                  className="relative h-8 bg-surface-page border-theme-input border-border-default shadow-theme-input"
                   style={{ zIndex: 10 }}
                 >
                   {/* 进度条 - 使用品牌强调色 */}
@@ -265,7 +265,7 @@ export default function ExpertEditor({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary" />
-                    <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+                    <label className="text-micro font-bold tracking-widest text-content-secondary">
                       {t('expertDescription')}
                     </label>
                   </div>
@@ -275,8 +275,8 @@ export default function ExpertEditor({
                     onClick={handleGenerateDescription}
                     disabled={isGeneratingDescription || formData.system_prompt.length < 10}
                     className={cn(
-                      'flex items-center gap-1 px-2 py-1 text-micro uppercase',
-                      'border-2 border-border-default bg-surface-page',
+                      'flex items-center gap-1 px-2 py-1 text-micro',
+                      'border-theme-button border-border-default bg-surface-page',
                       'hover:bg-accent-hover hover:text-content-primary hover:border-accent-hover',
                       'transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                     )}
@@ -301,7 +301,7 @@ export default function ExpertEditor({
                   onChange={(e) => handleFieldChange('description', e.target.value)}
                   placeholder={t('expertDescriptionPlaceholder')}
                   rows={3}
-                  className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-y min-h-[80px] bauhaus-scrollbar"
+                  className="w-full px-3 py-2 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-y min-h-[80px] bauhaus-scrollbar"
                 />
                 <p className="text-nano text-content-secondary">
                   {t('expertDescriptionTooltip')}
@@ -313,7 +313,7 @@ export default function ExpertEditor({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary" />
-                    <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+                    <label className="text-micro font-bold tracking-widest text-content-secondary">
                       {t('systemPrompt')}
                     </label>
                   </div>
@@ -331,7 +331,7 @@ export default function ExpertEditor({
 
                 {/* 🔥 工具使用说明模板 */}
                 {showToolTips && (
-                  <div className="p-3 border-2 border-border-default bg-accent-hover/5 space-y-2">
+                  <div className="p-3 border-theme-card border-border-default bg-accent-hover/5 space-y-2">
                     <p className="text-nano text-content-secondary">
                       {t('toolTipsDescription')}
                     </p>
@@ -377,7 +377,7 @@ export default function ExpertEditor({
                   onChange={(e) => handleFieldChange('system_prompt', e.target.value)}
                   placeholder={t('systemPromptPlaceholder')}
                   rows={10}
-                  className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-y min-h-[150px] bauhaus-scrollbar"
+                  className="w-full px-3 py-2 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-y min-h-[150px] bauhaus-scrollbar"
                 />
                 <div className="flex justify-between text-nano text-content-secondary">
                   <span>{formData.system_prompt.length} {t('chars')}</span>
@@ -394,8 +394,8 @@ export default function ExpertEditor({
                     onClick={handleSave}
                     disabled={isSaving || formData.system_prompt.length < 10}
                     className={cn(
-                      'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
-                      'bg-accent-hover text-content-primary text-xs font-bold uppercase',
+                      'flex items-center gap-2 px-6 py-2 border-theme-button border-border-default',
+                      'bg-accent-hover text-accent-ink text-xs font-bold',
                       'shadow-theme-button-lg',
                       'transition-all duration-200 hover:[transform:var(--transform-button-lg-hover)] hover:shadow-theme-button-lg-hover',
                       'active:[transform:var(--transform-button-active)] active:shadow-theme-button-active',
@@ -425,7 +425,7 @@ export default function ExpertEditor({
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary" />
-                    <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+                    <label className="text-micro font-bold tracking-widest text-content-secondary">
                       {t('testInput')}
                     </label>
                   </div>
@@ -434,7 +434,7 @@ export default function ExpertEditor({
                     onChange={(e) => setTestInput(e.target.value)}
                     placeholder={t('testInputPlaceholder')}
                     rows={5}
-                    className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-none"
+                    className="w-full px-3 py-2 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-none"
                   />
                   <div className="flex justify-between text-nano text-content-secondary">
                     <span>{testInput.length} {t('chars')}</span>
@@ -449,8 +449,8 @@ export default function ExpertEditor({
                     onClick={handlePreview}
                     disabled={isPreviewing || testInput.length < 10}
                     className={cn(
-                      'flex items-center gap-2 px-6 py-2 border-2 border-border-default',
-                      'bg-accent-hover text-content-primary text-xs font-bold uppercase',
+                      'flex items-center gap-2 px-6 py-2 border-theme-button border-border-default',
+                      'bg-accent-hover text-accent-ink text-xs font-bold',
                       'shadow-theme-button-lg',
                       'transition-all duration-200 hover:[transform:var(--transform-button-lg-hover)] hover:shadow-theme-button-lg-hover',
                       'active:[transform:var(--transform-button-active)] active:shadow-theme-button-active',
@@ -477,7 +477,7 @@ export default function ExpertEditor({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 bg-accent-hover" />
-                        <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+                        <label className="text-micro font-bold tracking-widest text-content-secondary">
                           {t('previewResults')}
                         </label>
                       </div>
@@ -485,7 +485,7 @@ export default function ExpertEditor({
                         {previewResult.model} · {previewResult.temperature} · {(previewResult.execution_time_ms / 1000).toFixed(2)}s
                       </span>
                     </div>
-                    <div className="p-4 border-2 border-border-default bg-surface-page min-h-[200px]">
+                    <div className="p-4 border-theme-card border-border-default bg-surface-page min-h-[200px]">
                       <pre className="text-sm whitespace-pre-wrap">
                         {previewResult.preview_response}
                       </pre>

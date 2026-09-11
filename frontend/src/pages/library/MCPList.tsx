@@ -109,11 +109,11 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
             onClick={() => setIsAddOpen(true)}
             className={cn(
               "h-11 px-4 flex items-center gap-2",
-              "bg-surface-elevated text-content-primary font-mono text-xs font-bold uppercase",
-              "border-2 border-border-default shadow-theme-card",
-              "hover:bg-accent-brand hover:text-content-inverted hover:border-accent-brand",
-              "hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-theme-card-hover",
-              "active:translate-x-0 active:translate-y-0 active:shadow-theme-card",
+              "bg-surface-elevated text-content-primary font-mono text-xs font-bold",
+              "border-theme-button border-border-default shadow-theme-button",
+              "hover:bg-accent-brand hover:text-accent-ink hover:border-accent-brand",
+              "hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover",
+              "active:[transform:var(--transform-button-active)] active:shadow-theme-button-active",
               "transition-all"
             )}
           >
@@ -125,7 +125,7 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
 
       {/* 统计 */}
       {!isLoading && filteredServers.length > 0 && (
-        <div className="flex items-center gap-2 font-mono text-micro uppercase tracking-widest text-content-muted">
+        <div className="flex items-center gap-2 font-mono text-micro tracking-widest text-content-muted">
           <div className="w-1.5 h-1.5 bg-accent-brand" />
           <span>
             {effectiveSearchQuery
@@ -157,16 +157,16 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
       ) : (
         /* 空状态 - 与 HistoryPage 一致 */
         <div className="text-center py-20">
-          <div className="w-16 h-16 mx-auto mb-4 border-2 border-border-default bg-surface-page flex items-center justify-center">
+          <div className="w-16 h-16 mx-auto mb-4 border-theme-card border-border-default bg-surface-page flex items-center justify-center">
             <Server className="w-8 h-8 text-content-muted" />
           </div>
-          <h3 className="font-mono text-base font-bold text-content-primary uppercase mb-2">
+          <h3 className="font-mono text-base font-bold text-content-primary mb-2">
             {effectiveSearchQuery
               ? t('noMatchingServers') || 'No matching servers'
               : t('noMCPServers') || 'No MCP servers'
             }
           </h3>
-          <p className="font-mono text-xs text-content-muted uppercase">
+          <p className="font-mono text-xs text-content-muted">
             {effectiveSearchQuery
               ? t('tryOtherKeywords') || 'Try other keywords'
               : t('clickAddToConnect') || 'Click ADD to connect an MCP server'

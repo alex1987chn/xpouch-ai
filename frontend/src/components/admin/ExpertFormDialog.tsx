@@ -146,14 +146,14 @@ export default function ExpertFormDialog({
       {/* 对话框容器 */}
       <div
         {...a11y}
-        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg border-2 border-border-default bg-surface-card shadow-theme-modal max-h-[90vh] overflow-y-auto bauhaus-scrollbar"
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg border-theme-card border-border-default bg-surface-card shadow-theme-modal max-h-[90vh] overflow-y-auto bauhaus-scrollbar rounded-lg"
         style={{ zIndex: Z_INDEX.MODAL + 1 }}
       >
         {/* 标题 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border-divider">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-accent-hover" />
-            <span id="expert-form-title" className="text-xs font-bold uppercase tracking-widest text-content-secondary">
+            <span id="expert-form-title" className="text-xs font-bold tracking-widest text-content-secondary">
               /// {title}
             </span>
           </div>
@@ -173,7 +173,7 @@ export default function ExpertFormDialog({
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-content-secondary" />
-              <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+              <label className="text-micro font-bold tracking-widest text-content-secondary">
                 {t('expertKey')}
               </label>
             </div>
@@ -203,7 +203,7 @@ export default function ExpertFormDialog({
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-content-secondary" />
-              <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+              <label className="text-micro font-bold tracking-widest text-content-secondary">
                 {'Name'}
               </label>
             </div>
@@ -215,7 +215,7 @@ export default function ExpertFormDialog({
               }
               placeholder={t('namePlaceholder')}
               disabled={isSubmitting}
-              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+              className="w-full px-3 py-2 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
             />
           </div>
 
@@ -223,7 +223,7 @@ export default function ExpertFormDialog({
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-content-secondary" />
-              <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+              <label className="text-micro font-bold tracking-widest text-content-secondary">
                 {t('expertDescription')}
               </label>
             </div>
@@ -235,7 +235,7 @@ export default function ExpertFormDialog({
               placeholder={t('expertDescriptionPlaceholder')}
               rows={2}
               disabled={isSubmitting}
-              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-y min-h-[60px]"
+              className="w-full px-3 py-2 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-y min-h-[60px]"
             />
           </div>
 
@@ -252,11 +252,11 @@ export default function ExpertFormDialog({
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-content-secondary" />
-              <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+              <label className="text-micro font-bold tracking-widest text-content-secondary">
                 {t('temperature')}: {formData.temperature.toFixed(1)}
               </label>
             </div>
-            <div className="relative h-8 bg-surface-page border-2 border-border-default">
+            <div className="relative h-8 bg-surface-page border-theme-input border-border-default">
               <div
                 className="absolute top-0 left-0 h-full bg-accent-hover transition-all pointer-events-none"
                 style={{ width: `${(formData.temperature / 2) * 100}%` }}
@@ -296,7 +296,7 @@ export default function ExpertFormDialog({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 bg-content-secondary" />
-                <label className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+                <label className="text-micro font-bold tracking-widest text-content-secondary">
                   {t('systemPrompt')}
                 </label>
               </div>
@@ -366,7 +366,7 @@ export default function ExpertFormDialog({
               placeholder={t('systemPromptPlaceholder')}
               rows={5}
               disabled={isSubmitting}
-              className="w-full px-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-y min-h-[100px]"
+              className="w-full px-3 py-2 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors resize-y min-h-[100px]"
             />
             <div className="flex justify-between text-nano text-content-secondary">
               <span>{formData.system_prompt.length} {t('chars')}</span>
@@ -380,11 +380,11 @@ export default function ExpertFormDialog({
         </div>
 
         {/* 底部按钮 */}
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t-2 border-border-default">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border-divider">
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-4 py-2 border-2 border-border-default bg-surface-page text-xs font-bold uppercase hover:bg-accent-hover hover:text-content-primary transition-colors disabled:opacity-50"
+            className="px-4 py-2 border-theme-button border-border-default bg-surface-page text-xs font-bold hover:bg-accent-hover hover:text-content-primary transition-colors disabled:opacity-50"
           >
             {t('cancel')}
           </button>
@@ -399,13 +399,13 @@ export default function ExpertFormDialog({
               !!keyError
             }
             className={cn(
-              'flex items-center gap-2 px-4 py-2 border-2 border-border-default',
-              'bg-accent-hover text-content-primary text-xs font-bold uppercase',
+              'flex items-center gap-2 px-4 py-2 border-theme-button border-border-default',
+              'bg-accent-hover text-accent-ink text-xs font-bold',
               'shadow-theme-button',
-              'hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-theme-button-hover',
-              'active:translate-x-[0px] active:translate-y-[0px] active:shadow-none',
+              'hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover',
+              'active:[transform:var(--transform-button-active)] active:shadow-theme-button-active',
               'transition-all',
-              'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0'
+              'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:[transform:none]'
             )}
           >
             {isSubmitting ? (

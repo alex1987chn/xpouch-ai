@@ -105,7 +105,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
         <section>
           <div className="flex items-center gap-2 mb-3">
             <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-            <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+            <span className="text-micro font-bold tracking-widest text-content-secondary">
               {t('avatarSetup')}
             </span>
           </div>
@@ -113,7 +113,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
           <div className="flex items-start gap-4">
             {/* 头像预览 */}
             <div className="relative shrink-0">
-              <div className="w-20 h-20 border-2 border-border-default bg-surface-page flex items-center justify-center overflow-hidden">
+              <div className="w-20 h-20 border-theme-card border-border-default bg-surface-page flex items-center justify-center overflow-hidden">
                 {avatarPreview ? (
                   <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -124,7 +124,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
               </div>
 
               {/* 上传按钮 */}
-              <label className="absolute -bottom-1 -right-1 w-7 h-7 bg-accent-hover border-2 border-border-default flex items-center justify-center cursor-pointer hover:brightness-95 transition-all">
+              <label className="absolute -bottom-1 -right-1 w-7 h-7 bg-accent-hover border-theme-button border-border-default flex items-center justify-center cursor-pointer hover:brightness-95 transition-all">
                 <Camera className="w-3.5 h-3.5 text-content-primary" />
                 <input
                   type="file"
@@ -137,9 +137,9 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
 
             {/* 头像操作按钮 */}
             <div className="flex flex-col gap-2 flex-1">
-              <label className="flex items-center justify-center gap-2 px-3 py-2 border-2 border-border-default bg-surface-page cursor-pointer hover:bg-surface-card transition-colors">
+              <label className="flex items-center justify-center gap-2 px-3 py-2 border-theme-button border-border-default bg-surface-page cursor-pointer hover:bg-surface-card transition-colors">
                 <Upload className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase">{t('uploadAvatar')}</span>
+                <span className="text-xs font-bold">{t('uploadAvatar')}</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -150,10 +150,10 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
               {avatarPreview && (
                 <button
                   onClick={handleRemoveAvatar}
-                  className="flex items-center justify-center gap-2 px-3 py-2 border-2 border-status-offline/50 text-status-offline hover:bg-status-offline/10 transition-colors"
+                  className="flex items-center justify-center gap-2 px-3 py-2 border-theme-button border-status-offline/50 text-status-offline hover:bg-status-offline/10 transition-colors"
                 >
                   <X className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase">{t('removeAvatar')}</span>
+                  <span className="text-xs font-bold">{t('removeAvatar')}</span>
                 </button>
               )}
             </div>
@@ -170,7 +170,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
         <section>
           <div className="flex items-center gap-2 mb-3">
             <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-            <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+            <span className="text-micro font-bold tracking-widest text-content-secondary">
               {t('username')}
             </span>
           </div>
@@ -183,7 +183,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
               onChange={(e) => setUsername(e.target.value)}
               placeholder={t('usernamePlaceholder')}
               maxLength={20}
-              className="w-full pl-10 pr-3 py-2.5 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+              className="w-full pl-10 pr-3 py-2.5 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
             />
           </div>
           <p className="text-micro text-content-secondary mt-2 opacity-60">
@@ -197,14 +197,14 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
         <button
           onClick={onClose}
           disabled={isSaving}
-          className="flex-1 py-3 text-sm font-bold uppercase border-r-2 border-border-default hover:bg-surface-page transition-colors disabled:opacity-50"
+          className="flex-1 py-3 text-sm font-bold border-r border-border-divider hover:bg-surface-page transition-colors disabled:opacity-50"
         >
           {t('cancel')}
         </button>
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="flex-1 py-3 bg-accent-hover text-content-primary text-sm font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
+          className="flex-1 py-3 bg-accent-hover text-accent-ink text-sm font-bold hover:brightness-95 transition-colors disabled:opacity-50"
         >
           {isSaving ? (
             <span className="flex items-center justify-center gap-2">

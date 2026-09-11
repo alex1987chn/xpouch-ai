@@ -65,7 +65,7 @@ export function ModelSection() {
       <section>
         <div className="flex items-center gap-2 mb-3">
           <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-          <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+          <span className="text-micro font-bold tracking-widest text-content-secondary">
             {t('simpleMode')}
           </span>
         </div>
@@ -74,7 +74,7 @@ export function ModelSection() {
           <div className="p-3 text-xs text-content-secondary">{t('modelsLoading')}</div>
         )}
         {modelsFailed && (
-          <div className="p-3 border-2 border-border-default text-xs text-content-secondary">
+          <div className="p-3 border-theme-card border-border-default text-xs text-content-secondary">
             {t('modelsLoadFailed')}
           </div>
         )}
@@ -85,7 +85,7 @@ export function ModelSection() {
             <div
               onClick={() => setSelectedModelId('')}
               className={cn(
-                'flex items-center gap-3 p-3 border-2 cursor-pointer transition-all',
+                'flex items-center gap-3 p-3 border-theme-card cursor-pointer transition-all',
                 selectedModelId === ''
                   ? 'border-accent-hover bg-accent-hover/10'
                   : 'border-border-default hover:border-content-secondary'
@@ -112,7 +112,7 @@ export function ModelSection() {
                 key={model.id}
                 onClick={() => setSelectedModelId(model.id)}
                 className={cn(
-                  'flex items-center gap-3 p-3 border-2 cursor-pointer transition-all',
+                  'flex items-center gap-3 p-3 border-theme-card cursor-pointer transition-all',
                   selectedModelId === model.id
                     ? 'border-accent-hover bg-accent-hover/10'
                     : 'border-border-default hover:border-content-secondary'
@@ -142,12 +142,12 @@ export function ModelSection() {
       <section>
         <div className="flex items-center gap-2 mb-3">
           <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-          <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+          <span className="text-micro font-bold tracking-widest text-content-secondary">
             {t('thinkingMode')}
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-0 border-2 border-border-default">
+        <div className="grid grid-cols-3 gap-0 border-theme-card border-border-default">
           {THINKING_OPTIONS.map(option => (
             <button
               key={option.value}
@@ -155,8 +155,8 @@ export function ModelSection() {
               disabled={!supportsThinking}
               onClick={() => setThinking(option.value)}
               className={cn(
-                'py-2.5 text-xs font-bold uppercase transition-colors',
-                option.value !== 'auto' && 'border-l-2 border-border-default',
+                'py-2.5 text-xs font-bold transition-colors',
+                option.value !== 'auto' && 'border-l border-border-divider',
                 !supportsThinking && 'opacity-40 cursor-not-allowed',
                 supportsThinking && thinking === option.value
                   ? 'bg-accent-hover text-content-primary'
@@ -183,7 +183,7 @@ export function ModelSection() {
         <button
           onClick={handleSave}
           disabled={!canSave}
-          className="flex items-center gap-2 px-4 py-2 border-2 border-border-default bg-accent-hover text-content-primary text-xs font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-4 py-2 border-theme-button border-border-default bg-accent-hover text-accent-ink text-xs font-bold hover:brightness-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Save className="w-3.5 h-3.5" />
           {isSaving ? t('savingUserSettings') : t('save')}

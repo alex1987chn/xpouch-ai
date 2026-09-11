@@ -14,7 +14,7 @@ import { pushToast } from '@/components/ui/use-toast'
 function StatusRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3 py-2 border-b border-border-default last:border-b-0">
-      <span className="text-micro font-bold uppercase tracking-widest text-content-secondary shrink-0 mt-0.5">
+      <span className="text-micro font-bold tracking-widest text-content-secondary shrink-0 mt-0.5">
         {label}
       </span>
       <div className="text-sm text-content-primary text-right break-all">{children}</div>
@@ -74,7 +74,7 @@ export function SystemStatusSection() {
 
   return (
     <div className="flex-1 overflow-y-auto bauhaus-scrollbar px-5 py-5 space-y-5">
-      <section className="border-2 border-border-default px-3 py-1">
+      <section className="border-theme-card border-border-default px-3 py-1">
         <StatusRow label="Version">
           {data.version} · {data.environment}
         </StatusRow>
@@ -112,11 +112,11 @@ export function SystemStatusSection() {
       <section>
         <div className="flex items-center gap-2 mb-2">
           <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-          <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+          <span className="text-micro font-bold tracking-widest text-content-secondary">
             Providers
           </span>
         </div>
-        <div className="border-2 border-border-default px-3 py-1 space-y-0">
+        <div className="border-theme-card border-border-default px-3 py-1 space-y-0">
           {data.providers.configured.map(p => (
             <StatusRow key={p.name} label={p.display_name}>
               <span className="inline-flex items-center gap-1.5">
@@ -145,7 +145,7 @@ export function SystemStatusSection() {
       <section>
         <div className="flex items-center gap-2 mb-2">
           <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-          <span className="text-micro font-bold uppercase tracking-widest text-content-secondary">
+          <span className="text-micro font-bold tracking-widest text-content-secondary">
             {t('dailyTokenQuota')}
           </span>
         </div>
@@ -156,12 +156,12 @@ export function SystemStatusSection() {
             value={quotaInput}
             onChange={e => setQuotaInput(e.target.value)}
             placeholder={t('quotaUnlimited')}
-            className="flex-1 px-3 py-2 border-2 border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+            className="flex-1 px-3 py-2 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
           />
           <button
             onClick={handleSaveQuota}
             disabled={saving}
-            className="flex items-center gap-1.5 px-3 py-2 border-2 border-border-default bg-accent-hover text-content-primary text-xs font-bold uppercase hover:brightness-95 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 border-theme-button border-border-default bg-accent-hover text-accent-ink text-xs font-bold hover:brightness-95 transition-colors disabled:opacity-50"
           >
             <Save className="w-3.5 h-3.5" />
             {t('save')}

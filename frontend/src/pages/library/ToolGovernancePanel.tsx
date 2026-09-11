@@ -205,8 +205,8 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
     // 与下方两栏布局同构：左侧工具列表 + 右侧详情
     return (
       <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <div className="border-2 border-border-default bg-surface-card shadow-theme-card">
-          <div className="border-b-2 border-border-default px-4 py-3">
+        <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
+          <div className="border-b border-border-divider px-4 py-3">
             <Skeleton className="h-3.5 w-32" />
           </div>
           <div className="p-3 space-y-2">
@@ -215,7 +215,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
             ))}
           </div>
         </div>
-        <div className="border-2 border-border-default bg-surface-card shadow-theme-card p-4 space-y-3">
+        <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card p-4 space-y-3">
           <Skeleton className="h-5 w-1/3" />
           <Skeleton className="h-3 w-2/3" />
           <Skeleton className="h-40 w-full" />
@@ -227,11 +227,11 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
 
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-      <div className="border-2 border-border-default bg-surface-card shadow-theme-card">
-        <div className="flex items-center justify-between border-b-2 border-border-default px-4 py-3">
+      <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
+        <div className="flex items-center justify-between border-b border-border-divider px-4 py-3">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-4 w-4 text-content-secondary" />
-            <span className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
+            <span className="font-mono text-micro font-bold tracking-widest text-content-secondary">
               {t('toolGovernance') || 'Tool Governance'}
             </span>
           </div>
@@ -246,19 +246,19 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
               key={`${policy.source}:${policy.tool_name}`}
               onClick={() => handleSelect(policy)}
               className={cn(
-                'w-full border-b-2 border-border-default px-4 py-3 text-left transition-all relative',
+                'w-full border-b border-border-divider px-4 py-3 text-left transition-all relative',
                 selectedKey === `${policy.source}:${policy.tool_name}`
                   ? 'bg-surface-elevated border-l-4 border-l-accent-brand pl-3'
                   : 'bg-surface-card hover:bg-surface-page border-l-4 border-l-transparent'
               )}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-xs font-bold uppercase text-content-primary">
+                <span className="font-mono text-xs font-bold text-content-primary">
                   {policy.tool_name}
                 </span>
-                <span className="text-nano uppercase text-content-muted">{policy.source}</span>
+                <span className="text-nano font-mono text-content-muted">{policy.source}</span>
               </div>
-              <div className="mt-2 flex items-center gap-2 text-micro uppercase text-content-secondary">
+              <div className="mt-2 flex items-center gap-2 text-micro text-content-secondary">
                 <span>{policy.risk_tier}</span>
                 <span>/</span>
                 <span>{policy.approval_required ? t('approvalRequired') || 'Approval' : t('autoAllowed') || 'Auto'}</span>
@@ -268,24 +268,24 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
           </div>
         ) : (
           <div className="px-4 py-12 text-center">
-            <p className="font-mono text-xs uppercase text-content-muted">
+            <p className="font-mono text-xs text-content-muted">
               {t('noToolPoliciesFound') || 'No tool policies found'}
             </p>
           </div>
         )}
       </div>
 
-      <div className="border-2 border-border-default bg-surface-card shadow-theme-card">
+      <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
         {selectedPolicy && draft ? (
           <>
-            <div className="flex items-center justify-between border-b-2 border-border-default px-4 py-3">
+            <div className="flex items-center justify-between border-b border-border-divider px-4 py-3">
               <div>
-                <div className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
+                <div className="font-mono text-micro font-bold tracking-widest text-content-secondary">
                   {selectedPolicy.tool_name}
                 </div>
                 <div className="mt-1 text-xs text-content-muted">{selectedPolicy.description}</div>
               </div>
-              <div className="flex items-center gap-2 text-micro uppercase text-content-secondary">
+              <div className="flex items-center gap-2 text-micro text-content-secondary">
                 <Check className="h-3.5 w-3.5" />
                 {selectedPolicy.source}
               </div>
@@ -297,7 +297,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
                   value={draft.risk_tier}
                   disabled={!canEdit}
                   onChange={e => setDraft(prev => prev ? { ...prev, risk_tier: e.target.value as PolicyDraft['risk_tier'] } : prev)}
-                  className="w-full border-2 border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-strong disabled:opacity-60"
+                  className="w-full border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-strong disabled:opacity-60"
                 >
                   <option value="low">{t('riskLow') || 'Low'}</option>
                   <option value="medium">{t('riskMedium') || 'Medium'}</option>
@@ -305,7 +305,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
                 </select>
               </Field>
               <Field label={t('enabled') || 'Enabled'}>
-                <label className="flex h-[42px] items-center gap-2 border-2 border-border-default bg-surface-page px-3 text-sm text-content-primary">
+                <label className="flex h-[42px] items-center gap-2 border-theme-input border-border-default bg-surface-page px-3 text-sm text-content-primary">
                   <input
                     type="checkbox"
                     checked={draft.enabled}
@@ -316,7 +316,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
                 </label>
               </Field>
               <Field label={t('approvalRequired') || 'Approval Required'}>
-                <label className="flex h-[42px] items-center gap-2 border-2 border-border-default bg-surface-page px-3 text-sm text-content-primary">
+                <label className="flex h-[42px] items-center gap-2 border-theme-input border-border-default bg-surface-page px-3 text-sm text-content-primary">
                   <input
                     type="checkbox"
                     checked={draft.approval_required}
@@ -327,7 +327,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
                 </label>
               </Field>
               <Field label={t('source') || 'Source'}>
-                <div className="flex h-[42px] items-center border-2 border-border-default bg-surface-page px-3 text-sm text-content-secondary">
+                <div className="flex h-[42px] items-center border-theme-input border-border-default bg-surface-page px-3 text-sm text-content-secondary">
                   {selectedPolicy.source}
                 </div>
               </Field>
@@ -337,7 +337,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
                   disabled={!canEdit}
                   onChange={e => setDraft(prev => prev ? { ...prev, allowed_experts: e.target.value } : prev)}
                   placeholder="planner, search"
-                  className="w-full border-2 border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-strong disabled:opacity-60"
+                  className="w-full border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-strong disabled:opacity-60"
                 />
               </Field>
               <Field label={t('blockedExperts') || 'Blocked Experts'} className="md:col-span-2">
@@ -346,7 +346,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
                   disabled={!canEdit}
                   onChange={e => setDraft(prev => prev ? { ...prev, blocked_experts: e.target.value } : prev)}
                   placeholder="memorize_expert"
-                  className="w-full border-2 border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-strong disabled:opacity-60"
+                  className="w-full border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-strong disabled:opacity-60"
                 />
               </Field>
               <Field label={t('policyNote') || 'Policy Note'} className="md:col-span-2">
@@ -355,7 +355,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
                   value={draft.policy_note}
                   disabled={!canEdit}
                   onChange={e => setDraft(prev => prev ? { ...prev, policy_note: e.target.value } : prev)}
-                  className="w-full resize-y border-2 border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-strong disabled:opacity-60"
+                  className="w-full resize-y border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-strong disabled:opacity-60"
                 />
               </Field>
             </div>
@@ -365,7 +365,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
                 <button
                   onClick={() => void handleSave()}
                   disabled={isSaving}
-                  className="flex items-center gap-2 border-2 border-border-default bg-surface-elevated px-3 py-2 font-mono text-micro font-bold uppercase text-content-primary transition-colors hover:border-border-strong disabled:opacity-60"
+                  className="flex items-center gap-2 border-theme-button border-border-default bg-surface-elevated px-3 py-2 font-mono text-micro font-bold text-content-primary transition-colors hover:border-border-strong disabled:opacity-60"
                 >
                   <Save className="h-3.5 w-3.5" />
                   {isSaving ? t('saving') || 'Saving' : t('savePolicy') || 'Save Policy'}
@@ -394,7 +394,7 @@ function Field({
 }) {
   return (
     <div className={cn('space-y-2', className)}>
-      <div className="font-mono text-micro font-bold uppercase tracking-widest text-content-secondary">
+      <div className="font-mono text-micro font-bold tracking-widest text-content-secondary">
         {label}
       </div>
       {children}

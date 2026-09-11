@@ -45,7 +45,7 @@ export function SettingsHubDialog() {
       aria-selected={section === key}
       onClick={() => setSettingsSection(key)}
       className={cn(
-        'flex items-center gap-2.5 px-3 py-2 text-xs font-bold uppercase border-2 transition-colors',
+        'flex items-center gap-2.5 px-3 py-2 text-xs font-bold border-theme-button transition-colors',
         section === key
           ? 'bg-accent-hover border-accent-hover text-content-primary'
           : 'bg-transparent border-transparent text-content-secondary hover:bg-surface-page hover:border-border-default'
@@ -64,34 +64,34 @@ export function SettingsHubDialog() {
     >
       <div
         {...a11y}
-        className="relative bg-surface-card border-2 border-border-default shadow-theme-modal w-[680px] max-w-[90vw] h-[600px] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-surface-card border-theme-card border-border-default shadow-theme-modal w-[680px] max-w-[90vw] h-[600px] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200 rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - Bauhaus风格 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border-divider shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-accent-hover"></div>
-            <span id="settings-hub-title" className="text-xs font-bold uppercase tracking-widest text-content-secondary">
+            <span id="settings-hub-title" className="text-xs font-bold tracking-widest text-content-secondary">
               /// {t('settings')}
             </span>
           </div>
           <button
             aria-label={t('close')}
             onClick={closeSettings}
-            className="w-6 h-6 flex items-center justify-center border-2 border-border-default hover:bg-accent-hover transition-colors"
+            className="w-6 h-6 flex items-center justify-center border-theme-button border-border-default hover:bg-accent-hover transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* 移动端分区条（sm 以下替代左栏） */}
-        <div role="tablist" className="grid border-b-2 border-border-default shrink-0 sm:hidden" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+        <div role="tablist" className="grid border-b border-border-divider shrink-0 sm:hidden" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
           {tabs.map(renderTabButton)}
         </div>
 
         <div className="flex flex-1 min-h-0">
           {/* 桌面端左侧导航栏 */}
-          <div role="tablist" className="hidden sm:flex sm:flex-col w-[148px] shrink-0 border-r-2 border-border-default p-2 gap-1">
+          <div role="tablist" className="hidden sm:flex sm:flex-col w-[148px] shrink-0 border-r border-border-divider p-2 gap-1">
             {tabs.map(renderTabButton)}
           </div>
 

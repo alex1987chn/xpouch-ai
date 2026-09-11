@@ -48,7 +48,7 @@ function BauhausToast({
   return (
     <div
       className={cn(
-        'fixed bottom-4 right-4 z-50 px-4 py-3 border-2 shadow-theme-card font-mono text-xs font-bold uppercase',
+        'fixed bottom-4 right-4 z-50 px-4 py-3 border shadow-theme-card font-mono text-xs font-bold',
         type === 'success'
           ? 'border-status-online bg-status-online/10 text-content-primary'
           : 'border-status-offline bg-status-offline/10 text-content-primary'
@@ -258,13 +258,13 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
         "flex flex-col lg:flex-row gap-4",
         embedded ? "h-full min-h-0" : "h-[100dvh] p-4 bg-surface-page"
       )}>
-        <div className="lg:w-[320px] border-2 border-border-default bg-surface-card p-3 space-y-2">
+        <div className="lg:w-[320px] border-theme-card border-border-default bg-surface-card p-3 space-y-2">
           <Skeleton className="h-3.5 w-24" />
           {Array.from({ length: 6 }, (_, i) => (
             <Skeleton key={i} className="h-12 w-full" />
           ))}
         </div>
-        <div className="flex-1 border-2 border-border-default bg-surface-card p-4 space-y-3">
+        <div className="flex-1 border-theme-card border-border-default bg-surface-card p-4 space-y-3">
           <Skeleton className="h-5 w-1/4" />
           <Skeleton className="h-3 w-2/3" />
           <Skeleton className="h-32 w-full" />

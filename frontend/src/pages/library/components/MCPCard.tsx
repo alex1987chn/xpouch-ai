@@ -88,9 +88,9 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
     <>
       <div
         className={cn(
-          "group relative bg-surface-card border-2 border-border-default",
+          "group relative bg-surface-card border-theme-card border-border-default",
           "shadow-theme-card transition-all",
-          isExpanded ? "" : "hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-theme-card-hover"
+          isExpanded ? "" : "hover:[transform:var(--transform-card-hover)] hover:shadow-theme-card-hover"
         )}
       >
         {/* 卡片头部 - 点击展开/折叠 */}
@@ -176,7 +176,7 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
             <div className="p-3">
               <div className="flex items-center gap-2 mb-3">
                 <Wrench className="w-3.5 h-3.5 text-content-muted" />
-                <span className="font-mono text-micro font-bold uppercase tracking-widest text-content-muted">
+                <span className="font-mono text-micro font-bold tracking-widest text-content-muted">
                   {t('availableTools') || 'Available Tools'} ({tools?.length ?? 0})
                 </span>
               </div>

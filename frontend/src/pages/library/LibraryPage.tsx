@@ -142,8 +142,8 @@ function TabButton({ isActive, onClick, icon, label }: TabButtonProps) {
     <button
       onClick={onClick}
       className={cn(
-        "relative flex items-center gap-2 px-4 py-2 font-bold font-mono text-xs uppercase tracking-wide transition-all",
-        "border-2 border-b-0 -mb-[2px]",
+        "relative flex items-center gap-2 px-4 py-2 font-bold font-mono text-xs tracking-wide transition-all",
+        "border-theme-button border-b-0 -mb-[1px]",
         isActive
           ? "bg-surface-card text-content-primary border-border-default z-10"
           : "bg-surface-page text-content-secondary border-border-default/40 hover:border-border-default hover:text-content-primary"
@@ -168,13 +168,13 @@ function KnowledgeBaseContent({ searchQuery: _searchQuery }: KnowledgeBaseConten
   // 空状态
   return (
     <div className="text-center py-20">
-      <div className="w-16 h-16 mx-auto mb-4 border-2 border-border-default bg-surface-page flex items-center justify-center">
+      <div className="w-16 h-16 mx-auto mb-4 border-theme-card border-border-default bg-surface-page flex items-center justify-center">
         <Database className="w-8 h-8 text-content-secondary" />
       </div>
-      <h3 className="font-mono text-base font-bold text-content-primary uppercase mb-2">
+      <h3 className="font-mono text-base font-bold text-content-primary mb-2">
         {t('comingSoon') || 'Coming Soon'}
       </h3>
-      <p className="font-mono text-xs text-content-secondary uppercase max-w-sm mx-auto">
+      <p className="font-mono text-xs text-content-secondary max-w-sm mx-auto">
         {t('knowledgeBaseDescription') || 'Knowledge base feature is under development'}
       </p>
     </div>

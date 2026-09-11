@@ -176,7 +176,7 @@ export function TemplateImportDialog({
 
   const renderUploadStep = () => (
     <div
-      className="border-2 border-dashed border-border-default bg-surface-page p-8 text-center"
+      className="border-theme-card border-dashed border-border-default bg-surface-page p-8 text-center"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
@@ -196,7 +196,7 @@ export function TemplateImportDialog({
       </p>
       <button
         onClick={() => fileInputRef.current?.click()}
-        className="mt-2 text-xs font-bold uppercase text-accent-brand hover:underline"
+        className="mt-2 text-xs font-bold text-accent-brand hover:underline"
       >
         {t('browseFiles') || 'Browse files'}
       </button>
@@ -213,8 +213,8 @@ export function TemplateImportDialog({
           <span>{t('templateValid') || 'Template is valid and ready to import'}</span>
         </div>
 
-        <div className="border-2 border-border-default bg-surface-page p-4">
-          <h4 className="font-mono text-xs font-bold uppercase text-content-muted">
+        <div className="border-theme-card border-border-default bg-surface-page p-4">
+          <h4 className="font-mono text-xs font-bold text-content-muted">
             {t('templateInfo') || 'Template Info'}
           </h4>
           <div className="mt-3 space-y-2 text-sm">
@@ -240,14 +240,14 @@ export function TemplateImportDialog({
         <div className="flex justify-end gap-2">
           <button
             onClick={resetState}
-            className="px-4 py-2 text-xs font-bold uppercase text-content-muted hover:text-content-primary"
+            className="px-4 py-2 text-xs font-bold text-content-muted hover:text-content-primary"
           >
             {t('cancel') || 'Cancel'}
           </button>
           <button
             onClick={handleImport}
             disabled={isImporting}
-            className="flex items-center gap-2 border-2 border-accent-brand bg-accent-brand px-4 py-2 font-mono text-xs font-bold uppercase text-content-inverted transition-all hover:brightness-95 disabled:opacity-50"
+            className="flex items-center gap-2 border-theme-button border-accent-brand bg-accent-brand px-4 py-2 font-mono text-xs font-bold text-accent-ink transition-all hover:brightness-95 disabled:opacity-50"
           >
             {isImporting ? (
               <>
@@ -271,10 +271,10 @@ export function TemplateImportDialog({
 
     return (
       <div className="space-y-4">
-        <div className="flex items-start gap-3 rounded border-2 border-yellow-500/30 bg-yellow-500/10 p-4">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-yellow-600" />
+        <div className="flex items-start gap-3 rounded border-theme-card border-accent-warning/30 bg-accent-warning/10 p-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-accent-warning" />
           <div>
-            <h4 className="font-mono text-xs font-bold uppercase text-yellow-700">
+            <h4 className="font-mono text-xs font-bold text-accent-warning">
               {t('templateExists') || 'Template already exists'}
             </h4>
             <p className="mt-1 text-sm text-content-secondary">
@@ -283,8 +283,8 @@ export function TemplateImportDialog({
           </div>
         </div>
 
-        <div className="border-2 border-border-default bg-surface-page p-4">
-          <h4 className="font-mono text-xs font-bold uppercase text-content-muted">
+        <div className="border-theme-card border-border-default bg-surface-page p-4">
+          <h4 className="font-mono text-xs font-bold text-content-muted">
             {t('existingTemplate') || 'Existing Template'}
           </h4>
           <div className="mt-2 text-sm">
@@ -298,14 +298,14 @@ export function TemplateImportDialog({
         </div>
 
         <div className="space-y-2">
-          <label className="font-mono text-xs font-bold uppercase text-content-muted">
+          <label className="font-mono text-xs font-bold text-content-muted">
             {t('importStrategy') || 'Import Strategy'}
           </label>
           
           <div className="space-y-2">
             <label
               className={cn(
-                'flex cursor-pointer items-start gap-3 border-2 p-3 transition-colors',
+                'flex cursor-pointer items-start gap-3 border-theme-card p-3 transition-colors',
                 selectedStrategy === 'clone'
                   ? 'border-accent-brand bg-accent-brand/5'
                   : 'border-border-default hover:border-border-strong'
@@ -322,7 +322,7 @@ export function TemplateImportDialog({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <Copy className="h-4 w-4 text-content-secondary" />
-                  <span className="font-mono text-xs font-bold uppercase text-content-primary">
+                  <span className="font-mono text-xs font-bold text-content-primary">
                     {t('clone') || 'Clone'}
                   </span>
                 </div>
@@ -335,7 +335,7 @@ export function TemplateImportDialog({
                     value={customKey}
                     onChange={(e) => setCustomKey(e.target.value)}
                     placeholder={preview.conflict.suggested_key}
-                    className="mt-2 w-full border-2 border-border-default bg-surface-page px-2 py-1 text-sm font-mono text-content-primary outline-none focus:border-border-strong"
+                    className="mt-2 w-full border-theme-input border-border-default bg-surface-page px-2 py-1 text-sm font-mono text-content-primary outline-none focus:border-border-strong"
                   />
                 )}
               </div>
@@ -344,7 +344,7 @@ export function TemplateImportDialog({
             {!preview.conflict.existing_template.is_builtin && (
               <label
                 className={cn(
-                  'flex cursor-pointer items-start gap-3 border-2 p-3 transition-colors',
+                  'flex cursor-pointer items-start gap-3 border-theme-card p-3 transition-colors',
                   selectedStrategy === 'override'
                     ? 'border-accent-brand bg-accent-brand/5'
                     : 'border-border-default hover:border-border-strong'
@@ -361,7 +361,7 @@ export function TemplateImportDialog({
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <ArrowRight className="h-4 w-4 text-content-secondary" />
-                    <span className="font-mono text-xs font-bold uppercase text-content-primary">
+                    <span className="font-mono text-xs font-bold text-content-primary">
                       {t('override') || 'Override'}
                     </span>
                   </div>
@@ -374,7 +374,7 @@ export function TemplateImportDialog({
 
             <label
               className={cn(
-                'flex cursor-pointer items-start gap-3 border-2 p-3 transition-colors',
+                'flex cursor-pointer items-start gap-3 border-theme-card p-3 transition-colors',
                 selectedStrategy === 'skip'
                   ? 'border-accent-brand bg-accent-brand/5'
                   : 'border-border-default hover:border-border-strong'
@@ -391,7 +391,7 @@ export function TemplateImportDialog({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <X className="h-4 w-4 text-content-secondary" />
-                  <span className="font-mono text-xs font-bold uppercase text-content-primary">
+                  <span className="font-mono text-xs font-bold text-content-primary">
                     {t('skip') || 'Skip'}
                   </span>
                 </div>
@@ -406,7 +406,7 @@ export function TemplateImportDialog({
         <div className="flex justify-end gap-2">
           <button
             onClick={resetState}
-            className="px-4 py-2 text-xs font-bold uppercase text-content-muted hover:text-content-primary"
+            className="px-4 py-2 text-xs font-bold text-content-muted hover:text-content-primary"
           >
             {t('cancel') || 'Cancel'}
           </button>
@@ -414,7 +414,7 @@ export function TemplateImportDialog({
             <button
               onClick={handleImport}
               disabled={isImporting || (selectedStrategy === 'clone' && !customKey)}
-              className="flex items-center gap-2 border-2 border-accent-brand bg-accent-brand px-4 py-2 font-mono text-xs font-bold uppercase text-content-inverted transition-all hover:brightness-95 disabled:opacity-50"
+              className="flex items-center gap-2 border-theme-button border-accent-brand bg-accent-brand px-4 py-2 font-mono text-xs font-bold text-accent-ink transition-all hover:brightness-95 disabled:opacity-50"
             >
               {isImporting ? (
                 <>
@@ -454,7 +454,7 @@ export function TemplateImportDialog({
           </>
         ) : (
           <>
-            <AlertTriangle className="mx-auto h-16 w-16 text-yellow-500" />
+            <AlertTriangle className="mx-auto h-16 w-16 text-accent-warning" />
             <h4 className="font-mono text-lg font-bold text-content-primary">
               {t('importSkipped') || 'Import Skipped'}
             </h4>
@@ -464,7 +464,7 @@ export function TemplateImportDialog({
 
         <button
           onClick={handleClose}
-          className="mt-4 border-2 border-border-default bg-surface-page px-6 py-2 font-mono text-xs font-bold uppercase text-content-primary transition-all hover:border-border-strong"
+          className="mt-4 border-theme-button border-border-default bg-surface-page px-6 py-2 font-mono text-xs font-bold text-content-primary transition-all hover:border-border-strong"
         >
           {t('close') || 'Close'}
         </button>
@@ -474,9 +474,9 @@ export function TemplateImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg shadow-theme-modal">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 font-mono text-sm font-bold uppercase">
+          <DialogTitle className="flex items-center gap-2 font-mono text-sm font-bold">
             <FileJson className="h-4 w-4" />
             {t('importTemplate') || 'Import Template'}
           </DialogTitle>
