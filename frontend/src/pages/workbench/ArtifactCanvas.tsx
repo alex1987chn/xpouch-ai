@@ -146,10 +146,10 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
               <button
                 key={artifact.id}
                 onClick={() => setDetailId(artifact.id)}
-                className="w-full rounded-sm border-theme-card border-border-default bg-surface-card p-2.5 text-left transition-all hover:border-border-hover hover:shadow-theme-card"
+                className="w-full rounded-md border border-border-divider bg-surface-card p-2.5 text-left transition-all hover:border-border-hover hover:shadow-theme-card"
               >
                 <div className="flex items-center gap-2">
-                  <span className="rounded-sm bg-accent-info/12 px-1 py-0.5 font-mono text-nano text-accent-info">
+                  <span className="rounded-full bg-accent-info/12 px-2 py-0.5 text-nano font-medium text-accent-info">
                     {artifact.type}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-xs font-bold text-content-primary">

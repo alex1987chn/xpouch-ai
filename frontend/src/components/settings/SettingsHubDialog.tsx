@@ -45,10 +45,10 @@ export function SettingsHubDialog() {
       aria-selected={section === key}
       onClick={() => setSettingsSection(key)}
       className={cn(
-        'flex items-center gap-2.5 px-3 py-2 text-xs font-bold border-theme-button transition-colors',
+        'flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
         section === key
-          ? 'bg-accent-hover border-accent-hover text-content-primary'
-          : 'bg-transparent border-transparent text-content-secondary hover:bg-surface-page hover:border-border-default'
+          ? 'bg-surface-tint font-bold text-content-primary'
+          : 'font-medium text-content-secondary hover:bg-surface-tint/60 hover:text-content-primary'
       )}
     >
       <Icon className="w-4 h-4 shrink-0" />
@@ -64,23 +64,20 @@ export function SettingsHubDialog() {
     >
       <div
         {...a11y}
-        className="relative bg-surface-card rounded-lg border-theme-card border-border-default shadow-theme-modal w-[680px] max-w-[90vw] h-[600px] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200 rounded-lg"
+        className="relative bg-surface-card rounded-lg border-theme-card border-border-default shadow-theme-modal w-[680px] max-w-[90vw] h-[600px] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 弹窗头部 - Bauhaus风格 */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-divider shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-accent-hover"></div>
-            <span id="settings-hub-title" className="text-xs font-bold tracking-widest text-content-secondary">
-              {t('settings')}
-            </span>
-          </div>
+          <span id="settings-hub-title" className="text-sm font-bold text-content-primary">
+            {t('settings')}
+          </span>
           <button
             aria-label={t('close')}
             onClick={closeSettings}
-            className="w-6 h-6 flex items-center justify-center border-theme-button border-border-default hover:bg-accent-hover transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 

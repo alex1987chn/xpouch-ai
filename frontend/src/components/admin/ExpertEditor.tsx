@@ -218,7 +218,7 @@ export default function ExpertEditor({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-content-secondary" />
-                  <label className="text-micro font-bold tracking-widest text-content-secondary">
+                  <label className="text-xs font-bold text-content-secondary">
                     {t('temperature')}: {formData.temperature?.toFixed(1)}
                   </label>
                 </div>
@@ -265,7 +265,7 @@ export default function ExpertEditor({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary" />
-                    <label className="text-micro font-bold tracking-widest text-content-secondary">
+                    <label className="text-xs font-bold text-content-secondary">
                       {t('expertDescription')}
                     </label>
                   </div>
@@ -313,7 +313,7 @@ export default function ExpertEditor({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary" />
-                    <label className="text-micro font-bold tracking-widest text-content-secondary">
+                    <label className="text-xs font-bold text-content-secondary">
                       {t('systemPrompt')}
                     </label>
                   </div>
@@ -425,7 +425,7 @@ export default function ExpertEditor({
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-content-secondary" />
-                    <label className="text-micro font-bold tracking-widest text-content-secondary">
+                    <label className="text-xs font-bold text-content-secondary">
                       {t('testInput')}
                     </label>
                   </div>
@@ -477,7 +477,7 @@ export default function ExpertEditor({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 bg-accent-hover" />
-                        <label className="text-micro font-bold tracking-widest text-content-secondary">
+                        <label className="text-xs font-bold text-content-secondary">
                           {t('previewResults')}
                         </label>
                       </div>

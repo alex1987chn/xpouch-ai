@@ -35,6 +35,7 @@ import {
   Database  // 🔥 新增：Memory 类型图标
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { expertColor } from '@/lib/expertIdentity'
 import type { ThinkingStep } from '@/types'
 
 // ============================================================================
@@ -84,7 +85,7 @@ const StatusIcon = ({ status }: { status: ThinkingStep['status'] }) => {
     case 'failed':
       return <XCircle className="w-4 h-4 text-status-offline" />
     default:
-      return <div className="w-4 h-4 rounded-full bg-muted" />
+      return <div className="w-4 h-4 rounded-full bg-surface-tint" />
   }
 }
 
@@ -126,32 +127,22 @@ const StepItem = ({ step, index }: StepItemProps) => {
     <div
       style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
       className={cn(
-        "stagger-item relative flex items-start gap-3 p-3 rounded-lg border",
-        step.status === 'running' && "bg-accent-brand/5 border-accent-brand/20",
-        step.status === 'completed' && "bg-status-online/5 border-status-online/20",
-        step.status === 'failed' && "bg-status-offline/5 border-status-offline/20",
-        step.status === 'pending' && "bg-muted/30 border-border"
+        "stagger-item relative flex items-start gap-3 rounded-md border p-3",
+        step.status === 'running' && "border-accent-brand/25 bg-accent-brand/5",
+        step.status === 'failed' && "border-accent-destructive/25 bg-accent-destructive/5",
+        (step.status === 'completed' || step.status === 'pending') && "border-border-divider bg-surface-card"
       )}
     >
       {/* 步骤序号 */}
-      <div className="flex-shrink-0 w-6 h-6 rounded bg-muted flex items-center justify-center text-xs font-mono font-bold text-muted-foreground">
+      <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-surface-tint font-display text-[11px] font-bold text-content-secondary">
         {index + 1}
       </div>
-      
-      {/* 图标 */}
-      <div className={cn(
-        "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center",
-        step.type === 'search' && "bg-status-info/10 text-status-info",
-        step.type === 'reading' && "bg-purple-500/10 text-purple-500",
-        step.type === 'analysis' && "bg-amber-500/10 text-amber-500",
-        step.type === 'coding' && "bg-emerald-500/10 text-emerald-500",
-        step.type === 'planning' && "bg-cyan-500/10 text-cyan-500",
-        step.type === 'writing' && "bg-pink-500/10 text-pink-500",
-        step.type === 'artifact' && "bg-orange-500/10 text-orange-500",
-        step.type === 'memory' && "bg-indigo-500/10 text-indigo-500",  // 🔥 新增：Memory 类型样式
-        step.type === 'execution' && "bg-emerald-500/10 text-emerald-500",  // 🔥 任务执行类型样式
-        (!step.type || step.type === 'default') && "bg-content-muted/10 text-content-muted"
-      )}>
+
+      {/* 图标：步骤类型 → 专家识别色板（与全站身份色同源） */}
+      <div
+        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+        style={{ backgroundColor: expertColor(step.type || 'default') + '1f', color: expertColor(step.type || 'default') }}
+      >
         <Icon className="w-4 h-4" />
       </div>
       
@@ -159,17 +150,17 @@ const StepItem = ({ step, index }: StepItemProps) => {
       <div className="flex-1 min-w-0">
         {/* 标题行 */}
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-medium text-muted-foreground">{label}</span>
-          <span className="text-xs font-bold text-foreground">{step.expertName}</span>
+          <span className="text-xs font-medium text-content-muted">{label}</span>
+          <span className="text-xs font-bold text-content-primary">{step.expertName}</span>
           {step.duration && (
-            <span className="text-micro font-mono text-muted-foreground ml-auto">
+            <span className="ml-auto font-display text-[11px] font-bold text-content-muted">
               {formatDuration(step.duration)}
             </span>
           )}
         </div>
         
         {/* 描述内容 */}
-        <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+        <p className="text-[13px] leading-relaxed text-content-primary/90 whitespace-pre-wrap">
           {step.content}
         </p>
         
@@ -179,7 +170,7 @@ const StepItem = ({ step, index }: StepItemProps) => {
             href={step.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 mt-2 text-xs text-purple-500 hover:text-purple-600 hover:underline"
+            className="mt-2 inline-flex items-center gap-1 text-xs text-accent hover:text-accent-hover hover:underline"
           >
             <ExternalLink className="w-3 h-3" />
             {step.url.length > 50 ? step.url.slice(0, 50) + '...' : step.url}
@@ -269,17 +260,17 @@ export default function ThinkingProcess({ steps, isThinking, className, totalSte
   if (steps.length === 0) return null
 
   return (
-    <div className={cn("mb-4 border border-border bg-muted/30 rounded-lg overflow-hidden", className)}>
+    <div className={cn("mb-4 overflow-hidden rounded-md border border-border-divider bg-surface-card", className)}>
       {/* 头部 - 点击展开/收起 */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-4 py-3 text-sm hover:bg-muted/50 transition-colors"
+        className="flex w-full items-center justify-between px-4 py-3 text-sm transition-colors hover:bg-surface-tint/50"
       >
         <div className="flex items-center gap-3">
-          <Brain className="w-4 h-4 text-primary" />
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-tint"><Brain className="h-3.5 w-3.5 text-content-secondary" /></span>
           <span className="font-medium">{t('thinkingProcess')}</span>
-          <span className="text-xs text-muted-foreground">
-            ({completedSteps}/{totalSteps})
+          <span className="font-display text-xs font-bold text-content-muted">
+            {completedSteps}/{totalSteps}
           </span>
           {runningSteps > 0 && (
             <span className="flex items-center gap-1 text-xs text-accent-warning">
@@ -323,7 +314,7 @@ export default function ThinkingProcess({ steps, isThinking, className, totalSte
         <div className="overflow-hidden">
           <div
             ref={scrollContainerRef}
-            className="border-t border-border px-4 py-3 space-y-2 max-h-[300px] overflow-y-auto bauhaus-scrollbar"
+            className="max-h-[300px] space-y-2 overflow-y-auto border-t border-border-divider bg-surface-tint/30 px-4 py-3"
           >
             {steps.map((step, index) => (
               // 🔥 修复：使用 index 作为 key 的一部分，确保唯一性

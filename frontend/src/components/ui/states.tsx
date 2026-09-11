@@ -19,18 +19,18 @@ interface ErrorStateProps {
 export function ErrorState({ message, onRetry }: ErrorStateProps) {
   const { t } = useTranslation()
   return (
-    <div className="border-theme-card border-border-default bg-surface-card px-6 py-16 text-center shadow-theme-card">
-      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center border-theme-card border-border-default bg-surface-page">
+    <div className="rounded-md border border-border-divider bg-surface-card px-6 py-16 text-center">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent-destructive/10">
         <AlertTriangle className="h-8 w-8 text-accent-destructive" />
       </div>
-      <h3 className="font-mono text-sm font-bold text-content-primary">
+      <h3 className="text-sm font-bold text-content-primary">
         {t('loadFailed')}
       </h3>
       {message && <p className="mt-2 text-xs text-content-secondary">{message}</p>}
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-4 inline-flex items-center gap-2 px-4 py-2 border-theme-button border-border-default bg-surface-page text-xs font-bold text-content-secondary hover:border-accent hover:text-content-primary transition-colors"
+          className="mt-4 inline-flex items-center gap-2 rounded-full border border-border-divider bg-surface-page px-4 py-2 text-xs font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary"
         >
           <RotateCw className="w-3.5 h-3.5" />
           {t('retryAction')}
@@ -52,16 +52,16 @@ interface EmptyStateProps {
 
 export function EmptyState({ title, description, action }: EmptyStateProps) {
   return (
-    <div className="border-theme-card border-border-default bg-surface-card px-6 py-16 text-center shadow-theme-card">
-      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center border-theme-card border-border-default bg-surface-page">
+    <div className="rounded-md border border-border-divider bg-surface-card px-6 py-16 text-center">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-surface-tint">
         <Inbox className="h-8 w-8 text-content-muted" />
       </div>
-      <h3 className="font-mono text-sm font-bold text-content-primary">{title}</h3>
+      <h3 className="text-sm font-bold text-content-primary">{title}</h3>
       {description && <p className="mt-2 text-xs text-content-secondary">{description}</p>}
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-4 inline-flex items-center gap-2 px-4 py-2 border-theme-button border-border-default bg-accent-hover text-accent-ink text-xs font-bold hover:brightness-95 transition-all"
+          className="mt-4 inline-flex items-center gap-2 rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-xs font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card"
         >
           {action.label}
         </button>

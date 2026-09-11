@@ -60,7 +60,7 @@ export function SecuritySection() {
       <section>
         <div className="flex items-center gap-2 mb-3">
           <ShieldCheck className="w-4 h-4 text-content-secondary" />
-          <span className="text-micro font-bold tracking-widest text-content-secondary">
+          <span className="text-xs font-bold text-content-secondary">
             {t('passwordSetup')}
           </span>
         </div>
@@ -95,7 +95,7 @@ export function SecuritySection() {
           <button
             onClick={handleSetPassword}
             disabled={!canSubmit}
-            className="px-4 py-2 border-theme-button border-border-default bg-accent-hover text-accent-ink text-xs font-bold hover:brightness-95 transition-colors disabled:opacity-50"
+            className="rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-xs font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
           >
             {isSettingPassword ? t('passwordSaving') : t('passwordSaveAction')}
           </button>

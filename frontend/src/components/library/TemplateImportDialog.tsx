@@ -188,7 +188,7 @@ export function TemplateImportDialog({
         className="hidden"
       />
       <Upload className="mx-auto h-12 w-12 text-content-muted" />
-      <p className="mt-4 font-mono text-sm text-content-primary">
+      <p className="mt-4 text-sm font-medium text-content-primary">
         {t('dragAndDropJson') || 'Drag and drop your JSON file here'}
       </p>
       <p className="mt-2 text-xs text-content-muted">
@@ -214,7 +214,7 @@ export function TemplateImportDialog({
         </div>
 
         <div className="border-theme-card border-border-default bg-surface-page p-4">
-          <h4 className="font-mono text-xs font-bold text-content-muted">
+          <h4 className="text-xs font-bold text-content-muted">
             {t('templateInfo') || 'Template Info'}
           </h4>
           <div className="mt-3 space-y-2 text-sm">
@@ -247,7 +247,7 @@ export function TemplateImportDialog({
           <button
             onClick={handleImport}
             disabled={isImporting}
-            className="flex items-center gap-2 border-theme-button border-accent-brand bg-accent-brand px-4 py-2 font-mono text-xs font-bold text-accent-ink transition-all hover:brightness-95 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-xs font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
           >
             {isImporting ? (
               <>
@@ -274,7 +274,7 @@ export function TemplateImportDialog({
         <div className="flex items-start gap-3 rounded border-theme-card border-accent-warning/30 bg-accent-warning/10 p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-accent-warning" />
           <div>
-            <h4 className="font-mono text-xs font-bold text-accent-warning">
+            <h4 className="text-xs font-bold text-accent-warning">
               {t('templateExists') || 'Template already exists'}
             </h4>
             <p className="mt-1 text-sm text-content-secondary">
@@ -284,7 +284,7 @@ export function TemplateImportDialog({
         </div>
 
         <div className="border-theme-card border-border-default bg-surface-page p-4">
-          <h4 className="font-mono text-xs font-bold text-content-muted">
+          <h4 className="text-xs font-bold text-content-muted">
             {t('existingTemplate') || 'Existing Template'}
           </h4>
           <div className="mt-2 text-sm">
@@ -298,7 +298,7 @@ export function TemplateImportDialog({
         </div>
 
         <div className="space-y-2">
-          <label className="font-mono text-xs font-bold text-content-muted">
+          <label className="text-xs font-bold text-content-muted">
             {t('importStrategy') || 'Import Strategy'}
           </label>
           
@@ -322,7 +322,7 @@ export function TemplateImportDialog({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <Copy className="h-4 w-4 text-content-secondary" />
-                  <span className="font-mono text-xs font-bold text-content-primary">
+                  <span className="font-display text-xs font-bold text-content-primary">
                     {t('clone') || 'Clone'}
                   </span>
                 </div>
@@ -335,7 +335,7 @@ export function TemplateImportDialog({
                     value={customKey}
                     onChange={(e) => setCustomKey(e.target.value)}
                     placeholder={preview.conflict.suggested_key}
-                    className="mt-2 w-full border-theme-input border-border-default bg-surface-page px-2 py-1 text-sm font-mono text-content-primary outline-none focus:border-border-strong"
+                    className="mt-2 w-full border-theme-input border-border-default bg-surface-page px-2 py-1 rounded-md text-sm text-content-primary outline-none focus:border-border-focus"
                   />
                 )}
               </div>
@@ -361,7 +361,7 @@ export function TemplateImportDialog({
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <ArrowRight className="h-4 w-4 text-content-secondary" />
-                    <span className="font-mono text-xs font-bold text-content-primary">
+                    <span className="font-display text-xs font-bold text-content-primary">
                       {t('override') || 'Override'}
                     </span>
                   </div>
@@ -391,7 +391,7 @@ export function TemplateImportDialog({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <X className="h-4 w-4 text-content-secondary" />
-                  <span className="font-mono text-xs font-bold text-content-primary">
+                  <span className="font-display text-xs font-bold text-content-primary">
                     {t('skip') || 'Skip'}
                   </span>
                 </div>
@@ -414,7 +414,7 @@ export function TemplateImportDialog({
             <button
               onClick={handleImport}
               disabled={isImporting || (selectedStrategy === 'clone' && !customKey)}
-              className="flex items-center gap-2 border-theme-button border-accent-brand bg-accent-brand px-4 py-2 font-mono text-xs font-bold text-accent-ink transition-all hover:brightness-95 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-xs font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
             >
               {isImporting ? (
                 <>
@@ -464,7 +464,7 @@ export function TemplateImportDialog({
 
         <button
           onClick={handleClose}
-          className="mt-4 border-theme-button border-border-default bg-surface-page px-6 py-2 font-mono text-xs font-bold text-content-primary transition-all hover:border-border-strong"
+          className="mt-4 border-theme-button border-border-default bg-surface-page px-6 py-2 font-display text-xs font-bold text-content-primary transition-all hover:border-border-strong"
         >
           {t('close') || 'Close'}
         </button>

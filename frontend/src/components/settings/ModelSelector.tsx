@@ -79,8 +79,7 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
     <div className="space-y-3">
       {label && (
         <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-          <label className="text-micro font-bold tracking-widest text-content-secondary">
+          <label className="text-xs font-bold text-content-secondary">
             {label}
           </label>
         </div>
@@ -117,9 +116,9 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
                   onClick={() => handleProviderSelect(provider)}
                   className={cn(
                     'w-full px-3 py-2.5 text-left text-xs transition-all pointer-events-auto relative',
-                    'hover:bg-accent-hover hover:text-content-primary',
+                    'hover:bg-surface-tint hover:text-content-primary',
                     effectiveProvider === provider
-                      ? 'bg-accent-hover text-content-primary font-bold'
+                      ? 'bg-surface-tint text-content-primary font-bold'
                       : 'bg-transparent text-content-primary'
                   )}
                 >
@@ -166,9 +165,9 @@ export default function ModelSelector({ value, onChange, label }: ModelSelectorP
                   onClick={() => handleModelSelect(model.id)}
                   className={cn(
                     'w-full px-3 py-2.5 text-left text-xs transition-all pointer-events-auto relative',
-                    'hover:bg-accent-hover hover:text-content-primary',
+                    'hover:bg-surface-tint hover:text-content-primary',
                     value === model.id
-                      ? 'bg-accent-hover text-content-primary font-bold'
+                      ? 'bg-surface-tint text-content-primary font-bold'
                       : 'bg-transparent text-content-primary'
                   )}
                 >

@@ -42,7 +42,7 @@ export function ResetPasswordForm({
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <label className="font-mono text-micro font-bold text-content-secondary">
+        <label className="text-xs font-bold text-content-secondary">
           PHONE_NUMBER
         </label>
         <input
@@ -53,11 +53,11 @@ export function ResetPasswordForm({
           maxLength={11}
           disabled={loading}
           autoFocus
-          className="w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
+          className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2.5 text-sm text-content-primary transition-colors focus:border-border-focus focus:outline-none"
         />
       </div>
       <div className="space-y-1">
-        <label className="font-mono text-micro font-bold text-content-secondary">
+        <label className="text-xs font-bold text-content-secondary">
           VERIFICATION_CODE
         </label>
         <div className="flex gap-2">
@@ -69,24 +69,24 @@ export function ResetPasswordForm({
             onChange={(e) => onCodeChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
             maxLength={6}
             disabled={loading}
-            className="flex-1 px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-mono text-sm tracking-[0.2em] focus:outline-none focus:border-accent-hover transition-colors rounded-md"
+            className="flex-1 rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2.5 font-display text-sm tracking-[0.2em] text-content-primary focus:border-border-focus"
           />
           <button
             onClick={onSendCode}
             disabled={
               !phoneNumber || phoneNumber.length !== 11 || (countdown > 0 && !debugCode) || loading
             }
-            className="px-3 border-theme-button border-border-default bg-surface-card font-mono text-xs hover:bg-surface-page transition-colors disabled:opacity-50 whitespace-nowrap rounded-md"
+            className="whitespace-nowrap rounded-full border border-border-divider bg-surface-card px-3.5 text-xs font-medium text-content-secondary transition-colors hover:bg-surface-tint hover:text-content-primary disabled:opacity-50"
           >
             {countdown > 0 ? `${countdown}s` : t('sendCode')}
           </button>
         </div>
-        <div className="font-mono text-nano text-content-secondary opacity-50">
+        <div className="text-nano text-content-muted">
           {t('resetSendHint')}
         </div>
       </div>
       <div className="space-y-1">
-        <label className="font-mono text-micro font-bold text-content-secondary">
+        <label className="text-xs font-bold text-content-secondary">
           {t('newPasswordLabel')}
         </label>
         <input
@@ -100,14 +100,14 @@ export function ResetPasswordForm({
             }
           }}
           disabled={loading}
-          className="w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md"
+          className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2.5 text-sm text-content-primary transition-colors focus:border-border-focus focus:outline-none"
         />
       </div>
 
       <button
         onClick={onSubmit}
         disabled={!canSubmit}
-        className="w-full py-3 border-theme-button border-border-default bg-accent-hover text-accent-ink font-bold font-mono text-sm shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
+        className="w-full rounded-full border border-border-divider bg-accent-brand py-2.5 text-sm font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card active:translate-y-0 active:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
       >
         {loading ? 'RESETTING...' : t('resetPasswordAction')}
       </button>
@@ -116,7 +116,7 @@ export function ResetPasswordForm({
         <button
           onClick={onBack}
           disabled={loading}
-          className="font-mono text-micro text-content-secondary hover:text-content-primary transition-colors underline underline-offset-2"
+          className="text-[11.5px] text-content-muted hover:text-content-primary transition-colors underline underline-offset-2"
         >
           {t('backToLogin')}
         </button>
@@ -124,8 +124,8 @@ export function ResetPasswordForm({
 
       {/* 开发环境显示验证码 */}
       {import.meta.env.DEV && debugCode && (
-        <div className="p-3 bg-accent-hover/10 border border-theme-card border-accent-hover rounded-md">
-          <div className="font-mono text-micro text-content-primary">
+        <div className="p-3 rounded-md border border-accent-brand/30 bg-accent-brand/10">
+          <div className="text-[11.5px] font-medium text-content-primary">
             <div className="font-bold mb-1">🔧 DEV_MODE</div>
             <div>
               CODE: <span className="text-lg font-bold">{debugCode}</span>

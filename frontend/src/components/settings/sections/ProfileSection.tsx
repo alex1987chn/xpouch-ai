@@ -104,8 +104,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
         {/* 头像设置 */}
         <section>
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-            <span className="text-micro font-bold tracking-widest text-content-secondary">
+                        <span className="text-xs font-bold text-content-secondary">
               {t('avatarSetup')}
             </span>
           </div>
@@ -124,7 +123,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
               </div>
 
               {/* 上传按钮 */}
-              <label className="absolute -bottom-1 -right-1 w-7 h-7 bg-accent-hover border-theme-button border-border-default flex items-center justify-center cursor-pointer hover:brightness-95 transition-all">
+              <label className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-border-divider bg-accent-brand text-accent-ink cursor-pointer transition-all hover:-translate-y-px hover:shadow-theme-card">
                 <Camera className="w-3.5 h-3.5 text-content-primary" />
                 <input
                   type="file"
@@ -169,8 +168,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
         {/* 用户名设置 */}
         <section>
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-            <span className="text-micro font-bold tracking-widest text-content-secondary">
+                        <span className="text-xs font-bold text-content-secondary">
               {t('username')}
             </span>
           </div>
@@ -204,7 +202,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="flex-1 py-3 bg-accent-hover text-accent-ink text-sm font-bold hover:brightness-95 transition-colors disabled:opacity-50"
+          className="flex-1 rounded-full border border-border-divider bg-accent-brand py-2.5 text-sm font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
         >
           {isSaving ? (
             <span className="flex items-center justify-center gap-2">

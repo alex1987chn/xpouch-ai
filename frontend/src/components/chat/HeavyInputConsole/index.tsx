@@ -102,16 +102,17 @@ export default function HeavyInputConsole({
 
         {/* 工具栏 */}
         <div className="flex items-center justify-between border-t border-border-divider py-1.5 pl-2.5 pr-1.5">
-          {/* 左侧：附件 / 联网 */}
-          <div className="flex items-center gap-1">
+          {/* 左侧：附件 / 联网（蓝本 ic-btn：描边小钮） */}
+          <div className="flex items-center gap-1.5">
             <button
               disabled={disabled || imageList.length >= MAX_IMAGES}
               onClick={() => fileInputRef.current?.click()}
               aria-label={t('attachment')}
-              className="rounded-md p-2 text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary disabled:opacity-50"
+              className="flex h-[30px] items-center gap-1.5 rounded-md border border-border-divider bg-surface-card px-2.5 text-xs font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
               title={`${t('attachment')}${imageList.length ? ` (${imageList.length}/${MAX_IMAGES})` : ''}`}
             >
-              <Paperclip className="h-4 w-4" />
+              <Paperclip className="h-3.5 w-3.5" />
+              <span>{t('attachment')}</span>
             </button>
             <input
               ref={fileInputRef}
@@ -126,10 +127,10 @@ export default function HeavyInputConsole({
             <button
               disabled={disabled}
               aria-label={t('webSearch')}
-              className="rounded-md p-2 text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary disabled:opacity-50"
               title={t('webSearch')}
+              className="flex h-[30px] w-[30px] items-center justify-center rounded-md border border-border-divider bg-surface-card text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
             >
-              <Globe className="h-4 w-4" />
+              <Globe className="h-3.5 w-3.5" />
             </button>
           </div>
 

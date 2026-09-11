@@ -177,7 +177,7 @@ export function ThemeShowcase() {
 function ColorCard({ name, className, description }: { name: string, className: string, description: string }) {
   return (
     <div className={cn('p-4 rounded-lg border-theme-card', className)}>
-      <div className="text-xs font-mono text-content-secondary mb-1">{name}</div>
+      <div className="text-[11px] text-content-muted mb-1">{name}</div>
       <div className="text-sm text-content-primary">{description}</div>
     </div>
   )
@@ -187,7 +187,7 @@ function ColorCard({ name, className, description }: { name: string, className: 
 function BorderCard({ name, className }: { name: string, className: string }) {
   return (
     <div className={cn('p-4 rounded-lg border-theme-card bg-surface-card', className)}>
-      <div className="text-xs font-mono text-content-secondary">{name}</div>
+      <div className="text-[11px] text-content-muted">{name}</div>
     </div>
   )
 }
@@ -208,7 +208,7 @@ function AccentCard({ name, bgClass, textClass }: { name: string, bgClass: strin
 function ShadowCard({ name, className }: { name: string, className: string }) {
   return (
     <div className={cn('p-4 rounded-lg bg-surface-card border-theme-card border-border-default', className)}>
-      <div className="text-xs font-mono text-content-secondary">{name}</div>
+      <div className="text-[11px] text-content-muted">{name}</div>
     </div>
   )
 }

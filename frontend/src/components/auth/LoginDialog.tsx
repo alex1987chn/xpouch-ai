@@ -195,33 +195,25 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
         className="relative bg-surface-card rounded-lg border-theme-card border-border-default shadow-theme-modal w-[380px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-200 rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 弹窗头部 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border-divider">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-accent-hover"></div>
-            <span className="text-xs font-bold text-content-secondary">
-              /// AUTHENTICATION
-            </span>
-          </div>
-          <button
-            aria-label={t('close')}
-            onClick={handleClose}
-            className="w-6 h-6 flex items-center justify-center border-theme-button border-border-default hover:bg-accent-hover transition-colors rounded"
-          >
-            <span className="text-xs font-bold">×</span>
-          </button>
-        </div>
+        {/* 关闭按钮（浮层右上） */}
+        <button
+          aria-label={t('close')}
+          onClick={handleClose}
+          className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-md text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary"
+        >
+          <span className="text-base font-bold">×</span>
+        </button>
 
         {/* 弹窗内容 */}
         <div className="p-6 space-y-5">
-          {/* Logo和标题 */}
+          {/* 品牌标 + 标题 */}
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 border-theme-card border-border-default bg-surface-page flex items-center justify-center rounded-md">
+            <div className="mx-auto mb-3.5 flex h-12 w-12 items-center justify-center rounded-[50%_50%_50%_0] bg-accent-brand">
               <The4DPocketLogo />
             </div>
             <h2
               id="login-dialog-title"
-              className="text-lg font-black tracking-tight mb-1 text-content-primary"
+              className="mb-0.5 text-[17px] font-bold text-content-primary"
             >
               {loginMode === 'reset'
                 ? t('resetPasswordTitle')
@@ -229,13 +221,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                   ? t('welcomeBack')
                   : t('verifyIdentity')}
             </h2>
-            <p className="text-xs font-mono text-content-secondary">
-              {loginMode === 'reset'
-                ? 'RESET PASSWORD'
-                : step === 'phone'
-                  ? 'WELCOME BACK'
-                  : 'VERIFY IDENTITY'}
-            </p>
+            <p className="text-xs text-content-muted">xpouch</p>
           </div>
 
           {/* 调试信息 */}
@@ -249,23 +235,23 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
           )}
 
           {/* 登录方式 Tab（reset 模式下无高亮，点任一 tab 退出重置流程） */}
-          <div className="grid grid-cols-2 gap-0 border-theme-card border-border-default rounded-md overflow-hidden">
+          <div className="flex h-[34px] items-center overflow-hidden rounded-full border border-border-default bg-surface-page">
             <button
               onClick={() => setLoginMode('otp')}
-              className={`py-2 font-mono text-xs font-bold tracking-wider transition-colors ${
+              className={`h-full flex-1 text-xs transition-colors ${
                 loginMode === 'otp'
-                  ? 'bg-accent-hover text-content-primary'
-                  : 'bg-surface-page text-content-secondary hover:bg-surface-page/60'
+                  ? 'bg-surface-tint font-bold text-content-primary'
+                  : 'text-content-muted hover:text-content-primary'
               }`}
             >
               {t('loginTabOtp')}
             </button>
             <button
               onClick={() => setLoginMode('password')}
-              className={`py-2 font-mono text-xs font-bold tracking-wider transition-colors ${
+              className={`h-full flex-1 border-l border-border-divider text-xs transition-colors ${
                 loginMode === 'password'
-                  ? 'bg-accent-hover text-content-primary'
-                  : 'bg-surface-page text-content-secondary hover:bg-surface-page/60'
+                  ? 'bg-surface-tint font-bold text-content-primary'
+                  : 'text-content-muted hover:text-content-primary'
               }`}
             >
               {t('passwordLoginTab')}

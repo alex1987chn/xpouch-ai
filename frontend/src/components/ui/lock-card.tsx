@@ -23,7 +23,7 @@ export function PermissionLockCard({ title, description }: PermissionLockCardPro
       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center border-theme-card border-border-default bg-surface-page">
         <Lock className="h-8 w-8 text-content-muted" />
       </div>
-      <h3 className="font-mono text-sm font-bold text-content-primary">
+      <h3 className="text-sm font-bold text-content-primary">
         {title || t('adminOnly')}
       </h3>
       {description && <p className="mt-2 text-xs text-content-secondary">{description}</p>}

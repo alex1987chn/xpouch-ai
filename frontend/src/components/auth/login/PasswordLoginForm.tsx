@@ -17,7 +17,7 @@ interface PasswordLoginFormProps {
 }
 
 const INPUT_CLS =
-  'w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page font-mono text-sm focus:outline-none focus:border-accent-hover transition-colors rounded-md'
+  'w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2.5 text-sm text-content-primary transition-colors focus:border-border-focus focus:outline-none'
 
 export function PasswordLoginForm({
   t,
@@ -32,7 +32,7 @@ export function PasswordLoginForm({
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <label className="font-mono text-micro font-bold text-content-secondary">
+        <label className="text-xs font-bold text-content-secondary">
           {t('identifierLabel')}
         </label>
         <input
@@ -45,7 +45,7 @@ export function PasswordLoginForm({
         />
       </div>
       <div className="space-y-1">
-        <label className="font-mono text-micro font-bold text-content-secondary">
+        <label className="text-xs font-bold text-content-secondary">
           PASSWORD
         </label>
         <input
@@ -66,12 +66,12 @@ export function PasswordLoginForm({
       <button
         onClick={onSubmit}
         disabled={!identifier.trim() || !password || loading}
-        className="w-full py-3 border-theme-button border-border-default bg-accent-hover text-accent-ink font-bold font-mono text-sm shadow-theme-button hover:[transform:var(--transform-button-hover)] hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)] active:shadow-theme-button-active transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
+        className="w-full rounded-full border border-border-divider bg-accent-brand py-2.5 text-sm font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card active:translate-y-0 active:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
       >
         {loading ? 'SIGNING...' : '登录 / LOGIN'}
       </button>
 
-      <div className="flex justify-between items-center font-mono text-micro text-content-secondary">
+      <div className="flex justify-between items-center text-[11.5px] text-content-muted">
         <button
           onClick={onForgotPassword}
           className="hover:text-content-primary transition-colors underline underline-offset-2"
