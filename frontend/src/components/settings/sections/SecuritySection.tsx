@@ -55,7 +55,7 @@ export function SecuritySection() {
     newPassword.length >= 8 && (!hasPassword || Boolean(oldPassword)) && !isSettingPassword
 
   return (
-    <div className="flex-1 overflow-y-auto bauhaus-scrollbar px-5 py-5 space-y-4">
+    <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
       {/* 密码设置 */}
       <section>
         <div className="flex items-center gap-2 mb-3">

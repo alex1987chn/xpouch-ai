@@ -60,7 +60,7 @@ export function BauhausSelect({
 
       {isOpen && createPortal(
         <div
-          className="fixed border-theme-card border-border-default bg-surface-card shadow-theme-card z-[9999] max-h-60 overflow-y-auto bauhaus-scrollbar"
+          className="fixed border-theme-card border-border-default bg-surface-card shadow-theme-card z-[9999] max-h-60 overflow-y-auto"
           style={{
             width: triggerRef.current?.getBoundingClientRect().width || 200,
             left: triggerRef.current?.getBoundingClientRect().left || 0,

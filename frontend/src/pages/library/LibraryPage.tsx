@@ -51,7 +51,7 @@ export default function LibraryPage() {
         active={activeTab}
         onSelect={key => setActiveTab(key as TabType)}
       >
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-6xl">
           <SubPageHeader
             title={activeLabel}
             right={

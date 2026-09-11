@@ -4,7 +4,7 @@
  * ============================================
  *
  * 功能：
- * 1. 主题切换（soft/dark/bauhaus）- 柔和为默认，Bauhaus 为怀旧选项
+ * 1. 主题切换（soft/dark）- 柔和为默认
  * 2. 主题持久化（localStorage）
  * 3. 系统主题监听（prefers-color-scheme）
  * 4. 主题切换动画过渡
@@ -17,8 +17,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { logger } from '@/utils/logger'
 
-/** 支持的主题类型 - 柔和（默认）/ 暖暗 / Bauhaus（怀旧选项，沉底） */
-export type Theme = 'soft' | 'dark' | 'bauhaus'
+/** 支持的主题类型 - 柔和（默认）/ 暖暗 */
+export type Theme = 'soft' | 'dark'
 
 /** 主题配置元数据 */
 export interface ThemeMeta {
@@ -28,7 +28,7 @@ export interface ThemeMeta {
   icon: string
 }
 
-/** 可用主题 - 柔和 + 暖暗 + Bauhaus（沉底） */
+/** 可用主题 - 柔和 + 暖暗 */
 export const THEMES: ThemeMeta[] = [
   {
     id: 'soft',
@@ -41,12 +41,6 @@ export const THEMES: ThemeMeta[] = [
     name: 'Dark',
     description: '暖暗色 - 暖炭黑基底，夜间护眼',
     icon: 'Moon'
-  },
-  {
-    id: 'bauhaus',
-    name: 'Bauhaus',
-    description: '包豪斯怀旧 - 粗边框、硬阴影、直角',
-    icon: 'Shapes'
   }
 ]
 
@@ -54,25 +48,25 @@ export const THEMES: ThemeMeta[] = [
 interface ThemeState {
   /** 当前主题 */
   theme: Theme
-  
+
   /** 是否跟随系统主题 */
   followSystem: boolean
-  
+
   /** 设置主题 */
   setTheme: (theme: Theme) => void
-  
+
   /** 切换到下一主题 */
   toggleTheme: () => void
-  
+
   /** 设置是否跟随系统 */
   setFollowSystem: (follow: boolean) => void
-  
+
   /** 初始化主题（应用启动时调用） */
   initTheme: () => void
-  
+
   /** @internal 获取下一个主题 */
   _getNextTheme: () => Theme
-  
+
   /** @internal 迁移旧主题 */
   _migrateTheme: () => void
 }
@@ -142,12 +136,12 @@ export const useThemeStore = create<ThemeState>()(
 
       /**
        * 修复旧主题值（迁移逻辑）
-       * v3.5 主题重组：light/kyoto → soft（新默认体验即改版意图），
-       * 历史遗留 bauhaus/cyberpunk/glass → soft
+       * 2026-09-12 bauhaus 主题移除：bauhaus → soft；
+       * 历史遗留 light/kyoto/cyberpunk/glass → soft
        */
       _migrateTheme: () => {
         const currentTheme = get().theme as string
-        const validThemes: Theme[] = ['soft', 'dark', 'bauhaus']
+        const validThemes: Theme[] = ['soft', 'dark']
         if (!validThemes.includes(currentTheme as Theme)) {
           const newTheme: Theme = 'soft'
           applyTheme(newTheme)
@@ -158,11 +152,11 @@ export const useThemeStore = create<ThemeState>()(
 
       /**
        * 获取下一个主题（用于循环切换）
-       * Soft -> Dark -> Bauhaus -> Soft
+       * Soft -> Dark -> Soft
        */
       _getNextTheme: (): Theme => {
         const currentTheme = get().theme
-        const themeOrder: Theme[] = ['soft', 'dark', 'bauhaus']
+        const themeOrder: Theme[] = ['soft', 'dark']
         const currentIndex = themeOrder.indexOf(currentTheme)
         const nextIndex = (currentIndex + 1) % themeOrder.length
         return themeOrder[nextIndex]
@@ -174,7 +168,7 @@ export const useThemeStore = create<ThemeState>()(
       setTheme: (theme: Theme) => {
         applyTheme(theme)
         set({ theme, followSystem: false })
-        
+
         // 可选：添加切换动画类
         if (typeof document !== 'undefined') {
           document.documentElement.classList.add('theme-transitioning')
@@ -185,7 +179,7 @@ export const useThemeStore = create<ThemeState>()(
       },
 
       /**
-       * 切换主题（Soft -> Dark -> Bauhaus -> Soft）
+       * 切换主题（Soft -> Dark -> Soft）
        */
       toggleTheme: () => {
         const nextTheme = get()._getNextTheme()
@@ -211,10 +205,10 @@ export const useThemeStore = create<ThemeState>()(
       initTheme: () => {
         // 先迁移旧主题值
         get()._migrateTheme()
-        
+
         const state = get()
         const { theme, followSystem } = state
-        
+
         if (followSystem) {
           const systemTheme = getSystemTheme()
           applyTheme(systemTheme)
@@ -222,7 +216,7 @@ export const useThemeStore = create<ThemeState>()(
         } else {
           applyTheme(theme)
         }
-        
+
         ensureSystemThemeListener(
           (newTheme) => set({ theme: newTheme }),
           () => get().followSystem
@@ -232,9 +226,9 @@ export const useThemeStore = create<ThemeState>()(
     {
       name: 'xpouch-theme',
       // 只持久化这些字段
-      partialize: (state) => ({ 
-        theme: state.theme, 
-        followSystem: state.followSystem 
+      partialize: (state) => ({
+        theme: state.theme,
+        followSystem: state.followSystem
       })
     }
   )

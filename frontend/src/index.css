@@ -22,7 +22,6 @@
 
 /* 主题覆盖 - 暖暗 / Bauhaus（怀旧选项，沉底） */
 @import './styles/tokens/themes/_dark.css';
-@import './styles/tokens/themes/_bauhaus.css';
 
 /* ============================================
    2. Tailwind v4（通过 @config 挂载 tailwind.config.ts，保持 v3 主题 token 兼容）
@@ -86,11 +85,6 @@
   /* 暖暗主题 */
   [data-theme="dark"] {
     color-scheme: dark;
-  }
-
-  /* Bauhaus 怀旧主题（亮色） */
-  [data-theme="bauhaus"] {
-    color-scheme: light;
   }
 
   /* 确保 html 和 body 使用主题变量 */
@@ -213,41 +207,7 @@
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
   }
 
-  /* ============================================
-     Bauhaus Scrollbar - 直角无圆角，hover时才显示
-     ============================================ */
-  .bauhaus-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
-  }
 
-  .bauhaus-scrollbar::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  .bauhaus-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .bauhaus-scrollbar::-webkit-scrollbar-thumb {
-    background: transparent;
-    border-radius: 0;
-  }
-
-  /* hover时显示滚动条 */
-  .bauhaus-scrollbar:hover {
-    scrollbar-color: rgb(var(--border-default)) transparent;
-  }
-
-  .bauhaus-scrollbar:hover::-webkit-scrollbar-thumb {
-    background: rgb(var(--border-default));
-    opacity: 0.4;
-  }
-
-  .bauhaus-scrollbar:hover::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--accent-hover));
-    opacity: 1;
-  }
 }
 
 /* ============================================

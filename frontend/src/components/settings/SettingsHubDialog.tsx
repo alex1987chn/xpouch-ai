@@ -12,7 +12,7 @@
 import { createPortal } from 'react-dom'
 import { User, ShieldCheck, X, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useTranslation } from '@/i18n'
+import { useTranslation, type Language } from '@/i18n'
 import { useAppUIStore, type SettingsSection } from '@/store/appUIStore'
 import { useUserStore } from '@/store/userStore'
 import { useState } from 'react'
@@ -23,6 +23,41 @@ import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { ProfileSection } from '@/components/settings/sections/ProfileSection'
 import { SecuritySection } from '@/components/settings/sections/SecuritySection'
+
+/** 语言切换分段胶囊（设置中心头部，蓝本 .seg 语法） */
+const LANGS: { id: Language; label: string }[] = [
+  { id: 'zh', label: '中文' },
+  { id: 'en', label: 'EN' },
+  { id: 'ja', label: '日本語' },
+]
+
+function LanguageToggle() {
+  const { language, setLanguage } = useTranslation()
+  return (
+    <div
+      role="group"
+      aria-label="Language"
+      className="flex h-[28px] items-center overflow-hidden rounded-full border border-border-default bg-surface-page"
+    >
+      {LANGS.map((lang, i) => (
+        <button
+          key={lang.id}
+          type="button"
+          onClick={() => setLanguage(lang.id)}
+          className={cn(
+            'h-full px-2.5 text-[11px] transition-colors',
+            i > 0 && 'border-l border-border-divider',
+            language === lang.id
+              ? 'bg-surface-tint font-bold text-content-primary'
+              : 'text-content-muted hover:text-content-primary'
+          )}
+        >
+          {lang.label}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 export function SettingsHubDialog() {
   const { t } = useTranslation()
@@ -83,18 +118,21 @@ export function SettingsHubDialog() {
         className="relative bg-surface-card rounded-lg border-theme-card border-border-default shadow-theme-modal w-[680px] max-w-[90vw] h-[600px] max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 弹窗头部 - Bauhaus风格 */}
+        {/* 弹窗头部：标题 + 语言切换 + 关闭 */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-divider shrink-0">
           <span id="settings-hub-title" className="text-sm font-bold text-content-primary">
             {t('settings')}
           </span>
-          <button
-            aria-label={t('close')}
-            onClick={closeSettings}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2.5">
+            <LanguageToggle />
+            <button
+              aria-label={t('close')}
+              onClick={closeSettings}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* 移动端分区条（sm 以下替代左栏） */}

@@ -122,7 +122,7 @@ export default function ExpertListTable({
       </div>
 
       {/* 专家列表 */}
-      <div ref={listContainerRef} className="flex-1 overflow-y-auto bauhaus-scrollbar p-2">
+      <div ref={listContainerRef} className="flex-1 overflow-y-auto p-2">
         <div className="space-y-1">
           {filteredExperts.map((expert) => (
             <button

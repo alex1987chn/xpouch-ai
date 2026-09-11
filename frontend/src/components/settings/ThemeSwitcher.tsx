@@ -8,9 +8,10 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { Sun, Moon, Check, Shapes } from 'lucide-react'
+import { Sun, Moon, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useThemeStore, THEMES, type Theme } from '@/store/themeStore'
+import { useTranslation } from '@/i18n'
 
 interface ThemeSwitcherProps {
   className?: string
@@ -23,7 +24,6 @@ interface ThemeSwitcherProps {
 const themeIcons: Record<Theme, React.ReactNode> = {
   soft: <Sun className="w-4 h-4" />,
   dark: <Moon className="w-4 h-4" />,
-  bauhaus: <Shapes className="w-4 h-4" />,
 }
 
 /**
@@ -32,7 +32,6 @@ const themeIcons: Record<Theme, React.ReactNode> = {
 const themePreview: Record<Theme, string> = {
   soft: 'bg-accent-brand border border-border-default',
   dark: 'bg-surface-card border border-border-default',
-  bauhaus: 'bg-accent-brand border border-content-primary',
 }
 
 /**
@@ -268,10 +267,15 @@ function DropdownThemeSwitcher({ className }: { className?: string }) {
 }
 
 /**
- * 分段胶囊模式（顶栏，蓝本 .seg 形态：柔和 | 暗色 | Bauhaus）
+ * 分段胶囊模式（顶栏，蓝本 .seg 形态：柔和 | 黑暗）
  */
 function SegThemeSwitcher({ className }: { className?: string }) {
+  const { t } = useTranslation()
   const { theme, setTheme } = useThemeStore()
+  const themeLabels: Record<Theme, string> = {
+    soft: t('themeSoft'),
+    dark: t('themeDark'),
+  }
 
   return (
     <div
@@ -279,7 +283,7 @@ function SegThemeSwitcher({ className }: { className?: string }) {
       aria-label="Theme"
       className={cn(
         'flex h-[30px] items-center overflow-hidden rounded-full',
-        'border-theme-card border-border-default bg-surface-card',
+        'border border-border-default bg-surface-card',
         className
       )}
     >
@@ -296,7 +300,7 @@ function SegThemeSwitcher({ className }: { className?: string }) {
               : 'text-content-muted hover:text-content-primary'
           )}
         >
-          {themeMeta.name}
+          {themeLabels[themeMeta.id]}
         </button>
       ))}
     </div>
