@@ -22,15 +22,18 @@ export default function EmptyState({
 }: EmptyStateProps) {
   const { t } = useTranslation()
 
-  // Compact 变体：用于聊天区域，简洁风格（蓝本首跑空态：几何口袋 + 引导文案）
+  // Compact 变体：新会话引导（自然高度、重心上移，贴近输入台的语言）
   if (variant === 'compact') {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-[50%_50%_50%_0] bg-accent-brand mb-4">
-          <Sparkles className="h-6 w-6 text-accent-ink" />
+      <div className="flex flex-col items-center justify-center pt-[16vh] text-center">
+        <div className="flex h-11 w-11 items-center justify-center rounded-[50%_50%_50%_0] bg-accent-brand">
+          <Sparkles className="h-5 w-5 text-accent-ink" />
         </div>
-        <p className="text-sm text-content-muted">
+        <p className="mt-3 text-sm font-bold text-content-primary">
           {t('initConversation')}
+        </p>
+        <p className="mt-1 text-xs text-content-muted">
+          {t('workbenchNewHint')}
         </p>
       </div>
     )
