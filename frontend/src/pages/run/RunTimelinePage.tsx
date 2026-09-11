@@ -1,31 +1,38 @@
 /**
- * Run Timeline Page
+ * TaskControlPage（原 RunTimelinePage 演进）
  *
- * 独立的时间线查看页面，展示运行实例的完整事件历史
+ * [设计] 一次运行 = 一张任务控制视图（docs/design 蓝本）：
+ * 左侧时间线（专家识别色标注每步归属 + 琥珀色审批行），
+ * 右侧执行计划卡（thread 的 execution_plan.sub_tasks）+ 关联产物。
  *
- * [路由] /run/:runId
- * [入口] 从对话页面顶部 run_id 链接跳转
+ * [审批边界] 裁决动作必须回到会话上下文执行（resumeChat 是 SSE 流，
+ * 消费端在聊天 store）——本页的审批行是注意力层：跳转到工作台对应线程裁决。
+ *
+ * [实时性] run 活动期间 timeline 每 3s refetch（事件账本是 append-only，
+ * 增量安全）；终态停止轮询。
  */
 
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Clock, AlertCircle, CheckCircle, Loader2, ChevronRight } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { ArrowLeft, Clock, AlertCircle, CheckCircle, Loader2, ChevronRight, ExternalLink } from 'lucide-react'
 import { format, formatDistanceToNow, differenceInSeconds } from 'date-fns'
+import { zhCN } from 'date-fns/locale'
 import { useTranslation } from '@/i18n'
 import { Skeleton } from '@/components/ui/skeleton'
-import { zhCN } from 'date-fns/locale'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 
 import { useRunDetails, useRunTimeline } from '@/hooks/queries/useRunTimelineQuery'
-import type { RunEvent, RunEventType } from '@/types/run'
-import { getEventDisplayName, getEventCategory } from '@/types/run'
+import { useThreadArtifactsQuery } from '@/hooks/queries/useArtifactsQuery'
+import { getConversation } from '@/services/chat'
+import type { RunEvent, RunStatus } from '@/types/run'
+import { getEventDisplayName, getEventCategory, ACTIVE_RUN_STATUSES } from '@/types/run'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { PayloadDrawer } from './PayloadDrawer'
-import { RunStatusBadge } from '@/components/ui/run-status-badge'
+import { expertColor, expertDisplayName } from '@/lib/expertIdentity'
 
 // ============================================
-// 事件图标组件
+// 事件图标（沿用原配色：类别身份色，阶段 3 统一）
 // ============================================
 
 const eventIconConfig: Record<string, { icon: typeof Clock; color: string }> = {
@@ -38,29 +45,37 @@ const eventIconConfig: Record<string, { icon: typeof Clock; color: string }> = {
   other: { icon: Clock, color: 'text-content-secondary' },
 }
 
-function EventIcon({ eventType }: { eventType: RunEventType }) {
-  const category = getEventCategory(eventType)
+function EventIcon({ eventType }: { eventType: string }) {
+  const category = getEventCategory(eventType as never)
   const config = eventIconConfig[category] || eventIconConfig.other
   const Icon = config.icon
 
-  // 终态事件使用不同颜色
   const isTerminal = ['run_completed', 'run_failed', 'run_cancelled', 'run_timed_out'].includes(eventType)
   const isFailed = ['run_failed', 'run_cancelled', 'run_timed_out', 'task_failed', 'hitl_rejected'].includes(eventType)
 
-  const finalColor = isFailed ? 'text-accent-destructive' : isTerminal ? 'text-accent-success' : config.color
+  if (isTerminal || isFailed) {
+    const FailedIcon = eventType === 'run_completed' ? CheckCircle : AlertCircle
+    return (
+      <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-theme-card border-border-default bg-surface-card">
+        <FailedIcon className={cn('h-4 w-4', eventType === 'run_completed' ? 'text-status-online' : 'text-status-offline')} />
+      </div>
+    )
+  }
 
   return (
-    <div className={cn(
-      'flex h-8 w-8 items-center justify-center rounded-full border-theme-card bg-surface-card',
-      finalColor.replace('text-', 'border-')
-    )}>
-      <Icon className={cn('h-4 w-4', finalColor)} />
+    <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-theme-card border-border-default bg-surface-card">
+      <Icon className={cn('h-4 w-4', config.color, event_type_spinning(eventType) && 'animate-spin')} />
     </div>
   )
 }
 
+/** 仅"进行中"语义的图标自转（任务开始/生命周期启动），完成态不转 */
+function event_type_spinning(eventType: string): boolean {
+  return eventType === 'task_started' || eventType === 'run_started' || eventType === 'run_created'
+}
+
 // ============================================
-// 时间线事件组件
+// 时间线事件行（新增专家归属标注）
 // ============================================
 
 interface TimelineEventItemProps {
@@ -77,37 +92,44 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
   const timeStr = format(time, 'HH:mm:ss')
 
   const hasPayload = event.event_data && Object.keys(event.event_data).length > 0
+  const isTaskEvent = ['task_started', 'task_completed', 'task_failed'].includes(event.event_type)
+  const expertType = isTaskEvent ? String(event.event_data?.expert_type || '') : ''
 
   return (
     <div
       className={cn(
-        'relative flex gap-4 pb-6 cursor-pointer group',
-        isSelected && 'bg-accent-subtle/50 -mx-2 px-2 rounded'
+        'group relative flex cursor-pointer gap-4 rounded-md pb-6 transition-colors hover:bg-surface-elevation/40',
+        isSelected && 'bg-accent-subtle/50 -mx-2 px-2'
       )}
       onClick={onClick}
     >
       {/* 时间线 */}
       {!isLast && (
-        <div className="absolute left-4 top-10 h-full w-0.5 bg-border-default" />
+        <div className="absolute left-4 top-10 h-full w-px bg-border-divider" />
       )}
 
-      {/* 图标 */}
       <EventIcon eventType={event.event_type} />
 
       {/* 内容 */}
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-content-primary">
+          {/* 专家归属：识别色点 + 名称（寻路语义） */}
+          {expertType && (
+            <span className="flex items-center gap-1.5 text-xs" style={{ color: expertColor(expertType) }}>
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: expertColor(expertType) }} />
+              {expertDisplayName(expertType)}
+            </span>
+          )}
+          <span className={cn('text-sm', expertType ? 'text-content-secondary' : 'font-medium text-content-primary')}>
             {getEventDisplayName(event.event_type)}
           </span>
-          <span className="text-xs text-content-tertiary">{timeStr}</span>
-          <span className="text-xs text-content-tertiary">({timeAgo})</span>
-          
-          {/* Payload 指示器 */}
+          <span className="text-xs text-content-muted">{timeStr}</span>
+          <span className="text-xs text-content-muted">({timeAgo})</span>
+
           {hasPayload && (
             <ChevronRight className={cn(
-              'h-4 w-4 text-content-tertiary ml-auto',
-              'opacity-0 group-hover:opacity-100 transition-opacity',
+              'ml-auto h-4 w-4 text-content-muted',
+              'opacity-0 transition-opacity group-hover:opacity-100',
               isSelected && 'opacity-100'
             )} />
           )}
@@ -115,12 +137,9 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
 
         {/* 事件详情 */}
         {event.event_data && Object.keys(event.event_data).length > 0 && (
-          <div className="mt-2 text-sm text-content-secondary">
+          <div className="mt-1.5 text-sm text-content-secondary">
             {event.event_type === 'router_decided' && (
               <span>{t('modeLabel')} {event.event_data.mode === 'complex' ? t('modeComplex') : t('modeSimple')}</span>
-            )}
-            {event.event_type === 'task_started' && (
-              <span>{t('expertLabel')} {String(event.event_data.expert_type || 'unknown')}</span>
             )}
             {event.event_type === 'task_completed' && (
               <span>{t('durationLabel')} {event.event_data.duration_ms ? `${Math.round(event.event_data.duration_ms as number / 1000)}s` : '-'}</span>
@@ -128,13 +147,9 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
             {event.event_type === 'artifact_generated' && (
               <span>{t('artifactTypeLabel')} {String(event.event_data.artifact_type || 'unknown')}</span>
             )}
-            {event.event_type === 'hitl_interrupted' && (
-              <span>{t('hitlWaitingApproval')}</span>
-            )}
           </div>
         )}
 
-        {/* note */}
         {event.note && (
           <p className="mt-1 text-sm text-content-secondary">{event.note}</p>
         )}
@@ -144,48 +159,80 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
 }
 
 // ============================================
-// 运行信息卡片
+// 审批注意力行（等待裁决时的琥珀行动块）
 // ============================================
 
-function RunInfoCard({ run }: { run: NonNullable<ReturnType<typeof useRunDetails>['data']> }) {
+function ApprovalRow({ threadId }: { threadId: string }) {
   const { t } = useTranslation()
-  const duration = run.completed_at && run.started_at
-    ? differenceInSeconds(new Date(run.completed_at), new Date(run.started_at))
-    : null
-
+  const navigate = useNavigate()
   return (
-    <div className="border-b border-border-default bg-surface-card px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <RunStatusBadge status={run.status} variant="detailed" />
-          <span className="text-sm text-content-secondary">
-            {t('modeLabel')} {run.mode === 'complex' ? t('modeComplexShort') : t('modeSimpleShort')}
-          </span>
-        </div>
-        <div className="flex items-center gap-4 text-sm text-content-secondary">
-          {duration !== null && (
-            <span>{t('durationLabel')} {duration}s</span>
-          )}
-          {run.created_at && (
-            <span>{t('runCreatedAt', { time: format(new Date(run.created_at), 'yyyy-MM-dd HH:mm') })}</span>
-          )}
-        </div>
+    <div className="mb-4 flex items-center gap-3 rounded-md border border-accent-warning/30 bg-accent-warning/10 px-4 py-3">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-warning/20">
+        <AlertCircle className="h-4 w-4 text-accent-warning" />
       </div>
-
-      {/* 错误信息 */}
-      {run.error_message && (
-        <div className="mt-3 rounded-md bg-status-offline/10 p-3">
-          <p className="text-sm text-status-offline">
-            错误: {run.error_message}
-          </p>
-        </div>
-      )}
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-bold text-content-primary">{t('hitlWaitingApproval')}</div>
+        <div className="text-xs text-content-secondary">{t('tasksPendingConfirm')}</div>
+      </div>
+      <Button size="sm" onClick={() => navigate(`/workbench/${threadId}`)}>
+        {t('goToDecide')}
+        <ExternalLink className="ml-1 h-3.5 w-3.5" />
+      </Button>
     </div>
   )
 }
 
 // ============================================
-// 主页面组件
+// 执行计划卡（thread 详情的 sub_tasks 投影）
+// ============================================
+
+function PlanCard({ threadId }: { threadId: string }) {
+  const { t } = useTranslation()
+  const { data: conversation } = useQuery({
+    queryKey: ['workbench', 'threadPlan', threadId],
+    queryFn: () => getConversation(threadId),
+    enabled: !!threadId,
+    staleTime: 30_000,
+    retry: 1,
+  })
+
+  const subTasks = conversation?.execution_plan?.sub_tasks
+  if (!subTasks?.length) return null
+
+  return (
+    <div className="rounded-md border-theme-card border-border-default bg-surface-card p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-bold tracking-widest text-content-secondary">
+          /// {t('planCardTitle')}
+        </span>
+        <span className="text-nano text-content-muted">
+          {t('planStepCount', { count: subTasks.length })}
+        </span>
+      </div>
+      <ol className="m-0 list-decimal space-y-2 pl-4 text-sm">
+        {subTasks.map(task => (
+          <li key={task.id} className="text-content-secondary">
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: expertColor(task.expert_type) }}
+              />
+              <span className="text-content-primary">{task.task_description}</span>
+            </span>
+            {task.status && (
+              <span className="ml-3 text-xs text-content-muted">
+                {task.status === 'completed' ? '✓' : task.status === 'failed' ? '✗' : '…'} {task.status}
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+// ============================================
+// 主页面
 // ============================================
 
 export default function RunTimelinePage() {
@@ -193,38 +240,43 @@ export default function RunTimelinePage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
 
-  // 抽屉状态
   const [selectedEvent, setSelectedEvent] = useState<RunEvent | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   const { data: runResponse, isLoading: isRunLoading, error: runError } = useRunDetails(runId || null)
-  const { data: timelineResponse, isLoading: isTimelineLoading, error: timelineError } = useRunTimeline(runId || null)
+  const run = runResponse
+
+  // 实时性：run 活动期间 3s 轮询事件账本（append-only，重复拉取安全）
+  const isActive = !!run && ACTIVE_RUN_STATUSES.includes(run.status as RunStatus)
+  const { data: timelineResponse, isLoading: isTimelineLoading, error: timelineError } = useRunTimeline(runId || null, undefined, {
+    refetchInterval: isActive ? 3_000 : false,
+  })
 
   const isLoading = isRunLoading || isTimelineLoading
   const error = runError || timelineError
-  const run = runResponse
-  const events = timelineResponse?.events || []
+  const events = useMemo(() => timelineResponse?.events || [], [timelineResponse])
 
-  // 点击事件
   const handleEventClick = useCallback((event: RunEvent) => {
     setSelectedEvent(event)
     setIsDrawerOpen(true)
   }, [])
+  const handleCloseDrawer = useCallback(() => setIsDrawerOpen(false), [])
 
-  // 关闭抽屉
-  const handleCloseDrawer = useCallback(() => {
-    setIsDrawerOpen(false)
-  }, [])
+  // 运行时长
+  const durationText = run?.started_at && run.completed_at
+    ? `${differenceInSeconds(new Date(run.completed_at), new Date(run.started_at))}s`
+    : run?.started_at
+      ? `${differenceInSeconds(new Date(), new Date(run.started_at))}s`
+      : null
 
-  // 加载状态（与下方时间线布局同构：头部条 + 事件行）
   if (isLoading) {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-center gap-4 border-b border-border-default px-6 py-4">
+        <div className="flex items-center gap-4 border-b border-border-divider px-6 py-4">
           <Skeleton className="h-4 w-20" />
           <Skeleton className="h-5 w-48" />
         </div>
-        <div className="p-6 space-y-4 max-w-3xl">
+        <div className="max-w-3xl space-y-4 p-6">
           {Array.from({ length: 5 }, (_, i) => (
             <Skeleton key={i} className="h-14 w-full" />
           ))}
@@ -233,11 +285,10 @@ export default function RunTimelinePage() {
     )
   }
 
-  // 错误状态
   if (error || !run) {
     return (
       <div className="flex h-full flex-col items-center justify-center">
-        <AlertCircle className="h-12 w-12 text-content-tertiary" />
+        <AlertCircle className="h-12 w-12 text-content-muted" />
         <p className="mt-4 text-content-primary">{t('runNotFound')}</p>
         <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
           {t('runBack')}
@@ -246,37 +297,55 @@ export default function RunTimelinePage() {
     )
   }
 
+  const isAwaiting = run.status === 'waiting_for_approval'
+  const threadId = run.thread_id
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {/* 头部 */}
-      <header className="flex items-center gap-4 border-b border-border-default px-6 py-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          {t('runBack')}
+      <header className="flex shrink-0 items-center gap-4 border-b border-border-divider px-6 py-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate(threadId ? `/workbench/${threadId}` : '/workbench')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          {t('backToWorkbench')}
         </Button>
         <div className="flex-1">
           <h1 className="text-lg font-semibold text-content-primary">
-            {t('runDetails')}
+            {t('taskControlTitle')}
             <span className="ml-2 font-mono text-sm text-content-secondary">
               #{runId?.slice(0, 8)}
             </span>
           </h1>
         </div>
+        {/* 状态 chip（语义色：裁决琥珀 / 执行绿 / 终态灰红） */}
+        <span
+          className={cn(
+            'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
+            isAwaiting && 'bg-accent-warning/12 text-accent-warning',
+            isActive && !isAwaiting && 'bg-status-online/12 text-status-online',
+            !isActive && !isAwaiting && run.status === 'completed' && 'bg-status-online/12 text-status-online',
+            !isActive && !isAwaiting && run.status !== 'completed' && 'bg-status-offline/12 text-status-offline'
+          )}
+        >
+          {(isActive || isAwaiting) && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />}
+          {isAwaiting ? t('chipAwaiting') : isActive ? t('chipRunning') : run.status}
+        </span>
+        {durationText && (
+          <span className="font-mono text-xs text-content-muted">{durationText}</span>
+        )}
       </header>
 
-      {/* 运行信息 */}
-      <RunInfoCard run={run} />
+      {/* 主体：时间线 + 右栏 */}
+      <div className="flex min-h-0 flex-1">
+        <div className="bauhaus-scrollbar min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          {isAwaiting && threadId && <ApprovalRow threadId={threadId} />}
 
-      {/* 时间线 */}
-      <ScrollArea className="flex-1">
-        <div className="px-6 py-4">
           {events.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-content-secondary">
-              <Clock className="h-8 w-8 mb-2 opacity-50" />
+              <Clock className="mb-2 h-8 w-8 opacity-50" />
               <p>{t('noEvents')}</p>
             </div>
           ) : (
-            <div className="space-y-0">
+            <div className="max-w-2xl space-y-0">
               {events.map((event, index) => (
                 <TimelineEventItem
                   key={event.id}
@@ -289,7 +358,13 @@ export default function RunTimelinePage() {
             </div>
           )}
         </div>
-      </ScrollArea>
+
+        {/* 右栏：执行计划 + 关联产物 */}
+        <div className="hidden w-[340px] shrink-0 flex-col gap-4 overflow-y-auto border-l border-border-divider bg-surface-card p-4 lg:flex">
+          {threadId && <PlanCard threadId={threadId} />}
+          {threadId && <RelatedArtifacts threadId={threadId} />}
+        </div>
+      </div>
 
       {/* Payload 抽屉 */}
       <PayloadDrawer
@@ -297,6 +372,51 @@ export default function RunTimelinePage() {
         isOpen={isDrawerOpen}
         onClose={handleCloseDrawer}
       />
+    </div>
+  )
+}
+
+/** 关联产物（thread 投影，点击跳产物中心看全文） */
+function RelatedArtifacts({ threadId }: { threadId: string }) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { data, isLoading } = useThreadArtifactsQuery(threadId)
+  const artifacts = data?.items ?? []
+
+  return (
+    <div className="rounded-md border-theme-card border-border-default bg-surface-card p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-bold tracking-widest text-content-secondary">
+          /// {t('relatedArtifacts')}
+        </span>
+        <span className="text-nano text-content-muted">{artifacts.length}</span>
+      </div>
+      {isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-5/6" />
+        </div>
+      ) : artifacts.length === 0 ? (
+        <p className="text-nano text-content-muted">{t('canvasEmpty')}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {artifacts.map(artifact => (
+            <button
+              key={artifact.id}
+              onClick={() => navigate('/artifacts')}
+              className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1.5 text-left transition-colors hover:bg-surface-elevated"
+            >
+              <span className="rounded-sm bg-accent-info/12 px-1 py-0.5 font-mono text-nano text-accent-info">
+                {artifact.type}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-xs text-content-primary">
+                {artifact.title || artifact.type}
+              </span>
+              <ChevronRight className="h-3 w-3 shrink-0 text-content-muted" />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

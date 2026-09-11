@@ -48,8 +48,13 @@ export function useRunDetails(runId: string | null) {
 
 /**
  * 获取运行实例的时间线事件
+ * @param options.refetchInterval 活动运行期间的事件账本轮询（任务控制页 3s）
  */
-export function useRunTimeline(runId: string | null, limit: number = 100) {
+export function useRunTimeline(
+  runId: string | null,
+  limit: number = 100,
+  options?: { refetchInterval?: number | false }
+) {
   return useQuery({
     queryKey: runKeys.timeline(runId || ''),
     queryFn: async () => {
@@ -63,6 +68,7 @@ export function useRunTimeline(runId: string | null, limit: number = 100) {
     staleTime: CACHE_TIMES.CHAT_SESSION.staleTime,
     gcTime: CACHE_TIMES.CHAT_SESSION.gcTime,
     retry: 2,
+    refetchInterval: options?.refetchInterval,
   })
 }
 

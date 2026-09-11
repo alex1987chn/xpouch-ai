@@ -38,6 +38,11 @@ export type TranslationKey =
   | 'expertLabel' | 'durationLabel' | 'artifactTypeLabel' | 'hitlWaitingApproval'
   | 'runCreatedAt' | 'runBack' | 'runDetails' | 'runNotFound' | 'noEvents'
   | 'payloadEmpty' | 'selectEventHint'
+  // 工作台（阶段 2 新 IA）
+  | 'workbenchTitle' | 'strataSearch' | 'groupToday' | 'groupYesterday' | 'groupThisWeek' | 'groupEarlier' | 'strataEmpty'
+  | 'chipAwaiting' | 'chipRunning'
+  | 'canvasArtifacts' | 'canvasGallery' | 'canvasEmpty' | 'canvasGalleryEmpty' | 'openArtifact' | 'backToList'
+  | 'taskControlTitle' | 'backToWorkbench' | 'goToDecide' | 'planCardTitle' | 'planStepCount' | 'relatedArtifacts' | 'workbenchNewHint'
   // 计划审核
   | 'planReviewTitle' | 'tasksPendingConfirm'
   // Artifact 加载态

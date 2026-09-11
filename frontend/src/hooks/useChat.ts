@@ -41,7 +41,15 @@ import {
   useSetInputMessageAction,
 } from '@/hooks/useChatSelectors'
 
-export function useChat() {
+export interface UseChatOptions {
+  /**
+   * 线程 URL 基座：首条消息创建线程后 replace 导航的目标前缀。
+   * 默认 '/chat'（独立聊天页）；工作台传 '/workbench' 实现页内换线程。
+   */
+  threadUrlBase?: string
+}
+
+export function useChat({ threadUrlBase = '/chat' }: UseChatOptions = {}) {
   const navigate = useNavigate()
 
   const inputMessage = useInputMessage()
@@ -53,17 +61,17 @@ export function useChat() {
       // 🔥 修复：保留 isNew 状态，避免触发不必要的 loadConversation
       // 后端已创建会话，标记 isNew: false 表示会话已存在
       if (agentId && agentId !== SYSTEM_AGENTS.DEFAULT_CHAT && agentId !== 'default-chat') {
-        navigate(`/chat/${threadId}?agentId=${agentId}`, { 
+        navigate(`${threadUrlBase}/${threadId}?agentId=${agentId}`, {
           replace: true,
           state: { isNew: false }
         })
       } else {
-        navigate(`/chat/${threadId}`, { 
+        navigate(`${threadUrlBase}/${threadId}`, {
           replace: true,
           state: { isNew: false }
         })
       }
-    }, [navigate]),
+    }, [navigate, threadUrlBase]),
   })
 
   // 2. Get conversation manager

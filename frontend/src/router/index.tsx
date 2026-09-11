@@ -25,7 +25,8 @@ import {
   LibraryPageWrapper,
   CreateAgentPageWrapper,
   EditAgentPageWrapper,
-  UnifiedChatPageWrapper
+  UnifiedChatPageWrapper,
+  WorkbenchPageWrapper
 } from './wrappers'
 import { LoadingFallback } from './components/LoadingFallback'
 
@@ -46,6 +47,15 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <HomePage />
+      },
+      {
+        // 工作台（阶段 2 新 IA，迁移期并行；cutover 时替换 '/' 与旧路由）
+        path: 'workbench',
+        element: <WorkbenchPageWrapper />
+      },
+      {
+        path: 'workbench/:threadId',
+        element: <WorkbenchPageWrapper />
       },
       {
         path: 'library',
