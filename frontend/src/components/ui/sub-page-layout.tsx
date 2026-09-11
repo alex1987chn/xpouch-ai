@@ -76,10 +76,11 @@ export function SubPageLayout({ menu, active, onSelect, children }: SubPageLayou
   )
 }
 
-/** 内容页标题行（17px 粗体 + 右侧插槽，1px 分隔底） */
+/** 内容页标题行（17px 粗体 + 右侧插槽，1px 分隔底）。
+ * 右槽惯例：搜索（w-72 SearchInput）/ 计数 / 入口按钮；窄屏自动换行。 */
 export function SubPageHeader({ title, right }: { title: string; right?: ReactNode }) {
   return (
-    <div className="mb-5 flex items-end justify-between border-b border-border-divider pb-3">
+    <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-3 border-b border-border-divider pb-3">
       <h2 className="text-[17px] font-bold text-content-primary">{title}</h2>
       {right}
     </div>

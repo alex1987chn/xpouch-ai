@@ -8,7 +8,6 @@
  */
 
 import * as React from "react"
-import { Search } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -61,9 +60,10 @@ Input.displayName = "Input"
 /**
  * SearchInput - 统一搜索组件（全站唯一搜索形态）
  *
- * 胶囊外形 + 前置图标 + 页面底色；size 变体：
- * - default（h-10）：内容页搜索条（资源库/管理台分区）
+ * 无图标的纯胶囊（placeholder 即语义）；size 变体：
+ * - default（h-9）：内容页标题行右槽（w-72 由调用方定）
  * - compact（h-8，13px）：面板内/窄栏（会话地层等）
+ * 位置规范：搜索住在标题行右侧，不单独漂一行。
  */
 export interface SearchInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "size"> {
@@ -79,37 +79,29 @@ const SearchInput = React.forwardRef<
 >(({ className, value, onChange, error, size = "default", ...props }, ref) => {
   const compact = size === "compact"
   return (
-    <div className="relative flex w-full items-center">
-      <Search
-        className={cn(
-          "pointer-events-none z-10 text-content-muted",
-          compact ? "left-2.5 h-3.5 w-3.5" : "left-3.5 h-4 w-4"
-        )}
-      />
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          // 布局：胶囊
-          "flex w-full rounded-full",
-          compact ? "h-8 pl-8 pr-3 text-[13px]" : "h-10 pl-10 pr-4 text-sm",
-          // 边框 + Focus
-          "border-theme-input border-border-default bg-surface-page",
-          "focus:border-border-focus focus:outline-none",
-          // 文字
-          "text-content-primary placeholder:text-content-muted",
-          // 过渡
-          "transition-colors duration-150 ease-out",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          // 错误状态
-          error && "border-accent-destructive focus:border-accent-destructive",
-          className
-        )}
-        ref={ref}
-        {...props}
-      />
-    </div>
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn(
+        // 布局：胶囊
+        "flex w-full rounded-full",
+        compact ? "h-8 px-3 text-[13px]" : "h-9 px-4 text-sm",
+        // 边框 + Focus
+        "border-theme-input border-border-default bg-surface-page",
+        "focus:border-border-focus focus:outline-none",
+        // 文字
+        "text-content-primary placeholder:text-content-muted",
+        // 过渡
+        "transition-colors duration-150 ease-out",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        // 错误状态
+        error && "border-accent-destructive focus:border-accent-destructive",
+        className
+      )}
+      ref={ref}
+      {...props}
+    />
   )
 })
 SearchInput.displayName = "SearchInput"

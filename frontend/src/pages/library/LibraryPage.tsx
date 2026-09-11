@@ -51,24 +51,26 @@ export default function LibraryPage() {
         onSelect={key => setActiveTab(key as TabType)}
       >
         <div className="mx-auto max-w-5xl">
-          <SubPageHeader title={t('railLibrary')} />
-
-          {/* 搜索：统一组件，各分区共用 */}
-          <div className="mb-4">
-            <SearchInput
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder={
-                activeTab === 'knowledge'
-                  ? (t('searchKnowledge') || 'Search knowledge base...')
-                  : activeTab === 'templates'
-                    ? (t('searchTemplates') || 'Search templates...')
-                    : activeTab === 'governance'
-                      ? (t('searchTools') || 'Search tools...')
-                      : (t('searchMCPServers') || 'Search MCP servers...')
-              }
-            />
-          </div>
+          <SubPageHeader
+            title={t('railLibrary')}
+            right={
+              <div className="w-72">
+                <SearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder={
+                    activeTab === 'knowledge'
+                      ? (t('searchKnowledge') || 'Search knowledge base...')
+                      : activeTab === 'templates'
+                        ? (t('searchTemplates') || 'Search templates...')
+                        : activeTab === 'governance'
+                          ? (t('searchTools') || 'Search tools...')
+                          : (t('searchMCPServers') || 'Search MCP servers...')
+                  }
+                />
+              </div>
+            }
+          />
 
           <div className="pb-12">
             {activeTab === 'knowledge' && (

@@ -68,6 +68,15 @@ export default function ManagementConsolePage() {
   { key: 'mcp', label: t('mcpManagement'), icon: Plug },
  ]
 
+ // 分区级搜索（仅列表型分区）：住在标题行右槽
+ const sectionSearch: Partial<Record<ConsoleTab, { value: string; set: (v: string) => void; placeholder: string }>> = {
+  governance: { value: governanceQuery, set: setGovernanceQuery, placeholder: t('searchTools') },
+  templates: { value: templateQuery, set: setTemplateQuery, placeholder: t('searchTemplates') },
+  mcp: { value: mcpQuery, set: setMcpQuery, placeholder: t('searchMCPServers') },
+ }
+ const search = sectionSearch[tab]
+ const activeLabel = tabs.find(item => item.key === tab)?.label ?? t('navConsole')
+
  return (
   <SubPageLayout
    menu={tabs}
@@ -76,11 +85,18 @@ export default function ManagementConsolePage() {
   >
    <div className="mx-auto max-w-[1080px]">
     <SubPageHeader
-     title={t('navConsole')}
+     title={activeLabel}
      right={
-      <span className="rounded-full bg-accent-brand/15 px-2 py-0.5 text-micro font-bold text-content-primary">
-       ADMIN
-      </span>
+      <div className="flex items-center gap-3">
+       {search && (
+        <div className="w-72">
+         <SearchInput value={search.value} onChange={search.set} placeholder={search.placeholder} />
+        </div>
+       )}
+       <span className="rounded-full bg-accent-brand/15 px-2 py-0.5 text-micro font-bold text-content-primary">
+        ADMIN
+       </span>
+      </div>
      }
     />
 
@@ -88,42 +104,9 @@ export default function ManagementConsolePage() {
      {tab === 'system' && <SystemStatusSection />}
      {tab === 'experts' && <ExpertAdminPage embedded />}
      {tab === 'model' && <ModelSection />}
-     {tab === 'governance' && (
-      <div className="flex flex-1 flex-col">
-       <div className="mb-4">
-        <SearchInput
-         value={governanceQuery}
-         onChange={setGovernanceQuery}
-         placeholder={t('searchTools')}
-        />
-       </div>
-       <ToolGovernancePanel searchQuery={governanceQuery} canView canEdit />
-      </div>
-     )}
-     {tab === 'templates' && (
-      <div className="flex flex-1 flex-col">
-       <div className="mb-4">
-        <SearchInput
-         value={templateQuery}
-         onChange={setTemplateQuery}
-         placeholder={t('searchTemplates')}
-        />
-       </div>
-       <SkillTemplatePanel searchQuery={templateQuery} canEdit />
-      </div>
-     )}
-     {tab === 'mcp' && (
-      <div className="flex flex-1 flex-col">
-       <div className="mb-4">
-        <SearchInput
-         value={mcpQuery}
-         onChange={setMcpQuery}
-         placeholder={t('searchMCPServers')}
-        />
-       </div>
-       <MCPList searchQuery={mcpQuery} isAdmin />
-      </div>
-     )}
+     {tab === 'governance' && <ToolGovernancePanel searchQuery={governanceQuery} canView canEdit />}
+     {tab === 'templates' && <SkillTemplatePanel searchQuery={templateQuery} canEdit />}
+     {tab === 'mcp' && <MCPList searchQuery={mcpQuery} isAdmin />}
     </div>
    </div>
   </SubPageLayout>

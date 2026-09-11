@@ -91,8 +91,8 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
 
  return (
   <div className="space-y-4">
-   {/* 工具栏：搜索 + 添加按钮 */}
-   <div className="flex items-center gap-3">
+   {/* 工具栏：外置搜索时仅剩添加按钮（右对齐锚定） */}
+    <div className={cn("flex items-center gap-3", isExternalSearch && "justify-end")}>
     {/* 搜索框 - 仅在独立使用时显示 */}
     {!isExternalSearch && (
      <SearchInput
