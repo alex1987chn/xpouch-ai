@@ -47,14 +47,14 @@ export function StatusAvatar({
       {isThinking && (
         <>
           {/* 外圈旋转渐变光环 - 模拟高能运算 */}
-          <div className="absolute inset-[-4px] rounded-full bg-gradient-to-tr from-yellow-500 via-orange-400 to-transparent animate-spin blur-[2px] opacity-70" />
+          <div className="absolute inset-[-4px] rounded-full bg-gradient-to-tr from-accent-brand via-accent-warning to-transparent animate-spin blur-[2px] opacity-70" />
           {/* 内圈脉动光环 */}
-          <div className="absolute inset-[-1px] rounded-full bg-yellow-500/20 animate-pulse" />
+          <div className="absolute inset-[-1px] rounded-full bg-accent-brand/20 animate-pulse" />
         </>
       )}
       {isStreaming && (
         /* 黄色呼吸光环 - 模拟数据传输 */
-        <div className="absolute inset-[-2px] rounded-full bg-yellow-500 animate-pulse blur-sm opacity-50" />
+        <div className="absolute inset-[-2px] rounded-full bg-accent-brand animate-pulse blur-sm opacity-50" />
       )}
       {isError && (
         /* 红色呼吸光环 - 错误状态 */

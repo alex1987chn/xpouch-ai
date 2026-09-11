@@ -11,11 +11,11 @@ export function Toaster() {
         <div
           key={toast.id}
           className={cn(
-            'flex items-center justify-between gap-3 px-4 py-3 rounded-lg shadow-lg',
+            'flex items-center justify-between gap-3 px-4 py-3 rounded-lg shadow-theme-card',
             'min-w-[300px] max-w-md',
             'animate-in slide-in-from-bottom-2',
             toast.variant === 'destructive'
-              ? 'bg-status-offline text-white'
+              ? 'bg-status-offline text-content-inverted'
               : 'bg-surface-card text-content-primary'
           )}
         >

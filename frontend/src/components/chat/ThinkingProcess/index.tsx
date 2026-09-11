@@ -78,7 +78,7 @@ const typeIcons: Record<NonNullable<ThinkingStep['type']>, React.ElementType> = 
 const StatusIcon = ({ status }: { status: ThinkingStep['status'] }) => {
   switch (status) {
     case 'running':
-      return <Loader2 className="w-4 h-4 text-yellow-500 animate-spin" />
+      return <Loader2 className="w-4 h-4 text-accent-brand animate-spin" />
     case 'completed':
       return <CheckCircle2 className="w-4 h-4 text-status-online" />
     case 'failed':
@@ -127,7 +127,7 @@ const StepItem = ({ step, index }: StepItemProps) => {
       style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
       className={cn(
         "stagger-item relative flex items-start gap-3 p-3 rounded-lg border",
-        step.status === 'running' && "bg-yellow-500/5 border-yellow-500/20",
+        step.status === 'running' && "bg-accent-brand/5 border-accent-brand/20",
         step.status === 'completed' && "bg-status-online/5 border-status-online/20",
         step.status === 'failed' && "bg-status-offline/5 border-status-offline/20",
         step.status === 'pending' && "bg-muted/30 border-border"
@@ -282,7 +282,7 @@ export default function ThinkingProcess({ steps, isThinking, className, totalSte
             ({completedSteps}/{totalSteps})
           </span>
           {runningSteps > 0 && (
-            <span className="flex items-center gap-1 text-xs text-yellow-600">
+            <span className="flex items-center gap-1 text-xs text-accent-warning">
               <Loader2 className="w-3 h-3 animate-spin" />
               {t('thinkingInProgress')}
             </span>
