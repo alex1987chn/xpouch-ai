@@ -12,20 +12,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
     <script>
       // 防止主题闪烁：在 React 加载前应用主题
+      // v3.5 主题重组：soft（默认）/ dark / bauhaus；旧值 light/kyoto → soft
       (function() {
         try {
           var saved = localStorage.getItem('xpouch-theme');
-          var theme = 'light';
+          var theme = 'soft';
           if (saved) {
             try {
               var parsed = JSON.parse(saved);
               var storedTheme = parsed.theme || parsed.state?.theme;
-              // 迁移旧主题值
-              if (storedTheme === 'bauhaus' || storedTheme === 'cyberpunk') {
-                theme = 'light';
-              } else if (storedTheme === 'dark') {
+              if (storedTheme === 'dark') {
                 theme = 'dark';
+              } else if (storedTheme === 'bauhaus') {
+                theme = 'bauhaus';
               }
+              // soft / light / kyoto / 其他历史值 → soft（默认）
             } catch (e) {
               // 旧格式直接是字符串
               if (saved === 'dark') theme = 'dark';
@@ -34,7 +35,7 @@
             theme = 'dark';
           }
           document.documentElement.setAttribute('data-theme', theme);
-          document.documentElement.style.colorScheme = theme;
+          document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
         } catch (e) {}
       })();
     </script>

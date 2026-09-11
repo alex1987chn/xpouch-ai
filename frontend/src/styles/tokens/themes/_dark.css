@@ -1,65 +1,76 @@
 /**
  * ============================================
- * THEME: Dark (Bauhaus Dark)
+ * THEME: Dark (暖暗 · Warm Dark)
  * ============================================
+ * 暖炭黑基底（非纯黑）+ 柔和材质
+ * 材质变量（边框宽/阴影/位移/圆角）从 :root 柔和默认继承，
+ * 此处只覆盖颜色与背景图案
  */
 
 [data-theme="dark"] {
     /* ========================================
-       Typography - 字体（Bauhaus 风格）
+       Background - 微点阵（几乎不可见的暖纹理）
        ======================================== */
-    --font-sans: 'Geist', system-ui, sans-serif;
-    --font-display: 'Space Grotesk', 'Geist', system-ui, sans-serif;
-    --font-mono: 'Space Mono', monospace;
-    
-    /* 字重 - Dark 主题使用相同字重 */
-    --font-weight-display: 700;
-
-    /* Bauhaus 点阵背景（暗色版）- 使用 content-muted */
-    --bg-pattern: radial-gradient(rgb(120 120 120 / 0.15) 1.5px, transparent 1.5px);
-    --bg-pattern-size: 32px 32px;
-
-    /* Color Tokens */
-    --surface-page: 28 28 30;
-    --surface-card: 44 44 46;
-    --surface-elevated: 58 58 60;
-    --surface-input: 44 44 46;
-    --surface-overlay: 0 0 0;
-    --surface-scrim: 0 0 0;
-
-    --content-primary: 250 250 250;
-    --content-secondary: 170 170 170;
-    --content-muted: 150 150 150;  /* page 5.8:1 / card 4.7:1，AA 达标（WCAG 实测） */
-    --content-inverted: 28 28 30;
-    --content-disabled: 80 80 80;
-
-    --border-default: 80 80 80;
-    --border-hover: 250 204 21;    /* yellow-400 - hover 亮黄 */
-    --border-focus: 234 179 8;     /* amber-500 - focus 品牌黄 */
-    --border-divider: 58 58 60;
-    --border-disabled: 44 44 46;
-
-    --accent-brand: 234 179 8;     /* amber-500 - 品牌深黄 */
-    --accent-hover: 251 191 36;    /* amber-400 - hover 次色（比 brand 稍亮） */
-    --accent-active: 202 138 4;    /* amber-600 - active 深黄（明显深于 brand） */
-    --accent-subtle: 66 57 25;
-    --accent-destructive: 239 68 68;
-    --accent-success: 34 197 94;
-    --accent-warning: 249 115 22;
-    --accent-info: 59 130 246;
-
-    /* 阴影 - 使用深灰而非纯黑，更柔和 */
-    --shadow-color: 28 28 30;  /* surface-page 同色 */
-    --shadow-opacity: 0.6;
-
-    /* Radius/Animation 继承 _semantic.css 默认值 */
-
-    /* 边框宽度继承 _layout.css 默认值 */
+    --bg-pattern: radial-gradient(rgb(236 231 222 / 0.03) 1px, transparent 1px);
+    --bg-pattern-size: 24px 24px;
 
     /* ========================================
-       阴影/变换系统
-       Dark 主题通过 --shadow-color 和 --shadow-opacity 控制
-       继承 _layout.css 默认值，只需覆盖 focus 透明度
+       Surface - 暖炭黑系
        ======================================== */
-    --shadow-focus: 0 0 0 4px rgb(var(--accent-brand) / 0.3);
+    --surface-page: 25 23 20;              /* #191714 - 暖炭黑（非纯黑） */
+    --surface-card: 32 29 25;              /* #201d19 */
+    --surface-elevated: 38 34 30;          /* #26221e */
+    --surface-input: 32 29 25;
+    --surface-overlay: 12 10 9;
+    --surface-scrim: 12 10 9;
+
+    /* ========================================
+       Content - 暖白文字
+       ======================================== */
+    --content-primary: 236 231 222;        /* #ece7de - 暖白 */
+    --content-secondary: 168 160 148;      /* #a8a094 */
+    --content-muted: 122 114 101;          /* #7a7265 */
+    --content-inverted: 236 231 222;       /* 暗底遮罩上的暖白 */
+    --content-disabled: 90 84 76;
+
+    /* ========================================
+       Border - 预混合浅色细线（暗底 ~10% 暖白）
+       ======================================== */
+    --border-default: 46 42 36;            /* #2e2a24 */
+    --border-hover: 62 57 49;
+    --border-focus: 74 68 58;
+    --border-divider: 40 36 31;
+    --border-disabled: 46 42 36;
+
+    /* ========================================
+       Accent - 品牌黄（暗底上更亮一档）
+       ======================================== */
+    --accent-brand: 234 179 8;             /* yellow-500 */
+    --accent-hover: 251 191 36;            /* yellow-400 */
+    --accent-active: 202 138 4;            /* amber-600 */
+    --accent-subtle: 54 44 18;             /* 暗色浅黄底 */
+    --accent-ink: 32 29 25;                /* 黄底上的深字 */
+    --accent-destructive: 215 110 100;     /* 提亮的陶土红 */
+    --accent-success: 143 176 134;         /* 提亮鼠尾草 */
+    --accent-warning: 217 160 98;          /* 提亮暖橙 */
+    --accent-info: 127 165 192;            /* 提亮雾蓝 */
+
+    /* ========================================
+       Status / Shadow 基色
+       ======================================== */
+    --status-online: 143 176 134;
+    --status-offline: 215 110 100;
+    --status-busy: 217 160 98;
+    --status-info: 127 165 192;
+
+    --shadow-color: 0 0 0;
+    --shadow-opacity: 0.4;
+
+    /* 暗底上漫射阴影需要更深才可读（局部覆盖，其余继承 :root） */
+    --shadow-card: 0 1px 3px rgb(0 0 0 / 0.28);
+    --shadow-card-hover: 0 4px 12px rgb(0 0 0 / 0.38);
+    --shadow-card-accent: 0 4px 12px rgb(var(--accent-brand) / 0.14);
+    --shadow-dropdown: 0 4px 16px rgb(0 0 0 / 0.42);
+    --shadow-modal: 0 8px 32px rgb(0 0 0 / 0.5);
+    --shadow-focus: 0 0 0 2px rgb(var(--accent-brand) / 0.2);
 }

@@ -10,7 +10,6 @@ import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import LoginDialog from '@/components/auth/LoginDialog'
 import { useAppUISelectors } from '@/hooks'
 import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher'
-import { useThemeStore } from '@/store/themeStore'
 
 import { useChatStore } from '@/store/chatStore'
 import { useQueryClient } from '@tanstack/react-query'
@@ -65,7 +64,6 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
   const navigate = useNavigate()
   const location = useLocation()
   const { sidebar, dialogs } = useAppUISelectors()
-  const { theme } = useThemeStore()
 
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -126,15 +124,13 @@ export default function AppLayout({ children, hideMobileMenu = false }: AppLayou
         'h-[100dvh]'
       )}
     >
-      {/* 背景图案 - 主题可控（kyoto 渐变定义于主题 token --bg-app，其余主题用点阵） */}
+      {/* 背景图案 - 主题变量驱动（soft=无、暖暗=微点阵、bauhaus=点阵），定义于各主题 token */}
       <div
-        className={cn(
-          "fixed inset-0 pointer-events-none bg-surface-page",
-          theme !== 'kyoto' && "bg-dot-pattern"
-        )}
+        className="fixed inset-0 pointer-events-none bg-surface-page"
         style={{
           zIndex: Z_INDEX.BACKGROUND,
-          ...(theme === 'kyoto' && { backgroundImage: 'var(--bg-app)' })
+          backgroundImage: 'var(--bg-pattern)',
+          backgroundSize: 'var(--bg-pattern-size)'
         }}
         aria-hidden="true"
       />

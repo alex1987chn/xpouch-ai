@@ -3,19 +3,20 @@
  * SEMANTIC DESIGN TOKENS - RGB Format
  * 语义化设计变量 - 支持透明度修饰符
  * ============================================
- * 
+ *
  * 命名规范：
  * --{类别}-{用途}：描述用途而非颜色值
  * 格式：纯数字 RGB（如 "255 255 255"），非十六进制
- * 
+ *
  * 为什么用 RGB 数字？
  * Tailwind 的 <alpha-value> 占位符需要 rgb(R G B / <alpha-value>) 格式
  * 这样 bg-surface-card/50 这样的透明度修饰符才能正常工作
  */
 
 /* ============================================
-   DEFAULT TOKENS (Bauhaus Theme)
-   默认主题：包豪斯工业风
+   DEFAULT TOKENS (Soft Theme · 柔和亮)
+   默认主题：暖中性 + 漫射阴影（2026 材质扶正，蓝本 docs/design/）
+   Bauhaus 原视觉保留在 themes/_bauhaus.css（可选主题，沉底）
    ============================================ */
 :root {
     /* ------------------------------------------
@@ -25,7 +26,7 @@
     --font-sans: 'Geist', system-ui, sans-serif;  /* 现代几何无衬线 - 正文 */
     --font-display: 'Space Grotesk', 'Geist', system-ui, sans-serif;  /* 几何宽体 - Logo/标题 */
     --font-mono: 'Space Mono', monospace;  /* 工业等宽字体 */
-    
+
     /* 字重语义化 */
     --font-weight-regular: 400;
     --font-weight-medium: 500;
@@ -35,63 +36,64 @@
 
     /* ------------------------------------------
        Surface - 表面层级
-       魏玛纸张色系
+       象牙暖纸色系（源自 Kyoto，预混合避免透明度运算）
        ------------------------------------------ */
-    --surface-page: 232 232 227;           /* #e8e8e3 - 暖灰纸张 */
-    --surface-card: 255 255 255;           /* #ffffff - 纯白卡片 */
-    --surface-elevated: 248 248 248;       /* #f8f8f8 - 微凸表面 */
-    --surface-input: 255 255 255;          /* #ffffff - 输入框背景 */
-    --surface-overlay: 15 15 15;           /* #0f0f0f - 遮罩层 */
-    --surface-scrim: 15 15 15;             /* #0f0f0f - 模态背景遮罩 */
+    --surface-page: 250 247 242;           /* #faf7f2 - 象牙页面底 */
+    --surface-card: 255 253 250;           /* #fffdfa - 暖白卡片 */
+    --surface-elevated: 255 255 253;       /* 微凸表面 */
+    --surface-input: 255 253 250;          /* 输入框背景 */
+    --surface-overlay: 60 55 50;           /* 遮罩层（暖深褐） */
+    --surface-scrim: 40 38 35;             /* 模态背景遮罩 */
 
     /* ------------------------------------------
        Content - 内容颜色
-       德绍印刷黑
+       墨色系
        ------------------------------------------ */
-    --content-primary: 15 15 15;           /* #0f0f0f - 主文字 */
-    --content-secondary: 85 85 85;         /* #555555 - 次要文字 */
-    --content-muted: 100 100 100;          /* #646464 - 辅助文字（白卡对比度 5.9:1，页面底 4.8:1，AA 达标） */
-    --content-inverted: 255 255 255;       /* #ffffff - 反色文字 */
-    --content-disabled: 200 200 200;       /* #c8c8c8 - 禁用状态 */
+    --content-primary: 45 42 38;           /* #2d2a26 - 主文字（墨色） */
+    --content-secondary: 111 106 98;       /* #6f6a62 - 次要文字 */
+    --content-muted: 160 155 148;          /* 辅助文字 */
+    --content-inverted: 250 247 242;       /* 反色文字（深色遮罩上） */
+    --content-disabled: 195 190 183;       /* 禁用状态 */
 
     /* ------------------------------------------
        Border - 边界颜色
-       包豪斯粗黑边
+       银鼠预混合色系（柔和细线，非纯黑）
        ------------------------------------------ */
-    --border-default: 15 15 15;            /* #0f0f0f - 标志性粗黑边 */
-    --border-hover: 250 204 21;            /* yellow-400 - hover 亮黄 */
-    --border-focus: 250 204 21;            /* yellow-400 - focus 品牌黄 */
-    --border-divider: 228 228 231;         /* #e4e4e7 - 分割线 */
-    --border-disabled: 200 200 200;        /* #c8c8c8 - 禁用边框 */
+    --border-default: 210 205 198;         /* #d2cdc6 - 银鼠 */
+    --border-hover: 185 178 168;           /* hover 加深一档 */
+    --border-focus: 175 165 150;           /* focus 深暖线 */
+    --border-divider: 232 228 222;         /* 分割线 */
+    --border-disabled: 220 215 208;        /* 禁用边框 */
 
     /* ------------------------------------------
        Accent - 品牌/强调色
-       包豪斯三原色：黄 #facc15 / 蓝 #2563eb / 红 #ef4444
+       品牌黄（yellow-500 档，象牙底上对比达标）
+       强调色稀缺原则：只出现在主 CTA 与"待裁决"
        ------------------------------------------ */
-    --accent-brand: 250 204 21;            /* yellow-400 - 品牌黄 */
-    --accent-hover: 251 191 36;            /* amber-400 - hover 次色 */
-    --accent-active: 245 158 11;           /* amber-500 - active 深黄 */
+    --accent-brand: 234 179 8;             /* yellow-500 - 品牌黄 */
+    --accent-hover: 251 191 36;            /* yellow-400 - hover 次色 */
+    --accent-active: 202 138 4;            /* amber-600 - active 深黄 */
     --accent-subtle: 254 249 195;          /* #fef9c3 - 浅黄背景 */
-    --accent-destructive: 239 68 68;       /* #ef4444 - 包豪斯红 */
-    --accent-success: 34 197 94;           /* #22c55e - 绿 */
-    --accent-warning: 249 115 22;          /* #f97316 - 橙 */
-    --accent-info: 37 99 235;              /* #2563eb - 包豪斯蓝 */
+    --accent-ink: 45 42 38;                /* 黄底上的文字色（深墨） */
+    --accent-destructive: 190 85 75;       /* 陶土红 - 危险才红 */
+    --accent-success: 120 150 118;         /* 鼠尾草绿 */
+    --accent-warning: 202 138 60;          /* 暖橙 */
+    --accent-info: 130 160 180;            /* 雾蓝 */
 
     /* ------------------------------------------
-       Shadow - 硬阴影系统
-       Bauhaus 标志性硬边阴影
+       Shadow - 阴影颜色
        ------------------------------------------ */
-    --shadow-color: 15 15 15;              /* #0f0f0f - 纯黑阴影 */
-    --shadow-opacity: 1;                   /* 完全不透明 */
+    --shadow-color: 45 42 38;              /* 墨色阴影基 */
+    --shadow-opacity: 0.08;
 
     /* ------------------------------------------
        Status - 状态指示色
        用于在线/离线/错误/警告等状态
        ------------------------------------------ */
-    --status-online: 34 197 94;            /* #22c55e - 在线/成功 */
-    --status-offline: 239 68 68;           /* #ef4444 - 离线/错误 */
-    --status-busy: 249 115 22;             /* #f97316 - 忙碌/警告 */
-    --status-info: 37 99 235;              /* #2563eb - 信息/处理中 */
+    --status-online: 120 150 118;          /* 在线/成功 */
+    --status-offline: 190 85 75;           /* 离线/错误 */
+    --status-busy: 202 138 60;             /* 忙碌/警告 */
+    --status-info: 130 160 180;            /* 信息/处理中 */
 
     /* ------------------------------------------
        Animation - 动画时长
@@ -103,12 +105,13 @@
     --duration-slower: 500ms;
 
     /* ------------------------------------------
-       Radius - 包豪斯无圆角
-       ------------------------------------------ */
-    --radius-sm: 0;
-    --radius-md: 0;
-    --radius-lg: 0;
-    --radius-xl: 0;
+       Radius - 圆角阶梯（中间档）
+       嵌套同心圆规范：内圆角 = 外圆角 − 内边距
+       ============================================ */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 18px;
     --radius-none: 0;
     --radius-full: 9999px;
 

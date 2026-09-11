@@ -94,3 +94,6 @@ frontend/vite.config.d.ts
 
 # 本地归档（历史评审报告等）
 archive/
+
+# 设计参考（本地 only，UI 改造实现完成后归档到 archive/）
+docs/design/

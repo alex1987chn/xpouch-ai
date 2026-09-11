@@ -91,6 +91,7 @@ const config: Config = {
           hover: "rgb(var(--accent-hover) / <alpha-value>)",
           active: "rgb(var(--accent-active) / <alpha-value>)",
           subtle: "rgb(var(--accent-subtle) / <alpha-value>)",
+          ink: "rgb(var(--accent-ink) / <alpha-value>)",
           destructive: "rgb(var(--accent-destructive) / <alpha-value>)",
           success: "rgb(var(--accent-success) / <alpha-value>)",
           warning: "rgb(var(--accent-warning) / <alpha-value>)",
@@ -123,7 +124,7 @@ const config: Config = {
         
         primary: {
           DEFAULT: "rgb(var(--accent-brand) / <alpha-value>)",
-          foreground: "rgb(var(--content-inverted) / <alpha-value>)",
+          foreground: "rgb(var(--accent-ink) / <alpha-value>)",
         },
         
         secondary: {
@@ -165,8 +166,6 @@ const config: Config = {
         xl: "var(--radius-xl)",
         none: "0",
         full: "9999px",
-        // 旧兼容
-        'bauhaus': '0',
       },
 
       /* ============================================

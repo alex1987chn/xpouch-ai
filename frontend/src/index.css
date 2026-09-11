@@ -14,19 +14,15 @@
    1. CSS 导入（必须放在最顶部）
    ============================================ */
 
-/* 语义变量定义 - 默认 Bauhaus 主题 */
+/* 语义变量定义 - 默认柔和主题（Soft，暖中性 + 漫射阴影） */
 @import './styles/tokens/_semantic.css';
 
 /* 布局与视觉风格变量 */
 @import './styles/tokens/_layout.css';
 
-/* 主题覆盖 - 按优先级排序 */
-@import './styles/tokens/themes/_light.css';
+/* 主题覆盖 - 暖暗 / Bauhaus（怀旧选项，沉底） */
 @import './styles/tokens/themes/_dark.css';
-@import './styles/tokens/themes/_kyoto.css';
-
-/* 兼容性覆盖（用于旧组件） */
-@import './styles/tokens/themes/_kyoto-compat.css';
+@import './styles/tokens/themes/_bauhaus.css';
 
 /* ============================================
    2. Tailwind v4（通过 @config 挂载 tailwind.config.ts，保持 v3 主题 token 兼容）
@@ -46,14 +42,7 @@
    ============================================ */
 
 @layer utilities {
-  /* 背景图案 */
-  .bg-dot-pattern {
-    background-image: radial-gradient(rgb(var(--content-muted) / 0.3) 1.5px, transparent 1.5px);
-    background-size: 32px 32px;
-  }
-
-  /* ============================================
-     页面/列表入场动效（v3.4.4 C 批次）
+  /* 页面/列表入场动效（v3.4.4 C 批次）
      - 干脆利落：150-250ms、无弹跳曲线（Bauhaus 原则）
      - 全局 prefers-reduced-motion 规则会将其压到 0.01ms
      - stagger-item 配合内联 animation-delay 做列表错峰（建议 40ms 步长，封顶 8 项）
@@ -89,19 +78,19 @@
 }
 
 @layer base {
-  /* 根元素默认使用 light color-scheme */
+  /* 根元素默认使用 soft（柔和亮）color-scheme */
   :root {
     color-scheme: light;
   }
-  
-  /* Light 主题 */
-  [data-theme="light"] {
-    color-scheme: light;
-  }
-  
-  /* Dark 主题（Bauhaus 暗色版） */
+
+  /* 暖暗主题 */
   [data-theme="dark"] {
     color-scheme: dark;
+  }
+
+  /* Bauhaus 怀旧主题（亮色） */
+  [data-theme="bauhaus"] {
+    color-scheme: light;
   }
 
   /* 确保 html 和 body 使用主题变量 */
@@ -185,23 +174,23 @@
     color: rgb(var(--content-inverted));
   }
 
-  /* 滚动条基础样式 */
+  /* 滚动条基础样式（极简细条，源自 Kyoto 主题的全局化） */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: rgb(var(--surface-page));
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgb(var(--content-muted) / 0.3);
-    border-radius: 4px;
+    background: rgb(var(--content-muted) / 0.25);
+    border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--content-muted) / 0.5);
+    background: rgb(var(--content-muted) / 0.45);
   }
 }
 

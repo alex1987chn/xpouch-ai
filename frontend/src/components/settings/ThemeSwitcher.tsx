@@ -2,13 +2,13 @@
  * ============================================
  * ThemeSwitcher - 主题切换组件
  * ============================================
- * 
- * 支持 3 个主题：Light / Dark / Kyoto
+ *
+ * 支持 3 个主题：Soft（柔和亮）/ Dark（暖暗）/ Bauhaus（怀旧，沉底）
  * 点击浮动按钮展开主题选择面板
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { Sun, Moon, Check, Leaf } from 'lucide-react'
+import { Sun, Moon, Check, Shapes } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useThemeStore, THEMES, type Theme } from '@/store/themeStore'
 
@@ -21,18 +21,18 @@ interface ThemeSwitcherProps {
  * 主题图标映射
  */
 const themeIcons: Record<Theme, React.ReactNode> = {
-  light: <Sun className="w-4 h-4" />,
+  soft: <Sun className="w-4 h-4" />,
   dark: <Moon className="w-4 h-4" />,
-  kyoto: <Leaf className="w-4 h-4" />,
+  bauhaus: <Shapes className="w-4 h-4" />,
 }
 
 /**
  * 主题预览色块（展示主题的代表色）
  */
 const themePreview: Record<Theme, string> = {
-  light: 'bg-accent-brand border-2 border-content-primary',
+  soft: 'bg-accent-brand border-2 border-border-default',
   dark: 'bg-surface-card border-2 border-border-default',
-  kyoto: 'bg-[rgb(var(--accent-brand))] border-2 border-border-default',
+  bauhaus: 'bg-accent-brand border-2 border-content-primary',
 }
 
 /**

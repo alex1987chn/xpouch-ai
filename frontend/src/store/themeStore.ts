@@ -2,13 +2,13 @@
  * ============================================
  * Theme Store - 主题状态管理
  * ============================================
- * 
+ *
  * 功能：
- * 1. 主题切换（light/dark）- 基于 Bauhaus 设计风格
+ * 1. 主题切换（soft/dark/bauhaus）- 柔和为默认，Bauhaus 为怀旧选项
  * 2. 主题持久化（localStorage）
  * 3. 系统主题监听（prefers-color-scheme）
  * 4. 主题切换动画过渡
- * 
+ *
  * 使用方式：
  * const { theme, setTheme, toggleTheme } = useThemeStore()
  */
@@ -17,8 +17,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { logger } from '@/utils/logger'
 
-/** 支持的主题类型 - Bauhaus + Kyoto */
-export type Theme = 'light' | 'dark' | 'kyoto'
+/** 支持的主题类型 - 柔和（默认）/ 暖暗 / Bauhaus（怀旧选项，沉底） */
+export type Theme = 'soft' | 'dark' | 'bauhaus'
 
 /** 主题配置元数据 */
 export interface ThemeMeta {
@@ -28,25 +28,25 @@ export interface ThemeMeta {
   icon: string
 }
 
-/** 可用主题 - Bauhaus + Kyoto */
+/** 可用主题 - 柔和 + 暖暗 + Bauhaus（沉底） */
 export const THEMES: ThemeMeta[] = [
   {
-    id: 'light',
-    name: 'Light',
-    description: 'Bauhaus 明亮主题 - 粗边框、硬阴影',
+    id: 'soft',
+    name: 'Soft',
+    description: '柔和亮色 - 暖中性、漫射阴影、细边框',
     icon: 'Sun'
   },
   {
     id: 'dark',
     name: 'Dark',
-    description: 'Bauhaus 暗黑主题 - 夜间护眼',
+    description: '暖暗色 - 暖炭黑基底，夜间护眼',
     icon: 'Moon'
   },
   {
-    id: 'kyoto',
-    name: 'Kyoto',
-    description: '京都日系 - 东方非对称美学',
-    icon: 'Cherry'
+    id: 'bauhaus',
+    name: 'Bauhaus',
+    description: '包豪斯怀旧 - 粗边框、硬阴影、直角',
+    icon: 'Shapes'
   }
 ]
 
@@ -99,9 +99,9 @@ function applyTheme(theme: Theme): void {
  */
 function getSystemTheme(): Theme {
   if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'soft'
   }
-  return 'light'
+  return 'soft'
 }
 
 let mediaQueryList: MediaQueryList | null = null
@@ -122,7 +122,7 @@ function ensureSystemThemeListener(setThemeFromSystem: (theme: Theme) => void, s
       return
     }
 
-    const newTheme: Theme = event.matches ? 'dark' : 'light'
+    const newTheme: Theme = event.matches ? 'dark' : 'soft'
     applyTheme(newTheme)
     setThemeFromSystem(newTheme)
   }
@@ -136,18 +136,20 @@ function ensureSystemThemeListener(setThemeFromSystem: (theme: Theme) => void, s
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      // 默认：Bauhaus 明亮主题
-      theme: 'light',
+      // 默认：柔和亮主题
+      theme: 'soft',
       followSystem: false,
-      
+
       /**
        * 修复旧主题值（迁移逻辑）
-       * 将 bauhaus/cyberpunk/glass 转换为 light/dark
+       * v3.5 主题重组：light/kyoto → soft（新默认体验即改版意图），
+       * 历史遗留 bauhaus/cyberpunk/glass → soft
        */
       _migrateTheme: () => {
         const currentTheme = get().theme as string
-        if (currentTheme === 'bauhaus' || currentTheme === 'cyberpunk' || currentTheme === 'glass') {
-          const newTheme: Theme = 'light'
+        const validThemes: Theme[] = ['soft', 'dark', 'bauhaus']
+        if (!validThemes.includes(currentTheme as Theme)) {
+          const newTheme: Theme = 'soft'
           applyTheme(newTheme)
           set({ theme: newTheme })
           logger.info('[ThemeStore] 已迁移旧主题:', currentTheme, '->', newTheme)
@@ -156,11 +158,11 @@ export const useThemeStore = create<ThemeState>()(
 
       /**
        * 获取下一个主题（用于循环切换）
-       * Light -> Dark -> Kyoto -> Light
+       * Soft -> Dark -> Bauhaus -> Soft
        */
       _getNextTheme: (): Theme => {
         const currentTheme = get().theme
-        const themeOrder: Theme[] = ['light', 'dark', 'kyoto']
+        const themeOrder: Theme[] = ['soft', 'dark', 'bauhaus']
         const currentIndex = themeOrder.indexOf(currentTheme)
         const nextIndex = (currentIndex + 1) % themeOrder.length
         return themeOrder[nextIndex]
@@ -183,7 +185,7 @@ export const useThemeStore = create<ThemeState>()(
       },
 
       /**
-       * 切换主题（Light -> Dark -> Kyoto -> Light）
+       * 切换主题（Soft -> Dark -> Bauhaus -> Soft）
        */
       toggleTheme: () => {
         const nextTheme = get()._getNextTheme()
