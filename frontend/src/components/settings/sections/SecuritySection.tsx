@@ -73,7 +73,7 @@ export function SecuritySection() {
               onChange={(e) => setOldPassword(e.target.value)}
               placeholder={t('oldPasswordPlaceholder')}
               disabled={isSettingPassword}
-              className="w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+              className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2.5 text-sm transition-colors focus:border-border-focus focus:outline-none"
             />
           )}
           <input
@@ -87,9 +87,9 @@ export function SecuritySection() {
             }}
             placeholder={t('newPasswordPlaceholder')}
             disabled={isSettingPassword}
-            className="w-full px-3 py-2.5 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+            className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2.5 text-sm transition-colors focus:border-border-focus focus:outline-none"
           />
-          <p className="text-micro text-content-secondary opacity-60">
+          <p className="text-[11.5px] text-content-muted">
             {t('accountSecurityDesc')}
           </p>
           <button

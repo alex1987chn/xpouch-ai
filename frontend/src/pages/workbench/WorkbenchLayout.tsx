@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from '@/i18n'
-import { LayoutGrid, Layers, ShieldCheck } from 'lucide-react'
+import { LayoutGrid, Layers, Settings } from 'lucide-react'
 
 import { useUserStore } from '@/store/userStore'
 import { useAppUISelectors } from '@/hooks'
@@ -156,7 +156,7 @@ export default function WorkbenchLayout() {
           {([
             { key: 'work', icon: LayoutGrid, label: t('workbenchTitle'), to: '/workbench', active: onWorkbench },
             { key: 'lib', icon: Layers, label: t('railLibrary'), to: '/library', active: location.pathname.startsWith('/library') },
-            ...(isAdmin ? [{ key: 'admin', icon: ShieldCheck, label: t('navConsole'), to: '/admin/console', active: location.pathname.startsWith('/admin') }] : []),
+            ...(isAdmin ? [{ key: 'admin', icon: Settings, label: t('navConsole'), to: '/admin/console', active: location.pathname.startsWith('/admin') }] : []),
           ] as const).map(({ key, icon: Icon, label, to, active }) => (
             <button
               key={key}

@@ -100,7 +100,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto bauhaus-scrollbar px-5 py-5 space-y-6">
+      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
         {/* 头像设置 */}
         <section>
           <div className="flex items-center gap-2 mb-3">
@@ -112,7 +112,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
           <div className="flex items-start gap-4">
             {/* 头像预览 */}
             <div className="relative shrink-0">
-              <div className="w-20 h-20 border-theme-card border-border-default bg-surface-page flex items-center justify-center overflow-hidden">
+              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-border-divider bg-surface-page">
                 {avatarPreview ? (
                   <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -136,7 +136,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
 
             {/* 头像操作按钮 */}
             <div className="flex flex-col gap-2 flex-1">
-              <label className="flex items-center justify-center gap-2 px-3 py-2 border-theme-button border-border-default bg-surface-page cursor-pointer hover:bg-surface-card transition-colors">
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-full border border-border-divider bg-surface-page px-4 py-2 transition-colors hover:border-border-hover hover:text-content-primary">
                 <Upload className="w-4 h-4" />
                 <span className="text-xs font-bold">{t('uploadAvatar')}</span>
                 <input
@@ -149,7 +149,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
               {avatarPreview && (
                 <button
                   onClick={handleRemoveAvatar}
-                  className="flex items-center justify-center gap-2 px-3 py-2 border-theme-button border-status-offline/50 text-status-offline hover:bg-status-offline/10 transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-full border border-accent-destructive/30 px-4 py-2 text-accent-destructive transition-colors hover:bg-accent-destructive/10"
                 >
                   <X className="w-4 h-4" />
                   <span className="text-xs font-bold">{t('removeAvatar')}</span>
@@ -157,7 +157,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
               )}
             </div>
           </div>
-          <p className="text-micro text-content-secondary mt-2 opacity-60">
+          <p className="mt-2 text-[11.5px] text-content-muted">
             {t('avatarHint')}
           </p>
         </section>
@@ -181,28 +181,28 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
               onChange={(e) => setUsername(e.target.value)}
               placeholder={t('usernamePlaceholder')}
               maxLength={20}
-              className="w-full pl-10 pr-3 py-2.5 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+              className="w-full rounded-md border-theme-input border-border-default bg-surface-page py-2.5 pl-10 pr-3 text-sm transition-colors focus:border-border-focus focus:outline-none"
             />
           </div>
-          <p className="text-micro text-content-secondary mt-2 opacity-60">
+          <p className="mt-2 text-[11.5px] text-content-muted">
             {t('usernameHint')}
           </p>
         </section>
       </div>
 
       {/* 底部按钮 */}
-      <div className="flex gap-0 border-t border-border-divider shrink-0">
+      <div className="flex justify-end gap-2 border-t border-border-divider px-6 py-3.5 shrink-0">
         <button
           onClick={onClose}
           disabled={isSaving}
-          className="flex-1 py-3 text-sm font-bold border-r border-border-divider hover:bg-surface-page transition-colors disabled:opacity-50"
+          className="rounded-full border border-border-divider bg-surface-page px-4 py-2 text-[13px] font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
         >
           {t('cancel')}
         </button>
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="flex-1 rounded-full border border-border-divider bg-accent-brand py-2.5 text-sm font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
+          className="rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-[13px] font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
         >
           {isSaving ? (
             <span className="flex items-center justify-center gap-2">
