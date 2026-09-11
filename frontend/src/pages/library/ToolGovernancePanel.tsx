@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Check, Save, ShieldAlert } from 'lucide-react'
+import { Check, Save, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { PermissionLockCard } from '@/components/ui/lock-card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -58,6 +58,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
  const [draft, setDraft] = useState<PolicyDraft | null>(null)
  const [isLoading, setIsLoading] = useState(true)
  const [isSaving, setIsSaving] = useState(false)
+ const [editing, setEditing] = useState(false)
 
  useEffect(() => {
   tRef.current = t
@@ -163,6 +164,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
  const handleSelect = (policy: ToolPolicyRecord) => {
   setSelectedKey(`${policy.source}:${policy.tool_name}`)
   setDraft(draftFromPolicy(policy))
+  setEditing(true)
  }
 
  const handleSave = async () => {
@@ -203,78 +205,53 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
  }
 
  if (isLoading) {
-  // 与下方两栏布局同构：左侧工具列表 + 右侧详情
   return (
-   <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-    <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
-     <div className="border-b border-border-divider px-4 py-3">
-      <Skeleton className="h-3.5 w-32" />
-     </div>
-     <div className="p-3 space-y-2">
-      {Array.from({ length: 6 }, (_, i) => (
-       <Skeleton key={i} className="h-14 w-full" />
-      ))}
-     </div>
-    </div>
-    <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card p-4 space-y-3">
-     <Skeleton className="h-5 w-1/3" />
-     <Skeleton className="h-3 w-2/3" />
-     <Skeleton className="h-40 w-full" />
-     <Skeleton className="h-3 w-1/2" />
-    </div>
+   <div className="space-y-2.5">
+    {Array.from({ length: 6 }, (_, i) => (
+     <Skeleton key={i} className="h-16 w-full rounded-md" />
+    ))}
    </div>
   )
  }
 
- return (
-  <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-   <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
-    <div className="flex items-center justify-between border-b border-border-divider px-4 py-3">
-     <div className="flex items-center gap-2">
-      <ShieldAlert className="h-4 w-4 text-content-secondary" />
-      <span className="text-xs font-bold text-content-secondary">
-       {t('toolGovernance') || 'Tool Governance'}
-      </span>
-     </div>
-     <div className="flex items-center gap-2">
-      {/* 预留操作按钮位置 */}
-     </div>
-    </div>
+ // ===== 行列表视图（默认）：策略行卡 =====
+ if (!editing) {
+  return (
+   <div>
     {filteredPolicies.length > 0 ? (
-     <div className="overflow-y-auto">
+     <div className="space-y-2.5">
       {filteredPolicies.map(policy => (
-      <button
-       key={`${policy.source}:${policy.tool_name}`}
-       onClick={() => handleSelect(policy)}
-       className={cn(
-        'w-full border-b border-border-divider px-4 py-3 text-left transition-colors',
-        selectedKey === `${policy.source}:${policy.tool_name}`
-         ? 'bg-surface-tint border-l-2 border-l-accent-brand pl-3.5'
-         : 'bg-surface-card hover:bg-surface-tint/60 border-l-2 border-l-transparent'
-       )}
-      >
-       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold text-content-primary">
-         {policy.tool_name}
-        </span>
-        <span className="text-nano text-content-muted">{policy.source}</span>
-       </div>
-       <div className="mt-2 flex items-center gap-1.5">
-        {policy.approval_required ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-accent-warning/10 px-2 py-0.5 text-nano font-medium text-accent-warning">
+       <button
+        key={`${policy.source}:${policy.tool_name}`}
+        onClick={() => handleSelect(policy)}
+        className="group flex w-full items-center gap-3 rounded-md border border-border-divider bg-surface-card px-4 py-3 text-left transition-all hover:border-border-hover hover:shadow-theme-card"
+       >
+        <div className="min-w-0 flex-1">
+         <div className="flex items-center gap-2">
+          <span className="truncate text-[13px] font-bold text-content-primary">
+           {policy.tool_name}
+          </span>
+          {policy.approval_required ? (
+           <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-accent-warning/10 px-2 py-0.5 text-nano font-medium text-accent-warning">
             <span className="h-1 w-1 animate-pulse rounded-full bg-accent-warning" />
             {t('approvalRequired') || 'Approval'}
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-status-online/10 px-2 py-0.5 text-nano font-medium text-status-online">
+           </span>
+          ) : (
+           <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-status-online/10 px-2 py-0.5 text-nano font-medium text-status-online">
             <span className="h-1 w-1 rounded-full bg-status-online" />
             {t('autoAllowed') || 'Auto'}
-          </span>
-        )}
-        <span className="text-nano text-content-muted">· {policy.risk_tier}</span>
-       </div>
-      </button>
-     ))}
+           </span>
+          )}
+         </div>
+         <div className="mt-0.5 truncate text-[11.5px] text-content-muted">
+          {policy.description || policy.policy_note || '—'}
+         </div>
+        </div>
+        <span className="shrink-0 text-nano text-content-muted">
+         {policy.source} · {policy.risk_tier}
+        </span>
+       </button>
+      ))}
      </div>
     ) : (
      <EmptyState
@@ -284,7 +261,19 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
      />
     )}
    </div>
+  )
+ }
 
+ // ===== 编辑视图：点进策略行 =====
+ return (
+  <div>
+   <button
+    onClick={() => setEditing(false)}
+    className="mb-3 flex w-fit items-center gap-1.5 rounded-full border border-border-divider bg-surface-card px-3 py-1.5 text-xs font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary"
+   >
+    <ArrowLeft className="h-3.5 w-3.5" />
+    {t('toolGovernance') || 'Tool Governance'}
+   </button>
    <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
     {selectedPolicy && draft ? (
      <>

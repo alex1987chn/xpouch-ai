@@ -87,7 +87,7 @@ export default function ManagementConsolePage() {
     <SubPageHeader
      title={activeLabel}
      right={
-      <div className="flex items-center gap-3">
+      <div className="flex h-9 items-center gap-3">
        {search && (
         <div className="w-72">
          <SearchInput value={search.value} onChange={search.set} placeholder={search.placeholder} />

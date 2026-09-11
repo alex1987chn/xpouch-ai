@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Bot, FileCode, Plus, Rocket, Save, Trash2, Upload, Download, Link2 } from 'lucide-react'
+import { Plus, Rocket, Save, Trash2, Upload, Download, Link2, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '@/components/ui/use-toast'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -18,14 +18,6 @@ import { TemplateImportDialog } from '@/components/library/TemplateImportDialog'
 import { EmptyState } from '@/components/ui/states'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 
-// Artifact 类型标签颜色映射（半透明色底 + 主题感知前景，双主题通用）
-const ARTIFACT_TYPE_COLORS: Record<string, string> = {
- markdown: 'bg-accent-success/15 text-content-primary',
- code: 'bg-accent-info/15 text-content-primary',
- html: 'bg-accent-warning/15 text-content-primary',
- text: 'bg-surface-elevated text-content-primary',
- image: 'bg-accent-destructive/15 text-content-primary',
-}
 
 interface SkillTemplatePanelProps {
  searchQuery: string
@@ -107,6 +99,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
  const [isDeleting, setIsDeleting] = useState(false)
+ const [editing, setEditing] = useState(false)
 
  useEffect(() => {
   tRef.current = t
@@ -196,11 +189,13 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
  const handleSelect = (template: SkillTemplate) => {
   setSelectedId(template.id)
   setDraft(draftFromTemplate(template))
+  setEditing(true)
  }
 
  const handleCreate = () => {
   setSelectedId(null)
   setDraft(EMPTY_DRAFT)
+  setEditing(true)
  }
 
  const handleUseTemplate = (template: SkillTemplate) => {
@@ -292,6 +287,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
     description: t('templateDeleted') || 'Template deleted successfully.',
    })
    setIsDeleteDialogOpen(false)
+   setEditing(false)
    await refreshTemplates()
   } catch (error) {
    toast({
@@ -355,104 +351,88 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
  }
 
  if (isLoading) {
-  // 与下方两栏布局同构：左侧模板列表 + 右侧详情
   return (
-   <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-    <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
-     <div className="border-b border-border-divider px-4 py-3">
-      <Skeleton className="h-3.5 w-32" />
-     </div>
-     <div className="p-3 space-y-2">
-      {Array.from({ length: 6 }, (_, i) => (
-       <Skeleton key={i} className="h-14 w-full" />
-      ))}
-     </div>
-    </div>
-    <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card p-4 space-y-3">
-     <Skeleton className="h-5 w-1/3" />
-     <Skeleton className="h-3 w-2/3" />
-     <Skeleton className="h-40 w-full" />
-     <Skeleton className="h-3 w-1/2" />
-    </div>
+   <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
+    {Array.from({ length: 6 }, (_, i) => (
+     <Skeleton key={i} className="h-[140px] w-full rounded-md" />
+    ))}
    </div>
   )
  }
 
- return (
-  <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-   <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
-    <div className="flex items-center justify-between border-b border-border-divider px-4 py-3">
-     <div className="flex items-center gap-2">
-      <Bot className="h-4 w-4 text-content-secondary" />
-      <span className="text-xs font-bold text-content-secondary">
-       {t('skillTemplates') || 'Skill Templates'}
-      </span>
+ // ===== 栅格视图（默认）：模板卡片 + 新建卡 =====
+ if (!editing) {
+  return (
+   <div>
+    {canEdit && (
+     <div className="mb-3.5 flex justify-end gap-2">
+      <button
+       onClick={() => setIsImportDialogOpen(true)}
+       className="flex items-center gap-1.5 rounded-full border border-border-divider bg-surface-card px-3.5 py-1.5 text-xs font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary"
+      >
+       <Upload className="h-3.5 w-3.5" />
+       {t('importTemplate') || 'Import'}
+      </button>
+      <button
+       onClick={handleCreate}
+       className="flex items-center gap-1.5 rounded-full border border-border-divider bg-accent-brand px-3.5 py-1.5 text-xs font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card"
+      >
+       <Plus className="h-3.5 w-3.5" />
+       {t('newTemplate') || 'New'}
+      </button>
      </div>
-     <div className="flex items-center gap-2">
-      {canEdit && (
-       <>
-        <button
-         onClick={() => setIsImportDialogOpen(true)}
-         className="flex items-center gap-1 rounded-md border-theme-button border-border-default bg-surface-page px-2 py-1 text-xs font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary"
-         title={t('importTemplate') || 'Import'}
-        >
-         <Upload className="h-3.5 w-3.5" />
-        </button>
-        <button
-         onClick={handleCreate}
-         className="flex items-center gap-1 rounded-md border-theme-button border-border-default bg-surface-page px-2 py-1 text-xs font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary"
-        >
-         <Plus className="h-3.5 w-3.5" />
-         {t('newTemplate') || 'New'}
-        </button>
-       </>
-      )}
-     </div>
-    </div>
+    )}
 
     {filteredTemplates.length > 0 ? (
-     <div className="overflow-y-auto">
-      {filteredTemplates.map((template, index) => (
-       <button
-        key={template.id}
-        onClick={() => handleSelect(template)}
-        style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
-        className={cn(
-         'stagger-item w-full border-b border-border-divider px-4 py-3 text-left transition-all relative',
-         selectedId === template.id
-          ? 'bg-surface-tint border-l-2 border-l-accent-brand pl-3'
-          : 'bg-surface-card hover:bg-surface-page border-l-4 border-l-transparent'
-        )}
+     <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
+      {filteredTemplates.map(tpl => (
+       <div
+        key={tpl.id}
+        onClick={() => handleSelect(tpl)}
+        className="group flex cursor-pointer flex-col rounded-md border border-border-divider bg-surface-card p-4 transition-all hover:-translate-y-px hover:shadow-theme-card"
        >
         <div className="flex items-center justify-between gap-2">
-         <span className="truncate text-xs font-bold text-content-primary">
-          {template.name}
+         <span className="truncate text-[13.5px] font-bold text-content-primary">
+          {tpl.name}
          </span>
          <span className="shrink-0 rounded-full bg-surface-tint px-2 py-0.5 text-nano font-medium text-content-secondary">
-          {template.recommended_mode}
+          {tpl.recommended_mode === 'complex' ? t('modeComplex') : t('modeSimple')}
          </span>
         </div>
-        <p className="mt-2 line-clamp-2 text-xs text-content-secondary">
-         {template.description || t('templateNoDescription') || 'No description'}
+        <p className="mt-1.5 line-clamp-2 min-h-[38px] text-xs leading-relaxed text-content-secondary">
+         {tpl.description || t('templateNoDescription') || '—'}
         </p>
-        {template.expected_artifact_types && template.expected_artifact_types.length > 0 && (
-         <div className="mt-2 flex flex-wrap gap-1">
-          {template.expected_artifact_types.map(type => (
-           <span
-            key={type}
-            className={cn(
-             'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-nano',
-             ARTIFACT_TYPE_COLORS[type] || 'bg-surface-elevated text-content-primary'
-            )}
-           >
-            <FileCode className="h-2.5 w-2.5" />
-            {type}
-           </span>
-          ))}
-         </div>
-        )}
-       </button>
+        <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-content-muted">
+         <span className="rounded-full bg-surface-tint px-2 py-0.5 font-medium text-content-secondary">
+          {tpl.category}
+         </span>
+         {tpl.is_builtin && (
+          <span className="rounded-full bg-accent-info/12 px-2 py-0.5 font-medium text-accent-info">
+           {t('builtinExpert') || 'Built-in'}
+          </span>
+         )}
+         <button
+          onClick={e => {
+           e.stopPropagation()
+           handleUseTemplate(tpl)
+          }}
+          className="ml-auto rounded-full border border-border-divider bg-accent-brand px-3 py-1 text-[11px] font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card"
+         >
+          {t('useTemplate') || 'Use'}
+         </button>
+        </div>
+       </div>
       ))}
+
+      {canEdit && (
+       <button
+        onClick={handleCreate}
+        className="flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-md border-[1.5px] border-dashed border-border-hover text-[13px] text-content-muted transition-all hover:bg-surface-tint/60 hover:text-content-primary"
+       >
+        <Plus className="h-5 w-5" />
+        {t('newTemplate') || 'New'}
+       </button>
+      )}
      </div>
     ) : (
      <EmptyState
@@ -461,8 +441,35 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
       title={t('noTemplatesFound') || 'No templates found'}
      />
     )}
-   </div>
 
+    <TemplateImportDialog
+     open={isImportDialogOpen}
+     onOpenChange={setIsImportDialogOpen}
+     onSuccess={handleImportSuccess}
+    />
+    <DeleteConfirmDialog
+     isOpen={isDeleteDialogOpen}
+     onClose={() => setIsDeleteDialogOpen(false)}
+     onConfirm={handleConfirmDelete}
+     title={t('confirmDeleteTemplate') || 'Delete Template'}
+     itemName={draft.name}
+     isDeleting={isDeleting}
+     variant="danger"
+    />
+   </div>
+  )
+ }
+
+ // ===== 编辑视图：点进模板卡 =====
+ return (
+  <div>
+   <button
+    onClick={() => setEditing(false)}
+    className="mb-3 flex w-fit items-center gap-1.5 rounded-full border border-border-divider bg-surface-card px-3 py-1.5 text-xs font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary"
+   >
+    <ArrowLeft className="h-3.5 w-3.5" />
+    {t('skillTemplates') || 'Templates'}
+   </button>
    <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
     <div className="flex items-center justify-between border-b border-border-divider px-4 py-3">
      <div>

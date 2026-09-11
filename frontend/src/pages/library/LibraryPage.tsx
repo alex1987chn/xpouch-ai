@@ -37,6 +37,7 @@ export default function LibraryPage() {
     { key: 'mcp', label: t('mcpTools') || 'MCP', icon: Wrench },
     ...(canViewGovernance ? [{ key: 'governance', label: t('toolGovernance') || 'Governance', icon: ShieldAlert }] : []),
   ]
+  const activeLabel = menu.find(item => item.key === activeTab)?.label ?? t('railLibrary')
 
   return (
     <div
@@ -52,9 +53,9 @@ export default function LibraryPage() {
       >
         <div className="mx-auto max-w-5xl">
           <SubPageHeader
-            title={t('railLibrary')}
+            title={activeLabel}
             right={
-              <div className="w-72">
+              <div className="flex h-9 w-72 items-center">
                 <SearchInput
                   value={searchQuery}
                   onChange={setSearchQuery}
