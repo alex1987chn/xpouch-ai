@@ -40,7 +40,8 @@ export type TranslationKey =
   | 'payloadEmpty' | 'selectEventHint'
   // 工作台（阶段 2 新 IA）
   | 'workbenchTitle' | 'strataTitle' | 'strataSearch' | 'cmdSearch' | 'railLibrary' | 'groupToday' | 'groupYesterday' | 'groupThisWeek' | 'groupEarlier' | 'strataEmpty'
-  | 'sbOnline' | 'sbOffline' | 'sbCommands' | 'aiBylineFallback'
+  | 'sbOnline' | 'sbOffline' | 'sbCommands' | 'sbDbConnected' | 'sbDbDisconnected' | 'sbJump' | 'aiBylineFallback'
+  | 'version' | 'modelProviders' | 'disabledProviders' | 'administrator' | 'userManagement'
   | 'chipAwaiting' | 'chipRunning'
   | 'canvasArtifacts' | 'canvasGallery' | 'canvasEmpty' | 'canvasGalleryEmpty' | 'openArtifact' | 'backToList'
   | 'taskControlTitle' | 'backToWorkbench' | 'goToDecide' | 'planCardTitle' | 'planStepCount' | 'relatedArtifacts' | 'workbenchNewHint'

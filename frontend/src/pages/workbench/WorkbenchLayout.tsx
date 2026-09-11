@@ -10,8 +10,9 @@
  * SettingsHubDialog/LoginDialog 自管开关（appUIStore/userStore），此处挂载。
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from '@/i18n'
 import { LayoutGrid, Layers, ShieldCheck } from 'lucide-react'
 
@@ -20,6 +21,8 @@ import { useAppUISelectors } from '@/hooks'
 import { useIsWaitingForApproval } from '@/hooks/useTaskSelectors'
 import { useChatStore } from '@/store/chatStore'
 import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery'
+import { useUserSettingsQuery } from '@/hooks/queries/useUserSettingsQuery'
+import { getSystemStatus } from '@/services/systemStatus'
 import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher'
 import { SettingsHubDialog } from '@/components/settings/SettingsHubDialog'
 import LoginDialog from '@/components/auth/LoginDialog'
@@ -46,6 +49,7 @@ export default function WorkbenchLayout() {
   const { dialogs } = useAppUISelectors()
   const isAwaiting = useIsWaitingForApproval()
   const { data: agents } = useAgentsQuery({ includeDefault: true })
+  const isAdmin = user?.role === 'admin'
 
   // 连接状态（navigator.onLine，真实信号，不做假数据）
   const [online, setOnline] = useState(() => navigator.onLine)
@@ -60,7 +64,39 @@ export default function WorkbenchLayout() {
     }
   }, [])
 
-  const isAdmin = user?.role === 'admin'
+  // 底栏真实信号：默认模型（用户级）/ 数据库连接（admin 级，与系统状态面共享缓存）
+  const { data: settingsData } = useUserSettingsQuery(isAuthenticated)
+  const { data: sysStatus } = useQuery({
+    queryKey: ['system-status'],
+    queryFn: getSystemStatus,
+    enabled: isAdmin,
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
+  })
+
+  // G 键两段跳转（蓝本 G W/L/A）：g 后 900ms 内按 w/l/a
+  const gPendingRef = useRef(0)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      const k = e.key.toLowerCase()
+      if (k === 'g') {
+        gPendingRef.current = Date.now()
+        return
+      }
+      if (Date.now() - gPendingRef.current < 900) {
+        gPendingRef.current = 0
+        if (k === 'w') navigate('/workbench')
+        else if (k === 'l') navigate('/library')
+        else if (k === 'a' && isAdmin) navigate('/admin/console')
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [navigate, isAdmin])
+
   // 工作台域：'/'（即工作台）、/workbench、任务控制 /run
   const onWorkbench =
     location.pathname === '/' ||
@@ -171,15 +207,36 @@ export default function WorkbenchLayout() {
       <footer className="relative z-30 flex h-7 shrink-0 items-center gap-4 border-t border-border-divider bg-surface-card px-3.5 text-nano text-content-muted">
         <span className={cn('h-[7px] w-[7px] shrink-0 animate-pulse rounded-full', online ? 'bg-status-online' : 'bg-accent-warning')} />
         <span>{online ? t('sbOnline') : t('sbOffline')}</span>
+        {isAdmin && sysStatus && (
+          <>
+            <span className="h-3 w-px bg-border-divider" />
+            <span className={cn(!sysStatus.database.connected && 'text-accent-warning')}>
+              PostgreSQL · {sysStatus.database.connected ? t('sbDbConnected') : t('sbDbDisconnected')}
+            </span>
+          </>
+        )}
+        {settingsData?.default_model?.id && (
+          <>
+            <span className="h-3 w-px bg-border-divider" />
+            <span className="font-display">{settingsData.default_model.id}</span>
+          </>
+        )}
         {(agents?.length ?? 0) > 0 && (
           <>
             <span className="h-3 w-px bg-border-divider" />
             <span>{t('expertLabel')} · {agents?.length}</span>
           </>
         )}
-        <span className="ml-auto flex items-center gap-1.5">
-          <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-[9.5px] font-bold text-content-muted">⌘K</kbd>
-          {t('sbCommands')}
+        <span className="ml-auto flex items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-[9.5px] font-bold text-content-muted">⌘K</kbd>
+            {t('sbCommands')}
+          </span>
+          <span className="hidden items-center gap-1.5 sm:flex">
+            <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-[9.5px] font-bold text-content-muted">G</kbd>
+            <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-[9.5px] font-bold text-content-muted">W/L/A</kbd>
+            {t('sbJump')}
+          </span>
         </span>
       </footer>
 

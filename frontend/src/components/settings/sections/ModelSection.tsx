@@ -1,11 +1,12 @@
 /**
  * 模型偏好分区（系统管理页内嵌版本）。
- * 全局默认模型属实例级配置：模型选择器 + 思考开关 + 保存，
+ * 全局默认模型属实例级配置：思考开关置顶 + 模型单选行 + 保存，
  * 无弹窗底栏（保存内联，取消不需要——切分区即回滚草稿）。
+ * 布局对齐 docs/design 蓝本 model-row / radio / primary-btn 语法。
  */
 
 import { useState, useEffect } from 'react'
-import { Save, Info, Check } from 'lucide-react'
+import { Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { useModelsQuery } from '@/hooks/queries/useModelsQuery'
@@ -60,132 +61,126 @@ export function ModelSection() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* 默认模型（管理员可选，普通用户只读） */}
+    <div className="space-y-5">
+      {/* 思考开关（置顶，蓝本「思考 · 自动」胶囊语法） */}
       <section>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-          <span className="text-micro font-bold tracking-widest text-content-secondary">
-            {t('simpleMode')}
-          </span>
+        <div className="mb-2.5 flex items-center justify-between gap-3">
+          <span className="text-xs font-bold text-content-secondary">{t('thinkingMode')}</span>
+          <div className="flex h-[30px] items-center overflow-hidden rounded-full border-theme-card border-border-default bg-surface-card">
+            {THINKING_OPTIONS.map((option, index) => (
+              <button
+                key={option.value}
+                type="button"
+                disabled={!supportsThinking}
+                onClick={() => setThinking(option.value)}
+                className={cn(
+                  'h-full px-3.5 text-xs transition-colors',
+                  index > 0 && 'border-l border-border-divider',
+                  !supportsThinking && 'cursor-not-allowed opacity-40',
+                  supportsThinking && thinking === option.value
+                    ? 'bg-surface-tint font-bold text-content-primary'
+                    : 'text-content-muted hover:text-content-primary'
+                )}
+              >
+                {t(option.labelKey)}
+              </button>
+            ))}
+          </div>
         </div>
+        <p className="text-[11.5px] leading-relaxed text-content-muted">
+          {supportsThinking ? t('thinkingCostHint') : t('thinkingUnsupported')}
+        </p>
+      </section>
+
+      {/* 模型单选（蓝本 model-row / radio 语法） */}
+      <section>
+        <span className="mb-2.5 block text-xs font-bold text-content-secondary">{t('simpleMode')}</span>
 
         {modelsLoading && (
-          <div className="p-3 text-xs text-content-secondary">{t('modelsLoading')}</div>
+          <div className="rounded-md p-3 text-xs text-content-secondary">{t('modelsLoading')}</div>
         )}
         {modelsFailed && (
-          <div className="p-3 border-theme-card border-border-default text-xs text-content-secondary">
+          <div className="rounded-md border border-border-default p-3 text-xs text-content-secondary">
             {t('modelsLoadFailed')}
           </div>
         )}
 
         {!modelsLoading && !modelsFailed && (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {/* 跟随系统默认 */}
-            <div
+            <button
+              type="button"
               onClick={() => setSelectedModelId('')}
               className={cn(
-                'flex items-center gap-3 p-3 border-theme-card cursor-pointer transition-all',
+                'flex w-full items-center gap-3 rounded-md border p-3.5 text-left transition-all',
                 selectedModelId === ''
-                  ? 'border-accent-hover bg-accent-hover/10'
-                  : 'border-border-default hover:border-content-secondary'
+                  ? 'border-border-default bg-surface-card shadow-theme-card'
+                  : 'border-border-divider bg-surface-card hover:border-border-hover'
               )}
             >
               <div className="flex-1">
-                <div className="text-sm font-bold text-content-primary">
+                <div className="text-[13px] font-bold text-content-primary">
                   {t('followSystemDefault')}
                 </div>
-                <div className="text-micro text-content-secondary mt-0.5">
+                <div className="mt-0.5 text-[11.5px] text-content-muted">
                   {settingsData?.default_model?.name || effectiveModelId}
                 </div>
               </div>
-              {selectedModelId === '' && (
-                <div className="w-5 h-5 border-2 border-border-default bg-accent-hover flex items-center justify-center">
-                  <Check className="w-3 h-3 text-content-primary" />
-                </div>
-              )}
-            </div>
+              <span
+                className={cn(
+                  'h-4 w-4 shrink-0 rounded-full border-2 transition-all',
+                  selectedModelId === '' ? 'border-accent-brand bg-accent-brand' : 'border-border-hover'
+                )}
+              />
+            </button>
 
             {/* 可选模型 */}
             {models.map(model => (
-              <div
+              <button
                 key={model.id}
+                type="button"
                 onClick={() => setSelectedModelId(model.id)}
                 className={cn(
-                  'flex items-center gap-3 p-3 border-theme-card cursor-pointer transition-all',
+                  'flex w-full items-center gap-3 rounded-md border p-3.5 text-left transition-all',
                   selectedModelId === model.id
-                    ? 'border-accent-hover bg-accent-hover/10'
-                    : 'border-border-default hover:border-content-secondary'
+                    ? 'border-border-default bg-surface-card shadow-theme-card'
+                    : 'border-border-divider bg-surface-card hover:border-border-hover'
                 )}
               >
                 <div className="flex-1">
-                  <div className="text-sm font-bold text-content-primary">
+                  <div className="text-[13px] font-bold text-content-primary">
                     {model.name}
                   </div>
-                  <div className="text-micro text-content-secondary mt-0.5">
-                    {model.provider_name} - {Math.round(model.context_window / 1000)}K tokens
-                    {model.thinking_toggle ? ` - ${t('thinkingMode')}` : ''}
+                  <div className="mt-0.5 text-[11.5px] text-content-muted">
+                    {model.provider_name} · {Math.round(model.context_window / 1000)}K tokens
+                    {model.thinking_toggle ? ` · ${t('thinkingMode')} ✓` : ''}
                   </div>
                 </div>
-                {selectedModelId === model.id && (
-                  <div className="w-5 h-5 border-2 border-border-default bg-accent-hover flex items-center justify-center">
-                    <Check className="w-3 h-3 text-content-primary" />
-                  </div>
-                )}
-              </div>
+                <span
+                  className={cn(
+                    'h-4 w-4 shrink-0 rounded-full border-2 transition-all',
+                    selectedModelId === model.id ? 'border-accent-brand bg-accent-brand' : 'border-border-hover'
+                  )}
+                />
+              </button>
             ))}
           </div>
         )}
       </section>
 
-      {/* 思考模式开关 */}
-      <section>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-          <span className="text-micro font-bold tracking-widest text-content-secondary">
-            {t('thinkingMode')}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-3 gap-0 border-theme-card border-border-default">
-          {THINKING_OPTIONS.map(option => (
-            <button
-              key={option.value}
-              type="button"
-              disabled={!supportsThinking}
-              onClick={() => setThinking(option.value)}
-              className={cn(
-                'py-2.5 text-xs font-bold transition-colors',
-                option.value !== 'auto' && 'border-l border-border-divider',
-                !supportsThinking && 'opacity-40 cursor-not-allowed',
-                supportsThinking && thinking === option.value
-                  ? 'bg-accent-hover text-content-primary'
-                  : 'text-content-secondary hover:bg-surface-page'
-              )}
-            >
-              {t(option.labelKey)}
-            </button>
-          ))}
-        </div>
-        <p className="text-nano text-content-secondary opacity-60 mt-2">
-          {supportsThinking ? t('thinkingCostHint') : t('thinkingUnsupported')}
-        </p>
-      </section>
-
       {/* Complex 模式：一行提示（模型由管理员在专家管理配置） */}
-      <p className="text-nano text-content-secondary opacity-60 flex items-start gap-1.5">
-        <Info className="w-3 h-3 shrink-0 mt-0.5" />
+      <p className="flex items-start gap-1.5 text-[11.5px] text-content-muted">
+        <Info className="mt-0.5 h-3 w-3 shrink-0" />
         <span>{t('complexModeDesc')}</span>
       </p>
 
-      {/* 保存（内联右对齐） */}
+      {/* 保存（内联右对齐，蓝本 primary-btn 胶囊） */}
       <div className="flex justify-end pt-1">
         <button
           onClick={handleSave}
           disabled={!canSave}
-          className="flex items-center gap-2 px-4 py-2 border-theme-button border-border-default bg-accent-hover text-accent-ink text-xs font-bold hover:brightness-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-[13px] font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
         >
-          <Save className="w-3.5 h-3.5" />
           {isSaving ? t('savingUserSettings') : t('save')}
         </button>
       </div>

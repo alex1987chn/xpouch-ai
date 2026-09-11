@@ -1,23 +1,70 @@
 /**
- * 系统状态分区（设置中心，仅管理员可见）。
+ * 系统状态分区（设置中心 / 管理控制台，仅管理员可见）。
  * 部署检查面：版本 / 数据库与迁移对齐 / 模型 provider / 用户分布 / 日配额。
- * 未来管理控制台落地时整体迁入，届时按功能拆分。
+ * 布局对齐 docs/design 蓝本 stat-cards：统计卡栅格 + provider 行 + 配额编辑卡。
  */
 
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { CheckCircle, XCircle, Save } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { getSystemStatus, updateDailyTokenQuota } from '@/services/systemStatus'
 import { pushToast } from '@/components/ui/use-toast'
+import { cn } from '@/lib/utils'
 
-function StatusRow({ label, children }: { label: string; children: React.ReactNode }) {
+/** 统计卡（蓝本 stat-card：k 标签 / v 大数 / s 附加行） */
+function StatCard({
+  k,
+  v,
+  s,
+  tone = 'muted',
+}: {
+  k: string
+  v: string
+  s?: string
+  tone?: 'ok' | 'warn' | 'bad' | 'muted'
+}) {
   return (
-    <div className="flex items-start justify-between gap-3 py-2 border-b border-border-default last:border-b-0">
-      <span className="text-micro font-bold tracking-widest text-content-secondary shrink-0 mt-0.5">
-        {label}
-      </span>
-      <div className="text-sm text-content-primary text-right break-all">{children}</div>
+    <div className="rounded-md border border-border-divider bg-surface-card p-4">
+      <div className="text-[11.5px] font-medium text-content-muted">{k}</div>
+      <div className="mt-1.5 font-display text-[19px] font-bold leading-tight text-content-primary">
+        {v}
+      </div>
+      {s && (
+        <div
+          className={cn(
+            'mt-1 text-[11.5px]',
+            tone === 'ok' && 'text-accent-success',
+            tone === 'warn' && 'text-accent-warning',
+            tone === 'bad' && 'text-status-offline',
+            tone === 'muted' && 'text-content-muted'
+          )}
+        >
+          {s}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Provider 行（蓝本 mcp-row 语法：状态点 + 名称 + 明细） */
+function ProviderRow({
+  ok,
+  name,
+  detail,
+}: {
+  ok: boolean
+  name: string
+  detail: string
+}) {
+  return (
+    <div className="mb-2.5 flex items-center gap-3 rounded-md border border-border-divider bg-surface-card px-4 py-3 last:mb-0">
+      <span
+        className={cn('h-2 w-2 shrink-0 rounded-full', ok ? 'bg-accent-success' : 'bg-content-muted/50')}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="text-[13px] font-bold text-content-primary">{name}</div>
+        <div className="truncate text-[11.5px] text-content-muted">{detail}</div>
+      </div>
     </div>
   )
 }
@@ -57,98 +104,65 @@ export function SystemStatusSection() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 overflow-y-auto bauhaus-scrollbar px-5 py-5 text-xs text-content-secondary">
-        ...loading
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="h-[92px] animate-pulse rounded-md bg-surface-tint" />
+        ))}
       </div>
     )
   }
   if (isError || !data) {
-    return (
-      <div className="flex-1 overflow-y-auto bauhaus-scrollbar px-5 py-5 text-xs text-content-secondary">
-        {t('modelsLoadFailed')}
-      </div>
-    )
+    return <div className="py-6 text-xs text-content-secondary">{t('modelsLoadFailed')}</div>
   }
 
   const db = data.database
+  const providersOk = data.providers.configured.length
+  const providersTotal = data.providers.total || providersOk + data.providers.missing_key.length
 
   return (
-    <div className="flex-1 overflow-y-auto bauhaus-scrollbar px-5 py-5 space-y-5">
-      <section className="border-theme-card border-border-default px-3 py-1">
-        <StatusRow label="Version">
-          {data.version} · {data.environment}
-        </StatusRow>
-        <StatusRow label="Database">
-          <span className="inline-flex items-center gap-1.5">
-            {db.connected ? (
-              <CheckCircle className="w-4 h-4 text-accent-success" />
-            ) : (
-              <XCircle className="w-4 h-4 text-status-offline" />
-            )}
-            {db.connected ? 'Connected' : 'Disconnected'}
-          </span>
-        </StatusRow>
-        <StatusRow label="Migrations">
-          <span className="inline-flex items-center gap-1.5">
-            {db.up_to_date ? (
-              <CheckCircle className="w-4 h-4 text-accent-success" />
-            ) : (
-              <XCircle className="w-4 h-4 text-status-offline" />
-            )}
-            {db.up_to_date
-              ? t('migrationsUpToDate')
-              : `${db.applied_version ?? 'N/A'} → ${db.code_head ?? 'N/A'}`}
-          </span>
-        </StatusRow>
-        <StatusRow label="Default Model">
-          {data.default_model}
-        </StatusRow>
-        <StatusRow label="Users">
-          {data.users.total} · admin {data.users.admin}
-        </StatusRow>
+    <div className="space-y-5">
+      {/* 统计卡栅格（蓝本 stat-cards） */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard k={t('version')} v={data.version} s={data.environment} />
+        <StatCard
+          k="PostgreSQL"
+          v={db.connected ? t('sbDbConnected') : t('sbDbDisconnected')}
+          s={db.up_to_date ? t('migrationsUpToDate') : `${db.applied_version ?? 'N/A'} → ${db.code_head ?? 'N/A'}`}
+          tone={db.connected ? 'ok' : 'bad'}
+        />
+        <StatCard
+          k={t('modelProviders')}
+          v={`${providersOk}/${providersTotal}`}
+          s={data.providers.configured.map(p => p.name).join(' · ') || t('missingKey')}
+          tone={providersOk === providersTotal ? 'ok' : 'warn'}
+        />
+        <StatCard k={t('defaultModel')} v={data.default_model} />
+        <StatCard k={t('userManagement')} v={String(data.users.total)} s={`${t('administrator')} · ${data.users.admin}`} />
+        <StatCard
+          k={t('dailyTokenQuota')}
+          v={data.user_daily_token_quota ? data.user_daily_token_quota.toLocaleString() : t('quotaUnlimited')}
+          s={t('quotaHint')}
+          tone="muted"
+        />
+      </div>
+
+      {/* 模型 Provider 明细行 */}
+      <section>
+        <span className="mb-2.5 block text-xs font-bold text-content-secondary">Providers</span>
+        {data.providers.configured.map(p => (
+          <ProviderRow key={p.name} ok name={p.display_name} detail={p.default_model || p.env_key} />
+        ))}
+        {data.providers.missing_key.map(p => (
+          <ProviderRow key={p.name} ok={false} name={p.name} detail={`${t('missingKey')} · ${p.env_key}`} />
+        ))}
+        {data.providers.disabled.length > 0 && (
+          <ProviderRow ok={false} name={t('disabledProviders')} detail={data.providers.disabled.join(', ')} />
+        )}
       </section>
 
-      {/* 模型 Provider */}
+      {/* 每用户日 token 配额（编辑） */}
       <section>
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-          <span className="text-micro font-bold tracking-widest text-content-secondary">
-            Providers
-          </span>
-        </div>
-        <div className="border-theme-card border-border-default px-3 py-1 space-y-0">
-          {data.providers.configured.map(p => (
-            <StatusRow key={p.name} label={p.display_name}>
-              <span className="inline-flex items-center gap-1.5">
-                <CheckCircle className="w-4 h-4 text-accent-success" />
-                {p.default_model || p.env_key}
-              </span>
-            </StatusRow>
-          ))}
-          {data.providers.missing_key.map(p => (
-            <StatusRow key={p.name} label={p.name}>
-              <span className="inline-flex items-center gap-1.5 text-content-secondary">
-                <XCircle className="w-4 h-4 text-status-offline" />
-                {t('missingKey')} · {p.env_key}
-              </span>
-            </StatusRow>
-          ))}
-          {data.providers.disabled.length > 0 && (
-            <StatusRow label="Disabled">
-              <span className="text-content-secondary">{data.providers.disabled.join(', ')}</span>
-            </StatusRow>
-          )}
-        </div>
-      </section>
-
-      {/* 每用户日 token 配额 */}
-      <section>
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-1.5 h-1.5 bg-content-secondary"></div>
-          <span className="text-micro font-bold tracking-widest text-content-secondary">
-            {t('dailyTokenQuota')}
-          </span>
-        </div>
+        <span className="mb-2.5 block text-xs font-bold text-content-secondary">{t('dailyTokenQuota')}</span>
         <div className="flex items-center gap-2">
           <input
             type="number"
@@ -156,18 +170,16 @@ export function SystemStatusSection() {
             value={quotaInput}
             onChange={e => setQuotaInput(e.target.value)}
             placeholder={t('quotaUnlimited')}
-            className="flex-1 px-3 py-2 border-theme-input border-border-default bg-surface-page text-sm focus:outline-none focus:border-border-focus transition-colors"
+            className="w-48 rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm transition-colors focus:outline-none focus:border-border-focus"
           />
           <button
             onClick={handleSaveQuota}
             disabled={saving}
-            className="flex items-center gap-1.5 px-3 py-2 border-theme-button border-border-default bg-accent-hover text-accent-ink text-xs font-bold hover:brightness-95 transition-colors disabled:opacity-50"
+            className="rounded-full border border-border-divider bg-accent-brand px-4 py-2 text-xs font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50"
           >
-            <Save className="w-3.5 h-3.5" />
-            {t('save')}
+            {saving ? t('savingUserSettings') : t('save')}
           </button>
         </div>
-        <p className="text-nano text-content-secondary opacity-60 mt-2">{t('quotaHint')}</p>
       </section>
     </div>
   )

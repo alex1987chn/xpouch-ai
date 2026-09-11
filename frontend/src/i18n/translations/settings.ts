@@ -1,6 +1,14 @@
 // 设置相关翻译 - 系统设置、个人设置等
 
 export const zh: Record<string, string> = {
+  version: '版本',
+  modelProviders: '模型提供商',
+  disabledProviders: '已停用',
+  administrator: '管理员',
+  userManagement: '用户',
+  sbDbConnected: '数据库已连接',
+  sbDbDisconnected: '数据库未连接',
+  sbJump: '跳转',
   // Settings
   theme: '主题',
   language: '语言',
@@ -52,6 +60,14 @@ export const zh: Record<string, string> = {
 }
 
 export const en: Record<string, string> = {
+  version: 'Version',
+  modelProviders: 'Model providers',
+  disabledProviders: 'Disabled',
+  administrator: 'Administrators',
+  userManagement: 'Users',
+  sbDbConnected: 'Database connected',
+  sbDbDisconnected: 'Database disconnected',
+  sbJump: 'Navigate',
   // Settings
   theme: 'Theme',
   language: 'Language',
@@ -103,6 +119,14 @@ export const en: Record<string, string> = {
 }
 
 export const ja: Record<string, string> = {
+  version: 'バージョン',
+  modelProviders: 'モデルプロバイダー',
+  disabledProviders: '無効化',
+  administrator: '管理者',
+  userManagement: 'ユーザー',
+  sbDbConnected: 'データベース接続済み',
+  sbDbDisconnected: 'データベース未接続',
+  sbJump: '移動',
   // Settings
   theme: 'テーマ',
   language: '言語',
