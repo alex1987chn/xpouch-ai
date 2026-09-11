@@ -168,6 +168,28 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
   setEditing(true)
  }
 
+ // 行内启停（列表右侧开关，即时生效）
+ const handleToggleEnabled = async (policy: ToolPolicyRecord) => {
+  try {
+   await updateToolPolicy(policy.source, policy.tool_name, {
+    enabled: !policy.enabled,
+    risk_tier: policy.risk_tier,
+    approval_required: policy.approval_required,
+    allowed_experts: policy.allowed_experts ?? null,
+    blocked_experts: policy.blocked_experts ?? null,
+    policy_note: policy.policy_note ?? null,
+   })
+   toast({ title: t('saved') || 'Saved' })
+   await refreshPolicies(`${policy.source}:${policy.tool_name}`)
+  } catch (error) {
+   toast({
+    title: t('saveFailed') || 'Save failed',
+    description: error instanceof Error ? error.message : t('saveFailed'),
+    variant: 'destructive',
+   })
+  }
+ }
+
  const handleSave = async () => {
   if (!selectedPolicy || !draft) return
   setIsSaving(true)
@@ -249,8 +271,17 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
          </div>
         </div>
         <span className="shrink-0 text-nano text-content-muted">
-         {policy.source} · {policy.risk_tier}
+         {(policy.source === 'builtin' ? t('policySourceBuiltin') : t('policySourceMcp'))} · {
+          policy.risk_tier === 'low' ? (t('riskLow') || 'Low')
+          : policy.risk_tier === 'medium' ? (t('riskMedium') || 'Medium')
+          : (t('riskHigh') || 'High')
+         }
         </span>
+        <PillSwitch
+         on={policy.enabled}
+         disabled={!canEdit}
+         onToggle={() => handleToggleEnabled(policy)}
+        />
        </button>
       ))}
      </div>
@@ -275,7 +306,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
     <ArrowLeft className="h-3.5 w-3.5" />
     {t('toolGovernance') || 'Tool Governance'}
    </button>
-   <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
+   <div className="rounded-lg border-theme-card border-border-default bg-surface-card shadow-theme-card">
     {selectedPolicy && draft ? (
      <>
       <div className="flex items-center justify-between gap-3 border-b border-border-divider px-5 py-3.5">
@@ -301,7 +332,11 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
         </div>
        </div>
        <span className="shrink-0 text-nano text-content-muted">
-        {selectedPolicy.source} · {selectedPolicy.risk_tier}
+        {(selectedPolicy.source === 'builtin' ? t('policySourceBuiltin') : t('policySourceMcp'))} · {
+         selectedPolicy.risk_tier === 'low' ? (t('riskLow') || 'Low')
+         : selectedPolicy.risk_tier === 'medium' ? (t('riskMedium') || 'Medium')
+         : (t('riskHigh') || 'High')
+        }
        </span>
       </div>
 
@@ -325,18 +360,6 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
            {tier === 'low' ? (t('riskLow') || 'Low') : tier === 'medium' ? (t('riskMedium') || 'Medium') : (t('riskHigh') || 'High')}
           </button>
          ))}
-        </div>
-       </Field>
-       <Field label={t('enabled') || 'Enabled'}>
-        <div className="flex h-[34px] items-center gap-2.5">
-         <PillSwitch
-          on={draft.enabled}
-          disabled={!canEdit}
-          onToggle={() => setDraft(prev => prev ? { ...prev, enabled: !prev.enabled } : prev)}
-         />
-         <span className="text-xs text-content-secondary">
-          {draft.enabled ? t('enabled') || 'Enabled' : t('disabled') || 'Disabled'}
-         </span>
         </div>
        </Field>
        <Field label={t('approvalRequired') || 'Approval Required'}>

@@ -16,6 +16,7 @@ import {
 } from '@/services/admin'
 import { TemplateImportDialog } from '@/components/library/TemplateImportDialog'
 import { EmptyState } from '@/components/ui/states'
+import { PillSwitch } from '@/pages/library/components/MCPCard'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 
 
@@ -389,7 +390,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        <div
         key={tpl.id}
         onClick={() => handleSelect(tpl)}
-        className="group flex cursor-pointer flex-col rounded-md border border-border-divider bg-surface-card p-4 transition-all hover:-translate-y-px hover:shadow-theme-card"
+        className="group flex min-h-[168px] cursor-pointer flex-col rounded-md border border-border-divider bg-surface-card p-4 transition-all hover:-translate-y-px hover:shadow-theme-card"
        >
         <div className="flex items-center justify-between gap-2">
          <span className="truncate text-[13.5px] font-bold text-content-primary">
@@ -411,12 +412,14 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
            {t('builtinExpert') || 'Built-in'}
           </span>
          )}
+        </div>
+        <div className="mt-3 flex items-center justify-end border-t border-border-divider pt-3">
          <button
           onClick={e => {
            e.stopPropagation()
            handleUseTemplate(tpl)
           }}
-          className="ml-auto rounded-full border border-border-divider bg-accent-brand px-3 py-1 text-[11px] font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card"
+          className="rounded-full border border-border-divider bg-accent-brand px-4 py-1.5 text-xs font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card"
          >
           {t('useTemplate') || 'Use'}
          </button>
@@ -470,7 +473,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
     <ArrowLeft className="h-3.5 w-3.5" />
     {t('skillTemplates') || 'Templates'}
    </button>
-   <div className="border-theme-card border-border-default bg-surface-card shadow-theme-card">
+   <div className="rounded-lg border-theme-card border-border-default bg-surface-card shadow-theme-card">
     <div className="flex items-center justify-between border-b border-border-divider px-4 py-3">
      <div>
       <div className="text-xs font-bold text-content-secondary">
@@ -614,22 +617,23 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
     </div>
 
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-divider px-4 py-3">
-     <label className="flex items-center gap-2 text-xs text-content-secondary">
-      <input
-       type="checkbox"
-       checked={draft.is_active}
+     <div className="flex items-center gap-2.5">
+      <PillSwitch
+       on={draft.is_active}
        disabled={isReadonly}
-       onChange={e => setDraft(prev => ({ ...prev, is_active: e.target.checked }))}
+       onToggle={() => setDraft(prev => ({ ...prev, is_active: !prev.is_active }))}
       />
-      {t('templateActive') || 'Template active'}
-     </label>
+      <span className="text-xs text-content-secondary">
+       {t('templateActive') || 'Template active'}
+      </span>
+     </div>
 
      {canEdit ? (
       <div className="flex items-center gap-2">
        {draft.id && (
         <button
          onClick={handleDeleteClick}
-         className="flex items-center gap-2 border-theme-button border-border-default bg-surface-page px-3 py-2 text-xs font-bold text-content-secondary transition-colors hover:text-accent-destructive"
+         className="flex items-center gap-2 rounded-full border border-accent-destructive/30 bg-surface-page px-4 py-2 text-xs font-bold text-accent-destructive transition-colors hover:bg-accent-destructive/10"
         >
          <Trash2 className="h-3.5 w-3.5" />
          {t('delete') || 'Delete'}

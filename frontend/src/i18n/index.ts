@@ -91,7 +91,7 @@ export type TranslationKey =
   | 'recommendedMode' | 'templateDescription' | 'starterPrompt' | 'systemHint'
   | 'suggestedTags' | 'toolHints' | 'templateActive' | 'templateReadonlyHint'
   | 'builtinTemplateCannotDelete' | 'toolGovernance' | 'templateManagement' | 'mcpManagement' | 'governanceAdminOnly'
-  | 'approvalRequired' | 'autoAllowed' | 'riskTier' | 'riskLow' | 'riskMedium' | 'riskHigh'
+  | 'approvalRequired' | 'autoAllowed' | 'riskTier' | 'policySourceBuiltin' | 'policySourceMcp' | 'riskLow' | 'riskMedium' | 'riskHigh'
   | 'enabled' | 'disabled' | 'source' | 'allowedExperts' | 'blockedExperts'
   | 'policyNote' | 'policySaved' | 'savePolicy' | 'noToolPolicySelected' | 'saved'
   | 'comingSoon'

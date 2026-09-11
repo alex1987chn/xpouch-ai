@@ -249,15 +249,16 @@ export default function ExpertFormDialog({
                 {t('temperature')}: {formData.temperature.toFixed(1)}
               </label>
             </div>
-            <div className="relative h-8 rounded-full border-theme-input border-border-default bg-surface-page">
+            <div className="relative flex h-6 items-center">
+              <div className="absolute left-0 right-0 h-1.5 rounded-full bg-surface-tint" />
               <div
-                className="absolute top-0 left-0 h-full rounded-full bg-accent-brand/70 transition-all pointer-events-none"
+                className="absolute left-0 h-1.5 rounded-full bg-accent-brand transition-all pointer-events-none"
                 style={{ width: `${(formData.temperature / 2) * 100}%` }}
               />
               <div
-                className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-accent-brand shadow-theme-card transition-all pointer-events-none"
+                className="absolute h-[18px] w-[18px] rounded-full border-2 border-surface-card bg-accent-brand shadow-theme-card transition-all pointer-events-none"
                 style={{
-                  left: `calc(${(formData.temperature / 2) * 100}% - 8px)`,
+                  left: `calc(${(formData.temperature / 2) * 100}% - 9px)`,
                 }}
               />
               <input

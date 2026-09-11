@@ -146,7 +146,7 @@ export default function ExpertEditor({
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border-theme-card border-border-default bg-surface-card shadow-theme-card relative">
+    <div className="relative flex-1 flex flex-col overflow-hidden rounded-lg border-theme-card border-border-default bg-surface-card shadow-theme-card">
       {/* 非管理员遮罩层 */}
       {!isAdmin && (
         <div className="absolute inset-0 z-50 bg-surface-page/80 backdrop-blur-sm flex items-center justify-center">
@@ -224,20 +224,18 @@ export default function ExpertEditor({
                     {t('temperature')}: {formData.temperature?.toFixed(1)}
                   </label>
                 </div>
-                <div
-                  className="relative h-8 rounded-full border-theme-input border-border-default bg-surface-page"
-                  style={{ zIndex: 10 }}
-                >
+                <div className="relative flex h-6 items-center" style={{ zIndex: 10 }}>
+                  <div className="absolute left-0 right-0 h-1.5 rounded-full bg-surface-tint" />
                   <div
-                    className="absolute top-0 left-0 h-full rounded-full bg-accent-brand/70 transition-all pointer-events-none"
+                    className="absolute left-0 h-1.5 rounded-full bg-accent-brand transition-all pointer-events-none"
                     style={{
                       width: `${((formData.temperature ?? 0.5) / 2) * 100}%`,
                     }}
                   />
                   <div
-                    className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-accent-brand shadow-theme-card transition-all pointer-events-none"
+                    className="absolute h-[18px] w-[18px] rounded-full border-2 border-surface-card bg-accent-brand shadow-theme-card transition-all pointer-events-none"
                     style={{
-                      left: `calc(${((formData.temperature ?? 0.5) / 2) * 100}% - 8px)`,
+                      left: `calc(${((formData.temperature ?? 0.5) / 2) * 100}% - 9px)`,
                     }}
                   />
                   <input
