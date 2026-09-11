@@ -16,7 +16,7 @@ import ArtifactDashboard from './ArtifactDashboard'
 function SimpleExpertRail({ hasArtifact }: { hasArtifact: boolean }) {
   const StatusIndicator = ({ status }: { status: string }) => {
     if (status === 'running') {
-      return <div className="w-3 h-3 border-2 border-yellow-500 border-t-transparent animate-spin rounded-full" />
+      return <div className="w-3 h-3 border-2 border-accent-brand border-t-transparent animate-spin rounded-full" />
     }
     if (status === 'completed') {
       return <div className="w-3 h-3 bg-status-online rounded-full" />
@@ -28,7 +28,7 @@ function SimpleExpertRail({ hasArtifact }: { hasArtifact: boolean }) {
     <div className="w-14 border-r-2 border-border bg-surface-elevated flex flex-col items-center py-2 shrink-0">
       <div className="w-[1px] h-4 bg-border/50 mb-2" />
       <div className="relative group">
-        <div className="w-10 h-10 border-2 border-border bg-card shadow-theme-button-sm flex items-center justify-center">
+        <div className="w-10 h-10 border-theme-card border-border bg-card shadow-theme-card flex items-center justify-center">
           <span className="font-black text-xs text-primary">AI</span>
         </div>
         <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-card rounded-full flex items-center justify-center">

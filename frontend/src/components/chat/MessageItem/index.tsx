@@ -457,11 +457,11 @@ function MessageItem({
     return (
       <div className="flex flex-col items-end group user-message">
         <div className="flex items-center gap-2 mb-1 opacity-60 group-hover:opacity-100 transition-opacity">
-          <span className="font-mono text-nano uppercase text-content-muted">
+          <span className="font-mono text-nano text-content-muted">
             {message.timestamp ? formatMessageTime(message.timestamp) : ''}
           </span>
         </div>
-        <div className="bg-surface-elevated text-content-primary p-5 shadow-theme-card border-2 border-border-default w-fit max-w-[80%] select-text">
+        <div className="bg-surface-elevated text-content-primary p-5 shadow-theme-card border-theme-card border-border-default w-fit max-w-[80%] select-text">
           <div className="flex gap-3">
             <span className="font-mono text-accent-brand font-bold shrink-0">&gt;_</span>
             <p className="font-mono text-sm leading-relaxed whitespace-pre-wrap select-text text-content-primary">
@@ -482,7 +482,7 @@ function MessageItem({
           status={aiStatus}
           className="w-6 h-6"
         />
-        <span className="font-mono text-micro text-muted-foreground uppercase tracking-wide">
+        <span className="font-mono text-micro text-muted-foreground tracking-wide">
           {activeExpert ? `${activeExpert.toUpperCase()}_AGENT` : 'ASSISTANT'}
         </span>
         <span className="font-mono text-nano text-muted-foreground/50">

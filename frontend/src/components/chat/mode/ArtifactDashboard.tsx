@@ -326,8 +326,8 @@ export default function ArtifactDashboard({
         <div className="flex-1 flex items-center gap-1 min-w-0 overflow-hidden">
           {artifacts.length > 0 && (
             <>
-              <div className="h-7 px-2 flex items-center gap-1.5 bg-accent text-accent-foreground border-2 border-border-default shrink-0">
-                <span className="font-mono text-micro font-bold uppercase">{expertName}</span>
+              <div className="h-7 px-2 flex items-center gap-1.5 bg-accent text-accent-ink border-theme-button border-border-default shrink-0">
+                <span className="font-mono text-micro font-bold">{expertName}</span>
                 <span className="text-nano opacity-70">({artifacts.length})</span>
               </div>
               <div className="w-px h-5 bg-border mx-1 shrink-0" />
@@ -348,8 +348,8 @@ export default function ArtifactDashboard({
                   className={cn(
                     'h-7 px-2 flex items-center gap-1.5 transition-all shrink-0 cursor-pointer',
                     selectedIndex === idx
-                      ? 'h-8 bg-surface-card border-2 border-border-default border-b-0 top-[2px] z-10 text-content-primary shadow-[0_-2px_0_0_rgb(var(--accent-brand))]'
-                      : 'bg-panel border-2 border-border-default/30 border-b-0 opacity-60 hover:opacity-100 text-muted-foreground'
+                      ? 'h-8 bg-surface-card border-theme-card border-border-default border-b-0 top-[2px] z-10 text-content-primary shadow-[0_-2px_0_0_rgb(var(--accent-brand))]'
+                      : 'bg-panel border-theme-card border-border-default/30 border-b-0 opacity-60 hover:opacity-100 text-muted-foreground'
                   )}
                 >
                   <FileCode className="w-3 h-3 shrink-0 pointer-events-none" />
@@ -379,7 +379,7 @@ export default function ArtifactDashboard({
               {/* Toolbar */}
               <div className="flex items-center justify-between px-2 py-1.5 border-b border-border-default bg-panel shrink-0">
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 text-micro font-mono text-content-primary uppercase">
+                  <div className="flex items-center gap-1 text-micro font-mono text-content-primary">
                     <FileCode className="w-3 h-3 text-accent" />
                     <span className="font-bold">
                       {isEditing ? 'Editing' : currentArtifact.language || currentArtifact.type}
@@ -395,7 +395,7 @@ export default function ArtifactDashboard({
                         onClick={handleSave}
                         disabled={isSaving}
                         className={cn(
-                          'w-7 h-7 flex items-center justify-center border-2 transition-all',
+                          'w-7 h-7 flex items-center justify-center border-theme-button transition-all',
                           isSaving
                             ? 'bg-status-online text-white border-status-online cursor-not-allowed'
                             : 'bg-status-online text-white border-status-online hover:bg-status-online/90'
@@ -408,7 +408,7 @@ export default function ArtifactDashboard({
                         onClick={handleCancel}
                         disabled={isSaving}
                         className={cn(
-                          'w-7 h-7 flex items-center justify-center border-2 transition-all',
+                          'w-7 h-7 flex items-center justify-center border-theme-button transition-all',
                           isSaving
                             ? 'bg-panel text-muted-foreground border-border-default cursor-not-allowed'
                             : 'bg-panel text-content-primary border-border-default hover:border-status-offline hover:text-status-offline'
@@ -426,7 +426,7 @@ export default function ArtifactDashboard({
                           <button
                             onClick={handleEdit}
                             className={cn(
-                              'w-7 h-7 flex items-center justify-center border-2 transition-all',
+                              'w-7 h-7 flex items-center justify-center border-theme-button transition-all',
                               'bg-panel text-content-primary border-border-default hover:border-primary hover:bg-surface-card'
                             )}
                             title="Edit"
@@ -441,7 +441,7 @@ export default function ArtifactDashboard({
                           <button
                             onClick={() => setViewMode('code')}
                             className={cn(
-                              'w-7 h-7 flex items-center justify-center border-2 transition-all',
+                              'w-7 h-7 flex items-center justify-center border-theme-button transition-all',
                               viewMode === 'code'
                                 ? 'bg-primary text-primary-foreground border-primary'
                                 : 'bg-panel text-content-primary border-border-default hover:border-primary hover:bg-surface-card'
@@ -453,7 +453,7 @@ export default function ArtifactDashboard({
                           <button
                             onClick={() => setViewMode('preview')}
                             className={cn(
-                              'w-7 h-7 flex items-center justify-center border-2 transition-all',
+                              'w-7 h-7 flex items-center justify-center border-theme-button transition-all',
                               viewMode === 'preview'
                                 ? 'bg-primary text-primary-foreground border-primary'
                                 : 'bg-panel text-content-primary border-border-default hover:border-primary hover:bg-surface-card'
@@ -471,7 +471,7 @@ export default function ArtifactDashboard({
                           onClick={() => setShowExportMenu(!showExportMenu)}
                           disabled={isExportingPDF}
                           className={cn(
-                            'h-7 px-1.5 flex items-center gap-0.5 border-2 transition-all',
+                            'h-7 px-1.5 flex items-center gap-0.5 border-theme-button transition-all',
                             isExportingPDF
                               ? 'bg-primary/50 text-primary-foreground border-primary/50 cursor-wait'
                               : 'bg-panel text-content-primary border-border-default hover:border-primary hover:bg-surface-card'
@@ -489,7 +489,7 @@ export default function ArtifactDashboard({
                         </button>
 
                         {showExportMenu && (
-                          <div className="absolute right-0 top-full mt-1 z-50 w-[150px] bg-surface-card border-2 border-border-default shadow-lg">
+                          <div className="absolute right-0 top-full mt-1 z-50 w-[150px] bg-surface-card border-theme-card border-border-default shadow-theme-dropdown">
                             <button
                               onClick={handleExportMarkdown}
                               className="w-full px-3 py-2 text-left text-xs text-content-primary hover:bg-accent hover:text-accent-foreground transition-colors flex items-center justify-between"
@@ -524,7 +524,7 @@ export default function ArtifactDashboard({
                       <button
                         onClick={handleCopy}
                         className={cn(
-                          'w-7 h-7 flex items-center justify-center border-2 transition-all',
+                          'w-7 h-7 flex items-center justify-center border-theme-button transition-all',
                           copied
                             ? 'bg-status-online text-white border-status-online'
                             : 'bg-panel text-content-primary border-border-default hover:border-primary hover:bg-surface-card'
@@ -540,7 +540,7 @@ export default function ArtifactDashboard({
                   <button
                     onClick={onToggleFullscreen}
                     className={cn(
-                      'w-7 h-7 flex items-center justify-center border-2 transition-all',
+                      'w-7 h-7 flex items-center justify-center border-theme-button transition-all',
                       isFullscreen
                         ? 'bg-primary text-primary-foreground border-primary'
                         : 'bg-panel text-content-primary border-border-default hover:border-primary hover:bg-surface-card'

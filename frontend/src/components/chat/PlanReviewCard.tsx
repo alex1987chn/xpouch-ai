@@ -185,7 +185,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
   if (!isWaitingForApproval) return null
 
   return (
-    <div className="my-4 border-2 border-border-default bg-surface-card">
+    <div className="my-4 border-theme-card border-border-default bg-surface-card rounded-lg">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border-default bg-surface-elevated">
         <div className="flex items-center gap-3">
@@ -195,7 +195,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
             <span className="text-xs text-content-muted">{t('tasksPendingConfirm', { count: editedPlan.length })}</span>
           </div>
         </div>
-        <span className="px-2 py-1 text-micro font-mono uppercase tracking-wider border border-border-default text-content-muted">
+        <span className="px-2 py-1 text-micro font-mono tracking-wider border border-border-default text-content-muted">
           HITL
         </span>
       </div>
@@ -213,7 +213,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
 
               <div className="flex-1 min-w-0 space-y-2">
                 {/* Expert Tag */}
-                <span className="inline-flex items-center px-2 py-0.5 text-micro font-medium uppercase tracking-wide border border-border-default text-content-secondary">
+                <span className="inline-flex items-center px-2 py-0.5 text-micro font-medium tracking-wide border border-border-default text-content-secondary">
                   {task.expert_type}
                 </span>
 

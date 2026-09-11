@@ -67,7 +67,7 @@ export default function HeavyInputConsole({
       {/* 输入区域 */}
       <div className="p-4 pb-4 pt-3 bg-surface-page">
         <div className={cn(
-          "bg-card border-2 border-border-default shadow-theme-card relative group transition-all rounded-md",
+          "bg-card border-theme-card border-border-default shadow-theme-card relative group transition-all rounded-md",
           !disabled && "focus-within:shadow-theme-card-accent"
         )}>
           {/* 行号 + 文本域 */}
@@ -91,7 +91,7 @@ export default function HeavyInputConsole({
                   <img
                     src={img}
                     alt={`image-${index + 1}`}
-                    className="w-14 h-14 border-2 border-border-default object-cover"
+                    className="w-14 h-14 border-theme-card border-border-default object-cover"
                   />
                   <button
                     onClick={() => onRemoveImage?.(index)}
@@ -142,7 +142,7 @@ export default function HeavyInputConsole({
             {disabled && onStop ? (
               <button
                 onClick={onStop}
-                className="px-6 py-1.5 bg-accent-destructive text-content-inverted font-bold text-micro uppercase border-2 border-accent-destructive transition-all flex items-center gap-2 shadow-theme-button hover:shadow-theme-button-hover hover:bg-accent-destructive/90 active:[transform:var(--transform-button-active)] rounded-md"
+                className="px-6 py-1.5 bg-accent-destructive text-content-inverted font-bold text-micro border-theme-button border-accent-destructive transition-all flex items-center gap-2 shadow-theme-button hover:shadow-theme-button-hover hover:bg-accent-destructive/90 active:[transform:var(--transform-button-active)] rounded-md"
                 title={t('stop')}
               >
                 <Square className="w-3 h-3" />
@@ -153,7 +153,7 @@ export default function HeavyInputConsole({
                 onClick={onSend}
                 disabled={!hasContent}
                 className={cn(
-                  "px-6 py-1.5 bg-surface-elevated text-content-primary font-bold text-micro uppercase border-2 border-border-default transition-all flex items-center gap-2 shadow-theme-button rounded-md",
+                  "px-6 py-1.5 bg-surface-elevated text-content-primary font-bold text-micro border-theme-button border-border-default transition-all flex items-center gap-2 shadow-theme-button rounded-md",
                   value.trim() && "hover:bg-accent-brand hover:text-content-inverted hover:border-accent-brand hover:shadow-theme-button-hover active:[transform:var(--transform-button-active)]"
                 )}
               >

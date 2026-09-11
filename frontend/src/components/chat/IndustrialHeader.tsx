@@ -80,7 +80,7 @@ export function IndustrialHeader({
             onClick={onMenuClick}
             aria-label={t('menu')}
             title={t('menu')}
-            className="lg:hidden w-8 h-8 flex items-center justify-center border-2 border-border hover:bg-accent-hover transition-colors mr-1"
+            className="lg:hidden w-8 h-8 flex items-center justify-center border-theme-button border-border hover:bg-accent-hover transition-colors mr-1"
           >
             <Menu className="w-4 h-4" />
           </button>
@@ -122,7 +122,7 @@ export function IndustrialHeader({
             <button
               onClick={() => onViewModeChange('chat')}
               className={cn(
-                'h-8 px-2 border-2 border-border transition-all',
+                'h-8 px-2 border-theme-button border-border transition-all',
                 viewMode === 'chat'
                   ? 'bg-accent-brand text-content-inverted border-accent-brand'
                   : 'bg-surface-elevated text-content-secondary hover:border-accent-brand hover:text-accent-brand'
@@ -133,7 +133,7 @@ export function IndustrialHeader({
             <button
               onClick={() => onViewModeChange('preview')}
               className={cn(
-                'h-8 px-2 border-2 border-border border-l-0 transition-all',
+                'h-8 px-2 border-theme-button border-border border-l-0 transition-all',
                 viewMode === 'preview'
                   ? 'bg-accent-brand text-content-inverted border-accent-brand'
                   : 'bg-surface-elevated text-content-secondary hover:border-accent-brand hover:text-accent-brand'
@@ -151,11 +151,11 @@ export function IndustrialHeader({
               status === 'online'
                 ? 'bg-status-online'
                 : status === 'busy'
-                  ? 'bg-yellow-500'
+                  ? 'bg-accent-brand'
                   : 'bg-status-offline'
             )}
           />
-          <span className="font-mono text-micro text-primary/70 font-bold uppercase">
+          <span className="font-mono text-micro text-primary/70 font-bold">
             {status}
           </span>
         </div>
@@ -166,7 +166,7 @@ export function IndustrialHeader({
             onClick={onClose}
             aria-label={t('close')}
             title={t('close')}
-            className="w-8 h-8 flex items-center justify-center border-2 border-border hover:bg-status-offline hover:text-content-inverted transition-colors"
+            className="w-8 h-8 flex items-center justify-center border-theme-button border-border hover:bg-status-offline hover:text-content-inverted transition-colors"
           >
             <X className="w-4 h-4" />
           </button>

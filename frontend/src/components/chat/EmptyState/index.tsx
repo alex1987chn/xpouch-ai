@@ -26,10 +26,10 @@ export default function EmptyState({
   if (variant === 'compact') {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 border-2 border-dashed border-border/60 flex items-center justify-center mb-4 text-primary/60">
+        <div className="w-16 h-16 border-theme-card border-dashed border-border/60 flex items-center justify-center mb-4 text-primary/60">
           <Terminal className="w-8 h-8" />
         </div>
-        <p className="font-mono text-xs uppercase tracking-widest text-primary/70">
+        <p className="font-mono text-xs tracking-widest text-primary/70">
           {t('initConversation')}
         </p>
       </div>
@@ -38,15 +38,15 @@ export default function EmptyState({
 
   // Detailed 变体：用于 Artifact 区域，更丰富的视觉
   return (
-    <div className="h-full flex flex-col items-center justify-center p-8 border-2 border-dashed border-border/30 bg-panel/50">
+    <div className="h-full flex flex-col items-center justify-center p-8 border-theme-card border-dashed border-border/30 bg-panel/50">
       <div className="text-center space-y-6">
         <div className="flex justify-center">
-          <div className="w-16 h-16 border-2 border-border bg-card shadow-theme-card flex items-center justify-center">
+          <div className="w-16 h-16 border-theme-card border-border bg-card shadow-theme-card flex items-center justify-center">
             <LayoutGrid className="w-8 h-8 text-muted-foreground" />
           </div>
         </div>
         <div className="space-y-2">
-          <h3 className="text-sm font-bold uppercase tracking-wide text-primary">
+          <h3 className="text-sm font-bold tracking-wide text-primary">
             {title || t('noArtifacts')}
           </h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
