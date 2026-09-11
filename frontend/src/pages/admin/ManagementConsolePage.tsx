@@ -80,9 +80,9 @@ export default function ManagementConsolePage() {
           }
         />
 
-        <div className="flex flex-col lg:flex-row gap-5 items-start">
+        <div className="flex flex-col lg:flex-row gap-5 lg:items-stretch">
           {/* 左栏：分区原地切换（与设置中心同交互） */}
-          <div className="hidden lg:flex lg:flex-col w-[200px] shrink-0 border-2 border-border-default bg-surface-card shadow-theme-card p-2 gap-1 lg:sticky lg:top-8">
+          <div className="hidden lg:flex lg:flex-col w-[200px] shrink-0 border-2 border-border-default bg-surface-card shadow-theme-card p-2 gap-1">
             {tabs.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}

@@ -33,7 +33,6 @@ import { LoadingFallback } from './components/LoadingFallback'
 import HomePage from '@/pages/home/HomePage'
 
 // 路由懒加载 - 代码分割优化（chunk 失效自动刷新拿新构建）
-const ExpertAdminPage = lazyWithReload(() => import('@/pages/admin/ExpertAdminPage'))
 const StatsPage = lazyWithReload(() => import('@/pages/admin/StatsPage'))
 const ManagementConsolePage = lazyWithReload(() => import('@/pages/admin/ManagementConsolePage'))
 const RunTimelinePage = lazyWithReload(() => import('@/pages/run/RunTimelinePage'))
@@ -79,14 +78,9 @@ export const router = createBrowserRouter([
         )
       },
       {
+        // v3.4.7：专家工作台内嵌管理控制台（?tab=experts），旧路径重定向保书签
         path: 'admin/experts',
-        element: (
-          <AdminRoute requiredRole="admin">
-            <SuspenseWithErrorBoundary fallback={<LoadingFallback />}>
-              <ExpertAdminPage />
-            </SuspenseWithErrorBoundary>
-          </AdminRoute>
-        )
+        element: <Navigate to="/admin/console?tab=experts" replace />
       },
       {
         path: 'admin/stats',

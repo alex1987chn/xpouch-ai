@@ -255,8 +255,8 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
     // 与下方两栏布局同构：左侧专家列表 + 右侧详情/编辑区
     return (
       <div className={cn(
-        "flex flex-col lg:flex-row gap-4 p-4 bg-surface-page",
-        embedded ? "h-full" : "h-[100dvh]"
+        "flex flex-col lg:flex-row gap-4 p-4",
+        embedded ? "h-full" : "h-[100dvh] bg-surface-page"
       )}>
         <div className="lg:w-[320px] border-2 border-border-default bg-surface-card p-3 space-y-2">
           <Skeleton className="h-3.5 w-24" />

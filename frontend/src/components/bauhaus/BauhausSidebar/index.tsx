@@ -85,7 +85,6 @@ export default function BauhausSidebar({
   // 产品决策「可见但锁」（DESIGN.md §4.5）：管理入口全员可见——
   // 开源访客需要看到功能丰富度；无权限者在页面内得到锁卡片而非入口隐藏。
   // 不要改成按角色隐藏；如确需隐藏请先与产品确认。
-  const showExpertAdmin = true
 
   // 用户数据
   const currentPlan = (user?.plan as 'Free' | 'Pilot' | 'Maestro') || 'Free'
@@ -274,7 +273,6 @@ export default function BauhausSidebar({
             isOnHistory={isOnHistory}
             isOnAdmin={isOnAdmin}
             isOnStats={isOnStats}
-            showExpertAdmin={showExpertAdmin}
           isAdmin={user?.role === 'admin'}
             onMenuClick={handleMenuClick}
             t={t}
@@ -290,8 +288,7 @@ export default function BauhausSidebar({
               isOnHistory={isOnHistory}
               isOnAdmin={isOnAdmin}
               isOnStats={isOnStats}
-              showExpertAdmin={showExpertAdmin}
-          isAdmin={user?.role === 'admin'}
+            isAdmin={user?.role === 'admin'}
               onMenuClick={handleMenuClick}
               t={t}
               toast={toast}

@@ -23,11 +23,9 @@ from models.domain.system_setting import SystemSetting
 from models.domain.thread import Thread
 from models.domain.tool_policy import ToolPolicy
 from models.domain.user import User
-from models.domain.user_settings import UserSettings
 
 __all__ = [
     "User",
-    "UserSettings",
     "AgentRun",
     "RunEvent",
     "ShareToken",
