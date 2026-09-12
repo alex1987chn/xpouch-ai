@@ -44,15 +44,23 @@ export function artifactTypeChipStyle(type: string): React.CSSProperties {
 /** 可在弹框内直接编辑的文本型产物 */
 export const EDITABLE_ARTIFACT_TYPES = new Set(['markdown', 'text', 'code', 'html', 'report', 'sql', 'json'])
 
-/** 可导出为 Markdown 的类型 */
-export const MD_EXPORTABLE_TYPES = new Set(['markdown', 'report', 'text'])
-
-/** 类型 → 下载扩展名 */
+/** 类型 → 下载扩展名（code 类可用 language 细分） */
 const TYPE_EXT: Record<string, string> = {
   markdown: 'md', code: 'txt', html: 'html', text: 'txt',
   sql: 'sql', json: 'json', chart: 'json', report: 'md',
 }
 
-export function artifactFileExt(type: string): string {
+/** 语言 → 扩展名（下载源文件时优先于类型兜底） */
+const LANGUAGE_EXT: Record<string, string> = {
+  python: 'py', javascript: 'js', typescript: 'ts', jsx: 'jsx', tsx: 'tsx',
+  java: 'java', go: 'go', rust: 'rs', c: 'c', cpp: 'cpp', csharp: 'cs',
+  bash: 'sh', shell: 'sh', yaml: 'yml', css: 'css', ruby: 'rb', php: 'php',
+}
+
+export function artifactFileExt(type: string, language?: string | null): string {
+  if (language) {
+    const langExt = LANGUAGE_EXT[language.toLowerCase()]
+    if (langExt) return langExt
+  }
   return TYPE_EXT[type] || 'txt'
 }

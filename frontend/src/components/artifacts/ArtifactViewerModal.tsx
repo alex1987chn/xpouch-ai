@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from '@/i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  X, Pencil, Copy, Check, Download, Share2, FileText, Eye, Code2,
+  X, Pencil, Copy, Check, Download, Share2, Eye, Code2,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -23,7 +23,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Skeleton } from '@/components/ui/skeleton'
 import { pushToast } from '@/components/ui/use-toast'
 import {
-  EDITABLE_ARTIFACT_TYPES, MD_EXPORTABLE_TYPES,
+  EDITABLE_ARTIFACT_TYPES,
   artifactTypeChipStyle, artifactFileExt,
 } from '@/lib/artifactPresentation'
 import { toLocalDate, localeForLanguage } from '@/lib/datetime'
@@ -122,12 +122,7 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId }: ArtifactV
 
   const handleDownload = () => {
     if (!detail?.content) return
-    downloadBlob(detail.content, artifactFileExt(detail.type))
-  }
-
-  const handleExportMd = () => {
-    if (!detail?.content) return
-    downloadBlob(detail.content, 'md')
+    downloadBlob(detail.content, artifactFileExt(detail.type, detail.language))
   }
 
   /** 导出 PDF：打印流（打印对话框里选"另存为 PDF"） */
@@ -143,7 +138,6 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId }: ArtifactV
   const createdLabel = detail?.created_at
     ? formatDistanceToNow(toLocalDate(detail.created_at), { addSuffix: true, locale })
     : ''
-  const isMdAble = !!detail && MD_EXPORTABLE_TYPES.has(detail.type)
   const canEdit = !!detail && EDITABLE_ARTIFACT_TYPES.has(detail.type)
 
   const actionBtn = 'flex h-8 items-center gap-1.5 rounded-full border border-border-divider bg-surface-card px-3 text-xs font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary'
@@ -212,11 +206,6 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId }: ArtifactV
               <button onClick={handleDownload} title={t('download')} className={cn(actionBtn, 'w-8 justify-center px-0')}>
                 <Download className="h-3.5 w-3.5" />
               </button>
-              {isMdAble && (
-                <button onClick={handleExportMd} className={actionBtn}>
-                  <FileText className="h-3.5 w-3.5" />{t('artExportMd')}
-                </button>
-              )}
               <button onClick={handleExportPdf} className={actionBtn}>
                 {t('artExportPdf')}
               </button>

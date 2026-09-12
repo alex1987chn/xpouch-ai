@@ -53,7 +53,7 @@ export type TranslationKey =
   | 'editPlan' | 'finishEdit' | 'planVersionMeta' | 'planStepExecutor'
   | 'planApprovedMsg' | 'planConflictMsg' | 'resumeFailed' | 'planRejectedMsg' | 'planRejectedWithFeedback'
   // 产物弹窗
-  | 'artView' | 'artCode' | 'artExportMd' | 'artExportPdf'
+  | 'artView' | 'artCode' | 'artExportPdf'
   // Artifact 加载态
   | 'artifactChartGenerating' | 'artifactMermaidGenerating' | 'artifactDataError'
   | 'artifactHtmlTruncated'
