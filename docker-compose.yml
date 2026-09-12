@@ -5,10 +5,11 @@ services:
     image: pgvector/pgvector:pg18-bookworm
     container_name: xpouch-postgres
     restart: always
-    # 当前仓库内的 compose 主要用于本地开发 / 联调，因此默认暴露 5432 到宿主机。
-    # 生产环境请通过独立部署脚本或覆盖配置移除此映射，不要直接照搬本文件。
+    # 宿主机侧端口映射可通过根 .env 的 POSTGRES_PORT_MAPPING 覆盖：
+    # - 本地开发默认 5432:5432（本机工具直连）
+    # - 生产由 deploy.sh 强制默认 127.0.0.1:5432:5432（仅容器/本机可达，不对公网开放）
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT_MAPPING:-5432:5432}"
     volumes:
       # PG 18+ 新格式：挂载到 /var/lib/postgresql（非 data 子目录）
       - ./postgres_data:/var/lib/postgresql
@@ -27,6 +28,9 @@ services:
   # 后端服务
   backend:
     build: ./backend
+    # build+image 同设：构建产物以 GIT_VERSION（git 短 SHA，deploy.sh 注入）打标签，
+    # 旧版本镜像保留可回滚；本地 compose 不设 GIT_VERSION 时退回 local 标签
+    image: xpouch-ai-backend:${GIT_VERSION:-local}
     container_name: xpouch-backend
     restart: always
     env_file:
@@ -54,6 +58,7 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+    image: xpouch-ai-frontend:${GIT_VERSION:-local}
     container_name: xpouch-frontend
     restart: always
     ports:
@@ -70,8 +75,8 @@ services:
     networks:
       - app-network
 
-volumes:
-  postgres_data:
+# 说明：PG 数据使用 bind mount（./postgres_data），无需具名卷。
+# 该顶层 volumes 声明曾与实际挂载不一致（具名卷从未被引用），已移除。
 
 networks:
   app-network:

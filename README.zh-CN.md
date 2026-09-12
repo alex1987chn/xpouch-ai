@@ -200,6 +200,11 @@ POST /api/chat
 git clone https://github.com/alex1987chn/xpouch-ai.git
 cd xpouch-ai
 
+# ① 根目录 .env：给 docker-compose 插值数据库账号密码（缺它 db 起不来）
+cp .env.example .env
+# 编辑 .env，修改 POSTGRES_PASSWORD 等数据库三项
+
+# ② 后端 .env：应用运行配置（LLM Key 等）
 cp backend/.env.example backend/.env
 # 编辑 backend/.env，至少填入一个 LLM API Key
 
@@ -218,7 +223,7 @@ docker-compose up -d --build
 - 后端容器启动时会执行 `alembic upgrade head`
 - Docker Compose 会把容器内后端 `DATABASE_URL` 指向 `db` 服务
 - 仓库中的 `docker-compose.yml` 默认面向本地开发 / 联调，数据库端口会暴露到宿主机，便于调试
-- 生产环境请使用你自己的部署流程或覆盖配置，不要直接把当前 compose 视为生产默认模板
+- 生产环境用 `deploy.sh` 部署：它会合并 `docker-compose.prod.yml`（日志轮转），并把数据库端口默认收紧为仅回环 `127.0.0.1:5432`
 - 根目录 `.env` 主要给 `docker-compose.yml` 做变量插值；`backend/.env` 才是后端运行配置来源
 
 ### 方式二：本地开发

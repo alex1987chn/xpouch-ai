@@ -5,17 +5,23 @@ PDF/Word/Excel/纯文本类附件 → 纯文本，注入当前对话上下文。
 不做持久化存储；知识库化是后续独立功能。
 
 限制：
-- 单文件 ≤ 10MB（base64 解码后）
+- 单文件 ≤ MAX_UPLOAD_SIZE_MB（config.settings，默认 10MB，base64 解码后）
 - 单文档注入上限 40k 字符（超长截断并标注）
 """
 
 import base64
 import io
 
+from config import settings
 from utils.logger import logger
 
-MAX_DOC_BYTES = 10 * 1024 * 1024
 MAX_DOC_TEXT_CHARS = 40_000
+
+
+def _max_doc_bytes() -> int:
+    """单文件字节上限，消费 config.settings（MAX_UPLOAD_SIZE_MB，默认 10MB）。"""
+    return settings.max_upload_size_mb * 1024 * 1024
+
 
 TEXT_EXTENSIONS = {
     "txt",
@@ -48,8 +54,9 @@ def parse_document(*, filename: str, content_base64: str) -> str:
     except Exception as exc:
         raise DocumentParseError(f"附件 {filename} 不是有效的文件内容") from exc
 
-    if len(raw) > MAX_DOC_BYTES:
-        raise DocumentParseError(f"附件 {filename} 超过 10MB 上限")
+    max_bytes = _max_doc_bytes()
+    if len(raw) > max_bytes:
+        raise DocumentParseError(f"附件 {filename} 超过 {settings.max_upload_size_mb}MB 上限")
     if not raw:
         raise DocumentParseError(f"附件 {filename} 是空文件")
 

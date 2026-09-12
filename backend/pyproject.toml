@@ -1,7 +1,7 @@
 [project]
 name = "backend"
 version = "3.5.0"
-description = "Add your description here"
+description = "XPouch AI — self-hosted multi-user AI workbench (FastAPI + LangGraph backend)"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -20,8 +20,7 @@ dependencies = [
     "sqlmodel>=0.0.37,<1.0.0",
     "tencentcloud-sdk-python-common>=3.0.0,<4.0.0",  # 🔥 子包化：仅 common + sms，避免元包安装全量云服务（镜像瘦身）
     "tencentcloud-sdk-python-sms>=3.0.0,<4.0.0",  # 短信验证码通道（与上一行配套）
-    "uvicorn>=0.41.0,<1.0.0",  # 🟡 稳定性提升
-    "gunicorn>=23.0.0,<27.0.0",  # 生产环境多 worker 部署
+    "uvicorn>=0.41.0,<1.0.0",  # 🟡 稳定性提升；生产/开发均为单 worker（见下）
     "watchfiles>=0.20.0,<2.0.0",  # 🔥 新增：Windows 热重载兼容
     "PyJWT>=2.8.0,<3.0.0",
     "bcrypt>=4.0.0,<6.0.0",  # 🔥 passlib 已移除，直接使用 bcrypt 5.x

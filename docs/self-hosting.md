@@ -15,8 +15,15 @@
 ```bash
 git clone https://github.com/alex1987chn/xpouch-ai.git
 cd xpouch-ai
+
+# ① 根目录 .env：docker-compose 插值数据库账号密码（缺它 db 起不来）
+cp .env.example .env
+# 编辑 .env：修改 POSTGRES_PASSWORD 等数据库三项
+
+# ② 后端 .env：应用运行配置
 cp backend/.env.example backend/.env
-# 编辑 backend/.env：至少配置 DATABASE_URL 三项与一个 LLM Key（见下文）
+# 编辑 backend/.env：至少配置一个 LLM Key（见下文）
+
 docker compose up -d --build
 ```
 
@@ -84,6 +91,13 @@ server {
 ```
 
 > `X-Forwarded-For` 会被用于发码 IP 频控，请保留该头。
+
+## 单实例约束（重要）
+
+XPouch 后端按**单 worker 单实例**设计，请勿用 gunicorn/uwsgi 开多 worker，也不要多机副本：
+
+- SSE 断线续传缓冲与发码/登录频控均在进程内存中，多 worker 会导致续传命中错误进程、频控形同虚设
+- 单机纵向扩容（CPU/内存）即可支撑中小团队规模；如需多实例高可用，需先把事件缓冲与限流迁到 Redis（暂未实现）
 
 ## 升级
 

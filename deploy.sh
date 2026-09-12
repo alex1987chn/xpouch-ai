@@ -24,6 +24,10 @@ if [ -z "$POSTGRES_USER" ] || [ -z "$POSTGRES_DB" ] || [ -z "$POSTGRES_PASSWORD"
     exit 1
 fi
 
+# 生产安全默认：数据库端口只绑回环（不对公网开放）。
+# 本地开发 compose 默认 5432:5432；生产想改也只需覆盖此变量。
+export POSTGRES_PORT_MAPPING="${POSTGRES_PORT_MAPPING:-127.0.0.1:5432:5432}"
+
 # 确保 backend/.env 存在（docker-compose 需要）
 if [ ! -f "backend/.env" ]; then
     echo "⚠️  backend/.env 不存在，从根目录复制..."
@@ -33,6 +37,9 @@ fi
 echo "1. 拉取最新代码..."
 git fetch origin
 git reset --hard origin/main
+# 镜像版本标签（git 短 SHA）：compose 的 image: 引用，旧版本镜像保留可回滚
+export GIT_VERSION="$(git rev-parse --short HEAD)"
+echo "   部署版本: $GIT_VERSION"
 
 # 发版前置检查（v3.4.3 起 config fail-closed，漏配会在升级后表现为功能异常/无法登录）
 echo "   发版前置检查..."
@@ -80,6 +87,13 @@ else
 fi
 echo "   使用命令: $DOCKER_COMPOSE"
 
+# 生产覆盖文件（日志轮转等生产差异）；本地开发不带此文件
+if [ -f "docker-compose.prod.yml" ]; then
+    COMPOSE_FILES="-f docker-compose.yml -f docker-compose.prod.yml"
+else
+    COMPOSE_FILES="-f docker-compose.yml"
+fi
+
 # 检查是否需要升级
 # 首先检查数据目录中的 PG 版本
 if [ -f "postgres_data/PG_VERSION" ]; then
@@ -108,9 +122,8 @@ if [ -f "postgres_data/PG_VERSION" ]; then
         if docker ps | grep -q "pg15-backup-temp"; then
             BACKUP_FILENAME="backup_pg15_$(date +%Y%m%d_%H%M%S).sql"
             echo "   💾 正在备份数据库到 $BACKUP_FILENAME..."
-            docker exec pg15-backup-temp pg_dumpall -U "$POSTGRES_USER" > "$BACKUP_FILENAME"
-            
-            if [ $? -eq 0 ] && [ -s "$BACKUP_FILENAME" ]; then
+            # set -e 下失败分支必须挂在 if 条件里，命令失败脚本才会走到 else
+            if docker exec pg15-backup-temp pg_dumpall -U "$POSTGRES_USER" > "$BACKUP_FILENAME" && [ -s "$BACKUP_FILENAME" ]; then
                 echo "   ✅ 备份完成: $(du -h "$BACKUP_FILENAME" | cut -f1)"
             else
                 echo "❌ 备份失败"
@@ -131,8 +144,7 @@ elif docker ps --format "{{.Names}}\t{{.Status}}" | grep -q "xpouch-postgres.*Up
         PG_UPGRADE_NEEDED=true
         BACKUP_FILENAME="backup_pg15_$(date +%Y%m%d_%H%M%S).sql"
         echo "   💾 正在备份数据库到 $BACKUP_FILENAME..."
-        docker exec xpouch-postgres pg_dumpall -U "$POSTGRES_USER" > "$BACKUP_FILENAME"
-        if [ $? -eq 0 ] && [ -s "$BACKUP_FILENAME" ]; then
+        if docker exec xpouch-postgres pg_dumpall -U "$POSTGRES_USER" > "$BACKUP_FILENAME" && [ -s "$BACKUP_FILENAME" ]; then
             echo "   ✅ 备份完成: $(du -h "$BACKUP_FILENAME" | cut -f1)"
         else
             echo "❌ 备份失败，中止升级"
@@ -140,13 +152,23 @@ elif docker ps --format "{{.Names}}\t{{.Status}}" | grep -q "xpouch-postgres.*Up
         fi
     fi
 fi
-$DOCKER_COMPOSE down
+# 部署前数据库备份（数据安全优先：备份失败即中止部署）
+if docker ps --format '{{.Names}}' | grep -q '^xpouch-postgres$'; then
+    echo "   💾 部署前备份数据库..."
+    if ! bash scripts/backup_db.sh; then
+        echo "❌ 部署前备份失败，中止部署。请排查 scripts/backup_db.sh 后重试。"
+        exit 1
+    fi
+else
+    echo "   （未检测到运行中的数据库容器，跳过部署前备份——首次部署属正常）"
+fi
+$DOCKER_COMPOSE $COMPOSE_FILES down
 
 echo "3. 构建并启动容器..."
 # 始终使用 --no-cache 确保代码变更被应用
 # 注意：Docker 的 COPY 层缓存可能不会正确检测所有文件变化
 echo "   使用 --no-cache 构建确保代码更新..."
-$DOCKER_COMPOSE build --no-cache
+$DOCKER_COMPOSE $COMPOSE_FILES build --no-cache
 
 # 如果需要 PG 升级，在启动前清理旧数据
 PG_DATA_BACKUP_DIR=""
@@ -157,7 +179,7 @@ if [ "$PG_UPGRADE_NEEDED" = true ]; then
     echo "   ✅ 旧数据已备份到: $PG_DATA_BACKUP_DIR"
 fi
 
-$DOCKER_COMPOSE up -d
+$DOCKER_COMPOSE $COMPOSE_FILES up -d
 
 echo "4. 等待数据库就绪..."
 
@@ -172,8 +194,7 @@ if [ "$PG_UPGRADE_NEEDED" = true ]; then
         echo "   📥 恢复数据到 PG 18..."
         # 等待数据库完全就绪
         sleep 5
-        docker exec -i xpouch-postgres psql -U "$POSTGRES_USER" < "$BACKUP_FILE"
-        if [ $? -eq 0 ]; then
+        if docker exec -i xpouch-postgres psql -U "$POSTGRES_USER" < "$BACKUP_FILE"; then
             echo "   ✅ 数据恢复完成"
             # 可选：清理备份文件（注释掉以保留）
             # rm -f "$BACKUP_FILE"
@@ -194,7 +215,7 @@ sleep 5
 # 检查数据库连接是否正常
 MAX_RETRY=5
 RETRY=0
-while ! $DOCKER_COMPOSE exec -T db pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" 2>/dev/null; do
+while ! $DOCKER_COMPOSE $COMPOSE_FILES exec -T db pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" 2>/dev/null; do
     RETRY=$((RETRY+1))
     if [ $RETRY -ge $MAX_RETRY ]; then
         echo "❌ 数据库连接失败，请检查数据库状态"
@@ -207,50 +228,49 @@ done
 echo "5. 检查 Alembic 状态..."
 
 # 检查 alembic_version 表是否存在
-TABLE_EXISTS=$(docker-compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'alembic_version');" 2>/dev/null | xargs || echo "f")
+TABLE_EXISTS=$($DOCKER_COMPOSE $COMPOSE_FILES exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'alembic_version');" 2>/dev/null | xargs || echo "f")
 
 if [ "$TABLE_EXISTS" = "f" ] || [ -z "$TABLE_EXISTS" ]; then
     echo "   📝 首次使用 Alembic：标记现有数据库状态为 001..."
     # 标记现有数据库为 001 版本（不执行实际迁移，只记录状态）
-    $DOCKER_COMPOSE exec -T backend uv run alembic stamp 001 || {
+    $DOCKER_COMPOSE $COMPOSE_FILES exec -T backend uv run alembic stamp 001 || {
         echo "⚠️  stamp 失败，尝试强制标记..."
-        $DOCKER_COMPOSE exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY); INSERT INTO alembic_version (version_num) VALUES ('001') ON CONFLICT DO NOTHING;"
+        $DOCKER_COMPOSE $COMPOSE_FILES exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY); INSERT INTO alembic_version (version_num) VALUES ('001') ON CONFLICT DO NOTHING;"
     }
 else
     echo "   ✅ Alembic 表已存在，检查当前版本..."
-    CURRENT=$(docker-compose exec -T backend uv run alembic current 2>/dev/null | grep -E "^\w+" | head -1 | tr -d ' ' || echo "none")
+    CURRENT=$($DOCKER_COMPOSE $COMPOSE_FILES exec -T backend uv run alembic current 2>/dev/null | grep -E "^\w+" | head -1 | tr -d ' ' || echo "none")
     if [ "$CURRENT" = "none" ] || [ -z "$CURRENT" ]; then
         echo "   📝 表存在但无版本记录，标记为 001..."
-        $DOCKER_COMPOSE exec -T backend uv run alembic stamp 001 || true
+        $DOCKER_COMPOSE $COMPOSE_FILES exec -T backend uv run alembic stamp 001 || true
     else
         echo "   ✅ 当前版本: $CURRENT"
     fi
 fi
 
 echo "6. 执行数据库迁移（如有变更）..."
-$DOCKER_COMPOSE exec -T backend uv run alembic upgrade head
-if [ $? -eq 0 ]; then
+if $DOCKER_COMPOSE $COMPOSE_FILES exec -T backend uv run alembic upgrade head; then
     echo "   ✅ 迁移成功"
 else
     echo "❌ 迁移失败，查看日志..."
-    $DOCKER_COMPOSE exec -T backend uv run alembic history --verbose
+    $DOCKER_COMPOSE $COMPOSE_FILES exec -T backend uv run alembic history --verbose
     exit 1
 fi
 
 echo "7. 验证数据库修复..."
 # 检查关键修复是否生效
-EMBEDDING_TYPE=$($DOCKER_COMPOSE exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT data_type FROM information_schema.columns WHERE table_name = 'user_memories' AND column_name = 'embedding';" 2>/dev/null | xargs || echo "unknown")
+EMBEDDING_TYPE=$($DOCKER_COMPOSE $COMPOSE_FILES exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT data_type FROM information_schema.columns WHERE table_name = 'user_memories' AND column_name = 'embedding';" 2>/dev/null | xargs || echo "unknown")
 if [ "$EMBEDDING_TYPE" = "USER-DEFINED" ]; then
     echo "   ✅ embedding 字段已修复为 Vector 类型"
 else
     echo "   ⚠️  embedding 字段类型: $EMBEDDING_TYPE (可能未完全修复)"
 fi
 
-TRIGGER_COUNT=$($DOCKER_COMPOSE exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_name LIKE 'trg_%_updated_at';" 2>/dev/null | xargs || echo "0")
+TRIGGER_COUNT=$($DOCKER_COMPOSE $COMPOSE_FILES exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_name LIKE 'trg_%_updated_at';" 2>/dev/null | xargs || echo "0")
 echo "   ✅ 自动更新触发器: $TRIGGER_COUNT 个"
 
 echo "8. 检查服务状态..."
-$DOCKER_COMPOSE ps
+$DOCKER_COMPOSE $COMPOSE_FILES ps
 
 echo "9. 清理旧镜像与缓存..."
 
@@ -289,15 +309,15 @@ fi
 
 echo ""
 echo "当前 Alembic 版本:"
-$DOCKER_COMPOSE exec -T backend uv run alembic current 2>/dev/null || echo "无法获取版本"
+$DOCKER_COMPOSE $COMPOSE_FILES exec -T backend uv run alembic current 2>/dev/null || echo "无法获取版本"
 echo ""
 echo "访问地址:"
 echo "  - 前端: https://xpouch.ai"
 echo "  - 后端: https://xpouch.ai/api/health"
 echo ""
 echo "查看日志:"
-echo "  docker-compose logs -f backend"
-echo "  docker-compose logs -f frontend"
+echo "  $DOCKER_COMPOSE logs -f backend"
+echo "  $DOCKER_COMPOSE logs -f frontend"
 echo ""
 echo "回滚命令（如需要）:"
-echo "  docker-compose exec backend uv run alembic downgrade 001"
+echo "  $DOCKER_COMPOSE $COMPOSE_FILES exec backend uv run alembic downgrade <上一版本号>"

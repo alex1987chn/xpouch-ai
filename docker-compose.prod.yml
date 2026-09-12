@@ -1,0 +1,31 @@
+# ============================================================================
+# XPouch AI 生产环境覆盖配置
+#
+# 与主文件合并使用（后加载者优先，只声明与开发的差异，不复制主文件）：
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# deploy.sh 已默认带上本文件；本地开发不需要它。
+# ============================================================================
+
+services:
+  db:
+    # 日志轮转：json-file 默认无上限，restart: always 下长期运行可写满磁盘
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  frontend:
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

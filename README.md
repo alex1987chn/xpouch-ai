@@ -203,6 +203,12 @@ A contributor-oriented map of directories, the event protocol, and "how to add X
 git clone https://github.com/alex1987chn/xpouch-ai.git
 cd xpouch-ai
 
+# ① Root .env: feeds database credentials into docker-compose interpolation
+#    (without it the db service cannot start)
+cp .env.example .env
+# Edit .env — change POSTGRES_PASSWORD etc.
+
+# ② Backend .env: application configuration (LLM keys, etc.)
 cp backend/.env.example backend/.env
 # Edit backend/.env — at least one LLM API key is required
 
@@ -220,7 +226,8 @@ Notes:
 
 - The backend container runs `alembic upgrade head` on startup
 - Docker Compose points the container's `DATABASE_URL` at the `db` service
-- The checked-in `docker-compose.yml` targets local development/debugging and exposes the database port to the host — do not treat it as a production template
+- The checked-in `docker-compose.yml` targets local development/debugging and exposes the database port to the host
+- For production use `deploy.sh`: it merges `docker-compose.prod.yml` (log rotation) and binds the database port to loopback only (`127.0.0.1:5432`)
 - The root `.env` feeds variable interpolation into `docker-compose.yml`; `backend/.env` is the actual backend configuration source
 
 ### Option 2: Local development
