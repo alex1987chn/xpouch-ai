@@ -5,6 +5,8 @@ from datetime import datetime
 from sqlalchemy import Column, Text, func
 from sqlmodel import Field, SQLModel
 
+from utils.time import utc_now_naive
+
 
 class SystemSetting(SQLModel, table=True):
     """系统级键值配置。
@@ -19,6 +21,6 @@ class SystemSetting(SQLModel, table=True):
     key: str = Field(primary_key=True, max_length=64)
     value: str = Field(sa_column=Column(Text, nullable=False))
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=utc_now_naive,
         sa_column_kwargs={"onupdate": func.now()},
     )

@@ -7,6 +7,8 @@ from datetime import datetime
 from sqlalchemy import JSON, Column, Index, String, func
 from sqlmodel import Field, SQLModel
 
+from utils.time import utc_now_naive
+
 
 class SkillTemplate(SQLModel, table=True):
     """可复用技能/模板。"""
@@ -38,8 +40,8 @@ class SkillTemplate(SQLModel, table=True):
     artifact_schema_hint: str | None = Field(default=None, description="产出物结构提示")
     is_active: bool = Field(default=True)
     is_builtin: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utc_now_naive)
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=utc_now_naive,
         sa_column_kwargs={"onupdate": func.now()},
     )

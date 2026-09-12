@@ -25,6 +25,7 @@ import { useRunDetails, useRunTimeline } from '@/hooks/queries/useRunTimelineQue
 import { useThreadArtifactsQuery } from '@/hooks/queries/useArtifactsQuery'
 import { ArtifactViewerModal } from '@/components/artifacts/ArtifactViewerModal'
 import { artifactTypeChipStyle } from '@/lib/artifactPresentation'
+import { toLocalDate } from '@/lib/datetime'
 import { getConversation } from '@/services/chat'
 import type { RunEvent, RunStatus } from '@/types/run'
 import { getEventDisplayName, getEventCategory, ACTIVE_RUN_STATUSES } from '@/types/run'
@@ -89,7 +90,7 @@ interface TimelineEventItemProps {
 
 function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEventItemProps) {
  const { t } = useTranslation()
- const time = new Date(event.timestamp)
+ const time = toLocalDate(event.timestamp)
  const timeAgo = formatDistanceToNow(time, { addSuffix: true, locale: zhCN })
  const timeStr = format(time, 'HH:mm:ss')
 
@@ -266,9 +267,9 @@ export default function RunTimelinePage() {
 
  // 运行时长
  const durationText = run?.started_at && run.completed_at
-  ? `${differenceInSeconds(new Date(run.completed_at), new Date(run.started_at))}s`
+  ? `${differenceInSeconds(toLocalDate(run.completed_at), toLocalDate(run.started_at))}s`
   : run?.started_at
-   ? `${differenceInSeconds(new Date(), new Date(run.started_at))}s`
+   ? `${differenceInSeconds(new Date(), toLocalDate(run.started_at))}s`
    : null
 
  if (isLoading) {

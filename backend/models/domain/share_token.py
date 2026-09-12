@@ -10,6 +10,8 @@ from datetime import datetime
 
 from sqlmodel import Field, SQLModel
 
+from utils.time import utc_now_naive
+
 
 class ShareToken(SQLModel, table=True):
     """产物分享令牌（撤销 = revoked_at 置时间）"""
@@ -35,5 +37,5 @@ class ShareToken(SQLModel, table=True):
     # 创建者（thread.user_id，冗余便于直接校验）
     created_by: str = Field(index=True, max_length=64)
 
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utc_now_naive)
     revoked_at: datetime | None = Field(default=None)

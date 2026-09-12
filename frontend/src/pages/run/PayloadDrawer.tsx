@@ -16,6 +16,7 @@ import { CodeBlock } from '@/components/ui/code-block'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { toLocalDate } from '@/lib/datetime'
 import { ANIMATION_DURATION } from '@/constants/ui'
 import type { RunEvent } from '@/types/run'
 import { useTranslation } from '@/i18n'
@@ -163,7 +164,7 @@ export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
                       {event.event_type}
                     </span>
                     <span className="text-xs text-content-muted">
-                      {new Date(event.timestamp).toLocaleString()}
+                      {toLocalDate(event.timestamp).toLocaleString()}
                     </span>
                   </div>
 

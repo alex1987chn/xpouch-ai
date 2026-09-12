@@ -12,6 +12,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
 from models.enums import UserRole, _enum_values
+from utils.time import utc_now_naive
 
 
 class User(SQLModel, table=True):
@@ -54,9 +55,9 @@ class User(SQLModel, table=True):
     refresh_token: str | None = Field(default=None)
     token_expires_at: datetime | None = Field(default=None)
     is_verified: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utc_now_naive)
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=utc_now_naive,
         sa_column_kwargs={"onupdate": func.now()},
     )
     # 最近一次登录时间（OTP/密码登录成功时写入；迁移 20260912_000100）

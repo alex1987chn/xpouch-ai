@@ -11,6 +11,8 @@ from typing import Optional
 from sqlalchemy import func
 from sqlmodel import Field, Relationship, SQLModel
 
+from utils.time import utc_now_naive
+
 
 class CustomAgent(SQLModel, table=True):
     """
@@ -47,9 +49,9 @@ class CustomAgent(SQLModel, table=True):
     conversation_count: int = Field(default=0)  # 使用次数
 
     # 时间戳
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utc_now_naive)
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=utc_now_naive,
         sa_column_kwargs={"onupdate": func.now()},
     )
 

@@ -10,6 +10,8 @@ from typing import Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
+from utils.time import utc_now_naive
+
 
 class Artifact(SQLModel, table=True):
     """
@@ -46,7 +48,7 @@ class Artifact(SQLModel, table=True):
     sort_order: int = Field(default=0)
 
     # 时间戳
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utc_now_naive)
 
     # 关联关系（使用字符串避免循环导入）
     sub_task: Optional["SubTask"] = Relationship(back_populates="artifacts")  # noqa: F821

@@ -10,6 +10,8 @@ from datetime import datetime
 from sqlalchemy import JSON, Column, Index
 from sqlmodel import Field, Relationship, SQLModel
 
+from utils.time import utc_now_naive
+
 
 class Message(SQLModel, table=True):
     """消息表"""
@@ -20,7 +22,7 @@ class Message(SQLModel, table=True):
     thread_id: str = Field(foreign_key="thread.id", index=True, max_length=64)
     role: str = Field(max_length=20)
     content: str
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=utc_now_naive)
     # extra_data 字段存储 thinking、reasoning 等额外信息
     extra_data: dict | None = Field(default=None, sa_column=Column(JSON))
 

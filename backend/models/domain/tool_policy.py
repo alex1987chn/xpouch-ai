@@ -7,6 +7,8 @@ from datetime import datetime
 from sqlalchemy import JSON, Column, Index, String, func
 from sqlmodel import Field, SQLModel
 
+from utils.time import utc_now_naive
+
 
 class ToolPolicy(SQLModel, table=True):
     """工具治理策略覆盖表。"""
@@ -28,8 +30,8 @@ class ToolPolicy(SQLModel, table=True):
     allowed_experts: list[str] | None = Field(default=None, sa_column=Column(JSON))
     blocked_experts: list[str] | None = Field(default=None, sa_column=Column(JSON))
     policy_note: str | None = Field(default=None, description="策略说明")
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utc_now_naive)
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=utc_now_naive,
         sa_column_kwargs={"onupdate": func.now()},
     )

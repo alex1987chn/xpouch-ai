@@ -13,6 +13,8 @@ from datetime import datetime
 from sqlalchemy import Index, func
 from sqlmodel import Field, SQLModel
 
+from utils.time import utc_now_naive
+
 
 class SystemExpert(SQLModel, table=True):
     """
@@ -56,9 +58,9 @@ class SystemExpert(SQLModel, table=True):
     is_system: bool = Field(default=False, description="是否为系统核心组件，true=禁止删除")
     # 配置版本号（乐观锁，用于并发更新检测）
     config_version: int = Field(default=0, description="配置版本号，每次更新自动递增")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
+    created_at: datetime = Field(default_factory=utc_now_naive, description="创建时间")
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=utc_now_naive,
         sa_column_kwargs={"onupdate": func.now()},
         description="最后更新时间",
     )

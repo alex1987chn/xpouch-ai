@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
 import { CardSkeleton, Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/states'
+import { toLocalDate } from '@/lib/datetime'
 import { ErrorState } from '@/components/ui/states'
 import { SubPageLayout, SubPageHeader, type SubPageMenuItem } from '@/components/ui/sub-page-layout'
 import { cn } from '@/lib/utils'
@@ -173,7 +174,7 @@ function RunTable({
       {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(1)}s` : '-'}
      </span>
      <span className="hidden shrink-0 text-xs text-content-muted lg:inline">
-      {new Date(run.created_at).toLocaleString()}
+      {toLocalDate(run.created_at).toLocaleString()}
      </span>
      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-content-muted transition-colors group-hover:text-content-primary" />
     </button>

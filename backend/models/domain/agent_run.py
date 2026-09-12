@@ -12,6 +12,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
 from models.enums import RunStatus, _enum_values
+from utils.time import utc_now_naive
 
 
 class AgentRun(SQLModel, table=True):
@@ -62,10 +63,10 @@ class AgentRun(SQLModel, table=True):
 
     retry_of_run_id: str | None = Field(default=None, foreign_key="agentrun.id", max_length=64)
 
-    created_at: datetime = Field(default_factory=datetime.now)
-    started_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utc_now_naive)
+    started_at: datetime = Field(default_factory=utc_now_naive)
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=utc_now_naive,
         sa_column_kwargs={"onupdate": func.now()},
     )
     deadline_at: datetime | None = None
