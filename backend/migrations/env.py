@@ -28,8 +28,12 @@ from config import settings
 config = context.config
 
 # Setup logging
+# disable_existing_loggers 必须为 False：v3.5.0 起迁移在应用进程内执行
+# （create_db_and_tables → command.upgrade），alembic 的 fileConfig 默认
+# 会停掉此前已配置的所有 logger（含 utils/logger.setup_logging 配好的
+# 应用日志），生产环境的错误日志因此被静默丢弃，500 无法定位。
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # SQLModel metadata
 target_metadata = SQLModel.metadata
