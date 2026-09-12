@@ -64,7 +64,7 @@ def _render_body(artifact_type: str, content: str) -> str:
 
 
 def _render_share_html(artifact_type: str, title: str, content: str, og_url: str) -> str:
-    """产物分享页（内联 Bauhaus 风格样式 + OG 卡片）"""
+    """产物分享页（内联柔和风格样式 + OG 卡片；色值对齐 docs/design token）"""
     body = _render_body(artifact_type, content[:_MAX_CONTENT_CHARS])
     safe_title = escape(title)
     desc = escape(_preview_text(content))
@@ -74,6 +74,9 @@ def _render_share_html(artifact_type: str, title: str, content: str, og_url: str
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
 <title>{safe_title} · XPOUCH</title>
 <meta property="og:type" content="article" />
 <meta property="og:title" content="{safe_title}" />
@@ -84,60 +87,83 @@ def _render_share_html(artifact_type: str, title: str, content: str, og_url: str
 <style>
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{
-    font-family: 'Space Grotesk', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
-    background: #f4f2ec; color: #111827; padding: 24px; line-height: 1.65;
+    font-family: 'Geist', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+    background: #faf7f2; color: #2d2a26; padding: 32px 20px; line-height: 1.75;
   }}
   .card {{
-    max-width: 780px; margin: 0 auto; background: #ffffff;
-    border: 2px solid #111827; box-shadow: 8px 8px 0 0 #111827;
+    max-width: 800px; margin: 0 auto; background: #fffefb;
+    border: 1px solid #e8e4e0; border-radius: 14px;
+    box-shadow: 0 2px 4px rgba(45,42,38,.05), 0 8px 24px rgba(45,42,38,.07);
+    overflow: hidden;
   }}
   header {{
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 20px; border-bottom: 2px solid #111827; background: #facc15;
+    padding: 14px 22px; border-bottom: 1px solid #ecebe8;
   }}
-  header .brand {{ font-weight: 900; letter-spacing: 2px; }}
+  header .brand {{
+    font-family: 'Space Grotesk', 'Geist', sans-serif; font-weight: 700;
+    font-size: 15px; letter-spacing: .02em; color: #2d2a26;
+  }}
+  header .brand .x {{ color: #f2c00f; }}
   header .type {{
-    font-family: ui-monospace, monospace; font-size: 12px; font-weight: 700;
-    background: #111827; color: #fff; padding: 2px 8px; text-transform: uppercase;
+    font-size: 11px; font-weight: 500; color: #6f6a62;
+    background: #f1ece2; border-radius: 999px; padding: 3px 10px;
   }}
-  main {{ padding: 28px 24px 36px; overflow-wrap: break-word; }}
-  h1, h2, h3 {{ margin: 1.2em 0 .5em; border-bottom: 2px solid #111827; padding-bottom: 4px; }}
-  p, ul, ol {{ margin: .7em 0; }}
-  code {{ font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: .92em; }}
-  :not(pre) > code {{ background: #f4f2ec; border: 1px solid #d4d0c8; padding: 1px 5px; }}
+  main {{ padding: 26px 26px 34px; overflow-wrap: break-word; font-size: 14px; }}
+  h1, h2, h3 {{ margin: 1.3em 0 .55em; font-weight: 700; line-height: 1.4; }}
+  h1 {{ font-size: 1.45em; }} h2 {{ font-size: 1.2em; }} h3 {{ font-size: 1.05em; }}
+  main > h1:first-child {{ margin-top: 0; }}
+  p, ul, ol {{ margin: .7em 0; }} li {{ margin: .25em 0; }}
+  a {{ color: #2d2a26; text-decoration: underline; text-underline-offset: 3px;
+      text-decoration-color: rgba(45,42,38,.35); }}
+  a:hover {{ text-decoration-color: #2d2a26; }}
+  code {{ font-family: ui-monospace, 'Space Mono', Consolas, monospace; font-size: .9em; }}
+  :not(pre) > code {{ background: #f1ece2; border-radius: 5px; padding: 2px 6px; }}
   pre {{
-    background: #111827; color: #f9fafb; padding: 16px; overflow: auto;
-    border: 2px solid #111827; margin: 1em 0; font-size: 13px;
+    background: #faf7f2; border: 1px solid #ecebe8; border-radius: 10px;
+    padding: 14px 16px; overflow: auto; margin: 1em 0;
+    font-size: 12.5px; line-height: 1.7;
   }}
   pre.text, pre.code {{ white-space: pre-wrap; }}
-  .media {{ max-width: 100%; border: 2px solid #111827; margin: 1em 0; }}
-  .note {{ font-size: 13px; color: #6b7280; margin-bottom: 12px; }}
-  table {{ border-collapse: collapse; margin: 1em 0; }}
-  th, td {{ border: 1px solid #111827; padding: 6px 10px; }}
-  a {{ color: #111827; }}
+  .media {{ max-width: 100%; border: 1px solid #e8e4e0; border-radius: 10px; margin: 1em 0; }}
+  .note {{ font-size: 12px; color: #a49d90; margin-bottom: 12px; }}
+  table {{ border-collapse: collapse; margin: 1em 0; width: 100%; font-size: 13px; }}
+  th, td {{ border: 1px solid #e8e4e0; padding: 7px 11px; }}
+  th {{ background: #faf7f2; font-weight: 600; }}
+  blockquote {{ border-left: 3px solid #e8e4e0; margin: 1em 0; padding: 2px 0 2px 14px; color: #6f6a62; }}
+  hr {{ border: none; border-top: 1px solid #ecebe8; margin: 1.6em 0; }}
   footer {{
     display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 20px; border-top: 2px solid #111827; font-size: 13px;
+    padding: 13px 22px; border-top: 1px solid #ecebe8; font-size: 12.5px;
   }}
-  footer .ctime {{ color: #6b7280; font-family: ui-monospace, monospace; font-size: 12px; }}
+  footer .ctime {{ color: #a49d90; }}
   footer a.cta {{
-    display: inline-block; background: #111827; color: #fff; text-decoration: none;
-    padding: 8px 18px; font-weight: 700; border: 2px solid #111827;
-    box-shadow: 4px 4px 0 0 #facc15; transition: transform .15s ease;
+    display: inline-flex; align-items: center; gap: 6px; background: #f2c00f;
+    color: #3f3200; text-decoration: none; padding: 8px 18px; font-weight: 700;
+    font-size: 13px; border: 1px solid rgba(45,42,38,.12); border-radius: 999px;
+    transition: transform .15s ease, box-shadow .15s ease;
   }}
-  footer a.cta:hover {{ transform: translate(-2px, -2px); }}
+  footer a.cta:hover {{
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(45,42,38,.08), 0 8px 24px rgba(45,42,38,.12);
+  }}
+  @media (max-width: 560px) {{
+    body {{ padding: 16px 10px; }}
+    main {{ padding: 20px 16px 26px; }}
+    footer {{ padding: 12px 16px; flex-wrap: wrap; gap: 10px; }}
+  }}
 </style>
 </head>
 <body>
   <div class="card">
     <header>
-      <span class="brand">XPOUCH</span>
+      <span class="brand">[<span class="x">X</span>POUCH]</span>
       <span class="type">{escape(artifact_type)}</span>
     </header>
     <main>{body}</main>
     <footer>
       <span class="ctime">{escape(datetime.now().strftime("%Y-%m-%d %H:%M"))}</span>
-      <a class="cta" href="/">在 XPOUSH 中打开 →</a>
+      <a class="cta" href="/">在 XPOUCH 中打开 →</a>
     </footer>
   </div>
 </body>
@@ -146,18 +172,24 @@ def _render_share_html(artifact_type: str, title: str, content: str, og_url: str
 
 _NOT_FOUND_HTML = """<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Not Found · XPOUCH</title>
-<style>body{font-family:system-ui;background:#f4f2ec;display:flex;align-items:center;
-justify-content:center;min-height:100vh}div{border:2px solid #111827;background:#fff;
-box-shadow:8px 8px 0 0 #111827;padding:40px 60px;font-weight:700}</style></head>
+<style>body{font-family:'Geist','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+background:#faf7f2;color:#2d2a26;display:flex;align-items:center;justify-content:center;
+min-height:100vh}div{border:1px solid #e8e4e0;background:#fffefb;border-radius:14px;
+box-shadow:0 2px 4px rgba(45,42,38,.05),0 8px 24px rgba(45,42,38,.07);
+padding:36px 52px;font-weight:600;font-size:14px}</style></head>
 <body><div>链接不存在或已被撤销</div></body></html>"""
 
 _TOO_MANY_HTML = """<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Too Many Requests · XPOUCH</title>
-<style>body{font-family:system-ui;background:#f4f2ec;display:flex;align-items:center;
-justify-content:center;min-height:100vh}div{border:2px solid #111827;background:#fff;
-box-shadow:8px 8px 0 0 #111827;padding:40px 60px;font-weight:700}</style></head>
+<style>body{font-family:'Geist','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+background:#faf7f2;color:#2d2a26;display:flex;align-items:center;justify-content:center;
+min-height:100vh}div{border:1px solid #e8e4e0;background:#fffefb;border-radius:14px;
+box-shadow:0 2px 4px rgba(45,42,38,.05),0 8px 24px rgba(45,42,38,.07);
+padding:36px 52px;font-weight:600;font-size:14px}</style></head>
 <body><div>请求过于频繁，请稍后再试</div></body></html>"""
 
 

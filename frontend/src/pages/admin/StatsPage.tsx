@@ -18,7 +18,7 @@ import { useTranslation } from '@/i18n'
 import { CardSkeleton, Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/states'
 import { ErrorState } from '@/components/ui/states'
-import PageTitle from '@/components/layout/PageTitle'
+import { SubPageLayout, SubPageHeader, type SubPageMenuItem } from '@/components/ui/sub-page-layout'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
 import { getRunStats } from '@/services/stats'
@@ -219,8 +219,8 @@ export default function StatsPage() {
  if (isLoading) {
   // 与下方内容页同构：标题行 + 卡片网格
   return (
-   <div className="min-h-full bg-surface-page px-6 md:px-12 py-8">
-    <div className="max-w-5xl mx-auto space-y-6">
+   <StatsShell>
+    <div className="mx-auto max-w-6xl space-y-6">
      <Skeleton className="h-7 w-48" />
      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {Array.from({ length: 6 }, (_, i) => (
@@ -228,26 +228,25 @@ export default function StatsPage() {
       ))}
      </div>
     </div>
-   </div>
+   </StatsShell>
   )
  }
 
  if (error) {
   logger.error('[StatsPage] 加载失败:', error)
   return (
-   <div className="min-h-full bg-surface-page p-8">
-    <div className="max-w-7xl mx-auto">
+   <StatsShell>
+    <div className="mx-auto max-w-6xl">
      <ErrorState message={error instanceof Error ? error.message : undefined} onRetry={() => refetch()} />
     </div>
-   </div>
+   </StatsShell>
   )
  }
 
  return (
-  <div className="min-h-full bg-surface-page px-6 md:px-12 py-8">
-   <div className="max-w-5xl mx-auto space-y-6">
-    {/* 页面标题（PageTitle 统一习语） */}
-    <PageTitle
+  <StatsShell>
+   <div className="mx-auto max-w-6xl space-y-6">
+    <SubPageHeader
      title={t('navStats')}
      right={isAdmin ? (
       <span className="rounded-full bg-accent-brand/15 px-2 py-0.5 text-micro font-bold text-content-primary">
@@ -373,6 +372,32 @@ export default function StatsPage() {
      )}
     </div>
    </div>
-  </div>
+  </StatsShell>
+ )
+}
+
+
+/**
+ * StatsShell - 统计页统一壳（SubPageLayout 单子项形态）
+ *
+ * [布局] 与资源库/系统管理同构：168px 子菜单 + 标题行同高，
+ * 切页时标题位置不再跳动。运行统计未来若有子分区（趋势/明细/导出…），
+ * 往 STATS_MENU 里加项即可，无需再动布局。
+ */
+function StatsShell({ children }: { children: React.ReactNode }) {
+ const { t } = useTranslation()
+ const STATS_MENU: SubPageMenuItem[] = [
+  { key: 'stats', label: t('navStats'), icon: BarChart3 },
+ ]
+ return (
+  <SubPageLayout
+   menu={STATS_MENU}
+   active="stats"
+   onSelect={() => {
+    /* 单子项，暂无可切换分区 */
+   }}
+  >
+   {children}
+  </SubPageLayout>
  )
 }

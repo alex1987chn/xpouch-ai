@@ -299,6 +299,16 @@ export default function RunTimelinePage() {
   )
  }
 
+ // 返回语义：有站内历史就回退（如从运行统计进来回到列表），
+ // 直接打开链接时兜底回会话/工作台
+ const handleBack = () => {
+  if (window.history.state && window.history.state.idx > 0) {
+   navigate(-1)
+   return
+  }
+  navigate(threadId ? `/workbench/${threadId}` : '/workbench')
+ }
+
  const isAwaiting = run.status === 'waiting_for_approval'
  const threadId = run.thread_id
 
@@ -306,9 +316,9 @@ export default function RunTimelinePage() {
   <div className="flex h-full min-h-0 flex-col">
    {/* 头部 */}
    <header className="flex shrink-0 items-center gap-4 border-b border-border-divider px-6 py-4">
-    <Button variant="ghost" size="sm" onClick={() => navigate(threadId ? `/workbench/${threadId}` : '/workbench')}>
+    <Button variant="ghost" size="sm" onClick={handleBack}>
      <ArrowLeft className="mr-2 h-4 w-4" />
-     {t('backToWorkbench')}
+     {t('runBack')}
     </Button>
     <div className="flex-1">
      <h1 className="text-lg font-semibold text-content-primary">
