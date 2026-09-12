@@ -4,6 +4,8 @@ from pgvector.sqlalchemy import Vector  # 必须确保数据库已开启 pgvecto
 from sqlalchemy import Column
 from sqlmodel import Field, SQLModel
 
+from utils.time import utc_now_naive
+
 
 class UserMemory(SQLModel, table=True):
     """用户长期记忆表 - 存储向量化的用户偏好、习惯和重要信息"""
@@ -17,7 +19,7 @@ class UserMemory(SQLModel, table=True):
     # 🔥 BAAI/bge-m3 的维度是 1024
     embedding: list[float] = Field(sa_column=Column(Vector(1024)))
 
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
+    created_at: datetime = Field(default_factory=utc_now_naive, description="创建时间")
     source: str = Field(
         default="conversation", description="记忆来源: conversation/user_profile/system"
     )

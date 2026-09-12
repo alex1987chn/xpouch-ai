@@ -50,7 +50,7 @@ class MemoryManager:
                     user_id=user_id,
                     content=content,
                     embedding=vector,
-                    created_at=utc_now_naive().isoformat(),
+                    created_at=utc_now_naive(),
                     source=source,
                     memory_type=memory_type,
                 )
