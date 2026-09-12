@@ -1,5 +1,9 @@
 # XPouch AI 主题系统最佳实践
 
+> **v3.5.1 现状**：主题枚举为 **soft（柔和·默认）/ dark（黑暗）** 双主题，bauhaus 等历史主题已退役
+> （存量 localStorage 值由 themeStore 迁移映射自动归入 soft）。本文的 token 机制说明仍然有效；
+> 主题相关的视觉规范以 [DESIGN.md](./DESIGN.md) 为准。
+
 ## 架构概览
 
 ```

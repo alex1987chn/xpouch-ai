@@ -309,18 +309,18 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
           <div className="min-w-0 flex-1">
             {planRevising ? (
               <>
-                <div className="flex items-center gap-2 text-[13px] font-bold text-content-primary">
+                <div className="flex items-center gap-2 text-body-sm font-bold text-content-primary">
                   {t('revisingTitle')}
                   <span className="shimmer" />
                 </div>
-                <div className="mt-0.5 text-[11.5px] text-content-muted">{t('revisingHint')}</div>
+                <div className="mt-0.5 text-caption text-content-muted">{t('revisingHint')}</div>
               </>
             ) : (
               <>
-                <div className="text-[13px] font-bold text-content-primary">
+                <div className="text-body-sm font-bold text-content-primary">
                   {t('planReviewTitle')} · {t('tasksPendingConfirm', { count: pendingPlan.length })}
                 </div>
-                <div className="mt-0.5 text-[11.5px] text-content-muted">{t('planReviewPaused')}</div>
+                <div className="mt-0.5 text-caption text-content-muted">{t('planReviewPaused')}</div>
               </>
             )}
           </div>

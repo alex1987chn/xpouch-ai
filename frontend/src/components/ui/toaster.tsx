@@ -28,7 +28,7 @@ export function Toaster() {
           <div className="min-w-0 flex-1 space-y-0.5">
             {toast.title && (
               <div className={cn(
-                'truncate text-[13px] font-medium',
+                'truncate text-body-sm font-medium',
                 toast.variant === 'destructive' ? 'text-accent-destructive' : 'text-content-primary'
               )}>
                 {toast.title}

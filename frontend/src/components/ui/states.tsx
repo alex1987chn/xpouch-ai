@@ -94,11 +94,11 @@ export function EmptyState({
           <Icon className={cn('text-content-secondary', dense ? 'h-[18px] w-[18px]' : 'h-5 w-5')} />
         </div>
       )}
-      <h3 className={cn('font-bold text-content-primary', dense ? 'text-[13px]' : 'text-[13.5px]')}>
+      <h3 className={cn('font-bold text-content-primary', dense ? 'text-body-sm' : 'text-body')}>
         {title}
       </h3>
       {description && (
-        <p className={cn('mx-auto mt-1 leading-relaxed text-content-muted', dense ? 'max-w-xs text-[11.5px]' : 'max-w-sm text-xs')}>
+        <p className={cn('mx-auto mt-1 leading-relaxed text-content-muted', dense ? 'max-w-xs text-caption' : 'max-w-sm text-xs')}>
           {description}
         </p>
       )}

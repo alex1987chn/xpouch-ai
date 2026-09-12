@@ -177,7 +177,7 @@ export default function ExpertEditor({
             <div className="truncate text-sm font-bold text-content-primary">
               {expert.name}
             </div>
-            <div className="truncate text-[11.5px] text-content-muted">
+            <div className="truncate text-caption text-content-muted">
               {expert.expert_key} · {formData.model}
             </div>
           </div>
@@ -198,7 +198,7 @@ export default function ExpertEditor({
 
       {/* 更新时间 */}
       <div className="border-b border-border-divider bg-surface-tint/30 px-5 py-1.5">
-        <span className="text-[11px] text-content-muted">
+        <span className="text-tiny text-content-muted">
           {t('lastUpdated')}: {new Date(expert.updated_at).toLocaleString()}
         </span>
       </div>
@@ -273,7 +273,7 @@ export default function ExpertEditor({
                     disabled={isGeneratingDescription || formData.system_prompt.length < 10}
                     className={cn(
                       'flex items-center gap-1.5 rounded-full border border-border-divider bg-surface-page',
-                      'px-3 py-1 text-[11.5px] font-medium text-content-secondary',
+                      'px-3 py-1 text-caption font-medium text-content-secondary',
                       'transition-colors hover:border-border-hover hover:text-content-primary',
                       'disabled:cursor-not-allowed disabled:opacity-50'
                     )}
@@ -343,7 +343,7 @@ export default function ExpertEditor({
                               • <code className="bg-surface-page px-1">{tool.name}</code>
                               <span className="text-content-secondary/70"> - {tool.description}</span>
                               {tool.category === 'mcp' && (
-                                <span className="ml-1 text-[9px] font-medium text-accent-warning">(MCP)</span>
+                                <span className="ml-1 text-nano font-medium text-accent-warning">(MCP)</span>
                               )}
                             </li>
                           ))}

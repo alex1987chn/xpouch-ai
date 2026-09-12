@@ -21,6 +21,7 @@ import { getArtifactDetail, shareArtifact, updateArtifactContent } from '@/servi
 import { artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
 import ArtifactRenderer from '@/components/artifacts/ArtifactRenderer'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { Segmented } from '@/components/ui/segmented'
 import { Skeleton } from '@/components/ui/skeleton'
 import { pushToast } from '@/components/ui/use-toast'
 import {
@@ -190,7 +191,7 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId, docArtifact
             </span>
           )}
           <div id="artifact-viewer-title" className="min-w-0 flex-1">
-            <div className="truncate text-[13.5px] font-bold text-content-primary">
+            <div className="truncate text-body font-bold text-content-primary">
               {detail?.title || detail?.content_preview?.slice(0, 24) || detail?.type || '…'}
             </div>
             {detail?.created_at && (
@@ -219,26 +220,15 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId, docArtifact
                   <span className="hidden sm:inline">{t('edit')}</span>
                 </button>
               )}
-              <div className="flex h-8 items-center overflow-hidden rounded-full border border-border-divider" role="group">
-                <button
-                  onClick={() => setMode('view')}
-                  className={cn(
-                    'flex h-full items-center gap-1 px-2.5 text-xs transition-colors',
-                    mode === 'view' ? 'bg-surface-tint font-bold text-content-primary' : 'text-content-secondary hover:text-content-primary'
-                  )}
-                >
-                  <Eye className="h-3.5 w-3.5" />{t('artView')}
-                </button>
-                <button
-                  onClick={() => setMode('code')}
-                  className={cn(
-                    'flex h-full items-center gap-1 px-2.5 text-xs transition-colors',
-                    mode === 'code' ? 'bg-surface-tint font-bold text-content-primary' : 'text-content-secondary hover:text-content-primary'
-                  )}
-                >
-                  <Code2 className="h-3.5 w-3.5" />{t('artCode')}
-                </button>
-              </div>
+              <Segmented
+                value={mode}
+                onValueChange={setMode}
+                aria-label={`${t('artView')}/${t('artCode')}`}
+                options={[
+                  { value: 'view', label: <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" />{t('artView')}</span> },
+                  { value: 'code', label: <span className="flex items-center gap-1"><Code2 className="h-3.5 w-3.5" />{t('artCode')}</span> },
+                ]}
+              />
               <button onClick={handleCopy} title={t('copy')} className={cn(actionBtn, 'w-8 justify-center px-0')}>
                 {copied ? <Check className="h-3.5 w-3.5 text-accent-success" /> : <Copy className="h-3.5 w-3.5" />}
               </button>

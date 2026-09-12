@@ -251,7 +251,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
        >
         <div className="min-w-0 flex-1">
          <div className="flex items-center gap-2">
-          <span className="truncate text-[13px] font-bold text-content-primary">
+          <span className="truncate text-body-sm font-bold text-content-primary">
            {policy.tool_name}
           </span>
           {policy.approval_required ? (
@@ -266,7 +266,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
            </span>
           )}
          </div>
-         <div className="mt-0.5 truncate text-[11.5px] text-content-muted">
+         <div className="mt-0.5 truncate text-caption text-content-muted">
           {policy.description || policy.policy_note || '—'}
          </div>
         </div>
@@ -329,7 +329,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
           </span>
          )}
         </div>
-        <div className="mt-0.5 truncate text-[11.5px] text-content-muted">
+        <div className="mt-0.5 truncate text-caption text-content-muted">
          {selectedPolicy.description || '—'}
         </div>
        </div>

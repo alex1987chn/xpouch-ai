@@ -12,7 +12,9 @@ import {
   Pie,
   Cell
 } from 'recharts'
+import { useMemo } from 'react'
 import { useTranslation } from '@/i18n'
+import { useThemeStore } from '@/store/themeStore'
 
 interface ChartData {
   name: string
@@ -37,6 +39,24 @@ const DEFAULT_COLORS = [
 
 interface ChartRendererProps {
   code: string
+}
+
+/** 网格/坐标轴/气泡取 token 实际值——双主题下图表不再悬在错误底色上 */
+function useChartTheme() {
+  const theme = useThemeStore((s) => s.theme)
+  return useMemo(() => {
+    const css = getComputedStyle(document.documentElement)
+    const v = (name: string, fallback: string) => {
+      const raw = css.getPropertyValue(name).trim()
+      return raw ? `rgb(${raw})` : fallback
+    }
+    return {
+      grid: v('--border-divider', '#444'),
+      axis: v('--content-muted', '#888'),
+      tooltipBg: v('--surface-card', '#1e293b'),
+      tooltipBorder: v('--border-divider', '#374151'),
+    }
+  }, [theme])
 }
 
 /**
@@ -85,6 +105,12 @@ function isJSONComplete(str: string): boolean {
 
 export function ChartRenderer({ code }: ChartRendererProps) {
   const { t } = useTranslation()
+  const ct = useChartTheme()
+  const tooltipStyle = {
+    backgroundColor: ct.tooltipBg,
+    border: `1px solid ${ct.tooltipBorder}`,
+    borderRadius: '6px',
+  }
   // 🔥 防抖：如果 JSON 不完整，显示加载状态而非报错
   if (!isJSONComplete(code)) {
     return (
@@ -134,15 +160,11 @@ export function ChartRenderer({ code }: ChartRendererProps) {
       case 'line':
         return (
           <LineChart data={config.items}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-            <XAxis dataKey={xKey} stroke="#888" tick={{ fontSize: 12 }} />
-            <YAxis stroke="#888" tick={{ fontSize: 12 }} />
+            <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+            <XAxis dataKey={xKey} stroke={ct.axis} tick={{ fontSize: 12 }} />
+            <YAxis stroke={ct.axis} tick={{ fontSize: 12 }} />
             <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#1e293b', 
-                border: '1px solid #374151',
-                borderRadius: '6px'
-              }} 
+              contentStyle={tooltipStyle} 
             />
             <Line 
               type="monotone" 
@@ -173,11 +195,7 @@ export function ChartRenderer({ code }: ChartRendererProps) {
               ))}
             </Pie>
             <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#1e293b', 
-                border: '1px solid #374151',
-                borderRadius: '6px'
-              }} 
+              contentStyle={tooltipStyle} 
             />
           </PieChart>
         )
@@ -186,15 +204,11 @@ export function ChartRenderer({ code }: ChartRendererProps) {
       default:
         return (
           <BarChart data={config.items}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-            <XAxis dataKey={xKey} stroke="#888" tick={{ fontSize: 12 }} />
-            <YAxis stroke="#888" tick={{ fontSize: 12 }} />
+            <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+            <XAxis dataKey={xKey} stroke={ct.axis} tick={{ fontSize: 12 }} />
+            <YAxis stroke={ct.axis} tick={{ fontSize: 12 }} />
             <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#1e293b', 
-                border: '1px solid #374151',
-                borderRadius: '6px'
-              }} 
+              contentStyle={tooltipStyle} 
             />
             <Bar dataKey={yKey} fill={color} radius={[4, 4, 0, 0]} />
           </BarChart>
@@ -205,7 +219,7 @@ export function ChartRenderer({ code }: ChartRendererProps) {
   return (
     <div className="w-full h-[300px] bg-surface-page rounded-lg p-4 my-4 border border-border-divider">
       {config?.title && (
-        <h4 className="text-center text-sm font-bold text-gray-300 mb-4">
+        <h4 className="text-center text-sm font-bold text-content-secondary mb-4">
           {config.title}
         </h4>
       )}

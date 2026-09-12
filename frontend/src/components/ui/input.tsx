@@ -86,7 +86,7 @@ const SearchInput = React.forwardRef<
       className={cn(
         // 布局：胶囊
         "flex w-full rounded-full",
-        compact ? "h-8 px-3 text-[13px]" : "h-9 px-4 text-sm",
+        compact ? "h-8 px-3 text-body-sm" : "h-9 px-4 text-sm",
         // 边框 + Focus
         "border-theme-input border-border-default bg-surface-page",
         "focus:border-border-focus focus:outline-none",

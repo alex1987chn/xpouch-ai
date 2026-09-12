@@ -89,7 +89,7 @@ export function SecuritySection() {
             disabled={isSettingPassword}
             className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2.5 text-sm transition-colors focus:border-border-focus focus:outline-none"
           />
-          <p className="text-[11.5px] text-content-muted">
+          <p className="text-caption text-content-muted">
             {t('accountSecurityDesc')}
           </p>
           <button

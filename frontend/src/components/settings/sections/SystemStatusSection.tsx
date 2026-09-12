@@ -25,14 +25,14 @@ function StatCard({
 }) {
   return (
     <div className="rounded-md border border-border-divider bg-surface-card p-4">
-      <div className="text-[11.5px] font-medium text-content-muted">{k}</div>
+      <div className="text-caption font-medium text-content-muted">{k}</div>
       <div className="mt-1.5 font-display text-[19px] font-bold leading-tight text-content-primary">
         {v}
       </div>
       {s && (
         <div
           className={cn(
-            'mt-1 text-[11.5px]',
+            'mt-1 text-caption',
             tone === 'ok' && 'text-accent-success',
             tone === 'warn' && 'text-accent-warning',
             tone === 'bad' && 'text-status-offline',
@@ -62,8 +62,8 @@ function ProviderRow({
         className={cn('h-2 w-2 shrink-0 rounded-full', ok ? 'bg-accent-success' : 'bg-content-muted/50')}
       />
       <div className="min-w-0 flex-1">
-        <div className="text-[13px] font-bold text-content-primary">{name}</div>
-        <div className="truncate text-[11.5px] text-content-muted">{detail}</div>
+        <div className="text-body-sm font-bold text-content-primary">{name}</div>
+        <div className="truncate text-caption text-content-muted">{detail}</div>
       </div>
     </div>
   )

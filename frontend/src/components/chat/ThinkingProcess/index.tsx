@@ -133,7 +133,7 @@ const StepItem = ({ step, index }: StepItemProps) => {
         />
         <span
           className={cn(
-            'min-w-0 flex-1 truncate text-[13px] text-content-primary',
+            'min-w-0 flex-1 truncate text-body-sm text-content-primary',
             step.status === 'running' && 'font-bold'
           )}
         >
@@ -144,7 +144,7 @@ const StepItem = ({ step, index }: StepItemProps) => {
         </span>
         {step.status === 'running' && <span className="shimmer shrink-0" />}
         {step.duration && (
-          <span className="shrink-0 text-[11.5px] text-content-muted">
+          <span className="shrink-0 text-caption text-content-muted">
             {formatDuration(step.duration)}
           </span>
         )}
@@ -171,7 +171,7 @@ const StepItem = ({ step, index }: StepItemProps) => {
               href={step.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-1.5 inline-flex items-center gap-1 font-mono text-[11px] text-accent hover:text-accent-hover hover:underline"
+              className="mt-1.5 inline-flex items-center gap-1 font-mono text-tiny text-accent hover:text-accent-hover hover:underline"
             >
               <ExternalLink className="h-3 w-3" />
               {step.url.length > 50 ? step.url.slice(0, 50) + '...' : step.url}

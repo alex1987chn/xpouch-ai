@@ -140,7 +140,7 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1">
-              <h3 className="truncate text-[13px] font-bold text-content-primary">
+              <h3 className="truncate text-body-sm font-bold text-content-primary">
                 {server.name}
               </h3>
               {canShowTools && (
@@ -152,7 +152,7 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
                 />
               )}
             </div>
-            <p className="mt-0.5 truncate font-mono text-[11.5px] text-content-muted" title={isAdmin ? server.sse_url : undefined}>
+            <p className="mt-0.5 truncate font-mono text-caption text-content-muted" title={isAdmin ? server.sse_url : undefined}>
               {isAdmin ? server.sse_url : maskUrl(server.sse_url)}
             </p>
           </div>
@@ -186,7 +186,7 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
           <div className="border-t border-border-divider bg-surface-tint/40 px-4 py-3">
             <div className="mb-2.5 flex items-center gap-1.5">
               <Wrench className="h-3.5 w-3.5 text-content-muted" />
-              <span className="text-[11.5px] font-bold text-content-muted">
+              <span className="text-caption font-bold text-content-muted">
                 {t('availableTools') || 'Available Tools'} ({tools?.length ?? 0})
               </span>
             </div>
@@ -211,7 +211,7 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
                     <div className="text-xs font-bold text-content-primary">
                       {tool.name}
                     </div>
-                    <div className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-content-muted">
+                    <div className="mt-0.5 line-clamp-2 text-tiny leading-relaxed text-content-muted">
                       {tool.description}
                     </div>
                   </div>

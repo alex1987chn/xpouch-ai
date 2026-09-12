@@ -323,7 +323,7 @@ export default function ExpertFormDialog({
                           • <code className="bg-surface-page px-1">{tool.name}</code>
                           <span className="text-content-secondary/70"> - {tool.description}</span>
                           {tool.category === 'mcp' && (
-                            <span className="ml-1 text-[9px] font-medium text-accent-warning">(MCP)</span>
+                            <span className="ml-1 text-nano font-medium text-accent-warning">(MCP)</span>
                           )}
                         </li>
                       ))}

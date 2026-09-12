@@ -112,9 +112,9 @@ export function EditUserDialog({ open, user, isSelf, onClose, onSaved }: EditUse
     }
   }
 
-  const ghostBtn = 'flex h-9 items-center gap-1.5 rounded-full border border-border-divider bg-surface-card px-4 text-[13px] font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50'
-  const primaryBtn = 'flex h-9 items-center gap-1.5 rounded-full border border-border-divider bg-accent-brand px-5 text-[13px] font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none'
-  const inputCls = 'w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-[13px] text-content-primary focus:border-border-focus focus:outline-none transition-colors'
+  const ghostBtn = 'flex h-9 items-center gap-1.5 rounded-full border border-border-divider bg-surface-card px-4 text-body-sm font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50'
+  const primaryBtn = 'flex h-9 items-center gap-1.5 rounded-full border border-border-divider bg-accent-brand px-5 text-body-sm font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none'
+  const inputCls = 'w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-body-sm text-content-primary focus:border-border-focus focus:outline-none transition-colors'
   const modePill = (active: boolean) =>
     cn(
       'rounded-md px-3 py-1.5 text-xs transition-colors',
@@ -134,7 +134,7 @@ export function EditUserDialog({ open, user, isSelf, onClose, onSaved }: EditUse
         <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-surface-tint text-xs font-bold text-content-primary">
           {(user.username || 'U').charAt(0).toUpperCase()}
         </span>
-        <span id="edit-user-title" className="flex-1 truncate text-[14.5px] font-bold text-content-primary">
+        <span id="edit-user-title" className="flex-1 truncate text-body-lg font-bold text-content-primary">
           {user.username}
         </span>
         <span className="text-nano text-content-muted">{user.id.slice(0, 8)}</span>
@@ -238,13 +238,13 @@ export function EditUserDialog({ open, user, isSelf, onClose, onSaved }: EditUse
             {t('resetGenerate')}
           </button>
         )}
-        <p className="text-[11px] leading-relaxed text-content-muted">
+        <p className="text-tiny leading-relaxed text-content-muted">
           {generatedPassword ? t('resetDeliverHint') : t('resetModeHint')}
         </p>
 
         {generatedPassword && (
           <div className="flex items-center gap-2 rounded-md border border-accent-warning/30 bg-accent-warning/[0.08] px-3 py-2.5">
-            <span className="flex-1 font-mono text-[13px] font-bold text-content-primary">{generatedPassword}</span>
+            <span className="flex-1 font-mono text-body-sm font-bold text-content-primary">{generatedPassword}</span>
             <button
               onClick={handleCopyPassword}
               title={t('copy')}

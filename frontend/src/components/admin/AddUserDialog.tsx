@@ -93,7 +93,7 @@ export function AddUserDialog({ open, onClose, onCreated }: AddUserDialogProps) 
     }
   }
 
-  const inputCls = 'w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-[13px] text-content-primary focus:border-border-focus focus:outline-none transition-colors'
+  const inputCls = 'w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-body-sm text-content-primary focus:border-border-focus focus:outline-none transition-colors'
   const modePill = (active: boolean) =>
     cn(
       'rounded-md px-3 py-1.5 text-xs transition-colors',
@@ -110,7 +110,7 @@ export function AddUserDialog({ open, onClose, onCreated }: AddUserDialogProps) 
     >
       {/* 头部 */}
       <div className="flex items-center gap-2.5 border-b border-border-divider px-5 py-4">
-        <span id="add-user-title" className="flex-1 text-[14.5px] font-bold text-content-primary">
+        <span id="add-user-title" className="flex-1 text-body-lg font-bold text-content-primary">
           {t('addUser')}
         </span>
         <button
@@ -125,9 +125,9 @@ export function AddUserDialog({ open, onClose, onCreated }: AddUserDialogProps) 
       {createdPwd ? (
         /* 随机初始密码展示（仅一次） */
         <div className="flex flex-col gap-3 px-5 py-5">
-          <p className="text-[12.5px] leading-relaxed text-content-secondary">{t('userCreated')}</p>
+          <p className="text-xs leading-relaxed text-content-secondary">{t('userCreated')}</p>
           <div className="flex items-center gap-2 rounded-md border border-accent-warning/30 bg-accent-warning/[0.08] px-3 py-2.5">
-            <span className="flex-1 font-mono text-[13px] font-bold text-content-primary">{createdPwd}</span>
+            <span className="flex-1 font-mono text-body-sm font-bold text-content-primary">{createdPwd}</span>
             <button
               onClick={handleCopyPassword}
               title={t('copy')}
@@ -136,7 +136,7 @@ export function AddUserDialog({ open, onClose, onCreated }: AddUserDialogProps) 
               {copied ? <Check className="h-3.5 w-3.5 text-accent-success" /> : <Copy className="h-3.5 w-3.5" />}
             </button>
           </div>
-          <p className="text-[11px] leading-relaxed text-content-muted">{t('resetDeliverHint')}</p>
+          <p className="text-tiny leading-relaxed text-content-muted">{t('resetDeliverHint')}</p>
           <button
             onClick={handleClose}
             className="self-end rounded-full border border-border-divider bg-accent-brand px-5 py-1.5 text-xs font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card"
@@ -215,18 +215,18 @@ export function AddUserDialog({ open, onClose, onCreated }: AddUserDialogProps) 
                 maxLength={64}
               />
             )}
-            <p className="text-[11px] leading-relaxed text-content-muted">{t('pwdNoneHint')}</p>
+            <p className="text-tiny leading-relaxed text-content-muted">{t('pwdNoneHint')}</p>
           </div>
 
           {/* 底部 */}
           <div className="flex items-center justify-end gap-2.5 border-t border-border-divider px-5 py-3.5">
-            <button onClick={handleClose} disabled={isSaving} className="flex h-9 items-center rounded-full border border-border-divider bg-surface-card px-4 text-[13px] font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50">
+            <button onClick={handleClose} disabled={isSaving} className="flex h-9 items-center rounded-full border border-border-divider bg-surface-card px-4 text-body-sm font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50">
               {t('cancel')}
             </button>
             <button
               onClick={handleCreate}
               disabled={!canSubmit || isSaving}
-              className="flex h-9 items-center gap-1.5 rounded-full border border-border-divider bg-accent-brand px-5 text-[13px] font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
+              className="flex h-9 items-center gap-1.5 rounded-full border border-border-divider bg-accent-brand px-5 text-body-sm font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
             >
               {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {t('addUser')}

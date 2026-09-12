@@ -87,7 +87,7 @@ export function ModelSection() {
             ))}
           </div>
         </div>
-        <p className="text-[11.5px] leading-relaxed text-content-muted">
+        <p className="text-caption leading-relaxed text-content-muted">
           {supportsThinking ? t('thinkingCostHint') : t('thinkingUnsupported')}
         </p>
       </section>
@@ -119,10 +119,10 @@ export function ModelSection() {
               )}
             >
               <div className="flex-1">
-                <div className="text-[13px] font-bold text-content-primary">
+                <div className="text-body-sm font-bold text-content-primary">
                   {t('followSystemDefault')}
                 </div>
-                <div className="mt-0.5 text-[11.5px] text-content-muted">
+                <div className="mt-0.5 text-caption text-content-muted">
                   {settingsData?.default_model?.name || effectiveModelId}
                 </div>
               </div>
@@ -148,10 +148,10 @@ export function ModelSection() {
                 )}
               >
                 <div className="flex-1">
-                  <div className="text-[13px] font-bold text-content-primary">
+                  <div className="text-body-sm font-bold text-content-primary">
                     {model.name}
                   </div>
-                  <div className="mt-0.5 text-[11.5px] text-content-muted">
+                  <div className="mt-0.5 text-caption text-content-muted">
                     {model.provider_name} · {Math.round(model.context_window / 1000)}K tokens
                     {model.thinking_toggle ? ` · ${t('thinkingMode')} ✓` : ''}
                   </div>
@@ -169,7 +169,7 @@ export function ModelSection() {
       </section>
 
       {/* Complex 模式：一行提示（模型由管理员在专家管理配置） */}
-      <p className="flex items-start gap-1.5 text-[11.5px] text-content-muted">
+      <p className="flex items-start gap-1.5 text-caption text-content-muted">
         <Info className="mt-0.5 h-3 w-3 shrink-0" />
         <span>{t('complexModeDesc')}</span>
       </p>
@@ -179,7 +179,7 @@ export function ModelSection() {
         <button
           onClick={handleSave}
           disabled={!canSave}
-          className="flex items-center gap-2 rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-[13px] font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+          className="flex items-center gap-2 rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-body-sm font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
         >
           {isSaving ? t('savingUserSettings') : t('save')}
         </button>

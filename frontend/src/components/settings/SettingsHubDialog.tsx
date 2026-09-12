@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom'
 import { User, ShieldCheck, Info, X, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation, type Language } from '@/i18n'
+import { Segmented } from '@/components/ui/segmented'
 import { useAppUIStore, type SettingsSection } from '@/store/appUIStore'
 import { useUserStore } from '@/store/userStore'
 import { useState } from 'react'
@@ -35,28 +36,13 @@ const LANGS: { id: Language; label: string }[] = [
 function LanguageToggle() {
   const { language, setLanguage } = useTranslation()
   return (
-    <div
-      role="group"
+    <Segmented
+      size="sm"
       aria-label="Language"
-      className="flex h-[28px] items-center overflow-hidden rounded-full border border-border-default bg-surface-page"
-    >
-      {LANGS.map((lang, i) => (
-        <button
-          key={lang.id}
-          type="button"
-          onClick={() => setLanguage(lang.id)}
-          className={cn(
-            'h-full px-2.5 text-[11px] transition-colors',
-            i > 0 && 'border-l border-border-divider',
-            language === lang.id
-              ? 'bg-surface-tint font-bold text-content-primary'
-              : 'text-content-muted hover:text-content-primary'
-          )}
-        >
-          {lang.label}
-        </button>
-      ))}
-    </div>
+      value={language}
+      onValueChange={setLanguage}
+      options={LANGS.map((lang) => ({ value: lang.id, label: lang.label }))}
+    />
   )
 }
 
@@ -98,7 +84,7 @@ export function SettingsHubDialog() {
       aria-selected={section === key}
       onClick={() => setSettingsSection(key)}
       className={cn(
-        'flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
+        'flex items-center gap-2.5 rounded-md px-3 py-2 text-body-sm transition-colors',
         section === key
           ? 'bg-surface-tint font-bold text-content-primary'
           : 'font-medium text-content-secondary hover:bg-surface-tint/60 hover:text-content-primary'
@@ -152,7 +138,7 @@ export function SettingsHubDialog() {
                 <button
                   type="button"
                   onClick={() => setConfirmLogout(true)}
-                  className="mt-auto flex items-center gap-2.5 rounded-md border-t border-border-divider px-3 py-2.5 text-[13px] font-medium text-accent-destructive transition-colors hover:bg-accent-destructive/10"
+                  className="mt-auto flex items-center gap-2.5 rounded-md border-t border-border-divider px-3 py-2.5 text-body-sm font-medium text-accent-destructive transition-colors hover:bg-accent-destructive/10"
                 >
                   <LogOut className="h-4 w-4 shrink-0" />
                   <span>{t('logout')}</span>

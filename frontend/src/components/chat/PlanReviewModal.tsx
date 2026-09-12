@@ -47,9 +47,9 @@ export function PlanReviewModal({
     }
   }, [open, plan])
 
-  const ghostBtn = 'flex h-9 items-center gap-1.5 rounded-full border border-border-divider bg-surface-card px-4 text-[13px] font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50'
-  const primaryBtn = 'flex h-9 items-center gap-1.5 rounded-full border border-border-divider bg-accent-brand px-5 text-[13px] font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none'
-  const dangerBtn = 'flex h-9 items-center gap-1.5 rounded-full border border-status-offline/40 bg-surface-card px-4 text-[13px] font-medium text-status-offline transition-colors hover:bg-status-offline/5 disabled:opacity-50'
+  const ghostBtn = 'flex h-9 items-center gap-1.5 rounded-full border border-border-divider bg-surface-card px-4 text-body-sm font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50'
+  const primaryBtn = 'flex h-9 items-center gap-1.5 rounded-full border border-border-divider bg-accent-brand px-5 text-body-sm font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none'
+  const dangerBtn = 'flex h-9 items-center gap-1.5 rounded-full border border-status-offline/40 bg-surface-card px-4 text-body-sm font-medium text-status-offline transition-colors hover:bg-status-offline/5 disabled:opacity-50'
 
   return (
     <ModalShell
@@ -64,7 +64,7 @@ export function PlanReviewModal({
         <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-accent-warning/15 text-accent-warning">
           <AlertTriangle className="h-3.5 w-3.5" />
         </span>
-        <span id="plan-review-modal-title" className="flex-1 text-[14.5px] font-bold text-content-primary">
+        <span id="plan-review-modal-title" className="flex-1 text-body-lg font-bold text-content-primary">
           {t('planReviewTitle')}
         </span>
         {planVersion != null && (
@@ -88,12 +88,12 @@ export function PlanReviewModal({
               <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-accent-brand/15">
                 <Loader2 className="h-3 w-3 animate-spin text-accent-brand" />
               </span>
-              <span className="text-[13px] font-bold text-content-primary">{t('revisingTitle')}</span>
+              <span className="text-body-sm font-bold text-content-primary">{t('revisingTitle')}</span>
             </div>
             <div className="rounded-md border border-border-divider bg-surface-page px-4 py-4">
               <div className="shimmer" />
             </div>
-            <p className="text-[11.5px] leading-relaxed text-content-muted">{t('revisingHint')}</p>
+            <p className="text-caption leading-relaxed text-content-muted">{t('revisingHint')}</p>
           </div>
           <div className="flex items-center justify-end border-t border-border-divider px-5 py-3.5">
             <button onClick={onClose} className={ghostBtn}>{t('close')}</button>
@@ -103,7 +103,7 @@ export function PlanReviewModal({
         /* 修订反馈视图 */
         <>
           <div className="flex flex-col gap-3 px-5 py-4">
-            <p className="text-[12.5px] leading-relaxed text-content-secondary">
+            <p className="text-xs leading-relaxed text-content-secondary">
               <b className="text-content-primary">{t('reviseTitle')}</b>
               {' · '}{t('feedbackNote')}
             </p>
@@ -113,9 +113,9 @@ export function PlanReviewModal({
               autoFocus
               rows={4}
               placeholder={t('feedbackPlaceholder')}
-              className="w-full resize-y rounded-md border border-border-default bg-surface-page p-3 text-[13px] leading-relaxed text-content-primary placeholder:text-content-muted focus:border-border-focus focus:outline-none"
+              className="w-full resize-y rounded-md border border-border-default bg-surface-page p-3 text-body-sm leading-relaxed text-content-primary placeholder:text-content-muted focus:border-border-focus focus:outline-none"
             />
-            <p className="text-[11.5px] text-content-muted">{t('feedbackHint')}</p>
+            <p className="text-caption text-content-muted">{t('feedbackHint')}</p>
           </div>
           <div className="flex items-center justify-end gap-2.5 border-t border-border-divider px-5 py-3.5">
             <button onClick={() => setFeedbackView(false)} disabled={isSubmitting} className={ghostBtn}>
@@ -135,11 +135,11 @@ export function PlanReviewModal({
         <>
           {/* 计划视图 */}
           <div className="flex flex-col gap-3 px-5 py-4">
-            <p className="text-[12.5px] leading-relaxed text-content-secondary">{t('approvalModalNote')}</p>
+            <p className="text-xs leading-relaxed text-content-secondary">{t('approvalModalNote')}</p>
             <div className="flex flex-col gap-2">
               {editedPlan.map((task, index) => (
                 <div key={task.id} className="flex gap-3 rounded-md border border-border-divider bg-surface-page p-3">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface-tint font-display text-[11px] font-bold text-content-secondary">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface-tint font-display text-tiny font-bold text-content-secondary">
                     {index + 1}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -150,12 +150,12 @@ export function PlanReviewModal({
                           prev.map(p => (p.id === task.id ? { ...p, description: e.target.value } : p))
                         )}
                         rows={2}
-                        className="w-full resize-none rounded-md border border-border-default bg-surface-card p-2 text-[13px] text-content-primary focus:border-border-focus focus:outline-none"
+                        className="w-full resize-none rounded-md border border-border-default bg-surface-card p-2 text-body-sm text-content-primary focus:border-border-focus focus:outline-none"
                       />
                     ) : (
-                      <p className="text-[13px] leading-relaxed text-content-primary">{task.description}</p>
+                      <p className="text-body-sm leading-relaxed text-content-primary">{task.description}</p>
                     )}
-                    <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-content-muted">
+                    <div className="mt-1.5 flex items-center gap-1.5 text-tiny text-content-muted">
                       <span className="h-[7px] w-[7px] rounded-full" style={expertDotStyle(task.expert_type)} />
                       {t('planStepExecutor', { expert: task.expert_type })}
                     </div>

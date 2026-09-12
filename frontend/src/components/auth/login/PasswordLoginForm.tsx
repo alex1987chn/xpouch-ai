@@ -71,7 +71,7 @@ export function PasswordLoginForm({
         {loading ? 'SIGNING...' : '登录 / LOGIN'}
       </button>
 
-      <div className="flex justify-between items-center text-[11.5px] text-content-muted">
+      <div className="flex justify-between items-center text-caption text-content-muted">
         <button
           onClick={onForgotPassword}
           className="hover:text-content-primary transition-colors underline underline-offset-2"

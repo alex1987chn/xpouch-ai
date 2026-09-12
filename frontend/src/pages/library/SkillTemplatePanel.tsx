@@ -393,7 +393,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
         className="group flex min-h-[168px] cursor-pointer flex-col rounded-md border border-border-divider bg-surface-card p-4 transition-all hover:-translate-y-px hover:shadow-theme-card"
        >
         <div className="flex items-center justify-between gap-2">
-         <span className="truncate text-[13.5px] font-bold text-content-primary">
+         <span className="truncate text-body font-bold text-content-primary">
           {tpl.name}
          </span>
          <span className="shrink-0 rounded-full bg-surface-tint px-2 py-0.5 text-nano font-medium text-content-secondary">
@@ -403,7 +403,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
         <p className="mt-1.5 line-clamp-2 min-h-[38px] text-xs leading-relaxed text-content-secondary">
          {tpl.description || t('templateNoDescription') || '—'}
         </p>
-        <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-content-muted">
+        <div className="mt-2.5 flex items-center gap-1.5 text-tiny text-content-muted">
          <span className="rounded-full bg-surface-tint px-2 py-0.5 font-medium text-content-secondary">
           {tpl.category}
          </span>
@@ -430,7 +430,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
       {canEdit && (
        <button
         onClick={handleCreate}
-        className="flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-md border-[1.5px] border-dashed border-border-hover text-[13px] text-content-muted transition-all hover:bg-surface-tint/60 hover:text-content-primary"
+        className="flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-md border-[1.5px] border-dashed border-border-hover text-body-sm text-content-muted transition-all hover:bg-surface-tint/60 hover:text-content-primary"
        >
         <Plus className="h-5 w-5" />
         {t('newTemplate') || 'New'}

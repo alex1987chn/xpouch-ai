@@ -214,7 +214,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
               disabled={createMutation.isPending}
               className="font-mono text-sm"
             />
-            <p className="mt-2 text-[11.5px] text-content-muted">
+            <p className="mt-2 text-caption text-content-muted">
               {formData.transport === 'sse' 
                 ? 'SSE endpoint URL for Server-Sent Events transport'
                 : 'HTTP endpoint URL for Streamable HTTP transport'}
@@ -228,7 +228,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
             type="button"
             onClick={handleClose}
             disabled={createMutation.isPending}
-            className="rounded-full border border-border-divider bg-surface-page px-4 py-2 text-[13px] font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
+            className="rounded-full border border-border-divider bg-surface-page px-4 py-2 text-body-sm font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
           >
             {t('cancel') || 'Cancel'}
           </button>
@@ -236,7 +236,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
             type="submit"
             onClick={handleSubmit}
             disabled={createMutation.isPending}
-            className="rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-[13px] font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
+            className="rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-body-sm font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
           >
             {createMutation.isPending ? (
               <span className="flex items-center justify-center gap-2">

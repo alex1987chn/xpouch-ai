@@ -293,7 +293,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
                 >
                   {expert.name.charAt(0)}
                 </span>
-                <span className="truncate text-[13.5px] font-bold text-content-primary">
+                <span className="truncate text-body font-bold text-content-primary">
                   {expert.name}
                 </span>
               </div>
@@ -302,7 +302,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
                 {expert.description || t('templateNoDescription') || '—'}
               </p>
 
-              <div className="flex items-center gap-1.5 text-[11px] text-content-muted">
+              <div className="flex items-center gap-1.5 text-tiny text-content-muted">
                 <span className="rounded-full bg-surface-tint px-2 py-0.5 font-medium text-content-secondary">
                   {expert.model}
                 </span>
@@ -316,7 +316,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
           {/* 新建专家卡（蓝本 ex-new：虚线卡） */}
           <button
             onClick={() => setIsCreateDialogOpen(true)}
-            className="flex min-h-[150px] flex-col items-center justify-center gap-2 rounded-md border-[1.5px] border-dashed border-border-hover text-[13px] text-content-muted transition-all hover:bg-surface-tint/60 hover:text-content-primary"
+            className="flex min-h-[150px] flex-col items-center justify-center gap-2 rounded-md border-[1.5px] border-dashed border-border-hover text-body-sm text-content-muted transition-all hover:bg-surface-tint/60 hover:text-content-primary"
           >
             <Plus className="h-5 w-5" />
             {t('createExpert')}

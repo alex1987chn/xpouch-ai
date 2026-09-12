@@ -182,7 +182,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             placeholder={t('cmdSearch')}
             className="flex-1 border-none bg-transparent text-sm text-content-primary outline-none ring-0 placeholder:text-content-muted"
           />
-          <kbd className="rounded border border-border-divider bg-surface-page px-1.5 font-display text-[9.5px] font-bold text-content-muted">esc</kbd>
+          <kbd className="rounded border border-border-divider bg-surface-page px-1.5 font-display text-nano font-bold text-content-muted">esc</kbd>
         </div>
 
         {/* 分组列表 */}
@@ -203,14 +203,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 onMouseEnter={() => setCursor(i)}
                 onClick={() => runAt(i)}
                 className={cn(
-                  'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-[13px] transition-colors',
+                  'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-body-sm transition-colors',
                   i === cursor ? 'bg-surface-tint text-content-primary' : 'text-content-secondary hover:bg-surface-tint/60'
                 )}
               >
                 <item.icon className="h-4 w-4 shrink-0 text-content-muted" />
                 <span className="flex-1 truncate">{item.label}</span>
                 {item.hint && (
-                  <kbd className="rounded border border-border-divider bg-surface-page px-1.5 font-display text-[9.5px] font-bold text-content-muted">{item.hint}</kbd>
+                  <kbd className="rounded border border-border-divider bg-surface-page px-1.5 font-display text-nano font-bold text-content-muted">{item.hint}</kbd>
                 )}
               </button>
             )
@@ -228,7 +228,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 onMouseEnter={() => setCursor(i)}
                 onClick={() => runAt(i)}
                 className={cn(
-                  'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-[13px] transition-colors',
+                  'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-body-sm transition-colors',
                   i === cursor ? 'bg-surface-tint text-content-primary' : 'text-content-secondary hover:bg-surface-tint/60'
                 )}
               >
@@ -240,7 +240,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         </div>
 
         {/* 脚注 */}
-        <div className="border-t border-border-divider px-4 py-2 text-[11px] text-content-muted">
+        <div className="border-t border-border-divider px-4 py-2 text-tiny text-content-muted">
           {t('cmdHint')}
         </div>
       </div>
@@ -250,5 +250,5 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 }
 
 function GroupLabel({ label }: { label: string }) {
-  return <div className="px-3 pb-1 pt-2 text-[11px] font-bold text-content-muted">{label}</div>
+  return <div className="px-3 pb-1 pt-2 text-tiny font-bold text-content-muted">{label}</div>
 }

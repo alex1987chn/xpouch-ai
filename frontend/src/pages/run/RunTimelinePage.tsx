@@ -293,7 +293,7 @@ export default function RunTimelinePage() {
    <div className="flex h-full flex-col items-center justify-center">
     <AlertCircle className="h-12 w-12 text-content-muted" />
     <p className="mt-4 text-content-primary">{t('runNotFound')}</p>
-    <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
+    <Button variant="default" className="mt-4" onClick={() => navigate(-1)}>
      {t('runBack')}
     </Button>
    </div>

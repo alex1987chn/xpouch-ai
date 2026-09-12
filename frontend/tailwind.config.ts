@@ -38,6 +38,11 @@ const config: Config = {
         nano: '10px',
         micro: '10px',
         tiny: '11px',
+        /* 正文签名档（v3.5.1 起 token 化，禁用 text-[Npx] 任意值） */
+        caption: '11.5px',
+        'body-sm': '13px',
+        body: '13.5px',
+        'body-lg': '14.5px',
       },
 
       /* ============================================

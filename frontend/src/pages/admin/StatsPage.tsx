@@ -58,11 +58,11 @@ function MetricCard({
  return (
   <div className="rounded-md border border-border-divider bg-surface-card p-4">
    <div className="flex items-center justify-between">
-    <span className="text-[11.5px] font-medium text-content-muted">{title}</span>
+    <span className="text-caption font-medium text-content-muted">{title}</span>
     <span className={cn('flex h-7 w-7 items-center justify-center rounded-full', tintClasses[color])}>{icon}</span>
    </div>
    <div className="mt-1.5 font-display text-[19px] font-bold leading-tight text-content-primary">{value}</div>
-   {subtitle && <div className="mt-1 text-[11.5px] text-content-muted">{subtitle}</div>}
+   {subtitle && <div className="mt-1 text-caption text-content-muted">{subtitle}</div>}
   </div>
  )
 }
@@ -159,7 +159,7 @@ function RunTable({
      onClick={() => onRunClick(run.run_id)}
      className="stagger-item group flex w-full items-center gap-3 rounded-md border border-border-divider bg-surface-card px-4 py-3 text-left transition-all hover:border-border-hover hover:shadow-theme-card"
     >
-     <span className="font-display text-[13px] font-bold text-content-primary">
+     <span className="font-display text-body-sm font-bold text-content-primary">
       #{run.run_id.slice(0, 8)}
      </span>
      {isAdmin && (

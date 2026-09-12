@@ -21,22 +21,22 @@ export function AboutSection() {
         <div className="font-display text-[22px] font-bold tracking-wide text-content-primary">
           [<span className="text-accent-brand">X</span>POUCH]
         </div>
-        <div className="text-[12.5px] italic text-content-muted">initial minds, one pouch</div>
+        <div className="text-xs italic text-content-muted">initial minds, one pouch</div>
       </div>
 
       {/* 版本 / 仓库信息行 */}
       <div className="mt-4 divide-y divide-border-divider rounded-md border border-border-divider">
         <div className="flex items-center justify-between px-4 py-3">
-          <span className="text-[13px] text-content-secondary">{t('versionLabel')}</span>
-          <span className="text-[13px] font-medium text-content-primary">{VERSION.CURRENT}</span>
+          <span className="text-body-sm text-content-secondary">{t('versionLabel')}</span>
+          <span className="text-body-sm font-medium text-content-primary">{VERSION.CURRENT}</span>
         </div>
         <div className="flex items-center justify-between px-4 py-3">
-          <span className="text-[13px] text-content-secondary">{t('openSource')}</span>
+          <span className="text-body-sm text-content-secondary">{t('openSource')}</span>
           <a
             href={GITHUB_REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-[13px] font-medium text-content-primary underline-offset-2 transition-colors hover:text-accent-hover hover:underline"
+            className="flex items-center gap-1.5 text-body-sm font-medium text-content-primary underline-offset-2 transition-colors hover:text-accent-hover hover:underline"
           >
             <GithubMark className="h-3.5 w-3.5" />
             GitHub
@@ -44,7 +44,7 @@ export function AboutSection() {
         </div>
       </div>
 
-      <p className="mt-4 px-1 text-[11.5px] leading-relaxed text-content-muted">
+      <p className="mt-4 px-1 text-caption leading-relaxed text-content-muted">
         {t('aboutHint')}
       </p>
     </div>

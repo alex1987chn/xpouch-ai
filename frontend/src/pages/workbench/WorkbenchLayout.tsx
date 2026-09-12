@@ -162,10 +162,10 @@ export default function WorkbenchLayout() {
         {/* ⌘K 药丸：打开全局命令面板 */}
         <button
           onClick={() => setPaletteOpen(true)}
-          className="absolute left-1/2 top-1/2 hidden h-[34px] w-[400px] -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 rounded-full border-theme-input border-border-default bg-surface-page px-3.5 text-[13px] text-content-muted transition-all hover:border-border-hover hover:shadow-theme-card sm:flex"
+          className="absolute left-1/2 top-1/2 hidden h-[34px] w-[400px] -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 rounded-full border-theme-input border-border-default bg-surface-page px-3.5 text-body-sm text-content-muted transition-all hover:border-border-hover hover:shadow-theme-card sm:flex"
           title={t('cmdSearch')}
         >
-          <span className="rounded border border-border-default bg-surface-card px-1.5 py-px font-display text-[11px] font-bold text-content-secondary">⌘K</span>
+          <span className="rounded border border-border-default bg-surface-card px-1.5 py-px font-display text-tiny font-bold text-content-secondary">⌘K</span>
           <span className="truncate">{t('cmdSearch')}</span>
         </button>
 
@@ -282,12 +282,12 @@ export default function WorkbenchLayout() {
             </span>
           )}
           <span className="flex items-center gap-1.5">
-            <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-[9.5px] font-bold text-content-muted">⌘K</kbd>
+            <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-nano font-bold text-content-muted">⌘K</kbd>
             {t('sbCommands')}
           </span>
           <span className="hidden items-center gap-1.5 sm:flex">
-            <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-[9.5px] font-bold text-content-muted">G</kbd>
-            <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-[9.5px] font-bold text-content-muted">W/L/A/S</kbd>
+            <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-nano font-bold text-content-muted">G</kbd>
+            <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-nano font-bold text-content-muted">W/L/A/S</kbd>
             {t('sbJump')}
           </span>
         </span>

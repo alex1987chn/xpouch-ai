@@ -46,16 +46,6 @@ const buttonVariants = cva(
         ],
 
         /**
-         * 轮廓变体
-         */
-        outline: [
-          "bg-surface-card border-theme-button border-border-default text-content-primary",
-          "shadow-theme-button",
-          "hover:border-border-hover hover:bg-surface-tint",
-          "active:translate-y-0 active:shadow-none",
-        ],
-
-        /**
          * 幽灵变体
          */
         ghost: [
@@ -87,13 +77,41 @@ const buttonVariants = cva(
           "hover:bg-accent-hover hover:-translate-y-px hover:shadow-theme-card",
           "active:translate-y-0 active:shadow-none",
         ],
+
+        /**
+         * 胶囊次级（v3.5.1 收编全站高频手写胶囊按钮：
+         * 灰描边圆角全、暖白底、悬停微位移+卡片影）
+         */
+        pill: [
+          "rounded-full bg-surface-card border border-border-divider text-content-secondary",
+          "hover:border-border-hover hover:text-content-primary",
+        ],
+
+        /**
+         * 胶囊品牌（黄底主行动胶囊）
+         */
+        pillBrand: [
+          "rounded-full bg-accent-brand border border-border-divider text-accent-ink font-bold",
+          "hover:-translate-y-px hover:shadow-theme-card",
+          "active:translate-y-0 active:shadow-none disabled:translate-y-0 disabled:shadow-none",
+        ],
+
+        /**
+         * 胶囊危险（红描边破坏性胶囊）
+         */
+        pillDanger: [
+          "rounded-full bg-surface-card border border-status-offline/40 text-status-offline",
+          "hover:bg-status-offline/5",
+        ],
       },
-      
+
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-9 px-3 text-xs",
         lg: "h-11 px-8 text-base",
         icon: "h-10 w-10",
+        /** 胶囊系标准高度（全站 h-9 胶囊按钮） */
+        pill: "h-9 px-4 text-[13px]",
       },
     },
     defaultVariants: {

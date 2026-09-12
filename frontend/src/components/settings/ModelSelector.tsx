@@ -87,10 +87,10 @@ export default function ModelSelector({ value, onChange, label, disabled }: Mode
             )}
           >
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[13px] font-bold text-content-primary">
+              <div className="truncate text-body-sm font-bold text-content-primary">
                 {model.name}
               </div>
-              <div className="truncate text-[11px] text-content-muted">
+              <div className="truncate text-tiny text-content-muted">
                 {Math.round(model.context_window / 1000)}K tokens
                 {model.thinking_toggle ? ` · ${t('thinkingMode')} ✓` : ''}
               </div>

@@ -116,7 +116,7 @@ export function ResetPasswordForm({
         <button
           onClick={onBack}
           disabled={loading}
-          className="text-[11.5px] text-content-muted hover:text-content-primary transition-colors underline underline-offset-2"
+          className="text-caption text-content-muted hover:text-content-primary transition-colors underline underline-offset-2"
         >
           {t('backToLogin')}
         </button>
@@ -125,7 +125,7 @@ export function ResetPasswordForm({
       {/* 开发环境显示验证码 */}
       {import.meta.env.DEV && debugCode && (
         <div className="p-3 rounded-md border border-accent-brand/30 bg-accent-brand/10">
-          <div className="text-[11.5px] font-medium text-content-primary">
+          <div className="text-caption font-medium text-content-primary">
             <div className="font-bold mb-1">🔧 DEV_MODE</div>
             <div>
               CODE: <span className="text-lg font-bold">{debugCode}</span>

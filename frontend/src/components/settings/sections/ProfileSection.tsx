@@ -33,8 +33,8 @@ function InfoRow({ label, value, mono, copyable }: { label: string; value: strin
 
   return (
     <div className="flex items-center gap-3 border-b border-border-divider py-2.5 last:border-b-0">
-      <span className="w-24 shrink-0 text-[11.5px] font-medium text-content-muted">{label}</span>
-      <span className={`min-w-0 flex-1 truncate text-[13px] text-content-primary ${mono ? 'font-mono text-xs' : ''}`}>
+      <span className="w-24 shrink-0 text-caption font-medium text-content-muted">{label}</span>
+      <span className={`min-w-0 flex-1 truncate text-body-sm text-content-primary ${mono ? 'font-mono text-xs' : ''}`}>
         {value}
       </span>
       {copyable && (
@@ -175,11 +175,11 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
                 className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm transition-colors focus:border-border-focus focus:outline-none"
               />
               <div className="mt-1.5 flex items-center gap-3">
-                <p className="text-[11.5px] text-content-muted">{t('usernameHint')}</p>
+                <p className="text-caption text-content-muted">{t('usernameHint')}</p>
                 {avatarPreview && (
                   <button
                     onClick={handleRemoveAvatar}
-                    className="flex shrink-0 items-center gap-1 text-[11.5px] text-content-muted transition-colors hover:text-accent-destructive"
+                    className="flex shrink-0 items-center gap-1 text-caption text-content-muted transition-colors hover:text-accent-destructive"
                   >
                     <X className="h-3 w-3" />
                     {t('removeAvatar')}
@@ -205,14 +205,14 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
         <button
           onClick={onClose}
           disabled={isSaving}
-          className="rounded-full border border-border-divider bg-surface-page px-4 py-2 text-[13px] font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
+          className="rounded-full border border-border-divider bg-surface-page px-4 py-2 text-body-sm font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
         >
           {t('cancel')}
         </button>
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="flex items-center gap-2 rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-[13px] font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
+          className="flex items-center gap-2 rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-body-sm font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
         >
           {isSaving ? (
             <span className="flex items-center gap-2">

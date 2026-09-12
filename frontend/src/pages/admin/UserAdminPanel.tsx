@@ -232,7 +232,7 @@ export function UserAdminPanel({ searchQuery }: UserAdminPanelProps) {
                               {(user.username || 'U').charAt(0).toUpperCase()}
                             </span>
                           )}
-                          <span className="max-w-[140px] truncate text-[13px] font-bold text-content-primary">
+                          <span className="max-w-[140px] truncate text-body-sm font-bold text-content-primary">
                             {user.username}
                             {isSelf && <span className="ml-1 font-normal text-content-muted">({t('selfTag')})</span>}
                           </span>

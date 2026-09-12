@@ -63,7 +63,7 @@ export default function ChatEmptyState() {
       <h2 className="mt-4 text-lg font-bold text-content-primary">
         {t('emptyTitle')}
       </h2>
-      <p className="mt-1.5 text-[13px] text-content-muted">
+      <p className="mt-1.5 text-body-sm text-content-muted">
         {t('emptySub')}
       </p>
 
@@ -78,8 +78,8 @@ export default function ChatEmptyState() {
             <span className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-tint">
               <Icon className="h-4 w-4 text-content-secondary" />
             </span>
-            <span className="text-[13px] font-bold text-content-primary">{label}</span>
-            <span className="text-[11.5px] leading-relaxed text-content-muted">{desc}</span>
+            <span className="text-body-sm font-bold text-content-primary">{label}</span>
+            <span className="text-caption leading-relaxed text-content-muted">{desc}</span>
           </button>
         ))}
       </div>

@@ -412,7 +412,7 @@ function MessageItem({
           {hasAttachments && (
             <div className="mb-1.5 flex flex-wrap justify-end gap-1.5">
               {imageCount > 0 && (
-                <span className="flex items-center gap-1 rounded-sm bg-surface-card px-1.5 py-0.5 text-[11px] text-content-secondary">
+                <span className="flex items-center gap-1 rounded-sm bg-surface-card px-1.5 py-0.5 text-tiny text-content-secondary">
                   <ImageIcon className="h-3 w-3" />
                   {t('attachmentImages', { count: imageCount })}
                 </span>
@@ -420,7 +420,7 @@ function MessageItem({
               {docNames.map(name => (
                 <span
                   key={name}
-                  className="flex min-w-0 items-center gap-1 rounded-sm bg-surface-card px-1.5 py-0.5 text-[11px] text-content-secondary"
+                  className="flex min-w-0 items-center gap-1 rounded-sm bg-surface-card px-1.5 py-0.5 text-tiny text-content-secondary"
                   title={name}
                 >
                   <FileText className="h-3 w-3 shrink-0" />
@@ -429,7 +429,7 @@ function MessageItem({
               ))}
             </div>
           )}
-          <p className="whitespace-pre-wrap text-[13.5px] leading-[1.65] text-content-primary">
+          <p className="whitespace-pre-wrap text-body leading-[1.65] text-content-primary">
             {content}
           </p>
         </div>
@@ -446,7 +446,7 @@ function MessageItem({
           className={cn('h-[7px] w-[7px] rounded-full', !agentDot && 'bg-content-muted/45')}
           style={agentDot ?? undefined}
         />
-        <span className="text-[11px] text-content-muted">
+        <span className="text-tiny text-content-muted">
           {activeExpert ? expertDisplayName(activeExpert) : t('aiBylineFallback')}
         </span>
         <span className="text-nano text-content-muted/60">
@@ -456,9 +456,9 @@ function MessageItem({
 
       {/* 内容区：无气泡背景，直接展示（蓝本 13.5px / 1.75 行高）；长文收起 */}
       <div ref={bodyRef} className={cn(
-        'w-full text-[13.5px] leading-[1.75] prose prose-sm max-w-none',
+        'w-full text-body leading-[1.75] prose prose-sm max-w-none',
         'prose-headings:text-sm prose-headings:font-bold prose-headings:text-content-primary',
-        'prose-p:text-[13.5px] prose-p:leading-[1.75] prose-p:text-content-primary/90',
+        'prose-p:text-body prose-p:leading-[1.75] prose-p:text-content-primary/90',
         'prose-strong:text-content-primary prose-code:text-content-primary prose-pre:bg-surface-elevated/50',
         'prose-pre:border prose-pre:border-border-default/30 prose-a:text-content-primary prose-a:underline prose-a:decoration-border-hover prose-a:underline-offset-2 hover:prose-a:text-accent-hover',
         'select-text',

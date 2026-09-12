@@ -111,7 +111,7 @@ export function DeleteConfirmDialog({
             </div>
             <div className="min-w-0 pt-0.5">
               {itemName && (
-                <div className="text-[13.5px] font-bold text-content-primary">
+                <div className="text-body font-bold text-content-primary">
                   {itemName}
                 </div>
               )}
@@ -127,14 +127,14 @@ export function DeleteConfirmDialog({
           <button
             onClick={handleClose}
             disabled={isDeleting}
-            className="rounded-full border border-border-divider bg-surface-page px-4 py-2 text-[13px] font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
+            className="rounded-full border border-border-divider bg-surface-page px-4 py-2 text-body-sm font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
           >
             {t('cancel')}
           </button>
           <button
             onClick={handleConfirm}
             disabled={isDeleting}
-            className={`rounded-full px-5 py-2 text-[13px] font-bold transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none ${
+            className={`rounded-full px-5 py-2 text-body-sm font-bold transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none ${
               variant === 'danger'
                 ? 'bg-accent-destructive text-content-inverted'
                 : 'bg-accent-warning text-accent-ink'

@@ -66,7 +66,7 @@ export function OtpLoginForm({
           {loading ? 'SENDING...' : t('sendCode')}
         </button>
 
-        <div className="text-center text-[11.5px] text-content-muted">
+        <div className="text-center text-caption text-content-muted">
           {t('autoRegisterHint')}
         </div>
       </div>
