@@ -22,6 +22,7 @@ from constants import DEFAULT_ASSISTANT_PROMPT, ROUTER_SYSTEM_PROMPT
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from utils.event_generator import event_router_decision, event_router_start
 from utils.logger import logger
+from utils.message_text import extract_message_text
 from utils.prompt_utils import inject_current_time  # v3.6: 提取到工具函数
 from utils.time import utc_now_naive
 
@@ -47,7 +48,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
     """
     messages = state["messages"]
     last_message = messages[-1]
-    user_query = last_message.content if hasattr(last_message, "content") else str(last_message)
+    user_query = extract_message_text(last_message)
 
     # v3.1 修复：移除断点恢复检查，每次用户新输入都重新判断
     # 之前的逻辑会导致 Complex 模式结束后，新消息仍被判定为 Complex
@@ -317,7 +318,7 @@ async def direct_reply_node(state: AgentState, config: RunnableConfig = None) ->
     logger.info("[DIRECT_REPLY] 节点开始执行")
     messages = state["messages"]
     last_message = messages[-1]
-    user_query = last_message.content if hasattr(last_message, "content") else str(last_message)
+    user_query = extract_message_text(last_message)
 
     # 🔥 从 state 获取 user_id
     user_id = state.get("user_id", "default_user")

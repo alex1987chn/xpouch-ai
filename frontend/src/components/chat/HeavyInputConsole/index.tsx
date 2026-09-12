@@ -1,12 +1,12 @@
 /**
  * 重型输入控制台
- * 蓝本 .input-console：单行圆角卡——[附件][联网] [输入区...] [圆形发送钮]，
+ * 蓝本 .input-console：单行圆角卡——[附件] [输入区...] [圆形发送钮]，
  * 输入随内容自增高（field-sizing-content），按钮始终贴底对齐。
  */
 
 import { useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { Paperclip, Globe, Square, X, ArrowUp } from 'lucide-react'
+import { Paperclip, Square, X, ArrowUp } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import type { HeavyInputConsoleProps } from '../types'
 import HeavyInputTextArea from './HeavyInputTextArea'
@@ -112,15 +112,6 @@ export default function HeavyInputConsole({
                 void handleFiles(e.target.files)
               }}
             />
-            <button
-              disabled={disabled}
-              aria-label={t('webSearch')}
-              title={t('webSearch')}
-              className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-border-divider bg-surface-card text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
-            >
-              <Globe className="h-[15px] w-[15px]" />
-            </button>
-
             <HeavyInputTextArea
               value={value}
               onChange={onChange}

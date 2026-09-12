@@ -67,6 +67,7 @@ from database import engine
 from utils.json_parser import parse_llm_json
 from utils.llm_factory import get_llm_instance
 from utils.logger import logger
+from utils.message_text import extract_message_text
 
 # P0 优化: 本地内存缓存高频查询 (5分钟TTL)
 # commander 配置缓存（单例，很少变化）
@@ -202,11 +203,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
     messages = state["messages"]
     last_message = messages[-1]
-    user_query = (
-        last_message.content
-        if isinstance(last_message, HumanMessage)
-        else str(last_message.content)
-    )
+    user_query = extract_message_text(last_message)
 
     # 获取 thread_id
     thread_id = state.get("thread_id")
