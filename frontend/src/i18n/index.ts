@@ -47,7 +47,13 @@ export type TranslationKey =
   | 'canvasArtifacts' | 'canvasGallery' | 'canvasEmpty' | 'canvasEmptyHint' | 'canvasWide' | 'canvasCompact' | 'canvasGalleryEmpty' | 'canvasGalleryEmptyHint' | 'openArtifact' | 'backToList'
   | 'taskControlTitle' | 'backToWorkbench' | 'goToDecide' | 'planCardTitle' | 'planStepCount' | 'relatedArtifacts' | 'workbenchNewHint'
   // 计划审核
-  | 'planReviewTitle' | 'tasksPendingConfirm'
+  | 'planReviewTitle' | 'tasksPendingConfirm' | 'planReviewViewBtn' | 'planReviewPaused'
+  | 'approvalModalNote' | 'approveRun' | 'rejectPlan' | 'confirmReject'
+  | 'feedbackTitle' | 'feedbackNote' | 'feedbackPlaceholder' | 'feedbackHint'
+  | 'editPlan' | 'finishEdit' | 'planVersionMeta' | 'planStepExecutor'
+  | 'planApprovedMsg' | 'planConflictMsg' | 'resumeFailed' | 'planRejectedMsg' | 'planRejectedWithFeedback'
+  // 产物弹窗
+  | 'artView' | 'artCode' | 'artExportMd' | 'artExportPdf'
   // Artifact 加载态
   | 'artifactChartGenerating' | 'artifactMermaidGenerating' | 'artifactDataError'
   | 'artifactHtmlTruncated'

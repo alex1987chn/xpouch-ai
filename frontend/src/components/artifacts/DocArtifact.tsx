@@ -370,7 +370,7 @@ export default function DocArtifact({ content, className, isStreaming }: DocArti
         
         {/* 🔥 新增：流式光标动画 */}
         {isStreaming && (
-          <span className="inline-block w-2 h-5 ml-1 bg-primary animate-pulse align-middle rounded-sm" />
+          <span className="inline-block w-2 h-5 ml-1 bg-accent-brand animate-pulse align-middle rounded-sm" />
         )}
       </div>
     </div>

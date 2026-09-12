@@ -1,5 +1,5 @@
 /**
- * Bauhaus 风格骨架屏。
+/** 语义 token 骨架屏。
  *
  * 用语义 token（surface-elevated + content-muted 低透明度）而不是写死灰色，
  * 暗色主题自动适配；animate-pulse 全局受 prefers-reduced-motion 约束。

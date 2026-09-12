@@ -25,7 +25,7 @@ import { useUserSettingsQuery } from '@/hooks/queries/useUserSettingsQuery'
 import { getSystemStatus } from '@/services/systemStatus'
 import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher'
 import { CommandPalette } from '@/components/cmd/CommandPalette'
-import { The4DPocketLogo } from '@/components/bauhaus'
+import { The4DPocketLogo } from '@/components/brand'
 import { SettingsHubDialog } from '@/components/settings/SettingsHubDialog'
 import LoginDialog from '@/components/auth/LoginDialog'
 import { cn } from '@/lib/utils'
@@ -134,7 +134,7 @@ export default function WorkbenchLayout() {
   const avatarNode = user?.avatar ? (
     <img src={user.avatar} alt="" className="h-[30px] w-[30px] rounded-full border border-border-divider object-cover" />
   ) : (
-    <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#6f93ad,#b45f55)] text-xs font-bold text-white">
+    <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full border border-border-divider bg-surface-tint text-xs font-bold text-content-primary">
       {(user?.username || 'U').charAt(0).toUpperCase()}
     </span>
   )

@@ -1,5 +1,5 @@
-/* The4DPocketLogo 动画（原 framer-motion 迁移为纯 CSS）：
-   方块落入底座 + 底座回弹，无限循环。CSS 变量随主题切换。 */
+/* The4DPocketLogo 动画（纯 CSS）：
+   卡片落入口袋 + 口袋回弹，无限循环。CSS 变量随主题切换。 */
 
 @keyframes logo-drop {
   0% {

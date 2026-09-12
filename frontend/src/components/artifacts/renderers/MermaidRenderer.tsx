@@ -13,7 +13,7 @@ function loadMermaid(): Promise<MermaidInstance> {
     mermaidPromise = import('mermaid').then((m) => {
       m.default.initialize({
         startOnLoad: false,
-        theme: 'dark',
+        theme: 'neutral',
         securityLevel: 'loose',
         fontFamily: 'inherit'
       })
@@ -21,6 +21,17 @@ function loadMermaid(): Promise<MermaidInstance> {
     })
   }
   return mermaidPromise
+}
+
+/** 跟随当前主题重初始化（soft=neutral 浅色图，dark=dark 深色图） */
+function syncMermaidTheme(mermaid: MermaidInstance) {
+  const isDark = document.documentElement.dataset.theme === 'dark'
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: isDark ? 'dark' : 'neutral',
+    securityLevel: 'loose',
+    fontFamily: 'inherit'
+  })
 }
 
 interface MermaidRendererProps {
@@ -112,6 +123,7 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
 
       try {
         const mermaid = await loadMermaid()
+        syncMermaidTheme(mermaid)
         const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`
         const { svg: renderedSvg } = await mermaid.render(id, code.trim())
         if (cancelled) return
@@ -134,8 +146,8 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
   // 🔥 流式输出中或渲染失败时显示加载状态
   if (!isReady) {
     return (
-      <div className="w-full h-[200px] bg-[#1e1e1e] rounded-lg my-4 border border-gray-700 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-gray-500">
+      <div className="w-full h-[200px] bg-surface-page rounded-lg my-4 border border-border-divider flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-content-muted">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-status-online rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
             <div className="w-2 h-2 bg-status-online rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -150,7 +162,7 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
   return (
     <div 
       ref={ref}
-      className="w-full overflow-x-auto p-4 bg-[#1e1e1e] rounded my-4 flex justify-center border border-gray-700"
+      className="w-full overflow-x-auto p-4 bg-surface-page rounded my-4 flex justify-center border border-border-divider"
       dangerouslySetInnerHTML={{ __html: svg }} 
     />
   )

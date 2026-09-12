@@ -24,12 +24,12 @@ export default function HtmlArtifact({ content, className }: HtmlArtifactProps) 
   useEffect(() => {
     if (content) {
       const htmlContent = extractHtmlContent(content)
-      // 注入 Bauhaus 滚动条样式到 iframe 内部
-      const bauhausScrollbarStyle = `
+      // 注入柔和滚动条样式到 iframe 内部（iframe 内取不到主题变量，用中性色）
+      const softScrollbarStyle = `
         <style>
           * {
             scrollbar-width: thin;
-            scrollbar-color: #0f0f0f transparent;
+            scrollbar-color: rgba(45,42,38,.25) transparent;
           }
           *::-webkit-scrollbar {
             width: 8px;
@@ -39,11 +39,11 @@ export default function HtmlArtifact({ content, className }: HtmlArtifactProps) 
             background: transparent;
           }
           *::-webkit-scrollbar-thumb {
-            background: #0f0f0f;
-            border-radius: 0;
+            background: rgba(45,42,38,.22);
+            border-radius: 999px;
           }
           *::-webkit-scrollbar-thumb:hover {
-            background: #facc15;
+            background: rgba(45,42,38,.4);
           }
         </style>
       `
@@ -51,18 +51,18 @@ export default function HtmlArtifact({ content, className }: HtmlArtifactProps) 
       const hasHead = /<head/i.test(htmlContent)
       let styledContent: string
       if (hasHead) {
-        styledContent = htmlContent.replace(/<head>/i, '<head>' + bauhausScrollbarStyle)
+        styledContent = htmlContent.replace(/<head>/i, '<head>' + softScrollbarStyle)
       } else {
         // 如果没有 head，在 body 或 html 标签后插入
         const bodyMatch = htmlContent.match(/<body([^>]*)>/i)
         if (bodyMatch) {
           styledContent = htmlContent.replace(
             /<body([^>]*)>/i,
-            '<body$1>' + bauhausScrollbarStyle
+            '<body$1>' + softScrollbarStyle
           )
         } else {
           // 没有 body 标签，直接在最前面插入
-          styledContent = bauhausScrollbarStyle + htmlContent
+          styledContent = softScrollbarStyle + htmlContent
         }
       }
 

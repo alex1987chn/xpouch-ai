@@ -1,19 +1,19 @@
 /**
- * PlanReviewCard - HITL (Human-in-the-Loop) 计划审核组件
- * 
- * v3.3 视觉优化：
- * - 统一使用 border 而非背景色区分层次
- * - 简化专家标签为单色标签
- * - 减少动画，提升响应感
- * - 更克制的配色方案
+ * PlanReviewCard - HITL 计划审批入口（对话流内联行）
+ *
+ * [蓝本] 审批行 = 琥珀底时间线行（⚠ 圆标 + 标题 + 暂停说明 + 「查看并裁决」胶囊），
+ * 点击行内按钮或右侧光晕打开 PlanReviewModal 大弹窗完成批准/驳回。
+ * 批准/驳回的业务逻辑（resume 流、计划版本冲突恢复）原样保留在本组件。
  */
 
 import { useState, useCallback } from 'react'
-import { Trash2, Edit3, CheckCircle2, XCircle, Play, Loader2, AlertCircle } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { AlertTriangle, Loader2 } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { resumeChat, type ResumeChatParams } from '@/services/chat'
-import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { pushToast } from '@/components/ui/use-toast'
+import { PlanReviewModal } from '@/components/chat/PlanReviewModal'
+import type { TaskInfo } from '@/types/events'
 
 import {
   useIsWaitingForApproval,
@@ -23,7 +23,6 @@ import {
   useTaskActions,
 } from '@/hooks/useTaskSelectors'
 import { useAddMessageAction } from '@/hooks/useChatSelectors'
-import { cn } from '@/lib/utils'
 
 interface PlanReviewCardProps {
   threadId: string
@@ -66,66 +65,18 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
   const { clearPendingPlan, setIsWaitingForApproval, updateTasksFromPlan, setMode } = useTaskActions()
   const addMessage = useAddMessageAction()
 
-  const [editedPlan, setEditedPlan] = useState(pendingPlan)
-  const [isEditing, setIsEditing] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-  const [isCancelling, setIsCancelling] = useState(false)
 
-  const handleUpdateDescription = useCallback((taskId: string, newDescription: string) => {
-    setEditedPlan(prev =>
-      prev.map(task => (task.id === taskId ? { ...task, description: newDescription } : task))
-    )
-  }, [])
-
-  const handleDeleteTask = useCallback((taskId: string) => {
-    setEditedPlan(prev => prev.filter(task => task.id !== taskId))
-  }, [])
-
-  const handleReject = useCallback(() => setShowConfirmDialog(true), [])
-
-  const doCancel = useCallback(async () => {
-    if (!pendingRunId) {
-      pushToast({ title: '缺少运行实例 ID', description: '无法取消当前计划', variant: 'destructive' })
-      return
+  // 导航离开导致的取消，不显示错误
+  const swallowAbort = useCallback((error: unknown) => {
+    if (!isAbortError(error)) {
+      pushToast({ title: t('resumeFailed'), variant: 'destructive' })
     }
+  }, [t])
 
-    setShowConfirmDialog(false)
-    setIsCancelling(true)
-    setIsSubmitting(true)
-
-    clearPendingPlan()
-    setIsWaitingForApproval(false)
-    setMode('simple')
-
-    try {
-      // 取消走非流式 JSON 路径（后端 _handle_rejection 返回 JSON，非 SSE 流）
-      await resumeChat(
-        {
-          threadId,
-          runId: pendingRunId,
-          planVersion: pendingPlanVersion,
-          approved: false,
-        },
-        undefined
-      )
-      addMessage({ role: 'system', content: '计划已取消，状态已清理', timestamp: Date.now() })
-    } catch (error) {
-      // 取消失败同样必须恢复审批卡片（后端 run 未取消，仍等待审批）
-      setIsWaitingForApproval(true)
-      // 用户导航离开导致的取消，不显示错误
-      if (isAbortError(error)) {
-        return
-      }
-      pushToast({ title: '取消失败', description: '请重试', variant: 'destructive' })
-    } finally {
-      setIsSubmitting(false)
-      setIsCancelling(false)
-    }
-  }, [threadId, pendingPlanVersion, pendingRunId, clearPendingPlan, setIsWaitingForApproval, setMode, addMessage])
-
-  const handleApprove = useCallback(async () => {
-    if (editedPlan.length === 0) {
+  const handleApprove = useCallback(async (plan: TaskInfo[]) => {
+    if (plan.length === 0) {
       pushToast({ title: t('minOneTask'), variant: 'destructive' })
       return
     }
@@ -137,13 +88,13 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
     const tempMessageId = `temp-resume-${Date.now()}`
     setIsSubmitting(true)
     setMode('complex')
-    updateTasksFromPlan(editedPlan)
+    updateTasksFromPlan(plan)
     setIsWaitingForApproval(false)
 
     addMessage({
       id: tempMessageId,
       role: 'system',
-      content: '计划已确认，正在恢复执行...',
+      content: t('planApprovedMsg'),
       timestamp: Date.now(),
     })
 
@@ -152,7 +103,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
         threadId,
         runId: pendingRunId,
         planVersion: pendingPlanVersion,
-        updatedPlan: editedPlan.map((task, index) => ({
+        updatedPlan: plan.map((task, index) => ({
           id: task.id,
           expert_type: task.expert_type,
           description: task.description,
@@ -166,150 +117,111 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
       // 任何失败（含中断/重复请求）都必须恢复审批卡片：
       // 后端 run 仍处于 waiting_for_approval，卡片丢失 = 用户被永久卡在"恢复中"
       setIsWaitingForApproval(true)
-      // 用户导航离开导致的取消，不弹错误提示（但状态已恢复）
       if (isAbortError(error)) {
         return
       }
       const userMessage = isPlanVersionConflictError(error)
-        ? '计划已被其他操作更新，请刷新后重新确认'
+        ? t('planConflictMsg')
         : error instanceof Error && error.message
-          ? `启动失败: ${error.message}`
-          : '启动失败，请检查网络后重试'
+          ? `${t('resumeFailed')}: ${error.message}`
+          : t('resumeFailed')
       addMessage({ id: tempMessageId, role: 'system', content: userMessage, timestamp: Date.now() })
       pushToast({ title: userMessage, variant: 'destructive' })
     } finally {
       setIsSubmitting(false)
     }
-  }, [editedPlan, threadId, pendingPlanVersion, pendingRunId, resumeExecution, updateTasksFromPlan, setIsWaitingForApproval, addMessage, setMode, t])
+  }, [threadId, pendingPlanVersion, pendingRunId, resumeExecution, updateTasksFromPlan, setIsWaitingForApproval, addMessage, setMode, t])
+
+  const handleReject = useCallback(async (feedback: string) => {
+    if (!pendingRunId) {
+      pushToast({ title: '缺少运行实例 ID', description: '无法取消当前计划', variant: 'destructive' })
+      return
+    }
+
+    setIsSubmitting(true)
+    clearPendingPlan()
+    setIsWaitingForApproval(false)
+    setMode('simple')
+
+    try {
+      // 取消走非流式 JSON 路径（后端 _handle_rejection 返回 JSON，非 SSE 流）；
+      // 反馈随请求提交，后端落库为会话 user 消息
+      await resumeChat(
+        {
+          threadId,
+          runId: pendingRunId,
+          planVersion: pendingPlanVersion,
+          approved: false,
+          feedback: feedback || undefined,
+        },
+        undefined
+      )
+      addMessage({
+        role: 'system',
+        content: feedback ? `${t('planRejectedWithFeedback')}：${feedback}` : t('planRejectedMsg'),
+        timestamp: Date.now(),
+      })
+    } catch (error) {
+      // 取消失败同样必须恢复审批卡片（后端 run 未取消，仍等待审批）
+      setIsWaitingForApproval(true)
+      swallowAbort(error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }, [threadId, pendingPlanVersion, pendingRunId, clearPendingPlan, setIsWaitingForApproval, setMode, addMessage, t, swallowAbort])
 
   if (!isWaitingForApproval) return null
 
   return (
-    <div className="my-4 border-theme-card border-border-default bg-surface-card rounded-lg">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border-divider bg-surface-card">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-accent-warning" />
-          <div>
-            <h3 className="text-sm font-semibold text-content-primary">{t('planReviewTitle')}</h3>
-            <span className="text-xs text-content-muted">{t('tasksPendingConfirm', { count: editedPlan.length })}</span>
-          </div>
-        </div>
-        <span className="flex items-center gap-1.5 rounded-full bg-accent-warning/10 px-2 py-0.5 text-micro font-medium text-accent-warning">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent-warning" />
-          {t('chipAwaiting')}
-        </span>
-      </div>
-
-      {/* Task List */}
-      <div className="p-4 space-y-3 max-h-72 overflow-y-auto">
-        {editedPlan.map((task, index) => (
-          <div
-            key={task.id}
-            className="group rounded-md border border-border-default hover:border-border-hover transition-colors"
-          >
-            <div className="flex items-start gap-3 p-3">
-              {/* Index */}
-              <span className="font-display text-xs font-bold text-content-muted pt-0.5">{index + 1}</span>
-
-              <div className="flex-1 min-w-0 space-y-2">
-                {/* Expert Tag */}
-                <span className="inline-flex items-center rounded-full border border-border-default px-2 py-0.5 text-micro font-medium text-content-secondary">
-                  {task.expert_type}
-                </span>
-
-                {/* Description */}
-                {isEditing ? (
-                  <textarea
-                    value={task.description}
-                    onChange={e => handleUpdateDescription(task.id, e.target.value)}
-                    className="w-full rounded-md p-2 text-sm border border-border-default bg-surface-card text-content-primary focus:outline-none focus:border-border-focus resize-none"
-                    rows={2}
-                  />
-                ) : (
-                  <p className="text-sm text-content-secondary leading-relaxed">{task.description}</p>
-                )}
-              </div>
-
-              {/* Delete Button */}
-              {isEditing && editedPlan.length > 1 && (
-                <button
-                  onClick={() => handleDeleteTask(task.id)}
-                  className="p-1.5 text-status-offline hover:bg-status-offline/10 transition-colors"
-                  title={t('deleteTask')}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-border-divider bg-surface-card">
+    <>
+      {/* 蓝本审批光晕：右缘琥珀渐变条，点击直达裁决 */}
+      {createPortal(
         <button
-          onClick={() => setIsEditing(!isEditing)}
-          disabled={isSubmitting}
-          className={cn(
-            'flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium border border-border-default',
-            'bg-surface-card text-content-secondary hover:bg-surface-page',
-            'disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-          )}
-        >
-          {isEditing ? <CheckCircle2 className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
-          {isEditing ? '完成' : '编辑'}
-        </button>
+          onClick={() => setModalOpen(true)}
+          title={t('planReviewViewBtn')}
+          className="fixed right-0 top-[52px] bottom-[28px] hidden w-[7px] cursor-pointer xl:block"
+          style={{
+            zIndex: 30,
+            background: 'linear-gradient(to bottom, transparent, rgba(180,95,6,.55) 30%, rgba(180,95,6,.55) 70%, transparent)',
+            filter: 'blur(1px)',
+          }}
+        />,
+        document.body
+      )}
 
-        <div className="flex items-center gap-2">
+      {/* 内联审批行（蓝本 appraisal 时间线行） */}
+      <div className="my-4 rounded-lg border border-accent-warning/25 bg-accent-warning/[0.08] p-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-accent-warning/15 text-accent-warning">
+            <AlertTriangle className="h-3 w-3" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-bold text-content-primary">
+              {t('planReviewTitle')} · {t('tasksPendingConfirm', { count: pendingPlan.length })}
+            </div>
+            <div className="mt-0.5 text-[11.5px] text-content-muted">{t('planReviewPaused')}</div>
+          </div>
           <button
-            onClick={handleReject}
+            onClick={() => setModalOpen(true)}
             disabled={isSubmitting}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 text-xs font-medium border',
-              'border-status-offline text-status-offline hover:bg-status-offline/5',
-              'disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-            )}
+            className="flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-accent-warning/35 bg-surface-card px-3 text-xs font-medium text-accent-warning transition-all hover:-translate-y-px hover:shadow-theme-card disabled:opacity-50"
           >
-            <XCircle className="w-4 h-4" />
-            取消
-          </button>
-
-          <button
-            onClick={handleApprove}
-            disabled={isSubmitting || editedPlan.length === 0}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 text-xs font-medium',
-              'bg-content-primary text-surface-card hover:bg-content-secondary',
-              'disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-            )}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                执行中
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                确认执行
-              </>
-            )}
+            {isSubmitting && <Loader2 className="h-3 w-3 animate-spin" />}
+            {t('planReviewViewBtn')}
           </button>
         </div>
       </div>
 
-      <DeleteConfirmDialog
-        isOpen={showConfirmDialog}
-        onClose={() => setShowConfirmDialog(false)}
-        onConfirm={doCancel}
-        title={t('confirmCancelTitle')}
-        description={t('confirmCancelDescription')}
-        confirmText={isCancelling ? t('canceling') : t('confirmCancel')}
-        isDeleting={isCancelling}
-        variant="warning"
+      <PlanReviewModal
+        open={modalOpen}
+        plan={pendingPlan}
+        planVersion={pendingPlanVersion}
+        isSubmitting={isSubmitting}
+        onApprove={handleApprove}
+        onReject={handleReject}
+        onClose={() => setModalOpen(false)}
       />
-    </div>
+    </>
   )
 }
 

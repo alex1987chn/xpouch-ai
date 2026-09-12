@@ -62,13 +62,13 @@ export function StatusAvatar({
       )}
       
       {/* 遮罩层 (防止光环溢出到头像内部) */}
-      <div className="absolute inset-[1px] rounded-full bg-background z-0" />
+      <div className="absolute inset-[1px] rounded-full bg-surface-card z-0" />
 
       {/* 核心头像 */}
       <div className="relative z-10 w-full h-full">
         <Avatar className="w-full h-full">
           <AvatarImage src={src} alt="AI" className="object-cover" />
-          <AvatarFallback className="bg-primary/10 text-primary">
+          <AvatarFallback className="bg-accent-brand/10 text-accent-brand">
             {fallback || <Bot className="w-4 h-4" />}
           </AvatarFallback>
         </Avatar>

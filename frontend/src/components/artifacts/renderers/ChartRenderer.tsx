@@ -88,8 +88,8 @@ export function ChartRenderer({ code }: ChartRendererProps) {
   // 🔥 防抖：如果 JSON 不完整，显示加载状态而非报错
   if (!isJSONComplete(code)) {
     return (
-      <div className="w-full h-[200px] bg-[#1e1e1e] rounded-lg p-4 my-4 border border-gray-700 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-gray-500">
+      <div className="w-full h-[200px] bg-surface-page rounded-lg p-4 my-4 border border-border-divider flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-content-muted">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-status-info rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
             <div className="w-2 h-2 bg-status-info rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -108,8 +108,8 @@ export function ChartRenderer({ code }: ChartRendererProps) {
   } catch (e) {
     // JSON 完整但解析失败（语法错误），显示友好提示
     return (
-      <div className="w-full h-[200px] bg-[#1e1e1e] rounded-lg p-4 my-4 border border-gray-700 flex items-center justify-center">
-        <div className="text-gray-500 text-sm flex items-center gap-2">
+      <div className="w-full h-[200px] bg-surface-page rounded-lg p-4 my-4 border border-border-divider flex items-center justify-center">
+        <div className="text-content-muted text-sm flex items-center gap-2">
           <span>{t('artifactDataError')}</span>
         </div>
       </div>
@@ -118,8 +118,8 @@ export function ChartRenderer({ code }: ChartRendererProps) {
 
   if (!config || !config.items || !Array.isArray(config.items)) {
     return (
-      <div className="w-full h-[200px] bg-[#1e1e1e] rounded-lg p-4 my-4 border border-gray-700 flex items-center justify-center">
-        <div className="text-gray-500 text-sm">图表数据不完整</div>
+      <div className="w-full h-[200px] bg-surface-page rounded-lg p-4 my-4 border border-border-divider flex items-center justify-center">
+        <div className="text-content-muted text-sm">图表数据不完整</div>
       </div>
     )
   }
@@ -203,7 +203,7 @@ export function ChartRenderer({ code }: ChartRendererProps) {
   }
 
   return (
-    <div className="w-full h-[300px] bg-[#1e1e1e] rounded-lg p-4 my-4 border border-gray-700">
+    <div className="w-full h-[300px] bg-surface-page rounded-lg p-4 my-4 border border-border-divider">
       {config?.title && (
         <h4 className="text-center text-sm font-bold text-gray-300 mb-4">
           {config.title}

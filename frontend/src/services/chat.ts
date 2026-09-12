@@ -561,6 +561,8 @@ export interface ResumeChatParams {
     depends_on?: string[] // 🔥 任务依赖关系（关键字段）
   }>
   approved: boolean
+  /** 驳回反馈（approved=false 时提交，后端落库为会话 user 消息） */
+  feedback?: string
 }
 
 export async function resumeChat(
@@ -580,7 +582,8 @@ export async function resumeChat(
         run_id: params.runId,
         plan_version: params.planVersion,
         updated_plan: params.updatedPlan,
-        approved: params.approved
+        approved: params.approved,
+        feedback: params.feedback
       }),
       signal: abortSignal,
       // P0 修复: 允许携带 Cookie
@@ -599,7 +602,8 @@ export async function resumeChat(
       run_id: params.runId,
       plan_version: params.planVersion,
       updated_plan: params.updatedPlan,
-      approved: params.approved
+      approved: params.approved,
+      feedback: params.feedback
     },
     errorContext: 'chat.ts resume',
     logPrefix: 'Resume ',

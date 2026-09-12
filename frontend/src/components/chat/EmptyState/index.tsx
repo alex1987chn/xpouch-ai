@@ -8,7 +8,7 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Rocket, UserPlus, MessageSquare, type LucideIcon } from 'lucide-react'
-import { The4DPocketLogo } from '@/components/bauhaus'
+import { The4DPocketLogo } from '@/components/brand'
 import { useTranslation } from '@/i18n'
 import { useUserStore } from '@/store/userStore'
 

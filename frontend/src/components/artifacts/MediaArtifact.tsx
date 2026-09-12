@@ -99,11 +99,11 @@ export default function MediaArtifact({ content, type = 'media', className, titl
   
   if (!url) {
     return (
-      <div className={cn('w-full h-full flex items-center justify-center text-muted-foreground', className)}>
+      <div className={cn('w-full h-full flex items-center justify-center text-content-muted', className)}>
         <div className="flex flex-col items-center gap-2">
           <AlertCircle className="w-8 h-8" />
           <span className="text-sm">{t('mediaLinkInvalid')}</span>
-          <code className="text-xs bg-muted px-2 py-1 rounded">{content.slice(0, 100)}...</code>
+          <code className="text-xs bg-surface-tint px-2 py-1 rounded">{content.slice(0, 100)}...</code>
         </div>
       </div>
     )
@@ -119,14 +119,14 @@ export default function MediaArtifact({ content, type = 'media', className, titl
           ) : (
             <ImageIcon className="w-4 h-4 text-status-online" />
           )}
-          <span className="text-xs font-mono text-muted-foreground truncate flex-1">
+          <span className="text-xs font-mono text-content-muted truncate flex-1">
             {title || url.split('/').pop() || t('mediaFile')}
           </span>
         </div>
       )}
       
       {/* 媒体内容 */}
-      <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-muted/30">
+      <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-surface-tint/40">
         {mediaType === 'video' ? (
           <div className="w-full max-w-4xl">
             <video
@@ -146,7 +146,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
               <div className="absolute inset-0 flex items-center justify-center bg-background/80">
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <span className="text-sm text-muted-foreground">{t('videoLoading')}</span>
+                  <span className="text-sm text-content-muted">{t('videoLoading')}</span>
                 </div>
               </div>
             )}
@@ -156,10 +156,10 @@ export default function MediaArtifact({ content, type = 'media', className, titl
               <div className="absolute inset-0 flex items-center justify-center bg-background/90">
                 <div className="flex flex-col items-center gap-3">
                   <AlertCircle className="w-10 h-10 text-status-offline" />
-                  <span className="text-sm text-muted-foreground">{t('videoLoadFailed')}</span>
+                  <span className="text-sm text-content-muted">{t('videoLoadFailed')}</span>
                   <button
                     onClick={handleRetry}
-                    className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+                    className="px-3 py-1 text-xs bg-accent-brand text-accent-ink rounded hover:bg-accent-hover transition-colors"
                   >
                     重试
                   </button>
@@ -184,7 +184,7 @@ export default function MediaArtifact({ content, type = 'media', className, titl
               <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <span className="text-sm text-muted-foreground">{t('imageLoading')}</span>
+                  <span className="text-sm text-content-muted">{t('imageLoading')}</span>
                 </div>
               </div>
             )}
@@ -194,10 +194,10 @@ export default function MediaArtifact({ content, type = 'media', className, titl
               <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
                 <div className="flex flex-col items-center gap-3">
                   <AlertCircle className="w-10 h-10 text-status-offline" />
-                  <span className="text-sm text-muted-foreground">{t('imageLoadFailed')}</span>
+                  <span className="text-sm text-content-muted">{t('imageLoadFailed')}</span>
                   <button
                     onClick={handleRetry}
-                    className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+                    className="px-3 py-1 text-xs bg-accent-brand text-accent-ink rounded hover:bg-accent-hover transition-colors"
                   >
                     重试
                   </button>

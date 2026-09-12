@@ -254,38 +254,11 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "pulse-glow": {
-          "0%, 100%": { opacity: "1", transform: "scale(1)", filter: "brightness(1)" },
-          "50%": { opacity: "0.9", transform: "scale(1.08)", filter: "brightness(1.2)" },
-        },
-        // Bauhaus 按下动画
-        "bauhaus-press": {
-          "0%": { transform: "translate(0, 0)", boxShadow: "4px 4px 0 0 rgb(var(--shadow-color))" },
-          "100%": { transform: "translate(2px, 2px)", boxShadow: "0 0 0 0 rgb(var(--shadow-color))" },
-        },
-        // 工业总线流动
-        "bus-flow": {
-          "0%, 100%": { transform: "translateY(-100%)", opacity: "0" },
-          "10%": { opacity: "0.8" },
-          "90%": { opacity: "0.8" },
-          "100%": { transform: "translateY(100%)", opacity: "0" },
-        },
-        // 霓虹闪烁（赛博朋克）
-        "neon-flicker": {
-          "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.8" },
-          "52%": { opacity: "0.2" },
-          "54%": { opacity: "1" },
-        },
       },
-      
+
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "pulse-glow": "pulse-glow 0.8s ease-in-out infinite",
-        "bauhaus-press": "bauhaus-press 0.1s ease-out forwards",
-        "bus-flow": "bus-flow 2s ease-in-out infinite",
-        "neon-flicker": "neon-flicker 3s ease-in-out infinite",
       },
 
       /* ============================================

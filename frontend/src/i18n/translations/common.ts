@@ -277,10 +277,10 @@ export const en: Record<string, string> = {
   confirmLogoutDesc: 'You will need to sign in again to continue.',
 
   // Chat Actions
-  copy: 'COPY',
-  copied: 'COPIED',
+  copy: 'Copy',
+  copied: 'Copied',
   regenerate: 'Regenerate',
-  retry: 'RETRY',
+  retry: 'Retry',
 
   // Delete Dialog
   confirmDeleteTitle: 'Confirm Delete',

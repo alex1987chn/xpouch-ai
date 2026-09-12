@@ -128,6 +128,7 @@ class ResumeRequest(BaseModel):
     updated_plan: list[dict[str, Any]] | None = None
     plan_version: int | None = Field(default=None, ge=1)
     approved: bool = True
+    feedback: str | None = Field(default=None, max_length=4000)  # 驳回反馈（落库为 user 消息）
     message_id: str | None = None  # 前端传入的消息ID，用于关联流式输出
     idempotency_key: str | None = Field(default=None, min_length=8, max_length=128)
 
@@ -463,6 +464,7 @@ async def resume_chat(
         plan_version=request.plan_version,
         message_id=request.message_id,
         idempotency_key=request.idempotency_key,
+        feedback=request.feedback,
     )
 
 

@@ -28,7 +28,7 @@ from crud.run_event import (
     emit_hitl_resumed,
     emit_run_cancelled,
 )
-from models import AgentRun, ExecutionPlan, RunStatus, Thread
+from models import AgentRun, ExecutionPlan, Message, RunStatus, Thread
 from models.enums import TaskStatus
 from services.chat.run_lifecycle import sse_stream_headers
 from utils.error_codes import ErrorCode
@@ -72,6 +72,7 @@ class RecoveryService:
         plan_version: int | None = None,
         message_id: str | None = None,
         idempotency_key: str | None = None,
+        feedback: str | None = None,
     ) -> StreamingResponse | dict[str, str]:
         """
         恢复被中断的 HITL 流程
@@ -118,7 +119,7 @@ class RecoveryService:
 
         # 2. 处理用户拒绝
         if not approved:
-            return await self._handle_rejection(thread_id, run_id)
+            return await self._handle_rejection(thread_id, run_id, feedback)
 
         # 3. 处理用户批准 - 流式恢复
         return await self._handle_approval(
@@ -130,21 +131,39 @@ class RecoveryService:
             idempotency_key,
         )
 
-    async def _handle_rejection(self, thread_id: str, run_id: str) -> dict[str, str]:
+    async def _handle_rejection(
+        self, thread_id: str, run_id: str, feedback: str | None = None
+    ) -> dict[str, str]:
         """
         处理用户拒绝计划
 
         清理状态：
         - 清理 LangGraph checkpoints
         - 更新 ExecutionPlan 状态为 cancelled
+        - 用户反馈以 user 消息落库（会话里留痕，后续运行可作为上下文）
 
         Args:
             thread_id: 线程ID
+            run_id: 运行实例ID
+            feedback: 用户驳回时填写的反馈（可选）
 
         Returns:
             取消状态响应
         """
         logger.info("[HITL RESUME] 用户拒绝了计划，清理状态")
+
+        # 驳回反馈先落库（run 即将取消，但反馈属于会话历史）
+        trimmed = (feedback or "").strip()
+        if trimmed:
+            self.db.add(
+                Message(
+                    thread_id=thread_id,
+                    role="user",
+                    content=trimmed,
+                    timestamp=utc_now_naive(),
+                )
+            )
+            logger.info(f"[HITL RESUME] 驳回反馈已落库（{len(trimmed)} 字）")
 
         # 清理 checkpoints（原始 + isolated 两种格式；单一实现在 utils/db）
         from utils.db import delete_checkpoints_for_thread

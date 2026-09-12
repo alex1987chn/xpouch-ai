@@ -3,8 +3,8 @@
  * ThemeSwitcher - 主题切换组件
  * ============================================
  *
- * 支持 3 个主题：Soft（柔和亮）/ Dark（暖暗）/ Bauhaus（怀旧，沉底）
- * 点击浮动按钮展开主题选择面板
+ * 支持 2 个主题：Soft（柔和）/ Dark（黑暗）
+ * 顶栏分段胶囊形态 + 浮动按钮展开面板两种形态
  */
 
 import { useState, useRef, useEffect } from 'react'

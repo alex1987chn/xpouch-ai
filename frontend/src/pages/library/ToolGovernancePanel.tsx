@@ -439,7 +439,7 @@ function Field({
 }) {
  return (
   <div className={cn('space-y-2', className)}>
-   <div className="text-micro font-bold tracking-widest text-content-secondary">
+   <div className="text-micro font-bold text-content-secondary">
     {label}
    </div>
    {children}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from '@/i18n'
 import { createPortal } from 'react-dom'
-import { The4DPocketLogo } from '@/components/bauhaus'
+import { The4DPocketLogo } from '@/components/brand'
 import { useUserStore } from '@/store/userStore'
 import { logger } from '@/utils/logger'
 import { pushToast } from '@/components/ui/use-toast'

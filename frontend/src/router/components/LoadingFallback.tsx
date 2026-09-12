@@ -2,7 +2,7 @@
  * 路由加载中状态组件（柔和形态：口袋标脉冲 + 文案）
  */
 import { useTranslation } from '@/i18n'
-import { The4DPocketLogo } from '@/components/bauhaus'
+import { The4DPocketLogo } from '@/components/brand'
 
 export function LoadingFallback() {
   const { t } = useTranslation()

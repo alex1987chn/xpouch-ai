@@ -23,6 +23,7 @@ import { useState, useCallback, useMemo } from 'react'
 
 import { useRunDetails, useRunTimeline } from '@/hooks/queries/useRunTimelineQuery'
 import { useThreadArtifactsQuery } from '@/hooks/queries/useArtifactsQuery'
+import { ArtifactViewerModal } from '@/components/artifacts/ArtifactViewerModal'
 import { getConversation } from '@/services/chat'
 import type { RunEvent, RunStatus } from '@/types/run'
 import { getEventDisplayName, getEventCategory, ACTIVE_RUN_STATUSES } from '@/types/run'
@@ -379,14 +380,14 @@ export default function RunTimelinePage() {
 /** 关联产物（thread 投影，点击跳产物中心看全文） */
 function RelatedArtifacts({ threadId }: { threadId: string }) {
  const { t } = useTranslation()
- const navigate = useNavigate()
+ const [viewerId, setViewerId] = useState<string | null>(null)
  const { data, isLoading } = useThreadArtifactsQuery(threadId)
  const artifacts = data?.items ?? []
 
  return (
   <div className="rounded-md border-theme-card border-border-default bg-surface-card p-4">
    <div className="mb-3 flex items-center justify-between">
-    <span className="text-xs font-bold tracking-widest text-content-secondary">
+    <span className="text-xs font-bold text-content-secondary">
      {t('relatedArtifacts')}
     </span>
     <span className="text-nano text-content-muted">{artifacts.length}</span>
@@ -403,7 +404,7 @@ function RelatedArtifacts({ threadId }: { threadId: string }) {
      {artifacts.map(artifact => (
       <button
        key={artifact.id}
-       onClick={() => navigate(`/workbench/${threadId}`)}
+       onClick={() => setViewerId(artifact.id)}
        className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-surface-tint/60"
       >
        <span className="rounded-full bg-accent-info/12 px-2 py-0.5 text-nano font-medium text-accent-info">
@@ -417,6 +418,7 @@ function RelatedArtifacts({ threadId }: { threadId: string }) {
      ))}
     </div>
    )}
+   <ArtifactViewerModal artifactId={viewerId} onClose={() => setViewerId(null)} threadId={threadId} />
   </div>
  )
 }

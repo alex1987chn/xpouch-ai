@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
     <script>
       // 防止主题闪烁：在 React 加载前应用主题
-      // v3.5 主题重组：soft（默认）/ dark / bauhaus；旧值 light/kyoto → soft
+      // soft（默认）/ dark；旧值 light/kyoto/bauhaus → soft
       (function() {
         try {
           var saved = localStorage.getItem('xpouch-theme');
@@ -23,8 +23,6 @@
               var storedTheme = parsed.theme || parsed.state?.theme;
               if (storedTheme === 'dark') {
                 theme = 'dark';
-              } else if (storedTheme === 'bauhaus') {
-                theme = 'bauhaus';
               }
               // soft / light / kyoto / 其他历史值 → soft（默认）
             } catch (e) {

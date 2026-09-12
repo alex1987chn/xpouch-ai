@@ -245,7 +245,7 @@ const MarkdownCode = memo(function MarkdownCode({ children, className }: Markdow
               ⚠️ 链接已过期，请重新生成
             </span>
           )}
-          <code className="block mt-1 text-xs bg-muted px-1 py-0.5 rounded">
+          <code className="block mt-1 text-xs bg-surface-tint px-1 py-0.5 rounded">
             {codeContent.slice(0, 60)}...
           </code>
         </span>
@@ -253,7 +253,7 @@ const MarkdownCode = memo(function MarkdownCode({ children, className }: Markdow
     }
     
     return (
-      <code className="bg-muted px-1.5 py-0.5 rounded text-sm">
+      <code className="bg-surface-tint px-1.5 py-0.5 rounded text-sm">
         {children}
       </code>
     )
@@ -503,7 +503,7 @@ function MessageItem({
             {content}
           </ReactMarkdown>
         ) : aiStatus !== 'idle' ? (
-          <span className="text-muted-foreground/50 italic">
+          <span className="text-content-muted/50 italic">
             {aiStatus === 'thinking' ? '思考中...' : '生成中...'}
           </span>
         ) : null}
@@ -517,7 +517,7 @@ function MessageItem({
               e.stopPropagation()
               handlePreview()
             }}
-            className="flex items-center gap-1 text-micro text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-micro text-content-muted hover:text-content-primary px-2 py-1 rounded hover:bg-surface-tint/60 transition-colors cursor-pointer"
             title={t('preview')}
           >
             <Eye className="w-3 h-3" />
@@ -529,7 +529,7 @@ function MessageItem({
             e.stopPropagation()
             handleCopy()
           }}
-          className="flex items-center gap-1 text-micro text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
+          className="flex items-center gap-1 text-micro text-content-muted hover:text-content-primary px-2 py-1 rounded hover:bg-surface-tint/60 transition-colors cursor-pointer"
           title={t('copy')}
         >
           {copied ? (
@@ -550,7 +550,7 @@ function MessageItem({
               e.stopPropagation()
               handleRetry()
             }}
-            className="flex items-center gap-1 text-micro text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-micro text-content-muted hover:text-content-primary px-2 py-1 rounded hover:bg-surface-tint/60 transition-colors cursor-pointer"
             title={t('regenerate')}
           >
             <RefreshCw className="w-3 h-3" />

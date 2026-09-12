@@ -5,9 +5,9 @@ interface The4DPocketLogoProps {
 }
 
 /**
- * Logo 动画：方块落入底座 + 底座回弹（原 framer-motion 迁移为纯 CSS keyframes，
+ * 品牌标志动画：黄卡片落入蓝口袋 + 口袋回弹（纯 CSS keyframes，
  * 见 The4DPocketLogo.css）。全局 prefers-reduced-motion 会将其压为静态定格
- * （方块停在底座中）。
+ * （卡片停在口袋中）。
  */
 export function The4DPocketLogo({ className }: The4DPocketLogoProps) {
   return (
@@ -15,7 +15,7 @@ export function The4DPocketLogo({ className }: The4DPocketLogoProps) {
       className={`relative w-[42px] h-[42px] ${className || ""}`}
       style={{ overflow: "visible" }}
     >
-      {/* 掉落的方块 (Pocket Item) */}
+      {/* 掉落的卡片 (Pocket Item) */}
       <div
         className="absolute left-[13px] w-4 h-4 border-2 border-border z-[5]"
         style={{

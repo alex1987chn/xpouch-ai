@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Plus, LayoutGrid, Layers, LineChart, Settings, Search, MessageSquare, Sun, Moon, Shapes } from 'lucide-react'
+import { Plus, LayoutGrid, Layers, LineChart, Settings, Search, MessageSquare, Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { Z_INDEX } from '@/constants/zIndex'
@@ -34,7 +34,7 @@ interface SessionItem {
   label: string
 }
 
-const themeIcons = { soft: Sun, dark: Moon, bauhaus: Shapes } as const
+const themeIcons = { soft: Sun, dark: Moon } as const
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation()

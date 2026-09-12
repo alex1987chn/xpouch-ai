@@ -20,7 +20,7 @@
 /* 布局与视觉风格变量 */
 @import './styles/tokens/_layout.css';
 
-/* 主题覆盖 - 暖暗 / Bauhaus（怀旧选项，沉底） */
+/* 主题覆盖 - 暖暗 */
 @import './styles/tokens/themes/_dark.css';
 
 /* ============================================
@@ -42,7 +42,7 @@
 
 @layer utilities {
   /* 页面/列表入场动效（v3.4.4 C 批次）
-     - 干脆利落：150-250ms、无弹跳曲线（Bauhaus 原则）
+     - 干脆利落：150-250ms、无弹跳曲线
      - 全局 prefers-reduced-motion 规则会将其压到 0.01ms
      - stagger-item 配合内联 animation-delay 做列表错峰（建议 40ms 步长，封顶 8 项）
      ============================================ */
@@ -189,26 +189,10 @@
 }
 
 /* ============================================
-   4. Bauhaus 特有工具类
+   4. 阴影/按压反馈
+   Bauhaus 硬阴影已退役：统一使用语义阴影 shadow-theme-*（tailwind.config.ts boxShadow）
+   按压反馈统一走 --transform-button-active + shadow-theme-button-active
    ============================================ */
-
-@layer utilities {
-  /* Bauhaus 硬阴影已退役：统一使用语义阴影 shadow-theme-*（tailwind.config.ts boxShadow）
-     按压反馈统一走 --transform-button-active + shadow-theme-button-active */
-
-  /* 点阵网格背景（用于 ChatStreamPanel 和 ArtifactDashboard） */
-  .dot-grid {
-    background-image: radial-gradient(rgb(var(--content-muted) / 0.15) 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-
-  /* 噪点纹理 */
-  .bg-noise {
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
-  }
-
-
-}
 
 /* ============================================
    5. Logo 动画专用变量
@@ -221,5 +205,38 @@
     --logo-item: rgb(var(--accent-brand));
     --logo-item-active: rgb(var(--accent-hover));
     --logo-base: rgb(var(--accent-info));
+  }
+}
+
+/* ============================================
+   6. 产物打印（导出 PDF）
+   打印根节点由 ArtifactViewerModal 挂到 body，
+   打印时隐藏应用、仅渲染产物内容（强制 soft 主题）。
+   ============================================
+*/
+.print-root {
+  display: none;
+}
+
+@media print {
+  body:has(.print-root) > #root {
+    display: none !important;
+  }
+  body:has(.print-root) .print-root {
+    display: block !important;
+    background: #fffefb;
+    color: #2d2a26;
+    padding: 24px;
+    font-size: 12.5px;
+    line-height: 1.75;
+  }
+  .print-root .print-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .print-root pre {
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 }

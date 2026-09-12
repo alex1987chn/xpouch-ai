@@ -1,5 +1,5 @@
 import { Suspense, ReactNode } from 'react'
-import { The4DPocketLogo } from '@/components/bauhaus'
+import { The4DPocketLogo } from '@/components/brand'
 import ErrorBoundary from './ErrorBoundary'
 
 interface SuspenseWithErrorBoundaryProps {
