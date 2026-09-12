@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **长文折叠 + 文档视图**：AI 长回复自动限高折叠（渐隐遮罩 + 展开全文），消息底部"文档视图"一键进产物弹框阅读
 - **运行统计全用户开放**：普通用户查看自己的运行数据，管理员查看全实例；运行记录支持按运行 ID / 用户名搜索
 - **底栏今日 token 用量 + 配额条**：实时显示当前用户当日消耗与配额进度（留空 = ∞ 不限量）
-- **设置中心关于块 + 分享页 GitHub 链接**：wordmark + slogan（initial minds, one pouch）+ 版本号 + 开源仓库引流
+- **设置中心「关于」分区**：wordmark + slogan（initial minds, one pouch）+ 版本号 + 开源仓库链接（品牌块自导航栏迁入独立分区）
+- **画廊治理**：跨会话画廊支持标题/内容搜索（300ms 防抖）与类型过滤（文档/代码/网页/图表等类型色 chip）；产物卡片与查看器可一键直达来源会话
 
 ### 变更
 
@@ -29,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **思维链行式化**：思维过程从卡片堆叠改为紧凑步骤行（状态圆标+专家色点+耗时+点击展开详情）
 - **运行统计布局归一**：与资源库/系统管理共用 SubPageLayout（子菜单+同高标题行），切页不再跳动
 - 资源库移除工具治理入口（管理台为唯一入口，消除重复）；版本号全线 3.5.0
+- **生产部署加固**：新增 docker-compose.prod.yml（日志轮转）随 deploy.sh 合并使用；数据库端口生产默认仅绑回环 127.0.0.1；deploy.sh 部署前自动 pg_dump 备份（失败即中止）、镜像按 git 短 SHA 打标签可回滚；快速开始文档补根目录 .env 步骤；上传限制统一消费 MAX_UPLOAD_SIZE_MB；单 worker 部署约束写入文档；移除未使用的 gunicorn 依赖
+- **后端正确性**：用户资料更新白名单化（plan 等配额语义字段不可自改）；发码频控的客户端 IP 改取 X-Forwarded-For 末跳（首跳可伪造）；refresh token 与库内哈希比对、登出即服务端撤销；被进程重启中断的计划修订任务启动时自动标记失败（原计划保持待审）
+- **性能与体验**：流式输出尊重阅读位置（上滑停止跟随+「回到底部」按钮）；流式渲染节流至 ~20fps 并缓存历史消息解析结果；切换会话自动挂断在途流（仅断开前端连接，任务照常后台跑完）；LLM 调用与记忆检索恢复异步——并发请求不再互相冻结（实测并发两条耗时≈单条）
+- i18n：SSE 处理器获得非 React 翻译入口，11 处用户可见硬编码中文入翻译表
 
 ### 修复
 
@@ -39,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **分享页 html 产物显示源码**：改为沙箱 iframe 实时预览（allow-scripts，与主站隔离）
 - **审批通过后输入台仍是旧会话**：修复 isNew 路由守卫缺失与 key 重挂掐流问题
 - 弹窗右上角关闭按钮统一补齐；OTP 直角回归修复；toast 不再遮挡顶部搜索框
+- **附件文档三连修**：文档问答强制简单模式直达（不再误入复杂任务链路而报错）；PDF 逐字断行与 CJK 空格伪影规整；附件以文档名/图片数 chips 在用户气泡展示（文档文本与图片本体不进展示层）
+- **AI 产物渲染安全加固**：HTML 产物 iframe 摘除 allow-same-origin（blob URL 继承主站 origin，原配置可被 AI 脚本逃逸携带 Cookie 调 API）；Mermaid 渲染 securityLevel 收紧为 strict
+- 初始页「新建专家」直达专家管理分区（原落在系统状态）
 
 ## [2026-09-11] - v3.4.7 系统管理、图片输入与双角色收敛
 

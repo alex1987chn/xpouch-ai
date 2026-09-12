@@ -37,11 +37,11 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - `Thread / AgentRun / ExecutionPlan` 三层运行时语义
 - artifact 持久化、恢复展示与多任务串行执行
 - 跨轮产物连续性（追问"把上面的图改成时序图"可直接引用历史产物）
-- **产物中心**：跨会话浏览全部产物，一键生成公开分享链接
+- **产物中心**：跨会话浏览全部产物，支持搜索与类型过滤，一键生成公开分享链接、直达来源会话
 - **双登录**（手机验证码 + 密码），账号与安全独立管理（含忘记密码重置）
 - **断线可恢复**：流式中断自动续传，关闭页面任务后台跑完
 - 模型思考过程流式展示（reasoning 增量事件，与正文同管道）
-- 用户级模型配置（simple 模式自选模型与思考开关，无需重启）
+- 实例级模型配置（管理员切换全局默认模型与思考开关，无需重启）
 - Token 用量可视化（今日 / 累计）
 - 技能模板（Library 面板 + 内置模板 + 一键发起会话）
 - 模板导入导出（支持 override/clone/skip 策略的 JSON 导入导出）
@@ -97,10 +97,6 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - 可选模型清单来自 `providers.yaml` + Provider API Key（`GET /api/models` 单一真相源），管理员可控可用范围
 - 多专家任务（Complex 模式）的模型在「专家管理」中按专家配置
 - 普通用户直接使用——模型与思考治理属管理侧（见下方双角色模型）
-
-- 设置页（头像菜单 → 模型配置）自选 simple 模式模型，或跟随系统默认
-- 思考模式三态开关（跟随默认 / 开启 / 关闭），仅对声明 `thinking_toggle` 的模型开放
-- 偏好存于 `user_settings` 表（JSONB），多端同步；模型列表来自 `GET /api/models`（providers.yaml 单一真相源）
 
 ### MCP 动态工具接入
 
@@ -261,7 +257,7 @@ DATABASE_URL=postgresql+psycopg://user:password@host:5432/dbname
 JWT_SECRET_KEY=your-secret
 
 # 至少一个 LLM 提供商
-DEEPSEEK_API_KEY=...   # 推荐，默认模型 deepseek-v4-flash
+DEEPSEEK_API_KEY=...   # 推荐，默认模型 deepseek-flash
 # 或 OPENAI_API_KEY=...
 # 或 MOONSHOT_API_KEY=...
 ```
@@ -338,6 +334,7 @@ BACKUP_KEEP=30 ./scripts/backup_db.sh   # 自定义份数
 
 - run-based runtime 语义重构
 - complex 模式 HITL / resume / artifact 主链闭环
+- **HITL 修订循环**（批准 / 修订并重提 / 终止，后台修订+前端轮询）
 - run 级 cancel / timeout / heartbeat / current node
 - durable run / run ledger（第一阶段）
 - 轻量 replay / eval / regression assets
@@ -351,7 +348,6 @@ BACKUP_KEEP=30 ./scripts/backup_db.sh   # 自定义份数
 - 会话恢复与任务续执行（切换会话后可继续执行中的任务）
 - 模板导入导出（JSON 格式，支持冲突检测与多种导入策略）
 - DeepSeek V4 Flash 迁移（旧模型 ID 别名兼容存量数据）
-- 用户级模型配置（simple 模式选模型 + 思考开关）
 - 模型思考过程流式展示（reasoning 增量事件）
 - 事件协议 v2 统一（恰好一次投递、单通道分发、契约测试）
 - 跨轮产物连续性（历史产物注入规划 + get_artifact 工具）
@@ -361,11 +357,15 @@ BACKUP_KEEP=30 ./scripts/backup_db.sh   # 自定义份数
 - Token 用量记账与可视化
 - 权限锁定态（可见但锁）与 UI 设计规范文档（DESIGN.md）
 - 弹窗焦点管理与可访问性基线（a11y）、后端路由结构归一（auth/ 包 + routers/ 单一家族）
+- 柔和化双主题大改版（View Transitions 光圈切换）与全站组件重构
+- 用户管理与审计日志（脱敏列表、角色编辑、密码重置、管理面留痕）
+- 附件文档解析（PDF/Word/Excel/MD 注入对话上下文）
+- LLM 调用与记忆检索恢复异步（并发请求不再互相阻塞）
 
 ### 下一阶段
 
 - 交互式 selective approval UI
-- 模板分享（Template Sharing）
+- 知识库做实（附件文档持久化与检索）
 
 ## 贡献
 

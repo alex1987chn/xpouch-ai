@@ -37,11 +37,11 @@ The current stable baseline includes:
 - Three-layer runtime semantics: `Thread / AgentRun / ExecutionPlan`
 - Artifact persistence, restored rendering, and multi-task serial execution
 - Cross-turn artifact continuity (follow-ups like "turn the chart above into a sequence diagram" can reference prior artifacts)
-- **Artifact center**: browse every artifact across sessions, one-click public share links
+- **Artifact center**: browse every artifact across sessions with search & type filters, one-click public share links, and one-click jump to the source conversation
 - **Dual login** (SMS code + password) with a standalone Account & Security dialog, incl. forgot-password reset
 - **Interruptible-resumable streaming**: auto-resume after disconnects; tasks keep running when you close the page
 - Reasoning stream (deep-thinking increments streamed alongside the answer)
-- Per-user model configuration (pick model & thinking toggle for simple mode, no restart)
+- Instance-level model configuration (admin switches the global default model & thinking toggle, no restart)
 - Token usage visualization (today / total)
 - Skill templates (Library panel + built-in templates + one-click sessions)
 - Template import/export (JSON with override / clone / skip strategies)
@@ -265,7 +265,7 @@ DATABASE_URL=postgresql+psycopg://user:password@host:5432/dbname
 JWT_SECRET_KEY=your-secret
 
 # At least one LLM provider
-DEEPSEEK_API_KEY=...   # recommended, default model deepseek-v4-flash
+DEEPSEEK_API_KEY=...   # recommended, default model deepseek-flash
 # or OPENAI_API_KEY=...
 # or MOONSHOT_API_KEY=...
 ```
@@ -357,7 +357,6 @@ Backups land in `backups/` (gitignored).
 - session recovery and task continuation (in-flight tasks survive tab switches)
 - template import/export (JSON with conflict detection and multiple strategies)
 - DeepSeek V4 Flash migration (legacy model ID aliases kept for stored data)
-- per-user model configuration (simple-mode model + thinking toggle)
 - reasoning stream (incremental thinking events)
 - event protocol v2 unification (exactly-once delivery, single channel, contract tests)
 - cross-turn artifact continuity (artifact summaries into planning + get_artifact tool)
@@ -367,11 +366,15 @@ Backups land in `backups/` (gitignored).
 - token usage accounting & visualization
 - visible-but-locked permission model + UI design conventions (DESIGN.md)
 - dialog focus management & accessibility baseline (a11y), backend route structure unified (auth/ package + single routers/ family)
+- Soft/Dark dual-theme redesign (circular-reveal transitions) with a full component refresh
+- User management & audit log (masked list, role editing, password reset, admin mutation trail)
+- Document attachments (PDF/Word/Excel/MD parsed into conversation context)
+- Async LLM calls & memory retrieval restored (concurrent requests no longer block each other)
 
 ### Next up
 
 - Interactive selective approval UI
-- Template sharing
+- Knowledge base (artifact/document persistence & retrieval)
 
 ## Contributing
 
