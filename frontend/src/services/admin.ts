@@ -502,6 +502,26 @@ export interface AdminResetPasswordResponse {
   password?: string
 }
 
+export interface AdminCreateUserRequest {
+  username: string
+  phone_number: string
+  email?: string | null
+  role?: 'admin' | 'user'
+  initial_password?: string
+  generate_random_password?: boolean
+}
+
+export type AdminCreateUserResponse = AdminUser & { generated_password?: string }
+
+export async function createAdminUser(request: AdminCreateUserRequest): Promise<AdminCreateUserResponse> {
+  const response = await authenticatedFetch(buildUrl('/admin/users'), {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(request),
+  })
+  return handleResponse<AdminCreateUserResponse>(response, '创建用户失败')
+}
+
 export async function listAdminUsers(): Promise<AdminUser[]> {
   const response = await authenticatedFetch(buildUrl('/admin/users'), {
     method: 'GET',

@@ -11,13 +11,14 @@ import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import {
-  Users, RefreshCw, Eye, EyeOff, Pencil, Trash2, Copy, Check,
+  Users, RefreshCw, Eye, EyeOff, Pencil, Trash2, Copy, Check, UserPlus,
 } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/states'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { EditUserDialog } from '@/components/admin/EditUserDialog'
+import { AddUserDialog } from '@/components/admin/AddUserDialog'
 import { pushToast } from '@/components/ui/use-toast'
 import {
   listAdminUsers, revealUserPhone, deleteAdminUser, type AdminUser,
@@ -131,6 +132,7 @@ export function UserAdminPanel({ searchQuery }: UserAdminPanelProps) {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<AdminUser | null>(null)
   const [deleting, setDeleting] = useState<AdminUser | null>(null)
+  const [adding, setAdding] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const usersQuery = useQuery({
@@ -175,6 +177,13 @@ export function UserAdminPanel({ searchQuery }: UserAdminPanelProps) {
           {t('userCount', { count: filtered.length })}
         </span>
         <span className="flex-1" />
+        <button
+          onClick={() => setAdding(true)}
+          className="flex h-7 items-center gap-1.5 rounded-full border border-border-divider bg-surface-card px-3 text-xs font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary"
+        >
+         <UserPlus className="h-3.5 w-3.5" />
+         {t('addUser')}
+        </button>
         <button
           onClick={() => queryClient.invalidateQueries({ queryKey: ['adminUsers'] })}
           disabled={usersQuery.isLoading}
@@ -268,6 +277,12 @@ export function UserAdminPanel({ searchQuery }: UserAdminPanelProps) {
           </div>
         )}
       </div>
+
+      <AddUserDialog
+        open={adding}
+        onClose={() => setAdding(false)}
+        onCreated={() => queryClient.invalidateQueries({ queryKey: ['adminUsers'] })}
+      />
 
       <EditUserDialog
         open={!!editing}

@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { AlertTriangle, Trash2, Loader2 } from 'lucide-react'
+import { AlertTriangle, Trash2, Loader2, X } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { expertDotStyle } from '@/lib/expertIdentity'
@@ -65,6 +65,14 @@ export function PlanReviewModal({
           {planVersion != null && (
             <span className="text-nano text-content-muted">{t('planVersionMeta', { version: planVersion })}</span>
           )}
+          <button
+            onClick={onClose}
+            title={t('close')}
+            disabled={isSubmitting}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-surface-tint hover:text-content-primary disabled:opacity-50"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         {/* 计划视图 */}

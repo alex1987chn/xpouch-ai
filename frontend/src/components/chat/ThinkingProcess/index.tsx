@@ -160,7 +160,7 @@ const StepItem = ({ step, index }: StepItemProps) => {
 
       {/* 展开详情：过程文本 / 链接 */}
       {open && (
-        <div className="pb-3 pl-[54px] pr-4">
+        <div className="pb-3 pl-[66px] pr-4">
           {step.content && (
             <p className="whitespace-pre-wrap text-xs leading-relaxed text-content-secondary">
               {step.content}

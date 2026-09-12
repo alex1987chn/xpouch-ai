@@ -9,7 +9,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from '@/i18n'
-import { Copy, Check, KeyRound, Loader2 } from 'lucide-react'
+import { X, Copy, Check, KeyRound, Loader2 } from 'lucide-react'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { pushToast } from '@/components/ui/use-toast'
 import {
@@ -138,6 +138,13 @@ export function EditUserDialog({ open, user, isSelf, onClose, onSaved }: EditUse
           {user.username}
         </span>
         <span className="text-nano text-content-muted">{user.id.slice(0, 8)}</span>
+          <button
+            onClick={onClose}
+            title={t('close')}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-surface-tint hover:text-content-primary"
+          >
+            <X className="h-4 w-4" />
+          </button>
       </div>
 
       {/* 资料区 */}

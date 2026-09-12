@@ -1,6 +1,16 @@
 // 管理后台翻译 - 专家管理、专家配置等
 
 export const zh: Record<string, string> = {
+  // 用户管理·添加（v3.5.1）
+  addUser: '添加用户',
+  phonePlaceholder: '手机号（验证码登录身份）',
+  initialPasswordLabel: '初始密码',
+  pwdModeNone: '不设置',
+  pwdModeRandom: '系统随机',
+  pwdModeCustom: '自定义',
+  pwdNoneHint: '不设密码：用户用手机验证码登录，首次收到验证码即可进入；设置初始密码则也可用密码登录。',
+  userCreated: '用户已创建',
+  userCreateFailed: '创建失败',
   // 用户管理（v3.5）
   searchUsers: '搜索用户 / 手机号 / 邮箱…',
   colUser: '用户',
@@ -147,6 +157,16 @@ export const zh: Record<string, string> = {
 }
 
 export const en: Record<string, string> = {
+  // 用户管理·添加（v3.5.1）
+  addUser: 'Add user',
+  phonePlaceholder: 'Phone number (OTP login identity)',
+  initialPasswordLabel: 'Initial password',
+  pwdModeNone: 'None',
+  pwdModeRandom: 'System random',
+  pwdModeCustom: 'Custom',
+  pwdNoneHint: 'No password: the user signs in with SMS verification code. With an initial password, password login also works.',
+  userCreated: 'User created',
+  userCreateFailed: 'Failed to create user',
   // 用户管理（v3.5）
   searchUsers: 'Search users / phone / email…',
   colUser: 'User',
@@ -293,6 +313,16 @@ export const en: Record<string, string> = {
 }
 
 export const ja: Record<string, string> = {
+  // ユーザー管理・追加（v3.5.1）
+  addUser: 'ユーザーを追加',
+  phonePlaceholder: '電話番号（認証コードログイン用）',
+  initialPasswordLabel: '初期パスワード',
+  pwdModeNone: '設定しない',
+  pwdModeRandom: 'システム生成',
+  pwdModeCustom: 'カスタム',
+  pwdNoneHint: 'パスワードなし：ユーザーはSMS認証コードでログインします。初期パスワードを設定するとパスワードログインも有効になります。',
+  userCreated: 'ユーザーを作成しました',
+  userCreateFailed: '作成に失敗しました',
   // ユーザー管理（v3.5）
   searchUsers: 'ユーザー / 電話 / メールを検索…',
   colUser: 'ユーザー',

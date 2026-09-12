@@ -91,7 +91,7 @@ export const zh: Record<string, string> = {
   myStats: '我的统计',
   totalRuns: '总运行数',
   successRate: '成功率',
-  hitlCount: '等待裁决',
+  hitlCount: '待审核',
   avgDuration: '平均耗时',
   trends: '趋势',
   days: '天',

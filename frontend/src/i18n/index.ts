@@ -69,6 +69,8 @@ export type TranslationKey =
   | 'resetModeHint' | 'resetDeliverHint' | 'resetPasswordTooShort' | 'resetPasswordOk'
   | 'resetPasswordFailed' | 'userSaved' | 'userSaveFailed' | 'userDeleted' | 'userDeleteFailed'
   | 'userDeleteTitle' | 'userDeleteWarning' | 'deleting'
+  | 'addUser' | 'phonePlaceholder' | 'initialPasswordLabel' | 'pwdModeNone'
+  | 'pwdModeRandom' | 'pwdModeCustom' | 'pwdNoneHint' | 'userCreated' | 'userCreateFailed'
   // 登录弹窗
   | 'phoneNumberPlaceholder' | 'autoRegisterHint' | 'codePlaceholder' | 'codeSentTo' | 'changePhone'
   // UID 复制

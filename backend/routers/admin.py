@@ -10,6 +10,7 @@
 
 import os
 import secrets
+import uuid
 from datetime import datetime
 from typing import Literal
 
@@ -798,6 +799,69 @@ class AdminResetPasswordRequest(BaseModel):
 
     mode: Literal["custom", "random"] = "random"
     password: str | None = PydanticField(default=None, min_length=8, max_length=64)
+
+
+class AdminCreateUserRequest(BaseModel):
+    """管理员创建用户：手机号为登录身份（OTP），初始密码可选"""
+
+    username: str = PydanticField(min_length=1, max_length=50)
+    phone_number: str = PydanticField(min_length=5, max_length=32)
+    email: str | None = PydanticField(default=None, max_length=254)
+    role: UserRole = UserRole.USER
+    initial_password: str | None = PydanticField(default=None, min_length=8, max_length=64)
+    generate_random_password: bool = False
+
+
+@router.post("/users", response_model=AdminUserResponse, status_code=201)
+async def create_user(
+    request: AdminCreateUserRequest,
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_admin),
+):
+    """管理员添加用户。
+
+    - 手机号必填且全局唯一（OTP 登录身份；未设初始密码的用户走验证码登录）
+    - 初始密码二选一：自定义（≥8 位）或系统随机（仅本次响应返回一次）
+    """
+    phone = request.phone_number.strip()
+    username = request.username.strip()
+    email = (request.email.strip() or None) if request.email else None
+
+    if session.exec(select(User).where(User.phone_number == phone)).first():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="手机号已被使用")
+    if email and session.exec(select(User).where(User.email == email)).first():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="邮箱已被使用")
+
+    generated_password: str | None = None
+    if request.generate_random_password:
+        generated_password = _generate_random_password()
+        password_hash = hash_password(generated_password)
+    elif request.initial_password:
+        password_hash = hash_password(request.initial_password)
+    else:
+        password_hash = None
+
+    user = User(
+        id=str(uuid.uuid4()),
+        username=username,
+        phone_number=phone,
+        email=email,
+        role=request.role,
+        password_hash=password_hash,
+        is_verified=bool(password_hash),
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    logger.info(f"[Admin] 用户 {user.id} 已创建（username={username}）")
+
+    result = _user_to_dto(user)
+    if generated_password:
+        # 随机初始密码仅此一次返回，服务端不留明文
+        result_dict = result.model_dump()
+        result_dict["generated_password"] = generated_password
+        return result_dict
+    return result
 
 
 def _user_to_dto(user: User) -> AdminUserResponse:

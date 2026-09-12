@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useRef, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   sendMessage as apiSendMessage,
   resumeChat as apiResumeChat,
@@ -32,6 +33,7 @@ import {
   useChatActions,
 } from '@/hooks/useChatSelectors'
 import { useActiveRunId, useTaskMode, useTaskActions } from '@/hooks/useTaskSelectors'
+import { artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
 import { useChatStore } from '@/store/chatStore'
 
 import { useStreamHandler } from './useStreamHandler'
@@ -74,6 +76,9 @@ function isAbortError(error: unknown, signal?: AbortSignal | null): boolean {
  * Chat core logic Hook
  */
 export function useChatCore(options: UseChatCoreOptions = {}) {
+  const queryClient = useQueryClient()
+  // 产物事件防抖戳（同一波产物只触发一次列表刷新）
+  const artifactFlushRef = useRef(0)
   const { onChunk, onNewConversation } = options
 
   // Refactored: Hook only manages AbortController
@@ -138,8 +143,17 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       if (threadId) handlers.onThreadId?.(threadId)
       if (expertEvent?.type === 'message.done') handlers.onDone?.()
       if (chunk) handleChunk(chunk)
+      // 产物实时投影：收到 artifact.generated 即防抖刷新右栏画布/画廊，
+      // 复杂任务运行中产物就能挂卡，不必等流结束或手动刷新
+      if (_artifact || expertEvent?.type === 'artifact.generated') {
+        const now = Date.now()
+        if (now - artifactFlushRef.current > 2000) {
+          artifactFlushRef.current = now
+          queryClient.invalidateQueries({ queryKey: artifactsKeys.all })
+        }
+      }
     }
-  }, [setActiveRunId])
+  }, [setActiveRunId, queryClient, artifactFlushRef])
 
   /**
    * Stop generation

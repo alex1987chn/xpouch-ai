@@ -148,7 +148,11 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId }: ArtifactV
         open={open}
         onClose={onClose}
         labelledBy="artifact-viewer-title"
-        panelClassName="flex h-[84vh] w-[min(920px,94vw)] flex-col overflow-hidden"
+        panelClassName={
+          detail?.type === 'html'
+            ? 'flex h-[88vh] w-[min(1400px,96vw)] flex-col overflow-hidden'
+            : 'flex h-[84vh] w-[min(920px,94vw)] flex-col overflow-hidden'
+        }
       >
         {/* 头部：类型 + 标题 + 动作组 */}
         <div className="flex items-center gap-2.5 border-b border-border-divider px-4 py-3">
