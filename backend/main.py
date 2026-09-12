@@ -104,6 +104,23 @@ async def lifespan(app: FastAPI):
     # 创建数据库表
     create_db_and_tables()
 
+    # 修订任务启动兜底：BackgroundTasks 不随进程存活，重启会让"修订中"悬置。
+    # 对超时未终态的修订补写 FAILED 事件（原计划保持待审，用户可继续操作）。
+    try:
+        from sqlmodel import Session
+
+        from crud.run_event import fail_stale_revision_jobs
+        from database import engine
+
+        with Session(engine) as session:
+            repaired = fail_stale_revision_jobs(session)
+        if repaired:
+            logger.warning(
+                f"[Lifespan] 有 {repaired} 个修订任务被重启中断，已标记失败（原计划保持待审）"
+            )
+    except Exception as e:
+        logger.warning(f"[Lifespan WARN] 修订任务启动兜底失败（不影响主流程）: {e}")
+
     # 🔥 Checkpointer 初始化：官方 AsyncPostgresSaver.setup()（幂等，按
     #    checkpoint_migrations 版本表补齐表结构），替代手搓检查 DDL
     from utils.db import setup_shared_checkpointer

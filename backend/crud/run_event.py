@@ -534,3 +534,56 @@ def emit_hitl_revision_failed(
         execution_plan_id=execution_plan_id,
         event_data={"plan_version": plan_version, "error": error[:500]},
     )
+
+
+def fail_stale_revision_jobs(
+    db: Session,
+    *,
+    stale_after_seconds: int = 1800,
+) -> int:
+    """启动兜底：修订后台任务（BackgroundTasks）不随进程存活。
+
+    进程重启会让"修订中"永远悬置——账本里最新修订态停在
+    HITL_REVISION_STARTED，前端轮询推导 revising=True 卡死。
+    这里对超时仍未终态的 run 补写 HITL_REVISION_FAILED（原计划保持待审，
+    用户可重新修订或直接批准/终止），返回处理的 run 数。
+    """
+    from datetime import timedelta
+
+    state_types = (
+        RunEventType.HITL_REVISION_STARTED,
+        RunEventType.HITL_REVISION_FAILED,
+        RunEventType.PLAN_UPDATED,
+    )
+    cutoff = utc_now_naive() - timedelta(seconds=stale_after_seconds)
+
+    events = db.exec(
+        select(RunEvent)
+        .where(RunEvent.event_type.in_(state_types))
+        .order_by(RunEvent.created_at.asc(), RunEvent.id.asc())
+    ).all()
+
+    # 按 run 取最新一条修订态事件（升序遍历，后写覆盖）
+    latest_by_run: dict[str, RunEvent] = {}
+    for ev in events:
+        latest_by_run[ev.run_id] = ev
+
+    stale = [
+        ev
+        for ev in latest_by_run.values()
+        if ev.event_type == RunEventType.HITL_REVISION_STARTED
+        and ev.created_at
+        and ev.created_at < cutoff
+    ]
+    for ev in stale:
+        emit_hitl_revision_failed(
+            db,
+            run_id=ev.run_id,
+            thread_id=ev.thread_id or "",
+            execution_plan_id=ev.execution_plan_id or "",
+            plan_version=(ev.event_data or {}).get("plan_version", 0),
+            error="进程重启中断了修订任务；原计划保持待审，可重新提交修订或直接批准",
+        )
+    if stale:
+        db.commit()
+    return len(stale)

@@ -51,8 +51,15 @@ def record_sms_send(ip: str) -> None:
 
 
 def extract_client_ip(request) -> str:
-    """取客户端 IP：优先 X-Forwarded-For 首跳（自部署常规反代拓扑），回退直连地址。"""
-    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+    """取客户端 IP：X-Forwarded-For 末跳，回退直连地址。
+
+    XFF 是客户端可伪造的头（可自带任意首跳）。部署拓扑是自家的
+    nginx（$proxy_add_x_forwarded_for 会把上一跳真实 IP 追加到末尾），
+    所以只有末跳是可信代理写入的值；取首跳等于让攻击者自定义频控 key。
+    """
+    forwarded = [
+        h.strip() for h in (request.headers.get("X-Forwarded-For") or "").split(",") if h.strip()
+    ]
     if forwarded:
-        return forwarded
+        return forwarded[-1]
     return request.client.host if request.client else "unknown"

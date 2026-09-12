@@ -21,6 +21,7 @@ import type {
 } from './types'
 import type { HandlerContext } from './types'
 import { getLastAssistantMessage } from './utils'
+import { t } from '@/i18n'
 import { logger } from '@/utils/logger'
 import type { ThinkingStep } from '@/types'
 
@@ -54,7 +55,7 @@ export function handlePlanCreated(
       thinking[planStepIndex] = {
         ...thinking[planStepIndex],
         status: 'completed',
-        content: '任务规划完成'
+        content: t('thinkingPlanDone')
       }
       updateMessageMetadata(lastAi.id, { thinking })
     }
@@ -264,7 +265,7 @@ export function handleTaskCompleted(
       thinking[taskStepIndex] = {
         ...thinking[taskStepIndex],
         status: 'completed',
-        content: event.data.output || '任务执行完成'
+        content: event.data.output || t('thinkingTaskDone')
       }
       updateMessageMetadata(lastAi.id, { thinking })
       if (debug) {

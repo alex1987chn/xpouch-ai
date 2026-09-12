@@ -9,7 +9,7 @@ import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { I18nProvider } from './i18n'
-import { ThemeProvider, ThemeInitializer } from './hooks/useTheme'
+import { ThemeInitializer } from './hooks/useTheme'
 import { AppProvider } from './providers/AppProvider'
 import { AuthInitializer } from './components/AuthInitializer'
 import { router, AppProviders } from '@/router'
@@ -78,10 +78,8 @@ root.render(
       <AppProvider>
         <AuthInitializer>
           <I18nProvider>
-            <ThemeProvider>
-              <ThemeInitializer />
-              <RouterProvider router={router} />
-            </ThemeProvider>
+            <ThemeInitializer />
+            <RouterProvider router={router} />
           </I18nProvider>
         </AuthInitializer>
       </AppProvider>

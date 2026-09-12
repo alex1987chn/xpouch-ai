@@ -16,6 +16,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'react-router-dom'
+import { useTranslation } from '@/i18n'
 import { useTaskStore } from '@/store/taskStore'
 import { useChatStore } from '@/store/chatStore'
 import { logger } from '@/utils/logger'
@@ -66,6 +67,7 @@ export function useSessionRestore(
 ): UseSessionRestoreReturn {
   const { enabled = true, onRestored } = options
   const { id: threadId } = useParams<{ id: string }>()
+  const { t } = useTranslation()
   
   const [isRestoring, setIsRestoring] = useState(false)
   const [isRestored, setIsRestored] = useState(false)
@@ -224,7 +226,7 @@ export function useSessionRestore(
           // 添加系统消息提示用户
           addMessage({
             role: 'system',
-            content: '检测到页面曾切换到后台，任务仍在执行中。请等待完成或刷新页面查看最新结果。',
+            content: t('backgroundTaskNotice'),
             timestamp: Date.now()
           })
         }

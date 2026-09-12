@@ -16,6 +16,7 @@ import type {
 } from './types'
 import type { HandlerContext } from './types'
 import { getLastAssistantMessage } from './utils'
+import { t } from '@/i18n'
 import { pushToast } from '@/components/ui/use-toast'
 import { logger } from '@/utils/logger'
 import type { ThinkingStep } from '@/types'
@@ -171,8 +172,8 @@ export function handleError(event: ErrorEvent, _context: HandlerContext): void {
   logger.error('[SystemEvents] 服务器错误:', event.data.code, event.data.message)
 
   pushToast({
-    title: '服务端错误',
-    description: event.data.message || '请求处理失败，请重试',
+    title: t('serverErrorTitle'),
+    description: event.data.message || t('serverErrorFallback'),
     variant: 'destructive',
   })
 }

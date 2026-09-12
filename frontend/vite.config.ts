@@ -49,8 +49,8 @@ export default defineConfig({
           const vendorChunks: Record<string, string[]> = {
             // React 核心生态
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            // UI 动画和图标
-            'ui-vendor': ['framer-motion', 'lucide-react'],
+            // 图标库
+            'ui-vendor': ['lucide-react'],
             // Radix UI 组件库
             'radix-ui': [
               '@radix-ui/react-avatar',

@@ -12,6 +12,9 @@ RunStreamHub - 断线续传（B6 resumable stream MVP）
 - 缓冲在进程内，服务重启即丢——resume 端点返回 410，前端退化到
   现有"后台跑完 + 轮询刷新"路径
 - run 总量 LRU 上限 + 单 run 事件条数上限，防无界增长
+- **部署约束：本模块要求单 worker 单实例**。多 worker 时续传请求有
+  N-1 概率命中没有该缓冲的进程（进程内限流同理失效）；多实例需先
+  把缓冲外置（Redis 等），见 docs/self-hosting.md「单实例约束」
 """
 
 import asyncio

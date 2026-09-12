@@ -85,7 +85,9 @@ export const zh = {
   success: '成功',
   failed: '失败',
   loading: '加载中...',
-  
+  serverErrorTitle: '服务端错误',
+  serverErrorFallback: '请求处理失败，请重试',
+
   // StatsPage
   globalStats: '全局统计',
   myStats: '我的统计',
@@ -300,7 +302,9 @@ export const en = {
   success: 'Success',
   failed: 'Failed',
   loading: 'Loading...',
-  
+  serverErrorTitle: 'Server error',
+  serverErrorFallback: 'Request failed, please try again',
+
   // StatsPage
   globalStats: 'Global Stats',
   myStats: 'My Stats',
@@ -515,7 +519,9 @@ export const ja = {
   success: '成功',
   failed: '失敗',
   loading: '読み込み中...',
-  
+  serverErrorTitle: 'サーバーエラー',
+  serverErrorFallback: 'リクエストが失敗しました。もう一度お試しください',
+
   // StatsPage
   globalStats: 'グローバル統計',
   myStats: 'マイ統計',

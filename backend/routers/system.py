@@ -24,10 +24,11 @@ router = APIRouter(prefix="/api", tags=["system"])
 # ============================================================================
 
 
+# 可更新字段白名单：此模型即边界，往 User 模型加敏感列（plan/quota/role 等）
+# 不会自动变成"用户可改"。plan 属配额语义，只能由管理侧流程变更。
 class UpdateUserRequest(BaseModel):
     username: str | None = None
     avatar: str | None = None
-    plan: str | None = None
 
 
 class UpdateUserSettingsRequest(BaseModel):
@@ -104,8 +105,6 @@ async def update_user_me(
         current_user.username = request.username
     if request.avatar is not None:
         current_user.avatar = request.avatar
-    if request.plan is not None:
-        current_user.plan = request.plan
 
     session.add(current_user)
     session.commit()

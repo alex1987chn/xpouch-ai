@@ -138,7 +138,11 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
       return
     }
     if (!pendingRunId) {
-      pushToast({ title: '缺少运行实例 ID', description: '无法恢复执行', variant: 'destructive' })
+      pushToast({
+        title: t('missingRunId'),
+        description: t('cannotResume'),
+        variant: 'destructive'
+      })
       return
     }
 
@@ -195,7 +199,11 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
       return
     }
     if (!pendingRunId) {
-      pushToast({ title: '缺少运行实例 ID', description: '无法提交修订', variant: 'destructive' })
+      pushToast({
+        title: t('missingRunId'),
+        description: t('cannotSubmitRevision'),
+        variant: 'destructive'
+      })
       return
     }
 
@@ -233,7 +241,11 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
 
   const handleTerminate = useCallback(async () => {
     if (!pendingRunId) {
-      pushToast({ title: '缺少运行实例 ID', description: '无法终止当前任务', variant: 'destructive' })
+      pushToast({
+        title: t('missingRunId'),
+        description: t('cannotTerminate'),
+        variant: 'destructive'
+      })
       return
     }
 

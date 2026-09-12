@@ -135,11 +135,17 @@ def test_sms_ip_limit_window_and_isolation():
     assert sms_ip_limit_exhausted("203.0.113.11", window_seconds=3600, max_sends=3) is False
 
 
-def test_extract_client_ip_prefers_forwarded_first_hop():
+def test_extract_client_ip_uses_last_forwarded_hop():
+    """XFF 末跳才是自家代理追加的可信值；首跳是客户端可伪造的。"""
     from auth.limiter import extract_client_ip
 
+    # 客户端伪造首跳 203.0.113.9，自家 nginx 追加末跳真实 IP 10.0.0.1
     req = SimpleNamespace(headers={"X-Forwarded-For": "203.0.113.9, 10.0.0.1"}, client=None)
     req2 = SimpleNamespace(headers={}, client=SimpleNamespace(host="127.0.0.1"))
+    req3 = SimpleNamespace(
+        headers={"X-Forwarded-For": ""}, client=SimpleNamespace(host="192.168.1.5")
+    )
 
-    assert extract_client_ip(req) == "203.0.113.9"
+    assert extract_client_ip(req) == "10.0.0.1"
     assert extract_client_ip(req2) == "127.0.0.1"
+    assert extract_client_ip(req3) == "192.168.1.5"

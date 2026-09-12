@@ -11,6 +11,7 @@
 
 import { useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from '@/i18n'
 import {
   sendMessage as apiSendMessage,
   resumeChat as apiResumeChat,
@@ -20,7 +21,7 @@ import {
 import type { ApiMessage, StreamCallback, StreamRuntimeMeta } from '@/types'
 import { normalizeAgentId, getAgentType } from '@/utils/agentUtils'
 import { generateUUID } from '@/utils'
-import { findMessageById, isSameId } from '@/utils/normalize'
+import { isSameId } from '@/utils/normalize'
 import type { Message } from '@/types'
 import { errorHandler, logger } from '@/utils/logger'
 import type { AnyServerEvent } from '@/types/events'
@@ -78,6 +79,7 @@ function isAbortError(error: unknown, signal?: AbortSignal | null): boolean {
  */
 export function useChatCore(options: UseChatCoreOptions = {}) {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
   // 产物事件防抖戳（同一波产物只触发一次列表刷新）
   const artifactFlushRef = useRef(0)
   const { onChunk, onNewConversation } = options
@@ -328,11 +330,11 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       return finalResponseContent
 
     } catch (error) {
-      const maybeConflict = error as { status?: number; code?: string; message?: string }
+      // 409 冲突判定以结构化 code 为准（后端 ErrorCode.ACTIVE_RUN_CONFLICT），
+      // 不做消息文本匹配——后端文案随语言变化，子串匹配天然脆弱
+      const maybeConflict = error as { status?: number; code?: string }
       const isActiveRunConflict =
-        maybeConflict?.status === 409 &&
-        (maybeConflict?.code === 'ACTIVE_RUN_CONFLICT' ||
-          maybeConflict?.message?.includes('当前会话已有进行中的任务'))
+        maybeConflict?.status === 409 && maybeConflict?.code === 'ACTIVE_RUN_CONFLICT'
       const aborted = isAbortError(error, abortControllerRef.current?.signal)
 
       // 🔐 检测 401 错误，保存消息以便登录后重发
@@ -352,7 +354,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       } else if (isActiveRunConflict) {
         addMessage({
           role: 'assistant',
-          content: '当前会话已有进行中的任务，请先等待完成、确认恢复、取消任务，或切换到新会话后再继续。',
+          content: t('activeRunConflictMsg'),
           metadata: { threadId: currentConversationId ?? undefined }
         })
       } else {
@@ -367,15 +369,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       }
     } finally {
       finalizeStream()
-
-      if (conversationMode === 'complex' && assistantMessageId) {
-        const currentMessages = useChatStore.getState().messages
-        // 🔥 使用规范化工具查找
-        const assistantMsg = findMessageById(currentMessages, assistantMessageId)
-        if (assistantMsg && !assistantMsg.content?.trim()) {
-          debug('Complex mode: keep empty AI message waiting for aggregator summary', assistantMessageId)
-        }
-      }
     }
   }, [
     isGenerating,

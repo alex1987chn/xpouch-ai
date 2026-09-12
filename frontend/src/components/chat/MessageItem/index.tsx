@@ -75,11 +75,12 @@ interface MarkdownLinkProps {
  * Markdown 链接渲染组件
  * 支持图片/视频预览和普通链接
  */
-const MarkdownLink = memo(function MarkdownLink({ 
-  href = '', 
+const MarkdownLink = memo(function MarkdownLink({
+  href = '',
   children,
-  onLinkClick 
+  onLinkClick
 }: MarkdownLinkProps) {
+  const { t } = useTranslation()
   const linkText = children?.toString() || ''
   
   // 🔥 检测是否为媒体链接（多种策略）
@@ -112,7 +113,7 @@ const MarkdownLink = memo(function MarkdownLink({
         />
         {isExpired && (
           <span className="text-xs text-amber-600 block mt-1">
-            ⚠️ 图片链接已过期，请重新生成
+            ⚠️ {t('imageLinkExpired')}
           </span>
         )}
         <a href={href} className="hidden text-accent hover:underline text-xs">
@@ -121,7 +122,7 @@ const MarkdownLink = memo(function MarkdownLink({
       </span>
     )
   }
-  
+
   if (shouldRenderAsVideo) {
     return (
       <span className="block my-3">
@@ -136,11 +137,8 @@ const MarkdownLink = memo(function MarkdownLink({
             target.nextElementSibling?.classList.remove('hidden')
           }}
         >
-          您的浏览器不支持视频播放
+          {t('videoNotSupported')}
         </video>
-        <a href={href} className="hidden text-accent hover:underline text-xs">
-          {children}
-        </a>
       </span>
     )
   }
@@ -197,6 +195,7 @@ interface MarkdownCodeProps {
  * Markdown 代码渲染组件
  */
 const MarkdownCode = memo(function MarkdownCode({ children, className }: MarkdownCodeProps) {
+  const { t } = useTranslation()
   const codeContent = String(children || '').replace(/\n$/, '')
   const isInline = !className?.includes('language-')
   const match = /language-(\w+)/.exec(className || '')
@@ -241,7 +240,7 @@ const MarkdownCode = memo(function MarkdownCode({ children, className }: Markdow
           )}
           {isExpired && (
             <span className="text-xs text-amber-600 block mt-1">
-              ⚠️ 链接已过期，请重新生成
+              ⚠️ {t('linkExpired')}
             </span>
           )}
           <code className="block mt-1 text-xs bg-surface-tint px-1 py-0.5 rounded">
@@ -475,7 +474,7 @@ function MessageItem({
           </ReactMarkdown>
         ) : aiStatus !== 'idle' ? (
           <span className="text-content-muted/50 italic">
-            {aiStatus === 'thinking' ? '思考中...' : '生成中...'}
+            {aiStatus === 'thinking' ? t('aiThinkingPlaceholder') : t('aiGeneratingPlaceholder')}
           </span>
         ) : null}
       </div>
