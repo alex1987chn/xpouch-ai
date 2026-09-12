@@ -358,9 +358,16 @@ async def chat_endpoint(
         user_id=current_user.id,
     )
 
-    # 2. 保存用户消息——展示内容保持简短，文档文本存 extra_data 供 LLM 上下文重建
-    extra_data = {"documents": parsed_documents} if parsed_documents else None
-    await thread_service.save_user_message(thread_id, request.message, extra_data=extra_data)
+    # 2. 保存用户消息——展示内容保持简短，附件以元数据进 extra_data：
+    #    文档存解析文本（供 LLM 上下文重建），图片只记数量（本体不落库，防存储膨胀）
+    extra_data: dict = {}
+    if parsed_documents:
+        extra_data["documents"] = parsed_documents
+    if request.images:
+        extra_data["image_count"] = len(request.images)
+    await thread_service.save_user_message(
+        thread_id, request.message, extra_data=extra_data or None
+    )
 
     # 3. 构建 LangChain 消息列表
     langchain_messages = await thread_service.build_langchain_messages(thread_id)

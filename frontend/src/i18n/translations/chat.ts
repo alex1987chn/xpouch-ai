@@ -22,6 +22,7 @@ export const zh = {
   // Input & Chat
   uploadImage: '上传图片',
   uploadAttachment: '上传附件',
+  attachmentImages: '图片 ×{count}',
   simpleMode: '简单对话模式',
   complexMode: '复杂任务模式',
   simple: '简单',
@@ -182,6 +183,7 @@ export const en = {
   // Input & Chat
   uploadImage: 'Upload Image',
   uploadAttachment: 'Upload Attachment',
+  attachmentImages: 'Images ×{count}',
   simpleMode: 'Simple Chat Mode',
   complexMode: 'Complex Task Mode',
   simple: 'Simple',
@@ -342,6 +344,7 @@ export const ja = {
   // Input & Chat
   uploadImage: '画像をアップロード',
   uploadAttachment: 'ファイルをアップロード',
+  attachmentImages: '画像 ×{count}',
   simpleMode: 'シンプルチャットモード',
   complexMode: '複雑なタスクモード',
   simple: 'シンプル',

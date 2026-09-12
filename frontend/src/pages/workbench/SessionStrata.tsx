@@ -25,7 +25,7 @@ import { EmptyState } from '@/components/ui/states'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
 import type { Conversation } from '@/types'
-import { expertDotStyle } from '@/lib/expertIdentity'
+import { agentDotStyle, expertDisplayName } from '@/lib/expertIdentity'
 import { toLocalDate, localeForLanguage, type Locale } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
 
@@ -217,38 +217,45 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
                 <div className="px-2 pb-1 pt-3 text-nano font-bold text-content-muted">
                   {group[1]}
                 </div>
-                {groups[group[0]].map(conv => (
-                  <button
-                    key={conv.id}
-                    onClick={() => handleSelect(conv)}
-                    className={cn(
-                      'group flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left transition-colors',
-                      conv.id === activeThreadId
-                        ? 'bg-surface-tint'
-                        : 'hover:bg-surface-tint/60'
-                    )}
-                  >
-                    <span
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={expertDotStyle(conv.agent_id)}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-xs text-content-secondary group-hover:text-content-primary">
-                      {conv.title || t('newChat')}
-                    </span>
+                {groups[group[0]].map(conv => {
+                  const dot = agentDotStyle(conv.agent_id)
+                  return (
                     <button
-                      onClick={e => {
-                        e.stopPropagation()
-                        setPendingDelete(conv)
-                      }}
-                      aria-label={t('delete')}
-                      title={t('delete')}
-                      className="shrink-0 p-0.5 text-content-muted opacity-0 transition-opacity hover:text-accent-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                      key={conv.id}
+                      onClick={() => handleSelect(conv)}
+                      className={cn(
+                        'group flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left transition-colors',
+                        conv.id === activeThreadId
+                          ? 'bg-surface-tint'
+                          : 'hover:bg-surface-tint/60'
+                      )}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <span
+                        className={cn(
+                          'h-2 w-2 shrink-0 rounded-full',
+                          !dot && 'bg-content-muted/40'
+                        )}
+                        style={dot ?? undefined}
+                        title={expertDisplayName(conv.agent_id)}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-xs text-content-secondary group-hover:text-content-primary">
+                        {conv.title || t('newChat')}
+                      </span>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation()
+                          setPendingDelete(conv)
+                        }}
+                        aria-label={t('delete')}
+                        title={t('delete')}
+                        className="shrink-0 p-0.5 text-content-muted opacity-0 transition-opacity hover:text-accent-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                      <RowTrailing conversation={conv} locale={locale} />
                     </button>
-                    <RowTrailing conversation={conv} locale={locale} />
-                  </button>
-                ))}
+                  )
+                })}
               </div>
             ) : null
           )

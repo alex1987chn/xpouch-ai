@@ -9,7 +9,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, memo, useMemo } from 'react'
-import { Copy, Check, RefreshCw, FileText, ChevronDown, ChevronUp } from 'lucide-react'
+import { Copy, Check, RefreshCw, FileText, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import type { MessageItemProps } from '../types'
 import { extractCodeBlocks, detectContentType, detectMediaUrl } from '../utils'
@@ -18,7 +18,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.css'
 import { CodeBlock } from '@/components/ui/code-block'
-import { expertDotStyle, expertDisplayName } from '@/lib/expertIdentity'
+import { agentDotStyle, expertDisplayName } from '@/lib/expertIdentity'
 import ArtifactViewerModal from '@/components/artifacts/ArtifactViewerModal'
 import { cn } from '@/lib/utils'
 import type { Components } from 'react-markdown'
@@ -393,8 +393,15 @@ function MessageItem({
     code: ({ node: _node, ...props }) => <MarkdownCode {...props} />
   }), [onLinkClick])
 
-  // 用户消息：暖调浅底圆角气泡，右对齐（蓝本 .msg-user）
+  // 署名点色：默认助手返回 null（渲染中性点），自定义专家返回识别色
+  const agentDot = agentDotStyle(activeExpert)
+
+  // 用户消息：暖调浅底圆角气泡，右对齐（蓝本 .msg-user）；附件以 chips 展示
+  // （名字/数量来自消息 extra_data 元数据——文档文本与图片本体都不在展示层）
   if (isUser) {
+    const docNames = message.extra_data?.documents?.map(d => d.name) ?? []
+    const imageCount = message.extra_data?.image_count ?? 0
+    const hasAttachments = docNames.length > 0 || imageCount > 0
     return (
       <div className="flex flex-col items-end group user-message">
         <div className="mb-1 opacity-60 group-hover:opacity-100 transition-opacity">
@@ -403,6 +410,26 @@ function MessageItem({
           </span>
         </div>
         <div className="w-fit max-w-[78%] select-text rounded-md border border-border-divider bg-surface-tint p-2.5 px-3.5 shadow-theme-card">
+          {hasAttachments && (
+            <div className="mb-1.5 flex flex-wrap justify-end gap-1.5">
+              {imageCount > 0 && (
+                <span className="flex items-center gap-1 rounded-sm bg-surface-card px-1.5 py-0.5 text-[11px] text-content-secondary">
+                  <ImageIcon className="h-3 w-3" />
+                  {t('attachmentImages', { count: imageCount })}
+                </span>
+              )}
+              {docNames.map(name => (
+                <span
+                  key={name}
+                  className="flex min-w-0 items-center gap-1 rounded-sm bg-surface-card px-1.5 py-0.5 text-[11px] text-content-secondary"
+                  title={name}
+                >
+                  <FileText className="h-3 w-3 shrink-0" />
+                  <span className="max-w-[160px] truncate">{name}</span>
+                </span>
+              ))}
+            </div>
+          )}
           <p className="whitespace-pre-wrap text-[13.5px] leading-[1.65] text-content-primary">
             {content}
           </p>
@@ -414,11 +441,11 @@ function MessageItem({
   // AI 消息：无气泡，全宽排版 + 专家署名行（识别色点 + 显示名，蓝本 .byline）
   return (
     <div className="flex flex-col items-start w-full select-text ai-message group">
-      {/* 署名行：识别色点 + 专家名 + 时间 */}
+      {/* 署名行：识别色点（默认助手为中性点）+ 专家名 + 时间 */}
       <div className="mb-1.5 flex items-center gap-1.5">
         <span
-          className="h-[7px] w-[7px] rounded-full"
-          style={expertDotStyle(activeExpert || 'assistant')}
+          className={cn('h-[7px] w-[7px] rounded-full', !agentDot && 'bg-content-muted/45')}
+          style={agentDot ?? undefined}
         />
         <span className="text-[11px] text-content-muted">
           {activeExpert ? expertDisplayName(activeExpert) : t('aiBylineFallback')}
@@ -552,6 +579,7 @@ function areEqual(prevProps: MessageItemProps, nextProps: MessageItemProps): boo
   if (prevMsg.content !== nextMsg.content) return false
   if (prevMsg.role !== nextMsg.role) return false
   if (prevMsg.timestamp !== nextMsg.timestamp) return false
+  if (prevMsg.extra_data !== nextMsg.extra_data) return false
   
   // 比较 metadata.thinking 长度（thinking 步骤变化）
   const prevThinkingLength = prevMsg.metadata?.thinking?.length ?? 0

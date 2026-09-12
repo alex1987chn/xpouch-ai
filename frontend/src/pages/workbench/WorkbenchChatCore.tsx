@@ -30,7 +30,8 @@ import { artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
 import type { ChatDocument } from '@/components/chat/types'
 import ChatStreamPanel from '@/components/chat/ChatStreamPanel'
 import { SYSTEM_AGENTS } from '@/constants/agents'
-import { expertColor, expertDisplayName } from '@/lib/expertIdentity'
+import { agentDotStyle, expertDisplayName } from '@/lib/expertIdentity'
+import { cn } from '@/lib/utils'
 
 interface WorkbenchChatCoreProps {
   /** null = 新会话（线程由首条消息创建，经 onNewConversation 回写 URL） */
@@ -168,6 +169,7 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
   const { data: agents } = useAgentsQuery({ includeDefault: true })
   const currentAgent = agents?.find(a => a.id === normalizedAgentId)
   const expertName = currentAgent?.name || expertDisplayName(normalizedAgentId)
+  const agentDot = agentDotStyle(normalizedAgentId)
 
   const runIdForControl = activeRunId || latestRunId || threadId
   const isAwaiting = isHITLPaused || pollingStatus === 'waiting_for_approval'
@@ -180,8 +182,11 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
       <div className="mx-auto flex w-full max-w-[760px] items-center gap-2 px-6 pt-4">
         <span className="flex items-center gap-1.5 text-xs text-content-secondary">
           <span
-            className="inline-block h-2 w-2 rounded-full"
-            style={{ backgroundColor: expertColor(normalizedAgentId) }}
+            className={cn(
+              'inline-block h-2 w-2 rounded-full',
+              !agentDot && 'bg-content-muted/40'
+            )}
+            style={agentDot ?? undefined}
           />
           <span className="font-medium">{expertName}</span>
         </span>

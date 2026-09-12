@@ -12,7 +12,8 @@
  *
  * @design
  * - 使用 State Machine 管理轮询生命周期
- * - 终态时仅通知，不主动刷新数据
+ * - 终态时失效地层/产物缓存（SSE 断流后执行仍会完成，轮询是最后的对账机会），
+ *   UI 响应仍由组件层决定
  * - 组件层决定如何响应终态
  *
  * @usage
@@ -22,10 +23,12 @@
  */
 
 import { useEffect, useRef, useCallback, useReducer } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRunStatus } from '@/services/run'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
+import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
+import { artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
 import { logger } from '@/utils/logger'
 import type { RunStatus } from '@/types/run'
 
@@ -125,6 +128,7 @@ interface UseRunPollingReturn {
 export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPollingReturn {
   const { enabled = true } = options
   const [state, dispatch] = useReducer(pollingReducer, initialState)
+  const queryClient = useQueryClient()
 
   // 跟踪状态变化（用于日志）
   const previousStatusRef = useRef<RunStatus | null>(null)
@@ -190,6 +194,9 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
         dispatch({ type: 'TERMINAL_REACHED' })
         setGenerating(false)
         clearActiveRunId()
+        // 断流兜底：SSE 已断时执行仍会在服务端完成，轮询是最后对账点
+        queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
+        queryClient.invalidateQueries({ queryKey: artifactsKeys.all })
       }
       return
     }
@@ -208,7 +215,7 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
       logger.info('[useRunPolling] 从 HITL 恢复，继续轮询')
       dispatch({ type: 'HITL_RESUMED' })
     }
-  }, [data, activeRunId, state.isTerminal, state.status, setGenerating, clearActiveRunId])
+  }, [data, activeRunId, state.isTerminal, state.status, setGenerating, clearActiveRunId, queryClient])
 
   // 错误处理
   useEffect(() => {

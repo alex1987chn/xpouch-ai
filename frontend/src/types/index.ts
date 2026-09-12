@@ -8,6 +8,15 @@ import type { AnyServerEvent } from './events'
 // ============================================
 
 /**
+ * 用户消息附件元数据（后端消息 extra_data 透传，气泡 chips 渲染用）。
+ * 文档只留名字（解析文本留在后端供上下文重建），图片只记数量不落库。
+ */
+export interface MessageAttachmentData {
+  documents?: { name: string }[]
+  image_count?: number
+}
+
+/**
  * 基础消息接口 - 用于 UI 组件
  */
 export interface Message {
@@ -17,6 +26,7 @@ export interface Message {
   isTyping?: boolean
   timestamp?: number | string
   metadata?: MessageMetadata
+  extra_data?: MessageAttachmentData
 }
 
 /**

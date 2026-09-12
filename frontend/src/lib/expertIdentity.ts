@@ -41,6 +41,19 @@ export function expertDotStyle(expertType: string): React.CSSProperties {
   return { backgroundColor: expertColor(expertType) }
 }
 
+/** 默认系统助手的 ID（含历史遗留别名）；它们不占专家识别色 */
+const DEFAULT_AGENT_IDS = new Set(['sys-default-chat', 'assistant'])
+
+/**
+ * 智能体点色：默认助手返回 null（调用方渲染中性点）。
+ * 哈希色对默认助手是"假身份色"——大多数会话都是默认助手，
+ * 一律套随机识别色会让小圆看起来像无意义的装饰。
+ */
+export function agentDotStyle(agentId: string | null | undefined): React.CSSProperties | null {
+  if (!agentId || DEFAULT_AGENT_IDS.has(agentId)) return null
+  return expertDotStyle(agentId)
+}
+
 /**
  * 专家显示名：内置专家走系统映射，自定义专家返回 key。
  * 调用方若持有专家列表（useAgentsQuery），优先用列表里的 name 再兜底到这里。

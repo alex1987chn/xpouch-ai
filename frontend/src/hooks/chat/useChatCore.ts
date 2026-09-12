@@ -34,6 +34,7 @@ import {
 } from '@/hooks/useChatSelectors'
 import { useActiveRunId, useTaskMode, useTaskActions } from '@/hooks/useTaskSelectors'
 import { artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
+import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { useChatStore } from '@/store/chatStore'
 
 import { useStreamHandler } from './useStreamHandler'
@@ -108,13 +109,19 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   const { reset: resetStreamHandler, createChunkHandler, forceFlush, markFinalized } =
     useStreamHandler()
 
-  /** 三条流程共用的收尾：flush 缓冲 → 复位生成态 → 清 run → 释放 abort */
+  /**
+   * 三条流程共用的收尾：flush 缓冲 → 复位生成态 → 清 run → 释放 abort，
+   * 并失效地层/产物缓存（会话标题、latest_run 状态、产物卡都以服务端为准，
+   * 不失效则审批恢复执行结束后侧栏仍停在"待审核"、画布缺卡，需手动刷新）。
+   */
   const finalizeStream = useCallback(() => {
     forceFlush()
     setGenerating(false)
     clearActiveRunId()
     abortControllerRef.current = null
-  }, [forceFlush, setGenerating, clearActiveRunId])
+    queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
+    queryClient.invalidateQueries({ queryKey: artifactsKeys.all })
+  }, [forceFlush, setGenerating, clearActiveRunId, queryClient])
 
   /**
    * 流式回调工厂：syncRuntimeMeta + 可选的 threadId 同步 / 完成闩锁，
@@ -245,10 +252,25 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       // 🔥🔥🔥 关键修复：使用函数式更新避免竞态条件
       // 确保获取最新的 messages 状态，而不是使用闭包中的快照
+      // 乐观用户消息带附件元数据（与后端 extra_data 同构），气泡立即渲染 chips
+      const optimisticExtraData: Message['extra_data'] =
+        documents?.length || images?.length
+          ? {
+              ...(documents?.length
+                ? { documents: documents.map(d => ({ name: d.name })) }
+                : {}),
+              ...(images?.length ? { image_count: images.length } : {}),
+            }
+          : undefined
       setMessages((prevMessages) => {
         const newMessages = [
           ...prevMessages,
-          { role: 'user' as const, content: userContent, timestamp: Date.now() },
+          {
+            role: 'user' as const,
+            content: userContent,
+            timestamp: Date.now(),
+            extra_data: optimisticExtraData,
+          },
           {
             id: assistantMessageId,
             role: 'assistant' as const,
