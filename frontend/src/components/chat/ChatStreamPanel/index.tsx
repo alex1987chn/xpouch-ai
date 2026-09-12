@@ -118,6 +118,33 @@ function getMessageThinkingSteps(msg: Message) {
   return []
 }
 
+// ============================================================================
+// 渲染期解析缓存：面板随流式每次 flush 重渲染，历史消息的
+// think 解析/步骤提取结果是稳定的，不必每帧重算（长会话显著省主线程）
+// ============================================================================
+
+/** 正文解析缓存：键为内容字符串，内容不变即命中（流式消息每次 flush 产生新键，靠容量上限淘汰） */
+const parsedContentCache = new Map<string, string>()
+function cachedParsedContent(rawContent: string): string {
+  const hit = parsedContentCache.get(rawContent)
+  if (hit !== undefined) return hit
+  const parsed = parseThinkTags(rawContent).content || rawContent
+  if (parsedContentCache.size > 500) parsedContentCache.clear()
+  parsedContentCache.set(rawContent, parsed)
+  return parsed
+}
+
+/** thinking 步骤缓存：按消息对象弱引用（流式消息更新时对象替换，缓存自然失效） */
+const thinkingStepsCache = new WeakMap<Message, ReturnType<typeof getMessageThinkingSteps>>()
+function cachedThinkingSteps(msg: Message) {
+  let steps = thinkingStepsCache.get(msg)
+  if (!steps) {
+    steps = getMessageThinkingSteps(msg)
+    thinkingStepsCache.set(msg, steps)
+  }
+  return steps
+}
+
 /**
  * 左侧聊天流面板 - Industrial Style
  *
@@ -244,7 +271,7 @@ export default function ChatStreamPanel({
   // 替代 map 内每项对后续消息的 O(n) 扫描（流式时整体 O(n²)/帧 的放大器）。
   const lastThinkingIndex = useMemo(() => {
     for (let i = displayMessages.length - 1; i >= 0; i--) {
-      if (getMessageThinkingSteps(displayMessages[i]).length > 0) return i
+      if (cachedThinkingSteps(displayMessages[i]).length > 0) return i
     }
     return -1
   }, [displayMessages])
@@ -292,12 +319,12 @@ export default function ChatStreamPanel({
               index === displayMessages.length - 1 && 
               msg.role === 'assistant'
             
-            const thinkingSteps = getMessageThinkingSteps(msg)
+            const thinkingSteps = cachedThinkingSteps(msg)
             const messageKey = msg.id ? `${msg.id}-${index}` : `msg-${index}`
             
             // 🔥 修复：确保 content 不为 undefined，避免显示 'undefined'
             const rawContent = msg.content || ''
-            const parsedContent = parseThinkTags(rawContent).content || rawContent
+            const parsedContent = cachedParsedContent(rawContent)
             const hasActualContent = parsedContent.replace(/\s/g, '').length > 0
             
             // Only show ThinkingProcess on the last message with thinking

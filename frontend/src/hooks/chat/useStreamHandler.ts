@@ -108,6 +108,9 @@ function processStreamingChunk(
 // Hook：流式处理器工厂
 // ============================================================================
 
+/** 刷新节流窗口（ms）：~20fps 的打字机观感，渲染开销较 60fps 降一个量级 */
+const FLUSH_THROTTLE_MS = 50
+
 export function useStreamHandler() {
   const { updateMessage, updateMessageMetadata } = useChatActions()
   
@@ -175,7 +178,7 @@ export function useStreamHandler() {
       updateMessage(messageId, pending.contentDelta, true)
       onChunkRef.current?.(pending.contentDelta)
     }
-    
+
     // 批量更新 thinking 内容
     if (pending.thinkingBuffer && thinkingIdRef.current) {
       updateMessageMetadata(messageId, {
@@ -190,25 +193,41 @@ export function useStreamHandler() {
         }]
       })
     }
-    
+
     // 清空缓冲
     pendingUpdateRef.current = { contentDelta: '', thinkingBuffer: '' }
     rafIdRef.current = null
   }, [updateMessage, updateMessageMetadata])
-  
+
   /**
    * 调度批量更新
-   * 使用 RAF 合并同一帧内的多次更新
+   *
+   * 两层合并：RAF 合并同一帧内的多次更新 + 时间节流限制每秒刷新次数。
+   * 每次 flush 都会让流式消息整条重跑 Markdown/KaTeX 渲染（重），
+   * 60fps 全速刷新在长回答/低端机上主线程吃满；~20fps 的"打字机"
+   * 观感几乎无差，渲染开销降一个量级。缓冲不丢——剩余内容下一窗口刷出。
    */
+  const lastFlushAtRef = useRef(0)
+
   const scheduleUpdate = useCallback((content: string, thinkingBuffer: string) => {
     // 累加到缓冲
     pendingUpdateRef.current.contentDelta += content
     pendingUpdateRef.current.thinkingBuffer = thinkingBuffer
-    
-    // 如果已有 RAF 调度，等待执行；否则调度新的
-    if (rafIdRef.current === null) {
-      rafIdRef.current = requestAnimationFrame(flushUpdates)
+
+    // 如果已有调度在排队，等待执行；否则调度新的
+    if (rafIdRef.current !== null) return
+
+    const tick = () => {
+      const elapsed = performance.now() - lastFlushAtRef.current
+      if (elapsed >= FLUSH_THROTTLE_MS) {
+        lastFlushAtRef.current = performance.now()
+        flushUpdates()
+      } else {
+        // 未到节流窗口：再等一帧（rafIdRef 由 flushUpdates 置空前保持占用）
+        rafIdRef.current = requestAnimationFrame(tick)
+      }
     }
+    rafIdRef.current = requestAnimationFrame(tick)
   }, [flushUpdates])
   
   /**
