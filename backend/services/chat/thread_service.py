@@ -26,12 +26,32 @@ from utils.exceptions import AuthorizationError, NotFoundError
 from utils.time import utc_now_naive
 
 
-def _build_document_context_blocks(extra_data: dict | None) -> str:
+def _coerce_extra_data(extra_data: dict | str | None) -> dict | None:
+    """extra_data 类型兼容：老库漂移的存量行可能以 JSON 字符串落库
+    （MessageResponse.parse_extra_data 已兼容同形态，此处对齐），
+    非 dict/str 或解析失败一律返回 None。"""
+    if extra_data is None:
+        return None
+    if isinstance(extra_data, str):
+        try:
+            import json
+
+            parsed = json.loads(extra_data)
+        except (ValueError, TypeError):
+            return None
+        return parsed if isinstance(parsed, dict) else None
+    if isinstance(extra_data, dict):
+        return extra_data
+    return None
+
+
+def _build_document_context_blocks(extra_data: dict | str | None) -> str:
     """从消息 extra_data 提取附件文档文本，拼为 LLM 上下文块。
 
     附件文档的解析文本不进消息展示内容（用户气泡保持简短），
     仅在构建 LLM 消息时注入——当前轮与历史重建走同一条路。
     """
+    extra_data = _coerce_extra_data(extra_data)
     if not extra_data:
         return ""
     documents = extra_data.get("documents") or []
