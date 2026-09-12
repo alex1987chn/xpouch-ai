@@ -29,21 +29,22 @@ logger.info(
 
 
 def create_db_and_tables():
-    """创建数据库表（仅 development / testing 环境）。
+    """启动时 schema 对齐——所有环境统一走 Alembic（单一真相源）。
 
-    Schema 真相源是 Alembic 迁移（容器启动 CMD 执行 `alembic upgrade head`）。
-    生产环境跳过 create_all：此前双真相源并存（create_all 静默补表）会掩盖
-    "线上库缺迁移"的事实。生产若缺表应直接失败并提示执行迁移。
+    create_all 已退役：开发/生产双真相源并存时，create_all 会静默补表，
+    掩盖"库缺迁移"的事实（如 last_login_at 事故）。缺迁移即失败并提示。
     """
-    from config import settings
+    from pathlib import Path
 
-    if settings.environment == "production":
-        logger.info("[Database] production: skipping create_all (schema managed by Alembic)")
-        return
+    from alembic import command
+    from alembic.config import Config
 
-    logger.info("[Database] Checking database tables...")
-    SQLModel.metadata.create_all(engine, checkfirst=True)
-    logger.info("[Database] Database tables ready")
+    ini_path = Path(__file__).parent / "alembic.ini"
+    alembic_cfg = Config(str(ini_path))
+    # script_location 以 ini 所在目录为基准，避免工作目录差异
+    alembic_cfg.set_main_option("script_location", str(Path(__file__).parent / "migrations"))
+    command.upgrade(alembic_cfg, "head")
+    logger.info("[Database] schema aligned via Alembic (upgrade head)")
 
 
 def get_session():

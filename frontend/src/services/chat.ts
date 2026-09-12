@@ -561,7 +561,10 @@ export interface ResumeChatParams {
     depends_on?: string[] // 🔥 任务依赖关系（关键字段）
   }>
   approved: boolean
-  /** 驳回反馈（approved=false 时提交，后端落库为会话 user 消息） */
+  /** 显式动作：approve（批准）/ revise（驳回+反馈 → 专家修订 v(n+1)）/ terminate（终止）。
+   *  缺省按 approved 推导，保持旧语义。 */
+  action?: 'approve' | 'revise' | 'terminate'
+  /** 驳回反馈（revise/terminate 时提交，后端落库为会话 user 消息） */
   feedback?: string
 }
 
@@ -583,6 +586,7 @@ export async function resumeChat(
         plan_version: params.planVersion,
         updated_plan: params.updatedPlan,
         approved: params.approved,
+        action: params.action,
         feedback: params.feedback
       }),
       signal: abortSignal,
@@ -603,6 +607,7 @@ export async function resumeChat(
       plan_version: params.planVersion,
       updated_plan: params.updatedPlan,
       approved: params.approved,
+      action: params.action,
       feedback: params.feedback
     },
     errorContext: 'chat.ts resume',

@@ -71,3 +71,29 @@ class RunStatusResponse(BaseModel):
     status: str  # RunStatus 枚举值
     current_node: str | None = None
     completed_at: datetime | None = None
+
+
+class RunPlanTask(BaseModel):
+    """计划修订轮询用：单个任务快照"""
+
+    id: str
+    expert_type: str
+    description: str
+    sort_order: int
+    depends_on: list[str] = []
+
+
+class RunPlanResponse(BaseModel):
+    """计划状态响应（HITL 修订轮询专供）
+
+    revising 判定来自事件账本：最新修订事件为 started 即修订中；
+    revision_error 只在最新事件为 revision_failed 时非空。
+    """
+
+    run_id: str
+    plan_id: str | None = None
+    plan_version: int
+    status: str  # TaskStatus 枚举值
+    revising: bool
+    revision_error: str | None = None
+    tasks: list[RunPlanTask] = []

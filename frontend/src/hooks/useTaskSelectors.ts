@@ -35,6 +35,9 @@ export const useIsWaitingForApproval = () => useTaskStore(state => state.isWaiti
 /** 获取待审批计划 */
 export const usePendingPlan = () => useTaskStore(state => state.pendingPlan)
 
+/** HITL 修订中标志（驳回反馈已提交，专家修订 v(n+1) 中） */
+export const usePlanRevising = () => useTaskStore(state => state.planRevising)
+
 /** 获取待审批计划版本号（乐观锁） */
 export const usePendingPlanVersion = () => useTaskStore(state => state.pendingPlanVersion)
 
@@ -134,6 +137,7 @@ export const useTaskActions = () => {
   const setPendingPlan = useTaskStore(state => state.setPendingPlan)
   const clearPendingPlan = useTaskStore(state => state.clearPendingPlan)
   const setIsWaitingForApproval = useTaskStore(state => state.setIsWaitingForApproval)
+  const setPlanRevising = useTaskStore(state => state.setPlanRevising)
   const restoreFromExecutionPlan = useTaskStore(state => state.restoreFromExecutionPlan)
   const updateArtifactContent = useTaskStore(state => state.updateArtifactContent)
 
@@ -155,6 +159,7 @@ export const useTaskActions = () => {
       setPendingPlan,
       clearPendingPlan,
       setIsWaitingForApproval,
+      setPlanRevising,
       restoreFromExecutionPlan,
       updateArtifactContent,
     }),

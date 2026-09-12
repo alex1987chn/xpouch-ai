@@ -1,6 +1,6 @@
 // 运行时间线 / 运行详情相关翻译
 
-export const zh: Record<string, string> = {
+export const zh = {
   modeLabel: '模式:',
   modeComplex: '复杂模式',
   modeSimple: '简单模式',
@@ -19,7 +19,7 @@ export const zh: Record<string, string> = {
   selectEventHint: '选择事件查看详情',
 }
 
-export const en: Record<string, string> = {
+export const en = {
   modeLabel: 'Mode:',
   modeComplex: 'Complex Mode',
   modeSimple: 'Simple Mode',
@@ -38,7 +38,7 @@ export const en: Record<string, string> = {
   selectEventHint: 'Select an event to view details',
 }
 
-export const ja: Record<string, string> = {
+export const ja = {
   modeLabel: 'モード:',
   modeComplex: '複雑モード',
   modeSimple: 'シンプルモード',

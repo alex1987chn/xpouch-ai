@@ -27,6 +27,9 @@ from crud.message import create_user_message
 from crud.run_event import (
     emit_hitl_rejected,
     emit_hitl_resumed,
+    emit_hitl_revision_failed,
+    emit_hitl_revision_started,
+    emit_plan_updated,
     emit_run_cancelled,
 )
 from models import AgentRun, ExecutionPlan, RunStatus, Thread
@@ -74,6 +77,7 @@ class RecoveryService:
         message_id: str | None = None,
         idempotency_key: str | None = None,
         feedback: str | None = None,
+        action: str | None = None,
     ) -> StreamingResponse | dict[str, str]:
         """
         恢复被中断的 HITL 流程
@@ -83,7 +87,10 @@ class RecoveryService:
         Args:
             thread_id: 线程ID
             user_id: 用户ID（用于权限验证）
-            approved: 用户是否批准计划
+            approved: 用户是否批准计划（action 缺省时的兼容语义）
+            action: 显式动作 'approve' | 'revise' | 'terminate'；缺省时按
+                approved 推导（True→approve，False→terminate）。
+                'revise' = 驳回+反馈 → 规划专家修订出 v(n+1)，任务保持挂起
             updated_plan: 用户修改后的任务计划（与前端传来的JSON结构一致）
                 每项包含:
                 - id: str 任务ID
@@ -95,16 +102,21 @@ class RecoveryService:
             plan_version: 客户端当前看到的计划版本号（乐观锁）
             message_id: 前端传入的消息ID（用于关联流式输出）
             idempotency_key: 幂等键（推荐传入，防止重复恢复请求）
+            feedback: 驳回/修订反馈（落库为 user 消息；revise 必填）
 
         Returns:
-            approved=True: StreamingResponse SSE流
-            approved=False: {"status": "cancelled", "message": "..."}
+            approve: StreamingResponse SSE流
+            revise: {"status": "revising", "execution_plan_id": ...}
+            terminate: {"status": "cancelled", "message": "..."}
 
         Raises:
             NotFoundError: 线程不存在
             AuthorizationError: 无权访问此线程
         """
-        logger.info(f"[HITL RESUME] thread_id={thread_id}, run_id={run_id}, approved={approved}")
+        effective_action = action or ("approve" if approved else "terminate")
+        logger.info(
+            f"[HITL RESUME] thread_id={thread_id}, run_id={run_id}, action={effective_action}"
+        )
 
         # 1. 验证线程存在且属于当前用户
         thread = self.db.get(Thread, thread_id)
@@ -118,8 +130,10 @@ class RecoveryService:
         if agent_run.user_id != user_id:
             raise AuthorizationError("无权访问此运行实例")
 
-        # 2. 处理用户拒绝
-        if not approved:
+        # 2. 分支处理：修订（驳回+反馈，任务保持挂起）/ 终止
+        if effective_action == "revise":
+            return await self._handle_revision(thread_id, run_id, agent_run.user_id, feedback)
+        if not approved or effective_action == "terminate":
             return await self._handle_rejection(thread_id, run_id, feedback)
 
         # 3. 处理用户批准 - 流式恢复
@@ -179,6 +193,150 @@ class RecoveryService:
         await asyncio.to_thread(self.db.commit)
 
         return {"status": "cancelled", "message": "计划已被用户拒绝"}
+
+    # ============================================================================
+    # 计划修订（v4 循环，方案 A：运行内真修订）
+    # ============================================================================
+
+    async def _handle_revision(
+        self,
+        thread_id: str,
+        run_id: str,
+        user_id: str,
+        feedback: str | None,
+    ) -> dict[str, str]:
+        """驳回 + 反馈 → 计划进入"修订中"，任务保持挂起。
+
+        与终止（_handle_rejection）的本质区别：不删 checkpoint、不取消
+        计划与运行。反馈落库为 user 消息，修订由后台任务异步执行
+        （LLM 调用耗时可达分钟级，不能占住 HTTP 请求），前端轮询
+        GET /runs/{run_id}/plan 感知 v(n+1)。
+        """
+        trimmed = (feedback or "").strip()
+        if not trimmed:
+            raise ValidationError("修订必须附上反馈，否则规划专家无从下手")
+
+        agent_run = self._get_run_or_raise(run_id, thread_id)
+        if agent_run.user_id != user_id:
+            raise AuthorizationError("无权访问此运行实例")
+        if agent_run.status != RunStatus.WAITING_FOR_APPROVAL:
+            raise ValidationError("当前运行不在等待审批状态，无法修订")
+
+        execution_plan = self.db.exec(
+            select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)
+        ).first()
+        if not execution_plan:
+            raise NotFoundError("ExecutionPlan")
+
+        # 反馈先落库（属于会话历史）
+        create_user_message(self.db, thread_id=thread_id, content=trimmed)
+
+        # 记录"修订中"起点事件（plan 接口据此判定 revising）
+        emit_hitl_revision_started(
+            self.db,
+            run_id=run_id,
+            thread_id=thread_id,
+            execution_plan_id=execution_plan.id,
+            plan_version=execution_plan.plan_version,
+            feedback=trimmed,
+        )
+        await asyncio.to_thread(self.db.commit)
+
+        logger.info(
+            f"[HITL REVISION] run={run_id} 进入修订中（plan v{execution_plan.plan_version}）"
+        )
+        return {
+            "status": "revising",
+            "execution_plan_id": execution_plan.id,
+            "message": "规划专家正在按你的反馈修订计划",
+        }
+
+    async def run_revision_job(
+        self,
+        *,
+        run_id: str,
+        thread_id: str,
+        execution_plan_id: str,
+        feedback: str,
+    ) -> None:
+        """后台修订任务（路由层 BackgroundTasks 调度；独立会话）。
+
+        成功：替换子任务 + plan_version+1 + PLAN_UPDATED 事件（前端轮询感知）。
+        失败：保持原计划待审 + HITL_REVISION_FAILED 事件（前端如实提示）。
+        两种结局 run 都停留在 WAITING_FOR_APPROVAL，等待用户再次裁决。
+        """
+        from agents.services.plan_revision import revise_plan_tasks
+        from database import engine
+        from models import SubTask
+
+        with Session(engine) as session:
+            plan = session.get(ExecutionPlan, execution_plan_id)
+            if not plan:
+                logger.error(f"[HITL REVISION] 计划不存在: {execution_plan_id}")
+                return
+
+            try:
+                previous_tasks = [
+                    {
+                        "id": str(index + 1),
+                        "expert_type": st.expert_type,
+                        "description": st.task_description,
+                        "dependencies": st.depends_on or [],
+                    }
+                    for index, st in enumerate(plan.sub_tasks)
+                ]
+                revised = await revise_plan_tasks(
+                    user_query=plan.user_query,
+                    previous_tasks=previous_tasks,
+                    plan_version=plan.plan_version,
+                    feedback=feedback,
+                )
+
+                # 替换子任务（ORM 级联 delete-orphan）
+                for st in list(plan.sub_tasks):
+                    session.delete(st)
+                await asyncio.to_thread(session.flush)
+                for index, task in enumerate(revised.tasks, start=1):
+                    session.add(
+                        SubTask(
+                            execution_plan_id=plan.id,
+                            sort_order=index,
+                            expert_type=task.expert_type,
+                            task_description=task.description,
+                            depends_on=[d for d in task.dependencies if d] or None,
+                        )
+                    )
+
+                plan.plan_version += 1
+                plan.estimated_steps = len(revised.tasks)
+                if revised.strategy:
+                    plan.plan_summary = revised.strategy
+
+                emit_plan_updated(
+                    session,
+                    run_id=run_id,
+                    thread_id=thread_id,
+                    execution_plan_id=plan.id,
+                    plan_version=plan.plan_version,
+                    task_count=len(revised.tasks),
+                )
+                await asyncio.to_thread(session.commit)
+                logger.info(
+                    f"[HITL REVISION] 修订完成：run={run_id} v{plan.plan_version}"
+                    f"（{len(revised.tasks)} 个任务）"
+                )
+            except Exception as exc:  # noqa: BLE001 — 任何失败都退回"原计划待审"
+                session.rollback()
+                emit_hitl_revision_failed(
+                    session,
+                    run_id=run_id,
+                    thread_id=thread_id,
+                    execution_plan_id=execution_plan_id,
+                    plan_version=plan.plan_version,
+                    error=str(exc),
+                )
+                await asyncio.to_thread(session.commit)
+                logger.error(f"[HITL REVISION] 修订失败，保持原计划待审: {exc}")
 
     async def cancel_run(self, run_id: str, user_id: str) -> dict[str, str]:
         """显式取消指定运行实例。"""

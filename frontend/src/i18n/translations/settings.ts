@@ -1,6 +1,6 @@
 // 设置相关翻译 - 系统设置、个人设置等
 
-export const zh: Record<string, string> = {
+export const zh = {
   version: '版本',
   modelProviders: '模型提供商',
   disabledProviders: '已停用',
@@ -65,7 +65,7 @@ export const zh: Record<string, string> = {
   openSource: '开源仓库',
 }
 
-export const en: Record<string, string> = {
+export const en = {
   version: 'Version',
   modelProviders: 'Model providers',
   disabledProviders: 'Disabled',
@@ -130,7 +130,7 @@ export const en: Record<string, string> = {
   openSource: 'Open Source',
 }
 
-export const ja: Record<string, string> = {
+export const ja = {
   version: 'バージョン',
   modelProviders: 'モデルプロバイダー',
   disabledProviders: '無効化',

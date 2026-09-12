@@ -34,6 +34,8 @@ export interface UISliceState {
   isInitialized: boolean
   activeRunId: string | null
   isWaitingForApproval: boolean
+  /** HITL 修订中：驳回反馈已提交，规划专家修订 v(n+1)（轮询感知完成） */
+  planRevising: boolean
   pendingPlan: Task[]
   pendingPlanVersion: number
   pendingRunId: string | null
@@ -59,6 +61,7 @@ export interface UISliceActions {
   ) => void
   clearPendingPlan: () => void
   setIsWaitingForApproval: (waiting: boolean) => void
+  setPlanRevising: (revising: boolean) => void
   addRunningTaskId: (taskId: string) => void
   removeRunningTaskId: (taskId: string) => void
   clearRunningTaskIds: () => void
@@ -103,6 +106,7 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
   activeRunId: null,
   isWaitingForApproval: false,
   pendingPlan: [],
+  planRevising: false,
   pendingPlanVersion: 1,
   pendingRunId: null,
   pendingExecutionPlanId: null,
@@ -167,6 +171,12 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
       state.pendingRunId = null
       state.pendingExecutionPlanId = null
       state.isWaitingForApproval = false
+    })
+  },
+
+  setPlanRevising: (revising: boolean) => {
+    set((state) => {
+      state.planRevising = revising
     })
   },
 

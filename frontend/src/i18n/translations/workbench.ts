@@ -3,7 +3,7 @@
  * 三栏：左会话地层 / 中对话流 / 右产物画布；任务控制页
  */
 
-export const zh: Record<string, string> = {
+export const zh = {
   workbenchTitle: '工作台',
   strataTitle: '会话',
   strataSearch: '搜索会话…',
@@ -49,7 +49,7 @@ export const zh: Record<string, string> = {
   workbenchNewHint: '输入内容开始新会话',
 }
 
-export const en: Record<string, string> = {
+export const en = {
   workbenchTitle: 'Workbench',
   strataTitle: 'Sessions',
   strataSearch: 'Search conversations…',
@@ -95,7 +95,7 @@ export const en: Record<string, string> = {
   workbenchNewHint: 'Type to start a new conversation',
 }
 
-export const ja: Record<string, string> = {
+export const ja = {
   workbenchTitle: 'ワークベンチ',
   strataTitle: 'セッション',
   strataSearch: '会話を検索…',

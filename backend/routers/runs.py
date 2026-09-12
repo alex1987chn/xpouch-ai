@@ -10,8 +10,10 @@ from sqlmodel import Session, select
 from crud.run_event import get_run_events_by_run_id, get_run_events_by_thread_id
 from database import get_session
 from dependencies import get_current_user
-from models import AgentRun, Thread, User
+from models import AgentRun, ExecutionPlan, RunEvent, Thread, User
 from schemas.run_event import (
+    RunPlanResponse,
+    RunPlanTask,
     RunStatusResponse,
     RunSummaryResponse,
     RunTimelineResponse,
@@ -68,6 +70,74 @@ async def get_run_details(
     logger.info(f"[Runs API] 获取运行详情: run_id={run_id}, user_id={current_user.id}")
     run = _get_run_or_raise(db, run_id, current_user.id, is_admin=(current_user.role == "admin"))
     return RunSummaryResponse.model_validate(run)
+
+
+@router.get("/{run_id}/plan", response_model=RunPlanResponse)
+async def get_run_plan(
+    run_id: str,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> RunPlanResponse:
+    """计划状态轮询（HITL 修订专供）。
+
+    返回计划版本、子任务快照与修订状态；revising/revision_error 从
+    事件账本推导（最新修订事件 = started 即修订中 / failed 即失败）。
+    """
+    # 归属校验（admin 可跨用户查看）；run 本体不再使用
+    _get_run_or_raise(db, run_id, current_user.id, is_admin=(current_user.role == "admin"))
+
+    plan = db.exec(
+        select(ExecutionPlan)
+        .where(ExecutionPlan.run_id == run_id)
+        .order_by(ExecutionPlan.id.desc())
+    ).first()
+    if not plan:
+        raise NotFoundError("ExecutionPlan")
+
+    # 事件账本推导修订状态（倒序取第一条相关事件）
+    from models.enums import RunEventType
+
+    revision_events = db.exec(
+        select(RunEvent)
+        .where(
+            RunEvent.run_id == run_id,
+            RunEvent.event_type.in_(
+                [
+                    RunEventType.HITL_REVISION_STARTED,
+                    RunEventType.HITL_REVISION_FAILED,
+                    RunEventType.PLAN_UPDATED,
+                ]
+            ),
+        )
+        .order_by(RunEvent.id.desc())
+    ).all()
+    revising = False
+    revision_error: str | None = None
+    if revision_events:
+        latest = revision_events[0]
+        if latest.event_type == RunEventType.HITL_REVISION_STARTED:
+            revising = True
+        elif latest.event_type == RunEventType.HITL_REVISION_FAILED:
+            revision_error = (latest.event_data or {}).get("error")
+
+    return RunPlanResponse(
+        run_id=run_id,
+        plan_id=plan.id,
+        plan_version=plan.plan_version,
+        status=str(plan.status) if plan.status else "pending",
+        revising=revising,
+        revision_error=revision_error,
+        tasks=[
+            RunPlanTask(
+                id=str(index + 1),
+                expert_type=st.expert_type,
+                description=st.task_description,
+                sort_order=st.sort_order,
+                depends_on=st.depends_on or [],
+            )
+            for index, st in enumerate(plan.sub_tasks)
+        ],
+    )
 
 
 @router.get("/{run_id}/status", response_model=RunStatusResponse)

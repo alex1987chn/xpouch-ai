@@ -1,6 +1,6 @@
 // 管理后台翻译 - 专家管理、专家配置等
 
-export const zh: Record<string, string> = {
+export const zh = {
   // 用户管理·添加（v3.5.1）
   addUser: '添加用户',
   phonePlaceholder: '手机号（验证码登录身份）',
@@ -156,7 +156,7 @@ export const zh: Record<string, string> = {
   noToolsAvailable: '暂无可用工具',
 }
 
-export const en: Record<string, string> = {
+export const en = {
   // 用户管理·添加（v3.5.1）
   addUser: 'Add user',
   phonePlaceholder: 'Phone number (OTP login identity)',
@@ -312,7 +312,7 @@ export const en: Record<string, string> = {
   noToolsAvailable: 'No tools available',
 }
 
-export const ja: Record<string, string> = {
+export const ja = {
   // ユーザー管理・追加（v3.5.1）
   addUser: 'ユーザーを追加',
   phonePlaceholder: '電話番号（認証コードログイン用）',

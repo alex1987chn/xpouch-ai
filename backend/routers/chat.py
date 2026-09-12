@@ -30,7 +30,7 @@ import asyncio
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
@@ -128,6 +128,9 @@ class ResumeRequest(BaseModel):
     updated_plan: list[dict[str, Any]] | None = None
     plan_version: int | None = Field(default=None, ge=1)
     approved: bool = True
+    # 显式动作：approve（批准执行）/ revise（驳回+反馈 → 专家修订 v(n+1)）/
+    # terminate（终止任务）。缺省按 approved 推导，保持旧客户端兼容。
+    action: str | None = Field(default=None, pattern="^(approve|revise|terminate)$")
     feedback: str | None = Field(default=None, max_length=4000)  # 驳回反馈（落库为 user 消息）
     message_id: str | None = None  # 前端传入的消息ID，用于关联流式输出
     idempotency_key: str | None = Field(default=None, min_length=8, max_length=128)
@@ -445,6 +448,7 @@ async def chat_endpoint(
 @router.post("/chat/resume")
 async def resume_chat(
     request: ResumeRequest,
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -453,9 +457,12 @@ async def resume_chat(
 
     当用户在前端审核计划后，调用此接口继续执行。
     返回 SSE 流，包含后续所有任务执行事件。
+
+    action='revise'（驳回+反馈）返回 {"status": "revising"}，
+    修订由后台任务执行，前端轮询 GET /runs/{run_id}/plan 感知 v(n+1)。
     """
     service = RecoveryService(session)
-    return await service.resume_chat(
+    result = await service.resume_chat(
         thread_id=request.thread_id,
         run_id=request.run_id,
         user_id=current_user.id,
@@ -465,7 +472,18 @@ async def resume_chat(
         message_id=request.message_id,
         idempotency_key=request.idempotency_key,
         feedback=request.feedback,
+        action=request.action,
     )
+    # 修订：LLM 调用可能持续分钟级，放后台任务执行（响应立即返回）
+    if isinstance(result, dict) and result.get("status") == "revising":
+        background_tasks.add_task(
+            service.run_revision_job,
+            run_id=request.run_id,
+            thread_id=request.thread_id,
+            execution_plan_id=result["execution_plan_id"],
+            feedback=(request.feedback or "").strip(),
+        )
+    return result
 
 
 @router.post("/runs/{run_id}/cancel", response_model=CancelRunResponse)

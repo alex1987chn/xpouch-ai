@@ -1,6 +1,6 @@
 // 通用翻译 - 导航、按钮、通用操作等
 
-export const zh: Record<string, string> = {
+export const zh = {
   // Navigation
   newChat: '新会话',
   draftSaved: '草稿已保存',
@@ -215,7 +215,7 @@ export const zh: Record<string, string> = {
   noMoreRecords: '没有更多记录了',
 }
 
-export const en: Record<string, string> = {
+export const en = {
   // Navigation
   newChat: 'New Chat',
   draftSaved: 'Draft saved',
@@ -430,7 +430,7 @@ export const en: Record<string, string> = {
   noMoreRecords: 'No more records',
 }
 
-export const ja: Record<string, string> = {
+export const ja = {
   // Navigation
   newChat: '新しいチャット',
   draftSaved: '下書きを保存しました',

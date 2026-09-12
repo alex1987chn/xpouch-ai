@@ -1,6 +1,6 @@
 // 首页翻译 - 智能体相关、首页展示等
 
-export const zh: Record<string, string> = {
+export const zh = {
   // Home
   greeting: '你好！我是 XPouch AI 助手',
   slogan: 'All Agents, One Pouch',
@@ -78,7 +78,7 @@ export const zh: Record<string, string> = {
   imageAnalyzerExpert: '图像分析专家',
 }
 
-export const en: Record<string, string> = {
+export const en = {
   // Home
   greeting: 'Hello! I am XPouch AI Assistant',
   slogan: 'All Agents, One Pouch',
@@ -156,7 +156,7 @@ export const en: Record<string, string> = {
   imageAnalyzerExpert: 'Image Analysis Expert',
 }
 
-export const ja: Record<string, string> = {
+export const ja = {
   // Home
   greeting: 'こんにちは！XPouch AI アシスタントです',
   slogan: 'All Agents, One Pouch',

@@ -128,7 +128,9 @@ class RunEventType(StrEnum):
     # HITL 事件
     HITL_INTERRUPTED = "hitl_interrupted"  # 等待用户审核
     HITL_RESUMED = "hitl_resumed"  # 用户批准后恢复
-    HITL_REJECTED = "hitl_rejected"  # 用户拒绝计划
+    HITL_REJECTED = "hitl_rejected"  # 用户拒绝计划（终止语义）
+    HITL_REVISION_STARTED = "hitl_revision_started"  # 驳回+反馈 → 规划专家修订中
+    HITL_REVISION_FAILED = "hitl_revision_failed"  # 修订失败（保持原计划待审）
 
     # 任务执行事件
     TASK_STARTED = "task_started"  # 子任务开始执行

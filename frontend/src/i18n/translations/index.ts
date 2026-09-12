@@ -1,5 +1,3 @@
-import { TranslationKey } from '../index'
-
 // 导入各模块翻译
 import * as common from './common'
 import * as home from './home'
@@ -10,8 +8,8 @@ import * as settings from './settings'
 import * as run from './run'
 import * as workbench from './workbench'
 
-// 合并所有中文翻译
-export const zh: Record<TranslationKey, string> = {
+// 合并所有中文翻译（键类型由此派生——TranslationKey 单一真相源）
+export const zh = {
   ...common.zh,
   ...home.zh,
   ...chat.zh,
@@ -20,10 +18,13 @@ export const zh: Record<TranslationKey, string> = {
   ...settings.zh,
   ...run.zh,
   ...workbench.zh,
-} as Record<TranslationKey, string>
+}
+
+// 键集合由 zh 派生：en/ja 缺键 = 编译期报错（替代人工同步）
+export type TranslationKeys = keyof typeof zh
 
 // 合并所有英文翻译
-export const en: Record<TranslationKey, string> = {
+export const en: Record<TranslationKeys, string> = {
   ...common.en,
   ...home.en,
   ...chat.en,
@@ -32,10 +33,10 @@ export const en: Record<TranslationKey, string> = {
   ...settings.en,
   ...run.en,
   ...workbench.en,
-} as Record<TranslationKey, string>
+}
 
 // 合并所有日文翻译
-export const ja: Record<TranslationKey, string> = {
+export const ja: Record<TranslationKeys, string> = {
   ...common.ja,
   ...home.ja,
   ...chat.ja,
@@ -44,7 +45,7 @@ export const ja: Record<TranslationKey, string> = {
   ...settings.ja,
   ...run.ja,
   ...workbench.ja,
-} as Record<TranslationKey, string>
+}
 
 // 导出各模块（用于需要按按需加载的场景）
 export { common, home, chat, library, admin, settings, run, workbench }

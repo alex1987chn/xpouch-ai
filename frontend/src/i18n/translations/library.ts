@@ -1,6 +1,6 @@
 // 资源库页翻译 - 知识库、MCP服务器等
 
-export const zh: Record<string, string> = {
+export const zh = {
   // Knowledge Base
   newKnowledgeBase: '新建知识库',
   searchKnowledge: '搜索知识库...',
@@ -168,7 +168,7 @@ export const zh: Record<string, string> = {
   artifactSchemaHint: '产出结构提示',
 }
 
-export const en: Record<string, string> = {
+export const en = {
   // Knowledge Base
   newKnowledgeBase: 'New Knowledge Base',
   searchKnowledge: 'Search knowledge base...',
@@ -336,7 +336,7 @@ export const en: Record<string, string> = {
   artifactSchemaHint: 'Artifact Schema Hint',
 }
 
-export const ja: Record<string, string> = {
+export const ja = {
   // Knowledge Base
   newKnowledgeBase: '新規ナレッジベース',
   searchKnowledge: 'ナレッジベースを検索...',

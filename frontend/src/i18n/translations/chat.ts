@@ -1,6 +1,6 @@
 // 聊天页翻译 - 对话、输入、专家状态等
 
-export const zh: Record<string, string> = {
+export const zh = {
   // Chat
   startConversation: '开始对话',
   initConversation: '开始新对话',
@@ -125,6 +125,18 @@ export const zh: Record<string, string> = {
   pollingRefresh: '刷新',
   pollingError: '连接失败，请刷新重试',
   planReviewTitle: '计划审批',
+  planRevisionSubmitted: '已提交修订请求，规划专家修订中…',
+  revisePlan: '修订并重提',
+  reviseTitle: '修订计划',
+  confirmRevise: '提交修订',
+  reviseNeedFeedback: '修订需要填写反馈，规划专家才知道改什么',
+  terminateTask: '终止任务',
+  terminateTaskWarning: '将终止本次任务并作废当前计划（checkpoints 清理）。反馈不会提交给专家。此操作不可恢复。',
+  revisingTitle: '专家修订中',
+  revisingHint: '反馈已提交，规划专家正在修订计划；完成后会重新提交审批，可继续裁决或关闭弹窗等待。',
+  revisionFailed: '计划修订失败，原计划保持待审：可重试修订、直接批准或终止。',
+  planRevisedToast: '专家已提交修订版 v{version}，请重新裁决',
+
   tasksPendingConfirm: '{count} 个任务待确认',
   planReviewViewBtn: '查看并审核',
   planReviewPaused: '任务在此暂停，直到你批准或驳回',
@@ -148,7 +160,7 @@ export const zh: Record<string, string> = {
 
 }
 
-export const en: Record<string, string> = {
+export const en = {
   // Chat
   startConversation: 'Start Conversation',
   initConversation: 'Initialize conversation',
@@ -273,6 +285,18 @@ export const en: Record<string, string> = {
   pollingRefresh: 'Refresh',
   pollingError: 'Connection failed, please refresh',
   planReviewTitle: 'Plan Approval',
+  planRevisionSubmitted: 'Revision submitted — the planner is revising…',
+  revisePlan: 'Revise & resubmit',
+  reviseTitle: 'Revise plan',
+  confirmRevise: 'Submit revision',
+  reviseNeedFeedback: 'A revision needs your feedback — the expert needs to know what to change',
+  terminateTask: 'Terminate task',
+  terminateTaskWarning: 'This terminates the run and discards the current plan (checkpoints cleaned). Feedback will NOT reach the expert. This cannot be undone.',
+  revisingTitle: 'Expert revising',
+  revisingHint: 'Feedback submitted — the planner is revising the plan. It will resubmit for approval; keep this open or close and wait.',
+  revisionFailed: 'Plan revision failed. The original plan stays pending: retry revision, approve, or terminate.',
+  planRevisedToast: 'Expert submitted revision v{version} — please review again',
+
   tasksPendingConfirm: '{count} tasks to confirm',
   planReviewViewBtn: 'Review plan',
   planReviewPaused: 'Task paused until you approve or reject',
@@ -296,7 +320,7 @@ export const en: Record<string, string> = {
 
 }
 
-export const ja: Record<string, string> = {
+export const ja = {
   // Chat
   startConversation: '会話を開始',
   initConversation: '会話を開始',
@@ -421,6 +445,18 @@ export const ja: Record<string, string> = {
   pollingRefresh: '更新',
   pollingError: '接続失敗、更新してください',
   planReviewTitle: 'プラン承認',
+  planRevisionSubmitted: '修正リクエストを送信しました。プランナーが修正中…',
+  revisePlan: '修正して再提出',
+  reviseTitle: 'プランを修正',
+  confirmRevise: '修正を提出',
+  reviseNeedFeedback: '修正にはフィードバックが必要です。専門家が何を変えるべきか知る必要があります',
+  terminateTask: 'タスクを終了',
+  terminateTaskWarning: 'この実行を終了し、現在のプランを破棄します（チェックポイント削除）。フィードバックは専門家に届きません。取り消せません。',
+  revisingTitle: '専門家が修正中',
+  revisingHint: 'フィードバックを送信しました。プランナーが修正中です。完了後に再提出されます。待機するか閉じてお待ちください。',
+  revisionFailed: 'プランの修正に失敗しました。元のプランは承認待ちのままです：再試行、承認、または終了できます。',
+  planRevisedToast: '専門家が修正版 v{version} を提出しました。再審査してください',
+
   tasksPendingConfirm: '{count}件のタスクが確認待ち',
   planReviewViewBtn: 'プランを審査',
   planReviewPaused: '承認または却下するまでタスクは一時停止中',

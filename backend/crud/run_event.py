@@ -494,3 +494,43 @@ def emit_run_timed_out(
         thread_id=thread_id,
         event_data={"current_node": current_node, "deadline_at": deadline_at},
     )
+
+
+def emit_hitl_revision_started(
+    db: Session,
+    *,
+    run_id: str,
+    thread_id: str,
+    execution_plan_id: str,
+    plan_version: int,
+    feedback: str,
+) -> RunEvent:
+    """发送 HITL_REVISION_STARTED 事件（驳回+反馈 → 专家修订中）"""
+    return append_run_event(
+        db,
+        run_id=run_id,
+        event_type=RunEventType.HITL_REVISION_STARTED,
+        thread_id=thread_id,
+        execution_plan_id=execution_plan_id,
+        event_data={"plan_version": plan_version, "feedback": feedback[:500]},
+    )
+
+
+def emit_hitl_revision_failed(
+    db: Session,
+    *,
+    run_id: str,
+    thread_id: str,
+    execution_plan_id: str,
+    plan_version: int,
+    error: str,
+) -> RunEvent:
+    """发送 HITL_REVISION_FAILED 事件（修订失败，原计划保持待审）"""
+    return append_run_event(
+        db,
+        run_id=run_id,
+        event_type=RunEventType.HITL_REVISION_FAILED,
+        thread_id=thread_id,
+        execution_plan_id=execution_plan_id,
+        event_data={"plan_version": plan_version, "error": error[:500]},
+    )
