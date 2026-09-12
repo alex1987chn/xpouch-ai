@@ -14,7 +14,8 @@ function loadMermaid(): Promise<MermaidInstance> {
       m.default.initialize({
         startOnLoad: false,
         theme: 'neutral',
-        securityLevel: 'loose',
+        // strict：禁用图内 HTML 标签与点击回调——AI 生成内容直通渲染，不能放开
+        securityLevel: 'strict',
         fontFamily: 'inherit'
       })
       return m.default
@@ -29,7 +30,7 @@ function syncMermaidTheme(mermaid: MermaidInstance) {
   mermaid.initialize({
     startOnLoad: false,
     theme: isDark ? 'dark' : 'neutral',
-    securityLevel: 'loose',
+    securityLevel: 'strict',
     fontFamily: 'inherit'
   })
 }

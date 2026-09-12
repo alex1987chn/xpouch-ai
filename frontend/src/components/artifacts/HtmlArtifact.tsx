@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/utils'
 
 interface HtmlArtifactProps {
@@ -7,6 +8,7 @@ interface HtmlArtifactProps {
 }
 
 export default function HtmlArtifact({ content, className }: HtmlArtifactProps) {
+  const { t } = useTranslation()
   const [htmlUrl, setHtmlUrl] = useState<string | null>(null)
 
   // 提取 HTML 内容（去除代码块标记）
@@ -83,15 +85,16 @@ export default function HtmlArtifact({ content, className }: HtmlArtifactProps) 
         <iframe
           src={htmlUrl}
           className="w-full h-full bg-white border-none"
-          // 🔥 允许执行 JavaScript 和必要的交互权限（包含 allow-same-origin 支持 localStorage）
-          // 注意：iframe 内容可访问自身 Origin 的 LocalStorage/Cookies，但与主站隔离（blob URL）
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+          // 安全边界：blob URL 继承主站 origin，一旦给 allow-same-origin，
+          // AI 生成的脚本就能带着主站 Cookie 调 API / 读 localStorage（沙箱逃逸）。
+          // 只给 scripts/forms/modals/popups——与分享页 iframe 同一隔离口径。
+          sandbox="allow-scripts allow-forms allow-modals allow-popups"
           title="HTML Preview"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center text-content-muted">
-          加载中...
+          {t('loading')}
         </div>
       )}
     </div>
