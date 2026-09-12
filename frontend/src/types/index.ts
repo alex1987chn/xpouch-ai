@@ -102,6 +102,7 @@ export type ConversationAgentType = 'default' | 'custom' | 'ai'
 export interface ArtifactListItem {
   id: string
   thread_id?: string | null
+  thread_title?: string | null
   type: string
   title?: string | null
   language?: string | null

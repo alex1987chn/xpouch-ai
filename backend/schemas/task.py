@@ -58,6 +58,7 @@ class ArtifactSummaryResponse(BaseModel):
 
     id: str
     thread_id: str | None
+    thread_title: str | None = None
     type: str
     title: str | None
     language: str | None

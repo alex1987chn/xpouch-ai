@@ -27,6 +27,19 @@ export const ARTIFACT_TYPE_ICON: Record<string, React.ElementType> = {
   image: Image, video: Film, media: Play, text: FileText,
 }
 
+/** 类型 → i18n 词条键（卡片/过滤器的本地化类型名；无映射时回退原始 type） */
+export const ARTIFACT_TYPE_LABEL_KEY: Record<string, string> = {
+  code: 'artifactTypeCode', sql: 'artifactTypeSql', json: 'artifactTypeJson',
+  chart: 'artifactTypeChart', html: 'artifactTypeHtml', markdown: 'artifactTypeMarkdown',
+  report: 'artifactTypeReport', search: 'artifactTypeSearch', image: 'artifactTypeImage',
+  video: 'artifactTypeVideo', media: 'artifactTypeMedia', text: 'artifactTypeText',
+}
+
+/** 画廊过滤器的常用类型（冷门类型不加 chip，全部档仍可见） */
+export const GALLERY_FILTER_TYPES = [
+  'markdown', 'report', 'code', 'sql', 'json', 'html', 'chart', 'image',
+] as const
+
 export function artifactTypeColor(type: string): string {
   return ARTIFACT_TYPE_COLOR[type] || '#6f6a62'
 }

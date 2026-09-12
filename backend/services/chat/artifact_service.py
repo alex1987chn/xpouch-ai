@@ -15,7 +15,12 @@ from typing import Any
 
 from sqlmodel import Session
 
-from crud.execution_plan import get_artifact, list_artifacts_for_user, update_artifact_content
+from crud.execution_plan import (
+    get_artifact,
+    get_thread_titles_map,
+    list_artifacts_for_user,
+    update_artifact_content,
+)
 from models import Artifact, ExecutionPlan, SubTask, Thread
 from utils.artifacts import parse_artifacts_from_response
 from utils.exceptions import AuthorizationError, NotFoundError
@@ -37,26 +42,33 @@ class ArtifactService:
         user_id: str,
         thread_id: str | None = None,
         artifact_type: str | None = None,
+        search: str | None = None,
         page: int = 1,
         limit: int = 20,
     ) -> dict[str, Any]:
         """按用户跨会话列出产物（产物中心列表页）。
 
-        列表只带内容预览（前 200 字符），完整内容按需走详情接口。
+        列表只带内容预览（前 200 字符），完整内容按需走详情接口；
+        附带 thread_title 供卡片跳转来源会话。
         """
         result = list_artifacts_for_user(
             self.db,
             user_id=user_id,
             thread_id=thread_id,
             artifact_type=artifact_type,
+            search=search,
             page=page,
             limit=limit,
         )
+
+        thread_ids = {a.thread_id for a in result["items"] if a.thread_id}
+        thread_titles = get_thread_titles_map(self.db, sorted(thread_ids))
 
         items = [
             {
                 "id": a.id,
                 "thread_id": a.thread_id,
+                "thread_title": thread_titles.get(a.thread_id) if a.thread_id else None,
                 "type": a.type,
                 "title": a.title,
                 "language": a.language,

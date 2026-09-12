@@ -38,7 +38,8 @@ export default function ChatEmptyState() {
         icon: UserPlus,
         label: t('emptyCardExpert'),
         desc: t('emptyCardExpertDesc'),
-        onClick: () => navigate('/admin/console'),
+        // 直达专家管理分区（不带 tab 会落在默认的系统状态）
+        onClick: () => navigate('/admin/console?tab=experts'),
       })
     }
     list.push({

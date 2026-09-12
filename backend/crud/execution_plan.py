@@ -6,6 +6,7 @@ ExecutionPlan / SubTask / Artifact 数据访问层。
 
 from __future__ import annotations
 
+from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, func, select
 
@@ -310,16 +311,26 @@ def update_artifact_content(db: Session, artifact_id: str, content: str) -> Arti
     return artifact
 
 
+def get_thread_titles_map(db: Session, thread_ids: list[str]) -> dict[str, str | None]:
+    """批量取会话标题（产物卡片展示来源会话用），缺失的会话不出现在结果里。"""
+    if not thread_ids:
+        return {}
+    rows = db.exec(select(Thread.id, Thread.title).where(Thread.id.in_(thread_ids))).all()
+    return {row[0]: row[1] for row in rows}
+
+
 def list_artifacts_for_user(
     db: Session,
     user_id: str,
     thread_id: str | None = None,
     artifact_type: str | None = None,
+    search: str | None = None,
     page: int = 1,
     limit: int = 20,
 ) -> dict:
     """按用户跨会话列出产物（artifact.thread_id 冗余列直连 thread 做归属过滤）。
 
+    search 对标题/内容做 ILIKE 包含匹配（当前量级无索引压力）。
     分页语义与 list_threads 一致：{items, total, page, limit, pages}。
     """
     limit = min(limit, 100)
@@ -330,6 +341,9 @@ def list_artifacts_for_user(
         base_filters.append(Artifact.thread_id == thread_id)
     if artifact_type:
         base_filters.append(Artifact.type == artifact_type)
+    if search:
+        pattern = f"%{search}%"
+        base_filters.append(or_(Artifact.title.ilike(pattern), Artifact.content.ilike(pattern)))
 
     total = db.exec(
         select(func.count())

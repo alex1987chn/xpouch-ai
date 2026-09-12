@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { MessagesSquare } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -45,9 +46,11 @@ interface ArtifactViewerModalProps {
   threadId?: string | null
   /** 静态文档模式：不取库、不可编辑/分享（消息"文档视图"复用本弹框） */
   docArtifact?: StaticDoc | null
+  /** 打开来源会话（画廊里跳回产出该产物的对话）；不传则不显示入口 */
+  onOpenSourceThread?: (sourceThreadId: string) => void
 }
 
-export function ArtifactViewerModal({ artifactId, onClose, threadId, docArtifact }: ArtifactViewerModalProps) {
+export function ArtifactViewerModal({ artifactId, onClose, threadId, docArtifact, onOpenSourceThread }: ArtifactViewerModalProps) {
   const { t, language } = useTranslation()
   const [mode, setMode] = useState<'view' | 'code'>('view')
   const [editing, setEditing] = useState(false)
@@ -196,6 +199,16 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId, docArtifact
           </div>
           {!editing && detail && (
             <div className="flex items-center gap-1.5">
+              {onOpenSourceThread && detail.thread_id && (
+                <button
+                  onClick={() => onOpenSourceThread(detail.thread_id!)}
+                  title={t('openSourceThread')}
+                  className={actionBtn}
+                >
+                  <MessagesSquare className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{t('openSourceThread')}</span>
+                </button>
+              )}
               {canEdit && (
                 <button
                   onClick={handleStartEdit}

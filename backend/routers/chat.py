@@ -551,6 +551,7 @@ async def list_artifacts_endpoint(
     limit: int = 20,
     thread_id: str | None = None,
     artifact_type: str | None = Query(None, alias="type"),
+    search: str | None = Query(None, max_length=100),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -560,6 +561,7 @@ async def list_artifacts_endpoint(
         user_id=current_user.id,
         thread_id=thread_id,
         artifact_type=artifact_type,
+        search=(search or "").strip() or None,
         page=page,
         limit=limit,
     )
