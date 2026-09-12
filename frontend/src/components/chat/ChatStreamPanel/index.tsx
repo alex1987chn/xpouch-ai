@@ -34,7 +34,9 @@
  * - 流式输出时组件保持静止
  */
 
-import { useRef, useLayoutEffect, useCallback, useMemo } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
+import { ArrowDown } from 'lucide-react'
+import { useTranslation } from '@/i18n'
 import type { Message } from '@/types'
 import EmptyState from '../EmptyState'
 import MessageItem from '../MessageItem'
@@ -136,6 +138,7 @@ export default function ChatStreamPanel({
   resumeExecution,
   polling,
 }: ChatStreamPanelProps) {
+  const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement>(null)
   
   // Performance Optimized Selectors (v3.1.0)
@@ -160,13 +163,40 @@ export default function ChatStreamPanel({
   // 获取计划步骤数
   const estimatedSteps = pendingPlan.length || 0
 
-  // Auto-scroll to bottom
-  // React 19: 使用 useLayoutEffect 避免滚动闪烁
+  // Auto-scroll to bottom —— 尊重阅读位置：
+  // 流式输出时默认跟随滚底；用户主动上滑（距底 > 阈值）即停止跟随并浮现
+  // "回到底部"，滑回底部或点按钮恢复跟随。React 19: useLayoutEffect 防滚动闪烁
+  const followBottomRef = useRef(true)
+  const [showJumpToBottom, setShowJumpToBottom] = useState(false)
+
   useLayoutEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && followBottomRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages, isGenerating])
+
+  // 切换会话：新现场从底部开始
+  useEffect(() => {
+    followBottomRef.current = true
+    setShowJumpToBottom(false)
+  }, [threadId])
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    const following = distanceFromBottom < 80
+    followBottomRef.current = following
+    setShowJumpToBottom(!following)
+  }, [])
+
+  const jumpToBottom = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    followBottomRef.current = true
+    setShowJumpToBottom(false)
+  }, [])
 
   // Handle send
   const handleSend = useCallback(() => {
@@ -245,10 +275,12 @@ export default function ChatStreamPanel({
 
   return (
     <>
-      {/* Message list area */}
+      {/* Message list area（外层 relative 供"回到底部"悬浮钮定位） */}
+      <div className="relative min-h-0 flex-1">
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto"
+        onScroll={handleScroll}
+        className="h-full overflow-y-auto"
       >
         {/* 对话列：居中 760px（蓝本 conv-inner 语法） */}
         <div className="mx-auto w-full max-w-[760px] space-y-8 px-6 pb-5 pt-5">
@@ -318,6 +350,18 @@ export default function ChatStreamPanel({
           />
         )}
         </div>
+      </div>
+
+      {/* 回到底部：用户上滑阅读时浮现（定位于滚动容器外层，不随内容滚动） */}
+      {showJumpToBottom && (
+        <button
+          onClick={jumpToBottom}
+          title={t('jumpToBottom')}
+          className="absolute bottom-4 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-border-divider bg-surface-card text-content-secondary shadow-theme-card transition-colors hover:text-content-primary"
+        >
+          <ArrowDown className="h-4 w-4" />
+        </button>
+      )}
       </div>
 
       {/* v3.4.0 轮询状态栏（输入框上方） */}
