@@ -201,7 +201,6 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
             icon={MessagesSquare}
             title={t('strataEmpty')}
             description={t('strataEmptyHint')}
-            action={{ label: t('newChat'), onClick: onNewChat }}
           />
         ) : filtered.length === 0 ? (
           <EmptyState

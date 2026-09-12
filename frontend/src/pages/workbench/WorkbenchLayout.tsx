@@ -22,6 +22,7 @@ import { useIsWaitingForApproval } from '@/hooks/useTaskSelectors'
 import { useChatStore } from '@/store/chatStore'
 import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery'
 import { useUserSettingsQuery } from '@/hooks/queries/useUserSettingsQuery'
+import { getTokensToday } from '@/services/stats'
 import { getSystemStatus } from '@/services/systemStatus'
 import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher'
 import { CommandPalette } from '@/components/cmd/CommandPalette'
@@ -73,8 +74,16 @@ export default function WorkbenchLayout() {
     }
   }, [])
 
-  // 底栏真实信号：默认模型（用户级）/ 数据库连接（admin 级，与系统状态面共享缓存）
+  // 底栏真实信号：默认模型（用户级）/ 数据库连接（admin 级）/ 今日 token 用量+配额
   const { data: settingsData } = useUserSettingsQuery(isAuthenticated)
+  const { data: tokensToday } = useQuery({
+    queryKey: ['tokens-today'],
+    queryFn: getTokensToday,
+    enabled: isAuthenticated,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
+  })
   const { data: sysStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: getSystemStatus,
@@ -120,11 +129,11 @@ export default function WorkbenchLayout() {
     return () => window.removeEventListener('keydown', onKey)
   }, [navigate, isAdmin])
 
-  // 工作台域：'/'（即工作台）、/workbench、任务控制 /run
+  // 工作台域：'/'（即工作台）、/workbench。
+  // /run（任务控制）不点亮任何 rail 项——主页图标保持可点，一键回主页。
   const onWorkbench =
     location.pathname === '/' ||
-    location.pathname.startsWith('/workbench') ||
-    location.pathname.startsWith('/run')
+    location.pathname.startsWith('/workbench')
 
   const goDecide = () => {
     const tid = useChatStore.getState().currentConversationId
@@ -182,8 +191,8 @@ export default function WorkbenchLayout() {
           {([
             { key: 'work', icon: LayoutGrid, label: t('workbenchTitle'), to: '/workbench', active: onWorkbench },
             { key: 'lib', icon: Layers, label: t('railLibrary'), to: '/library', active: location.pathname.startsWith('/library') },
+            { key: 'stats', icon: LineChart, label: t('navStats'), to: '/admin/stats', active: location.pathname.startsWith('/admin/stats') },
             ...(isAdmin ? ([
-              { key: 'stats', icon: LineChart, label: t('navStats'), to: '/admin/stats', active: location.pathname.startsWith('/admin/stats') },
               { key: 'admin', icon: Settings, label: t('navConsole'), to: '/admin/console', active: location.pathname.startsWith('/admin/console') },
             ] as const) : []),
           ] as const).map(({ key, icon: Icon, label, to, active }) => (
@@ -257,6 +266,21 @@ export default function WorkbenchLayout() {
           </>
         )}
         <span className="ml-auto flex items-center gap-4">
+          {tokensToday && (
+            <span className="flex items-center gap-2" title={tokensToday.daily_token_quota ? `每日上限 ${tokensToday.daily_token_quota.toLocaleString()} tokens` : '未设配额，不限制'}>
+              <span>今日 {tokensToday.today_tokens >= 1000 ? `${(tokensToday.today_tokens / 1000).toFixed(1)}k` : tokensToday.today_tokens}</span>
+              {tokensToday.daily_token_quota ? (
+                <span className="h-1 w-14 overflow-hidden rounded-full bg-surface-tint">
+                  <span
+                    className="block h-full rounded-full bg-accent-brand"
+                    style={{ width: `${Math.min(100, Math.round((tokensToday.today_tokens / tokensToday.daily_token_quota) * 100))}%` }}
+                  />
+                </span>
+              ) : (
+                <span className="text-content-muted">∞</span>
+              )}
+            </span>
+          )}
           <span className="flex items-center gap-1.5">
             <kbd className="rounded border border-border-divider bg-surface-card px-1.5 font-display text-[9.5px] font-bold text-content-muted">⌘K</kbd>
             {t('sbCommands')}

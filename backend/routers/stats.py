@@ -77,3 +77,17 @@ async def get_run_stats(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/tokens-today")
+async def get_tokens_today(
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """当前用户今日 token 用量 + 全局配额（底栏轻量轮询专供）。"""
+    from services.run_quota import load_daily_token_quota
+
+    return {
+        "today_tokens": get_today_token_usage(db, user_id=current_user.id),
+        "daily_token_quota": load_daily_token_quota(db),
+    }
