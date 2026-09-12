@@ -250,7 +250,7 @@ export default function StatsPage() {
      title={t('navStats')}
      right={isAdmin ? (
       <span className="rounded-full bg-accent-brand/15 px-2 py-0.5 text-micro font-bold text-content-primary">
-       Admin
+       ADMIN
       </span>
      ) : undefined}
     />

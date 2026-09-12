@@ -43,10 +43,17 @@ def _render_body(artifact_type: str, content: str) -> str:
 
     escaped = escape(content)
 
-    if artifact_type in ("code", "html"):
-        label = "完整页面请在 XPOUCH 中打开体验" if artifact_type == "html" else ""
-        note = f'<p class="note">{escape(label)}</p>' if label else ""
-        return f'{note}<pre class="code"><code>{escaped}</code></pre>'
+    if artifact_type == "html":
+        # 网页产物 → 沙箱 iframe 实时预览（allow-scripts：产物自带交互脚本可运行；
+        # 不给 allow-same-origin：与主站完全隔离，拿不到父页/cookie/存储）
+        safe_doc = escape(content, quote=True)
+        return (
+            '<p class="note">以下为页面的实时预览（沙箱内运行）</p>'
+            f'<iframe class="html-preview" sandbox="allow-scripts" srcdoc="{safe_doc}"></iframe>'
+        )
+
+    if artifact_type == "code":
+        return f'<pre class="code"><code>{escaped}</code></pre>'
 
     if artifact_type in ("image", "video", "media"):
         # 内容是 URL 或 markdown 链接，提取首个 http(s) 地址
@@ -126,6 +133,10 @@ def _render_share_html(artifact_type: str, title: str, content: str, og_url: str
   }}
   pre.text, pre.code {{ white-space: pre-wrap; }}
   .media {{ max-width: 100%; border: 1px solid #e8e4e0; border-radius: 10px; margin: 1em 0; }}
+  .html-preview {{
+    width: 100%; height: 72vh; min-height: 420px; background: #fff;
+    border: 1px solid #e8e4e0; border-radius: 10px; margin: .6em 0 1em;
+  }}
   .note {{ font-size: 12px; color: #a49d90; margin-bottom: 12px; }}
   table {{ border-collapse: collapse; margin: 1em 0; width: 100%; font-size: 13px; }}
   th, td {{ border: 1px solid #e8e4e0; padding: 7px 11px; }}
