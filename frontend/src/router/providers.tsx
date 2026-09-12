@@ -7,7 +7,10 @@
  * - AppProviders 包装组件
  */
 
-import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
+import { QueryClient, QueryClientProvider, QueryCache, useQueryClient } from '@tanstack/react-query'
+import { useUserStore } from '@/store/userStore'
+import { useChatStore } from '@/store/chatStore'
 import { DEFAULT_CACHE_CONFIG } from '@/config/query'
 import { showLoginDialog } from '@/utils/authUtils'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -47,10 +50,32 @@ const queryClient = new QueryClient({
   }),
 })
 
+/**
+ * UserIdentitySync - 登录/登出/换号时清空 react-query 缓存与会话选中态。
+ * 否则上一身份（如管理员）的接口缓存会带到新身份：轻则展示过期数据，
+ * 重则管理端点 403 报错，刷新页面才恢复。
+ */
+function UserIdentitySync() {
+  const userId = useUserStore(s => s.user?.id)
+  const queryClient = useQueryClient()
+  const prevRef = useRef<string | undefined>(userId)
+
+  useEffect(() => {
+    if (prevRef.current !== userId) {
+      queryClient.clear()
+      useChatStore.setState({ currentConversationId: null, messages: [] })
+      prevRef.current = userId
+    }
+  }, [userId, queryClient])
+
+  return null
+}
+
 // 导出Provider包装组件（供main.tsx使用）
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
+      <UserIdentitySync />
       <ErrorBoundary>
         {children}
         <Toaster />

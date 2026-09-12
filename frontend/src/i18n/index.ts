@@ -69,6 +69,7 @@ export type TranslationKey =
   | 'resetModeHint' | 'resetDeliverHint' | 'resetPasswordTooShort' | 'resetPasswordOk'
   | 'resetPasswordFailed' | 'userSaved' | 'userSaveFailed' | 'userDeleted' | 'userDeleteFailed'
   | 'userDeleteTitle' | 'userDeleteWarning' | 'deleting'
+  | 'docView' | 'expandAll' | 'collapseAll' | 'strataEmptyHint'
   | 'addUser' | 'phonePlaceholder' | 'initialPasswordLabel' | 'pwdModeNone'
   | 'pwdModeRandom' | 'pwdModeCustom' | 'pwdNoneHint' | 'userCreated' | 'userCreateFailed'
   // 登录弹窗

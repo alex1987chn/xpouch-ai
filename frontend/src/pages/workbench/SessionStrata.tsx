@@ -14,7 +14,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
 import { formatDistanceToNow } from 'date-fns'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, MessagesSquare, SearchX } from 'lucide-react'
 
 import { useChatHistoryQuery, chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { deleteConversation } from '@/services/chat'
@@ -194,8 +194,23 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
               <div key={i} className="h-10 animate-pulse rounded-sm bg-content-muted/10" />
             ))}
           </div>
+        ) : conversations.length === 0 ? (
+          <EmptyState
+            variant="bare"
+            dense
+            icon={MessagesSquare}
+            title={t('strataEmpty')}
+            description={t('strataEmptyHint')}
+            action={{ label: t('newChat'), onClick: onNewChat }}
+          />
         ) : filtered.length === 0 ? (
-          <EmptyState variant="bare" dense title={t('strataEmpty')} />
+          <EmptyState
+            variant="bare"
+            dense
+            icon={SearchX}
+            title={t('noMatchingHistory')}
+            description={t('tryOtherKeywords')}
+          />
         ) : (
           groupLabels.map(group =>
             group ? (

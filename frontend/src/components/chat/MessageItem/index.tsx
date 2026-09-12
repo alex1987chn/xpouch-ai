@@ -8,10 +8,9 @@
  * - 使用 useMemo 缓存 components 对象
  */
 
-import { useState, useCallback, useRef, useEffect, memo, useMemo } from 'react'
-import { Copy, Check, RefreshCw, Eye } from 'lucide-react'
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, memo, useMemo } from 'react'
+import { Copy, Check, RefreshCw, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTranslation } from '@/i18n'
-import { useTaskStore } from '@/store/taskStore'
 import type { MessageItemProps } from '../types'
 import { extractCodeBlocks, detectContentType, detectMediaUrl } from '../utils'
 import ReactMarkdown from 'react-markdown'
@@ -19,14 +18,14 @@ import remarkGfm from 'remark-gfm'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.css'
 import { CodeBlock } from '@/components/ui/code-block'
-import { SIMPLE_TASK_ID } from '@/constants/task'
 import { expertDotStyle, expertDisplayName } from '@/lib/expertIdentity'
-import { logger } from '@/utils/logger'
+import ArtifactViewerModal from '@/components/artifacts/ArtifactViewerModal'
+import { cn } from '@/lib/utils'
 import type { Components } from 'react-markdown'
-import type { ArtifactType } from '@/types'
 
 // 开发环境调试开关
-const DEBUG = import.meta.env.VITE_DEBUG_MODE === 'true'
+/** AI 长文折叠阈值（px，实测渲染高度超过即收起） */
+const COLLAPSE_HEIGHT = 560
 
 // ============================================================================
 // 时间格式化工具
@@ -284,6 +283,16 @@ function MessageItem({
   const isUser = message.role === 'user'
   const [copied, setCopied] = useState(false)
   const { t } = useTranslation()
+
+  // 长文折叠：完成态且实测高度超限时收起（渐隐 + 展开全文）
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const [bodyOverflow, setBodyOverflow] = useState(false)
+  const [bodyExpanded, setBodyExpanded] = useState(false)
+  const isBusy = aiStatus === 'thinking' || aiStatus === 'streaming'
+  const contentCollapsed = !isUser && !isBusy && bodyOverflow && !bodyExpanded
+
+  // 文档视图：消息内容送产物弹框的静态文档模式
+  const [docView, setDocView] = useState<{ type: string; title: string; content: string; language?: string | null } | null>(null)
   
   // 🔥 用于存储复制成功提示的定时器，组件卸载时清理
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -299,6 +308,12 @@ function MessageItem({
 
   // 🔥 修复：确保 content 是字符串
   const content = message.content || ''
+
+  useLayoutEffect(() => {
+    if (isUser) return
+    const el = bodyRef.current
+    if (el) setBodyOverflow(el.scrollHeight > COLLAPSE_HEIGHT)
+  }, [content, isUser])
   
   // 检查是否有可预览的代码块或媒体内容
   const codeBlocks = extractCodeBlocks(content)
@@ -306,99 +321,25 @@ function MessageItem({
   const hasPreviewContent = codeBlocks.length > 0 || content.length > 200 || !!mediaInfo.url
 
   // 处理预览 - 将内容发送到 artifact 区域（使用新协议 taskStore）
+  // 文档视图：内容进产物弹框（静态只读，支持复制/导出 PDF），不再写 taskStore
   const handlePreview = useCallback(() => {
-    const taskStore = useTaskStore.getState()
-    
-    // 🔥 优先检测媒体内容（图片/视频）
-    const mediaInfo = detectMediaUrl(content)
     if (mediaInfo.type && mediaInfo.url) {
-      const artifact = {
-        id: crypto.randomUUID(),
+      setDocView({
         type: mediaInfo.type,
         title: mediaInfo.type === 'video' ? t('videoPreview') : t('imagePreview'),
         content: mediaInfo.url,
-        sort_order: 0
-      }
-      
-      taskStore.setMode('simple')
-      taskStore.initializePlan({
-        execution_plan_id: 'media_preview',
-        summary: t('mediaPreviewMode'),
-        estimated_steps: 1,
-        execution_mode: 'sequential',
-        tasks: [{
-          id: SIMPLE_TASK_ID,
-          expert_type: 'media',
-          description: t('mediaPreviewDesc'),
-          status: 'completed',
-          sort_order: 0
-        }]
       })
-      
-      taskStore.replaceArtifacts(SIMPLE_TASK_ID, [{
-        id: artifact.id,
-        type: artifact.type as ArtifactType,
-        title: artifact.title,
-        content: artifact.content,
-        sortOrder: artifact.sort_order,
-        createdAt: new Date().toISOString(),
-        isPreview: true
-      }])
-      
-      taskStore.selectTask(SIMPLE_TASK_ID)
       return
     }
-    
     const detected = detectContentType(codeBlocks, content)
-    if (!detected && content.length <= 200) return
-
-    const artifact = {
-      id: crypto.randomUUID(),
+    const firstLine = content.split('\n').find(l => l.trim()) || ''
+    setDocView({
       type: detected?.type || 'markdown',
-      title: detected?.type === 'code' ? t('codePreview') 
-        : detected?.type === 'html' ? 'HTML 预览' 
-        : t('messagePreview'),
+      title: firstLine.replace(/[#*`>\-]+/g, '').trim().slice(0, 24) || t('messagePreview'),
       content: detected?.content || content,
-      language: detected?.language,
-      sort_order: 0
-    }
-
-    const hasSimpleTask = taskStore.mode === 'simple' && taskStore.tasks.has(SIMPLE_TASK_ID)
-    
-    if (!hasSimpleTask) {
-      if (DEBUG) logger.debug('[Preview] Initializing simple mode')
-      taskStore.setMode('simple')
-      taskStore.initializePlan({
-        execution_plan_id: 'simple_preview',
-        summary: t('simpleChatMode'),
-        estimated_steps: 1,
-        execution_mode: 'sequential',
-        tasks: [{
-          id: SIMPLE_TASK_ID,
-          expert_type: 'assistant',
-          description: t('simpleChatPreviewDesc'),
-          status: 'completed',
-          sort_order: 0
-        }]
-      })
-    } else {
-      taskStore.setMode('simple')
-    }
-    
-    if (DEBUG) logger.debug('[Preview] Replacing artifact:', artifact.title, 'to task:', SIMPLE_TASK_ID)
-    taskStore.replaceArtifacts(SIMPLE_TASK_ID, [{
-      id: artifact.id,
-      type: artifact.type as ArtifactType,
-      title: artifact.title,
-      content: artifact.content,
-      language: artifact.language,
-      sortOrder: artifact.sort_order,
-      createdAt: new Date().toISOString(),
-      isPreview: true
-    }])
-    
-    taskStore.selectTask(SIMPLE_TASK_ID)
-  }, [content, codeBlocks, t])
+      language: detected?.language ?? null,
+    })
+  }, [content, codeBlocks, mediaInfo, t])
 
   // 处理复制
   const handleCopy = useCallback(async () => {
@@ -487,13 +428,16 @@ function MessageItem({
         </span>
       </div>
 
-      {/* 内容区：无气泡背景，直接展示（蓝本 13.5px / 1.75 行高） */}
-      <div className="w-full text-[13.5px] leading-[1.75] prose prose-sm max-w-none
-        prose-headings:text-sm prose-headings:font-bold prose-headings:text-content-primary
-        prose-p:text-[13.5px] prose-p:leading-[1.75] prose-p:text-content-primary/90
-        prose-strong:text-content-primary prose-code:text-content-primary prose-pre:bg-surface-elevated/50
-        prose-pre:border prose-pre:border-border-default/30 prose-a:text-content-primary prose-a:underline prose-a:decoration-border-hover prose-a:underline-offset-2 hover:prose-a:text-accent-hover
-        select-text">
+      {/* 内容区：无气泡背景，直接展示（蓝本 13.5px / 1.75 行高）；长文收起 */}
+      <div ref={bodyRef} className={cn(
+        'w-full text-[13.5px] leading-[1.75] prose prose-sm max-w-none',
+        'prose-headings:text-sm prose-headings:font-bold prose-headings:text-content-primary',
+        'prose-p:text-[13.5px] prose-p:leading-[1.75] prose-p:text-content-primary/90',
+        'prose-strong:text-content-primary prose-code:text-content-primary prose-pre:bg-surface-elevated/50',
+        'prose-pre:border prose-pre:border-border-default/30 prose-a:text-content-primary prose-a:underline prose-a:decoration-border-hover prose-a:underline-offset-2 hover:prose-a:text-accent-hover',
+        'select-text',
+        contentCollapsed && 'relative max-h-[560px] overflow-hidden'
+      )}>
         {content ? (
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
@@ -509,6 +453,36 @@ function MessageItem({
         ) : null}
       </div>
 
+      {contentCollapsed && (
+        <div className="pointer-events-none relative -mt-10 h-10">
+          <div className="absolute inset-0 bg-gradient-to-t from-surface-page to-transparent" />
+        </div>
+      )}
+      {contentCollapsed && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            setBodyExpanded(true)
+          }}
+          className="flex items-center gap-1 text-micro font-medium text-content-muted transition-colors hover:text-content-primary"
+        >
+          {t('expandAll')}
+          <ChevronDown className="h-3 w-3" />
+        </button>
+      )}
+      {!contentCollapsed && bodyOverflow && !isBusy && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            setBodyExpanded(false)
+          }}
+          className="flex items-center gap-1 text-micro font-medium text-content-muted transition-colors hover:text-content-primary"
+        >
+          {t('collapseAll')}
+          <ChevronUp className="h-3 w-3" />
+        </button>
+      )}
+
       {/* 底部操作栏：悬停显示，更简洁 */}
       <div className="mt-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         {hasPreviewContent && (
@@ -518,10 +492,10 @@ function MessageItem({
               handlePreview()
             }}
             className="flex items-center gap-1 text-micro text-content-muted hover:text-content-primary px-2 py-1 rounded hover:bg-surface-tint/60 transition-colors cursor-pointer"
-            title={t('preview')}
+            title={t('docView')}
           >
-            <Eye className="w-3 h-3" />
-            {t('preview')}
+            <FileText className="w-3 h-3" />
+            {t('docView')}
           </button>
         )}
         <button
@@ -558,6 +532,8 @@ function MessageItem({
           </button>
         )}
       </div>
+
+      <ArtifactViewerModal artifactId={null} docArtifact={docView} onClose={() => setDocView(null)} />
     </div>
   )
 }

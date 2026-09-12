@@ -27,16 +27,27 @@ import {
   artifactTypeChipStyle, artifactFileExt,
 } from '@/lib/artifactPresentation'
 import { toLocalDate, localeForLanguage } from '@/lib/datetime'
+import type { ArtifactListItem } from '@/types'
 import { cn } from '@/lib/utils'
+
+interface StaticDoc {
+  type: string
+  title?: string
+  content: string
+  created_at?: string | null
+  language?: string | null
+}
 
 interface ArtifactViewerModalProps {
   artifactId: string | null
   onClose: () => void
   /** 当前线程（编辑保存后精准失效本线程产物列表） */
   threadId?: string | null
+  /** 静态文档模式：不取库、不可编辑/分享（消息"文档视图"复用本弹框） */
+  docArtifact?: StaticDoc | null
 }
 
-export function ArtifactViewerModal({ artifactId, onClose, threadId }: ArtifactViewerModalProps) {
+export function ArtifactViewerModal({ artifactId, onClose, threadId, docArtifact }: ArtifactViewerModalProps) {
   const { t, language } = useTranslation()
   const [mode, setMode] = useState<'view' | 'code'>('view')
   const [editing, setEditing] = useState(false)
@@ -49,10 +60,21 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId }: ArtifactV
   const detailQuery = useQuery({
     queryKey: ['artifactDetail', artifactId],
     queryFn: () => getArtifactDetail(artifactId!),
-    enabled: !!artifactId,
+    enabled: !!artifactId && !docArtifact,
     staleTime: 60_000,
   })
-  const detail = detailQuery.data
+  const detail: ArtifactListItem | undefined = docArtifact
+    ? {
+        id: '',
+        type: docArtifact.type,
+        title: docArtifact.title ?? null,
+        language: docArtifact.language ?? null,
+        content: docArtifact.content,
+        content_preview: '',
+        created_at: docArtifact.created_at ?? null,
+        thread_id: null,
+      }
+    : detailQuery.data
 
   // 切换产物时复位视图状态
   useEffect(() => {
@@ -60,7 +82,7 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId }: ArtifactV
     setEditing(false)
   }, [artifactId])
 
-  const open = !!artifactId
+  const open = !!artifactId || !!docArtifact
 
   const handleCopy = async () => {
     if (!detail?.content) return
@@ -138,7 +160,7 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId }: ArtifactV
   const createdLabel = detail?.created_at
     ? formatDistanceToNow(toLocalDate(detail.created_at), { addSuffix: true, locale })
     : ''
-  const canEdit = !!detail && EDITABLE_ARTIFACT_TYPES.has(detail.type)
+  const canEdit = !!detail && !docArtifact && EDITABLE_ARTIFACT_TYPES.has(detail.type)
 
   const actionBtn = 'flex h-8 items-center gap-1.5 rounded-full border border-border-divider bg-surface-card px-3 text-xs font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary'
 
@@ -213,9 +235,11 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId }: ArtifactV
               <button onClick={handleExportPdf} className={actionBtn}>
                 {t('artExportPdf')}
               </button>
-              <button onClick={handleShare} className={cn(actionBtn, 'w-8 justify-center px-0')} title={t('artifactShareAction')}>
-                <Share2 className="h-3.5 w-3.5" />
-              </button>
+              {!docArtifact && (
+                <button onClick={handleShare} className={cn(actionBtn, 'w-8 justify-center px-0')} title={t('artifactShareAction')}>
+                  <Share2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           )}
           <button
