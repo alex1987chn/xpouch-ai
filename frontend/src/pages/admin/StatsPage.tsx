@@ -20,6 +20,7 @@ import { EmptyState } from '@/components/ui/states'
 import { toLocalDate } from '@/lib/datetime'
 import { ErrorState } from '@/components/ui/states'
 import { SubPageLayout, SubPageHeader, type SubPageMenuItem } from '@/components/ui/sub-page-layout'
+import { SearchInput } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/userStore'
 import { getRunStats } from '@/services/stats'
@@ -197,9 +198,10 @@ export default function StatsPage() {
  const limit = 50
 
  // 获取统计数据
+ const [runSearch, setRunSearch] = useState('')
  const { data, isLoading, error, refetch } = useQuery({
-  queryKey: ['run-stats', limit, offset, days],
-  queryFn: () => getRunStats(limit, offset, days),
+  queryKey: ['run-stats', limit, offset, days, runSearch],
+  queryFn: () => getRunStats(limit, offset, days, runSearch),
   refetchOnWindowFocus: false,
  })
 
@@ -337,10 +339,20 @@ export default function StatsPage() {
 
     {/* 运行列表 */}
     <div className="space-y-4">
-     <div className="flex items-center justify-between">
+     <div className="flex flex-wrap items-center justify-between gap-3">
       <h2 className="text-sm text-content-muted">
        {t('runList')} ({data?.total_runs_count || 0})
       </h2>
+      <div className="w-64">
+       <SearchInput
+        value={runSearch}
+        onChange={v => {
+         setRunSearch(v)
+         setOffset(0)
+        }}
+        placeholder={t('searchRuns')}
+       />
+      </div>
       {data && data.total_runs_count > limit && (
        <div className="flex gap-2">
         <button

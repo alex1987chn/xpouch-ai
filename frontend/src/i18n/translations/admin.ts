@@ -13,6 +13,7 @@ export const zh = {
   userCreateFailed: '创建失败',
   // 用户管理（v3.5）
   searchUsers: '搜索用户 / 手机号 / 邮箱…',
+  searchRuns: '搜索运行 ID / 用户名…',
   colUser: '用户',
   colPhone: '手机号',
   colEmail: '邮箱',
@@ -169,6 +170,7 @@ export const en = {
   userCreateFailed: 'Failed to create user',
   // 用户管理（v3.5）
   searchUsers: 'Search users / phone / email…',
+  searchRuns: 'Search run ID / username…',
   colUser: 'User',
   colPhone: 'Phone',
   colEmail: 'Email',
@@ -325,6 +327,7 @@ export const ja = {
   userCreateFailed: '作成に失敗しました',
   // ユーザー管理（v3.5）
   searchUsers: 'ユーザー / 電話 / メールを検索…',
+  searchRuns: '実行ID / ユーザー名を検索…',
   colUser: 'ユーザー',
   colPhone: '電話番号',
   colEmail: 'メール',

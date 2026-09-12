@@ -11,7 +11,7 @@
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, or_, select
 from sqlmodel import Session
 
 from models import AgentRun, RunEvent, User
@@ -177,15 +177,17 @@ def get_run_list(
     user_id: str | None = None,
     limit: int = 50,
     offset: int = 0,
+    search: str | None = None,
 ) -> tuple[list[dict], int]:
     """
-    获取运行列表（分页）
+    获取运行列表（分页，支持按运行 ID / 用户名模糊搜索）
 
     Args:
         db: 数据库会话
         user_id: 用户 ID（None 表示全局）
         limit: 每页数量（默认 50）
         offset: 偏移量
+        search: 搜索词（匹配运行 ID 或用户名）
 
     Returns:
         (运行列表, 总数)
@@ -196,10 +198,27 @@ def get_run_list(
     if user_id:
         base_stmt = base_stmt.where(AgentRun.user_id == user_id)
 
+    if search:
+        like = f"%{search.strip()}%"
+        base_stmt = base_stmt.where(
+            or_(
+                AgentRun.id.ilike(like),
+                AgentRun.user_id.in_(select(User.id).where(User.username.ilike(like))),
+            )
+        )
+
     # 获取总数
     count_stmt = select(func.count(AgentRun.id))
     if user_id:
         count_stmt = count_stmt.where(AgentRun.user_id == user_id)
+    if search:
+        like = f"%{search.strip()}%"
+        count_stmt = count_stmt.where(
+            or_(
+                AgentRun.id.ilike(like),
+                AgentRun.user_id.in_(select(User.id).where(User.username.ilike(like))),
+            )
+        )
     total_result = db.exec(count_stmt).first()
     total_count = total_result[0] if total_result else 0
 

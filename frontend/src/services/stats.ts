@@ -11,9 +11,11 @@ import type { RunStatsResponse } from '@/types/stats'
 export async function getRunStats(
   limit: number = 50,
   offset: number = 0,
-  days: number = 7
+  days: number = 7,
+  search?: string
 ): Promise<RunStatsResponse> {
-  const url = buildUrl(`/admin/stats/runs?limit=${limit}&offset=${offset}&days=${days}`)
+  const searchParam = search?.trim() ? `&search=${encodeURIComponent(search.trim())}` : ''
+  const url = buildUrl(`/admin/stats/runs?limit=${limit}&offset=${offset}&days=${days}${searchParam}`)
   const response = await authenticatedFetch(url)
   return handleResponse<RunStatsResponse>(response, '获取运行统计失败')
 }

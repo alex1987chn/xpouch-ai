@@ -26,6 +26,7 @@ async def get_run_stats(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     days: int = Query(default=7, ge=1, le=30),
+    search: str | None = Query(default=None, max_length=64),
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> RunStatsResponse:
@@ -57,7 +58,7 @@ async def get_run_stats(
     trends = get_daily_trends(db, user_id=user_id, days=days)
 
     # 获取运行列表（分页）
-    runs, total_count = get_run_list(db, user_id=user_id, limit=limit, offset=offset)
+    runs, total_count = get_run_list(db, user_id=user_id, limit=limit, offset=offset, search=search)
 
     # 今日 token 用量与配额（按请求者口径；配额为全局设置）
     from services.run_quota import load_daily_token_quota
