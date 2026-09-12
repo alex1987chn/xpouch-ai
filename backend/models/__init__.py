@@ -25,6 +25,7 @@
 from models.domain import (
     AgentRun,
     Artifact,
+    AuditLog,
     CustomAgent,
     ExecutionPlan,
     Message,
@@ -119,6 +120,7 @@ __all__ = [
     "SubTask",
     "ExecutionPlan",
     "Artifact",
+    "AuditLog",
     "UserMemory",
     "MCPServer",
     # DTO - Conversation

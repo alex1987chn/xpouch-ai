@@ -43,6 +43,17 @@ export interface HeavyInputConsoleProps {
   onImagesSelected?: (images: string[]) => void
   /** 移除指定序号的图片 */
   onRemoveImage?: (index: number) => void
+  /** v3.5 文档附件：当前轮随消息发送的文档（后端解析为文本） */
+  documents?: ChatDocument[]
+  /** 选择新文档（控制台内完成 File→base64 转换，回传完整列表） */
+  onDocumentsSelected?: (documents: ChatDocument[]) => void
+  /** 移除指定文档 */
+  onRemoveDocument?: (index: number) => void
+}
+
+export interface ChatDocument {
+  name: string
+  content_base64: string
 }
 
 /**

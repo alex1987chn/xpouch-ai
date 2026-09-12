@@ -47,6 +47,7 @@ import { isSameId } from '@/utils/normalize'
 import type { ResumeChatParams } from '@/services/chat'
 import type { AvatarStatus } from '@/components/ui/StatusAvatar'
 import type { RunStatus } from '@/types/run'
+import type { ChatDocument } from '../types'
 
 // Performance Optimized Selectors (v3.1.0)
 import {
@@ -72,6 +73,9 @@ interface ChatStreamPanelProps {
   /** v3.4.7 图片输入：当前轮随消息发送的图片（dataURL，父层持有状态） */
   images?: string[]
   onImagesSelected?: (images: string[]) => void
+  documents?: ChatDocument[]
+  onDocumentsSelected?: (documents: ChatDocument[]) => void
+  onRemoveDocument?: (index: number) => void
   onRemoveImage?: (index: number) => void
   /** 行为回调（避免扁平 props 过多） */
   actions: {
@@ -124,6 +128,9 @@ export default function ChatStreamPanel({
   input,
   actions,
   images,
+  documents,
+  onDocumentsSelected,
+  onRemoveDocument,
   onImagesSelected,
   onRemoveImage,
   resumeExecution,
@@ -333,6 +340,9 @@ export default function ChatStreamPanel({
         images={images}
         onImagesSelected={onImagesSelected}
         onRemoveImage={onRemoveImage}
+        documents={documents}
+        onDocumentsSelected={onDocumentsSelected}
+        onRemoveDocument={onRemoveDocument}
       />
     </>
   )

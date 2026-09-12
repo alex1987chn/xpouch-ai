@@ -35,6 +35,9 @@ dependencies = [
     "tenacity>=9.0.0,<10.0.0",  # P1 新增: 重试机制
     "cachetools>=5.3.0,<8.0.0",  # P1 新增: TTL 缓存
     "markdown-it-py>=4.2.0",
+    "pypdf>=6.0.0,<7.0.0",  # v3.5 附件文档解析：PDF
+    "python-docx>=1.2.0,<2.0.0",  # v3.5 附件文档解析：Word
+    "openpyxl>=3.1.5,<4.0.0",  # v3.5 附件文档解析：Excel
 ]
 
 [dependency-groups]

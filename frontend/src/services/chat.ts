@@ -460,6 +460,13 @@ export async function deleteConversationsBatch(ids: string[]): Promise<BatchDele
  * 发送消息 - 流式输出
  * v3.0: 只处理新协议事件
  */
+export interface ChatDocument {
+  /** 文件名（含扩展名，后端按扩展名选择解析器） */
+  name: string
+  /** 文件内容的 base64（不含 data: 前缀） */
+  content_base64: string
+}
+
 export async function sendMessage(
   messages: ApiMessage[],
   agentId: string = 'default-chat',
@@ -467,7 +474,8 @@ export async function sendMessage(
   threadId?: string | null,
   abortSignal?: AbortSignal,
   assistantMessageId?: string | undefined,  // v3.0: 前端传递的助手消息 ID
-  images?: string[] | undefined  // v3.4.7: 当前轮图片输入（dataURL，仅视觉模型）
+  images?: string[] | undefined,  // v3.4.7: 当前轮图片输入（dataURL，仅视觉模型）
+  documents?: ChatDocument[] | undefined  // v3.5: 附件文档（后端解析为文本注入上下文）
 ): Promise<string> {
 
   const history = messages.slice(0, -1)
@@ -483,6 +491,7 @@ export async function sendMessage(
       body: JSON.stringify({
         message: messageContent,
         images: images ?? [],
+        documents: documents ?? [],
         history: history.map(m => ({ role: m.role, content: m.content })),
         agent_id: agentId,
         thread_id: threadId,
@@ -500,6 +509,7 @@ export async function sendMessage(
     requestBody: {
       message: messageContent,
       images: images ?? [],
+      documents: documents ?? [],
       history: history.map(m => ({ role: m.role, content: m.content })),
       agent_id: agentId,
       thread_id: threadId,

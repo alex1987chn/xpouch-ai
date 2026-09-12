@@ -75,6 +75,13 @@ class ChatMessageDTO(BaseModel):
     timestamp: str | None = None
 
 
+class DocumentInput(BaseModel):
+    """附件文档（轻量版：解析为文本注入上下文，不做持久化）"""
+
+    name: str = Field(..., max_length=200, description="文件名（含扩展名）")
+    content_base64: str = Field(..., description="文件内容 base64")
+
+
 class ChatRequest(BaseModel):
     """聊天请求"""
 
@@ -84,11 +91,32 @@ class ChatRequest(BaseModel):
         max_length=4,
         description="当前轮图片输入（data:image/*;base64 dataURL），最多 4 张，仅视觉模型可用",
     )
+    documents: list[DocumentInput] = Field(
+        default_factory=list,
+        max_length=3,
+        description="附件文档（base64），后端解析为文本注入当前对话上下文",
+    )
     history: list[ChatMessageDTO]
     thread_id: str | None = None
     agent_id: str | None = "assistant"
     stream: bool | None = True
     message_id: str | None = None
+
+
+def _build_document_blocks(documents: list[DocumentInput]) -> str:
+    """解析附件文档为文本块（拼接到用户消息末尾）。任一失败即 400。"""
+    if not documents:
+        return ""
+    from services.document_parser import DocumentParseError, parse_document
+
+    blocks: list[str] = []
+    for doc in documents:
+        try:
+            text = parse_document(filename=doc.name, content_base64=doc.content_base64)
+        except DocumentParseError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from None
+        blocks.append(f"\n\n【用户附件：{doc.name}】\n{text}")
+    return "".join(blocks)
 
 
 def _attach_images(
@@ -317,14 +345,18 @@ async def chat_endpoint(
     )
     thread_id = thread.id
 
+    # 1.5 附件文档解析（任一失败即 400，不产生半截消息）
+    document_blocks = _build_document_blocks(request.documents)
+    effective_message = request.message + document_blocks
+
     ensure_no_active_run_for_thread(
         session,
         thread_id=thread_id,
         user_id=current_user.id,
     )
 
-    # 2. 保存用户消息
-    await thread_service.save_user_message(thread_id, request.message)
+    # 2. 保存用户消息（含附件文档文本）
+    await thread_service.save_user_message(thread_id, effective_message)
 
     # 3. 构建 LangChain 消息列表
     langchain_messages = await thread_service.build_langchain_messages(thread_id)
@@ -427,7 +459,7 @@ async def chat_endpoint(
             thread_id=thread_id,
             thread=thread,
             agent_run=agent_run,
-            user_message=request.message,
+            user_message=effective_message,
             message_id=actual_message_id,
         )
     else:

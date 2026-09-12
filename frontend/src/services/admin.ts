@@ -572,3 +572,19 @@ export async function resetAdminUserPassword(
   })
   return handleResponse<AdminResetPasswordResponse>(response, '重置密码失败')
 }
+
+
+export interface AuditLogEntry {
+  id: number
+  actor_username: string
+  action: string
+  target: string | null
+  detail: Record<string, unknown> | null
+  created_at: string | null
+}
+
+export async function getAuditLogs(search?: string): Promise<AuditLogEntry[]> {
+  const param = search?.trim() ? `&search=${encodeURIComponent(search.trim())}` : ''
+  const response = await authenticatedFetch(buildUrl(`/admin/audit-logs?limit=100${param}`))
+  return handleResponse<AuditLogEntry[]>(response, '获取审计日志失败')
+}

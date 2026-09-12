@@ -27,6 +27,7 @@ import { useChatStore } from '@/store/chatStore'
 import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery'
 import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
+import type { ChatDocument } from '@/components/chat/types'
 import ChatStreamPanel from '@/components/chat/ChatStreamPanel'
 import { SYSTEM_AGENTS } from '@/constants/agents'
 import { expertColor, expertDisplayName } from '@/lib/expertIdentity'
@@ -110,6 +111,7 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
 
   // v3.4.7 图片输入：当前轮随消息发送的图片（dataURL）
   const [pendingImages, setPendingImages] = useState<string[]>([])
+  const [pendingDocs, setPendingDocs] = useState<ChatDocument[]>([])
 
   const handleSend = useCallback(() => {
     if ((!inputValue.trim() && !pendingImages.length) || isStreaming) return
@@ -119,13 +121,14 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
       pushToast({ title: t('loginRequired') || '请先登录' })
       return
     }
-    sendMessage(inputValue, normalizedAgentId, pendingImages).then(() => {
+    sendMessage(inputValue, normalizedAgentId, pendingImages, pendingDocs).then(() => {
       // 刷新地层 + 本线程产物投影
       queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
       if (threadId) queryClient.invalidateQueries({ queryKey: artifactsKeys.threadList(threadId) })
     })
     setInputValue('')
     setPendingImages([])
+    setPendingDocs([])
   }, [inputValue, pendingImages, isStreaming, sendMessage, normalizedAgentId, queryClient, threadId])
 
   const handleInputChange = useCallback(
@@ -209,6 +212,9 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
       <ChatStreamPanel
         input={chatStreamInput}
         images={pendingImages}
+        documents={pendingDocs}
+        onDocumentsSelected={setPendingDocs}
+        onRemoveDocument={(index: number) => setPendingDocs(prev => prev.filter((_, i) => i !== index))}
         onImagesSelected={setPendingImages}
         onRemoveImage={(index: number) => setPendingImages(prev => prev.filter((_, i) => i !== index))}
         actions={chatStreamActions}

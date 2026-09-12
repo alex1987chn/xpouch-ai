@@ -6,12 +6,14 @@
 
 import { useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { Paperclip, Square, X, ArrowUp } from 'lucide-react'
+import { Paperclip, FileText, Square, X, ArrowUp } from 'lucide-react'
 import { useTranslation } from '@/i18n'
-import type { HeavyInputConsoleProps } from '../types'
+import type { ChatDocument, HeavyInputConsoleProps } from '../types'
 import HeavyInputTextArea from './HeavyInputTextArea'
 
 const MAX_IMAGES = 4
+const MAX_DOCUMENTS = 3
+const DOC_EXTENSIONS = 'pdf docx xlsx xls txt md markdown csv json'
 
 export default function HeavyInputConsole({
   value,
@@ -22,20 +24,49 @@ export default function HeavyInputConsole({
   images,
   onImagesSelected,
   onRemoveImage,
+  documents,
+  onDocumentsSelected,
+  onRemoveDocument,
 }: HeavyInputConsoleProps) {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const imageList = images ?? []
-  const hasContent = Boolean(value.trim()) || imageList.length > 0
+  const docList = documents ?? []
+  const hasContent = Boolean(value.trim()) || imageList.length > 0 || docList.length > 0
 
   // File → dataURL（控制台内完成转换，父层只存 dataURL 列表）
   const handleFiles = async (files: FileList | null) => {
-    if (!files?.length || !onImagesSelected) return
+    if (!files?.length) return
+    const all = Array.from(files)
+    const pickedImages = all.filter(f => f.type.startsWith('image/'))
+    const pickedDocs = all.filter(f => !f.type.startsWith('image/'))
+
+    // 文档：File → base64（不含 data: 前缀）
+    if (pickedDocs.length && onDocumentsSelected) {
+      const room = MAX_DOCUMENTS - docList.length
+      const docs = await Promise.all(
+        pickedDocs.slice(0, Math.max(0, room)).map(
+          file =>
+            new Promise<ChatDocument>((resolve, reject) => {
+              const reader = new FileReader()
+              reader.onload = () => {
+                const result = String(reader.result || '')
+                const base64 = result.includes(',') ? result.split(',')[1] : result
+                resolve({ name: file.name, content_base64: base64 })
+              }
+              reader.onerror = () => reject(reader.error)
+              reader.readAsDataURL(file)
+            })
+        )
+      )
+      onDocumentsSelected([...docList, ...docs])
+    }
+
+    if (!pickedImages.length || !onImagesSelected) return
     const room = MAX_IMAGES - imageList.length
     if (room <= 0) return
-    const picked = Array.from(files)
+    const picked = pickedImages
       .slice(0, room)
-      .filter(f => f.type.startsWith('image/'))
     const dataUrls = await Promise.all(
       picked.map(
         file =>
@@ -91,7 +122,29 @@ export default function HeavyInputConsole({
             </div>
           )}
 
-          {/* 单行：附件 + 联网 + 输入区 + 发送 */}
+          {/* 文档附件 chips */}
+          {docList.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 px-2.5 pb-1">
+              {docList.map((doc, index) => (
+                <span
+                  key={`${doc.name}-${index}`}
+                  className="flex items-center gap-1.5 rounded-md border border-border-divider bg-surface-page px-2 py-1 text-nano text-content-secondary"
+                >
+                  <FileText className="h-3 w-3 shrink-0" />
+                  <span className="max-w-[160px] truncate">{doc.name}</span>
+                  <button
+                    onClick={() => onRemoveDocument?.(index)}
+                    aria-label={t('close')}
+                    className="text-content-muted transition-colors hover:text-status-offline"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* 单行：附件 + 输入区 + 发送 */}
           <div className="flex items-end gap-2 px-2.5 py-2">
             <button
               disabled={disabled || imageList.length >= MAX_IMAGES}
@@ -105,7 +158,7 @@ export default function HeavyInputConsole({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept={`image/*,${DOC_EXTENSIONS.split(' ').map(e => '.' + e).join(',')}`}
               multiple
               className="hidden"
               onChange={e => {

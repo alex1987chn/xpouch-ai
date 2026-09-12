@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react'
-import { Bot, Database, ShieldAlert, Wrench } from 'lucide-react'
+import { Bot, Database, Wrench } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useSwipeBack } from '@/hooks/useSwipeBack'
 import { SearchInput } from '@/components/ui/input'
@@ -14,10 +14,9 @@ import { EmptyState } from '@/components/ui/states'
 import { SubPageLayout, SubPageHeader } from '@/components/ui/sub-page-layout'
 import { MCPList } from './MCPList'
 import SkillTemplatePanel from './SkillTemplatePanel'
-import ToolGovernancePanel from './ToolGovernancePanel'
 import { useUserStore } from '@/store/userStore'
 
-type TabType = 'knowledge' | 'templates' | 'mcp' | 'governance'
+type TabType = 'knowledge' | 'templates' | 'mcp'
 
 export default function LibraryPage() {
   const { t } = useTranslation()
@@ -25,17 +24,14 @@ export default function LibraryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeBack({ targetPath: '/' })
 
-  // Library 权限：可查看治理 Tab / 可编辑模板与策略
-  const user = useUserStore(state => state.user)
-  const role = user?.role ?? ''
-  const canViewGovernance = role === 'admin'
-  const canEditLibrary = role === 'admin'
+  // Library 权限：可编辑模板与策略（管理动作在系统管理台）
+  const canEditLibrary = useUserStore(state => state.user?.role === 'admin')
 
   const menu = [
     { key: 'knowledge', label: t('knowledgeBase') || 'Knowledge', icon: Database },
     { key: 'templates', label: t('skillTemplates') || 'Templates', icon: Bot },
     { key: 'mcp', label: t('mcpTools') || 'MCP', icon: Wrench },
-    ...(canViewGovernance ? [{ key: 'governance', label: t('toolGovernance') || 'Governance', icon: ShieldAlert }] : []),
+
   ]
   const activeLabel = menu.find(item => item.key === activeTab)?.label ?? t('railLibrary')
 
@@ -64,9 +60,7 @@ export default function LibraryPage() {
                       ? (t('searchKnowledge') || 'Search knowledge base...')
                       : activeTab === 'templates'
                         ? (t('searchTemplates') || 'Search templates...')
-                        : activeTab === 'governance'
-                          ? (t('searchTools') || 'Search tools...')
-                          : (t('searchMCPServers') || 'Search MCP servers...')
+                        : (t('searchMCPServers') || 'Search MCP servers...')
                   }
                 />
               </div>
@@ -86,9 +80,6 @@ export default function LibraryPage() {
                 onSearchChange={setSearchQuery}
                 isAdmin={canEditLibrary}
               />
-            )}
-            {activeTab === 'governance' && (
-              <ToolGovernancePanel searchQuery={searchQuery} canView={canViewGovernance} canEdit={canEditLibrary} />
             )}
           </div>
         </div>

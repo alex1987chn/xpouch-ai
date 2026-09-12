@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, field_validator
 from pydantic import Field as PydanticField
 from sqlalchemy import func, update
@@ -22,6 +22,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from agents.services.expert_manager import refresh_cache
+from crud.audit_log import record_audit
 from database import get_session
 from dependencies import require_role
 from models import Artifact, SystemExpert, Thread, User, UserRole
@@ -250,7 +251,7 @@ async def update_expert(
     expert_key: str,
     expert_update: ExpertUpdate,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_admin),
 ):
     """
     更新系统专家配置（原子递增乐观锁）
@@ -312,6 +313,14 @@ async def update_expert(
             detail=f"专家配置已被他人修改（当前版本: {current_version}, 期望版本: {expert_update.expected_version}），请刷新后重试",
         )
 
+    record_audit(
+        session,
+        actor_user_id=admin.id,
+        actor_username=admin.username,
+        action="expert.update",
+        target=expert_key,
+        detail={"expected_version": expert_update.expected_version},
+    )
     session.commit()
 
     # 重新查询获取更新后的值
@@ -539,7 +548,7 @@ System Prompt:
 async def create_expert(
     expert_create: ExpertCreate,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin),  # 需要管理员权限
+    admin: User = Depends(get_current_admin),  # 需要管理员权限
 ):
     """
     创建新专家
@@ -574,6 +583,14 @@ async def create_expert(
     )
 
     session.add(new_expert)
+    record_audit(
+        session,
+        actor_user_id=admin.id,
+        actor_username=admin.username,
+        action="expert.create",
+        target=expert_create.expert_key,
+        detail={"name": expert_create.name, "model": expert_create.model},
+    )
     try:
         session.commit()
         session.refresh(new_expert)
@@ -619,7 +636,7 @@ async def create_expert(
 async def delete_expert(
     expert_key: str,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin),  # 需要管理员权限
+    admin: User = Depends(get_current_admin),  # 需要管理员权限
 ):
     """
     删除专家
@@ -648,6 +665,13 @@ async def delete_expert(
 
     # 删除专家
     session.delete(expert)
+    record_audit(
+        session,
+        actor_user_id=admin.id,
+        actor_username=admin.username,
+        action="expert.delete",
+        target=expert_key,
+    )
     session.commit()
 
     logger.info(f"[Admin] Expert '{expert_key}' deleted by admin")
@@ -732,12 +756,21 @@ async def get_system_status(
 async def update_daily_token_quota(
     request: DailyTokenQuotaRequest,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_admin),
 ):
     """设置每用户日 token 配额（全实例生效；None/0 = 不限量）"""
     from services.run_quota import save_daily_token_quota
 
     quota = save_daily_token_quota(session, request.daily_token_quota)
+    record_audit(
+        session,
+        actor_user_id=admin.id,
+        actor_username=admin.username,
+        action="quota.update",
+        target="user_daily_token_quota",
+        detail={"daily_token_quota": quota},
+    )
+    session.commit()
     logger.info(f"[Admin] 每用户日 token 配额更新为: {quota or '不限量'}")
     return {"user_daily_token_quota": quota}
 
@@ -816,7 +849,7 @@ class AdminCreateUserRequest(BaseModel):
 async def create_user(
     request: AdminCreateUserRequest,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin),
+    current_admin: User = Depends(get_current_admin),
 ):
     """管理员添加用户。
 
@@ -851,6 +884,14 @@ async def create_user(
         is_verified=bool(password_hash),
     )
     session.add(user)
+    record_audit(
+        session,
+        actor_user_id=current_admin.id,
+        actor_username=current_admin.username,
+        action="user.create",
+        target=username,
+        detail={"user_id": user.id, "role": str(request.role)},
+    )
     session.commit()
     session.refresh(user)
     logger.info(f"[Admin] 用户 {user.id} 已创建（username={username}）")
@@ -956,6 +997,14 @@ async def update_user(
 
     user.updated_at = utc_now_naive()
     session.add(user)
+    record_audit(
+        session,
+        actor_user_id=current_admin.id,
+        actor_username=current_admin.username,
+        action="user.update",
+        target=user_id,
+        detail={"username": user.username, "role": str(user.role)},
+    )
     session.commit()
     session.refresh(user)
     logger.info(f"[Admin] 用户 {user_id} 资料已更新")
@@ -997,6 +1046,14 @@ async def delete_user(
 
     # custom_agents 走 ORM 级联（all, delete-orphan）
     session.delete(user)
+    record_audit(
+        session,
+        actor_user_id=current_admin.id,
+        actor_username=current_admin.username,
+        action="user.delete",
+        target=user_id,
+        detail={"username": user.username, "deleted_threads": len(thread_ids)},
+    )
     session.commit()
     logger.info(f"[Admin] 用户 {user_id} 已删除（含 {len(thread_ids)} 个会话）")
     return {"message": "用户已删除", "deleted_threads": len(thread_ids)}
@@ -1007,7 +1064,7 @@ async def admin_reset_password(
     user_id: str,
     request: AdminResetPasswordRequest,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin),
+    current_admin: User = Depends(get_current_admin),
 ):
     """管理员重置密码。
 
@@ -1035,6 +1092,14 @@ async def admin_reset_password(
     user.password_hash = hash_password(new_password)
     user.updated_at = utc_now_naive()
     session.add(user)
+    record_audit(
+        session,
+        actor_user_id=current_admin.id,
+        actor_username=current_admin.username,
+        action="user.reset_password",
+        target=user_id,
+        detail={"mode": request.mode},
+    )
     session.commit()
     logger.info(f"[Admin] 用户 {user_id} 密码已重置（mode={request.mode}）")
 
@@ -1043,3 +1108,39 @@ async def admin_reset_password(
         # 随机密码仅此一次返回，服务端不留明文
         result["password"] = new_password
     return result
+
+
+class AuditLogResponse(BaseModel):
+    """审计日志条目"""
+
+    id: int
+    actor_username: str
+    action: str
+    target: str | None = None
+    detail: dict | None = None
+    created_at: datetime | None = None
+
+
+@router.get("/audit-logs", response_model=list[AuditLogResponse])
+async def list_audit_logs_endpoint(
+    search: str | None = Query(default=None, max_length=64),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_admin),
+):
+    """审计日志列表（管理面关键变更留痕，时间倒序）"""
+    from crud.audit_log import list_audit_logs as _list
+
+    entries, _total = _list(session, search=search, limit=limit, offset=offset)
+    return [
+        AuditLogResponse(
+            id=e.id,
+            actor_username=e.actor_username,
+            action=e.action,
+            target=e.target,
+            detail=e.detail,
+            created_at=e.created_at,
+        )
+        for e in entries
+    ]

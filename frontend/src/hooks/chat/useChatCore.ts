@@ -188,7 +188,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   const sendMessageCore = useCallback(async (
     content?: string,
     overrideAgentId?: string,
-    images?: string[]
+    images?: string[],
+    documents?: { name: string; content_base64: string }[]
   ) => {
     // Deduplication: prevent duplicate submissions
     if (isGenerating) {
@@ -291,7 +292,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         actualThreadId,
         abortControllerRef.current.signal,
         assistantMessageId,
-        images
+        images,
+        documents
       )
 
       const initialThreadId = useChatStore.getState().currentConversationId

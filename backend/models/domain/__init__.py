@@ -11,6 +11,7 @@
 
 from models.domain.agent_run import AgentRun
 from models.domain.artifact import Artifact
+from models.domain.audit_log import AuditLog
 from models.domain.custom_agent import CustomAgent
 from models.domain.execution_plan import ExecutionPlan
 from models.domain.message import Message
@@ -37,6 +38,7 @@ __all__ = [
     "ExecutionPlan",
     "SubTask",
     "Artifact",
+    "AuditLog",
     "SystemExpert",
     "SystemSetting",
 ]
