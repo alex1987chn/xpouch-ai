@@ -63,6 +63,9 @@ export const zh = {
   modelsLoading: '正在加载模型列表...',
   modelsLoadFailed: '模型列表加载失败，请稍后重试',
   openSource: '开源仓库',
+  navAbout: '关于',
+  versionLabel: '当前版本',
+  aboutHint: 'XPouch 是一个开源自托管的多用户 AI 工作台——对话、复杂任务与产物管理，数据完全属于你自己。',
 }
 
 export const en = {
@@ -128,6 +131,9 @@ export const en = {
   modelsLoading: 'Loading model list...',
   modelsLoadFailed: 'Failed to load model list, please retry later',
   openSource: 'Open Source',
+  navAbout: 'About',
+  versionLabel: 'Version',
+  aboutHint: 'XPouch is an open-source, self-hosted multi-user AI workbench — chat, complex tasks and artifact management, with data that stays yours.',
 }
 
 export const ja = {
@@ -193,4 +199,7 @@ export const ja = {
   modelsLoading: 'モデルリストを読み込み中...',
   modelsLoadFailed: 'モデルリストの取得に失敗しました。後でもう一度お試しください',
   openSource: 'オープンソース',
+  navAbout: '情報',
+  versionLabel: 'バージョン',
+  aboutHint: 'XPouch はオープンソースのセルフホスト型マルチユーザー AI ワークベンチです。チャット、複雑なタスク、成果物管理——データはあなたのもの。',
 }
