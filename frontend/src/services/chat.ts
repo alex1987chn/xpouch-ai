@@ -484,25 +484,8 @@ export async function sendMessage(
 
   const url = buildUrl('/chat')
 
-  if (!onChunk) {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({
-        message: messageContent,
-        images: images ?? [],
-        documents: documents ?? [],
-        history: history.map(m => ({ role: m.role, content: m.content })),
-        agent_id: agentId,
-        thread_id: threadId,
-        stream: false,
-        message_id: assistantMessageId,  // v3.0: 传递助手消息 ID
-      }),
-      signal: abortSignal
-    })
-    const result = await handleResponse<unknown>(response, '发送消息失败')
-    return typeof result === 'string' ? result : JSON.stringify(result)
-  }
+  // 非流式分支已删：全站唯一调用链恒传 onChunk（流式是产品语义），
+  // 后端 sync 端点保留为公开 API 语义（stream=false 可用）。
 
   return runSSEStream({
     url,

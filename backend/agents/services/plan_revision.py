@@ -11,7 +11,6 @@ HITL 计划修订服务（v4 循环核心，方案 A）
 """
 
 import asyncio
-import os
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
@@ -19,6 +18,7 @@ from pydantic import ValidationError
 
 from agents.nodes.commander import ExecutionPlan as PlanSchema
 from agents.nodes.commander import _extract_json_string
+from config import settings
 from constants import COMMANDER_SYSTEM_PROMPT
 from providers_config import get_model_config
 from utils.logger import logger
@@ -53,14 +53,14 @@ def _load_commander_config() -> tuple[str, str, float]:
         if expert:
             return (
                 expert.system_prompt,
-                expert.model or os.getenv("MODEL_NAME", "deepseek-flash"),
+                expert.model or settings.model_name,
                 float(expert.temperature if expert.temperature is not None else 0.5),
             )
     except Exception as exc:  # noqa: BLE001 — 配置读取失败必须兜底到常量
         logger.warning(f"[PLAN_REVISION] commander 配置读取失败，使用常量兜底: {exc}")
     return (
         COMMANDER_SYSTEM_PROMPT,
-        os.getenv("MODEL_NAME", "deepseek-flash"),
+        settings.model_name,
         0.5,
     )
 

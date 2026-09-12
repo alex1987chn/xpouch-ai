@@ -15,9 +15,10 @@
 import contextvars
 import json as _json
 import logging
-import os
 import sys
 import uuid
+
+from config import settings
 
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
 run_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("run_id", default="-")
@@ -70,8 +71,8 @@ def setup_logging() -> None:
     if getattr(root, "_xpouch_logging_configured", False):
         return
 
-    level = os.getenv("LOG_LEVEL", "INFO").upper()
-    log_format = os.getenv("LOG_FORMAT", "text").lower()
+    level = settings.log_level.upper()
+    log_format = settings.log_format.lower()
 
     handler = logging.StreamHandler(sys.stdout)
     handler.addFilter(_ContextFilter())

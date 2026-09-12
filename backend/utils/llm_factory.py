@@ -10,13 +10,13 @@ P1 优化:
 """
 
 import logging
-import os
 import threading
 from collections import OrderedDict
 
 import httpx
 from langchain_openai import ChatOpenAI
 
+from config import settings
 from providers_config import (
     get_best_router_provider,
     get_provider_api_key,
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 def get_default_model() -> str:
     """获取默认模型"""
-    return os.getenv("MODEL_NAME", "deepseek-flash")
+    return settings.model_name
 
 
 def get_effective_model(configured_model: str | None) -> str:
@@ -49,7 +49,7 @@ def get_effective_model(configured_model: str | None) -> str:
     default_model = get_default_model()
 
     # 强制兜底模式
-    if os.getenv("FORCE_MODEL_FALLBACK", "").lower() == "true":
+    if settings.force_model_fallback:
         custom_logger.info(f"[ModelFallback] 强制兜底模式，使用 '{default_model}'")
         return default_model
 
@@ -78,7 +78,7 @@ def get_effective_model(configured_model: str | None) -> str:
         return configured_model
 
     # 允许 OpenAI 模型
-    if os.getenv("ALLOW_OPENAI_MODELS", "").lower() == "true":
+    if settings.allow_openai_models:
         return configured_model
 
     # 兜底到默认模型

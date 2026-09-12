@@ -55,7 +55,6 @@ v3.7 优化: P0 修复 + TTLCache 本地内存缓存高频查询
 
 import asyncio  # 🔥 用于异步保存专家执行结果
 import json
-import os
 import re
 from typing import Any
 
@@ -68,6 +67,7 @@ from agents.services.expert_manager import get_expert_config_cached
 from agents.services.expert_repository import register_expert_cache
 from agents.state_patch import replace_task_item
 from agents.tool_policy import filter_tools_for_binding
+from config import settings
 from models.enums import GraphTaskStatus
 from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
@@ -429,7 +429,7 @@ async def generic_worker_node(
             # 🔥 新增：为所有专家绑定工具（联网搜索、时间、计算器）
             # 如果 LLM 支持工具调用，则绑定工具集
             # 🔥 环境变量控制：ENABLE_TOOL_CALLING=false 可禁用工具调用（平滑升级兼容）
-            enable_tools = os.getenv("ENABLE_TOOL_CALLING", "true").lower() == "true"
+            enable_tools = settings.enable_tool_calling
             if enable_tools:
                 try:
                     # 🔥 MCP: 从 config 获取动态注入的工具
@@ -447,7 +447,7 @@ async def generic_worker_node(
                     )
 
                     # 🔥 警告：如果 MCP 工具为空但预期应该有
-                    if not mcp_tools and os.getenv("MCP_SERVERS"):
+                    if not mcp_tools and settings.mcp_servers:
                         logger.warning("[GenericWorker] ⚠️ MCP 工具为空！请检查 MCP 服务器连接")
 
                     llm_to_use = llm_with_config.bind_tools(bindable_tools)

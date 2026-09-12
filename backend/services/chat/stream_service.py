@@ -393,7 +393,11 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         agent_run: AgentRun,
         user_message: str,
     ) -> dict:
-        """LangGraph 非流式处理（内部使用流式）"""
+        """LangGraph 非流式处理（内部使用流式）。
+
+        拍板（2026-09-13）：sync 路径保留为公开 API 语义（stream=false 可用，
+        供脚本/集成调用）；产品前端恒走流式，不在此路径上叠加新功能。
+        """
         # 非流式也使用流式获取，但返回完整结果
         full_response = ""
 

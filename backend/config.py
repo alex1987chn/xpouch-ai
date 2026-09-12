@@ -98,6 +98,15 @@ class Settings(BaseSettings):
     run_deadline_seconds: int = Field(default=900, alias="RUN_DEADLINE_SECONDS")
     run_max_graph_loops: int = Field(default=50, alias="RUN_MAX_GRAPH_LOOPS")
 
+    # 模型与工具（原散落 os.getenv 的外飞地收编，语义与默认值保持不变）
+    model_name: str = Field(default="deepseek-flash", alias="MODEL_NAME")
+    enable_tool_calling: bool = Field(default=True, alias="ENABLE_TOOL_CALLING")
+    mcp_servers: str | None = Field(default=None, alias="MCP_SERVERS")
+    force_model_fallback: bool = Field(default=False, alias="FORCE_MODEL_FALLBACK")
+    allow_openai_models: bool = Field(default=False, alias="ALLOW_OPENAI_MODELS")
+    log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    log_format: str = Field(default="text", alias="LOG_FORMAT")
+
     # 安全限制
     max_upload_size_mb: int = Field(default=10, alias="MAX_UPLOAD_SIZE_MB")
     request_timeout_seconds: int = Field(default=120, alias="REQUEST_TIMEOUT_SECONDS")

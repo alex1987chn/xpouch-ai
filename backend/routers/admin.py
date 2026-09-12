@@ -22,6 +22,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from agents.services.expert_manager import refresh_cache
+from config import settings
 from crud.audit_log import record_audit
 from database import get_session
 from dependencies import require_role
@@ -72,9 +73,7 @@ class ExpertUpdate(BaseModel):
     description: str | None = PydanticField(
         default=None, description="专家能力描述，用于 Planner 决定任务分配"
     )
-    model: str = PydanticField(
-        default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-flash"), description="模型名称"
-    )
+    model: str = PydanticField(default_factory=lambda: settings.model_name, description="模型名称")
     temperature: float = PydanticField(
         default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）"
     )
@@ -97,9 +96,7 @@ class ExpertCreate(BaseModel):
         default=None, description="专家能力描述，用于 Planner 决定任务分配"
     )
     system_prompt: str = PydanticField(..., min_length=10, description="系统提示词（至少10个字符）")
-    model: str = PydanticField(
-        default_factory=lambda: os.getenv("MODEL_NAME", "deepseek-flash"), description="模型名称"
-    )
+    model: str = PydanticField(default_factory=lambda: settings.model_name, description="模型名称")
     temperature: float = PydanticField(
         default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）"
     )

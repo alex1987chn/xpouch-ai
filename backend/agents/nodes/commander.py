@@ -43,7 +43,6 @@ CommanderOutput:
 
 import asyncio
 import logging
-import os
 from typing import Any
 
 from cachetools import TTLCache
@@ -62,6 +61,7 @@ from tenacity import (
 from agents.event_stream import emit_event
 from agents.services.expert_repository import register_expert_cache
 from agents.state import AgentState
+from config import settings
 from constants import COMMANDER_SYSTEM_PROMPT
 from database import engine
 from utils.json_parser import parse_llm_json
@@ -237,7 +237,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
         if not commander_config:
             # 回退：使用常量中的 Prompt 和硬编码的模型
             system_prompt = COMMANDER_SYSTEM_PROMPT
-            model = os.getenv("MODEL_NAME", "deepseek-flash")
+            model = settings.model_name
             temperature = 0.5
             logger.info(f"[COMMANDER] 使用默认回退配置: model={model}")
         else:
