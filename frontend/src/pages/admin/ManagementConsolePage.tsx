@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Bot, ShieldCheck, FileCode, Cpu, Activity, Plug } from 'lucide-react'
+import { Bot, ShieldCheck, FileCode, Cpu, Activity, Plug, Users } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useUserStore } from '@/store/userStore'
 import { SearchInput } from '@/components/ui/input'
@@ -25,9 +25,10 @@ import ExpertAdminPage from './ExpertAdminPage'
 import ToolGovernancePanel from '../library/ToolGovernancePanel'
 import { ModelSection } from '@/components/settings/sections/ModelSection'
 import SkillTemplatePanel from '../library/SkillTemplatePanel'
+import UserAdminPanel from './UserAdminPanel'
 import { MCPList } from '../library/MCPList'
 
-type ConsoleTab = 'system' | 'experts' | 'governance' | 'templates' | 'mcp' | 'model'
+type ConsoleTab = 'system' | 'experts' | 'governance' | 'templates' | 'mcp' | 'model' | 'users'
 
 export default function ManagementConsolePage() {
  const { t } = useTranslation()
@@ -40,13 +41,14 @@ export default function ManagementConsolePage() {
  // 侧边栏子项深链（/admin/console?tab=xxx）同步到分区
  useEffect(() => {
   const paramTab = searchParams.get('tab') as ConsoleTab | null
-  if (paramTab && ['system', 'experts', 'governance', 'templates', 'mcp', 'model'].includes(paramTab)) {
+  if (paramTab && ['system', 'experts', 'governance', 'templates', 'mcp', 'model', 'users'].includes(paramTab)) {
    setTab(paramTab)
   }
  }, [searchParams])
  const [governanceQuery, setGovernanceQuery] = useState('')
  const [mcpQuery, setMcpQuery] = useState('')
  const [templateQuery, setTemplateQuery] = useState('')
+ const [usersQuery, setUsersQuery] = useState('')
 
  // 权限锁定态（可见但锁）
  if (!isAdmin) {
@@ -66,6 +68,7 @@ export default function ManagementConsolePage() {
   { key: 'governance', label: t('toolGovernance'), icon: ShieldCheck },
   { key: 'templates', label: t('templateManagement'), icon: FileCode },
   { key: 'mcp', label: t('mcpManagement'), icon: Plug },
+  { key: 'users', label: t('userManagement'), icon: Users },
  ]
 
  // 分区级搜索（仅列表型分区）：住在标题行右槽
@@ -73,6 +76,7 @@ export default function ManagementConsolePage() {
   governance: { value: governanceQuery, set: setGovernanceQuery, placeholder: t('searchTools') },
   templates: { value: templateQuery, set: setTemplateQuery, placeholder: t('searchTemplates') },
   mcp: { value: mcpQuery, set: setMcpQuery, placeholder: t('searchMCPServers') },
+  users: { value: usersQuery, set: setUsersQuery, placeholder: t('searchUsers') },
  }
  const search = sectionSearch[tab]
  const activeLabel = tabs.find(item => item.key === tab)?.label ?? t('navConsole')
@@ -83,7 +87,7 @@ export default function ManagementConsolePage() {
    active={tab}
    onSelect={key => setTab(key as ConsoleTab)}
   >
-   <div className="mx-auto max-w-[1080px]">
+   <div className="mx-auto max-w-6xl">
     <SubPageHeader
      title={activeLabel}
      right={
@@ -107,6 +111,7 @@ export default function ManagementConsolePage() {
      {tab === 'governance' && <ToolGovernancePanel searchQuery={governanceQuery} canView canEdit />}
      {tab === 'templates' && <SkillTemplatePanel searchQuery={templateQuery} canEdit />}
      {tab === 'mcp' && <MCPList searchQuery={mcpQuery} isAdmin />}
+     {tab === 'users' && <UserAdminPanel searchQuery={usersQuery} />}
     </div>
    </div>
   </SubPageLayout>

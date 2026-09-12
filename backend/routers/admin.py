@@ -9,6 +9,9 @@
 """
 
 import os
+import secrets
+from datetime import datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
@@ -20,9 +23,12 @@ from sqlmodel import Session, select
 from agents.services.expert_manager import refresh_cache
 from database import get_session
 from dependencies import require_role
-from models import SystemExpert, User, UserRole
+from models import Artifact, SystemExpert, Thread, User, UserRole
+from services.chat.thread_service import ChatThreadService
+from utils.jwt_handler import hash_password
 from utils.logger import logger
 from utils.time import utc_now_naive
+from utils.verification import mask_phone_number
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -733,3 +739,243 @@ async def update_daily_token_quota(
     quota = save_daily_token_quota(session, request.daily_token_quota)
     logger.info(f"[Admin] 每用户日 token 配额更新为: {quota or '不限量'}")
     return {"user_daily_token_quota": quota}
+
+
+# ============================================================================
+# 用户管理（v3.5 用户管理面板）
+# ============================================================================
+
+
+def _mask_phone(phone: str | None) -> str | None:
+    """服务端脱敏：列表响应永不携带完整手机号。"""
+    if not phone:
+        return None
+    try:
+        return mask_phone_number(phone)
+    except Exception:
+        return phone[:3] + "****" + phone[-4:] if len(phone) >= 8 else "****"
+
+
+def _generate_random_password(length: int = 12) -> str:
+    """系统随机密码：12 位无歧义字符集（去 0O1lI），三类字符各至少一位。"""
+    alphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    while True:
+        password = "".join(secrets.choice(alphabet) for _ in range(length))
+        if (
+            any(c.islower() for c in password)
+            and any(c.isupper() for c in password)
+            and any(c.isdigit() for c in password)
+        ):
+            return password
+
+
+class AdminUserResponse(BaseModel):
+    """用户管理列表项（手机号只回脱敏值）"""
+
+    id: str
+    username: str
+    email: str | None = None
+    phone_masked: str | None = None
+    has_phone: bool = False
+    avatar: str | None = None
+    role: str
+    plan: str
+    created_at: datetime | None = None
+    last_login_at: datetime | None = None
+
+
+class AdminUserUpdate(BaseModel):
+    """用户资料/角色编辑（全部可选，仅提交的字段生效）"""
+
+    username: str | None = PydanticField(default=None, min_length=1, max_length=50)
+    email: str | None = PydanticField(default=None, max_length=254)
+    phone_number: str | None = PydanticField(default=None, max_length=32)
+    role: UserRole | None = None
+
+
+class AdminResetPasswordRequest(BaseModel):
+    """重置密码：custom=管理员指定，random=系统生成（仅响应里返回一次）"""
+
+    mode: Literal["custom", "random"] = "random"
+    password: str | None = PydanticField(default=None, min_length=8, max_length=64)
+
+
+def _user_to_dto(user: User) -> AdminUserResponse:
+    return AdminUserResponse(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        phone_masked=_mask_phone(user.phone_number),
+        has_phone=bool(user.phone_number),
+        avatar=user.avatar,
+        role=str(user.role) if user.role else "user",
+        plan=user.plan,
+        created_at=user.created_at,
+        last_login_at=user.last_login_at,
+    )
+
+
+@router.get("/users", response_model=list[AdminUserResponse])
+async def list_users(
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_admin),
+):
+    """全实例用户列表（按注册时间正序；手机号仅脱敏值）"""
+    users = session.exec(select(User).order_by(User.created_at)).all()
+    return [_user_to_dto(u) for u in users]
+
+
+@router.get("/users/{user_id}/phone")
+async def get_user_phone(
+    user_id: str,
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_admin),
+):
+    """查看完整手机号（按需揭示，admin only）"""
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+    if not user.phone_number:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="该用户未绑定手机号")
+    return {"phone_number": user.phone_number}
+
+
+@router.patch("/users/{user_id}", response_model=AdminUserResponse)
+async def update_user(
+    user_id: str,
+    request: AdminUserUpdate,
+    session: Session = Depends(get_session),
+    current_admin: User = Depends(get_current_admin),
+):
+    """编辑用户资料与角色。
+
+    保护：不能修改自己的角色（防最后一个管理员自锁）。
+    邮箱/手机号唯一性冲突返回 409。
+    """
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    if request.role is not None:
+        if user.id == current_admin.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="不能修改自己的角色"
+            )
+        user.role = request.role
+
+    if request.username is not None:
+        user.username = request.username.strip()
+
+    if request.email is not None:
+        email = request.email.strip() or None
+        if email:
+            duplicate = session.exec(
+                select(User).where(User.email == email, User.id != user_id)
+            ).first()
+            if duplicate:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT, detail="邮箱已被其他账号使用"
+                )
+        user.email = email
+
+    if request.phone_number is not None:
+        phone = request.phone_number.strip() or None
+        if phone:
+            duplicate = session.exec(
+                select(User).where(User.phone_number == phone, User.id != user_id)
+            ).first()
+            if duplicate:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT, detail="手机号已被其他账号使用"
+                )
+        user.phone_number = phone
+
+    user.updated_at = utc_now_naive()
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    logger.info(f"[Admin] 用户 {user_id} 资料已更新")
+    return _user_to_dto(user)
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    session: Session = Depends(get_session),
+    current_admin: User = Depends(get_current_admin),
+):
+    """删除用户及其会话数据（会话清理复用既有 delete_thread 链路）。
+
+    保护：不能删除当前登录的账号。产物表 thread_id 无外键约束，
+    删用户后按其会话 ID 集合显式清理，避免画廊残留孤儿产物。
+    """
+    if user_id == current_admin.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="不能删除当前登录的账号"
+        )
+
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    threads = session.exec(select(Thread).where(Thread.user_id == user_id)).all()
+    thread_ids = [t.id for t in threads]
+
+    thread_service = ChatThreadService(session)
+    for thread in threads:
+        await thread_service.delete_thread(thread.id, user_id)
+
+    # 孤儿产物清理（artifact.thread_id 仅是索引，无 FK 级联）
+    if thread_ids:
+        artifacts = session.exec(select(Artifact).where(Artifact.thread_id.in_(thread_ids))).all()
+        for artifact in artifacts:
+            session.delete(artifact)
+
+    # custom_agents 走 ORM 级联（all, delete-orphan）
+    session.delete(user)
+    session.commit()
+    logger.info(f"[Admin] 用户 {user_id} 已删除（含 {len(thread_ids)} 个会话）")
+    return {"message": "用户已删除", "deleted_threads": len(thread_ids)}
+
+
+@router.post("/users/{user_id}/reset-password")
+async def admin_reset_password(
+    user_id: str,
+    request: AdminResetPasswordRequest,
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_admin),
+):
+    """管理员重置密码。
+
+    - custom：管理员指定密码（≥8 位）
+    - random：系统生成，仅在本次响应里返回一次（不落明文、不发短信）
+
+    交付约定：不通过短信发送明文密码（运营商/终端留痕是安全反模式），
+    由管理员通过可信渠道一次性交付给用户。
+    """
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    if request.mode == "custom":
+        if not request.password or len(request.password) < 8:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="自定义密码至少 8 位"
+            )
+        new_password = request.password
+        generated = False
+    else:
+        new_password = _generate_random_password()
+        generated = True
+
+    user.password_hash = hash_password(new_password)
+    user.updated_at = utc_now_naive()
+    session.add(user)
+    session.commit()
+    logger.info(f"[Admin] 用户 {user_id} 密码已重置（mode={request.mode}）")
+
+    result: dict = {"message": "密码已重置", "generated": generated}
+    if generated:
+        # 随机密码仅此一次返回，服务端不留明文
+        result["password"] = new_password
+    return result

@@ -82,6 +82,7 @@ async def login_with_password(
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
     user.is_verified = True
+    user.last_login_at = utc_now_naive()
     user.access_token = hash_secret(access_token)
     user.refresh_token = hash_secret(refresh_token)
     user.token_expires_at = utc_now_naive() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)

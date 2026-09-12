@@ -465,3 +465,90 @@ export async function importSkillTemplate(
   )
   return handleResponse<TemplateImportResponse>(response, '导入模板失败')
 }
+
+// ============================================================================
+// 用户管理（v3.5）
+// ============================================================================
+
+export interface AdminUser {
+  id: string
+  username: string
+  email: string | null
+  phone_masked: string | null
+  has_phone: boolean
+  avatar: string | null
+  role: string
+  plan: string
+  created_at: string | null
+  last_login_at: string | null
+}
+
+export interface AdminUserUpdateRequest {
+  username?: string
+  email?: string | null
+  phone_number?: string | null
+  role?: 'admin' | 'user'
+}
+
+export interface AdminResetPasswordRequest {
+  mode: 'custom' | 'random'
+  password?: string
+}
+
+export interface AdminResetPasswordResponse {
+  message: string
+  generated: boolean
+  /** 随机模式下仅此一次返回明文 */
+  password?: string
+}
+
+export async function listAdminUsers(): Promise<AdminUser[]> {
+  const response = await authenticatedFetch(buildUrl('/admin/users'), {
+    method: 'GET',
+    headers: getHeaders(),
+  })
+  return handleResponse<AdminUser[]>(response, '获取用户列表失败')
+}
+
+export async function revealUserPhone(userId: string): Promise<string> {
+  const response = await authenticatedFetch(buildUrl(`/admin/users/${userId}/phone`), {
+    method: 'GET',
+    headers: getHeaders(),
+  })
+  const data = await handleResponse<{ phone_number: string }>(response, '获取手机号失败')
+  return data.phone_number
+}
+
+export async function updateAdminUser(
+  userId: string,
+  request: AdminUserUpdateRequest
+): Promise<AdminUser> {
+  const response = await authenticatedFetch(buildUrl(`/admin/users/${userId}`), {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify(request),
+  })
+  return handleResponse<AdminUser>(response, '更新用户失败')
+}
+
+export async function deleteAdminUser(
+  userId: string
+): Promise<{ message: string; deleted_threads: number }> {
+  const response = await authenticatedFetch(buildUrl(`/admin/users/${userId}`), {
+    method: 'DELETE',
+    headers: getHeaders(),
+  })
+  return handleResponse<{ message: string; deleted_threads: number }>(response, '删除用户失败')
+}
+
+export async function resetAdminUserPassword(
+  userId: string,
+  request: AdminResetPasswordRequest
+): Promise<AdminResetPasswordResponse> {
+  const response = await authenticatedFetch(buildUrl(`/admin/users/${userId}/reset-password`), {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(request),
+  })
+  return handleResponse<AdminResetPasswordResponse>(response, '重置密码失败')
+}

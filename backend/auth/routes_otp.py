@@ -191,6 +191,7 @@ async def verify_code_and_login(
 
     # 更新用户信息
     user.is_verified = True
+    user.last_login_at = utc_now_naive()
     user.access_token = hash_secret(access_token)
     user.refresh_token = hash_secret(refresh_token)
     user.token_expires_at = utc_now_naive() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)

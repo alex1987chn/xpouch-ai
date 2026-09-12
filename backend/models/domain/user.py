@@ -59,6 +59,8 @@ class User(SQLModel, table=True):
         default_factory=datetime.now,
         sa_column_kwargs={"onupdate": func.now()},
     )
+    # 最近一次登录时间（OTP/密码登录成功时写入；迁移 20260912_000100）
+    last_login_at: datetime | None = None
 
     # 关联关系（使用字符串避免循环导入）
     threads: list["Thread"] = Relationship(back_populates="user")  # noqa: F821

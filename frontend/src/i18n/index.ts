@@ -59,6 +59,16 @@ export type TranslationKey =
   | 'artifactHtmlTruncated'
   | 'videoLoading' | 'videoLoadFailed' | 'imageLoading' | 'imageLoadFailed'
   | 'mediaLinkInvalid' | 'artifactSchemaHintPlaceholder'
+  // 用户管理
+  | 'searchUsers' | 'colUser' | 'colPhone' | 'colEmail' | 'colUuid'
+  | 'colCreatedAt' | 'colLastLogin' | 'colRole' | 'colActions' | 'userCount' | 'userNoMatch'
+  | 'selfTag' | 'revealPhone' | 'maskPhone' | 'revealPhoneFailed' | 'userNameLabel' | 'emailLabel'
+  | 'emailPlaceholder' | 'phoneLabel' | 'userRoleLabel' | 'roleAdmin' | 'roleUser'
+  | 'selfRoleLockedHint' | 'selfDeleteLockedHint' | 'resetPasswordLabel' | 'resetModeRandom'
+  | 'resetModeCustom' | 'resetCustomPlaceholder' | 'resetApply' | 'resetGenerate'
+  | 'resetModeHint' | 'resetDeliverHint' | 'resetPasswordTooShort' | 'resetPasswordOk'
+  | 'resetPasswordFailed' | 'userSaved' | 'userSaveFailed' | 'userDeleted' | 'userDeleteFailed'
+  | 'userDeleteTitle' | 'userDeleteWarning' | 'deleting'
   // 登录弹窗
   | 'phoneNumberPlaceholder' | 'autoRegisterHint' | 'codePlaceholder' | 'codeSentTo' | 'changePhone'
   // UID 复制
