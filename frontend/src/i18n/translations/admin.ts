@@ -2,7 +2,6 @@
 
 export const zh: Record<string, string> = {
   // 用户管理（v3.5）
-  userManagement: '用户管理',
   searchUsers: '搜索用户 / 手机号 / 邮箱…',
   colUser: '用户',
   colPhone: '手机号',
@@ -149,7 +148,6 @@ export const zh: Record<string, string> = {
 
 export const en: Record<string, string> = {
   // 用户管理（v3.5）
-  userManagement: 'Users',
   searchUsers: 'Search users / phone / email…',
   colUser: 'User',
   colPhone: 'Phone',
@@ -296,7 +294,6 @@ export const en: Record<string, string> = {
 
 export const ja: Record<string, string> = {
   // ユーザー管理（v3.5）
-  userManagement: 'ユーザー管理',
   searchUsers: 'ユーザー / 電話 / メールを検索…',
   colUser: 'ユーザー',
   colPhone: '電話番号',
