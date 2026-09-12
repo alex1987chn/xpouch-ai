@@ -12,7 +12,7 @@
  * - router/hooks/* : 业务逻辑 Hooks
  *
  * [v3.4.7 cutover] 对话即桌面：全局唯一壳 WorkbenchLayout，
- * '/' 即工作台；旧 AppLayout（六项导航/双会话列表）与
+ * '/' 即工作台；改版前的旧壳（六项导航/双会话列表）与
  * /chat /history /artifacts /create-agent /edit-agent 路由退役。
  */
 
@@ -98,13 +98,4 @@ export const router = createBrowserRouter([
 export { AppProviders } from './providers'
 
 // 导出 Hooks 供外部使用
-export {
-  useRequireAuth,
-  useCreateAgent,
-  useEditAgent
-} from './hooks'
-
-export type {
-  AgentFormData,
-  AgentEditData
-} from './hooks'
+export { useRequireAuth } from './hooks'

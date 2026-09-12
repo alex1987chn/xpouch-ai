@@ -3,30 +3,18 @@
 export const zh = {
   // Navigation
   newChat: '新会话',
-  draftSaved: '草稿已保存',
-  draftRestored: '已恢复未发送的消息',
   history: '会话记录',
   knowledgeBase: '知识库',
   library: '资源工坊',
-  workshop: '工坊',
   settings: '设置',
-  home: '首页',
-  recentChats: '最近会话',
   navDashboard: '首页',
   navExperts: '专家管理',
   navConsole: '系统管理',
-  managementConsole: '管理控制台',
   systemStatusLockedDesc: '管理控制台仅对管理员开放，包含系统状态、专家与模型、工具治理等实例级管理功能',
-  userManagementComingSoon: '用户管理 · 敬请期待',
   navStats: '运行统计',
-  workspace: '工作台',
-  navChat: '对话',
-  memoryDump: '最近会话',
-  noDataStream: '[无数据]',
 
   // Error
   error: '错误',
-  operationFailed: '操作失败',
 
   // Common
   save: '保存',
@@ -34,25 +22,15 @@ export const zh = {
   delete: '删除',
   edit: '编辑',
   confirmDelete: '确认',
-  noHistory: '暂无历史记录',
-  startChat: '开始一个新的聊天',
-  totalHistory: '条历史记录',
   totalItems: '项内容',
-  matchingHistory: '条匹配的历史记录',
-  matchingItems: '项匹配的内容',
-  searchHistory: '搜索历史记录...',
   noMatchingHistory: '未找到匹配的历史记录',
   tryOtherKeywords: '尝试其他关键词',
 
   // Create Agent
   create: '创建',
-  agentName: '智能体名称',
-  agentNamePlaceholder: '例如：编程助手',
   description: '描述',
-  descriptionPlaceholder: '简要描述这个智能体的功能...',
   systemPrompt: '系统提示词',
   systemPromptPlaceholder: '你是一个专业的助手，擅长...',
-  systemPromptHint: '定义智能体应该如何行为和响应',
   required: '必填',
 
   // User Menu
@@ -78,8 +56,6 @@ export const zh = {
   deleting: '删除中...',
   
   // Cancel Dialog
-  confirmCancelTitle: '确认取消',
-  confirmCancelDescription: '确定要取消执行吗？这会清理所有计划状态。',
 
   // Common states
   success: '成功',
@@ -89,8 +65,6 @@ export const zh = {
   serverErrorFallback: '请求处理失败，请重试',
 
   // StatsPage
-  globalStats: '全局统计',
-  myStats: '我的统计',
   totalRuns: '总运行数',
   successRate: '成功率',
   hitlCount: '待审核',
@@ -104,29 +78,17 @@ export const zh = {
   runList: '运行记录',
   prev: '上一页',
   next: '下一页',
-  viewDetails: '查看详情',
   loadFailed: '加载失败',
 
   // 权限与通用提示
   permissionDenied: '权限不足',
   adminOnly: '该功能仅限管理员使用',
-  readOnly: '只读',
-  loginSuccess: '登录成功',
   welcomeBack: '欢迎回来',
   verifyIdentity: '验证身份',
   sendCode: '发送验证码',
-  sending: '发送中...',
   canceling: '取消中...',
-  confirmCancel: '确定取消',
-  justNow: '刚刚',
-  secondsAgo: '秒前',
   general: '综合',
-  expandSidebar: '展开侧边栏',
-  collapseSidebar: '收起侧边栏',
   login: '登录',
-  usageLabel: 'Token 用量',
-  usageToday: '今日',
-  usageTotal: '累计',
   loginTabOtp: '验证码登录',
   passwordLoginTab: '密码登录',
   identifierLabel: '手机号 / 邮箱',
@@ -137,8 +99,6 @@ export const zh = {
   passwordSetup: '密码设置',
   oldPasswordPlaceholder: '当前密码',
   newPasswordPlaceholder: '新密码（至少 8 位）',
-  passwordSetupHint: '设置后可使用手机号/邮箱 + 密码登录',
-  passwordSaveLabel: '保存密码',
   passwordMinLength: '密码至少 8 位',
   oldPasswordRequired: '请输入当前密码',
   passwordSaved: '密码已保存',
@@ -159,7 +119,6 @@ export const zh = {
   menu: '菜单',
   image: '图片',
   attachment: '附件',
-  webSearch: '网络搜索',
   artifactChartGenerating: '图表生成中...',
   artifactMermaidGenerating: '流程图生成中...',
   artifactDataError: '图表数据格式错误',
@@ -175,8 +134,6 @@ export const zh = {
   codePlaceholder: '6位验证码',
   codeSentTo: '验证码已发送至 {phone}',
   changePhone: '修改手机号',
-  uidCopied: '已复制',
-  clickToCopyUid: '点击复制 UID',
   source: '源码',
   mediaFile: '媒体文件',
   resend: '重新发送',
@@ -192,58 +149,32 @@ export const zh = {
   imageSizeExceeded: '图片大小不能超过 2MB',
   imageProcessFailed: '图片处理失败，请重试',
   saveFailedLater: '保存失败，请稍后重试',
-  updateFailedLater: '更新失败，请稍后重试',
 
   // 语言选择
-  langZh: '中',
-  langEn: 'EN',
-  langJa: '日',
 
   // 默认助手
-  defaultAgentDescription: '日常对话、通用任务、智能问答',
 
   // 登录后消息重发
-  sendingPendingMessage: '正在发送刚才的消息...',
 
   // 批量删除
   select: '选择',
-  selectAll: '全选',
-  deselectAll: '取消全选',
-  selectedCount: '已选择 {count} 项',
-  batchDelete: '批量删除',
-  batchDeleteConfirm: '确定要删除 {count} 条会话记录吗？此操作无法撤销。',
-  moreAvailable: '更多',
-  loadMore: '滚动加载更多',
-  noMoreRecords: '没有更多记录了',
 }
 
 export const en = {
   // Navigation
   newChat: 'New Chat',
-  draftSaved: 'Draft saved',
-  draftRestored: 'Restored unsent message',
   history: 'Conversations',
   knowledgeBase: 'Knowledge Base',
   library: 'Library',
-  workshop: 'Workshop',
   settings: 'Settings',
-  home: 'Home',
-  recentChats: 'Recent Chats',
   navDashboard: 'Dashboard',
   navExperts: 'Experts',
   navConsole: 'System',
-  managementConsole: 'Management Console',
   systemStatusLockedDesc: 'The management console is admin-only: system status, experts & models, tool governance and other instance-level settings',
-  userManagementComingSoon: 'User management · coming soon',
   navStats: 'Run Stats',
-  workspace: 'Workspace',
-  navChat: 'Chat',
-  memoryDump: 'Recent Chats',
-  noDataStream: '[NO DATA]',
 
   // Error
   error: 'Error',
-  operationFailed: 'Operation failed',
 
   // Common
   save: 'Save',
@@ -251,25 +182,15 @@ export const en = {
   delete: 'Delete',
   edit: 'Edit',
   confirmDelete: 'Are you sure you want to delete this conversation?',
-  noHistory: 'No conversation history',
-  startChat: 'Start a new chat to see it here',
-  totalHistory: 'history records',
   totalItems: 'total items',
-  matchingHistory: 'matching history',
-  matchingItems: 'matching items',
-  searchHistory: 'Search history...',
   noMatchingHistory: 'No matching history found',
   tryOtherKeywords: 'Try other keywords',
 
   // Create Agent
   create: 'Create',
-  agentName: 'Agent Name',
-  agentNamePlaceholder: 'e.g., Coding Assistant',
   description: 'Description',
-  descriptionPlaceholder: 'A brief description of what this agent does...',
   systemPrompt: 'System Prompt',
   systemPromptPlaceholder: 'You are a helpful assistant who specializes in...',
-  systemPromptHint: 'Define how agent should behave and respond',
   required: 'Required',
 
   // User Menu
@@ -295,8 +216,6 @@ export const en = {
   deleting: 'Deleting...',
   
   // Cancel Dialog
-  confirmCancelTitle: 'Confirm Cancel',
-  confirmCancelDescription: 'Are you sure you want to cancel? This will clear all plan states.',
 
   // Common states
   success: 'Success',
@@ -306,8 +225,6 @@ export const en = {
   serverErrorFallback: 'Request failed, please try again',
 
   // StatsPage
-  globalStats: 'Global Stats',
-  myStats: 'My Stats',
   totalRuns: 'Total Runs',
   successRate: 'Success Rate',
   hitlCount: 'Awaiting review',
@@ -321,29 +238,17 @@ export const en = {
   runList: 'Run History',
   prev: 'Prev',
   next: 'Next',
-  viewDetails: 'View Details',
   loadFailed: 'Load Failed',
 
   // 权限与通用提示
   permissionDenied: 'Permission Denied',
   adminOnly: 'This feature is for administrators only',
-  readOnly: 'Read Only',
-  loginSuccess: 'Login Successful',
   welcomeBack: 'Welcome Back',
   verifyIdentity: 'Verify Identity',
   sendCode: 'Send Code',
-  sending: 'SENDING...',
   canceling: 'Canceling...',
-  confirmCancel: 'Confirm Cancel',
-  justNow: 'just now',
-  secondsAgo: 'seconds ago',
   general: 'General',
-  expandSidebar: 'Expand Sidebar',
-  collapseSidebar: 'Collapse Sidebar',
   login: 'Login',
-  usageLabel: 'Token usage',
-  usageToday: 'Today',
-  usageTotal: 'Total',
   loginTabOtp: 'SMS Code',
   passwordLoginTab: 'Password',
   identifierLabel: 'PHONE / EMAIL',
@@ -354,8 +259,6 @@ export const en = {
   passwordSetup: 'Password',
   oldPasswordPlaceholder: 'Current password',
   newPasswordPlaceholder: 'New password (min 8 characters)',
-  passwordSetupHint: 'Once set, you can sign in with phone/email + password',
-  passwordSaveLabel: 'Save Password',
   passwordMinLength: 'Password must be at least 8 characters',
   newPasswordLabel: 'New Password',
   forgotPasswordLink: 'Forgot password?',
@@ -376,7 +279,6 @@ export const en = {
   menu: 'Menu',
   image: 'Image',
   attachment: 'Attachment',
-  webSearch: 'Web Search',
   artifactChartGenerating: 'Generating chart...',
   artifactMermaidGenerating: 'Generating diagram...',
   artifactDataError: 'Invalid chart data format',
@@ -392,8 +294,6 @@ export const en = {
   codePlaceholder: '6-digit code',
   codeSentTo: 'Code sent to {phone}',
   changePhone: 'Change number',
-  uidCopied: 'Copied',
-  clickToCopyUid: 'Click to copy UID',
   source: 'Source',
   mediaFile: 'Media File',
   resend: 'Resend',
@@ -409,58 +309,32 @@ export const en = {
   imageSizeExceeded: 'Image size cannot exceed 2MB',
   imageProcessFailed: 'Image processing failed, please try again',
   saveFailedLater: 'Save failed, please try again later',
-  updateFailedLater: 'Update failed, please try again later',
 
   // 语言选择
-  langZh: '中',
-  langEn: 'EN',
-  langJa: '日',
 
   // Default Agent
-  defaultAgentDescription: 'Daily conversations, general tasks, intelligent Q&A',
 
   // Post-login message retry
-  sendingPendingMessage: 'Sending your previous message...',
 
   // Batch delete
   select: 'Select',
-  selectAll: 'Select All',
-  deselectAll: 'Deselect All',
-  selectedCount: '{count} selected',
-  batchDelete: 'Batch Delete',
-  batchDeleteConfirm: 'Are you sure you want to delete {count} conversations? This action cannot be undone.',
-  moreAvailable: 'more',
-  loadMore: 'Scroll to load more',
-  noMoreRecords: 'No more records',
 }
 
 export const ja = {
   // Navigation
   newChat: '新しいチャット',
-  draftSaved: '下書きを保存しました',
-  draftRestored: '未送信のメッセージを復元しました',
   history: '会話記録',
   knowledgeBase: 'ナレッジベース',
   library: 'ライブラリ',
-  workshop: 'ワークショップ',
   settings: '設定',
-  home: 'ホーム',
-  recentChats: '最近のチャット',
   navDashboard: 'ダッシュボード',
   navExperts: 'エキスパート管理',
   navConsole: 'システム管理',
-  managementConsole: '管理コンソール',
   systemStatusLockedDesc: '管理コンソールは管理者専用です。システム状態、エキスパートとモデル、ツールガバナンスなどのインスタンス設定を含みます',
-  userManagementComingSoon: 'ユーザー管理 · 近日公開',
   navStats: '実行統計',
-  workspace: 'ワークスペース',
-  navChat: 'チャット',
-  memoryDump: '最近のチャット',
-  noDataStream: '[データなし]',
 
   // Error
   error: 'エラー',
-  operationFailed: '操作に失敗しました',
 
   // Common
   save: '保存',
@@ -468,25 +342,15 @@ export const ja = {
   delete: '削除',
   edit: '編集',
   confirmDelete: 'この会話を削除してもよろしいですか？',
-  noHistory: '履歴なし',
-  startChat: '新しいチャットを開始してここに表示します',
-  totalHistory: '件の履歴',
   totalItems: '件のアイテム',
-  matchingHistory: '件の一致する履歴',
-  matchingItems: '件の一致するアイテム',
-  searchHistory: '履歴を検索...',
   noMatchingHistory: '一致する履歴が見つかりません',
   tryOtherKeywords: '他のキーワードを試してください',
 
   // Create Agent
   create: '作成',
-  agentName: 'エージェント名',
-  agentNamePlaceholder: '例：プログラミングアシスタント',
   description: '説明',
-  descriptionPlaceholder: 'このエージェントの機能の簡単な説明...',
   systemPrompt: 'システムプロンプト',
   systemPromptPlaceholder: 'あなたは専門的なアシスタントで、...',
-  systemPromptHint: 'エージェントがどのように動作し、応答するかを定義',
   required: '必須',
 
   // User Menu
@@ -512,8 +376,6 @@ export const ja = {
   deleting: '削除中...',
   
   // Cancel Dialog
-  confirmCancelTitle: 'キャンセルの確認',
-  confirmCancelDescription: '実行をキャンセルしてもよろしいですか？すべての計画状態がクリアされます。',
 
   // Common states
   success: '成功',
@@ -523,8 +385,6 @@ export const ja = {
   serverErrorFallback: 'リクエストが失敗しました。もう一度お試しください',
 
   // StatsPage
-  globalStats: 'グローバル統計',
-  myStats: 'マイ統計',
   totalRuns: '総実行数',
   successRate: '成功率',
   hitlCount: '承認待ち',
@@ -538,29 +398,17 @@ export const ja = {
   runList: '実行履歴',
   prev: '前へ',
   next: '次へ',
-  viewDetails: '詳細を見る',
   loadFailed: '読み込み失敗',
 
   // 权限与通用提示
   permissionDenied: '権限がありません',
   adminOnly: 'この機能は管理者のみ使用可能です',
-  readOnly: '読み取り専用',
-  loginSuccess: 'ログイン成功',
   welcomeBack: 'おかえりなさい',
   verifyIdentity: '身分を証明',
   sendCode: '認証コードを送信',
-  sending: '送信中...',
   canceling: 'キャンセル中...',
-  confirmCancel: 'キャンセルを確定',
-  justNow: 'たった今',
-  secondsAgo: '秒前',
   general: '一般',
-  expandSidebar: 'サイドバーを展開',
-  collapseSidebar: 'サイドバーを折りたたむ',
   login: 'ログイン',
-  usageLabel: 'Token 使用量',
-  usageToday: '今日',
-  usageTotal: '累計',
   loginTabOtp: 'SMS認証',
   passwordLoginTab: 'パスワード',
   identifierLabel: '電話 / メール',
@@ -571,8 +419,6 @@ export const ja = {
   passwordSetup: 'パスワード設定',
   oldPasswordPlaceholder: '現在のパスワード',
   newPasswordPlaceholder: '新しいパスワード（8文字以上）',
-  passwordSetupHint: '設定すると電話番号/メール + パスワードでログインできます',
-  passwordSaveLabel: 'パスワードを保存',
   passwordMinLength: 'パスワードは8文字以上必要です',
   newPasswordLabel: '新しいパスワード',
   forgotPasswordLink: 'パスワードをお忘れですか？',
@@ -593,7 +439,6 @@ export const ja = {
   menu: 'メニュー',
   image: '画像',
   attachment: '添付ファイル',
-  webSearch: 'ウェブ検索',
   artifactChartGenerating: 'チャート生成中...',
   artifactMermaidGenerating: 'ダイアグラム生成中...',
   artifactDataError: 'チャートデータの形式が正しくありません',
@@ -609,8 +454,6 @@ export const ja = {
   codePlaceholder: '6桁の認証コード',
   codeSentTo: '認証コードを送信しました {phone}',
   changePhone: '電話番号を変更',
-  uidCopied: 'コピーしました',
-  clickToCopyUid: 'クリックでUIDをコピー',
   source: 'ソース',
   mediaFile: 'メディアファイル',
   resend: '再送信',
@@ -626,27 +469,13 @@ export const ja = {
   imageSizeExceeded: '画像サイズは2MBを超えることはできません',
   imageProcessFailed: '画像の処理に失敗しました。もう一度お試しください',
   saveFailedLater: '保存に失敗しました。後でもう一度お試しください',
-  updateFailedLater: '更新に失敗しました。後でもう一度お試しください',
 
   // 语言选择
-  langZh: '中',
-  langEn: 'EN',
-  langJa: '日',
 
   // デフォルトアシスタント
-  defaultAgentDescription: '日常会話、一般的なタスク、知能Q&A',
 
   // ログイン後のメッセージ再送信
-  sendingPendingMessage: '先ほどのメッセージを送信中...',
 
   // 一括削除
   select: '選択',
-  selectAll: 'すべて選択',
-  deselectAll: '選択解除',
-  selectedCount: '{count}件選択',
-  batchDelete: '一括削除',
-  batchDeleteConfirm: '{count}件の会話を削除してもよろしいですか？この操作は取り消せません。',
-  moreAvailable: 'その他',
-  loadMore: 'スクロールしてさらに読み込む',
-  noMoreRecords: 'これ以上記録はありません',
 }

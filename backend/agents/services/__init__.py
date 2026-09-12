@@ -18,8 +18,6 @@ from .expert_manager import (
 from .task_manager import (
     complete_execution_plan,
     get_or_create_execution_plan,
-    get_subtask_by_id,
-    update_subtask_status,
 )
 
 __all__ = [
@@ -36,6 +34,4 @@ __all__ = [
     # Task Manager
     "get_or_create_execution_plan",
     "complete_execution_plan",
-    "update_subtask_status",
-    "get_subtask_by_id",
 ]

@@ -3,7 +3,7 @@
  *
  * 用语义 token（surface-elevated + content-muted 低透明度）而不是写死灰色，
  * 暗色主题自动适配；animate-pulse 全局受 prefers-reduced-motion 约束。
- * 与业务布局同构组合使用（见 ArtifactsPage / SkillTemplatePanel / HistoryPage）。
+ * 与业务布局同构组合使用（见 SkillTemplatePanel / 工作台画布）。
  */
 
 import { cn } from '@/lib/utils'
@@ -20,7 +20,7 @@ export function Skeleton({ className }: { className?: string }) {
   )
 }
 
-/** 产物/模板卡片骨架：与 ArtifactsPage、SkillTemplatePanel 卡片同构 */
+/** 产物/模板卡片骨架：与产物/模板卡片同构 */
 export function CardSkeleton() {
   return (
     <div className="border-theme-card border-border-default bg-surface-card p-4 flex flex-col gap-3 min-h-[160px]">
@@ -33,7 +33,7 @@ export function CardSkeleton() {
   )
 }
 
-/** 行列表骨架：与 HistoryPage 行同构 */
+/** 行列表骨架：与全站行卡同构 */
 export function RowSkeleton() {
   return (
     <div className="flex items-center gap-3 border-theme-card border-border-default bg-surface-card px-4 py-3">

@@ -13,17 +13,9 @@ import logging
 import os
 import threading
 from collections import OrderedDict
-from typing import Any
 
 import httpx
 from langchain_openai import ChatOpenAI
-from tenacity import (
-    before_sleep_log,
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from providers_config import (
     get_best_router_provider,
@@ -356,34 +348,10 @@ def get_llm_cache_info():
         return {"size": len(_llm_instance_cache), "maxsize": _LLM_CACHE_MAX}
 
 
-# ============================================================================
-# P1 优化: 带重试的 LLM 调用函数
-# ============================================================================
-
-
-@retry(
-    retry=retry_if_exception_type((Exception,)),
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    before_sleep=before_sleep_log(logger, logging.WARNING),
-    reraise=True,
-)
-async def invoke_llm_with_retry(llm: ChatOpenAI, messages: list, **kwargs) -> Any:
-    """带重试机制的 LLM 调用 (非流式)"""
-    return await llm.ainvoke(messages, **kwargs)
-
-
-@retry(
-    retry=retry_if_exception_type((Exception,)),
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    before_sleep=before_sleep_log(logger, logging.WARNING),
-    reraise=True,
-)
-async def stream_llm_with_retry(llm: ChatOpenAI, messages: list, **kwargs):
-    """带重试机制的 LLM 调用 (流式)"""
-    async for chunk in llm.astream(messages, **kwargs):
-        yield chunk
+# 说明：LLM 层重试已交由 ChatOpenAI 自带的 max_retries（指数退避）承担。
+# 此前这里的 tenacity 包装与官方内建重试叠加，故障时会把一次失败放大成
+# 6 次请求，且零调用方——已移除。业务级重试（如计划生成 JSON 校验失败
+# 重出）由调用方自行实现（见 commander._generate_plan_with_json_mode）。
 
 
 if __name__ == "__main__":

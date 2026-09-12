@@ -148,33 +148,6 @@ def get_run_events_by_thread_id(
     )
 
 
-def get_latest_run_event(
-    db: Session,
-    run_id: str,
-) -> RunEvent | None:
-    """
-    获取运行实例的最新事件。
-
-    用于判断当前运行状态。
-    """
-    return db.exec(
-        select(RunEvent)
-        .where(RunEvent.run_id == run_id)
-        .order_by(RunEvent.timestamp.desc())
-        .limit(1)
-    ).first()
-
-
-def count_run_events_by_run_id(
-    db: Session,
-    run_id: str,
-) -> int:
-    """
-    统计运行实例的事件数量。
-    """
-    return len(get_run_events_by_run_id(db, run_id, limit=10000))
-
-
 # ============================================================================
 # 便捷函数：常用事件写入
 # ============================================================================
@@ -329,27 +302,6 @@ def emit_hitl_rejected(
     )
 
 
-def emit_task_started(
-    db: Session,
-    *,
-    run_id: str,
-    thread_id: str,
-    execution_plan_id: str,
-    task_id: str,
-    expert_type: str,
-) -> RunEvent:
-    """发送 TASK_STARTED 事件"""
-    return append_run_event(
-        db,
-        run_id=run_id,
-        event_type=RunEventType.TASK_STARTED,
-        thread_id=thread_id,
-        execution_plan_id=execution_plan_id,
-        task_id=task_id,
-        event_data={"expert_type": expert_type},
-    )
-
-
 def emit_task_completed(
     db: Session,
     *,
@@ -374,28 +326,6 @@ def emit_task_completed(
             "has_artifact": has_artifact,
             "duration_ms": duration_ms,
         },
-    )
-
-
-def emit_task_failed(
-    db: Session,
-    *,
-    run_id: str,
-    thread_id: str,
-    execution_plan_id: str,
-    task_id: str,
-    expert_type: str,
-    error_message: str | None = None,
-) -> RunEvent:
-    """发送 TASK_FAILED 事件"""
-    return append_run_event(
-        db,
-        run_id=run_id,
-        event_type=RunEventType.TASK_FAILED,
-        thread_id=thread_id,
-        execution_plan_id=execution_plan_id,
-        task_id=task_id,
-        event_data={"expert_type": expert_type, "error_message": error_message},
     )
 
 

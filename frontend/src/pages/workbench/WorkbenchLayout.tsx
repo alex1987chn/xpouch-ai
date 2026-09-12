@@ -6,7 +6,7 @@
  * + 28px 底部环境状态栏（连接状态 · 专家数 · 快捷键提示）。
  * 待裁决时右缘琥珀光晕（蓝本 edge-glow）作为第二注意力层。
  *
- * [边界] 旧页面仍走 AppLayout；cutover 时此壳升格为全局壳并收敛导航。
+ * [边界] cutover 时此壳从工作台局部升格为全局唯一壳并收敛导航。
  * SettingsHubDialog/LoginDialog 自管开关（appUIStore/userStore），此处挂载。
  */
 

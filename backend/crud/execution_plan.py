@@ -7,14 +7,12 @@ ExecutionPlan / SubTask / Artifact 数据访问层。
 from __future__ import annotations
 
 from sqlalchemy import or_
-from sqlalchemy.orm import selectinload
 from sqlmodel import Session, func, select
 
 from models import (
     Artifact,
     ArtifactCreate,
     ExecutionPlan,
-    ExecutionPlanUpdate,
     SubTask,
     SubTaskCreate,
     SubTaskUpdate,
@@ -57,27 +55,6 @@ def get_execution_plan_by_thread(db: Session, thread_id: str) -> ExecutionPlan |
     """通过线程 ID 获取执行计划。"""
     statement = select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)
     return db.exec(statement).first()
-
-
-def update_execution_plan(
-    db: Session,
-    execution_plan_id: str,
-    update_data: ExecutionPlanUpdate,
-) -> ExecutionPlan | None:
-    """更新执行计划。"""
-    execution_plan = get_execution_plan(db, execution_plan_id)
-    if not execution_plan:
-        return None
-
-    update_dict = update_data.model_dump(exclude_unset=True)
-    for key, value in update_dict.items():
-        setattr(execution_plan, key, value)
-
-    execution_plan.updated_at = utc_now_naive()
-    db.add(execution_plan)
-    db.commit()
-    db.refresh(execution_plan)
-    return execution_plan
 
 
 def update_execution_plan_status(
@@ -287,17 +264,6 @@ def get_artifacts_by_subtask(db: Session, sub_task_id: str) -> list[Artifact]:
     return list(db.exec(statement).all())
 
 
-def delete_artifact(db: Session, artifact_id: str) -> bool:
-    """删除产物。"""
-    artifact = get_artifact(db, artifact_id)
-    if not artifact:
-        return False
-
-    db.delete(artifact)
-    db.commit()
-    return True
-
-
 def update_artifact_content(db: Session, artifact_id: str, content: str) -> Artifact | None:
     """更新产物内容。"""
     artifact = get_artifact(db, artifact_id)
@@ -433,13 +399,3 @@ def create_execution_plan_with_subtasks(
     db.commit()
     db.refresh(execution_plan)
     return execution_plan
-
-
-def get_execution_plan_full(db: Session, execution_plan_id: str) -> ExecutionPlan | None:
-    """获取完整执行计划（包含子任务和产物）。"""
-    statement = (
-        select(ExecutionPlan)
-        .where(ExecutionPlan.id == execution_plan_id)
-        .options(selectinload(ExecutionPlan.sub_tasks).selectinload(SubTask.artifacts))
-    )
-    return db.exec(statement).first()

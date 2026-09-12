@@ -18,16 +18,12 @@ export const zh = {
   // Settings
   theme: '主题',
   language: '语言',
-  systemSettings: '系统设置',
   userSettings: '个人设置',
-  personalSettings: '个人设置',
   modelConfig: '模型配置',
 
   // Personal Settings Dialog
-  avatarSetup: '头像设置',
   uploadAvatar: '上传头像',
   removeAvatar: '移除',
-  avatarHint: '支持 JPG、PNG 格式，最大 2MB',
   username: '用户名',
   usernamePlaceholder: '请输入用户名',
   usernameHint: '2-20 个字符',
@@ -35,11 +31,7 @@ export const zh = {
   savingUserSettings: '保存中...',
 
   // Settings Dialog (System Config)
-  systemConfig: '系统配置',
   defaultModel: '默认模型',
-  agentPrompts: '智能体 Prompt 配置',
-  customized: '已自定义',
-  defaultPrompt: '默认',
 
   // Model Config Dialog (Simple 模式偏好)
   simpleMode: 'Simple 模式（直接对话）',
@@ -51,7 +43,6 @@ export const zh = {
   thinkingUnsupported: '当前模型不支持思考模式开关',
   thinkingCostHint: '开启思考模式可提升复杂问题的回答质量，但响应更慢、token 消耗更高',
   complexModeDesc: 'Complex 模式（多专家任务）的模型由管理员在「专家管理」中配置。',
-  modelManagedByAdmin: '模型与思考模式由管理员统一配置',
   systemStatus: '系统状态',
   migrationsUpToDate: '迁移已对齐',
   missingKey: '未配置 Key',
@@ -86,16 +77,12 @@ export const en = {
   // Settings
   theme: 'Theme',
   language: 'Language',
-  systemSettings: 'System Settings',
   userSettings: 'User Settings',
-  personalSettings: 'User Settings',
   modelConfig: 'Model Config',
 
   // Personal Settings Dialog
-  avatarSetup: 'AVATAR SETUP',
   uploadAvatar: 'Upload Avatar',
   removeAvatar: 'Remove',
-  avatarHint: 'Supports JPG, PNG format, max 2MB',
   username: 'Username',
   usernamePlaceholder: 'Enter username',
   usernameHint: '2-20 characters',
@@ -103,11 +90,7 @@ export const en = {
   savingUserSettings: 'Saving...',
 
   // Settings Dialog (System Config)
-  systemConfig: 'SYSTEM CONFIG',
   defaultModel: 'DEFAULT MODEL',
-  agentPrompts: 'AGENT PROMPTS',
-  customized: 'Customized',
-  defaultPrompt: 'Default',
 
   // Model Config Dialog (Simple mode preferences)
   simpleMode: 'SIMPLE MODE (DIRECT CHAT)',
@@ -119,7 +102,6 @@ export const en = {
   thinkingUnsupported: 'This model does not support the thinking toggle',
   thinkingCostHint: 'Enabling thinking improves quality on complex questions, but is slower and costs more tokens',
   complexModeDesc: 'Complex mode (multi-expert tasks) models are configured by the administrator in Expert Management.',
-  modelManagedByAdmin: 'Models and thinking mode are managed by the administrator',
   systemStatus: 'SYSTEM',
   migrationsUpToDate: 'Migrations up to date',
   missingKey: 'Key missing',
@@ -154,16 +136,12 @@ export const ja = {
   // Settings
   theme: 'テーマ',
   language: '言語',
-  systemSettings: 'システム設定',
   userSettings: '個人設定',
-  personalSettings: '個人設定',
   modelConfig: 'モデル設定',
 
   // Personal Settings Dialog
-  avatarSetup: 'アバター設定',
   uploadAvatar: 'アバターをアップロード',
   removeAvatar: '削除',
-  avatarHint: 'JPG、PNG形式をサポート、最大2MB',
   username: 'ユーザー名',
   usernamePlaceholder: 'ユーザー名を入力',
   usernameHint: '2-20文字',
@@ -171,11 +149,7 @@ export const ja = {
   savingUserSettings: '保存中...',
 
   // Settings Dialog (System Config)
-  systemConfig: 'システム設定',
   defaultModel: 'デフォルトモデル',
-  agentPrompts: 'エージェントプロンプト',
-  customized: 'カスタマイズ済み',
-  defaultPrompt: 'デフォルト',
 
   // Model Config Dialog (Simple モード設定)
   simpleMode: 'Simpleモード（直接会話）',
@@ -187,7 +161,6 @@ export const ja = {
   thinkingUnsupported: 'このモデルは思考モード切替に非対応です',
   thinkingCostHint: '思考モードを有効にすると複雑な質問の品質が向上しますが、応答が遅くトークン消費も増えます',
   complexModeDesc: 'Complexモード（マルチエキスパート）のモデルは管理者が「エキスパート管理」で設定します。',
-  modelManagedByAdmin: 'モデルと思考モードは管理者が一括設定します',
   systemStatus: 'システム状態',
   migrationsUpToDate: 'マイグレーション同期済み',
   missingKey: 'Key 未設定',

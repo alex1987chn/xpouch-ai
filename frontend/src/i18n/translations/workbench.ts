@@ -38,15 +38,11 @@ export const zh = {
   artExportPdf: '导出 PDF',
   canvasGalleryEmpty: '还没有任何产物',
   canvasGalleryEmptyHint: '去工作台发起一次任务试试',
-  openArtifact: '打开',
-  backToList: '← 返回列表',
   taskControlTitle: '任务控制',
-  backToWorkbench: '返回工作台',
   goToDecide: '去审核',
   planCardTitle: '执行计划',
   planStepCount: '{count} 个步骤',
   relatedArtifacts: '关联产物',
-  workbenchNewHint: '输入内容开始新会话',
 }
 
 export const en = {
@@ -84,15 +80,11 @@ export const en = {
   artExportPdf: 'Export PDF',
   canvasGalleryEmpty: 'No artifacts yet',
   canvasGalleryEmptyHint: 'Start a task in the workbench',
-  openArtifact: 'Open',
-  backToList: '← Back to list',
   taskControlTitle: 'Task Control',
-  backToWorkbench: 'Back to workbench',
   goToDecide: 'Go to review',
   planCardTitle: 'Execution plan',
   planStepCount: '{count} steps',
   relatedArtifacts: 'Related artifacts',
-  workbenchNewHint: 'Type to start a new conversation',
 }
 
 export const ja = {
@@ -130,13 +122,9 @@ export const ja = {
   artExportPdf: 'PDF 書き出し',
   canvasGalleryEmpty: '産物はまだありません',
   canvasGalleryEmptyHint: 'ワークベンチでタスクを開始してみましょう',
-  openArtifact: '開く',
-  backToList: '← 一覧に戻る',
   taskControlTitle: 'タスク管理',
-  backToWorkbench: 'ワークベンチへ戻る',
   goToDecide: '審査へ',
   planCardTitle: '実行計画',
   planStepCount: '{count} ステップ',
   relatedArtifacts: '関連産物',
-  workbenchNewHint: '入力して新しい会話を開始',
 }

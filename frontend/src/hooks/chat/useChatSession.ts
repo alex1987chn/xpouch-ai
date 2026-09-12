@@ -59,12 +59,12 @@ export function useChatSessionHandoff({
     // 这发生在：轮询检测到终态 -> restoreSession() -> 但后端状态仍显示 running
     // 此时如果启动轮询，会重置 isTerminal，导致终态检测失效
     if (isTerminal) {
-      logger.info('[UnifiedChatPage] 已检测到终态，跳过轮询启动')
+      logger.info('[ChatSession] 已检测到终态，跳过轮询启动')
       return
     }
 
     // 🔥 所有条件满足，安全启动轮询
-    logger.info('[UnifiedChatPage] 恢复完成，启动轮询:', { latestRunId, activeRunId })
+    logger.info('[ChatSession] 恢复完成，启动轮询:', { latestRunId, activeRunId })
     startPolling()
   }, [isRestored, isLatestRunControllable, latestRunId, activeRunId, isTerminal, startPolling, stopPolling])
 
@@ -81,7 +81,7 @@ export function useChatSessionHandoff({
   useEffect(() => {
     if (!isTerminal || hasRefreshedRef.current) return
 
-    logger.info('[UnifiedChatPage] 检测到终态，刷新数据')
+    logger.info('[ChatSession] 检测到终态，刷新数据')
     hasRefreshedRef.current = true
     restoreSession()
   }, [isTerminal, restoreSession])
@@ -117,7 +117,7 @@ export function usePendingMessageRetry(
             useChatStore.getState().setShouldRetrySend(false)
           })
           .catch((err) => {
-            logger.error('[UnifiedChatPage] 消息重发失败:', err)
+            logger.error('[ChatSession] 消息重发失败:', err)
             useChatStore.getState().setShouldRetrySend(false)
             // 如果还是 401，会再次触发登录弹窗，pendingMessage 保留
           })

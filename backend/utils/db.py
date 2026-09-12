@@ -3,22 +3,15 @@ LangGraph 数据库连接工具
 提供异步连接池给 AsyncPostgresSaver 使用
 """
 
-import os
 from contextlib import asynccontextmanager
 
 from psycopg_pool import AsyncConnectionPool
 
+from config import settings
 from utils.logger import logger
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL is not set in environment variables")
-
-# 转换为 psycopg 格式（去掉 +asyncpg 等驱动后缀）
-PSYCOPG_DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg", "postgresql").replace(
-    "postgresql+psycopg", "postgresql"
-)
+# 统一走 config.settings（与 database.py/env.py 同源），驱动固定 psycopg
+PSYCOPG_DATABASE_URL = settings.get_database_url(sync_driver="psycopg")
 
 # 添加 TCP keepalive 参数，防止长时间等待时连接被关闭
 # 🔥 激进版：30s 无数据就开始探测，每 10s 敲一次，连敲 3 次没回就判定死亡

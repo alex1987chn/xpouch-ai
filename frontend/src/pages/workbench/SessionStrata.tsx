@@ -5,8 +5,8 @@
  * 按日期分组（今天/昨天/本周/更早）；行内信息 = 专家识别色点 + 标题 + 状态 chip。
  * 状态语义：待裁决（琥珀）≠ 运行中（鼠尾草绿）≠ 静默（相对时间）。
  *
- * [数据] useChatHistoryQuery（与 HistoryPage 同一真相源）；
- * 搜索为已加载数据的前端过滤（沿用 HistoryPage 惯例，量级 <100 无需服务端搜索）。
+ * [数据] useChatHistoryQuery（与运行统计页同一真相源）；
+ * 搜索为已加载数据的前端过滤（沿用运行统计页惯例，量级 <100 无需服务端搜索）。
  */
 
 import { useMemo, useRef, useEffect, useState } from 'react'
