@@ -265,3 +265,31 @@
 @media (prefers-reduced-motion: reduce) {
   .shimmer { animation: none; opacity: 0.5; }
 }
+
+/* ============================================
+   8. 主题切换过渡（A+B 方案）
+   A：theme-transitioning 挂在 <html> 上的 550ms 全局色彩缓动，
+      只过渡颜色类属性、动画结束由 JS 摘除（不常驻）。
+   B：View Transitions 光圈由 JS 驱动（lib/themeTransition），
+      这里只负责关掉默认交叉淡化、新旧层正常混合。
+   ============================================ */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition:
+    background-color 550ms ease,
+    border-color 550ms ease,
+    color 550ms ease,
+    fill 550ms ease,
+    stroke 550ms ease,
+    box-shadow 550ms ease,
+    outline-color 550ms ease !important;
+  transition-delay: 0ms !important;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}

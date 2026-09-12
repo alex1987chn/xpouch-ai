@@ -196,7 +196,7 @@ export function TemplateImportDialog({
       </p>
       <button
         onClick={() => fileInputRef.current?.click()}
-        className="mt-2 text-xs font-bold text-accent-brand hover:underline"
+        className="mt-2 text-xs font-bold text-content-primary underline underline-offset-2 decoration-border-hover hover:decoration-content-primary"
       >
         {t('browseFiles') || 'Browse files'}
       </button>

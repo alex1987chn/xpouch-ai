@@ -68,7 +68,7 @@ export function StatusAvatar({
       <div className="relative z-10 w-full h-full">
         <Avatar className="w-full h-full">
           <AvatarImage src={src} alt="AI" className="object-cover" />
-          <AvatarFallback className="bg-accent-brand/10 text-accent-brand">
+          <AvatarFallback className="bg-accent-brand/10 text-accent-ink">
             {fallback || <Bot className="w-4 h-4" />}
           </AvatarFallback>
         </Avatar>

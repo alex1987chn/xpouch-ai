@@ -16,6 +16,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { logger } from '@/utils/logger'
+import { applyThemeWithTransition } from '@/lib/themeTransition'
 
 /** 支持的主题类型 - 柔和（默认）/ 暖暗 */
 export type Theme = 'soft' | 'dark'
@@ -53,7 +54,7 @@ interface ThemeState {
   followSystem: boolean
 
   /** 设置主题 */
-  setTheme: (theme: Theme) => void
+  setTheme: (theme: Theme, origin?: { x: number; y: number }) => void
 
   /** 切换到下一主题 */
   toggleTheme: () => void
@@ -163,19 +164,13 @@ export const useThemeStore = create<ThemeState>()(
       },
 
       /**
-       * 设置主题
+       * 设置主题（用户主动切换）
+       * origin：切换控件在视口中的位置——View Transitions 光圈从那里点亮/熄灭；
+       * 不传则从屏幕中心扩散。动画策略见 lib/themeTransition（A 渐变兜底 + B 光圈）。
        */
-      setTheme: (theme: Theme) => {
-        applyTheme(theme)
+      setTheme: (theme: Theme, origin?: { x: number; y: number }) => {
+        applyThemeWithTransition(() => applyTheme(theme), origin)
         set({ theme, followSystem: false })
-
-        // 可选：添加切换动画类
-        if (typeof document !== 'undefined') {
-          document.documentElement.classList.add('theme-transitioning')
-          setTimeout(() => {
-            document.documentElement.classList.remove('theme-transitioning')
-          }, 300)
-        }
       },
 
       /**

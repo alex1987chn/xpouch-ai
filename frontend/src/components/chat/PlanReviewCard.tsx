@@ -182,7 +182,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
           className="fixed right-0 top-[52px] bottom-[28px] hidden w-[7px] cursor-pointer xl:block"
           style={{
             zIndex: 30,
-            background: 'linear-gradient(to bottom, transparent, rgba(217,119,6,.55) 30%, rgba(217,119,6,.55) 70%, transparent)',
+            background: 'linear-gradient(to bottom, transparent, rgb(180 83 9 / 0.55) 30%, rgb(180 83 9 / 0.55) 70%, transparent)',
             filter: 'blur(1px)',
           }}
         />,

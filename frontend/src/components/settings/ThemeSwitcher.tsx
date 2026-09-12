@@ -95,8 +95,8 @@ function FloatingThemeSwitcher({ className }: { className?: string }) {
             {THEMES.map((themeMeta) => (
               <button
                 key={themeMeta.id}
-                onClick={() => {
-                  setTheme(themeMeta.id)
+                onClick={(e) => {
+                  setTheme(themeMeta.id, { x: e.clientX, y: e.clientY })
                   setIsOpen(false)
                 }}
                 className={cn(
@@ -157,7 +157,7 @@ function InlineThemeSwitcher({ className }: { className?: string }) {
       {THEMES.map((themeMeta) => (
         <button
           key={themeMeta.id}
-          onClick={() => setTheme(themeMeta.id)}
+          onClick={(e) => setTheme(themeMeta.id, { x: e.clientX, y: e.clientY })}
           className={cn(
             'flex flex-col items-center gap-2 p-3 rounded-lg',
             'border-theme-button transition-all duration-fast',
@@ -242,8 +242,8 @@ function DropdownThemeSwitcher({ className }: { className?: string }) {
           {THEMES.map((themeMeta) => (
             <button
               key={themeMeta.id}
-              onClick={() => {
-                setTheme(themeMeta.id)
+              onClick={(e) => {
+                setTheme(themeMeta.id, { x: e.clientX, y: e.clientY })
                 setIsOpen(false)
               }}
               className={cn(
@@ -290,7 +290,7 @@ function SegThemeSwitcher({ className }: { className?: string }) {
       {THEMES.map((themeMeta, index) => (
         <button
           key={themeMeta.id}
-          onClick={() => setTheme(themeMeta.id)}
+          onClick={(e) => setTheme(themeMeta.id, { x: e.clientX, y: e.clientY })}
           title={themeMeta.name}
           className={cn(
             'h-full px-3 text-xs transition-colors duration-fast',
