@@ -13,7 +13,8 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.x-green?logo=langchain)](https://langchain-ai.github.io/langgraph/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://docker.com)
 
-<img src="./.github/images/hero-home.png" alt="XPouch AI Screenshot" width="900">
+<img src="./.github/images/hero-home.png" alt="XPouch AI 柔和主题" width="900">
+<img src="./.github/images/hero-dark.png" alt="XPouch AI 黑暗主题" width="900">
 
 [在线体验](https://xpouch.ai) · [问题反馈](https://github.com/alex1987chn/xpouch-ai/issues) · [功能讨论](https://github.com/alex1987chn/xpouch-ai/discussions)
 
@@ -29,6 +30,10 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 
 - simple / complex 双模式
 - complex 模式下的 HITL 审批与恢复
+- **HITL 修订循环**：驳回+反馈 → 规划专家修订出 v(n+1)，任务保持挂起，可循环裁决或终止
+- **用户管理与审计日志**（管理员）：脱敏用户列表、角色编辑、密码重置；管理面变更全量留痕
+- **附件文档**：PDF / Word / Excel / MD 等解析为文本注入对话上下文
+- **产物大弹框**：视图/代码切换、编辑、导出 MD/PDF、公开分享
 - `Thread / AgentRun / ExecutionPlan` 三层运行时语义
 - artifact 持久化、恢复展示与多任务串行执行
 - 跨轮产物连续性（追问"把上面的图改成时序图"可直接引用历史产物）
@@ -47,7 +52,7 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - **图片输入（多模态）**：聊天支持附带图片，视觉模型原生理解（非视觉模型显式拒绝）
 - **模板分享链接**：公开只读导出，跨实例一键导入
 - MCP 动态工具接入
-- 三套主题（Light / Dark / Kyoto）与中英日多语言界面
+- **双主题（柔和 / 黑暗）**：柔和暖纸色与暖炭黑两套语义配色，切换带光圈扩散过渡动画；中英日多语言界面
 
 ## 核心能力
 
@@ -59,9 +64,11 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 
 ### HITL 审批与恢复
 
-- Commander 生成计划后暂停
-- 用户可修改、删除、调整任务
-- `POST /api/chat/resume` 围绕 `run_id` 恢复执行
+- Commander 生成计划后暂停，审批卡与右缘琥珀光晕直达裁决
+- **三动作裁决**：批准执行 / 修订并重提（驳回+反馈，规划专家修订出 v(n+1)，任务保持挂起）/ 终止任务
+- 用户可修改、删除、调整任务后再批准
+- `POST /api/chat/resume` 围绕 `run_id` 恢复执行；修订由后台任务执行，前端轮询感知新版本
+- 驳回反馈以 user 消息永久留痕在会话中
 
 ### Run-based Runtime
 
@@ -76,6 +83,7 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - artifact 持久化到数据库
 - 历史复杂会话可恢复展示 artifact
 - **跨轮连续性**：每条新消息自动携带本会话最近产物的摘要进入规划上下文，Commander 可生成"修改产物 X"类任务；专家经 `get_artifact` 工具按需读取完整内容，不膨胀图状态
+- **产物画布与画廊**：侧栏卡片化浏览当前会话与跨会话产物，点击打开大弹框——视图/代码切换、编辑、复制、下载、导出 MD/PDF、公开分享
 
 ### 模型思考过程流式展示
 
@@ -110,7 +118,17 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 
 - 统一治理层：`risk_tier`、`allow/deny/require_approval`，绑定与执行前双重校验
 - 可配置策略：`ToolPolicy` 持久化，`GET/PUT /api/tools/policies`，运行时合并数据库覆盖
-- Library 页「Tool Governance」面板：管理员查看/编辑策略
+- 系统管理台「工具治理」面板：管理员查看/编辑策略
+
+### 用户管理与审计日志（管理员）
+
+- **用户管理**：全实例用户列表（手机号脱敏/按需揭示、UUID、注册时间、最近登录、角色），支持创建用户、编辑资料与角色、重置密码（自定义/系统随机，随机明文仅展示一次）、删除用户（级联清理会话与产物）
+- **审计日志**：用户/专家/配额等管理面变更全量留痕（操作者、动作、对象、详情），支持搜索
+
+### 附件文档（多模态上下文）
+
+- 聊天支持附带 PDF / Word / Excel / Markdown / 纯文本文档（单文件 10MB，最多 3 个）
+- 后端解析为纯文本注入当前对话上下文，专家直接基于文档内容作答
 
 ### Server-Driven UI
 
@@ -127,13 +145,14 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - 展示运行全生命周期事件：run 创建、router 决策、HITL 中断/恢复、任务执行、artifact 生成、运行终态等
 - API：`GET /api/runs/{run_id}`、`GET /api/runs/{run_id}/timeline`、`GET /api/runs/thread/{thread_id}/timeline`
 
-### Admin Stats Dashboard（管理统计面板）
+### Admin Stats Dashboard（运行统计）
 
-- 运行统计概览：总运行数、成功率、HITL 使用率、平均耗时
+- **全用户开放**：普通用户查看自己的运行数据，管理员查看全实例
+- 运行统计概览：总运行数、成功率、待审核数、平均耗时
 - 7 天趋势图表：按日期聚合的运行数据
-- 运行列表：带分页，显示状态、模式、时间、用户
+- 运行列表：带分页与搜索（运行 ID / 用户名模糊匹配），显示状态、模式、时间、用户
 - 数据库层聚合：使用 `func.count` / `func.sum` / `func.avg` + `group_by`
-- API：`GET /api/admin/stats/runs`（概览与 7 天趋势内嵌于同一响应）
+- API：`GET /api/admin/stats/runs`（概览与趋势内嵌于同一响应）
 
 ## 当前架构
 

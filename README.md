@@ -13,7 +13,8 @@ English | [简体中文](./README.zh-CN.md)
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.x-green?logo=langchain)](https://langchain-ai.github.io/langgraph/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://docker.com)
 
-<img src="./.github/images/hero-home.png" alt="XPouch AI Screenshot" width="900">
+<img src="./.github/images/hero-home.png" alt="XPouch AI — soft theme" width="900">
+<img src="./.github/images/hero-dark.png" alt="XPouch AI — dark theme" width="900">
 
 [Try it Live](https://xpouch.ai) · [Issues](https://github.com/alex1987chn/xpouch-ai/issues) · [Discussions](https://github.com/alex1987chn/xpouch-ai/discussions)
 
@@ -29,6 +30,10 @@ The current stable baseline includes:
 
 - simple / complex dual mode
 - HITL approval and recovery in complex mode
+- **HITL revision loop**: reject with feedback → the planner produces v(n+1) while the task stays paused; decide in a loop or terminate
+- **User management & audit log** (admin): masked user list, role editing, password reset; every admin-side mutation is recorded
+- **Document attachments**: PDF / Word / Excel / MD parsed into the conversation context
+- **Artifact viewer modal**: view/code toggle, editing, MD/PDF export, public sharing
 - Three-layer runtime semantics: `Thread / AgentRun / ExecutionPlan`
 - Artifact persistence, restored rendering, and multi-task serial execution
 - Cross-turn artifact continuity (follow-ups like "turn the chart above into a sequence diagram" can reference prior artifacts)
@@ -45,7 +50,7 @@ The current stable baseline includes:
 - **Accessibility baseline**: dialog focus management (trap & restore), WCAG AA contrast, accessible names on all icon buttons
 - SSE-driven Server-Driven UI (unified event protocol, exactly-once delivery)
 - MCP dynamic tool integration
-- Three themes (Light / Dark / Kyoto) and a trilingual UI (EN / 中文 / 日本語)
+- **Dual themes (Soft / Dark)**: warm-paper light and warm-charcoal dark semantic palettes, with a circular-reveal transition animation; trilingual UI (EN / 中文 / 日本語)
 
 ## Core Capabilities
 
@@ -57,9 +62,11 @@ The current stable baseline includes:
 
 ### HITL approval and recovery
 
-- Commander pauses after generating a plan
-- Users can edit, delete, and reorder tasks
-- `POST /api/chat/resume` resumes execution around a `run_id`
+- Commander pauses after generating a plan; an amber approval card and an edge glow lead you straight to the decision
+- **Three-action decision**: Approve & run / Revise & resubmit (reject with feedback — the planner produces v(n+1) while the task stays paused) / Terminate
+- Users can edit, delete, and reorder tasks before approving
+- `POST /api/chat/resume` resumes execution around a `run_id`; revisions run as a background task and the frontend polls for the new version
+- Rejection feedback is permanently kept in the conversation as a user message
 
 ### Run-based runtime
 
@@ -114,7 +121,17 @@ The current stable baseline includes:
 
 - Unified governance layer: `risk_tier`, `allow/deny/require_approval`, validated at both binding and execution time
 - Configurable policies: `ToolPolicy` persistence, `GET/PUT /api/tools/policies`, runtime merge of database overrides
-- Library page "Tool Governance" panel: admins view/edit policies
+- System Management "Tool Governance" panel: admins view/edit policies
+
+### User management & audit log (admin)
+
+- **User management**: instance-wide user list (masked phone with on-demand reveal, UUID, registered/last-login time, role), plus create user, edit profile & role, reset password (custom or system-random — random shown only once), and delete user with cascading cleanup
+- **Audit log**: every admin-side mutation (users / experts / quota) is recorded with actor, action, target, and detail; searchable
+
+### Document attachments (multimodal context)
+
+- Attach PDF / Word / Excel / Markdown / text documents to a chat message (10 MB per file, up to 3)
+- The backend parses them into plain text injected into the current conversation context, so experts answer directly from the documents
 
 ### Server-Driven UI
 
@@ -133,11 +150,12 @@ The current stable baseline includes:
 
 ### Admin stats dashboard
 
-- Run overview: total runs, success rate, HITL usage, average duration
+- **Open to all users**: regular users see their own run data; admins see the whole instance
+- Run overview: total runs, success rate, pending reviews, average duration
 - 7-day trend charts aggregated by date
-- Paginated run list with status, mode, duration, and user
+- Paginated run list with search (fuzzy match on run ID / username), status, mode, duration, and user
 - Database-level aggregation via `func.count` / `func.sum` / `func.avg` + `group_by`
-- API: `GET /api/admin/stats/runs` (overview and 7-day trends in one response)
+- API: `GET /api/admin/stats/runs` (overview and trends in one response)
 
 ## Architecture
 
