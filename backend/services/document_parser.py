@@ -106,7 +106,11 @@ def _normalize_extracted_text(text: str) -> str:
     import re
 
     cjk = _CJK_CLASS
+    # 换行两侧任一为 CJK → 直接相连
     text = re.sub(rf"(?<=[{cjk}])[ \t]*\r?\n[ \t]*(?=[{cjk}])", "", text)
+    # 设计类 PDF 逐字绘制会被提取成"CJK 空格 CJK"（"公 司 介 绍"）——
+    # 中文行内本就不使用空格分隔，单个空格夹在两个 CJK 字符之间即提取伪影
+    text = re.sub(rf"(?<=[{cjk}]) (?=[{cjk}])", "", text)
 
     non_empty = [line for line in text.split("\n") if line.strip()]
     if non_empty:

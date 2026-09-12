@@ -64,6 +64,22 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
     await emit_event(event_router_start(query=user_query[:200]))  # 限制长度
     logger.info("[Router] 已发送 router.start 事件")
 
+    # 0-. 确定性兜底（对称规则）：带附件文档的消息强制简单模式直达回复。
+    # 文档问答 = 读文档答问题的轻量场景（文档文本已随消息注入上下文），
+    # 走 complex 的多专家编排纯属开销且曾因超长坏文本炸规划；
+    # 重型文档工作流（解析→多步分析→产物）待知识库版本再引入。
+    if "【用户附件：" in user_query:
+        await emit_event(
+            event_router_decision(
+                decision="simple",
+                reason="检测到附件文档，直接解读（简单模式）",
+            )
+        )
+        logger.info("[Router] 附件文档消息 → 强制简单模式直达回复")
+        return {
+            "router_decision": "simple",
+        }
+
     # 0. 确定性兜底：某些任务必须进入 complex，避免路由模型误判。
     forced_complex_reason = _get_forced_complex_reason(user_query)
     if forced_complex_reason:
