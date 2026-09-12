@@ -130,14 +130,13 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
         logger.info(f"[Router] LLM 就绪: {getattr(llm, 'model_name', '?')}")
 
         # 尝试使用原生结构化输出（OpenAI, Kimi 等支持）
-        # 🔥 2026-09-12 诊断：本机 dev 环境 asyncio 调度层异常（timer/
-        #    跨线程唤醒不触发），ainvoke 无限挂起且 wait_for 兜底失效；
-        #    先降级为同步 invoke（阻塞 ~1-2s 可接受）恢复链路，
-        #    根因（疑与 run.py 手动 loop 注入 + Py3.13 + Windows 组合
-        #    有关）定位后恢复异步。
+        # 🔥 2026-09-13 T4 恢复异步：同步 invoke 阻塞事件循环数秒，
+        #    单 worker 内所有并发请求（含他人 SSE 心跳）一起冻结。
+        #    本机 dev 若复发 asyncio 调度挂起（Windows+run.py 手动
+        #    loop 注入的组合问题），改用容器/WSL 跑后端绕开。
         try:
             llm_structured = llm.with_structured_output(RoutingDecision)
-            decision = llm_structured.invoke(
+            decision = await llm_structured.ainvoke(
                 [SystemMessage(content=system_prompt), *messages],
                 config={"tags": ["router"], "metadata": {"node_type": "router"}},
             )
@@ -153,7 +152,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
                 logger.warning(
                     f"[Router] 结构化输出不可用（{type(structured_error).__name__}），降级到 PydanticOutputParser"
                 )
-                response = llm.invoke(
+                response = await llm.ainvoke(
                     [SystemMessage(content=system_prompt), *messages],
                     config={"tags": ["router"], "metadata": {"node_type": "router"}},
                 )
@@ -368,11 +367,10 @@ async def direct_reply_node(state: AgentState, config: RunnableConfig = None) ->
     # Simple 模式：优先用户偏好模型（user_settings），否则系统默认 DeepSeek（2026-09 起 MiniMax 已停用）
     llm = _resolve_simple_llm(state)
 
-    # 2026-09-12 诊断：本机 dev 环境 asyncio 调度异常（timer/跨线程唤醒
-    # 不触发），异步 LLM 调用无限挂起；与 router 决策同样降级为同步
-    # stream（阻塞可接受），并逐块经 custom stream 直发 message.delta，
-    # 保持前端流式体验。根因定位后统一恢复 astream。
-    response = llm.invoke(
+    # 🔥 2026-09-13 T4 恢复异步 ainvoke：同步 invoke 阻塞事件循环期间
+    #    （简单回复可达数十秒），所有并发请求一起冻结。本机 dev 若复发
+    #    asyncio 调度挂起，改用容器/WSL 跑后端绕开。
+    response = await llm.ainvoke(
         [
             SystemMessage(content=system_prompt),
             *messages,  # 用户的历史消息上下文
