@@ -101,6 +101,7 @@ export function useChat({ threadUrlBase = '/chat' }: UseChatOptions = {}) {
     sendMessage: chatCore.sendMessage,
     setInputMessage,
     stopGeneration: chatCore.stopGeneration,
+    detachActiveStream: chatCore.detachActiveStream,
     resumeExecution: chatCore.resumeExecution,
 
     // Conversation management

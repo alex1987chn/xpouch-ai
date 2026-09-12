@@ -10,7 +10,7 @@
  * （待裁决琥珀/执行中绿）+ 任务控制入口——审批注意力层的页内投影。
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
 import { useQueryClient } from '@tanstack/react-query'
@@ -72,6 +72,7 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
     isStreaming,
     sendMessage,
     stopGeneration,
+    detachActiveStream,
     resumeExecution,
     regenerate,
     setInputMessage: setInputValue,
@@ -79,6 +80,18 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
 
   const { isRestored, isLatestRunControllable, latestRunId, restore: restoreSession } =
     useSessionRestore({ enabled: !!threadId && !isNewConversation })
+
+  // 挂断在途流（真实线程切换时）：只 abort 前端 SSE——服务端任务继续跑完，
+  // 回来时 restore/轮询接管现场，绝不 cancelRun（用户主动停止才真取消）；
+  // 旧流的回调另有归属守卫兜底丢弃事件
+  const prevThreadIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    const prevThreadId = prevThreadIdRef.current
+    prevThreadIdRef.current = threadId
+    if (prevThreadId !== null && prevThreadId !== threadId) {
+      detachActiveStream()
+    }
+  }, [threadId, detachActiveStream])
 
   const { startPolling, stopPolling, isPolling, currentStatus: pollingStatus, isHITLPaused, isTerminal, hasError } =
     useRunPolling({ enabled: true })

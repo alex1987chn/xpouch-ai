@@ -130,6 +130,11 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
    * chunk 统一交给 handleChunk（RAF 批处理层）。
    * 完整正文一律以 API 返回值为准（回调内不做累积——历史版本的累积
    * 均被返回值覆盖，属死代码）。
+   *
+   * 会话归属守卫：回调创建时记下流所属会话，用户切走（store 的当前
+   * 会话变化）后静默丢弃后续 runId/chunk/done 事件——旧流不再把页面
+   * 拽回旧线程、不污染新线程的消息列表。产物失效不受守卫限制（画廊
+   * 跨会话，切走后仍应看到新产物）。
    */
   const makeStreamCallback = useCallback((
     handleChunk: (chunk: string) => void,
@@ -138,6 +143,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       onDone?: () => void
     } = {}
   ): StreamCallback => {
+    const ownerThreadId: { current: string | null } = {
+      current: useChatStore.getState().currentConversationId,
+    }
     return async (
       chunk: string | undefined,
       threadId?: string,
@@ -146,12 +154,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       _expertId?,
       runtimeMeta?: StreamRuntimeMeta,
     ) => {
-      if (runtimeMeta?.runId) {
-        setActiveRunId(runtimeMeta.runId)
-      }
-      if (threadId) handlers.onThreadId?.(threadId)
-      if (expertEvent?.type === 'message.done') handlers.onDone?.()
-      if (chunk) handleChunk(chunk)
       // 产物实时投影：收到 artifact.generated 即防抖刷新右栏画布/画廊，
       // 复杂任务运行中产物就能挂卡，不必等流结束或手动刷新
       if (_artifact || expertEvent?.type === 'artifact.generated') {
@@ -161,8 +163,38 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
           queryClient.invalidateQueries({ queryKey: artifactsKeys.all })
         }
       }
+      // 归属守卫：流已被挂断（用户切走），事件静默丢弃
+      if (useChatStore.getState().currentConversationId !== ownerThreadId.current) {
+        return
+      }
+      if (runtimeMeta?.runId) {
+        setActiveRunId(runtimeMeta.runId)
+      }
+      if (threadId) {
+        // 新会话首条消息：仅当用户未切走时收养新线程并通知上层导航
+        const storeCurrent = useChatStore.getState().currentConversationId
+        const switchedAway = !!storeCurrent && storeCurrent !== ownerThreadId.current
+        if (!switchedAway) {
+          if (ownerThreadId.current !== threadId) ownerThreadId.current = threadId
+          handlers.onThreadId?.(threadId)
+        }
+      }
+      if (expertEvent?.type === 'message.done') handlers.onDone?.()
+      if (chunk) handleChunk(chunk)
     }
   }, [setActiveRunId, queryClient, artifactFlushRef])
+
+  /**
+   * 切换会话时挂断在途流：只 abort 前端 SSE 连接（服务端 producer 继续
+   * 跑完并落库，恢复执行/轮询链路接管现场），绝不调用 cancelRun——
+   * 用户主动"停止生成"才真取消任务，两者语义严格区分。
+   */
+  const detachActiveStream = useCallback(() => {
+    if (abortControllerRef.current) {
+      debug('Detaching stream (thread switch), task keeps running server-side')
+      abortControllerRef.current.abort()
+    }
+  }, [])
 
   /**
    * Stop generation
@@ -574,6 +606,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   return {
     sendMessage: sendMessageCore,
     stopGeneration,
+    detachActiveStream,
     resumeExecution,
     regenerateMessage,
     conversationMode,
