@@ -26,6 +26,28 @@ from utils.exceptions import AuthorizationError, NotFoundError
 from utils.time import utc_now_naive
 
 
+def _build_document_context_blocks(extra_data: dict | None) -> str:
+    """从消息 extra_data 提取附件文档文本，拼为 LLM 上下文块。
+
+    附件文档的解析文本不进消息展示内容（用户气泡保持简短），
+    仅在构建 LLM 消息时注入——当前轮与历史重建走同一条路。
+    """
+    if not extra_data:
+        return ""
+    documents = extra_data.get("documents") or []
+    if not isinstance(documents, list):
+        return ""
+    blocks = []
+    for doc in documents:
+        if not isinstance(doc, dict):
+            continue
+        name = str(doc.get("name", "")).strip()
+        text = str(doc.get("text", "")).strip()
+        if name and text:
+            blocks.append(f"\n\n【用户附件：{name}】\n{text}")
+    return "".join(blocks)
+
+
 def save_assistant_message_sync(
     db: Session,
     thread_id: str,
@@ -491,18 +513,26 @@ class ChatThreadService:
     # 消息管理
     # ============================================================================
 
-    async def save_user_message(self, thread_id: str, content: str) -> Message:
+    async def save_user_message(
+        self,
+        thread_id: str,
+        content: str,
+        extra_data: dict | None = None,
+    ) -> Message:
         """
         保存用户消息
 
         Args:
             thread_id: 线程ID
             content: 消息内容
+            extra_data: 非展示元数据（如附件文档解析文本，供 LLM 上下文重建）
 
         Returns:
             保存的消息实例
         """
-        message = create_user_message(self.db, thread_id=thread_id, content=content)
+        message = create_user_message(
+            self.db, thread_id=thread_id, content=content, extra_data=extra_data
+        )
         self.db.commit()
         return message
 
@@ -547,7 +577,12 @@ class ChatThreadService:
         langchain_messages = []
         for msg in db_messages:
             if msg.role == "user":
-                langchain_messages.append(HumanMessage(content=msg.content))
+                content = msg.content
+                # 附件文档解析文本存于 extra_data，不进展示内容；此处注入 LLM 上下文
+                doc_blocks = _build_document_context_blocks(msg.extra_data)
+                if doc_blocks:
+                    content = f"{content}{doc_blocks}"
+                langchain_messages.append(HumanMessage(content=content))
             elif msg.role == "assistant":
                 langchain_messages.append(AIMessage(content=msg.content))
 

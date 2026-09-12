@@ -124,7 +124,7 @@ export default function HeavyInputConsole({
 
           {/* 文档附件 chips */}
           {docList.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 px-2.5 pb-1">
+            <div className="flex flex-wrap gap-1.5 px-3 pt-2.5">
               {docList.map((doc, index) => (
                 <span
                   key={`${doc.name}-${index}`}

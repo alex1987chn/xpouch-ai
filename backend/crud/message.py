@@ -40,9 +40,17 @@ def create_message(
     return message
 
 
-def create_user_message(db: Session, *, thread_id: str, content: str) -> Message:
-    """用户消息便捷入口。"""
-    return create_message(db, thread_id=thread_id, role="user", content=content)
+def create_user_message(
+    db: Session,
+    *,
+    thread_id: str,
+    content: str,
+    extra_data: dict[str, Any] | None = None,
+) -> Message:
+    """用户消息便捷入口（extra_data 可携带附件文档等非展示元数据）。"""
+    return create_message(
+        db, thread_id=thread_id, role="user", content=content, extra_data=extra_data
+    )
 
 
 def create_assistant_message(

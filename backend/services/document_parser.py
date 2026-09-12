@@ -78,9 +78,48 @@ def parse_document(*, filename: str, content_base64: str) -> str:
     text = text.strip()
     if not text:
         raise DocumentParseError(f"附件 {filename} 未解析出文本内容（可能是扫描件/纯图片 PDF）")
+    text = _normalize_extracted_text(text)
     if len(text) > MAX_DOC_TEXT_CHARS:
         text = text[:MAX_DOC_TEXT_CHARS] + "\n\n…（内容过长，已截断）"
     return text
+
+
+# CJK 字符集（含中文标点/全角/省略号/破折号）：设计类 PDF 常逐字断行，
+# 相邻行两侧都是 CJK 时换行几乎必然是提取伪影（CJK 行内不需要换行分隔）
+_CJK_CLASS = (
+    "\\u4e00-\\u9fff\\u3400-\\u4dbf"
+    "\\u3000-\\u303f\\uff00-\\uffef"
+    "\\u2014\\u2018\\u2019\\u201c\\u201d\\u2026"
+)
+
+
+def _normalize_extracted_text(text: str) -> str:
+    """规整提取文本。
+
+    规则：
+    1. 换行两侧任一为 CJK → 直接相连（CJK 行内不需要换行分隔，
+       对规整 CJK 文本同样安全——段内换行即提取伪影）；
+    2. 断行检测：剩余行的中位长度过短（设计类 PDF 逐字/逐词断行）
+       → 判定为坏提取，剩余换行并入空格；否则保留段落结构，
+       仅压缩 3 个以上连续空行。
+    """
+    import re
+
+    cjk = _CJK_CLASS
+    text = re.sub(rf"(?<=[{cjk}])[ \t]*\r?\n[ \t]*(?=[{cjk}])", "", text)
+
+    non_empty = [line for line in text.split("\n") if line.strip()]
+    if non_empty:
+        lengths = sorted(len(line.strip()) for line in non_empty)
+        median_length = lengths[len(lengths) // 2]
+        if median_length < 6:
+            # 坏提取：逐字/逐词断行，全部并入连续文本
+            text = re.sub(r"[ \t]*\r?\n[ \t]*", " ", text)
+        else:
+            text = re.sub(r"\n{3,}", "\n\n", text)
+
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    return text.strip()
 
 
 def _parse_pdf(raw: bytes) -> str:

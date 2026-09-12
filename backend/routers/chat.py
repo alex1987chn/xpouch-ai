@@ -103,20 +103,24 @@ class ChatRequest(BaseModel):
     message_id: str | None = None
 
 
-def _build_document_blocks(documents: list[DocumentInput]) -> str:
-    """解析附件文档为文本块（拼接到用户消息末尾）。任一失败即 400。"""
+def _parse_documents(documents: list[DocumentInput]) -> list[dict]:
+    """解析附件文档（任一失败即 400）。
+
+    返回 [{"name", "text"}]——文本存消息 extra_data（不进展示内容），
+    LLM 上下文注入由 build_langchain_messages 统一处理。
+    """
     if not documents:
-        return ""
+        return []
     from services.document_parser import DocumentParseError, parse_document
 
-    blocks: list[str] = []
+    parsed: list[dict] = []
     for doc in documents:
         try:
             text = parse_document(filename=doc.name, content_base64=doc.content_base64)
         except DocumentParseError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from None
-        blocks.append(f"\n\n【用户附件：{doc.name}】\n{text}")
-    return "".join(blocks)
+        parsed.append({"name": doc.name, "text": text})
+    return parsed
 
 
 def _attach_images(
@@ -346,8 +350,7 @@ async def chat_endpoint(
     thread_id = thread.id
 
     # 1.5 附件文档解析（任一失败即 400，不产生半截消息）
-    document_blocks = _build_document_blocks(request.documents)
-    effective_message = request.message + document_blocks
+    parsed_documents = _parse_documents(request.documents)
 
     ensure_no_active_run_for_thread(
         session,
@@ -355,8 +358,9 @@ async def chat_endpoint(
         user_id=current_user.id,
     )
 
-    # 2. 保存用户消息（含附件文档文本）
-    await thread_service.save_user_message(thread_id, effective_message)
+    # 2. 保存用户消息——展示内容保持简短，文档文本存 extra_data 供 LLM 上下文重建
+    extra_data = {"documents": parsed_documents} if parsed_documents else None
+    await thread_service.save_user_message(thread_id, request.message, extra_data=extra_data)
 
     # 3. 构建 LangChain 消息列表
     langchain_messages = await thread_service.build_langchain_messages(thread_id)
@@ -459,7 +463,7 @@ async def chat_endpoint(
             thread_id=thread_id,
             thread=thread,
             agent_run=agent_run,
-            user_message=effective_message,
+            user_message=request.message,
             message_id=actual_message_id,
         )
     else:
