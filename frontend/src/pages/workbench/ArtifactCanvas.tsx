@@ -10,40 +10,22 @@
 
 import { useState } from 'react'
 import { useTranslation } from '@/i18n'
-import {
-  Package, LayoutGrid, PanelRight, FileText, Code2, Database, BarChart3,
-  Globe, FileJson, Search, Image, Film, Play, Braces,
-} from 'lucide-react'
+import { Package, LayoutGrid, PanelRight } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
 
 import { useArtifactsQuery, useThreadArtifactsQuery } from '@/hooks/queries/useArtifactsQuery'
-import { ArtifactViewerModal, artifactTypeChipStyle } from '@/components/artifacts/ArtifactViewerModal'
+import { ArtifactViewerModal } from '@/components/artifacts/ArtifactViewerModal'
+import { artifactTypeChipStyle, artifactTypeIcon } from '@/lib/artifactPresentation'
+import { toLocalDate, localeForLanguage } from '@/lib/datetime'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/states'
 import type { ArtifactListItem } from '@/types'
 import { cn } from '@/lib/utils'
-import { formatDistanceToNow, parseISO } from 'date-fns'
-import { zhCN, enUS, ja } from 'date-fns/locale'
 
 type CanvasTab = 'thread' | 'gallery'
 
 interface ArtifactCanvasProps {
   threadId: string | null
-}
-
-function toLocalDate(iso: string): Date {
-  const parsed = parseISO(iso)
-  return new Date(parsed.getTime() + parsed.getTimezoneOffset() * 60_000)
-}
-
-/** 类型 → 图标（卡片色块用同族识别色） */
-const TYPE_ICON: Record<string, React.ElementType> = {
-  code: Code2, sql: Database, json: FileJson, chart: BarChart3,
-  html: Globe, markdown: FileText, report: FileText, search: Search,
-  image: Image, video: Film, media: Play, text: FileText,
-}
-
-function typeIcon(type: string): React.ElementType {
-  return TYPE_ICON[type] || Braces
 }
 
 export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
@@ -59,7 +41,7 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
     tab === 'thread' ? (threadQuery.data?.items ?? []) : (galleryQuery.data?.items ?? [])
   const isLoading = tab === 'thread' ? threadQuery.isLoading : galleryQuery.isLoading
 
-  const locale = language === 'en' ? enUS : language === 'ja' ? ja : zhCN
+  const locale = localeForLanguage(language)
 
   return (
     <aside
@@ -116,7 +98,7 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {activeList.map(artifact => {
-              const Icon = typeIcon(artifact.type)
+              const Icon = artifactTypeIcon(artifact.type)
               const title = artifact.title || (artifact.content_preview ?? '').slice(0, 20) || artifact.type
               return (
                 <button

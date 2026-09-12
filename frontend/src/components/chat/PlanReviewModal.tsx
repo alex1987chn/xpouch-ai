@@ -7,13 +7,10 @@
  */
 
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { AlertTriangle, Trash2, Loader2 } from 'lucide-react'
 import { useTranslation } from '@/i18n'
-import { useEscapeToClose } from '@/hooks/useEscapeToClose'
-import { useDialogA11y } from '@/hooks/useDialogA11y'
-import { Z_INDEX } from '@/constants/zIndex'
-import { expertColor } from '@/lib/expertIdentity'
+import { ModalShell } from '@/components/ui/modal-shell'
+import { expertDotStyle } from '@/lib/expertIdentity'
 import { cn } from '@/lib/utils'
 import type { TaskInfo } from '@/types/events'
 
@@ -46,25 +43,17 @@ export function PlanReviewModal({
     }
   }, [open, plan])
 
-  useEscapeToClose(open && !isSubmitting, onClose)
-  const a11y = useDialogA11y<HTMLDivElement>(open, 'plan-review-modal-title')
-
-  if (!open) return null
-
   const ghostBtn = 'flex h-9 items-center gap-1.5 rounded-full border border-border-divider bg-surface-card px-4 text-[13px] font-medium text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50'
   const primaryBtn = 'flex h-9 items-center gap-1.5 rounded-full border border-border-divider bg-accent-brand px-5 text-[13px] font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none'
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
-      style={{ zIndex: Z_INDEX.MODAL }}
-      onMouseDown={e => { if (e.target === e.currentTarget && !isSubmitting) onClose() }}
+  return (
+    <ModalShell
+      open={open}
+      onClose={onClose}
+      labelledBy="plan-review-modal-title"
+      dismissable={!isSubmitting}
+      panelClassName="max-h-[82vh] w-[min(580px,94vw)] overflow-y-auto"
     >
-      <div
-        {...a11y}
-        aria-labelledby="plan-review-modal-title"
-        className="max-h-[82vh] w-[min(580px,94vw)] overflow-y-auto rounded-xl border border-border-default bg-surface-card shadow-theme-modal"
-      >
         {/* 头部 */}
         <div className="flex items-center gap-2.5 border-b border-border-divider px-5 py-4">
           <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-accent-warning/15 text-accent-warning">
@@ -175,16 +164,8 @@ export function PlanReviewModal({
             </div>
           </>
         )}
-      </div>
-    </div>,
-    document.body
+    </ModalShell>
   )
-}
-
-/** 专家识别色点样式（低饱和底 + 深字同族） */
-function expertDotStyle(expertType: string): React.CSSProperties {
-  const color = expertColor(expertType)
-  return { backgroundColor: color }
 }
 
 export default PlanReviewModal

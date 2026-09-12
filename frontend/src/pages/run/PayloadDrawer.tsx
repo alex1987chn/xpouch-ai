@@ -74,7 +74,7 @@ export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
       {/* 遮罩层 - 可选，点击关闭 */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-surface-scrim/40 transition-opacity"
+          className="fixed inset-0 z-40 bg-surface-scrim/45 transition-opacity"
           style={{ opacity: isOpen ? 1 : 0 }}
           onClick={onClose}
         />

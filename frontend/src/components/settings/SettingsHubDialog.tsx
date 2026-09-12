@@ -109,7 +109,7 @@ export function SettingsHubDialog() {
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-surface-scrim/60 flex items-center justify-center"
+      className="fixed inset-0 bg-surface-scrim/45 flex items-center justify-center"
       style={{ zIndex: Z_INDEX.MODAL }}
       onClick={closeSettings}
     >

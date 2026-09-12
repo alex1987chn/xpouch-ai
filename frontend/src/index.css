@@ -240,3 +240,28 @@
     word-break: break-word;
   }
 }
+
+/* ============================================
+   7. 流式进行中的微光条（蓝本 .shimmer）
+   行内"正在执行"的过渡表达：tint→card→tint 扫描
+   ============================================ */
+@layer utilities {
+  .shimmer {
+    display: inline-block;
+    width: 96px;
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--surface-tint) 25%, var(--surface-elevated) 50%, var(--surface-tint) 75%);
+    background-size: 200% 100%;
+    animation: shimmer-sweep 1.3s linear infinite;
+  }
+}
+
+@keyframes shimmer-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer { animation: none; opacity: 0.5; }
+}

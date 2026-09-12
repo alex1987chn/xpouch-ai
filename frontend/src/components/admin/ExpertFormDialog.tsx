@@ -142,7 +142,7 @@ export default function ExpertFormDialog({
   return createPortal(
     <>
       {/* 遮罩 */}
-      <div className="fixed inset-0 bg-surface-scrim/60" style={{ zIndex: Z_INDEX.MODAL }} onClick={handleClose} />
+      <div className="fixed inset-0 bg-surface-scrim/45" style={{ zIndex: Z_INDEX.MODAL }} onClick={handleClose} />
       {/* 对话框容器：头部/底部固定，仅正文滚动 */}
       <div
         {...a11y}

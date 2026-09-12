@@ -23,12 +23,13 @@ from config import settings
 from crud.agent_run import (
     mark_run_cancelled_by_id,
 )
+from crud.message import create_user_message
 from crud.run_event import (
     emit_hitl_rejected,
     emit_hitl_resumed,
     emit_run_cancelled,
 )
-from models import AgentRun, ExecutionPlan, Message, RunStatus, Thread
+from models import AgentRun, ExecutionPlan, RunStatus, Thread
 from models.enums import TaskStatus
 from services.chat.run_lifecycle import sse_stream_headers
 from utils.error_codes import ErrorCode
@@ -155,14 +156,7 @@ class RecoveryService:
         # 驳回反馈先落库（run 即将取消，但反馈属于会话历史）
         trimmed = (feedback or "").strip()
         if trimmed:
-            self.db.add(
-                Message(
-                    thread_id=thread_id,
-                    role="user",
-                    content=trimmed,
-                    timestamp=utc_now_naive(),
-                )
-            )
+            create_user_message(self.db, thread_id=thread_id, content=trimmed)
             logger.info(f"[HITL RESUME] 驳回反馈已落库（{len(trimmed)} 字）")
 
         # 清理 checkpoints（原始 + isolated 两种格式；单一实现在 utils/db）

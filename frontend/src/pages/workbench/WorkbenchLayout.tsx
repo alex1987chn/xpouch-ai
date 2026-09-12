@@ -134,13 +134,16 @@ export default function WorkbenchLayout() {
   const avatarNode = user?.avatar ? (
     <img src={user.avatar} alt="" className="h-[30px] w-[30px] rounded-full border border-border-divider object-cover" />
   ) : (
-    <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full border border-border-divider bg-surface-tint text-xs font-bold text-content-primary">
+    <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full border border-border-divider text-xs font-bold text-white" style={{ background: 'linear-gradient(135deg, #6f93ad, #b45f55)' }}>
       {(user?.username || 'U').charAt(0).toUpperCase()}
     </span>
   )
 
   return (
-    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-surface-page">
+    <div
+      className="flex h-[100dvh] w-full flex-col overflow-hidden bg-surface-page"
+      style={{ backgroundImage: 'var(--bg-pattern)', backgroundSize: 'var(--bg-pattern-size)' }}
+    >
       {/* ===== 顶栏 ===== */}
       <header className="relative z-40 flex h-[52px] shrink-0 items-center gap-3.5 border-b border-border-divider bg-surface-card px-4">
         <button onClick={() => navigate('/workbench')} aria-label="xpouch">

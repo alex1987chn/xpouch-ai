@@ -13,9 +13,7 @@ import { useMemo, useRef, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
-import { formatDistanceToNow, parseISO } from 'date-fns'
-import type { Locale } from 'date-fns'
-import { zhCN, enUS, ja } from 'date-fns/locale'
+import { formatDistanceToNow } from 'date-fns'
 import { Plus, Trash2 } from 'lucide-react'
 
 import { useChatHistoryQuery, chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
@@ -28,17 +26,12 @@ import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
 import type { Conversation } from '@/types'
 import { expertDotStyle } from '@/lib/expertIdentity'
+import { toLocalDate, localeForLanguage, type Locale } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
 
 interface SessionStrataProps {
   activeThreadId: string | null
   onNewChat: () => void
-}
-
-/** UTC → 本地时间的时区修正（沿用 HistoryPage 惯例） */
-function toLocalDate(iso: string): Date {
-  const parsed = parseISO(iso)
-  return new Date(parsed.getTime() + parsed.getTimezoneOffset() * 60_000)
 }
 
 type StrataGroup = 'today' | 'yesterday' | 'thisWeek' | 'earlier'
@@ -112,7 +105,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
     return buckets
   }, [filtered])
 
-  const locale = language === 'en' ? enUS : language === 'ja' ? ja : zhCN
+  const locale = localeForLanguage(language)
 
   // 加载更多：滚动到底触发（IntersectionObserver，沿用 HistoryPage 模式）
   const sentinelRef = useRef<HTMLDivElement>(null)

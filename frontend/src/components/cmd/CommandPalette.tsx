@@ -163,7 +163,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   return createPortal(
     <div
-      className="fixed inset-0 flex items-start justify-center bg-surface-scrim/50 pt-[14vh]"
+      className="fixed inset-0 flex items-start justify-center bg-surface-scrim/45 pt-[14vh]"
       style={{ zIndex: Z_INDEX.MODAL }}
       onClick={close}
     >

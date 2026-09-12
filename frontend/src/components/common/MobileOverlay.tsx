@@ -21,7 +21,7 @@ export default function MobileOverlay({ show, onClick, className }: MobileOverla
   return (
     <div
       className={cn(
-        'fixed inset-0 bg-surface-scrim/60 lg:hidden transition-opacity duration-300',
+        'fixed inset-0 bg-surface-scrim/45 lg:hidden transition-opacity duration-300',
         className
       )}
       style={{ zIndex: Z_INDEX.OVERLAY }}

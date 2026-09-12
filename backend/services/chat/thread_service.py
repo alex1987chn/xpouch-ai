@@ -20,6 +20,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, func, select
 
 from constants import SYSTEM_AGENT_DEFAULT_CHAT, SYSTEM_AGENT_ORCHESTRATOR, normalize_agent_id
+from crud.message import create_assistant_message, create_user_message
 from models import AgentRun, CustomAgent, ExecutionPlan, Message, SubTask, Thread
 from utils.exceptions import AuthorizationError, NotFoundError
 from utils.time import utc_now_naive
@@ -43,19 +44,14 @@ def save_assistant_message_sync(
     final_thinking = thinking_data or parsed_thinking
 
     # 🔥 Message 表的 id 是 INTEGER 自增，不要传入 UUID 字符串；
-    # message_id 放入 extra_data 供前端关联
-    extra_data = {"thinking": final_thinking} if final_thinking else {}
-    if message_id:
-        extra_data["frontend_message_id"] = message_id
-
-    message = Message(
+    # message_id/thinking 统一由 crud.message 写入 extra_data 供前端关联
+    message = create_assistant_message(
+        db,
         thread_id=thread_id,
-        role="assistant",
         content=clean_content,
-        extra_data=extra_data if extra_data else None,
-        timestamp=utc_now_naive(),
+        thinking_data=final_thinking,
+        frontend_message_id=message_id,
     )
-    db.add(message)
 
     # 更新线程时间
     thread = db.get(Thread, thread_id)
@@ -506,10 +502,7 @@ class ChatThreadService:
         Returns:
             保存的消息实例
         """
-        message = Message(
-            thread_id=thread_id, role="user", content=content, timestamp=utc_now_naive()
-        )
-        self.db.add(message)
+        message = create_user_message(self.db, thread_id=thread_id, content=content)
         self.db.commit()
         return message
 

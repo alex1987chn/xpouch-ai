@@ -142,6 +142,7 @@ const StepItem = ({ step, index }: StepItemProps) => {
             <span className="font-normal text-content-muted"> · {step.expertName}</span>
           )}
         </span>
+        {step.status === 'running' && <span className="shimmer shrink-0" />}
         {step.duration && (
           <span className="shrink-0 text-[11.5px] text-content-muted">
             {formatDuration(step.duration)}

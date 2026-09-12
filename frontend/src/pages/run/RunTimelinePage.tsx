@@ -24,6 +24,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { useRunDetails, useRunTimeline } from '@/hooks/queries/useRunTimelineQuery'
 import { useThreadArtifactsQuery } from '@/hooks/queries/useArtifactsQuery'
 import { ArtifactViewerModal } from '@/components/artifacts/ArtifactViewerModal'
+import { artifactTypeChipStyle } from '@/lib/artifactPresentation'
 import { getConversation } from '@/services/chat'
 import type { RunEvent, RunStatus } from '@/types/run'
 import { getEventDisplayName, getEventCategory, ACTIVE_RUN_STATUSES } from '@/types/run'
@@ -407,7 +408,10 @@ function RelatedArtifacts({ threadId }: { threadId: string }) {
        onClick={() => setViewerId(artifact.id)}
        className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-surface-tint/60"
       >
-       <span className="rounded-full bg-accent-info/12 px-2 py-0.5 text-nano font-medium text-accent-info">
+       <span
+        className="rounded-full px-2 py-0.5 text-nano font-medium"
+        style={artifactTypeChipStyle(artifact.type)}
+       >
         {artifact.type}
        </span>
        <span className="min-w-0 flex-1 truncate text-xs text-content-primary">

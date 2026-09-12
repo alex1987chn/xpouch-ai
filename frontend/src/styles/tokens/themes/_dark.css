@@ -35,34 +35,36 @@
     --content-disabled: 90 84 76;
 
     /* ========================================
-       Border - 预混合浅色细线（暗底 ~10% 暖白）
+       Border - 亮墨透明线在暗卡底上的精确预混合（蓝本 rgba 公式）
        ======================================== */
-    --border-default: 52 48 43;            /* 亮墨 10% 预混合（蓝本 @ #201d19） */
-    --border-hover: 81 76 69;           /* 亮墨 24% 预混合 */
+    --border-default: 52 49 45;            /* 亮墨 10% @ #201d19（蓝本 --line） */
+    --border-hover: 81 78 72;              /* 亮墨 24% @ #201d19（蓝本 --line-strong） */
     --border-focus: 74 68 58;
-    --border-divider: 52 48 43;
+    --border-divider: 52 49 45;
     --border-disabled: 46 42 36;
 
     /* ========================================
-       Accent - 品牌黄（暗底上更亮一档）
+       Accent - 品牌色（主色与 soft 同值，跨主题统一品牌资产）
        ======================================== */
-    --accent-brand: 234 179 8;             /* yellow-500 */
-    --accent-hover: 251 191 36;            /* yellow-400 */
-    --accent-active: 202 138 4;            /* amber-600 */
+    --accent-brand: 242 192 15;            /* #f2c00f - 品牌主色黄（与 soft 同源） */
+    --accent-hover: 250 204 21;            /* #facc15 - hover 亮一档 */
+    --accent-active: 234 179 8;            /* #eab308 - active 压一档 */
     --accent-subtle: 54 44 18;             /* 暗色浅黄底 */
-    --accent-ink: 32 29 25;                /* 黄底上的深字 */
-    --accent-destructive: 215 110 100;     /* 提亮的陶土红 */
-    --accent-success: 143 176 134;         /* 提亮鼠尾草 */
-    --accent-warning: 217 160 98;          /* 提亮暖橙 */
-    --accent-info: 127 165 192;            /* 提亮雾蓝 */
+    --accent-ink: 32 29 25;                /* 黄底配字（暗主题用暗卡墨，蓝本同款） */
+
+    /* 辅色 - 专家识别三色系（暗主题提亮档，蓝本 e-*） */
+    --accent-destructive: 201 119 108;     /* #c9776c - 陶土（提亮） */
+    --accent-success: 143 176 134;         /* #8fb088 - 鼠尾草（提亮） */
+    --accent-warning: 217 160 98;          /* #d9a062 - 琥珀（提亮） */
+    --accent-info: 127 165 192;            /* #7fa5c0 - 雾蓝（提亮） */
 
     /* ========================================
        Status / Shadow 基色
        ======================================== */
-    --status-online: 143 176 134;
-    --status-offline: 215 110 100;
-    --status-busy: 217 160 98;
-    --status-info: 127 165 192;
+    --status-online: 157 187 150;          /* #9dbb96 - 深鼠尾草提亮（蓝本 ok） */
+    --status-offline: 201 119 108;         /* #c9776c - 陶土提亮 */
+    --status-busy: 217 160 98;             /* #d9a062 - 深琥珀提亮 */
+    --status-info: 127 165 192;            /* #7fa5c0 - 雾蓝提亮 */
 
     --shadow-color: 0 0 0;
     --shadow-opacity: 0.4;

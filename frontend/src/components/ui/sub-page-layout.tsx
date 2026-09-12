@@ -26,7 +26,10 @@ interface SubPageLayoutProps {
 
 export function SubPageLayout({ menu, active, onSelect, children }: SubPageLayoutProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-page lg:flex-row">
+    <div
+      className="flex h-full min-h-0 flex-col bg-surface-page lg:flex-row"
+      style={{ backgroundImage: 'var(--bg-pattern)', backgroundSize: 'var(--bg-pattern-size)' }}
+    >
       {/* 子菜单（subrail） */}
       <div className="hidden w-[168px] shrink-0 flex-col gap-0.5 border-r border-border-divider bg-surface-card p-2.5 lg:flex">
         {menu.map(item => (
