@@ -81,6 +81,19 @@ class TestMessageDeltaGating:
         token = _make_stream_token(langgraph_node="router", content="should not appear")
         assert self.service.transform_langgraph_event(token, message_id="m1") is None
 
+    def test_direct_reply_content_becomes_delta(self):
+        """simple 模式的流式来源：direct_reply 的 token 必须放行。
+
+        回归守卫——direct_reply 的内容经 on_chat_model_stream → message.delta
+        逐字送达前端（simple 模式唯一的流式来源），拦掉它会让简单模式失去
+        流式输出、退化成「转圈后整段蹦出」。
+        """
+        token = _make_stream_token(
+            node_type="direct_reply", langgraph_node="direct_reply", content="simple-delta"
+        )
+        out = self.service.transform_langgraph_event(token, message_id="m1")
+        assert out is not None and "message.delta" in out and "simple-delta" in out
+
     def test_empty_chunk_returns_none(self):
         token = {"event": "on_chat_model_stream", "metadata": {}, "data": {}}
         assert self.service.transform_langgraph_event(token, message_id="m1") is None
@@ -103,3 +116,38 @@ class TestMessageDeltaGating:
         token = _make_stream_token(node_type="aggregator", langgraph_node="aggregator", content="x")
         out = self.service.transform_langgraph_event(token, message_id="mid-9")
         assert out is not None and '"message_id": "mid-9"' in out
+
+
+class TestSimpleModeStreamingWiring:
+    """simple 模式流式链路的两半必须同时成立（缺一即退化为整段蹦出）：
+    1. direct_reply 的 LLM 实例 streaming=True → ainvoke 内部走流式触发 token 回调；
+    2. transform_langgraph_event 放行 direct_reply 的 token（见上方 gating 测试）。
+    """
+
+    def test_resolve_simple_llm_requests_streaming(self):
+        from unittest.mock import patch
+
+        from agents.nodes import router as router_mod
+
+        captured: dict = {}
+
+        def _fake_get_llm_by_model(model_id, **kwargs):
+            captured["model_id"] = model_id
+            captured.update(kwargs)
+            return object()
+
+        with (
+            patch(
+                "providers_config.get_model_config",
+                lambda _m: {"provider": "deepseek", "model": "deepseek-flash"},
+            ),
+            patch("utils.llm_factory.get_llm_by_model", _fake_get_llm_by_model),
+        ):
+            result = router_mod._resolve_simple_llm(
+                {"simple_model": "deepseek-chat", "simple_thinking": None}
+            )
+
+        assert result is not None
+        assert captured.get("streaming") is True, (
+            "direct_reply 的 LLM 必须 streaming=True——否则简单模式失去逐字流式"
+        )

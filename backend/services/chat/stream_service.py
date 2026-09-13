@@ -44,6 +44,13 @@ from utils.exceptions import AppError
 from utils.logger import logger, set_run_id
 from utils.time import utc_now_naive
 
+# 允许产生 message.delta / message.thinking 的节点白名单。
+# - aggregator：复杂模式的最终聚合回复
+# - direct_reply：简单模式的回复（内容经 on_chat_model_stream 逐字送达，
+#   是 simple 模式唯一的流式来源）
+# 其余节点（commander/expert/router）的产出经 sse_event 通道直达前端。
+_DELTA_ALLOWED_NODES = frozenset({"aggregator", "direct_reply"})
+
 
 class StreamService(CustomAgentMixin, EventBuildersMixin):
     """流式处理服务。
@@ -1124,14 +1131,14 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         """将 LangGraph 事件转换为 SSE 格式
 
         判据说明（langgraph_node + node_type 合并共存，已实测验证）：
-        - metadata["langgraph_node"]：LangGraph 1.2.11 自动注入的节点名，
-          只挂在节点边界事件上（on_chain_start/end/stream），是节点身份判据；
-        - metadata["node_type"]：节点内部发 LLM 时自挂的角色标记
-          （expert/commander/router/aggregator），会合并进同一 metadata dict，
-          是 LLM token（on_chat_model_stream）的角色判据。
+        - metadata["node_type"]：节点内部发 LLM 时自挂的角色标记，会出现在
+          LLM token 事件（on_chat_model_stream）上，是该事件的**主判据**；
+        - metadata["langgraph_node"]：LangGraph 1.2.11 自动注入的节点名，只挂在
+          节点边界事件上（on_chain_start/end/stream），token 事件上作**兜底**判据。
 
-        本函数只处理 on_chat_model_stream 的 message.delta / message.thinking；
-        其余事件（task/plan/artifact 等）均经 emit_event 的 sse_event 通道直达。
+        只有白名单节点允许产生 message.delta / message.thinking；其余节点
+        （commander/expert/router）的产出经 sse_event 通道直达前端。
+        本函数不处理 task/plan/artifact 等事件（那些由 emit_event 直达）。
         """
         import json
 
@@ -1152,14 +1159,11 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             node_type = metadata.get("node_type", "")
             langgraph_node = metadata.get("langgraph_node", "")
 
-            # 主判据：非流式内容节点一律拦截（其内容经 sse_event 通道直达）
-            # commander/expert 的产出走 plan.thinking / artifact 事件，不进 message.delta
-            if node_type in ("commander", "expert", "router"):
-                return None
-            # 兜底：节点身份判据（aggregator 允许 message.delta，其余默认拦截）
-            # langgraph_node 与 node_type 在 messages 通道 metadata 中合并共存；
-            # 两者都非 aggregator 时说明该 token 不属于可流式输出的节点
-            if langgraph_node != "aggregator" and node_type != "aggregator":
+            # 白名单判据：aggregator = 复杂模式的最终回复流；
+            # direct_reply = 简单模式的回复流（内容经 on_chat_model_stream 逐字送达，
+            # 是 simple 模式唯一的流式来源，不可拦截）
+            effective_node = node_type or langgraph_node
+            if effective_node not in _DELTA_ALLOWED_NODES:
                 return None
 
             # 思考过程流式块（DeepSeek reasoning_content；思考 chunk 通常没有正文内容，
@@ -1176,7 +1180,6 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             content = getattr(chunk, "content", None)
             if content:
                 # 只发送纯净数据，包含 message_id 用于前端消息关联
-                # 只有 aggregator 节点会执行到这里（其余已被上方判据拦截）
                 event_data = {"content": content}
                 if message_id:
                     event_data["message_id"] = message_id
