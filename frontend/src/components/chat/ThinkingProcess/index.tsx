@@ -184,7 +184,7 @@ const StepItem = ({ step, index, onOpenArtifact }: StepItemProps) => {
       <button
         onClick={() => hasDetail && setOpen(v => !v)}
         className={cn(
-          'flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors',
+          'flex w-full items-center gap-3 px-4 py-2 text-left transition-colors',
           hasDetail && 'cursor-pointer hover:bg-surface-tint/50',
           step.status === 'running' && 'bg-surface-tint/30'
         )}
@@ -229,7 +229,7 @@ const StepItem = ({ step, index, onOpenArtifact }: StepItemProps) => {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="block w-full cursor-pointer px-4 pb-2.5 pl-[66px] text-left transition-colors hover:bg-surface-tint/50"
+          className="block w-full cursor-pointer px-4 pb-2.5 pl-[66px] pt-1 text-left transition-colors hover:bg-surface-tint/50"
         >
           <p className="line-clamp-3 whitespace-pre-wrap text-xs leading-relaxed text-content-secondary">
             {step.content}
@@ -239,7 +239,7 @@ const StepItem = ({ step, index, onOpenArtifact }: StepItemProps) => {
 
       {/* 展开详情：过程文本 / 链接 */}
       {open && (
-        <div className="pb-3 pl-[66px] pr-4">
+        <div className="pb-3 pl-[66px] pr-4 pt-1">
           {step.content && (
             <p className="whitespace-pre-wrap text-xs leading-relaxed text-content-secondary">
               {step.content}
@@ -357,12 +357,13 @@ export default function ThinkingProcess({
   return (
     <div className={cn("mb-4 overflow-hidden rounded-lg border border-border-divider bg-surface-card", className)}>
       {/* 头部 - 点击展开/收起 */}
+      {/* 行高克制：py-2.5 + 20px 图标（原 py-3 + 24px 偏厚重，整块面板显得压头） */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex w-full items-center justify-between px-4 py-3 text-sm transition-colors hover:bg-surface-tint/50"
+        className="flex w-full items-center justify-between px-4 py-2.5 text-sm transition-colors hover:bg-surface-tint/50"
       >
         <div className="flex items-center gap-2.5">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-tint"><Brain className="h-3.5 w-3.5 text-content-secondary" /></span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-tint"><Brain className="h-3 w-3 text-content-secondary" /></span>
           <span className="font-bold text-content-primary">{t('thinkingProcess')}</span>
           <span className="text-xs font-medium text-content-muted">
             {completedSteps}/{totalSteps}
