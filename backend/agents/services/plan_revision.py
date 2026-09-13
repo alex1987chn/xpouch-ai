@@ -17,11 +17,16 @@ from langchain_core.runnables import RunnableConfig
 from pydantic import ValidationError
 
 from agents.nodes.commander import ExecutionPlan as PlanSchema
-from agents.nodes.commander import _extract_json_string
 from config import settings
 from constants import COMMANDER_SYSTEM_PROMPT
 from providers_config import get_model_config
 from utils.logger import logger
+
+
+class PlanRevisionError(RuntimeError):
+    """修订未产出合法计划。调用方对修订失败一律宽兜底（保持原计划待审），
+    故这里只需一个可辨识的异常类型用于日志与语义表达。"""
+
 
 REVISION_TIMEOUT_SECONDS = 240
 
@@ -116,12 +121,16 @@ async def revise_plan_tasks(
     human_prompt = _build_revision_prompt(user_query, previous_tasks, plan_version, feedback)
 
     async def _invoke() -> PlanSchema:
-        response = await llm.ainvoke(
+        # 结构化输出：schema 由 function-calling 保证，不再手抽 JSON
+        # （原实现复用 commander 的 _extract_json_string，随该函数一并移除）
+        structured = llm.with_structured_output(PlanSchema)
+        parsed = await structured.ainvoke(
             [SystemMessage(content=system_prompt), HumanMessage(content=human_prompt)],
-            config=RunnableConfig(tags=["plan_revision", "json_mode"]),
+            config=RunnableConfig(tags=["plan_revision", "structured_output"]),
         )
-        raw = response.content if hasattr(response, "content") else str(response)
-        return PlanSchema.model_validate_json(_extract_json_string(raw))
+        if parsed is None:
+            raise PlanRevisionError("结构化输出未产出合法修订计划")
+        return parsed
 
     try:
         revised = await asyncio.wait_for(_invoke(), timeout=REVISION_TIMEOUT_SECONDS)

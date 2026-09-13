@@ -48,14 +48,13 @@ from typing import Any
 from cachetools import TTLCache
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, field_validator
 from sqlmodel import Session
 from tenacity import (
     before_sleep_log,
     retry,
     retry_if_exception_type,
     stop_after_attempt,
-    wait_fixed,
 )
 
 from agents.event_stream import emit_event
@@ -388,12 +387,11 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                     f"[COMMANDER] 复用 chat.py 发送的 plan.started: {preview_execution_plan_id}"
                 )
 
-            # 2️⃣ 使用 JSON Mode + Pydantic 强校验生成计划
-            # 🔥 Commander 2.0: DeepSeek 兼容的 JSON Mode 实现
+            # 2️⃣ 用**结构化输出**生成计划（schema 由 function-calling 保证）
             human_prompt = f"用户查询: {user_query}\n\n请分析需求并生成执行计划。"
 
-            logger.info("[COMMANDER] 使用 JSON Mode + Pydantic 校验生成执行计划...")
-            commander_response = await _generate_plan_with_json_mode(
+            logger.info("[COMMANDER] 使用结构化输出生成执行计划...")
+            commander_response = await _generate_plan(
                 llm_with_config,
                 system_prompt,
                 human_prompt,
@@ -597,76 +595,64 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
         }
 
 
-def _extract_json_string(content: str) -> str:
+class PlanGenerationError(RuntimeError):
+    """结构化输出未产出合法计划（schema 层面的失败）。
+
+    单独成类，是为了让重试**只针对这一类问题**。此前的写法是
+    `retry_if_exception_type((ValidationError, Exception))`——等价于重试一切，
+    连网络错误也重试（而网络重试已由 ChatOpenAI 内建 max_retries 承担），
+    且 `wait_fixed(0.5)` 对 LLM 的输出波动没有实际帮助。
     """
-    从 LLM 响应中提取 JSON 字符串
-
-    处理以下情况:
-    1. Markdown 代码块 (```json ... ```)
-    2. 纯 JSON 文本
-    3. 前后有额外文本的情况
-    """
-    content = content.strip()
-
-    # 情况 1: Markdown 代码块
-    if content.startswith("```"):
-        lines = content.split("\n")
-        # 找到第一个和最后一个 ```
-        start_idx = 0
-        end_idx = len(lines) - 1
-
-        # 跳过开头的 ``` 或 ```json
-        for i, line in enumerate(lines):
-            if line.strip().startswith("```"):
-                start_idx = i + 1
-                break
-
-        # 找到结尾的 ```
-        for i in range(len(lines) - 1, -1, -1):
-            if lines[i].strip() == "```":
-                end_idx = i
-                break
-
-        json_content = "\n".join(lines[start_idx:end_idx])
-        return json_content.strip()
-
-    # 情况 2: 尝试找到 JSON 对象的开始和结束
-    # 找到第一个 { 和最后一个 }
-    start = content.find("{")
-    end = content.rfind("}")
-
-    if start != -1 and end != -1 and end > start:
-        return content[start : end + 1]
-
-    # 情况 3: 已经是纯 JSON
-    return content
 
 
-async def _generate_plan_once(
-    llm_with_config,
-    enhanced_system_prompt: str,
+@retry(
+    retry=retry_if_exception_type(PlanGenerationError),
+    stop=stop_after_attempt(2),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
+    reraise=True,
+)
+async def _generate_plan(
+    llm,
+    system_prompt: str,
     human_prompt: str,
     preview_execution_plan_id: str,
 ) -> ExecutionPlan:
-    """
-    单次生成执行计划（用于 tenacity 重试）
+    """用**结构化输出**生成执行计划。
+
+    取代此前「JSON Mode + 手抽 JSON + Pydantic 校验」的三段式：输出符合
+    `ExecutionPlan` schema 由 provider 的 function-calling 保证，因此不再需要
+    剥 markdown 围栏、截取首尾大括号、以及在提示词里追加
+    "You MUST output a valid JSON object"——那些都是缺少 schema 约束时的补丁。
+
+    `include_raw=True` 保留原始响应，用于两件不能丢的事：
+      1. `plan.thinking` 事件（用户可见的规划思考流）
+      2. 失败时排障（拿到模型真正吐了什么）
     """
     from utils.event_generator import event_plan_thinking
 
-    json_mode_llm = llm_with_config.bind(response_format={"type": "json_object"})
-
-    response = await json_mode_llm.ainvoke(
-        [SystemMessage(content=enhanced_system_prompt), HumanMessage(content=human_prompt)],
+    structured = llm.with_structured_output(ExecutionPlan, include_raw=True)
+    result = await structured.ainvoke(
+        [SystemMessage(content=system_prompt), HumanMessage(content=human_prompt)],
         config=RunnableConfig(
-            tags=["commander", "json_mode"],
-            metadata={"node_type": "commander", "mode": "json_object"},
+            tags=["commander", "structured_output"],
+            metadata={"node_type": "commander"},
         ),
     )
 
-    raw_content = response.content if hasattr(response, "content") else str(response)
+    # include_raw=True 时返回 {"raw": AIMessage, "parsed": ExecutionPlan|None,
+    #                          "parsing_error": Exception|None}
+    raw_text = ""
+    parsed: ExecutionPlan | None = None
+    parsing_error: object | None = None
+    if isinstance(result, dict):
+        parsed = result.get("parsed")
+        parsing_error = result.get("parsing_error")
+        raw_text = getattr(result.get("raw"), "content", "") or ""
+    else:
+        parsed = result  # 少数实现直接返回对象
 
-    # 发送 thinking 事件
-    thinking_preview = raw_content[:200] + "..." if len(raw_content) > 200 else raw_content
+    # 先发 thinking（与改造前一致：即使随后校验失败，思考流也已可见）
+    thinking_preview = raw_text[:200] + "..." if len(raw_text) > 200 else raw_text
     await emit_event(
         event_plan_thinking(
             execution_plan_id=preview_execution_plan_id,
@@ -674,46 +660,13 @@ async def _generate_plan_once(
         )
     )
 
-    # 提取和校验 JSON
-    cleaned_content = _extract_json_string(raw_content)
-    return ExecutionPlan.model_validate_json(cleaned_content)
+    if parsed is None:
+        raise PlanGenerationError(f"结构化输出未产出合法计划: {parsing_error or '空结果'}")
+    return parsed
 
 
-@retry(
-    retry=retry_if_exception_type((ValidationError, Exception)),
-    stop=stop_after_attempt(2),
-    wait=wait_fixed(0.5),
-    before_sleep=before_sleep_log(logger, logging.WARNING),
-    reraise=True,
-)
-async def _generate_plan_with_json_mode(
-    llm_with_config,
-    system_prompt: str,
-    human_prompt: str,
-    preview_execution_plan_id: str,
-) -> ExecutionPlan:
-    """
-    Commander 2.0: 使用 JSON Mode + Pydantic 强校验生成执行计划
-
-    P1 优化: 使用 tenacity 统一重试机制
-    """
-    enhanced_system_prompt = (
-        system_prompt
-        + """
-
-IMPORTANT: You MUST output a valid JSON object. No conversation, no markdown code blocks, just raw JSON text."""
-    )
-
-    try:
-        return await _generate_plan_once(
-            llm_with_config,
-            enhanced_system_prompt,
-            human_prompt,
-            preview_execution_plan_id,
-        )
-    except ValidationError as e:
-        logger.warning(f"[COMMANDER] Pydantic 校验失败: {e}")
-        raise
-    except Exception as e:
-        logger.warning(f"[COMMANDER] 生成计划失败: {e}")
-        raise
+# 说明：本模块的「JSON Mode + 手抽 JSON + tenacity 重试」三段式已由
+# _generate_plan（结构化输出）取代，_extract_json_string / _generate_plan_once /
+# _generate_plan_with_json_mode 全部移除。原实现的三处补丁——剥 markdown 围栏、
+# 截取首尾大括号、在提示词里追加 "You MUST output a valid JSON object"——
+# 都是缺少 schema 约束时的替代品，现由 function-calling 保证。

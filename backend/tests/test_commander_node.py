@@ -41,6 +41,32 @@ class _FakeResponse:
         self.content = content
 
 
+class _FakeStructured:
+    """`with_structured_output(..., include_raw=True)` 的返回物替身。
+
+    真实实现返回 RunnableSequence，ainvoke 得到
+    {"raw": AIMessage, "parsed": <模型实例> | None, "parsing_error": ...}。
+    桩按该形状返回，并复用 json 走一遍真实校验——这样「计划 JSON 合法/非法」
+    仍由真实 schema 判定，桩不会掩盖 schema 相关问题。
+    同时在此记录 prompt：改造后 LLM 调用经结构化路径，原先只覆写 ainvoke 的
+    捕获桩会漏记。
+    """
+
+    def __init__(self, llm):
+        self._llm = llm
+
+    async def ainvoke(self, messages, config=None):  # noqa: ARG002
+        from pydantic import ValidationError
+
+        self._llm._record_prompt(messages)
+        raw = _FakeResponse(self._llm._json)
+        try:
+            parsed = self._llm._schema.model_validate_json(self._llm._json)
+        except ValidationError as exc:
+            return {"raw": raw, "parsed": None, "parsing_error": exc}
+        return {"raw": raw, "parsed": parsed, "parsing_error": None}
+
+
 class _FakeBound:
     def __init__(self, llm):
         self._llm = llm
@@ -48,18 +74,39 @@ class _FakeBound:
     def bind(self, **_kwargs):
         return self
 
+    def with_structured_output(self, schema, **_kwargs):
+        self._llm._schema = schema
+        return _FakeStructured(self._llm)
+
     async def ainvoke(self, messages, config=None):
         return await self._llm.ainvoke(messages, config=config)
 
 
 class _FakeLLM:
-    def __init__(self, json_plan: str):
+    """计划生成用的 LLM 替身。
+
+    captured_prompts 非空时记录每次调用的 system prompt——普通路径与结构化路径
+    都经 _record_prompt，因此捕获不依赖调用方式。
+    """
+
+    def __init__(self, json_plan: str, captured_prompts: list | None = None):
         self._json = json_plan
+        self._schema = None
+        self._captured = captured_prompts
+
+    def _record_prompt(self, messages) -> None:
+        if self._captured is not None and messages:
+            self._captured.append(messages[0].content)
 
     def bind(self, **_kwargs):
         return _FakeBound(self)
 
+    def with_structured_output(self, schema, **_kwargs):
+        self._schema = schema
+        return _FakeStructured(self)
+
     async def ainvoke(self, messages, config=None):
+        self._record_prompt(messages)
         return _FakeResponse(self._json)
 
 
@@ -178,13 +225,8 @@ def _patches(llm):
 async def test_generates_plan_without_artifacts_section():
     captured_prompts: list = []
 
-    class _CaptureLLM(_FakeLLM):
-        async def ainvoke(self, messages, config=None):
-            captured_prompts.append(messages[0].content)
-            return await super().ainvoke(messages, config=config)
-
     with _patches(
-        _CaptureLLM(
+        _FakeLLM(
             _plan_json(
                 [
                     {
@@ -194,7 +236,8 @@ async def test_generates_plan_without_artifacts_section():
                         "dependencies": [],
                     }
                 ]
-            )
+            ),
+            captured_prompts=captured_prompts,
         )
     ):
         result = await commander_node(_base_state())
@@ -212,15 +255,11 @@ async def test_generates_plan_without_artifacts_section():
 async def test_injects_recent_artifacts_into_prompt():
     captured_prompts: list = []
 
-    class _CaptureLLM(_FakeLLM):
-        async def ainvoke(self, messages, config=None):
-            captured_prompts.append(messages[0].content)
-            return await super().ainvoke(messages, config=config)
-
-    capture = _CaptureLLM(
+    capture = _FakeLLM(
         _plan_json(
             [{"id": "task_0", "expert_type": "coder", "description": "改图", "dependencies": []}]
-        )
+        ),
+        captured_prompts=captured_prompts,
     )
     state = _base_state(
         extra={
