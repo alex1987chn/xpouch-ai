@@ -4,7 +4,9 @@
  */
 
 import { useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { deleteConversation as apiDeleteConversation } from '@/services/chat'
+import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { errorHandler } from '@/utils/logger'
 
 import {
@@ -16,14 +18,14 @@ import {
  * Conversation management Hook
  */
 export function useConversation() {
-
+  const queryClient = useQueryClient()
   const messages = useMessages()
   const currentThreadId = useCurrentConversationId()
-  
+
   // Actions
-  const { 
-    setMessages, 
-    setCurrentConversationId, 
+  const {
+    setMessages,
+    setCurrentConversationId,
   } = useChatActions()
 
   /**
@@ -33,6 +35,10 @@ export function useConversation() {
     try {
       await apiDeleteConversation(threadId)
 
+      // 失效会话列表缓存——否则左栏 SessionStrata 删完仍残留该会话
+      queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
+      queryClient.removeQueries({ queryKey: chatHistoryKeys.detail(threadId) })
+
       if (currentThreadId === threadId) {
         setMessages([])
         setCurrentConversationId(null)
@@ -40,7 +46,7 @@ export function useConversation() {
     } catch (error) {
       errorHandler.handle(error, 'deleteConversation')
     }
-  }, [currentThreadId, setMessages, setCurrentConversationId])
+  }, [queryClient, currentThreadId, setMessages, setCurrentConversationId])
 
   return {
     messages,

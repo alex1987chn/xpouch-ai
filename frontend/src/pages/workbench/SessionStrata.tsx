@@ -10,14 +10,12 @@
  */
 
 import { useMemo, useRef, useEffect, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
 import { formatDistanceToNow } from 'date-fns'
 import { Plus, Trash2, MessagesSquare, SearchX } from 'lucide-react'
 
-import { useChatHistoryQuery, chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
-import { deleteConversation } from '@/services/chat'
+import { useChatHistoryQuery, useDeleteConversationMutation } from '@/hooks/queries/useChatHistoryQuery'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { pushToast } from '@/components/ui/use-toast'
 import { SearchInput } from '@/components/ui/input'
@@ -76,10 +74,10 @@ function RowTrailing({ conversation, locale }: { conversation: Conversation; loc
 export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps) {
   const { t, language } = useTranslation()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [pendingDelete, setPendingDelete] = useState<Conversation | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const deleteConversationMutation = useDeleteConversationMutation()
+  const isDeleting = deleteConversationMutation.isPending
 
   const { data, isLoading, fetchNextPage, hasNextPage } = useChatHistoryQuery({ limit: 20 })
   const conversations = useMemo(
@@ -125,9 +123,8 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
   // 删除会话：确认后调接口，刷新地层；删的是当前线程则回到新会话
   const handleConfirmDelete = async () => {
     if (!pendingDelete) return
-    setIsDeleting(true)
     try {
-      await deleteConversation(pendingDelete.id)
+      await deleteConversationMutation.mutateAsync(pendingDelete.id)
       pushToast({ title: t('sessionDeleted') })
       if (pendingDelete.id === activeThreadId) {
         useChatStore.getState().setMessages([])
@@ -135,11 +132,9 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
         useTaskStore.getState().resetAll(true)
         navigate('/workbench')
       }
-      queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
     } catch (error) {
       pushToast({ title: (error as Error).message || t('deleteFailed'), variant: 'destructive' })
     } finally {
-      setIsDeleting(false)
       setPendingDelete(null)
     }
   }
