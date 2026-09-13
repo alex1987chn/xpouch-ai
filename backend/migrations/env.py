@@ -28,11 +28,21 @@ from config import settings
 config = context.config
 
 # Setup logging
-# disable_existing_loggers 必须为 False：v3.5.0 起迁移在应用进程内执行
-# （create_db_and_tables → command.upgrade），alembic 的 fileConfig 默认
-# 会停掉此前已配置的所有 logger（含 utils/logger.setup_logging 配好的
-# 应用日志），生产环境的错误日志因此被静默丢弃，500 无法定位。
-if config.config_file_name is not None:
+#
+# 只在**尚未配置日志**时套用 alembic.ini（CLI 场景：`alembic upgrade head`）。
+# 进程内迁移（应用启动时 create_db_and_tables → command.upgrade）必须跳过，
+# 否则会破坏应用日志：
+#   logging.config.fileConfig 会**无条件**调用 _clearExistingHandlers()，把
+#   utils/logger.setup_logging() 配好的 root handler 全部清掉，再按 alembic.ini
+#   的 [logger_root] level=WARNING 重建 —— 结果是启动后应用的 INFO 日志全部
+#   消失（ERROR 仍走 stderr，故"部分可见"更有迷惑性）。
+#   v3.5.0 曾因此让生产 500 难以定位；当时只修了 disable_existing_loggers，
+#   但该参数**并不阻止 handler 被清除**（遗留问题，2026-09-13 修正）。
+# 判据用 setup_logging() 打在 root logger 上的幂等标记，最精确。
+import logging as _logging
+
+_app_logging_configured = bool(getattr(_logging.getLogger(), "_xpouch_logging_configured", False))
+if config.config_file_name is not None and not _app_logging_configured:
     fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # SQLModel metadata

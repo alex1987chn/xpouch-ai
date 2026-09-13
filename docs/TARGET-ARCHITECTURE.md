@@ -309,7 +309,7 @@
 | **`preview_execution_plan_id` 接线未生效（已修）** | 该键原**未在 `AgentState` 声明、无写入点**（仅测试显式传），而 LangGraph 过滤未声明键 → commander 里 `state.get(...) or uuid4()` **每次执行都拿到新 uuid**，它设计的目标「`plan.started` 事件 id 与落库计划 id 一致」**从未成立**。已补声明 + commander 成功路径回写。 |
 | **psycopg 连接串必须是 plain** | `utils/db.py` 走 psycopg 原生池，只认 `postgresql://`；`+psycopg` 是 SQLAlchemy 驱动标记，libpq 会报 `invalid connection option`。`database.py` / `migrations/env.py` 走 SQLAlchemy，**才**用 `+psycopg`。 |
 | **provider `enabled` 判定** | `is_provider_configured` 必须同时看 `enabled` 与存在 key。只看 key 会让 `enabled: false` 的 provider 被选中，然后 `_build_llm_instance` 抛错、commander 静默退化为空计划。 |
-| **alembic `fileConfig` 清 handler** | `logging.config.fileConfig` **无条件**调用 `_clearExistingHandlers()`，且 `alembic.ini` 的 `[logger_root] level = WARNING`。进程内迁移一跑，应用的 INFO 日志全部消失（ERROR 仍在）。**未修**——修法不是重调 `setup_logging()`（有幂等守卫会直接返回），需显式重建 handler。 |
+| **alembic `fileConfig` 清 handler（已修 2026-09-13）** | `logging.config.fileConfig` 会**无条件**调用 `_clearExistingHandlers()`，且 `alembic.ini` 是 `[logger_root] level = WARNING`。进程内迁移一跑，应用的 INFO 日志全部消失（ERROR 仍走 stderr，故"部分可见"更具迷惑性）。v3.5.0 曾因此让生产 500 难以定位，当时只修了 `disable_existing_loggers`——**该参数并不阻止 handler 被清除**。现 `migrations/env.py` 仅在应用未配置日志时（CLI 场景）才套用 alembic.ini，判据用 `setup_logging()` 打在 root 上的幂等标记。**已实机验证**：迁移后的 `[Database] schema aligned` / `[Lifespan] ...` / `[SessionCleanup] ...` / 带 request-id 的请求日志全部可见。 |
 | **枚举须注册 msgpack 白名单** | `utils/db.py` 的 `JsonPlusSerializer(allowed_msgpack_modules=[...])`——新增业务枚举不注册，checkpoint 反序列化会炸。 |
 | **时区约定** | 全库 UTC naive 写入 + 前端 `toLocalDate` 补 Z 解析。禁用模型默认 `datetime.now` / 裸 `new Date(iso)`。 |
 | **前端依赖用 pnpm** | 根 `pnpm-lock.yaml` 是真锁文件。`npm uninstall` 会改写 `package.json`（即使命令失败）。 |
