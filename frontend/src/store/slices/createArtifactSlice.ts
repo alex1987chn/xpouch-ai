@@ -81,9 +81,11 @@ export const createArtifactSlice = (
         task.artifacts[existingIndex] = {
           id: data.artifact.id,
           type: data.artifact.type as Artifact['type'],
-          title: data.artifact.title,
+          // 线上协议里这两个字段可能是显式 null（后端 `str | None`），
+          // 存储层用 undefined 表示"没有"，这里统一收一下
+          title: data.artifact.title ?? undefined,
           content: data.artifact.content,
-          language: data.artifact.language,
+          language: data.artifact.language ?? undefined,
           sortOrder: data.artifact.sort_order,
           createdAt: task.artifacts[existingIndex].createdAt || new Date().toISOString()
         }
@@ -91,9 +93,11 @@ export const createArtifactSlice = (
         task.artifacts.push({
           id: data.artifact.id,
           type: data.artifact.type as Artifact['type'],
-          title: data.artifact.title,
+          // 线上协议里这两个字段可能是显式 null（后端 `str | None`），
+          // 存储层用 undefined 表示"没有"，这里统一收一下
+          title: data.artifact.title ?? undefined,
           content: data.artifact.content,
-          language: data.artifact.language,
+          language: data.artifact.language ?? undefined,
           sortOrder: data.artifact.sort_order,
           createdAt: new Date().toISOString()
         })

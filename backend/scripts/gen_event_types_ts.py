@@ -25,7 +25,7 @@ import types as pytypes
 import typing
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -78,6 +78,10 @@ def _ts_type(annotation: Any) -> str:
     origin = typing.get_origin(annotation)
     args = typing.get_args(annotation)
 
+    # Literal["a", "b"] → 'a' | 'b'（后端把状态类字段收窄成字面量，前端也这么写）
+    if origin is Literal:
+        return " | ".join(json_repr(arg) for arg in args)
+
     if origin in (list, set, tuple):
         inner = _ts_type(args[0]) if args else "unknown"
         # 联合类型要加括号，避免 "string | null[]" 这种歧义
@@ -98,6 +102,13 @@ def _ts_type(annotation: Any) -> str:
     return "unknown"
 
 
+def json_repr(value: Any) -> str:
+    """TS 里的字面量写法：字符串加单引号，其余原样（数字/布尔）"""
+    if isinstance(value, str):
+        return f"'{value}'"
+    return str(value).lower() if isinstance(value, bool) else str(value)
+
+
 def _render_model(model: type[BaseModel]) -> str:
     lines = [f"export interface {model.__name__} {{"]
     for name, field in model.model_fields.items():
@@ -116,14 +127,23 @@ def _payload_models() -> list[type[BaseModel]]:
 
     缺模型直接抛错——新增事件类型必须补 payload 模型，这本身就是一道闸门
     （此前出现过「事件发了但前端没有对应类型」的静默缺口）。
+    再递归收集这些模型引用到的嵌套模型（TaskInfo / ArtifactInfo / ThinkingData ...），
+    保证生成物里所有被引用的类型都有定义（此前靠一份硬编码名单，新增嵌套模型就会漏）。
     """
     from event_types import events as events_module
 
     models: list[type[BaseModel]] = []
     seen: set[str] = set()
 
-    # 先收集直接依赖的嵌套模型（TaskInfo / ArtifactInfo 等）
-    nested_names = {"TaskInfo", "ArtifactInfo"}
+    def _collect(model: type[BaseModel]) -> None:
+        """后序收集：先收依赖，再收自己（保证 TS 里被引用者先声明）"""
+        if model.__name__ in seen:
+            return
+        seen.add(model.__name__)
+        for field in model.model_fields.values():
+            for nested in _nested_models(field.annotation):
+                _collect(nested)
+        models.append(model)
 
     for member in EventType:
         model_name = f"{_pascal(member.name)}Data"
@@ -133,17 +153,20 @@ def _payload_models() -> list[type[BaseModel]]:
                 f"事件 {member.value!r}（{member.name}）缺少 payload 模型 {model_name}；"
                 f"请在 backend/event_types/events.py 补上，或修正本脚本的命名约定"
             )
-        if model.__name__ not in seen:
-            models.append(model)
-            seen.add(model.__name__)
-
-    for name in sorted(nested_names):
-        model = getattr(events_module, name, None)
-        if model is not None and model.__name__ not in seen:
-            models.insert(0, model)
-            seen.add(model.__name__)
+        _collect(model)
 
     return models
+
+
+def _nested_models(annotation: Any) -> list[type[BaseModel]]:
+    """从注解里递归挑出 pydantic 模型（含 list[X] / X | None 这类包装）"""
+    if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+        return [annotation]
+
+    found: list[type[BaseModel]] = []
+    for arg in typing.get_args(annotation):
+        found.extend(_nested_models(arg))
+    return found
 
 
 def generate() -> str:

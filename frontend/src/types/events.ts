@@ -3,7 +3,6 @@
  * 统一前后端事件协议（与 backend/types/events.py 对应）
  */
 
-import type { ThinkingStep } from './index'
 
 // ============================================================================
 // 事件类型枚举
@@ -102,7 +101,7 @@ export interface TaskCompletedData {
   expert_type: string
   description: string
   status: 'completed'
-  output?: string
+  output?: string | null
   duration_ms: number
   completed_at: string
   artifact_count: number
@@ -128,7 +127,7 @@ export interface TaskProgressData {
   task_id: string
   expert_type: string
   progress: number // 0.0 - 1.0
-  message?: string // 进度消息，如"正在搜索..."
+  message?: string | null // 进度消息，如"正在搜索..."
 }
 
 export type TaskProgressEvent = SSEEvent<TaskProgressData, 'task.progress'>
@@ -139,10 +138,13 @@ export type TaskProgressEvent = SSEEvent<TaskProgressData, 'task.progress'>
 
 export interface ArtifactInfo {
   id: string
-  type: 'code' | 'html' | 'markdown' | 'json' | 'text'
-  title?: string
+  /** 产物类型（code / markdown / report / sql / chart / image / html / search / media / video / text / json）。
+   *  此前这里只列了 5 种字面量，而产物实际有 12 类——是前端自己的类型谎言，已放宽为 string；
+   *  类型名与配色由 lib/artifactPresentation 负责。 */
+  type: string
+  title?: string | null
   content: string
-  language?: string
+  language?: string | null
   sort_order: number
 }
 
@@ -157,11 +159,6 @@ export type ArtifactGeneratedEvent = SSEEvent<ArtifactGeneratedData, 'artifact.g
 // ============================================================================
 // 消息阶段事件
 // ============================================================================
-
-export interface ThinkingData {
-  text?: string
-  steps?: ThinkingStep[]
-}
 
 export interface MessageDeltaData {
   message_id: string
@@ -182,8 +179,8 @@ export type MessageThinkingEvent = SSEEvent<MessageThinkingData, 'message.thinki
 export interface MessageDoneData {
   message_id: string
   full_content: string
-  total_tokens?: number
-  thinking?: ThinkingData  // 思考过程数据（类似 DeepSeek Chat）
+  total_tokens?: number | null
+  thinking?: Generated.ThinkingData | null  // 思考过程数据（类似 DeepSeek Chat）
 }
 
 export type MessageDoneEvent = SSEEvent<MessageDoneData, 'message.done'>
@@ -201,7 +198,7 @@ export type RouterStartEvent = SSEEvent<RouterStartData, 'router.start'>
 
 export interface RouterDecisionData {
   decision: 'simple' | 'complex'
-  reason?: string
+  reason?: string | null
 }
 
 export type RouterDecisionEvent = SSEEvent<RouterDecisionData, 'router.decision'>
@@ -209,7 +206,7 @@ export type RouterDecisionEvent = SSEEvent<RouterDecisionData, 'router.decision'
 export interface ErrorData {
   code: string
   message: string
-  details?: Record<string, unknown>
+  details?: Record<string, unknown> | null
 }
 
 export type ErrorEvent = SSEEvent<ErrorData, 'error'>
@@ -220,17 +217,10 @@ export type ErrorEvent = SSEEvent<ErrorData, 'error'>
 
 export interface HumanInterruptData {
   type: 'plan_review'
-  run_id?: string
-  execution_plan_id?: string
+  run_id?: string | null
+  execution_plan_id?: string | null
   plan_version: number
-  current_plan: Array<{
-    id: string
-    expert_type: string
-    description: string
-    sort_order: number
-    status: 'pending' | 'running' | 'completed' | 'failed'
-    depends_on?: string[] // 🔥 任务依赖关系
-  }>
+  current_plan: Generated.PlanTaskPayload[]
 }
 
 export type HumanInterruptEvent = SSEEvent<HumanInterruptData, 'human.interrupt'>
@@ -255,28 +245,29 @@ import type * as Generated from './events.generated'
 
 /** 编译期断言：T 必须为 true，否则 tsc 报错 */
 type Assert<T extends true> = T
-/** 手写类型声明的字段必须都在生成类型里 */
-type KeysSubset<Handwritten, FromGenerated> = keyof Handwritten extends keyof FromGenerated
-  ? true
-  : false
+/**
+ * 双向相等：手写类型与后端生成类型**逐字段一致**（含可选性与 null）。
+ * 这比「字段子集」严得多——字段类型被改窄/加 null/换名字都会在这里红。
+ */
+type SameShape<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
 
-type _TaskInfo = Assert<KeysSubset<TaskInfo, Generated.TaskInfo>>
-type _PlanCreated = Assert<KeysSubset<PlanCreatedData, Generated.PlanCreatedData>>
-type _PlanStarted = Assert<KeysSubset<PlanStartedData, Generated.PlanStartedData>>
-type _PlanThinking = Assert<KeysSubset<PlanThinkingData, Generated.PlanThinkingData>>
-type _TaskStarted = Assert<KeysSubset<TaskStartedData, Generated.TaskStartedData>>
-type _TaskProgress = Assert<KeysSubset<TaskProgressData, Generated.TaskProgressData>>
-type _TaskCompleted = Assert<KeysSubset<TaskCompletedData, Generated.TaskCompletedData>>
-type _TaskFailed = Assert<KeysSubset<TaskFailedData, Generated.TaskFailedData>>
-type _ArtifactInfo = Assert<KeysSubset<ArtifactInfo, Generated.ArtifactInfo>>
-type _ArtifactGenerated = Assert<KeysSubset<ArtifactGeneratedData, Generated.ArtifactGeneratedData>>
-type _MessageDelta = Assert<KeysSubset<MessageDeltaData, Generated.MessageDeltaData>>
-type _MessageThinking = Assert<KeysSubset<MessageThinkingData, Generated.MessageThinkingData>>
-type _MessageDone = Assert<KeysSubset<MessageDoneData, Generated.MessageDoneData>>
-type _RouterStart = Assert<KeysSubset<RouterStartData, Generated.RouterStartData>>
-type _RouterDecision = Assert<KeysSubset<RouterDecisionData, Generated.RouterDecisionData>>
-type _Error = Assert<KeysSubset<ErrorData, Generated.ErrorData>>
-type _HumanInterrupt = Assert<KeysSubset<HumanInterruptData, Generated.HumanInterruptData>>
+type _TaskInfo = Assert<SameShape<TaskInfo, Generated.TaskInfo>>
+type _PlanCreated = Assert<SameShape<PlanCreatedData, Generated.PlanCreatedData>>
+type _PlanStarted = Assert<SameShape<PlanStartedData, Generated.PlanStartedData>>
+type _PlanThinking = Assert<SameShape<PlanThinkingData, Generated.PlanThinkingData>>
+type _TaskStarted = Assert<SameShape<TaskStartedData, Generated.TaskStartedData>>
+type _TaskProgress = Assert<SameShape<TaskProgressData, Generated.TaskProgressData>>
+type _TaskCompleted = Assert<SameShape<TaskCompletedData, Generated.TaskCompletedData>>
+type _TaskFailed = Assert<SameShape<TaskFailedData, Generated.TaskFailedData>>
+type _ArtifactInfo = Assert<SameShape<ArtifactInfo, Generated.ArtifactInfo>>
+type _ArtifactGenerated = Assert<SameShape<ArtifactGeneratedData, Generated.ArtifactGeneratedData>>
+type _MessageDelta = Assert<SameShape<MessageDeltaData, Generated.MessageDeltaData>>
+type _MessageThinking = Assert<SameShape<MessageThinkingData, Generated.MessageThinkingData>>
+type _MessageDone = Assert<SameShape<MessageDoneData, Generated.MessageDoneData>>
+type _RouterStart = Assert<SameShape<RouterStartData, Generated.RouterStartData>>
+type _RouterDecision = Assert<SameShape<RouterDecisionData, Generated.RouterDecisionData>>
+type _Error = Assert<SameShape<ErrorData, Generated.ErrorData>>
+type _HumanInterrupt = Assert<SameShape<HumanInterruptData, Generated.HumanInterruptData>>
 
 /** 上面这组断言只做编译期校验，导出以免被 noUnusedLocals 误报 */
 export type ProtocolConformanceAnchors = [

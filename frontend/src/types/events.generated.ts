@@ -30,32 +30,23 @@ export interface TaskInfo {
   expert_type: string
   description: string
   sort_order: number
-  status?: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
   depends_on?: string[]
-}
-
-export interface ArtifactInfo {
-  id: string
-  type: string
-  title: string | null
-  content: string
-  language: string | null
-  sort_order: number
 }
 
 export interface PlanCreatedData {
   execution_plan_id: string
   summary: string
   estimated_steps: number
-  execution_mode: string
+  execution_mode: 'sequential' | 'parallel'
   tasks: TaskInfo[]
 }
 
 export interface PlanStartedData {
   execution_plan_id: string
-  title?: string
-  content?: string
-  status?: string
+  title: string
+  content: string
+  status: 'running'
 }
 
 export interface PlanThinkingData {
@@ -81,11 +72,11 @@ export interface TaskCompletedData {
   task_id: string
   expert_type: string
   description: string
-  status?: string
+  status: 'completed'
   output?: string | null
   duration_ms: number
   completed_at: string
-  artifact_count?: number
+  artifact_count: number
 }
 
 export interface TaskFailedData {
@@ -94,6 +85,15 @@ export interface TaskFailedData {
   description: string
   error: string
   failed_at: string
+}
+
+export interface ArtifactInfo {
+  id: string
+  type: string
+  title?: string | null
+  content: string
+  language?: string | null
+  sort_order: number
 }
 
 export interface ArtifactGeneratedData {
@@ -113,19 +113,33 @@ export interface MessageThinkingData {
   content: string
 }
 
+export interface ThinkingData {
+  text?: string | null
+  steps?: Record<string, unknown>[] | null
+}
+
 export interface MessageDoneData {
   message_id: string
   full_content: string
   total_tokens?: number | null
-  thinking?: Record<string, unknown> | null
+  thinking?: ThinkingData | null
+}
+
+export interface PlanTaskPayload {
+  id: string
+  expert_type: string
+  description: string
+  sort_order: number
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  depends_on?: string[]
 }
 
 export interface HumanInterruptData {
-  type?: string
+  type: 'plan_review'
   run_id?: string | null
   execution_plan_id?: string | null
-  current_plan: Record<string, unknown>[]
-  plan_version?: number
+  current_plan: PlanTaskPayload[]
+  plan_version: number
 }
 
 export interface RouterStartData {
@@ -134,7 +148,7 @@ export interface RouterStartData {
 }
 
 export interface RouterDecisionData {
-  decision: string
+  decision: 'simple' | 'complex'
   reason?: string | null
 }
 

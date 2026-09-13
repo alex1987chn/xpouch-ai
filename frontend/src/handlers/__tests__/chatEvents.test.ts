@@ -105,82 +105,9 @@ describe('Chat Events', () => {
       )
     })
 
-    it('应该合并 thinking 数据而不是覆盖', () => {
-      const event = {
-        id: 'evt-1',
-        type: 'message.done' as const,
-        data: {
-          message_id: 'msg-1',
-          full_content: 'content',
-          thinking: {
-            steps: [
-              { id: 'step-2', type: 'analysis', status: 'completed' }
-            ]
-          }
-        }
-      }
-
-      mockContext.chatStore.messages = [
-        {
-          id: 'msg-1',
-          role: 'assistant',
-          content: 'partial',
-          metadata: {
-            thinking: [{ id: 'step-1', type: 'planning', status: 'completed' }]
-          }
-        }
-      ]
-
-      handleMessageDone(event, mockContext)
-
-      expect(mockContext.chatStore.updateMessageMetadata).toHaveBeenCalledWith(
-        'msg-1',
-        {
-          thinking: [
-            { id: 'step-1', type: 'planning', status: 'completed' },
-            { id: 'step-2', type: 'analysis', status: 'completed' }
-          ]
-        }
-      )
-    })
-
-    it('应该去重 thinking steps', () => {
-      const event = {
-        id: 'evt-1',
-        type: 'message.done' as const,
-        data: {
-          message_id: 'msg-1',
-          full_content: 'content',
-          thinking: {
-            steps: [
-              { id: 'step-1', type: 'planning', status: 'completed' } // 已存在
-            ]
-          }
-        }
-      }
-
-      mockContext.chatStore.messages = [
-        {
-          id: 'msg-1',
-          role: 'assistant',
-          content: 'partial',
-          metadata: {
-            thinking: [{ id: 'step-1', type: 'planning', status: 'running' }]
-          }
-        }
-      ]
-
-      handleMessageDone(event, mockContext)
-
-      // 不应该添加重复的 step-1
-      expect(mockContext.chatStore.updateMessageMetadata).toHaveBeenCalledWith(
-        'msg-1',
-        {
-          thinking: [{ id: 'step-1', type: 'planning', status: 'running' }]
-        }
-      )
-    })
-
+    // 说明：此处原有两条「合并后端 thinking.steps / 去重」的用例，已随实现一起删除——
+    // 后端从不发送结构化步骤（协议里 thinking 是松字段，发射器从不构造），那两条
+    // 用例测的是走不到的代码。步骤的权威来源是流式事件与恢复时的账本重建。
     it('应该将所有 running 状态的 thinking steps 标记为 completed', () => {
       const event = {
         id: 'evt-1',

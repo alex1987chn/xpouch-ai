@@ -186,34 +186,11 @@ export function handleMessageDone(
   // 这可以纠正流式传输中可能的数据丢失或乱序问题
   updateMessage(event.data.message_id, event.data.full_content, false)
 
-  // 🔥 修复：合并 thinking 数据，而不是覆盖
-  // 优先使用前端累积的 thinking，后端返回的作为补充
-  const newSteps = event.data.thinking?.steps ?? []
-  if (newSteps.length > 0) {
-    const existingThinking = message.metadata?.thinking || []
-
-    // 合并：保留现有步骤，添加后端返回的新步骤（去重）
-    const existingIds = new Set(existingThinking.map((s: ThinkingStep) => s.id))
-    const mergedThinking = [
-      ...existingThinking,
-      ...newSteps.filter((s: ThinkingStep) => !existingIds.has(s.id))
-    ]
-
-    updateMessageMetadata(event.data.message_id, {
-      thinking: mergedThinking
-    })
-
-    if (debug) {
-      logger.debug(
-        '[ChatEvents] 合并 thinking 数据，前端:',
-        existingThinking.length,
-        '后端:',
-        newSteps.length,
-        '合并后:',
-        mergedThinking.length
-      )
-    }
-  }
+  // 说明：这里原本有一段「把后端 message.done 里的 thinking.steps 合并进前端累积步骤」。
+  // 现已删除 —— 后端**从不发送**结构化步骤（发射器从不构造 `thinking=`；协议里
+  // `thinking` 是留给前端扩展的松字段），那段分支永远走不到。步骤的权威来源是流式
+  // 期间的事件（handlers/taskEvents 等）与恢复时的账本重建
+  // （lib/thinkingStepsFromTimeline）。
 
   // 🔥🔥🔥 关键修复：message.done 时将所有 thinking steps 标记为 completed
   // 防止流结束后仍有 running 状态的步骤导致 UI 一直转圈

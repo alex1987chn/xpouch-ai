@@ -4,7 +4,7 @@ SSE 事件类型定义
 """
 
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -68,7 +68,7 @@ class TaskInfo(BaseModel):
     expert_type: str
     description: str
     sort_order: int
-    status: str = "pending"
+    status: Literal["pending", "running", "completed", "failed"]
     # 2026-09-13：此前**没有这个字段**，而前端类型里一直声明着它 → plan.created
     # 从不发送依赖关系（前端读到 undefined）。是「前端手写类型 vs 后端模型」的
     # 一致性断言（frontend/src/types/events.ts）把它照出来的。
@@ -81,7 +81,7 @@ class PlanCreatedData(BaseModel):
     execution_plan_id: str
     summary: str
     estimated_steps: int
-    execution_mode: str  # sequential | parallel
+    execution_mode: Literal["sequential", "parallel"]  # 见 models.enums.ExecutionMode
     tasks: list[TaskInfo]
 
 
@@ -92,9 +92,9 @@ class PlanStartedData(BaseModel):
     """plan.started 事件数据 - 通知前端开始规划"""
 
     execution_plan_id: str
-    title: str = "任务规划"
-    content: str = "正在分析需求..."
-    status: str = "running"
+    title: str
+    content: str
+    status: Literal["running"]
 
 
 class PlanThinkingData(BaseModel):
@@ -133,11 +133,11 @@ class TaskCompletedData(BaseModel):
     task_id: str
     expert_type: str
     description: str
-    status: str = "completed"
+    status: Literal["completed"]
     output: str | None = None
     duration_ms: int
     completed_at: str
-    artifact_count: int = 0  # 产物数量
+    artifact_count: int  # 产物数量（发射器一定传）
 
 
 class TaskFailedData(BaseModel):
@@ -160,9 +160,9 @@ class ArtifactInfo(BaseModel):
 
     id: str
     type: str  # code | html | markdown | json | text
-    title: str | None
+    title: str | None = None
     content: str
-    language: str | None
+    language: str | None = None
     sort_order: int
 
 
@@ -172,6 +172,17 @@ class ArtifactGeneratedData(BaseModel):
     task_id: str
     expert_type: str
     artifact: ArtifactInfo
+
+
+class ThinkingData(BaseModel):
+    """message.done 里附带的思考过程数据（与前端 ThinkingData 同一形状）。
+
+    `steps` 有意保持宽松（dict）：步骤的结构由前端定义（thinking 面板的渲染模型），
+    后端只透传。
+    """
+
+    text: str | None = None
+    steps: list[dict[str, Any]] | None = None
 
 
 # ============================================================================
@@ -200,7 +211,7 @@ class MessageDoneData(BaseModel):
     message_id: str
     full_content: str
     total_tokens: int | None = None
-    thinking: dict[str, Any] | None = None  # 思考过程数据（类似 DeepSeek Chat）
+    thinking: ThinkingData | None = None  # 思考过程数据（前端 = 手写类型的同一形状）
 
 
 # ============================================================================
@@ -218,7 +229,7 @@ class RouterStartData(BaseModel):
 class RouterDecisionData(BaseModel):
     """router.decision 事件数据"""
 
-    decision: str  # simple | complex
+    decision: Literal["simple", "complex"]
     reason: str | None = None
 
 
@@ -230,6 +241,21 @@ class ErrorData(BaseModel):
     details: dict[str, Any] | None = None
 
 
+class PlanTaskPayload(BaseModel):
+    """human.interrupt 的 current_plan 条目（审批卡直接渲染它）。
+
+    与 `TaskInfo`（plan.created 的任务）字段基本一致，但 `id` 用**子任务 UUID**
+    且不从属于落库 DTO —— 所以单独一个模型，避免两处语义被一个模型糊在一起。
+    """
+
+    id: str
+    expert_type: str
+    description: str
+    sort_order: int
+    status: Literal["pending", "running", "completed", "failed"]
+    depends_on: list[str] = []
+
+
 # ============================================================================
 # 🔥🔥🔥 v3.1.0 HITL: 人类审核中断事件
 # ============================================================================
@@ -238,11 +264,11 @@ class ErrorData(BaseModel):
 class HumanInterruptData(BaseModel):
     """human.interrupt 事件数据 - HITL 中断等待用户确认"""
 
-    type: str = "plan_review"  # 中断类型，目前仅支持 plan_review
+    type: Literal["plan_review"]  # 中断类型，目前仅支持 plan_review
     run_id: str | None = None
     execution_plan_id: str | None = None
-    current_plan: list[dict[str, Any]]  # 当前计划任务列表
-    plan_version: int = 1  # 计划版本号（乐观锁）
+    current_plan: list[PlanTaskPayload]  # 当前计划任务列表
+    plan_version: int  # 计划版本号（乐观锁）
 
 
 # ============================================================================

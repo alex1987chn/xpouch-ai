@@ -260,7 +260,7 @@ export const createTaskSlice = (
         completedTask.status = 'completed'
         completedTask.completedAt = data.completed_at
         completedTask.durationMs = data.duration_ms
-        completedTask.output = data.output
+        completedTask.output = data.output ?? undefined
       }
 
       // 🔥 移除：state.runningTaskIds.delete(data.task_id)（这是 UISlice 的状态）
