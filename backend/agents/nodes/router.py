@@ -291,7 +291,12 @@ def _get_forced_complex_reason(user_query: str) -> str | None:
 
 
 def _resolve_simple_llm(state: AgentState):
-    """按用户偏好解析 simple 模式 LLM；未配置或解析失败时回落系统默认单例"""
+    """按用户偏好解析 simple 模式 LLM；未配置或解析失败时回落系统默认单例。
+
+    streaming=False：direct_reply 用 ainvoke 取完整响应，不需要逐 token 流式；
+    实例字段显式设为 True 会让 langchain-core 的 _should_stream 在 ainvoke 内部
+    偷偷改走流式路径（先聚合再丢弃），白付一次流式开销。
+    """
     from agents.graph import get_simple_llm_lazy
 
     preferred_model = state.get("simple_model")
@@ -302,7 +307,7 @@ def _resolve_simple_llm(state: AgentState):
             try:
                 from utils.llm_factory import get_default_model, get_llm_by_model
 
-                return get_llm_by_model(get_default_model(), streaming=True, thinking=thinking)
+                return get_llm_by_model(get_default_model(), streaming=False, thinking=thinking)
             except Exception as e:
                 logger.warning(f"[DirectReply] 默认模型应用思考偏好失败，回落系统默认: {e}")
         return get_simple_llm_lazy()
@@ -314,7 +319,7 @@ def _resolve_simple_llm(state: AgentState):
         if not get_model_config(preferred_model):
             raise ValueError(f"未知模型 ID: {preferred_model}")
 
-        return get_llm_by_model(preferred_model, streaming=True, thinking=thinking)
+        return get_llm_by_model(preferred_model, streaming=False, thinking=thinking)
     except Exception as e:
         logger.warning(f"[DirectReply] 用户偏好模型 '{preferred_model}' 不可用，回落系统默认: {e}")
         return get_simple_llm_lazy()

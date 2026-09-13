@@ -332,7 +332,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                 # 获取实际的 API 模型名称（providers.yaml 中定义的 model 字段）
                 actual_model = model_config.get("model", model)
                 llm = get_llm_instance(
-                    provider=provider, streaming=True, temperature=final_temperature
+                    provider=provider, streaming=False, temperature=final_temperature
                 )
                 logger.info(
                     f"[COMMANDER] 模型 '{model}' -> '{actual_model}' 使用 provider: {provider}, temperature: {final_temperature}"

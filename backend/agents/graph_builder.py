@@ -61,8 +61,9 @@ def _get_simple_llm_cached():
 
     try:
         # 2026-09: MiniMax 已停用（余额耗尽、效果一般），Simple 模式改用 DeepSeek
+        # streaming=False：direct_reply 用 ainvoke 取完整响应（见 router._resolve_simple_llm 注释）
         if is_provider_configured("deepseek"):
-            return get_llm_instance(provider="deepseek", streaming=True, temperature=0.7)
+            return get_llm_instance(provider="deepseek", streaming=False, temperature=0.7)
     except Exception:
         pass
     return get_router_llm()

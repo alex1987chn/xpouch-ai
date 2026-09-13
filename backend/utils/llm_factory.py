@@ -285,28 +285,33 @@ def get_router_llm() -> ChatOpenAI:
 def get_expert_llm(
     provider: str | None = None, model: str | None = None, temperature: float | None = None
 ) -> ChatOpenAI:
-    """获取 Expert 节点专用的 LLM 实例"""
+    """获取 Expert 节点专用的 LLM 实例。
+
+    streaming=False：专家产出经 sse_event 通道（artifact/task 事件）直达前端，
+    不进 message.delta 流；ainvoke 取完整响应即可。实例字段显式设为 True 会让
+    langchain-core 的 _should_stream 在 ainvoke 内部偷偷改走流式（先聚合再丢弃）。
+    """
     if provider:
         return get_llm_instance(
-            provider=provider, model=model, streaming=True, temperature=temperature
+            provider=provider, model=model, streaming=False, temperature=temperature
         )
 
     if is_provider_configured("deepseek"):
         return get_llm_instance(
-            provider="deepseek", model=model, streaming=True, temperature=temperature or 0.7
+            provider="deepseek", model=model, streaming=False, temperature=temperature or 0.7
         )
 
     return get_llm_instance(
-        provider=get_best_router_provider(), model=model, streaming=True, temperature=temperature
+        provider=get_best_router_provider(), model=model, streaming=False, temperature=temperature
     )
 
 
 def get_commander_llm() -> ChatOpenAI:
-    """获取 Commander 节点专用的 LLM 实例"""
+    """获取 Commander 节点专用的 LLM 实例（streaming=False，理由同 get_expert_llm）"""
     if is_provider_configured("deepseek"):
-        return get_llm_instance(provider="deepseek", streaming=True, temperature=0.5)
+        return get_llm_instance(provider="deepseek", streaming=False, temperature=0.5)
     if is_provider_configured("openai"):
-        return get_llm_instance(provider="openai", streaming=True, temperature=0.5)
+        return get_llm_instance(provider="openai", streaming=False, temperature=0.5)
     return get_router_llm()
 
 
