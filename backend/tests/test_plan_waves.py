@@ -8,7 +8,9 @@
 from agents.plan_waves import (
     blocked_task_ids,
     completed_task_ids,
+    deadlocked_task_ids,
     is_plan_finished,
+    plan_wave_decision,
     ready_task_ids,
     select_wave,
 )
@@ -114,17 +116,110 @@ class TestBlockedSet:
         assert blocked_task_ids(tasks) == ["task_2"]
 
     def test_transitive_block_is_detected(self):
-        """上游失败 → 下游直接依赖它而被阻塞（更下游需先标记才能判定）。"""
+        """上游失败 → 下游阻塞，**且阻塞沿依赖链传递**。
+
+        2026-09-13（C2）改为传递闭包：此前只判直接依赖，更下游会停在
+        「既不就绪也不阻塞」的假等待态，执行器要么空转、要么靠静默忽略蒙过去。
+        """
         tasks = [
             _task("task_1", status="failed"),
             _task("task_2", deps=["task_1"]),
             _task("task_3", deps=["task_2"]),
         ]
-        assert blocked_task_ids(tasks) == ["task_2"]
+        assert blocked_task_ids(tasks) == ["task_2", "task_3"]
 
     def test_healthy_plan_has_no_blocked(self):
         tasks = [_task("task_1"), _task("task_2", deps=["task_1"])]
         assert blocked_task_ids(tasks) == []
+
+
+class TestDanglingDependency:
+    """依赖指向计划里不存在的任务 = 已删除的上游，按「已满足」处理。"""
+
+    def test_dangling_dep_does_not_block(self):
+        tasks = [_task("task_2", deps=["task_1_deleted"])]
+        assert ready_task_ids(tasks) == ["task_2"]
+        assert blocked_task_ids(tasks) == []
+
+    def test_dangling_dep_is_not_deadlock(self):
+        tasks = [_task("task_2", deps=["task_1_deleted"])]
+        assert plan_wave_decision(tasks).deadlocked == []
+
+    def test_dangling_and_real_dep_mixed(self):
+        """真实上游没完成时仍然等待——悬空容忍不能变成「依赖全部失效」。"""
+        tasks = [
+            _task("task_1", order=0),
+            _task("task_2", deps=["task_1", "task_1_deleted"], order=1),
+        ]
+        assert ready_task_ids(tasks) == ["task_1"]
+
+
+class TestDeadlock:
+    """依赖成环：必须被显式归类，否则判定层留下永远 pending 的任务。"""
+
+    def test_two_cycle_is_deadlocked(self):
+        tasks = [
+            _task("task_a", deps=["task_b"]),
+            _task("task_b", deps=["task_a"]),
+        ]
+        decision = plan_wave_decision(tasks)
+        assert decision.ready == []
+        assert decision.blocked == []
+        assert sorted(decision.deadlocked) == ["task_a", "task_b"]
+        assert sorted(deadlocked_task_ids(tasks)) == ["task_a", "task_b"]
+        assert decision.finished is True, "成环即无救，必须判定为结束而不是空转"
+
+    def test_downstream_of_cycle_is_deadlocked(self):
+        tasks = [
+            _task("task_a", deps=["task_b"]),
+            _task("task_b", deps=["task_a"]),
+            _task("task_c", deps=["task_a"], order=2),
+        ]
+        decision = plan_wave_decision(tasks)
+        assert sorted(decision.deadlocked) == ["task_a", "task_b", "task_c"]
+
+    def test_self_dependency_is_deadlocked(self):
+        tasks = [_task("task_a", deps=["task_a"])]
+        assert plan_wave_decision(tasks).deadlocked == ["task_a"]
+
+    def test_cycle_does_not_stop_independent_tasks(self):
+        """环外的任务照常就绪——不能因为一处成环就整轮不跑。"""
+        tasks = [
+            _task("task_a", deps=["task_b"], order=0),
+            _task("task_b", deps=["task_a"], order=1),
+            _task("task_free", order=2),
+        ]
+        decision = plan_wave_decision(tasks)
+        assert decision.ready == ["task_free"]
+        assert decision.finished is False
+
+
+class TestClassificationIsTotal:
+    """三分类完备性：每个 pending 任务恰好落入 ready / blocked / deadlocked 之一。
+
+    这是执行器「不会空转」的结构性保证——不是靠某条用例，而是靠归类本身的完备。
+    """
+
+    def test_every_pending_task_is_classified(self):
+        tasks = [
+            _task("done", status="completed", order=0),
+            _task("failed", status="failed", order=1),
+            _task("ready_now", deps=["done"], order=2),
+            _task("blocked_by_fail", deps=["failed"], order=3),
+            _task("blocked_transitive", deps=["blocked_by_fail"], order=4),
+            _task("waiting_on_ready", deps=["ready_now"], order=5),
+            _task("cycle_a", deps=["cycle_b"], order=6),
+            _task("cycle_b", deps=["cycle_a"], order=7),
+            _task("dangling", deps=["gone"], order=8),
+        ]
+        decision = plan_wave_decision(tasks)
+        classified = set(decision.ready) | set(decision.blocked) | set(decision.deadlocked)
+        pending = {t["task_id"] for t in tasks if t.get("status") == "pending"}
+        assert classified == pending
+        assert len(decision.ready) + len(decision.blocked) + len(decision.deadlocked) == len(
+            pending
+        ), "三个集合互不相交"
+        assert set(decision.ready) == {"ready_now", "dangling"}
 
 
 class TestSelectWave:
