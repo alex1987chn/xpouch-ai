@@ -673,7 +673,15 @@ class RecoveryService:
                             f"[HITL RESUME] 保存 {len(artifacts)} 个 artifacts 到 SubTask {subtask.id}"
                         )
                     except Exception as e:
-                        logger.error(f"[HITL RESUME] 保存 artifacts 失败: {e}")
+                        # rollback 必需：create_artifacts_batch 内部会 commit，失败后
+                        # 会话可能处于不可用事务态；不清理会让后续写（例如把 run 标成
+                        # COMPLETED）抛 PendingRollbackError，把局部失败放大成整轮失败
+                        self.db.rollback()
+                        logger.error(
+                            "[HITL RESUME] 保存 artifacts 失败（该任务产物缺失，其余流程继续）: %s",
+                            e,
+                            exc_info=True,
+                        )
 
     # ============================================================================
     # 状态清理
@@ -714,7 +722,17 @@ class RecoveryService:
                 logger.info(f"[HITL RESUME] ExecutionPlan {execution_plan.id} 已标记为 cancelled")
 
         except Exception as e:
-            logger.warning(f"[HITL RESUME] 更新 execution_plan 失败: {e}")
+            # 取消流程不应因计划状态写失败而中断，但后果是「run 已取消、计划仍
+            # IN_PROGRESS」的矛盾态：前端审批卡可能仍显示可操作，而再次批准必然
+            # 失败；且调用方因拿不到 plan id 会写出缺上下文的 hitl_rejected 事件。
+            # 故用 error + exc_info（此前是 warning 且无堆栈，事后几乎无迹可寻）。
+            self.db.rollback()
+            logger.error(
+                "[HITL RESUME] 更新 execution_plan 状态失败（run 已取消但计划状态可能"
+                "仍为非终态，前端可能仍可操作）: %s",
+                e,
+                exc_info=True,
+            )
 
     # ============================================================================
     # 辅助方法

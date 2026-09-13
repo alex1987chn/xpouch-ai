@@ -7,6 +7,7 @@ v3.5 更新：使用数据库配置 + 占位符动态填充
 v3.6 更新：使用 prompt_utils.inject_current_time 替代内联实现
 """
 
+import asyncio
 import re
 from typing import Any, Literal
 
@@ -107,7 +108,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
         logger.warning("[Router] 记忆检索超时（8s），跳过记忆继续路由")
         relevant_memories = ""
     except Exception as e:
-        logger.warning(f"[Router] 记忆检索失败: {e}")
+        logger.warning(f"[Router] 记忆检索失败: {e}", exc_info=True)
         relevant_memories = ""
 
     # 2. 🔥 v3.5: 加载 System Prompt（DB -> Cache -> Constants 兜底）
@@ -203,7 +204,7 @@ def _load_router_system_prompt() -> str:
             logger.info("[Router] 从数据库/缓存加载 System Prompt")
             return config["system_prompt"]
     except Exception as e:
-        logger.warning(f"[Router] 从数据库加载失败: {e}")
+        logger.warning(f"[Router] 从数据库加载失败: {e}", exc_info=True)
 
     # L3: 兜底到静态常量
     logger.info("[Router] 使用静态常量 System Prompt (L3兜底)")
@@ -310,7 +311,9 @@ def _resolve_simple_llm(state: AgentState):
 
                 return get_llm_by_model(get_default_model(), streaming=True, thinking=thinking)
             except Exception as e:
-                logger.warning(f"[DirectReply] 默认模型应用思考偏好失败，回落系统默认: {e}")
+                logger.warning(
+                    f"[DirectReply] 默认模型应用思考偏好失败，回落系统默认: {e}", exc_info=True
+                )
         return get_simple_llm_lazy()
 
     try:
@@ -346,11 +349,17 @@ async def direct_reply_node(state: AgentState, config: RunnableConfig = None) ->
 
     # 1. 🔥 检索长期记忆（异步）
     try:
-        relevant_memories = await memory_manager.search_relevant_memories(
-            user_id, user_query, limit=5
+        # 与 router 节点对称：加 8s 超时。否则检索挂起时只会表现为「没有记忆的
+        # 普通回复」（异常分支把它降级成无记忆），用户与排查者都看不到真实原因。
+        relevant_memories = await asyncio.wait_for(
+            memory_manager.search_relevant_memories(user_id, user_query, limit=5),
+            timeout=8,
         )
+    except TimeoutError:
+        logger.warning("[DirectReply] 记忆检索超时（8s），跳过记忆继续回复")
+        relevant_memories = ""
     except Exception as e:
-        logger.warning(f"[DirectReply] 记忆检索失败: {e}")
+        logger.warning("[DirectReply] 记忆检索失败: %s", e, exc_info=True)
         relevant_memories = ""
 
     # 2. 🔥 构建 System Prompt（注入记忆和时间）

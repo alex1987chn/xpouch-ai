@@ -334,8 +334,16 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                     logger.warning(f"[COMMANDER] 警告: 以下占位符未填充: {remaining_placeholders}")
 
             except Exception as e:
-                # 注入失败时不中断流程，保留原始 Prompt
-                logger.warning(f"[COMMANDER] 占位符填充失败（已忽略）: {e}")
+                # 注入失败不中断规划，但后果要说清：规划器可能看不到可用专家清单
+                # （易编造 expert_type）与用户查询占位符。此前文案是「（已忽略）」
+                # 且该 try 把「取专家列表 + 格式化 + 替换 + 校验」全包进来——一旦
+                # 失败，连上面那句「未填充占位符」的警告也被一并跳过（二次静默）。
+                logger.error(
+                    "[COMMANDER] 提示词占位符填充失败，规划质量可能下降"
+                    "（专家清单/用户查询可能未注入，模型或编造 expert_type）: %s",
+                    e,
+                    exc_info=True,
+                )
 
             # 执行 LLM 进行规划
             # 从模型名称推断 provider

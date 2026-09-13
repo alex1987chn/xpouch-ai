@@ -95,7 +95,7 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
         final_response = "".join(final_response_chunks)
 
     except Exception as e:
-        logger.warning(f"[AGG] LLM 总结失败，回退到简单拼接: {e}")
+        logger.warning(f"[AGG] LLM 总结失败，回退到简单拼接: {e}", exc_info=True)
         # 兜底：使用简单拼接
         final_response = _build_markdown_response(expert_results, strategy)
 
@@ -118,34 +118,51 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
     run_id = state.get("run_id")  # 获取当前运行实例 ID
 
     if execution_plan_id:
-        try:
+        # 三件事**各自独立**：其中任何一件失败都不应跳过其余两件。
+        # 此前三件共用一个 Session + 一个 try —— 第一步失败就会连带跳过
+        # 「持久化聚合消息」与「更新 run 状态」：用户看到的聚合综述不落库、
+        # run 状态要等 stream_service 兜底（而那条兜底写的是 state["messages"][-1]，
+        # 复杂模式下是最后一个专家的原始产出、**不是**综述正文），且只有一行
+        # 无堆栈的 warning。现在每件独立提交、失败各自如实报错。
 
-            def _save_execution_plan():
-                with Session(engine) as db_session:
-                    # 标记执行计划为已完成
-                    complete_execution_plan(db_session, execution_plan_id, final_response)
+        def _mark_plan_completed() -> None:
+            with Session(engine) as db_session:
+                complete_execution_plan(db_session, execution_plan_id, final_response)
 
-                    # 持久化聚合消息（统一走 thread_service 同步核心：
-                    # think 标签清洗 + frontend_message_id 写入，与 simple 模式一致）
-                    if thread_id:
-                        save_assistant_message_sync(
-                            db_session,
-                            thread_id,
-                            final_response,
-                            message_id=state.get("message_id"),
-                        )
+        def _persist_summary() -> None:
+            if not thread_id:
+                return
+            with Session(engine) as db_session:
+                # 统一走 thread_service 同步核心（think 标签清洗 +
+                # frontend_message_id 写入，与 simple 模式一致）
+                save_assistant_message_sync(
+                    db_session,
+                    thread_id,
+                    final_response,
+                    message_id=state.get("message_id"),
+                )
 
-                    # 🔥🔥🔥 关键修复：直接更新 AgentRun 状态为 completed
-                    # 这是确保状态正确的根本方法，不依赖 SSE 流的生命周期
-                    if run_id:
-                        from crud.agent_run import mark_run_completed_by_id
+        def _mark_run_completed() -> None:
+            if not run_id:
+                return
+            from crud.agent_run import mark_run_completed_by_id
 
-                        mark_run_completed_by_id(db_session, run_id)
-                        logger.info(f"[AGG] AgentRun {run_id} 状态更新为 completed")
+            with Session(engine) as db_session:
+                mark_run_completed_by_id(db_session, run_id)
 
-            await asyncio.to_thread(_save_execution_plan)
-        except Exception as e:
-            logger.warning(f"[AGG] 保存 ExecutionPlan 失败: {e}")
+        failed: list[str] = []
+        for _label, _step in (
+            ("标记执行计划完成", _mark_plan_completed),
+            ("持久化聚合消息", _persist_summary),
+            ("更新 AgentRun 状态", _mark_run_completed),
+        ):
+            try:
+                await asyncio.to_thread(_step)
+            except Exception as e:
+                failed.append(_label)
+                logger.error("[AGG] %s 失败: %s", _label, e, exc_info=True)
+        if run_id and "更新 AgentRun 状态" not in failed:
+            logger.info(f"[AGG] AgentRun {run_id} 状态更新为 completed")
 
     logger.info(f"[AGG] 聚合完成，回复长度: {len(final_response)}")
 
@@ -189,7 +206,7 @@ def _load_aggregator_system_prompt(input_data: str) -> str:
                 _aggregator_config_cache["aggregator"] = config
                 logger.info("[AGG] 全局缓存命中: System Prompt")
         except Exception as e:
-            logger.warning(f"[AGG] 从数据库加载失败: {e}")
+            logger.warning(f"[AGG] 从数据库加载失败: {e}", exc_info=True)
 
     # L3: 兜底到静态常量
     if not system_prompt:

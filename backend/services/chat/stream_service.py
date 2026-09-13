@@ -567,7 +567,16 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                         create_artifacts_batch(self.db, db_subtask.id, expert_artifacts[task_id])
                         logger.info("[StreamService] ✅ artifacts 保存成功")
                     except Exception as e:
-                        logger.error(f"[StreamService] 保存 artifacts 失败: {e}", exc_info=True)
+                        # rollback 必需：create_artifacts_batch 内部会 commit，失败后
+                        # 会话可能残留不可用事务态；本函数随后还要写助手消息，
+                        # 不清理会以 PendingRollbackError 把局部失败放大成整轮保存失败
+                        self.db.rollback()
+                        logger.error(
+                            "[StreamService] 保存 artifacts 失败（该任务产物缺失，"
+                            "其余保存流程继续）: %s",
+                            e,
+                            exc_info=True,
+                        )
                 else:
                     logger.warning(
                         f"[StreamService] ⚠️ task_id={task_id} 在 expert_artifacts 中未找到"
