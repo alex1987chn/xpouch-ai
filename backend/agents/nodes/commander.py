@@ -64,6 +64,7 @@ from agents.state import AgentState
 from config import settings
 from constants import COMMANDER_SYSTEM_PROMPT
 from database import engine
+from models.enums import ExecutionMode
 from utils.llm_factory import get_llm_instance
 from utils.logger import logger
 from utils.message_text import extract_message_text
@@ -93,6 +94,14 @@ class Task(BaseModel):
     input_data: dict[str, Any] = Field(default={}, description="输入参数")
     priority: int = Field(default=0, description="优先级 (0=最高)")
     dependencies: list[str] = Field(default=[], description="依赖的任务ID列表")
+    execution_mode: ExecutionMode = Field(
+        default=ExecutionMode.SEQUENTIAL,
+        description=(
+            "执行模式。sequential=按依赖顺序逐个执行（默认）；"
+            "parallel=与其他无依赖任务同时执行。"
+            "当前执行器尚按顺序推进，此字段作为数据标记先行贯通。"
+        ),
+    )
 
     @field_validator("dependencies", mode="before")
     @classmethod
@@ -120,6 +129,18 @@ class ExecutionPlan(BaseModel):
     strategy: str = Field(description="执行策略概述：如'并行执行'、'顺序执行'、'分阶段交付'等")
     estimated_steps: int = Field(description="预计步骤数")
     tasks: list[Task] = Field(description="子任务列表，支持依赖关系（DAG）")
+
+
+def derive_plan_execution_mode(tasks: list[Task]) -> ExecutionMode:
+    """由任务的执行模式派生计划级执行模式。
+
+    只要存在任一 `parallel` 任务，计划级即为 `parallel`。该字段目前仅落库、
+    无决策消费（执行器在批次 C 才按它分波扇出）；先行派生是为了并行计划
+    不会被记成 sequential。
+    """
+    if any(task.execution_mode == ExecutionMode.PARALLEL for task in tasks):
+        return ExecutionMode.PARALLEL
+    return ExecutionMode.SEQUENTIAL
 
 
 # 向后兼容：保留旧模型别名
@@ -402,18 +423,23 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
             # v3.0: 准备子任务数据（支持显式依赖关系 DAG）
             # 🔥 关键修复：传递 task_id 用于 depends_on 映射
+            # execution_mode 由计划本身决定（默认 sequential）；LLM 未产出该字段时
+            # 取默认值，行为与硬编码 "sequential" 完全一致
             subtasks_data = [
                 SubTaskCreate(
                     expert_type=task.expert_type,
                     task_description=task.description,
                     input_data=task.input_data,
                     sort_order=idx,
-                    execution_mode="sequential",
+                    execution_mode=task.execution_mode,
                     depends_on=task.dependencies if task.dependencies else None,
                     task_id=task.id,  # 🔥 关键：传递 Commander 生成的 task ID
                 )
                 for idx, task in enumerate(commander_response.tasks)
             ]
+            # 计划级执行模式由任务派生（任一任务并行 → 计划级 parallel）。
+            # 该字段目前仅落库、无决策消费；派生它可避免并行计划被记成 sequential
+            plan_execution_mode = derive_plan_execution_mode(commander_response.tasks)
 
             # v3.0: 立即持久化到数据库 (通过 TaskManager)
             # 🔥 v3.3: 使用 preview_execution_plan_id 确保事件和数据库记录一致
@@ -436,7 +462,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                             plan_summary=commander_response.strategy,
                             estimated_steps=commander_response.estimated_steps,
                             subtasks_data=subtasks_data,
-                            execution_mode="sequential",
+                            execution_mode=plan_execution_mode,
                             execution_plan_id=preview_execution_plan_id,
                         )
 
@@ -533,7 +559,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                         execution_plan_id=execution_plan_id,
                         summary=commander_response.strategy,
                         estimated_steps=commander_response.estimated_steps,
-                        execution_mode="sequential",
+                        execution_mode=plan_execution_mode,
                         tasks=[
                             {
                                 "id": t["id"],
