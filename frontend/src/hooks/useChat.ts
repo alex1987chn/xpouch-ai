@@ -47,9 +47,15 @@ export interface UseChatOptions {
    * 默认 '/chat'（独立聊天页）；工作台传 '/workbench' 实现页内换线程。
    */
   threadUrlBase?: string
+  /**
+   * 流中断（服务端任务仍在执行）时的回调，参数为该 run id。
+   * 传了它就表示上层愿意接管现场（工作台用它启动运行状态轮询）；
+   * 不传则维持「中断即报错、结果需手动刷新」的旧行为。
+   */
+  onStreamInterrupted?: (runId: string) => void
 }
 
-export function useChat({ threadUrlBase = '/chat' }: UseChatOptions = {}) {
+export function useChat({ threadUrlBase = '/chat', onStreamInterrupted }: UseChatOptions = {}) {
   const navigate = useNavigate()
 
   const inputMessage = useInputMessage()
@@ -57,6 +63,7 @@ export function useChat({ threadUrlBase = '/chat' }: UseChatOptions = {}) {
 
   // 1. Get chat core logic with callbacks
   const chatCore = useChatCore({
+    onStreamInterrupted,
     onNewConversation: useCallback((threadId: string, agentId: string) => {
       // 🔥 修复：保留 isNew 状态，避免触发不必要的 loadConversation
       // 后端已创建会话，标记 isNew: false 表示会话已存在

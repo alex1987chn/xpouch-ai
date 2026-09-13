@@ -67,6 +67,16 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
   }, [threadId])
 
   // ===== 聊天编排（与 UnifiedChatPage 同序列） =====
+  // startPolling 在下面才由 useRunPolling 产出，而 useChat 必须先调用（Hook 顺序），
+  // 所以用 ref 转一手：中断回调触发时轮询接口已就位（同 useRunPolling 内的
+  // refetchRef 手法）。
+  const startPollingRef = useRef<(() => void) | null>(null)
+  const handleStreamInterrupted = useCallback(() => {
+    // 流断了但服务端任务还在跑：runId 已被 useChatCore 保留，这里启动轮询接管。
+    // 轮询到终态会失效缓存并触发 restore，用户无需手动刷新即可看到结果。
+    startPollingRef.current?.()
+  }, [])
+
   const {
     inputMessage: inputValue,
     isStreaming,
@@ -76,7 +86,7 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
     resumeExecution,
     regenerate,
     setInputMessage: setInputValue,
-  } = useChat({ threadUrlBase: '/workbench' })
+  } = useChat({ threadUrlBase: '/workbench', onStreamInterrupted: handleStreamInterrupted })
 
   const { isRestored, isLatestRunControllable, latestRunId, restore: restoreSession } =
     useSessionRestore({ enabled: !!threadId && !isNewConversation })
@@ -95,6 +105,9 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
 
   const { startPolling, stopPolling, isPolling, currentStatus: pollingStatus, isHITLPaused, isTerminal, hasError } =
     useRunPolling({ enabled: true })
+
+  // 供上面的中断回调使用（每次渲染刷新，避免闭包过期）
+  startPollingRef.current = startPolling
 
   const activeRunId = useTaskStore(state => state.activeRunId)
 

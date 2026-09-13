@@ -417,8 +417,10 @@ export default function ChatStreamPanel({
 
       {/* v3.4.0 轮询状态栏（输入框上方） */}
       {/* 🔥 修复：HITL 审核时不显示轮询状态栏，避免与 PlanReviewCard 重复提示 */}
+      {/* hasError 时也必须显示：否则「连接失败，请刷新重试 + 刷新按钮」这条
+          分支永远不可见（ERROR_OCCURRED 已把 isPolling 置 false） */}
       <RunPollingBar
-        show={(polling?.isPolling ?? false) && !isWaitingForApproval}
+        show={((polling?.isPolling ?? false) || (polling?.hasError ?? false)) && !isWaitingForApproval}
         status={polling?.status ?? null}
         isHITLPaused={polling?.isHITLPaused ?? false}
         hasError={polling?.hasError ?? false}

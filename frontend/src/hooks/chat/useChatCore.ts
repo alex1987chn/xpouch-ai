@@ -37,6 +37,7 @@ import { useActiveRunId, useTaskMode, useTaskActions } from '@/hooks/useTaskSele
 import { artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
 import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { useChatStore } from '@/store/chatStore'
+import { useTaskStore } from '@/store/taskStore'
 
 import { useStreamHandler } from './useStreamHandler'
 import { clearProcessedMessageDone } from '@/handlers/chatEvents'
@@ -54,6 +55,14 @@ interface UseChatCoreOptions {
   onChunk?: (chunk: string) => void
   /** New conversation created callback */
   onNewConversation?: (threadId: string, agentId: string) => void
+  /**
+   * 流被中断、但服务端任务仍在执行时的回调（参数为该 run id）。
+   *
+   * 提供它 = 上层愿意接管现场（当前实现是启动运行状态轮询）；不提供则维持
+   * 「中断即报错、结果要手动刷新」的旧行为。之所以做成回调：轮询状态机属于
+   * 页面编排层（useRunPolling 在 useChat 之外），core 不该反向依赖它。
+   */
+  onStreamInterrupted?: (runId: string) => void
 }
 
 function getErrorStatus(error: unknown): number | undefined {
@@ -82,7 +91,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   const { t } = useTranslation()
   // 产物事件防抖戳（同一波产物只触发一次列表刷新）
   const artifactFlushRef = useRef(0)
-  const { onChunk, onNewConversation } = options
+  const { onChunk, onNewConversation, onStreamInterrupted } = options
 
   // Refactored: Hook only manages AbortController
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -115,11 +124,17 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
    * 三条流程共用的收尾：flush 缓冲 → 复位生成态 → 清 run → 释放 abort，
    * 并失效地层/产物缓存（会话标题、latest_run 状态、产物卡都以服务端为准，
    * 不失效则审批恢复执行结束后侧栏仍停在"待审核"、画布缺卡，需手动刷新）。
+   *
+   * `keepRunId`：**流被中断但服务端任务还活着**时用（见 catch 里的
+   * `interruptedRunId`）。此时清掉 runId 会让轮询无从接管——服务端任务跑完
+   * 也无人对账，用户只能手动刷新才看得到结果。
    */
-  const finalizeStream = useCallback(() => {
+  const finalizeStream = useCallback((opts: { keepRunId?: boolean } = {}) => {
     forceFlush()
     setGenerating(false)
-    clearActiveRunId()
+    if (!opts.keepRunId) {
+      clearActiveRunId()
+    }
     abortControllerRef.current = null
     queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
     queryClient.invalidateQueries({ queryKey: artifactsKeys.all })
@@ -263,6 +278,11 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
     const assistantMessageId = generateUUID()
 
+    // 「流中断但服务端任务还在跑」时收尾要保留 runId（交给轮询对账）。
+    // 必须在 try 之外声明：catch 与 finally 是两个独立块作用域，catch 里的
+    // const 在 finally 里不可见。
+    let keepRunIdOnFailure = false
+
     try {
       const storeState = useChatStore.getState()
       const validHistoryMessages = storeState.messages
@@ -371,6 +391,13 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       // 🔐 检测 401 错误，保存消息以便登录后重发
       const isAuthError = getErrorStatus(error) === 401
+      // 用户主动中断 / 未登录：服务端没有需要接管的在跑任务（用户停止会在后端
+      // 真取消；401 连请求都没进去），runId 照常清掉。
+      // 注意 409 不在此列——409 恰恰证明**有**一个 run 在跑，正需要接管。
+      const noBackgroundRun = aborted || isAuthError
+      const interruptedRunId =
+        noBackgroundRun || !onStreamInterrupted ? null : useTaskStore.getState().activeRunId
+      keepRunIdOnFailure = !!interruptedRunId
 
       if (aborted) {
         debug('Request cancelled (user initiated)')
@@ -384,11 +411,29 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         const currentMessages = useChatStore.getState().messages
         useChatStore.getState().setMessages(currentMessages.slice(0, -2))
       } else if (isActiveRunConflict) {
+        // 409 = 该会话本来就有 run 在跑（本次请求被拒）。提示语义照旧，
+        // 但同样把现场交给轮询——否则「等待完成」只能靠用户手动刷新。
         addMessage({
           role: 'assistant',
           content: t('activeRunConflictMsg'),
           metadata: { threadId: currentConversationId ?? undefined }
         })
+        if (interruptedRunId) {
+          debug(`Active run conflict, hand over to polling: ${interruptedRunId}`)
+          onStreamInterrupted?.(interruptedRunId)
+        }
+      } else if (interruptedRunId) {
+        // 流中断但服务端任务还活着（runId 已由 runtimeMeta 落进 store）：
+        // 保留 runId + 按「后台继续」提示，由上层启动轮询接管——任务跑完后
+        // 轮询会对账终态并刷新本会话，用户不必手动刷新页面。
+        debug(`Stream interrupted, run keeps running in background: ${interruptedRunId}`)
+        errorHandler.handle(error, 'sendMessageCore')
+        addMessage({
+          role: 'assistant',
+          content: t('streamInterruptedNotice'),
+          metadata: { threadId: currentConversationId ?? undefined }
+        })
+        onStreamInterrupted?.(interruptedRunId)
       } else {
         errorHandler.handle(error, 'sendMessageCore')
 
@@ -400,7 +445,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         })
       }
     } finally {
-      finalizeStream()
+      finalizeStream({ keepRunId: keepRunIdOnFailure })
     }
   }, [
     isGenerating,
@@ -410,6 +455,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     conversationMode,
     onChunk,
     onNewConversation,
+    onStreamInterrupted,
     setGenerating,
     setMode,
     setMessages,
@@ -421,6 +467,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     finalizeStream,
     makeStreamCallback,
     markFinalized,
+    t,
   ])
 
   // Component unmount cleanup

@@ -44,14 +44,14 @@ const HITL_STATUS: RunStatus = 'waiting_for_approval'
 // ==================== State Machine 定义 ====================
 
 type PollingState =
-  | { status: 'idle'; isPolling: false; isHITLPaused: false; isTerminal: false; hasError: false }
-  | { status: 'polling'; isPolling: true; isHITLPaused: false; isTerminal: false; hasError: false }
-  | { status: 'hitl_paused'; isPolling: true; isHITLPaused: true; isTerminal: false; hasError: false }
-  | { status: 'terminal'; isPolling: false; isHITLPaused: false; isTerminal: true; hasError: false }
-  | { status: 'error'; isPolling: false; isHITLPaused: false; isTerminal: true; hasError: true }
+  | { status: 'idle'; isPolling: false; isHITLPaused: false; isTerminal: false; hasError: false; runId: null }
+  | { status: 'polling'; isPolling: true; isHITLPaused: false; isTerminal: false; hasError: false; runId: string }
+  | { status: 'hitl_paused'; isPolling: true; isHITLPaused: true; isTerminal: false; hasError: false; runId: string }
+  | { status: 'terminal'; isPolling: false; isHITLPaused: false; isTerminal: true; hasError: false; runId: string }
+  | { status: 'error'; isPolling: false; isHITLPaused: false; isTerminal: true; hasError: true; runId: string }
 
 type PollingAction =
-  | { type: 'START' }
+  | { type: 'START'; runId: string }
   | { type: 'STOP' }
   | { type: 'HITL_PAUSED' }
   | { type: 'HITL_RESUMED' }
@@ -65,33 +65,51 @@ const initialState: PollingState = {
   isHITLPaused: false,
   isTerminal: false,
   hasError: false,
+  runId: null,
 }
 
-function pollingReducer(state: PollingState, action: PollingAction): PollingState {
+/**
+ * 轮询状态机。
+ *
+ * `runId` 记录**本状态机当前跟踪的 run**：终态是「那个 run 的」结论，不是页面会话的
+ * 结论。同一页面里换了一个 run（用户又发了新消息、任务断流后重新接管），必须允许
+ * 重新起轮询——否则一次终态会把后续所有轮询永久锁死（此前 isTerminal 的静态判断
+ * 就有这个问题）。因此 START 只在「同一个 run 已终态」时拒绝。
+ */
+export function pollingReducer(state: PollingState, action: PollingAction): PollingState {
   switch (action.type) {
-    case 'START':
-      // 终态不允许重新启动
-      if (state.isTerminal) return state
-      return { status: 'polling', isPolling: true, isHITLPaused: false, isTerminal: false, hasError: false }
+    case 'START': {
+      // 同一个 run 已经走到终态：无需（也无法）重启
+      if (state.isTerminal && state.runId === action.runId) return state
+      return {
+        status: 'polling',
+        isPolling: true,
+        isHITLPaused: false,
+        isTerminal: false,
+        hasError: false,
+        runId: action.runId,
+      }
+    }
 
     case 'STOP':
       if (state.status === 'idle') return state
-      return { status: 'idle', isPolling: false, isHITLPaused: false, isTerminal: false, hasError: false }
+      return initialState
 
     case 'HITL_PAUSED':
       if (state.status !== 'polling') return state
-      return { status: 'hitl_paused', isPolling: true, isHITLPaused: true, isTerminal: false, hasError: false }
+      return { status: 'hitl_paused', isPolling: true, isHITLPaused: true, isTerminal: false, hasError: false, runId: state.runId }
 
     case 'HITL_RESUMED':
       if (state.status !== 'hitl_paused') return state
-      return { status: 'polling', isPolling: true, isHITLPaused: false, isTerminal: false, hasError: false }
+      return { status: 'polling', isPolling: true, isHITLPaused: false, isTerminal: false, hasError: false, runId: state.runId }
 
     case 'TERMINAL_REACHED':
-      if (state.isTerminal) return state
-      return { status: 'terminal', isPolling: false, isHITLPaused: false, isTerminal: true, hasError: false }
+      if (state.isTerminal || !state.runId) return state
+      return { status: 'terminal', isPolling: false, isHITLPaused: false, isTerminal: true, hasError: false, runId: state.runId }
 
     case 'ERROR_OCCURRED':
-      return { status: 'error', isPolling: false, isHITLPaused: false, isTerminal: true, hasError: true }
+      if (!state.runId) return state
+      return { status: 'error', isPolling: false, isHITLPaused: false, isTerminal: true, hasError: true, runId: state.runId }
 
     case 'RESET':
       return initialState
@@ -245,17 +263,18 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
       return
     }
 
-    if (state.isTerminal) {
-      logger.info('[useRunPolling] 已经是终态，跳过轮询启动')
+    // 同一 run 已终态 → 跳过；换了一个 run → 允许（reducer 内部按 runId 判定）
+    if (state.isTerminal && state.runId === currentRunId) {
+      logger.info('[useRunPolling] 该 run 已是终态，跳过轮询启动:', { runId: currentRunId })
       return
     }
 
     logger.info('[useRunPolling] 启动轮询:', { runId: currentRunId })
-    dispatch({ type: 'START' })
+    dispatch({ type: 'START', runId: currentRunId })
     consecutiveErrorsRef.current = 0
     previousStatusRef.current = null
     refetchRef.current()
-  }, [enabled, state.isTerminal])
+  }, [enabled, state.isTerminal, state.runId])
 
   const stopPolling = useCallback(() => {
     if (state.status === 'idle') return
