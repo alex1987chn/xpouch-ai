@@ -45,7 +45,8 @@ def validate_router_cases(cases: list[dict[str, Any]]) -> dict[str, Any]:
 def _validate_commander_dependencies(task_ids: set[str], tasks: list[Any]) -> list[str]:
     errors: list[str] = []
     for task in tasks:
-        for dependency in task.dependencies:
+        # [B4] 依赖字段统一叫 depends_on（模型侧 AliasChoices 兼容旧名 dependencies）
+        for dependency in task.depends_on:
             if dependency not in task_ids:
                 errors.append(f"task {task.id} 依赖了不存在的任务 {dependency}")
     return errors

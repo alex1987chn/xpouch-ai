@@ -394,7 +394,7 @@ gantt
       "description": "搜索关于...，产出markdown格式的报告，包含摘要、关键发现、来源",
       "input_data": { "query": "..." },
       "priority": 10,
-      "dependencies": []
+      "depends_on": []
     },
     {
       "id": "task_2",
@@ -402,7 +402,7 @@ gantt
       "description": "基于task_1的结果，编写...代码，产出code类型，需包含注释和测试用例",
       "input_data": { "requirements": "..." },
       "priority": 5,
-      "dependencies": ["task_1"]
+      "depends_on": ["task_1"]
     }
   ]
 }

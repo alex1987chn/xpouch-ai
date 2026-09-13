@@ -113,7 +113,7 @@ COMMANDER_SYSTEM_PROMPT = """
       "description": "具体的任务描述（包含预期的产出要求）",
       "input_data": {},
       "priority": 0,
-      "dependencies": []
+      "depends_on": []
     },
     {
       "id": "task_2",
@@ -121,7 +121,7 @@ COMMANDER_SYSTEM_PROMPT = """
       "description": "分析搜索结果，产出结构化对比报告（markdown格式）",
       "input_data": {},
       "priority": 1,
-      "dependencies": ["task_1"]
+      "depends_on": ["task_1"]
     }
   ]
 }
@@ -139,10 +139,10 @@ COMMANDER_SYSTEM_PROMPT = """
     * 产出的结构要求（如"包含摘要、对比表格、结论"）
   - input_data: 对象，可选的输入参数
   - priority: 整数，执行优先级（0=最高）
-  - dependencies: 字符串数组，依赖的任务ID列表（支持DAG）
+  - depends_on: 字符串数组，依赖的任务ID列表（支持DAG）
 
 【依赖关系设计原则】
-1. 如果任务B需要任务A的输出结果，在B.dependencies中填入A.id
+1. 如果任务B需要任务A的输出结果，在B.depends_on中填入A.id
 2. 无依赖的任务可以并行执行
 3. 通过显式依赖避免上下文污染
 4. 下游任务应在描述中说明如何使用上游产出

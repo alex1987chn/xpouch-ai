@@ -47,7 +47,7 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from sqlmodel import Session
 from tenacity import (
     before_sleep_log,
@@ -57,6 +57,7 @@ from tenacity import (
 )
 
 from agents.event_stream import emit_event
+from agents.plan_tasks import attach_subtask_ids, build_plan_tasks
 from agents.state import AgentState
 from config import settings
 from constants import COMMANDER_SYSTEM_PROMPT
@@ -80,14 +81,26 @@ _all_experts_cache = ConfigCache(maxsize=5, ttl=60, name="all_experts")
 
 
 class Task(BaseModel):
-    """任务定义 - 支持 DAG 依赖关系"""
+    """任务定义 - 支持 DAG 依赖关系。
+
+    [B4] 依赖字段统一叫 `depends_on`（与图状态/数据库/事件 payload/前端一致）。
+    此前 LLM 侧叫 `dependencies`，于是每个转换点都要手写一次改名——漏一处就是静默
+    丢依赖。`AliasChoices` 让旧写法继续能解析（历史提示词、已存计划、老测试都不受影响），
+    但**模型自己产出的字段名现在是 canonical 的那个**。
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
 
     id: str = Field(default="", description="任务唯一标识符（短ID，如 task_1, task_2）")
     expert_type: str = Field(description="执行此任务的专家类型")
     description: str = Field(description="任务描述")
     input_data: dict[str, Any] = Field(default={}, description="输入参数")
     priority: int = Field(default=0, description="优先级 (0=最高)")
-    dependencies: list[str] = Field(default=[], description="依赖的任务ID列表")
+    depends_on: list[str] = Field(
+        default=[],
+        validation_alias=AliasChoices("depends_on", "dependencies"),
+        description="依赖的任务ID列表（引用其他任务的 id，如 task_1）",
+    )
     execution_mode: ExecutionMode = Field(
         default=ExecutionMode.SEQUENTIAL,
         description=(
@@ -97,10 +110,10 @@ class Task(BaseModel):
         ),
     )
 
-    @field_validator("dependencies", mode="before")
+    @field_validator("depends_on", mode="before")
     @classmethod
     def parse_dependencies(cls, v):
-        """兼容处理：整数依赖转为字符串"""
+        """兼容处理：单个 id / 整数依赖统一转成字符串列表"""
         if v is None:
             return []
         if isinstance(v, int | str):
@@ -207,7 +220,6 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
         get_expert_config_cached,
     )
     from agents.services.task_manager import get_or_create_execution_plan
-    from models import SubTaskCreate
     from utils.event_generator import (
         event_plan_created,
         event_plan_started,
@@ -401,43 +413,12 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                 preview_execution_plan_id,
             )
 
-            # v3.1: 兜底处理 - 如果 LLM 没有生成 id，自动生成
-            for idx, task in enumerate(commander_response.tasks):
-                if not task.id:
-                    task.id = f"task_{idx}"
-                    logger.info(f"[COMMANDER] 自动为任务 {idx} 生成 id: {task.id}")
-
-            # v3.2: 修复依赖上下文注入 - 将 dependencies 中的索引格式转换为 ID 格式
-            task_id_map = {str(idx): task.id for idx, task in enumerate(commander_response.tasks)}
-            for task in commander_response.tasks:
-                if task.dependencies:
-                    new_dependencies = []
-                    for dep in task.dependencies:
-                        # 如果是数字索引（如 "0"），转换为对应的 ID（如 "task_0"）
-                        if dep in task_id_map:
-                            new_dependencies.append(task_id_map[dep])
-                        else:
-                            # 如果已经是正确的 ID 格式（如 "task_0"），保持不变
-                            new_dependencies.append(dep)
-                    task.dependencies = new_dependencies
-                    logger.info(f"[COMMANDER] 任务 {task.id} 的依赖已转换: {new_dependencies}")
+            # [B4] 计划形状收敛：LLM 输出 → canonical PlanTask（补 id、依赖归一都在这里做）
+            plan_tasks = build_plan_tasks(commander_response.tasks)
 
             # v3.0: 准备子任务数据（支持显式依赖关系 DAG）
-            # 🔥 关键修复：传递 task_id 用于 depends_on 映射
-            # execution_mode 由计划本身决定（默认 sequential）；LLM 未产出该字段时
-            # 取默认值，行为与硬编码 "sequential" 完全一致
-            subtasks_data = [
-                SubTaskCreate(
-                    expert_type=task.expert_type,
-                    task_description=task.description,
-                    input_data=task.input_data,
-                    sort_order=idx,
-                    execution_mode=task.execution_mode,
-                    depends_on=task.dependencies if task.dependencies else None,
-                    task_id=task.id,  # 🔥 关键：传递 Commander 生成的 task ID
-                )
-                for idx, task in enumerate(commander_response.tasks)
-            ]
+            # 转换只有一处（agents/plan_tasks.py），不在这里手写字段映射
+            subtasks_data = [plan_task.to_subtask_create() for plan_task in plan_tasks]
             # 计划级执行模式由任务派生（任一任务并行 → 计划级 parallel）。
             # 该字段目前仅落库、无决策消费；派生它可避免并行计划被记成 sequential
             plan_execution_mode = derive_plan_execution_mode(commander_response.tasks)
@@ -522,26 +503,10 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                     )
 
             # 转换为内部字典格式（用于 LangGraph 状态流转）
-            task_list = []
-            for idx, subtask in enumerate(sub_tasks_list):
-                commander_task = commander_response.tasks[idx]
-                task_list.append(
-                    {
-                        "id": subtask["id"],
-                        "task_id": commander_task.id,
-                        "expert_type": subtask["expert_type"],
-                        "description": subtask["task_description"],
-                        "input_data": subtask["input_data"],
-                        "sort_order": subtask["sort_order"],
-                        "status": subtask["status"],
-                        "depends_on": commander_task.dependencies
-                        if commander_task.dependencies
-                        else [],
-                        "output_result": None,
-                        "started_at": None,
-                        "completed_at": None,
-                    }
-                )
+            # [B4] 落库结果回填 subtask_id，然后只经 canonical 模型的显式转换产出
+            # 图状态 dict 与事件 payload（此前这两处各自手写字段映射，是漂移高发区）
+            plan_tasks = attach_subtask_ids(plan_tasks, sub_tasks_list)
+            task_list = [plan_task.to_state_dict() for plan_task in plan_tasks]
 
             logger.info(
                 f"[COMMANDER] 生成了 {len(task_list)} 个任务。策略: {commander_response.strategy}"
@@ -561,20 +526,8 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                         summary=commander_response.strategy,
                         estimated_steps=commander_response.estimated_steps,
                         execution_mode=plan_execution_mode,
-                        tasks=[
-                            {
-                                "id": t["id"],
-                                "task_id": commander_response.tasks[idx].id,
-                                "expert_type": t["expert_type"],
-                                "description": t["task_description"],
-                                "sort_order": t["sort_order"],
-                                "status": t["status"],
-                                "depends_on": commander_response.tasks[idx].dependencies
-                                if commander_response.tasks[idx].dependencies
-                                else [],
-                            }
-                            for idx, t in enumerate(sub_tasks_list)
-                        ],
+                        # 同一份 canonical 计划 → 事件 payload（键集与 TaskInfo 由测试钉住）
+                        tasks=[plan_task.to_event_task_dict() for plan_task in plan_tasks],
                     )
                 )
 

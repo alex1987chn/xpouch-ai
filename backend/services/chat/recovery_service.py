@@ -296,7 +296,7 @@ class RecoveryService:
                         "id": str(index + 1),
                         "expert_type": st.expert_type,
                         "description": st.task_description,
-                        "dependencies": st.depends_on or [],
+                        "depends_on": st.depends_on or [],
                     }
                     for index, st in enumerate(plan.sub_tasks)
                 ]
@@ -318,7 +318,7 @@ class RecoveryService:
                             sort_order=index,
                             expert_type=task.expert_type,
                             task_description=task.description,
-                            depends_on=[d for d in task.dependencies if d] or None,
+                            depends_on=[d for d in task.depends_on if d] or None,
                         )
                     )
 
