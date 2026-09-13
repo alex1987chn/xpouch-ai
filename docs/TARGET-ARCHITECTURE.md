@@ -201,6 +201,10 @@
   4. 恢复路径改为 `Command(resume=审批结果)`
   → 一次性消掉：外层 while、`_should_wait_for_human_approval` 启发式、`HumanMessage` 注入、`isolated_thread_id`、`run_max_graph_loops`（原生 `recursion_limit` 接管）、checkpoint 线性膨胀。
   **单独改其中任何一件都会造出坏掉的中间态**（例如只换 `interrupt()` 但 thread 仍是 `{thread}_{run}`，恢复时找不到 checkpoint）。
+  **⚠️ 2026-09-13 修正**：上面那句关于 thread 的判断**不成立**——恢复请求自身携带 `thread_id` 与 `run_id`，而 `execute_langgraph_stream` 已有 `isolated_thread_id = f"{thread_id}_{run_id}"` 的**确定性重建**，故恢复能命中同一 checkpoint。**因此第 3 件（thread 对齐）与前两件是可分的**，B3 可安全拆为：
+  - **B3a**（机制替换，保持现有隔离 thread）：1 `interrupt()` + 2 `plan_approval` 节点 + 4 `Command(resume)` + 原生暂停检测；同时删外层 while、启发式、`HumanMessage` 注入、`run_max_graph_loops`。
+  - **B3b**（独立改进，低风险）：thread 对齐业务 thread + checkpoint 生命周期（终态清理加「非等待态」守卫）。
+  拆分后每步各自可提交、可验证，避免一次性改动过大。
   **实现要点**：
   - `plan_approval` 节点内代码顺序必须是「**先 `interrupt()`、后应用裁决结果**」——`interrupt()` 之前的代码在恢复时会重跑一遍，之后的只跑一次。计划的 approve 合并（保留已完成任务的 `output_result`、清理依赖、重算索引）应放在 `interrupt()` 之后，或更干净地：随 `Command(resume={"action":"approve","tasks":[...]})` 传入、由节点应用，从而替代现有 `_apply_updated_plan` 的 `aupdate_state` 路径。
   - **checkpoint 生命周期随 thread 对齐而变**：恢复依赖同一 `thread_id` 的 checkpoint，因此终态清理**不得删除等待审批中的线程 checkpoint**（现 `delete_checkpoints_for_thread` 在正常收尾路径被调用，需加「非等待态」守卫）。
