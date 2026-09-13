@@ -56,7 +56,7 @@ function messageTimeMs(ts: number | string | undefined): number {
  */
 async function attachThinkingFromTimeline(
   messages: Message[],
-  run: { id: string; started_at?: string } | null | undefined,
+  run: { id: string; started_at?: string | null } | null | undefined,
   labels: ThinkingStepLabels,
 ): Promise<Message[]> {
   if (!run?.id || !run.started_at) return messages

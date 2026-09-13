@@ -347,13 +347,11 @@ export default function ChatStreamPanel({
                     <ThinkingProcess
                       steps={thinkingSteps}
                       isThinking={isThinkingNow}
-                      // 只有当前运行的那条用计划的预估步数；历史消息用它自己的步数
-                      // （estimatedSteps 来自本轮 pendingPlan，套到旧消息上会算错）
-                      totalSteps={
-                        isLiveThinking && estimatedSteps > 0
-                          ? estimatedSteps
-                          : thinkingSteps.length
-                      }
+                      // 只有当前运行的那条传计划的预估任务数当分母；历史消息不传——
+                      // 它会拿自己的**任务步数**当分母（estimatedSteps 来自本轮 pendingPlan，
+                      // 套到旧消息上会算错；而历史那条的 thinkingSteps.length 含路由/规划步，
+                      // 拿它当分母会读出「6/8」这种把两个口径混在一起的数）
+                      totalSteps={isLiveThinking && estimatedSteps > 0 ? estimatedSteps : undefined}
                       defaultExpanded={isLiveThinking}
                       onOpenArtifact={setViewArtifactId}
                     />

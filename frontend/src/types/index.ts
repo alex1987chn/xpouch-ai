@@ -168,6 +168,8 @@ export interface AgentRunSummary {
   updated_at?: string
   last_heartbeat_at?: string | null
   completed_at?: string | null
+  /** run 开始时间：`attachThinkingFromTimeline` 判定「这条助手消息是否由本次 run 产出」的依据 */
+  started_at?: string | null
 }
 
 export interface StreamRuntimeMeta {

@@ -474,6 +474,27 @@ TTL(180s) 一过就被 `reclaim_expired_leases` 判成「运行进程失联」�
 **未实机覆盖**：两个组**同时**「进行中」的画面（本该用并发上限 = 2 演示，测试期间该会话登录态过期、
 resume 流返回 401，只能靠单测覆盖状态聚合）。
 
+### 前端补 2 · 思考面板的「账本重建」从未生效（2026-09-13，查上面那条时顺带查实）
+
+**现象**：刷新或切会话回来后，思考过程面板一律空白（只有正文），而设计上它应当从运行事件账本重建。
+
+**根因（两处漏字段，链路因此断在第一句）**：
+1. `useSessionRestore.attachThinkingFromTimeline` 的第一句是
+   `if (!run?.id || !run.started_at) return messages`——它要靠 `started_at` 判定「这条助手消息确由本次
+   run 产出」；而线程详情响应里的 `latest_run`（`AgentRunSummaryResponse` + `thread_service._serialize_run`）
+   **两个地方都没有 `started_at`** → 每次恢复都在第一句返回。
+2. 于是整套能力（含 `lib/thinkingStepsFromTimeline` 与它的测试）**从落地起就是死代码**——测试只覆盖了
+   纯函数，没人验证「字段拿得到」。
+
+**修法**：`AgentRunSummaryResponse` 与 `_serialize_run` 补 `started_at`（前端 `AgentRunSummary` 类型同步）。
+
+**验证（实机，可复现）**：页面里用 Vite 模块图直接跑真实重建函数验证输入充分
+（真实账本 → 8 步、守卫放行）；会话内往返一次，网络记录里出现 `/runs/{id}/timeline?limit=200`，
+面板出现且读数为 `6/6 思考完成`，分组结构与实时一致（智能路由/任务规划内联 + 规划专家组 + 搜索专家组含 3 任务）。
+
+**顺带修**：`ChatStreamPanel` 不再把「历史消息的全部步数」当分母（那会把路由/规划也算成任务，
+读出「6/8」这种两口径混算的数）——历史消息现在用面板自己的**任务步数**当分母。
+
 ### 批次 E · 收尾项（可穿插，独立价值）
 
 已完成（2026-09-13）：

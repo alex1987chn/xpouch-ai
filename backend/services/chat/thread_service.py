@@ -395,6 +395,9 @@ class ChatThreadService:
                 agent_run.last_heartbeat_at.isoformat() if agent_run.last_heartbeat_at else None
             ),
             "completed_at": agent_run.completed_at.isoformat() if agent_run.completed_at else None,
+            # 前端靠它判定「这条助手消息是否由本次 run 产出」以重建思考面板
+            # （见 schemas/conversation.AgentRunSummaryResponse 的注释）；漏了它面板永不重建
+            "started_at": agent_run.started_at.isoformat() if agent_run.started_at else None,
         }
 
     def _build_simple_thread_response(self, thread: Thread) -> dict:
