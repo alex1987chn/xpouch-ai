@@ -38,10 +38,12 @@ async def execute_commander_workflow(
         "final_response": "",
     }
 
+    from config import settings
+
     final_state = await graph.ainvoke(
         initial_state,
         config={
-            "recursion_limit": 100,
+            "recursion_limit": settings.recursion_limit,
             "configurable": {"thread_id": thread_id},
         },
     )

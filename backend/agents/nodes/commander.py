@@ -64,7 +64,6 @@ from agents.state import AgentState
 from config import settings
 from constants import COMMANDER_SYSTEM_PROMPT
 from database import engine
-from utils.json_parser import parse_llm_json
 from utils.llm_factory import get_llm_instance
 from utils.logger import logger
 from utils.message_text import extract_message_text
@@ -688,78 +687,4 @@ IMPORTANT: You MUST output a valid JSON object. No conversation, no markdown cod
         raise
     except Exception as e:
         logger.warning(f"[COMMANDER] 生成计划失败: {e}")
-        raise
-
-
-# 保留旧函数作为兜底（当 JSON Mode 完全不可用时）
-async def _streaming_planning_fallback(
-    llm_with_config,
-    system_prompt: str,
-    human_prompt: str,
-    preview_execution_plan_id: str,
-) -> ExecutionPlan:
-    """
-    兜底方案：使用流式解析生成执行计划
-
-    当 JSON Mode 也完全不可用时使用
-    """
-    from utils.event_generator import event_plan_thinking
-
-    thinking_content = ""
-    json_buffer = ""
-    is_json_phase = False
-
-    logger.info("[COMMANDER] Fallback: 使用流式解析...")
-
-    async for chunk in llm_with_config.astream(
-        [SystemMessage(content=system_prompt), HumanMessage(content=human_prompt)],
-        config=RunnableConfig(
-            tags=["commander", "streaming", "fallback"],
-            metadata={"node_type": "commander", "mode": "fallback"},
-        ),
-    ):
-        content = chunk.content if hasattr(chunk, "content") else str(chunk)
-        if not content:
-            continue
-
-        if not is_json_phase:
-            if "```json" in content or "```" in content:
-                is_json_phase = True
-                before_json = content.split("```")[0]
-                if before_json.strip():
-                    thinking_content += before_json
-                    await emit_event(
-                        event_plan_thinking(
-                            execution_plan_id=preview_execution_plan_id, delta=before_json
-                        )
-                    )
-                json_parts = content.split("```", 1)
-                if len(json_parts) > 1:
-                    json_buffer += json_parts[1]
-                continue
-
-            thinking_content += content
-            await emit_event(
-                event_plan_thinking(execution_plan_id=preview_execution_plan_id, delta=content)
-            )
-        else:
-            if "```" in content:
-                json_parts = content.split("```", 1)
-                json_buffer += json_parts[0]
-            else:
-                json_buffer += content
-
-    # 解析 JSON
-    json_str = json_buffer.strip()
-    if json_str.startswith("json"):
-        json_str = json_str[4:].strip()
-
-    try:
-        commander_response = parse_llm_json(
-            json_str, ExecutionPlan, strict=False, clean_markdown=False
-        )
-        logger.info(f"[COMMANDER] 流式解析成功，生成 {len(commander_response.tasks)} 个任务")
-        return commander_response
-    except Exception as parse_err:
-        logger.warning(f"[COMMANDER] 流式解析失败: {parse_err}")
         raise

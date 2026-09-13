@@ -531,8 +531,6 @@ async def generic_worker_node(
                     )
                 except (RuntimeError, ValueError) as usage_err:
                     logger.warning("[GenericWorker] ⚠️ 用量记账提交失败: %s", usage_err)
-        except TimeoutError as exc:
-            raise ExpertExecutionError("LLM 调用超时") from exc
         except Exception as exc:
             raise ExpertExecutionError(f"LLM 调用失败: {exc}") from exc
 

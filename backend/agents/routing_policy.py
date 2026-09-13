@@ -4,13 +4,11 @@
 """
 
 import logging
-from datetime import datetime, timedelta
 from typing import Any
 
 from langchain_core.messages import ToolMessage
 
 from agents.state import AgentState
-from utils.time import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +16,6 @@ TOOL_LOOP_WINDOW = 20
 TOOL_LOOP_MAX_TOTAL = 12
 TOOL_LOOP_MAX_SAME_TOOL_STREAK = 4
 TOOL_LOOP_MAX_PING_PONG = 8
-TOOL_LOOP_TIME_WINDOW_SECONDS = 30
-TOOL_LOOP_MAX_IN_TIME_WINDOW = 8
 
 
 def route_router(state: AgentState) -> str:
@@ -40,8 +36,6 @@ def route_generic(state: AgentState) -> str:
     Generic Worker 之后：工具调用 -> tools；ToolMessage 回 generic；
     任务完成 -> aggregator；否则回 expert_dispatcher。
     """
-    from langchain_core.messages import ToolMessage
-
     messages = state.get("messages", [])
     current_index = state.get("current_task_index", 0)
     task_list = state.get("task_list", [])
@@ -65,7 +59,11 @@ def route_generic(state: AgentState) -> str:
 
 
 def should_trip_tool_loop_guard(messages: list[Any]) -> tuple[bool, str]:
-    """检测工具调用是否进入可疑循环（总量/同工具连续/ping-pong/时间窗口）。"""
+    """检测工具调用是否进入可疑循环（总量/同工具连续/ping-pong）。
+
+    注意：原「时间窗口」规则已移除——ToolMessage 的时间戳字段在全库
+    无任何写入点，该分支恒不触发（死代码）。剩余三条规则均基于消息序。
+    """
     recent_messages = messages[-TOOL_LOOP_WINDOW:]
     tool_messages = [
         msg for msg in recent_messages if isinstance(msg, ToolMessage) and getattr(msg, "name", "")
@@ -74,15 +72,6 @@ def should_trip_tool_loop_guard(messages: list[Any]) -> tuple[bool, str]:
 
     if len(tool_names) >= TOOL_LOOP_MAX_TOTAL:
         return True, f"最近 {TOOL_LOOP_WINDOW} 条内工具调用过多({len(tool_names)})"
-
-    now = utc_now_naive()
-    recent_by_time = 0
-    for msg in tool_messages:
-        ts = _extract_tool_message_timestamp(msg)
-        if ts and now - ts <= timedelta(seconds=TOOL_LOOP_TIME_WINDOW_SECONDS):
-            recent_by_time += 1
-    if recent_by_time >= TOOL_LOOP_MAX_IN_TIME_WINDOW:
-        return True, f"{TOOL_LOOP_TIME_WINDOW_SECONDS}s 内工具调用过多({recent_by_time})"
 
     if tool_names:
         tail_name = tool_names[-1]
@@ -104,29 +93,6 @@ def should_trip_tool_loop_guard(messages: list[Any]) -> tuple[bool, str]:
             return True, f"检测到工具 ping-pong 循环({first}<->{second})"
 
     return False, ""
-
-
-def _extract_tool_message_timestamp(msg: ToolMessage) -> datetime | None:
-    """从 ToolMessage 的 additional_kwargs / response_metadata 提取时间戳。"""
-    candidates = []
-    additional = getattr(msg, "additional_kwargs", None) or {}
-    metadata = getattr(msg, "response_metadata", None) or {}
-    for key in ("ts", "timestamp", "created_at"):
-        if key in additional:
-            candidates.append(additional[key])
-        if key in metadata:
-            candidates.append(metadata[key])
-    for raw in candidates:
-        if not raw:
-            continue
-        if isinstance(raw, datetime):
-            return raw
-        if isinstance(raw, str):
-            try:
-                return datetime.fromisoformat(raw.replace("Z", "+00:00"))
-            except ValueError:
-                continue
-    return None
 
 
 # 兼容旧引用（graph 曾直接暴露 _should_trip_tool_loop_guard）

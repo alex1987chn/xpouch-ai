@@ -1,6 +1,5 @@
 import asyncio
 import sys
-from datetime import datetime, timedelta
 from pathlib import Path
 
 from langchain_core.messages import ToolMessage
@@ -24,20 +23,14 @@ def test_tool_loop_guard_detects_same_tool_streak():
     assert "连续调用" in reason
 
 
-def test_tool_loop_guard_detects_dense_calls_in_time_window():
-    now = datetime.now()
+def test_tool_loop_guard_detects_dense_total():
     msgs = [
-        ToolMessage(
-            content="ok",
-            tool_call_id=f"id-{idx}",
-            name=f"tool-{idx % 2}",
-            additional_kwargs={"ts": (now - timedelta(seconds=idx)).isoformat()},
-        )
-        for idx in range(8)
+        ToolMessage(content="ok", tool_call_id=f"id-{idx}", name=f"tool-{idx % 3}")
+        for idx in range(12)
     ]
     tripped, reason = _should_trip_tool_loop_guard(msgs)
     assert tripped is True
-    assert "内工具调用过多" in reason
+    assert "工具调用过多" in reason
 
 
 def test_error_code_enum_is_serialized_consistently():

@@ -138,7 +138,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             stream_queue = asyncio.Queue()
 
             config = {
-                "recursion_limit": 100,
+                "recursion_limit": settings.recursion_limit,
                 "configurable": {
                     "thread_id": thread_id,
                     "stream_queue": stream_queue,
@@ -412,7 +412,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         graph = create_smart_router_workflow(checkpointer=get_shared_checkpointer())
 
         config = {
-            "recursion_limit": 100,
+            "recursion_limit": settings.recursion_limit,
             "configurable": {
                 "thread_id": thread_id,
                 "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
@@ -733,7 +733,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         # 格式: {thread_id}_{run_id} - 必须与 handle_langgraph_stream 中的格式一致
         isolated_thread_id = f"{thread_id}_{run_id}" if run_id else thread_id
         config = {
-            "recursion_limit": 100,
+            "recursion_limit": settings.recursion_limit,
             "configurable": {
                 "thread_id": isolated_thread_id,
                 "stream_queue": realtime_queue,
