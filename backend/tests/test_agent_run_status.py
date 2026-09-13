@@ -261,6 +261,48 @@ def test_ensure_no_active_run_for_thread_raises_conflict():
         raise AssertionError("Expected active run conflict to be raised")
 
 
+def test_expired_lease_paused_run_still_holds_thread():
+    """停在审批点的 run：租约过期也仍然占着会话（不让新任务插进来）。
+
+    为什么与「过期僵尸让位」相反：HITL 暂停的 run **不是僵尸**——它等的是人，
+    这一轮流已收尾没人替它续租，租约必然过期。若互斥照租约把它放行，用户「计划还挂着
+    没裁决」时又能发新消息，同一会话就同时有两条 run（一条永远停在审批点）。
+    与之配套的回收侧口径见 `run_holds_thread`（回收同样不碰它）。
+    """
+    thread = Thread(
+        id="thread-1",
+        title="demo",
+        user_id="user-1",
+        agent_type="ai",
+        agent_id="sys-default-chat",
+        status="paused",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    paused = AgentRun(
+        id="run-paused",
+        thread_id="thread-1",
+        user_id="user-1",
+        status=RunStatus.WAITING_FOR_APPROVAL,
+        current_node="waiting_for_approval",
+        owner="dead-process:1234:abcd",
+        lease_expires_at=utc_now_naive() - timedelta(hours=1),
+        created_at=datetime.now(),
+        started_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    session = _FakeSession(thread)
+    session.runs[paused.id] = paused
+
+    try:
+        ensure_no_active_run_for_thread(session, thread_id="thread-1", user_id="user-1")
+    except AppError as exc:
+        assert exc.code == ErrorCode.ACTIVE_RUN_CONFLICT
+        assert exc.details["active_run_id"] == "run-paused"
+    else:
+        raise AssertionError("停在审批点的 run 必须继续占着会话")
+
+
 def test_expired_lease_run_does_not_block_new_run():
     """租约过期的活跃 run = 僵尸，不再挡住新任务。
 

@@ -137,6 +137,22 @@ def create_agent_run(
     return run
 
 
+def run_holds_thread(run: AgentRun, *, now=None) -> bool:
+    """该 run 是否「活着并占着这条会话」。**存活判定的唯一入口**（互斥与回收共用）。
+
+    停在审批点（waiting_for_approval）的 run **无条件算活着**：它等的是**人**，
+    不是进程——这一轮流已收尾，没有任何进程会替它续租（续租只发生在「本进程持有的
+    活跃 run」上），而它的执行预算已被 `pause_deadline` 挂起。少了这一条例外会出现
+    最坏的一类误杀：计划放着几分钟不点 → 租约到期 → 回收段把它标成「运行进程失联」
+    → 审批卡消失、任务再也批不了（2026-09-13 实测：一小时内 5 条待审批 run 全被误杀）。
+
+    其余活跃状态照旧看租约：状态说「应该是什么状态」，租约说「还有人在管它吗」。
+    """
+    if run.status == RunStatus.WAITING_FOR_APPROVAL:
+        return True
+    return is_lease_alive(run.lease_expires_at, now)
+
+
 def get_active_run_for_thread(
     db: Session,
     *,
@@ -144,10 +160,10 @@ def get_active_run_for_thread(
     user_id: str | None = None,
     exclude_run_id: str | None = None,
 ) -> AgentRun | None:
-    """获取线程下**真正在跑**的运行实例（活跃状态 + 租约有效）。
+    """获取线程下**真正在跑**的运行实例（活跃状态 + `run_holds_thread`）。
 
-    为什么在 Python 侧过滤租约、而不是写进 SQL：存活判定必须只有一处实现
-    （`utils/run_lease.is_lease_alive`）。在 SQL 里再写一遍
+    为什么在 Python 侧过滤存活、而不是写进 SQL：存活判定必须只有一处实现
+    （`run_holds_thread` → `utils/run_lease.is_lease_alive`）。在 SQL 里再写一遍
     `lease_expires_at > now` 就是第二个真相——两处一旦不一致就会出现「互斥认为
     它活着、回收认为它死了」这种自相矛盾（旧口径的病根正是判定逻辑散落各处）。
     代价是取一小页记录再筛，见 MAX_ACTIVE_RUNS_SCANNED。
@@ -164,7 +180,7 @@ def get_active_run_for_thread(
     if exclude_run_id is not None:
         statement = statement.where(AgentRun.id != exclude_run_id)
     for run in db.exec(statement).all():
-        if is_lease_alive(run.lease_expires_at):
+        if run_holds_thread(run):
             return run
     return None
 

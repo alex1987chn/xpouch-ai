@@ -4,7 +4,8 @@
 因为这里要验的正是**查询与写入**的行为：哪些 run 被续、哪些被回收、为什么。
 
 要钉死的性质（决定 2 里最贵的两类错误）：
-- 误杀：活着的 run（租约有效）绝不能被回收 → 包括 HITL 等待中的 run
+- 误杀：活着的 run 绝不能被回收 —— 租约有效的，以及**资产性质特殊**的
+  HITL 等待中 run（它等的是人，租约**必然**会过期，不能照租约判死）
 - 漏杀：租约过期/无租约的活跃 run 必须被回收，否则僵尸一直挂着
 """
 
@@ -135,6 +136,27 @@ class TestReclaim:
             "run-paused",
             status=RunStatus.WAITING_FOR_APPROVAL,
             lease_seconds=60,
+            deadline_seconds=None,
+        )
+
+        assert lease_service.reclaim_expired_leases(db) == []
+        db.refresh(run)
+        assert run.status == RunStatus.WAITING_FOR_APPROVAL
+
+    def test_does_not_touch_hitl_paused_run_with_expired_lease(self, db):
+        """等待审批 + **租约已过期**：仍然绝不回收。
+
+        上一条测试用的是**有效**租约，于是漏掉了真实路径：停在审批点时这一轮流已收尾，
+        没有任何进程替它续租（续租只发生在「本进程持有的活跃 run」上），租约**必然**
+        会到期。照租约判死的结果是最坏的一类误杀——计划放几分钟不点，回收段把它标成
+        「运行进程失联」，审批卡消失、任务再也批不了（2026-09-13 实测：一小时内 5 条
+        待审批 run 全被误杀，其中一条正是用户报「审批计划这个选项没出来」的那次）。
+        """
+        run = _add_run(
+            db,
+            "run-paused-expired",
+            status=RunStatus.WAITING_FOR_APPROVAL,
+            lease_seconds=-600,
             deadline_seconds=None,
         )
 

@@ -22,7 +22,7 @@ import asyncio
 
 from sqlmodel import Session, select
 
-from crud.agent_run import ACTIVE_RUN_STATUSES, mark_run_timed_out_by_id
+from crud.agent_run import ACTIVE_RUN_STATUSES, mark_run_timed_out_by_id, run_holds_thread
 from database import engine
 from models import AgentRun
 from utils.logger import logger
@@ -31,7 +31,6 @@ from utils.run_lease import (
     RUN_LEASE_TTL_SECONDS,
     RUN_OWNER_ID,
     is_deadline_exceeded,
-    is_lease_alive,
     lease_deadline,
 )
 from utils.time import utc_now_naive
@@ -77,9 +76,15 @@ def reclaim_expired_leases(session: Session, now=None) -> list[tuple[str, list[s
     - 超过 deadline → 进程可能还在，但预算已用尽（HITL 等待期 deadline 被挂起，
       所以等待中的 run 不会命中这条）
 
-    存活与预算的判定**复用 `utils/run_lease` 的同一对函数**，不在查询里重写一遍
-    —— 判定散落正是旧口径的病根（互斥认为它活着、回收认为它死了）。所以这里是
-    「取一页活跃行 → 用同一个判定筛」，代价可控（见 MAX_ACTIVE_RUNS_SCANNED）。
+    存活与预算的判定**复用同一对判据**（`crud.agent_run.run_holds_thread` +
+    `utils/run_lease.is_deadline_exceeded`），不在查询里重写一遍——判定散落正是旧
+    口径的病根（互斥认为它活着、回收认为它死了）。所以这里是「取一页活跃行 →
+    用同一个判定筛」，代价可控（见 MAX_ACTIVE_RUNS_SCANNED）。
+
+    ⚠️ 存活判定里有一条**必须**的例外：停在审批点（waiting_for_approval）的 run
+    无条件算活着。它等的是人——这一轮流已收尾没人续租、预算也被 `pause_deadline`
+    挂起，若照租约判死，计划放几分钟不点就被这里标成「运行进程失联」（2026-09-13
+    实测：一小时内误杀 5 条待审批 run，用户看到的是审批卡消失、任务再也批不了）。
     """
     now = now or utc_now_naive()
     rows = session.exec(
@@ -91,12 +96,12 @@ def reclaim_expired_leases(session: Session, now=None) -> list[tuple[str, list[s
 
     reclaimed: list[tuple[str, list[str]]] = []
     for run in rows:
-        lease_alive = is_lease_alive(run.lease_expires_at, now)
+        holds = run_holds_thread(run, now=now)
         over_budget = is_deadline_exceeded(run.deadline_at, now)
-        # ⚠️ 两个判据是**或**关系，不能写成「租约有效就跳过」：进程活着但流早断了
+        # ⚠️ 两个判据是**或**关系，不能写成「活着就跳过」：进程活着但流早断了
         # （SSE 断开后没人驱动图）时，租约一直续、run 永远不超时，预算就成了死条款。
         # 旧清理循环里 `deadline_at < now` 那条分支管的正是这种情形，换机制时必须带过来。
-        if lease_alive and not over_budget:
+        if holds and not over_budget:
             continue
         # 两种情况用户看到的都是「超时」，但排查结论完全不同（进程没了 vs 跑太久），
         # 所以原因分开写。
