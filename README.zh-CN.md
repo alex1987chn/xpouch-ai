@@ -30,12 +30,15 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 
 - simple / complex 双模式
 - complex 模式下的 HITL 审批与恢复
-- **HITL 修订循环**：驳回+反馈 → 规划专家修订出 v(n+1)，任务保持挂起，可循环裁决或终止
+- **HITL 修订循环**：驳回+反馈 → 规划专家修订出 v(n+1)，任务保持挂起，可循环裁决或终止；v(n) ↔ v(n+1) 修订对照视图
 - **用户管理与审计日志**（管理员）：脱敏用户列表、角色编辑、密码重置；管理面变更全量留痕
 - **附件文档**：PDF / Word / Excel / MD 等解析为文本注入对话上下文
 - **产物大弹框**：视图/代码切换、编辑、导出 MD/PDF、公开分享
 - `Thread / AgentRun / ExecutionPlan` 三层运行时语义
-- artifact 持久化、恢复展示与多任务串行执行
+- artifact 持久化、恢复展示与波次并发执行（按依赖分波扇出同层就绪任务，并发上限管理端可配）
+- **运行租约**：run 是带租约的持久作业，「这个 run 还活着吗」收敛为唯一判定机制
+- **流式帧持久化**：SSE 帧按 run 级号段落库，断线重连从持久帧补放
+- **思考面板按专家分组**：相邻同专家步骤合并成组，组头显示专家名 / 状态 / 步数
 - 跨轮产物连续性（追问"把上面的图改成时序图"可直接引用历史产物）
 - **产物中心**：跨会话浏览全部产物，支持搜索与类型过滤，一键生成公开分享链接、直达来源会话
 - **双登录**（手机验证码 + 密码），账号与安全独立管理（含忘记密码重置）
@@ -69,6 +72,7 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - 用户可修改、删除、调整任务后再批准
 - `POST /api/chat/resume` 围绕 `run_id` 恢复执行；修订由后台任务执行，前端轮询感知新版本
 - 驳回反馈以 user 消息永久留痕在会话中
+- **修订对照视图**：v(n) ↔ v(n+1) 的计划差异可直接比对
 
 ### Run-based Runtime
 
@@ -76,6 +80,7 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 - `AgentRun` 表达一次真实执行
 - `ExecutionPlan` 表达复杂任务计划
 - 支持 run 级 cancel / timeout / heartbeat / current node
+- run 租约（`owner` / `lease_expires_at` / `attempt`）：进程重启或失联后，归属与回收由租约统一判定
 
 ### Artifact 系统
 
@@ -130,7 +135,7 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 
 - 后端是真相源
 - 前端通过 SSE 事件驱动 store 与 UI
-- 事件协议 v2：节点经统一出口（`emit_event`）发射结构化事件，经 LangChain custom event 通道直达消费端——每条事件恰好一次投递，不进图状态/checkpoint；前后端事件枚举有契约测试守护
+- 事件协议 v2：节点经统一出口（`emit_event`）发射结构化事件，经 LangChain custom event 通道直达消费端——每条事件恰好一次投递，不进图状态/checkpoint；**类型单一真相源**：由后端事件模型生成前端 TS（`frontend/src/types/events.generated.ts`），配 pytest 与 `just check-event-types` 两道漂移闸门
 - 传输级 `[DONE]` 完成标记，异常断流与正常结束可区分
 - 适合继续演进为可审计、可回放的 Agent 产品
 
@@ -269,7 +274,8 @@ DEEPSEEK_API_KEY=...   # 推荐，默认模型 deepseek-flash
 - `LANGCHAIN_API_KEY`
 - `CORS_ORIGINS`
 - `RUN_DEADLINE_SECONDS`
-- `RUN_MAX_GRAPH_LOOPS`
+- `LLM_CALL_TIMEOUT_SECONDS`
+- `GRAPH_MAX_CONCURRENCY`（同层并发上限，**以管理端「系统状态」的配置为准**，此项只是环境变量兜底）
 
 完整示例见 `backend/.env.example`。
 
@@ -321,6 +327,7 @@ BACKUP_KEEP=30 ./scripts/backup_db.sh   # 自定义份数
 ## 文档
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — 架构导览（贡献者先读这篇）
+- [docs/TARGET-ARCHITECTURE.md](./docs/TARGET-ARCHITECTURE.md) — 目标架构与路线（八条决定、批次记录、实测复盘）
 - [CHANGELOG.md](./CHANGELOG.md)
 - [DESIGN.md](./DESIGN.md) — UI 设计与交互规范
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
@@ -361,6 +368,12 @@ BACKUP_KEEP=30 ./scripts/backup_db.sh   # 自定义份数
 - 用户管理与审计日志（脱敏列表、角色编辑、密码重置、管理面留痕）
 - 附件文档解析（PDF/Word/Excel/MD 注入对话上下文）
 - LLM 调用与记忆检索恢复异步（并发请求不再互相阻塞）
+- LangGraph 原生化：审批迁原生 `interrupt()`，拆掉外层循环与存活启发式
+- 波次并发执行（同层就绪任务并发，管理端可配并发上限）
+- 运行租约：run 存活判定收敛为单一机制
+- SSE 帧持久化 + 续传读端（断线从持久帧补放）
+- 事件协议类型单一真相源（后端模型生成前端 TS + 两道漂移闸门）
+- 思考面板：按专家分组 + 刷新后从运行事件账本重建
 
 ### 下一阶段
 

@@ -652,4 +652,7 @@ UTC+8 下少 8 小时（实时消息带 `Z` 所以只有恢复路径错）。这
 ## 附：派生文档
 
 - `docs/langgraph-native-audit.md` —— 框架原生化审计（19 处自研机制逐条对到 langgraph 1.2.11 / langchain 1.3.18 的结论，含「官方有 / 官方没有 / middleware 挂不上」三档判定）
-- `docs/design/REDESIGN-NOTES.md` —— UI 设计体系（token 三层 + 自研语义皮 + Radix 行为芯）
+- [../DESIGN.md](../DESIGN.md) / [../THEME_GUIDE.md](../THEME_GUIDE.md) —— UI 设计体系与 token（**入库**，规范真源）
+- `docs/design/REDESIGN-NOTES.md` —— UI 改造过程笔记（token 三层 + 自研语义皮 + Radix 行为芯）。
+  ⚠️ 本地文档，`docs/design/` 已被 .gitignore 排除：**别把只该活在这里的规范写进去**，
+  稳定的部分要回抄到入库的 DESIGN.md / THEME_GUIDE.md

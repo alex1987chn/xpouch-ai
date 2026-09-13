@@ -22,15 +22,10 @@
 
 ```
 frontend/src/styles/tokens/
-├── _semantic.css          # 颜色、字体基础变量
-├── _layout.css            # 阴影、边框宽度、变换效果变量
+├── _semantic.css          # 颜色、字体、圆角基础变量（:root 即 soft 主题值）
+├── _layout.css            # 阴影、边框宽度、变换效果变量（双主题共用）
 └── themes/
-    ├── _light.css         # Light 主题（仅覆盖变量）
-    ├── _dark.css          # Dark 主题（仅覆盖变量）
-    ├── _glass.css         # Glass 主题（仅覆盖变量）
-    ├── _kyoto.css         # Kyoto 主题（仅覆盖变量）
-    ├── _glass-compat.css  # 最小化兼容覆盖（遗留组件）
-    └── _kyoto-compat.css  # 最小化兼容覆盖（遗留组件）
+    └── _dark.css          # Dark 主题（仅覆盖颜色变量，材质继承 :root）
 ```
 
 ---
@@ -112,10 +107,8 @@ frontend/src/styles/tokens/
 // frontend/src/store/themeStore.ts
 
 export const THEMES: ThemeMeta[] = [
-  { id: 'light', name: 'Light', description: 'Bauhaus 明亮主题', icon: 'Sun' },
-  { id: 'dark', name: 'Dark', description: 'Bauhaus 暗黑主题', icon: 'Moon' },
-  { id: 'glass', name: 'Glass', description: '玻璃极简', icon: 'Sparkles' },
-  { id: 'kyoto', name: 'Kyoto', description: '京都日系', icon: 'Leaf' },
+  { id: 'soft', name: 'Soft', description: '柔和亮色 - 暖中性、漫射阴影、细边框', icon: 'Sun' },
+  { id: 'dark', name: 'Dark', description: '暖暗色 - 暖炭黑基底，夜间护眼', icon: 'Moon' },
   { id: 'neon', name: 'Neon', description: '赛博霓虹', icon: 'Zap' },  // ← 新增
 ]
 ```
@@ -133,7 +126,7 @@ export const THEMES: ThemeMeta[] = [
 
 ## 3. 组件开发规范
 
-### ❌ 错误写法（硬编码 Bauhaus 风格）
+### ❌ 错误写法（硬编码具体风格）
 
 ```tsx
 // ❌ 不要把具体样式写死在组件里
@@ -200,29 +193,29 @@ const buttonVariants = cva(
 
 ### 字体变量
 ```css
---font-sans: 'DM Sans', system-ui, sans-serif;
---font-mono: 'Space Mono', monospace;  /* Bauhaus */
-
-/* Glass: 两者都用 DM Sans */
-/* Kyoto: 'Noto Serif JP', 'Noto Sans JP' */
+--font-sans: 'Geist', system-ui, sans-serif;  /* 正文 */
+--font-mono: 'Space Mono', monospace;         /* 等宽（编号、代码、状态胶囊） */
 ```
 
 ### 圆角变量
 ```css
---radius-sm: 0 | 2px | 4px | 6px;
---radius-md: 0 | 3px | 8px | 10px;
---radius-lg: 0 | 4px | 12px | 16px;
---radius-xl: 0 | 6px | 16px | 20px;
+--radius-sm: 6px;
+--radius-md: 10px;
+--radius-lg: 14px;
+--radius-xl: 18px;
+--radius-none: 0;
 --radius-full: 9999px;
 ```
 
 ### 边框宽度变量
 ```css
+/* 柔和材质体系下全部为 1px；改用变量的意义是拿回集中管控权，
+   需要时只改 token 即可全站生效（不要在组件里写 border-2） */
 --border-width-thin: 1px;
---border-width-thick: 2px;
---border-width-card: 1px | 2px;
---border-width-button: 1px | 2px;
---border-width-input: 1px | 2px;
+--border-width-thick: 1px;
+--border-width-card: 1px;
+--border-width-button: 1px;
+--border-width-input: 1px;
 ```
 
 ### 阴影变量（细化层级）
@@ -302,9 +295,11 @@ boxShadow: {
 
 | 风格 | 边框 | 阴影 | 位移 | 字体 |
 |-----|------|------|------|------|
-| **Bauhaus** (Light/Dark) | 2px 粗硬边 | 硬阴影 4-8px | 大幅度 2-4px | Space Mono 等宽 |
-| **Glass** | 1px 细边 | 柔和扩散 4-20px | 微浮动 1-2px | DM Sans 无衬线 |
-| **Kyoto** | 1px 细边 | 极淡 1-4px | 极微 0.5-1px | Noto Serif JP 衬线 |
+| **Soft**（默认，`:root`） | 1px 细边 | 漫射浅阴影 1-3px | 微浮动 0.5-1px | Geist 无衬线 |
+| **Dark** | 1px 细边（预混合亮色线） | 深黑系阴影、对比加强 | 微浮动 0.5-1px | Geist 无衬线 |
+
+> 材质（边框宽度、阴影、位移）双主题共用同一套值，只换颜色；历史风格
+> Bauhaus / Glass / Kyoto 及其 compat 覆盖文件均已退役（v3.5.1）。
 
 ---
 
@@ -312,18 +307,24 @@ boxShadow: {
 
 添加新组件前检查：
 
-- [ ] 边框使用 `border-2 border-border-default` 或 `border border-border-default`
+- [ ] 边框宽度用语义类（`border-theme-card` / `border-theme-button` / `border-theme-input`），
+      颜色用 `border-border-default` / `border-border-divider`——**不要写 `border-2` 等字面量**
 - [ ] 阴影使用 `shadow-theme-*` 系列
-- [ ] 位移使用 `[transform:var(--transform-*)]`
+- [ ] 位移使用 `-translate-y-px`（或 `[transform:var(--transform-*)]`）
 - [ ] 没有硬编码的 `shadow-hard`, `border-2 border-black` 等
-- [ ] 圆角使用主题变量或保持直角（Bauhaus）
+- [ ] 圆角用 `rounded-md` / `rounded-lg` 等 token 类，不写 `rounded-[14px]`
 
 ---
 
 ## 8. 常见问题
 
-### Q: 为什么边框要用 `border-2 border-border-default` 而不是 `border border-theme-card`？
-A: 早期使用了复杂的 `border border-theme-card border-border-default` 组合，现在简化为标准的 `border-2 border-border-default`。`border-2` 对应 `--border-width-card` 的默认值（Bauhaus 2px，Glass/Kyoto 实际为 1px）。
+### Q: 边框到底该用哪套类名？
+A: 分两件事——
+- **宽度**走语义类：`border-theme-card`（卡片/面板/模态）、`border-theme-button`（按钮）、`border-theme-input`（输入类控件），
+  它们指向 `--border-width-*`（柔和体系下都是 1px），改 token 即全站生效
+- **颜色**走 `border-border-default`（静止）/ `border-border-hover`（悬停）/ `border-border-focus`（聚焦）/ `border-border-divider`（分隔线）
+
+不要写 `border-2`：那会绕过 token，主题一改就漏网（历史 Bauhaus 的 2px 风格即由此而来）。
 
 ### Q: 细化的阴影层级有什么用？
 A: 提供视觉层次感：
@@ -332,7 +333,8 @@ A: 提供视觉层次感：
 - 重要操作（保存、提交）用 `shadow-button-lg`
 
 ### Q: 新主题需要写 compat 文件吗？
-A: 不需要。compat 文件是为了兼容旧组件的过渡方案。新组件都应该使用语义化类名，新主题只需定义 CSS 变量即可。
+A: 不需要。compat 覆盖是历史遗留的过渡方案（Bauhaus/Glass/Kyoto 时期），已随那些主题一并删除。
+新组件都应该使用语义化类名，新主题只需定义 CSS 变量 + 在 `themeStore` 注册元数据即可。
 
 ### Q: 如何调试主题变量？
 A: 在浏览器 DevTools 中：

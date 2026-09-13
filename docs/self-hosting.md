@@ -59,6 +59,9 @@ docker compose up -d --build
 | `TENCENT_CLOUD_SECRET_ID` 等 `SMS_*` | — | 腾讯云短信（验证码通道），不配则开发环境走控制台回退、生产无法发码 |
 | `TAVILY_API_KEY` | — | 联网搜索工具 |
 | `THREAD_RETENTION_DAYS` | — | 会话保留天数 |
+| `RUN_DEADLINE_SECONDS` | `900` | 单次 run 执行预算（秒），超时判失败并收口 |
+| `LLM_CALL_TIMEOUT_SECONDS` | `420` | 单次 LLM 调用超时，防模型端悬挂 |
+| `GRAPH_MAX_CONCURRENCY` | `1` | 同层任务并发上限的**兜底值**（1 = 串行）；实际生效值以管理台「系统状态」页配置为准 |
 
 完整清单见 [`backend/.env.example`](../backend/.env.example)（含注释）。
 
@@ -97,13 +100,21 @@ server {
 XPouch 后端按**单 worker 单实例**设计，请勿用 gunicorn/uwsgi 开多 worker，也不要多机副本：
 
 - SSE 断线续传缓冲与发码/登录频控均在进程内存中，多 worker 会导致续传命中错误进程、频控形同虚设
-- 单机纵向扩容（CPU/内存）即可支撑中小团队规模；如需多实例高可用，需先把事件缓冲与限流迁到 Redis（暂未实现）
+- **run 租约是进程作用域的**（`owner` + 心跳续租，见 `services/run_lease_service.py`）：
+  多副本下每个进程只认自己拥有的 run，另一副本会把它当失联回收——同一 thread 的任务会被打断
+- 单机纵向扩容（CPU/内存）即可支撑中小团队规模；如需多实例高可用，需先把事件缓冲、限流
+  与 run 租约所有权迁到集中式存储/Redis（暂未实现）
 
 ## 升级
 
 ```bash
-git pull
-docker compose up -d --build
+# 仓库自带的部署脚本（推荐）：内部是 git fetch + git reset --hard origin/main，
+# 再 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+./deploy.sh
+
+# 手工升级（等价于脚本的后半段）
+git fetch origin && git reset --hard origin/main
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
 - 后端容器启动时会自动执行数据库迁移（`alembic upgrade head`）

@@ -30,12 +30,15 @@ The current stable baseline includes:
 
 - simple / complex dual mode
 - HITL approval and recovery in complex mode
-- **HITL revision loop**: reject with feedback → the planner produces v(n+1) while the task stays paused; decide in a loop or terminate
+- **HITL revision loop**: reject with feedback → the planner produces v(n+1) while the task stays paused; decide in a loop or terminate, with a **revision diff view** (v(n) ↔ v(n+1))
 - **User management & audit log** (admin): masked user list, role editing, password reset; every admin-side mutation is recorded
 - **Document attachments**: PDF / Word / Excel / MD parsed into the conversation context
 - **Artifact viewer modal**: view/code toggle, editing, MD/PDF export, public sharing
 - Three-layer runtime semantics: `Thread / AgentRun / ExecutionPlan`
-- Artifact persistence, restored rendering, and multi-task serial execution
+- Artifact persistence, restored rendering, and **wave-based parallel execution** (dependency-ordered waves fan out same-layer ready tasks; the concurrency cap is admin-configurable)
+- **Run lease**: a run is a leased, durable job — one mechanism decides whether it still owns its thread
+- **Durable SSE frames**: frames are persisted per run, so a reconnect replays from storage instead of losing the stream
+- **Expert-grouped thinking panel**: adjacent steps from the same expert collapse into a group header showing who is working
 - Cross-turn artifact continuity (follow-ups like "turn the chart above into a sequence diagram" can reference prior artifacts)
 - **Artifact center**: browse every artifact across sessions with search & type filters, one-click public share links, and one-click jump to the source conversation
 - **Dual login** (SMS code + password) with a standalone Account & Security dialog, incl. forgot-password reset
@@ -67,6 +70,7 @@ The current stable baseline includes:
 - Users can edit, delete, and reorder tasks before approving
 - `POST /api/chat/resume` resumes execution around a `run_id`; revisions run as a background task and the frontend polls for the new version
 - Rejection feedback is permanently kept in the conversation as a user message
+- **Revision diff view**: compare the plan revision v(n) against v(n+1) before deciding again
 
 ### Run-based runtime
 
@@ -74,6 +78,7 @@ The current stable baseline includes:
 - `AgentRun` is one real execution
 - `ExecutionPlan` is a complex-task plan
 - run-level cancel / timeout / heartbeat / current node
+- run lease (`owner` / `lease_expires_at` / `attempt`): after a restart or a lost process, ownership and reclaim are decided by the lease alone
 
 ### Artifact system
 
@@ -137,7 +142,7 @@ The current stable baseline includes:
 
 - The backend is the source of truth
 - The frontend is driven by SSE events into its stores
-- Event protocol v2: nodes emit structured events through a unified outlet (`emit_event`) over the LangChain custom-event channel — exactly-once delivery, never entering graph state or checkpoints; the frontend/backend event enums are guarded by contract tests
+- Event protocol v2: nodes emit structured events through a unified outlet (`emit_event`) over the LangChain custom-event channel — exactly-once delivery, never entering graph state or checkpoints; the **type source of truth is the backend model**, which generates the frontend TS (`frontend/src/types/events.generated.ts`), guarded by a pytest gate and `just check-event-types`
 - A transport-level `[DONE]` marker distinguishes normal completion from abnormal stream breaks
 - Ready to evolve into an auditable, replayable Agent product
 
@@ -277,7 +282,8 @@ Common optional variables:
 - `LANGCHAIN_API_KEY`
 - `CORS_ORIGINS`
 - `RUN_DEADLINE_SECONDS`
-- `RUN_MAX_GRAPH_LOOPS`
+- `LLM_CALL_TIMEOUT_SECONDS`
+- `GRAPH_MAX_CONCURRENCY` (same-layer concurrency cap — the **admin UI setting wins**; this variable is only the env fallback)
 
 See `backend/.env.example` for a full example.
 
@@ -329,6 +335,7 @@ Backups land in `backups/` (gitignored).
 ## Documentation
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — architecture map (start here if you want to contribute)
+- [docs/TARGET-ARCHITECTURE.md](./docs/TARGET-ARCHITECTURE.md) — target architecture & roadmap (eight decisions, batch records, field-tested lessons)
 - [CHANGELOG.md](./CHANGELOG.md)
 - [DESIGN.md](./DESIGN.md) — UI & interaction conventions
 - [CONTRIBUTING.md](./CONTRIBUTING.md)（中文）
@@ -370,6 +377,12 @@ Backups land in `backups/` (gitignored).
 - User management & audit log (masked list, role editing, password reset, admin mutation trail)
 - Document attachments (PDF/Word/Excel/MD parsed into conversation context)
 - Async LLM calls & memory retrieval restored (concurrent requests no longer block each other)
+- LangGraph-native approval via `interrupt()` (outer loop and liveness heuristics removed)
+- Wave-based parallel execution (same-layer tasks fan out; concurrency cap configurable in the admin UI)
+- Run lease: a single mechanism decides run liveness
+- Durable SSE frames + resume read path (reconnect replays from storage)
+- Event protocol type source of truth (backend model → generated frontend TS, two drift gates)
+- Thinking panel grouped by expert, rebuilt from the run event ledger after refresh
 
 ### Next up
 
