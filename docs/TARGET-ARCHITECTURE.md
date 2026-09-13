@@ -237,16 +237,18 @@
 
 **批次 B 总验收**：五条特征测试通过；checkpoint 表行数不再随消息线性增长。
 
-### 批次 B4 · Plan 全量收敛（**须在 B3 之后**）
+### 批次 B4 · Plan 全量收敛（**上半已完成 2026-09-13**）
 
 从 B2 推迟而来。理由：B3 会重组 commander / `plan_approval` / 分发节点，**在重组前改同一批代码等于做两遍**，且会在高风险改动前引入 churn。
 
-- [ ] `Plan` / `PlanStep` canonical 模型：四套形状（`commander.Task` / `SubTaskCreate` / `TaskInfo` / 图状态 dict）收成一套，边界处显式转换
-- [ ] `dependencies` ↔ `depends_on` 收敛为单一写法
-- [ ] `SubTask` 补存放 Commander 语义 `task_id`（如 `task_0`）的字段——现为「双身份」，靠 `expert_results` 里 db_uuid 双保险匹配（`generic.py` 的匹配逻辑随之简化）
-- [ ] 用测试断言三条转换链（LLM→DTO、DTO→图状态、图状态→事件 payload）的字段一致——历史上已因字段名漂移静默丢过数据
+- [x] **canonical 模型 + 唯一转换点**（`agents/plan_tasks.py`）：`PlanTask` + `build_plan_tasks` / `attach_subtask_ids` / `to_state_dict` / `to_event_task_dict` / `to_subtask_create`。commander 里三处手写构造（DTO / 状态 dict / plan.created payload）全部改经它。
+- [x] **`dependencies` ↔ `depends_on` 收敛为单一写法**：canonical 名 = `depends_on`；LLM 侧 `Task` 用 `AliasChoices` 兼容旧名（历史提示词、已存计划、老测试不受影响），提示词/默认数据/修订路径/回归校验器一并改名。改名过程当场揪出两处仍读旧名的站点（`evals/regression_runner.py`、事件 payload 的键集）。
+- [x] **三条链的一致性测试**（`tests/test_plan_task_conversions.py`，15 条）：状态 dict 键集钉死、事件 payload 键集 == `TaskInfo.model_fields`、DTO 双身份、依赖序号归一、落库前后调用顺序、位置错配必须报错。**验收口径「改任一字段名只影响一处」由此成立**（配 `to_event_task_dict` 未落库即报错）。
+- [ ] **`SubTask` 补 Commander 语义 `task_id` 列**（下半，需一条迁移）：现状 `SubTaskCreate.task_id` 落库时被丢弃，`generic.py` 只能靠 `expert_results` 里 `task_id` + `db_uuid` 双保险匹配依赖。补列后：创建时写入、`generic.py` 的匹配逻辑简化、`depends_on` 的语义变清晰。
+  - 注意：**修订路径（`action=revise`）产出的依赖 ID 用的是「1/2/…」序号写法**，与原计划的 `task_1` 命名不一致——落库时没有归一，执行期匹配依赖可能落空。这条独立于补列，属同一批的收尾项（已实测修订本身可用：见「批次 D 补」的 v1→v2 验证）。
+- **图状态 dict 的键名有意不改**（`id` 存 UUID、`task_id` 存语义 ID）：被 generic / dispatcher / aggregator / plan_waves 广泛读取，改名纯风险无收益；改由 `to_state_dict()` 一处生成并在模块 docstring 写清映射，测试钉住键集。
 
-**验收**：改任一字段名只会影响一处；三条转换链有一致性测试。
+**验收**：改任一字段名只会影响一处 ✅（上半）；三条转换链有一致性测试 ✅。
 
 ### 批次 C · 并行（决定 5 + 决定 8）
 
