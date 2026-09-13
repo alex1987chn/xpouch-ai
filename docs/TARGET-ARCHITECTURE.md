@@ -309,15 +309,25 @@
     1. ~~首轮流不经过 hub、规划阶段断连即杀任务~~ → **已于 2026-09-13 修复，见下节「批次 D 补 2」**。
     2. **进程重启后 run 已死**（单进程跑图，producer 随进程消失）：此时只能重放已落库的一段，没有可跟随的流，所以端点返回 410 交由前端刷新。要拿到「完整产出」的前提是 run 能被重新驱动 —— 那是**决定 2**（租约/回收）的事，不在本片。因此核心验收的准确表述是：**重启后按 `last_event_id` 仍能拿到重启前的完整输出，且后端不报错、前端不悬挂**。
     3. ~~刷新页面后审批卡不出现~~（**2026-09-13 核实：不成立**）——`useSessionRestore` 在 `latest_run.status === 'waiting_for_approval'` 时本来就会用 `execution_plan.sub_tasks` 重建 `pendingPlan`。所以「卡片丢失」只有**断线重连**这一种情况，本片已修；F5 一直是被覆盖的。
-- [ ] **决定 2 · run 租约（未做；设计已核实到可执行粒度，2026-09-13）**：`run_lease(run_id, owner, lease_expires_at, attempt)` + supervisor 续租/回收。
-  - **四处启发式的现状与归属（已逐个核过代码）**：
-    1. **存活可见性** = `AgentRun.last_heartbeat_at`。写：`crud/agent_run.update_run_status` 与 `touch_run_heartbeat_by_id`（stream_service 的 `_sync_run_progress_from_token` 每帧触发）；读：`schemas/conversation` 暴露给前端，但**前端只声明类型、无逻辑消费者**。→ 租约完全覆盖：`lease_expires_at` 就是「最后一次见过 + TTL」，且多一层「谁持有」。
-    2. **僵尸回收** = `session_cleanup_service._cleanup_once` 的 `stale_runs` 段（`deadline_at < now` 或 `updated_at < now - 30min` → 标 timed_out）。→ 租约覆盖：`lease_expires_at < now` 即死，不必再「猜 30 分钟」。
-    3. **并发互斥** = `crud/agent_run.ensure_no_active_run_for_thread`（按 `ACTIVE_RUN_STATUSES` 查活跃 run → 409）。→ 租约覆盖且**更准**：现在一条僵尸 run（进程死了但状态还是 running）会一直挡住该会话，直到清理循环轮到它；租约过期即可当场判死回收。
-    4. **请求去重** = `RecoveryService._inflight_resume_by_run`（同 run 的重复 resume 请求进程内去重）。→ **不是 run 存活语义，不并入租约**：它挡的是「同一秒内的两次 HTTP 请求」，租约管的是「run 是否还活着」。建议原样保留，并在注释里写清区别（免得下次又被当成「重复机制」删掉）。
-  - **必须保留的既有语义**：`pause_deadline`（审批等待期挂起执行预算 `deadline_at`）。**租约管存活、deadline 管预算，两者正交**，不要合并。
-  - **执行清单（下一轮照做即可）**：① 一条迁移加 `owner` / `lease_expires_at` / `attempt` 三列（**一次切干净**，不做两套并存）；② 新增 `services/run_lease.py`（acquire / renew / release / reclaim + supervisor 循环，并接管 cleanup 里的 `stale_runs` 段）；③ 心跳写入点改为续租（上述 5 个调用点）；④ 互斥判定改为「存在未过期租约」；⑤ 收尾释放租约（`cleanup_terminal_run` 的五个终态调用点）；⑥ 重跑 e2e 与取消/超时路径的用例（这些路径用户已实机验证过，改完必须重跑）。
-  - **为什么这一轮没做**：它落在取消/超时路径上，且需要「迁移 + 三处机制同时切换」才算完成——分批做会留下「租约与心跳并存」的两套语义（正是本次要消灭的东西）。宁可留一条可执行清单，也不留半张图。
+- [x] **决定 2 · run 租约（已完成 2026-09-13）**：`agentrun` 加 `owner` / `lease_expires_at` / `attempt` 三列（迁移 `20260913_000300`），新增 `utils/run_lease.py`（策略与判定）+ `services/run_lease_service.py`（supervisor：续租 + 回收），随 lifespan 启动，20s 一轮、TTL 180s。
+  - **四处启发式的最终归属**（逐个核对过，不是「少一个机制」而是「一个机制说清一件事」）：
+    1. **存活可见性** → 租约。心跳仍然写（`last_heartbeat_at` = 最后一次见到进展，诊断用），但**生死只由租约判定**；旧口径里前端只声明了心跳类型、无逻辑消费者。
+    2. **僵尸回收** → `reclaim_expired_leases`。判据从「`updated_at` 30 分钟没动」变成「租约过期或无租约」。
+    3. **并发互斥** → 同一个判定（`get_active_run_for_thread` 只认租约有效的活跃 run）。
+    4. **请求去重** → **保持原样**（`RecoveryService._inflight_resume_by_run`）：它挡的是「同一秒内的两次 HTTP 请求」，是请求级幂等，不是 run 存活语义。两处都在注释里写清了区别。
+  - **行为变化（都是有意的，各有测试）**：
+    - 僵尸 run **不再挡住会话**：租约一过期即可开新任务（旧口径要等清理循环猜满 30 分钟）。冲突响应里带上 `lease_expires_at` 便于排查。
+    - 崩溃后的冻结时间从最长 30 分钟缩到 **约 3 分钟**（TTL 180s）。取这个值不取更短是为了防误杀：进程「活着但事件循环被卡住」若被误判死，会出现「标记超时但实际仍在跑」的状态分裂，代价比多等几分钟大得多。
+    - **NULL 租约 = 无存活证据**（迁移前的遗留行一律可回收）；迁移不回填假租约——部署必然伴随重启，那些行本就是僵尸。
+    - `attempt`：创建 = 1，审批后续跑认领 = 2……仅用于排查，不出现在 API 里。实测 e2e 的 run 终态是 `attempt=2`，与设计一致。
+  - **必须保留的既有语义（都验过）**：`pause_deadline`（HITL 等待期挂起预算）——等待中的 run 租约照续、deadline 为 None，因此**绝不被回收**；`deadline` 判据与流内守卫共用 `is_deadline_exceeded`（一处实现），租约有效但超预算的 run 仍会被回收（旧清理循环里 `deadline_at < now` 那条分支的等价物——写成「租约有效就跳过」会让预算变成死条款，这条被单测当场逮到）。
+  - **实测验收**（`lease_verify.py`，真实 HTTP + 真实 DB + 真实 supervisor）：
+    1. run 停在审批、进程活着 → 跨 3 个 supervisor 周期（60s）租约持续续期、状态不变（**不误杀**）；
+    2. 把租约改成「别的进程持有且已过期」（模拟进程死亡）→ supervisor 回收为 `timed_out`，原因写明「运行进程失联（租约过期）」并释放租约（**能回收**）；
+    3. 回收后该会话活跃 run 为空（**让位**，新任务可立刻开始）。
+    标准 e2e（规划 → 审批 → 执行完成）同时重跑通过（5 任务、5 产物、`message.done`）。
+  - **测试**：`tests/test_run_lease.py`（16 条，判定 + 读写点）、`tests/test_run_lease_service.py`（12 条，含「单轮失败不能让 supervisor 死掉」与「HITL 等待中的 run 不许回收」）。后端 **405 passed**。
+  - **有意不做**：让租约承担「崩溃后自动接管续跑」（从 checkpoint 重新驱动图）。回收目前 = 标记超时（与旧行为一致），接管是另一个量级的特性；租约把它的前提（谁是活的）备好了，但没顺手改行为。
 
 **注**：决定 1 的 token delta 处理已拍板为「进 journal，但用独立表 + ~200ms 批量提交」——批量是**提交批次**，一行仍只装一条事件（见第 2 片）。
 

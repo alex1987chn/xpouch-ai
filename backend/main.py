@@ -160,17 +160,24 @@ async def lifespan(app: FastAPI):
     logger.info("[Lifespan] Expert cache cleared for fresh start")
 
     logger.info("[Lifespan] Startup complete, yielding control to Uvicorn...")
+    from services.run_lease_service import run_run_lease_supervisor
     from services.session_cleanup_service import run_session_cleanup_loop
 
+    # 两条后台循环，职责不同（决定 2 之后的分工）：
+    #   lease supervisor = **存活**（续租本进程持有的 run + 回收租约过期的），20s 一轮
+    #   session cleanup  = **保留策略**（按保留期删线程/会话/帧），小时级
     cleanup_task = asyncio.create_task(run_session_cleanup_loop())
+    lease_task = asyncio.create_task(run_run_lease_supervisor())
     yield
     logger.info("[Lifespan] Shutdown started...")
 
+    lease_task.cancel()
     cleanup_task.cancel()
-    try:
-        await cleanup_task
-    except asyncio.CancelledError:
-        logger.info("[Lifespan] Session cleanup task stopped")
+    for task, label in ((lease_task, "Run lease supervisor"), (cleanup_task, "Session cleanup")):
+        try:
+            await task
+        except asyncio.CancelledError:
+            logger.info("[Lifespan] %s task stopped", label)
 
     # 🔥 关闭连接池
     from utils.db import close_connection_pool

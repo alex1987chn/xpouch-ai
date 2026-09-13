@@ -21,6 +21,7 @@ from sqlmodel import Session, select
 
 from config import settings
 from crud.agent_run import (
+    acquire_run_lease,
     mark_run_cancelled_by_id,
 )
 from crud.message import create_user_message
@@ -448,6 +449,17 @@ class RecoveryService:
         self._enter_inflight_resume(run_id, resume_key)
         try:
             logger.info("[HITL RESUME] 用户批准，开始流式恢复")
+            # 认领租约（决定 2）：把「谁来驱动这个 run」从「谁先到」变成「谁持有租约」。
+            # 单实例下这一步必然成功（租约是创建时自己拿的）；多实例/重复投递时
+            # 另一个进程持有有效租约 → 拒绝驱动，否则双方会同时跑同一个 run，
+            # 而对方的 supervisor 会在自己的续租周期里把它当作无主 run 回收掉。
+            if not await asyncio.to_thread(acquire_run_lease, self.db, run_id):
+                raise AppError(
+                    message="该任务正在被另一个实例处理，请稍后刷新查看结果",
+                    code=ErrorCode.ACTIVE_RUN_CONFLICT,
+                    status_code=409,
+                    details={"run_id": run_id},
+                )
             await self._update_run_status(run_id, RunStatus.RESUMING)
             # 🔥 恢复执行：重置完整执行预算（等待期已挂起 deadline）
             await self._reset_deadline(run_id)

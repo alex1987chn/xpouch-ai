@@ -1,4 +1,12 @@
-"""AgentRun 数据访问层。"""
+"""AgentRun 数据访问层。
+
+**run 租约的读写点都在这里**（决定 2）：创建时认领、状态写/心跳时续租、进入终态时
+释放、互斥判定看租约是否有效。策略与判定（TTL、owner 身份、`is_lease_alive`）在
+`utils/run_lease.py`；后台续租/回收循环在 `services/run_lease_service.py`。
+
+一句话原则：**`status` 说「应该是什么状态」，租约说「还有人在管它吗」**。
+状态写入顺带续租（进程显然活着），终态写入顺带释放（没有所有权了）。
+"""
 
 from __future__ import annotations
 
@@ -11,6 +19,7 @@ from crud.run_event import emit_run_created, emit_run_started, emit_run_timed_ou
 from models import AgentRun, RunStatus, Thread, ThreadStatus
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
+from utils.run_lease import RUN_OWNER_ID, accepts_renewal, is_lease_alive, lease_deadline
 from utils.time import utc_now_naive
 
 ACTIVE_RUN_STATUSES = {
@@ -19,6 +28,45 @@ ACTIVE_RUN_STATUSES = {
     RunStatus.RESUMING,
     RunStatus.WAITING_FOR_APPROVAL,
 }
+
+TERMINAL_RUN_STATUSES = {
+    RunStatus.COMPLETED,
+    RunStatus.FAILED,
+    RunStatus.CANCELLED,
+    RunStatus.TIMED_OUT,
+}
+
+# 互斥判定时最多看这么多条活跃记录：过滤「租约是否有效」用同一个纯函数（见
+# get_active_run_for_thread 的注释），所以要在 Python 侧过滤，条数必须可控。
+# 一个会话同时存在多条活跃 run 只可能是「僵尸 + 新的」这种短暂并存。
+MAX_ACTIVE_RUNS_SCANNED = 20
+
+
+def _claim_lease(run: AgentRun, *, new_attempt: bool = False) -> bool:
+    """认领/续租。返回是否续上了（他人持有 / 已终态时返回 False，不许碰）。
+
+    `new_attempt=True` 表示「这是又一次驱动」（创建 / 审批后续跑），计数 +1；
+    顺带的写入（状态变更、心跳）只续租不计数。
+
+    终态 run 一律不许认领，这条挡的是一类真实竞态：流已判死、run 刚被回收成
+    timed_out，而某个还没退出的在途心跳/状态写入**又把它复活**成「有租约的活跃
+    run」——僵尸复活比不回收更难查。
+    """
+    if run.status not in ACTIVE_RUN_STATUSES:
+        return False
+    if not accepts_renewal(run.owner):
+        return False
+    run.owner = RUN_OWNER_ID
+    run.lease_expires_at = lease_deadline()
+    if new_attempt:
+        run.attempt = (run.attempt or 0) + 1
+    return True
+
+
+def _release_lease(run: AgentRun) -> None:
+    """进入终态即释放：没有所有权可言（同时也让互斥不再被它挡住）。"""
+    run.owner = None
+    run.lease_expires_at = None
 
 
 def derive_thread_status_from_run_status(status: RunStatus) -> ThreadStatus:
@@ -65,6 +113,8 @@ def create_agent_run(
         updated_at=started_at,
         deadline_at=started_at + timedelta(seconds=settings.run_deadline_seconds),
     )
+    # 出生即持有租约（attempt=1）：新 run 的存活证据从第一刻起就只有这一个来源
+    _claim_lease(run, new_attempt=True)
     db.add(run)
     db.flush()
 
@@ -94,18 +144,29 @@ def get_active_run_for_thread(
     user_id: str | None = None,
     exclude_run_id: str | None = None,
 ) -> AgentRun | None:
-    """获取线程下当前活跃运行实例。"""
+    """获取线程下**真正在跑**的运行实例（活跃状态 + 租约有效）。
+
+    为什么在 Python 侧过滤租约、而不是写进 SQL：存活判定必须只有一处实现
+    （`utils/run_lease.is_lease_alive`）。在 SQL 里再写一遍
+    `lease_expires_at > now` 就是第二个真相——两处一旦不一致就会出现「互斥认为
+    它活着、回收认为它死了」这种自相矛盾（旧口径的病根正是判定逻辑散落各处）。
+    代价是取一小页记录再筛，见 MAX_ACTIVE_RUNS_SCANNED。
+    """
     statement = (
         select(AgentRun)
         .where(AgentRun.thread_id == thread_id)
         .where(AgentRun.status.in_(ACTIVE_RUN_STATUSES))
         .order_by(AgentRun.created_at.desc())
+        .limit(MAX_ACTIVE_RUNS_SCANNED)
     )
     if user_id is not None:
         statement = statement.where(AgentRun.user_id == user_id)
     if exclude_run_id is not None:
         statement = statement.where(AgentRun.id != exclude_run_id)
-    return db.exec(statement).first()
+    for run in db.exec(statement).all():
+        if is_lease_alive(run.lease_expires_at):
+            return run
+    return None
 
 
 def ensure_no_active_run_for_thread(
@@ -115,7 +176,12 @@ def ensure_no_active_run_for_thread(
     user_id: str | None = None,
     exclude_run_id: str | None = None,
 ) -> None:
-    """确保线程下没有其他活跃运行实例。"""
+    """确保线程下没有**真正在跑**的其他运行实例。
+
+    行为变化（决定 2 的收益之一）：僵尸 run（进程已死、状态还挂在 running）不再
+    挡住新任务——它的租约过期即被视为已死，新 run 可以立刻开始，由 supervisor
+    随后把僵尸回收掉。旧口径下这种情况要等清理循环「猜」满 30 分钟才放行。
+    """
     active_run = get_active_run_for_thread(
         db,
         thread_id=thread_id,
@@ -134,8 +200,29 @@ def ensure_no_active_run_for_thread(
             "active_run_id": active_run.id,
             "active_run_status": str(active_run.status),
             "current_node": active_run.current_node,
+            "lease_expires_at": (
+                active_run.lease_expires_at.isoformat() if active_run.lease_expires_at else None
+            ),
         },
     )
+
+
+def acquire_run_lease(db: Session, run_id: str) -> bool:
+    """驱动一个 run 之前认领租约（`attempt` +1）。返回是否认领成功。
+
+    什么时候需要它：**续跑**（审批后恢复执行）。新 run 由 `create_agent_run` 出生即
+    持有，不需要再认领。返回 False 表示「没能认领」——run 不存在，或**另一个进程正
+    持有有效租约**（多实例/重复投递）。调用方必须据此拒绝驱动：硬闯会导致两个进程
+    同时驱动一个 run，而对方的 supervisor 会在自己的续租周期里把它当成无主 run 回收。
+    """
+    run = db.get(AgentRun, run_id)
+    if run is None:
+        return False
+    if not _claim_lease(run, new_attempt=True):
+        return False
+    db.add(run)
+    db.commit()
+    return True
 
 
 def mark_run_completed(db: Session, run: AgentRun) -> None:
@@ -143,6 +230,7 @@ def mark_run_completed(db: Session, run: AgentRun) -> None:
     run.status = RunStatus.COMPLETED
     run.completed_at = utc_now_naive()
     run.updated_at = utc_now_naive()
+    _release_lease(run)  # 终态即释放：不再享有所有权
     db.add(run)
     _sync_thread_status(db, run.thread_id, run.status)
 
@@ -164,12 +252,17 @@ def update_run_status(
     *,
     current_node: str | None = None,
 ) -> None:
-    """更新运行状态和当前节点。"""
+    """更新运行状态和当前节点（顺带续租 / 终态释放）。"""
     run.status = status
     if current_node is not None:
         run.current_node = current_node
     run.last_heartbeat_at = utc_now_naive()
     run.updated_at = utc_now_naive()
+    if status in TERMINAL_RUN_STATUSES:
+        _release_lease(run)
+    else:
+        # 状态写入本身就证明「本进程在管这个 run」→ 顺带续租，零额外开销
+        _claim_lease(run)
     db.add(run)
     _sync_thread_status(db, run.thread_id, run.status)
 
@@ -186,6 +279,7 @@ def mark_run_failed(
     run.error_code = error_code
     run.error_message = error_message
     run.updated_at = utc_now_naive()
+    _release_lease(run)
     db.add(run)
     _sync_thread_status(db, run.thread_id, run.status)
 
@@ -220,6 +314,9 @@ def touch_run_heartbeat_by_id(
     now = utc_now_naive()
     run.last_heartbeat_at = now
     run.updated_at = now
+    # 心跳顺带续租：这是「进程活着」最频繁的信号，且写的是同一行、零额外开销。
+    # 注意它**不是**存活判定的依据（判定只看租约）——心跳是诊断记录。
+    _claim_lease(run)
     db.add(run)
     return run
 
@@ -257,6 +354,7 @@ def mark_run_timed_out_by_id(
     run.error_message = error_message
     run.timed_out_at = utc_now_naive()
     run.updated_at = utc_now_naive()
+    _release_lease(run)
     db.add(run)
     emit_run_timed_out(
         db,
@@ -287,6 +385,7 @@ def mark_run_cancelled_by_id(
     run.error_message = error_message
     run.cancelled_at = utc_now_naive()
     run.updated_at = utc_now_naive()
+    _release_lease(run)
     db.add(run)
     _sync_thread_status(db, run.thread_id, run.status)
     return run

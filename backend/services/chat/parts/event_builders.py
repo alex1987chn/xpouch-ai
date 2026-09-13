@@ -20,7 +20,6 @@ from utils.sse_builder import (
     build_message_done_event,
     build_message_thinking_event,
 )
-from utils.time import utc_now_naive
 
 
 class EventBuildersMixin:
@@ -47,12 +46,16 @@ class EventBuildersMixin:
         from crud.agent_run import mark_run_timed_out_by_id
         from models.enums import RunStatus
         from utils.exceptions import AppError
+        from utils.run_lease import is_deadline_exceeded
 
         agent_run = self.db.get(AgentRun, run_id)
         if agent_run is None:
             return
 
-        if agent_run.deadline_at and agent_run.deadline_at <= utc_now_naive():
+        # 预算判据与后台回收**同一处实现**（utils/run_lease）：流内守卫先发现超预算
+        # 就立刻终止并给出明确错误；进程已不在时由 supervisor 回收。两处口径若不一致，
+        # 会出现「流里认为没超、回收认为超了」这类自相矛盾的终止原因。
+        if is_deadline_exceeded(agent_run.deadline_at):
             timed_out = mark_run_timed_out_by_id(
                 self.db,
                 run_id,

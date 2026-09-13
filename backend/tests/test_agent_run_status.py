@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from config import settings
 from crud.agent_run import (
@@ -15,6 +15,8 @@ from crud.agent_run import (
 from models import AgentRun, RunEvent, RunEventType, RunStatus, Thread
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
+from utils.run_lease import RUN_OWNER_ID, lease_deadline
+from utils.time import utc_now_naive
 
 
 class _FakeSession:
@@ -69,6 +71,9 @@ class _FakeResult:
 
     def first(self):
         return self._items[0] if self._items else None
+
+    def all(self):
+        return list(self._items)
 
 
 def test_derive_thread_status_from_run_status():
@@ -219,6 +224,7 @@ def test_mark_run_cancelled_syncs_thread_status_to_idle():
 
 
 def test_ensure_no_active_run_for_thread_raises_conflict():
+    """有**存活租约**的活跃 run 才挡新任务（决定 2：死活的唯一判据是租约）。"""
     thread = Thread(
         id="thread-1",
         title="demo",
@@ -235,6 +241,8 @@ def test_ensure_no_active_run_for_thread_raises_conflict():
         user_id="user-1",
         status=RunStatus.WAITING_FOR_APPROVAL,
         current_node="waiting_for_approval",
+        owner=RUN_OWNER_ID,
+        lease_expires_at=lease_deadline(),
         created_at=datetime.now(),
         started_at=datetime.now(),
         updated_at=datetime.now(),
@@ -248,5 +256,53 @@ def test_ensure_no_active_run_for_thread_raises_conflict():
         assert exc.code == ErrorCode.ACTIVE_RUN_CONFLICT
         assert exc.status_code == 409
         assert exc.details["active_run_id"] == "run-1"
+        assert exc.details["lease_expires_at"], "冲突详情要带上租约到期时刻（排查僵尸时用）"
     else:
         raise AssertionError("Expected active run conflict to be raised")
+
+
+def test_expired_lease_run_does_not_block_new_run():
+    """租约过期的活跃 run = 僵尸，不再挡住新任务。
+
+    行为变化（决定 2）：旧口径下这种僵尸要等清理循环「猜」满 30 分钟才放行，
+    期间用户一直吃 409；现在过期即可让位，由 supervisor 随后回收。
+    """
+    thread = Thread(
+        id="thread-1",
+        title="demo",
+        user_id="user-1",
+        agent_type="ai",
+        agent_id="sys-default-chat",
+        status="running",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    zombie = AgentRun(
+        id="run-zombie",
+        thread_id="thread-1",
+        user_id="user-1",
+        status=RunStatus.RUNNING,
+        current_node="generic",
+        owner="dead-process:1234:abcd",
+        lease_expires_at=utc_now_naive() - timedelta(seconds=1),
+        created_at=datetime.now(),
+        started_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    homeless = AgentRun(
+        id="run-no-lease",
+        thread_id="thread-1",
+        user_id="user-1",
+        status=RunStatus.RUNNING,
+        owner=None,
+        lease_expires_at=None,  # 迁移前遗留 / 无存活证据
+        created_at=datetime.now(),
+        started_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    session = _FakeSession(thread)
+    session.runs[zombie.id] = zombie
+    session.runs[homeless.id] = homeless
+
+    # 不抛异常 = 放行
+    ensure_no_active_run_for_thread(session, thread_id="thread-1", user_id="user-1")

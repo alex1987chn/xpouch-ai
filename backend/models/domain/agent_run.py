@@ -71,6 +71,15 @@ class AgentRun(SQLModel, table=True):
     )
     deadline_at: datetime | None = None
     last_heartbeat_at: datetime | None = None
+
+    # ---- run 租约（决定 2）：存活判定的唯一权威 ----
+    # 语义与读写点见 utils/run_lease.py 与 services/run_lease_service.py。
+    # 与 `last_heartbeat_at` 的分工：心跳 = 「最后一次见到进展」的诊断记录；
+    # 租约 = 「谁、到什么时候」的持有声明 —— 只有租约能判定一个 run 是死是活。
+    owner: str | None = Field(default=None, max_length=128)
+    lease_expires_at: datetime | None = None
+    attempt: int = Field(default=0)
+
     completed_at: datetime | None = None
     cancelled_at: datetime | None = None
     timed_out_at: datetime | None = None

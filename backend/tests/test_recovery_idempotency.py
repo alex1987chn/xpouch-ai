@@ -57,6 +57,13 @@ async def test_handle_approval_releases_inflight_when_preflight_fails(monkeypatc
     monkeypatch.setattr(service, "_reset_deadline", _noop_update)
     monkeypatch.setattr(service, "_update_execution_plan_status", _raise_not_found)
 
+    async def _lease_ok(*_args, **_kwargs):
+        # 本用例的主题是「预检查失败时释放 in-flight 键」；租约认领（决定 2）是
+        # 正交的一层，这里让它直接成功，好走到被测的那条失败路径上。
+        return True
+
+    monkeypatch.setattr("services.chat.recovery_service.acquire_run_lease", _lease_ok)
+
     with pytest.raises(NotFoundError, match="ExecutionPlan"):
         await service._handle_approval(
             thread_id="thread-1",
