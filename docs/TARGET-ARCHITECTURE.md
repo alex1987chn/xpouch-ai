@@ -362,7 +362,11 @@
 - [x] ~~决定 7：配置缓存去全局化~~ → **第一刀已完成（`0283b02`）**：全局 epoch 失效 + 删注册表。DI 与另外两处缓存（tool_policy 自带 invalidate、graph_builder 的 LLM lru_cache）有意未纳入，见决定 7 章节。
 - [x] ~~commander / plan_revision 改 `with_structured_output(..., include_raw=True)`~~ → **已完成（`b2fabe3`）**，删掉手抽 JSON ~90 行，e2e 通过。
 - [ ] `Runnable.with_fallbacks` 运行时模型降级——**待用户决定**。我的建议是不做：它会让 provider 在运行时被静默切换（DeepSeek 抖动改由 Moonshot 出计划），而模型质量是用户在刻意管控的（停用 MiniMax 即例），与刚清扫完的「静默降级」缺陷同类。
-- [ ] 前端第二批：`useSessionRestore` Query 化、自研 persist 退役、`use-toast` 换 `useSyncExternalStore`（涉生产验证过的恢复时序，需谨慎）。`taskStore` 持久化收敛已在 `7e3dd31` 做掉一部分（停止持久化服务端数据副本）；内存里那份 tasks Map 及其写入点仍留着（动它要碰流式事件路径，需实机验证）。
+- [x] **前端第二批（2026-09-13）**：
+  - ✅ **自研 persist 退役**：删除 `store/middleware/persist.ts`（155 行，仅 taskStore 在用），改用 zustand 官方 `persist`（与 chatStore/themeStore 同一套）。Set 过不去 JSON 边界，用 `partialize`（Set→数组）与 `merge`（数组→Set）两头配对——这是**静默丢状态**的典型位置，新增 `store/__tests__/taskStorePersistence.test.ts` 三条把它钉住（含版本不匹配不污染状态）。
+  - ✅ **`use-toast` 换 `useSyncExternalStore`**：此前是自建监听器集合 + 每个订阅者各持一份 `useState`（并发渲染下会撕裂），现在只留一份模块级快照。对外 API 不变（`pushToast`/`dismissToast`/`useToast`），20 处调用点零改动。顺带把 toast id 从 `Math.random()` 换成递增序号（DOM key 不需要随机性，也避免安全扫描误报）。
+  - ⏸️ **`useSessionRestore` Query 化：有意不做**。理由：这个 Hook 是「取数 → 一次性写进两个 store」的命令式应用（约 15 处 store 写入 + 派生标志），不是渲染期派生；它的触发策略（5s 防抖 + visibilitychange + 活跃流检查 + `force`）是产品语义，改成 Query 后仍要保留这套触发逻辑，等于**多一套缓存/失效机制**而不是少一套。Query 的收益（去重/缓存/重试）在这里几乎为零，风险却压在用户已实机验证过的恢复时序上。真要动，应先有「恢复时序」的自动化测试（当前只有 e2e 目检）。
+  - 仍留着：内存里那份 tasks Map 及其写入点（动它要碰流式事件路径，需实机验证）。
 - [ ] 记忆迁 `AsyncPostgresStore.asearch`（**不值作为换而换**，等记忆要升级为产品功能再做）。
 
 **已否决（不要再提议）**：

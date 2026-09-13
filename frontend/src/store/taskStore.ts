@@ -32,18 +32,28 @@
 
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
+import { persist } from 'zustand/middleware'
 import { logger } from '@/utils/logger'
 import { enableMapSet } from 'immer'
-import { persist } from './middleware/persist'
 
 // 导入 Slices
-import { createTaskSlice, type Task, type TaskSlice } from './slices/createTaskSlice'
+import { createTaskSlice, type TaskSlice } from './slices/createTaskSlice'
 import { createArtifactSlice, type ArtifactSlice } from './slices/createArtifactSlice'
 import { createUISlice, type UISlice } from './slices/createUISlice'
 import { createPlanningSlice, type PlanningSlice } from './slices/createPlanningSlice'
 
 // 启用 Immer 的 Map/Set 支持（必须在 create 之前调用）
 enableMapSet()
+
+// 清理旧自研 persist 的键（键名形如 `xpouch-task-store@2`，与官方 persist 的
+// `xpouch-task-store` 不同名）。不清的话 localStorage 里会长期留着一份不会再被
+// 读到的运行数据。
+try {
+  localStorage.removeItem('xpouch-task-store@1')
+  localStorage.removeItem('xpouch-task-store@2')
+} catch {
+  // 隐私模式等场景下 localStorage 不可用：持久化本身会静默降级，这里同样忽略
+}
 
 // ============================================================================
 // 合并 Store 类型
@@ -77,11 +87,14 @@ export const useTaskStore = create<TaskStore>()(
       }
     })),
     // ============================================================================
-    // Persist 配置
+    // Persist 配置（zustand 官方 persist：与 chatStore / themeStore 同一套）
     // ============================================================================
     {
       name: 'xpouch-task-store',
-      version: 2,  // 自定义 deserialize 已兼容旧 session 持久化字段
+      // 版本 3 = 首次改用官方 persist。旧的 `@2` 键已被上面的清理删掉，
+      // 且没有需要迁移的运行数据（持久化的只有下面这几个 UI 偏好，都能重新推导），
+      // 因此不写 migrate：版本不匹配时按初始状态起步即可。
+      version: 3,
       // 只持久化 UI 偏好与跨刷新需要保留的标记。
       //
       // 此前还持久化了 executionPlan / tasks（含 artifacts）/ tasksCacheVersion /
@@ -90,83 +103,31 @@ export const useTaskStore = create<TaskStore>()(
       // 副本一并移除）。留着的代价：localStorage 长期躺着一份会过期的运行数据，
       // 还要为旧结构维护 deserialize 兼容。
       // 现在产物/任务一律以服务端为唯一真相（/threads、/artifacts、/run/:id）。
-      partialize: (state: TaskStore) => ({
-        // UISlice：跨刷新需要保留的 UI 状态
-        runningTaskIds: Array.from(state.runningTaskIds),
-        isInitialized: state.isInitialized,
-        mode: state.mode,
-        // 不持久化临时状态：isWaitingForApproval, pendingPlan, progress
-        // 这些状态应该在页面刷新后通过 API 恢复
-        // PlanningSlice
-        planThinkingContent: state.planThinkingContent,
-      } as unknown as Partial<TaskStore>),
-      // 自定义序列化：处理 Map/Set
-      serialize: (state: unknown) => {
-        try {
-          return JSON.stringify(state)
-        } catch (error) {
-          logger.error('[TaskStore] serialize 失败:', error)
-          throw error
+      //
+      // Set → 数组：JSON 表达不了 Set（官方 persist 用 JSON 存），读回时在 merge 里还原。
+      partialize: (state) =>
+        ({
+          // UISlice：跨刷新需要保留的 UI 状态
+          runningTaskIds: Array.from(state.runningTaskIds),
+          isInitialized: state.isInitialized,
+          mode: state.mode,
+          // 不持久化临时状态：isWaitingForApproval, pendingPlan, progress
+          // 这些状态应该在页面刷新后通过 API 恢复
+          // PlanningSlice
+          planThinkingContent: state.planThinkingContent,
+        }) as unknown as Partial<TaskStore>,
+      merge: (persisted, current) => {
+        // 读回时把 Set 还原（store 内部契约是 Set，见 createUISlice）
+        const restored = (persisted ?? {}) as { runningTaskIds?: string[] }
+        return {
+          ...current,
+          ...(persisted as Partial<TaskStore>),
+          runningTaskIds: new Set(restored.runningTaskIds ?? []),
         }
       },
-      deserialize: (str: string) => {
-        try {
-          if (!str) {
-            logger.warn('[TaskStore] deserialize: 空字符串')
-            return {}
-          }
-
-          const parsed = JSON.parse(str)
-
-          // 兼容旧持久化字段：session -> executionPlan
-          if (parsed.session && !parsed.executionPlan) {
-            parsed.executionPlan = parsed.session
-          }
-          delete parsed.session
-
-          // 恢复 Map
-          if (parsed.tasks && Array.isArray(parsed.tasks)) {
-            parsed.tasks = new Map(parsed.tasks)
-            
-            // 重建 tasksCache
-            parsed.tasksCache = Array.from(parsed.tasks.values() as Iterable<Task>)
-              .sort((a: Task, b: Task) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-          } else {
-            parsed.tasks = new Map()
-            parsed.tasksCache = []
-          }
-
-          // 恢复 Set: ['id1', 'id2', ...] => Set
-          if (parsed.runningTaskIds && Array.isArray(parsed.runningTaskIds)) {
-            parsed.runningTaskIds = new Set(parsed.runningTaskIds)
-          } else {
-            parsed.runningTaskIds = new Set()
-          }
-
-          return parsed
-        } catch (error) {
-          logger.error('[TaskStore] deserialize 失败:', error)
-          // 返回一个安全的默认状态
-          return {
-            executionPlan: null,
-            tasks: new Map(),
-            tasksCache: [],
-            runningTaskIds: new Set(),
-            selectedTaskId: null,
-            isInitialized: false,
-            mode: null,
-            activeRunId: null,
-            isWaitingForApproval: false,
-            planRevising: false,
-            pendingPlan: [],
-            pendingPlanVersion: 1,
-            pendingRunId: null,
-            pendingExecutionPlanId: null,
-            planThinkingContent: '',
-            progress: null
-          }
-        }
-      }
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) logger.warn('[TaskStore] 持久化状态恢复失败（按初始状态继续）:', error)
+      },
     }
   )
 )
