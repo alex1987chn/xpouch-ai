@@ -256,17 +256,24 @@
 
 ### 批次 E · 收尾项（可穿插，独立价值）
 
-- [ ] **alembic 日志 handler 问题**（见第 8 节）——直接损害排障能力，已经害过一次。
+已完成（2026-09-13）：
+- [x] **alembic 日志 handler**（`3489eb4`）——`fileConfig` 无条件清 handler 致启动后应用 INFO 日志全消失。**已实机验证**。注意此前只修 `disable_existing_loggers` 不足——该参数不阻止 handler 被清除。
+- [x] **per-tool_call 重试 + per-tool 超时**（`0f72f4d`）。**关键机制发现**：`handle_tool_errors` 在 `execute` 内部执行，异常那步已被转成消息 → awrap 包装器看不到异常 → **重试不可能发生**。故 `handle_tool_errors=False`，由包装器统一负责超时/重试/降级（用 `request.tool_call` 的真实 id 构造错误消息）。**原计划「工具错误走 handle_tool_errors」对需要重试的场景不成立。**
+- [x] **LLM 调用超时**（`e72ab69`）——按节点性质分两种语义：`generic` 用节点内 `asyncio.timeout`（任务级失败，其余任务继续）；`commander`/`aggregator` 用节点级 `TimeoutPolicy`（悬挂则整轮无救，快速失败）。配置 `LLM_CALL_TIMEOUT_SECONDS` 默认 420s。**已 e2e 验证**。
+- [x] 顺带修：`_apply_updated_plan` 依赖清理用 db uuid 建集合而 `depends_on` 存 commander id → **编辑计划即清空所有依赖**（`73e8a3e`）。
+
+待做：
 - [ ] 决定 6：事件 schema 生成 TS 类型。
 - [ ] 决定 7：配置缓存去全局化。
 - [ ] commander / plan_revision 改 `with_structured_output(..., include_raw=True)`（删 ~150 行手抽 JSON；保留 `plan.thinking` 事件、任务 id 兜底、失败兜底语义）。
-- [ ] 工具错误走 `ToolNode(handle_tool_errors=...)`（分类话术是业务资产，保留）。
-- [ ] `awrap_tool_call` 做 per-tool_call 重试（**现状重试整个 ToolNode，多 tool_call 时会把已成功的重复执行——这是在错的，不只是优化**）。
-- [ ] per-tool 超时（现状挂了 MCP 会把 calculator 一起放宽到 90s）。
-- [ ] `TimeoutPolicy` 挂 `generic`/`commander`/`aggregator`（现在 LLM 悬挂只能等 run 级 900s）。
+  **注意**：`_extract_json_string` 被 `plan_revision.py` 复用，两处需一起改；这是**计划生成的关键路径**，改完必须跑 `backend/scripts/e2e_hitl_check.py`（该脚本会真实走规划环节）。
 - [ ] `Runnable.with_fallbacks` 运行时模型降级。
 - [ ] 前端第二批：`taskStore` 持久化收敛、`useSessionRestore` Query 化、自研 persist 退役、`use-toast` 换 `useSyncExternalStore`（涉生产验证过的恢复时序，需谨慎）。
 - [ ] 记忆迁 `AsyncPostgresStore.asearch`（**不值作为换而换**，等记忆要升级为产品功能再做）。
+
+**已否决（不要再提议）**：
+- 「用 `ToolNode(handle_tool_errors=...)` 生成工具错误消息」——与按调用重试互斥（见上）。
+- 给 `generic` 加节点级 `TimeoutPolicy`——会让单个慢任务拖死整轮（有测试守护）。
 
 ---
 
