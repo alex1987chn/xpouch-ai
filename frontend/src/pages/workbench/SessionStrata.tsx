@@ -65,7 +65,7 @@ function RowTrailing({ conversation, locale }: { conversation: Conversation; loc
     )
   }
   return (
-    <span className="shrink-0 text-nano text-content-muted">
+    <span className="shrink-0 text-tiny text-content-muted">
       {formatDistanceToNow(toLocalDate(conversation.updated_at), { addSuffix: false, locale })}
     </span>
   )
@@ -208,8 +208,9 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
         ) : (
           groupLabels.map(group =>
             group ? (
-              <div key={group[0]} className="mb-1">
-                <div className="px-2 pb-1 pt-3 text-nano font-bold text-content-muted">
+              <div key={group[0]}>
+                {/* 分组标签对齐蓝图 .group-label：11px bold、组间距收紧（原 10px + pt-3 偏空） */}
+                <div className="px-2 pb-1 pt-2 text-tiny font-bold text-content-muted">
                   {group[1]}
                 </div>
                 {groups[group[0]].map(conv => {
@@ -233,7 +234,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
                         style={dot ?? undefined}
                         title={expertDisplayName(conv.agent_id)}
                       />
-                      <span className="min-w-0 flex-1 truncate text-xs text-content-secondary group-hover:text-content-primary">
+                      <span className="min-w-0 flex-1 truncate text-body-sm text-content-secondary group-hover:text-content-primary">
                         {conv.title || t('newChat')}
                       </span>
                       <button

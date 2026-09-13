@@ -175,11 +175,15 @@ const StepItem = ({ step, index, onOpenArtifact, inExpertGroup = false }: StepIt
     execution: t('thinkingExecution'),
     default: t('thinkingDefault')
   }
-  // 组内任务行：标题就是任务本身（描述），否则一屏全是「任务执行」
-  const label =
-    inExpertGroup && step.taskDescription
-      ? step.taskDescription
-      : typeLabels[step.type || 'default']
+  // 组内任务行：标题是任务本身（描述）。计划里的 description 常是整句长文，
+  // 一行全量渲染会让整个面板显得「字很大」——行名只取前 30 字（详情/摘要就在下方，
+  // 不丢信息）；蓝图 run-card 的步骤也是短名（「读取现有认证流程」）而非全文。
+  const description = inExpertGroup ? step.taskDescription : undefined
+  const label = description
+    ? description.length > 30
+      ? `${description.slice(0, 30)}…`
+      : description
+    : typeLabels[step.type || 'default']
   const hasDetail = !!step.content || !!step.url
   // 组内少了专家色点（8px + 12px 间距），详情/产物块的缩进随之左移
   const indent = inExpertGroup ? 'pl-[46px]' : 'pl-[66px]'
@@ -214,7 +218,7 @@ const StepItem = ({ step, index, onOpenArtifact, inExpertGroup = false }: StepIt
         )}
         <span
           className={cn(
-            'min-w-0 flex-1 truncate text-body-sm text-content-primary',
+            'min-w-0 flex-1 truncate text-xs text-content-primary',
             step.status === 'running' && 'font-bold'
           )}
         >
@@ -316,12 +320,14 @@ const ExpertGroupHeader = ({
     <div
       style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
       className={cn(
-        'stagger-item flex items-center gap-2 bg-surface-tint/40 px-4 py-1.5',
+        // 无底色条：层级靠「字号 + 字重」（面板头 14 bold > 组头 12 semibold > 步骤 12 regular），
+        // 与蓝图 run-card 的普通行 + 分隔线同一思路——此前的 tint 全宽色带视觉权重压过了面板头
+        'stagger-item flex items-center gap-2 px-4 py-1.5',
         index > 0 && 'border-t border-border-divider'
       )}
     >
       <span className="h-2 w-2 flex-shrink-0 rounded-full" style={expertDotStyle(expertType)} />
-      <span className="min-w-0 truncate text-body-sm font-bold text-content-primary">
+      <span className="min-w-0 truncate text-xs font-semibold text-content-primary">
         {expertLabelOf(expertType)}
       </span>
       {/* 单个任务不报数（"1 个任务"是纯噪音），多任务时才说明这位专家分了几个 */}
