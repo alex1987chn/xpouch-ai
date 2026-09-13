@@ -336,12 +336,11 @@
 - [x] 顺带修：`_apply_updated_plan` 依赖清理用 db uuid 建集合而 `depends_on` 存 commander id → **编辑计划即清空所有依赖**（`73e8a3e`）。
 
 待做：
-- [ ] 决定 6：事件 schema 生成 TS 类型。
-- [ ] 决定 7：配置缓存去全局化。
-- [ ] commander / plan_revision 改 `with_structured_output(..., include_raw=True)`（删 ~150 行手抽 JSON；保留 `plan.thinking` 事件、任务 id 兜底、失败兜底语义）。
-  **注意**：`_extract_json_string` 被 `plan_revision.py` 复用，两处需一起改；这是**计划生成的关键路径**，改完必须跑 `backend/scripts/e2e_hitl_check.py`（该脚本会真实走规划环节）。
-- [ ] `Runnable.with_fallbacks` 运行时模型降级。
-- [ ] 前端第二批：`taskStore` 持久化收敛、`useSessionRestore` Query 化、自研 persist 退役、`use-toast` 换 `useSyncExternalStore`（涉生产验证过的恢复时序，需谨慎）。
+- [ ] 决定 6：事件 schema 生成 TS 类型（**需要用户先定 codegen 挂在哪**：构建期 / 提交前钩子 / CI 校验）。
+- [x] ~~决定 7：配置缓存去全局化~~ → **第一刀已完成（`0283b02`）**：全局 epoch 失效 + 删注册表。DI 与另外两处缓存（tool_policy 自带 invalidate、graph_builder 的 LLM lru_cache）有意未纳入，见决定 7 章节。
+- [x] ~~commander / plan_revision 改 `with_structured_output(..., include_raw=True)`~~ → **已完成（`b2fabe3`）**，删掉手抽 JSON ~90 行，e2e 通过。
+- [ ] `Runnable.with_fallbacks` 运行时模型降级——**待用户决定**。我的建议是不做：它会让 provider 在运行时被静默切换（DeepSeek 抖动改由 Moonshot 出计划），而模型质量是用户在刻意管控的（停用 MiniMax 即例），与刚清扫完的「静默降级」缺陷同类。
+- [ ] 前端第二批：`useSessionRestore` Query 化、自研 persist 退役、`use-toast` 换 `useSyncExternalStore`（涉生产验证过的恢复时序，需谨慎）。`taskStore` 持久化收敛已在 `7e3dd31` 做掉一部分（停止持久化服务端数据副本）；内存里那份 tasks Map 及其写入点仍留着（动它要碰流式事件路径，需实机验证）。
 - [ ] 记忆迁 `AsyncPostgresStore.asearch`（**不值作为换而换**，等记忆要升级为产品功能再做）。
 
 **已否决（不要再提议）**：
