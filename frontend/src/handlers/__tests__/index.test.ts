@@ -6,8 +6,8 @@ import {
 } from '../index'
 
 // Mock stores
+// 2026-09-13 清理后 plan.created 不再写「本地任务副本」：本桩只需保留仍存在的动作
 const mockTaskStore = {
-  initializePlan: vi.fn(),
   setIsInitialized: vi.fn(),
   setMode: vi.fn()
 }
@@ -62,7 +62,7 @@ describe('EventHandler', () => {
       handler.handle(event)
       handler.handle(event) // 重复
 
-      expect(mockTaskStore.initializePlan).toHaveBeenCalledTimes(1)
+      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledTimes(1)
     })
 
     it('应该限制已处理事件数量', () => {
@@ -82,7 +82,7 @@ describe('EventHandler', () => {
         data: { execution_plan_id: 's1', tasks: [] }
       })
 
-      expect(mockTaskStore.initializePlan).toHaveBeenCalledTimes(1)
+      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -96,7 +96,7 @@ describe('EventHandler', () => {
 
       handler.handle(planCreatedEvent)
 
-      expect(mockTaskStore.initializePlan).toHaveBeenCalledWith(planCreatedEvent.data)
+      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledWith(true)
       expect(mockTaskStore.setIsInitialized).toHaveBeenCalledWith(true)
       expect(mockTaskStore.setMode).toHaveBeenCalledWith('complex')
     })
@@ -129,7 +129,7 @@ describe('EventHandler', () => {
       handler.clearProcessedEvents()
       handler.handle(event) // 可以再次处理
 
-      expect(mockTaskStore.initializePlan).toHaveBeenCalledTimes(2)
+      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledTimes(2)
     })
   })
 })
@@ -159,7 +159,7 @@ describe('便捷函数', () => {
 
       handleServerEvent(event)
 
-      expect(mockTaskStore.initializePlan).toHaveBeenCalledWith(event.data)
+      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledWith(true)
     })
   })
 
@@ -175,7 +175,7 @@ describe('便捷函数', () => {
       getEventHandler().clearProcessedEvents()
       handleServerEvent(event) // 可以再次处理
 
-      expect(mockTaskStore.initializePlan).toHaveBeenCalledTimes(2)
+      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledTimes(2)
     })
   })
 })

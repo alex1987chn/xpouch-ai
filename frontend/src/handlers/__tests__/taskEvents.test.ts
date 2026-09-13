@@ -24,20 +24,16 @@ describe('Task Events', () => {
 
   beforeEach(() => {
     mockContext = {
+      // 只 mock 仍然存在的动作。2026-09-13 清理后，任务事件处理器不再写
+      // 「本地任务副本」（tasks Map / tasksCache / progress），只维护
+      // runningTaskIds 与思考步骤。
       taskStore: {
-        initializePlan: vi.fn(),
         setIsInitialized: vi.fn(),
         setMode: vi.fn(),
         startPlan: vi.fn(),
         appendPlanThinking: vi.fn(),
-        startTask: vi.fn(),
         addRunningTaskId: vi.fn(),
-        completeTask: vi.fn(),
-        setProgress: vi.fn(),
-        removeRunningTaskId: vi.fn(),
-        failTask: vi.fn(),
-        tasksCache: [],
-        tasks: new Map()
+        removeRunningTaskId: vi.fn()
       } as any,
       chatStore: {
         messages: [],
@@ -61,7 +57,6 @@ describe('Task Events', () => {
 
       handlePlanCreated(event, mockContext)
 
-      expect(mockContext.taskStore.initializePlan).toHaveBeenCalledWith(event.data)
       expect(mockContext.taskStore.setIsInitialized).toHaveBeenCalledWith(true)
       expect(mockContext.taskStore.setMode).toHaveBeenCalledWith('complex')
     })
@@ -142,8 +137,8 @@ describe('Task Events', () => {
 
       handleTaskStarted(event, mockContext)
 
-      expect(mockContext.taskStore.startTask).toHaveBeenCalledWith(event.data)
       expect(mockContext.taskStore.addRunningTaskId).toHaveBeenCalledWith('task-1')
+      expect(mockContext.chatStore.updateMessageMetadata).toHaveBeenCalled()
     })
 
     it('不应该重复添加已存在的 thinking step', () => {
@@ -171,14 +166,13 @@ describe('Task Events', () => {
 
       handleTaskStarted(event, mockContext)
 
-      expect(mockContext.taskStore.startTask).toHaveBeenCalledWith(event.data)
       // updateMessageMetadata 不应该被调用，因为 thinking step 已存在
       expect(mockContext.chatStore.updateMessageMetadata).not.toHaveBeenCalled()
     })
   })
 
   describe('handleTaskCompleted', () => {
-    it('应该完成任务并更新进度', () => {
+    it('应该释放运行中标记并收尾思考步骤（不再维护本地进度副本）', () => {
       const event = {
         id: 'evt-1',
         type: 'task.completed' as const,
@@ -188,11 +182,6 @@ describe('Task Events', () => {
           completed_at: new Date().toISOString()
         }
       }
-
-      mockContext.taskStore.tasksCache = [
-        { id: 'task-1', status: 'completed' },
-        { id: 'task-2', status: 'pending' }
-      ] as any
 
       mockContext.chatStore.messages = [
         {
@@ -209,9 +198,15 @@ describe('Task Events', () => {
 
       handleTaskCompleted(event, mockContext)
 
-      expect(mockContext.taskStore.completeTask).toHaveBeenCalledWith(event.data)
       expect(mockContext.taskStore.removeRunningTaskId).toHaveBeenCalledWith('task-1')
-      expect(mockContext.taskStore.setProgress).toHaveBeenCalledWith({ current: 1, total: 2 })
+      expect(mockContext.chatStore.updateMessageMetadata).toHaveBeenCalledWith(
+        'msg-1',
+        expect.objectContaining({
+          thinking: expect.arrayContaining([
+            expect.objectContaining({ id: 'task-1', status: 'completed' })
+          ])
+        })
+      )
     })
   })
 
@@ -229,7 +224,6 @@ describe('Task Events', () => {
 
       handleTaskFailed(event, mockContext)
 
-      expect(mockContext.taskStore.failTask).toHaveBeenCalledWith(event.data)
       expect(mockContext.taskStore.removeRunningTaskId).toHaveBeenCalledWith('task-1')
     })
   })

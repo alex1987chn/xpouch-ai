@@ -51,12 +51,12 @@ export const useRunningTaskIds = () => useTaskStore(state => state.runningTaskId
 /**
  * 任务相关 Actions。
  *
- * 只暴露**有调用方**的：PlanReviewCard（计划审批与编辑）与 useChatCore（模式/运行 ID）。
- * 其余（initializePlan/startTask/completeTask/failTask/addArtifact/selectTask/
- * updateArtifactContent 等）没有任何调用方，连同本地任务副本一并停止使用。
+ * 只暴露**有调用方**的：PlanReviewCard（计划审批）与 useChatCore（模式/运行 ID）。
+ * [2026-09-13] 本地任务副本（tasks Map / artifact slice）已整体删除，因此
+ * updateTasksFromPlan / initializePlan / startTask / completeTask / failTask /
+ * addArtifact / selectTask 这批动作不复存在——它们此前只写不读。
  */
 export const useTaskActions = () => {
-  const updateTasksFromPlan = useTaskStore(state => state.updateTasksFromPlan)
   const setMode = useTaskStore(state => state.setMode)
   const setActiveRunId = useTaskStore(state => state.setActiveRunId)
   const clearActiveRunId = useTaskStore(state => state.clearActiveRunId)
@@ -67,7 +67,6 @@ export const useTaskActions = () => {
 
   return useMemo(
     () => ({
-      updateTasksFromPlan,
       setMode,
       setActiveRunId,
       clearActiveRunId,
@@ -77,7 +76,6 @@ export const useTaskActions = () => {
       setPlanRevising,
     }),
     [
-      updateTasksFromPlan,
       setMode,
       setActiveRunId,
       clearActiveRunId,

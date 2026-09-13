@@ -34,13 +34,11 @@ export function handlePlanCreated(
   context: HandlerContext
 ): void {
   const { taskStore, chatStore, debug } = context
-  const { initializePlan, setIsInitialized, setMode } = taskStore
+  // 本地任务副本已删除（见 store/taskStore.ts 的说明）：这里只需标记「已初始化 +
+  // 复杂模式」，任务清单本身由服务端与 pendingPlan 承载
+  const { setIsInitialized, setMode } = taskStore
   const { updateMessageMetadata } = chatStore
 
-  // TaskSlice: 初始化任务数据
-  initializePlan(event.data)
-
-  // UISlice: 标记初始化完成并设置模式
   setIsInitialized(true)
   setMode('complex')
 
@@ -167,10 +165,9 @@ export function handleTaskStarted(
   context: HandlerContext
 ): void {
   const { taskStore, chatStore, debug } = context
-  const { startTask, addRunningTaskId } = taskStore
+  const { addRunningTaskId } = taskStore
   const { updateMessageMetadata } = chatStore
 
-  startTask(event.data)
   addRunningTaskId(event.data.task_id)
 
   // 🔥 性能优化：使用缓存 ID 查找最后一条助手消息
@@ -211,19 +208,18 @@ export function handleTaskStarted(
 }
 
 /**
- * 处理 task.progress 事件
- * 可选事件：用于展示运行中任务的阶段性提示
+ * 处理 task.progress 事件（可选事件：阶段性提示）
+ *
+ * 当前**只记录日志，不落任何状态**：它此前唯一的去处是本地任务副本的
+ * `task.output`，而那份副本没有任何消费者（已删除）。处理器保留是因为事件本身
+ * 仍在协议里——将来要做进度条时，在这里接一个真有 UI 消费者的字段即可，
+ * 不要再往 store 里塞只写不读的副本。
  */
 export function handleTaskProgress(
   event: TaskProgressEvent,
   context: HandlerContext
 ): void {
-  const { taskStore, debug } = context
-  const { updateTask } = taskStore
-
-  if (event.data.message) {
-    updateTask(event.data.task_id, { output: event.data.message })
-  }
+  const { debug } = context
 
   if (debug) {
     logger.debug('[TaskEvents] 任务进度:', event.data.task_id, event.data.progress)
@@ -239,18 +235,10 @@ export function handleTaskCompleted(
   context: HandlerContext
 ): void {
   const { taskStore, chatStore, debug } = context
-  const { completeTask, setProgress, tasksCache, removeRunningTaskId } = taskStore
+  const { removeRunningTaskId } = taskStore
   const { updateMessageMetadata } = chatStore
 
-  completeTask(event.data)
   removeRunningTaskId(event.data.task_id)
-
-  // 🔥 更新进度
-  const completedCount = tasksCache.filter((t) => t.status === 'completed').length
-  const totalCount = tasksCache.length
-  if (totalCount > 0) {
-    setProgress({ current: completedCount, total: totalCount })
-  }
 
   // 🔥 性能优化：使用缓存 ID 查找最后一条助手消息
   const lastAi = getLastAssistantMessage(chatStore)
@@ -281,18 +269,7 @@ export function handleTaskCompleted(
   }
 
   if (debug) {
-    const completedCount = taskStore.tasksCache.filter(
-      (t) => t.status === 'completed'
-    ).length
-    const totalCount = taskStore.tasksCache.length
-    logger.debug(
-      '[TaskEvents] 任务完成:',
-      event.data.task_id,
-      '进度:',
-      completedCount,
-      '/',
-      totalCount
-    )
+    logger.debug('[TaskEvents] 任务完成:', event.data.task_id)
   }
 }
 
@@ -305,9 +282,8 @@ export function handleTaskFailed(
   context: HandlerContext
 ): void {
   const { taskStore } = context
-  const { failTask, removeRunningTaskId } = taskStore
+  const { removeRunningTaskId } = taskStore
 
-  failTask(event.data)
   removeRunningTaskId(event.data.task_id)
 
   logger.error('[TaskEvents] 任务失败:', event.data.task_id, event.data.error)

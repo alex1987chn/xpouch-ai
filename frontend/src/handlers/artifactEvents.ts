@@ -11,52 +11,30 @@ import { logger } from '@/utils/logger'
 
 /**
  * 处理 artifact.generated 事件
- * 批处理模式 - 直接添加完整的 artifact
- * 添加产物到对应任务
- * 
- * 🔥 智能选中策略：
- * - 如果用户没有选中任何任务，自动选中新完成的有产物任务
- * - 如果用户已手动选中某个任务，保持不变（避免打断用户查看）
+ *
+ * 批处理模式：事件本身就带完整产物。产物的**唯一真相在服务端**
+ * （ArtifactCanvas 走 /artifacts 查询、正文按 id 取详情），所以这里只做一件事：
+ * 把产物引用挂到该任务的执行步骤上（下方内联卡片），不再往本地 store 里存副本。
+ *
+ * [2026-09-13 清理] 删除的旧行为：
+ * - `addArtifact`：把产物塞进本地任务副本的 `task.artifacts`，而那份副本没有任何
+ *   消费者（见 store/taskStore.ts）。
+ * - 「智能选中」`selectTask`：维护 `selectedTaskId`，同样无消费者（资源画布按 thread
+ *   取数，不依赖任务的选中态）。
  */
 export function handleArtifactGenerated(
   event: ArtifactGeneratedEvent,
   context: HandlerContext
 ): void {
-  const { taskStore, debug } = context
-  const { addArtifact, selectTask, selectedTaskId, tasks } = taskStore
+  const { debug } = context
 
-  // 🔥 调试日志：记录当前状态
   if (debug) {
-    const task = tasks.get(event.data.task_id)
     logger.debug('[ArtifactEvents] artifact.generated: 收到事件', {
       taskId: event.data.task_id,
       artifactId: event.data.artifact.id,
       artifactType: event.data.artifact.type,
-      taskExists: !!task,
-      currentArtifactsCount: task?.artifacts?.length || 0
+      contentLength: event.data.artifact.content?.length || 0
     })
-  }
-
-  addArtifact(event.data)
-
-  // 🔥 智能选中：只有当用户未选中任务，或选中的任务无产物时，才自动切换
-  const currentSelectedTask = selectedTaskId ? tasks.get(selectedTaskId) : null
-  const shouldAutoSelect =
-    !selectedTaskId ||
-    (currentSelectedTask && currentSelectedTask.artifacts.length === 0)
-
-  if (shouldAutoSelect) {
-    selectTask(event.data.task_id)
-  }
-
-  if (debug) {
-    logger.debug(
-      '[ArtifactEvents] 产物已添加:',
-      event.data.artifact.id,
-      event.data.artifact.type,
-      '内容长度:',
-      event.data.artifact.content?.length || 0
-    )
   }
 
   // 同步到思考步骤：在该任务的执行步骤下方内联一张产物卡片

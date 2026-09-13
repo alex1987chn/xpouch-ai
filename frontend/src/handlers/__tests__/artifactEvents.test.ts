@@ -17,12 +17,10 @@ describe('Artifact Events', () => {
 
   beforeEach(() => {
     mockContext = {
-      taskStore: {
-        addArtifact: vi.fn(),
-        selectTask: vi.fn(),
-        selectedTaskId: null,
-        tasks: new Map()
-      } as any,
+      // 2026-09-13 清理后，artifact 处理器**不写本地 store**：产物真相在服务端
+      // （ArtifactCanvas 走 /artifacts 查询），这里只把它挂到思考步骤上。
+      // 因此 taskStore 桩是空的——留着它只是为了满足 HandlerContext 的形状。
+      taskStore: {} as any,
       chatStore: {
         // 现被 handleArtifactGenerated 使用（把产物挂到对应思考步骤上）；
         // 桩必须给出 messages / updateMessageMetadata，否则读 messages.length 抛错
@@ -109,32 +107,7 @@ describe('Artifact Events', () => {
       expect(updateMessageMetadata).not.toHaveBeenCalled()
     })
 
-    it('应该添加产物到任务', () => {
-      const event = {
-        id: 'evt-1',
-        type: 'artifact.generated' as const,
-        data: {
-          task_id: 'task-1',
-          artifact: {
-            id: 'art-1',
-            type: 'code',
-            content: 'console.log("hello")',
-            title: 'test.js'
-          }
-        }
-      }
-
-      mockContext.taskStore.tasks.set('task-1', {
-        id: 'task-1',
-        artifacts: []
-      })
-
-      handleArtifactGenerated(event, mockContext)
-
-      expect(mockContext.taskStore.addArtifact).toHaveBeenCalledWith(event.data)
-    })
-
-    it('当用户未选中任务时应该自动选中', () => {
+    it('不再写本地任务副本（产物真相在服务端）', () => {
       const event = {
         id: 'evt-1',
         type: 'artifact.generated' as const,
@@ -144,57 +117,11 @@ describe('Artifact Events', () => {
         }
       }
 
-      mockContext.taskStore.selectedTaskId = null
-      mockContext.taskStore.tasks.set('task-1', {
-        id: 'task-1',
-        artifacts: [{ id: 'existing' }]
-      })
-
-      handleArtifactGenerated(event, mockContext)
-
-      expect(mockContext.taskStore.selectTask).toHaveBeenCalledWith('task-1')
-    })
-
-    it('当用户已手动选中任务时不应该自动切换', () => {
-      const event = {
-        id: 'evt-1',
-        type: 'artifact.generated' as const,
-        data: {
-          task_id: 'task-1',
-          artifact: { id: 'art-1', type: 'code', content: 'test' }
-        }
-      }
-
-      mockContext.taskStore.selectedTaskId = 'task-2'
-      mockContext.taskStore.tasks.set('task-2', {
-        id: 'task-2',
-        artifacts: [{ id: 'existing' }]
-      })
-
-      handleArtifactGenerated(event, mockContext)
-
-      expect(mockContext.taskStore.selectTask).not.toHaveBeenCalled()
-    })
-
-    it('当用户选中的任务无产物时应该自动切换', () => {
-      const event = {
-        id: 'evt-1',
-        type: 'artifact.generated' as const,
-        data: {
-          task_id: 'task-1',
-          artifact: { id: 'art-1', type: 'code', content: 'test' }
-        }
-      }
-
-      mockContext.taskStore.selectedTaskId = 'task-2'
-      mockContext.taskStore.tasks.set('task-2', {
-        id: 'task-2',
-        artifacts: []
-      })
-
-      handleArtifactGenerated(event, mockContext)
-
-      expect(mockContext.taskStore.selectTask).toHaveBeenCalledWith('task-1')
+      // 处理器只碰 chatStore（挂思考步骤）——taskStore 上一片死数据都不写。
+      // 曾经的 addArtifact / selectTask（智能选中）连同 tasks Map 一起删除：
+      // 它们只写不读，且「选中」没有任何 UI 消费者。
+      expect(() => handleArtifactGenerated(event, mockContext)).not.toThrow()
+      expect(Object.keys(mockContext.taskStore)).toEqual([])
     })
   })
 })

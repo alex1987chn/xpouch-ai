@@ -1,20 +1,24 @@
 /**
- * UI Slice - UI state management
+ * UI Slice - 工作台 UI 状态
  *
- * [Responsibilities]
- * - Manage UI state unrelated to application data
- * - Running task ID set
- * - Selected task ID
- * - Initialization state
- * - HITL review related UI state
- * - Progress tracking (从 ExecutionStore 迁移)
- * - Polling state (轮询状态)
+ * [职责边界] 只放**有真实消费者**的 UI 状态：
+ * - `mode` / `isInitialized`：simple / complex 判定与首屏初始化（ChatStreamPanel、useSessionRestore）
+ * - `runningTaskIds`：正在执行的任务集合（ChatStreamPanel 的「执行中」态）
+ * - `activeRunId`：当前接管运行实例（轮询、审批、恢复三处都用它）
+ * - HITL 相关：`pendingPlan` / `pendingPlanVersion` / `pendingRunId` /
+ *   `pendingExecutionPlanId` / `isWaitingForApproval` / `planRevising`（审批卡与恢复）
+ *
+ * [2026-09-13 清理] 删掉了三组**只写不读**的状态（连同它们的 action 与 selector）：
+ * - `selectedTaskId` / `selectTask`：无任何消费者（资源画布走服务端查询与 threadId）
+ * - `progress` / `setProgress`：写点在 task 事件处理器里，无读取方
+ * - `isPolling` / `pollingStatus` / `isHITLPaused` 及其 setter：轮询状态的真身在
+ *   `useRunPolling` 的状态机里，这几个字段是从未被写入过的影子副本
+ * 与之配套的还有整个「本地任务副本」（tasks Map / tasksCache / artifact slice）——
+ * 任务与产物一律以服务端为唯一真相（/threads、/artifacts、/run/:id）。
  */
 
-import type { Task } from './createTaskSlice'
+import type { TaskInfo } from '@/types/events'
 import type { TaskStore } from '../taskStore'
-import { useTaskStore } from '../taskStore'
-import type { RunStatus } from '@/types/run'
 
 // ============================================================================
 // State & Actions Interfaces
@@ -22,39 +26,28 @@ import type { RunStatus } from '@/types/run'
 
 export type AppMode = 'simple' | 'complex' | null
 
-export interface Progress {
-  current: number
-  total: number
-}
-
 export interface UISliceState {
   mode: AppMode
   runningTaskIds: Set<string>
-  selectedTaskId: string | null
   isInitialized: boolean
   activeRunId: string | null
   isWaitingForApproval: boolean
   /** HITL 修订中：驳回反馈已提交，规划专家修订 v(n+1)（轮询感知完成） */
   planRevising: boolean
-  pendingPlan: Task[]
+  /** 待审批计划的行 = 协议里的 TaskInfo（审批弹窗的要求形状） */
+  pendingPlan: TaskInfo[]
   pendingPlanVersion: number
   pendingRunId: string | null
   pendingExecutionPlanId: string | null
-  progress: Progress | null  // 从 ExecutionStore 迁移
-  // 轮询状态
-  isPolling: boolean
-  pollingStatus: RunStatus | null
-  isHITLPaused: boolean
 }
 
 export interface UISliceActions {
   setMode: (mode: 'simple' | 'complex') => void
-  selectTask: (taskId: string | null) => void
   setIsInitialized: (initialized: boolean) => void
   setActiveRunId: (runId: string | null) => void
   clearActiveRunId: () => void
   setPendingPlan: (
-    plan: Task[],
+    plan: TaskInfo[],
     planVersion?: number,
     runId?: string | null,
     executionPlanId?: string | null,
@@ -68,27 +61,9 @@ export interface UISliceActions {
   resetUI: () => void
   hasRunningTasks: () => boolean
   isTaskRunning: (taskId: string) => boolean
-  setProgress: (progress: Progress | null) => void
-  // 轮询 Actions
-  setPolling: (polling: boolean) => void
-  setPollingStatus: (status: RunStatus | null) => void
-  setHITLPaused: (paused: boolean) => void
 }
 
 export type UISlice = UISliceState & UISliceActions
-
-// ============================================================================
-// 轮询状态 Selectors
-// ============================================================================
-
-/** 获取轮询状态 */
-export const useIsPolling = () => useTaskStore(state => state.isPolling)
-
-/** 获取轮询状态 */
-export const usePollingStatus = () => useTaskStore(state => state.pollingStatus)
-
-/** 获取 HITL 暂停状态 */
-export const useIsHITLPaused = () => useTaskStore(state => state.isHITLPaused)
 
 type UISliceSetter = (fn: (draft: TaskStore) => void) => void
 type UISliceGetter = () => TaskStore
@@ -101,20 +76,14 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
   // Initial state
   mode: null,
   runningTaskIds: new Set(),
-  selectedTaskId: null,
   isInitialized: false,
   activeRunId: null,
   isWaitingForApproval: false,
-  pendingPlan: [],
   planRevising: false,
+  pendingPlan: [],
   pendingPlanVersion: 1,
   pendingRunId: null,
   pendingExecutionPlanId: null,
-  progress: null,
-  // 轮询状态初始值
-  isPolling: false,
-  pollingStatus: null,
-  isHITLPaused: false,
 
   // Actions
 
@@ -122,12 +91,6 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
     set((state) => {
       if (state.mode === mode) return
       state.mode = mode
-    })
-  },
-
-  selectTask: (taskId: string | null) => {
-    set((state) => {
-      state.selectedTaskId = taskId
     })
   },
 
@@ -150,7 +113,7 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
   },
 
   setPendingPlan: (
-    plan: Task[],
+    plan: TaskInfo[],
     planVersion: number = 1,
     runId: string | null = null,
     executionPlanId: string | null = null,
@@ -208,19 +171,14 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
     set((state) => {
       state.mode = null
       state.runningTaskIds = new Set()
-      state.selectedTaskId = null
       state.isInitialized = false
       state.activeRunId = null
       state.isWaitingForApproval = false
+      state.planRevising = false
       state.pendingPlan = []
       state.pendingPlanVersion = 1
       state.pendingRunId = null
       state.pendingExecutionPlanId = null
-      state.progress = null
-      // 重置轮询状态
-      state.isPolling = false
-      state.pollingStatus = null
-      state.isHITLPaused = false
     })
   },
 
@@ -231,30 +189,4 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
   isTaskRunning: (taskId: string) => {
     return get().runningTaskIds.has(taskId)
   },
-
-  // 新增进度设置方法
-  setProgress: (progress: Progress | null) => {
-    set((state) => {
-      state.progress = progress
-    })
-  },
-
-  // 轮询状态 Actions
-  setPolling: (polling: boolean) => {
-    set((state) => {
-      state.isPolling = polling
-    })
-  },
-
-  setPollingStatus: (status: RunStatus | null) => {
-    set((state) => {
-      state.pollingStatus = status
-    })
-  },
-
-  setHITLPaused: (paused: boolean) => {
-    set((state) => {
-      state.isHITLPaused = paused
-    })
-  }
 })

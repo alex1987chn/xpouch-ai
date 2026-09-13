@@ -1,33 +1,22 @@
 /**
  * 任务状态管理 Store (Zustand + Immer + Slice Pattern)
- * 
- * [架构升级 - 批处理模式重构]
- * - 移除 Artifact 流式逻辑（streamingArtifacts 已删除）
- * - 所有 Artifact 通过 artifact.generated 事件全量推送
- * - 新增 progress 状态（从 ExecutionStore 迁移）
- * - 符合 SDUI 原则：后端推送什么，前端就存什么
- * 
- * [新架构]
- * - createTaskSlice:      核心任务数据 + syncTasksCache
- * - createArtifactSlice:  产物管理（批处理模式）
- * - createUISlice:        纯 UI 状态（模式、选中、运行中任务、进度）
- * - createPlanningSlice:  规划阶段状态（思考内容）
- * 
- * [职责]
- * 管理复杂模式下的多专家协作状态：
- * - 任务计划（Plan）初始化与更新
- * - 专家任务状态跟踪（pending/running/completed/failed）
- * - Artifact 产物管理（增删改查）
- * - HITL 状态管理（等待用户确认）
- * 
- * [性能优化]
- * - Map 结构避免大数组遍历更新
- * - tasksCache 通过 syncTasksCache 统一重建
- * - Selectors 模式避免不必要重渲染
- * 
- * [持久化]
- * - 不将运行时临时态作为长期会话真相源
- * - 页面刷新后通过 API 恢复 thread / execution plan 状态
+ *
+ * [职责] 只保存**工作台的 UI 状态**：
+ * - `createUISlice`:       模式、运行中任务集合、当前运行实例、HITL 审批相关
+ * - `createPlanningSlice`: 规划阶段的思考流文本
+ *
+ * [2026-09-13 清理：删掉「本地任务副本」]
+ * 此前这里还有 `createTaskSlice`（tasks Map + tasksCache + 任务 CRUD）与
+ * `createArtifactSlice`（产物挂在 task.artifacts 上）。逐个核对消费者后确认整条链
+ * **只写不读**：没有任何组件订阅 `tasks` / `tasksCache` / `task.artifacts`，
+ * 唯一的本地读取方（useSessionRestore 里的「本地 vs 服务端产物数」对账启发式）早已移除。
+ *
+ * 留着的代价不是「多占一点内存」，而是**双真相源**：任务与产物的真相在服务端
+ * （/threads、/artifacts、/run/:id），本地再存一份就要维护它的同步时机，而任何一次
+ * 漏同步都表现为「界面状态和执行状态对不上」——最难查的那类问题。
+ *
+ * [持久化] 只持久化跨刷新要保留的 UI 偏好（见下方 partialize）；运行数据不在其中，
+ * 它们由 useSessionRestore 从服务端恢复。
  */
 
 import { create } from 'zustand'
@@ -37,8 +26,6 @@ import { logger } from '@/utils/logger'
 import { enableMapSet } from 'immer'
 
 // 导入 Slices
-import { createTaskSlice, type TaskSlice } from './slices/createTaskSlice'
-import { createArtifactSlice, type ArtifactSlice } from './slices/createArtifactSlice'
 import { createUISlice, type UISlice } from './slices/createUISlice'
 import { createPlanningSlice, type PlanningSlice } from './slices/createPlanningSlice'
 
@@ -59,7 +46,7 @@ try {
 // 合并 Store 类型
 // ============================================================================
 
-export type TaskStore = TaskSlice & ArtifactSlice & UISlice & PlanningSlice & {
+export type TaskStore = UISlice & PlanningSlice & {
   resetAll: (force?: boolean) => void
 }
 
@@ -71,20 +58,15 @@ export const useTaskStore = create<TaskStore>()(
   persist(
     immer((set, get, _api) => ({
       // 组合所有 Slices
-      ...createTaskSlice(set, get),
-      ...createArtifactSlice(set, get),
       ...createUISlice(set, get),
       ...createPlanningSlice(set, get),
-      
+
       // 全局重置方法 - 组合各 Slice 的重置逻辑
-      resetAll: (force: boolean = false) => {
+      resetAll: (_force: boolean = false) => {
         // 🔥 按依赖顺序重置各 Slice 状态
-        get().resetArtifacts()   // 1. 重置 Artifacts（在 Task 之前）
-        // P0 修复：传入 hasRunningTasks 检查函数，避免 TaskSlice 直接访问 UISlice 状态
-        get().resetTasks(force, () => get().hasRunningTasks())  // 2. 重置 Task 数据
-        get().resetUI()          // 3. 重置 UI 状态（依赖 Task 数据）
-        get().resetPlanning()    // 4. 重置 Planning 状态
-      }
+        get().resetUI() // 1. 重置 UI 状态
+        get().resetPlanning() // 2. 重置 Planning 状态
+      },
     })),
     // ============================================================================
     // Persist 配置（zustand 官方 persist：与 chatStore / themeStore 同一套）
@@ -111,7 +93,7 @@ export const useTaskStore = create<TaskStore>()(
           runningTaskIds: Array.from(state.runningTaskIds),
           isInitialized: state.isInitialized,
           mode: state.mode,
-          // 不持久化临时状态：isWaitingForApproval, pendingPlan, progress
+          // 不持久化临时状态：isWaitingForApproval, pendingPlan
           // 这些状态应该在页面刷新后通过 API 恢复
           // PlanningSlice
           planThinkingContent: state.planThinkingContent,
@@ -136,10 +118,12 @@ export const useTaskStore = create<TaskStore>()(
 // 类型导出（供组件和 Hooks 使用）
 // ============================================================================
 
-export type { ExecutionPlanState, Task, TaskStatus } from './slices/createTaskSlice'
-export type { ArtifactSlice, ArtifactSliceActions } from './slices/createArtifactSlice'
-export type { UISlice, UISliceState, UISliceActions, AppMode, Progress } from './slices/createUISlice'
-export type { PlanningSlice, PlanningSliceState, PlanningSliceActions } from './slices/createPlanningSlice'
+export type { UISlice, UISliceState, UISliceActions, AppMode } from './slices/createUISlice'
+export type {
+  PlanningSlice,
+  PlanningSliceState,
+  PlanningSliceActions,
+} from './slices/createPlanningSlice'
 
 // 默认导出
 export default useTaskStore

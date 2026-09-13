@@ -71,7 +71,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
   const pendingRunId = usePendingRunId()
   const pendingPlanVersion = usePendingPlanVersion()
   const planRevising = usePlanRevising()
-  const { clearPendingPlan, setIsWaitingForApproval, setPlanRevising, setPendingPlan, updateTasksFromPlan, setMode, clearActiveRunId } = useTaskActions()
+  const { clearPendingPlan, setIsWaitingForApproval, setPlanRevising, setPendingPlan, setMode, clearActiveRunId } = useTaskActions()
   const addMessage = useAddMessageAction()
   const setGenerating = useChatStore((state) => state.setGenerating)
 
@@ -151,7 +151,6 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
     const tempMessageId = `temp-resume-${Date.now()}`
     setIsSubmitting(true)
     setMode('complex')
-    updateTasksFromPlan(plan)
     setIsWaitingForApproval(false)
 
     addMessage({
@@ -193,7 +192,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
     } finally {
       setIsSubmitting(false)
     }
-  }, [threadId, pendingPlanVersion, pendingRunId, resumeExecution, updateTasksFromPlan, setIsWaitingForApproval, addMessage, setMode, t])
+  }, [threadId, pendingPlanVersion, pendingRunId, resumeExecution, setIsWaitingForApproval, addMessage, setMode, t])
 
   const handleRevise = useCallback(async (feedback: string) => {
     if (!feedback) {

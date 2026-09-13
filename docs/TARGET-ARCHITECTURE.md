@@ -413,7 +413,11 @@ reducer/纯函数断言。**反向对照**：把修复回退后 3 条全红（�
   - ✅ **自研 persist 退役**：删除 `store/middleware/persist.ts`（155 行，仅 taskStore 在用），改用 zustand 官方 `persist`（与 chatStore/themeStore 同一套）。Set 过不去 JSON 边界，用 `partialize`（Set→数组）与 `merge`（数组→Set）两头配对——这是**静默丢状态**的典型位置，新增 `store/__tests__/taskStorePersistence.test.ts` 三条把它钉住（含版本不匹配不污染状态）。
   - ✅ **`use-toast` 换 `useSyncExternalStore`**：此前是自建监听器集合 + 每个订阅者各持一份 `useState`（并发渲染下会撕裂），现在只留一份模块级快照。对外 API 不变（`pushToast`/`dismissToast`/`useToast`），20 处调用点零改动。顺带把 toast id 从 `Math.random()` 换成递增序号（DOM key 不需要随机性，也避免安全扫描误报）。
   - ⏸️ **`useSessionRestore` Query 化：有意不做**。理由：这个 Hook 是「取数 → 一次性写进两个 store」的命令式应用（约 15 处 store 写入 + 派生标志），不是渲染期派生；它的触发策略（5s 防抖 + visibilitychange + 活跃流检查 + `force`）是产品语义，改成 Query 后仍要保留这套触发逻辑，等于**多一套缓存/失效机制**而不是少一套。Query 的收益（去重/缓存/重试）在这里几乎为零，风险却压在用户已实机验证过的恢复时序上。真要动，应先有「恢复时序」的自动化测试（当前只有 e2e 目检）。
-  - 仍留着：内存里那份 tasks Map 及其写入点（动它要碰流式事件路径，需实机验证）。
+  - ✅ **本地任务副本已删除（2026-09-13，续九）**：`createTaskSlice`（tasks Map / tasksCache / 任务 CRUD）与 `createArtifactSlice` 整体删除，`createUISlice` 同时删掉三组只写不读的状态（`selectedTaskId`/`selectTask`、`progress`/`setProgress`、以及从没被写入过的轮询影子字段）。逐个核对消费者：**没有任何组件订阅 tasks / tasksCache / task.artifacts**；产物与任务一律以服务端为唯一真相。代价不是内存，而是双真相源——本地留一份就要维护同步时机，漏一次就表现为「界面与执行状态对不上」。
+    - 处理器的死写点一并清掉（`initializePlan` / `startTask` / `completeTask` / `failTask` / `addArtifact` / `selectTask` / `setProgress`），保留的是真有 UI 消费者的部分：思考步骤、`runningTaskIds`、模式与初始化标记、`pendingPlan`（其元素形状本就是协议类型 `TaskInfo`，弹窗要的也是它）。
+    - **验证**：新增 `handlers/__tests__/handlersRealStore.test.ts`——**不用桩 store**，直接拿真 store 喂真实事件，任何「处理器引用了已删除的动作」都会当场抛错（这是那条「需实机验证」的自动化版本）；另外用浏览器在真实 dev 环境跑了一遍完整链路（规划 → 审批弹窗 → 批准 → 执行），确认 4 个任务步骤与耗时、步骤下内联产物卡、产物画布、最终综述全部正常，控制台无异常。前端 66 passed。
+    - 顺带记录一个**先前就存在**的观察（未修）：run 正常结束后，左侧会话列表的「运行中」标记可能残留一段时间——它读的是会话列表接口缓存，而流收尾时的 invalidate 与该 run 的 completed 落库存在竞态。与本清理无关（该标记从来不由本地任务副本驱动），记为待办。
+
 - [ ] 记忆迁 `AsyncPostgresStore.asearch`（**不值作为换而换**，等记忆要升级为产品功能再做）。
 
 **已否决（不要再提议）**：
