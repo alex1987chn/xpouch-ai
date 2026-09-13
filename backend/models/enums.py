@@ -87,6 +87,18 @@ class RunStatus(StrEnum):
     TIMED_OUT = "timed_out"
 
 
+# 终态集合：单一真相源（此前这段判断散在 routers/chat.py 与 recovery 的各个守卫里）。
+# 用途：拒绝「对已结束的 run 再做需要它在跑/在等审批的操作」，以及续传端点的一致性判断。
+TERMINAL_RUN_STATUSES: frozenset[RunStatus] = frozenset(
+    {
+        RunStatus.COMPLETED,
+        RunStatus.FAILED,
+        RunStatus.CANCELLED,
+        RunStatus.TIMED_OUT,
+    }
+)
+
+
 class ThreadStatus(StrEnum):
     """会话展示状态（Thread.status 字段）。
 

@@ -147,17 +147,26 @@ export function useSessionRestore(
       // 🔥🔥🔥 关键修复：使用 completed_at 判断任务是否真正完成
       // 避免状态同步延迟导致的"假 running"问题
       const isRunActuallyCompleted = !!latestRun?.completed_at
+      // 「可控」= 还需要前端接管现场（轮询 / 等审批）
       const isLatestRunControllable =
         !isRunActuallyCompleted && (
           latestRunStatus === 'running' ||
           latestRunStatus === 'resuming' ||
           latestRunStatus === 'waiting_for_approval'
         )
+      // 「生成中」只对**真的在跑**的 run 成立：审批等待是等人，不是生成。
+      // 这里曾对全部「可控」状态都 setGenerating(true)，后果是刷新后点「批准」
+      // 被 resumeExecution 的防重入守卫（它看 isGenerating）在本地挡掉——报
+      // 「已有请求正在进行，请稍后再试」，请求根本没发出去，任务再也起不来。
+      // 不刷新时那条路径本来没问题（流收尾时 finalizeStream 会把 generating 置 false），
+      // 这里与它对齐即可。卡片自身另有 isSubmitting 防连点，后端还有 in-flight 去重。
+      const isRunStreaming =
+        !isRunActuallyCompleted &&
+        (latestRunStatus === 'running' || latestRunStatus === 'resuming')
 
       if (isLatestRunControllable && latestRun?.id) {
         setActiveRunId(latestRun.id)
-        // 🔥 Bug 修复：根据后端状态恢复 isGenerating，确保按钮状态正确
-        setGenerating(true)
+        setGenerating(isRunStreaming)
         // 🔥 保存最新运行状态，供组件层决定是否启动轮询
         setIsLatestRunControllable(true)
         setLatestRunId(latestRun.id)

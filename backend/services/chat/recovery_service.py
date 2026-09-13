@@ -33,7 +33,7 @@ from crud.run_event import (
     emit_run_cancelled,
 )
 from models import AgentRun, ExecutionPlan, RunStatus, Thread
-from models.enums import TaskStatus
+from models.enums import TERMINAL_RUN_STATUSES, TaskStatus
 from services.chat.run_lifecycle import sse_stream_headers
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError, AuthorizationError, NotFoundError, ValidationError
@@ -129,6 +129,21 @@ class RecoveryService:
         agent_run = self._get_run_or_raise(run_id, thread_id)
         if agent_run.user_id != user_id:
             raise AuthorizationError("无权访问此运行实例")
+
+        # 终态守卫：approve / revise 都要求这个 run 还在等审批。
+        # 此前没有这道守卫，批准一个已结束（驳回/取消/超时）的 run 会把它从终态
+        # **翻回 RESUMING**，然后在更深处失败（checkpoint 早被终态清理删掉）——
+        # 用户看到的是莫名其妙的错误，而 run 状态已被改花。
+        # terminate 有意不拦：对已取消的 run 再取消是幂等的。
+        if effective_action in ("approve", "revise") and agent_run.status in TERMINAL_RUN_STATUSES:
+            raise AppError(
+                message=(
+                    f"该任务已结束（{agent_run.status}），无法再批准或修订；"
+                    "请刷新页面查看结果，或重新发起任务"
+                ),
+                code=ErrorCode.RESUME_INVALID_STATE,
+                status_code=409,
+            )
 
         # 2. 分支处理：修订（驳回+反馈，任务保持挂起）/ 终止
         if effective_action == "revise":

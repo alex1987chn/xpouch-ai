@@ -154,6 +154,7 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
 
   const setGenerating = useChatStore((state) => state.setGenerating)
   const clearActiveRunId = useTaskStore((state) => state.clearActiveRunId)
+  const clearPendingPlan = useTaskStore((state) => state.clearPendingPlan)
 
   // 从 store 获取 activeRunId
   const activeRunId = useTaskStore((state) => state.activeRunId)
@@ -215,6 +216,13 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
         // 断流兜底：SSE 已断时执行仍会在服务端完成，轮询是最后对账点
         queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
         queryClient.invalidateQueries({ queryKey: artifactsKeys.all })
+        // 审批卡必须跟着 run 一起收场：run 在别处被驳回/取消/超时（另一个标签页、
+        // 任务控制页、清理服务）时这里才发现，而卡片此前没有任何机制会被撤下——
+        // 用户看到一张点不动的卡（批准还会失败），这是实测踩到过的坑。
+        if (useTaskStore.getState().isWaitingForApproval) {
+          logger.info('[useRunPolling] run 已终态，撤下过期的审批卡')
+          clearPendingPlan()
+        }
       }
       return
     }
