@@ -58,4 +58,48 @@ export function handleArtifactGenerated(
       event.data.artifact.content?.length || 0
     )
   }
+
+  // 同步到思考步骤：在该任务的执行步骤下方内联一张产物卡片
+  // （点击复用 ArtifactViewerModal 预览）。只存最小字段，正文按 id 取详情。
+  attachArtifactToStep(context, event.data.task_id, event.data.artifact)
+}
+
+/**
+ * 把产物引用挂到对应任务的执行步骤上。
+ *
+ * 为什么挂在思考步骤而不是新建消息：执行期间唯一在更新的可见区域就是思考面板
+ * （见 ChatStreamPanel 的 thinking 渲染），把产物挂在那里用户才能"边执行边看到
+ * 产出"。查找方式与 task.completed 一致（最后一条带 thinking 的助手消息 + 按
+ * task_id 匹配步骤），保证同一任务的产出与状态落在同一行。
+ */
+function attachArtifactToStep(
+  context: HandlerContext,
+  taskId: string,
+  artifact: { id: string; type: string; title?: string | null }
+): void {
+  const { chatStore } = context
+  const messages = chatStore.messages
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i]
+    if (msg.role !== 'assistant' || !msg.id || !msg.metadata?.thinking) continue
+
+    const thinking = msg.metadata.thinking
+    const stepIndex = thinking.findIndex(s => s.id === taskId)
+    if (stepIndex < 0) continue
+
+    const step = thinking[stepIndex]
+    const existing = step.artifacts || []
+    if (existing.some(a => a.id === artifact.id)) return // 幂等：重复事件不重复挂
+
+    const next = [...thinking]
+    next[stepIndex] = {
+      ...step,
+      artifacts: [
+        ...existing,
+        { id: artifact.id, type: artifact.type, title: artifact.title ?? null },
+      ],
+    }
+    chatStore.updateMessageMetadata(msg.id, { thinking: next })
+    return
+  }
 }

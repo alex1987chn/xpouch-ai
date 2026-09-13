@@ -57,6 +57,12 @@ export interface ThinkingStep {
    */
   duration?: number
   /**
+   * 该步骤产出的产物引用（用于步骤下方的内联卡片）。
+   * 只存渲染所需的最小字段；正文由 ArtifactViewerModal 按 id 取详情，
+   * 避免把产物内容复制进消息元数据。
+   */
+  artifacts?: { id: string; type: string; title?: string | null }[]
+  /**
    * 相关 URL（如 reading 类型时的网页链接）
    */
   url?: string

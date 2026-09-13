@@ -32,6 +32,11 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { expertColor } from '@/lib/expertIdentity'
+import {
+  ARTIFACT_TYPE_LABEL_KEY,
+  artifactTypeColor,
+  artifactTypeIcon,
+} from '@/lib/artifactPresentation'
 import type { ThinkingStep } from '@/types'
 
 // ============================================================================
@@ -47,6 +52,8 @@ interface ThinkingProcessProps {
   className?: string
   /** 固定的总步骤数（从 plan.created 获取） */
   totalSteps?: number
+  /** 打开某条产物的查看器（复用 ArtifactViewerModal）；不传则卡片不可点 */
+  onOpenArtifact?: (artifactId: string) => void
 }
 
 // ============================================================================
@@ -85,9 +92,63 @@ const StatusDot = ({ status }: { status: ThinkingStep['status'] }) => {
 interface StepItemProps {
   step: ThinkingStep
   index: number
+  onOpenArtifact?: (artifactId: string) => void
 }
 
-const StepItem = ({ step, index }: StepItemProps) => {
+/** 步骤产出的产物卡片：点击交给调用方打开查看器（复用 ArtifactViewerModal）。
+    形态刻意比画廊卡更轻——它嵌在紧凑的步骤区里，重卡片会显得突兀。 */
+const StepArtifactCard = ({
+  artifact,
+  onOpen,
+}: {
+  artifact: NonNullable<ThinkingStep['artifacts']>[number]
+  onOpen?: (artifactId: string) => void
+}) => {
+  const { t } = useTranslation()
+  const Icon = artifactTypeIcon(artifact.type)
+  const labelKey = ARTIFACT_TYPE_LABEL_KEY[artifact.type]
+  const typeLabel = labelKey ? t(labelKey as Parameters<typeof t>[0]) : artifact.type
+  const title = artifact.title || typeLabel
+  const clickable = !!onOpen
+
+  const inner = (
+    <>
+      <span
+        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded"
+        style={{ backgroundColor: `${artifactTypeColor(artifact.type)}1f` }}
+      >
+        <Icon className="h-3 w-3" style={{ color: artifactTypeColor(artifact.type) }} />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-caption text-content-primary">{title}</span>
+      <span className="flex-shrink-0 text-nano text-content-muted">{typeLabel}</span>
+      {clickable && (
+        <ChevronRight className="h-3 w-3 flex-shrink-0 text-content-muted transition-transform duration-200 group-hover:translate-x-0.5" />
+      )}
+    </>
+  )
+
+  const base =
+    'flex w-full items-center gap-2 rounded-md border border-border-divider bg-surface-card px-2.5 py-1.5 text-left'
+
+  if (!clickable) {
+    return <div className={base}>{inner}</div>
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen!(artifact.id)}
+      title={t('preview')}
+      className={cn(
+        base,
+        'group cursor-pointer transition-colors hover:border-border-hover hover:bg-surface-tint/40'
+      )}
+    >
+      {inner}
+    </button>
+  )
+}
+
+const StepItem = ({ step, index, onOpenArtifact }: StepItemProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const typeLabels: Record<NonNullable<ThinkingStep['type']>, string> = {
@@ -195,6 +256,17 @@ const StepItem = ({ step, index }: StepItemProps) => {
           )}
         </div>
       )}
+
+      {/* 该步骤产出的产物卡片（常驻可见，点击打开查看器）。
+          放在内容下方：用户既看到「这一步产出了什么」（内容摘要），
+          也能直接点开成品——此前产物只能去右栏画布/画廊找。 */}
+      {step.artifacts && step.artifacts.length > 0 && (
+        <div className="flex flex-col gap-1.5 pb-2.5 pl-[66px] pr-4">
+          {step.artifacts.map(a => (
+            <StepArtifactCard key={a.id} artifact={a} onOpen={onOpenArtifact} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -203,7 +275,13 @@ const StepItem = ({ step, index }: StepItemProps) => {
 // 主组件
 // ============================================================================
 
-export default function ThinkingProcess({ steps, isThinking, className, totalSteps: fixedTotalSteps }: ThinkingProcessProps) {
+export default function ThinkingProcess({
+  steps,
+  isThinking,
+  className,
+  totalSteps: fixedTotalSteps,
+  onOpenArtifact,
+}: ThinkingProcessProps) {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(true)
   const autoCollapseTimer = useRef<NodeJS.Timeout | null>(null)
@@ -326,7 +404,12 @@ export default function ThinkingProcess({ steps, isThinking, className, totalSte
           >
             {steps.map((step, index) => (
               // 使用 index 作为 key 的一部分，确保唯一性
-              <StepItem key={`${step.id}-${index}`} step={step} index={index} />
+              <StepItem
+                key={`${step.id}-${index}`}
+                step={step}
+                index={index}
+                onOpenArtifact={onOpenArtifact}
+              />
             ))}
           </div>
         </div>

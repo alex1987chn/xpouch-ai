@@ -43,6 +43,7 @@ import MessageItem from '../MessageItem'
 import ThinkingProcess from '../ThinkingProcess'
 import HeavyInputConsole from '../HeavyInputConsole'
 import PlanReviewCard from '../PlanReviewCard'
+import { ArtifactViewerModal } from '@/components/artifacts/ArtifactViewerModal'
 import { RunPollingBar } from '../RunPollingBar'
 import { parseThinkTags, formatThinkingAsSteps } from '@/utils/thinkParser'
 import { isSameId } from '@/utils/normalize'
@@ -196,6 +197,9 @@ export default function ChatStreamPanel({
   const followBottomRef = useRef(true)
   const [showJumpToBottom, setShowJumpToBottom] = useState(false)
 
+  // 思考步骤里产物卡片点开的查看器（复用画廊/消息文档视图同一弹窗）
+  const [viewArtifactId, setViewArtifactId] = useState<string | null>(null)
+
   useLayoutEffect(() => {
     if (scrollRef.current && followBottomRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -341,6 +345,7 @@ export default function ChatStreamPanel({
                       steps={thinkingSteps}
                       isThinking={isLastAndStreaming}
                       totalSteps={estimatedSteps > 0 ? estimatedSteps : thinkingSteps.length}
+                      onOpenArtifact={setViewArtifactId}
                     />
                   </div>
                 )}
@@ -374,6 +379,15 @@ export default function ChatStreamPanel({
             key={`plan-review-${threadId}`}
             threadId={threadId}
             resumeExecution={resumeExecution}
+          />
+        )}
+
+        {/* 思考步骤里产物卡片点开的查看器（与画廊/消息文档视图同一组件） */}
+        {viewArtifactId && (
+          <ArtifactViewerModal
+            artifactId={viewArtifactId}
+            threadId={threadId}
+            onClose={() => setViewArtifactId(null)}
           />
         )}
         </div>
