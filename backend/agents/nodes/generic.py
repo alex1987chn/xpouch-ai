@@ -495,13 +495,18 @@ async def generic_worker_node(
                     _m.type,
                     str(_m.content)[:600],
                 )
-            response = await llm_to_use.ainvoke(
-                messages_for_llm,
-                config=RunnableConfig(
-                    tags=["expert", expert_type, "generic_worker"],
-                    metadata={"node_type": "expert", "expert_type": expert_type},
-                ),
-            )
+            # LLM 调用加超时：模型端悬挂时本次调用不会无限 await（此前的表现是
+            # 一直挂着，只能等 run 级 deadline 或后台清理兜底才发现）。超时按
+            # **任务级**失败处理（ExpertExecutionError → task.failed），其余任务
+            # 照常执行；这也是为什么不用节点级 TimeoutPolicy——那会杀掉整轮。
+            async with asyncio.timeout(settings.llm_call_timeout_seconds):
+                response = await llm_to_use.ainvoke(
+                    messages_for_llm,
+                    config=RunnableConfig(
+                        tags=["expert", expert_type, "generic_worker"],
+                        metadata={"node_type": "expert", "expert_type": expert_type},
+                    ),
+                )
             logger.info(
                 "[GenericWorker][DIAG] response: len=%d head=%r",
                 len(response.content or ""),
@@ -531,6 +536,12 @@ async def generic_worker_node(
                     )
                 except (RuntimeError, ValueError) as usage_err:
                     logger.warning("[GenericWorker] ⚠️ 用量记账提交失败: %s", usage_err)
+        except TimeoutError as exc:
+            # asyncio.timeout 触发的模型悬挂（此分支此前因无超时包裹而不可达，
+            # 已随超时的引入重新变为有效路径）
+            raise ExpertExecutionError(
+                f"LLM 调用超时（{settings.llm_call_timeout_seconds:.0f}s 未返回）"
+            ) from exc
         except Exception as exc:
             raise ExpertExecutionError(f"LLM 调用失败: {exc}") from exc
 

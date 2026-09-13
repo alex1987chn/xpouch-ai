@@ -102,6 +102,16 @@ class Settings(BaseSettings):
     # （参考 services/run_quota.py 的 user_daily_token_quota），此处保留为
     # 环境变量兜底默认值，执行器改为「设置表优先、env 兜底」即可，无需改执行逻辑。
     graph_max_concurrency: int = Field(default=1, alias="GRAPH_MAX_CONCURRENCY")
+    # 单次 LLM 调用的超时（秒）。防模型端悬挂时无限 await——此前只能等 run 级
+    # deadline 或后台清理兜底才发现，用户侧表现为「一直转圈」。
+    # 用在哪：
+    #   - generic（专家执行）：节点内 asyncio.timeout 包裹 → 按**任务级**失败处理
+    #     （该任务失败、其余继续）
+    #   - commander / aggregator：图节点级 TimeoutPolicy → 这两个挂了整轮无救，
+    #     故快速失败并报清晰错误
+    # 取值需显著大于正常单次调用耗时（专家长回答可达数分钟），又要小于 run 级
+    # 执行预算（RUN_DEADLINE_SECONDS，默认 900s），否则超时形同虚设。
+    llm_call_timeout_seconds: float = Field(default=420.0, alias="LLM_CALL_TIMEOUT_SECONDS")
     run_deadline_seconds: int = Field(default=900, alias="RUN_DEADLINE_SECONDS")
     # 注：原 run_max_graph_loops / RUN_MAX_GRAPH_LOOPS（图循环预算）已随批次 B3
     # 移除——它唯一的作用是看管「为对抗 interrupt_before 静态中断而手写的外层

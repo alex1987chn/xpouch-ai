@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
+from langgraph.types import TimeoutPolicy
 
 from agents.state import AgentState
 from config import settings
@@ -93,15 +94,22 @@ def create_smart_router_workflow(
     from agents.routing_policy import route_generic, route_router
     from agents.tool_runtime import dynamic_tool_node
 
+    # 节点级超时（LangGraph 原生 TimeoutPolicy）——只给「挂了整轮无救」的节点：
+    #   commander：规划环节悬挂 → 后面无计划可批，快速失败并报清晰错误
+    #   aggregator：聚合环节悬挂 → 无最终产出，同上
+    # 不给 generic 用：那会让单个慢任务拖死整轮；它的超时放在节点内部，
+    # 走任务级失败（该任务失败、其余照常执行）。
+    node_timeout = TimeoutPolicy(run_timeout=settings.llm_call_timeout_seconds)
+
     workflow = StateGraph(AgentState)
 
     workflow.add_node("router", router_node)
     workflow.add_node("direct_reply", direct_reply_node)
-    workflow.add_node("commander", commander_node)
+    workflow.add_node("commander", commander_node, timeout=node_timeout)
     workflow.add_node("plan_approval", plan_approval_node)
     workflow.add_node("expert_dispatcher", expert_dispatcher_node)
     workflow.add_node("generic", generic_worker_node)
-    workflow.add_node("aggregator", aggregator_node)
+    workflow.add_node("aggregator", aggregator_node, timeout=node_timeout)
     workflow.add_node("tools", dynamic_tool_node)
 
     workflow.set_entry_point("router")

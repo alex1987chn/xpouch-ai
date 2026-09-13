@@ -12,9 +12,12 @@
 3. 任务切换的回路（generic → expert_dispatcher）**不经过**审批节点，
    因此「批准后不会再次询问」由图形状保证，无需运行时位置判断
 4. 不再使用静态中断（interrupt_before）——它是旧一族 workaround 的总根源
+5. 节点级超时只给「挂了整轮无救」的节点（commander / aggregator），
+   **generic 不在内**——见 TestNodeLevelTimeout 的说明
 """
 
 import pytest
+from langgraph.graph import StateGraph
 
 from agents.graph_builder import create_smart_router_workflow
 
@@ -59,3 +62,49 @@ class TestPlanApprovalTopology:
         assert not getattr(compiled, "interrupt_before_nodes", None), (
             "interrupt_before 已废弃，审批应走 plan_approval 节点的 interrupt()"
         )
+
+
+class TestNodeLevelTimeout:
+    """节点级超时（TimeoutPolicy）的接线范围。
+
+    守护的不变量：**只有「挂了整轮无救」的节点有节点级超时**。
+    - commander：规划悬挂 → 无计划可批
+    - aggregator：聚合悬挂 → 无最终产出
+    - **generic 必须没有**：节点级超时会把整个 run 杀掉，而单个专家慢/挂时
+      正确的语义是「该任务失败、其余任务继续」。generic 的超时放在节点内部
+      （asyncio.timeout 包 LLM 调用 → ExpertExecutionError → task.failed）。
+
+    测试方式：记录 `StateGraph.add_node` 实际收到的 timeout 参数——测真实接线，
+    而不是测某个常量的内容。
+    """
+
+    def _recorded_timeouts(self, monkeypatch) -> dict:
+        recorded: dict = {}
+        original = StateGraph.add_node
+
+        def _recording(self, node, action, **kwargs):
+            recorded[node] = kwargs.get("timeout")
+            return original(self, node, action, **kwargs)
+
+        monkeypatch.setattr(StateGraph, "add_node", _recording)
+        create_smart_router_workflow()
+        return recorded
+
+    def test_commander_has_node_timeout(self, monkeypatch):
+        assert self._recorded_timeouts(monkeypatch)["commander"] is not None
+
+    def test_aggregator_has_node_timeout(self, monkeypatch):
+        assert self._recorded_timeouts(monkeypatch)["aggregator"] is not None
+
+    def test_generic_has_no_node_timeout(self, monkeypatch):
+        timeout = self._recorded_timeouts(monkeypatch)["generic"]
+        assert timeout is None, (
+            "generic 不得使用节点级超时——那会让单个慢任务拖死整轮；"
+            "它的超时应在节点内部以任务级失败处理"
+        )
+
+    def test_timeout_budget_sits_between_call_and_run_limits(self):
+        """超时预算需 >0 且小于 run 级执行预算，否则形同虚设。"""
+        from config import settings
+
+        assert 0 < settings.llm_call_timeout_seconds < settings.run_deadline_seconds
