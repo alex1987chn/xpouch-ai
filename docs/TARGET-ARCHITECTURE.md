@@ -356,6 +356,36 @@
 - 之后 `last_event_id=0` 重新 resume：HTTP 200，重放里含 `human.interrupt`、以 `[DONE]` 收尾 → **审批卡能自己回来**。
 标准 e2e（规划→审批→执行完成）同时重跑通过。后端 **295 passed**。
 
+### 批次 D 补 3 · 轮询状态机的两处生命周期错配（2026-09-13，用户实测报出）
+
+**用户报的现象**：会话 A 的审批卡不点（run 停在 `waiting_for_approval`）→ 刷新页面 →
+点「新建会话」→ 底部残留「正在恢复任务连接… (Unknown)」的加载条，直到整页刷新。
+
+**根因（两处，同一类问题的两面）**：
+
+1. **轮询状态机与它的输入脱钩**。轮询唯一的输入是 `store.activeRunId`（查询的
+   enabled 与 queryKey 都靠它），而清空它的路径不止一条——`WorkbenchPage.handleNewChat`
+   调 `resetAll(true)` → `resetUI()` 会把 `activeRunId` 置空——**停轮询却只有一条路**
+   （`useChatSessionHandoff` 的「没有可控任务」分支），而那条路前面会先被 `!isRestored`
+   拦掉（新建会话时 restore 被禁用/重置）。结果：状态机停在 `polling`/`hitl_paused`
+   （`isPolling` 仍为 true），查询被禁用 → 状态永远取不到 → 假加载条常驻。
+   修法是不变量式的 `isPollingOrphaned(state, activeRunId)`：**有轮询状态却没有 run 就停**，
+   覆盖未来所有「清 runId」的路径，而不是只补「新建会话」这一处。
+2. **「卸载时停轮询」的 cleanup 依赖写错**。原写法是
+   `useEffect(() => () => {...}, [state.isPolling, stopPolling])`——依赖变化就会跑 cleanup，
+   而 cleanup 读的是**闭包里旧的** `isPolling`，于是 HITL 暂停（status 变化 → `stopPolling`
+   换引用 → 触发 cleanup）会把刚暂停的轮询直接停成 `idle`。后果不止界面：审批在**别的
+   标签页/任务控制页**被处理时本页没人轮询，「run 在别处收场 → 撤下过期审批卡」这条
+   兜底就永远不会触发。改为空依赖 + ref（与文件内 `refetchRef` 同手法）。
+
+**顺带**：`RunPollingBar` 在状态尚未取到时不再显示 `(Unknown)`（那是内部词表的兜底值，
+对用户是噪音），只显示「正在恢复任务连接…」。
+
+**验证**：新增 `hooks/__tests__/useRunPollingOrphan.test.tsx`（3 条，`@testing-library/react`
++ 真实 store + 真 QueryClient，把用户的操作序列按 `resetAll(true)` 原样重放）与 3 条
+reducer/纯函数断言。**反向对照**：把修复回退后 3 条全红（其中 2 条即用户报的现象），
+恢复后全绿——证明测试真的覆盖这两条路径，而不是"看着像"。前端 69 passed。
+
 ### 批次 E · 收尾项（可穿插，独立价值）
 
 已完成（2026-09-13）：

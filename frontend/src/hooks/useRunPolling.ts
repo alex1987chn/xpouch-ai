@@ -119,6 +119,26 @@ export function pollingReducer(state: PollingState, action: PollingAction): Poll
   }
 }
 
+/**
+ * 轮询状态是否「失去了输入」（有轮询状态，但没有 run 可轮询）。
+ *
+ * 为什么需要这条不变量：轮询的唯一输入是 store 里的 `activeRunId`（查询 enabled
+ * 与 queryKey 都靠它）。而清掉 activeRunId 的路径不止一条——`resetAll()`（新建会话、
+ * 切线程）里就会置空——停轮询却只有「恢复交接」那一条路（`useChatSessionHandoff`
+ * 的「没有可控任务」分支）。于是新建会话时会出现：状态机还在 `polling`，
+ * runId 已经没了 → 查询被禁用、状态永远取不到 → 底部一直显示
+ * 「正在恢复任务连接…(Unknown)」的假加载条，直到整页刷新。
+ * （实测复现：会话 A 停在审批等待且不点，刷新后点「新建会话」。）
+ *
+ * 把它写成纯判定是为了能直接单测——这类「生命周期错配」的坑在 UI 上极难一眼看出。
+ */
+export function isPollingOrphaned(
+  state: PollingState,
+  activeRunId: string | null | undefined
+): boolean {
+  return state.isPolling && !activeRunId
+}
+
 // ==================== Hook 定义 ====================
 
 interface UseRunPollingOptions {
@@ -290,14 +310,35 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
     dispatch({ type: 'STOP' })
   }, [state.status])
 
-  // 清理：组件卸载时停止轮询
+  // 失去输入就停：轮询状态还在、但 run 已经被清掉（新建会话 / 切线程 / 别处 reset），
+  // 此时查询永远取不到状态，只会留一条假的「正在恢复任务连接」加载条。见
+  // isPollingOrphaned 的注释（实测复现路径写在那里）。
+  useEffect(() => {
+    if (isPollingOrphaned(state, activeRunId)) {
+      logger.warn('[useRunPolling] 轮询状态存在但 activeRunId 已清空，停止轮询（避免假加载条）')
+      stopPolling()
+    }
+  }, [state, activeRunId, stopPolling])
+
+  // 清理：**仅**组件卸载时停止轮询。
+  //
+  // 这里必须用空依赖 + ref（不能把 isPolling / stopPolling 放进依赖数组）：
+  // 那种写法会让 cleanup 在每次依赖变化时都跑一遍，而 cleanup 里判的是**闭包里那个
+  // 旧的** isPolling——于是 HITL 暂停（status 变化 → stopPolling 换引用 → 跑一次
+  // cleanup，此时旧闭包里 isPolling 还是 true）会把刚暂停的轮询直接停成 idle。
+  // 后果不只是界面：审批在**别的标签页/任务控制页**被处理时，本页没人轮询，
+  // 「run 在别处收场 → 撤下过期审批卡」这条兜底就永远不会触发。
+  const isPollingRef = useRef(state.isPolling)
+  isPollingRef.current = state.isPolling
+  const stopPollingRef = useRef(stopPolling)
+  stopPollingRef.current = stopPolling
   useEffect(() => {
     return () => {
-      if (state.isPolling) {
-        stopPolling()
+      if (isPollingRef.current) {
+        stopPollingRef.current()
       }
     }
-  }, [state.isPolling, stopPolling])
+  }, [])
 
   return {
     startPolling,

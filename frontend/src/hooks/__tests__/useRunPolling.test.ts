@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { pollingReducer, type PollingState } from '../useRunPolling'
+import { isPollingOrphaned, pollingReducer, type PollingState } from '../useRunPolling'
 
 const idle: PollingState = {
   status: 'idle',
@@ -21,6 +21,7 @@ const idle: PollingState = {
 }
 
 const start = (runId: string) => pollingReducer(idle, { type: 'START', runId })
+const hitlPaused = (runId: string) => pollingReducer(start(runId), { type: 'HITL_PAUSED' })
 const terminalFor = (runId: string): PollingState =>
   pollingReducer(start(runId), { type: 'TERMINAL_REACHED' })
 
@@ -86,5 +87,24 @@ describe('pollingReducer', () => {
   it('终态重复上报不改状态', () => {
     const state = terminalFor('run-1')
     expect(pollingReducer(state, { type: 'TERMINAL_REACHED' })).toBe(state)
+  })
+})
+
+describe('isPollingOrphaned：轮询失去输入就必须停', () => {
+  it('有轮询状态但没有 run → 孤儿（新建会话/切线程会清掉 activeRunId）', () => {
+    expect(isPollingOrphaned(start('run-1'), null)).toBe(true)
+    expect(isPollingOrphaned(start('run-1'), undefined)).toBe(true)
+    expect(isPollingOrphaned(hitlPaused('run-1'), null)).toBe(true)
+  })
+
+  it('有 run 时不受影响', () => {
+    expect(isPollingOrphaned(start('run-1'), 'run-1')).toBe(false)
+  })
+
+  it('已经停下或已终态时不再触发（不与终态判定互相打扰）', () => {
+    expect(isPollingOrphaned(idle, null)).toBe(false)
+    expect(isPollingOrphaned(terminalFor('run-1'), null)).toBe(false)
+    const errored = pollingReducer(start('run-1'), { type: 'ERROR_OCCURRED' })
+    expect(isPollingOrphaned(errored, null)).toBe(false)
   })
 })

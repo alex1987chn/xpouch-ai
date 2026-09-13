@@ -49,7 +49,9 @@ export function RunPollingBar({
 
   if (!show) return null
 
-  const statusLabel = status ? STATUS_LABELS[status] : 'Unknown'
+  // 状态还没取到（首帧查询在途）时不写 "(Unknown)"：那是内部词表的兜底值，
+  // 对用户是无意义的噪音（曾经因为状态机泄漏长期停留在这个文案上）。
+  const statusLabel = status ? STATUS_LABELS[status] : null
 
   return (
     <div
@@ -76,7 +78,9 @@ export function RunPollingBar({
             <span className="text-content-primary">
               {isHITLPaused
                 ? t('pollingHitlPaused')
-                : `${t('pollingRestoring')} (${statusLabel})`}
+                : statusLabel
+                  ? `${t('pollingRestoring')} (${statusLabel})`
+                  : t('pollingRestoring')}
             </span>
           </>
         )}
