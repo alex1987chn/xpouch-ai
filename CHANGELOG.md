@@ -5,6 +5,27 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 修复
+
+- **全新部署起不来（迁移链跑不通空库）**：`001` 漏了 create_all 时代的三处时间戳列
+  （`customagent.created_at/updated_at`、`subtask.created_at/updated_at`、
+  `systemexpert.created_at`），于是 `004` 在 `customagent.created_at` 上建索引时
+  直接 UndefinedColumn、迁移链在空库上停在第 4 步。v3.5.0 把 `create_all` 退役后
+  全新安装只走 Alembic，**结果是 `docker-compose up` 在空库上必炸**（存量库不受影响，
+  001 早在迁移史里执行过、不会重跑）。已补齐 001 的这三处列，空库可一路跑到 head。
+- **CI 上的一条测试**：`test_generic_worker_node.py` 的失败路径用例漏桩工具治理覆盖
+  （该读的是库），本地因测试库迁移过而侥幸全绿、CI 空库必挂（失败原因被 DB 异常顶掉，
+  断言 `'LLM'` 落空）。补桩后与同文件其它用例口径一致。
+
+### 变更
+
+- **CI 新增两道闸门**（backend job）：① 把整套迁移 apply 到一个空的独立库——
+  此前 CI 从不跑迁移，"迁移链在空库上跑不通"只能等上线才暴露（生产已中过两次：
+  OTP 列宽收窄、`subtask.input_data` 缺迁移）；② 迁移后再跑一遍测试，让"只在一边过"
+  的环境偏差（如上面那条 toolpolicy 依赖）在同一次 CI 里现形。
+
 ## [2026-09-13] - v3.5.1 目标架构落地：LangGraph 原生化、波次并发与运行租约
 
 路线与批次记录见 [docs/TARGET-ARCHITECTURE.md](./docs/TARGET-ARCHITECTURE.md)。

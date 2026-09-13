@@ -326,7 +326,15 @@ async def test_failure_path_yields_failed_outcome():
         async def ainvoke(self, messages, config=None):
             raise RuntimeError("LLM 爆炸")
 
-    with _patches():
+    # 工具治理覆盖是**读库**的（tool_policy_service.get_overrides）——同文件其余用例
+    # 都桩掉它，这里漏了。漏掉时本地「能过」纯属侥幸：本地测试库（xpouch_test）迁移过、
+    # 有 toolpolicy 表，而 CI 的 Postgres 是空库，于是 DB 异常先于 LLM 异常抛出，
+    # 失败原因变成 "relation toolpolicy does not exist"，断言 'LLM' 就挂了。
+    with (
+        _patches(),
+        patch("agents.nodes.generic.tool_policy_service.get_overrides", return_value={}),
+        patch("agents.nodes.generic.filter_tools_for_binding", return_value=([], [])),
+    ):
         result = await expert_worker_node(_branch_state(task), llm=_BoomLLM())
 
     outcome = _outcome_of(result)

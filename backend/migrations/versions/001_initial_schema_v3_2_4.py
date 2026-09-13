@@ -105,6 +105,12 @@ def upgrade() -> None:
         sa.Column("category", sa.String(), nullable=True),
         sa.Column("is_public", sa.Boolean(), nullable=True),
         sa.Column("conversation_count", sa.Integer(), nullable=True),
+        # create_all 时代的列，此前漏写在本迁移里——后果是**空库跑不到 head**
+        # （004 要在这两个列上建索引，直接 UndefinedColumn），而 v3.5.0 起
+        # create_all 已退役、全新部署只走 Alembic，等于全新安装起不来。
+        # 存量库不受影响（001 早在迁移史里执行过，不会重跑）。
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["user.id"],
@@ -150,6 +156,9 @@ def upgrade() -> None:
         sa.Column("depends_on", sa.JSON(), nullable=True),
         sa.Column("error_message", sa.String(), nullable=True),
         sa.Column("duration_ms", sa.Integer(), nullable=True),
+        # 同 customagent：create_all 时代的两个时间戳列，补齐才能从空库跑到 head
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(
             ["task_session_id"], ["tasksession.session_id"], ondelete="CASCADE"
         ),
@@ -190,6 +199,8 @@ def upgrade() -> None:
         sa.Column("temperature", sa.Float(), nullable=False),
         sa.Column("is_dynamic", sa.Boolean(), nullable=True),
         sa.Column("is_system", sa.Boolean(), nullable=True),
+        # 同 customagent：create_all 时代就有 created_at，001 漏写
+        sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("expert_key"),

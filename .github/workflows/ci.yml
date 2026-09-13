@@ -58,7 +58,7 @@ jobs:
 
       - name: Run all backend tests (with coverage)
         env:
-          # 使用 CI 服务中的 PostgreSQL
+          # 使用 CI 服务中的 PostgreSQL（**空库**：测试不得依赖 schema）
           DATABASE_URL: postgresql+psycopg://xpouch_test:test_pass@localhost:5432/xpouch_test
           # Mock API keys for tests
           DEEPSEEK_API_KEY: test-key
@@ -69,6 +69,30 @@ jobs:
         run: |
           uv pip install pytest-cov
           uv run pytest tests/ --cov=. --cov-report=term --cov-report=xml
+
+      - name: Apply the migration chain to an empty database
+        env:
+          # 独立库：整套迁移从零 apply 一遍。CI 此前从不跑迁移，于是
+          # 「迁移链在空库上跑不通」只能等上线才暴露（生产已中过两次：
+          # OTP 列宽收窄、subtask.input_data 缺迁移）。
+          DATABASE_URL: postgresql+psycopg://xpouch_test:test_pass@localhost:5432/xpouch_migrations
+        run: |
+          PGPASSWORD=test_pass psql -h localhost -U xpouch_test -d xpouch_test \
+            -c "CREATE DATABASE xpouch_migrations;"
+          uv run alembic upgrade head
+
+      - name: Run backend tests again against the migrated schema
+        env:
+          # 本地日常跑的是「迁移过的库」，这里对齐同一口径。
+          # 两遍都跑，才能让「只在一边过」的偏差（例如本地绿、CI 空库红那条
+          # toolpolicy 依赖）在同一次 CI 里现形，而不是等推上去才发现。
+          DATABASE_URL: postgresql+psycopg://xpouch_test:test_pass@localhost:5432/xpouch_migrations
+          DEEPSEEK_API_KEY: test-key
+          MOONSHOT_API_KEY: test-key
+          SILICON_API_KEY: test-key
+          JWT_SECRET_KEY: test-secret-key-for-ci-only
+          ENVIRONMENT: development
+        run: uv run pytest tests/ -q
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
