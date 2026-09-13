@@ -30,8 +30,10 @@ class SubTask(SQLModel, table=True):
 
     __tablename__ = "subtask"
 
+    # 注解为 str，默认工厂必须返回 str——返回 uuid.UUID 会让运行时类型与注解
+    # 不一致（Postgres 下被 psycopg 适配故未暴露，SQLite 下直接绑定失败）
     id: str = Field(
-        default_factory=lambda: __import__("uuid").uuid4(),
+        default_factory=lambda: str(__import__("uuid").uuid4()),
         primary_key=True,
     )
 

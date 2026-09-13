@@ -25,7 +25,7 @@ class CustomAgent(SQLModel, table=True):
     __tablename__ = "customagent"
 
     id: str = Field(
-        default_factory=lambda: __import__("uuid").uuid4(),
+        default_factory=lambda: str(__import__("uuid").uuid4()),
         primary_key=True,
     )
 

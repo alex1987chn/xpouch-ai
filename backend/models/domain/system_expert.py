@@ -31,7 +31,7 @@ class SystemExpert(SQLModel, table=True):
 
     # DB-10: 主键策略统一为 UUID
     id: str = Field(
-        default_factory=lambda: __import__("uuid").uuid4(),
+        default_factory=lambda: str(__import__("uuid").uuid4()),
         primary_key=True,
     )
     expert_key: str = Field(

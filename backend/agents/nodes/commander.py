@@ -557,6 +557,9 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                 "current_task_index": 0,
                 "expert_results": [],
                 "execution_plan_id": execution_plan_id,
+                # 回写预览 ID：使同一 run 内节点重执行（重试/并行分支）拿到同一
+                # ID，而不是每次新生成 uuid（该键已在 AgentState 声明才会持久化）
+                "preview_execution_plan_id": preview_execution_plan_id,
             }
 
     except Exception as e:

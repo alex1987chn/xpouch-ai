@@ -20,8 +20,9 @@ class Artifact(SQLModel, table=True):
 
     __tablename__ = "artifact"
 
+    # 注解为 str，默认工厂必须返回 str（与 execution_plan / share_token 等一致）
     id: str = Field(
-        default_factory=lambda: __import__("uuid").uuid4(),
+        default_factory=lambda: str(__import__("uuid").uuid4()),
         primary_key=True,
     )
 

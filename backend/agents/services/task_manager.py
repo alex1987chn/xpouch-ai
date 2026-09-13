@@ -52,8 +52,11 @@ def get_or_create_execution_plan(
     """
     获取或创建执行计划
 
-    如果指定 thread_id 的 ExecutionPlan 已存在，则复用并更新；
-    否则创建新的 ExecutionPlan。
+    幂等规则（按 (thread_id, run_id) 判定，批次 B1）：
+    - 计划不存在 → 创建新的 ExecutionPlan（连同子任务），返回 is_reused=False
+    - 计划存在且属于**同一个 run** → 直接复用，**不触碰子任务**，返回 is_reused=True
+    - 计划存在但属于**不同的 run**（同会话中的新一次复杂任务）→ 替换计划内容
+      （删除旧子任务并按 subtasks_data 重建），返回 is_reused=True
 
     Args:
         db: 数据库会话
@@ -83,8 +86,18 @@ def get_or_create_execution_plan(
     existing_plan = get_execution_plan_by_thread(db, thread_id)
 
     if existing_plan:
-        # ✅ 修复：删除旧的 SubTasks，根据新的 subtasks_data 创建新的
-        # 这样可以确保 task_list 与数据库一致
+        # 同一 run 内重执行 → 复用，不删除重建。
+        # 删除重建会抹掉已完成任务的 status / output_result / task_id，
+        # 与审批路径（_apply_updated_plan 显式保留已完成任务）语义冲突；
+        # 节点被重试、并行分支重跑时都会走到这里。
+        if run_id is not None and existing_plan.run_id == run_id:
+            logger.info(
+                f"[TaskManager] 复用同一 run 的 ExecutionPlan {existing_plan.id}（不重建子任务）"
+            )
+            return existing_plan, True
+
+        # 不同 run：同会话中的新一次复杂任务 → 替换计划内容，
+        # 确保 task_list 与数据库一致
         old_subtasks = get_subtasks_by_execution_plan(db, existing_plan.id)
         if old_subtasks:
             for old_subtask in old_subtasks:
