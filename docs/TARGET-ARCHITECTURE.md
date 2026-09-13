@@ -194,20 +194,21 @@
   | 上游节点 | **不重跑**（checkpoint 中已有结果）——故 `commander_node` 的写库副作用不会被恢复触发，决定 3 非 B3 阻塞项（已在上文修正） |
   | 事件格式 | 恢复流与首跑流**同构** → 服务层「首跑循环」与「恢复循环」可合并为一个函数，仅 input 不同（`None` vs `Command(resume=)`）；这直接消掉现外层 while 的一半复杂度 |
   | 中断 payload | 可直接从 `Interrupt.value` 取计划数据，不必再手工构造 `human.interrupt` 事件 |
-- [ ] **B3 · interrupt 原生化（原子，不可再拆）**，四件事必须同一 commit：
-  1. `interrupt()` + `Command(resume=)` 替换 `interrupt_before=["expert_dispatcher"]`
-  2. 审批独立成 `plan_approval` 节点；任务切换回路 `generic → expert_dispatcher` **绕过**它（拓扑承载语义，不靠运行时判断）
-  3. checkpoint `thread_id` 对齐业务 thread
-  4. 恢复路径改为 `Command(resume=审批结果)`
-  → 一次性消掉：外层 while、`_should_wait_for_human_approval` 启发式、`HumanMessage` 注入、`isolated_thread_id`、`run_max_graph_loops`（原生 `recursion_limit` 接管）、checkpoint 线性膨胀。
-  **单独改其中任何一件都会造出坏掉的中间态**（例如只换 `interrupt()` 但 thread 仍是 `{thread}_{run}`，恢复时找不到 checkpoint）。
-  **⚠️ 2026-09-13 修正**：上面那句关于 thread 的判断**不成立**——恢复请求自身携带 `thread_id` 与 `run_id`，而 `execute_langgraph_stream` 已有 `isolated_thread_id = f"{thread_id}_{run_id}"` 的**确定性重建**，故恢复能命中同一 checkpoint。**因此第 3 件（thread 对齐）与前两件是可分的**，B3 可安全拆为：
-  - **B3a**（机制替换，保持现有隔离 thread）：1 `interrupt()` + 2 `plan_approval` 节点 + 4 `Command(resume)` + 原生暂停检测；同时删外层 while、启发式、`HumanMessage` 注入、`run_max_graph_loops`。
-  - **B3b**（独立改进，低风险）：thread 对齐业务 thread + checkpoint 生命周期（终态清理加「非等待态」守卫）。
-  拆分后每步各自可提交、可验证，避免一次性改动过大。
-  **实现要点**：
-  - `plan_approval` 节点内代码顺序必须是「**先 `interrupt()`、后应用裁决结果**」——`interrupt()` 之前的代码在恢复时会重跑一遍，之后的只跑一次。计划的 approve 合并（保留已完成任务的 `output_result`、清理依赖、重算索引）应放在 `interrupt()` 之后，或更干净地：随 `Command(resume={"action":"approve","tasks":[...]})` 传入、由节点应用，从而替代现有 `_apply_updated_plan` 的 `aupdate_state` 路径。
-  - **checkpoint 生命周期随 thread 对齐而变**：恢复依赖同一 `thread_id` 的 checkpoint，因此终态清理**不得删除等待审批中的线程 checkpoint**（现 `delete_checkpoints_for_thread` 在正常收尾路径被调用，需加「非等待态」守卫）。
+- [x] **B3a 已完成并实机验证（2026-09-13，commit `760071a`）**：四件事中已完成 1/2/4，同一 commit（原子）：
+  1. ✅ `interrupt()` + `Command(resume=)` 替换 `interrupt_before=["expert_dispatcher"]`
+  2. ✅ 审批独立成 `plan_approval` 节点；任务切换回路 `generic → expert_dispatcher` **绕过**它（拓扑承载语义，不靠运行时判断）
+  3. ⬜ checkpoint `thread_id` 对齐业务 thread → 归入 B3b
+  4. ✅ 恢复路径改为 `Command(resume=审批结果)`
+  → 一次性消掉：外层 while、`_should_wait_for_human_approval` 启发式、`HumanMessage` 注入、`run_max_graph_loops`（原生 `recursion_limit` 接管）。
+  - 新增测试：`tests/test_graph_topology.py`（5 条结构测试，替代被删的启发式单测）、`tests/test_plan_approval_node.py`（4 条节点行为测试）。
+  - **实机验证通过**：`backend/scripts/e2e_hitl_check.py`（真实 HTTP + 真实 LLM，可重复运行）。两次连续成功——规划出 3 任务计划 → `human.interrupt` 携带完整计划（含 `task_1→task_2→task_3` 依赖链）→ 批准后 3 个任务执行完成、3 份产物、`message.done`。
+  - 未做：`cancel-during-wait` 与「幂等重放」的端到端用例（B0 已覆盖其 DB 级不变量）。
+- [ ] **B3b（未做）**：thread 对齐业务 thread + checkpoint 生命周期守卫。
+  - ⚠️ **修正记录**：本节原写「四件事必须同一 commit，只换 `interrupt()` 但 thread 仍是 `{thread}_{run}` 会找不到 checkpoint」——**不成立**。恢复请求自身携带 `thread_id` 与 `run_id`，而 `execute_langgraph_stream` 已有 `isolated_thread_id = f"{thread_id}_{run_id}"` 的**确定性重建**，恢复能命中同一 checkpoint。故 thread 对齐与前两件可分，B3 已按此拆为 B3a（已完成）/ B3b。
+  - 终态清理需加「**非等待态**」守卫：`delete_checkpoints_for_thread` 在正常收尾路径被调用，thread 对齐后若在等待审批中执行会删掉恢复所依赖的 checkpoint。
+- **实现要点（B3a 落地时遵循）**：
+  - `plan_approval` 节点内代码顺序必须是「**先 `interrupt()`、后应用裁决结果**」——`interrupt()` 之前的代码在恢复时会重跑一遍，之后的只跑一次。
+  - 计划的 approve 合并（保留已完成任务的 `output_result`、清理依赖、重算索引）**留在 `_apply_updated_plan`**，由服务层在 resume 前 `aupdate_state`；`plan_approval` 节点本身不访问数据库。后续可改为随 `Command(resume={"action":"approve","tasks":[...]})` 传入、由节点应用（更干净，但非必需）。
 - [ ] **已拍板（2026-09-13）：修订不图内化，保留后台任务。**
   - 理由：拆开看是两件事——**图只负责「停在审批点等人」，修订是对计划数据的副作用，不是图的一次转移**。
   - 形状：图 pause 在 `plan_approval` 的 `interrupt`；`approve` → `Command(resume)` 从该点继续；`revise` → API 立即返回 + 后台任务跑 LLM 出 v(n+1) 落库与账本，前端轮询到新版本重亮审批卡。
@@ -301,6 +302,8 @@
 | 地雷 | 说明 |
 |---|---|
 | **`interrupt()` 会重跑节点** | 恢复时**含中断的那个节点**从头执行（其上游节点不会重跑，状态来自 checkpoint）。任何写库/发事件副作用必须在 `interrupt()` 之后，或幂等。**推论：把 `interrupt()` 放在独立节点里，就能避免让有副作用的节点重跑**——这是 B3 设计的依据。 |
+| **`Command(resume=None)` 会让 langgraph 内部崩溃（已实测）** | langgraph 1.2.11 下以 `None` 作为恢复值会抛 `UnboundLocalError: resume_is_map`（框架内部问题）。**恢复值一律传 dict**，如 `{"action": "approve"}`。 |
+| **`human.interrupt` 的 SSE payload 是扁平的** | `build_sse_event` 展开了 event data，故字段直接是 `current_plan` / `plan_version` / `run_id` / `execution_plan_id`，**没有 `data` 外层**；且 **`thread_id` 不在 payload 里**，只在响应头 `X-Thread-ID`。写客户端或验证脚本时注意（已踩两次）。 |
 | **产物不得随任务替换被删（已修）** | 原 `get_or_create_execution_plan` 按 `thread_id` 单键判定，命中即删除全部旧 SubTasks 并重建；而 `SubTask.artifacts` 配 `cascade="all, delete-orphan"` → **连带删除已完成任务的产物**。产品语义上产物是**会话级交付物**（同会话「先生成网页、再写小游戏」，两个都要留），故改为 **一 run 一计划**：新 run 新建计划，不删除任何既有内容；运行时不再有删除子任务的路径，级联自然失效（**无需迁移**）。`get_execution_plan_by_thread` 改为显式按 `created_at desc()` 取最新（原为无 ORDER BY 的 `.first()`，多计划下不确定）。 |
 | **`preview_execution_plan_id` 接线未生效（已修）** | 该键原**未在 `AgentState` 声明、无写入点**（仅测试显式传），而 LangGraph 过滤未声明键 → commander 里 `state.get(...) or uuid4()` **每次执行都拿到新 uuid**，它设计的目标「`plan.started` 事件 id 与落库计划 id 一致」**从未成立**。已补声明 + commander 成功路径回写。 |
 | **psycopg 连接串必须是 plain** | `utils/db.py` 走 psycopg 原生池，只认 `postgresql://`；`+psycopg` 是 SQLAlchemy 驱动标记，libpq 会报 `invalid connection option`。`database.py` / `migrations/env.py` 走 SQLAlchemy，**才**用 `+psycopg`。 |
