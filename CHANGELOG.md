@@ -5,27 +5,6 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### 修复
-
-- **全新部署起不来（迁移链跑不通空库）**：`001` 漏了 create_all 时代的三处时间戳列
-  （`customagent.created_at/updated_at`、`subtask.created_at/updated_at`、
-  `systemexpert.created_at`），于是 `004` 在 `customagent.created_at` 上建索引时
-  直接 UndefinedColumn、迁移链在空库上停在第 4 步。v3.5.0 把 `create_all` 退役后
-  全新安装只走 Alembic，**结果是 `docker-compose up` 在空库上必炸**（存量库不受影响，
-  001 早在迁移史里执行过、不会重跑）。已补齐 001 的这三处列，空库可一路跑到 head。
-- **CI 上的一条测试**：`test_generic_worker_node.py` 的失败路径用例漏桩工具治理覆盖
-  （该读的是库），本地因测试库迁移过而侥幸全绿、CI 空库必挂（失败原因被 DB 异常顶掉，
-  断言 `'LLM'` 落空）。补桩后与同文件其它用例口径一致。
-
-### 变更
-
-- **CI 新增两道闸门**（backend job）：① 把整套迁移 apply 到一个空的独立库——
-  此前 CI 从不跑迁移，"迁移链在空库上跑不通"只能等上线才暴露（生产已中过两次：
-  OTP 列宽收窄、`subtask.input_data` 缺迁移）；② 迁移后再跑一遍测试，让"只在一边过"
-  的环境偏差（如上面那条 toolpolicy 依赖）在同一次 CI 里现形。
-
 ## [2026-09-13] - v3.5.1 目标架构落地：LangGraph 原生化、波次并发与运行租约
 
 路线与批次记录见 [docs/TARGET-ARCHITECTURE.md](./docs/TARGET-ARCHITECTURE.md)。
@@ -45,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 变更
 
+- **迁移史 squash（001–004 → 单一 baseline）**：这四步属 create_all 时代、自带漂移，且是"空库跑不通"的根源；
+  已合并为 `001_baseline_schema`（内容是 004 执行完毕时的 schema，用 pg_dump 结构指纹逐行比对证明等价：
+  列/类型/可空/默认值、索引定义、约束定义、触发器全部一致）。**链尾 revision 不变，存量库升级是 no-op**
+- **CI 新增两道闸门**（backend job）：① 把整套迁移 apply 到一个空的独立库——此前 CI 从不跑迁移，
+  "迁移链在空库上跑不通"只能等上线才暴露（生产已中过两次：OTP 列宽收窄、`subtask.input_data` 缺迁移）；
+  ② 迁移后再跑一遍测试，让"只在一边过"的环境偏差（如上面那条 toolpolicy 依赖）在同一次 CI 里现形
 - **审批机制迁 LangGraph 原生 `interrupt()`**（批次 B3a）：一次性拆掉外层 while 循环、`_should_wait_for_human_approval` 启发式、`HumanMessage` 注入与 `run_max_graph_loops`（循环保护交还原生 `recursion_limit`）
 - **计划（Plan）收敛为 canonical 形状**（批次 B4）：任务字段单一写法、依赖字段单一写法，子任务创建与依赖解析收敛为唯一实现；计划复用幂等化、UUID 默认工厂统一、preview id 接线修正；一 run 一计划（产物不再随任务替换被删）
 - **计划生成改用结构化输出**：删除手抽 JSON 的 ~90 行胶水
@@ -56,6 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 修复
 
+- **全新部署起不来（迁移链跑不通空库，重要）**：`001` 漏了 create_all 时代的三处时间戳列
+  （`customagent.created_at/updated_at`、`subtask.created_at/updated_at`、`systemexpert.created_at`），
+  于是 `004` 在 `customagent.created_at` 上建索引时直接 UndefinedColumn，迁移链在空库上停在第 4 步。
+  v3.5.0 把 `create_all` 退役后全新安装只走 Alembic，**结果是 `docker-compose up` 在空库上必炸**。
+  存量库不受影响（001 早在迁移史里执行过、不会重跑），已在 CI 加闸门锁住这一类问题
+- **CI 上的一条测试**：`test_generic_worker_node.py` 的失败路径用例漏桩工具治理覆盖（那是读库的），
+  本地因测试库迁移过而侥幸全绿、CI 空库必挂（失败原因被 DB 异常顶掉，断言 `'LLM'` 落空）
 - **复杂任务跑完审批卡不出现、需刷新（用户实测报出）**：SSE 帧 id 是 run 级序号，前端却按**页面级**去重——跨 run 撞号使第二个 run 的头部帧（含审批中断）被静默丢弃；去重作用域改为 run / 流会话
 - **停在审批点的 run 被租约回收（P0 回归，本次改造自己引入）**：租约把「停在审批等人」误判为「进程失联」清掉——存活判定补 HITL 例外
 - **刷新后思考面板的「账本重建」从未生效**：`latest_run` 缺 `started_at` 字段，重建路径根本没跑到
