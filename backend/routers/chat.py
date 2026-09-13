@@ -49,6 +49,7 @@ from models import (
 from models.enums import RunStatus
 from schemas.task import PaginatedArtifactListResponse
 from services.chat.artifact_service import ArtifactService
+from services.chat.frame_replay import load_gap_frames
 from services.chat.recovery_service import RecoveryService
 from services.chat.share_service import ShareService
 from services.chat.stream_hub import get_stream_hub
@@ -648,9 +649,13 @@ async def resume_stream(
 ):
     """从 last_event_id 之后重放并继续推送该 run 的 SSE 事件流。
 
-    - run 已终态 / 缓冲不可用（重启丢缓冲、seq 超出窗口）：410，
-      前端退化到"后台跑完 + 轮询刷新"路径
-    - 正常返回 SSE：先补放 backlog，再跟随实时事件直到 producer 收尾
+    - run 已终态 / 没有可跟随的实时通道：410，前端退化到"后台跑完 + 轮询刷新"路径
+    - 正常返回 SSE：先补放「内存窗口以外」的缺口，再补内存窗口内的 backlog，
+      然后跟随实时事件直到 producer 收尾
+
+    为什么要先从库里补一段：内存缓冲每 run 只留最近 MAX_EVENTS_PER_RUN 条，
+    断线久了的客户端会落在窗口之前——直接跟随会**静默丢掉中间一段**（不报错，
+    只是文字少半截）。已落库的帧覆盖这段，见 services/chat/frame_replay.py。
     """
     thread = session.get(Thread, thread_id)
     if not thread or thread.user_id != current_user.id:
@@ -666,23 +671,38 @@ async def resume_stream(
     if subscription is None:
         raise HTTPException(status_code=410, detail="执行流缓冲不可用，请稍后刷新查看结果")
     backlog, queue, closed = subscription
+    if closed:
+        # 缓冲已关闭 = 这一轮流已收尾，没有可跟随的实时通道。只回放库里的帧
+        # 再结束的话，前端会把「没有完成标记的关闭」当成回答被截断而报错，
+        # 所以退回 410 走既有的刷新路径（终态内容本就在消息表里）。
+        raise HTTPException(status_code=410, detail="执行已结束，请刷新会话查看结果")
+
+    # 缺口补放（无缺口时不查库）：内存窗口最早一条的 seq 与客户端的位置之间
+    prefix = await asyncio.to_thread(
+        load_gap_frames,
+        session,
+        run.id,
+        last_event_id,
+        backlog[0][0] if backlog else None,
+    )
 
     async def _resume_gen():
         try:
+            for wire in prefix:
+                yield wire
             for _seq, wire in backlog:
                 yield wire
-            if not closed:
-                while True:
-                    try:
-                        item = await asyncio.wait_for(queue.get(), timeout=30)
-                    except TimeoutError:
-                        # SSE 注释行：保持链路活跃，解析器忽略
-                        yield ": keepalive\n\n"
-                        continue
-                    if item is None:
-                        return
-                    _seq, wire = item
-                    yield wire
+            while True:
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=30)
+                except TimeoutError:
+                    # SSE 注释行：保持链路活跃，解析器忽略
+                    yield ": keepalive\n\n"
+                    continue
+                if item is None:
+                    return
+                _seq, wire = item
+                yield wire
         finally:
             get_stream_hub().unsubscribe(run.id, queue)
 

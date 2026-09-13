@@ -62,6 +62,27 @@ def test_close_sends_sentinel_and_marks_closed():
     assert sub2 is not None and sub2[2] is True
 
 
+def test_publish_reopens_closed_buffer():
+    """close 只是「这一轮 producer 收尾」：同一 run 的第二轮流必须能重新订阅。
+
+    真实场景：同一 run 再次审批续跑（第二轮 execute_langgraph_stream）。若 closed
+    永久为真，那一轮里所有 resume 都会拿到「已结束」而无法跟随。
+    """
+    hub = RunStreamHub()
+    hub.publish("run-1", "event: a\ndata: {}\n\n", 1)
+    hub.close("run-1")
+
+    hub.publish("run-1", "event: b\ndata: {}\n\n", 2)
+
+    sub = hub.subscribe("run-1", after_seq=0)
+    assert sub is not None
+    backlog, queue, closed = sub
+    assert closed is False, "第二轮流开始后必须重新可订阅"
+    assert [seq for seq, _w in backlog] == [1, 2], "窗口里上一轮的帧仍可重放"
+    hub.publish("run-1", "event: c\ndata: {}\n\n", 3)
+    assert queue.get_nowait()[0] == 3
+
+
 def test_subscribe_unknown_run_returns_none():
     assert RunStreamHub().subscribe("ghost", 0) is None
 

@@ -254,7 +254,7 @@
 
 目标：让 SSE 续传在**进程重启后仍成立**、为多实例铺路；把「run 还活着吗」从四处启发式收敛为租约。
 
-**分三片推进（每片独立可验证，勿合并）：**
+**分三片推进（每片独立可验证，勿合并）** —— 三片均已于 2026-09-13 完成（第 1/2/3 片见下）：
 
 - [x] **第 1 片 · 帧表基础设施（已完成 2026-09-13，commit `f9a8972`）**：`run_stream_frame(id, run_id, seq, wire, created_at)` + 迁移 `20260913_000200`（唯一索引 `(run_id,seq)`、`created_at` 索引）+ `crud/run_stream_frame.py`（append/list_after/latest_seq/prune_run/prune_older_than）+ 10 条测试。**未接线**，不改变任何现有行为。
   - 与 `runevent` 的分工（模型 docstring 已写明）：runevent = 永久审计账本（里程碑、只追加不删）；本表 = 瞬态传输缓冲（含 token 级增量），run 终态即清。
@@ -267,14 +267,17 @@
   - **实测验证**（`scripts/e2e_hitl_check.py` 真实 HTTP + 真实 LLM）：run `43fada9c…` 落库 1910 行，seq 连续 1→1910、无重号、`id:` 行与 seq 全量一致、终帧为 `message.done`（证明尾部刷净生效）；`1910 = 1906 delta + 1 task.started + 1 task.completed + 1 artifact.generated + 1 message.done`，与线上事件数逐条对齐。
   - 新增 18 条测试（`tests/test_frame_recorder.py`）+ hub 测试改为显式传 seq。全量 **283 passed**。
   - **原设计（保留作对照，勿再照此实现）**：~~token 级帧必须合并写（~200ms 一批，一帧可含多条 SSE 事件，seq 记其中最后一条）~~。
-- [ ] **第 3 片 · 读取端切换 + 清理 + 删旧件**：
-  - `/chat/{thread_id}/stream/resume` 改为：先 `list_frames_after(last_event_id)` 重放库中帧，再跟随实时（内存 hub 或 DB 轮询；单实例下前者即可，NOTIFY 留到多实例）。
-  - **读端切换时必须处理两个已知坑**（2026-09-13 读代码时发现，属既有行为、非本片引入）：
-    1. **`hub.closed` ≠ run 结束**。`close()` 只是「这一轮 producer 收尾」，而同一 run 可以有第二轮流（第二次审批续跑）。当前 `subscribe()` 见 `closed=True` 会返回**空 backlog + 立即结束**，于是第二轮期间任何 resume 都拿不到（含 hub 里已有的 backlog）。读端不能用它判断终态，终态应看 `AgentRun.status`。
-    2. **首轮流（`handle_langgraph_stream`）根本不经过 hub**，因此没有 `id:` 行、前端 `lastSeq` 恒为 0、续传不会被触发。也就是说目前**可续传的只有「批准之后」那一段**。要么把首轮也接到同一发布出口（推荐，改动小且让语义统一），要么在文档里明确这个边界。
-  - `prune_run_frames` 挂到既有 checkpoint 清理时机（`delete_checkpoints_for_thread` 的三处调用点：正常收尾 / 驳回 / 取消），并在 `session_cleanup_service` 里加 `prune_frames_older_than` 兜底。
-  - 全部生效后才删除 `stream_hub`；删除前它仍是实时跟随的唯一通道。
-  - **验证方式**：e2e 脚本 + 「跑复杂任务到一半重启后端 → 前端按 last_event_id 续传仍拿到完整产出」的手工用例（这条是第 3 片的核心验收）。**注意**：进程重启会让 producer 一起消失（单进程内跑图），所以「重启后续传」能拿到的是**已落库的那一段**；若要拿到完整产出，前提是 run 能被重新驱动（决定 2 的回收/续跑），否则应把验收改成「重启后按 last_event_id 仍能拿到重启前的完整输出，而后端不报错、前端不悬挂」。
+- [x] **第 3 片 · 读取端切换 + 清理（已完成 2026-09-13，commit `待填`）**：
+  - **读取端**：`/chat/{thread_id}/stream/resume` 现在是「缺口补放 → 内存 backlog → 跟随实时」。补放只在**确有缺口**时查库（`backlog[0].seq > last_event_id + 1`，即客户端落后于内存窗口），逻辑在 `services/chat/frame_replay.py`，无缺口时零查询。
+    - **实现选择**：不是原计划的「先无条件重放库中帧、再跟随」——那样会与内存 backlog 重叠，得靠 `max()` 去重；改成「只在缺口处查库」后两段天然不重叠，且热路径（客户端没落后，绝大多数）一次库都不查。
+    - **`closed` 一律 410**：缓冲关闭 = 没有可跟随的实时通道。此时只回放库里那一段再结束的话，前端会把「没有完成标记的关闭」当成回答被截断而报错，比 410 更糟（410 会走既有的刷新路径，终态内容本就在消息表里）。
+    - **同轮顺带修掉一个潜伏 bug**：`close()` 原来会把 `closed` 永久置真，导致同一 run 的**第二轮流**（再次审批续跑）期间所有 resume 都拿「已结束」。现在 `publish` 会重新打开缓冲（旧订阅者已收到哨兵，不受影响），并补了回归测试。
+  - **清理**：新增 `utils.db.cleanup_terminal_run(thread_id, run_ids)` = checkpoint + SSE 传输帧一起清，**五个终态调用点全部改走它**（正常收尾 / 驳回 / 取消 / 审批续跑完成 / 线程过期与僵尸回收）。理由：两者生命周期一致，分散调用迟早有人只清一半。`session_cleanup_service` 另加 `prune_frames_older_than(24h)` 兜底。
+  - **决定不删 `stream_hub`**（原计划写的是「全部生效后才删除」）：它仍是**实时跟随**的唯一通道。帧持久化解决的是「重放的前缀是否完整」，跟随实时若改成 DB 轮询，只会更慢更吵，且真正要外置缓冲得等 LISTEN/NOTIFY（多实例）那一批。所以本片的收尾是「hub 的角色收窄为纯广播 + 实时跟随」，`MAX_EVENTS_PER_RUN` 不再决定续传完整性（它只圈定内存窗口）。
+  - **实测验证**（把 `MAX_EVENTS_PER_RUN` 临时缩到 50 再跑真实链路）：一个 `last_event_id=0` 的旁观连接拿到了**从 seq=1 起、逐条连续、共 746 条**（= 库里 696 + 内存 50），证明内存窗口之外那一段确实由 `run_stream_frame` 补回；窗口恢复 2000 后重跑标准 e2e 全通过，且该 run 的帧在终态被清成 0 行（清理钩子实机生效）。
+  - **仍未覆盖的边界（明确记录，非缺陷）**：
+    1. **首轮流（`handle_langgraph_stream`，即批准之前的规划阶段）压根不经过 hub** → 没有 `id:` 行、前端 `lastSeq` 恒为 0、不会触发续传。推荐后续单独做一小批：把它的两个 `yield event_str` 接到同一发布出口、并在生成器收尾处 `finish_blocking`（改动小但碰的是最热路径，需独立验证）。
+    2. **进程重启后 run 已死**（单进程跑图，producer 随进程消失）：此时只能重放已落库的一段，没有可跟随的流，所以端点返回 410 交由前端刷新。要拿到「完整产出」的前提是 run 能被重新驱动 —— 那是**决定 2**（租约/回收）的事，不在本片。因此核心验收的准确表述是：**重启后按 `last_event_id` 仍能拿到重启前的完整输出，且后端不报错、前端不悬挂**。
 - [ ] **决定 2 · run 租约**：`run_lease(run_id, owner, lease_expires_at, attempt)` + supervisor 续租/回收，替换心跳 + 清理循环 + 活跃互斥 + in-flight 去重四处启发式。
   - **注意**：这四处分别服务不同语义（存活可见性 / 僵尸回收 / 并发互斥 / 请求去重），替换前要逐个确认新机制真的覆盖，不能只图"少一个机制"。且它们都在**已验证过的取消/超时路径**上，改动需重跑 e2e。
 
@@ -384,6 +387,7 @@
 - **批次 A**：`pytest` + `tsc` 全绿；简单消息流式正常；复杂任务到审批页正常。
 - **批次 B**：五条特征测试（resume / revise / cancel-during-wait / 幂等重放 / 审批期超时）通过；checkpoint 不随消息线性增长。
 - **批次 C**：含并行层的计划跑通；审批页可见分层；单分支失败可降级；限流上限可配。
+- **批次 D**：`run_stream_frame` 有帧落库且终态被清；续传在「客户端落后于内存窗口」时仍拿到完整输出（缺口由库里帧补回）；重启后按 `last_event_id` 能拿到重启前的完整输出且不报错、不悬挂。
 - **通用**：`plan.thinking` 事件、失败兜底语义、工具错误话术三条不回归。
 
 ---

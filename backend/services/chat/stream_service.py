@@ -384,12 +384,12 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             # 传输级完成标记：前端据此区分"正常结束"与"异常断流"
             yield "data: [DONE]\n\n"
 
-            # async-with（图连接）退出后清理本次运行的隔离线程 checkpoint：
-            # 图的最终 checkpoint 写入要等到连接归还时才全部落地，删除必须放在
-            # 此处（放在 with 内会"删后复现"，实测如此）
-            from utils.db import delete_checkpoints_for_thread
+            # async-with（图连接）退出后清理本次运行的瞬态数据（checkpoint +
+            # SSE 传输帧）：图的最终 checkpoint 写入要等到连接归还时才全部落地，
+            # 删除必须放在此处（放在 with 内会"删后复现"，实测如此）
+            from utils.db import cleanup_terminal_run
 
-            await delete_checkpoints_for_thread(thread_id, [agent_run.id])
+            await cleanup_terminal_run(thread_id, [agent_run.id])
 
         from services.chat.run_lifecycle import sse_stream_headers
 

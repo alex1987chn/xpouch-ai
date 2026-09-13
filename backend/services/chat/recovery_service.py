@@ -173,10 +173,10 @@ class RecoveryService:
             create_user_message(self.db, thread_id=thread_id, content=trimmed)
             logger.info(f"[HITL RESUME] 驳回反馈已落库（{len(trimmed)} 字）")
 
-        # 清理 checkpoints（原始 + isolated 两种格式；单一实现在 utils/db）
-        from utils.db import delete_checkpoints_for_thread
+        # 驳回即终态：清理 checkpoints（原始 + isolated 两种格式）+ SSE 传输帧
+        from utils.db import cleanup_terminal_run
 
-        await delete_checkpoints_for_thread(thread_id, [run_id])
+        await cleanup_terminal_run(thread_id, [run_id])
 
         # 更新 ExecutionPlan
         execution_plan = await self._cancel_execution_plan(run_id)
@@ -386,10 +386,10 @@ class RecoveryService:
         )
         self.db.commit()
 
-        # 取消即终态：清理本次运行的隔离线程 checkpoint
-        from utils.db import delete_checkpoints_for_thread
+        # 取消即终态：清理本次运行的隔离线程 checkpoint + SSE 传输帧
+        from utils.db import cleanup_terminal_run
 
-        await delete_checkpoints_for_thread(agent_run.thread_id, [run_id])
+        await cleanup_terminal_run(agent_run.thread_id, [run_id])
 
         return {"status": "cancelled", "message": "运行已取消"}
 
@@ -475,10 +475,10 @@ class RecoveryService:
                     await self._process_collected_artifacts(run_id, stream_queue)
                     await self._update_run_status(run_id, RunStatus.COMPLETED)
 
-                    # run 终态：删除隔离线程 checkpoint + 传输级完成标记
-                    from utils.db import delete_checkpoints_for_thread
+                    # run 终态：清理隔离线程 checkpoint + SSE 传输帧
+                    from utils.db import cleanup_terminal_run
 
-                    await delete_checkpoints_for_thread(thread_id, [run_id])
+                    await cleanup_terminal_run(thread_id, [run_id])
                     yield "data: [DONE]\n\n"
 
                 except asyncio.CancelledError:

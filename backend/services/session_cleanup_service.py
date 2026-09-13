@@ -17,6 +17,7 @@ from sqlmodel import Session, select
 
 from config import settings
 from crud.agent_run import derive_thread_status_from_run_status, mark_run_timed_out_by_id
+from crud.run_stream_frame import prune_frames_older_than
 from database import engine
 from models import AgentRun, ExecutionPlan, RunStatus, Thread, ThreadStatus
 from utils.logger import logger
@@ -25,6 +26,9 @@ from utils.time import utc_now_naive
 THREAD_RETENTION_DAYS = settings.thread_retention_days
 STALE_RUNNING_THREAD_MINUTES = max(5, settings.request_timeout_seconds // 60)
 SESSION_CLEANUP_INTERVAL_SECONDS = settings.session_cleanup_interval_minutes * 60
+# SSE 传输帧的兜底保留时长：正常路径在 run 终态就清（utils.db.cleanup_terminal_run），
+# 这里只兜「异常结束没走到终态清理」的残留（帧本身只服务断线重放，无需久留）。
+RUN_FRAME_RETENTION_HOURS = 24
 
 
 def _purge_thread(session: Session, thread: Thread) -> list[str] | None:
@@ -138,10 +142,14 @@ def _cleanup_once() -> dict[str, Any]:
         else:
             session.rollback()
 
+        # TTL 兜底：终态清理没跑到的残留帧（帧只服务断线重放，无需久留）
+        pruned_frames = prune_frames_older_than(session, RUN_FRAME_RETENTION_HOURS)
+
     return {
         "stale_run_timeout": stale_run_timeout,
         "stale_running_reset": stale_running_reset,
         "expired_deleted": expired_deleted,
+        "pruned_frames": pruned_frames,
         "checkpoint_targets": checkpoint_targets,
         "retention_days": THREAD_RETENTION_DAYS,
         "stale_running_minutes": STALE_RUNNING_THREAD_MINUTES,
@@ -163,13 +171,14 @@ async def run_session_cleanup_loop() -> None:
                 stats["stale_run_timeout"]
                 or stats["stale_running_reset"]
                 or stats["expired_deleted"]
+                or stats["pruned_frames"]
             ):
                 logger.info("[SessionCleanup] 完成一次清理: %s", stats)
             # run 终态/线程删除后清理对应 checkpoint（LangGraph 无自动 TTL）
             for target_thread_id, run_ids in stats.get("checkpoint_targets", []):
-                from utils.db import delete_checkpoints_for_thread
+                from utils.db import cleanup_terminal_run
 
-                await delete_checkpoints_for_thread(target_thread_id, run_ids)
+                await cleanup_terminal_run(target_thread_id, run_ids)
         except Exception as exc:  # noqa: BLE001
             logger.warning("[SessionCleanup] 清理执行失败: %s", exc)
         await asyncio.sleep(SESSION_CLEANUP_INTERVAL_SECONDS)

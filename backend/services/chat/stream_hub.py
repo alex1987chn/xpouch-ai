@@ -27,7 +27,9 @@ from collections import OrderedDict
 
 from utils.logger import logger
 
-# 单 run 缓冲的事件条数上限（超出即丢弃最旧，重连时若 last_seq 早于最旧则 410）
+# 单 run 缓冲的事件条数上限（超出即丢弃最旧）。
+# 注意：这不影响续传的完整性——更早的帧在 run_stream_frame 里，resume 端点会用
+# 它把「客户端落后于本窗口」的缺口补上（见 services/chat/frame_replay.py）。
 MAX_EVENTS_PER_RUN = 2000
 # 同时保留缓冲的 run 数上限（LRU）
 MAX_TRACKED_RUNS = 100
@@ -85,6 +87,11 @@ class RunStreamHub:
                 while len(self._runs) > self._max_runs:
                     self._runs.popitem(last=False)
             self._runs.move_to_end(run_id)
+            # 有新的帧 = 这个 run 又有了一轮流，重新打开缓冲。
+            # `close()` 的语义只是「**这一轮** producer 收尾」，而同一 run 可以有
+            # 第二轮（再次审批续跑）；若让 closed 永久为真，那一轮期间所有
+            # resume 都会拿到「已结束」而无法跟随（旧订阅者已收到哨兵，不受影响）。
+            buf.closed = False
             if seq <= buf.last_seq:
                 logger.warning(
                     "[RunStreamHub] seq 非递增：run=%s last=%d 本次=%d", run_id, buf.last_seq, seq
