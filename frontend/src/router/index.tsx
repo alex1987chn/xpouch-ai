@@ -27,6 +27,7 @@ import {
   WorkbenchPageWrapper
 } from './wrappers'
 import { LoadingFallback } from './components/LoadingFallback'
+import { NotFoundRedirect } from './components/NotFoundRedirect'
 
 // 路由懒加载 - 代码分割优化（chunk 失效自动刷新拿新构建）
 const WorkbenchLayout = lazyWithReload(() => import('@/pages/workbench/WorkbenchLayout'))
@@ -83,7 +84,9 @@ export const router = createBrowserRouter([
       },
       {
         path: '*',
-        element: <Navigate to="/" replace />
+        // 未知路径仍回工作台，但**留一条日志**（见 NotFoundRedirect）：裸 Navigate 会让
+        // 「路径没匹配上」和「真的回了首页」在现象上完全无法区分
+        element: <NotFoundRedirect />
       }
     ]
   },

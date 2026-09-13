@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
 import { useQueryClient } from '@tanstack/react-query'
+import { FileQuestion } from 'lucide-react'
 
 import { useChat } from '@/hooks/useChat'
 import { useSessionRestore } from '@/hooks/useSessionRestore'
@@ -88,7 +89,7 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
     setInputMessage: setInputValue,
   } = useChat({ threadUrlBase: '/workbench', onStreamInterrupted: handleStreamInterrupted })
 
-  const { isRestored, isLatestRunControllable, latestRunId, restore: restoreSession } =
+  const { isRestored, isMissingSession, isLatestRunControllable, latestRunId, restore: restoreSession } =
     useSessionRestore({ enabled: !!threadId && !isNewConversation })
 
   // 挂断在途流（真实线程切换时）：只 abort 前端 SSE——服务端任务继续跑完，
@@ -239,19 +240,46 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
         )}
       </div>
 
-      {/* 对话流（消息自取 store，含输入台/审批卡/HITL 状态条） */}
-      <ChatStreamPanel
-        input={chatStreamInput}
-        images={pendingImages}
-        documents={pendingDocs}
-        onDocumentsSelected={setPendingDocs}
-        onRemoveDocument={(index: number) => setPendingDocs(prev => prev.filter((_, i) => i !== index))}
-        onImagesSelected={setPendingImages}
-        onRemoveImage={(index: number) => setPendingImages(prev => prev.filter((_, i) => i !== index))}
-        actions={chatStreamActions}
-        resumeExecution={resumeExecution}
-        polling={chatStreamPolling}
-      />
+      {/* 会话不存在（已删除 / 链接有误）：给明确状态，而不是一个看着像首页的空对话。
+          为什么放在这里而不是空态组件里：空态是"这个会话还没有内容"，两者语义不同，混在一起
+          就回到"打开怎么是首页"那个说不清的现象上去了。 */}
+      {isMissingSession ? (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6">
+          <FileQuestion className="h-8 w-8 text-content-muted" />
+          <p className="text-body-sm font-medium text-content-primary">{t('sessionMissingTitle')}</p>
+          <p className="max-w-[420px] text-center text-caption text-content-muted">
+            {t('sessionMissingHint')}
+          </p>
+          <div className="mt-1 flex items-center gap-2">
+            <button
+              onClick={handleRefreshSession}
+              className="rounded-md border border-border-divider px-3 py-1.5 text-caption text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary"
+            >
+              {t('retry')}
+            </button>
+            <button
+              onClick={() => navigate('/workbench')}
+              className="rounded-md bg-accent-brand px-3 py-1.5 text-caption font-medium text-accent-ink transition-colors hover:bg-accent-brand-hover"
+            >
+              {t('backToWorkbench')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* 对话流（消息自取 store，含输入台/审批卡/HITL 状态条） */
+        <ChatStreamPanel
+          input={chatStreamInput}
+          images={pendingImages}
+          documents={pendingDocs}
+          onDocumentsSelected={setPendingDocs}
+          onRemoveDocument={(index: number) => setPendingDocs(prev => prev.filter((_, i) => i !== index))}
+          onImagesSelected={setPendingImages}
+          onRemoveImage={(index: number) => setPendingImages(prev => prev.filter((_, i) => i !== index))}
+          actions={chatStreamActions}
+          resumeExecution={resumeExecution}
+          polling={chatStreamPolling}
+        />
+      )}
     </div>
   )
 }

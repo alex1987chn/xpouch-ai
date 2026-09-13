@@ -27,7 +27,7 @@ import {
   buildThinkingStepsFromTimeline,
   type ThinkingStepLabels,
 } from '@/lib/thinkingStepsFromTimeline'
-import type { Message, SubTask } from '@/types'
+import type { Conversation, Message, SubTask } from '@/types'
 
 interface UseSessionRestoreOptions {
   /** 是否启用恢复 */
@@ -87,8 +87,10 @@ interface UseSessionRestoreReturn {
   isRestored: boolean
   /** 恢复错误 */
   error: Error | null
+  /** 会话在服务端不存在（已删除 / 链接有误）：界面应给出明确状态而非空页面 */
+  isMissingSession: boolean
   /** 手动触发恢复 */
-  restore: () => Promise<void>
+  restore: (force?: boolean) => Promise<void>
   /** 最新运行是否处于可控制状态（running/resuming/waiting_for_approval） */
   isLatestRunControllable: boolean
   /** 最新运行实例 ID */
@@ -124,6 +126,14 @@ export function useSessionRestore(
   const [error, setError] = useState<Error | null>(null)
   const [isLatestRunControllable, setIsLatestRunControllable] = useState(false)
   const [latestRunId, setLatestRunId] = useState<string | null>(null)
+  /**
+   * 会话在服务端不存在（已删除 / 链接有误）。
+   *
+   * 为什么要单独立一个状态：以前这里把「会话不存在（404）」和「新会话还没建好」当成同一件事，
+   * 两者都是一句 debug 日志然后**停在空页面**——用户看到的就是「打开怎么是首页」，
+   * 既没有解释也不会重试（2026-09-13 用户报的现象，与坏路径回首页是同一族）。
+   */
+  const [isMissingSession, setIsMissingSession] = useState(false)
   
   // 防抖相关 refs
   const lastRestoreTimeRef = useRef(0)
@@ -173,11 +183,25 @@ export function useSessionRestore(
     lastRestoreTimeRef.current = now
     setIsRestoring(true)
     setError(null)
+    // 每次恢复都先清掉上一轮的「会话不存在」结论：用户可能是在重试，或切到了别的会话
+    setIsMissingSession(false)
 
     try {
       // 检查本地 localStorage 是否已有数据
       // 从服务端获取会话详情
-      const conversation = await getConversation(threadId)
+      //
+      // 404 先静默重试一次再定性：首条消息刚落库、线程刚创建的那一瞬间，这个 GET 仍可能
+      // 撞上 404（同一进程内的写入可见性 + 网络往返差），把它当成「会话不存在」会误报。
+      // 重试仍 404 才交给外层 catch 定性（那里会给用户一个明确状态，见 isMissingSession）。
+      let conversation: Conversation
+      try {
+        conversation = await getConversation(threadId)
+      } catch (err) {
+        if (!(isStatusError(err) && err.status === 404)) throw err
+        logger.debug('[useSessionRestore] 会话详情 404，1.2s 后重试一次')
+        await new Promise(resolve => setTimeout(resolve, 1200))
+        conversation = await getConversation(threadId)
+      }
       const latestRun = conversation.latest_run
 
       // 🔥 恢复消息（无论简单模式还是复杂模式）
@@ -315,11 +339,17 @@ export function useSessionRestore(
 
       return true
     } catch (err: unknown) {
-      // 🔥 404 错误静默处理：新会话在后端还不存在，这是预期行为
+      // 到这里还 404 = 会话在服务端真的不存在（已删除 / 链接有误）。
+      //
+      // 为什么不能像以前那样"静默当成功"：新会话那条路根本走不到这里——URL 还没有 threadId
+      // 时 `enabled` 就是 false，performRestore 会提前返回。所以能走到 404 的只有「指向一个
+      // 不存在的会话」，而静默返回的后果是页面停在空态、看起来与"打开首页"一模一样，
+      // 且永远不会重试。改成显式状态（isMissingSession）让界面说清发生了什么并给出重试。
       if (isStatusError(err) && err.status === 404) {
-        logger.debug('[useSessionRestore] 会话不存在（新会话），跳过恢复')
-        setIsRestored(true) // 标记为已恢复，避免重复尝试
-        return true
+        logger.warn('[useSessionRestore] 会话不存在或已被删除:', threadId)
+        setIsMissingSession(true)
+        setIsRestored(true) // 结算，避免 effect 反复重试；重试交给界面上的按钮（force）
+        return false
       }
 
       const error = err instanceof Error ? err : new Error(String(err))
@@ -382,6 +412,7 @@ export function useSessionRestore(
   useEffect(() => {
     return () => {
       setIsRestored(false)
+      setIsMissingSession(false)
       setError(null)
       lastRestoreTimeRef.current = 0
     }
@@ -391,6 +422,7 @@ export function useSessionRestore(
     isRestoring,
     isRestored,
     error,
+    isMissingSession,
     restore,
     isLatestRunControllable,
     latestRunId,
