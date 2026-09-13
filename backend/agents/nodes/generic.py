@@ -287,6 +287,22 @@ async def expert_worker_node(
             except (RuntimeError, ValueError) as event_err:
                 logger.warning(f"[GenericWorker] ⚠️ task_started 账本写入提交失败: {event_err}")
 
+        # 任务开始时刻落库（SubTask.started_at）。此前这一列**永远是 NULL**：收尾时
+        # save_expert_execution_result 只写 completed_at/duration_ms，没有开始时刻，
+        # 于是"哪个任务慢、卡了多久"只能靠事件账本反推，直接查库看不到。
+        # 同样只在首次进入时做（工具循环重入不得重打时间戳），且走后台线程——
+        # 节点跑在事件循环里，一次 DB 写不该阻塞流式输出。
+        if task_id:
+            try:
+                from utils.async_task_queue import async_mark_subtask_running, spawn_background
+
+                spawn_background(
+                    async_mark_subtask_running(str(task_id)),
+                    label=f"subtask_running:{expert_type}:{task_id}",
+                )
+            except (RuntimeError, ValueError) as mark_err:
+                logger.warning(f"[GenericWorker] ⚠️ 任务开始时刻落库提交失败: {mark_err}")
+
     # 本分支的固定返回：标记已启动（防 started 重发）+ 产出失败产物时的收口
     base_return: dict[str, Any] = {"worker_started": True}
 

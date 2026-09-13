@@ -76,6 +76,27 @@ def _sync_save_wrapper(
             return False
 
 
+def _sync_mark_subtask_running(task_id: str) -> bool:
+    """在独立线程中把子任务标为 running（顺带落 started_at）。返回是否成功。"""
+    from crud.execution_plan import update_subtask_status
+    from database import Session, engine
+    from models.enums import TaskStatus
+
+    with Session(engine) as new_session:
+        try:
+            updated = update_subtask_status(new_session, task_id, TaskStatus.RUNNING)
+            if updated is None:
+                # 计划可能已被修订替换（旧行不存在）：按"没这条任务"记一条警告即可，
+                # 不是什么异常路径，也不该改前端语义。
+                logger.warning("[AsyncTaskQueue] 任务开始落库跳过：SubTask 不存在 %s", task_id)
+                return False
+            return True
+        except Exception:
+            new_session.rollback()
+            logger.exception("[AsyncTaskQueue] 任务开始时刻落库失败 task_id=%s", task_id)
+            return False
+
+
 def _sync_append_run_event_wrapper(
     *,
     run_id: str,
@@ -108,6 +129,18 @@ def _sync_append_run_event_wrapper(
             logger.exception(
                 "[RunEvent] 后台写入运行事件失败 run_id=%s event=%s", run_id, event_type
             )
+
+
+async def async_mark_subtask_running(task_id: str) -> bool:
+    """把子任务标为 running 并落 started_at（线程池执行同步 DB 写）。
+
+    为什么单独一支而不是塞进 `async_save_expert_result`：开始与结束发生在两个时刻，
+    中间是整段执行（可能几分钟）。开始时刻必须**在任务真正开始时**写下，否则
+    "这个任务跑了多久"永远只能从完成时刻倒推（且跨进程重启就断线）。
+
+    失败只告警不抛：它是可观测性补充，不该因为一次 DB 抖动打断任务执行。
+    """
+    return await asyncio.to_thread(_sync_mark_subtask_running, task_id)
 
 
 async def async_save_expert_result(

@@ -645,8 +645,14 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                 db_subtask.input_data = subtask.get("input_data", {})
                 db_subtask.status = to_task_status(subtask.get("status", GraphTaskStatus.COMPLETED))
                 db_subtask.output_result = subtask.get("output_result")
-                db_subtask.started_at = subtask.get("started_at")
-                db_subtask.completed_at = subtask.get("completed_at")
+                # 时刻字段**只在这两个来源没写过时才补**（`or` 语义，不能直接赋值）：
+                # 真实的 started_at/completed_at/duration_ms 由执行期写入（节点开始时的
+                # async_mark_subtask_running + 收尾的 save_expert_execution_result），
+                # 而这里回填的是图状态里的值——它通常根本没有这两个键，直接赋值会把
+                # 已写好的时刻**清成 NULL**（这正是 started_at 长期为空的第二个原因）。
+                db_subtask.started_at = subtask.get("started_at") or db_subtask.started_at
+                db_subtask.completed_at = subtask.get("completed_at") or db_subtask.completed_at
+                db_subtask.duration_ms = subtask.get("duration_ms") or db_subtask.duration_ms
                 db_subtask.updated_at = utc_now_naive()
                 self.db.add(db_subtask)
                 self.db.flush()
