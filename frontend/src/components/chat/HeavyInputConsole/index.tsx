@@ -173,14 +173,16 @@ export default function HeavyInputConsole({
             />
 
             {/* 圆形发送 / 停止（蓝本 .send / .stop-btn） */}
+            {/* 停止用「柔和危险」配色：与发送键的实心品牌黄形成对照，一眼区分
+                「继续在跑（可中断）」与「可以发送」；深一档的 hover 给可点反馈 */}
             {disabled && onStop ? (
               <button
                 onClick={onStop}
                 aria-label={t('stop')}
                 title={t('stop')}
-                className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-border-hover bg-surface-card text-content-primary transition-colors hover:bg-surface-tint"
+                className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-accent-destructive/35 bg-accent-destructive/12 text-accent-destructive transition-colors hover:bg-accent-destructive/20"
               >
-                <Square className="h-3 w-3" />
+                <Square className="h-3 w-3 fill-current" />
               </button>
             ) : (
               <button

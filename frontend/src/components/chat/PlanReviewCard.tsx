@@ -30,6 +30,7 @@ import {
   useTaskActions,
 } from '@/hooks/useTaskSelectors'
 import { useAddMessageAction } from '@/hooks/useChatSelectors'
+import { useChatStore } from '@/store/chatStore'
 
 interface PlanReviewCardProps {
   threadId: string
@@ -70,8 +71,9 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
   const pendingRunId = usePendingRunId()
   const pendingPlanVersion = usePendingPlanVersion()
   const planRevising = usePlanRevising()
-  const { clearPendingPlan, setIsWaitingForApproval, setPlanRevising, setPendingPlan, updateTasksFromPlan, setMode } = useTaskActions()
+  const { clearPendingPlan, setIsWaitingForApproval, setPlanRevising, setPendingPlan, updateTasksFromPlan, setMode, clearActiveRunId } = useTaskActions()
   const addMessage = useAddMessageAction()
+  const setGenerating = useChatStore((state) => state.setGenerating)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [showTerminateConfirm, setShowTerminateConfirm] = useState(false)
@@ -229,6 +231,9 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
         content: t('planRevisionSubmitted'),
         timestamp: Date.now(),
       })
+      // 修订是后端后台任务，前端没有流在跑：输入台不该停在「生成中」
+      // （与 terminate 同理：isGenerating 若被上游置真，停止键会一直挂着）
+      setGenerating(false)
     } catch (error) {
       // 失败必须恢复审批卡（run 仍处于等待审批）
       if (!isAbortError(error)) {
@@ -237,7 +242,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
     } finally {
       setIsSubmitting(false)
     }
-  }, [threadId, pendingPlanVersion, pendingRunId, setPlanRevising, addMessage, t])
+  }, [threadId, pendingPlanVersion, pendingRunId, setPlanRevising, addMessage, t, setGenerating])
 
   const handleTerminate = useCallback(async () => {
     if (!pendingRunId) {
@@ -272,6 +277,11 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
         content: t('planRejectedMsg'),
         timestamp: Date.now(),
       })
+      // 终止成功 = run 已终态：输入台必须离开「生成中」，停止键回退成发送键。
+      // 此前这里只清了卡片、没人动生成态——若 isGenerating 为真（恢复流程会把
+      // 「可控」run 标成生成中），停止键就一直挂着，用户也发不出新消息。
+      setGenerating(false)
+      clearActiveRunId()
     } catch (error) {
       // 终止失败同样必须恢复审批卡片（后端 run 未取消，仍等待审批）
       setIsWaitingForApproval(true)
@@ -279,7 +289,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
     } finally {
       setIsSubmitting(false)
     }
-  }, [threadId, pendingPlanVersion, pendingRunId, clearPendingPlan, setIsWaitingForApproval, setPlanRevising, setMode, addMessage, t, swallowAbort])
+  }, [threadId, pendingPlanVersion, pendingRunId, clearPendingPlan, setIsWaitingForApproval, setPlanRevising, setMode, addMessage, t, swallowAbort, setGenerating, clearActiveRunId])
 
   if (!isWaitingForApproval) return null
 

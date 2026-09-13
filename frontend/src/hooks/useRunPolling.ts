@@ -241,7 +241,7 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
       logger.info('[useRunPolling] 从 HITL 恢复，继续轮询')
       dispatch({ type: 'HITL_RESUMED' })
     }
-  }, [data, activeRunId, state.isTerminal, state.status, setGenerating, clearActiveRunId, queryClient])
+  }, [data, activeRunId, state.isTerminal, state.status, setGenerating, clearActiveRunId, clearPendingPlan, queryClient])
 
   // 错误处理
   useEffect(() => {
