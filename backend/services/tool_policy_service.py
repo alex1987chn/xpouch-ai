@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from sqlmodel import Session, select
 
@@ -28,9 +28,19 @@ class ToolPolicyOverride:
 
 
 class ToolPolicyService:
+    """工具策略覆盖的进程内缓存（TTL 30s）。
+
+    ⚠️ 时间基准必须与 `utc_now_naive()` 一致（naive UTC）。
+    这里曾写成 `datetime.min.replace(tzinfo=UTC)`（aware），与 naive 的 now 比较
+    会抛 TypeError → `get_overrides()` 每次都失败 → 被 generic 的宽 except 吞掉、
+    记为「工具绑定失败」→ **所有专家的工具调用静默失效**
+    （自引入至 2026-09-13 修复）。naive/aware 混用是本项目已发生多次的坑，
+    见 docs/TARGET-ARCHITECTURE.md 的时区约定。
+    """
+
     def __init__(self) -> None:
         self._cache: dict[tuple[str, str], ToolPolicyOverride] = {}
-        self._cache_expire_at = datetime.min.replace(tzinfo=UTC)
+        self._cache_expire_at = datetime.min  # naive，与 utc_now_naive() 同基准
         self._cache_lock = asyncio.Lock()
 
     async def get_overrides(self) -> dict[tuple[str, str], ToolPolicyOverride]:
@@ -49,7 +59,7 @@ class ToolPolicyService:
     async def invalidate(self) -> None:
         async with self._cache_lock:
             self._cache = {}
-            self._cache_expire_at = datetime.min.replace(tzinfo=UTC)
+            self._cache_expire_at = datetime.min  # naive，见类 docstring
 
     def _load_overrides_sync(self) -> dict[tuple[str, str], ToolPolicyOverride]:
         with Session(engine) as session:

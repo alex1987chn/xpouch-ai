@@ -467,7 +467,16 @@ async def generic_worker_node(
                             blocked.reason,
                         )
                 except Exception as e:
-                    logger.warning(f"[GenericWorker] ⚠️ 工具绑定失败（模型可能不支持工具调用）: {e}")
+                    # 注意措辞：这里捕获的是**绑定过程中的任何异常**，不只是
+                    # 「模型不支持工具调用」。此前文案写成后者，导致一个真实的
+                    # 时区比较异常（见 tool_policy_service）被误读为模型能力问题，
+                    # 工具静默失效数月无人发现。现明确说出降级后果与异常类型。
+                    logger.warning(
+                        "[GenericWorker] ⚠️ 工具绑定失败，专家将**无工具**执行（异常类型 %s）: %s",
+                        type(e).__name__,
+                        e,
+                        exc_info=True,
+                    )
                     llm_to_use = llm_with_config
             else:
                 logger.info("[GenericWorker] ⏭️ 工具调用已禁用（ENABLE_TOOL_CALLING=false）")
