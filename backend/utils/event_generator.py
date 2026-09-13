@@ -75,6 +75,8 @@ class EventGenerator:
                 description=task["description"],
                 sort_order=task.get("sort_order", 0),
                 status=task.get("status", "pending"),
+                # 依赖关系必须透传：前端审批卡回传计划时用的就是它
+                depends_on=task.get("depends_on") or [],
             )
             for task in tasks
         ]

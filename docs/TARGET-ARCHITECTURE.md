@@ -108,11 +108,18 @@
   - **L2 步骤内**（节点内子图，需 `parent_sub_task_id`）：扇出**机械且同质**（搜索工具内部查 5 个引擎合并），或**运行时才知道宽度**（搜索返回 12 条逐条分析）。
 - **代价**：见第 6 节「并行的五个新问题」。
 
-### 决定 6 · 事件 schema 单一真相源 + 生成 TS 类型
+### 决定 6 · 事件 schema 单一真相源 + 生成 TS 类型（**已落地 2026-09-13**）
 
 - **现状**：Python `event_types/events.py` 与前端 TS 类型各自手写。
-- **目标**：Pydantic 为源 → 生成 TS + 校验 + 协议版本号。
-- **理由**：这是「漂移」这类问题最便宜的根治（原 T2 OpenAPI 计划的延伸，优先级应上调）。
+- **已完成**：真相源 = 后端 pydantic 模型（本来就有，`build_sse_event` 就是拿它们构线的），往下一层导出：
+  - `backend/scripts/gen_event_types_ts.py` → `frontend/src/types/events.generated.ts`（模型→TS interface + EventType 联合 + EventPayloadMap；缺 payload 模型直接抛错）。Justfile 有 `gen-event-types` / `check-event-types`。
+  - **闸门一（后端）**：`tests/test_event_types_ts_fresh.py` —— 生成物过期即测试失败，并打印修复命令。
+  - **闸门二（前端）**：`types/events.ts` 对每条手写类型做**字段子集断言**（`Assert<KeysSubset<...>>`）——挡住「前端声明了后端不发送的字段」这类最伤人的漂移。已用假字段做负向验证（tsc 立刻 TS2344）。
+  - **顺带照出一个真问题**：`TaskInfo` 后端没有 `depends_on`、前端一直有 → `plan.created` 从不发送依赖关系。已补模型 + 发射器透传。
+- **已知缺口（两道闸门当前不覆盖，别误以为全覆盖）**：
+  1. **null 与 undefined 的语义差**：后端 `str | None` 生成 `x?: string | null`，前端多写 `x?: string`。对齐它要动一批消费点的空值处理，属独立批次。
+  2. **前端把字段收窄成字面量**：`ArtifactInfo.type` 只列了 5 种，而实际产物类型有 12 种（`lib/artifactPresentation` 的 12 个 + 过滤档）——是前端自己的类型债，修它要顺带把 `type` 的消费者过一遍。
+- **未做**：协议版本号（生成物里带一个 hash/版本，运行时对不上就报警）——等真有多端接入时再加。
 
 ### 决定 7 · 配置缓存去全局化（**第一刀已完成 2026-09-13**）
 

@@ -236,6 +236,70 @@ export interface HumanInterruptData {
 export type HumanInterruptEvent = SSEEvent<HumanInterruptData, 'human.interrupt'>
 
 // ============================================================================
+// 协议一致性闸门（决定 6）
+//
+// 真相源是后端的 pydantic 事件模型（backend/event_types/events.py），由
+// backend/scripts/gen_event_types_ts.py 生成 events.generated.ts，后端另有 pytest
+// 断言该生成物始终最新。下面这组断言挡住**最伤人的那一类漂移**：前端声明了后端
+// 根本不发送的字段（字段改名/删除后前端照样编译、运行期读到 undefined）。
+// 真出现过：TaskInfo 的 depends_on 前端一直有、后端一直没发。
+//
+// 尚未覆盖（已知缺口，写进 docs/TARGET-ARCHITECTURE.md 决定 6）：
+// - null 与 undefined 的语义差（后端 `str | None` 生成 `x?: string | null`，前端
+//   多写成 `x?: string`）——对齐它要动一批消费点的空值处理；
+// - 前端把字段收窄成字面量联合（如 ArtifactInfo.type 只列 5 种，实际产物类型有
+//   12 种）——那是前端自己的类型债，另行修。
+// ============================================================================
+
+import type * as Generated from './events.generated'
+
+/** 编译期断言：T 必须为 true，否则 tsc 报错 */
+type Assert<T extends true> = T
+/** 手写类型声明的字段必须都在生成类型里 */
+type KeysSubset<Handwritten, FromGenerated> = keyof Handwritten extends keyof FromGenerated
+  ? true
+  : false
+
+type _TaskInfo = Assert<KeysSubset<TaskInfo, Generated.TaskInfo>>
+type _PlanCreated = Assert<KeysSubset<PlanCreatedData, Generated.PlanCreatedData>>
+type _PlanStarted = Assert<KeysSubset<PlanStartedData, Generated.PlanStartedData>>
+type _PlanThinking = Assert<KeysSubset<PlanThinkingData, Generated.PlanThinkingData>>
+type _TaskStarted = Assert<KeysSubset<TaskStartedData, Generated.TaskStartedData>>
+type _TaskProgress = Assert<KeysSubset<TaskProgressData, Generated.TaskProgressData>>
+type _TaskCompleted = Assert<KeysSubset<TaskCompletedData, Generated.TaskCompletedData>>
+type _TaskFailed = Assert<KeysSubset<TaskFailedData, Generated.TaskFailedData>>
+type _ArtifactInfo = Assert<KeysSubset<ArtifactInfo, Generated.ArtifactInfo>>
+type _ArtifactGenerated = Assert<KeysSubset<ArtifactGeneratedData, Generated.ArtifactGeneratedData>>
+type _MessageDelta = Assert<KeysSubset<MessageDeltaData, Generated.MessageDeltaData>>
+type _MessageThinking = Assert<KeysSubset<MessageThinkingData, Generated.MessageThinkingData>>
+type _MessageDone = Assert<KeysSubset<MessageDoneData, Generated.MessageDoneData>>
+type _RouterStart = Assert<KeysSubset<RouterStartData, Generated.RouterStartData>>
+type _RouterDecision = Assert<KeysSubset<RouterDecisionData, Generated.RouterDecisionData>>
+type _Error = Assert<KeysSubset<ErrorData, Generated.ErrorData>>
+type _HumanInterrupt = Assert<KeysSubset<HumanInterruptData, Generated.HumanInterruptData>>
+
+/** 上面这组断言只做编译期校验，导出以免被 noUnusedLocals 误报 */
+export type ProtocolConformanceAnchors = [
+  _TaskInfo,
+  _PlanCreated,
+  _PlanStarted,
+  _PlanThinking,
+  _TaskStarted,
+  _TaskProgress,
+  _TaskCompleted,
+  _TaskFailed,
+  _ArtifactInfo,
+  _ArtifactGenerated,
+  _MessageDelta,
+  _MessageThinking,
+  _MessageDone,
+  _RouterStart,
+  _RouterDecision,
+  _Error,
+  _HumanInterrupt,
+]
+
+// ============================================================================
 // 联合类型
 // ============================================================================
 

@@ -69,6 +69,10 @@ class TaskInfo(BaseModel):
     description: str
     sort_order: int
     status: str = "pending"
+    # 2026-09-13：此前**没有这个字段**，而前端类型里一直声明着它 → plan.created
+    # 从不发送依赖关系（前端读到 undefined）。是「前端手写类型 vs 后端模型」的
+    # 一致性断言（frontend/src/types/events.ts）把它照出来的。
+    depends_on: list[str] = []
 
 
 class PlanCreatedData(BaseModel):
