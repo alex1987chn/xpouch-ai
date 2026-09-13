@@ -416,11 +416,20 @@ export default function ChatStreamPanel({
       </div>
 
       {/* v3.4.0 轮询状态栏（输入框上方） */}
-      {/* 🔥 修复：HITL 审核时不显示轮询状态栏，避免与 PlanReviewCard 重复提示 */}
-      {/* hasError 时也必须显示：否则「连接失败，请刷新重试 + 刷新按钮」这条
-          分支永远不可见（ERROR_OCCURRED 已把 isPolling 置 false） */}
+      {/* 三种不显示的情形：
+          1) HITL 审核中——与 PlanReviewCard 重复提示；
+          2) 本端有活流（isGenerating）——流就是事实来源，此时轮询栏只会与正在
+             推进的任务界面打架（实测：批准后任务已在跑，底部还挂着
+             「正在恢复任务连接…(Resuming)」+ 刷新按钮）；
+          3) 都没有时自然不显示。
+          hasError 时仍必须显示：否则「连接失败，请刷新重试 + 刷新按钮」这条
+          分支永远不可见（ERROR_OCCURRED 已把 isPolling 置 false）。 */}
       <RunPollingBar
-        show={((polling?.isPolling ?? false) || (polling?.hasError ?? false)) && !isWaitingForApproval}
+        show={
+          ((polling?.isPolling ?? false) || (polling?.hasError ?? false)) &&
+          !isWaitingForApproval &&
+          !isGenerating
+        }
         status={polling?.status ?? null}
         isHITLPaused={polling?.isHITLPaused ?? false}
         hasError={polling?.hasError ?? false}
