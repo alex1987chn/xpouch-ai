@@ -183,8 +183,17 @@
 - [ ] **B0 · 前置特征测试（零行为变更，可最先做）**：为 resume / revise / cancel-during-wait / 幂等重放 / 审批期超时五条路写测试，锁住「迁移不该改变的东西」。当前只有 `transform_langgraph_event` 的 delta 门控 10 条。
 - [ ] **B1 · 决定 3 节点纯化**：`commander_node` 的 ExecutionPlan/SubTask 写入移到提交步，幂等化（确定性 id + upsert）。
   验收：计划创建结果与迁移前逐字段比对一致。
-- [ ] **B2 · 决定 4 Plan 单真相**：`Plan`/`PlanStep` canonical 模型；四套形状（`commander.Task` / `SubTaskCreate` / `TaskInfo` / 图状态 dict）收成一套 + 边界显式转换；**预埋 `execution_mode`**（LLM schema 新增该字段，默认 sequential → 行为不变）。
-  验收：字段名不再有两套写法（`dependencies`/`depends_on`、`task_id` 双身份）；`execution_mode` 能从 LLM 输出贯通到 `SubTask` 行。
+- [x] **B2 · execution_mode 贯通预埋（已完成 2026-09-13，commit `e136b7e`）**：LLM 计划 schema 新增 `execution_mode`（默认 sequential，提示词有意不动 → 行为不变）；commander 三处硬编码 `"sequential"` 改为由数据派生；抽出纯函数 `derive_plan_execution_mode`。新增 `tests/test_execution_mode_chain.py`（8 条）。
+  **范围收紧**：本批**未**做「四套计划形状收敛为 canonical 模型」——因 B3 会重组 commander/审批/分发节点，重组前改同一批代码等于做两遍，且在高风险改动前引入 churn。全量收敛推迟为 **B4**（见批次末）。
+  B4 待办：`Plan`/`PlanStep` canonical 模型；`dependencies` ↔ `depends_on` 单一写法；`SubTask` 补存放 Commander 语义 `task_id` 的字段（现为双身份，靠 `expert_results` 里 db_uuid 双保险匹配）；用测试断言三条转换链字段一致。
+- [ ] **B3 实现依据（2026-09-13 本地实测，环境 langgraph 1.2.11）**——动手前已验，勿再重复试探：
+  | 能力 | 实测结论 |
+  |---|---|
+  | 首跑暂停 | 中断经 `on_chain_stream` 的 `__interrupt__` 浮现；`snapshot.next == (中断节点名,)`，且 **`snapshot.tasks[0].interrupts` 给出结构化 `Interrupt` 对象**（含 value payload 与 id）——这是取代 `_should_wait_for_human_approval` 启发式的原生判据 |
+  | 恢复 | `astream_events(Command(resume=值), config)` 有效；中断节点**从头重跑**，`interrupt()` 此时返回 resume 值并继续 |
+  | 上游节点 | **不重跑**（checkpoint 中已有结果）——故 `commander_node` 的写库副作用不会被恢复触发，决定 3 非 B3 阻塞项（已在上文修正） |
+  | 事件格式 | 恢复流与首跑流**同构** → 服务层「首跑循环」与「恢复循环」可合并为一个函数，仅 input 不同（`None` vs `Command(resume=)`）；这直接消掉现外层 while 的一半复杂度 |
+  | 中断 payload | 可直接从 `Interrupt.value` 取计划数据，不必再手工构造 `human.interrupt` 事件 |
 - [ ] **B3 · interrupt 原生化（原子，不可再拆）**，四件事必须同一 commit：
   1. `interrupt()` + `Command(resume=)` 替换 `interrupt_before=["expert_dispatcher"]`
   2. 审批独立成 `plan_approval` 节点；任务切换回路 `generic → expert_dispatcher` **绕过**它（拓扑承载语义，不靠运行时判断）
@@ -192,6 +201,9 @@
   4. 恢复路径改为 `Command(resume=审批结果)`
   → 一次性消掉：外层 while、`_should_wait_for_human_approval` 启发式、`HumanMessage` 注入、`isolated_thread_id`、`run_max_graph_loops`（原生 `recursion_limit` 接管）、checkpoint 线性膨胀。
   **单独改其中任何一件都会造出坏掉的中间态**（例如只换 `interrupt()` 但 thread 仍是 `{thread}_{run}`，恢复时找不到 checkpoint）。
+  **实现要点**：
+  - `plan_approval` 节点内代码顺序必须是「**先 `interrupt()`、后应用裁决结果**」——`interrupt()` 之前的代码在恢复时会重跑一遍，之后的只跑一次。计划的 approve 合并（保留已完成任务的 `output_result`、清理依赖、重算索引）应放在 `interrupt()` 之后，或更干净地：随 `Command(resume={"action":"approve","tasks":[...]})` 传入、由节点应用，从而替代现有 `_apply_updated_plan` 的 `aupdate_state` 路径。
+  - **checkpoint 生命周期随 thread 对齐而变**：恢复依赖同一 `thread_id` 的 checkpoint，因此终态清理**不得删除等待审批中的线程 checkpoint**（现 `delete_checkpoints_for_thread` 在正常收尾路径被调用，需加「非等待态」守卫）。
 - [ ] **已拍板（2026-09-13）：修订不图内化，保留后台任务。**
   - 理由：拆开看是两件事——**图只负责「停在审批点等人」，修订是对计划数据的副作用，不是图的一次转移**。
   - 形状：图 pause 在 `plan_approval` 的 `interrupt`；`approve` → `Command(resume)` 从该点继续；`revise` → API 立即返回 + 后台任务跑 LLM 出 v(n+1) 落库与账本，前端轮询到新版本重亮审批卡。
@@ -200,6 +212,17 @@
   - 后续可选：若想给修订过程做实时进度，可给后台任务单独开 SSE，不必回到图内。
 
 **批次 B 总验收**：五条特征测试通过；checkpoint 表行数不再随消息线性增长。
+
+### 批次 B4 · Plan 全量收敛（**须在 B3 之后**）
+
+从 B2 推迟而来。理由：B3 会重组 commander / `plan_approval` / 分发节点，**在重组前改同一批代码等于做两遍**，且会在高风险改动前引入 churn。
+
+- [ ] `Plan` / `PlanStep` canonical 模型：四套形状（`commander.Task` / `SubTaskCreate` / `TaskInfo` / 图状态 dict）收成一套，边界处显式转换
+- [ ] `dependencies` ↔ `depends_on` 收敛为单一写法
+- [ ] `SubTask` 补存放 Commander 语义 `task_id`（如 `task_0`）的字段——现为「双身份」，靠 `expert_results` 里 db_uuid 双保险匹配（`generic.py` 的匹配逻辑随之简化）
+- [ ] 用测试断言三条转换链（LLM→DTO、DTO→图状态、图状态→事件 payload）的字段一致——历史上已因字段名漂移静默丢过数据
+
+**验收**：改任一字段名只会影响一处；三条转换链有一致性测试。
 
 ### 批次 C · 并行（决定 5 + 决定 8）
 
