@@ -5,6 +5,56 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-09-13] - v3.5.1 目标架构落地：LangGraph 原生化、波次并发与运行租约
+
+路线与批次记录见 [docs/TARGET-ARCHITECTURE.md](./docs/TARGET-ARCHITECTURE.md)。
+
+### 新增功能
+
+- **HITL 计划修订二期 · 修订对照视图**：修订后的 v(n+1) 与原计划的差异可直接对照查看（沿用既有三动作契约：后台修订任务 + 前端轮询重亮裁决卡）
+- **同层任务并发（波次扇出）**：复杂任务执行从「逐任务串行」升级为「按依赖分波并发」——专家执行抽为子图、以 `Send` 扇出同层就绪任务、波次判定补齐悬空依赖容忍/传递阻塞/环检测三分类；管理端「系统状态」新增**同层并发上限**配置项（与日 token 配额并排，默认 1 = 串行，env `GRAPH_MAX_CONCURRENCY` 仅兜底）
+- **运行租约（run lease）**：run 从「HTTP 请求」变成带租约的持久作业——`owner` / `lease_expires_at` / `attempt` 三字段，进程内 supervisor 只续租本进程的活跃 run；此前分散在四处的「这个 run 还活着吗」启发式收敛为唯一机制（迁移 `20260913_000300_run_lease`）
+- **SSE 帧持久化 + 续传读端**：流式帧按 run 级号段落库（~200ms 批量提交），断开后 `stream/resume` 从持久帧补放（迁移 `20260913_000200_run_stream_frame`）；修好「断流后前端真正接管」——此前「后台跑完 + 轮询刷新」只写在文档里
+- **事件协议单一真相源**：后端事件模型生成前端 TS（`frontend/src/types/events.generated.ts`，`just gen-event-types`），配两道漂移闸门（pytest 一条 + `just check-event-types`）；协议逐字段对齐，闸门口径升级为「形状全等」
+- **思考面板按专家分组**：思维过程不再是一串无主步骤——相邻同专家步骤合并成组，组头给专家名/状态/步数，「谁在干活」一眼可见（打样阶段）
+- **思考步骤内联产物**：任务产出的产物卡片直接挂到对应步骤行，点击复用既有查看器；复杂任务执行期间不再「空白等待」
+- **思考面板从运行事件账本重建**：刷新/重连后不再丢（顺带修账本里 `task_started` 重复写）
+- **专家名册接口** `GET /api/experts/catalog`（只返回 key + 显示名）：前端专家显示名改为 名册 → 智能体 → 静态表 → 原文 的解析顺序，改名即时生效，杀掉会漂移的第二份映射
+- **无效会话不再静默空态**：打不开的会话给出明确提示（标题 + 说明 + 重试 / 回工作台），未知路径回工作台并留痕
+
+### 变更
+
+- **审批机制迁 LangGraph 原生 `interrupt()`**（批次 B3a）：一次性拆掉外层 while 循环、`_should_wait_for_human_approval` 启发式、`HumanMessage` 注入与 `run_max_graph_loops`（循环保护交还原生 `recursion_limit`）
+- **计划（Plan）收敛为 canonical 形状**（批次 B4）：任务字段单一写法、依赖字段单一写法，子任务创建与依赖解析收敛为唯一实现；计划复用幂等化、UUID 默认工厂统一、preview id 接线修正；一 run 一计划（产物不再随任务替换被删）
+- **计划生成改用结构化输出**：删除手抽 JSON 的 ~90 行胶水
+- **前端「本地副本」全面退役**：删除任务副本（tasks Map / artifact slice / 三组死状态）、服务端数据本地副本与对账启发式、自研 persist（toast 改用 `useSyncExternalStore`）
+- **配置缓存去全局化**（决定 7 第一刀）：删掉注册表改全局 epoch 失效；散落的 `os.getenv` 外飞地收编进 `Settings`
+- **LLM 调用超时**：单次调用超时 `LLM_CALL_TIMEOUT_SECONDS`（默认 420s，专家按任务级失败、commander/aggregator 快速失败）；工具超时与重试改为按**单个** `tool_call` 计
+- 「静默降级」清扫：C 类 11 处（含 2 处 rollback、1 处聚合拆分）与 3 处掩盖真缺陷的宽 except
+- `RUN_MAX_GRAPH_LOOPS` 随 B3a 移除（README 与 .env 说明同步）
+
+### 修复
+
+- **复杂任务跑完审批卡不出现、需刷新（用户实测报出）**：SSE 帧 id 是 run 级序号，前端却按**页面级**去重——跨 run 撞号使第二个 run 的头部帧（含审批中断）被静默丢弃；去重作用域改为 run / 流会话
+- **停在审批点的 run 被租约回收（P0 回归，本次改造自己引入）**：租约把「停在审批等人」误判为「进程失联」清掉——存活判定补 HITL 例外
+- **刷新后思考面板的「账本重建」从未生效**：`latest_run` 缺 `started_at` 字段，重建路径根本没跑到
+- **恢复消息时间戳差一个时区**：裸 `new Date(iso)` 把 UTC naive 当本地时间解析
+- **会话列表状态标签不对账**：切走再回来看不到最新状态——恢复可见性时重取，打开会话时失效一次
+- **刷新后点「批准」被本地挡掉**：终态 run 的审批守卫、过期审批卡自动撤下
+- **复杂任务结果出现两条 / 计划正文被覆盖**：复杂模式消息改为单写入者；批准恢复时把占位消息 id 传给后端
+- **每条消息各渲染自己的思考面板**：批准后规划内容不再消失
+- **规划阶段断连会杀任务**：改为不杀；审批卡可由 resume 重放回来
+- **工具调用静默失效**：时区混用致 `get_overrides` 必抛异常
+- **生产 500（含旧消息的会话必现）**：`extra_data` 字符串形态兼容
+- **生产错误日志被吞**：进程内 alembic 迁移的 `fileConfig` 停用了既有 logger；另修迁移不再清空应用日志 handler
+- **简单模式流式回归**（Tier 1 改造引入）
+- **轮询状态机两处生命周期错配**：假加载条、HITL 轮询被误停
+- **任务时刻落库**：`SubTask.started_at` 此前恒为 NULL（现于任务真正启动时落库，收尾不再回填覆盖）
+- **子任务 `input_data` 无迁移**（迁移 `20260913_000100_subtask_input_data`）；memory 时间戳归位 UTC；psycopg 连接串驱动标记与修订兜底 timestamp 字段名修正
+- 前端体验：思考面板减重（行高收紧）、计划弹窗编辑框自增高（长描述不再只露两行）、本端有活流时不显示轮询状态栏、终止/修订后输入台不停在「生成中」、停止键改柔和危险配色
+- i18n：意图分析结论入词条（此前实时面板硬编码中文）
+- 开发环境：Vite 代理 `^/s/` 正则化——字面量 `/s` 会吞掉 `/src/**` 导致页面空白
+
 ## [2026-09-12] - v3.5.0 柔和化大改版、HITL 修订循环与用户管理
 
 ### 新增功能
