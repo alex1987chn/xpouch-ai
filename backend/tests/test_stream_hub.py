@@ -1,28 +1,40 @@
-"""RunStreamHub 测试：seq 注入 / 重放 / 广播 / 关闭 / LRU 淘汰。"""
+"""RunStreamHub 测试：id 注入 / 重放 / 广播 / 关闭 / LRU 淘汰。
+
+注意：seq 由调用方（RunFrameRecorder）分配，本模块不再自增——测试里显式传 seq，
+这样「广播器」与「持号者」的边界才被钉住。
+"""
 
 import asyncio
 
 from services.chat.stream_hub import RunStreamHub
 
 
-def test_publish_assigns_ordered_seq_ids():
+def test_publish_injects_given_seq_as_id():
     hub = RunStreamHub()
-    w1 = hub.publish("run-1", "event: message.delta\ndata: {}\n\n")
-    w2 = hub.publish("run-1", "event: message.delta\ndata: {}\n\n")
-    assert w1.startswith("id: 1\n")
-    assert w2.startswith("id: 2\n")
+    w1 = hub.publish("run-1", "event: message.delta\ndata: {}\n\n", 7)
+    w2 = hub.publish("run-1", "event: message.delta\ndata: {}\n\n", 8)
+    assert w1.startswith("id: 7\n")
+    assert w2.startswith("id: 8\n")
+
+
+def test_publish_accepts_non_contiguous_seq():
+    """seq 可能跳过（进程重启后续号），广播器不得假设连续性。"""
+    hub = RunStreamHub()
+    hub.publish("run-1", "event: a\ndata: {}\n\n", 1)
+    wire = hub.publish("run-1", "event: b\ndata: {}\n\n", 42)
+    assert wire.startswith("id: 42\n")
 
 
 def test_publish_replaces_existing_id():
     hub = RunStreamHub()
-    wire = hub.publish("run-1", "id: old-uuid\nevent: message.delta\ndata: {}\n\n")
+    wire = hub.publish("run-1", "id: old-uuid\nevent: message.delta\ndata: {}\n\n", 1)
     assert wire.startswith("id: 1\nevent: message.delta")
 
 
 def test_subscribe_replays_backlog_and_follows_live():
     hub = RunStreamHub()
-    hub.publish("run-1", "event: a\ndata: {}\n\n")
-    hub.publish("run-1", "event: b\ndata: {}\n\n")
+    hub.publish("run-1", "event: a\ndata: {}\n\n", 1)
+    hub.publish("run-1", "event: b\ndata: {}\n\n", 2)
 
     sub = hub.subscribe("run-1", after_seq=1)
     assert sub is not None
@@ -30,14 +42,14 @@ def test_subscribe_replays_backlog_and_follows_live():
     assert [w for _s, w in backlog] == ["id: 2\nevent: b\ndata: {}\n\n"]
     assert closed is False
 
-    hub.publish("run-1", "event: c\ndata: {}\n\n")
+    hub.publish("run-1", "event: c\ndata: {}\n\n", 3)
     item = queue.get_nowait()
     assert item is not None and item[0] == 3
 
 
 def test_close_sends_sentinel_and_marks_closed():
     hub = RunStreamHub()
-    hub.publish("run-1", "event: a\ndata: {}\n\n")
+    hub.publish("run-1", "event: a\ndata: {}\n\n", 1)
     sub = hub.subscribe("run-1", after_seq=0)
     assert sub is not None
     _backlog, queue, _closed = sub
@@ -56,9 +68,9 @@ def test_subscribe_unknown_run_returns_none():
 
 def test_lru_eviction():
     hub = RunStreamHub(max_runs=2)
-    hub.publish("run-a", "event: x\ndata: {}\n\n")
-    hub.publish("run-b", "event: x\ndata: {}\n\n")
-    hub.publish("run-c", "event: x\ndata: {}\n\n")
+    hub.publish("run-a", "event: x\ndata: {}\n\n", 1)
+    hub.publish("run-b", "event: x\ndata: {}\n\n", 1)
+    hub.publish("run-c", "event: x\ndata: {}\n\n", 1)
     # run-a 最旧且未被访问，被淘汰
     assert hub.subscribe("run-a", 0) is None
     assert hub.subscribe("run-b", 0) is not None
@@ -66,8 +78,8 @@ def test_lru_eviction():
 
 def test_backlog_window_drops_old_events():
     hub = RunStreamHub()
-    for i in range(5):
-        hub.publish("run-1", f"event: e{i}\ndata: {{}}\n\n")
+    for i in range(1, 6):
+        hub.publish("run-1", f"event: e{i}\ndata: {{}}\n\n", i)
     sub = hub.subscribe("run-1", after_seq=3)
     assert sub is not None
     backlog, _q, _closed = sub
@@ -77,12 +89,12 @@ def test_backlog_window_drops_old_events():
 def test_asyncio_queue_wait():
     async def _flow():
         hub = RunStreamHub()
-        hub.publish("run-1", "event: a\ndata: {}\n\n")
+        hub.publish("run-1", "event: a\ndata: {}\n\n", 1)
         sub = hub.subscribe("run-1", after_seq=0)
         assert sub is not None
         _backlog, queue, _closed = sub
         await asyncio.sleep(0)
-        hub.publish("run-1", "event: b\ndata: {}\n\n")
+        hub.publish("run-1", "event: b\ndata: {}\n\n", 2)
         item = await asyncio.wait_for(queue.get(), timeout=1)
         assert item[0] == 2
 

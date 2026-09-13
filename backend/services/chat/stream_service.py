@@ -37,6 +37,7 @@ from crud.run_event import (
 )
 from models import AgentRun, ExecutionPlan, RunStatus, Thread
 from models.enums import GraphTaskStatus, TaskStatus, to_task_status
+from services.chat.frame_recorder import get_frame_recorder
 from services.chat.parts.custom_agent import CustomAgentMixin
 from services.chat.parts.event_builders import EventBuildersMixin
 from services.mcp_tools_service import mcp_tools_service
@@ -775,6 +776,23 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         # 恢复输入：审批结果经 Command(resume=) 回传给 plan_approval 节点
         resume_input = Command(resume={"action": "approve"})
 
+        # 🔥 B6 断线续传：统一事件出口——分配 seq id 写入 hub 缓冲，
+        # 再投递给当前消费者（主连接或 resume 连接各自订阅）
+        from services.chat.stream_hub import get_stream_hub
+
+        hub = get_stream_hub()
+        frames = get_frame_recorder()
+
+        async def _push_event(event_str: str) -> None:
+            if run_id:
+                # ① 编号（本进程首次为这个 run 分配时先从库里续号）
+                seq = await frames.reserve_seq(run_id)
+                # ② 实时广播（注入 id: 行）；③ 入待写缓冲，约 200ms 批量落库，
+                # 供进程重启后按 seq 重放。落库异常只 warning，不影响实时推送。
+                event_str = hub.publish(run_id, event_str, seq)
+                frames.record(run_id, seq, event_str)
+            await sse_queue.put({"type": "sse", "event": event_str})
+
         async def producer():
             nonlocal aggregator_executed
             try:
@@ -856,22 +874,16 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                 # 「标失败 + 推 RESUME_ERROR」分支永远不会执行。
                 # 现在让异常沿 await producer_task 上抛到调用方既有的处理分支。
                 if run_id:
+                    # 尾帧先落库再关直播：resume 的重放只认已落库的帧，少刷这一下
+                    # 会让「刚断线就重连」的客户端丢掉最后不到一个刷写周期的输出。
+                    # 同步写（不是 await）：收尾可能处在取消态，任何 await 都可能被
+                    # 跳过——那会连带 hub.close 与 done 哨兵都发不出去，订阅者悬挂。
+                    frames.finish_blocking(run_id)
                     hub.close(run_id)
                 await sse_queue.put({"type": "done"})
 
         # 启动生产者
         producer_task = asyncio.create_task(producer())
-
-        # 🔥 B6 断线续传：统一事件出口——分配 seq id 写入 hub 缓冲，
-        # 再投递给当前消费者（主连接或 resume 连接各自订阅）
-        from services.chat.stream_hub import get_stream_hub
-
-        hub = get_stream_hub()
-
-        async def _push_event(event_str: str) -> None:
-            if run_id:
-                event_str = hub.publish(run_id, event_str)
-            await sse_queue.put({"type": "sse", "event": event_str})
 
         try:
             # 消费并 yield 事件

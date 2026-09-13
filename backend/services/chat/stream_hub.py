@@ -2,15 +2,19 @@
 RunStreamHub - 断线续传（B6 resumable stream MVP）
 
 每个 run 一个有界事件缓冲 + 订阅者广播：
-- publish(run_id, wire): 分配递增 seq，注入到 SSE 线格式的 id: 行，
+- publish(run_id, wire, seq): 把 seq 注入到 SSE 线格式的 id: 行，
   存入环形缓冲并广播给所有订阅者（含主连接之外的 resume 连接）
 - subscribe(run_id, after_seq): 返回 (backlog, subscriber queue)——
   断线重连的连接先补放 backlog，再从队列接收后续事件
 - close(run_id): producer 收尾时调用，向订阅者投递哨兵并标记关闭
 
+**本模块不分配 seq**：seq 是 run 级的持久游标，由 `services.chat.frame_recorder`
+持有（它要在进程重启后接着库里的号继续，否则唯一索引会让新号段整批冲突回滚）。
+本模块只是「按给定 seq 广播 + 保留一小段可重放窗口」的纯内存件。
+
 内存语义（MVP 边界）：
-- 缓冲在进程内，服务重启即丢——resume 端点返回 410，前端退化到
-  现有"后台跑完 + 轮询刷新"路径
+- 缓冲在进程内，服务重启即丢——resume 端点要先靠 run_stream_frame 里的
+  持久帧补放，再回到本模块跟随实时（详见 routers/chat.py resume 端点）
 - run 总量 LRU 上限 + 单 run 事件条数上限，防无界增长
 - **部署约束：本模块要求单 worker 单实例**。多 worker 时续传请求有
   N-1 概率命中没有该缓冲的进程（进程内限流同理失效）；多实例需先
@@ -20,6 +24,8 @@ RunStreamHub - 断线续传（B6 resumable stream MVP）
 import asyncio
 import threading
 from collections import OrderedDict
+
+from utils.logger import logger
 
 # 单 run 缓冲的事件条数上限（超出即丢弃最旧，重连时若 last_seq 早于最旧则 410）
 MAX_EVENTS_PER_RUN = 2000
@@ -31,18 +37,18 @@ class _RunBuffer:
     """单个 run 的事件缓冲与订阅者"""
 
     def __init__(self) -> None:
-        self.seq = 0
+        self.last_seq = 0
         self.events: OrderedDict[int, str] = OrderedDict()
         self.subscribers: list[asyncio.Queue] = []
         self.closed = False
 
-    def append(self, wire: str) -> tuple[int, str]:
-        self.seq += 1
-        id_wire = self._with_id(wire, self.seq)
-        self.events[self.seq] = id_wire
+    def append(self, wire: str, seq: int) -> str:
+        id_wire = self._with_id(wire, seq)
+        self.events[seq] = id_wire
+        self.last_seq = seq
         while len(self.events) > MAX_EVENTS_PER_RUN:
             self.events.popitem(last=False)
-        return self.seq, id_wire
+        return id_wire
 
     @staticmethod
     def _with_id(wire: str, seq: int) -> str:
@@ -65,8 +71,12 @@ class RunStreamHub:
         self._lock = threading.Lock()
         self._max_runs = max_runs
 
-    def publish(self, run_id: str, wire: str) -> str:
-        """记录并广播一条事件；返回带 id 的线格式。"""
+    def publish(self, run_id: str, wire: str, seq: int) -> str:
+        """记录并广播一条**已编号**事件；返回带 id 的线格式。
+
+        seq 由调用方（`RunFrameRecorder`）分配，必须是该 run 内严格递增的
+        持久游标——非递增意味着发布端有 bug，重放顺序会错乱，故此处告警。
+        """
         with self._lock:
             buf = self._runs.get(run_id)
             if buf is None:
@@ -75,7 +85,11 @@ class RunStreamHub:
                 while len(self._runs) > self._max_runs:
                     self._runs.popitem(last=False)
             self._runs.move_to_end(run_id)
-            seq, id_wire = buf.append(wire)
+            if seq <= buf.last_seq:
+                logger.warning(
+                    "[RunStreamHub] seq 非递增：run=%s last=%d 本次=%d", run_id, buf.last_seq, seq
+                )
+            id_wire = buf.append(wire, seq)
             subscribers = list(buf.subscribers)
         for queue in subscribers:
             queue.put_nowait((seq, id_wire))

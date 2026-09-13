@@ -33,12 +33,15 @@ class RunStreamFrame(SQLModel, table=True):
 
     run_id: str = Field(foreign_key="agentrun.id", max_length=64)
 
-    # 与发布端（stream_hub）同一 seq 空间。一帧可能聚合多条 SSE 事件
-    # （见写入端的合并策略），此时记录其中**最后一条**的 seq：
-    # 帧是原子单元，客户端按 seq 续读时不会漏也不会重。
+    # 与发布端（stream_hub / services.chat.frame_recorder）同一 seq 空间。
+    # **一行 = 一条 SSE 事件**：续传按 `seq > last_event_id` 取帧，而客户端的
+    # last_event_id 可能停在半批中间（实时通道是逐条下发的）；若把多条事件并成
+    # 一行、只记最后一条的 seq，重放会把整行再发一遍，已收到的事件被重复应用
+    # （token 重复 = 正文重影）。写端的批量提交已拿回写放大，多出来的只是行数——
+    # 本表瞬态、run 终态即清，量级可接受。
     seq: int = Field(index=False)
 
-    # SSE 线文本（可能包含多条以空行分隔的事件）
+    # SSE 线文本（含 `id: <seq>` 行）
     wire: str = Field(sa_column=Column(Text, nullable=False))
 
     created_at: datetime = Field(

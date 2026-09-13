@@ -67,9 +67,10 @@
 - **现状**：`RunEvent`（账本）与 `stream_hub`（环形缓冲 + seq）各自记录，续传靠进程内缓冲，重启即丢，被约束在单实例。
 - **目标**：SSE 端点 = 「从 seq N 之后读 journal 并 tail」。多实例靠 `LISTEN/NOTIFY` 自然工作。
 - **理由**：续传变精确；`stream_hub` 的单实例约束与 410 降级路径一起消失；将来要扩不再是重写。
-- **代价**：~~需拍板 token 级 delta 是否进 journal~~ → **已拍板（2026-09-13）：delta 进 journal，但用「合并写 + 独立表」**。
+- **代价**：~~需拍板 token 级 delta 是否进 journal~~ → **已拍板（2026-09-13）：delta 进 journal，但用「独立表 + 批量提交」**。
   - 原因：`stream_hub` 现在缓冲 2000 条事件，生成中断线重连**能重放已生成的文字**；若 delta 不进 journal，重连会丢半截文本——聊天产品里这是看得见的退化。原先"不进"的判断会造成行为回归。
-  - 做法：**两张表、同一 seq 空间**。`run_event`（永久、里程碑、审计）**不动**；新增 `run_stream_frame`（瞬态、delta 帧、run 终态即清理）。写入**合并**（~200ms 一帧，而非每 token 一行）→ 写放大从约 50 行/秒降到约 5 行/秒。SSE 端点按 seq 合并读两表。
+  - 做法：**两张表、同一 seq 空间**。`run_event`（永久、里程碑、审计）**不动**；新增 `run_stream_frame`（瞬态、delta 帧、run 终态即清理）。写入按 ~200ms **批量提交**（一个事务多行，而非每 token 一次事务）→ 写放大从约 50 次事务/秒降到约 5 次/秒。SSE 端点按 seq 合并读两表。
+  - **细化（2026-09-13 实施第 2 片时）**：「批量」是**提交批次**，不是「一行塞多条事件」。一行一事件才能让 `seq > last_event_id` 精确——客户端可能停在半批中间，整体重放会造成 token 重影（详见批次 D 第 2 片）。
   - 收益：重启/跨实例精确重放；审计账本不被 delta 撑爆。
 
 ### 决定 2 · Run 是带租约的持久作业，不是 HTTP 请求
@@ -257,19 +258,27 @@
 
 - [x] **第 1 片 · 帧表基础设施（已完成 2026-09-13，commit `f9a8972`）**：`run_stream_frame(id, run_id, seq, wire, created_at)` + 迁移 `20260913_000200`（唯一索引 `(run_id,seq)`、`created_at` 索引）+ `crud/run_stream_frame.py`（append/list_after/latest_seq/prune_run/prune_older_than）+ 10 条测试。**未接线**，不改变任何现有行为。
   - 与 `runevent` 的分工（模型 docstring 已写明）：runevent = 永久审计账本（里程碑、只追加不删）；本表 = 瞬态传输缓冲（含 token 级增量），run 终态即清。
-- [ ] **第 2 片 · 写入端接线**：`stream_hub.publish` 之后把帧落库。
-  - **token 级帧必须合并写**（~200ms 一批，一帧可含多条 SSE 事件，seq 记其中最后一条）——否则每个 token 一次 INSERT，约 50 次/秒/run，写放大不可接受。
-  - 需一个轻量 flush（定时器或按字节阈值），并保证**终态前把缓冲刷净**，否则尾部丢失。
-  - 落库失败只 warning（`append_frames` 已保证不抛），实时推送不受影响。
+- [x] **第 2 片 · 写入端接线（已完成 2026-09-13，commit `f4544aa`）**：新增 `services/chat/frame_recorder.py`（`RunFrameRecorder`），接线点是 `StreamService._push_event`（唯一事件出口），三行：`reserve_seq` → `hub.publish(wire, seq)` → `record`。
+  - **seq 的所有权改了**：从 `stream_hub` 移到 `frame_recorder`。理由——seq 是 run 级的**持久游标**，进程重启后必须接着库里的号继续，否则唯一索引 `(run_id, seq)` 会让新号段整批冲突回滚（静默空洞）。hub 因此退化为「按给定 seq 广播」的纯内存件。
+  - **「一帧压多条事件、seq 记最后一条」的原设计被推翻**（原设计在下面保留作对照，理由已失效）：续传按 `seq > last_event_id` 取帧，而客户端 last_event_id 可能停在半批中间（实时通道逐条下发），把多条事件并成一行再整体重放会让**已收到的事件被重复应用**（token 重复＝正文重影）。改为**一行一事件 + 批量提交**：写放大照样摊平（~200ms 一次 INSERT 多行），代价只是行数（实测一次 25 秒的流 = 1910 行 / 222 kB，瞬态表，终态即清）。这也让 `seq >` 的语义精确，第 3 片的读端不需要任何去重。
+  - **终态刷净**放在 producer 的 `finally` 里，且用**同步**写（`finish_blocking`）：收尾可能处在取消态，任何 `await` 都可能被跳过——那不仅丢尾帧，还会连带 `hub.close` 与 `done` 哨兵都发不出去，订阅者悬挂。
+  - **写失败不丢批**：失败批次退回缓冲并退避重试（2s），只有积压超过 5000 条才丢最旧并告警。理由：一次 DB 抖动不该在重放里留空洞；而高频重试会在 DB 故障期把线程池占满（每次尝试都要等连接超时）。
+  - **号段的高水位必须留在内存**（`finish_blocking` 不摘条目，交给 LRU 回收）：同一 run 的第二段流（第二次审批续跑）可能在上一段 flush 尚未提交时开始，此时重新查库续号会读到旧最大值而重号。
+  - **实测验证**（`scripts/e2e_hitl_check.py` 真实 HTTP + 真实 LLM）：run `43fada9c…` 落库 1910 行，seq 连续 1→1910、无重号、`id:` 行与 seq 全量一致、终帧为 `message.done`（证明尾部刷净生效）；`1910 = 1906 delta + 1 task.started + 1 task.completed + 1 artifact.generated + 1 message.done`，与线上事件数逐条对齐。
+  - 新增 18 条测试（`tests/test_frame_recorder.py`）+ hub 测试改为显式传 seq。全量 **283 passed**。
+  - **原设计（保留作对照，勿再照此实现）**：~~token 级帧必须合并写（~200ms 一批，一帧可含多条 SSE 事件，seq 记其中最后一条）~~。
 - [ ] **第 3 片 · 读取端切换 + 清理 + 删旧件**：
   - `/chat/{thread_id}/stream/resume` 改为：先 `list_frames_after(last_event_id)` 重放库中帧，再跟随实时（内存 hub 或 DB 轮询；单实例下前者即可，NOTIFY 留到多实例）。
+  - **读端切换时必须处理两个已知坑**（2026-09-13 读代码时发现，属既有行为、非本片引入）：
+    1. **`hub.closed` ≠ run 结束**。`close()` 只是「这一轮 producer 收尾」，而同一 run 可以有第二轮流（第二次审批续跑）。当前 `subscribe()` 见 `closed=True` 会返回**空 backlog + 立即结束**，于是第二轮期间任何 resume 都拿不到（含 hub 里已有的 backlog）。读端不能用它判断终态，终态应看 `AgentRun.status`。
+    2. **首轮流（`handle_langgraph_stream`）根本不经过 hub**，因此没有 `id:` 行、前端 `lastSeq` 恒为 0、续传不会被触发。也就是说目前**可续传的只有「批准之后」那一段**。要么把首轮也接到同一发布出口（推荐，改动小且让语义统一），要么在文档里明确这个边界。
   - `prune_run_frames` 挂到既有 checkpoint 清理时机（`delete_checkpoints_for_thread` 的三处调用点：正常收尾 / 驳回 / 取消），并在 `session_cleanup_service` 里加 `prune_frames_older_than` 兜底。
   - 全部生效后才删除 `stream_hub`；删除前它仍是实时跟随的唯一通道。
-  - **验证方式**：e2e 脚本 + 「跑复杂任务到一半重启后端 → 前端按 last_event_id 续传仍拿到完整产出」的手工用例（这条是第 3 片的核心验收）。
+  - **验证方式**：e2e 脚本 + 「跑复杂任务到一半重启后端 → 前端按 last_event_id 续传仍拿到完整产出」的手工用例（这条是第 3 片的核心验收）。**注意**：进程重启会让 producer 一起消失（单进程内跑图），所以「重启后续传」能拿到的是**已落库的那一段**；若要拿到完整产出，前提是 run 能被重新驱动（决定 2 的回收/续跑），否则应把验收改成「重启后按 last_event_id 仍能拿到重启前的完整输出，而后端不报错、前端不悬挂」。
 - [ ] **决定 2 · run 租约**：`run_lease(run_id, owner, lease_expires_at, attempt)` + supervisor 续租/回收，替换心跳 + 清理循环 + 活跃互斥 + in-flight 去重四处启发式。
   - **注意**：这四处分别服务不同语义（存活可见性 / 僵尸回收 / 并发互斥 / 请求去重），替换前要逐个确认新机制真的覆盖，不能只图"少一个机制"。且它们都在**已验证过的取消/超时路径**上，改动需重跑 e2e。
 
-**注**：决定 1 的 token delta 处理已拍板为「进 journal，但合并写 + 独立表」（见第 4 节决定 1）。
+**注**：决定 1 的 token delta 处理已拍板为「进 journal，但用独立表 + ~200ms 批量提交」——批量是**提交批次**，一行仍只装一条事件（见第 2 片）。
 
 ### 批次 E · 收尾项（可穿插，独立价值）
 

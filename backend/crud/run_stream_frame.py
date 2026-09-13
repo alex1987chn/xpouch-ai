@@ -19,7 +19,8 @@ from utils.time import utc_now_naive
 def append_frames(db: Session, run_id: str, frames: list[tuple[int, str]]) -> int:
     """批量追加帧：frames = [(seq, wire), ...]。
 
-    调用方负责给出正确的 seq（与 stream_hub 同一空间）。返回写入条数。
+    调用方（`services.chat.frame_recorder`）负责给出正确的 seq：它是 run 级的
+    **持久游标**（跨进程也要单调递增），一行一事件。返回写入条数。
     唯一索引 (run_id, seq) 保证重复发布不会产生重复行——重复时整批回滚并记警告，
     因为「seq 冲突」意味着发布端有问题，静默去重会掩盖它。
     """
@@ -33,7 +34,7 @@ def append_frames(db: Session, run_id: str, frames: list[tuple[int, str]]) -> in
     except Exception as exc:  # noqa: BLE001 — 帧持久化失败不能影响实时推送
         db.rollback()
         logger.warning(
-            "[RunStreamFrame] 落库失败（实时推送不受影响，重启后该段无法重放）: %s",
+            "[RunStreamFrame] 该批帧未落库（实时推送不受影响）: %s",
             exc,
             exc_info=True,
         )
