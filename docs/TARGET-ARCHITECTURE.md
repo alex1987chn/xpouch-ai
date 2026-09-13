@@ -79,12 +79,15 @@
 - **理由**：把四处启发式收敛成一个更小的自研。**注意：这是自研收敛，不是引入 Temporal。**
 - **代价**：要迁移现有 deadline/heartbeat 语义；`pause_deadline`（审批等待期不消耗预算）必须保留。
 
-### 决定 3 · 节点是纯函数，持久化在提交步 ← **Tier 2 硬前提**
+### 决定 3 · 节点是纯函数，持久化在提交步（**降级：非 B3 阻塞项**）
 
-- **现状**：`commander_node` 在图里直接创建 ExecutionPlan + SubTasks。
+- **现状**：`commander_node` 在图里直接创建 ExecutionPlan + SubTasks（经 `get_or_create_execution_plan`）。
 - **目标**：节点只返回 state delta（含 `plan_id` + 计划草案），提交步统一落库并保证幂等。
-- **理由**：`interrupt()` 恢复时**节点函数会从头重新执行**（LangGraph 既定语义）。若节点有写库副作用，恢复即双写。**这条不解决就上 `interrupt()`，会踩一个比现在所有 workaround 都隐蔽的坑。**
-- **代价**：需要设计「提交步」的位置与幂等键。
+- **理由**：
+  - `RetryPolicy` 重试会重跑节点；并行分支会重跑；健壮性要求节点可重入。
+  - 现实现藏着一个**破坏性**语义（见第 8 节「get_or_create_execution_plan 删除重建」），迟早要拆。
+- **⚠️ 2026-09-13 修正**：本节原写「这是 B3 的硬前提，因为 `interrupt()` 恢复时节点会重跑、commander 会双写」——**该表述不准确**。LangGraph 恢复时只从头重跑**含中断的那个节点**，上游节点不会重跑。B3 把 `interrupt()` 放进独立的 `plan_approval` 节点后，`commander_node` 不会重跑，**不存在恢复导致的双写**。
+  → 因此决定 3 的性质是「拆雷 + 重试/并行的前提」，**不是 B3 的阻塞项**；B3 不必等 B1。
 
 ### 决定 4 · Plan 是领域聚合，不是图状态（**预埋 `execution_mode`**）
 
@@ -174,6 +177,8 @@
 | **B1** | 决定 3：`commander_node` 的 DB 写入移到提交步，幂等化 | 无（纯重构） | 低 |
 | **B2** | 决定 4：Plan canonical 模型收敛，携带 `execution_mode` | 无（纯增量，新字段默认 sequential） | 低 |
 | **B3** | `interrupt()` + `Command(resume=)` 原生化 + thread 对齐 | **有**（暂停/恢复语义换实现） | **高** |
+
+**⚠️ 2026-09-13 顺序修正**：B1 原被标为 B3 的硬前提，经核代码后**降级**——`interrupt()` 只重跑含中断的节点，B3 把中断放进独立 `plan_approval` 节点后 `commander_node` 不会重跑。故 **B3 不阻塞于 B1**。B1/B2 仍应按序先做（风险低、独立可 revert、拆掉破坏性语义），但若 B3 需要先行，不必等待。
 
 - [ ] **B0 · 前置特征测试（零行为变更，可最先做）**：为 resume / revise / cancel-during-wait / 幂等重放 / 审批期超时五条路写测试，锁住「迁移不该改变的东西」。当前只有 `transform_langgraph_event` 的 delta 门控 10 条。
 - [ ] **B1 · 决定 3 节点纯化**：`commander_node` 的 ExecutionPlan/SubTask 写入移到提交步，幂等化（确定性 id + upsert）。
@@ -268,7 +273,9 @@
 
 | 地雷 | 说明 |
 |---|---|
-| **`interrupt()` 会重跑节点** | 恢复时节点函数从头执行。任何写库/发事件副作用必须在 `interrupt()` 之后，或幂等。这是批次 B 的核心约束。 |
+| **`interrupt()` 会重跑节点** | 恢复时**含中断的那个节点**从头执行（其上游节点不会重跑，状态来自 checkpoint）。任何写库/发事件副作用必须在 `interrupt()` 之后，或幂等。**推论：把 `interrupt()` 放在独立节点里，就能避免让有副作用的节点重跑**——这是 B3 设计的依据。 |
+| **`get_or_create_execution_plan` 是破坏性的** | `agents/services/task_manager.py:83` 起：按 **`thread_id`** 查计划，命中则**删除全部旧 SubTasks 再重建**。与审批路径「保留已完成任务的 `output_result`/`task_id`」（`_apply_updated_plan`）哲学冲突。任何让 `commander_node` 重跑的机制（重试/并行/未来重构）都会**抹掉子任务状态**。决定 3 要拆的就是这个雷。 |
+| **`preview_execution_plan_id` 接线未生效** | 该键**未在 `AgentState` 声明、无任何写入点**（仅测试显式传），而 LangGraph 过滤未声明键 → commander 里 `state.get(...) or uuid4()` **每次执行都拿到新 uuid**。它设计的目标「`plan.started` 事件 id 与落库计划 id 一致」**从未成立**。属预先存在缺陷，修法=在 `AgentState` 声明并在 chat.py 起始注入，或改为从 `execution_plan_id` 派生。 |
 | **psycopg 连接串必须是 plain** | `utils/db.py` 走 psycopg 原生池，只认 `postgresql://`；`+psycopg` 是 SQLAlchemy 驱动标记，libpq 会报 `invalid connection option`。`database.py` / `migrations/env.py` 走 SQLAlchemy，**才**用 `+psycopg`。 |
 | **provider `enabled` 判定** | `is_provider_configured` 必须同时看 `enabled` 与存在 key。只看 key 会让 `enabled: false` 的 provider 被选中，然后 `_build_llm_instance` 抛错、commander 静默退化为空计划。 |
 | **alembic `fileConfig` 清 handler** | `logging.config.fileConfig` **无条件**调用 `_clearExistingHandlers()`，且 `alembic.ini` 的 `[logger_root] level = WARNING`。进程内迁移一跑，应用的 INFO 日志全部消失（ERROR 仍在）。**未修**——修法不是重调 `setup_logging()`（有幂等守卫会直接返回），需显式重建 handler。 |
