@@ -1,12 +1,9 @@
 from datetime import datetime
 
-import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
 from models import ExecutionPlan
 from services.chat.stream_service import StreamService
-from utils.error_codes import ErrorCode
-from utils.exceptions import AppError
 
 
 class _DummySession:
@@ -73,52 +70,10 @@ def test_complex_persistence_guard_accepts_valid_result(monkeypatch):
     assert error is None
 
 
-def test_hitl_wait_guard_requires_plan_before_task_execution():
-    service = StreamService(_DummySession())
-
-    should_wait = service._should_wait_for_human_approval(
-        task_list=[{"id": "task-1"}],
-        current_task_index=0,
-        collected_task_list=[],
-    )
-
-    assert should_wait is True
-
-
-def test_hitl_wait_guard_stops_after_task_execution_started():
-    service = StreamService(_DummySession())
-
-    should_wait = service._should_wait_for_human_approval(
-        task_list=[{"id": "task-1"}],
-        current_task_index=0,
-        collected_task_list=[{"id": "task-1"}],
-    )
-
-    assert should_wait is False
-
-
-@pytest.mark.asyncio
-async def test_loop_budget_guard_raises_when_budget_exhausted():
-    service = StreamService(_DummySession())
-
-    with pytest.raises(AppError) as exc_info:
-        await service._raise_if_loop_budget_exhausted(
-            loop_count=5,
-            max_loops=5,
-            aggregator_executed=False,
-            run_id=None,
-        )
-
-    assert exc_info.value.code == ErrorCode.LOOP_GUARD_TRIGGERED
-
-
-@pytest.mark.asyncio
-async def test_loop_budget_guard_skips_when_aggregator_finished():
-    service = StreamService(_DummySession())
-
-    await service._raise_if_loop_budget_exhausted(
-        loop_count=5,
-        max_loops=5,
-        aggregator_executed=True,
-        run_id=None,
-    )
+# 已移除的用例（批次 B3）：
+# - test_hitl_wait_guard_* 测的是 _should_wait_for_human_approval 启发式，
+#   该启发式已删除——暂停判据改为图的原生 interrupt（见 stream_service
+#   的 pending_interrupts 检测与 agents/nodes/plan_approval.py）。
+# - test_loop_budget_guard_* 测的是 _raise_if_loop_budget_exhausted，该守卫
+#   随外层 while 循环一并删除，循环保护改由原生 recursion_limit 承担。
+# 上述不变量改由图结构保证，见 tests/test_graph_topology.py。

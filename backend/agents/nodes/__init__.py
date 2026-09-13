@@ -4,6 +4,7 @@ LangGraph 节点模块
 包含所有工作流节点的实现：
 - router: 意图识别节点
 - commander: 任务规划节点
+- plan_approval: 计划审批节点（HITL 人机分界点，interrupt 原生暂停）
 - dispatcher: 专家分发节点
 - aggregator: 结果聚合节点
 - generic: 通用专家执行节点
@@ -16,12 +17,14 @@ from agents.nodes.aggregator import aggregator_node
 from agents.nodes.commander import commander_node
 from agents.nodes.dispatcher import expert_dispatcher_node
 from agents.nodes.generic import generic_worker_node
+from agents.nodes.plan_approval import plan_approval_node
 from agents.nodes.router import direct_reply_node, router_node
 
 __all__ = [
     "router_node",
     "direct_reply_node",
     "commander_node",
+    "plan_approval_node",
     "expert_dispatcher_node",
     "aggregator_node",
     "generic_worker_node",

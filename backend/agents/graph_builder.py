@@ -87,6 +87,7 @@ def create_smart_router_workflow(
         direct_reply_node,
         expert_dispatcher_node,
         generic_worker_node,
+        plan_approval_node,
         router_node,
     )
     from agents.routing_policy import route_generic, route_router
@@ -97,6 +98,7 @@ def create_smart_router_workflow(
     workflow.add_node("router", router_node)
     workflow.add_node("direct_reply", direct_reply_node)
     workflow.add_node("commander", commander_node)
+    workflow.add_node("plan_approval", plan_approval_node)
     workflow.add_node("expert_dispatcher", expert_dispatcher_node)
     workflow.add_node("generic", generic_worker_node)
     workflow.add_node("aggregator", aggregator_node)
@@ -108,7 +110,11 @@ def create_smart_router_workflow(
         "router", route_router, {"direct_reply": "direct_reply", "commander": "commander"}
     )
     workflow.add_edge("direct_reply", END)
-    workflow.add_edge("commander", "expert_dispatcher")
+    # 审批点独立成节点：规划完成后必须先过人工裁决。
+    # 任务切换的回路是 generic → expert_dispatcher，天然**绕过** plan_approval，
+    # 因此「要不要问人」由图拓扑表达，不再需要运行时位置判断。
+    workflow.add_edge("commander", "plan_approval")
+    workflow.add_edge("plan_approval", "expert_dispatcher")
     workflow.add_edge("expert_dispatcher", "generic")
     workflow.add_conditional_edges(
         "generic",
@@ -129,10 +135,7 @@ def create_smart_router_workflow(
     else:
         logger.info("[Graph] Using persistent checkpointer: %s", type(checkpointer).__name__)
 
-    compiled = workflow.compile(
-        checkpointer=checkpointer,
-        interrupt_before=["expert_dispatcher"],
-    )
+    compiled = workflow.compile(checkpointer=checkpointer)
     return compiled
 
 

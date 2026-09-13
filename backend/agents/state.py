@@ -31,6 +31,8 @@ class AgentState(TypedDict):
     # 执行都新生成 uuid，"plan.started 事件 id 与落库计划 id 一致" 从未成立。
     preview_execution_plan_id: str | None
     message_id: str | None  # 本次消息 ID（SSE 事件与 DB 消息关联，贯穿全图）
+    # 人工审批裁决（plan_approval 节点写入）：approve / revise / terminate
+    approval_action: str | None
     # Stage 3 跨轮产物连续性：本会话最近产物的有界摘要（id/type/title/expert/内容头），
     # 供 Commander 规划时知晓可引用/可修改的既有产物；完整内容由专家经 get_artifact 按需读取
     recent_artifacts: list[dict[str, Any]]

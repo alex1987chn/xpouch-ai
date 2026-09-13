@@ -23,6 +23,7 @@ from typing import Any
 
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage
+from langgraph.types import Command
 from sqlmodel import Session, select
 
 from agents.event_stream import sse_payload_to_wire
@@ -254,27 +255,32 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                 yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
                 return
 
-            # 🔥🔥🔥 HITL 检测：检查是否处于 interrupt 状态
-            # 获取当前状态，检查是否有待执行的任务（被 interrupt 暂停）
+            # HITL 检测：`interrupt()` 把「停在审批点等人」变成了**原生状态**。
+            # `snapshot.tasks[].interrupts` 非空即表示图正停在某个 interrupt 上。
+            # 这取代了原先的启发式（`task_list` 非空 && `current_task_index == 0`
+            # && 未收集到任何结果）——那种靠状态形状反推的判据在「规划出 0 任务」
+            # 或「首任务已完成但收集失败」时会误判。
             final_state = await graph.aget_state(config)
             state_values = final_state.values if final_state else {}
 
-            # 检查是否有任务列表但未完成（说明被 interrupt 暂停）
-            task_list = state_values.get("task_list", [])
-            current_task_index = state_values.get("current_task_index", 0)
+            pending_interrupts = (
+                [intr for task in (final_state.tasks or ()) for intr in (task.interrupts or ())]
+                if final_state
+                else []
+            )
 
-            # 如果存在任务列表且当前任务索引为0（未开始执行），说明被 HITL 中断
-            if self._should_wait_for_human_approval(
-                task_list=task_list,
-                current_task_index=current_task_index,
-                collected_task_list=collected_task_list,
-            ):
-                logger.info("[StreamService] HITL 中断检测：任务规划完成，等待用户审核")
+            if pending_interrupts:
+                logger.info(
+                    "[StreamService] HITL 中断检测：图停在 interrupt（%d 个），等待用户审核",
+                    len(pending_interrupts),
+                )
+
+                # 构建当前计划数据（供前端审批卡渲染）
+                task_list = state_values.get("task_list", [])
 
                 # 🔥 方案1：更新 ExecutionPlan 状态为 waiting_for_approval
                 await self._update_execution_plan_status(thread_id, TaskStatus.WAITING_FOR_APPROVAL)
 
-                # 构建当前计划数据
                 current_plan = [
                     {
                         "id": task.get("id", f"task-{i}"),
@@ -594,42 +600,6 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             return "复杂模式未找到已创建的 ExecutionPlan，已拒绝写入错误兜底结果"
         return None
 
-    def _should_wait_for_human_approval(
-        self,
-        *,
-        task_list: list[dict],
-        current_task_index: int,
-        collected_task_list: list[dict],
-    ) -> bool:
-        """判断复杂模式是否应进入 HITL 审核等待态。"""
-        return bool(task_list) and current_task_index == 0 and len(collected_task_list) == 0
-
-    async def _raise_if_loop_budget_exhausted(
-        self,
-        *,
-        loop_count: int,
-        max_loops: int,
-        aggregator_executed: bool,
-        run_id: str | None,
-    ) -> None:
-        """超过图执行循环预算时立即失败，防止无限推进。"""
-        if aggregator_executed or loop_count < max_loops:
-            return
-
-        if run_id:
-            await self._mark_agent_run_failed(
-                run_id,
-                "运行超过最大图循环预算",
-                error_code=ErrorCode.LOOP_GUARD_TRIGGERED,
-            )
-
-        raise AppError(
-            message="运行超过最大图循环预算",
-            code=ErrorCode.LOOP_GUARD_TRIGGERED,
-            status_code=409,
-            details={"run_id": run_id, "max_loops": max_loops},
-        )
-
     async def _update_thread_mode(self, thread_id: str, mode: str, run_id: str | None = None):
         """更新线程模式和运行实例模式"""
         thread = self.db.get(Thread, thread_id)
@@ -770,206 +740,85 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             # message.done 与本次流式 delta 使用同一 ID
             if message_id:
                 await graph.aupdate_state(config, {"message_id": message_id})
-        # 🔥🔥🔥 关键修复：外层循环驱动任务执行直到完成
-        # LangGraph 的 astream_events 在第一个循环结束后就返回，不会自动继续
-        # 需要手动检查状态并驱动后续任务执行
-
-        # 🔥 修复：将 aggregator_executed 定义在 producer 外部，以便外层访问
+        # 单次驱动整个计划：interrupt() 把「暂停点」变成原生状态，一次
+        # astream_events 即可从审批点续跑到聚合完成。旧式 interrupt_before
+        # 每次到达 dispatcher（含任务切换）都中断，才需要外层 while 反复
+        # 拉起图、并用「current_index > 0」的位置启发式区分首次审批与任务
+        # 切换——那套脚手架随 interrupt() 一并移除。
         aggregator_executed = False
+        # 恢复输入：审批结果经 Command(resume=) 回传给 plan_approval 节点
+        resume_input = Command(resume={"action": "approve"})
 
         async def producer():
             nonlocal aggregator_executed
             try:
-                loop_count = 0
-                max_loops = settings.run_max_graph_loops
+                if run_id:
+                    self._raise_if_run_cancelled(run_id)
 
-                while loop_count < max_loops:
-                    if run_id:
-                        self._raise_if_run_cancelled(run_id)
-                    loop_count += 1
-
-                    # 获取当前状态
-                    current_state = await graph.aget_state(config)
-                    task_list = current_state.values.get("task_list", [])
-                    current_index = current_state.values.get("current_task_index", 0)
-                    next_nodes = current_state.next  # 🔥 获取待执行的节点
-
-                    # 检查是否所有任务都完成了，或者 aggregator 已经执行过
-                    if current_index >= len(task_list) or aggregator_executed:
-                        break
-
-                    # 🔥🔥🔥 关键修复：处理 interrupt_before 导致的任务切换中断
-                    # interrupt_before=["expert_dispatcher"] 会在每次到达该节点时中断
-                    # 如果 current_index > 0 且 next 包含 "expert_dispatcher"，说明是任务切换
-                    if "expert_dispatcher" in next_nodes and current_index > 0:
-                        logger.info(
-                            f"[Producer] 检测到任务切换中断 (loop {loop_count}, index {current_index}), 继续执行并推送事件"
-                        )
-                        # 🔥 关键：使用 astream_events 而不是 astream，确保事件被正确推送
-                        # astream_events 返回的事件格式与下面主循环一致，可以复用处理逻辑
-                        try:
-                            async for token in graph.astream_events(None, config, version="v2"):
-                                if not isinstance(token, dict):
-                                    continue
-
-                                if run_id:
-                                    self._raise_if_run_cancelled(run_id)
-                                    self._sync_run_progress_from_token(token, run_id)
-
-                                event_type = token.get("event", "")
-                                metadata = token.get("metadata", {})
-                                # 🔥 修复：on_chain_start 用 metadata.name，on_chain_end 用 token.name
-                                if event_type == "on_chain_start":
-                                    name = metadata.get("name", "")
-                                else:
-                                    name = token.get("name", "")
-
-                                # 协议 v2：节点的统一事件出口（emit_event）
-                                if event_type == "on_custom_event" and name == "sse_event":
-                                    event_str = sse_payload_to_wire(token)
-                                    if event_str:
-                                        await _push_event(event_str)
-                                    continue
-
-                                # 检测 aggregator 开始执行
-                                if event_type == "on_chain_start" and name == "aggregator":
-                                    aggregator_executed = True
-                                    logger.info(
-                                        f"[Producer-Resume] 检测到 aggregator 开始执行 (loop {loop_count})"
-                                    )
-
-                                if event_type == "on_chain_end":
-                                    data = token.get("data", {}) or {}
-                                    output = data.get("output", {}) or {}
-
-                                    if name == "aggregator" and output.get("final_response"):
-                                        aggregator_executed = True
-                                        logger.info(
-                                            f"[Producer-Resume] aggregator 执行完成 (loop {loop_count})"
-                                        )
-                                        break
-
-                                # 转换并推送事件给前端
-                                event_str = self.transform_langgraph_event(token, message_id)
-                                if event_str:
-                                    await _push_event(event_str)
-                                    if "message.done" in event_str:
-                                        aggregator_executed = True
-
-                                # 收集 artifacts（带 task_id，恢复流的
-                                # _process_collected_artifacts 依赖它落库到对应 SubTask）
-                                data = token.get("data", {}) or {}
-                                output = data.get("output", {}) or {}
-                                if output and isinstance(output, dict) and output.get("artifact"):
-                                    expert_info = output.get("last_expert_result") or {}
-                                    await stream_queue.put(
-                                        {
-                                            "type": "artifact",
-                                            "task_id": expert_info.get("task_id"),
-                                            "data": output["artifact"],
-                                        }
-                                    )
-
-                        except Exception as e:
-                            logger.warning(
-                                f"[Producer] astream_events 执行异常: {e}", exc_info=True
-                            )
-
-                        # 如果 aggregator 已执行，退出外层循环
-                        if aggregator_executed:
-                            logger.info("[Producer] aggregator 已完成，退出外层循环")
-                            break
-
-                        # 短暂等待后进入下一轮循环检查状态
-                        await asyncio.sleep(0.1)
+                # 执行一轮 LangGraph
+                async for token in graph.astream_events(resume_input, config, version="v2"):
+                    # 🔥 修复：token 可能是字符串，跳过非字典类型
+                    if not isinstance(token, dict):
                         continue
 
-                    # 执行一轮 LangGraph
-                    async for token in graph.astream_events(None, config, version="v2"):
-                        # 🔥 修复：token 可能是字符串，跳过非字典类型
-                        if not isinstance(token, dict):
-                            continue
+                    if run_id:
+                        self._raise_if_run_cancelled(run_id)
+                    if run_id:
+                        self._sync_run_progress_from_token(token, run_id)
 
-                        if run_id:
-                            self._raise_if_run_cancelled(run_id)
-                        if run_id:
-                            self._sync_run_progress_from_token(token, run_id)
+                    event_type = token.get("event", "")
+                    metadata = token.get("metadata", {})
+                    # 🔥 修复：on_chain_start 用 metadata.name，on_chain_end 用 token.name
+                    if event_type == "on_chain_start":
+                        name = metadata.get("name", "")
+                    else:
+                        name = token.get("name", "")
 
-                        event_type = token.get("event", "")
-                        metadata = token.get("metadata", {})
-                        # 🔥 修复：on_chain_start 用 metadata.name，on_chain_end 用 token.name
-                        if event_type == "on_chain_start":
-                            name = metadata.get("name", "")
-                        else:
-                            name = token.get("name", "")
-
-                        # 协议 v2：节点的统一事件出口（emit_event）
-                        if event_type == "on_custom_event" and name == "sse_event":
-                            custom_str = sse_payload_to_wire(token)
-                            if custom_str:
-                                await _push_event(custom_str)
-                                if "message.done" in custom_str:
-                                    logger.info(
-                                        "[Producer] 已发送 message.done，标记 aggregator 完成"
-                                    )
-                                    aggregator_executed = True
-                            continue
-
-                        # 🔥 检测 aggregator 节点开始执行
-                        if event_type == "on_chain_start" and name == "aggregator":
-                            aggregator_executed = True
-                            logger.info(
-                                f"[Producer] 检测到 aggregator 开始执行 (loop {loop_count})"
-                            )
-
-                        if event_type == "on_chain_end":
-                            data = token.get("data", {}) or {}
-                            output = data.get("output", {}) or {}
-
-                            # 🔥🔥🔥 关键修复：检测 aggregator 执行完成
-                            if name == "aggregator" and output.get("final_response"):
-                                aggregator_executed = True
-                                logger.info(
-                                    f"[Producer] aggregator 执行完成，准备退出 (loop {loop_count})"
-                                )
-                                break
-
-                        event_str = self.transform_langgraph_event(token, message_id)
-                        if event_str:
-                            await _push_event(event_str)
-
-                            # 🔥 如果发送了 message.done 事件，说明 aggregator 已完成
-                            if "message.done" in event_str:
+                    # 协议 v2：节点的统一事件出口（emit_event）
+                    if event_type == "on_custom_event" and name == "sse_event":
+                        custom_str = sse_payload_to_wire(token)
+                        if custom_str:
+                            await _push_event(custom_str)
+                            if "message.done" in custom_str:
                                 logger.info("[Producer] 已发送 message.done，标记 aggregator 完成")
                                 aggregator_executed = True
+                        continue
 
-                        # 收集 artifacts
+                    # aggregator 开始执行即表示已进入聚合阶段（供收尾判定）
+                    if event_type == "on_chain_start" and name == "aggregator":
+                        aggregator_executed = True
+                        logger.info("[Producer] aggregator 开始执行")
+
+                    if event_type == "on_chain_end":
                         data = token.get("data", {}) or {}
                         output = data.get("output", {}) or {}
-                        if output and isinstance(output, dict) and output.get("artifact"):
-                            expert_info = output.get("last_expert_result") or {}
-                            await stream_queue.put(
-                                {
-                                    "type": "artifact",
-                                    "task_id": expert_info.get("task_id"),
-                                    "data": output["artifact"],
-                                }
-                            )
 
-                    # 🔥 如果 aggregator 已执行，退出外层循环
-                    if aggregator_executed:
-                        logger.info("[Producer] aggregator 已完成，退出外层循环")
-                        break
+                        # 聚合完成（final_response 非空）→ 标记，供收尾判定
+                        if name == "aggregator" and output.get("final_response"):
+                            aggregator_executed = True
+                            logger.info("[Producer] aggregator 执行完成")
 
-                    # 短暂等待，让状态更新
-                    await asyncio.sleep(0.1)
+                    event_str = self.transform_langgraph_event(token, message_id)
+                    if event_str:
+                        await _push_event(event_str)
 
-                await self._raise_if_loop_budget_exhausted(
-                    loop_count=loop_count,
-                    max_loops=max_loops,
-                    aggregator_executed=aggregator_executed,
-                    run_id=run_id,
-                )
+                        # 🔥 如果发送了 message.done 事件，说明 aggregator 已完成
+                        if "message.done" in event_str:
+                            logger.info("[Producer] 已发送 message.done，标记 aggregator 完成")
+                            aggregator_executed = True
+
+                    # 收集 artifacts
+                    data = token.get("data", {}) or {}
+                    output = data.get("output", {}) or {}
+                    if output and isinstance(output, dict) and output.get("artifact"):
+                        expert_info = output.get("last_expert_result") or {}
+                        await stream_queue.put(
+                            {
+                                "type": "artifact",
+                                "task_id": expert_info.get("task_id"),
+                                "data": output["artifact"],
+                            }
+                        )
 
             except AppError:
                 raise
@@ -1042,16 +891,18 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
     async def _apply_updated_plan(
         self, graph, config: dict, updated_plan: list[dict], message_id: str | None = None
     ):
-        """
-        应用用户更新后的计划
+        """把用户在审批页编辑过的计划合并进图状态。
 
-        🔥 关键修复：必须添加 HumanMessage 来触发 Graph 继续执行，
-        否则 LangGraph 会认为没有新输入而进入 END 节点。
-        """
-        from langchain_core.messages import HumanMessage
+        合并语义（业务规则，不属于脚手架）：
+        - 已完成的任务：整条沿用当前状态（保留 `output_result` / Commander `task_id`）
+        - 未完成/新增任务：采用前端提交的内容，但保留已有输出与 task_id
+        - 依赖清理：指向已删除任务的 `depends_on` 条目剔除；空则置 None
+        - 重算 `current_task_index`（第一个非 completed 任务的位置）
 
-        # 🔥🔥🔥 关键修复：合并状态，不要完全替换
-        # 获取当前状态
+        续跑由调用方的 `Command(resume=...)` 触发，本方法只负责状态合并，
+        不再伪造 `HumanMessage`（那是静态中断时代的权宜手段）。
+        """
+        # 合并状态，不要完全替换
         current_state = await graph.aget_state(config)
         current_values = current_state.values
         current_task_list = current_values.get("task_list", [])
@@ -1104,17 +955,17 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             # 所有任务都完成了
             next_task_index = len(merged_plan)
 
-        # 🔥🔥🔥 关键修复：添加 HumanMessage 触发流程继续
-        current_messages = current_values.get("messages", [])
-        approval_message = HumanMessage(content="计划已审核通过，请按新计划执行任务。")
-        updated_messages = list(current_messages) + [approval_message]
-
         # 更新 LangGraph 状态（保留已完成任务的结果）
+        # 计划的 approve 合并语义：按 id 保留已完成任务的 output_result / task_id、
+        # 清理指向已删除任务的依赖、重算 current_task_index。
+        #
+        # 不再伪造 HumanMessage 触发续跑：那是在静态中断（interrupt_before）下
+        # 让图「动起来」的权宜手段，会把一条假用户消息写进会话历史。现在由
+        # `Command(resume=...)` 触发续跑，图从断点继续，无需任何伪造输入。
         state_update = {
             "task_list": merged_plan,
-            "current_task_index": next_task_index,  # 🔥 使用正确的索引，而不是重置为 0
-            "messages": updated_messages,
-            "expert_results": current_expert_results,  # 🔥 保留已有结果，而不是清空
+            "current_task_index": next_task_index,  # 正确的索引，而不是重置为 0
+            "expert_results": current_expert_results,  # 保留已有结果，而不是清空
         }
         # 恢复流的消息 ID 贯通：聚合阶段的 message.done 与本次流式 delta 使用同一 ID
         if message_id:

@@ -96,7 +96,9 @@ class Settings(BaseSettings):
     stream_timeout: float = Field(default=120.0, alias="STREAM_TIMEOUT")
     recursion_limit: int = Field(default=100, alias="RECURSION_LIMIT")
     run_deadline_seconds: int = Field(default=900, alias="RUN_DEADLINE_SECONDS")
-    run_max_graph_loops: int = Field(default=50, alias="RUN_MAX_GRAPH_LOOPS")
+    # 注：原 run_max_graph_loops / RUN_MAX_GRAPH_LOOPS（图循环预算）已随批次 B3
+    # 移除——它唯一的作用是看管「为对抗 interrupt_before 静态中断而手写的外层
+    # while 循环」。改用 interrupt() 后，循环保护由原生 recursion_limit 承担。
 
     # 模型与工具（原散落 os.getenv 的外飞地收编，语义与默认值保持不变）
     model_name: str = Field(default="deepseek-flash", alias="MODEL_NAME")
