@@ -263,6 +263,10 @@ async def generic_worker_node(
     is_first_entry = (
         current_task.get("status", GraphTaskStatus.PENDING) != GraphTaskStatus.IN_PROGRESS
     )
+    run_id = state.get("run_id")
+    thread_id = state.get("thread_id")
+    execution_plan_id = state.get("execution_plan_id")
+
     task_list_for_return = task_list
     if is_first_entry:
         await emit_event(
@@ -274,26 +278,26 @@ async def generic_worker_node(
             task_list, current_index, {"status": GraphTaskStatus.IN_PROGRESS}
         )
 
-    run_id = state.get("run_id")
-    thread_id = state.get("thread_id")
-    execution_plan_id = state.get("execution_plan_id")
-    if run_id and thread_id:
-        try:
-            from utils.async_task_queue import async_append_run_event, spawn_background
+        # 账本写入同样只在首次进入时做。此前这段在 guard **之外**，于是工具循环每
+        # 重入本节点一次就多写一行 task_started（实测一个任务两行，任务控制页时间线
+        # 重复显示；前端靠按 task_id 去重所以聊天界面看不出来）。
+        if run_id and thread_id:
+            try:
+                from utils.async_task_queue import async_append_run_event, spawn_background
 
-            spawn_background(
-                async_append_run_event(
-                    run_id=run_id,
-                    event_type="task_started",
-                    thread_id=thread_id,
-                    execution_plan_id=execution_plan_id,
-                    task_id=str(current_task.get("id", task_id)),
-                    event_data={"expert_type": expert_type, "description": description},
-                ),
-                label=f"run_event:task_started:{expert_type}",
-            )
-        except (RuntimeError, ValueError) as event_err:
-            logger.warning(f"[GenericWorker] ⚠️ task_started 账本写入提交失败: {event_err}")
+                spawn_background(
+                    async_append_run_event(
+                        run_id=run_id,
+                        event_type="task_started",
+                        thread_id=thread_id,
+                        execution_plan_id=execution_plan_id,
+                        task_id=str(current_task.get("id", task_id)),
+                        event_data={"expert_type": expert_type, "description": description},
+                    ),
+                    label=f"run_event:task_started:{expert_type}",
+                )
+            except (RuntimeError, ValueError) as event_err:
+                logger.warning(f"[GenericWorker] ⚠️ task_started 账本写入提交失败: {event_err}")
 
     try:
         # 获取专家配置参数

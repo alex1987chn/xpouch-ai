@@ -167,6 +167,63 @@ async def test_tool_loop_reentry_skips_started_event():
 
 
 @pytest.mark.asyncio
+async def test_task_started_ledger_row_written_only_on_first_entry(monkeypatch):
+    """账本里的 task_started 只在首次进入时写一行（工具循环重入不再多写）。
+
+    曾经的缺陷：账本写入在 is_first_entry guard **之外**，工具循环每重入一次就多写
+    一行（实测一个任务两行，任务控制页时间线重复显示；聊天界面靠按 task_id 去重才
+    没暴露）。思考面板改从账本重建后，重复行会直接变成重复步骤。
+    """
+    import utils.async_task_queue as queue_module
+
+    calls: list[str] = []
+
+    def _spy(coro, label=None, **_kwargs):
+        calls.append(label or "")
+        # 吞掉协程，避免 "coroutine was never awaited" 噪音
+        close = getattr(coro, "close", None)
+        if callable(close):
+            close()
+
+    monkeypatch.setattr(queue_module, "spawn_background", _spy)
+
+    from langchain_core.messages import ToolMessage
+
+    class _NoToolResponse(_FakeResponse):
+        pass
+
+    # 1) 首次进入（pending）→ 写一行
+    first_state = _base_state(
+        {"id": "t-1", "expert_type": "coder", "description": "写代码", "status": "pending"},
+        extra={"run_id": "r-1", "thread_id": "th-1"},
+    )
+    with (
+        _patches(),
+        patch("agents.nodes.generic.tool_policy_service.get_overrides", return_value={}),
+    ):
+        await generic_worker_node(first_state, llm=_FakeLLM([_NoToolResponse("最终回复")]))
+    first_entry_calls = [c for c in calls if c.startswith("run_event:task_started")]
+    assert len(first_entry_calls) == 1, "首次进入必须写一行 task_started 到账本"
+
+    # 2) 工具循环重入（in_progress）→ 不再写
+    reentry_state = _base_state(
+        {"id": "t-1", "expert_type": "coder", "description": "写代码", "status": "in_progress"},
+        extra={"run_id": "r-1", "thread_id": "th-1"},
+    )
+    reentry_state["messages"] = [
+        ToolMessage(content="工具结果", tool_call_id="call-1", name="calculator")
+    ]
+    calls.clear()
+    with (
+        _patches(),
+        patch("agents.nodes.generic.tool_policy_service.get_overrides", return_value={}),
+    ):
+        await generic_worker_node(reentry_state, llm=_FakeLLM([_NoToolResponse("最终回复")]))
+
+    assert [c for c in calls if c.startswith("run_event:task_started")] == []
+
+
+@pytest.mark.asyncio
 async def test_failure_path_advances_index_and_reports():
     """LLM 抛异常：index 仍推进（防卡死循环），last_expert_result.status=failed。"""
     task = {"id": "t-1", "expert_type": "coder", "description": "会失败", "status": "pending"}

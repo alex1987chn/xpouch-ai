@@ -21,13 +21,63 @@ import { useTaskStore } from '@/store/taskStore'
 import { useChatStore } from '@/store/chatStore'
 import { logger } from '@/utils/logger'
 import { getConversation } from '@/services/chat'
-import type { SubTask } from '@/types'
+import { getRunTimeline } from '@/services/runs'
+import { toLocalDate } from '@/lib/datetime'
+import {
+  buildThinkingStepsFromTimeline,
+  type ThinkingStepLabels,
+} from '@/lib/thinkingStepsFromTimeline'
+import type { Message, SubTask } from '@/types'
 
 interface UseSessionRestoreOptions {
   /** 是否启用恢复 */
   enabled?: boolean
   /** 恢复完成后回调 */
   onRestored?: () => void
+}
+
+/** 消息时间戳（number=毫秒；string 按后端约定 naive UTC 解析）→ 毫秒 */
+function messageTimeMs(ts: number | string | undefined): number {
+  if (typeof ts === 'number') return ts
+  if (!ts) return 0
+  return toLocalDate(ts).getTime()
+}
+
+/**
+ * 用运行事件账本给最后一条助手消息补回「思考过程」步骤骨架。
+ *
+ * 背景：思考步骤只活在前端内存（流式期间由 SSE 事件拼出），服务端只持久化正文，
+ * 所以刷新后面板必然消失。骨架一直躺在事件账本里，这里取回来挂上即可
+ * （映射规则与差异见 lib/thinkingStepsFromTimeline）。
+ *
+ * 只在「这条助手消息确实由本次 run 产出」时挂：run 开始时间晚于消息时间的，
+ * 说明那是上一轮的消息（本轮还在规划/等审批，还没有产出）。
+ * 取数失败一律静默降级——面板没有就没有，绝不因为一次额外请求影响会话恢复。
+ */
+async function attachThinkingFromTimeline(
+  messages: Message[],
+  run: { id: string; started_at?: string } | null | undefined,
+  labels: ThinkingStepLabels,
+): Promise<Message[]> {
+  if (!run?.id || !run.started_at) return messages
+
+  const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant')
+  if (!lastAssistant) return messages
+  if ((lastAssistant.metadata?.thinking?.length ?? 0) > 0) return messages
+  if (messageTimeMs(lastAssistant.timestamp) < toLocalDate(run.started_at).getTime()) return messages
+
+  try {
+    const timeline = await getRunTimeline(run.id, 200)
+    const steps = buildThinkingStepsFromTimeline(timeline.events ?? [], labels)
+    if (steps.length === 0) return messages
+    logger.debug('[useSessionRestore] 已从事件账本重建思考步骤:', steps.length, '步')
+    return messages.map((m) =>
+      m === lastAssistant ? { ...m, metadata: { ...m.metadata, thinking: steps } } : m,
+    )
+  } catch (error) {
+    logger.warn('[useSessionRestore] 思考步骤重建失败（面板留空，不影响会话恢复）:', error)
+    return messages
+  }
 }
 
 interface UseSessionRestoreReturn {
@@ -128,7 +178,8 @@ export function useSessionRestore(
       // 检查本地 localStorage 是否已有数据
       // 从服务端获取会话详情
       const conversation = await getConversation(threadId)
-      
+      const latestRun = conversation.latest_run
+
       // 🔥 恢复消息（无论简单模式还是复杂模式）
       if (conversation.messages && conversation.messages.length > 0) {
         // 🔥🔥🔥 前端暴力排序：确保消息按 timestamp 升序排列
@@ -137,11 +188,16 @@ export function useSessionRestore(
           const timeB = new Date(b.timestamp || 0).getTime()
           return timeA - timeB
         })
-        setMessages(sortedMessages)
+        // 思考面板随刷新消失（步骤只在内存里）→ 从事件账本重建骨架挂回
+        const restoredMessages = await attachThinkingFromTimeline(sortedMessages, latestRun, {
+          planDone: t('thinkingPlanDone'),
+          taskDone: t('thinkingTaskDone'),
+          taskFailed: t('thinkingTaskFailed'),
+        })
+        setMessages(restoredMessages)
       }
       setCurrentConversationId(threadId)
 
-      const latestRun = conversation.latest_run
       const latestRunStatus = latestRun?.status
 
       // 🔥🔥🔥 关键修复：使用 completed_at 判断任务是否真正完成
@@ -271,7 +327,7 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [threadId, enabled, setPendingPlan, setMode, setIsInitialized, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId, setGenerating])
+  }, [threadId, enabled, setPendingPlan, setMode, setIsInitialized, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId, setGenerating, t])
 
   /**
    * 公开的手动恢复方法
