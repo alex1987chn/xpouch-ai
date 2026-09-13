@@ -67,7 +67,10 @@
 - **现状**：`RunEvent`（账本）与 `stream_hub`（环形缓冲 + seq）各自记录，续传靠进程内缓冲，重启即丢，被约束在单实例。
 - **目标**：SSE 端点 = 「从 seq N 之后读 journal 并 tail」。多实例靠 `LISTEN/NOTIFY` 自然工作。
 - **理由**：续传变精确；`stream_hub` 的单实例约束与 410 降级路径一起消失；将来要扩不再是重写。
-- **代价**：需拍板 **token 级 delta 是否进 journal**。倾向 **不进**——journal 记 milestone，delta 走短生命周期通道。此拍板未完成，开工前必须定。
+- **代价**：~~需拍板 token 级 delta 是否进 journal~~ → **已拍板（2026-09-13）：delta 进 journal，但用「合并写 + 独立表」**。
+  - 原因：`stream_hub` 现在缓冲 2000 条事件，生成中断线重连**能重放已生成的文字**；若 delta 不进 journal，重连会丢半截文本——聊天产品里这是看得见的退化。原先"不进"的判断会造成行为回归。
+  - 做法：**两张表、同一 seq 空间**。`run_event`（永久、里程碑、审计）**不动**；新增 `run_stream_frame`（瞬态、delta 帧、run 终态即清理）。写入**合并**（~200ms 一帧，而非每 token 一行）→ 写放大从约 50 行/秒降到约 5 行/秒。SSE 端点按 seq 合并读两表。
+  - 收益：重启/跨实例精确重放；审计账本不被 delta 撑爆。
 
 ### 决定 2 · Run 是带租约的持久作业，不是 HTTP 请求
 
@@ -164,16 +167,34 @@
 
 ### 批次 B · Tier 2（**朝目标架构走的第一步，不只是还债**）
 
-范围：**决定 3 + 决定 4（含 `execution_mode` 预埋）+ `interrupt()` 原生化 + checkpoint thread 对齐**，四件打包，缺一不可。
+**拆成三个子批执行，不打包。** 耦合的只有 B3 内部的四件事；B1/B2 是行为不变的纯重构，可独立落地、独立 revert。这样 B3 的爆炸半径从「节点写库 + 计划模型 + 中断恢复」缩到「只改中断恢复」。
 
-- [ ] **前置：为 resume / revise / cancel-during-wait 三条路补特征测试**（当前只有 `transform_langgraph_event` 的 delta 门控 10 条）。
-- [ ] 决定 3：节点纯化——`commander_node` 的 DB 写入移到提交步，幂等化。
-- [ ] 决定 4：Plan canonical 模型收敛，携带 `execution_mode`。
-- [ ] `interrupt()` + `Command(resume=)` 替换 `interrupt_before=["expert_dispatcher"]`；审批独立成 `plan_approval` 节点，任务切换回路**绕过**它（拓扑承载语义，不靠运行时判断）。
-- [ ] 一次性消掉：外层 while、`_should_wait_for_human_approval` 启发式、`HumanMessage` 注入、`isolated_thread_id`、`run_max_graph_loops`（原生 `recursion_limit` 接管）、checkpoint 线性膨胀。
-- [ ] **需用户拍板**：修订（reviser）是否图内化——图内 = 驳回流挂住等分钟级 LLM（体验更好但长调用回到请求生命周期）；后台任务 = 保留现状形态。取决于生产网关超时策略。
+| 子批 | 内容 | 行为变更 | 风险 |
+|---|---|---|---|
+| **B1** | 决定 3：`commander_node` 的 DB 写入移到提交步，幂等化 | 无（纯重构） | 低 |
+| **B2** | 决定 4：Plan canonical 模型收敛，携带 `execution_mode` | 无（纯增量，新字段默认 sequential） | 低 |
+| **B3** | `interrupt()` + `Command(resume=)` 原生化 + thread 对齐 | **有**（暂停/恢复语义换实现） | **高** |
 
-**验收**：resume / revise / cancel-during-wait / 幂等重放 / 审批期超时五条特征测试通过；checkpoint 表行数不再随消息线性增长。
+- [ ] **B0 · 前置特征测试（零行为变更，可最先做）**：为 resume / revise / cancel-during-wait / 幂等重放 / 审批期超时五条路写测试，锁住「迁移不该改变的东西」。当前只有 `transform_langgraph_event` 的 delta 门控 10 条。
+- [ ] **B1 · 决定 3 节点纯化**：`commander_node` 的 ExecutionPlan/SubTask 写入移到提交步，幂等化（确定性 id + upsert）。
+  验收：计划创建结果与迁移前逐字段比对一致。
+- [ ] **B2 · 决定 4 Plan 单真相**：`Plan`/`PlanStep` canonical 模型；四套形状（`commander.Task` / `SubTaskCreate` / `TaskInfo` / 图状态 dict）收成一套 + 边界显式转换；**预埋 `execution_mode`**（LLM schema 新增该字段，默认 sequential → 行为不变）。
+  验收：字段名不再有两套写法（`dependencies`/`depends_on`、`task_id` 双身份）；`execution_mode` 能从 LLM 输出贯通到 `SubTask` 行。
+- [ ] **B3 · interrupt 原生化（原子，不可再拆）**，四件事必须同一 commit：
+  1. `interrupt()` + `Command(resume=)` 替换 `interrupt_before=["expert_dispatcher"]`
+  2. 审批独立成 `plan_approval` 节点；任务切换回路 `generic → expert_dispatcher` **绕过**它（拓扑承载语义，不靠运行时判断）
+  3. checkpoint `thread_id` 对齐业务 thread
+  4. 恢复路径改为 `Command(resume=审批结果)`
+  → 一次性消掉：外层 while、`_should_wait_for_human_approval` 启发式、`HumanMessage` 注入、`isolated_thread_id`、`run_max_graph_loops`（原生 `recursion_limit` 接管）、checkpoint 线性膨胀。
+  **单独改其中任何一件都会造出坏掉的中间态**（例如只换 `interrupt()` 但 thread 仍是 `{thread}_{run}`，恢复时找不到 checkpoint）。
+- [ ] **已拍板（2026-09-13）：修订不图内化，保留后台任务。**
+  - 理由：拆开看是两件事——**图只负责「停在审批点等人」，修订是对计划数据的副作用，不是图的一次转移**。
+  - 形状：图 pause 在 `plan_approval` 的 `interrupt`；`approve` → `Command(resume)` 从该点继续；`revise` → API 立即返回 + 后台任务跑 LLM 出 v(n+1) 落库与账本，前端轮询到新版本重亮审批卡。
+  - **不需要 `plan_reviser` 节点。** 分钟级 LLM 调用留在请求生命周期之外（不赌生产网关超时），同时「停在审批点」成为原生状态而非启发式推断。
+  - 反证：原「从账本推导修订态 + 重启兜底」机制中，`fail_stale_revision_jobs` 自 v3.5.0 起从未生效（`created_at` 字段名 bug，2026-09-13 才修）——该路径本身脆弱。
+  - 后续可选：若想给修订过程做实时进度，可给后台任务单独开 SSE，不必回到图内。
+
+**批次 B 总验收**：五条特征测试通过；checkpoint 表行数不再随消息线性增长。
 
 ### 批次 C · 并行（决定 5 + 决定 8）
 
