@@ -81,7 +81,6 @@ export function useSessionRestore(
   
   // 从 Store 获取状态（使用 Selectors 模式）
   const resetAll = useTaskStore((state) => state.resetAll)
-  const restoreFromExecutionPlan = useTaskStore((state) => state.restoreFromExecutionPlan)
   const setPendingPlan = useTaskStore((state) => state.setPendingPlan)
   const setMode = useTaskStore((state) => state.setMode)
   const setIsInitialized = useTaskStore((state) => state.setIsInitialized)
@@ -178,37 +177,19 @@ export function useSessionRestore(
         return true
       }
       
-      // 复杂模式：恢复任务状态（智能合并）
+      // 复杂模式：恢复执行状态
+      //
+      // 此前这里有一段「智能合并」启发式：比较**本地持久化的产物数**与 API 返回的
+      // 产物数，决定用哪边重建任务表。那套逻辑存在的前提是「本地留有一份任务/产物
+      // 副本」——而那份副本没有任何 UI 消费者，属于审计所称的「双真相源」。
+      // 现已移除本地副本，产物/任务一律**以服务端为唯一真相**：直接设置模式与
+      // 初始化标记即可（后面的 pendingPlan / 运行中判定本来就全部读 subTasks）。
       const { execution_plan } = conversation
       if (execution_plan?.sub_tasks) {
         const subTasks = execution_plan.sub_tasks || []
-        
-        // 统计 API 返回的 artifacts 数量
-        const apiArtifactCount = subTasks.reduce((sum: number, t: SubTask) =>
-          sum + (t.artifacts?.length || 0), 0)
-        
-        // 检查本地数据
-        const taskStore = useTaskStore.getState()
-        let localArtifactCount = 0
-        taskStore.tasks.forEach((task) => {
-          localArtifactCount += task?.artifacts?.length || 0
-        })
-        
-        // 智能决策：
-        // 1. 本地无数据 -> 从 API 恢复
-        // 2. API 有 artifacts 但本地没有 -> 从 API 恢复（数据更完整）
-        // 3. 其他情况 -> 保留本地数据
-        if (taskStore.tasks.size === 0) {
-          restoreFromExecutionPlan(execution_plan, subTasks)
-          // 🔥 恢复成功后设置 UI 状态
-          setMode('complex')
-          setIsInitialized(true)
-        } else if (apiArtifactCount > 0 && localArtifactCount === 0) {
-          restoreFromExecutionPlan(execution_plan, subTasks)
-          // 🔥 恢复成功后设置 UI 状态
-          setMode('complex')
-          setIsInitialized(true)
-        }
+
+        setMode('complex')
+        setIsInitialized(true)
         
         // 检查是否还有运行中的任务
         const hasRunningTask = subTasks.some((t: SubTask) => t.status === 'running')
@@ -281,7 +262,7 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [threadId, enabled, restoreFromExecutionPlan, setPendingPlan, setMode, setIsInitialized, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId, setGenerating])
+  }, [threadId, enabled, setPendingPlan, setMode, setIsInitialized, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId, setGenerating])
 
   /**
    * 公开的手动恢复方法

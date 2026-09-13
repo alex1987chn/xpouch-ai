@@ -14,8 +14,7 @@ import type {
   TaskFailedData,
   TaskInfo
 } from '@/types/events'
-import type { ExecutionPlan as ApiExecutionPlan, SubTask, Artifact } from '@/types'
-import { formatTaskOutput } from '@/utils/formatters'
+import type { Artifact } from '@/types'
 import { logger } from '@/utils/logger'
 import type { TaskStore } from '../taskStore'
 
@@ -81,13 +80,10 @@ export interface TaskSliceActions {
   updateTask: (taskId: string, updates: Partial<Task>) => void
   deleteTask: (taskId: string) => void
   setTasks: (tasks: Map<string, Task>) => void
-  
-  // ExecutionPlan restore
-  restoreFromExecutionPlan: (executionPlan: ApiExecutionPlan, subTasks: SubTask[]) => void
-  
+
   // Reset all tasks
   resetTasks: (force?: boolean, hasRunningTasks?: () => boolean) => void
-  
+
   // Cache sync (for other slices to call)
   syncTasksCache: () => void
 }
@@ -338,68 +334,6 @@ export const createTaskSlice = (
     })
   },
 
-  restoreFromExecutionPlan: (executionPlan: ApiExecutionPlan, subTasks: SubTask[]) => {
-    set((state) => {
-      // 使用 state 直接修改（Immer 会处理不可变性）
-      state.executionPlan = {
-        executionPlanId: executionPlan.execution_plan_id,
-        summary: executionPlan.user_query || '',
-        estimatedSteps: subTasks.length + 1,
-        executionMode: 'sequential',
-        status:
-          (executionPlan.status as 'pending' | 'running' | 'completed' | 'failed') || 'running',
-        // 🔥 保存 run_id 和 thread_id，用于跳转到时间线页面
-        runId: executionPlan.run_id,
-        threadId: executionPlan.thread_id,
-      }
-
-      state.tasks = new Map()
-
-      subTasks.forEach((subTask, index) => {
-        const taskStatus = (subTask.status as TaskStatus) || 'pending'
-
-        const artifacts: Artifact[] = (subTask.artifacts || []).map((art, artIndex) => {
-          const backendArtifact = art as Artifact & {
-            sort_order?: number
-            created_at?: string
-          }
-
-          return {
-            id: art.id || `${subTask.id}-artifact-${artIndex}`,
-            type: art.type || 'text',
-            title: art.title || `${subTask.expert_type} Result`,
-            content: art.content || '',
-            language: art.language,
-            sortOrder: backendArtifact.sortOrder ?? backendArtifact.sort_order ?? artIndex,
-            createdAt:
-              backendArtifact.createdAt ??
-              backendArtifact.created_at ??
-              new Date().toISOString()
-          }
-        })
-
-        state.tasks.set(subTask.id, {
-          id: subTask.id,
-          expert_type: subTask.expert_type,
-          description: subTask.task_description,
-          status: taskStatus,
-          sort_order: index,
-          artifacts: artifacts,
-          output: formatTaskOutput(subTask.output_result || subTask.output),
-          error: subTask.error_message || subTask.error,
-          durationMs: subTask.duration_ms
-        })
-      })
-
-      // 移除以下跨 Slice 状态修改：
-      // state.mode = 'complex'（UISlice 状态）
-      // state.isInitialized = true（UISlice 状态）
-      // state.selectedTaskId = ...（UISlice 状态）
-      // 这些应由调用方（UISlice）处理
-
-      rebuildTasksCache(state)
-    })
-  },
 
   syncTasksCache: () => {
     set((state) => {

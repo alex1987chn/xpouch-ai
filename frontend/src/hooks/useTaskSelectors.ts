@@ -1,229 +1,90 @@
 /**
- * TaskStore 性能优化 Selectors
- * 
- * 使用 Zustand Selector 模式避免不必要的重渲染
- * 适用于高频更新场景（SSE 流式事件）
+ * TaskStore Selectors
+ *
+ * 只保留**有真实消费者**的 selector。
+ *
+ * 此前这里还有一整套针对 tasks / tasksCache / executionPlan / artifacts 的
+ * selector（useTaskStats、useRunningTasks、useSelectedTask、useTaskById、
+ * useTaskArtifacts、useTasksMap、useTasksCache、useExecutionPlan…），经逐个核对
+ * **没有任何组件消费它们**——那批数据是「服务端运行数据的本地副本」，其唯一读者
+ * 是 useSessionRestore 里的对账启发式（已移除）。任务与产物现以服务端为唯一真相
+ * （/threads、/artifacts、/run/:id），因此不再提供本地副本 selector。
+ *
+ * 使用 Zustand selector 模式避免高频 SSE 更新下的多余重渲染。
  */
 
 import { useMemo } from 'react'
-import { useShallow } from 'zustand/react/shallow'
 import { useTaskStore } from '@/store/taskStore'
-import type { Task } from '@/store/taskStore'
 
 // ============================================================================
-// 基础 Selectors (返回原始值)
+// 基础 Selectors（返回原始值）
 // ============================================================================
 
-/** 获取当前模式 */
+/** 当前模式（simple / complex） */
 export const useTaskMode = () => useTaskStore(state => state.mode)
 
-/** 获取当前执行计划 */
-export const useExecutionPlan = () => useTaskStore(state => state.executionPlan)
-
-/** 获取选中的任务ID */
-export const useSelectedTaskId = () => useTaskStore(state => state.selectedTaskId)
-
-/** 获取任务初始化状态 */
-export const useTaskInitialized = () => useTaskStore(state => state.isInitialized)
-
-/** 获取当前活跃运行 ID */
+/** 当前活跃运行 ID */
 export const useActiveRunId = () => useTaskStore(state => state.activeRunId)
 
-/** 获取等待审批状态 */
+/** 是否等待人工审批 */
 export const useIsWaitingForApproval = () => useTaskStore(state => state.isWaitingForApproval)
 
-/** 获取待审批计划 */
+/** 待审批计划（审批卡渲染 + 执行步数来源） */
 export const usePendingPlan = () => useTaskStore(state => state.pendingPlan)
 
 /** HITL 修订中标志（驳回反馈已提交，专家修订 v(n+1) 中） */
 export const usePlanRevising = () => useTaskStore(state => state.planRevising)
 
-/** 获取待审批计划版本号（乐观锁） */
+/** 待审批计划版本号（乐观锁） */
 export const usePendingPlanVersion = () => useTaskStore(state => state.pendingPlanVersion)
 
-/** 获取待审批运行 ID */
+/** 待审批运行 ID */
 export const usePendingRunId = () => useTaskStore(state => state.pendingRunId)
 
-/** 获取待审批执行计划 ID */
-export const usePendingExecutionPlanId = () => useTaskStore(state => state.pendingExecutionPlanId)
-
-/** 获取运行中的任务ID集合 */
+/** 运行中的任务 ID 集合（消费方用它判「是否正在执行」） */
 export const useRunningTaskIds = () => useTaskStore(state => state.runningTaskIds)
 
-/** 获取任务缓存版本号 (用于触发重渲染) */
-export const useTasksCacheVersion = () => useTaskStore(state => state.tasksCacheVersion)
-
 // ============================================================================
-// 复杂 Selectors (使用 useShallow 进行浅比较)
-// ============================================================================
-
-/** 
- * 获取任务缓存数组
- * 使用 useShallow 因为返回的是数组引用
- */
-export const useTasksCache = () => useTaskStore(
-  useShallow(state => state.tasksCache)
-)
-
-/**
- * 获取所有任务 Map
- * 注意：只有在需要遍历所有任务时使用，通常 tasksCache 更合适
- */
-export const useTasksMap = () => useTaskStore(
-  useShallow(state => state.tasks)
-)
-
-/**
- * 获取选中任务的详细信息
- * 自动根据 selectedTaskId 查找对应的 Task 对象
- * 使用 useShallow 因为 find 会返回新的对象引用
- */
-export const useSelectedTask = (): Task | undefined => useTaskStore(
-  useShallow(state => {
-    const { selectedTaskId, tasksCache } = state
-    if (!selectedTaskId) return undefined
-    return tasksCache.find(t => t.id === selectedTaskId)
-  })
-)
-
-/**
- * 获取运行中的任务列表
- */
-export const useRunningTasks = (): Task[] => useTaskStore(
-  useShallow(state => {
-    const { runningTaskIds, tasksCache } = state
-    if (runningTaskIds.size === 0) return []
-    return tasksCache.filter(t => runningTaskIds.has(t.id))
-  })
-)
-
-/**
- * 获取任务统计信息
- * 返回一个稳定的对象，避免频繁重渲染
- */
-export const useTaskStats = () => {
-  const total = useTaskStore(state => state.tasksCache.length)
-  const running = useTaskStore(state => state.runningTaskIds.size)
-  const initialized = useTaskStore(state => state.isInitialized)
-  const hasExecutionPlan = useTaskStore(state => !!state.executionPlan)
-  return useMemo(
-    () => ({ total, running, initialized, hasExecutionPlan }),
-    [total, running, initialized, hasExecutionPlan]
-  )
-}
-
-// ============================================================================
-// Actions Selectors (稳定引用，不会触发重渲染)
+// Actions Selectors（稳定引用，不触发重渲染）
 // ============================================================================
 
 /**
- * 获取任务相关的 Actions
- * 使用 useShallow 返回一个稳定的 actions 对象
+ * 任务相关 Actions。
+ *
+ * 只暴露**有调用方**的：PlanReviewCard（计划审批与编辑）与 useChatCore（模式/运行 ID）。
+ * 其余（initializePlan/startTask/completeTask/failTask/addArtifact/selectTask/
+ * updateArtifactContent 等）没有任何调用方，连同本地任务副本一并停止使用。
  */
 export const useTaskActions = () => {
-  const initializePlan = useTaskStore(state => state.initializePlan)
-  const startTask = useTaskStore(state => state.startTask)
-  const completeTask = useTaskStore(state => state.completeTask)
-  const failTask = useTaskStore(state => state.failTask)
-  const addArtifact = useTaskStore(state => state.addArtifact)
-  const selectTask = useTaskStore(state => state.selectTask)
-  const resetTasks = useTaskStore(state => state.resetTasks)
-  const resetAll = useTaskStore(state => state.resetAll)
+  const updateTasksFromPlan = useTaskStore(state => state.updateTasksFromPlan)
   const setMode = useTaskStore(state => state.setMode)
-  const setIsInitialized = useTaskStore(state => state.setIsInitialized)
   const setActiveRunId = useTaskStore(state => state.setActiveRunId)
   const clearActiveRunId = useTaskStore(state => state.clearActiveRunId)
-  const updateTasksFromPlan = useTaskStore(state => state.updateTasksFromPlan)
   const setPendingPlan = useTaskStore(state => state.setPendingPlan)
   const clearPendingPlan = useTaskStore(state => state.clearPendingPlan)
   const setIsWaitingForApproval = useTaskStore(state => state.setIsWaitingForApproval)
   const setPlanRevising = useTaskStore(state => state.setPlanRevising)
-  const restoreFromExecutionPlan = useTaskStore(state => state.restoreFromExecutionPlan)
-  const updateArtifactContent = useTaskStore(state => state.updateArtifactContent)
 
   return useMemo(
     () => ({
-      initializePlan,
-      startTask,
-      completeTask,
-      failTask,
-      addArtifact,
-      selectTask,
-      resetTasks,
-      resetAll,
+      updateTasksFromPlan,
       setMode,
-      setIsInitialized,
       setActiveRunId,
       clearActiveRunId,
-      updateTasksFromPlan,
       setPendingPlan,
       clearPendingPlan,
       setIsWaitingForApproval,
       setPlanRevising,
-      restoreFromExecutionPlan,
-      updateArtifactContent,
     }),
     [
-      initializePlan,
-      startTask,
-      completeTask,
-      failTask,
-      addArtifact,
-      selectTask,
-      resetTasks,
-      resetAll,
+      updateTasksFromPlan,
       setMode,
-      setIsInitialized,
       setActiveRunId,
       clearActiveRunId,
-      updateTasksFromPlan,
       setPendingPlan,
       clearPendingPlan,
       setIsWaitingForApproval,
-      restoreFromExecutionPlan,
-      updateArtifactContent,
+      setPlanRevising,
     ]
   )
 }
-
-/**
- * 获取单个 Action (当只需要一个 action 时使用)
- */
-export const useSelectTaskAction = () => useTaskStore(state => state.selectTask)
-export const useResetTasksAction = () => useTaskStore(state => state.resetTasks)
-export const useResetAllAction = () => useTaskStore(state => state.resetAll)
-export const useInitializePlanAction = () => useTaskStore(state => state.initializePlan)
-
-// ============================================================================
-// 条件 Selectors (根据条件返回不同值)
-// ============================================================================
-
-/**
- * 根据任务ID获取任务详情
- * 用于 BusRail/ExpertRail 中的任务卡片
- */
-export const useTaskById = (taskId: string | null): Task | undefined => {
-  return useTaskStore(
-    useShallow(state => {
-      if (!taskId) return undefined
-      return state.tasksCache.find(t => t.id === taskId)
-    })
-  )
-}
-
-/**
- * 检查指定任务是否正在运行
- */
-export const useIsTaskRunning = (taskId: string): boolean => 
-  useTaskStore(state => state.runningTaskIds.has(taskId))
-
-/**
- * 获取任务的 artifacts
- */
-export const useTaskArtifacts = (taskId: string) => 
-  useTaskStore(
-    useShallow(state => {
-      const task = state.tasksCache.find(t => t.id === taskId)
-      return task?.artifacts || []
-    })
-  )

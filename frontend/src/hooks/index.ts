@@ -42,34 +42,18 @@ export { useEscapeToClose } from './useEscapeToClose'
 
 // TaskStore Selectors
 export {
-  // 基础 Selectors
+  // 只导出**有真实消费者**的 selector。此前那批针对 tasks/tasksCache/
+  // executionPlan/artifacts 的 selector 零组件消费者，已随本地任务副本一并移除
+  // ——任务与产物以服务端为唯一真相（/threads、/artifacts、/run/:id）。
   useTaskMode,
-  useExecutionPlan,
-  useSelectedTaskId,
-  useTaskInitialized,
+  useActiveRunId,
   useIsWaitingForApproval,
   usePendingPlan,
+  usePlanRevising,
+  usePendingPlanVersion,
+  usePendingRunId,
   useRunningTaskIds,
-  useTasksCacheVersion,
-  
-  // 复杂 Selectors (useShallow)
-  useTasksCache,
-  useTasksMap,
-  useSelectedTask,
-  useRunningTasks,
-  useTaskStats,
-  
-  // Actions
   useTaskActions,
-  useSelectTaskAction,
-  useResetTasksAction,
-  useResetAllAction,
-  useInitializePlanAction,
-  
-  // 条件 Selectors
-  useTaskById,
-  useIsTaskRunning,
-  useTaskArtifacts,
 } from './useTaskSelectors'
 
 // ChatStore Selectors

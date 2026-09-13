@@ -82,15 +82,17 @@ export const useTaskStore = create<TaskStore>()(
     {
       name: 'xpouch-task-store',
       version: 2,  // 自定义 deserialize 已兼容旧 session 持久化字段
-      // 只持久化关键字段
+      // 只持久化 UI 偏好与跨刷新需要保留的标记。
+      //
+      // 此前还持久化了 executionPlan / tasks（含 artifacts）/ tasksCacheVersion /
+      // selectedTaskId —— 那是**服务端数据的本地副本**，且没有 UI 消费者（唯一读它
+      // 的是 useSessionRestore 里那段「本地产物数 vs API 产物数」对账启发式，已随
+      // 副本一并移除）。留着的代价：localStorage 长期躺着一份会过期的运行数据，
+      // 还要为旧结构维护 deserialize 兼容。
+      // 现在产物/任务一律以服务端为唯一真相（/threads、/artifacts、/run/:id）。
       partialize: (state: TaskStore) => ({
-        // TaskSlice
-        executionPlan: state.executionPlan,
-        tasks: Array.from(state.tasks.entries()),
-        tasksCacheVersion: state.tasksCacheVersion,
-        // UISlice
+        // UISlice：跨刷新需要保留的 UI 状态
         runningTaskIds: Array.from(state.runningTaskIds),
-        selectedTaskId: state.selectedTaskId,
         isInitialized: state.isInitialized,
         mode: state.mode,
         // 不持久化临时状态：isWaitingForApproval, pendingPlan, progress
