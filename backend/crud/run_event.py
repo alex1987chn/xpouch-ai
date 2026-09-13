@@ -490,7 +490,7 @@ def fail_stale_revision_jobs(
     events = db.exec(
         select(RunEvent)
         .where(RunEvent.event_type.in_(state_types))
-        .order_by(RunEvent.created_at.asc(), RunEvent.id.asc())
+        .order_by(RunEvent.timestamp.asc(), RunEvent.id.asc())
     ).all()
 
     # 按 run 取最新一条修订态事件（升序遍历，后写覆盖）
@@ -502,8 +502,8 @@ def fail_stale_revision_jobs(
         ev
         for ev in latest_by_run.values()
         if ev.event_type == RunEventType.HITL_REVISION_STARTED
-        and ev.created_at
-        and ev.created_at < cutoff
+        and ev.timestamp
+        and ev.timestamp < cutoff
     ]
     for ev in stale:
         emit_hitl_revision_failed(

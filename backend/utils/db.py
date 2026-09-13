@@ -10,8 +10,13 @@ from psycopg_pool import AsyncConnectionPool
 from config import settings
 from utils.logger import logger
 
-# 统一走 config.settings（与 database.py/env.py 同源），驱动固定 psycopg
-PSYCOPG_DATABASE_URL = settings.get_database_url(sync_driver="psycopg")
+# 统一走 config.settings（与 database.py/env.py 同源）。
+# 注意：此处必须用 plain——本模块把连接串交给 psycopg 原生池
+# （psycopg_pool.AsyncConnectionPool）与 AsyncPostgresSaver，二者基于 libpq，
+# 只认 postgresql:// / postgres://；SQLAlchemy 风格的 "+psycopg" 驱动标记
+# 会被 libpq 当成非法连接选项（invalid connection option "…?keepalives"）。
+# database.py / migrations/env.py 走 SQLAlchemy，那里才需要 "+psycopg"。
+PSYCOPG_DATABASE_URL = settings.get_database_url(sync_driver="plain")
 
 # 添加 TCP keepalive 参数，防止长时间等待时连接被关闭
 # 🔥 激进版：30s 无数据就开始探测，每 10s 敲一次，连敲 3 次没回就判定死亡
