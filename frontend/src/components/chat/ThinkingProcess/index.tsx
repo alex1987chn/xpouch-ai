@@ -54,6 +54,8 @@ interface ThinkingProcessProps {
   totalSteps?: number
   /** 打开某条产物的查看器（复用 ArtifactViewerModal）；不传则卡片不可点 */
   onOpenArtifact?: (artifactId: string) => void
+  /** 初始是否展开（历史消息传 false，避免"展开→自动收起"的闪烁） */
+  defaultExpanded?: boolean
 }
 
 // ============================================================================
@@ -281,9 +283,12 @@ export default function ThinkingProcess({
   className,
   totalSteps: fixedTotalSteps,
   onOpenArtifact,
+  defaultExpanded = true,
 }: ThinkingProcessProps) {
   const { t } = useTranslation()
-  const [isExpanded, setIsExpanded] = useState(true)
+  // 历史消息的面板默认折叠：它们早已结束，一进来展开再自动收起会闪一下；
+  // 折叠态仍是一行摘要（N/N 完成），点击即可展开回看。
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const autoCollapseTimer = useRef<NodeJS.Timeout | null>(null)
   // 使用 ref 记录是否已经自动折叠过，避免重复触发
   const hasAutoCollapsed = useRef(false)

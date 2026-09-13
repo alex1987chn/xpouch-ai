@@ -331,20 +331,30 @@ export default function ChatStreamPanel({
             const parsedContent = cachedParsedContent(rawContent)
             const hasActualContent = parsedContent.replace(/\s/g, '').length > 0
             
-            // Only show ThinkingProcess on the last message with thinking
-            // （lastThinkingIndex 已预计算；无任何 thinking 时该分支不会进入）
-            const isLastMessageWithThinking = index === lastThinkingIndex
-            
+            // 每条带思考步骤的消息各渲染自己的面板：此前只渲染**最后一条**，
+            // 于是批准后新建消息时，用户刚读过的规划内容整块从屏幕消失。
+            // lastThinkingIndex 现在只用来判断「哪一条是当前正在跑的那条」——
+            // 只有它自动展开并显示实时状态，历史面板默认折叠成一行摘要。
+            const isLiveThinking = index === lastThinkingIndex
+            const isThinkingNow = isLastAndStreaming && isLiveThinking
+
             return (
               <div key={messageKey}>
                 {/* Thinking chain display (outside message bubble, BEFORE message content) */}
                 {/* 常规布局：思考过程在消息上方 */}
-                {thinkingSteps.length > 0 && isLastMessageWithThinking && (
+                {thinkingSteps.length > 0 && (
                   <div className="mb-4">
-                    <ThinkingProcess 
+                    <ThinkingProcess
                       steps={thinkingSteps}
-                      isThinking={isLastAndStreaming}
-                      totalSteps={estimatedSteps > 0 ? estimatedSteps : thinkingSteps.length}
+                      isThinking={isThinkingNow}
+                      // 只有当前运行的那条用计划的预估步数；历史消息用它自己的步数
+                      // （estimatedSteps 来自本轮 pendingPlan，套到旧消息上会算错）
+                      totalSteps={
+                        isLiveThinking && estimatedSteps > 0
+                          ? estimatedSteps
+                          : thinkingSteps.length
+                      }
+                      defaultExpanded={isLiveThinking}
                       onOpenArtifact={setViewArtifactId}
                     />
                   </div>
