@@ -251,8 +251,25 @@
 
 ### 批次 D · 运行层归位（决定 1 + 决定 2）
 
-- [ ] 决定 1：SSE 改为 journal 的投影。（开工前拍板 token delta 是否进 journal。）
-- [ ] 决定 2：`run_lease` + supervisor 循环，替换四处存活启发式。
+目标：让 SSE 续传在**进程重启后仍成立**、为多实例铺路；把「run 还活着吗」从四处启发式收敛为租约。
+
+**分三片推进（每片独立可验证，勿合并）：**
+
+- [x] **第 1 片 · 帧表基础设施（已完成 2026-09-13，commit `f9a8972`）**：`run_stream_frame(id, run_id, seq, wire, created_at)` + 迁移 `20260913_000200`（唯一索引 `(run_id,seq)`、`created_at` 索引）+ `crud/run_stream_frame.py`（append/list_after/latest_seq/prune_run/prune_older_than）+ 10 条测试。**未接线**，不改变任何现有行为。
+  - 与 `runevent` 的分工（模型 docstring 已写明）：runevent = 永久审计账本（里程碑、只追加不删）；本表 = 瞬态传输缓冲（含 token 级增量），run 终态即清。
+- [ ] **第 2 片 · 写入端接线**：`stream_hub.publish` 之后把帧落库。
+  - **token 级帧必须合并写**（~200ms 一批，一帧可含多条 SSE 事件，seq 记其中最后一条）——否则每个 token 一次 INSERT，约 50 次/秒/run，写放大不可接受。
+  - 需一个轻量 flush（定时器或按字节阈值），并保证**终态前把缓冲刷净**，否则尾部丢失。
+  - 落库失败只 warning（`append_frames` 已保证不抛），实时推送不受影响。
+- [ ] **第 3 片 · 读取端切换 + 清理 + 删旧件**：
+  - `/chat/{thread_id}/stream/resume` 改为：先 `list_frames_after(last_event_id)` 重放库中帧，再跟随实时（内存 hub 或 DB 轮询；单实例下前者即可，NOTIFY 留到多实例）。
+  - `prune_run_frames` 挂到既有 checkpoint 清理时机（`delete_checkpoints_for_thread` 的三处调用点：正常收尾 / 驳回 / 取消），并在 `session_cleanup_service` 里加 `prune_frames_older_than` 兜底。
+  - 全部生效后才删除 `stream_hub`；删除前它仍是实时跟随的唯一通道。
+  - **验证方式**：e2e 脚本 + 「跑复杂任务到一半重启后端 → 前端按 last_event_id 续传仍拿到完整产出」的手工用例（这条是第 3 片的核心验收）。
+- [ ] **决定 2 · run 租约**：`run_lease(run_id, owner, lease_expires_at, attempt)` + supervisor 续租/回收，替换心跳 + 清理循环 + 活跃互斥 + in-flight 去重四处启发式。
+  - **注意**：这四处分别服务不同语义（存活可见性 / 僵尸回收 / 并发互斥 / 请求去重），替换前要逐个确认新机制真的覆盖，不能只图"少一个机制"。且它们都在**已验证过的取消/超时路径**上，改动需重跑 e2e。
+
+**注**：决定 1 的 token delta 处理已拍板为「进 journal，但合并写 + 独立表」（见第 4 节决定 1）。
 
 ### 批次 E · 收尾项（可穿插，独立价值）
 
