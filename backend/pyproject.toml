@@ -8,7 +8,9 @@ dependencies = [
     "fastapi>=0.129.0,<1.0.0",
     "starlette>=0.52.1",  # 🔥 安全修复: DoS 漏洞 (GHSA-f96h-pmfr-66vw)
     "pydantic-settings>=2.13.1",  # 🟡 支持更多配置源
-    # Note: pydantic-core 2.42.0+ 需要 pydantic 2.13.0+，但 LangChain 尚未支持，暂时保持现状
+    # 注：pydantic / pydantic-core 由 fastapi 与 langchain-core 传递解析，本地不额外约束。
+    # （此前这里写着「pydantic-core 2.42+ 需要 pydantic 2.13+ 但 LangChain 尚未支持」——
+    #   该限制早已解除：当前解析结果是 pydantic 2.13.5 + pydantic-core 2.46.5）
     "langchain-core>=1.0.0,<2.0.0",  # 🔥 收紧：限制在主版本 1.x，避免破坏性变更
     "langchain-openai>=1.0.0,<2.0.0",  # 🔥 收紧：与 langchain-core 版本兼容
     "langchain-tavily>=0.2.0,<1.0.0",  # 🔥 新增：Tavily 官方工具包
