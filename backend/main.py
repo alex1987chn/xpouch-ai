@@ -45,7 +45,19 @@ from config import settings
 # 内部模块导入
 from database import create_db_and_tables, engine
 from models import SkillTemplate, SystemExpert
-from routers import admin, agents, chat, library, mcp, public, runs, stats, system, tools
+from routers import (
+    admin,
+    agents,
+    chat,
+    experts,
+    library,
+    mcp,
+    public,
+    runs,
+    stats,
+    system,
+    tools,
+)
 from utils.exceptions import AppError, handle_error
 from utils.logger import logger, new_request_id, reset_request_id, set_request_id, setup_logging
 
@@ -207,6 +219,7 @@ app.include_router(library.router)
 app.include_router(tools.router)
 app.include_router(chat.router)
 app.include_router(agents.router)
+app.include_router(experts.router)
 app.include_router(system.router)
 app.include_router(mcp.router)
 app.include_router(runs.router)

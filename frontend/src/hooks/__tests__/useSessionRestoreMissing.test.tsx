@@ -11,8 +11,10 @@
  */
 
 import { render, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
 
 import { useSessionRestore } from '../useSessionRestore'
 import { useChatStore } from '@/store/chatStore'
@@ -37,13 +39,27 @@ function Harness() {
   return null
 }
 
+function TestProviders({ children }: { children: ReactNode }) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return (
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[`/workbench/${currentThreadId}`]}>
+        <Routes>
+          <Route path="/workbench/:id" element={children} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
+  )
+}
+
+let currentThreadId = 't1'
+
 function renderAt(threadId: string) {
+  currentThreadId = threadId
   return render(
-    <MemoryRouter initialEntries={[`/workbench/${threadId}`]}>
-      <Routes>
-        <Route path="/workbench/:id" element={<Harness />} />
-      </Routes>
-    </MemoryRouter>
+    <TestProviders>
+      <Harness />
+    </TestProviders>
   )
 }
 
