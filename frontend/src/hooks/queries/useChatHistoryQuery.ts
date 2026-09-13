@@ -85,8 +85,14 @@ export function useChatHistoryQuery(options: { limit?: number; enabled?: boolean
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     // 组件挂载时如果数据是 stale 的，自动重新获取
     refetchOnMount: 'always',
-    // 窗口重新获得焦点时不自动刷新（避免打扰用户）
-    refetchOnWindowFocus: false,
+    // 窗口重新获得焦点时对账（2026-09-13 由 false 改为 true）。
+    //
+    // 为什么改：会话行右侧的状态 chip（待审核/运行中）来自 `latest_run.status`，而
+    // **状态在别处变化**时（另一个标签页、任务控制页、运维容器里取消了 run）本客户端
+    // 没有任何对账时机——5 分钟 staleTime 内它会一直挂着过期的「待审核」。用户实测撞到过：
+    // run 早已 cancelled，侧栏仍显示待审核。切窗口回来是最自然的对账点，且 staleTime
+    // 仍拦得住频繁请求（不是每次聚焦都打）。
+    refetchOnWindowFocus: true,
     // 只有 enabled 为 true 且已登录时才发起请求
     enabled,
   })

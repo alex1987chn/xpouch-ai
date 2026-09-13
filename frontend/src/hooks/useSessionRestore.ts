@@ -16,12 +16,14 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from '@/i18n'
 import { useTaskStore } from '@/store/taskStore'
 import { useChatStore } from '@/store/chatStore'
 import { logger } from '@/utils/logger'
 import { getConversation } from '@/services/chat'
 import { getRunTimeline } from '@/services/runs'
+import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { toLocalDate } from '@/lib/datetime'
 import {
   buildThinkingStepsFromTimeline,
@@ -120,6 +122,7 @@ export function useSessionRestore(
   const { enabled = true, onRestored } = options
   const { id: threadId } = useParams<{ id: string }>()
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   
   const [isRestoring, setIsRestoring] = useState(false)
   const [isRestored, setIsRestored] = useState(false)
@@ -226,6 +229,11 @@ export function useSessionRestore(
         setMessages(restoredMessages)
       }
       setCurrentConversationId(threadId)
+
+      // 刚拿到这条会话的真相（含 latest_run.status）→ 让会话地层跟着对账一次。
+      // 侧栏状态 chip 读的正是 latest_run.status，而这个状态可能在别处变过
+      // （另一个标签页/任务控制页取消），本客户端此前没有任何时机知道。
+      queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
 
       const latestRunStatus = latestRun?.status
 
@@ -362,7 +370,7 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [threadId, enabled, setPendingPlan, setMode, setIsInitialized, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId, setGenerating, t])
+  }, [threadId, enabled, queryClient, setPendingPlan, setMode, setIsInitialized, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId, setGenerating, t])
 
   /**
    * 公开的手动恢复方法
