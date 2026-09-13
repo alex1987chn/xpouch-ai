@@ -514,8 +514,12 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     try {
       const streamCallback = makeStreamCallback(handleChunk)
 
+      // 把上面那条占位消息的 id 一并交给后端：后端用它作为本轮聚合消息的 id
+      // （落库 + message.done + 每条 delta），前端才能把流式内容写回同一条消息。
+      // 漏传的后果实测过——后端自造 id，前端 store 里找不到 →
+      // handleMessageDelta 的兜底再建一条 → 界面上两条一模一样的回答。
       const fullContent = await apiResumeChat(
-        params,
+        { ...params, messageId: assistantMessageId },
         streamCallback,
         abortControllerRef.current.signal
       )

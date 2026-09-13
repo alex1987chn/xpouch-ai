@@ -568,6 +568,16 @@ export interface ResumeChatParams {
   action?: 'approve' | 'revise' | 'terminate'
   /** 驳回反馈（revise/terminate 时提交，后端落库为会话 user 消息） */
   feedback?: string
+  /**
+   * 本次流式回复在**前端**的消息 id（useChatCore 建占位消息时生成的 UUID）。
+   *
+   * 必须传：后端会用它作为本轮聚合消息的 id（落库 + message.done + 每条 delta），
+   * 前端据此把流式内容写进那条占位消息。不传的话后端自造 id，前端在 store 里
+   * 找不到它 → `handleMessageDelta` 的兜底会**再建一条** → 界面上出现两条一模
+   * 一样的回答（刷新后被服务端数据替换成一条）。sendMessage 一直传了这个字段，
+   * resume 这条链路此前漏了。
+   */
+  messageId?: string
 }
 
 export async function resumeChat(
@@ -589,7 +599,8 @@ export async function resumeChat(
         updated_plan: params.updatedPlan,
         approved: params.approved,
         action: params.action,
-        feedback: params.feedback
+        feedback: params.feedback,
+        message_id: params.messageId
       }),
       signal: abortSignal,
       // P0 修复: 允许携带 Cookie
@@ -610,7 +621,8 @@ export async function resumeChat(
       updated_plan: params.updatedPlan,
       approved: params.approved,
       action: params.action,
-      feedback: params.feedback
+      feedback: params.feedback,
+      message_id: params.messageId
     },
     errorContext: 'chat.ts resume',
     logPrefix: 'Resume ',
