@@ -195,7 +195,16 @@ function runSSEStream({
             }
           } else {
             handleServerEvent(fullEvent)
-            if (onChunk && (eventType.startsWith('message.') || eventType === 'error')) {
+            // artifact.generated 需一并透给 onChunk：useChatCore 里已有「产物到达即
+            // 防抖刷新右栏画布/画廊」的逻辑，但此前该事件到不了 onChunk（只透传
+            // message.* 与 error），那段逻辑因此是死代码——运行期间画布不刷新，
+            // 产物要等 run 结束才出现。
+            if (
+              onChunk &&
+              (eventType.startsWith('message.') ||
+                eventType === 'error' ||
+                eventType === 'artifact.generated')
+            ) {
               await onChunk(undefined, activeThreadId, fullEvent, undefined, undefined, runtimeMeta)
             }
           }

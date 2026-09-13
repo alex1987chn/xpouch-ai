@@ -158,6 +158,22 @@ const StepItem = ({ step, index }: StepItemProps) => {
         )}
       </button>
 
+      {/* 产出摘要：默认可见（3 行截断），点击展开全文。
+          此前 step.content 只在 open 时渲染 —— 执行期间每个任务的产出必须点击
+          才能看到，用户感知就是「一直转圈、页面没内容」。现改为摘要常驻，
+          正文随执行逐任务长出来。 */}
+      {hasDetail && !open && step.content && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="block w-full cursor-pointer px-4 pb-2.5 pl-[66px] text-left transition-colors hover:bg-surface-tint/50"
+        >
+          <p className="line-clamp-3 whitespace-pre-wrap text-xs leading-relaxed text-content-secondary">
+            {step.content}
+          </p>
+        </button>
+      )}
+
       {/* 展开详情：过程文本 / 链接 */}
       {open && (
         <div className="pb-3 pl-[66px] pr-4">

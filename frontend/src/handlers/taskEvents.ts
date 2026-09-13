@@ -265,7 +265,10 @@ export function handleTaskCompleted(
       thinking[taskStepIndex] = {
         ...thinking[taskStepIndex],
         status: 'completed',
-        content: event.data.output || t('thinkingTaskDone')
+        content: event.data.output || t('thinkingTaskDone'),
+        // 耗时此前从未赋值（ThinkingProcess 有渲染逻辑但拿不到数据），
+        // 于是「这一步花了多久」在执行期间完全不可见
+        duration: event.data.duration_ms ?? thinking[taskStepIndex].duration
       }
       updateMessageMetadata(lastAi.id, { thinking })
       if (debug) {
