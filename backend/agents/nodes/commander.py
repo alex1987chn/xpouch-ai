@@ -534,7 +534,6 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
             return {
                 "task_list": task_list,
                 "strategy": commander_response.strategy,
-                "current_task_index": 0,
                 "expert_results": [],
                 "execution_plan_id": execution_plan_id,
                 # 回写预览 ID：使同一 run 内节点重执行（重试/并行分支）拿到同一
@@ -547,7 +546,6 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
         return {
             "task_list": [],
             "strategy": f"Error: {str(e)}",
-            "current_task_index": 0,
         }
 
 

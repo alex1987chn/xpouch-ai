@@ -1,6 +1,11 @@
 """
-图条件路由逻辑：Router / Dispatcher / Generic 之后的分支判定。
+图条件路由逻辑：Router 之后的分支判定 + 工具循环守卫。
+
 与 graph_builder 解耦，便于单测与策略调整。
+
+**任务推进的路由不在这里**：C2 起由 `agents/nodes/wave_scheduler.py` 的
+`route_wave` 按依赖波次决定扇出哪些任务（`Send`），执行子图内部的路由在
+`agents/expert_worker.py: route_worker`。本模块只留「意图分流」与「工具循环守卫」。
 """
 
 import logging
@@ -24,42 +29,12 @@ def route_router(state: AgentState) -> str:
     return "direct_reply" if decision == "simple" else "commander"
 
 
-def route_dispatcher(state: AgentState) -> str:
-    """Dispatcher 之后：是否还有任务，有则回 expert_dispatcher，无则 aggregator"""
-    task_list = state.get("task_list", [])
-    current_index = state.get("current_task_index", 0)
-    return "aggregator" if current_index >= len(task_list) else "expert_dispatcher"
-
-
-def route_generic(state: AgentState) -> str:
-    """
-    Generic Worker 之后：工具调用 -> tools；ToolMessage 回 generic；
-    任务完成 -> aggregator；否则回 expert_dispatcher。
-    """
-    messages = state.get("messages", [])
-    current_index = state.get("current_task_index", 0)
-    task_list = state.get("task_list", [])
-
-    if not messages:
-        return route_dispatcher(state)
-
-    last_message = messages[-1]
-    should_break, reason = should_trip_tool_loop_guard(messages)
-    if should_break:
-        logger.warning("[RouteGeneric] 熔断触发：%s，强制结束任务", reason)
-        return "aggregator"
-
-    if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-        return "tools"
-    if isinstance(last_message, ToolMessage):
-        return "generic"
-    if current_index >= len(task_list):
-        return "aggregator"
-    return route_dispatcher(state)
-
-
 def should_trip_tool_loop_guard(messages: list[Any]) -> tuple[bool, str]:
     """检测工具调用是否进入可疑循环（总量/同工具连续/ping-pong）。
+
+    调用方是执行子图内的专家节点：判定只看**本任务**的工具往返（分支草稿消息），
+    别的任务的工具调用不会算进来。命中后的动作是「本任务不再绑工具、收尾作答」，
+    不是结束整轮计划——见 `agents/nodes/generic.py` 与 `agents/expert_worker.py`。
 
     注意：原「时间窗口」规则已移除——ToolMessage 的时间戳字段在全库
     无任何写入点，该分支恒不触发（死代码）。剩余三条规则均基于消息序。

@@ -32,7 +32,6 @@ async def execute_commander_workflow(
     initial_state: AgentState = {
         "messages": [HumanMessage(content=user_query)],
         "task_list": [],
-        "current_task_index": 0,
         "strategy": "",
         "expert_results": [],
         "final_response": "",

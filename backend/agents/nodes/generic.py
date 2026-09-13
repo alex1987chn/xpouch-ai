@@ -1,59 +1,50 @@
 """
-Generic Worker 节点 - 通用专家执行
+Expert Worker 节点 - 单个专家任务的执行（跑在 `agents/expert_worker.py` 子图内）
 
 [职责]
-执行单个专家任务，支持：
+执行**一个**专家任务，支持：
 - 专家配置动态加载（数据库 + 缓存）
-- 工具调用（Function Calling）
+- 工具调用（Function Calling，与 tools 节点构成分支内的循环）
 - 批处理 Artifact 交付（完成后全量推送）
-- 上下文组装（上游依赖任务输出注入）
+- 上下文组装（上游依赖输出由父图解析后经 Send payload 注入）
 
 [执行流程]
-1. 从 state 获取当前任务（current_task_index）
+1. 从 Send payload 取本分支的任务（`current_task`）与上游输出（`dependency_outputs`）
 2. 加载专家配置（system_prompt, model, temperature）
 3. 组装上下文（系统提示 + 上游任务输出 + 当前任务输入）
 4. 调用 LLM（批处理模式）
-5. 处理工具调用（如有）
+5. 处理工具调用（如有）→ 交给同子图的 `tools` 节点，再回到本节点
 6. 生成 Artifact（代码/文档/HTML）- 批处理交付
-7. 发送 task.completed 事件（包含完整 Artifact）
-8. 更新任务状态到数据库
-9. 递增 current_task_index，返回控制给 Dispatcher
+7. 发 task.completed / task.failed 事件 + 写运行事件账本
+8. 产出 **outcome**（见 `agents/task_outcome.py`）交回主图
 
-[工具调用流程]
-首次调用 -> LLM 返回 tool_calls -> ToolNode 执行 ->
-再次调用 -> LLM 看到 ToolMessage -> 生成最终回复
+[为什么不再直接写 task_list / expert_results]
+主图按依赖波次把同层任务**并发**扇出（Send），并发写无 reducer 的通道会直接
+InvalidUpdateError；而 task_list 又必须支持计划编辑的「整表替换」。于是产物统一
+走 `task_outcomes`（有 reducer，按 key 合并），由 `wave_scheduler` 的 join 落状态。
 
-[批处理交付]
-所有专家统一使用 ainvoke 等待完整响应：
-- 生成的 Artifact 在 task.completed 事件中全量推送
-- 前端在任务完成时一次性渲染完整内容
-- 简化架构，避免流式同步问题
+[分支私有草稿]
+工具循环的消息留在子图的 `worker_messages`，不进主图 `messages`（会话历史）。
+顺带一个真实收益：工具循环守卫因此只看**本任务**的工具调用，不再把历史会话里
+别的任务的工具往返算进来（此前会误熔断）。
 
 [依赖注入]
-- 根据 depends_on 查找上游任务输出
-- 注入到当前任务上下文
+- 依赖输出由父图在扇出前解析好（Send payload），分支读不到主图状态
 - 缺失依赖时容错处理（提示 LLM 尽力完成）
 
-[Artifact 生成]
-- 从 LLM 响应提取代码块
-- 识别语言类型（自动检测或指定）
-- 创建 Artifact 记录（数据库 + 事件推送）
-- 支持多个 Artifact（一个任务可产出多个文件）
-
 [错误处理]
-- 专家配置不存在：返回 failed 状态
-- LLM 调用异常：记录错误，标记失败
-- 工具执行失败：返回错误信息，LLM 生成容错回复
+- 专家配置不存在：产出 failed 的 outcome
+- LLM 调用异常/超时：产出 failed 的 outcome（**只让本任务失败，其余任务照常**）
 
 [状态更新]
-- task_list[current_index]: 更新 output_result, status, completed_at
-- expert_results: 追加执行结果（供下游任务使用）
-- event_queue: 推送 task.started/completed 事件
+- 产出 outcome → 由 join 落成 task_list / expert_results
+- 事件：task.started / task.completed / task.failed / artifact.generated
 
 v3.7 优化: P0 修复 + TTLCache 本地内存缓存高频查询
+C2（2026-09-13）: 从「主图节点 + current_task_index 游标」改为「执行子图内的分支节点」
 """
 
-import asyncio  # 🔥 用于异步保存专家执行结果
+import asyncio
 import json
 import re
 from typing import Any
@@ -62,8 +53,10 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, To
 from langchain_core.runnables import RunnableConfig
 
 from agents.event_stream import emit_event
+from agents.plan_waves import task_key
+from agents.routing_policy import should_trip_tool_loop_guard
 from agents.services.expert_manager import get_expert_config_cached
-from agents.state_patch import replace_task_item
+from agents.task_outcome import build_task_outcome
 from agents.tool_policy import filter_tools_for_binding
 from config import settings
 from models.enums import GraphTaskStatus
@@ -158,18 +151,17 @@ def normalize_messages_for_llm(
     return normalized
 
 
-async def generic_worker_node(
+async def expert_worker_node(
     state: dict[str, Any], config: RunnableConfig = None, llm=None
 ) -> dict[str, Any]:
     """
-    通用专家执行节点
+    专家执行节点（执行子图内的分支节点）
 
-    根据 state["current_task"]["expert_type"] 从数据库加载专家配置并执行。
-    用于处理动态创建的自定义专家。
+    根据 Send payload 注入的 `current_task` 从数据库加载专家配置并执行。
 
     支持工具调用流程：
     1. 首次调用：LLM 可能返回 tool_calls
-    2. 工具执行后：LLM 看到 ToolMessage，生成最终回复
+    2. 工具执行后（同子图的 tools 节点）：LLM 看到 ToolMessage，生成最终回复
 
     🔥 v4.0 重构：批处理模式
     - 所有专家统一使用 ainvoke 等待完整响应
@@ -177,41 +169,40 @@ async def generic_worker_node(
     - 简化架构，避免流式同步问题
 
     Args:
-        state: AgentState，包含 task_list, current_task_index 等
+        state: 分支状态，含 current_task / dependency_outputs / worker_messages 等
         llm: 可选的 LLM 实例，如果不提供则根据专家配置创建
 
     Returns:
-        Dict: 执行结果，包含 output_result, status, artifact 等
+        Dict: 分支状态更新（草稿消息 + worker_started + task_outcomes）
     """
     from langchain_core.messages import ToolMessage
 
-    # 获取当前任务
-    task_list = state.get("task_list", [])
-    current_index = state.get("current_task_index", 0)
-    existing_messages = state.get("messages", [])
+    # 本分支的任务 / 上游输出 / 运行标识都来自 Send payload（分支读不到主图其它通道）
+    current_task = state.get("current_task") or {}
+    dependency_outputs = state.get("dependency_outputs") or {}
+    branch_context = state.get("branch_context") or {}
+    existing_messages = state.get("worker_messages", [])
 
-    if current_index >= len(task_list):
-        return {
-            "output_result": "没有待执行的任务",
-            "status": GraphTaskStatus.FAILED,
-            "error": "Task index out of range",
-            "started_at": utc_now_naive().isoformat(),
-            "completed_at": utc_now_naive().isoformat(),
-        }
+    if not current_task:
+        # Send payload 没注入任务 = 接线错了。必须炸出来：静默返回会让这个分支
+        # 无声消失（计划少跑一个任务却报成功）。
+        raise GenericWorkerError("expert_worker 分支缺少 current_task（Send payload 未注入）")
 
-    current_task = task_list[current_index]
     expert_type = current_task.get("expert_type", "")
     description = current_task.get("description", "")
     input_data = current_task.get("input_data", {})
 
     if not expert_type:
-        return {
-            "output_result": "任务缺少 expert_type 字段",
-            "status": GraphTaskStatus.FAILED,
-            "error": "Missing expert_type in task",
-            "started_at": utc_now_naive().isoformat(),
-            "completed_at": utc_now_naive().isoformat(),
-        }
+        # 任务本身不合法（LLM 规划出的残缺项）：产出失败产物，不炸整轮
+        outcome = build_task_outcome(
+            current_task,
+            status=GraphTaskStatus.FAILED,
+            output="任务缺少 expert_type 字段",
+            error="Missing expert_type in task",
+            started_at=utc_now_naive().isoformat(),
+            completed_at=utc_now_naive().isoformat(),
+        )
+        return {"worker_started": True, "task_outcomes": {outcome["task_key"]: outcome}}
 
     # P0 修复 + 优化: 优先使用本地内存缓存，缓存未命中才查数据库
     # 1️⃣ 优先从本地内存缓存读取（不走线程池，零阻塞）
@@ -245,38 +236,35 @@ async def generic_worker_node(
                 _generic_expert_cache[expert_type] = expert_config
 
     if not expert_config:
-        return {
-            "output_result": f"专家 '{expert_type}' 未找到",
-            "status": GraphTaskStatus.FAILED,
-            "error": f"Expert '{expert_type}' not found in database",
-            "started_at": utc_now_naive().isoformat(),
-            "completed_at": utc_now_naive().isoformat(),
-        }
+        outcome = build_task_outcome(
+            current_task,
+            status=GraphTaskStatus.FAILED,
+            output=f"专家 '{expert_type}' 未找到",
+            error=f"Expert '{expert_type}' not found in database",
+            started_at=utc_now_naive().isoformat(),
+            completed_at=utc_now_naive().isoformat(),
+        )
+        return {"worker_started": True, "task_outcomes": {outcome["task_key"]: outcome}}
 
     started_at = utc_now_naive()
 
-    task_id = current_task.get("id", str(current_index))
+    task_id = current_task.get("id") or task_key(current_task)
 
     # ✅ 发送 task.started 事件（仅任务首次进入时；工具循环重入不再重复发）
     from utils.event_generator import event_task_started
 
-    is_first_entry = (
-        current_task.get("status", GraphTaskStatus.PENDING) != GraphTaskStatus.IN_PROGRESS
-    )
-    run_id = state.get("run_id")
-    thread_id = state.get("thread_id")
-    execution_plan_id = state.get("execution_plan_id")
+    # 「首次进入」由分支私有的 worker_started 表达（此前借 task_list 里的
+    # in_progress 标记——那是主图状态，分支里已没有它可写）
+    is_first_entry = not state.get("worker_started")
+    run_id = branch_context.get("run_id")
+    thread_id = branch_context.get("thread_id")
+    execution_plan_id = branch_context.get("execution_plan_id")
 
-    task_list_for_return = task_list
     if is_first_entry:
         await emit_event(
             event_task_started(task_id=task_id, expert_type=expert_type, description=description)
         )
         logger.info(f"[GenericWorker] 已生成 task.started 事件: {expert_type}")
-        # 标记 in_progress：ToolNode 循环重入本节点时据此跳过重复的 started 事件
-        task_list_for_return = replace_task_item(
-            task_list, current_index, {"status": GraphTaskStatus.IN_PROGRESS}
-        )
 
         # 账本写入同样只在首次进入时做。此前这段在 guard **之外**，于是工具循环每
         # 重入本节点一次就多写一行 task_started（实测一个任务两行，任务控制页时间线
@@ -298,6 +286,9 @@ async def generic_worker_node(
                 )
             except (RuntimeError, ValueError) as event_err:
                 logger.warning(f"[GenericWorker] ⚠️ task_started 账本写入提交失败: {event_err}")
+
+    # 本分支的固定返回：标记已启动（防 started 重发）+ 产出失败产物时的收口
+    base_return: dict[str, Any] = {"worker_started": True}
 
     try:
         # 获取专家配置参数
@@ -356,10 +347,25 @@ async def generic_worker_node(
         # 此前条件是 `if existing_messages:`——聊天历史恒非空，导致多任务执行时
         # 任务描述/依赖上下文从未进入 prompt，同专家的每个任务都在回答原始请求
         # （表现为多个任务的 artifact 内容雷同）。
+        # 注：现在的 `existing_messages` 是**本分支**的工具草稿（不再是全会话历史），
+        # 所以「恒非空」这个坑在本分支里天然不存在；判断逻辑保持不变以防回归。
         has_tool_message = bool(existing_messages) and isinstance(
             existing_messages[-1], ToolMessage
         )
-        if has_tool_message:
+
+        # 工具循环守卫：此前在路由函数里「熔断 → 直接跳 aggregator」，等于一个任务
+        # 的工具失控会**终结整轮计划**（其余任务不再执行），而且它数的是全会话历史里
+        # 的工具往返，别的任务的调用会把本任务误判成循环。现在收敛到分支内、只看本
+        # 任务：熔断 = 本任务不再绑工具，让模型基于已有信息收尾，其余任务照常。
+        guard_tripped, guard_reason = should_trip_tool_loop_guard(existing_messages)
+        if guard_tripped:
+            logger.warning(
+                "[GenericWorker] 工具循环熔断：%s（任务 %s 转入无工具收尾）", guard_reason, task_id
+            )
+
+        # 熔断时也要沿用分支消息：模型必须看到已经拿到的工具结果再作答
+        continue_branch = has_tool_message or guard_tripped
+        if continue_branch:
             # 工具执行后的情况：messages 包含 AIMessage(tool_calls) + ToolMessage
             # 我们需要保留这些上下文，让 LLM 看到工具结果
             normalized_existing = normalize_messages_for_llm(existing_messages, content_mode)
@@ -371,7 +377,8 @@ async def generic_worker_node(
         else:
             # 首次调用：创建新的消息列表
             # 🔥🔥🔥 智能上下文组装：处理依赖缺失的情况
-            expert_results = state.get("expert_results", [])
+            # 上游输出由父图在扇出前解析好放进 Send payload（分支读不到主图状态），
+            # 所以这里是纯粹的 payload 查询，不再扫 expert_results。
             depends_on = current_task.get("depends_on", [])
 
             # 构建上下文提示
@@ -379,28 +386,17 @@ async def generic_worker_node(
             missing_deps = []
 
             if depends_on:
-                # 查找依赖任务的输出
-                # 🔥🔥🔥 关键修复：双保险匹配，支持 task_id 和 db_uuid
                 for dep_id in depends_on:
-                    dep_result = next(
-                        (
-                            r
-                            for r in expert_results
-                            if r.get("task_id") == dep_id or r.get("db_uuid") == dep_id
-                        ),
-                        None,
-                    )
-                    if dep_result and dep_result.get("output"):
+                    dep_output = dependency_outputs.get(str(dep_id))
+                    if dep_output:
                         context_parts.append(
-                            f"【上游任务 {dep_id} 的输出】:\n{dep_result['output'][:2000]}..."
+                            f"【上游任务 {dep_id} 的输出】:\n{dep_output[:2000]}..."
                         )
-                        logger.info(
-                            f"[GenericWorker] ✅ 找到依赖 {dep_id}: {len(dep_result['output'])} 字符"
-                        )
+                        logger.info(f"[GenericWorker] ✅ 找到依赖 {dep_id}: {len(dep_output)} 字符")
                     else:
                         missing_deps.append(dep_id)
                         logger.warning(
-                            f"[GenericWorker] ⚠️ 未找到依赖 {dep_id}, 可用结果: {[r.get('task_id') for r in expert_results]}"
+                            f"[GenericWorker] ⚠️ 未找到依赖 {dep_id}, 可用依赖: {list(dependency_outputs)}"
                         )
 
             # 组装任务提示
@@ -422,9 +418,9 @@ async def generic_worker_node(
                 HumanMessage(content=task_prompt),
             ]
 
-        # 🔥 关键修复：根据是否有 ToolMessage 决定是否绑定工具
-        # 如果已经有 ToolMessage（工具执行完成），则不绑定工具，防止无限循环
-        if has_tool_message:
+        # 🔥 关键修复：根据是否「已在分支内续跑」决定是否绑定工具
+        # 如果已经有 ToolMessage（工具执行完成）或已熔断，则不绑定工具，防止无限循环
+        if continue_branch:
             llm_to_use = llm_with_config
         else:
             # 🔥 新增：为所有专家绑定工具（联网搜索、时间、计算器）
@@ -493,6 +489,15 @@ async def generic_worker_node(
             messages_for_llm.append(
                 HumanMessage(
                     content="[系统提示：以上是工具执行结果，请基于此结果生成最终回复，任务已完成，不要再调用任何工具]"
+                )
+            )
+        if guard_tripped:
+            messages_for_llm.append(
+                HumanMessage(
+                    content=(
+                        f"[系统提示：工具调用已被熔断（{guard_reason}）。"
+                        "不要再调用任何工具，请基于已经获得的信息直接给出最终答复]"
+                    )
                 )
             )
 
@@ -567,6 +572,11 @@ async def generic_worker_node(
         # 🔥 关键修复：检查响应中是否包含工具调用
         has_tool_calls = hasattr(response, "tool_calls") and response.tool_calls
 
+        if has_tool_calls and guard_tripped:
+            # 已经给过「无工具收尾」的机会，模型仍要调工具 → 本任务失败。
+            # 只失败本任务（其余任务照常），且失败原因写清是熔断而非模型报错。
+            raise ExpertExecutionError(f"工具调用陷入循环（{guard_reason}），已中止该任务")
+
         if has_tool_calls:
             logger.info(f"[GenericWorker] 🔧 LLM 返回了工具调用！数量: {len(response.tool_calls)}")
             for tool_call in response.tool_calls:
@@ -583,21 +593,9 @@ async def generic_worker_node(
                     task_id,
                     str(tool_args)[:200],
                 )
-            # 🔥🔥 关键：返回 messages 让 ToolNode 处理工具调用
-            # 此时不生成 task.completed 事件，因为任务还没完成
-            return {
-                "messages": [response],  # 包含 tool_calls 的 AIMessage
-                "task_list": task_list_for_return,  # 携带 in_progress 标记（防 started 重发）
-                "current_task_index": current_index,  # 不增加 index，等工具执行完再说
-                # 正式 schema 键（替代 __expert_info 隐式契约，随 checkpoint 持久化）
-                "last_expert_result": {
-                    "expert_type": expert_type,
-                    "expert_name": expert_name,
-                    "task_id": task_id,
-                    "status": GraphTaskStatus.WAITING_FOR_TOOL,
-                    "tool_calls": response.tool_calls,
-                },
-            }
+            # 🔥🔥 关键：返回分支草稿消息，由同子图的 tools 节点执行工具调用
+            # 此时不生成 task.completed 事件（任务还没完成），也不产出 outcome
+            return {**base_return, "worker_messages": [response]}
 
         # 没有工具调用，正常完成任务
         logger.info("[GenericWorker] ℹ️ LLM 返回了普通文本响应，未调用工具")
@@ -612,8 +610,8 @@ async def generic_worker_node(
         # -------------------------------------------------------------
         if expert_type == "memorize_expert":
             memory_content = response.content.strip()
-            # 从 state 获取 user_id，默认使用 default_user
-            user_id = state.get("user_id", "default_user")
+            # user_id 由 Send payload 的 branch_context 带过来，默认 default_user
+            user_id = branch_context.get("user_id") or "default_user"
 
             if memory_content:
                 logger.info(f"[GenericWorker] 正在保存记忆: {memory_content}")
@@ -648,46 +646,6 @@ async def generic_worker_node(
         # 🔥 检测 artifact 类型
         artifact_type = _detect_artifact_type(response.content, expert_type)
 
-        # ✅ v3.2 修复：增加 current_task_index 以支持循环
-        # Generic Worker 执行完任务后，需要递增 index 才能执行下一个任务
-        next_index = current_index + 1
-
-        # 构造新的 task item + 新 task_list，避免对原状态做原地修改
-        updated_task_list = replace_task_item(
-            task_list,
-            current_index,
-            {
-                "output_result": {"content": response.content},
-                "status": GraphTaskStatus.COMPLETED,
-                "completed_at": completed_at.isoformat(),
-            },
-        )
-
-        # ✅ 添加到 expert_results（用于后续任务依赖和最终聚合）
-        # 🔥🔥🔥 关键修复：使用 task_id (Commander ID, 如 "task_0") 而不是 id (UUID)
-        # 下游任务通过 depends_on: ["task_0"] 查找，必须用相同格式才能匹配
-        semantic_id = current_task.get("task_id")  # Commander ID (如 "task_0")
-        db_uuid = current_task.get("id")  # 数据库 UUID (如 "550e8400...")
-        record_id = semantic_id if semantic_id else db_uuid  # 优先使用 semantic_id
-
-        expert_result = {
-            "task_id": record_id,  # 🔥 关键：使用 Commander ID 让下游能匹配到
-            "db_uuid": db_uuid,  # 保留 UUID 方便调试
-            "expert_type": expert_type,
-            "description": description,
-            "output": response.content,
-            "status": GraphTaskStatus.COMPLETED,
-            "duration_ms": duration_ms,
-        }
-
-        logger.info(
-            f"[GenericWorker] 保存专家结果: task_id={record_id}, db_uuid={db_uuid}, expert={expert_type}"
-        )
-
-        # 获取现有的 expert_results 并追加新结果
-        expert_results = state.get("expert_results", [])
-        expert_results = expert_results + [expert_result]
-
         # ✅ 构建 artifact 对象（符合 ArtifactCreate 模型）
         artifact = {
             "type": artifact_type,
@@ -697,6 +655,22 @@ async def generic_worker_node(
             "sort_order": 0,  # 默认排序
             "artifact_id": artifact_id,
         }
+
+        # ✅ 产出 outcome：交回主图（由 wave_scheduler 的 join 落成 task_list /
+        # expert_results）。task_key 用 commander 语义 id——下游 depends_on 引用的是它。
+        outcome = build_task_outcome(
+            current_task,
+            status=GraphTaskStatus.COMPLETED,
+            output=response.content,
+            duration_ms=duration_ms,
+            started_at=started_at.isoformat(),
+            completed_at=completed_at.isoformat(),
+            artifact=artifact,
+        )
+        logger.info(
+            f"[GenericWorker] 产出任务结果: task_key={outcome['task_key']}, "
+            f"db_uuid={outcome['db_uuid']}, expert={expert_type}"
+        )
 
         # ✅ 异步保存专家执行结果到数据库（P0 优化：不阻塞主流程）
         # 🔥 修复：不传递 db_session，在 async_save_expert_result 中创建独立的 Session
@@ -754,26 +728,11 @@ async def generic_worker_node(
         logger.info(f"[GenericWorker] 已生成 task.completed 事件: {expert_type}")
 
         return {
-            "messages": [
-                response
-            ],  # 🔥🔥🔥 核心修复：必须把 LLM 的最终回复更新到图状态的消息历史中！🔥🔥🔥
-            "task_list": updated_task_list,
-            "expert_results": expert_results,
-            "current_task_index": next_index,  # ✅ 增加 index
-            "output_result": response.content,
-            "status": GraphTaskStatus.COMPLETED,
-            "started_at": started_at.isoformat(),
-            "completed_at": completed_at.isoformat(),
-            "duration_ms": duration_ms,
-            "artifact": artifact,
-            # 正式 schema 键（替代 __expert_info，服务层从 state 更新读取）
-            "last_expert_result": {
-                "expert_type": expert_type,
-                "expert_name": expert_name,
-                "task_id": task_id,
-                "status": GraphTaskStatus.COMPLETED,
-                "artifact_id": artifact_id,  # 🔥 包含 artifact_id
-            },
+            **base_return,
+            # 分支草稿：本任务的最终回复（主图 messages 由 aggregator 追加综述，
+            # 不在这里写——N 个并发分支往会话历史里写会让顺序变成完成顺序）
+            "worker_messages": [response],
+            "task_outcomes": {outcome["task_key"]: outcome},
         }
 
     except Exception as e:
@@ -782,35 +741,19 @@ async def generic_worker_node(
         else:
             logger.warning(f"[GenericWorker] '{expert_type}' failed: {e}")
 
-        # ✅ 失败时也要增加 index，否则会卡死循环
-        next_index = current_index + 1
-
-        # 构造新的 task item + 新 task_list，避免原地修改
-        failed_task_list = replace_task_item(
-            task_list,
-            current_index,
-            {
-                "status": GraphTaskStatus.FAILED,
-            },
-        )
-
-        # 获取现有的 expert_results 并添加失败记录
-        expert_results = state.get("expert_results", [])
-        # 🔥🔥🔥 关键修复：使用 task_id (Commander ID) 而不是 id (UUID)
-        semantic_id = current_task.get("task_id")
+        # 失败也只影响本任务：产出 failed 的 outcome，其余任务照常（并发下互不影响）。
+        # 此前这里还要「推进游标以防死循环」——游标已随 C2 移除，不再需要。
         db_uuid = current_task.get("id")
-        task_id = semantic_id if semantic_id else db_uuid
-        expert_result = {
-            "task_id": task_id,  # 🔥 使用 Commander ID
-            "db_uuid": db_uuid,  # 保留 UUID
-            "expert_type": expert_type,
-            "description": description,
-            "output": f"专家执行失败: {str(e)}",
-            "status": GraphTaskStatus.FAILED,
-            "error": str(e),
-            "duration_ms": 0,
-        }
-        expert_results = expert_results + [expert_result]
+        # 事件/账本里的 task_id 沿用 db uuid 口径（前端按它关联任务行）
+        task_id = db_uuid or task_key(current_task)
+        outcome = build_task_outcome(
+            current_task,
+            status=GraphTaskStatus.FAILED,
+            output=f"专家执行失败: {str(e)}",
+            error=str(e),
+            started_at=started_at.isoformat(),
+            completed_at=utc_now_naive().isoformat(),
+        )
 
         # ✅ 生成 task.failed 事件
         from utils.event_generator import event_task_failed
@@ -822,9 +765,9 @@ async def generic_worker_node(
         )
         logger.info(f"[GenericWorker] 已生成 task.failed 事件: {expert_type}")
 
-        run_id = state.get("run_id")
-        thread_id = state.get("thread_id")
-        execution_plan_id = state.get("execution_plan_id")
+        run_id = branch_context.get("run_id")
+        thread_id = branch_context.get("thread_id")
+        execution_plan_id = branch_context.get("execution_plan_id")
         if run_id and thread_id:
             try:
                 from utils.async_task_queue import async_append_run_event, spawn_background
@@ -835,7 +778,7 @@ async def generic_worker_node(
                         event_type="task_failed",
                         thread_id=thread_id,
                         execution_plan_id=execution_plan_id,
-                        task_id=str(db_uuid) if db_uuid else str(task_id),
+                        task_id=str(task_id),
                         event_data={"expert_type": expert_type, "error_message": str(e)},
                     ),
                     label=f"run_event:task_failed:{expert_type}",
@@ -844,24 +787,8 @@ async def generic_worker_node(
                 logger.warning(f"[GenericWorker] ⚠️ task_failed 账本写入提交失败: {event_err}")
 
         return {
-            "task_list": failed_task_list,
-            "expert_results": expert_results,
-            "current_task_index": next_index,  # ✅ 即使失败也增加 index
-            "output_result": f"专家执行失败: {str(e)}",
-            "status": GraphTaskStatus.FAILED,
-            "error": str(e),
-            "started_at": started_at.isoformat(),
-            "completed_at": utc_now_naive().isoformat(),
-            # 正式 schema 键（替代 __expert_info）
-            "last_expert_result": {
-                "expert_type": expert_type,
-                "expert_name": expert_config.get("name", expert_type)
-                if expert_config
-                else expert_type,
-                "task_id": task_id,
-                "status": GraphTaskStatus.FAILED,
-                "error": str(e),
-            },
+            **base_return,
+            "task_outcomes": {outcome["task_key"]: outcome},
         }
 
 

@@ -10,13 +10,15 @@
 - **`execution_mode` 只表达「可以并行」，实际并发上限由配置决定**
   （`GRAPH_MAX_CONCURRENCY`，默认 1 = 串行，能力在位但不改变现有行为）。
 
-任务在本模块里的三种「未完成」归类（每轮三选一，无遗漏）：
+任务在本模块里的分类：
 - `ready`    = pending 且依赖**全部满足** → 本轮可执行
 - `blocked`  = 依赖里有一个**已失败/已取消**（含传递：上游被阻塞则下游也阻塞）
   → 永远不会就绪。必须显式识别，否则执行器会认为「还有未完成任务」而空转到超时
-- `deadlocked` = 既不就绪也不阻塞，即依赖成环（LLM 规划出 A→B→A 这类）
-  → 同样永远不会就绪。若不识别，执行器空转；若静默忽略，用户看到的是
-  「计划莫名少跑了几个任务」而没有任何解释。故单独成一类，由调用方如实上报。
+- `deadlocked` = 依赖**成环**（含困在环下游的任务）→ 同样永远不会就绪。若不识别，
+  执行器空转；若静默忽略，用户看到的是「计划莫名少跑了几个任务」而没有解释
+- 以上都不是的 pending 任务 = 在**等一个稍后会跑的上游**（正常等待），本模块不把它
+  归入任何终态类别——这一条曾判错（把正常等待当成成环，于是整条下游链在第一波
+  就被标失败），所以「等待」与「成环」的区分是本模块最需要小心的边界。
 
 **依赖悬空（dep 指向计划里不存在的 key）= 视为已满足**，不是阻塞。这是有意的：
 计划编辑（`_apply_updated_plan`）允许删除任务而留下悬空依赖，执行侧对这类引用
@@ -38,12 +40,17 @@ _PENDING = "pending"
 _TERMINAL_FAILURE = frozenset({_FAILED, _CANCELLED})
 
 
-def _task_key(task: dict[str, Any]) -> str:
+def task_key(task: dict[str, Any]) -> str:
     """任务的依赖空间标识：优先 commander id（`task_id`），退回 db id。
 
-    依赖解析必须用 `task_id`——`depends_on` 里存的是它。
+    依赖解析必须用 `task_id`——`depends_on` 里存的是它。这是「依赖空间 key」的
+    唯一定义（`agents/task_outcome.py` 复用它，不另立一套）。
     """
     return str(task.get("task_id") or task.get("id") or "")
+
+
+# 模块内沿用的私有别名（对外是 task_key）
+_task_key = task_key
 
 
 def _deps_of(task: dict[str, Any]) -> list[str]:
@@ -73,9 +80,11 @@ def failed_task_ids(task_list: list[dict[str, Any]]) -> set[str]:
 
 @dataclass(frozen=True)
 class WaveDecision:
-    """一轮波次判定的完整结果（三分类 + 是否已结束）。
+    """一轮波次判定的完整结果。
 
     `ready` 已按 `sort_order` 稳定排序，调用方直接切片即可（见 `select_wave`）。
+    `blocked` / `deadlocked` 是**终态**（永远不会就绪，调用方应标记失败）；
+    未出现在三者中的 pending 任务是在正常等待上游（不要动它）。
     """
 
     ready: list[str]
@@ -86,8 +95,9 @@ class WaveDecision:
     def finished(self) -> bool:
         """计划是否已无可执行任务。
 
-        归类是完备的（pending 必属 ready/blocked/deadlocked 之一），所以
-        「没有 ready」就等于「永远不会有 ready」——不会出现空转。
+        没有 ready 就等价于「永远不会有 ready」：若有 pending 任务在等上游，则上游
+        链条的末端必然是一个依赖已满足的任务——那它本身就该是 ready。反过来说，
+        ready 为空时所有剩余 pending 都已落入 blocked/deadlocked（终态），不会空转。
         """
         return not self.ready
 
@@ -116,13 +126,42 @@ def _propagate_blocked(
     return blocked
 
 
+def _propagate_runnable(
+    status_by_key: dict[str, str],
+    deps_by_key: dict[str, list[str]],
+    blocked: set[str],
+) -> set[str]:
+    """「迟早能跑」的传递闭包：依赖要么已完成/悬空，要么本身迟早能跑。
+
+    这是**区分「正常等待」与「成环」的关键**。自底向上迭代：
+    - 第一轮加进来的就是 ready（依赖全部已满足）
+    - 随后逐层把「上游已在集合里」的任务加进来
+    - 迭代结束仍不在集合里的 pending 任务，只可能是成环（或困在环下游）
+    """
+    runnable: set[str] = set()
+    changed = True
+    while changed:
+        changed = False
+        for key, status in status_by_key.items():
+            if status != _PENDING or key in blocked or key in runnable:
+                continue
+            if all(
+                status_by_key.get(dep) == _COMPLETED or dep not in status_by_key or dep in runnable
+                for dep in deps_by_key.get(key, ())
+            ):
+                runnable.add(key)
+                changed = True
+    return runnable
+
+
 def plan_wave_decision(task_list: list[dict[str, Any]]) -> WaveDecision:
-    """把计划切成 ready / blocked / deadlocked 三类的完整判定。"""
+    """把计划切成 ready / blocked / deadlocked（终态）三类的判定。"""
     status_by_key = _status_by_key(task_list)
     known_keys = set(status_by_key)
     deps_by_key = {_task_key(t): _deps_of(t) for t in task_list if _task_key(t)}
 
     blocked = _propagate_blocked(status_by_key, deps_by_key)
+    runnable = _propagate_runnable(status_by_key, deps_by_key, blocked)
 
     ready_pairs: list[tuple[int, str]] = []
     pending_pairs: list[tuple[int, str]] = []
@@ -145,13 +184,13 @@ def plan_wave_decision(task_list: list[dict[str, Any]]) -> WaveDecision:
     ready_pairs.sort(key=lambda pair: pair[0])
     pending_pairs.sort(key=lambda pair: pair[0])
     ready = [key for _order, key in ready_pairs]
-    ready_set = set(ready)
 
-    # 三分类完备：pending 里剩下的既不就绪也不阻塞 —— 依赖成环（或困在环的下游）。
-    # 这里**必须**吃掉全部剩余的 pending，否则执行器会「还有 pending」而空转。
     blocked_ordered = [key for _order, key in pending_pairs if key in blocked]
+    # 终态里的第三类：既非就绪、也非阻塞，且**不在「迟早能跑」集合里** —— 成环。
+    # 注意必须用 runnable 判定，不能用「剩下的都是成环」：在等上游的任务也是「剩下的」，
+    # 那会把正常的多波次计划误判成死锁（实测踩过：菱形计划第一波就把下游全标失败了）。
     deadlocked = [
-        key for _order, key in pending_pairs if key not in ready_set and key not in blocked
+        key for _order, key in pending_pairs if key not in blocked and key not in runnable
     ]
 
     return WaveDecision(ready=ready, blocked=blocked_ordered, deadlocked=deadlocked)

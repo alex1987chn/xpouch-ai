@@ -5,8 +5,12 @@ commander 语义 id（`task_id`）——两者不同源，交集恒为空，于�
 计划，所有任务的依赖都会被清空**。后果是下游任务失去上游产出的上下文注入
 （generic 读 `depends_on` 拼接上游结果），任务质量静默下降。
 
-这里同时锁住合并语义的其余部分：已完成任务整条保留、索引重算、依赖清理本身
-仍然有效（指向被删除任务的依赖要剔除）。
+这里同时锁住合并语义的其余部分：已完成任务整条保留、依赖清理本身仍然有效
+（指向被删除任务的依赖要剔除）。
+
+C2（2026-09-13）：不再重算 `current_task_index`——游标已删除，「下一个跑哪个」统一由
+`agents/plan_waves.py` 按依赖判定。所以本文件不再断言索引，改为断言「合并后的计划
+让判定层能正确选出下一个任务」（这比断言一个数字更接近真实契约）。
 """
 
 import asyncio
@@ -102,13 +106,38 @@ class TestCompletedTaskPreserved:
         assert merged["task_1"]["status"] == "completed"
         assert merged["task_1"]["output_result"] == "上游产出，必须保留"
 
-    def test_index_points_to_first_unfinished(self):
+    def test_next_task_selected_by_wave_decision(self):
+        """合并后的计划交给判定层：下一个该跑谁由依赖算出，不再靠游标。"""
+        from agents.plan_waves import select_wave
+
         current = [_task("task_1", status="completed"), _task("task_2"), _task("task_3")]
         updated = [_task("task_1"), _task("task_2"), _task("task_3")]
 
-        state = _apply(current, updated)
+        merged = _apply(current, updated)["task_list"]
 
-        assert state["current_task_index"] == 1, "应指向第一个未完成任务"
+        assert select_wave(merged, max_concurrency=1) == ["task_2"], "串行下取第一个就绪任务"
+        assert "current_task_index" not in _apply(current, updated), (
+            "游标已删除：留着会与波次判定形成两套「下一个是谁」"
+        )
+
+    def test_removed_upstream_leaves_downstream_runnable(self):
+        """编辑时删掉上游 → 下游依赖被清理成悬空 → 它必须仍然可执行。
+
+        这是「删任务」这条编辑路径与波次判定层的接口：悬空依赖按已满足处理，
+        否则用户删掉一个上游就会让整条下游链永远卡在 pending（判定层见
+        `agents/plan_waves.py` 的悬空容忍）。
+        """
+        from agents.plan_waves import plan_wave_decision
+
+        current = [_task("task_1"), _task("task_2", deps=["task_1"])]
+        updated = [_task("task_2", deps=["task_1"])]  # task_1 被删
+
+        merged = _apply(current, updated)["task_list"]
+
+        decision = plan_wave_decision(merged)
+        assert decision.ready == ["task_2"]
+        assert decision.blocked == [] and decision.deadlocked == []
+        assert merged[0]["depends_on"] is None, "指向已删任务的依赖在合并时被剔除"
 
     def test_message_id_propagates(self):
         current = [_task("task_1"), _task("task_2")]

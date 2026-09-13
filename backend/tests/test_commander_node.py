@@ -242,7 +242,8 @@ async def test_generates_plan_without_artifacts_section():
     ):
         result = await commander_node(_base_state())
 
-    assert result["current_task_index"] == 0
+    # 不再断言 current_task_index（C2 已删除游标）：规划产出计划后由波次判定选任务
+    assert "current_task_index" not in result
     assert result["strategy"] == "测试策略"
     assert len(result["task_list"]) == 1
     assert result["task_list"][0]["expert_type"] == "coder"

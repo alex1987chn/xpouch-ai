@@ -89,24 +89,40 @@ def create_smart_router_workflow(
     checkpointer: BaseCheckpointSaver | None = None,
 ) -> StateGraph:
     """
-    创建智能路由工作流（Router -> Commander -> HITL -> Dispatcher -> Generic -> Tools -> Aggregator）。
+    创建智能路由工作流。
+
+    拓扑（C2 起：执行侧按依赖波次扇出）::
+
+        router → {direct_reply | commander → plan_approval → wave_dispatch}
+        wave_dispatch ──Send──▶ expert_worker（子图：worker ↔ tools）──▶ task_join
+             ▲                                                              │
+             └──────────────────────────────────────────────────────────────┘
+        wave_dispatch（无就绪任务）→ aggregator → END
+
+    与旧拓扑（dispatcher + generic + current_task_index 游标）的对应关系：
+    - `expert_dispatcher` 的「专家是否存在」检查并入 expert_worker（它本来就要加载
+      专家配置，配不到就产出 failed 产物），任务切换由波次判定接管。
+    - `generic`/`tools` 的循环搬进 `expert_worker` 子图：`Send` 只让分支跑一个节点，
+      一个任务的多步工具循环只能在子图里表达。
+    - `current_task_index` 游标删除：选中哪些任务由 `plan_waves` 按依赖算（决定 5）。
     """
+    from agents.expert_worker import build_expert_worker_subgraph
     from agents.nodes import (
         aggregator_node,
         commander_node,
         direct_reply_node,
-        expert_dispatcher_node,
-        generic_worker_node,
         plan_approval_node,
         router_node,
+        task_join_node,
+        wave_dispatch_node,
     )
-    from agents.routing_policy import route_generic, route_router
-    from agents.tool_runtime import dynamic_tool_node
+    from agents.nodes.wave_scheduler import AGGREGATOR_NODE, EXPERT_WORKER_NODE, route_wave
+    from agents.routing_policy import route_router
 
     # 节点级超时（LangGraph 原生 TimeoutPolicy）——只给「挂了整轮无救」的节点：
     #   commander：规划环节悬挂 → 后面无计划可批，快速失败并报清晰错误
     #   aggregator：聚合环节悬挂 → 无最终产出，同上
-    # 不给 generic 用：那会让单个慢任务拖死整轮；它的超时放在节点内部，
+    # 不给专家执行用（含子图）：那会让单个慢任务拖死整轮；它的超时放在节点内部，
     # 走任务级失败（该任务失败、其余照常执行）。
     node_timeout = TimeoutPolicy(run_timeout=settings.llm_call_timeout_seconds)
 
@@ -116,10 +132,11 @@ def create_smart_router_workflow(
     workflow.add_node("direct_reply", direct_reply_node)
     workflow.add_node("commander", commander_node, timeout=node_timeout)
     workflow.add_node("plan_approval", plan_approval_node)
-    workflow.add_node("expert_dispatcher", expert_dispatcher_node)
-    workflow.add_node("generic", generic_worker_node)
+    workflow.add_node("wave_dispatch", wave_dispatch_node)
+    # 执行子图：一个任务 = 一次 worker ↔ tools 的工具循环
+    workflow.add_node(EXPERT_WORKER_NODE, build_expert_worker_subgraph())
+    workflow.add_node("task_join", task_join_node)
     workflow.add_node("aggregator", aggregator_node, timeout=node_timeout)
-    workflow.add_node("tools", dynamic_tool_node)
 
     workflow.set_entry_point("router")
 
@@ -128,22 +145,19 @@ def create_smart_router_workflow(
     )
     workflow.add_edge("direct_reply", END)
     # 审批点独立成节点：规划完成后必须先过人工裁决。
-    # 任务切换的回路是 generic → expert_dispatcher，天然**绕过** plan_approval，
+    # 任务波次推进的回路是 task_join → wave_dispatch，天然**绕过** plan_approval，
     # 因此「要不要问人」由图拓扑表达，不再需要运行时位置判断。
     workflow.add_edge("commander", "plan_approval")
-    workflow.add_edge("plan_approval", "expert_dispatcher")
-    workflow.add_edge("expert_dispatcher", "generic")
+    workflow.add_edge("plan_approval", "wave_dispatch")
+    # 条件边返回 Send 列表 = 并发扇出本轮任务；返回节点名 = 无就绪任务，转聚合
     workflow.add_conditional_edges(
-        "generic",
-        route_generic,
-        {
-            "tools": "tools",
-            "generic": "generic",
-            "expert_dispatcher": "expert_dispatcher",
-            "aggregator": "aggregator",
-        },
+        "wave_dispatch",
+        route_wave,
+        {EXPERT_WORKER_NODE: EXPERT_WORKER_NODE, AGGREGATOR_NODE: AGGREGATOR_NODE},
     )
-    workflow.add_edge("tools", "generic")
+    # 扇入：等本轮所有分支都产出后再落状态
+    workflow.add_edge(EXPERT_WORKER_NODE, "task_join")
+    workflow.add_edge("task_join", "wave_dispatch")
     workflow.add_edge("aggregator", END)
 
     if checkpointer is None:

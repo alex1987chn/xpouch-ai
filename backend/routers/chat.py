@@ -450,7 +450,6 @@ async def chat_endpoint(
         "messages": langchain_messages,
         "current_agent": "router",
         "task_list": [],
-        "current_task_index": 0,
         "strategy": "",
         "expert_results": [],
         "final_response": "",

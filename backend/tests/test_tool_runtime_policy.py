@@ -41,8 +41,7 @@ def test_dynamic_tool_node_blocks_high_risk_tool_without_invoking_executor(monke
                 ],
             )
         ],
-        "task_list": [{"expert_type": "writer"}],
-        "current_task_index": 0,
+        "current_task": {"expert_type": "writer"},
     }
     config = {"configurable": {"mcp_tools": [_DummyTool("filesystem_write", "写入本地文件")]}}
 
@@ -75,8 +74,7 @@ def test_dynamic_tool_node_blocks_builtin_tool_for_memorize_expert(monkeypatch):
                 ],
             )
         ],
-        "task_list": [{"expert_type": "memorize_expert"}],
-        "current_task_index": 0,
+        "current_task": {"expert_type": "memorize_expert"},
     }
 
     with _mock_empty_overrides():

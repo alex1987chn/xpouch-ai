@@ -194,10 +194,42 @@ class TestDeadlock:
         assert decision.finished is False
 
 
-class TestClassificationIsTotal:
-    """三分类完备性：每个 pending 任务恰好落入 ready / blocked / deadlocked 之一。
+class TestWaitingIsNotDeadlock:
+    """「在等上游」与「成环」必须分开——判错会把正常的多波次计划整条标失败。
 
-    这是执行器「不会空转」的结构性保证——不是靠某条用例，而是靠归类本身的完备。
+    实测踩过：菱形计划（调研 → 写作/配图 → 汇编）在第一波就把写作/配图/汇编
+    全标成「依赖成环，无法执行」，因为它们当时既不 ready（上游还没跑）也不 blocked。
+    """
+
+    def test_downstream_of_pending_task_is_not_deadlocked(self):
+        tasks = [
+            _task("task_0", order=0),
+            _task("task_1", deps=["task_0"], order=1),
+            _task("task_2", deps=["task_1"], order=2),
+        ]
+        decision = plan_wave_decision(tasks)
+        assert decision.ready == ["task_0"]
+        assert decision.deadlocked == [], "链式计划里的等待不是死锁"
+        assert decision.finished is False
+
+    def test_diamond_only_first_layer_is_ready(self):
+        tasks = [
+            _task("task_0", order=0),
+            _task("task_1", deps=["task_0"], order=1),
+            _task("task_2", deps=["task_0"], order=2),
+            _task("task_4", deps=["task_1", "task_2"], order=3),
+        ]
+        decision = plan_wave_decision(tasks)
+        assert decision.ready == ["task_0"]
+        assert decision.deadlocked == []
+        assert decision.blocked == []
+
+
+class TestClassificationIsTotal:
+    """pending 任务的分类必须是**互斥且完备**的：
+
+    ready ∪ blocked ∪ deadlocked ∪ waiting（等上游）= 全部 pending。
+    前两类 + 第三类是终态（调用方可标失败），waiting 不是——第 4 类由此测试守边界。
     """
 
     def test_every_pending_task_is_classified(self):
@@ -213,12 +245,13 @@ class TestClassificationIsTotal:
             _task("dangling", deps=["gone"], order=8),
         ]
         decision = plan_wave_decision(tasks)
-        classified = set(decision.ready) | set(decision.blocked) | set(decision.deadlocked)
+        terminal = set(decision.ready) | set(decision.blocked) | set(decision.deadlocked)
         pending = {t["task_id"] for t in tasks if t.get("status") == "pending"}
-        assert classified == pending
+        # 唯一允许的「未分类」项是等上游的那个（它既非就绪也非终态）
+        assert pending - terminal == {"waiting_on_ready"}
         assert len(decision.ready) + len(decision.blocked) + len(decision.deadlocked) == len(
-            pending
-        ), "三个集合互不相交"
+            terminal
+        ), "三类互不相交"
         assert set(decision.ready) == {"ready_now", "dangling"}
 
 

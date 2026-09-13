@@ -11,7 +11,7 @@ import asyncio
 import uuid
 from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from sqlmodel import Session
 
@@ -164,9 +164,14 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
     logger.info(f"[AGG] 聚合完成，回复长度: {len(final_response)}")
 
     # ✅ 返回 task_list 以确保 chat.py 能收集到所有任务状态
+    # 并把综述作为 AIMessage 追加到 messages：复杂模式最后一条消息由此**确定性地**
+    # 是助手回复（并发分支各写各的产物、不写会话历史；stream_service 落库前的
+    # 校验要求「最后一条是 AIMessage」，且 ExecutionPlan.final_response 的兜底
+    # 取值也应当拿到综述而不是某个专家的草稿）。
     return {
         "task_list": task_list,  # ✅ 添加 task_list
         "final_response": final_response,
+        "messages": [AIMessage(content=final_response)],
     }
 
 
@@ -223,6 +228,10 @@ def _build_aggregator_input(expert_results: list[dict[str, Any]], strategy: str)
     v3.5: 构建 Aggregator 的输入数据（注入到 System Prompt 的 {input} 占位符）
 
     将多个专家结果格式化为结构化文本，供 Aggregator 整合。
+
+    顺序契约：`expert_results` 由 wave_scheduler 的 join 按 **sort_order（计划顺序）**
+    派生，本函数不再排序——并发执行下完成顺序每次都不同，若这里再按别的口径排一次，
+    「同一份计划的综述」会随调度抖动而变（两处排序 = 两个真相）。
 
     Args:
         expert_results: 专家执行结果列表

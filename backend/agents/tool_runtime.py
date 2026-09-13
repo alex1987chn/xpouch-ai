@@ -229,14 +229,11 @@ async def dynamic_tool_node(
             tool_calls = msg.tool_calls
             break
 
-    task_list = state.get("task_list", []) if isinstance(state, dict) else []
-    current_task_index = state.get("current_task_index", 0) if isinstance(state, dict) else 0
-    current_task = (
-        task_list[current_task_index]
-        if isinstance(task_list, list) and 0 <= current_task_index < len(task_list)
-        else {}
-    )
-    expert_type = current_task.get("expert_type")
+    # 工具治理要按「哪个专家在调」判定：执行分支把当前任务放在 state 的
+    # `current_task` 里（Send payload 注入，见 agents/expert_worker.py）。
+    # 游标 + 列表的旧口径已随 C2 删除——工具节点现在只在分支里跑。
+    current_task = state.get("current_task") if isinstance(state, dict) else None
+    expert_type = (current_task or {}).get("expert_type")
     policy_overrides = await tool_policy_service.get_overrides()
 
     # 记录工具调用请求

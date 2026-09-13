@@ -166,7 +166,8 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             )
 
             # 收集任务列表和产物
-            collected_task_list = []
+            # 按 db uuid 归拢任务产物（同一任务可能被多轮/多事件重复上报）
+            collected_tasks: dict[str, dict] = {}
             expert_artifacts = {}
 
             # 🔥 MCP: 获取动态工具
@@ -179,12 +180,18 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
 
             stream_queue = asyncio.Queue()
 
+            # 并发上限（同层就绪任务的并行度）：设置表优先、env 兜底，默认串行。
+            # 由 wave_scheduler 的 route_wave 读取（决定本轮 Send 扇出几个任务）。
+            from services.run_concurrency import resolve_graph_max_concurrency
+
+            max_concurrency = resolve_graph_max_concurrency(self.db)
             config = {
                 "recursion_limit": settings.recursion_limit,
                 "configurable": {
                     "thread_id": thread_id,
                     "stream_queue": stream_queue,
                     "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
+                    "graph_max_concurrency": max_concurrency,
                 },
             }
 
@@ -230,7 +237,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                         await emit(event_str)
 
                     # 收集任务执行结果
-                    self._collect_execution_results(token, collected_task_list, expert_artifacts)
+                    self._collect_execution_results(token, collected_tasks, expert_artifacts)
 
                     # 检测 router_decision
                     if (
@@ -291,7 +298,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
 
             # HITL 检测：`interrupt()` 把「停在审批点等人」变成了**原生状态**。
             # `snapshot.tasks[].interrupts` 非空即表示图正停在某个 interrupt 上。
-            # 这取代了原先的启发式（`task_list` 非空 && `current_task_index == 0`
+            # 这取代了原先的启发式（`task_list` 非空 && 任务游标停在 0
             # && 未收集到任何结果）——那种靠状态形状反推的判据在「规划出 0 任务」
             # 或「首任务已完成但收集失败」时会误判。
             final_state = await graph.aget_state(config)
@@ -379,7 +386,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     persist_error = self._get_complex_result_persistence_error(
                         thread_id=thread_id,
                         last_message=last_message,
-                        task_list=collected_task_list,
+                        task_list=list(collected_tasks.values()),
                     )
                     if persist_error:
                         logger.error("[StreamService] %s", persist_error)
@@ -394,7 +401,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     user_message=user_message,
                     last_message=last_message,
                     router_decision=router_decision,
-                    task_list=collected_task_list,
+                    task_list=list(collected_tasks.values()),
                     expert_artifacts=expert_artifacts,
                     message_id=actual_message_id,
                     run_id=agent_run.id,
@@ -730,8 +737,16 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
 
         self.db.commit()
 
-    def _collect_execution_results(self, token, task_list: list[dict], expert_artifacts: dict):
-        """收集 LangGraph 执行结果（从 state 更新读取，替代 v1 的 raw output 捞取）"""
+    def _collect_execution_results(
+        self, token, collected_tasks: dict[str, dict], expert_artifacts: dict
+    ):
+        """收集 LangGraph 执行结果（从 **任务产物** 读取）。
+
+        产物通道 `task_outcomes` 是执行分支的唯一出口（见 `agents/task_outcome.py`），
+        每个任务恰好一份、键为依赖空间 key。这里的写入按 **db uuid upsert**：
+        一个产物可能在两个事件里出现（执行分支节点自身、以及包着它的子图节点），
+        也可能被重跑覆盖——按 key 覆盖天然幂等，不再依赖「最后一条事件赢」。
+        """
         # 🔥 修复：跳过非字典类型的 token
         if not isinstance(token, dict):
             return
@@ -742,38 +757,38 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             output = token.get("data", {}).get("output", {}) or {}
             if not (output and isinstance(output, dict)):
                 return
-            # 正式 schema 键（generic 节点返回值经 ChannelWrite 透传到事件 output）
-            expert_info = output.get("last_expert_result")
-            if not expert_info:
+            outcomes = output.get("task_outcomes")
+            if not isinstance(outcomes, dict) or not outcomes:
                 return
-            # 收集任务结果
-            task_list.append(
-                {
-                    "id": expert_info.get("task_id"),
-                    "expert_type": expert_info.get("expert_type"),
-                    "status": expert_info.get("status"),
-                    "description": output.get("description", ""),
-                    "output_result": output.get("output_result"),
-                    "input_data": output.get("input_data", {}),
-                    "started_at": output.get("started_at"),
-                    "completed_at": output.get("completed_at"),
-                    "artifact": output.get("artifact"),
-                }
-            )
 
-            # 收集 artifacts
-            task_id = expert_info.get("task_id")
-            artifact_data = output.get("artifact")
-            logger.info(
-                f"[_collect_execution_results] 收集 artifacts: task_id={task_id}, has_artifact={artifact_data is not None}"
-            )
-            if task_id and artifact_data:
-                if task_id not in expert_artifacts:
-                    expert_artifacts[task_id] = []
-                expert_artifacts[task_id].append(artifact_data)
-                logger.info(
-                    f"[_collect_execution_results] ✅ artifacts 已收集: task_id={task_id}, count={len(expert_artifacts[task_id])}"
-                )
+            for outcome in outcomes.values():
+                if not isinstance(outcome, dict):
+                    continue
+                task_id = outcome.get("db_uuid") or outcome.get("task_key")
+                collected_tasks[task_id] = {
+                    "id": task_id,
+                    "expert_type": outcome.get("expert_type"),
+                    "status": outcome.get("status"),
+                    "description": outcome.get("description", ""),
+                    "output_result": outcome.get("output"),
+                    "input_data": outcome.get("input_data", {}),
+                    "started_at": outcome.get("started_at"),
+                    "completed_at": outcome.get("completed_at"),
+                    "artifact": outcome.get("artifact"),
+                }
+
+                # 收集 artifacts（同一 artifact_id 只收一次：产物会被两个事件携带）
+                artifact_data = outcome.get("artifact")
+                if task_id and artifact_data:
+                    bucket = expert_artifacts.setdefault(task_id, [])
+                    artifact_id = artifact_data.get("artifact_id")
+                    if not any(item.get("artifact_id") == artifact_id for item in bucket):
+                        bucket.append(artifact_data)
+                        logger.info(
+                            "[_collect_execution_results] ✅ artifacts 已收集: task_id=%s, count=%d",
+                            task_id,
+                            len(bucket),
+                        )
 
     # ============================================================================
     # 公共流式方法（供 RecoveryService 复用）
@@ -822,12 +837,16 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         # 🔥🔥🔥 关键修复：使用与初始执行相同的确定性 isolated_thread_id
         # 格式: {thread_id}_{run_id} - 必须与 handle_langgraph_stream 中的格式一致
         isolated_thread_id = f"{thread_id}_{run_id}" if run_id else thread_id
+        from services.run_concurrency import resolve_graph_max_concurrency
+
         config = {
             "recursion_limit": settings.recursion_limit,
             "configurable": {
                 "thread_id": isolated_thread_id,
                 "stream_queue": realtime_queue,
                 "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
+                # 续跑必须与初始执行同口径，否则「审批后剩下的任务」会悄悄退回串行
+                "graph_max_concurrency": resolve_graph_max_concurrency(self.db),
             },
         }
         logger.info(f"[StreamService] 恢复流程使用隔离的 thread_id: {isolated_thread_id}")
@@ -937,18 +956,22 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                             logger.info("[Producer] 已发送 message.done，标记 aggregator 完成")
                             aggregator_executed = True
 
-                    # 收集 artifacts
+                    # 收集 artifacts（产物通道，与初始执行路径同一口径）
                     data = token.get("data", {}) or {}
                     output = data.get("output", {}) or {}
-                    if output and isinstance(output, dict) and output.get("artifact"):
-                        expert_info = output.get("last_expert_result") or {}
-                        await stream_queue.put(
-                            {
-                                "type": "artifact",
-                                "task_id": expert_info.get("task_id"),
-                                "data": output["artifact"],
-                            }
-                        )
+                    outcomes = output.get("task_outcomes") if isinstance(output, dict) else None
+                    if isinstance(outcomes, dict):
+                        for _key, outcome in outcomes.items():
+                            artifact = (outcome or {}).get("artifact")
+                            if not artifact:
+                                continue
+                            await stream_queue.put(
+                                {
+                                    "type": "artifact",
+                                    "task_id": (outcome or {}).get("db_uuid") or _key,
+                                    "data": artifact,
+                                }
+                            )
 
             finally:
                 # 注意：这里**不捕获**异常——失败必须上抛。
@@ -1025,7 +1048,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         - 已完成的任务：整条沿用当前状态（保留 `output_result` / Commander `task_id`）
         - 未完成/新增任务：采用前端提交的内容，但保留已有输出与 task_id
         - 依赖清理：指向已删除任务的 `depends_on` 条目剔除；空则置 None
-        - 重算 `current_task_index`（第一个非 completed 任务的位置）
+        - 下一个该跑谁**不在这里算**：由 `agents/plan_waves.py` 按依赖判定（C2 起）
 
         续跑由调用方的 `Command(resume=...)` 触发，本方法只负责状态合并，
         不再伪造 `HumanMessage`（那是静态中断时代的权宜手段）。
@@ -1080,26 +1103,18 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
 
             merged_plan.append(merged_task)
 
-        # 计算正确的 current_task_index（第一个待执行任务的位置）
-        next_task_index = 0
-        for idx, task in enumerate(merged_plan):
-            if task.get("status") != "completed":
-                next_task_index = idx
-                break
-        else:
-            # 所有任务都完成了
-            next_task_index = len(merged_plan)
-
         # 更新 LangGraph 状态（保留已完成任务的结果）
         # 计划的 approve 合并语义：按 id 保留已完成任务的 output_result / task_id、
-        # 清理指向已删除任务的依赖、重算 current_task_index。
+        # 清理指向已删除任务的依赖。
         #
         # 不再伪造 HumanMessage 触发续跑：那是在静态中断（interrupt_before）下
         # 让图「动起来」的权宜手段，会把一条假用户消息写进会话历史。现在由
         # `Command(resume=...)` 触发续跑，图从断点继续，无需任何伪造输入。
+        #
+        # 不再重算任务游标（C2 已删除 current_task_index）：改完计划后跑哪些任务
+        # 由 `plan_waves` 按依赖重新判定——「下一个该跑谁」只有一处答案。
         state_update = {
             "task_list": merged_plan,
-            "current_task_index": next_task_index,  # 正确的索引，而不是重置为 0
             "expert_results": current_expert_results,  # 保留已有结果，而不是清空
         }
         # 恢复流的消息 ID 贯通：聚合阶段的 message.done 与本次流式 delta 使用同一 ID
