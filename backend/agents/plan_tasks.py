@@ -108,8 +108,14 @@ def build_plan_tasks(llm_tasks: list[Any]) -> list[PlanTask]:
 
     顺带做两件原本散在 commander 里的归一：
     - 缺 id 的按位置补 `task_{idx}`
-    - 依赖里的序号写法（`"0"` / `"task_0"` 混用）统一成 Commander 语义 ID
+    - 依赖写法归一，判定顺序是**先认已有 id、再认位置**：
+      1. 值本身就等于某个任务的 id（`task_1`，或修订路径的 `"1"`）→ 原样保留；
+      2. 否则按位置解释（历史行为 `{str(idx): task.id}`，0 基）——LLM 偶尔把依赖写成
+         `"0"`/`"1"` 这种位置号。
+      顺序不能反：修订路径的 id 就是数字（`"1"`/`"2"`），先按位置解释会把 `"1"` 错认
+      成第二个任务（实测把 writer 的依赖接成了它自己）。
     """
+    known_ids = {task.id for task in llm_tasks if task.id}
     id_by_index = {str(idx): (task.id or f"task_{idx}") for idx, task in enumerate(llm_tasks)}
     plan_tasks: list[PlanTask] = []
     normalized_total = 0
@@ -118,7 +124,7 @@ def build_plan_tasks(llm_tasks: list[Any]) -> list[PlanTask]:
         semantic_id = task.id or f"task_{idx}"
         dependencies: list[str] = []
         for dep in task.depends_on or []:
-            mapped = id_by_index.get(dep, dep)
+            mapped = dep if dep in known_ids else id_by_index.get(dep, dep)
             if mapped != dep:
                 normalized_total += 1
             dependencies.append(mapped)

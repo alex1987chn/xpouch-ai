@@ -378,12 +378,38 @@ def create_execution_plan_with_subtasks(
     db.add(execution_plan)
     db.flush()
 
+    create_subtasks(db, execution_plan.id, subtasks_data)
+
+    db.commit()
+    db.refresh(execution_plan)
+    return execution_plan
+
+
+def create_subtasks(
+    db: Session,
+    execution_plan_id: str,
+    subtasks_data: list[SubTaskCreate],
+) -> list[SubTask]:
+    """创建子任务并**接好依赖线**（唯一实现，两条创建路径共用）。
+
+    依赖的两种形态（这里的转换是必须的）：
+    - 传入的 `SubTaskCreate.depends_on` 是 **Commander 语义 ID**（`task_1`），
+      与 `task_id` 同一命名空间；
+    - 落库的 `SubTask.depends_on` 存的是**子任务 UUID**（前端的计划视图、执行期
+      的 `expert_results.db_uuid` 匹配都是这个形态）。
+    所以这里把语义 ID 解析成 UUID；解析不到的依赖**原样保留**（交给下游的依赖清理
+    判断，不静默丢弃）。
+
+    为什么要抽出来：修订路径（`action=revise`）此前自己 `SubTask(...)` 建行、没做这一步，
+    于是修订后的依赖存进去的是 LLM 写的 `"1"/"2"` —— 执行期谁都匹配不到，下游任务
+    静默失去上游上下文。
+    """
     task_id_to_subtask: dict[str, SubTask] = {}
     subtask_list: list[tuple[SubTask, list[str] | None]] = []
 
     for idx, data in enumerate(subtasks_data):
         subtask = SubTask(
-            execution_plan_id=execution_plan.id,
+            execution_plan_id=execution_plan_id,
             expert_type=data.expert_type,
             task_description=data.task_description,
             sort_order=data.sort_order if data.sort_order is not None else idx,
@@ -409,7 +435,7 @@ def create_execution_plan_with_subtasks(
             else:
                 new_depends_on.append(dep_id)
         subtask.depends_on = new_depends_on
+        db.add(subtask)
 
-    db.commit()
-    db.refresh(execution_plan)
-    return execution_plan
+    db.flush()
+    return [subtask for subtask, _ in subtask_list]

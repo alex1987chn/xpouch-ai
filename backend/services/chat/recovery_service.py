@@ -282,7 +282,6 @@ class RecoveryService:
         """
         from agents.services.plan_revision import revise_plan_tasks
         from database import engine
-        from models import SubTask
 
         with Session(engine) as session:
             plan = session.get(ExecutionPlan, execution_plan_id)
@@ -311,16 +310,27 @@ class RecoveryService:
                 for st in list(plan.sub_tasks):
                     session.delete(st)
                 await asyncio.to_thread(session.flush)
+
+                # 与新建路径共用同一套「建行 + 接依赖线」实现：
+                # 修订输出的 id/depends_on 是 LLM 的 "1"/"2" 命名空间，必须经
+                # task_id → 子任务 UUID 的解析，否则执行期匹配不到上游（此前的写法
+                # 直接把 "1"/"2" 存进 depends_on）。
+                #
+                # ⚠️ 必须先给任务写上 id：修订提示词规定 id 从 "1" 连续编号、depends_on
+                # 也用同一套号。若留空交给位置兜底（`task_{idx}` 是 0 基），LLM 写的
+                # "1"（1 基）就会被解析成第二个任务 —— 实测把 writer 的依赖接成了它自己。
+                from agents.plan_tasks import build_plan_tasks
+                from crud.execution_plan import create_subtasks
+
                 for index, task in enumerate(revised.tasks, start=1):
-                    session.add(
-                        SubTask(
-                            execution_plan_id=plan.id,
-                            sort_order=index,
-                            expert_type=task.expert_type,
-                            task_description=task.description,
-                            depends_on=[d for d in task.depends_on if d] or None,
-                        )
-                    )
+                    task.id = str(index)
+                revised_tasks = build_plan_tasks(list(revised.tasks))
+                await asyncio.to_thread(
+                    create_subtasks,
+                    session,
+                    plan.id,
+                    [task.to_subtask_create() for task in revised_tasks],
+                )
 
                 plan.plan_version += 1
                 plan.estimated_steps = len(revised.tasks)
