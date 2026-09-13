@@ -125,6 +125,14 @@ function runSSEStream({
     let doneMarkerReceived = false
     let activeThreadId = threadId
     let activeRunId: string | undefined
+    /**
+     * 本次请求的去重作用域（交给 EventHandler）。
+     * run id 在 onopen 里由 X-Run-ID 头拿到，先于任何一帧到达，所以正常路径下用它；
+     * 拿不到时退化为这次请求的随机 id——**绝不能退化成"整个页面"**：帧 id 是 run 级
+     * seq，跨 run 会重号，那样第二个 run 的头部事件会被当成重复丢掉（见 handlers/index.ts
+     * 里 UNKNOWN_RUN_SCOPE 的说明）。
+     */
+    const dedupeScope = `stream:${crypto.randomUUID()}`
     /** B6 断线续传：最近收到的服务端事件 seq（hub 分配的整数 id） */
     let lastSeq = 0
     const ctrl = new AbortController()
@@ -186,15 +194,17 @@ function runSSEStream({
 
           // 协议 v2 单通道收敛：所有事件统一经 EventHandler（全局唯一分发点），
           // onChunk 只承担两类职责：message.delta 的正文流式、UI 状态同步（runtimeMeta）
+          // 去重作用域按 run（run id 未知时按本次请求）：帧 id 是 run 级 seq，跨 run 重号
+          const eventScope = activeRunId ?? dedupeScope
           if (eventType === 'message.delta') {
-            handleServerEvent(fullEvent)
+            handleServerEvent(fullEvent, eventScope)
             const content = eventData.content
             if (content && typeof content === 'string' && onChunk) {
               await onChunk(content, activeThreadId, undefined, undefined, undefined, runtimeMeta)
               fullContent += content
             }
           } else {
-            handleServerEvent(fullEvent)
+            handleServerEvent(fullEvent, eventScope)
             // artifact.generated 需一并透给 onChunk：useChatCore 里已有「产物到达即
             // 防抖刷新右栏画布/画廊」的逻辑，但此前该事件到不了 onChunk（只透传
             // message.* 与 error），那段逻辑因此是死代码——运行期间画布不刷新，

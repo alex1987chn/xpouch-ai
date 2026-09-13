@@ -86,6 +86,30 @@ describe('EventHandler', () => {
     })
   })
 
+  describe('去重作用域（run 级，不是页面级）', () => {
+    const planCreated = (id: string) => ({
+      id,
+      type: 'plan.created' as const,
+      data: { execution_plan_id: 's1', tasks: [] }
+    })
+
+    it('不同 run 的同号 seq 都要处理——帧 id 是 run 级 seq，跨 run 会重号', () => {
+      // 实测事故：同页第二个复杂任务的 seq 1（router/plan/human.interrupt 都在头部）
+      // 被当成上一轮 run 的重复丢掉，审批卡不出现、会话看着是空的
+      handler.handle(planCreated('1'), 'run-a')
+      handler.handle(planCreated('1'), 'run-b')
+
+      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledTimes(2)
+    })
+
+    it('同一个 run 内的重复帧仍被拦掉——补放与实时跟随的重叠窗口靠它兜底', () => {
+      handler.handle(planCreated('1'), 'run-a')
+      handler.handle(planCreated('1'), 'run-a')
+
+      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('事件分发', () => {
     it('应该根据类型分发到正确的处理器', () => {
       const planCreatedEvent = {
