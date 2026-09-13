@@ -13,6 +13,7 @@ import { useUserStore } from '@/store/userStore'
 import { logger } from '@/utils/logger'
 import { pushToast } from '@/components/ui/use-toast'
 import { useTranslation } from '@/i18n'
+import { toLocalDate } from '@/lib/datetime'
 
 interface ProfileSectionProps {
   onClose: () => void
@@ -129,7 +130,8 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
   const formatDate = (iso?: string) => {
     if (!iso) return '—'
     try {
-      return new Date(iso).toLocaleString()
+      // 后端时间戳是无时区的 UTC（见 lib/datetime 约定），裸 new Date 会按本地解析差一个时区
+      return toLocalDate(iso).toLocaleString()
     } catch {
       return iso
     }

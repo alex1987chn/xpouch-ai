@@ -22,6 +22,7 @@ import { logger } from '@/utils/logger'
 import ModelSelector from '@/components/settings/ModelSelector'
 import { EmptyState } from '@/components/ui/states'
 import { expertColor } from '@/lib/expertIdentity'
+import { toLocalDate } from '@/lib/datetime'
 import type {
   SystemExpert,
   PreviewExpertResponse,
@@ -199,7 +200,8 @@ export default function ExpertEditor({
       {/* 更新时间 */}
       <div className="border-b border-border-divider bg-surface-tint/30 px-5 py-1.5">
         <span className="text-tiny text-content-muted">
-          {t('lastUpdated')}: {new Date(expert.updated_at).toLocaleString()}
+          {/* 后端时间戳是无时区 UTC（见 lib/datetime 约定），裸 new Date 会按本地解析差一个时区 */}
+          {t('lastUpdated')}: {toLocalDate(expert.updated_at).toLocaleString()}
         </span>
       </div>
 

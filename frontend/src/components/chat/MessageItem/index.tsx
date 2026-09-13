@@ -19,6 +19,7 @@ import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.css'
 import { CodeBlock } from '@/components/ui/code-block'
 import { agentDotStyle, expertDisplayName } from '@/lib/expertIdentity'
+import { toLocalDate } from '@/lib/datetime'
 import ArtifactViewerModal from '@/components/artifacts/ArtifactViewerModal'
 import { cn } from '@/lib/utils'
 import type { Components } from 'react-markdown'
@@ -39,7 +40,10 @@ function formatMessageTime(timestamp: string | number | Date | undefined): strin
   if (!timestamp) return ''
   
   try {
-    const date = new Date(timestamp)
+    // 字符串一律过 toLocalDate：后端返回**无时区的 UTC naive**，裸 new Date 会按本地解析
+    // 导致恢复出来的历史消息时间差一个时区（UTC+8 下少 8 小时；实时消息带 Z 故正常）。
+    // 数字/Date 走原路（调用方已给出真实时刻）。
+    const date = typeof timestamp === 'string' ? toLocalDate(timestamp) : new Date(timestamp)
     const now = new Date()
     const isSameYear = date.getFullYear() === now.getFullYear()
     
