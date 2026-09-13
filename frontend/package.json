@@ -1,6 +1,6 @@
 {
   "name": "xpouch-ai-frontend",
-  "version": "3.5.0",
+  "version": "3.5.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,6 +9,7 @@
     "build:analyze": "vite build && echo 'Bundle analysis: dist/stats.html'",
     "preview": "vite preview",
     "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",

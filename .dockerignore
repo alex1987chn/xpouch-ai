@@ -70,6 +70,11 @@ tmp/
 temp/
 *.tmp
 
+# Local agent/scanner artifacts (hook snapshots, local tool state)
+**/.mimosa
+**/.zcode
+**/.ruff_cache
+
 # Docker files themselves (avoid recursive copies)
 Dockerfile*
 docker-compose*.yml
