@@ -113,7 +113,7 @@ export function PlanReviewModal({
               autoFocus
               rows={4}
               placeholder={t('feedbackPlaceholder')}
-              className="w-full resize-y rounded-md border border-border-default bg-surface-page p-3 text-body-sm leading-relaxed text-content-primary placeholder:text-content-muted focus:border-border-focus focus:outline-none"
+              className="field-sizing-content max-h-56 min-h-[5rem] w-full resize-none overflow-y-auto rounded-md border border-border-default bg-surface-page p-3 text-body-sm leading-relaxed text-content-primary placeholder:text-content-muted focus:border-border-focus focus:outline-none"
             />
             <p className="text-caption text-content-muted">{t('feedbackHint')}</p>
           </div>
@@ -144,13 +144,16 @@ export function PlanReviewModal({
                   </span>
                   <div className="min-w-0 flex-1">
                     {isEditing ? (
+                      /* 自增高（与控制台输入框同一写法）：内容多高就给多高，
+                         上限 max-h-48 之后内部滚动，避免把弹窗底部按钮顶出屏。
+                         field-sizing 不支持的浏览器退回 rows=2 + 滚动 = 原行为。 */
                       <textarea
                         value={task.description}
                         onChange={e => setEditedPlan(prev =>
                           prev.map(p => (p.id === task.id ? { ...p, description: e.target.value } : p))
                         )}
                         rows={2}
-                        className="w-full resize-none rounded-md border border-border-default bg-surface-card p-2 text-body-sm text-content-primary focus:border-border-focus focus:outline-none"
+                        className="field-sizing-content max-h-48 min-h-[3.5rem] w-full resize-none overflow-y-auto rounded-md border border-border-default bg-surface-card p-2 text-body-sm leading-relaxed text-content-primary focus:border-border-focus focus:outline-none"
                       />
                     ) : (
                       <p className="text-body-sm leading-relaxed text-content-primary">{task.description}</p>
