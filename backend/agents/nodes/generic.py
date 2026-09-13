@@ -431,26 +431,42 @@ async def generic_worker_node(
             # 🔥 环境变量控制：ENABLE_TOOL_CALLING=false 可禁用工具调用（平滑升级兼容）
             enable_tools = settings.enable_tool_calling
             if enable_tools:
+                # 工具集的收集与治理过滤**不放在宽 try 里**——它们读的是 DB 配置
+                # （工具治理覆盖）与注入的 MCP 工具，失败属程序/数据层问题。
+                # 此前整段被一个 `except Exception` 包住降级为「无工具执行」，
+                # 于是 tool_policy_service 的时区比较异常（naive vs aware）被
+                # 吞成一句误导性警告，**所有专家的工具调用静默失效数月**。
+                # 现在这类错误直接上抛（失败可见），只有「模型确实不支持工具
+                # 调用」才允许降级。
+                # 🔥 MCP: 从 config 获取动态注入的工具
+                mcp_tools = []
+                if config and hasattr(config, "get"):
+                    mcp_tools = config.get("configurable", {}).get("mcp_tools", [])
+
+                # 🔥 MCP: 合并基础工具和动态 MCP 工具
+                runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
+                policy_overrides = await tool_policy_service.get_overrides()
+                bindable_tools, blocked_tools = filter_tools_for_binding(
+                    runtime_tools,
+                    expert_type=expert_type,
+                    overrides=policy_overrides,
+                )
+
+                # 🔥 警告：如果 MCP 工具为空但预期应该有
+                if not mcp_tools and settings.mcp_servers:
+                    logger.warning("[GenericWorker] ⚠️ MCP 工具为空！请检查 MCP 服务器连接")
+
                 try:
-                    # 🔥 MCP: 从 config 获取动态注入的工具
-                    mcp_tools = []
-                    if config and hasattr(config, "get"):
-                        mcp_tools = config.get("configurable", {}).get("mcp_tools", [])
-
-                    # 🔥 MCP: 合并基础工具和动态 MCP 工具
-                    runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
-                    policy_overrides = await tool_policy_service.get_overrides()
-                    bindable_tools, blocked_tools = filter_tools_for_binding(
-                        runtime_tools,
-                        expert_type=expert_type,
-                        overrides=policy_overrides,
-                    )
-
-                    # 🔥 警告：如果 MCP 工具为空但预期应该有
-                    if not mcp_tools and settings.mcp_servers:
-                        logger.warning("[GenericWorker] ⚠️ MCP 工具为空！请检查 MCP 服务器连接")
-
                     llm_to_use = llm_with_config.bind_tools(bindable_tools)
+                except (NotImplementedError, TypeError) as bind_err:
+                    # 仅「该模型实例不支持绑定工具」这一情形可降级：无工具但仍能对话。
+                    logger.error(
+                        "[GenericWorker] ⚠️ 模型不支持工具调用，专家将**无工具**执行: %s",
+                        bind_err,
+                        exc_info=True,
+                    )
+                    llm_to_use = llm_with_config
+                else:
                     logger.info(
                         "[GenericWorker] 🔧 工具已绑定: %s 个工具 (基础: %s, MCP: %s, 被治理层过滤: %s)",
                         len(bindable_tools),
@@ -466,18 +482,6 @@ async def generic_worker_node(
                             blocked.action,
                             blocked.reason,
                         )
-                except Exception as e:
-                    # 注意措辞：这里捕获的是**绑定过程中的任何异常**，不只是
-                    # 「模型不支持工具调用」。此前文案写成后者，导致一个真实的
-                    # 时区比较异常（见 tool_policy_service）被误读为模型能力问题，
-                    # 工具静默失效数月无人发现。现明确说出降级后果与异常类型。
-                    logger.warning(
-                        "[GenericWorker] ⚠️ 工具绑定失败，专家将**无工具**执行（异常类型 %s）: %s",
-                        type(e).__name__,
-                        e,
-                        exc_info=True,
-                    )
-                    llm_to_use = llm_with_config
             else:
                 logger.info("[GenericWorker] ⏭️ 工具调用已禁用（ENABLE_TOOL_CALLING=false）")
                 llm_to_use = llm_with_config

@@ -820,11 +820,15 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                             }
                         )
 
-            except AppError:
-                raise
-            except Exception as e:
-                logger.error(f"[StreamService] Producer 错误: {e}", exc_info=True)
             finally:
+                # 注意：这里**不捕获**异常——失败必须上抛。
+                # 此前是 `except Exception: logger.error(...)` 吞掉继续，后果是
+                # 消费者收到 finally 投递的 done 后正常退出、`await producer_task`
+                # 正常返回，于是恢复流程继续把 run 标成 COMPLETED：**一次彻底失败
+                # 的 HITL 恢复被粉饰成成功**（客户端收到干净的 [DONE]、无 error
+                # 事件、无 message.done），而 recovery_service 里专门写好的
+                # 「标失败 + 推 RESUME_ERROR」分支永远不会执行。
+                # 现在让异常沿 await producer_task 上抛到调用方既有的处理分支。
                 if run_id:
                     hub.close(run_id)
                 await sse_queue.put({"type": "done"})

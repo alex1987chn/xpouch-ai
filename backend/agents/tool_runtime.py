@@ -153,7 +153,9 @@ def build_tool_call_wrapper(builtin_tool_names: set[str]):
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
                 async with asyncio.timeout(timeout_seconds):
-                    return await handler(request)
+                    result = await handler(request)
+                logger.info("[ToolNode] ✅ 工具 %s 调用成功", tool_name)
+                return result
             except Exception as err:
                 is_last = attempt >= MAX_ATTEMPTS
                 category, user_msg = classify_tool_error(err)

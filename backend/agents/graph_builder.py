@@ -66,8 +66,17 @@ def _get_simple_llm_cached():
         # message.delta 逐字送达前端（simple 模式唯一流式来源）
         if is_provider_configured("deepseek"):
             return get_llm_instance(provider="deepseek", streaming=True, temperature=0.7)
-    except Exception:
-        pass
+    except Exception as exc:
+        # 这里曾是 `except Exception: pass`——全仓唯一连日志都没有的吞异常。
+        # 后果：simple 模式静默换用 router LLM（其 streaming 多为 False），
+        # **逐字流式消失**（回复整段突然出现），且模型/温度也可能与配置不符，
+        # 而没有任何线索可查。注意措辞要说出降级后果。
+        logger.warning(
+            "[Graph] simple 模式 LLM 构造失败，回落 router LLM"
+            "（可能失去逐字流式，请核对 provider 配置）: %s",
+            exc,
+            exc_info=True,
+        )
     return get_router_llm()
 
 
