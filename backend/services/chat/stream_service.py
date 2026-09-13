@@ -908,11 +908,18 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         current_task_list = current_values.get("task_list", [])
         current_expert_results = current_values.get("expert_results", [])
 
-        # 创建任务 ID 到当前任务的映射
+        # 创建任务 ID 到当前任务的映射（键用 db id：前端提交的 updated_plan
+        # 里 `id` 就是 db uuid，与审批卡下发的 current_plan 一致）
         current_task_map = {task.get("id"): task for task in current_task_list}
 
         # 清理依赖关系并合并状态
-        kept_task_ids = {task.get("id") for task in updated_plan}
+        #
+        # ⚠️ 依赖集合必须用 **commander 语义 id（`task_id`）**，不能用 db id：
+        # `depends_on` 里存的是 "task_1" 这类 commander id，而 `id` 是数据库主键。
+        # 二者不同源（「双身份」），此前用 `task.get("id")` 建集合导致交集恒为空
+        # —— 用户一旦编辑计划，**所有依赖都会被清空**，下游任务随即失去上游产出
+        # 的上下文注入（generic 读取 depends_on 拼接上下文）。
+        kept_task_ids = {str(task.get("task_id") or task.get("id")) for task in updated_plan}
         merged_plan = []
 
         for task in updated_plan:

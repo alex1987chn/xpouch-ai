@@ -95,6 +95,13 @@ class Settings(BaseSettings):
     force_heartbeat_interval: float = Field(default=30.0, alias="FORCE_HEARTBEAT_INTERVAL")
     stream_timeout: float = Field(default=120.0, alias="STREAM_TIMEOUT")
     recursion_limit: int = Field(default=100, alias="RECURSION_LIMIT")
+    # 图内并行执行的任务数上限。
+    #   1（默认）= 串行 —— 并行能力在位但不改变现有行为；
+    #   >1 = 同层就绪任务并发执行（见 agents/plan_waves.py）。
+    # 将来若要做成页面可配置项：按 system_setting 的既有模式读取
+    # （参考 services/run_quota.py 的 user_daily_token_quota），此处保留为
+    # 环境变量兜底默认值，执行器改为「设置表优先、env 兜底」即可，无需改执行逻辑。
+    graph_max_concurrency: int = Field(default=1, alias="GRAPH_MAX_CONCURRENCY")
     run_deadline_seconds: int = Field(default=900, alias="RUN_DEADLINE_SECONDS")
     # 注：原 run_max_graph_loops / RUN_MAX_GRAPH_LOOPS（图循环预算）已随批次 B3
     # 移除——它唯一的作用是看管「为对抗 interrupt_before 静态中断而手写的外层

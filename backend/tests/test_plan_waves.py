@@ -1,0 +1,178 @@
+"""波次规划（agents/plan_waves.py）的单元测试。
+
+这是并行的**判定层**：给定计划（依赖 DAG + 各任务状态），算出「本轮能跑哪些」。
+它与执行器解耦、纯函数无 IO，所以能用最便宜的方式把并行语义钉死——包括
+「默认串行（并发上限 1）时行为与现在完全一致」这条不改变现有业务的保证。
+"""
+
+from agents.plan_waves import (
+    blocked_task_ids,
+    completed_task_ids,
+    is_plan_finished,
+    ready_task_ids,
+    select_wave,
+)
+
+
+def _task(task_id: str, *, deps: list[str] | None = None, status: str = "pending", order: int = 0):
+    """构造与图状态同形的任务字典。
+
+    注意 `id` 与 `task_id` 是两个身份：`id` 是 db uuid、`task_id` 是 commander
+    语义 id，而 `depends_on` 引用的是后者——这正是本模块要守住的区分。
+    """
+    return {
+        "id": f"uuid-{task_id}",
+        "task_id": task_id,
+        "expert_type": "researcher",
+        "description": f"任务 {task_id}",
+        "sort_order": order,
+        "status": status,
+        "depends_on": deps or [],
+        "output_result": None,
+    }
+
+
+class TestCompletedSet:
+    def test_uses_commander_id_not_db_id(self):
+        tasks = [_task("task_1", status="completed")]
+        assert completed_task_ids(tasks) == {"task_1"}, "依赖空间用 commander id"
+
+    def test_only_completed_counts(self):
+        tasks = [
+            _task("task_1", status="completed"),
+            _task("task_2", status="failed"),
+            _task("task_3", status="pending"),
+        ]
+        assert completed_task_ids(tasks) == {"task_1"}
+
+
+class TestReadySet:
+    def test_no_deps_are_ready_immediately(self):
+        tasks = [_task("task_1", order=0), _task("task_2", order=1)]
+        assert ready_task_ids(tasks) == ["task_1", "task_2"]
+
+    def test_dependent_task_waits_for_upstream(self):
+        tasks = [
+            _task("task_1", order=0),
+            _task("task_2", deps=["task_1"], order=1),
+        ]
+        assert ready_task_ids(tasks) == ["task_1"], "下游在上游完成前不就绪"
+
+    def test_dependent_becomes_ready_after_upstream_completes(self):
+        tasks = [
+            _task("task_1", status="completed", order=0),
+            _task("task_2", deps=["task_1"], order=1),
+        ]
+        assert ready_task_ids(tasks) == ["task_2"]
+
+    def test_chain_only_advances_one_step(self):
+        """链式计划（最常见的形状）：任一时点只有一个就绪任务。"""
+        tasks = [
+            _task("task_1", order=0),
+            _task("task_2", deps=["task_1"], order=1),
+            _task("task_3", deps=["task_2"], order=2),
+        ]
+        assert ready_task_ids(tasks) == ["task_1"]
+
+    def test_wide_layer_is_all_ready_after_fan_in(self):
+        """菱形：task_1 → (2a,2b,2c) → task_4。扇出层三个同时就绪。"""
+        tasks = [
+            _task("task_1", status="completed", order=0),
+            _task("task_2a", deps=["task_1"], order=1),
+            _task("task_2b", deps=["task_1"], order=2),
+            _task("task_2c", deps=["task_1"], order=3),
+            _task("task_4", deps=["task_2a", "task_2b", "task_2c"], order=4),
+        ]
+        assert ready_task_ids(tasks) == ["task_2a", "task_2b", "task_2c"]
+        assert "task_4" not in ready_task_ids(tasks), "扇入任务须等全部上游"
+
+    def test_respects_sort_order(self):
+        tasks = [_task("task_b", order=5), _task("task_a", order=1)]
+        assert ready_task_ids(tasks) == ["task_a", "task_b"]
+
+    def test_completed_and_running_are_not_ready(self):
+        tasks = [
+            _task("task_1", status="completed"),
+            _task("task_2", status="running"),
+        ]
+        assert ready_task_ids(tasks) == []
+
+
+class TestBlockedSet:
+    def test_pending_with_failed_dep_is_blocked(self):
+        tasks = [
+            _task("task_1", status="failed"),
+            _task("task_2", deps=["task_1"]),
+        ]
+        assert blocked_task_ids(tasks) == ["task_2"]
+
+    def test_cancelled_dep_also_blocks(self):
+        tasks = [
+            _task("task_1", status="cancelled"),
+            _task("task_2", deps=["task_1"]),
+        ]
+        assert blocked_task_ids(tasks) == ["task_2"]
+
+    def test_transitive_block_is_detected(self):
+        """上游失败 → 下游直接依赖它而被阻塞（更下游需先标记才能判定）。"""
+        tasks = [
+            _task("task_1", status="failed"),
+            _task("task_2", deps=["task_1"]),
+            _task("task_3", deps=["task_2"]),
+        ]
+        assert blocked_task_ids(tasks) == ["task_2"]
+
+    def test_healthy_plan_has_no_blocked(self):
+        tasks = [_task("task_1"), _task("task_2", deps=["task_1"])]
+        assert blocked_task_ids(tasks) == []
+
+
+class TestSelectWave:
+    def test_concurrency_one_degrades_to_single_task(self):
+        """默认配置（1）= 串行：即使扇出层有 3 个就绪任务，也只取 1 个。
+
+        这是「并行能力在位、但不改变现有业务」的执行层保证。
+        """
+        tasks = [
+            _task("task_1", status="completed", order=0),
+            _task("task_2a", deps=["task_1"], order=1),
+            _task("task_2b", deps=["task_1"], order=2),
+        ]
+        assert select_wave(tasks, max_concurrency=1) == ["task_2a"]
+
+    def test_zero_or_negative_treated_as_serial(self):
+        tasks = [_task("task_1"), _task("task_2", order=1)]
+        assert select_wave(tasks, max_concurrency=0) == ["task_1"]
+
+    def test_caps_to_concurrency_limit(self):
+        tasks = [_task(f"task_{i}", order=i) for i in range(5)]
+        assert select_wave(tasks, max_concurrency=2) == ["task_0", "task_1"]
+
+    def test_returns_all_when_limit_exceeds_ready(self):
+        tasks = [_task("task_1"), _task("task_2", order=1)]
+        assert select_wave(tasks, max_concurrency=8) == ["task_1", "task_2"]
+
+    def test_empty_when_nothing_ready(self):
+        tasks = [_task("task_1", status="running")]
+        assert select_wave(tasks, max_concurrency=4) == []
+
+
+class TestFinished:
+    def test_all_terminal_is_finished(self):
+        tasks = [_task("task_1", status="completed"), _task("task_2", status="failed")]
+        assert is_plan_finished(tasks) is True
+
+    def test_pending_with_ready_work_is_not_finished(self):
+        tasks = [_task("task_1")]
+        assert is_plan_finished(tasks) is False
+
+    def test_all_pending_blocked_is_finished(self):
+        """没有就绪任务且存在被阻塞任务 → 视为结束，避免执行器空转到超时。"""
+        tasks = [
+            _task("task_1", status="failed"),
+            _task("task_2", deps=["task_1"]),
+        ]
+        assert is_plan_finished(tasks) is True
+
+    def test_empty_plan_is_finished(self):
+        assert is_plan_finished([]) is True
