@@ -109,12 +109,12 @@ export function handleRouterDecision(
     }
 
     if (routerStepIndex >= 0) {
-      const modeText =
-        event.data.decision === 'simple' ? '简单模式' : '复杂模式（多专家协作）'
+      // 文案入 i18n 表（此前硬编码中文：en/ja 用户也会看到中文结论）
+      const modeLabel = t(event.data.decision === 'simple' ? 'modeSimple' : 'modeComplex')
       thinking[routerStepIndex] = {
         ...thinking[routerStepIndex],
         status: 'completed',
-        content: `意图分析完成：已选择${modeText}`
+        content: t('thinkingRouterDone', { mode: modeLabel })
       }
       updateMessageMetadata(lastAi.id, { thinking })
       if (debug) {

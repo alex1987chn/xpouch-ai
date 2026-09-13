@@ -124,7 +124,10 @@
 - **有意未做（DI）**：依赖注入要改所有节点签名，而读取点全在**最热的执行路径**上（每次路由/每次工具调用）；收益主要是「便于替换实现/测试」，而真正造成事故的缺陷来源已被 epoch 消掉。等出现第二个配置存储或真需要替换实现时再做。
 - **边界（明确未纳入，避免"看起来全改了"）**：
   - `services/tool_policy_service.py` 的覆盖缓存：自带 `invalidate()` 且管理面更新时显式调用（`routers/tools.py`），不属于「忘记注册」这一类。
-  - `agents/graph_builder.py` 的 3 个 LLM 单例（`lru_cache`）：只在首次调用时构造，**改模型配置要重启进程才生效**。这是否算缺陷取决于产品预期（用户的模型配置改完是否该立刻生效）——单独列出待用户判断，未擅自改（改它会牵出「模型配置变更后要不要重建单例」的产品语义）。
+  - `agents/graph_builder.py` 的 3 个 LLM 单例（`lru_cache`）：**2026-09-13 复核后修正**——此前我在本节写「改模型配置要重启进程才生效」，**那是错的**。真相：
+    - 系统管理里选的「简单模式模型 + 思考档」存在 `system_setting`，`routers/chat.py` **每次请求**都 `load_model_preferences(session)` 注入图状态 → `_resolve_simple_llm` 用它构造实例（实例缓存按 (provider, model, streaming, thinking, temperature) 做键）→ **选完立刻生效，无需重启**。专家管理里每个专家的模型同理：管理员保存时 `refresh_cache()` → epoch 递增 → 配置缓存自清 → 下次运行用新模型建新实例。
+    - 那 3 个单例只是「没有选择时的兜底」，其输入全部来自 env（`MODEL_NAME` / providers.yaml）——改 env 需要重启，这属于 env 语义，不是缺陷。
+    - 唯一的真实差异：**router / commander / aggregator 三个角色的 provider 由 `providers.yaml` 钉定、模型名取 env 默认**，不跟随上面那个选择（有意为之：Router 要 JSON 稳定输出，历史上 MiniMax 的 `<think>` 标签就是因此被移除）。UI 上那个控件本来标的就是「简单模式」，所以行为与标注一致。**若将来希望编排角色也跟随某个选择，那是产品决策**，不在本轮。
 
 ### 决定 8 · 计划生成端要能产出宽计划（**并行的真正瓶颈**）
 

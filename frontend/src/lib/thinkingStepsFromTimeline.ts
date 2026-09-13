@@ -28,6 +28,9 @@ export interface ThinkingStepLabels {
   taskDone: string
   /** 单个任务执行失败（i18n: thinkingTaskFailed） */
   taskFailed: string
+  /** 意图分析结论（i18n: thinkingRouterDone，需要 mode 文案）——由调用方给全句，
+   *  保证与实时面板（handlers/systemEvents）逐字一致 */
+  routerDone: (mode: unknown) => string
 }
 
 /** 账本里哪些事件算「思考过程的一步」——其余（生命周期/HITL/产物）不产生步骤 */
@@ -39,6 +42,7 @@ const STEP_EVENTS = new Set([
   'task_failed',
 ])
 
+/** 与 systemEvents 的实时文案共用同一个 i18n 词条（由调用方注入，见 ThinkingStepLabels） */
 function asText(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
@@ -47,10 +51,9 @@ function asNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
-/** 与 systemEvents 的实时文案保持同一句（那边是硬编码中文） */
-function routerConclusion(mode: unknown): string {
-  const modeText = mode === 'simple' ? '简单模式' : '复杂模式（多专家协作）'
-  return `意图分析完成：已选择${modeText}`
+/** 账本里的 mode → 结论句（走调用方注入的 i18n 文案，与实时面板同源） */
+function routerConclusion(mode: unknown, labels: ThinkingStepLabels): string {
+  return labels.routerDone(mode)
 }
 
 /**
@@ -77,7 +80,7 @@ export function buildThinkingStepsFromTimeline(
           id: `router-${event.id}`,
           expertType: 'router',
           expertName: '智能路由',
-          content: routerConclusion(data.mode),
+          content: routerConclusion(data.mode, labels),
           timestamp: event.timestamp,
           status: 'completed',
           type: 'analysis',

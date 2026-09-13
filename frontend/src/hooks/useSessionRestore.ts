@@ -193,6 +193,11 @@ export function useSessionRestore(
           planDone: t('thinkingPlanDone'),
           taskDone: t('thinkingTaskDone'),
           taskFailed: t('thinkingTaskFailed'),
+          // 与实时面板同一词条 + 同一 mode 文案，保证两处逐字一致
+          routerDone: (mode) =>
+            t('thinkingRouterDone', {
+              mode: t(mode === 'simple' ? 'modeSimple' : 'modeComplex'),
+            }),
         })
         setMessages(restoredMessages)
       }

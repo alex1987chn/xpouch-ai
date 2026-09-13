@@ -12,7 +12,13 @@ import { describe, it, expect } from 'vitest'
 import { buildThinkingStepsFromTimeline } from '../thinkingStepsFromTimeline'
 import type { RunEvent } from '@/types/run'
 
-const LABELS = { planDone: '任务规划完成', taskDone: '任务执行完成', taskFailed: '任务执行失败' }
+const LABELS = {
+  planDone: '任务规划完成',
+  taskDone: '任务执行完成',
+  taskFailed: '任务执行失败',
+  routerDone: (mode: unknown) =>
+    `意图分析完成：已选择${mode === 'simple' ? '简单模式' : '复杂模式'}`,
+}
 
 function ev(partial: Partial<RunEvent> & { id: number; event_type: RunEvent['event_type'] }): RunEvent {
   return {
@@ -44,7 +50,9 @@ describe('buildThinkingStepsFromTimeline', () => {
       [ev({ id: 1, event_type: 'router_decided', event_data: { mode: 'complex' } })],
       LABELS,
     )
-    expect(steps[0].content).toBe('意图分析完成：已选择复杂模式（多专家协作）')
+    // 措辞由调用方注入（实际是 i18n 的 thinkingRouterDone + modeComplex），
+    // 实时面板与账本重建共用同一词条 → 两处必然一致
+    expect(steps[0].content).toBe('意图分析完成：已选择复杂模式')
   })
 
   it('计划与任务步骤带上专家名 / 耗时 / 状态', () => {
