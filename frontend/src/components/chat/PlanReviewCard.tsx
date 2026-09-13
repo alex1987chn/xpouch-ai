@@ -24,6 +24,7 @@ import type { TaskInfo } from '@/types/events'
 import {
   useIsWaitingForApproval,
   usePendingPlan,
+  usePreviousPendingPlan,
   usePendingRunId,
   usePendingPlanVersion,
   usePlanRevising,
@@ -68,6 +69,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
   const { t } = useTranslation()
   const isWaitingForApproval = useIsWaitingForApproval()
   const pendingPlan = usePendingPlan()
+  const previousPendingPlan = usePreviousPendingPlan()
   const pendingRunId = usePendingRunId()
   const pendingPlanVersion = usePendingPlanVersion()
   const planRevising = usePlanRevising()
@@ -347,6 +349,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
       <PlanReviewModal
         open={modalOpen}
         plan={pendingPlan}
+        previousPlan={previousPendingPlan}
         planVersion={pendingPlanVersion}
         isSubmitting={isSubmitting}
         isRevising={planRevising}

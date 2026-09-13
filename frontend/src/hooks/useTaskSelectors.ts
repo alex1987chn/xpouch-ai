@@ -32,6 +32,9 @@ export const useIsWaitingForApproval = () => useTaskStore(state => state.isWaiti
 /** 待审批计划（审批卡渲染 + 执行步数来源） */
 export const usePendingPlan = () => useTaskStore(state => state.pendingPlan)
 
+/** 上一版计划（仅本次为修订结果时非空，供审批弹窗的改动对照） */
+export const usePreviousPendingPlan = () => useTaskStore(state => state.previousPendingPlan)
+
 /** HITL 修订中标志（驳回反馈已提交，专家修订 v(n+1) 中） */
 export const usePlanRevising = () => useTaskStore(state => state.planRevising)
 

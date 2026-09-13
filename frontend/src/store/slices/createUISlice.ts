@@ -36,6 +36,15 @@ export interface UISliceState {
   planRevising: boolean
   /** 待审批计划的行 = 协议里的 TaskInfo（审批弹窗的要求形状） */
   pendingPlan: TaskInfo[]
+  /**
+   * 上一版计划（仅当本次是**修订**结果时非空）。
+   *
+   * 用途：审批弹窗里的「本次修订改动」对照。修订是删旧行建新行，跨版本只有位置
+   * 可比（见 lib/planDiff 的说明），所以对照必须在**内存**里留住上一版——
+   * 服务端不再保留 v(n) 的任务行。刷新页面后这份对照会丢，属可接受降级
+   * （此时界面上仍会显示完整的新计划）。
+   */
+  previousPendingPlan: TaskInfo[]
   pendingPlanVersion: number
   pendingRunId: string | null
   pendingExecutionPlanId: string | null
@@ -81,6 +90,7 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
   isWaitingForApproval: false,
   planRevising: false,
   pendingPlan: [],
+  previousPendingPlan: [],
   pendingPlanVersion: 1,
   pendingRunId: null,
   pendingExecutionPlanId: null,
@@ -119,6 +129,10 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
     executionPlanId: string | null = null,
   ) => {
     set((state) => {
+      // 版本号变大 = 这一份是修订结果 → 把上一版留作对照（同版本重复下发不算修订）
+      if (planVersion > state.pendingPlanVersion && state.pendingPlan.length > 0) {
+        state.previousPendingPlan = state.pendingPlan
+      }
       state.pendingPlan = plan
       state.pendingPlanVersion = planVersion
       state.pendingRunId = runId
@@ -130,6 +144,7 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
   clearPendingPlan: () => {
     set((state) => {
       state.pendingPlan = []
+      state.previousPendingPlan = []
       state.pendingPlanVersion = 1
       state.pendingRunId = null
       state.pendingExecutionPlanId = null
@@ -176,6 +191,7 @@ export const createUISlice = (set: UISliceSetter, get: UISliceGetter): UISlice =
       state.isWaitingForApproval = false
       state.planRevising = false
       state.pendingPlan = []
+      state.previousPendingPlan = []
       state.pendingPlanVersion = 1
       state.pendingRunId = null
       state.pendingExecutionPlanId = null

@@ -12,6 +12,8 @@ import { useState, useEffect } from 'react'
 import { AlertTriangle, Trash2, Loader2, X } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { PlanDiffList } from './PlanDiffList'
+import { changedRowsOnly, diffPlans } from '@/lib/planDiff'
 import { expertDotStyle } from '@/lib/expertIdentity'
 import { cn } from '@/lib/utils'
 import type { TaskInfo } from '@/types/events'
@@ -19,6 +21,11 @@ import type { TaskInfo } from '@/types/events'
 interface PlanReviewModalProps {
   open: boolean
   plan: TaskInfo[]
+  /**
+   * 上一版计划（仅修订后非空）。用于「本次修订改动」对照——
+   * 跨版本只有位置可比，见 lib/planDiff。
+   */
+  previousPlan?: TaskInfo[]
   planVersion: number | null
   isSubmitting: boolean
   isRevising: boolean
@@ -29,13 +36,20 @@ interface PlanReviewModalProps {
 }
 
 export function PlanReviewModal({
-  open, plan, planVersion, isSubmitting, isRevising, onApprove, onRevise, onTerminate, onClose,
+  open, plan, previousPlan, planVersion, isSubmitting, isRevising, onApprove, onRevise, onTerminate, onClose,
 }: PlanReviewModalProps) {
   const { t } = useTranslation()
   const [editedPlan, setEditedPlan] = useState<TaskInfo[]>(plan)
   const [isEditing, setIsEditing] = useState(false)
   const [feedbackView, setFeedbackView] = useState(false)
   const [feedback, setFeedback] = useState('')
+  const [diffView, setDiffView] = useState(false)
+
+  // 修订对照的数据（只有本次是修订结果时才非空）
+  const hasDiff = (previousPlan?.length ?? 0) > 0 && !isEditing
+  const diffCount = hasDiff
+    ? changedRowsOnly(diffPlans(previousPlan ?? [], plan)).length
+    : 0
 
   // 每次打开时以最新待审计划复位
   useEffect(() => {
@@ -44,6 +58,7 @@ export function PlanReviewModal({
       setIsEditing(false)
       setFeedbackView(false)
       setFeedback('')
+      setDiffView(false)
     }
   }, [open, plan])
 
@@ -136,6 +151,25 @@ export function PlanReviewModal({
           {/* 计划视图 */}
           <div className="flex flex-col gap-3 px-5 py-4">
             <p className="text-xs leading-relaxed text-content-secondary">{t('approvalModalNote')}</p>
+
+            {/* 修订对照：只在「本次是修订结果」时出现 */}
+            {hasDiff && (
+              <div className="flex flex-col gap-2 rounded-md border border-border-divider bg-surface-tint px-3 py-2.5">
+                <button
+                  onClick={() => setDiffView(v => !v)}
+                  className="flex items-center gap-1.5 self-start text-caption font-bold text-content-secondary transition-colors hover:text-content-primary"
+                >
+                  {diffView ? t('planDiffHide') : t('planDiffShow', { count: diffCount })}
+                </button>
+                {diffView && (
+                  <>
+                    <PlanDiffList before={previousPlan ?? []} after={plan} />
+                    <p className="text-tiny leading-relaxed text-content-muted">{t('planDiffNote')}</p>
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="flex flex-col gap-2">
               {editedPlan.map((task, index) => (
                 <div key={task.id} className="flex gap-3 rounded-md border border-border-divider bg-surface-page p-3">
