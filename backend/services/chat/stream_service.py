@@ -514,7 +514,11 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             execution_plan.run_id = execution_plan.run_id or run_id
             execution_plan.user_query = execution_plan.user_query or user_message
             execution_plan.status = TaskStatus.COMPLETED
-            execution_plan.final_response = last_message.content
+            # final_response 由 aggregator 写入（= 用户看到的聚合综述）。
+            # 这里只在为空时兜底，**不得覆盖**——state 里的最后一条消息在复杂模式下
+            # 是最后一个专家的原始产出，覆盖会让计划正文变成专家草稿而非综述。
+            if not execution_plan.final_response:
+                execution_plan.final_response = last_message.content
             execution_plan.updated_at = utc_now_naive()
             execution_plan.completed_at = utc_now_naive()
             self.db.add(execution_plan)
@@ -582,7 +586,20 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                         f"[StreamService] ⚠️ task_id={task_id} 在 expert_artifacts 中未找到"
                     )
 
-        # 保存 AI 消息（思考过程优先使用原生 reasoning_content，无则回退 <think> 标签解析）
+        if router_decision == "complex":
+            # 复杂模式的**唯一写入者**是 aggregator 节点：它是图内最后一个节点，
+            # 无条件写入助手消息（save_assistant_message_sync，带 state.message_id）
+            # 与计划的 final_response。
+            #
+            # 因此这里必须提前返回、不重复保存，否则同一轮会出现**两条内容不同的
+            # 助手消息**——一条是用户看到的聚合综述，一条是 state 里最后一个专家的
+            # 原始产出；并且会把计划的 final_response 覆盖成专家原始产出。
+            # 生产前端恒走流式 + 审批暂停，所以这条路径平时走不到；但 sync 公开
+            # API 路径（handle_langgraph_sync）会走到，属真实可触发的重复写入。
+            return
+
+        # 保存 AI 消息（简单模式；思考过程优先用原生 reasoning_content，
+        # 无则回退 <think> 标签解析）
         from utils.thinking_parser import build_thinking_data
 
         thinking_data = build_thinking_data(thinking_text) if thinking_text else None
