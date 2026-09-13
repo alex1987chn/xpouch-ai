@@ -15,6 +15,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { PlanDiffList } from './PlanDiffList'
 import { changedRowsOnly, diffPlans } from '@/lib/planDiff'
 import { expertDotStyle } from '@/lib/expertIdentity'
+import { useExpertLabel } from '@/hooks/useExpertLabel'
 import { cn } from '@/lib/utils'
 import type { TaskInfo } from '@/types/events'
 
@@ -39,6 +40,7 @@ export function PlanReviewModal({
   open, plan, previousPlan, planVersion, isSubmitting, isRevising, onApprove, onRevise, onTerminate, onClose,
 }: PlanReviewModalProps) {
   const { t } = useTranslation()
+  const expertLabelOf = useExpertLabel()
   const [editedPlan, setEditedPlan] = useState<TaskInfo[]>(plan)
   const [isEditing, setIsEditing] = useState(false)
   const [feedbackView, setFeedbackView] = useState(false)
@@ -194,7 +196,7 @@ export function PlanReviewModal({
                     )}
                     <div className="mt-1.5 flex items-center gap-1.5 text-tiny text-content-muted">
                       <span className="h-[7px] w-[7px] rounded-full" style={expertDotStyle(task.expert_type)} />
-                      {t('planStepExecutor', { expert: task.expert_type })}
+                      {t('planStepExecutor', { expert: expertLabelOf(task.expert_type) })}
                     </div>
                   </div>
                   {isEditing && editedPlan.length > 1 && (

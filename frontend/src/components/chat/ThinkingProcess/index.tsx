@@ -13,6 +13,12 @@
  * [设计] 蓝本 run-card 步骤行形态：紧凑单行（状态圆标 + 专家色点 + 名称 + 耗时
  * + 展开箭头），点击行展开详情（过程文本 / 链接）。不再用大卡片堆叠。
  *
+ * [2026-09-13 按专家分组] 任务步骤**按专家成组**渲染：组头 = 专家（识别色 + 名字 +
+ * 任务数 + 进行中），组内 = 该专家的任务行（行标题取任务描述，产出正文在其下）。
+ * 平铺时代每行都是「任务执行」+ 原始 expert_type，既看不出谁在干活，也看不出哪几行
+ * 是同一个人；分组后串行退化成"一位接一位"，并行（C2 波次扇出）时多个组同时亮。
+ * 分组规则见 lib/thinkingGroups.ts。
+ *
  * [动画]
  * - 折叠用 CSS grid-rows 过渡；步骤入场用 stagger-item 习语
  * - 自动延迟折叠（全部完成后 1.5s）
@@ -31,7 +37,9 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { expertColor } from '@/lib/expertIdentity'
+import { expertColor, expertDotStyle } from '@/lib/expertIdentity'
+import { useExpertLabel } from '@/hooks/useExpertLabel'
+import { expertGroupStatus, groupThinkingSteps } from '@/lib/thinkingGroups'
 import {
   ARTIFACT_TYPE_LABEL_KEY,
   artifactTypeColor,
@@ -95,6 +103,8 @@ interface StepItemProps {
   step: ThinkingStep
   index: number
   onOpenArtifact?: (artifactId: string) => void
+  /** 是否渲染在专家组内：组内不重复画专家色点（组头已有），行标题改用任务描述 */
+  inExpertGroup?: boolean
 }
 
 /** 步骤产出的产物卡片：点击交给调用方打开查看器（复用 ArtifactViewerModal）。
@@ -150,7 +160,7 @@ const StepArtifactCard = ({
   )
 }
 
-const StepItem = ({ step, index, onOpenArtifact }: StepItemProps) => {
+const StepItem = ({ step, index, onOpenArtifact, inExpertGroup = false }: StepItemProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const typeLabels: Record<NonNullable<ThinkingStep['type']>, string> = {
@@ -165,8 +175,14 @@ const StepItem = ({ step, index, onOpenArtifact }: StepItemProps) => {
     execution: t('thinkingExecution'),
     default: t('thinkingDefault')
   }
-  const label = typeLabels[step.type || 'default']
+  // 组内任务行：标题就是任务本身（描述），否则一屏全是「任务执行」
+  const label =
+    inExpertGroup && step.taskDescription
+      ? step.taskDescription
+      : typeLabels[step.type || 'default']
   const hasDetail = !!step.content || !!step.url
+  // 组内少了专家色点（8px + 12px 间距），详情/产物块的缩进随之左移
+  const indent = inExpertGroup ? 'pl-[46px]' : 'pl-[66px]'
 
   // 格式化耗时
   const formatDuration = (ms?: number) => {
@@ -190,10 +206,12 @@ const StepItem = ({ step, index, onOpenArtifact }: StepItemProps) => {
         )}
       >
         <StatusDot status={step.status} />
-        <span
-          className="h-2 w-2 flex-shrink-0 rounded-full"
-          style={{ backgroundColor: expertColor(step.type || 'default') }}
-        />
+        {!inExpertGroup && (
+          <span
+            className="h-2 w-2 flex-shrink-0 rounded-full"
+            style={{ backgroundColor: expertColor(step.expertType || step.type || 'default') }}
+          />
+        )}
         <span
           className={cn(
             'min-w-0 flex-1 truncate text-body-sm text-content-primary',
@@ -201,7 +219,8 @@ const StepItem = ({ step, index, onOpenArtifact }: StepItemProps) => {
           )}
         >
           {label}
-          {step.expertName && (
+          {/* 组内不重复署名（组头已写着是谁）；编排类步骤保留署名（智能路由/任务规划） */}
+          {!inExpertGroup && step.expertName && (
             <span className="font-normal text-content-muted"> · {step.expertName}</span>
           )}
         </span>
@@ -229,7 +248,10 @@ const StepItem = ({ step, index, onOpenArtifact }: StepItemProps) => {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="block w-full cursor-pointer px-4 pb-2.5 pl-[66px] pt-1 text-left transition-colors hover:bg-surface-tint/50"
+          className={cn(
+            'block w-full cursor-pointer px-4 pb-2.5 pt-1 text-left transition-colors hover:bg-surface-tint/50',
+            indent
+          )}
         >
           <p className="line-clamp-3 whitespace-pre-wrap text-xs leading-relaxed text-content-secondary">
             {step.content}
@@ -239,7 +261,7 @@ const StepItem = ({ step, index, onOpenArtifact }: StepItemProps) => {
 
       {/* 展开详情：过程文本 / 链接 */}
       {open && (
-        <div className="pb-3 pl-[66px] pr-4 pt-1">
+        <div className={cn('pb-3 pr-4 pt-1', indent)}>
           {step.content && (
             <p className="whitespace-pre-wrap text-xs leading-relaxed text-content-secondary">
               {step.content}
@@ -263,11 +285,62 @@ const StepItem = ({ step, index, onOpenArtifact }: StepItemProps) => {
           放在内容下方：用户既看到「这一步产出了什么」（内容摘要），
           也能直接点开成品——此前产物只能去右栏画布/画廊找。 */}
       {step.artifacts && step.artifacts.length > 0 && (
-        <div className="flex flex-col gap-1.5 pb-2.5 pl-[66px] pr-4">
+        <div className={cn('flex flex-col gap-1.5 pb-2.5 pr-4', indent)}>
           {step.artifacts.map(a => (
             <StepArtifactCard key={a.id} artifact={a} onOpen={onOpenArtifact} />
           ))}
         </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================================
+// 专家组头（一位专家一段活：识别色 + 名字 + 任务数 + 状态）
+// ============================================================================
+
+const ExpertGroupHeader = ({
+  expertType,
+  steps,
+  index,
+}: {
+  expertType: string
+  steps: ThinkingStep[]
+  index: number
+}) => {
+  const { t } = useTranslation()
+  const expertLabelOf = useExpertLabel()
+  const status = expertGroupStatus(steps)
+
+  return (
+    <div
+      style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
+      className={cn(
+        'stagger-item flex items-center gap-2 bg-surface-tint/40 px-4 py-1.5',
+        index > 0 && 'border-t border-border-divider'
+      )}
+    >
+      <span className="h-2 w-2 flex-shrink-0 rounded-full" style={expertDotStyle(expertType)} />
+      <span className="min-w-0 truncate text-body-sm font-bold text-content-primary">
+        {expertLabelOf(expertType)}
+      </span>
+      {/* 单个任务不报数（"1 个任务"是纯噪音），多任务时才说明这位专家分了几个 */}
+      {steps.length > 1 && (
+        <span className="flex-shrink-0 text-caption text-content-muted">
+          {t('thinkingGroupTasks', { count: steps.length })}
+        </span>
+      )}
+      {status === 'running' && (
+        <span className="flex items-center gap-1 text-caption text-accent-warning">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {t('running')}
+        </span>
+      )}
+      {status === 'failed' && (
+        <span className="flex items-center gap-1 text-caption text-status-offline">
+          <XCircle className="h-3 w-3" />
+          {t('thinkingTaskFailed')}
+        </span>
       )}
     </div>
   )
@@ -295,13 +368,18 @@ export default function ThinkingProcess({
   // 滚动容器 ref，用于自动滚动到底部
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
-  // 统计
-  const dynamicTotalSteps = steps.length
-  const totalSteps = fixedTotalSteps ?? dynamicTotalSteps  // 优先使用固定的总步骤数
-  const completedSteps = steps.filter(s => s.status === 'completed').length
-  const failedSteps = steps.filter(s => s.status === 'failed').length
+  // 统计：只数**任务**步骤（路由/规划不算"第几个任务"）。
+  // 分母优先用计划的预估任务数（任务还没开始跑时也能显示 0/6），任务数超过预估时
+  // 以实际为准——此前分子数的是全部步骤、分母是计划任务数，出现过「2/1」这种读数。
+  const taskSteps = steps.filter(s => s.type === 'execution')
+  const completedTasks = taskSteps.filter(s => s.status === 'completed').length
+  const totalTasks = Math.max(fixedTotalSteps ?? 0, taskSteps.length)
   const runningSteps = steps.filter(s => s.status === 'running').length
-  const isAllDone = dynamicTotalSteps > 0 && runningSteps === 0
+  const failedSteps = steps.filter(s => s.status === 'failed').length
+  const isAllDone = steps.length > 0 && runningSteps === 0
+
+  // 按专家分组（纯函数，见 lib/thinkingGroups.ts）
+  const rows = groupThinkingSteps(steps)
 
   // 自动展开/折叠逻辑
   useEffect(() => {
@@ -365,9 +443,12 @@ export default function ThinkingProcess({
         <div className="flex items-center gap-2.5">
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-tint"><Brain className="h-3 w-3 text-content-secondary" /></span>
           <span className="font-bold text-content-primary">{t('thinkingProcess')}</span>
-          <span className="text-xs font-medium text-content-muted">
-            {completedSteps}/{totalSteps}
-          </span>
+          {/* 任务进度：还没规划出任务时不显示（0/0 无意义） */}
+          {totalTasks > 0 && (
+            <span className="text-xs font-medium text-content-muted">
+              {completedTasks}/{totalTasks}
+            </span>
+          )}
           {runningSteps > 0 && (
             <span className="flex items-center gap-1 text-xs text-accent-warning">
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -408,15 +489,33 @@ export default function ThinkingProcess({
             ref={scrollContainerRef}
             className="max-h-[300px] overflow-y-auto border-t border-border-divider"
           >
-            {steps.map((step, index) => (
-              // 使用 index 作为 key 的一部分，确保唯一性
-              <StepItem
-                key={`${step.id}-${index}`}
-                step={step}
-                index={index}
-                onOpenArtifact={onOpenArtifact}
-              />
-            ))}
+            {rows.map((row, rowIndex) =>
+              row.kind === 'expert' ? (
+                <div key={`expert-${row.expertType}-${rowIndex}`}>
+                  <ExpertGroupHeader
+                    expertType={row.expertType}
+                    steps={row.steps}
+                    index={rowIndex}
+                  />
+                  {row.steps.map((step, stepIndex) => (
+                    <StepItem
+                      key={step.id}
+                      step={step}
+                      index={stepIndex + 1}
+                      inExpertGroup
+                      onOpenArtifact={onOpenArtifact}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <StepItem
+                  key={`${row.step.id}-${rowIndex}`}
+                  step={row.step}
+                  index={rowIndex}
+                  onOpenArtifact={onOpenArtifact}
+                />
+              )
+            )}
           </div>
         </div>
       </div>

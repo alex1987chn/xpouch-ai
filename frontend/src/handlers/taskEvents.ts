@@ -186,6 +186,8 @@ export function handleTaskStarted(
         expertType: event.data.expert_type,
         expertName: event.data.expert_type,
         content: event.data.description,
+        // 描述单独留一份：完成时 content 会被产出覆盖，而按专家分组的行标题要的是任务本身
+        taskDescription: event.data.description,
         timestamp: event.data.started_at,
         status: 'running' as const,
         type: 'execution' as const

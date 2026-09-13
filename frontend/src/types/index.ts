@@ -37,6 +37,14 @@ export interface ThinkingStep {
   expertType: string
   expertName: string
   content: string
+  /**
+   * 任务步骤（type='execution'）的**任务描述**，即"这一步在做什么"。
+   *
+   * 为什么不复用 content：任务完成时 content 会被产出正文覆盖（那是给用户读的结果），
+   * 描述就没了——而按专家分组的面板上，行标题必须是任务本身，否则一屏全是「任务执行」。
+   * 非任务步骤不填。
+   */
+  taskDescription?: string
   timestamp: string
   status: 'pending' | 'running' | 'completed' | 'failed'
   /**

@@ -179,18 +179,6 @@ export function detectMediaUrl(content: string): { type: 'image' | 'video' | nul
 }
 
 /**
- * 翻译专家名称
+ * 专家显示名不在这里：旧 translateExpertName 已删（死代码 + 词条分散在两处），
+ * 唯一真相源是 lib/expertIdentity 的 EXPERT_TYPE_LABEL_KEY / expertLabel。
  */
-export function translateExpertName(name: string, t: (key: string) => string): string {
-  const nameMap: Record<string, string> = {
-    'Task Planning': t('planningExpert') || '规划专家',
-    'planner': t('planningExpert') || '规划专家',
-    'commander': t('commander') || '指挥官',
-    'search': t('searchExpertName') || '搜索专家',
-    'coding': t('codingExpert') || '编程专家',
-    'research': t('researchExpert') || '研究专家',
-    'analyzer': t('analyzerExpertName') || '分析专家',
-    'writing': t('writingExpert') || '写作专家',
-  }
-  return nameMap[name] || name
-}

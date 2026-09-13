@@ -10,6 +10,7 @@
  */
 
 import { getSystemAgentName } from '@/constants/agents'
+import type { TranslationKey } from '@/i18n'
 
 /** 受控识别色板（雾蓝/鼠尾草/陶土/雾紫/青灰/驼棕） */
 const EXPERT_PALETTE = [
@@ -60,4 +61,40 @@ export function agentDotStyle(agentId: string | null | undefined): React.CSSProp
  */
 export function expertDisplayName(expertType: string): string {
   return getSystemAgentName(expertType) || expertType
+}
+
+/**
+ * 系统专家类型 → i18n 词条。**显示名的唯一真相源**（2026-09-13 收敛）。
+ *
+ * 此前这个映射散在三处：`components/chat/utils.ts` 的 `translateExpertName`
+ * （写好却无人调用，已删）、chat.ts 与 home.ts 各写了一半词条、以及界面直接渲染
+ * `expert_type` 原串（审批弹窗上就显示成「search 执行」）。新增系统专家只改这里
+ * + 对应词条即可；自定义专家不在表内，按 key 原样显示（有专家列表时优先用列表里的
+ * name，见 expertDisplayName 的约定）。
+ */
+export const EXPERT_TYPE_LABEL_KEY: Record<string, TranslationKey> = {
+  search: 'searchExpert',
+  coder: 'codingExpert',
+  researcher: 'researchExpert',
+  analyzer: 'analyzerExpert',
+  writer: 'writingExpert',
+  planner: 'planningExpert',
+  image_analyzer: 'imageAnalyzerExpert',
+  memorize_expert: 'memoryExpert',
+  designer: 'designerExpert',
+  architect: 'architectExpert',
+  // 编排链上的系统角色（任务的 expert_type 真会落到它们身上，例如计划最后一步）
+  aggregator: 'aggregatorExpert',
+  commander: 'commanderExpert',
+  router: 'routerExpert',
+}
+
+/**
+ * 专家显示名（带翻译）：表内走词条，表外（自定义专家）原样返回 key 串。
+ *
+ * @param t I18nProvider 的 t；纯函数不引 i18n 运行时，便于测试与复用
+ */
+export function expertLabel(expertType: string, t: (key: TranslationKey) => string): string {
+  const key = EXPERT_TYPE_LABEL_KEY[expertType]
+  return key ? t(key) : expertType
 }

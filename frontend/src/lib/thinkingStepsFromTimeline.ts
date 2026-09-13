@@ -110,6 +110,7 @@ export function buildThinkingStepsFromTimeline(
           expertName: expert,
           // 实时面板在任务进行中显示的就是任务描述，账本正好有这一项
           content: asText(data.description) || labels.taskDone,
+          taskDescription: asText(data.description) || undefined,
           timestamp: event.timestamp,
           status: 'completed',
           type: 'execution',

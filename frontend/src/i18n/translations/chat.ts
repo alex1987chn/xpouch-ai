@@ -28,6 +28,14 @@ export const zh = {
   clear: '清除',
   searchExpert: '搜索专家',
   analyzerExpert: '分析专家',
+  // 专家显示名的唯一真相源是 lib/expertIdentity.EXPERT_TYPE_LABEL_KEY（新增系统专家在此补词条）
+  imageAnalyzerExpert: '图片分析专家',
+  memoryExpert: '记忆助理',
+  designerExpert: '设计专家',
+  architectExpert: '架构专家',
+  aggregatorExpert: '首席联络官',
+  commanderExpert: '任务指挥官',
+  routerExpert: '意图路由网关',
   pending: '等待',
   running: '进行中',
   completed: '完成',
@@ -47,6 +55,8 @@ export const zh = {
   thinkingSteps: '执行步骤',
   thinkingCompleted: '思考完成',
   thinkingInProgress: '思考中',
+  /** 按专家分组的组头：该专家负责的任务数 */
+  thinkingGroupTasks: '{count} 个任务',
 
   // Workflow Steps (Expert Drawer)
 
@@ -179,6 +189,13 @@ export const en = {
   clear: 'Clear',
   searchExpert: 'Search Expert',
   analyzerExpert: 'Analyzer Expert',
+  imageAnalyzerExpert: 'Image Analysis Expert',
+  memoryExpert: 'Memory Assistant',
+  designerExpert: 'Design Expert',
+  architectExpert: 'Architecture Expert',
+  aggregatorExpert: 'Chief Liaison',
+  commanderExpert: 'Task Commander',
+  routerExpert: 'Intent Router',
   pending: 'Pending',
   running: 'Running',
   completed: 'Completed',
@@ -198,6 +215,7 @@ export const en = {
   thinkingSteps: 'Execution Steps',
   thinkingCompleted: 'Thinking Completed',
   thinkingInProgress: 'Thinking in Progress',
+  thinkingGroupTasks: '{count} tasks',
 
   // Workflow Steps (Expert Drawer)
 
@@ -330,6 +348,13 @@ export const ja = {
   clear: 'クリア',
   searchExpert: '検索エキスパート',
   analyzerExpert: '分析エキスパート',
+  imageAnalyzerExpert: '画像分析エキスパート',
+  memoryExpert: 'メモリーアシスタント',
+  designerExpert: 'デザインエキスパート',
+  architectExpert: 'アーキテクチャエキスパート',
+  aggregatorExpert: 'チーフリエゾン',
+  commanderExpert: 'タスクコマンダー',
+  routerExpert: 'インテントルーター',
   pending: '待機中',
   running: '実行中',
   completed: '完了',
@@ -349,6 +374,7 @@ export const ja = {
   thinkingSteps: '実行ステップ',
   thinkingCompleted: '思考完了',
   thinkingInProgress: '思考中',
+  thinkingGroupTasks: '{count} 件のタスク',
 
   // Workflow Steps (Expert Drawer)
 

@@ -16,6 +16,7 @@ import { ArrowRight } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { changedRowsOnly, diffPlans, summarizePlanDiff, type PlanDiffRow } from '@/lib/planDiff'
+import { useExpertLabel } from '@/hooks/useExpertLabel'
 import type { TaskInfo } from '@/types/events'
 
 /** 有改动的那三类（'same' 不会渲染） */
@@ -40,6 +41,7 @@ interface PlanDiffListProps {
 
 export function PlanDiffList({ before, after }: PlanDiffListProps) {
   const { t } = useTranslation()
+  const expertLabelOf = useExpertLabel()
   const rows = changedRowsOnly(diffPlans(before, after))
   const summary = summarizePlanDiff(rows)
 
@@ -84,9 +86,9 @@ export function PlanDiffList({ before, after }: PlanDiffListProps) {
               )}
               {row.before && row.after && row.before.expert_type !== row.after.expert_type && (
                 <p className="flex items-center gap-1 text-tiny text-content-muted">
-                  {t('planStepExecutor', { expert: row.before.expert_type })}
+                  {t('planStepExecutor', { expert: expertLabelOf(row.before.expert_type) })}
                   <ArrowRight className="h-3 w-3" />
-                  {t('planStepExecutor', { expert: row.after.expert_type })}
+                  {t('planStepExecutor', { expert: expertLabelOf(row.after.expert_type) })}
                 </p>
               )}
             </div>
