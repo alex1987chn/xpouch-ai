@@ -2,17 +2,19 @@
 
 分工（与 `services.chat.frame_recorder` 对着看）：
 - `frame_recorder` 写：把每条 SSE 帧编号并批量落库。
-- 本模块读：客户端落后于内存缓冲窗口时，从库里把它缺的那段按 seq 取回来。
+- 本模块读：① `load_gap_frames`——客户端落后于内存缓冲窗口时，从库里补回它缺的那段；
+  ② `load_replay_frames`——**没有实时窗口可跟随**时，把整段已落库的帧取回来。
 - `services.chat.stream_hub` 仍是**实时跟随**通道（进程内、逐条、无延迟）。
 
 为什么需要补放：内存缓冲每 run 只留最近 MAX_EVENTS_PER_RUN 条，客户端断线久了
 会落在窗口之前。这时若直接把窗口内的帧当作续传起点，服务端**不会报错**，只是
 把中间一段悄悄跳过——用户看到的是文字少了半截。库里那一份正好覆盖这段。
 
-边界（明确不做的事）：库里只有**已落库**的帧，且本模块不判断 run 是否还活着。
-「进程重启后 run 已死、只能重放不能跟随」这种情形由调用方（resume 端点）返回
-410 交给前端的轮询刷新路径处理——返一个能拿到但立刻结束的空流，会被前端当成
-「回答被截断」报错，比 410 更糟。
+什么时候用「整段重放」（②）：run 正当停在审批点、而这一轮流已经收尾（缓冲关闭
+或进程重启过缓冲丢失）。客户端断连期间错过的是 `human.interrupt`——**审批卡本身**。
+此时重放整段并以 `[DONE]` 收尾是对的：这一轮流本来就是正常收尾的，客户端据此
+干净结算，卡片也就自己回来了。其他情况（run 还在跑却没有实时通道、或已终态）
+仍然由调用方返回 410，交给前端的轮询/刷新路径。
 """
 
 from __future__ import annotations
@@ -21,6 +23,10 @@ from sqlmodel import Session
 
 from crud.run_stream_frame import list_frames_after
 from utils.logger import logger
+
+# 整段重放的上限：真超了说明客户端落后过多，截断并告警
+# （重放尽力而为，不能让一个请求拖着上万行不放）
+MAX_REPLAY_FRAMES = 2000
 
 
 def load_gap_frames(
@@ -51,3 +57,20 @@ def load_gap_frames(
             len(wires),
         )
     return wires
+
+
+def load_replay_frames(db: Session, run_id: str, last_event_id: int) -> list[str]:
+    """取 `last_event_id` 之后的**全部**已落库帧（没有实时窗口可跟随时的整段重放）。
+
+    调用方（resume 端点）只在「run 停在审批点、本轮流已收尾」时用这条路：客户端
+    断连期间错过的是 `human.interrupt`，而**审批卡就是靠这个事件渲染的**——补不回
+    来用户就无处可点。超过 MAX_REPLAY_FRAMES 则截断并告警。
+    """
+    rows = list_frames_after(db, run_id, last_event_id, limit=MAX_REPLAY_FRAMES)
+    if len(rows) >= MAX_REPLAY_FRAMES:
+        logger.warning(
+            "[Resume] run=%s 整段重放达到上限 %d 条（客户端落后过多，已截断）",
+            run_id,
+            MAX_REPLAY_FRAMES,
+        )
+    return [row.wire for row in rows]

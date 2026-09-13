@@ -49,7 +49,7 @@ from models import (
 from models.enums import RunStatus
 from schemas.task import PaginatedArtifactListResponse
 from services.chat.artifact_service import ArtifactService
-from services.chat.frame_replay import load_gap_frames
+from services.chat.frame_replay import load_gap_frames, load_replay_frames
 from services.chat.recovery_service import RecoveryService
 from services.chat.share_service import ShareService
 from services.chat.stream_hub import get_stream_hub
@@ -649,9 +649,12 @@ async def resume_stream(
 ):
     """从 last_event_id 之后重放并继续推送该 run 的 SSE 事件流。
 
-    - run 已终态 / 没有可跟随的实时通道：410。前端收到 410 后退化到
+    - run 已终态 / run 还在跑但没有可跟随的实时通道：410。前端收到 410 后退化到
       "后台跑完 + 轮询刷新"路径（`useChatCore` 的中断分支保留 runId 并启动
       `useRunPolling`，轮询到终态自动刷新本会话，用户不必手动刷新页面）。
+    - run **停在审批点**且本轮流已收尾：整段重放库里这一轮的帧并以 [DONE] 收尾
+      （见下方 `_paused_replay_gen`）。这是「断连时错过 human.interrupt → 审批卡
+      自己回来」的那条路。
     - 正常返回 SSE：先补放「内存窗口以外」的缺口，再补内存窗口内的 backlog，
       然后跟随实时事件直到 producer 收尾
 
@@ -670,14 +673,36 @@ async def resume_stream(
         raise HTTPException(status_code=410, detail="执行已结束，请刷新会话查看结果")
 
     subscription = get_stream_hub().subscribe(run.id, last_event_id)
-    if subscription is None:
-        raise HTTPException(status_code=410, detail="执行流缓冲不可用，请稍后刷新查看结果")
-    backlog, queue, closed = subscription
-    if closed:
-        # 缓冲已关闭 = 这一轮流已收尾，没有可跟随的实时通道。只回放库里的帧
-        # 再结束的话，前端会把「没有完成标记的关闭」当成回答被截断而报错，
-        # 所以退回 410 走既有的刷新路径（终态内容本就在消息表里）。
-        raise HTTPException(status_code=410, detail="执行已结束，请刷新会话查看结果")
+    live_channel = subscription is not None and not subscription[2]
+    if not live_channel:
+        # 没有可跟随的实时通道（缓冲不存在=进程重启过，或已关闭=这一轮流收尾了）。
+        # 若 run 正当停在审批点，这一轮本就是**正常收尾**的，于是把库里这段帧整段
+        # 重放并以 [DONE] 收尾：客户端断连期间错过的 `human.interrupt` 由此补回，
+        # **审批卡自己回来了**（否则用户看到「等待裁决」却无处可点）。
+        # 其他情况（run 还在跑却没通道 / 已终态）仍返回 410，交给前端轮询/刷新。
+        if run.status != RunStatus.WAITING_FOR_APPROVAL:
+            detail = (
+                "执行流缓冲不可用，请稍后刷新查看结果"
+                if subscription is None
+                else "执行已结束，请刷新会话查看结果"
+            )
+            raise HTTPException(status_code=410, detail=detail)
+
+        replay = await asyncio.to_thread(load_replay_frames, session, run.id, last_event_id)
+
+        async def _paused_replay_gen():
+            for wire in replay:
+                yield wire
+            # 这一轮流已正常收尾：补上它原本就会发的完成标记，前端据此干净结算
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(
+            _paused_replay_gen(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    backlog, queue, _closed = subscription
 
     # 缺口补放（无缺口时不查库）：内存窗口最早一条的 seq 与客户端的位置之间
     prefix = await asyncio.to_thread(

@@ -117,14 +117,47 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
 
         Returns:
             StreamingResponse SSE流
+
+        结构（与恢复流 `execute_langgraph_stream` 同构）：
+        - `_run_graph()`：跑图 + 暂停检测 + 落库/账本/状态更新的正文
+        - `producer()`：分离任务里执行正文，并在 finally 里收尾（刷净帧、关实时窗口、通知消费者）
+        - `event_generator()`：只做传输（取队列 → 下发，含心跳保活）；客户端断连只结束它自己
+        - `emit()`：内容事件的唯一出口（分配 seq → hub 广播 → 入待写缓冲 → 投递消费者）
+
+        **为什么要把图执行放进分离任务**：以前它就跑在这个 SSE 生成器里，客户端一断连
+        Starlette 就 `aclose()` 生成器 → 图循环被放弃 → **规划阶段的 run 当场死亡**
+        （即使只是刷新页面）。分离之后断连只影响传输，任务照常跑完并在审批点停下。
+        断连期间的事件同时进了 hub 与持久帧，重连时由 resume 端点补放——包括
+        `human.interrupt`，也就是**审批卡能自己回来**。
         """
         # 在方法内部导入 LangGraph，防止循环引用
 
         from agents.graph import create_smart_router_workflow
+        from services.chat.stream_hub import get_stream_hub
 
-        async def event_generator():
-            # 本 run 的所有日志行自动携带 run= 字段（请求任务生命周期内有效）
-            set_run_id(agent_run.id)
+        # 日志上下文在 create_task 之前设好：create_task 复制当前 context，
+        # producer（含后台继续执行的那段）里的日志行才会带 run= 字段
+        set_run_id(agent_run.id)
+
+        sse_queue: asyncio.Queue = asyncio.Queue()
+        hub = get_stream_hub()
+        frames = get_frame_recorder()
+
+        async def emit(event_str: str) -> None:
+            """内容事件出口：分配 seq → 实时广播 → 入待写缓冲 → 投递当前消费者。
+
+            与恢复流共用同一套持久帧，故断连期间错过的内容可被 resume 端点重放。
+            """
+            seq = await frames.reserve_seq(agent_run.id)
+            wire = hub.publish(agent_run.id, event_str, seq)
+            frames.record(agent_run.id, seq, wire)
+            await sse_queue.put({"type": "sse", "event": wire})
+
+        async def emit_transport(event_str: str) -> None:
+            """传输级标记（[DONE]）：只投给当前消费者，不进重放缓冲。"""
+            await sse_queue.put({"type": "sse", "event": event_str})
+
+        async def _run_graph():
             actual_message_id = message_id or str(uuid.uuid4())
             full_response = ""
             router_decision = "simple"
@@ -186,7 +219,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     if event_type == "on_custom_event" and name == "sse_event":
                         event_str = sse_payload_to_wire(token)
                         if event_str:
-                            yield event_str
+                            await emit(event_str)
                         continue
 
                     # 处理消息流、task 事件等
@@ -194,7 +227,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                         token, actual_message_id, reasoning_parts
                     )
                     if event_str:
-                        yield event_str
+                        await emit(event_str)
 
                     # 收集任务执行结果
                     self._collect_execution_results(token, collected_task_list, expert_artifacts)
@@ -225,7 +258,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             except AppError as e:
                 if e.code == ErrorCode.RUN_CANCELLED:
                     logger.info("[StreamService] 运行已取消，结束 LangGraph 流")
-                    yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
+                    await emit(self._build_error_event(ErrorCode.RUN_CANCELLED, e.message))
                     return
                 logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
                 await self._mark_agent_run_failed(agent_run.id, str(e))
@@ -239,7 +272,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     error_message=str(e),
                 )
                 await asyncio.to_thread(self.db.commit)
-                yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
+                await emit(self._build_error_event(ErrorCode.GRAPH_ERROR, str(e)))
                 return
             except Exception as e:
                 logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
@@ -253,7 +286,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     error_message=str(e),
                 )
                 await asyncio.to_thread(self.db.commit)
-                yield self._build_error_event(ErrorCode.GRAPH_ERROR, str(e))
+                await emit(self._build_error_event(ErrorCode.GRAPH_ERROR, str(e)))
                 return
 
             # HITL 检测：`interrupt()` 把「停在审批点等人」变成了**原生状态**。
@@ -318,17 +351,21 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                 from services.chat.run_lifecycle import pause_deadline
 
                 await asyncio.to_thread(pause_deadline, self.db, agent_run.id)
-                yield self._build_human_interrupt_event(
-                    thread_id,
-                    current_plan,
-                    plan_version,
-                    run_id=agent_run.id,
-                    execution_plan_id=execution_plan.id if execution_plan else None,
+                # 审批卡必须走 emit（进持久帧）：断连期间错过它的话，重连时
+                # resume 端点的补放能把卡片带回来
+                await emit(
+                    self._build_human_interrupt_event(
+                        thread_id,
+                        current_plan,
+                        plan_version,
+                        run_id=agent_run.id,
+                        execution_plan_id=execution_plan.id if execution_plan else None,
+                    )
                 )
                 # HITL 中断是本轮流的正常终态：发 [DONE] 让前端干净收尾
                 # （恢复走独立的 /chat/resume 请求）
-                yield "data: [DONE]\n\n"
-                return  # 结束流，等待用户通过 /chat/resume 恢复
+                await emit_transport("data: [DONE]\n\n")
+                return  # 结束本轮执行，等待用户通过 /chat/resume 恢复
 
             # 正常流程：获取最终结果
             last_message = (
@@ -347,7 +384,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     if persist_error:
                         logger.error("[StreamService] %s", persist_error)
                         await self._mark_agent_run_failed(agent_run.id, persist_error)
-                        yield self._build_error_event(ErrorCode.GRAPH_ERROR, persist_error)
+                        await emit(self._build_error_event(ErrorCode.GRAPH_ERROR, persist_error))
                         return
 
                 # 保存到数据库
@@ -378,18 +415,67 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             # 🔥 修复：只有简单模式才在这里发送 message.done
             # 复杂模式由 aggregator 通过 event_queue 发送
             if router_decision == "simple":
-                yield self._build_message_done_event(actual_message_id, full_response)
+                await emit(self._build_message_done_event(actual_message_id, full_response))
             # 复杂模式：message.done 已由 aggregator 通过 event_queue 发送
 
             # 传输级完成标记：前端据此区分"正常结束"与"异常断流"
-            yield "data: [DONE]\n\n"
+            await emit_transport("data: [DONE]\n\n")
 
-            # async-with（图连接）退出后清理本次运行的瞬态数据（checkpoint +
-            # SSE 传输帧）：图的最终 checkpoint 写入要等到连接归还时才全部落地，
-            # 删除必须放在此处（放在 with 内会"删后复现"，实测如此）
+            # 本轮执行已把最终结果落库，这里清理本次运行的瞬态数据（checkpoint +
+            # SSE 传输帧）：图的最终 checkpoint 写入要等连接归还时才全部落地，
+            # 删除必须放在图执行之后（放在其前会"删后复现"，实测如此）
             from utils.db import cleanup_terminal_run
 
             await cleanup_terminal_run(thread_id, [agent_run.id])
+
+        async def producer():
+            """分离任务：跑完整轮执行（含暂停检测与落库），再收尾。
+
+            收尾放在 finally 里，保证「异常/取消/正常结束」三条路径都会：
+            刷净尾部帧（resume 的重放只认已落库的帧）→ 关实时窗口 → 通知消费者结束。
+            """
+            try:
+                await _run_graph()
+            finally:
+                # finish_blocking 是同步写：取消态下任何 await 都可能被跳过，
+                # 那会连 done 哨兵都发不出去，消费者就悬挂了（见 frame_recorder）
+                frames.finish_blocking(agent_run.id)
+                hub.close(agent_run.id)
+                await sse_queue.put({"type": "done"})
+
+        producer_task = asyncio.create_task(producer())
+
+        async def event_generator():
+            """只做传输：取队列 → 下发；长静默期发心跳。客户端断连只结束它自己。"""
+            try:
+                while True:
+                    try:
+                        item = await asyncio.wait_for(
+                            sse_queue.get(), timeout=settings.stream_timeout
+                        )
+                    except TimeoutError:
+                        # 专家任务期间可能长时间没有事件：心跳保活 + 顺带检查取消
+                        self._touch_agent_run(agent_run.id)
+                        self._raise_if_run_cancelled(agent_run.id)
+                        yield self._build_heartbeat_event()
+                        continue
+                    if item.get("type") == "done":
+                        break
+                    if item.get("event"):
+                        yield item["event"]
+                await producer_task
+            except asyncio.CancelledError:
+                # 客户端断开连接 ≠ 停止任务：producer 继续在后台跑完（暂停检测、
+                # 落库、账本与状态更新都在它里面）。断连期间的事件已进 hub 与持久帧，
+                # 重连时由 /chat/{thread_id}/stream/resume 补放。
+                # 主动取回异常结果，避免孤儿任务的 "exception was never retrieved" 噪音
+                producer_task.add_done_callback(
+                    lambda t: t.exception() if not t.cancelled() else None
+                )
+                logger.info(
+                    "[StreamService] 客户端断开，复杂模式任务转后台继续: run=%s", agent_run.id
+                )
+                raise
 
         from services.chat.run_lifecycle import sse_stream_headers
 

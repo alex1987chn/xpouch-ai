@@ -14,7 +14,7 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from crud.run_stream_frame import append_frames, list_frames_after
 from models import AgentRun, RunStreamFrame, Thread
-from services.chat.frame_replay import load_gap_frames
+from services.chat.frame_replay import load_gap_frames, load_replay_frames
 from utils.db import _prune_frames_for_runs
 
 TABLES = [Thread.__table__, AgentRun.__table__, RunStreamFrame.__table__]
@@ -74,6 +74,34 @@ class TestGapReplay:
         append_frames(db, "r2", [(4, _wire(4))])
 
         assert load_gap_frames(db, "r1", last_event_id=3, next_live_seq=7) == []
+
+
+class TestReplayFrames:
+    """整段重放：没有实时窗口可跟随时（run 停在审批点、本轮流已收尾）。"""
+
+    def test_takes_everything_after_last(self, db):
+        append_frames(db, "r1", [(seq, _wire(seq)) for seq in range(1, 6)])
+
+        wires = load_replay_frames(db, "r1", last_event_id=0)
+
+        assert [_id_of(w) for w in wires] == [1, 2, 3, 4, 5]
+
+    def test_respects_client_position(self, db):
+        """客户端已经收到一部分（last_event_id=4）→ 只补 5，不重复推送。"""
+        append_frames(db, "r1", [(seq, _wire(seq)) for seq in range(1, 6)])
+
+        wires = load_replay_frames(db, "r1", last_event_id=4)
+
+        assert [_id_of(w) for w in wires] == [5]
+
+    def test_truncates_at_cap(self, db, monkeypatch):
+        """上限兜底：超出即截断（重放尽力而为，不让一个请求拖着上万行）。"""
+        monkeypatch.setattr("services.chat.frame_replay.MAX_REPLAY_FRAMES", 3)
+        append_frames(db, "r1", [(seq, _wire(seq)) for seq in range(1, 8)])
+
+        wires = load_replay_frames(db, "r1", last_event_id=0)
+
+        assert [_id_of(w) for w in wires] == [1, 2, 3]
 
 
 class TestTerminalPrune:
