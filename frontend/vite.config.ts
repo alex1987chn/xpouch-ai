@@ -136,8 +136,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false
       },
-      // 产物分享页（B2）：后端 SSR 路由，若不加代理会被 SPA 回退截胡跳首页
-      '/s': {
+      // 产物分享页（B2）：后端 SSR 路由 GET /s/{token}，若不加代理会被 SPA 回退截胡跳首页。
+      // ⚠️ 必须用正则 '^/s/'，不能用字面量 '/s'——Vite 的代理 key 是**路径前缀**匹配，
+      // 字面量 '/s' 会把所有以 /s 开头的路径一起转发到后端，包括 /src/**（整个应用的
+      // 源码模块），导致页面空白（模块请求被后端 404 吞掉）。
+      '^/s/': {
         target: 'http://127.0.0.1:3002',
         changeOrigin: true,
         secure: false
