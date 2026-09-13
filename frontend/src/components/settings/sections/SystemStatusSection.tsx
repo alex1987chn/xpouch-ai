@@ -1,13 +1,13 @@
 /**
  * 系统状态分区（设置中心 / 管理控制台，仅管理员可见）。
- * 部署检查面：版本 / 数据库与迁移对齐 / 模型 provider / 用户分布 / 日配额。
- * 布局对齐 docs/design 蓝本 stat-cards：统计卡栅格 + provider 行 + 配额编辑卡。
+ * 部署检查面：版本 / 数据库与迁移对齐 / 模型 provider / 用户分布 / 日配额 / 并发上限。
+ * 布局对齐 docs/design 蓝本 stat-cards：统计卡栅格 + provider 行 + 配置编辑卡。
  */
 
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from '@/i18n'
-import { getSystemStatus, updateDailyTokenQuota } from '@/services/systemStatus'
+import { getSystemStatus, updateDailyTokenQuota, updateGraphMaxConcurrency } from '@/services/systemStatus'
 import { pushToast } from '@/components/ui/use-toast'
 import { cn } from '@/lib/utils'
 
@@ -79,9 +79,19 @@ export function SystemStatusSection() {
 
   const [quotaInput, setQuotaInput] = useState('')
   const [saving, setSaving] = useState(false)
+  const [concurrencyInput, setConcurrencyInput] = useState('')
+  const [savingConcurrency, setSavingConcurrency] = useState(false)
+  const concurrency = data?.graph_max_concurrency
+
   useEffect(() => {
     if (data) setQuotaInput(data.user_daily_token_quota ? String(data.user_daily_token_quota) : '')
   }, [data])
+  useEffect(() => {
+    // 只回填「设置表里的值」：留空表示未配置（此时卡片上会显示 env 兜底的生效值）
+    if (concurrency) {
+      setConcurrencyInput(concurrency.configured ? String(concurrency.configured) : '')
+    }
+  }, [concurrency])
 
   const handleSaveQuota = async () => {
     const trimmed = quotaInput.trim()
@@ -99,6 +109,26 @@ export function SystemStatusSection() {
       pushToast({ title: (err as Error).message, variant: 'destructive' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleSaveConcurrency = async () => {
+    const trimmed = concurrencyInput.trim()
+    const limit = concurrency?.limit ?? 8
+    const value = trimmed ? Number(trimmed) : null
+    if (trimmed && (!Number.isInteger(value) || (value as number) < 1 || (value as number) > limit)) {
+      pushToast({ title: t('graphConcurrencyInvalid', { limit }), variant: 'destructive' })
+      return
+    }
+    setSavingConcurrency(true)
+    try {
+      await updateGraphMaxConcurrency(value)
+      pushToast({ title: t('graphConcurrencySaved') })
+      refetch()
+    } catch (err) {
+      pushToast({ title: (err as Error).message, variant: 'destructive' })
+    } finally {
+      setSavingConcurrency(false)
     }
   }
 
@@ -180,6 +210,40 @@ export function SystemStatusSection() {
             {saving ? t('savingUserSettings') : t('save')}
           </button>
         </div>
+      </section>
+
+      {/* 同层任务并发上限（编辑） */}
+      <section>
+        <span className="mb-2.5 block text-xs font-bold text-content-secondary">
+          {t('graphConcurrency')}
+        </span>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            max={concurrency?.limit ?? 8}
+            value={concurrencyInput}
+            onChange={e => setConcurrencyInput(e.target.value)}
+            placeholder="1"
+            className="w-48 rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm transition-colors focus:outline-none focus:border-border-focus"
+          />
+          <button
+            onClick={handleSaveConcurrency}
+            disabled={savingConcurrency}
+            className="rounded-full border border-border-divider bg-accent-brand px-4 py-2 text-xs font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50"
+          >
+            {savingConcurrency ? t('savingUserSettings') : t('save')}
+          </button>
+          {concurrency && (
+            <span className="text-caption text-content-muted">
+              {t('graphConcurrencyEffective')}: {concurrency.effective}
+              {concurrency.configured === null && ` (${t('graphConcurrencyFromEnv')})`}
+            </span>
+          )}
+        </div>
+        <p className="mt-2 max-w-2xl text-caption leading-relaxed text-content-muted">
+          {t('graphConcurrencyHint')}
+        </p>
       </section>
     </div>
   )

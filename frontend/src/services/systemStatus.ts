@@ -22,6 +22,13 @@ export interface SystemStatus {
   default_model: string
   users: { total: number; admin: number }
   user_daily_token_quota: number | null
+  /** 同层任务并发上限：configured=设置表值（null=未配置，走 env），effective=实际生效值 */
+  graph_max_concurrency: {
+    configured: number | null
+    effective: number
+    env_default: number
+    limit: number
+  }
 }
 
 export async function getSystemStatus(): Promise<SystemStatus> {
@@ -36,4 +43,15 @@ export async function updateDailyTokenQuota(quota: number | null): Promise<{ use
     body: JSON.stringify({ daily_token_quota: quota }),
   })
   return handleResponse(response, '更新配额失败')
+}
+
+export async function updateGraphMaxConcurrency(
+  value: number | null
+): Promise<{ graph_max_concurrency: number }> {
+  const response = await authenticatedFetch(buildUrl('/admin/graph-max-concurrency'), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ graph_max_concurrency: value }),
+  })
+  return handleResponse(response, '更新并发上限失败')
 }

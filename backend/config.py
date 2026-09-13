@@ -97,10 +97,11 @@ class Settings(BaseSettings):
     recursion_limit: int = Field(default=100, alias="RECURSION_LIMIT")
     # 图内并行执行的任务数上限。
     #   1（默认）= 串行 —— 并行能力在位但不改变现有行为；
-    #   >1 = 同层就绪任务并发执行（见 agents/plan_waves.py）。
-    # 将来若要做成页面可配置项：按 system_setting 的既有模式读取
-    # （参考 services/run_quota.py 的 user_daily_token_quota），此处保留为
-    # 环境变量兜底默认值，执行器改为「设置表优先、env 兜底」即可，无需改执行逻辑。
+    #   >1 = 同层就绪任务并发执行（判定见 agents/plan_waves.py，扇出见
+    #        agents/nodes/wave_scheduler.py: route_wave）。
+    # 这是**env 兜底值**：实际生效值由 services/run_concurrency.py 解析
+    # （system_setting 表的 graph_max_concurrency 优先，其次本值，最后串行）。
+    # 管理端「系统状态」页可改，上限 MAX_CONCURRENCY_LIMIT。
     graph_max_concurrency: int = Field(default=1, alias="GRAPH_MAX_CONCURRENCY")
     # 单次 LLM 调用的超时（秒）。防模型端悬挂时无限 await——此前只能等 run 级
     # deadline 或后台清理兜底才发现，用户侧表现为「一直转圈」。

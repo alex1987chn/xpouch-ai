@@ -694,6 +694,16 @@ class DailyTokenQuotaRequest(BaseModel):
     daily_token_quota: int | None = PydanticField(default=None, ge=0, le=1_000_000_000)
 
 
+class GraphConcurrencyRequest(BaseModel):
+    """同层任务并发上限更新请求（1 = 串行）。
+
+    上限由 `services/run_concurrency.MAX_CONCURRENCY_LIMIT` 定义（单一真相源），
+    这里只做边界校验；页面输入框与它同源（前端也引同一个值）。
+    """
+
+    graph_max_concurrency: int | None = PydanticField(default=None, ge=0, le=64)
+
+
 @router.get("/system-status")
 async def get_system_status(
     session: Session = Depends(get_session),
@@ -706,6 +716,11 @@ async def get_system_status(
 
     from config import settings as app_settings
     from providers_config import validate_all_providers
+    from services.run_concurrency import (
+        MAX_CONCURRENCY_LIMIT,
+        load_graph_max_concurrency,
+        resolve_graph_max_concurrency,
+    )
     from services.run_quota import load_daily_token_quota
     from utils.llm_factory import get_default_model
 
@@ -746,6 +761,14 @@ async def get_system_status(
         "default_model": get_default_model(),
         "users": {"total": user_count, "admin": admin_count},
         "user_daily_token_quota": load_daily_token_quota(session),
+        # 并发上限：`configured` = 设置表里的值（None = 未配置，走 env），
+        # `effective` = 本次运行实际会用的值（设置表 → env → 串行）
+        "graph_max_concurrency": {
+            "configured": load_graph_max_concurrency(session),
+            "effective": resolve_graph_max_concurrency(session),
+            "env_default": app_settings.graph_max_concurrency,
+            "limit": MAX_CONCURRENCY_LIMIT,
+        },
     }
 
 
@@ -770,6 +793,33 @@ async def update_daily_token_quota(
     session.commit()
     logger.info(f"[Admin] 每用户日 token 配额更新为: {quota or '不限量'}")
     return {"user_daily_token_quota": quota}
+
+
+@router.put("/graph-max-concurrency")
+async def update_graph_max_concurrency(
+    request: GraphConcurrencyRequest,
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_current_admin),
+):
+    """设置同层任务的并发上限（1 = 串行；全实例生效，下一个 run 起效）。
+
+    为什么是实例级而不是「每个计划自己选」：并发直接影响 provider 限流与成本，
+    属运维参数；计划里的 `execution_mode` 只表达「这个任务可以并行」。
+    """
+    from services.run_concurrency import save_graph_max_concurrency
+
+    value = save_graph_max_concurrency(session, request.graph_max_concurrency)
+    record_audit(
+        session,
+        actor_user_id=admin.id,
+        actor_username=admin.username,
+        action="concurrency.update",
+        target="graph_max_concurrency",
+        detail={"graph_max_concurrency": value},
+    )
+    session.commit()
+    logger.info("[Admin] 同层任务并发上限更新为: %s", value)
+    return {"graph_max_concurrency": value}
 
 
 # ============================================================================

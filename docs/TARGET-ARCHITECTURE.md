@@ -262,12 +262,22 @@
   - 配置 `GRAPH_MAX_CONCURRENCY` 默认 **1（串行）**：能力在位但不改变现有业务。将来做页面可配置项时按 `system_setting` 既有模式读（参考 `services/run_quota.py` 的 `user_daily_token_quota`），执行器改「设置表优先、env 兜底」即可，无需改执行逻辑（已写入 `config.py` 注释）。
   - **声明：C1 尚未接线到执行器**——它是判定层，执行仍走 `current_task_index` 单任务循环。这是有意为之：接线必须一次做对（见 C2），半步接线会让判定与执行两套语义并存。
   - 顺带修一真 bug：`_apply_updated_plan` 的依赖清理用 db uuid 建集合，而 `depends_on` 存的是 commander id → **编辑计划即清空所有依赖**（测试 7 条锁住）。
-- [ ] **C2 执行侧接线（未做）**：用 `Send` 按波扇出，同层任务并发（受 `GRAPH_MAX_CONCURRENCY` 约束）。
-  - **真实成本（已核代码，勿低估）**：一个任务的执行**跨越多个图步骤**——`generic → tools → generic → … → current_task_index++ → dispatcher`，游标存在 state 里。而 `Send` 只让分支跑**一个节点**，框架没有「每个分支拥有自己的循环」这种构造。所以要让 N 个任务真正并发，必须把 `generic` + `tools` 及其内部路由抽成**子图**，Send 的目标改为该子图。
-  - 该重构动的是全仓最复杂的执行路径（`generic.py` 800+ 行，含产物收集、事件发射、工具治理），需独立一轮专注完成 + 宽计划 fixture（不走 LLM：并行执行、单分支失败降级、并发取消）+ 重跑 `backend/scripts/e2e_hitl_check.py`。
-  - **触发条件**：当决定把并发上限调到 >1 时再做。默认 1 下 C2 不产生任何行为变化（波次恒为 1 个任务），故无紧迫性。
-- [ ] **失败策略（C2 一并设计）**：单分支失败时兄弟任务继续/取消、下游 skip/fail-fast。取安全默认值 + 显式配置项（默认「降级为部分结果继续」，对检索类扇出最安全），集中一处并注释写清——不替用户猜产品意图。
-- [ ] **其余仍需一并处理**：聚合顺序按 `sort_order`（不能按完成顺序）；并发配额/限流（突发会撞 provider 429）；取消要覆盖在飞分支；token 成本可下钻到任务级。
+- [x] **C2 执行侧接线（已完成 2026-09-13，commit `d6280d0` + 开关 `c83209c` 前序判定层）**：执行侧改为**按波 Send 扇出**。
+  - **拓扑**：`commander → plan_approval → wave_dispatch ──Send──▶ expert_worker(子图) ──▶ task_join →（回 wave_dispatch）`；`wave_dispatch` 无就绪任务时转 `aggregator`。
+  - **`agents/expert_worker.py`（新）**：一个任务 = 一次 `worker ↔ tools` 循环。**必须**是子图——`Send` 只让分支跑一个节点，框架没有「每个分支自己的循环」这种构造（此判断与本文原估计一致）。
+  - **`agents/nodes/wave_scheduler.py`（新）**：`wave_dispatch`（扇出前把跑不了的任务标失败）/ `route_wave`（条件边，按并发上限 Send）/ `task_join`（产物落成 `task_list`、`expert_results`——二者执行期的唯一写者）。
+  - **`agents/task_outcome.py`（新）**：分支产物的唯一形状（写者=generic，读者=join + stream_service 结果收集）。
+  - **删除**：`agents/nodes/dispatcher.py`、`current_task_index` 游标、`last_expert_result` 通道。选任务只剩一处答案（`plan_waves`）。
+  - **三条分支状态硬约束（实测得出，写在 `expert_worker.py` docstring）**：① 分支只拿得到 Send payload；② 工具草稿走私有 `worker_messages`，不污染会话历史；③ 只经 `task_outcomes`（有 reducer）交回结果——并发写无 reducer 的通道直接 `InvalidUpdateError`，而 `task_list` **必须**保持无 reducer（计划编辑要整表替换）。
+  - **两个接线后才暴露的真 bug（由新集成测试抓到）**：
+    1. 子图会把自己 schema 里**与主图同名的键全部写回**（不是只写本节点返回的）→ 平铺 `thread_id` 让 N 个并发分支写同一无 reducer 通道而炸。改为打包进主图没有的私有键 `branch_context`。
+    2. 「等待 ≠ 成环」：判定层原把「既不就绪也不阻塞」一律判死锁，于是菱形计划在第一波就把整条下游链标失败。改为「迟早能跑」不动点判定。
+  - **并发上限**：`services/run_concurrency.py`（读取链 system_setting → env → 串行）注入两个 run 配置；管理端「系统状态」页可改（`PUT /admin/graph-max-concurrency`），与日 token 配额并排。默认 **1 = 串行**，行为与接线前一致。
+  - **验收**：新增 `tests/test_wave_execution.py`（6 条，跑真实图、只桩掉 router/commander/aggregator 与专家 LLM）覆盖串行按序 / **真并发重叠** / 依赖门控与跨波次注入 / 单分支失败降级 / 成环收尾 / 聚合顺序；`tests/test_plan_waves.py` 扩到 32 条；后端 364 全绿 + 真实 LLM 的 e2e 重跑通过。
+- [x] **失败策略（随 C2 落地，集中在一处）**：单分支失败 → 兄弟继续（不 fail-fast）；依赖失败的下游 → 标失败并写明「上游失败，已跳过」（**不让它带着缺失上游硬跑**，那会产出看似正常的垃圾）；依赖成环 → 标失败并写明原因。三者同时写实时事件 + 运行事件账本（用户能看到「为什么没跑」）。改策略只改 `wave_scheduler.py`。
+  - 有意**不做**配置项：策略只有一种，加开关等于给用户一个「选错就产出垃圾」的机会；真要分叉时再抽。
+- [x] **其余三项**：聚合顺序按 `sort_order`（join 派生，aggregator 不再排序）✅；取消覆盖在飞分支 ✅（沿用 asyncio 取消整轮，分支随之取消）；并发配额/限流 ⚠️ **未做**（突发会撞 provider 429，见下方「仍未做」）；token 成本下钻到任务级 ⚠️ **未做**（`add_run_token_usage` 是 run 级的）。
+- **仍未做（记在账上）**：provider 限流的退避/排队；任务级 token 成本；`execution_mode` 仍未参与限流决策（现在只由全局上限决定每波几个）——若要「这个计划整体不许并发」这类语义，得让 `route_wave` 也看它。
 
 ### 批次 D · 运行层归位（决定 1 + 决定 2）
 
