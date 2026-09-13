@@ -203,9 +203,10 @@
   - 新增测试：`tests/test_graph_topology.py`（5 条结构测试，替代被删的启发式单测）、`tests/test_plan_approval_node.py`（4 条节点行为测试）。
   - **实机验证通过**：`backend/scripts/e2e_hitl_check.py`（真实 HTTP + 真实 LLM，可重复运行）。两次连续成功——规划出 3 任务计划 → `human.interrupt` 携带完整计划（含 `task_1→task_2→task_3` 依赖链）→ 批准后 3 个任务执行完成、3 份产物、`message.done`。
   - 未做：`cancel-during-wait` 与「幂等重放」的端到端用例（B0 已覆盖其 DB 级不变量）。
-- [ ] **B3b（未做）**：thread 对齐业务 thread + checkpoint 生命周期守卫。
-  - ⚠️ **修正记录**：本节原写「四件事必须同一 commit，只换 `interrupt()` 但 thread 仍是 `{thread}_{run}` 会找不到 checkpoint」——**不成立**。恢复请求自身携带 `thread_id` 与 `run_id`，而 `execute_langgraph_stream` 已有 `isolated_thread_id = f"{thread_id}_{run_id}"` 的**确定性重建**，恢复能命中同一 checkpoint。故 thread 对齐与前两件可分，B3 已按此拆为 B3a（已完成）/ B3b。
-  - 终态清理需加「**非等待态**」守卫：`delete_checkpoints_for_thread` 在正常收尾路径被调用，thread 对齐后若在等待审批中执行会删掉恢复所依赖的 checkpoint。
+- [ ] **B3b（暂停，2026-09-13 决定暂不做）**：thread 对齐业务 thread + checkpoint 生命周期守卫。
+  - **暂不做的理由**（原以为的价值已不存在）：我以为它的价值是阻止 checkpoint 无限增长，但查证后——**每条终态路径都已在清理 checkpoint**（正常收尾 `stream_service:391`、驳回 `recovery:179`、取消 `recovery:392`、批准恢复收尾 `recovery:481`、后台清扫 `session_cleanup_service:172`）。增长早已有界，`{thread}_{run}` 虽不优雅但能工作。收益只剩「概念整洁」。
+  - **真实隐患（若将来要做，必须先解决）**：`handle_langgraph_stream` 每次都拿**完整历史**调 `aupdate_state(initial_state)`；现在每 run 一个新隔离 thread 所以是「从零写入」，一旦共享 thread，同一份历史会经 `add_messages` reducer **追加到已有 checkpoint 上 → 消息成倍重复**且随轮数累积。需一并改消息注入策略 + 给清理加「非等待态」守卫。
+  - **重新评估的触发条件**：需要「会话级执行历史可查询 / 时间旅行（`get_state_history`）」时，再拿出来讨论——届时上面两条隐患是必答项，不是可选项。
 - **实现要点（B3a 落地时遵循）**：
   - `plan_approval` 节点内代码顺序必须是「**先 `interrupt()`、后应用裁决结果**」——`interrupt()` 之前的代码在恢复时会重跑一遍，之后的只跑一次。
   - 计划的 approve 合并（保留已完成任务的 `output_result`、清理依赖、重算索引）**留在 `_apply_updated_plan`**，由服务层在 resume 前 `aupdate_state`；`plan_approval` 节点本身不访问数据库。后续可改为随 `Command(resume={"action":"approve","tasks":[...]})` 传入、由节点应用（更干净，但非必需）。
