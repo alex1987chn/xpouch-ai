@@ -22,10 +22,8 @@ from sqlmodel import Session
 from crud.execution_plan import (
     create_artifacts_batch,
     create_execution_plan_with_subtasks,
-    create_subtask,
-    get_execution_plan_by_thread,
+    get_execution_plan_by_run,
     get_subtask,
-    get_subtasks_by_execution_plan,
     update_execution_plan_status,
 )
 from crud.run_event import emit_artifact_generated, emit_task_completed
@@ -50,13 +48,20 @@ def get_or_create_execution_plan(
     execution_plan_id: str | None = None,
 ) -> tuple[Any, bool]:
     """
-    获取或创建执行计划
+    获取或创建执行计划（**一 run 一计划**）
 
-    幂等规则（按 (thread_id, run_id) 判定，批次 B1）：
-    - 计划不存在 → 创建新的 ExecutionPlan（连同子任务），返回 is_reused=False
-    - 计划存在且属于**同一个 run** → 直接复用，**不触碰子任务**，返回 is_reused=True
-    - 计划存在但属于**不同的 run**（同会话中的新一次复杂任务）→ 替换计划内容
-      （删除旧子任务并按 subtasks_data 重建），返回 is_reused=True
+    幂等规则：
+    - 本次 run 已有计划 → 直接复用，**不触碰子任务**（节点重执行幂等，返回
+      is_reused=True）
+    - 其余情况 → **新建一份计划**，不删除任何既有计划/子任务/产物
+      （返回 is_reused=False）
+
+    历史说明：原实现按 `thread_id` 单一键判定，命中即删除全部旧 SubTasks 并
+    重建。因 `SubTask.artifacts` 配了 `cascade="all, delete-orphan"`，该行为会
+    连带删除已完成任务的**产物**——同会话里「先生成网页、再写小游戏」，网页
+    产物会被第二次规划抹掉，与「产物是会话级交付物」的产品语义冲突。改为
+    一 run 一计划后，产物与任务历史都保留，且运行时不再有任何删除子任务的
+    路径（级联自然失效，无需迁移）。
 
     Args:
         db: 数据库会话
@@ -82,72 +87,16 @@ def get_or_create_execution_plan(
         ... )
         >>> print(f"Plan: {execution_plan.id}, Reused: {reused}")
     """
-    # 先检查是否已存在
-    existing_plan = get_execution_plan_by_thread(db, thread_id)
+    # 幂等（同一 run 内节点重执行）→ 复用已建计划，不触碰子任务
+    if run_id is not None:
+        existing = get_execution_plan_by_run(db, run_id)
+        if existing is not None:
+            logger.info(f"[TaskManager] 复用本 run 的 ExecutionPlan {existing.id}（不重建子任务）")
+            return existing, True
 
-    if existing_plan:
-        # 同一 run 内重执行 → 复用，不删除重建。
-        # 删除重建会抹掉已完成任务的 status / output_result / task_id，
-        # 与审批路径（_apply_updated_plan 显式保留已完成任务）语义冲突；
-        # 节点被重试、并行分支重跑时都会走到这里。
-        if run_id is not None and existing_plan.run_id == run_id:
-            logger.info(
-                f"[TaskManager] 复用同一 run 的 ExecutionPlan {existing_plan.id}（不重建子任务）"
-            )
-            return existing_plan, True
-
-        # 不同 run：同会话中的新一次复杂任务 → 替换计划内容，
-        # 确保 task_list 与数据库一致
-        old_subtasks = get_subtasks_by_execution_plan(db, existing_plan.id)
-        if old_subtasks:
-            for old_subtask in old_subtasks:
-                db.delete(old_subtask)
-
-        # 更新 session 的信息
-        existing_plan.plan_summary = plan_summary
-        existing_plan.estimated_steps = estimated_steps
-        existing_plan.execution_mode = execution_mode
-        existing_plan.run_id = run_id
-        existing_plan.status = TaskStatus.RUNNING
-        db.add(existing_plan)
-
-        # 🔥 关键修复：批量创建子任务并正确映射 depends_on
-        task_id_to_subtask: dict[str, Any] = {}
-        subtask_data_list: list[tuple] = []
-
-        for subtask_data in subtasks_data:
-            subtask = create_subtask(
-                db=db,
-                execution_plan_id=existing_plan.id,
-                expert_type=subtask_data.expert_type,
-                task_description=subtask_data.task_description,
-                sort_order=subtask_data.sort_order,
-                input_data=subtask_data.input_data,
-                execution_mode=subtask_data.execution_mode,
-                depends_on=None,  # 先不设置
-            )
-
-            # 建立映射
-            if subtask_data.task_id:
-                task_id_to_subtask[subtask_data.task_id] = subtask
-            subtask_data_list.append((subtask, subtask_data.depends_on))
-
-        # 更新 depends_on
-        for subtask, original_depends_on in subtask_data_list:
-            if original_depends_on:
-                new_depends_on = []
-                for dep_id in original_depends_on:
-                    if dep_id in task_id_to_subtask:
-                        new_depends_on.append(str(task_id_to_subtask[dep_id].id))
-                    else:
-                        new_depends_on.append(dep_id)
-                subtask.depends_on = new_depends_on
-                db.add(subtask)
-
-        db.commit()
-        db.refresh(existing_plan)
-        return existing_plan, True
-
+    # 其余情况一律**新建一份计划**：不删除任何既有计划、子任务或产物。
+    # 同会话里「先生成网页、再写小游戏」应各留一份计划与产物（产物是会话级
+    # 交付物，不能因后续任务重新规划而消失），任务历史也随之保留。
     execution_plan = create_execution_plan_with_subtasks(
         db=db,
         thread_id=thread_id,

@@ -52,9 +52,23 @@ def get_execution_plan(db: Session, execution_plan_id: str) -> ExecutionPlan | N
 
 
 def get_execution_plan_by_thread(db: Session, thread_id: str) -> ExecutionPlan | None:
-    """通过线程 ID 获取执行计划。"""
-    statement = select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)
+    """通过线程 ID 获取该线程**最新**的执行计划（无则 None）。
+
+    一个会话可以有多份计划（一 run 一计划）——同会话里先生成网页、再写小游戏，
+    会各留一份计划与产物，互不覆盖。因此必须显式按 created_at 取最新；
+    原实现用无 ORDER BY 的 `.first()`，多计划下结果不确定。
+    """
+    statement = (
+        select(ExecutionPlan)
+        .where(ExecutionPlan.thread_id == thread_id)
+        .order_by(ExecutionPlan.created_at.desc())
+    )
     return db.exec(statement).first()
+
+
+def get_execution_plan_by_run(db: Session, run_id: str) -> ExecutionPlan | None:
+    """按 run_id 获取 ExecutionPlan（一 run 一计划，故至多一份）。"""
+    return db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)).first()
 
 
 def update_execution_plan_status(

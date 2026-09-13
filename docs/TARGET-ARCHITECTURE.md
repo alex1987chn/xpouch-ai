@@ -301,8 +301,8 @@
 | 地雷 | 说明 |
 |---|---|
 | **`interrupt()` 会重跑节点** | 恢复时**含中断的那个节点**从头执行（其上游节点不会重跑，状态来自 checkpoint）。任何写库/发事件副作用必须在 `interrupt()` 之后，或幂等。**推论：把 `interrupt()` 放在独立节点里，就能避免让有副作用的节点重跑**——这是 B3 设计的依据。 |
-| **`get_or_create_execution_plan` 是破坏性的** | `agents/services/task_manager.py:83` 起：按 **`thread_id`** 查计划，命中则**删除全部旧 SubTasks 再重建**。与审批路径「保留已完成任务的 `output_result`/`task_id`」（`_apply_updated_plan`）哲学冲突。任何让 `commander_node` 重跑的机制（重试/并行/未来重构）都会**抹掉子任务状态**。决定 3 要拆的就是这个雷。 |
-| **`preview_execution_plan_id` 接线未生效** | 该键**未在 `AgentState` 声明、无任何写入点**（仅测试显式传），而 LangGraph 过滤未声明键 → commander 里 `state.get(...) or uuid4()` **每次执行都拿到新 uuid**。它设计的目标「`plan.started` 事件 id 与落库计划 id 一致」**从未成立**。属预先存在缺陷，修法=在 `AgentState` 声明并在 chat.py 起始注入，或改为从 `execution_plan_id` 派生。 |
+| **产物不得随任务替换被删（已修）** | 原 `get_or_create_execution_plan` 按 `thread_id` 单键判定，命中即删除全部旧 SubTasks 并重建；而 `SubTask.artifacts` 配 `cascade="all, delete-orphan"` → **连带删除已完成任务的产物**。产品语义上产物是**会话级交付物**（同会话「先生成网页、再写小游戏」，两个都要留），故改为 **一 run 一计划**：新 run 新建计划，不删除任何既有内容；运行时不再有删除子任务的路径，级联自然失效（**无需迁移**）。`get_execution_plan_by_thread` 改为显式按 `created_at desc()` 取最新（原为无 ORDER BY 的 `.first()`，多计划下不确定）。 |
+| **`preview_execution_plan_id` 接线未生效（已修）** | 该键原**未在 `AgentState` 声明、无写入点**（仅测试显式传），而 LangGraph 过滤未声明键 → commander 里 `state.get(...) or uuid4()` **每次执行都拿到新 uuid**，它设计的目标「`plan.started` 事件 id 与落库计划 id 一致」**从未成立**。已补声明 + commander 成功路径回写。 |
 | **psycopg 连接串必须是 plain** | `utils/db.py` 走 psycopg 原生池，只认 `postgresql://`；`+psycopg` 是 SQLAlchemy 驱动标记，libpq 会报 `invalid connection option`。`database.py` / `migrations/env.py` 走 SQLAlchemy，**才**用 `+psycopg`。 |
 | **provider `enabled` 判定** | `is_provider_configured` 必须同时看 `enabled` 与存在 key。只看 key 会让 `enabled: false` 的 provider 被选中，然后 `_build_llm_instance` 抛错、commander 静默退化为空计划。 |
 | **alembic `fileConfig` 清 handler** | `logging.config.fileConfig` **无条件**调用 `_clearExistingHandlers()`，且 `alembic.ini` 的 `[logger_root] level = WARNING`。进程内迁移一跑，应用的 INFO 日志全部消失（ERROR 仍在）。**未修**——修法不是重调 `setup_logging()`（有幂等守卫会直接返回），需显式重建 handler。 |

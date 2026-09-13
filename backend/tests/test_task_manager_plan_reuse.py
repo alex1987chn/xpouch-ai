@@ -1,16 +1,16 @@
-"""`get_or_create_execution_plan` 的复用/替换语义（批次 B1）。
+"""`get_or_create_execution_plan` 的「一 run 一计划」语义。
 
-背景：该函数原按 `thread_id` 单一键判定，命中即**删除全部旧 SubTasks 再重建**。
-这与审批路径（`_apply_updated_plan` 显式保留已完成任务的 `output_result`/`task_id`）
-语义冲突——任何让 commander 节点重执行的机制（重试、并行分支、未来重构）都会
-静默抹掉已完成任务的记录。
+背景（为什么必须这样）：产物是**会话级交付物**。同一个会话里先生成网页、
+再写小游戏，用户要的是**两个产物都在**。原实现按 `thread_id` 单键判定，
+命中即删除全部旧 SubTasks 并重建；而 `SubTask.artifacts` 配了
+`cascade="all, delete-orphan"`，于是网页产物会在第二次规划时被连带删除。
 
-修复后按 `(thread_id, run_id)` 二元组判定：
-  - 同一 run → 复用，不触碰子任务（幂等，节点可安全重执行）
-  - 不同 run → 替换计划内容（同会话中「新一次复杂任务」的原有意图，保留）
-  - run_id 缺失 → 沿用替换语义（无法判定同源，保守取原有行为）
+改为「一 run 一计划」后：
+  - 同一 run 内节点重执行 → 复用，不触碰子任务（幂等）
+  - 其余情况 → 新建一份计划，**不删除任何既有内容**
+  - 运行时不再存在任何删除子任务的路径 → 级联自然失效，无需迁移
 
-用真 SQLite 而非 fake session：本组用例要证明的正是「子任务行未被删除」，
+用真 SQLite 而非 fake session：本组用例要证明的正是「子任务与产物行仍在」，
 假会话无法证明这一点。
 """
 
@@ -19,11 +19,10 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from agents.services import task_manager
+from crud.execution_plan import get_execution_plan_by_thread
 from models import Artifact, ExecutionPlan, SubTask, Thread
 from schemas.task import SubTaskCreate
 
-# Artifact 必须建表：SubTask.artifacts 配了 cascade="all, delete-orphan"，
-# 删除子任务时 ORM 会连带删除其产物（delete 路径需要这张表才能执行）
 TABLES = [
     Thread.__table__,
     ExecutionPlan.__table__,
@@ -44,37 +43,44 @@ def db():
         yield session
 
 
-def _subtasks_data() -> list[SubTaskCreate]:
+def _subtasks_data(prefix: str = "新任务") -> list[SubTaskCreate]:
     return [
-        SubTaskCreate(expert_type="researcher", task_description="新任务 A", sort_order=0),
-        SubTaskCreate(expert_type="writer", task_description="新任务 B", sort_order=1),
+        SubTaskCreate(expert_type="researcher", task_description=f"{prefix} A", sort_order=0),
+        SubTaskCreate(expert_type="writer", task_description=f"{prefix} B", sort_order=1),
     ]
 
 
-def _seed_plan(db: Session, *, plan_id: str, run_id: str, with_completed_subtask: bool = True):
-    """建一个属于 run_id 的计划；可选地放入一条**已完成**的子任务（带一份产物）。"""
+def _seed_plan(
+    db: Session,
+    *,
+    plan_id: str = "p1",
+    run_id: str = "r1",
+    subtask_id: str = "s-old",
+    artifact_id: str | None = "a-old",
+):
+    """建一个属于 run_id 的计划 + 一条**已完成**的子任务（可选带一份产物）。"""
     db.add(Thread(id="t1", title="会话", user_id="u1"))
     db.add(
         ExecutionPlan(
             id=plan_id, thread_id="t1", user_query="原查询", run_id=run_id, plan_version=1
         )
     )
-    if with_completed_subtask:
-        db.add(
-            SubTask(
-                id="s-old",
-                execution_plan_id=plan_id,
-                expert_type="researcher",
-                task_description="已完成的任务",
-                sort_order=0,
-                status="completed",
-                output_result="珍贵的历史产出，不可丢失",
-            )
+    db.add(
+        SubTask(
+            id=subtask_id,
+            execution_plan_id=plan_id,
+            expert_type="researcher",
+            task_description="已完成的任务",
+            sort_order=0,
+            status="completed",
+            output_result="珍贵的历史产出，不可丢失",
         )
+    )
+    if artifact_id:
         db.add(
             Artifact(
-                id="a-old",
-                sub_task_id="s-old",
+                id=artifact_id,
+                sub_task_id=subtask_id,
                 thread_id="t1",
                 type="markdown",
                 title="历史产物",
@@ -82,10 +88,6 @@ def _seed_plan(db: Session, *, plan_id: str, run_id: str, with_completed_subtask
             )
         )
     db.commit()
-
-
-def _all_artifacts(db: Session) -> list[Artifact]:
-    return list(db.exec(select(Artifact)).all())
 
 
 def _call(db: Session, *, run_id, thread_id: str = "t1"):
@@ -104,28 +106,24 @@ def _all_subtasks(db: Session, plan_id: str) -> list[SubTask]:
     return list(db.exec(select(SubTask).where(SubTask.execution_plan_id == plan_id)).all())
 
 
+def _all_artifacts(db: Session) -> list[Artifact]:
+    return list(db.exec(select(Artifact)).all())
+
+
 class TestSameRunReuse:
-    """同一 run 内节点重执行 → 幂等，不得动子任务。"""
+    """同一 run 内节点重执行 → 幂等，不得动子任务与产物。"""
 
     def test_reuses_plan_without_deleting_subtasks(self, db):
-        _seed_plan(db, plan_id="p1", run_id="r1")
+        _seed_plan(db)
 
         plan, is_reused = _call(db, run_id="r1")
 
         assert is_reused is True
         assert plan.id == "p1"
-        subtasks = _all_subtasks(db, "p1")
-        assert len(subtasks) == 1, "同一 run 重执行不得重建子任务"
-        assert subtasks[0].id == "s-old"
+        assert [s.id for s in _all_subtasks(db, "p1")] == ["s-old"]
 
     def test_preserves_completed_subtask_state(self, db):
-        """核心不变量：已完成任务的产出与状态必须原样保留。
-
-        注：SubTask 没有存放 Commander 语义 task_id（如 "task_0"）的字段——
-        该 ID 目前只活在图状态与 expert_results 中，靠 db_uuid 双保险匹配。
-        这是 B2（决定 4 · Plan 单真相）要收掉的双身份问题之一。
-        """
-        _seed_plan(db, plan_id="p1", run_id="r1")
+        _seed_plan(db)
 
         _call(db, run_id="r1")
 
@@ -133,8 +131,15 @@ class TestSameRunReuse:
         assert subtask.status == "completed"
         assert subtask.output_result == "珍贵的历史产出，不可丢失"
 
+    def test_preserves_artifacts(self, db):
+        _seed_plan(db)
+
+        _call(db, run_id="r1")
+
+        assert [a.id for a in _all_artifacts(db)] == ["a-old"]
+
     def test_repeated_calls_are_stable(self, db):
-        _seed_plan(db, plan_id="p1", run_id="r1")
+        _seed_plan(db)
 
         first, _ = _call(db, run_id="r1")
         second, _ = _call(db, run_id="r1")
@@ -142,62 +147,90 @@ class TestSameRunReuse:
         assert first.id == second.id == "p1"
         assert len(_all_subtasks(db, "p1")) == 1
 
-    def test_preserves_artifacts(self, db):
-        """同 run 复用不删子任务 → 其产物也必须留存（对比下方 replace 路径）。"""
-        _seed_plan(db, plan_id="p1", run_id="r1")
 
-        _call(db, run_id="r1")
+class TestNewRunCreatesNewPlan:
+    """同会话中的新一次复杂任务 → 新建计划，旧计划/子任务/产物全部保留。"""
 
-        assert [a.id for a in _all_artifacts(db)] == ["a-old"]
-
-
-class TestDifferentRunReplaces:
-    """同会话中的新一次复杂任务 → 保持原有替换语义。"""
-
-    def test_replaces_plan_content(self, db):
-        _seed_plan(db, plan_id="p1", run_id="r1")
+    def test_creates_a_separate_plan(self, db):
+        _seed_plan(db)
 
         plan, is_reused = _call(db, run_id="r2")
 
-        assert is_reused is True
-        assert plan.id == "p1", "复用同一 ExecutionPlan 行（thread 级单计划）"
-        subtasks = _all_subtasks(db, "p1")
-        assert len(subtasks) == 2, "新 run 应以其自身任务替换旧任务"
-        assert all(s.id != "s-old" for s in subtasks)
-
-    def test_rebind_run_id(self, db):
-        _seed_plan(db, plan_id="p1", run_id="r1")
-
-        plan, _ = _call(db, run_id="r2")
-
+        assert is_reused is False
+        assert plan.id != "p1", "新 run 应新建计划，而不是改写旧计划"
         assert plan.run_id == "r2"
+        assert len(_all_subtasks(db, plan.id)) == 2
 
-    def test_replace_cascades_to_artifacts(self, db):
-        """⚠️ 特征测试：替换路径会**连带删除旧计划子任务的产物**。
-
-        成因：SubTask.artifacts 配了 cascade="all, delete-orphan"，
-        `db.delete(old_subtask)` → ORM 连带删除其 Artifact 行。
-
-        这里只**记录既有行为**、不判定对错：它是否合理取决于产品语义
-        （「同会话新任务是否应清理上一任务的产物」）。若要改，属于数据/产品
-        决策，需与画廊、分享链接、审计的语义一起考虑——故不在 B1 内擅改。
-        """
-        _seed_plan(db, plan_id="p1", run_id="r1")
+    def test_old_plan_and_subtasks_survive(self, db):
+        _seed_plan(db)
 
         _call(db, run_id="r2")
 
-        assert _all_artifacts(db) == [], "当前行为：替换计划会级联删除旧产物"
+        old = db.get(ExecutionPlan, "p1")
+        assert old is not None, "旧计划不得被删除"
+        assert old.run_id == "r1", "旧计划仍归其原始 run"
+        assert [s.id for s in _all_subtasks(db, "p1")] == ["s-old"]
+        assert _all_subtasks(db, "p1")[0].output_result == "珍贵的历史产出，不可丢失"
+
+    def test_old_artifacts_survive(self, db):
+        """核心回归：新任务不能抹掉上一任务的产物。"""
+        _seed_plan(db)
+
+        _call(db, run_id="r2")
+
+        assert [a.id for a in _all_artifacts(db)] == ["a-old"]
+
+    def test_two_sequential_tasks_keep_both_artifacts(self, db):
+        """用户场景：同会话「先生成网页、再写小游戏」——两个产物都要在。"""
+        _seed_plan(db, plan_id="p1", run_id="r1", subtask_id="s-web", artifact_id="a-web")
+
+        # 第二次复杂任务
+        plan2, _ = _call(db, run_id="r2")
+        db.add(
+            SubTask(
+                id="s-game",
+                execution_plan_id=plan2.id,
+                expert_type="coder",
+                task_description="写个小游戏",
+                sort_order=0,
+                status="completed",
+            )
+        )
+        db.add(
+            Artifact(
+                id="a-game",
+                sub_task_id="s-game",
+                thread_id="t1",
+                type="html",
+                title="小游戏",
+                content="<html/>",
+            )
+        )
+        db.commit()
+
+        assert sorted(a.id for a in _all_artifacts(db)) == ["a-game", "a-web"]
+        assert db.get(Artifact, "a-web") is not None, "网页产物必须留存"
+
+    def test_latest_plan_lookup_prefers_newest(self, db):
+        """按 thread 取计划 → 最新那份（显式 created_at 排序，非无序 .first()）。"""
+        _seed_plan(db)
+        plan2, _ = _call(db, run_id="r2")
+
+        latest = get_execution_plan_by_thread(db, "t1")
+
+        assert latest is not None and latest.id == plan2.id
 
 
-class TestMissingRunIdKeepsLegacyBehavior:
-    """run_id 缺失时无法判定同源，保守沿用替换语义（与修复前一致）。"""
+class TestMissingRunId:
+    """run_id 缺失时无法做同源判定 → 一律新建，绝不删除既有内容。"""
 
-    def test_replaces_when_run_id_is_none(self, db):
-        _seed_plan(db, plan_id="p1", run_id="r1")
+    def test_creates_new_plan_without_deleting(self, db):
+        _seed_plan(db)
 
         plan, is_reused = _call(db, run_id=None)
 
-        assert is_reused is True
-        subtasks = _all_subtasks(db, plan.id)
-        assert len(subtasks) == 2
-        assert all(s.id != "s-old" for s in subtasks)
+        assert is_reused is False
+        assert plan.id != "p1"
+        assert db.get(ExecutionPlan, "p1") is not None
+        assert [s.id for s in _all_subtasks(db, "p1")] == ["s-old"]
+        assert [a.id for a in _all_artifacts(db)] == ["a-old"]
