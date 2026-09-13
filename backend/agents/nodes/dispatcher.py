@@ -12,21 +12,18 @@ v3.4 优化：P0 修复 + TTLCache 缓存高频查询
 import asyncio
 from typing import Any
 
-from cachetools import TTLCache
 from langchain_core.runnables import RunnableConfig
 from sqlmodel import Session
 
 from agents.services.expert_manager import get_expert_config
-from agents.services.expert_repository import register_expert_cache
 from agents.state import AgentState
 from database import engine
+from utils.config_cache import ConfigCache
 from utils.exceptions import AppError
 from utils.logger import logger
 
 # P0 优化: 本地内存缓存高频专家配置查询 (5分钟TTL)
-_dispatcher_expert_cache: TTLCache = register_expert_cache(
-    "dispatcher_expert", TTLCache(maxsize=200, ttl=300)
-)
+_dispatcher_expert_cache = ConfigCache(maxsize=200, ttl=300, name="dispatcher_expert")
 
 
 async def expert_dispatcher_node(

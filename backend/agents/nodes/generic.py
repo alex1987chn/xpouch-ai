@@ -58,13 +58,11 @@ import json
 import re
 from typing import Any
 
-from cachetools import TTLCache
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 
 from agents.event_stream import emit_event
 from agents.services.expert_manager import get_expert_config_cached
-from agents.services.expert_repository import register_expert_cache
 from agents.state_patch import replace_task_item
 from agents.tool_policy import filter_tools_for_binding
 from config import settings
@@ -73,15 +71,14 @@ from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from services.tool_policy_service import tool_policy_service
 from tools import ASYNC_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集（异步版，避免阻塞事件循环）
+from utils.config_cache import ConfigCache
 from utils.llm_factory import get_effective_model, get_expert_llm
 from utils.logger import logger
 from utils.prompt_utils import enhance_system_prompt_with_tools  # v3.6: 提取到工具函数
 from utils.time import utc_now_naive
 
 # P0 优化: 本地内存缓存高频专家配置查询 (5分钟TTL, 最大200条)
-_generic_expert_cache: TTLCache = register_expert_cache(
-    "generic_expert", TTLCache(maxsize=200, ttl=300)
-)
+_generic_expert_cache = ConfigCache(maxsize=200, ttl=300, name="generic_expert")
 
 
 class GenericWorkerError(Exception):

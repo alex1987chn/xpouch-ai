@@ -5,12 +5,13 @@
 提供专家配置管理、缓存和格式化功能
 
 P1 优化: 使用 cachetools.TTLCache 替代自定义缓存
+决定 7: 本地缓存改用 utils.config_cache.ConfigCache（全局 epoch 失效）
 """
 
-from cachetools import TTLCache
 from sqlmodel import Session, select
 
 from models import SystemExpert
+from utils.config_cache import ConfigCache, invalidate_config_caches
 from utils.llm_factory import get_effective_model
 from utils.logger import logger
 
@@ -18,7 +19,8 @@ from utils.logger import logger
 # - 自动 TTL 过期 (5分钟)
 # - 线程安全 (内部已加锁)
 # - 无需手动管理 timestamp
-_expert_cache: TTLCache = TTLCache(maxsize=100, ttl=300)
+# 决定 7: 换成 ConfigCache 后，失效不再需要「逐个点名清空」，见 refresh_cache
+_expert_cache: ConfigCache = ConfigCache(maxsize=100, ttl=300, name="expert_global")
 
 
 def get_expert_config(expert_key: str, session: Session) -> dict | None:
@@ -182,25 +184,19 @@ def refresh_cache(session: Session | None = None):
     """
     刷新专家配置缓存
 
-    管理员更新专家配置后，可调用此函数刷新缓存。
-    清除全局缓存 + 全部已注册的模块本地缓存（通过 ExpertRepository 注册表，
-    新增本地缓存只需 register_expert_cache 注册，失效链自动覆盖）。
+    管理员更新专家配置后调用。决定性变化（决定 7）：失效不再是「逐个点名清空各模块
+    的本地缓存」——那需要一张注册表，而**忘记注册就是一次静默的配置不生效**（历史上
+    aggregator 用过旧 system_prompt 最长 5 分钟）。现在只递增全局 epoch，任何
+    `ConfigCache` 在下一次访问时自行清空，新增缓存天然纳入失效链。
 
     Args:
         session: 数据库会话（可选）
     """
-    # 1. 清除全局缓存
-    _expert_cache.clear()
-    logger.info("[ExpertManager] 全局缓存已清除")
+    # 1. 全局缓存与所有模块本地缓存一起失效（epoch+1，访问时自清）
+    invalidate_config_caches()
+    logger.info("[ExpertManager] 配置缓存已全局失效（epoch 递增，各缓存下次访问自清）")
 
-    # 2. 清除全部已注册的模块本地缓存（注册制，无遗漏）
-    from agents.services.expert_repository import expert_repository
-
-    cleared = expert_repository.clear_all_local()
-    if cleared:
-        logger.info(f"[ExpertManager] 已清除 {cleared} 个模块本地缓存: {expert_repository.names()}")
-
-    # 3. 重新加载到全局缓存（如果提供了 session）
+    # 2. 重新加载到全局缓存（如果提供了 session）
     if session:
         experts = load_all_experts(session)
         _expert_cache.update(experts)
@@ -213,7 +209,7 @@ def force_refresh_all():
 
     用于 API 调用后立即刷新缓存
     """
-    _expert_cache.clear()
+    invalidate_config_caches()
 
 
 def get_all_expert_list(db_session: Session | None = None) -> list[tuple]:

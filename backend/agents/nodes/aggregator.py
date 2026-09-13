@@ -11,27 +11,24 @@ import asyncio
 import uuid
 from typing import Any
 
-from cachetools import TTLCache
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from sqlmodel import Session
 
 from agents.event_stream import emit_event
 from agents.services.expert_manager import get_expert_config_cached
-from agents.services.expert_repository import register_expert_cache
 from agents.services.task_manager import complete_execution_plan
 from agents.state import AgentState
 from constants import AGGREGATOR_SYSTEM_PROMPT
 from database import engine
 from services.chat.thread_service import save_assistant_message_sync
+from utils.config_cache import ConfigCache
 from utils.event_generator import event_message_delta, event_message_done
 from utils.llm_factory import get_aggregator_llm
 from utils.logger import logger
 
 # P0 优化: 本地内存缓存 aggregator 配置 (5分钟TTL)
-_aggregator_config_cache: TTLCache = register_expert_cache(
-    "aggregator_config", TTLCache(maxsize=10, ttl=300)
-)
+_aggregator_config_cache = ConfigCache(maxsize=10, ttl=300, name="aggregator_config")
 
 
 async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> dict[str, Any]:
