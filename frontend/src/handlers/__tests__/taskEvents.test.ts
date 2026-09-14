@@ -25,13 +25,12 @@ describe('Task Events', () => {
   beforeEach(() => {
     mockContext = {
       // 只 mock 仍然存在的动作。2026-09-13 清理后，任务事件处理器不再写
-      // 「本地任务副本」（tasks Map / tasksCache / progress），只维护
+      // 「本地任务副本」（tasks Map / tasksCache / progress）；2026-09-14 进一步
+      // 删除 PlanningSlice（planThinkingContent 只写不读），处理器只维护
       // runningTaskIds 与思考步骤。
       taskStore: {
         setIsInitialized: vi.fn(),
         setMode: vi.fn(),
-        startPlan: vi.fn(),
-        appendPlanThinking: vi.fn(),
         addRunningTaskId: vi.fn(),
         removeRunningTaskId: vi.fn()
       } as any,
@@ -63,7 +62,7 @@ describe('Task Events', () => {
   })
 
   describe('handlePlanStarted', () => {
-    it('应该调用 startPlan 并创建 thinking step', () => {
+    it('创建 thinking step，不触碰 taskStore（PlanningSlice 已删，评审 M5）', () => {
       const event = {
         id: 'evt-1',
         type: 'plan.started' as const,
@@ -77,13 +76,13 @@ describe('Task Events', () => {
 
       handlePlanStarted(event, mockContext)
 
-      expect(mockContext.taskStore.startPlan).toHaveBeenCalledWith(event.data)
+      expect(mockContext.taskStore.startPlan).toBeUndefined()
       expect(mockContext.chatStore.updateMessageMetadata).toHaveBeenCalled()
     })
   })
 
   describe('handlePlanThinking', () => {
-    it('应该追加 delta 到 thinking content', () => {
+    it('追加 delta 到 thinking content，不触碰 taskStore（PlanningSlice 已删，评审 M5）', () => {
       const event = {
         id: 'evt-1',
         type: 'plan.thinking' as const,
@@ -105,7 +104,7 @@ describe('Task Events', () => {
 
       handlePlanThinking(event, mockContext)
 
-      expect(mockContext.taskStore.appendPlanThinking).toHaveBeenCalledWith(event.data)
+      expect(mockContext.taskStore.appendPlanThinking).toBeUndefined()
       expect(mockContext.chatStore.updateMessageMetadata).toHaveBeenCalledWith(
         'msg-1',
         expect.objectContaining({

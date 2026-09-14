@@ -72,13 +72,8 @@ export function handlePlanStarted(
   event: PlanStartedEvent,
   context: HandlerContext
 ): void {
-  const { taskStore, chatStore, debug } = context
-  const { startPlan } = taskStore
+  const { chatStore, debug } = context
   const { updateMessageMetadata } = chatStore
-
-  // v3.2.0: 新规划开始
-  // 🔥 注意：不要调用 resetAll()，否则会清空 plan.created 创建的任务
-  startPlan(event.data)
 
   // 🔥 性能优化：使用缓存 ID 查找最后一条助手消息
   const lastAi = getLastAssistantMessage(chatStore)
@@ -90,7 +85,7 @@ export function handlePlanStarted(
     const planStep = {
       id: `plan-${event.data.execution_plan_id}`,
       expertType: 'planner',
-      expertName: '任务规划',
+      expertName: t('thinkingPlanning'),
       content: '',
       timestamp: new Date().toISOString(),
       status: 'running' as const,
@@ -121,11 +116,8 @@ export function handlePlanThinking(
   event: PlanThinkingEvent,
   context: HandlerContext
 ): void {
-  const { taskStore, chatStore, debug } = context
-  const { appendPlanThinking } = taskStore
+  const { chatStore, debug } = context
   const { updateMessageMetadata } = chatStore
-
-  appendPlanThinking(event.data)
 
   if (debug) {
     logger.debug('[TaskEvents] 🧠 plan.thinking:', event.data.delta.substring(0, 30) + '...')

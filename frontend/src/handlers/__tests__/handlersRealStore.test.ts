@@ -98,20 +98,21 @@ describe('事件处理器 × 真实 store：不得引用已删除的动作', () 
     expect(useTaskStore.getState()).toBe(before)
   })
 
-  it('plan.started / plan.thinking：写 planning slice 的思考文本', () => {
+  it('plan.started / plan.thinking：PlanningSlice 已删，store 不得再有思考文本副本（评审 M5）', () => {
     const context = realStoreContext()
 
     handlePlanStarted(
       { id: 'e5', type: 'plan.started', data: { execution_plan_id: 'p1', content: '规划中' } } as never,
       context
     )
-    expect(useTaskStore.getState().planThinkingContent).toBe('规划中')
-
     handlePlanThinking(
       { id: 'e6', type: 'plan.thinking', data: { execution_plan_id: 'p1', delta: '…继续' } } as never,
       context
     )
-    expect(useTaskStore.getState().planThinkingContent).toBe('规划中…继续')
+    // 只写不读的本地副本已随 PlanningSlice 删除；思考流的真相在 message.metadata.thinking
+    expect(
+      (useTaskStore.getState() as Record<string, unknown>).planThinkingContent
+    ).toBeUndefined()
   })
 
   it('plan.created / router.decision：只动 UI 标记（模式与初始化）', () => {

@@ -22,7 +22,7 @@ function readPersisted(): { state: Record<string, unknown>; version: number } {
 describe('taskStore 持久化', () => {
   beforeEach(() => {
     localStorage.clear()
-    useTaskStore.setState({ mode: null, isInitialized: false, planThinkingContent: '' })
+    useTaskStore.setState({ mode: null, isInitialized: false })
   })
 
   it('只写 UI 偏好，且 Set 落成数组（JSON 可表达）', () => {
@@ -38,6 +38,8 @@ describe('taskStore 持久化', () => {
     expect(persisted.state).not.toHaveProperty('tasks')
     expect(persisted.state).not.toHaveProperty('executionPlan')
     expect(persisted.state).not.toHaveProperty('artifacts')
+    // PlanningSlice 的思考文本同理（评审 M5：只写不读的副本）
+    expect(persisted.state).not.toHaveProperty('planThinkingContent')
   })
 
   it('读回时把数组还原成 Set（merge 的另一半）', async () => {
@@ -49,7 +51,6 @@ describe('taskStore 持久化', () => {
           runningTaskIds: ['task-a', 'task-b'],
           isInitialized: true,
           mode: 'complex',
-          planThinkingContent: '规划中…',
         },
       }),
     )
@@ -61,7 +62,6 @@ describe('taskStore 持久化', () => {
     expect([...state.runningTaskIds].sort()).toEqual(['task-a', 'task-b'])
     expect(state.mode).toBe('complex')
     expect(state.isInitialized).toBe(true)
-    expect(state.planThinkingContent).toBe('规划中…')
   })
 
   it('版本不匹配（旧的 @2 自研 persist 数据）不会污染状态', async () => {

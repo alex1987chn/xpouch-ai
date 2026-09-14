@@ -3,13 +3,16 @@
  *
  * [职责] 只保存**工作台的 UI 状态**：
  * - `createUISlice`:       模式、运行中任务集合、当前运行实例、HITL 审批相关
- * - `createPlanningSlice`: 规划阶段的思考流文本
  *
  * [2026-09-13 清理：删掉「本地任务副本」]
  * 此前这里还有 `createTaskSlice`（tasks Map + tasksCache + 任务 CRUD）与
  * `createArtifactSlice`（产物挂在 task.artifacts 上）。逐个核对消费者后确认整条链
  * **只写不读**：没有任何组件订阅 `tasks` / `tasksCache` / `task.artifacts`，
  * 唯一的本地读取方（useSessionRestore 里的「本地 vs 服务端产物数」对账启发式）早已移除。
+ * [2026-09-14 清理：删掉 createPlanningSlice]
+ * 同一套只写不读（评审 M5）：planThinkingContent 没有任何 UI 消费者（思考面板读的是
+ * message.metadata.thinking，由 taskEvents 另写一份），却挂在 persist 的 partialize
+ * 里——plan.thinking 的每个 delta 都触发一次 localStorage 全量序列化。
  *
  * 留着的代价不是「多占一点内存」，而是**双真相源**：任务与产物的真相在服务端
  * （/threads、/artifacts、/run/:id），本地再存一份就要维护它的同步时机，而任何一次
@@ -27,7 +30,6 @@ import { enableMapSet } from 'immer'
 
 // 导入 Slices
 import { createUISlice, type UISlice } from './slices/createUISlice'
-import { createPlanningSlice, type PlanningSlice } from './slices/createPlanningSlice'
 
 // 启用 Immer 的 Map/Set 支持（必须在 create 之前调用）
 enableMapSet()
@@ -46,7 +48,7 @@ try {
 // 合并 Store 类型
 // ============================================================================
 
-export type TaskStore = UISlice & PlanningSlice & {
+export type TaskStore = UISlice & {
   resetAll: (force?: boolean) => void
 }
 
@@ -59,13 +61,11 @@ export const useTaskStore = create<TaskStore>()(
     immer((set, get, _api) => ({
       // 组合所有 Slices
       ...createUISlice(set, get),
-      ...createPlanningSlice(set, get),
 
       // 全局重置方法 - 组合各 Slice 的重置逻辑
       resetAll: (_force: boolean = false) => {
         // 🔥 按依赖顺序重置各 Slice 状态
         get().resetUI() // 1. 重置 UI 状态
-        get().resetPlanning() // 2. 重置 Planning 状态
       },
     })),
     // ============================================================================
@@ -95,8 +95,6 @@ export const useTaskStore = create<TaskStore>()(
           mode: state.mode,
           // 不持久化临时状态：isWaitingForApproval, pendingPlan
           // 这些状态应该在页面刷新后通过 API 恢复
-          // PlanningSlice
-          planThinkingContent: state.planThinkingContent,
         }) as unknown as Partial<TaskStore>,
       merge: (persisted, current) => {
         // 读回时把 Set 还原（store 内部契约是 Set，见 createUISlice）
@@ -119,11 +117,6 @@ export const useTaskStore = create<TaskStore>()(
 // ============================================================================
 
 export type { UISlice, UISliceState, UISliceActions, AppMode } from './slices/createUISlice'
-export type {
-  PlanningSlice,
-  PlanningSliceState,
-  PlanningSliceActions,
-} from './slices/createPlanningSlice'
 
 // 默认导出
 export default useTaskStore
