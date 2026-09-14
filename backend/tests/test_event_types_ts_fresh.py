@@ -15,7 +15,7 @@ from scripts import gen_event_types_ts
 def test_generated_ts_is_fresh():
     assert gen_event_types_ts.check() == 0, (
         "frontend/src/types/events.generated.ts 与后端事件模型不一致；"
-        "跑 `cd backend && .venv/Scripts/python -m scripts.gen_event_types_ts` 重新生成"
+        "跑 `just gen-event-types`（或 `cd backend && uv run python -m scripts.gen_event_types_ts`）重新生成"
     )
 
 

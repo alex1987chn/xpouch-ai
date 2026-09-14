@@ -56,7 +56,7 @@ from agents.event_stream import emit_event
 from agents.plan_waves import task_key
 from agents.routing_policy import should_trip_tool_loop_guard
 from agents.services.expert_manager import get_expert_config_cached
-from agents.task_outcome import build_task_outcome
+from agents.task_outcome import DEPENDENCY_CONTEXT_LIMIT, build_task_outcome
 from agents.tool_policy import filter_tools_for_binding
 from config import settings
 from models.enums import GraphTaskStatus
@@ -426,7 +426,10 @@ async def expert_worker_node(
                     dep_output = dependency_outputs.get(str(dep_id))
                     if dep_output:
                         context_parts.append(
-                            f"【上游任务 {dep_id} 的输出】:\n{dep_output[:2000]}..."
+                            # 截断上限同源 task_outcome.DEPENDENCY_CONTEXT_LIMIT
+                            # （Send payload 在 wave_scheduler 已按同一上限裁过，
+                            # 这里是防御性第二刀）
+                            f"【上游任务 {dep_id} 的输出】:\n{dep_output[:DEPENDENCY_CONTEXT_LIMIT]}..."
                         )
                         logger.info(f"[GenericWorker] ✅ 找到依赖 {dep_id}: {len(dep_output)} 字符")
                     else:
@@ -836,14 +839,7 @@ def _format_input_data(data: dict) -> str:
     if not data:
         return "（无额外参数）"
 
-    lines = []
-    for key, value in data.items():
-        if isinstance(value, list | dict):
-            lines.append(f"- {key}: {value}")
-        else:
-            lines.append(f"- {key}: {value}")
-
-    return "\n".join(lines)
+    return "\n".join(f"- {key}: {value}" for key, value in data.items())
 
 
 def _detect_artifact_type(content: str, expert_key: str) -> str:

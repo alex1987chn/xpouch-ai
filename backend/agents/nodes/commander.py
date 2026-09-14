@@ -106,7 +106,8 @@ class Task(BaseModel):
         description=(
             "执行模式。sequential=按依赖顺序逐个执行（默认）；"
             "parallel=与其他无依赖任务同时执行。"
-            "当前执行器尚按顺序推进，此字段作为数据标记先行贯通。"
+            "注：批次 C 后波次调度按 depends_on 判定并行（wave_scheduler 不读本字段），"
+            "当前仅作数据标记保留。"
         ),
     )
 

@@ -24,7 +24,7 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from crud.run_event import fail_stale_revision_jobs
 from models import AgentRun, ExecutionPlan, RunEvent, Thread
-from models.enums import RunEventType
+from models.enums import RunEventType, RunStatus
 from services.chat.recovery_service import RecoveryService
 from services.chat.run_lifecycle import pause_deadline, reset_deadline
 from utils.error_codes import ErrorCode
@@ -230,6 +230,21 @@ class TestStaleRevisionFallback:
     def _emit(self, db: Session, run_id: str, event_type: RunEventType, *, ago_seconds: int = 0):
         from datetime import timedelta
 
+        # 评审后语义收窄：fail_stale_revision_jobs 只扫**活跃 run**（join AgentRun），
+        # 所以每个用例需要一个 RUNNING 的归属 run（与生产一致：事件必有归属 run）。
+        # 同一 run 多次 emit 时复用已有行（测试里同 run 会发多个事件）。
+        if db.get(AgentRun, run_id) is None:
+            db.add(
+                AgentRun(
+                    id=run_id,
+                    thread_id="t1",
+                    user_id="u1",
+                    status=RunStatus.RUNNING,
+                    mode="complex",
+                    created_at=utc_now_naive(),
+                    updated_at=utc_now_naive(),
+                )
+            )
         ev = RunEvent(
             run_id=run_id,
             event_type=event_type,

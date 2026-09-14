@@ -193,8 +193,14 @@ def _build_llm_instance(
     if extra_body:
         llm_config["extra_body"] = extra_body
 
-    # HTTP 客户端配置
-    http_client = httpx.Client(http2=False, timeout=600.0, verify=True)
+    # HTTP 客户端配置。超时必须**大于**节点层的单次调用超时
+    # （settings.llm_call_timeout_seconds，评审低危项：此前硬编码 600s 与配置不同源）——
+    # httpx 先到会以连接层错误收场，绕过任务级的失败处理。
+    http_client = httpx.Client(
+        http2=False,
+        timeout=settings.llm_call_timeout_seconds + 60.0,
+        verify=True,
+    )
     llm_config["http_client"] = http_client
 
     # DeepSeek 使用 ChatDeepSeek：原生捕获 reasoning_content 到 additional_kwargs

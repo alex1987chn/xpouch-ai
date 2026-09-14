@@ -8,7 +8,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from agents.graph import _should_trip_tool_loop_guard  # noqa: E402
+from agents.routing_policy import should_trip_tool_loop_guard  # noqa: E402
 from services.mcp_tools_service import MCPToolsService  # noqa: E402
 from utils.error_codes import ErrorCode, as_error_code  # noqa: E402
 from utils.exceptions import AppError  # noqa: E402
@@ -18,7 +18,7 @@ def test_tool_loop_guard_detects_same_tool_streak():
     msgs = [
         ToolMessage(content="ok", tool_call_id=f"id-{idx}", name="search_web") for idx in range(5)
     ]
-    tripped, reason = _should_trip_tool_loop_guard(msgs)
+    tripped, reason = should_trip_tool_loop_guard(msgs)
     assert tripped is True
     assert "连续调用" in reason
 
@@ -28,7 +28,7 @@ def test_tool_loop_guard_detects_dense_total():
         ToolMessage(content="ok", tool_call_id=f"id-{idx}", name=f"tool-{idx % 3}")
         for idx in range(12)
     ]
-    tripped, reason = _should_trip_tool_loop_guard(msgs)
+    tripped, reason = should_trip_tool_loop_guard(msgs)
     assert tripped is True
     assert "工具调用过多" in reason
 

@@ -18,7 +18,6 @@ from agents.graph_builder import (
     get_router_llm_lazy,
     get_simple_llm_lazy,
 )
-from agents.routing_policy import _should_trip_tool_loop_guard
 
 __all__ = [
     "create_smart_router_workflow",
@@ -26,5 +25,4 @@ __all__ = [
     "get_router_llm_lazy",
     "get_commander_llm_lazy",
     "get_simple_llm_lazy",
-    "_should_trip_tool_loop_guard",
 ]

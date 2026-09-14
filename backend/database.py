@@ -8,7 +8,7 @@ SQLModelSession = Session
 
 DATABASE_URL = settings.get_database_url(sync_driver="psycopg")
 
-# PostgreSQL配置 - 优化连接池以适配 4 个 Gunicorn Workers
+# PostgreSQL 配置 - 连接池按单 worker 单实例 uvicorn 调优（见 docs/self-hosting.md）
 engine = create_engine(
     DATABASE_URL,
     echo=False,

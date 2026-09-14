@@ -68,7 +68,3 @@ def should_trip_tool_loop_guard(messages: list[Any]) -> tuple[bool, str]:
             return True, f"检测到工具 ping-pong 循环({first}<->{second})"
 
     return False, ""
-
-
-# 兼容旧引用（graph 曾直接暴露 _should_trip_tool_loop_guard）
-_should_trip_tool_loop_guard = should_trip_tool_loop_guard

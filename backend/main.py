@@ -64,7 +64,8 @@ from utils.logger import logger, new_request_id, reset_request_id, set_request_i
 # 日志必须在任何业务日志产生前配置好（容器内 uvicorn 直启不会配 root logger）
 setup_logging()
 
-ENCODERS_BY_TYPE[_dt] = lambda o: o.isoformat() + "Z"
+# 全库约定 naive UTC；带时区的值（万一混入）自带偏移，不能再拼 Z（会产出非法 "+00:00Z"）
+ENCODERS_BY_TYPE[_dt] = lambda o: o.isoformat() + "Z" if o.tzinfo is None else o.isoformat()
 
 # ============================================================================
 # Lifespan - 应用生命周期管理

@@ -480,6 +480,8 @@ def fail_stale_revision_jobs(
     """
     from datetime import timedelta
 
+    from models import AgentRun, RunStatus
+
     state_types = (
         RunEventType.HITL_REVISION_STARTED,
         RunEventType.HITL_REVISION_FAILED,
@@ -487,9 +489,14 @@ def fail_stale_revision_jobs(
     )
     cutoff = utc_now_naive() - timedelta(seconds=stale_after_seconds)
 
+    # 只扫**仍处于活跃状态**的 run 的修订态事件（join 收窄，语义不变）：
+    # 此前全量拉三类事件，账本随时间线性变慢（评审低危项）。已终态的 run
+    # 不存在「补写修订失败」的意义。
     events = db.exec(
         select(RunEvent)
+        .join(AgentRun, RunEvent.run_id == AgentRun.id)
         .where(RunEvent.event_type.in_(state_types))
+        .where(AgentRun.status.in_([RunStatus.RUNNING, RunStatus.RESUMING]))
         .order_by(RunEvent.timestamp.asc(), RunEvent.id.asc())
     ).all()
 

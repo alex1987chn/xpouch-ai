@@ -147,7 +147,8 @@ class TestLeasePredicate:
         assert delta == RUN_LEASE_TTL_SECONDS
 
     def test_owner_identity_is_stable_and_distinctive(self):
-        assert RUN_OWNER_ID == RUN_OWNER_ID, "进程身份全程不变"
+        assert lease_deadline.__globals__["RUN_OWNER_ID"] == RUN_OWNER_ID, "进程内身份单一来源"
+        assert RUN_OWNER_ID != ""
         assert RUN_OWNER_ID.count(":") >= 2, "主机名:pid:随机后缀，重启后新旧进程可区分"
 
     def test_accepts_renewal_only_for_self_or_unowned(self):
