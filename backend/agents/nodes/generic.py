@@ -206,35 +206,54 @@ async def expert_worker_node(
         return {"worker_started": True, "task_outcomes": {outcome["task_key"]: outcome}}
 
     # P0 修复 + 优化: 优先使用本地内存缓存，缓存未命中才查数据库
-    # 1️⃣ 优先从本地内存缓存读取（不走线程池，零阻塞）
-    expert_config = _generic_expert_cache.get(expert_type)
-    if expert_config:
-        logger.info(f"[GenericWorker] 本地缓存命中: {expert_type}")
-    else:
-        # 2️⃣ 检查全局缓存
-        expert_config = get_expert_config_cached(expert_type)
+    # 任务级失败隔离：配置获取（内含 DB 会话）也属于「外部基础设施」，抖动时
+    # 只失败本任务，绝不允许异常冲出节点把同波兄弟任务连带拖死（评审 H1）。
+    try:
+        # 1️⃣ 优先从本地内存缓存读取（不走线程池，零阻塞）
+        expert_config = _generic_expert_cache.get(expert_type)
         if expert_config:
-            logger.info(f"[GenericWorker] 全局缓存命中: {expert_type}")
-            # 同步到本地缓存
-            _generic_expert_cache[expert_type] = expert_config
+            logger.info(f"[GenericWorker] 本地缓存命中: {expert_type}")
         else:
-            # 3️⃣ 缓存未命中，可能是自定义专家，尝试直接查数据库
-            logger.info(f"[GenericWorker] 缓存未命中，查询数据库: {expert_type}")
-            from sqlmodel import Session
-
-            from agents.services.expert_manager import get_expert_config
-            from database import engine
-
-            # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
-            def _load_expert_config():
-                with Session(engine) as session:
-                    return get_expert_config(expert_type, session)
-
-            expert_config = await asyncio.to_thread(_load_expert_config)
+            # 2️⃣ 检查全局缓存
+            expert_config = get_expert_config_cached(expert_type)
             if expert_config:
-                logger.info(f"[GenericWorker] 从数据库加载成功: {expert_type}")
-                # 4️⃣ 写入本地缓存
+                logger.info(f"[GenericWorker] 全局缓存命中: {expert_type}")
+                # 同步到本地缓存
                 _generic_expert_cache[expert_type] = expert_config
+            else:
+                # 3️⃣ 缓存未命中，可能是自定义专家，尝试直接查数据库
+                logger.info(f"[GenericWorker] 缓存未命中，查询数据库: {expert_type}")
+                from sqlmodel import Session
+
+                from agents.services.expert_manager import get_expert_config
+                from database import engine
+
+                # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
+                def _load_expert_config():
+                    with Session(engine) as session:
+                        return get_expert_config(expert_type, session)
+
+                expert_config = await asyncio.to_thread(_load_expert_config)
+                if expert_config:
+                    logger.info(f"[GenericWorker] 从数据库加载成功: {expert_type}")
+                    # 4️⃣ 写入本地缓存
+                    _generic_expert_cache[expert_type] = expert_config
+    except Exception as config_err:
+        logger.error(
+            "[GenericWorker] ❌ 加载专家配置失败（只失败本任务）: expert=%s err=%s",
+            expert_type,
+            config_err,
+            exc_info=True,
+        )
+        outcome = build_task_outcome(
+            current_task,
+            status=GraphTaskStatus.FAILED,
+            output=f"加载专家 '{expert_type}' 配置失败",
+            error=f"Failed to load expert config: {config_err}",
+            started_at=utc_now_naive().isoformat(),
+            completed_at=utc_now_naive().isoformat(),
+        )
+        return {"worker_started": True, "task_outcomes": {outcome["task_key"]: outcome}}
 
     if not expert_config:
         outcome = build_task_outcome(

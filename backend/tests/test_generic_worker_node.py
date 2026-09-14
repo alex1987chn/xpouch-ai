@@ -341,3 +341,32 @@ async def test_failure_path_yields_failed_outcome():
     assert outcome["status"] == "failed"
     assert "LLM" in outcome["error"]
     assert outcome["task_key"] == "task_1"
+
+
+@pytest.mark.asyncio
+async def test_config_load_failure_yields_failed_outcome():
+    """配置获取（内含 DB 会话）抛异常：只失败本任务，异常不得冲出节点（评审 H1）。
+
+    此前配置加载段在任务级 try 之外——本地测试因 _CONFIG_PATCHES 全量 mock 配置
+    而永远测不到这条真实路径，DB 抖动会炸掉整个 superstep 并连带同波兄弟任务。
+    """
+
+    def _raise_db(_expert_type):
+        raise RuntimeError("DB 抖动")
+
+    task = _task()
+    with (
+        patch.multiple(
+            sys.modules["agents.nodes.generic"],
+            _generic_expert_cache={},
+            get_expert_config_cached=_raise_db,
+        ),
+        patch("agents.nodes.generic.tool_policy_service.get_overrides", return_value={}),
+        patch("agents.nodes.generic.filter_tools_for_binding", return_value=([], [])),
+    ):
+        result = await expert_worker_node(_branch_state(task), llm=_FakeLLM([]))
+
+    outcome = _outcome_of(result)
+    assert outcome["status"] == "failed"
+    assert "Failed to load expert config" in outcome["error"]
+    assert outcome["task_key"] == "task_1"
