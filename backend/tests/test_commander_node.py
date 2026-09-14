@@ -328,3 +328,24 @@ async def test_missing_task_ids_auto_generated():
 
     # task_list[].id = DB subtask id；Commander 生成的 id 落在 task_id 字段
     assert result["task_list"][0]["task_id"] == "task_0"
+
+
+@pytest.mark.asyncio
+async def test_plan_failure_raises_instead_of_empty_plan():
+    """规划失败必须显式上抛（评审 H2）：不得吞成空计划伪装成功。
+
+    此前 except 把失败吞成 task_list=[] + strategy="Error: …"，plan_approval
+    放行空计划、aggregator 回「未生成任何执行结果。」——run 正常完结、无失败标记。
+    """
+    from agents.nodes.commander import PlanGenerationError
+
+    llm = _FakeLLM(_plan_json([]))
+    with (
+        _patches(llm),
+        patch(
+            "agents.nodes.commander._generate_plan",
+            side_effect=PlanGenerationError("结构化输出未产出合法计划"),
+        ),
+        pytest.raises(PlanGenerationError),
+    ):
+        await commander_node(_base_state())

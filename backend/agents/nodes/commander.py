@@ -541,12 +541,13 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                 "preview_execution_plan_id": preview_execution_plan_id,
             }
 
-    except Exception as e:
-        logger.error(f"[ERROR] Commander 规划失败: {e}", exc_info=True)
-        return {
-            "task_list": [],
-            "strategy": f"Error: {str(e)}",
-        }
+    except Exception:
+        # 规划失败必须显式失败（评审 H2）：此前吞成 task_list=[] + strategy="Error: …"，
+        # 于是 plan_approval 放行空计划、aggregator 提前回「未生成任何执行结果。」——
+        # run 正常完结、无失败标记、无 task.failed 事件，用户只看到一句莫名其妙的话，
+        # 排障只能翻服务端日志。上抛后由图执行层统一收口（标 run 失败 + error 事件）。
+        logger.exception("[ERROR] Commander 规划失败，向上抛出以失败本 run")
+        raise
 
 
 class PlanGenerationError(RuntimeError):
