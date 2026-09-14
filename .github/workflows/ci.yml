@@ -81,6 +81,16 @@ jobs:
             -c "CREATE DATABASE xpouch_migrations;"
           uv run alembic upgrade head
 
+      - name: Detect model/schema drift (alembic check)
+        # 评审 M1：autogenerate diff 空转检查——模型与迁移库不一致时当场报出
+        # （新增列忘写迁移这类事故此前只有上线才暴露）。
+        # 当前为非阻塞：库内尚有已知漂移（模型默认 ix_* 索引名 vs 迁移统一的
+        # idx_*、未建模的 user_settings 表等），对齐后移除 continue-on-error 转正。
+        continue-on-error: true
+        env:
+          DATABASE_URL: postgresql+psycopg://xpouch_test:test_pass@localhost:5432/xpouch_migrations
+        run: uv run alembic check
+
       - name: Run backend tests again against the migrated schema
         env:
           # 本地日常跑的是「迁移过的库」，这里对齐同一口径。

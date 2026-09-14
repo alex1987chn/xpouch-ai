@@ -20,9 +20,12 @@ from sqlalchemy import create_engine, pool
 # Import SQLModel and all models
 from sqlmodel import SQLModel
 
-from config import settings
-
 # Import all models to ensure metadata includes all tables
+# （评审 M1 补上的缺失导入：此前注释宣称导入全部模型，实际一条都没导——
+#   target_metadata 是空 metadata，autogenerate/check 会生成「删光所有表」。
+#   幸而迁移全部手写才没有爆发。models/__init__ 是表模型的权威注册处。）
+import models  # noqa: F401  # noqa: E402
+from config import settings
 
 # Alembic Config object
 config = context.config
