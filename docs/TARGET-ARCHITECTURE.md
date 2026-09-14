@@ -619,21 +619,25 @@ UTC+8 下少 8 小时（实时消息带 `Z` 所以只有恢复路径错）。这
 
 ---
 
-## 9. 当前状态快照（2026-09-13 晚）
+## 9. 当前状态快照（2026-09-14 深夜刷新）
 
-- **分支**：`feat/redesign-workbench`，`origin/main` = `02f333f`（本地领先 **65** 个 commit，**未推送**）
-- **已发布**：v3.5.0（tag 停在 `3e060e2`；两个 hotfix 未进 tag，随下次发版带上）
-- **生产**：v3.5.0 已部署、500 已修。**注意**：`origin/main` 尚未含批次 B 之后的工作，生产也尚未拉取后续修复。
+- **分支**：`feat/redesign-workbench`，与 `origin/main` 的关系已多次变动（v3.5.1 tag/Release 已发布后本地又累加修复批次）。以 `git rev-list --count origin/main..HEAD` 实时为准，别信本文的快照数字。
+- **已发布**：v3.5.1（tag/Release 曾重指到 `8097c4f`，之后 main 又追加了 UI 修复批）
+- **生产**：待用户重跑 `deploy.sh`（拉取 origin/main 即含 v3.5.1 全部内容 + 迁移史 squash + 评审修复批）。
 
-**本轮（决定 2 之后）追加修复**（均已完成实机验证，见批次 D 补 4 / 前端补两条）：
+**2026-09-13 深夜~09-14 追加**（均完成实机验证）：
 
 | 内容 | 触发 |
 |---|---|
 | 租约不得回收「停在审批点」的 run（`run_holds_thread`） | 用户报「审批计划这个选项没了」——我引入的回归，一小时内误杀 5 条待审批 run |
-| SSE 去重作用域改为 run（原本全页面共用一个 Set） | 用户报「审批卡不出现 / 打开像首页，都要强刷」——同页第二个 run 的头部帧被静默丢弃 |
-| 思考面板按专家分组 + 专家显示名收敛 | 用户提出「专家应当看得见谁在干」 |
+| SSE 去重作用域改为 run（原本全页面共用一个 Set） | 用户报「审批卡不出现 / 打开像首页，都要强刷」 |
+| 迁移史 squash：001–004 → 单一 baseline（pg_dump 指纹证明等价） | CI 新闸门当场抓到「空库跑不到 head」 |
+| 产物围栏清洗（strip_code_fence + 数据迁移） | 用户报「HTML 预览顶部出现 index.html」 |
+| 评审修复批：H1 任务隔离补洞 / H2 规划失败上抛 / H5 分发守卫 / M1 env.py 模型导入 + alembic check 闸门（暂非阻塞）/ M5 删 PlanningSlice / M7 聚合单次注入 / M8 i18n 清扫 | 全仓深读评审 |
 
-**测试状态**：后端 `pytest` 413 passed；前端 `tsc` 全绿 + `vite build` 通过 + vitest 101 passed。
+**测试状态**：后端 `pytest` 427 passed；前端 `tsc` 全绿 + `vite build` 通过 + vitest 102 passed。
+
+**已知漂移（待拍板后清零，见 alembic check 输出）**：27 组索引名（模型默认 ix_* vs 迁移统一 idx_*）、约 11 处外键命名差异、user_settings 表无模型、systemexpert 唯一约束名。
 
 **本地服务**：后端 `run.py` 于 3002（PG 容器 `xpouch-postgres`）。
 

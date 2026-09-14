@@ -184,10 +184,7 @@ export default function ChatStreamPanel({
   // 从 TaskStore 计算状态
   const isExecuting = mode === 'complex' && runningTaskIds.size > 0
   const isPlanning = mode === 'complex' && !isExecuting && !isWaitingForApproval
-  
-  // 当前活跃专家（从运行中的任务获取）
-  const activeExpert = null // 暂不使用，后续可从 runningTaskIds 获取
-  
+
   // 获取计划步骤数
   const estimatedSteps = pendingPlan.length || 0
 
@@ -324,7 +321,9 @@ export default function ChatStreamPanel({
               msg.role === 'assistant'
             
             const thinkingSteps = cachedThinkingSteps(msg)
-            const messageKey = msg.id ? `${msg.id}-${index}` : `msg-${index}`
+            // key 不掺 index：displayMessages 会因过滤（执行态/空消息隐藏）整体移位，
+            // 掺 index 会让后续所有消息重挂（丢展开态/折叠态并闪烁）。有 id 用 id（评审低危 L1）。
+            const messageKey = msg.id || `msg-${index}`
             
             // 🔥 修复：确保 content 不为 undefined，避免显示 'undefined'
             const rawContent = msg.content || ''
@@ -369,7 +368,6 @@ export default function ChatStreamPanel({
                       ...msg,
                       content: parsedContent
                     }}
-                    activeExpert={activeExpert}
                     aiStatus={getMessageStatus(msg, index)}
                     onRegenerate={handleRegenerate}
                     onLinkClick={handleLinkClick}

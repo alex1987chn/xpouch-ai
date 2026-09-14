@@ -18,7 +18,6 @@ import remarkGfm from 'remark-gfm'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.css'
 import { CodeBlock } from '@/components/ui/code-block'
-import { agentDotStyle, expertDisplayName } from '@/lib/expertIdentity'
 import { toLocalDate } from '@/lib/datetime'
 import ArtifactViewerModal from '@/components/artifacts/ArtifactViewerModal'
 import { cn } from '@/lib/utils'
@@ -278,7 +277,6 @@ const MarkdownCode = memo(function MarkdownCode({ children, className }: Markdow
 
 function MessageItem({
   message,
-  activeExpert,
   aiStatus = 'idle',
   onRegenerate,
   onLinkClick,
@@ -338,7 +336,7 @@ function MessageItem({
     const firstLine = content.split('\n').find(l => l.trim()) || ''
     setDocView({
       type: detected?.type || 'markdown',
-      title: firstLine.replace(/[#*`>\-]+/g, '').trim().slice(0, 24) || t('messagePreview'),
+      title: firstLine.replace(/[#*`>-]+/g, '').trim().slice(0, 24) || t('messagePreview'),
       content: detected?.content || content,
       language: detected?.language ?? null,
     })
@@ -396,9 +394,6 @@ function MessageItem({
     code: ({ node: _node, ...props }) => <MarkdownCode {...props} />
   }), [onLinkClick])
 
-  // 署名点色：默认助手返回 null（渲染中性点），自定义专家返回识别色
-  const agentDot = agentDotStyle(activeExpert)
-
   // 用户消息：暖调浅底圆角气泡，右对齐（蓝本 .msg-user）；附件以 chips 展示
   // （名字/数量来自消息 extra_data 元数据——文档文本与图片本体都不在展示层）
   if (isUser) {
@@ -444,14 +439,11 @@ function MessageItem({
   // AI 消息：无气泡，全宽排版 + 专家署名行（识别色点 + 显示名，蓝本 .byline）
   return (
     <div className="flex flex-col items-start w-full select-text ai-message group">
-      {/* 署名行：识别色点（默认助手为中性点）+ 专家名 + 时间 */}
+      {/* 署名行：中性色点 + 助手名 + 时间 */}
       <div className="mb-1.5 flex items-center gap-1.5">
-        <span
-          className={cn('h-[7px] w-[7px] rounded-full', !agentDot && 'bg-content-muted/45')}
-          style={agentDot ?? undefined}
-        />
+        <span className="h-[7px] w-[7px] rounded-full bg-content-muted/45" />
         <span className="text-tiny text-content-muted">
-          {activeExpert ? expertDisplayName(activeExpert) : t('aiBylineFallback')}
+          {t('aiBylineFallback')}
         </span>
         <span className="text-nano text-content-muted/60">
           {formatMessageTime(message.timestamp)}
@@ -591,7 +583,6 @@ function areEqual(prevProps: MessageItemProps, nextProps: MessageItemProps): boo
   
   // 比较其他 UI 相关 props
   if (prevProps.aiStatus !== nextProps.aiStatus) return false
-  if (prevProps.activeExpert !== nextProps.activeExpert) return false
 
   // 🔥 忽略函数引用变化：onRegenerate, onLinkClick
   // 这些函数应该由父组件用 useCallback 缓存

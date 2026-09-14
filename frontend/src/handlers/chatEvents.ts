@@ -15,7 +15,10 @@ import { useChatStore } from '@/store/chatStore'
 import { t } from '@/i18n'
 import type { ThinkingStep } from '@/types'
 
-// 🔥 防重：已处理过的 message.done 消息ID集合
+// 🔥 防重：已处理过的 message.done 消息ID集合。
+// 上限保护（评审低危项）：长生命周期页面下集合只增不减，超限即整体清空——
+// 清空的代价只是极端旧消息的 done 被重复处理一次（幂等），远好于无界增长。
+const PROCESSED_DONES_CAP = 500
 const processedMessageDones = new Set<string>()
 
 /**
@@ -160,6 +163,9 @@ export function handleMessageDone(
       event.data.message_id
     )
     return
+  }
+  if (processedMessageDones.size >= PROCESSED_DONES_CAP) {
+    processedMessageDones.clear()
   }
   processedMessageDones.add(event.data.message_id)
 

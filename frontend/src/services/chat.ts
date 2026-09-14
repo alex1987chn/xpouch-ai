@@ -164,7 +164,11 @@ function runSSEStream({
       if (msg.data === '[DONE]') {
         logger.debug(`[chat.ts] ${logPrefix}收到 [DONE]，流式响应完成`)
         doneMarkerReceived = true
+        // 传输层收口（评审低危 L6）：服务端已发完成标记，主动断开连接，
+        // 不再等服务端关流。先 safeResolve 再 abort（abort 监听里的 safeReject
+        // 是单次结算，此时已是 no-op）。
         safeResolve(fullContent)
+        ctrl.abort()
         return
       }
 
@@ -606,9 +610,10 @@ export async function resumeChat(
 ): Promise<string> {
   const url = buildUrl('/chat/resume')
   
-  // 如果不需要流式响应（如用户取消），使用普通 fetch
+  // 如果不需要流式响应（如用户取消），使用普通 fetch。
+  // 用 authenticatedFetch（与全站一致）：裸 fetch 会绕过统一的 401 静默刷新（评审低危 L6）
   if (!onChunk) {
-    const response = await fetch(url, {
+    const response = await authenticatedFetch(url, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({

@@ -105,12 +105,11 @@ function isStatusError(error: unknown): error is { status?: number } {
 
 /**
  * 会话恢复 Hook
- * 
- * 恢复流程：
- * 1. 从 localStorage 读取缓存状态（瞬间响应）
- * 2. 从服务端获取最新状态（校准）
- * 3. 合并状态，更新 UI
- * 
+ *
+ * 恢复流程（localStorage 缓存副本已随「删本地副本」清理移除）：
+ * 1. 从服务端获取会话详情（404 先静默重试一次再定性）
+ * 2. 以服务端数据校准 UI（消息、审批卡、运行状态）
+ *
  * @description
  * 同时支持两种恢复场景：
  * - 页面刷新后恢复（useEffect 初始触发）
@@ -190,7 +189,6 @@ export function useSessionRestore(
     setIsMissingSession(false)
 
     try {
-      // 检查本地 localStorage 是否已有数据
       // 从服务端获取会话详情
       //
       // 404 先静默重试一次再定性：首条消息刚落库、线程刚创建的那一瞬间，这个 GET 仍可能
@@ -209,12 +207,11 @@ export function useSessionRestore(
 
       // 🔥 恢复消息（无论简单模式还是复杂模式）
       if (conversation.messages && conversation.messages.length > 0) {
-        // 🔥🔥🔥 前端暴力排序：确保消息按 timestamp 升序排列
-        const sortedMessages = [...conversation.messages].sort((a, b) => {
-          const timeA = new Date(a.timestamp || 0).getTime()
-          const timeB = new Date(b.timestamp || 0).getTime()
-          return timeA - timeB
-        })
+        // 🔥🔥🔥 前端排序：按 timestamp 升序。走 messageTimeMs（naive-UTC 解析口径），
+        // 与本文件其余时间处理一致——裸 new Date() 一旦混入带时区的实时时间戳会错序（评审低危 L5）
+        const sortedMessages = [...conversation.messages].sort(
+          (a, b) => messageTimeMs(a.timestamp) - messageTimeMs(b.timestamp)
+        )
         // 思考面板随刷新消失（步骤只在内存里）→ 从事件账本重建骨架挂回
         const restoredMessages = await attachThinkingFromTimeline(sortedMessages, latestRun, {
           // 步骤署名与实时面板同一词条（评审 M8：不再硬编码中文）

@@ -310,24 +310,3 @@ export type AnyServerEvent =
   | RouterStartEvent
   | RouterDecisionEvent
   | ErrorEvent
-
-// ============================================================================
-// 事件解析工具
-// ============================================================================
-
-/**
- * 解析 SSE 事件数据
- */
-export function parseSSEEvent(data: unknown): AnyServerEvent | null {
-  if (typeof data !== 'object' || data === null) {
-    return null
-  }
-
-  const event = data as SSEEvent<unknown>
-
-  if (!event.type || !event.data) {
-    return null
-  }
-
-  return event as AnyServerEvent
-}
