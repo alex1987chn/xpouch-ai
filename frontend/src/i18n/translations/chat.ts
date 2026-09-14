@@ -71,6 +71,9 @@ export const zh = {
   thinkingMemory: '记忆检索',
   thinkingExecution: '任务执行',
   thinkingDefault: '思考',
+  thinkingRouting: '智能路由',
+  thinkingReasoning: '深度思考',
+  videoUnsupported: '您的浏览器不支持视频播放',
 
   // 预览相关
   videoPreview: '视频预览',
@@ -230,6 +233,9 @@ export const en = {
   thinkingMemory: 'Memory Retrieval',
   thinkingExecution: 'Task Execution',
   thinkingDefault: 'Thinking',
+  thinkingRouting: 'Routing',
+  thinkingReasoning: 'Deep Thinking',
+  videoUnsupported: 'Your browser does not support video playback',
 
   // Preview Related
   videoPreview: 'Video Preview',
@@ -389,6 +395,9 @@ export const ja = {
   thinkingMemory: '記憶検索',
   thinkingExecution: 'タスク実行',
   thinkingDefault: '思考',
+  thinkingRouting: 'ルーティング',
+  thinkingReasoning: '深い思考',
+  videoUnsupported: 'お使いのブラウザは動画再生に対応していません',
 
   // プレビュー関連
   videoPreview: '動画プレビュー',

@@ -45,7 +45,7 @@ export function handleRouterStart(
     const routerStep = {
       id: `router-${event.id}`,
       expertType: 'router',
-      expertName: '智能路由',
+      expertName: t('thinkingRouting'),
       content: '正在分析意图，选择执行模式...',
       timestamp: event.data.timestamp,
       status: 'running' as const,

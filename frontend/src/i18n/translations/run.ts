@@ -13,6 +13,15 @@ export const zh = {
   noEvents: '暂无事件记录',
   payloadEmpty: '此事件无 Payload 数据',
   selectEventHint: '选择事件查看详情',
+  // 运行状态（评审 M8：此前轮询状态栏英文硬编码）
+  runStatusQueued: '排队中',
+  runStatusRunning: '运行中',
+  runStatusAwaiting: '待裁决',
+  runStatusResuming: '恢复中',
+  runStatusCompleted: '已完成',
+  runStatusFailed: '失败',
+  runStatusCancelled: '已取消',
+  runStatusTimedOut: '已超时',
 }
 
 export const en = {
@@ -28,6 +37,14 @@ export const en = {
   noEvents: 'No events yet',
   payloadEmpty: 'No payload data for this event',
   selectEventHint: 'Select an event to view details',
+  runStatusQueued: 'Queued',
+  runStatusRunning: 'Running',
+  runStatusAwaiting: 'Awaiting Review',
+  runStatusResuming: 'Resuming',
+  runStatusCompleted: 'Completed',
+  runStatusFailed: 'Failed',
+  runStatusCancelled: 'Cancelled',
+  runStatusTimedOut: 'Timed Out',
 }
 
 export const ja = {
@@ -43,4 +60,12 @@ export const ja = {
   noEvents: 'イベント記録はありません',
   payloadEmpty: 'このイベントにはPayloadデータがありません',
   selectEventHint: 'イベントを選択して詳細を表示',
+  runStatusQueued: '待機中',
+  runStatusRunning: '実行中',
+  runStatusAwaiting: '承認待ち',
+  runStatusResuming: '再開中',
+  runStatusCompleted: '完了',
+  runStatusFailed: '失敗',
+  runStatusCancelled: 'キャンセル済み',
+  runStatusTimedOut: 'タイムアウト',
 }

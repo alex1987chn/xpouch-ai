@@ -267,8 +267,11 @@ export default function WorkbenchLayout() {
         )}
         <span className="ml-auto flex items-center gap-4">
           {tokensToday && (
-            <span className="flex items-center gap-2" title={tokensToday.daily_token_quota ? `每日上限 ${tokensToday.daily_token_quota.toLocaleString()} tokens` : '未设配额，不限制'}>
-              <span>今日 {tokensToday.today_tokens >= 1000 ? `${(tokensToday.today_tokens / 1000).toFixed(1)}k` : tokensToday.today_tokens}</span>
+            <span
+              className="flex items-center gap-2"
+              title={tokensToday.daily_token_quota ? t('footerQuotaTitleCapped', { quota: tokensToday.daily_token_quota.toLocaleString() }) : t('footerQuotaTitleUnlimited')}
+            >
+              <span>{t('footerTokensToday', { tokens: tokensToday.today_tokens >= 1000 ? `${(tokensToday.today_tokens / 1000).toFixed(1)}k` : String(tokensToday.today_tokens) })}</span>
               {tokensToday.daily_token_quota ? (
                 <span className="h-1 w-14 overflow-hidden rounded-full bg-surface-tint">
                   <span

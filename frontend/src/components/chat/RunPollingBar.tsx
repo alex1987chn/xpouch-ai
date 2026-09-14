@@ -11,6 +11,7 @@
 
 import { Loader2, RefreshCw, AlertTriangle } from 'lucide-react'
 import { useTranslation } from '@/i18n'
+import type { TranslationKey } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { RunStatus } from '@/types/run'
 
@@ -27,15 +28,16 @@ interface RunPollingBarProps {
   onRefresh: () => void
 }
 
-const STATUS_LABELS: Record<RunStatus, string> = {
-  queued: 'Queued',
-  running: 'Running',
-  waiting_for_approval: 'Waiting for Approval',
-  resuming: 'Resuming',
-  completed: 'Completed',
-  failed: 'Failed',
-  cancelled: 'Cancelled',
-  timed_out: 'Timed Out',
+// 状态词条 key（评审 M8：此前英文硬编码，zh 用户看到 "Resuming"）
+const STATUS_LABEL_KEYS: Record<RunStatus, TranslationKey> = {
+  queued: 'runStatusQueued',
+  running: 'runStatusRunning',
+  waiting_for_approval: 'runStatusAwaiting',
+  resuming: 'runStatusResuming',
+  completed: 'runStatusCompleted',
+  failed: 'runStatusFailed',
+  cancelled: 'runStatusCancelled',
+  timed_out: 'runStatusTimedOut',
 }
 
 export function RunPollingBar({
@@ -51,7 +53,7 @@ export function RunPollingBar({
 
   // 状态还没取到（首帧查询在途）时不写 "(Unknown)"：那是内部词表的兜底值，
   // 对用户是无意义的噪音（曾经因为状态机泄漏长期停留在这个文案上）。
-  const statusLabel = status ? STATUS_LABELS[status] : null
+  const statusLabel = status ? t(STATUS_LABEL_KEYS[status]) : null
 
   return (
     <div

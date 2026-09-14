@@ -12,6 +12,7 @@ import type { HandlerContext } from './types'
 import { logger } from '@/utils/logger'
 import { findMessageById } from '@/utils/normalize'
 import { useChatStore } from '@/store/chatStore'
+import { t } from '@/i18n'
 import type { ThinkingStep } from '@/types'
 
 // 🔥 防重：已处理过的 message.done 消息ID集合
@@ -124,7 +125,7 @@ export function handleMessageThinking(
     thinking.push({
       id: 'model_reasoning',
       expertType: 'analysis',
-      expertName: '深度思考',
+      expertName: t('thinkingReasoning'),
       content: event.data.content,
       timestamp: new Date().toISOString(),
       status: 'running',

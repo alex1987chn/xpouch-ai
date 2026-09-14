@@ -22,6 +22,10 @@ import type { RunEvent } from '@/types/run'
 import type { ThinkingStep } from '@/types'
 
 export interface ThinkingStepLabels {
+  /** 步骤署名：路由（i18n: thinkingRouting）——与实时面板共用词条（评审 M8） */
+  routerName: string
+  /** 步骤署名：规划（i18n: thinkingPlanning） */
+  planName: string
   /** 计划生成完成（i18n: thinkingPlanDone） */
   planDone: string
   /** 单个任务执行完成（i18n: thinkingTaskDone） */
@@ -79,7 +83,7 @@ export function buildThinkingStepsFromTimeline(
         steps.push({
           id: `router-${event.id}`,
           expertType: 'router',
-          expertName: '智能路由',
+          expertName: labels.routerName,
           content: routerConclusion(data.mode, labels),
           timestamp: event.timestamp,
           status: 'completed',
@@ -91,7 +95,7 @@ export function buildThinkingStepsFromTimeline(
         steps.push({
           id: `plan-${event.execution_plan_id ?? event.id}`,
           expertType: 'planner',
-          expertName: '任务规划',
+          expertName: labels.planName,
           content: labels.planDone,
           timestamp: event.timestamp,
           status: 'completed',

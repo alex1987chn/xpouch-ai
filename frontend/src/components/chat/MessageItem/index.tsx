@@ -239,7 +239,7 @@ const MarkdownCode = memo(function MarkdownCode({ children, className }: Markdow
                 target.style.display = 'none'
               }}
             >
-              您的浏览器不支持视频播放
+              {t('videoUnsupported')}
             </video>
           )}
           {isExpired && (

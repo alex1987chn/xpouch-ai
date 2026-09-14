@@ -217,6 +217,9 @@ export function useSessionRestore(
         })
         // 思考面板随刷新消失（步骤只在内存里）→ 从事件账本重建骨架挂回
         const restoredMessages = await attachThinkingFromTimeline(sortedMessages, latestRun, {
+          // 步骤署名与实时面板同一词条（评审 M8：不再硬编码中文）
+          routerName: t('thinkingRouting'),
+          planName: t('thinkingPlanning'),
           planDone: t('thinkingPlanDone'),
           taskDone: t('thinkingTaskDone'),
           taskFailed: t('thinkingTaskFailed'),

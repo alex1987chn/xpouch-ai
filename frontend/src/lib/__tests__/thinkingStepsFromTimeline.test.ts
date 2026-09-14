@@ -13,6 +13,8 @@ import { buildThinkingStepsFromTimeline } from '../thinkingStepsFromTimeline'
 import type { RunEvent } from '@/types/run'
 
 const LABELS = {
+  routerName: '智能路由',
+  planName: '任务规划',
   planDone: '任务规划完成',
   taskDone: '任务执行完成',
   taskFailed: '任务执行失败',
