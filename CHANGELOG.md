@@ -5,6 +5,17 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 修复
+
+- **HTML 产物预览顶部出现「index.html」字样（用户实测报出）**：模型常给产物起名
+  （` ```html:index.html … ``` ` 围栏标注），而专家产物此前把整个响应原样入库，
+  围栏头尾被预览当正文渲染（顶部文件名、底部多一行 ` ``` `）。已在产物入库前剥掉
+  包裹整体的围栏（正文内部代码块不动），迁移清洗存量脏数据（14 条）；
+  产物解析器同步兼容「语言:文件名 / 语言 文件名」标注，**文件名会用作产物标题**；
+  审计外的产物下载/导出同样受益
+
 ## [2026-09-13] - v3.5.1 目标架构落地：LangGraph 原生化、波次并发与运行租约
 
 路线与批次记录见 [docs/TARGET-ARCHITECTURE.md](./docs/TARGET-ARCHITECTURE.md)。

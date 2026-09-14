@@ -64,6 +64,7 @@ from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from services.tool_policy_service import tool_policy_service
 from tools import ASYNC_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集（异步版，避免阻塞事件循环）
+from utils.artifacts import strip_code_fence
 from utils.config_cache import ConfigCache
 from utils.llm_factory import get_effective_model, get_expert_llm
 from utils.logger import logger
@@ -666,7 +667,10 @@ async def expert_worker_node(
         artifact = {
             "type": artifact_type,
             "title": f"{expert_name}结果",
-            "content": response.content,
+            # 模型常用 ```html:index.html 的围栏给产物命名——原样入库会把围栏
+            # 头尾渲染进 HTML 预览（页面顶部出现文件名、底部多一行 ```）。
+            # 剥掉「包裹整体的围栏」，正文内部的代码块不动。
+            "content": strip_code_fence(response.content),
             "language": None,  # 可选字段，Pydantic 模型需要
             "sort_order": 0,  # 默认排序
             "artifact_id": artifact_id,

@@ -7,6 +7,30 @@ Artifacts 解析工具
 import re
 
 
+def strip_code_fence(content: str) -> str:
+    """剥掉「包裹整个内容的一层代码围栏」，正文内部的代码块不动。
+
+    模型常给产物起名：```html:index.html … ```（也见 ```html index.html 形态）。
+    专家产物此前把整个响应原样存入 artifact，围栏头尾被 HTML 预览当正文渲染——
+    表现为页面顶部出现「index.html」字样、底部多一行 ```。
+
+    只在内容以围栏开头、且以独立的 ``` 行收尾时剥；其余情况（围栏前有说明文字、
+    没有闭合围栏等）原样返回，宁可保留也不误伤。
+    """
+    if not isinstance(content, str):
+        return content
+    text = content.strip()
+    if not text.startswith("```"):
+        return content
+    head_end = text.find("\n")
+    if head_end == -1:
+        return content
+    body = text[head_end + 1 :]
+    if not body.endswith("\n```"):
+        return content
+    return body[:-4].rstrip()
+
+
 def parse_artifacts_from_response(response: str) -> list[dict]:
     """
     从LLM响应中解析Artifacts
@@ -30,25 +54,31 @@ def parse_artifacts_from_response(response: str) -> list[dict]:
     """
     artifacts = []
 
-    # 1. 解析代码块 (```language code```)
-    code_pattern = r"```(\w+)?\n(.*?)\n```"
+    # 1. 解析代码块。围栏头部除语言外还可能带文件名标注——模型常用
+    #    ```html:index.html 或 ```html index.html 给产物命名。旧正则只认
+    #    「```lang\n」，遇到标注整个块不匹配，围栏会原样漏进产物内容。
+    code_pattern = r"```([^\n]*)\n(.*?)\n```"
     for match in re.finditer(code_pattern, response, re.DOTALL):
-        language = match.group(1) or "text"
+        header = match.group(1).strip()
+        # 语言 = 头部第一个 token；余下部分若存在，视为模型给产物起的文件名
+        parts = re.split(r"[:|\s]+", header, maxsplit=1)
+        language = parts[0] if parts and parts[0] else "text"
+        filename = parts[1].strip() if len(parts) > 1 and parts[1].strip() else None
         content = match.group(2).strip()
 
         # 确定artifact类型
         if language == "html":
             artifact_type = "html"
-            title = "HTML文档"
+            title = filename or "HTML文档"
         elif language in ["python", "javascript", "typescript", "java", "go", "rust", "c", "cpp"]:
             artifact_type = "code"
-            title = f"{language.capitalize()}代码"
+            title = filename or f"{language.capitalize()}代码"
         elif language == "mermaid":
             artifact_type = "diagram"
             title = "流程图"
         else:
             artifact_type = "code"
-            title = f"{language.capitalize()}代码"
+            title = filename or f"{language.capitalize()}代码"
 
         artifacts.append(
             {"type": artifact_type, "title": title, "content": content, "language": language}
