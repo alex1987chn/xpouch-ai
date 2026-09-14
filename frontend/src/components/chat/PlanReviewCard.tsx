@@ -11,7 +11,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, Loader2 } from 'lucide-react'
+import { ClipboardList, Loader2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from '@/i18n'
 import { resumeChat, type ResumeChatParams } from '@/services/chat'
@@ -311,11 +311,12 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
         document.body
       )}
 
-      {/* 内联审批行（蓝本 appraisal 时间线行） */}
+      {/* 内联审批行（蓝本 appraisal 时间线行）。图标用计划清单而非警告三角——
+          琥珀色表达「待裁决」，感叹号会读成告警/错误（设计师反馈） */}
       <div className="my-4 rounded-lg border border-accent-warning/25 bg-accent-warning/[0.08] p-3">
         <div className="flex items-center gap-3">
           <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-accent-warning/15 text-accent-warning">
-            <AlertTriangle className="h-3 w-3" />
+            <ClipboardList className="h-3 w-3" />
           </span>
           <div className="min-w-0 flex-1">
             {planRevising ? (

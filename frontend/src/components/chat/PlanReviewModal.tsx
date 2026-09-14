@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { AlertTriangle, Trash2, Loader2, X } from 'lucide-react'
+import { ClipboardList, Trash2, Loader2, X } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PlanDiffList } from './PlanDiffList'
@@ -74,12 +74,15 @@ export function PlanReviewModal({
       onClose={onClose}
       labelledBy="plan-review-modal-title"
       dismissable={!isSubmitting && !isRevising}
-      panelClassName="max-h-[82vh] w-[min(580px,94vw)] overflow-y-auto"
+      /* 头/底锁死、只有中间内容滚：面板 flex-col + max-h，内容区 flex-1 overflow；
+         此前整面板一起滚，计划一长批准按钮就被顶出首屏（设计师反馈）。
+         85vh：内容多时窗口吃满可用高度，避免「窗口很短就出滚动条」 */
+      panelClassName="flex max-h-[85vh] w-[min(580px,94vw)] flex-col"
     >
-      {/* 头部 */}
-      <div className="flex items-center gap-2.5 border-b border-border-divider px-5 py-4">
+      {/* 头部（锁定，不随内容滚动） */}
+      <div className="flex shrink-0 items-center gap-2.5 border-b border-border-divider px-5 py-4">
         <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-accent-warning/15 text-accent-warning">
-          <AlertTriangle className="h-3.5 w-3.5" />
+          <ClipboardList className="h-3.5 w-3.5" />
         </span>
         <span id="plan-review-modal-title" className="flex-1 text-body-lg font-bold text-content-primary">
           {t('planReviewTitle')}
@@ -100,7 +103,7 @@ export function PlanReviewModal({
       {isRevising ? (
         /* 修订中面板：后台任务执行中，弹窗可关闭，轮询感知 v(n+1) */
         <>
-          <div className="flex flex-col gap-3 px-5 py-6">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-6">
             <div className="flex items-center gap-2.5">
               <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-accent-brand/15">
                 <Loader2 className="h-3 w-3 animate-spin text-accent-brand" />
@@ -112,14 +115,14 @@ export function PlanReviewModal({
             </div>
             <p className="text-caption leading-relaxed text-content-muted">{t('revisingHint')}</p>
           </div>
-          <div className="flex items-center justify-end border-t border-border-divider px-5 py-3.5">
+          <div className="flex shrink-0 items-center justify-end border-t border-border-divider px-5 py-3.5">
             <button onClick={onClose} className={ghostBtn}>{t('close')}</button>
           </div>
         </>
       ) : feedbackView ? (
         /* 修订反馈视图 */
         <>
-          <div className="flex flex-col gap-3 px-5 py-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">
             <p className="text-xs leading-relaxed text-content-secondary">
               <b className="text-content-primary">{t('reviseTitle')}</b>
               {' · '}{t('feedbackNote')}
@@ -134,7 +137,7 @@ export function PlanReviewModal({
             />
             <p className="text-caption text-content-muted">{t('feedbackHint')}</p>
           </div>
-          <div className="flex items-center justify-end gap-2.5 border-t border-border-divider px-5 py-3.5">
+          <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-border-divider px-5 py-3.5">
             <button onClick={() => setFeedbackView(false)} disabled={isSubmitting} className={ghostBtn}>
               {t('cancel')}
             </button>
@@ -150,8 +153,8 @@ export function PlanReviewModal({
         </>
       ) : (
         <>
-          {/* 计划视图 */}
-          <div className="flex flex-col gap-3 px-5 py-4">
+          {/* 计划视图（内容区自己滚，底栏锁定在外层） */}
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">
             <p className="text-xs leading-relaxed text-content-secondary">{t('approvalModalNote')}</p>
 
             {/* 修订对照：只在「本次是修订结果」时出现 */}
@@ -212,8 +215,8 @@ export function PlanReviewModal({
               ))}
             </div>
           </div>
-          {/* 底部：编辑 / 终止 / 修订并重提 / 批准 */}
-          <div className="flex flex-wrap items-center gap-2.5 border-t border-border-divider px-5 py-3.5">
+          {/* 底部：编辑 / 终止 / 修订并重提 / 批准（锁定，不随内容滚动） */}
+          <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-t border-border-divider px-5 py-3.5">
             <button
               onClick={() => setIsEditing(v => !v)}
               disabled={isSubmitting}
