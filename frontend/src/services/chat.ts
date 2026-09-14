@@ -40,6 +40,7 @@ import { getHeaders, buildUrl, handleResponse, handleSSEConnectionError, authent
 import { ApiMessage, StreamCallback, Conversation, StreamRuntimeMeta } from '@/types'
 import { logger } from '@/utils/logger'
 import { handleServerEvent } from '@/handlers'
+import { useChatStore } from '@/store/chatStore'
 import { createSSEPromiseHelpers, SSE_HEARTBEAT_TIMEOUT, SSE_HEARTBEAT_CHECK_INTERVAL } from '@/utils/sseUtils'
 import { showLoginDialog } from '@/utils/authUtils'
 import type { AnyServerEvent, EventType } from '@/types/events'
@@ -181,6 +182,14 @@ function runSSEStream({
         const eventData = JSON.parse(msg.data)
 
         if (eventType) {
+          // 会话归属守卫（评审 H5）：流所属会话已不是当前会话（用户切走/返回）时，
+          // 该流的任何事件都不得再进全局分发——兜底 addMessage 不带 threadId，
+          // 会绕开 chatStore 的 P4-1 守卫，把旧线程的半截回答串进新会话。
+          // seq 记录仍保留（上方），onChunk 自有归属守卫，这里切断分发即可。
+          const currentThreadId = useChatStore.getState().currentConversationId
+          if (activeThreadId && currentThreadId && currentThreadId !== activeThreadId) {
+            return
+          }
           const runtimeMeta: StreamRuntimeMeta = {
             threadId: activeThreadId,
             runId: activeRunId,
