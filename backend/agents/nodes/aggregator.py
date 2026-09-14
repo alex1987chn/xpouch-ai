@@ -78,9 +78,20 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
             tags=["aggregator"], metadata={"node_type": "aggregator"}
         )
 
+        # 数据正文只出现一次（评审 M7）：System prompt 的 {input} 占位符已携带
+        # 全部成果，HumanMessage 若再发一遍同一份文本，token 翻倍且模型面对两份
+        # 相同材料。仅当自定义 prompt 未含 {input}（数据不在 system 里）时，
+        # HumanMessage 才回退为承载数据正文。
+        data_in_system = aggregator_input in system_prompt
+        human_content = (
+            "请基于上方提供的专家成果与执行策略，生成最终综述。"
+            if data_in_system
+            else aggregator_input
+        )
+
         # 使用流式输出（通过 LangGraph 的 on_chat_model_stream 事件发送 message.delta）
         async for chunk in aggregator_llm.astream(
-            [SystemMessage(content=system_prompt), HumanMessage(content=aggregator_input)],
+            [SystemMessage(content=system_prompt), HumanMessage(content=human_content)],
             config=aggregator_config,
         ):
             content = chunk.content if hasattr(chunk, "content") else str(chunk)
@@ -248,7 +259,10 @@ def _build_aggregator_input(expert_results: list[dict[str, Any]], strategy: str)
     ]
 
     for i, res in enumerate(expert_results, 1):
-        lines.append(f"--- 专家 {i}: {res['expert_type'].upper()} ---")
+        # 失败任务显式标注状态——否则「上游任务失败，已跳过」这类错误说明会以
+        # 「成果」的口吻混进汇总，聚合模型无从知晓哪些任务失败了（评审低危项）
+        status_label = "成功" if res.get("status") != "failed" else "失败"
+        lines.append(f"--- 专家 {i}: {res['expert_type'].upper()}（{status_label}） ---")
         lines.append(f"任务: {res['description']}")
         lines.append(f"成果:\n{res['output']}")
         lines.append("")
