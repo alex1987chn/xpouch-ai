@@ -234,8 +234,13 @@ async def test_missing_dependency_is_tolerated():
 
 
 @pytest.mark.asyncio
-async def test_tool_loop_reentry_uses_branch_scratch():
-    """工具循环重入：草稿末尾是 ToolMessage → 沿用草稿、不再绑工具、直接收尾。"""
+async def test_tool_loop_reentry_rebinds_tools_and_keeps_scratch():
+    """工具循环重入（评审 H3）：草稿末尾是 ToolMessage → 沿用草稿、**重新绑工具**。
+
+    多步工具链（search → read → 计算）依赖每轮都能再发起工具调用；单轮时代的
+    「重入不再绑工具」在这里被改回多轮。循环有界性由熔断守卫 + recursion_limit 兜底
+    （见 test_guard_tripped_forces_toolless_finish）。
+    """
     from langchain_core.messages import ToolMessage
 
     state = _branch_state(_task(), {"worker_started": True})
@@ -243,21 +248,98 @@ async def test_tool_loop_reentry_uses_branch_scratch():
         ToolMessage(content="工具结果", tool_call_id="call-1", name="calculator")
     ]
 
-    class _TrackingLLM(_FakeLLM):
+    bound_log: list[list] = []
+
+    class _RecordingBound(_FakeBound):
+        def bind_tools(self, tools):
+            bound_log.append(list(tools))
+            return self
+
+    class _RecordingLLM(_FakeLLM):
+        def bind(self, **_kwargs):
+            return _RecordingBound(self)
+
         async def ainvoke(self, messages, config=None):
             # 断言工具结果进入了上下文
             assert any(getattr(m, "tool_call_id", None) == "call-1" for m in messages)
             return await super().ainvoke(messages, config=config)
 
+    sentinel_tool = object()
     with (
         _patches(),
         patch("agents.nodes.generic.tool_policy_service.get_overrides", return_value={}),
+        patch(
+            "agents.nodes.generic.filter_tools_for_binding",
+            return_value=([sentinel_tool], []),
+        ),
     ):
-        result = await expert_worker_node(state, llm=_TrackingLLM([_FakeResponse("最终回复")]))
+        result = await expert_worker_node(state, llm=_RecordingLLM([_FakeResponse("最终回复")]))
 
+    # 重入轮绑上了工具（含治理过滤后的工具集）
+    assert bound_log and sentinel_tool in bound_log[0], "工具重入必须重新绑定工具（多轮循环）"
     outcome = _outcome_of(result)
     assert outcome["status"] == "completed"
     assert outcome["output"] == "最终回复"
+
+
+@pytest.mark.asyncio
+async def test_guard_tripped_forces_toolless_finish():
+    """熔断后转无工具收尾（评审 H3）：不再绑工具，且注入熔断收尾指令。
+
+    用「同一工具连续调用 4 次」触发 should_trip_tool_loop_guard 的连续同工具规则。
+    """
+    from langchain_core.messages import AIMessage, ToolMessage
+
+    state = _branch_state(_task(), {"worker_started": True})
+    # 构造会触发熔断的草稿：同一工具连续 4 轮调用
+    scratch: list = []
+    for i in range(4):
+        scratch.append(
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "web_search", "args": {"q": f"q{i}"}, "id": f"c{i}"}],
+            )
+        )
+        scratch.append(ToolMessage(content=f"结果{i}", tool_call_id=f"c{i}", name="web_search"))
+    state["worker_messages"] = scratch
+
+    bind_calls: list[list] = []
+
+    class _NoToolsBound(_FakeBound):
+        def bind_tools(self, tools):
+            bind_calls.append(list(tools))
+            return self
+
+    class _FinishLLM(_FakeLLM):
+        def bind(self, **_kwargs):
+            return _NoToolsBound(self)
+
+    seen_prompts: list[list] = []
+
+    class _CaptureLLM(_FinishLLM):
+        async def ainvoke(self, messages, config=None):
+            seen_prompts.append(list(messages))
+            return await super().ainvoke(messages, config=config)
+
+    with (
+        _patches(),
+        patch("agents.nodes.generic.tool_policy_service.get_overrides", return_value={}),
+        patch(
+            "agents.nodes.generic.filter_tools_for_binding",
+            return_value=([object()], []),
+        ),
+    ):
+        result = await expert_worker_node(
+            state, llm=_CaptureLLM([_FakeResponse("基于已有信息的收尾答复")])
+        )
+
+    # 熔断轮不得再绑工具
+    assert bind_calls == [], "熔断后仍绑了工具"
+    # 注入了熔断收尾指令
+    assert any("熔断" in str(getattr(m, "content", "")) for m in seen_prompts[-1])
+    outcome = _outcome_of(result)
+    assert outcome["status"] == "completed"
+    assert outcome["output"] == "基于已有信息的收尾答复"
 
 
 @pytest.mark.asyncio

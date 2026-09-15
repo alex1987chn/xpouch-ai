@@ -399,11 +399,13 @@ async def expert_worker_node(
                 "[GenericWorker] 工具循环熔断：%s（任务 %s 转入无工具收尾）", guard_reason, task_id
             )
 
-        # 熔断时也要沿用分支消息：模型必须看到已经拿到的工具结果再作答
-        continue_branch = has_tool_message or guard_tripped
-        if continue_branch:
-            # 工具执行后的情况：messages 包含 AIMessage(tool_calls) + ToolMessage
-            # 我们需要保留这些上下文，让 LLM 看到工具结果
+        # 熔断 = 本任务转入无工具收尾：模型基于已获得的工具结果直接作答，
+        # 其余任务照常（评审 H3：恢复多轮工具循环后，这里就是循环的有界性来源之一）
+        finish_only = guard_tripped
+
+        if has_tool_message:
+            # 工具重入：沿用分支草稿（AIMessage(tool_calls) + ToolMessage），
+            # 让 LLM 看到已经拿到的工具结果
             normalized_existing = normalize_messages_for_llm(existing_messages, content_mode)
 
             messages_for_llm = [
@@ -457,79 +459,76 @@ async def expert_worker_node(
                 HumanMessage(content=task_prompt),
             ]
 
-        # 🔥 关键修复：根据是否「已在分支内续跑」决定是否绑定工具
-        # 如果已经有 ToolMessage（工具执行完成）或已熔断，则不绑定工具，防止无限循环
-        if continue_branch:
+        # 🔥 工具绑定：**每一轮都重新绑定**（评审 H3：恢复多轮工具循环）。
+        # 多步工具链（search → read → 计算）依赖每轮都能再发起工具调用；此前
+        # 「工具续跑一律不再绑工具」把循环砍成单轮，多步链路第二轮即被强制收尾，
+        # 熔断守卫也因此不可达。循环的有界性由两级兜底：
+        #   1. should_trip_tool_loop_guard（分支内、只看本任务）→ 熔断转无工具收尾
+        #   2. 子图 recursion_limit 硬上限
+        # ENABLE_TOOL_CALLING=false 可禁用工具调用（平滑升级兼容）
+        enable_tools = settings.enable_tool_calling and not finish_only
+        if enable_tools:
+            # 工具集的收集与治理过滤**不放在宽 try 里**——它们读的是 DB 配置
+            # （工具治理覆盖）与注入的 MCP 工具，失败属程序/数据层问题。
+            # 此前整段被一个 `except Exception` 包住降级为「无工具执行」，
+            # 于是 tool_policy_service 的时区比较异常（naive vs aware）被
+            # 吞成一句误导性警告，**所有专家的工具调用静默失效数月**。
+            # 现在这类错误直接上抛（失败可见），只有「模型确实不支持工具
+            # 调用」才允许降级。
+            # 🔥 MCP: 从 config 获取动态注入的工具
+            mcp_tools = []
+            if config and hasattr(config, "get"):
+                mcp_tools = config.get("configurable", {}).get("mcp_tools", [])
+
+            # 🔥 MCP: 合并基础工具和动态 MCP 工具
+            runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
+            policy_overrides = await tool_policy_service.get_overrides()
+            bindable_tools, blocked_tools = filter_tools_for_binding(
+                runtime_tools,
+                expert_type=expert_type,
+                overrides=policy_overrides,
+            )
+
+            # 🔥 警告：如果 MCP 工具为空但预期应该有
+            if not mcp_tools and settings.mcp_servers:
+                logger.warning("[GenericWorker] ⚠️ MCP 工具为空！请检查 MCP 服务器连接")
+
+            try:
+                llm_to_use = llm_with_config.bind_tools(bindable_tools)
+            except (NotImplementedError, TypeError) as bind_err:
+                # 仅「该模型实例不支持绑定工具」这一情形可降级：无工具但仍能对话。
+                logger.error(
+                    "[GenericWorker] ⚠️ 模型不支持工具调用，专家将**无工具**执行: %s",
+                    bind_err,
+                    exc_info=True,
+                )
+                llm_to_use = llm_with_config
+            else:
+                logger.info(
+                    "[GenericWorker] 🔧 工具已绑定: %s 个工具 (基础: %s, MCP: %s, 被治理层过滤: %s)",
+                    len(bindable_tools),
+                    len(BASE_TOOLS),
+                    len(mcp_tools),
+                    len(blocked_tools),
+                )
+                for blocked in blocked_tools:
+                    logger.info(
+                        "[GenericWorker] 工具未暴露给当前 expert | expert=%s tool=%s action=%s reason=%s",
+                        expert_type,
+                        blocked.tool_name,
+                        blocked.action,
+                        blocked.reason,
+                    )
+        elif finish_only:
+            logger.info("[GenericWorker] 🔒 工具已熔断，本任务转无工具收尾: %s", task_id)
             llm_to_use = llm_with_config
         else:
-            # 🔥 新增：为所有专家绑定工具（联网搜索、时间、计算器）
-            # 如果 LLM 支持工具调用，则绑定工具集
-            # 🔥 环境变量控制：ENABLE_TOOL_CALLING=false 可禁用工具调用（平滑升级兼容）
-            enable_tools = settings.enable_tool_calling
-            if enable_tools:
-                # 工具集的收集与治理过滤**不放在宽 try 里**——它们读的是 DB 配置
-                # （工具治理覆盖）与注入的 MCP 工具，失败属程序/数据层问题。
-                # 此前整段被一个 `except Exception` 包住降级为「无工具执行」，
-                # 于是 tool_policy_service 的时区比较异常（naive vs aware）被
-                # 吞成一句误导性警告，**所有专家的工具调用静默失效数月**。
-                # 现在这类错误直接上抛（失败可见），只有「模型确实不支持工具
-                # 调用」才允许降级。
-                # 🔥 MCP: 从 config 获取动态注入的工具
-                mcp_tools = []
-                if config and hasattr(config, "get"):
-                    mcp_tools = config.get("configurable", {}).get("mcp_tools", [])
+            logger.info("[GenericWorker] ⏭️ 工具调用已禁用（ENABLE_TOOL_CALLING=false）")
+            llm_to_use = llm_with_config
 
-                # 🔥 MCP: 合并基础工具和动态 MCP 工具
-                runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
-                policy_overrides = await tool_policy_service.get_overrides()
-                bindable_tools, blocked_tools = filter_tools_for_binding(
-                    runtime_tools,
-                    expert_type=expert_type,
-                    overrides=policy_overrides,
-                )
-
-                # 🔥 警告：如果 MCP 工具为空但预期应该有
-                if not mcp_tools and settings.mcp_servers:
-                    logger.warning("[GenericWorker] ⚠️ MCP 工具为空！请检查 MCP 服务器连接")
-
-                try:
-                    llm_to_use = llm_with_config.bind_tools(bindable_tools)
-                except (NotImplementedError, TypeError) as bind_err:
-                    # 仅「该模型实例不支持绑定工具」这一情形可降级：无工具但仍能对话。
-                    logger.error(
-                        "[GenericWorker] ⚠️ 模型不支持工具调用，专家将**无工具**执行: %s",
-                        bind_err,
-                        exc_info=True,
-                    )
-                    llm_to_use = llm_with_config
-                else:
-                    logger.info(
-                        "[GenericWorker] 🔧 工具已绑定: %s 个工具 (基础: %s, MCP: %s, 被治理层过滤: %s)",
-                        len(bindable_tools),
-                        len(BASE_TOOLS),
-                        len(mcp_tools),
-                        len(blocked_tools),
-                    )
-                    for blocked in blocked_tools:
-                        logger.info(
-                            "[GenericWorker] 工具未暴露给当前 expert | expert=%s tool=%s action=%s reason=%s",
-                            expert_type,
-                            blocked.tool_name,
-                            blocked.action,
-                            blocked.reason,
-                        )
-            else:
-                logger.info("[GenericWorker] ⏭️ 工具调用已禁用（ENABLE_TOOL_CALLING=false）")
-                llm_to_use = llm_with_config
-
-        # 🔥 关键优化：当 has_tool_message=True 时，在消息末尾添加明确的"任务完成"提示
-        if has_tool_message:
-            # 在消息列表末尾添加一个 HumanMessage，明确告诉 LLM 任务完成
-            messages_for_llm.append(
-                HumanMessage(
-                    content="[系统提示：以上是工具执行结果，请基于此结果生成最终回复，任务已完成，不要再调用任何工具]"
-                )
-            )
+        # 熔断收尾：在消息末尾追加显式指令，让模型停止发起工具调用、直接作答。
+        # （has_tool_message 本身**不再**注入「不要再调用工具」——那是单轮时代的
+        # 写法；多轮循环下模型自然决定是否继续调用工具。）
         if guard_tripped:
             messages_for_llm.append(
                 HumanMessage(
