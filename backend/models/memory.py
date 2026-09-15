@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector  # 必须确保数据库已开启 pgvector 插件
-from sqlalchemy import Column
+from sqlalchemy import Column, Text
 from sqlmodel import Field, SQLModel
 
 from utils.time import utc_now_naive
@@ -14,7 +14,7 @@ class UserMemory(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     user_id: str = Field(index=True, description="用户ID")
-    content: str = Field(description="记忆内容文本")
+    content: str = Field(description="记忆内容文本", sa_type=Text)
 
     # 🔥 BAAI/bge-m3 的维度是 1024
     embedding: list[float] = Field(sa_column=Column(Vector(1024)))

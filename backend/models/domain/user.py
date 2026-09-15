@@ -32,7 +32,8 @@ class User(SQLModel, table=True):
                 name="user_role_enum",
                 native_enum=True,
                 values_callable=_enum_values,
-            )
+            ),
+            nullable=False,
         ),  # DB-12: 使用 PostgreSQL ENUM
     )
     phone_number: str | None = Field(default=None, max_length=32, unique=True, index=True)
@@ -40,7 +41,7 @@ class User(SQLModel, table=True):
     # 密码登录（bcrypt，utils/jwt_handler.hash_password/verify_password）；
     # 手机 OTP 注册的账号默认无密码，登录后可通过 set-password 首次设置
     password_hash: str | None = Field(default=None, max_length=255)
-    verification_code: str | None = Field(default=None, max_length=16)
+    verification_code: str | None = Field(default=None, max_length=255)  # 存 64 位哈希
     verification_code_expires_at: datetime | None = Field(default=None)
     verification_code_attempts: int = Field(default=0)
     verification_code_locked_until: datetime | None = Field(default=None)

@@ -8,7 +8,7 @@ append-only 事件账本，用于追踪 AgentRun 的完整生命周期。
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Column, func
+from sqlalchemy import JSON, Column, Index, func
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, SQLModel
 
@@ -35,7 +35,7 @@ class RunEvent(SQLModel, table=True):
     __tablename__ = "runevent"
 
     id: int = Field(default=None, primary_key=True)
-    run_id: str = Field(foreign_key="agentrun.id", index=True, max_length=64)
+    run_id: str = Field(foreign_key="agentrun.id", index=True, max_length=64, ondelete="CASCADE")
 
     event_type: RunEventType = Field(
         sa_column=Column(
@@ -64,15 +64,23 @@ class RunEvent(SQLModel, table=True):
     event_data: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON, nullable=True))
 
     # 关联的线程 ID（冗余存储，便于按线程查询）
-    thread_id: str | None = Field(default=None, foreign_key="thread.id", max_length=64, index=True)
+    thread_id: str | None = Field(
+        default=None, foreign_key="thread.id", max_length=64, index=True, ondelete="SET NULL"
+    )
 
     # 关联的计划 ID（计划相关事件）
     execution_plan_id: str | None = Field(
-        default=None, foreign_key="executionplan.id", max_length=64, index=True
+        default=None,
+        foreign_key="executionplan.id",
+        max_length=64,
+        index=True,
+        ondelete="SET NULL",
     )
 
     # 关联的任务 ID（任务相关事件）
     task_id: str | None = Field(default=None, max_length=64, index=True)
+
+    __table_args__ = (Index("idx_runevent_run_id_timestamp", "run_id", "timestamp"),)
 
     # 备注（可选，用于人工标注或补充说明）
     note: str | None = Field(default=None, max_length=512)

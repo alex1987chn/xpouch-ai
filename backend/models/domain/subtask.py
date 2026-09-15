@@ -38,7 +38,9 @@ class SubTask(SQLModel, table=True):
     )
 
     # 关联的复杂执行计划
-    execution_plan_id: str = Field(foreign_key="executionplan.id", index=True, max_length=64)
+    execution_plan_id: str = Field(
+        foreign_key="executionplan.id", index=True, max_length=64, ondelete="CASCADE"
+    )
 
     # 排序顺序：用于前端展示和串行执行顺序
     sort_order: int = Field(default=0, index=True)
@@ -62,6 +64,7 @@ class SubTask(SQLModel, table=True):
                 native_enum=True,
                 values_callable=_enum_values,
             ),
+            nullable=False,
             index=True,
         ),
     )  # DB-12: 使用 PostgreSQL ENUM

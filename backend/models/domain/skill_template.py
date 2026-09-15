@@ -4,7 +4,7 @@ Skill / Template 领域模型
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, Index, String, func
+from sqlalchemy import JSON, Column, Index, String, Text, func
 from sqlmodel import Field, SQLModel
 
 from utils.time import utc_now_naive
@@ -37,7 +37,9 @@ class SkillTemplate(SQLModel, table=True):
     # 预期产出物类型（如 ['markdown', 'html']）
     expected_artifact_types: list[str] | None = Field(default=None, sa_column=Column(JSON))
     # 产出物结构提示（指导 Agent 如何组织产出）
-    artifact_schema_hint: str | None = Field(default=None, description="产出物结构提示")
+    artifact_schema_hint: str | None = Field(
+        default=None, sa_type=Text, description="产出物结构提示"
+    )
     is_active: bool = Field(default=True)
     is_builtin: bool = Field(default=False)
     created_at: datetime = Field(default_factory=utc_now_naive)

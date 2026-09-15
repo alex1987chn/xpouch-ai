@@ -17,12 +17,23 @@
 """
 
 # ============================================================================
-# 枚举类型（集中定义，供全项目使用）
+# 命名约定（评审 M1 漂移对齐）
 # ============================================================================
+# 必须在**任何表模型定义之前**设置：Field(index=True) 的索引名在类创建时就按
+# 此约定解析。模型默认约定是 ix_%(column_0_label)s，而迁移史（005 起）刻意
+# 统一为 idx_ 前缀——两套约定并存导致 27 组「同列不同名」索引漂移。这里把
+# 约定对齐到 idx_，使模型元数据与迁移库逐名一致（alembic check 归零的前提）。
+# 约定块之后的 import 因此不在文件顶部（noqa: E402），属有意为之。
+from sqlmodel import SQLModel
+
+SQLModel.metadata.naming_convention = {
+    "ix": "idx_%(column_0_label)s",
+}
+
 # ============================================================================
 # ORM 领域模型（数据库表）
 # ============================================================================
-from models.domain import (
+from models.domain import (  # noqa: E402
     AgentRun,
     Artifact,
     AuditLog,
@@ -39,8 +50,9 @@ from models.domain import (
     Thread,
     ToolPolicy,
     User,
+    UserSettings,
 )
-from models.enums import (
+from models.enums import (  # noqa: E402
     ConversationType,
     ExecutionMode,
     ExpertType,
@@ -62,7 +74,7 @@ from models.memory import UserMemory  # noqa: E402
 # ============================================================================
 # Pydantic DTO（API 请求/响应）
 # ============================================================================
-from schemas import (
+from schemas import (  # noqa: E402
     # Task
     ArtifactCreate,
     ArtifactResponse,
@@ -125,6 +137,7 @@ __all__ = [
     "AuditLog",
     "UserMemory",
     "MCPServer",
+    "UserSettings",
     # DTO - Conversation
     "MessageResponse",
     "ThreadListResponse",

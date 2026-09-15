@@ -8,7 +8,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import func
+from sqlalchemy import Index, func
 from sqlmodel import Field, Relationship, SQLModel
 
 from utils.time import utc_now_naive
@@ -30,7 +30,7 @@ class CustomAgent(SQLModel, table=True):
     )
 
     # 关联用户
-    user_id: str = Field(foreign_key="user.id", index=True, max_length=64)
+    user_id: str = Field(foreign_key="user.id", index=True, max_length=64, ondelete="CASCADE")
 
     # 基本信息
     name: str = Field(index=True, max_length=255)  # 智能体名称
@@ -53,6 +53,15 @@ class CustomAgent(SQLModel, table=True):
     updated_at: datetime = Field(
         default_factory=utc_now_naive,
         sa_column_kwargs={"onupdate": func.now()},
+    )
+
+    __table_args__ = (
+        Index(
+            "idx_customagent_user_default_created",
+            "user_id",
+            "is_default",
+            "created_at",
+        ),
     )
 
     # 关联关系（使用字符串避免循环导入）

@@ -7,7 +7,7 @@ AgentRun 领域模型
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, String, func
+from sqlalchemy import Column, String, Text, func
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -25,7 +25,7 @@ class AgentRun(SQLModel, table=True):
         primary_key=True,
         max_length=64,
     )
-    thread_id: str = Field(foreign_key="thread.id", index=True, max_length=64)
+    thread_id: str = Field(foreign_key="thread.id", index=True, max_length=64, ondelete="CASCADE")
     user_id: str = Field(foreign_key="user.id", index=True, max_length=64)
 
     # 入口与模式描述
@@ -53,7 +53,7 @@ class AgentRun(SQLModel, table=True):
     current_node: str | None = Field(default=None, max_length=128)
 
     error_code: str | None = Field(default=None, max_length=64)
-    error_message: str | None = Field(default=None)
+    error_message: str | None = Field(default=None, sa_type=Text)
 
     # Token 用量记账（B5）：各专家任务 ainvoke 的 usage_metadata 增量累加；
     # router/aggregator 的小额调用暂不统计（文档注明为近似值）
@@ -61,7 +61,9 @@ class AgentRun(SQLModel, table=True):
     completion_tokens: int = Field(default=0)
     total_tokens: int = Field(default=0)
 
-    retry_of_run_id: str | None = Field(default=None, foreign_key="agentrun.id", max_length=64)
+    retry_of_run_id: str | None = Field(
+        default=None, foreign_key="agentrun.id", max_length=64, ondelete="SET NULL"
+    )
 
     created_at: datetime = Field(default_factory=utc_now_naive)
     started_at: datetime = Field(default_factory=utc_now_naive)
@@ -77,7 +79,7 @@ class AgentRun(SQLModel, table=True):
     # 与 `last_heartbeat_at` 的分工：心跳 = 「最后一次见到进展」的诊断记录；
     # 租约 = 「谁、到什么时候」的持有声明 —— 只有租约能判定一个 run 是死是活。
     owner: str | None = Field(default=None, max_length=128)
-    lease_expires_at: datetime | None = None
+    lease_expires_at: datetime | None = Field(default=None, index=True)
     attempt: int = Field(default=0)
 
     completed_at: datetime | None = None

@@ -8,7 +8,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, func
+from sqlalchemy import Column, Index, func
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -26,8 +26,10 @@ class ExecutionPlan(SQLModel, table=True):
         primary_key=True,
         max_length=64,
     )
-    thread_id: str = Field(foreign_key="thread.id", index=True, max_length=64)
-    run_id: str | None = Field(default=None, foreign_key="agentrun.id", index=True, max_length=64)
+    thread_id: str = Field(foreign_key="thread.id", index=True, max_length=64, ondelete="CASCADE")
+    run_id: str | None = Field(
+        default=None, foreign_key="agentrun.id", index=True, max_length=64, ondelete="CASCADE"
+    )
 
     user_query: str = Field(index=True)
     plan_summary: str | None = Field(default=None)
@@ -63,10 +65,13 @@ class ExecutionPlan(SQLModel, table=True):
                 native_enum=True,
                 values_callable=_enum_values,
             ),
+            nullable=False,
             index=True,
         ),
     )
     plan_version: int = Field(default=1)
+
+    __table_args__ = (Index("idx_executionplan_thread_created", "thread_id", "created_at"),)
 
     created_at: datetime = Field(default_factory=utc_now_naive)
     updated_at: datetime = Field(

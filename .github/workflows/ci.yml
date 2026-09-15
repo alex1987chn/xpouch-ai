@@ -84,9 +84,9 @@ jobs:
       - name: Detect model/schema drift (alembic check)
         # 评审 M1：autogenerate diff 空转检查——模型与迁移库不一致时当场报出
         # （新增列忘写迁移这类事故此前只有上线才暴露）。
-        # 当前为非阻塞：库内尚有已知漂移（模型默认 ix_* 索引名 vs 迁移统一的
-        # idx_*、未建模的 user_settings 表等），对齐后移除 continue-on-error 转正。
-        continue-on-error: true
+        # 2026-09-14 漂移已清零（索引命名统一 idx_*、user_settings 已建模、
+        # 可空性/外键对齐），闸门转为阻塞。前置：models/__init__.py 顶部设置了
+        # SQLModel.metadata 命名约定，env.py 导入了全部模型——这两处动过必挂。
         env:
           DATABASE_URL: postgresql+psycopg://xpouch_test:test_pass@localhost:5432/xpouch_migrations
         run: uv run alembic check

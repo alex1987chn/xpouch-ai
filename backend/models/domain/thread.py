@@ -8,7 +8,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, String, func
+from sqlalchemy import Column, Index, String, func
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -39,6 +39,7 @@ class Thread(SQLModel, table=True):
                 native_enum=True,
                 values_callable=_enum_values,
             ),
+            nullable=False,
             index=True,
         ),
     )
@@ -52,10 +53,13 @@ class Thread(SQLModel, table=True):
     # 用户ID
     user_id: str = Field(foreign_key="user.id", index=True, max_length=64)
 
+    __table_args__ = (Index("idx_thread_user_updated", "user_id", "updated_at"),)
+
     # 关联的复杂执行计划（仅复杂模式有值）
     execution_plan_id: str | None = Field(
         default=None,
         foreign_key="executionplan.id",
+        ondelete="SET NULL",
         index=True,
         max_length=64,
     )

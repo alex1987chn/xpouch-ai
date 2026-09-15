@@ -24,6 +24,6 @@ class AuditLog(SQLModel, table=True):
     action: str = Field(index=True, max_length=64)  # 如 user.update / expert.delete / quota.update
     target: str | None = Field(default=None, max_length=128, index=True)
     detail: dict | None = Field(default=None, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=utc_now_naive, index=True)
+    created_at: datetime = Field(default_factory=utc_now_naive)  # 索引见 __table_args__
 
     __table_args__ = (Index("idx_auditlog_created", "created_at"),)

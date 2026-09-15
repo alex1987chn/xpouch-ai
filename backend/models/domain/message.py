@@ -7,7 +7,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, Index
+from sqlalchemy import JSON, Column, Index, Text
 from sqlmodel import Field, Relationship, SQLModel
 
 from utils.time import utc_now_naive
@@ -19,9 +19,9 @@ class Message(SQLModel, table=True):
     __tablename__ = "message"
 
     id: int | None = Field(default=None, primary_key=True)
-    thread_id: str = Field(foreign_key="thread.id", index=True, max_length=64)
+    thread_id: str = Field(foreign_key="thread.id", index=True, max_length=64, ondelete="CASCADE")
     role: str = Field(max_length=20)
-    content: str
+    content: str = Field(sa_type=Text)
     timestamp: datetime = Field(default_factory=utc_now_naive)
     # extra_data 字段存储 thinking、reasoning 等额外信息
     extra_data: dict | None = Field(default=None, sa_column=Column(JSON))

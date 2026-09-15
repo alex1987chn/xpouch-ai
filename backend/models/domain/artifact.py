@@ -8,6 +8,7 @@
 from datetime import datetime
 from typing import Optional
 
+from sqlalchemy import Text
 from sqlmodel import Field, Relationship, SQLModel
 
 from utils.time import utc_now_naive
@@ -27,7 +28,9 @@ class Artifact(SQLModel, table=True):
     )
 
     # 关联的子任务
-    sub_task_id: str = Field(foreign_key="subtask.id", index=True, max_length=64)
+    sub_task_id: str = Field(
+        foreign_key="subtask.id", index=True, max_length=64, ondelete="CASCADE"
+    )
 
     # 冗余会话 ID（写入时从 subtask→executionplan 派生）：
     # 跨会话产物列表免 4 表 join，直接按 user 的 thread 集合过滤
@@ -40,7 +43,7 @@ class Artifact(SQLModel, table=True):
     title: str | None = Field(default=None, max_length=255)
 
     # 产物内容
-    content: str
+    content: str = Field(sa_type=Text)
 
     # 代码语言（如果是代码类型）
     language: str | None = Field(default=None, max_length=64)

@@ -41,7 +41,9 @@ class MCPServer(SQLModel, table=True):
     transport: str = Field(
         default="sse", description="传输协议：sse (Server-Sent Events) 或 streamable_http"
     )
-    is_active: bool = Field(default=True, description="是否启用（前端硬核 Toggle 开关）")
+    is_active: bool = Field(
+        default=True, index=True, description="是否启用（前端硬核 Toggle 开关）"
+    )
     icon: str | None = Field(default=None, description="图标 URL 或图标名称")
     connection_status: str = Field(
         default="unknown", description="连接状态：unknown/connected/error"
