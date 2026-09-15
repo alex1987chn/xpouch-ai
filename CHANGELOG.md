@@ -5,7 +5,9 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2026-09-16] - v3.5.2 评审修复批次：工具循环、流式语义与迁移健壮性
+
+全项目评审（合理性 / 反模式 / 前后端实现 / 架构健壮性 / 可维护性）产出的三批修复与清扫。
 
 ### 变更
 
