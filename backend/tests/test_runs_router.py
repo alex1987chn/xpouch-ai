@@ -95,7 +95,7 @@ async def test_get_thread_timeline_requires_thread_ownership(sample_user, monkey
 
     monkeypatch.setattr(runs, "get_run_events_by_thread_id", lambda *_args, **_kwargs: [])
 
-    with pytest.raises(AuthorizationError, match="无权访问此线程"):
+    with pytest.raises(AuthorizationError, match="没有权限访问此会话"):
         await runs.get_thread_timeline(
             thread_id="thread-1",
             limit=200,

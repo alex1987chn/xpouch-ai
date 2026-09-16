@@ -335,38 +335,3 @@ def get_aggregator_llm() -> ChatOpenAI:
 # ============================================================================
 # 便捷函数
 # ============================================================================
-
-
-def list_available_providers() -> list:
-    """列出所有可用的提供商"""
-    from providers_config import get_active_providers
-
-    return list(get_active_providers().keys())
-
-
-def clear_llm_cache():
-    """清空 LLM 缓存（关闭全部实例持有的 httpx.Client）"""
-    with _llm_cache_lock:
-        instances = list(_llm_instance_cache.values())
-        _llm_instance_cache.clear()
-    for instance in instances:
-        _close_llm_instance(instance)
-
-
-def get_llm_cache_info():
-    """获取缓存信息"""
-    with _llm_cache_lock:
-        return {"size": len(_llm_instance_cache), "maxsize": _LLM_CACHE_MAX}
-
-
-# 说明：LLM 层重试已交由 ChatOpenAI 自带的 max_retries（指数退避）承担。
-# 此前这里的 tenacity 包装与官方内建重试叠加，故障时会把一次失败放大成
-# 6 次请求，且零调用方——已移除。业务级重试（如计划生成 JSON 校验失败
-# 重出）由调用方自行实现（见 commander._generate_plan_with_json_mode）。
-
-
-if __name__ == "__main__":
-    from providers_config import print_provider_status
-
-    print_provider_status()
-    custom_logger.info(f"\n缓存信息: {get_llm_cache_info()}")

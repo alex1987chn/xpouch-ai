@@ -6,14 +6,38 @@
 """
 
 from agents.plan_waves import (
-    blocked_task_ids,
-    completed_task_ids,
-    deadlocked_task_ids,
-    is_plan_finished,
+    _COMPLETED,
+    _TERMINAL_FAILURE,
+    _task_key,
     plan_wave_decision,
-    ready_task_ids,
     select_wave,
 )
+
+
+# 断言便捷视图：原为生产模块的导出包装，生产侧零消费后下沉到测试文件
+# （语义与 WaveDecision 字段一一对应；completed/failed 两个集合视图同理）
+def ready_task_ids(task_list):
+    return plan_wave_decision(task_list).ready
+
+
+def blocked_task_ids(task_list):
+    return plan_wave_decision(task_list).blocked
+
+
+def deadlocked_task_ids(task_list):
+    return plan_wave_decision(task_list).deadlocked
+
+
+def is_plan_finished(task_list):
+    return plan_wave_decision(task_list).finished
+
+
+def completed_task_ids(task_list):
+    return {_task_key(t) for t in task_list if t.get("status") == _COMPLETED}
+
+
+def failed_task_ids(task_list):
+    return {_task_key(t) for t in task_list if t.get("status") in _TERMINAL_FAILURE}
 
 
 def _task(task_id: str, *, deps: list[str] | None = None, status: str = "pending", order: int = 0):

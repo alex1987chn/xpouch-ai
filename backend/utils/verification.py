@@ -6,7 +6,9 @@
 
 import secrets
 import string
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from utils.time import utc_now_naive as utcnow  # 全库统一 naive-UTC 单一口径
 
 
 class VerificationCodeError(Exception):
@@ -31,11 +33,6 @@ class VerificationCodeRateLimitError(VerificationCodeError):
     """验证码请求过于频繁或已被临时锁定"""
 
     pass
-
-
-def utcnow() -> datetime:
-    """返回与现有数据库字段兼容的 naive UTC 时间。"""
-    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def generate_verification_code(length: int = 6) -> str:
@@ -187,22 +184,6 @@ def validate_phone_number(phone: str) -> bool:
     return len(phone) == 11 and phone.startswith("1")
 
 
-def validate_email(email: str) -> bool:
-    """
-    验证邮箱格式
-
-    Args:
-        email: 邮箱地址
-
-    Returns:
-        是否有效
-    """
-    import re
-
-    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-    return re.match(pattern, email) is not None
-
-
 def mask_phone_number(phone: str, visible_digits: int = 4) -> str:
     """
     脱敏手机号码
@@ -225,39 +206,3 @@ def mask_phone_number(phone: str, visible_digits: int = 4) -> str:
 
     middle_length = len(phone) - 3 - visible_digits
     return phone[:3] + "*" * middle_length + phone[-visible_digits:]
-
-
-def mask_email(email: str) -> str:
-    """
-    脱敏邮箱地址
-
-    Args:
-        email: 邮箱地址
-
-    Returns:
-        脱敏后的邮箱地址
-    """
-    if "@" not in email:
-        return email
-
-    username, domain = email.split("@", 1)
-
-    # 用户名保留第一个字符和最后一个字符，中间用*代替
-    if len(username) <= 2:
-        masked_username = "*" * len(username)
-    else:
-        masked_username = username[0] + "*" * (len(username) - 2) + username[-1]
-
-    # 域名保留第一部分和后缀，中间用*代替
-    domain_parts = domain.split(".")
-    if len(domain_parts) >= 2:
-        tld = ".".join(domain_parts[-2:])
-        main_domain = ".".join(domain_parts[:-2])
-        if len(main_domain) <= 2:
-            masked_domain = "*" * len(main_domain) + "." + tld
-        else:
-            masked_domain = main_domain[0] + "*" * (len(main_domain) - 1) + "." + tld
-    else:
-        masked_domain = domain
-
-    return masked_username + "@" + masked_domain

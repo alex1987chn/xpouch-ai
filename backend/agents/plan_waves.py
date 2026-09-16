@@ -68,16 +68,6 @@ def _status_by_key(task_list: list[dict[str, Any]]) -> dict[str, str]:
     return status
 
 
-def completed_task_ids(task_list: list[dict[str, Any]]) -> set[str]:
-    """已完成任务的 key 集合。"""
-    return {_task_key(t) for t in task_list if t.get("status") == _COMPLETED}
-
-
-def failed_task_ids(task_list: list[dict[str, Any]]) -> set[str]:
-    """失败/已取消任务的 key 集合。"""
-    return {_task_key(t) for t in task_list if t.get("status") in _TERMINAL_FAILURE}
-
-
 @dataclass(frozen=True)
 class WaveDecision:
     """一轮波次判定的完整结果。
@@ -196,24 +186,6 @@ def plan_wave_decision(task_list: list[dict[str, Any]]) -> WaveDecision:
     return WaveDecision(ready=ready, blocked=blocked_ordered, deadlocked=deadlocked)
 
 
-def ready_task_ids(task_list: list[dict[str, Any]]) -> list[str]:
-    """按 `sort_order` 返回「已就绪」的任务 key 列表。
-
-    就绪 = pending 且所有依赖都已完成（悬空依赖容忍，见模块 docstring）。
-    """
-    return plan_wave_decision(task_list).ready
-
-
-def blocked_task_ids(task_list: list[dict[str, Any]]) -> list[str]:
-    """返回因上游失败/取消而**永远不会就绪**的 pending 任务 key（含传递）。"""
-    return plan_wave_decision(task_list).blocked
-
-
-def deadlocked_task_ids(task_list: list[dict[str, Any]]) -> list[str]:
-    """返回依赖成环、永远不会就绪的 pending 任务 key。"""
-    return plan_wave_decision(task_list).deadlocked
-
-
 def select_wave(task_list: list[dict[str, Any]], max_concurrency: int) -> list[str]:
     """从就绪任务中取出本轮要执行的一批（上限 `max_concurrency`）。
 
@@ -224,8 +196,3 @@ def select_wave(task_list: list[dict[str, Any]], max_concurrency: int) -> list[s
     if max_concurrency <= 1:
         return ready[:1]
     return ready[:max_concurrency]
-
-
-def is_plan_finished(task_list: list[dict[str, Any]]) -> bool:
-    """计划是否已无可执行任务（没有 pending，或 pending 全部就绪不了）。"""
-    return plan_wave_decision(task_list).finished

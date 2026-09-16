@@ -110,18 +110,3 @@ def parse_artifacts_from_response(response: str) -> list[dict]:
             )
 
     return artifacts
-
-
-def generate_artifact_event(artifact: dict) -> str:
-    """
-    生成Artifact的SSE事件
-
-    Args:
-        artifact: artifact字典
-
-    Returns:
-        SSE格式的字符串
-    """
-    import json
-
-    return f"data: {json.dumps({'type': 'artifact', 'artifact': artifact})}\n\n"

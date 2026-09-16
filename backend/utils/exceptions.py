@@ -43,15 +43,6 @@ class ValidationError(AppError):
         )
 
 
-class AuthenticationError(AppError):
-    """认证错误"""
-
-    def __init__(self, message: str = "认证失败", details: dict[str, Any] | None = None):
-        super().__init__(
-            message=message, code=ErrorCode.AUTHENTICATION_ERROR, status_code=401, details=details
-        )
-
-
 class AuthorizationError(AppError):
     """授权错误"""
 
@@ -70,65 +61,6 @@ class NotFoundError(AppError):
         )
 
 
-class LLMError(AppError):
-    """LLM API调用错误"""
-
-    def __init__(
-        self, message: str, provider: str = "unknown", details: dict[str, Any] | None = None
-    ):
-        details = details or {}
-        details["provider"] = provider
-        super().__init__(
-            message=message,
-            code=ErrorCode.LLM_ERROR,
-            status_code=502,  # Bad Gateway
-            details=details,
-        )
-
-
-class DatabaseError(AppError):
-    """数据库错误"""
-
-    def __init__(
-        self, message: str, operation: str = "unknown", details: dict[str, Any] | None = None
-    ):
-        details = details or {}
-        details["operation"] = operation
-        super().__init__(
-            message=message,
-            code=ErrorCode.DATABASE_ERROR,
-            status_code=503,  # Service Unavailable
-            details=details,
-        )
-
-
-class ExternalServiceError(AppError):
-    """外部服务错误"""
-
-    def __init__(self, service: str, message: str, details: dict[str, Any] | None = None):
-        details = details or {}
-        details["service"] = service
-        super().__init__(
-            message=f"{service} 服务错误: {message}",
-            code=ErrorCode.EXTERNAL_SERVICE_ERROR,
-            status_code=502,
-            details=details,
-        )
-
-
-class RateLimitError(AppError):
-    """速率限制错误"""
-
-    def __init__(self, message: str = "请求过于频繁", retry_after: int | None = None):
-        details = {}
-        if retry_after:
-            details["retry_after"] = retry_after
-        super().__init__(
-            message=message, code=ErrorCode.RATE_LIMIT, status_code=429, details=details
-        )
-
-
-# 错误处理工具函数
 def handle_error(error: Exception) -> AppError:
     """将通用异常转换为 AppError"""
     if isinstance(error, AppError):

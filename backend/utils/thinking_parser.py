@@ -5,10 +5,7 @@
 类似 DeepSeek Chat 和 Kimi Chat 的展开/收起功能
 """
 
-import json
 import re
-
-from utils.logger import logger
 
 
 def parse_thinking(content: str) -> tuple[str, dict | None]:
@@ -132,61 +129,3 @@ def _parse_thinking_steps(thought_text: str) -> list:
         )
 
     return steps
-
-
-def extract_thinking_for_stream(content: str) -> tuple[bool, str, str | None]:
-    """
-    流式处理时提取 thinking 内容
-
-    Args:
-        content: 当前累积的内容
-
-    Returns:
-        Tuple[是否在thought标签内, 当前thinking内容, 已完成的thinking内容]
-    """
-    # 检查是否在 <thought> 标签内
-    opening_tags = re.findall(r"<(thought|think)>", content, re.IGNORECASE)
-    closing_tags = re.findall(r"</(thought|think)>", content, re.IGNORECASE)
-
-    in_thought = len(opening_tags) > len(closing_tags)
-
-    # 提取当前正在进行的 thought
-    if in_thought:
-        # 找到最后一个打开的标签位置
-        last_open_match = None
-        for match in re.finditer(r"<(thought|think)>", content, re.IGNORECASE):
-            last_open_match = match
-
-        if last_open_match:
-            current_thought = content[last_open_match.end() :].strip()
-            return True, current_thought, None
-
-    # 提取已完成的 thought
-    completed_thought = None
-    thought_pattern = r"<(thought|think)>(.*?)</\1>"
-    matches = list(re.finditer(thought_pattern, content, re.DOTALL | re.IGNORECASE))
-    if matches:
-        # 合并所有已完成的 thought
-        completed_thought = "\n\n".join([m.group(2).strip() for m in matches])
-
-    return False, "", completed_thought
-
-
-if __name__ == "__main__":
-    # 测试用例
-    test_cases = [
-        "<thought>我需要分析这个问题...\n首先，考虑X\n然后，考虑Y</thought>\n答案是42",
-        "<think>让我想想...</think>\n这是最终答案",
-        "没有 thought 标签的普通消息",
-        "<thought>第一步\n第二步\n第三步</think>",
-    ]
-
-    for i, test in enumerate(test_cases, 1):
-        logger.info(f"\n=== 测试用例 {i} ===")
-        logger.info(f"原文:\n{test}\n")
-        clean, thinking = parse_thinking(test)
-        logger.info(f"清理后:\n{clean}\n")
-        if thinking:
-            logger.info(f"Thinking 数据:\n{json.dumps(thinking, indent=2, ensure_ascii=False)}\n")
-        else:
-            logger.info("未找到 thought 标签")

@@ -22,7 +22,6 @@ from crud.execution_plan import (
     update_artifact_content,
 )
 from models import Artifact, ExecutionPlan, SubTask, Thread
-from utils.artifacts import parse_artifacts_from_response
 from utils.exceptions import AuthorizationError, NotFoundError
 from utils.logger import logger
 
@@ -267,67 +266,3 @@ class ArtifactService:
     # ============================================================================
     # Artifact 解析（包装 utils.artifacts）
     # ============================================================================
-
-    def parse_artifacts_from_llm_response(self, response: str) -> list[dict[str, Any]]:
-        """
-        从 LLM 响应中解析 Artifacts
-
-        包装 backend.utils.artifacts.parse_artifacts_from_response
-
-        Args:
-            response: LLM 响应文本
-
-        Returns:
-            Artifacts 列表
-        """
-        return parse_artifacts_from_response(response)
-
-    def extract_code_blocks(
-        self, response: str, language_filter: str | None = None
-    ) -> list[dict[str, Any]]:
-        """
-        提取代码块
-
-        Args:
-            response: LLM 响应文本
-            language_filter: 语言过滤（如 'python', 'javascript'）
-
-        Returns:
-            代码块列表
-        """
-        artifacts = parse_artifacts_from_response(response)
-        code_artifacts = [a for a in artifacts if a.get("type") == "code"]
-
-        if language_filter:
-            code_artifacts = [a for a in code_artifacts if a.get("language") == language_filter]
-
-        return code_artifacts
-
-    # ============================================================================
-    # 批量操作
-    # ============================================================================
-
-    async def batch_update_artifacts(
-        self, updates: list[dict[str, str]], user_id: str
-    ) -> list[dict[str, Any]]:
-        """
-        批量更新 Artifacts
-
-        Args:
-            updates: 更新列表，每项包含 artifact_id 和 content
-            user_id: 用户ID
-
-        Returns:
-            更新结果列表
-        """
-        results = []
-        for update in updates:
-            try:
-                result = await self.update_artifact(
-                    artifact_id=update["artifact_id"], content=update["content"], user_id=user_id
-                )
-                results.append({"success": True, "data": result})
-            except Exception as e:
-                results.append({"success": False, "error": str(e)})
-
-        return results

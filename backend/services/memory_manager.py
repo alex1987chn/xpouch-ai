@@ -100,35 +100,6 @@ class MemoryManager:
             logger.error(f"[Memory] ❌ 检索失败: {e}")
             return ""
 
-    def _get_all_memories_sync(self, user_id: str, limit: int = 50) -> list[UserMemory]:
-        """获取用户所有记忆（用于调试或导出）"""
-        try:
-            with Session(engine) as session:
-                statement = (
-                    select(UserMemory)
-                    .where(UserMemory.user_id == user_id)
-                    .order_by(UserMemory.created_at.desc())
-                    .limit(limit)
-                )
-                return session.exec(statement).all()
-        except Exception as e:
-            logger.error(f"[Memory] ❌ 获取记忆失败: {e}")
-            return []
-
-    def _delete_memory_sync(self, memory_id: int, user_id: str) -> bool:
-        """删除指定记忆"""
-        try:
-            with Session(engine) as session:
-                memory = session.get(UserMemory, memory_id)
-                if memory and memory.user_id == user_id:
-                    session.delete(memory)
-                    session.commit()
-                    return True
-                return False
-        except Exception as e:
-            logger.error(f"[Memory] ❌ 删除记忆失败: {e}")
-            return False
-
     # --- 异步入口 (供 Agent 调用) ---
     async def add_memory(
         self, user_id: str, content: str, source: str = "conversation", memory_type: str = "fact"
@@ -144,14 +115,6 @@ class MemoryManager:
         改用容器/WSL 跑后端绕开。
         """
         return await asyncio.to_thread(self._search_sync, user_id, query, limit)
-
-    async def get_user_memories(self, user_id: str, limit: int = 50) -> list[UserMemory]:
-        """异步获取用户所有记忆"""
-        return await asyncio.to_thread(self._get_all_memories_sync, user_id, limit)
-
-    async def delete_memory(self, memory_id: int, user_id: str) -> bool:
-        """异步删除记忆"""
-        return await asyncio.to_thread(self._delete_memory_sync, memory_id, user_id)
 
 
 # 全局记忆管理器实例

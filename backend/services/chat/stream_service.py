@@ -55,6 +55,15 @@ from utils.time import utc_now_naive
 _DELTA_ALLOWED_NODES = frozenset({"aggregator", "direct_reply"})
 
 
+def _build_isolated_thread_id(thread_id: str, run_id: str | None) -> str:
+    """确定性隔离 checkpoint thread_id：`{thread_id}_{run_id}`（无 run 时退回原 id）。
+
+    首跑与恢复各自从请求参数即可重建同一个 id——这是 B3b（checkpoint 对齐业务
+    thread）推迟期间的唯一契约，此前两条流各写一遍 f-string 靠注释维持同步。
+    """
+    return f"{thread_id}_{run_id}" if run_id else thread_id
+
+
 class StreamService(CustomAgentMixin, EventBuildersMixin):
     """流式处理服务。
 
@@ -187,21 +196,17 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             # 由 wave_scheduler 的 route_wave 读取（决定本轮 Send 扇出几个任务）。
             from services.run_concurrency import resolve_graph_max_concurrency
 
-            max_concurrency = resolve_graph_max_concurrency(self.db)
+            # 确定性的隔离 thread_id：新消息不受旧 checkpoint 影响，恢复可重建（见 helper）
+            isolated_thread_id = _build_isolated_thread_id(thread_id, agent_run.id)
             config = {
                 "recursion_limit": settings.recursion_limit,
                 "configurable": {
-                    "thread_id": thread_id,
+                    "thread_id": isolated_thread_id,
                     "stream_queue": stream_queue,
                     "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
-                    "graph_max_concurrency": max_concurrency,
+                    "graph_max_concurrency": resolve_graph_max_concurrency(self.db),
                 },
             }
-
-            # 🔥🔥🔥 关键修复：使用确定性的隔离 thread_id，确保新消息不受旧状态影响
-            # 格式: {thread_id}_{agent_run.id} - 确定性，可在恢复时重建
-            isolated_thread_id = f"{thread_id}_{agent_run.id}"
-            config["configurable"]["thread_id"] = isolated_thread_id
             logger.info(f"[StreamService] 使用隔离的 thread_id: {isolated_thread_id}")
 
             # 注入初始状态（现在使用隔离的 thread_id，不会与旧状态冲突）
@@ -802,9 +807,8 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
 
         graph = create_smart_router_workflow(checkpointer=get_shared_checkpointer())
 
-        # 🔥🔥🔥 关键修复：使用与初始执行相同的确定性 isolated_thread_id
-        # 格式: {thread_id}_{run_id} - 必须与 handle_langgraph_stream 中的格式一致
-        isolated_thread_id = f"{thread_id}_{run_id}" if run_id else thread_id
+        # 与初始执行相同的确定性 isolated_thread_id（同一 helper，格式锁进代码）
+        isolated_thread_id = _build_isolated_thread_id(thread_id, run_id)
         from services.run_concurrency import resolve_graph_max_concurrency
 
         config = {
@@ -1116,16 +1120,14 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         return None
 
     def _get_latest_execution_plan(self, thread_id: str) -> ExecutionPlan | None:
-        """获取线程最新的 ExecutionPlan。"""
-        return self.db.exec(
-            select(ExecutionPlan)
-            .where(ExecutionPlan.thread_id == thread_id)
-            .order_by(ExecutionPlan.created_at.desc())
-        ).first()
+        """获取线程最新的 ExecutionPlan（单一实现在 crud.execution_plan）。"""
+        from crud.execution_plan import get_latest_execution_plan_by_thread
+
+        return get_latest_execution_plan_by_thread(self.db, thread_id)
 
     def _get_execution_plan_by_run(self, run_id: str) -> ExecutionPlan | None:
-        """按 run_id 获取 ExecutionPlan（单一实现在 run_lifecycle）。"""
-        from services.chat.run_lifecycle import get_execution_plan_by_run
+        """按 run_id 获取 ExecutionPlan（单一实现在 crud.execution_plan）。"""
+        from crud.execution_plan import get_execution_plan_by_run
 
         return get_execution_plan_by_run(self.db, run_id)
 

@@ -12,11 +12,11 @@
 
 from datetime import timedelta
 
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from crud.agent_run import mark_run_completed_by_id, mark_run_failed_by_id, update_run_status_by_id
 from crud.run_event import emit_run_completed
-from models import AgentRun, ExecutionPlan
+from models import AgentRun
 from models.enums import RunStatus
 from utils.exceptions import AuthorizationError, NotFoundError, ValidationError
 from utils.logger import logger
@@ -92,11 +92,6 @@ def finalize_run_completed(session: Session, run_id: str, thread_id: str) -> Non
     emit_run_completed(session, run_id=run_id, thread_id=thread_id)
     session.commit()
     logger.info(f"[RunLifecycle] AgentRun {run_id} finalized as completed")
-
-
-def get_execution_plan_by_run(session: Session, run_id: str) -> ExecutionPlan | None:
-    """按 run_id 获取 ExecutionPlan。"""
-    return session.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)).first()
 
 
 def get_agent_run_or_raise(

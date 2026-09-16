@@ -1,6 +1,6 @@
 """RunFrameRecorder —— SSE 帧的「编号 + 批量落库」出口（批次 D · 第 2 片）。
 
-它在流式链路上的位置（`StreamService._push_event` 是唯一调用点）：
+它在流式链路上的位置（`StreamPipeline.emit` 是唯一调用点，见 stream_pipeline.py）：
 
     seq = await frames.reserve_seq(run_id)            # ① 分配 run 级序号
     id_wire = hub.publish(run_id, wire, seq)          # ② 实时广播（注入 id: 行）
@@ -95,7 +95,7 @@ class RunFrameRecorder:
         self._runs: dict[str, _RunFrames] = {}
         self._max_runs = max_runs
 
-    # ── 写端（被 _push_event 调用）─────────────────────────────────────────
+    # ── 写端（被 StreamPipeline.emit 调用）─────────────────────────────────────────
 
     async def reserve_seq(self, run_id: str) -> int:
         """分配该 run 的下一个 seq。

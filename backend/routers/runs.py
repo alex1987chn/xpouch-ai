@@ -40,12 +40,10 @@ def _get_run_or_raise(db: Session, run_id: str, user_id: str, is_admin: bool = F
 
 
 def _get_thread_or_raise(db: Session, thread_id: str, user_id: str) -> Thread:
-    thread = db.get(Thread, thread_id)
-    if thread is None:
-        raise NotFoundError("Thread")
-    if thread.user_id != user_id:
-        raise AuthorizationError("无权访问此线程")
-    return thread
+    # 单一实现在 thread_service（run 侧对称物 get_agent_run_or_raise）
+    from services.chat.thread_service import get_thread_or_raise
+
+    return get_thread_or_raise(db, thread_id, user_id)
 
 
 @router.get("/{run_id}", response_model=RunSummaryResponse)

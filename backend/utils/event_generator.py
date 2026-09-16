@@ -271,11 +271,6 @@ def event_task_started(*args, **kwargs) -> SSEEvent:
     return _event_generator.task_started(*args, **kwargs)
 
 
-def event_task_progress(*args, **kwargs) -> SSEEvent:
-    """便捷函数：生成 task.progress 事件"""
-    return _event_generator.task_progress(*args, **kwargs)
-
-
 def event_task_completed(*args, **kwargs) -> SSEEvent:
     """便捷函数：生成 task.completed 事件"""
     return _event_generator.task_completed(*args, **kwargs)

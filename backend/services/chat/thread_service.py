@@ -105,6 +105,21 @@ def save_assistant_message_sync(
     return message
 
 
+def get_thread_or_raise(db: Session, thread_id: str, user_id: str) -> Thread:
+    """线程归属校验单一实现（run 侧对称物：run_lifecycle.get_agent_run_or_raise）。
+
+    此前同款「不存在→404 / 非属主→403」块在 thread_service / runs / chat /
+    share_service 至少 6 处复制粘贴。注意 artifact_service 的两处**有意不走
+    这里**：它们经 subtask→plan 间接取 thread，且对孤儿 thread 放行（宽松语义）。
+    """
+    thread = db.get(Thread, thread_id)
+    if not thread:
+        raise NotFoundError(resource="会话")
+    if thread.user_id != user_id:
+        raise AuthorizationError("没有权限访问此会话")
+    return thread
+
+
 class ChatThreadService:
     """聊天线程管理服务"""
 
@@ -257,13 +272,8 @@ class ChatThreadService:
             NotFoundError: 线程不存在
             AuthorizationError: 无权访问此线程
         """
-        # 1. 验证线程存在且属于当前用户
-        thread = self.db.get(Thread, thread_id)
-        if not thread:
-            raise NotFoundError(resource="会话")
-
-        if thread.user_id != user_id:
-            raise AuthorizationError("没有权限访问此会话")
+        # 1. 验证线程存在且属于当前用户（本方法不消费 thread 实例）
+        get_thread_or_raise(self.db, thread_id, user_id)
 
         # 2. 查询消息（按时间正序）
         statement = (
@@ -298,14 +308,14 @@ class ChatThreadService:
             NotFoundError: 线程不存在
             AuthorizationError: 无权访问此线程
         """
+        # 此处不走共享助手：selectinload 预载 messages 是本路径的前提，
+        # 助手的 db.get 不会带预载（懒加载在 async 上下文会 MissingGreenlet）
         statement = (
             select(Thread).where(Thread.id == thread_id).options(selectinload(Thread.messages))
         )
         thread = self.db.exec(statement).first()
-
         if not thread:
             raise NotFoundError(resource="会话")
-
         if thread.user_id != user_id:
             raise AuthorizationError("没有权限访问此会话")
 
@@ -442,12 +452,7 @@ class ChatThreadService:
             NotFoundError: 线程不存在
             AuthorizationError: 无权删除此线程
         """
-        thread = self.db.get(Thread, thread_id)
-        if not thread:
-            raise NotFoundError(resource="会话")
-
-        if thread.user_id != user_id:
-            raise AuthorizationError("没有权限访问此会话")
+        thread = get_thread_or_raise(self.db, thread_id, user_id)
 
         execution_plans = self.db.exec(
             select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)

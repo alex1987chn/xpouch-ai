@@ -42,7 +42,6 @@ from models import (
     AgentRun,
     MessageResponse,
     PaginatedThreadListResponse,
-    Thread,
     ThreadDetailResponse,
     User,
 )
@@ -661,9 +660,11 @@ async def resume_stream(
     断线久了的客户端会落在窗口之前——直接跟随会**静默丢掉中间一段**（不报错，
     只是文字少半截）。已落库的帧覆盖这段，见 services/chat/frame_replay.py。
     """
-    thread = session.get(Thread, thread_id)
-    if not thread or thread.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="会话不存在")
+    # 归属校验统一走共享助手（此前 404 混用：不存在与无权都报 404，
+    # 与全站 NotFoundError/AuthorizationError 两段模型不一致）
+    from services.chat.thread_service import get_thread_or_raise
+
+    get_thread_or_raise(session, thread_id, current_user.id)
 
     run = session.exec(
         select(AgentRun).where(AgentRun.thread_id == thread_id).order_by(AgentRun.started_at.desc())

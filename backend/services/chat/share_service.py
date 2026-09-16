@@ -20,8 +20,8 @@ from typing import Any
 from sqlmodel import Session
 
 from crud.execution_plan import get_artifact
-from models import Artifact, ExecutionPlan, ShareToken, SkillTemplate, SubTask, Thread
-from utils.exceptions import AuthorizationError, NotFoundError
+from models import Artifact, ExecutionPlan, ShareToken, SkillTemplate, SubTask
+from utils.exceptions import NotFoundError
 from utils.logger import logger
 from utils.secret_hash import hash_secret
 from utils.time import utc_now_naive
@@ -185,7 +185,9 @@ class ShareService:
             if subtask and subtask.execution_plan_id
             else None
         )
-        thread = self.db.get(Thread, plan.thread_id) if plan and plan.thread_id else None
-        if not thread or thread.user_id != user_id:
-            raise AuthorizationError("无权操作此产物")
+        if plan and plan.thread_id:
+            # 归属校验共享助手（经 plan.thread_id 定位属主）
+            from services.chat.thread_service import get_thread_or_raise
+
+            get_thread_or_raise(self.db, plan.thread_id, user_id)
         return artifact

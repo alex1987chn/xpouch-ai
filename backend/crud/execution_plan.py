@@ -15,7 +15,6 @@ from models import (
     ExecutionPlan,
     SubTask,
     SubTaskCreate,
-    SubTaskUpdate,
     TaskStatus,
     Thread,
 )
@@ -51,24 +50,19 @@ def get_execution_plan(db: Session, execution_plan_id: str) -> ExecutionPlan | N
     return db.exec(statement).first()
 
 
-def get_execution_plan_by_thread(db: Session, thread_id: str) -> ExecutionPlan | None:
-    """通过线程 ID 获取该线程**最新**的执行计划（无则 None）。
-
-    一个会话可以有多份计划（一 run 一计划）——同会话里先生成网页、再写小游戏，
-    会各留一份计划与产物，互不覆盖。因此必须显式按 created_at 取最新；
-    原实现用无 ORDER BY 的 `.first()`，多计划下结果不确定。
-    """
-    statement = (
-        select(ExecutionPlan)
-        .where(ExecutionPlan.thread_id == thread_id)
-        .order_by(ExecutionPlan.created_at.desc())
-    )
-    return db.exec(statement).first()
-
-
 def get_execution_plan_by_run(db: Session, run_id: str) -> ExecutionPlan | None:
     """按 run_id 获取 ExecutionPlan（一 run 一计划，故至多一份）。"""
     return db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)).first()
+
+
+def get_latest_execution_plan_by_thread(db: Session, thread_id: str) -> ExecutionPlan | None:
+    """取线程**最新**的执行计划（显式 created_at 倒序；一个会话可有多份计划，
+    一 run 一计划，先生成网页再写小游戏各留一份、互不覆盖）。"""
+    return db.exec(
+        select(ExecutionPlan)
+        .where(ExecutionPlan.thread_id == thread_id)
+        .order_by(ExecutionPlan.created_at.desc())
+    ).first()
 
 
 def update_execution_plan_status(
@@ -93,33 +87,6 @@ def update_execution_plan_status(
     db.commit()
     db.refresh(execution_plan)
     return execution_plan
-
-
-def create_subtask(
-    db: Session,
-    execution_plan_id: str,
-    expert_type: str,
-    task_description: str,
-    sort_order: int = 0,
-    input_data: dict | None = None,
-    execution_mode: str = "sequential",
-    depends_on: list[str] | None = None,
-) -> SubTask:
-    """创建子任务。"""
-    subtask = SubTask(
-        execution_plan_id=execution_plan_id,
-        expert_type=expert_type,
-        task_description=task_description,
-        sort_order=sort_order,
-        input_data=input_data,
-        execution_mode=execution_mode,
-        depends_on=depends_on,
-        status=TaskStatus.PENDING,
-    )
-    db.add(subtask)
-    db.commit()
-    db.refresh(subtask)
-    return subtask
 
 
 def get_subtask(db: Session, subtask_id: str) -> SubTask | None:
@@ -170,23 +137,6 @@ def update_subtask_status(
     return subtask
 
 
-def update_subtask(db: Session, subtask_id: str, update_data: SubTaskUpdate) -> SubTask | None:
-    """通用子任务更新。"""
-    subtask = get_subtask(db, subtask_id)
-    if not subtask:
-        return None
-
-    update_dict = update_data.model_dump(exclude_unset=True)
-    for key, value in update_dict.items():
-        setattr(subtask, key, value)
-
-    subtask.updated_at = utc_now_naive()
-    db.add(subtask)
-    db.commit()
-    db.refresh(subtask)
-    return subtask
-
-
 def _derive_thread_id(db: Session, sub_task_id: str) -> str | None:
     """从 subtask→executionplan 链路派生 thread_id（artifact 冗余列写入用）。"""
     subtask = db.get(SubTask, sub_task_id)
@@ -194,31 +144,6 @@ def _derive_thread_id(db: Session, sub_task_id: str) -> str | None:
         return None
     plan = db.get(ExecutionPlan, subtask.execution_plan_id)
     return plan.thread_id if plan else None
-
-
-def create_artifact(
-    db: Session,
-    sub_task_id: str,
-    artifact_type: str,
-    content: str,
-    title: str | None = None,
-    language: str | None = None,
-    sort_order: int = 0,
-) -> Artifact:
-    """创建产物。"""
-    artifact = Artifact(
-        sub_task_id=sub_task_id,
-        thread_id=_derive_thread_id(db, sub_task_id),
-        type=artifact_type,
-        title=title,
-        content=content,
-        language=language,
-        sort_order=sort_order,
-    )
-    db.add(artifact)
-    db.commit()
-    db.refresh(artifact)
-    return artifact
 
 
 def create_artifacts_batch(
