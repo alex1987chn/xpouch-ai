@@ -223,8 +223,8 @@ export default function StatsPage() {
   // 与下方内容页同构：标题行 + 卡片网格
   return (
    <StatsShell>
-    <div className="mx-auto max-w-6xl space-y-6">
-     <Skeleton className="h-7 w-48" />
+    <div className="mx-auto max-w-6xl">
+     <Skeleton className="mb-5 h-7 w-48" />
      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {Array.from({ length: 6 }, (_, i) => (
        <CardSkeleton key={i} />
@@ -248,7 +248,7 @@ export default function StatsPage() {
 
  return (
   <StatsShell>
-   <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl">
     <SubPageHeader
      title={t('navStats')}
      right={isAdmin ? (
@@ -257,6 +257,9 @@ export default function StatsPage() {
       </span>
      ) : undefined}
     />
+    </div>
+    {/* 标题在节奏容器外：顶部只保留标题自带的 mb-5，不与 space-y 叠加（对齐管理台/资源库） */}
+    <div className="mx-auto max-w-6xl space-y-6">
 
     {/* 新用户空状态：引导跑第一个任务 */}
     {data?.metrics && data.metrics.total_runs === 0 && (
@@ -383,8 +386,8 @@ export default function StatsPage() {
      {data?.runs && (
       <RunTable runs={data.runs} isAdmin={isAdmin} onRunClick={handleRunClick} />
      )}
+     </div>
     </div>
-   </div>
   </StatsShell>
  )
 }
