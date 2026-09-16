@@ -3,6 +3,7 @@
 > 本文是**使用规范**层：什么场景用什么、怎么写才"像 xpouch"。
 > v3.5.1 起对齐柔和材质体系（Bauhaus 规范已随该主题一并退役）。
 > Token 完整数值见 [THEME_GUIDE.md](./THEME_GUIDE.md)；新页面/新组件上线前过一遍文末检查清单。
+> 组件语法字典、位置与交互态的硬规则见 [docs/DESIGN-SPEC.md](./docs/DESIGN-SPEC.md)。
 
 ---
 

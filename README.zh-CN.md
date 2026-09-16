@@ -330,6 +330,7 @@ BACKUP_KEEP=30 ./scripts/backup_db.sh   # 自定义份数
 - [docs/TARGET-ARCHITECTURE.md](./docs/TARGET-ARCHITECTURE.md) — 目标架构与路线（八条决定、批次记录、实测复盘）
 - [CHANGELOG.md](./CHANGELOG.md)
 - [DESIGN.md](./DESIGN.md) — UI 设计与交互规范
+- [docs/DESIGN-SPEC.md](./docs/DESIGN-SPEC.md) — 组件语法字典与硬规范（位置/交互态/禁则/有意不抽象清单）
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [SECURITY.md](./SECURITY.md)
 - [THEME_GUIDE.md](./THEME_GUIDE.md) — 主题系统

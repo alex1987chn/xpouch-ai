@@ -338,6 +338,7 @@ Backups land in `backups/` (gitignored).
 - [docs/TARGET-ARCHITECTURE.md](./docs/TARGET-ARCHITECTURE.md) — target architecture & roadmap (eight decisions, batch records, field-tested lessons)
 - [CHANGELOG.md](./CHANGELOG.md)
 - [DESIGN.md](./DESIGN.md) — UI & interaction conventions
+- [docs/DESIGN-SPEC.md](./docs/DESIGN-SPEC.md) — component syntax dictionary, placement & interaction-state rules (Chinese)
 - [CONTRIBUTING.md](./CONTRIBUTING.md)（中文）
 - [SECURITY.md](./SECURITY.md)
 - [THEME_GUIDE.md](./THEME_GUIDE.md) — theme system（中文）
