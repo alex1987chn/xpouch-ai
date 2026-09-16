@@ -12,6 +12,7 @@
 夹具与 test_hitl_approval_invariants 同惯例：一次性内存 SQLite。
 """
 
+import asyncio
 from unittest.mock import patch
 
 import pytest
@@ -73,6 +74,10 @@ def _audit_rows(db: Session) -> list[AuditLog]:
 
 async def _noop_cleanup(*_args, **_kwargs) -> None:
     return None
+
+
+# 同步测试里驱动异步服务方法（asyncio_mode=auto 只作用于 async 测试函数）
+asyncio_run = asyncio.run
 
 
 class TestTerminateAudit:
@@ -139,3 +144,57 @@ class TestApproveAudit:
         assert row.action == "plan.approve"
         assert row.detail["plan_version"] == 1
         assert row.detail["plan_modified"] is False
+
+
+class TestListAuditLogs:
+    """回归：列表查询的计数写法（.first()[0] 在本版本 sqlmodel 上炸，
+    接口 500 → 面板吞错渲染成空态——审计页从上线起就没出过列表）。"""
+
+    def _add_second_run(self, db: Session) -> None:
+        now = utc_now_naive()
+        db.add(
+            AgentRun(
+                id="r2",
+                thread_id="t1",
+                user_id="u1",
+                status=RunStatus.WAITING_FOR_APPROVAL,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        db.add(
+            ExecutionPlan(
+                id="p2", thread_id="t1", user_query="第二任务", run_id="r2", plan_version=1
+            )
+        )
+        db.commit()
+
+    def test_list_returns_entries_and_total(self, db):
+        from crud.audit_log import list_audit_logs
+
+        self._add_second_run(db)
+        svc = RecoveryService(db)
+        with patch("utils.db.cleanup_terminal_run", _noop_cleanup):
+            asyncio_run(svc.resume_chat("t1", "r1", "u1", approved=False, feedback=None))
+            asyncio_run(
+                svc.resume_chat("t1", "r2", "u1", approved=True, action="revise", feedback="改")
+            )
+
+        entries, total = list_audit_logs(db)
+        assert total == 2
+        assert [e.action for e in entries] == ["plan.revise", "plan.terminate"]  # 时间倒序
+
+    def test_search_filters(self, db):
+        from crud.audit_log import list_audit_logs
+
+        self._add_second_run(db)
+        svc = RecoveryService(db)
+        with patch("utils.db.cleanup_terminal_run", _noop_cleanup):
+            asyncio_run(svc.resume_chat("t1", "r1", "u1", approved=False, feedback=None))
+            asyncio_run(
+                svc.resume_chat("t1", "r2", "u1", approved=True, action="revise", feedback="改")
+            )
+
+        entries, total = list_audit_logs(db, search="plan.terminate")
+        assert total == 1
+        assert entries[0].action == "plan.terminate"
