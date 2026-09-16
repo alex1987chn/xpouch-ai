@@ -81,12 +81,13 @@ export function SubPageLayout({ menu, active, onSelect, children }: SubPageLayou
 
 /** 内容页标题行（17px 粗体 + 右侧插槽，1px 分隔底）。
  * 右槽惯例：搜索（w-72 SearchInput）/ 计数 / 入口按钮；窄屏自动换行。
- * min-h-9：右槽基准高度与搜索框对齐——右槽为空/矮（徽章类）时标题
- * 底线仍落在同一基准线，跨页切换标题不跳动。 */
+ * 标题自身占 h-9 且底对齐：标题的垂直位置由自己的盒子决定，与右槽高度
+ * 无关——此前只靠行的 min-h-9 兜底（border-box 下内容区最小仅 23px），
+ * 右槽是矮徽章/为空时标题会比有搜索框的页面上浮 ~10px，跨页不齐。 */
 export function SubPageHeader({ title, right }: { title: string; right?: ReactNode }) {
   return (
     <div className="mb-5 flex min-h-9 flex-wrap items-end justify-between gap-x-4 gap-y-3 border-b border-border-divider pb-3">
-      <h2 className="text-[17px] font-bold text-content-primary">{title}</h2>
+      <h2 className="flex h-9 items-end text-[17px] font-bold text-content-primary">{title}</h2>
       {right}
     </div>
   )
