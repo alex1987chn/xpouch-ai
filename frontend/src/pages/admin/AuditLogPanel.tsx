@@ -25,6 +25,10 @@ const ACTION_LABELS: Record<string, string> = {
   'expert.update': '专家 · 更新',
   'expert.delete': '专家 · 删除',
   'quota.update': '配额 · 调整',
+  'concurrency.update': '系统 · 并发上限调整',
+  'plan.approve': '计划 · 批准',
+  'plan.revise': '计划 · 修订',
+  'plan.terminate': '计划 · 终止',
 }
 
 export default function AuditLogPanel({ searchQuery }: { searchQuery: string }) {

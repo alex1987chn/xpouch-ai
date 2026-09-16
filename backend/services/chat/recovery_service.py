@@ -24,6 +24,7 @@ from crud.agent_run import (
     acquire_run_lease,
     mark_run_cancelled_by_id,
 )
+from crud.audit_log import record_audit
 from crud.message import create_user_message
 from crud.run_event import (
     emit_hitl_rejected,
@@ -33,7 +34,7 @@ from crud.run_event import (
     emit_plan_updated,
     emit_run_cancelled,
 )
-from models import AgentRun, ExecutionPlan, RunStatus, Thread
+from models import AgentRun, ExecutionPlan, RunStatus, Thread, User
 from models.enums import TERMINAL_RUN_STATUSES, TaskStatus
 from services.chat.run_lifecycle import sse_stream_headers
 from utils.error_codes import ErrorCode
@@ -146,14 +147,32 @@ class RecoveryService:
                 status_code=409,
             )
 
-        # 2. 分支处理：修订（驳回+反馈，任务保持挂起）/ 终止
+        # 2. 分支处理：修订（驳回+反馈，任务保持挂起）/ 终止。
+        # 三个裁决动作各记一条审计日志（与管理面 8 个动作同一 append-only 通道），
+        # 只在分支**成功返回后**落笔——失败路径不产生"做了没做成"的误导记录。
         if effective_action == "revise":
-            return await self._handle_revision(thread_id, run_id, agent_run.user_id, feedback)
+            result = await self._handle_revision(thread_id, run_id, agent_run.user_id, feedback)
+            await self._audit_plan_decision(
+                user_id,
+                "plan.revise",
+                run_id,
+                thread_id,
+                {"plan_version": plan_version, "has_feedback": bool(feedback)},
+            )
+            return result
         if not approved or effective_action == "terminate":
-            return await self._handle_rejection(thread_id, run_id, feedback)
+            result = await self._handle_rejection(thread_id, run_id, feedback)
+            await self._audit_plan_decision(
+                user_id,
+                "plan.terminate",
+                run_id,
+                thread_id,
+                {"has_feedback": bool(feedback)},
+            )
+            return result
 
         # 3. 处理用户批准 - 流式恢复
-        return await self._handle_approval(
+        response = await self._handle_approval(
             thread_id,
             run_id,
             updated_plan,
@@ -161,6 +180,39 @@ class RecoveryService:
             message_id,
             idempotency_key,
         )
+        await self._audit_plan_decision(
+            user_id,
+            "plan.approve",
+            run_id,
+            thread_id,
+            {"plan_version": plan_version, "plan_modified": bool(updated_plan)},
+        )
+        return response
+
+    async def _audit_plan_decision(
+        self,
+        actor_user_id: str,
+        action: str,
+        run_id: str,
+        thread_id: str,
+        detail: dict,
+    ) -> None:
+        """计划裁决进审计日志：谁、对哪个 run、做了什么裁决。
+
+        只记结构性事实（run/thread/版本/是否带反馈），**不记对话与计划内容**
+        ——审计面是治理留痕，不是内容副本（量、隐私、性能三重考量）。
+        用户名在此懒查（成功路径才碰 user 表），守卫/校验失败路径零额外查询。
+        """
+        audit_user = self.db.get(User, actor_user_id)
+        record_audit(
+            self.db,
+            actor_user_id=actor_user_id,
+            actor_username=audit_user.username if audit_user else actor_user_id,
+            action=action,
+            target=f"run:{run_id}",
+            detail={"thread_id": thread_id, **detail},
+        )
+        await asyncio.to_thread(self.db.commit)
 
     async def _handle_rejection(
         self, thread_id: str, run_id: str, feedback: str | None = None

@@ -17,12 +17,22 @@ import pytest
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-from models import AgentRun, Thread
+from models import AgentRun, AuditLog, ExecutionPlan, Message, RunEvent, Thread, User
 from services.chat.recovery_service import RecoveryService
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
 
-TABLES = [Thread.__table__, AgentRun.__table__]
+# 审计扩范围后 resume_chat 的成功路径会落审计/反馈消息/账本，
+# 夹具需带上对应表（守卫拒绝路径不触碰它们）
+TABLES = [
+    Thread.__table__,
+    AgentRun.__table__,
+    ExecutionPlan.__table__,
+    RunEvent.__table__,
+    Message.__table__,
+    User.__table__,
+    AuditLog.__table__,
+]
 
 TERMINAL = ["cancelled", "completed", "failed", "timed_out"]
 
