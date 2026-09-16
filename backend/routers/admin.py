@@ -189,8 +189,10 @@ async def get_all_experts(
 
     权限：ADMIN
     """
-    # 按创建时间排序，确保新创建的专家在最底部
-    experts = session.exec(select(SystemExpert).order_by(SystemExpert.created_at)).all()
+    # 按创建时间倒序：新建的专家排在最前（id 兜底打破同秒并列）
+    experts = session.exec(
+        select(SystemExpert).order_by(SystemExpert.created_at.desc(), SystemExpert.id.desc())
+    ).all()
 
     return [
         ExpertResponse(
@@ -972,8 +974,8 @@ async def list_users(
     session: Session = Depends(get_session),
     _: User = Depends(get_current_admin),
 ):
-    """全实例用户列表（按注册时间正序；手机号仅脱敏值）"""
-    users = session.exec(select(User).order_by(User.created_at)).all()
+    """全实例用户列表（按注册时间倒序，最近注册在前；手机号仅脱敏值）"""
+    users = session.exec(select(User).order_by(User.created_at.desc(), User.id.desc())).all()
     return [_user_to_dto(u) for u in users]
 
 

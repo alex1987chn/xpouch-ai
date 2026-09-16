@@ -35,5 +35,8 @@ async def get_expert_catalog(
     current_user: User = Depends(get_current_user),
 ) -> list[ExpertCatalogItem]:
     """列出全部专家的 key 与显示名（供前端把 expert_type 翻成名字）。"""
-    experts = session.exec(select(SystemExpert).order_by(SystemExpert.created_at)).all()
+    # 与管理台列表同口径：新建在前（名册主要按键值消费，排序仅求确定性）
+    experts = session.exec(
+        select(SystemExpert).order_by(SystemExpert.created_at.desc(), SystemExpert.id.desc())
+    ).all()
     return [ExpertCatalogItem(expert_key=expert.expert_key, name=expert.name) for expert in experts]
