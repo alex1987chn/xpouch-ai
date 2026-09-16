@@ -40,6 +40,7 @@ from models.enums import GraphTaskStatus, TaskStatus, to_task_status
 from services.chat.frame_recorder import get_frame_recorder
 from services.chat.parts.custom_agent import CustomAgentMixin
 from services.chat.parts.event_builders import EventBuildersMixin
+from services.chat.stream_pipeline import StreamPipeline
 from services.mcp_tools_service import mcp_tools_service
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
@@ -96,6 +97,16 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         """手动使 MCP 工具缓存失效"""
         await mcp_tools_service.invalidate_cache()
 
+    def _heartbeat_line(self, run_id: str | None) -> str:
+        """静默超时线：心跳保活 + 顺带的取消/超预算检查（两条流共用管道的 on_timeout 回调）。
+
+        run_id 为 None（无持久化的裸流）时跳过检查只给心跳线。
+        """
+        if run_id:
+            self._touch_agent_run(run_id)
+            self._raise_if_run_cancelled(run_id)
+        return self._build_heartbeat_event()
+
     async def handle_langgraph_stream(
         self,
         initial_state: dict,
@@ -118,11 +129,12 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         Returns:
             StreamingResponse SSE流
 
-        结构（与恢复流 `execute_langgraph_stream` 同构）：
-        - `_run_graph()`：跑图 + 暂停检测 + 落库/账本/状态更新的正文
-        - `producer()`：分离任务里执行正文，并在 finally 里收尾（刷净帧、关实时窗口、通知消费者）
-        - `event_generator()`：只做传输（取队列 → 下发，含心跳保活）；客户端断连只结束它自己
-        - `emit()`：内容事件的唯一出口（分配 seq → hub 广播 → 入待写缓冲 → 投递消费者）
+        结构（与恢复流 `execute_langgraph_stream` 共享同一套管道 `stream_pipeline`）：
+        - `_run_graph()`：领域正文——跑图 + 暂停检测 + 落库/账本/状态更新
+          （首跑特有的职责：router 决策检测、HITL 中断检测、结果落库）
+        - `StreamPipeline`：管道四件套——事件出口（seq → hub 广播 → 持久帧 →
+          队列）、producer 外壳（finally 三连收尾）、消费循环（心跳保活）、
+          断连语义（不杀 producer）
 
         **为什么要把图执行放进分离任务**：以前它就跑在这个 SSE 生成器里，客户端一断连
         Starlette 就 `aclose()` 生成器 → 图循环被放弃 → **规划阶段的 run 当场死亡**
@@ -139,23 +151,14 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         # producer（含后台继续执行的那段）里的日志行才会带 run= 字段
         set_run_id(agent_run.id)
 
-        sse_queue: asyncio.Queue = asyncio.Queue()
-        hub = get_stream_hub()
-        frames = get_frame_recorder()
-
-        async def emit(event_str: str) -> None:
-            """内容事件出口：分配 seq → 实时广播 → 入待写缓冲 → 投递当前消费者。
-
-            与恢复流共用同一套持久帧，故断连期间错过的内容可被 resume 端点重放。
-            """
-            seq = await frames.reserve_seq(agent_run.id)
-            wire = hub.publish(agent_run.id, event_str, seq)
-            frames.record(agent_run.id, seq, wire)
-            await sse_queue.put({"type": "sse", "event": wire})
-
-        async def emit_transport(event_str: str) -> None:
-            """传输级标记（[DONE]）：只投给当前消费者，不进重放缓冲。"""
-            await sse_queue.put({"type": "sse", "event": event_str})
+        # 共享管道（事件出口/producer/消费循环/断连语义），与恢复流同一实现；
+        # frames/hub 从本模块取（M4 回归测试桩的就是这里的符号）
+        pipeline = StreamPipeline(
+            run_id=agent_run.id,
+            stream_timeout=settings.stream_timeout,
+            frames=get_frame_recorder(),
+            hub=get_stream_hub(),
+        )
 
         async def _run_graph():
             actual_message_id = message_id or str(uuid.uuid4())
@@ -226,7 +229,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     if event_type == "on_custom_event" and name == "sse_event":
                         event_str = sse_payload_to_wire(token)
                         if event_str:
-                            await emit(event_str)
+                            await pipeline.emit(event_str)
                         continue
 
                     # 处理消息流、task 事件等
@@ -234,7 +237,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                         token, actual_message_id, reasoning_parts
                     )
                     if event_str:
-                        await emit(event_str)
+                        await pipeline.emit(event_str)
 
                     # 收集任务执行结果
                     self._collect_execution_results(token, collected_tasks, expert_artifacts)
@@ -265,7 +268,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             except AppError as e:
                 if e.code == ErrorCode.RUN_CANCELLED:
                     logger.info("[StreamService] 运行已取消，结束 LangGraph 流")
-                    await emit(self._build_error_event(ErrorCode.RUN_CANCELLED, e.message))
+                    await pipeline.emit(self._build_error_event(ErrorCode.RUN_CANCELLED, e.message))
                     return
                 logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
                 await self._mark_agent_run_failed(agent_run.id, str(e))
@@ -279,7 +282,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     error_message=str(e),
                 )
                 await asyncio.to_thread(self.db.commit)
-                await emit(self._build_error_event(ErrorCode.GRAPH_ERROR, str(e)))
+                await pipeline.emit(self._build_error_event(ErrorCode.GRAPH_ERROR, str(e)))
                 return
             except Exception as e:
                 logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
@@ -293,7 +296,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     error_message=str(e),
                 )
                 await asyncio.to_thread(self.db.commit)
-                await emit(self._build_error_event(ErrorCode.GRAPH_ERROR, str(e)))
+                await pipeline.emit(self._build_error_event(ErrorCode.GRAPH_ERROR, str(e)))
                 return
 
             # HITL 检测：`interrupt()` 把「停在审批点等人」变成了**原生状态**。
@@ -360,7 +363,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                 await asyncio.to_thread(pause_deadline, self.db, agent_run.id)
                 # 审批卡必须走 emit（进持久帧）：断连期间错过它的话，重连时
                 # resume 端点的补放能把卡片带回来
-                await emit(
+                await pipeline.emit(
                     self._build_human_interrupt_event(
                         thread_id,
                         current_plan,
@@ -371,7 +374,7 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                 )
                 # HITL 中断是本轮流的正常终态：发 [DONE] 让前端干净收尾
                 # （恢复走独立的 /chat/resume 请求）
-                await emit_transport("data: [DONE]\n\n")
+                await pipeline.emit_transport("data: [DONE]\n\n")
                 return  # 结束本轮执行，等待用户通过 /chat/resume 恢复
 
             # 正常流程：获取最终结果
@@ -391,7 +394,9 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
                     if persist_error:
                         logger.error("[StreamService] %s", persist_error)
                         await self._mark_agent_run_failed(agent_run.id, persist_error)
-                        await emit(self._build_error_event(ErrorCode.GRAPH_ERROR, persist_error))
+                        await pipeline.emit(
+                            self._build_error_event(ErrorCode.GRAPH_ERROR, persist_error)
+                        )
                         return
 
                 # 保存到数据库
@@ -422,11 +427,13 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
             # 🔥 修复：只有简单模式才在这里发送 message.done
             # 复杂模式由 aggregator 通过 event_queue 发送
             if router_decision == "simple":
-                await emit(self._build_message_done_event(actual_message_id, full_response))
+                await pipeline.emit(
+                    self._build_message_done_event(actual_message_id, full_response)
+                )
             # 复杂模式：message.done 已由 aggregator 通过 event_queue 发送
 
             # 传输级完成标记：前端据此区分"正常结束"与"异常断流"
-            await emit_transport("data: [DONE]\n\n")
+            await pipeline.emit_transport("data: [DONE]\n\n")
 
             # 本轮执行已把最终结果落库，这里清理本次运行的瞬态数据（checkpoint +
             # SSE 传输帧）：图的最终 checkpoint 写入要等连接归还时才全部落地，
@@ -435,59 +442,14 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
 
             await cleanup_terminal_run(thread_id, [agent_run.id])
 
-        async def producer():
-            """分离任务：跑完整轮执行（含暂停检测与落库），再收尾。
-
-            收尾放在 finally 里，保证「异常/取消/正常结束」三条路径都会：
-            刷净尾部帧（resume 的重放只认已落库的帧）→ 关实时窗口 → 通知消费者结束。
-            """
-            try:
-                await _run_graph()
-            finally:
-                # finish_blocking 是同步写：取消态下任何 await 都可能被跳过，
-                # 那会连 done 哨兵都发不出去，消费者就悬挂了（见 frame_recorder）
-                frames.finish_blocking(agent_run.id)
-                hub.close(agent_run.id)
-                await sse_queue.put({"type": "done"})
-
-        producer_task = asyncio.create_task(producer())
-
-        async def event_generator():
-            """只做传输：取队列 → 下发；长静默期发心跳。客户端断连只结束它自己。"""
-            try:
-                while True:
-                    try:
-                        item = await asyncio.wait_for(
-                            sse_queue.get(), timeout=settings.stream_timeout
-                        )
-                    except TimeoutError:
-                        # 专家任务期间可能长时间没有事件：心跳保活 + 顺带检查取消
-                        self._touch_agent_run(agent_run.id)
-                        self._raise_if_run_cancelled(agent_run.id)
-                        yield self._build_heartbeat_event()
-                        continue
-                    if item.get("type") == "done":
-                        break
-                    if item.get("event"):
-                        yield item["event"]
-                await producer_task
-            except asyncio.CancelledError:
-                # 客户端断开连接 ≠ 停止任务：producer 继续在后台跑完（暂停检测、
-                # 落库、账本与状态更新都在它里面）。断连期间的事件已进 hub 与持久帧，
-                # 重连时由 /chat/{thread_id}/stream/resume 补放。
-                # 主动取回异常结果，避免孤儿任务的 "exception was never retrieved" 噪音
-                producer_task.add_done_callback(
-                    lambda t: t.exception() if not t.cancelled() else None
-                )
-                logger.info(
-                    "[StreamService] 客户端断开，复杂模式任务转后台继续: run=%s", agent_run.id
-                )
-                raise
+        # producer 分离任务在调用方同步上下文里起（保住日志上下文复制）；
+        # 收尾三连/心跳/断连语义全部由共享管道承担
+        pipeline.start(_run_graph)
 
         from services.chat.run_lifecycle import sse_stream_headers
 
         return StreamingResponse(
-            event_generator(),
+            pipeline.events(on_timeout=lambda: self._heartbeat_line(agent_run.id)),
             media_type="text/event-stream",
             headers=sse_stream_headers(thread_id, agent_run.id),
         )
@@ -887,160 +849,116 @@ class StreamService(CustomAgentMixin, EventBuildersMixin):
         # 恢复输入：审批结果经 Command(resume=) 回传给 plan_approval 节点
         resume_input = Command(resume={"action": "approve"})
 
-        # 🔥 B6 断线续传：统一事件出口——分配 seq id 写入 hub 缓冲，
-        # 再投递给当前消费者（主连接或 resume 连接各自订阅）
+        # 🔥 B6 断线续传：统一事件出口（seq → hub 广播 → 持久帧 → 消费队列）。
+        # 管道与首跑流同一实现（stream_pipeline）；队列沿用 recovery 传入的
+        # sse_queue（本方法签名不变）。
         from services.chat.stream_hub import get_stream_hub
 
-        hub = get_stream_hub()
-        frames = get_frame_recorder()
+        pipeline = StreamPipeline(
+            run_id=run_id,
+            stream_timeout=settings.stream_timeout,
+            frames=get_frame_recorder(),
+            hub=get_stream_hub(),
+            queue=sse_queue,
+        )
 
-        async def _push_event(event_str: str) -> None:
-            if run_id:
-                # ① 编号（本进程首次为这个 run 分配时先从库里续号）
-                seq = await frames.reserve_seq(run_id)
-                # ② 实时广播（注入 id: 行）；③ 入待写缓冲，约 200ms 批量落库，
-                # 供进程重启后按 seq 重放。落库异常只 warning，不影响实时推送。
-                event_str = hub.publish(run_id, event_str, seq)
-                frames.record(run_id, seq, event_str)
-            await sse_queue.put({"type": "sse", "event": event_str})
+        async def _stream_body():
+            """恢复流的领域正文：从审批点续跑到聚合完成。
 
-        async def producer():
+            异常**原样上抛**（管道不捕获）：此前 `except Exception: 记日志`
+            的写法会把一次彻底失败的 HITL 恢复粉饰成成功（消费者收到干净的
+            [DONE]、无 error 事件、无 message.done），recovery_service 里专门
+            写好的「标失败 + 推 RESUME_ERROR」分支永远不会执行
+            （tests/test_producer_failure_propagates.py 锁定）。
+            """
             nonlocal aggregator_executed
-            try:
+            if run_id:
+                self._raise_if_run_cancelled(run_id)
+
+            # 执行一轮 LangGraph
+            async for token in graph.astream_events(resume_input, config, version="v2"):
+                # 🔥 修复：token 可能是字符串，跳过非字典类型
+                if not isinstance(token, dict):
+                    continue
+
                 if run_id:
                     self._raise_if_run_cancelled(run_id)
+                if run_id:
+                    self._sync_run_progress_from_token(token, run_id)
 
-                # 执行一轮 LangGraph
-                async for token in graph.astream_events(resume_input, config, version="v2"):
-                    # 🔥 修复：token 可能是字符串，跳过非字典类型
-                    if not isinstance(token, dict):
-                        continue
+                event_type = token.get("event", "")
+                metadata = token.get("metadata", {})
+                # 🔥 修复：on_chain_start 用 metadata.name，on_chain_end 用 token.name
+                if event_type == "on_chain_start":
+                    name = metadata.get("name", "")
+                else:
+                    name = token.get("name", "")
 
-                    if run_id:
-                        self._raise_if_run_cancelled(run_id)
-                    if run_id:
-                        self._sync_run_progress_from_token(token, run_id)
-
-                    event_type = token.get("event", "")
-                    metadata = token.get("metadata", {})
-                    # 🔥 修复：on_chain_start 用 metadata.name，on_chain_end 用 token.name
-                    if event_type == "on_chain_start":
-                        name = metadata.get("name", "")
-                    else:
-                        name = token.get("name", "")
-
-                    # 协议 v2：节点的统一事件出口（emit_event）
-                    if event_type == "on_custom_event" and name == "sse_event":
-                        custom_str = sse_payload_to_wire(token)
-                        if custom_str:
-                            await _push_event(custom_str)
-                            if "message.done" in custom_str:
-                                logger.info("[Producer] 已发送 message.done，标记 aggregator 完成")
-                                aggregator_executed = True
-                        continue
-
-                    # aggregator 开始执行即表示已进入聚合阶段（供收尾判定）
-                    if event_type == "on_chain_start" and name == "aggregator":
-                        aggregator_executed = True
-                        logger.info("[Producer] aggregator 开始执行")
-
-                    if event_type == "on_chain_end":
-                        data = token.get("data", {}) or {}
-                        output = data.get("output", {}) or {}
-
-                        # 聚合完成（final_response 非空）→ 标记，供收尾判定
-                        if name == "aggregator" and output.get("final_response"):
-                            aggregator_executed = True
-                            logger.info("[Producer] aggregator 执行完成")
-
-                    event_str = self.transform_langgraph_event(token, message_id)
-                    if event_str:
-                        await _push_event(event_str)
-
-                        # 🔥 如果发送了 message.done 事件，说明 aggregator 已完成
-                        if "message.done" in event_str:
+                # 协议 v2：节点的统一事件出口（emit_event）
+                if event_type == "on_custom_event" and name == "sse_event":
+                    custom_str = sse_payload_to_wire(token)
+                    if custom_str:
+                        await pipeline.emit(custom_str)
+                        if "message.done" in custom_str:
                             logger.info("[Producer] 已发送 message.done，标记 aggregator 完成")
                             aggregator_executed = True
+                    continue
 
-                    # 收集 artifacts（产物通道，与初始执行路径同一口径）
+                # aggregator 开始执行即表示已进入聚合阶段（供收尾判定）
+                if event_type == "on_chain_start" and name == "aggregator":
+                    aggregator_executed = True
+                    logger.info("[Producer] aggregator 开始执行")
+
+                if event_type == "on_chain_end":
                     data = token.get("data", {}) or {}
                     output = data.get("output", {}) or {}
-                    outcomes = output.get("task_outcomes") if isinstance(output, dict) else None
-                    if isinstance(outcomes, dict):
-                        for _key, outcome in outcomes.items():
-                            artifact = (outcome or {}).get("artifact")
-                            if not artifact:
-                                continue
-                            await stream_queue.put(
-                                {
-                                    "type": "artifact",
-                                    "task_id": (outcome or {}).get("db_uuid") or _key,
-                                    "data": artifact,
-                                }
-                            )
 
-            finally:
-                # 注意：这里**不捕获**异常——失败必须上抛。
-                # 此前是 `except Exception: logger.error(...)` 吞掉继续，后果是
-                # 消费者收到 finally 投递的 done 后正常退出、`await producer_task`
-                # 正常返回，于是恢复流程继续把 run 标成 COMPLETED：**一次彻底失败
-                # 的 HITL 恢复被粉饰成成功**（客户端收到干净的 [DONE]、无 error
-                # 事件、无 message.done），而 recovery_service 里专门写好的
-                # 「标失败 + 推 RESUME_ERROR」分支永远不会执行。
-                # 现在让异常沿 await producer_task 上抛到调用方既有的处理分支。
-                if run_id:
-                    # 尾帧先落库再关直播：resume 的重放只认已落库的帧，少刷这一下
-                    # 会让「刚断线就重连」的客户端丢掉最后不到一个刷写周期的输出。
-                    # 同步写（不是 await）：收尾可能处在取消态，任何 await 都可能被
-                    # 跳过——那会连带 hub.close 与 done 哨兵都发不出去，订阅者悬挂。
-                    frames.finish_blocking(run_id)
-                    hub.close(run_id)
-                await sse_queue.put({"type": "done"})
+                    # 聚合完成（final_response 非空）→ 标记，供收尾判定
+                    if name == "aggregator" and output.get("final_response"):
+                        aggregator_executed = True
+                        logger.info("[Producer] aggregator 执行完成")
 
-        # 启动生产者
-        producer_task = asyncio.create_task(producer())
+                event_str = self.transform_langgraph_event(token, message_id)
+                if event_str:
+                    await pipeline.emit(event_str)
 
-        try:
-            # 消费并 yield 事件
-            while True:
-                try:
-                    item = await asyncio.wait_for(sse_queue.get(), timeout=settings.stream_timeout)
-                    if item.get("type") == "done":
-                        break
-                    if item.get("type") == "sse" and item.get("event"):
-                        yield item["event"]
-                except TimeoutError:
-                    if run_id:
-                        self._touch_agent_run(run_id)
-                        self._raise_if_run_cancelled(run_id)
-                    yield self._build_heartbeat_event()
+                    # 🔥 如果发送了 message.done 事件，说明 aggregator 已完成
+                    if "message.done" in event_str:
+                        logger.info("[Producer] 已发送 message.done，标记 aggregator 完成")
+                        aggregator_executed = True
 
-            await producer_task
+                # 收集 artifacts（产物通道，与初始执行路径同一口径）
+                data = token.get("data", {}) or {}
+                output = data.get("output", {}) or {}
+                outcomes = output.get("task_outcomes") if isinstance(output, dict) else None
+                if isinstance(outcomes, dict):
+                    for _key, outcome in outcomes.items():
+                        artifact = (outcome or {}).get("artifact")
+                        if not artifact:
+                            continue
+                        await stream_queue.put(
+                            {
+                                "type": "artifact",
+                                "task_id": (outcome or {}).get("db_uuid") or _key,
+                                "data": artifact,
+                            }
+                        )
 
-            # 🔥 关键修复：更新 AgentRun 状态为 completed
+        async def _on_drained():
+            # 队列排空且 producer 正常结束：聚合已执行则做完成收尾
+            # （单一实现在 run_lifecycle.finalize_run_completed）
             if run_id and aggregator_executed:
-                # 完成收尾单一实现在 run_lifecycle.finalize_run_completed
                 from services.chat.run_lifecycle import finalize_run_completed
 
                 await asyncio.to_thread(finalize_run_completed, self.db, run_id, thread_id)
 
-        except asyncio.CancelledError:
-            # 🔥 客户端断开连接 ≠ 停止任务：producer 继续在后台跑到自然完成，
-            # 结果照常落库——切走再回来的会话（banner + 轮询）能拿到完整结果。
-            # 真正的停止走协作取消：POST /runs/{run_id}/cancel 写入 DB 后，
-            # producer 在下一个 token 检查点感知并自行退出（本分支此前取消
-            # producer 的实现会把后台断连误杀成僵尸 RUNNING，已移除）。
-            if run_id:
-                # 主动取回异常结果，避免孤儿任务的 "exception was never retrieved" 噪音
-                producer_task.add_done_callback(
-                    lambda t: t.exception() if not t.cancelled() else None
-                )
-                agent_run = self.db.get(AgentRun, run_id)
-                logger.info(
-                    f"[StreamService] 客户端断开连接，任务转后台继续执行: "
-                    f"run={run_id} status={agent_run.status if agent_run else 'not found'}"
-                )
-            raise
+        # producer 分离任务在调用方上下文里起（日志上下文复制）；
+        # 断连不杀 producer / 心跳 / finally 三连收尾由共享管道承担
+        pipeline.start(_stream_body)
+        async for event in pipeline.events(
+            on_timeout=lambda: self._heartbeat_line(run_id), on_drained=_on_drained
+        ):
+            yield event
 
         # message.done 由 aggregator_node 通过 event_queue 发送
         # 这里不再重复发送
