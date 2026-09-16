@@ -122,7 +122,6 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
         })),
         data.plan_version,
         pendingRunId,
-        data.plan_id,
       )
       setPlanRevising(false)
       pushToast({ title: t('planRevisedToast', { version: data.plan_version }) })

@@ -31,6 +31,7 @@ import {
 import { toLocalDate, localeForLanguage } from '@/lib/datetime'
 import type { ArtifactListItem } from '@/types'
 import { cn } from '@/lib/utils'
+import { useCopy } from '@/hooks/useCopy'
 
 interface StaticDoc {
   type: string
@@ -57,7 +58,7 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId, docArtifact
   const [editing, setEditing] = useState(false)
   const [editDraft, setEditDraft] = useState('')
   const [isSaving, setIsSaving] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopy()
   const [printKey, setPrintKey] = useState(0)
   const queryClient = useQueryClient()
 
@@ -91,9 +92,7 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId, docArtifact
   const handleCopy = async () => {
     if (!detail?.content) return
     try {
-      await navigator.clipboard.writeText(detail.content)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      await copy(detail.content)
     } catch {
       pushToast({ title: t('copyFailed') || 'Copy failed', variant: 'destructive' })
     }
@@ -103,7 +102,7 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId, docArtifact
     if (!detail) return
     try {
       const { path } = await shareArtifact(detail.id)
-      await navigator.clipboard.writeText(window.location.origin + path)
+      await copy(window.location.origin + path)
       pushToast({ title: t('artifactShareCopied') })
     } catch {
       pushToast({ title: t('saveFailed'), variant: 'destructive' })

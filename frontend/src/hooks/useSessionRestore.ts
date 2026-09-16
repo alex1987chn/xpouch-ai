@@ -145,7 +145,6 @@ export function useSessionRestore(
   const resetAll = useTaskStore((state) => state.resetAll)
   const setPendingPlan = useTaskStore((state) => state.setPendingPlan)
   const setMode = useTaskStore((state) => state.setMode)
-  const setIsInitialized = useTaskStore((state) => state.setIsInitialized)
   const setActiveRunId = useTaskStore((state) => state.setActiveRunId)
   const clearActiveRunId = useTaskStore((state) => state.clearActiveRunId)
   const addMessage = useChatStore((state) => state.addMessage)
@@ -291,7 +290,6 @@ export function useSessionRestore(
         const subTasks = execution_plan.sub_tasks || []
 
         setMode('complex')
-        setIsInitialized(true)
         
         // 检查是否还有运行中的任务
         const hasRunningTask = subTasks.some((t: SubTask) => t.status === 'running')
@@ -335,7 +333,6 @@ export function useSessionRestore(
               pendingPlan,
               execution_plan.plan_version || 1,
               latestRun?.id || execution_plan.run_id || null,
-              execution_plan.execution_plan_id || null,
             )
             logger.debug('[useSessionRestore] HITL 恢复: pendingPlan 已设置', pendingPlan.length, '个任务')
           }
@@ -370,7 +367,7 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [threadId, enabled, queryClient, setPendingPlan, setMode, setIsInitialized, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId, setGenerating, t])
+  }, [threadId, enabled, queryClient, setPendingPlan, setMode, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId, setGenerating, t])
 
   /**
    * 公开的手动恢复方法

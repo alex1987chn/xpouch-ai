@@ -7,7 +7,6 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react'
-import { useChatStore } from '@/store/chatStore'
 import { logger } from '@/utils/logger'
 
 interface PollingHandoffParams {
@@ -93,37 +92,3 @@ export function useChatSessionHandoff({
  * 登录后自动重发 pendingMessage（Store Trigger 模式）。
  * 用 ref 持有最新回调，避免 subscribe 闭包过期。
  */
-export function usePendingMessageRetry(
-  sendMessage: (content: string, agentId?: string) => Promise<unknown>,
-  normalizedAgentId: string,
-  isStreaming: boolean
-): void {
-  const sendMessageRef = useRef(sendMessage)
-  sendMessageRef.current = sendMessage
-
-  const normalizedAgentIdRef = useRef(normalizedAgentId)
-  normalizedAgentIdRef.current = normalizedAgentId
-
-  useEffect(() => {
-    const unsubscribe = useChatStore.subscribe((state, prevState) => {
-      // 当 shouldRetrySend 从 false 变为 true 时触发
-      if (state.shouldRetrySend && !prevState.shouldRetrySend && state.pendingMessage && !isStreaming) {
-        const currentSendMessage = sendMessageRef.current
-        const currentAgentId = normalizedAgentIdRef.current
-
-        currentSendMessage(state.pendingMessage, currentAgentId)
-          .then(() => {
-            useChatStore.getState().setPendingMessage(null)
-            useChatStore.getState().setShouldRetrySend(false)
-          })
-          .catch((err) => {
-            logger.error('[ChatSession] 消息重发失败:', err)
-            useChatStore.getState().setShouldRetrySend(false)
-            // 如果还是 401，会再次触发登录弹窗，pendingMessage 保留
-          })
-      }
-    })
-
-    return () => unsubscribe()
-  }, [isStreaming])
-}

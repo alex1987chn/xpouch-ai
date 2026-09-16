@@ -132,7 +132,6 @@ describe('事件处理器 × 真实 store：不得引用已删除的动作', () 
       } as never,
       context
     )
-    expect(useTaskStore.getState().isInitialized).toBe(true)
     expect(useTaskStore.getState().mode).toBe('complex')
 
     handleRouterDecision(

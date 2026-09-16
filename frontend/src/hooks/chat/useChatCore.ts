@@ -404,10 +404,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         // 保留已流出的部分内容（后端 cancel 流程也会持久化已生成部分），
         // 此前整体置空会丢掉用户已经看到的半截回答
       } else if (isAuthError) {
-        // 401 错误：保存消息到 pendingMessage，等待登录后重发
-        debug('Authentication error (401), saving message for retry after login')
-        useChatStore.getState().setPendingMessage(userContent)
-        // 移除刚才添加的用户消息和助手消息（因为实际没有发送成功）
+        // 401：未登录/登录过期。自动重发机制已废弃（交互改为先登录再发送），
+        // 这里只移除没发出去的乐观消息对；登录提示由全局 401 拦截负责
+        debug('Authentication error (401), dropping unsent optimistic messages')
         const currentMessages = useChatStore.getState().messages
         useChatStore.getState().setMessages(currentMessages.slice(0, -2))
       } else if (isActiveRunConflict) {

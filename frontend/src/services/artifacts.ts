@@ -62,10 +62,4 @@ export async function shareArtifact(
 /**
  * 撤销产物的全部分享链接
  */
-export async function revokeArtifactShare(
-  artifactId: string
-): Promise<{ revoked: number }> {
-  const url = buildUrl(`/artifacts/${artifactId}/share`)
-  const response = await authenticatedFetch(url, { method: 'DELETE' })
-  return handleResponse<{ revoked: number }>(response, '撤销分享失败')
-}
+

@@ -26,6 +26,7 @@ import {
 import { toLocalDate } from '@/lib/datetime'
 import { useUserStore } from '@/store/userStore'
 import { cn } from '@/lib/utils'
+import { useCopy } from '@/hooks/useCopy'
 
 interface UserAdminPanelProps {
   searchQuery: string
@@ -48,12 +49,10 @@ function RoleChip({ role }: { role: string }) {
 
 function UuidCell({ id }: { id: string }) {
   const { t } = useTranslation()
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopy()
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(id)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      await copy(id)
     } catch {
       pushToast({ title: t('copyFailed'), variant: 'destructive' })
     }

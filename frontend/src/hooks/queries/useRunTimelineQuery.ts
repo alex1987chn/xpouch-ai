@@ -12,7 +12,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { getRunTimeline, getThreadTimeline, getRunDetails } from '@/services/runs'
+import { getRunTimeline, getRunDetails } from '@/services/runs'
 import { logger } from '@/utils/logger'
 import { CACHE_TIMES } from '@/config/query'
 
@@ -75,19 +75,4 @@ export function useRunTimeline(
 /**
  * 获取线程下所有运行的时间线事件
  */
-export function useThreadTimeline(threadId: string | null, limit: number = 200) {
-  return useQuery({
-    queryKey: runKeys.threadTimeline(threadId || ''),
-    queryFn: async () => {
-      if (!threadId) {
-        throw new Error('Thread ID is required')
-      }
-      logger.debug('[useThreadTimeline] Fetching thread timeline:', threadId)
-      return getThreadTimeline(threadId, limit)
-    },
-    enabled: !!threadId,
-    staleTime: CACHE_TIMES.CHAT_SESSION.staleTime,
-    gcTime: CACHE_TIMES.CHAT_SESSION.gcTime,
-    retry: 2,
-  })
-}
+

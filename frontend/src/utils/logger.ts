@@ -88,24 +88,7 @@ export const logger = {
 /**
  * 开发环境快捷方式（仅开发环境使用）
  */
-export const devLog = logger.debug.bind(logger)
 
-/**
- * 统一错误处理器
- *
- * @description
- * 提供错误处理、规范化、日志记录的工具对象
- * 支持异步和同步错误处理，自动发送到日志系统
- *
- * @example
- * ```typescript
- * try {
- *   await riskyOperation()
- * } catch (error) {
- *   await errorHandler.handle(error, 'riskyOperation')
- * }
- * ```
- */
 export const errorHandler = {
   /**
    * 处理异步错误
@@ -235,42 +218,9 @@ export const errorHandler = {
   }
 }
 
-/**
- * 装饰器：自动捕获函数错误
- */
-export function withErrorHandler<T extends (...args: unknown[]) => unknown>(
-  fn: T,
-  context?: string
-): T {
-  return ((...args: unknown[]) => {
-    try {
-      const result = fn(...args)
 
-      // 处理异步函数
-      if (result instanceof Promise) {
-        return result.catch((error) => {
-          errorHandler.handle(error, context)
-          throw error // 重新抛出，让调用者处理
-        })
-      }
 
-      return result
-    } catch (error) {
-      errorHandler.handleSync(error, context)
-      throw error // 重新抛出，让调用者处理
-    }
-  }) as T
-}
 
-/**
- * 快捷函数：创建错误处理器的装饰器版本
- */
-export function safeExecute<T extends (...args: unknown[]) => unknown>(
-  fn: T,
-  context?: string
-): T {
-  return withErrorHandler(fn, context)
-}
 
 /**
  * 安全访问工具函数
@@ -287,105 +237,11 @@ export function safeExecute<T extends (...args: unknown[]) => unknown>(
  * ```
  */
 
-/**
- * 安全获取数组元素
- *
- * @description
- * 安全地从数组中获取指定索引的元素
- * 如果数组为 null/undefined 或索引越界，返回兜底值
- *
- * @template T - 数组元素类型
- * @param array - 目标数组（可为 null/undefined）
- * @param index - 要获取的索引
- * @param fallback - 兜底值（默认）
- * @returns T - 数组元素或兜底值
- *
- * @example
- * ```typescript
- * const arr = ['a', 'b', 'c']
- * const item = safeGet(arr, 1, 'default') // 'b'
- * const missing = safeGet(arr, 5, 'default') // 'default'
- * const nullArr = safeGet(null, 0, 'default') // 'default'
- * ```
- */
-export function safeGet<T>(
-  array: T[] | null | undefined,
-  index: number,
-  fallback: T
-): T {
-  if (!array || !array[index]) {
-    return fallback
-  }
-  return array[index]
-}
 
-/**
- * 安全获取对象属性
- *
- * @description
- * 安全地从对象中获取指定属性的值
- * 如果对象为 null/undefined 或属性不存在，返回兜底值
- *
- * @template T - 对象类型
- * @template K - 属性键类型
- * @param obj - 目标对象（可为 null/undefined）
- * @param key - 要获取的属性键
- * @param fallback - 兜底值
- * @returns T[K] - 属性值或兜底值
- *
- * @example
- * ```typescript
- * const obj = { a: 1, b: 2 }
- * const value = safeGetProp(obj, 'a', 0) // 1
- * const missing = safeGetProp(obj, 'c', 0) // 0
- * const nullObj = safeGetProp(null, 'a', 0) // 0
- * ```
- */
-export function safeGetProp<T, K extends keyof T>(
-  obj: T | null | undefined,
-  key: K,
-  fallback: T[K]
-): T[K] {
-  if (!obj || obj[key] === undefined) {
-    return fallback
-  }
-  return obj[key]
-}
 
-/**
- * 安全执行可选回调
- *
- * @description
- * 安全地执行可选的回调函数
- * 如果回调不存在或执行出错，返回 undefined 并记录错误
- *
- * @template T - 返回值类型
- * @param fn - 要执行的回调函数（可选）
- * @param args - 传递给回调函数的参数
- * @returns T | undefined - 回调返回值或 undefined
- *
- * @example
- * ```typescript
- * const onClick = (e: Event) => console.log(e)
- * const result = safeCall(onClick, event) // 执行函数
- * const noFn = safeCall(null) // undefined
- * const throwing = safeCall(() => { throw new Error('') }) // undefined (error logged)
- * ```
- */
-export function safeCall<T>(
-  fn?: (...args: unknown[]) => T,
-  ...args: unknown[]
-): T | undefined {
-  if (typeof fn !== 'function') {
-    return undefined
-  }
-  try {
-    return fn(...args)
-  } catch (error) {
-    errorHandler.handleSync(error, 'safeCall')
-    return undefined
-  }
-}
+
+
+
 
 /**
  * 安全字符串处理
@@ -406,76 +262,4 @@ export function safeCall<T>(
  * const str4 = safeString(123) // '123'
  * ```
  */
-export function safeString(value: unknown, fallback: string = ''): string {
-  if (value === null || value === undefined) {
-    return fallback
-  }
-  if (typeof value === 'string') {
-    return value
-  }
-  return String(value)
-}
-
-/**
- * 安全数字处理
- *
- * @description
- * 将任意值安全地转换为数字
- * 如果值为 null/undefined 或转换结果为 NaN，返回 0 或自定义兜底值
- *
- * @param value - 要转换的值
- * @param fallback - 兜底值（默认 0）
- * @returns number - 数字或兜底值
- *
- * @example
- * ```typescript
- * const num1 = safeNumber(42) // 42
- * const num2 = safeNumber(null) // 0
- * const num3 = safeNumber('42') // 42
- * const num4 = safeNumber('abc', 10) // 10
- * const num5 = safeNumber(NaN, 100) // 100
- * ```
- */
-export function safeNumber(value: unknown, fallback: number = 0): number {
-  if (value === null || value === undefined) {
-    return fallback
-  }
-  if (typeof value === 'number') {
-    return value
-  }
-  const num = Number(value)
-  return isNaN(num) ? fallback : num
-}
-
-/**
- * 安全布尔值处理
- *
- * @description
- * 将任意值安全地转换为布尔值
- * 如果值为 null/undefined，返回 false 或自定义兜底值
- *
- * @param value - 要转换的值
- * @param fallback - 兜底值（默认 false）
- * @returns boolean - 布尔值或兜底值
- *
- * @example
- * ```typescript
- * const bool1 = safeBoolean(true) // true
- * const bool2 = safeBoolean(null) // false
- * const bool3 = safeBoolean(1) // true
- * const bool4 = safeBoolean(0) // false
- * const bool5 = safeBoolean(null, true) // true
- * ```
- */
-export function safeBoolean(value: unknown, fallback: boolean = false): boolean {
-  if (value === null || value === undefined) {
-    return fallback
-  }
-  if (typeof value === 'boolean') {
-    return value
-  }
-  return Boolean(value)
-}
-
-
 

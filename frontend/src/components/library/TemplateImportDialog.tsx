@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Spinner } from '@/components/ui/spinner'
 import {
   previewImportSkillTemplate,
   importSkillTemplate,
@@ -251,7 +252,7 @@ export function TemplateImportDialog({
           >
             {isImporting ? (
               <>
-                <span className="animate-spin">⟳</span>
+                <Spinner size="xs" />
                 {t('importing') || 'Importing...'}
               </>
             ) : (
@@ -418,7 +419,7 @@ export function TemplateImportDialog({
             >
               {isImporting ? (
                 <>
-                  <span className="animate-spin">⟳</span>
+                  <Spinner size="xs" />
                   {t('importing') || 'Importing...'}
                 </>
               ) : (

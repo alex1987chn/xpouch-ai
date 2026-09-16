@@ -3,7 +3,7 @@
  *
  * [复用] 编排序列与 UnifiedChatPage 完全一致（生产验证过的组合）：
  *   useChat({threadUrlBase}) → useSessionRestore → useRunPolling →
- *   useChatSessionHandoff → usePendingMessageRetry → ChatStreamPanel
+ *   useChatSessionHandoff → ChatStreamPanel
  * 消息不经 props（ChatStreamPanel 自取 store），此处只做接线。
  *
  * [新增] 顶部「专家与运行状态行」：专家识别色署名 + 运行状态 chip
@@ -19,7 +19,7 @@ import { FileQuestion } from 'lucide-react'
 import { useChat } from '@/hooks/useChat'
 import { useSessionRestore } from '@/hooks/useSessionRestore'
 import { useRunPolling } from '@/hooks/useRunPolling'
-import { useChatSessionHandoff, usePendingMessageRetry } from '@/hooks/chat/useChatSession'
+import { useChatSessionHandoff } from '@/hooks/chat/useChatSession'
 import { useTaskStore } from '@/store/taskStore'
 import { useUserStore } from '@/store/userStore'
 import { useAppUIStore } from '@/store/appUIStore'
@@ -128,7 +128,6 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
     stopPolling,
     restoreSession,
   })
-  usePendingMessageRetry(sendMessage, normalizedAgentId, isStreaming)
 
   // 模板等外部入口带入的开场白（location.state.startWith）：一次性预填输入框
   const routeState = location.state as { startWith?: string } | null

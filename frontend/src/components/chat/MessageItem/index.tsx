@@ -8,7 +8,7 @@
  * - 使用 useMemo 缓存 components 对象
  */
 
-import { useState, useCallback, useRef, useEffect, useLayoutEffect, memo, useMemo } from 'react'
+import { useState, useCallback, useRef, useLayoutEffect, memo, useMemo } from 'react'
 import { Copy, Check, RefreshCw, FileText, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import type { MessageItemProps } from '../types'
@@ -22,6 +22,7 @@ import { toLocalDate } from '@/lib/datetime'
 import ArtifactViewerModal from '@/components/artifacts/ArtifactViewerModal'
 import { cn } from '@/lib/utils'
 import type { Components } from 'react-markdown'
+import { useCopy } from '@/hooks/useCopy'
 
 // 开发环境调试开关
 /** AI 长文折叠阈值（px，实测渲染高度超过即收起） */
@@ -282,7 +283,7 @@ function MessageItem({
   onLinkClick,
 }: MessageItemProps) {
   const isUser = message.role === 'user'
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopy()
   const { t } = useTranslation()
 
   // 长文折叠：完成态且实测高度超限时收起（渐隐 + 展开全文）
@@ -294,19 +295,6 @@ function MessageItem({
 
   // 文档视图：消息内容送产物弹框的静态文档模式
   const [docView, setDocView] = useState<{ type: string; title: string; content: string; language?: string | null } | null>(null)
-  
-  // 🔥 用于存储复制成功提示的定时器，组件卸载时清理
-  const copyTimerRef = useRef<NodeJS.Timeout | null>(null)
-  
-  // 组件卸载时清理定时器
-  useEffect(() => {
-    return () => {
-      if (copyTimerRef.current) {
-        clearTimeout(copyTimerRef.current)
-      }
-    }
-  }, [])
-
   // 🔥 修复：确保 content 是字符串
   const content = message.content || ''
 
@@ -342,43 +330,11 @@ function MessageItem({
     })
   }, [content, codeBlocks, mediaInfo, t])
 
-  // 处理复制
+  // 处理复制（降级与 copied 复位都在 useCopy 里）
   const handleCopy = useCallback(async () => {
-    const textToCopy = content
-    if (!textToCopy) return
-
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(textToCopy)
-        setCopied(true)
-        copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
-        return
-      }
-
-      const textarea = document.createElement('textarea')
-      textarea.value = textToCopy
-      textarea.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;'
-      document.body.appendChild(textarea)
-
-      const range = document.createRange()
-      range.selectNode(textarea)
-      const selection = window.getSelection()
-      selection?.removeAllRanges()
-      selection?.addRange(range)
-      textarea.select()
-      textarea.setSelectionRange(0, textToCopy.length)
-
-      const successful = document.execCommand('copy')
-      if (successful) {
-        setCopied(true)
-        copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
-      }
-
-      document.body.removeChild(textarea)
-    } catch {
-      // 复制失败静默处理
-    }
-  }, [content])
+    if (!content) return
+    await copy(content)
+  }, [content, copy])
 
   // 处理重试
   const handleRetry = useCallback(() => {

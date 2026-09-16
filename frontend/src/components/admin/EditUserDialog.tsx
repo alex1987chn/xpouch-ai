@@ -16,6 +16,7 @@ import {
   updateAdminUser, resetAdminUserPassword, type AdminUser,
 } from '@/services/admin'
 import { cn } from '@/lib/utils'
+import { useCopy } from '@/hooks/useCopy'
 
 interface EditUserDialogProps {
   open: boolean
@@ -40,7 +41,7 @@ export function EditUserDialog({ open, user, isSelf, onClose, onSaved }: EditUse
   const [newPassword, setNewPassword] = useState('')
   const [isResetting, setIsResetting] = useState(false)
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopy()
 
   // 打开时以目标用户复位
   useEffect(() => {
@@ -51,8 +52,7 @@ export function EditUserDialog({ open, user, isSelf, onClose, onSaved }: EditUse
       setResetMode('random')
       setNewPassword('')
       setGeneratedPassword(null)
-      setCopied(false)
-    }
+      }
   }, [open, user])
 
   if (!user) return null
@@ -104,9 +104,7 @@ export function EditUserDialog({ open, user, isSelf, onClose, onSaved }: EditUse
   const handleCopyPassword = async () => {
     if (!generatedPassword) return
     try {
-      await navigator.clipboard.writeText(generatedPassword)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      await copy(generatedPassword)
     } catch {
       pushToast({ title: t('copyFailed'), variant: 'destructive' })
     }

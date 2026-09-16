@@ -18,6 +18,4 @@ export function generateUUID(): string {
  * 生成短ID（8位随机字符）
  * 用于临时标识、本地缓存key等场景
  */
-export function generateShortId(): string {
-  return Math.random().toString(36).substring(2, 10)
-}
+

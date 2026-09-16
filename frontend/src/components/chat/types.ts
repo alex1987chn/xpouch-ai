@@ -8,17 +8,7 @@ import type { AvatarStatus } from '@/components/ui/StatusAvatar'
 /**
  * 消息列表 Props
  */
-export interface MessageListProps {
-  messages: Message[]
-  isGenerating: boolean
-  activeExpert?: string | null
-  onRegenerate?: (messageId: string | number) => void
-  onLinkClick?: (href: string) => void
-}
 
-/**
- * 消息项 Props
- */
 export interface MessageItemProps {
   message: Message
   activeExpert?: string | null
@@ -69,6 +59,4 @@ export interface HeavyInputTextAreaProps {
 /**
  * 路由指示器 Props
  */
-export interface RoutingIndicatorProps {
-  expertType: string
-}
+

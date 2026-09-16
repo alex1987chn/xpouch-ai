@@ -150,8 +150,7 @@ export function handleHumanInterrupt(
     setPendingPlan(
       currentPlan.map((t) => ({ ...t, artifacts: [] })),
       planVersion ?? 1,
-      runId,
-      executionPlanId
+      runId
     )
     logger.info('[SystemEvents] 🔴 HITL 中断: 计划等待审核', {
       taskCount: currentPlan.length,

@@ -93,11 +93,5 @@ export const useChatActions = () => {
 export const useAddMessageAction = () => 
   useChatStore(state => state.addMessage)
 
-export const useUpdateMessageAction = () => 
-  useChatStore(state => state.updateMessage)
-
-export const useSetGeneratingAction = () => 
-  useChatStore(state => state.setGenerating)
-
 export const useSetInputMessageAction = () =>
   useChatStore(state => state.setInputMessage)

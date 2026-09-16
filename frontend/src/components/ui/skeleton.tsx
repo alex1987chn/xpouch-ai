@@ -34,13 +34,4 @@ export function CardSkeleton() {
 }
 
 /** 行列表骨架：与全站行卡同构 */
-export function RowSkeleton() {
-  return (
-    <div className="flex items-center gap-3 border-theme-card border-border-default bg-surface-card px-4 py-3">
-      <Skeleton className="w-2 h-2 shrink-0" />
-      <Skeleton className="h-3.5 flex-1 max-w-[40%]" />
-      <Skeleton className="h-3 w-32 hidden md:block" />
-      <Skeleton className="h-3 w-16 ml-auto" />
-    </div>
-  )
-}
+

@@ -20,6 +20,7 @@ import { getAvailableTools } from '@/services/admin'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
+import { Spinner } from '@/components/ui/spinner'
 
 interface ExpertFormDialogProps {
   mode: 'create' | 'edit'
@@ -402,7 +403,7 @@ export default function ExpertFormDialog({
           >
             {isSubmitting ? (
               <>
-                <div className="h-3 w-3 animate-spin rounded-full border border-accent-ink/30 border-t-accent-ink" />
+                <Spinner size="xs" />
                 {isCreate ? t('creating') : t('saving')}
               </>
             ) : (

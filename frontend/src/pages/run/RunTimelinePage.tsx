@@ -16,7 +16,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Clock, AlertCircle, CheckCircle, Loader2, ChevronRight, ExternalLink } from 'lucide-react'
 import { format, formatDistanceToNow, differenceInSeconds } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
 import { useTranslation } from '@/i18n'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useState, useCallback, useMemo } from 'react'
@@ -25,7 +24,7 @@ import { useRunDetails, useRunTimeline } from '@/hooks/queries/useRunTimelineQue
 import { useThreadArtifactsQuery } from '@/hooks/queries/useArtifactsQuery'
 import { ArtifactViewerModal } from '@/components/artifacts/ArtifactViewerModal'
 import { artifactTypeChipStyle } from '@/lib/artifactPresentation'
-import { toLocalDate } from '@/lib/datetime'
+import { toLocalDate, localeForLanguage } from '@/lib/datetime'
 import { getConversation } from '@/services/chat'
 import type { RunEvent, RunStatus } from '@/types/run'
 import { getEventDisplayName, getEventCategory, ACTIVE_RUN_STATUSES } from '@/types/run'
@@ -89,9 +88,9 @@ interface TimelineEventItemProps {
 }
 
 function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEventItemProps) {
- const { t } = useTranslation()
+ const { t, language } = useTranslation()
  const time = toLocalDate(event.timestamp)
- const timeAgo = formatDistanceToNow(time, { addSuffix: true, locale: zhCN })
+ const timeAgo = formatDistanceToNow(time, { addSuffix: true, locale: localeForLanguage(language) })
  const timeStr = format(time, 'HH:mm:ss')
 
  const hasPayload = event.event_data && Object.keys(event.event_data).length > 0

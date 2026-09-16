@@ -4,10 +4,6 @@ import { getUserProfile, updateUserProfile, type UserProfile } from '@/services/
 import { sendVerificationCode, verifyCodeAndLogin, loginWithPasswordApi, logoutApi, type SendCodeResponse } from '@/services/auth'
 import { logger, errorHandler } from '@/utils/logger'
 
-function isStatusError(error: unknown): error is { status?: number } {
-  return typeof error === 'object' && error !== null && 'status' in error
-}
-
 interface UserState {
   user: UserProfile | null
   isLoading: boolean
@@ -23,12 +19,11 @@ interface UserState {
   checkAuth: () => Promise<boolean>
 
   // User methods
-  fetchUser: () => Promise<void>
   updateUser: (data: Partial<UserProfile>) => Promise<void>
 }
 
 export const useUserStore = create<UserState>()(
-  (set, get) => ({
+  (set) => ({
     // Initial state
     user: null,
     isLoading: false,
@@ -133,36 +128,7 @@ export const useUserStore = create<UserState>()(
     },
 
     // User: Fetch user profile
-    fetchUser: async () => {
-      set({ isLoading: true, error: null })
-      try {
-        const remoteUser = await getUserProfile()
-        const localUser = get().user
-        
-        // 比较更新时间戳，只有当远程数据更新时才更新本地状态
-        if (localUser && remoteUser.updated_at) {
-          // 如果远程更新时间晚于本地更新时间，更新本地状态
-          if (remoteUser.updated_at > localUser.updated_at) {
-            set({ user: remoteUser, isLoading: false })
-          } else {
-            // 远程数据不比本地新，保持现有状态（避免不必要的重渲染）
-            set({ isLoading: false })
-          }
-        } else {
-          // 本地没有用户数据或远程数据缺少时间戳，直接设置
-          set({ user: remoteUser, isLoading: false })
-        }
-      } catch (error) {
-        errorHandler.handleSync(error, 'fetchUser')
-        set({ error: errorHandler.getUserMessage(error), isLoading: false })
-        // If user fetch fails (e.g., 401), logout
-        if (isStatusError(error) && error.status === 401) {
-          set({ user: null, isAuthenticated: false })
-        }
-      }
-    },
 
-    // User: Update user profile
     updateUser: async (data) => {
       set({ isLoading: true, error: null })
       try {
@@ -178,5 +144,4 @@ export const useUserStore = create<UserState>()(
 )
 
 // Selector helpers
-export const selectIsAuthenticated = (state: UserState) => state.isAuthenticated
-export const selectUser = (state: UserState) => state.user
+

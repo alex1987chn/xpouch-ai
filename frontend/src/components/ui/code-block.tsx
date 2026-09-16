@@ -93,24 +93,3 @@ export function CodeBlock({
     </Highlight>
   )
 }
-
-// 内联代码组件（用于行内代码）
-interface InlineCodeProps {
-  children: React.ReactNode
-  className?: string
-}
-
-export function InlineCode({ children, className }: InlineCodeProps) {
-  return (
-    <code
-      className={cn(
-        'px-1.5 py-0.5 rounded text-sm font-mono',
-        'bg-surface-elevated',
-        'text-content-primary',
-        className
-      )}
-    >
-      {children}
-    </code>
-  )
-}

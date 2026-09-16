@@ -29,7 +29,6 @@ describe('Task Events', () => {
       // 删除 PlanningSlice（planThinkingContent 只写不读），处理器只维护
       // runningTaskIds 与思考步骤。
       taskStore: {
-        setIsInitialized: vi.fn(),
         setMode: vi.fn(),
         addRunningTaskId: vi.fn(),
         removeRunningTaskId: vi.fn()
@@ -56,7 +55,6 @@ describe('Task Events', () => {
 
       handlePlanCreated(event, mockContext)
 
-      expect(mockContext.taskStore.setIsInitialized).toHaveBeenCalledWith(true)
       expect(mockContext.taskStore.setMode).toHaveBeenCalledWith('complex')
     })
   })

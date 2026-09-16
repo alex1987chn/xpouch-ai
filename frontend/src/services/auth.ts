@@ -95,20 +95,7 @@ export async function verifyCodeAndLogin(
  * P0 修复: 刷新 access token
  * 从 Cookie 自动读取 refresh token
  */
-export async function refreshTokenApi(): Promise<RefreshResponse> {
-  const response = await fetch(buildUrl('/auth/refresh-token'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    // P0 修复: 允许携带 Cookie
-    credentials: 'include'
-  })
-  return handleResponse<RefreshResponse>(response, '刷新 token 失败')
-}
 
-/**
- * P0 修复: 用户登出
- * 调用后端清除 Cookie
- */
 export async function logoutApi(): Promise<{ message: string }> {
   const response = await fetch(buildUrl('/auth/logout'), {
     method: 'POST',

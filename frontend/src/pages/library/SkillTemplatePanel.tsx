@@ -18,6 +18,7 @@ import { TemplateImportDialog } from '@/components/library/TemplateImportDialog'
 import { EmptyState } from '@/components/ui/states'
 import { PillSwitch } from '@/pages/library/components/MCPCard'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
+import { useCopy } from '@/hooks/useCopy'
 
 
 interface SkillTemplatePanelProps {
@@ -101,6 +102,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
  const [isDeleting, setIsDeleting] = useState(false)
  const [editing, setEditing] = useState(false)
+ const { copy } = useCopy()
 
  useEffect(() => {
   tRef.current = t
@@ -306,7 +308,7 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
   try {
    const res = await shareSkillTemplate(selectedTemplate.template_key)
    const url = `${window.location.origin}${res.path}`
-   await navigator.clipboard.writeText(url)
+   await copy(url)
    toast({
     title: t('templateShareCopied') || 'Share link copied',
     description: t('templateShareHint') || 'Anyone with the link can fetch this template JSON for import.',

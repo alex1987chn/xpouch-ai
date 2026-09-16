@@ -22,17 +22,15 @@ function readPersisted(): { state: Record<string, unknown>; version: number } {
 describe('taskStore 持久化', () => {
   beforeEach(() => {
     localStorage.clear()
-    useTaskStore.setState({ mode: null, isInitialized: false })
+    useTaskStore.setState({ mode: null })
   })
 
   it('只写 UI 偏好，且 Set 落成数组（JSON 可表达）', () => {
     useTaskStore.getState().setMode('complex')
-    useTaskStore.getState().setIsInitialized(true)
 
     const persisted = readPersisted()
     expect(persisted.version).toBe(3)
     expect(persisted.state.mode).toBe('complex')
-    expect(persisted.state.isInitialized).toBe(true)
     expect(Array.isArray(persisted.state.runningTaskIds)).toBe(true)
     // 服务端数据的本地副本不得再进 localStorage（唯一真相在服务端）
     expect(persisted.state).not.toHaveProperty('tasks')
@@ -49,7 +47,6 @@ describe('taskStore 持久化', () => {
         version: 3,
         state: {
           runningTaskIds: ['task-a', 'task-b'],
-          isInitialized: true,
           mode: 'complex',
         },
       }),
@@ -61,7 +58,6 @@ describe('taskStore 持久化', () => {
     expect(state.runningTaskIds).toBeInstanceOf(Set)
     expect([...state.runningTaskIds].sort()).toEqual(['task-a', 'task-b'])
     expect(state.mode).toBe('complex')
-    expect(state.isInitialized).toBe(true)
   })
 
   it('版本不匹配（旧的 @2 自研 persist 数据）不会污染状态', async () => {

@@ -15,8 +15,6 @@ export {
   // Chat History Queries
   useChatHistoryQuery,
   useDeleteConversationMutation,
-  useBatchDeleteConversationsMutation,
-  useRecentConversationsQuery,
   chatHistoryKeys,
 } from './useChatHistoryQuery'
 
@@ -42,6 +40,5 @@ export {
   // Run Timeline Queries
   useRunDetails,
   useRunTimeline,
-  useThreadTimeline,
   runKeys,
 } from './useRunTimelineQuery'

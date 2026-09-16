@@ -212,28 +212,7 @@ export async function previewExpert(
 /**
  * 升级用户为管理员
  */
-export async function promoteUser(data: PromoteUserRequest): Promise<void> {
-  const response = await authenticatedFetch(buildUrl('/admin/promote-user'), {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(data)
-  })
-  return handleResponse<void>(response, '升级用户失败')
-}
 
-/**
- * 获取单个专家配置
- */
-export async function getExpert(expertKey: string): Promise<SystemExpert> {
-  const response = await authenticatedFetch(buildUrl(`/admin/experts/${expertKey}`), {
-    headers: getHeaders()
-  })
-  return handleResponse<SystemExpert>(response, '获取专家配置失败')
-}
-
-/**
- * 根据 System Prompt 自动生成专家描述
- */
 export async function generateExpertDescription(
   data: GenerateDescriptionRequest
 ): Promise<GenerateDescriptionResponse> {

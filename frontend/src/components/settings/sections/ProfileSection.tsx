@@ -14,6 +14,8 @@ import { logger } from '@/utils/logger'
 import { pushToast } from '@/components/ui/use-toast'
 import { useTranslation } from '@/i18n'
 import { toLocalDate } from '@/lib/datetime'
+import { useCopy } from '@/hooks/useCopy'
+import { Spinner } from '@/components/ui/spinner'
 
 interface ProfileSectionProps {
   onClose: () => void
@@ -22,13 +24,11 @@ interface ProfileSectionProps {
 /** 信息行（只读账号信息）：label + value + 可选复制 */
 function InfoRow({ label, value, mono, copyable }: { label: string; value: string; mono?: boolean; copyable?: boolean }) {
   const { t } = useTranslation()
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopy()
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      await copy(value)
     } catch { /* 忽略 */ }
   }
 
@@ -218,7 +218,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
         >
           {isSaving ? (
             <span className="flex items-center gap-2">
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent-ink/30 border-t-accent-ink" />
+              <Spinner size="md" />
               {t('savingUserSettings')}
             </span>
           ) : (

@@ -30,6 +30,7 @@ import type {
   ToolInfo,
 } from '@/services/admin'
 import { previewExpert, getAvailableTools } from '@/services/admin'
+import { Spinner } from '@/components/ui/spinner'
 
 interface ExpertEditorProps {
   expert: SystemExpert | null
@@ -402,7 +403,7 @@ export default function ExpertEditor({
                   >
                     {isSaving ? (
                       <>
-                        <div className="h-3 w-3 animate-spin rounded-full border border-accent-ink/30 border-t-accent-ink" />
+                        <Spinner size="xs" />
                         {t('saving')}
                       </>
                     ) : (
@@ -455,7 +456,7 @@ export default function ExpertEditor({
                   >
                     {isPreviewing ? (
                       <>
-                        <div className="h-3 w-3 animate-spin rounded-full border border-accent-ink/30 border-t-accent-ink" />
+                        <Spinner size="xs" />
                         {t('running')}
                       </>
                     ) : (

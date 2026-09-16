@@ -8,7 +8,6 @@ import {
 // Mock stores
 // 2026-09-13 清理后 plan.created 不再写「本地任务副本」：本桩只需保留仍存在的动作
 const mockTaskStore = {
-  setIsInitialized: vi.fn(),
   setMode: vi.fn()
 }
 
@@ -62,7 +61,6 @@ describe('EventHandler', () => {
       handler.handle(event)
       handler.handle(event) // 重复
 
-      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledTimes(1)
     })
 
     it('应该限制已处理事件数量', () => {
@@ -82,7 +80,6 @@ describe('EventHandler', () => {
         data: { execution_plan_id: 's1', tasks: [] }
       })
 
-      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -99,14 +96,12 @@ describe('EventHandler', () => {
       handler.handle(planCreated('1'), 'run-a')
       handler.handle(planCreated('1'), 'run-b')
 
-      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledTimes(2)
     })
 
     it('同一个 run 内的重复帧仍被拦掉——补放与实时跟随的重叠窗口靠它兜底', () => {
       handler.handle(planCreated('1'), 'run-a')
       handler.handle(planCreated('1'), 'run-a')
 
-      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -120,8 +115,6 @@ describe('EventHandler', () => {
 
       handler.handle(planCreatedEvent)
 
-      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledWith(true)
-      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledWith(true)
       expect(mockTaskStore.setMode).toHaveBeenCalledWith('complex')
     })
 
@@ -153,7 +146,6 @@ describe('EventHandler', () => {
       handler.clearProcessedEvents()
       handler.handle(event) // 可以再次处理
 
-      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledTimes(2)
     })
   })
 })
@@ -183,7 +175,6 @@ describe('便捷函数', () => {
 
       handleServerEvent(event)
 
-      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledWith(true)
     })
   })
 
@@ -199,7 +190,6 @@ describe('便捷函数', () => {
       getEventHandler().clearProcessedEvents()
       handleServerEvent(event) // 可以再次处理
 
-      expect(mockTaskStore.setIsInitialized).toHaveBeenCalledTimes(2)
     })
   })
 })

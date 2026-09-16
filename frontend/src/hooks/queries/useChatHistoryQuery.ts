@@ -19,8 +19,8 @@
  * - limit: 每页20条，减少首屏加载时间
  */
 
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
-import { getConversations, deleteConversation, deleteConversationsBatch } from '@/services/chat'
+import { useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
+import { getConversations, deleteConversation } from '@/services/chat'
 import { logger } from '@/utils/logger'
 import { CACHE_TIMES } from '@/config/query'
 
@@ -125,50 +125,4 @@ export function useDeleteConversationMutation() {
 }
 
 // 批量删除会话的 Mutation Hook
-export function useBatchDeleteConversationsMutation() {
-  const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: async (threadIds: string[]) => {
-      const result = await deleteConversationsBatch(threadIds)
-      return result
-    },
-    onSuccess: (result, threadIds) => {
-      // 成功删除后，重新获取列表
-      queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
-      // 同时移除成功删除的会话缓存
-      const deletedIds = threadIds.filter((id) => !result.failed_ids.includes(id))
-      deletedIds.forEach((id) => {
-        queryClient.removeQueries({ queryKey: chatHistoryKeys.detail(id) })
-      })
-      logger.debug('[useBatchDeleteConversationsMutation] Batch deleted:', result.deleted_count, 'failed:', result.failed_ids.length)
-    },
-    onError: (error) => {
-      logger.error('[useBatchDeleteConversationsMutation] Failed to batch delete conversations:', error)
-    },
-  })
-}
-
-// 获取最近会话的 Hook（用于侧边栏）
-// 使用 useQuery 直接获取第一页数据（简化版，不需要无限滚动）
-export function useRecentConversationsQuery(limit: number = 20, options: { enabled?: boolean } = {}) {
-  const { enabled = true } = options
-  
-  const { data, isLoading, error } = useQuery({
-    queryKey: [...chatHistoryKeys.list({ limit }), 'recent'],
-    queryFn: async () => {
-      const result = await getConversations(1, limit)
-      return result.items
-    },
-    staleTime: CACHE_TIMES.CHAT_HISTORY.staleTime,
-    gcTime: CACHE_TIMES.CHAT_HISTORY.gcTime,
-    refetchOnMount: 'always',
-    enabled,
-  })
-
-  return {
-    data: data || [],
-    isLoading,
-    error,
-  }
-}

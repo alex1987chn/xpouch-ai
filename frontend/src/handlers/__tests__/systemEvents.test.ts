@@ -239,7 +239,6 @@ describe('System Events', () => {
         event.data.current_plan.map((t) => ({ ...t, artifacts: [] })),
         3,
         'run-1',
-        'plan-1',
       )
     })
 

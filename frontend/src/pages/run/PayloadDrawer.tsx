@@ -20,6 +20,7 @@ import { toLocalDate } from '@/lib/datetime'
 import { ANIMATION_DURATION } from '@/constants/ui'
 import type { RunEvent } from '@/types/run'
 import { useTranslation } from '@/i18n'
+import { useCopy } from '@/hooks/useCopy'
 
 interface PayloadDrawerProps {
   event: RunEvent | null
@@ -29,14 +30,13 @@ interface PayloadDrawerProps {
 
 export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
   const { t } = useTranslation()
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopy()
   const [isExpanded, setIsExpanded] = useState(false)
 
   // 关闭时重置状态
   useEffect(() => {
     if (!isOpen) {
-      setCopied(false)
-      setIsExpanded(false)
+        setIsExpanded(false)
     }
   }, [isOpen])
 
@@ -44,9 +44,7 @@ export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
   const handleCopy = useCallback(async () => {
     if (!event?.event_data) return
     try {
-      await navigator.clipboard.writeText(JSON.stringify(event.event_data, null, 2))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await copy(JSON.stringify(event.event_data, null, 2))
     } catch (err) {
       console.error('Failed to copy:', err)
     }

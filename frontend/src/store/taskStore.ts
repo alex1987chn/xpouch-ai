@@ -60,7 +60,8 @@ export const useTaskStore = create<TaskStore>()(
   persist(
     immer((set, get, _api) => ({
       // 组合所有 Slices
-      ...createUISlice(set, get),
+      ...createUISlice(set),
+      // get 供下方 resetAll 使用（UISlice 不再需要 getter）
 
       // 全局重置方法 - 组合各 Slice 的重置逻辑
       resetAll: (_force: boolean = false) => {
@@ -91,7 +92,6 @@ export const useTaskStore = create<TaskStore>()(
         ({
           // UISlice：跨刷新需要保留的 UI 状态
           runningTaskIds: Array.from(state.runningTaskIds),
-          isInitialized: state.isInitialized,
           mode: state.mode,
           // 不持久化临时状态：isWaitingForApproval, pendingPlan
           // 这些状态应该在页面刷新后通过 API 恢复

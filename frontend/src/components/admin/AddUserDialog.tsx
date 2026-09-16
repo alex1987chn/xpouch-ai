@@ -14,6 +14,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { pushToast } from '@/components/ui/use-toast'
 import { createAdminUser } from '@/services/admin'
 import { cn } from '@/lib/utils'
+import { useCopy } from '@/hooks/useCopy'
 
 interface AddUserDialogProps {
   open: boolean
@@ -33,7 +34,7 @@ export function AddUserDialog({ open, onClose, onCreated }: AddUserDialogProps) 
   const [password, setPassword] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [createdPwd, setCreatedPwd] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopy()
 
   const reset = () => {
     setUsername('')
@@ -43,7 +44,6 @@ export function AddUserDialog({ open, onClose, onCreated }: AddUserDialogProps) 
     setPwdMode('none')
     setPassword('')
     setCreatedPwd(null)
-    setCopied(false)
   }
 
   const handleClose = () => {
@@ -85,9 +85,7 @@ export function AddUserDialog({ open, onClose, onCreated }: AddUserDialogProps) 
   const handleCopyPassword = async () => {
     if (!createdPwd) return
     try {
-      await navigator.clipboard.writeText(createdPwd)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      await copy(createdPwd)
     } catch {
       pushToast({ title: t('copyFailed'), variant: 'destructive' })
     }

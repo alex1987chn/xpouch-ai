@@ -36,10 +36,9 @@ export function handlePlanCreated(
   const { taskStore, chatStore, debug } = context
   // 本地任务副本已删除（见 store/taskStore.ts 的说明）：这里只需标记「已初始化 +
   // 复杂模式」，任务清单本身由服务端与 pendingPlan 承载
-  const { setIsInitialized, setMode } = taskStore
+  const { setMode } = taskStore
   const { updateMessageMetadata } = chatStore
 
-  setIsInitialized(true)
   setMode('complex')
 
   // 🔥 性能优化：使用缓存 ID 查找最后一条助手消息

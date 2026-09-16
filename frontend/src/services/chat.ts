@@ -452,16 +452,7 @@ export async function getConversation(id: string): Promise<Conversation> {
 /**
  * 获取会话消息列表（单独端点，P0-5 优化）
  */
-export async function getThreadMessages(threadId: string): Promise<ApiMessage[]> {
-  const response = await authenticatedFetch(buildUrl(`/threads/${threadId}/messages`), {
-    headers: getHeaders()
-  })
-  return handleResponse<ApiMessage[]>(response, '获取消息列表失败')
-}
 
-/**
- * 删除单个会话
- */
 export async function deleteConversation(id: string): Promise<void> {
   const response = await authenticatedFetch(buildUrl(`/threads/${id}`), {
     method: 'DELETE',
@@ -479,25 +470,8 @@ export interface BatchDeleteResult {
   failed_ids: string[]
 }
 
-export async function deleteConversationsBatch(ids: string[]): Promise<BatchDeleteResult> {
-  const response = await authenticatedFetch(buildUrl('/threads/batch-delete'), {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ thread_ids: ids })
-  })
-  return handleResponse<BatchDeleteResult>(response, '批量删除会话失败')
-}
-
-/**
- * 发送消息 - 流式输出
- * v3.0: 只处理新协议事件
- */
-export interface ChatDocument {
-  /** 文件名（含扩展名，后端按扩展名选择解析器） */
-  name: string
-  /** 文件内容的 base64（不含 data: 前缀） */
-  content_base64: string
-}
+export type { ChatDocument } from '@/components/chat/types'
+import type { ChatDocument } from '@/components/chat/types'
 
 export async function sendMessage(
   messages: ApiMessage[],
@@ -543,36 +517,7 @@ export async function sendMessage(
  * 更新 Artifact 内容（持久化到后端）
  * 用于用户编辑 AI 生成的产物
  */
-export interface UpdateArtifactParams {
-  artifactId: string
-  content: string
-}
 
-export interface UpdateArtifactResult {
-  id: string
-  type: string
-  title?: string
-  content: string
-  language?: string
-  sort_order: number
-  updated: boolean
-}
-
-export async function updateArtifact(
-  params: UpdateArtifactParams
-): Promise<UpdateArtifactResult> {
-  const response = await authenticatedFetch(buildUrl(`/artifacts/${params.artifactId}`), {
-    method: 'PATCH',
-    headers: getHeaders(),
-    body: JSON.stringify({ content: params.content })
-  })
-  return handleResponse<UpdateArtifactResult>(response, '保存失败')
-}
-
-/**
- * 🔥🔥🔥 v3.1.0 HITL: 恢复被中断的执行流程
- * 复用与 sendMessage 完全相同的 SSE 处理逻辑
- */
 export interface ResumeChatParams {
   threadId: string
   runId: string

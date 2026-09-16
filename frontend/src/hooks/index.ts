@@ -9,7 +9,6 @@ export {
   // Chat History
   useChatHistoryQuery,
   useDeleteConversationMutation,
-  useRecentConversationsQuery,
   chatHistoryKeys,
   // Agents
   useAgentsQuery,
@@ -70,24 +69,12 @@ export {
   // Actions
   useChatActions,
   useAddMessageAction,
-  useUpdateMessageAction,
-  useSetGeneratingAction,
   useSetInputMessageAction,
 } from './useChatSelectors'
 
 // ============================================================================
 // AuthStore Selectors
 // ============================================================================
-export {
-  // 基础 Selectors
-  useIsAuthenticated,
-  useUser,
-  useIsAuthLoading,
-  
-  // 复杂 Selectors
-  useAuth,
-} from './useAuthSelectors'
-
 // ============================================================================
 // App UI Selectors（直接读 store，无 Context）
 // ============================================================================
