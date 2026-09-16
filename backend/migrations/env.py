@@ -51,6 +51,17 @@ if config.config_file_name is not None and not _app_logging_configured:
 # SQLModel metadata
 target_metadata = SQLModel.metadata
 
+# LangGraph checkpointer 在**运行时**自建的表（模型不声明、迁移链不创建）。
+# 对 alembic check/autogenerate 显式排除——它们不属于 schema 真相源的管辖范围，
+# 否则老库每次 check 都报 4 张 remove_table 噪音，淹没了真漂移。
+RUNTIME_MANAGED_TABLES = frozenset(
+    {"checkpoints", "checkpoint_writes", "checkpoint_blobs", "checkpoint_migrations"}
+)
+
+
+def _include_object(obj, name, type_, reflected, compare_to):
+    return not (type_ == "table" and name in RUNTIME_MANAGED_TABLES)
+
 
 def get_database_url():
     """使用统一配置获取 Alembic 所需的同步数据库连接串。"""
@@ -66,6 +77,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        include_object=_include_object,
     )
 
     with context.begin_transaction():
@@ -82,6 +94,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
+            include_object=_include_object,
         )
 
         with context.begin_transaction():

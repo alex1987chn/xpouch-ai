@@ -8,7 +8,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Column, Index, func
+from sqlalchemy import JSON, Column, Index, Text, func
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -88,8 +88,8 @@ class SubTask(SQLModel, table=True):
     # 输出结果：JSON 格式的执行结果
     output_result: dict | None = Field(default=None, sa_column=Column(JSON))
 
-    # 错误信息
-    error_message: str | None = None
+    # 错误信息（长文本：失败堆栈/原因说明可能很长，与其他内容列同口径用 Text）
+    error_message: str | None = Field(default=None, sa_column=Column(Text))
 
     # 执行耗时（毫秒）
     duration_ms: int | None = None
