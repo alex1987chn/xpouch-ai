@@ -90,20 +90,17 @@
 - **⚠️ 2026-09-13 修正**：本节原写「这是 B3 的硬前提，因为 `interrupt()` 恢复时节点会重跑、commander 会双写」——**该表述不准确**。LangGraph 恢复时只从头重跑**含中断的那个节点**，上游节点不会重跑。B3 把 `interrupt()` 放进独立的 `plan_approval` 节点后，`commander_node` 不会重跑，**不存在恢复导致的双写**。
   → 因此决定 3 的性质是「拆雷 + 重试/并行的前提」，**不是 B3 的阻塞项**；B3 不必等 B1。
 
-### 决定 4 · Plan 是领域聚合，不是图状态（**预埋 `execution_mode`**）
+### 决定 4 · Plan 是领域聚合，不是图状态（**形状收敛已落地 2026-09-13，批次 B4**）
 
-- **现状**：四套形状 + 两处手工互转（见第 2 节）。
-- **目标**：一个 `Plan` + `PlanStep` 领域模型，只在边界做显式转换（LLM 输出 schema / API schema / 事件 schema）。图状态只持 `plan_id` + `revision`。
-- **理由**：整类消灭漂移。
-- **关键预埋**：canonical 模型**必须带 `execution_mode`**。现状是：`SubTask.execution_mode` 与 `ExecutionMode.PARALLEL` 已在 DB/枚举层定义，但 **LLM 计划 schema（`commander.Task`）没有该字段**，执行器也不消费 → 并行表达从源头就断。不预埋，决定 4 做完要再做一遍。
+- **已落地（形状收敛）**：任务字段/依赖字段单一写法（`depends_on` 一统）、子任务创建与依赖解析收敛为唯一实现、一 run 一计划（产物不再随计划替换被删）。
+- **未做（领域聚合后半段）**：图状态仍持全量 `task_list`，未收敛到「图内只持 `plan_id` + `revision`、边界显式转换」的终态——LLM 输出 schema / API schema / 事件 schema 的转换已大幅减少但非零。
+- **关键预埋（已就位）**：canonical 形状带 `execution_mode`，`commander.Task` 有该字段并由数据派生（B2 预埋 → C2 消费）。
 
-### 决定 5 · 计划即执行图（`Send` 分波扇出）
+### 决定 5 · 计划即执行图（`Send` 分波扇出）（**已落地 2026-09-13，批次 C2**）
 
-- **现状**：`task_list` 数组 + `current_task_index` 游标 + dispatcher 节点 + 外层 while。`current_task_index` 与列表强耦合，正是它让列表**不能**换成 reducer（换了重跑就索引错位）。
-- **目标**：依赖 DAG 分层（拓扑波），同层用 `Send` 并行扇出，聚合节点 join。`current_task_index`、dispatcher、外层 while、自研循环守卫一起消失（原生 `recursion_limit` 接管）。
-- **理由**：计划既是数据也是图结构，不再需要两套东西互相翻译。
-- **已实测**：6 个 IO-bound 分支，`max_concurrency=1/3/6 → 1.87s/0.61s/0.30s`。**`max_concurrency` 是原生限流旋钮，不需要手搓 semaphore**；结果靠 reducer 聚合。
-- **扇出层级的判据**：
+- **已落地**：`current_task_index` 游标、dispatcher 节点、外层 while、自研循环守卫**全部删除**——依赖 DAG 分层在 `agents/plan_waves.py`（纯函数判定层），同层 `Send` 扇出到 `agents/expert_worker.py` 子图，`task_outcomes` 经 reducer 聚合，循环保护交还原生 `recursion_limit`。
+- **并发上限**：`services/run_concurrency.py`（system_setting → env → 串行兜底，默认 1），管理端「系统状态」页可改；`tests/test_wave_execution.py` 跑真图锁住并发语义。
+- **扇出层级的判据**（设计时的权衡记录，仍然有效）：
   - **L1 计划级**（摊平到计划，`execution_mode=parallel` + `depends_on`）：子 agent 产出**语义不同、用户想看**的结果（多源检索）。白拿审批可见性 + per-source `Artifact` 归因（`Artifact.sub_task_id` 已支持）+ 单源重试 + 复用配额与事件机制。**本产品大多数场景应走 L1。**
   - **L2 步骤内**（节点内子图，需 `parent_sub_task_id`）：扇出**机械且同质**（搜索工具内部查 5 个引擎合并），或**运行时才知道宽度**（搜索返回 12 条逐条分析）。
 - **代价**：见第 6 节「并行的五个新问题」。
