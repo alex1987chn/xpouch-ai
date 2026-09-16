@@ -1,9 +1,9 @@
-"""事件流协议 v2 契约测试。
+"""事件流协议 v2 契约测试（原 test_event_queue_immutability，v1 遗留名已更正）。
 
 v1（state 携带 SSE 字符串 + on_chain_end 捞取）已被 custom stream 取代：
 - 节点层唯一出口是 agents.event_stream.emit_event（内部 get_stream_writer）
 - 节点源码不得再出现 event_queue 写入 / sse_event_to_string 直构
-- 消费端（stream_service）必须以 stream_mode 含 custom 驱动图
+- 消费端（stream_pipeline / stream_service）必须以 on_custom_event 驱动
 state_patch 的不可变工具（replace_task_item 等）仍被任务列表更新使用，保留其测试。
 """
 
@@ -38,7 +38,7 @@ def test_nodes_use_emit_event_as_sole_event_exit():
         assert "get_event_queue_snapshot" not in code, f"{node_file} 不得读取 event_queue"
 
 
-def test_stream_service_consumes_custom_stream():
+def test_stream_pipeline_consumes_custom_stream():
     code = _read("services/chat/stream_service.py")
     assert '== "on_custom_event"' in code, "消费端应处理 on_custom_event（emit_event 出口）"
     assert "sse_payload_to_wire(" in code, "消费端应使用统一 payload 转换"

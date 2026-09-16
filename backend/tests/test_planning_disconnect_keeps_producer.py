@@ -2,8 +2,9 @@
 
 回归背景：producer/consumer 分离改造之前，图执行跑在 SSE 生成器里，客户端一断连
 （例如刷新页面）Starlette 就取消生成器 → **规划阶段的 run 当场死亡**。改造后
-断连只结束传输（`event_generator` 收到 CancelledError 自尽），producer 在后台
-继续跑到审批点，`human.interrupt` 帧落库，重连时由 resume 端点补放。
+断连只结束传输（消费端收到 CancelledError 自尽，现为 stream_pipeline 的
+events 生成器），producer 在后台继续跑到审批点，`human.interrupt` 帧落库，
+重连时由 resume 端点补放。
 
 本测试用真实图（interrupt / checkpointer / HITL 检测全真，只把 router/commander
 换成桩，桩法与 test_wave_execution 一致）直驱 `handle_langgraph_stream`，锁住
