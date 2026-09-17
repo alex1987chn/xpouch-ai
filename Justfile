@@ -53,6 +53,14 @@ gen-event-types:
 check-event-types:
     cd backend; uv run python -m scripts.gen_event_types_ts --check
 
+# 由后端领域枚举（models/enums.py）重新生成前端 TS 联合类型（改枚举后必跑；生成物不要手改）
+gen-enums:
+    cd backend; uv run python -m scripts.gen_enums_ts
+
+# 只校验领域枚举生成物是否最新
+check-enums:
+    cd backend; uv run python -m scripts.gen_enums_ts --check
+
 # =============================================================================
 # 代码检查
 # =============================================================================

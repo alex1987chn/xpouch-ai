@@ -4,40 +4,28 @@
  * 与后端 RunEventType 和 RunEvent 保持一致
  */
 
+import {
+  RUN_STATUS_VALUES,
+  TERMINAL_RUN_STATUSES,
+  type RunEventType,
+  type RunStatus,
+} from './enums.generated'
+
 // ============================================
 // 运行事件类型枚举
 // ============================================
 
-/**
- * 运行事件类型 - 与后端 RunEventType 保持一致
- */
-export type RunEventType =
-  // 生命周期事件
-  | 'run_created'
-  | 'run_started'
-  // 路由事件
-  | 'router_decided'
-  // 计划事件（复杂模式）
-  | 'plan_created'
-  | 'plan_updated'
-  // HITL 事件
-  | 'hitl_interrupted'
-  | 'hitl_resumed'
-  | 'hitl_rejected'
-  // 任务执行事件
-  | 'task_started'
-  | 'task_completed'
-  | 'task_failed'
-  // 产物事件
-  | 'artifact_generated'
-  // 终态事件
-  | 'run_completed'
-  | 'run_failed'
-  | 'run_cancelled'
-  | 'run_timed_out'
+// RunEventType / RunStatus 由后端 models/enums.py 生成（见 enums.generated.ts）。
+// 这里原本是手抄的字面量联合 + "与后端保持一致"的注释——注释不是闸门：手抄那份已经
+// 少了 hitl_revision_started / hitl_revision_failed 两个成员（少成员不会编译报错，
+// 于是前端静默不识别它们的事件分类与显示名）。
+export type { RunEventType, RunStatus }
 
 /**
- * 终态事件列表
+ * 终态事件列表（前端语义：哪些事件标志运行结束）。
+ *
+ * 状态侧的终态集合来自后端（TERMINAL_RUN_STATUSES）；事件侧后端没有对应常量，
+ * 故在此显式列出——成员受 RunEventType 约束，改名/删成员会编译报错。
  */
 export const TERMINAL_EVENTS: RunEventType[] = [
   'run_completed',
@@ -51,27 +39,15 @@ export const TERMINAL_EVENTS: RunEventType[] = [
 // ============================================
 
 /**
- * 运行状态 - 与后端 RunStatus 保持一致
+ * 活跃运行状态（不允许同线程并发）= 全部状态 - 后端定义的终态集合。
+ *
+ * 派生而非手抄：后端新增状态时这里自动跟随，不会漏（手抄版就漏过）。
  */
-export type RunStatus =
-  | 'queued'
-  | 'running'
-  | 'waiting_for_approval'
-  | 'resuming'
-  | 'completed'
-  | 'failed'
-  | 'cancelled'
-  | 'timed_out'
+const TERMINAL_STATUS_SET: ReadonlySet<string> = new Set(TERMINAL_RUN_STATUSES)
 
-/**
- * 活跃运行状态（不允许同线程并发）
- */
-export const ACTIVE_RUN_STATUSES: RunStatus[] = [
-  'queued',
-  'running',
-  'waiting_for_approval',
-  'resuming',
-]
+export const ACTIVE_RUN_STATUSES: RunStatus[] = RUN_STATUS_VALUES.filter(
+  status => !TERMINAL_STATUS_SET.has(status)
+)
 
 // ============================================
 // 运行事件接口
@@ -181,6 +157,8 @@ export function getEventDisplayName(eventType: RunEventType): string {
     hitl_interrupted: '等待审核',
     hitl_resumed: '审核通过',
     hitl_rejected: '审核拒绝',
+    hitl_revision_started: '修订开始',
+    hitl_revision_failed: '修订失败',
     task_started: '任务开始',
     task_completed: '任务完成',
     task_failed: '任务失败',
