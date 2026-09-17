@@ -20,10 +20,8 @@ import { useUserStore } from '@/store/userStore'
 import { useAppUISelectors } from '@/hooks'
 import { useIsWaitingForApproval } from '@/hooks/useTaskSelectors'
 import { useChatStore } from '@/store/chatStore'
-import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery'
 import { useUserSettingsQuery } from '@/hooks/queries/useUserSettingsQuery'
 import { getTokensToday } from '@/services/stats'
-import { getSystemStatus } from '@/services/systemStatus'
 import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher'
 import { CommandPalette } from '@/components/cmd/CommandPalette'
 import { The4DPocketLogo } from '@/components/brand'
@@ -31,6 +29,13 @@ import { SettingsHubDialog } from '@/components/settings/SettingsHubDialog'
 import LoginDialog from '@/components/auth/LoginDialog'
 import { cn } from '@/lib/utils'
 import { Z_INDEX } from '@/constants/zIndex'
+
+/** token 数的紧凑写法（底栏只有 7px 高、十几字符宽）：1_234 → 1.2k，1_200_000 → 1.2M */
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  return String(n)
+}
 
 /** 顶栏 logo：原 4D 口袋动画标（缩小）+ [XPOUCH] 字标（用户原始设计） */
 function LogoMark() {
@@ -58,7 +63,6 @@ export default function WorkbenchLayout() {
   const { user, isAuthenticated } = useUserStore()
   const { dialogs } = useAppUISelectors()
   const isAwaiting = useIsWaitingForApproval()
-  const { data: agents } = useAgentsQuery({ includeDefault: true })
   const isAdmin = user?.role === 'admin'
 
   // 连接状态（navigator.onLine，真实信号，不做假数据）
@@ -74,7 +78,7 @@ export default function WorkbenchLayout() {
     }
   }, [])
 
-  // 底栏真实信号：默认模型（用户级）/ 数据库连接（admin 级）/ 今日 token 用量+配额
+  // 底栏真实信号：默认模型（用户级）/ 今日 token 用量+配额
   const { data: settingsData } = useUserSettingsQuery(isAuthenticated)
   const { data: tokensToday } = useQuery({
     queryKey: ['tokens-today'],
@@ -84,13 +88,14 @@ export default function WorkbenchLayout() {
     refetchOnWindowFocus: false,
     staleTime: 30_000,
   })
-  const { data: sysStatus } = useQuery({
-    queryKey: ['system-status'],
-    queryFn: getSystemStatus,
-    enabled: isAdmin,
-    refetchOnWindowFocus: false,
-    staleTime: 30_000,
-  })
+
+  // 今日用量 / 日配额的进度语义：配额留空 = 不限量，此时**不画填充**（对着无上限的桶
+  // 画百分比是假信号，条只作轨道）；配了额度才按真实比例填充，打满即转警示色——
+  // 那正是新任务会被拦截的时刻，属真实危险信号而不是装饰。
+  const tokenQuota = tokensToday?.daily_token_quota ?? null
+  const tokensUsed = tokensToday?.today_tokens ?? 0
+  const tokenQuotaRatio = tokenQuota ? Math.min(100, Math.round((tokensUsed / tokenQuota) * 100)) : 0
+  const tokenQuotaExceeded = tokenQuota !== null && tokensUsed >= tokenQuota
 
   // ⌘K / Ctrl+K 全局命令面板
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -245,43 +250,34 @@ export default function WorkbenchLayout() {
       <footer className="relative z-30 flex h-7 shrink-0 items-center gap-4 border-t border-border-divider bg-surface-card px-3.5 text-nano text-content-muted">
         <span className={cn('h-[7px] w-[7px] shrink-0 animate-pulse rounded-full', online ? 'bg-status-online' : 'bg-accent-warning')} />
         <span>{online ? t('sbOnline') : t('sbOffline')}</span>
-        {isAdmin && sysStatus && (
-          <>
-            <span className="h-3 w-px bg-border-divider" />
-            <span className={cn(!sysStatus.database.connected && 'text-accent-warning')}>
-              PostgreSQL · {sysStatus.database.connected ? t('sbDbConnected') : t('sbDbDisconnected')}
-            </span>
-          </>
-        )}
         {settingsData?.default_model?.id && (
           <>
             <span className="h-3 w-px bg-border-divider" />
             <span className="font-display">{settingsData.default_model.id}</span>
           </>
         )}
-        {(agents?.length ?? 0) > 0 && (
-          <>
-            <span className="h-3 w-px bg-border-divider" />
-            <span>{t('expertLabel')} · {agents?.length}</span>
-          </>
-        )}
         <span className="ml-auto flex items-center gap-4">
           {tokensToday && (
             <span
               className="flex items-center gap-2"
-              title={tokensToday.daily_token_quota ? t('footerQuotaTitleCapped', { quota: tokensToday.daily_token_quota.toLocaleString() }) : t('footerQuotaTitleUnlimited')}
+              title={tokenQuota ? t('footerQuotaTitleCapped', { quota: tokenQuota.toLocaleString() }) : t('footerQuotaTitleUnlimited')}
             >
-              <span>{t('footerTokensToday', { tokens: tokensToday.today_tokens >= 1000 ? `${(tokensToday.today_tokens / 1000).toFixed(1)}k` : String(tokensToday.today_tokens) })}</span>
-              {tokensToday.daily_token_quota ? (
-                <span className="h-1 w-14 overflow-hidden rounded-full bg-surface-tint">
+              <span className={cn(tokenQuotaExceeded && 'text-status-offline')}>
+                {tokenQuota
+                  ? t('footerTokensTodayCapped', { used: formatTokens(tokensUsed), quota: formatTokens(tokenQuota) })
+                  : t('footerTokensToday', { tokens: formatTokens(tokensUsed) })}
+              </span>
+              <span className="h-1 w-14 overflow-hidden rounded-full bg-surface-tint">
+                {tokenQuota !== null && (
                   <span
-                    className="block h-full rounded-full bg-accent-brand"
-                    style={{ width: `${Math.min(100, Math.round((tokensToday.today_tokens / tokensToday.daily_token_quota) * 100))}%` }}
+                    className={cn(
+                      'block h-full rounded-full',
+                      tokenQuotaExceeded ? 'bg-status-offline' : 'bg-accent-brand'
+                    )}
+                    style={{ width: `${tokenQuotaRatio}%` }}
                   />
-                </span>
-              ) : (
-                <span className="text-content-muted">∞</span>
-              )}
+                )}
+              </span>
             </span>
           )}
           <span className="flex items-center gap-1.5">

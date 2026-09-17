@@ -48,6 +48,7 @@ export const zh = {
   planStepCount: '{count} 个步骤',
   relatedArtifacts: '关联产物',
   footerTokensToday: '今日 {tokens}',
+  footerTokensTodayCapped: '今日 {used} / {quota}',
   footerQuotaTitleCapped: '每日上限 {quota} tokens',
   footerQuotaTitleUnlimited: '未设配额，不限制',
 }
@@ -96,6 +97,7 @@ export const en = {
   planStepCount: '{count} steps',
   relatedArtifacts: 'Related artifacts',
   footerTokensToday: 'Today {tokens}',
+  footerTokensTodayCapped: 'Today {used} / {quota}',
   footerQuotaTitleCapped: 'Daily limit {quota} tokens',
   footerQuotaTitleUnlimited: 'No quota set, unlimited',
 }
@@ -144,6 +146,7 @@ export const ja = {
   planStepCount: '{count} ステップ',
   relatedArtifacts: '関連成果物',
   footerTokensToday: '今日 {tokens}',
+  footerTokensTodayCapped: '今日 {used} / {quota}',
   footerQuotaTitleCapped: '1日の上限 {quota} tokens',
   footerQuotaTitleUnlimited: 'クォータ未設定・無制限',
 }
