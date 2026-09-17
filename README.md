@@ -6,7 +6,7 @@
 
 English | [简体中文](./README.zh-CN.md)
 
-[![License](https://img.shields.io/badge/License-Apache%202.0%20with%20Additional%20Terms-blue.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 [![CI](https://github.com/alex1987chn/xpouch-ai/actions/workflows/ci.yml/badge.svg)](./actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue?logo=python)](https://python.org)
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev)
@@ -396,7 +396,8 @@ Issues, ideas, and pull requests are welcome. See [CONTRIBUTING.md](./CONTRIBUTI
 
 ## License
 
-Licensed under the **Apache License 2.0** with additional terms — see [LICENSE](./LICENSE).
+[Apache License 2.0](./LICENSE) — free to use, modify, distribute and commercialize, including
+running it as a hosted service. Attribution notices are in [NOTICE](./NOTICE).
 
 ---
 

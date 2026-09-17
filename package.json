@@ -1,6 +1,7 @@
 {
   "name": "xpouch-ai-monorepo",
   "private": true,
+  "license": "Apache-2.0",
   "description": "XPouch AI - A modern AI assistant with LangGraph backend",
   "scripts": {
     "dev": "concurrently \"pnpm --prefix frontend run dev\" \"cd backend && uv run python run.py\"",

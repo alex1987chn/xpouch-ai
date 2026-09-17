@@ -6,7 +6,7 @@
 
 [English](./README.md) | 简体中文
 
-[![License](https://img.shields.io/badge/License-Apache%202.0%20with%20Additional%20Terms-blue.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 [![CI](https://github.com/alex1987chn/xpouch-ai/actions/workflows/ci.yml/badge.svg)](./actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue?logo=python)](https://python.org)
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev)
@@ -388,8 +388,8 @@ BACKUP_KEEP=30 ./scripts/backup_db.sh   # 自定义份数
 
 ## 许可证
 
-本项目采用 **Apache License 2.0 + 附加条款** 开源。
-详细条款见 [LICENSE](./LICENSE)。
+[Apache License 2.0](./LICENSE)——可自由使用、修改、分发与商用（含作为托管服务对外提供）。
+署名要求见 [NOTICE](./NOTICE)。
 
 ---
 

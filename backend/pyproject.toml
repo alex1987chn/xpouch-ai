@@ -4,6 +4,9 @@ version = "3.5.3"
 description = "XPouch AI — self-hosted multi-user AI workbench (FastAPI + LangGraph backend)"
 readme = "README.md"
 requires-python = ">=3.13"
+# SPDX 标识（PEP 639）。许可正文在仓库根 LICENSE、署名通知在 NOTICE；
+# 不写 license-files——两个文件都在仓库根，不在本包目录内。
+license = "Apache-2.0"
 dependencies = [
     "fastapi>=0.129.0,<1.0.0",
     "starlette>=0.52.1",  # 🔥 安全修复: DoS 漏洞 (GHSA-f96h-pmfr-66vw)

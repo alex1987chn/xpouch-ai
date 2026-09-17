@@ -239,15 +239,24 @@ git push origin feat/your-feature-name
 - **GitHub Discussions**: 一般性讨论和问题
 - **Pull Requests**: 代码贡献
 
-## 许可证
+## 贡献者条款（Contributor Terms）
 
-通过提交贡献，您同意：
+> 本条款原先是 LICENSE 里的 "Contributor Agreement" 一节，2026-09 移到这里：
+> LICENSE 描述的是**使用者**的权利，贡献者授权属于贡献流程的一部分。
 
-1. 您的贡献将采用与项目相同的 [Apache License 2.0 + 附加条款](./LICENSE) 开源许可
-2. 项目维护者有权在未来调整开源协议条款
-3. 您的贡献可能被用于商业用途（包括云服务）
+通过向本项目提交贡献（Pull Request、补丁、文档等），您同意：
 
-详细贡献者条款请参阅 LICENSE 文件中的 "Contributor Agreement" 部分。
+1. 您的贡献将采用与项目相同的许可发布（[Apache License 2.0](./LICENSE)，见其第 5 条）
+2. 您的贡献可能被用于商业用途（包括云服务）
+3. 项目维护者有权在未来调整本项目的许可条款
+4. 您授予项目维护者一项永久的、全球范围的、非独占的、免版税的许可，以使用您的贡献
+
+您保留自己贡献部分的著作权；上述条款只授予项目使用所需的权利，不转移著作权。
+
+> Original wording: *By contributing to this project, you agree that: your contributions may
+> be used for commercial purposes; the project maintainers may change the license terms in
+> the future; you grant the project maintainers a perpetual, worldwide, non-exclusive,
+> royalty-free license to use your contributions.*
 
 ## 致谢
 
