@@ -5,7 +5,9 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2026-09-17] - v3.5.3 质量加固批次：单一真相源收敛、流式管道收编、审计修复与许可改为 Apache-2.0
+
+无新功能。存量库升级路径打通 + 真相源收敛 + 架构去重 + 死代码清扫（净 -1033 行）。**许可改为标准 Apache License 2.0。**
 
 ### 变更
 
@@ -13,19 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **版本号收敛为单一真相源**：此前 6 处各写一份（根 `package.json`、`frontend/package.json`、`backend/pyproject.toml`、`config.py` 的 `VERSION` 默认值、前端 `ui.ts` 常量、`.env.example` 注释），没有真源也没有闸门。现在唯一真相源是 `backend/pyproject.toml`：后端由新增的 `utils/version.py` 在 import 时读取（`VERSION` 环境变量与其在 `Settings` 里的字段一并移除），前端由 `vite.config.ts` 构建期注入 `__APP_VERSION__`；两个 `package.json` 的 `version` 字段删除（private 包从未发布，镜像 tag 用 `GIT_VERSION`），并加 `tests/test_version_single_source.py` 锁住"不得再出现第二份版本号"
 - **`config.Settings` 清理失效配置**：删除 `app_name`（无任何读取点）与 `ENABLE_HITL` / `ENABLE_MCP` / `ENABLE_MEMORY` 三个功能开关（**从未被读过，改它们不影响任何行为**，`.env.example` 却把它们列为可用开关），以及 7 个 provider API Key 字段（`deepseek_/openai_/anthropic_/minimax_/moonshot_/google_/silicon_api_key`）与只会读它们的 `get_llm_key()`。密钥的唯一入口是 `providers.yaml` 的 `env_key` + `providers_config.get_provider_api_key`（`os.getenv`）——本类曾为每个 provider 各留一个从未参与取值的副本字段
 - **领域枚举改为生成**：前端 `types/run.ts` 曾手抄 `RunStatus` / `RunEventType` 并把"与后端保持一致"写在注释里。现由 `scripts/gen_enums_ts.py` 从 `backend/models/enums.py` 生成 `frontend/src/types/enums.generated.ts`（每个枚举产出 `X_VALUES` 常量数组 + 同名联合类型，`TERMINAL_RUN_STATUSES` 一并生成；`ACTIVE_RUN_STATUSES` 改为从中派生），闸门与事件协议同构：后端 pytest 断言生成物最新，前端引用处按类型报错
-
-### 修复
-
-- **运行时间线里 HITL 修订事件显示原始英文类型名**：前端手抄的 `RunEventType` 比后端少了 `hitl_revision_started` / `hitl_revision_failed` 两个成员（后端 18 个、前端 16 个），而 HITL 修订是已上线能力、这两个事件一直在写库——`getEventDisplayName` 查表落空后回退成事件名原文。手写联合"少一个成员"不会让任何代码编译报错，所以此前无人发现；改为生成后 `Record<RunEventType, string>` 立刻编译失败，补齐中文名"修订开始 / 修订失败"
-- **生产启动闸门认的是一份陈旧的 provider 名单**：`Settings.validate()` 把"至少有一个可用 LLM"硬编码成 `deepseek/openai/anthropic/minimax` 四个 key，而 provider 名单的真相源是 `providers.yaml`——该副本漏掉 `moonshot`，又把已停用的 `minimax` 算作可用。后果：**只配 Moonshot 的生产实例会被判成"没有 LLM"，lifespan 直接 RuntimeError 拒绝启动**。现改为向 `providers_config` 查询（`enabled: true` 且对应 `env_key` 已设置），放行口径与历史一致（LLM 或向量模型至少其一），并加 `tests/test_config_validate.py` 锁住语义
-- **管理台「系统状态」与设置中心「关于」显示的版本号长期陈旧**：两处恰好是唯一被用户看到的版本展示面，却在 v3.5.2 / v3.5.3 连续两次发版漏更新，一直显示 `3.5.1`（生产同样如此——`deploy.sh` / compose 只注入 `GIT_VERSION` 做镜像 tag，从不注入 `VERSION`，故展示的一直是代码里的默认值）。收敛到单一真相源后，展示面自动跟随 pyproject，漏更新在结构上不再可能
-
-## [2026-09-17] - v3.5.3 质量加固批次：schema 单一真相源、流式管道收编与审计修复
-
-无新功能。存量库升级路径打通 + 架构去重 + 死代码清扫（净 -1033 行）。
-
-### 变更
-
+- **底部状态栏精简，token 配额进度条改真实语义**：移除 "PostgreSQL · 数据库已连接"（基础设施状态不属于面向用户的状态栏，管理台系统状态页保留该卡）与"专家 · N"；token 进度条改为——配额留空=不限量时只留空轨道（不对无上限的桶画百分比），配了额度才按 `今日用量/配额` 填充、打满转警示色（此刻新任务会被拦截），文案变 `今日 {used} / {quota}`
 - **流式执行管道收编为单一实现**：首跑流与恢复流此前各持一份逐行同构的管道层（事件出口 / producer 外壳 / 消费循环 / 断连语义），任何缺陷都要修两遍。现抽出 `services/chat/stream_pipeline.py` 共享，两条流退化为「领域正文 + 薄装配」。行为零变化（断连不杀任务、取消一致性、异常上抛等不变量由回归测试锁定）
 - **计划裁决纳入审计日志**：批准 / 修订 / 终止三个动作现在与管理面变更同渠道留痕（`plan.approve` / `plan.revise` / `plan.terminate`，记录操作者、run、计划版本与是否带反馈）；**只记结构性事实，不记对话与计划内容**（治理留痕不是内容副本）
 - **数据库 schema 收敛为全口径单一真相源**：`models/` 是唯一真相，迁移是搬运记录——任何库（全新 / 存量）跑 `alembic check` 都归零，CI 闸门持续锁住
@@ -33,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 修复
 
+- **运行时间线里 HITL 修订事件显示原始英文类型名**：前端手抄的 `RunEventType` 比后端少了 `hitl_revision_started` / `hitl_revision_failed` 两个成员（后端 18 个、前端 16 个），而 HITL 修订是已上线能力、这两个事件一直在写库——`getEventDisplayName` 查表落空后回退成事件名原文。手写联合"少一个成员"不会让任何代码编译报错，所以此前无人发现；改为生成后 `Record<RunEventType, string>` 立刻编译失败，补齐中文名"修订开始 / 修订失败"
+- **生产启动闸门认的是一份陈旧的 provider 名单**：`Settings.validate()` 把"至少有一个可用 LLM"硬编码成 `deepseek/openai/anthropic/minimax` 四个 key，而 provider 名单的真相源是 `providers.yaml`——该副本漏掉 `moonshot`，又把已停用的 `minimax` 算作可用。后果：**只配 Moonshot 的生产实例会被判成"没有 LLM"，lifespan 直接 RuntimeError 拒绝启动**。现改为向 `providers_config` 查询（`enabled: true` 且对应 `env_key` 已设置），放行口径与历史一致（LLM 或向量模型至少其一），并加 `tests/test_config_validate.py` 锁住语义
+- **管理台「系统状态」与设置中心「关于」显示的版本号长期陈旧**：两处恰好是唯一被用户看到的版本展示面，却在 v3.5.2 / v3.5.3 连续两次发版漏更新，一直显示 `3.5.1`（生产同样如此——`deploy.sh` / compose 只注入 `GIT_VERSION` 做镜像 tag，从不注入 `VERSION`，故展示的一直是代码里的默认值）。收敛到单一真相源后，展示面自动跟随 pyproject，漏更新在结构上不再可能
 - **存量库的迁移卡死（部署向）**：schema 对齐迁移的索引改名此前是无条件裸 `ALTER`，只在全新链上成立；存量库（create_all 时代）会因旧名覆盖不同而中断升级。现全部守卫化（旧名存在 + 新名缺失 + 旧索引位于活表三条件），并补齐类型对齐（VARCHAR→原生枚举 / Text、可空收窄、JSONB→JSON、死列与历史注释清理）——存量库升级路径打通，56 项漂移归零
 - **运行时间线的相对时间恒为中文**：该处硬编码了 `zhCN` 而未走站内 locale 解析，英文 / 日文界面下显示中文（如「3 分钟前」）
 - **「登录后自动重发」机制退役**：该机制的触发条件从未被置真（`setShouldRetrySend` 全仓只传过 `false`），401 时挂起的消息无人消费——半个功能静默死亡。交互早已改为「先登录再发送」，故整体删除而非修活；401 仍会回滚未发出的乐观消息
