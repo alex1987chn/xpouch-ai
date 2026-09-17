@@ -5,7 +5,9 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2026-09-17] - v3.5.3 质量加固批次：schema 单一真相源、流式管道收编与审计修复
+
+无新功能。存量库升级路径打通 + 架构去重 + 死代码清扫（净 -1033 行）。
 
 ### 变更
 
