@@ -31,7 +31,7 @@ The current stable baseline includes:
 - simple / complex dual mode
 - HITL approval and recovery in complex mode
 - **HITL revision loop**: reject with feedback → the planner produces v(n+1) while the task stays paused; decide in a loop or terminate, with a **revision diff view** (v(n) ↔ v(n+1))
-- **User management & audit log** (admin): masked user list, role editing, password reset; every admin-side mutation is recorded
+- **User management & audit log** (admin): masked user list, role editing, password reset; admin-side mutations and plan decisions are recorded
 - **Document attachments**: PDF / Word / Excel / MD parsed into the conversation context
 - **Artifact viewer modal**: view/code toggle, editing, MD/PDF export, public sharing
 - Three-layer runtime semantics: `Thread / AgentRun / ExecutionPlan`
@@ -131,7 +131,7 @@ The current stable baseline includes:
 ### User management & audit log (admin)
 
 - **User management**: instance-wide user list (masked phone with on-demand reveal, UUID, registered/last-login time, role), plus create user, edit profile & role, reset password (custom or system-random — random shown only once), and delete user with cascading cleanup
-- **Audit log**: every admin-side mutation (users / experts / quota) is recorded with actor, action, target, and detail; searchable
+- **Audit log**: admin-side mutations (users / experts / quota / concurrency) and plan decisions (approve / revise / terminate) are recorded with actor, action, target, and detail; searchable. **Structural facts only — never conversation or plan contents** (a governance trail, not a content copy)
 
 ### Document attachments (multimodal context)
 
@@ -375,7 +375,7 @@ Backups land in `backups/` (gitignored).
 - visible-but-locked permission model + UI design conventions (DESIGN.md)
 - dialog focus management & accessibility baseline (a11y), backend route structure unified (auth/ package + single routers/ family)
 - Soft/Dark dual-theme redesign (circular-reveal transitions) with a full component refresh
-- User management & audit log (masked list, role editing, password reset, admin mutation trail)
+- User management & audit log (masked list, role editing, password reset, admin mutation trail, plan-decision trail)
 - Document attachments (PDF/Word/Excel/MD parsed into conversation context)
 - Async LLM calls & memory retrieval restored (concurrent requests no longer block each other)
 - LangGraph-native approval via `interrupt()` (outer loop and liveness heuristics removed)

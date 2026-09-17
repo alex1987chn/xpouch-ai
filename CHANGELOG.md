@@ -5,6 +5,22 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 变更
+
+- **流式执行管道收编为单一实现**：首跑流与恢复流此前各持一份逐行同构的管道层（事件出口 / producer 外壳 / 消费循环 / 断连语义），任何缺陷都要修两遍。现抽出 `services/chat/stream_pipeline.py` 共享，两条流退化为「领域正文 + 薄装配」。行为零变化（断连不杀任务、取消一致性、异常上抛等不变量由回归测试锁定）
+- **计划裁决纳入审计日志**：批准 / 修订 / 终止三个动作现在与管理面变更同渠道留痕（`plan.approve` / `plan.revise` / `plan.terminate`，记录操作者、run、计划版本与是否带反馈）；**只记结构性事实，不记对话与计划内容**（治理留痕不是内容副本）
+- **数据库 schema 收敛为全口径单一真相源**：`models/` 是唯一真相，迁移是搬运记录——任何库（全新 / 存量）跑 `alembic check` 都归零，CI 闸门持续锁住
+- 内部清扫：删除前后端死代码（净 **-1033 行**）、收敛三处重复实现（执行计划查询双份、`AuthenticationError` 重名、`utcnow` 与 `utc_now_naive` 撞车）、新增 `useCopy` / `Spinner` 两个基础件收编 13 处内联实现
+
+### 修复
+
+- **存量库的迁移卡死（部署向）**：schema 对齐迁移的索引改名此前是无条件裸 `ALTER`，只在全新链上成立；存量库（create_all 时代）会因旧名覆盖不同而中断升级。现全部守卫化（旧名存在 + 新名缺失 + 旧索引位于活表三条件），并补齐类型对齐（VARCHAR→原生枚举 / Text、可空收窄、JSONB→JSON、死列与历史注释清理）——存量库升级路径打通，56 项漂移归零
+- **运行时间线的相对时间恒为中文**：该处硬编码了 `zhCN` 而未走站内 locale 解析，英文 / 日文界面下显示中文（如「3 分钟前」）
+- **「登录后自动重发」机制退役**：该机制的触发条件从未被置真（`setShouldRetrySend` 全仓只传过 `false`），401 时挂起的消息无人消费——半个功能静默死亡。交互早已改为「先登录再发送」，故整体删除而非修活；401 仍会回滚未发出的乐观消息
+- **审计日志列表此前从未渲染成功**：列表查询的计数写法把标量当元组解包，接口恒 500、前端吞错成空态——审计页自上线起就是空的（数据一直在正常落库）
+
 ## [2026-09-16] - v3.5.2 评审修复批次：工具循环、流式语义与迁移健壮性
 
 全项目评审（合理性 / 反模式 / 前后端实现 / 架构健壮性 / 可维护性）产出的三批修复与清扫。
