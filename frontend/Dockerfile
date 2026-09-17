@@ -12,6 +12,11 @@ COPY pnpm-lock.yaml ./
 COPY pnpm-workspace.yaml ./
 COPY package.json ./
 
+# 版本号的唯一真相源：vite.config.ts 构建时读它注入 __APP_VERSION__（前端不自己存版本）。
+# 必须保持 ./backend/ 这一层目录结构——vite.config.ts 按 <cwd>/backend/pyproject.toml 查找；
+# 缺了它构建会直接失败并提示找不到真相源（不会静默注入 undefined）。
+COPY backend/pyproject.toml ./backend/
+
 # 复制前端项目文件
 # 注：Tailwind 4 迁移后 postcss.config.js 已删除（改用 @tailwindcss/vite 插件），勿再复制
 COPY frontend/package.json ./frontend/

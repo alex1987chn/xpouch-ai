@@ -5,6 +5,18 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 变更
+
+- **版本号收敛为单一真相源**：此前 6 处各写一份（根 `package.json`、`frontend/package.json`、`backend/pyproject.toml`、`config.py` 的 `VERSION` 默认值、前端 `ui.ts` 常量、`.env.example` 注释），没有真源也没有闸门。现在唯一真相源是 `backend/pyproject.toml`：后端由新增的 `utils/version.py` 在 import 时读取（`VERSION` 环境变量与其在 `Settings` 里的字段一并移除），前端由 `vite.config.ts` 构建期注入 `__APP_VERSION__`；两个 `package.json` 的 `version` 字段删除（private 包从未发布，镜像 tag 用 `GIT_VERSION`），并加 `tests/test_version_single_source.py` 锁住"不得再出现第二份版本号"
+- **`config.Settings` 清理失效配置**：删除 `app_name`（无任何读取点）与 `ENABLE_HITL` / `ENABLE_MCP` / `ENABLE_MEMORY` 三个功能开关（**从未被读过，改它们不影响任何行为**，`.env.example` 却把它们列为可用开关），以及 7 个 provider API Key 字段（`deepseek_/openai_/anthropic_/minimax_/moonshot_/google_/silicon_api_key`）与只会读它们的 `get_llm_key()`。密钥的唯一入口是 `providers.yaml` 的 `env_key` + `providers_config.get_provider_api_key`（`os.getenv`）——本类曾为每个 provider 各留一个从未参与取值的副本字段
+
+### 修复
+
+- **生产启动闸门认的是一份陈旧的 provider 名单**：`Settings.validate()` 把"至少有一个可用 LLM"硬编码成 `deepseek/openai/anthropic/minimax` 四个 key，而 provider 名单的真相源是 `providers.yaml`——该副本漏掉 `moonshot`，又把已停用的 `minimax` 算作可用。后果：**只配 Moonshot 的生产实例会被判成"没有 LLM"，lifespan 直接 RuntimeError 拒绝启动**。现改为向 `providers_config` 查询（`enabled: true` 且对应 `env_key` 已设置），放行口径与历史一致（LLM 或向量模型至少其一），并加 `tests/test_config_validate.py` 锁住语义
+- **管理台「系统状态」与设置中心「关于」显示的版本号长期陈旧**：两处恰好是唯一被用户看到的版本展示面，却在 v3.5.2 / v3.5.3 连续两次发版漏更新，一直显示 `3.5.1`（生产同样如此——`deploy.sh` / compose 只注入 `GIT_VERSION` 做镜像 tag，从不注入 `VERSION`，故展示的一直是代码里的默认值）。收敛到单一真相源后，展示面自动跟随 pyproject，漏更新在结构上不再可能
+
 ## [2026-09-17] - v3.5.3 质量加固批次：schema 单一真相源、流式管道收编与审计修复
 
 无新功能。存量库升级路径打通 + 架构去重 + 死代码清扫（净 -1033 行）。

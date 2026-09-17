@@ -7,7 +7,7 @@
  */
 
 import { useTranslation } from '@/i18n'
-import { VERSION } from '@/constants/ui'
+import { APP_VERSION } from '@/constants/ui'
 import { GITHUB_REPO_URL } from '@/constants/links'
 import { GithubMark } from '@/components/common/GithubMark'
 
@@ -28,7 +28,7 @@ export function AboutSection() {
       <div className="mt-4 divide-y divide-border-divider rounded-md border border-border-divider">
         <div className="flex items-center justify-between px-4 py-3">
           <span className="text-body-sm text-content-secondary">{t('versionLabel')}</span>
-          <span className="text-body-sm font-medium text-content-primary">{VERSION.CURRENT}</span>
+          <span className="text-body-sm font-medium text-content-primary">v{APP_VERSION}</span>
         </div>
         <div className="flex items-center justify-between px-4 py-3">
           <span className="text-body-sm text-content-secondary">{t('openSource')}</span>

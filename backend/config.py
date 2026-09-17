@@ -4,15 +4,18 @@ XPouch AI 配置管理 - Pydantic Settings 最佳实践
 用法：
     from config import settings
     port = settings.port
-    api_key = settings.deepseek_api_key.get_secret_value()
 
 安全：
     - 敏感信息使用 SecretStr，打印时自动脱敏
-    - 生产环境强制验证
+    - 生产环境强制验证（至少一个可用模型提供商 + JWT 密钥 + 数据库连接）
 
 注意：
     - 本模块只定义配置，不执行初始化（避免循环导入）
     - 初始化在 main.py lifespan 中执行
+    - **模型提供商的 API Key 不经过本模块**：变量名声明在 providers.yaml 的 env_key，
+      取值由 providers_config.get_provider_api_key 直接 os.getenv——那是唯一入口，
+      本模块不再为每个 provider 各留一个字段（曾经留过 7 个，且 validate() 里的
+      provider 名单与 providers.yaml 不同步，见 validate() 注释）
 """
 
 from functools import lru_cache
@@ -36,8 +39,9 @@ class Settings(BaseSettings):
     )
 
     # 基础配置
-    app_name: str = Field(default="XPouch AI", alias="APP_NAME")
-    version: str = Field(default="3.5.1", alias="VERSION")
+    # 版本号**不在这里配置**：唯一真相源是 `pyproject.toml`，运行时值见
+    # utils/version.py 的 APP_VERSION。此前它是本类的 VERSION 字段，与 pyproject
+    # 各存一份，导致管理台「系统状态」连续两个版本显示旧值。
     # Fail-closed：必须显式声明环境。未配置 ENVIRONMENT 时启动即报错，
     # 防止生产漏配时静默落入 development（debug 端点开放、X-User-ID 认证旁路）。
     environment: Literal["development", "testing", "production"] = Field(
@@ -57,14 +61,6 @@ class Settings(BaseSettings):
     )  # 5 分钟，与 pool_recycle 保持一致，防止云数据库断开
     db_pool_max_lifetime: float = Field(default=7200.0, alias="DB_POOL_MAX_LIFETIME")  # 2 小时
 
-    # LLM API Keys（自动脱敏）
-    deepseek_api_key: SecretStr | None = Field(default=None, alias="DEEPSEEK_API_KEY")
-    openai_api_key: SecretStr | None = Field(default=None, alias="OPENAI_API_KEY")
-    anthropic_api_key: SecretStr | None = Field(default=None, alias="ANTHROPIC_API_KEY")
-    minimax_api_key: SecretStr | None = Field(default=None, alias="MINIMAX_API_KEY")
-    moonshot_api_key: SecretStr | None = Field(default=None, alias="MOONSHOT_API_KEY")
-    google_api_key: SecretStr | None = Field(default=None, alias="GOOGLE_API_KEY")
-
     # 认证（单一来源：utils/jwt_handler 从这里取值）
     jwt_secret_key: SecretStr = Field(default=SecretStr("dev-secret-only"), alias="JWT_SECRET_KEY")
     access_token_expire_minutes: int = Field(default=60, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
@@ -75,14 +71,8 @@ class Settings(BaseSettings):
     langchain_api_key: SecretStr | None = Field(default=None, alias="LANGCHAIN_API_KEY")
     langchain_project: str = Field(default="xpouch-ai", alias="LANGCHAIN_PROJECT")
 
-    # 工具配置
+    # 工具配置（模型提供商的 Key 不在此处，见模块注释）
     tavily_api_key: SecretStr | None = Field(default=None, alias="TAVILY_API_KEY")
-    silicon_api_key: SecretStr | None = Field(default=None, alias="SILICON_API_KEY")
-
-    # 功能开关
-    enable_hitl: bool = Field(default=True, alias="ENABLE_HITL")
-    enable_mcp: bool = Field(default=True, alias="ENABLE_MCP")
-    enable_memory: bool = Field(default=True, alias="ENABLE_MEMORY")
 
     # 会话清理
     session_cleanup_interval_minutes: int = Field(
@@ -224,11 +214,6 @@ class Settings(BaseSettings):
 
     # ==================== 便捷方法 ====================
 
-    def get_llm_key(self, provider: str) -> str | None:
-        """安全获取 LLM API Key"""
-        key = getattr(self, f"{provider}_api_key", None)
-        return key.get_secret_value() if key else None
-
     def get_jwt_secret(self) -> str:
         """获取 JWT 密钥（生产环境强制检查）"""
         secret = self.jwt_secret_key.get_secret_value()
@@ -262,25 +247,41 @@ class Settings(BaseSettings):
         logger.info(f"LangSmith 追踪已启用 | 项目: {self.langchain_project}")
 
     def validate(self) -> bool:
-        """验证配置完整性（在 lifespan 中调用）"""
+        """验证配置完整性（在 lifespan 中调用；生产环境返回 False 会拒绝启动）
+
+        "至少有一个可用提供商"由 providers.yaml 推导（enabled 且对应 env_key 已设置，
+        判定逻辑在 providers_config），不在此硬编码名单——此处曾写死
+        deepseek/openai/anthropic/minimax 四个，漏掉 moonshot，且把已停用的 minimax
+        算作可用：**只配 Moonshot 的生产实例会被判成"没有 LLM"而在启动时 RuntimeError**。
+        名单的第二份拷贝就是漂移来源，故改为向真相源查询。
+
+        放行口径与历史一致：LLM 提供商（providers 段）或向量模型（embeddings 段）
+        至少配好一个即可（原实现是 `has_llm or has_embedding`）。此处刻意不放严——
+        闸门收紧意味着既有部署可能直接起不来，那不该由一次重构顺手决定。
+        """
         import logging
+        import os
+
+        from providers_config import (
+            get_default_embedding_provider,
+            get_embedding_provider_config,
+            validate_all_providers,
+        )
 
         logger = logging.getLogger(__name__)
 
-        has_llm = any(
-            [
-                self.get_llm_key("deepseek"),
-                self.get_llm_key("openai"),
-                self.get_llm_key("anthropic"),
-                self.get_llm_key("minimax"),
-            ]
-        )
-
-        has_embedding = bool(self.silicon_api_key)
+        has_provider = bool(validate_all_providers()["configured"])
+        if not has_provider:
+            embedding_cfg = get_embedding_provider_config(get_default_embedding_provider()) or {}
+            embedding_env_key = embedding_cfg.get("env_key")
+            has_provider = bool(embedding_env_key and os.getenv(embedding_env_key))
 
         if self.is_production:
-            if not has_llm:
-                logger.error("生产环境必须配置至少一个 LLM API Key")
+            if not has_provider:
+                logger.error(
+                    "生产环境必须至少配置一个可用的模型提供商"
+                    "（providers.yaml 中 enabled 且对应 API Key 已设置）"
+                )
                 return False
 
             try:
@@ -298,7 +299,7 @@ class Settings(BaseSettings):
         if self.langchain_tracing_v2 and not self.langchain_api_key:
             logger.warning("LangSmith 已启用但未设置 LANGCHAIN_API_KEY")
 
-        return has_llm or has_embedding
+        return has_provider
 
 
 @lru_cache

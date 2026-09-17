@@ -2,10 +2,45 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { visualizer } from 'rollup-plugin-visualizer'
+import fs from 'fs'
 import path from 'path'
+
+/**
+ * 应用版本号的唯一真相源是 `backend/pyproject.toml`——Python 侧由 utils/version.py
+ * 读同一个文件，前端在构建期读一次注入 `__APP_VERSION__`（声明见 src/vite-env.d.ts）。
+ * 由此"发版只改 pyproject 一处"，两端展示面自动跟随；此前的做法是两端各写一份字面量，
+ * 连续两个版本漏改。
+ *
+ * 不用 `import.meta.url` 定位：Vite 会把本配置文件打包到临时目录再执行，
+ * 打包后的 import.meta.url 指向临时文件而不是 frontend/。改为从 cwd 向上找
+ * （本地 cwd=frontend、容器内 cwd=/app/frontend，都在仓库/镜像的 frontend 层）。
+ */
+function readAppVersion(): string {
+  let dir = process.cwd()
+  for (let i = 0; i < 3; i += 1) {
+    const pyproject = path.join(dir, 'backend', 'pyproject.toml')
+    if (fs.existsSync(pyproject)) {
+      // 取顶层 version 行（[project] 的那条）：行首无缩进即为顶层键，
+      // 表内的 version 都带缩进或属于别的键名，不会误匹配。
+      const line = fs
+        .readFileSync(pyproject, 'utf8')
+        .split('\n')
+        .find(candidate => candidate.startsWith('version'))
+      const value = line?.split('"')[1]
+      if (value) return value
+      throw new Error('[version] pyproject.toml 里找不到顶层 version 行，构建中止')
+    }
+    dir = path.dirname(dir)
+  }
+  // 宁可构建失败，也不要注入 undefined 让界面显示 "vundefined"
+  throw new Error('找不到 backend/pyproject.toml（版本号唯一真相源），构建中止')
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(readAppVersion()),
+  },
   plugins: [
     react(),
     // Tailwind v4 官方 Vite 插件（替代原 postcss + autoprefixer 链路）

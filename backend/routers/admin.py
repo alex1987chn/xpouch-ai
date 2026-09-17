@@ -725,6 +725,7 @@ async def get_system_status(
     )
     from services.run_quota import load_daily_token_quota
     from utils.llm_factory import get_default_model
+    from utils.version import APP_VERSION
 
     # 数据库连通 + 迁移对齐（漂移检测：代码内迁移链 head vs 库中 alembic_version）
     db_connected = True
@@ -751,7 +752,7 @@ async def get_system_status(
     ).one()
 
     return {
-        "version": app_settings.version,
+        "version": APP_VERSION,
         "environment": app_settings.environment,
         "database": {
             "connected": db_connected,

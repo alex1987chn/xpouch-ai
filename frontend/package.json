@@ -1,6 +1,5 @@
 {
   "name": "xpouch-ai-frontend",
-  "version": "3.5.3",
   "private": true,
   "type": "module",
   "scripts": {

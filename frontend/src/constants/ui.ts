@@ -1,19 +1,10 @@
 // UI 相关常量
 // 集中管理所有 UI 配置和魔法数字
 
-// 系统版本号
-export const VERSION = {
-  /** 当前 OS 版本号 */
-  CURRENT: 'v3.5.1',
-  /** 主版本号 */
-  MAJOR: 3,
-  /** 次版本号 */
-  MINOR: 5,
-  /** 修订号 */
-  PATCH: 1,
-  /** 完整版本字符串 */
-  get FULL() { return `XPOUCH OS ${this.CURRENT}` }
-}
+// 系统版本号：构建期由 vite.config.ts 从 backend/pyproject.toml 注入（唯一真相源）。
+// 此前这里是手写的 `CURRENT: 'v3.5.1'` 加一组 MAJOR/MINOR/PATCH 字段——发版时
+// 和 pyproject 各改一处，连续两个版本漏改，设置中心「关于」一直显示旧版本。
+export const APP_VERSION = __APP_VERSION__
 
 // 手势滑动相关
 export const SWIPE = {

@@ -60,6 +60,7 @@ from routers import (
 )
 from utils.exceptions import AppError, handle_error
 from utils.logger import logger, new_request_id, reset_request_id, set_request_id, setup_logging
+from utils.version import APP_VERSION
 
 # 日志必须在任何业务日志产生前配置好（容器内 uvicorn 直启不会配 root logger）
 setup_logging()
@@ -209,7 +210,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="XPouch AI Backend",
     description="Python + SQLModel + LangGraph backend",
-    version=settings.version,
+    version=APP_VERSION,
     lifespan=lifespan,
 )
 
