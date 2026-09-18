@@ -91,7 +91,7 @@ export default function ModelSelector({ value, onChange, label, disabled }: Mode
                 {model.name}
               </div>
               <div className="truncate text-tiny text-content-muted">
-                {Math.round(model.context_window / 1000)}K tokens
+                {model.context_window ? `${Math.round(model.context_window / 1000)}K tokens` : ''}
                 {model.thinking_toggle ? ` · ${t('thinkingMode')} ✓` : ''}
               </div>
             </div>

@@ -152,7 +152,10 @@ export function ModelSection() {
                     {model.name}
                   </div>
                   <div className="mt-0.5 text-caption text-content-muted">
-                    {model.provider_name} · {Math.round(model.context_window / 1000)}K tokens
+                    {model.provider_name} ·{' '}
+                    {model.context_window
+                      ? `${Math.round(model.context_window / 1000)}K tokens`
+                      : ''}
                     {model.thinking_toggle ? ` · ${t('thinkingMode')} ✓` : ''}
                   </div>
                 </div>

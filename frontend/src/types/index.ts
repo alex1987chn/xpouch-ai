@@ -1,7 +1,18 @@
 // 统一类型定义文件
 // 消除类型定义分散的问题
 
+import type { components } from '@/types/api.generated'
 import type { AnyServerEvent } from './events'
+
+// ============================================
+// REST 契约锚点（本文件的 REST 形状类型逐个接锚点；范式沿 types/stats.ts）
+// ============================================
+
+/** 双向相等：手写类型与后端生成类型**逐字段一致**（含可选性与 null）。 */
+type SameShape<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+type Assert<T extends true> = T
+
+type Schemas = components['schemas']
 
 // ============================================
 // 消息相关类型
@@ -247,17 +258,25 @@ export type AgentType = 'system' | 'custom'
 
 /**
  * 用户资料接口
+ *
+ * SameShape 锚定后端 schemas/user_profile.py 的 UserProfileResponse
+ * （REST 契约锚点范式见 types/stats.ts）。
  */
 export interface UserProfile {
     id: string
     username: string
-    avatar?: string
+    avatar: string | null
     plan: string
     role: 'user' | 'admin'  // 用户角色（与后端 UserRole 一致；v3.4.7 双角色收敛）
-    created_at?: string  // 注册时间（/user/me 提供）
-    updated_at: string  // 用户信息更新时间戳，用于同步
-    has_password?: boolean  // 是否已设置密码（决定修改密码时是否要求旧密码）
+    created_at: string | null  // 注册时间（/user/me 提供）
+    updated_at: string | null  // 用户信息更新时间戳，用于同步
+    has_password: boolean  // 是否已设置密码（决定修改密码时是否要求旧密码）
 }
+
+type _UserProfile = Assert<SameShape<UserProfile, Schemas['UserProfileResponse']>>
+
+/** 锚点只做编译期校验，导出以免被 noUnusedLocals 误报 */
+export type IndexConformanceAnchors = [_UserProfile]
 
 // ============================================
 // 专家状态事件类型

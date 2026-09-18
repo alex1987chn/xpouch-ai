@@ -5,6 +5,7 @@
 """
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -32,13 +33,17 @@ class DailyTrend(BaseModel):
 
 
 class RunListItem(BaseModel):
-    """运行列表项"""
+    """运行列表项
+
+    按「恒序列化、值可空的字段不写默认值」约定，user_id/user_name 无默认值——
+    crud 组装的 dict 恒带全部键，默认值只会让 OpenAPI 契约退化成 optional。
+    """
 
     run_id: str
     thread_id: str
-    user_id: str | None = None  # 仅 admin 可见
-    user_name: str | None = None  # 仅 admin 可见
-    mode: str  # simple/complex
+    user_id: str | None  # 仅 admin 可见
+    user_name: str | None  # 仅 admin 可见
+    mode: Literal["simple", "complex"]
     status: RunStatus
     duration_ms: int | None
     created_at: datetime
@@ -52,8 +57,8 @@ class RunStatsResponse(BaseModel):
     is_admin: bool
 
     # 今日 token 用量与每用户日配额（quota 为 null 表示不限量）
-    today_tokens: int = 0
-    daily_token_quota: int | None = None
+    today_tokens: int
+    daily_token_quota: int | None
 
     # 核心指标
     metrics: RunMetrics

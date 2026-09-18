@@ -1892,7 +1892,10 @@ export interface components {
         };
         /**
          * AvailableModel
-         * @description 可选模型条目（providers.yaml models 段投影，按 provider 优先级排序）
+         * @description 可选模型条目（providers.yaml models 段投影，按 provider 优先级排序）。
+         *
+         *     按「恒序列化、值可空的字段不写默认值」约定无默认值——
+         *     get_available_models 组装的 dict 恒带全部键。
          */
         AvailableModel: {
             /** Id */
@@ -1902,20 +1905,14 @@ export interface components {
             /** Provider Name */
             provider_name: string;
             /** Model */
-            model?: string | null;
+            model: string | null;
             /** Name */
             name: string;
             /** Context Window */
-            context_window?: number | null;
-            /**
-             * Thinking Toggle
-             * @default false
-             */
+            context_window: number | null;
+            /** Thinking Toggle */
             thinking_toggle: boolean;
-            /**
-             * Vision
-             * @default false
-             */
+            /** Vision */
             vision: boolean;
         };
         /**
@@ -2537,10 +2534,9 @@ export interface components {
          */
         ModelPreferences: {
             /** Simple Model */
-            simple_model?: string | null;
+            simple_model: string | null;
             /**
              * Simple Thinking
-             * @default auto
              * @enum {string}
              */
             simple_thinking: "auto" | "enabled" | "disabled";
@@ -2730,6 +2726,9 @@ export interface components {
         /**
          * RunListItem
          * @description 运行列表项
+         *
+         *     按「恒序列化、值可空的字段不写默认值」约定，user_id/user_name 无默认值——
+         *     crud 组装的 dict 恒带全部键，默认值只会让 OpenAPI 契约退化成 optional。
          */
         RunListItem: {
             /** Run Id */
@@ -2737,11 +2736,14 @@ export interface components {
             /** Thread Id */
             thread_id: string;
             /** User Id */
-            user_id?: string | null;
+            user_id: string | null;
             /** User Name */
-            user_name?: string | null;
-            /** Mode */
-            mode: string;
+            user_name: string | null;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "simple" | "complex";
             status: components["schemas"]["RunStatus"];
             /** Duration Ms */
             duration_ms: number | null;
@@ -2823,13 +2825,10 @@ export interface components {
         RunStatsResponse: {
             /** Is Admin */
             is_admin: boolean;
-            /**
-             * Today Tokens
-             * @default 0
-             */
+            /** Today Tokens */
             today_tokens: number;
             /** Daily Token Quota */
-            daily_token_quota?: number | null;
+            daily_token_quota: number | null;
             metrics: components["schemas"]["RunMetrics"];
             /** Trends */
             trends: components["schemas"]["DailyTrend"][];
@@ -3515,6 +3514,9 @@ export interface components {
         /**
          * UserProfileResponse
          * @description 公开的用户资料（/api/user/me GET/PUT 响应）。
+         *
+         *     按「恒序列化、值可空的字段不写默认值」约定，全部字段无默认值——
+         *     _to_profile_response 恒传全键。
          */
         UserProfileResponse: {
             /** Id */
@@ -3522,18 +3524,15 @@ export interface components {
             /** Username */
             username: string;
             /** Avatar */
-            avatar?: string | null;
+            avatar: string | null;
             /** Plan */
             plan: string;
             role: components["schemas"]["UserRole"];
             /** Created At */
-            created_at?: string | null;
+            created_at: string | null;
             /** Updated At */
-            updated_at?: string | null;
-            /**
-             * Has Password
-             * @default false
-             */
+            updated_at: string | null;
+            /** Has Password */
             has_password: boolean;
         };
         /**

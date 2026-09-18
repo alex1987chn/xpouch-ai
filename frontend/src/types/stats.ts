@@ -1,7 +1,11 @@
 /**
  * 统计相关类型定义
+ *
+ * 契约真相源是后端 schemas/stats.py（→ api.generated.ts）；
+ * 底部 SameShape 锚点锁住手写类型与生成物逐字段一致。
  */
 
+import type { components } from '@/types/api.generated'
 import type { RunStatus } from './run'
 
 /**
@@ -34,7 +38,7 @@ export interface RunListItem {
   thread_id: string
   user_id: string | null
   user_name: string | null
-  mode: string
+  mode: 'simple' | 'complex'
   status: RunStatus
   duration_ms: number | null
   created_at: string
@@ -57,3 +61,25 @@ export interface RunStatsResponse {
   limit: number
   offset: number
 }
+
+// ============================================
+// REST 契约锚点（范式沿 types/events.ts 的 SameShape / services/stats.ts）
+// ============================================
+
+/** 双向相等：手写类型与后端生成类型**逐字段一致**（含可选性与 null）。 */
+type SameShape<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+type Assert<T extends true> = T
+
+type Schemas = components['schemas']
+type _RunMetrics = Assert<SameShape<RunMetrics, Schemas['RunMetrics']>>
+type _DailyTrend = Assert<SameShape<DailyTrend, Schemas['DailyTrend']>>
+type _RunListItem = Assert<SameShape<RunListItem, Schemas['RunListItem']>>
+type _RunStatsResponse = Assert<SameShape<RunStatsResponse, Schemas['RunStatsResponse']>>
+
+/** 上面这组断言只做编译期校验，导出以免被 noUnusedLocals 误报 */
+export type StatsConformanceAnchors = [
+  _RunMetrics,
+  _DailyTrend,
+  _RunListItem,
+  _RunStatsResponse,
+]

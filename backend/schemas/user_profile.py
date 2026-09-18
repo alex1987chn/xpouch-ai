@@ -13,14 +13,18 @@ from models.enums import UserRole
 
 
 class UserProfileResponse(BaseModel):
-    """公开的用户资料（/api/user/me GET/PUT 响应）。"""
+    """公开的用户资料（/api/user/me GET/PUT 响应）。
+
+    按「恒序列化、值可空的字段不写默认值」约定，全部字段无默认值——
+    _to_profile_response 恒传全键。
+    """
 
     id: str
     username: str
-    avatar: str | None = None
+    avatar: str | None
     plan: str
     role: UserRole
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    created_at: datetime | None
+    updated_at: datetime | None
     # 是否已设置密码（布尔，不含哈希本身）——前端据此决定是否要求旧密码
-    has_password: bool = False
+    has_password: bool

@@ -127,7 +127,7 @@ export function ProfileSection({ onClose }: ProfileSectionProps) {
     }
   }
 
-  const formatDate = (iso?: string) => {
+  const formatDate = (iso?: string | null) => {
     if (!iso) return '—'
     try {
       // 后端时间戳是无时区的 UTC（见 lib/datetime 约定），裸 new Date 会按本地解析差一个时区

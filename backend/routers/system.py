@@ -70,16 +70,20 @@ class HealthCheckResponse(BaseModel):
 
 
 class AvailableModel(BaseModel):
-    """可选模型条目（providers.yaml models 段投影，按 provider 优先级排序）"""
+    """可选模型条目（providers.yaml models 段投影，按 provider 优先级排序）。
+
+    按「恒序列化、值可空的字段不写默认值」约定无默认值——
+    get_available_models 组装的 dict 恒带全部键。
+    """
 
     id: str
     provider: str
     provider_name: str
-    model: str | None = None
+    model: str | None
     name: str
-    context_window: int | None = None
-    thinking_toggle: bool = False
-    vision: bool = False
+    context_window: int | None
+    thinking_toggle: bool
+    vision: bool
 
 
 class ModelListResponse(BaseModel):
@@ -89,8 +93,8 @@ class ModelListResponse(BaseModel):
 class ModelPreferences(BaseModel):
     """全局模型偏好（simple 模式；simple_model=None 即跟随系统默认）"""
 
-    simple_model: str | None = None
-    simple_thinking: Literal["auto", "enabled", "disabled"] = "auto"
+    simple_model: str | None
+    simple_thinking: Literal["auto", "enabled", "disabled"]
 
 
 class DefaultModelInfo(BaseModel):
