@@ -868,6 +868,17 @@ class AdminUserResponse(BaseModel):
     last_login_at: datetime | None = None
 
 
+class AdminUserCreatedResponse(AdminUserResponse):
+    """创建用户响应：随机初始密码仅此一次随响应返回。
+
+    该字段只属于 create 端点——列表/更新沿用 AdminUserResponse，不得带出。
+    （此前把 generated_password 注入返回 dict 但模型没声明，被 response_model
+    静默过滤，管理员拿不到一次性初始密码。）
+    """
+
+    generated_password: str | None = None
+
+
 class AdminUserUpdate(BaseModel):
     """用户资料/角色编辑（全部可选，仅提交的字段生效）"""
 
@@ -884,6 +895,14 @@ class AdminResetPasswordRequest(BaseModel):
     password: str | None = PydanticField(default=None, min_length=8, max_length=64)
 
 
+class AdminResetPasswordResponse(BaseModel):
+    """重置密码响应：随机模式下 password 仅此一次返回明文"""
+
+    message: str
+    generated: bool
+    password: str | None = None
+
+
 class AdminCreateUserRequest(BaseModel):
     """管理员创建用户：手机号为登录身份（OTP），初始密码可选"""
 
@@ -895,7 +914,7 @@ class AdminCreateUserRequest(BaseModel):
     generate_random_password: bool = False
 
 
-@router.post("/users", response_model=AdminUserResponse, status_code=201)
+@router.post("/users", response_model=AdminUserCreatedResponse, status_code=201)
 async def create_user(
     request: AdminCreateUserRequest,
     session: Session = Depends(get_session),
@@ -949,9 +968,9 @@ async def create_user(
     result = _user_to_dto(user)
     if generated_password:
         # 随机初始密码仅此一次返回，服务端不留明文
-        result_dict = result.model_dump()
-        result_dict["generated_password"] = generated_password
-        return result_dict
+        return AdminUserCreatedResponse(
+            **result.model_dump(), generated_password=generated_password
+        )
     return result
 
 
@@ -1109,7 +1128,7 @@ async def delete_user(
     return {"message": "用户已删除", "deleted_threads": len(thread_ids)}
 
 
-@router.post("/users/{user_id}/reset-password")
+@router.post("/users/{user_id}/reset-password", response_model=AdminResetPasswordResponse)
 async def admin_reset_password(
     user_id: str,
     request: AdminResetPasswordRequest,
@@ -1153,11 +1172,12 @@ async def admin_reset_password(
     session.commit()
     logger.info(f"[Admin] 用户 {user_id} 密码已重置（mode={request.mode}）")
 
-    result: dict = {"message": "密码已重置", "generated": generated}
-    if generated:
-        # 随机密码仅此一次返回，服务端不留明文
-        result["password"] = new_password
-    return result
+    # 随机密码仅此一次返回，服务端不留明文
+    return AdminResetPasswordResponse(
+        message="密码已重置",
+        generated=generated,
+        password=new_password if generated else None,
+    )
 
 
 class AuditLogResponse(BaseModel):
