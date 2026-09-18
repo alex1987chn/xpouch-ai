@@ -68,3 +68,10 @@ class RunStatsResponse(BaseModel):
     total_runs_count: int  # 总记录数（用于分页）
     limit: int
     offset: int
+
+
+class TokensTodayResponse(BaseModel):
+    """今日 token 用量 + 全局配额（底栏轻量轮询专供；quota 为 null 表示不限量）"""
+
+    today_tokens: int
+    daily_token_quota: int | None = None

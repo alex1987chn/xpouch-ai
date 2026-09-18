@@ -15,7 +15,7 @@ from crud.stats import get_daily_trends, get_run_list, get_run_metrics, get_toda
 from database import get_session
 from dependencies import get_current_user
 from models import User
-from schemas.stats import RunMetrics, RunStatsResponse
+from schemas.stats import RunMetrics, RunStatsResponse, TokensTodayResponse
 from utils.logger import logger
 
 router = APIRouter(prefix="/api/admin/stats", tags=["stats"])
@@ -79,7 +79,7 @@ async def get_run_stats(
     )
 
 
-@router.get("/tokens-today")
+@router.get("/tokens-today", response_model=TokensTodayResponse)
 async def get_tokens_today(
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
