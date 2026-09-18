@@ -14,6 +14,7 @@ npm 配置，也不进 package.json。
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -87,10 +88,18 @@ def generate() -> str:
         spec_path = Path(tmp) / "openapi.json"
         spec_path.write_text(json.dumps(spec, ensure_ascii=False), encoding="utf-8")
         out_path = Path(tmp) / "api.generated.ts"
+        node = _which("node")
+        # PATH 带上工具目录的 node_modules/.bin：openapi-typescript 的 CLI 内部
+        # 以子进程方式调 node，CI 的纯净 PATH 下找不到时会以 EACCES/ENOENT 炸
+        env = {
+            **dict(os.environ),
+            "PATH": str(cli.parent.parent / ".bin") + os.pathsep + os.environ["PATH"],
+        }
         result = subprocess.run(
-            [_which("node"), str(cli), str(spec_path), "-o", str(out_path)],
+            [node, str(cli), str(spec_path), "-o", str(out_path)],
             capture_output=True,
             text=True,
+            env=env,
         )
         if result.returncode != 0:
             print(result.stdout, file=sys.stderr)

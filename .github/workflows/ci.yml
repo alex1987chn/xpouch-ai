@@ -50,6 +50,12 @@ jobs:
         with:
           python-version: "3.13"
 
+      # T2 OpenAPI 闸门需要 node 拉起 openapi-typescript（系统临时目录隔离工具目录）
+      - name: Setup Node.js (for OpenAPI type gate)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
       - name: Install dependencies
         run: uv sync --frozen
 
