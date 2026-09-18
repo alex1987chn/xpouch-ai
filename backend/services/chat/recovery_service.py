@@ -524,6 +524,14 @@ class RecoveryService:
             # 关键一致性保障：计划更新前执行乐观锁校验与版本递增
             self._bump_plan_version_with_cas(run_id, plan_version)
 
+            # 租约释放：resume 成功（计划已更新、事件已写入），run 即将进入 RUNNING。
+            # 不释放的话，run 在 RUNNING 期间租约仍被持有，后续对该 run 的任何
+            # resume 请求（前端轮询/用户重复点）都会撞 ACTIVE_RUN_CONFLICT。
+            run = self.db.get(AgentRun, run_id)
+            if run:
+                run.owner = None
+                run.lease_expires_at = None
+
             # 🔥 写入 hitl_resumed 事件到账本
             execution_plan = self._get_execution_plan_by_run(run_id)
             emit_hitl_resumed(

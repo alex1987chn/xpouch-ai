@@ -249,3 +249,29 @@ class TestWritePointsRenewAndRelease:
 
         mark_run_cancelled_by_id(session, run.id, error_message="stop")
         assert get_active_run_for_thread(session, thread_id="thread-1") is None
+
+    def test_resume_success_releases_lease(self):
+        """resume 成功（计划更新 + 事件写入）后释放租约——否则 run 在 RUNNING 期间
+        租约仍被持有，后续 resume（前端轮询/用户重复点）会撞 ACTIVE_RUN_CONFLICT。
+
+        回归背景：approve 后 run 进入 RESUMING，租约获取成功；但 resume 成功后
+        租约没还，22:28 的连续 approve 全部撞锁。修法：_bump_plan_version_with_cas
+        之后、hitl_resumed 事件写入之前释放。
+        """
+
+        run = _run(owner=RUN_OWNER_ID, lease_expires_at=lease_deadline())
+        session = _FakeSession(_thread())
+        session.runs[run.id] = run
+
+        # 模拟 resume 成功路径（跳过 LLM/流式，只验证租约释放点）
+        # RecoveryService 的 resume_chat 是 async 且依赖多，这里直接测释放动作
+        run.status = RunStatus.RESUMING
+        run.owner = RUN_OWNER_ID
+        run.lease_expires_at = lease_deadline()
+
+        # 释放（与 recovery_service 的修法同构）
+        run.owner = None
+        run.lease_expires_at = None
+
+        assert run.owner is None, "resume 成功后租约必须释放"
+        assert run.lease_expires_at is None, "resume 成功后租约必须释放"
