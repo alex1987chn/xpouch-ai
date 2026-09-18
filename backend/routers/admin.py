@@ -903,18 +903,21 @@ def _generate_random_password(length: int = 12) -> str:
 
 
 class AdminUserResponse(BaseModel):
-    """用户管理列表项（手机号只回脱敏值）"""
+    """用户管理列表项（手机号只回脱敏值）
+
+    按「恒序列化、值可空的字段不写默认值」约定无默认值——_user_to_dto 恒传全键。
+    """
 
     id: str
     username: str
-    email: str | None = None
-    phone_masked: str | None = None
-    has_phone: bool = False
-    avatar: str | None = None
+    email: str | None
+    phone_masked: str | None
+    has_phone: bool
+    avatar: str | None
     role: str
     plan: str
-    created_at: datetime | None = None
-    last_login_at: datetime | None = None
+    created_at: datetime | None
+    last_login_at: datetime | None
 
 
 class AdminUserCreatedResponse(AdminUserResponse):
@@ -1230,14 +1233,17 @@ async def admin_reset_password(
 
 
 class AuditLogResponse(BaseModel):
-    """审计日志条目"""
+    """审计日志条目
+
+    按「恒序列化、值可空的字段不写默认值」约定无默认值——_record_audit 恒传全键。
+    """
 
     id: int
     actor_username: str
     action: str
-    target: str | None = None
-    detail: dict | None = None
-    created_at: datetime | None = None
+    target: str | None
+    detail: dict | None
+    created_at: datetime | None
 
 
 @router.get("/audit-logs", response_model=list[AuditLogResponse])

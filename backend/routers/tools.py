@@ -2,6 +2,8 @@
 工具列表与治理 API
 """
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlmodel import Session, select
@@ -17,15 +19,17 @@ from utils.logger import logger
 
 router = APIRouter(prefix="/api/tools", tags=["tools"])
 
+ToolCategory = Literal["builtin", "mcp"]
+
 
 class ToolInfo(BaseModel):
     """工具信息"""
 
     name: str
     description: str
-    category: str  # builtin, mcp
+    category: ToolCategory  # builtin, mcp
     enabled: bool = True
-    risk_tier: str
+    risk_tier: Literal["low", "medium", "high"]
     approval_required: bool
     allowed_experts: list[str] | None = None
     blocked_experts: list[str] | None = None

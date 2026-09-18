@@ -1645,30 +1645,29 @@ export interface components {
             /** Username */
             username: string;
             /** Email */
-            email?: string | null;
+            email: string | null;
             /** Phone Masked */
-            phone_masked?: string | null;
-            /**
-             * Has Phone
-             * @default false
-             */
+            phone_masked: string | null;
+            /** Has Phone */
             has_phone: boolean;
             /** Avatar */
-            avatar?: string | null;
+            avatar: string | null;
             /** Role */
             role: string;
             /** Plan */
             plan: string;
             /** Created At */
-            created_at?: string | null;
+            created_at: string | null;
             /** Last Login At */
-            last_login_at?: string | null;
+            last_login_at: string | null;
             /** Generated Password */
             generated_password?: string | null;
         };
         /**
          * AdminUserResponse
          * @description 用户管理列表项（手机号只回脱敏值）
+         *
+         *     按「恒序列化、值可空的字段不写默认值」约定无默认值——_user_to_dto 恒传全键。
          */
         AdminUserResponse: {
             /** Id */
@@ -1676,24 +1675,21 @@ export interface components {
             /** Username */
             username: string;
             /** Email */
-            email?: string | null;
+            email: string | null;
             /** Phone Masked */
-            phone_masked?: string | null;
-            /**
-             * Has Phone
-             * @default false
-             */
+            phone_masked: string | null;
+            /** Has Phone */
             has_phone: boolean;
             /** Avatar */
-            avatar?: string | null;
+            avatar: string | null;
             /** Role */
             role: string;
             /** Plan */
             plan: string;
             /** Created At */
-            created_at?: string | null;
+            created_at: string | null;
             /** Last Login At */
-            last_login_at?: string | null;
+            last_login_at: string | null;
         };
         /**
          * AdminUserUpdate
@@ -1873,6 +1869,8 @@ export interface components {
         /**
          * AuditLogResponse
          * @description 审计日志条目
+         *
+         *     按「恒序列化、值可空的字段不写默认值」约定无默认值——_record_audit 恒传全键。
          */
         AuditLogResponse: {
             /** Id */
@@ -1882,13 +1880,13 @@ export interface components {
             /** Action */
             action: string;
             /** Target */
-            target?: string | null;
+            target: string | null;
             /** Detail */
-            detail?: {
+            detail: {
                 [key: string]: unknown;
             } | null;
             /** Created At */
-            created_at?: string | null;
+            created_at: string | null;
         };
         /**
          * AvailableModel
@@ -3370,15 +3368,21 @@ export interface components {
             name: string;
             /** Description */
             description: string;
-            /** Category */
-            category: string;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "builtin" | "mcp";
             /**
              * Enabled
              * @default true
              */
             enabled: boolean;
-            /** Risk Tier */
-            risk_tier: string;
+            /**
+             * Risk Tier
+             * @enum {string}
+             */
+            risk_tier: "low" | "medium" | "high";
             /** Approval Required */
             approval_required: boolean;
             /** Allowed Experts */

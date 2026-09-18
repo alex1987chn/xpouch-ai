@@ -1,9 +1,16 @@
 /**
  * 管理员相关 API 服务
- * 
+ *
+ * 契约真相源是后端（→ api.generated.ts）；本文件手写类型的 SameShape 锚点
+ * 见文件底部——后端契约变更而这里没跟上时编译期报红。
+ * 注意：锚点按需逐步添加（本会话已锚定 6 个恒有键形状），剩余请求 DTO
+ * （Update/Create 类）因生成物与手写在「可空字段的 optional/null」语义上
+ * 尚有差异，留待后端请求 DTO 一并收敛后再锚。
+ *
  * P0 修复: 添加 credentials: 'include' 以支持 HttpOnly Cookie
  */
 
+import type { components } from '@/types/api.generated'
 import { getHeaders, buildUrl, handleResponse, authenticatedFetch } from './common'
 
 // ============================================================================
@@ -14,7 +21,7 @@ export interface SystemExpert {
   id: string
   expert_key: string
   name: string
-  description?: string
+  description: string | null
   system_prompt: string
   model: string
   temperature: number
@@ -74,9 +81,9 @@ export interface ToolInfo {
   name: string
   description: string
   category: 'builtin' | 'mcp'
-  enabled?: boolean
-  risk_tier?: 'low' | 'medium' | 'high'
-  approval_required?: boolean
+  enabled: boolean
+  risk_tier: 'low' | 'medium' | 'high'
+  approval_required: boolean
   allowed_experts?: string[] | null
   blocked_experts?: string[] | null
   policy_note?: string | null
@@ -561,6 +568,31 @@ export interface AuditLogEntry {
   detail: Record<string, unknown> | null
   created_at: string | null
 }
+
+// ============================================================================
+// REST 契约锚点（范式沿 types/stats.ts；SystemExpert/AdminUser/AuditLogEntry/
+// ToolInfo/ToolsListResponse/ToolPolicyListResponse 六个恒有键形状已锚定）
+// ============================================================================
+
+/** 双向相等：手写类型与后端生成类型**逐字段一致**（含可选性与 null）。 */
+type SameShape<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+type Assert<T extends true> = T
+
+type Schemas = components['schemas']
+type _SystemExpert = Assert<SameShape<SystemExpert, Schemas['ExpertResponse']>>
+type _AdminUser = Assert<SameShape<AdminUser, Schemas['AdminUserResponse']>>
+type _AuditLogEntry = Assert<SameShape<AuditLogEntry, Schemas['AuditLogResponse']>>
+type _ToolInfo = Assert<SameShape<ToolInfo, Schemas['ToolInfo']>>
+type _ToolsListResponse = Assert<SameShape<ToolsListResponse, Schemas['ToolsListResponse']>>
+
+/** 锚点只做编译期校验，导出以免被 noUnusedLocals 误报 */
+export type AdminConformanceAnchors = [
+  _SystemExpert,
+  _AdminUser,
+  _AuditLogEntry,
+  _ToolInfo,
+  _ToolsListResponse,
+]
 
 export async function getAuditLogs(search?: string): Promise<AuditLogEntry[]> {
   const param = search?.trim() ? `&search=${encodeURIComponent(search.trim())}` : ''
