@@ -34,7 +34,6 @@ from unittest.mock import patch
 import pytest
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
-from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -91,11 +90,15 @@ _PLAN = [
 
 
 @pytest.fixture
-def engine():
+def engine(tmp_path):
+    # 用**临时文件库 + 默认池**而非 StaticPool 单连接：本测试的 producer
+    # （后台任务 / to_thread）与测试轮询分属多个 session，StaticPool 的
+    # 单连接会让跨 session 的事务可见性与回滚相互污染——这正是本测试
+    # 偶发挂的土壤（CI/本地都随机复现过）。文件库提供真实的连接级
+    # 事务隔离，贴近生产（PG 多连接）形态。
     engine = create_engine(
-        "sqlite://",
+        f"sqlite:///{tmp_path}/producer-test.db",
         connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
     )
     SQLModel.metadata.create_all(engine, tables=TABLES)
     with Session(engine) as session:
