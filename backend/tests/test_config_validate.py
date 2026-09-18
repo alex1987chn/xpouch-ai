@@ -19,6 +19,7 @@ from providers_config import (
     get_all_providers,
     get_default_embedding_provider,
     get_embedding_provider_config,
+    is_provider_configured,
 )
 
 
@@ -49,8 +50,8 @@ PRODUCTION = {
 def _only(*env_keys: str) -> Iterator[None]:
     """清空 conftest 预置的假 key，只让给定的几个"已配置"。
 
-    必须**删除**变量而不是置空串：providers_config.is_provider_configured 判的是
-    `os.getenv(env_key) is not None`，空串也算已配置。patch.dict 会在退出时整体还原。
+    用**删除**而非置空串——是最严格的隔离口径，不依赖 is_provider_configured
+    对空串的判定方向。patch.dict 会在退出时整体还原。
     """
     with patch.dict(os.environ, dict.fromkeys(env_keys, "sk-test-only")):
         for key in PROVIDER_ENV_KEYS:
@@ -80,4 +81,17 @@ def test_disabled_provider_key_does_not_count() -> None:
 def test_no_provider_key_rejects_production_start() -> None:
     """一个 key 都没有 → 生产拒绝启动（闸门本身不能消失）。"""
     with _only():
+        assert Settings(**PRODUCTION).validate() is False
+
+
+def test_empty_string_key_counts_as_unconfigured() -> None:
+    """key 留空 = 未配置（真值判定）。
+
+    回归背景：is_provider_configured 原判 `os.getenv(...) is not None`，.env 里
+    写了变量名但值为空串时，状态页把它算作"已配置"亮绿灯、启动闸门放行，
+    而实际调用必 401——两层展示与闸门都被空串骗过。改为真值判定后，
+    "显示可用"与"调用可用"重新对齐；本测试在两个层面锁住该语义。
+    """
+    with _only(), patch.dict(os.environ, {"DEEPSEEK_API_KEY": ""}):
+        assert is_provider_configured("deepseek") is False
         assert Settings(**PRODUCTION).validate() is False

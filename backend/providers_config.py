@@ -192,11 +192,12 @@ def is_provider_configured(provider: str) -> bool:
     """
     检查指定提供商是否「可用」——须同时满足：
     1. providers.yaml 中 enabled: true（未被显式禁用）
-    2. 已配置 API Key（对应环境变量存在）
+    2. 已配置 API Key（对应环境变量存在且非空）
 
     注意：仅看 Key 存在与否会漏判「key 在但 provider 被禁用」——此时
     llm_factory._build_llm_instance 会 raise，导致调用链（如 commander 规划）
     静默退化为空结果。与 _build_llm_instance 的 enabled 检查保持一致。
+    空串同理不算已配置：.env 里留空的 key 会让状态页亮绿灯、调用必 401。
 
     Args:
         provider: 提供商标识
@@ -209,7 +210,7 @@ def is_provider_configured(provider: str) -> bool:
         return False
     if not config.get("enabled", True):
         return False
-    return get_provider_api_key(provider) is not None
+    return bool(get_provider_api_key(provider))
 
 
 # ============================================================================
