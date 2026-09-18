@@ -88,7 +88,7 @@ def test_agent_list_items_contract(sample_user):
 
     class _Result:
         def one(self):
-            return 1
+            return (1,)  # Row 形状：sqlalchemy select 的单列聚合经 [0] 解包
 
         def all(self):
             return [_agent_fixture()]

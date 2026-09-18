@@ -16,8 +16,10 @@ import uuid
 from datetime import datetime
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from sqlalchemy import func
+from sqlalchemy import select as sa_select
 from sqlalchemy.orm import selectinload
-from sqlmodel import Session, func, select
+from sqlmodel import Session, select
 
 from constants import SYSTEM_AGENT_DEFAULT_CHAT, SYSTEM_AGENT_ORCHESTRATOR, normalize_agent_id
 from crud.message import create_assistant_message, create_user_message
@@ -147,9 +149,11 @@ class ChatThreadService:
         limit = min(limit, 100)
         offset = (page - 1) * limit
 
-        # 1. 查询总记录数（SQL COUNT，不拉全量行）
-        count_statement = select(func.count()).select_from(Thread).where(Thread.user_id == user_id)
-        total = self.db.exec(count_statement).one()
+        # 1. 查询总记录数（SQL COUNT，不拉全量行；单列聚合用 sqlalchemy select，见 CONTRIBUTING 查询惯例）
+        count_statement = (
+            sa_select(func.count()).select_from(Thread).where(Thread.user_id == user_id)
+        )
+        total = self.db.exec(count_statement).one()[0]
 
         # 2. 查询当前页线程（不预加载消息）
         statement = (

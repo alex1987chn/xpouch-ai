@@ -95,6 +95,11 @@ docker-compose up -d --build
 - **错误处理**：使用自定义异常类（`AppError`）
 - **数据库操作**：使用 SQLModel ORM
 - **API 设计**：遵循 RESTful 原则
+- **查询惯例**：查整行实体用 `sqlmodel.select`（`Session.exec` 直接给对象）；
+  **单列聚合 / 表达式查询必须用 `sqlalchemy.select` 并以 `row[0]` 取值**
+  （sqlmodel 的 select 单列经 `exec` 返回标量而非 Row——两种 select 混用时
+  形状不可预测，曾两次引发线上事故，范本见 `crud/stats.py`；多列聚合两态
+  均为 Row，不受影响）
 
 ### Pre-commit Hooks
 

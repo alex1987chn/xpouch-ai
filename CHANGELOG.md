@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 变更
 
+- **统一聚合查询惯例**：单列聚合 / 表达式查询必须用 `sqlalchemy.select` + `row[0]`（sqlmodel 的 select 单列经 `exec` 返回标量，混用不可预测——`b98478a` 的配额事故即此根因）。已把 agent_service / thread_service 两处靠标量语义"碰巧工作"的 count 对齐，约定写入 CONTRIBUTING
 - **REST API 契约收敛（T2）**：给 37 个未声明 `response_model` 的端点补齐 30 个（其余 7 个按形态排除：SSE×3、HTML 分享页、system-status 动态聚合、debug×3），自此全部 JSON 端点的响应形态都在 OpenAPI schema 里显式声明。配套新增 `scripts/gen_openapi_types.py`：以 openapi-typescript（钉版 7.13.0 + typescript 6.0.3，装进系统临时目录的隔离工具目录，规避 `legacy-peer-deps` 下 peer 不自动安装的差异）把 app 的 schema 生成为 `frontend/src/types/api.generated.ts`，新鲜度闸门进后端 pytest（子进程隔离运行，避免重导入扰动时序敏感的 asyncio 测试），`just gen-openapi-types` / `check-openapi-types` 手动入口。前端第一个契约锚点落在 `services/stats.ts`（SameShape 双向逐字段断言，范式沿 `types/events.ts`），响应模型确立「恒序列化、值可空的字段不写默认值」约定（默认值会被 OpenAPI 降级成 optional，与运行时恒有键不符）
 - **契约测试**：新增 34 条「全键断言」响应契约测试（`assert set(body.keys()) == {...}`，范式沿 `test_expert_catalog.py`），日后路由/service 新增返回键而响应模型没跟上，测试立刻红
 

@@ -8,7 +8,9 @@
 
 from __future__ import annotations
 
-from sqlmodel import Session, func, select
+from sqlalchemy import func
+from sqlalchemy import select as sa_select
+from sqlmodel import Session, select
 
 from crud.query_helpers import get_owned_custom_agent_or_404
 from models import CustomAgent, CustomAgentCreate, CustomAgentUpdate, Thread
@@ -39,11 +41,13 @@ class AgentService:
     def list_custom_agents(self, user_id: str, page: int, page_size: int) -> dict:
         offset = (page - 1) * page_size
 
+        # 单列聚合必须用 sqlalchemy 的 select：sqlmodel 的 select 经 Session.exec
+        # 会返回标量，取值惯例见 CONTRIBUTING「查询惯例」（b98478a 同族教训）
         total = self.session.exec(
-            select(func.count())
+            sa_select(func.count())
             .select_from(CustomAgent)
             .where(CustomAgent.user_id == user_id, CustomAgent.is_default.is_(False))
-        ).one()
+        ).one()[0]
 
         custom_agents = self.session.exec(
             select(CustomAgent)
