@@ -156,7 +156,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build backend image
-        run: docker build -t xpouch-backend-ci ./backend
+        # --build-context repo=. 与 docker-compose.yml 的 additional_contexts 对应：
+        # backend/Dockerfile 里 COPY --from=repo NOTICE 依赖该附加上下文
+        run: docker build --build-context repo=. -t xpouch-backend-ci ./backend
 
       - name: Build frontend image
         run: docker build -f frontend/Dockerfile -t xpouch-frontend-ci .

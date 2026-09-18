@@ -57,6 +57,9 @@ COPY --from=builder /app/frontend/dist /usr/share/nginx/html
 # 复制自定义的 nginx 配置
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
+# 随镜像分发 NOTICE（Apache-2.0 §4d：二进制分发须随附声明文件；置于 Web 根，/NOTICE 可公开访问）
+COPY NOTICE /usr/share/nginx/html/NOTICE
+
 # 验证 Nginx 文件复制成功
 RUN ls -la /usr/share/nginx/html || (echo "Nginx 静态文件未复制成功" && exit 1)
 RUN ls -la /usr/share/nginx/html/index.html || (echo "index.html 未复制到 Nginx 目录" && exit 1)

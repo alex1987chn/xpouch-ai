@@ -27,7 +27,12 @@ services:
 
   # 后端服务
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      # NOTICE 在仓库根，backend 构建上下文看不到：经附加上下文挂入，
+      # 供 Dockerfile 的 COPY --from=repo 使用（需要 Compose v2.17+ / BuildKit）
+      additional_contexts:
+        repo: .
     # build+image 同设：构建产物以 GIT_VERSION（git 短 SHA，deploy.sh 注入）打标签，
     # 旧版本镜像保留可回滚；本地 compose 不设 GIT_VERSION 时退回 local 标签
     image: xpouch-ai-backend:${GIT_VERSION:-local}

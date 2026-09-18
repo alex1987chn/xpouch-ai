@@ -5,6 +5,13 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 修复
+
+- **API Key 留空不再被算作「已配置」**：`is_provider_configured` 原判 `os.getenv(...) is not None`，`.env` 里写了变量名但值为空串时，系统状态页亮绿灯、生产启动闸门放行，而实际调用必 401。改为真值判定后，「显示可用」与「调用可用」对齐（空串 = 未配置）；附带收紧了生产启动闸门的同一盲区
+- **容器镜像随附 `NOTICE`**（Apache-2.0 §4d）：前端镜像置于 Web 根（`/NOTICE` 可公开访问），后端镜像经 compose `additional_contexts` 从仓库根挂入；CI 的直调 `docker build` 已同步加 `--build-context`
+
 ## [2026-09-17] - v3.5.3 质量加固批次：单一真相源收敛、流式管道收编、审计修复与许可改为 Apache-2.0
 
 无新功能。存量库升级路径打通 + 真相源收敛 + 架构去重 + 死代码清扫（净 -1033 行）。**许可改为标准 Apache License 2.0。**

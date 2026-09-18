@@ -34,6 +34,11 @@ COPY tools/ ./tools/
 COPY migrations/ ./migrations/
 COPY alembic.ini ./
 
+# 随镜像分发 NOTICE（Apache-2.0 §4d：二进制分发须随附声明文件）。
+# NOTICE 在仓库根、不在本上下文（./backend）内，经 compose additional_contexts
+# 以 "repo" 名义挂入；绕过 compose 直调 docker build 时须加 --build-context repo=.（CI 已同步）
+COPY --from=repo NOTICE ./
+
 # 暴露端口（与 .env.example 和 docker-compose.yml 保持一致）
 EXPOSE 3000
 
