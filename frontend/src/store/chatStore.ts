@@ -25,9 +25,6 @@ import { isSameId } from '@/utils/normalize'
 // ============================================================================
 
 interface ChatState {
-  // 智能体相关
-  selectedAgentId: string
-
   // 聊天相关
   messages: Message[]
   currentConversationId: string | null
@@ -41,9 +38,6 @@ interface ChatState {
 }
 
 interface ChatActions {
-  // 智能体操作
-  setSelectedAgentId: (id: string) => void
-  
   // 消息操作
   setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void
   addMessage: (message: Message) => void
@@ -70,7 +64,6 @@ export const useChatStore = create<ChatStore>()(
   persist(
     (set) => ({
       // ========== 初始状态 ==========
-      selectedAgentId: 'default-chat',
       messages: [],
       currentConversationId: null,
       inputMessage: '',
@@ -79,7 +72,6 @@ export const useChatStore = create<ChatStore>()(
 
       // ========== 智能体操作 ==========
 
-      setSelectedAgentId: (id: string) => set({ selectedAgentId: id }),
       // （智能体列表的唯一真相是 React Query —— useAgentsQuery；
       //   此前 persisted customAgents 副本已删除，见 v3.4.4 缓存所有权收敛）
 
@@ -157,8 +149,8 @@ export const useChatStore = create<ChatStore>()(
       // 只持久化轻量 UI 偏好。messages / currentConversationId 不再持久化：
       // 会话内容由服务端恢复（useSessionRestore），持久化副本只会造成
       // 导航时旧数据闪烁（历史上被迫加"导航清空"hack 的根源）。
-      partialize: (state) => ({
-        selectedAgentId: state.selectedAgentId,
+      partialize: () => ({
+        // 轻量 UI 偏好在此持久化
       })
     }
   )

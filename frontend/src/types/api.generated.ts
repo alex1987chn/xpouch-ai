@@ -998,77 +998,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/agents": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get All Agents
-         * @description 获取当前用户的所有自定义智能体（支持分页）
-         *
-         *     P1 优化:
-         *     - 添加分页支持
-         *     - 默认每页 20 条，最大 100 条
-         *
-         *     返回列表：
-         *     - 用户自定义智能体（按创建时间降序，最新的在前）
-         *
-         *     注意：
-         *     - 系统专家（search, coder, researcher等）不返回，虚拟专家不暴露到前端
-         *     - 默认助手（简单模式）由前端硬编码，不在此接口返回
-         */
-        get: operations["get_all_agents_api_agents_get"];
-        put?: never;
-        /**
-         * Create Custom Agent
-         * @description 创建自定义智能体
-         *
-         *     用户创建的智能体用于简单的对话场景，直接使用自定义的 system_prompt
-         *     调用 LLM，不经过 LangGraph 专家工作流。
-         */
-        post: operations["create_custom_agent_api_agents_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/agents/{agent_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Custom Agent
-         * @description 获取单个自定义智能体详情
-         */
-        get: operations["get_custom_agent_api_agents__agent_id__get"];
-        /**
-         * Update Custom Agent
-         * @description 更新自定义智能体
-         */
-        put: operations["update_custom_agent_api_agents__agent_id__put"];
-        post?: never;
-        /**
-         * Delete Custom Agent
-         * @description 删除自定义智能体
-         *
-         *     注意：
-         *     - 禁止删除默认助手（is_default=True）
-         *     - 只能删除用户自己的智能体
-         *     - 级联删除关联的所有会话记录
-         */
-        delete: operations["delete_custom_agent_api_agents__agent_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/experts/catalog": {
         parameters: {
             query?: never;
@@ -1705,16 +1634,6 @@ export interface components {
             role?: components["schemas"]["UserRole"] | null;
         };
         /**
-         * AgentDeleteResponse
-         * @description 删除自定义智能体的响应（含级联删除的会话数）
-         */
-        AgentDeleteResponse: {
-            /** Ok */
-            ok: boolean;
-            /** Deleted Threads Count */
-            deleted_threads_count: number;
-        };
-        /**
          * AgentRunSummaryResponse
          * @description 线程详情中的最近一次运行摘要。
          *
@@ -1737,39 +1656,6 @@ export interface components {
             completed_at: string | null;
             /** Started At */
             started_at: string | null;
-        };
-        /**
-         * AgentSummaryResponse
-         * @description 自定义智能体列表项（AgentService.list_custom_agents 手工组装的扁平条目；
-         *
-         *     与 CustomAgentResponse 的差异：时间字段在 service 里已 isoformat 成字符串，
-         *     另带列表专用的 is_builtin 常量位——两个形态并存是既有契约，不在此合并。
-         */
-        AgentSummaryResponse: {
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Description */
-            description: string;
-            /** System Prompt */
-            system_prompt: string;
-            /** Category */
-            category: string;
-            /** Model Id */
-            model_id: string;
-            /** Conversation Count */
-            conversation_count: number;
-            /** Is Public */
-            is_public: boolean;
-            /** Is Default */
-            is_default: boolean;
-            /** Is Builtin */
-            is_builtin: boolean;
-            /** Created At */
-            created_at?: string | null;
-            /** Updated At */
-            updated_at?: string | null;
         };
         /**
          * ArtifactDetailResponse
@@ -2012,80 +1898,6 @@ export interface components {
             message?: string | null;
             /** Execution Plan Id */
             execution_plan_id?: string | null;
-        };
-        /**
-         * CustomAgentCreate
-         * @description 创建自定义智能体的 DTO
-         */
-        CustomAgentCreate: {
-            /** Name */
-            name: string;
-            /** Description */
-            description?: string | null;
-            /** Systemprompt */
-            systemPrompt: string;
-            /**
-             * Category
-             * @default 综合
-             */
-            category: string;
-            /**
-             * Modelid
-             * @default deepseek-flash
-             */
-            modelId: string;
-        };
-        /**
-         * CustomAgentResponse
-         * @description 自定义智能体响应 DTO（from_attributes：路由直返 CustomAgent ORM）
-         */
-        CustomAgentResponse: {
-            /** Id */
-            id: string;
-            /** User Id */
-            user_id: string;
-            /** Name */
-            name: string;
-            /** Description */
-            description?: string | null;
-            /** System Prompt */
-            system_prompt: string;
-            /** Model Id */
-            model_id: string;
-            /** Is Default */
-            is_default: boolean;
-            /** Category */
-            category: string;
-            /** Is Public */
-            is_public: boolean;
-            /** Conversation Count */
-            conversation_count: number;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
-        };
-        /**
-         * CustomAgentUpdate
-         * @description 更新自定义智能体的 DTO
-         */
-        CustomAgentUpdate: {
-            /** Name */
-            name?: string | null;
-            /** Description */
-            description?: string | null;
-            /** Systemprompt */
-            systemPrompt?: string | null;
-            /** Category */
-            category?: string | null;
-            /** Modelid */
-            modelId?: string | null;
         };
         /**
          * DailyTokenQuotaRequest
@@ -2549,19 +2361,6 @@ export interface components {
          */
         ModelPreferencesResponse: {
             preferences: components["schemas"]["ModelPreferences"];
-        };
-        /** PaginatedAgentsResponse */
-        PaginatedAgentsResponse: {
-            /** Items */
-            items: components["schemas"]["AgentSummaryResponse"][];
-            /** Total */
-            total: number;
-            /** Page */
-            page: number;
-            /** Page Size */
-            page_size: number;
-            /** Pages */
-            pages: number;
         };
         /**
          * PaginatedArtifactListResponse
@@ -5321,179 +5120,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_all_agents_api_agents_get: {
-        parameters: {
-            query?: {
-                /** @description 页码 */
-                page?: number;
-                /** @description 每页数量 */
-                page_size?: number;
-                require_auth?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PaginatedAgentsResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_custom_agent_api_agents_post: {
-        parameters: {
-            query?: {
-                require_auth?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CustomAgentCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CustomAgentResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_custom_agent_api_agents__agent_id__get: {
-        parameters: {
-            query?: {
-                require_auth?: boolean;
-            };
-            header?: never;
-            path: {
-                agent_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CustomAgentResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_custom_agent_api_agents__agent_id__put: {
-        parameters: {
-            query?: {
-                require_auth?: boolean;
-            };
-            header?: never;
-            path: {
-                agent_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CustomAgentUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CustomAgentResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_custom_agent_api_agents__agent_id__delete: {
-        parameters: {
-            query?: {
-                require_auth?: boolean;
-            };
-            header?: never;
-            path: {
-                agent_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AgentDeleteResponse"];
                 };
             };
             /** @description Validation Error */

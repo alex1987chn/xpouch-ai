@@ -19,16 +19,15 @@ import {
   type ResumeChatParams
 } from '@/services/chat'
 import type { ApiMessage, StreamCallback, StreamRuntimeMeta } from '@/types'
-import { normalizeAgentId, getAgentType } from '@/utils/agentUtils'
 import { generateUUID } from '@/utils'
 import { isSameId } from '@/utils/normalize'
+import { SYSTEM_AGENTS } from '@/constants/agents'
 import type { Message } from '@/types'
 import { errorHandler, logger } from '@/utils/logger'
 import type { AnyServerEvent } from '@/types/events'
 
 import {
   useInputMessage,
-  useSelectedAgentId,
   useCurrentConversationId,
   useIsGenerating,
   useChatActions,
@@ -54,7 +53,7 @@ interface UseChatCoreOptions {
   /** Handle streaming content callback */
   onChunk?: (chunk: string) => void
   /** New conversation created callback */
-  onNewConversation?: (threadId: string, agentId: string) => void
+  onNewConversation?: (threadId: string) => void
   /**
    * 流被中断、但服务端任务仍在执行时的回调（参数为该 run id）。
    *
@@ -101,7 +100,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
   // Chat store selectors
   const inputMessage = useInputMessage()
-  const selectedAgentId = useSelectedAgentId()
   const currentConversationId = useCurrentConversationId()
   const isGenerating = useIsGenerating()
 
@@ -243,7 +241,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
    */
   const sendMessageCore = useCallback(async (
     content?: string,
-    overrideAgentId?: string,
     images?: string[],
     documents?: { name: string; content_base64: string }[]
   ) => {
@@ -266,13 +263,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
     resetStreamHandler()
 
-    const agentId = overrideAgentId || selectedAgentId
-    if (!agentId) {
-      logger.error('[useChatCore] No agent selected')
-      setGenerating(false)
-      return
-    }
-    const normalizedAgentId = normalizeAgentId(agentId)
+    const normalizedAgentId = SYSTEM_AGENTS.DEFAULT_CHAT
 
     abortControllerRef.current = new AbortController()
 
@@ -300,9 +291,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       ]
 
       debug('Preparing to send message, history count:', storeState.messages.length, 'Current input:', userContent)
-
-      const agentType = getAgentType(normalizedAgentId)
-      debug('Agent type:', agentType, 'Agent ID:', normalizedAgentId)
 
       // 🔥🔥🔥 关键修复：使用函数式更新避免竞态条件
       // 确保获取最新的 messages 状态，而不是使用闭包中的快照
@@ -353,7 +341,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
             actualThreadId = threadId
             setCurrentConversationId(threadId)
             // 🔥 触发新会话回调，让上层组件更新 URL
-            onNewConversation?.(threadId, normalizedAgentId)
+            onNewConversation?.(threadId)
           }
         },
         // message.done 的 full_content 是权威全文（chatEvents 已整体校准）；
@@ -374,7 +362,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       const initialThreadId = useChatStore.getState().currentConversationId
       if (actualThreadId && actualThreadId !== initialThreadId) {
-        onNewConversation?.(actualThreadId, selectedAgentId)
+        onNewConversation?.(actualThreadId)
       }
 
       debug(`Task completed, final content length: ${finalResponseContent?.length || 0}`)
@@ -449,7 +437,6 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   }, [
     isGenerating,
     inputMessage,
-    selectedAgentId,
     currentConversationId,
     conversationMode,
     onChunk,
@@ -585,13 +572,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     setMode('simple')
     resetStreamHandler()
 
-    const agentId = selectedAgentId
-    if (!agentId) {
-      logger.error('[regenerateMessage] No agent selected')
-      setGenerating(false)
-      return
-    }
-    const normalizedAgentId = normalizeAgentId(agentId)
+    const normalizedAgentId = SYSTEM_AGENTS.DEFAULT_CHAT
 
     abortControllerRef.current = new AbortController()
 
@@ -651,7 +632,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     } finally {
       finalizeStream()
     }
-  }, [isGenerating, selectedAgentId, currentConversationId, setGenerating, setMode, setMessages, resetStreamHandler, createChunkHandler, onChunk, setCurrentConversationId, updateMessage, finalizeStream, makeStreamCallback])
+  }, [isGenerating, currentConversationId, setGenerating, setMode, setMessages, resetStreamHandler, createChunkHandler, onChunk, setCurrentConversationId, updateMessage, finalizeStream, makeStreamCallback])
 
   return {
     sendMessage: sendMessageCore,

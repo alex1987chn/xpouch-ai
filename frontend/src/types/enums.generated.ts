@@ -13,7 +13,7 @@ export const USER_ROLE_VALUES = ['user', 'admin'] as const
 export type UserRole = (typeof USER_ROLE_VALUES)[number]
 
 /** ConversationType（真相源：backend/models/enums.py） */
-export const CONVERSATION_TYPE_VALUES = ['default', 'custom', 'ai'] as const
+export const CONVERSATION_TYPE_VALUES = ['default', 'ai'] as const
 export type ConversationType = (typeof CONVERSATION_TYPE_VALUES)[number]
 
 /** ExpertType（真相源：backend/models/enums.py） */

@@ -99,30 +99,23 @@ export function expertLabel(expertType: string, t: (key: TranslationKey) => stri
   return key ? t(key) : expertType
 }
 
-/** 解析显示名时可用的两份运行时映射（都可缺省） */
+/** 解析显示名时可用的运行时映射（可缺省） */
 export interface ExpertNameSources {
   /** `GET /api/experts/catalog`：系统专家的权威名（管理员改名即时生效） */
   catalogNames?: ReadonlyMap<string, string>
-  /** `useAgentsQuery`（`GET /api/agents`）：自定义专家的名字 */
-  agentNames?: ReadonlyMap<string, string>
 }
 
 /**
  * 显示名的**解析顺序**（纯函数，便于单测）：
  *
  *   1. 名册（服务端权威值——管理员改名立刻反映，不再靠前端词条猜）
- *   2. 自定义智能体列表（名册通常也含它们，但两者数据源不同，留作兜底）
- *   3. 静态词条（系统内置专家名的离线兜底；无网络/接口失败时界面不至于退化成 slug）
- *   4. 原样返回 expert_type
+ *   2. 静态词条（系统内置专家名的离线兜底；无网络/接口失败时界面不至于退化成 slug）
+ *   3. 原样返回 expert_type
  */
 export function resolveExpertLabel(
   expertType: string,
   sources: ExpertNameSources,
   t: (key: TranslationKey) => string,
 ): string {
-  return (
-    sources.catalogNames?.get(expertType) ||
-    sources.agentNames?.get(expertType) ||
-    expertLabel(expertType, t)
-  )
+  return sources.catalogNames?.get(expertType) || expertLabel(expertType, t)
 }

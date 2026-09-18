@@ -27,16 +27,7 @@ export const useIsGenerating = () =>
 
 
 
-/** 获取选中的智能体ID */
-export const useSelectedAgentId = () => 
-  useChatStore(state => state.selectedAgentId)
-
-// ============================================================================
-// 复杂 Selectors (使用 useShallow)
-// ============================================================================
-
-/** 
- * 获取消息列表
+/** 获取消息列表
  * 使用 useShallow 避免数组引用变化导致的重渲染
  */
 export const useMessages = () => useChatStore(
@@ -60,7 +51,6 @@ export const useChatActions = () => {
   const updateMessageMetadata = useChatStore(state => state.updateMessageMetadata)
   const setInputMessage = useChatStore(state => state.setInputMessage)
   const setCurrentConversationId = useChatStore(state => state.setCurrentConversationId)
-  const setSelectedAgentId = useChatStore(state => state.setSelectedAgentId)
   const setGenerating = useChatStore(state => state.setGenerating)
 
   return useMemo(
@@ -71,7 +61,6 @@ export const useChatActions = () => {
       updateMessageMetadata,
       setInputMessage,
       setCurrentConversationId,
-      setSelectedAgentId,
       setGenerating,
     }),
     [
@@ -81,7 +70,6 @@ export const useChatActions = () => {
       updateMessageMetadata,
       setInputMessage,
       setCurrentConversationId,
-      setSelectedAgentId,
       setGenerating,
     ]
   )

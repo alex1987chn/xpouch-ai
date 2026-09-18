@@ -19,12 +19,7 @@ describe('resolveExpertLabel 的解析顺序', () => {
     expect(t).not.toHaveBeenCalled()
   })
 
-  it('名册没有时用自定义智能体列表（自定义专家的名字）', () => {
-    const agentNames = new Map([['story_writer', '小说家']])
-    expect(resolveExpertLabel('story_writer', { agentNames }, t)).toBe('小说家')
-  })
-
-  it('两者都没有时落静态词条（离线兜底，界面不退化成 slug）', () => {
+  it('名册没有时落静态词条（离线兜底，界面不退化成 slug）', () => {
     expect(resolveExpertLabel('search', {}, t)).toBe('t:searchExpert')
   })
 

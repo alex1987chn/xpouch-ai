@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
 import { useQueryClient } from '@tanstack/react-query'
 import { FileQuestion } from 'lucide-react'
@@ -25,7 +25,6 @@ import { useUserStore } from '@/store/userStore'
 import { useAppUIStore } from '@/store/appUIStore'
 import { pushToast } from '@/components/ui/use-toast'
 import { useChatStore } from '@/store/chatStore'
-import { useAgentsQuery } from '@/hooks/queries/useAgentsQuery'
 import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
 import type { ChatDocument } from '@/components/chat/types'
@@ -43,12 +42,10 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [searchParams] = useSearchParams()
   const location = useLocation()
 
-  // URL ?agentId 优先（从资源库/首页带专家进入），否则默认助手
-  const agentIdParam = searchParams.get('agentId')
-  const normalizedAgentId = agentIdParam || SYSTEM_AGENTS.DEFAULT_CHAT
+  // 专家显示名（当前会话的专家类型；自定义智能体已删除，恒为系统默认）
+  const normalizedAgentId = SYSTEM_AGENTS.DEFAULT_CHAT
 
   // 新建会话发送中（首条消息 navigate 过来）不清流——与 UnifiedChatPage
   // 同守卫：restore 只对"进入已有会话"生效
@@ -148,7 +145,7 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
       pushToast({ title: t('loginRequired') || '请先登录' })
       return
     }
-    sendMessage(inputValue, normalizedAgentId, pendingImages, pendingDocs).then(() => {
+    sendMessage(inputValue, pendingImages, pendingDocs).then(() => {
       // 刷新地层 + 本线程产物投影
       queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
       if (threadId) queryClient.invalidateQueries({ queryKey: artifactsKeys.threadList(threadId) })
@@ -192,9 +189,7 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
   )
 
   // ===== 专家与运行状态行 =====
-  const { data: agents } = useAgentsQuery({ includeDefault: true })
-  const currentAgent = agents?.find(a => a.id === normalizedAgentId)
-  const expertName = currentAgent?.name || expertDisplayName(normalizedAgentId)
+  const expertName = expertDisplayName(normalizedAgentId)
   const agentDot = agentDotStyle(normalizedAgentId)
 
   const runIdForControl = activeRunId || latestRunId || threadId

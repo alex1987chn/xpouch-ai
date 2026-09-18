@@ -19,15 +19,6 @@ export {
 } from './useChatHistoryQuery'
 
 export {
-  // Agents Queries
-  useAgentsQuery,
-  useCustomAgentsQuery,
-  useDeleteAgentMutation,
-  agentsKeys,
-  type UIAgent,
-} from './useAgentsQuery'
-
-export {
   // MCP Queries
   useMCPServers,
   useCreateMCP,
