@@ -1717,6 +1717,8 @@ export interface components {
         /**
          * AgentRunSummaryResponse
          * @description 线程详情中的最近一次运行摘要。
+         *
+         *     按「恒序列化、值可空的字段不写默认值」约定无默认值。
          */
         AgentRunSummaryResponse: {
             /** Id */
@@ -1724,17 +1726,17 @@ export interface components {
             /** Status */
             status: string;
             /** Current Node */
-            current_node?: string | null;
+            current_node: string | null;
             /** Created At */
-            created_at?: string | null;
+            created_at: string | null;
             /** Updated At */
-            updated_at?: string | null;
+            updated_at: string | null;
             /** Last Heartbeat At */
-            last_heartbeat_at?: string | null;
+            last_heartbeat_at: string | null;
             /** Completed At */
-            completed_at?: string | null;
+            completed_at: string | null;
             /** Started At */
-            started_at?: string | null;
+            started_at: string | null;
         };
         /**
          * AgentSummaryResponse
@@ -2506,18 +2508,20 @@ export interface components {
         /**
          * MessageResponse
          * @description 消息响应模型
+         *
+         *     按「恒序列化、值可空的字段不写默认值」约定无默认值——Message ORM 恒有全列。
          */
         MessageResponse: {
             /** Id */
-            id?: number | null;
+            id: number | null;
             /** Role */
             role: string;
             /** Content */
             content: string;
             /** Timestamp */
-            timestamp?: string | null;
+            timestamp: string | null;
             /** Extra Data */
-            extra_data?: {
+            extra_data: {
                 [key: string]: unknown;
             } | null;
         };

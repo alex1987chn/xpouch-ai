@@ -55,6 +55,8 @@ export interface GenerateDescriptionRequest {
 export interface GenerateDescriptionResponse {
   description: string
   generated_at: string
+  temperature: number
+  execution_time_ms: number
 }
 
 export interface PreviewExpertRequest {
@@ -493,8 +495,8 @@ export interface AdminCreateUserRequest {
   phone_number: string
   email?: string | null
   role?: 'admin' | 'user'
-  initial_password?: string
-  generate_random_password?: boolean
+  initial_password?: string | null
+  generate_random_password: boolean
 }
 
 export type AdminCreateUserResponse = AdminUser & { generated_password?: string }
@@ -584,6 +586,12 @@ type _AdminUser = Assert<SameShape<AdminUser, Schemas['AdminUserResponse']>>
 type _AuditLogEntry = Assert<SameShape<AuditLogEntry, Schemas['AuditLogResponse']>>
 type _ToolInfo = Assert<SameShape<ToolInfo, Schemas['ToolInfo']>>
 type _ToolsListResponse = Assert<SameShape<ToolsListResponse, Schemas['ToolsListResponse']>>
+type _ExpertPreviewResponse = Assert<
+  SameShape<PreviewExpertResponse, Schemas['ExpertPreviewResponse']>
+>
+type _GenerateDescriptionResponse = Assert<
+  SameShape<GenerateDescriptionResponse, Schemas['GenerateDescriptionResponse']>
+>
 
 /** 锚点只做编译期校验，导出以免被 noUnusedLocals 误报 */
 export type AdminConformanceAnchors = [
@@ -592,6 +600,8 @@ export type AdminConformanceAnchors = [
   _AuditLogEntry,
   _ToolInfo,
   _ToolsListResponse,
+  _ExpertPreviewResponse,
+  _GenerateDescriptionResponse,
 ]
 
 export async function getAuditLogs(search?: string): Promise<AuditLogEntry[]> {

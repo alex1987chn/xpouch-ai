@@ -10,13 +10,16 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class MessageResponse(BaseModel):
-    """消息响应模型"""
+    """消息响应模型
 
-    id: int | None = None
+    按「恒序列化、值可空的字段不写默认值」约定无默认值——Message ORM 恒有全列。
+    """
+
+    id: int | None
     role: str
     content: str
-    timestamp: datetime | None = None
-    extra_data: dict | None = None
+    timestamp: datetime | None
+    extra_data: dict | None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -39,20 +42,23 @@ class MessageResponse(BaseModel):
 
 
 class AgentRunSummaryResponse(BaseModel):
-    """线程详情中的最近一次运行摘要。"""
+    """线程详情中的最近一次运行摘要。
+
+    按「恒序列化、值可空的字段不写默认值」约定无默认值。
+    """
 
     id: str
     status: str
-    current_node: str | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-    last_heartbeat_at: datetime | None = None
-    completed_at: datetime | None = None
+    current_node: str | None
+    created_at: datetime | None
+    updated_at: datetime | None
+    last_heartbeat_at: datetime | None
+    completed_at: datetime | None
     # `started_at` 是前端重建「思考过程」面板的**必需字段**：`attachThinkingFromTimeline`
     # 用它判定「这条助手消息确由本次 run 产出」（助手消息时间早于 run 开始时间 = 那是上一轮），
     # 缺了它函数第一句就 return。此前漏在响应模型之外，整套「从事件账本重建面板」的能力
     # 因此从未生效（刷新/切会话后思考面板一律空白，与用户报的「打开内容不全」同源）。
-    started_at: datetime | None = None
+    started_at: datetime | None
 
     model_config = ConfigDict(from_attributes=True)
 
