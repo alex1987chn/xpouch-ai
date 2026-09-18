@@ -97,6 +97,11 @@ TERMINAL_RUN_STATUSES: frozenset[RunStatus] = frozenset(
     }
 )
 
+# 不续租的状态集合：终态 + RESUMING（「正在恢复」是过渡态，不是「活跃运行」——
+# resume 成功后 run 即将进入 RUNNING，此时租约应释放，否则后续 resume 会撞
+# ACTIVE_RUN_CONFLICT）。
+_NO_RENEW_RUN_STATUSES: frozenset[RunStatus] = TERMINAL_RUN_STATUSES | {RunStatus.RESUMING}
+
 
 class ThreadStatus(StrEnum):
     """会话展示状态（Thread.status 字段）。

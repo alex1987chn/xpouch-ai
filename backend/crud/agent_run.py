@@ -17,6 +17,7 @@ from sqlmodel import Session, select
 from config import settings
 from crud.run_event import emit_run_created, emit_run_started, emit_run_timed_out
 from models import AgentRun, RunStatus, Thread, ThreadStatus
+from models.enums import _NO_RENEW_RUN_STATUSES
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
 from utils.run_lease import RUN_OWNER_ID, accepts_renewal, is_lease_alive, lease_deadline
@@ -274,7 +275,7 @@ def update_run_status(
         run.current_node = current_node
     run.last_heartbeat_at = utc_now_naive()
     run.updated_at = utc_now_naive()
-    if status in TERMINAL_RUN_STATUSES:
+    if status in _NO_RENEW_RUN_STATUSES:
         _release_lease(run)
     else:
         # 状态写入本身就证明「本进程在管这个 run」→ 顺带续租，零额外开销

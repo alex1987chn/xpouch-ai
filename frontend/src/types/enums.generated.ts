@@ -45,3 +45,5 @@ export const RUN_EVENT_TYPE_VALUES = ['run_created', 'run_started', 'router_deci
 export type RunEventType = (typeof RUN_EVENT_TYPE_VALUES)[number]
 
 export const TERMINAL_RUN_STATUSES = ['completed', 'failed', 'cancelled', 'timed_out'] as const
+
+export const _NO_RENEW_RUN_STATUSES = ['resuming', 'completed', 'failed', 'cancelled', 'timed_out'] as const

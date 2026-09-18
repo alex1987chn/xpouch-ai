@@ -208,10 +208,22 @@ class TestWritePointsRenewAndRelease:
         assert run.attempt == 1
 
     def test_status_write_renews_lease(self):
+        """RUNNING 状态写入续租（证明进程在管它）；RESUMING 是过渡态不续租（见下）。"""
         run = _run(owner=RUN_OWNER_ID, lease_expires_at=utc_now_naive() - timedelta(seconds=5))
         session = _FakeSession(_thread())
+        update_run_status(session, run, RunStatus.RUNNING)
+        assert is_lease_alive(run.lease_expires_at) is True, "RUNNING 状态写入即续租"
+
+    def test_resuming_status_releases_lease(self):
+        """RESUMING 状态写入释放租约（过渡态，不是活跃运行）——resume 成功后
+        run 即将进入 RUNNING，此时租约应释放，否则后续 resume 会撞
+        ACTIVE_RUN_CONFLICT。
+        """
+        run = _run(owner=RUN_OWNER_ID, lease_expires_at=lease_deadline())
+        session = _FakeSession(_thread())
         update_run_status(session, run, RunStatus.RESUMING)
-        assert is_lease_alive(run.lease_expires_at) is True, "状态写入即证明进程在管它"
+        assert run.owner is None, "RESUMING 状态写入必须释放租约（否则后续 resume 撞锁）"
+        assert run.lease_expires_at is None, "RESUMING 状态写入必须释放租约（否则后续 resume 撞锁）"
 
     def test_heartbeat_renews_lease(self):
         run = _run(owner=RUN_OWNER_ID, lease_expires_at=utc_now_naive() - timedelta(seconds=5))
@@ -254,24 +266,15 @@ class TestWritePointsRenewAndRelease:
         """resume 成功（计划更新 + 事件写入）后释放租约——否则 run 在 RUNNING 期间
         租约仍被持有，后续 resume（前端轮询/用户重复点）会撞 ACTIVE_RUN_CONFLICT。
 
-        回归背景：approve 后 run 进入 RESUMING，租约获取成功；但 resume 成功后
-        租约没还，22:28 的连续 approve 全部撞锁。修法：_bump_plan_version_with_cas
-        之后、hitl_resumed 事件写入之前释放。
+        修法：update_run_status 对 RESUMING 也释放租约（和终态一样）——
+        RESUMING 是「正在恢复」的过渡态，不是「活跃运行」，不该续租。
         """
-
         run = _run(owner=RUN_OWNER_ID, lease_expires_at=lease_deadline())
         session = _FakeSession(_thread())
         session.runs[run.id] = run
 
-        # 模拟 resume 成功路径（跳过 LLM/流式，只验证租约释放点）
-        # RecoveryService 的 resume_chat 是 async 且依赖多，这里直接测释放动作
-        run.status = RunStatus.RESUMING
-        run.owner = RUN_OWNER_ID
-        run.lease_expires_at = lease_deadline()
+        # RESUMING 状态写入即释放租约（与终态同规则）
+        update_run_status(session, run, RunStatus.RESUMING)
 
-        # 释放（与 recovery_service 的修法同构）
-        run.owner = None
-        run.lease_expires_at = None
-
-        assert run.owner is None, "resume 成功后租约必须释放"
-        assert run.lease_expires_at is None, "resume 成功后租约必须释放"
+        assert run.owner is None, "RESUMING 状态写入必须释放租约（否则后续 resume 撞锁）"
+        assert run.lease_expires_at is None, "RESUMING 状态写入必须释放租约（否则后续 resume 撞锁）"
