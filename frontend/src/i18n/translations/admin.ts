@@ -64,11 +64,8 @@ export const zh = {
   userDeleteWarning: '将删除 {name} 的账号、全部会话与产物数据，此操作不可恢复。',
   deleting: '删除中…',
   // Expert Admin Page - additional keys
-  expertsHeader: '专家列表',
-  searchPlaceholder: '搜索专家...',
   loadFailed: '加载失败',
   refreshSuccess: '刷新成功',
-  noMatchExpert: '没有匹配的专家',
   config: '配置',
   conservative: '保守',
   balanced: '平衡',
@@ -113,7 +110,6 @@ export const zh = {
   systemPromptTooShort: 'System Prompt 太短，无法生成描述',
 
   // Dynamic Expert (v3.0)
-  newExpert: '新建专家',
   createExpert: '创建专家',
   dynamicExpert: '自定义',
   builtinExpert: '内置',
@@ -207,11 +203,8 @@ export const en = {
   userDeleteWarning: "This deletes {name}'s account, all conversations and artifacts. This cannot be undone.",
   deleting: 'Deleting…',
   // Expert Admin Page - additional keys
-  expertsHeader: 'Experts',
-  searchPlaceholder: 'Search experts...',
   loadFailed: 'Failed to load',
   refreshSuccess: 'Refresh successful',
-  noMatchExpert: 'No matching experts',
   config: 'Config',
   conservative: 'Conservative',
   balanced: 'Balanced',
@@ -256,7 +249,6 @@ export const en = {
   systemPromptTooShort: 'System Prompt is too short to generate description',
 
   // Dynamic Expert (v3.0)
-  newExpert: 'New Expert',
   createExpert: 'Create Expert',
   dynamicExpert: 'Custom',
   builtinExpert: 'Built-in',
@@ -350,11 +342,8 @@ export const ja = {
   userDeleteWarning: '{name} のアカウント、すべての会話と成果物が削除されます。この操作は元に戻せません。',
   deleting: '削除中…',
   // Expert Admin Page - additional keys
-  expertsHeader: 'エキスパート一覧',
-  searchPlaceholder: 'エキスパートを検索...',
   loadFailed: '読み込みに失敗しました',
   refreshSuccess: '更新成功',
-  noMatchExpert: '一致するエキスパートが見つかりません',
   config: '設定',
   conservative: '保守的',
   balanced: 'バランス',
@@ -399,7 +388,6 @@ export const ja = {
   systemPromptTooShort: 'System Promptが短すぎて説明を生成できません',
 
   // Dynamic Expert (v3.0)
-  newExpert: '新規エキスパート',
   createExpert: 'エキスパートを作成',
   dynamicExpert: 'カスタム',
   builtinExpert: '内蔵',

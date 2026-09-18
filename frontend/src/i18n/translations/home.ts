@@ -23,10 +23,8 @@ export const zh = {
 
   // Expert Names
   commander: '指挥官',
-  searchExpertName: '搜索专家',
   codingExpert: '编程专家',
   researchExpert: '研究专家',
-  analyzerExpertName: '分析专家',
   writingExpert: '写作专家',
   planningExpert: '规划专家',
 }
@@ -54,10 +52,8 @@ export const en = {
 
   // Expert Names
   commander: 'Commander',
-  searchExpertName: 'Search Expert',
   codingExpert: 'Coding Expert',
   researchExpert: 'Research Expert',
-  analyzerExpertName: 'Analyzer Expert',
   writingExpert: 'Writing Expert',
   planningExpert: 'Planning Expert',
 }
@@ -85,10 +81,8 @@ export const ja = {
 
   // Expert Names
   commander: 'コマンダー',
-  searchExpertName: '検索エキスパート',
   codingExpert: 'プログラミングエキスパート',
   researchExpert: '研究エキスパート',
-  analyzerExpertName: '分析エキスパート',
   writingExpert: 'ライティングエキスパート',
   planningExpert: 'プランニングエキスパート',
 }
