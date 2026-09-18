@@ -7,8 +7,8 @@
 
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func as sa_func
-from sqlmodel import Session, select
+from sqlalchemy import func, select
+from sqlmodel import Session
 
 from models import AgentRun, SystemSetting
 from utils.logger import logger
@@ -50,15 +50,20 @@ def save_daily_token_quota(session: Session, quota: int | None) -> int | None:
 
 
 def today_token_usage_exceeds_quota(session: Session, user_id: str, quota: int) -> bool:
-    """该用户今日（UTC 日界）已产生的 token 总量是否已达配额。"""
+    """该用户今日（UTC 日界）已产生的 token 总量是否已达配额。
+
+    select 必须用 **sqlalchemy** 的（与 crud.stats.get_today_token_usage 同款）：
+    sqlmodel 的 select 单列聚合经 Session.exec 会得到 ScalarResult 直接给 int，
+    `used[0]` 会 TypeError——这是 da19a1c 修过的同族问题的漏网之鱼（配额
+    未设置时此函数不被调用，故长期潜伏）。
+    """
     today_start = utc_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
     used = session.exec(
-        select(sa_func.coalesce(sa_func.sum(AgentRun.total_tokens), 0)).where(
+        select(func.coalesce(func.sum(AgentRun.total_tokens), 0)).where(
             AgentRun.user_id == user_id,
             AgentRun.started_at >= today_start,
         )
     ).one()
-    # exec 对单列聚合返回 Row 元组，需取 [0] 解包
     return int(used[0] or 0) >= quota
 
 

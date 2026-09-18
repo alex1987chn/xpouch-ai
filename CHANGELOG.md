@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 修复
 
+- **设置日 token 配额后，所有消息发送报 `'int' object is not subscriptable`**：`today_token_usage_exceeds_quota` 用 sqlmodel 的 select 做单列聚合，`Session.exec` 对其返回标量而非 Row，`used[0]` 必炸。该函数只在配额已设置时被调用，配额长期留空使 bug 潜伏（ crud.stats 的同款函数用的是 sqlalchemy select，侥幸无恙）。修法与之一致，并补真实引擎回归测试——原测试桩对 exec 的 MagicMock 返回值恒可下标，测不出语句形态回归
 - **管理员用「系统生成密码」创建用户后拿不到初始密码**：`create_user` 往返回 dict 注入 `generated_password`，但端点的 `response_model=AdminUserResponse` 没有该字段——FastAPI 按模型过滤，随机密码从未到达前端，AddUserDialog 的一次性密码框恒为空（生产已带此 bug）。新增 `AdminUserCreatedResponse` 子类声明该字段，仅 create 端点使用
 - **API Key 留空不再被算作「已配置」**：`is_provider_configured` 原判 `os.getenv(...) is not None`，`.env` 里写了变量名但值为空串时，系统状态页亮绿灯、生产启动闸门放行，而实际调用必 401。改为真值判定后，「显示可用」与「调用可用」对齐（空串 = 未配置）；附带收紧了生产启动闸门的同一盲区
 - **容器镜像随附 `NOTICE`**（Apache-2.0 §4d）：前端镜像置于 Web 根（`/NOTICE` 可公开访问），后端镜像经 compose `additional_contexts` 从仓库根挂入；CI 的直调 `docker build` 已同步加 `--build-context`
