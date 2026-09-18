@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, status
 
 # 🔥 MCP 连接测试
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from crud.query_helpers import get_mcp_server_or_404
@@ -393,7 +394,14 @@ async def delete_mcp_server(
     return None
 
 
-@router.get("/servers/{server_id}/tools", response_model=list[dict])
+class MCPToolInfo(BaseModel):
+    """MCP 服务器实时工具列表条目"""
+
+    name: str
+    description: str
+
+
+@router.get("/servers/{server_id}/tools", response_model=list[MCPToolInfo])
 async def get_mcp_server_tools(
     server_id: str,
     session: Session = Depends(get_session),

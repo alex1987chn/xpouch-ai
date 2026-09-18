@@ -5,6 +5,12 @@
 from pydantic import BaseModel
 
 
+class RevokedResponse(BaseModel):
+    """撤销分享链接的统一响应（产物分享 / 模板分享同形）"""
+
+    revoked: int
+
+
 class LangSmithConfig(BaseModel):
     """LangSmith 追踪配置"""
 

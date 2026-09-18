@@ -46,6 +46,7 @@ from models import (
     User,
 )
 from models.enums import RunStatus
+from schemas.common import RevokedResponse
 from schemas.task import PaginatedArtifactListResponse
 from services.chat.artifact_service import ArtifactService
 from services.chat.frame_replay import load_gap_frames, load_replay_frames
@@ -261,7 +262,48 @@ class CancelRunResponse(BaseModel):
     message: str
 
 
-@router.delete("/threads/{thread_id}")
+class DeleteThreadResponse(BaseModel):
+    """删除单个线程响应"""
+
+    ok: bool
+
+
+class ChatResumeResponse(BaseModel):
+    """HITL 恢复的非流式分支（approve 分支返回 SSE 流，不经本模型校验）。
+
+    terminate → {status, message}；revise → {status, execution_plan_id, message}。
+    """
+
+    status: str
+    message: str | None = None
+    execution_plan_id: str | None = None
+
+
+class ArtifactDetailResponse(BaseModel):
+    """Artifact 详情（full=false 时 content 为 100 字摘要 + "..."，键不变）"""
+
+    id: str
+    thread_id: str | None = None
+    type: str
+    title: str | None = None
+    content: str
+    language: str | None = None
+    sort_order: int
+    sub_task_id: str
+    content_length: int
+    created_at: str | None = None
+
+
+class ArtifactShareResponse(BaseModel):
+    """产物分享链接创建响应（明文 token 仅此一次返回）"""
+
+    token: str
+    path: str
+    artifact_id: str
+    created_at: str | None = None
+
+
+@router.delete("/threads/{thread_id}", response_model=DeleteThreadResponse)
 async def delete_thread(
     thread_id: str,
     session: Session = Depends(get_session),
@@ -487,7 +529,7 @@ async def chat_endpoint(
 # ============================================================================
 
 
-@router.post("/chat/resume")
+@router.post("/chat/resume", response_model=ChatResumeResponse)
 async def resume_chat(
     request: ResumeRequest,
     background_tasks: BackgroundTasks,
@@ -566,7 +608,7 @@ async def list_artifacts_endpoint(
     )
 
 
-@router.get("/artifacts/{artifact_id}")
+@router.get("/artifacts/{artifact_id}", response_model=ArtifactDetailResponse)
 async def get_artifact_endpoint(
     artifact_id: str,
     full: bool = False,
@@ -604,7 +646,7 @@ async def update_artifact(
     return ArtifactUpdateResponse(**result)
 
 
-@router.post("/artifacts/{artifact_id}/share")
+@router.post("/artifacts/{artifact_id}/share", response_model=ArtifactShareResponse)
 async def create_artifact_share(
     artifact_id: str,
     session: Session = Depends(get_session),
@@ -615,7 +657,7 @@ async def create_artifact_share(
     return await asyncio.to_thread(service.create_share, artifact_id, current_user.id)
 
 
-@router.delete("/artifacts/{artifact_id}/share")
+@router.delete("/artifacts/{artifact_id}/share", response_model=RevokedResponse)
 async def revoke_artifact_share(
     artifact_id: str,
     session: Session = Depends(get_session),

@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from database import get_session
@@ -18,6 +19,7 @@ from models import (
     User,
     UserRole,
 )
+from schemas.common import RevokedResponse
 from schemas.template_import_export import (
     TemplateConflictInfo,
     TemplateExportData,
@@ -34,6 +36,20 @@ from utils.logger import logger
 from utils.time import utc_now_naive
 
 router = APIRouter(prefix="/api/library", tags=["library"])
+
+
+class DeleteTemplateResponse(BaseModel):
+    """删除模板响应"""
+
+    success: bool
+
+
+class TemplateShareResponse(BaseModel):
+    """模板分享链接创建响应（明文 token 仅此一次返回；与产物分享键不同，不合并）"""
+
+    token: str
+    path: str
+    template_key: str
 
 
 def _require_editor(current_user: User) -> None:
@@ -105,7 +121,7 @@ async def update_skill_template(
     return template
 
 
-@router.delete("/templates/{template_id}")
+@router.delete("/templates/{template_id}", response_model=DeleteTemplateResponse)
 async def delete_skill_template(
     template_id: str,
     session: Session = Depends(get_session),
@@ -248,7 +264,7 @@ async def export_skill_template(
     return build_template_export(template, exported_by=str(current_user.id))
 
 
-@router.post("/templates/{template_key}/share")
+@router.post("/templates/{template_key}/share", response_model=TemplateShareResponse)
 async def share_skill_template(
     template_key: str,
     session: Session = Depends(get_session),
@@ -272,7 +288,7 @@ async def share_skill_template(
     return result
 
 
-@router.delete("/templates/{template_key}/share")
+@router.delete("/templates/{template_key}/share", response_model=RevokedResponse)
 async def revoke_template_shares(
     template_key: str,
     session: Session = Depends(get_session),
