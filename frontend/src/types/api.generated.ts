@@ -2429,8 +2429,9 @@ export interface components {
              * Transport
              * @description 传输协议：sse 或 streamable_http
              * @default sse
+             * @enum {string}
              */
-            transport: string | null;
+            transport: "sse" | "streamable_http";
             /**
              * Icon
              * @description 图标
@@ -2452,14 +2453,20 @@ export interface components {
             description: string | null;
             /** Sse Url */
             sse_url: string;
-            /** Transport */
-            transport: string;
+            /**
+             * Transport
+             * @enum {string}
+             */
+            transport: "sse" | "streamable_http";
             /** Is Active */
             is_active: boolean;
             /** Icon */
             icon: string | null;
-            /** Connection Status */
-            connection_status: string;
+            /**
+             * Connection Status
+             * @enum {string}
+             */
+            connection_status: "unknown" | "connected" | "error";
             /**
              * Created At
              * Format: date-time
@@ -2485,7 +2492,7 @@ export interface components {
             /** Sse Url */
             sse_url?: string | null;
             /** Transport */
-            transport?: string | null;
+            transport?: ("sse" | "streamable_http") | null;
             /** Is Active */
             is_active?: boolean | null;
             /** Icon */

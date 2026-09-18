@@ -5,13 +5,14 @@ MCP 服务器模型 - 管理外部 MCP 服务器配置
 - 存储用户添加的 MCP 服务器（如高德地图、文件系统、通义万相等）
 - 支持多种传输协议：SSE、Streamable HTTP
 - 提供连接状态追踪
+
+DTO（MCPServerCreate/Update/Response）在 schemas/mcp.py，取值空间
+（transport / connection_status 的 Literal）也在那里声明。
 """
 
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
-from pydantic import Field as PydanticField
 from sqlmodel import Field, SQLModel
 
 # ============================================================================
@@ -38,6 +39,8 @@ class MCPServer(SQLModel, table=True):
     sse_url: str = Field(
         unique=True, description="MCP 服务器连接地址（如 https://mcp.amap.com/sse）"
     )
+    # 取值空间（Literal["sse","streamable_http"]）声明在 schemas/mcp.py；
+    # 表列保持 str 以免 SQLModel 把 Literal 映射成 ENUM 触发迁移
     transport: str = Field(
         default="sse", description="传输协议：sse (Server-Sent Events) 或 streamable_http"
     )
@@ -55,46 +58,9 @@ class MCPServer(SQLModel, table=True):
 
 
 # ============================================================================
-# Pydantic DTO (数据传输对象)
-# ============================================================================
-
-
-class MCPServerCreate(BaseModel):
-    """创建 MCP 服务器的 DTO
-
-    添加新服务器时，后端会执行连接测试，
-    只有连接成功才会入库。
-    """
-
-    name: str = PydanticField(..., min_length=1, max_length=100, description="显示名称")
-    description: str | None = PydanticField(default=None, max_length=500, description="功能描述")
-    sse_url: str = PydanticField(..., description="MCP 服务器连接地址")
-    transport: str | None = PydanticField(
-        default="sse", description="传输协议：sse 或 streamable_http"
-    )
-    icon: str | None = PydanticField(default=None, description="图标")
-
-
-class MCPServerUpdate(BaseModel):
-    """更新 MCP 服务器的 DTO
-
-    支持部分更新，所有字段均为可选。
-    """
-
-    name: str | None = PydanticField(default=None, min_length=1, max_length=100)
-    description: str | None = PydanticField(default=None, max_length=500)
-    sse_url: str | None = None
-    transport: str | None = None
-    is_active: bool | None = None
-    icon: str | None = None
-
-
-# ============================================================================
 # 导出
 # ============================================================================
 
 __all__ = [
     "MCPServer",
-    "MCPServerCreate",
-    "MCPServerUpdate",
 ]

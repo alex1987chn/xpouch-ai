@@ -26,7 +26,7 @@ from schemas.custom_agent import (
     CustomAgentResponse,
     CustomAgentUpdate,
 )
-from schemas.mcp import MCPServerResponse
+from schemas.mcp import MCPServerCreate, MCPServerResponse, MCPServerUpdate
 from schemas.run_event import (
     RunEventResponse,
     RunPlanResponse,
@@ -86,6 +86,8 @@ __all__ = [
     "CustomAgentUpdate",
     "CustomAgentResponse",
     # MCP
+    "MCPServerCreate",
+    "MCPServerUpdate",
     "MCPServerResponse",
     # Run Event
     "RunEventResponse",
