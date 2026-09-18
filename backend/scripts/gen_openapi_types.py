@@ -66,8 +66,20 @@ def _ensure_cli() -> Path:
         ),
         encoding="utf-8",
     )
+    # --legacy-peer-deps：openapi-typescript 声明的 peer 是 typescript ^5.x，
+    # 而项目用 typescript 6.0.3（peer 声明是需求提示而非硬约束；openapi-typescript
+    # 只 parse 生成文件不执行编译器，与 TS 6 的兼容性已由 tsc 全量编译验证）。
+    # 本机用户 .npmrc 若已开 legacy-peer-deps 则等效；CI 默认严格校验，不加会 ERESOLVE。
     result = subprocess.run(
-        [_which("npm"), "install", "--prefix", str(_TOOL_DIR), "--no-audit", "--no-fund"],
+        [
+            _which("npm"),
+            "install",
+            "--prefix",
+            str(_TOOL_DIR),
+            "--no-audit",
+            "--no-fund",
+            "--legacy-peer-deps",
+        ],
         capture_output=True,
         text=True,
     )
