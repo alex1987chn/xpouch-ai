@@ -3,6 +3,7 @@
 """
 
 from datetime import datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
@@ -50,17 +51,94 @@ from services.user_preferences import (  # noqa: E402
 )
 
 # ============================================================================
+# 响应模型
+# ============================================================================
+
+
+class RootStatusResponse(BaseModel):
+    """根路径探活"""
+
+    status: str
+    message: str
+
+
+class HealthCheckResponse(BaseModel):
+    """健康检查（timestamp 为 ISO 字符串，UTC naive 补 Z 由全局编码器处理）"""
+
+    status: str
+    timestamp: str
+
+
+class AvailableModel(BaseModel):
+    """可选模型条目（providers.yaml models 段投影，按 provider 优先级排序）"""
+
+    id: str
+    provider: str
+    provider_name: str
+    model: str | None = None
+    name: str
+    context_window: int | None = None
+    thinking_toggle: bool = False
+    vision: bool = False
+
+
+class ModelListResponse(BaseModel):
+    models: list[AvailableModel]
+
+
+class ModelPreferences(BaseModel):
+    """全局模型偏好（simple 模式；simple_model=None 即跟随系统默认）"""
+
+    simple_model: str | None = None
+    simple_thinking: Literal["auto", "enabled", "disabled"] = "auto"
+
+
+class DefaultModelInfo(BaseModel):
+    id: str
+    name: str
+
+
+class UserSettingsResponse(BaseModel):
+    """全局模型偏好读取响应"""
+
+    preferences: ModelPreferences
+    default_model: DefaultModelInfo
+
+
+class ModelPreferencesResponse(BaseModel):
+    """全局模型偏好写入响应"""
+
+    preferences: ModelPreferences
+
+
+class UsageBucket(BaseModel):
+    """一个统计口径的 token 用量（今日 / 累计共用）"""
+
+    runs: int
+    total_tokens: int
+    prompt_tokens: int
+    completion_tokens: int
+
+
+class UsageSummaryResponse(BaseModel):
+    """当前用户 token 用量汇总（近似值：不含 router/aggregator）"""
+
+    today: UsageBucket
+    total: UsageBucket
+
+
+# ============================================================================
 # 根路径和健康检查
 # ============================================================================
 
 
-@router.get("/", include_in_schema=False)
+@router.get("/", include_in_schema=False, response_model=RootStatusResponse)
 async def root():
     """根路径健康检查"""
     return {"status": "ok", "message": "XPouch AI Backend (Python + SQLModel) is running"}
 
 
-@router.get("/health")
+@router.get("/health", response_model=HealthCheckResponse)
 async def health_check():
     """健康检查端点"""
     return {"status": "healthy", "timestamp": utc_now_naive().isoformat()}
@@ -118,7 +196,7 @@ async def update_user_me(
 # ============================================================================
 
 
-@router.get("/models")
+@router.get("/models", response_model=ModelListResponse)
 async def list_models(current_user: User = Depends(get_current_user_with_auth)):
     """列出当前可用的模型（provider 已启用且未标记 hidden），作为前端模型列表的单一真相源"""
     from providers_config import get_available_models
@@ -126,7 +204,7 @@ async def list_models(current_user: User = Depends(get_current_user_with_auth)):
     return {"models": get_available_models()}
 
 
-@router.get("/user/settings")
+@router.get("/user/settings", response_model=UserSettingsResponse)
 async def get_user_settings(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user_with_auth),
@@ -148,7 +226,7 @@ async def get_user_settings(
     }
 
 
-@router.put("/user/settings")
+@router.put("/user/settings", response_model=ModelPreferencesResponse)
 async def update_user_settings(
     request: UpdateUserSettingsRequest,
     session: Session = Depends(get_session),
@@ -300,7 +378,7 @@ async def debug_cleanup_users(current_user: User = Depends(get_current_user_with
 # ============================================================================
 
 
-@router.get("/usage/summary")
+@router.get("/usage/summary", response_model=UsageSummaryResponse)
 async def get_usage_summary(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user_with_auth),
