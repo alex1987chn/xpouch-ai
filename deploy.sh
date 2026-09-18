@@ -75,17 +75,29 @@ echo "2. 停止现有服务..."
 # 检查是否需要数据库升级（PG 15 -> 18）
 PG_UPGRADE_NEEDED=false
 # 检测 docker compose 命令
-# 优先使用 docker-compose（Ubuntu 生产环境默认）
-# 如果 docker-compose 不存在，则尝试 docker compose（新版 Docker）
-if command -v docker-compose &>/dev/null; then
-    DOCKER_COMPOSE="docker-compose"
-elif docker compose version &>/dev/null; then
+# 优先使用 docker compose（v2 插件）；standalone 的 docker-compose 若是 python v1
+# （已 EOL），不认识 compose 文件里的 additional_contexts（需 v2.17+），会直接校验报错
+DOCKER_COMPOSE=""
+if docker compose version &>/dev/null; then
     DOCKER_COMPOSE="docker compose"
+elif command -v docker-compose &>/dev/null; then
+    DOCKER_COMPOSE="docker-compose"
 else
-    echo "❌ 错误: 未找到 docker-compose 或 docker compose 命令"
+    echo "❌ 错误: 未找到 docker compose（v2 插件）或 docker-compose 命令"
     exit 1
 fi
-echo "   使用命令: $DOCKER_COMPOSE"
+
+# 版本闸门：additional_contexts 要求 Compose v2.17+，过旧一律拦截并给出升级指引
+COMPOSE_VERSION=$($DOCKER_COMPOSE version --short 2>/dev/null | sed 's/^v//' || echo "0")
+if ! printf '2.17\n%s\n' "$COMPOSE_VERSION" | sort -V -C 2>/dev/null; then
+    echo "❌ 错误: $DOCKER_COMPOSE 版本为 ${COMPOSE_VERSION}，需要 Compose v2.17+"
+    echo "   （docker-compose.yml 的 backend.build.additional_contexts 需要 v2.17+；"
+    echo "   python 版 docker-compose v1 已停止维护，建议卸载以免再次误选）"
+    echo "   Ubuntu 安装 v2 插件: apt-get install -y docker-compose-plugin（Docker 官方源）"
+    echo "   或 docker-compose-v2（Ubuntu 23.04+ 仓库）；装完可用 docker compose version 验证"
+    exit 1
+fi
+echo "   使用命令: $DOCKER_COMPOSE (v${COMPOSE_VERSION})"
 
 # 生产覆盖文件（日志轮转等生产差异）；本地开发不带此文件
 if [ -f "docker-compose.prod.yml" ]; then
