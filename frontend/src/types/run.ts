@@ -1,9 +1,12 @@
 /**
  * 运行事件相关类型定义
- * 
- * 与后端 RunEventType 和 RunEvent 保持一致
+ *
+ * 契约真相源是后端 schemas/run_event.py（→ api.generated.ts）：
+ * RunEventType / RunStatus re-export 自 enums.generated，形状接口由
+ * 底部 SameShape 锚点与生成物逐字段锁定（含可选性与 null）。
  */
 
+import type { components } from '@/types/api.generated'
 import {
   RUN_STATUS_VALUES,
   TERMINAL_RUN_STATUSES,
@@ -61,11 +64,11 @@ export interface RunEvent {
   run_id: string
   event_type: RunEventType
   timestamp: string
-  event_data?: Record<string, unknown>
-  thread_id?: string
-  execution_plan_id?: string
-  task_id?: string
-  note?: string
+  event_data?: Record<string, unknown> | null
+  thread_id?: string | null
+  execution_plan_id?: string | null
+  task_id?: string | null
+  note?: string | null
 }
 
 /**
@@ -78,22 +81,18 @@ export interface RunSummary {
   entrypoint: string
   mode: 'simple' | 'complex'
   status: RunStatus
-  current_node?: string
-  error_code?: string
-  error_message?: string
+  current_node?: string | null
+  error_code?: string | null
+  error_message?: string | null
   created_at: string
-  started_at?: string
+  started_at?: string | null
   updated_at: string
-  last_heartbeat_at?: string
-  completed_at?: string
-  cancelled_at?: string
-  timed_out_at?: string
-  deadline_at?: string
+  last_heartbeat_at?: string | null
+  completed_at?: string | null
+  cancelled_at?: string | null
+  timed_out_at?: string | null
+  deadline_at?: string | null
 }
-
-// ============================================
-// API 响应类型
-// ============================================
 
 /**
  * 运行时间线 API 响应
@@ -112,6 +111,30 @@ export interface ThreadTimelineResponse {
   events: RunEvent[]
   total: number
 }
+
+// ============================================
+// REST 契约锚点（范式沿 types/events.ts 的 SameShape / services/stats.ts）
+// ============================================
+
+/** 双向相等：手写类型与后端生成类型**逐字段一致**（含可选性与 null）。 */
+type SameShape<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+type Assert<T extends true> = T
+
+type Schemas = components['schemas']
+type _RunEvent = Assert<SameShape<RunEvent, Schemas['RunEventResponse']>>
+type _RunSummary = Assert<SameShape<RunSummary, Schemas['RunSummaryResponse']>>
+type _RunTimeline = Assert<SameShape<RunTimelineResponse, Schemas['RunTimelineResponse']>>
+type _ThreadTimeline = Assert<
+  SameShape<ThreadTimelineResponse, Schemas['ThreadTimelineResponse']>
+>
+
+/** 上面这组断言只做编译期校验，导出以免被 noUnusedLocals 误报 */
+export type RunConformanceAnchors = [
+  _RunEvent,
+  _RunSummary,
+  _RunTimeline,
+  _ThreadTimeline,
+]
 
 // ============================================
 // 工具函数

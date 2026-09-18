@@ -2699,8 +2699,7 @@ export interface components {
             id: number;
             /** Run Id */
             run_id: string;
-            /** Event Type */
-            event_type: string;
+            event_type: components["schemas"]["RunEventType"];
             /**
              * Timestamp
              * Format: date-time
@@ -2719,6 +2718,15 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /**
+         * RunEventType
+         * @description 运行事件类型枚举
+         *
+         *     用于 RunEvent 账本记录，追踪 AgentRun 的完整生命周期。
+         *     事件命名遵循 {entity}_{action} 规范。
+         * @enum {string}
+         */
+        RunEventType: "run_created" | "run_started" | "router_decided" | "plan_created" | "plan_updated" | "hitl_interrupted" | "hitl_resumed" | "hitl_rejected" | "hitl_revision_started" | "hitl_revision_failed" | "task_started" | "task_completed" | "task_failed" | "artifact_generated" | "run_completed" | "run_failed" | "run_cancelled" | "run_timed_out";
         /**
          * RunListItem
          * @description 运行列表项
@@ -2847,8 +2855,7 @@ export interface components {
         RunStatusResponse: {
             /** Id */
             id: string;
-            /** Status */
-            status: string;
+            status: components["schemas"]["RunStatus"];
             /** Current Node */
             current_node?: string | null;
             /** Completed At */
@@ -2867,10 +2874,12 @@ export interface components {
             user_id: string;
             /** Entrypoint */
             entrypoint: string;
-            /** Mode */
-            mode: string;
-            /** Status */
-            status: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "simple" | "complex";
+            status: components["schemas"]["RunStatus"];
             /** Current Node */
             current_node?: string | null;
             /** Error Code */

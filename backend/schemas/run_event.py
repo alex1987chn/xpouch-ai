@@ -1,11 +1,18 @@
 """
 RunEvent 相关的 Pydantic DTO
+
+取值约定：event_type / status / mode 用 Literal / 枚举而非裸 str——
+它们经 openapi 生成前端联合类型（run.ts 的 RunEventType / RunStatus
+re-export 自 enums.generated），裸 str 会让契约退化成 string、失去
+编译期防漂移能力（SameShape 锚点会红）。
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
+
+from models.enums import RunEventType, RunStatus
 
 
 class RunEventResponse(BaseModel):
@@ -15,7 +22,7 @@ class RunEventResponse(BaseModel):
 
     id: int
     run_id: str
-    event_type: str  # RunEventType 枚举值
+    event_type: RunEventType
     timestamp: datetime
     event_data: dict[str, Any] | None = None
     thread_id: str | None = None
@@ -33,8 +40,8 @@ class RunSummaryResponse(BaseModel):
     thread_id: str
     user_id: str
     entrypoint: str
-    mode: str
-    status: str  # RunStatus 枚举值
+    mode: Literal["simple", "complex"]
+    status: RunStatus
     current_node: str | None = None
     error_code: str | None = None
     error_message: str | None = None
@@ -68,7 +75,7 @@ class RunStatusResponse(BaseModel):
     """运行状态响应（轻量级，专供轮询使用）"""
 
     id: str
-    status: str  # RunStatus 枚举值
+    status: RunStatus
     current_node: str | None = None
     completed_at: datetime | None = None
 
