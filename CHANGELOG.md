@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 变更
+
+- **REST API 契约收敛（T2）**：给 37 个未声明 `response_model` 的端点补齐 30 个（其余 7 个按形态排除：SSE×3、HTML 分享页、system-status 动态聚合、debug×3），自此全部 JSON 端点的响应形态都在 OpenAPI schema 里显式声明。配套新增 `scripts/gen_openapi_types.py`：以 openapi-typescript（钉版 7.13.0 + typescript 6.0.3，装进系统临时目录的隔离工具目录，规避 `legacy-peer-deps` 下 peer 不自动安装的差异）把 app 的 schema 生成为 `frontend/src/types/api.generated.ts`，新鲜度闸门进后端 pytest（子进程隔离运行，避免重导入扰动时序敏感的 asyncio 测试），`just gen-openapi-types` / `check-openapi-types` 手动入口。前端第一个契约锚点落在 `services/stats.ts`（SameShape 双向逐字段断言，范式沿 `types/events.ts`），响应模型确立「恒序列化、值可空的字段不写默认值」约定（默认值会被 OpenAPI 降级成 optional，与运行时恒有键不符）
+- **契约测试**：新增 34 条「全键断言」响应契约测试（`assert set(body.keys()) == {...}`，范式沿 `test_expert_catalog.py`），日后路由/service 新增返回键而响应模型没跟上，测试立刻红
+
 ### 修复
 
+- **管理员用「系统生成密码」创建用户后拿不到初始密码**：`create_user` 往返回 dict 注入 `generated_password`，但端点的 `response_model=AdminUserResponse` 没有该字段——FastAPI 按模型过滤，随机密码从未到达前端，AddUserDialog 的一次性密码框恒为空（生产已带此 bug）。新增 `AdminUserCreatedResponse` 子类声明该字段，仅 create 端点使用
 - **API Key 留空不再被算作「已配置」**：`is_provider_configured` 原判 `os.getenv(...) is not None`，`.env` 里写了变量名但值为空串时，系统状态页亮绿灯、生产启动闸门放行，而实际调用必 401。改为真值判定后，「显示可用」与「调用可用」对齐（空串 = 未配置）；附带收紧了生产启动闸门的同一盲区
 - **容器镜像随附 `NOTICE`**（Apache-2.0 §4d）：前端镜像置于 Web 根（`/NOTICE` 可公开访问），后端镜像经 compose `additional_contexts` 从仓库根挂入；CI 的直调 `docker build` 已同步加 `--build-context`
 

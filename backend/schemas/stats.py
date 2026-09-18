@@ -71,7 +71,12 @@ class RunStatsResponse(BaseModel):
 
 
 class TokensTodayResponse(BaseModel):
-    """今日 token 用量 + 全局配额（底栏轻量轮询专供；quota 为 null 表示不限量）"""
+    """今日 token 用量 + 全局配额（底栏轻量轮询专供）。
+
+    约定：响应模型里「恒序列化、值可空」的字段不写默认值——写了默认值会被
+    OpenAPI 降级成 optional，而 FastAPI 运行时其实恒有键（null 也是键）；
+    无默认值才能生成 `required + nullable` 的准确契约。
+    """
 
     today_tokens: int
-    daily_token_quota: int | None = None
+    daily_token_quota: int | None

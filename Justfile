@@ -61,6 +61,15 @@ gen-enums:
 check-enums:
     cd backend; uv run python -m scripts.gen_enums_ts --check
 
+# 由后端 REST 契约（各路由 response_model）重新生成前端 TS 类型（改响应模型后必跑；生成物不要手改；
+# 需要本机有 Node/npx，首次运行会联网下载钉版工具）
+gen-openapi-types:
+    cd backend; uv run python -m scripts.gen_openapi_types
+
+# 只校验 REST 契约生成物是否最新
+check-openapi-types:
+    cd backend; uv run python -m scripts.gen_openapi_types --check
+
 # =============================================================================
 # 代码检查
 # =============================================================================
