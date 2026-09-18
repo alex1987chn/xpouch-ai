@@ -87,6 +87,55 @@ class ExpertUpdate(BaseModel):
         return v.strip()
 
 
+class ExpertConfigUpdateResponse(BaseModel):
+    """专家配置更新响应（乐观锁递增后的版本号；updated_at 为 ISO 字符串）"""
+
+    message: str
+    expert_key: str
+    config_version: int
+    updated_at: str
+
+
+class ExpertDeleteResponse(BaseModel):
+    """专家删除响应"""
+
+    message: str
+    expert_key: str
+
+
+class PromoteUserResponse(BaseModel):
+    """升级管理员响应（email 可空：用户可能未绑定邮箱）"""
+
+    message: str
+    username: str
+    email: str | None = None
+
+
+class DailyTokenQuotaResponse(BaseModel):
+    """每用户日 token 配置响应（None = 不限量）"""
+
+    user_daily_token_quota: int | None = None
+
+
+class GraphConcurrencyResponse(BaseModel):
+    """同层任务并发上限响应"""
+
+    graph_max_concurrency: int
+
+
+class UserPhoneResponse(BaseModel):
+    """完整手机号按需揭示响应（未绑定时端点 404，故恒为非空串）"""
+
+    phone_number: str
+
+
+class UserDeleteResponse(BaseModel):
+    """删除用户响应（含级联清理的会话数）"""
+
+    message: str
+    deleted_threads: int
+
+
 class ExpertCreate(BaseModel):
     """专家创建 DTO"""
 
@@ -245,7 +294,7 @@ async def get_expert(
     )
 
 
-@router.patch("/experts/{expert_key}")
+@router.patch("/experts/{expert_key}", response_model=ExpertConfigUpdateResponse)
 async def update_expert(
     expert_key: str,
     expert_update: ExpertUpdate,
@@ -347,7 +396,7 @@ async def update_expert(
     }
 
 
-@router.post("/promote-user")
+@router.post("/promote-user", response_model=PromoteUserResponse)
 async def promote_user(
     request: UserPromoteRequest,
     session: Session = Depends(get_session),
@@ -631,7 +680,7 @@ async def create_expert(
     )
 
 
-@router.delete("/experts/{expert_key}")
+@router.delete("/experts/{expert_key}", response_model=ExpertDeleteResponse)
 async def delete_expert(
     expert_key: str,
     session: Session = Depends(get_session),
@@ -775,7 +824,7 @@ async def get_system_status(
     }
 
 
-@router.put("/user-daily-token-quota")
+@router.put("/user-daily-token-quota", response_model=DailyTokenQuotaResponse)
 async def update_daily_token_quota(
     request: DailyTokenQuotaRequest,
     session: Session = Depends(get_session),
@@ -798,7 +847,7 @@ async def update_daily_token_quota(
     return {"user_daily_token_quota": quota}
 
 
-@router.put("/graph-max-concurrency")
+@router.put("/graph-max-concurrency", response_model=GraphConcurrencyResponse)
 async def update_graph_max_concurrency(
     request: GraphConcurrencyRequest,
     session: Session = Depends(get_session),
@@ -999,7 +1048,7 @@ async def list_users(
     return [_user_to_dto(u) for u in users]
 
 
-@router.get("/users/{user_id}/phone")
+@router.get("/users/{user_id}/phone", response_model=UserPhoneResponse)
 async def get_user_phone(
     user_id: str,
     session: Session = Depends(get_session),
@@ -1080,7 +1129,7 @@ async def update_user(
     return _user_to_dto(user)
 
 
-@router.delete("/users/{user_id}")
+@router.delete("/users/{user_id}", response_model=UserDeleteResponse)
 async def delete_user(
     user_id: str,
     session: Session = Depends(get_session),
