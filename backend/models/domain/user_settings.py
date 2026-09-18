@@ -19,7 +19,9 @@ class UserSettings(SQLModel, table=True):
 
     __tablename__ = "user_settings"
 
-    user_id: str = Field(foreign_key="user.id", primary_key=True, max_length=255)
+    user_id: str = Field(
+        foreign_key="user.id", primary_key=True, max_length=255, ondelete="CASCADE"
+    )
     preferences: dict = Field(sa_column=Column(JSON, nullable=False))
     updated_at: datetime = Field(
         sa_column_kwargs={"nullable": False},

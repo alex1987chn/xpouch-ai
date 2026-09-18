@@ -24,8 +24,9 @@ class ShareToken(SQLModel, table=True):
     )
 
     # 分享的产物（产物分享时必填；模板分享为空）
+    # artifact 删除则分享令牌失效（级联删除，链接即失效）
     artifact_id: str | None = Field(
-        default=None, foreign_key="artifact.id", index=True, max_length=64
+        default=None, foreign_key="artifact.id", index=True, max_length=64, ondelete="CASCADE"
     )
 
     # 分享的模板（模板分享时必填）

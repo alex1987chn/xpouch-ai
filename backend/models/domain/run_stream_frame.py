@@ -31,7 +31,8 @@ class RunStreamFrame(SQLModel, table=True):
     # 自增整型主键：本表是高频追加-清理型，无需全局唯一业务 id
     id: int | None = Field(default=None, primary_key=True)
 
-    run_id: str = Field(foreign_key="agentrun.id", max_length=64)
+    # run 删除则帧删除（帧是 run 的附属传输数据，无独立生命周期）
+    run_id: str = Field(foreign_key="agentrun.id", max_length=64, ondelete="CASCADE")
 
     # 与发布端（stream_hub / services.chat.frame_recorder）同一 seq 空间。
     # **一行 = 一条 SSE 事件**：续传按 `seq > last_event_id` 取帧，而客户端的
