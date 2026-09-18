@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 变更
 
+- **修订对照视图改版**：从纵向改动列表改为左右对照（v1 | v2）——改动行的左格（旧值）琥珀高亮、删除整格灰底+删除线、新增的右格鼠尾草绿，专家变化在格内一行；列头标注 v1/v2。纵向空间占用减半
 - **REST 契约的前端锚点迁移（T2 下半场）**：后端 `schemas/mcp.py` 与 `schemas/run_event.py` 的取值空间从裸 str 收敛为真实联合（transport/connection_status/RunEventType/RunStatus/mode 的 Literal/枚举）——裸 str 会让 OpenAPI 契约退化成 `string`，前端联合类型的约束形同虚设。前端 12+ 个手写类型接 SameShape 编译期锚点（`types/mcp.ts`、`types/run.ts`、`types/stats.ts`、`types/index.ts` 的 UserProfile、`services/models.ts`、`services/experts.ts`）——后端契约变更而前端没重新生成时，这些文件编译期直接报红。锚点逼出的真实漂移已修：`AvailableModel` 前端缺失 `vision` 字段、`context_window` 实为可空（两处显示兜底）、UserProfile 可空字段对齐、MCP 的 description/icon 语义差、Create.transport 必填性。**MCP 的 DTO 分层收尾**：Create/Update/Response 全部迁入 schemas/，models/mcp.py 只剩表模型；**schemas/__init__ 补全为全量 re-export**，并修掉一个潜伏循环导入（models/__init__ 的包级 `from schemas import X` 改为子模块直导，包半初始化状态下包级名字取不到）
 - **i18n 死键清理**：一次性审计（644 键 × 全 src 字符串扫描）揪出 6 个无引用死键——全部是旧版专家选择页残留（首页的搜索/分析专家名 + 旧专家管理页的 4 个键），三语同步删除。键类型由 zh 派生 + Record 约束，tsc 确认无误删
 - **统一聚合查询惯例**：单列聚合 / 表达式查询必须用 `sqlalchemy.select` + `row[0]`（sqlmodel 的 select 单列经 `exec` 返回标量，混用不可预测——`b98478a` 的配额事故即此根因）。已把 agent_service / thread_service 两处靠标量语义"碰巧工作"的 count 对齐，约定写入 CONTRIBUTING
