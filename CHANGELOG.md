@@ -5,7 +5,7 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2026-09-19] - v3.5.4 REST 契约收敛收尾、HITL 修复与 CustomAgent 退役
 
 ### 变更
 
@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 修复
 
+- **审批通过后再次操作报「该任务正在被另一个实例处理」**：approve 后 run 获取租约，但 RESUMING 状态被 `update_run_status` 当作活跃状态续租——租约一直被持有，后续 resume（轮询/重复点）全部撞 409。修法：RESUMING 是过渡态不续租（与终态同规则，状态写入即释放）
+- **计划修订报 `value too long for type character varying(500)`**：修订 LLM 产出的任务描述可能超 500 字，撞 `subtask.task_description` 的 VARCHAR(500)。改为 TEXT + 落库前长度守卫（截断并记日志）
+- **删除会话报 FK 违约（Query-invoked autoflush）**：删会话级联删 run 时 `run_stream_frame`（断线续传帧）的外键无级联。全外键扫描补齐三处 ON DELETE CASCADE（帧/分享令牌/用户偏好——后两处是同型隐患）
 - **设置日 token 配额后，所有消息发送报 `'int' object is not subscriptable`**：`today_token_usage_exceeds_quota` 用 sqlmodel 的 select 做单列聚合，`Session.exec` 对其返回标量而非 Row，`used[0]` 必炸。该函数只在配额已设置时被调用，配额长期留空使 bug 潜伏（ crud.stats 的同款函数用的是 sqlalchemy select，侥幸无恙）。修法与之一致，并补真实引擎回归测试——原测试桩对 exec 的 MagicMock 返回值恒可下标，测不出语句形态回归
 - **管理员用「系统生成密码」创建用户后拿不到初始密码**：`create_user` 往返回 dict 注入 `generated_password`，但端点的 `response_model=AdminUserResponse` 没有该字段——FastAPI 按模型过滤，随机密码从未到达前端，AddUserDialog 的一次性密码框恒为空（生产已带此 bug）。新增 `AdminUserCreatedResponse` 子类声明该字段，仅 create 端点使用
 - **API Key 留空不再被算作「已配置」**：`is_provider_configured` 原判 `os.getenv(...) is not None`，`.env` 里写了变量名但值为空串时，系统状态页亮绿灯、生产启动闸门放行，而实际调用必 401。改为真值判定后，「显示可用」与「调用可用」对齐（空串 = 未配置）；附带收紧了生产启动闸门的同一盲区
