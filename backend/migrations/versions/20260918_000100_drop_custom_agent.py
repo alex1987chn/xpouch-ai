@@ -52,22 +52,46 @@ def upgrade() -> None:
     )
     op.execute("DELETE FROM thread WHERE agent_type = 'custom';")
 
-    # ── 3. conversation_type_enum 移除 'custom' 值 ──
-    # PG 枚举值删除需重建类型：改列回 varchar → 重建枚举 → 改回新枚举
+    # ── 3. conversation_type_enum 移除 'custom' 值（目标态驱动，幂等）──
+    # 目标态：thread.agent_type = conversation_type_enum('default','ai')，
+    # server default = 'default'。坑点：20260304 迁移给该列设过
+    # SET DEFAULT 'default'::conversation_type_enum——DEFAULT 表达式依赖类型，
+    # DROP TYPE 前必须先摘（否则 DependentObjectsStillExist）；重建后重设。
     op.execute(
         """
         DO $$ BEGIN
-            -- 仅当枚举里还有 'custom' 时才收窄（幂等）
-            IF EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'custom'
-                       AND enumtypid = 'conversation_type_enum'::regtype) THEN
-                -- 先改列回 varchar（枚举 → varchar 不需要 USING）
-                ALTER TABLE thread ALTER COLUMN agent_type TYPE varchar;
-                -- 重建枚举（去掉 custom）
-                DROP TYPE conversation_type_enum;
+            -- 值域归一：万一还有 'custom' 残留值，先归为 'default'（防 USING 强转失败）
+            UPDATE thread SET agent_type = 'default' WHERE agent_type = 'custom';
+
+            -- 目标态判断：列已是收窄后的枚举则跳过（幂等）
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'thread' AND column_name = 'agent_type'
+                  AND udt_name = 'conversation_type_enum'
+                  AND EXISTS (
+                      SELECT 1 FROM pg_enum
+                      WHERE enumtypid = 'conversation_type_enum'::regtype
+                        AND enumlabel = 'ai'
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM pg_enum
+                      WHERE enumtypid = 'conversation_type_enum'::regtype
+                        AND enumlabel = 'custom'
+                  )
+            ) THEN
+                -- 摘默认（依赖类型，DROP TYPE 前必须摘；无默认时 DROP 是 no-op）
+                ALTER TABLE thread ALTER COLUMN agent_type DROP DEFAULT;
+                -- 经 varchar 中转（兼容列当前是旧枚举或 varchar 两种形态）
+                ALTER TABLE thread ALTER COLUMN agent_type TYPE varchar
+                    USING agent_type::text;
+                -- 重建枚举（去掉 custom；不存在则直接建）
+                DROP TYPE IF EXISTS conversation_type_enum;
                 CREATE TYPE conversation_type_enum AS ENUM ('default', 'ai');
-                -- 改回新枚举（varchar → 新枚举需 USING 强转）
+                -- 转回新枚举并重设默认
                 ALTER TABLE thread ALTER COLUMN agent_type TYPE conversation_type_enum
                     USING agent_type::conversation_type_enum;
+                ALTER TABLE thread ALTER COLUMN agent_type
+                    SET DEFAULT 'default'::conversation_type_enum;
             END IF;
         END $$;
         """

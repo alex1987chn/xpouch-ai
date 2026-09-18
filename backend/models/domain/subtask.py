@@ -48,8 +48,9 @@ class SubTask(SQLModel, table=True):
     # 专家类型：指定由哪个专家执行
     expert_type: str = Field(index=True, max_length=64)  # 存储 ExpertType 枚举值
 
-    # 任务描述：自然语言描述的任务内容
-    task_description: str = Field(index=True)
+    # 任务描述：自然语言描述的任务内容（TEXT——修订 LLM 可能产出超长描述，
+    # VARCHAR(500) 曾致落库 StringDataRightTruncation，见迁移 20260918_000200）
+    task_description: str = Field(sa_column=Column(Text, index=True, nullable=False))
 
     # 输入数据：JSON 格式的任务参数
     input_data: dict | None = Field(default=None, sa_column=Column(JSON))
