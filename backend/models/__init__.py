@@ -74,37 +74,43 @@ from models.memory import UserMemory  # noqa: E402
 # ============================================================================
 # Pydantic DTO（API 请求/响应）
 # ============================================================================
-from schemas import (  # noqa: E402
-    # Task
-    ArtifactCreate,
-    ArtifactResponse,
-    # Custom Agent
+# 注意：这里必须从 schemas 的**子模块**直导，不能用 `from schemas import X`
+# （包级导入）。schemas/__init__ 会 re-export stats 等模块，而那些模块又
+# `from models.enums import ...`——包级导入在 models 半初始化状态下取不到
+# 名字，双向首导都会 ImportError。子模块直导则两个方向都安全。
+from schemas.common import LangSmithConfig  # noqa: E402
+from schemas.conversation import (  # noqa: E402
+    MessageResponse,
+    PaginatedThreadListResponse,
+    ThreadDetailResponse,
+    ThreadListResponse,
+)
+from schemas.custom_agent import (  # noqa: E402
     CustomAgentCreate,
     CustomAgentResponse,
     CustomAgentUpdate,
-    ExecutionPlanCreate,
-    ExecutionPlanResponse,
-    ExecutionPlanUpdate,
-    # Common
-    LangSmithConfig,
-    # Conversation
-    MessageResponse,
-    PaginatedThreadListResponse,
-    # Run Event
+)
+from schemas.run_event import (  # noqa: E402
     RunEventResponse,
     RunTimelineResponse,
+    ThreadTimelineResponse,
+)
+from schemas.skill_template import (  # noqa: E402
     SkillTemplateCreate,
     SkillTemplateResponse,
     SkillTemplateUpdate,
+)
+from schemas.task import (  # noqa: E402
+    ArtifactCreate,
+    ArtifactResponse,
+    ExecutionPlanCreate,
+    ExecutionPlanResponse,
+    ExecutionPlanUpdate,
     SubTaskCreate,
     SubTaskResponse,
     SubTaskUpdate,
-    ThreadDetailResponse,
-    ThreadListResponse,
-    ThreadTimelineResponse,
-    ToolPolicyResponse,
-    ToolPolicyUpdate,
 )
+from schemas.tool_policy import ToolPolicyResponse, ToolPolicyUpdate  # noqa: E402
 
 # ============================================================================
 # 统一导出列表
