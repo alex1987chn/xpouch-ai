@@ -26,7 +26,8 @@ from crud.query_helpers import get_mcp_server_or_404
 from database import get_session
 from dependencies import get_current_user, require_role
 from models import User, UserRole
-from models.mcp import MCPServer, MCPServerCreate, MCPServerResponse, MCPServerUpdate
+from models.mcp import MCPServer, MCPServerCreate, MCPServerUpdate
+from schemas.mcp import MCPServerResponse
 from utils.exceptions import ValidationError
 from utils.logger import logger
 from utils.time import utc_now_naive

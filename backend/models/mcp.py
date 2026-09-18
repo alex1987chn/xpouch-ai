@@ -10,7 +10,7 @@ MCP 服务器模型 - 管理外部 MCP 服务器配置
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from pydantic import Field as PydanticField
 from sqlmodel import Field, SQLModel
 
@@ -89,26 +89,6 @@ class MCPServerUpdate(BaseModel):
     icon: str | None = None
 
 
-class MCPServerResponse(BaseModel):
-    """MCP 服务器响应 DTO
-
-    包含 connection_status 字段供前端展示状态灯。
-    """
-
-    id: str
-    name: str
-    description: str | None
-    sse_url: str
-    transport: str
-    is_active: bool
-    icon: str | None
-    connection_status: str
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 # ============================================================================
 # 导出
 # ============================================================================
@@ -117,5 +97,4 @@ __all__ = [
     "MCPServer",
     "MCPServerCreate",
     "MCPServerUpdate",
-    "MCPServerResponse",
 ]
