@@ -13,6 +13,7 @@ from sqlmodel import Session
 from database import get_session
 from dependencies import get_current_user
 from models import CustomAgentCreate, CustomAgentUpdate, User
+from schemas.custom_agent import AgentSummaryResponse, CustomAgentResponse
 from services.agent_service import AgentService
 from utils.exceptions import AppError
 
@@ -23,14 +24,21 @@ router = APIRouter(prefix="/api", tags=["agents"])
 
 # P1 优化: 分页响应模型
 class PaginatedAgentsResponse(BaseModel):
-    items: list
+    items: list[AgentSummaryResponse]
     total: int
     page: int
     page_size: int
     pages: int
 
 
-@router.post("/agents")
+class AgentDeleteResponse(BaseModel):
+    """删除自定义智能体的响应（含级联删除的会话数）"""
+
+    ok: bool
+    deleted_threads_count: int
+
+
+@router.post("/agents", response_model=CustomAgentResponse)
 async def create_custom_agent(
     agent_data: CustomAgentCreate,
     session: Session = Depends(get_session),
@@ -75,7 +83,7 @@ async def get_all_agents(
         raise AppError(message=str(e), original_error=e) from e
 
 
-@router.get("/agents/{agent_id}")
+@router.get("/agents/{agent_id}", response_model=CustomAgentResponse)
 async def get_custom_agent(
     agent_id: str,
     session: Session = Depends(get_session),
@@ -85,7 +93,7 @@ async def get_custom_agent(
     return AgentService(session).get_custom_agent(agent_id, current_user.id)
 
 
-@router.delete("/agents/{agent_id}")
+@router.delete("/agents/{agent_id}", response_model=AgentDeleteResponse)
 async def delete_custom_agent(
     agent_id: str,
     session: Session = Depends(get_session),
@@ -102,7 +110,7 @@ async def delete_custom_agent(
     return await AgentService(session).delete_custom_agent(agent_id, current_user.id)
 
 
-@router.put("/agents/{agent_id}")
+@router.put("/agents/{agent_id}", response_model=CustomAgentResponse)
 async def update_custom_agent(
     agent_id: str,
     agent_data: CustomAgentUpdate,

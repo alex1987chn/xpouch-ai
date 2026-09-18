@@ -17,6 +17,7 @@ from fastapi.responses import HTMLResponse
 from sqlmodel import Session
 
 from database import get_session
+from schemas.template_import_export import TemplateExportSchema
 from services.chat.share_service import ShareService, share_rate_limiter
 from utils.exceptions import NotFoundError
 
@@ -233,7 +234,7 @@ async def share_page(token: str, request: Request, session: Session = Depends(ge
     return HTMLResponse(_render_share_html(artifact.type, title, artifact.content, og_url))
 
 
-@router.get("/api/public/templates/shared/{token}")
+@router.get("/api/public/templates/shared/{token}", response_model=TemplateExportSchema)
 async def get_shared_template(token: str, session: Session = Depends(get_session)):
     """模板分享链接的公开只读导出（无认证；token 不可枚举，撤销即失效）"""
     from routers.library import build_template_export

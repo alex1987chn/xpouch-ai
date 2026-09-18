@@ -224,7 +224,7 @@ def build_template_export(template: SkillTemplate, exported_by: str | None = Non
     )
 
 
-@router.get("/templates/{template_key}/export")
+@router.get("/templates/{template_key}/export", response_model=TemplateExportSchema)
 async def export_skill_template(
     template_key: str,
     session: Session = Depends(get_session),

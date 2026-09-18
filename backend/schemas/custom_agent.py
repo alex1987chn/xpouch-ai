@@ -4,7 +4,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from pydantic import Field as PydanticField
 
 
@@ -29,7 +29,9 @@ class CustomAgentUpdate(BaseModel):
 
 
 class CustomAgentResponse(BaseModel):
-    """自定义智能体响应 DTO"""
+    """自定义智能体响应 DTO（from_attributes：路由直返 CustomAgent ORM）"""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: str
     user_id: str
@@ -43,3 +45,24 @@ class CustomAgentResponse(BaseModel):
     conversation_count: int
     created_at: datetime
     updated_at: datetime
+
+
+class AgentSummaryResponse(BaseModel):
+    """自定义智能体列表项（AgentService.list_custom_agents 手工组装的扁平条目；
+
+    与 CustomAgentResponse 的差异：时间字段在 service 里已 isoformat 成字符串，
+    另带列表专用的 is_builtin 常量位——两个形态并存是既有契约，不在此合并。
+    """
+
+    id: str
+    name: str
+    description: str
+    system_prompt: str
+    category: str
+    model_id: str
+    conversation_count: int
+    is_public: bool
+    is_default: bool
+    is_builtin: bool
+    created_at: str | None = None
+    updated_at: str | None = None
