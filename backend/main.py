@@ -47,7 +47,6 @@ from database import create_db_and_tables, engine
 from models import SkillTemplate, SystemExpert
 from routers import (
     admin,
-    agents,
     chat,
     experts,
     library,
@@ -220,7 +219,6 @@ app.include_router(admin.router)
 app.include_router(library.router)
 app.include_router(tools.router)
 app.include_router(chat.router)
-app.include_router(agents.router)
 app.include_router(experts.router)
 app.include_router(system.router)
 app.include_router(mcp.router)

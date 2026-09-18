@@ -37,7 +37,6 @@ from models.domain import (  # noqa: E402
     AgentRun,
     Artifact,
     AuditLog,
-    CustomAgent,
     ExecutionPlan,
     Message,
     RunEvent,
@@ -85,11 +84,6 @@ from schemas.conversation import (  # noqa: E402
     ThreadDetailResponse,
     ThreadListResponse,
 )
-from schemas.custom_agent import (  # noqa: E402
-    CustomAgentCreate,
-    CustomAgentResponse,
-    CustomAgentUpdate,
-)
 from schemas.run_event import (  # noqa: E402
     RunEventResponse,
     RunTimelineResponse,
@@ -136,7 +130,6 @@ __all__ = [
     "Message",
     "SystemExpert",
     "SystemSetting",
-    "CustomAgent",
     "SubTask",
     "ExecutionPlan",
     "Artifact",
@@ -149,10 +142,6 @@ __all__ = [
     "ThreadListResponse",
     "ThreadDetailResponse",
     "PaginatedThreadListResponse",
-    # DTO - Custom Agent
-    "CustomAgentCreate",
-    "CustomAgentUpdate",
-    "CustomAgentResponse",
     # DTO - Task
     "SubTaskCreate",
     "SubTaskUpdate",

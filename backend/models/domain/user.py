@@ -66,7 +66,3 @@ class User(SQLModel, table=True):
 
     # 关联关系（使用字符串避免循环导入）
     threads: list["Thread"] = Relationship(back_populates="user")  # noqa: F821
-    custom_agents: list["CustomAgent"] = Relationship(  # noqa: F821
-        back_populates="user",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
-    )

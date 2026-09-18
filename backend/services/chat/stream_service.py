@@ -38,7 +38,6 @@ from crud.run_event import (
 from models import AgentRun, ExecutionPlan, RunStatus, Thread
 from models.enums import GraphTaskStatus, TaskStatus, to_task_status
 from services.chat.frame_recorder import get_frame_recorder
-from services.chat.parts.custom_agent import CustomAgentMixin
 from services.chat.parts.event_builders import EventBuildersMixin
 from services.chat.stream_pipeline import StreamPipeline
 from services.mcp_tools_service import mcp_tools_service
@@ -64,11 +63,10 @@ def _build_isolated_thread_id(thread_id: str, run_id: str | None) -> str:
     return f"{thread_id}_{run_id}" if run_id else thread_id
 
 
-class StreamService(CustomAgentMixin, EventBuildersMixin):
+class StreamService(EventBuildersMixin):
     """流式处理服务。
 
-    P3-2 增量拆分：自定义智能体双路径（parts/custom_agent.py）与
-    事件构建/运行状态助手（parts/event_builders.py）已迁出（Mixin 组合），
+    P3-2 增量拆分：事件构建/运行状态助手（parts/event_builders.py）已迁出（Mixin 组合），
     公开接口不变。
     """
 

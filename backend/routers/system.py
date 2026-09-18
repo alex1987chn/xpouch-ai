@@ -12,7 +12,7 @@ from sqlmodel import Session, select
 
 from database import engine, get_session
 from dependencies import get_current_user_with_auth, require_role
-from models import CustomAgent, Thread, User, UserRole
+from models import Thread, User, UserRole
 from schemas.user_profile import UserProfileResponse
 from utils.exceptions import NotFoundError
 from utils.time import utc_now_naive
@@ -359,14 +359,7 @@ async def debug_cleanup_users(current_user: User = Depends(get_current_user_with
             for conv in threads:
                 session.delete(conv)
 
-            # 2. 删除该用户的所有自定义智能体
-            custom_agents = session.exec(
-                select(CustomAgent).where(CustomAgent.user_id == user.id)
-            ).all()
-            for agent in custom_agents:
-                session.delete(agent)
-
-            # 3. 最后删除用户
+            # 2. 最后删除用户
             session.delete(user)
 
         session.commit()

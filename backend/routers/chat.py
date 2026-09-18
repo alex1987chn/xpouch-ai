@@ -414,52 +414,18 @@ async def chat_endpoint(
     # 3. 构建 LangChain 消息列表
     langchain_messages = await thread_service.build_langchain_messages(thread_id)
 
-    # 4. 获取自定义智能体（如果有）
-    custom_agent = await thread_service.get_custom_agent(
-        agent_id=request.agent_id or "assistant", user_id=current_user.id
-    )
-
-    if custom_agent is not None:
-        _attach_images(
-            langchain_messages,
-            request.images,
-            custom_agent.model_id or "deepseek-flash",
-        )
-
     agent_run = create_agent_run(
         session,
         thread_id=thread_id,
         user_id=current_user.id,
         entrypoint="chat",
-        mode="custom" if custom_agent else "router",
+        mode="router",
         checkpoint_namespace=thread_id,
     )
     session.commit()
     session.refresh(agent_run)
 
-    # 5. 路由到对应的处理逻辑
-    if custom_agent:
-        # 自定义智能体模式
-        if request.stream:
-            return await stream_service.handle_custom_agent_stream(
-                custom_agent=custom_agent,
-                messages=langchain_messages,
-                thread_id=thread_id,
-                thread=thread,
-                agent_run=agent_run,
-                message_id=request.message_id,
-            )
-        else:
-            return await stream_service.handle_custom_agent_sync(
-                custom_agent=custom_agent,
-                messages=langchain_messages,
-                thread_id=thread_id,
-                thread=thread,
-                agent_run=agent_run,
-                message_id=request.message_id,
-            )
-
-    # 系统默认助手模式：通过 LangGraph 处理
+    # 4. 路由到对应的处理逻辑（统一走主链路：router 判断简单/复杂）
     # 读取全局模型偏好（simple 模式使用；失败静默降级为系统默认）
     try:
         from services.user_preferences import load_model_preferences

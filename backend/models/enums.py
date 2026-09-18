@@ -24,7 +24,6 @@ class ConversationType(StrEnum):
     """会话类型枚举"""
 
     DEFAULT = "default"
-    CUSTOM = "custom"
     AI = "ai"
 
 

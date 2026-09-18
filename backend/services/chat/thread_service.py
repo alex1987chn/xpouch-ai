@@ -23,7 +23,7 @@ from sqlmodel import Session, select
 
 from constants import SYSTEM_AGENT_DEFAULT_CHAT, SYSTEM_AGENT_ORCHESTRATOR, normalize_agent_id
 from crud.message import create_assistant_message, create_user_message
-from models import AgentRun, CustomAgent, ExecutionPlan, Message, SubTask, Thread
+from models import AgentRun, ExecutionPlan, Message, SubTask, Thread
 from utils.exceptions import AuthorizationError, NotFoundError
 from utils.time import utc_now_naive
 
@@ -516,21 +516,12 @@ class ChatThreadService:
         if frontend_agent_id == SYSTEM_AGENT_ORCHESTRATOR:
             frontend_agent_id = SYSTEM_AGENT_DEFAULT_CHAT
 
-        # 判断 agent 类型
-        custom_agent_check = self.db.get(CustomAgent, frontend_agent_id)
-        if custom_agent_check and custom_agent_check.user_id == user_id:
-            agent_type = "custom"
-            final_agent_id = frontend_agent_id
-        else:
-            agent_type = "default"
-            final_agent_id = SYSTEM_AGENT_DEFAULT_CHAT
-
         # 初始 thread_mode 为 simple，Router 会在处理时更新它
         thread = Thread(
             id=thread_id,
             title=message[:30] + "..." if len(message) > 30 else message,
-            agent_id=final_agent_id,
-            agent_type=agent_type,
+            agent_id=SYSTEM_AGENT_DEFAULT_CHAT,
+            agent_type="default",
             thread_mode="simple",
             user_id=user_id,
             created_at=utc_now_naive(),
@@ -622,41 +613,6 @@ class ChatThreadService:
 
     # ============================================================================
     # 自定义智能体验证
-    # ============================================================================
-
-    async def get_custom_agent(self, agent_id: str, user_id: str) -> CustomAgent | None:
-        """
-        获取并验证自定义智能体
-
-        Args:
-            agent_id: 智能体ID
-            user_id: 用户ID（用于权限验证）
-
-        Returns:
-            CustomAgent实例（验证通过）或None（系统默认）
-        """
-        normalized_agent_id = normalize_agent_id(agent_id)
-
-        # sys-task-orchestrator 转换为系统默认
-        if normalized_agent_id == SYSTEM_AGENT_ORCHESTRATOR:
-            normalized_agent_id = SYSTEM_AGENT_DEFAULT_CHAT
-
-        # 系统默认助手
-        if normalized_agent_id == SYSTEM_AGENT_DEFAULT_CHAT:
-            return None
-
-        custom_agent = self.db.get(CustomAgent, normalized_agent_id)
-
-        if custom_agent and custom_agent.user_id == user_id:
-            # 增加对话计数
-            custom_agent.conversation_count += 1
-            self.db.add(custom_agent)
-            self.db.commit()
-            return custom_agent
-
-        # 未找到或无权访问，回退到系统默认
-        return None
-
     # ============================================================================
     # ExecutionPlan 管理
     # ============================================================================
