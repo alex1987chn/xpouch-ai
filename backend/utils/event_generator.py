@@ -28,7 +28,7 @@ from event_types.events import (
     build_sse_event,
     sse_event_to_string,
 )
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class EventGenerator:
@@ -124,7 +124,7 @@ class EventGenerator:
             task_id=task_id,
             expert_type=expert_type,
             description=description,
-            started_at=utc_now_naive().isoformat(),
+            started_at=utc_now().isoformat(),
         )
         return build_sse_event(EventType.TASK_STARTED, data, self._next_event_id())
 
@@ -157,7 +157,7 @@ class EventGenerator:
             status="completed",
             output=output,
             duration_ms=duration_ms,
-            completed_at=utc_now_naive().isoformat(),
+            completed_at=utc_now().isoformat(),
             artifact_count=artifact_count,
         )
         return build_sse_event(EventType.TASK_COMPLETED, data, self._next_event_id())
@@ -169,7 +169,7 @@ class EventGenerator:
             expert_type=expert_type,
             description=description,
             error=error,
-            failed_at=utc_now_naive().isoformat(),
+            failed_at=utc_now().isoformat(),
         )
         return build_sse_event(EventType.TASK_FAILED, data, self._next_event_id())
 
@@ -227,7 +227,7 @@ class EventGenerator:
 
     def router_start(self, query: str) -> SSEEvent:
         """生成 router.start 事件"""
-        data = RouterStartData(query=query, timestamp=utc_now_naive().isoformat())
+        data = RouterStartData(query=query, timestamp=utc_now().isoformat())
         return build_sse_event(EventType.ROUTER_START, data, self._next_event_id())
 
     def router_decision(self, decision: str, reason: str | None = None) -> SSEEvent:

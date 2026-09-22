@@ -33,7 +33,7 @@ from schemas.template_import_export import (
 )
 from utils.exceptions import AuthorizationError, NotFoundError, ValidationError
 from utils.logger import logger
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 router = APIRouter(prefix="/api/library", tags=["library"])
 
@@ -143,7 +143,7 @@ async def delete_skill_template(
 
 def _generate_suggested_key(base_key: str) -> str:
     """生成建议的新 key（添加时间戳后缀）"""
-    timestamp = utc_now_naive().strftime("%Y%m%d_%H%M%S")
+    timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
     return f"{base_key}_imported_{timestamp}"
 
 
@@ -233,7 +233,7 @@ def build_template_export(template: SkillTemplate, exported_by: str | None = Non
             artifact_schema_hint=template.artifact_schema_hint,
         ),
         meta=TemplateExportMeta(
-            exported_at=utc_now_naive(),
+            exported_at=utc_now(),
             exported_by=exported_by,
             source_instance=None,  # 可从配置读取
         ),

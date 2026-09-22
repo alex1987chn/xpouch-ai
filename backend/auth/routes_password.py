@@ -31,7 +31,7 @@ from utils.jwt_handler import (
 )
 from utils.logger import logger
 from utils.secret_hash import hash_secret
-from utils.time import utc_now_naive
+from utils.time import utc_now
 from utils.verification import mask_phone_number
 
 router = APIRouter(tags=["Authentication"])
@@ -82,10 +82,10 @@ async def login_with_password(
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
     user.is_verified = True
-    user.last_login_at = utc_now_naive()
+    user.last_login_at = utc_now()
     user.access_token = hash_secret(access_token)
     user.refresh_token = hash_secret(refresh_token)
-    user.token_expires_at = utc_now_naive() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    user.token_expires_at = utc_now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     session.add(user)
     session.commit()
     session.refresh(user)

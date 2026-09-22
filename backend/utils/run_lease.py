@@ -38,7 +38,7 @@ import socket
 import uuid
 from datetime import datetime, timedelta
 
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 # 租约时长：必须**远大于**续租间隔（下面那个），否则正常运行的 run 会被自己的慢周期
 # 误判成死的。180s 配合 20s 续租 = 9 倍余量 —— 事件循环被同步任务卡住几十秒、
@@ -71,7 +71,7 @@ RUN_OWNER_ID = _build_owner_id()
 
 def lease_deadline(now: datetime | None = None) -> datetime:
     """本次续租后的到期时刻。"""
-    return (now or utc_now_naive()) + timedelta(seconds=RUN_LEASE_TTL_SECONDS)
+    return (now or utc_now()) + timedelta(seconds=RUN_LEASE_TTL_SECONDS)
 
 
 def is_lease_alive(lease_expires_at: datetime | None, now: datetime | None = None) -> bool:
@@ -83,7 +83,7 @@ def is_lease_alive(lease_expires_at: datetime | None, now: datetime | None = Non
     """
     if lease_expires_at is None:
         return False
-    return lease_expires_at > (now or utc_now_naive())
+    return lease_expires_at > (now or utc_now())
 
 
 def accepts_renewal(owner: str | None) -> bool:
@@ -107,4 +107,4 @@ def is_deadline_exceeded(deadline_at: datetime | None, now: datetime | None = No
     """
     if deadline_at is None:
         return False
-    return deadline_at <= (now or utc_now_naive())
+    return deadline_at <= (now or utc_now())

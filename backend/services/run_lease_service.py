@@ -33,7 +33,7 @@ from utils.run_lease import (
     is_deadline_exceeded,
     lease_deadline,
 )
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 # 回收时一轮最多扫描多少条活跃 run。正常每次 0-2 条；设上限只是防止迁移后第一次
 # tick 撞上历史遗留的一大堆活跃行时把时间全花在这。按 created_at 升序取——
@@ -86,7 +86,7 @@ def reclaim_expired_leases(session: Session, now=None) -> list[tuple[str, list[s
     挂起，若照租约判死，计划放几分钟不点就被这里标成「运行进程失联」（2026-09-13
     实测：一小时内误杀 5 条待审批 run，用户看到的是审批卡消失、任务再也批不了）。
     """
-    now = now or utc_now_naive()
+    now = now or utc_now()
     rows = session.exec(
         select(AgentRun)
         .where(AgentRun.status.in_(ACTIVE_RUN_STATUSES))

@@ -1,7 +1,7 @@
 """工具策略服务的缓存时间基准（时区回归测试）。
 
 回归背景：`_cache_expire_at` 曾初始化为 `datetime.min.replace(tzinfo=UTC)`
-（**aware**），而比较用的 `utc_now_naive()` 返回 **naive** —— 比较直接抛
+（**aware**），而比较用的 `utc_now()` 返回 **naive** —— 比较直接抛
 `TypeError: can't compare offset-naive and offset-aware datetimes`。
 后果不止是缓存失效：`get_overrides()` 被 `generic` 的宽 except 吞掉、记成
 「工具绑定失败」，于是 **所有专家的工具调用静默失效**（搜索/时间/计算器/MCP），
@@ -67,7 +67,7 @@ class TestCacheTimeBase:
 
         assert calls["n"] == 2, "invalidate 之后必须重新加载"
 
-    def test_expire_marker_is_naive(self):
-        """过期标记必须与 utc_now_naive() 同为 naive——这条防止回归。"""
+    def test_expire_marker_is_aware(self):
+        """过期标记必须与 utc_now() 同为 aware UTC——这条防止 naive/aware 混用回归。"""
         service = ToolPolicyService()
-        assert service._cache_expire_at.tzinfo is None
+        assert service._cache_expire_at.tzinfo is not None

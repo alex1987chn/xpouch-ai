@@ -6,7 +6,7 @@ from database import engine
 from models.memory import UserMemory
 from providers_config import get_embedding_client
 from utils.logger import logger
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 def get_embedding(text: str) -> list[float]:
@@ -50,7 +50,7 @@ class MemoryManager:
                     user_id=user_id,
                     content=content,
                     embedding=vector,
-                    created_at=utc_now_naive(),
+                    created_at=utc_now(),
                     source=source,
                     memory_type=memory_type,
                 )

@@ -16,7 +16,7 @@ from models import AgentRun, RunEvent, RunEventType, RunStatus, Thread
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
 from utils.run_lease import RUN_OWNER_ID, lease_deadline
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class _FakeSession:
@@ -286,7 +286,7 @@ def test_expired_lease_paused_run_still_holds_thread():
         status=RunStatus.WAITING_FOR_APPROVAL,
         current_node="waiting_for_approval",
         owner="dead-process:1234:abcd",
-        lease_expires_at=utc_now_naive() - timedelta(hours=1),
+        lease_expires_at=utc_now() - timedelta(hours=1),
         created_at=datetime.now(),
         started_at=datetime.now(),
         updated_at=datetime.now(),
@@ -326,7 +326,7 @@ def test_expired_lease_run_does_not_block_new_run():
         status=RunStatus.RUNNING,
         current_node="generic",
         owner="dead-process:1234:abcd",
-        lease_expires_at=utc_now_naive() - timedelta(seconds=1),
+        lease_expires_at=utc_now() - timedelta(seconds=1),
         created_at=datetime.now(),
         started_at=datetime.now(),
         updated_at=datetime.now(),

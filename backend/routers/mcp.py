@@ -30,7 +30,7 @@ from models.mcp import MCPServer
 from schemas.mcp import MCPServerCreate, MCPServerResponse, MCPServerUpdate
 from utils.exceptions import ValidationError
 from utils.logger import logger
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 router = APIRouter(prefix="/api/mcp", tags=["mcp"])
 
@@ -280,8 +280,8 @@ async def create_mcp_server(
         icon=server_data.icon,
         connection_status="connected",  # 测试通过
         is_active=True,
-        created_at=utc_now_naive(),
-        updated_at=utc_now_naive(),
+        created_at=utc_now(),
+        updated_at=utc_now(),
     )
 
     session.add(mcp_server)
@@ -367,7 +367,7 @@ async def update_mcp_server(
     if update_data.icon is not None:
         server.icon = update_data.icon
 
-    server.updated_at = utc_now_naive()
+    server.updated_at = utc_now()
 
     session.add(server)
     session.commit()

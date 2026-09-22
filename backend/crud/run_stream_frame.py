@@ -13,7 +13,7 @@ from sqlmodel import Session, delete, select
 
 from models import RunStreamFrame
 from utils.logger import logger
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 def append_frames(db: Session, run_id: str, frames: list[tuple[int, str]]) -> int:
@@ -77,7 +77,7 @@ def prune_frames_older_than(db: Session, retention_hours: int = 24) -> int:
 
     与 session_cleanup_service 的既有节奏配合（它已经在做线程/checkpoint 清扫）。
     """
-    cutoff: datetime = utc_now_naive() - timedelta(hours=retention_hours)
+    cutoff: datetime = utc_now() - timedelta(hours=retention_hours)
     result = db.exec(delete(RunStreamFrame).where(RunStreamFrame.created_at < cutoff))
     db.commit()
     return int(result.rowcount or 0)

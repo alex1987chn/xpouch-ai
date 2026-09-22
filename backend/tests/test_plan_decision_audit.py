@@ -23,7 +23,7 @@ from models import AgentRun, AuditLog, ExecutionPlan, Message, RunEvent, Thread,
 from models.enums import RunStatus
 from services.chat.recovery_service import RecoveryService
 from utils.exceptions import ValidationError
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 TABLES = [
     Thread.__table__,
@@ -45,7 +45,7 @@ def db():
     )
     SQLModel.metadata.create_all(engine, tables=TABLES)
     with Session(engine) as session:
-        now = utc_now_naive()
+        now = utc_now()
         session.add(User(id="u1", username="tester"))
         session.add(Thread(id="t1", title="会话", user_id="u1"))
         session.add(
@@ -151,7 +151,7 @@ class TestListAuditLogs:
     接口 500 → 面板吞错渲染成空态——审计页从上线起就没出过列表）。"""
 
     def _add_second_run(self, db: Session) -> None:
-        now = utc_now_naive()
+        now = utc_now()
         db.add(
             AgentRun(
                 id="r2",

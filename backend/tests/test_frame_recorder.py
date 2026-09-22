@@ -286,8 +286,8 @@ class TestFailureIsolation:
 
 
 class TestRetentionWindow:
-    def test_frames_carry_utc_naive_created_at(self, engine):
-        """created_at 必须是 naive UTC（全库约定），TTL 清扫才能正确比较。"""
+    def test_frames_carry_utc_aware_created_at(self, engine):
+        """created_at 必须是 aware UTC（2026-09-22 全链路 aware 约定）。"""
         rec = RunFrameRecorder(session_factory=lambda: Session(engine), flush_interval=5)
 
         async def _flow():
@@ -298,7 +298,7 @@ class TestRetentionWindow:
         asyncio.run(_flow())
         row = _frames(engine)[0]
         assert isinstance(row.created_at, datetime)
-        assert row.created_at.tzinfo is None
+        assert row.created_at.tzinfo is not None
 
 
 class TestBufferEviction:

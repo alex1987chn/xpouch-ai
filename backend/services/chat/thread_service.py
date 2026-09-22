@@ -13,7 +13,7 @@
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from sqlalchemy import func
@@ -25,7 +25,7 @@ from constants import SYSTEM_AGENT_DEFAULT_CHAT, SYSTEM_AGENT_ORCHESTRATOR, norm
 from crud.message import create_assistant_message, create_user_message
 from models import AgentRun, ExecutionPlan, Message, SubTask, Thread
 from utils.exceptions import AuthorizationError, NotFoundError
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 def _coerce_extra_data(extra_data: dict | str | None) -> dict | None:
@@ -100,7 +100,7 @@ def save_assistant_message_sync(
     # 更新线程时间
     thread = db.get(Thread, thread_id)
     if thread:
-        thread.updated_at = utc_now_naive()
+        thread.updated_at = utc_now()
         db.add(thread)
 
     db.commit()
@@ -417,7 +417,9 @@ class ChatThreadService:
     def _build_simple_thread_response(self, thread: Thread) -> dict:
         """构建简单模式的线程响应"""
         # 🔥 后端兜底排序：确保消息按时间戳升序排列
-        sorted_messages = sorted(thread.messages, key=lambda m: m.timestamp or datetime.min)
+        sorted_messages = sorted(
+            thread.messages, key=lambda m: m.timestamp or datetime.min.replace(tzinfo=UTC)
+        )
         latest_run = self._get_latest_run(thread.id)
         return {
             "id": thread.id,
@@ -524,8 +526,8 @@ class ChatThreadService:
             agent_type="default",
             thread_mode="simple",
             user_id=user_id,
-            created_at=utc_now_naive(),
-            updated_at=utc_now_naive(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
         self.db.add(thread)
         self.db.commit()

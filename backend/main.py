@@ -24,7 +24,7 @@ from contextlib import asynccontextmanager
 # ============================================================================
 # 时间序列化约定（P7 UTC 化配套）
 # ============================================================================
-# DB 时间列统一存 naive UTC（utils/time.utc_now_naive）。FastAPI 默认把
+# DB 时间列统一存 naive UTC（utils/time.utc_now）。FastAPI 默认把
 # naive datetime 序列化为无时区后缀的 ISO 串，浏览器会按本地时区解析——
 # 服务器本地化时代恰好成立，UTC 化后会把时间显示成 8 小时后。此处全局
 # 为 naive datetime 追加 "Z"，明确告知前端"这是 UTC"。

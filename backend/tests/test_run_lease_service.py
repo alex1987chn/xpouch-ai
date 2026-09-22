@@ -20,7 +20,7 @@ from crud.agent_run import ACTIVE_RUN_STATUSES
 from models import AgentRun, RunEvent, RunStatus, Thread
 from services import run_lease_service as lease_service
 from utils.run_lease import RUN_OWNER_ID, lease_deadline
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 TABLES = [Thread.__table__, AgentRun.__table__, RunEvent.__table__]
 OTHER_OWNER = "other-host:4242:deadbeef"
@@ -51,7 +51,7 @@ def _add_run(
     thread_id: str = "t1",
 ) -> AgentRun:
     """造一条 run。`lease_seconds` 为负数即「已过期」，None 即「无租约」。"""
-    now = utc_now_naive()
+    now = utc_now()
     run = AgentRun(
         id=run_id,
         thread_id=thread_id,
@@ -84,11 +84,11 @@ class TestRenew:
         assert renewed == 1
         for run in (mine, other, done):
             db.refresh(run)
-        assert mine.lease_expires_at > utc_now_naive() + timedelta(seconds=100), (
+        assert mine.lease_expires_at > utc_now() + timedelta(seconds=100), (
             "本进程的活跃 run 必须续到 TTL 之后"
         )
-        assert other.lease_expires_at < utc_now_naive() + timedelta(seconds=2), "别人的 run 不得碰"
-        assert done.lease_expires_at < utc_now_naive() + timedelta(seconds=2), "终态 run 不续租"
+        assert other.lease_expires_at < utc_now() + timedelta(seconds=2), "别人的 run 不得碰"
+        assert done.lease_expires_at < utc_now() + timedelta(seconds=2), "终态 run 不续租"
 
     def test_paused_run_keeps_being_renewed(self, db):
         """HITL 等待中的 run 也是活跃的：用户思考期间它必须一直活着。"""
@@ -96,7 +96,7 @@ class TestRenew:
 
         assert lease_service.renew_owned_leases(db) == 1
         db.refresh(paused)
-        assert paused.lease_expires_at > utc_now_naive()
+        assert paused.lease_expires_at > utc_now()
 
 
 class TestReclaim:
@@ -237,4 +237,4 @@ class TestSupervisorSafety:
 
     def test_lease_deadline_helper_is_used(self):
         """续租写的是 lease_deadline()（TTL 的唯一来源），不是随手加的时间。"""
-        assert lease_deadline() > utc_now_naive()
+        assert lease_deadline() > utc_now()

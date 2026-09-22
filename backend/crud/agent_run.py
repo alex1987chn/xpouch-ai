@@ -21,7 +21,7 @@ from models.enums import _NO_RENEW_RUN_STATUSES
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
 from utils.run_lease import RUN_OWNER_ID, accepts_renewal, is_lease_alive, lease_deadline
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 ACTIVE_RUN_STATUSES = {
     RunStatus.QUEUED,
@@ -86,7 +86,7 @@ def _sync_thread_status(db: Session, thread_id: str, status: RunStatus) -> None:
         return
 
     thread.status = derive_thread_status_from_run_status(status)
-    thread.updated_at = utc_now_naive()
+    thread.updated_at = utc_now()
     db.add(thread)
 
 
@@ -101,7 +101,7 @@ def create_agent_run(
     checkpoint_namespace: str | None = None,
 ) -> AgentRun:
     """创建新的运行实例。"""
-    started_at = utc_now_naive()
+    started_at = utc_now()
     run = AgentRun(
         thread_id=thread_id,
         user_id=user_id,
@@ -245,8 +245,8 @@ def acquire_run_lease(db: Session, run_id: str) -> bool:
 def mark_run_completed(db: Session, run: AgentRun) -> None:
     """标记运行完成。"""
     run.status = RunStatus.COMPLETED
-    run.completed_at = utc_now_naive()
-    run.updated_at = utc_now_naive()
+    run.completed_at = utc_now()
+    run.updated_at = utc_now()
     _release_lease(run)  # 终态即释放：不再享有所有权
     db.add(run)
     _sync_thread_status(db, run.thread_id, run.status)
@@ -273,8 +273,8 @@ def update_run_status(
     run.status = status
     if current_node is not None:
         run.current_node = current_node
-    run.last_heartbeat_at = utc_now_naive()
-    run.updated_at = utc_now_naive()
+    run.last_heartbeat_at = utc_now()
+    run.updated_at = utc_now()
     if status in _NO_RENEW_RUN_STATUSES:
         _release_lease(run)
     else:
@@ -295,7 +295,7 @@ def mark_run_failed(
     run.status = RunStatus.FAILED
     run.error_code = error_code
     run.error_message = error_message
-    run.updated_at = utc_now_naive()
+    run.updated_at = utc_now()
     _release_lease(run)
     db.add(run)
     _sync_thread_status(db, run.thread_id, run.status)
@@ -328,7 +328,7 @@ def touch_run_heartbeat_by_id(
         return None
     if current_node is not None:
         run.current_node = current_node
-    now = utc_now_naive()
+    now = utc_now()
     run.last_heartbeat_at = now
     run.updated_at = now
     # 心跳顺带续租：这是「进程活着」最频繁的信号，且写的是同一行、零额外开销。
@@ -369,8 +369,8 @@ def mark_run_timed_out_by_id(
     run.current_node = current_node
     run.error_code = error_code
     run.error_message = error_message
-    run.timed_out_at = utc_now_naive()
-    run.updated_at = utc_now_naive()
+    run.timed_out_at = utc_now()
+    run.updated_at = utc_now()
     _release_lease(run)
     db.add(run)
     emit_run_timed_out(
@@ -400,8 +400,8 @@ def mark_run_cancelled_by_id(
     run.current_node = current_node
     run.error_code = error_code
     run.error_message = error_message
-    run.cancelled_at = utc_now_naive()
-    run.updated_at = utc_now_naive()
+    run.cancelled_at = utc_now()
+    run.updated_at = utc_now()
     _release_lease(run)
     db.add(run)
     _sync_thread_status(db, run.thread_id, run.status)

@@ -2,7 +2,7 @@
 
 此前 Message 的构造散落在 thread_service（用户消息/助手消息）与
 recovery_service（HITL 驳回反馈）三处；统一收敛到本模块，
-保证时间戳口径（utc_now_naive）与 extra_data 结构的一致性。
+保证时间戳口径（utc_now）与 extra_data 结构的一致性。
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from typing import Any
 from sqlmodel import Session
 
 from models import Message
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 def create_message(
@@ -34,7 +34,7 @@ def create_message(
         role=role,
         content=content,
         extra_data=extra_data,
-        timestamp=utc_now_naive(),
+        timestamp=utc_now(),
     )
     db.add(message)
     return message

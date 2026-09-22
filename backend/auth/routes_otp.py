@@ -21,7 +21,7 @@ from utils.jwt_handler import ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, 
 from utils.logger import logger
 from utils.secret_hash import hash_secret
 from utils.sms_service import send_verification_code_with_fallback
-from utils.time import utc_now_naive
+from utils.time import utc_now
 from utils.verification import (
     VerificationCodeRateLimitError,
     enforce_send_rate_limit,
@@ -191,10 +191,10 @@ async def verify_code_and_login(
 
     # 更新用户信息
     user.is_verified = True
-    user.last_login_at = utc_now_naive()
+    user.last_login_at = utc_now()
     user.access_token = hash_secret(access_token)
     user.refresh_token = hash_secret(refresh_token)
-    user.token_expires_at = utc_now_naive() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    user.token_expires_at = utc_now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     _clear_verification_code(user)
 
     session.add(user)

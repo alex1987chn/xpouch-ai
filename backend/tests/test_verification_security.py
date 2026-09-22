@@ -64,7 +64,7 @@ def test_register_code_send_resets_expired_window():
     )
 
     assert send_count == 1
-    assert reset_at > datetime.now(UTC).replace(tzinfo=None)
+    assert reset_at > datetime.now(UTC)
 
 
 def test_verify_code_uses_exact_match():

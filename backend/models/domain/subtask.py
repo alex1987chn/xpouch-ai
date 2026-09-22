@@ -13,7 +13,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
 from models.enums import ExecutionMode, TaskStatus, _enum_values
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 if TYPE_CHECKING:
     from models.domain.artifact import Artifact
@@ -96,9 +96,9 @@ class SubTask(SQLModel, table=True):
     duration_ms: int | None = None
 
     # 时间戳
-    created_at: datetime = Field(default_factory=utc_now_naive)
+    created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(
-        default_factory=utc_now_naive,
+        default_factory=utc_now,
         sa_column_kwargs={"onupdate": func.now()},
     )
     started_at: datetime | None = None

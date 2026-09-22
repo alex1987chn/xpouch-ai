@@ -29,7 +29,7 @@ from crud.execution_plan import (
 from crud.run_event import emit_artifact_generated, emit_task_completed
 from models import TaskStatus
 from utils.logger import logger
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 # =============================================================================
 # ExecutionPlan 管理
@@ -170,10 +170,10 @@ def save_expert_execution_result(
         # 2. 更新 SubTask 状态 - 直接操作对象避免参数问题
         subtask.status = TaskStatus.COMPLETED
         subtask.output_result = {"content": output_result}
-        subtask.completed_at = utc_now_naive()
+        subtask.completed_at = utc_now()
         if duration_ms is not None:
             subtask.duration_ms = duration_ms
-        subtask.updated_at = utc_now_naive()
+        subtask.updated_at = utc_now()
         db.add(subtask)
         db.commit()
         db.refresh(subtask)

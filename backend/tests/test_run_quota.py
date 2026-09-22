@@ -19,7 +19,7 @@ from services.run_quota import (
     save_daily_token_quota,
     today_token_usage_exceeds_quota,
 )
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class _KVStubSession:
@@ -110,9 +110,9 @@ def _add_run(engine, run_id: str, total_tokens: int) -> None:
                 thread_id="t1",
                 user_id="u1",
                 total_tokens=total_tokens,
-                created_at=utc_now_naive(),
-                started_at=utc_now_naive(),
-                updated_at=utc_now_naive(),
+                created_at=utc_now(),
+                started_at=utc_now(),
+                updated_at=utc_now(),
             )
         )
         session.commit()

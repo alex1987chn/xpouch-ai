@@ -6,7 +6,7 @@ from models import AgentRun, RunStatus
 from services.chat.stream_service import StreamService
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class _FakeSession:
@@ -34,10 +34,10 @@ def test_deadline_guard_marks_run_timed_out():
         user_id="user-1",
         status=RunStatus.RUNNING,
         current_node="generic",
-        deadline_at=utc_now_naive() - timedelta(seconds=1),
-        created_at=utc_now_naive(),
-        started_at=utc_now_naive(),
-        updated_at=utc_now_naive(),
+        deadline_at=utc_now() - timedelta(seconds=1),
+        created_at=utc_now(),
+        started_at=utc_now(),
+        updated_at=utc_now(),
     )
     session = _FakeSession(run)
     service = StreamService(session)

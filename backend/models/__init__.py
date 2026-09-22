@@ -30,6 +30,12 @@ SQLModel.metadata.naming_convention = {
     "ix": "idx_%(column_0_label)s",
 }
 
+# 时间列说明（2026-09-22 aware 化）：sqlmodel 0.0.45 起普通 `datetime` 注解
+# 默认映射 UTCDateTime（= DateTime(timezone=True)，见 sqlmodel/sql/sqltypes.py）；
+# 写入统一 utils/time.utc_now()（aware UTC）。**新增时间列禁止用 NaiveDatetime
+# 注解**（那会退回 naive 存储）；显式 sa_column/sa_type 声明绕过默认映射，
+# 时间列不得绕过注解式声明。
+
 # ============================================================================
 # ORM 领域模型（数据库表）
 # ============================================================================

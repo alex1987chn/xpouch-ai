@@ -5,6 +5,16 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 变更
+
+- **协作模式落地**：新增 `docs/BACKLOG.md`（未完成工作唯一真相源，完成验收后删条目，完成史由 git/CHANGELOG 承载）与 `docs/DECISIONS.md`（已定决策与约定，含明确不做清单，防否决需求复燃）；`DESIGN-SPEC.md` 补六条规范（嵌套同心圆公式、丝绒玻璃只进浮层、空态不放操作按钮、placeholder 用 content-muted、动效勿引回 framer-motion、审批图标用 ClipboardList）
+- **时区全链路 aware 化**：领域表全部时间列 `timestamp → timestamptz`（迁移 20260922_000100，`USING AT TIME ZONE 'UTC'` 零损失转换，45 列/16 表），写入统一 `utc_now()`（aware，删除 `utc_now_naive`），API 序列化自动带 +00:00，前端 `toLocalDate` 移除补 Z 兼容直接解析。触发信号与顺带收益：sqlmodel 解钉至 0.0.45（其 naive 强校验与默认 aware 映射即本方案的模型侧）；ToolPolicy 缓存基准、消息排序兜底等 naive/aware 混用雷点一并根治。用户可见行为零变化（显示时间绝对时刻不变），自托管升级会自动跑迁移（表小，锁秒级）
+- **langchain 系升级**：langchain 1.3.18 → 1.4.2（原"不升 1.4"决策由用户授权推翻），连带 core 1.6.4 / langchain-openai 1.6.3 / langchain-deepseek 1.1.1 / langgraph 1.2.12；`langgraph-native-audit.md` 审计基线加注记（完整重跑=条件触发）
+- **pnpm 11.25.0 → 12.5.1（Rust 重写版）**：命令/flag/设置/lockfile 格式沿用 11，实测零迁移成本；lockfile 变为双 YAML 文档规范格式（check-yaml 钩子相应排除）；包管理器口径统一——六处 `npx tsc` 收进 `pnpm run typecheck`，Dockerfile 注明 npm 仅自举
+- **依赖 patch 批**：sqlalchemy 2.0.54 / psycopg 三件 3.3.6 / uvicorn 0.53 / watchfiles 1.3 / sse-starlette / tavily / tencentcloud / pypdf / langgraph-sdk / langsmith 0.14 / ruff；前端 react-router-dom 7.18.4 等 4 项
+
 ## [2026-09-19] - v3.5.4 REST 契约收敛收尾、HITL 修复与 CustomAgent 退役
 
 ### 变更

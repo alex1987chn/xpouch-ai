@@ -29,7 +29,7 @@ from services.chat.recovery_service import RecoveryService
 from services.chat.run_lifecycle import pause_deadline, reset_deadline
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError, NotFoundError, ValidationError
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 TABLES = [
     Thread.__table__,
@@ -180,7 +180,7 @@ class TestDeadlinePauseResume:
             id=run_id,
             thread_id="t1",
             user_id="u1",
-            deadline_at=utc_now_naive(),
+            deadline_at=utc_now(),
         )
         db.add(run)
         db.commit()
@@ -205,7 +205,7 @@ class TestDeadlinePauseResume:
         reset_deadline(db, "r1", 900)
         db.refresh(run)
         assert run.deadline_at is not None
-        remaining = (run.deadline_at - utc_now_naive()).total_seconds()
+        remaining = (run.deadline_at - utc_now()).total_seconds()
         assert 895 <= remaining <= 900, f"重置后应剩约 900s，实际 {remaining}"
 
     def test_pause_on_missing_run_is_noop(self, db):
@@ -241,8 +241,8 @@ class TestStaleRevisionFallback:
                     user_id="u1",
                     status=RunStatus.RUNNING,
                     mode="complex",
-                    created_at=utc_now_naive(),
-                    updated_at=utc_now_naive(),
+                    created_at=utc_now(),
+                    updated_at=utc_now(),
                 )
             )
         ev = RunEvent(
@@ -251,7 +251,7 @@ class TestStaleRevisionFallback:
             thread_id="t1",
             execution_plan_id="p1",
             event_data={"plan_version": 1},
-            timestamp=utc_now_naive() - timedelta(seconds=ago_seconds),
+            timestamp=utc_now() - timedelta(seconds=ago_seconds),
         )
         db.add(ev)
         db.commit()

@@ -12,7 +12,7 @@ from typing import Any
 from sqlmodel import Session, select
 
 from models import RunEvent, RunEventType
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 def append_run_event(
@@ -49,7 +49,7 @@ def append_run_event(
         thread_id=thread_id,
         execution_plan_id=execution_plan_id,
         task_id=task_id,
-        timestamp=utc_now_naive(),
+        timestamp=utc_now(),
         note=note,
     )
     db.add(event)
@@ -487,7 +487,7 @@ def fail_stale_revision_jobs(
         RunEventType.HITL_REVISION_FAILED,
         RunEventType.PLAN_UPDATED,
     )
-    cutoff = utc_now_naive() - timedelta(seconds=stale_after_seconds)
+    cutoff = utc_now() - timedelta(seconds=stale_after_seconds)
 
     # 只扫**仍处于活跃状态**的 run 的修订态事件（join 收窄，语义不变）：
     # 此前全量拉三类事件，账本随时间线性变慢（评审低危项）。已终态的 run

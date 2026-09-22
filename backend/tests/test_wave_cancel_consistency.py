@@ -54,7 +54,7 @@ from services.chat.recovery_service import RecoveryService  # noqa: E402
 from services.chat.stream_service import StreamService  # noqa: E402
 from utils.error_codes import ErrorCode  # noqa: E402
 from utils.exceptions import AppError  # noqa: E402
-from utils.time import utc_now_naive  # noqa: E402
+from utils.time import utc_now  # noqa: E402
 
 TABLES = [
     Thread.__table__,
@@ -150,9 +150,9 @@ def engine():
                 thread_id="t1",
                 user_id="u1",
                 status=RunStatus.WAITING_FOR_APPROVAL,  # 已停在审批点，等待恢复
-                created_at=utc_now_naive(),
-                started_at=utc_now_naive(),
-                updated_at=utc_now_naive(),
+                created_at=utc_now(),
+                started_at=utc_now(),
+                updated_at=utc_now(),
                 deadline_at=None,  # HITL 等待期已挂起预算（恢复时会重置）
             )
         )

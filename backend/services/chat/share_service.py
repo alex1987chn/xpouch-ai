@@ -24,7 +24,7 @@ from models import Artifact, ExecutionPlan, ShareToken, SkillTemplate, SubTask
 from utils.exceptions import NotFoundError
 from utils.logger import logger
 from utils.secret_hash import hash_secret
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class ShareRateLimiter:
@@ -82,7 +82,7 @@ class ShareService:
             artifact_id=artifact.id,
             token_hash=hash_secret(token),
             created_by=user_id,
-            created_at=utc_now_naive(),
+            created_at=utc_now(),
         )
         self.db.add(share)
         self.db.commit()
@@ -101,7 +101,7 @@ class ShareService:
 
         revoked = 0
         for share in self.db.query(ShareToken).filter_by(artifact_id=artifact_id, revoked_at=None):
-            share.revoked_at = utc_now_naive()
+            share.revoked_at = utc_now()
             self.db.add(share)
             revoked += 1
         self.db.commit()
@@ -119,7 +119,7 @@ class ShareService:
             template_key=template_key,
             token_hash=hash_secret(token),
             created_by=user_id,
-            created_at=utc_now_naive(),
+            created_at=utc_now(),
         )
         self.db.add(share)
         self.db.commit()
@@ -137,7 +137,7 @@ class ShareService:
         for share in self.db.query(ShareToken).filter_by(
             template_key=template_key, revoked_at=None
         ):
-            share.revoked_at = utc_now_naive()
+            share.revoked_at = utc_now()
             self.db.add(share)
             revoked += 1
         self.db.commit()

@@ -49,7 +49,7 @@ from agents.task_outcome import (
 from models.enums import GraphTaskStatus
 from utils.event_generator import event_task_failed
 from utils.logger import logger
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 EXPERT_WORKER_NODE = "expert_worker"
 TASK_JOIN_NODE = "task_join"
@@ -130,7 +130,7 @@ async def wave_dispatch_node(
             status=GraphTaskStatus.FAILED,
             output=reason,
             error=reason,
-            completed_at=utc_now_naive().isoformat(),
+            completed_at=utc_now().isoformat(),
         )
         outcomes[outcome["task_key"]] = outcome
         updated_task_list = replace_task_item_by_key(

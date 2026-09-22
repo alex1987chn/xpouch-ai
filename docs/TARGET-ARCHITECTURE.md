@@ -605,7 +605,7 @@ UTC+8 下少 8 小时（实时消息带 `Z` 所以只有恢复路径错）。这
 | **provider `enabled` 判定** | `is_provider_configured` 必须同时看 `enabled` 与存在 key。只看 key 会让 `enabled: false` 的 provider 被选中，然后 `_build_llm_instance` 抛错、commander 静默退化为空计划。 |
 | **alembic `fileConfig` 清 handler（已修 2026-09-13）** | `logging.config.fileConfig` 会**无条件**调用 `_clearExistingHandlers()`，且 `alembic.ini` 是 `[logger_root] level = WARNING`。进程内迁移一跑，应用的 INFO 日志全部消失（ERROR 仍走 stderr，故"部分可见"更具迷惑性）。v3.5.0 曾因此让生产 500 难以定位，当时只修了 `disable_existing_loggers`——**该参数并不阻止 handler 被清除**。现 `migrations/env.py` 仅在应用未配置日志时（CLI 场景）才套用 alembic.ini，判据用 `setup_logging()` 打在 root 上的幂等标记。**已实机验证**：迁移后的 `[Database] schema aligned` / `[Lifespan] ...` / `[SessionCleanup] ...` / 带 request-id 的请求日志全部可见。 |
 | **枚举须注册 msgpack 白名单** | `utils/db.py` 的 `JsonPlusSerializer(allowed_msgpack_modules=[...])`——新增业务枚举不注册，checkpoint 反序列化会炸。 |
-| **时区约定** | 全库 UTC naive 写入 + 前端 `toLocalDate` 补 Z 解析。禁用模型默认 `datetime.now` / 裸 `new Date(iso)`。 |
+| **时区约定** | 全链路 aware UTC（2026-09-22 起）：列一律 timestamptz（sqlmodel 0.0.45 默认映射，显式 NaiveDatetime 禁用）、写入 `utils/time.utc_now()`、API 带 +00:00 后缀，前端 `toLocalDate` 直接解析。禁用模型默认 `datetime.now()`（服务器墙钟）与 naive 时间值。例外：注入 prompt 的用户墙钟（prompt_utils/tools/utils）。 |
 | **前端依赖用 pnpm** | 根 `pnpm-lock.yaml` 是真锁文件。`npm uninstall` 会改写 `package.json`（即使命令失败）。 |
 | **前端「改动没生效」** | 先整页 F5（懒加载 chunk 残留），不要急着重启服务。 |
 | **`_debug_code` 登录** | 仅新用户返回。测老号要换新手机号。 |

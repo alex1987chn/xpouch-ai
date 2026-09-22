@@ -20,7 +20,7 @@ from crud.run_stream_frame import prune_frames_older_than
 from database import engine
 from models import AgentRun, ExecutionPlan, Thread, ThreadStatus
 from utils.logger import logger
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 THREAD_RETENTION_DAYS = settings.thread_retention_days
 STALE_RUNNING_THREAD_MINUTES = max(5, settings.request_timeout_seconds // 60)
@@ -78,7 +78,7 @@ def _cleanup_once() -> dict[str, Any]:
     按保留期删东西。两者职责不同、周期也不同（存活 20s 一轮，保留小时级），
     合在一起会让「一个机制管两件事」的老毛病重演。
     """
-    now = utc_now_naive()
+    now = utc_now()
     stale_running_before = now - timedelta(minutes=STALE_RUNNING_THREAD_MINUTES)
     expired_before = now - timedelta(days=THREAD_RETENTION_DAYS)
 

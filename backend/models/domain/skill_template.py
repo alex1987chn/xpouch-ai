@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy import JSON, Column, Index, String, Text, func
 from sqlmodel import Field, SQLModel
 
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class SkillTemplate(SQLModel, table=True):
@@ -42,8 +42,8 @@ class SkillTemplate(SQLModel, table=True):
     )
     is_active: bool = Field(default=True)
     is_builtin: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=utc_now_naive)
+    created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(
-        default_factory=utc_now_naive,
+        default_factory=utc_now,
         sa_column_kwargs={"onupdate": func.now()},
     )

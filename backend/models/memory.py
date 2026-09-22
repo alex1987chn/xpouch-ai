@@ -4,7 +4,7 @@ from pgvector.sqlalchemy import Vector  # 必须确保数据库已开启 pgvecto
 from sqlalchemy import Column, Text
 from sqlmodel import Field, SQLModel
 
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class UserMemory(SQLModel, table=True):
@@ -19,7 +19,7 @@ class UserMemory(SQLModel, table=True):
     # 🔥 BAAI/bge-m3 的维度是 1024
     embedding: list[float] = Field(sa_column=Column(Vector(1024)))
 
-    created_at: datetime = Field(default_factory=utc_now_naive, description="创建时间")
+    created_at: datetime = Field(default_factory=utc_now, description="创建时间")
     source: str = Field(
         default="conversation", description="记忆来源: conversation/user_profile/system"
     )

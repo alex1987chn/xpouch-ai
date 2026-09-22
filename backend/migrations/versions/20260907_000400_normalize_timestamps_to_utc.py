@@ -1,7 +1,7 @@
 """存量时间数据归一化为 UTC（P7 UTC 化）
 
 背景与约定（utils/time.py 模块 docstring 详述）：
-- v3.4.4 起 DB 时间列统一写 naive UTC（utc_now_naive），列类型保持
+- v3.4.4 起 DB 时间列统一写 naive UTC（utc_now），列类型保持
   naive DateTime 不变（零列类型迁移）
 - 此前 DB 存的是服务器本地时间（部署 TZ = Asia/Singapore，UTC+8，
   无夏令时），本迁移对本地时间列一次性回填 -8 小时

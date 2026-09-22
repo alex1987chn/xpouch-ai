@@ -44,7 +44,7 @@ from services.mcp_tools_service import mcp_tools_service
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
 from utils.logger import logger, set_run_id
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 # 允许产生 message.delta / message.thinking 的节点白名单。
 # - aggregator：复杂模式的最终聚合回复
@@ -578,8 +578,8 @@ class StreamService(EventBuildersMixin):
             # 是最后一个专家的原始产出，覆盖会让计划正文变成专家草稿而非综述。
             if not execution_plan.final_response:
                 execution_plan.final_response = last_message.content
-            execution_plan.updated_at = utc_now_naive()
-            execution_plan.completed_at = utc_now_naive()
+            execution_plan.updated_at = utc_now()
+            execution_plan.completed_at = utc_now()
             self.db.add(execution_plan)
             self.db.flush()
 
@@ -602,7 +602,7 @@ class StreamService(EventBuildersMixin):
                         task_description=subtask["description"],
                         input_data=subtask.get("input_data", {}),
                         execution_plan_id=execution_plan.id,
-                        created_at=utc_now_naive(),
+                        created_at=utc_now(),
                     )
 
                 db_subtask.expert_type = subtask["expert_type"]
@@ -618,7 +618,7 @@ class StreamService(EventBuildersMixin):
                 db_subtask.started_at = subtask.get("started_at") or db_subtask.started_at
                 db_subtask.completed_at = subtask.get("completed_at") or db_subtask.completed_at
                 db_subtask.duration_ms = subtask.get("duration_ms") or db_subtask.duration_ms
-                db_subtask.updated_at = utc_now_naive()
+                db_subtask.updated_at = utc_now()
                 self.db.add(db_subtask)
                 self.db.flush()
 
@@ -703,7 +703,7 @@ class StreamService(EventBuildersMixin):
             agent_run = self.db.get(AgentRun, run_id)
             if agent_run:
                 agent_run.mode = mode
-                agent_run.updated_at = utc_now_naive()
+                agent_run.updated_at = utc_now()
                 self.db.add(agent_run)
 
         self.db.commit()
@@ -1192,7 +1192,7 @@ class StreamService(EventBuildersMixin):
 
             if execution_plan:
                 execution_plan.status = status
-                execution_plan.updated_at = utc_now_naive()
+                execution_plan.updated_at = utc_now()
                 self.db.add(execution_plan)
                 self.db.commit()
                 logger.info(

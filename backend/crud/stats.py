@@ -16,7 +16,7 @@ from sqlmodel import Session
 
 from models import AgentRun, RunEvent, User
 from models.enums import RunEventType, RunStatus
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 def get_run_metrics(
@@ -118,7 +118,7 @@ def get_daily_trends(
     Returns:
         每日趋势列表
     """
-    since = (utc_now_naive() - timedelta(days=days - 1)).replace(
+    since = (utc_now() - timedelta(days=days - 1)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
 
@@ -154,7 +154,7 @@ def get_daily_trends(
 
     # 补零填满完整窗口：没跑任务的日期也要出现（否则趋势图缺柱、间距失真）
     by_day = {(row.date.strftime("%Y-%m-%d") if row.date else ""): row for row in results}
-    today = utc_now_naive().date()
+    today = utc_now().date()
     window = [(today - timedelta(days=offset)).isoformat() for offset in range(days - 1, -1, -1)]
     return [
         {
@@ -266,7 +266,7 @@ def get_today_token_usage(
     user_id: str,
 ) -> int:
     """该用户今日（UTC 日界，与配额判定同口径）已产生的 token 总量"""
-    today_start = utc_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
     used = db.exec(
         select(func.coalesce(func.sum(AgentRun.total_tokens), 0)).where(
             AgentRun.user_id == user_id,

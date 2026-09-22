@@ -25,7 +25,7 @@ from utils.event_generator import event_router_decision, event_router_start
 from utils.logger import logger
 from utils.message_text import extract_message_text
 from utils.prompt_utils import inject_current_time  # v3.6: 提取到工具函数
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class RoutingDecision(BaseModel):
@@ -221,7 +221,7 @@ def _fill_router_placeholders(system_prompt: str, user_query: str, relevant_memo
     - {relevant_memories}: 相关记忆
     """
     # 准备时间信息
-    now = utc_now_naive()
+    now = utc_now()
     weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
     weekday_str = weekdays[now.weekday()]
     time_str = now.strftime(f"%Y年%m月%d日 %H:%M:%S {weekday_str}")

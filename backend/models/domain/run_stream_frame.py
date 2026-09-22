@@ -20,7 +20,7 @@ from datetime import datetime
 from sqlalchemy import Column, Index, Text, func
 from sqlmodel import Field, SQLModel
 
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class RunStreamFrame(SQLModel, table=True):
@@ -46,7 +46,7 @@ class RunStreamFrame(SQLModel, table=True):
     wire: str = Field(sa_column=Column(Text, nullable=False))
 
     created_at: datetime = Field(
-        default_factory=utc_now_naive,
+        default_factory=utc_now,
         sa_column_kwargs={"server_default": func.now()},
     )
 

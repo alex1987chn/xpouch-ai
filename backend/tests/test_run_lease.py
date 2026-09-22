@@ -31,7 +31,7 @@ from utils.run_lease import (
     is_lease_alive,
     lease_deadline,
 )
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class _FakeResult:
@@ -126,10 +126,10 @@ def _run(**overrides) -> AgentRun:
 
 class TestLeasePredicate:
     def test_future_lease_is_alive(self):
-        assert is_lease_alive(utc_now_naive() + timedelta(seconds=5)) is True
+        assert is_lease_alive(utc_now() + timedelta(seconds=5)) is True
 
     def test_past_lease_is_dead(self):
-        assert is_lease_alive(utc_now_naive() - timedelta(seconds=1)) is False
+        assert is_lease_alive(utc_now() - timedelta(seconds=1)) is False
 
     def test_null_lease_is_dead(self):
         """NULL = 无存活证据（迁移前遗留或不认识它的进程写的）。"""
@@ -142,7 +142,7 @@ class TestLeasePredicate:
         assert RUN_LEASE_TTL_SECONDS >= RUN_LEASE_RENEW_INTERVAL_SECONDS * 5
 
     def test_lease_deadline_uses_ttl(self):
-        now = utc_now_naive()
+        now = utc_now()
         delta = (lease_deadline(now) - now).total_seconds()
         assert delta == RUN_LEASE_TTL_SECONDS
 
@@ -209,7 +209,7 @@ class TestWritePointsRenewAndRelease:
 
     def test_status_write_renews_lease(self):
         """RUNNING 状态写入续租（证明进程在管它）；RESUMING 是过渡态不续租（见下）。"""
-        run = _run(owner=RUN_OWNER_ID, lease_expires_at=utc_now_naive() - timedelta(seconds=5))
+        run = _run(owner=RUN_OWNER_ID, lease_expires_at=utc_now() - timedelta(seconds=5))
         session = _FakeSession(_thread())
         update_run_status(session, run, RunStatus.RUNNING)
         assert is_lease_alive(run.lease_expires_at) is True, "RUNNING 状态写入即续租"
@@ -226,7 +226,7 @@ class TestWritePointsRenewAndRelease:
         assert run.lease_expires_at is None, "RESUMING 状态写入必须释放租约（否则后续 resume 撞锁）"
 
     def test_heartbeat_renews_lease(self):
-        run = _run(owner=RUN_OWNER_ID, lease_expires_at=utc_now_naive() - timedelta(seconds=5))
+        run = _run(owner=RUN_OWNER_ID, lease_expires_at=utc_now() - timedelta(seconds=5))
         session = _FakeSession(_thread())
         session.runs[run.id] = run
         touch_run_heartbeat_by_id(session, run.id)

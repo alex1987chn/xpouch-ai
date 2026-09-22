@@ -120,11 +120,11 @@ class TestPrune:
 
         from sqlmodel import select
 
-        from utils.time import utc_now_naive
+        from utils.time import utc_now
 
         append_frames(db, "r1", [(1, "old")])
         stale = db.exec(select(RunStreamFrame).where(RunStreamFrame.seq == 1)).first()
-        stale.created_at = utc_now_naive() - timedelta(hours=48)
+        stale.created_at = utc_now() - timedelta(hours=48)
         db.add(stale)
         db.commit()
         append_frames(db, "r1", [(2, "fresh")])

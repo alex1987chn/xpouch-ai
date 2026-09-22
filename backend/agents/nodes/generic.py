@@ -69,7 +69,7 @@ from utils.config_cache import ConfigCache
 from utils.llm_factory import get_effective_model, get_expert_llm
 from utils.logger import logger
 from utils.prompt_utils import enhance_system_prompt_with_tools  # v3.6: 提取到工具函数
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 # P0 优化: 本地内存缓存高频专家配置查询 (5分钟TTL, 最大200条)
 _generic_expert_cache = ConfigCache(maxsize=200, ttl=300, name="generic_expert")
@@ -200,8 +200,8 @@ async def expert_worker_node(
             status=GraphTaskStatus.FAILED,
             output="任务缺少 expert_type 字段",
             error="Missing expert_type in task",
-            started_at=utc_now_naive().isoformat(),
-            completed_at=utc_now_naive().isoformat(),
+            started_at=utc_now().isoformat(),
+            completed_at=utc_now().isoformat(),
         )
         return {"worker_started": True, "task_outcomes": {outcome["task_key"]: outcome}}
 
@@ -250,8 +250,8 @@ async def expert_worker_node(
             status=GraphTaskStatus.FAILED,
             output=f"加载专家 '{expert_type}' 配置失败",
             error=f"Failed to load expert config: {config_err}",
-            started_at=utc_now_naive().isoformat(),
-            completed_at=utc_now_naive().isoformat(),
+            started_at=utc_now().isoformat(),
+            completed_at=utc_now().isoformat(),
         )
         return {"worker_started": True, "task_outcomes": {outcome["task_key"]: outcome}}
 
@@ -261,12 +261,12 @@ async def expert_worker_node(
             status=GraphTaskStatus.FAILED,
             output=f"专家 '{expert_type}' 未找到",
             error=f"Expert '{expert_type}' not found in database",
-            started_at=utc_now_naive().isoformat(),
-            completed_at=utc_now_naive().isoformat(),
+            started_at=utc_now().isoformat(),
+            completed_at=utc_now().isoformat(),
         )
         return {"worker_started": True, "task_outcomes": {outcome["task_key"]: outcome}}
 
-    started_at = utc_now_naive()
+    started_at = utc_now()
 
     task_id = current_task.get("id") or task_key(current_task)
 
@@ -638,7 +638,7 @@ async def expert_worker_node(
         # 没有工具调用，正常完成任务
         logger.info("[GenericWorker] ℹ️ LLM 返回了普通文本响应，未调用工具")
 
-        completed_at = utc_now_naive()
+        completed_at = utc_now()
         duration_ms = int((completed_at - started_at).total_seconds() * 1000)
 
         logger.info(f"[GenericWorker] '{expert_type}' completed (耗时: {duration_ms / 1000:.2f}s)")
@@ -793,7 +793,7 @@ async def expert_worker_node(
             output=f"专家执行失败: {str(e)}",
             error=str(e),
             started_at=started_at.isoformat(),
-            completed_at=utc_now_naive().isoformat(),
+            completed_at=utc_now().isoformat(),
         )
 
         # ✅ 生成 task.failed 事件

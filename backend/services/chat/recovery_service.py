@@ -41,7 +41,7 @@ from utils.error_codes import ErrorCode
 from utils.exceptions import AppError, AuthorizationError, NotFoundError, ValidationError
 from utils.logger import logger, set_run_id
 from utils.sse_builder import build_error_event
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class RecoveryService:
@@ -450,7 +450,7 @@ class RecoveryService:
             from models.enums import TaskStatus
 
             execution_plan.status = TaskStatus.CANCELLED
-            execution_plan.updated_at = utc_now_naive()
+            execution_plan.updated_at = utc_now()
             execution_plan.final_response = execution_plan.final_response or "运行已取消"
             self.db.add(execution_plan)
             self.db.commit()
@@ -692,7 +692,7 @@ class RecoveryService:
                 ExecutionPlan.id == execution_plan.id,
                 ExecutionPlan.plan_version == expected_plan_version,
             )
-            .values(plan_version=ExecutionPlan.plan_version + 1, updated_at=utc_now_naive())
+            .values(plan_version=ExecutionPlan.plan_version + 1, updated_at=utc_now())
         )
         result = self.db.exec(stmt)
 
@@ -790,7 +790,7 @@ class RecoveryService:
 
             if execution_plan:
                 execution_plan.status = status
-                execution_plan.updated_at = utc_now_naive()
+                execution_plan.updated_at = utc_now()
                 self.db.add(execution_plan)
                 self.db.commit()
                 logger.info(f"[HITL RESUME] ExecutionPlan {execution_plan.id} 状态更新为 {status}")
@@ -805,7 +805,7 @@ class RecoveryService:
             if execution_plan:
                 execution_plan.status = TaskStatus.CANCELLED
                 execution_plan.final_response = "计划被用户取消"
-                execution_plan.updated_at = utc_now_naive()
+                execution_plan.updated_at = utc_now()
                 self.db.add(execution_plan)
                 self.db.commit()
                 logger.info(f"[HITL RESUME] ExecutionPlan {execution_plan.id} 已标记为 cancelled")

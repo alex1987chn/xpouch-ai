@@ -30,7 +30,7 @@ from models import Artifact, SystemExpert, Thread, User, UserRole
 from services.chat.thread_service import ChatThreadService
 from utils.jwt_handler import hash_password
 from utils.logger import logger
-from utils.time import utc_now_naive
+from utils.time import utc_now
 from utils.verification import mask_phone_number
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -466,7 +466,7 @@ async def preview_expert(
         )
 
     # 调用 LLM 进行预览
-    started_at = utc_now_naive()
+    started_at = utc_now()
 
     try:
         # 使用工厂方法创建 LLM 实例
@@ -494,7 +494,7 @@ async def preview_expert(
             ]
         )
 
-        completed_at = utc_now_naive()
+        completed_at = utc_now()
         execution_time_ms = int((completed_at - started_at).total_seconds() * 1000)
 
         return ExpertPreviewResponse(
@@ -555,7 +555,7 @@ System Prompt:
 
     try:
         # 使用 Router LLM 生成描述（温度稍高以获得更有创意的描述）
-        started_at = utc_now_naive()
+        started_at = utc_now()
         llm = get_router_llm()
 
         # 获取温度参数
@@ -576,7 +576,7 @@ System Prompt:
         # 清理可能的引号
         description = description.strip('"').strip("'")
 
-        completed_at = utc_now_naive()
+        completed_at = utc_now()
         execution_time_ms = int((completed_at - started_at).total_seconds() * 1000)
 
         return GenerateDescriptionResponse(
@@ -627,7 +627,7 @@ async def create_expert(
         model=expert_create.model,
         temperature=expert_create.temperature,
         is_dynamic=True,  # 用户创建的专家默认为动态专家
-        updated_at=utc_now_naive(),
+        updated_at=utc_now(),
     )
 
     session.add(new_expert)
@@ -1116,7 +1116,7 @@ async def update_user(
                 )
         user.phone_number = phone
 
-    user.updated_at = utc_now_naive()
+    user.updated_at = utc_now()
     session.add(user)
     record_audit(
         session,
@@ -1211,7 +1211,7 @@ async def admin_reset_password(
         generated = True
 
     user.password_hash = hash_password(new_password)
-    user.updated_at = utc_now_naive()
+    user.updated_at = utc_now()
     session.add(user)
     record_audit(
         session,

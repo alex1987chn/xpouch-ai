@@ -4,7 +4,7 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from models import AuditLog
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 def record_audit(
@@ -23,7 +23,7 @@ def record_audit(
         action=action,
         target=target,
         detail=detail,
-        created_at=utc_now_naive(),
+        created_at=utc_now(),
     )
     db.add(entry)
     return entry

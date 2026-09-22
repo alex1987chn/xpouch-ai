@@ -20,7 +20,7 @@ from models import AgentRun
 from models.enums import RunStatus
 from utils.exceptions import AuthorizationError, NotFoundError, ValidationError
 from utils.logger import logger
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 def update_run_status(
@@ -76,7 +76,7 @@ def reset_deadline(session: Session, run_id: str, budget_seconds: int) -> None:
     """恢复执行时重置完整执行预算（每轮批准都是新的执行爆发）。"""
     run = session.get(AgentRun, run_id)
     if run:
-        run.deadline_at = utc_now_naive() + timedelta(seconds=budget_seconds)
+        run.deadline_at = utc_now() + timedelta(seconds=budget_seconds)
         session.add(run)
         session.commit()
         logger.info(f"[RunLifecycle] deadline reset (+{budget_seconds}s) for run {run_id}")

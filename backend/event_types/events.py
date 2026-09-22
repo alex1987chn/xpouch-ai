@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class EventType(StrEnum):
@@ -294,7 +294,7 @@ def build_sse_event(
 
     return SSEEvent(
         id=event_id or str(uuid.uuid4()),
-        timestamp=utc_now_naive().isoformat(),
+        timestamp=utc_now().isoformat(),
         type=event_type,
         data=data.model_dump(),
     )

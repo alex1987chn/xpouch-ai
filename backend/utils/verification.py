@@ -8,7 +8,7 @@ import secrets
 import string
 from datetime import datetime, timedelta
 
-from utils.time import utc_now_naive as utcnow  # 全库统一 naive-UTC 单一口径
+from utils.time import utc_now as utcnow  # 全库统一 naive-UTC 单一口径
 
 
 class VerificationCodeError(Exception):

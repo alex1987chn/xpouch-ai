@@ -13,7 +13,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
 from models.enums import ExecutionMode, TaskStatus, _enum_values
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class ExecutionPlan(SQLModel, table=True):
@@ -73,9 +73,9 @@ class ExecutionPlan(SQLModel, table=True):
 
     __table_args__ = (Index("idx_executionplan_thread_created", "thread_id", "created_at"),)
 
-    created_at: datetime = Field(default_factory=utc_now_naive)
+    created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(
-        default_factory=utc_now_naive,
+        default_factory=utc_now,
         sa_column_kwargs={"onupdate": func.now()},
     )
     completed_at: datetime | None = None

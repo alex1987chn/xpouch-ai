@@ -17,7 +17,7 @@ from utils.jwt_handler import (
 )
 from utils.logger import logger
 from utils.secret_hash import compare_hash, hash_secret
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 router = APIRouter(tags=["Authentication"])
 
@@ -69,7 +69,7 @@ async def refresh_access_token_endpoint(
 
         # 更新用户的 access token
         user.access_token = hash_secret(new_access_token)
-        user.token_expires_at = utc_now_naive() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        user.token_expires_at = utc_now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
         session.add(user)
         session.commit()

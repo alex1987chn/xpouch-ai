@@ -55,7 +55,7 @@ from models import (  # noqa: E402
 )
 from services.chat.frame_recorder import RunFrameRecorder  # noqa: E402
 from services.chat.stream_service import StreamService  # noqa: E402
-from utils.time import utc_now_naive  # noqa: E402
+from utils.time import utc_now  # noqa: E402
 
 # handle_langgraph_stream 会碰到的全部表（含只读的 SystemSetting——
 # resolve_graph_max_concurrency 对它做 session.get，表缺了会直接抛）。
@@ -109,10 +109,10 @@ def engine(tmp_path):
                 thread_id="t1",
                 user_id="u1",
                 status=RunStatus.QUEUED,
-                created_at=utc_now_naive(),
-                started_at=utc_now_naive(),
-                updated_at=utc_now_naive(),
-                deadline_at=utc_now_naive() + timedelta(seconds=600),
+                created_at=utc_now(),
+                started_at=utc_now(),
+                updated_at=utc_now(),
+                deadline_at=utc_now() + timedelta(seconds=600),
             )
         )
         session.add(

@@ -15,7 +15,7 @@ from dependencies import get_current_user_with_auth, require_role
 from models import Thread, User, UserRole
 from schemas.user_profile import UserProfileResponse
 from utils.exceptions import NotFoundError
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 router = APIRouter(prefix="/api", tags=["system"])
 
@@ -145,7 +145,7 @@ async def root():
 @router.get("/health", response_model=HealthCheckResponse)
 async def health_check():
     """健康检查端点"""
-    return {"status": "healthy", "timestamp": utc_now_naive().isoformat()}
+    return {"status": "healthy", "timestamp": utc_now().isoformat()}
 
 
 # ============================================================================
@@ -181,7 +181,7 @@ async def update_user_me(
 ):
     """更新当前用户信息（仅公开字段，不序列化内部凭证列）"""
     # 记录更新时间戳
-    current_user.updated_at = utc_now_naive()
+    current_user.updated_at = utc_now()
 
     if request.username is not None:
         current_user.username = request.username
@@ -385,7 +385,7 @@ async def get_usage_summary(
 
     from models import AgentRun
 
-    today_start = utc_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     def _sum_since(since: datetime | None) -> dict:
         stmt = select(

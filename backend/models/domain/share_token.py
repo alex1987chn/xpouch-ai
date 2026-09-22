@@ -10,7 +10,7 @@ from datetime import datetime
 
 from sqlmodel import Field, SQLModel
 
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class ShareToken(SQLModel, table=True):
@@ -38,5 +38,5 @@ class ShareToken(SQLModel, table=True):
     # 创建者（thread.user_id，冗余便于直接校验）
     created_by: str = Field(index=True, max_length=64)
 
-    created_at: datetime = Field(default_factory=utc_now_naive)
+    created_at: datetime = Field(default_factory=utc_now)
     revoked_at: datetime | None = Field(default=None)

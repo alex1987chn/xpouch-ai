@@ -12,7 +12,7 @@ from sqlmodel import Session
 
 from models import AgentRun, SystemSetting
 from utils.logger import logger
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 USER_DAILY_TOKEN_QUOTA_KEY = "user_daily_token_quota"
 
@@ -57,7 +57,7 @@ def today_token_usage_exceeds_quota(session: Session, user_id: str, quota: int) 
     `used[0]` 会 TypeError——这是 da19a1c 修过的同族问题的漏网之鱼（配额
     未设置时此函数不被调用，故长期潜伏）。
     """
-    today_start = utc_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
     used = session.exec(
         select(func.coalesce(func.sum(AgentRun.total_tokens), 0)).where(
             AgentRun.user_id == user_id,

@@ -13,7 +13,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, SQLModel
 
 from models.enums import RunEventType, _enum_values
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 class RunEvent(SQLModel, table=True):
@@ -52,7 +52,7 @@ class RunEvent(SQLModel, table=True):
 
     # 事件时间戳（服务器时间）
     timestamp: datetime = Field(
-        default_factory=utc_now_naive,
+        default_factory=utc_now,
         sa_column_kwargs={"server_default": func.now()},
     )
 

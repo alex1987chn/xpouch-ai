@@ -18,7 +18,7 @@ from models import (
     TaskStatus,
     Thread,
 )
-from utils.time import utc_now_naive
+from utils.time import utc_now
 
 
 def create_execution_plan(
@@ -80,8 +80,8 @@ def update_execution_plan_status(
     if final_response is not None:
         execution_plan.final_response = final_response
     if status in (TaskStatus.COMPLETED, TaskStatus.FAILED):
-        execution_plan.completed_at = utc_now_naive()
-    execution_plan.updated_at = utc_now_naive()
+        execution_plan.completed_at = utc_now()
+    execution_plan.updated_at = utc_now()
 
     db.add(execution_plan)
     db.commit()
@@ -120,9 +120,9 @@ def update_subtask_status(
 
     subtask.status = status
     if status == TaskStatus.RUNNING and not subtask.started_at:
-        subtask.started_at = utc_now_naive()
+        subtask.started_at = utc_now()
     if status in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
-        subtask.completed_at = utc_now_naive()
+        subtask.completed_at = utc_now()
     if output_result is not None:
         subtask.output_result = output_result
     if error_message is not None:
@@ -130,7 +130,7 @@ def update_subtask_status(
     if duration_ms is not None:
         subtask.duration_ms = duration_ms
 
-    subtask.updated_at = utc_now_naive()
+    subtask.updated_at = utc_now()
     db.add(subtask)
     db.commit()
     db.refresh(subtask)
