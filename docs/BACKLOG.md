@@ -27,7 +27,7 @@
 - [ ] 前端状态三轨统一（消息 zustand / 会话产物 react-query / taskStore——周级重构，单独立项）
 - [ ] User 表验证码六列摊平（规范=独立表；能用，收益低，搁置）
 - [ ] 未使用 i18n 键审计：判据 `git grep "t('<key>')"` 为空 ≠ 死键（`expertIdentity` 这类类型→key 映射是动态引用，删前连映射表一起查）
-- [ ] Plan 形状 canonical 收敛（原审计批次 B4，从未开工）：`dependencies`↔`depends_on` 双名并存（模型 AliasChoices 兼容旧名）、SubTask 缺 Commander 语义 task_id 字段（双身份）；收敛为单一写法后可删 evals/B4 的双名兼容注释
+- [ ] Plan 收敛收尾（原审计批次 B4 的**剩余部分**——大半已完成：`agents/plan_tasks.PlanTask` canonical 模型 + 三条边界转换 + `depends_on` 字段名统一都在位）：① SubTask 表加语义 task_id 列（现桥接只在内存 `PlanTask.subtask_id`，修订重建任务行后 ID 无延续性，diff 只能按位置对齐——落列后可按 ID 对齐）；② 删 commander Task 的 `AliasChoices("depends_on","dependencies")` 输入容错（历史提示词/存量计划面确认后）；③ `priority` 字段只在 Commander 输出存在、下游全丢——要么传导要么从输出 schema 删
 - [ ] Redis 限流（现内存态，多 worker 不共享）
 - [ ] 列表虚拟化（会话/画廊长列表）
 - [ ] i18n `common.ts` 按域拆分
