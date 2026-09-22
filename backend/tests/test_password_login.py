@@ -34,7 +34,7 @@ def db():
 
 @pytest.fixture(autouse=True)
 def clear_password_limiter():
-    from auth import _password_attempts
+    from auth.limiter import _password_attempts
 
     _password_attempts.clear()
     yield
@@ -66,7 +66,8 @@ def _login(db, identifier: str, password: str):
     """直接调用端点函数（绕过 HTTP 层）"""
     import asyncio
 
-    from auth import PasswordLoginRequest, login_with_password
+    from auth.routes_password import login_with_password
+    from auth.schemas import PasswordLoginRequest
 
     request = PasswordLoginRequest(identifier=identifier, password=password)
 
@@ -112,7 +113,7 @@ def test_login_account_without_password_is_404(db, user_without_password):
 def test_login_locks_after_too_many_failures(db, user_with_password):
     import fastapi
 
-    from auth import _password_attempts_exhausted, _record_password_failure
+    from auth.limiter import _password_attempts_exhausted, _record_password_failure
     from config import settings
 
     for _ in range(settings.password_max_attempts):
@@ -127,7 +128,8 @@ def test_login_locks_after_too_many_failures(db, user_with_password):
 def test_set_password_first_time_no_old_needed(db, user_without_password):
     import asyncio
 
-    from auth import SetPasswordRequest, set_password
+    from auth.routes_password import set_password
+    from auth.schemas import SetPasswordRequest
 
     request = SetPasswordRequest(password=_NEW_PW)
     result = asyncio.run(set_password(request, db, user_without_password))
@@ -141,7 +143,8 @@ def test_set_password_existing_requires_old(db, user_with_password):
 
     import fastapi
 
-    from auth import SetPasswordRequest, set_password
+    from auth.routes_password import set_password
+    from auth.schemas import SetPasswordRequest
 
     with pytest.raises(fastapi.HTTPException) as exc:
         asyncio.run(set_password(SetPasswordRequest(password=_NEW_PW), db, user_with_password))

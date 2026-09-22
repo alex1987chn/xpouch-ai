@@ -28,7 +28,6 @@
 - [ ] User 表验证码六列摊平（规范=独立表；能用，收益低，搁置）
 - [ ] 未使用 i18n 键审计：判据 `git grep "t('<key>')"` 为空 ≠ 死键（`expertIdentity` 这类类型→key 映射是动态引用，删前连映射表一起查）
 - [ ] Plan 形状 canonical 收敛（原审计批次 B4，从未开工）：`dependencies`↔`depends_on` 双名并存（模型 AliasChoices 兼容旧名）、SubTask 缺 Commander 语义 task_id 字段（双身份）；收敛为单一写法后可删 evals/B4 的双名兼容注释
-- [ ] 兼容层清扫批（2026-09-22 审计产出，均为拆分期 re-export 壳，消费方改直连后可删）：后端 `agents/graph.py`（7 处 lazy import 消费方）、`auth/__init__` 历史公开名（tests/main.py）、`commander.py` 的 SubTaskOutput/CommanderOutput 别名；前端 `ui/input.tsx` 旧名导出（注释自标"逐步淘汰"）、`handlers/types.ts` 与 `handlers/index.ts` 的原 eventHandlers.ts 导出壳。**不在清扫范围**（有存量数据或对外契约依赖）：_coerce_extra_data 一族（老库 JSON 漂移）、agent ID 新旧映射（DB 存量）、resume action 缺省（对外 API）、Authorization 头通道（对外 API）
 - [ ] Redis 限流（现内存态，多 worker 不共享）
 - [ ] 列表虚拟化（会话/画廊长列表）
 - [ ] i18n `common.ts` 按域拆分

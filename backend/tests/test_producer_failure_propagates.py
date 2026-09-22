@@ -39,7 +39,9 @@ def _run(monkeypatch, svc: StreamService) -> None:
         return []
 
     monkeypatch.setattr(svc, "_get_mcp_tools", _fake_mcp_tools)
-    monkeypatch.setattr("agents.graph.create_smart_router_workflow", lambda **_kwargs: _BoomGraph())
+    monkeypatch.setattr(
+        "agents.graph_builder.create_smart_router_workflow", lambda **_kwargs: _BoomGraph()
+    )
     monkeypatch.setattr("utils.db.get_shared_checkpointer", lambda: object())
 
     async def _drain() -> None:
@@ -79,7 +81,7 @@ class TestProducerFailurePropagates:
 
         monkeypatch.setattr(svc, "_get_mcp_tools", _fake_mcp_tools)
         monkeypatch.setattr(
-            "agents.graph.create_smart_router_workflow", lambda **_kwargs: _AppErrGraph()
+            "agents.graph_builder.create_smart_router_workflow", lambda **_kwargs: _AppErrGraph()
         )
         monkeypatch.setattr("utils.db.get_shared_checkpointer", lambda: object())
 

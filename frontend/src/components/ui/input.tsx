@@ -174,5 +174,3 @@ Label.displayName = "Label"
 // 向后兼容导出
 export { Input, SearchInput, Textarea, Label }
 
-// 旧名称兼容（逐步淘汰）
-export { Input as ThemeInput, SearchInput as ThemeSearchInput, Textarea as ThemeTextarea, Label as ThemeLabel }

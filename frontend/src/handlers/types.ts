@@ -1,7 +1,6 @@
 /**
  * Event Handlers 共享类型定义
  * 
- * 注意：保持与原始 eventHandlers.ts 兼容
  */
 
 import type { useTaskStore } from '@/store/taskStore'

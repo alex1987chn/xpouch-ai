@@ -124,7 +124,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
     try:
         # 🔥 v3.7: 智能模式选择 - 先尝试 with_structured_output，不支持则降级
 
-        from agents.graph import get_router_llm_lazy
+        from agents.graph_builder import get_router_llm_lazy
 
         logger.info("[Router] 准备加载 LLM（懒加载单例）")
         llm = get_router_llm_lazy()
@@ -299,7 +299,7 @@ def _resolve_simple_llm(state: AgentState):
     设为 True 会让 langchain-core 的 _should_stream 在 ainvoke 内部改走流式
     并触发 token 回调——这正是流式的实现机制，不可关闭。
     """
-    from agents.graph import get_simple_llm_lazy
+    from agents.graph_builder import get_simple_llm_lazy
 
     preferred_model = state.get("simple_model")
     thinking = state.get("simple_thinking")

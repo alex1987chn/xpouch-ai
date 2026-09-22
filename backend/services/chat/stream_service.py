@@ -151,7 +151,7 @@ class StreamService(EventBuildersMixin):
         """
         # 在方法内部导入 LangGraph，防止循环引用
 
-        from agents.graph import create_smart_router_workflow
+        from agents.graph_builder import create_smart_router_workflow
         from services.chat.stream_hub import get_stream_hub
 
         # 日志上下文在 create_task 之前设好：create_task 复制当前 context，
@@ -474,7 +474,7 @@ class StreamService(EventBuildersMixin):
         full_response = ""
 
         # 在方法内部导入
-        from agents.graph import create_smart_router_workflow
+        from agents.graph_builder import create_smart_router_workflow
         from utils.db import get_shared_checkpointer
 
         # 🔥 MCP: 获取动态工具
@@ -793,7 +793,7 @@ class StreamService(EventBuildersMixin):
             SSE 事件字符串
         """
         # 在方法内部导入，防止循环引用
-        from agents.graph import create_smart_router_workflow
+        from agents.graph_builder import create_smart_router_workflow
         from utils.db import get_shared_checkpointer
 
         # 恢复流程同样把 run_id 注入日志上下文（HITL 续跑的日志关联）

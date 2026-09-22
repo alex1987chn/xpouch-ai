@@ -151,11 +151,6 @@ def derive_plan_execution_mode(tasks: list[Task]) -> ExecutionMode:
     return ExecutionMode.SEQUENTIAL
 
 
-# 向后兼容：保留旧模型别名
-SubTaskOutput = Task
-CommanderOutput = ExecutionPlan
-
-
 async def _preload_expert_configs(task_list: list[dict]) -> None:
     """
     P1 优化: 预加载所有专家配置到缓存
@@ -355,7 +350,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
             # 执行 LLM 进行规划
             # 从模型名称推断 provider
-            from agents.graph import get_commander_llm_lazy
+            from agents.graph_builder import get_commander_llm_lazy
             from providers_config import get_model_config
 
             model_config = get_model_config(model)

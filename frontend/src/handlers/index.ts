@@ -186,27 +186,6 @@ export function handleServerEvent(event: AnyServerEvent, runScope?: string): voi
   getEventHandler().handle(event, runScope)
 }
 
-// ============================================================================
-// 类型导出（保持向后兼容）
-// ============================================================================
-
-export type {
-  AnyServerEvent,
-  PlanCreatedEvent,
-  PlanStartedEvent,
-  PlanThinkingEvent,
-  TaskStartedEvent,
-  TaskCompletedEvent,
-  TaskFailedEvent,
-  ArtifactGeneratedEvent,
-  MessageDeltaEvent,
-  MessageDoneEvent,
-  HumanInterruptEvent,
-  RouterStartEvent,
-  RouterDecisionEvent,
-  ErrorEvent,
-  HandlerContext
-} from './types'
 
 // ============================================================================
 // 处理器函数导出（便于单元测试）

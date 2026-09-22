@@ -84,7 +84,8 @@ def _stage_code(user: User, code: str = _CODE, expired: bool = False) -> None:
 
 
 def _reset(db, phone: str, code: str, password: str):
-    from auth import ResetPasswordRequest, reset_password
+    from auth.routes_password import reset_password
+    from auth.schemas import ResetPasswordRequest
 
     return asyncio.run(
         reset_password(ResetPasswordRequest(phone_number=phone, code=code, password=password), db)
@@ -92,7 +93,8 @@ def _reset(db, phone: str, code: str, password: str):
 
 
 def _send_code(db, phone: str, purpose: str = "login"):
-    from auth import SendCodeRequest, send_verification_code
+    from auth.routes_otp import send_verification_code
+    from auth.schemas import SendCodeRequest
 
     return asyncio.run(
         send_verification_code(
