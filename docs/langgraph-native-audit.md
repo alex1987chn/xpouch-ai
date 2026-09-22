@@ -3,6 +3,8 @@
 日期：2026-09-13
 版本基线：langgraph 1.2.11 · langgraph-checkpoint 4.2.0 · langgraph-checkpoint-postgres 3.1.2 · langgraph-prebuilt 1.1.0 · langchain 1.3.18 · langchain-core 1.6.1 · langchain-openai 1.6.0 · langchain-deepseek 1.1.0
 
+> **⚠️ 基线注记（2026-09-22）**：依赖已抬升至 langchain 1.4.2 / langchain-core 1.6.4 / langchain-openai 1.6.3 / langchain-deepseek 1.1.1 / langgraph 1.2.12（langgraph-checkpoint-postgres 3.1.2 未变；openai 3.7.0、mcp 1.29.1 未动）。本文各条判定**未逐条重验**，但升级批已过全量 474 测试 + 真实 LLM 的 HITL e2e（规划→中断→恢复→波次执行）。若后续遇到框架行为与本文描述不符，先核对本注记的版本差，再考虑重跑审计。
+
 结论摘要：项目 2026 年 1 月起写，当时框架早期，若干能力只能自研。审计后确认——
 **约 6 处是「当时迫不得已、现在官方有更好答案」；约 10 处是「官方真没有、必须自研」；3 处是「上层封装（middleware）只能配 create_agent，而 create_agent 装不下本项目业务管线」，应用底层原语而非 middleware。**
 

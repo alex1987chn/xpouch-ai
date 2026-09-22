@@ -23,7 +23,8 @@
 - **模型**：MiniMax 已停用（2026-09-02，质量与成本原因，providers.yaml enabled:false）；默认 deepseek-flash。
 - **时区**：全库 UTC naive 写入 + 前端 `toLocalDate` 补 Z 解析（规则详见 TARGET-ARCHITECTURE.md）；20260912_000300 已纠 user.created_at，其余表个别 ±8h 历史行有意不迁移（用户知悉）。
 - **版本号单源**：`backend/pyproject.toml`（改后必须 `uv lock` 重锁）；发版 patch 递增。
-- **依赖升级口径（2026-09-13）**：只升同大版本的 patch/minor；前端 `pnpm up <pkg>@<ver>` 显式列包、后端 `uv lock --upgrade-package <pkg>`；**明确不升**：eslint 10 / typescript 7 / mermaid 12 / @vitejs/plugin-react 6 / @types-node 26 / eslint-plugin-react-refresh 0.5 / concurrently 10；langchain 1.3.18→1.4.0 不升（`docs/langgraph-native-audit.md` 审计基线钉在该版本，升级须连审计重跑）；mcp 2.x 被上游 langchain-mcp-adapters 卡住。
+- **依赖升级口径（2026-09-13）**：只升同大版本的 patch/minor；前端 `pnpm up <pkg>@<ver>` 显式列包、后端 `uv lock --upgrade-package <pkg>`；**明确不升**：eslint 10 / typescript 7 / mermaid 12 / @vitejs/plugin-react 6 / @types-node 26 / eslint-plugin-react-refresh 0.5 / concurrently 10；mcp 2.x 被上游 langchain-mcp-adapters 卡住。
+- **langchain 已升 1.4.2（2026-09-22，原"1.4.0 不升"决策由用户授权推翻）**：连带 core 1.6.4 / openai-pkg 1.6.3 / deepseek 1.1.1 / langgraph 1.2.12；openai 3.7.0 与 mcp 1.29.1 未被连带。`langgraph-native-audit.md` 审计基线已加注记（判定未逐条重验，升级批过全量测试+真实 LLM e2e）；完整审计重跑=条件触发（遇框架行为与文档不符时）。
 - **pnpm 已升 12.5.1（2026-09-22，Rust 重写版）**：官方口径命令/flag/设置/lockfile 格式沿用 11，实测零迁移成本；锚点三处=根 `package.json` 的 `packageManager`+`engines`、`frontend/Dockerfile` 的 `pnpm@12`（CI 的 action-setup 自动读 packageManager）；lockfile 自记 pnpm 版本与平台二进制（`@pnpm/exe.*`，约 160 行自引用元数据，属预期非漂移）；`pnpm-workspace.yaml` 的 allowBuilds/minimumReleaseAge 继续有效。
 - **API 建模约定**：恒序列化、值可空的字段**不写默认值**（默认值会被 OpenAPI 降级 optional，与运行时恒有键矛盾）。改协议/路由后的常规动作：`just gen-enums` / `just gen-event-types` / `just gen-openapi-types`。
 - **evals/ 不进镜像**=有意（仅测试引用）。
