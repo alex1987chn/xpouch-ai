@@ -24,8 +24,7 @@ AI 多智能体工作台（LangGraph 后端 + React 前端，开源自托管）�
 - langgraph checkpoint 运行时四表不在 alembic 管辖，勿动
 - 迁移必须双口径验证：空库链 + 开发库（先停后端），`alembic check` 零漂移；DDL 用守卫式字面量 SQL
 - 单列聚合必须 `sqlalchemy.select + row[0]`（sqlmodel select 返回标量，见 CONTRIBUTING）
-- 词汇 canonical（2026-09 收敛定稿）：description / strategy / created_at / expert_type / depends_on / thread；`dependencies` 旧名已显式拒绝
+- 词汇 canonical（description/strategy/created_at/expert_type/depends_on/thread 等）以 `docs/DECISIONS.md` 词汇收敛条目为唯一真相源
 
 ## 边界
 - API 密钥只在 `.env`（gitignored）；`providers.yaml` 可入库但禁敏感信息
-- 生产操作（deploy.sh / 服务器）等用户明确指示
