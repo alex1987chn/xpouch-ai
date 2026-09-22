@@ -26,6 +26,7 @@
 - [ ] 后端半异步二选一（全同步线程池 vs 正规 async engine；**等 T4 生产确认**）
 - [ ] 前端状态三轨统一（消息 zustand / 会话产物 react-query / taskStore——周级重构，单独立项）
 - [ ] User 表验证码六列摊平（规范=独立表；能用，收益低，搁置）
+- [ ] 时区 aware 化专项：模型层全局 `DateTime(timezone=True)` + `ALTER ... USING AT TIME ZONE 'UTC'` 迁移（timestamp→timestamptz 零损失，锁表低峰）+ API 自动带后缀；前端 toLocalDate 已兼容带后缀输入零改动。**触发条件：sqlmodel 解钉需求（0.0.45+ 要求 aware 或 NaiveDatetime 注解）/ 再发时区事故 / 大版本窗口**。顺带解掉 sqlmodel 0.0.42 钉版
 - [ ] 未使用 i18n 键审计：判据 `git grep "t('<key>')"` 为空 ≠ 死键（`expertIdentity` 这类类型→key 映射是动态引用，删前连映射表一起查）
 - [ ] Redis 限流（现内存态，多 worker 不共享）
 - [ ] 列表虚拟化（会话/画廊长列表）

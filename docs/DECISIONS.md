@@ -21,7 +21,8 @@
 - **合理自研、勿再当待办重审**：RunEvent 账本 + stream_hub 断线续传（OSS 无等价物）、deadline/心跳/清理循环、DB 协作取消、SSRF 校验、serializer 白名单（官方安全参数）、前端 fetch-event-source + 接管连接 + RAF 渲染。
 - **有意保留不重构**：RAF 批量层；主题 FOUC 内联脚本（内联脚本无法 import TS，是硬约束）。
 - **模型**：MiniMax 已停用（2026-09-02，质量与成本原因，providers.yaml enabled:false）；默认 deepseek-flash。
-- **时区**：全库 UTC naive 写入 + 前端 `toLocalDate` 补 Z 解析（规则详见 TARGET-ARCHITECTURE.md）；20260912_000300 已纠 user.created_at，其余表个别 ±8h 历史行有意不迁移（用户知悉）。
+- **时区：现状=全库 UTC naive（自洽约定：`utc_now_naive` 写入、PG `timestamp` 列、前端 `toLocalDate` 补 Z 唯一解析入口，de8a7aa 定稿）**。行业常规是全链路 aware UTC + `timestamptz`，naive 属于逆生态方向（sqlmodel 0.0.45 强校验即信号，暂钉 0.0.42）——**长期方向=aware 化专项**（模型注解 DateTime(timezone=True) + `USING AT TIME ZONE 'UTC'` 迁移零损失转换 + 前端 toLocalDate 已兼容带后缀输入），触发条件：sqlmodel 解钉需求 / 再发时区事故 / 大版本窗口。存量个别 ±8h 历史行有意不迁移（用户知悉）。
+- **langsmith = 静默随行（2026-09-22 三项核查：无 key / 无 tracing 开关 / 代码零引用）**：langchain-core 传递依赖，默认不上报，零处理。观测需求未来走 **langfuse 自托管**（开源、CallbackHandler 即插即用、不经 langsmith），不启用 LangSmith。
 - **版本号单源**：`backend/pyproject.toml`（改后必须 `uv lock` 重锁）；发版 patch 递增。
 - **依赖升级口径（2026-09-13）**：只升同大版本的 patch/minor；前端 `pnpm up <pkg>@<ver>` 显式列包、后端 `uv lock --upgrade-package <pkg>`；**明确不升**：eslint 10 / typescript 7 / mermaid 12 / @vitejs/plugin-react 6 / @types-node 26 / eslint-plugin-react-refresh 0.5 / concurrently 10；mcp 2.x 被上游 langchain-mcp-adapters 卡住。
 - **langchain 已升 1.4.2（2026-09-22，原"1.4.0 不升"决策由用户授权推翻）**：连带 core 1.6.4 / openai-pkg 1.6.3 / deepseek 1.1.1 / langgraph 1.2.12；openai 3.7.0 与 mcp 1.29.1 未被连带。`langgraph-native-audit.md` 审计基线已加注记（判定未逐条重验，升级批过全量测试+真实 LLM e2e）；完整审计重跑=条件触发（遇框架行为与文档不符时）。
