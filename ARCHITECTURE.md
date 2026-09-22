@@ -146,7 +146,7 @@ POST /api/chat
 
 ```bash
 cd backend && uv run ruff check . && uv run pytest tests/ -q
-cd frontend && pnpm run lint && npx tsc --noEmit && pnpm run build
+cd frontend && pnpm run lint && pnpm run typecheck && pnpm run build
 ```
 
 CI（`.github/workflows/ci.yml`）在 push/PR 时跑同一套检查。

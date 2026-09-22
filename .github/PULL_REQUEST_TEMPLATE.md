@@ -15,6 +15,6 @@
 ## 自查清单
 
 - [ ] 后端：`uv run ruff check .` 与 `uv run pytest tests/ -q` 通过
-- [ ] 前端：`pnpm run lint`、`npx tsc --noEmit`、`pnpm run build` 通过
+- [ ] 前端：`pnpm run lint`、`pnpm run typecheck`、`pnpm run build` 通过
 - [ ] 涉及 UI：遵循 [DESIGN.md](./DESIGN.md)（语义 token、i18n 三语、骨架屏/空态）
 - [ ] 涉及接口：鉴权与权限守卫已考虑，schema 进 `schemas/`

@@ -298,7 +298,7 @@ uv run pytest tests/ -q
 # frontend
 cd frontend
 pnpm run lint
-npx tsc --noEmit
+pnpm run typecheck
 pnpm run build
 ```
 
