@@ -1,9 +1,10 @@
 # 阶段 1: 构建
 FROM node:24-alpine AS builder
 
-# 安装 pnpm（钉住大版本 11，与根 package.json 的 packageManager 大版本一致；
-# pnpm 11 的 allowBuilds / minimumReleaseAge 策略读取根 pnpm-workspace.yaml）
-RUN npm install -g pnpm@11
+# 安装 pnpm（钉住大版本 12，与根 package.json 的 packageManager 大版本一致；
+# pnpm 12 = Rust 重写版，命令/flag/设置/lockfile 格式沿用 11；
+# allowBuilds / minimumReleaseAge 策略读取根 pnpm-workspace.yaml）
+RUN npm install -g pnpm@12
 
 WORKDIR /app
 
