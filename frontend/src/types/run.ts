@@ -63,7 +63,7 @@ export interface RunEvent {
   id: number
   run_id: string
   event_type: RunEventType
-  timestamp: string
+  created_at: string
   event_data?: Record<string, unknown> | null
   thread_id?: string | null
   execution_plan_id?: string | null

@@ -37,7 +37,8 @@
 
 import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
 import { getHeaders, buildUrl, handleResponse, handleSSEConnectionError, authenticatedFetch } from './common'
-import { ApiMessage, StreamCallback, Conversation, StreamRuntimeMeta } from '@/types'
+import { ApiMessage, StreamCallback, Thread, StreamRuntimeMeta } from '@/types'
+import type { TaskInfo } from '@/types/events'
 import { logger } from '@/utils/logger'
 import { handleServerEvent } from '@/handlers'
 import { useChatStore } from '@/store/chatStore'
@@ -45,8 +46,8 @@ import { createSSEPromiseHelpers, SSE_HEARTBEAT_TIMEOUT, SSE_HEARTBEAT_CHECK_INT
 import { showLoginDialog } from '@/utils/authUtils'
 import type { AnyServerEvent, EventType } from '@/types/events'
 
-// 重新导出类型供外部使用（Conversation 类型来自 @/types）
-export type { Conversation }
+// 重新导出类型供外部使用（Thread 类型来自 @/types）
+export type { Thread }
 
 // ============================================================================
 // SSE 常量配置
@@ -190,7 +191,7 @@ function runSSEStream({
           // 该流的任何事件都不得再进全局分发——兜底 addMessage 不带 threadId，
           // 会绕开 chatStore 的 P4-1 守卫，把旧线程的半截回答串进新会话。
           // seq 记录仍保留（上方），onChunk 自有归属守卫，这里切断分发即可。
-          const currentThreadId = useChatStore.getState().currentConversationId
+          const currentThreadId = useChatStore.getState().currentThreadId
           if (activeThreadId && currentThreadId && currentThreadId !== activeThreadId) {
             return
           }
@@ -418,8 +419,8 @@ function runSSEStream({
 /**
  * 分页会话列表响应
  */
-export interface PaginatedConversations {
-  items: Conversation[]
+export interface PaginatedThreads {
+  items: Thread[]
   total: number
   page: number
   limit: number
@@ -431,29 +432,29 @@ export interface PaginatedConversations {
  * @param page 页码（从1开始）
  * @param limit 每页条数（默认20）
  */
-export async function getConversations(page: number = 1, limit: number = 20): Promise<PaginatedConversations> {
+export async function getThreads(page: number = 1, limit: number = 20): Promise<PaginatedThreads> {
   const response = await authenticatedFetch(
     buildUrl(`/threads?page=${page}&limit=${limit}`), 
     { headers: getHeaders() }
   )
-  return handleResponse<PaginatedConversations>(response, '获取会话列表失败')
+  return handleResponse<PaginatedThreads>(response, '获取会话列表失败')
 }
 
 /**
  * 获取单个会话详情（包含完整消息）
  */
-export async function getConversation(id: string): Promise<Conversation> {
+export async function getThread(id: string): Promise<Thread> {
   const response = await authenticatedFetch(buildUrl(`/threads/${id}`), {
     headers: getHeaders()
   })
-  return await handleResponse<Conversation>(response, '获取会话详情失败')
+  return await handleResponse<Thread>(response, '获取会话详情失败')
 }
 
 /**
  * 获取会话消息列表（单独端点，P0-5 优化）
  */
 
-export async function deleteConversation(id: string): Promise<void> {
+export async function deleteThread(id: string): Promise<void> {
   const response = await authenticatedFetch(buildUrl(`/threads/${id}`), {
     method: 'DELETE',
     headers: getHeaders()
@@ -522,14 +523,7 @@ export interface ResumeChatParams {
   threadId: string
   runId: string
   planVersion: number
-  updatedPlan?: Array<{
-    id: string
-    expert_type: string
-    description: string
-    sort_order: number
-    status: 'pending' | 'running' | 'completed' | 'failed'
-    depends_on?: string[] // 🔥 任务依赖关系（关键字段）
-  }>
+  updatedPlan?: TaskInfo[] // 🔥 任务依赖关系（depends_on 关键字段）
   approved: boolean
   /** 显式动作：approve（批准）/ revise（驳回+反馈 → 专家修订 v(n+1)）/ terminate（终止）。
    *  缺省按 approved 推导，保持旧语义。 */

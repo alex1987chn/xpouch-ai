@@ -45,12 +45,16 @@ class SubTask(SQLModel, table=True):
     # 排序顺序：用于前端展示和串行执行顺序
     sort_order: int = Field(default=0, index=True)
 
+    # Commander 语义 ID（task_1）：此前只在内存桥接，修订重建任务行后无延续性；
+    # 落列后修订 diff 可按 ID 对齐（depends_on 列存的是解析后的 UUID，勿混）
+    task_id: str | None = Field(default=None, max_length=64, index=True)
+
     # 专家类型：指定由哪个专家执行
     expert_type: str = Field(index=True, max_length=64)  # 存储 ExpertType 枚举值
 
     # 任务描述：自然语言描述的任务内容（TEXT——修订 LLM 可能产出超长描述，
     # VARCHAR(500) 曾致落库 StringDataRightTruncation，见迁移 20260918_000200）
-    task_description: str = Field(sa_column=Column(Text, index=True, nullable=False))
+    description: str = Field(sa_column=Column(Text, index=True, nullable=False))
 
     # 输入数据：JSON 格式的任务参数
     input_data: dict | None = Field(default=None, sa_column=Column(JSON))

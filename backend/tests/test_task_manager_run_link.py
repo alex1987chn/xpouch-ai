@@ -47,12 +47,12 @@ def test_get_or_create_execution_plan_passes_run_id_when_creating(monkeypatch):
         thread_id="thread-1",
         run_id="run-1",
         user_query="查路线",
-        plan_summary="顺序执行",
+        strategy="顺序执行",
         estimated_steps=1,
         subtasks_data=[
             SubTaskCreate(
                 expert_type="search",
-                task_description="搜索路线",
+                description="搜索路线",
                 task_id="task-1",
             )
         ],

@@ -14,8 +14,8 @@ import { useChatStore } from '@/store/chatStore'
 // ============================================================================
 
 /** 获取当前会话ID */
-export const useCurrentConversationId = () => 
-  useChatStore(state => state.currentConversationId)
+export const useCurrentThreadId = () => 
+  useChatStore(state => state.currentThreadId)
 
 /** 获取输入框消息 */
 export const useInputMessage = () => 
@@ -50,7 +50,7 @@ export const useChatActions = () => {
   const updateMessage = useChatStore(state => state.updateMessage)
   const updateMessageMetadata = useChatStore(state => state.updateMessageMetadata)
   const setInputMessage = useChatStore(state => state.setInputMessage)
-  const setCurrentConversationId = useChatStore(state => state.setCurrentConversationId)
+  const setCurrentThreadId = useChatStore(state => state.setCurrentThreadId)
   const setGenerating = useChatStore(state => state.setGenerating)
 
   return useMemo(
@@ -60,7 +60,7 @@ export const useChatActions = () => {
       updateMessage,
       updateMessageMetadata,
       setInputMessage,
-      setCurrentConversationId,
+      setCurrentThreadId,
       setGenerating,
     }),
     [
@@ -69,7 +69,7 @@ export const useChatActions = () => {
       updateMessage,
       updateMessageMetadata,
       setInputMessage,
-      setCurrentConversationId,
+      setCurrentThreadId,
       setGenerating,
     ]
   )

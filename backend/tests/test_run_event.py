@@ -99,7 +99,7 @@ class TestRunEventCRUD:
         assert event.id is not None
         assert event.run_id == "test-run-id"
         assert event.event_type == RunEventType.RUN_CREATED
-        assert event.timestamp is not None
+        assert event.created_at is not None
 
     def test_emit_convenience_functions(self):
         """测试便捷事件发送函数"""

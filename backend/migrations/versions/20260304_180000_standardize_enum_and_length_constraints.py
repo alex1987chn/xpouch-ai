@@ -122,7 +122,7 @@ def upgrade() -> None:
     op.alter_column("user", "auth_provider", type_=sa.String(length=32))
     op.alter_column("user", "provider_id", type_=sa.String(length=128))
 
-    op.alter_column("systemexpert", "expert_key", type_=sa.String(length=64))
+    op.alter_column("systemexpert", "expert_type", type_=sa.String(length=64))
     op.alter_column("systemexpert", "name", type_=sa.String(length=255))
     op.alter_column("systemexpert", "model", type_=sa.String(length=128))
 
@@ -163,7 +163,7 @@ def downgrade() -> None:
     op.alter_column("user", "auth_provider", type_=sa.String())
     op.alter_column("user", "provider_id", type_=sa.String())
 
-    op.alter_column("systemexpert", "expert_key", type_=sa.String())
+    op.alter_column("systemexpert", "expert_type", type_=sa.String())
     op.alter_column("systemexpert", "name", type_=sa.String())
     op.alter_column("systemexpert", "model", type_=sa.String())
 

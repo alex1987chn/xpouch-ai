@@ -34,7 +34,7 @@ import { agentDotStyle, expertDisplayName } from '@/lib/expertIdentity'
 import { cn } from '@/lib/utils'
 
 interface WorkbenchChatCoreProps {
-  /** null = 新会话（线程由首条消息创建，经 onNewConversation 回写 URL） */
+  /** null = 新会话（线程由首条消息创建，经 onNewThread 回写 URL） */
   threadId: string | null
 }
 
@@ -50,16 +50,16 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
   // 新建会话发送中（首条消息 navigate 过来）不清流——与 UnifiedChatPage
   // 同守卫：restore 只对"进入已有会话"生效
   const routeNavState = location.state as { isNew?: boolean } | null
-  const isNewConversation = routeNavState?.isNew ?? false
+  const isNewThread = routeNavState?.isNew ?? false
 
   // 切换线程清残留（restore 前的干净起点；与 UnifiedChatPage 同款）
   useEffect(() => {
     if (threadId) {
-      const currentId = useChatStore.getState().currentConversationId
+      const currentId = useChatStore.getState().currentThreadId
       if (currentId !== threadId) {
         useChatStore.getState().setMessages([])
         useTaskStore.getState().resetAll()
-        useChatStore.getState().setCurrentConversationId(threadId)
+        useChatStore.getState().setCurrentThreadId(threadId)
       }
     }
   }, [threadId])
@@ -87,7 +87,7 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
   } = useChat({ threadUrlBase: '/workbench', onStreamInterrupted: handleStreamInterrupted })
 
   const { isRestored, isMissingSession, isLatestRunControllable, latestRunId, restore: restoreSession } =
-    useSessionRestore({ enabled: !!threadId && !isNewConversation })
+    useSessionRestore({ enabled: !!threadId && !isNewThread })
 
   // 挂断在途流（真实线程切换时）：只 abort 前端 SSE——服务端任务继续跑完，
   // 回来时 restore/轮询接管现场，绝不 cancelRun（用户主动停止才真取消）；

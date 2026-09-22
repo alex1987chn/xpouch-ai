@@ -32,7 +32,7 @@ class ExecutionPlan(SQLModel, table=True):
     )
 
     user_query: str = Field(index=True)
-    plan_summary: str | None = Field(default=None)
+    strategy: str | None = Field(default=None)
     estimated_steps: int = Field(default=0)
 
     execution_mode: ExecutionMode = Field(

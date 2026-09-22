@@ -53,7 +53,7 @@ def _load_commander_config() -> tuple[str, str, float]:
 
         with get_session() as session:
             expert = session.exec(
-                select(SystemExpert).where(SystemExpert.expert_key == "commander")
+                select(SystemExpert).where(SystemExpert.expert_type == "commander")
             ).first()
         if expert:
             return (

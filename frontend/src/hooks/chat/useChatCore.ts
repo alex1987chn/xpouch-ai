@@ -28,7 +28,7 @@ import type { AnyServerEvent } from '@/types/events'
 
 import {
   useInputMessage,
-  useCurrentConversationId,
+  useCurrentThreadId,
   useIsGenerating,
   useChatActions,
 } from '@/hooks/useChatSelectors'
@@ -52,8 +52,8 @@ const debug = DEBUG
 interface UseChatCoreOptions {
   /** Handle streaming content callback */
   onChunk?: (chunk: string) => void
-  /** New conversation created callback */
-  onNewConversation?: (threadId: string) => void
+  /** New thread created callback */
+  onNewThread?: (threadId: string) => void
   /**
    * 流被中断、但服务端任务仍在执行时的回调（参数为该 run id）。
    *
@@ -90,23 +90,23 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   const { t } = useTranslation()
   // 产物事件防抖戳（同一波产物只触发一次列表刷新）
   const artifactFlushRef = useRef(0)
-  const { onChunk, onNewConversation, onStreamInterrupted } = options
+  const { onChunk, onNewThread, onStreamInterrupted } = options
 
   // Refactored: Hook only manages AbortController
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  const conversationMode = useTaskMode() || 'simple'
+  const threadMode = useTaskMode() || 'simple'
   const activeRunId = useActiveRunId()
 
   // Chat store selectors
   const inputMessage = useInputMessage()
-  const currentConversationId = useCurrentConversationId()
+  const currentThreadId = useCurrentThreadId()
   const isGenerating = useIsGenerating()
 
   // Actions
   const {
     setInputMessage,
-    setCurrentConversationId,
+    setCurrentThreadId,
     addMessage,
     updateMessage,
     setMessages,
@@ -157,7 +157,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     } = {}
   ): StreamCallback => {
     const ownerThreadId: { current: string | null } = {
-      current: useChatStore.getState().currentConversationId,
+      current: useChatStore.getState().currentThreadId,
     }
     return async (
       chunk: string | undefined,
@@ -177,7 +177,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         }
       }
       // 归属守卫：流已被挂断（用户切走），事件静默丢弃
-      if (useChatStore.getState().currentConversationId !== ownerThreadId.current) {
+      if (useChatStore.getState().currentThreadId !== ownerThreadId.current) {
         return
       }
       if (runtimeMeta?.runId) {
@@ -185,7 +185,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       }
       if (threadId) {
         // 新会话首条消息：仅当用户未切走时收养新线程并通知上层导航
-        const storeCurrent = useChatStore.getState().currentConversationId
+        const storeCurrent = useChatStore.getState().currentThreadId
         const switchedAway = !!storeCurrent && storeCurrent !== ownerThreadId.current
         if (!switchedAway) {
           if (ownerThreadId.current !== threadId) ownerThreadId.current = threadId
@@ -329,7 +329,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       setInputMessage('')
 
-      let actualThreadId = useChatStore.getState().currentConversationId || currentConversationId
+      let actualThreadId = useChatStore.getState().currentThreadId || currentThreadId
 
       debug('Preparing to call sendMessage')
 
@@ -339,9 +339,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         onThreadId: (threadId) => {
           if (threadId !== actualThreadId) {
             actualThreadId = threadId
-            setCurrentConversationId(threadId)
+            setCurrentThreadId(threadId)
             // 🔥 触发新会话回调，让上层组件更新 URL
-            onNewConversation?.(threadId)
+            onNewThread?.(threadId)
           }
         },
         // message.done 的 full_content 是权威全文（chatEvents 已整体校准）；
@@ -360,9 +360,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         documents
       )
 
-      const initialThreadId = useChatStore.getState().currentConversationId
+      const initialThreadId = useChatStore.getState().currentThreadId
       if (actualThreadId && actualThreadId !== initialThreadId) {
-        onNewConversation?.(actualThreadId)
+        onNewThread?.(actualThreadId)
       }
 
       debug(`Task completed, final content length: ${finalResponseContent?.length || 0}`)
@@ -403,7 +403,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         addMessage({
           role: 'assistant',
           content: t('activeRunConflictMsg'),
-          metadata: { threadId: currentConversationId ?? undefined }
+          metadata: { threadId: currentThreadId ?? undefined }
         })
         if (interruptedRunId) {
           debug(`Active run conflict, hand over to polling: ${interruptedRunId}`)
@@ -418,7 +418,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         addMessage({
           role: 'assistant',
           content: t('streamInterruptedNotice'),
-          metadata: { threadId: currentConversationId ?? undefined }
+          metadata: { threadId: currentThreadId ?? undefined }
         })
         onStreamInterrupted?.(interruptedRunId)
       } else {
@@ -428,7 +428,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         addMessage({
           role: 'assistant',
           content: userMessage,
-          metadata: { threadId: currentConversationId ?? undefined }
+          metadata: { threadId: currentThreadId ?? undefined }
         })
       }
     } finally {
@@ -437,16 +437,16 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
   }, [
     isGenerating,
     inputMessage,
-    currentConversationId,
-    conversationMode,
+    currentThreadId,
+    threadMode,
     onChunk,
-    onNewConversation,
+    onNewThread,
     onStreamInterrupted,
     setGenerating,
     setMode,
     setMessages,
     setInputMessage,
-    setCurrentConversationId,
+    setCurrentThreadId,
     addMessage,
     resetStreamHandler,
     createChunkHandler,
@@ -607,8 +607,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
       const streamCallback = makeStreamCallback(handleChunk, {
         onThreadId: (threadId) => {
-          if (threadId !== useChatStore.getState().currentConversationId) {
-            setCurrentConversationId(threadId)
+          if (threadId !== useChatStore.getState().currentThreadId) {
+            setCurrentThreadId(threadId)
           }
         },
       })
@@ -617,7 +617,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         validHistoryMessages,
         normalizedAgentId,
         streamCallback,
-        storeState.currentConversationId || currentConversationId,
+        storeState.currentThreadId || currentThreadId,
         abortControllerRef.current.signal,
         String(messageId)  // 🔥 确保 message_id 是 string 类型
       )
@@ -632,7 +632,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     } finally {
       finalizeStream()
     }
-  }, [isGenerating, currentConversationId, setGenerating, setMode, setMessages, resetStreamHandler, createChunkHandler, onChunk, setCurrentConversationId, updateMessage, finalizeStream, makeStreamCallback])
+  }, [isGenerating, currentThreadId, setGenerating, setMode, setMessages, resetStreamHandler, createChunkHandler, onChunk, setCurrentThreadId, updateMessage, finalizeStream, makeStreamCallback])
 
   return {
     sendMessage: sendMessageCore,
@@ -640,7 +640,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     detachActiveStream,
     resumeExecution,
     regenerateMessage,
-    conversationMode,
+    threadMode,
     isGenerating,
   }
 }

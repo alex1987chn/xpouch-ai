@@ -31,8 +31,7 @@
             "input_data": {
               "query": "从江滨地铁站到金沙天街的距离和路线"
             },
-            "priority": 0,
-            "dependencies": []
+            "depends_on": []
           }
         ]
       },
@@ -54,16 +53,14 @@
             "expert_type": "search",
             "description": "搜集修真和克苏鲁融合设定素材",
             "input_data": {},
-            "priority": 0,
-            "dependencies": []
+            "depends_on": []
           },
           {
             "id": "task_2",
             "expert_type": "writer",
             "description": "基于研究结果生成小说大纲和开头",
             "input_data": {},
-            "priority": 1,
-            "dependencies": ["task_1"]
+            "depends_on": ["task_1"]
           }
         ]
       },

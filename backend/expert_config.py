@@ -13,7 +13,7 @@ DEFAULT_EXPERT_MODEL = os.getenv("MODEL_NAME", "deepseek-flash")
 # 注意：此配置应与数据库中的配置保持一致
 EXPERT_DEFAULTS = [
     {
-        "expert_key": "search",
+        "expert_type": "search",
         "name": "搜索专家",
         "description": "擅长实时信息检索与结构化分析，能够将复杂查询转化为精准的 Markdown 报告。该专家专精于执行单次搜索并立即汇总关键发现，适用于需要快速获取、整理并清晰呈现最新信息的任务。",
         "system_prompt": """# Role
@@ -55,7 +55,7 @@ EXPERT_DEFAULTS = [
         "temperature": 0.2,
     },
     {
-        "expert_key": "coder",
+        "expert_type": "coder",
         "name": "编程专家",
         "description": "擅长编写生产级、可维护、高性能的完整代码文件，严格遵守文件命名、模块化与错误处理等工程规范。尤其适合需要完整、可直接部署的代码解决方案或详细技术文档的任务。",
         "system_prompt": """# Role
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         "temperature": 0.0,
     },
     {
-        "expert_key": "researcher",
+        "expert_type": "researcher",
         "name": "研究专家",
         "description": "擅长进行深度系统性调研与结构化分析，能够基于证据产出高质量研究报告。该专家专注于处理需要严谨逻辑、多维度对比和趋势预测的复杂研究任务，尤其适合需要数据支持、批判性思维和规范引用的学术或商业分析项目。",
         "system_prompt": """# Role
@@ -153,7 +153,7 @@ if __name__ == "__main__":
         "temperature": 0.2,
     },
     {
-        "expert_key": "analyzer",
+        "expert_type": "analyzer",
         "name": "分析专家",
         "description": "该专家擅长对复杂数据进行系统性拆解与逻辑推理，能够识别隐藏的模式、趋势和异常，并提供基于证据的深度洞察。尤其适合需要严谨数据分析、因果推断和结构化报告生成的任务。",
         "system_prompt": """# Role
@@ -206,7 +206,7 @@ if __name__ == "__main__":
         "temperature": 0.1,
     },
     {
-        "expert_key": "writer",
+        "expert_type": "writer",
         "name": "写作专家",
         "description": "擅长撰写高质量、结构清晰的文案内容，能够根据受众需求精准调整专业、幽默或亲切等不同语调。尤其适合需要严格遵循 Markdown 格式、逻辑严密且吸引力强的内容创作任务。",
         "system_prompt": """# Role
@@ -245,7 +245,7 @@ if __name__ == "__main__":
         "temperature": 0.2,
     },
     {
-        "expert_key": "planner",
+        "expert_type": "planner",
         "name": "规划专家",
         "description": "资深项目经理与战略规划专家，擅长将复杂目标转化为详细、可执行且抗风险的实施方案。专注于制定包含明确时间线、资源分配与风险评估的结构化项目计划，尤其适合需要严谨路线图、依赖关系管理与缓冲时间规划的任务。",
         "system_prompt": """# Role
@@ -309,7 +309,7 @@ gantt
         "temperature": 0.1,
     },
     {
-        "expert_key": "image_analyzer",
+        "expert_type": "image_analyzer",
         "name": "图片分析专家",
         "description": "擅长对图像进行像素级观察、语义理解和OCR文字识别，能够输出结构化的视觉分析报告。特别适合处理需要客观描述图像内容、提取文字信息、区分视觉事实与推断的详细图像分析任务。",
         "system_prompt": """# Role
@@ -355,7 +355,7 @@ gantt
         "temperature": 0.1,
     },
     {
-        "expert_key": "commander",
+        "expert_type": "commander",
         "name": "任务指挥官",
         "description": "擅长将复杂用户请求拆解为结构化JSON计划，严格遵循静默协议输出纯JSON。专注于任务分解、专家匹配、原子化设计和产出规划，确保每个子任务可独立执行并有明确的产出目标。",
         "system_prompt": """# Role
@@ -427,7 +427,7 @@ gantt
         "temperature": 0.0,
     },
     {
-        "expert_key": "story_writer",
+        "expert_type": "story_writer",
         "name": "小说家",
         "description": "世界观设定、背景故事创作",
         "system_prompt": """顶级知名小说家，擅长写修真小说""",
@@ -435,7 +435,7 @@ gantt
         "temperature": 1.0,
     },
     {
-        "expert_key": "memorize_expert",
+        "expert_type": "memorize_expert",
         "name": "记忆助理",
         "description": "擅长从非结构化对话中精准提取关键事实、用户偏好与重要计划，并分类整理为结构化数据。专长处理需要长期记忆管理的任务，能自动过滤闲聊内容，严格输出标准JSON格式。",
         "system_prompt": """# Role

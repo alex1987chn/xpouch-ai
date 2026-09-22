@@ -23,27 +23,29 @@ from utils.logger import logger
 _expert_cache: ConfigCache = ConfigCache(maxsize=100, ttl=300, name="expert_global")
 
 
-def get_expert_config(expert_key: str, session: Session) -> dict | None:
+def get_expert_config(expert_type: str, session: Session) -> dict | None:
     """
     从数据库获取专家配置
 
     Args:
-        expert_key: 专家类型标识（如 'coder', 'search'）
+        expert_type: 专家类型标识（如 'coder', 'search'）
         session: 数据库会话
 
     Returns:
         Dict: 专家配置 {
-            "expert_key": str,
+            "expert_type": str,
             "name": str,
             "system_prompt": str,
             "model": str,
             "temperature": float
         }
     """
-    expert = session.exec(select(SystemExpert).where(SystemExpert.expert_key == expert_key)).first()
+    expert = session.exec(
+        select(SystemExpert).where(SystemExpert.expert_type == expert_type)
+    ).first()
 
     if not expert:
-        logger.warning(f"[ExpertManager] Expert '{expert_key}' not found in database")
+        logger.warning(f"[ExpertManager] Expert '{expert_type}' not found in database")
         return None
 
     return _build_config(expert)
@@ -55,7 +57,7 @@ def _build_config(expert: SystemExpert) -> dict:
     effective_model = get_effective_model(expert.model)
 
     config = {
-        "expert_key": expert.expert_key,
+        "expert_type": expert.expert_type,
         "name": expert.name,
         "system_prompt": expert.system_prompt,
         "model": effective_model,
@@ -95,18 +97,18 @@ def _infer_provider(model: str) -> str | None:
     return None
 
 
-def get_expert_prompt(expert_key: str, session: Session) -> str | None:
+def get_expert_prompt(expert_type: str, session: Session) -> str | None:
     """
     获取专家 Prompt（便捷函数）
 
     Args:
-        expert_key: 专家类型标识
+        expert_type: 专家类型标识
         session: 数据库会话
 
     Returns:
         str: 专家系统提示词
     """
-    config = get_expert_config(expert_key, session)
+    config = get_expert_config(expert_type, session)
     return config["system_prompt"] if config else None
 
 
@@ -118,13 +120,13 @@ def load_all_experts(session: Session) -> dict[str, dict]:
         session: 数据库会话
 
     Returns:
-        Dict: 所有专家配置 {expert_key: config}
+        Dict: 所有专家配置 {expert_type: config}
     """
     experts = session.exec(select(SystemExpert)).all()
-    return {expert.expert_key: _build_config(expert) for expert in experts}
+    return {expert.expert_type: _build_config(expert) for expert in experts}
 
 
-def get_expert_prompt_cached(expert_key: str, session: Session | None = None) -> str | None:
+def get_expert_prompt_cached(expert_type: str, session: Session | None = None) -> str | None:
     """
     获取专家 Prompt（带缓存）
 
@@ -133,49 +135,49 @@ def get_expert_prompt_cached(expert_key: str, session: Session | None = None) ->
     - 线程安全（cachetools 内部已加锁）
 
     Args:
-        expert_key: 专家类型标识
+        expert_type: 专家类型标识
         session: 数据库会话（可选，如果缓存为空时使用）
 
     Returns:
         str: 专家系统提示词
     """
     # 尝试从缓存读取
-    if expert_key in _expert_cache:
-        config = _expert_cache[expert_key]
+    if expert_type in _expert_cache:
+        config = _expert_cache[expert_type]
         return config.get("system_prompt")
 
     # 缓存未命中，加载所有专家
     if session:
         experts = load_all_experts(session)
         _expert_cache.update(experts)
-        config = _expert_cache.get(expert_key)
+        config = _expert_cache.get(expert_type)
         if config:
             return config.get("system_prompt")
 
-    logger.warning(f"[ExpertManager] Expert '{expert_key}' not found in cache")
+    logger.warning(f"[ExpertManager] Expert '{expert_type}' not found in cache")
     return None
 
 
-def get_expert_config_cached(expert_key: str, session: Session | None = None) -> dict | None:
+def get_expert_config_cached(expert_type: str, session: Session | None = None) -> dict | None:
     """
     获取专家完整配置（带缓存）
 
     Args:
-        expert_key: 专家类型标识
+        expert_type: 专家类型标识
         session: 数据库会话（可选，如果缓存为空时使用）
 
     Returns:
         Dict: 专家完整配置
     """
     # 尝试从缓存读取
-    if expert_key in _expert_cache:
-        return _expert_cache[expert_key]
+    if expert_type in _expert_cache:
+        return _expert_cache[expert_type]
 
     # 缓存未命中，加载所有专家
     if session:
         experts = load_all_experts(session)
         _expert_cache.update(experts)
-        return _expert_cache.get(expert_key)
+        return _expert_cache.get(expert_type)
 
     return None
 
@@ -220,7 +222,7 @@ def get_all_expert_list(db_session: Session | None = None) -> list[tuple]:
         db_session: 数据库会话
 
     Returns:
-        List[tuple]: 专家列表 [(expert_key, name, description), ...]
+        List[tuple]: 专家列表 [(expert_type, name, description), ...]
     """
     fallback_experts = [
         ("search", "搜索专家", "用于搜索、查询信息"),
@@ -236,9 +238,9 @@ def get_all_expert_list(db_session: Session | None = None) -> list[tuple]:
         return fallback_experts
 
     try:
-        experts = db_session.exec(select(SystemExpert).order_by(SystemExpert.expert_key)).all()
+        experts = db_session.exec(select(SystemExpert).order_by(SystemExpert.expert_type)).all()
 
-        result = [(e.expert_key, e.name, e.description or "暂无描述") for e in experts]
+        result = [(e.expert_type, e.name, e.description or "暂无描述") for e in experts]
         logger.info(f"[ExpertManager] 从数据库加载了 {len(result)} 个专家")
         return result
 

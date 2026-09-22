@@ -150,7 +150,7 @@ def upgrade() -> None:
         sa.Column("thread_id", sa.String(), nullable=False),
         sa.Column("user_query", sa.String(), nullable=False),
         sa.Column("final_response", sa.String(), nullable=True),
-        sa.Column("plan_summary", sa.String(), nullable=True),
+        sa.Column("strategy", sa.String(), nullable=True),
         sa.Column("estimated_steps", sa.Integer(), nullable=False),
         sa.Column("execution_mode", sa.String(), nullable=True),
         sa.Column("status", sa.String(), nullable=False),
@@ -171,7 +171,7 @@ def upgrade() -> None:
         sa.Column("id", sa.String(), nullable=False),
         sa.Column("task_session_id", sa.String(), nullable=False),
         sa.Column("expert_type", sa.String(), nullable=False),
-        sa.Column("task_description", sa.String(), nullable=False),
+        sa.Column("description", sa.String(), nullable=False),
         sa.Column("output_result", sa.JSON(), nullable=True),
         sa.Column("status", sa.String(), nullable=False),
         sa.Column("started_at", sa.DateTime(), nullable=True),
@@ -219,7 +219,7 @@ def upgrade() -> None:
     op.create_table(
         "systemexpert",
         sa.Column("id", sa.Integer(), nullable=False, autoincrement=True),
-        sa.Column("expert_key", sa.String(), nullable=False),
+        sa.Column("expert_type", sa.String(), nullable=False),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("description", sa.String(), nullable=True),
         sa.Column("system_prompt", sa.String(), nullable=False),
@@ -231,7 +231,9 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_systemexpert_expert_key"), "systemexpert", ["expert_key"], unique=True)
+    op.create_index(
+        op.f("ix_systemexpert_expert_type"), "systemexpert", ["expert_type"], unique=True
+    )
 
     # ======================================================================
     # user_memories（pgvector 扩展必须先启用；embedding/created_at 在 002 里被重建，

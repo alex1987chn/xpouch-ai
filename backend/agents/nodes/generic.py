@@ -59,6 +59,7 @@ from agents.services.expert_manager import get_expert_config_cached
 from agents.task_outcome import DEPENDENCY_CONTEXT_LIMIT, build_task_outcome
 from agents.tool_policy import filter_tools_for_binding
 from config import settings
+from event_types.events import TaskFailedData, TaskStartedData
 from models.enums import GraphTaskStatus
 from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
@@ -300,7 +301,12 @@ async def expert_worker_node(
                         thread_id=thread_id,
                         execution_plan_id=execution_plan_id,
                         task_id=str(current_task.get("id", task_id)),
-                        event_data={"expert_type": expert_type, "description": description},
+                        event_data=TaskStartedData(
+                            task_id=str(current_task.get("id", task_id)),
+                            expert_type=expert_type,
+                            description=description,
+                            started_at=utc_now().isoformat(),
+                        ).model_dump(),
                     ),
                     label=f"run_event:task_started:{expert_type}",
                 )
@@ -820,7 +826,13 @@ async def expert_worker_node(
                         thread_id=thread_id,
                         execution_plan_id=execution_plan_id,
                         task_id=str(task_id),
-                        event_data={"expert_type": expert_type, "error_message": str(e)},
+                        event_data=TaskFailedData(
+                            task_id=str(task_id),
+                            expert_type=expert_type,
+                            description="",
+                            error=str(e),
+                            failed_at=utc_now().isoformat(),
+                        ).model_dump(),
                     ),
                     label=f"run_event:task_failed:{expert_type}",
                 )
@@ -841,7 +853,7 @@ def _format_input_data(data: dict) -> str:
     return "\n".join(f"- {key}: {value}" for key, value in data.items())
 
 
-def _detect_artifact_type(content: str, expert_key: str) -> str:
+def _detect_artifact_type(content: str, expert_type: str) -> str:
     """
     检测 artifact 类型
 

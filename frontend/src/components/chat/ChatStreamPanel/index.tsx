@@ -56,7 +56,7 @@ import type { ChatDocument } from '../types'
 import {
   useMessages,
   useIsGenerating,
-  useCurrentConversationId,
+  useCurrentThreadId,
 } from '@/hooks/useChatSelectors'
 
 // Phase 2: Server-Driven UI - 使用 TaskStore
@@ -173,7 +173,7 @@ export default function ChatStreamPanel({
   // Only re-render when these specific values change
   const messages = useMessages()
   const isGenerating = useIsGenerating()
-  const threadId = useCurrentConversationId()
+  const threadId = useCurrentThreadId()
   
   // Phase 2: Server-Driven UI - 使用 TaskStore
   const mode = useTaskMode()

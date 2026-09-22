@@ -4,7 +4,7 @@
  * @description
  * 这是组合式 Hook，将聊天逻辑拆分为多个单一职责的子 Hooks：
  * - useChatCore: 核心聊天逻辑（发送、停止、加载状态）
- * - useConversation: 会话管理（加载、删除）
+ * - useThread: 会话管理（加载、删除）
  *
  * 符合 SDUI 原则：Backend -> SSE -> EventHandler -> Store
  *
@@ -17,8 +17,8 @@
  *   inputMessage: 输入消息
  *   setInputMessage: 设置输入消息
  *   stopGeneration: 停止生成
- *   loadConversation: 加载历史会话
- *   deleteConversation: 删除会话
+ *   loadThread: 加载历史会话
+ *   deleteThread: 删除会话
  *   retry: 重试最后一条消息
  * }
  *
@@ -33,7 +33,7 @@
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useChatCore } from './chat/useChatCore'
-import { useConversation } from './chat/useConversation'
+import { useThread } from './chat/useThread'
 
 import {
   useInputMessage,
@@ -63,8 +63,8 @@ export function useChat({ threadUrlBase = '/chat', onStreamInterrupted }: UseCha
   // 1. Get chat core logic with callbacks
   const chatCore = useChatCore({
     onStreamInterrupted,
-    onNewConversation: useCallback((threadId: string) => {
-      // 🔥 修复：保留 isNew 状态，避免触发不必要的 loadConversation
+    onNewThread: useCallback((threadId: string) => {
+      // 🔥 修复：保留 isNew 状态，避免触发不必要的 loadThread
       // 后端已创建会话，标记 isNew: false 表示会话已存在
       navigate(`${threadUrlBase}/${threadId}`, {
         replace: true,
@@ -73,16 +73,16 @@ export function useChat({ threadUrlBase = '/chat', onStreamInterrupted }: UseCha
     }, [navigate, threadUrlBase]),
   })
 
-  // 2. Get conversation manager
-  const conversationManager = useConversation()
+  // 2. Get thread manager
+  const threadManager = useThread()
 
   // 3. Retry last user message (重新发送最后一条用户消息)
   const retry = useCallback(() => {
-    const lastMessage = conversationManager.messages.filter(m => m.role === 'user').pop()
+    const lastMessage = threadManager.messages.filter(m => m.role === 'user').pop()
     if (lastMessage?.content) {
       chatCore.sendMessage(lastMessage.content)
     }
-  }, [conversationManager.messages, chatCore])
+  }, [threadManager.messages, chatCore])
 
   // 4. Regenerate AI response (重新生成指定 AI 消息的回复，不重复添加用户消息)
   const regenerate = useCallback((messageId: string | number) => {
@@ -91,10 +91,10 @@ export function useChat({ threadUrlBase = '/chat', onStreamInterrupted }: UseCha
 
   return {
     // ========== State ==========
-    messages: conversationManager.messages,
+    messages: threadManager.messages,
     inputMessage,
     isStreaming: chatCore.isGenerating,
-    conversationMode: chatCore.conversationMode,
+    threadMode: chatCore.threadMode,
 
     // ========== Methods ==========
     sendMessage: chatCore.sendMessage,
@@ -103,8 +103,8 @@ export function useChat({ threadUrlBase = '/chat', onStreamInterrupted }: UseCha
     detachActiveStream: chatCore.detachActiveStream,
     resumeExecution: chatCore.resumeExecution,
 
-    // Conversation management
-    deleteConversation: conversationManager.deleteConversation,
+    // Thread management
+    deleteThread: threadManager.deleteThread,
 
     // Retry / Regenerate
     retry,

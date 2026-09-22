@@ -39,7 +39,7 @@ def _session() -> Session:
             execution_plan_id="p1",
             sort_order=0,
             expert_type="search",
-            task_description="查资料",
+            description="查资料",
         )
     )
     session.commit()

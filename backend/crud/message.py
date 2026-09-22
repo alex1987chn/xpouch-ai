@@ -34,7 +34,7 @@ def create_message(
         role=role,
         content=content,
         extra_data=extra_data,
-        timestamp=utc_now(),
+        created_at=utc_now(),
     )
     db.add(message)
     return message

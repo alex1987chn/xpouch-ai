@@ -29,7 +29,7 @@ def test_update_expert_contract(sample_user, monkeypatch):
 
     class _UpdatedExpert:
         id = "exp-1"
-        expert_key = "aggregator"
+        expert_type = "aggregator"
         name = "首席联络官"
         is_dynamic = True
         is_system = False
@@ -70,7 +70,7 @@ def test_update_expert_contract(sample_user, monkeypatch):
 
     assert response.status_code == 200
     body = response.json()
-    assert set(body.keys()) == {"message", "expert_key", "config_version", "updated_at"}
+    assert set(body.keys()) == {"message", "expert_type", "config_version", "updated_at"}
     assert body["config_version"] == 7
     assert isinstance(body["updated_at"], str)
 
@@ -115,7 +115,7 @@ def test_promote_user_contract(sample_user, monkeypatch):
 def test_delete_expert_contract(sample_user, monkeypatch):
     from types import SimpleNamespace
 
-    fake_expert = SimpleNamespace(is_system=False, is_dynamic=True, expert_key="custom-1")
+    fake_expert = SimpleNamespace(is_system=False, is_dynamic=True, expert_type="custom-1")
 
     class _Result:
         def first(self):
@@ -145,7 +145,7 @@ def test_delete_expert_contract(sample_user, monkeypatch):
     response = TestClient(app).delete("/api/admin/experts/custom-1")
 
     assert response.status_code == 200
-    assert set(response.json().keys()) == {"message", "expert_key"}
+    assert set(response.json().keys()) == {"message", "expert_type"}
 
 
 def test_quota_and_concurrency_contract(sample_user, monkeypatch):

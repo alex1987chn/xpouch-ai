@@ -41,7 +41,7 @@ def get_or_create_execution_plan(
     thread_id: str,
     run_id: str | None,
     user_query: str,
-    plan_summary: str,
+    strategy: str,
     estimated_steps: int,
     subtasks_data: list[Any],
     execution_mode: str = "sequential",
@@ -68,7 +68,7 @@ def get_or_create_execution_plan(
         thread_id: 线程/会话标识
         run_id: 当前运行实例 ID
         user_query: 用户原始查询
-        plan_summary: 执行策略概述
+        strategy: 执行策略概述
         estimated_steps: 预计步骤数
         subtasks_data: 子任务数据列表 (SubTaskCreate)
         execution_mode: 执行模式 (sequential/parallel)
@@ -82,7 +82,7 @@ def get_or_create_execution_plan(
     Example:
         >>> execution_plan, reused = get_or_create_execution_plan(
         ...     db, thread_id="abc123", user_query="查询天气",
-        ...     plan_summary="分步执行", estimated_steps=3,
+        ...     strategy="分步执行", estimated_steps=3,
         ...     subtasks_data=[subtask1, subtask2]
         ... )
         >>> print(f"Plan: {execution_plan.id}, Reused: {reused}")
@@ -102,7 +102,7 @@ def get_or_create_execution_plan(
         thread_id=thread_id,
         run_id=run_id,
         user_query=user_query,
-        plan_summary=plan_summary,
+        strategy=strategy,
         estimated_steps=estimated_steps,
         subtasks_data=subtasks_data,
         execution_mode=execution_mode,

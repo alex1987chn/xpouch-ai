@@ -158,8 +158,8 @@ def upgrade() -> None:
             IF NOT EXISTS (SELECT 1 FROM subtask WHERE sort_order IS NULL) THEN
                 ALTER TABLE subtask ALTER COLUMN sort_order SET NOT NULL;
             END IF;
-            IF NOT EXISTS (SELECT 1 FROM subtask WHERE task_description IS NULL) THEN
-                ALTER TABLE subtask ALTER COLUMN task_description SET NOT NULL;
+            IF NOT EXISTS (SELECT 1 FROM subtask WHERE description IS NULL) THEN
+                ALTER TABLE subtask ALTER COLUMN description SET NOT NULL;
             END IF;
             IF NOT EXISTS (SELECT 1 FROM executionplan WHERE status IS NULL) THEN
                 ALTER TABLE executionplan ALTER COLUMN status SET NOT NULL;

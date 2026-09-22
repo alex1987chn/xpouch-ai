@@ -153,7 +153,7 @@ class TestCanonicalToDto:
         dto = build_plan_tasks(_llm_tasks())[1].to_subtask_create()
 
         assert isinstance(dto, SubTaskCreate)
-        assert dto.task_description == "写报告"
+        assert dto.description == "写报告"
         assert dto.depends_on == ["task_1"]
         # task_id = Commander 语义 ID：落库后供下游依赖匹配用
         assert dto.task_id == "task_2"
@@ -189,9 +189,9 @@ class TestPlanTaskModel:
         assert isinstance(PlanTask.model_fields, dict)
 
     def test_to_subtask_create_truncates_overlong_description(self):
-        """长度守卫：task_description 超 500 字时截断（HITL 修订 LLM 可能产出超长描述）。
+        """长度守卫：description 超 500 字时截断（HITL 修订 LLM 可能产出超长描述）。
 
-        回归背景：subtask.task_description 曾是 VARCHAR(500)，修订 LLM 产出
+        回归背景：subtask.description 曾是 VARCHAR(500)，修订 LLM 产出
         "编写完整可运行的单文件 HTML5 游戏"这类精细需求时落库直接
         StringDataRightTruncation。VARCHAR 已改 TEXT，守卫保留作为护栏。
         """
@@ -204,5 +204,5 @@ class TestPlanTaskModel:
             sort_order=0,
         )
         dto = task.to_subtask_create()
-        assert len(dto.task_description) <= 500
-        assert dto.task_description.endswith("...")
+        assert len(dto.description) <= 500
+        assert dto.description.endswith("...")

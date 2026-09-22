@@ -22,6 +22,7 @@
 - **有意保留不重构**：RAF 批量层；主题 FOUC 内联脚本（内联脚本无法 import TS，是硬约束）。
 - **模型**：MiniMax 已停用（2026-09-02，质量与成本原因，providers.yaml enabled:false）；默认 deepseek-flash。
 - **时区：全链路 aware UTC（2026-09-22 落地）**：领域表时间列全部 timestamptz（sqlmodel 0.0.45 默认映射 UTCDateTime，**NaiveDatetime 注解禁用**）、写入 `utils/time.utc_now()`（utc_now_naive 已删除，无兼容层）、API 自动带 +00:00、前端 `toLocalDate` 直接解析（补 Z 逻辑已删）。例外：注入 prompt 的用户墙钟（prompt_utils/tools/utils）保持本地时间。存量个别 ±8h 历史行有意不迁移（用户知悉）。
+- **词汇收敛（2026-09-22 专项落地）**：canonical 名=description / strategy / created_at / expert_type / depends_on / thread（前端）；`dependencies` 旧名已显式拒绝（model_validator 抛错，fail-loud）。**有意保留的命名边界**：① 请求侧 `ChatMessageDTO.timestamp`（对外 API 契约，不改名）；② SSE 事件 payload 的 `timestamp` 协议键（线上一致即可）；③ 前端本地 Message/ThinkingStep 的 `timestamp`（本地生成时间戳，非 DB 列镜像）；④ `thought_process` 只进 plan.thinking 事件不落库（过程性数据，可回放，设计选择）；⑤ 账本 depends_on 存解析后 UUID、task_id 列存语义 ID（两个命名空间，桥接=关节非黏土）。
 - **langsmith = 静默随行（2026-09-22 三项核查：无 key / 无 tracing 开关 / 代码零引用）**：langchain-core 传递依赖，默认不上报，零处理。观测需求未来走 **langfuse 自托管**（开源、CallbackHandler 即插即用、不经 langsmith），不启用 LangSmith。
 - **版本号单源**：`backend/pyproject.toml`（改后必须 `uv lock` 重锁）；发版 patch 递增。
 - **依赖升级口径（2026-09-13）**：只升同大版本的 patch/minor；前端 `pnpm up <pkg>@<ver>` 显式列包、后端 `uv lock --upgrade-package <pkg>`；**明确不升**：eslint 10 / typescript 7 / mermaid 12 / @vitejs/plugin-react 6 / @types-node 26 / eslint-plugin-react-refresh 0.5 / concurrently 10；mcp 2.x 被上游 langchain-mcp-adapters 卡住。

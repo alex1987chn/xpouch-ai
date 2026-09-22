@@ -63,7 +63,7 @@ function UserIdentitySync() {
   useEffect(() => {
     if (prevRef.current !== userId) {
       queryClient.clear()
-      useChatStore.setState({ currentConversationId: null, messages: [] })
+      useChatStore.setState({ currentThreadId: null, messages: [] })
       prevRef.current = userId
     }
   }, [userId, queryClient])

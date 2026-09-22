@@ -84,7 +84,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
 
   // 从列表中获取选中的专家详情（避免重复查询）
   const selectedExpert = selectedExpertKey
-    ? experts.find((e) => e.expert_key === selectedExpertKey) || null
+    ? experts.find((e) => e.expert_type === selectedExpertKey) || null
     : null
 
   // 自动生成描述
@@ -115,9 +115,9 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
     try {
       // 乐观锁：传入当前版本号
       const dataWithVersion = { ...data, expected_version: selectedExpert.config_version }
-      await updateExpert(selectedExpert.expert_key, dataWithVersion)
+      await updateExpert(selectedExpert.expert_type, dataWithVersion)
       queryClient.invalidateQueries({ queryKey: ['experts'] })
-      queryClient.invalidateQueries({ queryKey: ['expert', selectedExpert.expert_key] })
+      queryClient.invalidateQueries({ queryKey: ['expert', selectedExpert.expert_type] })
       pushToast({ title: t('saveSuccess') })
     } catch (error: any) {
       logger.error('Failed to update expert:', error)
@@ -125,7 +125,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
       if (error.status === 409) {
         // 乐观锁冲突：配置已被他人修改
         await queryClient.invalidateQueries({ queryKey: ['experts'] })
-        await queryClient.invalidateQueries({ queryKey: ['expert', selectedExpert.expert_key] })
+        await queryClient.invalidateQueries({ queryKey: ['expert', selectedExpert.expert_type] })
         pushToast({ title: '配置已被他人修改，已为您刷新最新数据，请确认后重试', variant: 'destructive' })
       } else {
         pushToast({ title: t('saveFailed'), variant: 'destructive' })
@@ -138,7 +138,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
   // 创建专家
   const handleCreateExpert = useCallback(
     async (data: CreateExpertRequest | UpdateExpertRequest) => {
-      if (!('expert_key' in data)) return
+      if (!('expert_type' in data)) return
       const createData = data
 
       setIsCreating(true)
@@ -149,7 +149,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
 
         await queryClient.invalidateQueries({ queryKey: ['experts'] })
         // 创建后直接进入新专家的编辑视图
-        setSelectedExpertKey(createData.expert_key)
+        setSelectedExpertKey(createData.expert_type)
       } catch (error) {
         logger.error('Failed to create expert:', error)
         pushToast({ title: t('createFailed'), variant: 'destructive' })
@@ -180,9 +180,9 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
 
     setIsDeleting(true)
     try {
-      await deleteExpert(expertToDelete.expert_key)
+      await deleteExpert(expertToDelete.expert_type)
       queryClient.invalidateQueries({ queryKey: ['experts'] })
-      if (selectedExpertKey === expertToDelete.expert_key) {
+      if (selectedExpertKey === expertToDelete.expert_type) {
         setSelectedExpertKey(null)
       }
       pushToast({ title: t('deleteSuccess') })
@@ -255,7 +255,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
           </button>
           <div className="min-h-0 flex-1">
             <ExpertEditor
-              key={selectedExpert.expert_key}
+              key={selectedExpert.expert_type}
               expert={selectedExpert}
               isAdmin={canEditExperts}
               isSaving={isSaving}
@@ -271,8 +271,8 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
         <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
           {experts.map(expert => (
             <div
-              key={expert.expert_key}
-              onClick={() => setSelectedExpertKey(expert.expert_key)}
+              key={expert.expert_type}
+              onClick={() => setSelectedExpertKey(expert.expert_type)}
               className="group relative cursor-pointer rounded-md border border-border-divider bg-surface-card p-4 transition-all hover:-translate-y-px hover:shadow-theme-card"
             >
               {/* 动态专家删除（hover 出现） */}
@@ -289,7 +289,7 @@ export default function ExpertAdminPage({ embedded = false }: { embedded?: boole
               <div className="mb-2.5 flex items-center gap-2.5">
                 <span
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                  style={{ backgroundColor: expertColor(expert.expert_key) }}
+                  style={{ backgroundColor: expertColor(expert.expert_type) }}
                 >
                   {expert.name.charAt(0)}
                 </span>

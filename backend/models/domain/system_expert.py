@@ -26,7 +26,7 @@ class SystemExpert(SQLModel, table=True):
 
     __table_args__ = (
         # DB-8: 统一索引命名前缀
-        Index("idx_systemexpert_expert_key", "expert_key", unique=True),
+        Index("idx_systemexpert_expert_type", "expert_type", unique=True),
     )
 
     # DB-10: 主键策略统一为 UUID
@@ -34,7 +34,7 @@ class SystemExpert(SQLModel, table=True):
         default_factory=lambda: str(__import__("uuid").uuid4()),
         primary_key=True,
     )
-    expert_key: str = Field(
+    expert_type: str = Field(
         max_length=64,
         description="专家类型标识（对应 ExpertType 枚举，如 'coder', 'search'）",
     )

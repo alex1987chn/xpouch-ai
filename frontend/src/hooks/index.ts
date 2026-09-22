@@ -8,14 +8,14 @@
 export {
   // Chat History
   useChatHistoryQuery,
-  useDeleteConversationMutation,
+  useDeleteThreadMutation,
   chatHistoryKeys,
 } from './queries'
 
 // 聊天相关
 export { useChat } from './useChat'
 export { useChatCore } from './chat/useChatCore'
-export { useConversation } from './chat/useConversation'
+export { useThread } from './chat/useThread'
 
 // 主题相关
 // 主题初始化组件（读写主题用 useThemeStore）
@@ -52,7 +52,7 @@ export {
 // ChatStore Selectors
 export {
   // 基础 Selectors
-  useCurrentConversationId,
+  useCurrentThreadId,
   useInputMessage,
   useIsGenerating,
 

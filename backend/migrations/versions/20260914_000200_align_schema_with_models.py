@@ -203,9 +203,7 @@ def upgrade() -> None:
     op.execute(
         "CREATE INDEX IF NOT EXISTS idx_subtask_execution_plan_id ON subtask (execution_plan_id)"
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS idx_subtask_task_description ON subtask (task_description)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS idx_subtask_description ON subtask (description)")
     op.execute("CREATE INDEX IF NOT EXISTS idx_toolpolicy_source ON toolpolicy (source)")
 
     # ── 3. 杂项对齐 ──
@@ -237,7 +235,7 @@ def upgrade() -> None:
         """
     )
     # 与唯一索引冗余的唯一约束（模型只声明唯一索引）
-    op.execute("ALTER TABLE systemexpert DROP CONSTRAINT IF EXISTS systemexpert_expert_key_key")
+    op.execute("ALTER TABLE systemexpert DROP CONSTRAINT IF EXISTS systemexpert_expert_type_key")
     # 死列清理：thread.task_session_id（模型无字段，全仓零引用）
     op.execute("DROP INDEX IF EXISTS idx_thread_task_session_id")
     op.execute("ALTER TABLE thread DROP COLUMN IF EXISTS task_session_id")

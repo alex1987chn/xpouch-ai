@@ -124,7 +124,7 @@ export default function ExpertEditor({
     setPreviewResult(null)
     try {
       const result = await previewExpert({
-        expert_key: expert.expert_key,
+        expert_type: expert.expert_type,
         test_input: testInput,
       })
       setPreviewResult(result)
@@ -171,7 +171,7 @@ export default function ExpertEditor({
         <div className="flex min-w-0 items-center gap-2.5">
           <span
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-            style={{ backgroundColor: expertColor(expert.expert_key) }}
+            style={{ backgroundColor: expertColor(expert.expert_type) }}
           >
             {expert.name.charAt(0)}
           </span>
@@ -180,7 +180,7 @@ export default function ExpertEditor({
               {expert.name}
             </div>
             <div className="truncate text-caption text-content-muted">
-              {expert.expert_key} · {formData.model}
+              {expert.expert_type} · {formData.model}
             </div>
           </div>
         </div>

@@ -45,8 +45,8 @@ def db():
 
 def _subtasks_data(prefix: str = "新任务") -> list[SubTaskCreate]:
     return [
-        SubTaskCreate(expert_type="researcher", task_description=f"{prefix} A", sort_order=0),
-        SubTaskCreate(expert_type="writer", task_description=f"{prefix} B", sort_order=1),
+        SubTaskCreate(expert_type="researcher", description=f"{prefix} A", sort_order=0),
+        SubTaskCreate(expert_type="writer", description=f"{prefix} B", sort_order=1),
     ]
 
 
@@ -70,7 +70,7 @@ def _seed_plan(
             id=subtask_id,
             execution_plan_id=plan_id,
             expert_type="researcher",
-            task_description="已完成的任务",
+            description="已完成的任务",
             sort_order=0,
             status="completed",
             output_result="珍贵的历史产出，不可丢失",
@@ -96,7 +96,7 @@ def _call(db: Session, *, run_id, thread_id: str = "t1"):
         thread_id=thread_id,
         run_id=run_id,
         user_query="新查询",
-        plan_summary="策略",
+        strategy="策略",
         estimated_steps=2,
         subtasks_data=_subtasks_data(),
     )
@@ -191,7 +191,7 @@ class TestNewRunCreatesNewPlan:
                 id="s-game",
                 execution_plan_id=plan2.id,
                 expert_type="coder",
-                task_description="写个小游戏",
+                description="写个小游戏",
                 sort_order=0,
                 status="completed",
             )

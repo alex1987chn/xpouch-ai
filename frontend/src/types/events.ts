@@ -3,6 +3,8 @@
  * 统一前后端事件协议（与 backend/types/events.py 对应）
  */
 
+import type { TaskStatus } from './enums.generated'
+
 
 // ============================================================================
 // 事件类型枚举
@@ -51,7 +53,7 @@ export interface TaskInfo {
   expert_type: string
   description: string
   sort_order: number
-  status: 'pending' | 'running' | 'completed' | 'failed'
+  status: TaskStatus
   depends_on?: string[]
 }
 

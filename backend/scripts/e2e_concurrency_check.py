@@ -107,11 +107,11 @@ def _task_windows(run_id: str) -> list[tuple[str, datetime, datetime]]:
         label = str(getattr(ev, "event_data", "") or "")
         name = label.split("'description': ")[-1].split(",")[0].strip("'\"")[:20]
         if ev.event_type == "task_started" and ev.task_id:
-            starts[str(ev.task_id)] = (name or "task", ev.timestamp)
+            starts[str(ev.task_id)] = (name or "task", ev.created_at)
         elif ev.event_type == "task_completed" and ev.task_id:
             start = starts.pop(str(ev.task_id), None)
             if start:
-                windows.append((start[0] or name, start[1], ev.timestamp))
+                windows.append((start[0] or name, start[1], ev.created_at))
     return windows
 
 

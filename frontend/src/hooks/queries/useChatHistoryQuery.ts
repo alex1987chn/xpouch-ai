@@ -20,7 +20,7 @@
  */
 
 import { useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
-import { getConversations, deleteConversation } from '@/services/chat'
+import { getThreads, deleteThread } from '@/services/chat'
 import { logger } from '@/utils/logger'
 import { CACHE_TIMES } from '@/config/query'
 
@@ -57,11 +57,11 @@ export function useChatHistoryQuery(options: { limit?: number; enabled?: boolean
     queryKey: chatHistoryKeys.list({ limit }),
     queryFn: async ({ pageParam = 1 }) => {
       try {
-        const result = await getConversations(pageParam, limit)
+        const result = await getThreads(pageParam, limit)
         logger.debug('[useChatHistoryQuery] Fetched page:', pageParam, 'count:', result.items.length, 'total:', result.total)
         return result
       } catch (error) {
-        logger.error('[useChatHistoryQuery] Failed to fetch conversations:', error)
+        logger.error('[useChatHistoryQuery] Failed to fetch threads:', error)
         throw error
       }
     },
@@ -99,16 +99,16 @@ export function useChatHistoryQuery(options: { limit?: number; enabled?: boolean
 }
 
 // 获取单个会话详情的 Query Hook —— 已删除（零消费者）。
-// 会话恢复实际走 useSessionRestore 的 getConversation() 直取 + chatStore 持久化，
+// 会话恢复实际走 useSessionRestore 的 getThread() 直取 + chatStore 持久化，
 // 此 Query 与该路径构成双缓存；如需 Query 化恢复路径，以 git 历史恢复此实现。
 
 // 删除会话的 Mutation Hook
-export function useDeleteConversationMutation() {
+export function useDeleteThreadMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (threadId: string) => {
-      await deleteConversation(threadId)
+      await deleteThread(threadId)
       return threadId
     },
     onSuccess: (deletedId) => {
@@ -116,10 +116,10 @@ export function useDeleteConversationMutation() {
       queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
       // 同时移除单个会话的缓存
       queryClient.removeQueries({ queryKey: chatHistoryKeys.detail(deletedId) })
-      logger.debug('[useDeleteConversationMutation] Deleted and invalidated cache:', deletedId)
+      logger.debug('[useDeleteThreadMutation] Deleted and invalidated cache:', deletedId)
     },
     onError: (error) => {
-      logger.error('[useDeleteConversationMutation] Failed to delete conversation:', error)
+      logger.error('[useDeleteThreadMutation] Failed to delete thread:', error)
     },
   })
 }

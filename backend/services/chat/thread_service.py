@@ -195,7 +195,7 @@ class ChatThreadService:
         subquery = (
             select(
                 Message.thread_id,
-                func.max(Message.timestamp).label("max_timestamp"),
+                func.max(Message.created_at).label("max_created_at"),
             )
             .where(Message.thread_id.in_(thread_ids))
             .group_by(Message.thread_id)
@@ -205,7 +205,7 @@ class ChatThreadService:
         last_msg_stmt = select(Message.thread_id, Message.content).join(
             subquery,
             (Message.thread_id == subquery.c.thread_id)
-            & (Message.timestamp == subquery.c.max_timestamp),
+            & (Message.created_at == subquery.c.max_created_at),
         )
         last_msg_rows = self.db.exec(last_msg_stmt).all()
 
@@ -281,7 +281,7 @@ class ChatThreadService:
 
         # 2. 查询消息（按时间正序）
         statement = (
-            select(Message).where(Message.thread_id == thread_id).order_by(Message.timestamp.asc())
+            select(Message).where(Message.thread_id == thread_id).order_by(Message.created_at.asc())
         )
         messages = self.db.exec(statement).all()
 
@@ -291,7 +291,7 @@ class ChatThreadService:
                 "id": msg.id,
                 "role": msg.role,
                 "content": msg.content,
-                "timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
+                "created_at": msg.created_at.isoformat() if msg.created_at else None,
                 "extra_data": msg.extra_data,
             }
             for msg in messages
@@ -361,7 +361,7 @@ class ChatThreadService:
                     "id": st.id,
                     "execution_plan_id": st.execution_plan_id,
                     "expert_type": st.expert_type,
-                    "task_description": st.task_description,
+                    "description": st.description,
                     "status": st.status,
                     "output_result": st.output_result,
                     "error_message": st.error_message,
@@ -418,7 +418,7 @@ class ChatThreadService:
         """构建简单模式的线程响应"""
         # 🔥 后端兜底排序：确保消息按时间戳升序排列
         sorted_messages = sorted(
-            thread.messages, key=lambda m: m.timestamp or datetime.min.replace(tzinfo=UTC)
+            thread.messages, key=lambda m: m.created_at or datetime.min.replace(tzinfo=UTC)
         )
         latest_run = self._get_latest_run(thread.id)
         return {
@@ -436,7 +436,7 @@ class ChatThreadService:
                     "id": msg.id,
                     "role": msg.role,
                     "content": msg.content,
-                    "timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
+                    "created_at": msg.created_at.isoformat() if msg.created_at else None,
                     "extra_data": msg.extra_data,
                 }
                 for msg in sorted_messages
@@ -595,7 +595,7 @@ class ChatThreadService:
             LangChain BaseMessage 列表（用于 LLM 调用）
         """
         statement = (
-            select(Message).where(Message.thread_id == thread_id).order_by(Message.timestamp)
+            select(Message).where(Message.thread_id == thread_id).order_by(Message.created_at)
         )
         db_messages = self.db.exec(statement).all()
 
@@ -623,7 +623,7 @@ class ChatThreadService:
         self,
         thread_id: str,
         user_query: str,
-        plan_summary: str | None = None,
+        strategy: str | None = None,
         estimated_steps: int = 0,
     ) -> ExecutionPlan:
         """
@@ -632,7 +632,7 @@ class ChatThreadService:
         Args:
             thread_id: 关联的线程ID
             user_query: 用户原始查询
-            plan_summary: 规划摘要
+            strategy: 规划摘要
             estimated_steps: 预计步骤数
 
         Returns:
@@ -644,7 +644,7 @@ class ChatThreadService:
             db=self.db,
             thread_id=thread_id,
             user_query=user_query,
-            plan_summary=plan_summary,
+            strategy=strategy,
             estimated_steps=estimated_steps,
             execution_mode="sequential",
         )

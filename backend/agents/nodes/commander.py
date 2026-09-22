@@ -47,7 +47,7 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlmodel import Session
 from tenacity import (
     before_sleep_log,
@@ -83,24 +83,33 @@ _all_experts_cache = ConfigCache(maxsize=5, ttl=60, name="all_experts")
 class Task(BaseModel):
     """任务定义 - 支持 DAG 依赖关系。
 
-    [B4] 依赖字段统一叫 `depends_on`（与图状态/数据库/事件 payload/前端一致）。
-    此前 LLM 侧叫 `dependencies`，于是每个转换点都要手写一次改名——漏一处就是静默
-    丢依赖。`AliasChoices` 让旧写法继续能解析（历史提示词、已存计划、老测试都不受影响），
-    但**模型自己产出的字段名现在是 canonical 的那个**。
+    依赖字段统一叫 `depends_on`（与图状态/数据库/事件 payload/前端一致）。
+    历史上 LLM 侧曾叫 `dependencies`（提示词旧教材），2026-09-22 教材已随迁移
+    20260922_000200 更新、AliasChoices 容错同步退役——**旧字段名现在显式抛错**
+    （静默丢依赖比 loudly 失败危险得多，见 model_validator）。
     """
-
-    model_config = ConfigDict(populate_by_name=True)
 
     id: str = Field(default="", description="任务唯一标识符（短ID，如 task_1, task_2）")
     expert_type: str = Field(description="执行此任务的专家类型")
     description: str = Field(description="任务描述")
     input_data: dict[str, Any] = Field(default={}, description="输入参数")
-    priority: int = Field(default=0, description="优先级 (0=最高)")
     depends_on: list[str] = Field(
         default=[],
-        validation_alias=AliasChoices("depends_on", "dependencies"),
         description="依赖的任务ID列表（引用其他任务的 id，如 task_1）",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_legacy_dependencies(cls, data: Any) -> Any:
+        """旧字段名显式拒绝：`dependencies` 是退役写法（教材已更新），
+        静默丢弃会导致依赖凭空消失，必须当场报错。"""
+        if isinstance(data, dict) and "dependencies" in data:
+            raise ValueError(
+                "旧字段名 'dependencies' 已退役，请使用 'depends_on'（提示词教材"
+                "如仍教旧名，检查 systemexpert 表是否漏跑迁移 20260922_000200）"
+            )
+        return data
+
     execution_mode: ExecutionMode = Field(
         default=ExecutionMode.SEQUENTIAL,
         description=(
@@ -437,7 +446,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                             thread_id=thread_id,
                             run_id=run_id,
                             user_query=user_query,
-                            plan_summary=commander_response.strategy,
+                            strategy=commander_response.strategy,
                             estimated_steps=commander_response.estimated_steps,
                             subtasks_data=subtasks_data,
                             execution_mode=plan_execution_mode,
@@ -452,7 +461,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                             {
                                 "id": subtask.id,
                                 "expert_type": subtask.expert_type,
-                                "task_description": subtask.task_description,
+                                "description": subtask.description,
                                 "input_data": subtask.input_data,
                                 "sort_order": subtask.sort_order,
                                 "status": subtask.status,
@@ -466,7 +475,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                                 thread_id=thread_id,
                                 execution_plan_id=created_plan.id,
                                 task_count=len(persisted_subtasks),
-                                plan_summary=commander_response.strategy,
+                                strategy=commander_response.strategy,
                             )
                             db_session.commit()
                         return created_plan.id, is_reused, serialized_subtasks

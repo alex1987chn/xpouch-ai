@@ -27,7 +27,7 @@ import { isSameId } from '@/utils/normalize'
 interface ChatState {
   // 聊天相关
   messages: Message[]
-  currentConversationId: string | null
+  currentThreadId: string | null
   inputMessage: string
 
   // 生成状态
@@ -48,7 +48,7 @@ interface ChatActions {
   setInputMessage: (input: string) => void
   
   // 会话状态
-  setCurrentConversationId: (id: string | null) => void
+  setCurrentThreadId: (id: string | null) => void
   
   // 生成状态
   setGenerating: (value: boolean) => void
@@ -65,7 +65,7 @@ export const useChatStore = create<ChatStore>()(
     (set) => ({
       // ========== 初始状态 ==========
       messages: [],
-      currentConversationId: null,
+      currentThreadId: null,
       inputMessage: '',
       isGenerating: false,
       lastAssistantMessageId: null,
@@ -91,8 +91,8 @@ export const useChatStore = create<ChatStore>()(
         // （修复流式中途切换会话后，错误气泡/系统消息串入新会话）
         if (
           message.metadata?.threadId &&
-          state.currentConversationId &&
-          message.metadata.threadId !== state.currentConversationId
+          state.currentThreadId &&
+          message.metadata.threadId !== state.currentThreadId
         ) {
           return {}
         }
@@ -138,7 +138,7 @@ export const useChatStore = create<ChatStore>()(
 
       // ========== 会话状态 ==========
       
-      setCurrentConversationId: (id: string | null) => set({ currentConversationId: id }),
+      setCurrentThreadId: (id: string | null) => set({ currentThreadId: id }),
 
       // ========== 生成状态 ==========
 
@@ -146,7 +146,7 @@ export const useChatStore = create<ChatStore>()(
     }),
     {
       name: 'xpouch-chat-store',
-      // 只持久化轻量 UI 偏好。messages / currentConversationId 不再持久化：
+      // 只持久化轻量 UI 偏好。messages / currentThreadId 不再持久化：
       // 会话内容由服务端恢复（useSessionRestore），持久化副本只会造成
       // 导航时旧数据闪烁（历史上被迫加"导航清空"hack 的根源）。
       partialize: () => ({

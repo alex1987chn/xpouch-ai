@@ -13,14 +13,14 @@ Pydantic DTO (数据传输对象)
 """
 
 from schemas.common import LangSmithConfig, RevokedResponse
-from schemas.conversation import (
+from schemas.mcp import MCPServerCreate, MCPServerResponse, MCPServerUpdate
+from schemas.message import (
     AgentRunSummaryResponse,
     MessageResponse,
     PaginatedThreadListResponse,
     ThreadDetailResponse,
     ThreadListResponse,
 )
-from schemas.mcp import MCPServerCreate, MCPServerResponse, MCPServerUpdate
 from schemas.run_event import (
     RunEventResponse,
     RunPlanResponse,

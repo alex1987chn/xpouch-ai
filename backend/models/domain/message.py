@@ -22,7 +22,7 @@ class Message(SQLModel, table=True):
     thread_id: str = Field(foreign_key="thread.id", index=True, max_length=64, ondelete="CASCADE")
     role: str = Field(max_length=20)
     content: str = Field(sa_type=Text)
-    timestamp: datetime = Field(default_factory=utc_now)
+    created_at: datetime = Field(default_factory=utc_now)
     # extra_data 字段存储 thinking、reasoning 等额外信息
     extra_data: dict | None = Field(default=None, sa_column=Column(JSON))
 
@@ -30,5 +30,5 @@ class Message(SQLModel, table=True):
     thread: "Thread" = Relationship(back_populates="messages")  # noqa: F821
 
     # 复合索引：优化消息查询
-    # 场景：加载对话历史时，查询 WHERE thread_id = ? ORDER BY timestamp DESC
-    __table_args__ = (Index("idx_message_thread_timestamp", "thread_id", "timestamp"),)
+    # 场景：加载对话历史时，查询 WHERE thread_id = ? ORDER BY created_at DESC
+    __table_args__ = (Index("idx_message_thread_created_at", "thread_id", "created_at"),)

@@ -25,7 +25,7 @@ const LABELS = {
 function ev(partial: Partial<RunEvent> & { id: number; event_type: RunEvent['event_type'] }): RunEvent {
   return {
     run_id: 'r1',
-    timestamp: '2026-09-13T09:00:00',
+    created_at: '2026-09-13T09:00:00',
     ...partial,
   } as RunEvent
 }
@@ -60,19 +60,19 @@ describe('buildThinkingStepsFromTimeline', () => {
   it('计划与任务步骤带上专家名 / 耗时 / 状态', () => {
     const steps = buildThinkingStepsFromTimeline(
       [
-        ev({ id: 1, event_type: 'plan_created', execution_plan_id: 'p1', timestamp: '2026-09-13T09:00:01' }),
+        ev({ id: 1, event_type: 'plan_created', execution_plan_id: 'p1', created_at: '2026-09-13T09:00:01' }),
         ev({
           id: 2,
           event_type: 'task_started',
           task_id: 'task_1',
-          timestamp: '2026-09-13T09:00:10',
+          created_at: '2026-09-13T09:00:10',
           event_data: { expert_type: 'writer', description: '写一份对比报告' },
         }),
         ev({
           id: 3,
           event_type: 'task_completed',
           task_id: 'task_1',
-          timestamp: '2026-09-13T09:00:30',
+          created_at: '2026-09-13T09:00:30',
           event_data: { expert_type: 'writer', has_artifact: true, duration_ms: 29300 },
         }),
       ],
@@ -95,9 +95,9 @@ describe('buildThinkingStepsFromTimeline', () => {
   it('同一任务的 started 重复出现时只保留一步（账本曾重复写 task_started）', () => {
     const steps = buildThinkingStepsFromTimeline(
       [
-        ev({ id: 1, event_type: 'task_started', task_id: 't1', timestamp: '2026-09-13T09:00:00', event_data: { expert_type: 'search', description: '第一版描述' } }),
-        ev({ id: 2, event_type: 'task_started', task_id: 't1', timestamp: '2026-09-13T09:00:05', event_data: { expert_type: 'search', description: '第一版描述' } }),
-        ev({ id: 3, event_type: 'task_completed', task_id: 't1', timestamp: '2026-09-13T09:00:20', event_data: { expert_type: 'search', duration_ms: 20000 } }),
+        ev({ id: 1, event_type: 'task_started', task_id: 't1', created_at: '2026-09-13T09:00:00', event_data: { expert_type: 'search', description: '第一版描述' } }),
+        ev({ id: 2, event_type: 'task_started', task_id: 't1', created_at: '2026-09-13T09:00:05', event_data: { expert_type: 'search', description: '第一版描述' } }),
+        ev({ id: 3, event_type: 'task_completed', task_id: 't1', created_at: '2026-09-13T09:00:20', event_data: { expert_type: 'search', duration_ms: 20000 } }),
       ],
       LABELS,
     )
@@ -140,9 +140,9 @@ describe('buildThinkingStepsFromTimeline', () => {
   it('按时间升序排列（乱序输入也不乱）', () => {
     const steps = buildThinkingStepsFromTimeline(
       [
-        ev({ id: 1, event_type: 'task_completed', task_id: 't2', timestamp: '2026-09-13T09:05:00', event_data: { expert_type: 'b' } }),
-        ev({ id: 2, event_type: 'router_decided', timestamp: '2026-09-13T09:00:00', event_data: { mode: 'complex' } }),
-        ev({ id: 3, event_type: 'plan_created', timestamp: '2026-09-13T09:01:00' }),
+        ev({ id: 1, event_type: 'task_completed', task_id: 't2', created_at: '2026-09-13T09:05:00', event_data: { expert_type: 'b' } }),
+        ev({ id: 2, event_type: 'router_decided', created_at: '2026-09-13T09:00:00', event_data: { mode: 'complex' } }),
+        ev({ id: 3, event_type: 'plan_created', created_at: '2026-09-13T09:01:00' }),
       ],
       LABELS,
     )

@@ -141,7 +141,7 @@ export default function WorkbenchLayout() {
     location.pathname.startsWith('/workbench')
 
   const goDecide = () => {
-    const tid = useChatStore.getState().currentConversationId
+    const tid = useChatStore.getState().currentThreadId
     if (tid) navigate(`/workbench/${tid}`)
   }
 

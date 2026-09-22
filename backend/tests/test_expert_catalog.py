@@ -1,7 +1,7 @@
 """专家名册端点的契约测试。
 
 钉两件事：
-1. **只回 expert_key + name**——这是该端点存在的全部理由（前端只为把 expert_type 显示成人名），
+1. **只回 expert_type + name**——这是该端点存在的全部理由（前端只为把 expert_type 显示成人名），
    绝不能顺手带出 system_prompt / model / temperature（权限面的不必要扩大）。
    测试里故意让桩对象**携带**这些管理字段，证明响应把它们丢掉了。
 2. 任何登录用户可读（不是 admin 端点）——普通用户正是它要服务的人。
@@ -18,10 +18,10 @@ from routers import experts
 
 
 class _ExpertStub:
-    """只被读 expert_key / name；其余字段是实现"不该出现在响应里"的诱饵。"""
+    """只被读 expert_type / name；其余字段是实现"不该出现在响应里"的诱饵。"""
 
-    def __init__(self, expert_key: str, name: str) -> None:
-        self.expert_key = expert_key
+    def __init__(self, expert_type: str, name: str) -> None:
+        self.expert_type = expert_type
         self.name = name
         self.system_prompt = "这是不该外泄的提示词"
         self.model = "deepseek-flash"
@@ -67,9 +67,9 @@ def test_catalog_exposes_only_key_and_name(sample_user):
     assert response.status_code == 200
     items = response.json()
     assert len(items) == 2
-    assert next(i for i in items if i["expert_key"] == "aggregator")["name"] == "首席联络官"
+    assert next(i for i in items if i["expert_type"] == "aggregator")["name"] == "首席联络官"
     for item in items:
-        assert set(item.keys()) == {"expert_key", "name"}, (
+        assert set(item.keys()) == {"expert_type", "name"}, (
             "名册只该有 key + name，不得带出提示词/模型/温度"
         )
 

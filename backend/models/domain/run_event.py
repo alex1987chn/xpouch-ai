@@ -51,7 +51,7 @@ class RunEvent(SQLModel, table=True):
     )
 
     # 事件时间戳（服务器时间）
-    timestamp: datetime = Field(
+    created_at: datetime = Field(
         default_factory=utc_now,
         sa_column_kwargs={"server_default": func.now()},
     )
@@ -80,7 +80,7 @@ class RunEvent(SQLModel, table=True):
     # 关联的任务 ID（任务相关事件）
     task_id: str | None = Field(default=None, max_length=64, index=True)
 
-    __table_args__ = (Index("idx_runevent_run_id_timestamp", "run_id", "timestamp"),)
+    __table_args__ = (Index("idx_runevent_run_id_created_at", "run_id", "created_at"),)
 
     # 备注（可选，用于人工标注或补充说明）
     note: str | None = Field(default=None, max_length=512)

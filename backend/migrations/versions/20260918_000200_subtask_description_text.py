@@ -1,4 +1,4 @@
-"""subtask.task_description 放宽为 TEXT（修订 LLM 产出超长撞 VARCHAR(500)）
+"""subtask.description 放宽为 TEXT（修订 LLM 产出超长撞 VARCHAR(500)）
 
 Revision ID: 20260918_000200
 Revises: 20260918_000100
@@ -6,7 +6,7 @@ Create Date: 2026-09-18
 
 背景：HITL 修订路径（用户驳回计划后 LLM 重写）产出的任务描述可能超过
 500 字（如"编写完整可运行的单文件 HTML5 游戏"这类精细需求），落库时
-撞 subtask.task_description 的 VARCHAR(500) 限制报 StringDataRightTruncation。
+撞 subtask.description 的 VARCHAR(500) 限制报 StringDataRightTruncation。
 
 任务描述本质上是自由文本（用户可编辑、LLM 可重写），用 TEXT 而非继续
 加宽 VARCHAR——PG 里 TEXT 与 VARCHAR 性能无差异，避免下次再撞。
@@ -29,9 +29,9 @@ def upgrade() -> None:
         """
         DO $$ BEGIN
             IF EXISTS (SELECT 1 FROM information_schema.columns
-                       WHERE table_name = 'subtask' AND column_name = 'task_description'
+                       WHERE table_name = 'subtask' AND column_name = 'description'
                          AND data_type = 'character varying') THEN
-                ALTER TABLE subtask ALTER COLUMN task_description TYPE TEXT;
+                ALTER TABLE subtask ALTER COLUMN description TYPE TEXT;
             END IF;
         END $$;
         """

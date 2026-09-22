@@ -25,7 +25,7 @@ def create_execution_plan(
     db: Session,
     thread_id: str,
     user_query: str,
-    plan_summary: str | None = None,
+    strategy: str | None = None,
     estimated_steps: int = 0,
     execution_mode: str = "sequential",
 ) -> ExecutionPlan:
@@ -33,7 +33,7 @@ def create_execution_plan(
     execution_plan = ExecutionPlan(
         thread_id=thread_id,
         user_query=user_query,
-        plan_summary=plan_summary,
+        strategy=strategy,
         estimated_steps=estimated_steps,
         execution_mode=execution_mode,
         status=TaskStatus.PENDING,
@@ -280,7 +280,7 @@ def create_execution_plan_with_subtasks(
     thread_id: str,
     run_id: str | None,
     user_query: str,
-    plan_summary: str,
+    strategy: str,
     estimated_steps: int,
     subtasks_data: list[SubTaskCreate],
     execution_mode: str = "sequential",
@@ -291,7 +291,7 @@ def create_execution_plan_with_subtasks(
         "thread_id": thread_id,
         "run_id": run_id,
         "user_query": user_query,
-        "plan_summary": plan_summary,
+        "strategy": strategy,
         "estimated_steps": estimated_steps,
         "execution_mode": execution_mode,
         "status": TaskStatus.RUNNING,
@@ -335,8 +335,9 @@ def create_subtasks(
     for idx, data in enumerate(subtasks_data):
         subtask = SubTask(
             execution_plan_id=execution_plan_id,
+            task_id=data.task_id,
             expert_type=data.expert_type,
-            task_description=data.task_description,
+            description=data.description,
             sort_order=data.sort_order if data.sort_order is not None else idx,
             input_data=data.input_data,
             execution_mode=data.execution_mode,

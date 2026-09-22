@@ -23,7 +23,7 @@ class RunEventResponse(BaseModel):
     id: int
     run_id: str
     event_type: RunEventType
-    timestamp: datetime
+    created_at: datetime
     event_data: dict[str, Any] | None = None
     thread_id: str | None = None
     execution_plan_id: str | None = None

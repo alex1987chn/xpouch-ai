@@ -129,7 +129,7 @@ async def get_run_plan(
             RunPlanTask(
                 id=str(index + 1),
                 expert_type=st.expert_type,
-                description=st.task_description,
+                description=st.description,
                 sort_order=st.sort_order,
                 depends_on=st.depends_on or [],
             )

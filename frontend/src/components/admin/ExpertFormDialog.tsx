@@ -3,7 +3,7 @@
  * 
  * [职责]
  * 新建/编辑专家的弹窗表单
- * - 处理 expert_key 格式验证
+ * - 处理 expert_type 格式验证
  * - 模型选择、温度滑块
  * - System Prompt 编辑
  */
@@ -44,7 +44,7 @@ export default function ExpertFormDialog({
 
   // 表单数据
   const [formData, setFormData] = useState<CreateExpertRequest & { id?: string }>({
-    expert_key: '',
+    expert_type: '',
     name: '',
     description: '',
     system_prompt: '',
@@ -80,7 +80,7 @@ export default function ExpertFormDialog({
     if (mode === 'edit' && expert) {
       setFormData({
         id: expert.id,
-        expert_key: expert.expert_key,
+        expert_type: expert.expert_type,
         name: expert.name,
         description: expert.description || '',
         system_prompt: expert.system_prompt,
@@ -89,7 +89,7 @@ export default function ExpertFormDialog({
       })
     } else if (mode === 'create') {
       setFormData({
-        expert_key: '',
+        expert_type: '',
         name: '',
         description: '',
         system_prompt: '',
@@ -100,14 +100,14 @@ export default function ExpertFormDialog({
     setKeyError('')
   }, [mode, expert, isOpen])
 
-  // 验证 expert_key 格式
+  // 验证 expert_type 格式
   const validateExpertKey = (key: string): boolean => {
     const regex = /^[a-z][a-z0-9_]*$/
     return regex.test(key)
   }
 
   const handleExpertKeyChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, expert_key: value }))
+    setFormData((prev) => ({ ...prev, expert_type: value }))
     if (value && !validateExpertKey(value)) {
       setKeyError(t('expertKeyHint'))
     } else {
@@ -116,10 +116,10 @@ export default function ExpertFormDialog({
   }
 
   const handleSubmit = () => {
-    if (!formData.expert_key || !formData.name || !formData.system_prompt) {
+    if (!formData.expert_type || !formData.name || !formData.system_prompt) {
       return
     }
-    if (!validateExpertKey(formData.expert_key)) {
+    if (!validateExpertKey(formData.expert_type)) {
       setKeyError(t('expertKeyHint'))
       return
     }
@@ -176,7 +176,7 @@ export default function ExpertFormDialog({
             </div>
             <input
               type="text"
-              value={formData.expert_key}
+              value={formData.expert_type}
               onChange={(e) => handleExpertKeyChange(e.target.value)}
               placeholder={t('expertKeyPlaceholder')}
               disabled={isSubmitting || !isCreate}
@@ -386,7 +386,7 @@ export default function ExpertFormDialog({
             onClick={handleSubmit}
             disabled={
               isSubmitting ||
-              !formData.expert_key ||
+              !formData.expert_type ||
               !formData.name ||
               !formData.system_prompt ||
               formData.system_prompt.length < 10 ||

@@ -84,7 +84,7 @@ from models.memory import UserMemory  # noqa: E402
 # `from models.enums import ...`——包级导入在 models 半初始化状态下取不到
 # 名字，双向首导都会 ImportError。子模块直导则两个方向都安全。
 from schemas.common import LangSmithConfig  # noqa: E402
-from schemas.conversation import (  # noqa: E402
+from schemas.message import (  # noqa: E402
     MessageResponse,
     PaginatedThreadListResponse,
     ThreadDetailResponse,

@@ -97,7 +97,7 @@ async def process_experts(session, update_existing=False, update_commander=False
     else:
         existing_experts = session.exec(select(SystemExpert)).all()
 
-    existing_keys = {e.expert_key for e in existing_experts}
+    existing_keys = {e.expert_type for e in existing_experts}
     logger.info(f"Found {len(existing_experts)} existing experts in database")
 
     updated_count = 0
@@ -105,27 +105,27 @@ async def process_experts(session, update_existing=False, update_commander=False
     commander_updated = False
 
     for expert_config in EXPERT_DEFAULTS:
-        expert_key = expert_config["expert_key"]
+        expert_type = expert_config["expert_type"]
 
-        if expert_key in existing_keys:
+        if expert_type in existing_keys:
             # 情况1：强制更新所有专家
             if update_existing:
                 await _update_expert(session, expert_config)
                 updated_count += 1
             # 情况2：只更新 commander（用于启用思维链）
-            elif update_commander and expert_key == "commander":
+            elif update_commander and expert_type == "commander":
                 await _update_expert(session, expert_config)
                 updated_count += 1
                 commander_updated = True
                 logger.info("✓ Commander updated to enable thinking chain!")
             else:
-                logger.warning(f"⚠ Skipping existing expert: {expert_key}")
+                logger.warning(f"⚠ Skipping existing expert: {expert_type}")
         else:
             # 创建新专家
             expert = SystemExpert(**expert_config)
             session.add(expert)
             created_count += 1
-            logger.info(f"✓ Created expert: {expert_key}")
+            logger.info(f"✓ Created expert: {expert_type}")
 
     # 提交事务
     if isinstance(session, AsyncSession):
@@ -148,16 +148,16 @@ async def _update_expert(session, expert_config):
 
     from models import SystemExpert
 
-    expert_key = expert_config["expert_key"]
+    expert_type = expert_config["expert_type"]
 
     if isinstance(session, AsyncSession):
         result = await session.execute(
-            select(SystemExpert).where(SystemExpert.expert_key == expert_key)
+            select(SystemExpert).where(SystemExpert.expert_type == expert_type)
         )
         expert = result.scalar_one_or_none()
     else:
         expert = session.exec(
-            select(SystemExpert).where(SystemExpert.expert_key == expert_key)
+            select(SystemExpert).where(SystemExpert.expert_type == expert_type)
         ).first()
 
     if expert:
@@ -166,7 +166,7 @@ async def _update_expert(session, expert_config):
         expert.model = expert_config["model"]
         expert.temperature = expert_config["temperature"]
         session.add(expert)
-        logger.info(f"✓ Updated expert: {expert_key}")
+        logger.info(f"✓ Updated expert: {expert_type}")
 
 
 def init_experts(update_existing=False, update_commander=False):
@@ -201,7 +201,7 @@ async def list_experts_process(session):
     logger.info(f"\nTotal experts in database: {len(experts)}\n")
 
     for expert in experts:
-        logger.info(f"Expert Key: {expert.expert_key}")
+        logger.info(f"Expert Key: {expert.expert_type}")
         logger.info(f"  Name: {expert.name}")
         logger.info(f"  Model: {expert.model}")
         logger.info(f"  Temperature: {expert.temperature}")

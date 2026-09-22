@@ -32,9 +32,7 @@ def db():
     with Session(engine) as session:
         session.add(Thread(id="t1", title="会话", user_id="u1"))
         session.add(
-            ExecutionPlan(
-                id="p1", thread_id="t1", user_query="q", plan_summary="s", estimated_steps=2
-            )
+            ExecutionPlan(id="p1", thread_id="t1", user_query="q", strategy="s", estimated_steps=2)
         )
         session.commit()
         yield session
@@ -43,7 +41,7 @@ def db():
 def _dto(task_id: str | None, desc: str, depends_on=None, sort_order: int = 0) -> SubTaskCreate:
     return SubTaskCreate(
         expert_type="search",
-        task_description=desc,
+        description=desc,
         sort_order=sort_order,
         depends_on=depends_on,
         task_id=task_id,

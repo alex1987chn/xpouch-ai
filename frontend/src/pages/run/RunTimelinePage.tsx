@@ -25,7 +25,7 @@ import { useThreadArtifactsQuery } from '@/hooks/queries/useArtifactsQuery'
 import { ArtifactViewerModal } from '@/components/artifacts/ArtifactViewerModal'
 import { artifactTypeChipStyle } from '@/lib/artifactPresentation'
 import { toLocalDate, localeForLanguage } from '@/lib/datetime'
-import { getConversation } from '@/services/chat'
+import { getThread } from '@/services/chat'
 import type { RunEvent, RunStatus } from '@/types/run'
 import { getEventDisplayName, getEventCategory, ACTIVE_RUN_STATUSES } from '@/types/run'
 import { Button } from '@/components/ui/button'
@@ -89,7 +89,7 @@ interface TimelineEventItemProps {
 
 function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEventItemProps) {
  const { t, language } = useTranslation()
- const time = toLocalDate(event.timestamp)
+ const time = toLocalDate(event.created_at)
  const timeAgo = formatDistanceToNow(time, { addSuffix: true, locale: localeForLanguage(language) })
  const timeStr = format(time, 'HH:mm:ss')
 
@@ -190,15 +190,15 @@ function ApprovalRow({ threadId }: { threadId: string }) {
 
 function PlanCard({ threadId }: { threadId: string }) {
  const { t } = useTranslation()
- const { data: conversation } = useQuery({
+ const { data: thread } = useQuery({
   queryKey: ['workbench', 'threadPlan', threadId],
-  queryFn: () => getConversation(threadId),
+  queryFn: () => getThread(threadId),
   enabled: !!threadId,
   staleTime: 30_000,
   retry: 1,
  })
 
- const subTasks = conversation?.execution_plan?.sub_tasks
+ const subTasks = thread?.execution_plan?.sub_tasks
  if (!subTasks?.length) return null
 
  return (

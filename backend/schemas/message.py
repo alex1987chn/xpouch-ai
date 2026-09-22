@@ -18,7 +18,7 @@ class MessageResponse(BaseModel):
     id: int | None
     role: str
     content: str
-    timestamp: datetime | None
+    created_at: datetime | None
     extra_data: dict | None
 
     model_config = ConfigDict(from_attributes=True)

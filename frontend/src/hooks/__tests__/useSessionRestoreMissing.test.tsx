@@ -19,10 +19,10 @@ import type { ReactNode } from 'react'
 import { useSessionRestore } from '../useSessionRestore'
 import { useChatStore } from '@/store/chatStore'
 
-const getConversation = vi.fn()
+const getThread = vi.fn()
 
 vi.mock('@/services/chat', () => ({
-  getConversation: (...args: unknown[]) => getConversation(...args),
+  getThread: (...args: unknown[]) => getThread(...args),
 }))
 vi.mock('@/services/runs', () => ({
   getRunTimeline: vi.fn(async () => ({ events: [] })),
@@ -67,23 +67,23 @@ const notFound = Object.assign(new Error('会话不存在'), { status: 404 })
 
 describe('useSessionRestore：404 的两个分支', () => {
   beforeEach(() => {
-    getConversation.mockReset()
+    getThread.mockReset()
     hookState = null
     useChatStore.getState().setMessages([])
   })
 
   it('两次都 404 → 判定为会话不存在，并结算（不反复重试）', async () => {
-    getConversation.mockRejectedValue(notFound)
+    getThread.mockRejectedValue(notFound)
 
     renderAt('gone-1')
 
     await waitFor(() => expect(hookState?.isMissingSession).toBe(true), { timeout: 4000 })
     expect(hookState?.isRestored).toBe(true)
-    expect(getConversation).toHaveBeenCalledTimes(2) // 一次 + 静默重试一次，不再多试
+    expect(getThread).toHaveBeenCalledTimes(2) // 一次 + 静默重试一次，不再多试
   })
 
   it('首次 404、重试成功 → 正常恢复，不误报会话不存在', async () => {
-    getConversation
+    getThread
       .mockRejectedValueOnce(notFound)
       .mockResolvedValueOnce({
         id: 't1',

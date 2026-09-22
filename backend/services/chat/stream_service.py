@@ -599,14 +599,14 @@ class StreamService(EventBuildersMixin):
                     db_subtask = SubTask(
                         id=subtask["id"],
                         expert_type=subtask["expert_type"],
-                        task_description=subtask["description"],
+                        description=subtask["description"],
                         input_data=subtask.get("input_data", {}),
                         execution_plan_id=execution_plan.id,
                         created_at=utc_now(),
                     )
 
                 db_subtask.expert_type = subtask["expert_type"]
-                db_subtask.task_description = subtask["description"]
+                db_subtask.description = subtask["description"]
                 db_subtask.input_data = subtask.get("input_data", {})
                 db_subtask.status = to_task_status(subtask.get("status", GraphTaskStatus.COMPLETED))
                 db_subtask.output_result = subtask.get("output_result")

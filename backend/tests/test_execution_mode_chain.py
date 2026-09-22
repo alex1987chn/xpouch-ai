@@ -107,7 +107,7 @@ class TestPersistenceChain:
         )
         create_payload = SubTaskCreate(
             expert_type="researcher",
-            task_description="任务",
+            description="任务",
             sort_order=0,
             execution_mode=mode,
         )
@@ -115,7 +115,7 @@ class TestPersistenceChain:
             id="s1",
             execution_plan_id="p1",
             expert_type=create_payload.expert_type,
-            task_description=create_payload.task_description,
+            description=create_payload.description,
             sort_order=create_payload.sort_order,
             execution_mode=create_payload.execution_mode,
         )

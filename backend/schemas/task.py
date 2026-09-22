@@ -11,7 +11,7 @@ class SubTaskCreate(BaseModel):
     """创建子任务的 DTO"""
 
     expert_type: str  # ExpertType 枚举值
-    task_description: str
+    description: str
     input_data: dict | None = None
     sort_order: int = 0
     execution_mode: str = "sequential"
@@ -83,7 +83,7 @@ class SubTaskResponse(BaseModel):
 
     id: str
     expert_type: str
-    task_description: str
+    description: str
     status: str
     sort_order: int
     execution_mode: str
@@ -101,7 +101,7 @@ class ExecutionPlanCreate(BaseModel):
     """创建复杂执行计划的 DTO。"""
 
     user_query: str
-    plan_summary: str | None = None
+    strategy: str | None = None
     estimated_steps: int = 0
     execution_mode: str = "sequential"
 
@@ -122,7 +122,7 @@ class ExecutionPlanResponse(BaseModel):
     run_id: str | None = None
     thread_id: str
     user_query: str
-    plan_summary: str | None
+    strategy: str | None
     estimated_steps: int
     execution_mode: str
     sub_tasks: list[SubTaskResponse]

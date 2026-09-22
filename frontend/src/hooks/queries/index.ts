@@ -14,7 +14,7 @@
 export {
   // Chat History Queries
   useChatHistoryQuery,
-  useDeleteConversationMutation,
+  useDeleteThreadMutation,
   chatHistoryKeys,
 } from './useChatHistoryQuery'
 

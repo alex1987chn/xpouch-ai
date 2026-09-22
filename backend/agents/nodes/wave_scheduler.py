@@ -46,6 +46,7 @@ from agents.task_outcome import (
     outcome_task_patch,
     outcome_to_expert_result,
 )
+from event_types.events import TaskFailedData
 from models.enums import GraphTaskStatus
 from utils.event_generator import event_task_failed
 from utils.logger import logger
@@ -171,7 +172,13 @@ async def _announce_unreachable(
                 thread_id=thread_id,
                 execution_plan_id=state.get("execution_plan_id"),
                 task_id=str(task.get("id") or key),
-                event_data={"expert_type": task.get("expert_type", ""), "error_message": reason},
+                event_data=TaskFailedData(
+                    task_id=str(task.get("id") or key),
+                    expert_type=task.get("expert_type", ""),
+                    description=task.get("description", ""),
+                    error=reason,
+                    failed_at=utc_now().isoformat(),
+                ).model_dump(),
             ),
             label=f"run_event:task_skipped:{key}",
         )

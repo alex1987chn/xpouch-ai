@@ -168,7 +168,7 @@ def _stub_db_stack(stack):
             SimpleNamespace(
                 id=f"st-{i}",
                 expert_type="coder",
-                task_description=f"任务{i}",
+                description=f"任务{i}",
                 input_data={},
                 sort_order=i,
                 status="pending",
@@ -233,7 +233,7 @@ async def test_generates_plan_without_artifacts_section():
                         "id": "task_0",
                         "expert_type": "coder",
                         "description": "写代码",
-                        "dependencies": [],
+                        "depends_on": [],
                     }
                 ]
             ),
@@ -258,7 +258,7 @@ async def test_injects_recent_artifacts_into_prompt():
 
     capture = _FakeLLM(
         _plan_json(
-            [{"id": "task_0", "expert_type": "coder", "description": "改图", "dependencies": []}]
+            [{"id": "task_0", "expert_type": "coder", "description": "改图", "depends_on": []}]
         ),
         captured_prompts=captured_prompts,
     )
@@ -294,13 +294,13 @@ async def test_dependency_indexes_converted_to_ids():
                     "id": "task_0",
                     "expert_type": "researcher",
                     "description": "调研",
-                    "dependencies": [],
+                    "depends_on": [],
                 },
                 {
                     "id": "task_1",
                     "expert_type": "writer",
                     "description": "写作",
-                    "dependencies": ["0"],
+                    "depends_on": ["0"],
                 },
             ]
         )
@@ -318,7 +318,7 @@ async def test_missing_task_ids_auto_generated():
     llm = _FakeLLM(
         _plan_json(
             [
-                {"expert_type": "researcher", "description": "调研", "dependencies": []},
+                {"expert_type": "researcher", "description": "调研", "depends_on": []},
             ]
         )
     )
@@ -349,3 +349,26 @@ async def test_plan_failure_raises_instead_of_empty_plan():
         pytest.raises(PlanGenerationError),
     ):
         await commander_node(_base_state())
+
+
+class TestLegacyNameRejection:
+    """旧字段名 'dependencies' 必须显式抛错（fail-loud）——静默丢弃会丢依赖。"""
+
+    def test_dependencies_name_rejected(self):
+        import pytest
+        from pydantic import ValidationError
+
+        from agents.nodes.commander import Task
+
+        with pytest.raises(ValidationError, match="dependencies"):
+            Task.model_validate(
+                {"id": "task_1", "expert_type": "search", "description": "x", "dependencies": []}
+            )
+
+    def test_depends_on_still_accepted(self):
+        from agents.nodes.commander import Task
+
+        task = Task.model_validate(
+            {"id": "task_1", "expert_type": "search", "description": "x", "depends_on": []}
+        )
+        assert task.depends_on == []

@@ -43,7 +43,7 @@ def owned_artifact(db):
             id="s1",
             execution_plan_id="p1",
             expert_type="coder",
-            task_description="生成示例产物",
+            description="生成示例产物",
             status="completed",
         )
     )

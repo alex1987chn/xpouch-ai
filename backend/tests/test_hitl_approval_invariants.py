@@ -223,7 +223,7 @@ class TestStaleRevisionFallback:
     兜底对超时仍未终态的 run 补写 HITL_REVISION_FAILED（原计划保持待审）。
 
     回归背景：该函数自 v3.5.0 起**从未生效**——它引用了 RunEvent.created_at，
-    而模型字段名是 timestamp，AttributeError 被 main.py 的 try/except 吞掉。
+    而模型字段名是 created_at，AttributeError 被 main.py 的 try/except 吞掉。
     2026-09-13 修复，这些用例锁住修复。
     """
 
@@ -251,7 +251,7 @@ class TestStaleRevisionFallback:
             thread_id="t1",
             execution_plan_id="p1",
             event_data={"plan_version": 1},
-            timestamp=utc_now() - timedelta(seconds=ago_seconds),
+            created_at=utc_now() - timedelta(seconds=ago_seconds),
         )
         db.add(ev)
         db.commit()
@@ -261,7 +261,7 @@ class TestStaleRevisionFallback:
         from sqlmodel import select
 
         rows = db.exec(
-            select(RunEvent).where(RunEvent.run_id == run_id).order_by(RunEvent.timestamp)
+            select(RunEvent).where(RunEvent.run_id == run_id).order_by(RunEvent.created_at)
         ).all()
         return [str(r.event_type) for r in rows]
 

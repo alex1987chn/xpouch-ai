@@ -213,7 +213,7 @@ export interface paths {
          *     权限：ADMIN
          *
          *     说明：
-         *     - expert_key 必须唯一
+         *     - expert_type 必须唯一
          *     - 新创建的专家 is_dynamic 默认为 True（用户创建的专家）
          */
         post: operations["create_expert_api_admin_experts_post"];
@@ -223,7 +223,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/experts/{expert_key}": {
+    "/api/admin/experts/{expert_type}": {
         parameters: {
             query?: never;
             header?: never;
@@ -236,7 +236,7 @@ export interface paths {
          *
          *     权限：ADMIN
          */
-        get: operations["get_expert_api_admin_experts__expert_key__get"];
+        get: operations["get_expert_api_admin_experts__expert_type__get"];
         put?: never;
         post?: never;
         /**
@@ -249,7 +249,7 @@ export interface paths {
          *     - 系统核心组件（is_system=true）不可删除
          *     - 删除后会自动刷新 LangGraph 缓存
          */
-        delete: operations["delete_expert_api_admin_experts__expert_key__delete"];
+        delete: operations["delete_expert_api_admin_experts__expert_type__delete"];
         options?: never;
         head?: never;
         /**
@@ -266,7 +266,7 @@ export interface paths {
          *
          *     注意：更新后会自动刷新 LangGraph 缓存，下次任务立即生效
          */
-        patch: operations["update_expert_api_admin_experts__expert_key__patch"];
+        patch: operations["update_expert_api_admin_experts__expert_type__patch"];
         trace?: never;
     };
     "/api/admin/promote-user": {
@@ -1973,8 +1973,8 @@ export interface components {
          * @description 名册条目：只有"这是谁"所需的两个字段。
          */
         ExpertCatalogItem: {
-            /** Expert Key */
-            expert_key: string;
+            /** Expert Type */
+            expert_type: string;
             /** Name */
             name: string;
         };
@@ -1985,8 +1985,8 @@ export interface components {
         ExpertConfigUpdateResponse: {
             /** Message */
             message: string;
-            /** Expert Key */
-            expert_key: string;
+            /** Expert Type */
+            expert_type: string;
             /** Config Version */
             config_version: number;
             /** Updated At */
@@ -1998,10 +1998,10 @@ export interface components {
          */
         ExpertCreate: {
             /**
-             * Expert Key
+             * Expert Type
              * @description 专家类型标识（唯一）
              */
-            expert_key: string;
+            expert_type: string;
             /**
              * Name
              * @description 专家显示名称
@@ -2036,16 +2036,16 @@ export interface components {
         ExpertDeleteResponse: {
             /** Message */
             message: string;
-            /** Expert Key */
-            expert_key: string;
+            /** Expert Type */
+            expert_type: string;
         };
         /**
          * ExpertPreviewRequest
          * @description 专家预览请求 DTO
          */
         ExpertPreviewRequest: {
-            /** Expert Key */
-            expert_key: string;
+            /** Expert Type */
+            expert_type: string;
             /**
              * Test Input
              * @description 测试输入（至少10个字符）
@@ -2077,8 +2077,8 @@ export interface components {
         ExpertResponse: {
             /** Id */
             id: string;
-            /** Expert Key */
-            expert_key: string;
+            /** Expert Type */
+            expert_type: string;
             /** Name */
             name: string;
             /** Description */
@@ -2330,8 +2330,8 @@ export interface components {
             role: string;
             /** Content */
             content: string;
-            /** Timestamp */
-            timestamp: string | null;
+            /** Created At */
+            created_at: string | null;
             /** Extra Data */
             extra_data: {
                 [key: string]: unknown;
@@ -2498,10 +2498,10 @@ export interface components {
             run_id: string;
             event_type: components["schemas"]["RunEventType"];
             /**
-             * Timestamp
+             * Created At
              * Format: date-time
              */
-            timestamp: string;
+            created_at: string;
             /** Event Data */
             event_data?: {
                 [key: string]: unknown;
@@ -3750,12 +3750,12 @@ export interface operations {
             };
         };
     };
-    get_expert_api_admin_experts__expert_key__get: {
+    get_expert_api_admin_experts__expert_type__get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                expert_key: string;
+                expert_type: string;
             };
             cookie?: never;
         };
@@ -3781,12 +3781,12 @@ export interface operations {
             };
         };
     };
-    delete_expert_api_admin_experts__expert_key__delete: {
+    delete_expert_api_admin_experts__expert_type__delete: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                expert_key: string;
+                expert_type: string;
             };
             cookie?: never;
         };
@@ -3812,12 +3812,12 @@ export interface operations {
             };
         };
     };
-    update_expert_api_admin_experts__expert_key__patch: {
+    update_expert_api_admin_experts__expert_type__patch: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                expert_key: string;
+                expert_type: string;
             };
             cookie?: never;
         };

@@ -52,7 +52,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   // 会话数据（与地层同一真相源，缓存友好）
   const { data } = useChatHistoryQuery({ limit: 30 })
-  const conversations = useMemo(
+  const threads = useMemo(
     () => data?.pages.flatMap(page => page.items) ?? [],
     [data]
   )
@@ -81,7 +81,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         icon: Plus,
         run: () => {
           useChatStore.getState().setMessages([])
-          useChatStore.getState().setCurrentConversationId(null)
+          useChatStore.getState().setCurrentThreadId(null)
           useTaskStore.getState().resetAll(true)
           navigate('/workbench')
         },
@@ -112,12 +112,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     [commands, q]
   )
   const filteredSessions = useMemo(() => {
-    if (!q) return conversations.slice(0, 8).map(c => ({ id: c.id, label: c.title || t('newChat') }))
-    return conversations
+    if (!q) return threads.slice(0, 8).map(c => ({ id: c.id, label: c.title || t('newChat') }))
+    return threads
       .filter(c => (c.title || '').toLowerCase().includes(q) || (c.last_message_preview || '').toLowerCase().includes(q))
       .slice(0, 8)
       .map(c => ({ id: c.id, label: c.title || t('newChat') }))
-  }, [conversations, q, t])
+  }, [threads, q, t])
 
   const flat: Array<{ kind: 'command'; item: CommandItem } | { kind: 'session'; item: SessionItem }> = useMemo(
     () => [
@@ -138,7 +138,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     } else {
       // 与地层切换同一守卫序列：清态再跳线程
       useChatStore.getState().setMessages([])
-      useChatStore.getState().setCurrentConversationId(null)
+      useChatStore.getState().setCurrentThreadId(null)
       useTaskStore.getState().resetAll(true)
       navigate(`/workbench/${entry.item.id}`)
     }

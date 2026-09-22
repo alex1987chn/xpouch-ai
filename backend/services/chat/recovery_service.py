@@ -347,7 +347,7 @@ class RecoveryService:
                     {
                         "id": str(index + 1),
                         "expert_type": st.expert_type,
-                        "description": st.task_description,
+                        "description": st.description,
                         "depends_on": st.depends_on or [],
                     }
                     for index, st in enumerate(plan.sub_tasks)
@@ -388,7 +388,7 @@ class RecoveryService:
                 plan.plan_version += 1
                 plan.estimated_steps = len(revised.tasks)
                 if revised.strategy:
-                    plan.plan_summary = revised.strategy
+                    plan.strategy = revised.strategy
 
                 emit_plan_updated(
                     session,

@@ -109,7 +109,7 @@ def get_run_events_by_run_id(
         db.exec(
             select(RunEvent)
             .where(RunEvent.run_id == run_id)
-            .order_by(RunEvent.timestamp.asc())
+            .order_by(RunEvent.created_at.asc())
             .limit(limit)
             .offset(offset)
         ).all()
@@ -141,7 +141,7 @@ def get_run_events_by_thread_id(
         db.exec(
             select(RunEvent)
             .where(RunEvent.thread_id == thread_id)
-            .order_by(RunEvent.timestamp.asc())
+            .order_by(RunEvent.created_at.asc())
             .limit(limit)
             .offset(offset)
         ).all()
@@ -213,7 +213,7 @@ def emit_plan_created(
     thread_id: str,
     execution_plan_id: str,
     task_count: int,
-    plan_summary: str | None = None,
+    strategy: str | None = None,
 ) -> RunEvent:
     """发送 PLAN_CREATED 事件"""
     return append_run_event(
@@ -222,7 +222,7 @@ def emit_plan_created(
         event_type=RunEventType.PLAN_CREATED,
         thread_id=thread_id,
         execution_plan_id=execution_plan_id,
-        event_data={"task_count": task_count, "plan_summary": plan_summary},
+        event_data={"task_count": task_count, "strategy": strategy},
     )
 
 
@@ -497,7 +497,7 @@ def fail_stale_revision_jobs(
         .join(AgentRun, RunEvent.run_id == AgentRun.id)
         .where(RunEvent.event_type.in_(state_types))
         .where(AgentRun.status.in_([RunStatus.RUNNING, RunStatus.RESUMING]))
-        .order_by(RunEvent.timestamp.asc(), RunEvent.id.asc())
+        .order_by(RunEvent.created_at.asc(), RunEvent.id.asc())
     ).all()
 
     # 按 run 取最新一条修订态事件（升序遍历，后写覆盖）
@@ -509,8 +509,8 @@ def fail_stale_revision_jobs(
         ev
         for ev in latest_by_run.values()
         if ev.event_type == RunEventType.HITL_REVISION_STARTED
-        and ev.timestamp
-        and ev.timestamp < cutoff
+        and ev.created_at
+        and ev.created_at < cutoff
     ]
     for ev in stale:
         emit_hitl_revision_failed(

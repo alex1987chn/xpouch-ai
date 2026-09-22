@@ -5,35 +5,35 @@
 
 import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { deleteConversation as apiDeleteConversation } from '@/services/chat'
+import { deleteThread as apiDeleteThread } from '@/services/chat'
 import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { errorHandler } from '@/utils/logger'
 
 import {
   useMessages,
-  useCurrentConversationId,
+  useCurrentThreadId,
   useChatActions,
 } from '@/hooks/useChatSelectors'
 /**
- * Conversation management Hook
+ * Thread management Hook
  */
-export function useConversation() {
+export function useThread() {
   const queryClient = useQueryClient()
   const messages = useMessages()
-  const currentThreadId = useCurrentConversationId()
+  const currentThreadId = useCurrentThreadId()
 
   // Actions
   const {
     setMessages,
-    setCurrentConversationId,
+    setCurrentThreadId,
   } = useChatActions()
 
   /**
-   * Delete conversation
+   * Delete thread
    */
-  const deleteConversation = useCallback(async (threadId: string) => {
+  const deleteThread = useCallback(async (threadId: string) => {
     try {
-      await apiDeleteConversation(threadId)
+      await apiDeleteThread(threadId)
 
       // 失效会话列表缓存——否则左栏 SessionStrata 删完仍残留该会话
       queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
@@ -41,16 +41,16 @@ export function useConversation() {
 
       if (currentThreadId === threadId) {
         setMessages([])
-        setCurrentConversationId(null)
+        setCurrentThreadId(null)
       }
     } catch (error) {
-      errorHandler.handle(error, 'deleteConversation')
+      errorHandler.handle(error, 'deleteThread')
     }
-  }, [queryClient, currentThreadId, setMessages, setCurrentConversationId])
+  }, [queryClient, currentThreadId, setMessages, setCurrentThreadId])
 
   return {
     messages,
-    deleteConversation,
-    currentConversationId: currentThreadId,
+    deleteThread,
+    currentThreadId: currentThreadId,
   }
 }

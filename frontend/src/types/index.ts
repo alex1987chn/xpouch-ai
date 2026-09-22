@@ -118,7 +118,7 @@ export interface ApiMessage {
 /**
  * 会话类型枚举
  */
-export type ConversationAgentType = 'default' | 'custom' | 'ai'
+export type ThreadAgentType = 'default' | 'custom' | 'ai'
 
 /**
  * 产物中心：跨会话产物列表项
@@ -151,11 +151,11 @@ export interface PaginatedArtifacts {
 /**
  * 会话列表项接口（轻量级，不包含消息内容）
  */
-export interface Conversation {
+export interface Thread {
   id: string
   title: string
   agent_id: string
-  agent_type?: ConversationAgentType
+  agent_type?: ThreadAgentType
   user_id: string
   created_at: string
   updated_at: string

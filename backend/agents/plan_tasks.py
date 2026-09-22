@@ -93,7 +93,7 @@ class PlanTask(BaseModel):
     def to_subtask_create(self) -> SubTaskCreate:
         """→ 落库 DTO（`task_id` 即 Commander 语义 ID，供下游依赖匹配）
 
-        长度守卫：task_description 超 500 字时截断并记日志（修订 LLM 可能
+        长度守卫：description 超 500 字时截断并记日志（修订 LLM 可能
         产出超长描述；VARCHAR(500) 是历史遗留，已改 TEXT，但守卫保留作为
         护栏——超长描述对执行无意义，截断后仍可读）。
         """
@@ -107,7 +107,7 @@ class PlanTask(BaseModel):
             desc = desc[:497] + "..."
         return SubTaskCreate(
             expert_type=self.expert_type,
-            task_description=desc,
+            description=desc,
             input_data=self.input_data,
             sort_order=self.sort_order,
             execution_mode=self.execution_mode,

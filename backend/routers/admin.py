@@ -53,7 +53,7 @@ class ExpertResponse(BaseModel):
     """专家响应 DTO"""
 
     id: str
-    expert_key: str
+    expert_type: str
     name: str
     description: str | None
     system_prompt: str
@@ -91,7 +91,7 @@ class ExpertConfigUpdateResponse(BaseModel):
     """专家配置更新响应（乐观锁递增后的版本号；updated_at 为 ISO 字符串）"""
 
     message: str
-    expert_key: str
+    expert_type: str
     config_version: int
     updated_at: str
 
@@ -100,7 +100,7 @@ class ExpertDeleteResponse(BaseModel):
     """专家删除响应"""
 
     message: str
-    expert_key: str
+    expert_type: str
 
 
 class PromoteUserResponse(BaseModel):
@@ -139,7 +139,7 @@ class UserDeleteResponse(BaseModel):
 class ExpertCreate(BaseModel):
     """专家创建 DTO"""
 
-    expert_key: str = PydanticField(..., min_length=1, description="专家类型标识（唯一）")
+    expert_type: str = PydanticField(..., min_length=1, description="专家类型标识（唯一）")
     name: str = PydanticField(..., min_length=1, description="专家显示名称")
     description: str | None = PydanticField(
         default=None, description="专家能力描述，用于 Planner 决定任务分配"
@@ -150,16 +150,16 @@ class ExpertCreate(BaseModel):
         default=0.5, ge=0.0, le=2.0, description="温度参数（0.0-2.0）"
     )
 
-    @field_validator("expert_key")
+    @field_validator("expert_type")
     @classmethod
-    def validate_expert_key(cls, v: str) -> str:
+    def validate_expert_type(cls, v: str) -> str:
         if not v or len(v.strip()) < 1:
-            raise ValueError("expert_key 不能为空")
+            raise ValueError("expert_type 不能为空")
         # 只允许小写字母、数字和下划线
         import re
 
         if not re.match(r"^[a-z][a-z0-9_]*$", v.strip()):
-            raise ValueError("expert_key 必须以字母开头，只能包含小写字母、数字和下划线")
+            raise ValueError("expert_type 必须以字母开头，只能包含小写字母、数字和下划线")
         return v.strip()
 
     @field_validator("name")
@@ -180,7 +180,7 @@ class ExpertCreate(BaseModel):
 class ExpertPreviewRequest(BaseModel):
     """专家预览请求 DTO"""
 
-    expert_key: str
+    expert_type: str
     test_input: str = PydanticField(..., min_length=10, description="测试输入（至少10个字符）")
 
 
@@ -246,7 +246,7 @@ async def get_all_experts(
     return [
         ExpertResponse(
             id=expert.id,
-            expert_key=expert.expert_key,
+            expert_type=expert.expert_type,
             name=expert.name,
             description=expert.description,
             system_prompt=expert.system_prompt,
@@ -261,9 +261,9 @@ async def get_all_experts(
     ]
 
 
-@router.get("/experts/{expert_key}", response_model=ExpertResponse)
+@router.get("/experts/{expert_type}", response_model=ExpertResponse)
 async def get_expert(
-    expert_key: str,
+    expert_type: str,
     session: Session = Depends(get_session),
     _: User = Depends(get_current_admin),
 ):
@@ -272,16 +272,18 @@ async def get_expert(
 
     权限：ADMIN
     """
-    expert = session.exec(select(SystemExpert).where(SystemExpert.expert_key == expert_key)).first()
+    expert = session.exec(
+        select(SystemExpert).where(SystemExpert.expert_type == expert_type)
+    ).first()
 
     if not expert:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"专家 '{expert_key}' 不存在"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"专家 '{expert_type}' 不存在"
         )
 
     return ExpertResponse(
         id=expert.id,
-        expert_key=expert.expert_key,
+        expert_type=expert.expert_type,
         name=expert.name,
         description=expert.description,
         system_prompt=expert.system_prompt,
@@ -294,9 +296,9 @@ async def get_expert(
     )
 
 
-@router.patch("/experts/{expert_key}", response_model=ExpertConfigUpdateResponse)
+@router.patch("/experts/{expert_type}", response_model=ExpertConfigUpdateResponse)
 async def update_expert(
-    expert_key: str,
+    expert_type: str,
     expert_update: ExpertUpdate,
     session: Session = Depends(get_session),
     admin: User = Depends(get_current_admin),
@@ -315,11 +317,13 @@ async def update_expert(
     注意：更新后会自动刷新 LangGraph 缓存，下次任务立即生效
     """
     # 先查询专家（用于权限检查等）
-    expert = session.exec(select(SystemExpert).where(SystemExpert.expert_key == expert_key)).first()
+    expert = session.exec(
+        select(SystemExpert).where(SystemExpert.expert_type == expert_type)
+    ).first()
 
     if not expert:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"专家 '{expert_key}' 不存在"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"专家 '{expert_type}' 不存在"
         )
 
     # 🔥 权限检查：只有动态专家可以修改 name
@@ -353,7 +357,7 @@ async def update_expert(
     if result.rowcount == 0:
         # 获取当前版本号用于错误提示
         current_expert = session.exec(
-            select(SystemExpert).where(SystemExpert.expert_key == expert_key)
+            select(SystemExpert).where(SystemExpert.expert_type == expert_type)
         ).first()
         current_version = current_expert.config_version if current_expert else "未知"
         raise HTTPException(
@@ -366,18 +370,18 @@ async def update_expert(
         actor_user_id=admin.id,
         actor_username=admin.username,
         action="expert.update",
-        target=expert_key,
+        target=expert_type,
         detail={"expected_version": expert_update.expected_version},
     )
     session.commit()
 
     # 重新查询获取更新后的值
     updated_expert = session.exec(
-        select(SystemExpert).where(SystemExpert.expert_key == expert_key)
+        select(SystemExpert).where(SystemExpert.expert_type == expert_type)
     ).first()
 
     logger.info(
-        f"[Admin] Expert '{expert_key}' updated by admin (version {updated_expert.config_version})"
+        f"[Admin] Expert '{expert_type}' updated by admin (version {updated_expert.config_version})"
     )
 
     # 自动刷新 LangGraph 缓存（无需重启）
@@ -390,7 +394,7 @@ async def update_expert(
 
     return {
         "message": "专家配置已更新，下次任务生效",
-        "expert_key": expert_key,
+        "expert_type": expert_type,
         "config_version": updated_expert.config_version,
         "updated_at": updated_expert.updated_at.isoformat(),
     }
@@ -458,11 +462,11 @@ async def preview_expert(
     from utils.llm_factory import get_llm_instance
 
     # 获取专家配置（不从缓存读取，确保使用最新配置）
-    expert_config = get_expert_config(request.expert_key, session)
+    expert_config = get_expert_config(request.expert_type, session)
 
     if not expert_config:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"专家 '{request.expert_key}' 不存在"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"专家 '{request.expert_type}' 不存在"
         )
 
     # 调用 LLM 进行预览
@@ -604,23 +608,24 @@ async def create_expert(
     权限：ADMIN
 
     说明：
-    - expert_key 必须唯一
+    - expert_type 必须唯一
     - 新创建的专家 is_dynamic 默认为 True（用户创建的专家）
     """
 
-    # 检查 expert_key 是否已存在
+    # 检查 expert_type 是否已存在
     existing_expert = session.exec(
-        select(SystemExpert).where(SystemExpert.expert_key == expert_create.expert_key)
+        select(SystemExpert).where(SystemExpert.expert_type == expert_create.expert_type)
     ).first()
 
     if existing_expert:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=f"专家 '{expert_create.expert_key}' 已存在"
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"专家 '{expert_create.expert_type}' 已存在",
         )
 
     # 创建新专家
     new_expert = SystemExpert(
-        expert_key=expert_create.expert_key,
+        expert_type=expert_create.expert_type,
         name=expert_create.name,
         description=expert_create.description,
         system_prompt=expert_create.system_prompt,
@@ -636,7 +641,7 @@ async def create_expert(
         actor_user_id=admin.id,
         actor_username=admin.username,
         action="expert.create",
-        target=expert_create.expert_key,
+        target=expert_create.expert_type,
         detail={"name": expert_create.name, "model": expert_create.model},
     )
     try:
@@ -647,7 +652,7 @@ async def create_expert(
         logger.warning(f"[Admin] Create expert integrity error: {exc}")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="创建专家失败：expert_key 重复或字段约束不满足",
+            detail="创建专家失败：expert_type 重复或字段约束不满足",
         ) from exc
     except Exception as exc:
         session.rollback()
@@ -656,7 +661,7 @@ async def create_expert(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="创建专家失败：数据库写入异常"
         ) from exc
 
-    logger.info(f"[Admin] Expert '{expert_create.expert_key}' created by admin")
+    logger.info(f"[Admin] Expert '{expert_create.expert_type}' created by admin")
 
     # 自动刷新 LangGraph 缓存
     try:
@@ -667,7 +672,7 @@ async def create_expert(
 
     return ExpertResponse(
         id=new_expert.id,
-        expert_key=new_expert.expert_key,
+        expert_type=new_expert.expert_type,
         name=new_expert.name,
         description=new_expert.description,
         system_prompt=new_expert.system_prompt,
@@ -680,9 +685,9 @@ async def create_expert(
     )
 
 
-@router.delete("/experts/{expert_key}", response_model=ExpertDeleteResponse)
+@router.delete("/experts/{expert_type}", response_model=ExpertDeleteResponse)
 async def delete_expert(
-    expert_key: str,
+    expert_type: str,
     session: Session = Depends(get_session),
     admin: User = Depends(get_current_admin),  # 需要管理员权限
 ):
@@ -696,11 +701,13 @@ async def delete_expert(
     - 删除后会自动刷新 LangGraph 缓存
     """
     # 查找专家
-    expert = session.exec(select(SystemExpert).where(SystemExpert.expert_key == expert_key)).first()
+    expert = session.exec(
+        select(SystemExpert).where(SystemExpert.expert_type == expert_type)
+    ).first()
 
     if not expert:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"专家 '{expert_key}' 不存在"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"专家 '{expert_type}' 不存在"
         )
 
     # 🔥 检查是否为系统核心组件（优先检查 is_system）
@@ -718,11 +725,11 @@ async def delete_expert(
         actor_user_id=admin.id,
         actor_username=admin.username,
         action="expert.delete",
-        target=expert_key,
+        target=expert_type,
     )
     session.commit()
 
-    logger.info(f"[Admin] Expert '{expert_key}' deleted by admin")
+    logger.info(f"[Admin] Expert '{expert_type}' deleted by admin")
 
     # 自动刷新 LangGraph 缓存
     try:
@@ -731,7 +738,7 @@ async def delete_expert(
     except Exception as e:
         logger.warning(f"[Admin] Warning: Failed to refresh cache: {e}")
 
-    return {"message": "专家已删除", "expert_key": expert_key}
+    return {"message": "专家已删除", "expert_type": expert_type}
 
 
 # ============================================================================

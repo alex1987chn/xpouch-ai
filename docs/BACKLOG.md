@@ -27,7 +27,6 @@
 - [ ] 前端状态三轨统一（消息 zustand / 会话产物 react-query / taskStore——周级重构，单独立项）
 - [ ] User 表验证码六列摊平（规范=独立表；能用，收益低，搁置）
 - [ ] 未使用 i18n 键审计：判据 `git grep "t('<key>')"` 为空 ≠ 死键（`expertIdentity` 这类类型→key 映射是动态引用，删前连映射表一起查）
-- [ ] Plan 收敛专项（原 B4 剩余 + 2026-09-22 全字段审计产出）：已完成=PlanTask canonical 模型/边界转换/depends_on 字段名统一（代码侧）。剩余：① SubTask 表落语义 task_id 列（修订 diff 按 ID 对齐的前提）；② `dependencies` 旧名退役三部曲（数据迁移改 systemexpert.commander 提示词 → 删 AliasChoices → model_validator 对旧名显式抛错——裸删会静默丢依赖）；③ 列改名迁移收掉 `description↔task_description`、`strategy↔plan_summary` 两对代码内双名（转换已集中，低风险）；④ 前端 PlanTaskPayload 的 status 手写四值接枚举生成；⑤ `priority` 幽灵字段处置（提示词在教、下游全丢——传导或删除）
 - [ ] Redis 限流（现内存态，多 worker 不共享）
 - [ ] 列表虚拟化（会话/画廊长列表）
 - [ ] i18n `common.ts` 按域拆分

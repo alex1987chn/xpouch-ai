@@ -85,7 +85,7 @@ export function buildThinkingStepsFromTimeline(
           expertType: 'router',
           expertName: labels.routerName,
           content: routerConclusion(data.mode, labels),
-          timestamp: event.timestamp,
+          timestamp: event.created_at,
           status: 'completed',
           type: 'analysis',
         })
@@ -97,7 +97,7 @@ export function buildThinkingStepsFromTimeline(
           expertType: 'planner',
           expertName: labels.planName,
           content: labels.planDone,
-          timestamp: event.timestamp,
+          timestamp: event.created_at,
           status: 'completed',
           type: 'planning',
         })
@@ -115,7 +115,7 @@ export function buildThinkingStepsFromTimeline(
           // 实时面板在任务进行中显示的就是任务描述，账本正好有这一项
           content: asText(data.description) || labels.taskDone,
           taskDescription: asText(data.description) || undefined,
-          timestamp: event.timestamp,
+          timestamp: event.created_at,
           status: 'completed',
           type: 'execution',
         })
@@ -144,7 +144,7 @@ export function buildThinkingStepsFromTimeline(
           expertType: expert,
           expertName: expert,
           content: failed ? labels.taskFailed : labels.taskDone,
-          timestamp: event.timestamp,
+          timestamp: event.created_at,
           status: failed ? 'failed' : 'completed',
           type: 'execution',
           duration,

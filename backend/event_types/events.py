@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from models.enums import TaskStatus
 from utils.time import utc_now
 
 
@@ -68,7 +69,7 @@ class TaskInfo(BaseModel):
     expert_type: str
     description: str
     sort_order: int
-    status: Literal["pending", "running", "completed", "failed"]
+    status: TaskStatus
     # 2026-09-13：此前**没有这个字段**，而前端类型里一直声明着它 → plan.created
     # 从不发送依赖关系（前端读到 undefined）。是「前端手写类型 vs 后端模型」的
     # 一致性断言（frontend/src/types/events.ts）把它照出来的。
@@ -252,7 +253,7 @@ class PlanTaskPayload(BaseModel):
     expert_type: str
     description: str
     sort_order: int
-    status: Literal["pending", "running", "completed", "failed"]
+    status: TaskStatus
     depends_on: list[str] = []
 
 

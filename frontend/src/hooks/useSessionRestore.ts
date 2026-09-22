@@ -21,7 +21,7 @@ import { useTranslation } from '@/i18n'
 import { useTaskStore } from '@/store/taskStore'
 import { useChatStore } from '@/store/chatStore'
 import { logger } from '@/utils/logger'
-import { getConversation } from '@/services/chat'
+import { getThread } from '@/services/chat'
 import { getRunTimeline } from '@/services/runs'
 import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { toLocalDate } from '@/lib/datetime'
@@ -29,7 +29,7 @@ import {
   buildThinkingStepsFromTimeline,
   type ThinkingStepLabels,
 } from '@/lib/thinkingStepsFromTimeline'
-import type { Conversation, Message, SubTask } from '@/types'
+import type { Thread, Message, SubTask } from '@/types'
 
 interface UseSessionRestoreOptions {
   /** 是否启用恢复 */
@@ -149,7 +149,7 @@ export function useSessionRestore(
   const clearActiveRunId = useTaskStore((state) => state.clearActiveRunId)
   const addMessage = useChatStore((state) => state.addMessage)
   const setMessages = useChatStore((state) => state.setMessages)
-  const setCurrentConversationId = useChatStore((state) => state.setCurrentConversationId)
+  const setCurrentThreadId = useChatStore((state) => state.setCurrentThreadId)
   const setGenerating = useChatStore((state) => state.setGenerating)
 
   /**
@@ -193,22 +193,22 @@ export function useSessionRestore(
       // 404 先静默重试一次再定性：首条消息刚落库、线程刚创建的那一瞬间，这个 GET 仍可能
       // 撞上 404（同一进程内的写入可见性 + 网络往返差），把它当成「会话不存在」会误报。
       // 重试仍 404 才交给外层 catch 定性（那里会给用户一个明确状态，见 isMissingSession）。
-      let conversation: Conversation
+      let thread: Thread
       try {
-        conversation = await getConversation(threadId)
+        thread = await getThread(threadId)
       } catch (err) {
         if (!(isStatusError(err) && err.status === 404)) throw err
         logger.debug('[useSessionRestore] 会话详情 404，1.2s 后重试一次')
         await new Promise(resolve => setTimeout(resolve, 1200))
-        conversation = await getConversation(threadId)
+        thread = await getThread(threadId)
       }
-      const latestRun = conversation.latest_run
+      const latestRun = thread.latest_run
 
       // 🔥 恢复消息（无论简单模式还是复杂模式）
-      if (conversation.messages && conversation.messages.length > 0) {
+      if (thread.messages && thread.messages.length > 0) {
         // 🔥🔥🔥 前端排序：按 timestamp 升序。走 messageTimeMs（naive-UTC 解析口径），
         // 与本文件其余时间处理一致——裸 new Date() 一旦混入带时区的实时时间戳会错序（评审低危 L5）
-        const sortedMessages = [...conversation.messages].sort(
+        const sortedMessages = [...thread.messages].sort(
           (a, b) => messageTimeMs(a.timestamp) - messageTimeMs(b.timestamp)
         )
         // 思考面板随刷新消失（步骤只在内存里）→ 从事件账本重建骨架挂回
@@ -227,7 +227,7 @@ export function useSessionRestore(
         })
         setMessages(restoredMessages)
       }
-      setCurrentConversationId(threadId)
+      setCurrentThreadId(threadId)
 
       // 刚拿到这条会话的真相（含 latest_run.status）→ 让会话地层跟着对账一次。
       // 侧栏状态 chip 读的正是 latest_run.status，而这个状态可能在别处变过
@@ -271,7 +271,7 @@ export function useSessionRestore(
       }
       
       // 检查是否是复杂模式（有 execution_plan）
-      if (!conversation.execution_plan && !conversation.execution_plan_id) {
+      if (!thread.execution_plan && !thread.execution_plan_id) {
         // 简单模式：只恢复消息即可
         setIsRestored(true)
         setIsRestoring(false)
@@ -285,7 +285,7 @@ export function useSessionRestore(
       // 副本」——而那份副本没有任何 UI 消费者，属于审计所称的「双真相源」。
       // 现已移除本地副本，产物/任务一律**以服务端为唯一真相**：直接设置模式与
       // 初始化标记即可（后面的 pendingPlan / 运行中判定本来就全部读 subTasks）。
-      const { execution_plan } = conversation
+      const { execution_plan } = thread
       if (execution_plan?.sub_tasks) {
         const subTasks = execution_plan.sub_tasks || []
 
@@ -367,7 +367,7 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [threadId, enabled, queryClient, setPendingPlan, setMode, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentConversationId, setGenerating, t])
+  }, [threadId, enabled, queryClient, setPendingPlan, setMode, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentThreadId, setGenerating, t])
 
   /**
    * 公开的手动恢复方法

@@ -30,7 +30,7 @@ describe('SSE 分发点会话归属守卫（评审 H5）', () => {
       // 挂住不返回：流保持“打开”状态，由测试手动喂帧
       await new Promise(() => {})
     })
-    useChatStore.setState({ currentConversationId: 'thread-A', messages: [] })
+    useChatStore.setState({ currentThreadId: 'thread-A', messages: [] })
   })
 
   it('流所属会话已切走时，帧不再进全局分发（不产生兜底消息）', async () => {
@@ -45,7 +45,7 @@ describe('SSE 分发点会话归属守卫（评审 H5）', () => {
     await vi.waitFor(() => expect(capturedOnMessage).not.toBeNull())
 
     // 用户切到会话 B
-    useChatStore.setState({ currentConversationId: 'thread-B', messages: [] })
+    useChatStore.setState({ currentThreadId: 'thread-B', messages: [] })
 
     // 旧流（thread-A）的一帧 delta 到达：message_id 未知 → 若无守卫会兜底 addMessage
     await capturedOnMessage!({

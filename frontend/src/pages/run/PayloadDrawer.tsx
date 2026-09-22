@@ -162,7 +162,7 @@ export function PayloadDrawer({ event, isOpen, onClose }: PayloadDrawerProps) {
                       {event.event_type}
                     </span>
                     <span className="text-xs text-content-muted">
-                      {toLocalDate(event.timestamp).toLocaleString()}
+                      {toLocalDate(event.created_at).toLocaleString()}
                     </span>
                   </div>
 

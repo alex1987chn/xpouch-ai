@@ -39,7 +39,7 @@ INDEX_RENAMES_UP = [
     ("ix_subtask_status", "idx_subtask_status"),
     ("ix_artifact_sub_task_id", "idx_artifact_sub_task_id"),
     ("ix_artifact_type", "idx_artifact_type"),
-    ("ix_systemexpert_expert_key", "idx_systemexpert_expert_key"),
+    ("ix_systemexpert_expert_type", "idx_systemexpert_expert_type"),
     ("ix_user_memories_user_id", "idx_user_memories_user_id"),
     ("ix_mcp_servers_is_active", "idx_mcp_servers_is_active"),
     ("ix_mcp_servers_name", "idx_mcp_servers_name"),

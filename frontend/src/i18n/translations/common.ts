@@ -49,8 +49,8 @@ export const zh = {
 
   // Delete Dialog
   confirmDeleteTitle: '确认删除',
-  confirmDeleteConversation: '删除会话',
-  deleteConversationWarning: '会话及其消息、运行记录将一并删除，此操作不可恢复。',
+  confirmDeleteThread: '删除会话',
+  deleteThreadWarning: '会话及其消息、运行记录将一并删除，此操作不可恢复。',
   sessionDeleted: '会话已删除',
   confirmDeleteDescription: '此操作无法撤销，请确认是否继续？',
   deleting: '删除中...',
@@ -207,8 +207,8 @@ export const en = {
 
   // Delete Dialog
   confirmDeleteTitle: 'Confirm Delete',
-  confirmDeleteConversation: 'Delete conversation',
-  deleteConversationWarning: 'Conversation, its messages and runs will be deleted. This cannot be undone.',
+  confirmDeleteThread: 'Delete conversation',
+  deleteThreadWarning: 'Conversation, its messages and runs will be deleted. This cannot be undone.',
   sessionDeleted: 'Conversation deleted',
   download: 'Download',
   copyFailed: 'Copy failed',
@@ -367,8 +367,8 @@ export const ja = {
 
   // Delete Dialog
   confirmDeleteTitle: '削除の確認',
-  confirmDeleteConversation: '会話を削除',
-  deleteConversationWarning: '会話とメッセージ・実行履歴はすべて削除されます。元に戻せません。',
+  confirmDeleteThread: '会話を削除',
+  deleteThreadWarning: '会話とメッセージ・実行履歴はすべて削除されます。元に戻せません。',
   sessionDeleted: '会話を削除しました',
   download: 'ダウンロード',
   copyFailed: 'コピーに失敗しました',

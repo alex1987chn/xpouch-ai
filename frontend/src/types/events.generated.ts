@@ -30,7 +30,7 @@ export interface TaskInfo {
   expert_type: string
   description: string
   sort_order: number
-  status: 'pending' | 'running' | 'completed' | 'failed'
+  status: 'pending' | 'waiting_for_approval' | 'running' | 'completed' | 'failed' | 'cancelled'
   depends_on?: string[]
 }
 
@@ -130,7 +130,7 @@ export interface PlanTaskPayload {
   expert_type: string
   description: string
   sort_order: number
-  status: 'pending' | 'running' | 'completed' | 'failed'
+  status: 'pending' | 'waiting_for_approval' | 'running' | 'completed' | 'failed' | 'cancelled'
   depends_on?: string[]
 }
 

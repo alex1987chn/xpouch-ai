@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 变更（词汇收敛专项）
+
+- **全站词汇/形状收敛（零兼容层一刀切）**：同义双名五对收口——`task_description`→`description`、`plan_summary`→`strategy`、`message/runevent` 的 `timestamp`→`created_at`、`systemexpert.expert_key`→`expert_type`（迁移 20260922_000200，守卫式兼容空库链与 create_all 老库的历史分叉：空库的 systemexpert 键列从 001 起就叫 expert_type）
+- **`dependencies` 旧字段名退役（fail-loud）**：提示词教材随迁移更新（dependencies→depends_on、删 priority 教学），`AliasChoices` 容错删除，旧名输入显式抛错——静默丢弃会丢任务依赖
+- **`priority` 幽灵字段删除**：提示词在教、schema 在收、下游全丢（生产零消费实测），从输出 schema 移除
+- **SubTask 落语义 task_id 列**：此前只在内存桥接，修订重建任务行后 ID 无延续性；落列后修订 diff 可按 ID 对齐
+- **任务事件 payload 统一受 schema 约束**：TaskInfo/PlanTaskPayload 的 status 接 TaskStatus 枚举（前端生成物跟）；账本写入 3 处手拼 dict 改用 SSE 同款 payload 模型序列化（双真相源收口第一步）
+- **前端词汇对齐 thread**：`Conversation` 类型/hooks（useConversation→useThread）/局部变量全部 rename（/api/threads 端点本就叫 thread）；i18n 两组键三语同步；`getAgentType` 死函数与 `ThreadAgentType` 的 'custom' 死值（CustomAgent 退役漏网）顺手清除
+- **有意保留的命名边界**（详见 DECISIONS）：请求侧 ChatMessageDTO.timestamp（对外契约）、SSE payload 的 timestamp 协议键、前端本地 Message/ThinkingStep.timestamp（本地时间戳非列镜像）
+
 ### 变更
 
 - **协作模式落地**：新增 `docs/BACKLOG.md`（未完成工作唯一真相源，完成验收后删条目，完成史由 git/CHANGELOG 承载）与 `docs/DECISIONS.md`（已定决策与约定，含明确不做清单，防否决需求复燃）；`DESIGN-SPEC.md` 补六条规范（嵌套同心圆公式、丝绒玻璃只进浮层、空态不放操作按钮、placeholder 用 content-muted、动效勿引回 framer-motion、审批图标用 ClipboardList）

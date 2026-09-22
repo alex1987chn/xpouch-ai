@@ -15,14 +15,14 @@ import { useTranslation } from '@/i18n'
 import { formatDistanceToNow } from 'date-fns'
 import { Plus, Trash2, MessagesSquare, SearchX } from 'lucide-react'
 
-import { useChatHistoryQuery, useDeleteConversationMutation } from '@/hooks/queries/useChatHistoryQuery'
+import { useChatHistoryQuery, useDeleteThreadMutation } from '@/hooks/queries/useChatHistoryQuery'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { pushToast } from '@/components/ui/use-toast'
 import { SearchInput } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/states'
 import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
-import type { Conversation } from '@/types'
+import type { Thread } from '@/types'
 import { agentDotStyle, expertDisplayName } from '@/lib/expertIdentity'
 import { toLocalDate, localeForLanguage, type Locale } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
@@ -46,9 +46,9 @@ function groupOf(iso: string): StrataGroup {
 }
 
 /** 会话行的右侧槽：活动态显示状态 chip，静默态显示相对时间 */
-function RowTrailing({ conversation, locale }: { conversation: Conversation; locale: Locale }) {
+function RowTrailing({ thread, locale }: { thread: Thread; locale: Locale }) {
   const { t } = useTranslation()
-  const status = conversation.latest_run?.status
+  const status = thread.latest_run?.status
   if (status === 'waiting_for_approval') {
     return (
       <span className="shrink-0 rounded-full bg-accent-warning/12 px-1.5 py-0.5 text-nano font-medium text-accent-warning">
@@ -66,7 +66,7 @@ function RowTrailing({ conversation, locale }: { conversation: Conversation; loc
   }
   return (
     <span className="shrink-0 text-tiny text-content-muted">
-      {formatDistanceToNow(toLocalDate(conversation.updated_at), { addSuffix: false, locale })}
+      {formatDistanceToNow(toLocalDate(thread.updated_at), { addSuffix: false, locale })}
     </span>
   )
 }
@@ -75,12 +75,12 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
   const { t, language } = useTranslation()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [pendingDelete, setPendingDelete] = useState<Conversation | null>(null)
-  const deleteConversationMutation = useDeleteConversationMutation()
-  const isDeleting = deleteConversationMutation.isPending
+  const [pendingDelete, setPendingDelete] = useState<Thread | null>(null)
+  const deleteThreadMutation = useDeleteThreadMutation()
+  const isDeleting = deleteThreadMutation.isPending
 
   const { data, isLoading, fetchNextPage, hasNextPage } = useChatHistoryQuery({ limit: 20 })
-  const conversations = useMemo(
+  const threads = useMemo(
     () => data?.pages.flatMap(page => page.items) ?? [],
     [data]
   )
@@ -88,17 +88,17 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
   // 搜索：前端过滤已加载数据（标题 + 最后消息预览，沿用 HistoryPage 语义）
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return conversations
-    return conversations.filter(
+    if (!q) return threads
+    return threads.filter(
       c =>
         c.title?.toLowerCase().includes(q) ||
         c.last_message_preview?.toLowerCase().includes(q)
     )
-  }, [conversations, search])
+  }, [threads, search])
 
   // 日期分组（保持列表原顺序，分组只是展示切面）
   const groups = useMemo(() => {
-    const buckets: Record<StrataGroup, Conversation[]> = { today: [], yesterday: [], thisWeek: [], earlier: [] }
+    const buckets: Record<StrataGroup, Thread[]> = { today: [], yesterday: [], thisWeek: [], earlier: [] }
     for (const c of filtered) buckets[groupOf(c.updated_at)].push(c)
     return buckets
   }, [filtered])
@@ -124,11 +124,11 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
   const handleConfirmDelete = async () => {
     if (!pendingDelete) return
     try {
-      await deleteConversationMutation.mutateAsync(pendingDelete.id)
+      await deleteThreadMutation.mutateAsync(pendingDelete.id)
       pushToast({ title: t('sessionDeleted') })
       if (pendingDelete.id === activeThreadId) {
         useChatStore.getState().setMessages([])
-        useChatStore.getState().setCurrentConversationId(null)
+        useChatStore.getState().setCurrentThreadId(null)
         useTaskStore.getState().resetAll(true)
         navigate('/workbench')
       }
@@ -140,12 +140,12 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
   }
 
   // 切换会话：清空聊天态再换线程（与 HistoryPageWrapper 同一守卫序列）
-  const handleSelect = (conversation: Conversation) => {
-    if (conversation.id === activeThreadId) return
+  const handleSelect = (thread: Thread) => {
+    if (thread.id === activeThreadId) return
     useChatStore.getState().setMessages([])
-    useChatStore.getState().setCurrentConversationId(null)
+    useChatStore.getState().setCurrentThreadId(null)
     useTaskStore.getState().resetAll(true)
-    navigate(`/workbench/${conversation.id}`)
+    navigate(`/workbench/${thread.id}`)
   }
 
   const groupLabels: Array<[StrataGroup, string] | null> = [
@@ -189,7 +189,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
               <div key={i} className="h-10 animate-pulse rounded-sm bg-content-muted/10" />
             ))}
           </div>
-        ) : conversations.length === 0 ? (
+        ) : threads.length === 0 ? (
           <EmptyState
             variant="bare"
             dense
@@ -248,7 +248,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
-                      <RowTrailing conversation={conv} locale={locale} />
+                      <RowTrailing thread={conv} locale={locale} />
                     </button>
                   )
                 })}
@@ -264,8 +264,8 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
           isOpen={!!pendingDelete}
           onClose={() => setPendingDelete(null)}
           onConfirm={handleConfirmDelete}
-          title={t('confirmDeleteConversation') || '删除会话'}
-          description={(t('deleteConversationWarning') || '会话及其消息、运行记录将一并删除，此操作不可恢复。')}
+          title={t('confirmDeleteThread') || '删除会话'}
+          description={(t('deleteThreadWarning') || '会话及其消息、运行记录将一并删除，此操作不可恢复。')}
           itemName={pendingDelete?.title || t('newChat')}
           confirmText={t('delete')}
           isDeleting={isDeleting}

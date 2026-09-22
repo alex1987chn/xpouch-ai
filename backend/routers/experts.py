@@ -8,7 +8,7 @@
 
 [为什么单独一支而不是复用 admin 的 ExpertResponse] 后者含 `system_prompt`、`model`、
 `temperature`、`config_version`——那是实例级管理信息。只为了显示一个名字而把它们发给
-所有用户，是权限面的不必要扩大。这里只回 `expert_key` + `name` 两个字段。
+所有用户，是权限面的不必要扩大。这里只回 `expert_type` + `name` 两个字段。
 """
 
 from fastapi import APIRouter, Depends
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/experts", tags=["experts"])
 class ExpertCatalogItem(BaseModel):
     """名册条目：只有"这是谁"所需的两个字段。"""
 
-    expert_key: str
+    expert_type: str
     name: str
 
 
@@ -39,4 +39,6 @@ async def get_expert_catalog(
     experts = session.exec(
         select(SystemExpert).order_by(SystemExpert.created_at.desc(), SystemExpert.id.desc())
     ).all()
-    return [ExpertCatalogItem(expert_key=expert.expert_key, name=expert.name) for expert in experts]
+    return [
+        ExpertCatalogItem(expert_type=expert.expert_type, name=expert.name) for expert in experts
+    ]

@@ -19,7 +19,7 @@ import { getHeaders, buildUrl, handleResponse, authenticatedFetch } from './comm
 
 export interface SystemExpert {
   id: string
-  expert_key: string
+  expert_type: string
   name: string
   description: string | null
   system_prompt: string
@@ -40,7 +40,7 @@ export interface UpdateExpertRequest {
 }
 
 export interface CreateExpertRequest {
-  expert_key: string
+  expert_type: string
   name: string
   description?: string
   system_prompt: string
@@ -60,7 +60,7 @@ export interface GenerateDescriptionResponse {
 }
 
 export interface PreviewExpertRequest {
-  expert_key: string
+  expert_type: string
   test_input: string
 }
 

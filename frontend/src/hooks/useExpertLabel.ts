@@ -19,7 +19,7 @@ export function useExpertLabel(): (expertType: string) => string {
   const { data: catalog } = useExpertCatalogQuery()
 
   const catalogNames = useMemo(
-    () => new Map((catalog ?? []).map(item => [item.expert_key, item.name])),
+    () => new Map((catalog ?? []).map(item => [item.expert_type, item.name])),
     [catalog]
   )
 

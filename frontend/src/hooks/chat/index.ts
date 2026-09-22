@@ -6,4 +6,4 @@
 export { useChatCore } from './useChatCore'
 
 // 会话管理
-export { useConversation } from './useConversation'
+export { useThread } from './useThread'
