@@ -1,9 +1,0 @@
-style(chat): 同轮专家卡成组收紧间距（32px → 12px）
-
-一轮的连续专家卡是一个过程块：组内间距收紧（渲染层判断前一条
-也是 expert_result 时 -mt-5），组间（专家卡↔用户/思考/正文消息）
-保持 space-y-8 原间距。E2E DOM 断言：expert→expert 12px、
-user→expert / expert→other 32px。
-
-代码块行高经实测复核不修：行高比 1.63~1.67 属正常范围，
-视觉反馈的"挤"实为 prose-sm 小字号观感，无缺陷不盲调。
