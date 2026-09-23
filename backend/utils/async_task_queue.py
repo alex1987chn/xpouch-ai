@@ -13,9 +13,12 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from utils.logger import logger
+
+if TYPE_CHECKING:
+    from event_types.events import SSEEvent
 
 # 持有运行中的后台任务引用：CPython 文档明确警告无引用的任务可能被 GC
 # 中途丢弃，且异常不会进入任何 handler
@@ -149,11 +152,16 @@ async def async_save_expert_result(
     output_result: str,
     artifact_data: dict[str, Any] | None = None,
     duration_ms: int | None = None,
+    artifact_event: SSEEvent | None = None,
 ) -> None:
     """异步保存专家执行结果（线程池执行同步 DB 写入）。
 
-    落库失败时经 emit_event 告知前端（本协程运行在事件循环、继承节点的
-    图上下文）；无图上下文（如单测直调）时 emit_event 为 no-op，日志兜底。
+    artifact_event：随本次保存产出的 artifact.generated 事件。它的协议语义是
+    「产物已持久化，收到即可查」——前端收到后会立即拉 /artifacts 列表，所以
+    必须在**落库成功之后**发射（保存失败则不发：产物不存在，宣称"已生成"
+    只会让刷新扑空）。落库失败时经 emit_event 告知前端（本协程运行在事件
+    循环、继承节点的图上下文）；无图上下文（如单测直调）时 emit_event 为
+    no-op，日志兜底。
     """
     saved = await asyncio.to_thread(
         _sync_save_wrapper,
@@ -176,6 +184,14 @@ async def async_save_expert_result(
             )
         except Exception:
             logger.debug("[AsyncTaskQueue] 持久化失败通知未送达 task_id=%s", task_id)
+        return
+    if artifact_event is not None:
+        try:
+            from agents.event_stream import emit_event
+
+            await emit_event(artifact_event)
+        except Exception:
+            logger.exception("[AsyncTaskQueue] artifact.generated 事件未送达 task_id=%s", task_id)
 
 
 async def async_append_run_event(

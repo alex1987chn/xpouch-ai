@@ -724,7 +724,20 @@ async def expert_worker_node(
         if task_id:
             try:
                 from utils.async_task_queue import async_save_expert_result, spawn_background
+                from utils.event_generator import event_artifact_generated
 
+                # artifact.generated 事件交给保存协程，在**落库成功之后**发射：
+                # 前端收到事件会立即拉 /artifacts 列表（右栏画布实时出卡），
+                # 先发后存会让那次刷新扑空——产物要等下一次事件或手动整页刷新
+                # 才出现。跳过保存（task_id 为空）时同样不发：没落库就不该宣称已生成。
+                artifact_event = event_artifact_generated(
+                    task_id=task_id,
+                    expert_type=expert_type,
+                    artifact_id=artifact_id,
+                    artifact_type=artifact_type,
+                    content=response.content,
+                    title=f"{expert_name}结果",
+                )
                 # 使用后台线程异步保存，不阻塞 LLM 响应返回（持引用防 GC + 失败可见）
                 spawn_background(
                     async_save_expert_result(
@@ -733,6 +746,7 @@ async def expert_worker_node(
                         output_result=response.content,
                         artifact_data=artifact,
                         duration_ms=duration_ms,
+                        artifact_event=artifact_event,
                     ),
                     label=f"save_result:{expert_type}:{task_id}",
                 )
@@ -742,24 +756,9 @@ async def expert_worker_node(
         else:
             logger.warning(f"[GenericWorker] ⚠️ 跳过保存: task_id={task_id}")
 
-        # ✅ 发送 artifact / 完成事件（协议 v2：custom stream 直推）
-        from utils.event_generator import event_artifact_generated, event_task_completed
-
-        # 🔥 v4.0 重构：统一发送 artifact.generated 事件（批处理模式）
-        # 所有专家完成后发送完整的 artifact 内容
-        await emit_event(
-            event_artifact_generated(
-                task_id=task_id,
-                expert_type=expert_type,
-                artifact_id=artifact_id,
-                artifact_type=artifact_type,
-                content=response.content,
-                title=f"{expert_name}结果",
-            )
-        )
-        logger.info(f"[GenericWorker] 已生成 artifact.generated 事件: {artifact_type}")
-
         # 1. 发送 task.completed 事件（专家执行完成）
+        from utils.event_generator import event_task_completed
+
         await emit_event(
             event_task_completed(
                 task_id=task_id,
