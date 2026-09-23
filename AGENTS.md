@@ -12,6 +12,7 @@ AI 多智能体工作台（LangGraph 后端 + React 前端，开源自托管）�
 - 后端：`cd backend && uv run python run.py`（3002；**改代码必须重启进程**）
 - 前端：`pnpm build` 后 `pnpm preview`（4173）；开发 `pnpm dev`
 - 测试：后端 `backend/.venv/Scripts/python.exe -m pytest tests/ -q`；前端 `pnpm test`
+- **验收链（改完必跑）**：后端 ruff check + format + pytest；前端 `pnpm run typecheck` + lint + test + build；动到执行路径（流式/HITL/迁移）加跑 e2e
 - HITL 全链路 e2e（真实 LLM）：`backend/scripts/e2e_hitl_check.py`
 - 改枚举/事件协议/response_model 后：`just gen-enums` / `gen-event-types` / `gen-openapi-types`
 
