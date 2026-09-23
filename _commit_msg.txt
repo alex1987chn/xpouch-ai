@@ -1,0 +1,20 @@
+feat(chat): 专家卡工具明细可展开 + 产出全文就地展开
+
+对照 Manus / ChatGPT Deep Research / Devin 的过程可回看模式确定形态：
+行业"过程流式"是动作流（工具调用实时出现）而非草稿正文流——工具
+循环里哪轮是最终正文生成完才知道，流草稿会把中间轮当正文闪现。
+
+- 工具明细：后端从账本聚合逐次明细快照（extra_data.tool_calls，
+  截 50 条）随专家消息落库，task.completed 事件携带（载荷=库内
+  终态）；完成态汇总行点击展开逐次明细（工具名/MCP 标/耗时/成败）
+- 实时活动序列：执行中从"只显示当前一条"升级为逐次追加的序列
+  （metadata.toolCalls，渲染最近 3 条 + 更早计数，calling 转圈）
+- 产出全文：完成态新增"展开全文"chevron——惰性拉首个 artifact
+  就地 markdown 渲染（限高滚动），再次点击收起；刷新回放后同源可用
+- MessageMetadata.toolActivity（单条当前活动）退役，删净无兼容层；
+  areEqual 补 toolCalls 引用比较；markdown components 提取模块级
+  工厂（主组件与专家卡共用）
+
+E2E 实测：刷新回放后展开 6 行工具明细、全文就地渲染 3338 字。
+测试：后端 494 绿（明细快照断言扩展）、前端 99 绿（序列累积 4 条
++ 终态明细断言）、tsc/build 绿。

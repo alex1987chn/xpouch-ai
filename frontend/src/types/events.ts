@@ -120,6 +120,8 @@ export interface TaskCompletedData {
   message_id?: number | null
   artifact_ids?: string[]
   tool_stats?: Record<string, number> | null
+  /** 逐次工具调用明细（完成时刻快照；真相源=账本） */
+  tool_calls?: Record<string, unknown>[] | null
 }
 
 export type TaskCompletedEvent = SSEEvent<TaskCompletedData, 'task.completed'>

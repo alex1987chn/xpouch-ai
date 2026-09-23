@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 变更
+
+- **专家卡工具明细可展开 + 产出全文就地展开**（对照 Manus / ChatGPT Deep Research / Devin 的过程可回看模式——行业"过程流式"= 动作流而非草稿正文流，故不做中间轮草稿流式）：①完成态工具汇总行（N 次 · 总耗时）点击展开逐次明细（工具名 / MCP 标 / 耗时 / 成败色点）——后端从账本聚合**逐次明细快照**随消息落库（extra_data.tool_calls，截 50 条）并经 task.completed 事件下发（事件载荷=库内终态）；②执行中的工具活动从"只显示当前一条"升级为**实时追加的活动序列**（逐次累积进消息 metadata，渲染最近 3 条 + 更早计数）；③完成态新增"展开全文"chevron——惰性拉取首个 artifact 就地 markdown 渲染（限高滚动，不打断消息流），再次点击收起；刷新回放后明细与全文展开同源可用（extra_data 快照）
+
 ### 修复
 
 - **批准计划后下游任务丢失上游产出（依赖被合并清空）**：`_apply_updated_plan` 的依赖保留集合用 `task_id or id` 取键，但前端回传的 updated_plan 是 TaskInfo 形态（id=db uuid、**没有 task_id 字段**）——集合全部落回 uuid，而 `depends_on` 里存的是语义 id（"task_1"），交集恒空 → 依赖被清成 None → 下游任务的 prompt 里没有上游输出也无缺失警告，模型只能靠工具自救（查产物又受异步落库时序影响），按教材「不得编造」如实产出「无法执行：上游缺失」。修法：建集合前先经 current_task_map 把 uuid 映射回语义 id，映射不到（用户新增任务）才用自身 id。回归测试用真实 TaskInfo 形态（无 task_id 字段）钉住。注意：这是存量 bug（上一版注释声称修过的坑，兜底分支仍踩着），非本轮顺序重构引入

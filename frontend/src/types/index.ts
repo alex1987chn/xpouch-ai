@@ -32,6 +32,16 @@ export interface MessageAttachmentData {
  * 消息表是专家执行状态的一等真相源：task 开始插入 running 态，完成/失败原位
  * 更新；刷新会话直接从这里读，不再有前端拼装的中间态。
  */
+/** 单次工具调用记录（服务端账本/快照与前端实时累积共用形状） */
+export interface ToolCallRecord {
+  tool: string
+  duration_ms?: number
+  success?: boolean
+  source?: string
+  /** 仅实时态：calling 尚在进行（终态快照无此字段） */
+  status?: 'calling' | 'done'
+}
+
 export interface ExpertMessageData {
   message_kind: 'expert_result'
   expert_type: string
@@ -42,6 +52,8 @@ export interface ExpertMessageData {
   status: 'running' | 'completed' | 'failed'
   artifact_ids?: string[]
   tool_stats?: { count: number; total_ms: number; failed: number } | null
+  /** 逐次工具调用明细（完成时刻快照；刷新后从这里读） */
+  tool_calls?: ToolCallRecord[] | null
   duration_ms?: number | null
   summary?: string | null
   error?: string | null
@@ -122,16 +134,10 @@ export interface MessageMetadata {
   reasoningContent?: string
   /** 发起该消息的会话 ID（P4-1 会话归属守卫：切换会话后不再追加旧会话消息） */
   threadId?: string
-  /** 专家消息（extra_data.message_kind='expert_result'）执行期间的当前工具活动
-   * ——纯前端运行时态：完成后由 extra_data.tool_stats 终态取代渲染 */
-  toolActivity?: {
-    tool: string
-    source: 'builtin' | 'mcp'
-    state: 'calling' | 'done'
-    attempt?: number
-    durationMs?: number
-    success?: boolean
-  }
+  /** 专家消息（extra_data.message_kind='expert_result'）执行期间的工具活动序列
+   * ——纯前端运行时态：逐次累积（calling 项实时追加、result 到达转 done），
+   * 完成后由 extra_data.tool_calls / tool_stats 终态取代渲染 */
+  toolCalls?: ToolCallRecord[]
 }
 
 /**

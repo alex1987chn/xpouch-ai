@@ -52,35 +52,8 @@ function makeContextWithExpertMessage(): {
   }
 }
 
-describe('Tool Events（挂专家消息的运行时 toolActivity）', () => {
-  it('tool.calling 把当前工具活动写进对应专家消息的 metadata', () => {
-    const { context, messages } = makeContextWithExpertMessage()
-    handleToolCalling(
-      {
-        id: 'e1',
-        type: 'tool.calling' as const,
-        timestamp: '',
-        data: {
-          task_id: 'task-1',
-          expert_type: 'search',
-          tool: 'asearch_web',
-          source: 'builtin' as const,
-          args_summary: '',
-          attempt: 1,
-        },
-      } as never,
-      context
-    )
-
-    expect(messages[0].metadata?.toolActivity).toEqual({
-      tool: 'asearch_web',
-      source: 'builtin',
-      state: 'calling',
-      attempt: 1,
-    })
-  })
-
-  it('tool.result 覆盖同工具的 calling 态并带耗时成败', () => {
+describe('Tool Events（挂专家消息的运行时活动序列 toolCalls）', () => {
+  it('tool.calling 逐次追加活动项（序列累积，不是只记当前）', () => {
     const { context, messages } = makeContextWithExpertMessage()
     handleToolCalling(
       {
@@ -89,43 +62,72 @@ describe('Tool Events（挂专家消息的运行时 toolActivity）', () => {
       } as never,
       context
     )
-    handleToolResult(
+    handleToolCalling(
       {
-        id: 'e2', type: 'tool.result' as const, timestamp: '',
-        data: { task_id: 'task-1', expert_type: 'search', tool: 'asearch_web', source: 'builtin' as const, success: true, duration_ms: 2210 },
+        id: 'e2', type: 'tool.calling' as const, timestamp: '',
+        data: { task_id: 'task-1', expert_type: 'search', tool: 'maps_geo', source: 'mcp' as const, args_summary: '', attempt: 1 },
       } as never,
       context
     )
 
-    expect(messages[0].metadata?.toolActivity).toMatchObject({
-      state: 'done',
-      durationMs: 2210,
-      success: true,
-    })
+    expect(messages[0].metadata?.toolCalls).toEqual([
+      { tool: 'asearch_web', source: 'builtin', status: 'calling' },
+      { tool: 'maps_geo', source: 'mcp', status: 'calling' },
+    ])
   })
 
-  it('迟到的不相关工具 result 不覆盖当前 calling（乱序防护）', () => {
+  it('tool.result 把同工具最后一个 calling 项转为 done（带耗时成败）', () => {
     const { context, messages } = makeContextWithExpertMessage()
     handleToolCalling(
       {
-        id: 'e3', type: 'tool.calling' as const, timestamp: '',
+        id: 'e1', type: 'tool.calling' as const, timestamp: '',
+        data: { task_id: 'task-1', expert_type: 'search', tool: 'asearch_web', source: 'builtin' as const, args_summary: '', attempt: 1 },
+      } as never,
+      context
+    )
+    handleToolCalling(
+      {
+        id: 'e2', type: 'tool.calling' as const, timestamp: '',
+        data: { task_id: 'task-1', expert_type: 'search', tool: 'asearch_web', source: 'builtin' as const, args_summary: '', attempt: 2 },
+      } as never,
+      context
+    )
+    handleToolResult(
+      {
+        id: 'e3', type: 'tool.result' as const, timestamp: '',
+        data: { task_id: 'task-1', expert_type: 'search', tool: 'asearch_web', source: 'builtin' as const, success: false, duration_ms: 2210 },
+      } as never,
+      context
+    )
+
+    // 只转最后一个 calling；前一个保持 calling（各自轮次独立）
+    expect(messages[0].metadata?.toolCalls).toEqual([
+      { tool: 'asearch_web', source: 'builtin', status: 'calling' },
+      { tool: 'asearch_web', source: 'builtin', duration_ms: 2210, success: false, status: 'done' },
+    ])
+  })
+
+  it('迟到的不相关工具 result 不污染序列（新增完成项兜底，不动 calling）', () => {
+    const { context, messages } = makeContextWithExpertMessage()
+    handleToolCalling(
+      {
+        id: 'e1', type: 'tool.calling' as const, timestamp: '',
         data: { task_id: 'task-1', expert_type: 'search', tool: 'maps_geo', source: 'mcp' as const, args_summary: '', attempt: 2 },
       } as never,
       context
     )
     handleToolResult(
       {
-        id: 'e4', type: 'tool.result' as const, timestamp: '',
+        id: 'e2', type: 'tool.result' as const, timestamp: '',
         data: { task_id: 'task-1', expert_type: 'search', tool: 'asearch_web', source: 'builtin' as const, success: true, duration_ms: 100 },
       } as never,
       context
     )
 
-    expect(messages[0].metadata?.toolActivity).toMatchObject({
-      tool: 'maps_geo',
-      state: 'calling',
-      attempt: 2,
-    })
+    const calls = messages[0].metadata?.toolCalls ?? []
+    expect(calls[0]).toMatchObject({ tool: 'maps_geo', status: 'calling' })
+    // 无匹配 calling 的迟到 result 作为完成项落入序列（不覆盖）
+    expect(calls[1]).toMatchObject({ tool: 'asearch_web', status: 'done', success: true })
   })
 
   it('task_id 不匹配任何专家消息时不写入', () => {

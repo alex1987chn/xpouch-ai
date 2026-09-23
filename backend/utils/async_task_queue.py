@@ -115,6 +115,7 @@ def _sync_save_wrapper(
             if msg is not None:
                 payload["message_id"] = msg.id
                 payload["tool_stats"] = (msg.extra_data or {}).get("tool_stats")
+                payload["tool_calls"] = (msg.extra_data or {}).get("tool_calls")
         except Exception:
             logger.exception("[AsyncTaskQueue] 专家消息完成态更新失败 task=%s", task_id)
     return payload
@@ -241,6 +242,8 @@ async def async_save_expert_result(
                 task_completed_event.data["message_id"] = result["message_id"]
             if result.get("tool_stats") is not None:
                 task_completed_event.data["tool_stats"] = result["tool_stats"]
+            if result.get("tool_calls") is not None:
+                task_completed_event.data["tool_calls"] = result["tool_calls"]
             await emit_event(task_completed_event)
         if artifact_event is not None:
             await emit_event(artifact_event)

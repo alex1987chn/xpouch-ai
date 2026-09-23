@@ -177,23 +177,35 @@ def _find_expert_message(db: Session, thread_id: str, task_id: str) -> Message |
     return None
 
 
-def _tool_stats_from_ledger(db: Session, run_id: str | None, task_id: str) -> dict[str, int]:
-    """从 runevent 账本聚合该任务的工具调用统计（完成时刻快照）。"""
-    stats = {"count": 0, "total_ms": 0, "failed": 0}
-    if not run_id:
-        return stats
-    rows = db.exec(
-        select(RunEvent.event_data).where(
-            RunEvent.run_id == run_id, RunEvent.event_type == RunEventType.TOOL_RESULT
-        )
-    ).all()
-    for data in rows:
-        if (data or {}).get("task_id") == task_id:
+def _tool_snapshot_from_ledger(db: Session, run_id: str | None, task_id: str) -> dict[str, Any]:
+    """从 runevent 账本聚合该任务的工具调用：聚合统计 + 逐次明细（完成时刻
+    快照，与 duration 同性质——真相源仍是账本）。明细截 50 条防超长。"""
+    stats: dict[str, int] = {"count": 0, "total_ms": 0, "failed": 0}
+    calls: list[dict[str, Any]] = []
+    if run_id:
+        rows = db.exec(
+            select(RunEvent.event_data).where(
+                RunEvent.run_id == run_id, RunEvent.event_type == RunEventType.TOOL_RESULT
+            )
+        ).all()
+        for data in rows:
+            if (data or {}).get("task_id") != task_id:
+                continue
             stats["count"] += 1
-            stats["total_ms"] += int(data.get("duration_ms") or 0)
-            if data.get("success") is not True:
+            duration_ms = int(data.get("duration_ms") or 0)
+            stats["total_ms"] += duration_ms
+            success = data.get("success") is True
+            if not success:
                 stats["failed"] += 1
-    return stats
+            calls.append(
+                {
+                    "tool": str(data.get("tool") or "unknown"),
+                    "duration_ms": duration_ms,
+                    "success": success,
+                    "source": str(data.get("source") or "builtin"),
+                }
+            )
+    return {"tool_stats": stats, "tool_calls": calls[:50]}
 
 
 def complete_expert_message(
@@ -215,7 +227,7 @@ def complete_expert_message(
     extra.update(
         status="completed",
         artifact_ids=artifact_ids,
-        tool_stats=_tool_stats_from_ledger(db, run_id, task_id),
+        **_tool_snapshot_from_ledger(db, run_id, task_id),
         duration_ms=duration_ms,
         summary=summary,
     )

@@ -348,11 +348,7 @@ function MessageItem({
   }, [message.id, onRegenerate])
 
   // 🔥 性能优化：使用 useMemo 缓存 Markdown components 对象
-  const markdownComponents = useMemo<Components>(() => ({
-    a: ({ node: _node, ...props }) => <MarkdownLink {...props} onLinkClick={onLinkClick} />,
-    img: ({ node: _node, ...props }) => <MarkdownImage {...props} />,
-    code: ({ node: _node, ...props }) => <MarkdownCode {...props} />
-  }), [onLinkClick])
+  const markdownComponents = useMemo(() => buildMarkdownComponents(onLinkClick), [onLinkClick])
 
   // 用户消息：暖调浅底圆角气泡，右对齐（蓝本 .msg-user）；附件以 chips 展示
   // （名字/数量来自消息 extra_data 元数据——文档文本与图片本体都不在展示层）
@@ -537,6 +533,15 @@ function MessageItem({
 }
 
 // ============================================================================
+// Markdown components 工厂（主组件与专家卡共用；链接回调可选）
+function buildMarkdownComponents(onLinkClick?: MessageItemProps['onLinkClick']): Components {
+  return {
+    a: ({ node: _node, ...props }) => <MarkdownLink {...props} onLinkClick={onLinkClick} />,
+    img: ({ node: _node, ...props }) => <MarkdownImage {...props} />,
+    code: ({ node: _node, ...props }) => <MarkdownCode {...props} />
+  }
+}
+
 // 性能优化：自定义 areEqual 函数
 // 只比较影响 UI 的关键字段，忽略函数引用变化
 // ============================================================================
@@ -545,18 +550,23 @@ function areEqual(prevProps: MessageItemProps, nextProps: MessageItemProps): boo
   // 比较 message 关键字段
   const prevMsg = prevProps.message
   const nextMsg = nextProps.message
-  
+
   if (prevMsg.id !== nextMsg.id) return false
   if (prevMsg.content !== nextMsg.content) return false
   if (prevMsg.role !== nextMsg.role) return false
   if (prevMsg.timestamp !== nextMsg.timestamp) return false
   if (prevMsg.extra_data !== nextMsg.extra_data) return false
-  
+
   // 比较 metadata.thinking 长度（thinking 步骤变化）
   const prevThinkingLength = prevMsg.metadata?.thinking?.length ?? 0
-  const nextThinkingLength = nextMsg.metadata?.thinking?.length ?? 0
+  const nextThinkingLength = nextProps.message.metadata?.thinking?.length ?? 0
   if (prevThinkingLength !== nextThinkingLength) return false
-  
+
+  // 工具活动序列（metadata.toolCalls）：条数或末项状态变化都要重渲染
+  const prevCalls = prevMsg.metadata?.toolCalls
+  const nextCalls = nextMsg.metadata?.toolCalls
+  if (prevCalls !== nextCalls) return false
+
   // 比较其他 UI 相关 props
   if (prevProps.aiStatus !== nextProps.aiStatus) return false
 
@@ -568,9 +578,10 @@ function areEqual(prevProps: MessageItemProps, nextProps: MessageItemProps): boo
 /**
  * 专家执行结果卡（message_kind='expert_result'）。
  *
- * 数据全部来自消息 extra_data（服务端真相源）；metadata.toolActivity 是
- * 执行期间的实时指示（calling 转圈），完成后不再渲染。
- * artifact 横条点击拉详情并送 docView 静态预览（与正文消息的文档视图同一弹框）。
+ * 数据分层：extra_data 是服务端真相（终态：摘要/产物引用/工具明细快照）；
+ * metadata.toolCalls 是执行期间的实时活动序列（逐次追加，完成后被终态取代）。
+ * 交互：完成后工具汇总行与产出全文均可展开——明细直接读快照，全文惰性拉
+ * artifact 就地 markdown 渲染（不打断消息流，替代强制弹窗）。
  */
 function ExpertResultCard({
   message,
@@ -587,13 +598,22 @@ function ExpertResultCard({
     language?: string | null
   } | null>(null)
   const [loadingArtifact, setLoadingArtifact] = useState(false)
+  const [toolsOpen, setToolsOpen] = useState(false)
+  const [outputOpen, setOutputOpen] = useState(false)
+  const [outputText, setOutputText] = useState<string | null>(null)
+  const [loadingOutput, setLoadingOutput] = useState(false)
+  // 展开全文的 markdown 渲染配置（无链接回调：卡片内不接管导航）
+  const outputComponents = useMemo(() => buildMarkdownComponents(), [])
 
   const color = expertColor(extra.expert_type)
   const name = expertLabel(extra.expert_type, t)
   const running = extra.status === 'running'
   const failed = extra.status === 'failed'
-  const activity = message.metadata?.toolActivity
+  const liveCalls = message.metadata?.toolCalls
   const toolStats = extra.tool_stats
+  // 明细：终态优先（服务端快照），实时态用运行时序列
+  const detailCalls = !running ? extra.tool_calls : liveCalls
+  const primaryArtifactId = (extra.artifact_ids ?? [])[0]
 
   const openArtifact = async (artifactId: string) => {
     if (loadingArtifact) return
@@ -611,8 +631,31 @@ function ExpertResultCard({
     }
   }
 
+  // 产出全文就地展开（惰性拉首个 artifact；再次点击收起）
+  const toggleOutput = async () => {
+    if (outputOpen) {
+      setOutputOpen(false)
+      return
+    }
+    if (outputText == null && primaryArtifactId) {
+      if (loadingOutput) return
+      setLoadingOutput(true)
+      try {
+        const artifact = await getArtifactDetail(primaryArtifactId)
+        setOutputText(artifact.content ?? '')
+      } finally {
+        setLoadingOutput(false)
+      }
+    }
+    setOutputOpen(true)
+  }
+
   const formatMs = (ms?: number | null) =>
     ms == null ? null : ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`
+
+  // 实时活动：序列全部保留在状态里，渲染最近 3 条（旧的收进计数）
+  const visibleLive = (liveCalls ?? []).slice(-3)
+  const hiddenLiveCount = (liveCalls ?? []).length - visibleLive.length
 
   return (
     <div className="flex w-full flex-col items-start select-text ai-message group">
@@ -657,36 +700,106 @@ function ExpertResultCard({
         </p>
       )}
 
-      {/* 工具活动：执行中显示当前调用（转圈），完成后显示统计快照 */}
-      {running && activity && (
-        <div className="mt-1 flex items-center gap-1.5 text-xs text-content-muted">
-          <Wrench className="h-3 w-3 shrink-0" />
-          <span className="truncate font-mono">{activity.tool}</span>
-          {activity.source === 'mcp' && (
-            <span className="shrink-0 rounded-sm border border-border-divider px-1 text-nano">MCP</span>
-          )}
-          {activity.state === 'calling' && <Loader2 className="h-3 w-3 shrink-0 animate-spin" />}
-          {activity.state === 'calling' ? (
-            <span>
-              {(activity.attempt ?? 1) > 1 ? t('thinkingToolRetrying') : t('thinkingToolCalling')}
-            </span>
-          ) : (
-            <span className={activity.success ? 'text-status-online' : 'text-status-offline'}>
-              {activity.success ? '✓' : '✗'} {formatMs(activity.durationMs)}
+      {/* 工具区。
+          执行中：实时活动序列（逐次追加，最近 3 条可见，calling 项转圈）。
+          完成后：汇总行（N 次 · 总耗时），点击展开逐次明细（终态快照）。 */}
+      {running && visibleLive.length > 0 && (
+        <div className="mt-1 flex w-full flex-col gap-0.5">
+          {hiddenLiveCount > 0 && (
+            <span className="text-nano text-content-muted/70">
+              … {t('expertEarlierCalls', { count: hiddenLiveCount })}
             </span>
           )}
+          {visibleLive.map((call, i) => (
+            <div key={i} className="flex items-center gap-1.5 text-xs text-content-muted">
+              <Wrench className="h-3 w-3 shrink-0" />
+              <span className="truncate font-mono">{call.tool}</span>
+              {call.source === 'mcp' && (
+                <span className="shrink-0 rounded-sm border border-border-divider px-1 text-nano">MCP</span>
+              )}
+              {call.status === 'calling' ? (
+                <>
+                  <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                  <span>{t('thinkingToolCalling')}</span>
+                </>
+              ) : (
+                <span className={call.success ? 'text-status-online' : 'text-status-offline'}>
+                  {call.success ? '✓' : '✗'} {formatMs(call.duration_ms)}
+                </span>
+              )}
+            </div>
+          ))}
         </div>
       )}
       {!running && toolStats && toolStats.count > 0 && (
-        <div className="mt-1 flex items-center gap-1.5 text-xs text-content-muted">
-          <Wrench className="h-3 w-3 shrink-0" />
-          <span>
-            {toolStats.count} {t('thinkingToolCalls')}
-            {toolStats.failed > 0 && (
-              <span className="text-status-offline">（{toolStats.failed} ✗）</span>
+        <>
+          <button
+            type="button"
+            onClick={() => setToolsOpen(v => !v)}
+            className="mt-1 flex items-center gap-1.5 text-xs text-content-muted transition-colors hover:text-content-secondary"
+          >
+            <Wrench className="h-3 w-3 shrink-0" />
+            <span>
+              {toolStats.count} {t('thinkingToolCalls')}
+              {toolStats.failed > 0 && (
+                <span className="text-status-offline">（{toolStats.failed} ✗）</span>
+              )}
+            </span>
+            <span>· {formatMs(toolStats.total_ms)}</span>
+            {toolsOpen ? (
+              <ChevronUp className="h-3 w-3 shrink-0" />
+            ) : (
+              <ChevronDown className="h-3 w-3 shrink-0" />
             )}
-          </span>
-          <span>· {formatMs(toolStats.total_ms)}</span>
+          </button>
+          {toolsOpen && (detailCalls ?? []).length > 0 && (
+            <div className="mt-1 flex w-full flex-col gap-0.5 rounded-md border border-border-divider bg-surface-tint/40 px-2.5 py-1.5">
+              {(detailCalls ?? []).map((call, i) => (
+                <div key={i} className="flex items-center gap-1.5 text-xs text-content-muted">
+                  <span
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                      call.success === false ? 'bg-status-offline' : 'bg-status-online'
+                    }`}
+                  />
+                  <span className="truncate font-mono">{call.tool}</span>
+                  {call.source === 'mcp' && (
+                    <span className="shrink-0 rounded-sm border border-border-divider px-1 text-nano">MCP</span>
+                  )}
+                  <span className="ml-auto shrink-0">{formatMs(call.duration_ms)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 产出全文就地展开（惰性拉首个 artifact，markdown 渲染；再次点击收起） */}
+      {!running && !failed && primaryArtifactId && (
+        <button
+          type="button"
+          onClick={() => void toggleOutput()}
+          className="mt-1 flex items-center gap-1 text-xs text-content-muted transition-colors hover:text-content-secondary"
+        >
+          {outputOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          <span>{outputOpen ? t('expertCollapseOutput') : t('expertExpandOutput')}</span>
+          {loadingOutput && <Loader2 className="h-3 w-3 animate-spin" />}
+        </button>
+      )}
+      {outputOpen && outputText != null && (
+        <div className={cn(
+          'mt-1.5 max-h-96 w-full overflow-y-auto rounded-md border border-border-divider bg-surface-tint/40 px-3 py-2',
+          'text-body leading-[1.75] prose prose-sm max-w-none',
+          'prose-headings:text-sm prose-headings:font-bold prose-headings:text-content-primary',
+          'prose-p:text-body prose-p:leading-[1.75] prose-p:text-content-primary/90',
+          'prose-strong:text-content-primary prose-code:text-content-primary prose-pre:bg-surface-elevated/50',
+        )}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeKatex]}
+            components={outputComponents}
+          >
+            {outputText}
+          </ReactMarkdown>
         </div>
       )}
 

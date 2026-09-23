@@ -154,6 +154,8 @@ class TaskCompletedData(BaseModel):
     message_id: int | None = None
     artifact_ids: list[str] = []
     tool_stats: dict[str, int] | None = None  # {"count","total_ms","failed"}
+    # 逐次工具调用明细（完成时刻快照，真相源=账本；None=未聚合/无调用）
+    tool_calls: list[dict[str, Any]] | None = None
 
 
 class TaskFailedData(BaseModel):

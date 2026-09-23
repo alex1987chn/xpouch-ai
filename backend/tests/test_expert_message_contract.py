@@ -112,10 +112,22 @@ def test_lifecycle_running_to_completed(monkeypatch, fresh):
     # 完成更新：产物引用 + 工具统计快照（从账本聚合 task 维度）
     ledger = [
         SimpleNamespace(
-            event_data={"task_id": "task-1", "tool": "a", "duration_ms": 100, "success": True}
+            event_data={
+                "task_id": "task-1",
+                "tool": "a",
+                "duration_ms": 100,
+                "success": True,
+                "source": "builtin",
+            }
         ),
         SimpleNamespace(
-            event_data={"task_id": "task-1", "tool": "b", "duration_ms": 50, "success": False}
+            event_data={
+                "task_id": "task-1",
+                "tool": "b",
+                "duration_ms": 50,
+                "success": False,
+                "source": "mcp",
+            }
         ),
         SimpleNamespace(
             event_data={"task_id": "other", "tool": "c", "duration_ms": 9, "success": True}
@@ -139,6 +151,11 @@ def test_lifecycle_running_to_completed(monkeypatch, fresh):
     assert extra["summary"] == "调研完成"
     # 只聚合本任务的两条（other 不算），失败一次
     assert extra["tool_stats"] == {"count": 2, "total_ms": 150, "failed": 1}
+    # 逐次明细快照（终态可展开的明细行，source 归一缺省 builtin）
+    assert extra["tool_calls"] == [
+        {"tool": "a", "duration_ms": 100, "success": True, "source": "builtin"},
+        {"tool": "b", "duration_ms": 50, "success": False, "source": "mcp"},
+    ]
 
 
 def test_fail_keeps_error(monkeypatch, fresh):

@@ -238,7 +238,7 @@ describe('Task Events', () => {
   })
 
   describe('handleTaskCompleted', () => {
-    it('应该释放运行中标记并把专家消息覆盖为终态（事件载荷=库内终态）', () => {
+    it('应该释放运行中标记并把专家消息覆盖为终态（事件载荷=库内终态，含工具明细）', () => {
       const event = {
         id: 'evt-1',
         type: 'task.completed' as const,
@@ -251,7 +251,11 @@ describe('Task Events', () => {
           completed_at: new Date().toISOString(),
           message_id: 101,
           artifact_ids: ['art-1'],
-          tool_stats: { count: 3, total_ms: 2100, failed: 0 }
+          tool_stats: { count: 3, total_ms: 2100, failed: 0 },
+          tool_calls: [
+            { tool: 'asearch_web', duration_ms: 1200, success: true, source: 'builtin' },
+            { tool: 'maps_geo', duration_ms: 900, success: true, source: 'mcp' },
+          ],
         }
       }
 
@@ -266,6 +270,10 @@ describe('Task Events', () => {
           status: 'completed',
           artifact_ids: ['art-1'],
           tool_stats: { count: 3, total_ms: 2100, failed: 0 },
+          tool_calls: [
+            { tool: 'asearch_web', duration_ms: 1200, success: true, source: 'builtin' },
+            { tool: 'maps_geo', duration_ms: 900, success: true, source: 'mcp' },
+          ],
           duration_ms: 5000
         })
       )

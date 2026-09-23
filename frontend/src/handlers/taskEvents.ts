@@ -239,6 +239,7 @@ export function handleTaskCompleted(
 
   // 事件载荷=消息终态（后端在专家消息更新完成后才发射），前端原位覆盖
   if (event.data.message_id != null) {
+    const rawCalls = event.data.tool_calls
     updateMessageExtra(String(event.data.message_id), {
       status: 'completed',
       artifact_ids: event.data.artifact_ids ?? [],
@@ -249,6 +250,13 @@ export function handleTaskCompleted(
             failed: event.data.tool_stats.failed ?? 0,
           }
         : null,
+      // 逐次明细（服务端账本聚合的快照，取代实时累积的 metadata.toolCalls）
+      tool_calls: (rawCalls ?? []).map(c => ({
+        tool: String((c as { tool?: unknown }).tool ?? 'unknown'),
+        duration_ms: Number((c as { duration_ms?: unknown }).duration_ms ?? 0),
+        success: (c as { success?: unknown }).success === true,
+        source: String((c as { source?: unknown }).source ?? 'builtin'),
+      })),
       duration_ms: event.data.duration_ms,
       summary: (event.data.output || '').slice(0, 120) || null,
     })
